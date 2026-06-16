@@ -125,7 +125,7 @@ describe('makeSendGroupRedeemRequest — Phase 4 (#271)', () => {
       isPeerConnected: () => false,
       pendingMap,
     });
-    await expect(send({ adminNkn: 'app.x', groupId: 'g', code: 'C' }))
+    await expect(send({ adminPeerAddr: 'app.x', groupId: 'g', code: 'C' }))
       .rejects.toThrow(/Peer transport not connected/);
   });
 
@@ -140,7 +140,7 @@ describe('makeSendGroupRedeemRequest — Phase 4 (#271)', () => {
     });
 
     const pending = send({
-      adminNkn: 'app.alice', groupId: 'g-1', code: 'JOIN-XYZ',
+      adminPeerAddr: 'app.alice', groupId: 'g-1', code: 'JOIN-XYZ',
       shareCard: true, peerDisplay: 'Bob',
     });
 
@@ -172,7 +172,7 @@ describe('makeSendGroupRedeemRequest — Phase 4 (#271)', () => {
       sendPeer, isPeerConnected: () => true, pendingMap,
       timeoutMs: 1000,
     });
-    const pending = send({ adminNkn: 'app.x', groupId: 'g', code: 'C' });
+    const pending = send({ adminPeerAddr: 'app.x', groupId: 'g', code: 'C' });
     // Need to wait for await sendPeer + the next microtask.
     await Promise.resolve(); await Promise.resolve();
     vi.advanceTimersByTime(1100);
@@ -188,7 +188,7 @@ describe('makeSendGroupRedeemRequest — Phase 4 (#271)', () => {
       isPeerConnected: () => true,
       pendingMap,
     });
-    await expect(send({ adminNkn: 'app.x', groupId: 'g', code: 'C' }))
+    await expect(send({ adminPeerAddr: 'app.x', groupId: 'g', code: 'C' }))
       .rejects.toThrow(/Failed to reach admin over NKN/);
     expect(pendingMap.size).toBe(0);
   });

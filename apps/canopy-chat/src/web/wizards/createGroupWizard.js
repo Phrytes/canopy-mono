@@ -66,7 +66,7 @@ async function persistCreatedCirclePolicy(groupId, state) {
  * @param {Function}    [opts.onDispatched]
  */
 export function renderCreateGroupWizard(opts) {
-  const { container, doc, callSkill, onClose, onDispatched, getMyNkn } = opts;
+  const { container, doc, callSkill, onClose, onDispatched, getMyPeerAddr } = opts;
 
   const state = initialState();
 
@@ -92,7 +92,7 @@ export function renderCreateGroupWizard(opts) {
         // invite URL we render carries the admin's peer-redeem target.
         // null / unavailable transport just means joiners can't fall
         // back to the peer path (they still get local + pod paths).
-        result.adminNkn = (typeof getMyNkn === 'function') ? (getMyNkn() ?? null) : null;
+        result.adminPeerAddr = (typeof getMyPeerAddr === 'function') ? (getMyPeerAddr() ?? null) : null;
         // 2026-05-24 — also embed the rules in the invite URL so the
         // joiner's wizard step 1 can show them directly (their local
         // substrate has no group-rules item until after they join).
@@ -412,10 +412,10 @@ function renderReviewStep(container, doc, state, onBack, onCancel, rerender, onS
 function renderSuccessStep(container, doc, state, onClose) {
   const wrap = makeBody(doc, '✓ Buurt created', `${state.successResult.groupId} is live.`);
 
-  // Encode {kind, groupId, code, expiresAt, adminNkn?} as a stoop-invite://
+  // Encode {kind, groupId, code, expiresAt, adminPeerAddr?} as a stoop-invite://
   // URL so the invitee can paste a single string into /join-group.  The
   // wizard's decoder reads `kind` to pick the right substrate path; if
-  // `adminNkn` is set, the joiner falls back to a peer-redeem when its
+  // `adminPeerAddr` is set, the joiner falls back to a peer-redeem when its
   // local substrate has no copy of the code (cross-browser/-device).
   const inviteUrl = encodeMembershipCodeUrl(state.successResult);
 
@@ -532,7 +532,7 @@ function encodeMembershipCodeUrl(result) {
     expiresAt: result.expiresAt,
     // Optional: admin's NKN address for peer-redeem fallback when the
     // joiner has no local copy of the code (cross-browser/-device).
-    ...(result.adminNkn ? { adminNkn: result.adminNkn } : {}),
+    ...(result.adminPeerAddr ? { adminPeerAddr: result.adminPeerAddr } : {}),
     // 2026-05-24 — embed the rules object so the joiner's wizard can
     // show them without needing to fetch from the admin's substrate
     // (joiner has no local group-rules item for groups they haven't

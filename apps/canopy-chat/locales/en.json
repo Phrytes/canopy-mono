@@ -407,7 +407,7 @@
       "doc": "Lookup error."
     }
   },
-  "publishNkn": {
+  "publishPeerAddrCmd": {
     "unavailable": {
       "text": "Pod publish unavailable (sign in first).",
       "doc": "Defensive."

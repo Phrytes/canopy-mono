@@ -40,7 +40,7 @@ export default function CreateGroupWizardModal({
   // Optional: () => string|null — caller's NKN address.  Embedded in
   // the invite URL so the joiner can peer-redeem when their substrate
   // has no local copy of the code (cross-device).
-  getMyNkn,
+  getMyPeerAddr,
   // N1+E8 — optional (groupId, patch) => Promise persister; writes the
   // wizard's chosen policy (incl. buurt chat-off) onto the new circle.
   persistPolicy,
@@ -75,9 +75,9 @@ export default function CreateGroupWizardModal({
       // stoop-invite:// URL the web emits + send it back as a
       // `record`-shape reply; ChatScreen's record-bubble auto-renders
       // a QR for QR-prefixed field values.
-      const adminNkn = (typeof getMyNkn === 'function') ? (getMyNkn() ?? null) : null;
+      const adminPeerAddr = (typeof getMyPeerAddr === 'function') ? (getMyPeerAddr() ?? null) : null;
       const rules    = buildRulesObjectFromState(after);
-      const enriched = { ...result, adminNkn, rules };
+      const enriched = { ...result, adminPeerAddr, rules };
       const inviteUrl = encodeMembershipCodeUrl(enriched);
 
       try {

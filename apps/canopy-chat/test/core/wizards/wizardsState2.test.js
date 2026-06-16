@@ -304,7 +304,7 @@ describe('joinGroupState', () => {
 
   it('finalSubmit membershipCode: expired-code triggers peer fallback', async () => {
     const state = JG.initialState();
-    state.invite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', adminNkn: 'NKN-ADMIN', rules: { purpose: 'P' } };
+    state.invite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', adminPeerAddr: 'NKN-ADMIN', rules: { purpose: 'P' } };
     state.handle = 'anne';
     const callSkill = vi.fn()
       .mockResolvedValueOnce({ ok: true })                                  // setMyHandle

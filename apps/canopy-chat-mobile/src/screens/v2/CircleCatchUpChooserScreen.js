@@ -30,7 +30,7 @@ import { t } from '../../core/localisation.js';
  * @param {Array<{from: string, offer: {requestId, count, sizeBytes, lastTs}}>} props.offers
  * @param {string} props.circleId
  * @param {string} [props.circleName]
- * @param {(nknAddr: string) => ({displayName?: string}|null)} [props.resolveContact]
+ * @param {(peerAddr: string) => ({displayName?: string}|null)} [props.resolveContact]
  * @param {(decision: object) => void} props.onResolve
  * @param {number} [props.nowMs]
  */

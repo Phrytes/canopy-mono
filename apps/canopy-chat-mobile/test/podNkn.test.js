@@ -1,8 +1,8 @@
 /**
  * Bundle G3 (#265) — mobile NKN-on-pod wrapper contract.
  *
- * Pins the shape `buildLookupPeerNknByWebid` + `buildPublishNknAddrToPod`
- * expose so /lookup-peer + /publish-nkn slash handlers (in canonical
+ * Pins the shape `buildLookupPeerAddrByWebid` + `buildPublishPeerAddrToPod`
+ * expose so /lookup-peer + /publish-peer slash handlers (in canonical
  * `apps/canopy-chat/src/core/localBuiltins.js`) work without per-
  * surface branching.  Mirrors web's pattern from main.js:1421-1435 but
  * threads the OidcSessionRN's `getAuthenticatedFetch()` instead of the
@@ -15,8 +15,8 @@
 import { describe, it, expect } from 'vitest';
 
 import {
-  buildLookupPeerNknByWebid,
-  buildPublishNknAddrToPod,
+  buildLookupPeerAddrByWebid,
+  buildPublishPeerAddrToPod,
 } from '../src/core/podNkn.js';
 
 /**
@@ -53,16 +53,16 @@ function fakeSession({ webid = null, authed = false, routes = new Map() } = {}) 
   };
 }
 
-describe('Bundle G3 (#265) — buildLookupPeerNknByWebid', () => {
+describe('Bundle G3 (#265) — buildLookupPeerAddrByWebid', () => {
   it('throws "Sign in first" when no session is authenticated', async () => {
     const ref = { current: fakeSession({ authed: false }) };
-    const lookup = buildLookupPeerNknByWebid({ sessionRef: ref });
+    const lookup = buildLookupPeerAddrByWebid({ sessionRef: ref });
     await expect(lookup('https://bob.example/#me')).rejects.toThrow(/sign in/i);
   });
 
   it('throws "Sign in first" when sessionRef.current is null', async () => {
     const ref = { current: null };
-    const lookup = buildLookupPeerNknByWebid({ sessionRef: ref });
+    const lookup = buildLookupPeerAddrByWebid({ sessionRef: ref });
     await expect(lookup('https://bob.example/#me')).rejects.toThrow(/sign in/i);
   });
 
@@ -80,7 +80,7 @@ describe('Bundle G3 (#265) — buildLookupPeerNknByWebid', () => {
     const ref = { current: fakeSession({
       webid: 'https://alice.example/#me', authed: true, routes,
     }) };
-    const lookup = buildLookupPeerNknByWebid({ sessionRef: ref });
+    const lookup = buildLookupPeerAddrByWebid({ sessionRef: ref });
     const addr = await lookup('https://bob.example/profile/card#me');
     expect(addr).toBeNull();
   });
@@ -95,23 +95,23 @@ describe('Bundle G3 (#265) — buildLookupPeerNknByWebid', () => {
       ['https://bob.example/canopy/identity/identity.ttl', () => ({
         status: 200, contentType: 'text/turtle',
         body: `@prefix canopy: <https://canopy.dev/ns#>.
-<#me> canopy:nknAddr "app.deadbeef1234567890".
+<#me> canopy:peerAddr "app.deadbeef1234567890".
 `,
       })],
     ]);
     const ref = { current: fakeSession({
       webid: 'https://alice.example/#me', authed: true, routes,
     }) };
-    const lookup = buildLookupPeerNknByWebid({ sessionRef: ref });
+    const lookup = buildLookupPeerAddrByWebid({ sessionRef: ref });
     const addr = await lookup('https://bob.example/profile/card#me');
     expect(addr).toBe('app.deadbeef1234567890');
   });
 });
 
-describe('Bundle G3 (#265) — buildPublishNknAddrToPod', () => {
+describe('Bundle G3 (#265) — buildPublishPeerAddrToPod', () => {
   it('throws "Sign in first" when no session is authenticated', async () => {
     const ref = { current: fakeSession({ authed: false }) };
-    const publish = buildPublishNknAddrToPod({
+    const publish = buildPublishPeerAddrToPod({
       sessionRef: ref,
       agent: { peer: { address: 'app.abc' } },
     });
@@ -122,7 +122,7 @@ describe('Bundle G3 (#265) — buildPublishNknAddrToPod', () => {
     const ref = { current: fakeSession({
       webid: 'https://alice.example/#me', authed: true,
     }) };
-    const publish = buildPublishNknAddrToPod({
+    const publish = buildPublishPeerAddrToPod({
       sessionRef: ref,
       agent: { peer: {} },   // no address
     });
@@ -170,7 +170,7 @@ describe('Bundle G3 (#265) — buildPublishNknAddrToPod', () => {
       return originalFetch(input, init);
     };
     const ref = { current: session };
-    const publish = buildPublishNknAddrToPod({
+    const publish = buildPublishPeerAddrToPod({
       sessionRef: ref,
       agent: { peer: { address: 'app.feedface000111222' } },
     });
@@ -180,7 +180,7 @@ describe('Bundle G3 (#265) — buildPublishNknAddrToPod', () => {
     expect(result.url).toBe('https://alice.example/canopy/identity/identity.ttl');
     // The PUT body carries the NKN triple.
     const ttlWrite = seenBodies.find(w => w.url.endsWith('identity.ttl'));
-    expect(ttlWrite?.body).toContain('canopy:nknAddr');
+    expect(ttlWrite?.body).toContain('canopy:peerAddr');
     expect(ttlWrite?.body).toContain('app.feedface000111222');
   });
 });

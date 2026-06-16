@@ -63,8 +63,8 @@ export function createLocalBuiltins({
   onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
   agent,                     // v0.7.P3a — agent {identity:{host,chat}}
   connectPeer,               // v0.7.P3b — () => Promise<{address}>
-  lookupPeerNknByWebid,      // v0.7.P3d — (webid) => Promise<string|null>
-  publishNknAddrToPod,       // v0.7.P3d — () => Promise<{ok, url, status}>
+  lookupPeerAddrByWebid,      // v0.7.P3d — (webid) => Promise<string|null>
+  publishPeerAddrToPod,       // v0.7.P3d — () => Promise<{ok, url, status}>
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -94,10 +94,10 @@ export function createLocalBuiltins({
     'transport-mode':   async (args) => transportMode(args, { agent, t }),
     'transports':       async ()     => transportsStatus({ agent, t }),
     'settings':         async (args) => settingsHandler(args, { t }),
-    'lookup-peer':      async (args) => lookupPeer(args, { lookupPeerNknByWebid, t }),
-    'publish-nkn':      async (args) => publishNkn(args, { publishNknAddrToPod, t }),
+    'lookup-peer':      async (args) => lookupPeer(args, { lookupPeerAddrByWebid, t }),
+    'publish-peer':      async (args) => publishPeerAddrCmd(args, { publishPeerAddrToPod, t }),
     'send-file':        async (args) => sendFile(args, {
-      agent, t, openFilePicker, lookupPeerNknByWebid,
+      agent, t, openFilePicker, lookupPeerAddrByWebid,
     }),
     mute:               async (args) => muteHandler(args, { agent, t }),
     unmute:             async (args) => unmuteHandler(args, { agent, t }),
@@ -357,7 +357,7 @@ async function meIdentity(_args, { agent, t }) {
  * an NKN address ('app.<hex>') OR a webid (auto-resolved).
  */
 async function sendFile(args, {
-  agent, t, openFilePicker, lookupPeerNknByWebid,
+  agent, t, openFilePicker, lookupPeerAddrByWebid,
 }) {
   const peerRaw = String(args?.peer ?? '').trim();
   if (!peerRaw) return { ok: false, error: t('sendFile.no_peer') };
@@ -371,10 +371,10 @@ async function sendFile(args, {
   // Resolve peer if it looks like a webid.
   let peerAddr = peerRaw;
   if (peerRaw.startsWith('http') || peerRaw.startsWith('webid:')) {
-    if (typeof lookupPeerNknByWebid !== 'function') {
+    if (typeof lookupPeerAddrByWebid !== 'function') {
       return { ok: false, error: t('sendFile.no_lookup') };
     }
-    const resolved = await lookupPeerNknByWebid(peerRaw).catch(() => null);
+    const resolved = await lookupPeerAddrByWebid(peerRaw).catch(() => null);
     if (!resolved) return { ok: false, error: t('sendFile.lookup_failed', { peer: peerRaw }) };
     peerAddr = resolved;
   }
@@ -454,14 +454,14 @@ async function sendFile(args, {
  * via the peer's pod profile.  Returns the address so the user can
  * `/test-peer` or `/addappt --attendees-addr=` with it.
  */
-async function lookupPeer(args, { lookupPeerNknByWebid, t }) {
+async function lookupPeer(args, { lookupPeerAddrByWebid, t }) {
   const webid = String(args?.webid ?? '').trim();
   if (!webid) return { ok: false, error: t('lookup.no_webid') };
-  if (typeof lookupPeerNknByWebid !== 'function') {
+  if (typeof lookupPeerAddrByWebid !== 'function') {
     return { ok: false, error: t('lookup.unavailable') };
   }
   try {
-    const addr = await lookupPeerNknByWebid(webid);
+    const addr = await lookupPeerAddrByWebid(webid);
     if (!addr) return { ok: false, error: t('lookup.not_found', { webid }) };
     return { message: t('lookup.found', { webid, address: addr }) };
   } catch (err) {
@@ -470,19 +470,19 @@ async function lookupPeer(args, { lookupPeerNknByWebid, t }) {
 }
 
 /**
- * `/publish-nkn` — v0.7.P3d.  Re-publishes the user's NKN address
+ * `/publish-peer` — v0.7.P3d.  Re-publishes the user's NKN address
  * to their pod identity.ttl.
  */
-async function publishNkn(_args, { publishNknAddrToPod, t }) {
-  if (typeof publishNknAddrToPod !== 'function') {
-    return { ok: false, error: t('publishNkn.unavailable') };
+async function publishPeerAddrCmd(_args, { publishPeerAddrToPod, t }) {
+  if (typeof publishPeerAddrToPod !== 'function') {
+    return { ok: false, error: t('publishPeerAddrCmd.unavailable') };
   }
   try {
-    const r = await publishNknAddrToPod();
-    if (!r?.ok) return { ok: false, error: t('publishNkn.failed', { status: r?.status ?? 'unknown' }) };
-    return { message: t('publishNkn.done', { url: r.url }) };
+    const r = await publishPeerAddrToPod();
+    if (!r?.ok) return { ok: false, error: t('publishPeerAddrCmd.failed', { status: r?.status ?? 'unknown' }) };
+    return { message: t('publishPeerAddrCmd.done', { url: r.url }) };
   } catch (err) {
-    return { ok: false, error: t('publishNkn.failed', { error: err.message ?? String(err) }) };
+    return { ok: false, error: t('publishPeerAddrCmd.failed', { error: err.message ?? String(err) }) };
   }
 }
 
@@ -1458,7 +1458,7 @@ async function transportsStatus({ agent, t }) {
     title:       t('transport.status_title'),
     mode:        agent.transportMode ?? 'nkn',
     nknStatus:   agent.peer?.status  ?? 'idle',
-    nknAddress:  agent.peer?.address ?? '(none)',
+    peerAddress:  agent.peer?.address ?? '(none)',
     relayStatus: agent.relay?.status ?? 'idle',
     relayUrl:    agent.relay?.url    ?? '(none)',
     relayError:  agent.relay?.error  ?? null,

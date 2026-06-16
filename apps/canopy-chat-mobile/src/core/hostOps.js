@@ -46,12 +46,12 @@ import { runBrief, createBriefCache } from '../../../canopy-chat/src/brief.js';
 import { runFind }                    from '../../../canopy-chat/src/find.js';
 import { AppRegistry }                from '../../../canopy-chat/src/appRegistry.js';
 
-// Bundle G3 (#265) — NKN-on-pod wrappers (lookupPeerNknByWebid +
-// publishNknAddrToPod).  Same shape web wires from main.js:1421-1435
+// Bundle G3 (#265) — NKN-on-pod wrappers (lookupPeerAddrByWebid +
+// publishPeerAddrToPod).  Same shape web wires from main.js:1421-1435
 // but consuming the mobile OidcSessionRN's authenticated fetch.
 import {
-  buildLookupPeerNknByWebid,
-  buildPublishNknAddrToPod,
+  buildLookupPeerAddrByWebid,
+  buildPublishPeerAddrToPod,
 }                                     from './podNkn.js';
 
 /**
@@ -199,15 +199,15 @@ export function buildMobileLocalBuiltins({
       await agent.connectPeerTransport({ nknLib });
       return { address: agent.peer?.address ?? '' };
     },
-    // Bundle G3 (#265) — /lookup-peer <webid> + /publish-nkn.  Same
+    // Bundle G3 (#265) — /lookup-peer <webid> + /publish-peer.  Same
     // helpers web wires via main.js:1421-1435; mobile uses the
     // OidcSessionRN authenticated fetch instead of the @inrupt
     // browser fetch.  When sessionRef isn't supplied (older
     // ChatScreen call-sites), leave the injection undefined so the
-    // built-in handlers report t('lookup.unavailable') / t('publishNkn.unavailable').
+    // built-in handlers report t('lookup.unavailable') / t('publishPeerAddrCmd.unavailable').
     ...(sessionRef ? {
-      lookupPeerNknByWebid: buildLookupPeerNknByWebid({ sessionRef }),
-      publishNknAddrToPod:  buildPublishNknAddrToPod({ sessionRef, agent }),
+      lookupPeerAddrByWebid: buildLookupPeerAddrByWebid({ sessionRef }),
+      publishPeerAddrToPod:  buildPublishPeerAddrToPod({ sessionRef, agent }),
     } : {}),
     //   - externalFlow, simPeers                    → not applicable on mobile
   });

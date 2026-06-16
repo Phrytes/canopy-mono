@@ -31,7 +31,7 @@
  *
  *   - All offers in the window are passed to the injected
  *     `chooseOffer(offers, {circleId})` hook.  Resolution shape:
- *       {accept: {offerFrom: nknAddr, mode: 'all'|'last-50'|'last-7-days'}}
+ *       {accept: {offerFrom: peerAddr, mode: 'all'|'last-50'|'last-7-days'}}
  *       {decline: true}
  *       null  — same as decline (UI dismiss / timeout)
  *   - chooseOffer rejection is treated as decline.
@@ -77,7 +77,7 @@ const DEFAULT_CHUNK_TIMEOUT_MS = 10_000;
 
 /**
  * @param {object} args
- * @param {(nknAddr: string, envelope: object) => Promise<*>} args.sendToPeer
+ * @param {(peerAddr: string, envelope: object) => Promise<*>} args.sendToPeer
  * @param {{ingestChatMessage: Function}} args.inbox            — ε.1 inbox.
  * @param {number} [args.offerWindowMs]                          default 3000.
  * @param {number} [args.chunkTimeoutMs]                         default 10_000.

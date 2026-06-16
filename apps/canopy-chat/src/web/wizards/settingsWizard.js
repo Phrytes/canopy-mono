@@ -62,7 +62,7 @@ export function renderSettingsWizard(opts) {
 
     body.appendChild(renderSection(doc, 'About', [
       renderInfo(doc, 'NKN address',
-        opts.getMyNkn ? (opts.getMyNkn() ?? '(not connected)') : '(unknown)'),
+        opts.getMyPeerAddr ? (opts.getMyPeerAddr() ?? '(not connected)') : '(unknown)'),
     ]));
 
     container.appendChild(body);

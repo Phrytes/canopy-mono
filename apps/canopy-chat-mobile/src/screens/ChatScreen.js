@@ -351,7 +351,7 @@ export default function ChatScreen({
         try { await onSessionChanged?.(); } catch { /* best-effort */ }
       },
       // Bundle G3 (#265) — raw OidcSessionRN ref for /lookup-peer +
-      // /publish-nkn (which need session.getAuthenticatedFetch).
+      // /publish-peer (which need session.getAuthenticatedFetch).
       sessionRef,
     });
   }, [bootState, podAuth]);
@@ -1665,7 +1665,7 @@ export default function ChatScreen({
             callSkill={bootState.kind === 'ready' ? bootState.bundle.callSkill : undefined}
             t={t}
             // Bundle H Phase 4 (#271) — joinGroupWizard's cross-instance
-            // fallback (membershipCode-with-adminNkn).  Constructed
+            // fallback (membershipCode-with-adminPeerAddr).  Constructed
             // inline so it closes over the live agent + pendingMap.
             sendPeerRedeem={bootState.kind === 'ready'
               ? makeSendGroupRedeemRequest({
@@ -1678,7 +1678,7 @@ export default function ChatScreen({
             // address into the invite URL so the joiner can peer-
             // redeem when their substrate has no local copy of the
             // code (cross-device flow).
-            getMyNkn={() => bootState.kind === 'ready'
+            getMyPeerAddr={() => bootState.kind === 'ready'
               ? (bootState.bundle.agent?.peer?.address ?? null)
               : null}
             // N1+E8 — persist the create wizard's chosen policy (incl. the

@@ -64,7 +64,7 @@ const DEFAULT_ACCEPT_TIMEOUT_MS   = 15_000;
  * @param {object} args
  * @param {(appOrigin: string, opId: string, args: object) => Promise<*>} args.callSkill
  *   Bound callSkill; we call `callSkill('stoop', 'getMessagesSince', …)`.
- * @param {(nknAddr: string, envelope: object) => Promise<*>} args.sendToPeer
+ * @param {(peerAddr: string, envelope: object) => Promise<*>} args.sendToPeer
  *   NKN send; thin wrapper over agent.sendPeerMessage.
  * @param {(groupId: string) => Promise<object|null>|object|null} [args.getCirclePolicy]
  *   When omitted, every request is auto-approved (V1 default).  When

@@ -185,12 +185,12 @@ describe('US-2 — Carol cannot impersonate Alice', () => {
     const alice = await AgentIdentity.generate(va);
     const claim = signClaim(alice, {
       webid: 'https://alice.example/profile/card#me',
-      nknAddr: 'app.alice.real',
+      peerAddr: 'app.alice.real',
     });
     // Attacker pulls the claim off Alice's pod, swaps in their own
     // NKN address (trying to redirect messages to themselves).  Sig
     // is over the original — verification fails.
-    const redirected = { ...claim, nknAddr: 'app.attacker.evil' };
+    const redirected = { ...claim, peerAddr: 'app.attacker.evil' };
     expect(verifyClaim(redirected)).toEqual({ ok: false, reason: 'bad-sig' });
   });
 });
@@ -314,16 +314,16 @@ describe('US-5 — Muting Bob by webid blocks him across devices', () => {
     expect(aliases).toContain('https://bob.example/#me');
     // sendTo to the new addr refuses because the alias matches mute:
     const fakeNkn = makeFakeNknSelf('app.alice');
-    const aliceWithNkn = await createSecureAgent({
+    const aliceWithPeerAddr = await createSecureAgent({
       vault:            new VaultMemory(),
       nknLib:           fakeNkn,
       identityResolver: memberMap,
     });
-    await aliceWithNkn.peer.connect();
-    aliceWithNkn.agent.security.registerPeer('app.bob.rotated', bobNewPubKey);
-    await aliceWithNkn.mute.add('https://bob.example/#me');
+    await aliceWithPeerAddr.peer.connect();
+    aliceWithPeerAddr.agent.security.registerPeer('app.bob.rotated', bobNewPubKey);
+    await aliceWithPeerAddr.mute.add('https://bob.example/#me');
     await expect(
-      aliceWithNkn.peer.sendTo('app.bob.rotated', { body: 'no' })
+      aliceWithPeerAddr.peer.sendTo('app.bob.rotated', { body: 'no' })
     ).rejects.toThrow(/muted/);
   });
 });

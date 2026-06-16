@@ -1054,10 +1054,10 @@ export async function createRealHouseholdAgent(opts = {}) {
         // address into the card so the scanner can DM straight back
         // (no pod lookup needed).  The stoop substrate has no NKN
         // identity of its own; only the chat-layer secure-agent does.
-        const myNkn = sa?.peer?.address ?? null;
-        if (myNkn) realArgs = { ...realArgs, nknAddr: myNkn };
+        const myPeerAddr = sa?.peer?.address ?? null;
+        if (myPeerAddr) realArgs = { ...realArgs, peerAddr: myPeerAddr };
         if (typeof console !== 'undefined') {
-          console.log('[realAgent] getContactShareQr inject nknAddr=' + (myNkn ? myNkn.slice(0,16)+'…' : 'NONE'));
+          console.log('[realAgent] getContactShareQr inject peerAddr=' + (myPeerAddr ? myPeerAddr.slice(0,16)+'…' : 'NONE'));
         }
       }
       // F1 5.3d — per-circle posts.  Stoop's browser bundle in
@@ -1809,7 +1809,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       if (typeof console !== 'undefined') {
         console.log('[realAgent] listContacts result:', data.contacts.map((c) => ({
           webid: String(c.webid).slice(0,32),
-          nknAddr: c.nknAddr ? (c.nknAddr.slice(0,16) + '…') : 'NONE',
+          peerAddr: c.peerAddr ? (c.peerAddr.slice(0,16) + '…') : 'NONE',
         })));
       }
       return {
@@ -1826,7 +1826,7 @@ export async function createRealHouseholdAgent(opts = {}) {
           // button can target the right NKN destination instead of
           // the contact's stableId/webid.  ListItemRow forwards this
           // to buttonSpecials.startDm.
-          peerAddr:    c.nknAddr ?? null,
+          peerAddr:    c.peerAddr ?? null,
         })),
         _sync: simulateSync(),
       };

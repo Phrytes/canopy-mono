@@ -425,7 +425,7 @@ export const canopyChatManifest = {
     /**
      * `/lookup-peer <webid>` — v0.7.P3d.  Resolves a peer's NKN
      * address by fetching their WebID profile + reading the
-     * canopy:nknAddr triple from their pod's identity.ttl file.
+     * canopy:peerAddr triple from their pod's identity.ttl file.
      * Used to bridge webid → NKN cross-peer (so users don't have
      * to paste raw NKN addresses).
      */
@@ -442,17 +442,17 @@ export const canopyChatManifest = {
     },
 
     /**
-     * `/publish-nkn` — v0.7.P3d.  Re-publishes the user's NKN
+     * `/publish-peer` — v0.7.P3d.  Re-publishes the user's NKN
      * address to their pod's identity.ttl (auto-runs on sign-in;
      * this command is for manual re-publish after /rotate-identity
      * changes the address).
      */
     {
-      id:    'publish-nkn',
+      id:    'publish-peer',
       verb:  'add',
       params: [],
       surfaces: {
-        slash: { command: '/publish-nkn' },
+        slash: { command: '/publish-peer' },
         chat:  { reply: 'text', hint: 'publish your NKN address to your pod' },
       },
     },

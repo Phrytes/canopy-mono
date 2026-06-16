@@ -162,21 +162,21 @@ describe('Bundle F P1 — buildMobileLocalBuiltins', () => {
     expect(r.error ?? '').not.toContain('apps.no_registry');
   });
 
-  // Bundle G3 (#265) — /lookup-peer + /publish-nkn.
-  it('/lookup-peer + /publish-nkn report unavailable when sessionRef is not wired', async () => {
+  // Bundle G3 (#265) — /lookup-peer + /publish-peer.
+  it('/lookup-peer + /publish-peer report unavailable when sessionRef is not wired', async () => {
     // The default buildHarness above doesn't pass sessionRef, so the
     // built-ins fall back to the t('lookup.unavailable') /
-    // t('publishNkn.unavailable') sentinels — NOT a crash.
+    // t('publishPeerAddrCmd.unavailable') sentinels — NOT a crash.
     const r1 = await h.handlers['lookup-peer']({ webid: 'https://bob/#me' });
     expect(r1.ok).toBe(false);
     expect(r1.error).toContain('lookup.unavailable');
-    const r2 = await h.handlers['publish-nkn']({});
+    const r2 = await h.handlers['publish-peer']({});
     expect(r2.ok).toBe(false);
-    expect(r2.error).toContain('publishNkn.unavailable');
+    expect(r2.error).toContain('publishPeerAddrCmd.unavailable');
   });
 });
 
-describe('Bundle G3 (#265) — /lookup-peer + /publish-nkn with sessionRef wired', () => {
+describe('Bundle G3 (#265) — /lookup-peer + /publish-peer with sessionRef wired', () => {
   it('routes /lookup-peer through podNkn wrapper', async () => {
     __resetThreadIdSeq();
     let threadState = createInitialThreadState();
@@ -211,13 +211,13 @@ describe('Bundle G3 (#265) — /lookup-peer + /publish-nkn with sessionRef wired
 <#me> pim:storage <https://bob.example/>.`,
               };
             }
-            // Peer's identity.ttl → canopy:nknAddr.
+            // Peer's identity.ttl → canopy:peerAddr.
             if (String(url).startsWith('https://bob.example/canopy/identity/identity.ttl')) {
               return {
                 ok: true, status: 200,
                 headers: { get: (k) => k.toLowerCase() === 'content-type' ? 'text/turtle' : null },
                 text: async () => `@prefix canopy: <https://canopy.dev/ns#>.
-<#me> canopy:nknAddr "app.bobbob".`,
+<#me> canopy:peerAddr "app.bobbob".`,
               };
             }
             return { ok: false, status: 404, headers: { get: () => null }, text: async () => '' };

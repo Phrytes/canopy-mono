@@ -301,7 +301,7 @@ export default function App() {
           // Persist the agent identity (chat + host vaults + stoop
           // cache) to AsyncStorage so the NKN address — derived from the
           // identity keypair — stays stable across reboots (otherwise a
-          // peer's cached nknAddr from a /share-my-contact QR breaks).
+          // peer's cached peerAddr from a /share-my-contact QR breaks).
           asyncStorage: AsyncStorage,
           // S4 — multi-member sealing: route stoop redeem/leave to the circle's producer.
           stoopControlAgent: circleControlAgentRouter,

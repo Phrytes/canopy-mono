@@ -2049,9 +2049,9 @@ export function buildSkills({
      *
      *   Two sources collapse into the same list:
      *     - On the ADMIN side: rows we wrote via
-     *       `verifyMembershipCodeForPeer` carry `redeemedBy = joinerNkn`.
+     *       `verifyMembershipCodeForPeer` carry `redeemedBy = joinerPeerAddr`.
      *     - On the JOINER side: rows we wrote via
-     *       `recordRemoteRedemption` carry `confirmedBy = adminNkn`.
+     *       `recordRemoteRedemption` carry `confirmedBy = adminPeerAddr`.
      *
      *   We collect every non-self, non-empty `redeemedBy` + `confirmedBy`
      *   for the group, dedupe, and return as a flat list.  Caller can
@@ -3350,10 +3350,10 @@ export function buildSkills({
         trustOffer,
         // 2026-05-27 — embed the caller's NKN peer address so the
         // scanner can DM the contact straight after add, without
-        // needing a Solid pod lookup (lookupPeerNknByWebid).  Caller
-        // (canopy-chat's realAgent) passes args.nknAddr; the stoop
+        // needing a Solid pod lookup (lookupPeerAddrByWebid).  Caller
+        // (canopy-chat's realAgent) passes args.peerAddr; the stoop
         // substrate doesn't have its own NKN identity.
-        ...(typeof a.nknAddr === 'string' && a.nknAddr ? { nknAddr: a.nknAddr } : {}),
+        ...(typeof a.peerAddr === 'string' && a.peerAddr ? { peerAddr: a.peerAddr } : {}),
       };
       return { payload: `stoop-contact://${_encodeQrPayload(card)}` };
     }, {
@@ -3378,7 +3378,7 @@ export function buildSkills({
       const card = _decodeQrPayload(a.payload.slice('stoop-contact://'.length));
       if (!card?.webid) return { error: 'malformed-card' };
       if (typeof console !== 'undefined') {
-        console.log('[stoop/addContactFromQr] card.nknAddr=' + (card.nknAddr ? (card.nknAddr.slice(0,16)+'…') : 'NONE') + ' for webid=' + String(card.webid).slice(0, 32));
+        console.log('[stoop/addContactFromQr] card.peerAddr=' + (card.peerAddr ? (card.peerAddr.slice(0,16)+'…') : 'NONE') + ' for webid=' + String(card.webid).slice(0, 32));
       }
       const trustLevel = card.trustOffer === 'vertrouwd' || card.trustOffer === 'bekend'
         ? card.trustOffer : 'bekend';
@@ -3391,7 +3391,7 @@ export function buildSkills({
         avatarUrl:   card.avatarUrl   ?? null,
         // 2026-05-27 — preserve the NKN peer address embedded in the
         // QR card so the chat-shell can DM straight after add.
-        ...(typeof card.nknAddr === 'string' && card.nknAddr ? { nknAddr: card.nknAddr } : {}),
+        ...(typeof card.peerAddr === 'string' && card.peerAddr ? { peerAddr: card.peerAddr } : {}),
         trustLevel,
       });
       metrics?.record?.('contact-added-from-qr');

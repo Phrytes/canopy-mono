@@ -329,7 +329,7 @@ describe('/transports', () => {
     expect(r.title).toMatch(/Transports/i);
     expect(r.mode).toBe('both');
     expect(r.nknStatus).toBe('connected');
-    expect(r.nknAddress).toBe('app.me');
+    expect(r.peerAddress).toBe('app.me');
     expect(r.relayStatus).toBe('connected');
     expect(r.relayUrl).toBe('wss://relay.example');
     expect(r.relayError).toBeNull();
@@ -341,7 +341,7 @@ describe('/transports', () => {
     const r = await builtins['transports']();
     expect(r.mode).toBe('nkn');
     expect(r.nknStatus).toBe('idle');
-    expect(r.nknAddress).toBe('(none)');
+    expect(r.peerAddress).toBe('(none)');
     expect(r.relayStatus).toBe('idle');
     expect(r.relayUrl).toBe('(none)');
   });

@@ -55,7 +55,7 @@ export function stoopContactToRow(c) {
     isBot:      false,
     skillCount: 0,
     reachable:  c.reachable !== false,
-    peerAddr:   c.pubKey ?? c.nknAddr ?? null,   // native address → DM channel
+    peerAddr:   c.pubKey ?? c.peerAddr ?? null,   // native address → DM channel
     url:        null,
     source:     'contact',                       // marks a ContactBook person (vs a discovered peer)
     trustLevel: c.trustLevel ?? null,            // 'bekend' | 'vertrouwd' | null

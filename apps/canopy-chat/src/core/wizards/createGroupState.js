@@ -284,12 +284,12 @@ export function buildRulesObjectFromState(state) {
 }
 
 /**
- * Encode the substrate's `{groupId, code, expiresAt, adminNkn?, rules?}`
+ * Encode the substrate's `{groupId, code, expiresAt, adminPeerAddr?, rules?}`
  * result into a `stoop-invite://<base64url-of-JSON>` URL the joiner
  * can paste into `/join-group`.  Lifted from web/createGroupWizard.js
  * 2026-05-27 so the mobile success-screen can reuse it.
  *
- * @param {{ groupId: string, code: string, expiresAt?: number, adminNkn?: string, rules?: object }} result
+ * @param {{ groupId: string, code: string, expiresAt?: number, adminPeerAddr?: string, rules?: object }} result
  * @returns {string}
  */
 export function encodeMembershipCodeUrl(result) {
@@ -298,7 +298,7 @@ export function encodeMembershipCodeUrl(result) {
     groupId:   result.groupId,
     code:      result.code,
     expiresAt: result.expiresAt,
-    ...(result.adminNkn ? { adminNkn: result.adminNkn } : {}),
+    ...(result.adminPeerAddr ? { adminPeerAddr: result.adminPeerAddr } : {}),
     ...(result.rules    ? { rules:    result.rules    } : {}),
   };
   const json = JSON.stringify(payload);
@@ -314,7 +314,7 @@ export function encodeMembershipCodeUrl(result) {
  * / state.successResult.  Returns `{result?, state}`.
  *
  * On success: caller can post-process the result (the original web
- * wizard adds adminNkn + rules into the result before stashing as
+ * wizard adds adminPeerAddr + rules into the result before stashing as
  * successResult; mobile may do the same in its own wrapper).
  */
 export async function finalSubmit({ state, callSkill }) {

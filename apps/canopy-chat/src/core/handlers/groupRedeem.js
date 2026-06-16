@@ -101,7 +101,7 @@ export function makeHandleGroupRedeemRequest({
  * @param {Map<string, {resolve: Function, reject: Function, timer?: any}>} args.pendingMap
  * @param {number}                                         [args.timeoutMs=30000]
  * @param {{info?, warn?, error?}}                         [args.logger]
- * @returns {(args: {adminNkn: string, groupId: string, code: string, shareCard?: boolean, peerDisplay?: string}) => Promise<{ok?: boolean, codeId?: string, validUntil?: number, error?: string}>}
+ * @returns {(args: {adminPeerAddr: string, groupId: string, code: string, shareCard?: boolean, peerDisplay?: string}) => Promise<{ok?: boolean, codeId?: string, validUntil?: number, error?: string}>}
  */
 export function makeSendGroupRedeemRequest({
   sendPeer, isPeerConnected, pendingMap, timeoutMs = 30_000, logger = console,
@@ -116,7 +116,7 @@ export function makeSendGroupRedeemRequest({
     typeof isPeerConnected !== 'function' ? true : !!isPeerConnected();
 
   return async function sendGroupRedeemRequest({
-    adminNkn, groupId, code, shareCard, peerDisplay,
+    adminPeerAddr, groupId, code, shareCard, peerDisplay,
   }) {
     if (!peerUp()) {
       throw new Error('Peer transport not connected. Try /peer-connect first.');
@@ -130,7 +130,7 @@ export function makeSendGroupRedeemRequest({
       pendingMap.set(requestId, { resolve, reject, timer });
     });
     try {
-      await sendPeer(adminNkn, {
+      await sendPeer(adminPeerAddr, {
         type:    'p2p-chat',
         subtype: 'group-redeem-request',
         requestId,
@@ -146,7 +146,7 @@ export function makeSendGroupRedeemRequest({
         try { clearTimeout(entry.timer); } catch { /* defensive */ }
         pendingMap.delete(requestId);
       }
-      logger.warn?.('[group-redeem] send failed', adminNkn, err);
+      logger.warn?.('[group-redeem] send failed', adminPeerAddr, err);
       throw new Error(`Failed to reach admin over NKN: ${err?.message ?? err}`);
     }
     return promise;

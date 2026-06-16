@@ -156,31 +156,31 @@ function parseStorageFromJsonLd(body, webid) {
 /* ───────────────── v0.7.P3d — WebID ↔ NKN mapping ───────────────── */
 
 // Canopy's namespace for app-specific triples published to user pods.
-// Convention: <webid> <canopy:nknAddr> "<nkn-address-string>".
-const CANOPY_NKN_ADDR = 'https://canopy.dev/ns#nknAddr';
+// Convention: <webid> <canopy:peerAddr> "<nkn-address-string>".
+const CANOPY_NKN_ADDR = 'https://canopy.dev/ns#peerAddr';
 
 /**
  * v0.7.P3d — publish the user's NKN address as a triple in their
  * pod profile, so other users can discover it from their WebID.
  *
  * Writes a small Turtle doc at <pod>/canopy/identity.ttl containing:
- *   <#me> canopy:nknAddr "app.<addr-hex>" .
+ *   <#me> canopy:peerAddr "app.<addr-hex>" .
  *
  * Lives separately from the WebID doc (which the user can't always
  * write to directly).  Discovery: peer fetches THIS doc by URL
  * convention.
  *
  * @param {{ podRoot: string, write: Function }} podWriter
- * @param {string} nknAddr
+ * @param {string} peerAddr
  * @returns {Promise<{ ok: boolean, url: string, status: number }>}
  */
-export async function publishNknAddr(podWriter, nknAddr) {
-  if (!podWriter?.write) throw new TypeError('publishNknAddr: podWriter required');
-  if (typeof nknAddr !== 'string' || nknAddr === '') {
-    throw new TypeError('publishNknAddr: nknAddr required');
+export async function publishPeerAddr(podWriter, peerAddr) {
+  if (!podWriter?.write) throw new TypeError('publishPeerAddr: podWriter required');
+  if (typeof peerAddr !== 'string' || peerAddr === '') {
+    throw new TypeError('publishPeerAddr: peerAddr required');
   }
   const turtle = `@prefix canopy: <https://canopy.dev/ns#>.
-<#me> canopy:nknAddr "${nknAddr.replace(/"/g, '\\"')}" .
+<#me> canopy:peerAddr "${peerAddr.replace(/"/g, '\\"')}" .
 `;
   return podWriter.write('identity', 'identity.ttl', turtle, 'text/turtle');
 }
@@ -191,7 +191,7 @@ export async function publishNknAddr(podWriter, nknAddr) {
  *
  * Two-step:
  *   1. Get the peer's WebID doc → find pim:storage (their pod root)
- *   2. Fetch <pod>/canopy/identity.ttl → extract canopy:nknAddr
+ *   2. Fetch <pod>/canopy/identity.ttl → extract canopy:peerAddr
  *
  * Falls back to null when any step fails (network, no triple, ACL).
  *
@@ -199,7 +199,7 @@ export async function publishNknAddr(podWriter, nknAddr) {
  * @param {string} targetWebid
  * @returns {Promise<string|null>}
  */
-export async function discoverPeerNknAddr(session, targetWebid) {
+export async function discoverPeerAddr(session, targetWebid) {
   if (typeof session?.fetch !== 'function') return null;
   if (typeof targetWebid !== 'string' || targetWebid === '') return null;
 
@@ -218,11 +218,11 @@ export async function discoverPeerNknAddr(session, targetWebid) {
     });
     if (!res.ok) return null;
     const body = await res.text();
-    // Match: canopy:nknAddr "<addr>".  Accept either bare prefix
+    // Match: canopy:peerAddr "<addr>".  Accept either bare prefix
     // form or full IRI.
-    const full = body.match(/<https:\/\/canopy\.dev\/ns#nknAddr>\s*"([^"]+)"/);
+    const full = body.match(/<https:\/\/canopy\.dev\/ns#peerAddr>\s*"([^"]+)"/);
     if (full) return full[1];
-    const pref = body.match(/\bcanopy:nknAddr\s*"([^"]+)"/);
+    const pref = body.match(/\bcanopy:peerAddr\s*"([^"]+)"/);
     if (pref) return pref[1];
   } catch {
     /* fall through */

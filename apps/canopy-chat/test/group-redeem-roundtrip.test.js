@@ -13,7 +13,7 @@
  *
  * This is the exact path that was failing on two phones — not because
  * of a code gap (the handlers were wired), but because the NKN address
- * rotated each launch (stale adminNkn) and single-client delivery
+ * rotated each launch (stale adminPeerAddr) and single-client delivery
  * dropped the request/response.  Both are fixed at the transport layer
  * (persisted identity + MultiClient).  This test pins the application-
  * layer round-trip so the wiring can't silently regress.
@@ -141,7 +141,7 @@ describe('group-redeem cross-device round-trip', () => {
     });
 
     const reply = await sendPeerRedeem({
-      adminNkn: adminAddr,
+      adminPeerAddr: adminAddr,
       groupId:  'buurt-oost',
       code:     'SECRET-123',
       peerDisplay: 'Anne',
@@ -161,7 +161,7 @@ describe('group-redeem cross-device round-trip', () => {
     });
 
     const reply = await sendPeerRedeem({
-      adminNkn: adminAddr,
+      adminPeerAddr: adminAddr,
       groupId:  'buurt-oost',
       code:     'WRONG',
     });

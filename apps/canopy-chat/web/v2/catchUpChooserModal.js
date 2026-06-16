@@ -57,7 +57,7 @@ function shortAddr(addr) {
  * @param {Array<{from: string, offer: {requestId, count, sizeBytes, lastTs}}>} args.offers
  * @param {string} args.circleId
  * @param {string} [args.circleName]
- * @param {(nknAddr: string) => ({displayName?: string}|null)} [args.resolveContact]
+ * @param {(peerAddr: string) => ({displayName?: string}|null)} [args.resolveContact]
  * @param {Function} args.t
  * @param {(decision: object) => void} args.onResolve
  * @param {number} [args.nowMs]  — test seam; defaults to Date.now() per render

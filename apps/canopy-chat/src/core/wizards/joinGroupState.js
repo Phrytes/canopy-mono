@@ -233,9 +233,9 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
       groupId: inv.groupId, code: inv.code,
     });
     // Cross-instance fallback.
-    if (redeem?.error === 'invalid-or-expired-code' && inv.adminNkn && typeof sendPeerRedeem === 'function') {
+    if (redeem?.error === 'invalid-or-expired-code' && inv.adminPeerAddr && typeof sendPeerRedeem === 'function') {
       const peerReply = await sendPeerRedeem({
-        adminNkn:    inv.adminNkn,
+        adminPeerAddr:    inv.adminPeerAddr,
         groupId:     inv.groupId,
         code:        inv.code,
         shareCard:   !!state.shareAddress,
@@ -250,7 +250,7 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
         code:        inv.code,
         codeId:      peerReply.codeId ?? null,
         expiresAt:   peerReply.validUntil ?? null,
-        confirmedBy: inv.adminNkn,
+        confirmedBy: inv.adminPeerAddr,
         ...(inv.rules && typeof inv.rules === 'object' ? { rules: inv.rules } : {}),
       });
       return {

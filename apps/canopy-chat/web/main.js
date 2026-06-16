@@ -95,7 +95,7 @@ import { clarifyCommandTargets } from '../src/v2/clarifyTargets.js';
 import * as podAuth                  from '../src/web/podAuth.js';
 import {
   createPodWriter, discoverPodRoot,
-  publishNknAddr, discoverPeerNknAddr,
+  publishPeerAddr, discoverPeerAddr,
 } from '../src/web/podStorage.js';
 // N5 — real-pod source for the folio Drive browser.  PodClient reads the
 // user's signed-in pod via session.fetch (no provisioned creds / #167).
@@ -584,10 +584,10 @@ const pendingPeerRedeems = new Map();
 /**
  * Joiner-side helper called by /join-group's wizard finalSubmit when
  * local redeemMembershipCode returns invalid-or-expired-code AND the
- * invite carries an adminNkn.  Sends a peer-message to the admin's
+ * invite carries an adminPeerAddr.  Sends a peer-message to the admin's
  * NKN address + awaits the matching response with a 30s timeout.
  */
-async function sendGroupRedeemRequest({ adminNkn, groupId, code, shareCard, peerDisplay }) {
+async function sendGroupRedeemRequest({ adminPeerAddr, groupId, code, shareCard, peerDisplay }) {
   if (!agent?.peer || agent.peer.status !== 'connected') {
     throw new Error('Peer transport not connected. Try /peer-connect first.');
   }
@@ -603,7 +603,7 @@ async function sendGroupRedeemRequest({ adminNkn, groupId, code, shareCard, peer
     pendingPeerRedeems.set(requestId, { resolve, reject, timer });
   });
   try {
-    await sendPeerWithRetry(adminNkn, {
+    await sendPeerWithRetry(adminPeerAddr, {
       type:      'p2p-chat',
       subtype:   'group-redeem-request',
       requestId,
@@ -995,11 +995,11 @@ podAuth.handleRedirect({ restorePreviousSession: true })
 
           // v0.7.P3d — publish our NKN address to the pod so peers
           // can discover it from our WebID.  Fire-and-forget; the
-          // user can manually re-publish via /publish-nkn if needed.
-          const nknAddr = agent.peer?.address;
-          if (nknAddr) {
+          // user can manually re-publish via /publish-peer if needed.
+          const peerAddr = agent.peer?.address;
+          if (peerAddr) {
             try {
-              const r = await publishNknAddr(writer, nknAddr);
+              const r = await publishPeerAddr(writer, peerAddr);
               if (r.ok) {
                 publishEventRef({
                   app: 'canopy-chat', type: 'notification', actor: session.webid,
@@ -1343,7 +1343,7 @@ function pageSurfaceOpen({ op, appOrigin, args }) {
         // NKN address into the invite URL.  /join-group uses
         // sendPeerRedeem to route a redeem-request to that address
         // when the joiner's local store has no copy of the code.
-        getMyNkn:       () => agent?.peer?.address ?? null,
+        getMyPeerAddr:       () => agent?.peer?.address ?? null,
         sendPeerRedeem: sendGroupRedeemRequest,
         // #212 — /settings wizard needs locale + transport-mode hooks.
         getLang: currentLang,
@@ -1542,21 +1542,21 @@ const localBuiltins = createLocalBuiltins({
   // promise.
   connectPeer: () => connectPeerImpl(),
   // v0.7.P3d — WebID-based peer discovery.  /lookup-peer <webid>
-  // hits the peer's pod identity.ttl + extracts canopy:nknAddr.
-  lookupPeerNknByWebid: async (webid) => {
+  // hits the peer's pod identity.ttl + extracts canopy:peerAddr.
+  lookupPeerAddrByWebid: async (webid) => {
     const session = podAuth.getCurrentSession();
     if (!session) throw new Error('Sign in first: /signin');
-    return discoverPeerNknAddr(session, webid);
+    return discoverPeerAddr(session, webid);
   },
   // v0.7.P3d — re-publish own NKN address to pod.
-  publishNknAddrToPod: async () => {
+  publishPeerAddrToPod: async () => {
     const session = podAuth.getCurrentSession();
     if (!session) throw new Error('Sign in first: /signin');
     const podRoot = await discoverPodRoot(session).catch(() => null);
     const writer  = createPodWriter(session, podRoot ? { podRoot } : {});
     const addr    = agent.peer?.address;
     if (!addr) throw new Error('NKN not connected yet.  /peer-connect first.');
-    return publishNknAddr(writer, addr);
+    return publishPeerAddr(writer, addr);
   },
   externalFlow: {
     /**
