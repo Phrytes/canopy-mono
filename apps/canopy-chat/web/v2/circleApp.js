@@ -75,6 +75,9 @@ import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
 import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo, SURFACE_PREFS } from '../../src/v2/surfacePref.js';
 // S6.D — is the conversational "chat" projection enriched by an LLM here? (user-loaded LLM + circle permits)
 import { resolveChatAi } from '../../src/v2/chatAi.js';
+// Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
+import { renderGuidedSetup } from './guidedSetupPanel.js';
+import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
 // S6.C (per-circle) — gate an app's surfaces by the circle's policy.features.
 import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
@@ -481,6 +484,11 @@ const CIRCLE_LLM_BASEURL   = import.meta.env?.VITE_CIRCLE_LLM_BASEURL ?? null;
 const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined;
 const CIRCLE_BOT_NAME      = import.meta.env?.VITE_CIRCLE_BOT_NAME ?? 'assistant';
 const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
+// Theme B — the settings-chatbot template. HQ can host an updated (open-source)
+// one at this URL; we fall back to the bundled DEFAULT_SETTINGS_TEMPLATE.
+const SETTINGS_TEMPLATE_URL = import.meta.env?.VITE_SETTINGS_TEMPLATE_URL ?? null;
+let settingsTemplate = DEFAULT_SETTINGS_TEMPLATE;
+loadSettingsTemplate({ url: SETTINGS_TEMPLATE_URL }).then((tpl) => { settingsTemplate = tpl; }).catch(() => { /* keep bundled */ });
 const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined;
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
 let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
@@ -1665,6 +1673,37 @@ async function openCircleScreenPanel(screenId) {
   } catch { renderCircleScreen(body, { blocks: [], t }); }
 }
 
+// Theme B — run the guided-setup chatbot in a modal: render one step, feed the
+// answer back through submitGuidedStep, and on done apply the collected policy
+// patch via onDone (which pre-fills the settings form — the GUI hand-off).
+function openGuidedSetupPanel({ onDone } = {}) {
+  const template = settingsTemplate;
+  let state = startGuidedSetup(template);
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-screen-panel';   // reuse the panel overlay chrome
+  const card = document.createElement('div');
+  card.className = 'cc-screen-panel__card';
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  const draw = () => renderGuidedSetup(card, {
+    template, state, t,
+    onAnswer: (answer) => {
+      const r = submitGuidedStep(template, state, answer);
+      state = r.state;
+      if (r.done) {
+        try { onDone?.(guidedPolicyPatch(state)); } catch { /* defensive */ }
+        try { overlay.remove(); } catch { /* */ }
+        return;
+      }
+      draw();
+    },
+    onClose: () => { try { overlay.remove(); } catch { /* */ } },
+  });
+  draw();
+}
+
 // S5 — full-size image viewer for a prikbord attachment, in a dismissable overlay.
 function showImageModal(src, { pending = false } = {}) {
   const overlay = document.createElement('div');
@@ -2527,6 +2566,11 @@ async function showSettings(id) {
     onIncomingApplied:   () => clearPending(),
     onIncomingDiscarded: () => clearPending(),
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
+    // Theme B — the guided-setup chatbot: walk the basics, then pre-fill these
+    // fields (the user still reviews + Saves). Template is remote-loadable; bundled fallback.
+    onGuidedSetup: () => openGuidedSetupPanel({
+      onDone: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
+    }),
     onBack: () => showDetail(id),
     onSave: async () => {
       if (!consensusActive()) {

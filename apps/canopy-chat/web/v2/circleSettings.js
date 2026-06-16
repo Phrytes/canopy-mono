@@ -55,6 +55,7 @@ export function renderCircleSettings(container, {
   circleId,
   onIncomingApplied,
   onIncomingDiscarded,
+  onGuidedSetup,   // Theme B — open the guided-setup chatbot (pre-fills these fields)
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
@@ -72,6 +73,17 @@ export function renderCircleSettings(container, {
   head.className = 'circle-settings__title';
   head.textContent = tr('circle.settings.title');
   container.appendChild(head);
+
+  // Theme B — a chat-guided setup that walks you through the basics, then hands
+  // off to these toggles (pre-filled). Opt-in; the manual form below always works.
+  if (typeof onGuidedSetup === 'function') {
+    const guided = document.createElement('button');
+    guided.type = 'button';
+    guided.className = 'circle-settings__guided';
+    guided.textContent = tr('circle.guided.button');
+    guided.addEventListener('click', () => onGuidedSetup());
+    container.appendChild(guided);
+  }
 
   // Axis 1 — features (toggles)
   const featSection = section(tr('circle.settings.features'));

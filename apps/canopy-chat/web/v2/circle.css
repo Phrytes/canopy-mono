@@ -451,6 +451,19 @@
 .cc-screen-panel__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .cc-screen-panel__head h3 { margin: 0; font-size: 17px; }
 .cc-screen-panel__close { cursor: pointer; font-size: 14px; line-height: 1; border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; background: var(--paper); color: var(--ink); }
+/* Theme B — settings chatbot (guided setup). */
+.circle-settings__guided { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; margin: 6px 0 12px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+.cc-guided__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cc-guided__title { margin: 0; font-size: 17px; }
+.cc-guided__close { cursor: pointer; font-size: 14px; line-height: 1; border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; background: var(--paper); color: var(--ink); }
+.cc-guided__say { font-size: 15px; line-height: 1.5; color: var(--ink); margin: 4px 0 12px; }
+.cc-guided__multi { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.cc-guided__opt { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.cc-guided__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cc-guided__btn { cursor: pointer; font: inherit; font-size: 14px; padding: 8px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.cc-guided__btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.cc-guided__btn--option:hover { border-color: var(--accent); }
+.cc-guided__done { font-size: 14px; color: var(--ink-soft); }
 /* δ.2 — per-message delivery state.  Pending = clock, Failed = warning (tap-to-retry).
    Sent renders nothing (happy-path stays clean). */
 .circle-kring__bubble-delivery { display: inline-block; margin-top: 4px; font-size: 12px; line-height: 1; padding: 2px 6px; border-radius: 10px; }

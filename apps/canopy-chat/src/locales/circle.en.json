@@ -279,6 +279,15 @@
     "self":  { "text": "only you", "doc": "Message scope badge — private to you (not shared with the kring)." },
     "kring": { "text": "whole kring", "doc": "Message scope badge — reaches every member of the kring." }
   },
+  "guided": {
+    "button":        { "text": "✨ Guided setup", "doc": "Theme B — open the settings chatbot from circle settings." },
+    "title":         { "text": "Guided setup", "doc": "Theme B — guided-setup panel heading." },
+    "close":         { "text": "Close", "doc": "Theme B — close the guided-setup panel." },
+    "continue":      { "text": "Continue", "doc": "Theme B — advance to the next step." },
+    "skip":          { "text": "Skip", "doc": "Theme B — skip this question." },
+    "open_settings": { "text": "Open settings", "doc": "Theme B — final step hands off to the settings form." },
+    "applied":       { "text": "Done — review the settings below and Save.", "doc": "Theme B — flow finished." }
+  },
   "kring": {
     "more": {
       "text": "More",
