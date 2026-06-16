@@ -29,7 +29,15 @@ import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '.
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 
-export default function CircleScreenView({ blocks = null, refreshing = false, onAction, onEmbedOpen }) {
+// An embed `ref` may be a full URN (urn:dec:item:T2) while a rendered row
+// carries only the local id (T2).  Match the raw ref OR its local-id tail so a
+// chip tap can find its row regardless of which form each side holds.
+function matchesHighlight(rowId, highlightRef) {
+  if (!rowId || !highlightRef) return false;
+  return rowId === highlightRef || String(highlightRef).endsWith(String(rowId));
+}
+
+export default function CircleScreenView({ blocks = null, refreshing = false, onAction, onEmbedOpen, highlightRef }) {
   // null = still materializing (host hasn't resolved yet).  Distinguish
   // from `[]` so the user sees a "Loading…" hint instead of the
   // "admin hasn't set up a screen yet" empty state — which is
@@ -63,13 +71,13 @@ export default function CircleScreenView({ blocks = null, refreshing = false, on
         </Text>
       ) : null}
       {blocks.map((block) => (
-        <BlockSection key={block.blockId} block={block} onAction={onAction} onEmbedOpen={onEmbedOpen} />
+        <BlockSection key={block.blockId} block={block} onAction={onAction} onEmbedOpen={onEmbedOpen} highlightRef={highlightRef} />
       ))}
     </View>
   );
 }
 
-function BlockSection({ block, onAction, onEmbedOpen }) {
+function BlockSection({ block, onAction, onEmbedOpen, highlightRef }) {
   const baseStyle = [styles.block, styles[`block_${block.type}`] ?? null];
 
   if (block.status === 'error') {
@@ -96,8 +104,8 @@ function BlockSection({ block, onAction, onEmbedOpen }) {
     case 'text':         body = renderText(block); break;
     case 'photo':        body = renderPhoto(block); break;
     case 'noticeboard':  body = renderNoticeboard(block); break;
-    case 'agenda':       body = renderAgenda(block); break;
-    case 'tasks':        body = renderTasks(block, onEmbedOpen); break;
+    case 'agenda':       body = renderAgenda(block, highlightRef); break;
+    case 'tasks':        body = renderTasks(block, onEmbedOpen, highlightRef); break;
     case 'rules':        body = renderRules(block); break;
     default:
       body = <Text style={styles.blockEmptyText}>{t('circle.screen.block_unknown', { type: block.type })}</Text>;
@@ -180,7 +188,7 @@ function renderNoticeboard(block) {
   );
 }
 
-function renderAgenda(block) {
+function renderAgenda(block, highlightRef) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle   = isCompact ? styles.agendaRowCompact   : styles.agendaRow;
@@ -188,16 +196,22 @@ function renderAgenda(block) {
   return (
     <View>
       <Text style={styles.blockTitle}>{t('circle.recipe.block.agenda')}</Text>
-      {items.map((ev) => (
-        <View key={ev.id ?? Math.random().toString(36)} style={rowStyle}>
-          <Text style={labelStyle}>{ev.label ?? ''}</Text>
-        </View>
-      ))}
+      {items.map((ev) => {
+        // S6.B — flash the row a chip-tap referenced.  Precise scroll on RN
+        // needs a ScrollView ref + measureLayout (no ref reaches here today),
+        // so this is highlight-only for v1; scroll-to is best-effort follow-up.
+        const hit = matchesHighlight(ev.id, highlightRef);
+        return (
+          <View key={ev.id ?? Math.random().toString(36)} style={hit ? [rowStyle, styles.rowHighlight] : rowStyle}>
+            <Text style={labelStyle}>{ev.label ?? ''}</Text>
+          </View>
+        );
+      })}
     </View>
   );
 }
 
-function renderTasks(block, onEmbedOpen) {
+function renderTasks(block, onEmbedOpen, highlightRef) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle    = isCompact ? styles.taskRowCompact    : styles.taskRow;
@@ -208,8 +222,12 @@ function renderTasks(block, onEmbedOpen) {
       <Text style={styles.blockTitle}>{t('circle.recipe.block.tasks')}</Text>
       {items.map((task) => {
         const embeds = embedChipsOf(task);
+        // S6.B — flash the row a chip-tap referenced.  Precise scroll on RN
+        // needs a ScrollView ref + measureLayout (no ref reaches here today),
+        // so this is highlight-only for v1; scroll-to is best-effort follow-up.
+        const hit = matchesHighlight(task.id, highlightRef);
         return (
-          <View key={task.id ?? Math.random().toString(36)} style={rowStyle}>
+          <View key={task.id ?? Math.random().toString(36)} style={hit ? [rowStyle, styles.rowHighlight] : rowStyle}>
             {task.circleName ? <Text style={circleStyle}>{task.circleName}</Text> : null}
             <Text style={textStyle}>{task.text ?? ''}</Text>
             {embeds.length > 0 && (
@@ -321,6 +339,10 @@ const styles = StyleSheet.create({
   taskCircleCompact:   { fontSize: 9,  fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 },
   taskText:            { fontSize: 14, color: theme.color.ink, flex: 1 },
   taskTextCompact:     { fontSize: 12, color: theme.color.ink, flex: 1, lineHeight: 16 },
+  // S6.B — accent-tinted background flashed on the row a "See also" chip
+  // referenced.  Subtle terracotta wash (RN has no CSS @keyframes; a static
+  // tint is the v1 — the panel re-renders fresh on each chip tap).
+  rowHighlight:        { backgroundColor: 'rgba(176, 74, 48, 0.16)', borderRadius: 6 },
   // embeds[] — "See also" chips on a task card.
   embeds:              { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 3, flexBasis: '100%' },
   embed:               { borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card, borderRadius: 999, paddingVertical: 1, paddingHorizontal: 8 },

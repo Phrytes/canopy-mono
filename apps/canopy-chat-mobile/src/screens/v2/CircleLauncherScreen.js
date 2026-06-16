@@ -1997,12 +1997,12 @@ function CircleDetail({
           // handles per-block status (ok / empty / error) + top-level
           // empty-state when no recipe is set up yet.
           <CircleScreenView blocks={screenBlocks} onAction={onScreenAction}
-            onEmbedOpen={({ screen }) => { if (screen) setScreenPanel({ screen }); }} />
+            onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
         ) : activeTab === 'prikbord' ? (
           // S1 #1 — the buurt noticeboard (its own composer + post list), scoped to
           // the open circle (S4 per-circle restructure — see stoopCall above).
           <CircleNoticeboard callSkill={stoopCall} onStoopEvent={bundle?.onStoopEvent}
-            onEmbedOpen={({ screen }) => { if (screen) setScreenPanel({ screen }); }} />
+            onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
@@ -2016,7 +2016,7 @@ function CircleDetail({
             onRetryDelivery,
             onBubbleButton,
             // tap a "See also" embed chip → open the item's screen panel (S6.B).
-            onEmbedOpen: ({ screen }) => { if (screen) setScreenPanel({ screen }); },
+            onEmbedOpen: ({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); },
           })
         )}
       </ScrollView>
@@ -2034,8 +2034,8 @@ function CircleDetail({
               </Pressable>
             </View>
             <ScrollView>
-              <CircleScreenView blocks={panelBlocks}
-                onEmbedOpen={({ screen }) => { if (screen) setScreenPanel({ screen }); }} />
+              <CircleScreenView blocks={panelBlocks} highlightRef={screenPanel?.highlightRef}
+                onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
             </ScrollView>
           </View>
         </View>
