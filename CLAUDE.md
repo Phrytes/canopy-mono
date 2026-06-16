@@ -53,8 +53,9 @@ substrate is the functionality.
 
 ## Where the truth is
 - **Master todo + roadmap (themes + the architectural spine):** `REMAINING-WORK.md`.
-- **Per-app truth:** `apps/<app>/manifest.js` + app-local CHANGELOGs + `apps/*/docs/`. (`Project Files/` is
-  gutted — do **not** treat it as current.)
+- **Per-app truth:** `apps/<app>/manifest.js` + app-local CHANGELOGs + `apps/*/docs/`. (The old `Project Files/` +
+  the DESIGN-*/PLAN-* docs moved OUT to the read-only sibling worktree `../canopy projectfiles/` 2026-06-16 — read
+  for reference, do **not** treat as current; note needed edits in `PROJECTFILES-DOC-CHANGES.md`.)
 - **The model, in prose:** `README.md` ("One manifest, every surface" + "Architecture invariant — three
   layers"), `PLAN-manifest-gate-surfaces.md`, `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.
 
