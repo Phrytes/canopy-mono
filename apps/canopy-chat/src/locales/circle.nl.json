@@ -275,6 +275,10 @@
       "doc": "SP-13.3."
     }
   },
+  "scope": {
+    "self":  { "text": "alleen jij", "doc": "Message scope badge — private to you (not shared with the kring)." },
+    "kring": { "text": "hele kring", "doc": "Message scope badge — reaches every member of the kring." }
+  },
   "kring": {
     "more": {
       "text": "Meer",

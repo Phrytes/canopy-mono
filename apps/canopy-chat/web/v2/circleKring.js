@@ -441,6 +441,17 @@ function renderBubble(row, {
     el.appendChild(sender);
   }
 
+  // "only you" vs "whole kring" scope badge — one presentation of the message's
+  // `scope` data property (messageScope.js). Only on real chat bubbles; absent → 'self'.
+  const _payload = row.event?.payload;
+  if (_payload && _payload.kind === 'chat-message') {
+    const scope = _payload.scope === 'kring' ? 'kring' : 'self';
+    const badge = document.createElement('span');
+    badge.className = `circle-kring__scope circle-kring__scope--${scope}`;
+    badge.textContent = `${scope === 'kring' ? '👥' : '👤'} ${tr(`circle.scope.${scope}`)}`;
+    el.appendChild(badge);
+  }
+
   // Kind pill (small, inline before text — matches the v2 PRIKBORD card
   // shape).  For chat-only messages the kind is null and no pill renders.
   const kind = pickKindLabel(row);

@@ -39,6 +39,10 @@ test('adding a task renders an inline Claim button on the bot reply, and it disp
   await expect(claim.first()).toBeVisible({ timeout: 8000 });
   await expect(claim.first()).toHaveAttribute('data-op-id', 'claimTask');
 
+  // Scope marker: adding a task is a mutating op → its reply reaches the whole kring;
+  // the user's own typed line is broadcast too. Both carry the "whole kring" badge.
+  await expect(page.locator('.circle-kring__scope--kring').first()).toBeVisible({ timeout: 8000 });
+
   // Tapping it dispatches claimTask against the item → a new bot reply, no error.
   const before = await page.locator('.circle-kring__bubble').count();
   await claim.first().click();

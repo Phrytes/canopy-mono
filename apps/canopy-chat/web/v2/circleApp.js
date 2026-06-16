@@ -90,6 +90,8 @@ import { EventLog } from '../../src/eventLog.js';
 import { createDeliveryStateMap } from '../../src/v2/deliveryState.js';
 // Phase 2 — shared kring chat send primitives (optimistic event + best-effort fan-out), web + mobile.
 import { kringChatMessageEvent, broadcastKringFanOut } from '../../src/v2/kringBroadcast.js';
+// "only you" vs "whole kring" — message scope (a data property; the badge renders it).
+import { scopeForReply } from '../../src/v2/messageScope.js';
 import {
   buildCircleStream, buildKringStream,
 } from '../../src/v2/circleStream.js';
@@ -793,7 +795,10 @@ function buildCircleBot(agent) {
     const gatedScreen = appEnabled ? screenButton : [];
     // S6.C (per-user) — the user's preference picks the projection (inline / screen / minimal).
     const buttons = selectSurfaceButtons({ inlineButtons, screenButton: gatedScreen, pref: circleSurfacePref.get() });
-    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons });
+    // Scope: a mutating op's reply reaches the whole kring (the action is shared); a
+    // read/info reply or an error is private to you. (messageScope.js)
+    const scope = scopeForReply({ verb, error: !!reply?.error });
+    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope });
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
 
@@ -2007,7 +2012,9 @@ function showKring(id, circle, policy) {
         // suppresses any echo. δ.2 tracks delivery state (pending → sent | failed) for the bubble icon.
         const msgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;
         const ts    = Date.now();
-        eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: id, actor: LOCAL_ACTOR, text: line }));
+        // A plain typed line fans out to the whole kring → scope 'kring'. (A line the bot
+        // intercepts as a command posts its OWN scoped reply; the user's words still went out.)
+        eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: id, actor: LOCAL_ACTOR, text: line, scope: 'kring' }));
         rerender();
         if (circleBot) { await circleBot.handle(line, { id, msgId, ts }); }
         else { broadcastFanOut({ msgId, text: line, ts }); }   // fallback before the bot is built
@@ -2026,14 +2033,16 @@ function showKring(id, circle, policy) {
     circleId: id,
     botBubble: (text, opts) => {
       const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-bot`;
-      // S6.A — opts.buttons (inline manifest buttons) ride payload.buttons.
-      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons }));
+      // S6.A — opts.buttons ride payload.buttons. scope ('self'|'kring') — a bot reply is
+      // private unless it represents a shared action; absent → renderer defaults to 'self'.
+      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope }));
       rerender();
     },
     // Local echo of the user's own line (used by the feedback mount, which consumes the message before the
     // composer's optimistic append). Local-only — NOT fanned out to peers.
     userBubble: (text) => {
       const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-me`;
+      // Local-only echo (feedback mount) — private to you, so default 'self' (no scope set).
       eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: LOCAL_ACTOR, text }));
       rerender();
     },

@@ -275,6 +275,10 @@
       "doc": "SP-13.3 — bottom-tab when memberDirectory is on (renders last per board ordering)."
     }
   },
+  "scope": {
+    "self":  { "text": "only you", "doc": "Message scope badge — private to you (not shared with the kring)." },
+    "kring": { "text": "whole kring", "doc": "Message scope badge — reaches every member of the kring." }
+  },
   "kring": {
     "more": {
       "text": "More",

@@ -10,10 +10,12 @@
  *
  * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array}} a
  */
-export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons }) {
+export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope }) {
   return {
     id: msgId, ts, app: 'kring', type: 'chat-message', actor,
-    payload: { circleId, text, kind: 'chat-message', ...(buttons?.length ? { buttons } : {}) },
+    // `scope` ('self' | 'kring') — is this message private to you or shared with the
+    // whole kring (a data property; the badge is one presentation of it). See messageScope.js.
+    payload: { circleId, text, kind: 'chat-message', ...(buttons?.length ? { buttons } : {}), ...(scope ? { scope } : {}) },
   };
 }
 

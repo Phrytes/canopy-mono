@@ -432,6 +432,10 @@
 .circle-kring__day { align-self: center; font-size: 11px; color: var(--ink-soft); text-transform: lowercase; padding: 8px 12px; font-style: italic; }
 .circle-kring__bubble { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); max-width: 80%; align-self: flex-start; }
 .circle-kring__bubble-sender { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+/* "only you" vs "whole kring" scope badge (one presentation of the message's scope data). */
+.circle-kring__scope { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; padding: 1px 7px; border-radius: 9px; margin-bottom: 3px; }
+.circle-kring__scope--self  { background: var(--paper); color: var(--ink-soft); }
+.circle-kring__scope--kring { background: #e8eef6; color: #3b6ea5; }
 .circle-kring__bubble-kind { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 4px; background: var(--paper); color: var(--accent-ink); margin-right: 6px; vertical-align: middle; }
 .circle-kring__bubble-text { font-size: 14px; color: var(--ink); display: inline; }
 .circle-kring__bubble-actions { display: flex; gap: 6px; margin-top: 8px; }

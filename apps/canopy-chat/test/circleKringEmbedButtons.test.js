@@ -51,6 +51,20 @@ describe('renderCircleKring — S6.A inline embed buttons', () => {
     expect(onEmbedButton).toHaveBeenCalledWith({ opId: undefined, itemId: undefined, screen: 'tasks' });
   });
 
+  it('scope badge — a kring-scoped bot reply shows "whole kring"; default/self shows "only you"', () => {
+    const kringRow = { id: 'k1', ts: Date.now(), type: 'chat-message', actor: 'bot', circleId: 'c1',
+      event: { type: 'chat-message', actor: 'bot', payload: { circleId: 'c1', text: '✓ Posted', kind: 'chat-message', scope: 'kring' } } };
+    const selfRow = { id: 'k2', ts: Date.now(), type: 'chat-message', actor: 'bot', circleId: 'c1',
+      event: { type: 'chat-message', actor: 'bot', payload: { circleId: 'c1', text: 'private answer', kind: 'chat-message' } } };
+    const el = renderCircleKring(document.createElement('div'), {
+      circle: { id: 'c1' }, t, activeTab: 'gesprek', rows: [kringRow, selfRow],
+    });
+    const badges = [...el.querySelectorAll('.circle-kring__scope')];
+    expect(badges).toHaveLength(2);
+    expect(el.querySelector('.circle-kring__scope--kring').textContent).toContain('circle.scope.kring');
+    expect(el.querySelector('.circle-kring__scope--self').textContent).toContain('circle.scope.self');
+  });
+
   it('renders no embed buttons when the row carries none', () => {
     const el = renderCircleKring(document.createElement('div'), {
       circle: { id: 'c1' }, t, activeTab: 'gesprek',
