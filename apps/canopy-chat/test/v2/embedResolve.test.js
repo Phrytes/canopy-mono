@@ -28,14 +28,79 @@ describe('resolveEmbedTitle', () => {
     expect(callSkill).toHaveBeenCalledWith('calendar', 'getEventSnapshot', { id: 'evt-1' });
   });
 
-  it('returns null for unknown types, cross-pod refs, and on error/throw', async () => {
+  it('returns null for unknown types and on error/throw', async () => {
     const ok = vi.fn(async () => ({ title: 'x' }));
     expect(await resolveEmbedTitle({ callSkill: ok, embed: { type: 'note', ref: 'n' } })).toBeNull();         // unknown type
-    expect(await resolveEmbedTitle({ callSkill: ok, embed: { type: 'task', ref: 'https://p/x.json' } })).toBeNull();  // cross-pod
     const err = vi.fn(async () => ({ error: 'nope' }));
     expect(await resolveEmbedTitle({ callSkill: err, embed: { type: 'task', ref: 'T2' }, crewId: 'c' })).toBeNull();
     const thrower = vi.fn(async () => { throw new Error('boom'); });
     expect(await resolveEmbedTitle({ callSkill: thrower, embed: { type: 'task', ref: 'T2' }, crewId: 'c' })).toBeNull();
+  });
+});
+
+describe('resolveEmbedTitle — cross-pod HTTP refs', () => {
+  const POD_REF = 'https://alice.pod/items/X.json';
+
+  it('fetches a public cross-pod task ref and extracts .text', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ text: 'Fix the gate' }) }));
+    const title = await resolveEmbedTitle({
+      embed: { type: 'task', ref: POD_REF }, fetchImpl,
+    });
+    expect(title).toBe('Fix the gate');
+    expect(fetchImpl).toHaveBeenCalledWith(POD_REF, { headers: { Accept: 'application/json' } });
+  });
+
+  it('extracts a folio-note frontmatter.title', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ frontmatter: { title: 'Welcome' } }) }));
+    const title = await resolveEmbedTitle({ embed: { type: 'note', ref: POD_REF }, fetchImpl });
+    expect(title).toBe('Welcome');
+  });
+
+  it('honours the title-extraction priority (.text wins over .title)', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ text: 'a', title: 'b', name: 'c' }) }));
+    expect(await resolveEmbedTitle({ embed: { type: 'task', ref: POD_REF }, fetchImpl })).toBe('a');
+  });
+
+  it('reads a nested source.title when top-level fields are absent', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ source: { title: 'Nested' } }) }));
+    expect(await resolveEmbedTitle({ embed: { type: 'task', ref: POD_REF }, fetchImpl })).toBe('Nested');
+  });
+
+  it('returns null on a 403 (ACP-protected) — chip keeps its ref', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: false, status: 403 }));
+    expect(await resolveEmbedTitle({ embed: { type: 'task', ref: POD_REF }, fetchImpl })).toBeNull();
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it('returns null on a network throw', async () => {
+    const fetchImpl = vi.fn(async () => { throw new Error('ECONNREFUSED'); });
+    expect(await resolveEmbedTitle({ embed: { type: 'task', ref: POD_REF }, fetchImpl })).toBeNull();
+  });
+
+  it('returns null on bad JSON without throwing', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => { throw new Error('not json'); } }));
+    expect(await resolveEmbedTitle({ embed: { type: 'task', ref: POD_REF }, fetchImpl })).toBeNull();
+  });
+
+  it('returns null (no throw) when no fetch is available', async () => {
+    // fetchImpl explicitly undefined AND globalThis.fetch removed so nothing real is hit.
+    const orig = globalThis.fetch;
+    // eslint-disable-next-line no-global-assign
+    globalThis.fetch = undefined;
+    try {
+      const title = await resolveEmbedTitle({ embed: { type: 'task', ref: POD_REF }, fetchImpl: undefined });
+      expect(title).toBeNull();
+    } finally {
+      globalThis.fetch = orig;
+    }
+  });
+
+  it('enrichEmbedsWithTitles threads fetchImpl to cross-pod embeds', async () => {
+    const fetchImpl = vi.fn(async () => ({ ok: true, json: async () => ({ title: 'Remote' }) }));
+    const out = await enrichEmbedsWithTitles({
+      embeds: [{ type: 'task', ref: POD_REF }], fetchImpl,
+    });
+    expect(out[0]).toEqual({ type: 'task', ref: POD_REF, title: 'Remote' });
   });
 });
 
