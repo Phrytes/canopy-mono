@@ -13,6 +13,7 @@ import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import EncryptedBackupWizardModal from '../../../../canopy-chat/src/rn/wizards/encryptedBackupWizardModal.js';
 import RestoreFromMnemonicWizardModal from '../../../../canopy-chat/src/rn/wizards/restoreFromMnemonicWizardModal.js';
+import { enableNativePush, disableNativePush, getNativePushState } from '../../v2/nativePush.js';
 
 export default function CircleMyDataScreen({ callSkill, onBack }) {
   const [dataLocation, setDataLocation] = useState({});
@@ -21,6 +22,14 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
   const [metrics, setMetrics] = useState({});
   const [wizard, setWizard] = useState(null);          // 'backup' | 'restore' | null
   const [mnemonic, setMnemonic] = useState(null);      // { words } | null when closed
+  const [push, setPush] = useState({ supported: false, granted: false });   // S6.6 native push
+
+  useEffect(() => { getNativePushState().then(setPush).catch(() => {}); }, []);
+  const toggleNativePush = useCallback(async () => {
+    if (push.granted) await disableNativePush({ callSkill });
+    else await enableNativePush({ callSkill });
+    setPush(await getNativePushState());
+  }, [push.granted, callSkill]);
 
   const revealMnemonic = useCallback(async () => {
     let words = '';
@@ -73,6 +82,18 @@ export default function CircleMyDataScreen({ callSkill, onBack }) {
         <Pressable style={[styles.action, styles.actionMuted]} onPress={() => setWizard('restore')} testID="mydata-restore">
           <Text style={styles.actionMutedLabel}>{t('circle.mydata.restore')}</Text>
         </Pressable>
+      </Section>
+
+      <Section title={t('circle.mydata.notifications')}>
+        <Text style={styles.privacyBody}>
+          {!push.supported ? t('circle.mydata.notif_unsupported')
+            : push.granted ? t('circle.mydata.notif_on') : t('circle.mydata.notif_off')}
+        </Text>
+        {push.supported ? (
+          <Pressable style={styles.action} onPress={toggleNativePush} testID="mydata-notif-toggle">
+            <Text style={styles.actionLabel}>{push.granted ? t('circle.mydata.notif_disable') : t('circle.mydata.notif_enable')}</Text>
+          </Pressable>
+        ) : null}
       </Section>
 
       {privacy.length > 0 && (
