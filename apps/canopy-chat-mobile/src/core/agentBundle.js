@@ -379,7 +379,8 @@ export async function bootAgentBundle(opts = {}) {
       (typeof agent.sendPeerMessage === 'function'
         ? agent.sendPeerMessage(addr, payload)
         : Promise.reject(new Error('agent.sendPeerMessage unavailable'))),
-    isPeerConnected: () => agent.peer?.status === 'connected',
+    // transport-NEUTRAL reachability (NKN OR relay) — not peer.status alone.
+    isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
     publishEvent: opts.publishEvent,
   });
 
