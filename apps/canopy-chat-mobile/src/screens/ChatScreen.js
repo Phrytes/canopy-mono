@@ -72,6 +72,8 @@ import { makeCatchUpProviderHandler } from '../../../canopy-chat/src/v2/catchUpP
 import { makeCatchUpReceiver }        from '../../../canopy-chat/src/v2/catchUpReceiver.js';
 import { makeHandleCalendarRsvp }
                                from '../../../canopy-chat/src/core/handlers/calendarRsvp.js';
+import { makeHandleCalendarCancel }
+                               from '../../../canopy-chat/src/core/handlers/calendarCancel.js';
 import { makeHandleBuurtPost } from '../../../canopy-chat/src/core/handlers/buurtPost.js';
 import {
   makeHandleGroupRedeemRequest,
@@ -505,6 +507,7 @@ export default function ChatScreen({
       // they just don't get a reply.  The factory is still imported in
       // case a follow-up slice needs to opt back in per-kring.
       'calendar-rsvp':         makeHandleCalendarRsvp({ callSkill, publishEvent }),
+      'calendar-cancel':       makeHandleCalendarCancel({ callSkill, publishEvent }),
       'buurt-post':            makeHandleBuurtPost({ callSkill, publishEvent }),
       'group-redeem-request':  makeHandleGroupRedeemRequest({ callSkill, sendPeer, publishEvent }),
       // Bundle H Phase 4 (#271) — joiner-side response.  Pairs with
