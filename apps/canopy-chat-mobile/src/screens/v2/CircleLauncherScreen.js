@@ -969,6 +969,7 @@ export default function CircleLauncherScreen({
         store={broadcastingStore}
         proposalStore={proposalStore}
         circleId={selected.id}
+        callSkill={bundle?.callSkill}
         incomingPolicy={incomingPolicy}
         onIncomingApplied={clearIncomingPolicy}
         onIncomingDiscarded={clearIncomingPolicy}

@@ -16,7 +16,7 @@
  * conflicts surface — overlays the SAME modal (CircleRecipeConflictScreen)
  * used by the recipe editor with a settings-namespaced heading.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import {
@@ -26,6 +26,9 @@ import {
 import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 import GuidedSetupPanel from './GuidedSetupPanel.js';
+// §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
+// four-tier crew storage policy (shared with web; pure mapping + call).
+import { pushCircleStoragePolicy } from '../../../../canopy-chat/src/v2/circleStoragePolicy.js';
 
 // Theme B — the guided-setup chatbot template can be HQ-updated remotely; unset
 // → the bundled DEFAULT_SETTINGS_TEMPLATE fallback (web's SETTINGS_TEMPLATE_URL).
@@ -39,6 +42,9 @@ const ENUM_AXES = ['view', 'llmTool', 'agents', 'revealPolicy', 'pod'];
 
 export default function CircleSettingsScreen({
   store, proposalStore, circleId, onBack,
+  // §4 storage-policy bridge — the host injects the agent's raw callSkill so a
+  // pod-tier change drives stoop.setCrewStoragePolicy (web parity).
+  callSkill,
   // γ.4 — opt-in conflict resolver.  See file header for the deferred
   // source plumbing; existing call sites pass none of these opts.
   incomingPolicy = null,
@@ -48,6 +54,8 @@ export default function CircleSettingsScreen({
   const [working, setWorking] = useState(null);
   const [expanded, setExpanded] = useState({});
   const [guidedOpen, setGuidedOpen] = useState(false);   // Theme B — guided-setup chatbot modal
+  const [storageNote, setStorageNote] = useState(null);  // §4 — stoop storage-policy rejection note
+  const baselinePodRef = useRef(undefined);              // §4 — pod tier at load (push only on change)
 
   // γ.4 — conflict resolver state (parallel to recipe-editor pattern).
   const [conflictReport, setConflictReport] = useState(null);
@@ -55,7 +63,11 @@ export default function CircleSettingsScreen({
 
   useEffect(() => {
     let live = true;
-    store.get(circleId).then((p) => { if (live) setWorking(p); });
+    store.get(circleId).then((p) => {
+      if (!live) return;
+      setWorking(p);
+      baselinePodRef.current = p?.pod;   // baseline for this editing session
+    });
     return () => { live = false; };
   }, [store, circleId]);
 
@@ -108,7 +120,10 @@ export default function CircleSettingsScreen({
     onIncomingApplied?.(merged);
   };
 
-  const patch = useCallback((p) => setWorking((cur) => mergeCirclePolicy(cur, p)), []);
+  const patch = useCallback((p) => {
+    setStorageNote(null);   // §4 — any edit dismisses a stale storage-policy note
+    setWorking((cur) => mergeCirclePolicy(cur, p));
+  }, []);
 
   const consensusActive = !!working?.consensusRequired && (working?.admins?.length ?? 0) >= 2;
 
@@ -130,9 +145,24 @@ export default function CircleSettingsScreen({
       }
     } else {
       await store.update(circleId, working);
+      // §4 storage-policy bridge — when the pod tier changed, drive stoop's
+      // authoritative crew storage policy (web parity). The skill owns
+      // admin-gating + the one-way guard; a rejection surfaces as a note and
+      // never blocks the local save.
+      if (working?.pod !== baselinePodRef.current && typeof callSkill === 'function') {
+        const res = await pushCircleStoragePolicy({
+          callSkill, circleId, pod: working.pod, groupPodUri: working.groupPodUri,
+        });
+        if (!res.ok) {
+          const key = `circle.settings.storage_err.${res.error}`;
+          const msg = t(key);
+          setStorageNote((msg && msg !== key) ? msg : t('circle.settings.storage_err.generic'));
+          return;   // stay on settings so the admin sees why the tier didn't take
+        }
+      }
     }
     onBack?.();
-  }, [working, consensusActive, store, proposalStore, circleId, onBack]);
+  }, [working, consensusActive, store, proposalStore, circleId, onBack, callSkill]);
 
   // γ.4 — overlay rendered on top of the regular screen when a conflict
   // is detected.  Mirrors CircleRecipeEditorScreen's pattern (β.5).
@@ -266,6 +296,7 @@ export default function CircleSettingsScreen({
           />
         </View>
         {consensusActive ? <Text style={styles.note}>{t('circle.settings.pending')}</Text> : null}
+        {storageNote ? <Text style={styles.note} testID="circle-settings-storage-note">{storageNote}</Text> : null}
       </ScrollView>
 
       <Pressable style={styles.save} onPress={onSave} accessibilityRole="button" testID="circle-settings-save">
