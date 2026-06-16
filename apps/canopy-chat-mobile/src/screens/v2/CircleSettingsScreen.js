@@ -25,6 +25,11 @@ import {
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
+import GuidedSetupPanel from './GuidedSetupPanel.js';
+
+// Theme B — the guided-setup chatbot template can be HQ-updated remotely; unset
+// → the bundled DEFAULT_SETTINGS_TEMPLATE fallback (web's SETTINGS_TEMPLATE_URL).
+const SETTINGS_TEMPLATE_URL = process.env.EXPO_PUBLIC_SETTINGS_TEMPLATE_URL || undefined;
 
 // 5.9a — `view` is the per-circle default-pane axis ('chat' / 'screen' /
 // 'cross-stream'); making it editable here lets an admin pick which surface
@@ -42,6 +47,7 @@ export default function CircleSettingsScreen({
 }) {
   const [working, setWorking] = useState(null);
   const [expanded, setExpanded] = useState({});
+  const [guidedOpen, setGuidedOpen] = useState(false);   // Theme B — guided-setup chatbot modal
 
   // γ.4 — conflict resolver state (parallel to recipe-editor pattern).
   const [conflictReport, setConflictReport] = useState(null);
@@ -164,6 +170,16 @@ export default function CircleSettingsScreen({
       <Text style={styles.title}>{t('circle.settings.title')}</Text>
 
       <ScrollView contentContainerStyle={styles.body}>
+        {/* Theme B — walk the basics in chat, then pre-fill the form below (the GUI hand-off). */}
+        <Pressable
+          style={styles.guided}
+          onPress={() => setGuidedOpen(true)}
+          accessibilityRole="button"
+          testID="circle-settings-guided"
+        >
+          <Text style={styles.guidedText}>{t('circle.guided.button')}</Text>
+        </Pressable>
+
         <Text style={styles.section}>{t('circle.settings.features')}</Text>
         {CIRCLE_FEATURES.map((f) => (
           <View key={f} style={styles.row}>
@@ -259,6 +275,13 @@ export default function CircleSettingsScreen({
       </Pressable>
     </View>
     {conflictOverlay}
+    <GuidedSetupPanel
+      visible={guidedOpen}
+      templateUrl={SETTINGS_TEMPLATE_URL}
+      t={t}
+      onDone={(p) => patch(p)}
+      onClose={() => setGuidedOpen(false)}
+    />
     </>
   );
 }
@@ -286,4 +309,6 @@ const styles = StyleSheet.create({
   muted:       { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   save:        { marginTop: 8, marginBottom: 12, padding: 13, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
   saveText:    { color: theme.color.white, fontSize: 15, fontWeight: '700' },
+  guided:      { marginTop: 4, marginBottom: 4, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.color.accent, backgroundColor: theme.color.card, alignItems: 'center' },
+  guidedText:  { color: theme.color.accent, fontSize: 14, fontWeight: '600' },
 });
