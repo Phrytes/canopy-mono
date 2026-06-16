@@ -66,6 +66,9 @@ import {
 } from '@canopy-app/canopy-chat';
 // B (circle bot) — v2 free-text→LLM→command surface (shared with web). Deep-imported like the other
 // v2 modules (kringChatReceiver etc.) since they're not on the canopy-chat barrel.
+// S6.A — manifest-driven inline buttons on bot replies (the resurrected inline menu), shared with web.
+import { embedButtonsForReply } from '../../../../canopy-chat/src/v2/replyEmbeds.js';
+import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -1413,6 +1416,8 @@ function CircleDetail({
     () => (rawCatalog ? scopeCatalogToApps(rawCatalog, policy?.apps) : rawCatalog),
     [rawCatalog, policy],
   );
+  // S6.A — {appOrigin → manifest} for computing inline buttons on bot replies.
+  const manifestsByOrigin = useMemo(() => buildManifestsByOrigin(), []);
   // Per-circle stoop restructure (parity with web circleApp.js `stoopCall`): the
   // prikbord + scherm noticeboard block call the raw 3-arg `callSkill('stoop', …)`
   // directly, bypassing scopeReadyDispatch — so scope them to THIS circle here.
@@ -1616,9 +1621,12 @@ function CircleDetail({
     try { reply = await runDispatch(scoped, rawCallSkill); }
     catch (e) { appendKringMessage({ actor: 'bot', text: t('circle.bot.failed', { msg: e?.message ?? String(e) }) }); return; }
     // The op's verb drives Added:/Completed: phrasing (a bare "✓ X" was identical for add + complete).
-    const verb = catalog?.opsById?.get(dispatch.opId)?.op?.verb;
-    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }) });
-  }, [catalog, circle?.id, rawCallSkill, appendKringMessage]);
+    const entry = catalog?.opsById?.get(dispatch.opId);
+    const verb = entry?.op?.verb;
+    // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
+    const buttons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons });
+  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin]);
 
   // B (clarification) — candidate source for an id-like param. Base = the circle's already-loaded
   // items (tasks + stoop posts, circle-scoped). Part C cross-app: ALSO pull the op's OWN list via the
@@ -1660,10 +1668,19 @@ function CircleDetail({
     },
   }), [catalog, circleLookup, runCircleCommandResolved, appendKringMessage, circle?.id]);
 
-  // B — a tapped candidate button → bind the id + re-run (may resolve, or clarify a further param).
+  // A tapped bubble button: S6.A inline manifest button (has opId) → dispatch its op against the item;
+  // otherwise (B clarification candidate) → bind the id + re-run.
   const onBubbleButton = useCallback((button) => {
+    if (button?.opId) {
+      const op = catalog?.opsById?.get(button.opId)?.op;
+      const arg = op?.surfaces?.slash?.match?.arg
+        ?? (op?.params || []).find((p) => p?.pickerSource)?.name
+        ?? 'id';
+      runCircleCommandResolved({ opId: button.opId, args: button.itemId != null ? { [arg]: button.itemId } : {} });
+      return;
+    }
     if (button?.id) clarify.pick(button.id, { id: circle?.id });
-  }, [clarify, circle?.id]);
+  }, [clarify, circle?.id, catalog, runCircleCommandResolved]);
 
   // B (two-level LLM policy) — the member's PERSONAL default, consulted when the circle policy is
   // 'user'. Persisted via AsyncStorage; seeded from the configured route until a settings UI lands
