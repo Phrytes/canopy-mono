@@ -74,6 +74,8 @@ import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
 // S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
+// "only you" vs "whole kring" — message scope (data property; the badge renders it).
+import { scopeForReply } from '../../../../canopy-chat/src/v2/messageScope.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
 import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
@@ -1589,11 +1591,11 @@ function CircleDetail({
 
   // SP-13.2.1 — append a kring chat bubble to the local eventLog (optimistic). Returns {msgId, ts}
   // so the caller can fan out the same id (receiver-side dedup suppresses any mirrored echo).
-  const appendKringMessage = useCallback(({ actor, text, buttons }) => {
+  const appendKringMessage = useCallback(({ actor, text, buttons, scope }) => {
     if (!eventLog?.append || !circle?.id) return null;
     const msgId = `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const ts    = Date.now();
-    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons }));
+    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope }));
     setStreamTick((n) => n + 1);
     return { msgId, ts };
   }, [eventLog, circle?.id]);
@@ -1643,7 +1645,9 @@ function CircleDetail({
       : [];
     // S6.C — the user's preference picks the projection (inline / screen / minimal). web parity.
     const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: surfacePrefStore.get() });
-    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons });
+    // Scope: a mutating op's reply reaches the whole kring; a read/info/error reply is private (web parity).
+    const scope = scopeForReply({ verb, error: !!reply?.error });
+    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope });
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
 
   // 2+-field inline form submit: echo the filled values, complete the dispatch, run it (parity with web).
@@ -1813,7 +1817,8 @@ function CircleDetail({
       });
     }
     if (await feedbackMountRef.current.tryHandle(text, circle.id)) return;   // feedback owned the turn
-    const appended = appendKringMessage({ actor: 'me', text });
+    // A plain typed line fans out to the whole kring → scope 'kring' (web parity).
+    const appended = appendKringMessage({ actor: 'me', text, scope: 'kring' });
     // Fire-and-forget: the bot posts its own reply bubble; swallow rejections so a failed turn can't
     // surface as an unhandled promise rejection.
     Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).catch(() => {});
@@ -2142,6 +2147,15 @@ function renderBubble(row, t, deliveryOpts = null) {
   return (
     <View key={row.id} style={styles.bubble} testID={`kring-bubble-${row.id}`}>
       {sender ? <Text style={styles.bubbleSender}>{sender}</Text> : null}
+      {/* "only you" vs "whole kring" scope badge — one presentation of payload.scope. */}
+      {payload.kind === 'chat-message' ? (
+        <Text
+          style={[styles.bubbleScope, payload.scope === 'kring' ? styles.bubbleScopeKring : styles.bubbleScopeSelf]}
+          testID={`kring-scope-${payload.scope === 'kring' ? 'kring' : 'self'}-${row.id}`}
+        >
+          {payload.scope === 'kring' ? `👥 ${t('circle.scope.kring')}` : `👤 ${t('circle.scope.self')}`}
+        </Text>
+      ) : null}
       <Text style={styles.bubbleText} numberOfLines={4}>
         {kind ? (<Text style={styles.bubbleKind}>{kind}  </Text>) : null}
         {text}
@@ -2366,6 +2380,9 @@ const styles = StyleSheet.create({
   // SP-13.2 — chat bubbles + composer (v2 §1+§5).
   bubble:           { padding: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, backgroundColor: theme.color.card, marginBottom: 6, maxWidth: '85%', alignSelf: 'flex-start' },
   bubbleSender:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  bubbleScope:      { alignSelf: 'flex-start', fontSize: 10, fontWeight: '600', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 9, marginBottom: 3, overflow: 'hidden' },
+  bubbleScopeSelf:  { backgroundColor: theme.color.paper, color: theme.color.inkSoft },
+  bubbleScopeKring: { backgroundColor: '#e8eef6', color: '#3b6ea5' },
   bubbleText:       { fontSize: 14, color: theme.color.ink },
   bubbleKind:       { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: theme.color.accent },
   dayDivider:       { alignSelf: 'center', fontSize: 11, color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 8 },
