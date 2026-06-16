@@ -25,6 +25,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { featureActionLabelKey } from '@canopy-app/canopy-chat';
+import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
 
@@ -205,12 +206,29 @@ function renderTasks(block) {
   return (
     <View>
       <Text style={styles.blockTitle}>{t('circle.recipe.block.tasks')}</Text>
-      {items.map((task) => (
-        <View key={task.id ?? Math.random().toString(36)} style={rowStyle}>
-          {task.circleName ? <Text style={circleStyle}>{task.circleName}</Text> : null}
-          <Text style={textStyle}>{task.text ?? ''}</Text>
-        </View>
-      ))}
+      {items.map((task) => {
+        const embeds = embedChipsOf(task);
+        return (
+          <View key={task.id ?? Math.random().toString(36)} style={rowStyle}>
+            {task.circleName ? <Text style={circleStyle}>{task.circleName}</Text> : null}
+            <Text style={textStyle}>{task.text ?? ''}</Text>
+            {embeds.length > 0 && (
+              <View style={styles.embeds}>
+                {embeds.map((e) => {
+                  const typeKey = embedTypeLabelKey(e.type);
+                  const typeLabel = t(typeKey);
+                  const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
+                  return (
+                    <View key={e.ref} style={styles.embed} testID={`task-embed-${e.ref}`}>
+                      <Text style={styles.embedText}>{`${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -295,6 +313,10 @@ const styles = StyleSheet.create({
   taskCircleCompact:   { fontSize: 9,  fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 0 },
   taskText:            { fontSize: 14, color: theme.color.ink, flex: 1 },
   taskTextCompact:     { fontSize: 12, color: theme.color.ink, flex: 1, lineHeight: 16 },
+  // embeds[] — "See also" chips on a task card.
+  embeds:              { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 3, flexBasis: '100%' },
+  embed:               { borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card, borderRadius: 999, paddingVertical: 1, paddingHorizontal: 8 },
+  embedText:           { fontSize: 11, color: theme.color.ink },
 
   rulesField:      { marginBottom: 10 },
   rulesLabel:      { fontSize: 11, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
