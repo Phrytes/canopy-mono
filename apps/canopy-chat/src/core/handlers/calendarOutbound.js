@@ -12,8 +12,9 @@
  *       organiser is an NKN address → sends a `calendar-rsvp` envelope
  *       back to the organiser.
  *
- * Plus a stub branch for `cancelEvent` propagation (currently logs
- * only — see comments below).
+ *   (c) cancelEvent → fans a `calendar-cancel` envelope to the event's
+ *       persisted attendee NKN addresses (recovered from the post-cancel
+ *       snapshot, since cancel is a soft delete).
  *
  * The factory returns `afterCallSkill(appOrigin, opId, args, result)`
  * — a thin hook the platform calls after each successful dispatch.
@@ -185,16 +186,52 @@ export function makeCalendarOutboundHook({
       return;
     }
 
-    // (c) cancelEvent — currently a stub on web because the cancelled
-    //     event's `attendees-nkn` isn't recovered post-cancel.  We
-    //     surface a notification for /logs visibility (matches web).
+    // (c) cancelEvent — fan a `calendar-cancel` envelope out to the event's
+    //     invitees so the cancellation propagates.  cancel is a SOFT delete
+    //     (state → 'cancelled', record kept), so the snapshot is still
+    //     readable post-cancel; the attendees' NKN addresses were persisted at
+    //     addEvent time (CalendarStore `attendeesNkn`) and surface in
+    //     snapshot.fields.attendeesNkn.  No attendeesNkn (e.g. a solo event, or
+    //     one created before this shipped) → nothing to notify.
     if (opId === 'cancelEvent' && dispatchArgs?.id) {
-      publishEvent?.({
-        app: 'calendar', type: 'notification',
-        payload: {
-          message: `🗑 event cancelled (peer propagation TBD): ${dispatchArgs.id}`,
-        },
-      });
+      let snapshot = null;
+      try {
+        snapshot = await callSkill('calendar', 'getEventSnapshot', { id: dispatchArgs.id });
+      } catch (err) {
+        logger.error?.('[calendar-outbound] getEventSnapshot for cancel fan-out failed', err);
+        return;
+      }
+      const targets = snapshot?.fields?.attendeesNkn
+        ? String(snapshot.fields.attendeesNkn).split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)
+        : [];
+      if (targets.length === 0) {
+        publishEvent?.({
+          app: 'calendar', type: 'notification',
+          payload: { message: `🗑 event cancelled (no invitees to notify): ${dispatchArgs.id}` },
+        });
+        return;
+      }
+      if (!peerUp()) {
+        logger.warn?.('[calendar-outbound] skipped cancel fan-out — peer transport not connected');
+        return;
+      }
+      for (const target of targets) {
+        try {
+          await sendPeer(target, {
+            type:    'p2p-chat',
+            subtype: 'calendar-cancel',
+            eventId: dispatchArgs.id,
+            title:   snapshot.title,
+            sentAt:  Date.now(),
+          });
+          publishEvent?.({
+            app: 'calendar', type: 'notification',
+            payload: { message: `📤 cancellation sent to ${String(target).slice(0, 16)}…` },
+          });
+        } catch (err) {
+          logger.error?.('[calendar-outbound] cancel send failed', target, err);
+        }
+      }
     }
   };
 }

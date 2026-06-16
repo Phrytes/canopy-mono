@@ -54,6 +54,28 @@ describe('withCalendarOutbound', () => {
     expect(sendPeer).not.toHaveBeenCalled();
   });
 
+  it('fans out a calendar-cancel to the persisted attendeesNkn after cancelEvent', async () => {
+    const sendPeer = vi.fn(async () => {});
+    const cs = withCalendarOutbound(
+      fakeCallSkill({ id: 'e-1', title: 'Lunch', fields: { attendeesNkn: 'addrA, addrB' } }),
+      { sendPeer, isPeerConnected: () => true },
+    );
+    await cs('calendar', 'cancelEvent', { id: 'e-1' });
+    expect(sendPeer).toHaveBeenCalledTimes(2);
+    expect(sendPeer.mock.calls[0][1]).toMatchObject({ subtype: 'calendar-cancel', eventId: 'e-1', title: 'Lunch' });
+    expect(sendPeer.mock.calls.map((c) => c[0])).toEqual(['addrA', 'addrB']);
+  });
+
+  it('cancelEvent with no persisted attendeesNkn notifies nobody (no send)', async () => {
+    const sendPeer = vi.fn(async () => {});
+    const cs = withCalendarOutbound(
+      fakeCallSkill({ id: 'e-1', title: 'Solo', fields: {} }),
+      { sendPeer, isPeerConnected: () => true },
+    );
+    await cs('calendar', 'cancelEvent', { id: 'e-1' });
+    expect(sendPeer).not.toHaveBeenCalled();
+  });
+
   it('passes non-calendar ops straight through (no fan-out)', async () => {
     const sendPeer = vi.fn(async () => {});
     const inner = vi.fn(async () => ({ ok: true, items: [] }));

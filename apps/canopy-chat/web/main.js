@@ -54,6 +54,7 @@ import { makePeerRouter }            from '../src/core/handlers/peerRouter.js';
 import { makeHandleChatMessage }    from '../src/core/handlers/chatMessage.js';
 import { makeHandleCalendarInvite } from '../src/core/handlers/calendarInvite.js';
 import { makeHandleCalendarRsvp }   from '../src/core/handlers/calendarRsvp.js';
+import { makeHandleCalendarCancel } from '../src/core/handlers/calendarCancel.js';
 import { makeHandleFileShare }     from '../src/core/handlers/fileShare.js';
 import { makeHandleBuurtPost }     from '../src/core/handlers/buurtPost.js';
 import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse }
@@ -755,10 +756,18 @@ const handleCatchUpRequest = makeHandleCatchUpRequest({
 // module; passing the bare reference is safe.  Subtypes with extra
 // inline guards (help-with-*, group-redeem-*) keep the guards as
 // thin wrappers so the router stays declarative.
+// calendar-cancel uses the SHARED inbound handler (the local invite/rsvp pair
+// predates it); callSkill/publishEvent are late-bound via the *Ref closures so
+// it's safe to build before they're assigned.
+const handleCalendarCancel = makeHandleCalendarCancel({
+  callSkill:    (appOrigin, opId, args) => callSkillRef(appOrigin, opId, args),
+  publishEvent: (event) => publishEventRef(event),
+});
 const peerMessageRouter = makePeerRouter({
   handlers: {
     'calendar-invite':       handleCalendarInvite,
     'calendar-rsvp':         handleCalendarRsvp,
+    'calendar-cancel':       handleCalendarCancel,
     'file-share':            handleFileShare,
     'group-redeem-request':  handleGroupRedeemRequest,
     'group-redeem-response': handleGroupRedeemResponse,

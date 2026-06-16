@@ -157,6 +157,10 @@ export function registerCalendarSkills(agent, store, opts = {}) {
         state:     event.state ?? 'open',
         organiser: event.organiser ?? 'unknown',
         ...(event.attendees?.length ? { attendees: event.attendees.join(', ') } : {}),
+        // attendees' NKN addresses — used by the cross-peer cancel fan-out to
+        // notify invitees when an event is cancelled (event is soft-deleted, so
+        // the snapshot is still readable post-cancel).
+        ...(event.attendeesNkn?.length ? { attendeesNkn: event.attendeesNkn.join(', ') } : {}),
         ...(summary ? { rsvp: summary } : {}),
       },
     })];
