@@ -1611,18 +1611,14 @@ const callSkill = async (appOrigin, opId, args) => {
     return agent.callSkill('folio', opId, args);
   }
   if (appOrigin === 'calendar') {
-    // Calendar skills are registered with the 'calendar_' prefix on
-    // the host agent (per v0.7.10 multi-app collision-avoidance).
-    const result = await agent.callSkill('household', `calendar_${opId}`, args);
-
-    // Bundle calendar cross-peer (#238, 2026-05-27) — inline fan-out
-    // logic replaced by portable `calendarOutboundHook`.  Same envelope
-    // shapes (calendar-invite / calendar-rsvp + cancelEvent stub) +
-    // same guards; mobile uses the same factory now.  See
-    // src/core/handlers/calendarOutbound.js.
+    // Routing (calendar → household/calendar_*) now lives in the SHARED agent
+    // (src/core/agent/realAgent.js) so every surface gets it; the classic shell
+    // just delegates + layers its cross-peer fan-out on top.  Bundle calendar
+    // cross-peer (#238, 2026-05-27) — portable `calendarOutboundHook` (same
+    // invite/rsvp/cancel envelopes + guards; mobile uses the same factory).
+    const result = await agent.callSkill('calendar', opId, args);
     try { await _calendarOutboundHook(appOrigin, opId, args ?? {}, result); }
     catch (err) { console.warn('[peer] calendar cross-peer side-effect failed', err); }
-
     return result;
   }
   return { ok: false, error: `${appOrigin}.${opId} not wired in this demo build` };

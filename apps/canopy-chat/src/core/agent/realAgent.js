@@ -1240,6 +1240,19 @@ export async function createRealHouseholdAgent(opts = {}) {
       const first  = Array.isArray(result) ? result[0] : null;
       return first?.data ?? null;
     }
+    if (appOrigin === 'calendar') {
+      // Calendar skills are registered on the household host agent with the
+      // 'calendar_' prefix (v0.7.10 multi-app collision-avoidance).  Routing
+      // lives HERE in the shared agent — not in a per-shell wrapper — so EVERY
+      // surface reaches calendar through the bare `agent.callSkill`: the
+      // classic web shell, the v2 circle launcher (web), and mobile (both pass
+      // the bare agent, so before this they threw "unknown appOrigin" on every
+      // calendar gate verb — schedule/accept/decline/cancel).  CLAUDE.md
+      // invariant #1: routing belongs in shared code, not a shell.  The
+      // cross-peer invite/RSVP fan-out (calendarOutbound hook) stays a
+      // shell/bundle concern layered ON TOP of this routing.
+      return callSkill('household', `calendar_${opId}`, args);
+    }
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };
 

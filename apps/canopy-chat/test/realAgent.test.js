@@ -72,6 +72,24 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
       /unknown appOrigin/,
     );
   });
+
+  it("routes the 'calendar' app-origin to the host's calendar_* skills (shared, not shell-only)", async () => {
+    // Regression for the gate-parity gap: calendar used to throw "unknown
+    // appOrigin" in the shared agent — routing lived only in the web/main.js
+    // shell, so the v2 circle launcher + mobile (both use the bare agent)
+    // failed every calendar gate verb.  The lift puts calendar→household/
+    // calendar_* routing HERE, so ALL surfaces reach calendar.
+    const a = await createRealHouseholdAgent();
+    const add = await a.callSkill('calendar', 'addEvent', {
+      title: 'Lunch', when: '2026-06-20T12:00:00.000Z',
+    });
+    expect(add).toBeTruthy();
+    expect(add.ok).not.toBe(false);                  // did NOT throw / fail-route
+
+    const list = await a.callSkill('calendar', 'listEvents', {});
+    const items = list?.items ?? [];
+    expect(items.some((e) => (e.label ?? e.title ?? '').includes('Lunch'))).toBe(true);
+  });
 });
 
 describe('createRealHouseholdAgent — pipeline integration', () => {
