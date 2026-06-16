@@ -444,6 +444,10 @@
 /* S6.A — manifest-driven inline buttons on a bot reply (the resurrected inline menu). */
 .circle-kring__embed-buttons { flex-wrap: wrap; }
 .circle-kring__embed-button { border-color: var(--accent); color: var(--accent-ink, var(--accent)); font-weight: 600; }
+/* embeds[] — cross-object "See also" chips on a kring message. */
+.circle-kring__embeds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.circle-kring__embeds-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; }
+.circle-kring__embed { font-size: 12px; color: var(--ink); background: var(--paper2, #f4efe7); border: 1px solid var(--line, #e2d9cb); border-radius: 999px; padding: 2px 9px; }
 /* S6.B — a screen button (opens a panel) reads as a filled affordance vs the outline op buttons. */
 .circle-kring__screen-button { background: var(--accent); color: #fff; border-color: var(--accent); }
 .cc-screen-panel { position: fixed; inset: 0; z-index: 65; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.45); }

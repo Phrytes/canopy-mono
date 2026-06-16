@@ -8,14 +8,21 @@
  * Build the optimistic kring chat-message event for the local (append-only) EventLog. The same `msgId`
  * is later passed to `broadcastKringFanOut`, so receiver-side dedup suppresses any mirrored echo.
  *
- * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array}} a
+ * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array, scope?:string, embeds?:Array}} a
  */
-export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope }) {
+export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope, embeds }) {
   return {
     id: msgId, ts, app: 'kring', type: 'chat-message', actor,
     // `scope` ('self' | 'kring') — is this message private to you or shared with the
     // whole kring (a data property; the badge is one presentation of it). See messageScope.js.
-    payload: { circleId, text, kind: 'chat-message', ...(buttons?.length ? { buttons } : {}), ...(scope ? { scope } : {}) },
+    // `embeds` ([{type,ref,title?}]) — cross-object references this message carries (a bot
+    // reply pointing at the task/event it just acted on); rendered as "See also" chips.
+    payload: {
+      circleId, text, kind: 'chat-message',
+      ...(buttons?.length ? { buttons } : {}),
+      ...(scope ? { scope } : {}),
+      ...(embeds?.length ? { embeds } : {}),
+    },
   };
 }
 

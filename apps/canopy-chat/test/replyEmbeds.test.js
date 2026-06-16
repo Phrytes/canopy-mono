@@ -4,7 +4,7 @@
  * against the contract the bot actually composes.
  */
 import { describe, it, expect } from 'vitest';
-import { snapshotsFromReply, embedButtonsForReply } from '../src/v2/replyEmbeds.js';
+import { snapshotsFromReply, embedButtonsForReply, embedsFromReply } from '../src/v2/replyEmbeds.js';
 import { mockTasksManifest } from '../src/core/manifests/mockManifests.js';
 
 const manifestsByOrigin = { 'tasks-v0': mockTasksManifest };
@@ -53,5 +53,31 @@ describe('embedButtonsForReply (real tasks manifest, appliesTo-gated)', () => {
 
   it('returns [] without a manifest or appOrigin', () => {
     expect(embedButtonsForReply({ reply: { task: { id: 't', state: 'open' } } })).toEqual([]);
+  });
+});
+
+describe('embedsFromReply', () => {
+  it('builds one embed for the ACTED-ON task (singular key), title from the reply', () => {
+    const out = embedsFromReply({ task: { id: 't2', state: 'open', text: 'Fix the gate' } }, { appOrigin: 'tasks-v0' });
+    expect(out).toEqual([{ type: 'task', ref: 't2', title: 'Fix the gate' }]);
+  });
+
+  it('maps a calendar event snapshot type → calendar-event', () => {
+    const out = embedsFromReply({ event: { id: 'e1', type: 'event', title: 'Lunch' } }, { appOrigin: 'calendar' });
+    expect(out).toEqual([{ type: 'calendar-event', ref: 'e1', title: 'Lunch' }]);
+  });
+
+  it('does NOT spawn chips for a LIST reply (only the acted-on singular item)', () => {
+    expect(embedsFromReply({ tasks: [{ id: 'a' }, { id: 'b' }] }, { appOrigin: 'tasks-v0' })).toEqual([]);
+  });
+
+  it('handles itemId/eventId id aliases + a missing title', () => {
+    expect(embedsFromReply({ event: { eventId: 'e9' } }, { appOrigin: 'calendar' }))
+      .toEqual([{ type: 'calendar-event', ref: 'e9' }]);
+  });
+
+  it('returns [] for an empty / error reply', () => {
+    expect(embedsFromReply(null)).toEqual([]);
+    expect(embedsFromReply({ error: 'nope' })).toEqual([]);
   });
 });

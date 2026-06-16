@@ -39,6 +39,7 @@ import { actionsForStreamRow } from '../../src/v2/streamActions.js';
 import { renderCircleScreen } from './circleScreen.js';
 import { renderCircleNoticeboard } from './circleNoticeboard.js';
 import { suggestCommands } from '../../src/v2/commandSuggest.js';
+import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../src/v2/embedChips.js';
 
 export function renderCircleKring(container, {
   circle = {},
@@ -485,6 +486,29 @@ function renderBubble(row, {
       actRow.appendChild(btn);
     }
     el.appendChild(actRow);
+  }
+
+  // embeds[] — cross-object "See also" chips the message carries (a bot reply
+  // referencing the task/event it acted on). Title rides the embed → no resolve.
+  const msgEmbeds = embedChipsOf(row.event?.payload);
+  if (msgEmbeds.length) {
+    const wrap = document.createElement('div');
+    wrap.className = 'circle-kring__embeds';
+    const heading = document.createElement('span');
+    heading.className = 'circle-kring__embeds-label';
+    heading.textContent = tr('circle.embed.see_also');
+    wrap.appendChild(heading);
+    for (const e of msgEmbeds) {
+      const chip = document.createElement('span');
+      chip.className = `circle-kring__embed circle-kring__embed--${e.type}`;
+      chip.dataset.ref = e.ref;
+      const typeKey = embedTypeLabelKey(e.type);
+      const typeLabel = tr(typeKey);
+      const typeText = (typeLabel && typeLabel !== typeKey) ? typeLabel : e.type;
+      chip.textContent = `${e.icon} ${typeText}: ${e.label ?? shortRef(e.ref)}`;
+      wrap.appendChild(chip);
+    }
+    el.appendChild(wrap);
   }
 
   // S6.A — manifest-driven inline buttons (the resurrected "inline menu"): an op

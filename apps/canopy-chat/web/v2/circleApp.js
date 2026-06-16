@@ -72,7 +72,7 @@ import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/we
 // inbound shape stoop.postRequest expects).
 import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected "inline menu").
-import { embedButtonsForReply } from '../../src/v2/replyEmbeds.js';
+import { embedButtonsForReply, embedsFromReply } from '../../src/v2/replyEmbeds.js';
 // S6.C — per-user preference selecting which projection (inline / screen / minimal) renders.
 import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo, SURFACE_PREFS } from '../../src/v2/surfacePref.js';
 // S6.D — is the conversational "chat" projection enriched by an LLM here? (user-loaded LLM + circle permits)
@@ -822,7 +822,11 @@ function buildCircleBot(agent) {
     // Scope: a mutating op's reply reaches the whole kring (the action is shared); a
     // read/info reply or an error is private to you. (messageScope.js)
     const scope = scopeForReply({ verb, error: !!reply?.error });
-    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope });
+    // embeds[] — the bot reply REFERENCES the item it just acted on (the created
+    // task / event), so the bubble shows a "See also" chip linking to it. Title
+    // is taken from the reply → no resolution needed.
+    const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
+    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope, embeds });
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
 
@@ -2128,7 +2132,7 @@ function showKring(id, circle, policy) {
       const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-bot`;
       // S6.A — opts.buttons ride payload.buttons. scope ('self'|'kring') — a bot reply is
       // private unless it represents a shared action; absent → renderer defaults to 'self'.
-      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope }));
+      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope, embeds: opts?.embeds }));
       rerender();
     },
     // Local echo of the user's own line (used by the feedback mount, which consumes the message before the

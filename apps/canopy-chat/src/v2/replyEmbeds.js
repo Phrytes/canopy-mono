@@ -55,6 +55,40 @@ function clip(s, n = 24) {
   return str.length > n ? `${str.slice(0, n - 1)}…` : str;
 }
 
+// snapshot `type` → canonical embed `type` (embedChips vocabulary). Unmapped
+// types pass through (the chip just falls back to the 🔗 icon).
+const SNAP_TYPE_TO_EMBED = { event: 'calendar-event' };
+
+/**
+ * Build `embeds[]` for the SINGLE item a reply ACTED ON (created / modified) —
+ * the singular `task`/`item`/`event`/`file` keys, NOT list arrays (a "5 tasks"
+ * list shouldn't spawn 5 chips; its items already get inline buttons). The title
+ * is taken from the reply, so the kring chip needs no resolution.
+ *
+ * @returns {{type:string, ref:string, title?:string}[]}
+ */
+export function embedsFromReply(reply, { appOrigin } = {}) {
+  if (!reply || typeof reply !== 'object') return [];
+  const p = (reply.payload && typeof reply.payload === 'object') ? reply.payload : reply;
+  const defaultType = ORIGIN_DEFAULT_TYPE[appOrigin];
+  const out = [];
+  const seen = new Set();
+  for (const k of ['task', 'item', 'event', 'file']) {
+    const it = p[k];
+    if (!it || typeof it !== 'object') continue;
+    const rawId = it.id ?? it.taskId ?? it.itemId ?? it.eventId ?? it.fileId;
+    if (rawId == null || rawId === '') continue;
+    const ref = String(rawId);
+    if (seen.has(ref)) continue;
+    seen.add(ref);
+    const snapType = it.type ?? defaultType ?? 'task';
+    const type = SNAP_TYPE_TO_EMBED[snapType] ?? snapType;
+    const title = it.label ?? it.title ?? it.text ?? it.name ?? null;
+    out.push({ type, ref, ...(title ? { title: String(title) } : {}) });
+  }
+  return out;
+}
+
 /**
  * Build the kring inline buttons for a reply's items.
  *

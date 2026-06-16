@@ -82,3 +82,29 @@ describe('renderCircleKring — S6.A inline embed buttons', () => {
     expect(el.querySelector('.circle-kring__embed-button')).toBeNull();
   });
 });
+
+describe('renderCircleKring — embeds[] "See also" chips on a bot row', () => {
+  const botRowWithEmbeds = (embeds) => ({
+    id: 'kring-c1-bot-2', ts: Date.now(), type: 'chat-message', actor: 'bot', circleId: 'c1',
+    event: { id: 'kring-c1-bot-2', ts: Date.now(), type: 'chat-message', actor: 'bot',
+      payload: { circleId: 'c1', text: '✓ Added: Fix the gate', kind: 'chat-message', embeds } },
+  });
+
+  it('renders a chip per embed the message carries (icon + type + title)', () => {
+    const el = renderCircleKring(document.createElement('div'), {
+      circle: { id: 'c1' }, t, activeTab: 'gesprek',
+      rows: [botRowWithEmbeds([{ type: 'task', ref: 't2', title: 'Fix the gate' }])],
+    });
+    const chips = el.querySelectorAll('.circle-kring__embed');
+    expect(chips).toHaveLength(1);
+    expect(chips[0].dataset.ref).toBe('t2');
+    expect(chips[0].textContent).toBe('✅ task: Fix the gate');   // identity t() → raw type fallback
+  });
+
+  it('renders no embeds block when the message carries none', () => {
+    const el = renderCircleKring(document.createElement('div'), {
+      circle: { id: 'c1' }, t, activeTab: 'gesprek', rows: [botRowWithEmbeds(undefined)],
+    });
+    expect(el.querySelector('.circle-kring__embeds')).toBeNull();
+  });
+});
