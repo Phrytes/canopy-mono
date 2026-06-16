@@ -15,6 +15,7 @@ import { theme } from './theme.js';
 import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 // embeds[] — cross-object reference chips ("See also"), shared with web.
 import { embedChipsOf, embedTypeLabelKey, shortRef } from '../../../../canopy-chat/src/v2/embedChips.js';
+import { enrichEmbedsWithTitles } from '../../../../canopy-chat/src/v2/embedResolve.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
@@ -33,6 +34,19 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
   const [attachment, setAttachment] = useState(null);   // S5 — pending image attachment
   const [viewing, setViewing] = useState(null);         // S5 — { uri, pending } full-image viewer
 
+  // embeds[] — resolve each post's embed refs to live titles (best-effort), then
+  // re-set so the "See also" chips upgrade from a ref to the real title.
+  const enrichEmbeds = useCallback(async (posts) => {
+    try {
+      const out = await Promise.all(posts.map(async (p) => {
+        if (!Array.isArray(p.embeds) || !p.embeds.length) return p;
+        const enriched = await enrichEmbedsWithTitles({ callSkill, embeds: p.embeds });
+        return enriched.some((e) => e && e.title) ? { ...p, embeds: enriched } : p;
+      }));
+      setPosts(out);
+    } catch { /* best-effort */ }
+  }, [callSkill]);
+
   const reload = useCallback(async () => {
     if (typeof callSkill !== 'function') return;
     let who = myWebid;
@@ -40,7 +54,7 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
     try {
       const res = await callSkill('stoop', 'listOpen', {});
       const items = Array.isArray(res?.items) ? res.items : [];
-      setPosts(items.map((it) => ({
+      const mapped = items.map((it) => ({
         id: it.id, text: it.text ?? it.label ?? '', type: it.type ?? it.intent ?? 'ask',
         addedBy: it.addedBy, mine: !!(who && it.addedBy === who),
         // S5 — inline-image metadata (thumbnail travels; full bytes on demand).
@@ -49,9 +63,13 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent }) {
         // embeds[] — cross-object references (a post → a task / event / post).
         embeds: Array.isArray(it.embeds) ? it.embeds
           : (Array.isArray(it.source?.embeds) ? it.source.embeds : []),
-      })));
+      }));
+      setPosts(mapped);
+      // embeds[] — progressively resolve each ref to a live title, then re-set
+      // to upgrade the "See also" chips (ref → real title). Best-effort.
+      enrichEmbeds(mapped);
     } catch { setPosts([]); }
-  }, [callSkill, myWebid]);
+  }, [callSkill, myWebid, enrichEmbeds]);
 
   useEffect(() => { reload(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
