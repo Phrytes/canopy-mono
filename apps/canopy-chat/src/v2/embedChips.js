@@ -53,8 +53,16 @@ export function embedChipsOf(item) {
       type:  String(e.type),
       ref:   String(e.ref),
       icon:  EMBED_TYPE_ICON[e.type] ?? '🔗',
-      // the embed's own label is DATA (the referenced item's title) — kept as-is;
-      // null → the renderer shows a shortened ref instead.
-      label: (typeof e.label === 'string' && e.label.trim()) ? e.label.trim() : null,
+      // Display label, best → worst: a RESOLVED live title (embedResolve) → the
+      // embed's own stored label → null (renderer falls back to a short ref).
+      label: pickLabel(e),
+      // whether `label` is a resolved live title (vs a stored label / null).
+      resolved: !!(e.title && String(e.title).trim()),
     }));
+}
+
+function pickLabel(e) {
+  if (e.title && String(e.title).trim()) return String(e.title).trim();
+  if (typeof e.label === 'string' && e.label.trim()) return e.label.trim();
+  return null;
 }

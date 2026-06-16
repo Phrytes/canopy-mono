@@ -83,6 +83,8 @@ import { pushCircleStoragePolicy } from '../../src/v2/circleStoragePolicy.js';
 // Calendar cross-peer fan-out — wrap the dispatch callSkill so a successful
 // calendar op fans its invite/RSVP envelopes out over the peer transport.
 import { withCalendarOutbound } from '../../src/core/handlers/calendarOutbound.js';
+// embeds[] — resolve a cross-object ref to a live title for the "See also" chips.
+import { enrichEmbedsWithTitles } from '../../src/v2/embedResolve.js';
 // Calendar INBOUND ingest — receive invite/RSVP/cancel envelopes from peers.
 import { makeHandleCalendarInvite } from '../../src/core/handlers/calendarInvite.js';
 import { makeHandleCalendarRsvp }   from '../../src/core/handlers/calendarRsvp.js';
@@ -1888,6 +1890,20 @@ function showKring(id, circle, policy) {
       }));
     } catch { noticeboardPosts = []; }
     rerender();
+    // embeds[] — progressively resolve each embed ref to its live title, then
+    // re-render to upgrade the "See also" chips (ref → real title). Best-effort.
+    enrichNoticeboardEmbeds();
+  }
+
+  async function enrichNoticeboardEmbeds() {
+    const crewId = getActiveCircle();
+    let changed = false;
+    await Promise.all(noticeboardPosts.map(async (p) => {
+      if (!Array.isArray(p.embeds) || !p.embeds.length) return;
+      const enriched = await enrichEmbedsWithTitles({ callSkill: rawCallSkill, embeds: p.embeds, crewId });
+      if (enriched.some((e) => e && e.title)) { p.embeds = enriched; changed = true; }
+    }));
+    if (changed) rerender();
   }
 
   // S5 — encode a picked image into the inbound-attachment shape + hold it pending.
