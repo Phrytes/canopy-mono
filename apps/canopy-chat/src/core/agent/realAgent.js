@@ -1283,7 +1283,9 @@ export async function createRealHouseholdAgent(opts = {}) {
         ok:      true,
         message: `✓ Added task: ${task.text ?? task.title ?? task.id}`,
         itemId:  task.id,
-        task,
+        // S6.A — carry the mock-era `state` + `type` the manifest's appliesTo gates
+        // on (the real crew uses `status`), so inline buttons compute on the reply.
+        task:    { ...task, type: 'task', state: _statusToChatState(task.status, task) },
         _sync:   simulateSync(),
       };
     }
@@ -1324,7 +1326,9 @@ export async function createRealHouseholdAgent(opts = {}) {
         ok:      true,
         message: `✓ ${verbMap[opId]}: ${title}${noteSuffix}`,
         itemId:  task.id,
-        task,
+        // S6.A — enrich with mock-era state/type so the post-action reply also
+        // carries the right inline buttons (e.g. a claimed task → Mark complete).
+        task:    { ...task, type: 'task', state: _statusToChatState(task.status, task) },
         _sync:   simulateSync(),
       };
     }
