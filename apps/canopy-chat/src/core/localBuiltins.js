@@ -332,11 +332,11 @@ async function meIdentity(_args, { agent, t }) {
     `  pubKey:    ${id.pubKey}`,
     `  stableId:  ${id.stableId ?? '(none)'}`,
   ];
-  // v0.7.P3b — NKN address (the thing peers send to).
+  // v0.7.P3b — peer address (the thing peers send to).
   if (peer.address) {
     lines.push('');
     lines.push('Cross-peer (NKN):');
-    lines.push(`  NKN address: ${peer.address}`);
+    lines.push(`  peer address: ${peer.address}`);
     lines.push('  → share this with a peer; they /test-peer <this-address> hello');
   } else if (peer.status === 'connecting') {
     lines.push('');
@@ -354,7 +354,7 @@ async function meIdentity(_args, { agent, t }) {
 /**
  * `/send-file <peer>` — v0.7.P3f.  Opens the file picker, reads
  * bytes as base64, sends as 'file-share' envelope.  Peer can be
- * an NKN address ('app.<hex>') OR a webid (auto-resolved).
+ * an peer address ('app.<hex>') OR a webid (auto-resolved).
  */
 async function sendFile(args, {
   agent, t, openFilePicker, lookupPeerAddrByWebid,
@@ -450,7 +450,7 @@ async function sendFile(args, {
 }
 
 /**
- * `/lookup-peer <webid>` — v0.7.P3d.  Resolves WebID → NKN address
+ * `/lookup-peer <webid>` — v0.7.P3d.  Resolves WebID → peer address
  * via the peer's pod profile.  Returns the address so the user can
  * `/test-peer` or `/addappt --attendees-addr=` with it.
  */
@@ -470,7 +470,7 @@ async function lookupPeer(args, { lookupPeerAddrByWebid, t }) {
 }
 
 /**
- * `/publish-peer` — v0.7.P3d.  Re-publishes the user's NKN address
+ * `/publish-peer` — v0.7.P3d.  Re-publishes the user's peer address
  * to their pod identity.ttl.
  */
 async function publishPeerAddrCmd(_args, { publishPeerAddrToPod, t }) {
@@ -490,7 +490,7 @@ async function publishPeerAddrCmd(_args, { publishPeerAddrToPod, t }) {
  * `/rotate-identity` — v0.7.P3d.  Rotates the chat-agent's Ed25519
  * keypair.  Old key stays valid for 7 days (in-flight envelopes
  * still decrypt).  KeyRotation.broadcast notifies known peers.
- * Your NKN address changes — share the new one via /me.
+ * Your peer address changes — share the new one via /me.
  */
 async function rotateIdentity(_args, { agent, t }) {
   if (!agent || typeof agent.rotateChatIdentity !== 'function') {
@@ -1270,7 +1270,7 @@ function createDmThread(args, { threadStore, setActive, t }) {
   }
   const peerId = String(args?.webid ?? args?.id ?? '').trim();
   if (!peerId) {
-    return { ok: false, error: 'Pass a webid or NKN address: /dm <peerId>' };
+    return { ok: false, error: 'Pass a webid or peer address: /dm <peerId>' };
   }
   // Look for an existing DM with this peer; activate it if found.
   const existing = [...threadStore.listThreads()].find(th =>

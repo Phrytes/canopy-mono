@@ -36,7 +36,7 @@ import {
  * Build the `lookupPeerAddrByWebid` injection for `createLocalBuiltins`.
  *
  * Resolves the peer's WebID → their pod's `canopy/identity/identity.ttl`
- * → the `canopy:peerAddr` triple. Returns the NKN address (`app.<hex>`)
+ * → the `canopy:peerAddr` triple. Returns the peer address (`app.<hex>`)
  * or `null` when any step fails (no session, network error, missing
  * triple, ACL denial).
  *
@@ -66,7 +66,7 @@ export function buildLookupPeerAddrByWebid({ sessionRef }) {
  *
  * Discovers the user's pod root via `pim:storage`, builds a
  * `podWriter`, and PUTs `<pod>/canopy/identity/identity.ttl` with the
- * agent's current NKN address. Returns the `{ ok, url, status }` shape
+ * agent's current peer address. Returns the `{ ok, url, status }` shape
  * that `localBuiltins.publishPeerAddrCmd` formats for the user.
  *
  * @param {object}  deps

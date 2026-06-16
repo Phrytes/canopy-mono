@@ -259,7 +259,7 @@ export async function bootAgentBundle(opts = {}) {
       const MdnsTransport = await loadMdnsTransport();
       if (!MdnsTransport || !MdnsTransport.isAvailable?.()) return;
       // The full chat AgentIdentity (with pubKey/sign/encrypt) lives
-      // inside sa.agent.identity — same one the NKN address is derived
+      // inside sa.agent.identity — same one the peer address is derived
       // from, so peers see one consistent identifier.
       const chatIdentity = agent?.sa?.agent?.identity;
       if (!chatIdentity?.pubKey) return;

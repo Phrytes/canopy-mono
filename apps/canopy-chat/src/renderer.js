@@ -450,7 +450,7 @@ function renderListItems(payload, opts, t) {
     const out = { id, label, buttons };
     if (staleHint) out.staleHint = staleHint;
     if (embed)     out.embed     = embed;
-    // 2026-05-27 — contact rows carry the peer's NKN address as
+    // 2026-05-27 — contact rows carry the peer's peer address as
     // `peerAddr` so the [DM] button can target it directly (see
     // realAgent.js listContacts mapper).  Pure pass-through.
     if (item && typeof item === 'object' && typeof item.peerAddr === 'string' && item.peerAddr) {

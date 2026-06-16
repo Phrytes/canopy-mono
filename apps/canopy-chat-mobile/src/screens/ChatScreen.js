@@ -2309,7 +2309,7 @@ function ListItemRow({ item, enabled, onButtonTap, originMessageId }) {
               // snapshot.  Undefined when the source item didn't
               // carry one — buttonSpecials handles that path.
               embed: item.embed,
-              // 2026-05-27 — pass the contact's NKN address so the
+              // 2026-05-27 — pass the contact's peer address so the
               // [DM] button-special can target it directly rather
               // than try to NKN-send to the stableId/webid.
               peerAddr: item.peerAddr,

@@ -81,7 +81,7 @@ export function interceptButtonTap({ opId, itemId, buttonLabel, t, embed, extra,
   // what makes free-text routing in that thread send a chat-message
   // envelope to the right peer (otherwise the thread is just an
   // unflagged container + parseInput rejects the text as unknown).
-  // We prefer the row-supplied peerAddr (the contact's NKN address
+  // We prefer the row-supplied peerAddr (the contact's peer address
   // captured from /share-my-contact's card) over the row's itemId
   // (the contact's webid/stableId, which isn't an NKN destination).
   if (opId === 'startDm') {

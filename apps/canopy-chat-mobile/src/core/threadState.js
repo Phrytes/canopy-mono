@@ -47,7 +47,7 @@ export function __resetThreadIdSeq() { _threadIdSeq = 0; }
  * @property {number}                createdAt
  * @property {Array<object>}         messages
  * @property {object|null}           sourceDispatch   most-recent list dispatch
- * @property {string|null}           [peerAddr]       Bundle H (#268): NKN address of the paired peer when this is a DM thread; undefined/null for regular threads
+ * @property {string|null}           [peerAddr]       Bundle H (#268): peer address of the paired peer when this is a DM thread; undefined/null for regular threads
  */
 
 /**

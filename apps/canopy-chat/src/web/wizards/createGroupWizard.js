@@ -88,7 +88,7 @@ export function renderCreateGroupWizard(opts) {
       rerender(); // show submitting state
       const { result } = await finalSubmit({ state, callSkill });
       if (result) {
-        // Stamp the current NKN address on the success payload so the
+        // Stamp the current peer address on the success payload so the
         // invite URL we render carries the admin's peer-redeem target.
         // null / unavailable transport just means joiners can't fall
         // back to the peer path (they still get local + pod paths).
@@ -530,7 +530,7 @@ function encodeMembershipCodeUrl(result) {
     groupId:   result.groupId,
     code:      result.code,
     expiresAt: result.expiresAt,
-    // Optional: admin's NKN address for peer-redeem fallback when the
+    // Optional: admin's peer address for peer-redeem fallback when the
     // joiner has no local copy of the code (cross-browser/-device).
     ...(result.adminPeerAddr ? { adminPeerAddr: result.adminPeerAddr } : {}),
     // 2026-05-24 — embed the rules object so the joiner's wizard can

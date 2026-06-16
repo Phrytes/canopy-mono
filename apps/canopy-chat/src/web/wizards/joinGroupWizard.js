@@ -212,7 +212,7 @@ function renderPrivacyStep(container, doc, state, onNext, onBack, onCancel, rere
   wrap.appendChild(checkRow);
 
   // Slice 4 (2026-05-24) — mesh address-sharing consent.  When on,
-  // admin propagates this joiner's NKN address to other consenting
+  // admin propagates this joiner's peer address to other consenting
   // members + propagates other consenting members' addresses to
   // this joiner.  When off, the joiner only talks to admin (star
   // routing); other members can't DM directly.

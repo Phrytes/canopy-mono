@@ -85,7 +85,7 @@ export function makeHandleGroupRedeemRequest({
 
 /**
  * JOINER-side outbound: sends a `group-redeem-request` envelope to
- * the admin's NKN address + awaits the matching response with a
+ * the admin's peer address + awaits the matching response with a
  * timeout.  Returns a function that the joinGroup wizard can pass
  * as `sendPeerRedeem` to `finalSubmit`.  Mirror of web's
  * `sendGroupRedeemRequest` in `apps/canopy-chat/web/main.js:532`.

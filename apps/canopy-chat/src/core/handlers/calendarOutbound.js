@@ -7,13 +7,13 @@
  * Web's calendar branch in callSkill does two things AFTER the
  * substrate write:
  *   (a) addEvent with `attendees-addr` arg → fans out `calendar-invite`
- *       envelopes to each NKN address (via `sendPeer`).
+ *       envelopes to each peer address (via `sendPeer`).
  *   (b) rsvp* (Accept / Decline / Tentative) on an event whose
- *       organiser is an NKN address → sends a `calendar-rsvp` envelope
+ *       organiser is an peer address → sends a `calendar-rsvp` envelope
  *       back to the organiser.
  *
  *   (c) cancelEvent → fans a `calendar-cancel` envelope to the event's
- *       persisted attendee NKN addresses (recovered from the post-cancel
+ *       persisted attendee peer addresses (recovered from the post-cancel
  *       snapshot, since cancel is a soft delete).
  *
  * The factory returns `afterCallSkill(appOrigin, opId, args, result)`
@@ -166,7 +166,7 @@ export function makeCalendarOutboundHook({
         return;
       }
       const organiser = snapshot?.fields?.organiser;
-      // Only send when organiser looks like an NKN address (not a webid).
+      // Only send when organiser looks like an peer address (not a webid).
       if (!organiser || typeof organiser !== 'string' || organiser.startsWith('webid:')) return;
       try {
         await sendPeer(organiser, {
@@ -189,7 +189,7 @@ export function makeCalendarOutboundHook({
     // (c) cancelEvent — fan a `calendar-cancel` envelope out to the event's
     //     invitees so the cancellation propagates.  cancel is a SOFT delete
     //     (state → 'cancelled', record kept), so the snapshot is still
-    //     readable post-cancel; the attendees' NKN addresses were persisted at
+    //     readable post-cancel; the attendees' peer addresses were persisted at
     //     addEvent time (CalendarStore `attendeeAddrs`) and surface in
     //     snapshot.fields.attendeeAddrs.  No attendeeAddrs (e.g. a solo event, or
     //     one created before this shipped) → nothing to notify.

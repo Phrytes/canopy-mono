@@ -37,7 +37,7 @@ import {
 
 export default function CreateGroupWizardModal({
   visible, callSkill, onClose, onDispatched, t,
-  // Optional: () => string|null — caller's NKN address.  Embedded in
+  // Optional: () => string|null — caller's peer address.  Embedded in
   // the invite URL so the joiner can peer-redeem when their substrate
   // has no local copy of the code (cross-device).
   getMyPeerAddr,

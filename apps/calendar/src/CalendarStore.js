@@ -185,7 +185,7 @@ export class CalendarStore {
     const attendees = normaliseAttendees(args.attendees);
     const actor     = args.actor ?? this.#actorDefault;
     const organiser = args.organiser ?? actor;
-    // Persist the attendees' NKN addresses (the cross-peer fan-out routing
+    // Persist the attendees' peer addresses (the cross-peer fan-out routing
     // arg) so a later cancelEvent can recover whom to notify — the event is
     // soft-deleted on cancel, but `attendees-addr` is otherwise never stored.
     // Mirrors the `_organiserAddr` stash above it.

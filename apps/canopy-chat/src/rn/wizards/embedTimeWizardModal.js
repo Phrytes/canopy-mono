@@ -86,7 +86,7 @@ export default function EmbedTimeWizardModal({
                 placeholder="e.g. Vondelpark"
               />
               <Field
-                label="Share with (optional, WebID or NKN address)"
+                label="Share with (optional, WebID or peer address)"
                 value={state.share}
                 onChangeText={(v) => setState((s) => ({ ...s, share: v }))}
                 placeholder="leave blank to keep local"

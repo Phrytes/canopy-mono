@@ -160,7 +160,7 @@ function parseStorageFromJsonLd(body, webid) {
 const CANOPY_NKN_ADDR = 'https://canopy.dev/ns#peerAddr';
 
 /**
- * v0.7.P3d — publish the user's NKN address as a triple in their
+ * v0.7.P3d — publish the user's peer address as a triple in their
  * pod profile, so other users can discover it from their WebID.
  *
  * Writes a small Turtle doc at <pod>/canopy/identity.ttl containing:
@@ -186,7 +186,7 @@ export async function publishPeerAddr(podWriter, peerAddr) {
 }
 
 /**
- * v0.7.P3d — discover a peer's NKN address by fetching their WebID
+ * v0.7.P3d — discover a peer's peer address by fetching their WebID
  * + following the pod root + reading the canopy/identity.ttl file.
  *
  * Two-step:

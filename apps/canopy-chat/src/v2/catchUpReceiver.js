@@ -439,7 +439,7 @@ export function makeCatchUpReceiver({
    * @param {string} args.circleId
    * @param {number} [args.sinceTs]
    * @param {Array<{addr: string}|string>} [args.knownPeers]
-   * @param {string} [args.fromPeerAddr]                  this agent's NKN addr
+   * @param {string} [args.fromPeerAddr]                  this agent's peer addr
    * @returns {Promise<{strategy: 'negotiated', accepted: boolean, count: number, source: string, requestId?: string}>}
    */
   function requestCatchUp({ circleId, sinceTs, knownPeers = [], fromPeerAddr = '' } = {}) {
