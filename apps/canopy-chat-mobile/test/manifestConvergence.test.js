@@ -86,12 +86,15 @@ describe('#240 manifest convergence — canonical shapes', () => {
   });
 
   it('the composed catalog still validates clean (no new warnings from this slice)', () => {
-    // After flipping state-string → state-array in the household
-    // manifest, the merged catalog should not surface any new
-    // warnings.  Benign op-id collision warnings (e.g. startDm in
-    // both canopy-chat + stoop) are tolerated.
+    // The merged catalog should not surface any UNEXPECTED warnings.  Benign
+    // collision warnings are the documented first-mount-wins policy:
+    //   - op-id collisions (e.g. startDm in both canopy-chat + stoop) →
+    //     prefixed as `<app>/<op>`.
+    //   - slash collisions (Part G 2026-06-17: the REAL household shares
+    //     generic commands like `/help`, `/claim`, `/done` with canopy-chat /
+    //     tasks; first-mount keeps the command).  These are policy, not bugs.
     const catalog  = composeManifests();
-    const benign = /op-id collision: "\w+" also declared by/;
+    const benign = /(op-id|slash) collision: ".+" (also declared|declared) by/;
     const unexpected = (catalog.warnings ?? []).filter((w) => !benign.test(w));
     expect(unexpected).toEqual([]);
   });

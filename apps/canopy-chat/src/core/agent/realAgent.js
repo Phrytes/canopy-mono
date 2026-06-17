@@ -59,15 +59,31 @@ async function restoreOrGenerate(vault) {
   return AgentIdentity.generate(vault);
 }
 
-import { mockHouseholdManifest } from './mockAgent.js';
 import {
   CalendarStore, registerCalendarSkills,
 } from '@canopy-app/calendar';
+// Part G household — Option B: the REAL standalone `apps/household` agent
+// replaces the chore-vocab inline skills below.  `householdManifest` (item/
+// task vocab) is the catalog source of truth; `HOUSEHOLD_SKILL_REGISTRY` maps
+// opId → the real `(args, ctx)` skill; `InMemoryStore` is its backing store.
+//
+// Imported by RELATIVE path (not the `@canopy-app/household` package name)
+// because canopy-chat doesn't carry household as a workspace dep yet (the
+// dissolve is in progress).  Mirrors canopy-chat-mobile/composeManifests.js,
+// which relative-imports the sibling app sources for the same reason.
+import {
+  householdManifest,
+  HOUSEHOLD_SKILL_REGISTRY,
+  InMemoryStore as HouseholdStore,
+} from '../../../../household/src/index.js';
 
-const SEED_CHORES = [
-  { id: 'c-1', label: 'Dishwasher',         type: 'chore', state: 'open' },
-  { id: 'c-2', label: 'Bins out',           type: 'chore', state: 'open' },
-  { id: 'c-3', label: 'Vacuum living room', type: 'chore', state: 'open' },
+// Deterministic seed for the real household store.  Three open items across
+// list types so `/list shopping` + the brief demo are non-empty out of the
+// box.  Added oldest-first (the store preserves insertion order).
+const SEED_HOUSEHOLD_ITEMS = [
+  { type: 'shopping', text: 'Milk'                },
+  { type: 'errand',   text: 'Post a parcel'       },
+  { type: 'task',     text: 'Vacuum living room'  },
 ];
 
 /**
@@ -87,11 +103,10 @@ const SEED_CHORES = [
  * }>}
  */
 export async function createRealHouseholdAgent(opts = {}) {
-  let chores = SEED_CHORES.map((c) => ({ ...c }));
-  // Household list items (shopping/errand/repair/schedule) — parallel to chores; backs the `addItem`
-  // op + the typed `listOpen` so the circle bot can drive shopping lists, not only chores.
-  const HH_LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
-  let listItems = [];
+  // Part G household — REAL `apps/household` store.  `chores`-as-an-array is
+  // gone; all household state now lives in this `ItemStore`-backed store
+  // (shopping/errand/repair/schedule items + tasks + contacts).
+  const householdStore = new HouseholdStore();
 
   // v0.7.12 — multi-pod RSVP coordination (simulated for the demo).
   // calendar.addEvent calls this when attendees are present; default
@@ -216,61 +231,60 @@ export async function createRealHouseholdAgent(opts = {}) {
     });
   }
 
-  // Register the household skills on the HOST agent.  Skills take
-  // `{parts}` per @canopy/core convention; we transport args via a
-  // DataPart and reply with another DataPart whose `.data` is the
-  // canopy-chat payload shape.
-  hostAgent.register('listOpen', async ({ parts }) => {
-    // A specific household list (shopping/errand/repair/schedule) → its open items; else open chores.
-    const type = String(parts?.[0]?.data?.type ?? '').trim().toLowerCase();
-    if (type && HH_LIST_TYPES.includes(type)) {
-      const open = listItems.filter((it) => it.type === type && it.state === 'open');
-      return [DataPart({ items: open.map((it) => ({ id: it.id, label: it.text, type: it.type })), _sync: simulateSync() })];
-    }
-    const open = chores.filter((c) => c.state === 'open');
-    // v0.6 — annotate every-other row with synthetic _lastSync so the
-    // per-row 'stale Xh ago' badge has something to render.
-    const now = Date.now();
-    const decorated = open.map((c, i) => i % 2 === 0
-      ? { ...c, _lastSync: now - 3 * 3_600_000 }   // 3h ago
-      : c);
-    return [DataPart({ items: decorated, _sync: simulateSync() })];
-  });
+  /* ─────────── Part G household — REAL `apps/household` skills ─────────── */
+  // Register the REAL household skills (skillRegistry.js) on the host agent,
+  // each wrapped so the chat-shell sees its expected renderer shape via
+  // `adaptHouseholdReply`.  The real skills take `(args, ctx)` and return the
+  // text-bridge shape `{ replies, stateUpdates }`; we adapt that here.
+  //
+  // ctx = { store: householdStore, senderWebid: <caller>, chatId, agent }.
+  const HOUSEHOLD_CHAT_ID = 'cc-default';
+  // Track item text by id so the action-reply adapter (which only gets an
+  // itemId in `stateUpdates`) can surface the affected item's text without a
+  // second store round-trip.  Populated on every list/add.
+  const householdItemText = new Map();   // itemId → text
 
-  // /profile — record-shape demo.
-  hostAgent.register('getProfile', async () => {
-    const open = chores.filter((c) => c.state === 'open').length;
-    const done = chores.filter((c) => c.state === 'done').length;
-    return [DataPart({
-      title:        'Household',
-      name:         'Casa de Demo',
-      openChores:   open,
-      doneChores:   done,
-      memberCount:  3,
-      polite:       true,
-      established:  '2026-05-21',
-    })];
-  });
+  /** Register one real household skill, adapting its reply for the chat shell. */
+  function registerHouseholdSkill(opId, skill) {
+    hostAgent.register(opId, async ({ parts, from }) => {
+      const args = parts?.[0]?.data ?? {};
+      const ctx  = {
+        store:       householdStore,
+        senderWebid: from ?? 'webid:local-demo-user',
+        chatId:      HOUSEHOLD_CHAT_ID,
+        agent:       hostAgent,
+      };
+      const out = await skill(args, ctx);
+      const payload = await adaptHouseholdReply(opId, out, householdStore, args);
+      return [DataPart(payload)];
+    });
+  }
 
-  // v0.4 — household membership demo (declared in mockHouseholdManifest
-  // but the skill was missing from the host agent — caught by user
-  // testing 2026-05-23).
-  // v0.7 Q30 — briefSummary for the /brief aggregator.
-  hostAgent.register('briefSummary', async () => {
-    const open = chores.filter((c) => c.state === 'open');
-    if (open.length === 0) return [DataPart({ ok: true })];   // empty → /brief skips
-    return [DataPart({
-      items:   open.map((c) => ({ id: c.id, label: c.label })),
-      message: `${open.length} chore${open.length === 1 ? '' : 's'} open`,
-    })];
-  });
+  for (const [opId, skill] of Object.entries(HOUSEHOLD_SKILL_REGISTRY)) {
+    // `classifyAndExtract` is a slow-path internal (LLM classifier), not a
+    // user-facing op — skip it (no chat surface, different signature).
+    if (opId === 'classifyAndExtract') continue;
+    registerHouseholdSkill(opId, skill);
+  }
 
-  hostAgent.register('addMember', async ({ parts }) => {
+  // v0.4 — household membership demo.  The real manifest declares
+  // `registerName` (writes a `contact` item); the legacy `/addmember`
+  // membership demo + the cross-app follow-up chain (followUps.js) still
+  // reference an `addMember` op, so keep a thin shim that records the member
+  // as a real contact item AND returns the `{memberName}` shape the demo +
+  // membership-redemption path expect.  (registerName is also wired above via
+  // the registry, reachable through the manifest's /register surface.)
+  hostAgent.register('addMember', async ({ parts, from }) => {
     const args = parts?.[0]?.data ?? {};
     const name = String(args.name ?? '').trim();
     if (!name) {
       return [DataPart({ ok: false, error: 'name required' })];
     }
+    try {
+      await householdStore.addItem({
+        type: 'contact', text: name, addedBy: from ?? 'webid:local-demo-user',
+      });
+    } catch { /* defensive — the member reply doesn't depend on the write */ }
     return [DataPart({
       ok:         true,
       message:    `✓ Added member: ${name}`,
@@ -278,153 +292,27 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
-  // v0.5 Q29 — snapshot factory for the J7 embed primitive.  Declared
-  // in mockHouseholdManifest, consumed by canopy-chat's /embed
-  // built-in.  Same kind of host-agent gap as addMember; caught by
-  // user testing 2026-05-23 + a defensive guard added to runDispatch
-  // alongside this commit.
+  // v0.5 Q29 — snapshot factory for the J7 embed primitive.  Consumed by
+  // canopy-chat's /embed built-in.  Reads a real household item by id (or
+  // id-prefix / keyword) from the store and shapes it as an ItemSnapshot.
   hostAgent.register('getChoreSnapshot', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const id = args?.choreId;
-    const target = chores.find((c) => c.id === id);
+    const id = String(parts?.[0]?.data?.choreId ?? '').trim();
+    const open = await householdStore.listOpen();
+    const target = open.find((it) => it.id === id)
+      ?? (id.length >= 4 ? open.find((it) => it.id.startsWith(id.toUpperCase())) : null)
+      ?? open.find((it) => it.text.toLowerCase().includes(id.toLowerCase()));
     if (!target) {
-      return [DataPart({ ok: false, error: `No chore with id "${id}".` })];
+      return [DataPart({ ok: false, error: `No item with id "${id}".` })];
     }
     return [DataPart({
       id:    target.id,
       type:  target.type,
-      state: target.state,
-      title: target.label,
+      state: 'open',
+      title: target.text,
       fields: {
-        state:       target.state,
-        assigned_to: 'unassigned',
+        state:       'open',
+        assigned_to: target.claimedBy ?? 'unassigned',
       },
-    })];
-  });
-
-  hostAgent.register('markComplete', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const id = args?.choreId;
-    const target = chores.find((c) => c.id === id);
-    if (!target) {
-      return [DataPart({ ok: false, error: `No chore with id "${id}".` })];
-    }
-    if (target.state === 'done') {
-      return [DataPart({ ok: false, error: `Chore "${target.label}" is already done.` })];
-    }
-    target.state = 'done';
-    // v0.7.7 — publish item-changed event for J8 reactive demo.
-    publishEvent({
-      app:     'household',
-      type:    'item-changed',
-      actor:   'webid:local-demo-user',
-      itemRef: { app: 'household', type: 'chore', id: target.id },
-      payload: { message: `✓ Done: ${target.label}` },
-    });
-    return [DataPart({
-      ok:      true,
-      message: `✓ Done: ${target.label}`,
-      itemId:  target.id,
-      // v0.6 — mutation reply carries _sync; chat shell renders the
-      // suffix below the bubble.
-      _sync:   simulateSync(),
-    })];
-  });
-
-  /* ─── household list items (shopping/errand/repair/schedule) — addItem ─── */
-
-  hostAgent.register('addItem', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const type = String(args.type ?? '').trim().toLowerCase();
-    const text = String(args.text ?? '').trim();
-    if (!HH_LIST_TYPES.includes(type)) return [DataPart({ ok: false, error: `type must be one of: ${HH_LIST_TYPES.join(', ')}` })];
-    if (!text) return [DataPart({ ok: false, error: 'text required' })];
-    const id = `i-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    listItems.push({ id, type, text, state: 'open' });
-    publishEvent({
-      app: 'household', type: 'item-changed',
-      actor: 'webid:local-demo-user',
-      itemRef: { app: 'household', type, id },
-      payload: { message: `✓ Added to ${type}: ${text}` },
-    });
-    // `text` in the payload so the verb-aware kring reply reads "Added: <text>".
-    return [DataPart({ ok: true, message: `✓ Added to ${type}: ${text}`, text, itemId: id, _sync: simulateSync() })];
-  });
-
-  /* ─── v0.7.cc — household: add-chore / nudge / remove-chore ─── */
-
-  hostAgent.register('addChore', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const label = String(args.label ?? '').trim();
-    if (!label) return [DataPart({ ok: false, error: 'label required' })];
-    const id = `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-    chores.push({ id, label, type: 'chore', state: 'open' });
-    publishEvent({
-      app: 'household', type: 'item-changed',
-      actor: 'webid:local-demo-user',
-      itemRef: { app: 'household', type: 'chore', id },
-      payload: { message: `✓ Added chore: ${label}` },
-    });
-    return [DataPart({
-      ok: true, message: `✓ Added chore: ${label}`,
-      itemId: id, _sync: simulateSync(),
-    })];
-  });
-
-  hostAgent.register('nudgePeer', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const peer  = String(args.peer  ?? '').trim();
-    const chore = args.chore ? String(args.chore).trim() : null;
-    if (!peer) return [DataPart({ ok: false, error: 'peer required' })];
-    const msg = chore
-      ? `Hey ${peer}, friendly nudge about: ${chore}`
-      : `Hey ${peer}, friendly nudge about the open chores`;
-    publishEvent({
-      app: 'household', type: 'notification',
-      actor: 'webid:local-demo-user',
-      itemRef: chore ? { app: 'household', type: 'chore', id: chore } : null,
-      payload: { message: msg, target: peer },
-    });
-    return [DataPart({
-      ok: true, message: `📣 Nudged ${peer}${chore ? ` about "${chore}"` : ''}.`,
-    })];
-  });
-
-  hostAgent.register('removeChore', async ({ parts }) => {
-    const args = parts?.[0]?.data ?? {};
-    const id = args?.choreId;
-    const target = chores.find((c) => c.id === id);
-    if (!target) return [DataPart({ ok: false, error: `No chore with id "${id}".` })];
-    // Q27 destructive — two-step confirm.  Bare call returns a
-    // confirmation prompt; --confirm=true actually removes.
-    if (!args.confirm) {
-      return [DataPart({
-        ok: true,
-        message: `⚠ Remove chore "${target.label}"?  Re-run with --confirm=true to proceed.`,
-        confirmRequired: true,
-        itemId: target.id,
-      })];
-    }
-    chores = chores.filter((c) => c.id !== id);
-    publishEvent({
-      app: 'household', type: 'item-changed',
-      actor: 'webid:local-demo-user',
-      itemRef: { app: 'household', type: 'chore', id: target.id },
-      payload: { message: `🗑 Removed: ${target.label}` },
-    });
-    return [DataPart({
-      ok: true, message: `🗑 Removed: ${target.label}`,
-      itemId: target.id, _sync: simulateSync(),
-    })];
-  });
-
-  // v0.7.5 — searchChores: text search across cached chores.
-  hostAgent.register('searchChores', async ({ parts }) => {
-    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
-    if (!q) return [DataPart({ items: [] })];
-    const hits = chores.filter((c) => c.label.toLowerCase().includes(q));
-    return [DataPart({
-      items: hits.map((c) => ({ id: c.id, label: c.label, type: 'chore' })),
     })];
   });
 
@@ -465,6 +353,24 @@ export async function createRealHouseholdAgent(opts = {}) {
   // hello-exchange so each agent knows the other.  InternalBus
   // delivers synchronously enough that one hello is sufficient.
   await chatAgent.hello(hostAgent.address);
+
+  // Seed a few household items so `/list shopping` + `/brief` are non-empty
+  // out of the box.  Deterministic order (added oldest-first); skip via
+  // opts.seedHousehold:false (clean-slate fixtures).
+  if (opts.seedHousehold !== false) {
+    for (const seed of SEED_HOUSEHOLD_ITEMS) {
+      try {
+        const item = await householdStore.addItem({
+          type: seed.type, text: seed.text, addedBy: 'webid:local-demo-user',
+        });
+        householdItemText.set(item.id, item.text);
+      } catch (err) {
+        if (typeof console !== 'undefined') {
+          console.warn('[realAgent] seed household item failed:', err?.message ?? err);
+        }
+      }
+    }
+  }
 
   /* ─── tasks-v0 real crew agent (slice 1 — integration plan
    *     2026-05-23) ─────────────────────────────────────────────
@@ -1262,6 +1168,143 @@ export async function createRealHouseholdAgent(opts = {}) {
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };
 
+  /* ─────────── Part G household — reply-impedance adapter ─────────── */
+  // The real `apps/household` skills return the text-bridge shape
+  // `{ replies: [{text}|{items,message}|{ok}], stateUpdates: [{kind,itemId}] }`.
+  // canopy-chat's renderer expects the mock-era renderer shapes:
+  //   - LIST   → { items: [{id, label, type, state}], _sync }
+  //   - ACTION → { ok, message, text, itemId, _sync }  (or {ok:false,error})
+  //   - OTHER  → { message } / { items, message } / { ok:true }
+  // This adapter bridges the two so /add · /list · /done · /task · /claim ·
+  // /register round-trip cleanly through the existing chat-shell renderer.
+
+  const HH_LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
+
+  /** First reply object's text (defensive against empty replies). */
+  function firstReplyText(out) {
+    const r = Array.isArray(out?.replies) ? out.replies[0] : null;
+    return (r && typeof r.text === 'string') ? r.text : '';
+  }
+  /** stateUpdate of a given kind (or the first one) → its itemId. */
+  function stateUpdateId(out, kind) {
+    const ups = Array.isArray(out?.stateUpdates) ? out.stateUpdates : [];
+    const hit = kind ? ups.find((u) => u?.kind === kind) : ups[0];
+    return hit?.itemId ?? null;
+  }
+
+  /**
+   * @param {string} opId    the household op
+   * @param {object} out     the real skill's {replies, stateUpdates}
+   * @param {object} store   householdStore (read fresh for list ops)
+   * @param {object} args    the dispatch args (carries the requested type)
+   */
+  async function adaptHouseholdReply(opId, out, store, args) {
+    out = out ?? { replies: [], stateUpdates: [] };
+
+    /* ── LIST ops — ignore the rendered text; read the store directly so the
+       structured list + per-item `ui` buttons (markComplete/claim) render. ── */
+    if (opId === 'listOpen' || opId === 'listTasks') {
+      const type = opId === 'listTasks'
+        ? 'task'
+        : (HH_LIST_TYPES.includes(String(args?.type ?? '')) ? String(args.type) : undefined);
+      let items = [];
+      try {
+        items = await store.listOpen(type !== undefined ? { type } : {});
+      } catch { items = []; }
+      // v0.6 — annotate every-other row with a synthetic `_lastSync` so the
+      // per-row 'stale Xh ago' badge has something to render (demo parity).
+      const now = Date.now();
+      return {
+        items: items.map((it, i) => {
+          householdItemText.set(it.id, it.text);
+          return {
+            id:    it.id,
+            label: it.text,
+            text:  it.text,
+            type:  it.type,
+            state: 'open',
+            ...(it.claimedBy ? { claimedBy: it.claimedBy } : {}),
+            ...(i % 2 === 0 ? { _lastSync: now - 3 * 3_600_000 } : {}),   // 3h ago
+          };
+        }),
+        _sync: simulateSync(),
+      };
+    }
+
+    /* ── household_briefSummary — {items, message} | {ok:true} ── */
+    if (opId === 'household_briefSummary') {
+      const r = Array.isArray(out.replies) ? out.replies[0] : null;
+      if (r && Array.isArray(r.items)) return { items: r.items, message: r.message };
+      return { ok: true };   // empty → /brief skips the section
+    }
+
+    /* ── help — single text reply → {message} ── */
+    if (opId === 'help') {
+      return { ok: true, message: firstReplyText(out) };
+    }
+
+    /* ── ACTION ops — {ok, message, text, itemId, _sync} ── */
+    const ADD_KINDS = {
+      addItem:      'item.added',
+      addTask:      'item.added',
+      registerName: 'item.added',
+      markComplete: 'item.completed',
+      removeItem:   'item.removed',
+      claim:        'item.claimed',
+      reassign:     'item.reassigned',
+    };
+    if (opId in ADD_KINDS) {
+      const message = firstReplyText(out);
+      const itemId  = stateUpdateId(out, ADD_KINDS[opId]);
+      const hadUpdate = Array.isArray(out.stateUpdates) && out.stateUpdates.length > 0;
+
+      // markComplete / removeItem / claim / reassign with NO stateUpdate means
+      // either "not found" or ">1 candidates" (the skill renders a
+      // disambiguation list in `replies[0].text`).  Surface that as a soft
+      // failure so the user sees the message instead of a false "✓".
+      const RESOLVING = new Set(['markComplete', 'removeItem', 'claim', 'reassign']);
+      if (RESOLVING.has(opId) && !hadUpdate) {
+        return { ok: false, error: message || `Couldn't ${opId}.` };
+      }
+
+      // The real `stateUpdates` carry only an itemId — recover the affected
+      // item text from the message ("✓ marked complete: <text>") or our
+      // id→text cache, so the verb-aware kring reply can read "Done: <text>".
+      let text = (itemId && householdItemText.get(itemId)) ?? '';
+      if (!text) {
+        const m = message.match(/:\s*(.+)$/);
+        if (m) text = m[1].trim();
+      }
+      // Keep the cache fresh on adds so later list/done can resolve the text.
+      if (itemId && (opId === 'addItem' || opId === 'addTask' || opId === 'registerName') && text) {
+        householdItemText.set(itemId, text);
+      }
+
+      // Publish an item-changed event for the J8 reactive demo + the
+      // household-alerts thread (parity with the old inline skills).
+      if (itemId) {
+        publishEvent({
+          app:     'household',
+          type:    'item-changed',
+          actor:   'webid:local-demo-user',
+          itemRef: { app: 'household', id: itemId },
+          payload: { message },
+        });
+      }
+
+      return {
+        ok:      true,
+        message,
+        ...(text ? { text } : {}),
+        ...(itemId ? { itemId } : {}),
+        _sync:   simulateSync(),
+      };
+    }
+
+    /* ── default: surface the first reply text as a message ── */
+    return { ok: true, message: firstReplyText(out) };
+  }
+
   /**
    * Bridge real tasks-v0 reply shapes → canopy-chat's chat-shell
    * expectations.  Real skills return rich shapes
@@ -1976,15 +2019,40 @@ export async function createRealHouseholdAgent(opts = {}) {
     : {};
 
   return {
-    manifest: mockHouseholdManifest,    // SAME declaration as v0.1.4 mock
+    // Part G — the REAL household app manifest (item/task vocab) is now the
+    // catalog source of truth for the household surface.  (The mock manifest
+    // + createMockHouseholdAgent stay in mockAgent.js as a test fixture.)
+    manifest: householdManifest,
     callSkill,
     llmProviders,
     // P6.5 — host-injected claim router; called after every successful
     // claimTask.  Hosts wire `makeAfterClaimHook` here once the agent +
     // override store are both available.
     setAfterClaimHook(fn) { claimRouterRef.hook = typeof fn === 'function' ? fn : null; },
-    reset() { chores = SEED_CHORES.map((c) => ({ ...c })); },
-    state() { return chores.map((c) => ({ ...c })); },
+    // Part G — reset/state now operate on the REAL household store.  `reset()`
+    // wipes every open item + reseeds the demo items; `state()` returns the
+    // current open items (async — the store is ItemStore-backed).
+    async reset() {
+      const open = await householdStore.listOpen({});
+      for (const it of open) {
+        try { await householdStore.remove(it.id); } catch { /* defensive */ }
+      }
+      householdItemText.clear();
+      if (opts.seedHousehold !== false) {
+        for (const seed of SEED_HOUSEHOLD_ITEMS) {
+          try {
+            const item = await householdStore.addItem({
+              type: seed.type, text: seed.text, addedBy: 'webid:local-demo-user',
+            });
+            householdItemText.set(item.id, item.text);
+          } catch { /* defensive */ }
+        }
+      }
+    },
+    async state() {
+      try { return await householdStore.listOpen({}); }
+      catch { return []; }
+    },
     meta: {
       hostAddress: hostAgent.address,
       chatAddress: chatAgent.address,

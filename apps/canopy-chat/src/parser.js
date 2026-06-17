@@ -104,6 +104,12 @@ export function parseSlash(trimmed, catalog, ctx = {}) {
   return {
     kind: 'slash',
     opId:    entry.opId,
+    // Carry the command's declared owner so resolveDispatch can pick the
+    // RIGHT app when two apps declare the same op id under DISTINCT commands
+    // (e.g. tasks `/addtask` vs household `/task`, both op id `addTask`).
+    // Without this, resolveDispatch re-resolved the bare op id to the
+    // first-mounted owner, hijacking the command (Part G household swap).
+    appOrigin: entry.appOrigin,
     args,
     threadId,
     command,

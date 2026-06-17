@@ -159,32 +159,32 @@ async function bootTestWorkspace() {
   };
 }
 
-/* ─────────────── J1 — Mark a chore done ─────────────── */
+/* ─────────────── J1 — Mark a household item done ─────────────── */
+// Part G — backed by the REAL `apps/household` agent.  The real manifest's
+// list op is `/list <type>` (type-only body); `/done <match>` resolves by
+// keyword.  Seed items: Milk (shopping), Post a parcel (errand), Vacuum
+// living room (task).
 
-describe('J1 — Mark a chore done', () => {
+describe('J1 — Mark a household item done', () => {
   let ws;
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
-  it("/mine lists 3 chores", async () => {
-    const reply = await ws.userInput('/mine');
+  it("/list shopping lists the seeded shopping item", async () => {
+    const reply = await ws.userInput('/list shopping');
     expect(reply.shape).toBe('list');
-    expect(reply.payload.items.length).toBe(3);
-    expect(reply.payload.items[0].label).toBe('Dishwasher');
+    expect(reply.payload.items.map((i) => i.label)).toEqual(['Milk']);
   });
 
-  it("/done c-1 marks the chore done", async () => {
-    // Fuzzy resolve ('/done dishwasher') needs a Thread's listing
-    // cache; bootTestWorkspace bypasses Thread for direct dispatch,
-    // so tests use the canonical id.
-    const reply = await ws.userInput('/done c-1');
+  it("/done Milk marks the item complete", async () => {
+    const reply = await ws.userInput('/done Milk');
     expect(reply.payload?.ok).toBe(true);
-    expect(reply.payload.message).toBe('✓ Done: Dishwasher');
+    expect(reply.payload.message).toBe('✓ marked complete: Milk');
   });
 
-  it("post-completion /mine drops the chore", async () => {
-    await ws.userInput('/done c-1');
-    const reply = await ws.userInput('/mine');
-    expect(reply.payload.items.find((i) => i.id === 'c-1')).toBeUndefined();
+  it("post-completion /list shopping drops the item", async () => {
+    await ws.userInput('/done Milk');
+    const reply = await ws.userInput('/list shopping');
+    expect(reply.payload.items.find((i) => i.label === 'Milk')).toBeUndefined();
   });
 });
 
@@ -232,10 +232,12 @@ describe('J3 — Anne is moving in (cross-app follow-ups)', () => {
   let ws;
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
-  it("/addmember Anne returns success", async () => {
-    const reply = await ws.userInput('/addmember Anne');
-    expect(reply.payload.ok).toBe(true);
-    expect(reply.payload.memberName).toBe('Anne');
+  it("addMember Anne returns success", async () => {
+    // Part G — addMember is a membership shim (no `/addmember` slash in the
+    // real manifest); dispatch the op directly.
+    const reply = await ws.callSkill('household', 'addMember', { name: 'Anne' });
+    expect(reply.ok).toBe(true);
+    expect(reply.memberName).toBe('Anne');
   });
 
   it("collectFollowUps suggests folio.shareFolder + stoop.postRequest after addMember", () => {
@@ -291,11 +293,13 @@ describe('J5 — Profile / settings record panel', () => {
   let ws;
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
-  it("/profile returns a record-shape reply with title", async () => {
-    const reply = await ws.userInput('/profile');
+  it("a record-shape reply renders with a title (/stoop-profile)", async () => {
+    // Part G — the household `/profile` record demo was retired with the
+    // chore mock (the real household manifest has no profile op).  The
+    // record-reply journey is still covered by stoop's profile record.
+    const reply = await ws.userInput('/stoop-profile');
     expect(reply.shape).toBe('record');
-    expect(reply.payload.title).toBe('Household');
-    expect(reply.payload.memberCount).toBe(3);
+    expect(reply.payload.title).toBeTruthy();
   });
 });
 
@@ -340,11 +344,23 @@ describe('J7 — Embed + multi-user RSVP round-trip', () => {
   let ws;
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
-  it("/embed c-1 produces a real embed envelope", async () => {
-    const reply = await ws.userInput('/embed c-1');
-    expect(reply.payload?.kind).toBe('item-card');
-    expect(reply.payload.snapshot.title).toBe('Dishwasher');
-    expect(reply.payload.issuedBy).toBe(ws.LOCAL_ACTOR);
+  it("getChoreSnapshot + buildEmbed produce a real embed envelope", async () => {
+    // Part G — the real household manifest declares no `/embed` factory (the
+    // mock's markComplete.embed decl was retired), so the slash-driven
+    // /embed path no longer resolves a household snapshot.  The embed
+    // PRIMITIVE is still exercised: getChoreSnapshot (kept on the host agent)
+    // reads a real household item, and buildEmbed wraps it into the card
+    // envelope the renderer ships.
+    const list = await ws.userInput('/list shopping');
+    const itemId = list.payload.items[0].id;   // a real ULID
+    const snapshot = await ws.callSkill('household', 'getChoreSnapshot', { choreId: itemId });
+    expect(snapshot.title).toBe('Milk');
+    const embed = buildEmbed({
+      appOrigin: 'household', snapshot, issuedBy: ws.LOCAL_ACTOR,
+    });
+    expect(embed.kind).toBe('item-card');
+    expect(embed.snapshot.title).toBe('Milk');
+    expect(embed.issuedBy).toBe(ws.LOCAL_ACTOR);
   });
 
   it("calendar invite dispatches an embed-card to Anne's sim-peer thread", async () => {
@@ -464,7 +480,7 @@ describe('J10 — _sync envelope per-style rendering', () => {
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
   it("household.markComplete reply carries _sync envelope", async () => {
-    const reply = await ws.userInput('/done c-1');
+    const reply = await ws.userInput('/done Milk');
     expect(reply.payload._sync).toBeTruthy();
     expect(reply.payload._sync.style).toBe('decentralized');
   });
@@ -484,8 +500,11 @@ describe('Bonus — /find across apps', () => {
   let ws;
   beforeEach(async () => { ws = await bootTestWorkspace(); });
 
-  it("returns hits from household + tasks + stoop + folio + calendar (where matching)", async () => {
-    // Seed a calendar event with 'dishwasher' in the title.
+  it("returns hits from the apps that declare a search surface (where matching)", async () => {
+    // Part G — the real household manifest declares no `search` surface (the
+    // mock's `searchChores` was retired), so household no longer participates
+    // in /find.  Calendar (getEventSnapshot/search) still does — seed an event
+    // with 'dishwasher' in the title and assert it surfaces.
     await ws.callSkill('calendar', 'addEvent', {
       title: 'dishwasher meeting',
       startsAt: '2026-06-01T10:00:00Z',
@@ -493,7 +512,6 @@ describe('Bonus — /find across apps', () => {
     const reply = await ws.userInput('/find dishwasher');
     expect(reply.shape).toBe('find');
     const apps = reply.payload.groups.map((g) => g.appOrigin);
-    expect(apps).toContain('household');
     expect(apps).toContain('calendar');
   });
 });

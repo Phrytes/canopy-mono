@@ -141,53 +141,57 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
  * Household — CC-HH
  * ══════════════════════════════════════════════════════════ */
 
-describe('CC-HH.1 — add a new chore', () => {
+// Part G (2026-06-17) — household is the REAL `apps/household` agent.  The
+// chore vocab (`/add-chore`, `/mine`, `/nudge`, `/remove-chore`) is gone; the
+// real manifest uses item/task vocab: `/add <type> <text>`, `/task <text>`,
+// `/list <type>`, `/tasks`, `/done <match>`, `/claim <match>`, `/remove
+// <match>`, `/register <name>`.  Seed items: Milk (shopping), Post a parcel
+// (errand), Vacuum living room (task).
+
+describe('CC-HH.1 — add a task', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/add-chore haal-brood appends + shows in /mine', async () => {
-    // Parser preserves quotes literally as part of the value, so we
-    // use a hyphenated single-token label here.  The 'haal brood'
-    // case with spaces is exercised in main.js via Q34 form flow
-    // (covered by manual test H-6 in the runbook).
-    const before = await ws.userInput('/mine');
+  it('/task haal-brood appends + shows in /tasks', async () => {
+    const before = await ws.userInput('/tasks');
     const beforeCount = before.payload.items.length;
-    const add = await ws.userInput('/add-chore haal-brood');
+    const add = await ws.userInput('/task haal-brood');
     expect(add.payload.ok).toBe(true);
-    expect(add.payload.message).toMatch(/Added chore.*haal-brood/);
-    const after = await ws.userInput('/mine');
+    expect(add.payload.message).toMatch(/added task.*haal-brood/i);
+    const after = await ws.userInput('/tasks');
     expect(after.payload.items.length).toBe(beforeCount + 1);
     expect(after.payload.items.some((c) => c.label === 'haal-brood')).toBe(true);
   });
 
-  it('/add-chore without label triggers needsForm (Q34) or skill error', async () => {
-    const r = await ws.userInput('/add-chore');
-    if (r.kind && r.kind !== 'ready' && r.kind !== 'success') {
-      // Real form-elicitation path: router asks for the missing label.
-      expect(['needsForm', 'needs-form', 'param-missing']).toContain(r.kind);
-    } else {
-      // Or the skill-level "label required" error path.
-      expect(r.error ?? r.payload?.ok === false).toBeTruthy();
-    }
+  it('addItem(shopping, bananas) appends to the shopping list', async () => {
+    // The `/add <type> <text>` slash needs the gate's `type+text` body split
+    // (a form in the plain-slash shell), so the realistic entry point is the
+    // op itself — exactly what the LLM compiles "put bananas on the shopping
+    // list" into.  Round-trips through the REAL household addItem skill.
+    const add = await ws.callSkill('household', 'addItem', { type: 'shopping', text: 'bananas' });
+    expect(add.ok).toBe(true);
+    expect(add.message).toMatch(/added to shopping.*bananas/i);
+    const list = await ws.userInput('/list shopping');
+    expect(list.payload.items.some((c) => c.label === 'bananas')).toBe(true);
   });
 });
 
-describe('CC-HH.2 — mark a chore done by partial name', () => {
+describe('CC-HH.2 — mark an item done by partial name', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/mine then /done <id> transitions to done', async () => {
-    const list = await ws.userInput('/mine');
-    const id = list.payload.items[0].id;
-    const reply = await ws.userInput(`/done ${id}`);
+  it('/list then /done <keyword> transitions to done', async () => {
+    const list = await ws.userInput('/list shopping');
+    const label = list.payload.items[0].label;   // 'Milk'
+    const reply = await ws.userInput(`/done ${label}`);
     expect(reply.payload.ok).toBe(true);
-    expect(reply.payload.message).toMatch(/Done/);
+    expect(reply.payload.message).toMatch(/marked complete/i);
     expect(reply.payload._sync).toBeTruthy();   // mutation reply carries _sync
   });
 
-  it('/done with bad id errors clearly', async () => {
-    const reply = await ws.userInput('/done c-does-not-exist');
-    expect(reply.payload?.ok ?? reply.error).toBeTruthy();
+  it('/done with a non-matching keyword errors clearly', async () => {
+    const reply = await ws.userInput('/done does-not-exist-zzz');
+    expect(reply.payload?.ok === false || reply.error).toBeTruthy();
   });
 });
 
@@ -195,42 +199,29 @@ describe('CC-HH.3 — list with stale-sync decoration', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/mine reply carries _sync with style + peers', async () => {
-    const r = await ws.userInput('/mine');
+  it('/list shopping reply carries _sync with style + peers', async () => {
+    const r = await ws.userInput('/list shopping');
     expect(r.payload._sync).toBeTruthy();
     expect(r.payload._sync.style).toBeTruthy();
     expect(Array.isArray(r.payload._sync.peers)).toBe(true);
   });
 
   it('at least one row is decorated with _lastSync (stale badge)', async () => {
-    const r = await ws.userInput('/mine');
+    // Add a 2nd errand so the every-other-row decoration (row 0) has a list
+    // to attach to (seed has 'Post a parcel'); add via the op (the `/add`
+    // type+text slash needs a form in the plain-slash shell).
+    const add = await ws.callSkill('household', 'addItem', { type: 'errand', text: 'groceries' });
+    expect(add.ok).toBe(true);
+    const r = await ws.userInput('/list errand');
     const stale = r.payload.items.filter((c) => c._lastSync);
     expect(stale.length).toBeGreaterThan(0);
   });
 });
 
-describe('CC-HH.4 — nudge a peer', () => {
-  let ws;
-  beforeEach(async () => { ws = await bootWorkspace(); });
-
-  it('/nudge anne fires a household.notification event', async () => {
-    const before = ws.eventLog.query({ limit: 100 }).length;
-    const r = await ws.userInput('/nudge anne');
-    expect(r.payload.ok).toBe(true);
-    expect(r.payload.message).toMatch(/Nudged anne/);
-    const after = ws.eventLog.query({ limit: 100 });
-    expect(after.length).toBeGreaterThan(before);
-    const last = after[after.length - 1];
-    expect(last.app).toBe('household');
-    expect(last.type).toBe('notification');
-  });
-
-  it('/nudge anne brood includes the chore in the notification', async () => {
-    const r = await ws.userInput('/nudge anne brood');
-    expect(r.payload.ok).toBe(true);
-    expect(r.payload.message).toMatch(/brood/);
-  });
-});
+// CC-HH.4 (nudge) was retired in the Part G household dissolve — the standalone
+// `apps/household` agent has no `nudgePeer` skill (it lived only in the
+// canopy-chat chore mock).  Re-introducing it belongs to a dedicated nudge
+// op on the household manifest, not here.
 
 describe('CC-HH.5 — daily digest event surfaces in chat', () => {
   let ws;
@@ -251,10 +242,13 @@ describe('CC-HH.6 — add member with capability-like audit trail', () => {
     secureAgentOpts: { capabilityIssuer: true, auditLog: true },
   }); });
 
-  it('/addmember anne returns success', async () => {
-    const r = await ws.userInput('/addmember anne');
-    expect(r.payload.ok).toBe(true);
-    expect(r.payload.message).toMatch(/Added member/);
+  it('addMember anne returns success', async () => {
+    // Part G — the real household manifest has no `/addmember` slash; the
+    // `addMember` op is kept as a membership shim (writes a contact item) for
+    // the cross-app follow-up chain (followUps.js).  Dispatch it via the op.
+    const r = await ws.callSkill('household', 'addMember', { name: 'anne' });
+    expect(r.ok).toBe(true);
+    expect(r.message).toMatch(/Added member/);
   });
 
   it('sa.caps.issue records to audit log when used', async () => {
@@ -266,30 +260,21 @@ describe('CC-HH.6 — add member with capability-like audit trail', () => {
   });
 });
 
-describe('CC-HH.7 — remove chore with Q27 two-step confirm', () => {
+describe('CC-HH.7 — remove an item by keyword', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('first /remove-chore returns a confirmation prompt; chore still present', async () => {
-    const list = await ws.userInput('/mine');
-    const id = list.payload.items[0].id;
-    const r = await ws.userInput(`/remove-chore ${id}`);
-    expect(r.payload.confirmRequired).toBe(true);
-    expect(r.payload.message).toMatch(/Re-run with --confirm=true/);
-    const stillThere = await ws.userInput('/mine');
-    expect(stillThere.payload.items.some((c) => c.id === id)).toBe(true);
-  });
-
-  it('second /remove-chore --confirm=true actually removes', async () => {
-    const list = await ws.userInput('/mine');
-    const id = list.payload.items[0].id;
-    await ws.userInput(`/remove-chore ${id}`);
-    // body:'flags' on the op accepts positional id + --confirm=true.
-    const r = await ws.userInput(`/remove-chore ${id} --confirm=true`);
+  it('/remove <keyword> hard-deletes the matching item', async () => {
+    // Part G — the real household `removeItem` op (`/remove <match>`) is a
+    // direct hard-delete (no Q27 two-step confirm — that was a mock-only
+    // affordance on the retired `removeChore` op).
+    const list = await ws.userInput('/list shopping');
+    const label = list.payload.items[0].label;   // 'Milk'
+    const r = await ws.userInput(`/remove ${label}`);
     expect(r.payload.ok).toBe(true);
-    expect(r.payload.message).toMatch(/Removed/);
-    const after = await ws.userInput('/mine');
-    expect(after.payload.items.some((c) => c.id === id)).toBe(false);
+    expect(r.payload.message).toMatch(/removed/i);
+    const after = await ws.userInput('/list shopping');
+    expect(after.payload.items.some((c) => c.label === label)).toBe(false);
   });
 });
 
@@ -430,12 +415,16 @@ describe('CC-TK.4 — claim a task', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/mytasks → /claim <id> flips state', async () => {
+  it('/mytasks → claim a task flips state', async () => {
+    // Part G (2026-06-17): the bare `/claim` slash is now owned by the REAL
+    // household (its `claim` op, first-mounted), so a TASK is claimed via the
+    // unambiguous tasks op — exactly what the renderer dispatches for a
+    // task-typed item's [I'll do this] button (the slash is the household one).
     const list = await ws.userInput('/mytasks');
     const openTask = list.payload.items.find((t) => t.state === 'open');
-    const r = await ws.userInput(`/claim ${openTask.id}`);
-    expect(r.payload.ok).toBe(true);
-    expect(r.payload.message).toMatch(/Claimed/);
+    const r = await ws.callSkill('tasks', 'claimTask', { id: openTask.id });
+    expect(r.ok).not.toBe(false);
+    expect(r.message).toMatch(/Claimed/);
   });
 });
 
@@ -575,7 +564,8 @@ describe('CC-TK.5 + CC-TK.6 — DoD: submit → approve / reject', () => {
   async function getClaimedTaskId() {
     const list = await ws.userInput('/mytasks');
     const open = list.payload.items.find((t) => t.state === 'open');
-    await ws.userInput(`/claim ${open.id}`);
+    // Part G — claim via the tasks op (the bare `/claim` slash is household's).
+    await ws.callSkill('tasks', 'claimTask', { id: open.id });
     return open.id;
   }
 
@@ -616,7 +606,8 @@ describe('CC-TK.7 — inbox of mentions', () => {
   it('/submit dispatches; /inbox is queryable (per-mention entries depend on approver wiring)', async () => {
     const list = await ws.userInput('/mytasks');
     const open = list.payload.items.find((t) => t.state === 'open');
-    await ws.userInput(`/claim ${open.id}`);
+    // Part G — claim via the tasks op (the bare `/claim` slash is household's).
+    await ws.callSkill('tasks', 'claimTask', { id: open.id });
     const sub = await ws.userInput(`/submit ${open.id}`);
     // Real tasks-v0 inbox is populated by the approver-mention
     // mechanism (Phase 52.9.3 substrate-mirror notifyEnvelope).
@@ -894,13 +885,14 @@ describe('CC-XA.3 — Anne is moving in (cross-app cascade)', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/addmember anne reply declares cross-app follow-ups', async () => {
-    const r = await ws.userInput('/addmember anne');
-    expect(r.payload.ok).toBe(true);
+  it('addMember anne reply declares cross-app follow-ups', async () => {
+    // Part G — addMember has no slash in the real manifest; dispatch the op.
+    const r = await ws.callSkill('household', 'addMember', { name: 'anne' });
+    expect(r.ok).toBe(true);
     // The follow-ups list is wired in followUps.js + manifest; we
     // verify the reply shape carries enough info for the renderer to
     // build them (Q31 contract).
-    expect(r.payload.memberName).toBe('anne');
+    expect(r.memberName).toBe('anne');
   });
 });
 

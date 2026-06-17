@@ -27,12 +27,15 @@ beforeAll(async () => {
   setDevLog(false);                  // tests shouldn't spam stdout
 });
 
-/** Mock-bundle factory: minimal household-like store with listOpen + markComplete. */
+/** Mock-bundle factory: minimal household-like store with listOpen + markComplete.
+ *  Part G (2026-06-17) — items use a REAL household list type ('shopping') so the
+ *  REAL manifest's markComplete `appliesTo: {type: [...LIST_TYPES, 'task']}` gate
+ *  lights the per-row [Done] button; markComplete resolves by `match` (id). */
 function makeMockBundle() {
-  const chores = new Map();   // id → { id, type:'chore', title, state }
-  chores.set('c1', { id: 'c1', type: 'chore', title: 'Dishwasher',      state: 'open' });
-  chores.set('c2', { id: 'c2', type: 'chore', title: 'Vacuum',          state: 'open' });
-  chores.set('c3', { id: 'c3', type: 'chore', title: 'Take out trash',  state: 'open' });
+  const chores = new Map();   // id → { id, type:'shopping', title, state }
+  chores.set('c1', { id: 'c1', type: 'shopping', title: 'Milk',           state: 'open' });
+  chores.set('c2', { id: 'c2', type: 'shopping', title: 'Bread',          state: 'open' });
+  chores.set('c3', { id: 'c3', type: 'shopping', title: 'Apples',         state: 'open' });
 
   const catalog           = composeManifests();
   const manifestsByOrigin = buildManifestsByOrigin();
@@ -46,8 +49,9 @@ function makeMockBundle() {
       return { items };
     }
     if (opId === 'markComplete') {
-      const c = chores.get(args.choreId);
-      if (!c) return { ok: false, error: `unknown chore: ${args.choreId}` };
+      // Real household markComplete binds the row id to `match`.
+      const c = chores.get(args.match ?? args.choreId);
+      if (!c) return { ok: false, error: `unknown item: ${args.match}` };
       c.state = 'completed';
       return { ok: true };
     }
@@ -58,9 +62,9 @@ function makeMockBundle() {
 }
 
 describe('#253 step 3 — refreshList state morphing', () => {
-  it('initial render of /mine has all 3 open chores with buttons', async () => {
+  it('initial render of /list shopping has all 3 open items with buttons', async () => {
     const { catalog, manifestsByOrigin, callSkill } = makeMockBundle();
-    const parsed   = parseInput('/mine', catalog);
+    const parsed   = parseInput('/list shopping', catalog);
     const dispatch = resolveDispatch(parsed, catalog);
     expect(dispatch.kind).toBe('ready');
     const reply    = await runDispatch(dispatch, callSkill);
@@ -89,8 +93,8 @@ describe('#253 step 3 — refreshList state morphing', () => {
     const before = await refreshList({ ...bundle, sourceDispatch, t });
     expect(before.items).toHaveLength(3);
 
-    // Simulate the side-effect of a row-tap dispatch.
-    await callSkill('household', 'markComplete', { choreId: 'c2' });
+    // Simulate the side-effect of a row-tap dispatch (real markComplete `match`).
+    await callSkill('household', 'markComplete', { match: 'c2' });
 
     // After refresh: 2 items (c2 is now state:'completed' and listOpen filters it out).
     const after = await refreshList({ ...bundle, sourceDispatch, t });

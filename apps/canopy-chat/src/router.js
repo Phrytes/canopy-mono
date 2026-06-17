@@ -123,8 +123,24 @@ export function resolveDispatch(parseResult, catalog) {
     };
   }
 
-  const { opId, args: rawArgs, threadId } = parseResult;
-  const entry = catalog.opsById.get(opId);
+  const { opId, args: rawArgs, threadId, appOrigin: hintOrigin } = parseResult;
+  // Prefer the op-id's owning app when the parser carried one (slash
+  // commandMenu entry).  Op-id prefix-on-collision (manifestMerge) keys the
+  // non-first declarer as `<app>/<opId>`, so when the hinted owner ISN'T the
+  // bare-key owner we must look up the prefixed key — otherwise a command
+  // declared by the second app (e.g. tasks `/addtask`, op id `addTask` also
+  // owned bare by household) would resolve to the wrong app.  Falls back to
+  // the bare key (no hint, or the hint IS the bare owner).
+  let entry = null;
+  if (hintOrigin) {
+    const prefixed = catalog.opsById.get(`${hintOrigin}/${opId}`);
+    const bare     = catalog.opsById.get(opId);
+    if (prefixed) entry = prefixed;
+    else if (bare && bare.appOrigin === hintOrigin) entry = bare;
+    else entry = bare ?? null;
+  } else {
+    entry = catalog.opsById.get(opId);
+  }
   if (!entry) {
     return {
       kind: 'error',

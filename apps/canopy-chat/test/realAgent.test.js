@@ -9,42 +9,79 @@
  *   - canopy-chat's callSkill interface still surfaces the right
  *     payload shape to the dispatch pipeline
  *
- * Same household ops as mockAgent — substitutable.  This test runs
- * in the node env (default vitest); the same code also runs in the
- * browser bundle (verified by `vite build` + the dev-server smoke).
+ * Part G (2026-06-17) — the household surface is now backed by the REAL
+ * `apps/household` agent (skillRegistry.js skills over an ItemStore), not the
+ * chore-vocab inline mock.  These tests assert the REAL household vocab:
+ *   - seed items: Milk (shopping), Post a parcel (errand), Vacuum living
+ *     room (task)
+ *   - markComplete({match}) (keyword/id), not markComplete({choreId})
+ *   - reply text "✓ marked complete: <text>" (the real skill's wording)
+ *
+ * This test runs in the node env (default vitest); the same code also runs
+ * in the browser bundle (verified by `vite build` + the dev-server smoke).
  */
 import { describe, it, expect } from 'vitest';
 
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 
 describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
-  it("listOpen returns 3 seed chores via real Agent.invoke roundtrip", async () => {
+  it("listOpen returns the 3 seed household items via real Agent.invoke roundtrip", async () => {
     const a = await createRealHouseholdAgent();
     const r = await a.callSkill('household', 'listOpen', {});
     expect(r.items.length).toBe(3);
     expect(r.items.map((c) => c.label).sort()).toEqual([
-      'Bins out', 'Dishwasher', 'Vacuum living room',
+      'Milk', 'Post a parcel', 'Vacuum living room',
     ]);
+    // Structured list items carry the renderer fields (id/label/type/state).
+    expect(r.items.every((it) => it.id && it.label && it.type && it.state === 'open')).toBe(true);
   });
 
-  it("markComplete flips state + listOpen reflects it", async () => {
+  it("listOpen({type}) filters to one list-type", async () => {
     const a = await createRealHouseholdAgent();
-    const done = await a.callSkill('household', 'markComplete', { choreId: 'c-1' });
-    // v0.6 — reply now includes _sync envelope; use toMatchObject to
-    // tolerate the extra field.
+    const r = await a.callSkill('household', 'listOpen', { type: 'shopping' });
+    expect(r.items.map((it) => it.label)).toEqual(['Milk']);
+  });
+
+  it("markComplete({match}) flips state + listOpen reflects it", async () => {
+    const a = await createRealHouseholdAgent();
+    const done = await a.callSkill('household', 'markComplete', { match: 'Milk' });
     expect(done).toMatchObject({
-      ok: true, message: '✓ Done: Dishwasher', itemId: 'c-1',
+      ok: true, message: '✓ marked complete: Milk', text: 'Milk',
     });
+    expect(typeof done.itemId).toBe('string');
+    expect(done._sync).toBeTruthy();
     const list = await a.callSkill('household', 'listOpen', {});
     expect(list.items.length).toBe(2);
-    expect(list.items.find((c) => c.id === 'c-1')).toBeUndefined();
+    expect(list.items.find((c) => c.label === 'Milk')).toBeUndefined();
   });
 
-  it("markComplete with unknown id returns ok:false", async () => {
+  it("markComplete with no match returns ok:false with the skill's message", async () => {
     const a = await createRealHouseholdAgent();
-    const r = await a.callSkill('household', 'markComplete', { choreId: 'nope' });
+    const r = await a.callSkill('household', 'markComplete', { match: 'nope-zzz' });
     expect(r.ok).toBe(false);
-    expect(r.error).toMatch(/No chore with id/);
+    expect(r.error).toMatch(/Couldn't find an open item/);
+  });
+
+  it("markComplete with >1 candidate surfaces the disambiguation list", async () => {
+    const a = await createRealHouseholdAgent();
+    // 'a' appears in "Post a parcel" + "Vacuum living room" → ambiguous.
+    const r = await a.callSkill('household', 'markComplete', { match: 'a' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Multiple matches/);
+  });
+
+  it("addItem + addTask + claim round-trip through the real skills", async () => {
+    const a = await createRealHouseholdAgent();
+    const add = await a.callSkill('household', 'addItem', { type: 'shopping', text: 'Bread' });
+    expect(add).toMatchObject({ ok: true, text: 'Bread' });
+    expect(add.message).toMatch(/Bread/);
+
+    const task = await a.callSkill('household', 'addTask', { text: 'Fix the leaky tap' });
+    expect(task).toMatchObject({ ok: true, text: 'Fix the leaky tap' });
+
+    const claim = await a.callSkill('household', 'claim', { match: 'leaky' });
+    expect(claim).toMatchObject({ ok: true, text: 'Fix the leaky tap' });
+    expect(claim.message).toMatch(/claimed/);
   });
 
   it("exposes a transport-NEUTRAL isPeerReachable() (false when no transport connected)", async () => {
@@ -64,12 +101,15 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     expect(a.meta.transport).toBe('internal');
   });
 
-  it('reset() restores chore state', async () => {
+  it('reset() restores the seed household state', async () => {
     const a = await createRealHouseholdAgent();
-    await a.callSkill('household', 'markComplete', { choreId: 'c-1' });
-    expect(a.state().find((c) => c.id === 'c-1').state).toBe('done');
-    a.reset();
-    expect(a.state().find((c) => c.id === 'c-1').state).toBe('open');
+    // Part G — state()/reset() are now async (ItemStore-backed).
+    await a.callSkill('household', 'markComplete', { match: 'Milk' });
+    let open = await a.state();
+    expect(open.find((c) => c.text === 'Milk')).toBeUndefined();
+    await a.reset();
+    open = await a.state();
+    expect(open.find((c) => c.text === 'Milk')).toBeTruthy();
   });
 
   it("rejects unknown appOrigin", async () => {
@@ -126,9 +166,9 @@ describe('createRealHouseholdAgent — pipeline integration', () => {
     const catalog = mergeManifests([{ manifest: a.manifest }]);
     const thread  = new Thread();
 
-    // /mine
-    thread.addUserMessage('/mine');
-    const r1 = resolveDispatch(parseInput('/mine', catalog), catalog);
+    // /list shopping  → the real household list op (type-only body).
+    thread.addUserMessage('/list shopping');
+    const r1 = resolveDispatch(parseInput('/list shopping', catalog), catalog);
     const reply1 = await runDispatch(r1, a.callSkill);
     const rendered1 = renderReply(reply1, {
       appOrigin: r1.appOrigin,
@@ -136,15 +176,15 @@ describe('createRealHouseholdAgent — pipeline integration', () => {
     });
     thread.addShellMessage(rendered1, { opId: r1.opId });
     expect(rendered1.kind).toBe('list');
-    expect(rendered1.items.length).toBe(3);
+    expect(rendered1.items.map((i) => i.label)).toEqual(['Milk']);
 
-    // /done c-1
-    thread.addUserMessage('/done c-1');
-    const r2 = resolveDispatch(parseInput('/done c-1', catalog), catalog);
+    // /done Milk  → markComplete({match:'Milk'}) via the real skill.
+    thread.addUserMessage('/done Milk');
+    const r2 = resolveDispatch(parseInput('/done Milk', catalog), catalog);
     const reply2 = await runDispatch(r2, a.callSkill);
     const rendered2 = renderReply(reply2);
     thread.addShellMessage(rendered2);
     expect(rendered2.kind).toBe('text');
-    expect(rendered2.text).toBe('✓ Done: Dishwasher');
+    expect(rendered2.text).toBe('✓ marked complete: Milk');
   });
 });

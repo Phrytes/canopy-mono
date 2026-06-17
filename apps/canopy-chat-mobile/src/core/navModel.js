@@ -15,7 +15,9 @@ import { canopyChatManifest } from '../../../canopy-chat/src/index.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../../../canopy-chat/src/core/manifests/mockManifests.js';
-import { mockHouseholdManifest } from '../../../canopy-chat/src/core/agent/mockAgent.js';
+// Part G (2026-06-17) — real `apps/household` manifest (item/task vocab),
+// replacing the chore-vocab mock (kept in lockstep with composeManifests.js).
+import { householdManifest as realHouseholdManifest } from '../../../household/manifest.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
 
 /**
@@ -27,7 +29,7 @@ import { calendarManifest } from '../../../calendar/manifest.js';
 export function buildNavModels({ householdManifest } = {}) {
   const manifests = [
     canopyChatManifest,
-    householdManifest ?? mockHouseholdManifest,
+    householdManifest ?? realHouseholdManifest,
     mockTasksManifest,
     mockStoopManifest,
     mockFolioManifest,

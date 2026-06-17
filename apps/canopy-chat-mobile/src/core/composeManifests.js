@@ -17,7 +17,9 @@ import { mergeManifests, canopyChatManifest } from '../../../canopy-chat/src/ind
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../../../canopy-chat/src/core/manifests/mockManifests.js';
-import { mockHouseholdManifest } from '../../../canopy-chat/src/core/agent/mockAgent.js';
+// Part G (2026-06-17) — the REAL `apps/household` manifest (item/task vocab)
+// is the household catalog source of truth, replacing the chore-vocab mock.
+import { householdManifest as realHouseholdManifest } from '../../../household/manifest.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
 
 /**
@@ -30,7 +32,7 @@ import { calendarManifest } from '../../../calendar/manifest.js';
 function manifestList({ householdManifest } = {}) {
   return [
     canopyChatManifest,
-    householdManifest ?? mockHouseholdManifest,
+    householdManifest ?? realHouseholdManifest,
     mockTasksManifest,
     mockStoopManifest,
     mockFolioManifest,
@@ -40,10 +42,10 @@ function manifestList({ householdManifest } = {}) {
 
 /**
  * @param {object} extras
- * @param {object} [extras.householdManifest]  override the default
- *                                             mockHouseholdManifest
- *                                             (e.g. when the real
- *                                             agent bundle has booted)
+ * @param {object} [extras.householdManifest]  override the default real
+ *                                             householdManifest (e.g. when
+ *                                             the agent bundle injects its
+ *                                             own manifest instance)
  * @returns {object}  raw merged catalog
  */
 export function composeManifests({ householdManifest, extraSources = [] } = {}) {

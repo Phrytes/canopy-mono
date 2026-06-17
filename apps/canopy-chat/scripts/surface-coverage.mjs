@@ -17,7 +17,7 @@ import { renderCoverage, coverageGaps, formatCoverageMarkdown } from '../../../p
 // The circle catalog set — exactly what composeManifests composes (the unified chat surface).
 const SPECS = [
   { name: 'canopy-chat', path: '../manifest.js',                          pick: (m) => m.canopyChatManifest },
-  { name: 'household',   path: '../src/core/agent/mockAgent.js',          pick: (m) => m.mockHouseholdManifest },
+  { name: 'household',   path: '../../household/manifest.js',             pick: (m) => m.householdManifest },
   { name: 'tasks',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockTasksManifest },
   { name: 'stoop',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockStoopManifest },
   { name: 'folio',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockFolioManifest },
