@@ -13,7 +13,7 @@
  * Flagged for device verification.
  */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler, Modal, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, TextInput, StyleSheet, BackHandler, Modal, Alert, findNodeHandle } from 'react-native';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -589,7 +589,9 @@ export default function CircleLauncherScreen({
   }, [view, screensSubMode, viewingScreenId, screensBook, callSkill, eventLog, circles, screenBlocksCache]);
 
   const callSkill = useMemo(
-    () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill) : null),
+    // Pass a catalog getter so the resolver skips origins that don't declare the op
+    // (no probe-storm). Lazy → read at dispatch time, after `catalog` is defined below.
+    () => (bundle?.callSkill ? makeResolvingCallSkill(bundle.callSkill, undefined, () => catalog) : null),
     [bundle],
   );
 
@@ -1733,6 +1735,30 @@ function CircleDetail({
   // S6.B — chat-triggered screen panel ({screen} | null) + its materialized blocks.
   const [screenPanel, setScreenPanel] = useState(null);
   const [panelBlocks, setPanelBlocks] = useState(null);
+  // S6.B precise scroll-to — the panel ScrollView, its content wrapper, and the
+  // single highlighted row.  measureLayout(row → content) gives the row's y in
+  // content space, which scrollTo consumes directly.
+  const panelScrollRef = useRef(null);
+  const panelContentRef = useRef(null);
+  const highlightRowRef = useRef(null);
+  const scrollPanelToHighlight = useCallback(() => {
+    const row = highlightRowRef.current;
+    const content = panelContentRef.current;
+    const scroller = panelScrollRef.current;
+    if (!row || !content || !scroller || typeof row.measureLayout !== 'function') return;
+    const contentNode = findNodeHandle(content);
+    if (contentNode == null) return;
+    row.measureLayout(
+      contentNode,
+      (_x, y) => { scroller.scrollTo({ y: Math.max(0, y - 12), animated: true }); },
+      () => { /* measure failed (row unmounted) — leave scroll where it is */ },
+    );
+  }, []);
+  // Re-nav within the panel (tapping a chip in an open panel changes highlightRef
+  // without remounting the row, so onLayout won't refire) — scroll on ref change.
+  useEffect(() => {
+    if (screenPanel?.highlightRef) scrollPanelToHighlight();
+  }, [screenPanel?.highlightRef, panelBlocks, scrollPanelToHighlight]);
   useEffect(() => {
     if (!screenPanel) { setPanelBlocks(null); return undefined; }
     let alive = true;
@@ -2033,9 +2059,12 @@ function CircleDetail({
                 <Text style={styles.panelClose}>✕</Text>
               </Pressable>
             </View>
-            <ScrollView>
-              <CircleScreenView blocks={panelBlocks} highlightRef={screenPanel?.highlightRef}
-                onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
+            <ScrollView ref={panelScrollRef}>
+              <View ref={panelContentRef} collapsable={false}>
+                <CircleScreenView blocks={panelBlocks} highlightRef={screenPanel?.highlightRef}
+                  highlightRowRef={highlightRowRef} onHighlightLayout={scrollPanelToHighlight}
+                  onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -2270,6 +2299,18 @@ function renderBubble(row, t, deliveryOpts = null) {
           </Text>
         </Pressable>
       ) : null}
+      {deliveryState === 'undeliverable' ? (
+        // permanent (e.g. a member has no published key) — show it, but NO retry.
+        // A static Text, not a Pressable (retrying can't help).
+        <Text
+          style={styles.deliveryUndeliverable}
+          accessibilityLabel={t('circle.chat.delivery.undeliverable')}
+          accessibilityRole="text"
+          testID={`kring-delivery-undeliverable-${row.id}`}
+        >
+          ⊘ {t('circle.chat.delivery.undeliverable')}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -2482,6 +2523,7 @@ const styles = StyleSheet.create({
   deliveryPending:    { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
   deliveryFailed:     { marginTop: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: '#f2c8b8', backgroundColor: '#fbe9e3' },
   deliveryFailedText: { fontSize: 11, color: '#b8290f' },
+  deliveryUndeliverable: { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
   ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
   // P6.5 #342 — "ON YOUR LIST" section on CircleDetail.

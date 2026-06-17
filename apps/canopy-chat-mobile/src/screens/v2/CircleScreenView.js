@@ -37,7 +37,7 @@ function matchesHighlight(rowId, highlightRef) {
   return rowId === highlightRef || String(highlightRef).endsWith(String(rowId));
 }
 
-export default function CircleScreenView({ blocks = null, refreshing = false, onAction, onEmbedOpen, highlightRef }) {
+export default function CircleScreenView({ blocks = null, refreshing = false, onAction, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null }) {
   // null = still materializing (host hasn't resolved yet).  Distinguish
   // from `[]` so the user sees a "Loading…" hint instead of the
   // "admin hasn't set up a screen yet" empty state — which is
@@ -71,13 +71,14 @@ export default function CircleScreenView({ blocks = null, refreshing = false, on
         </Text>
       ) : null}
       {blocks.map((block) => (
-        <BlockSection key={block.blockId} block={block} onAction={onAction} onEmbedOpen={onEmbedOpen} highlightRef={highlightRef} />
+        <BlockSection key={block.blockId} block={block} onAction={onAction} onEmbedOpen={onEmbedOpen}
+          highlightRef={highlightRef} highlightRowRef={highlightRowRef} onHighlightLayout={onHighlightLayout} />
       ))}
     </View>
   );
 }
 
-function BlockSection({ block, onAction, onEmbedOpen, highlightRef }) {
+function BlockSection({ block, onAction, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null }) {
   const baseStyle = [styles.block, styles[`block_${block.type}`] ?? null];
 
   if (block.status === 'error') {
@@ -104,8 +105,8 @@ function BlockSection({ block, onAction, onEmbedOpen, highlightRef }) {
     case 'text':         body = renderText(block); break;
     case 'photo':        body = renderPhoto(block); break;
     case 'noticeboard':  body = renderNoticeboard(block); break;
-    case 'agenda':       body = renderAgenda(block, highlightRef); break;
-    case 'tasks':        body = renderTasks(block, onEmbedOpen, highlightRef); break;
+    case 'agenda':       body = renderAgenda(block, highlightRef, highlightRowRef, onHighlightLayout); break;
+    case 'tasks':        body = renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef, onHighlightLayout); break;
     case 'rules':        body = renderRules(block); break;
     default:
       body = <Text style={styles.blockEmptyText}>{t('circle.screen.block_unknown', { type: block.type })}</Text>;
@@ -188,7 +189,7 @@ function renderNoticeboard(block) {
   );
 }
 
-function renderAgenda(block, highlightRef) {
+function renderAgenda(block, highlightRef, highlightRowRef = null, onHighlightLayout = null) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle   = isCompact ? styles.agendaRowCompact   : styles.agendaRow;
@@ -197,12 +198,17 @@ function renderAgenda(block, highlightRef) {
     <View>
       <Text style={styles.blockTitle}>{t('circle.recipe.block.agenda')}</Text>
       {items.map((ev) => {
-        // S6.B — flash the row a chip-tap referenced.  Precise scroll on RN
-        // needs a ScrollView ref + measureLayout (no ref reaches here today),
-        // so this is highlight-only for v1; scroll-to is best-effort follow-up.
+        // S6.B — a chip-tap referenced this row: highlight it AND (now) scroll to
+        // it.  The hit row carries the parent's ref + fires onHighlightLayout once
+        // native layout settles; the panel measures the ref and scrolls to it.
         const hit = matchesHighlight(ev.id, highlightRef);
         return (
-          <View key={ev.id ?? Math.random().toString(36)} style={hit ? [rowStyle, styles.rowHighlight] : rowStyle}>
+          <View
+            key={ev.id ?? Math.random().toString(36)}
+            ref={hit ? highlightRowRef : undefined}
+            onLayout={hit && onHighlightLayout ? () => onHighlightLayout() : undefined}
+            style={hit ? [rowStyle, styles.rowHighlight] : rowStyle}
+          >
             <Text style={labelStyle}>{ev.label ?? ''}</Text>
           </View>
         );
@@ -211,7 +217,7 @@ function renderAgenda(block, highlightRef) {
   );
 }
 
-function renderTasks(block, onEmbedOpen, highlightRef) {
+function renderTasks(block, onEmbedOpen, highlightRef, highlightRowRef = null, onHighlightLayout = null) {
   const items = block.content?.items ?? [];
   const isCompact = block.config?.compact === true;
   const rowStyle    = isCompact ? styles.taskRowCompact    : styles.taskRow;
@@ -222,12 +228,17 @@ function renderTasks(block, onEmbedOpen, highlightRef) {
       <Text style={styles.blockTitle}>{t('circle.recipe.block.tasks')}</Text>
       {items.map((task) => {
         const embeds = embedChipsOf(task);
-        // S6.B — flash the row a chip-tap referenced.  Precise scroll on RN
-        // needs a ScrollView ref + measureLayout (no ref reaches here today),
-        // so this is highlight-only for v1; scroll-to is best-effort follow-up.
+        // S6.B — a chip-tap referenced this row: highlight it AND (now) scroll to
+        // it.  The hit row carries the parent's ref + fires onHighlightLayout once
+        // native layout settles; the panel measures the ref and scrolls to it.
         const hit = matchesHighlight(task.id, highlightRef);
         return (
-          <View key={task.id ?? Math.random().toString(36)} style={hit ? [rowStyle, styles.rowHighlight] : rowStyle}>
+          <View
+            key={task.id ?? Math.random().toString(36)}
+            ref={hit ? highlightRowRef : undefined}
+            onLayout={hit && onHighlightLayout ? () => onHighlightLayout() : undefined}
+            style={hit ? [rowStyle, styles.rowHighlight] : rowStyle}
+          >
             {task.circleName ? <Text style={circleStyle}>{task.circleName}</Text> : null}
             <Text style={textStyle}>{task.text ?? ''}</Text>
             {embeds.length > 0 && (
