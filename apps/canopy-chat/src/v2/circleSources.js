@@ -62,13 +62,17 @@ function catalogHasOp(catalog, origin, opId) {
  * 2026-05-30).  Pass the merged catalog returned by `mergeManifests`.
  */
 export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_ORIGINS, catalog = null) {
+  // `catalog` may be a live GETTER (so a later rescope — app toggle / policy.apps
+  // — is honoured) or a static object. Resolved per call.
+  const getCatalog = typeof catalog === 'function' ? catalog : () => catalog;
   return async (opId, args) => {
     if (typeof rawCallSkill !== 'function') return null;
+    const cat = getCatalog();
     for (const app of origins) {
       // Perf #2: skip the transport round-trip when the catalog says
       // the op isn't declared on this origin (cuts ~8 wasted RPCs per
       // circle-open for aspirational ops like getFeed / listNotes).
-      if (!catalogHasOp(catalog, app, opId)) continue;
+      if (!catalogHasOp(cat, app, opId)) continue;
       try {
         const r = await rawCallSkill(app, opId, args ?? {});
         if (r != null) return r;

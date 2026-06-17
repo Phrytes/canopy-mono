@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { kringChatMessageEvent, broadcastKringFanOut } from '../../src/v2/kringBroadcast.js';
+import { kringChatMessageEvent, broadcastKringFanOut, classifyFanOut } from '../../src/v2/kringBroadcast.js';
 
 const mapOf = () => {
   const m = new Map();
@@ -34,9 +34,18 @@ describe('broadcastKringFanOut', () => {
     expect(onChange).toHaveBeenCalledTimes(2);   // pending + sent
   });
 
-  it('pending → failed when the result carries errors[]', async () => {
+  it('pending → undeliverable when every error is permanent (recipient-pubkey-unknown)', async () => {
     const map = mapOf();
     await broadcastKringFanOut({ ...base, rawCallSkill: async () => ({ sent: 0, errors: [{ webid: 'x', reason: 'recipient-pubkey-unknown' }] }), deliveryStateMap: map });
+    expect(map.get('m1')).toBe('undeliverable');   // retry can't help → no retry affordance
+  });
+
+  it('pending → failed when at least one error is transient (retryable)', async () => {
+    const map = mapOf();
+    await broadcastKringFanOut({ ...base, rawCallSkill: async () => ({ sent: 0, errors: [
+      { webid: 'x', reason: 'recipient-pubkey-unknown' },   // permanent
+      { webid: 'y', reason: 'send-timeout' },               // transient → whole fan-out stays retryable
+    ] }), deliveryStateMap: map });
     expect(map.get('m1')).toBe('failed');
   });
 
@@ -53,5 +62,28 @@ describe('broadcastKringFanOut', () => {
     const map = mapOf();
     await broadcastKringFanOut({ ...base, rawCallSkill: null, deliveryStateMap: map });
     expect(map.get('m1')).toBeNull();
+  });
+});
+
+describe('classifyFanOut', () => {
+  it('no errors → sent', () => {
+    expect(classifyFanOut({})).toBe('sent');
+    expect(classifyFanOut({ sent: 3, errors: [] })).toBe('sent');
+  });
+  it('whole-op {error} → failed (transient)', () => {
+    expect(classifyFanOut({ error: 'chat-unavailable' })).toBe('failed');
+  });
+  it('all-permanent recipient errors → undeliverable', () => {
+    expect(classifyFanOut({ sent: 0, errors: [
+      { webid: 'a', reason: 'recipient-pubkey-unknown' },
+      { webid: 'b', reason: 'recipient-pubkey-unknown' },
+    ] })).toBe('undeliverable');
+  });
+  it('any transient recipient error → failed', () => {
+    expect(classifyFanOut({ sent: 1, errors: [
+      { webid: 'a', reason: 'recipient-pubkey-unknown' },
+      { webid: 'b', reason: 'send-timeout' },
+    ] })).toBe('failed');
+    expect(classifyFanOut({ errors: [{ webid: 'a', reason: 'offline' }] })).toBe('failed');
   });
 });

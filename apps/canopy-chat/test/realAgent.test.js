@@ -99,6 +99,20 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     const items = list?.items ?? [];
     expect(items.some((e) => (e.label ?? e.title ?? '').includes('Lunch'))).toBe(true);
   });
+
+  it('task-less base: getMyTasks on an unknown crew → empty list, not an error', async () => {
+    // A circle with no tasks crew yet: bundleResolver can't resolve the crew,
+    // so the real list skill answers {error:'crewId required'}.  For a READ-only
+    // list op that's not a failure (there's nothing to list) — the adapter
+    // normalises it to {items: []} so the circle screen renders "no tasks"
+    // instead of an error bubble.
+    const a = await createRealHouseholdAgent();
+    const r = await a.callSkill('tasks-v0', 'getMyTasks', { crewId: 'ghost-crew-xyz' });
+    expect(r).toBeTruthy();
+    expect(r.error).toBeUndefined();
+    expect(Array.isArray(r.items)).toBe(true);
+    expect(r.items).toHaveLength(0);
+  });
 });
 
 describe('createRealHouseholdAgent — pipeline integration', () => {

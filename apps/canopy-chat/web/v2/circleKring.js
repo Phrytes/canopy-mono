@@ -577,6 +577,17 @@ function renderBubble(row, {
         if (typeof onRetryDelivery === 'function') onRetryDelivery(row.id);
       });
       el.appendChild(btn);
+    } else if (state === 'undeliverable') {
+      // permanent (e.g. a member has no published key) — show it, but NO retry
+      // (retrying can't help). A static glyph, not a button.
+      const ic = document.createElement('span');
+      ic.className = 'circle-kring__bubble-delivery circle-kring__bubble-delivery--undeliverable';
+      ic.dataset.deliveryState = 'undeliverable';
+      ic.setAttribute('role', 'status');
+      ic.setAttribute('aria-label', tr('circle.chat.delivery.undeliverable'));
+      ic.title = tr('circle.chat.delivery.undeliverable');
+      ic.textContent = '⊘';
+      el.appendChild(ic);
     }
     // 'sent' (and null) intentionally render nothing — happy path.
   }

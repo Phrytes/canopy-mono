@@ -42,6 +42,28 @@ export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, button
  * @param {()=>void} [a.onChange]   rerender hook fired on each state transition
  * @returns {Promise<void>}
  */
+// Per-recipient failure reasons that retrying can NEVER fix (vs a transient
+// transport/offline error). A fan-out that ONLY hit these is `undeliverable`
+// (the UI shows it, but offers no pointless retry); anything else is `failed`
+// (retryable). `recipient-pubkey-unknown` = the member has no published key, so
+// there's nobody to encrypt to until they publish one.
+export const PERMANENT_FANOUT_REASONS = new Set(['recipient-pubkey-unknown']);
+
+/**
+ * Classify a `broadcastKringMessage` result → a delivery state.
+ *   'sent'          — no per-recipient errors.
+ *   'failed'        — a whole-op error OR at least one TRANSIENT recipient error (retryable).
+ *   'undeliverable' — every recipient error is permanent (retry can't help) — NOT retryable.
+ * @returns {'sent'|'failed'|'undeliverable'}
+ */
+export function classifyFanOut(r) {
+  if (r?.error) return 'failed';                 // chat-unavailable / members-unavailable → transient
+  const errors = Array.isArray(r?.errors) ? r.errors : [];
+  if (errors.length === 0) return 'sent';
+  if (errors.some((e) => !PERMANENT_FANOUT_REASONS.has(e?.reason))) return 'failed';
+  return 'undeliverable';                         // all permanent
+}
+
 export function broadcastKringFanOut({ rawCallSkill, circleId, msgId, text, ts, deliveryStateMap, onChange }) {
   if (typeof rawCallSkill !== 'function') return Promise.resolve();
   const mark = (state) => { deliveryStateMap.set(msgId, state); onChange?.(); };
@@ -49,9 +71,9 @@ export function broadcastKringFanOut({ rawCallSkill, circleId, msgId, text, ts, 
   return Promise.resolve()
     .then(() => rawCallSkill('stoop', 'broadcastKringMessage', { groupId: circleId, text, msgId, ts }))
     .then((r) => {
-      if (r?.error) { console.warn('[kring-chat] fan-out skipped:', r.error); mark('failed'); }
-      else if ((r?.errors?.length ?? 0) > 0) { console.info('[kring-chat] fan-out partial:', r); mark('failed'); }
-      else { mark('sent'); }
+      const state = classifyFanOut(r);
+      if (state !== 'sent') console.info('[kring-chat] fan-out', state, '—', r?.error ?? r?.errors);
+      mark(state);
     })
     .catch((err) => { console.warn('[kring-chat] fan-out failed:', err?.message ?? err); mark('failed'); });
 }

@@ -1345,6 +1345,17 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:   simulateSync(),
       };
     }
+    // Task-less base — a circle with no tasks crew yet.  bundleResolver
+    // returns null, so the read-only list skills answer {error:'crewId
+    // required'}.  For a LIST op that's not a failure: there's simply
+    // nothing to list.  Normalise to an empty result so loadCircleItems /
+    // /mytasks render "no tasks" instead of an error bubble.  (Write ops
+    // like addTask keep the error — you can't add to a crew that isn't there.)
+    if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox'
+         || opId === 'myInbox' || opId === 'getMyTasks' || opId === 'listClaimable')
+        && data?.error === 'crewId required') {
+      return { items: [], _sync: simulateSync() };
+    }
     // listMine / listOpen: real returns {items: [...]} of task records.
     // Real items carry `status` (ready/claimed/submitted/rejected/
     // complete/blocked) but the chat-shell renderer + most tests

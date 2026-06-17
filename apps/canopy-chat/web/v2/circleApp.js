@@ -2793,7 +2793,9 @@ async function boot() {
       });
       // Route the auto-resolving callSkill through the calendar-wrapped one too,
       // so button-driven calendar dispatches fan out as well as the bot path.
-      resolveCallSkill = makeResolvingCallSkill(rawCallSkill);
+      // Pass a catalog GETTER so the resolver skips origins that don't declare the
+      // op (no probe-storm) AND honours later rescopes (app toggle / policy.apps).
+      resolveCallSkill = makeResolvingCallSkill(rawCallSkill, DEFAULT_CIRCLE_ORIGINS, () => catalog);
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
       // Phase 5 — build the kring composer's bot + feedback now that the agent (and its manifest) is up.
       try { buildCircleBot(agent); } catch (err) { console.warn('[circleApp] circle bot setup failed:', err?.message ?? err); }

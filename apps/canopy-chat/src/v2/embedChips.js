@@ -61,14 +61,17 @@ export function embedChipsOf(item) {
     ? item.embeds
     : (Array.isArray(item?.source?.embeds) ? item.source.embeds : []);
   return raw
-    .filter((e) => e && typeof e === 'object' && e.type && e.ref)
+    // Valid when it has a `type` AND either a `ref` (the canonical reference) OR an
+    // inline `object` payload (the item's data carried inline — no resolution needed).
+    .filter((e) => e && typeof e === 'object' && e.type
+      && ((e.ref != null && e.ref !== '') || (e.object && typeof e.object === 'object')))
     .map((e) => {
       // `denied` (embedResolve): an ACP-protected cross-pod ref you can't read →
       // a 🔒 placeholder chip, non-tappable (nothing to open).
       const locked = !!e.denied;
       return {
         type:  String(e.type),
-        ref:   String(e.ref),
+        ref:   String(e.ref ?? ''),
         icon:  locked ? '🔒' : (EMBED_TYPE_ICON[e.type] ?? '🔗'),
         // Display label, best → worst: a RESOLVED live title (embedResolve) → the
         // embed's own stored label → null (renderer falls back to a short ref).
@@ -82,7 +85,10 @@ export function embedChipsOf(item) {
 }
 
 function pickLabel(e) {
-  if (e.title && String(e.title).trim()) return String(e.title).trim();
-  if (typeof e.label === 'string' && e.label.trim()) return e.label.trim();
+  if (e.title && String(e.title).trim()) return String(e.title).trim();          // resolved live title
+  const o = (e.object && typeof e.object === 'object') ? e.object : null;          // inline object payload
+  const fromObj = o && (o.title ?? o.text ?? o.name ?? o.label);
+  if (typeof fromObj === 'string' && fromObj.trim()) return fromObj.trim();
+  if (typeof e.label === 'string' && e.label.trim()) return e.label.trim();        // stored label
   return null;
 }
