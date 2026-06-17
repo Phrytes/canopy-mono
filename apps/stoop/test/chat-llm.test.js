@@ -29,6 +29,7 @@ import { stoopManifest }           from '../manifest.js';
 import {
   createLlmChat,
   buildStoopSkillRegistry,
+  STOOP_SHELL_ONLY_OPS,
 } from '../src/chat/llmChat.js';
 
 const ANNE = 'https://id.example/anne';
@@ -64,11 +65,16 @@ describe('Stoop Slice D.2 — LLM tool-calling on chat via renderChat', () => {
     bundle = await buildBundle();
   });
 
-  it('skillRegistry covers every manifest op against the live agent', () => {
+  it('skillRegistry covers every substrate-backed manifest op against the live agent', () => {
     const { skillRegistry, missing } = buildStoopSkillRegistry(bundle);
-    // Zero ops missing — every D.1 manifest entry has a backing skill.
+    // Zero ops missing — every manifest entry either has a backing skill
+    // (directly or via the listFeed→listOpen / getStoopProfile→
+    // getMyProfile alias) or is a documented canopy-chat-shell-only op.
     expect(missing).toEqual([]);
     for (const op of stoopManifest.operations) {
+      // Part G dissolve (2026-06-17) — shell-only ops (wizards / [DM]
+      // button / synthesized /groups) have no standalone substrate skill.
+      if (STOOP_SHELL_ONLY_OPS.has(op.id)) continue;
       expect(skillRegistry, `skillRegistry must have op ${op.id}`).toHaveProperty(op.id);
       expect(typeof skillRegistry[op.id]).toBe('function');
     }

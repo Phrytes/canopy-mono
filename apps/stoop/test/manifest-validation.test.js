@@ -54,7 +54,12 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
     expect(set.size).toBe(ids.length);
   });
 
-  it('every op declares { id, verb, surfaces.chat.hint, surfaces.slash.command }', () => {
+  // Part G dissolve (2026-06-17) — every op declares { id, verb,
+  // surfaces.chat.hint }.  `surfaces.slash.command` is required for
+  // SLASH-callable ops; button-only ops (e.g. startDm) legitimately have
+  // NO slash command — so the slash assertion is conditional on the op
+  // declaring a slash surface.
+  it('every op declares { id, verb, surfaces.chat.hint } (+ valid slash.command when present)', () => {
     for (const op of stoopManifest.operations) {
       expect(op.id, `op missing id: ${JSON.stringify(op)}`).toBeTruthy();
       expect(typeof op.id, `${op.id} id-type`).toBe('string');
@@ -67,15 +72,21 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
       expect(op.surfaces.chat.hint, `${op.id} surfaces.chat.hint`).toBeTruthy();
       expect(typeof op.surfaces.chat.hint, `${op.id} hint-type`).toBe('string');
 
-      expect(op.surfaces.slash, `${op.id} surfaces.slash`).toBeDefined();
-      expect(op.surfaces.slash.command, `${op.id} surfaces.slash.command`).toBeTruthy();
-      expect(typeof op.surfaces.slash.command, `${op.id} command-type`).toBe('string');
-      expect(op.surfaces.slash.command.startsWith('/'), `${op.id} command starts with /`).toBe(true);
+      if (op.surfaces.slash) {
+        expect(op.surfaces.slash.command, `${op.id} surfaces.slash.command`).toBeTruthy();
+        expect(typeof op.surfaces.slash.command, `${op.id} command-type`).toBe('string');
+        expect(op.surfaces.slash.command.startsWith('/'), `${op.id} command starts with /`).toBe(true);
+      } else {
+        // No slash → must have an alternate surface (button / page).
+        expect(op.surfaces.ui ?? op.surfaces.page, `${op.id} has a non-slash surface`).toBeTruthy();
+      }
     }
   });
 
-  it("does not collide with household's slash commands (D.1 minimise-collision goal)", () => {
-    const stoopCommands = stoopManifest.operations.map((op) => op.surfaces.slash.command);
+  it("does not collide with household's slash commands (minimise-collision goal)", () => {
+    const stoopCommands = stoopManifest.operations
+      .map((op) => op.surfaces.slash?.command)
+      .filter(Boolean);
     const collisions = stoopCommands.filter((c) => HOUSEHOLD_COMMANDS.includes(c));
     expect(
       collisions,
@@ -83,12 +94,28 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
     ).toEqual([]);
   });
 
-  it("ships ~12–15 ops covering stoop's primary flows (per Project Files/projects/audit-stoop-folio-surfaces.md)", () => {
-    expect(stoopManifest.operations.length).toBeGreaterThanOrEqual(12);
-    expect(stoopManifest.operations.length).toBeLessThanOrEqual(15);
+  // Part G dissolve (2026-06-17) — the former mockStoopManifest's
+  // chat-shell ops (holiday-mode / contacts / wizards / groups / share-qr
+  // / startDm + the thin listFeed/getStoopProfile aliases) folded in, so
+  // the op set grew from the D.1 ~14 to 33.
+  it('ships the full chat+slash surface (Part G — one stoop manifest, 33 ops)', () => {
+    expect(stoopManifest.operations.length).toBe(33);
   });
 
-  it('declares the eight stoop itemTypes from src/lib/itemTypes.js', () => {
+  // No two ops may declare the same slash command (Part G hard guardrail
+  // — no double-handlers).
+  it('no two ops claim the same slash command', () => {
+    const cmds = stoopManifest.operations
+      .map((op) => op.surfaces.slash?.command)
+      .filter(Boolean);
+    const dup = cmds.filter((c, i) => cmds.indexOf(c) !== i);
+    expect(dup).toEqual([]);
+  });
+
+  // Part G dissolve (2026-06-17) — adds the app-local chat-shell types
+  // 'post'/'contact'/'member' (used by the relocated ops' appliesTo +
+  // the feed/contacts views) on top of the eight D.1 substrate types.
+  it('declares the eight substrate itemTypes + the three Part-G chat-shell types', () => {
     expect(stoopManifest.itemTypes).toEqual([
       'ask',
       'offer',
@@ -98,6 +125,9 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
       'rules-accept',
       'group-leave',
       'request',
+      'post',
+      'contact',
+      'member',
     ]);
   });
 

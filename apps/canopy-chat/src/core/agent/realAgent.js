@@ -738,7 +738,12 @@ export async function createRealHouseholdAgent(opts = {}) {
    * Stoop opId aliases — chat-shell vocabulary → real skill name.
    *   /feed       → listOpen     (no `listFeed` in real stoop)
    *   /stoop-profile → getMyProfile
-   *   /reveal     → setPeerReveal
+   *
+   * Part G dissolve (2026-06-17) — the `revealPeer → setPeerReveal`
+   * alias was DROPPED: the `revealPeer` op no longer exists (the
+   * `/reveal` collision was resolved by keeping ONE op, `setPeerReveal`,
+   * in the merged manifest).  `setPeerReveal` dispatches directly; the
+   * `peer→peerWebid` + `action→reveal` value transforms below STAY.
    *
    * F1 circle content (5.3d) — `loadCircleItems` reads a circle's
    * stoop posts via the source ops `getBulletin` / `getFeed`.  Stoop
@@ -755,7 +760,9 @@ export async function createRealHouseholdAgent(opts = {}) {
   const STOOP_OP_ALIAS = {
     listFeed:        'listOpen',
     getStoopProfile: 'getMyProfile',
-    revealPeer:      'setPeerReveal',
+    // `getBulletin` is NOT a manifest op — it's a circleContent source
+    // op (circleContent.DEFAULT_SOURCES); aliasing it to listOpen lands
+    // per-circle reads on the real reader.  KEPT (used by circleContent).
     getBulletin:     'listOpen',
   };
 
@@ -1008,12 +1015,11 @@ export async function createRealHouseholdAgent(opts = {}) {
           realArgs = { ...realArgs, reveal: realArgs.action.toLowerCase() === 'on' };
         }
       }
-      // markReturned substrate skill reads `a.requestId` but chat-shell
-      // params + slash users say `itemId`.  Alias here so /markReturned
-      // <id> and any future button mapping both reach the substrate.
-      if (realOpId === 'markReturned' && realArgs.itemId && !realArgs.requestId) {
-        realArgs = { ...realArgs, requestId: realArgs.itemId };
-      }
+      // Part G dissolve (2026-06-17) — the markReturned itemId→requestId
+      // bridge was REMOVED: the merged manifest declares the real param
+      // `requestId` directly (the `/lend-return` gate binds `arg:
+      // 'requestId'`), so the chat-shell already sends `requestId` —
+      // no shell-side rename needed.
       if (realOpId === 'setHolidayMode') {
         // Chat-shell sends {on: 'on'|'off'} (enum from /holiday-mode
         // <on|off>); real skill takes {on: boolean}.
@@ -1780,8 +1786,12 @@ export async function createRealHouseholdAgent(opts = {}) {
         buurt:       opts.stoopGroup ?? 'cc-default-buurt',
       };
     }
-    // setPeerReveal: real returns {} on success → adapt to mock shape.
-    if (opId === 'revealPeer') {
+    // setPeerReveal: real returns {} on success → adapt to chat shape.
+    // Part G dissolve (2026-06-17) — keyed on `setPeerReveal` (was
+    // `revealPeer`, the dropped alias op).  args still carry the
+    // chat-shell `peer`/`action` vocab; the peer→peerWebid +
+    // action→reveal transforms happen before invoke.
+    if (opId === 'setPeerReveal') {
       const peer   = args?.peer ?? args?.peerWebid ?? '(peer)';
       const action = args?.action ?? (args?.reveal ? 'on' : 'off');
       return {

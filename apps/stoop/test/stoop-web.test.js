@@ -73,11 +73,13 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3 + E.4)', () => {
     expect(res.headers.get('content-type')).toMatch(/application\/json/);
     const nav = await res.json();
     expect(nav.app).toBe('stoop');
-    // E.1 + E.2 + E.3 + E.4 ship FOUR sections.  Follow-on E.x slices
-    // will grow this (12 pages remaining hand-built; E.4 adopts but
-    // does not migrate profile).  Order = manifest.views[] order (Q2:
-    // deterministic declaration order).
-    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy', 'settings', 'profile']);
+    // E.1 + E.2 + E.3 + E.4 ship FOUR web-page sections (mine / privacy /
+    // settings / profile).  Part G dissolve (2026-06-17) APPENDED the
+    // chat-shell `feed` + `contacts` views from the former
+    // mockStoopManifest — they come AFTER the E.x pages so the original
+    // four keep their declaration order + indices.  Order = manifest
+    // .views[] order (Q2: deterministic declaration order).
+    expect(nav.sections.map((s) => s.id)).toEqual(['mine', 'privacy', 'settings', 'profile', 'feed', 'contacts']);
 
     const mine = nav.sections[0];
     expect(mine.id).toBe('mine');

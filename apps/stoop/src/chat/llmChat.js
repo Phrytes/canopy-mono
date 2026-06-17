@@ -119,6 +119,38 @@ function adaptSdkSkill(skillDef, agent) {
  * @returns {{ skillRegistry: Record<string, function>, missing: string[] }}
  *   `missing` is a diagnostic for tests / boot-time logging.
  */
+/**
+ * Part G dissolve (2026-06-17) — the manifest now also carries the
+ * chat-shell ops folded in from canopy-chat's former mockStoopManifest.
+ * Two of them are SEMANTIC ALIASES of a real stoop skill (mirrors
+ * canopy-chat's `STOOP_OP_ALIAS`): resolve them here so the standalone
+ * stoop LLM chat binds them to the right skill.
+ */
+const STOOP_OP_ALIAS = {
+  listFeed:        'listOpen',
+  getStoopProfile: 'getMyProfile',
+};
+
+/**
+ * Ops that are canopy-chat-SHELL-ONLY surfaces (customRenderer wizards,
+ * the [DM] button alias, and the realAgent-synthesized /groups op).
+ * They have NO backing skill in the standalone stoop substrate — the
+ * functionality lives in the canopy-chat client (side-panel wizards) or
+ * is synthesized by the canopy-chat realAgent adapter.  They are NOT a
+ * manifest-drift signal for the standalone bundle, so the registry
+ * builder skips them rather than reporting them `missing`.
+ */
+const SHELL_ONLY_OPS = new Set([
+  'startDm',                    // canopy-chat [DM] button → ensureDmThread
+  'getCurrentGroup',            // synthesized in realAgent (single-buurt /groups)
+  'restoreFromMnemonicWizard',  // #198 customRenderer
+  'conflictDisputeWizard',      // #200 customRenderer
+  'postAudienceWizard',         // #198 customRenderer
+  'encryptedBackupWizard',      // #198 customRenderer
+  'createGroupWizard',          // #197 customRenderer
+  'joinGroupWizard',            // #196 customRenderer
+]);
+
 export function buildStoopSkillRegistry(bundle) {
   if (!bundle?.agent?.skills?.get) {
     throw new TypeError('buildStoopSkillRegistry: bundle.agent.skills required');
@@ -126,12 +158,19 @@ export function buildStoopSkillRegistry(bundle) {
   const skillRegistry = {};
   const missing = [];
   for (const op of stoopManifest.operations) {
-    const def = bundle.agent.skills.get(op.id);
+    if (SHELL_ONLY_OPS.has(op.id)) continue;   // no standalone substrate skill
+    const skillId = STOOP_OP_ALIAS[op.id] ?? op.id;
+    const def = bundle.agent.skills.get(skillId);
     if (!def) { missing.push(op.id); continue; }
+    // Register under the MANIFEST op id (so the LLM tool catalogue +
+    // dispatch key on op.id); the adapter targets the resolved skill.
     skillRegistry[op.id] = adaptSdkSkill(def, bundle.agent);
   }
   return { skillRegistry, missing };
 }
+
+/** Exported for tests — the ops with no standalone-substrate skill. */
+export const STOOP_SHELL_ONLY_OPS = SHELL_ONLY_OPS;
 
 /**
  * Create the Slice D.2 LLM chat adapter for a live stoop bundle.

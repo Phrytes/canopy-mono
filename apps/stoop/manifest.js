@@ -80,6 +80,22 @@ const ITEM_TYPES = [
   'rules-accept',
   'group-leave',
   'request',  // legacy V0 — preserved for back-compat
+  // ── Part G dissolve (2026-06-17) — app-local types the chat-shell
+  //    ops folded in from the former mockStoopManifest reference.
+  //    Non-canonical (F-SP1-a); permitted by validateManifest.
+  //  - 'post'    — the chat-shell vocabulary for a prikbord item.  The
+  //    listOpen/listFeed reply adapter maps the substrate's canonical
+  //    ask/offer/lend/request rows to `type:'post'` (realAgent.js
+  //    adaptStoopReply), and respondToItem/markReturned/dispute gate
+  //    on `type:'post'`; the `feed` view renders it.
+  //  - 'contact' — the ContactBook graph (listContacts / addContact /
+  //    removeContact / setContactTrust / startDm appliesTo + the
+  //    `contacts` view).
+  //  - 'member'  — buurt roster rows (listGroupMembers appliesTo + the
+  //    [DM] row button via startDm's `['contact','member']` gate).
+  'post',
+  'contact',
+  'member',
 ];
 
 // The trio that renders on the prikbord (ask / offer / lend) — used as
@@ -99,11 +115,18 @@ export const stoopManifest = {
       // No `appliesTo.type` — postRequest dispatches across ask/offer/
       // lend based on the `intent` arg, so it spans three types.
       params: [
-        // `intent` picks one of {ask, offer, lend}; the skill
-        // translates this to canonical {type, kind} via
-        // `intentToCanonicalDraft`.
-        { name: 'intent', kind: 'enum', of: PRIKBORD_INTENTS, required: true },
+        // Part G dissolve (2026-06-17) — `text` is the FIRST required
+        // param so the `/post <text>` body (the folded-in mock gate uses
+        // `body: 'text-only'` / `body: 'flags'`) binds the post text via
+        // `_match`.  `intent` is OPTIONAL: the substrate's
+        // `intentToCanonicalDraft(a.intent, a.kind)` defaults a missing
+        // intent (→ canonical type 'request'), so a bare `/post "milk"`
+        // posts without an explicit ask/offer/lend choice — matching the
+        // former mockStoopManifest behaviour the journeys tests pin.
         { name: 'text',   kind: 'string', required: true, ...STR_NONEMPTY },
+        // `intent` picks one of {ask, offer, lend}; the skill translates
+        // this to canonical {type, kind} via `intentToCanonicalDraft`.
+        { name: 'intent', kind: 'enum', of: PRIKBORD_INTENTS, required: false },
         // Optional lend-only field (epoch-ms due date).
         { name: 'dueAt',  kind: 'number' },
         // Optional skill tag the post requires/offers (single string;
@@ -112,17 +135,33 @@ export const stoopManifest = {
         { name: 'skill',  kind: 'string' },
       ],
       surfaces: {
-        chat:  { hint: 'Post an item (ask/offer/lend) and broadcast it; returns immediately. Pass `expectClaims > 0` to wait for claims.' },
+        chat:  {
+          hint: 'Post an item (ask/offer/lend) and broadcast it; returns immediately. Pass `expectClaims > 0` to wait for claims.',
+          followUps: [
+            // Q31 demo — same-app follow-up: after posting, suggest viewing
+            // the feed.  Folded in from the former mockStoopManifest.
+            { opId: 'listFeed' },
+          ],
+        },
+        // Part G dissolve (2026-06-17) — `/post` is declared in BOTH the
+        // real stoop manifest and the former mock chat-shell reference.
+        // Kept the RICHER mock gate (more verbs: EN post/ask/borrow + NL
+        // vraag/plaats/leen/bied-aan + dropTrailing) with `body: 'flags'`
+        // (so a literal `/post <text>` lands the whole body as the post
+        // text, and `--intent=ask` parses as a flag).  PARAM vocab is the
+        // REAL skill's (`intent`, enum ask|offer|lend) — the substrate's
+        // `intentToCanonicalDraft(a.intent, a.kind)` is the value-map; no
+        // shell-side kind→intent bridge needed.  Bare 'share'/'deel'
+        // belong to folio.shareFolder (collision), so they're NOT verbs
+        // here; the post `intent` flag stays slash/LLM-only.
         slash: {
           command: '/post',
           shape:   '/post <ask|offer|lend> <text>',
-          // Body shape: 'type+text' — renderSlash emits
-          // `/post ask buy a vacuum cleaner` → {intent:'ask',text:'...'}.
-          // Verb tokens: EN ('post', 'add', 'share') + NL ('plaats', 'deel').
+          body:    'flags',
           match: {
-            verbs:   ['post', 'plaats', 'deel'],
-            body:    'type+text',
-            onEmpty: { skillId: 'postRequest', args: {} },
+            verbs:   ['post', 'ask', 'borrow', 'vraag', 'plaats', 'leen', ['bied', 'aan']],
+            body:    'text-only',
+            dropTrailing: ['to', 'aan', 'op', 'in', 'voor'],
           },
         },
       },
@@ -150,15 +189,16 @@ export const stoopManifest = {
           // Resolved 2026-05-21 (owner): `/bulletin` (EN — open-source
           // convention).  `/list` would collide with household.listOpen;
           // `/bulletin` is collision-free and the English equivalent of
-          // the in-app term "prikbord"/"buurt".  Dutch synonyms kept as
-          // match.verbs aliases.
+          // the in-app term "prikbord"/"buurt".
+          //
+          // Part C gate audit (folded in from the former mockStoopManifest
+          // at the Part G dissolve, 2026-06-17) — REMOVED the gate `match`:
+          // its `body: 'type-only'` mapped against a nonexistent `type`
+          // param (this op's enum is `intent`) with no typeAliases — a
+          // mis-wired gate.  This is a list op; the literal `/bulletin`
+          // slash (+ screen) stays, the NL gate is dropped.
           command: '/bulletin',
           shape:   '/bulletin [ask|offer|lend]',
-          match: {
-            verbs:   ['bulletin', 'board', 'posts', 'open', 'prikbord', 'buurt'],
-            body:    'type-only',
-            onEmpty: { skillId: 'listOpen', args: {} },
-          },
         },
       },
     },
@@ -179,26 +219,41 @@ export const stoopManifest = {
 
     // ── Negotiate / chat ────────────────────────────────────────────
     {
-      id:   'respondToItem',
-      verb: 'claim',  // canonical — `respondToItem` soft-claims the post.
+      id:        'respondToItem',
+      verb:      'claim',  // canonical — `respondToItem` soft-claims the post.
+      // Part G dissolve (2026-06-17) — the former mock declared this op
+      // WITHOUT a slash command but WITH a richer surface: an `appliesTo`
+      // gate (so the [Help with] row button surfaces on open feed posts),
+      // an NL gate `match` ("help with X" / "ik help X"), a `pickerSource`
+      // for label→id resolution, and a required `body` (so [Help with]
+      // triggers form-elicitation for the message).  The real manifest
+      // declared the `/respond` command.  Merged here: real's `/respond`
+      // command KEPT + the mock's gate match + pickerSource + Help-with
+      // button folded in.  No command collision (real `/respond`, mock
+      // had none).
+      appliesTo: { type: 'post', state: ['open'] },
       params: [
-        { name: 'itemId', kind: 'string', required: true, ...ID_NONEMPTY  },
+        { name: 'itemId', kind: 'string', required: true, ...ID_NONEMPTY,
+          pickerSource: { listOp: 'listFeed' } },          // label→id resolution
         { name: 'body',   kind: 'string', required: true, ...STR_NONEMPTY },
       ],
       surfaces: {
         chat:  { hint: 'Open a chat thread on a post + send the first message; soft-claims the post.' },
         slash: {
-          // Resolved 2026-05-21 (owner): `/respond` (EN — action-on-post).
-          // `/reply` would feel too chat-app-generic; `/respond` reads
-          // as taking action on a referenced item.  No `match` block:
-          // two-arg body (itemId + free-text) needs the chat composer's
-          // picker UI — slash-command shell only.  Aliases (`reply`,
-          // `reageer`) noted here for future grammar work; consumer's
-          // composer can prefix-match if useful.
+          // `/respond <itemId> <message>` literal shell + the folded-in
+          // NL gate.  PARTIAL gate: `arg: 'itemId'` binds the post by
+          // label; `body` ("what help?") is then form-elicited.
           command: '/respond',
           shape:   '/respond <itemId> <message>',
+          match: {
+            verbs: [['help', 'with'], ['respond', 'to'], 'offer', ['ik', 'help'], ['help', 'met'], ['reageer', 'op'], ['bied', 'hulp']],
+            body:  'match',
+            arg:   'itemId',
+          },
         },
-        ui: { control: 'button', label: 'Reageer' },
+        // appliesTo-gated row button on /feed posts.  Click → form
+        // prompts for body, then dispatches.
+        ui: { control: 'button', label: 'Help with' },
       },
     },
     {
@@ -220,11 +275,18 @@ export const stoopManifest = {
         slash: {
           // Resolved 2026-05-21 (owner): `/withdraw` (EN — clearer
           // mental model: "withdraw my post").  `/cancel` is too
-          // generic; `/remove` collides with household.  Aliases
-          // (cancel, intrekken, annuleer) in match.verbs.
+          // generic; `/remove` collides with household.
+          //
+          // Part C cross-app collision resolution (folded in at the Part G
+          // dissolve, 2026-06-17 — this op now reaches the circle gate via
+          // mockStoopManifest): the bare `cancel` token is OWNED by
+          // calendar.cancelEvent ("cancel event/appointment X"); stoop
+          // DROPS it here (loser-drops-the-bare-token, same as
+          // share→folio / accept→calendar).  stoop keeps `withdraw` +
+          // the NL aliases.
           command: '/withdraw',
           match: {
-            verbs:   ['withdraw', 'cancel', 'intrekken', 'annuleer'],
+            verbs:   ['withdraw', 'intrekken', 'annuleer'],
             body:    'match',
             onEmpty: { skillId: 'cancelRequest', args: {} },
           },
@@ -263,19 +325,27 @@ export const stoopManifest = {
       verb:      'complete',  // canonical — marks the lend complete.
       appliesTo: { type: 'lend' },
       params: [
-        { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
+        // Part G dissolve (2026-06-17) — `/lend-return` was declared in
+        // BOTH manifests.  PARAM is the REAL skill's `requestId` (the
+        // former mock declared `itemId` + a realAgent itemId→requestId
+        // bridge; that redundant bridge is now REMOVED — the manifest
+        // declares the real param directly).  pickerSource carried over
+        // from the mock so bare `/lend-return` surfaces a clickable list.
+        { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY,
+          pickerSource: { listOp: 'listFeed' } },
       ],
       surfaces: {
         chat:  { hint: 'Mark a lend item as returned; cancels its return reminder.' },
+        // Richer mock gate kept (extra `['mark','returned']` verb +
+        // `arg`-bind + `onEmpty`); `arg` re-pointed to the real param
+        // `requestId`.  `/lend-return` (EN — domain-prefixed makes it
+        // unambiguous in a multi-app host).  `done` collides w/ household.
         slash: {
-          // Resolved 2026-05-21 (owner): `/lend-return` (EN —
-          // domain-prefixed makes it unambiguous in a multi-app host).
-          // `/returned` alone would be ambiguous vs tasks lifecycle.
-          // `/done` collides with household.  Aliases in match.verbs.
           command: '/lend-return',
           match: {
-            verbs:   ['returned', 'teruggebracht', 'terug'],
+            verbs:   ['returned', 'teruggebracht', 'terug', ['mark', 'returned']],
             body:    'match',
+            arg:     'requestId',
             onEmpty: { skillId: 'markReturned', args: {} },
           },
         },
@@ -292,7 +362,10 @@ export const stoopManifest = {
                        // the action's nature.
       appliesTo: { type: 'report' },
       params: [
-        { name: 'itemId', kind: 'string', required: true, ...ID_NONEMPTY  },
+        // Part G dissolve (2026-06-17) — `/report` was in BOTH manifests;
+        // the former mock added a `pickerSource` (label→id) + a row button.
+        { name: 'itemId', kind: 'string', required: true, ...ID_NONEMPTY,
+          pickerSource: { listOp: 'listFeed' } },
         { name: 'reason', kind: 'string', ...STR_NONEMPTY },  // optional but if present must be non-empty
       ],
       surfaces: {
@@ -373,16 +446,29 @@ export const stoopManifest = {
     {
       id:   'setPeerReveal',
       verb: 'set',  // F-SP1-e: non-canonical — local-only reveal flag.
+      // Part G dissolve (2026-06-17) — `/reveal` was a COLLISION: the real
+      // op is `setPeerReveal`; the former mock declared `revealPeer` (a
+      // SEMANTIC alias of setPeerReveal via STOOP_OP_ALIAS) on the SAME
+      // `/reveal` command.  Resolved by keeping ONE op — `setPeerReveal`
+      // — with the RICHER mock `/reveal` slash (`body: 'flags'`, so
+      // `/reveal <peer> --action=on` parses the flag).  The `revealPeer`
+      // op AND its STOOP_OP_ALIAS entry are DROPPED (the op is gone).
+      //
+      // PARAMS keep the chat-shell presentation vocab (`peer` + `action`
+      // on|off) — the realAgent adapter's `peer→peerWebid` +
+      // `action→reveal(boolean)` transforms are KEPT (legitimate
+      // presentation→storage mapping, NOT a redundant rename).  The
+      // adaptStoopReply branch now keys on `setPeerReveal`.
       params: [
-        { name: 'peerWebid',       kind: 'string',  required: true, ...STR_NONEMPTY },
-        { name: 'showDisplayName', kind: 'boolean' },  // default true server-side
+        { name: 'peer',   kind: 'string', required: true, ...STR_NONEMPTY },
+        { name: 'action', kind: 'enum', of: ['on', 'off'], required: false },
       ],
       surfaces: {
-        chat:  { hint: 'Locally flip "show real name" for a single peer.' },
+        chat:  { hint: 'reveal (or hide) a peer\'s real name' },
         slash: {
-          // Two-arg body (peerWebid + bool) — slash shell, no match.
           command: '/reveal',
           shape:   '/reveal <peer-webid> [on|off]',
+          body:    'flags',
         },
       },
     },
@@ -424,13 +510,14 @@ export const stoopManifest = {
       surfaces: {
         chat:  { hint: "Walk an item's embeds/deps tree, materialising cross-pod refs (Phase 3.3c decentralised read path)." },
         slash: {
-          // Collision-free.  Read-only; no NL alias needed in V0.
+          // Collision-free.  Read-only.
+          //
+          // Part C gate audit (folded in from the former mockStoopManifest
+          // at the Part G dissolve, 2026-06-17) — REMOVED the gate `match`:
+          // `/tree` is a debug tree-walk, not an NL user command, and the
+          // `body: 'match'` dropped the label.  Literal `/tree` stays; the
+          // NL gate is dropped (so "tree the item" falls to the LLM).
           command: '/tree',
-          match: {
-            verbs:   ['tree', 'boom'],
-            body:    'match',
-            onEmpty: { skillId: 'getItemTree', args: {} },
-          },
         },
       },
     },
@@ -450,12 +537,15 @@ export const stoopManifest = {
           // Collision-free with household's /add /list /done /remove
           // /help /task /tasks /claim /register.  Action verb at the
           // session scope.
+          //
+          // Part C gate audit (folded in from the former mockStoopManifest
+          // at the Part G dissolve, 2026-06-17) — REMOVED the gate `match`:
+          // `body: 'reject'` is NOT a valid renderSlash body kind (it
+          // throws "unknown body kind" when the circle gate projects every
+          // op's match).  Sign-out is a session op, not an NL one-liner.
+          // Literal `/sign-out` + the confirm-gated button stay; the NL
+          // gate is dropped (so "sign-out" falls to the LLM).
           command: '/sign-out',
-          match: {
-            verbs:   ['sign-out', 'signout', 'uitloggen'],
-            body:    'reject',  // no body — session-scoped, no args
-            onEmpty: { skillId: 'signOutOfPod', args: {} },
-          },
         },
         ui: {
           control: 'button',
@@ -465,6 +555,249 @@ export const stoopManifest = {
             message:  'Uitloggen van je pod?  Lopende synchronisatie wordt afgebroken.',
           },
         },
+      },
+    },
+
+    /* ═══════════════════════════════════════════════════════════════
+     * Part G dissolve (2026-06-17) — chat-shell ops folded in from the
+     * former `mockStoopManifest` (apps/canopy-chat/src/core/manifests/
+     * mockManifests.js), which is now a re-export of THIS manifest.
+     * These were the chat-shell's slash/gate surface for the SAME real
+     * stoop skills; co-locating them here makes the one manifest the
+     * single source of truth (no mock↔real drift).  Each op's substrate
+     * handler is real (110 stoop skills); the realAgent.js `appOrigin
+     * === 'stoop'` adapter bridges chat vocab → skill vocab where
+     * needed (semantic aliases + value/i18n transforms).
+     * ═══════════════════════════════════════════════════════════════ */
+
+    // ── Thin ALIASED ops (dispatch via STOOP_OP_ALIAS in realAgent.js) ──
+    // These carry a DISTINCT slash command from their real target, so
+    // they don't double-handle.  Same pattern tasks uses for getMyTasks.
+    /**
+     * `/feed` → listFeed → (alias) listOpen.  `src/followUps.js` +
+     * `circleStoopScope.SCOPED_LIST_OPS` reference `listFeed` by name,
+     * and `adaptStoopReply` has a `listFeed` reply branch — so this op
+     * id is load-bearing and stays as a thin alias of listOpen.
+     */
+    {
+      id:   'listFeed', verb: 'list',
+      appliesTo: { type: 'post' },
+      params: [],
+      surfaces: {
+        slash: { command: '/feed' },
+        chat:  { reply: 'list', hint: "list your buurt's feed" },
+        // S6.B — the morning brief (Q30) + /find (Q33) decls for listFeed
+        // are re-attached post-hoc in mockManifests.js (mirrors how the
+        // folio brief/search attach there) to keep this file declarative.
+      },
+    },
+    /**
+     * `/stoop-profile` → getStoopProfile → (alias) getMyProfile.
+     * `adaptStoopReply` keys its profile-record branch on
+     * `getStoopProfile`, so the op id stays.
+     */
+    {
+      id:   'getStoopProfile', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/stoop-profile' },
+        chat:  { reply: 'record', hint: 'show your stoop profile (handle + reveals)' },
+      },
+    },
+
+    // ── DM (button-only alias of canopy-chat's startDm) ──────────────
+    /**
+     * Slice 6d — per-row [DM] button on contact + member rows.  No
+     * substrate dispatch — onButtonTap intercepts + routes to
+     * ensureDmThread.  appliesTo gate kept here where 'contact'/'member'
+     * itemTypes are declared.
+     */
+    {
+      id:   'startDm', verb: 'add',
+      appliesTo: { type: ['contact', 'member'] },
+      params: [{ name: 'webid', kind: 'string', required: true }],
+      surfaces: {
+        chat: { reply: 'text', hint: 'open a DM with this peer' },
+        ui:   { control: 'button', label: 'DM' },
+      },
+    },
+
+    // ── Holiday mode (#185 A6) ───────────────────────────────────────
+    // setHolidayMode / getHolidayMode are real skills; the realAgent
+    // adapter translates the chat-shell {on:'on'|'off'} enum → boolean.
+    {
+      id:   'setHolidayMode', verb: 'submit',
+      params: [
+        { name: 'on', kind: 'enum', of: ['on', 'off'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/holiday-mode' },
+        chat:  { reply: 'text', hint: 'toggle holiday mode on/off' },
+      },
+    },
+    {
+      id:   'getHolidayMode', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/holiday-status' },
+        chat:  { reply: 'record', hint: 'show current holiday-mode state' },
+      },
+    },
+
+    // ── ContactBook (#186 A4) ────────────────────────────────────────
+    // Chat-shell enums are English (EN-first); the realAgent adapter
+    // translates EN→NL trust ('known'→'bekend', 'trusted'→'vertrouwd')
+    // + `min-trust`→`minTrust` at the boundary.
+    {
+      id:   'listContacts', verb: 'list',
+      appliesTo: { type: 'contact' },
+      params: [
+        { name: 'min-trust', kind: 'enum', of: ['known', 'trusted'], required: false },
+        { name: 'tag',       kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/contacts', body: 'flags' },
+        chat:  { reply: 'list', hint: 'list your contacts' },
+      },
+    },
+    {
+      id:   'addContact', verb: 'add',
+      params: [
+        { name: 'webid', kind: 'webid',  required: true },
+        { name: 'name',  kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/add-contact', body: 'flags' },
+        chat:  { reply: 'text', hint: 'add a 1:1 contact' },
+      },
+    },
+    {
+      id:   'removeContact', verb: 'remove',
+      appliesTo: { type: 'contact' },
+      params: [
+        { name: 'webid', kind: 'webid', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/remove-contact' },
+        chat:  { reply: 'text', hint: 'remove a contact' },
+        ui:    { control: 'button', label: 'Remove' },
+      },
+    },
+    {
+      id:   'setContactTrust', verb: 'submit',
+      appliesTo: { type: 'contact' },
+      params: [
+        { name: 'webid', kind: 'webid', required: true },
+        { name: 'level', kind: 'enum', of: ['known', 'trusted', 'none'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/contact-trust', body: 'flags' },
+        chat:  { reply: 'text', hint: 'set a contact\'s trust level' },
+      },
+    },
+    {
+      id:   'getContactShareQr', verb: 'list',
+      params: [
+        { name: 'trust', kind: 'enum', of: ['known', 'trusted'], required: false },
+      ],
+      surfaces: {
+        slash: { command: '/share-my-contact', body: 'flags' },
+        chat:  { reply: 'record', hint: 'show your contact-share payload (paste into a QR generator)' },
+      },
+    },
+
+    // ── Cluster C wizards (#196/#197/#198/#200) — #180 customRenderer ──
+    {
+      id:   'restoreFromMnemonicWizard', verb: 'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/restore-from-mnemonic' },
+        chat:  { hint: 'recover from a saved mnemonic phrase (DESTRUCTIVE)' },
+        page:  { kind: 'side-panel', title: 'Restore identity' },
+      },
+    },
+    {
+      id:   'conflictDisputeWizard', verb: 'add',
+      // #200 — per-bubble action on stoop posts.  Slash kept for
+      // general-dispute (no postId) + LLM tool-call surface.
+      appliesTo: { type: 'post', state: ['open'] },
+      params: [
+        { name: 'postId', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/dispute', body: 'flags' },
+        chat:  { hint: 'raise a conflict-resolution dispute in your buurt' },
+        page:  { kind: 'side-panel', title: 'Raise a dispute' },
+        ui:    { control: 'button', label: 'Dispute' },
+      },
+    },
+    {
+      id:   'postAudienceWizard', verb: 'add',
+      params: [
+        { name: 'text', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/post-audience', body: 'flags' },
+        chat:  { hint: 'post with audience targeting (trust + tags + distance)' },
+        page:  { kind: 'side-panel', title: 'Post with audience' },
+      },
+    },
+    {
+      id:   'encryptedBackupWizard', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/encrypted-backup' },
+        chat:  { hint: 'download a passphrase-encrypted snapshot of your data' },
+        page:  { kind: 'side-panel', title: 'Encrypted backup' },
+      },
+    },
+    {
+      id:   'createGroupWizard', verb: 'add',
+      params: [],
+      surfaces: {
+        slash: { command: '/create-group' },
+        chat:  { hint: 'create a new buurt: 5-step wizard' },
+        page:  { kind: 'side-panel', title: 'Create buurt' },
+      },
+    },
+    {
+      id:   'joinGroupWizard', verb: 'add',
+      params: [
+        { name: 'invite', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/join-group' },
+        chat:  { hint: 'join a buurt: open the 3-step rules-gate wizard' },
+        page:  { kind: 'side-panel', title: 'Join buurt' },
+      },
+    },
+
+    // ── Buurt / group surface (#189 B1+B2) ───────────────────────────
+    // V0: single-buurt info per agent instance.  realAgent.js
+    // auto-injects the configured groupId + synthesizes getCurrentGroup.
+    {
+      id:   'getCurrentGroup', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/groups' },
+        chat:  { reply: 'record', hint: 'show your current buurt' },
+      },
+    },
+    {
+      id:   'listGroupMembers', verb: 'list',
+      appliesTo: { type: 'member' },
+      params: [],
+      surfaces: {
+        slash: { command: '/group-members' },
+        chat:  { reply: 'list', hint: 'list members of your buurt' },
+      },
+    },
+    {
+      id:   'getGroupRules', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/group-rules' },
+        chat:  { reply: 'record', hint: 'show your buurt\'s rules' },
       },
     },
   ],
@@ -825,6 +1158,15 @@ export const stoopManifest = {
         // can land per-field when the substrate has a fit.
       ],
     },
+
+    // ──── Part G dissolve (2026-06-17) — feed + contacts views ──────────
+    // Folded in from the former mockStoopManifest.  APPENDED after the
+    // E.x web-page views so the existing navmodel section order
+    // (mine/privacy/settings/profile) is unchanged.  `validateView` pins
+    // `view.type ∈ manifest.itemTypes`; 'post' + 'contact' are declared
+    // as app-local types above.
+    { id: 'feed',     title: 'Feed',     type: 'post' },
+    { id: 'contacts', title: 'Contacts', type: 'contact' },
   ],
 };
 
