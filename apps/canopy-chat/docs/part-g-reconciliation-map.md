@@ -59,8 +59,13 @@ These mean the chat surface and the real handler disagree — a dispatch can fai
      `revealPeer`); 17 mock-only ops relocated; itemTypes += post/contact/member. Removed ONLY the redundant
      `markReturned itemId→requestId` rename; KEPT the i18n/value transforms (they're not drift). 33 ops, no dup
      commands (fitness-asserted). stoop 710 / canopy-chat 2693 green.
-   - **household — REMAINING** (last app): verify `markComplete` choreId↔match; `mockHouseholdManifest` stays a test
-     fixture per the plan. Smaller than stoop.
+   - **household — ✅ DONE 2026-06-18 (`b2d6040a`, Option B — architectural rewire).** NOT a manifest re-export: the
+     mock was a chore-vocab agent built INLINE in realAgent.js; `apps/household/` is a separate richer app canopy-chat
+     never consumed. Rewired canopy-chat's household dispatch onto the real `apps/household` skills + `householdManifest`,
+     with a new `adaptHouseholdReply` bridging the skills' text-bridge `{replies,stateUpdates}` to the structured renderer
+     (LIST→store-read `{items}`+buttons; ACTION→`{ok,message,itemId}`). `markComplete` now `match` (was `choreId`).
+     `mockHouseholdManifest` stays the test fixture only. Latent dispatch fix (parser carries command `appOrigin`).
+     **NB `/claim` now collides household↔tasks (first-mount).** ⇒ **PART G COMPLETE.**
 3. Keep `mockHouseholdManifest` as a test fixture only.
 4. Verify: `validateManifest` strict on the merged manifests; renderChat/renderSlash/renderGate +
    surface-coverage snapshot; slash-routing smoke (no double handlers).
