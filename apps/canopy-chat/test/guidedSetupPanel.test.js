@@ -23,9 +23,9 @@ describe('renderGuidedSetup', () => {
     s = submitGuidedStep(T, s, undefined).state;   // → apps (multiselect)
     const el = renderGuidedSetup(document.createElement('div'), { template: T, state: s, t, onAnswer });
     el.querySelector('input[data-value="stoop"]').checked = true;
-    el.querySelector('input[data-value="tasks-v0"]').checked = true;
+    el.querySelector('input[data-value="tasks"]').checked = true;
     el.querySelector('.cc-guided__btn--primary').click();
-    expect(onAnswer).toHaveBeenCalledWith(['stoop', 'tasks-v0']);
+    expect(onAnswer).toHaveBeenCalledWith(['stoop', 'tasks']);
   });
 
   it('a choice step dispatches the chosen value immediately', () => {

@@ -167,7 +167,9 @@ appRegistry.subscribe(() => { catalog = filterCatalog(rawCatalog, appRegistry); 
 const manifestsByOrigin = {
   'canopy-chat': canopyChatManifest,
   'household':   agent.manifest,
-  'tasks-v0':    mockTasksManifest,
+  // Part G (2026-06-17): keyed by the merged manifest's `.app` (now
+  // `'tasks'`) so embed-button lookup matches the catalog's appOrigin.
+  'tasks':       mockTasksManifest,
   'stoop':       mockStoopManifest,
   'folio':       mockFolioManifest,
   'calendar':    calendarManifest,
@@ -1600,12 +1602,13 @@ const callSkill = async (appOrigin, opId, args) => {
   if (appOrigin === 'household') {
     return agent.callSkill(appOrigin, opId, args);
   }
-  if (appOrigin === 'tasks-v0') {
-    // Post-slice-1 (integration-plan 2026-05-23): tasks-v0 is the
+  if (appOrigin === 'tasks') {
+    // Post-slice-1 (integration-plan 2026-05-23): the tasks app is the
     // real crew agent composed in realAgent.js (110 real skills).
     // realAgent.callSkill knows the bus address + the briefSummary
-    // / searchTasks / myInbox alias mappings.
-    return agent.callSkill('tasks-v0', opId, args);
+    // / searchTasks / myInbox alias mappings.  Part G (2026-06-17):
+    // app-origin is now `'tasks'` (the merged manifest's `.app`).
+    return agent.callSkill('tasks', opId, args);
   }
   if (appOrigin === 'stoop') {
     // Post-slice-2b (integration-plan 2026-05-23): stoop is the

@@ -29,8 +29,8 @@ describe('guided-setup run (default template)', () => {
     s = r.state;
     expect(stepOf(T, s).ask).toMatch(/which apps/i);
 
-    r = submitGuidedStep(T, s, ['stoop', 'tasks-v0']);  // apps (multiselect)
-    expect(r.applied).toEqual({ key: 'apps', value: ['stoop', 'tasks-v0'] });
+    r = submitGuidedStep(T, s, ['stoop', 'tasks']);  // apps (multiselect)
+    expect(r.applied).toEqual({ key: 'apps', value: ['stoop', 'tasks'] });
     s = r.state;
     expect(stepOf(T, s).sets).toBe('storagePosture');
 

@@ -23,6 +23,15 @@ import { tasksManifest }         from '../manifest.js';
 
 const ANNE = 'https://id.example/anne';
 
+/**
+ * Part G (2026-06-17) — chat-shell ops folded into the manifest from the
+ * former mockTasksManifest that resolve through realAgent.js (alias /
+ * derivation), NOT a same-named mountable skill:
+ *   - myInbox        → aliased to `listMyInbox`
+ *   - listCrewMembers→ derived from `getCrewConfig` (members[] unpack)
+ */
+const CHAT_SHELL_ALIAS_OPS = new Set(['myInbox', 'listCrewMembers']);
+
 async function setup() {
   const runtime  = await buildMultiCrewRuntime({ label: 'sp-4b-mount-test' });
   const mountable = createTasksMountable({
@@ -55,6 +64,7 @@ describe('SP-4b: tasks-v0 multi-crew through manifest-host', () => {
   it('mountable exposes a skillRegistry covering every manifest op', async () => {
     const { mountable } = await setup();
     for (const op of tasksManifest.operations) {
+      if (CHAT_SHELL_ALIAS_OPS.has(op.id)) continue;   // resolved via realAgent alias/derivation
       expect(
         mountable.skillRegistry,
         `manifest op "${op.id}" must be in the mountable skillRegistry`,

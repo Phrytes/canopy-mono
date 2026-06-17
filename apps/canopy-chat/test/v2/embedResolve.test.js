@@ -10,7 +10,7 @@ describe('resolveEmbedTitle', () => {
     const title = await resolveEmbedTitle({ callSkill, embed: { type: 'task', ref: 'urn:dec:item:T2' }, crewId: 'c-1' });
     expect(title).toBe('Fix the gate');
     // tries the verbatim ref first; passes crewId through
-    expect(callSkill).toHaveBeenCalledWith('tasks-v0', 'getTaskSnapshot', { id: 'urn:dec:item:T2', crewId: 'c-1' });
+    expect(callSkill).toHaveBeenCalledWith('tasks', 'getTaskSnapshot', { id: 'urn:dec:item:T2', crewId: 'c-1' });
   });
 
   it('falls back to the local-id tail when the verbatim ref misses', async () => {

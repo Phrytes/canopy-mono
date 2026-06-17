@@ -71,10 +71,10 @@ describe('buildFormSpec', () => {
       ],
       missing: ['text'],
       prefilledArgs: {},
-      opId: 'addTask', appOrigin: 'tasks-v0',
+      opId: 'addTask', appOrigin: 'tasks',
     });
     expect(spec.opId).toBe('addTask');
-    expect(spec.appOrigin).toBe('tasks-v0');
+    expect(spec.appOrigin).toBe('tasks');
     expect(spec.fields.length).toBe(2);
     expect(spec.fields[0]).toMatchObject({
       name: 'text', kind: 'string', required: true,

@@ -7,26 +7,26 @@ import { describe, it, expect } from 'vitest';
 import { snapshotsFromReply, embedButtonsForReply, embedsFromReply } from '../src/v2/replyEmbeds.js';
 import { mockTasksManifest } from '../src/core/manifests/mockManifests.js';
 
-const manifestsByOrigin = { 'tasks-v0': mockTasksManifest };
+const manifestsByOrigin = { 'tasks': mockTasksManifest };
 
 describe('snapshotsFromReply', () => {
   it('extracts a single created task + defaults its type from the appOrigin', () => {
-    const snaps = snapshotsFromReply({ task: { id: 't1', state: 'open', label: 'boodschappen' } }, { appOrigin: 'tasks-v0' });
+    const snaps = snapshotsFromReply({ task: { id: 't1', state: 'open', label: 'boodschappen' } }, { appOrigin: 'tasks' });
     expect(snaps).toEqual([{ id: 't1', type: 'task', state: 'open', label: 'boodschappen', fields: { id: 't1', state: 'open', label: 'boodschappen' } }]);
   });
   it('extracts a list (items/tasks) + dedups by id', () => {
-    const snaps = snapshotsFromReply({ items: [{ id: 'a', state: 'open' }, { id: 'b', state: 'claimed' }, { id: 'a', state: 'open' }] }, { appOrigin: 'tasks-v0' });
+    const snaps = snapshotsFromReply({ items: [{ id: 'a', state: 'open' }, { id: 'b', state: 'claimed' }, { id: 'a', state: 'open' }] }, { appOrigin: 'tasks' });
     expect(snaps.map((s) => s.id)).toEqual(['a', 'b']);
   });
   it('reads payload-wrapped replies + non-object → []', () => {
-    expect(snapshotsFromReply({ payload: { tasks: [{ id: 'x', state: 'open' }] } }, { appOrigin: 'tasks-v0' })[0].id).toBe('x');
-    expect(snapshotsFromReply(null, { appOrigin: 'tasks-v0' })).toEqual([]);
+    expect(snapshotsFromReply({ payload: { tasks: [{ id: 'x', state: 'open' }] } }, { appOrigin: 'tasks' })[0].id).toBe('x');
+    expect(snapshotsFromReply(null, { appOrigin: 'tasks' })).toEqual([]);
   });
 });
 
 describe('embedButtonsForReply (real tasks manifest, appliesTo-gated)', () => {
   it('an OPEN task offers Claim (state=open button) not Mark complete (state=claimed)', () => {
-    const btns = embedButtonsForReply({ reply: { task: { id: 't1', state: 'open', label: 'boodschappen' } }, appOrigin: 'tasks-v0', manifestsByOrigin });
+    const btns = embedButtonsForReply({ reply: { task: { id: 't1', state: 'open', label: 'boodschappen' } }, appOrigin: 'tasks', manifestsByOrigin });
     const ops = btns.map((b) => b.opId);
     expect(ops).toContain('claimTask');
     expect(ops).not.toContain('completeTask');   // gated out: completeTask is state:['claimed']
@@ -35,7 +35,7 @@ describe('embedButtonsForReply (real tasks manifest, appliesTo-gated)', () => {
   });
 
   it('a CLAIMED task offers Mark complete + Submit, not Claim', () => {
-    const btns = embedButtonsForReply({ reply: { task: { id: 't2', state: 'claimed', label: 'lekkage' } }, appOrigin: 'tasks-v0', manifestsByOrigin });
+    const btns = embedButtonsForReply({ reply: { task: { id: 't2', state: 'claimed', label: 'lekkage' } }, appOrigin: 'tasks', manifestsByOrigin });
     const ops = btns.map((b) => b.opId);
     expect(ops).toContain('completeTask');
     expect(ops).toContain('submitTask');
@@ -45,7 +45,7 @@ describe('embedButtonsForReply (real tasks manifest, appliesTo-gated)', () => {
   it('builds one button set per item across a list, keyed opId:itemId', () => {
     const btns = embedButtonsForReply({
       reply: { tasks: [{ id: 'a', state: 'open' }, { id: 'b', state: 'claimed' }] },
-      appOrigin: 'tasks-v0', manifestsByOrigin,
+      appOrigin: 'tasks', manifestsByOrigin,
     });
     expect(btns.some((b) => b.id === 'claimTask:a')).toBe(true);
     expect(btns.some((b) => b.id === 'completeTask:b')).toBe(true);
@@ -58,7 +58,7 @@ describe('embedButtonsForReply (real tasks manifest, appliesTo-gated)', () => {
 
 describe('embedsFromReply', () => {
   it('builds one embed for the ACTED-ON task (singular key), title from the reply', () => {
-    const out = embedsFromReply({ task: { id: 't2', state: 'open', text: 'Fix the gate' } }, { appOrigin: 'tasks-v0' });
+    const out = embedsFromReply({ task: { id: 't2', state: 'open', text: 'Fix the gate' } }, { appOrigin: 'tasks' });
     expect(out).toEqual([{ type: 'task', ref: 't2', title: 'Fix the gate' }]);
   });
 
@@ -68,7 +68,7 @@ describe('embedsFromReply', () => {
   });
 
   it('does NOT spawn chips for a LIST reply (only the acted-on singular item)', () => {
-    expect(embedsFromReply({ tasks: [{ id: 'a' }, { id: 'b' }] }, { appOrigin: 'tasks-v0' })).toEqual([]);
+    expect(embedsFromReply({ tasks: [{ id: 'a' }, { id: 'b' }] }, { appOrigin: 'tasks' })).toEqual([]);
   });
 
   it('handles itemId/eventId id aliases + a missing title', () => {

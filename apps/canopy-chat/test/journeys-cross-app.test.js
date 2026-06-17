@@ -83,11 +83,11 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
   const callSkill = async (appOrigin, opId, args) => {
     if (appOrigin === 'canopy-chat') return localBuiltins[opId]?.(args ?? {});
     if (appOrigin === 'household')   return agent.callSkill(appOrigin, opId, args);
-    if (appOrigin === 'tasks-v0') {
+    if (appOrigin === 'tasks') {
       // Post-slice-1 (integration-plan 2026-05-23): tasks-v0 is the
       // real crew agent.  Route directly; realAgent.callSkill knows
       // how to reach it + adapt the briefSummary/searchTasks ops.
-      return agent.callSkill('tasks-v0', opId, args);
+      return agent.callSkill('tasks', opId, args);
     }
     if (appOrigin === 'stoop') {
       // Post-slice-2b: stoop is the real NeighborhoodAgent composed
@@ -589,10 +589,15 @@ describe('CC-TK.5 + CC-TK.6 — DoD: submit → approve / reject', () => {
     expect(app.payload.message).toMatch(/Approved/);
   });
 
-  it('submit then reject returns task to claimed + records reason', async () => {
+  it('submit then reject returns task to claimed + records note', async () => {
     const id = await getClaimedTaskId();
-    await ws.userInput(`/submit ${id}`);
-    const rej = await ws.userInput(`/reject ${id} --reason="not yet"`);
+    // submitTask needs a non-empty note (audit-log) — the former realAgent
+    // note-default was removed in the Part G dissolve, so pass one.
+    await ws.userInput(`/submit ${id} --note="ready for review"`);
+    // Part G (2026-06-17): the rejection field is `note` (the real skill's
+    // vocab), not the former chat-shell `reason` — the manifest now declares
+    // `note` directly and the realAgent `reason→note` rewrite was removed.
+    const rej = await ws.userInput(`/reject ${id} --note="not yet"`);
     expect(rej.payload.ok).toBe(true);
     expect(rej.payload.message).toMatch(/Rejected/);
     expect(rej.payload.message).toMatch(/not yet/);

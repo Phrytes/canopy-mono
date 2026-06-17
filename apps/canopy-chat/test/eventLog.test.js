@@ -88,7 +88,7 @@ describe('EventLog — query', () => {
     log.append(ev({ id: '1', ts: 1000, app: 'household', type: 'item-changed', actor: 'webid:anne' }));
     log.append(ev({ id: '2', ts: 2000, app: 'stoop',     type: 'notification', actor: 'webid:karl' }));
     log.append(ev({ id: '3', ts: 3000, app: 'household', type: 'notification', actor: 'webid:anne' }));
-    log.append(ev({ id: '4', ts: 4000, app: 'tasks-v0',  type: 'item-changed', actor: 'webid:maria' }));
+    log.append(ev({ id: '4', ts: 4000, app: 'tasks',  type: 'item-changed', actor: 'webid:maria' }));
     return log;
   };
 
@@ -105,7 +105,7 @@ describe('EventLog — query', () => {
 
   it("expression-tree filter — OR of apps", () => {
     const r = seed().query({
-      filter: { or: [{ apps: ['stoop'] }, { apps: ['tasks-v0'] }] },
+      filter: { or: [{ apps: ['stoop'] }, { apps: ['tasks'] }] },
     });
     expect(r.map((e) => e.id)).toEqual(['4', '2']);
   });

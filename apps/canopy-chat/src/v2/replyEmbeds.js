@@ -20,7 +20,7 @@ import { computeEmbedButtons } from '../core/embedButtons.js';
 // Default item `type` per appOrigin so `computeEmbedButtons`' appliesTo.type
 // matches when a reply item doesn't carry an explicit `type` (a task list often
 // returns bare `{id, state, label}`).
-const ORIGIN_DEFAULT_TYPE = { 'tasks-v0': 'task', tasks: 'task', calendar: 'event', folio: 'file' };
+const ORIGIN_DEFAULT_TYPE = { tasks: 'task', calendar: 'event', folio: 'file' };
 
 /** Extract item snapshots `{id, type, state, label, fields}` from a dispatch reply. */
 export function snapshotsFromReply(reply, { appOrigin } = {}) {

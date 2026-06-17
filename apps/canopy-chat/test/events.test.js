@@ -165,7 +165,7 @@ describe('EventRouter — subscriptions', () => {
       payload: { message: 'one' },
     });
     router.deliver({
-      id: 'e-2', ts: 0, app: 'tasks-v0', type: 'reminder',
+      id: 'e-2', ts: 0, app: 'tasks', type: 'reminder',
       payload: { message: 'two' },
     });
     expect(calls).toEqual([
@@ -352,13 +352,13 @@ describe('EventRouter — E3 onPanelStale auto-refresh seam', () => {
     s.getThread('main').addShellMessage(
       { kind: 'record', messageId: 'p-1', lifecycleState: 'live',
         payload: { id: 'task-9', type: 'task', title: 'old' } },
-      { opId: 'getTask', appOrigin: 'tasks-v0', args: { id: 'task-9' } },
+      { opId: 'getTask', appOrigin: 'tasks', args: { id: 'task-9' } },
     );
     return s;
   }
   const changed = (id) => ({
-    app: 'tasks-v0', type: 'item-changed', actor: 'webid:me',
-    itemRef: { app: 'tasks-v0', type: 'task', id },
+    app: 'tasks', type: 'item-changed', actor: 'webid:me',
+    itemRef: { app: 'tasks', type: 'task', id },
   });
 
   it('fires onPanelStale(thread, panel, itemRef) for a matching panel + marks it stale', () => {
@@ -369,7 +369,7 @@ describe('EventRouter — E3 onPanelStale auto-refresh seam', () => {
     const [thread, panel, itemRef] = onPanelStale.mock.calls[0];
     expect(thread.id).toBe('main');
     expect(panel.messageId).toBe('p-1');
-    expect(panel.sourceOp).toEqual({ opId: 'getTask', appOrigin: 'tasks-v0', args: { id: 'task-9' } });
+    expect(panel.sourceOp).toEqual({ opId: 'getTask', appOrigin: 'tasks', args: { id: 'task-9' } });
     expect(itemRef.id).toBe('task-9');
     expect(store.getThread('main').messages.find((m) => m.messageId === 'p-1').rendered.stale).toBe(true);
   });

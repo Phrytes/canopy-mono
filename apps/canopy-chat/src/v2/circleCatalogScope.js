@@ -9,7 +9,7 @@
 //
 // Default scope = `DEFAULT_CIRCLE_ORIGINS` (the 5 circle apps — drops canopy-chat's account/transport
 // infra ops). A per-circle `policy.apps` array narrows further (e.g. a household circle → ['household',
-// 'tasks-v0']). Pure: returns a new catalog object reusing the original's helpers; opsById/commandMenu
+// 'tasks']). Pure: returns a new catalog object reusing the original's helpers; opsById/commandMenu
 // filtered by `appOrigin`.
 
 import { DEFAULT_CIRCLE_ORIGINS } from './circleSources.js';

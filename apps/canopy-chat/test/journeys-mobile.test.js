@@ -77,7 +77,7 @@ async function bootWorkspace({ chatVault } = {}) {
   const callSkill = async (appOrigin, opId, args) => {
     if (appOrigin === 'canopy-chat') return localBuiltins[opId]?.(args ?? {});
     if (appOrigin === 'household')   return agent.callSkill(appOrigin, opId, args);
-    if (appOrigin === 'tasks-v0')    return agent.callSkill('tasks-v0', opId, args);
+    if (appOrigin === 'tasks')    return agent.callSkill('tasks', opId, args);
     if (appOrigin === 'stoop')       return agent.callSkill('stoop', opId, args);
     if (appOrigin === 'folio')       return agent.callSkill('folio', opId, args);
     if (appOrigin === 'calendar')    return agent.callSkill('household', `calendar_${opId}`, args);
@@ -253,7 +253,7 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
 
     // #219 slice-b skill: addSubtask.  Substrate ID is the same as
     // the slash command's body=flags form.
-    const sub = await ws.callSkill('tasks-v0', 'addSubtask', {
+    const sub = await ws.callSkill('tasks', 'addSubtask', {
       parentTaskId: parentId,
       text:         'Bring extra bags',
       crewId,
@@ -266,7 +266,7 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
     if (sub.task) {
       // Parent's dependencies should include the new sub-task id.
       // Read via listOpen — the substrate path the chat-shell uses.
-      const list = await ws.callSkill('tasks-v0', 'listOpen', { crewId });
+      const list = await ws.callSkill('tasks', 'listOpen', { crewId });
       const parentAfter = (list.items ?? []).find((i) => i.id === parentId);
       expect(parentAfter).toBeTruthy();
       expect(parentAfter.dependencies ?? []).toContain(sub.task.id);

@@ -9,7 +9,8 @@
  */
 
 export const APP_FEATURE = Object.freeze({
-  'tasks-v0': 'tasks',
+  // Part G (2026-06-17): the tasks app-origin is now `'tasks'` (the
+  // legacy `'tasks-v0'` key was dropped — dispatch never emits it now).
   tasks:      'tasks',
   calendar:   'calendar',
   folio:      'lists',

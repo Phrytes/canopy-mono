@@ -143,7 +143,7 @@ async function materializeAgenda(block, activeCircleIds, { callSkill } = {}) {
 
 /**
  * α.4 — tasks block across multiple kringen.  Query each active kring's
- * tasks-v0 crew, filter by scope, merge + cap.  The "Mijn dingen" screen
+ * tasks crew, filter by scope, merge + cap.  The "Mijn dingen" screen
  * uses scope:'assigned-to-me' across kringFilter=ALL to aggregate every
  * task assigned to the user across the kringen they're in.
  */
@@ -156,7 +156,7 @@ async function materializeTasks(block, activeCircleIds, { callSkill, myWebid, ci
   const circleNameMap = new Map((circles ?? []).map((c) => [c?.id, c?.name ?? '']));
   const buckets = await Promise.all(activeCircleIds.map(async (cid) => {
     try {
-      const res = await callSkill('tasks-v0', 'listOpen', { crewId: cid });
+      const res = await callSkill('tasks', 'listOpen', { crewId: cid });
       const raw = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
       return raw.map((t) => ({
         id:         t.id,

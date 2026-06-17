@@ -43,7 +43,7 @@ export const DEFAULT_SETTINGS_TEMPLATE = Object.freeze({
       sets: 'apps',
       options: [
         { value: 'stoop',    label: 'Neighborhood' },
-        { value: 'tasks-v0', label: 'Tasks' },
+        { value: 'tasks',    label: 'Tasks' },
         { value: 'calendar', label: 'Calendar' },
         { value: 'folio',    label: 'Files' },
         { value: 'household', label: 'Household' },

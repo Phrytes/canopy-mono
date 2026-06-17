@@ -3,9 +3,9 @@ import { clarifyCommandTargets } from '../../src/v2/clarifyTargets.js';
 
 // markComplete takes an id-like `target` (pickerSource → listOpen); addTask takes a plain title.
 const CATALOG = { opsById: new Map([
-  ['markComplete', { appOrigin: 'tasks-v0', op: { id: 'markComplete', params: [
+  ['markComplete', { appOrigin: 'tasks', op: { id: 'markComplete', params: [
     { name: 'target', kind: 'string', required: true, pickerSource: { listOp: 'listOpen' } } ] } }],
-  ['addTask', { appOrigin: 'tasks-v0', op: { id: 'addTask', params: [{ name: 'title', kind: 'string', required: true }] } }],
+  ['addTask', { appOrigin: 'tasks', op: { id: 'addTask', params: [{ name: 'title', kind: 'string', required: true }] } }],
 ]) };
 
 const lookupOf = (items) => vi.fn(async () => items);
@@ -16,7 +16,7 @@ describe('clarifyCommandTargets', () => {
     const r = await clarifyCommandTargets({ opId: 'markComplete', args: { target: 'dishes' } }, { catalog: CATALOG, lookup, scope: { id: 'circle-A' } });
     expect(r).toEqual({ kind: 'ready', opId: 'markComplete', args: { target: 'T1' } });
     // app-qualified: the op's appOrigin is passed so the picker's listOp resolves on the RIGHT app.
-    expect(lookup).toHaveBeenCalledWith('listOpen', 'dishes', { id: 'circle-A' }, 'tasks-v0');
+    expect(lookup).toHaveBeenCalledWith('listOpen', 'dishes', { id: 'circle-A' }, 'tasks');
   });
 
   it('returns clarify with candidates on an AMBIGUOUS match', async () => {

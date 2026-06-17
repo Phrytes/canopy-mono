@@ -41,7 +41,7 @@ describe('makeResolvingCallSkill — catalog short-circuit (Perf #2)', () => {
     const spy = makeSpy();
     const catalog = {
       opsById: new Map([
-        ['listNotes', { op: { id: 'listNotes' }, appOrigin: 'tasks-v0' }],
+        ['listNotes', { op: { id: 'listNotes' }, appOrigin: 'tasks' }],
       ]),
     };
     const call = makeResolvingCallSkill(spy.raw, DEFAULT_CIRCLE_ORIGINS, catalog);
@@ -49,7 +49,7 @@ describe('makeResolvingCallSkill — catalog short-circuit (Perf #2)', () => {
     // Exactly one probe (tasks-v0), zero wasted probes on stoop / household /
     // calendar / folio.  Replaces 5 probes with 1.
     expect(spy.calls).toHaveLength(1);
-    expect(spy.calls[0].origin).toBe('tasks-v0');
+    expect(spy.calls[0].origin).toBe('tasks');
   });
 
   it('catalog with no matching origin → ZERO probes', async () => {
@@ -86,7 +86,7 @@ describe('makeResolvingCallSkill — catalog short-circuit (Perf #2)', () => {
     const catalog = {
       opsById: new Map([
         ['stoop/x',    { op: { id: 'x' }, appOrigin: 'stoop'    }],
-        ['tasks-v0/x', { op: { id: 'x' }, appOrigin: 'tasks-v0' }],
+        ['tasks-v0/x', { op: { id: 'x' }, appOrigin: 'tasks' }],
       ]),
     };
     const call = makeResolvingCallSkill(spy.raw, DEFAULT_CIRCLE_ORIGINS, catalog);
@@ -166,7 +166,7 @@ describe('createRealHouseholdAgent — seed-once budget (Perf #1)', () => {
     void invocations;   // sanity-bound; assertion below is via listOpen post-boot.
 
     // After a clean boot with seeding DISABLED, listOpen sees the empty crew.
-    const r = await a.callSkill('tasks-v0', 'listOpen', {});
+    const r = await a.callSkill('tasks', 'listOpen', {});
     const items = Array.isArray(r?.items) ? r.items : [];
     expect(items).toHaveLength(0);   // no seeds, no leftover state.
   }, 30_000);

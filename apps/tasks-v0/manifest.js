@@ -17,11 +17,22 @@
  * multi-state gates (`['claimed','submitted','rejected']` for revoke,
  * etc.).  Tiny additive extension of `renderChat.matchesAppliesTo`.
  *
- * `surfaces.slash` is intentionally absent — tasks-v0 has no current
- * slash consumer (it is a browser web UI).  When a chat/bot wants
- * tasks ops, it consumes `renderChat(tasksManifest).toolCatalog`
- * directly (LLM tool-calls); a slash grammar can land later if a
- * Telegram bridge is wired.
+ * **Part G dissolve (2026-06-17):** this is now the ONE tasks manifest.
+ * canopy-chat's former `mockTasksManifest` (the chat-shell slash/gate
+ * surface for the REAL tasks-v0 skills) was folded in here and re-
+ * exported as `mockTasksManifest` (Option 2 — clean, no back-compat
+ * vocab bridges).  So the app's web/mobile screens AND the chat shell
+ * (circle LLM + deterministic gate) now read a single source of truth.
+ * `surfaces.slash` (with the device-verified Part-C gate `match`
+ * objects), id-param `pickerSource`, and `ui` buttons live below; the
+ * circle bot's deterministic gate (`renderGate`) reads them straight
+ * from here.
+ *
+ * Param vocabulary speaks the REAL skill's names (no shell-side rewrite):
+ * `rejectTask` declares `note` (not the mock's `reason`); `submitTask`
+ * keeps the real optional `note`.  Semantic op-aliases that ARE product
+ * decisions (listMine→listOpen, getMyTasks→listOpen, myInbox→listMyInbox)
+ * stay in `realAgent.js`'s `TASKS_OP_ALIAS` — they are NOT drift.
  *
  * Hints come from the existing `defineSkill({description})` strings
  * (one source — no fresh prose).
@@ -58,7 +69,13 @@ export const tasksManifest = {
    * `{policy, groupPodUri?}`), not a list of items.  See V0.3 Q17
    * (`shape: 'record'`) — the view encodes that reality.
    */
-  itemTypes: ['task', 'inbox-item', 'crew-storage-policy', 'crew'],
+  // Part G (2026-06-17) — 'schedule-slot' + 'member' folded in from the former
+  // mockTasksManifest (the suggest/acceptSchedule + listCrewMembers ops gate on
+  // them).  'subtask-request' / 'subtask-proposal' already model the inbox-kind
+  // subtask ops via `appliesTo.kind` on 'inbox-item'; the mock's standalone
+  // subtask ops (addSubtask / proposeSubtask) gate on 'task', so no new type is
+  // needed for those.
+  itemTypes: ['task', 'inbox-item', 'crew-storage-policy', 'crew', 'schedule-slot', 'member'],
 
   operations: [
     {
@@ -72,7 +89,17 @@ export const tasksManifest = {
         { name: 'definitionOfDone', kind: 'string' },
       ],
       surfaces: {
-        chat: { hint: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.' },
+        // Part G (2026-06-17) — slash/gate folded in from the former mockTasksManifest.
+        slash: { command: '/addtask', body: 'flags',
+          // F-SP2 (2026-06-11) — the deterministic NL gate (renderSlash/renderGate): "add X" routes
+          // here without the LLM. `text-only` → the body is the task text; dropTrailing strips the
+          // "… to/op the list" qualifier so "add milk to the list" → text "milk".
+          match: {
+            verbs:        ['add', 'todo', ['new', 'task'], 'voeg', 'zet', ['maak', 'taak'], ['nieuwe', 'taak']],
+            body:         'text-only',
+            dropTrailing: ['to', 'aan', 'op', 'toe'],
+          } },
+        chat: { reply: 'text', hint: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.' },
       },
     },
     {
@@ -80,9 +107,25 @@ export const tasksManifest = {
       verb:      'claim',
       appliesTo: { type: 'task', state: ['open'] },                      // F-SP3-a
       params: [
-        { name: 'id', kind: 'string', required: true, ...ID_NONEMPTY },
+        {
+          name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
+          // v0.7.Q34 — bare `/claim` → form shows clickable task list.
+          // Resolve the label against OPEN tasks: claim applies to state:['open'], and listMine
+          // excludes the unclaimed tasks you'd actually be claiming (device-verify 2026-06-11 — a
+          // freshly-added task was never in listMine, so "claim X" never resolved → "couldn't find X").
+          pickerSource: { listOp: 'listOpen' },
+        },
       ],
       surfaces: {
+        // Part G (2026-06-17) — slash/gate + pickerSource folded in.
+        slash: { command: '/claim',
+          // NL gate — "claim X" / "I'll take X" / "ik pak X" → claimTask{id}. `arg:'id'` targets the
+          // pickerSource param so the clarifying dispatch resolves the label → a real task id.
+          match: {
+            verbs: ['claim', 'pak', 'neem', ["i'll", 'take'], ["i'll", 'do'], ['ik', 'pak'], ['ik', 'doe'], ['ik', 'neem']],
+            body:  'match',
+            arg:   'id',
+          } },
         chat: {
           hint:  'Compare-and-swap claim a task.',
           // Q29 (canopy-chat v0.5, 2026-05-22) — declare a snapshot
@@ -98,9 +141,28 @@ export const tasksManifest = {
       verb:      'complete',
       appliesTo: { type: 'task', state: ['claimed'] },                   // F-SP3-a
       params: [
-        { name: 'id', kind: 'string', required: true, ...ID_NONEMPTY },
+        {
+          name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
+          // v0.7.Q34 — bare `/complete-task` → form picks from open tasks. completeTask is self-mark
+          // mode (tasks-v0 `bot.markComplete` completes by label with NO prior claim), so resolve the
+          // label against listOpen — listMine misses freshly-added unassigned tasks (device-verify
+          // 2026-06-11 — "done socks" → listMine:[] → "couldn't find socks in this circle").
+          pickerSource: { listOp: 'listOpen' },
+        },
       ],
       surfaces: {
+        // Part G (2026-06-17) — slash/gate + pickerSource folded in.
+        slash: { command: '/complete-task',
+          // NL gate — "done X" / "klaar met X" → completeTask{id}. Multiword phrases first so
+          // "klaar met afwas" beats the bare "klaar". `arg:'id'` for the pickerSource resolution.
+          match: {
+            verbs: [['klaar', 'met'], ['done', 'with'], 'done', 'complete', 'completed', 'finished', 'klaar', 'voltooid', 'gedaan'],
+            body:  'match',
+            arg:   'id',
+            // Also match the verb TRAILING the object ("kaas done", "afwas klaar") — the per-locale
+            // 'complete' verb list (circleGateLexicon) is tried after the leading verbs above fail.
+            trailing: 'complete',
+          } },
         chat: {
           hint: 'Mark a task complete.',
           // Q29 — same factory; lifecycle ops share the snapshot skill.
@@ -162,11 +224,18 @@ export const tasksManifest = {
       verb:      'submit',
       appliesTo: { type: 'task', state: ['claimed', 'rejected'] },        // F-SP3-a
       params: [
-        { name: 'id',   kind: 'string', required: true, ...ID_NONEMPTY },
+        {
+          name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
+          pickerSource: { listOp: 'listMine' },          // Part C — label→id resolution for the gate
+        },
         { name: 'note', kind: 'string' },
       ],
       surfaces: {
-        chat: { hint: 'Submit a claimed task for approval.' },
+        // Part G (2026-06-17) — slash/gate + pickerSource folded in.
+        slash: { command: '/submit', body: 'flags',
+          // Part C gate — "submit X" → submitTask{id}; id already has pickerSource:listMine.
+          match: { verbs: ['submit', ['hand', 'in'], 'indienen', 'inleveren', ['ter', 'review']], body: 'match', arg: 'id' } },
+        chat: { reply: 'text', hint: 'Submit a claimed task for approval.' },
         ui:   { control: 'button', label: 'Submit for review' },
       },
     },
@@ -175,11 +244,18 @@ export const tasksManifest = {
       verb:      'approve',
       appliesTo: { type: 'task', state: ['submitted'] },                  // F-SP3-a
       params: [
-        { name: 'id',   kind: 'string', required: true, ...ID_NONEMPTY },
+        {
+          name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
+          pickerSource: { listOp: 'listMine' },          // Part C — label→id resolution for the gate
+        },
         { name: 'note', kind: 'string' },
       ],
       surfaces: {
-        chat: { hint: 'Approve a submitted task.' },
+        // Part G (2026-06-17) — slash/gate + pickerSource folded in.
+        // Part C gate — bare 'accept' is calendar.rsvpAccept's (collision); approveTask keeps approve/goedkeuren/akkoord.
+        slash: { command: '/approve',
+          match: { verbs: ['approve', 'goedkeuren', 'akkoord'], body: 'match', arg: 'id' } },
+        chat: { reply: 'text', hint: 'Approve a submitted task.' },
         ui:   { control: 'button', label: 'Approve' },
       },
     },
@@ -188,11 +264,23 @@ export const tasksManifest = {
       verb:      'reject',
       appliesTo: { type: 'task', state: ['submitted'] },                  // F-SP3-a
       params: [
-        { name: 'id',   kind: 'string', required: true, ...ID_NONEMPTY  },
+        {
+          name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
+          pickerSource: { listOp: 'listMine' },          // Part C — label→id resolution
+        },
+        // Part G reconciliation (2026-06-17): the mock used `reason`; the
+        // REAL item-store skill wants `note` (audit-log convention) — REAL WINS.
+        // The chat shell's former `reason→note` rewrite in realAgent.js is
+        // therefore removed; the manifest declares the real name directly.
         { name: 'note', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
       surfaces: {
-        chat: { hint: 'Reject a submitted task with a mandatory note.' },
+        // Part G (2026-06-17) — slash/gate + pickerSource folded in.
+        // `body:'flags'` carries `--note=…`; Part C gate — rejectTask owns reject/afkeuren/afwijzen
+        // (collision vs calendar.rsvpDecline, which keeps 'decline').
+        slash: { command: '/reject', body: 'flags',
+          match: { verbs: ['reject', 'afkeuren', 'afwijzen', 'weiger'], body: 'match', arg: 'id' } },
+        chat: { reply: 'text', hint: 'Reject a submitted task with a mandatory note.' },
         ui:   { control: 'button', label: 'Reject' },
       },
     },
@@ -238,7 +326,21 @@ export const tasksManifest = {
       appliesTo: { type: 'task' },
       params:    [],
       surfaces: {
-        chat: { hint: 'List open tasks assigned to the calling actor.' },
+        // Part G (2026-06-17) — slash/brief/search/screen folded in from the
+        // former mockTasksManifest.  NB the chat-shell semantic of /mytasks is
+        // broader than "tasks assigned to me" (realAgent aliases listMine→listOpen
+        // — a product decision, not drift).
+        slash: { command: '/mytasks' },
+        chat: {
+          reply: 'list',
+          hint:  'List open tasks assigned to the calling actor.',
+          brief:  { summarySkill: 'briefSummary', order: 5, label: 'Tasks' },
+          search: { searchSkill:  'searchTasks' },
+        },
+        // S6.B — this overview op can open a dedicated screen (the Schermen
+        // `tasks` block) instead of only listing inline. The host renders an
+        // "Open …" affordance + a panel; the label is locale-resolved.
+        ui: { screen: 'tasks' },
       },
     },
     {
@@ -372,6 +474,8 @@ export const tasksManifest = {
         { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
       ],
       surfaces: {
+        // Part G (2026-06-17) — slash folded in from mockTasksManifest.
+        slash: { command: '/approve-subtask-request' },
         chat: { hint: 'Approve a queued sub-task request (admin/coordinator only).' },
         ui:   { control: 'button', label: 'Approve' },
       },
@@ -385,6 +489,8 @@ export const tasksManifest = {
         { name: 'note',      kind: 'string' },               // optional reason
       ],
       surfaces: {
+        // Part G (2026-06-17) — slash folded in from mockTasksManifest.
+        slash: { command: '/decline-subtask-request', body: 'flags' },
         chat: { hint: 'Decline a queued sub-task request (admin/coordinator only).' },
         ui:   { control: 'button', label: 'Decline' },
       },
@@ -397,8 +503,10 @@ export const tasksManifest = {
         { name: 'proposalId', kind: 'string', required: true, ...ID_NONEMPTY },
       ],
       surfaces: {
+        // Part G (2026-06-17) — slash folded in from mockTasksManifest.
+        slash: { command: '/approve-subtask-proposal' },
         chat: { hint: 'Approve a sub-task proposal (parent assignee; rolls submission back to claimed).' },
-        ui:   { control: 'button', label: 'Approve' },
+        ui:   { control: 'button', label: 'Accept' },
       },
     },
     {
@@ -410,6 +518,8 @@ export const tasksManifest = {
         { name: 'note',       kind: 'string' },              // optional reason
       ],
       surfaces: {
+        // Part G (2026-06-17) — slash folded in from mockTasksManifest.
+        slash: { command: '/decline-subtask-proposal', body: 'flags' },
         chat: { hint: 'Decline a sub-task proposal (parent assignee; reason shown to proposer).' },
         ui:   { control: 'button', label: 'Decline' },
       },
@@ -485,14 +595,20 @@ export const tasksManifest = {
     {
       id:        'archiveCrew',
       verb:      'archive',
-      params:    [],
+      // Part G (2026-06-17) — the mock declared a `confirm` flag; realAgent's
+      // Q27 two-step gate reads `args.confirm`.  Additive (real had no params).
+      params:    [
+        { name: 'confirm', kind: 'boolean', required: false },
+      ],
       // 'crew' itemType is the natural scope for crew-lifecycle ops.
       // Crews aren't surfaced by any view today (the crew dashboard
       // is hand-coded); appliesTo keeps the op off task-level inline
       // keyboards while letting chat agents address it by name.
       appliesTo: { type: 'crew' },
       surfaces: {
-        chat: { hint: 'Archive this crew — admin only. Hides it from active workflows; items are kept.' },
+        // Part G (2026-06-17) — slash folded in from mockTasksManifest.
+        slash: { command: '/archive-crew', body: 'flags' },
+        chat: { reply: 'text', hint: 'Archive this crew — admin only. Hides it from active workflows; items are kept.' },
         ui: {
           control: 'button',
           label:   'Archive crew',
@@ -509,9 +625,283 @@ export const tasksManifest = {
       params:    [],
       appliesTo: { type: 'crew' },
       surfaces: {
-        chat: { hint: 'Unarchive this crew — admin only.  Resumes new-task creation.' },
+        // Part G (2026-06-17) — slash folded in from mockTasksManifest.
+        slash: { command: '/unarchive-crew' },
+        chat: { reply: 'text', hint: 'Unarchive this crew — admin only.  Resumes new-task creation.' },
         // No confirm — unarchive is the undo path; low-barrier reversal.
         ui:   { control: 'button', label: 'Unarchive crew' },
+      },
+    },
+
+    /* ── Chat-shell ops (Part G dissolve, 2026-06-17) ───────────────────
+     * Folded in from canopy-chat's former `mockTasksManifest`.  These are
+     * the circle/chat-shell surface for the REAL tasks-v0 crew skills
+     * (handlers via createBrowserMultiCrewTasksAgent / realAgent).  Each
+     * declares `surfaces.slash` (+ a Part-C gate `match` where the op has a
+     * casual NL phrasing), so the circle LLM + the deterministic gate read
+     * them straight from this one manifest.  Params speak the REAL skill's
+     * vocab (no shell-side rewrite). */
+
+    /**
+     * #219 (2026-05-24) — patch body fields on an existing task.
+     * Wraps the substrate editTask skill which delegates to
+     * itemStore.update with the forbidden-field gate.  Row button shows
+     * on open OR claimed tasks (post-completion edits are out of scope).
+     */
+    {
+      id:    'editTask', verb: 'edit',
+      appliesTo: { type: 'task', state: ['open', 'claimed'] },
+      params: [
+        { name: 'id',               kind: 'string',  required: true,
+          pickerSource: { listOp: 'listMine' } },
+        { name: 'text',             kind: 'string',  required: false },
+        { name: 'notes',            kind: 'string',  required: false },
+        { name: 'dueAt',            kind: 'string',  required: false },
+        { name: 'requiredSkills',   kind: 'string',  required: false },
+        { name: 'scheduledAt',      kind: 'string',  required: false },
+        { name: 'estimateMinutes',  kind: 'number',  required: false },
+        { name: 'definitionOfDone', kind: 'string',  required: false },
+        { name: 'visibility',       kind: 'string',  required: false },
+      ],
+      surfaces: {
+        slash: { command: '/edit-task', body: 'flags' },
+        ui:    { control: 'button', label: 'Edit' },
+        chat:  { reply: 'text', hint: 'patch fields on an existing task' },
+      },
+    },
+    /**
+     * v0.7.cc — `/crew-new <name> --kind=<household|project|team|...>`.
+     * Mirrors tasks-v0 V2's provisionMyCrew.  Returns a crew id +
+     * suggested next ops (invite a member, add the first task).
+     */
+    {
+      id:    'provisionMyCrew', verb: 'add',
+      params: [
+        { name: 'name', kind: 'string', required: true },
+        { name: 'kind', kind: 'enum',
+          of: ['household', 'project', 'team', 'friends', 'maintenance'],
+          required: false },
+      ],
+      surfaces: {
+        slash: { command: '/crew-new', body: 'flags' },
+        chat:  { reply: 'text', hint: 'provision a new crew' },
+      },
+    },
+    /**
+     * v0.7.cc — `/inbox` — list mentions / pending review items for the
+     * current user.  Chat-shell op id; realAgent aliases myInbox→listMyInbox
+     * (a product-semantic alias, not drift).
+     */
+    {
+      id:    'myInbox', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/inbox' },
+        chat:  { reply: 'list', hint: 'list mentions + items needing my attention' },
+      },
+    },
+    /**
+     * #195 (B7, 2026-05-24) — availability half-day grid.  Wires
+     * tasks-v0's per-member availability hints.
+     */
+    {
+      id:    'getMyAvailability', verb: 'list',
+      params: [
+        { name: 'week', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/availability', body: 'flags' },
+        chat:  { reply: 'record', hint: 'show my availability grid for this week' },
+      },
+    },
+    {
+      id:    'setMyAvailability', verb: 'submit',
+      params: [
+        { name: 'cellKey', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/set-availability' },
+        chat:  { reply: 'text', hint: 'set one half-day cell (week|day|half|state)' },
+      },
+    },
+    {
+      id:    'setAvailabilityOptIn', verb: 'submit',
+      params: [
+        { name: 'on', kind: 'enum', of: ['on', 'off'], required: true },
+      ],
+      surfaces: {
+        slash: { command: '/availability-opt-in' },
+        chat:  { reply: 'text', hint: 'opt in/out of broadcasting availability hints' },
+      },
+    },
+    /**
+     * #193 (B6, 2026-05-23) — auto-scheduling planner.  Wires
+     * suggestSchedule + acceptSchedule.  slotKey shape:
+     * "taskId|slotStartMs|slotEndMs" — encoded into the row id so [Pick]
+     * buttons dispatch all three args.
+     */
+    {
+      id:    'suggestSchedule', verb: 'list',
+      appliesTo: { type: 'schedule-slot' },
+      params: [
+        { name: 'lookahead-days', kind: 'number', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/suggest-schedule', body: 'flags' },
+        chat:  { reply: 'list', hint: 'suggest scheduling slots for my open tasks' },
+      },
+    },
+    {
+      id:    'acceptSchedule', verb: 'add',
+      appliesTo: { type: 'schedule-slot' },
+      params: [
+        { name: 'slotKey', kind: 'string', required: true },
+      ],
+      surfaces: {
+        slash: { command: '/accept-schedule' },
+        chat:  { reply: 'text', hint: 'accept a scheduling suggestion' },
+        ui:    { control: 'button', label: 'Pick' },
+      },
+    },
+    /**
+     * #191 (B5, 2026-05-23) — cross-crew dashboard.  getMyCrews +
+     * per-crew counters (open / overdue / mine / awaitingApproval).
+     */
+    {
+      id:    'getMyCrews', verb: 'list',
+      appliesTo: { type: 'crew' },
+      params: [],
+      surfaces: {
+        slash: { command: '/crews' },
+        chat:  { reply: 'list', hint: 'cross-crew dashboard with per-crew counters' },
+      },
+    },
+    /**
+     * #190 (B3, 2026-05-23) — crew admin surface.  getCrewConfig +
+     * pause/unpause (crewControls).  All accept a crewId; auto-injected
+     * from opts.tasksCrewConfig.crewId by realAgent.
+     */
+    {
+      id:    'getCrewConfig', verb: 'list',
+      params: [],
+      surfaces: {
+        slash: { command: '/crew-info' },
+        chat:  { reply: 'record', hint: 'show crew config (kind, paused/archived, counts)' },
+      },
+    },
+    /**
+     * 2026-05-24 — /crew-members = list reply with one clickable row per
+     * member.  Derived from getCrewConfig (realAgent unpacks members[]).
+     */
+    {
+      id:    'listCrewMembers', verb: 'list',
+      appliesTo: { type: 'member' },
+      params: [],
+      surfaces: {
+        slash: { command: '/crew-members' },
+        chat:  { reply: 'list', hint: 'list members of your crew (with role)' },
+      },
+    },
+    {
+      id:    'pauseCrew', verb: 'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/pause-crew' },
+        chat:  { reply: 'text', hint: 'pause the crew (no new tasks; existing tasks remain workable)' },
+      },
+    },
+    {
+      id:    'unpauseCrew', verb: 'submit',
+      params: [],
+      surfaces: {
+        slash: { command: '/unpause-crew' },
+        chat:  { reply: 'text', hint: 'resume the crew after a pause' },
+      },
+    },
+    /**
+     * #187 (A9, 2026-05-23) — crew invite + redeem.  issueInvite /
+     * redeemInvite.  /invite mints a single-use code; /redeem-invite
+     * joins the crew that issued the token.
+     */
+    {
+      id:    'issueInvite', verb: 'add',
+      params: [
+        { name: 'role',      kind: 'enum',   of: ['member', 'admin'], required: false },
+        { name: 'ttl-hours', kind: 'number', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/invite', body: 'flags' },
+        chat:  { reply: 'record', hint: 'mint a single-use crew invite (admin-only)' },
+      },
+    },
+    {
+      id:    'redeemInvite', verb: 'add',
+      params: [
+        { name: 'invite',      kind: 'string', required: true },
+        { name: 'displayName', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/redeem-invite', body: 'flags' },
+        chat:  { reply: 'text', hint: 'join a crew using an invite token' },
+      },
+    },
+    /**
+     * #219 slice (b) (2026-05-24) — sub-task wiring.  The standalone
+     * spawn/propose/force ops (the inbox-kind approve/decline pairs are
+     * already modelled above on 'inbox-item').
+     *   - addSubtask        — direct spawn (allowed up to depth 3)
+     *   - proposeSubtask    — post-submit, needs assignee consent
+     *   - forceSpawnSubtask — admin override w/ mandatory reason
+     */
+    {
+      id:    'addSubtask', verb: 'add',
+      appliesTo: { type: 'task', state: ['open', 'claimed'] },
+      params: [
+        { name: 'parentTaskId',     kind: 'string', required: true,
+          pickerSource: { listOp: 'listMine' } },
+        { name: 'text',             kind: 'string', required: true  },
+        { name: 'notes',            kind: 'string', required: false },
+        { name: 'dueAt',            kind: 'string', required: false },
+        { name: 'requiredSkills',   kind: 'string', required: false },
+        { name: 'definitionOfDone', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/add-subtask', body: 'flags' },
+        ui:    { control: 'button', label: 'Add sub-task' },
+        chat:  { reply: 'text', hint: 'spawn a child task under a parent' },
+      },
+    },
+    {
+      id:    'proposeSubtask', verb: 'add',
+      appliesTo: { type: 'task', state: ['submitted'] },
+      params: [
+        { name: 'parentTaskId',     kind: 'string', required: true },
+        { name: 'text',             kind: 'string', required: true  },
+        { name: 'notes',            kind: 'string', required: false },
+        { name: 'dueAt',            kind: 'string', required: false },
+        { name: 'requiredSkills',   kind: 'string', required: false },
+        { name: 'definitionOfDone', kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/propose-subtask', body: 'flags' },
+        ui:    { control: 'button', label: 'Propose sub-task' },
+        chat:  { reply: 'text', hint: 'propose a sub-task on a submitted parent (needs assignee consent)' },
+      },
+    },
+    {
+      id:    'forceSpawnSubtask', verb: 'add',
+      // Admin-only escape hatch — no row button (admins use the slash).
+      params: [
+        { name: 'parentTaskId',     kind: 'string', required: true },
+        { name: 'text',             kind: 'string', required: true  },
+        { name: 'reason',           kind: 'string', required: true  },
+        { name: 'notes',            kind: 'string', required: false },
+        { name: 'dueAt',            kind: 'string', required: false },
+        { name: 'requiredSkills',   kind: 'string', required: false },
+      ],
+      surfaces: {
+        slash: { command: '/force-spawn-subtask', body: 'flags' },
+        chat:  { reply: 'text', hint: 'admin override: spawn sub-task bypassing depth + post-submit gates' },
       },
     },
   ],

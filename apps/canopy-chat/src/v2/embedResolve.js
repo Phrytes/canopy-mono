@@ -9,7 +9,7 @@
  * injected).
  *
  * Today resolves the two types with a reliable local snapshot op:
- *   task           → tasks-v0 getTaskSnapshot (needs crewId = the circle id)
+ *   task           → tasks    getTaskSnapshot (needs crewId = the circle id)
  *   calendar-event → calendar  getEventSnapshot
  * Cross-pod (http) refs resolve by fetching the public item URL and extracting
  * its title (fetch is injected — pure + SSR/test-safe). Stoop/folio TYPES that
@@ -18,7 +18,7 @@
 
 /** type → { app, op } for the snapshot lookup. */
 const RESOLVERS = Object.freeze({
-  'task':           { app: 'tasks-v0', op: 'getTaskSnapshot' },
+  'task':           { app: 'tasks',    op: 'getTaskSnapshot' },
   'calendar-event': { app: 'calendar',  op: 'getEventSnapshot' },
 });
 

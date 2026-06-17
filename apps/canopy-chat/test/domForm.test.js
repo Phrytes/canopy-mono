@@ -23,7 +23,7 @@ describe('renderForm — happy path', () => {
         { name: 'due',  kind: 'date' },
       ],
       missing: ['text'], prefilledArgs: {},
-      opId: 'addTask', appOrigin: 'tasks-v0',
+      opId: 'addTask', appOrigin: 'tasks',
     });
     const el = renderForm(spec, ctx());
     expect(el.querySelectorAll('.cc-form-field').length).toBe(2);

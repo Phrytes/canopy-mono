@@ -24,6 +24,22 @@ import { buildWorkspaceSkills }   from '../src/skills/workspace.js';
 import { buildInboxSkills }       from '../src/skills/inbox.js';
 import { buildSubtaskSkills }     from '../src/skills/subtasks.js';
 import { buildCrewControlSkills } from '../src/skills/crewControls.js';
+// Part G (2026-06-17) — the merged manifest now carries the chat-shell
+// surface ops, whose skills live in these additional builders (the same
+// set `wireSkills` registers).  Expand the coverage check to include them.
+import { buildAvailabilitySkills }       from '../src/skills/availability.js';
+import { buildPlannerSkills }            from '../src/skills/planner.js';
+import { buildDashboardSkills }          from '../src/skills/dashboard.js';
+import { buildMultiCrewOnboardingSkills } from '../src/skills/multiCrewOnboarding.js';
+
+/**
+ * Part G (2026-06-17) — chat-shell ops whose dispatch resolves through
+ * realAgent.js (alias / derivation), NOT a same-named `defineSkill`:
+ *   - myInbox        → aliased to `listMyInbox` (TASKS_OP_ALIAS)
+ *   - listCrewMembers→ derived from `getCrewConfig` (members[] unpack)
+ * These are intentional product semantics; exempt from the 1:1 check.
+ */
+const CHAT_SHELL_ALIAS_OPS = new Set(['myInbox', 'listCrewMembers']);
 
 describe('SP-3 V0: tasks-v0 manifest', () => {
   it('validateManifest = ok', () => {
@@ -47,9 +63,16 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
       // declared in the manifest; their defineSkill lives in
       // buildCrewControlSkills.
       ...buildCrewControlSkills({ bundleResolver: () => null }),
+      // Part G (2026-06-17) — chat-shell surface ops folded in from the
+      // former mockTasksManifest; their skills live in these builders.
+      ...buildAvailabilitySkills({ bundleResolver: () => null }),
+      ...buildPlannerSkills({ bundleResolver: () => null }),
+      ...buildDashboardSkills({ bundleResolver: () => null, crewsProvider: () => [] }),
+      ...buildMultiCrewOnboardingSkills({ bundleResolver: () => null }),
     ];
     const skillIds = new Set(defs.map((d) => d.id));
     for (const op of tasksManifest.operations) {
+      if (CHAT_SHELL_ALIAS_OPS.has(op.id)) continue;   // resolved via realAgent alias/derivation
       expect(
         skillIds,
         `manifest op "${op.id}" must have a matching skill in the registered builders`,
@@ -85,12 +108,19 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
     expect(revoke.appliesTo.state).toEqual(['claimed', 'submitted', 'rejected']);
   });
 
-  it('commandMenu is empty (no surfaces.slash in V0; chat-only)', () => {
+  it('commandMenu carries the Part-G slash surface (folded in from mockTasksManifest)', () => {
+    // Part G (2026-06-17): the manifest is now the single source of truth
+    // for the chat-shell's slash/gate surface, so commandMenu is no longer
+    // empty.  Spot-check the lifecycle commands are present.
     const out = renderChat(tasksManifest, {
       skillRegistry: {},
       toSkillCtx:    (c) => c,
     });
-    expect(out.commandMenu).toEqual([]);
+    expect(out.commandMenu.length).toBeGreaterThan(0);
+    const commands = out.commandMenu.map((c) => c.command);
+    expect(commands).toEqual(expect.arrayContaining([
+      '/addtask', '/claim', '/complete-task', '/submit', '/approve', '/reject',
+    ]));
   });
 
   it('inlineKeyboardFor honours F-SP3-a multi-state gates on real ops', () => {
@@ -109,10 +139,14 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
     expect(submittedKeys).not.toContain('submitTask');
     expect(submittedKeys).not.toContain('claimTask');
 
-    // An open task → only claim matches.
+    // An open task → claim matches; Part G (2026-06-17) also surfaces the
+    // open/claimed-gated editTask + addSubtask row buttons (folded in from
+    // the former mockTasksManifest), so assert membership not exact equality.
     const openKeys = out.inlineKeyboardFor({ id: 't2', type: 'task', state: 'open' })
       .map((b) => b.callbackData.split(':')[0]);
-    expect(openKeys).toEqual(['claimTask']);
+    expect(openKeys).toEqual(expect.arrayContaining(['claimTask']));
+    expect(openKeys).not.toContain('submitTask');
+    expect(openKeys).not.toContain('approveTask');
   });
 
   // V0.8 Q27 adoption (2026-05-21) — crew lifecycle ops.

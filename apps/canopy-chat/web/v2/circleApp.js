@@ -3035,7 +3035,7 @@ async function boot() {
           resolveCircleName: async (id) => circlesCache.find((c) => c.id === id)?.name ?? null,
           addToPersonalCrew: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
             try {
-              return await agent.callSkill('tasks-v0', 'addTask', {
+              return await agent.callSkill('tasks', 'addTask', {
                 text,
                 crewId:           'cc-default',
                 originCircleId,

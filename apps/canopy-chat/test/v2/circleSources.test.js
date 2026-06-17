@@ -49,12 +49,12 @@ describe('makeResolvingCallSkill', () => {
     const calls = [];
     const raw = async (app, op, args) => {
       calls.push([app, op]);
-      return app === 'tasks-v0' && op === 'getMyCrews' ? { crews: [], echoed: args.x } : null;
+      return app === 'tasks' && op === 'getMyCrews' ? { crews: [], echoed: args.x } : null;
     };
-    const resolve = makeResolvingCallSkill(raw, ['stoop', 'tasks-v0', 'folio']);
+    const resolve = makeResolvingCallSkill(raw, ['stoop', 'tasks', 'folio']);
     const res = await resolve('getMyCrews', { x: 7 });
     expect(res).toEqual({ crews: [], echoed: 7 });
-    expect(calls).toEqual([['stoop', 'getMyCrews'], ['tasks-v0', 'getMyCrews']]); // stopped at first hit
+    expect(calls).toEqual([['stoop', 'getMyCrews'], ['tasks', 'getMyCrews']]); // stopped at first hit
   });
 
   it('returns null when every origin yields null/throws or callSkill is missing', async () => {

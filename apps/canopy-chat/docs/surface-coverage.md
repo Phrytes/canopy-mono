@@ -52,15 +52,32 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `removeChore` | remove | ✅ | ✅ | ✅ | · | · | remove, delete, nope, verwijder, weg |
 |  | `getChoreSnapshot` | list | ✅ | · | · | · | · |  |
 | **tasks** | `addTask` | add | ✅ | ✅ | ✅ | ✅ | · | add, todo, new task, voeg, zet, maak taak, nieuwe taak |
-|  | `listMine` | list | ✅ | ✅ | · | ✅ | · |  |
 |  | `claimTask` | claim | ✅ | ✅ | ✅ | ✅ | ✅ | claim, pak, neem, i'll take, i'll do, ik pak, ik doe, ik neem |
 |  | `completeTask` | complete | ✅ | ✅ | ✅ | ✅ | ✅ | klaar met, done with, done, complete, completed, finished, klaar, voltooid, gedaan |
-|  | `editTask` | edit | ✅ | ✅ | · | ✅ | ✅ |  |
 |  | `getTaskSnapshot` | list | ✅ | · | · | · | · |  |
-|  | `provisionMyCrew` | add | ✅ | ✅ | · | ✅ | · |  |
+|  | `removeTask` | remove | ✅ | · | · | · | · |  |
+|  | `reassignTask` | reassign | ✅ | · | · | · | · |  |
 |  | `submitTask` | submit | ✅ | ✅ | ✅ | ✅ | ✅ | submit, hand in, indienen, inleveren, ter review |
 |  | `approveTask` | approve | ✅ | ✅ | ✅ | ✅ | ✅ | approve, goedkeuren, akkoord |
 |  | `rejectTask` | reject | ✅ | ✅ | ✅ | ✅ | ✅ | reject, afkeuren, afwijzen, weiger |
+|  | `revokeTask` | revoke | ✅ | · | · | ✅ | ✅ |  |
+|  | `listOpen` | list | ✅ | · | · | · | · |  |
+|  | `listMine` | list | ✅ | ✅ | · | ✅ | · |  |
+|  | `listClaimable` | list | ✅ | · | · | · | · |  |
+|  | `listAwaitingApproval` | list | ✅ | · | · | · | · |  |
+|  | `listMyMasteredTasks` | list | ✅ | · | · | · | · |  |
+|  | `listMyInbox` | list | ✅ | · | · | · | · |  |
+|  | `clearInboxItem` | remove | ✅ | · | · | ✅ | ✅ |  |
+|  | `approveSubtaskRequest` | approve | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `declineSubtaskRequest` | reject | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `approveSubtaskProposal` | approve | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `declineSubtaskProposal` | reject | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `clearInbox` | remove | ✅ | · | · | ✅ | ✅ |  |
+|  | `getDagTree` | tree | ✅ | · | · | · | · |  |
+|  | `archiveCrew` | archive | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `unarchiveCrew` | unarchive | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `editTask` | edit | ✅ | ✅ | · | ✅ | ✅ |  |
+|  | `provisionMyCrew` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `myInbox` | list | ✅ | ✅ | · | · | · |  |
 |  | `getMyAvailability` | list | ✅ | ✅ | · | · | · |  |
 |  | `setMyAvailability` | submit | ✅ | ✅ | · | · | · |  |
@@ -72,16 +89,10 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `listCrewMembers` | list | ✅ | ✅ | · | · | · |  |
 |  | `pauseCrew` | submit | ✅ | ✅ | · | · | · |  |
 |  | `unpauseCrew` | submit | ✅ | ✅ | · | · | · |  |
-|  | `archiveCrew` | remove | ✅ | ✅ | · | · | · |  |
-|  | `unarchiveCrew` | submit | ✅ | ✅ | · | · | · |  |
 |  | `issueInvite` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `redeemInvite` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `addSubtask` | add | ✅ | ✅ | · | ✅ | ✅ |  |
 |  | `proposeSubtask` | add | ✅ | ✅ | · | ✅ | ✅ |  |
-|  | `approveSubtaskRequest` | approve | ✅ | ✅ | · | ✅ | ✅ |  |
-|  | `declineSubtaskRequest` | reject | ✅ | ✅ | · | ✅ | ✅ |  |
-|  | `approveSubtaskProposal` | approve | ✅ | ✅ | · | ✅ | ✅ |  |
-|  | `declineSubtaskProposal` | reject | ✅ | ✅ | · | ✅ | ✅ |  |
 |  | `forceSpawnSubtask` | add | ✅ | ✅ | · | ✅ | · |  |
 | **stoop** | `listFeed` | list | ✅ | ✅ | · | · | · |  |
 |  | `postRequest` | add | ✅ | ✅ | ✅ | ✅ | · | post, ask, borrow, vraag, plaats, leen, bied aan |
@@ -139,10 +150,10 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `podStatus` | list | ✅ | ✅ | · | · | · |  |
 |  | `getIcsFeed` | list | ✅ | ✅ | · | · | · |  |
 |---|---|---|---|---|---|---|---|---|
-| **totals** | 134 ops | | 131 | 118 | 25 | 69 | 34 | |
+| **totals** | 145 ops | | 142 | 118 | 25 | 74 | 39 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 
-- **missing gate** (109/134): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:addItem, household:getProfile …
-- **missing inline** (100/134): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:listOpen, household:addItem …
-- **missing chat** (3/134): folio:deleteFromPod, folio:deleteLocally, folio:forceRepush
+- **missing gate** (120/145): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:addItem, household:getProfile …
+- **missing inline** (106/145): canopy-chat:help, canopy-chat:feedback, canopy-chat:feedback-stop, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:listOpen, household:addItem …
+- **missing chat** (3/145): folio:deleteFromPod, folio:deleteLocally, folio:forceRepush

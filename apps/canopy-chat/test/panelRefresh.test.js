@@ -3,7 +3,7 @@ import {
   REFRESHABLE_VERBS, panelMatchesItemRef, itemRefFromReply, collectStalePanels,
 } from '../src/panelRefresh.js';
 
-const REF = { app: 'tasks-v0', type: 'task', id: 'task-9' };
+const REF = { app: 'tasks', type: 'task', id: 'task-9' };
 
 describe('panelRefresh · REFRESHABLE_VERBS', () => {
   it('includes the read verbs, excludes mutations', () => {
@@ -22,7 +22,7 @@ describe('panelRefresh · panelMatchesItemRef', () => {
     expect(panelMatchesItemRef({ kind: 'mini-page', payload: { id: 'task-9', type: 'task' } }, REF)).toBe(true);
   });
   it('matches an embed-card panel by embed.itemRef', () => {
-    expect(panelMatchesItemRef({ kind: 'embed-card', embed: { itemRef: { app: 'tasks-v0', type: 'task', id: 'task-9' } } }, REF)).toBe(true);
+    expect(panelMatchesItemRef({ kind: 'embed-card', embed: { itemRef: { app: 'tasks', type: 'task', id: 'task-9' } } }, REF)).toBe(true);
   });
   it('rejects a different id / type / kind', () => {
     expect(panelMatchesItemRef({ kind: 'record', payload: { id: 'other', type: 'task' } }, REF)).toBe(false);
@@ -35,8 +35,8 @@ describe('panelRefresh · panelMatchesItemRef', () => {
 
 describe('panelRefresh · itemRefFromReply', () => {
   it('derives {app,type,id} from a mutation reply payload', () => {
-    expect(itemRefFromReply({ payload: { id: 'task-9', type: 'task' } }, 'tasks-v0'))
-      .toEqual({ app: 'tasks-v0', type: 'task', id: 'task-9' });
+    expect(itemRefFromReply({ payload: { id: 'task-9', type: 'task' } }, 'tasks'))
+      .toEqual({ app: 'tasks', type: 'task', id: 'task-9' });
   });
   it('reads itemId + payload.app aliases', () => {
     expect(itemRefFromReply({ payload: { itemId: 'p-2', app: 'stoop' } }))

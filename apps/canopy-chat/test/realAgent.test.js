@@ -107,7 +107,7 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     // normalises it to {items: []} so the circle screen renders "no tasks"
     // instead of an error bubble.
     const a = await createRealHouseholdAgent();
-    const r = await a.callSkill('tasks-v0', 'getMyTasks', { crewId: 'ghost-crew-xyz' });
+    const r = await a.callSkill('tasks', 'getMyTasks', { crewId: 'ghost-crew-xyz' });
     expect(r).toBeTruthy();
     expect(r.error).toBeUndefined();
     expect(Array.isArray(r.items)).toBe(true);

@@ -88,10 +88,10 @@ async function bootTestWorkspace() {
   const callSkill = async (appOrigin, opId, args) => {
     if (appOrigin === 'canopy-chat') return localBuiltins[opId]?.(args ?? {});
     if (appOrigin === 'household') return agent.callSkill(appOrigin, opId, args);
-    if (appOrigin === 'tasks-v0') {
+    if (appOrigin === 'tasks') {
       // Post-slice-1 (integration-plan 2026-05-23): tasks-v0 is the
       // real crew agent composed in realAgent.js.
-      return agent.callSkill('tasks-v0', opId, args);
+      return agent.callSkill('tasks', opId, args);
     }
     if (appOrigin === 'stoop') {
       // Post-slice-2b (integration-plan 2026-05-23): stoop is the
@@ -278,7 +278,7 @@ describe('J4 — Browse tasks + drill-down', () => {
   it("getTaskSnapshot returns embed-shape data", async () => {
     const list = await ws.userInput('/mytasks');
     const first = list.payload.items[0];
-    const snap = await ws.callSkill('tasks-v0', 'getTaskSnapshot', { id: first.id });
+    const snap = await ws.callSkill('tasks', 'getTaskSnapshot', { id: first.id });
     expect(snap.type).toBe('task');
     expect(snap.title).toBeTruthy();
     expect(snap.fields).toBeTruthy();

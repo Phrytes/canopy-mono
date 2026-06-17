@@ -683,17 +683,23 @@ export async function createRealHouseholdAgent(opts = {}) {
    *
    * Routing targets:
    *   - 'household'  → hostAgent (chores, members, calendar skills)
-   *   - 'tasks-v0'   → tasksCrew.address (the REAL tasks crew agent
-   *                    via slice-1 integration; 110 skills)
+   *   - 'tasks'      → tasksCrew.address (the REAL tasks crew agent
+   *                    via slice-1 integration; 110 skills).  Part G
+   *                    (2026-06-17): the app-origin is now `'tasks'`
+   *                    (was `'tasks-v0'`) — the merged manifest's
+   *                    `.app` is `'tasks'`, and the catalog keys ops
+   *                    by `m.app`.  The directory / npm package
+   *                    (`@canopy-app/tasks-v0`) keep their names.
    *   - 'stoop'      → stoopAgent.address (slice-2b NeighborhoodAgent)
    *   - 'folio'      → folioAgent.address (slice-4 web-only agent)
    *
    * Some opIds are renamed across the boundary (the chat surface
-   * uses `myInbox` historically; tasks-v0 exposes `listMyInbox`).
-   * Adapt here so the chat-shell renderer stays stable.
+   * uses `myInbox` historically; the real tasks crew exposes
+   * `listMyInbox`).  These SEMANTIC aliases are product decisions
+   * (NOT drift); adapt here so the chat-shell renderer stays stable.
    */
   const TASKS_OP_ALIAS = {
-    myInbox:  'listMyInbox',                  // canopy-chat → tasks-v0
+    myInbox:  'listMyInbox',                  // canopy-chat → real tasks crew
     // listMine on real tasks-v0 filters by t.assignee === from (only
     // tasks ALREADY assigned to me).  The chat-shell semantic of
     // /mytasks is broader — "everything actionable in my crew".  Map
@@ -809,11 +815,11 @@ export async function createRealHouseholdAgent(opts = {}) {
       const first = Array.isArray(result) ? result[0] : null;
       return first?.data ?? null;
     }
-    if (appOrigin === 'tasks-v0') {
+    if (appOrigin === 'tasks') {
       // Derived ops (not in the real crew agent): build the reply
       // from listMine + a small shape adapter.
       if (opId === 'briefSummary' || opId === 'tasks_briefSummary') {
-        const list = await callSkill('tasks-v0', 'listMine', {});
+        const list = await callSkill('tasks', 'listMine', {});
         const items = (list?.items ?? []).filter((t) => t.state === 'open');
         if (items.length === 0) return { ok: true };   // empty → /brief skips
         return {
@@ -824,7 +830,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       if (opId === 'searchTasks') {
         const q = String(args?.query ?? '').toLowerCase();
         if (!q) return { items: [] };
-        const list = await callSkill('tasks-v0', 'listMine', {});
+        const list = await callSkill('tasks', 'listMine', {});
         const hits = (list?.items ?? []).filter((t) =>
           String(t.text ?? t.title ?? '').toLowerCase().includes(q),
         );
@@ -834,24 +840,18 @@ export async function createRealHouseholdAgent(opts = {}) {
       }
       const realOpId = TASKS_OP_ALIAS[opId] ?? opId;
       // Per-op arg normalisation between the chat-shell vocabulary
-      // and tasks-v0's real skill arg names.
+      // and tasks-v0's real skill arg names.  NB the rejectTask
+      // `reason→note` rewrite + the submitTask note-default were REMOVED
+      // in the Part G dissolve (2026-06-17): the manifest now declares
+      // the real `note` param directly, so no shell-side vocab bridge.
       let realArgs = args ?? {};
       if (realOpId === 'provisionMyCrew' && !realArgs.crewId && realArgs.name) {
         // /crew-new sends a human name; real skill demands a slug.
         realArgs = { ...realArgs, crewId: _slugifyCrewId(realArgs.name) };
       }
-      if (realOpId === 'rejectTask' && realArgs.reason && !realArgs.note) {
-        // Chat-shell calls the rejection field `reason`; the real
-        // item-store wants `note` (audit-log convention).
-        realArgs = { ...realArgs, note: realArgs.reason };
-      }
       // Pass through any reject note so the adapter can append it
       // to the chat-shell reply message.
       const noteHint = (realOpId === 'rejectTask') ? realArgs.note : undefined;
-      if (realOpId === 'submitTask' && realArgs.note == null) {
-        // submitTask also requires a non-empty note (audit-log).
-        realArgs = { ...realArgs, note: 'submitted via chat' };
-      }
       if (realOpId === 'issueInvite') {
         // Chat-shell flag `ttl-hours` → real arg `ttlMs`.  Default 24h
         // when omitted.

@@ -68,8 +68,8 @@ describe('scopeStoopCallSkill', () => {
   it('does not inject/filter for a non-stoop app, and passes mutePeer through unscoped', async () => {
     const cs = vi.fn().mockResolvedValue({ items: [{ id: '1', groupId: 'circle-b' }] });
     const scoped = scopeStoopCallSkill(cs, 'circle-a');
-    await scoped('tasks-v0', 'listOpen', { x: 1 });
-    expect(cs).toHaveBeenLastCalledWith('tasks-v0', 'listOpen', { x: 1 });   // untouched
+    await scoped('tasks', 'listOpen', { x: 1 });
+    expect(cs).toHaveBeenLastCalledWith('tasks', 'listOpen', { x: 1 });   // untouched
     await scoped('stoop', 'mutePeer', { peerWebid: 'did:bob' });
     expect(cs.mock.calls.at(-1)[2]).toEqual({ peerWebid: 'did:bob' });       // not a scoped op → no groupId
   });

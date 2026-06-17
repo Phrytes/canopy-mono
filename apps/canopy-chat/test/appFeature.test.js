@@ -8,7 +8,7 @@ import { isFeatureEnabled, DEFAULT_CIRCLE_POLICY } from '../src/v2/circlePolicy.
 
 describe('featureForApp', () => {
   it('maps the app-bundle origins to their policy.features key', () => {
-    expect(featureForApp('tasks-v0')).toBe('tasks');
+    expect(featureForApp('tasks')).toBe('tasks');
     expect(featureForApp('calendar')).toBe('calendar');
     expect(featureForApp('folio')).toBe('lists');
   });
@@ -26,14 +26,14 @@ describe('isAppSurfaceEnabled (real circlePolicy)', () => {
   });
   it('tasks surfaces follow policy.features.tasks (default OFF → gated)', () => {
     // default policy has tasks:false → a fresh circle gates the task screen
-    expect(isAppSurfaceEnabled('tasks-v0', DEFAULT_CIRCLE_POLICY, isFeatureEnabled)).toBe(false);
-    expect(isAppSurfaceEnabled('tasks-v0', { features: { tasks: true } }, isFeatureEnabled)).toBe(true);
+    expect(isAppSurfaceEnabled('tasks', DEFAULT_CIRCLE_POLICY, isFeatureEnabled)).toBe(false);
+    expect(isAppSurfaceEnabled('tasks', { features: { tasks: true } }, isFeatureEnabled)).toBe(true);
   });
   it('calendar surfaces follow policy.features.calendar', () => {
     expect(isAppSurfaceEnabled('calendar', { features: { calendar: true } }, isFeatureEnabled)).toBe(true);
     expect(isAppSurfaceEnabled('calendar', { features: { calendar: false } }, isFeatureEnabled)).toBe(false);
   });
   it('covers exactly the app-bundle origins', () => {
-    expect(Object.keys(APP_FEATURE).sort()).toEqual(['calendar', 'folio', 'tasks', 'tasks-v0']);
+    expect(Object.keys(APP_FEATURE).sort()).toEqual(['calendar', 'folio', 'tasks']);
   });
 });

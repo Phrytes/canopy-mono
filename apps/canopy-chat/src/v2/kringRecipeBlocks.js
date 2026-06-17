@@ -227,7 +227,7 @@ async function materializeAgenda(block, { callSkill } = {}) {
 }
 
 /**
- * α.4 — tasks block.  Calls tasks-v0's listOpen scoped to the
+ * α.4 — tasks block.  Calls the tasks crew's listOpen scoped to the
  * circleId (treated as the crew id by canopy-chat's resolver) +
  * filters by scope:
  *   'assigned-to-me' — task.assignee equals myWebid (or undefined when
@@ -241,7 +241,7 @@ async function materializeTasks(block, circleId, { callSkill, myWebid, fetchImpl
   if (typeof callSkill !== 'function' || !circleId) {
     return { blockId: block.id, type: 'tasks', status: 'empty', content: { items: [] } };
   }
-  const res = await callSkill('tasks-v0', 'listOpen', { crewId: circleId });
+  const res = await callSkill('tasks', 'listOpen', { crewId: circleId });
   const raw = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
   const filtered = scope === 'all'
     ? raw

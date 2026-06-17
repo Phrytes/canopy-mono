@@ -35,7 +35,7 @@ export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
 }
 
 /** App origins probed when resolving an op to its owning app (both surfaces). */
-export const DEFAULT_CIRCLE_ORIGINS = ['stoop', 'tasks-v0', 'household', 'calendar', 'folio'];
+export const DEFAULT_CIRCLE_ORIGINS = ['stoop', 'tasks', 'household', 'calendar', 'folio'];
 
 // Perf #2 (2026-05-30) — does `catalog` declare `opId` on `origin`?
 // The merged catalog stores ops under either the bare `opId` (then

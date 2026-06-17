@@ -33,7 +33,7 @@ describe('runBulkOp — happy path', () => {
   it('merges baseArgs into each per-item call', async () => {
     const calls = [];
     await runBulkOp({
-      opId: 'archiveTask', appOrigin: 'tasks-v0',
+      opId: 'archiveTask', appOrigin: 'tasks',
       items: [{ id: 't-1' }, { id: 't-2' }],
       argName: 'taskId',
       baseArgs: { reason: 'sprint-end' },

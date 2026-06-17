@@ -36,13 +36,13 @@ describe('matchesFilter — wildcard behaviour', () => {
 describe('matchesFilter — single-key matches', () => {
   it('apps: includes the event app', () => {
     expect(matchesFilter(ev(), { apps: ['household'] })).toBe(true);
-    expect(matchesFilter(ev({ app: 'tasks-v0' }), { apps: ['household'] })).toBe(false);
+    expect(matchesFilter(ev({ app: 'tasks' }), { apps: ['household'] })).toBe(false);
   });
 
   it('apps: OR within the array', () => {
-    expect(matchesFilter(ev({ app: 'tasks-v0' }), { apps: ['household', 'tasks-v0'] }))
+    expect(matchesFilter(ev({ app: 'tasks' }), { apps: ['household', 'tasks'] }))
       .toBe(true);
-    expect(matchesFilter(ev({ app: 'stoop' }), { apps: ['household', 'tasks-v0'] }))
+    expect(matchesFilter(ev({ app: 'stoop' }), { apps: ['household', 'tasks'] }))
       .toBe(false);
   });
 
@@ -69,7 +69,7 @@ describe('matchesFilter — multi-key (AND across keys)', () => {
       apps: ['household'], eventTypes: ['reminder'],
     })).toBe(false);
     expect(matchesFilter(ev(), {
-      apps: ['tasks-v0'], eventTypes: ['notification'],
+      apps: ['tasks'], eventTypes: ['notification'],
     })).toBe(false);
   });
 
@@ -104,11 +104,11 @@ describe('matchesFilter — edge cases', () => {
 describe('normaliseFilter', () => {
   it('drops empty arrays + de-dupes + sorts', () => {
     expect(normaliseFilter({
-      apps:       ['tasks-v0', 'household', 'household'],
+      apps:       ['tasks', 'household', 'household'],
       eventTypes: [],
       actors:     ['webid:karl', 'webid:anne'],
     })).toEqual({
-      apps:   ['household', 'tasks-v0'],
+      apps:   ['household', 'tasks'],
       actors: ['webid:anne', 'webid:karl'],
     });
   });
@@ -168,7 +168,7 @@ describe('describeFilter', () => {
 
 describe('matchesFilter — expression tree (OQ-2.A, v0.6 catch-up)', () => {
   const houseNotif  = { id: 'e1', ts: 1, app: 'household', type: 'notification', actor: 'webid:anne' };
-  const tasksRemind = { id: 'e2', ts: 2, app: 'tasks-v0',  type: 'reminder',     actor: 'webid:karl' };
+  const tasksRemind = { id: 'e2', ts: 2, app: 'tasks',  type: 'reminder',     actor: 'webid:karl' };
   const stoopPost   = { id: 'e3', ts: 3, app: 'stoop',     type: 'item-changed', actor: 'webid:anne' };
 
   it('and: [F1, F2] → both must match', () => {
@@ -192,7 +192,7 @@ describe('matchesFilter — expression tree (OQ-2.A, v0.6 catch-up)', () => {
 
   it('mixed tree + flat: implicit AND between them', () => {
     const f = {
-      apps: ['household', 'tasks-v0'],
+      apps: ['household', 'tasks'],
       not:  { eventTypes: ['notification'] },
     };
     expect(matchesFilter(tasksRemind, f)).toBe(true);    // tasks-v0 ✓ AND not notif ✓
@@ -204,7 +204,7 @@ describe('matchesFilter — expression tree (OQ-2.A, v0.6 catch-up)', () => {
     const f = {
       or: [
         { and: [{ apps: ['household'] }, { actors: ['webid:anne'] }] },
-        { and: [{ apps: ['tasks-v0']   }, { actors: ['webid:karl'] }] },
+        { and: [{ apps: ['tasks']   }, { actors: ['webid:karl'] }] },
       ],
     };
     expect(matchesFilter(houseNotif,  f)).toBe(true);

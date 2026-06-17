@@ -29,7 +29,7 @@ describe('buildCircleStream', () => {
   it('tags each event with its circle name and keeps newest-first', () => {
     const events = [
       { id: 'e1', ts: 300, app: 'stoop',    type: 'buurt-post',   payload: { groupId: 'grp-9' } },
-      { id: 'e2', ts: 100, app: 'tasks-v0', type: 'task-claimed', payload: { crewId: 'crew-1' } },
+      { id: 'e2', ts: 100, app: 'tasks', type: 'task-claimed', payload: { crewId: 'crew-1' } },
       { id: 'e3', ts: 200, app: 'household',type: 'note-added',   payload: {} },
     ];
     const rows = buildCircleStream({ events, circles });
@@ -65,7 +65,7 @@ describe('buildKringStream (SP-13)', () => {
     { id: 'b', ts: 250, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'aanbod' } },
     { id: 'c', ts: 200, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'leen' } },
     { id: 'd', ts: 150, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'crew-1', kind: 'vraag' } },
-    { id: 'e', ts: 100, app: 'tasks-v0', type: 'task-claimed', payload: { crewId: 'crew-1' } },
+    { id: 'e', ts: 100, app: 'tasks', type: 'task-claimed', payload: { crewId: 'crew-1' } },
     { id: 'f', ts:  50, app: 'household',type: 'note-added',   payload: {} },
   ];
 

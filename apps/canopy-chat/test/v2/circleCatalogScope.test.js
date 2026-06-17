@@ -7,16 +7,16 @@ function makeCatalog() {
   const opsById = new Map([
     ['me',           { op: { id: 'me', verb: 'list', surfaces: ch },     appOrigin: 'canopy-chat' }],
     ['transportMode',{ op: { id: 'transportMode', surfaces: ch },        appOrigin: 'canopy-chat' }],
-    ['addTask',      { op: { id: 'addTask', verb: 'add', surfaces: ch }, appOrigin: 'tasks-v0' }],
+    ['addTask',      { op: { id: 'addTask', verb: 'add', surfaces: ch }, appOrigin: 'tasks' }],
     ['addItem',      { op: { id: 'addItem', verb: 'add', surfaces: ch }, appOrigin: 'household' }],
     ['markReturned', { op: { id: 'markReturned', surfaces: ch },         appOrigin: 'stoop' }],
   ]);
   const commandMenu = [
     { command: '/me',      opId: 'me',      appOrigin: 'canopy-chat' },
-    { command: '/addtask', opId: 'addTask', appOrigin: 'tasks-v0' },
+    { command: '/addtask', opId: 'addTask', appOrigin: 'tasks' },
     { command: '/add',     opId: 'addItem', appOrigin: 'household' },
   ];
-  return { opsById, commandMenu, replyShapeFor: () => null, appOrigins: ['canopy-chat', 'tasks-v0', 'household', 'stoop'] };
+  return { opsById, commandMenu, replyShapeFor: () => null, appOrigins: ['canopy-chat', 'tasks', 'household', 'stoop'] };
 }
 
 describe('scopeCatalogToApps (Part D — catalog scoping)', () => {
