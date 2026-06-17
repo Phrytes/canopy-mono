@@ -45,7 +45,14 @@ These mean the chat surface and the real handler disagree — a dispatch can fai
 1. **folio + tasks-v0 first** (real omits slash, low-risk): move the chat-shell ops + their slash/gate
    into the real manifest, fix the addTask/reject/approve param drift, import the real manifest in
    `circleGate.js`/`composeManifests`, delete the mock.
-2. **stoop + household next** (slash duplicated + param drift): reconcile `postRequest` kind↔intent,
+   - **folio — ✅ DONE (`cd750b8f`).**
+   - **tasks-v0 — ✅ DONE 2026-06-17 (Option 2, clean).** One manifest (`apps/tasks-v0/manifest.js`, 43 ops);
+     mockManifests re-exports it. App-origin migrated `tasks-v0`→`tasks` (the dir/package keep their names).
+     Param vocab → real skill: `rejectTask` declares `note` (was `reason`); the redundant realAgent vocab
+     bridges (rejectTask reason→note, submitTask note-default) were REMOVED. The SEMANTIC aliases
+     (`listMine`/`getMyTasks`→`listOpen`, `myInbox`→`listMyInbox`) + `adaptTasksReply` were KEPT — intentional
+     product behavior, not drift. web `b12aca7e` + mobile `7f3fbcd7`; tasks-v0 703 / canopy-chat 2693 green.
+2. **stoop + household next** (slash duplicated + param drift) — REMAINING: reconcile `postRequest` kind↔intent,
    `markReturned` itemId↔requestId, `markComplete` choreId↔match, dedupe the slash, align itemTypes.
 3. Keep `mockHouseholdManifest` as a test fixture only.
 4. Verify: `validateManifest` strict on the merged manifests; renderChat/renderSlash/renderGate +
