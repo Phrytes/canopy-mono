@@ -136,6 +136,13 @@ export const tasksManifest = {
       ],
       surfaces: {
         chat: { hint: 'Remove a task — admin only via item-store role policy.' },
+        // No inline button by design: the per-state task keyboard is
+        // deliberately minimal (open→claim, claimed→complete/submit,
+        // submitted→approve/reject/revoke).  removeTask is a hard-delete
+        // that fits no single lifecycle state and is admin/role-gated;
+        // `test/sp3-manifest.test.js` pins the open-task keyboard to
+        // exactly [claimTask], so adding an always-on Delete button would
+        // (correctly) break that design contract.  Stays chat/role-driven.
       },
     },
     {
