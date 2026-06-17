@@ -57,6 +57,7 @@ import { createContactSkillRegistry } from '../../src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../src/v2/contactThreadChannel.js';
 import { listContacts, mergeContacts, stoopContactToRow } from '../../src/v2/contactsSource.js';
 import { addBotToGraph } from '../../src/v2/addBot.js';
+import { createLocalStoragePeerBackend } from '../../src/web/localStoragePeerBackend.js';
 import { renderContactsRoster } from './contactsRoster.js';
 import { renderCircleProfile } from './circleProfile.js';
 import { renderCircleAdminPanel } from './circleAdminPanel.js';
@@ -723,7 +724,10 @@ function buildCircleBot(agent) {
   // transport (sendPeerMessage). (Ideally the secure-agent owns this so gossip/
   // discovery feed it directly — a follow-up; app-owned is correct + sufficient
   // here since canopy-chat drives population explicitly.)
-  circlePeerGraph = new PeerGraph();
+  // Persist the roster to localStorage so v2 Contacten survives a reload
+  // (it was in-memory and vanished on refresh). PeerGraph reads through the
+  // backend, so a fresh graph over the same store rehydrates automatically.
+  circlePeerGraph = new PeerGraph({ storageBackend: createLocalStoragePeerBackend() });
   circleCoreAgent = agent.sa?.agent ?? null;   // the core chat agent — discoverA2A's hello/native-upgrade target
   if (typeof window !== 'undefined') {
     window.canopyCirclePods = circlePods;   // S4 debug / e2e seam
