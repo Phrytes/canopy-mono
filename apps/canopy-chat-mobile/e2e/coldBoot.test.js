@@ -16,7 +16,7 @@
 const EXPECTED_APPS = [
   'canopy-chat',
   'household',
-  'tasks-v0',
+  'tasks',
   'stoop',
   'folio',
   'calendar',

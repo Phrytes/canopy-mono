@@ -641,7 +641,7 @@ export default function CircleLauncherScreen({
       addToPersonalCrew: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
         if (typeof bundle.callSkill !== 'function') return null;
         try {
-          return await bundle.callSkill('tasks-v0', 'addTask', {
+          return await bundle.callSkill('tasks', 'addTask', {
             text,
             crewId:           'cc-default',
             originCircleId,

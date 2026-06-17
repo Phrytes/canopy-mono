@@ -39,12 +39,12 @@ describe('5.3c canopy-chat-mobile — multi-crew tasks separation', () => {
       // Add in circle-a — the bundle's dispatch fires
       // `tasksCrew.ensureCrew('circle-a')` before invoke, spawning a
       // fresh per-circle CrewState whose store is keyed by crewId.
-      const addA = await bundle.callSkill('tasks-v0', 'addTask', {
+      const addA = await bundle.callSkill('tasks', 'addTask', {
         text: 'alpha task', crewId: 'circle-a',
       });
       expect(addA?.ok).toBe(true);
 
-      const addB = await bundle.callSkill('tasks-v0', 'addTask', {
+      const addB = await bundle.callSkill('tasks', 'addTask', {
         text: 'beta task', crewId: 'circle-b',
       });
       expect(addB?.ok).toBe(true);
@@ -52,10 +52,10 @@ describe('5.3c canopy-chat-mobile — multi-crew tasks separation', () => {
       // Read each circle scoped — listOpen is what loadCircleItems
       // resolves to on its `getMyTasks` → tasks-v0 fallback path
       // (see realAgent.js TASKS_OP_ALIAS).
-      const listA = await bundle.callSkill('tasks-v0', 'listOpen', {
+      const listA = await bundle.callSkill('tasks', 'listOpen', {
         crewId: 'circle-a',
       });
-      const listB = await bundle.callSkill('tasks-v0', 'listOpen', {
+      const listB = await bundle.callSkill('tasks', 'listOpen', {
         crewId: 'circle-b',
       });
 
@@ -76,7 +76,7 @@ describe('5.3c canopy-chat-mobile — multi-crew tasks separation', () => {
     try {
       // Primary crew is pre-seeded with 4 tasks at boot (see realAgent.js
       // SEED_TASKS). Reading a brand-new circle must NOT surface them.
-      const fresh = await bundle.callSkill('tasks-v0', 'listOpen', {
+      const fresh = await bundle.callSkill('tasks', 'listOpen', {
         crewId: 'fresh-circle',
       });
       const labels = (fresh?.items ?? []).map((t) => t.text ?? t.title ?? t.label);

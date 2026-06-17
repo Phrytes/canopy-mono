@@ -24,13 +24,13 @@ const catalog = {
     ['addTask', { op: { verb: 'add' } }],   // mutation → not refreshable
   ]),
 };
-const REF = { app: 'tasks-v0', type: 'task', id: 'task-9' };
+const REF = { app: 'tasks', type: 'task', id: 'task-9' };
 
 function recordMsg(id, opId) {
   return {
     id, lifecycleState: 'live',
     rendered: { kind: 'record', messageId: `r-${id}`, payload: { id: 'task-9', type: 'task', title: 'OLD' } },
-    sourceDispatch: { kind: 'ready', opId, appOrigin: 'tasks-v0', args: { id: 'task-9' } },
+    sourceDispatch: { kind: 'ready', opId, appOrigin: 'tasks', args: { id: 'task-9' } },
   };
 }
 

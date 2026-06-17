@@ -23,7 +23,7 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     const apps = [...catalog.appOrigins];
     expect(apps).toContain('canopy-chat');
     expect(apps).toContain('household');   // 2026-05-26 — mockHouseholdManifest is now the default (was opts-only)
-    expect(apps).toContain('tasks-v0');
+    expect(apps).toContain('tasks');
     expect(apps).toContain('stoop');
     expect(apps).toContain('folio');
     expect(apps).toContain('calendar');
@@ -54,7 +54,7 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     // for the dual-truth contract.
     expect(apps[0]).toBe('canopy-chat');
     expect(apps).toContain('household');
-    expect(apps).toContain('tasks-v0');
+    expect(apps).toContain('tasks');
     expect(apps).toContain('stoop');
     expect(apps).toContain('folio');
     expect(apps).toContain('calendar');

@@ -48,7 +48,7 @@ function makeManifestsByOrigin() {
   return {
     'canopy-chat': canopyChatManifest,
     'household':   mockHouseholdManifest,
-    'tasks-v0':    mockTasksManifest,
+    'tasks':    mockTasksManifest,
     'stoop':       mockStoopManifest,
     'folio':       mockFolioManifest,
     'calendar':    calendarManifest,
