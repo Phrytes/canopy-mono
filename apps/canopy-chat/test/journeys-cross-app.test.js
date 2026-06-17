@@ -416,9 +416,9 @@ describe('CC-TK.4 — claim a task', () => {
   beforeEach(async () => { ws = await bootWorkspace(); });
 
   it('/mytasks → claim a task flips state', async () => {
-    // Part G (2026-06-17): the bare `/claim` slash is now owned by the REAL
-    // household (its `claim` op, first-mounted), so a TASK is claimed via the
-    // unambiguous tasks op — exactly what the renderer dispatches for a
+    // Part G de-ambiguation (2026-06-18): household's task-claim moved to
+    // `/grab`, so the bare `/claim` slash is unambiguously tasks-v0's. Claim
+    // the TASK via the tasks op — what the renderer dispatches for a
     // task-typed item's [I'll do this] button (the slash is the household one).
     const list = await ws.userInput('/mytasks');
     const openTask = list.payload.items.find((t) => t.state === 'open');
@@ -564,7 +564,7 @@ describe('CC-TK.5 + CC-TK.6 — DoD: submit → approve / reject', () => {
   async function getClaimedTaskId() {
     const list = await ws.userInput('/mytasks');
     const open = list.payload.items.find((t) => t.state === 'open');
-    // Part G — claim via the tasks op (the bare `/claim` slash is household's).
+    // Part G — claim via the tasks op (the bare `/claim` slash is tasks-v0's).
     await ws.callSkill('tasks', 'claimTask', { id: open.id });
     return open.id;
   }
@@ -606,7 +606,7 @@ describe('CC-TK.7 — inbox of mentions', () => {
   it('/submit dispatches; /inbox is queryable (per-mention entries depend on approver wiring)', async () => {
     const list = await ws.userInput('/mytasks');
     const open = list.payload.items.find((t) => t.state === 'open');
-    // Part G — claim via the tasks op (the bare `/claim` slash is household's).
+    // Part G — claim via the tasks op (the bare `/claim` slash is tasks-v0's).
     await ws.callSkill('tasks', 'claimTask', { id: open.id });
     const sub = await ws.userInput(`/submit ${open.id}`);
     // Real tasks-v0 inbox is populated by the approver-mention

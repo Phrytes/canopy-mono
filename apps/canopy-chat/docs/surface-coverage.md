@@ -49,7 +49,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `help` | help | ✅ | ✅ | ✅ | · | · | help, hulp |
 |  | `addTask` | add | ✅ | ✅ | ✅ | ✅ | · | task, taak |
 |  | `listTasks` | list | ✅ | ✅ | ✅ | · | · | tasks, taken |
-|  | `claim` | claim | ✅ | ✅ | ✅ | ✅ | ✅ | claim, pak, neem |
+|  | `claim` | claim | ✅ | ✅ | ✅ | ✅ | ✅ | grab, oppakken |
 |  | `reassign` | reassign | ✅ | · | · | · | · |  |
 |  | `registerName` | register | ✅ | ✅ | ✅ | ✅ | · | register, registreer, naam |
 | **tasks** | `addTask` | add | ✅ | ✅ | ✅ | ✅ | · | add, todo, new task, voeg, zet, maak taak, nieuwe taak |

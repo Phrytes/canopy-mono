@@ -195,11 +195,16 @@ export const householdManifest = {
         { name: 'match', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
       surfaces: {
-        chat:  { hint: 'Claim an open task.  match = id, id-prefix, or keyword.' },
+        chat:  { hint: 'Grab an open task to do it.  match = id, id-prefix, or keyword.' },
         slash: {
-          command: '/claim',
+          // `/grab` (not `/claim`): in canopy-chat's unified catalog, `/claim`
+          // + the "claim/pak/neem" gate verbs are owned by tasks-v0 (the
+          // dedicated crew-task system).  Household's task-claim uses a distinct
+          // command + verbs so the two never collide (Part G de-ambiguation
+          // 2026-06-18; backwards-compat intentionally dropped).
+          command: '/grab',
           match: {
-            verbs:   ['claim', 'pak', 'neem'],
+            verbs:   ['grab', 'oppakken'],
             body:    'match',
             onEmpty: { skillId: 'help', args: {} },
           },
