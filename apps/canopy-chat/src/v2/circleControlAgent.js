@@ -50,7 +50,10 @@ export function createCircleControlAgent({
   const keyStore = createPodKeyStore({ podClient, uri: `${root}/.keys/group.json` });
   const agent = createControlAgent({
     sharing,
-    containerUri: `${root}/shared/`,
+    // Grant members access to the WHOLE circle container — they need to read both
+    // the per-recipient-wrapped group key (`${root}/.keys/`) AND the sealed content
+    // (everything's encrypted, so a shared READ is safe) for true multi-device.
+    containerUri: `${root}/`,
     keyStore,
     controllerKey,
     modes: ['read', 'write'],

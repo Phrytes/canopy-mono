@@ -80,6 +80,9 @@ import { resolveChatAi } from '../../src/v2/chatAi.js';
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
 // four-tier crew storage policy (admin-gated, one-way) instead of going nowhere.
 import { pushCircleStoragePolicy } from '../../src/v2/circleStoragePolicy.js';
+// Real ACP `sharing` for sealed circles on a real pod — a member redeem grants pod
+// read of the circle container (true multi-device). Verified in circlePod2Pod.css.test.js.
+import { createCirclePodSharing } from '../../src/v2/circlePodSharing.js';
 // Calendar cross-peer fan-out — wrap the dispatch callSkill so a successful
 // calendar op fans its invite/RSVP envelopes out over the peer transport.
 import { withCalendarOutbound } from '../../src/core/handlers/calendarOutbound.js';
@@ -489,6 +492,7 @@ let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
 // read the user's OWN private-pod items; null when signed out → resolution falls
 // back to a public fetch (only public cross-pod refs resolve; protected → 🔒).
 let circleAuthedFetch = null;
+let circleOwnerWebId = null;   // signed-in webid — owner of the ACP grants for sealed circles
 // S6.4 — the active circle's noticeboard reloader, so a stoop:attachment-fetched
 // event (recipient's full bytes arrived) can refresh whatever board is on screen.
 let noticeboardRefreshHook = null;
@@ -577,10 +581,17 @@ async function ensureCirclePod(circleId, policy) {
   // in-memory pseudo-pod (offline / not signed in). Verified end-to-end in circlePodProducer.css.test.js.
   const routing = circleRealPodRouting;
   try {
+    // On a REAL pod (signed in), wire a real ACP `sharing` so a member redeem grants
+    // them pod read of the circle container — true multi-device. (Pseudo-pod keeps
+    // the no-op: no ACL layer.) Verified on two CSS pods in circlePod2Pod.css.test.js.
+    const sharing = (routing && circleAuthedFetch && circleOwnerWebId)
+      ? createCirclePodSharing({ fetch: circleAuthedFetch, ownerWebId: circleOwnerWebId })
+      : undefined;
     const producer = await createCirclePodProducer({
       circleId, storagePosture, vault: circleVault, generateKeypair: podGenerateKeypair,
       makePodClient: routing ? routing.makePodClient : makeCirclePodClient,
       circleRootUri: routing ? routing.circleRootUri(circleId) : undefined,
+      sharing,
     });
     circlePods.set(circleId, producer);
     return producer;
@@ -2731,6 +2742,7 @@ async function boot() {
     circleRealPodRouting = realPodRouting(podSession, { PodClient, SolidOidcAuth, podRoot });
     // embed-ref resolution reads the user's own private-pod items with this fetch.
     circleAuthedFetch = (podSession && typeof podSession.fetch === 'function') ? podSession.fetch : null;
+    circleOwnerWebId  = podSession?.webid ?? null;
     if (typeof window !== 'undefined') {
       window.canopyPodSession = podSession ?? null;               // debug / e2e seam
       window.canopyPodSignIn = (issuer) => podAuth.startSignIn({ issuer, redirectUrl: window.location.href });
