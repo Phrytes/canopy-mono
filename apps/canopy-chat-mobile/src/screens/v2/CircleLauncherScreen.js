@@ -85,6 +85,7 @@ import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispa
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
+import { makeLexicalRetriever } from '../../../../canopy-chat/src/v2/circleRetriever.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
@@ -1831,7 +1832,16 @@ function CircleDetail({
     // Deterministic pre-LLM gate (manifest-derived via renderGate): "add X" / "done X" / "claim X"
     // route to the task op WITHOUT the (unreliable) small-model tool pick; else falls to interpret.
     // Gate built for the user's locale so trailing verbs ("kaas done"/"afwas klaar") match per-language.
-    gate: createTokenGate({ rules: circleGateRules(lang()) }),
+    // F-retrieve (tier 1 — lexical), web parity: on the via:'llm' path the gate
+    // pulls the circle's items relevant to the message into the LLM prompt
+    // (grounding + fewer tokens). Ranking lives once in circleRetriever; this
+    // shell injects only the loadItems adapter. Tier-2 semantic swaps in here.
+    gate: createTokenGate({
+      rules: circleGateRules(lang()),
+      retrieve: makeLexicalRetriever({
+        loadItems: (ctx) => loadCircleItems({ callSkill, circleId: ctx?.circleId ?? circle?.id }),
+      }),
+    }),
     // A slash command is parsed to {opId,args}; the LLM already yields {opId,args}. Both then flow
     // through the clarifying dispatch (unique → run; ambiguous → ask with buttons).
     dispatch: (input) => {
@@ -1846,7 +1856,7 @@ function CircleDetail({
     postToKring: (text, ctx) => { if (ctx?.msgId) broadcastFanOut({ msgId: ctx.msgId, text, ts: ctx.ts ?? Date.now() }); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
     onNoMatch: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); },
-  }), [catalog, clarify, circle?.id, appendKringMessage, broadcastFanOut, userLlmDefault, circleLlmPolicy]);
+  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, userLlmDefault, circleLlmPolicy]);
 
   // SP-13.2.1 / B / M6 — kring chat send: the feedback bot gets first refusal (it owns the turn only
   // for /feedback, /feedback-stop, and free text while active); otherwise echo + route to the circle bot.
