@@ -345,6 +345,66 @@ async function revokePodAccess(controlAgent, { webId, force = false, groupId, me
   catch { metrics?.record?.('control-agent-revoke-failed'); }
 }
 
+/**
+ * Resolve a member roster to the recipient webids (everyone but `selfWebid`) and
+ * fan a `chat.send` out to each. The single member-loop the kring `broadcast*`
+ * skills share, so the roster filter, per-peer error capture, and the return
+ * shape can't drift across them (E1 drift-guard).
+ *
+ * @param {object} a
+ * @param {{list:()=>Promise<Array>}} a.members
+ * @param {{send:(env:object)=>Promise<{ok?:boolean,reason?:string}>}} a.chat
+ * @param {string|null} a.selfWebid     webid to omit from the fan-out (the sender)
+ * @param {string} a.subtype            chat.send subtype
+ * @param {string} a.threadId           chat.send threadId (the circle/group id)
+ * @param {string} [a.body]             chat.send body (default '')
+ * @param {object} [a.extras]           chat.send extras payload
+ * @returns {Promise<{sent:number, attempted:number, errors:Array<{webid:string,reason:string}>}>}
+ */
+async function _fanOutToMembers({ members, chat, selfWebid, subtype, threadId, body = '', extras = {} }) {
+  const list = await members.list();
+  const webids = new Set();
+  for (const m of list ?? []) {
+    const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
+    if (!w || w === selfWebid) continue;
+    webids.add(w);
+  }
+  let sent = 0;
+  const errors = [];
+  await Promise.all([...webids].map(async (webid) => {
+    try {
+      const r = await chat.send({ toWebid: webid, subtype, threadId, body, extras });
+      if (r?.ok) sent += 1;
+      else errors.push({ webid, reason: r?.reason ?? 'unknown' });
+    } catch (err) {
+      errors.push({ webid, reason: String(err?.message ?? err) });
+    }
+  }));
+  return { sent, attempted: webids.size, errors };
+}
+
+/**
+ * Shared inbound-peer filter for BOTH ingest paths (kring chat + buurt post),
+ * so eviction + mute can't drift between them (E1 drift-guard). Returns a
+ * rejection verdict (`{evicted:true}` | `{muted:true}`) or `null` (let through).
+ *
+ * @param {object} a
+ * @param {{isEvicted:(webid:string)=>boolean}|null} [a.evictionRoster]
+ * @param {Set<string>|null} [a.muted]              per-viewer local mute set
+ * @param {string|null} [a.evictWebid]              author webid tested against eviction
+ * @param {Array<string|null|undefined>} [a.muteKeys]  candidate mute keys (stableId/actor/webid)
+ * @returns {{evicted:true}|{muted:true}|null}
+ */
+function _peerIngestVerdict({ evictionRoster, muted, evictWebid, muteKeys } = {}) {
+  if (evictionRoster && evictWebid && evictionRoster.isEvicted(evictWebid)) return { evicted: true };
+  if (muted) {
+    for (const k of muteKeys ?? []) {
+      if (k && muted.has(k)) return { muted: true };
+    }
+  }
+  return null;
+}
+
 export function buildSkills({
   store,
   skillMatch,
@@ -2103,7 +2163,8 @@ export function buildSkills({
      *   substrate-multi-transport slice can drop this bridge without
      *   schema changes.
      *
-     *   Returns: { ok: true, itemId } or { deduped: true } or { error }.
+     *   Returns: { ok: true, itemId } | { deduped: true } | { evicted: true }
+     *            | { muted: true } | { error }.
      */
     defineSkill('ingestRemotePost', async ({ parts }) => {
       const a = dataArgs(parts);
@@ -2117,12 +2178,17 @@ export function buildSkills({
       if (!payload || typeof payload !== 'object') return { error: 'payload required' };
       const requestId = payload.requestId;
       if (typeof requestId !== 'string' || !requestId) return { error: 'payload.requestId required' };
-      // Eviction filter — drop posts from members who left/were evicted.
-      const evictionRoster = bundle?.evictionRoster ?? null;
-      if (evictionRoster) {
-        const fromWebid = payload.from ?? null;
-        if (fromWebid && evictionRoster.isEvicted(fromWebid)) return { evicted: true };
-      }
+      // Eviction + mute filter — shared with ingestKringMessage so the two ingest
+      // paths can't drift (E1 drift-guard via _peerIngestVerdict). NB buurt-posts
+      // previously honoured eviction but NOT mute — this closes that gap: a muted
+      // member's posts are dropped too, matching the kring-chat path.
+      const verdict = _peerIngestVerdict({
+        evictionRoster: bundle?.evictionRoster ?? null,
+        muted,
+        evictWebid: payload.from ?? null,
+        muteKeys: [payload.fromStableId, payload.from, payload.fromActor],
+      });
+      if (verdict) return verdict;
       // Dedupe — same O(N) check as substrate-mirror.
       const open = await store.listOpen();
       if (open.some(i => i?.source?.requestId === requestId)) return { deduped: true };
@@ -2774,38 +2840,13 @@ export function buildSkills({
       if (!chat?.send)           return { error: 'chat-unavailable', sent: 0, errors: [], itemId: localItemId };
       if (!members)              return { error: 'members-unavailable', sent: 0, errors: [], itemId: localItemId };
 
-      const list = await members.list();
-      const webids = new Set();
-      for (const m of list ?? []) {
-        const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
-        if (!w || w === from) continue;
-        webids.add(w);
-      }
-
-      let sent = 0;
-      const errors = [];
-      await Promise.all([...webids].map(async (webid) => {
-        try {
-          const r = await chat.send({
-            toWebid:  webid,
-            subtype:  'kring-chat-message',
-            threadId: _groupId,
-            body:     text,
-            extras: {
-              circleId:  _groupId,
-              msgId:     a.msgId,
-              ts,
-              fromActor: a.fromActor ?? from ?? null,
-            },
-          });
-          if (r?.ok) sent += 1;
-          else errors.push({ webid, reason: r?.reason ?? 'unknown' });
-        } catch (err) {
-          errors.push({ webid, reason: String(err?.message ?? err) });
-        }
-      }));
+      const { sent, attempted, errors } = await _fanOutToMembers({
+        members, chat, selfWebid: from,
+        subtype: 'kring-chat-message', threadId: _groupId, body: text,
+        extras: { circleId: _groupId, msgId: a.msgId, ts, fromActor: a.fromActor ?? from ?? null },
+      });
       metrics?.record?.('kring-chat-fanout');
-      return { sent, attempted: webids.size, errors, itemId: localItemId };
+      return { sent, attempted, errors, itemId: localItemId };
     }, {
       description: 'Fan a plain-text kring chat message out to every other member via chat.send subtype:kring-chat-message; also mirrors locally to itemStore for durable history.',
       visibility:  'authenticated',
@@ -2839,39 +2880,13 @@ export function buildSkills({
       if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
       if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
 
-      const list = await members.list();
-      const webids = new Set();
-      for (const m of list ?? []) {
-        const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
-        if (!w || w === from) continue;
-        webids.add(w);
-      }
-
-      let sent = 0;
-      const errors = [];
-      await Promise.all([...webids].map(async (webid) => {
-        try {
-          const r = await chat.send({
-            toWebid:  webid,
-            subtype:  'kring-recipe-broadcast',
-            threadId: _groupId,
-            body:     '',
-            extras: {
-              circleId:  _groupId,
-              msgId:     a.msgId,
-              ts,
-              recipe:    a.recipe,
-              fromActor: a.fromActor ?? from ?? null,
-            },
-          });
-          if (r?.ok) sent += 1;
-          else errors.push({ webid, reason: r?.reason ?? 'unknown' });
-        } catch (err) {
-          errors.push({ webid, reason: String(err?.message ?? err) });
-        }
-      }));
+      const { sent, attempted, errors } = await _fanOutToMembers({
+        members, chat, selfWebid: from,
+        subtype: 'kring-recipe-broadcast', threadId: _groupId,
+        extras: { circleId: _groupId, msgId: a.msgId, ts, recipe: a.recipe, fromActor: a.fromActor ?? from ?? null },
+      });
       metrics?.record?.('kring-recipe-fanout');
-      return { sent, attempted: webids.size, errors };
+      return { sent, attempted, errors };
     }, {
       description: 'Fan a kring scherm recipe out to every other member via chat.send subtype:kring-recipe-broadcast; receivers cache as pending incomingRecipe for the γ.3 conflict resolver.',
       visibility:  'authenticated',
@@ -2905,39 +2920,13 @@ export function buildSkills({
       if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
       if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
 
-      const list = await members.list();
-      const webids = new Set();
-      for (const m of list ?? []) {
-        const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
-        if (!w || w === from) continue;
-        webids.add(w);
-      }
-
-      let sent = 0;
-      const errors = [];
-      await Promise.all([...webids].map(async (webid) => {
-        try {
-          const r = await chat.send({
-            toWebid:  webid,
-            subtype:  'kring-rules-broadcast',
-            threadId: _groupId,
-            body:     '',
-            extras: {
-              circleId:  _groupId,
-              msgId:     a.msgId,
-              ts,
-              rulesDoc:  a.rulesDoc,
-              fromActor: a.fromActor ?? from ?? null,
-            },
-          });
-          if (r?.ok) sent += 1;
-          else errors.push({ webid, reason: r?.reason ?? 'unknown' });
-        } catch (err) {
-          errors.push({ webid, reason: String(err?.message ?? err) });
-        }
-      }));
+      const { sent, attempted, errors } = await _fanOutToMembers({
+        members, chat, selfWebid: from,
+        subtype: 'kring-rules-broadcast', threadId: _groupId,
+        extras: { circleId: _groupId, msgId: a.msgId, ts, rulesDoc: a.rulesDoc, fromActor: a.fromActor ?? from ?? null },
+      });
       metrics?.record?.('kring-rules-fanout');
-      return { sent, attempted: webids.size, errors };
+      return { sent, attempted, errors };
     }, {
       description: 'Fan a kring rules document out to every other member via chat.send subtype:kring-rules-broadcast; receivers cache as pending incomingRules for the γ.4 conflict resolver.',
       visibility:  'authenticated',
@@ -2971,39 +2960,13 @@ export function buildSkills({
       if (!chat?.send) return { error: 'chat-unavailable', sent: 0, attempted: 0, errors: [] };
       if (!members)    return { error: 'members-unavailable', sent: 0, attempted: 0, errors: [] };
 
-      const list = await members.list();
-      const webids = new Set();
-      for (const m of list ?? []) {
-        const w = typeof m === 'string' ? m : (m?.webid ?? m?.webId ?? null);
-        if (!w || w === from) continue;
-        webids.add(w);
-      }
-
-      let sent = 0;
-      const errors = [];
-      await Promise.all([...webids].map(async (webid) => {
-        try {
-          const r = await chat.send({
-            toWebid:  webid,
-            subtype:  'kring-policy-broadcast',
-            threadId: _groupId,
-            body:     '',
-            extras: {
-              circleId:  _groupId,
-              msgId:     a.msgId,
-              ts,
-              policy:    a.policy,
-              fromActor: a.fromActor ?? from ?? null,
-            },
-          });
-          if (r?.ok) sent += 1;
-          else errors.push({ webid, reason: r?.reason ?? 'unknown' });
-        } catch (err) {
-          errors.push({ webid, reason: String(err?.message ?? err) });
-        }
-      }));
+      const { sent, attempted, errors } = await _fanOutToMembers({
+        members, chat, selfWebid: from,
+        subtype: 'kring-policy-broadcast', threadId: _groupId,
+        extras: { circleId: _groupId, msgId: a.msgId, ts, policy: a.policy, fromActor: a.fromActor ?? from ?? null },
+      });
       metrics?.record?.('kring-policy-fanout');
-      return { sent, attempted: webids.size, errors };
+      return { sent, attempted, errors };
     }, {
       description: 'Fan a kring circlePolicy document out to every other member via chat.send subtype:kring-policy-broadcast; receivers cache as pending incomingPolicy for the γ.4 conflict resolver.',
       visibility:  'authenticated',
@@ -3139,20 +3102,15 @@ export function buildSkills({
       if (typeof msgId    !== 'string' || !msgId)    return { error: 'msgId required' };
       if (typeof text     !== 'string' || !text)     return { error: 'text required' };
 
-      // Eviction filter — drop chats from members who left/were evicted.
-      const evictionRoster = bundle?.evictionRoster ?? null;
-      if (evictionRoster) {
-        const fromWebid = payload.fromActor ?? payload.fromWebid ?? null;
-        if (fromWebid && evictionRoster.isEvicted(fromWebid)) return { evicted: true };
-      }
-
-      // Mute filter — drop chats from peers I've muted locally
-      // (same shape as wireChat's broadcast-post branch).
-      if (muted && (
-        (payload.fromStableId && muted.has(payload.fromStableId)) ||
-        (payload.fromActor    && muted.has(payload.fromActor)) ||
-        (payload.fromWebid    && muted.has(payload.fromWebid))
-      )) return { muted: true };
+      // Eviction + mute filter — shared with ingestRemotePost so the two ingest
+      // paths can't drift (E1 drift-guard via _peerIngestVerdict).
+      const verdict = _peerIngestVerdict({
+        evictionRoster: bundle?.evictionRoster ?? null,
+        muted,
+        evictWebid: payload.fromActor ?? payload.fromWebid ?? null,
+        muteKeys: [payload.fromStableId, payload.fromActor, payload.fromWebid],
+      });
+      if (verdict) return verdict;
 
       // Dedupe by msgId — O(N) over open kring-chat items.
       const open = await store.listOpen({ type: 'kring-chat-message' });

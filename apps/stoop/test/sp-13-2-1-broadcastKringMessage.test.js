@@ -253,6 +253,46 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
 });
 
 /* ─────────────────────────────────────────────────────────────────────────
+ * E1 drift-guard — the two ingest paths (kring chat + buurt post) now share
+ * one eviction+mute filter (_peerIngestVerdict), so buurt-posts honour mute
+ * just like kring chats do.  This used to drift: ingestRemotePost dropped
+ * evicted authors but NOT muted ones.
+ * ─────────────────────────────────────────────────────────────────────── */
+describe('Stoop E1 drift-guard — ingestRemotePost honours mute (parity with kring chat)', () => {
+  it('drops buurt-posts from a peer muted via mutePeer', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    // Mute BOB (resolves BOB → 'sid-bob' via MemberMap; muted set keyed by stableId).
+    await callSkill(bundle.agent, 'mutePeer', { peerWebid: BOB });
+    const r = await callSkill(bundle.agent, 'ingestRemotePost', {
+      payload: {
+        requestId: 'buurt-mute-1', type: 'request', text: 'Anyone got a ladder?',
+        from: BOB, fromStableId: 'sid-bob',
+      },
+      fromPubKey: 'pk-bob',
+    });
+    expect(r.muted).toBe(true);
+    const open = await bundle.itemStore.listOpen();
+    expect(open.some((i) => i?.source?.requestId === 'buurt-mute-1')).toBe(false);
+  });
+
+  it('still ingests buurt-posts from a non-muted peer', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const r = await callSkill(bundle.agent, 'ingestRemotePost', {
+      payload: {
+        requestId: 'buurt-ok-1', type: 'request', text: 'Free lemons',
+        from: CARLA, fromStableId: 'sid-carla',
+      },
+      fromPubKey: 'pk-carla',
+    });
+    expect(r.ok).toBe(true);
+    const open = await bundle.itemStore.listOpen();
+    expect(open.some((i) => i?.source?.requestId === 'buurt-ok-1')).toBe(true);
+  });
+});
+
+/* ─────────────────────────────────────────────────────────────────────────
  * Cross-agent journey — Anne broadcasts, Bob ingests.
  *
  * Verifies the wire shape stays compatible end-to-end: what broadcast-
