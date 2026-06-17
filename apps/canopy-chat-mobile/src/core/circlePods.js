@@ -16,6 +16,7 @@ import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth } from '@canopy/pod-client';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../canopy-chat/src/v2/circlePodProducer.js';
 import { realPodRouting } from '../../../canopy-chat/src/v2/circleRealPod.js';
+import { createCirclePodSharing } from '../../../canopy-chat/src/v2/circlePodSharing.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
 let podSessionRef = null;                     // App-owned OidcSessionRN ref — set by setCirclePodSession
@@ -75,12 +76,19 @@ export async function ensureCirclePod(circleId, policy) {
   // Circle OIDC: when signed in, route a sealed circle to the user's REAL pod via the RN
   // session's authenticated fetch (the fetch is no longer hidden); else the pseudo-pod.
   const routing = getActiveRealPodRouting();
+  // On a REAL pod, wire a real ACP `sharing` (member redeem → pod read grant) for true
+  // multi-device. web parity (circleApp). Pseudo-pod keeps the no-op.
+  const shaped = sessionShape();
+  const sharing = (routing && shaped)
+    ? createCirclePodSharing({ fetch: shaped.fetch, ownerWebId: shaped.webid })
+    : undefined;
   try {
     producer = await createCirclePodProducer({
       circleId, storagePosture: policy?.storagePosture ?? 'p0', vault: circleVault,
       generateKeypair: podGenerateKeypair,
       makePodClient: routing ? routing.makePodClient : makeCirclePodClient,
       circleRootUri: routing ? routing.circleRootUri(circleId) : undefined,
+      sharing,
     });
   } catch (err) {
     if (typeof console !== 'undefined') console.warn('[circlePods] ensureCirclePod failed:', err?.message ?? err);
