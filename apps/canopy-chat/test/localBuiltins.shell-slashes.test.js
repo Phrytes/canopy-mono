@@ -91,7 +91,7 @@ describe('/dm', () => {
     });
     const r = await builtins.startDm({});
     expect(r.ok).toBe(false);
-    expect(r.error).toMatch(/webid or NKN address/);
+    expect(r.error).toMatch(/webid or peer address/);
   });
 });
 
