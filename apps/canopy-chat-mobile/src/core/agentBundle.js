@@ -38,6 +38,7 @@ import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactT
 import { withCalendarOutbound } from '../../../canopy-chat/src/core/handlers/calendarOutbound.js';
 import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
+import { AsyncStorageAdapter } from '../../../../packages/react-native/src/storage/AsyncStorageAdapter.js';
 import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
@@ -354,7 +355,12 @@ export async function bootAgentBundle(opts = {}) {
   // P4 registry synthesises a contact-thread catalog + a router (sendA2ATask for
   // a2a bots); the P5 channel carries the conversation over sa.peer. Exposed on
   // the bundle for the Contacten screens + Detox.
-  const peerGraph = new PeerGraph();
+  // Persist the roster so v2 Contacten survives a reload (AsyncStorage on RN);
+  // the AsyncStorageAdapter implements the PeerGraph storageBackend interface
+  // (get/set/delete/list). Same pattern as stoop-mobile's agentBundle.
+  const peerGraph = new PeerGraph({
+    storageBackend: new AsyncStorageAdapter({ prefix: 'cc-peers:' }),
+  });
   const sendContactTask = async (peerUrl, skillId, args) => {
     const task = sendA2ATask(agent, peerUrl, skillId, args);
     const { parts } = await task.done();
