@@ -194,6 +194,8 @@ import { renderRulesEditor } from './circleRulesEditor.js';
 import { localStorageObjectVersions } from '../../src/v2/objectVersionsStorage.js';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
+import { loadCircleItems } from '../../src/v2/circleContent.js';
+import { makeLexicalRetriever } from '../../src/v2/circleRetriever.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
@@ -920,7 +922,19 @@ function buildCircleBot(agent) {
     postToKring: (text, ctx) => { if (ctx?.msgId) _kringRender?.fanOut(ctx.msgId, text, ctx.ts); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
     onNoMatch: () => { _kringRender?.botBubble(t('circle.bot.unknown')); },
-    gate: createTokenGate({ rules: circleGateRules(currentLang()) }),
+    // F-retrieve (tier 1 — lexical): on the via:'llm' path the gate pulls the
+    // circle's items relevant to the message into the LLM prompt (grounding +
+    // fewer tokens). `loadItems` is the shell adapter; ranking lives once in
+    // circleRetriever. Tier-2 semantic (sealedIndex.semanticQuery) swaps in here.
+    gate: createTokenGate({
+      rules: circleGateRules(currentLang()),
+      retrieve: makeLexicalRetriever({
+        loadItems: (ctx) => loadCircleItems({
+          callSkill: resolveCallSkill,
+          circleId: ctx?.circleId ?? getActiveCircle(),
+        }),
+      }),
+    }),
     botName: CIRCLE_BOT_NAME,
   });
 }
