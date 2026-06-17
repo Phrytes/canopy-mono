@@ -52,8 +52,15 @@ These mean the chat surface and the real handler disagree — a dispatch can fai
      bridges (rejectTask reason→note, submitTask note-default) were REMOVED. The SEMANTIC aliases
      (`listMine`/`getMyTasks`→`listOpen`, `myInbox`→`listMyInbox`) + `adaptTasksReply` were KEPT — intentional
      product behavior, not drift. web `b12aca7e` + mobile `7f3fbcd7`; tasks-v0 703 / canopy-chat 2693 green.
-2. **stoop + household next** (slash duplicated + param drift) — REMAINING: reconcile `postRequest` kind↔intent,
-   `markReturned` itemId↔requestId, `markComplete` choreId↔match, dedupe the slash, align itemTypes.
+2. **stoop + household** (slash duplicated + param drift):
+   - **stoop — ✅ DONE 2026-06-17 (`e488df9a`).** Same pattern as tasks (one manifest + kept adapter); NO app-origin
+     migration (both `app:'stoop'`). Merged the two slash grammars with **richer-slash-wins**; real param vocab
+     (`postRequest`→`intent`, `markReturned`→`requestId`); `/reveal` collision resolved to `setPeerReveal` (dropped
+     `revealPeer`); 17 mock-only ops relocated; itemTypes += post/contact/member. Removed ONLY the redundant
+     `markReturned itemId→requestId` rename; KEPT the i18n/value transforms (they're not drift). 33 ops, no dup
+     commands (fitness-asserted). stoop 710 / canopy-chat 2693 green.
+   - **household — REMAINING** (last app): verify `markComplete` choreId↔match; `mockHouseholdManifest` stays a test
+     fixture per the plan. Smaller than stoop.
 3. Keep `mockHouseholdManifest` as a test fixture only.
 4. Verify: `validateManifest` strict on the merged manifests; renderChat/renderSlash/renderGate +
    surface-coverage snapshot; slash-routing smoke (no double handlers).
