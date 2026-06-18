@@ -147,6 +147,13 @@ export const householdManifest = {
         slash: {
           command: '/help',
           match:   { verbs: ['help', 'hulp'], body: 'none' },
+          // Slash dedup (2026-06-19): `/help` stays for STANDALONE household (the
+          // bot + the SP-1 byte-equivalence grammar + the bare-command fallback
+          // target). But in a merged circle the canopy-chat SHELL owns the global
+          // `/help` (it introspects every app, including household), so this one
+          // is NOT contributed to the unified catalog — `standaloneOnly` makes
+          // mergeManifests skip it (no /help collision). See manifestMerge.js.
+          standaloneOnly: true,
         },
       },
     },

@@ -143,7 +143,12 @@ export function mergeManifests(sources, opts = {}) {
       if (!matchesRuntime(op.runtime ?? 'both', wantRuntime)) continue;
 
       // commandMenu: first-wins by slash command (bare commands).
-      if (op?.surfaces?.slash?.command) {
+      // `standaloneOnly` slashes are deliberately NOT contributed to the unified
+      // catalog — they exist for the app's OWN standalone surface (bot / byte-
+      // equivalence) but defer to the shell's equivalent in a merged circle
+      // (e.g. household's /help → the canopy-chat shell's global /help, which
+      // already introspects every app). Skipped here = no collision, no warning.
+      if (op?.surfaces?.slash?.command && !op.surfaces.slash.standaloneOnly) {
         const command = op.surfaces.slash.command;
         const owner   = commandOwner.get(command);
         if (owner && owner !== m.app) {
