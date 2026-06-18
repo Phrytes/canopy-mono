@@ -1,5 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { lexicalRank, makeLexicalRetriever } from '../../src/v2/circleRetriever.js';
+import {
+  lexicalRank, makeLexicalRetriever,
+  cosineSim, makeSemanticRetriever, makeCircleRetriever,
+} from '../../src/v2/circleRetriever.js';
+import { mockEmbeddingsProvider } from '@canopy/llm-client';
 
 // Normalized circle items (the shape loadCircleItems returns: {id,label,kind,...}).
 const ITEMS = [
@@ -65,5 +69,58 @@ describe('makeLexicalRetriever', () => {
     expect(await boom('ladder')).toEqual([]);
     const none = makeLexicalRetriever({ loadItems: null });
     expect(await none('ladder')).toEqual([]);
+  });
+});
+
+describe('cosineSim', () => {
+  it('1 for identical, 0 for orthogonal/degenerate', () => {
+    expect(cosineSim([1, 0], [1, 0])).toBeCloseTo(1);
+    expect(cosineSim([1, 0], [0, 1])).toBeCloseTo(0);
+    expect(cosineSim([1, 0], [0, 0])).toBe(0);
+    expect(cosineSim([1], [1, 2])).toBe(0);     // length mismatch
+  });
+});
+
+describe('makeSemanticRetriever (tier-2)', () => {
+  // deterministic, token-aware embedder (shared tokens → higher cosine)
+  const { embed } = mockEmbeddingsProvider({ dims: 64 });
+  const loadItems = async () => ITEMS;
+
+  it('ranks by embedding cosine (semantic), tagging entries by kind', async () => {
+    const retrieve = makeSemanticRetriever({ embed, loadItems, limit: 3 });
+    const out = await retrieve('anyone still need that ladder?');
+    expect(out.map((c) => c.id)).toEqual(expect.arrayContaining(['t1', 'p1'])); // ladder items rank
+    expect(out.map((c) => c.id)).not.toContain('e1');                           // bbq doesn't
+    expect(out[0].text).toMatch(/^(task|post): /);
+  });
+
+  it('falls back to LEXICAL when the embedder throws (enclave down → graceful)', async () => {
+    const boom = async () => { throw new Error('enclave unreachable'); };
+    const retrieve = makeSemanticRetriever({ embed: boom, loadItems });
+    const out = await retrieve('borrow a ladder');
+    expect(out.map((c) => c.id)).toContain('t1');   // still got results, via lexicalRank
+  });
+
+  it('falls back to lexical when no embedder is supplied', async () => {
+    const retrieve = makeSemanticRetriever({ loadItems });   // no embed
+    expect((await retrieve('ladder')).map((c) => c.id)).toContain('t1');
+  });
+
+  it('best-effort: a throwing loader → []', async () => {
+    const retrieve = makeSemanticRetriever({ embed, loadItems: async () => { throw new Error('x'); } });
+    expect(await retrieve('ladder')).toEqual([]);
+  });
+});
+
+describe('makeCircleRetriever — auto-tiers', () => {
+  const loadItems = async () => ITEMS;
+  it('uses semantic when an embedder is configured', async () => {
+    const { embed } = mockEmbeddingsProvider({ dims: 64 });
+    const out = await makeCircleRetriever({ embed, loadItems })('ladder to borrow');
+    expect(out.map((c) => c.id)).toEqual(expect.arrayContaining(['t1', 'p1']));
+  });
+  it('uses lexical when no embedder is configured', async () => {
+    const out = await makeCircleRetriever({ loadItems })('quantum entanglement');
+    expect(out).toEqual([]);   // lexical: zero overlap → nothing
   });
 });

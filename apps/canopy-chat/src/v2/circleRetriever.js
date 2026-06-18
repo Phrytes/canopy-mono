@@ -12,12 +12,19 @@
  * No model, no embeddings, no network beyond the item load, no privacy leak.
  * Good enough to ground references like "is that ladder thing still open?".
  *
- * TIER 2 (deferred) — SEMANTIC: `@canopy/pod-client` `sealedIndex.semanticQuery`
- * (cosine over per-entry embeddings).  Better recall (synonyms/paraphrase) but
- * needs an embedding model — for sealed circles a LOCAL one, to keep text on
- * device.  The seam is already here: swap the `retrieve` passed to
- * `createTokenGate` for a semantic one; `circleDispatch`/`interpret` are
- * unchanged (they already merge memory-then-context and render it the same way).
+ * TIER 2 — SEMANTIC: cosine over embeddings (better recall — synonyms/paraphrase).
+ * `makeSemanticRetriever` embeds the query + candidate items via an injected
+ * `embed(texts)→vectors` (an `@canopy/llm-client` `EmbeddingClient`, pointed at
+ * the Privatemode enclave / Ollama / any `/v1/embeddings` route — see
+ * `circleEmbedProviders` + `embedPicker`), ranks by cosine, and GRACEFULLY FALLS
+ * BACK to lexical if the embedder is absent or errors (enclave unreachable).
+ * `makeCircleRetriever` auto-tiers (semantic when an embedder is configured, else
+ * lexical). The gate/dispatch/interpret are unchanged — same `retrieve` seam.
+ *
+ * Placement (invariant #7): embeddings go in the SAME trust boundary as the chat
+ * LLM — enclave for sealed circles, NOT a plain remote. (V0 here embeds items
+ * on-query; the amortized path — store sealed per-item vectors at index-time +
+ * `sealedIndex.semanticQuery` — is a follow-up; the `embed` seam is identical.)
  */
 
 // Minimal bilingual stop-word set (EN + NL) so common glue words don't inflate
@@ -109,4 +116,67 @@ export function makeLexicalRetriever({ loadItems, limit = 5 } = {}) {
     try { items = (await loadItems(ctx)) || []; } catch { return []; }
     return lexicalRank(items, text, { limit });
   };
+}
+
+/** Cosine similarity of two equal-length numeric vectors (0 if degenerate). */
+export function cosineSim(a, b) {
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length || a.length === 0) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  const denom = Math.sqrt(na) * Math.sqrt(nb);
+  return denom === 0 ? 0 : dot / denom;
+}
+
+/**
+ * TIER-2 SEMANTIC retriever. Embeds the query + candidate items via the injected
+ * `embed(texts)→Promise<vectors>` (one batched call), ranks by cosine, returns
+ * the top `limit` as context entries. Degrades GRACEFULLY: no embedder, or an
+ * embed error (enclave unreachable), falls back to `lexicalRank` over the same
+ * already-loaded items — so semantic is a strict upgrade, never a regression.
+ *
+ * @param {{embed?:(texts:string[])=>Promise<number[][]>, loadItems:Function, limit?:number, minScore?:number}} a
+ * @returns {(text:string, ctx?:object)=>Promise<Array>}
+ */
+export function makeSemanticRetriever({ embed, loadItems, limit = 5, minScore = 0 } = {}) {
+  return async (text, ctx = {}) => {
+    if (typeof loadItems !== 'function') return [];
+    let items = [];
+    try { items = (await loadItems(ctx)) || []; } catch { return []; }
+    if (typeof embed !== 'function') return lexicalRank(items, text, { limit });
+
+    const candidates = items.filter((it) => searchableText(it));
+    if (candidates.length === 0) return [];
+
+    let vectors;
+    try {
+      vectors = await embed([String(text ?? ''), ...candidates.map(searchableText)]);
+    } catch {
+      return lexicalRank(items, text, { limit });   // embedder down → graceful lexical fallback
+    }
+    const qVec = Array.isArray(vectors) ? vectors[0] : null;
+    if (!Array.isArray(qVec)) return lexicalRank(items, text, { limit });
+
+    const scored = [];
+    for (let i = 0; i < candidates.length; i++) {
+      const v = vectors[i + 1];
+      if (!Array.isArray(v) || v.length !== qVec.length) continue;
+      const score = cosineSim(qVec, v);
+      if (score > minScore) scored.push({ it: candidates[i], score, i });
+    }
+    scored.sort((a, b) => (b.score - a.score) || (a.i - b.i));   // score desc, recent (input order) tie-break
+    return scored.slice(0, Math.max(0, limit)).map(({ it }) => toContextEntry(it));
+  };
+}
+
+/**
+ * The gate-facing retriever factory: auto-tiers — SEMANTIC when an `embed` is
+ * configured (resolved from the circle's embed policy via `resolveCircleEmbedder`),
+ * else TIER-1 LEXICAL. One call site for the shells; the seam is the same.
+ *
+ * @param {{embed?:Function, loadItems:Function, limit?:number}} a
+ */
+export function makeCircleRetriever({ embed, loadItems, limit = 5 } = {}) {
+  return typeof embed === 'function'
+    ? makeSemanticRetriever({ embed, loadItems, limit })
+    : makeLexicalRetriever({ loadItems, limit });
 }
