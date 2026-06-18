@@ -195,7 +195,9 @@ import { localStorageObjectVersions } from '../../src/v2/objectVersionsStorage.j
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
-import { makeLexicalRetriever } from '../../src/v2/circleRetriever.js';
+import { makeCircleRetriever } from '../../src/v2/circleRetriever.js';
+import { buildCircleEmbedProviders } from '../../src/v2/circleEmbedProviders.js';
+import { resolveCircleEmbedder } from '../../src/v2/embedPicker.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
@@ -507,6 +509,12 @@ let noticeboardRefreshHook = null;
 // kring stream via `_kringRender`, a small per-circle bridge that showKring sets each time it opens.
 const CIRCLE_LLM_BASEURL   = import.meta.env?.VITE_CIRCLE_LLM_BASEURL ?? null;
 const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined;
+// F-retrieve tier-2 embeddings — defaults to the LLM base (the enclave serves both
+// /v1/chat/completions + /v1/embeddings), so semantic RAG rides the same trust
+// boundary unless explicitly pointed elsewhere. Model defaults to the provider's
+// (qwen3-embedding-4b) when unset; null base → semantic stays inert (tier-1 lexical).
+const CIRCLE_EMBED_BASEURL = import.meta.env?.VITE_CIRCLE_EMBED_BASEURL ?? CIRCLE_LLM_BASEURL;
+const CIRCLE_EMBED_MODEL   = import.meta.env?.VITE_CIRCLE_EMBED_MODEL ?? undefined;
 const CIRCLE_BOT_NAME      = import.meta.env?.VITE_CIRCLE_BOT_NAME ?? 'assistant';
 const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
 // Theme B — the settings-chatbot template. HQ can host an updated (open-source)
@@ -765,6 +773,19 @@ function buildCircleBot(agent) {
   }
 
   const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL });
+  // F-retrieve tier-2 embeddings — opt-in, same shape as the LLM providers. The
+  // embed route defaults to the LLM base (the enclave hosts both /v1/chat/completions
+  // + /v1/embeddings), so embeddings ride the SAME trust boundary by default; set
+  // VITE_CIRCLE_EMBED_BASEURL / _MODEL to point elsewhere. Empty → semantic inert.
+  const embedProviders = buildCircleEmbedProviders({ localBaseUrl: CIRCLE_EMBED_BASEURL, model: CIRCLE_EMBED_MODEL });
+  // Per-turn embedder resolution: rides the circle's embed policy (embedTool ??
+  // llmTool). Throws 'no-embedder' when off/unconfigured → the semantic retriever
+  // falls back to tier-1 lexical (strict upgrade, never a regression).
+  const resolveEmbed = async (texts) => {
+    const embedder = resolveCircleEmbedder({ circlePolicy: await policyFor(), userDefault, providers: embedProviders });
+    if (!embedder) throw new Error('no-embedder');
+    return embedder.embed(texts);
+  };
   const policyIo = localStoragePolicyIo();
   let userDefault = { mode: CIRCLE_LLM_BASEURL ? 'local' : 'off' };
   createUserLlmDefaultStore(localStorageUserLlmIo()).get()
@@ -922,13 +943,15 @@ function buildCircleBot(agent) {
     postToKring: (text, ctx) => { if (ctx?.msgId) _kringRender?.fanOut(ctx.msgId, text, ctx.ts); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
     onNoMatch: () => { _kringRender?.botBubble(t('circle.bot.unknown')); },
-    // F-retrieve (tier 1 — lexical): on the via:'llm' path the gate pulls the
-    // circle's items relevant to the message into the LLM prompt (grounding +
-    // fewer tokens). `loadItems` is the shell adapter; ranking lives once in
-    // circleRetriever. Tier-2 semantic (sealedIndex.semanticQuery) swaps in here.
+    // F-retrieve: on the via:'llm' path the gate pulls the circle's relevant items
+    // into the LLM prompt (grounding + fewer tokens). `makeCircleRetriever` auto-tiers
+    // — tier-2 SEMANTIC when an embed route is configured (rides the circle's embed
+    // policy via `resolveEmbed`), else tier-1 LEXICAL; an embedder error falls back
+    // to lexical. Ranking lives once in circleRetriever; `loadItems` is the shell adapter.
     gate: createTokenGate({
       rules: circleGateRules(currentLang()),
-      retrieve: makeLexicalRetriever({
+      retrieve: makeCircleRetriever({
+        embed: CIRCLE_EMBED_BASEURL ? resolveEmbed : undefined,
         loadItems: (ctx) => loadCircleItems({
           callSkill: resolveCallSkill,
           circleId: ctx?.circleId ?? getActiveCircle(),
