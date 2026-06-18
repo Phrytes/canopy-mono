@@ -30,7 +30,6 @@ import {
   AgentIdentity,
   OfflineTransport,
   PeerGraph,
-  RelayTransport,
   RoutingStrategy,
   FallbackTable,
 } from '@canopy/core';
@@ -38,10 +37,8 @@ import {
 import { KeychainVault }         from './identity/KeychainVault.js';
 import { attachIdentityToAgent } from './identity/IdentityWiring.js';
 import { AsyncStorageAdapter }   from './storage/AsyncStorageAdapter.js';
-import { MdnsTransport }         from './transport/MdnsTransport.js';
-import { BleTransport }          from './transport/BleTransport.js';
+import { buildMeshTransports }   from './buildMeshTransports.js';
 import { loadRendezvousRtcLib }  from './transport/rendezvousRtcLib.js';
-import { requestMeshPermissions } from './permissions.js';
 
 /**
  * @param {object}  [opts]
@@ -80,13 +77,6 @@ export async function createMeshAgent(opts = {}) {
     pod:              podOpt,
   } = opts;
 
-  const enableBle   = transportEnabled.ble   !== false;
-  const enableMdns  = transportEnabled.mdns  !== false;
-  const enableRelay = transportEnabled.relay !== false;
-
-  // ── Permissions (before any native transport is instantiated) ──────────────
-  const perms = await requestMeshPermissions();
-
   // ── Identity ───────────────────────────────────────────────────────────────
   const resolvedVault = vault ?? new KeychainVault({ service: 'mesh' });
   let identity;
@@ -96,48 +86,20 @@ export async function createMeshAgent(opts = {}) {
     identity = await AgentIdentity.generate(resolvedVault);
   }
 
-  // ── Transports (each wrapped — one failure doesn't abort boot) ─────────────
-  let mdns = null;
-  if (enableMdns && MdnsTransport.isAvailable()) {
-    try {
-      mdns = new MdnsTransport({
-        identity,
-        hostname: `dw-${identity.pubKey.slice(0, 8)}`,
-      });
-    } catch (e) {
-      console.warn('[createMeshAgent] MdnsTransport init failed:', e?.message);
-    }
-  }
-
-  let ble = null;
-  if (enableBle && perms.ble) {
-    try {
-      ble = new BleTransport({ identity, advertise: true, scan: true });
-    } catch (e) {
-      console.warn('[createMeshAgent] BleTransport init failed:', e?.message);
-    }
-  }
-
-  let relay = null;
-  if (enableRelay && relayUrl) {
-    try {
-      relay = new RelayTransport({ relayUrl, identity });
-    } catch (e) {
-      console.warn('[createMeshAgent] RelayTransport init failed:', e?.message);
-    }
-  }
-
-  // Pre-connect mDNS so we know the interface actually works.  WiFi off →
-  // the 6 s internal timeout rejects; we nullify mdns so it isn't retried
-  // as a fatal primary during agent.start().
-  if (mdns) {
-    try {
-      await _withTimeout(mdns.connect(), mdnsTimeoutMs, 'mDNS pre-connect');
-    } catch (e) {
-      console.warn('[createMeshAgent] mDNS disabled:', e?.message);
-      mdns = null;
-    }
-  }
+  // ── Transports (shared builder — T5.2d/T5.3c) ──────────────────────────────
+  // buildMeshTransports owns permissions + construct + time-boxed mDNS
+  // pre-connect, so this logic lives ONCE: the secure-mesh injection path in
+  // canopy-chat-mobile reuses the SAME builder (then injects via
+  // sa.addSecureTransport instead of registering on a bare agent). It returns
+  // the live ones; each is `null` when its native module is absent or the
+  // mDNS pre-connect timed out.
+  const { mdns, ble, relay } = await buildMeshTransports({
+    identity,
+    enable:         transportEnabled,
+    relayUrl,
+    mdnsTimeoutMs,
+    hostnamePrefix: 'dw',
+  });
 
   // ── PeerGraph (persisted) ──────────────────────────────────────────────────
   const peers = new PeerGraph({
@@ -308,16 +270,4 @@ export async function createMeshAgent(opts = {}) {
   // peer's PeerGraph record on the other side.
   if (autoStart) await agent.start();
   return agent;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function _withTimeout(promise, ms, label) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(
-      () => reject(new Error(`${label} timed out after ${ms}ms`)),
-      ms,
-    )),
-  ]);
 }
