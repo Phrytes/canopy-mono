@@ -15,6 +15,10 @@ export { regexParse }     from './parsers/regexCommands.js';
 export * as Skills        from './skills/index.js';
 export { InMemoryStore }  from './storage/InMemoryStore.js';
 
+// OBJ-2 — local-first (no-pod) cross-device item sync.
+export { wireHouseholdSubstrateMirror } from './substrateMirror.js';
+export { buildHouseholdSubstrateStack } from './lib/substrateStack.js';
+
 // Phase 1 convergence:
 export { HouseholdAgent } from './HouseholdAgent.js';
 

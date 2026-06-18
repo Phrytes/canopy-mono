@@ -75,7 +75,10 @@ import {
   householdManifest,
   HOUSEHOLD_SKILL_REGISTRY,
   InMemoryStore as HouseholdStore,
+  buildHouseholdSubstrateStack,
+  wireHouseholdSubstrateMirror,
 } from '../../../../household/src/index.js';
+import { createSecureMeshEnvelopeAdapter } from '../sync/secureMeshEnvelopeAdapter.js';
 
 // Deterministic seed for the real household store.  Three open items across
 // list types so `/list shopping` + the brief demo are non-empty out of the
@@ -179,6 +182,36 @@ export async function createRealHouseholdAgent(opts = {}) {
   const chatAgent = sa.agent;
   const chatId    = chatAgent.identity;
 
+  /* ─── OBJ-2 (S1a/S1c) — household no-pod peer item-sync ─────────────────────
+   * Wire the in-process household store into the substrate mirror over the REAL
+   * cross-peer wire (the secure-mesh chat agent), so an item added on one device
+   * fans out to the circle's other devices with NO pod. The mirror is
+   * transport-agnostic; we hand it the secure-mesh envelope adapter (publish →
+   * sa.peer.sendTo; receive → handleInbound, registered in the inbound router by
+   * connectPeerTransport below). Peers are app-owned (the chat agent keeps no
+   * core PeerGraph) — the shell feeds the roster via `addHouseholdPeer` as the
+   * circle's members become known (publish early-returns while the roster is
+   * empty, so this is inert until peers are added). Publish-on-write hooks in the
+   * skills (S1d) + persistence (S1e) follow; the mirror is exposed on `ctx` now
+   * so S1d only needs to add the publish calls.
+   */
+  const householdCircleId = opts.householdCircleId ?? 'household';
+  const householdEnvelopeAdapter = createSecureMeshEnvelopeAdapter({
+    sendPeerMessage: (to, payload) => sa.peer.sendTo(to, payload),
+    selfAddress:     chatId.pubKey,
+  });
+  const householdSubstrate = buildHouseholdSubstrateStack({
+    transport: householdEnvelopeAdapter,
+    deviceId:  chatId.pubKey,
+  });
+  const householdMirror = await wireHouseholdSubstrateMirror({
+    itemStore:      householdStore.substrate,
+    notifyEnvelope: householdSubstrate.notifyEnvelope,
+    pseudoPod:      householdSubstrate.pseudoPod,
+    circleId:       householdCircleId,
+    selfPubKey:     chatId.pubKey,
+  });
+
   // v0.6 demo — household runs as a 'decentralized' crew with three
   // simulated peers.  Mostly online; one randomly unreachable so the
   // sync-hint UI surfaces a recognisable pattern.  Real apps populate
@@ -260,6 +293,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         senderWebid: from ?? 'webid:local-demo-user',
         chatId:      HOUSEHOLD_CHAT_ID,
         agent:       hostAgent,
+        householdMirror,     // OBJ-2 — S1d publish-on-write hooks call this
       };
       const out = await skill(args, ctx);
       const payload = await adaptHouseholdReply(opId, out, householdStore, args);
@@ -2122,6 +2156,18 @@ export async function createRealHouseholdAgent(opts = {}) {
     upgradeToRendezvous:    sa.upgradeToRendezvous,
     isRendezvousActive:     sa.isRendezvousActive,
 
+    // OBJ-2 (S1c) — household no-pod sync roster. The shell feeds member pubKeys
+    // (from the circle's app-owned peer/contact roster) so publishItem fans out
+    // to them. Inert until peers are added.
+    addHouseholdPeer:    (pubKey) => householdMirror.addPeer(pubKey),
+    removeHouseholdPeer: (pubKey) => householdMirror.removePeer(pubKey),
+    // Sync seam (mirror + inbound handler) — used by S1d skill hooks + tests.
+    householdSync: {
+      mirror:       householdMirror,
+      handleInbound: householdEnvelopeAdapter.handleInbound,
+      circleId:     householdCircleId,
+    },
+
     // Transport-NEUTRAL reachability — true when ANY peer transport can carry a
     // message (NKN `.peer` OR the WebSocket `.relay`; sendPeerMessage already
     // picks whichever is up via the core RoutingStrategy). Callers that gate a
@@ -2147,14 +2193,24 @@ export async function createRealHouseholdAgent(opts = {}) {
      */
     async connectPeerTransport({ nknLib, onPeerMessage, relayUrl, rendezvous = false, rtcLib = null }) {
       if (!nknLib) throw new Error('connectPeerTransport: nknLib required (caller must inject the runtime nkn-sdk)');
-      await sa.peer.connect({ nknLib, onPeerMessage });
+      // OBJ-2 (S1a) — consume household substrate-sync envelopes off the inbound
+      // peer-message stream BEFORE the shell router. handleInbound returns true
+      // (consumed) only for tagged household-item envelopes; everything else
+      // (DMs, buurt-posts, calendar invites) falls through to the shell's
+      // onPeerMessage unchanged.
+      const routedOnPeerMessage = (addr, payload) => {
+        try { if (householdEnvelopeAdapter.handleInbound(addr, payload)) return; }
+        catch { /* fall through to the shell router */ }
+        return onPeerMessage?.(addr, payload);
+      };
+      await sa.peer.connect({ nknLib, onPeerMessage: routedOnPeerMessage });
       // T3a (unification / OBJ-1) — when a relay is configured, ALSO bring it up and switch to
       // transportMode 'both' so the secure-agent's RoutingStrategy (T2) picks the BEST route per
       // peer (relay > nkn by priority/latency). Best-effort: a relay failure never blocks NKN —
       // the bot keeps working on NKN alone.
       if (relayUrl) {
         try {
-          await sa.relay.connect({ relayUrl, onPeerMessage });
+          await sa.relay.connect({ relayUrl, onPeerMessage: routedOnPeerMessage });
           sa.setTransportMode('both');
           if (typeof console !== 'undefined') console.info('[realAgent] relay connected — routing across {nkn, relay}');
         } catch (err) {

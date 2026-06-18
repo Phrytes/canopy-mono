@@ -239,3 +239,50 @@ describe('createRealHouseholdAgent — T5.2d secure-mesh seams', () => {
     expect(a.peer?.address).toBeTruthy();
   });
 });
+
+// ── OBJ-2 (S1a/S1c) — household no-pod cross-device item sync wiring ──────────
+// The keystone adapter + household substrate stack + mirror are unit-tested in
+// their own suites; here we prove the realAgent INTEGRATION: the roster hooks
+// are exposed and an inbound tagged household-item envelope routes through the
+// adapter → notify-envelope → mirror → the household store.
+describe('createRealHouseholdAgent — OBJ-2 household no-pod sync (S1a/S1c)', () => {
+  it('exposes the sync roster hooks + seam', async () => {
+    const a = await createRealHouseholdAgent();
+    expect(typeof a.addHouseholdPeer).toBe('function');
+    expect(typeof a.removeHouseholdPeer).toBe('function');
+    expect(typeof a.householdSync?.handleInbound).toBe('function');
+    expect(typeof a.householdSync?.mirror?.publishItem).toBe('function');
+    expect(a.householdSync.circleId).toBe('household');
+  });
+
+  it('addHouseholdPeer / removeHouseholdPeer feed the mirror roster', async () => {
+    const a = await createRealHouseholdAgent();
+    a.addHouseholdPeer('peerB');
+    expect(a.householdSync.mirror.listPeers()).toContain('peerB');
+    a.removeHouseholdPeer('peerB');
+    expect(a.householdSync.mirror.listPeers()).not.toContain('peerB');
+  });
+
+  it('an inbound household-item envelope mirrors into the household store', async () => {
+    const a = await createRealHouseholdAgent();
+    const consumed = a.householdSync.handleInbound('peerB', {
+      __ntfyEnv: {
+        kind:      'household-item',
+        ref:       'pseudo-pod://peerB/household/circles/household/items/REMOTE1',
+        etag:      'e1',
+        _v:        1,
+        fromActor: 'peerB',
+        payload:   { id: 'REMOTE1', type: 'task', text: 'Synced eggs', addedBy: 'webid:bob' },
+      },
+    });
+    expect(consumed).toBe(true);
+    await new Promise((r) => setTimeout(r, 15));
+    const open = await a.callSkill('household', 'listOpen', {});
+    expect(open.items.some((i) => i.label === 'Synced eggs')).toBe(true);
+  });
+
+  it('handleInbound leaves non-envelope peer messages for the shell router', async () => {
+    const a = await createRealHouseholdAgent();
+    expect(a.householdSync.handleInbound('peerB', { someDM: 'hi' })).toBe(false);
+  });
+});
