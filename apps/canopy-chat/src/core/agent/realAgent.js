@@ -27,7 +27,7 @@ import {
   Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
-import { createSecureAgent } from '@canopy/secure-agent';
+import { createSecureMeshAgent } from '@canopy/secure-agent';
 import { createBrowserMultiCrewTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
 import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
@@ -157,12 +157,19 @@ export async function createRealHouseholdAgent(opts = {}) {
   // SECURITY: any opt below this comment that is RESET / DISABLED needs
   // a `// SECURITY: opted out — <reason>` comment per
   // Project Files/conventions/architectural-layering.md.
-  const sa = await createSecureAgent({
+  const sa = await createSecureMeshAgent({
     bus,
     vault:               opts.chatVault,
     identityVaultPrefix: 'cc-chat-id:',
     muteListVaultKey:    'cc-mute',
     auditLog:            { vaultKey: 'cc-audit' },
+    // T5.3b — the unified secure-mesh factory is now the single entry for the
+    // chat agent (web + mobile). With no `transports`, it is behaviourally
+    // identical to createSecureAgent; the value is the shared seam: the RN
+    // bundle injects platform transports here (mdns/ble) so the unified router
+    // ranks them alongside nkn/relay/rendezvous. Web injects none.
+    transports:          opts.meshTransports,      // RN passes { mdns, ble }; web omits
+    onTransportError:    opts.onTransportError,     // optional per-transport inject hook
     // onPeerMessage + nknLib supplied later via setPeerWiring().
     // Pass-through for extra factory opts (tests + future ops):
     // identityResolver, capabilityIssuer, policyEngine, groupManager,
