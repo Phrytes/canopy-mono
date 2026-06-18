@@ -12,6 +12,12 @@ const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
+// Skill-path tests must use the CURRENT ISO week: setMyAvailability /
+// getMyAvailability call `pruneStale()` (drops hints older than 4 ISO weeks), so
+// a hardcoded past week (the old '2026-W19') is pruned on write and reads back
+// empty. Pure AvailabilityHints tests below don't prune, so they keep fixed weeks.
+const THIS_WEEK = isoWeekOf(new Date());
+
 const CREW = {
   crewId:  'oss-tools',
   name:    'OSS Tools NL',
@@ -107,9 +113,9 @@ describe('V2.3 — availability skills', () => {
     const { crew } = await setup();
     expect((await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID)).ok).toBe(true);
     const r = await call(crew, 'setMyAvailability',
-      { week: '2026-W19', day: 'mon', half: 'am', state: 'open' }, KID);
+      { week: THIS_WEEK, day: 'mon', half: 'am', state: 'open' }, KID);
     expect(r.ok).toBe(true);
-    const own = await call(crew, 'getMyAvailability', { week: '2026-W19' }, KID);
+    const own = await call(crew, 'getMyAvailability', { week: THIS_WEEK }, KID);
     expect(own.grid).toEqual({ 'mon-am': 'open' });
     await crew.close();
   });
@@ -118,8 +124,8 @@ describe('V2.3 — availability skills', () => {
     const { crew } = await setup();
     await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID);
     await call(crew, 'setMyAvailability',
-      { week: '2026-W19', day: 'tue', half: 'pm', state: 'tight' }, KID);
-    const coordView = await call(crew, 'getCrewAvailability', { week: '2026-W19' }, FRITS);
+      { week: THIS_WEEK, day: 'tue', half: 'pm', state: 'tight' }, KID);
+    const coordView = await call(crew, 'getCrewAvailability', { week: THIS_WEEK }, FRITS);
     expect(coordView.members).toHaveLength(3);
     const kidEntry = coordView.members.find((m) => m.webid === KID);
     expect(kidEntry.grid).toEqual({ 'tue-pm': 'tight' });
