@@ -5,9 +5,11 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".":                       "./src/index.js",
-    "./providers/ollama":      "./src/providers/ollama.js",
-    "./providers/mock":        "./src/providers/mock.js"
+    ".":                          "./src/index.js",
+    "./providers/ollama":         "./src/providers/ollama.js",
+    "./providers/mock":           "./src/providers/mock.js",
+    "./providers/embeddings":     "./src/providers/embeddings.js",
+    "./providers/mockEmbeddings": "./src/providers/mockEmbeddings.js"
   },
   "scripts": {
     "test":       "vitest run",

@@ -75,5 +75,23 @@
  * @property {object} output
  */
 
+/**
+ * @typedef {object} EmbeddingProvider
+ *
+ * @property {string} id
+ *   Stable identifier ('openai-embeddings' | 'mock-embeddings' | ...).
+ *
+ * @property {string} [model]
+ *   The embedding model id the provider is pinned to. Index-time + query-time
+ *   MUST share a model (one vector space) — store this id alongside vectors so a
+ *   model change can trigger a re-index.
+ *
+ * @property {boolean} requiresKey
+ *   true for keyed routes (enclave/cloud); consumers can surface it.
+ *
+ * @property {(texts: string[], opts?: {model?:string, timeoutMs?:number}) => Promise<number[][]>} embed
+ *   Embed N texts → N vectors, in input order.
+ */
+
 // Empty export so this file is a real ES module.
 export const __types__ = true;

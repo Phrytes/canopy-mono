@@ -12,3 +12,12 @@ export {
   OLLAMA_DEFAULT_MODEL,
 } from './providers/ollama.js';
 export { mockProvider } from './providers/mock.js';
+
+// Embeddings (F-retrieve tier-2 / NL search) — sibling of the chat client.
+export { EmbeddingClient } from './EmbeddingClient.js';
+export {
+  openaiEmbeddingsProvider,
+  parseEmbeddingsResponse,
+  EMBEDDINGS_DEFAULT_MODEL,
+} from './providers/embeddings.js';
+export { mockEmbeddingsProvider } from './providers/mockEmbeddings.js';
