@@ -85,7 +85,9 @@ import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispa
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
-import { makeLexicalRetriever } from '../../../../canopy-chat/src/v2/circleRetriever.js';
+import { makeCircleRetriever } from '../../../../canopy-chat/src/v2/circleRetriever.js';
+import { buildCircleEmbedProviders } from '../../../../canopy-chat/src/v2/circleEmbedProviders.js';
+import { resolveCircleEmbedder } from '../../../../canopy-chat/src/v2/embedPicker.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
@@ -141,6 +143,11 @@ import CircleMyDataScreen from './CircleMyDataScreen.js';
 // stays inert (slash commands + plain kring chat still work).
 const CIRCLE_LLM_BASEURL = process.env.EXPO_PUBLIC_CIRCLE_LLM_BASEURL || null;
 const CIRCLE_LLM_MODEL   = process.env.EXPO_PUBLIC_CIRCLE_LLM_MODEL || undefined;
+// F-retrieve tier-2 embeddings (web parity) — base defaults to the LLM base (the
+// enclave serves /v1/chat/completions + /v1/embeddings), so semantic RAG rides the
+// same trust boundary; null base → semantic inert (tier-1 lexical).
+const CIRCLE_EMBED_BASEURL = process.env.EXPO_PUBLIC_CIRCLE_EMBED_BASEURL || CIRCLE_LLM_BASEURL;
+const CIRCLE_EMBED_MODEL   = process.env.EXPO_PUBLIC_CIRCLE_EMBED_MODEL || undefined;
 const CIRCLE_BOT_NAME    = process.env.EXPO_PUBLIC_CIRCLE_BOT_NAME || 'assistant';
 // M6 — feedback bot's LLM route (cleans/anonymizes participant input). Unset → in-memory demo mode.
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
@@ -1832,13 +1839,24 @@ function CircleDetail({
     // Deterministic pre-LLM gate (manifest-derived via renderGate): "add X" / "done X" / "claim X"
     // route to the task op WITHOUT the (unreliable) small-model tool pick; else falls to interpret.
     // Gate built for the user's locale so trailing verbs ("kaas done"/"afwas klaar") match per-language.
-    // F-retrieve (tier 1 — lexical), web parity: on the via:'llm' path the gate
-    // pulls the circle's items relevant to the message into the LLM prompt
-    // (grounding + fewer tokens). Ranking lives once in circleRetriever; this
-    // shell injects only the loadItems adapter. Tier-2 semantic swaps in here.
+    // F-retrieve (web parity): `makeCircleRetriever` auto-tiers — tier-2 SEMANTIC
+    // when an embed route is configured (rides this circle's embed policy via
+    // `resolveEmbed`), else tier-1 LEXICAL; an embedder error falls back to lexical.
+    // Ranking lives once in circleRetriever; this shell injects the loadItems + embed adapters.
     gate: createTokenGate({
       rules: circleGateRules(lang()),
-      retrieve: makeLexicalRetriever({
+      retrieve: makeCircleRetriever({
+        embed: CIRCLE_EMBED_BASEURL
+          ? async (texts) => {
+              const embedder = resolveCircleEmbedder({
+                circlePolicy: { llmTool: circleLlmPolicy },
+                userDefault:  userLlmDefault,
+                providers:    buildCircleEmbedProviders({ localBaseUrl: CIRCLE_EMBED_BASEURL, model: CIRCLE_EMBED_MODEL }),
+              });
+              if (!embedder) throw new Error('no-embedder');   // → graceful tier-1 lexical fallback
+              return embedder.embed(texts);
+            }
+          : undefined,
         loadItems: (ctx) => loadCircleItems({ callSkill, circleId: ctx?.circleId ?? circle?.id }),
       }),
     }),
