@@ -2125,9 +2125,22 @@ export async function createRealHouseholdAgent(opts = {}) {
      * binding wiring for { nknLib, onPeerMessage } supported by
      * sa.peer.connect.
      */
-    async connectPeerTransport({ nknLib, onPeerMessage }) {
+    async connectPeerTransport({ nknLib, onPeerMessage, relayUrl }) {
       if (!nknLib) throw new Error('connectPeerTransport: nknLib required (caller must inject the runtime nkn-sdk)');
       await sa.peer.connect({ nknLib, onPeerMessage });
+      // T3a (unification / OBJ-1) — when a relay is configured, ALSO bring it up and switch to
+      // transportMode 'both' so the secure-agent's RoutingStrategy (T2) picks the BEST route per
+      // peer (relay > nkn by priority/latency). Best-effort: a relay failure never blocks NKN —
+      // the bot keeps working on NKN alone. (Rendezvous/mdns/ble follow in T3b/T4.)
+      if (relayUrl) {
+        try {
+          await sa.relay.connect({ relayUrl, onPeerMessage });
+          sa.setTransportMode('both');
+          if (typeof console !== 'undefined') console.info('[realAgent] relay connected — routing across {nkn, relay}');
+        } catch (err) {
+          if (typeof console !== 'undefined') console.warn('[realAgent] relay auto-connect failed (continuing on NKN):', err?.message ?? err);
+        }
+      }
       return sa.peer;
     },
 

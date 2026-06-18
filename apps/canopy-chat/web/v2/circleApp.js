@@ -244,8 +244,8 @@ async function tryConnectPeerTransport(agent, peerMessageRouter) {
     return;
   }
   try {
-    await agent.connectPeerTransport({ nknLib, onPeerMessage: peerMessageRouter });
-    console.info('[circleApp] NKN peer transport connected');
+    await agent.connectPeerTransport({ nknLib, onPeerMessage: peerMessageRouter, relayUrl: CIRCLE_RELAY_URL });
+    console.info('[circleApp] peer transport connected' + (CIRCLE_RELAY_URL ? ' (nkn + relay, routed)' : ' (nkn)'));
   } catch (err) {
     console.warn('[circleApp] NKN connect failed — kring chat is local-only:', err?.message ?? err);
   }
@@ -515,6 +515,9 @@ const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined
 // (qwen3-embedding-4b) when unset; null base → semantic stays inert (tier-1 lexical).
 const CIRCLE_EMBED_BASEURL = import.meta.env?.VITE_CIRCLE_EMBED_BASEURL ?? CIRCLE_LLM_BASEURL;
 const CIRCLE_EMBED_MODEL   = import.meta.env?.VITE_CIRCLE_EMBED_MODEL ?? undefined;
+// T3a — optional relay (ws://|wss://). When set, the agent connects relay ALONGSIDE NKN and the
+// RoutingStrategy picks the best route per peer (relay > nkn). Unset → NKN-only (unchanged).
+const CIRCLE_RELAY_URL     = import.meta.env?.VITE_CIRCLE_RELAY_URL ?? null;
 const CIRCLE_BOT_NAME      = import.meta.env?.VITE_CIRCLE_BOT_NAME ?? 'assistant';
 const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
 // Theme B — the settings-chatbot template. HQ can host an updated (open-source)
