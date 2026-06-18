@@ -20,7 +20,7 @@
  * This test runs in the node env (default vitest); the same code also runs
  * in the browser bundle (verified by `vite build` + the dev-server smoke).
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 
@@ -284,5 +284,15 @@ describe('createRealHouseholdAgent — OBJ-2 household no-pod sync (S1a/S1c)', (
   it('handleInbound leaves non-envelope peer messages for the shell router', async () => {
     const a = await createRealHouseholdAgent();
     expect(a.householdSync.handleInbound('peerB', { someDM: 'hi' })).toBe(false);
+  });
+
+  it('S1d — a local addItem via the skills fans out to the roster (publish-on-write)', async () => {
+    const a = await createRealHouseholdAgent();
+    a.addHouseholdPeer('peerB');
+    const spy = vi.spyOn(a.householdSync.mirror, 'publishItem');
+    await a.callSkill('household', 'addItem', { type: 'shopping', text: 'Buy milk' });
+    expect(spy).toHaveBeenCalled();
+    expect(spy.mock.calls[0][0]?.text).toBe('Buy milk');   // the RAW item, with its id
+    expect(spy.mock.calls[0][0]?.id).toBeTruthy();
   });
 });

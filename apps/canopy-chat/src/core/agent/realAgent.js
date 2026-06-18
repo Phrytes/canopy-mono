@@ -211,6 +211,13 @@ export async function createRealHouseholdAgent(opts = {}) {
     circleId:       householdCircleId,
     selfPubKey:     chatId.pubKey,
   });
+  // S1d — publish-on-write: every LOCAL household mutation (via the store adapter
+  // the skills use) fans the raw item out to the roster. Sync-originated writes
+  // go straight to `.substrate`, bypassing the adapter, so they don't re-fire.
+  householdStore.setSyncHook({
+    publishItem:        (item) => householdMirror.publishItem(item),
+    publishItemRemoved: (id)   => householdMirror.publishItemRemoved(id),
+  });
 
   // v0.6 demo — household runs as a 'decentralized' crew with three
   // simulated peers.  Mostly online; one randomly unreachable so the

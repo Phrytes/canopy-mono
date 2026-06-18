@@ -47,6 +47,8 @@ export class InMemoryStore {
   /** @type {Map<string, number>}  itemId → insertion sequence */
   #insertionOrder = new Map();
   #seq = 0;
+  /** @type {{publishItem?:Function, publishItemRemoved?:Function}|null} OBJ-2 S1d sync hook */
+  #syncHook = null;
 
   constructor() {
     this.#store = new ItemStore({
@@ -57,6 +59,29 @@ export class InMemoryStore {
 
   /** the underlying @canopy/item-store ItemStore (substrate API: addItems/applySync/removeSync/listOpen/listClosed) — used by the substrate mirror. */
   get substrate() { return this.#store; }
+
+  /**
+   * OBJ-2 (S1d) — publish-on-write. Register a sync hook so every LOCAL mutation
+   * fans the RAW item out to the circle's peers. Best-effort + fire-and-forget;
+   * a null hook (the default) is a no-op, so the store works standalone (CLI,
+   * tests). The mirror writes back via `.substrate` directly (NOT these adapter
+   * methods), so sync-originated writes never re-fire the hook — no echo loop.
+   *
+   * @param {{publishItem?:(rawItem:object)=>any, publishItemRemoved?:(itemId:string)=>any}|null} hook
+   */
+  setSyncHook(hook) { this.#syncHook = hook ?? null; }
+
+  #emitWrite(rawItem) {
+    if (!this.#syncHook?.publishItem || !rawItem?.id) return;
+    try { const r = this.#syncHook.publishItem(rawItem); if (r?.catch) r.catch(() => {}); }
+    catch { /* best-effort — local write is the source of truth */ }
+  }
+
+  #emitRemove(itemId) {
+    if (!this.#syncHook?.publishItemRemoved || !itemId) return;
+    try { const r = this.#syncHook.publishItemRemoved(itemId); if (r?.catch) r.catch(() => {}); }
+    catch { /* best-effort */ }
+  }
 
   /**
    * @param {import('./Store.js').AddItemArgs} args
@@ -73,6 +98,7 @@ export class InMemoryStore {
       actor: addedBy ?? SYSTEM_ACTOR,
     });
     this.#insertionOrder.set(item.id, ++this.#seq);
+    this.#emitWrite(item);                 // OBJ-2 S1d — fan out to peers
     return legacyShape(item, addedBy);
   }
 
@@ -105,6 +131,7 @@ export class InMemoryStore {
       [{ id: itemId }],
       { actor: SYSTEM_ACTOR },
     );
+    this.#emitWrite(item);                 // OBJ-2 S1d
     return legacyShape(item);
   }
 
@@ -117,6 +144,7 @@ export class InMemoryStore {
       [{ id: itemId }],
       { actor: SYSTEM_ACTOR },
     );
+    this.#emitRemove(itemId);              // OBJ-2 S1d — fan out hard-delete
   }
 
   /**
@@ -134,6 +162,7 @@ export class InMemoryStore {
     if (result && result.error === 'already-claimed') {
       return { error: 'already-claimed', current: legacyShape(result.current) };
     }
+    this.#emitWrite(result);              // OBJ-2 S1d — fan out the claim
     return legacyShape(result);
   }
 
@@ -150,6 +179,7 @@ export class InMemoryStore {
       itemId, newAssignee,
       { actor: actor ?? SYSTEM_ACTOR },
     );
+    this.#emitWrite(item);                // OBJ-2 S1d — fan out the reassign
     return legacyShape(item);
   }
 
