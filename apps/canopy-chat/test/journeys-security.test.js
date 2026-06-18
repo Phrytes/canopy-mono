@@ -6,8 +6,8 @@
  * Unit tests in packages/secure-agent verify each primitive in
  * isolation; this file verifies they COMPOSE as intended:
  *
- *   J-S1  /mute then /muted reports the muted peer
- *   J-S2  /mute then sendPeerMessage to that peer is refused
+ *   J-S1  /block then /blocked reports the muted peer
+ *   J-S2  /block then sendPeerMessage to that peer is refused
  *   J-S3  /rotate-identity adds an audit-log entry
  *   J-S4  mute lifecycle is recorded in the audit chain
  *   J-S5  mute set + audit chain survive an agent rebuild on the
@@ -39,7 +39,7 @@ import { createSecureAgent }           from '@canopy/secure-agent';
  * Minimal boot: just enough wiring to fire local builtins through
  * the parseInput → dispatch → runDispatch path.  Mirrors the real
  * boot for the surfaces the safety journeys exercise (no app
- * skills needed — these tests touch /mute, /muted, /audit-tail,
+ * skills needed — these tests touch /block, /blocked, /audit-tail,
  * /rotate-identity, /security-status).
  */
 async function bootSafetyWorkspace({ chatVault, secureAgentOpts } = {}) {
@@ -93,23 +93,23 @@ async function bootSafetyWorkspace({ chatVault, secureAgentOpts } = {}) {
 }
 
 describe('Safety integration journeys', () => {
-  describe('J-S1 — /mute + /muted reflect each other', () => {
+  describe('J-S1 — /block + /blocked reflect each other', () => {
     // The test's `t()` returns the i18n KEY (not the EN string),
     // so we assert against the key + payload — same as journeys.test.js.
     it('adds + lists a muted peer', async () => {
       const ws = await bootSafetyWorkspace();
-      const addRes = await ws.run('/mute app.bad.peer');
+      const addRes = await ws.run('/block app.bad.peer');
       expect(addRes.message).toMatch(/mute\.added/);
       expect(addRes.message).toMatch(/app\.bad\.peer/);
-      const listRes = await ws.run('/muted');
+      const listRes = await ws.run('/blocked');
       expect(listRes.message).toMatch(/app\.bad\.peer/);
       expect(ws.agent.sa.mute.size).toBe(1);
     });
 
     it('idempotent: muting twice reports "already"', async () => {
       const ws = await bootSafetyWorkspace();
-      await ws.run('/mute app.x');
-      const r2 = await ws.run('/mute app.x');
+      await ws.run('/block app.x');
+      const r2 = await ws.run('/block app.x');
       expect(r2.message).toMatch(/mute\.already/);
     });
   });
@@ -122,7 +122,7 @@ describe('Safety integration journeys', () => {
       // BEFORE the transport-required check, and asserting on the
       // sa.mute set state since the receive-path mute drop is also
       // covered by secure-agent's unit tests.
-      await ws.run('/mute app.target.123');
+      await ws.run('/block app.target.123');
       expect(ws.agent.sa.mute.has('app.target.123')).toBe(true);
       // sa.peer.sendTo throws "peer transport not connected" BEFORE
       // the mute check when peer is idle — that's a different code
@@ -158,8 +158,8 @@ describe('Safety integration journeys', () => {
   describe('J-S4 — mute lifecycle is in the audit chain', () => {
     it('mute.add + mute.remove fire autoLog entries in order', async () => {
       const ws = await bootSafetyWorkspace();
-      await ws.run('/mute app.life.cycle');
-      await ws.run('/unmute app.life.cycle');
+      await ws.run('/block app.life.cycle');
+      await ws.run('/unblock app.life.cycle');
       await Promise.resolve();
       const events = ws.agent.sa.audit.entries().map((e) => e.event);
       expect(events).toEqual(['mute.add', 'mute.remove']);
@@ -172,7 +172,7 @@ describe('Safety integration journeys', () => {
     it('mute set + audit chain survive a fresh createRealHouseholdAgent', async () => {
       const sharedChat = new VaultMemory();
       const ws1 = await bootSafetyWorkspace({ chatVault: sharedChat });
-      await ws1.run('/mute app.persist.test');
+      await ws1.run('/block app.persist.test');
       await ws1.run('/rotate-identity');
       await Promise.resolve();
       const beforeSize = ws1.agent.sa.audit.size;
@@ -191,7 +191,7 @@ describe('Safety integration journeys', () => {
   describe('J-S6 — /security-status reports every wired primitive', () => {
     it('mute / audit / autoLog / vault state all surfaced', async () => {
       const ws = await bootSafetyWorkspace();
-      await ws.run('/mute app.sec.x');
+      await ws.run('/block app.sec.x');
       const res = await ws.run('/security-status');
       expect(res.message).toMatch(/SecurityLayer wired: +yes/);
       expect(res.message).toMatch(/Identity pubKey:/);
@@ -216,7 +216,7 @@ describe('Safety integration journeys', () => {
         secureAgentOpts: { identityResolver: mockResolver },
       });
       // Mute by webid
-      await ws.run('/mute https://alice.example/#me');
+      await ws.run('/block https://alice.example/#me');
       // The resolver-fanout property: aliasesFor(addr) — once HI'd a
       // peer's addr → resolver.aliases include the webid.  Register
       // a peer's pubKey so the resolver chain works:
@@ -257,9 +257,9 @@ describe('Safety integration journeys', () => {
   describe('J-S9 — /audit-tail surfaces the chain + verification', () => {
     it('after a mix of events, /audit-tail reports them in order with chain OK', async () => {
       const ws = await bootSafetyWorkspace();
-      await ws.run('/mute app.audit.peer');
+      await ws.run('/block app.audit.peer');
       await ws.run('/rotate-identity');
-      await ws.run('/unmute app.audit.peer');
+      await ws.run('/unblock app.audit.peer');
       await Promise.resolve();
       const res = await ws.run('/audit-tail');
       expect(res.message).toMatch(/chain verified/);
@@ -270,9 +270,9 @@ describe('Safety integration journeys', () => {
 
     it('--event filter narrows the tail', async () => {
       const ws = await bootSafetyWorkspace();
-      await ws.run('/mute app.x');
+      await ws.run('/block app.x');
       await ws.run('/rotate-identity');
-      await ws.run('/mute app.y');
+      await ws.run('/block app.y');
       await Promise.resolve();
       const res = await ws.run('/audit-tail --event=mute.add');
       expect(res.message).toMatch(/mute\.add/);
