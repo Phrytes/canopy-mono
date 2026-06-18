@@ -1874,6 +1874,8 @@ function CircleDetail({
     postToKring: (text, ctx) => { if (ctx?.msgId) broadcastFanOut({ msgId: ctx.msgId, text, ts: ctx.ts ?? Date.now() }); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
     onNoMatch: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); },
+    // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
+    onLlmUnavailable: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.basic_mode') }); },
   }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, userLlmDefault, circleLlmPolicy]);
 
   // SP-13.2.1 / B / M6 — kring chat send: the feedback bot gets first refusal (it owns the turn only
