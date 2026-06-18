@@ -625,6 +625,16 @@ export default function ChatScreen({
             roster = Array.isArray(r?.members) ? r.members : [];
           } catch { /* empty */ }
           const knownPeers = roster.map((m) => m?.addr).filter(Boolean);
+          // OBJ-2 S1c-shell (mobile parity) — feed the household no-pod sync roster
+          // with this circle's MEMBERS (people, from the stoop group roster — never
+          // bots: a bot must not receive household items). addHouseholdPeer dedupes,
+          // so re-running catch-up is safe. Mirrors circleApp.js's web wiring.
+          if (typeof agent?.addHouseholdPeer === 'function') {
+            const self = agent?.peer?.address ?? null;
+            for (const addr of knownPeers) {
+              if (addr !== self) agent.addHouseholdPeer(addr);
+            }
+          }
           return catchUpReceiver.requestCatchUp({
             circleId,
             sinceTs:    Number.isFinite(sinceTs) ? sinceTs : 0,

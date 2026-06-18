@@ -177,6 +177,14 @@ export async function bootAgentBundle(opts = {}) {
       ? { dbName: 'cc-tasks-cache', asyncStorage: opts.asyncStorage }
       : undefined);
 
+  // OBJ-2 S1e (mobile) — persist the household store across reloads, same shape
+  // as tasks/stoop. createRealHouseholdAgent threads `householdPersistDb` into
+  // new HouseholdStore({ dataSource }) → buildHouseholdDataSource → AsyncStoragePersist.
+  const householdPersistDb = opts.householdPersistDb
+    ?? (opts.asyncStorage
+      ? { dbName: 'cc-household-cache', asyncStorage: opts.asyncStorage }
+      : undefined);
+
   let agent;
   try {
     const createRealHouseholdAgent = await loadCreateRealHouseholdAgent();
@@ -185,6 +193,7 @@ export async function bootAgentBundle(opts = {}) {
       hostVault,
       stoopPersistDb,
       tasksPersistDb,
+      householdPersistDb,
       stoopControlAgent: opts.stoopControlAgent,   // S4 — multi-member sealing router (redeem/leave)
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
