@@ -77,6 +77,7 @@ import {
   InMemoryStore as HouseholdStore,
   buildHouseholdSubstrateStack,
   wireHouseholdSubstrateMirror,
+  buildHouseholdDataSource,
 } from '../../../../household/src/index.js';
 import { createSecureMeshEnvelopeAdapter } from '../sync/secureMeshEnvelopeAdapter.js';
 
@@ -109,7 +110,18 @@ export async function createRealHouseholdAgent(opts = {}) {
   // Part G household — REAL `apps/household` store.  `chores`-as-an-array is
   // gone; all household state now lives in this `ItemStore`-backed store
   // (shopping/errand/repair/schedule items + tasks + contacts).
-  const householdStore = new HouseholdStore();
+  //
+  // OBJ-2 S1e — restart-survival: when the shell passes `householdPersistDb`
+  // (web → `{ dbName: 'cc-household-state' }` IndexedDB; mobile →
+  // `{ dbName, asyncStorage }` AsyncStorage; node → `{ path }`), back the
+  // store with a persistent `CachingDataSource` so items survive a reload.
+  // Default (undefined) → in-memory `MemorySource`, unchanged.  The actual
+  // shell threading of `householdPersistDb` is a follow-up; realAgent just
+  // accepts + wires it here.
+  const householdDataSource = opts.householdPersistDb
+    ? await buildHouseholdDataSource(opts.householdPersistDb)
+    : undefined;
+  const householdStore = new HouseholdStore({ dataSource: householdDataSource });
 
   // v0.7.12 — multi-pod RSVP coordination (simulated for the demo).
   // calendar.addEvent calls this when attendees are present; default

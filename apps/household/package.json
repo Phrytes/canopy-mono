@@ -32,6 +32,7 @@
     "@canopy/web-adapter":  "file:../../packages/web-adapter",
     "@canopy/chat-agent":   "file:../../packages/chat-agent",
     "@canopy/item-store":   "file:../../packages/item-store",
+    "@canopy/local-store":  "file:../../packages/local-store",
     "@canopy/llm-client":   "file:../../packages/llm-client",
     "@canopy/notifier":     "file:../../packages/notifier",
     "@canopy/pseudo-pod":   "file:../../packages/pseudo-pod",

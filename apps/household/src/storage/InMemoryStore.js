@@ -37,7 +37,15 @@ const SYSTEM_ACTOR = '__household-store__';
 
 /**
  * Adapter — exposes L1b's ItemStore through H2's legacy Store
- * interface.  Constructor takes no args (matches existing tests).
+ * interface.
+ *
+ * OBJ-2 S1e — the constructor now accepts an optional injected
+ * `dataSource`.  `new InMemoryStore()` (no args) is unchanged: it
+ * builds a fresh `MemorySource` and is purely in-memory (lost on
+ * reload).  `new InMemoryStore({ dataSource })` backs the underlying
+ * ItemStore with the caller's DataSource — e.g. a
+ * `@canopy/local-store` `CachingDataSource` wired to a persist adapter
+ * (see `./persist.js`) — so household state survives a reload.
  *
  * @implements {import('./Store.js').Store}
  */
@@ -50,9 +58,16 @@ export class InMemoryStore {
   /** @type {{publishItem?:Function, publishItemRemoved?:Function}|null} OBJ-2 S1d sync hook */
   #syncHook = null;
 
-  constructor() {
+  /**
+   * @param {object} [opts]
+   * @param {import('@canopy/core').DataSource} [opts.dataSource]
+   *   OBJ-2 S1e — optional injected DataSource (e.g. a persistent
+   *   `CachingDataSource`).  Default: a fresh in-memory `MemorySource`
+   *   (unchanged legacy behaviour — `new InMemoryStore()` still works).
+   */
+  constructor({ dataSource } = {}) {
     this.#store = new ItemStore({
-      dataSource:    new MemorySource(),
+      dataSource:    dataSource ?? new MemorySource(),
       rootContainer: 'mem://household/',
     });
   }

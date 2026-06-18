@@ -19,6 +19,10 @@ export { InMemoryStore }  from './storage/InMemoryStore.js';
 export { wireHouseholdSubstrateMirror } from './substrateMirror.js';
 export { buildHouseholdSubstrateStack } from './lib/substrateStack.js';
 
+// OBJ-2 S1e — restart-survival: build a persistent DataSource to inject
+// into `new InMemoryStore({ dataSource })` (File/IndexedDB/AsyncStorage).
+export { buildHouseholdDataSource } from './storage/persist.js';
+
 // Phase 1 convergence:
 export { HouseholdAgent } from './HouseholdAgent.js';
 
