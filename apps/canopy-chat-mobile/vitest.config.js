@@ -7,8 +7,20 @@
  * native'` from the core layer fails loud instead of being skipped.
  */
 import { defineConfig } from 'vitest/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // RN-harness: the portable boot tests transitively reach async-storage
+      // (pod-client dynamic-imports it); vite mis-resolves the real RN package in
+      // node. Alias the specifier to an in-memory stub so the boot completes.
+      '@react-native-async-storage/async-storage': path.resolve(__dirname, 'test/stubs/asyncStorage.js'),
+    },
+  },
   test: {
     include: ['test/**/*.test.js'],
     exclude: ['**/node_modules/**', 'src/rn/**', 'src/screens/**'],
