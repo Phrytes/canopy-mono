@@ -2823,6 +2823,9 @@ async function boot() {
     const agent = await createRealHouseholdAgent({
       publishEvent: publishEventToLog,
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
+      // OBJ-2 S1e (web) — persist the household store in IndexedDB so items survive
+      // a reload (mobile already threads its AsyncStorage descriptor). Parity with stoop.
+      householdPersistDb: { dbName: 'cc-household-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
     });
     // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
