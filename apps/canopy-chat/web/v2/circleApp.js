@@ -548,6 +548,10 @@ let circleContactSkills = null;  // P4 — live contact/bot exposed-skill regist
 let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
 let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
 let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
+// OBJ-2 S1c-shell — feed the household no-pod sync roster with a circle's MEMBERS
+// (people, from the stoop group roster — never bots). Assigned in the boot fn
+// (which owns `agent`); module-level so `showDetail` (open-circle) can call it.
+let feedHouseholdRosterForCircle = null;
 // S4 — a dedicated vault for per-circle sealing identities + controller keys + the
 // persisted group-key resource (durability). IndexedDB-backed so a sealed circle's keys
 // survive reloads; falls back to in-memory where IndexedDB is unavailable.
@@ -1853,6 +1857,9 @@ async function createCircle() {
 async function showDetail(id) {
   hideCircleTabBar(tabBarEl);
   setActiveCircle(id);
+  // OBJ-2 S1c-shell — (re)feed the household sync roster with THIS circle's members
+  // so items added here fan out to them. Member-only + deduped; safe to call often.
+  feedHouseholdRosterForCircle?.(id)?.catch?.(() => {});
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
   // P6.3 — bump the seenAt marker so the next launcher render clears
   // this circle's unread badge.
@@ -3053,11 +3060,30 @@ async function boot() {
         peerCatchUpNegotiated,
         logger:                console,
       });
+      // OBJ-2 S1c-shell — feed the household no-pod sync roster from a circle's
+      // MEMBERS (the stoop group roster = people with reachable peer addrs), NOT
+      // the bot contacts: a bot must never receive household items. `addHouseholdPeer`
+      // dedupes, so repeated calls (re-open, reconnect) are safe; the mirror only
+      // fans out once peers are present. Reuses the exact member source the
+      // catch-up path uses (`listGroupRoster` → `members[].addr`).
+      feedHouseholdRosterForCircle = async (circleId) => {
+        if (typeof agent?.addHouseholdPeer !== 'function' || !circleId) return;
+        try {
+          const r    = await agent.callSkill('stoop', 'listGroupRoster', { groupId: circleId });
+          const self = agent?.peer?.address ?? null;
+          for (const m of (Array.isArray(r?.members) ? r.members : [])) {
+            if (m?.addr && m.addr !== self) agent.addHouseholdPeer(m.addr);
+          }
+        } catch { /* no roster / not a group — household sync stays local */ }
+      };
+
       // Fire after a short delay so the NKN HI handshake settles.
       // 1.5s mirrors web/main.js's existing kick-off timing.
       setTimeout(() => {
         requestCatchUpAll().catch((err) =>
           console.warn('[catch-up] kick-off failed', err?.message ?? err));
+        // Seed the household roster for the active circle (re-fed on open below).
+        feedHouseholdRosterForCircle(getActiveCircle()).catch(() => {});
       }, 1500);
       // P6.5 — wire the claim-router hook now that callSkill + override
       // store are both available.  On claim with `tasksToPersonal` on,
