@@ -129,8 +129,11 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     // failed every calendar gate verb.  The lift puts calendar→household/
     // calendar_* routing HERE, so ALL surfaces reach calendar.
     const a = await createRealHouseholdAgent();
+    // Use a RELATIVE future date — listEvents filters to [now, now+90d), so a
+    // hardcoded absolute `when` becomes a time-bomb the moment real time passes
+    // it (mirrors journeys-mobile.test.js:332 "regardless of the test clock").
     const add = await a.callSkill('calendar', 'addEvent', {
-      title: 'Lunch', when: '2026-06-20T12:00:00.000Z',
+      title: 'Lunch', when: new Date(Date.now() + 7 * 86_400_000).toISOString(),
     });
     expect(add).toBeTruthy();
     expect(add.ok).not.toBe(false);                  // did NOT throw / fail-route
