@@ -90,9 +90,9 @@ describe('V2.3 — bot.available / bot.week', () => {
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
-    // Seed a hint.
-    await call(crew, 'setMyAvailability',
-      { week: '2026-W19', day: 'mon', half: 'am', state: 'open' }, KID);
+    // KID is opted in via CREW.optedIn, so bot.week renders the current-week grid
+    // (empty cells show as 'unknown'). No hint seed needed — the asserts below check
+    // the rendered week header + day labels, not any stored value.
     const def = crew.agent.skills.get('bot.week');
     const reply = await def.handler({ parts: [], from: KID, agent: crew.agent, envelope: null });
     expect(reply.text).toMatch(/Week/);
