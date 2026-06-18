@@ -53,6 +53,7 @@ import {
   InternalTransport,
   NknTransport,
   RelayTransport,
+  RendezvousTransport,
   RoutingStrategy,
 } from '@canopy/core';
 
@@ -815,6 +816,41 @@ export async function createSecureAgent(opts = {}) {
     }
   }
 
+  /**
+   * T5.2b — wire WebRTC RENDEZVOUS (direct DataChannel) into the secure-mesh, reusing the
+   * core `RendezvousTransport` (signalled over an already-connected transport — peer/relay).
+   * It registers via `addSecureTransport` (security-wrapped on the unified router), and pins
+   * the direct route the moment a DataChannel opens (`RendezvousTransport.canReach` is true only
+   * for peers with an open channel, so the router naturally prefers it once up).
+   *
+   * Browser: works on the native `RTCPeerConnection`. RN: pass `rtcLib` (react-native-webrtc).
+   * Node: `connect()` works (registers the signalling listener); `upgradeToRendezvous` needs an rtcLib.
+   *
+   * Auto-upgrade on a peer's `capabilities.rendezvous` hello is a FOLLOW-UP (the secure-agent
+   * doesn't yet surface a capability-bearing 'peer' event) — for now call `sa.upgradeToRendezvous(peer)`.
+   *
+   * @param {{signalingTransport?:object, rtcLib?:object, iceServers?:Array}} [o]
+   * @returns {Promise<RendezvousTransport>}
+   */
+  async function enableSecureRendezvous({ signalingTransport, rtcLib, iceServers } = {}) {
+    if (extraTransports.has('rendezvous')) return extraTransports.get('rendezvous');
+    const sig = signalingTransport ?? peerTransport ?? relayTransport;
+    if (!sig) throw new Error('enableSecureRendezvous: a connected signalingTransport (peer/relay) is required first');
+    const rdv = new RendezvousTransport({ signalingTransport: sig, identity, rtcLib, iceServers });
+    // Pin/unpin the direct WebRTC route as the channel opens/closes (wire BEFORE connect so no event is missed).
+    rdv.on('peer-connected',    (p) => { try { routing.setPreferredTransport(p, 'rendezvous'); } catch { /* defensive */ } });
+    rdv.on('peer-disconnected', (p) => { try { routing.clearPreferredTransport(p); } catch { /* defensive */ } });
+    await addSecureTransport('rendezvous', rdv);   // makeReceiveHandler + connect + routing.addTransport
+    return rdv;
+  }
+
+  /** T5.2b — move the data path for `peerAddress` onto a direct WebRTC DataChannel (needs an rtcLib). */
+  async function upgradeToRendezvous(peerAddress, timeout) {
+    const rdv = extraTransports.get('rendezvous');
+    if (!rdv) throw new Error('upgradeToRendezvous: enableSecureRendezvous() not called');
+    return rdv.connectToPeer(peerAddress, timeout);
+  }
+
   async function disconnectRelay() {
     if (relayTransport) {
       try { await relayTransport.disconnect(); } catch { /* swallow */ }
@@ -1103,6 +1139,10 @@ export async function createSecureAgent(opts = {}) {
     // Transport-shaped object) into the secure-mesh: security-wrapped + router-registered.
     addSecureTransport,
     removeSecureTransport,
+    // T5.2b — WebRTC rendezvous (direct DataChannel), security-wrapped + auto-pinned on open.
+    enableSecureRendezvous,
+    upgradeToRendezvous,
+    isRendezvousActive: (peer) => !!extraTransports.get('rendezvous')?.hasOpenChannelTo?.(peer),
     rotateIdentity,
     securityStatus,
     shutdown,

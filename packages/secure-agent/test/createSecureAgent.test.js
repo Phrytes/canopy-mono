@@ -1888,6 +1888,25 @@ describe('createSecureAgent — A1 multi-transport', () => {
     expect(await sa.agent.routing.selectTransport('peer-x')).toBeNull();   // deregistered
     await sa.shutdown();
   });
+
+  // T5.2b — enableSecureRendezvous wires the WebRTC route + pins it on DataChannel open.
+  it('T5.2b — enableSecureRendezvous registers rendezvous + pins the direct route on channel-open', async () => {
+    const fakeNkn = makeFakeNkn({ address: 'app.fake.123' });
+    const sa = await createSecureAgent({ vault: new VaultMemory(), nknLib: fakeNkn });
+    await sa.peer.connect();                                  // a signalling transport (nkn)
+    const rdv = await sa.enableSecureRendezvous({});          // node: connect() works w/o rtcLib
+    expect(rdv).toBeTruthy();
+    expect(sa.agent.routing.getPreferredTransport('peer-x')).toBeNull();
+    // Simulate the WebRTC DataChannel opening → the secure-agent pins rendezvous for that peer.
+    rdv.emit('peer-connected', 'peer-x');
+    expect(sa.agent.routing.getPreferredTransport('peer-x')).toBe('rendezvous');
+    // …and clears it when the channel drops.
+    rdv.emit('peer-disconnected', 'peer-x');
+    expect(sa.agent.routing.getPreferredTransport('peer-x')).toBeNull();
+    // upgradeToRendezvous without an rtcLib (node) surfaces a clear error, not a silent hang.
+    await expect(sa.upgradeToRendezvous('peer-y')).rejects.toBeTruthy();
+    await sa.shutdown();
+  });
 });
 
 /* ─── helpers ───────────────────────────────────────── */
