@@ -53,6 +53,7 @@ import {
   InternalTransport,
   NknTransport,
   RelayTransport,
+  RoutingStrategy,
 } from '@canopy/core';
 
 import {
@@ -554,6 +555,15 @@ export async function createSecureAgent(opts = {}) {
   const relayState = { status: 'idle', address: null, error: null, url: null };
   let transportMode = opts.transportMode ?? 'nkn';
 
+  // ─── T2 (unification / OBJ-1) — RoutingStrategy over the connected transports ───
+  // The first step toward the unified secure-mesh (option iii): instead of the fixed
+  // prefer-NKN picker, in `transportMode:'both'` we ask the core RoutingStrategy for the
+  // BEST reachable route per peer (canonical priority mdns > rendezvous > relay > nkn …,
+  // reachability/latency-aware). Transports register here as they connect — their security
+  // is already applied by `makeReceiveHandler`, so adding rendezvous/mdns/ble later (T3/T4)
+  // is just connect + `routing.addTransport(name, tx)`. Explicit 'nkn'/'relay' still pin.
+  const routing = new RoutingStrategy({ transports: new Map() });
+
   // v0.7.cc — rolling buffer of recent peer traffic for /debug-dump.
   // Tiny memory footprint (last 10 envelopes); diagnostic-only.
   const RECENT_LIMIT = 10;
@@ -700,6 +710,7 @@ export async function createSecureAgent(opts = {}) {
       peerState.status  = 'connected';
       peerState.address = tx.address;
       peerState.error   = null;
+      routing.addTransport('nkn', tx);   // T2 — register for router-based selection ('both' mode)
       // A1 NOTE: we deliberately do NOT call agent.addTransport('nkn', tx)
       // here.  Agent.addTransport on an already-started agent re-wraps
       // useSecurityLayer + setReceiveHandler, which breaks the wiring
@@ -750,6 +761,7 @@ export async function createSecureAgent(opts = {}) {
       relayState.status  = 'connected';
       relayState.address = tx.address;
       relayState.error   = null;
+      routing.addTransport('relay', tx);   // T2 — register for router-based selection ('both' mode)
       // Same NOTE as connectPeer: don't agent.addTransport here;
       // sendToPeer routes via relayTransport directly.
       if (auditAutoLog) audit('relay.connect', relayUrl);
@@ -765,6 +777,7 @@ export async function createSecureAgent(opts = {}) {
     if (relayTransport) {
       try { await relayTransport.disconnect(); } catch { /* swallow */ }
       try { agent.removeTransport?.('relay'); } catch { /* defensive */ }
+      try { routing.removeTransport('relay'); } catch { /* defensive */ }   // T2 — deregister from the router
       relayTransport = null;
     }
     relayState.status = 'idle';
@@ -809,11 +822,19 @@ export async function createSecureAgent(opts = {}) {
    *             (Doesn't broadcast on both — that would duplicate at
    *             the receiver.)
    */
-  function pickTransport() {
+  async function pickTransport(addr) {
+    // Explicit pin — respect a user-chosen single transport.
     if (transportMode === 'nkn')   return peerTransport ?? null;
     if (transportMode === 'relay') return relayTransport ?? null;
-    // 'both' — NKN preferred when connected (lower-friction in the V0
-    // demo), relay fallback otherwise.
+    // 'both' (auto) — T2: let the RoutingStrategy pick the BEST reachable route for this peer
+    // (canonical priority + reachability), instead of the old fixed prefer-NKN. Falls back to
+    // the static prefer-NKN-then-relay if the router can't decide (no addr / nothing reachable).
+    if (addr) {
+      try {
+        const sel = await routing.selectTransport(addr);
+        if (sel?.transport) return sel.transport;
+      } catch { /* fall through to the static fallback */ }
+    }
     return peerTransport ?? relayTransport ?? null;
   }
 
@@ -855,7 +876,7 @@ export async function createSecureAgent(opts = {}) {
   }
 
   async function _sendToPeerOnce(addr, payload) {
-    const tx = pickTransport();
+    const tx = await pickTransport(addr);
     if (!tx) {
       throw new Error(
         `Peer transport not connected (mode=${transportMode}).  ` +

@@ -1839,6 +1839,18 @@ describe('createSecureAgent — A1 multi-transport', () => {
     await expect(sa.relay.connect()).rejects.toThrow(/no relayUrl/);
     await sa.shutdown();
   });
+
+  // T2 (unification / OBJ-1) — in 'both' mode, sendToPeer routes via the RoutingStrategy.
+  it("transportMode:'both' routes via the RoutingStrategy and still delivers over the one connected transport", async () => {
+    const fakeNkn = makeFakeNkn({ address: 'app.fake.123' });
+    const sa = await createSecureAgent({ vault: new VaultMemory(), nknLib: fakeNkn, transportMode: 'both' });
+    await sa.peer.connect();   // registers 'nkn' with the router
+    sa.agent.security.registerPeer('app.peer.456', sa.identity.pubKey);
+    await sa.peer.sendTo('app.peer.456', { type: 'p2p-chat', body: 'hi' });
+    // The router selected the only available transport (nkn) → HI + OW went out over it.
+    expect(fakeNkn._instance.sends.length).toBe(2);
+    await sa.shutdown();
+  });
 });
 
 /* ─── helpers ───────────────────────────────────────── */
