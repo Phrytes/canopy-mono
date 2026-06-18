@@ -8,6 +8,16 @@ const repoRoot  = path.resolve(__dirname, '../..');
 export default defineConfig({
   resolve: {
     alias: {
+      // RN-harness (Option 2): force `react` (+ its JSX runtimes) to THIS app's
+      // known-good local copy. packages/react-native components reached via the
+      // `@canopy/react-native/*` barrels import react; with no react at the repo
+      // root, vite mis-resolves it and dies on `./cjs/react.development.js`.
+      // react-native itself is stubbed in test/setup.js, so the component loads
+      // inert and the pure helpers beside it become importable. Longer keys first.
+      'react/jsx-dev-runtime': path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js'),
+      'react/jsx-runtime':     path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
+      'react':                 path.resolve(__dirname, 'node_modules/react'),
+
       // Point imports at the local sources so tests run without npm install.
       // Stoop-mobile imports the Stoop app barrel for the skill-builder
       // factory + Agent.js + groupMirror — same platform-shell pattern as
