@@ -1863,6 +1863,31 @@ describe('createSecureAgent — A1 multi-transport', () => {
     // ⇒ agent.enableRendezvous / mdns / ble (which pin on agent.routing) now affect sendToPeer too.
     await sa.shutdown();
   });
+
+  // T5.2a — addSecureTransport registers an injected transport (security-wrapped) on the unified router.
+  it('T5.2a — addSecureTransport security-wraps + router-registers an injected transport (mdns/ble seam)', async () => {
+    const sa = await createSecureAgent({ vault: new VaultMemory() });
+    let securedWith = null;
+    let connected = false, disconnected = false;
+    const fakeMdns = {
+      address: 'mdns.local.1',
+      useSecurityLayer(layer) { securedWith = layer; },     // makeReceiveHandler applies the security layer
+      on() { /* 'envelope' listener */ },
+      async connect()    { connected = true; },
+      async disconnect() { disconnected = true; },
+      // no canReach() → treated as reachable (address-agnostic)
+    };
+    await sa.addSecureTransport('mdns', fakeMdns);
+    expect(securedWith).toBe(sa.agent.security);            // got the SAME security layer (not clobbered)
+    expect(connected).toBe(true);
+    expect(sa.transportMode).toBe('both');                 // flipped so the router selects
+    const sel = await sa.agent.routing.selectTransport('peer-x');
+    expect(sel?.name).toBe('mdns');                         // registered on the unified router
+    await sa.removeSecureTransport('mdns');
+    expect(disconnected).toBe(true);
+    expect(await sa.agent.routing.selectTransport('peer-x')).toBeNull();   // deregistered
+    await sa.shutdown();
+  });
 });
 
 /* ─── helpers ───────────────────────────────────────── */

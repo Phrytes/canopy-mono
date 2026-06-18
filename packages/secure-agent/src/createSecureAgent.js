@@ -562,6 +562,9 @@ export async function createSecureAgent(opts = {}) {
   let relayTransport = null;
   const relayState = { status: 'idle', address: null, error: null, url: null };
   let transportMode = opts.transportMode ?? 'nkn';
+  // T5.2a — extra transports added via addSecureTransport (mdns/ble injected by the RN app,
+  // rendezvous by enableSecureRendezvous). Tracked for shutdown.
+  const extraTransports = new Map();
 
   // (T2/T5.1 — `routing` is created above and shared with the core Agent; in transportMode:'both'
   // `sendToPeer` asks it for the BEST reachable route per peer. Transports register via
@@ -773,6 +776,42 @@ export async function createSecureAgent(opts = {}) {
       relayState.status = 'error';
       relayState.error  = err?.message ?? String(err);
       throw err;
+    }
+  }
+
+  /**
+   * T5.2a — register ANY transport into the secure-mesh: apply the security layer
+   * (`makeReceiveHandler` — sign/encrypt + mute + bilateral-HI + circle-override +
+   * onPeerMessage), optionally connect it, and register it with the UNIFIED router
+   * (`routing.addTransport`, which T5.1 made the same as `agent.routing`). This is
+   * the one seam every non-NKN/relay transport flows through — `mdns`/`ble` built
+   * + injected by the RN app (the secure-agent stays platform-neutral), `rendezvous`
+   * by `enableSecureRendezvous`. We deliberately do NOT use `agent.addTransport`
+   * (it re-wraps `useSecurityLayer` + `setReceiveHandler(_dispatch)` on a started
+   * agent, which would CLOBBER makeReceiveHandler's secure receive wiring).
+   *
+   * @param {string} name  — a `TRANSPORT_PRIORITY` name ('mdns'|'ble'|'rendezvous'|…)
+   * @param {object} tx     — an already-constructed Transport-shaped object
+   * @param {{connect?:boolean}} [o]
+   * @returns {Promise<object>} the transport
+   */
+  async function addSecureTransport(name, tx, { connect = true } = {}) {
+    if (!name || !tx) throw new Error('addSecureTransport: name + transport required');
+    makeReceiveHandler(tx);                                   // secure receive wiring (NOT agent.addTransport)
+    if (connect && typeof tx.connect === 'function') await tx.connect();
+    routing.addTransport(name, tx);                           // unified router selects among all transports
+    extraTransports.set(name, tx);
+    if (transportMode === 'nkn' || transportMode === 'relay') transportMode = 'both';  // let the router pick
+    if (auditAutoLog) audit('transport.add', name);
+    return tx;
+  }
+
+  async function removeSecureTransport(name) {
+    const tx = extraTransports.get(name);
+    if (tx) {
+      try { await tx.disconnect?.(); } catch { /* swallow */ }
+      try { routing.removeTransport(name); } catch { /* defensive */ }
+      extraTransports.delete(name);
     }
   }
 
@@ -1023,6 +1062,9 @@ export async function createSecureAgent(opts = {}) {
    * Close the peer transport + stop the in-process agent.
    */
   async function shutdown() {
+    for (const [, tx] of extraTransports) { try { await tx.disconnect?.(); } catch { /* defensive */ } }
+    extraTransports.clear();
+    try { await relayTransport?.disconnect?.(); } catch { /* defensive */ }
     try { await peerTransport?.disconnect?.(); } catch { /* defensive */ }
     try { await agent.stop?.(); } catch { /* defensive */ }
     peerTransport = null;
@@ -1057,6 +1099,10 @@ export async function createSecureAgent(opts = {}) {
     },
     get transportMode() { return transportMode; },
     setTransportMode,
+    // T5.2a — register an externally-built transport (mdns/ble from the RN app, or any
+    // Transport-shaped object) into the secure-mesh: security-wrapped + router-registered.
+    addSecureTransport,
+    removeSecureTransport,
     rotateIdentity,
     securityStatus,
     shutdown,
