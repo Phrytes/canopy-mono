@@ -244,8 +244,16 @@ async function tryConnectPeerTransport(agent, peerMessageRouter) {
     return;
   }
   try {
-    await agent.connectPeerTransport({ nknLib, onPeerMessage: peerMessageRouter, relayUrl: CIRCLE_RELAY_URL });
-    console.info('[circleApp] peer transport connected' + (CIRCLE_RELAY_URL ? ' (nkn + relay, routed)' : ' (nkn)'));
+    // T5.2d — rendezvous:true opts in to direct WebRTC upgrades (signalled over nkn/relay).
+    // The browser provides globalThis.RTCPeerConnection, so no rtcLib is needed here; the
+    // unified router then prefers the direct DataChannel over nkn/relay once it opens.
+    await agent.connectPeerTransport({
+      nknLib,
+      onPeerMessage: peerMessageRouter,
+      relayUrl:      CIRCLE_RELAY_URL,
+      rendezvous:    true,
+    });
+    console.info('[circleApp] peer transport connected' + (CIRCLE_RELAY_URL ? ' (nkn + relay, routed)' : ' (nkn)') + ' + rendezvous');
   } catch (err) {
     console.warn('[circleApp] NKN connect failed — kring chat is local-only:', err?.message ?? err);
   }

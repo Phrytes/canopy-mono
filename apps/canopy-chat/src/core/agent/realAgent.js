@@ -2109,6 +2109,19 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Symmetric to .peer; main.js + the /set-relay slash use these.
     relay: sa.relay,
 
+    // T5.2d — secure-mesh seams (the unified secure-mesh factory's surface).
+    // Lets a shell inject a RUNTIME-built transport (e.g. canopy-chat-mobile's
+    // mDNS, which needs the agent's identity so it can't go through the
+    // construction-time `meshTransports` opt) — security-wrapped + on the
+    // unified router — and drive WebRTC rendezvous. connectPeerTransport below
+    // calls enableSecureRendezvous for the common case; these stay exposed for
+    // the Nearby/mDNS path + diagnostics.
+    addSecureTransport:     sa.addSecureTransport,
+    removeSecureTransport:  sa.removeSecureTransport,
+    enableSecureRendezvous: sa.enableSecureRendezvous,
+    upgradeToRendezvous:    sa.upgradeToRendezvous,
+    isRendezvousActive:     sa.isRendezvousActive,
+
     // Transport-NEUTRAL reachability — true when ANY peer transport can carry a
     // message (NKN `.peer` OR the WebSocket `.relay`; sendPeerMessage already
     // picks whichever is up via the core RoutingStrategy). Callers that gate a
@@ -2132,13 +2145,13 @@ export async function createRealHouseholdAgent(opts = {}) {
      * binding wiring for { nknLib, onPeerMessage } supported by
      * sa.peer.connect.
      */
-    async connectPeerTransport({ nknLib, onPeerMessage, relayUrl }) {
+    async connectPeerTransport({ nknLib, onPeerMessage, relayUrl, rendezvous = false, rtcLib = null }) {
       if (!nknLib) throw new Error('connectPeerTransport: nknLib required (caller must inject the runtime nkn-sdk)');
       await sa.peer.connect({ nknLib, onPeerMessage });
       // T3a (unification / OBJ-1) — when a relay is configured, ALSO bring it up and switch to
       // transportMode 'both' so the secure-agent's RoutingStrategy (T2) picks the BEST route per
       // peer (relay > nkn by priority/latency). Best-effort: a relay failure never blocks NKN —
-      // the bot keeps working on NKN alone. (Rendezvous/mdns/ble follow in T3b/T4.)
+      // the bot keeps working on NKN alone.
       if (relayUrl) {
         try {
           await sa.relay.connect({ relayUrl, onPeerMessage });
@@ -2146,6 +2159,18 @@ export async function createRealHouseholdAgent(opts = {}) {
           if (typeof console !== 'undefined') console.info('[realAgent] relay connected — routing across {nkn, relay}');
         } catch (err) {
           if (typeof console !== 'undefined') console.warn('[realAgent] relay auto-connect failed (continuing on NKN):', err?.message ?? err);
+        }
+      }
+      // T5.2d — opt in to direct WebRTC rendezvous, signalled over whichever transport just
+      // came up (peer/relay). Web needs no rtcLib (RendezvousTransport uses globalThis
+      // .RTCPeerConnection); RN injects react-native-webrtc via `rtcLib`. Best-effort: when the
+      // rtcLib is missing the agent keeps routing over nkn/relay/mdns — rendezvous just stays off.
+      if (rendezvous) {
+        try {
+          await sa.enableSecureRendezvous({ rtcLib });
+          if (typeof console !== 'undefined') console.info('[realAgent] rendezvous enabled — direct WebRTC upgrade available');
+        } catch (err) {
+          if (typeof console !== 'undefined') console.warn('[realAgent] rendezvous enable failed (continuing without direct WebRTC):', err?.message ?? err);
         }
       }
       return sa.peer;

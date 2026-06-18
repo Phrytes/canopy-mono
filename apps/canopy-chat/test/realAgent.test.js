@@ -188,3 +188,54 @@ describe('createRealHouseholdAgent — pipeline integration', () => {
     expect(rendered2.text).toBe('✓ marked complete: Milk');
   });
 });
+
+// ── T5.2d — secure-mesh seams: rendezvous + runtime transport injection ──────
+// The unified secure-mesh factory's surface is forwarded through realAgent so a
+// shell can opt into direct WebRTC rendezvous and inject a runtime-built
+// transport (canopy-chat-mobile's mDNS). Rendezvous ENABLEMENT registering on
+// the router is proven at the secure-agent layer (createSecureAgent.test); here
+// we prove the realAgent WIRING: the passthroughs exist and connectPeerTransport
+// plumbs `rendezvous` without breaking the peer connect.
+describe('createRealHouseholdAgent — T5.2d secure-mesh seams', () => {
+  function makeFakeNkn({ address = 'app.fake.test' } = {}) {
+    const instance = {
+      addr: address, sends: [],
+      handlers: { connect: [], message: [], error: [] },
+      on(event, cb) { (this.handlers[event] ??= []).push(cb); },
+      async send(to, payload) { this.sends.push({ to, payload }); },
+      close() {},
+    };
+    return {
+      Client: function () {
+        queueMicrotask(() => { for (const cb of instance.handlers.connect) cb(); });
+        return instance;
+      },
+      _instance: instance,
+    };
+  }
+
+  it('forwards the secure-mesh seams onto the returned surface', async () => {
+    const a = await createRealHouseholdAgent();
+    for (const m of [
+      'addSecureTransport', 'removeSecureTransport',
+      'enableSecureRendezvous', 'upgradeToRendezvous', 'isRendezvousActive',
+    ]) {
+      expect(typeof a[m]).toBe('function');
+    }
+  });
+
+  it('connectPeerTransport({rendezvous:true}) connects the peer and enables rendezvous (best-effort)', async () => {
+    const a = await createRealHouseholdAgent();
+    await a.connectPeerTransport({ nknLib: makeFakeNkn({ address: 'app.fake.rdv' }), rendezvous: true });
+    // peer transport is up …
+    expect(a.peer?.address).toBeTruthy();
+    // … and the rendezvous probe is wired through (no open DataChannel yet → false, but callable).
+    expect(a.isRendezvousActive('some.peer')).toBe(false);
+  });
+
+  it('connectPeerTransport without rendezvous still connects (no regression)', async () => {
+    const a = await createRealHouseholdAgent();
+    await a.connectPeerTransport({ nknLib: makeFakeNkn({ address: 'app.fake.plain' }) });
+    expect(a.peer?.address).toBeTruthy();
+  });
+});
