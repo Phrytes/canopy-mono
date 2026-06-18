@@ -1851,6 +1851,18 @@ describe('createSecureAgent — A1 multi-transport', () => {
     expect(fakeNkn._instance.sends.length).toBe(2);
     await sa.shutdown();
   });
+
+  // T5.1 (unification) — the secure-agent's router IS the core Agent's router (one shared RoutingStrategy).
+  it('T5.1 — agent.routing is the shared RoutingStrategy, and connected transports register on it', async () => {
+    const fakeNkn = makeFakeNkn({ address: 'app.fake.123' });
+    const sa = await createSecureAgent({ vault: new VaultMemory(), nknLib: fakeNkn });
+    expect(sa.agent.routing).toBeTruthy();                 // was null before T5.1
+    await sa.peer.connect();                               // routing.addTransport('nkn', …)
+    const sel = await sa.agent.routing.selectTransport('app.peer.456');
+    expect(sel?.name).toBe('nkn');                         // the shared router sees the transport
+    // ⇒ agent.enableRendezvous / mdns / ble (which pin on agent.routing) now affect sendToPeer too.
+    await sa.shutdown();
+  });
 });
 
 /* ─── helpers ───────────────────────────────────────── */

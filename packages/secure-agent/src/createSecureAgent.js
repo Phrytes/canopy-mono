@@ -215,7 +215,15 @@ export async function createSecureAgent(opts = {}) {
   // the factory; hostAgent is built manually; both share the bus).
   const bus = opts.bus ?? new InternalBus();
   const transport = new InternalTransport(bus, identity.pubKey);
-  const agent = new Agent({ identity, transport });
+  // ─── T5.1 (unification / OBJ-1) — ONE router shared with the core Agent ───
+  // The secure-agent routes `sendToPeer` via this RoutingStrategy (T2), and we pass the SAME
+  // instance to the core Agent so `agent.routing === routing`. That unifies the two routers: the
+  // core Agent's hooks that pin a transport on `agent.routing` — notably `enableRendezvous` (auto
+  // WebRTC upgrade) + mdns/ble registration — now take effect on the secure-agent's sendToPeer path
+  // too (resolving the T3b/T4 entanglement). Transports register via `routing.addTransport(name, tx)`
+  // DIRECTLY (not `agent.addTransport`, which would re-wrap security over makeReceiveHandler's wiring).
+  const routing = new RoutingStrategy({ transports: new Map() });
+  const agent = new Agent({ identity, transport, routing });
   await agent.start();
 
   // ─── S1 — persistent mute set (A.1) ───────────────────────────────
@@ -555,14 +563,9 @@ export async function createSecureAgent(opts = {}) {
   const relayState = { status: 'idle', address: null, error: null, url: null };
   let transportMode = opts.transportMode ?? 'nkn';
 
-  // ─── T2 (unification / OBJ-1) — RoutingStrategy over the connected transports ───
-  // The first step toward the unified secure-mesh (option iii): instead of the fixed
-  // prefer-NKN picker, in `transportMode:'both'` we ask the core RoutingStrategy for the
-  // BEST reachable route per peer (canonical priority mdns > rendezvous > relay > nkn …,
-  // reachability/latency-aware). Transports register here as they connect — their security
-  // is already applied by `makeReceiveHandler`, so adding rendezvous/mdns/ble later (T3/T4)
-  // is just connect + `routing.addTransport(name, tx)`. Explicit 'nkn'/'relay' still pin.
-  const routing = new RoutingStrategy({ transports: new Map() });
+  // (T2/T5.1 — `routing` is created above and shared with the core Agent; in transportMode:'both'
+  // `sendToPeer` asks it for the BEST reachable route per peer. Transports register via
+  // `routing.addTransport` as they connect; their security is already applied by makeReceiveHandler.)
 
   // v0.7.cc — rolling buffer of recent peer traffic for /debug-dump.
   // Tiny memory footprint (last 10 envelopes); diagnostic-only.
