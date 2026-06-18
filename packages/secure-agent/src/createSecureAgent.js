@@ -826,13 +826,20 @@ export async function createSecureAgent(opts = {}) {
    * Browser: works on the native `RTCPeerConnection`. RN: pass `rtcLib` (react-native-webrtc).
    * Node: `connect()` works (registers the signalling listener); `upgradeToRendezvous` needs an rtcLib.
    *
-   * Auto-upgrade on a peer's `capabilities.rendezvous` hello is a FOLLOW-UP (the secure-agent
-   * doesn't yet surface a capability-bearing 'peer' event) — for now call `sa.upgradeToRendezvous(peer)`.
+   * T5.2c — AUTO-upgrade: by default (`auto:true`) the data path moves onto a direct WebRTC
+   * DataChannel the moment a peer's hello advertises `capabilities.rendezvous`, with no manual
+   * `upgradeToRendezvous` call. Two halves, mirroring core `Agent.enableRendezvous({auto})` but
+   * driving the SECURE path (the secure-agent builds `rdv` directly rather than via core's
+   * `enableRendezvous`, so neither half happens for free):
+   *   1. set `agent._rendezvousEnabled` so `_snapshot(agent)` advertises `rendezvous:true` in our
+   *      HI capabilities → the OTHER peer upgrades toward us;
+   *   2. listen on the core agent's capability-bearing `'peer'` event (protocol/hello.js) and
+   *      upgrade toward any peer that advertises the flag.
    *
-   * @param {{signalingTransport?:object, rtcLib?:object, iceServers?:Array}} [o]
+   * @param {{signalingTransport?:object, rtcLib?:object, iceServers?:Array, auto?:boolean}} [o]
    * @returns {Promise<RendezvousTransport>}
    */
-  async function enableSecureRendezvous({ signalingTransport, rtcLib, iceServers } = {}) {
+  async function enableSecureRendezvous({ signalingTransport, rtcLib, iceServers, auto = true } = {}) {
     if (extraTransports.has('rendezvous')) return extraTransports.get('rendezvous');
     const sig = signalingTransport ?? peerTransport ?? relayTransport;
     if (!sig) throw new Error('enableSecureRendezvous: a connected signalingTransport (peer/relay) is required first');
@@ -841,6 +848,24 @@ export async function createSecureAgent(opts = {}) {
     rdv.on('peer-connected',    (p) => { try { routing.setPreferredTransport(p, 'rendezvous'); } catch { /* defensive */ } });
     rdv.on('peer-disconnected', (p) => { try { routing.clearPreferredTransport(p); } catch { /* defensive */ } });
     await addSecureTransport('rendezvous', rdv);   // makeReceiveHandler + connect + routing.addTransport
+
+    // T5.2c (1) — advertise the capability so peers auto-upgrade toward us. _snapshot(agent)
+    // reads this flag into the HI `capabilities.rendezvous` field.
+    agent._rendezvousEnabled = true;
+
+    // T5.2c (2) — auto-upgrade toward a peer the instant its hello advertises rendezvous. The
+    // early-return above guarantees this listener is bound at most once. Best-effort: a failed
+    // upgrade (e.g. no rtcLib on this side) never bubbles — the router keeps using the
+    // signalling transport. (rdv.canReach is true only once a DataChannel opens, so the router
+    // naturally prefers the direct route after `peer-connected` pins it.)
+    if (auto) {
+      agent.on('peer', async ({ address, capabilities }) => {
+        if (!capabilities?.rendezvous) return;
+        if (rdv.hasOpenChannelTo?.(address)) return;     // already direct
+        try { await upgradeToRendezvous(address); }
+        catch (err) { try { agent.emit('rendezvous-failed', { peer: address, error: err }); } catch { /* defensive */ } }
+      });
+    }
     return rdv;
   }
 

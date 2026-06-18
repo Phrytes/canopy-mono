@@ -1907,6 +1907,47 @@ describe('createSecureAgent — A1 multi-transport', () => {
     await expect(sa.upgradeToRendezvous('peer-y')).rejects.toBeTruthy();
     await sa.shutdown();
   });
+
+  // T5.2c — auto-upgrade: advertise the capability + upgrade toward peers that advertise it.
+  it('T5.2c — enableSecureRendezvous advertises rendezvous + auto-upgrades on a capability hello', async () => {
+    const fakeNkn = makeFakeNkn({ address: 'app.fake.auto' });
+    const sa = await createSecureAgent({ vault: new VaultMemory(), nknLib: fakeNkn });
+    await sa.peer.connect();
+    await sa.enableSecureRendezvous({});                       // auto defaults to true
+
+    // (1) we now advertise rendezvous in our HI capabilities (so PEERS upgrade toward us).
+    expect(sa.agent._rendezvousEnabled).toBe(true);
+
+    // (2) a peer whose hello advertises rendezvous triggers an auto upgrade attempt. Without an
+    // rtcLib (node) the WebRTC connect fails → surfaced as 'rendezvous-failed', which PROVES the
+    // auto listener fired + drove upgradeToRendezvous (rather than a silent no-op).
+    const failed = [];
+    sa.agent.on('rendezvous-failed', ({ peer }) => failed.push(peer));
+    sa.agent.emit('peer', { address: 'peer-auto', capabilities: { rendezvous: true } });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(failed).toContain('peer-auto');
+
+    // a peer WITHOUT the flag is left on the signalling transport (no upgrade attempt).
+    sa.agent.emit('peer', { address: 'peer-plain', capabilities: { rendezvous: false } });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(failed).not.toContain('peer-plain');
+
+    await sa.shutdown();
+  });
+
+  it('T5.2c — auto:false advertises but binds no auto-upgrade listener', async () => {
+    const fakeNkn = makeFakeNkn({ address: 'app.fake.noauto' });
+    const sa = await createSecureAgent({ vault: new VaultMemory(), nknLib: fakeNkn });
+    await sa.peer.connect();
+    await sa.enableSecureRendezvous({ auto: false });
+    const failed = [];
+    sa.agent.on('rendezvous-failed', ({ peer }) => failed.push(peer));
+    sa.agent.emit('peer', { address: 'peer-x', capabilities: { rendezvous: true } });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(failed).toEqual([]);                                // no listener → no attempt
+    expect(sa.agent._rendezvousEnabled).toBe(true);           // …but we still advertise
+    await sa.shutdown();
+  });
 });
 
 /* ─── helpers ───────────────────────────────────────── */
