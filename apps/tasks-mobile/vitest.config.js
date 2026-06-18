@@ -20,6 +20,14 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      // RN-harness (Option 2): force `react` (+ jsx runtimes) to THIS app's
+      // known-good local copy. Screen/component modules + @canopy/react-native
+      // barrels import react; with no react at the repo root, vite mis-resolves
+      // it and dies on `./cjs/react.development.js`. Longer keys first.
+      'react/jsx-dev-runtime': path.resolve(__dirname, 'node_modules/react/jsx-dev-runtime.js'),
+      'react/jsx-runtime':     path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
+      'react':                 path.resolve(__dirname, 'node_modules/react'),
+
       // Tasks app barrel — imported for the V2.8 single-agent factories
       // + role policy. Same platform-shell pattern as folio-mobile +
       // stoop-mobile (locked 2026-05-08, see
