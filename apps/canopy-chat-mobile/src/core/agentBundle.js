@@ -320,8 +320,10 @@ export async function bootAgentBundle(opts = {}) {
         await agent.connectPeerTransport({
           nknLib,
           onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
+          // T3a — relay alongside NKN (routed) when configured; unset → NKN-only.
+          relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null,
         });
-        console.log('[cc/boot] NKN connected, address:', agent.peer?.address);
+        console.log('[cc/boot] peer transport connected, address:', agent.peer?.address);
         // Bundle H (#268, 2026-05-27) — fire the catch-up trigger
         // 1.5s after connect so HI handshake settles first.  Mirrors
         // web/main.js:1338.  Read the slot at fire time — null/undefined

@@ -196,7 +196,7 @@ export function buildMobileLocalBuiltins({
       }
       const mod = await import('nkn-sdk');
       const nknLib = mod.default ?? mod;
-      await agent.connectPeerTransport({ nknLib });
+      await agent.connectPeerTransport({ nknLib, relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null });   // T3a
       return { address: agent.peer?.address ?? '' };
     },
     // Bundle G3 (#265) — /lookup-peer <webid> + /publish-peer.  Same
