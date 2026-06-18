@@ -943,6 +943,8 @@ function buildCircleBot(agent) {
     postToKring: (text, ctx) => { if (ctx?.msgId) _kringRender?.fanOut(ctx.msgId, text, ctx.ts); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
     onNoMatch: () => { _kringRender?.botBubble(t('circle.bot.unknown')); },
+    // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
+    onLlmUnavailable: () => { _kringRender?.botBubble(t('circle.bot.basic_mode')); },
     // F-retrieve: on the via:'llm' path the gate pulls the circle's relevant items
     // into the LLM prompt (grounding + fewer tokens). `makeCircleRetriever` auto-tiers
     // — tier-2 SEMANTIC when an embed route is configured (rides the circle's embed

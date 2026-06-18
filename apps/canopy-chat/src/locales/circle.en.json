@@ -1695,6 +1695,10 @@
       "text": "✓ {{label}}",
       "doc": "Generic one-line confirmation for a dispatched circle-bot command (verbs other than add/complete)."
     },
+    "basic_mode": {
+      "text": "💬 I can do buttons and quick commands right now (like “add milk” or /list). Chatting in your own words with the assistant isn’t available at the moment.",
+      "doc": "Contextual 'smart chat unavailable' reply (onLlmUnavailable) — shown when the bot is addressed with free text but the LLM is off/unreachable. Deliberately plain-language for non-technical users: never says LLM/endpoint, frames it as 'basic mode'. Covers both reasons (off + unreachable) with no false 'try again'."
+    },
     "added": {
       "text": "Added: {{label}}",
       "doc": "Reply after the circle bot adds an item (verb=add/create)."

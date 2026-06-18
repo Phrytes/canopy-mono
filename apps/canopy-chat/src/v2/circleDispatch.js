@@ -29,7 +29,7 @@ import { scopeCatalogToApps } from './circleCatalogScope.js';
  * @param {object} [a.gate]   optional token gate ({ evaluate })
  * @param {string} [a.botName='assistant']
  */
-export function createCircleDispatch({ catalog, policy, userDefault, llmProviders, interpret, dispatch, postToKring, onUnhandled, onNoMatch, dispatchSlash = true, gate, botName = 'assistant', recentTurns }) {
+export function createCircleDispatch({ catalog, policy, userDefault, llmProviders, interpret, dispatch, postToKring, onUnhandled, onNoMatch, onLlmUnavailable, dispatchSlash = true, gate, botName = 'assistant', recentTurns }) {
   if (typeof dispatch !== 'function') {
     throw new Error('createCircleDispatch: dispatch is required');
   }
@@ -57,14 +57,15 @@ export function createCircleDispatch({ catalog, policy, userDefault, llmProvider
         return { via: await sink(trimmed, ctx) };
       }
 
-      // 2. free text + the circle's LLM enabled + the bot addressed → gate / interpret → dispatch.
+      // 2. free text + the bot addressed → gate (deterministic, works WITHOUT the LLM) → interpret
+      //    (only when "smart chat" is available) → dispatch.
       const circlePolicy = await getPolicy(ctx);
       const llm = resolveCircleLlm({ circlePolicy, userDefault: getUserDefault(), providers: llmProviders });
-      if (llm && typeof interpret === 'function' && addressesBot(trimmed, botName)) {
+      if (typeof interpret === 'function' && addressesBot(trimmed, botName)) {
         const stripped = stripBotTag(trimmed, botName);
-        // Token gate (optional) — a cheap LOCAL pass before the (possibly remote) LLM: a rule routes a
-        // command directly (no LLM); a skip treats the turn as normal chat (→ the sink); else interpret
-        // with RAG context.
+        // Token gate (optional) — a cheap LOCAL pass that routes deterministic verbs ("add X", "done X")
+        // WITHOUT the LLM. It runs whether or not smart chat is configured, so commands keep working in
+        // "basic mode". A rule routes a command directly; a skip treats the turn as normal chat (→ sink).
         let context;
         if (gate && typeof gate.evaluate === 'function') {
           const g = await gate.evaluate(stripped, ctx);
@@ -75,24 +76,43 @@ export function createCircleDispatch({ catalog, policy, userDefault, llmProvider
           if (g.via === 'skip') return { via: await sink(trimmed, ctx) };
           context = g.context;
         }
-        // Conversation memory — prepend the recent kring turns so follow-ups
-        // ("en schoenen ook", "remove the milk", "that one") resolve against what
-        // was just said. Self-describing lines; interpret weaves them into the prompt.
-        const turns = typeof recentTurns === 'function' ? (recentTurns() || []) : [];
-        if (turns.length) context = [...turns, ...(Array.isArray(context) ? context : [])];
-        // Part D — scope the LLM's tool list to the circle's apps (default: the circle apps;
-        // `policy.apps` narrows further). Gate/dispatch unaffected.
-        const scopedCatalog = scopeCatalogToApps(getCatalog(), circlePolicy?.apps);
-        const cmd = await interpret(stripped, { catalog: scopedCatalog, llm, context });   // → {opId,args} | null
-        if (cmd && cmd.opId) {
-          await dispatch({ opId: cmd.opId, args: cmd.args && typeof cmd.args === 'object' ? cmd.args : {} }, ctx);
-          return { via: 'llm', cmd };
+
+        // The turn needs free-text UNDERSTANDING → the LLM, but only if smart chat is available.
+        if (llm) {
+          // Conversation memory — prepend the recent kring turns so follow-ups ("en schoenen ook",
+          // "that one") resolve against what was just said. interpret weaves them into the prompt.
+          const turns = typeof recentTurns === 'function' ? (recentTurns() || []) : [];
+          if (turns.length) context = [...turns, ...(Array.isArray(context) ? context : [])];
+          // Part D — scope the LLM's tool list to the circle's apps. Gate/dispatch unaffected.
+          const scopedCatalog = scopeCatalogToApps(getCatalog(), circlePolicy?.apps);
+          let cmd = null;
+          try {
+            cmd = await interpret(stripped, { catalog: scopedCatalog, llm, context });   // → {opId,args} | null
+          } catch (err) {
+            // Smart chat is configured but the endpoint is UNREACHABLE (server down). Reply in plain
+            // words ("basic mode") rather than failing the turn — buttons + commands still work.
+            if (typeof onLlmUnavailable === 'function') {
+              await onLlmUnavailable(stripped, ctx, { reason: 'unreachable', error: err });
+              return { via: 'llm-unavailable' };
+            }
+            throw err;   // no hook wired → preserve old behaviour
+          }
+          if (cmd && cmd.opId) {
+            await dispatch({ opId: cmd.opId, args: cmd.args && typeof cmd.args === 'object' ? cmd.args : {} }, ctx);
+            return { via: 'llm', cmd };
+          }
+          // The LLM ran but mapped the message to NO tool. Don't go silent — let the shell reply via onNoMatch.
+          if (typeof onNoMatch === 'function') { await onNoMatch(stripped, ctx); return { via: 'llm-nomatch' }; }
+          // couldn't map it to a command → fall through to the sink.
+        } else {
+          // Smart chat is OFF (not configured / circle opted out). The bot was addressed with free text the
+          // gate couldn't route. Reply in plain words ("basic mode") instead of silently posting it as chat.
+          if (typeof onLlmUnavailable === 'function') {
+            await onLlmUnavailable(stripped, ctx, { reason: 'off' });
+            return { via: 'llm-unavailable' };
+          }
+          // no hook wired → fall through to the sink (back-compat: silent post).
         }
-        // The LLM ran but mapped the message to NO tool. Don't go silent — the user addressed the bot and
-        // deserves an answer. Let the shell reply ("I couldn't turn that into an action") via onNoMatch;
-        // only fall through to the chat sink if the shell didn't wire one (back-compat).
-        if (typeof onNoMatch === 'function') { await onNoMatch(stripped, ctx); return { via: 'llm-nomatch' }; }
-        // the LLM couldn't map it to a command → fall through to the sink.
       }
 
       // 3. everything else → the injected sink.

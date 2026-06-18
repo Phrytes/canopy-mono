@@ -2,9 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.js';
 
 // A minimal harness: records what the shell would have done.
-function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botName, userDefault, gate, recentTurns } = {}) {
+function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botName, userDefault, gate, recentTurns, onLlmUnavailable } = {}) {
   const dispatched = [];
   const posted = [];
+  const unavailable = [];
   const cd = createCircleDispatch({
     policy,
     userDefault,
@@ -15,8 +16,9 @@ function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botNa
     recentTurns,
     dispatch: (slash) => { dispatched.push(slash); },
     postToKring: (text) => { posted.push(text); },
+    ...(onLlmUnavailable ? { onLlmUnavailable: (text, ctx, info) => { unavailable.push({ text, info }); } } : {}),
   });
-  return { cd, dispatched, posted };
+  return { cd, dispatched, posted, unavailable };
 }
 
 describe('createCircleDispatch — routing', () => {
@@ -125,6 +127,51 @@ describe('createCircleDispatch — routing', () => {
     expect(r2.via).toBe('kring');
     expect(skip.posted).toEqual(['@helper hi there']);
     expect(interpretSkip).not.toHaveBeenCalled();
+  });
+
+  it('BASIC MODE — the deterministic gate routes even when smart chat is OFF (no LLM)', async () => {
+    // The gate is deterministic; "add milk" must work without an LLM configured.
+    const interpret = vi.fn();
+    const { cd, dispatched } = harness({
+      policy: { llmTool: 'off' }, interpret, botName: 'helper',
+      gate: { evaluate: async () => ({ via: 'rule', command: { opId: 'addItem', args: { text: 'milk' } } }) },
+    });
+    const r = await cd.handle('@helper add milk');
+    expect(r.via).toBe('rule');
+    expect(dispatched).toEqual([{ opId: 'addItem', args: { text: 'milk' } }]);
+    expect(interpret).not.toHaveBeenCalled();   // never touched the (absent) LLM
+  });
+
+  it('BASIC MODE — free text the gate cannot route, smart chat OFF → onLlmUnavailable(reason:off)', async () => {
+    const interpret = vi.fn();
+    const { cd, unavailable, posted } = harness({
+      policy: { llmTool: 'off' }, interpret, botName: 'helper',
+      gate: { evaluate: async () => ({ via: 'context', context: [] }) },   // no rule, no skip
+      onLlmUnavailable: true,
+    });
+    const r = await cd.handle('@helper what do I still need from the shop?');
+    expect(r.via).toBe('llm-unavailable');
+    expect(unavailable).toHaveLength(1);
+    expect(unavailable[0].info.reason).toBe('off');
+    expect(interpret).not.toHaveBeenCalled();
+    expect(posted).toEqual([]);                 // replied basic-mode, did NOT silently post
+  });
+
+  it('UNREACHABLE — smart chat configured but the endpoint throws → onLlmUnavailable(reason:unreachable)', async () => {
+    const interpret = vi.fn(async () => { throw new Error('ECONNREFUSED'); });
+    const { cd, unavailable } = harness({
+      policy: { llmTool: 'local' }, providers: { local: { invoke: vi.fn() } }, interpret, botName: 'helper',
+      onLlmUnavailable: true,
+    });
+    const r = await cd.handle('@helper summarise the list');
+    expect(r.via).toBe('llm-unavailable');
+    expect(unavailable[0].info.reason).toBe('unreachable');
+  });
+
+  it('back-compat — interpret throwing with NO onLlmUnavailable hook still propagates', async () => {
+    const interpret = vi.fn(async () => { throw new Error('down'); });
+    const { cd } = harness({ policy: { llmTool: 'local' }, providers: { local: { invoke: vi.fn() } }, interpret, botName: 'helper' });
+    await expect(cd.handle('@helper hi')).rejects.toThrow('down');
   });
 
   it('treats blank input as a no-op', async () => {
