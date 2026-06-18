@@ -196,7 +196,19 @@ export function buildMobileLocalBuiltins({
       }
       const mod = await import('nkn-sdk');
       const nknLib = mod.default ?? mod;
-      await agent.connectPeerTransport({ nknLib, relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null });   // T3a
+      // T5.2d — mirror the boot path: best-effort WebRTC rendezvous so a manual
+      // /peer-connect reconnect also restores the direct-route upgrade.
+      let rtcLib = null;
+      try {
+        const rtcMod = await import('../../../../packages/react-native/src/transport/rendezvousRtcLib.js');
+        rtcLib = await rtcMod.loadRendezvousRtcLib?.();
+      } catch { /* react-native-webrtc absent — non-fatal */ }
+      await agent.connectPeerTransport({
+        nknLib,
+        relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null,   // T3a
+        rendezvous: true,                                             // T5.2d
+        rtcLib,
+      });
       return { address: agent.peer?.address ?? '' };
     },
     // Bundle G3 (#265) — /lookup-peer <webid> + /publish-peer.  Same

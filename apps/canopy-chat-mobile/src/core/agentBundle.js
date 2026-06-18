@@ -277,6 +277,19 @@ export async function bootAgentBundle(opts = {}) {
         )),
       ]);
       mdns = inst;
+      // T5.2d — inject the built mDNS into the unified secure-mesh router so
+      // peers found on the local network are actually ROUTABLE (mdns > relay >
+      // nkn), not merely listed in the Nearby row. `addSecureTransport`
+      // security-wraps it (same SecurityLayer as the chat agent) + registers it
+      // on the router; connect:false because we already time-boxed the
+      // pre-connect above. Best-effort: a failure leaves the Nearby UI working
+      // and the agent routing over nkn/relay.
+      try {
+        await agent.addSecureTransport?.('mdns', inst, { connect: false });
+        console.log('[cc/boot] mDNS injected into router — local-network routing live');
+      } catch (err) {
+        console.warn('[cc/boot] mDNS router-inject failed (Nearby still works):', err?.message ?? err);
+      }
     } catch (err) {
       console.warn('[cc/boot] mDNS init failed (best-effort):', err?.message ?? err);
     }
@@ -315,6 +328,16 @@ export async function bootAgentBundle(opts = {}) {
           // warnings) surfaces normally.
           setTimeout(() => { console.warn = originalWarn; }, 2000);
         }
+        // T5.2d — best-effort WebRTC rendezvous. Needs a dev build with
+        // react-native-webrtc; in Expo Go / a plain build the loader returns
+        // null and rendezvous stays signalling-only (nkn/relay keep routing).
+        // Loaded from the specific module (not the @canopy/react-native barrel)
+        // so no unrelated native dep is pulled at boot.
+        let rtcLib = null;
+        try {
+          const rtcMod = await import('../../../../packages/react-native/src/transport/rendezvousRtcLib.js');
+          rtcLib = await rtcMod.loadRendezvousRtcLib?.();
+        } catch { /* absent — non-fatal, rendezvous just stays off */ }
         // Stable wrapper reads the mutable slot at delivery time, so a
         // router attached after connect still receives messages.
         await agent.connectPeerTransport({
@@ -322,6 +345,9 @@ export async function bootAgentBundle(opts = {}) {
           onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
           // T3a — relay alongside NKN (routed) when configured; unset → NKN-only.
           relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null,
+          // T5.2d — direct WebRTC upgrade over the nkn/relay signalling path.
+          rendezvous: true,
+          rtcLib,
         });
         console.log('[cc/boot] peer transport connected, address:', agent.peer?.address);
         // Bundle H (#268, 2026-05-27) — fire the catch-up trigger
