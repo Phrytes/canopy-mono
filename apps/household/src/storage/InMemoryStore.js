@@ -55,6 +55,9 @@ export class InMemoryStore {
     });
   }
 
+  /** the underlying @canopy/item-store ItemStore (substrate API: addItems/applySync/removeSync/listOpen/listClosed) — used by the substrate mirror. */
+  get substrate() { return this.#store; }
+
   /**
    * @param {import('./Store.js').AddItemArgs} args
    * @returns {Promise<import('../types.js').Item>}
