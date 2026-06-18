@@ -371,9 +371,9 @@ describe('CC-ST.9 — mute a noisy peer', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/mute then /muted shows the peer', async () => {
-    await ws.userInput('/mute webid:noisy');
-    const r = await ws.userInput('/muted');
+  it('/block then /blocked shows the peer', async () => {
+    await ws.userInput('/block webid:noisy');
+    const r = await ws.userInput('/blocked');
     expect(r.payload.message).toMatch(/webid:noisy/);
   });
 });
@@ -966,12 +966,12 @@ describe('CC-XA.10 — mute by webid survives a reload (cross-app)', () => {
     const { VaultMemory } = await import('@canopy/vault');
     const sharedChat = new VaultMemory();
     const ws1 = await bootWorkspace({ chatVault: sharedChat });
-    await ws1.userInput('/mute webid:troublemaker');
+    await ws1.userInput('/block webid:troublemaker');
     expect(ws1.agent.sa.mute.has('webid:troublemaker')).toBe(true);
 
     const ws2 = await bootWorkspace({ chatVault: sharedChat });
     expect(ws2.agent.sa.mute.has('webid:troublemaker')).toBe(true);
-    const muted = await ws2.userInput('/muted');
+    const muted = await ws2.userInput('/blocked');
     expect(muted.payload.message).toMatch(/webid:troublemaker/);
   });
 });

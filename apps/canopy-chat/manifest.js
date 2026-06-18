@@ -569,10 +569,16 @@ export const canopyChatManifest = {
     },
 
     /**
-     * `/mute <peer>` — mute a peer.  Accepts NKN address, pubKey,
-     * webid, or stableId — when identityResolver is wired, mute
+     * `/block <peer>` — block a peer.  Accepts NKN address, pubKey,
+     * webid, or stableId — when identityResolver is wired, the block
      * fans out across all aliases (one webid blocks every device).
      * Persisted across reloads.
+     *
+     * Slash dedup (2026-06-19): renamed `/mute` → `/block` so it no longer
+     * collides with stoop's `/mute` (a LOCAL, hide-only mute that does NOT
+     * block). `/block` is also the accurate verb — this drops the peer's
+     * messages AND refuses to send. The op id stays `mute` (skill + its
+     * "muted" wording unchanged), so only the user-facing command moved.
      */
     {
       id:    'mute',
@@ -581,14 +587,14 @@ export const canopyChatManifest = {
         { name: 'peer', kind: 'string', required: true },
       ],
       surfaces: {
-        slash: { command: '/mute', body: 'argline' },
+        slash: { command: '/block', body: 'argline' },
         chat:  { reply: 'text', hint: 'block a peer (drops their messages + refuses to send)' },
       },
     },
 
     /**
-     * `/unmute <peer>` — remove a peer from the mute set.  Use the
-     * same identifier you muted with (NKN addr / pubKey / webid).
+     * `/unblock <peer>` — remove a peer from the block set.  Use the
+     * same identifier you blocked with (NKN addr / pubKey / webid).
      */
     {
       id:    'unmute',
@@ -597,21 +603,21 @@ export const canopyChatManifest = {
         { name: 'peer', kind: 'string', required: true },
       ],
       surfaces: {
-        slash: { command: '/unmute', body: 'argline' },
-        chat:  { reply: 'text', hint: 'remove a peer from the mute set' },
+        slash: { command: '/unblock', body: 'argline' },
+        chat:  { reply: 'text', hint: 'remove a peer from the block set' },
       },
     },
 
     /**
-     * `/muted` — list everyone in the mute set.
+     * `/blocked` — list everyone in the block set.
      */
     {
       id:    'muted',
       verb:  'list',
       params: [],
       surfaces: {
-        slash: { command: '/muted' },
-        chat:  { reply: 'text', hint: 'list muted peers' },
+        slash: { command: '/blocked' },
+        chat:  { reply: 'text', hint: 'list blocked peers' },
       },
     },
 

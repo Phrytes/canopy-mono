@@ -279,32 +279,32 @@
   },
   "mute": {
     "no_peer": {
-      "text": "Please name a peer: /mute <nkn-addr-or-webid-or-pubkey>",
-      "doc": "/mute missing arg."
+      "text": "Please name a peer: /block <nkn-addr-or-webid-or-pubkey>",
+      "doc": "/block missing arg."
     },
     "unavailable": {
-      "text": "Mute not available in this build.",
+      "text": "Block not available in this build.",
       "doc": "Defensive — sa.mute missing."
     },
     "added": {
-      "text": "🔇 Muted {{peer}}.\nTheir messages will be dropped + you can't send to them.",
-      "doc": "/mute success."
+      "text": "🚫 Blocked {{peer}}.\nTheir messages will be dropped + you can't send to them.",
+      "doc": "/block success."
     },
     "already": {
-      "text": "{{peer}} is already muted.",
+      "text": "{{peer}} is already blocked.",
       "doc": "Idempotent."
     },
     "removed": {
-      "text": "🔊 Unmuted {{peer}}.",
-      "doc": "/unmute success."
+      "text": "🔊 Unblocked {{peer}}.",
+      "doc": "/unblock success."
     },
     "not_muted": {
-      "text": "{{peer}} wasn't muted.",
+      "text": "{{peer}} wasn't blocked.",
       "doc": "Idempotent."
     },
     "empty": {
-      "text": "Mute set is empty.",
-      "doc": "/muted on empty set."
+      "text": "Block set is empty.",
+      "doc": "/blocked on empty set."
     }
   },
   "audit": {

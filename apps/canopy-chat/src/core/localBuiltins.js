@@ -558,9 +558,12 @@ async function securityStatus(_args, { agent, t }) {
 }
 
 /**
- * `/mute <peer>` — add peer to the mute set.  Resolver fanout
- * means a webid mute blocks the peer across all their devices /
+ * `/block <peer>` — add peer to the block set.  Resolver fanout
+ * means a webid block stops the peer across all their devices /
  * addresses.  Persisted via the factory's muteListVaultKey opt.
+ * (Internally the mechanism is `sa.mute`/op id `mute`; the user-facing
+ * command + copy were renamed `/mute`→`/block` to free `/mute` for
+ * stoop's local hide-only mute. See manifest.js.)
  */
 async function muteHandler(args, { agent, t }) {
   const peer = String(args?.peer ?? args?._match ?? '').trim();
@@ -573,7 +576,7 @@ async function muteHandler(args, { agent, t }) {
 }
 
 /**
- * `/unmute <peer>` — remove a peer from the mute set.
+ * `/unblock <peer>` — remove a peer from the block set.
  */
 async function unmuteHandler(args, { agent, t }) {
   const peer = String(args?.peer ?? args?._match ?? '').trim();
@@ -586,7 +589,7 @@ async function unmuteHandler(args, { agent, t }) {
 }
 
 /**
- * `/muted` — list current mute set.
+ * `/blocked` — list current block set.
  */
 async function mutedHandler(_args, { agent, t }) {
   const sa = agent?.sa;

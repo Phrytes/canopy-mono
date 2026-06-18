@@ -279,32 +279,32 @@
   },
   "mute": {
     "no_peer": {
-      "text": "Geef een peer op: /mute <nkn-adres-of-webid-of-pubkey>",
+      "text": "Geef een peer op: /block <nkn-adres-of-webid-of-pubkey>",
       "doc": "missing arg."
     },
     "unavailable": {
-      "text": "Mute niet beschikbaar in deze build.",
+      "text": "Blokkeren niet beschikbaar in deze build.",
       "doc": "Defensive."
     },
     "added": {
-      "text": "🔇 {{peer}} gedempt.\nHun berichten worden genegeerd en je kunt ze niet meer aanschrijven.",
+      "text": "🚫 {{peer}} geblokkeerd.\nHun berichten worden genegeerd en je kunt ze niet meer aanschrijven.",
       "doc": "success."
     },
     "already": {
-      "text": "{{peer}} stond al op de mute-lijst.",
+      "text": "{{peer}} stond al op de blokkeerlijst.",
       "doc": "Idempotent."
     },
     "removed": {
-      "text": "🔊 {{peer}} weer aangezet.",
+      "text": "🔊 {{peer}} weer toegelaten.",
       "doc": "success."
     },
     "not_muted": {
-      "text": "{{peer}} stond niet op de mute-lijst.",
+      "text": "{{peer}} stond niet op de blokkeerlijst.",
       "doc": "Idempotent."
     },
     "empty": {
-      "text": "Mute-lijst is leeg.",
-      "doc": "/muted op lege lijst."
+      "text": "Blokkeerlijst is leeg.",
+      "doc": "/blocked op lege lijst."
     }
   },
   "audit": {
