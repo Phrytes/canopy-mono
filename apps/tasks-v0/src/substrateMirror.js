@@ -2,29 +2,20 @@
  * Tasks substrate-mirror — cross-device task fan-out (Phase 52.9.3,
  * 2026-05-14, Tasks V2 ninth slice).
  *
- * Mirror of `apps/stoop/src/substrateMirror.js` adapted for Tasks's
- * task items. Wires `@canopy/notify-envelope` + `@canopy/pseudo-
- * pod` into a per-crew "publish on write, mirror on receive" flow so
- * a task added on device A shows up on device B's itemStore.
+ * OBJ-2 S2: now a THIN wrapper over the shared generic `wireItemMirror`
+ * (`@canopy/notify-envelope`), which household also uses. Tasks-specific bits:
+ * the envelope `kind` ('task'), the per-crew URI namespace, the full task draft
+ * (dependencies / requiredSkills / approval / parentTaskId / scheduling / …),
+ * and an action inference that also reads the review-log (submit/approve/reject).
  *
- * **Scope of this slice:** `addTask` fan-out only. Updates (claim,
- * complete, submit/approve/reject, removeTask) replicate locally to
- * the pseudoPod's Lamport `_v` counter but are NOT yet mirrored into
- * peers' itemStores — a follow-up slice will lift more itemStore
- * mutations into the substrate. Today this covers the most common
- * "where did the task go?" cross-device case.
+ * Behaviour is unchanged from the prior hand-rolled copy: `addTask` fan-out plus
+ * mutation fan-out (claim/complete/submit/approve/reject/reassign via the full
+ * task state on every `publishTask`), hard-delete via `publishTaskRemoved`, and
+ * the Q-D stale-peer auto-heal — all of which live in the shared core now.
  *
- * **What this gives the crew:**
- * - One global subscription per crew bundle (kind = 'task' envelopes).
- * - The receive path runs the Q-D 3-way Lamport version compare via
- *   `pseudoPod.writeFromPeer`; `'stale-peer'` events fire for
- *   app-level auto-heal (follow-up).
- * - The wire is owned by notify-envelope, not pubsub topics — apps
- *   subscribe by `kind: 'task'` plus a per-crew URI prefix filter.
- *
- * **Per-crew roster.** The substrate's `pseudoPod` is per-device,
- * not per-crew. The mirror tracks its own per-crew `recipients` set;
- * `addTask` reads it at publish time to direct fan-out.
+ * The receive path runs the Q-D 3-way Lamport version compare via
+ * `pseudoPod.writeFromPeer` (inside notify-envelope) before the mirror applies;
+ * `'stale-peer'` events drive the auto-heal republish.
  *
  * @param {object} args
  * @param {import('@canopy/item-store').ItemStore} args.itemStore
@@ -32,262 +23,49 @@
  * @param {object} args.pseudoPod        — shared per-bundle instance.
  * @param {string} args.crewId           — crew identifier (URI namespace).
  * @param {Array<{pubKey: string}>} [args.peers]
- * @param {string} [args.selfPubKey]     — local agent address; filtered out
- *                                          of the recipient roster (self).
+ * @param {string} [args.selfPubKey]     — local agent address; filtered out (self).
  * @returns {Promise<{
- *   addPeer:    (pubKey: string) => Promise<void>,
- *   removePeer: (pubKey: string) => void,
- *   stop:       () => Promise<void>,
- *   listPeers:  () => string[],
- *   getPeers:   () => string[],
- *   urlFor:     (taskId: string) => string,
+ *   addPeer:(pubKey:string)=>Promise<void>, removePeer:(pubKey:string)=>void,
+ *   stop:()=>Promise<void>, listPeers:()=>string[], getPeers:()=>string[],
+ *   urlFor:(taskId:string)=>string,
+ *   publishTask:(task:object, opts?:object)=>Promise<void>,
+ *   publishTaskRemoved:(originalId:string, opts?:object)=>Promise<void>,
  * }>}
  */
-export async function wireTasksSubstrateMirror({
-  itemStore,
-  notifyEnvelope,
-  pseudoPod,
-  crewId,
-  peers = [],
-  selfPubKey = null,
-}) {
-  if (!itemStore?.addItems) throw new Error('wireTasksSubstrateMirror: itemStore required');
-  if (!notifyEnvelope?.subscribe) throw new Error('wireTasksSubstrateMirror: notifyEnvelope required');
-  if (!pseudoPod?.write) throw new Error('wireTasksSubstrateMirror: pseudoPod required');
-  if (typeof crewId !== 'string' || !crewId) {
-    throw new Error('wireTasksSubstrateMirror: crewId required');
-  }
+import { wireItemMirror } from '@canopy/notify-envelope';
 
-  const recipients = new Set();
-  function addPeerSync(pubKey) {
-    if (!pubKey || typeof pubKey !== 'string') return;
-    if (selfPubKey && pubKey === selfPubKey) return;
-    recipients.add(pubKey);
-  }
-  for (const p of peers) addPeerSync(p?.pubKey);
-
-  /**
-   * The mirror handler — turns an inbound `task` envelope's payload
-   * into a local itemStore item. Dedupes on `payload.id` (item id);
-   * substrate's `writeFromPeer` already ran the Q-D version compare
-   * by the time this fires.
-   */
-  async function mirror(payload, fromPubKey) {
-    if (!payload || typeof payload.id !== 'string' || !payload.id) return;
-
-    // Look for an existing local item matched by syncedFromId. The
-    // local item-store mints a fresh `ulid()` per addItems, so the
-    // sender's `payload.id` doesn't match a local id directly — the
-    // syncedFromId marker stashed at first-receive is the join key.
-    const open   = await itemStore.listOpen();
-    const closed = await itemStore.listClosed();
-    const matches = (i) => i?.source?.syncedFromId === payload.id;
-    const existing = open.find(matches) ?? closed.find(matches);
-
-    // Sub-slice 1 (Phase 52.9.3 mutation fan-out, 2026-05-14) —
-    // if we already have the item, apply the new state via
-    // applySync (gate-bypass; preserves audit + emit). Skill bodies
-    // publish full task state on every mutation; this branch handles
-    // the receive-side application.
-    if (existing) {
-      const action = _inferAction(existing, payload);
-      try {
-        await itemStore.applySync({
-          syncedFromId: payload.id,
-          nextState:    _stripIdentity(payload),
-          action,
-        }, {
-          remoteActor: payload.completedBy
-                    ?? payload.assignee
-                    ?? payload.addedBy
-                    ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : null),
-        });
-      } catch (_err) { /* swallow — best-effort sync */ }
-      return;
-    }
-
-    // Reconstruct an addItems-shaped partial. We carry over the
-    // ORIGINAL author (payload.addedBy) — not fromPubKey — because
-    // the publishing device might be a relay node. The actor on the
-    // resulting audit entry reflects the real author.
-    const draft = {
-      type:           payload.type ?? 'task',
-      ...(payload.kind !== undefined ? { kind: payload.kind } : {}),
-      text:           payload.text ?? '(synced)',
-      ...(payload.notes ? { notes: payload.notes } : {}),
-      ...(payload.dependencies   ? { dependencies:   payload.dependencies }   : {}),
-      ...(payload.requiredSkills ? { requiredSkills: payload.requiredSkills } : {}),
-      ...(payload.dueAt !== undefined ? { dueAt: payload.dueAt } : {}),
-      ...(payload.visibility ? { visibility: payload.visibility } : {}),
-      ...(payload.definitionOfDone ? { definitionOfDone: payload.definitionOfDone } : {}),
-      ...(payload.approval ? { approval: payload.approval } : {}),
-      ...(payload.parentTaskId ? { parentTaskId: payload.parentTaskId } : {}),
-      ...(payload.scheduledAt     !== undefined ? { scheduledAt:     payload.scheduledAt }     : {}),
-      ...(payload.estimateMinutes !== undefined ? { estimateMinutes: payload.estimateMinutes } : {}),
-      ...(payload.embeds ? { embeds: payload.embeds } : {}),
-      source: {
-        synced:        true,
-        syncedFromId:  payload.id,
-        fromPubKey,
-        ...(payload.source ?? {}),
-      },
-    };
-
-    await itemStore.addItems(
-      [draft],
-      {
-        actor: payload.addedBy ?? `pubkey:${(fromPubKey ?? '').slice(0, 12) || 'broadcast'}`,
-        actionOverride: 'sync',
-      },
-    );
-  }
-
-  /**
-   * Per-crew URI prefix on the pseudoPod for this crew's tasks. The
-   * publisher embeds the URI in the envelope's `ref`; receivers filter
-   * by this prefix so the same notify-envelope subscription can host
-   * multiple crews without cross-talk.
-   */
-  const uriPrefix = `/tasks/crews/${crewId}/tasks/`;
-  function urlFor(taskId) {
-    return `pseudo-pod://${pseudoPod.deviceId ?? 'self'}${uriPrefix}${taskId}`;
-  }
-
-  const unsubscribe = notifyEnvelope.subscribe({
-    kind: 'task',
-    callback: (envelope) => {
-      const ref = envelope?.ref;
-      if (typeof ref !== 'string' || !ref.includes(uriPrefix)) return;
-      const fromPubKey = envelope.fromActor ?? null;
-      mirror(envelope.payload, fromPubKey).catch(() => {
-        /* swallow — UI reflects on next sync */
-      });
-    },
-  });
-
-  // Sub-slice 1 (mutation fan-out) — `task-removed` envelopes signal
-  // a hard-delete. Payload carries `{originalId}` (the sender's
-  // task id); the receiver finds its local copy by syncedFromId and
-  // hard-deletes via itemStore.removeSync (gate-bypass).
-  const unsubscribeRemoved = notifyEnvelope.subscribe({
-    kind: 'task-removed',
-    callback: (envelope) => {
-      const ref = envelope?.ref;
-      if (typeof ref !== 'string' || !ref.includes(uriPrefix)) return;
-      const originalId = envelope?.payload?.originalId;
-      if (typeof originalId !== 'string' || !originalId) return;
-      const fromPubKey = envelope.fromActor ?? null;
-      itemStore.removeSync({ syncedFromId: originalId }, {
-        remoteActor: fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : null,
-      }).catch(() => { /* swallow */ });
-    },
-  });
-
-  /**
-   * Q-D auto-heal (Phase 52.14, mirror of Stoop A1) — when a peer
-   * writes with an older `_v` than ours, `pseudoPod` emits
-   * `'stale-peer'` carrying our fresher local copy. Republish that
-   * back to the stale peer so they converge. Silent (no UI
-   * affordance); same lean as Stoop's V2.5 default.
-   */
-  function _onStalePeer(event) {
-    const uri = event?.uri;
-    if (typeof uri !== 'string' || !uri.includes(uriPrefix)) return;
-    const stalePeer = event.fromActor;
-    if (typeof stalePeer !== 'string' || stalePeer.length === 0) return;
-    const localBytes = event.localBytes;
-    if (typeof localBytes === 'undefined' || localBytes === null) return;
-    if (selfPubKey && stalePeer === selfPubKey) return;
-    notifyEnvelope.publish({
-      type:       'task',
-      ref:        uri,
-      payload:    localBytes,
-      etag:       event.localEtag ?? null,
-      _v:         event.localV,
-      recipients: [stalePeer],
-      ...(selfPubKey ? { fromActor: selfPubKey } : {}),
-    }).catch(() => { /* best-effort heal */ });
-  }
-  const unsubscribeStale = pseudoPod.on?.('stale-peer', _onStalePeer) ?? null;
-
-  async function addPeer(pubKey) { addPeerSync(pubKey); }
-  function removePeer(pubKey)   { if (typeof pubKey === 'string') recipients.delete(pubKey); }
-  async function stop() {
-    try { unsubscribe(); } catch { /* swallow */ }
-    try { unsubscribeRemoved(); } catch { /* swallow */ }
-    if (typeof unsubscribeStale === 'function') {
-      try { unsubscribeStale(); } catch { /* swallow */ }
-    }
-    recipients.clear();
-  }
-  function listPeers() { return [...recipients]; }
-  function getPeers()  { return [...recipients]; }
-
-  /**
-   * Publish a task's full current state to every peer in the
-   * roster. Called by Tasks skills after every mutation (addTask,
-   * claim, complete, submit, approve, reject, revoke, reassign) so
-   * receivers can `applySync` the new state.
-   *
-   * Best-effort fan-out — local write is the source of truth.
-   * Returns silently when there are no peers or no notifyEnvelope.
-   */
-  async function publishTask(task, opts = {}) {
-    if (!task?.id || recipients.size === 0) return;
-    try {
-      const uri = urlFor(task.id);
-      const { etag, _v } = await pseudoPod.write(uri, task);
-      await notifyEnvelope.publish({
-        type:       'task',
-        ref:        uri,
-        payload:    task,
-        etag,
-        _v,
-        recipients: [...recipients],
-        ...(opts.fromActor ?? selfPubKey ? { fromActor: opts.fromActor ?? selfPubKey } : {}),
-        crewId,
-      });
-    } catch (_err) { /* best-effort */ }
-  }
-
-  /**
-   * Publish a hard-delete signal for a task to every peer. Receivers
-   * call `itemStore.removeSync({syncedFromId: originalId})`. Best-
-   * effort.
-   */
-  async function publishTaskRemoved(originalId, opts = {}) {
-    if (typeof originalId !== 'string' || !originalId) return;
-    if (recipients.size === 0) return;
-    try {
-      const uri = urlFor(originalId);
-      await notifyEnvelope.publish({
-        type:       'task-removed',
-        ref:        uri,
-        payload:    { originalId },
-        recipients: [...recipients],
-        ...(opts.fromActor ?? selfPubKey ? { fromActor: opts.fromActor ?? selfPubKey } : {}),
-        crewId,
-      });
-    } catch (_err) { /* best-effort */ }
-  }
-
+/** Reconstruct an `addItems` draft from a synced task payload (full task shape). */
+function taskDraft(payload, fromPubKey) {
   return {
-    addPeer, removePeer, stop, listPeers, getPeers, urlFor,
-    publishTask, publishTaskRemoved,
+    type:           payload.type ?? 'task',
+    ...(payload.kind !== undefined ? { kind: payload.kind } : {}),
+    text:           payload.text ?? '(synced)',
+    ...(payload.notes ? { notes: payload.notes } : {}),
+    ...(payload.dependencies   ? { dependencies:   payload.dependencies }   : {}),
+    ...(payload.requiredSkills ? { requiredSkills: payload.requiredSkills } : {}),
+    ...(payload.dueAt !== undefined ? { dueAt: payload.dueAt } : {}),
+    ...(payload.visibility ? { visibility: payload.visibility } : {}),
+    ...(payload.definitionOfDone ? { definitionOfDone: payload.definitionOfDone } : {}),
+    ...(payload.approval ? { approval: payload.approval } : {}),
+    ...(payload.parentTaskId ? { parentTaskId: payload.parentTaskId } : {}),
+    ...(payload.scheduledAt     !== undefined ? { scheduledAt:     payload.scheduledAt }     : {}),
+    ...(payload.estimateMinutes !== undefined ? { estimateMinutes: payload.estimateMinutes } : {}),
+    ...(payload.embeds ? { embeds: payload.embeds } : {}),
+    source: {
+      synced:        true,
+      syncedFromId:  payload.id,
+      fromPubKey,
+      ...(payload.source ?? {}),
+    },
   };
 }
 
-// ── Internal helpers ──────────────────────────────────────────────
-
 /**
- * Infer which sync action best describes the transition from `local`
- * to `next`. The mirror uses the action tag for the audit shape +
- * the standard `item-<action>` event emission.
+ * Infer the sync action for a task transition. Extends the shared default with
+ * the review-log branch: submit/approve/reject mutate `reviewLog` rather than a
+ * dedicated field, so a grown reviewLog's newest `decision` names the action.
  */
-function _inferAction(local, next) {
-  // submit/approve/reject mutate the reviewLog rather than a
-  // dedicated `submittedAt`/`rejectedAt` field. The newest entry's
-  // `decision` gives us the action when reviewLog grew.
+function taskInferAction(local, next) {
   const localLen = Array.isArray(local.reviewLog) ? local.reviewLog.length : 0;
   const nextLen  = Array.isArray(next.reviewLog)  ? next.reviewLog.length  : 0;
   if (nextLen > localLen) {
@@ -296,8 +74,6 @@ function _inferAction(local, next) {
     if (newest?.decision === 'reject')  return 'reject';
     if (newest?.decision === 'approve') return 'approve';
   }
-  // approve sets completedAt too — fall through to the
-  // completed-state check below if reviewLog didn't yield a hit.
   if (!local.completedAt && next.completedAt)        return 'complete';
   if (local.assignee && !next.assignee)              return 'revoke';
   if (!local.assignee && next.assignee)              return 'claim';
@@ -305,12 +81,28 @@ function _inferAction(local, next) {
   return 'update';
 }
 
-/**
- * Strip identity fields (id, _etag, addedAt, ...) from a payload
- * before merging into the local item — `applySync` preserves
- * local identity and overwrites the rest.
- */
-function _stripIdentity(payload) {
-  const { id: _id, _etag: _etag, addedAt: _addedAt, ...rest } = payload;
-  return rest;
+export async function wireTasksSubstrateMirror({
+  itemStore,
+  notifyEnvelope,
+  pseudoPod,
+  crewId,
+  peers = [],
+  selfPubKey = null,
+}) {
+  const mirror = await wireItemMirror({
+    itemStore,
+    notifyEnvelope,
+    pseudoPod,
+    scopeId:     crewId,
+    kind:        'task',
+    uriPrefix:   (id) => `/tasks/crews/${id}/tasks/`,
+    toDraft:     taskDraft,
+    inferAction: taskInferAction,
+    scopeField:  'crewId',
+    peers,
+    selfPubKey,
+  });
+  // Preserve tasks' vocabulary on the surface (publishTask / publishTaskRemoved).
+  const { publish, publishRemoved, ...rest } = mirror;
+  return { ...rest, publishTask: publish, publishTaskRemoved: publishRemoved };
 }
