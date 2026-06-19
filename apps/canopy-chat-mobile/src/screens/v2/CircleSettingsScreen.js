@@ -26,6 +26,7 @@ import {
 import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 import GuidedSetupPanel from './GuidedSetupPanel.js';
+import PairedDevices from './PairedDevices.js';
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
 // four-tier crew storage policy (shared with web; pure mapping + call).
 import { pushCircleStoragePolicy } from '../../../../canopy-chat/src/v2/circleStoragePolicy.js';
@@ -50,6 +51,12 @@ export default function CircleSettingsScreen({
   incomingPolicy = null,
   onIncomingApplied,
   onIncomingDiscarded,
+  // OBJ-2 — paired devices (no-pod sync). Host wires these from the agent bundle when
+  // household sync is available; add/remove persist + return the updated roster.
+  householdSelfAddr = null,
+  householdPeers = [],
+  onAddHouseholdPeer,
+  onRemoveHouseholdPeer,
 }) {
   const [working, setWorking] = useState(null);
   const [expanded, setExpanded] = useState({});
@@ -297,6 +304,19 @@ export default function CircleSettingsScreen({
         </View>
         {consensusActive ? <Text style={styles.note}>{t('circle.settings.pending')}</Text> : null}
         {storageNote ? <Text style={styles.note} testID="circle-settings-storage-note">{storageNote}</Text> : null}
+
+        {householdSelfAddr && typeof onAddHouseholdPeer === 'function' ? (
+          <>
+            <Text style={styles.section}>{t('circle.pairedDevices.title')}</Text>
+            <PairedDevices
+              selfAddr={householdSelfAddr}
+              peers={householdPeers}
+              t={t}
+              onAdd={onAddHouseholdPeer}
+              onRemove={onRemoveHouseholdPeer}
+            />
+          </>
+        ) : null}
       </ScrollView>
 
       <Pressable style={styles.save} onPress={onSave} accessibilityRole="button" testID="circle-settings-save">
