@@ -41,6 +41,11 @@ const ROUTE_DEFAULT_BASE = {
 // A loopback base means the privatemode proxy is co-located with the client (safe — the host the
 // proxy runs on IS the participant's machine). Until the M7 enclave gateway ships, a non-loopback
 // privatemode endpoint is only allowed when attestation is configured (PRIVATEMODE_ATTESTATION).
+//
+// ⚠ CANONICAL HOME: this guard now lives in `@canopy/llm-client/routeSafety` (isLoopbackBase ·
+// attestationConfigured · assertConfidentialRouteSafe), shared by canopy-chat + the SDK. This is a
+// TEMPORARY FORK — feedback-pipeline is not yet in the pnpm workspace, so it can't import the package
+// (see header). When it joins, DELETE these locals and import from @canopy/llm-client/routeSafety.
 function isLoopbackBase(base) {
   if (!base) return false;
   try {

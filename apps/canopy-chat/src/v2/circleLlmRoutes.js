@@ -4,6 +4,7 @@
 // posture menukaart: a household circle on P2 typically uses 'local-ollama' or 'confidential-proxy'.
 
 import { buildCircleLlmProviders } from './circleLlmProviders.js';
+import { assertConfidentialRouteSafe } from '@canopy/llm-client/routeSafety';
 
 /** @typedef {{ label:string, mode:'off'|'local'|'cloud', baseUrl:string|null, model?:string, needsEndpoint?:boolean }} RoutePreset */
 
@@ -31,6 +32,16 @@ export function buildProvidersFromRoutes(routes = []) {
   const cfg = {};
   for (const r of list) {
     if (!r || !r.baseUrl || r.mode === 'off') continue;
+    // The 'confidential-proxy' preset PROMISES confidentiality (raw circle text → a TEE). Hold it to
+    // that promise: refuse a non-loopback endpoint with no attestation, where plaintext would reach a
+    // host that can read it. 'openai-compatible' is the user's explicit non-confidential opt-in, so it
+    // is NOT gated here. (Shared SDK guard — same rule the feedback pipeline enforces.)
+    assertConfidentialRouteSafe({
+      confidential: r.preset === 'confidential-proxy',
+      baseUrl:      r.baseUrl,
+      attestation:  r.attestation,
+      label:        `circle LLM route "${r.preset || r.mode}"`,
+    });
     if (r.mode === 'local') { cfg.localBaseUrl = r.baseUrl; cfg.localModel = r.model; }
     else if (r.mode === 'cloud') { cfg.cloudBaseUrl = r.baseUrl; cfg.cloudModel = r.model; }
   }

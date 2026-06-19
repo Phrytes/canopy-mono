@@ -6,6 +6,7 @@
   "main": "src/index.js",
   "exports": {
     ".":                          "./src/index.js",
+    "./routeSafety":              "./src/routeSafety.js",
     "./providers/ollama":         "./src/providers/ollama.js",
     "./providers/mock":           "./src/providers/mock.js",
     "./providers/embeddings":     "./src/providers/embeddings.js",

@@ -31,10 +31,32 @@ describe('circleLlmRoutes — presets', () => {
   it('buildProvidersFromRoutes maps configs → the {local, cloud} providers map', () => {
     const providers = buildProvidersFromRoutes([
       resolveRoutePreset('local-ollama'),
-      resolveRoutePreset('confidential-proxy', { baseUrl: 'https://enclave.example/v1' }),
+      // confidential-proxy must be loopback OR attested to pass the guard; attest it here.
+      resolveRoutePreset('confidential-proxy', { baseUrl: 'https://enclave.example/v1', attestation: true }),
     ]);
     expect(typeof providers.local.invoke).toBe('function');
     expect(typeof providers.cloud.invoke).toBe('function');
+  });
+
+  it('GUARD: confidential-proxy at a non-loopback host with no attestation is REFUSED (no silent leak)', () => {
+    expect(() => buildProvidersFromRoutes([
+      resolveRoutePreset('confidential-proxy', { baseUrl: 'http://192.168.2.20:8080/v1' }),
+    ])).toThrow(/non-loopback/);
+  });
+
+  it('GUARD: confidential-proxy is allowed when loopback, or attested', () => {
+    expect(() => buildProvidersFromRoutes([
+      resolveRoutePreset('confidential-proxy', { baseUrl: 'http://localhost:8080/v1' }),
+    ])).not.toThrow();
+    expect(() => buildProvidersFromRoutes([
+      resolveRoutePreset('confidential-proxy', { baseUrl: 'http://192.168.2.20:8080/v1', attestation: true }),
+    ])).not.toThrow();
+  });
+
+  it('GUARD: an explicit openai-compatible cloud is the user opt-in — NOT gated', () => {
+    expect(() => buildProvidersFromRoutes([
+      resolveRoutePreset('openai-compatible', { baseUrl: 'https://api.openai.example/v1' }),
+    ])).not.toThrow();
   });
 
   it('an unconfigured (no-endpoint / off) route contributes nothing', () => {
