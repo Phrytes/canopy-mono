@@ -241,6 +241,19 @@ describe('createRealHouseholdAgent — T5.2d secure-mesh seams', () => {
     await a.connectPeerTransport({ nknLib: makeFakeNkn({ address: 'app.fake.plain' }) });
     expect(a.peer?.address).toBeTruthy();
   });
+
+  it('connectPeerTransport requires nknLib OR relayUrl (nothing to connect → throws)', async () => {
+    const a = await createRealHouseholdAgent();
+    await expect(a.connectPeerTransport({})).rejects.toThrow(/nknLib and\/or relayUrl/);
+  });
+
+  it('connectPeerTransport relay-only (no nknLib) pins transportMode to relay — local-first LAN path', async () => {
+    const a = await createRealHouseholdAgent();
+    // No nknLib: the NKN peer transport must NOT be required. A bad relay URL fails best-effort
+    // (no throw), and since relay was the only transport the mode is pinned to 'relay'.
+    await a.connectPeerTransport({ relayUrl: 'ws://127.0.0.1:0' });
+    expect(a.transportMode).toBe('relay');
+  });
 });
 
 // ── OBJ-2 (S1a/S1c) — household no-pod cross-device item sync wiring ──────────

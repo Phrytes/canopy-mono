@@ -54,14 +54,11 @@ async function buildRelayAgent(label) {
     seedTasks:      false,
     seedStoopPosts: false,
   });
-  // Route relay-inbound: household-item envelopes are consumed by the sync handler; anything else is
-  // ignored here (this harness only exercises household sync). The secure-mesh receive path delivers a
-  // single `{ from, payload, ts }` env (same as realAgent's routedOnPeerMessage), so extract from/payload.
-  const onPeerMessage = (env) => {
-    try { if (agent.householdSync.handleInbound(env?.from, env?.payload)) return; } catch { /* fall through */ }
-  };
-  await agent.relay.connect({ relayUrl: RELAY_URL, onPeerMessage });
-  agent.setTransportMode('both');        // let the RoutingStrategy pick relay (the only connected transport)
+  // Use the REAL app wiring: connectPeerTransport relay-only (no nknLib — the LAN no-pod path). Its
+  // internal routedOnPeerMessage consumes household-item envelopes via handleInbound and pins
+  // transportMode to 'relay'; the shell onPeerMessage (no-op here) gets everything else. This exercises
+  // exactly what circleApp.js does in the browser, not a hand-rolled relay.connect.
+  await agent.connectPeerTransport({ relayUrl: RELAY_URL, onPeerMessage: () => {} });
   // eslint-disable-next-line no-console
   console.log(`[layer3] ${label} on relay as ${agent.relay.address?.slice(0, 12)}… (${RELAY_URL})`);
   return agent;

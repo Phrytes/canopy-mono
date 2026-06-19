@@ -2205,13 +2205,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     vault: sa.identity?.vault ?? sa.vault ?? null,
 
     /**
-     * Connect the NKN cross-peer transport.  Caller (web main.js / RN
-     * bundle) injects its runtime's nkn-sdk once available.  Late-
-     * binding wiring for { nknLib, onPeerMessage } supported by
-     * sa.peer.connect.
+     * Connect the cross-peer transport(s). Transport-neutral / local-first: NKN is ONE transport,
+     * not a prerequisite — bring up whichever is configured (`nknLib` and/or `relayUrl`). Passing only
+     * `relayUrl` is the LAN no-pod path (two devices over a relay, no public-NKN dependency); passing
+     * only `nknLib` is the original NKN path; both → the unified router picks the best route per peer.
+     * Caller (web main.js / circleApp / RN bundle) injects its runtime's nkn-sdk when available.
      */
     async connectPeerTransport({ nknLib, onPeerMessage, relayUrl, rendezvous = false, rtcLib = null }) {
-      if (!nknLib) throw new Error('connectPeerTransport: nknLib required (caller must inject the runtime nkn-sdk)');
+      if (!nknLib && !relayUrl) {
+        throw new Error('connectPeerTransport: provide nknLib and/or relayUrl (nothing to connect)');
+      }
       // OBJ-2 (S1a) — consume household substrate-sync envelopes off the inbound
       // peer-message stream BEFORE the shell router. handleInbound returns true
       // (consumed) only for tagged household-item envelopes; everything else
@@ -2231,18 +2234,20 @@ export async function createRealHouseholdAgent(opts = {}) {
         catch { /* fall through to the shell router */ }
         return onPeerMessage?.(env);
       };
-      await sa.peer.connect({ nknLib, onPeerMessage: routedOnPeerMessage });
-      // T3a (unification / OBJ-1) — when a relay is configured, ALSO bring it up and switch to
-      // transportMode 'both' so the secure-agent's RoutingStrategy (T2) picks the BEST route per
-      // peer (relay > nkn by priority/latency). Best-effort: a relay failure never blocks NKN —
-      // the bot keeps working on NKN alone.
+      if (nknLib) {
+        await sa.peer.connect({ nknLib, onPeerMessage: routedOnPeerMessage });
+      }
+      // T3a (unification / OBJ-1) — when a relay is configured, bring it up too. With NKN also up the
+      // secure-agent's RoutingStrategy (T2) picks the BEST route per peer (relay > nkn by priority);
+      // relay-ONLY pins transportMode to 'relay' so sends route over it. Best-effort: a relay failure
+      // never blocks NKN — but if relay is the ONLY transport, its failure means no cross-peer wire.
       if (relayUrl) {
         try {
           await sa.relay.connect({ relayUrl, onPeerMessage: routedOnPeerMessage });
-          sa.setTransportMode('both');
-          if (typeof console !== 'undefined') console.info('[realAgent] relay connected — routing across {nkn, relay}');
+          sa.setTransportMode(nknLib ? 'both' : 'relay');
+          if (typeof console !== 'undefined') console.info(`[realAgent] relay connected — routing across {${nknLib ? 'nkn, relay' : 'relay'}}`);
         } catch (err) {
-          if (typeof console !== 'undefined') console.warn('[realAgent] relay auto-connect failed (continuing on NKN):', err?.message ?? err);
+          if (typeof console !== 'undefined') console.warn(`[realAgent] relay connect failed${nknLib ? ' (continuing on NKN)' : ' (no cross-peer wire — relay was the only transport)'}:`, err?.message ?? err);
         }
       }
       // T5.2d — opt in to direct WebRTC rendezvous, signalled over whichever transport just

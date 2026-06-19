@@ -227,16 +227,17 @@ import { renderCircleOverride } from './circleOverride.js';
 // peer-display wiring lands with peer broadcast (SP-13.2.1).
 const LOCAL_ACTOR = 'me';
 
-// SP-13.2.1 — best-effort NKN bootstrap.  Mirrors web/main.js's
-// `connectPeerImpl` but doesn't throw if the CDN failed to load —
-// the kring view still works locally (just no peer fan-out).
+// SP-13.2.1 — best-effort peer bootstrap.  Transport-neutral / local-first: NKN is one transport,
+// not a prerequisite. Bring up whichever is available — NKN (CDN) and/or the relay (VITE_CIRCLE_RELAY_URL).
+// A configured relay alone is enough for the LAN no-pod two-device path; with NKN too the router picks
+// the best route. Doesn't throw if neither is available — the kring view still works locally.
 async function tryConnectPeerTransport(agent, peerMessageRouter) {
   const nknLib =
        (typeof window !== 'undefined' && window.nkn)
     ?? (typeof globalThis !== 'undefined' && globalThis.nkn)
     ?? null;
-  if (!nknLib) {
-    console.info('[circleApp] nkn-sdk not loaded — kring chat is local-only this session');
+  if (!nknLib && !CIRCLE_RELAY_URL) {
+    console.info('[circleApp] no nkn-sdk and no relay URL — kring chat is local-only this session');
     return;
   }
   if (typeof agent?.connectPeerTransport !== 'function') {
@@ -248,14 +249,15 @@ async function tryConnectPeerTransport(agent, peerMessageRouter) {
     // The browser provides globalThis.RTCPeerConnection, so no rtcLib is needed here; the
     // unified router then prefers the direct DataChannel over nkn/relay once it opens.
     await agent.connectPeerTransport({
-      nknLib,
+      nknLib:        nknLib ?? undefined,   // relay-only when the CDN didn't load
       onPeerMessage: peerMessageRouter,
       relayUrl:      CIRCLE_RELAY_URL,
       rendezvous:    true,
     });
-    console.info('[circleApp] peer transport connected' + (CIRCLE_RELAY_URL ? ' (nkn + relay, routed)' : ' (nkn)') + ' + rendezvous');
+    const routes = [nknLib && 'nkn', CIRCLE_RELAY_URL && 'relay'].filter(Boolean).join(' + ');
+    console.info(`[circleApp] peer transport connected (${routes}, routed) + rendezvous`);
   } catch (err) {
-    console.warn('[circleApp] NKN connect failed — kring chat is local-only:', err?.message ?? err);
+    console.warn('[circleApp] peer connect failed — kring chat is local-only:', err?.message ?? err);
   }
 }
 
@@ -3036,6 +3038,28 @@ async function boot() {
       });
       tryConnectPeerTransport(agent, peerMessageRouter).catch(() => { /* logged inside */ });
 
+      // DEV-only two-device pairing affordance. The production roster is fed from the circle's
+      // members (listGroupRoster → addHouseholdPeer); but for a quick laptop+phone LAN test over a
+      // relay you don't want to stand up the whole invite flow first. In a dev build, expose the agent
+      // + a one-liner: read `window.ccMyAddr` on each device, then run `ccPairHousehold('<other addr>')`
+      // on both. Gated to import.meta.env.DEV so it never ships in a production bundle.
+      if (import.meta.env?.DEV && typeof window !== 'undefined') {
+        window.ccAgent  = agent;
+        window.ccMyAddr = agent?.peer?.address ?? agent?.relay?.address ?? null;
+        window.ccPairHousehold = (addr) => {
+          if (!addr || typeof agent?.addHouseholdPeer !== 'function') return false;
+          agent.addHouseholdPeer(addr);
+          console.info('[dev] paired household peer:', addr);
+          return true;
+        };
+        // The relay address resolves slightly after connect — re-log it so it's easy to copy.
+        setTimeout(() => {
+          window.ccMyAddr = agent?.peer?.address ?? agent?.relay?.address ?? window.ccMyAddr;
+          console.info('[dev] this device household addr =', window.ccMyAddr,
+            '· pair with: ccPairHousehold("<other device addr>")');
+        }, 2000);
+      }
+
       // ε.4 — auto-fire negotiated catch-up on (re)connect, ONCE per
       // boot.  For each kring we know about, schedule via the strategy
       // router: pod-shared kringen route through the pod range-query;
@@ -3078,7 +3102,7 @@ async function boot() {
         if (typeof agent?.addHouseholdPeer !== 'function' || !circleId) return;
         try {
           const r    = await agent.callSkill('stoop', 'listGroupRoster', { groupId: circleId });
-          const self = agent?.peer?.address ?? null;
+          const self = agent?.peer?.address ?? agent?.relay?.address ?? null;   // relay-only → relay addr
           for (const m of (Array.isArray(r?.members) ? r.members : [])) {
             if (m?.addr && m.addr !== self) agent.addHouseholdPeer(m.addr);
           }
