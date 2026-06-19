@@ -51,13 +51,22 @@ const BOT            = 'assistant';
 
 /** Fail loudly (not vacuously) when LIVE_LLM=1 but the endpoint isn't up. */
 async function assertReachable() {
+  // Probe the OpenAI-compatible model list (`/v1/models`) — works for BOTH local
+  // Ollama AND the Privatemode loopback proxy. (Ollama's own `/api/tags` 404s on
+  // the OpenAI-shaped Privatemode proxy, which has no such route.) Normalise the
+  // base (strip a trailing `/v1`) and send the Bearer key if one is set.
+  const url = `${OLLAMA_BASEURL.replace(/\/+$/, '').replace(/\/v1$/, '')}/v1/models`;
   try {
-    const res = await fetch(`${OLLAMA_BASEURL.replace(/\/$/, '')}/api/tags`, { method: 'GET' });
+    const res = await fetch(url, {
+      method:  'GET',
+      headers: LLM_APIKEY ? { Authorization: `Bearer ${LLM_APIKEY}` } : {},
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {
     throw new Error(
-      `[live] LLM not reachable at ${OLLAMA_BASEURL} (${err?.message ?? err}). ` +
-      `Start it: \`ollama serve\` + \`ollama pull ${OLLAMA_MODEL}\`.`,
+      `[live] LLM endpoint not reachable at ${url} (${err?.message ?? err}). ` +
+      `Local Ollama: \`ollama serve\` + \`ollama pull ${OLLAMA_MODEL}\`. ` +
+      `Privatemode: start the privatemode-proxy (OpenAI /v1 on :8080).`,
     );
   }
 }
