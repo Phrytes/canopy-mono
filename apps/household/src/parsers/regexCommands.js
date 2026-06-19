@@ -106,9 +106,6 @@ export function regexParse(text) {
     return { skillId: 'listOpen', args: { type: 'shopping' } };
   }
 
-  // Tokenise on the verb.  Keep the rest of the line as `rest`.
-  const lower = s.toLowerCase();
-
   // Try multi-word add verbs first ("voeg toe").
   for (const phrase of ADD_VERBS_PHRASE) {
     const re = new RegExp(`^${phrase.join('\\s+')}\\b\\s*(.*)$`, 'i');
@@ -153,9 +150,6 @@ export function regexParse(text) {
 
   // Unknown leading word — fall through to the LLM.
   return null;
-  // (lower is unused when no verb matched; reserved for future use.)
-  // eslint-disable-next-line no-unused-vars
-  void lower;
 }
 
 /**

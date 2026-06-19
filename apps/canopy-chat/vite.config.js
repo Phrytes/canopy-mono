@@ -29,6 +29,7 @@ const nodeOs      = fileURLToPath(new URL('./src/web/shims/node/os.js',     impo
 const nodeHttp    = fileURLToPath(new URL('./src/web/shims/node/http.js',   import.meta.url));
 const wsShim      = fileURLToPath(new URL('./src/web/shims/wsShim.js',      import.meta.url));
 const relayShim   = fileURLToPath(new URL('./src/web/shims/relayShim.js',   import.meta.url));
+const telegramShim = fileURLToPath(new URL('./src/web/shims/telegramBridge.js', import.meta.url));
 // Pin @canopy/core to the real workspace package. Under pnpm hoisting there are
 // stray copies in other apps' node_modules (e.g. apps/folio/node_modules/@canopy/
 // core); without this, Vite can resolve @canopy/core — and thus its tweetnacl/
@@ -128,6 +129,10 @@ export default defineConfig({
       // exactly that (the dynamic-import path in NknTransport never
       // executes when window.nkn is supplied as opts.nknLib).
       'nkn-sdk':         empty,
+      // The Telegram bridge is a Node-only server transport (reads process.env at
+      // module load → `process is not defined` in the browser, blanking the app).
+      // household/src re-exports it, so it lands in the web import graph; stub it.
+      '@canopy/chat-agent/bridges/telegram': telegramShim,
       'js-yaml':         empty,
       'node-datachannel': empty,
       // N5 — @canopy/pod-client's barrel statically re-exports every
