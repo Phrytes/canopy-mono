@@ -2697,6 +2697,14 @@ async function showSettings(id) {
     incomingPolicy,
     policyStore,
     circleId: id,
+    // OBJ-2 — paired devices (no-pod sync). Only wired when the agent exposes the household
+    // sync hooks; add/remove persist + return the updated roster (the panel re-draws itself).
+    householdSelfAddr:     agent?.householdSelfAddr ?? null,
+    householdPeers:        agent?.listHouseholdPeers?.() ?? [],
+    onAddHouseholdPeer:    typeof agent?.addHouseholdPeer === 'function'
+      ? (addr) => agent.addHouseholdPeer(addr) : undefined,
+    onRemoveHouseholdPeer: typeof agent?.removeHouseholdPeer === 'function'
+      ? (addr) => agent.removeHouseholdPeer(addr) : undefined,
     onIncomingApplied:   () => clearPending(),
     onIncomingDiscarded: () => clearPending(),
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
@@ -3037,28 +3045,6 @@ async function boot() {
         },
       });
       tryConnectPeerTransport(agent, peerMessageRouter).catch(() => { /* logged inside */ });
-
-      // DEV-only two-device pairing affordance. The production roster is fed from the circle's
-      // members (listGroupRoster → addHouseholdPeer); but for a quick laptop+phone LAN test over a
-      // relay you don't want to stand up the whole invite flow first. In a dev build, expose the agent
-      // + a one-liner: read `window.ccMyAddr` on each device, then run `ccPairHousehold('<other addr>')`
-      // on both. Gated to import.meta.env.DEV so it never ships in a production bundle.
-      if (import.meta.env?.DEV && typeof window !== 'undefined') {
-        window.ccAgent  = agent;
-        window.ccMyAddr = agent?.peer?.address ?? agent?.relay?.address ?? null;
-        window.ccPairHousehold = (addr) => {
-          if (!addr || typeof agent?.addHouseholdPeer !== 'function') return false;
-          agent.addHouseholdPeer(addr);
-          console.info('[dev] paired household peer:', addr);
-          return true;
-        };
-        // The relay address resolves slightly after connect — re-log it so it's easy to copy.
-        setTimeout(() => {
-          window.ccMyAddr = agent?.peer?.address ?? agent?.relay?.address ?? window.ccMyAddr;
-          console.info('[dev] this device household addr =', window.ccMyAddr,
-            '· pair with: ccPairHousehold("<other device addr>")');
-        }, 2000);
-      }
 
       // ε.4 — auto-fire negotiated catch-up on (re)connect, ONCE per
       // boot.  For each kring we know about, schedule via the strategy

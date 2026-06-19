@@ -1783,6 +1783,18 @@
     "sending":     { "text": "versturen…", "doc": "P5 — transient state while a turn is in flight to the bot." },
     "send_failed": { "text": "Kon {{name}} niet bereiken — mogelijk offline.", "doc": "P5 — shown when a turn fails to send over the peer transport." }
   },
+  "pairedDevices": {
+    "title":          { "text": "Gekoppelde apparaten", "doc": "OBJ-2 — heading of the per-circle no-pod sync pairing panel; items sync to these devices over a relay/peer transport with no pod." },
+    "intro":          { "text": "Synchroniseer de items van deze kring over je apparaten zonder server. Voeg een ander apparaat toe via zijn adres — wat je hier toevoegt verschijnt daar.", "doc": "OBJ-2 — intro under the paired-devices heading." },
+    "yourAddr":       { "text": "Adres van dit apparaat", "doc": "OBJ-2 — label above the read-only field with this device’s shareable address." },
+    "copy":           { "text": "Kopiëren", "doc": "OBJ-2 — copy this device’s address to the clipboard." },
+    "copied":         { "text": "Gekopieerd", "doc": "OBJ-2 — transient confirmation after copying the address." },
+    "addPlaceholder": { "text": "Plak het adres van het andere apparaat", "doc": "OBJ-2 — input placeholder for the peer address to pair." },
+    "add":            { "text": "Apparaat toevoegen", "doc": "OBJ-2 — button to pair the entered address." },
+    "addFailed":      { "text": "Kon dat adres niet toevoegen — controleer het en probeer opnieuw.", "doc": "OBJ-2 — shown when adding a paired device fails." },
+    "empty":          { "text": "Nog geen gekoppelde apparaten. Voeg er één toe via zijn adres om items te synchroniseren.", "doc": "OBJ-2 — empty state of the paired-devices list." },
+    "remove":         { "text": "Verwijderen", "doc": "OBJ-2 — unpair a device from the no-pod sync roster." }
+  },
   "noticeboard": {
     "intent": {
       "ask":   { "text": "Vraag",  "doc": "S1 — noticeboard post type: a request for help/an item." },

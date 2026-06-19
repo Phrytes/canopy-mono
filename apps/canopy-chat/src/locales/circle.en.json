@@ -1783,6 +1783,18 @@
     "sending":     { "text": "sending…", "doc": "P5 — transient state while a turn is in flight to the bot." },
     "send_failed": { "text": "Couldn’t reach {{name}} — they may be offline.", "doc": "P5 — shown when a turn fails to send over the peer transport." }
   },
+  "pairedDevices": {
+    "title":          { "text": "Paired devices", "doc": "OBJ-2 — heading of the per-circle no-pod sync pairing panel; items sync to these devices over a relay/peer transport with no pod." },
+    "intro":          { "text": "Sync this circle’s items across your devices with no server. Add another device by its address — what you add here appears there.", "doc": "OBJ-2 — intro under the paired-devices heading." },
+    "yourAddr":       { "text": "This device’s address", "doc": "OBJ-2 — label above the read-only field with this device’s shareable address." },
+    "copy":           { "text": "Copy", "doc": "OBJ-2 — copy this device’s address to the clipboard." },
+    "copied":         { "text": "Copied", "doc": "OBJ-2 — transient confirmation after copying the address." },
+    "addPlaceholder": { "text": "Paste the other device’s address", "doc": "OBJ-2 — input placeholder for the peer address to pair." },
+    "add":            { "text": "Add device", "doc": "OBJ-2 — button to pair the entered address." },
+    "addFailed":      { "text": "Couldn’t add that address — check it and try again.", "doc": "OBJ-2 — shown when adding a paired device fails." },
+    "empty":          { "text": "No paired devices yet. Add one by its address to sync this circle’s items.", "doc": "OBJ-2 — empty state of the paired-devices list." },
+    "remove":         { "text": "Remove", "doc": "OBJ-2 — unpair a device from the no-pod sync roster." }
+  },
   "noticeboard": {
     "intent": {
       "ask":   { "text": "Ask",   "doc": "S1 — noticeboard post type: a request for help/an item." },

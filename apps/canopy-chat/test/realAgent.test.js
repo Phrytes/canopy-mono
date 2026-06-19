@@ -21,6 +21,7 @@
  * in the browser bundle (verified by `vite build` + the dev-server smoke).
  */
 import { describe, it, expect, vi } from 'vitest';
+import { VaultMemory } from '@canopy/vault';
 
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 
@@ -271,12 +272,34 @@ describe('createRealHouseholdAgent — OBJ-2 household no-pod sync (S1a/S1c)', (
     expect(a.householdSync.circleId).toBe('household');
   });
 
-  it('addHouseholdPeer / removeHouseholdPeer feed the mirror roster', async () => {
+  it('addHouseholdPeer / removeHouseholdPeer feed the mirror roster + return it', async () => {
     const a = await createRealHouseholdAgent();
-    a.addHouseholdPeer('peerB');
-    expect(a.householdSync.mirror.listPeers()).toContain('peerB');
-    a.removeHouseholdPeer('peerB');
-    expect(a.householdSync.mirror.listPeers()).not.toContain('peerB');
+    const after = await a.addHouseholdPeer('peerB');
+    expect(after).toContain('peerB');
+    expect(a.listHouseholdPeers()).toContain('peerB');
+    await a.removeHouseholdPeer('peerB');
+    expect(a.listHouseholdPeers()).not.toContain('peerB');
+  });
+
+  it('exposes householdSelfAddr — this device\'s shareable household address', async () => {
+    const a = await createRealHouseholdAgent();
+    expect(typeof a.householdSelfAddr).toBe('string');
+    expect(a.householdSelfAddr.length).toBeGreaterThan(0);
+    expect(a.householdSync.selfAddr).toBe(a.householdSelfAddr);
+  });
+
+  it('manually-paired peers PERSIST across a reload (same vault → re-fed on boot)', async () => {
+    const chatVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ chatVault });
+    await a.addHouseholdPeer('peerPersisted');
+    expect(a.listHouseholdPeers()).toContain('peerPersisted');
+    // "reload": a fresh agent on the SAME vault re-feeds the saved pairing on boot.
+    const a2 = await createRealHouseholdAgent({ chatVault });
+    expect(a2.listHouseholdPeers()).toContain('peerPersisted');
+    // remove persists too.
+    await a2.removeHouseholdPeer('peerPersisted');
+    const a3 = await createRealHouseholdAgent({ chatVault });
+    expect(a3.listHouseholdPeers()).not.toContain('peerPersisted');
   });
 
   it('an inbound household-item envelope mirrors into the household store', async () => {

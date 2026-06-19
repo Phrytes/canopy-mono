@@ -231,6 +231,26 @@ export async function createRealHouseholdAgent(opts = {}) {
     publishItemRemoved: (id)   => householdMirror.publishItemRemoved(id),
   });
 
+  // Paired-device PERSISTENCE — manually-paired household peers (the in-app "paired
+  // devices" screen → addHouseholdPeer) survive a reload. The circle-membership feed
+  // (listGroupRoster → addHouseholdPeer) is re-run on open and is the production source;
+  // this persists the MANUAL pairings on top, keyed in the chat agent's vault. Stored as
+  // a JSON string[]; restored on boot before any sync. Best-effort (a broken vault must
+  // never block the agent). Self-heals dups via the mirror's set-based roster.
+  const HOUSEHOLD_PEERS_KEY = 'cc-household-peers';
+  const householdVault = sa.identity?.vault ?? sa.vault ?? null;
+  async function persistHouseholdPeers() {
+    try { await householdVault?.set?.(HOUSEHOLD_PEERS_KEY, JSON.stringify(householdMirror.listPeers?.() ?? [])); }
+    catch { /* best-effort — pairing still works in-memory this session */ }
+  }
+  try {
+    const raw   = await householdVault?.get?.(HOUSEHOLD_PEERS_KEY);
+    const saved = raw ? JSON.parse(raw) : [];
+    for (const p of (Array.isArray(saved) ? saved : [])) {
+      if (typeof p === 'string' && p && p !== chatId.pubKey) await householdMirror.addPeer(p);
+    }
+  } catch { /* no saved peers / unreadable — start empty */ }
+
   // v0.6 demo — household runs as a 'decentralized' crew with three
   // simulated peers.  Mostly online; one randomly unreachable so the
   // sync-hint UI surfaces a recognisable pattern.  Real apps populate
@@ -2175,16 +2195,22 @@ export async function createRealHouseholdAgent(opts = {}) {
     upgradeToRendezvous:    sa.upgradeToRendezvous,
     isRendezvousActive:     sa.isRendezvousActive,
 
-    // OBJ-2 (S1c) — household no-pod sync roster. The shell feeds member pubKeys
-    // (from the circle's app-owned peer/contact roster) so publishItem fans out
-    // to them. Inert until peers are added.
-    addHouseholdPeer:    (pubKey) => householdMirror.addPeer(pubKey),
-    removeHouseholdPeer: (pubKey) => householdMirror.removePeer(pubKey),
+    // OBJ-2 (S1c) — household no-pod sync roster. Fed two ways: the circle-membership
+    // feed (listGroupRoster) AND the in-app "paired devices" screen. Both land here;
+    // add/remove persist the manual pairings (see HOUSEHOLD_PEERS_KEY) so they survive a
+    // reload. Inert until peers are added. Returns the resulting roster for the UI.
+    addHouseholdPeer:    async (pubKey) => { await householdMirror.addPeer(pubKey); await persistHouseholdPeers(); return householdMirror.listPeers?.() ?? []; },
+    removeHouseholdPeer: async (pubKey) => { householdMirror.removePeer(pubKey); await persistHouseholdPeers(); return householdMirror.listPeers?.() ?? []; },
+    listHouseholdPeers:  () => householdMirror.listPeers?.() ?? [],
+    // This device's shareable household address (the pubKey peers route to — matches
+    // relay.address; the OTHER device pastes this into its "paired devices" screen).
+    householdSelfAddr:   chatId.pubKey,
     // Sync seam (mirror + inbound handler) — used by S1d skill hooks + tests.
     householdSync: {
-      mirror:       householdMirror,
+      mirror:        householdMirror,
       handleInbound: householdEnvelopeAdapter.handleInbound,
-      circleId:     householdCircleId,
+      circleId:      householdCircleId,
+      selfAddr:      chatId.pubKey,
     },
 
     // Transport-NEUTRAL reachability — true when ANY peer transport can carry a

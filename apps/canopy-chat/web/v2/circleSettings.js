@@ -22,6 +22,7 @@ import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';   // S6.C — composable apps
 import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
 import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
+import { renderPairedDevices } from './pairedDevices.js';
 
 // 5.9a — `view` is the per-circle default-pane axis ('chat' / 'screen' /
 // 'cross-stream'); making it editable here lets an admin pick which surface
@@ -56,6 +57,11 @@ export function renderCircleSettings(container, {
   onIncomingApplied,
   onIncomingDiscarded,
   onGuidedSetup,   // Theme B — open the guided-setup chatbot (pre-fills these fields)
+  // OBJ-2 — paired devices (no-pod sync). Host wires these when household sync is available.
+  householdSelfAddr = null,
+  householdPeers = [],
+  onAddHouseholdPeer,
+  onRemoveHouseholdPeer,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
@@ -168,6 +174,23 @@ export function renderCircleSettings(container, {
   consRow.append(consBox, consSpan);
   consSec.appendChild(consRow);
   container.appendChild(consSec);
+
+  // OBJ-2 — paired devices (no-pod sync). Shown only when the host wires it (household
+  // sync available for this circle): this device's address + add/remove peers by address.
+  if (householdSelfAddr && typeof onAddHouseholdPeer === 'function') {
+    const pairedSec = section(tr('circle.pairedDevices.title'));
+    pairedSec.classList.add('circle-settings__paired');
+    const mount = document.createElement('div');
+    renderPairedDevices(mount, {
+      selfAddr: householdSelfAddr,
+      peers:    householdPeers,
+      t:        tr,
+      onAdd:    onAddHouseholdPeer,
+      onRemove: onRemoveHouseholdPeer,
+    });
+    pairedSec.appendChild(mount);
+    container.appendChild(pairedSec);
+  }
 
   if (note) {
     const noteEl = document.createElement('div');

@@ -589,6 +589,30 @@
 }
 .cc-contacts__add:hover { background: var(--accent); color: #fff; }
 .cc-contacts__empty { color: var(--ink-soft); font-size: 14px; padding: 12px 4px; }
+
+/* OBJ-2 — paired devices (no-pod sync) panel inside circle settings. */
+.cc-paired { display: flex; flex-direction: column; gap: 10px; }
+.cc-paired__intro { color: var(--ink-soft); font-size: 13px; margin: 0; }
+.cc-paired__label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.cc-paired__row { display: flex; align-items: center; gap: 8px; }
+.cc-paired__addr, .cc-paired__input {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px;
+  padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.cc-paired__addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-soft); }
+.cc-paired__copy, .cc-paired__addbtn, .cc-paired__remove {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+  padding: 7px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-paired__copy:hover, .cc-paired__addbtn:hover { background: var(--accent); color: #fff; }
+.cc-paired__remove { border-color: var(--line); color: var(--ink-soft); font-weight: 500; }
+.cc-paired__remove:hover { border-color: var(--danger, #c0392b); color: var(--danger, #c0392b); }
+.cc-paired__err { color: var(--danger, #c0392b); font-size: 13px; margin: 0; }
+.cc-paired__empty { color: var(--ink-soft); font-size: 13px; margin: 2px 0; }
+.cc-paired__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cc-paired__peer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px; border-radius: var(--radius); background: var(--surface); }
+.cc-paired__peeraddr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
 .cc-contacts__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .cc-contacts__row {
   display: flex; align-items: center; gap: 12px; cursor: pointer;
