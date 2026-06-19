@@ -2217,10 +2217,19 @@ export async function createRealHouseholdAgent(opts = {}) {
       // (consumed) only for tagged household-item envelopes; everything else
       // (DMs, buurt-posts, calendar invites) falls through to the shell's
       // onPeerMessage unchanged.
-      const routedOnPeerMessage = (addr, payload) => {
-        try { if (householdEnvelopeAdapter.handleInbound(addr, payload)) return; }
+      //
+      // The secure-mesh receive path delivers a SINGLE `{ from, payload, ts }` env
+      // (createSecureAgent makeReceiveHandler → onPeerMessageFn({from,payload,ts})),
+      // and the shell router (makePeerRouter) also takes that env object. handleInbound,
+      // though, wants `(fromAddress, payload)` positionally — so extract them from the
+      // env. (The earlier `(addr, payload)` form passed the whole env as the address +
+      // undefined payload, so household sync never matched over the real wire — a latent
+      // bug surfaced by the Layer-3 relay test; the shell router was unaffected as it
+      // reads the env object regardless.)
+      const routedOnPeerMessage = (env) => {
+        try { if (householdEnvelopeAdapter.handleInbound(env?.from, env?.payload)) return; }
         catch { /* fall through to the shell router */ }
-        return onPeerMessage?.(addr, payload);
+        return onPeerMessage?.(env);
       };
       await sa.peer.connect({ nknLib, onPeerMessage: routedOnPeerMessage });
       // T3a (unification / OBJ-1) — when a relay is configured, ALSO bring it up and switch to
