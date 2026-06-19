@@ -42,6 +42,11 @@ const OLLAMA_BASEURL = process.env.OLLAMA_BASEURL || 'http://127.0.0.1:11434';
 const OLLAMA_MODEL   = process.env.OLLAMA_MODEL   || 'qwen2.5:7b-instruct';
 const EMBED_BASEURL  = process.env.EMBED_BASEURL  || null;
 const EMBED_MODEL    = process.env.EMBED_MODEL    || undefined;
+// Bearer keys for an OpenAI-compatible gateway (e.g. the Privatemode loopback
+// proxy). Unset → local Ollama (no auth). For Privatemode: point *_BASEURL at the
+// proxy root (e.g. http://localhost:8080) + set the project key here.
+const LLM_APIKEY     = process.env.LLM_APIKEY     || undefined;
+const EMBED_APIKEY   = process.env.EMBED_APIKEY   || LLM_APIKEY;   // same proxy by default
 const BOT            = 'assistant';
 
 /** Fail loudly (not vacuously) when LIVE_LLM=1 but the endpoint isn't up. */
@@ -74,7 +79,7 @@ async function buildBot() {
   const catalog = mergeManifests([{ manifest: agent.manifest }]);
 
   // Live LLM — generous timeout (a cold 7B on CPU can exceed the app's 12s default).
-  const llm = new LlmClient({ provider: ollamaProvider({ baseUrl: OLLAMA_BASEURL, model: OLLAMA_MODEL, timeoutMs: 90_000 }) });
+  const llm = new LlmClient({ provider: ollamaProvider({ baseUrl: OLLAMA_BASEURL, model: OLLAMA_MODEL, apiKey: LLM_APIKEY, timeoutMs: 90_000 }) });
   const llmProviders = { local: llm };
 
   // F-retrieve grounds on the REAL household items (listOpen), semantic if EMBED_BASEURL set.
@@ -84,7 +89,7 @@ async function buildBot() {
   };
   let embed;
   if (EMBED_BASEURL) {
-    const providers = buildCircleEmbedProviders({ localBaseUrl: EMBED_BASEURL, model: EMBED_MODEL });
+    const providers = buildCircleEmbedProviders({ localBaseUrl: EMBED_BASEURL, model: EMBED_MODEL, apiKey: EMBED_APIKEY });
     embed = async (texts) => {
       const e = resolveCircleEmbedder({ circlePolicy: { embedTool: 'local' }, providers });
       if (!e) throw new Error('no-embedder');

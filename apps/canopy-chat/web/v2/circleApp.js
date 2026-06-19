@@ -523,6 +523,11 @@ const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined
 // (qwen3-embedding-4b) when unset; null base → semantic stays inert (tier-1 lexical).
 const CIRCLE_EMBED_BASEURL = import.meta.env?.VITE_CIRCLE_EMBED_BASEURL ?? CIRCLE_LLM_BASEURL;
 const CIRCLE_EMBED_MODEL   = import.meta.env?.VITE_CIRCLE_EMBED_MODEL ?? undefined;
+// Bearer key for an OpenAI-compatible gateway behind the LLM/embed base — notably
+// the Privatemode loopback proxy's project key. Unset → local Ollama (no auth).
+// Embeddings default to the same key (same enclave serves chat + /v1/embeddings).
+const CIRCLE_LLM_APIKEY    = import.meta.env?.VITE_CIRCLE_LLM_APIKEY ?? null;
+const CIRCLE_EMBED_APIKEY  = import.meta.env?.VITE_CIRCLE_EMBED_APIKEY ?? CIRCLE_LLM_APIKEY;
 // T3a — optional relay (ws://|wss://). When set, the agent connects relay ALONGSIDE NKN and the
 // RoutingStrategy picks the best route per peer (relay > nkn). Unset → NKN-only (unchanged).
 const CIRCLE_RELAY_URL     = import.meta.env?.VITE_CIRCLE_RELAY_URL ?? null;
@@ -787,12 +792,12 @@ function buildCircleBot(agent) {
     } catch { /* no addbot param */ }
   }
 
-  const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL });
+  const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL, apiKey: CIRCLE_LLM_APIKEY });
   // F-retrieve tier-2 embeddings — opt-in, same shape as the LLM providers. The
   // embed route defaults to the LLM base (the enclave hosts both /v1/chat/completions
   // + /v1/embeddings), so embeddings ride the SAME trust boundary by default; set
   // VITE_CIRCLE_EMBED_BASEURL / _MODEL to point elsewhere. Empty → semantic inert.
-  const embedProviders = buildCircleEmbedProviders({ localBaseUrl: CIRCLE_EMBED_BASEURL, model: CIRCLE_EMBED_MODEL });
+  const embedProviders = buildCircleEmbedProviders({ localBaseUrl: CIRCLE_EMBED_BASEURL, model: CIRCLE_EMBED_MODEL, apiKey: CIRCLE_EMBED_APIKEY });
   // Per-turn embedder resolution: rides the circle's embed policy (embedTool ??
   // llmTool). Throws 'no-embedder' when off/unconfigured → the semantic retriever
   // falls back to tier-1 lexical (strict upgrade, never a regression).

@@ -398,6 +398,35 @@ describe('ollamaProvider — defaultOptions + stop', () => {
   });
 });
 
+describe('ollamaProvider — apiKey (Privatemode / OpenAI-gateway auth)', () => {
+  const okResp = () => new Response(
+    JSON.stringify({ choices: [{ message: { content: 'ok' } }] }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } },
+  );
+
+  it('sends Authorization: Bearer <key> + posts to /v1/chat/completions when apiKey is set', async () => {
+    let captured;
+    const fakeFetch = async (url, init) => { captured = { url, headers: init.headers }; return okResp(); };
+    const provider = ollamaProvider({
+      baseUrl: 'http://localhost:8080',          // Privatemode loopback proxy root
+      model:   'gpt-oss-120b',
+      apiKey:  'pm-project-key-123',
+      fetchFn: fakeFetch,
+    });
+    await provider.invoke({ system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [] });
+    expect(captured.url).toBe('http://localhost:8080/v1/chat/completions');
+    expect(captured.headers.Authorization).toBe('Bearer pm-project-key-123');
+  });
+
+  it('sends NO Authorization header when apiKey is unset (local Ollama unchanged)', async () => {
+    let captured;
+    const fakeFetch = async (url, init) => { captured = init.headers; return okResp(); };
+    const provider = ollamaProvider({ fetchFn: fakeFetch });   // no apiKey
+    await provider.invoke({ system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [] });
+    expect(captured.Authorization).toBeUndefined();
+  });
+});
+
 describe('parseOpenAIChatResponse — loose-recovery integration', () => {
   it('recovers JS-call from text content via descriptors', () => {
     const r = parseOpenAIChatResponse(

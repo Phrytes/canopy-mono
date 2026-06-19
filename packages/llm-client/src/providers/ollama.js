@@ -52,6 +52,12 @@ export function ollamaProvider({
   model          = DEFAULT_MODEL,
   fetchFn        = globalThis.fetch,
   defaultOptions = null,
+  // Optional Bearer key. Local Ollama needs none; a key is required for an
+  // OpenAI-compatible gateway behind the same `/v1/chat/completions` protocol —
+  // notably the Privatemode (confidential-enclave) loopback proxy, which expects
+  // `Authorization: Bearer <project-key>`. Sent only when set, so the default
+  // local-Ollama path is unchanged.
+  apiKey         = null,
   // Abort the request after this many ms so an unreachable / stalled endpoint (e.g. a dropped
   // `adb reverse` to a local ollama) fails FAST and gracefully instead of hanging the turn for
   // minutes (device-verify 2026-06-11: a flaky reverse hung an interpret call ~5 min). 0/false
@@ -87,7 +93,11 @@ export function ollamaProvider({
         const timer = ctl ? setTimeout(() => ctl.abort(), budget) : null;
         return fetchFn(url, {
           method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept':       'application/json',
+            ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+          },
           body:    JSON.stringify(body),
           ...(ctl ? { signal: ctl.signal } : {}),
         }).finally(() => { if (timer) clearTimeout(timer); });
