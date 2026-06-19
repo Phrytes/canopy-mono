@@ -1,0 +1,9 @@
+{
+  "ignore_dirs": [
+    ".claude/worktrees",
+    ".git",
+    "apps/canopy-chat-mobile/android",
+    "apps/canopy-chat-mobile/ios",
+    "apps/canopy-chat/dist-web"
+  ]
+}
