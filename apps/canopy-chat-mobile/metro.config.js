@@ -90,6 +90,12 @@ module.exports = withCanopyPreset({
     'react-native-get-random-values',
     'react-native-safe-area-context',
     'react-native-screens',
+    // expo-crypto: the app + the installed dev-client APK ship 14.0.2 (Expo SDK 52,
+    // no native AES). packages/sync-engine carries a STRAY 56.0.3 whose module-load
+    // requires a native `ExpoCryptoAES` the APK doesn't have → "Cannot find native
+    // module 'ExpoCryptoAES'" runtime crash. sync-engine only needs digestStringAsync
+    // (hashing), present in both, so pinning all expo-crypto to the app's 14.0.2 is safe.
+    'expo-crypto',
   ],
 
   // App-specific module aliases (the preset already maps the @canopy/*
