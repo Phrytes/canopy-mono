@@ -6,6 +6,15 @@
  * not exported here; import them directly if needed.
  */
 
+// ── Emitter (base class) ──────────────────────────────────────────────────────
+// Exported FIRST, deliberately: downstream packages (@canopy/item-store ItemStore,
+// @canopy/identity-resolver MemberMap, …) do `class X extends Emitter` importing it
+// from this barrel. On Hermes' circular-import init order, a late re-export leaves
+// Emitter `undefined` at class-definition time → "Super expression must be null or a
+// function" → the whole agent boot fails. Emitter.js has no deps, so exporting it
+// before everything else makes the binding live before any cycle can reach it.
+export { Emitter } from './Emitter.js';
+
 // ── Envelope ────────────────────────────────────────────────────────────────
 export { P, REPLY_CODES, mkEnvelope, canonicalize, isEnvelope, genId } from './Envelope.js';
 
@@ -213,6 +222,3 @@ export { AgentConfig } from './config/AgentConfig.js';
 
 // ── Agent ─────────────────────────────────────────────────────────────────────
 export { Agent } from './Agent.js';
-
-// ── Utilities ────────────────────────────────────────────────────────────────
-export { Emitter } from './Emitter.js';
