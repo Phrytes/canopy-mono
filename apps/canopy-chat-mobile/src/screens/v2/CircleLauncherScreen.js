@@ -609,15 +609,34 @@ export default function CircleLauncherScreen({
       const sources = callSkill
         ? circleSourcesFromAgent({ callSkill, circlesStore: bundle?.agent?.circlesStore })
         : {};
-      setCircles(await loadCircles(sources));
+      const _l = await loadCircles(sources);
+      setCircles(_l);
+      return _l.length;
     } catch {
       setCircles([]);
+      return 0;
     } finally {
       setLoading(false);
     }
   }, [callSkill, bundle]);
 
-  useEffect(() => { load(); }, [load]);
+  // The stoop store hydrates from AsyncStorage a beat AFTER the agent bundle is
+  // ready, so the first load can race ahead of it and return 0 circles (the
+  // persisted ones look "lost" until the next manual reload). Retry a few times
+  // while empty so saved circles surface on their own. Bounded so a genuinely
+  // empty account doesn't spin; any real load (≥1 circle) stops it immediately.
+  useEffect(() => {
+    let cancelled = false;
+    let tries = 0;
+    const tick = async () => {
+      const n = await load();
+      if (!cancelled && n === 0 && callSkill && (tries += 1) < 5) {
+        setTimeout(() => { if (!cancelled) tick(); }, 1200);
+      }
+    };
+    tick();
+    return () => { cancelled = true; };
+  }, [load, callSkill]);
 
   // P6.2 #341 — refresh per-circle pending proposal counts whenever the
   // circle list changes.  countPending is async per circle; we tolerate

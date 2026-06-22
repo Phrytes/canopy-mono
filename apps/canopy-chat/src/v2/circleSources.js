@@ -50,6 +50,17 @@ function catalogHasOp(catalog, origin, opId) {
   return !!(bare && bare.appOrigin === origin);
 }
 
+// Positive-only: does the catalog POSITIVELY declare `opId` on `origin`? Unlike
+// catalogHasOp it does NOT default-true on a missing catalog — used to decide
+// whether the catalog "knows" an op anywhere (so the gate only filters ops the
+// catalog actually placed, never agent-skill ops absent from every manifest).
+function catalogDeclaresOp(catalog, origin, opId) {
+  if (!catalog || typeof catalog !== 'object' || !catalog.opsById) return false;
+  if (catalog.opsById.get(`${origin}/${opId}`)) return true;
+  const bare = catalog.opsById.get(opId);
+  return !!(bare && bare.appOrigin === origin);
+}
+
 /**
  * Wrap a host's 3-arg `callSkill(appOrigin, opId, args)` into the 2-arg
  * `callSkill(opId, args)` the circle helpers expect, by probing each app
@@ -68,11 +79,17 @@ export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_OR
   return async (opId, args) => {
     if (typeof rawCallSkill !== 'function') return null;
     const cat = getCatalog();
+    // The catalog gate (Perf #2) skips an origin the catalog says doesn't declare
+    // the op — but ONLY when the catalog positively knows the op on SOME origin
+    // (an "aspirational op" like getFeed/listNotes declared elsewhere). Essential
+    // circle-source ops that are AGENT skills, not manifest ops — `getMyCrews`
+    // (tasks), `listMyBuurts` (stoop) — appear on NO origin in the catalog, so the
+    // per-origin gate used to skip them everywhere → loadCircles returned nothing →
+    // "No circles yet" on every reload. When the op is unknown to the catalog, try
+    // all origins (the gate is a perf hint, not a hard filter).
+    const knownSomewhere = origins.some((app) => catalogDeclaresOp(cat, app, opId));
     for (const app of origins) {
-      // Perf #2: skip the transport round-trip when the catalog says
-      // the op isn't declared on this origin (cuts ~8 wasted RPCs per
-      // circle-open for aspirational ops like getFeed / listNotes).
-      if (!catalogHasOp(cat, app, opId)) continue;
+      if (knownSomewhere && !catalogHasOp(cat, app, opId)) continue;
       try {
         const r = await rawCallSkill(app, opId, args ?? {});
         if (r != null) return r;
