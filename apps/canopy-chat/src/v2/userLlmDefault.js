@@ -3,29 +3,72 @@
 // (`local`/`cloud`) or forbids (`off`) ignores it. User-global (one per member/device, not per-circle),
 // persisted via an injectable load/save: localStorage on web, AsyncStorage on mobile. Default `'off'`
 // so a member never gets an LLM they didn't opt into.
+//
+// The value carries the member's OWN endpoint config so they can point the assistant at their own LLM +
+// embedder from the in-app settings (not just a build-time env var): `{ preset, llmBaseUrl, llmModel,
+// embedBaseUrl, embedModel, apiKey, attestation }`. `mode` is derived from the preset and kept on the
+// value because it stays load-bearing for `resolveCircleLlm` (local|cloud|off selection).
 
-const VALID_MODES = ['off', 'local', 'cloud'];
-export const DEFAULT_USER_LLM = Object.freeze({ mode: 'off' });
+import { CIRCLE_LLM_ROUTE_PRESETS } from './circleLlmRoutes.js';
 
-/** Coerce any stored/raw value to a valid `{ mode }`; unknown/malformed → off. */
+const VALID_MODES   = ['off', 'local', 'cloud'];
+const VALID_PRESETS = Object.keys(CIRCLE_LLM_ROUTE_PRESETS);   // off · local-ollama · confidential-proxy · openai-compatible
+
+export const DEFAULT_USER_LLM = Object.freeze({
+  mode: 'off', preset: 'off',
+  llmBaseUrl: '', llmModel: '', embedBaseUrl: '', embedModel: '',
+  apiKey: '', attestation: false,
+});
+
+const str  = (v) => (typeof v === 'string' ? v.trim() : '');
+const bool = (v) => v === true || v === 'true';
+
+/** Back-compat: an old `{mode}`-only value maps to the closest preset. */
+function presetForLegacyMode(mode) {
+  if (mode === 'local') return 'local-ollama';
+  if (mode === 'cloud') return 'openai-compatible';
+  return 'off';
+}
+
+/** Coerce any stored/raw value to the full `{ mode, preset, …endpoints }` shape; unknown/malformed → off. */
 export function normalizeUserLlmDefault(raw) {
-  const mode = raw && typeof raw.mode === 'string' && VALID_MODES.includes(raw.mode) ? raw.mode : 'off';
-  return { mode };
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_USER_LLM };
+  const preset = VALID_PRESETS.includes(raw.preset)
+    ? raw.preset
+    : presetForLegacyMode(VALID_MODES.includes(raw.mode) ? raw.mode : 'off');
+  // mode follows the preset (presets define posture); a raw mode only survives when no preset narrows it.
+  const mode = CIRCLE_LLM_ROUTE_PRESETS[preset]?.mode
+    ?? (VALID_MODES.includes(raw.mode) ? raw.mode : 'off');
+  return {
+    mode, preset,
+    llmBaseUrl:   str(raw.llmBaseUrl),
+    llmModel:     str(raw.llmModel),
+    embedBaseUrl: str(raw.embedBaseUrl),
+    embedModel:   str(raw.embedModel),
+    apiKey:       str(raw.apiKey),
+    attestation:  bool(raw.attestation),
+  };
 }
 
 /**
- * @param {{ load?: () => any|Promise<any>, save?: (v:{mode:string}) => void|Promise<void> }} [io]
- * @returns {{ get: () => Promise<{mode:string}>, set: (mode:string) => Promise<{mode:string}> }}
+ * @param {{ load?: () => any|Promise<any>, save?: (v:object) => void|Promise<void> }} [io]
+ * @returns {{ get: () => Promise<object>, set: (patch:object|string) => Promise<object> }}
+ *   `set` accepts a partial patch (merged into the current value) OR a bare mode string (back-compat).
  */
 export function createUserLlmDefaultStore({ load, save } = {}) {
+  const read = async () => {
+    let raw = null;
+    try { raw = load ? await load() : null; } catch { raw = null; }
+    return normalizeUserLlmDefault(raw);
+  };
   return {
-    async get() {
-      let raw = null;
-      try { raw = load ? await load() : null; } catch { raw = null; }
-      return normalizeUserLlmDefault(raw);
-    },
-    async set(mode) {
-      const next = normalizeUserLlmDefault({ mode });
+    get: read,
+    async set(patch) {
+      const current = await read();
+      const merged = typeof patch === 'string'
+        ? { ...current, preset: presetForLegacyMode(patch), mode: patch }
+        : { ...current, ...patch };
+      const next = normalizeUserLlmDefault(merged);
       if (save) { try { await save(next); } catch { /* best-effort persist */ } }
       return next;
     },

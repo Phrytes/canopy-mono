@@ -280,31 +280,82 @@
     }
   },
   "scope": {
-    "self":  { "text": "only you", "doc": "Message scope badge — private to you (not shared with the kring)." },
-    "kring": { "text": "whole kring", "doc": "Message scope badge — reaches every member of the kring." }
+    "self": {
+      "text": "only you",
+      "doc": "Message scope badge — private to you (not shared with the kring)."
+    },
+    "kring": {
+      "text": "whole kring",
+      "doc": "Message scope badge — reaches every member of the kring."
+    }
   },
   "calendar": {
-    "invited": { "text": "📅 You're invited: {title} — it's on your calendar.", "doc": "Inbound calendar-invite kring heads-up; {title} is the event title." }
+    "invited": {
+      "text": "📅 You're invited: {title} — it's on your calendar.",
+      "doc": "Inbound calendar-invite kring heads-up; {title} is the event title."
+    }
   },
   "embed": {
-    "see_also": { "text": "See also", "doc": "Heading above a card's embeds[] cross-reference chips." },
+    "see_also": {
+      "text": "See also",
+      "doc": "Heading above a card's embeds[] cross-reference chips."
+    },
     "type": {
-      "task":           { "text": "Task",  "doc": "embeds[] chip type label — task." },
-      "calendar-event": { "text": "Event", "doc": "embeds[] chip type label — calendar event." },
-      "request":        { "text": "Request", "doc": "embeds[] chip type label — stoop request." },
-      "offer":          { "text": "Offer", "doc": "embeds[] chip type label — stoop offer." },
-      "note":           { "text": "Note",  "doc": "embeds[] chip type label — folio note." },
-      "chat-message":   { "text": "Message", "doc": "embeds[] chip type label — chat message." }
+      "task": {
+        "text": "Task",
+        "doc": "embeds[] chip type label — task."
+      },
+      "calendar-event": {
+        "text": "Event",
+        "doc": "embeds[] chip type label — calendar event."
+      },
+      "request": {
+        "text": "Request",
+        "doc": "embeds[] chip type label — stoop request."
+      },
+      "offer": {
+        "text": "Offer",
+        "doc": "embeds[] chip type label — stoop offer."
+      },
+      "note": {
+        "text": "Note",
+        "doc": "embeds[] chip type label — folio note."
+      },
+      "chat-message": {
+        "text": "Message",
+        "doc": "embeds[] chip type label — chat message."
+      }
     }
   },
   "guided": {
-    "button":        { "text": "✨ Guided setup", "doc": "Theme B — open the settings chatbot from circle settings." },
-    "title":         { "text": "Guided setup", "doc": "Theme B — guided-setup panel heading." },
-    "close":         { "text": "Close", "doc": "Theme B — close the guided-setup panel." },
-    "continue":      { "text": "Continue", "doc": "Theme B — advance to the next step." },
-    "skip":          { "text": "Skip", "doc": "Theme B — skip this question." },
-    "open_settings": { "text": "Open settings", "doc": "Theme B — final step hands off to the settings form." },
-    "applied":       { "text": "Done — review the settings below and Save.", "doc": "Theme B — flow finished." }
+    "button": {
+      "text": "✨ Guided setup",
+      "doc": "Theme B — open the settings chatbot from circle settings."
+    },
+    "title": {
+      "text": "Guided setup",
+      "doc": "Theme B — guided-setup panel heading."
+    },
+    "close": {
+      "text": "Close",
+      "doc": "Theme B — close the guided-setup panel."
+    },
+    "continue": {
+      "text": "Continue",
+      "doc": "Theme B — advance to the next step."
+    },
+    "skip": {
+      "text": "Skip",
+      "doc": "Theme B — skip this question."
+    },
+    "open_settings": {
+      "text": "Open settings",
+      "doc": "Theme B — final step hands off to the settings form."
+    },
+    "applied": {
+      "text": "Done — review the settings below and Save.",
+      "doc": "Theme B — flow finished."
+    }
   },
   "kring": {
     "more": {
@@ -361,10 +412,19 @@
     }
   },
   "screen": {
-    "open_generic": { "text": "Open overview →", "doc": "S6.B — generic label for a chat-triggered screen panel." },
+    "open_generic": {
+      "text": "Open overview →",
+      "doc": "S6.B — generic label for a chat-triggered screen panel."
+    },
     "open": {
-      "tasks":  { "text": "All tasks →", "doc": "S6.B — open the tasks panel from a bot reply." },
-      "agenda": { "text": "Full agenda →", "doc": "S6.B — open the agenda panel from a bot reply." }
+      "tasks": {
+        "text": "All tasks →",
+        "doc": "S6.B — open the tasks panel from a bot reply."
+      },
+      "agenda": {
+        "text": "Full agenda →",
+        "doc": "S6.B — open the agenda panel from a bot reply."
+      }
     },
     "empty": {
       "text": "The admin hasn't set up a screen yet.",
@@ -788,18 +848,45 @@
       "text": "Waiting on {{who}}.",
       "doc": "Footer note when a proposal is outstanding; {{who}} is the comma-separated approver list."
     },
-    "apps": { "text": "Apps in this circle", "doc": "S6.C — which whole apps the circle composes (catalog scope)." },
+    "apps": {
+      "text": "Apps in this circle",
+      "doc": "S6.C — which whole apps the circle composes (catalog scope)."
+    },
     "app": {
-      "stoop":     { "text": "Neighborhood", "doc": "S6.C — app label (stoop)." },
-      "tasks-v0":  { "text": "Tasks", "doc": "S6.C — app label (tasks-v0)." },
-      "household": { "text": "Household", "doc": "S6.C — app label (household)." },
-      "calendar":  { "text": "Calendar", "doc": "S6.C — app label (calendar)." },
-      "folio":     { "text": "Files", "doc": "S6.C — app label (folio)." }
+      "stoop": {
+        "text": "Neighborhood",
+        "doc": "S6.C — app label (stoop)."
+      },
+      "tasks-v0": {
+        "text": "Tasks",
+        "doc": "S6.C — app label (tasks-v0)."
+      },
+      "household": {
+        "text": "Household",
+        "doc": "S6.C — app label (household)."
+      },
+      "calendar": {
+        "text": "Calendar",
+        "doc": "S6.C — app label (calendar)."
+      },
+      "folio": {
+        "text": "Files",
+        "doc": "S6.C — app label (folio)."
+      }
     },
     "storage_err": {
-      "generic":                                 { "text": "Couldn't update the circle's storage location — your local settings were still saved.", "doc": "§4 — storage-policy bridge: fallback when stoop rejects setCrewStoragePolicy." },
-      "admin-only":                              { "text": "Only a circle admin can change the storage location.", "doc": "§4 — storage-policy bridge: stoop admin-only rejection." },
-      "storage-policy-downgrade-not-supported":  { "text": "Storage can't be turned back off once it's on (this is one-way by design).", "doc": "§4 — storage-policy bridge: stoop one-way downgrade guard." }
+      "generic": {
+        "text": "Couldn't update the circle's storage location — your local settings were still saved.",
+        "doc": "§4 — storage-policy bridge: fallback when stoop rejects setCrewStoragePolicy."
+      },
+      "admin-only": {
+        "text": "Only a circle admin can change the storage location.",
+        "doc": "§4 — storage-policy bridge: stoop admin-only rejection."
+      },
+      "storage-policy-downgrade-not-supported": {
+        "text": "Storage can't be turned back off once it's on (this is one-way by design).",
+        "doc": "§4 — storage-policy bridge: stoop one-way downgrade guard."
+      }
     },
     "feat": {
       "chat": {
@@ -1743,169 +1830,608 @@
     }
   },
   "extension": {
-    "title":        { "text": "Add “{{title}}”?", "doc": "Consent-card heading for installing a downloadable extension mapping (P2c-3)." },
-    "adds":         { "text": "Adds these commands:", "doc": "Consent card — label above the list of slash-commands the extension adds." },
-    "invokes":      { "text": "uses {{ops}}", "doc": "Consent card — per-command line: the existing ops a command invokes." },
-    "needs":        { "text": "Needs: {{atoms}}", "doc": "Consent card — the atoms/capabilities the extension declares it needs." },
-    "scope_app":    { "text": "Available everywhere", "doc": "Consent card — scope line for an app-scoped extension." },
-    "scope_circle": { "text": "Available in this circle", "doc": "Consent card — scope line for a circle-scoped extension." },
-    "what_if_deny": { "text": "If you decline, nothing is added or changed.", "doc": "Consent card — the 'what if I deny?' reassurance." },
-    "add":          { "text": "Add", "doc": "Consent card — confirm/install button." },
-    "decline":      { "text": "Decline", "doc": "Consent card — cancel button." },
-    "added":        { "text": "Added “{{title}}”.", "doc": "Toast after an extension is installed." },
-    "refused":      { "text": "This extension needs capabilities not available here: {{missing}}", "doc": "Shown when the sandbox verifier refuses a mapping (references unknown opIds)." }
+    "title": {
+      "text": "Add “{{title}}”?",
+      "doc": "Consent-card heading for installing a downloadable extension mapping (P2c-3)."
+    },
+    "adds": {
+      "text": "Adds these commands:",
+      "doc": "Consent card — label above the list of slash-commands the extension adds."
+    },
+    "invokes": {
+      "text": "uses {{ops}}",
+      "doc": "Consent card — per-command line: the existing ops a command invokes."
+    },
+    "needs": {
+      "text": "Needs: {{atoms}}",
+      "doc": "Consent card — the atoms/capabilities the extension declares it needs."
+    },
+    "scope_app": {
+      "text": "Available everywhere",
+      "doc": "Consent card — scope line for an app-scoped extension."
+    },
+    "scope_circle": {
+      "text": "Available in this circle",
+      "doc": "Consent card — scope line for a circle-scoped extension."
+    },
+    "what_if_deny": {
+      "text": "If you decline, nothing is added or changed.",
+      "doc": "Consent card — the 'what if I deny?' reassurance."
+    },
+    "add": {
+      "text": "Add",
+      "doc": "Consent card — confirm/install button."
+    },
+    "decline": {
+      "text": "Decline",
+      "doc": "Consent card — cancel button."
+    },
+    "added": {
+      "text": "Added “{{title}}”.",
+      "doc": "Toast after an extension is installed."
+    },
+    "refused": {
+      "text": "This extension needs capabilities not available here: {{missing}}",
+      "doc": "Shown when the sandbox verifier refuses a mapping (references unknown opIds)."
+    }
   },
   "curation": {
-    "changed":   { "text": "changed", "doc": "Curation bubble (P3) — pill shown when the after version differs from before." },
-    "unchanged": { "text": "unchanged", "doc": "Curation bubble (P3) — pill shown when before and after are identical." },
-    "before":    { "text": "Before", "doc": "Curation bubble (P3) — label for the original/before side." },
-    "after":     { "text": "After", "doc": "Curation bubble (P3) — label for the curated/after side." }
+    "changed": {
+      "text": "changed",
+      "doc": "Curation bubble (P3) — pill shown when the after version differs from before."
+    },
+    "unchanged": {
+      "text": "unchanged",
+      "doc": "Curation bubble (P3) — pill shown when before and after are identical."
+    },
+    "before": {
+      "text": "Before",
+      "doc": "Curation bubble (P3) — label for the original/before side."
+    },
+    "after": {
+      "text": "After",
+      "doc": "Curation bubble (P3) — label for the curated/after side."
+    }
   },
   "contacts": {
-    "title":       { "text": "Contacts", "doc": "P5 — heading of the contacts/bots roster screen." },
-    "empty":       { "text": "No contacts yet. Add a bot, or a peer you meet over the mesh appears here.", "doc": "P5 — empty state of the contacts roster." },
-    "add":         { "text": "+ Add a bot", "doc": "P5 — button on the contacts roster to add a bot by URL/address." },
-    "add_prompt":  { "text": "Bot address — an https URL (agent card) or a peer address", "doc": "P5 — prompt when adding a bot." },
-    "add_failed":  { "text": "Couldn’t add that bot — check the URL/address.", "doc": "P5 — shown when discoverA2A / add fails." },
-    "added":       { "text": "Added {{name}}.", "doc": "P5 — toast after a bot is added to the roster." },
-    "bot":         { "text": "bot", "doc": "P5 — tag on a roster row that is an agent/bot (vs a person)." },
-    "trust":       {
-      "bekend":    { "text": "known",   "doc": "S1 #2 — ContactBook trust level 'bekend'." },
-      "vertrouwd": { "text": "trusted", "doc": "S1 #2 — ContactBook trust level 'vertrouwd'." }
+    "title": {
+      "text": "Contacts",
+      "doc": "P5 — heading of the contacts/bots roster screen."
     },
-    "skills":      { "text": "{{count}} skills", "doc": "P5 — per-row count of a bot's exposed skills." },
-    "offline":     { "text": "offline", "doc": "P5 — roster row badge when the contact is unreachable." },
-    "open":        { "text": "Open chat", "doc": "P5 — open a contact's 1:1 DM thread." },
-    "thread_title":{ "text": "Chat with {{name}}", "doc": "P5 — header of a contact DM thread." },
-    "composer":    { "text": "Message {{name}}…", "doc": "P5 — placeholder of the DM-thread composer." },
-    "send":        { "text": "Send", "doc": "P5 — send button in the DM-thread composer." },
-    "back":        { "text": "← Contacts", "doc": "P5 — back link from a DM thread to the roster." },
-    "sending":     { "text": "sending…", "doc": "P5 — transient state while a turn is in flight to the bot." },
-    "send_failed": { "text": "Couldn’t reach {{name}} — they may be offline.", "doc": "P5 — shown when a turn fails to send over the peer transport." }
+    "empty": {
+      "text": "No contacts yet. Add a bot, or a peer you meet over the mesh appears here.",
+      "doc": "P5 — empty state of the contacts roster."
+    },
+    "add": {
+      "text": "+ Add a bot",
+      "doc": "P5 — button on the contacts roster to add a bot by URL/address."
+    },
+    "add_prompt": {
+      "text": "Bot address — an https URL (agent card) or a peer address",
+      "doc": "P5 — prompt when adding a bot."
+    },
+    "add_failed": {
+      "text": "Couldn’t add that bot — check the URL/address.",
+      "doc": "P5 — shown when discoverA2A / add fails."
+    },
+    "added": {
+      "text": "Added {{name}}.",
+      "doc": "P5 — toast after a bot is added to the roster."
+    },
+    "bot": {
+      "text": "bot",
+      "doc": "P5 — tag on a roster row that is an agent/bot (vs a person)."
+    },
+    "trust": {
+      "bekend": {
+        "text": "known",
+        "doc": "S1 #2 — ContactBook trust level 'bekend'."
+      },
+      "vertrouwd": {
+        "text": "trusted",
+        "doc": "S1 #2 — ContactBook trust level 'vertrouwd'."
+      }
+    },
+    "skills": {
+      "text": "{{count}} skills",
+      "doc": "P5 — per-row count of a bot's exposed skills."
+    },
+    "offline": {
+      "text": "offline",
+      "doc": "P5 — roster row badge when the contact is unreachable."
+    },
+    "open": {
+      "text": "Open chat",
+      "doc": "P5 — open a contact's 1:1 DM thread."
+    },
+    "thread_title": {
+      "text": "Chat with {{name}}",
+      "doc": "P5 — header of a contact DM thread."
+    },
+    "composer": {
+      "text": "Message {{name}}…",
+      "doc": "P5 — placeholder of the DM-thread composer."
+    },
+    "send": {
+      "text": "Send",
+      "doc": "P5 — send button in the DM-thread composer."
+    },
+    "back": {
+      "text": "← Contacts",
+      "doc": "P5 — back link from a DM thread to the roster."
+    },
+    "sending": {
+      "text": "sending…",
+      "doc": "P5 — transient state while a turn is in flight to the bot."
+    },
+    "send_failed": {
+      "text": "Couldn’t reach {{name}} — they may be offline.",
+      "doc": "P5 — shown when a turn fails to send over the peer transport."
+    }
   },
   "pairedDevices": {
-    "title":          { "text": "Paired devices", "doc": "OBJ-2 — heading of the per-circle no-pod sync pairing panel; items sync to these devices over a relay/peer transport with no pod." },
-    "intro":          { "text": "Sync this circle’s items across your devices with no server. Add another device by its address — what you add here appears there.", "doc": "OBJ-2 — intro under the paired-devices heading." },
-    "yourAddr":       { "text": "This device’s address", "doc": "OBJ-2 — label above the read-only field with this device’s shareable address." },
-    "copy":           { "text": "Copy", "doc": "OBJ-2 — copy this device’s address to the clipboard." },
-    "copied":         { "text": "Copied", "doc": "OBJ-2 — transient confirmation after copying the address." },
-    "addPlaceholder": { "text": "Paste the other device’s address", "doc": "OBJ-2 — input placeholder for the peer address to pair." },
-    "add":            { "text": "Add device", "doc": "OBJ-2 — button to pair the entered address." },
-    "addFailed":      { "text": "Couldn’t add that address — check it and try again.", "doc": "OBJ-2 — shown when adding a paired device fails." },
-    "empty":          { "text": "No paired devices yet. Add one by its address to sync this circle’s items.", "doc": "OBJ-2 — empty state of the paired-devices list." },
-    "remove":         { "text": "Remove", "doc": "OBJ-2 — unpair a device from the no-pod sync roster." }
+    "title": {
+      "text": "Paired devices",
+      "doc": "OBJ-2 — heading of the per-circle no-pod sync pairing panel; items sync to these devices over a relay/peer transport with no pod."
+    },
+    "intro": {
+      "text": "Sync this circle’s items across your devices with no server. Add another device by its address — what you add here appears there.",
+      "doc": "OBJ-2 — intro under the paired-devices heading."
+    },
+    "yourAddr": {
+      "text": "This device’s address",
+      "doc": "OBJ-2 — label above the read-only field with this device’s shareable address."
+    },
+    "copy": {
+      "text": "Copy",
+      "doc": "OBJ-2 — copy this device’s address to the clipboard."
+    },
+    "copied": {
+      "text": "Copied",
+      "doc": "OBJ-2 — transient confirmation after copying the address."
+    },
+    "addPlaceholder": {
+      "text": "Paste the other device’s address",
+      "doc": "OBJ-2 — input placeholder for the peer address to pair."
+    },
+    "add": {
+      "text": "Add device",
+      "doc": "OBJ-2 — button to pair the entered address."
+    },
+    "addFailed": {
+      "text": "Couldn’t add that address — check it and try again.",
+      "doc": "OBJ-2 — shown when adding a paired device fails."
+    },
+    "empty": {
+      "text": "No paired devices yet. Add one by its address to sync this circle’s items.",
+      "doc": "OBJ-2 — empty state of the paired-devices list."
+    },
+    "remove": {
+      "text": "Remove",
+      "doc": "OBJ-2 — unpair a device from the no-pod sync roster."
+    }
   },
   "noticeboard": {
     "intent": {
-      "ask":   { "text": "Ask",   "doc": "S1 — noticeboard post type: a request for help/an item." },
-      "offer": { "text": "Offer", "doc": "S1 — noticeboard post type: something on offer." },
-      "lend":  { "text": "Lend",  "doc": "S1 — noticeboard post type: lending an item (has a return)." }
+      "ask": {
+        "text": "Ask",
+        "doc": "S1 — noticeboard post type: a request for help/an item."
+      },
+      "offer": {
+        "text": "Offer",
+        "doc": "S1 — noticeboard post type: something on offer."
+      },
+      "lend": {
+        "text": "Lend",
+        "doc": "S1 — noticeboard post type: lending an item (has a return)."
+      }
     },
     "placeholder": {
-      "ask":   { "text": "Ask the circle for something…", "doc": "S1 — composer placeholder, ask intent." },
-      "offer": { "text": "Offer something to the circle…", "doc": "S1 — composer placeholder, offer intent." },
-      "lend":  { "text": "Lend something to the circle…", "doc": "S1 — composer placeholder, lend intent." }
+      "ask": {
+        "text": "Ask the circle for something…",
+        "doc": "S1 — composer placeholder, ask intent."
+      },
+      "offer": {
+        "text": "Offer something to the circle…",
+        "doc": "S1 — composer placeholder, offer intent."
+      },
+      "lend": {
+        "text": "Lend something to the circle…",
+        "doc": "S1 — composer placeholder, lend intent."
+      }
     },
-    "post":    { "text": "Post", "doc": "S1 — noticeboard composer submit button." },
-    "posting": { "text": "posting…", "doc": "S1 — transient state while a post is in flight." },
-    "empty":   { "text": "No open posts yet. Be the first to ask, offer, or lend.", "doc": "S1 — noticeboard empty state." },
+    "post": {
+      "text": "Post",
+      "doc": "S1 — noticeboard composer submit button."
+    },
+    "posting": {
+      "text": "posting…",
+      "doc": "S1 — transient state while a post is in flight."
+    },
+    "empty": {
+      "text": "No open posts yet. Be the first to ask, offer, or lend.",
+      "doc": "S1 — noticeboard empty state."
+    },
     "action": {
-      "respond":  { "text": "Help with", "doc": "S1 — per-post action: respond/offer help (respondToItem)." },
-      "returned": { "text": "Returned",  "doc": "S1 — per-post action on a lend: mark returned (markReturned)." },
-      "cancel":   { "text": "Withdraw",  "doc": "S1 — per-post action (author): cancel the post (cancelRequest)." },
-      "report":   { "text": "Report",    "doc": "S1 — per-post action: report abuse (reportPost)." },
-      "mute":     { "text": "Mute",      "doc": "S3 — per-post action: mute the author (mutePeer)." },
-      "assign":   { "text": "Assign",    "doc": "S3 — per-post action on a lend (author): assign a borrower (assignLend)." }
+      "respond": {
+        "text": "Help with",
+        "doc": "S1 — per-post action: respond/offer help (respondToItem)."
+      },
+      "returned": {
+        "text": "Returned",
+        "doc": "S1 — per-post action on a lend: mark returned (markReturned)."
+      },
+      "cancel": {
+        "text": "Withdraw",
+        "doc": "S1 — per-post action (author): cancel the post (cancelRequest)."
+      },
+      "report": {
+        "text": "Report",
+        "doc": "S1 — per-post action: report abuse (reportPost)."
+      },
+      "mute": {
+        "text": "Mute",
+        "doc": "S3 — per-post action: mute the author (mutePeer)."
+      },
+      "assign": {
+        "text": "Assign",
+        "doc": "S3 — per-post action on a lend (author): assign a borrower (assignLend)."
+      }
     },
-    "due":           { "text": "Return by", "doc": "S3 — lend due-date field label." },
-    "assign_prompt": { "text": "Borrower WebID:", "doc": "S3 — prompt for the borrower when assigning a lend." },
-    "posted":      { "text": "Posted.", "doc": "S1 — toast after a post is created." },
-    "post_failed": { "text": "Couldn’t post — try again.", "doc": "S1 — shown when postRequest fails." },
-    "respond_prompt": { "text": "Your reply to this post:", "doc": "S1 — prompt when responding to a post (respondToItem)." },
-    "attach":          { "text": "Attach image", "doc": "S5 — composer attach-image button." },
-    "attach_remove":   { "text": "Remove image", "doc": "S5 — remove the pending attachment." },
-    "attach_failed":   { "text": "Couldn’t attach that image.", "doc": "S5 — image encode failed." },
-    "attach_fetching": { "text": "Fetching the full image…", "doc": "S5 — recipient is fetching full bytes." }
+    "due": {
+      "text": "Return by",
+      "doc": "S3 — lend due-date field label."
+    },
+    "assign_prompt": {
+      "text": "Borrower WebID:",
+      "doc": "S3 — prompt for the borrower when assigning a lend."
+    },
+    "posted": {
+      "text": "Posted.",
+      "doc": "S1 — toast after a post is created."
+    },
+    "post_failed": {
+      "text": "Couldn’t post — try again.",
+      "doc": "S1 — shown when postRequest fails."
+    },
+    "respond_prompt": {
+      "text": "Your reply to this post:",
+      "doc": "S1 — prompt when responding to a post (respondToItem)."
+    },
+    "attach": {
+      "text": "Attach image",
+      "doc": "S5 — composer attach-image button."
+    },
+    "attach_remove": {
+      "text": "Remove image",
+      "doc": "S5 — remove the pending attachment."
+    },
+    "attach_failed": {
+      "text": "Couldn’t attach that image.",
+      "doc": "S5 — image encode failed."
+    },
+    "attach_fetching": {
+      "text": "Fetching the full image…",
+      "doc": "S5 — recipient is fetching full bytes."
+    }
   },
   "profile": {
-    "title":       { "text": "Me", "doc": "S2 — heading of the profile (Mij) screen." },
-    "identity":    { "text": "Identity", "doc": "S2 — profile identity section." },
-    "handle":      { "text": "Handle", "doc": "S2 — handle field label." },
-    "displayName": { "text": "Display name", "doc": "S2 — display-name field label." },
-    "save":        { "text": "Save", "doc": "S2 — save the profile identity." },
-    "saving":      { "text": "saving…", "doc": "S2 — transient save state." },
-    "skills":      { "text": "Skills", "doc": "S2 — personal skills section." },
-    "no_skills":   { "text": "No skills yet.", "doc": "S2 — empty skills state." },
-    "pick_skill":  { "text": "Pick a skill…", "doc": "S2 — skill-category select placeholder." },
-    "add_skill":   { "text": "Add", "doc": "S2 — add a skill button." },
-    "remove_skill":{ "text": "Remove skill", "doc": "S2 — a11y label for the per-skill remove button." },
-    "location":    { "text": "Location", "doc": "S2 — location section." },
-    "loc_current": { "text": "Current: {{label}}", "doc": "S2 — shows the saved location." },
-    "loc_none":    { "text": "No location set.", "doc": "S2 — no location yet." },
-    "geo_placeholder": { "text": "Search a place…", "doc": "S2 — geocode search input." },
-    "geo_search":  { "text": "Search", "doc": "S2 — geocode search button." },
-    "geo_use":     { "text": "Use this", "doc": "S2 — save the geocoded location." },
-    "loc_clear":   { "text": "Clear location", "doc": "S2 — clear the saved location." },
-    "availability":{ "text": "Availability →", "doc": "S2 — open the availability/quiet-hours screen." },
-    "mydata":      { "text": "My data →", "doc": "S5 — open the data-location/privacy/usage screen." }
+    "title": {
+      "text": "Me",
+      "doc": "S2 — heading of the profile (Mij) screen."
+    },
+    "identity": {
+      "text": "Identity",
+      "doc": "S2 — profile identity section."
+    },
+    "handle": {
+      "text": "Handle",
+      "doc": "S2 — handle field label."
+    },
+    "displayName": {
+      "text": "Display name",
+      "doc": "S2 — display-name field label."
+    },
+    "save": {
+      "text": "Save",
+      "doc": "S2 — save the profile identity."
+    },
+    "saving": {
+      "text": "saving…",
+      "doc": "S2 — transient save state."
+    },
+    "skills": {
+      "text": "Skills",
+      "doc": "S2 — personal skills section."
+    },
+    "no_skills": {
+      "text": "No skills yet.",
+      "doc": "S2 — empty skills state."
+    },
+    "pick_skill": {
+      "text": "Pick a skill…",
+      "doc": "S2 — skill-category select placeholder."
+    },
+    "add_skill": {
+      "text": "Add",
+      "doc": "S2 — add a skill button."
+    },
+    "remove_skill": {
+      "text": "Remove skill",
+      "doc": "S2 — a11y label for the per-skill remove button."
+    },
+    "location": {
+      "text": "Location",
+      "doc": "S2 — location section."
+    },
+    "loc_current": {
+      "text": "Current: {{label}}",
+      "doc": "S2 — shows the saved location."
+    },
+    "loc_none": {
+      "text": "No location set.",
+      "doc": "S2 — no location yet."
+    },
+    "geo_placeholder": {
+      "text": "Search a place…",
+      "doc": "S2 — geocode search input."
+    },
+    "geo_search": {
+      "text": "Search",
+      "doc": "S2 — geocode search button."
+    },
+    "geo_use": {
+      "text": "Use this",
+      "doc": "S2 — save the geocoded location."
+    },
+    "loc_clear": {
+      "text": "Clear location",
+      "doc": "S2 — clear the saved location."
+    },
+    "availability": {
+      "text": "Availability →",
+      "doc": "S2 — open the availability/quiet-hours screen."
+    },
+    "mydata": {
+      "text": "My data →",
+      "doc": "S5 — open the data-location/privacy/usage screen."
+    }
   },
   "mydata": {
-    "title":         { "text": "My data", "doc": "S5 — heading of the my-data screen." },
-    "back":          { "text": "← Me", "doc": "S5 — back to the profile." },
-    "storage":       { "text": "Where it lives", "doc": "S5 — storage/data-location section." },
-    "pod":           { "text": "Pod", "doc": "S5 — pod status label." },
-    "pod_signed_in": { "text": "Signed in — {{webid}}", "doc": "S5 — pod signed-in status." },
-    "pod_local":     { "text": "Local only (no pod)", "doc": "S5 — no pod attached." },
-    "pod_sign_in":   { "text": "Sign in to a pod", "doc": "S4 — start Solid sign-in so sealed circles store to your pod." },
-    "pod_root":      { "text": "Pod root", "doc": "S5 — pod root URI." },
-    "relay":         { "text": "Relay", "doc": "S5 — relay operator/url." },
-    "privacy":       { "text": "Privacy", "doc": "S5 — privacy disclosure section." },
-    "usage":         { "text": "Usage", "doc": "S5 — usage metrics section." },
-    "keys":          { "text": "Keys & backup", "doc": "S5 — key-management section heading." },
-    "backup":        { "text": "Back up my keys", "doc": "S5 — launch the encrypted-backup wizard." },
-    "view_mnemonic": { "text": "View recovery phrase", "doc": "S5 — reveal the recovery phrase once." },
-    "restore":       { "text": "Restore from recovery phrase", "doc": "S5 — launch the restore-from-mnemonic wizard." },
-    "mnemonic_title":{ "text": "Recovery phrase", "doc": "S5 — heading of the reveal-mnemonic dialog." },
-    "mnemonic_warn": { "text": "Write these words down and keep them somewhere safe. Anyone with this phrase can restore your identity. It is shown only once.", "doc": "S5 — reveal-mnemonic warning." },
-    "mnemonic_none": { "text": "No recovery phrase is available on this device.", "doc": "S5 — reveal-mnemonic empty state." },
-    "close":         { "text": "Close", "doc": "S5 — close a my-data dialog." },
-    "notifications":   { "text": "Notifications", "doc": "S5 — web-push section heading." },
-    "notif_on":        { "text": "Push notifications are on for this device.", "doc": "S5 — push subscribed state." },
-    "notif_off":       { "text": "Get notified about replies and circle activity even when this tab is closed.", "doc": "S5 — push not-subscribed state." },
-    "notif_unsupported": { "text": "This browser does not support push notifications.", "doc": "S5 — push unsupported." },
-    "notif_enable":    { "text": "Enable notifications", "doc": "S5 — subscribe to web push." },
-    "notif_disable":   { "text": "Turn off notifications", "doc": "S5 — unsubscribe from web push." },
-    "surface_pref":         { "text": "How the bot shows actions", "doc": "S6.C — surface-preference section heading." },
-    "surface_pref_inline":  { "text": "Buttons in chat", "doc": "S6.C — inline buttons on replies." },
-    "surface_pref_screen":  { "text": "Open a screen", "doc": "S6.C — prefer an overview panel." },
-    "surface_pref_chat":    { "text": "In conversation", "doc": "S6.D — no buttons; talk to the bot (LLM-enriched when available)." },
-    "chat_ai_on":      { "text": "AI is helping your chat in this circle.", "doc": "S6.D — chat LLM enrichment is on." },
-    "chat_ai_circle_off": { "text": "This circle doesn’t allow AI in chat.", "doc": "S6.D — circle policy.llmTool = off." },
-    "chat_ai_no_llm":  { "text": "Load an LLM in settings to let AI help your chat.", "doc": "S6.D — user hasn't loaded an LLM." },
-    "chat_ai_no_provider": { "text": "No AI model is configured.", "doc": "S6.D — no provider endpoint." }
+    "title": {
+      "text": "My data",
+      "doc": "S5 — heading of the my-data screen."
+    },
+    "back": {
+      "text": "← Me",
+      "doc": "S5 — back to the profile."
+    },
+    "storage": {
+      "text": "Where it lives",
+      "doc": "S5 — storage/data-location section."
+    },
+    "pod": {
+      "text": "Pod",
+      "doc": "S5 — pod status label."
+    },
+    "pod_signed_in": {
+      "text": "Signed in — {{webid}}",
+      "doc": "S5 — pod signed-in status."
+    },
+    "pod_local": {
+      "text": "Local only (no pod)",
+      "doc": "S5 — no pod attached."
+    },
+    "pod_sign_in": {
+      "text": "Sign in to a pod",
+      "doc": "S4 — start Solid sign-in so sealed circles store to your pod."
+    },
+    "pod_root": {
+      "text": "Pod root",
+      "doc": "S5 — pod root URI."
+    },
+    "relay": {
+      "text": "Relay",
+      "doc": "S5 — relay operator/url."
+    },
+    "privacy": {
+      "text": "Privacy",
+      "doc": "S5 — privacy disclosure section."
+    },
+    "usage": {
+      "text": "Usage",
+      "doc": "S5 — usage metrics section."
+    },
+    "keys": {
+      "text": "Keys & backup",
+      "doc": "S5 — key-management section heading."
+    },
+    "backup": {
+      "text": "Back up my keys",
+      "doc": "S5 — launch the encrypted-backup wizard."
+    },
+    "view_mnemonic": {
+      "text": "View recovery phrase",
+      "doc": "S5 — reveal the recovery phrase once."
+    },
+    "restore": {
+      "text": "Restore from recovery phrase",
+      "doc": "S5 — launch the restore-from-mnemonic wizard."
+    },
+    "mnemonic_title": {
+      "text": "Recovery phrase",
+      "doc": "S5 — heading of the reveal-mnemonic dialog."
+    },
+    "mnemonic_warn": {
+      "text": "Write these words down and keep them somewhere safe. Anyone with this phrase can restore your identity. It is shown only once.",
+      "doc": "S5 — reveal-mnemonic warning."
+    },
+    "mnemonic_none": {
+      "text": "No recovery phrase is available on this device.",
+      "doc": "S5 — reveal-mnemonic empty state."
+    },
+    "close": {
+      "text": "Close",
+      "doc": "S5 — close a my-data dialog."
+    },
+    "notifications": {
+      "text": "Notifications",
+      "doc": "S5 — web-push section heading."
+    },
+    "notif_on": {
+      "text": "Push notifications are on for this device.",
+      "doc": "S5 — push subscribed state."
+    },
+    "notif_off": {
+      "text": "Get notified about replies and circle activity even when this tab is closed.",
+      "doc": "S5 — push not-subscribed state."
+    },
+    "notif_unsupported": {
+      "text": "This browser does not support push notifications.",
+      "doc": "S5 — push unsupported."
+    },
+    "notif_enable": {
+      "text": "Enable notifications",
+      "doc": "S5 — subscribe to web push."
+    },
+    "notif_disable": {
+      "text": "Turn off notifications",
+      "doc": "S5 — unsubscribe from web push."
+    },
+    "surface_pref": {
+      "text": "How the bot shows actions",
+      "doc": "S6.C — surface-preference section heading."
+    },
+    "surface_pref_inline": {
+      "text": "Buttons in chat",
+      "doc": "S6.C — inline buttons on replies."
+    },
+    "surface_pref_screen": {
+      "text": "Open a screen",
+      "doc": "S6.C — prefer an overview panel."
+    },
+    "surface_pref_chat": {
+      "text": "In conversation",
+      "doc": "S6.D — no buttons; talk to the bot (LLM-enriched when available)."
+    },
+    "chat_ai_on": {
+      "text": "AI is helping your chat in this circle.",
+      "doc": "S6.D — chat LLM enrichment is on."
+    },
+    "chat_ai_circle_off": {
+      "text": "This circle doesn’t allow AI in chat.",
+      "doc": "S6.D — circle policy.llmTool = off."
+    },
+    "chat_ai_no_llm": {
+      "text": "Load an LLM in settings to let AI help your chat.",
+      "doc": "S6.D — user hasn't loaded an LLM."
+    },
+    "chat_ai_no_provider": {
+      "text": "No AI model is configured.",
+      "doc": "S6.D — no provider endpoint."
+    }
   },
   "admin": {
-    "title":      { "text": "Admin", "doc": "S3 — group admin panel title + ⋯ menu entry." },
-    "back":       { "text": "← Back", "doc": "S3 — back from the admin panel." },
-    "members":    { "text": "Members", "doc": "S3 — member roster section." },
-    "no_members": { "text": "No members yet.", "doc": "S3 — empty roster." },
-    "remove":     { "text": "Remove", "doc": "S3 — remove a member (admin-only)." },
-    "role":       {
-      "admin":       { "text": "admin", "doc": "S3 — admin role badge." },
-      "coordinator": { "text": "coordinator", "doc": "S3 — coordinator role badge." }
+    "title": {
+      "text": "Admin",
+      "doc": "S3 — group admin panel title + ⋯ menu entry."
     },
-    "announce":             { "text": "Announcement", "doc": "S3 — post-announcement section." },
-    "announce_placeholder": { "text": "Announce something to the circle…", "doc": "S3 — announcement input." },
-    "announce_post":        { "text": "Post", "doc": "S3 — post the announcement." },
-    "announced":            { "text": "Announcement posted.", "doc": "S3 — confirmation." },
-    "refused":              { "text": "That action is admin-only.", "doc": "S3 — shown when a non-admin op is refused." },
-    "saving":               { "text": "saving…", "doc": "S3 — transient state." },
-    "reports":    { "text": "Reports", "doc": "S3 — moderation reports section." },
-    "no_reports": { "text": "No reports.", "doc": "S3 — empty reports." },
-    "report_row": { "text": "Report on {{target}} — {{reason}}", "doc": "S3 — a report row." },
-    "no_reason":  { "text": "no reason given", "doc": "S3 — fallback when a report has no reason." },
-    "muted":      { "text": "Muted peers", "doc": "S3 — muted-peers section." },
-    "no_muted":   { "text": "No muted peers.", "doc": "S3 — empty muted list." },
-    "unmute":     { "text": "Unmute", "doc": "S3 — unmute a peer." }
+    "back": {
+      "text": "← Back",
+      "doc": "S3 — back from the admin panel."
+    },
+    "members": {
+      "text": "Members",
+      "doc": "S3 — member roster section."
+    },
+    "no_members": {
+      "text": "No members yet.",
+      "doc": "S3 — empty roster."
+    },
+    "remove": {
+      "text": "Remove",
+      "doc": "S3 — remove a member (admin-only)."
+    },
+    "role": {
+      "admin": {
+        "text": "admin",
+        "doc": "S3 — admin role badge."
+      },
+      "coordinator": {
+        "text": "coordinator",
+        "doc": "S3 — coordinator role badge."
+      }
+    },
+    "announce": {
+      "text": "Announcement",
+      "doc": "S3 — post-announcement section."
+    },
+    "announce_placeholder": {
+      "text": "Announce something to the circle…",
+      "doc": "S3 — announcement input."
+    },
+    "announce_post": {
+      "text": "Post",
+      "doc": "S3 — post the announcement."
+    },
+    "announced": {
+      "text": "Announcement posted.",
+      "doc": "S3 — confirmation."
+    },
+    "refused": {
+      "text": "That action is admin-only.",
+      "doc": "S3 — shown when a non-admin op is refused."
+    },
+    "saving": {
+      "text": "saving…",
+      "doc": "S3 — transient state."
+    },
+    "reports": {
+      "text": "Reports",
+      "doc": "S3 — moderation reports section."
+    },
+    "no_reports": {
+      "text": "No reports.",
+      "doc": "S3 — empty reports."
+    },
+    "report_row": {
+      "text": "Report on {{target}} — {{reason}}",
+      "doc": "S3 — a report row."
+    },
+    "no_reason": {
+      "text": "no reason given",
+      "doc": "S3 — fallback when a report has no reason."
+    },
+    "muted": {
+      "text": "Muted peers",
+      "doc": "S3 — muted-peers section."
+    },
+    "no_muted": {
+      "text": "No muted peers.",
+      "doc": "S3 — empty muted list."
+    },
+    "unmute": {
+      "text": "Unmute",
+      "doc": "S3 — unmute a peer."
+    }
+  },
+  "userLlm": {
+    "title": "Assistant endpoint",
+    "hint": "Point the assistant at your own LLM and embedder. Pick a posture, then enter the address.",
+    "save": "Save",
+    "saved": "Saved.",
+    "preset": {
+      "off": "Off (no assistant)",
+      "local-ollama": "Local (Ollama on your machine)",
+      "confidential-proxy": "Confidential (Privatemode / attested enclave)",
+      "openai-compatible": "Cloud (OpenAI-compatible — not private)"
+    },
+    "llmBaseUrl": "LLM address",
+    "llmModel": "LLM model",
+    "embedBaseUrl": "Embedder address (optional)",
+    "embedBaseUrl_ph": "same as the LLM address",
+    "embedModel": "Embedder model",
+    "apiKey": "API key (optional)",
+    "attestation": "I have verified this enclave is attested (allows a non-loopback confidential address)"
   }
 }

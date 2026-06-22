@@ -106,6 +106,7 @@ import { createFeedbackSurface } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 // (localStoragePolicyIo is already imported below with createCirclePolicyStore)
 import { createUserLlmDefaultStore, localStorageUserLlmIo } from '../../src/v2/userLlmDefault.js';
+import { applyUserLlmRuntime, validateUserLlmConfig } from '../../src/v2/userLlmRuntime.js';
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { EventLog } from '../../src/eventLog.js';
 // δ.2 — per-message delivery state for optimistic kring chat sends.
@@ -553,6 +554,7 @@ let circleCatalog = null;        // the merged dispatch catalog (built in buildC
 let circleActiveApps = null;     // S6.C deep — the active circle's policy.apps (null = all); narrows the catalog
 let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (set in buildCircleBot, called by showKring)
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
+let circleApplyUserLlm = null;   // (cfg) => {ok,mode}|{ok:false,error} — rebuild the live LLM/embed providers from the member's settings
 let circleEmbedButtonTap = null; // S6.A — dispatch an inline embed button {opId,itemId} from a bot reply
 // S6.C — per-user surface preference (inline / screen / minimal); hydrated at boot.
 const circleSurfacePref = createSurfacePrefStore(localStorageSurfacePrefIo());
@@ -799,12 +801,30 @@ function buildCircleBot(agent) {
     } catch { /* no addbot param */ }
   }
 
-  const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL, apiKey: CIRCLE_LLM_APIKEY, timeoutMs: CIRCLE_LLM_TIMEOUT_MS });
-  // F-retrieve tier-2 embeddings — opt-in, same shape as the LLM providers. The
-  // embed route defaults to the LLM base (the enclave hosts both /v1/chat/completions
-  // + /v1/embeddings), so embeddings ride the SAME trust boundary by default; set
-  // VITE_CIRCLE_EMBED_BASEURL / _MODEL to point elsewhere. Empty → semantic inert.
-  const embedProviders = buildCircleEmbedProviders({ localBaseUrl: CIRCLE_EMBED_BASEURL, model: CIRCLE_EMBED_MODEL, apiKey: CIRCLE_EMBED_APIKEY });
+  // Deployment env config = the FALLBACK when the member hasn't set their own endpoint in settings.
+  // The embed route defaults to the LLM base (the enclave hosts both /v1/chat/completions +
+  // /v1/embeddings) so semantic RAG rides the SAME trust boundary by default; null → semantic inert.
+  const ENV_LLM = {
+    mode: CIRCLE_LLM_BASEURL ? 'local' : 'off',
+    llmBaseUrl: CIRCLE_LLM_BASEURL, llmModel: CIRCLE_LLM_MODEL, llmApiKey: CIRCLE_LLM_APIKEY,
+    embedBaseUrl: CIRCLE_EMBED_BASEURL, embedModel: CIRCLE_EMBED_MODEL, embedApiKey: CIRCLE_EMBED_APIKEY,
+    timeoutMs: CIRCLE_LLM_TIMEOUT_MS,
+  };
+  // LIVE provider objects the bot holds by reference — applyUserLlmRuntime mutates them in place so a
+  // settings change takes effect without a reload. Seeded from env; the member's saved config overrides.
+  const llmProviders = {};
+  const embedProviders = {};
+  applyUserLlmRuntime({ userCfg: { preset: 'off' }, env: ENV_LLM, llmProviders, embedProviders });
+  let userDefault = { mode: ENV_LLM.mode };
+  const userLlmStore = createUserLlmDefaultStore(localStorageUserLlmIo());
+  // Exposed to the settings panel (showMyData): rebuild the live providers from the member's config.
+  circleApplyUserLlm = (cfg) => {
+    const r = applyUserLlmRuntime({ userCfg: cfg, env: ENV_LLM, llmProviders, embedProviders });
+    if (r.ok) userDefault = { ...cfg, mode: r.mode };
+    return r;
+  };
+  // Apply the member's saved endpoint config at boot (falls back to env when unset).
+  userLlmStore.get().then((v) => { circleApplyUserLlm(v); }).catch(() => {});
   // Per-turn embedder resolution: rides the circle's embed policy (embedTool ??
   // llmTool). Throws 'no-embedder' when off/unconfigured → the semantic retriever
   // falls back to tier-1 lexical (strict upgrade, never a regression).
@@ -814,9 +834,6 @@ function buildCircleBot(agent) {
     return embedder.embed(texts);
   };
   const policyIo = localStoragePolicyIo();
-  let userDefault = { mode: CIRCLE_LLM_BASEURL ? 'local' : 'off' };
-  createUserLlmDefaultStore(localStorageUserLlmIo()).get()
-    .then((v) => { if (v && v.mode !== 'off') userDefault = v; }).catch(() => {});
   async function policyFor() {
     const cid = getActiveCircle();
     if (!cid) return { llmTool: CIRCLE_LLM_POLICY };
@@ -1658,19 +1675,33 @@ async function showMyData() {
   // S6.D — is the conversational "chat" projection AI-enriched in THIS circle?
   // (user-loaded LLM + circle policy.llmTool + a configured provider).
   let chatAi = { enriched: false, reason: 'no-provider' };
+  let userLlmCfg = {};
+  const userLlmStore = createUserLlmDefaultStore(localStorageUserLlmIo());
   (async () => {
     try {
       const pol = await policyStore.get(getActiveCircle());
-      const userLlm = await createUserLlmDefaultStore(localStorageUserLlmIo()).get();
+      userLlmCfg = await userLlmStore.get();
       chatAi = resolveChatAi({
         circleLlmTool: pol?.llmTool ?? CIRCLE_LLM_POLICY,
-        userLlmMode: userLlm?.mode,
-        hasProvider: !!CIRCLE_LLM_BASEURL,
+        userLlmMode: userLlmCfg?.mode,
+        hasProvider: !!CIRCLE_LLM_BASEURL || !!userLlmCfg?.llmBaseUrl,
       });
       rerender();
     } catch { /* keep the safe default */ }
   })();
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, chatAi });
+  // Persist the member's assistant endpoint, then rebuild the LIVE providers (no reload). The guard runs
+  // both here (inline message) and inside circleApplyUserLlm; returns an error string or null (success).
+  const onSaveUserLlm = async (cfg) => {
+    const guardErr = validateUserLlmConfig(cfg);
+    if (guardErr) return guardErr;
+    userLlmCfg = await userLlmStore.set(cfg).catch(() => cfg);
+    const r = typeof circleApplyUserLlm === 'function' ? circleApplyUserLlm(userLlmCfg) : { ok: true };
+    if (!r || !r.ok) return (r && r.error) || 'could not apply';
+    // Providers are swapped live (no reload). Don't rerender the whole panel here — it would wipe the
+    // form's "Saved." confirmation; the chatAi status note refreshes on the next open.
+    return null;
+  };
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig });
   getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([

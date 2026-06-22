@@ -10,6 +10,8 @@
  * injects the matching callbacks; each launches an existing wizard/skill.
  */
 
+import { renderUserLlmSettings } from './userLlmSettings.js';
+
 export function renderCircleMyData(container, {
   dataLocation = {},
   podStatus = {},
@@ -26,6 +28,9 @@ export function renderCircleMyData(container, {
   surfacePref,            // S6.C — current 'inline' | 'screen' | 'chat'
   chatAi,                 // S6.D — { enriched, reason } for the active circle (shown under "chat")
   onSetSurfacePref,       // (value) => void
+  userLlm,                // the member's saved assistant endpoint config (userLlmDefault value)
+  onSaveUserLlm,          // (cfg) => Promise<string|null>  — persist + apply; returns an error message or null
+  validateUserLlm,        // (cfg) => string|null           — confidential-route guard for inline display
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -134,6 +139,14 @@ export function renderCircleMyData(container, {
       sec.appendChild(note);
     }
     container.appendChild(sec);
+  }
+
+  // ── assistant endpoint (the member's own LLM + embedder) ────────────────────
+  if (typeof onSaveUserLlm === 'function') {
+    const holder = document.createElement('div');
+    holder.className = 'cc-mydata__section';
+    renderUserLlmSettings(holder, { current: userLlm || {}, onSave: onSaveUserLlm, validate: validateUserLlm, t: tr });
+    container.appendChild(holder);
   }
 
   // ── privacy ────────────────────────────────────────────────────────────────
