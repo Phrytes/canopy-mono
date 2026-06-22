@@ -21,7 +21,7 @@
  * per-circle scope key threaded through ops — NOT N agents for N circles
  * (CLAUDE.md invariant #6). Pure + transport-free, so mobile reuses it verbatim.
  */
-import { isInCircle } from './circleScope.js';
+import { itemCircleId } from './circleScope.js';
 
 /** stoop ops whose created/mutated item belongs to / routes to the active circle. */
 export const SCOPED_WRITE_OPS = new Set([
@@ -32,17 +32,42 @@ export const SCOPED_WRITE_OPS = new Set([
 export const SCOPED_LIST_OPS = new Set(['listOpen', 'listFeed', 'listMyRequests', 'getBulletin']);
 
 /**
+ * Stoop item types that are internal bookkeeping — the membership lifecycle + rules
+ * documents — and must NEVER surface as user-facing noticeboard posts. `listOpen`
+ * (no intent) returns them alongside real `request`/`offer` posts; the prikbord is
+ * for asks/offers, so it filters these out.
+ */
+export const SYSTEM_STOOP_TYPES = new Set(['group-rules', 'membership-code', 'membership-redemption']);
+
+/** True when `item` is a real noticeboard post (an ask/offer), not a system item. */
+export function isNoticeboardPost(item) {
+  if (SYSTEM_STOOP_TYPES.has(item?.type)) return false;
+  // The local-first substrate/pseudo-pod collapses every stoop item to `type:'post'`,
+  // losing the semantic type — but the original `source` shape survives. Recognise the
+  // membership lifecycle + rules documents by their distinctive source fields so they
+  // don't surface as noticeboard posts even when the type is flattened.
+  const src = item?.source;
+  if (src && typeof src === 'object') {
+    if (src.rules != null) return false;                          // group-rules
+    if (typeof src.code === 'string' && src.code) return false;   // membership-code
+    if (src.redeemedBy != null) return false;                     // membership-redemption
+  }
+  return true;
+}
+
+/**
  * Keep `item` for `circleId` — lenient: an item carrying NO circle hint is kept
  * (the op already scoped it server-side). Mirrors `circleContent.js`'s rule so the
  * GUI and the content loader filter identically. A null circleId keeps everything.
  */
 export function keepForCircle(item, circleId) {
   if (!circleId) return true;
-  const it = item || {};
-  const hasHint =
-    it.circleId != null || it.crewId != null || it.groupId != null || it.audience != null;
-  if (!hasHint) return true;            // op already scoped via args — trust it
-  return isInCircle(it, circleId);
+  // itemCircleId now reads nested hints too (source.targets[]/source.groupId), so a
+  // scoped item is recognised here instead of looking "unscoped". null hint = genuinely
+  // unscoped → keep (the op already scoped it server-side).
+  const hint = itemCircleId(item || {});
+  if (hint == null) return true;
+  return hint === circleId;
 }
 
 /** Open a list item's sealed `text`/`label` for a current recipient. A non-sealed body

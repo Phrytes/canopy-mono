@@ -34,6 +34,7 @@ import { buildKringStream } from './circleStream.js';
 import { normalizeRulesDoc, isRulesEmpty } from './circleRules.js';
 import { enabledFeatures } from './circlePolicy.js';
 import { enrichEmbedsWithTitles } from './embedResolve.js';
+import { isNoticeboardPost } from './circleStoopScope.js';
 
 /**
  * Editor-side metadata per block type.  Drives the palette + the
@@ -178,18 +179,25 @@ async function materializeNoticeboard(block, circleId, { callSkill, eventLog, ci
   // surfaces the prikbord even when the chat tab (where the prikbord lives) is
   // hidden. Map each post into the StreamRow shape the renderer's pickSender/
   // pickRowText read. Falls back to the eventLog stream when no callSkill.
+  let listOpenSucceeded = false;
   if (typeof callSkill === 'function') {
     try {
       const res = await callSkill('stoop', 'listOpen', {});
-      const items = Array.isArray(res?.items) ? res.items : [];
+      // Keep only real asks/offers — drop system items (rules / membership lifecycle)
+      // that listOpen returns alongside posts.
+      const items = (Array.isArray(res?.items) ? res.items : []).filter(isNoticeboardPost);
       rows = items.slice(0, limit).map((it) => ({
         id: it.id,
         actor: shortWebid(it.addedBy),
         event: { payload: { text: it.text ?? it.label ?? '' } },
       }));
+      listOpenSucceeded = true;
     } catch { rows = []; }
   }
-  if (rows.length === 0 && eventLog?.query && circleId) {
+  // Fall back to the eventLog stream ONLY when listOpen wasn't available (no callSkill /
+  // it threw). When listOpen succeeded, an empty result means "no posts" — do NOT fall
+  // back, or the stream re-surfaces the very system/bookkeeping rows we just filtered out.
+  if (!listOpenSucceeded && rows.length === 0 && eventLog?.query && circleId) {
     const events = eventLog.query({ excludeMuted: true });
     const stream = buildKringStream({ events, circles: circles ?? [], circleId });
     // buildKringStream returns newest-first; cap to `limit`.

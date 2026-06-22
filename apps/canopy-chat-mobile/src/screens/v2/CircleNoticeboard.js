@@ -16,6 +16,7 @@ import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 // embeds[] — cross-object reference chips ("See also"), shared with web.
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { enrichEmbedsWithTitles } from '../../../../canopy-chat/src/v2/embedResolve.js';
+import { isNoticeboardPost } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
 import { getCirclePodFetch } from '../../core/circlePods.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
@@ -54,7 +55,9 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
     if (who == null) { try { const r = await callSkill('stoop', 'whoAmI', {}); who = r?.webid ?? r?.webId ?? ''; } catch { who = ''; } setMyWebid(who); }
     try {
       const res = await callSkill('stoop', 'listOpen', {});
-      const items = Array.isArray(res?.items) ? res.items : [];
+      // Keep only real asks/offers — listOpen (no intent) also returns system items
+      // (rules / membership) which aren't noticeboard posts.
+      const items = (Array.isArray(res?.items) ? res.items : []).filter(isNoticeboardPost);
       const mapped = items.map((it) => ({
         id: it.id, text: it.text ?? it.label ?? '', type: it.type ?? it.intent ?? 'ask',
         addedBy: it.addedBy, mine: !!(who && it.addedBy === who),

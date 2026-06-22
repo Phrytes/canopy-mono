@@ -19,6 +19,7 @@
 import { initLocalisation, t, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting, seedCircleRoster,
+  isNoticeboardPost,
   canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
@@ -1961,7 +1962,9 @@ function showKring(id, circle, policy) {
     try {
       await ensureMyWebid();
       const res = await stoopCall('stoop', 'listOpen', {});
-      const items = Array.isArray(res?.items) ? res.items : [];
+      // listOpen (no intent) also returns system items (rules / membership) — keep only
+      // real asks/offers so the prikbord isn't full of bookkeeping (and other circles').
+      const items = (Array.isArray(res?.items) ? res.items : []).filter(isNoticeboardPost);
       noticeboardPosts = items.map((it) => ({
         id:           it.id,
         text:         it.text ?? it.label ?? '',

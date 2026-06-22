@@ -16,6 +16,17 @@ export function itemCircleId(item = {}) {
   if (item.circleId) return item.circleId;
   if (item.crewId) return item.crewId;
   if (item.groupId) return item.groupId;
+  // Stoop persists the per-call circle scope NESTED, not at the top level:
+  //  • real posts → source.targets[{ kind:'group', groupId }] (the write path injects it)
+  //  • system items (rules / membership) → source.groupId
+  // Reading top-level only meant every item looked "unscoped" → the circle filter kept
+  // everything → cross-circle leak on the noticeboard. Read the nested hints too.
+  const targets = item.source?.targets;
+  if (Array.isArray(targets)) {
+    const g = targets.find((t) => t && t.kind === 'group' && typeof t.groupId === 'string');
+    if (g) return g.groupId;
+  }
+  if (typeof item.source?.groupId === 'string' && item.source.groupId) return item.source.groupId;
   const a = item.audience;
   if (typeof a === 'string') return circleRefFromShorthand(a);
   if (a && typeof a === 'object' && a.kind === 'circle-ref' && a.id) return a.id;

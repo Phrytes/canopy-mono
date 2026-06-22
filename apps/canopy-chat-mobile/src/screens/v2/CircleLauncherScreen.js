@@ -1155,6 +1155,7 @@ export default function CircleLauncherScreen({
         eventLog={eventLog}
         circles={circles}
         recipeStore={recipeStore}
+        onStoopEvent={bundle?.onStoopEvent}
         onBack={closeCircle}
         onSettings={() => setView('settings')}
         onAdmin={() => setView('admin')}
@@ -1474,7 +1475,7 @@ function LauncherTile({ circle: c, preview, pending, isPinned = false, isMuted =
 function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
-  recipeStore = null,
+  recipeStore = null, onStoopEvent,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops canopy-chat's infra ops (/me etc.)
@@ -2081,7 +2082,7 @@ function CircleDetail({
         ) : activeTab === 'prikbord' ? (
           // S1 #1 — the buurt noticeboard (its own composer + post list), scoped to
           // the open circle (S4 per-circle restructure — see stoopCall above).
-          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={bundle?.onStoopEvent}
+          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={onStoopEvent}
             onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
