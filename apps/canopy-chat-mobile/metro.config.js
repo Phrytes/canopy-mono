@@ -27,7 +27,7 @@ const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
 const projectRoot = __dirname;
 const repoRoot    = path.resolve(__dirname, '../..');
 
-module.exports = withCanopyPreset({
+const _cfg = withCanopyPreset({
   projectRoot,
   repoRoot,
 
@@ -187,7 +187,44 @@ module.exports = withCanopyPreset({
         };
       }
 
+      // 6. SHIM the Node-only Telegram bridge. It does `import { Telegraf } from 'telegraf'`
+      //    + `class … extends Telegraf`; on Hermes telegraf doesn't load → the base is
+      //    undefined → "Super expression must be null or a function" at module-eval → the
+      //    whole agent boot fails. household/src re-exports it, so it lands in the RN bundle
+      //    even though mobile never runs a Telegram bot. Resolve it to a no-op stub. (Mirror
+      //    of the web vite alias.) Must be a subpath resolver, not extraShims — the preset's
+      //    generic `@canopy/<pkg>/<subpath>` handler would otherwise resolve the real file first.
+      if (moduleName === '@canopy/chat-agent/bridges/telegram') {
+        return { filePath: path.resolve(__dirname, 'src/shims/telegramBridge.js'), type: 'sourceFile' };
+      }
+
       return null;
     },
   ],
 });
+
+// Wrap the preset's resolveRequest to intercept BEFORE its generic `@canopy/<pkg>/<subpath>`
+// handler. The Telegram bridge is Node-only (`import { Telegraf } from 'telegraf'` →
+// `class … extends Telegraf`); on Hermes telegraf doesn't load → the base is undefined →
+// "Super expression must be null or a function" → agent boot fails. household/src re-exports
+// it, so it lands in the RN bundle. extraSubpathResolvers run AFTER the generic @canopy
+// handler (which resolves the REAL file first), so the shim must intercept here. Mirror of
+// the web vite alias.
+const _presetResolve = _cfg.resolver.resolveRequest;
+_cfg.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === '@canopy/chat-agent/bridges/telegram') {
+    return { filePath: path.resolve(__dirname, 'src/shims/telegramBridge.js'), type: 'sourceFile' };
+  }
+  // react-native-webrtc: optional rendezvous (direct WebRTC) — native module not in this dev
+  // APK; the loader's try/catch can't suppress the native error on Hermes (redbox). Stub it so
+  // loadRendezvousRtcLib() returns null and the app runs over relay/nkn. (Install the native
+  // dep + rebuild to enable direct WebRTC.)
+  if (moduleName === 'react-native-webrtc') {
+    return { filePath: path.resolve(__dirname, 'src/shims/reactNativeWebrtc.js'), type: 'sourceFile' };
+  }
+  return _presetResolve
+    ? _presetResolve(context, moduleName, platform)
+    : context.resolveRequest(context, moduleName, platform);
+};
+
+module.exports = _cfg;
