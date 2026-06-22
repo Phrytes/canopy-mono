@@ -2870,7 +2870,13 @@ async function boot() {
       // so button-driven calendar dispatches fan out as well as the bot path.
       // Pass a catalog GETTER so the resolver skips origins that don't declare the
       // op (no probe-storm) AND honours later rescopes (app toggle / policy.apps).
-      resolveCallSkill = makeResolvingCallSkill(rawCallSkill, DEFAULT_CIRCLE_ORIGINS, () => catalog);
+      // BUGFIX: `catalog` is a LOCAL of buildCircleBot (defined far below + only after
+      // buildCircleBot runs); referencing it here threw ReferenceError on every resolved
+      // call, so the catalog getter crashed → loadCircles silently returned [] → circles
+      // never appeared even though createGroupV2 + listMyBuurts worked. Use the module-level
+      // `circleCatalog` (null until buildCircleBot sets it; makeResolvingCallSkill tolerates
+      // a null catalog by trying all origins).
+      resolveCallSkill = makeResolvingCallSkill(rawCallSkill, DEFAULT_CIRCLE_ORIGINS, () => circleCatalog);
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
       // Phase 5 — build the kring composer's bot + feedback now that the agent (and its manifest) is up.
       try { buildCircleBot(agent); } catch (err) { console.warn('[circleApp] circle bot setup failed:', err?.message ?? err); }
