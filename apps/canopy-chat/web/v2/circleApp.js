@@ -520,6 +520,10 @@ let noticeboardRefreshHook = null;
 // kring stream via `_kringRender`, a small per-circle bridge that showKring sets each time it opens.
 const CIRCLE_LLM_BASEURL   = import.meta.env?.VITE_CIRCLE_LLM_BASEURL ?? null;
 const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined;
+// Per-call LLM timeout. The provider's 12s default is fine for a fast cloud/enclave model
+// but aborts a local model's cold-start (qwen2.5:7b warms up in 30–60s) → the bot silently
+// drops to "basic mode". Default generous (90s) for the local case; override via env.
+const CIRCLE_LLM_TIMEOUT_MS = Number(import.meta.env?.VITE_CIRCLE_LLM_TIMEOUT_MS ?? 90000) || 90000;
 // F-retrieve tier-2 embeddings — defaults to the LLM base (the enclave serves both
 // /v1/chat/completions + /v1/embeddings), so semantic RAG rides the same trust
 // boundary unless explicitly pointed elsewhere. Model defaults to the provider's
@@ -795,7 +799,7 @@ function buildCircleBot(agent) {
     } catch { /* no addbot param */ }
   }
 
-  const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL, apiKey: CIRCLE_LLM_APIKEY });
+  const llmProviders = buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL, apiKey: CIRCLE_LLM_APIKEY, timeoutMs: CIRCLE_LLM_TIMEOUT_MS });
   // F-retrieve tier-2 embeddings — opt-in, same shape as the LLM providers. The
   // embed route defaults to the LLM base (the enclave hosts both /v1/chat/completions
   // + /v1/embeddings), so embeddings ride the SAME trust boundary by default; set
@@ -985,6 +989,7 @@ function buildCircleBot(agent) {
     }),
     botName: CIRCLE_BOT_NAME,
   });
+
 }
 
 // Top-level tab bar (Kringen / Stroom / Mij). Shown on the three top-level

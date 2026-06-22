@@ -19,9 +19,13 @@ import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
  * @param {string|null} [cfg.cloudApiKey]    Bearer key for the cloud route (falls back to apiKey)
  * @returns {{local?: object, cloud?: object}}
  */
-export function buildCircleLlmProviders({ localBaseUrl = null, model, audit, cloudBaseUrl = null, localModel, cloudModel, apiKey = null, cloudApiKey = null } = {}) {
+export function buildCircleLlmProviders({ localBaseUrl = null, model, audit, cloudBaseUrl = null, localModel, cloudModel, apiKey = null, cloudApiKey = null, timeoutMs } = {}) {
+  // `timeoutMs` overrides the provider's 12s default — too short for a local model's
+  // first (cold-load) call (qwen2.5:7b can take 30–60s warming up), which otherwise
+  // aborts mid-flight and the bot drops to "basic mode". Pass-through; the app sets a
+  // generous default + an env override.
   const mk = (baseUrl, m, key) => new LlmClient({
-    provider: ollamaProvider({ baseUrl: normalizeBase(baseUrl), ...(m ? { model: m } : {}), ...(key ? { apiKey: key } : {}) }),
+    provider: ollamaProvider({ baseUrl: normalizeBase(baseUrl), ...(m ? { model: m } : {}), ...(key ? { apiKey: key } : {}), ...(timeoutMs != null ? { timeoutMs } : {}) }),
     ...(typeof audit === 'function' ? { audit } : {}),
   });
   const providers = {};
