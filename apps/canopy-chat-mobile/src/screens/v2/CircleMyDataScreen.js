@@ -12,13 +12,14 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Modal } from 'react-nati
 import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
+import UserLlmSettings from './UserLlmSettings.js';
 import EncryptedBackupWizardModal from '../../../../canopy-chat/src/rn/wizards/encryptedBackupWizardModal.js';
 import RestoreFromMnemonicWizardModal from '../../../../canopy-chat/src/rn/wizards/restoreFromMnemonicWizardModal.js';
 import { enableNativePush, disableNativePush, getNativePushState } from '../../v2/nativePush.js';
 
 const CHAT_AI_KEY = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
 
-export default function CircleMyDataScreen({ callSkill, onBack, chatAi }) {
+export default function CircleMyDataScreen({ callSkill, onBack, chatAi, userLlm, onSaveUserLlm, validateUserLlm }) {
   const [dataLocation, setDataLocation] = useState({});
   const [podStatus, setPodStatus] = useState({});
   const [privacy, setPrivacy] = useState([]);
@@ -121,6 +122,12 @@ export default function CircleMyDataScreen({ callSkill, onBack, chatAi }) {
           </Text>
         ) : null}
       </Section>
+
+      {typeof onSaveUserLlm === 'function' && (
+        <Section title={t('circle.userLlm.title')}>
+          <UserLlmSettings current={userLlm || {}} onSave={onSaveUserLlm} validate={validateUserLlm} />
+        </Section>
+      )}
 
       {privacy.length > 0 && (
         <Section title={t('circle.mydata.privacy')}>

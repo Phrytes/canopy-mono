@@ -98,6 +98,7 @@ import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedba
 import { buildCircleLlmProviders } from '../../../../canopy-chat/src/v2/circleLlmProviders.js';
 import { createClarifyingDispatch } from '../../../../canopy-chat/src/v2/clarifyingDispatch.js';
 import { createUserLlmDefaultStore, asyncStorageUserLlmIo } from '../../../../canopy-chat/src/v2/userLlmDefault.js';
+import { buildUserLlmRuntime, validateUserLlmConfig } from '../../../../canopy-chat/src/v2/userLlmRuntime.js';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t, lang } from '../../core/localisation.js';
 import {
@@ -217,6 +218,21 @@ export default function CircleLauncherScreen({
   // detail/settings/override.
   // α.3 — boot lands on the Schermen tab (Q6 primary).  Was 'list' (= Kringen).
   const [view, setView] = useState('screens');
+  // The member's saved assistant endpoint config (settings → My data). Persisted to AsyncStorage;
+  // CircleDetail re-reads it on mount, so a save applies the next time a circle opens.
+  const [userLlmCfg, setUserLlmCfg] = useState({});
+  useEffect(() => {
+    let alive = true;
+    createUserLlmDefaultStore(asyncStorageUserLlmIo(AsyncStorage)).get().then((v) => { if (alive) setUserLlmCfg(v); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  const onSaveUserLlm = useCallback(async (cfg) => {
+    const err = validateUserLlmConfig(cfg);
+    if (err) return err;                       // confidential-route guard → inline message
+    const saved = await createUserLlmDefaultStore(asyncStorageUserLlmIo(AsyncStorage)).set(cfg).catch(() => cfg);
+    setUserLlmCfg(saved);
+    return null;
+  }, []);
   // P5 — the contact (bot/peer) whose DM thread is open under the Contacten tab.
   const [contactThread, setContactThread] = useState(null);
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
@@ -911,7 +927,7 @@ export default function CircleLauncherScreen({
   if (view === 'mydata') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
-        <CircleMyDataScreen callSkill={bundle?.callSkill} onBack={() => setView('profile')} chatAi={chatAi} />
+        <CircleMyDataScreen callSkill={bundle?.callSkill} onBack={() => setView('profile')} chatAi={chatAi} userLlm={userLlmCfg} onSaveUserLlm={onSaveUserLlm} validateUserLlm={validateUserLlmConfig} />
       </WithTabBar>
     );
   }
@@ -1851,12 +1867,26 @@ function CircleDetail({
   // B (circle bot) — the kring composer router: slash command → dispatch; free text addressed to the
   // bot (when the circle's LLM route is on) → interpret → dispatch; everything else → normal kring
   // post (fan-out the already-echoed message). Shared core with web (createCircleDispatch).
+  // LLM + embed providers from the member's saved endpoint config (settings), falling back to the
+  // EXPO_PUBLIC_* env. Shared with web via buildUserLlmRuntime (the confidential-route guard runs inside).
+  // Rebuilds when userLlmDefault changes → a settings save live-applies (the bot useMemo depends on it).
+  const llmRuntime = useMemo(() => {
+    try {
+      return buildUserLlmRuntime(userLlmDefault, { env: {
+        mode: CIRCLE_LLM_BASEURL ? 'local' : 'off',
+        llmBaseUrl: CIRCLE_LLM_BASEURL, llmModel: CIRCLE_LLM_MODEL,
+        embedBaseUrl: CIRCLE_EMBED_BASEURL, embedModel: CIRCLE_EMBED_MODEL,
+      } });
+    } catch { return { llmProviders: {}, embedProviders: {}, mode: 'off' }; }
+  }, [userLlmDefault]);
+  const hasEmbedProvider = !!(llmRuntime.embedProviders.local || llmRuntime.embedProviders.cloud);
+
   const circleBot = useMemo(() => createCircleDispatch({
     catalog,
     // Circle policy is authoritative (this circle's own llmTool); 'user' delegates to the member default.
     policy: { llmTool: circleLlmPolicy },
-    userDefault: userLlmDefault,
-    llmProviders: buildCircleLlmProviders({ localBaseUrl: CIRCLE_LLM_BASEURL, model: CIRCLE_LLM_MODEL }),
+    userDefault: { mode: llmRuntime.mode },
+    llmProviders: llmRuntime.llmProviders,
     interpret: interpretToCommand,
     // Conversation memory — the recent kring turns (latest via rowsRef), web parity.
     recentTurns: () => recentKringTurns({ rows: rowsRef.current, limit: 6 }),
@@ -1871,12 +1901,12 @@ function CircleDetail({
     gate: createTokenGate({
       rules: circleGateRules(lang()),
       retrieve: makeCircleRetriever({
-        embed: CIRCLE_EMBED_BASEURL
+        embed: hasEmbedProvider
           ? async (texts) => {
               const embedder = resolveCircleEmbedder({
                 circlePolicy: { llmTool: circleLlmPolicy },
-                userDefault:  userLlmDefault,
-                providers:    buildCircleEmbedProviders({ localBaseUrl: CIRCLE_EMBED_BASEURL, model: CIRCLE_EMBED_MODEL }),
+                userDefault:  { mode: llmRuntime.mode },
+                providers:    llmRuntime.embedProviders,
               });
               if (!embedder) throw new Error('no-embedder');   // → graceful tier-1 lexical fallback
               return embedder.embed(texts);
@@ -1901,7 +1931,7 @@ function CircleDetail({
     onNoMatch: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); },
     // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
     onLlmUnavailable: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.basic_mode') }); },
-  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, userLlmDefault, circleLlmPolicy]);
+  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy]);
 
   // SP-13.2.1 / B / M6 — kring chat send: the feedback bot gets first refusal (it owns the turn only
   // for /feedback, /feedback-stop, and free text while active); otherwise echo + route to the circle bot.
