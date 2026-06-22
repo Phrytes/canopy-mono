@@ -78,7 +78,12 @@ export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_OR
   const getCatalog = typeof catalog === 'function' ? catalog : () => catalog;
   return async (opId, args) => {
     if (typeof rawCallSkill !== 'function') return null;
-    const cat = getCatalog();
+    // A broken catalog getter (e.g. one closing over an out-of-scope var) must NOT take
+    // down resolution — that silently turned every circle-source call into a throw the
+    // caller's safe() swallowed → "No circles yet". Treat a throwing/absent getter as an
+    // unknown catalog (→ try all origins).
+    let cat = null;
+    try { cat = getCatalog(); } catch { cat = null; }
     // The catalog gate (Perf #2) skips an origin the catalog says doesn't declare
     // the op — but ONLY when the catalog positively knows the op on SOME origin
     // (an "aspirational op" like getFeed/listNotes declared elsewhere). Essential
