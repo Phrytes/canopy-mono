@@ -30,6 +30,7 @@
 import { composeManifests, buildManifestsByOrigin } from './composeManifests.js';
 // Shared extension-mapping loader (feedback-extension P2) — web≡mobile core.
 import { loadVerifyMappings } from '../../../canopy-chat/src/v2/mappingsLoader.js';
+import { getActiveCircle } from '../../../canopy-chat/src/v2/activeCircle.js';
 // Shared contact/bot exposed-skill registry (feedback-extension P4) — web≡mobile core.
 import { createContactSkillRegistry } from '../../../canopy-chat/src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactThreadChannel.js';
@@ -210,6 +211,7 @@ export async function bootAgentBundle(opts = {}) {
       seedTasks:        opts.seedTasks,
       seedStoopProfile: opts.seedStoopProfile,
       seedStoopPosts:   opts.seedStoopPosts,
+      getActiveCircleId: getActiveCircle,   // per-circle store scoping — the active circle scopes chat ops
     });
   } catch (err) {
     // Wrap with a localised-error-friendly shape so the RN UI can

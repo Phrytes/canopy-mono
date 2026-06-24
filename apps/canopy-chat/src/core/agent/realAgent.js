@@ -121,7 +121,29 @@ export async function createRealHouseholdAgent(opts = {}) {
   const householdDataSource = opts.householdPersistDb
     ? await buildHouseholdDataSource(opts.householdPersistDb)
     : undefined;
-  const householdStore = new HouseholdStore({ dataSource: householdDataSource });
+  // Per-circle store registry (no-pod scoping). One shared DataSource; each circle gets an ItemStore
+  // rooted at mem://household/circles/<id>/ so its list is its OWN. The legacy bucket ('household' /
+  // no active circle) keeps the bare root, so the pre-partition pile stays reachable as a default.
+  const householdStores = new Map();   // circleId → HouseholdStore
+  function getHouseholdScope(circleId) {
+    const id = (typeof circleId === 'string' && circleId) ? circleId : 'household';
+    let store = householdStores.get(id);
+    if (!store) {
+      const rootContainer = id === 'household' ? 'mem://household/' : `mem://household/circles/${id}/`;
+      store = new HouseholdStore({ dataSource: householdDataSource, rootContainer });
+      householdStores.set(id, store);
+    }
+    return store;
+  }
+  // The active circle (shell-supplied) scopes a household call when the chat args don't carry one
+  // (read verbs like listOpen aren't auto-scoped by the dispatch). circleId in args still wins.
+  const getActiveHouseholdCircleId = typeof opts.getActiveCircleId === 'function' ? opts.getActiveCircleId : () => null;
+  function resolveHouseholdCircleId(args) {
+    return (args?.circleId ?? args?.crewId ?? args?.groupId ?? getActiveHouseholdCircleId()) || 'household';
+  }
+  // Legacy/default store — the mirror, seeding, and standalone helpers stay on this bucket for now
+  // (per-circle mirror is a later phase). Per-circle skill reads/writes resolve via getHouseholdScope.
+  const householdStore = getHouseholdScope('household');
 
   // v0.7.12 — multi-pod RSVP coordination (simulated for the demo).
   // calendar.addEvent calls this when attendees are present; default
@@ -343,15 +365,18 @@ export async function createRealHouseholdAgent(opts = {}) {
   function registerHouseholdSkill(opId, skill) {
     hostAgent.register(opId, async ({ parts, from }) => {
       const args = parts?.[0]?.data ?? {};
+      // Per-circle scope: this circle's store (args.circleId, else the shell's active circle, else
+      // the legacy bucket). Read the reply back from the SAME store so the count/list is this circle's.
+      const store = getHouseholdScope(resolveHouseholdCircleId(args));
       const ctx  = {
-        store:       householdStore,
+        store,
         senderWebid: from ?? 'webid:local-demo-user',
         chatId:      HOUSEHOLD_CHAT_ID,
         agent:       hostAgent,
-        householdMirror,     // OBJ-2 — S1d publish-on-write hooks call this
+        householdMirror,     // OBJ-2 — S1d publish-on-write hooks call this (global for now; per-circle later)
       };
       const out = await skill(args, ctx);
-      const payload = await adaptHouseholdReply(opId, out, householdStore, args);
+      const payload = await adaptHouseholdReply(opId, out, store, args);
       return [DataPart(payload)];
     });
   }

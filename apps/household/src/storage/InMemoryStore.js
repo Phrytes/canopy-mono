@@ -65,10 +65,13 @@ export class InMemoryStore {
    *   `CachingDataSource`).  Default: a fresh in-memory `MemorySource`
    *   (unchanged legacy behaviour — `new InMemoryStore()` still works).
    */
-  constructor({ dataSource } = {}) {
+  constructor({ dataSource, rootContainer = 'mem://household/' } = {}) {
+    // Per-circle scoping (no-pod): a distinct `rootContainer` per circle (e.g.
+    // `mem://household/circles/<id>/`) partitions reads/writes — `ItemStore.#listAllItems`
+    // lists by the root prefix, so one shared DataSource serves all circles without leaks.
     this.#store = new ItemStore({
       dataSource:    dataSource ?? new MemorySource(),
-      rootContainer: 'mem://household/',
+      rootContainer,
     });
   }
 

@@ -2978,6 +2978,7 @@ async function boot() {
       // a reload (mobile already threads its AsyncStorage descriptor). Parity with stoop.
       householdPersistDb: { dbName: 'cc-household-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
+      getActiveCircleId: getActiveCircle,            // per-circle store scoping — the active circle scopes chat ops
     });
     circleHouseholdAgent = agent;   // OBJ-2 — expose to showSettings (sibling fn) for the paired-devices panel
     // OBJ-2 — joiner-side peer-redeem sender (shared factory), correlated by circlePendingRedeems.
