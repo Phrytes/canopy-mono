@@ -43,7 +43,13 @@ export function selectLlmClient(policy, providers) {
   if (mode !== 'local' && mode !== 'cloud') return null;
   if (!providers || typeof providers !== 'object') return null;
   const client = providers[mode];
-  return client ?? null;
+  if (client) return client;
+  // Privacy-safe fallback: a circle that asked for 'cloud' but has only a (more-private) 'local'
+  // provider configured uses local — downgrading toward a MORE-private route never violates intent,
+  // and avoids a dead "basic mode" when a single model is deployed under the other key. The reverse
+  // (local → cloud) is deliberately NOT done: that would send to a LESS-private endpoint than asked.
+  if (mode === 'cloud' && providers.local) return providers.local;
+  return null;
 }
 
 /**

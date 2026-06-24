@@ -49,11 +49,16 @@ export function validateUserLlmConfig(cfg) {
 export function buildUserLlmRuntime(userCfg, { env = {} } = {}) {
   const useUser = userCfg && userCfg.preset && userCfg.preset !== 'off';
   const confidential = useUser && userCfg.preset === 'confidential-proxy';
-  const mode = useUser ? modeForUserCfg(userCfg) : (env.mode || (env.llmBaseUrl ? 'local' : 'off'));
+  // A user route is only "in effect" when it actually carries a URL. Picking a preset but leaving the
+  // address blank must NOT kill the assistant — it falls back to the deployment env default (else the bot
+  // silently drops to "basic mode"). User URL wins; otherwise env; else off.
+  const hasUserLlm   = !!(useUser && userCfg.llmBaseUrl);
+  const hasUserEmbed = !!(useUser && userCfg.embedBaseUrl);
+  const mode = hasUserLlm ? modeForUserCfg(userCfg) : (env.llmBaseUrl ? 'local' : 'off');
 
   // ── LLM ────────────────────────────────────────────────────────────────────
   let llmProviders = {};
-  if (useUser && userCfg.llmBaseUrl) {
+  if (hasUserLlm) {
     assertConfidentialRouteSafe({ confidential, baseUrl: userCfg.llmBaseUrl, attestation: userCfg.attestation, label: 'LLM route' });
     const k = keyForMode(mode);
     llmProviders = buildCircleLlmProviders({
@@ -62,13 +67,13 @@ export function buildUserLlmRuntime(userCfg, { env = {} } = {}) {
       apiKey:          userCfg.apiKey || null,
       timeoutMs:       env.timeoutMs,
     });
-  } else if (!useUser && env.llmBaseUrl) {
+  } else if (env.llmBaseUrl) {
     llmProviders = buildCircleLlmProviders({ localBaseUrl: env.llmBaseUrl, model: env.llmModel, apiKey: env.llmApiKey, timeoutMs: env.timeoutMs });
   }
 
   // ── Embeddings (raw text too → same guard) ──────────────────────────────────
   let embedProviders = {};
-  if (useUser && userCfg.embedBaseUrl) {
+  if (hasUserEmbed) {
     assertConfidentialRouteSafe({ confidential, baseUrl: userCfg.embedBaseUrl, attestation: userCfg.attestation, label: 'embedder route' });
     const k = keyForMode(mode);
     embedProviders = buildCircleEmbedProviders({
@@ -76,7 +81,7 @@ export function buildUserLlmRuntime(userCfg, { env = {} } = {}) {
       [`${k}Model`]:   userCfg.embedModel || undefined,
       apiKey:          userCfg.apiKey || null,
     });
-  } else if (!useUser && env.embedBaseUrl) {
+  } else if (env.embedBaseUrl) {
     embedProviders = buildCircleEmbedProviders({ localBaseUrl: env.embedBaseUrl, model: env.embedModel, apiKey: env.embedApiKey });
   }
 

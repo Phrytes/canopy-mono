@@ -67,6 +67,15 @@ describe('buildUserLlmRuntime', () => {
     expect(rt.llmProviders.local).toBeTruthy();
     expect(rt.embedProviders.local).toBeTruthy();
   });
+  it('falls back to env when a preset is picked but the URL is left BLANK (no dark assistant)', () => {
+    // the footgun: user selects "confidential" but never types an address → must use the env default,
+    // NOT build an empty provider map (which silently drops the bot to "basic mode").
+    const rt = buildUserLlmRuntime({ preset: 'confidential-proxy', llmBaseUrl: '', embedBaseUrl: '' },
+      { env: { llmBaseUrl: 'http://localhost:8080', llmModel: 'kimi-k2.6', embedBaseUrl: 'http://localhost:8080' } });
+    expect(rt.mode).toBe('local');
+    expect(rt.llmProviders.local).toBeTruthy();   // env, not empty
+    expect(rt.embedProviders.local).toBeTruthy();
+  });
   it('throws on an unsafe confidential route', () => {
     expect(() => buildUserLlmRuntime({ preset: 'confidential-proxy', llmBaseUrl: 'https://evil/v1' })).toThrow(/confidential/i);
   });
