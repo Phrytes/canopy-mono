@@ -15,10 +15,22 @@ describe('buildCircleInviteUri', () => {
     expect(r.uri).toMatch(/^stoop-invite:\/\//);
   });
 
-  it('returns {error} when the caller is not admin / no code', async () => {
+  it('admin-only is terminal (does not try to mint); missing args rejected', async () => {
     const callSkill = vi.fn(async () => ({ error: 'admin-only' }));
     expect(await buildCircleInviteUri({ callSkill, circleId: 'c' })).toEqual({ error: 'admin-only' });
+    expect(callSkill).toHaveBeenCalledTimes(1);   // no rotate attempt
     expect(await buildCircleInviteUri({})).toEqual({ error: 'missing-args' });
+  });
+
+  it('mints a fresh code (rotateMyGroupCode) when there is no active one', async () => {
+    const callSkill = vi.fn(async (app, op) => {
+      if (op === 'getCurrentMembershipCode') return { error: 'no-code' };
+      if (op === 'rotateMyGroupCode') return { codeId: 'x', code: 'FRESH-CODE', expiresAt: 42 };
+      return {};
+    });
+    const r = await buildCircleInviteUri({ callSkill, circleId: 'c', adminPeerAddr: 'a' });
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'rotateMyGroupCode', { groupId: 'c' });
+    expect(r.uri).toMatch(/^stoop-invite:\/\//);
   });
 });
 

@@ -30,15 +30,22 @@ export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr 
   if (typeof callSkill !== 'function' || !circleId) return { error: 'missing-args' };
   let res;
   try { res = await callSkill('stoop', 'getCurrentMembershipCode', { groupId: circleId }); }
-  catch (err) { return { error: err?.message || 'code-fetch-failed' }; }
-  if (!res || res.error || !res.code) return { error: res?.error || 'no-code' };
-  const invite = {
-    groupId:   circleId,
-    code:      res.code,
-    expiresAt: res.expiresAt,
-    ...(adminPeerAddr ? { adminPeerAddr } : {}),
-  };
-  return { uri: encodeMembershipCodeUrl(invite), expiresAt: res.expiresAt };
+  catch (err) { res = { error: err?.message || 'code-fetch-failed' }; }
+  let code = res?.code;
+  let expiresAt = res?.expiresAt;
+  if (!code) {
+    // A non-'no-code' error (e.g. admin-only) is terminal — don't try to mint. Otherwise there's simply
+    // no ACTIVE code (expired, or the circle predates code-minting) → mint a fresh one (admin-gated;
+    // surfaces 'admin-only' itself if the caller can't). So an invite always works for an admin.
+    if (res?.error && res.error !== 'no-code') return { error: res.error };
+    let rot;
+    try { rot = await callSkill('stoop', 'rotateMyGroupCode', { groupId: circleId }); }
+    catch (err) { rot = { error: err?.message || 'rotate-failed' }; }
+    if (!rot?.code) return { error: rot?.error || 'no-code' };
+    code = rot.code; expiresAt = rot.expiresAt;
+  }
+  const invite = { groupId: circleId, code, expiresAt, ...(adminPeerAddr ? { adminPeerAddr } : {}) };
+  return { uri: encodeMembershipCodeUrl(invite), expiresAt };
 }
 
 /**
