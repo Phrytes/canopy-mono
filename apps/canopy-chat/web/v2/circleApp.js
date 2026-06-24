@@ -39,7 +39,7 @@ import { buildCircleLlmProviders } from '../../src/v2/circleLlmProviders.js';
 import { createTokenGate } from '../../src/v2/tokenGate.js';
 import { circleGateRules } from '../../src/v2/circleGate.js';
 import { interpretToCommand } from '../../src/v2/interpretCommand.js';
-import { createCircleDispatch } from '../../src/v2/circleDispatch.js';
+import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.js';
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
@@ -645,6 +645,13 @@ const contactThreads = new Map();
 let _activeContactThread = null; // { contactId, rerender } — set while a DM thread is on screen
 let circlePendingFollowUp = null;// a single-field needsForm awaiting the user's next message (conversational elicitation)
 let circlePendingFormFollowUp = null; // a 2+-field needsForm → inline multi-field form (mobile parity); cleared on submit
+// The bot asked a free-text QUESTION (an llm-reply containing '?') — route the user's NEXT line back to it
+// (no '@assistant' needed) with the prior exchange threaded as conversation, so a bare answer resolves.
+let circleAwaitingBotReply = null;   // {question, query} | null
+function noteCircleBotTurn(r, query) {
+  const reply = r && r.via === 'llm-reply' && typeof r.reply === 'string' ? r.reply.trim() : '';
+  circleAwaitingBotReply = reply && /\?/.test(reply) ? { question: reply, query: String(query || '') } : null;
+}
 let _kringRender = null;         // { circleId, botBubble(text), fanOut(msgId,text,ts) } — set by showKring
 // One bash-style command history for the kring composer, module-level so it survives showKring re-renders
 // (the classic shell keeps a single global history too). Web↔mobile parity via the shared helper.
@@ -2226,6 +2233,23 @@ function showKring(id, circle, policy) {
           if (circleDispatchReady) await circleDispatchReady({ opId: ready.opId, args: ready.args });
           return;
         }
+        // Conversational follow-up: the bot just asked a free-text question. Route THIS line back to it —
+        // force-addressed so it's interpreted (the prior Q&A threaded as `history`) — instead of fanning
+        // out to the kring. So "which list?" → "shopping" continues the conversation, no @assistant needed.
+        if (circleAwaitingBotReply && !line.startsWith('/')) {
+          const prev = circleAwaitingBotReply;
+          circleAwaitingBotReply = null;
+          const aMsgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;
+          eventLog.append(kringChatMessageEvent({ msgId: aMsgId, ts: Date.now(), circleId: id, actor: LOCAL_ACTOR, text: line }));
+          rerender();
+          const addressed = addressesBot(line, CIRCLE_BOT_NAME) ? line : `@${CIRCLE_BOT_NAME} ${line}`;
+          const history = [
+            { role: 'user', content: prev.query },
+            { role: 'assistant', content: prev.question },
+          ].filter((m) => m.content);
+          if (circleBot) { noteCircleBotTurn(await circleBot.handle(addressed, { id, msgId: aMsgId, ts: Date.now(), history }), line); }
+          return;
+        }
         // Phase 5 — the feedback bot gets first refusal (owns /feedback, /feedback-stop, the bot's own
         // slash cmds + free text while active); else the circle bot routes the turn (gate → interpret →
         // dispatch), with plain messages fanning out. Both render into the kring stream via _kringRender.
@@ -2238,7 +2262,7 @@ function showKring(id, circle, policy) {
         // intercepts as a command posts its OWN scoped reply; the user's words still went out.)
         eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: id, actor: LOCAL_ACTOR, text: line, scope: 'kring' }));
         rerender();
-        if (circleBot) { await circleBot.handle(line, { id, msgId, ts }); }
+        if (circleBot) { noteCircleBotTurn(await circleBot.handle(line, { id, msgId, ts }), line); }
         else { broadcastFanOut({ msgId, text: line, ts }); }   // fallback before the bot is built
       },
       onAction: (action /*, row */) => {
