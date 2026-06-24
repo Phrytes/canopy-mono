@@ -125,6 +125,10 @@ import { buildKringTabs, DEFAULT_KRING_TAB, featureTabId, featureForTabId } from
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions block.
 import { createActionFrequencyStore } from '../../src/v2/actionFrequency.js';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
+// OBJ-2 membership — the peer-redeem handshake (joiner ⇄ admin) is shared core; v2 just wires the
+// same three factories the classic shells use (groupRedeem.js) into its peer router + join glue.
+import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGroupRedeemRequest } from '../../src/core/handlers/groupRedeem.js';
+import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
 import { createChatMessageInbox } from '../../src/v2/chatMessageInbox.js';
@@ -566,6 +570,9 @@ let circleHouseholdAgent = null; // OBJ-2 — the real household agent (createRe
                                  // no-pod sync hooks (householdSelfAddr / addHouseholdPeer). Was referenced
                                  // as a free `agent` → ReferenceError that broke web Circle Settings entirely.
 let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
+// OBJ-2 membership — peer-redeem correlation (joiner side) + the sender, set when the agent boots.
+const circlePendingRedeems = new Map();  // requestId → {resolve,reject,timer}
+let circleSendPeerRedeem = null;         // makeSendGroupRedeemRequest(...) bound to this agent
 // OBJ-2 S1c-shell — feed the household no-pod sync roster with a circle's MEMBERS
 // (people, from the stoop group roster — never bots). Assigned in the boot fn
 // (which owns `agent`); module-level so `showDetail` (open-circle) can call it.
@@ -2912,6 +2919,12 @@ async function boot() {
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
     });
     circleHouseholdAgent = agent;   // OBJ-2 — expose to showSettings (sibling fn) for the paired-devices panel
+    // OBJ-2 — joiner-side peer-redeem sender (shared factory), correlated by circlePendingRedeems.
+    circleSendPeerRedeem = makeSendGroupRedeemRequest({
+      sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
+      isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
+      pendingMap:      circlePendingRedeems,
+    });
     // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
     // folio/calendar; reuses stoop's already-built pod-routing write-through). Best-effort.
     if (podSession?.isLoggedIn && circleRealPodRouting?.podRoot && typeof agent.attachStoopPod === 'function') {
@@ -3107,6 +3120,10 @@ async function boot() {
           }),
           'calendar-rsvp':           makeHandleCalendarRsvp({ callSkill: rawCallSkill, publishEvent: publishEventToLog }),
           'calendar-cancel':         makeHandleCalendarCancel({ callSkill: rawCallSkill, publishEvent: publishEventToLog }),
+          // OBJ-2 membership — the no-pod join handshake (shared core, same as the classic shells):
+          // admin verifies an incoming redeem + replies; joiner resolves the pending request on response.
+          'group-redeem-request':    makeHandleGroupRedeemRequest({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
+          'group-redeem-response':   makeHandleGroupRedeemResponse({ pendingMap: circlePendingRedeems }),
           // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
           // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message
