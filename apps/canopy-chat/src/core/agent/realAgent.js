@@ -231,6 +231,22 @@ export async function createRealHouseholdAgent(opts = {}) {
     publishItemRemoved: (id)   => householdMirror.publishItemRemoved(id),
   });
 
+  // OBJ-2 catch-up — the mirror only fans out NEW writes, so a freshly-paired peer never sees the
+  // EXISTING list. When a GENUINELY new peer is added we re-publish our current open items; the
+  // receiver de-dupes by etag/_v (idempotent), so both sides converge on the union. Fans out to all
+  // peers, but only fires on a peer that wasn't already known, so a re-feed on circle-open is a no-op.
+  async function republishHouseholdItemsToNewPeer() {
+    let items = [];
+    try { items = await householdStore.listOpen({}); } catch { return; }
+    for (const it of (Array.isArray(items) ? items : [])) {
+      try { householdMirror.publishItem(it); } catch { /* best-effort */ }
+    }
+  }
+  function isNewHouseholdPeer(pubKey) {
+    if (!pubKey) return false;
+    try { return !(householdMirror.listPeers?.() ?? []).includes(pubKey); } catch { return true; }
+  }
+
   // Paired-device PERSISTENCE — manually-paired household peers (the in-app "paired
   // devices" screen → addHouseholdPeer) survive a reload. The circle-membership feed
   // (listGroupRoster → addHouseholdPeer) is re-run on open and is the production source;
@@ -2199,14 +2215,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     // feed (listGroupRoster) AND the in-app "paired devices" screen. Both land here;
     // add/remove persist the manual pairings (see HOUSEHOLD_PEERS_KEY) so they survive a
     // reload. Inert until peers are added. Returns the resulting roster for the UI.
-    addHouseholdPeer:    async (pubKey) => { await householdMirror.addPeer(pubKey); await persistHouseholdPeers(); return householdMirror.listPeers?.() ?? []; },
+    addHouseholdPeer:    async (pubKey) => { const fresh = isNewHouseholdPeer(pubKey); await householdMirror.addPeer(pubKey); await persistHouseholdPeers(); if (fresh) republishHouseholdItemsToNewPeer().catch(() => {}); return householdMirror.listPeers?.() ?? []; },
     removeHouseholdPeer: async (pubKey) => { householdMirror.removePeer(pubKey); await persistHouseholdPeers(); return householdMirror.listPeers?.() ?? []; },
     // OBJ-2 mutual pairing — add the peer AND ask it to add us back (a __pairReq carrying our address),
     // so a single scan makes the no-pod sync bidirectional. The receiver's inbound router adds us and
     // does NOT echo, so there's no loop. Best-effort: a send failure still leaves our half of the pair.
     pairWithPeer:        async (pubKey) => {
+      const fresh = isNewHouseholdPeer(pubKey);
       await householdMirror.addPeer(pubKey); await persistHouseholdPeers();
       try { await sa.peer.sendTo(pubKey, { __pairReq: { addr: chatId.pubKey } }); } catch { /* best-effort */ }
+      if (fresh) republishHouseholdItemsToNewPeer().catch(() => {});   // catch-up: backfill the new peer
       return householdMirror.listPeers?.() ?? [];
     },
     listHouseholdPeers:  () => householdMirror.listPeers?.() ?? [],
@@ -2268,7 +2286,11 @@ export async function createRealHouseholdAgent(opts = {}) {
         // sync is bidirectional from one scan. Add + persist (no echo → no loop), then consume.
         const pr = env?.payload?.__pairReq;
         if (pr && typeof pr.addr === 'string' && pr.addr && pr.addr !== chatId.pubKey) {
-          Promise.resolve(householdMirror.addPeer(pr.addr)).then(() => persistHouseholdPeers()).catch(() => {});
+          const fresh = isNewHouseholdPeer(pr.addr);
+          Promise.resolve(householdMirror.addPeer(pr.addr))
+            .then(() => persistHouseholdPeers())
+            .then(() => { if (fresh) return republishHouseholdItemsToNewPeer(); })   // backfill the new peer too
+            .catch(() => {});
           return;
         }
         try { if (householdEnvelopeAdapter.handleInbound(env?.from, env?.payload)) return; }
