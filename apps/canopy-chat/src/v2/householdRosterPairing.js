@@ -1,0 +1,28 @@
+/**
+ * canopy-chat v2 — household roster → no-pod sync pairing (OBJ-2).
+ *
+ * A circle's members are recorded as stoop `membership-redemption` items; `listGroupRoster` flattens
+ * them to `[{addr, role}]`. To make a circle's items sync peer-to-peer with no pod, each device adds
+ * every OTHER member's transport address as a household-sync peer (`agent.addHouseholdPeer`). When both
+ * devices do this on circle-open (and after a join), they become mutual sync peers — so subsequent
+ * writes fan out across the circle.
+ *
+ * Shared web + mobile (one source, each shell just passes its `agent`) — the structure invariant.
+ *
+ * @param {{ agent: object, circleId: string }} a
+ * @returns {Promise<number>} how many peers were (re-)added (deduped by the agent).
+ */
+export async function feedHouseholdRoster({ agent, circleId } = {}) {
+  if (!agent || typeof agent.addHouseholdPeer !== 'function' || !circleId) return 0;
+  let r;
+  try { r = await agent.callSkill('stoop', 'listGroupRoster', { groupId: circleId }); }
+  catch { return 0; }   // not a group / no roster → household sync stays local
+  // relay-only deployments expose the address as relay.address; NKN as peer.address; fall back to the
+  // household self-address (the pubKey peers route to). Never pair with ourselves.
+  const self = agent.peer?.address ?? agent.relay?.address ?? agent.householdSelfAddr ?? null;
+  let added = 0;
+  for (const m of (Array.isArray(r?.members) ? r.members : [])) {
+    if (m?.addr && m.addr !== self) { try { agent.addHouseholdPeer(m.addr); added += 1; } catch { /* */ } }
+  }
+  return added;
+}

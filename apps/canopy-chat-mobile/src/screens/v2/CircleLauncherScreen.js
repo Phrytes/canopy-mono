@@ -87,6 +87,7 @@ import JoinGroupWizardModal from '../../../../canopy-chat/src/rn/wizards/joinGro
 import QrScannerModal from '../../rn/QrScannerModal.js';
 import { QrCodeView } from '@canopy/react-native/qr/view';
 import { buildCircleInviteUri } from '../../../../canopy-chat/src/v2/circleInvite.js';
+import { feedHouseholdRoster } from '../../../../canopy-chat/src/v2/householdRosterPairing.js';
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
@@ -757,12 +758,15 @@ export default function CircleLauncherScreen({
     setSelected(c);
     setView('detail');
     setItems([]);
+    // OBJ-2 — pair this circle's members as no-pod household-sync peers (web parity). Both devices do
+    // this on open → they become mutual sync peers, so writes fan out. Best-effort; never blocks open.
+    feedHouseholdRoster({ agent: bundle?.agent, circleId: c.id }).catch(() => {});
     if (!callSkill) return;
     try {
       const got = await loadCircleItems({ callSkill, circleId: c.id });
       setSelected((cur) => { if (cur && cur.id === c.id) setItems(got); return cur; });
     } catch { /* keep empty */ }
-  }, [callSkill]);
+  }, [callSkill, bundle]);
 
   const closeCircle = () => { setActiveCircle(null); setSelected(null); setItems([]); setView('list'); };
 
@@ -1336,7 +1340,12 @@ export default function CircleLauncherScreen({
             sendPeerRedeem={bundle?.sendPeerRedeem}
             t={t}
             onClose={() => setJoinArgs(null)}
-            onDispatched={() => { setJoinArgs(null); load(); }}
+            onDispatched={(r) => {
+              setJoinArgs(null);
+              const gid = r?.groupId ?? r?.joinedGroupId ?? null;
+              if (gid) feedHouseholdRoster({ agent: bundle?.agent, circleId: gid }).catch(() => {});
+              load();
+            }}
           />
         ) : null}
         {/* OBJ-2 — invite QR for a circle (admin shows it; another device scans). */}

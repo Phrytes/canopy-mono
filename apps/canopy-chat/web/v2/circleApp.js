@@ -131,6 +131,7 @@ import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 // same three factories the classic shells use (groupRedeem.js) into its peer router + join glue.
 import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGroupRedeemRequest } from '../../src/core/handlers/groupRedeem.js';
 import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
+import { feedHouseholdRoster } from '../../src/v2/householdRosterPairing.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
 import { rehydrateKringChatsFromStoop } from '../../src/v2/kringChatRehydrate.js';
 import { createChatMessageInbox } from '../../src/v2/chatMessageInbox.js';
@@ -3236,16 +3237,7 @@ async function boot() {
       // dedupes, so repeated calls (re-open, reconnect) are safe; the mirror only
       // fans out once peers are present. Reuses the exact member source the
       // catch-up path uses (`listGroupRoster` → `members[].addr`).
-      feedHouseholdRosterForCircle = async (circleId) => {
-        if (typeof agent?.addHouseholdPeer !== 'function' || !circleId) return;
-        try {
-          const r    = await agent.callSkill('stoop', 'listGroupRoster', { groupId: circleId });
-          const self = agent?.peer?.address ?? agent?.relay?.address ?? null;   // relay-only → relay addr
-          for (const m of (Array.isArray(r?.members) ? r.members : [])) {
-            if (m?.addr && m.addr !== self) agent.addHouseholdPeer(m.addr);
-          }
-        } catch { /* no roster / not a group — household sync stays local */ }
-      };
+      feedHouseholdRosterForCircle = (circleId) => feedHouseholdRoster({ agent, circleId });
 
       // Fire after a short delay so the NKN HI handshake settles.
       // 1.5s mirrors web/main.js's existing kick-off timing.
