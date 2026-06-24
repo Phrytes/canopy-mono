@@ -2834,13 +2834,13 @@ async function showSettings(id) {
     // OBJ-2 — paired devices (no-pod sync). Only wired when the agent exposes the household
     // sync hooks; add/remove persist + return the updated roster (the panel re-draws itself).
     householdSelfAddr:     circleHouseholdAgent?.householdSelfAddr ?? null,
-    householdPeers:        circleHouseholdAgent?.listHouseholdPeers?.() ?? [],
+    householdPeers:        circleHouseholdAgent?.listHouseholdPeers?.(id) ?? [],   // THIS circle's roster
     onAddHouseholdPeer:    typeof circleHouseholdAgent?.pairWithPeer === 'function'
-      ? (addr) => circleHouseholdAgent.pairWithPeer(addr)        // mutual: one scan pairs both ways
+      ? (addr) => circleHouseholdAgent.pairWithPeer(id, addr)        // mutual + per-circle: pair into THIS circle
       : (typeof circleHouseholdAgent?.addHouseholdPeer === 'function'
-        ? (addr) => circleHouseholdAgent.addHouseholdPeer(addr) : undefined),
+        ? (addr) => circleHouseholdAgent.addHouseholdPeer(id, addr) : undefined),
     onRemoveHouseholdPeer: typeof circleHouseholdAgent?.removeHouseholdPeer === 'function'
-      ? (addr) => circleHouseholdAgent.removeHouseholdPeer(addr) : undefined,
+      ? (addr) => circleHouseholdAgent.removeHouseholdPeer(id, addr) : undefined,
     onIncomingApplied:   () => clearPending(),
     onIncomingDiscarded: () => clearPending(),
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },

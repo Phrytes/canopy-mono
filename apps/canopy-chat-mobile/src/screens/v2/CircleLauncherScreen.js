@@ -1056,9 +1056,9 @@ export default function CircleLauncherScreen({
         onIncomingDiscarded={clearIncomingPolicy}
         // OBJ-2 — paired devices (no-pod sync). The agent exposes the household roster surface.
         householdSelfAddr={bundle?.agent?.householdSelfAddr ?? null}
-        householdPeers={bundle?.agent?.listHouseholdPeers?.() ?? []}
-        onAddHouseholdPeer={bundle?.agent?.pairWithPeer ?? bundle?.agent?.addHouseholdPeer}
-        onRemoveHouseholdPeer={bundle?.agent?.removeHouseholdPeer}
+        householdPeers={bundle?.agent?.listHouseholdPeers?.(selected.id) ?? []}
+        onAddHouseholdPeer={(addr) => (bundle?.agent?.pairWithPeer ?? bundle?.agent?.addHouseholdPeer)?.(selected.id, addr)}
+        onRemoveHouseholdPeer={(addr) => bundle?.agent?.removeHouseholdPeer?.(selected.id, addr)}
         onBack={() => { refreshProposals(); setView('detail'); }}
       />
     );

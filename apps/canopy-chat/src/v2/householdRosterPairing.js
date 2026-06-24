@@ -22,7 +22,8 @@ export async function feedHouseholdRoster({ agent, circleId } = {}) {
   const self = agent.peer?.address ?? agent.relay?.address ?? agent.householdSelfAddr ?? null;
   let added = 0;
   for (const m of (Array.isArray(r?.members) ? r.members : [])) {
-    if (m?.addr && m.addr !== self) { try { agent.addHouseholdPeer(m.addr); added += 1; } catch { /* */ } }
+    // Per-circle (OBJ-2 Phase 6): pair the member into THIS circle's mirror, not a global roster.
+    if (m?.addr && m.addr !== self) { try { agent.addHouseholdPeer(circleId, m.addr); added += 1; } catch { /* */ } }
   }
   return added;
 }
