@@ -2201,6 +2201,14 @@ export async function createRealHouseholdAgent(opts = {}) {
     // reload. Inert until peers are added. Returns the resulting roster for the UI.
     addHouseholdPeer:    async (pubKey) => { await householdMirror.addPeer(pubKey); await persistHouseholdPeers(); return householdMirror.listPeers?.() ?? []; },
     removeHouseholdPeer: async (pubKey) => { householdMirror.removePeer(pubKey); await persistHouseholdPeers(); return householdMirror.listPeers?.() ?? []; },
+    // OBJ-2 mutual pairing — add the peer AND ask it to add us back (a __pairReq carrying our address),
+    // so a single scan makes the no-pod sync bidirectional. The receiver's inbound router adds us and
+    // does NOT echo, so there's no loop. Best-effort: a send failure still leaves our half of the pair.
+    pairWithPeer:        async (pubKey) => {
+      await householdMirror.addPeer(pubKey); await persistHouseholdPeers();
+      try { await sa.peer.sendTo(pubKey, { __pairReq: { addr: chatId.pubKey } }); } catch { /* best-effort */ }
+      return householdMirror.listPeers?.() ?? [];
+    },
     listHouseholdPeers:  () => householdMirror.listPeers?.() ?? [],
     // This device's shareable household address (the pubKey peers route to — matches
     // relay.address; the OTHER device pastes this into its "paired devices" screen).
@@ -2256,6 +2264,13 @@ export async function createRealHouseholdAgent(opts = {}) {
       // bug surfaced by the Layer-3 relay test; the shell router was unaffected as it
       // reads the env object regardless.)
       const routedOnPeerMessage = (env) => {
+        // OBJ-2 mutual pairing — the other device added us as a peer and asks us to add it back, so the
+        // sync is bidirectional from one scan. Add + persist (no echo → no loop), then consume.
+        const pr = env?.payload?.__pairReq;
+        if (pr && typeof pr.addr === 'string' && pr.addr && pr.addr !== chatId.pubKey) {
+          Promise.resolve(householdMirror.addPeer(pr.addr)).then(() => persistHouseholdPeers()).catch(() => {});
+          return;
+        }
         try { if (householdEnvelopeAdapter.handleInbound(env?.from, env?.payload)) return; }
         catch { /* fall through to the shell router */ }
         return onPeerMessage?.(env);

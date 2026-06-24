@@ -2767,8 +2767,10 @@ async function showSettings(id) {
     // sync hooks; add/remove persist + return the updated roster (the panel re-draws itself).
     householdSelfAddr:     circleHouseholdAgent?.householdSelfAddr ?? null,
     householdPeers:        circleHouseholdAgent?.listHouseholdPeers?.() ?? [],
-    onAddHouseholdPeer:    typeof circleHouseholdAgent?.addHouseholdPeer === 'function'
-      ? (addr) => circleHouseholdAgent.addHouseholdPeer(addr) : undefined,
+    onAddHouseholdPeer:    typeof circleHouseholdAgent?.pairWithPeer === 'function'
+      ? (addr) => circleHouseholdAgent.pairWithPeer(addr)        // mutual: one scan pairs both ways
+      : (typeof circleHouseholdAgent?.addHouseholdPeer === 'function'
+        ? (addr) => circleHouseholdAgent.addHouseholdPeer(addr) : undefined),
     onRemoveHouseholdPeer: typeof circleHouseholdAgent?.removeHouseholdPeer === 'function'
       ? (addr) => circleHouseholdAgent.removeHouseholdPeer(addr) : undefined,
     onIncomingApplied:   () => clearPending(),
