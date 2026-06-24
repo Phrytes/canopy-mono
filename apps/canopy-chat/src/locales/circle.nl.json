@@ -1990,6 +1990,26 @@
       "text": "Gekopieerd",
       "doc": "OBJ-2 — transient confirmation after copying the address."
     },
+    "qrHint": {
+      "text": "Scan dit op je andere apparaat om te koppelen",
+      "doc": "OBJ-2 — caption under the pairing QR of this device’s address."
+    },
+    "scan": {
+      "text": "📷 Scan een apparaat",
+      "doc": "OBJ-2 — button that opens the camera to scan another device’s pairing QR."
+    },
+    "scanTitle": {
+      "text": "Scan de code van een apparaat",
+      "doc": "OBJ-2 — title of the QR scanner modal for pairing."
+    },
+    "scanUnknown": {
+      "text": "Die code is geen koppelcode voor een apparaat.",
+      "doc": "OBJ-2 — shown when a scanned/pasted code is not a canopy-pair payload."
+    },
+    "paired": {
+      "text": "Gekoppeld ✓",
+      "doc": "OBJ-2 — transient confirmation after a successful scan-to-pair."
+    },
     "addPlaceholder": {
       "text": "Plak het adres van het andere apparaat",
       "doc": "OBJ-2 — input placeholder for the peer address to pair."

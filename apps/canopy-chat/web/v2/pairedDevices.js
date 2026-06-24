@@ -18,6 +18,8 @@
  * @param {(addr:string)=>Promise<string[]>} opts.onAdd     pair a device; resolves to the new list.
  * @param {(addr:string)=>Promise<string[]>} opts.onRemove  unpair a device; resolves to the new list.
  */
+import { makePairUri, parsePairUri } from '../../src/core/qrSchemes.js';
+
 export function renderPairedDevices(container, opts = {}) {
   if (!container) return container;
   const { selfAddr = '', t, onAdd, onRemove } = opts;
@@ -60,6 +62,22 @@ export function renderPairedDevices(container, opts = {}) {
     });
     mineRow.append(mineInput, copyBtn);
     mine.append(mineLabel, mineRow);
+    // QR of this device's address — the other device scans it to pair (no typing). Lazy-loads the
+    // qrcode lib so it only costs when this panel is open; the copyable text above is the fallback.
+    if (selfAddr) {
+      const qrUri = makePairUri(selfAddr);
+      const canvas = document.createElement('canvas');
+      canvas.className = 'cc-paired__qr';
+      canvas.width = 200; canvas.height = 200;
+      canvas.style.cssText = 'display:block;max-width:200px;margin:8px 0;background:#fff';
+      const qrHint = document.createElement('p');
+      qrHint.className = 'cc-paired__qrhint';
+      qrHint.textContent = tr('circle.pairedDevices.qrHint');
+      mine.append(canvas, qrHint);
+      import('qrcode').then((mod) => {
+        (mod.default ?? mod).toCanvas(canvas, qrUri, { width: 200, margin: 1, errorCorrectionLevel: 'M' }, () => {});
+      }).catch(() => { canvas.remove(); });   // keep the copyable text fallback
+    }
     container.appendChild(mine);
 
     // ── Add a device by address ──
@@ -77,7 +95,8 @@ export function renderPairedDevices(container, opts = {}) {
     err.className = 'cc-paired__err';
     err.hidden = true;
     const submit = async () => {
-      const addr = addInput.value.trim();
+      // Accept a bare address OR a pasted `canopy-pair://…` URI (the QR's payload).
+      const addr = parsePairUri(addInput.value.trim())?.addr;
       if (!addr) return;
       err.hidden = true;
       addBtn.disabled = true;

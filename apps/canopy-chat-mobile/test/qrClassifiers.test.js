@@ -27,6 +27,12 @@ describe('canopy-chat-mobile QR classifiers', () => {
     expect(r.kind).toBe('unknown');
   });
 
+  it('classifies a canopy-pair:// URL as kind:pair', () => {
+    const r = classifyQrPayload('canopy-pair://abc123?name=Phone', CL);
+    expect(r.kind).toBe('pair');
+    expect(r.payload).toMatch(/^canopy-pair:\/\//);
+  });
+
   it('returns kind:unknown for empty input', () => {
     expect(classifyQrPayload('', CL).kind).toBe('unknown');
   });

@@ -18,6 +18,7 @@
 
 const STOOP_CONTACT_SCHEME = 'stoop-contact://';
 const STOOP_INVITE_SCHEME  = 'stoop-invite://';
+const PAIR_SCHEME          = 'canopy-pair://';
 
 /**
  * @returns {Array<{kind: string, classify: (text: string) => unknown|null}>}
@@ -26,7 +27,14 @@ export function getCanopyChatClassifiers() {
   return [
     { kind: 'contact', classify: _classifyContact },
     { kind: 'invite',  classify: _classifyInvite  },
+    { kind: 'pair',    classify: _classifyPair    },
   ];
+}
+
+// OBJ-2 device/agent pairing: `canopy-pair://<addr>?name=<label>` (output of the paired-devices QR).
+// The owning screen passes the payload to parsePairUri → addHouseholdPeer.
+function _classifyPair(text) {
+  return typeof text === 'string' && text.startsWith(PAIR_SCHEME) ? text : null;
 }
 
 function _classifyContact(text) {

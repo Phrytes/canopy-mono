@@ -8,7 +8,10 @@
  */
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
+import { QrCodeView } from '@canopy/react-native/qr/view';
 import { theme } from './theme.js';
+import QrScannerModal from '../../rn/QrScannerModal.js';
+import { makePairUri, parsePairUri } from '../../../../canopy-chat/src/core/qrSchemes.js';
 
 const short = (a) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a);
 
@@ -18,17 +21,26 @@ export default function PairedDevices({ selfAddr = '', peers: initialPeers = [],
   const [draft, setDraft] = useState('');
   const [err, setErr] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [paired, setPaired] = useState(false);
 
-  const add = async () => {
-    const addr = draft.trim();
+  // Pair by address (typed, pasted-URI, or scanned). Tolerant of a `canopy-pair://…` payload.
+  const pair = async (raw) => {
+    const addr = parsePairUri(String(raw ?? '').trim())?.addr;
     if (!addr) return;
     setErr(false); setBusy(true);
     try {
       const next = await onAdd?.(addr);
       setPeers(Array.isArray(next) ? next : [...new Set([...peers, addr])]);
       setDraft('');
+      setPaired(true); setTimeout(() => setPaired(false), 1500);
     } catch { setErr(true); }
     setBusy(false);
+  };
+  const add = () => pair(draft);
+  const onScanResult = (res) => {
+    if (res && res.kind === 'pair') pair(res.payload);
+    else setErr(true);
   };
   const remove = async (addr) => {
     try {
@@ -43,6 +55,20 @@ export default function PairedDevices({ selfAddr = '', peers: initialPeers = [],
 
       <Text style={styles.label}>{tr('circle.pairedDevices.yourAddr')}</Text>
       <Text style={styles.addr} selectable testID="paired-self-addr">{selfAddr}</Text>
+
+      {selfAddr ? (
+        <View style={styles.qrWrap}>
+          <QrCodeView value={makePairUri(selfAddr)} size={180} />
+          <Text style={styles.qrHint}>{tr('circle.pairedDevices.qrHint')}</Text>
+        </View>
+      ) : null}
+
+      <Pressable style={styles.scanBtn} onPress={() => { setErr(false); setScanOpen(true); }} testID="paired-scan-btn" accessibilityRole="button">
+        <Text style={styles.scanBtnText}>{tr('circle.pairedDevices.scan')}</Text>
+      </Pressable>
+      {paired ? <Text style={styles.paired}>{tr('circle.pairedDevices.paired')}</Text> : null}
+
+      <QrScannerModal visible={scanOpen} onClose={() => setScanOpen(false)} onResult={onScanResult} t={tr} />
 
       <View style={styles.addRow}>
         <TextInput
@@ -81,6 +107,11 @@ const styles = StyleSheet.create({
   intro:    { fontSize: 13, color: theme.color.inkSoft, marginBottom: 8 },
   label:    { fontSize: 12, fontWeight: '600', color: theme.color.inkSoft, marginBottom: 2 },
   addr:     { fontSize: 13, color: theme.color.ink, fontFamily: 'monospace', backgroundColor: theme.color.card, borderRadius: theme.radius.md, padding: 8, marginBottom: 10 },
+  qrWrap:   { alignItems: 'center', marginBottom: 12 },
+  qrHint:   { fontSize: 12, color: theme.color.inkSoft, marginTop: 6, textAlign: 'center' },
+  scanBtn:  { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 9, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.accent, marginBottom: 10 },
+  scanBtnText: { color: theme.color.accent, fontSize: 14, fontWeight: '600' },
+  paired:   { fontSize: 13, color: theme.color.accent, marginBottom: 8 },
   addRow:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   input:    { flex: 1, fontSize: 14, color: theme.color.ink, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: theme.color.paper },
   addBtn:   { paddingHorizontal: 14, paddingVertical: 9, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.accent },
