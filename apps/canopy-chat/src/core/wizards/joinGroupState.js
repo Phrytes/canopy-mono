@@ -255,7 +255,7 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
       });
       return {
         ok:      true,
-        message: `✓ Joined buurt "${inv.groupId}" as ${state.handle} (confirmed by admin over peer-bridge).`,
+        message: `✓ Joined circle "${inv.groupId}" as ${state.handle} (confirmed by admin over peer-bridge).`,
         groupId: inv.groupId,
         handle:  state.handle,
       };
@@ -265,7 +265,7 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
     }
     return {
       ok:      true,
-      message: `✓ Joined buurt "${inv.groupId}" as ${state.handle}.`,
+      message: `✓ Joined circle "${inv.groupId}" as ${state.handle}.`,
       groupId: inv.groupId,
       handle:  state.handle,
     };
@@ -290,7 +290,7 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
   }
   return {
     ok:      true,
-    message: `✓ Joined buurt "${inv.groupId}" as ${state.handle}.`,
+    message: `✓ Joined circle "${inv.groupId}" as ${state.handle}.`,
     groupId: inv.groupId,
     handle:  state.handle,
   };

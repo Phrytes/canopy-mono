@@ -31,6 +31,7 @@ export function renderCircleLauncher(container, {
   t,
   onOpenCircle,
   onNewCircle,
+  onJoinCircle,   // OBJ-2 — join an existing circle from an invite (scan/paste)
   // β.5 — per-tile context-menu callbacks.  When absent, right-click is
   // a no-op (so headless usage / tests that don't pass handlers still
   // behave).  Every handler is `(circleId) => void`.
@@ -139,6 +140,16 @@ export function renderCircleLauncher(container, {
     if (typeof onNewCircle === 'function') onNewCircle();
   });
   container.appendChild(newBtn);
+
+  // OBJ-2 — join an existing circle from an invite (scan/paste). Sibling of "+ new circle".
+  if (typeof onJoinCircle === 'function') {
+    const joinBtn = document.createElement('button');
+    joinBtn.type = 'button';
+    joinBtn.className = 'circle-launcher__join';
+    joinBtn.textContent = tr('circle.join.button');
+    joinBtn.addEventListener('click', () => onJoinCircle());
+    container.appendChild(joinBtn);
+  }
 
   return container;
 }

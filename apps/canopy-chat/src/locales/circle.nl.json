@@ -33,6 +33,17 @@
     "text": "Nog geen kring aan te maken — de app is nog aan het starten.",
     "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted."
   },
+  "join": {
+    "button": { "text": "Lid worden van een kring", "doc": "OBJ-2 — launcher entry to join an existing circle from an invite." },
+    "paste":  { "text": "Plak de uitnodigingslink van het andere apparaat:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." }
+  },
+  "invite": {
+    "menu":       { "text": "Uitnodigen voor deze kring", "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR." },
+    "title":      { "text": "Uitnodigen voor deze kring", "doc": "OBJ-2 — heading of the invite-QR overlay." },
+    "hint":       { "text": "Scan dit op het andere apparaat om lid te worden van deze kring.", "doc": "OBJ-2 — caption under the invite QR." },
+    "admin_only": { "text": "Alleen een beheerder kan mensen uitnodigen voor deze kring.", "doc": "OBJ-2 — shown when a non-admin opens invite." },
+    "no_code":    { "text": "Er is geen uitnodigingscode voor deze kring.", "doc": "OBJ-2 — shown when the circle has no current membership code." }
+  },
   "members": {
     "text": "{{count}} leden",
     "doc": "Member count on a circle tile; {{count}} interpolated."

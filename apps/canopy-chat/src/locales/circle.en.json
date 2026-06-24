@@ -33,6 +33,17 @@
     "text": "Can't create a circle yet — the app is still starting.",
     "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted."
   },
+  "join": {
+    "button": { "text": "Join a circle", "doc": "OBJ-2 — launcher entry to join an existing circle from an invite." },
+    "paste":  { "text": "Paste the invite link from the other device:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." }
+  },
+  "invite": {
+    "menu":       { "text": "Invite to this circle", "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR." },
+    "title":      { "text": "Invite to this circle", "doc": "OBJ-2 — heading of the invite-QR overlay." },
+    "hint":       { "text": "Scan this on the other device to join this circle.", "doc": "OBJ-2 — caption under the invite QR." },
+    "admin_only": { "text": "Only an admin can invite people to this circle.", "doc": "OBJ-2 — shown when a non-admin opens invite." },
+    "no_code":    { "text": "No invite code is available for this circle.", "doc": "OBJ-2 — shown when the circle has no current membership code." }
+  },
   "members": {
     "text": "{{count}} members",
     "doc": "Member count on a circle tile; {{count}} interpolated."

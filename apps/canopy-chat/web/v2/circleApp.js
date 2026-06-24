@@ -67,6 +67,8 @@ import { renderCircleMyData } from './circleMyData.js';
 // (the slash/page renderers) inside My-data, mounted in a lightweight overlay.
 import { renderEncryptedBackupWizard } from '../../src/web/wizards/encryptedBackupWizard.js';
 import { renderRestoreFromMnemonicWizard } from '../../src/web/wizards/restoreFromMnemonicWizard.js';
+// OBJ-2 membership — reuse the classic join wizard renderer in v2 via the same overlay adapter.
+import { renderJoinGroupWizard } from '../../src/web/wizards/joinGroupWizard.js';
 // S5 — web-push subscription orchestration (client half; server delivery is a
 // Node-hosted stoop with VAPID keys). The SW receiver lives at web/sw.js.
 import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/webPushClient.js';
@@ -1279,6 +1281,7 @@ function paintLauncher() {
     t,
     onOpenCircle: showDetail,
     onNewCircle:  createCircle,
+    onJoinCircle: showJoinCircle,
     onPin:        onPinCircle,
     onMute:       onMuteCircle,
     onSettings:   (id) => showSettings(id),
@@ -1743,7 +1746,7 @@ async function showMyData() {
 // S5 — mount one of the existing wizard renderers (encrypted-backup / restore)
 // inside a dismissable modal overlay. The wizard owns its own DOM; we supply the
 // container + the shared `rawCallSkill` (the wizards call `callSkill('stoop', …)`).
-function mountMyDataWizard(renderWizard) {
+function mountMyDataWizard(renderWizard, extra = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'cc-mydata-modal';
   const card = document.createElement('div');
@@ -1753,8 +1756,64 @@ function mountMyDataWizard(renderWizard) {
   document.body.appendChild(overlay);
   function close() { try { overlay.remove(); } catch { /* defensive */ } }
   try {
-    renderWizard({ container: card, doc: document, callSkill: rawCallSkill, onClose: close, onDispatched: () => {} });
+    // Thin adapter: hand the shared renderer this shell's DOM + rawCallSkill; `extra` lets a wizard that
+    // needs more (the join wizard wants `args`/`sendPeerRedeem`) get it without a bespoke mount fn.
+    renderWizard({ container: card, doc: document, callSkill: rawCallSkill, onClose: close, onDispatched: () => {}, ...extra });
   } catch (err) { close(); globalThis.alert?.(err?.message ?? String(err)); }
+}
+
+// OBJ-2 — Join a circle (no pod). Paste an invite (the QR's stoop-invite:// payload) and mount the SHARED
+// join wizard through the same overlay adapter; the joiner-side peer-redeem sender carries the no-pod
+// handshake. On success we feed the new roster (so items sync) and refresh the launcher. Pure reuse.
+function showJoinCircle() {
+  const invite = (globalThis.prompt?.(t('circle.join.paste')) || '').trim();
+  if (!invite) return;
+  mountMyDataWizard(renderJoinGroupWizard, {
+    args: { invite },
+    sendPeerRedeem: circleSendPeerRedeem,
+    onDispatched: async (reply) => {
+      const gid = reply?.groupId ?? reply?.joinedGroupId ?? null;
+      if (gid) { try { await feedHouseholdRosterForCircle?.(gid); } catch { /* best-effort */ } }
+      try { circlesCache = await loadCircles(sources); showLauncher(); } catch { /* */ }
+    },
+  });
+}
+
+// OBJ-2 — Invite to THIS circle: read the current membership code (admin-gated) + encode it as a
+// stoop-invite:// QR for another device to scan/paste. Shown in the same modal overlay.
+async function showCircleInvite(circleId) {
+  const adminPeerAddr = circleHouseholdAgent?.householdSelfAddr ?? null;
+  let r;
+  try { r = await buildCircleInviteUri({ callSkill: rawCallSkill, circleId, adminPeerAddr }); }
+  catch { r = { error: 'failed' }; }
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-mydata-modal';
+  const card = document.createElement('div');
+  card.className = 'cc-mydata-modal__card';
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+  const h = document.createElement('h3');
+  h.textContent = t('circle.invite.title');
+  card.appendChild(h);
+  if (!r || r.error || !r.uri) {
+    const p = document.createElement('p');
+    p.textContent = r?.error === 'admin-only' ? t('circle.invite.admin_only') : t('circle.invite.no_code');
+    card.appendChild(p);
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = 220; canvas.height = 220;
+  canvas.style.cssText = 'display:block;margin:10px auto;background:#fff;max-width:220px';
+  card.appendChild(canvas);
+  import('qrcode').then((m) => (m.default ?? m).toCanvas(canvas, r.uri, { width: 220, margin: 1 }, () => {})).catch(() => { canvas.remove(); });
+  const hint = document.createElement('p');
+  hint.textContent = t('circle.invite.hint');
+  card.appendChild(hint);
+  const code = document.createElement('code');
+  code.textContent = r.uri;
+  code.style.cssText = 'display:block;word-break:break-all;font-size:11px;margin-top:6px;opacity:.7';
+  card.appendChild(code);
 }
 
 // S5 — reveal the recovery phrase once (stoop `getMnemonicOnce`). Shown in the
@@ -1953,6 +2012,7 @@ function showKring(id, circle, policy) {
   const allowViewAs  = isFeatureEnabled(policy, 'memberDirectory');
   const allowFiles   = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
   const more = {
+    invite:   () => showCircleInvite(id),
     settings: () => showSettings(id),
     mine:     () => showOverride(id),
     advisor:  () => showAdvisor(id),

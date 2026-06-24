@@ -123,7 +123,7 @@ function renderRulesStep(container, doc, state, onNext, onCancel, rerender) {
   wrap.className = 'cc-wizard-body';
 
   const heading = doc.createElement('h3');
-  heading.textContent = `Buurt: ${state.invite?.groupId ?? '(unknown)'}`;
+  heading.textContent = `Circle: ${state.invite?.groupId ?? '(unknown)'}`;
   wrap.appendChild(heading);
 
   const blurb = doc.createElement('p');
@@ -225,7 +225,7 @@ function renderPrivacyStep(container, doc, state, onNext, onBack, onCancel, rere
     state.shareAddress = meshBox.checked;
   });
   meshRow.appendChild(meshBox);
-  meshRow.appendChild(doc.createTextNode(' Let other buurt members contact me directly (DM).'));
+  meshRow.appendChild(doc.createTextNode(' Let other circle members contact me directly (DM).'));
   wrap.appendChild(meshRow);
   const meshHint = doc.createElement('div');
   meshHint.className = 'cc-wizard-field-hint';
@@ -250,7 +250,7 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
 
   const blurb = doc.createElement('p');
   blurb.className = 'cc-wizard-blurb';
-  blurb.textContent = 'How you appear to other buurt members. Lowercase letters, digits, and hyphens.';
+  blurb.textContent = 'How you appear to other circle members. Lowercase letters, digits, and hyphens.';
   wrap.appendChild(blurb);
 
   const input = doc.createElement('input');
@@ -292,7 +292,7 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
   if (state.submitting) {
     const status = doc.createElement('div');
     status.className = 'cc-wizard-submitting';
-    status.textContent = 'Joining buurt…';
+    status.textContent = 'Joining circle…';
     wrap.appendChild(status);
   }
 
@@ -300,7 +300,7 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
   renderActions(container, doc, [
     { label: '← Back',          onClick: onBack,                                kind: 'secondary', disabled: state.submitting },
     { label: 'Cancel',          onClick: onCancel,                              kind: 'secondary', disabled: state.submitting },
-    { label: 'Join buurt',      onClick: onSubmit,
+    { label: 'Join circle',      onClick: onSubmit,
       disabled: !isValidHandle(state.handle) || state.submitting,
       kind: 'primary', className: 'cc-wizard-submit' },
   ]);

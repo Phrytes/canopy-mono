@@ -717,6 +717,8 @@ function pickSender(row) {
 }
 
 const MORE_ITEMS = [
+  // OBJ-2 — invite someone to this circle (membership QR). First so it's easy to find.
+  { key: 'invite',   labelKey: 'circle.invite.menu' },
   { key: 'settings', labelKey: 'circle.settings.title' },
   { key: 'mine',     labelKey: 'circle.override.title' },
   { key: 'viewAs',   labelKey: 'circle.viewAs.title' },
