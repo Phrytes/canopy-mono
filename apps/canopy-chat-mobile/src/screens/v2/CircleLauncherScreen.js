@@ -82,6 +82,11 @@ import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
 import { createCircleDispatch, addressesBot } from '../../../../canopy-chat/src/v2/circleDispatch.js';
+// OBJ-2 membership — reuse the classic RN join wizard + the camera scanner + the shared invite glue.
+import JoinGroupWizardModal from '../../../../canopy-chat/src/rn/wizards/joinGroupWizardModal.js';
+import QrScannerModal from '../../rn/QrScannerModal.js';
+import { QrCodeView } from '@canopy/react-native/qr/view';
+import { buildCircleInviteUri } from '../../../../canopy-chat/src/v2/circleInvite.js';
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
@@ -280,6 +285,11 @@ export default function CircleLauncherScreen({
   const [items, setItems] = useState([]);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  // OBJ-2 — join a circle: scan an invite QR → run the shared join wizard. Invite modal: show this
+  // circle's membership QR. Both reuse the classic membership core; nothing new below the surface.
+  const [joinScanOpen, setJoinScanOpen] = useState(false);
+  const [joinArgs, setJoinArgs] = useState(null);     // {invite} → JoinGroupWizardModal runs
+  const [inviteFor, setInviteFor] = useState(null);   // {circleId, uri, error} → invite-QR modal
   // P6.1 — selected circle's policy (loaded when `selected` changes); used
   // to gate detail action buttons on the Functies axis (board 4A).
   const [selectedPolicy, setSelectedPolicy] = useState(null);
@@ -879,6 +889,19 @@ export default function CircleLauncherScreen({
     load();
   }, [newName, bundle, load]);
 
+  // OBJ-2 — scanned a circle invite QR → hand it to the shared join wizard.
+  const onJoinScan = useCallback((res) => {
+    setJoinScanOpen(false);
+    if (res && res.kind === 'invite' && res.payload) setJoinArgs({ invite: res.payload });
+  }, []);
+  // OBJ-2 — show THIS circle's membership QR (admin-gated by the substrate).
+  const openCircleInvite = useCallback(async (circleId) => {
+    let r;
+    try { r = await buildCircleInviteUri({ callSkill: bundle?.callSkill, circleId, adminPeerAddr: bundle?.agent?.householdSelfAddr ?? null }); }
+    catch { r = { error: 'failed' }; }
+    setInviteFor({ circleId, ...(r || {}) });
+  }, [bundle]);
+
   if (view === 'screens') {
     // α.3 — Screens primary tab.  Two sub-modes: 'picker' (CRUD list)
     // and 'view' (render the active screen's materialized blocks).
@@ -1294,8 +1317,40 @@ export default function CircleLauncherScreen({
                 <Text style={styles.newText}>{t('circle.new')}</Text>
               </Pressable>
             )}
+            {!creating ? (
+              <Pressable style={styles.joinBtn} accessibilityRole="button" onPress={() => setJoinScanOpen(true)}>
+                <Text style={styles.joinText}>{t('circle.join.button')}</Text>
+              </Pressable>
+            ) : null}
           </ScrollView>
         )}
+        {/* OBJ-2 — scan an invite QR, then run the shared join wizard (no-pod redeem via the bundle's sender). */}
+        <QrScannerModal visible={joinScanOpen} onClose={() => setJoinScanOpen(false)} onResult={onJoinScan} t={t} />
+        <JoinGroupWizardModal
+          visible={!!joinArgs}
+          args={joinArgs}
+          callSkill={bundle?.callSkill}
+          sendPeerRedeem={bundle?.sendPeerRedeem}
+          t={t}
+          onClose={() => setJoinArgs(null)}
+          onDispatched={() => { setJoinArgs(null); load(); }}
+        />
+        {/* OBJ-2 — invite QR for a circle (admin shows it; another device scans). */}
+        <Modal visible={!!inviteFor} transparent animationType="fade" onRequestClose={() => setInviteFor(null)}>
+          <Pressable style={styles.inviteBackdrop} onPress={() => setInviteFor(null)}>
+            <Pressable style={styles.inviteCard} onPress={() => {}}>
+              <Text style={styles.inviteTitle}>{t('circle.invite.title')}</Text>
+              {inviteFor?.uri ? (
+                <>
+                  <QrCodeView value={inviteFor.uri} size={200} />
+                  <Text style={styles.inviteHint}>{t('circle.invite.hint')}</Text>
+                </>
+              ) : (
+                <Text style={styles.inviteHint}>{inviteFor?.error === 'admin-only' ? t('circle.invite.admin_only') : t('circle.invite.no_code')}</Text>
+              )}
+            </Pressable>
+          </Pressable>
+        </Modal>
         {/* β.5 — per-tile context menu, rendered as a transparent modal
             so a tap outside the sheet dismisses it.  The four actions
             mirror web: pin (toggle), mute (toggle), settings, leave. */}
@@ -1317,6 +1372,11 @@ export default function CircleLauncherScreen({
                 const isPinned = !!pinnedMap[cid];
                 const isMuted  = !!mutedMap[cid];
                 const items = [
+                  {
+                    key: 'invite',
+                    label: t('circle.invite.menu'),
+                    onPress: () => { closeTileMenu(); openCircleInvite(cid); },
+                  },
                   {
                     key: 'pin',
                     label: t(isPinned ? 'circle.tile.menu.unpin' : 'circle.tile.menu.pin'),
@@ -2592,6 +2652,12 @@ const styles = StyleSheet.create({
   muted:      { color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 10 },
   newBtn:     { marginTop: 12, padding: 12, borderWidth: 1, borderStyle: 'dashed', borderColor: theme.color.line, borderRadius: 8, alignItems: 'center' },
   newText:    { color: theme.color.inkSoft },
+  joinBtn:    { marginTop: 8, padding: 12, borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, alignItems: 'center' },
+  joinText:   { color: theme.color.accent, fontWeight: '600' },
+  inviteBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  inviteCard: { backgroundColor: theme.color.paper, borderRadius: 14, padding: 20, alignItems: 'center', maxWidth: 320 },
+  inviteTitle:{ fontSize: 16, fontWeight: '700', color: theme.color.ink, marginBottom: 12 },
+  inviteHint: { fontSize: 13, color: theme.color.inkSoft, marginTop: 10, textAlign: 'center' },
   createRow:  { marginTop: 12, flexDirection: 'row', gap: 8, alignItems: 'center' },
   input:      { flex: 1, padding: 11, borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, backgroundColor: theme.color.white, fontSize: 14 },
   createBtn:  { width: 42, paddingVertical: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
