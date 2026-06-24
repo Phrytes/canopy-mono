@@ -561,6 +561,10 @@ const circleSurfacePref = createSurfacePrefStore(localStorageSurfacePrefIo());
 let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
 let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
 let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
+let circleHouseholdAgent = null; // OBJ-2 — the real household agent (createRealHouseholdAgent); module-level
+                                 // so showSettings (a sibling fn, NOT nested in buildCircleBot) can read its
+                                 // no-pod sync hooks (householdSelfAddr / addHouseholdPeer). Was referenced
+                                 // as a free `agent` → ReferenceError that broke web Circle Settings entirely.
 let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
 // OBJ-2 S1c-shell — feed the household no-pod sync roster with a circle's MEMBERS
 // (people, from the stoop group roster — never bots). Assigned in the boot fn
@@ -2761,12 +2765,12 @@ async function showSettings(id) {
     circleId: id,
     // OBJ-2 — paired devices (no-pod sync). Only wired when the agent exposes the household
     // sync hooks; add/remove persist + return the updated roster (the panel re-draws itself).
-    householdSelfAddr:     agent?.householdSelfAddr ?? null,
-    householdPeers:        agent?.listHouseholdPeers?.() ?? [],
-    onAddHouseholdPeer:    typeof agent?.addHouseholdPeer === 'function'
-      ? (addr) => agent.addHouseholdPeer(addr) : undefined,
-    onRemoveHouseholdPeer: typeof agent?.removeHouseholdPeer === 'function'
-      ? (addr) => agent.removeHouseholdPeer(addr) : undefined,
+    householdSelfAddr:     circleHouseholdAgent?.householdSelfAddr ?? null,
+    householdPeers:        circleHouseholdAgent?.listHouseholdPeers?.() ?? [],
+    onAddHouseholdPeer:    typeof circleHouseholdAgent?.addHouseholdPeer === 'function'
+      ? (addr) => circleHouseholdAgent.addHouseholdPeer(addr) : undefined,
+    onRemoveHouseholdPeer: typeof circleHouseholdAgent?.removeHouseholdPeer === 'function'
+      ? (addr) => circleHouseholdAgent.removeHouseholdPeer(addr) : undefined,
     onIncomingApplied:   () => clearPending(),
     onIncomingDiscarded: () => clearPending(),
     onChange: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
@@ -2905,6 +2909,7 @@ async function boot() {
       householdPersistDb: { dbName: 'cc-household-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
     });
+    circleHouseholdAgent = agent;   // OBJ-2 — expose to showSettings (sibling fn) for the paired-devices panel
     // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
     // folio/calendar; reuses stoop's already-built pod-routing write-through). Best-effort.
     if (podSession?.isLoggedIn && circleRealPodRouting?.podRoot && typeof agent.attachStoopPod === 'function') {
