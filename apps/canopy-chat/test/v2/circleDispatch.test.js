@@ -2,10 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.js';
 
 // A minimal harness: records what the shell would have done.
-function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botName, userDefault, gate, recentTurns, onLlmUnavailable } = {}) {
+function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botName, userDefault, gate, recentTurns, onLlmUnavailable, onNoMatch } = {}) {
   const dispatched = [];
   const posted = [];
   const unavailable = [];
+  const noMatched = [];
   const cd = createCircleDispatch({
     policy,
     userDefault,
@@ -17,8 +18,9 @@ function harness({ policy = { llmTool: 'off' }, providers = {}, interpret, botNa
     dispatch: (slash) => { dispatched.push(slash); },
     postToKring: (text) => { posted.push(text); },
     ...(onLlmUnavailable ? { onLlmUnavailable: (text, ctx, info) => { unavailable.push({ text, info }); } } : {}),
+    ...(onNoMatch ? { onNoMatch: (text, ctx, opts) => { noMatched.push({ text, reply: opts && opts.reply }); } } : {}),
   });
-  return { cd, dispatched, posted, unavailable };
+  return { cd, dispatched, posted, unavailable, noMatched };
 }
 
 describe('createCircleDispatch — routing', () => {
@@ -98,6 +100,41 @@ describe('createCircleDispatch — routing', () => {
     expect(r.via).toBe('kring');
     expect(dispatched).toEqual([]);
     expect(posted).toEqual(['@bot what do you think of the weather']);
+  });
+
+  it('surfaces the LLM conversational reply (no tool) via onNoMatch → via:llm-reply', async () => {
+    const interpret = vi.fn(async () => ({ reply: 'Which list — tasks or items?' }));
+    const { cd, noMatched, dispatched } = harness({
+      policy: { llmTool: 'cloud' }, providers: { cloud: { invoke: vi.fn() } }, interpret,
+      onNoMatch: true, botName: 'bot',
+    });
+    const r = await cd.handle('@bot what is on the list');
+    expect(r.via).toBe('llm-reply');
+    expect(dispatched).toEqual([]);
+    expect(noMatched).toEqual([{ text: 'what is on the list', reply: 'Which list — tasks or items?' }]);
+  });
+
+  it('no tool AND no reply → onNoMatch with no reply → via:llm-nomatch', async () => {
+    const interpret = vi.fn(async () => null);
+    const { cd, noMatched } = harness({
+      policy: { llmTool: 'cloud' }, providers: { cloud: { invoke: vi.fn() } }, interpret,
+      onNoMatch: true, botName: 'bot',
+    });
+    const r = await cd.handle('@bot hii');
+    expect(r.via).toBe('llm-nomatch');
+    expect(noMatched).toEqual([{ text: 'hii', reply: undefined }]);
+  });
+
+  it('forwards ctx.history to interpret (conversational follow-up memory)', async () => {
+    const interpret = vi.fn(async () => ({ opId: 'listOpen', args: { type: 'shopping' } }));
+    const { cd, dispatched } = harness({
+      policy: { llmTool: 'cloud' }, providers: { cloud: { invoke: vi.fn() } }, interpret, botName: 'bot',
+    });
+    const history = [{ role: 'user', content: 'what is on the list' }, { role: 'assistant', content: 'which list?' }];
+    await cd.handle('@bot shopping', { history });
+    expect(interpret).toHaveBeenCalledOnce();
+    expect(interpret.mock.calls[0][1].history).toEqual(history);
+    expect(dispatched).toEqual([{ opId: 'listOpen', args: { type: 'shopping' } }]);
   });
 
   it("circle 'user' delegates to the member's default", async () => {

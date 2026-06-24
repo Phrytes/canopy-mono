@@ -986,7 +986,7 @@ function buildCircleBot(agent) {
     // + passed its msgId in ctx) — same as mobile.
     postToKring: (text, ctx) => { if (ctx?.msgId) _kringRender?.fanOut(ctx.msgId, text, ctx.ts); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
-    onNoMatch: () => { _kringRender?.botBubble(t('circle.bot.unknown')); },
+    onNoMatch: (_text, _ctx, opts) => { _kringRender?.botBubble((opts && opts.reply) || t('circle.bot.unknown')); },
     // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
     onLlmUnavailable: () => { _kringRender?.botBubble(t('circle.bot.basic_mode')); },
     // F-retrieve: on the via:'llm' path the gate pulls the circle's relevant items
@@ -1006,7 +1006,6 @@ function buildCircleBot(agent) {
     }),
     botName: CIRCLE_BOT_NAME,
   });
-
 }
 
 // Top-level tab bar (Kringen / Stroom / Mij). Shown on the three top-level

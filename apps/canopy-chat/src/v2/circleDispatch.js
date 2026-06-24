@@ -87,7 +87,9 @@ export function createCircleDispatch({ catalog, policy, userDefault, llmProvider
           const scopedCatalog = scopeCatalogToApps(getCatalog(), circlePolicy?.apps);
           let cmd = null;
           try {
-            cmd = await interpret(stripped, { catalog: scopedCatalog, llm, context });   // → {opId,args} | null
+            // `ctx.history` carries a follow-up's prior turns (the bot's question + the original ask) so a
+            // bare answer ("shopping") resolves against what was just asked. interpret threads it as messages.
+            cmd = await interpret(stripped, { catalog: scopedCatalog, llm, context, history: Array.isArray(ctx?.history) ? ctx.history : undefined });   // → {opId,args}|{reply}|null
           } catch (err) {
             // Smart chat is configured but the endpoint is UNREACHABLE (server down). Reply in plain
             // words ("basic mode") rather than failing the turn — buttons + commands still work.
@@ -101,8 +103,11 @@ export function createCircleDispatch({ catalog, policy, userDefault, llmProvider
             await dispatch({ opId: cmd.opId, args: cmd.args && typeof cmd.args === 'object' ? cmd.args : {} }, ctx);
             return { via: 'llm', cmd };
           }
-          // The LLM ran but mapped the message to NO tool. Don't go silent — let the shell reply via onNoMatch.
-          if (typeof onNoMatch === 'function') { await onNoMatch(stripped, ctx); return { via: 'llm-nomatch' }; }
+          // The LLM ran but mapped the message to NO tool. If it spoke a conversational reply (a clarifying
+          // question / answer), SHOW that — the bot can converse — rather than a dead-end. Otherwise the
+          // shell falls back to its generic "couldn't turn that into an action" via onNoMatch.
+          const reply = cmd && typeof cmd.reply === 'string' && cmd.reply ? cmd.reply : null;
+          if (typeof onNoMatch === 'function') { await onNoMatch(stripped, ctx, reply ? { reply } : undefined); return reply ? { via: 'llm-reply', reply } : { via: 'llm-nomatch' }; }
           // couldn't map it to a command → fall through to the sink.
         } else {
           // Smart chat is OFF (not configured / circle opted out). The bot was addressed with free text the

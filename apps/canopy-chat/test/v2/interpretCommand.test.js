@@ -45,10 +45,27 @@ describe('interpretToCommand', () => {
     expect(cmd).toEqual({ opId: 'addTask', args: { title: 'milk' } });
   });
 
-  it('returns null when the LLM emits a free reply (no tool call)', async () => {
+  it('returns {reply} when the LLM emits a free reply (no tool call) — bot can converse', async () => {
     const llm = llmReturning({ toolCall: null, replyText: 'nice weather' });
     const cmd = await interpretToCommand('how are you?', { catalog: CHORES, llm });
+    expect(cmd).toEqual({ reply: 'nice weather' });
+  });
+
+  it('returns null when there is neither a tool call nor any reply text', async () => {
+    const llm = llmReturning({ toolCall: null, replyText: '' });
+    const cmd = await interpretToCommand('…', { catalog: CHORES, llm });
     expect(cmd).toBeNull();
+  });
+
+  it('threads prior conversation turns (history) into the LLM messages', async () => {
+    let seenMessages = null;
+    const llm = llmInspecting((req) => { seenMessages = req.messages; });
+    await interpretToCommand('shopping', {
+      catalog: CHORES, llm,
+      history: [{ role: 'user', content: 'what is on the list' }, { role: 'assistant', content: 'which list?' }],
+    });
+    expect(seenMessages.map((m) => m.role)).toEqual(['user', 'assistant', 'user']);
+    expect(seenMessages[2].content).toBe('shopping');
   });
 
   it('passes the catalog ops to the LLM as tools', async () => {

@@ -81,7 +81,7 @@ import { scopeForReply } from '../../../../canopy-chat/src/v2/messageScope.js';
 import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
-import { createCircleDispatch } from '../../../../canopy-chat/src/v2/circleDispatch.js';
+import { createCircleDispatch, addressesBot } from '../../../../canopy-chat/src/v2/circleDispatch.js';
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
@@ -144,6 +144,10 @@ import CircleMyDataScreen from './CircleMyDataScreen.js';
 // stays inert (slash commands + plain kring chat still work).
 const CIRCLE_LLM_BASEURL = process.env.EXPO_PUBLIC_CIRCLE_LLM_BASEURL || null;
 const CIRCLE_LLM_MODEL   = process.env.EXPO_PUBLIC_CIRCLE_LLM_MODEL || undefined;
+// Per-call LLM timeout (web parity: VITE_CIRCLE_LLM_TIMEOUT_MS). The provider's 12s default is fine for a
+// fast enclave but aborts a CPU-only local model (qwen2.5:7b warms up + answers in 60–120s) → the bot
+// silently drops to "basic mode". Default generous (120s); override via env.
+const CIRCLE_LLM_TIMEOUT_MS = Number(process.env.EXPO_PUBLIC_CIRCLE_LLM_TIMEOUT_MS ?? 120000) || 120000;
 // F-retrieve tier-2 embeddings (web parity) — base defaults to the LLM base (the
 // enclave serves /v1/chat/completions + /v1/embeddings), so semantic RAG rides the
 // same trust boundary; null base → semantic inert (tier-1 lexical).
@@ -154,6 +158,10 @@ const CIRCLE_BOT_NAME    = process.env.EXPO_PUBLIC_CIRCLE_BOT_NAME || 'assistant
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
 // Default circle posture (off|local|cloud|user); 'user' = each member's personal default decides.
 const CIRCLE_LLM_POLICY  = process.env.EXPO_PUBLIC_CIRCLE_LLM_POLICY || 'user';
+// Scope the LLM's tool list to these app origins (comma-list, e.g. "household,tasks"). Unset → the bot
+// offers ALL circle apps' ops (~105 tools) — a big, slow prompt. Narrowing to the relevant apps cuts the
+// tool count dramatically (household alone ≈ 16), so the per-turn prompt is far smaller + faster.
+const CIRCLE_LLM_APPS = (process.env.EXPO_PUBLIC_CIRCLE_LLM_APPS || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions
 // row.  Module singleton (shared across kring opens), hydrated once from
@@ -1555,6 +1563,14 @@ function CircleDetail({
   // Conversational follow-up: a single-field needsForm awaiting the user's next message (shared followUp).
   const [pendingFollowUp, setPendingFollowUp] = useState(null);
   const [pendingForm, setPendingForm] = useState(null);   // 2+-field needsForm → inline form (parity with web)
+  // The bot asked a free-text QUESTION (an llm-reply containing '?') — route the user's NEXT line straight
+  // back to it (no '@assistant' needed) so the conversation continues. We stash {question, query} so the
+  // answer is interpreted WITH the prior exchange threaded as conversation. Cleared once consumed.
+  const [awaitingBotReply, setAwaitingBotReply] = useState(null);
+  const noteBotTurn = useCallback((r, query) => {
+    const reply = r && r.via === 'llm-reply' && typeof r.reply === 'string' ? r.reply.trim() : '';
+    setAwaitingBotReply(reply && /\?/.test(reply) ? { question: reply, query: String(query || '') } : null);
+  }, []);
   // Composer parity — slash-command auto-suggest off the merged catalog (shared `suggestCommands`,
   // same logic + set as web's dropdown). Tapping a row fills the command; the bash-style ArrowUp/Down
   // history that web also has is a keyboard affordance with no touch-gesture equivalent, so it's
@@ -1850,19 +1866,26 @@ function CircleDetail({
   // B (per-circle policy) — THIS circle's llmTool is authoritative (same cc.circlePolicy.<id> store the
   // settings screen writes). Unset → the deployment default CIRCLE_LLM_POLICY. Reloads per circle.
   const [circleLlmPolicy, setCircleLlmPolicy] = useState(CIRCLE_LLM_POLICY);
+  // This circle's app scope for the LLM tool list (the S6.C per-circle apps). Empty → fall back to the
+  // deployment env default (CIRCLE_LLM_APPS), else all apps. Per-circle so a household circle offers
+  // household tools while a chores circle offers its own — not a blunt global switch.
+  const [circleApps, setCircleApps] = useState([]);
   useEffect(() => {
     let alive = true;
-    if (!circle?.id) { setCircleLlmPolicy(CIRCLE_LLM_POLICY); return undefined; }
+    if (!circle?.id) { setCircleLlmPolicy(CIRCLE_LLM_POLICY); setCircleApps([]); return undefined; }
     AsyncStorage.getItem(`cc.circlePolicy.${circle.id}`)
       .then((s) => {
         if (!alive) return;
         let raw = null;
         try { raw = s ? JSON.parse(s) : null; } catch { raw = null; }
         setCircleLlmPolicy(raw && typeof raw.llmTool === 'string' ? raw.llmTool : CIRCLE_LLM_POLICY);
+        setCircleApps(Array.isArray(raw?.apps) ? raw.apps.filter((a) => typeof a === 'string' && a) : []);
       })
-      .catch(() => { if (alive) setCircleLlmPolicy(CIRCLE_LLM_POLICY); });
+      .catch(() => { if (alive) { setCircleLlmPolicy(CIRCLE_LLM_POLICY); setCircleApps([]); } });
     return () => { alive = false; };
   }, [circle?.id]);
+  // Per-circle apps win; deployment env is the fallback; neither → all apps (undefined → no scoping).
+  const llmApps = circleApps.length ? circleApps : (CIRCLE_LLM_APPS.length ? CIRCLE_LLM_APPS : null);
 
   // B (circle bot) — the kring composer router: slash command → dispatch; free text addressed to the
   // bot (when the circle's LLM route is on) → interpret → dispatch; everything else → normal kring
@@ -1876,6 +1899,7 @@ function CircleDetail({
         mode: CIRCLE_LLM_BASEURL ? 'local' : 'off',
         llmBaseUrl: CIRCLE_LLM_BASEURL, llmModel: CIRCLE_LLM_MODEL,
         embedBaseUrl: CIRCLE_EMBED_BASEURL, embedModel: CIRCLE_EMBED_MODEL,
+        timeoutMs: CIRCLE_LLM_TIMEOUT_MS,
       } });
     } catch { return { llmProviders: {}, embedProviders: {}, mode: 'off' }; }
   }, [userLlmDefault]);
@@ -1884,7 +1908,9 @@ function CircleDetail({
   const circleBot = useMemo(() => createCircleDispatch({
     catalog,
     // Circle policy is authoritative (this circle's own llmTool); 'user' delegates to the member default.
-    policy: { llmTool: circleLlmPolicy },
+    // `apps` scopes the LLM's tool list to the relevant app origins (was never passed → all 105 tools).
+    // Per-circle (circle policy.apps) with the deployment env as fallback.
+    policy: { llmTool: circleLlmPolicy, ...(llmApps ? { apps: llmApps } : {}) },
     userDefault: { mode: llmRuntime.mode },
     llmProviders: llmRuntime.llmProviders,
     interpret: interpretToCommand,
@@ -1928,10 +1954,10 @@ function CircleDetail({
     },
     postToKring: (text, ctx) => { if (ctx?.msgId) broadcastFanOut({ msgId: ctx.msgId, text, ts: ctx.ts ?? Date.now() }); },
     // Addressed the bot, but the LLM mapped it to no tool → reply instead of going silent.
-    onNoMatch: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); },
+    onNoMatch: (_text, _ctx, opts) => { appendKringMessage({ actor: 'bot', text: (opts && opts.reply) || t('circle.bot.unknown') }); },
     // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
     onLlmUnavailable: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.basic_mode') }); },
-  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy]);
+  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy, llmApps]);
 
   // SP-13.2.1 / B / M6 — kring chat send: the feedback bot gets first refusal (it owns the turn only
   // for /feedback, /feedback-stop, and free text while active); otherwise echo + route to the circle bot.
@@ -1949,6 +1975,23 @@ function CircleDetail({
       await runCircleCommandResolved({ opId: ready.opId, args: ready.args });
       return;
     }
+    // Conversational follow-up: the bot just asked a free-text question (llm-reply '?'). Route THIS line
+    // back to it — force-addressed so handle() interprets it (recent turns give it the context) — instead
+    // of broadcasting it to the kring. So "which list?" → "shopping" continues the conversation, no tag.
+    if (awaitingBotReply && !text.startsWith('/')) {
+      const prev = awaitingBotReply;
+      setAwaitingBotReply(null);
+      const appended = appendKringMessage({ actor: 'me', text });
+      const line = addressesBot(text, CIRCLE_BOT_NAME) ? text : `@${CIRCLE_BOT_NAME} ${text}`;
+      // Thread the prior exchange so a bare answer resolves: [original ask] → [bot's question] → [answer].
+      const history = [
+        { role: 'user', content: prev.query },
+        { role: 'assistant', content: prev.question },
+      ].filter((m) => m.content);
+      const r = await Promise.resolve(circleBot.handle(line, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts, history })).catch(() => null);
+      noteBotTurn(r, text);
+      return;
+    }
     // M6 — lazy shared feedback mount; its appendUserBubble/appendBotBubble render into the kring. Text
     // bubbles (incl. the bot's button labels); interactive M12 chips on mobile are a follow-up.
     if (!feedbackMountRef.current) {
@@ -1962,9 +2005,10 @@ function CircleDetail({
     // A plain typed line fans out to the whole kring → scope 'kring' (web parity).
     const appended = appendKringMessage({ actor: 'me', text, scope: 'kring' });
     // Fire-and-forget: the bot posts its own reply bubble; swallow rejections so a failed turn can't
-    // surface as an unhandled promise rejection.
-    Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).catch(() => {});
-  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved]);
+    // surface as an unhandled promise rejection. noteBotTurn arms the conversational follow-up if the
+    // bot replied with a question.
+    Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).then((r) => noteBotTurn(r, text)).catch(() => {});
+  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn]);
 
   // δ.2 — tap-to-retry on the failed icon.  Looks up the original
   // text from the eventLog so we don't have to remember it elsewhere.

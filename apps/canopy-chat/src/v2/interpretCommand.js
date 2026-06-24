@@ -7,11 +7,16 @@
 
 /** Default tool-selection prompt. Internal (LLM-facing), not a user-visible string. */
 export const DEFAULT_INTERPRET_SYSTEM =
-  'You turn a member\'s message in a shared circle into AT MOST ONE of the available tools (commands). '
-  + 'Call a tool ONLY when the message is clearly a request to perform that exact action, with arguments '
-  + 'taken verbatim from the message. If the message is ordinary chat, a question, a greeting, or no tool '
-  + 'clearly fits, call NO tool. When in doubt, call nothing — a missed command is better than a wrong '
-  + 'one. Never invent arguments the message does not contain.';
+  'You are the assistant in a shared circle. When a member\'s message is a clear request to DO or SEE '
+  + 'something, call AT MOST ONE matching tool — this INCLUDES requests to view, list, or show data (use '
+  + 'the matching list/open tool). Take arguments verbatim from the message; never invent them.\n'
+  + 'When no single tool clearly fits:\n'
+  + '- If you only need ONE detail to choose the right tool or argument, reply with a SHORT clarifying '
+  + 'question to the member (e.g. "Which list — shopping or tasks?").\n'
+  + '- If it is ordinary chat or a greeting, reply briefly and naturally.\n'
+  + 'Always address the MEMBER directly in plain language. NEVER describe your own tool-calling decision — '
+  + 'do not say things like "no tool call needed" or "this is a general question"; the member must never '
+  + 'see that. When in doubt between acting and asking, ASK a short question rather than guessing a tool.';
 
 const KIND_TO_JSON_TYPE = { string: 'string', number: 'number', integer: 'integer', boolean: 'boolean' };
 
@@ -56,26 +61,38 @@ export function buildToolDescriptors(catalog) {
  * `null` (chat / no command). Signature matches what `createCircleDispatch` calls as `interpret`.
  *
  * @param {string} text
- * @param {{catalog?: object, llm?: {invoke: Function}, system?: string, options?: object, context?: any[]}} [opts]
+ * @param {{catalog?: object, llm?: {invoke: Function}, system?: string, options?: object, context?: any[],
+ *          history?: Array<{role:'user'|'assistant', content:string}>}} [opts]
  *        `context` = RAG items (e.g. from the token gate's `retrieve`) woven into the system prompt.
- * @returns {Promise<{opId:string, args:object}|null>}
+ *        `history` = prior conversation turns threaded as real messages — so a clarifying follow-up
+ *        ("which list?" → "shopping") resolves against what the bot just asked, not a stateless guess.
+ * @returns {Promise<{opId:string, args:object}|{reply:string}|null>}
  */
-export async function interpretToCommand(text, { catalog, llm, system, options, context } = {}) {
+export async function interpretToCommand(text, { catalog, llm, system, options, context, history } = {}) {
   const q = String(text ?? '').trim();
   if (!q || !llm || typeof llm.invoke !== 'function') return null;
   const tools = buildToolDescriptors(catalog);
   if (tools.length === 0) return null;                       // nothing dispatchable → never call the LLM
 
+  const priorMsgs = Array.isArray(history)
+    ? history.filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string' && m.content)
+    : [];
   const result = await llm.invoke({
     system: withContext(system || DEFAULT_INTERPRET_SYSTEM, context),
-    messages: [{ role: 'user', content: q }],
+    messages: [...priorMsgs, { role: 'user', content: q }],
     tools,
     ...(options ? { options } : {}),
   });
 
   const call = result && result.toolCall;
-  if (!call || !call.id) return null;                        // noise / free reply → no command
-  return { opId: String(call.id), args: call.args && typeof call.args === 'object' ? call.args : {} };
+  if (call && call.id) {
+    return { opId: String(call.id), args: call.args && typeof call.args === 'object' ? call.args : {} };
+  }
+  // No tool — surface the model's conversational reply (a clarifying question, a short answer) so the
+  // bot can CONVERSE instead of dead-ending on "couldn't turn that into an action". `{reply}` carries
+  // no opId, so dispatch treats it as a spoken reply rather than a command. null = nothing usable.
+  const reply = result && typeof result.replyText === 'string' ? result.replyText.trim() : '';
+  return reply ? { reply } : null;
 }
 
 /** Append a compact RAG-context block to the (LLM-facing) system prompt. No-op without context. */
