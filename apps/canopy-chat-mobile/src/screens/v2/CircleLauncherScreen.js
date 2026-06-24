@@ -1326,15 +1326,19 @@ export default function CircleLauncherScreen({
         )}
         {/* OBJ-2 — scan an invite QR, then run the shared join wizard (no-pod redeem via the bundle's sender). */}
         <QrScannerModal visible={joinScanOpen} onClose={() => setJoinScanOpen(false)} onResult={onJoinScan} t={t} />
-        <JoinGroupWizardModal
-          visible={!!joinArgs}
-          args={joinArgs}
-          callSkill={bundle?.callSkill}
-          sendPeerRedeem={bundle?.sendPeerRedeem}
-          t={t}
-          onClose={() => setJoinArgs(null)}
-          onDispatched={() => { setJoinArgs(null); load(); }}
-        />
+        {/* Mount only once we have the invite — the wizard decodes it in its useState initializer (runs
+            once on mount), so an always-mounted modal would cache a "no invite" error. */}
+        {joinArgs ? (
+          <JoinGroupWizardModal
+            visible
+            args={joinArgs}
+            callSkill={bundle?.callSkill}
+            sendPeerRedeem={bundle?.sendPeerRedeem}
+            t={t}
+            onClose={() => setJoinArgs(null)}
+            onDispatched={() => { setJoinArgs(null); load(); }}
+          />
+        ) : null}
         {/* OBJ-2 — invite QR for a circle (admin shows it; another device scans). */}
         <Modal visible={!!inviteFor} transparent animationType="fade" onRequestClose={() => setInviteFor(null)}>
           <Pressable style={styles.inviteBackdrop} onPress={() => setInviteFor(null)}>
