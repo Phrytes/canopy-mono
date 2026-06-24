@@ -33,10 +33,46 @@ import { CIRCLE_GATE_TRAIL, DEFAULT_GATE_LOCALE } from './circleGateLexicon.js';
  */
 export function circleGateRules(locale = DEFAULT_GATE_LOCALE) {
   const loc = CIRCLE_GATE_TRAIL[locale] ? locale : DEFAULT_GATE_LOCALE;
-  return renderGate([
-    mockTasksManifest,
-    mockStoopManifest,
-    mockFolioManifest,
-    calendarManifest,
-  ], { locale: loc, trailLexicon: CIRCLE_GATE_TRAIL });
+  return [
+    // Household TYPED-LIST add (prepended, first-match-wins). The tasks-derived gate below treats EVERY
+    // "add" as a generic addTask and DROPS the list qualifier (see circleGate.test "add X to the list").
+    // But a household circle has typed lists — shopping/errand/repair/schedule — so "add bananas to the
+    // shopping list" must reach addItem({type:'shopping'}), not addTask. This catches the TYPED phrasing
+    // (English + common Dutch); generic "add X to the list" (no type word) returns null → falls through
+    // to the unchanged addTask rule. Types mirror the household manifest's addItem enum.
+    { name: 'household:addItem(typed-list)', test: HH_ADD_TYPED, command: householdTypedListAdd },
+    ...renderGate([
+      mockTasksManifest,
+      mockStoopManifest,
+      mockFolioManifest,
+      calendarManifest,
+    ], { locale: loc, trailLexicon: CIRCLE_GATE_TRAIL }),
+  ];
+}
+
+// alias → canonical household list type (the addItem `type` enum: shopping·errand·repair·schedule).
+const HH_LIST_ALIASES = {
+  shopping: 'shopping', groceries: 'shopping', grocery: 'shopping',
+  boodschappen: 'shopping', boodschappenlijst: 'shopping', boodschappenlijstje: 'shopping',
+  errand: 'errand', errands: 'errand', klusje: 'errand', klusjes: 'errand',
+  repair: 'repair', repairs: 'repair', reparatie: 'repair', reparaties: 'repair',
+  schedule: 'schedule', schedules: 'schedule', agenda: 'schedule',
+};
+// "add <item> to [the] <type> [list]" · "noteer <item> op de <type>lijst" · "voeg <item> toe aan de <type>"
+const HH_ADD_TYPED =
+  /^(?:add|noteer|zet|voeg)\s+(.+?)\s+(?:toe\s+)?(?:to|on|op|aan|naar)\s+(?:the\s+|de\s+|het\s+|my\s+|mijn\s+)?([a-zA-Z]+?)(?:[-\s]?(?:list|lijst|lijstje))?\.?$/i;
+
+/**
+ * "add X to the <type> list" → `addItem({type, text:X})` when <type> is a known household list type;
+ * otherwise null so the generic addTask rule handles it. Pure + deterministic (gate-safe).
+ * @param {string} text
+ * @returns {{opId:'addItem', args:{type:string, text:string}}|null}
+ */
+function householdTypedListAdd(text) {
+  const m = HH_ADD_TYPED.exec(String(text || '').trim());
+  if (!m) return null;
+  const item = m[1].trim();
+  const type = HH_LIST_ALIASES[m[2].toLowerCase()];
+  if (!item || !type) return null;   // no known list type → generic add (addTask) takes it
+  return { opId: 'addItem', args: { type, text: item } };
 }

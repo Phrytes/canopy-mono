@@ -19,6 +19,19 @@ describe('circle gate (manifest-derived) — deterministic routing', () => {
     expect((await route('add buy fresh milk')).command).toEqual({ opId: 'addTask', args: { text: 'buy fresh milk' } });
   });
 
+  it('TYPED list: "add X to the shopping/repair list" → addItem({type}), not addTask', async () => {
+    expect((await route('add bananas to the shopping list')).command).toEqual({ opId: 'addItem', args: { type: 'shopping', text: 'bananas' } });
+    expect((await route('add nails to the repair list')).command).toEqual({ opId: 'addItem', args: { type: 'repair', text: 'nails' } });
+    // alias (groceries → shopping) + a multi-word item
+    expect((await route('add fresh milk to the groceries list')).command).toEqual({ opId: 'addItem', args: { type: 'shopping', text: 'fresh milk' } });
+    // Dutch typed list
+    expect((await route('zet melk op de boodschappenlijst')).command).toEqual({ opId: 'addItem', args: { type: 'shopping', text: 'melk' } });
+  });
+
+  it('UNTYPED "add X to the list" still → addTask (no type word → falls through)', async () => {
+    expect((await route('add milk to the list')).command).toEqual({ opId: 'addTask', args: { text: 'milk' } });
+  });
+
   it('Dutch: "voeg melk toe" / "zet melk op de lijst" → addTask{text:melk}', async () => {
     expect((await route('voeg melk toe')).command).toEqual({ opId: 'addTask', args: { text: 'melk' } });
     expect((await route('zet melk op de lijst')).command).toEqual({ opId: 'addTask', args: { text: 'melk' } });
