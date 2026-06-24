@@ -54,7 +54,7 @@ export const householdManifest = {
         { name: 'text', kind: 'string', required: true, ...STR_NONEMPTY  },
       ],
       surfaces: {
-        chat:  { hint: 'Add a new open item to the household pod.' },
+        chat:  { hint: 'Add an item to a household LIST — type is one of shopping, errand, repair, schedule. Use this for "add X to the shopping/groceries/errand/repair list".' },
         slash: {
           command: '/add',
           match: {
@@ -169,7 +169,7 @@ export const householdManifest = {
         { name: 'dueAt',    kind: 'number' },                  // optional
       ],
       surfaces: {
-        chat:  { hint: 'Add a new task to the household pod.' },
+        chat:  { hint: 'Add a CHORE/TASK to do (assignable, has a due date) — NOT a shopping/errand/repair/schedule list item (use addItem for those).' },
         slash: {
           command: '/task',
           match: {

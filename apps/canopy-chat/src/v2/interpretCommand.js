@@ -44,7 +44,13 @@ export function buildToolDescriptors(catalog) {
     const required = [];
     for (const p of params) {
       if (!p || !p.name) continue;
-      properties[p.name] = { type: KIND_TO_JSON_TYPE[p.kind] || 'string' };
+      const prop = { type: KIND_TO_JSON_TYPE[p.kind] || 'string' };
+      // Pass enum values through so the model knows the valid choices (e.g. addItem.type ∈
+      // {shopping,errand,repair,schedule}) — without this it sends a bare string and can't tell
+      // addItem (a typed list) apart from addTask (a generic chore), so "add X to the shopping list"
+      // mis-routes to addTask. The enum is the strongest signal for correct tool + arg selection.
+      if (p.kind === 'enum' && Array.isArray(p.of) && p.of.length) prop.enum = p.of.slice();
+      properties[p.name] = prop;
       if (p.required) required.push(p.name);
     }
     tools.push({

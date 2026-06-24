@@ -30,6 +30,19 @@ describe('buildToolDescriptors', () => {
     expect(tools.find((t) => t.id === 'listOpen').schema).toEqual({ type: 'object', properties: {} });
   });
 
+  it('passes enum values into the param schema (so the model knows the valid choices)', () => {
+    const cat = catalogOf([
+      { id: 'addItem', verb: 'add', surfaces: { chat: { hint: 'add to a list' } },
+        params: [
+          { name: 'type', kind: 'enum', of: ['shopping', 'errand', 'repair', 'schedule'], required: true },
+          { name: 'text', kind: 'string', required: true },
+        ] },
+    ]);
+    const t = buildToolDescriptors(cat).find((x) => x.id === 'addItem');
+    expect(t.schema.properties.type.enum).toEqual(['shopping', 'errand', 'repair', 'schedule']);
+    expect(t.schema.required).toEqual(['type', 'text']);
+  });
+
   it('falls back to verb / id for the description and tolerates a missing catalog', () => {
     expect(buildToolDescriptors(null)).toEqual([]);
     expect(buildToolDescriptors({}).length).toBe(0);
