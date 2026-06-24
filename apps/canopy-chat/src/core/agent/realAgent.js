@@ -2288,6 +2288,12 @@ export async function createRealHouseholdAgent(opts = {}) {
     // This device's shareable household address (the pubKey peers route to — matches
     // relay.address; the OTHER device pastes this into its "paired devices" screen).
     householdSelfAddr:   chatId.pubKey,
+    // OBJ-2 — re-push THIS circle's current open items to ALL its peers. Called on circle-open
+    // (feedHouseholdRoster) so a late-subscribing / already-paired peer still converges: the
+    // live publish-on-write only reaches peers subscribed AT THAT MOMENT, and catch-up fires
+    // only on a FRESH pair — so without this, items added before the other side opened the
+    // circle never arrive. The receiver de-dupes by etag/_v (idempotent), so re-push is safe.
+    resyncHouseholdCircle: async (circleId) => { try { await republishHouseholdItemsToNewPeer(circleId); } catch { /* best-effort */ } },
     // Sync seam (mirror + inbound handler) — used by S1d skill hooks + tests.
     householdSync: {
       mirror:        householdMirror,

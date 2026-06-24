@@ -26,7 +26,7 @@ import { initLocalisation, t, detectDeviceLang, currentLang,
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { VaultIndexedDB, VaultMemory } from '@canopy/vault';
+import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
 // session routes a sealed circle to the user's REAL pod; otherwise the in-memory pseudo-pod.
 import * as podAuth from '../../src/web/podAuth.js';
@@ -2973,6 +2973,12 @@ async function boot() {
     };
     const agent = await createRealHouseholdAgent({
       publishEvent: publishEventToLog,
+      // PERSISTENT chat identity (the secure-agent peer address). Without a persistent vault the
+      // identity is in-memory and ROTATES on every page reload — so this device's address changes,
+      // the circle roster's recorded address goes stale, and peers can no longer reach it (no-pod
+      // sync silently dies after a refresh). localStorage-backed, same 'cc-chat-id:' prefix the
+      // mobile bundle uses (VaultAsyncStorage) → stable address across reloads, web≡mobile.
+      chatVault: new VaultLocalStorage({ prefix: 'cc-chat-id:' }),
       stoopPersistDb: { dbName: 'cc-stoop-state', storeName: 'items' },
       // OBJ-2 S1e (web) — persist the household store in IndexedDB so items survive
       // a reload (mobile already threads its AsyncStorage descriptor). Parity with stoop.

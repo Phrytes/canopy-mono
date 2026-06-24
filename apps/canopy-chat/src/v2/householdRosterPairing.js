@@ -25,5 +25,10 @@ export async function feedHouseholdRoster({ agent, circleId } = {}) {
     // Per-circle (OBJ-2 Phase 6): pair the member into THIS circle's mirror, not a global roster.
     if (m?.addr && m.addr !== self) { try { agent.addHouseholdPeer(circleId, m.addr); added += 1; } catch { /* */ } }
   }
+  // OBJ-2 convergence — re-push our current items to all (now-paired) peers. The live publish-on-write
+  // only reaches peers subscribed at write-time, and per-peer catch-up fires only on a FRESH pair; so
+  // without this re-push, an item added before the OTHER device opened the circle never arrives. Safe
+  // (the receiver de-dupes by etag). Fires on every circle-open, both directions → both sides converge.
+  try { await agent.resyncHouseholdCircle?.(circleId); } catch { /* best-effort */ }
   return added;
 }
