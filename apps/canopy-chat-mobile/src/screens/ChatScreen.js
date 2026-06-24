@@ -377,7 +377,7 @@ export default function ChatScreen({
   // Bundle H (#268) — inbound peer-router (port of web/main.js:346) +
   // catch-up trigger (port of main.js:1338), built over the live agent
   // + callSkill.
-  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel }) => {
+  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel, pendingPeerRedeems }) => {
     const sendPeer = (addr, payload) => agent.sendPeerMessage(addr, payload);
     const getMyPubKey = () =>
       agent?.identity?.chat?.pubKey ?? agent?.identity?.host?.webid ?? null;
@@ -515,7 +515,8 @@ export default function ChatScreen({
       // sendPeerRedeem call.  Mirror of web's handleGroupRedeemResponse
       // at main.js:743.
       'group-redeem-response': makeHandleGroupRedeemResponse({
-        pendingMap: pendingPeerRedeemsRef.current,
+        // OBJ-2 — the BUNDLE's shared map (so a v2-launcher join correlates here too); ref is the fallback.
+        pendingMap: pendingPeerRedeems ?? pendingPeerRedeemsRef.current,
       }),
       'help-with-accepted':    makeHandleHelpWithAccepted({
         ensureDmThread:    handleDmThreadOpen,
@@ -662,7 +663,7 @@ export default function ChatScreen({
       appOrigins: [...bootState.bundle.catalog.appOrigins],
       opCount:    bootState.bundle.catalog.opsById?.size ?? 0,
     });
-    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel }));
+    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel, pendingPeerRedeems: bootState.bundle.pendingPeerRedeems }));
   }, [bootState, buildPeerWiring]);
 
   // Auto-scroll on every new message in the active thread.
@@ -1677,13 +1678,9 @@ export default function ChatScreen({
             // Bundle H Phase 4 (#271) — joinGroupWizard's cross-instance
             // fallback (membershipCode-with-adminPeerAddr).  Constructed
             // inline so it closes over the live agent + pendingMap.
-            sendPeerRedeem={bootState.kind === 'ready'
-              ? makeSendGroupRedeemRequest({
-                  sendPeer:        (addr, payload) => bootState.bundle.agent.sendPeerMessage(addr, payload),
-                  isPeerConnected: () => bootState.bundle.agent?.peer?.status === 'connected',
-                  pendingMap:      pendingPeerRedeemsRef.current,
-                })
-              : undefined}
+            // OBJ-2 — the BUNDLE's shared sender (same pending-map the response handler resolves against,
+            // and the same one the v2 launcher uses), so classic + v2 joins both correlate.
+            sendPeerRedeem={bootState.kind === 'ready' ? bootState.bundle.sendPeerRedeem : undefined}
             // /create-group success-screen embeds the admin's NKN
             // address into the invite URL so the joiner can peer-
             // redeem when their substrate has no local copy of the

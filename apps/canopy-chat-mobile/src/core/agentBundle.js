@@ -36,6 +36,8 @@ import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactT
 // Calendar cross-peer fan-out — wrap the bundle callSkill so a successful calendar
 // op fans its invite/RSVP envelopes out over the peer transport (web parity).
 import { withCalendarOutbound } from '../../../canopy-chat/src/core/handlers/calendarOutbound.js';
+// OBJ-2 membership — shared joiner-side peer-redeem sender (correlated by the bundle's pending-map).
+import { makeSendGroupRedeemRequest } from '../../../canopy-chat/src/core/handlers/groupRedeem.js';
 import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
 import { AsyncStorageAdapter } from '../../../../packages/react-native/src/storage/AsyncStorageAdapter.js';
@@ -427,6 +429,16 @@ export async function bootAgentBundle(opts = {}) {
     publishEvent: opts.publishEvent,
   });
 
+  // OBJ-2 membership — ONE shared peer-redeem pending-map + sender. ChatScreen wires the response
+  // handler against this map (and uses this sender for the classic join wizard); the v2 launcher uses
+  // the same sender, so a v2 join correlates with the already-wired response handler. No double-wiring.
+  const pendingPeerRedeems = new Map();
+  const sendPeerRedeem = makeSendGroupRedeemRequest({
+    sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
+    isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
+    pendingMap:      pendingPeerRedeems,
+  });
+
   // 5.9c — expose `mdns` as a live getter so the launcher reads the
   // current instance (initially null, populated when the async
   // connect() resolves a tick later).  Callers should not cache the
@@ -437,6 +449,8 @@ export async function bootAgentBundle(opts = {}) {
     callSkill,
     agent,
     transport,
+    pendingPeerRedeems,
+    sendPeerRedeem,
     contactSkills,
     peerGraph,
     contactChannel,
