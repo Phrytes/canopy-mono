@@ -41,6 +41,13 @@ export function circleGateRules(locale = DEFAULT_GATE_LOCALE) {
     // (English + common Dutch); generic "add X to the list" (no type word) returns null → falls through
     // to the unchanged addTask rule. Types mirror the household manifest's addItem enum.
     { name: 'household:addItem(typed-list)', test: HH_ADD_TYPED, command: householdTypedListAdd },
+    // Household READ rules (prepended). The tasks-derived gate skips read phrasing ("show the shopping
+    // list", "what tasks do we have") → the LLM, which (small models) mis-picks markComplete and dumps a
+    // confusing "which one to complete?" clarify ON A READ (the markComplete-on-read bug, 2026-06-25).
+    // Route reads deterministically to listOpen/listTasks so they never reach the model. A read with no
+    // recognised list-type/tasks keyword (e.g. "what lists do we have") returns null → falls through.
+    { name: 'household:listOpen(typed-list-read)', test: HH_LIST_READ,  command: householdListRead },
+    { name: 'household:listTasks(read)',           test: HH_TASKS_READ, command: householdTasksRead },
     ...renderGate([
       mockTasksManifest,
       mockStoopManifest,
@@ -75,4 +82,24 @@ function householdTypedListAdd(text) {
   const type = HH_LIST_ALIASES[m[2].toLowerCase()];
   if (!item || !type) return null;   // no known list type → generic add (addTask) takes it
   return { opId: 'addItem', args: { type, text: item } };
+}
+
+// Read intent (EN + common NL); leading verb so a mutate phrase ("add"/"done"/"complete") never matches.
+const HH_READ = '(?:show|list|see|view|display|open|give|what(?:\'?s| is| are)?(?: on| in| left)?|which|welke|laat|toon|wat)';
+// read intent + a recognised list-type keyword → listOpen({type}); the type is the capture group.
+const HH_LIST_READ = new RegExp('^' + HH_READ +
+  '\\b.*?\\b(shopping|groceries|grocery|boodschappen|boodschappenlijst|errand|errands|klusje|klusjes|repair|repairs|reparatie|reparaties|schedule|schedules|agenda)\\b', 'i');
+// read intent + a tasks/chores keyword → listTasks.
+const HH_TASKS_READ = new RegExp('^' + HH_READ + '\\b.*?\\b(tasks?|chores?|to-?dos?|taken)\\b', 'i');
+
+/** "show the <type> list" / "what's on the <type> list" → `listOpen({type})`; null if no known type. */
+function householdListRead(text) {
+  const m = HH_LIST_READ.exec(String(text || '').trim());
+  if (!m) return null;
+  const type = HH_LIST_ALIASES[m[1].toLowerCase()];
+  return type ? { opId: 'listOpen', args: { type } } : null;
+}
+/** "what tasks do we have" / "show the chores" → `listTasks`. */
+function householdTasksRead(text) {
+  return HH_TASKS_READ.test(String(text || '').trim()) ? { opId: 'listTasks', args: {} } : null;
 }

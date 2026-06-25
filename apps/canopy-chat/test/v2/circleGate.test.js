@@ -32,6 +32,22 @@ describe('circle gate (manifest-derived) — deterministic routing', () => {
     expect((await route('add milk to the list')).command).toEqual({ opId: 'addTask', args: { text: 'milk' } });
   });
 
+  it('READ: "show/what\'s on the <type> list" → listOpen({type}) — NOT markComplete (the read misfire)', async () => {
+    expect((await route('show the shopping list')).command).toEqual({ opId: 'listOpen', args: { type: 'shopping' } });
+    expect((await route('show me the shopping list')).command).toEqual({ opId: 'listOpen', args: { type: 'shopping' } });
+    expect((await route("what's on the errand list")).command).toEqual({ opId: 'listOpen', args: { type: 'errand' } });
+  });
+
+  it('READ: "what tasks do we have" / "show the chores" → listTasks', async () => {
+    expect((await route('what tasks do we have?')).command).toEqual({ opId: 'listTasks', args: {} });
+    expect((await route('show the chores')).command).toEqual({ opId: 'listTasks', args: {} });
+  });
+
+  it('READ: a meta question with no type/tasks keyword falls through to the LLM (not a false read)', async () => {
+    expect((await route('what lists do we have')).via).toBe('llm');
+    expect((await route('what should we cook tonight?')).via).toBe('llm');
+  });
+
   it('Dutch: "voeg melk toe" / "zet melk op de lijst" → addTask{text:melk}', async () => {
     expect((await route('voeg melk toe')).command).toEqual({ opId: 'addTask', args: { text: 'melk' } });
     expect((await route('zet melk op de lijst')).command).toEqual({ opId: 'addTask', args: { text: 'melk' } });
