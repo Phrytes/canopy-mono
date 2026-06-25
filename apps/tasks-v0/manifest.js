@@ -334,7 +334,11 @@ export const tasksManifest = {
         chat: {
           reply: 'list',
           hint:  'List open tasks assigned to the calling actor.',
-          brief:  { summarySkill: 'briefSummary', order: 5, label: 'Tasks' },
+          // C4 (drift fix 2026-06-25): the canonical /brief decl lives on `listOpen`
+          // (summarySkill 'tasks_briefSummary', order 20 — the registered skill). This op
+          // carried a SECOND brief folded in from the old mock manifest ('briefSummary', not a
+          // real tasks-v0 skill) → tasks double-counted in /brief AND called a missing skill.
+          // Removed; the morning brief uses the open-tasks count (listOpen), not "my tasks".
           search: { searchSkill:  'searchTasks' },
         },
         // S6.B — this overview op can open a dedicated screen (the Schermen
