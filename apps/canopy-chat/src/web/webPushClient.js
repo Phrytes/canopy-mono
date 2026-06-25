@@ -91,3 +91,16 @@ export async function disableWebPush({ callSkill, nav = globalThis.navigator } =
   await callSkill('stoop', 'unsubscribeWebPush', endpoint ? { endpoint } : {}).catch(() => {});
   return { ok: true };
 }
+
+/**
+ * Show a LOCAL notification (no server push) via the active service-worker registration. Used by the
+ * verify-summary nudge (self-poll/self-notify). Resolves false when notifications aren't granted/available.
+ */
+export async function showLocalNotification({ title, body, tag, data, nav = globalThis.navigator, notification = globalThis.Notification } = {}) {
+  try {
+    if (!notification || notification.permission !== 'granted' || !nav?.serviceWorker) return false;
+    const reg = await nav.serviceWorker.ready;
+    await reg.showNotification(title || 'Feedback', { body: body || '', tag, data });
+    return true;
+  } catch { return false; }
+}

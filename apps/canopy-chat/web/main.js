@@ -2145,6 +2145,26 @@ function feedbackNote(thread, msg) {
   thread.addShellMessage(renderReply({ payload: msg, shape: 'text', threadId: thread.id }, { t }));
   renderActiveStream();
 }
+// verify-summary push nudge — self-poll the /control/ container + fire a LOCAL notification for any round
+// the participant hasn't verified yet. Runs after activation + on tab focus; localStorage suppresses repeats.
+let _fbNudgeThread = null, _fbNudgeWired = false;
+async function nudgeFeedbackVerification() {
+  if (!_feedbackSurface || _fbNudgeThread == null) return;
+  try {
+    const { showLocalNotification } = await import('../src/web/webPushClient.js');
+    const KEY = 'fp.nudged';
+    const seen = new Set(JSON.parse(localStorage.getItem(KEY) || '[]'));
+    const nudged = await _feedbackSurface.nudge(_fbNudgeThread, {
+      alreadyNudged: (r) => seen.has(r),
+      notify: ({ round, message }) => showLocalNotification({
+        title: t('feedback.nudge_title'),
+        body: message || t('feedback.nudge_body'),
+        tag: `fp-verify-${round}`, data: { round },
+      }),
+    });
+    if (nudged.length) { nudged.forEach((r) => seen.add(r)); localStorage.setItem(KEY, JSON.stringify([...seen])); }
+  } catch { /* best-effort; a nudge must never block the app */ }
+}
 // Phase 1 — the shared routing mount over web's CURRENT surface. Built lazily each turn so it tracks
 // the surface after a `/feedback <code>` pod re-activation (the mount is stateless glue; the active-set
 // lives in the surface). appendUserBubble is a no-op because the shell already rendered the user's
@@ -2268,6 +2288,10 @@ async function handleUserText(text, thread) {
       // and lead-opened verification rounds are read from the shared /control/ container on contact-open.
       const pods = await buildFeedbackVerifyPods({ session, activationUrl: FEEDBACK_ACTIVATION_URL, projectId: FEEDBACK_PROJECT_ID, code: fbCode[1], recoveryHash: await getOrCreateRecoveryHash() });
       await feedback(pods).start(thread.id);
+      // verify-summary nudge: self-poll for lead-opened rounds now + whenever the tab regains focus.
+      _fbNudgeThread = thread.id;
+      nudgeFeedbackVerification();
+      if (!_fbNudgeWired) { _fbNudgeWired = true; document.addEventListener('visibilitychange', () => { if (!document.hidden) nudgeFeedbackVerification(); }); }
     } catch (e) { feedbackNote(thread, `Activatie mislukt: ${e.message}`); }
     return;
   }

@@ -167,8 +167,13 @@ verified-summary = { projectId, round, summary, verifiedAt,
   (the `feedback()` getter now takes `{pod, centralPod, controlStore}`, back-compat with a bare pod). Tests:
   `feedbackVerifyPods.test.js` (4) + `PodRoundControl` (round-control). The surface no longer defaults to in-memory on
   the real activation path.
-- ⏳ **Follow-up:** a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`) so a participant is prompted to
-  verify without opening the app.
+- ✅ **Push nudge** — `verify/nudge.js` `nudgeForVerification` (SELF-POLL + SELF-NOTIFY: no central push registry — the
+  device reads the rounds it already polls and fires a LOCAL notification for any it hasn't verified, suppressed by
+  `alreadyNudged`). `CanopyChatBot.nudge` + `feedbackSurface.nudge` thread it; `main.js` runs it after activation + on
+  tab-focus (`visibilitychange`), notifying via `webPushClient.showLocalNotification` with `feedback.nudge_*` locale
+  strings (en+nl). Tests: `verify-nudge.test.js` (3) + a `CanopyChatBot.nudge` case. **⇒ all follow-ups done.**
+  *(Closed-app push — a notification when the app is fully shut — would need a central push registry; deferred by the
+  privacy-preserving self-poll choice, which nudges whenever the app is running anywhere, incl. a background tab.)*
 
 ---
 

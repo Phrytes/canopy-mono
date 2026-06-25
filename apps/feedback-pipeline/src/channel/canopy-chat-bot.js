@@ -13,6 +13,7 @@ import { getStrings } from '../strings/index.js';
 import { parseControl, runAction } from './actions.js';
 import { classifyIntent } from './intent.js';
 import { pollAndOpenVerification } from '../verify/round-control.js';
+import { nudgeForVerification } from '../verify/nudge.js';
 
 export class CanopyChatBot {
   #bridge; #pod; #centralPod; #controlStore; #config; #model; #participantFor; #identityFor; #strings; #sessions = new Map();
@@ -85,6 +86,17 @@ export class CanopyChatBot {
       dispatcher: session.dispatcher, controlStore: this.#controlStore,
       projectId: this.#config?.projectId, participant: this.#participantFor(String(chatId)),
       centralPod: this.#centralPod, model: this.#model, ...(summarise ? { summarise } : {}),
+    });
+  }
+
+  /** Verify-summary push nudge — fire a LOCAL notification (via `notify`) for any round this participant
+   *  hasn't verified yet. Self-poll/self-notify; no-op when the loop isn't wired. See verify/nudge.js. */
+  async nudge(chatId, { notify, alreadyNudged } = {}) {
+    if (!this.#controlStore || !this.#centralPod || typeof notify !== 'function') return [];
+    return nudgeForVerification({
+      controlStore: this.#controlStore, projectId: this.#config?.projectId,
+      participant: this.#participantFor(String(chatId)), centralPod: this.#centralPod,
+      notify, alreadyNudged,
     });
   }
 }

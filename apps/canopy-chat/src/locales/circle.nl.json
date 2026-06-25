@@ -3,6 +3,16 @@
     "text": "Jouw kringen",
     "doc": "Heading of the circle launcher (board 1B)."
   },
+  "feedback": {
+    "nudge_title": {
+      "text": "Feedback",
+      "doc": "Verify-summary push nudge — local notification title."
+    },
+    "nudge_body": {
+      "text": "Je hebt een samenvatting om te verifiëren.",
+      "doc": "Verify-summary push nudge — local notification body."
+    }
+  },
   "tab": {
     "screens": {
       "text": "Schermen",

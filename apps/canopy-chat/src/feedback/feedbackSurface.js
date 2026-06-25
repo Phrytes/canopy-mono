@@ -88,6 +88,12 @@ export function createFeedbackSurface({ config, pod, centralPod, controlStore, b
       await (await clientFor(threadId)).send(buttonId);
       return true;
     },
+    /** Verify-summary push nudge — fire a local notification (`notify`) for any round this participant
+     *  hasn't verified yet. Self-poll/self-notify; safe to call on app load/foreground. Returns the rounds
+     *  nudged (for the caller to mark in `alreadyNudged`). No-op when the verify loop isn't wired. */
+    async nudge(threadId, { notify, alreadyNudged } = {}) {
+      try { return await (await bot()).nudge(String(threadId), { notify, alreadyNudged }); } catch { return []; }
+    },
   };
 }
 

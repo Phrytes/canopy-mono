@@ -3,6 +3,16 @@
     "text": "Your circles",
     "doc": "Heading of the circle launcher (board 1B)."
   },
+  "feedback": {
+    "nudge_title": {
+      "text": "Feedback",
+      "doc": "Verify-summary push nudge — local notification title."
+    },
+    "nudge_body": {
+      "text": "You have a summary to verify.",
+      "doc": "Verify-summary push nudge — local notification body."
+    }
+  },
   "tab": {
     "screens": {
       "text": "Screens",
