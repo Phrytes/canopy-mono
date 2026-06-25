@@ -172,6 +172,11 @@ verified-summary = { projectId, round, summary, verifiedAt,
   `alreadyNudged`). `CanopyChatBot.nudge` + `feedbackSurface.nudge` thread it; `main.js` runs it after activation + on
   tab-focus (`visibilitychange`), notifying via `webPushClient.showLocalNotification` with `feedback.nudge_*` locale
   strings (en+nl). Tests: `verify-nudge.test.js` (3) + a `CanopyChatBot.nudge` case. **⇒ all follow-ups done.**
+  **Mobile parity (web ≡ mobile):** the same `surface.nudge`/`mount.nudge` (shared) + `nativePush.presentLocalNotification`
+  (expo) + a ChatScreen `AppState 'active'` hook (the mobile mirror of web's `visibilitychange`), AsyncStorage-deduped.
+  `nativePush.test.js` (+2). NB the mobile nudge is inert until the mobile feedback path is given verify pods
+  (`buildFeedbackVerifyPods`) — mobile feedback is still demo-only (no activation), a separate parity gap (mirrors web
+  pre-activation).
   *(Closed-app push — a notification when the app is fully shut — would need a central push registry; deferred by the
   privacy-preserving self-poll choice, which nudges whenever the app is running anywhere, incl. a background tab.)*
 

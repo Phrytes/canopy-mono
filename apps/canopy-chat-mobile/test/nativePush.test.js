@@ -5,7 +5,7 @@
  * stoop.subscribeExpoPush; denied/simulator paths short-circuit.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { enableNativePush, disableNativePush, getNativePushState } from '../src/v2/nativePush.js';
+import { enableNativePush, disableNativePush, getNativePushState, presentLocalNotification } from '../src/v2/nativePush.js';
 
 const TOKEN = 'ExponentPushToken[xyz]';
 const fakeDevice = (isDevice = true) => ({ isDevice });
@@ -63,5 +63,29 @@ describe('getNativePushState', () => {
     // No injected deps + no installed module → require throws → unsupported.
     const state = await getNativePushState();
     expect(state.supported).toBe(false);
+  });
+});
+
+describe('presentLocalNotification (verify-summary nudge — mobile parity)', () => {
+  it('schedules an immediate local notification when permission is granted', async () => {
+    const scheduled = [];
+    const notifications = {
+      getPermissionsAsync: vi.fn(async () => ({ granted: true })),
+      scheduleNotificationAsync: vi.fn(async (n) => { scheduled.push(n); }),
+    };
+    const ok = await presentLocalNotification({ title: 'Feedback', body: 'verify', data: { round: 1 }, notifications });
+    expect(ok).toBe(true);
+    expect(scheduled[0].content.title).toBe('Feedback');
+    expect(scheduled[0].content.body).toBe('verify');
+    expect(scheduled[0].trigger).toBe(null);   // present now
+  });
+
+  it('no-ops (false) when permission is not granted', async () => {
+    const notifications = {
+      getPermissionsAsync: vi.fn(async () => ({ granted: false })),
+      scheduleNotificationAsync: vi.fn(async () => { throw new Error('must not schedule'); }),
+    };
+    expect(await presentLocalNotification({ title: 'x', notifications })).toBe(false);
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
   });
 });

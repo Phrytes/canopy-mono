@@ -38,6 +38,9 @@ export function createFeedbackMount({ surface, appendUserBubble, appendBotBubble
     /** Enter feedback mode directly (e.g. from the contact's openFeedback action). */
     async open(threadId) { await fb.start(threadId); },
     isActive: (threadId) => fb.isActive(threadId),
+    /** Verify-summary push nudge — passthrough to the surface (fires a local notification per unverified
+     *  round). The shell injects `notify` (web showLocalNotification · mobile presentLocalNotification). */
+    async nudge(threadId, opts) { return fb.nudge(threadId, opts); },
     /**
      * Try to handle one text turn. Returns true when the mount took it (the caller should stop):
      *   • `/feedback [code]`  → enter feedback mode

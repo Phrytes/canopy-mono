@@ -21,7 +21,7 @@
  */
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
-  KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet,
+  AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 
@@ -35,6 +35,7 @@ import {
 } from '@canopy-app/canopy-chat';
 
 import { createFeedbackMount } from '../../../canopy-chat/src/feedback/feedbackMount.js';
+import { presentLocalNotification } from '../v2/nativePush.js';
 import { feedbackContactItem } from '../../../canopy-chat/src/feedback/feedbackSurface.js';
 import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
 import { buildNavModels }  from '../core/navModel.js';
@@ -676,6 +677,30 @@ export default function ChatScreen({
   // newly-active thread.
   useEffect(() => {
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd?.({ animated: false }));
+  }, [activeThreadId]);
+
+  // Verify-summary push nudge (parity with web main.js) — on app FOREGROUND, self-poll the /control/
+  // container via the feedback mount and fire a LOCAL notification (expo) for any unverified round.
+  // No-op until the feedback mount + its verify pods exist (mirrors web pre-activation). AsyncStorage-deduped.
+  useEffect(() => {
+    const checkNudge = async () => {
+      const mount = feedbackMountRef.current;
+      if (!mount || activeThreadId == null) return;
+      try {
+        const raw = await AsyncStorage.getItem('fp.nudged');
+        const seen = new Set(raw ? JSON.parse(raw) : []);
+        const nudged = await mount.nudge(activeThreadId, {
+          alreadyNudged: (r) => seen.has(r),
+          notify: ({ round, message }) => presentLocalNotification({
+            title: t('feedback.nudge_title'), body: message || t('feedback.nudge_body'), data: { round },
+          }),
+        });
+        if (nudged?.length) { nudged.forEach((r) => seen.add(r)); await AsyncStorage.setItem('fp.nudged', JSON.stringify([...seen])); }
+      } catch { /* best-effort; a nudge must never break the screen */ }
+    };
+    const sub = AppState.addEventListener('change', (s) => { if (s === 'active') checkNudge(); });
+    checkNudge();
+    return () => sub.remove();
   }, [activeThreadId]);
 
   /**
