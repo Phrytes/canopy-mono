@@ -155,8 +155,14 @@ verified-summary = { projectId, round, summary, verifiedAt,
 - ✅ **Per-participant verify status** — `verifiedCountFor({centralPod, round})` counts `verified-summary` records on
   central per round; `GET /api/projects/:id/rounds` enriches each round with `{verified, of: activations}` when a
   `centralPod` is supplied; the portal shows "Ronde N: X/Y geverifieerd". `test/portal.test.js` (+1).
-- ⏳ **Follow-ups:** a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`); the production **real-pod
-  provisioning** of own/central pods from the activation session (today the surface defaults to in-memory).
+- ✅ **Real-pod proof** — `scripts/verify-summary-css.js` runs the loop against a live Community Solid Server + the
+  loopback proxy: alice's raw lives on **her own pod**, the summary is generated on-device, and **only** the verified
+  summary reaches the central project pod. Verified live: central holds 1 record, raw never leaks, and the project owner
+  gets **403** reading alice's own pod (the own-pod-first isolation guarantee). The storage topology works end-to-end;
+  what remains is the *browser-session* wiring (below).
+- ⏳ **Follow-ups:** a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`); wiring the surface's
+  `pod`/`centralPod` from the **activation session** in the canopy-chat shell (the loop + pods are proven — this is the
+  session plumbing that replaces the in-memory default).
 
 ---
 
