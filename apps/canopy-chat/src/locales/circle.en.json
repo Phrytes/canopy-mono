@@ -48,6 +48,10 @@
     "text": "{{count}} members",
     "doc": "Member count on a circle tile; {{count}} interpolated."
   },
+  "leden_tab": {
+    "loading": { "text": "Loading members…", "doc": "LEDEN tab — while the roster (listGroupMembers) loads." },
+    "empty":   { "text": "No members yet.",  "doc": "LEDEN tab — the circle's roster is empty." }
+  },
   "tile_unread": {
     "text": "{{count}} unread",
     "doc": "Accessible label for the unread badge on a circle tile (P6.3)."

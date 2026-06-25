@@ -1661,6 +1661,21 @@ function CircleDetail({
   // doesn't persist across opens.
   useEffect(() => { setActiveTab(DEFAULT_KRING_TAB); }, [circle?.id]);
 
+  // LEDEN (members) tab — real roster via listGroupMembers (web≡mobile; mirrors web's directory load).
+  // null = not loaded yet, [] = loaded empty. Loads lazily when the tab is opened (per circle).
+  const [tabMembers, setTabMembers] = useState(null);
+  useEffect(() => {
+    if (activeTab !== 'leden' || !circle?.id || typeof rawCallSkill !== 'function') return undefined;
+    let alive = true;
+    setTabMembers(null);
+    (async () => {
+      let mem = [];
+      try { mem = normalizeCircleMembers(await rawCallSkill('stoop', 'listGroupMembers', { groupId: circle.id })); } catch { /* keep empty */ }
+      if (alive) setTabMembers(mem);
+    })();
+    return () => { alive = false; };
+  }, [activeTab, circle?.id, rawCallSkill]);
+
   // α.1e — materialized scherm blocks for the active recipe.  null
   // until the load below resolves; [] when the book is empty.
   // D1 — `screenReloadTick` bumps after a quickActions tap to re-rank.
@@ -2231,6 +2246,20 @@ function CircleDetail({
           // the open circle (S4 per-circle restructure — see stoopCall above).
           <CircleNoticeboard callSkill={stoopCall} onStoopEvent={onStoopEvent}
             onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
+        ) : activeTab === 'leden' ? (
+          // LEDEN — the circle's member roster (listGroupMembers → normalizeCircleMembers). web≡mobile.
+          tabMembers == null ? (
+            <Text style={styles.placeholder}>{t('circle.leden_tab.loading')}</Text>
+          ) : tabMembers.length === 0 ? (
+            <Text style={styles.placeholder}>{t('circle.leden_tab.empty')}</Text>
+          ) : (
+            tabMembers.map((m) => (
+              <View key={m.id} style={styles.memberRow} testID="circle-member-row">
+                <Text style={styles.memberHandle} numberOfLines={1}>{m.handle ? `@${m.handle}` : (m.realName || m.id)}</Text>
+                {m.realName && m.handle ? <Text style={styles.memberName} numberOfLines={1}>{m.realName}</Text> : null}
+              </View>
+            ))
+          )
         ) : activeTab !== 'gesprek' ? (
           <Text style={styles.placeholder}>
             {t('circle.kring.tab_coming', { tab: t(`circle.tabs.${activeTab}`) })}
@@ -2722,6 +2751,9 @@ const styles = StyleSheet.create({
   viewToggleText:      { fontSize: 12, color: theme.color.inkSoft },
   viewToggleTextActive:{ color: theme.color.white, fontWeight: '600' },
   placeholder:      { color: theme.color.inkSoft, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24, paddingHorizontal: 12 },
+  memberRow:        { paddingVertical: 10, paddingHorizontal: 4, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  memberHandle:     { fontSize: 15, color: theme.color.ink, fontWeight: '600' },
+  memberName:       { fontSize: 13, color: theme.color.inkSoft, marginTop: 1 },
   // Per-row action buttons (Ik help / Negeer …) — used by chat bubbles.
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },
