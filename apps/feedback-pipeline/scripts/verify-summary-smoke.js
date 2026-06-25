@@ -1,25 +1,39 @@
 #!/usr/bin/env node
-// Headless smoke for the verify-summary loop (docs/DESIGN-verify-summary-loop.md), Build Slice 1 core.
-//   contribute (OWN pod) → lead opens round → summarise ON-DEVICE → user verifies → verified summary
-//   on the CENTRAL pod, while the RAW stays in the own pod.
+// Headless e2e for the verify-summary loop (docs/DESIGN-verify-summary-loop.md) — the FULL Slice-1 flow:
+//   contribute (OWN pod) → LEAD opens a round → bot POLL opens the verify-turn → summarise ON-DEVICE
+//   (LLM via the loopback proxy) → user VERIFIES → ONLY the verified summary on CENTRAL; raw stays own;
+//   a re-poll after verify does not re-ask.
 //
 //   FP_LLM_BASEURL=http://localhost:8080/v1 FP_LLM_MODEL=gpt-oss-latest node scripts/verify-summary-smoke.js
 //
-// Skips cleanly (exit 0) if no LLM route is reachable — the summarise step needs one.
+// Skips cleanly (exit 0) if the summarise LLM route is unreachable.
+import { MemoryChannelAdapter } from '../src/channel/adapter.js';
+import { ChannelDispatcher } from '../src/channel/dispatcher.js';
 import { InMemoryCentralPod } from '../src/pod/central-pod.js';
+import { validateProjectConfig } from '../src/config/project-config.js';
 import * as signing from '../src/pod/signing.js';
 import { buildContribution } from '../src/pod/contribution.js';
-import { summariseOwnContributions, releaseVerifiedSummary } from '../src/verify/summary-round.js';
+import { InMemoryRoundControl, openVerificationRound, pollAndOpenVerification } from '../src/verify/round-control.js';
 
 const log = (...a) => console.log(...a);
+const lastVerifyBubble = (sent) => [...sent].reverse().find((m) => m.type === 'verify-summary');
 
 const id = signing.generateParticipantIdentity();
 const roster = new signing.IdentityRoster();
 roster.bind('alice', id.publicKey, id.encPublicKey);
 const verify = signing.makeContributionVerifier({ roster, projectId: 'demo' });
-
-// ── Stage 1 — alice's RAW feedback lives in HER OWN pod (signed). It never leaves. ──────────────────
 const ownPod = new InMemoryCentralPod({ verify });
+const central = new InMemoryCentralPod({ verify });
+const adapter = new MemoryChannelAdapter();
+const config = validateProjectConfig({
+  projectId: 'demo', llm: { route: 'local', model: process.env.FP_LLM_MODEL || 'gpt-oss-latest' },
+  aggregation: { k: 1 }, privacy: { verify: true },
+  signal: { layer1OnDevice: true, escalationCategories: ['crisis'] },
+});
+const d = new ChannelDispatcher({ adapter, pod: ownPod, config, participant: 'alice', identity: id, centralPod: central });
+const control = new InMemoryRoundControl();
+
+// ── Stage 1 — alice's RAW feedback → her OWN pod (signed). It never leaves. ─────────────────────────
 const raw = ['De GGZ-wachtlijst is al maanden veel te lang.', 'En de communicatie erover is ook slecht.'];
 for (const [i, text] of raw.entries()) {
   const c = buildContribution({ id: `alice:p${i + 1}`, text }, { lang: 'nl' });
@@ -27,33 +41,30 @@ for (const [i, text] of raw.entries()) {
 }
 log(`Stage 1 — own pod holds ${ownPod.list().length} raw point(s).`);
 
-// ── The CENTRAL pod — must hold ONLY a verified summary at the end. ─────────────────────────────────
-const central = new InMemoryCentralPod({ verify });
+// ── Stage 2 — the LEAD opens a verification round (writes a request to the control store). ──────────
+await openVerificationRound({ controlStore: control, projectId: 'demo', round: 1, openedBy: 'lead', message: 'Verifieer je samenvatting.' });
+log('Lead opened verification round 1.');
 
-// ── Stage 2 — lead opens round → alice's bot summarises HER OWN pod on-device → she verifies → release.
-const model = process.env.FP_LLM_MODEL || 'gpt-oss-latest';
-let draft;
-try {
-  draft = await summariseOwnContributions({ ownPod, participant: 'alice', model, projectId: 'demo', round: 1, opts: { lang: 'nl' } });
-} catch (e) { log(`SKIP: summarise needs an LLM route (set FP_LLM_BASEURL). (${e.message})`); process.exit(0); }
-if (!draft.summary) { log('SKIP: summary empty — LLM route unreachable.'); process.exit(0); }
-log(`\nStage 2 — on-device summary draft (via the confidential proxy):\n  "${draft.summary}"`);
+// ── the bot POLLS (as on contact-open) → opens the verify-turn → summarises ON-DEVICE via the proxy. ─
+const opened = await pollAndOpenVerification({ dispatcher: d, controlStore: control, projectId: 'demo', participant: 'alice', centralPod: central });
+if (!opened) { log('SKIP: no round opened.'); process.exit(0); }
+const presented = lastVerifyBubble(adapter.sent);
+if (!presented || !presented.summary) { log('SKIP: summarise produced no summary (LLM route unreachable?).'); process.exit(0); }
+log(`\nBot poll → on-device summary (via the confidential proxy):\n  "${presented.summary}"`);
 
-// alice VERIFIES → the verified summary (and ONLY that) is sealed+signed to central.
-const cid = await releaseVerifiedSummary({ centralPod: central, draft, identity: id, participant: 'alice', lang: 'nl' });
-log(`\nalice verified → released ${cid} to central.`);
+// ── alice VERIFIES → ONLY the verified summary is sealed+signed to central. ─────────────────────────
+const cid = await d.command('verify');
+log(`\nalice verified → ${cid} released to central.`);
 
 // ── Assertions ──────────────────────────────────────────────────────────────────────────────────────
-const ownAfter = ownPod.list();
-const centralAfter = central.list();
-const onlyVerifiedSummary = centralAfter.length === 1 && (centralAfter[0].contribution.themeTags || []).includes('verified-summary');
-const rawNeverLeft = ownAfter.length === raw.length && centralAfter.every((r) => !raw.includes(r.contribution.text));
+const onlyVerified = central.list().length === 1 && (central.list()[0].contribution.themeTags || []).includes('verified-summary');
+const rawStayed = ownPod.list().length === raw.length && central.list().every((r) => !raw.includes(r.contribution.text));
+const noReask = (await pollAndOpenVerification({ dispatcher: d, controlStore: control, projectId: 'demo', participant: 'alice', centralPod: central })) === null;
 
 log('\n=== RESULT ===');
-log(`  central pod: ${centralAfter.length} record(s) — tags ${JSON.stringify((centralAfter[0]?.contribution.themeTags) || [])}`);
-log(`  own pod still holds the raw: ${ownAfter.length} point(s)`);
-const ok = onlyVerifiedSummary && rawNeverLeft;
+log(`  central: ${central.list().length} record [${(central.list()[0]?.contribution.themeTags) || []}] · own pod raw: ${ownPod.list().length} · re-ask after verify: ${noReask ? 'no' : 'YES (bug)'}`);
+const ok = onlyVerified && rawStayed && noReask;
 log(ok
-  ? '\n✓ verify-summary loop: raw stayed in the own pod; ONLY the user-verified summary reached central.'
-  : '\n✗ FAIL — invariant broken (raw leaked to central, or no verified summary).');
+  ? '\n✓ full verify-summary loop: lead-triggered · on-device summary · user-verified · raw stayed own · no re-ask.'
+  : '\n✗ FAIL — an invariant broke.');
 process.exit(ok ? 0 : 1);

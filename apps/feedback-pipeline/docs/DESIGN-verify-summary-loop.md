@@ -125,9 +125,14 @@ verified-summary = { projectId, round, summary, verifiedAt,
    `withdrawVerification`, routed via `command('verify'|'verify-edit'|'verify-withdraw')`; the `verify-summary` bubble
    carries `{summary, points}` for the UI to render the `compare` (raw vs curated). Test `test/verify-turn.test.js` (3) +
    `test/verify-summary.test.js` (3); existing dispatcher tests still green (9).
-4. ⏳ **Lead trigger (poll)** — portal writes `verification-request`; the bot picks it up on open. *(remaining)*
-5. ✅ **Headless test** — `scripts/verify-summary-smoke.js` PASSES against the live proxy (contribute own → summarise →
-   verify → central holds only the verified summary; raw stays own).
+4. ✅ **Lead trigger (poll)** — `src/verify/round-control.js`: `openVerificationRound` (lead writes a
+   `verification-request` to a control store, idempotent) + `pendingRoundsFor` (rounds this participant hasn't
+   verified) + `pollAndOpenVerification` (on contact-open → opens the verify-turn for the first pending round).
+   `InMemoryRoundControl` for tests/demo; a project `/control/` container is the production backing.
+   `test/verify-round-control.test.js` (3): lead→poll→verify→no-re-ask · idempotent · pending-oldest-first.
+5. ✅ **Headless e2e** — `scripts/verify-summary-smoke.js` (full flow, dispatcher + lead-trigger) PASSES against the
+   live proxy: contribute(own) → lead opens round → poll → summarise(proxy) → verify → central holds only the
+   verified summary, raw stays own, no re-ask. **⇒ Slice 1 is engine-complete (9 verify tests green).**
 
 ### Slice 2 — canopy-chat wiring (web then mobile)
 The `fp-bot` mount surfaces the verify turn + the `compare` view; the poll runs on contact-open.
