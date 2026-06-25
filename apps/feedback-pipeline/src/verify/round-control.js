@@ -14,6 +14,8 @@ export class InMemoryRoundControl {
   #rounds = [];
   async writeRound(req) { this.#rounds.push({ ...req }); return req; }
   async listRounds(projectId) { return this.#rounds.filter((r) => !projectId || r.projectId === projectId); }
+  toJSON() { return { rounds: this.#rounds }; }
+  static fromJSON(obj) { const c = new InMemoryRoundControl(); for (const r of (obj?.rounds || [])) c.#rounds.push(r); return c; }
 }
 
 /**

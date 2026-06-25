@@ -95,6 +95,14 @@ export function portalHtml({ inviteBase } = {}) {
     <button id="cgen" class="sec" style="margin-top:14px">Codes genereren</button>
     <pre id="cout" class="hide"></pre>
   </section>
+
+  <section class="wide">
+    <h2>Verificatieronde</h2>
+    <div class="sub">Open een ronde: deelnemers krijgen via hun bot de samenvatting van hun eigen feedback ter
+      goedkeuring; alleen wat zij goedkeuren gaat naar de centrale pod.</div>
+    <button id="vround" class="sec" style="margin-top:14px">Verificatieronde openen</button>
+    <pre id="vout" class="hide"></pre>
+  </section>
 </main>
 <script>
 const J = (r) => r.json();
@@ -152,6 +160,19 @@ document.getElementById('cgen').addEventListener('click', async () => {
   const res = await api('POST','/api/projects/'+encodeURIComponent(projectId)+'/codes',{ count });
   const out = document.getElementById('cout'); out.classList.remove('hide');
   out.textContent = (res.links && res.links.length ? res.links : res.codes || []).join('\\n') || (res.reason||'—');
+});
+
+document.getElementById('vround').addEventListener('click', async () => {
+  const projectId = document.getElementById('cproj').value;   // reuse the same project selector
+  if (!projectId) return;
+  const enc = encodeURIComponent(projectId);
+  const { rounds=[] } = await api('GET','/api/projects/'+enc+'/rounds');   // next round = max+1
+  const next = (rounds.reduce((m,r)=>Math.max(m, Number(r.round)||0), 0)) + 1;
+  const res = await api('POST','/api/projects/'+enc+'/rounds',{ round: next, openedBy: 'lead' });
+  const out = document.getElementById('vout'); out.classList.remove('hide');
+  out.textContent = res.ok
+    ? 'Ronde '+res.round.round+' geopend ✓ — deelnemers zien de samenvatting bij hun volgende bot-bezoek.'
+    : (res.reason||'—');
 });
 
 refresh();

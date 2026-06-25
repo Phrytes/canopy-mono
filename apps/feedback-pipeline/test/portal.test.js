@@ -16,7 +16,7 @@ const baseConfig = (id) => ({ projectId: id, projectName: 'Wijk', llm: { route: 
 const post = (store, path, body, inviteBase) => handlePortal({ method: 'POST', path, body, store, inviteBase });
 const get = (store, path) => handlePortal({ method: 'GET', path, store });
 
-test('ProjectStore: create, validate, status, codes against the shared cohort', () => {
+test('ProjectStore: create, validate, status, codes against the shared cohort', async () => {
   const store = new ProjectStore();
   store.createProject({ config: baseConfig('p1'), cohort: { expiresAt: future, ceiling: 10 } });
   assert.throws(() => store.createProject({ config: baseConfig('p1'), cohort: { expiresAt: future, ceiling: 10 } }), /already exists/);
@@ -31,26 +31,26 @@ test('ProjectStore: create, validate, status, codes against the shared cohort', 
   assert.equal(store.cohort().validate('p1', codes[0], new Date().toISOString()).ok, true);
 });
 
-test('API: create → list → status → codes (+ invite links)', () => {
+test('API: create → list → status → codes (+ invite links)', async () => {
   const store = new ProjectStore();
-  const created = post(store, '/api/projects', { config: baseConfig('alpha'), cohort: { expiresAt: future, ceiling: 50 } });
+  const created = await post(store, '/api/projects', { config: baseConfig('alpha'), cohort: { expiresAt: future, ceiling: 50 } });
   assert.equal(created.status, 201);
   assert.equal(created.json.projectId, 'alpha');
   assert.ok(!created.json.projectPrivateKey);                    // no key for an unsealed project
 
-  const list = get(store, '/api/projects');
+  const list = await get(store, '/api/projects');
   assert.equal(list.json.projects.length, 1);
   assert.equal(list.json.projects[0].projectId, 'alpha');
 
-  const codes = post(store, '/api/projects/alpha/codes', { count: 3 }, 'https://activate.example/');
+  const codes = await post(store, '/api/projects/alpha/codes', { count: 3 }, 'https://activate.example/');
   assert.equal(codes.json.codes.length, 3);
   assert.equal(codes.json.links.length, 3);
   assert.match(codes.json.links[0], /^https:\/\/activate\.example\/\?projectId=alpha&code=/);
 });
 
-test('API: menukaart validation errors surface as 400 (seal without a key, non-host keygen)', () => {
+test('API: menukaart validation errors surface as 400 (seal without a key, non-host keygen)', async () => {
   const store = new ProjectStore();
-  const bad = post(store, '/api/projects', {
+  const bad = await post(store, '/api/projects', {
     config: { ...baseConfig('bad'), privacy: { seal: true, keygen: 'client' } },
     cohort: { expiresAt: future, ceiling: 5 },
   });
@@ -58,9 +58,9 @@ test('API: menukaart validation errors surface as 400 (seal without a key, non-h
   assert.match(bad.json.reason, /projectPublicKey/);
 });
 
-test('host keygen: returns a working keypair once; only the public key is stored', () => {
+test('host keygen: returns a working keypair once; only the public key is stored', async () => {
   const store = new ProjectStore();
-  const res = post(store, '/api/projects', {
+  const res = await post(store, '/api/projects', {
     config: { ...baseConfig('sealed'), privacy: { seal: true, keygen: 'host' } },
     cohort: { expiresAt: future, ceiling: 5 },
   });
@@ -76,10 +76,10 @@ test('host keygen: returns a working keypair once; only the public key is stored
   assert.equal(open(seal('hoi', pub), res.json.projectPrivateKey), 'hoi');
 });
 
-test('client/external keygen: lead supplies the public key; it is stored and usable', () => {
+test('client/external keygen: lead supplies the public key; it is stored and usable', async () => {
   const store = new ProjectStore();
   const kp = generateProjectKeypair();   // a key the lead generated offline (client/external)
-  const res = post(store, '/api/projects', {
+  const res = await post(store, '/api/projects', {
     config: { ...baseConfig('byo'), privacy: { seal: true, keygen: 'external', projectPublicKey: kp.publicKey } },
     cohort: { expiresAt: future, ceiling: 5 },
   });
@@ -88,7 +88,7 @@ test('client/external keygen: lead supplies the public key; it is stored and usa
   assert.equal(store.getConfig('byo').privacy.projectPublicKey, kp.publicKey);
 });
 
-test('persistence round-trips the store (configs + cohort)', () => {
+test('persistence round-trips the store (configs + cohort)', async () => {
   const store = new ProjectStore();
   store.createProject({ config: baseConfig('keep'), cohort: { expiresAt: future, ceiling: 9 } });
   const reloaded = ProjectStore.fromJSON(JSON.parse(JSON.stringify(store.toJSON())));
@@ -116,43 +116,69 @@ test('end-to-end: a portal-minted code activates via the activation service (sha
   assert.equal(store.cohort().activationCount('e2e'), 1);        // the portal sees the activation
 });
 
-test('inviteLink encodes projectId + code', () => {
+test('inviteLink encodes projectId + code', async () => {
   assert.equal(inviteLink('https://a.example/', 'p 1', 'abc-def'),
     'https://a.example/?projectId=p+1&code=abc-def');
 });
 
-test('per-project inviteBase overrides the portal default; absent → falls back', () => {
+test('per-project inviteBase overrides the portal default; absent → falls back', async () => {
   const store = new ProjectStore();
   // project WITH its own base
-  post(store, '/api/projects', { config: baseConfig('own'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'https://own.example/' });
+  await post(store, '/api/projects', { config: baseConfig('own'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'https://own.example/' });
   assert.equal(store.inviteBaseFor('own'), 'https://own.example/');
   assert.equal(store.status('own').inviteBase, 'https://own.example/');
   // its own base wins even when a different portal default is passed
-  const a = post(store, '/api/projects/own/codes', { count: 2 }, 'https://portal-default.example/');
+  const a = await post(store, '/api/projects/own/codes', { count: 2 }, 'https://portal-default.example/');
   assert.equal(a.json.links.length, 2);
   assert.match(a.json.links[0], /^https:\/\/own\.example\/\?projectId=own&code=/);
 
   // project WITHOUT its own base → uses the portal default
-  post(store, '/api/projects', { config: baseConfig('plain'), cohort: { expiresAt: future, ceiling: 5 } });
+  await post(store, '/api/projects', { config: baseConfig('plain'), cohort: { expiresAt: future, ceiling: 5 } });
   assert.equal(store.status('plain').inviteBase, null);
-  const b = post(store, '/api/projects/plain/codes', { count: 1 }, 'https://portal-default.example/');
+  const b = await post(store, '/api/projects/plain/codes', { count: 1 }, 'https://portal-default.example/');
   assert.match(b.json.links[0], /^https:\/\/portal-default\.example\/\?projectId=plain&code=/);
   // and with neither a project base nor a portal default → codes, no links
-  const c = post(store, '/api/projects/plain/codes', { count: 1 });
+  const c = await post(store, '/api/projects/plain/codes', { count: 1 });
   assert.equal(c.json.codes.length, 1);
   assert.equal(c.json.links.length, 0);
 });
 
-test('an invalid per-project inviteBase is rejected at create (400)', () => {
+test('an invalid per-project inviteBase is rejected at create (400)', async () => {
   const store = new ProjectStore();
-  const bad = post(store, '/api/projects', { config: baseConfig('badurl'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'not a url' });
+  const bad = await post(store, '/api/projects', { config: baseConfig('badurl'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'not a url' });
   assert.equal(bad.status, 400);
   assert.match(bad.json.reason, /invalid inviteBase/);
 });
 
-test('inviteBase round-trips through persistence', () => {
+test('inviteBase round-trips through persistence', async () => {
   const store = new ProjectStore();
   store.createProject({ config: baseConfig('persisted'), cohort: { expiresAt: future, ceiling: 5 }, inviteBase: 'https://keep.example/' });
   const reloaded = ProjectStore.fromJSON(JSON.parse(JSON.stringify(store.toJSON())));
   assert.equal(reloaded.inviteBaseFor('persisted'), 'https://keep.example/');
+});
+
+test('verification rounds: lead opens a round (idempotent), lists it, persists', async () => {
+  const store = new ProjectStore();
+  store.createProject({ config: baseConfig('vr'), cohort: { expiresAt: future, ceiling: 5 } });
+  const r1 = await store.openRound('vr', 1, { openedBy: 'lead', message: 'verify please' });
+  assert.equal(r1.round, 1);
+  await store.openRound('vr', 1);                                 // idempotent
+  const rounds = await store.listRounds('vr');
+  assert.equal(rounds.length, 1);
+  assert.equal(rounds[0].openedBy, 'lead');
+  const reloaded = ProjectStore.fromJSON(JSON.parse(JSON.stringify(store.toJSON())));
+  assert.equal((await reloaded.listRounds('vr')).length, 1, 'rounds survive persistence');
+});
+
+test('API: POST/GET /api/projects/:id/rounds opens + lists verification rounds', async () => {
+  const store = new ProjectStore();
+  await post(store, '/api/projects', { config: baseConfig('api-vr'), cohort: { expiresAt: future, ceiling: 5 } });
+  const opened = await post(store, '/api/projects/api-vr/rounds', { round: 2, openedBy: 'lead' });
+  assert.equal(opened.status, 200);
+  assert.equal(opened.json.round.round, 2);
+  const bad = await post(store, '/api/projects/api-vr/rounds', {});   // no round → 400
+  assert.equal(bad.status, 400);
+  const list = await get(store, '/api/projects/api-vr/rounds');
+  assert.equal(list.json.rounds.length, 1);
+  assert.equal(list.json.rounds[0].round, 2);
 });

@@ -12,8 +12,8 @@ import { ProjectStore, inviteLink } from './project-store.js';
 import { generateProjectKeypair } from '../pod/project-seal.js';
 import { portalHtml } from './ui.js';
 
-/** Pure API handler. @returns {{status:number, json:object}} */
-export function handlePortal({ method, path, body, store, inviteBase }) {
+/** Pure API handler. @returns {Promise<{status:number, json:object}>} */
+export async function handlePortal({ method, path, body, store, inviteBase }) {
   // POST /api/projects — create from a menukaart config + cohort window
   if (method === 'POST' && path === '/api/projects') {
     const config = body?.config || {};
@@ -41,7 +41,7 @@ export function handlePortal({ method, path, body, store, inviteBase }) {
     return { status: 200, json: { ok: true, projects: store.listProjects() } };
   }
 
-  const m = path.match(/^\/api\/projects\/([^/]+)(\/codes)?$/);
+  const m = path.match(/^\/api\/projects\/([^/]+)(\/codes|\/rounds)?$/);
   if (m) {
     const projectId = decodeURIComponent(m[1]);
     try {
@@ -52,6 +52,17 @@ export function handlePortal({ method, path, body, store, inviteBase }) {
         const base = store.inviteBaseFor(projectId) || inviteBase;   // per-project, else portal default
         const links = base ? codes.map((code) => inviteLink(base, projectId, code)) : [];
         return { status: 200, json: { ok: true, projectId, codes, links } };
+      }
+      // POST /api/projects/:id/rounds — LEAD opens a verify-summary verification round (idempotent)
+      if (method === 'POST' && m[2] === '/rounds') {
+        const round = Number(body?.round);
+        if (!Number.isFinite(round)) return { status: 400, json: { ok: false, reason: 'round (number) required' } };
+        const req = await store.openRound(projectId, round, { openedBy: body?.openedBy, message: body?.message, deadline: body?.deadline });
+        return { status: 200, json: { ok: true, projectId, round: req } };
+      }
+      // GET /api/projects/:id/rounds — open verification rounds
+      if (method === 'GET' && m[2] === '/rounds') {
+        return { status: 200, json: { ok: true, projectId, rounds: await store.listRounds(projectId) } };
       }
       // GET /api/projects/:id — config + status
       if (method === 'GET' && !m[2]) {
@@ -85,7 +96,7 @@ export function createPortalServer({ store, inviteBase, onChange }) {
     req.on('end', async () => {
       let parsed = {};
       if (raw) { try { parsed = JSON.parse(raw); } catch { return send(400, { ok: false, reason: 'invalid JSON' }); } }
-      const out = handlePortal({ method: req.method, path, body: parsed, store, inviteBase });
+      const out = await handlePortal({ method: req.method, path, body: parsed, store, inviteBase });
       // persist after any successful mutation
       if (out.status < 300 && (req.method === 'POST') && onChange) { try { await onChange(store); } catch { /* best-effort */ } }
       send(out.status, out.json);

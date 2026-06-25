@@ -147,8 +147,14 @@ verified-summary = { projectId, round, summary, verifiedAt,
   when not wired. **⇒ Slice 2 complete.** *(Optional later: the richer visual `compare` via canopy-chat `curation.js`;
   the textual compare — "based on your points" — already ships in the bubble.)*
 
-### Slice 3 — portal + push
-Portal "open verification round" button (writes the request, shows per-participant verify status); V2 push nudge.
+### Slice 3 — portal ✅ (open-round) + follow-ups
+- ✅ **Portal "open verification round"** — `ProjectStore.openRound`/`listRounds` (backed by `InMemoryRoundControl`,
+  persisted in `toJSON`/`fromJSON`); `POST`/`GET /api/projects/:id/rounds` (`handlePortal` is now async); a
+  "Verificatieronde openen" button in `ui.js` (opens round max+1). `test/portal.test.js` (+2). The lead opens a round →
+  the participants' bots pick it up on contact-open (Slice 2). **⇒ Slices 1-3 complete: the loop runs end-to-end.**
+- ⏳ **Follow-ups:** per-participant verify *status* (count `verified-summary` on central per round — needs the portal's
+  central-pod read access); a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`); and the production
+  **real-pod provisioning** of own/central pods from the activation session (today the surface defaults to in-memory).
 
 ---
 

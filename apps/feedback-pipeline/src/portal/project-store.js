@@ -12,13 +12,34 @@ import crypto from 'node:crypto';
 import { InMemoryCohortRegistry } from '../activation/cohort.js';
 import { validateProjectConfig } from '../config/project-config.js';
 import { IdentityRoster, makeContributionVerifier } from '../pod/signing.js';
+import { InMemoryRoundControl, openVerificationRound } from '../verify/round-control.js';
 
 export class ProjectStore {
   #configs = new Map();   // projectId -> { config, createdAt }
   #cohort;                // InMemoryCohortRegistry (shared with the activation service)
   #rosters = new Map();   // projectId -> IdentityRoster (pseudonym → signing pubKey)
+  #rounds;                // InMemoryRoundControl — verify-summary verification rounds the lead opens
 
-  constructor({ cohort } = {}) { this.#cohort = cohort || new InMemoryCohortRegistry(); }
+  constructor({ cohort, rounds } = {}) {
+    this.#cohort = cohort || new InMemoryCohortRegistry();
+    this.#rounds = rounds || new InMemoryRoundControl();
+  }
+
+  /** The shared verification-round control store — the participants' bots read open rounds from it
+   *  (a project /control/ container in production; the same in-process store in the local demo). */
+  roundControl() { return this.#rounds; }
+
+  /** LEAD action — open a verification round for a project (verify-summary loop). Idempotent per round. */
+  async openRound(projectId, round, { openedBy, message, deadline } = {}) {
+    this.#req(projectId);
+    return openVerificationRound({ controlStore: this.#rounds, projectId, round: Number(round), openedBy, message, deadline });
+  }
+
+  /** Open rounds for a project (most recent first). */
+  async listRounds(projectId) {
+    this.#req(projectId);
+    return (await this.#rounds.listRounds(projectId)).slice().sort((a, b) => Number(b.round) - Number(a.round));
+  }
 
   /** The shared cohort registry — so a co-located activation service redeems against the
    *  same state the portal issued codes from. */
@@ -86,11 +107,15 @@ export class ProjectStore {
       configs: Object.fromEntries(this.#configs),
       cohort: this.#cohort.toJSON(),
       rosters: Object.fromEntries([...this.#rosters].map(([id, r]) => [id, r.toJSON()])),
+      rounds: this.#rounds.toJSON(),
     };
   }
 
   static fromJSON(obj) {
-    const store = new ProjectStore({ cohort: InMemoryCohortRegistry.fromJSON(obj?.cohort) });
+    const store = new ProjectStore({
+      cohort: InMemoryCohortRegistry.fromJSON(obj?.cohort),
+      rounds: InMemoryRoundControl.fromJSON(obj?.rounds),
+    });
     for (const [id, v] of Object.entries(obj?.configs || {})) store.#configs.set(id, v);
     for (const [id, r] of Object.entries(obj?.rosters || {})) store.#rosters.set(id, IdentityRoster.fromJSON(r));
     return store;
