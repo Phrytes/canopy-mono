@@ -12,10 +12,11 @@ import { escalates, runTask1 } from '../task1.js';
 import { buildContribution } from '../pod/contribution.js';
 import { configToRunOpts } from '../config/project-config.js';
 import { contributionMeta } from '../pod/signing.js';
+import { summariseOwnContributions, releaseVerifiedSummary } from '../verify/summary-round.js';
 
 export class ChannelDispatcher {
-  #adapter; #pod; #participant; #opts; #projectId; #identity;
-  #session = { messages: [], points: [] };
+  #adapter; #pod; #participant; #opts; #projectId; #identity; #centralPod;
+  #session = { messages: [], points: [], verifyDraft: null };
 
   /**
    * @param {{ adapter, pod, config, participant:string, identity?:{publicKey:string,privateKey:string} }} args
@@ -28,14 +29,17 @@ export class ChannelDispatcher {
    */
   #requiresSignature;
 
-  constructor({ adapter, pod, config, participant, identity }) {
+  constructor({ adapter, pod, config, participant, identity, centralPod }) {
     this.#adapter = assertAdapter(adapter);
-    this.#pod = pod;
+    this.#pod = pod;                        // Stage 1 target + the verify-round source. Own pod when verify-summary is wired.
     this.#participant = participant;
     this.#opts = configToRunOpts(config);
     this.#projectId = config?.projectId;
     this.#identity = identity;
     this.#requiresSignature = Boolean(config?.privacy?.verify);
+    // Verify-summary loop (docs/DESIGN-verify-summary-loop.md): the CENTRAL pod receives ONLY the
+    // user-verified summary. Optional — absent ⇒ the verify-turn is inert (legacy single-pod flows).
+    this.#centralPod = centralPod ?? null;
   }
 
   #gate() { return { layer1OnDevice: this.#opts.layer1OnDevice, escalationCategories: this.#opts.escalationCategories }; }
@@ -105,6 +109,51 @@ export class ChannelDispatcher {
     return written;
   }
 
+  // ── Verify-summary loop, Stage 2 (docs/DESIGN-verify-summary-loop.md) ─────────────────────────────
+  // The lead opens a round → the bot summarises the participant's OWN pod ON-DEVICE → the participant
+  // verifies / edits / withdraws → ONLY the verified summary is sealed+signed to the CENTRAL pod. The
+  // raw never leaves the own pod.
+
+  /** Open a verification round: summarise the OWN pod on-device, stash the draft, present it for verify. */
+  async openVerificationRound({ round = 1, model = this.#opts.model, summarise = summariseOwnContributions } = {}) {
+    const draft = await summarise({
+      ownPod: this.#pod, participant: this.#participant, model,
+      projectId: this.#projectId, round, opts: { lang: this.#opts.lang },
+    });
+    this.#session.verifyDraft = draft;
+    await this.#adapter.send({ type: 'verify-summary', round, summary: draft.summary, points: draft.points });
+    return draft;
+  }
+
+  /** Verify: release the (possibly edited) summary draft to the CENTRAL pod. The raw never leaves. */
+  async verifySummary() {
+    const draft = this.#session.verifyDraft;
+    if (!draft) { await this.#adapter.send({ type: 'verify-none' }); return null; }
+    if (this.#requiresSignature && !this.#identity) { await this.#adapter.send({ type: 'verification-required' }); return null; }
+    if (!this.#centralPod) throw new Error('verifySummary: no centralPod configured');
+    const cid = await releaseVerifiedSummary({
+      centralPod: this.#centralPod, draft, identity: this.#identity,
+      participant: this.#participant, lang: this.#opts.lang,
+    });
+    this.#session.verifyDraft = null;
+    await this.#adapter.send({ type: 'verified', round: draft.round, id: cid });
+    return cid;
+  }
+
+  /** Edit the pending summary (the participant rewords it), then re-present for verify. */
+  async editVerificationSummary(newText) {
+    if (!this.#session.verifyDraft) { await this.#adapter.send({ type: 'verify-none' }); return; }
+    const summary = String(newText || '').trim();
+    this.#session.verifyDraft = { ...this.#session.verifyDraft, summary, edited: true };
+    await this.#adapter.send({ type: 'verify-summary', round: this.#session.verifyDraft.round, summary, points: this.#session.verifyDraft.points, edited: true });
+  }
+
+  /** Withdraw: discard the pending summary; nothing leaves the own pod. */
+  async withdrawVerification() {
+    this.#session.verifyDraft = null;
+    await this.#adapter.send({ type: 'verification-withdrawn' });
+  }
+
   /** The menu — identical across channels (architecture §1.3 button menu). */
   async command(action, arg) {
     switch (action) {
@@ -137,6 +186,10 @@ export class ChannelDispatcher {
         await this.#adapter.send({ type: action, status: 'unsupported' });
         return false;
       }
+      // verify-summary round (Stage 2) — button taps from the verify-summary bubble
+      case 'verify':          return this.verifySummary();
+      case 'verify-edit':     return this.editVerificationSummary(arg);
+      case 'verify-withdraw': return this.withdrawVerification();
       default:
         throw new Error(`unknown action: ${action}`);
     }

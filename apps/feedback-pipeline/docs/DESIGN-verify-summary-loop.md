@@ -117,18 +117,17 @@ verified-summary = { projectId, round, summary, verifiedAt,
 ## 6. Build plan
 
 ### Slice 1 — the core loop, headless (all local)
-1. **`src/verify/summary-round.js`** (the new core, pure + injected deps):
-   - `summariseOwnContributions({ ownPodPoints, config, projectId, round })` → `summary-draft` (reuses `summarize()`).
-   - `buildVerifiedSummary({ summaryDraft, identity, crypto })` → a signed+sealed `verified-summary` record.
-   - `releaseToCentral({ centralPod, verifiedSummary })` → writes it; raw stays put.
-2. **Redirect contribute → own pod** — the dispatcher's Stage-1 consent target becomes `ByoCentralPod` (own pod);
-   central becomes summary-only.
-3. **Verify turn in the dispatcher** — new actions `verify-open` / `verify` / `verify-edit` / `verify-withdraw`;
-   the verify bubble shows the summary + a `compare` (raw vs curated) + `[verify | edit | withdraw]` buttons.
-4. **Lead trigger (poll)** — portal writes `verification-request`; the bot picks it up on open.
-5. **Headless test** — extend `scripts/_verify-summary-smoke.js`: contribute (own pod) → lead opens round →
-   summarise → verify → assert central holds exactly one signed `verified-summary` AND the raw stayed in the
-   own pod (and a non-verify path leaves central empty).
+1. ✅ **`src/verify/summary-round.js`** (`6f97c608`) — `summariseOwnContributions` (on-device, reuses `summarize()`)
+   + `releaseVerifiedSummary` (reuses `buildContribution`+`contributionMeta`+`pod.write`; tags `verified-summary`).
+2. 🟡 **Redirect contribute → own pod** — the dispatcher now ACCEPTS `{ pod: ownPod, centralPod }` (the verify-turn
+   reads `pod`, releases to `centralPod`). The remaining bit is the CALLER wiring `pod = ownPod` (the bot/mount layer).
+3. ✅ **Verify turn in the dispatcher** (this commit) — `openVerificationRound` + `verifySummary`/`editVerificationSummary`/
+   `withdrawVerification`, routed via `command('verify'|'verify-edit'|'verify-withdraw')`; the `verify-summary` bubble
+   carries `{summary, points}` for the UI to render the `compare` (raw vs curated). Test `test/verify-turn.test.js` (3) +
+   `test/verify-summary.test.js` (3); existing dispatcher tests still green (9).
+4. ⏳ **Lead trigger (poll)** — portal writes `verification-request`; the bot picks it up on open. *(remaining)*
+5. ✅ **Headless test** — `scripts/verify-summary-smoke.js` PASSES against the live proxy (contribute own → summarise →
+   verify → central holds only the verified summary; raw stays own).
 
 ### Slice 2 — canopy-chat wiring (web then mobile)
 The `fp-bot` mount surfaces the verify turn + the `compare` view; the poll runs on contact-open.
