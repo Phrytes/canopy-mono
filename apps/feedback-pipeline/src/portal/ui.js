@@ -162,18 +162,23 @@ document.getElementById('cgen').addEventListener('click', async () => {
   out.textContent = (res.links && res.links.length ? res.links : res.codes || []).join('\\n') || (res.reason||'—');
 });
 
+async function renderRounds(projectId){
+  const { rounds=[] } = await api('GET','/api/projects/'+encodeURIComponent(projectId)+'/rounds');
+  const out = document.getElementById('vout'); out.classList.remove('hide');
+  out.textContent = rounds.length
+    ? rounds.map(r => 'Ronde '+r.round+': '+(r.verified||0)+'/'+(r.of||0)+' geverifieerd').join('\\n')
+    : 'Nog geen rondes geopend.';
+}
 document.getElementById('vround').addEventListener('click', async () => {
   const projectId = document.getElementById('cproj').value;   // reuse the same project selector
   if (!projectId) return;
   const enc = encodeURIComponent(projectId);
   const { rounds=[] } = await api('GET','/api/projects/'+enc+'/rounds');   // next round = max+1
   const next = (rounds.reduce((m,r)=>Math.max(m, Number(r.round)||0), 0)) + 1;
-  const res = await api('POST','/api/projects/'+enc+'/rounds',{ round: next, openedBy: 'lead' });
-  const out = document.getElementById('vout'); out.classList.remove('hide');
-  out.textContent = res.ok
-    ? 'Ronde '+res.round.round+' geopend ✓ — deelnemers zien de samenvatting bij hun volgende bot-bezoek.'
-    : (res.reason||'—');
+  await api('POST','/api/projects/'+enc+'/rounds',{ round: next, openedBy: 'lead' });
+  await renderRounds(projectId);
 });
+document.getElementById('cproj').addEventListener('change', (e) => { if (e.target.value) renderRounds(e.target.value); });
 
 refresh();
 </script>

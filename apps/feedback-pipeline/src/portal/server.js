@@ -10,10 +10,12 @@
 import http from 'node:http';
 import { ProjectStore, inviteLink } from './project-store.js';
 import { generateProjectKeypair } from '../pod/project-seal.js';
+import { verifiedCountFor } from '../verify/round-control.js';
 import { portalHtml } from './ui.js';
 
-/** Pure API handler. @returns {Promise<{status:number, json:object}>} */
-export async function handlePortal({ method, path, body, store, inviteBase }) {
+/** Pure API handler. `centralPod` (optional) lets the rounds view report per-round verify counts.
+ *  @returns {Promise<{status:number, json:object}>} */
+export async function handlePortal({ method, path, body, store, inviteBase, centralPod }) {
   // POST /api/projects — create from a menukaart config + cohort window
   if (method === 'POST' && path === '/api/projects') {
     const config = body?.config || {};
@@ -60,9 +62,14 @@ export async function handlePortal({ method, path, body, store, inviteBase }) {
         const req = await store.openRound(projectId, round, { openedBy: body?.openedBy, message: body?.message, deadline: body?.deadline });
         return { status: 200, json: { ok: true, projectId, round: req } };
       }
-      // GET /api/projects/:id/rounds — open verification rounds
+      // GET /api/projects/:id/rounds — open rounds, each with its verify status (X verified of Y activated)
       if (method === 'GET' && m[2] === '/rounds') {
-        return { status: 200, json: { ok: true, projectId, rounds: await store.listRounds(projectId) } };
+        const rounds = await store.listRounds(projectId);
+        const activations = store.status(projectId).activations;
+        const enriched = await Promise.all(rounds.map(async (r) => ({
+          ...r, verified: await verifiedCountFor({ centralPod, round: r.round }), of: activations,
+        })));
+        return { status: 200, json: { ok: true, projectId, rounds: enriched } };
       }
       // GET /api/projects/:id — config + status
       if (method === 'GET' && !m[2]) {
@@ -78,7 +85,7 @@ export async function handlePortal({ method, path, body, store, inviteBase }) {
  * Runnable portal http server.
  * @param {{ store:ProjectStore, inviteBase?:string, onChange?:(store)=>any }} a
  */
-export function createPortalServer({ store, inviteBase, onChange }) {
+export function createPortalServer({ store, inviteBase, onChange, centralPod }) {
   return http.createServer((req, res) => {
     const send = (status, json) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(json)); };
     const url = new URL(req.url, 'http://localhost');
@@ -96,7 +103,7 @@ export function createPortalServer({ store, inviteBase, onChange }) {
     req.on('end', async () => {
       let parsed = {};
       if (raw) { try { parsed = JSON.parse(raw); } catch { return send(400, { ok: false, reason: 'invalid JSON' }); } }
-      const out = await handlePortal({ method: req.method, path, body: parsed, store, inviteBase });
+      const out = await handlePortal({ method: req.method, path, body: parsed, store, inviteBase, centralPod });
       // persist after any successful mutation
       if (out.status < 300 && (req.method === 'POST') && onChange) { try { await onChange(store); } catch { /* best-effort */ } }
       send(out.status, out.json);

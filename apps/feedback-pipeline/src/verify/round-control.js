@@ -53,6 +53,21 @@ export async function pendingRoundsFor({ controlStore, projectId, participant, c
 }
 
 /**
+ * Lead status — how many participants have released a verified summary for a round (counts the
+ * `verified-summary` records on the central pod whose id ends in `:summary:<round>`). The portal shows
+ * this against the activation count. Returns 0 when no central pod is available.
+ */
+export async function verifiedCountFor({ centralPod, round }) {
+  if (!centralPod || typeof centralPod.list !== 'function') return 0;
+  const records = await centralPod.list();
+  const suffix = `:summary:${round}`;
+  return records.filter((r) => {
+    const c = r.contribution ?? r;
+    return (c.themeTags || []).includes('verified-summary') && String(c.id || '').endsWith(suffix);
+  }).length;
+}
+
+/**
  * Bot POLL (run on contact-open): open the verify-turn for the FIRST pending unverified round, if any.
  * Returns the round it opened (or null). The dispatcher's `centralPod` must be the same one passed here.
  */

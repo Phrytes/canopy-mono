@@ -182,3 +182,26 @@ test('API: POST/GET /api/projects/:id/rounds opens + lists verification rounds',
   assert.equal(list.json.rounds.length, 1);
   assert.equal(list.json.rounds[0].round, 2);
 });
+
+test('verify status: GET /rounds reports the verified count per round (with a central pod)', async () => {
+  const { InMemoryCentralPod } = await import('../src/pod/central-pod.js');
+  const signing = await import('../src/pod/signing.js');
+  const { releaseVerifiedSummary } = await import('../src/verify/summary-round.js');
+
+  const store = new ProjectStore();
+  await post(store, '/api/projects', { config: baseConfig('vs'), cohort: { expiresAt: future, ceiling: 5 } });
+  await post(store, '/api/projects/vs/rounds', { round: 1 });
+
+  const id = signing.generateParticipantIdentity();
+  const roster = new signing.IdentityRoster(); roster.bind('alice', id.publicKey, id.encPublicKey);
+  const central = new InMemoryCentralPod({ verify: signing.makeContributionVerifier({ roster, projectId: 'vs' }) });
+  await releaseVerifiedSummary({ centralPod: central, draft: { projectId: 'vs', round: 1, summary: 'a summary' }, identity: id, participant: 'alice', lang: 'nl' });
+
+  const list = await handlePortal({ method: 'GET', path: '/api/projects/vs/rounds', store, centralPod: central });
+  assert.equal(list.json.rounds[0].round, 1);
+  assert.equal(list.json.rounds[0].verified, 1, 'one participant verified round 1');
+  // round 2 (no verified summaries) → 0
+  await post(store, '/api/projects/vs/rounds', { round: 2 });
+  const list2 = await handlePortal({ method: 'GET', path: '/api/projects/vs/rounds', store, centralPod: central });
+  assert.equal(list2.json.rounds.find((r) => r.round === 2).verified, 0);
+});

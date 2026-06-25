@@ -152,9 +152,11 @@ verified-summary = { projectId, round, summary, verifiedAt,
   persisted in `toJSON`/`fromJSON`); `POST`/`GET /api/projects/:id/rounds` (`handlePortal` is now async); a
   "Verificatieronde openen" button in `ui.js` (opens round max+1). `test/portal.test.js` (+2). The lead opens a round →
   the participants' bots pick it up on contact-open (Slice 2). **⇒ Slices 1-3 complete: the loop runs end-to-end.**
-- ⏳ **Follow-ups:** per-participant verify *status* (count `verified-summary` on central per round — needs the portal's
-  central-pod read access); a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`); and the production
-  **real-pod provisioning** of own/central pods from the activation session (today the surface defaults to in-memory).
+- ✅ **Per-participant verify status** — `verifiedCountFor({centralPod, round})` counts `verified-summary` records on
+  central per round; `GET /api/projects/:id/rounds` enriches each round with `{verified, of: activations}` when a
+  `centralPod` is supplied; the portal shows "Ronde N: X/Y geverifieerd". `test/portal.test.js` (+1).
+- ⏳ **Follow-ups:** a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`); the production **real-pod
+  provisioning** of own/central pods from the activation session (today the surface defaults to in-memory).
 
 ---
 
