@@ -11,6 +11,14 @@
     "nudge_body": {
       "text": "You have a summary to verify.",
       "doc": "Verify-summary push nudge — local notification body."
+    },
+    "login_first": {
+      "text": "Log in to your pod first to take part.",
+      "doc": "Feedback activation — shown when /feedback <code> runs without a pod session."
+    },
+    "activation_failed": {
+      "text": "Activation failed: {error}",
+      "doc": "Feedback activation — shown when buildFeedbackVerifyPods throws."
     }
   },
   "tab": {

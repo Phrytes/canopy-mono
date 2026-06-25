@@ -139,6 +139,10 @@ const mkId = () => `m${MSG_ID_PREFIX}${nextMessageId++}`;
 // Unset → the bot still enters mode + the deterministic intent fast-path works, but the LLM
 // clean/review step needs a reachable route. Mirrors web's VITE_FEEDBACK_LLM_BASEURL.
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
+// M6 — feedback real-pod ACTIVATION (parity with web's VITE_FEEDBACK_ACTIVATION_URL / _PROJECT_ID).
+// Unset → `/feedback <code>` has no activation service, so the bare-demo mount path is used.
+const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
+const FEEDBACK_PROJECT_ID = process.env.EXPO_PUBLIC_FEEDBACK_PROJECT_ID || 'canopy-chat';
 
 // ε.1 — fallback inbox builder used only when App.js didn't pass one
 // (e.g. older standalone test mounts).  Production wiring goes through
@@ -996,17 +1000,39 @@ export default function ChatScreen({
     // M6 — feedback bot (parity with web main.js). `/feedback` enters mode; free text while a
     // thread is active routes to the co-hosted bot; the mount echoes the user + renders the bot's
     // reply through the SAME setThreadState/updateMessages path the DM branch above uses.
+    const fbAppendUser = (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [
+      ...msgs, { id: mkId(), role: 'user', text: x },
+    ]));
+    const fbAppendBot = (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [
+      ...msgs, { id: mkId(), role: 'bot', pending: false, rendered: {
+        kind: 'text', messageId: null, threadId: tid, lifecycleState: 'closed', text: x,
+      } },
+    ]));
+    // Real-pod ACTIVATION branch (`/feedback <code>`, parity with web main.js): own-pod-first verify
+    // pods from the RN pod session. A bare `/feedback` (no code) falls through to the demo mount below.
+    const fbCode = String(text).trim().match(/^\/feedback\s+(\S+)$/);
+    if (fbCode && FEEDBACK_ACTIVATION_URL) {
+      try {
+        const { activateMobileFeedback } = await import('../v2/feedbackActivation.js');
+        const pods = await activateMobileFeedback({ session: sessionRef.current, activationUrl: FEEDBACK_ACTIVATION_URL, projectId: FEEDBACK_PROJECT_ID, code: fbCode[1] });
+        feedbackMountRef.current = createFeedbackMount({
+          llmBaseURL: FEEDBACK_LLM_BASEURL, pod: pods.ownPod, centralPod: pods.centralPod, controlStore: pods.controlStore,
+          appendUserBubble: fbAppendUser, appendBotBubble: fbAppendBot,
+        });
+        fbAppendUser(currentThreadId, String(text).trim());
+        await feedbackMountRef.current.open(currentThreadId);
+      } catch (e) {
+        fbAppendBot(currentThreadId, e?.message === 'not-logged-in'
+          ? t('feedback.login_first', { defaultValue: 'Log eerst in op je pod om mee te doen.' })
+          : t('feedback.activation_failed', { error: e?.message ?? String(e), defaultValue: 'Activatie mislukt.' }));
+      }
+      return;
+    }
     if (!feedbackMountRef.current) {
       feedbackMountRef.current = createFeedbackMount({
         llmBaseURL: FEEDBACK_LLM_BASEURL,
-        appendUserBubble: (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [
-          ...msgs, { id: mkId(), role: 'user', text: x },
-        ])),
-        appendBotBubble: (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [
-          ...msgs, { id: mkId(), role: 'bot', pending: false, rendered: {
-            kind: 'text', messageId: null, threadId: tid, lifecycleState: 'closed', text: x,
-          } },
-        ])),
+        appendUserBubble: fbAppendUser,
+        appendBotBubble: fbAppendBot,
       });
     }
     if (await feedbackMountRef.current.tryHandle(text, currentThreadId)) return;

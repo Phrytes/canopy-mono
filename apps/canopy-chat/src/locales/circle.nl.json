@@ -11,6 +11,14 @@
     "nudge_body": {
       "text": "Je hebt een samenvatting om te verifiëren.",
       "doc": "Verify-summary push nudge — local notification body."
+    },
+    "login_first": {
+      "text": "Log eerst in op je pod om mee te doen.",
+      "doc": "Feedback activation — shown when /feedback <code> runs without a pod session."
+    },
+    "activation_failed": {
+      "text": "Activatie mislukt: {error}",
+      "doc": "Feedback activation — shown when buildFeedbackVerifyPods throws."
     }
   },
   "tab": {
