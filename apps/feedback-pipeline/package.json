@@ -28,7 +28,8 @@
     "portal": "node scripts/portal.js",
     "bootstrap-owner": "node scripts/bootstrap-owner.js",
     "llm-health": "node scripts/llm-health.js",
-    "canopy-bot": "node scripts/canopy-bot.js"
+    "canopy-bot": "node scripts/canopy-bot.js",
+    "verify-summary-smoke": "node scripts/verify-summary-smoke.js"
   },
   "dependencies": {
     "@canopy/redaction": "workspace:*",
