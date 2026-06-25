@@ -134,8 +134,14 @@ verified-summary = { projectId, round, summary, verifiedAt,
    live proxy: contribute(own) → lead opens round → poll → summarise(proxy) → verify → central holds only the
    verified summary, raw stays own, no re-ask. **⇒ Slice 1 is engine-complete (9 verify tests green).**
 
-### Slice 2 — canopy-chat wiring (web then mobile)
-The `fp-bot` mount surfaces the verify turn + the `compare` view; the poll runs on contact-open.
+### Slice 2 — channel render + actions ✅, then canopy-chat wiring
+- ✅ **Channel render + control grammar** (`render.js` + `actions.js` + `strings/{en,nl}.js`) — the `verify-summary`
+  bubble (summary + the points it's based on = the textual raw-vs-curated compare) + `[fp:verify | fp:verify-edit |
+  fp:verify-withdraw]` buttons; `verified`/`verification-withdrawn`/`verify-none` replies; `parseControl`+`runAction`
+  route the taps to the dispatcher, incl. tap-`[Edit]` → prompt → the next free text rewords (`awaitingEdit`).
+  Channel-agnostic ⇒ **canopy-chat AND TG both render it.** `test/verify-render-actions.test.js` (5).
+- ⏳ **canopy-chat mount wiring** — wire the `fp-bot` surface's dispatcher with `pod = ownPod` / `centralPod`, and run
+  `pollAndOpenVerification` on contact-open. Optional: the richer visual `compare` (canopy-chat `curation.js`).
 
 ### Slice 3 — portal + push
 Portal "open verification round" button (writes the request, shows per-participant verify status); V2 push nudge.

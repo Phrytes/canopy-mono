@@ -28,6 +28,23 @@ export function renderMessage(msg, s = getStrings()) {
     }
     case 'submitted':
       return { text: msg.ids?.length ? s.submitted(msg.ids.length) : s.submittedEmpty };
+    // verify-summary loop (Stage 2) — the bubble shows the summary + the points it's based on (the
+    // raw-vs-curated compare) + approve/edit/withdraw buttons. Only the approved summary leaves.
+    case 'verify-summary': {
+      const based = msg.points?.length
+        ? `\n\n${s.verifyBasedOn}\n${msg.points.map((p) => `• ${p.text}`).join('\n')}`
+        : '';
+      return {
+        text: `${s.verifyIntro}\n\n“${msg.summary}”${based}`,
+        buttons: [BTN('fp:verify', s.verifyConfirm), BTN('fp:verify-edit', s.verifyEdit), BTN('fp:verify-withdraw', s.verifyWithdraw)],
+      };
+    }
+    case 'verified':
+      return { text: s.verified };
+    case 'verification-withdrawn':
+      return { text: s.verificationWithdrawn };
+    case 'verify-none':
+      return { text: s.verifyNone };
     case 'verification-required':
       return { text: s.verificationRequired };
     case 'consent-failed':

@@ -21,6 +21,16 @@ export default {
 
   submitted: (n) => `${n} bijdrage(n) opgeslagen ✓. Typ /menu voor je opties.`,
   submittedEmpty: 'Er is niets verstuurd.',
+  // verify-summary loop (docs/DESIGN-verify-summary-loop.md)
+  verifyIntro: 'Dit is de samenvatting van jouw feedback. Klopt deze? Alleen wat jij goedkeurt wordt gedeeld.',
+  verifyBasedOn: 'Gebaseerd op jouw punten:',
+  verifyConfirm: 'Goedkeuren & versturen',
+  verifyEdit: 'Aanpassen',
+  verifyEditPrompt: 'Typ je eigen verwoording van de samenvatting.',
+  verifyWithdraw: 'Niet delen',
+  verified: 'Bedankt ✓. Je goedgekeurde samenvatting is gedeeld.',
+  verificationWithdrawn: 'Niets gedeeld — je feedback blijft bij jou.',
+  verifyNone: 'Er staat geen samenvatting klaar om te verifiëren.',
   // dit project vereist een geverifieerde identiteit, die dit kanaal niet kan bieden
   verificationRequired: 'Dit project accepteert alleen bijdragen van een geverifieerde identiteit. Doe mee via de canopy-app, die je bijdrage op je eigen apparaat ondertekent.',
   consentFailed: (n) => `${n} bijdrage(n) konden niet worden opgeslagen en zijn niet verstuurd. Er is niets bewaard.`,

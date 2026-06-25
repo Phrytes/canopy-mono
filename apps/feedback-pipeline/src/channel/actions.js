@@ -25,6 +25,11 @@ export function parseControl(text) {
   if (t === 'fp:escalate:yes') return { kind: 'escalate-yes' };
   if (t === 'fp:escalate:no') return { kind: 'escalate-no' };
   if (t === '/mijn' || t === '/mine' || t === 'fp:mine') return { kind: 'my-contributions' };
+  // verify-summary loop (Stage 2) button callbacks
+  if (t === 'fp:verify') return { kind: 'verify' };
+  if (t === 'fp:verify-withdraw') return { kind: 'verify-withdraw' };
+  const ve = t.match(/^fp:verify-edit(?::\s*(.+))?$/);            // [edit] (then prompt) or fp:verify-edit:<text>
+  if (ve) return { kind: 'verify-edit', text: ve[1]?.trim() };
   const wd = t.match(/^(?:\/intrekken|\/withdraw|fp:withdraw:)\s*(.+)$/);
   if (wd) return { kind: 'withdraw', arg: wd[1].trim() };
   return null;
@@ -69,8 +74,18 @@ export async function runAction(action, { session, say, strings: s }) {
       return say(s.escalateYesAck);
     case 'escalate-no':
       return say(s.escalateNoAck);
+    // verify-summary loop (Stage 2)
+    case 'verify':
+      return void await session.dispatcher.verifySummary();
+    case 'verify-withdraw':
+      return void await session.dispatcher.withdrawVerification();
+    case 'verify-edit':
+      if (action.text) { session.awaitingEdit = false; return void await session.dispatcher.editVerificationSummary(action.text); }
+      session.awaitingEdit = true;                                 // [Edit] tapped → the next free text rewords it
+      return say(s.verifyEditPrompt);
     case 'message':
     default:
+      if (session.awaitingEdit) { session.awaitingEdit = false; return void await session.dispatcher.editVerificationSummary(action.text); }
       return void await session.dispatcher.handleMessage(action.text);
   }
 }
