@@ -29,7 +29,7 @@ import { applyLlmRoute, assertCleanRouteSafe } from '../../../feedback-pipeline/
  * @param {(chatId:string)=>object} [a.identityFor]  per-thread identity (defaults to `identity`)
  * @param {(reply:{chatId:string,text:string,buttons?:Array})=>void} a.emit  render sink
  */
-export function createFeedbackSurface({ config, pod, bus, identity, identityFor, llmBaseURL, emit } = {}) {
+export function createFeedbackSurface({ config, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, emit } = {}) {
   if (typeof emit !== 'function') throw new Error('createFeedbackSurface: emit(reply) is required');
   const cfg = validateProjectConfig(config || exampleProjectConfig);
   // route ownership → the bot: the route lives in config.llm; `llmBaseURL` is the browser's
@@ -47,8 +47,11 @@ export function createFeedbackSurface({ config, pod, bus, identity, identityFor,
   let botPromise = null;
   const bot = () => (botPromise ||= (async () => {
     const resolved = (typeof pod === 'function' ? await pod() : await pod) || new InMemoryCentralPod();
+    // verify-summary loop (docs in apps/feedback-pipeline): when a central pod + a round-control store
+    // are supplied, `pod` is the participant's OWN pod and the verified summary goes to `centralPod`.
+    const resolvedCentral = typeof centralPod === 'function' ? await centralPod() : await centralPod;
     const bridge = new InternalBusBridge({ bus: sharedBus, address: 'fp-bot' });
-    const b = new CanopyChatBot({ bridge, pod: resolved, config: cfg, identityFor: idFor });
+    const b = new CanopyChatBot({ bridge, pod: resolved, centralPod: resolvedCentral ?? null, controlStore: controlStore ?? null, config: cfg, identityFor: idFor });
     await b.start();
     return b;
   })());
@@ -63,8 +66,13 @@ export function createFeedbackSurface({ config, pod, bus, identity, identityFor,
 
   const active = new Set();
   return {
-    /** Enter feedback mode for a thread and show the bot's guidance. */
-    async start(threadId) { active.add(String(threadId)); await (await clientFor(threadId)).send('/help'); },
+    /** Enter feedback mode for a thread and show the bot's guidance, then check for a lead-triggered
+     *  verification round (the verify-summary loop polls on contact-open; no-op when not wired). */
+    async start(threadId) {
+      active.add(String(threadId));
+      await (await clientFor(threadId)).send('/help');
+      try { await (await bot()).pollVerification(String(threadId)); } catch { /* best-effort; never block entry */ }
+    },
     /** Leave feedback mode. */
     stop(threadId) { active.delete(String(threadId)); clients.get(String(threadId))?.close(); clients.delete(String(threadId)); },
     isActive(threadId) { return active.has(String(threadId)); },

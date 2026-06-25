@@ -12,21 +12,27 @@ import { CanopyChatChannelAdapter } from './canopy-chat-adapter.js';
 import { getStrings } from '../strings/index.js';
 import { parseControl, runAction } from './actions.js';
 import { classifyIntent } from './intent.js';
+import { pollAndOpenVerification } from '../verify/round-control.js';
 
 export class CanopyChatBot {
-  #bridge; #pod; #config; #model; #participantFor; #identityFor; #strings; #sessions = new Map();
+  #bridge; #pod; #centralPod; #controlStore; #config; #model; #participantFor; #identityFor; #strings; #sessions = new Map();
 
   /** @param {{ bridge, pod, config, participantFor?:(chatId:string)=>string,
-   *           identityFor?:(chatId:string)=>{publicKey:string,privateKey:string} }} a
+   *           identityFor?:(chatId:string)=>{publicKey:string,privateKey:string},
+   *           centralPod?, controlStore? }} a
    *  canopy-chat runs ON the participant's device, so `identityFor` can return the participant's
    *  own signing keypair (from their vault) — contributions are then signed and accepted by a
-   *  verify-enabled project. */
-  constructor({ bridge, pod, config, participantFor, identityFor }) {
+   *  verify-enabled project. When `centralPod` + `controlStore` are supplied, the verify-summary
+   *  loop is active: `pod` is the participant's OWN pod (Stage-1 contributions + the summary source),
+   *  the verified summary goes to `centralPod`, and `pollVerification` opens any lead-triggered round. */
+  constructor({ bridge, pod, config, participantFor, identityFor, centralPod, controlStore }) {
     if (!bridge || typeof bridge.onMessage !== 'function' || typeof bridge.sendReply !== 'function') {
       throw new Error('CanopyChatBot: bridge with onMessage()/sendReply() required');
     }
     this.#bridge = bridge;
     this.#pod = pod;
+    this.#centralPod = centralPod ?? null;
+    this.#controlStore = controlStore ?? null;
     this.#config = config;
     this.#model = config?.llm?.model;
     this.#strings = getStrings(config?.language?.preferred);
@@ -41,6 +47,7 @@ export class CanopyChatBot {
       const dispatcher = new ChannelDispatcher({
         adapter, pod: this.#pod, config: this.#config,
         participant: this.#participantFor(chatId), identity: this.#identityFor?.(chatId),
+        centralPod: this.#centralPod,
       });
       s = { adapter, dispatcher, points: [] };
       this.#sessions.set(chatId, s);
@@ -67,5 +74,17 @@ export class CanopyChatBot {
     const action = parseControl(text) || await classifyIntent(text, { model: this.#model });
     const say = (txt, buttons) => this.#say(chatId, txt, buttons);
     return runAction(action, { session, say, strings: this.#strings });
+  }
+
+  /** Verify-summary loop — on contact-open, open the verify-turn for any lead-triggered round this
+   *  participant hasn't verified yet. No-op when the loop isn't wired (no centralPod/controlStore). */
+  async pollVerification(chatId, { summarise } = {}) {
+    if (!this.#controlStore || !this.#centralPod) return null;
+    const session = this.#session(String(chatId));
+    return pollAndOpenVerification({
+      dispatcher: session.dispatcher, controlStore: this.#controlStore,
+      projectId: this.#config?.projectId, participant: this.#participantFor(String(chatId)),
+      centralPod: this.#centralPod, model: this.#model, ...(summarise ? { summarise } : {}),
+    });
   }
 }

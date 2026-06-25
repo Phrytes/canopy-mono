@@ -140,8 +140,12 @@ verified-summary = { projectId, round, summary, verifiedAt,
   fp:verify-withdraw]` buttons; `verified`/`verification-withdrawn`/`verify-none` replies; `parseControl`+`runAction`
   route the taps to the dispatcher, incl. tap-`[Edit]` → prompt → the next free text rewords (`awaitingEdit`).
   Channel-agnostic ⇒ **canopy-chat AND TG both render it.** `test/verify-render-actions.test.js` (5).
-- ⏳ **canopy-chat mount wiring** — wire the `fp-bot` surface's dispatcher with `pod = ownPod` / `centralPod`, and run
-  `pollAndOpenVerification` on contact-open. Optional: the richer visual `compare` (canopy-chat `curation.js`).
+- ✅ **canopy-chat mount wiring** — `CanopyChatBot` accepts `centralPod` + `controlStore`, forwards `centralPod` to the
+  per-chat dispatcher, and exposes `pollVerification(chatId)`; `createFeedbackSurface` forwards both and calls
+  `pollVerification` on `start` (contact-open). Integration test `test/canopy-chat-bot-verify.test.js` (2): poll → the
+  verify bubble renders through the bridge → tap `[verify]` → central holds the verified summary, raw stays own; no-op
+  when not wired. **⇒ Slice 2 complete.** *(Optional later: the richer visual `compare` via canopy-chat `curation.js`;
+  the textual compare — "based on your points" — already ships in the bubble.)*
 
 ### Slice 3 — portal + push
 Portal "open verification round" button (writes the request, shows per-participant verify status); V2 push nudge.
