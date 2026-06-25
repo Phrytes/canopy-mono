@@ -2113,10 +2113,15 @@ const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? null;
 const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
 let _feedbackSurface = null;
-function feedback(podOverride) {
-  if (podOverride || !_feedbackSurface) {
+function feedback(override) {
+  // `override` may be a bare pod (legacy demo path) or { pod, centralPod, controlStore } from
+  // buildFeedbackVerifyPods (the verify-summary loop, own-pod-first).
+  const o = override && typeof override.write === 'function' ? { pod: override } : (override || {});
+  if (override || !_feedbackSurface) {
     _feedbackSurface = createFeedbackSurface({
-      pod: podOverride,
+      pod: o.pod,
+      centralPod: o.centralPod,            // verify-summary: the verified summary lands here
+      controlStore: o.controlStore,        // verify-summary: lead-opened rounds, read on contact-open
       // route ownership → the bot (M1.4): the browser has no env, so point config.llm at the
       // (local/loopback) endpoint via llmBaseURL. No setLlmRoute here.
       llmBaseURL: FEEDBACK_LLM_BASEURL || undefined,
@@ -2258,9 +2263,11 @@ async function handleUserText(text, thread) {
     const session = podAuth.getCurrentSession();
     if (!session) { feedbackNote(thread, 'Log eerst in op je pod om mee te doen.'); return; }
     try {
-      const { buildFeedbackPod, getOrCreateRecoveryHash } = await import('../src/feedback/feedbackPod.js');
-      const pod = await buildFeedbackPod({ session, activationUrl: FEEDBACK_ACTIVATION_URL, projectId: FEEDBACK_PROJECT_ID, code: fbCode[1], recoveryHash: await getOrCreateRecoveryHash() });
-      await feedback(pod).start(thread.id);
+      const { buildFeedbackVerifyPods, getOrCreateRecoveryHash } = await import('../src/feedback/feedbackPod.js');
+      // own-pod-first: raw stays on the participant's own pod; only the verified summary reaches central,
+      // and lead-opened verification rounds are read from the shared /control/ container on contact-open.
+      const pods = await buildFeedbackVerifyPods({ session, activationUrl: FEEDBACK_ACTIVATION_URL, projectId: FEEDBACK_PROJECT_ID, code: fbCode[1], recoveryHash: await getOrCreateRecoveryHash() });
+      await feedback(pods).start(thread.id);
     } catch (e) { feedbackNote(thread, `Activatie mislukt: ${e.message}`); }
     return;
   }

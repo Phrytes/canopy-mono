@@ -19,6 +19,30 @@ export class InMemoryRoundControl {
 }
 
 /**
+ * Pod-backed control store — rounds live as records in a shared `/control/` container (the lead writes
+ * via the portal, participants read on their device). Pod-agnostic: any pod with `write()`/`list()`
+ * satisfies it (a flat `CssCentralPod` in production, `InMemoryCentralPod` in tests).
+ */
+export class PodRoundControl {
+  #pod;
+  constructor({ pod }) {
+    if (!pod || typeof pod.write !== 'function' || typeof pod.list !== 'function') {
+      throw new Error('PodRoundControl: a pod with write()/list() is required');
+    }
+    this.#pod = pod;
+  }
+  // a round is stored as a contribution-shaped record (text = the round JSON) so any pod — including a
+  // contribution-validating one — accepts it; listRounds parses it back.
+  async writeRound(req) { await this.#pod.write('rounds', { id: `round-${req.projectId}-${req.round}`, text: JSON.stringify(req) }, {}); return req; }
+  async listRounds(projectId) {
+    const recs = await this.#pod.list();
+    return recs
+      .map((r) => { const c = r.contribution ?? r; try { return JSON.parse(c.text); } catch { return null; } })
+      .filter((r) => r && r.round != null && (!projectId || r.projectId === projectId));
+  }
+}
+
+/**
  * LEAD action — open a verification round. Idempotent per {projectId, round}.
  * @returns {Promise<{projectId, round, openedAt, openedBy?, message?, deadline?}>}
  */

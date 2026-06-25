@@ -160,9 +160,15 @@ verified-summary = { projectId, round, summary, verifiedAt,
   summary reaches the central project pod. Verified live: central holds 1 record, raw never leaks, and the project owner
   gets **403** reading alice's own pod (the own-pod-first isolation guarantee). The storage topology works end-to-end;
   what remains is the *browser-session* wiring (below).
-- ⏳ **Follow-ups:** a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`); wiring the surface's
-  `pod`/`centralPod` from the **activation session** in the canopy-chat shell (the loop + pods are proven — this is the
-  session plumbing that replaces the in-memory default).
+- ✅ **Session→pods wiring** — `buildFeedbackVerifyPods({session, …})` (canopy-chat `feedbackPod.js`) returns
+  `{ownPod, centralPod, controlStore}` from the activation session: own pod = a container on the participant's OWN pod
+  (`podRootFromWebId` + `feedback-own/`), central = the activation container, control = `PodRoundControl` over the
+  shared `/control/` container. `main.js` `/feedback <code>` builds them and passes all three to `createFeedbackSurface`
+  (the `feedback()` getter now takes `{pod, centralPod, controlStore}`, back-compat with a bare pod). Tests:
+  `feedbackVerifyPods.test.js` (4) + `PodRoundControl` (round-control). The surface no longer defaults to in-memory on
+  the real activation path.
+- ⏳ **Follow-up:** a V2 **push nudge** (reuse `subscribeWebPush`/`triggerSelfPush`) so a participant is prompted to
+  verify without opening the app.
 
 ---
 

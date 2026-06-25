@@ -6,7 +6,7 @@ import { ChannelDispatcher } from '../src/channel/dispatcher.js';
 import { InMemoryCentralPod } from '../src/pod/central-pod.js';
 import { validateProjectConfig } from '../src/config/project-config.js';
 import * as signing from '../src/pod/signing.js';
-import { InMemoryRoundControl, openVerificationRound, pendingRoundsFor, pollAndOpenVerification } from '../src/verify/round-control.js';
+import { InMemoryRoundControl, PodRoundControl, openVerificationRound, pendingRoundsFor, pollAndOpenVerification } from '../src/verify/round-control.js';
 
 function setup() {
   const id = signing.generateParticipantIdentity();
@@ -65,4 +65,15 @@ test('lead-trigger: pendingRoundsFor returns only unverified rounds, oldest firs
   await d.command('verify');
   pending = await pendingRoundsFor({ controlStore: control, projectId: 'demo', participant: 'p-1', centralPod: central });
   assert.deepEqual(pending.map((r) => r.round), [2], 'verified round 1 drops out');
+});
+
+test('PodRoundControl: pod-backed control store drives openVerificationRound + listRounds', async () => {
+  const control = new PodRoundControl({ pod: new InMemoryCentralPod() });
+  await openVerificationRound({ controlStore: control, projectId: 'demo', round: 1, openedBy: 'lead' });
+  await openVerificationRound({ controlStore: control, projectId: 'demo', round: 1 });   // idempotent
+  await openVerificationRound({ controlStore: control, projectId: 'other', round: 1 });   // a different project
+  const rounds = await control.listRounds('demo');
+  assert.equal(rounds.length, 1, 'one round for demo (idempotent, project-filtered)');
+  assert.equal(rounds[0].round, 1);
+  assert.equal(rounds[0].openedBy, 'lead');
 });
