@@ -872,9 +872,9 @@
         "text": "Buurt",
         "doc": "S6.C — app label (stoop)."
       },
-      "tasks-v0": {
+      "tasks": {
         "text": "Taken",
-        "doc": "S6.C — app label (tasks-v0)."
+        "doc": "S6.C — app label. Key MUST match the DEFAULT_CIRCLE_ORIGINS origin 'tasks' (Part G merged tasks-v0 → 'tasks')."
       },
       "household": {
         "text": "Huishouden",
