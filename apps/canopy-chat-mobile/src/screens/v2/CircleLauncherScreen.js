@@ -20,8 +20,6 @@ import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
   loadCircleItems, quickCreateCircle, setActiveCircle, normalizeCircleMembers,
   circleFilesFromListFiles,
-  // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
-  getCirclePolStatus, formatPolStatus,
   // P6.1 — per-kring feature-flag consumption.
   isFeatureEnabled,
   // §4 — admin's policy.view → default Chat/Scherm landing surface.
@@ -2109,18 +2107,9 @@ function CircleDetail({
     broadcastFanOut({ msgId, text, ts });
   }, [eventLog, broadcastFanOut]);
 
-  // 5.9d — Proof-of-Location placeholder.  Kept under the kring view as
-  // a passive status; real attestation lands in [[5.9d-followup]].
-  const [pol, setPol] = useState(null);
-  useEffect(() => {
-    let alive = true;
-    if (!callSkill || !circle?.id) { setPol(null); return () => { alive = false; }; }
-    (async () => {
-      const status = await getCirclePolStatus({ callSkill, circleId: circle.id });
-      if (alive) setPol(status);
-    })();
-    return () => { alive = false; };
-  }, [callSkill, circle?.id]);
+  // Proof-of-Location: the passive placeholder row was removed 2026-06-25 (parked feature, board 10C /
+  // slice 5.9d). The seam stays in the tree (src/v2/circlePol.js + getPolStatus + circle.pol.* locale) so
+  // re-surfacing it later is just re-adding the row. See REMAINING-WORK.md "Proof-of-Location (parked)".
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -2212,10 +2201,7 @@ function CircleDetail({
         </View>
       ) : null}
 
-      <View style={styles.polRow} testID="circle-detail-pol">
-        <Text style={styles.polLabel}>{t('circle.pol.title')}</Text>
-        <Text style={styles.polValue}>{formatPolStatus(pol, t)}</Text>
-      </View>
+      {/* Proof-of-Location row removed 2026-06-25 (parked — see REMAINING-WORK.md). */}
       {myListTasks.length > 0 ? (
         <View style={styles.onYourList} testID="circle-detail-on-your-list">
           <Text style={styles.onYourListTitle}>{t('circle.on_your_list')}</Text>

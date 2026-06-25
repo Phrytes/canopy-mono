@@ -12,7 +12,6 @@
  * as `pol`; we just render. Placeholder seam — real attestation in
  * [[5.9d-followup]].
  */
-import { formatPolStatus } from '../../src/v2/circlePol.js';
 import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
 
 export function renderCircleDetail(container, {
@@ -126,21 +125,9 @@ export function renderCircleDetail(container, {
     container.appendChild(meta);
   }
 
-  // 5.9d — Proof-of-Location placeholder row. Passive status, not tappable.
-  // Renders "Not configured" until a future slice wires a real attestation
-  // reader via the `getPolStatus` skill seam.
-  const polRow = document.createElement('div');
-  polRow.className = 'circle-detail__pol';
-  const polLabel = document.createElement('span');
-  polLabel.className = 'circle-detail__pol-label';
-  polLabel.textContent = tr('circle.pol.title');
-  const polValue = document.createElement('span');
-  polValue.className = 'circle-detail__pol-value';
-  polValue.textContent = formatPolStatus(pol, tr);
-  polRow.appendChild(polLabel);
-  polRow.appendChild(document.createTextNode(' '));
-  polRow.appendChild(polValue);
-  container.appendChild(polRow);
+  // Proof-of-Location row removed 2026-06-25 (parked feature — board 10C / slice 5.9d). The seam stays
+  // (src/v2/circlePol.js + getPolStatus + circle.pol.* locale); re-add this row to re-surface it.
+  void pol;
 
   const list = document.createElement('div');
   list.className = 'circle-detail__items';
