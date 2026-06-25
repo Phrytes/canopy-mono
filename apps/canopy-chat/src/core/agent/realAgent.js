@@ -283,6 +283,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     try { await householdVault?.set?.(householdPeersKey(circleId), JSON.stringify(m?.listPeers?.() ?? [])); }
     catch { /* best-effort — pairing still works in-memory this session */ }
   }
+  // OBJ-2 hygiene — forget a circle's sync peers when you LEAVE it: drop its persisted roster + clear the
+  // live mirror's peers, so a left/dead circle stops HI-pinging offline peers on every boot (the stale-peer
+  // noise). Best-effort; the local items stay (leave keeps your data, just stops the peer fan-out).
+  async function clearHouseholdPeers(circleId) {
+    const id = (typeof circleId === 'string' && circleId) ? circleId : null;
+    if (!id) return;
+    try { await householdVault?.set?.(householdPeersKey(id), '[]'); } catch { /* */ }
+    const m = householdMirrors.get(id);
+    if (m) { try { for (const p of (m.listPeers?.() ?? [])) m.removePeer(p); } catch { /* */ } }
+  }
   // OBJ-2 catch-up — the mirror fans out NEW writes only, so a freshly-paired peer never sees the
   // EXISTING list. When a GENUINELY new peer is added we re-publish that circle's current open items
   // (etag-deduped by the receiver), so both sides converge. Per-circle.
@@ -2133,6 +2143,8 @@ export async function createRealHouseholdAgent(opts = {}) {
     // #189 — leaveGroup: real returns {ok} or {error}.  Confirm-gated
     // above; when invoked for real, friendly text.
     if (opId === 'leaveGroup' && data.ok) {
+      // Forget the left circle's no-pod sync peers (stops stale-peer boot HI-pings).
+      clearHouseholdPeers(args?.groupId ?? args?.circleId ?? args?.crewId).catch(() => {});
       return {
         ok: true,
         message: '👋 Left the buurt. Your local data stays; you no longer receive feed updates.',
