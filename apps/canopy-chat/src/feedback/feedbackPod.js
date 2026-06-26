@@ -56,7 +56,11 @@ export async function buildFeedbackVerifyPods({ session, activationUrl, projectI
   await session.fetch(ownBase, { method: 'PUT', headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"' } }).catch(() => {});
   const ownPod = await makeCssCentralPod({ podBase: ownBase, authedFetch: session.fetch, flat: true });
   const controlBase = podRef.replace(/[^/]+\/$/, 'control/');   // sibling of the participant's container
-  const controlStore = new PodRoundControl({ pod: await makeCssCentralPod({ podBase: controlBase, authedFetch: session.fetch, flat: true }) });
+  // the /control/ container is PUBLIC-read (the lead writes it) — read it UNAUTHENTICATED. Using the
+  // participant's session token here breaks cross-login setups (an Inrupt login reading the local pod: the
+  // pod server rejects the foreign token even for a public resource). A plain fetch always works for public.
+  const publicFetch = (u, i) => fetch(u, i);
+  const controlStore = new PodRoundControl({ pod: await makeCssCentralPod({ podBase: controlBase, authedFetch: publicFetch, flat: true }) });
   return { ownPod, centralPod, controlStore, podRef };
 }
 
