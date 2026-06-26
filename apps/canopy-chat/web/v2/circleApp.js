@@ -104,8 +104,9 @@ import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
-import { createFeedbackSurface } from '../../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
+import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
 // (localStoragePolicyIo is already imported below with createCirclePolicyStore)
 import { createUserLlmDefaultStore, localStorageUserLlmIo } from '../../src/v2/userLlmDefault.js';
 import { applyUserLlmRuntime, validateUserLlmConfig } from '../../src/v2/userLlmRuntime.js';
@@ -554,6 +555,10 @@ const SETTINGS_TEMPLATE_URL = import.meta.env?.VITE_SETTINGS_TEMPLATE_URL ?? nul
 let settingsTemplate = DEFAULT_SETTINGS_TEMPLATE;
 loadSettingsTemplate({ url: SETTINGS_TEMPLATE_URL }).then((tpl) => { settingsTemplate = tpl; }).catch(() => { /* keep bundled */ });
 const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined;
+// cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
+const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
+const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
+let _fbPendingInviteCode = null;   // set from a ?projectId&code invite link, consumed on first feedback open
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
 let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
@@ -870,7 +875,13 @@ function buildCircleBot(agent) {
   // fanned out to peers), so a private feedback message isn't broadcast to the circle.
   const feedbackSurface = createFeedbackSurface({
     llmBaseURL: FEEDBACK_LLM_BASEURL,
-    emit: ({ text }) => { if (text) _kringRender?.botBubble(text); },
+    // General in-chat bot menus: pass the bot's buttons through as `action` callbacks (routed by source in
+    // circleEmbedButtonTap). Feedback's PRIMARY surface is the dedicated fp-bot thread, but if it's used
+    // in-kring its consent/verify buttons render here too (no longer dropped).
+    emit: ({ text, buttons }) => {
+      const acts = (buttons || []).map((b) => ({ action: b.id, label: b.label }));
+      if (text || acts.length) _kringRender?.botBubble(text || '', acts.length ? { buttons: acts } : undefined);
+    },
   });
   circleFeedbackMount = createFeedbackMount({
     surface: feedbackSurface,
@@ -948,7 +959,13 @@ function buildCircleBot(agent) {
   // A tapped bubble button: S6.B screen button (has `screen`) → open the panel;
   // S6.A inline button (has `opId`) → dispatch its op against the item (resolve the
   // gate's `arg` / a picker param / else `id`).
-  circleEmbedButtonTap = ({ opId, itemId, screen }) => {
+  circleEmbedButtonTap = ({ opId, itemId, screen, action }) => {
+    // General in-chat bot menus: a button may carry an `action` callback for a NON-circle bot, routed by
+    // source. Feedback (fp:*) → its surface's tapButton; other in-chat bots plug in here.
+    if (action) {
+      if (action.startsWith('fp:')) circleFeedbackMount?.surface?.tapButton?.(action, getActiveCircle());
+      return;
+    }
     if (screen) { openCircleScreenPanel(screen); return; }
     if (!opId) return;
     const op = catalog?.opsById?.get(opId)?.op;

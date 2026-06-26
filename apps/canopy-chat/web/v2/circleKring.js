@@ -527,7 +527,7 @@ function renderBubble(row, {
     const bRow = document.createElement('div');
     bRow.className = 'circle-kring__bubble-actions circle-kring__embed-buttons';
     for (const b of embedButtons) {
-      if (!b?.opId && !b?.screen) continue;
+      if (!b?.opId && !b?.screen && !b?.action) continue;   // `action` = a non-circle bot's callback (general in-chat menus)
       const btn = document.createElement('button');
       btn.type = 'button';
       // S6.B — a screen button opens a panel; an inline button dispatches an op.
@@ -536,8 +536,8 @@ function renderBubble(row, {
       if (b.opId) btn.dataset.opId = b.opId;
       if (b.itemId != null) btn.dataset.itemId = String(b.itemId);
       if (b.screen) btn.dataset.screen = b.screen;
-      btn.textContent = b.label ?? b.opId ?? b.screen;
-      btn.addEventListener('click', () => onEmbedButton({ opId: b.opId, itemId: b.itemId, screen: b.screen }));
+      btn.textContent = b.label ?? b.opId ?? b.screen ?? b.action;
+      btn.addEventListener('click', () => onEmbedButton(b));   // pass the whole button so a non-circle source survives
       bRow.appendChild(btn);
     }
     if (bRow.childNodes.length) el.appendChild(bRow);
