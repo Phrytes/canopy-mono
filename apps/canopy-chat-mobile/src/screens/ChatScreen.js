@@ -139,6 +139,7 @@ const mkId = () => `m${MSG_ID_PREFIX}${nextMessageId++}`;
 // Unset → the bot still enters mode + the deterministic intent fast-path works, but the LLM
 // clean/review step needs a reachable route. Mirrors web's VITE_FEEDBACK_LLM_BASEURL.
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
+const FEEDBACK_LLM_MODEL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_MODEL || undefined;
 // M6 — feedback real-pod ACTIVATION (parity with web's VITE_FEEDBACK_ACTIVATION_URL / _PROJECT_ID).
 // Unset → `/feedback <code>` has no activation service, so the bare-demo mount path is used.
 const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
@@ -1016,7 +1017,8 @@ export default function ChatScreen({
         const { activateMobileFeedback } = await import('../v2/feedbackActivation.js');
         const pods = await activateMobileFeedback({ session: sessionRef.current, activationUrl: FEEDBACK_ACTIVATION_URL, projectId: FEEDBACK_PROJECT_ID, code: fbCode[1] });
         feedbackMountRef.current = createFeedbackMount({
-          llmBaseURL: FEEDBACK_LLM_BASEURL, pod: pods.ownPod, centralPod: pods.centralPod, controlStore: pods.controlStore,
+          llmBaseURL: FEEDBACK_LLM_BASEURL,
+        llmModel: FEEDBACK_LLM_MODEL, pod: pods.ownPod, centralPod: pods.centralPod, controlStore: pods.controlStore,
           appendUserBubble: fbAppendUser, appendBotBubble: fbAppendBot,
         });
         fbAppendUser(currentThreadId, String(text).trim());
@@ -1031,6 +1033,7 @@ export default function ChatScreen({
     if (!feedbackMountRef.current) {
       feedbackMountRef.current = createFeedbackMount({
         llmBaseURL: FEEDBACK_LLM_BASEURL,
+        llmModel: FEEDBACK_LLM_MODEL,
         appendUserBubble: fbAppendUser,
         appendBotBubble: fbAppendBot,
       });
@@ -1123,6 +1126,7 @@ export default function ChatScreen({
       if (!feedbackMountRef.current) {
         feedbackMountRef.current = createFeedbackMount({
           llmBaseURL: FEEDBACK_LLM_BASEURL,
+        llmModel: FEEDBACK_LLM_MODEL,
           appendUserBubble: (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [...msgs, { id: mkId(), role: 'user', text: x }])),
           appendBotBubble:  (tid, x) => setThreadState((prev) => updateMessages(prev, tid, (msgs) => [...msgs, { id: mkId(), role: 'bot', pending: false, rendered: { kind: 'text', messageId: null, threadId: tid, lifecycleState: 'closed', text: x } }])),
         });
