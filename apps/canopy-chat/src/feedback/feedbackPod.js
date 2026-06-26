@@ -44,9 +44,11 @@ export function podRootFromWebId(webId) {
  *   • controlStore — the shared `/control/` container (the lead opens rounds; the participant reads them)
  * @returns {Promise<{ownPod, centralPod, controlStore}>}
  */
-export async function buildFeedbackVerifyPods({ session, activationUrl, projectId, code, recoveryHash, fetchImpl, ownPodBase } = {}) {
+export async function buildFeedbackVerifyPods({ session, activationUrl, projectId, code, recoveryHash, fetchImpl, ownPodBase, podRef: existingPodRef } = {}) {
   if (!session?.webid || typeof session.fetch !== 'function') throw new Error('buildFeedbackVerifyPods: a logged-in session {webid, fetch} is required');
-  const podRef = await activateParticipant({ activationUrl, projectId, code, recoveryHash, webId: session.webid, fetchImpl });
+  // skip activation when we already hold the participant's container (re-open / reload) — the cohort code
+  // is single-use, so re-activating would fail. Returns podRef so the caller can persist + reuse it.
+  const podRef = existingPodRef || await activateParticipant({ activationUrl, projectId, code, recoveryHash, webId: session.webid, fetchImpl });
   const centralPod = await makeCssCentralPod({ podBase: podRef, authedFetch: session.fetch, flat: true });
   const ownBase = ownPodBase || `${podRootFromWebId(session.webid)}feedback-own/`;
   // the own pod is the participant's OWN pod — the activation service can't reach it, so ensure the
@@ -55,7 +57,7 @@ export async function buildFeedbackVerifyPods({ session, activationUrl, projectI
   const ownPod = await makeCssCentralPod({ podBase: ownBase, authedFetch: session.fetch, flat: true });
   const controlBase = podRef.replace(/[^/]+\/$/, 'control/');   // sibling of the participant's container
   const controlStore = new PodRoundControl({ pod: await makeCssCentralPod({ podBase: controlBase, authedFetch: session.fetch, flat: true }) });
-  return { ownPod, centralPod, controlStore };
+  return { ownPod, centralPod, controlStore, podRef };
 }
 
 /** A stable client recovery hash kept in localStorage — the secret never leaves the device,

@@ -1250,7 +1250,8 @@ async function showFeedbackThread(bot) {
     try {
       const session = podAuth.getCurrentSession?.();
       if (session?.webid && activationUrl) {
-        const pods = await buildFeedbackVerifyPods({ session, activationUrl, projectId: bot.projectId, code: bot.code, recoveryHash: await getOrCreateRecoveryHash() });
+        const pods = await buildFeedbackVerifyPods({ session, activationUrl, projectId: bot.projectId, code: bot.code, recoveryHash: await getOrCreateRecoveryHash(), podRef: bot.podRef });
+        if (pods.podRef && pods.podRef !== bot.podRef) { try { await feedbackBotStore.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
         _buildFbSurface(botId, pods);   // rebuild the surface WITH the real own/central/control pods
       } else if (!session?.webid) {
         ft.messages.push({ origin: 'bot', text: t('feedback.login_first', { defaultValue: 'Log eerst in op je pod om mee te doen.' }) });
@@ -1264,7 +1265,12 @@ async function showFeedbackThread(bot) {
       _renderFbThread(botId);
     }
   }
-  try { await ft.surface.start(botId); } catch { /* best-effort; start polls the /control/ round */ }
+  // start() polls the lead's /control/ round + summarises on-device (an AI call, a few seconds) — show a
+  // busy state so the open doesn't look frozen, and surface any error in the chat (not just the console).
+  ft.busy = true; _renderFbThread(botId);
+  try { await ft.surface.start(botId); }
+  catch (e) { console.error('[circleApp] feedback poll/start failed:', e); ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
+  finally { ft.busy = false; _renderFbThread(botId); }
 }
 
 // #13 — pull human-readable text out of a remote-skill result (the channel's
