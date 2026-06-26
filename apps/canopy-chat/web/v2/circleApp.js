@@ -1211,10 +1211,12 @@ function _renderFbThread(botId) {
   const ft = _fbThreads.get(botId);
   if (!ft || _activeFbThread?.botId !== botId) return;
   renderContactThread(rootEl, {
-    name: ft.name, messages: ft.messages, skills: [], busy: false, error: false, t,
+    name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false, t,
     onBack: () => { _activeFbThread = null; showContacts(); },
-    onButtonTap: (b) => { ft.surface?.tapButton?.(b.action ?? b.callbackData ?? b.id, botId); },
-    onSend: async (text) => { await ft.surface?.handle?.(text, botId); },
+    // the bot's AI clean/summarise takes a few seconds per message — show a "thinking" state so /klaar
+    // doesn't look frozen.
+    onButtonTap: async (b) => { ft.busy = true; _renderFbThread(botId); try { await ft.surface?.tapButton?.(b.action ?? b.callbackData ?? b.id, botId); } finally { ft.busy = false; _renderFbThread(botId); } },
+    onSend: async (text) => { ft.busy = true; _renderFbThread(botId); try { await ft.surface?.handle?.(text, botId); } finally { ft.busy = false; _renderFbThread(botId); } },
   });
 }
 function _buildFbSurface(botId, pods) {
