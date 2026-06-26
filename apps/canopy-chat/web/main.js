@@ -1,6 +1,12 @@
 /**
  * canopy-chat — v0.2 web demo entry.
  *
+ * ⚠ CLASSIC-ONLY (2026-06-26): this file is the legacy shell, loaded ONLY by `classic.html`, which is
+ * unused in production. The production web app is `web/v2/circleApp.js` (loaded by `index.html`). Do NOT
+ * add new wiring here — it won't reach users. (The feedback verify-summary wiring below mistakenly landed
+ * here; it's being ported to circleApp.js — see REMAINING-WORK.md cluster J.) Kept as a reference until the
+ * classic→v2 functionality audit (incl. DM) is done, then this file is slated for deletion.
+ *
  * Multi-thread workspace.  Sidebar lists every thread; user can
  * create new threads with filter + permissions; clicking switches
  * the active thread.  Events from skill dispatches fan out through
