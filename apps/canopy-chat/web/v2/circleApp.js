@@ -107,6 +107,7 @@ import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
+import { feedbackBotFromInput, createFeedbackBotStore } from '../../src/v2/feedbackBots.js';
 // (localStoragePolicyIo is already imported below with createCirclePolicyStore)
 import { createUserLlmDefaultStore, localStorageUserLlmIo } from '../../src/v2/userLlmDefault.js';
 import { applyUserLlmRuntime, validateUserLlmConfig } from '../../src/v2/userLlmRuntime.js';
@@ -558,7 +559,11 @@ const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undef
 // cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
 const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
-let _fbPendingInviteCode = null;   // set from a ?projectId&code invite link, consumed on first feedback open
+// cluster J — ADDED feedback bots (no pre-seeding): the portal invite link/QR adds a co-hosted fp-bot
+// contact; tapping it opens its dedicated thread + activates the verify pods.
+const feedbackBotStore = createFeedbackBotStore(typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} });
+const _fbThreads = new Map();   // botId → { name, messages:[], surface, mount, activated }
+let _activeFbThread = null;     // { botId }
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
 let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
@@ -822,9 +827,13 @@ function buildCircleBot(agent) {
     window.canopyPeers = circlePeerGraph;   // debug / e2e seam (roster + journey-A tests seed/inspect peers)
     window.canopyAddBot = addBotFromInput;  // manual / programmatic add
     try {
-      const addbot = new URLSearchParams(window.location.search).get('addbot');
+      const params = new URLSearchParams(window.location.search);
+      const addbot = params.get('addbot');
       if (addbot) addBotFromInput(addbot);  // ?addbot=<https url | peer address>
-    } catch { /* no addbot param */ }
+      // cluster J — a feedback invite link (?projectId=…&code=…) IS the add-a-bot action: it adds the
+      // feedback bot, then Contacten shows it (tap → its dedicated thread + activation). No pre-seeding.
+      if (params.get('projectId') && params.get('code')) addBotFromInput(window.location.search);
+    } catch { /* no addbot / invite param */ }
   }
 
   // Deployment env config = the FALLBACK when the member hasn't set their own endpoint in settings.
@@ -1065,6 +1074,10 @@ async function showContacts() {
   showTabBar('contacten');
   let contacts = [];
   try { contacts = await loadAllContacts(); } catch { contacts = []; }
+  // cluster J — added feedback bots (from an invite link/QR) show as agent contacts at the top.
+  let fbBots = [];
+  try { fbBots = await feedbackBotStore.list(); } catch { fbBots = []; }
+  if (fbBots.length) contacts = [...fbBots, ...contacts.filter((c) => !fbBots.some((f) => f.contactId === c.contactId))];
   renderContactsRoster(rootEl, {
     contacts, t,
     onOpen: showContactThread,
@@ -1096,6 +1109,14 @@ async function loadAllContacts() {
 // the shared `addBotToGraph` (web≡mobile).  Best-effort: a bad URL/address shows
 // a localised alert, never throws into the UI.
 async function addBotFromInput(input) {
+  // cluster J — a feedback INVITE link/QR adds the co-hosted feedback bot (NOT a PeerGraph peer).
+  const fb = feedbackBotFromInput(input, { activationUrl: FEEDBACK_ACTIVATION_URL || undefined });
+  if (fb) {
+    await feedbackBotStore.add(fb);
+    globalThis.alert?.(t('circle.contacts.added', { name: fb.name }));
+    showContacts();
+    return;
+  }
   if (!circlePeerGraph) return;
   try {
     const rec = await addBotToGraph({ input, peerGraph: circlePeerGraph, coreAgent: circleCoreAgent, discover: discoverA2A });
@@ -1111,6 +1132,11 @@ async function addBotFromInput(input) {
 // the contact-thread channel (sa.peer → mdns/relay/nkn); the async reply lands
 // via `onContactReply` (registered in the peer router) and re-renders here.
 async function showContactThread(contactId) {
+  // cluster J — an added feedback bot opens its OWN dedicated thread (co-hosted, real-pod activation).
+  if (String(contactId).startsWith('fp-bot:')) {
+    const bot = await feedbackBotStore.get(contactId);
+    if (bot) { await showFeedbackThread(bot); return; }
+  }
   hideCircleTabBar(tabBarEl);
   let row = null;
   try { row = (await loadAllContacts()).find((c) => c.contactId === contactId) ?? null; }
@@ -1173,6 +1199,65 @@ async function showContactThread(contactId) {
   });
   _activeContactThread = { contactId, rerender };
   rerender();
+}
+
+// cluster J — the dedicated feedback bot thread. The added fp-bot contact opens here; the feedback surface
+// renders text + buttons (consent · the verify bubble). On first open we build the verify pods
+// (own/central/control) via buildFeedbackVerifyPods, and surface.start polls the lead's /control/ round →
+// the verify bubble. Reuses renderContactThread (buttons + onButtonTap) like a peer DM, but co-hosted.
+function _renderFbThread(botId) {
+  const ft = _fbThreads.get(botId);
+  if (!ft || _activeFbThread?.botId !== botId) return;
+  renderContactThread(rootEl, {
+    name: ft.name, messages: ft.messages, skills: [], busy: false, error: false, t,
+    onBack: () => { _activeFbThread = null; showContacts(); },
+    onButtonTap: (b) => { ft.surface?.tapButton?.(b.action ?? b.callbackData ?? b.id, botId); },
+    onSend: async (text) => { await ft.surface?.handle?.(text, botId); },
+  });
+}
+function _buildFbSurface(botId, pods) {
+  const ft = _fbThreads.get(botId);
+  ft.surface = createFeedbackSurface({
+    llmBaseURL: FEEDBACK_LLM_BASEURL,
+    pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
+    emit: ({ text, buttons }) => {
+      ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ action: b.id, label: b.label })) });
+      _renderFbThread(botId);
+    },
+  });
+  ft.mount = createFeedbackMount({
+    surface: ft.surface,
+    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _renderFbThread(botId); },
+    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _renderFbThread(botId); },
+  });
+}
+async function showFeedbackThread(bot) {
+  hideCircleTabBar(tabBarEl);
+  const botId = bot.id;
+  if (!_fbThreads.has(botId)) _fbThreads.set(botId, { name: bot.name, messages: [], surface: null, mount: null, activated: false });
+  const ft = _fbThreads.get(botId);
+  _activeFbThread = { botId };
+  if (!ft.surface) _buildFbSurface(botId, null);
+  _renderFbThread(botId);
+  if (!ft.activated) {
+    ft.activated = true;
+    const activationUrl = bot.activationUrl || FEEDBACK_ACTIVATION_URL;
+    try {
+      const session = podAuth.getCurrentSession?.();
+      if (session?.webid && activationUrl) {
+        const pods = await buildFeedbackVerifyPods({ session, activationUrl, projectId: bot.projectId, code: bot.code, recoveryHash: await getOrCreateRecoveryHash() });
+        _buildFbSurface(botId, pods);   // rebuild the surface WITH the real own/central/control pods
+      } else if (!session?.webid) {
+        ft.messages.push({ origin: 'bot', text: t('feedback.login_first', { defaultValue: 'Log eerst in op je pod om mee te doen.' }) });
+        _renderFbThread(botId);
+      }
+    } catch (e) {
+      ft.activated = false;   // allow a retry on reopen
+      ft.messages.push({ origin: 'bot', text: t('feedback.activation_failed', { error: e?.message ?? String(e), defaultValue: 'Activatie mislukt.' }) });
+      _renderFbThread(botId);
+    }
+  }
+  try { await ft.surface.start(botId); } catch { /* best-effort; start polls the /control/ round */ }
 }
 
 // #13 — pull human-readable text out of a remote-skill result (the channel's
