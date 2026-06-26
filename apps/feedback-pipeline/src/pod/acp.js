@@ -58,7 +58,7 @@ export async function provisionParticipantContainer(ownerFetch, containerUri, op
     method: 'PUT',
     headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#Container>; rel="type"' },
   });
-  if (!c.ok && c.status !== 205) throw new Error(`create container failed: HTTP ${c.status}`);
+  if (!c.ok && c.status !== 205 && c.status !== 409) throw new Error(`create container failed: HTTP ${c.status}`);  // 409 = already exists → idempotent re-activation
   const acr = await acrUriOf(ownerFetch, containerUri);
   const a = await ownerFetch(acr, { method: 'PUT', headers: { 'content-type': 'text/turtle' }, body: containerAcp(containerUri, opts) });
   if (!a.ok) throw new Error(`set ACP failed: HTTP ${a.status}`);

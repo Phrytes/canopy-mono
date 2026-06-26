@@ -53,8 +53,10 @@ export const STRUCTURED_RULES = [
   { type: 'dossier',  pattern: /\b(?:dossiernummer|zaaknummer|klachtnummer|pati[eë]ntnummer|studentnummer|leerlingnummer|kenmerk|referentienummer|case\s*(?:number|no\.?|#)|reference\s*(?:number|no\.?|#)|student\s*(?:number|id|no\.?)|file\s*(?:number|no\.?))(?:\s*(?:is|:|nummer|number|=|#))?\s*\d{4,12}\b/gi },
   // Dutch licence plate (kenteken) — the main dash-separated sidecodes.
   { type: 'kenteken', pattern: /\b(?:[A-Z]{2}-\d{2}-\d{2}|\d{2}-\d{2}-[A-Z]{2}|\d{2}-[A-Z]{2}-\d{2}|[A-Z]{2}-\d{2}-[A-Z]{2}|[A-Z]{2}-[A-Z]{2}-\d{2}|\d{2}-[A-Z]{2}-[A-Z]{2}|\d{2}-[A-Z]{3}-\d|\d-[A-Z]{3}-\d{2}|[A-Z]-\d{3}-[A-Z]{2}|[A-Z]{3}-\d{2}-[A-Z])\b/g },
-  // Capitalised street name ending in a known suffix, followed by a number.
-  { type: 'address',  pattern: new RegExp(`\\b[A-ZÀ-Ý][a-zà-ÿ]*?(?:${STREET})\\s+\\d+[a-zA-Z]?\\b`, 'g') },
+  // Street name ending in a known suffix, followed by a number. Leading letter is case-INSENSITIVE:
+  // users type addresses lowercase ("aristotelessingel 45a"), and for a privacy floor catching a real
+  // address beats avoiding the rare over-redaction of "onderweg 5". (The capital-only rule leaked.)
+  { type: 'address',  pattern: new RegExp(`\\b[A-Za-zÀ-ÿ][a-zà-ÿ]*?(?:${STREET})\\s+\\d+[a-zA-Z]?\\b`, 'g') },
 
   // Labelled BSN ("mijn BSN is 184729356", "BSN eindigt op 7781") — redact the
   // number regardless of the 11-proef (a number the writer CALLS their BSN is

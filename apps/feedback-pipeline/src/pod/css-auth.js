@@ -38,6 +38,22 @@ export async function clientCredentialsFetch({ cssUrl, clientId, clientSecret, a
 }
 
 /**
+ * Like clientCredentialsFetch, but the returned fetch RE-AUTHS when the access token expires: on a 401
+ * it re-runs the client-credentials grant once and retries. For long-lived services (the activation
+ * service) whose owner token would otherwise go stale → "create container failed: HTTP 401".
+ */
+export function refreshingClientCredentialsFetch(opts) {
+  let current = null;
+  const ensure = async () => { if (!current) current = await clientCredentialsFetch(opts); return current; };
+  return async (url, init) => {
+    let f = await ensure();
+    let res = await f(url, init);
+    if (res.status === 401) { current = null; f = await ensure(); res = await f(url, init); }
+    return res;
+  };
+}
+
+/**
  * A CssCentralPod from either an existing `authedFetch` (browser) or credentials (server).
  * Pass `flat:true` when podBase is the participant's OWN container (canopy-chat pre-send).
  * Crypto is derived from `config` (privacy menukaart) + whatever key material this process

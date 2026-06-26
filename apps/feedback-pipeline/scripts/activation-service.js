@@ -16,7 +16,7 @@ import { createHash } from 'node:crypto';
 import { InMemoryCohortRegistry } from '../src/activation/cohort.js';
 import { createActivationServer } from '../src/activation/server.js';
 import { provisionCssPod } from '../src/activation/provision-css-pod.js';
-import { clientCredentialsFetch } from '../src/pod/css-auth.js';
+import { refreshingClientCredentialsFetch } from '../src/pod/css-auth.js';
 
 const STORE = process.env.FP_COHORT_STORE || './cohort-store.json';
 const PORT = Number(process.env.PORT || 8787);
@@ -33,7 +33,7 @@ const ownerWebId = need('FP_OWNER_WEBID'), projectPodBase = need('FP_PROJECT_POD
 const writerWebIds = (process.env.FP_WRITER_WEBIDS || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 // the project-pod owner's authenticated (DPoP) fetch, from Solid-OIDC client credentials
-const ownerFetch = await clientCredentialsFetch({ cssUrl: CSS_URL, clientId: ownerId, clientSecret: ownerSecret });
+const ownerFetch = refreshingClientCredentialsFetch({ cssUrl: CSS_URL, clientId: ownerId, clientSecret: ownerSecret });
 
 const registry = InMemoryCohortRegistry.fromJSON(JSON.parse(readFileSync(STORE, 'utf8')));
 const persist = (reg) => writeFileSync(STORE, JSON.stringify(reg.toJSON(), null, 2));
