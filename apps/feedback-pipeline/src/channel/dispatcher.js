@@ -106,6 +106,10 @@ export class ChannelDispatcher {
       return [];
     }
     await this.#adapter.send({ type: 'submitted', ids: written });
+    // the reviewed batch is decided (consented or declined) — clear it so a second /klaar can't re-offer
+    // and re-write the same points ("duplicate contribution id"). Escalated (signal-track) messages stay.
+    this.#session.messages = this.#session.messages.filter((m) => escalates(m.fm.signal, this.#gate()));
+    this.#session.points = [];
     return written;
   }
 
