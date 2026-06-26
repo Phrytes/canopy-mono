@@ -42,6 +42,12 @@ export async function handleActivate({ body, registry, provisionPod, config, now
  */
 export function createActivationServer({ registry, provisionPod, config, now = () => new Date().toISOString(), onRedeem, onIdentity }) {
   return http.createServer((req, res) => {
+    // CORS — the participant activates from the browser/app (a different origin than this service); the
+    // cohort code is the authorisation, not the origin. Reflect the origin + answer the preflight.
+    res.setHeader('access-control-allow-origin', req.headers.origin || '*');
+    res.setHeader('access-control-allow-headers', 'content-type');
+    res.setHeader('access-control-allow-methods', 'POST, GET, OPTIONS');
+    if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
     const send = (status, json) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(json)); };
     if (req.method === 'GET' && req.url === '/health') return send(200, { ok: true });
     if (req.method !== 'POST' || (req.url || '').split('?')[0] !== '/activate') return send(404, { ok: false, reason: 'not found' });
