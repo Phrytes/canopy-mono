@@ -74,11 +74,14 @@ export class CssCentralPod {
     if ((await this.#fetch(uri)).status === 200) throw new Error(`duplicate contribution id: ${c.id}`);
     const body = { participant, contribution: stored, status: 'submitted' };
     if (this.#verify) { body.sig = meta.sig; body.pubKey = meta.pubKey; }
-    const res = await this.#fetch(uri, {
-      method: 'PUT', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`write failed: HTTP ${res.status}`);
+    const put = () => this.#fetch(uri, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    let res = await put();
+    if (res.status === 404 || res.status === 412) {   // parent container missing → create it + retry once
+      const container = this.#flat ? this.#base : `${this.#base}${encodeURIComponent(participant)}/`;
+      await this.#fetch(container, { method: 'PUT', headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"' } }).catch(() => {});
+      res = await put();
+    }
+    if (!res.ok) throw new Error(`write failed: HTTP ${res.status} → ${uri}`);
     return c.id;
   }
 

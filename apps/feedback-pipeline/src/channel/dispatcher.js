@@ -96,7 +96,7 @@ export class ChannelDispatcher {
       try {
         await this.#pod.write(this.#participant, contribution, meta);
         written.push(cid);
-      } catch (e) { failure = e; break; }   // a refused write means the batch is not trustworthy
+      } catch (e) { failure = e; console.error('[feedback] consent write failed:', e?.message); break; }   // a refused write means the batch is not trustworthy
     }
     if (failure) {
       // all-or-nothing: undo any partial writes so consent is not silently half-applied

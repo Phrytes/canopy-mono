@@ -51,7 +51,7 @@ export async function buildFeedbackVerifyPods({ session, activationUrl, projectI
   const ownBase = ownPodBase || `${podRootFromWebId(session.webid)}feedback-own/`;
   // the own pod is the participant's OWN pod — the activation service can't reach it, so ensure the
   // container exists here with the participant's own session (they own it; idempotent — 2xx OR 409/412).
-  await session.fetch(ownBase, { method: 'PUT', headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#Container>; rel="type"' } }).catch(() => {});
+  await session.fetch(ownBase, { method: 'PUT', headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"' } }).catch(() => {});
   const ownPod = await makeCssCentralPod({ podBase: ownBase, authedFetch: session.fetch, flat: true });
   const controlBase = podRef.replace(/[^/]+\/$/, 'control/');   // sibling of the participant's container
   const controlStore = new PodRoundControl({ pod: await makeCssCentralPod({ podBase: controlBase, authedFetch: session.fetch, flat: true }) });
