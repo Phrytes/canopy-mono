@@ -556,6 +556,7 @@ const SETTINGS_TEMPLATE_URL = import.meta.env?.VITE_SETTINGS_TEMPLATE_URL ?? nul
 let settingsTemplate = DEFAULT_SETTINGS_TEMPLATE;
 loadSettingsTemplate({ url: SETTINGS_TEMPLATE_URL }).then((tpl) => { settingsTemplate = tpl; }).catch(() => { /* keep bundled */ });
 const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined;
+const FEEDBACK_LLM_MODEL = import.meta.env?.VITE_FEEDBACK_LLM_MODEL ?? undefined;   // the model the route serves (default qwen2.5 404s on Privatemode)
 // cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
 const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
@@ -884,6 +885,7 @@ function buildCircleBot(agent) {
   // fanned out to peers), so a private feedback message isn't broadcast to the circle.
   const feedbackSurface = createFeedbackSurface({
     llmBaseURL: FEEDBACK_LLM_BASEURL,
+    llmModel: FEEDBACK_LLM_MODEL,
     // General in-chat bot menus: pass the bot's buttons through as `action` callbacks (routed by source in
     // circleEmbedButtonTap). Feedback's PRIMARY surface is the dedicated fp-bot thread, but if it's used
     // in-kring its consent/verify buttons render here too (no longer dropped).
@@ -1219,6 +1221,7 @@ function _buildFbSurface(botId, pods) {
   const ft = _fbThreads.get(botId);
   ft.surface = createFeedbackSurface({
     llmBaseURL: FEEDBACK_LLM_BASEURL,
+    llmModel: FEEDBACK_LLM_MODEL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
     emit: ({ text, buttons }) => {
       ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });

@@ -29,13 +29,14 @@ import { applyLlmRoute, assertCleanRouteSafe } from '../../../feedback-pipeline/
  * @param {(chatId:string)=>object} [a.identityFor]  per-thread identity (defaults to `identity`)
  * @param {(reply:{chatId:string,text:string,buttons?:Array})=>void} a.emit  render sink
  */
-export function createFeedbackSurface({ config, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, emit } = {}) {
+export function createFeedbackSurface({ config, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit } = {}) {
   if (typeof emit !== 'function') throw new Error('createFeedbackSurface: emit(reply) is required');
   const cfg = validateProjectConfig(config || exampleProjectConfig);
-  // route ownership → the bot: the route lives in config.llm; `llmBaseURL` is the browser's
-  // no-env convenience to point config.llm at its (local/loopback) endpoint. Install + M0
-  // safety-check the clean route up front.
+  // route ownership → the bot: the route lives in config.llm; `llmBaseURL`/`llmModel` are the browser's
+  // no-env convenience to point config.llm at its (local/loopback) endpoint + the model that endpoint
+  // actually serves (the default `qwen2.5:7b-instruct` 404s on a Privatemode proxy). Install + M0 check.
   if (llmBaseURL) cfg.llm.baseURL = llmBaseURL;
+  if (llmModel) cfg.llm.model = llmModel;
   applyLlmRoute(cfg.llm || {});
   assertCleanRouteSafe(cfg.llm || {});
 
