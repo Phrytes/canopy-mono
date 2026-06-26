@@ -1221,7 +1221,7 @@ function _buildFbSurface(botId, pods) {
     llmBaseURL: FEEDBACK_LLM_BASEURL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
     emit: ({ text, buttons }) => {
-      ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ action: b.id, label: b.label })) });
+      ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       _renderFbThread(botId);
     },
   });
@@ -1253,7 +1253,9 @@ async function showFeedbackThread(bot) {
       }
     } catch (e) {
       ft.activated = false;   // allow a retry on reopen
-      ft.messages.push({ origin: 'bot', text: t('feedback.activation_failed', { error: e?.message ?? String(e), defaultValue: 'Activatie mislukt.' }) });
+      const detail = e?.message ?? String(e);
+      console.error('[circleApp] feedback activation failed:', e);
+      ft.messages.push({ origin: 'bot', text: t('feedback.activation_failed', { error: detail, defaultValue: `Activatie mislukt: ${detail}` }) });
       _renderFbThread(botId);
     }
   }
