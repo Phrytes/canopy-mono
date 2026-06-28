@@ -13,8 +13,16 @@ import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { listContacts, mergeContacts, stoopContactToRow } from '../../../../canopy-chat/src/v2/contactsSource.js';
 import { addBotToGraph } from '../../../../canopy-chat/src/v2/addBot.js';
+import { feedbackBotFromInput } from '../../../../canopy-chat/src/v2/feedbackBots.js';
 
-export default function ContactsScreen({ bundle, onOpen }) {
+const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
+
+// cluster J — an added feedback bot rendered as a roster row (a co-hosted agent, not a PeerGraph peer).
+function feedbackBotToRow(bot) {
+  return { contactId: bot.id, name: bot.name || bot.label, isBot: true, isFeedback: true, reachable: true, skillCount: 0, bot };
+}
+
+export default function ContactsScreen({ bundle, onOpen, feedbackStore = null }) {
   const peerGraph = bundle?.peerGraph ?? null;
   const callSkill = bundle?.callSkill ?? null;
   const [contacts, setContacts] = useState([]);
@@ -31,9 +39,10 @@ export default function ContactsScreen({ bundle, onOpen }) {
         (typeof callSkill === 'function' ? callSkill('stoop', 'listContacts', {}) : Promise.resolve(null)).catch(() => null),
       ]);
       const stoopRows = (Array.isArray(stoopRes?.contacts) ? stoopRes.contacts : []).map(stoopContactToRow).filter(Boolean);
-      setContacts(mergeContacts(peerRows, stoopRows));
+      const fbRows = feedbackStore ? (await feedbackStore.list().catch(() => [])).map(feedbackBotToRow) : [];
+      setContacts([...fbRows, ...mergeContacts(peerRows, stoopRows)]);
     } catch { setContacts([]); }
-  }, [peerGraph, callSkill]);
+  }, [peerGraph, callSkill, feedbackStore]);
 
   // Load on mount + whenever the graph changes (a bot added/discovered/removed).
   useEffect(() => {
@@ -49,13 +58,17 @@ export default function ContactsScreen({ bundle, onOpen }) {
     if (!input) return;
     setError(false);
     try {
-      await addBotToGraph({ input, peerGraph, coreAgent: bundle?.coreAgent, discover: bundle?.discoverA2A });
+      // cluster J — a feedback invite link/QR adds the co-hosted feedback bot to its own registry; anything
+      // else is a PeerGraph peer/bot. Same precedence as web's addBotFromInput.
+      const fb = feedbackStore ? feedbackBotFromInput(input, { activationUrl: FEEDBACK_ACTIVATION_URL }) : null;
+      if (fb) { await feedbackStore.add(fb); }
+      else { await addBotToGraph({ input, peerGraph, coreAgent: bundle?.coreAgent, discover: bundle?.discoverA2A }); }
       setAddText(''); setAddOpen(false);
       reload();
     } catch {
       setError(true);
     }
-  }, [addText, peerGraph, bundle, reload]);
+  }, [addText, peerGraph, bundle, reload, feedbackStore]);
 
   return (
     <View style={styles.wrap} testID="contacts-screen">

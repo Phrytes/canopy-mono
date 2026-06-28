@@ -36,11 +36,13 @@ export function sessionShim(session) {
  * Activate mobile feedback → the verify-summary pods. Throws `not-logged-in` when there is no pod session.
  * @returns {Promise<{ownPod, centralPod, controlStore}>}
  */
-export async function activateMobileFeedback({ session, activationUrl, projectId, code, storage, fetchImpl }) {
+export async function activateMobileFeedback({ session, activationUrl, projectId, code, storage, fetchImpl, podRef }) {
   const shim = sessionShim(session);
   if (!shim) throw new Error('not-logged-in');
   const recoveryHash = await getOrCreateRecoveryHashRN(storage);
   // the activation POST itself is unauthenticated (the cohort code authorises); the pods use the
   // session's authed fetch. `fetchImpl` defaults to global fetch (prod), injectable for tests.
-  return buildFeedbackVerifyPods({ session: shim, activationUrl, projectId, code, recoveryHash, fetchImpl });
+  // `podRef` (when already activated) skips re-activation — the cohort code is single-use, so re-opening
+  // the contact would otherwise fail. Returns podRef so the caller can persist + reuse it.
+  return buildFeedbackVerifyPods({ session: shim, activationUrl, projectId, code, recoveryHash, fetchImpl, podRef });
 }

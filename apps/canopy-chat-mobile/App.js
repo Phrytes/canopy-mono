@@ -451,6 +451,7 @@ export default function App() {
         </View>
         <CircleLauncherScreen
           bundle={bundle}
+          sessionRef={sessionRef}
           eventLog={eventLogRef.current}
           getPodWriter={getCirclePodWriter}
           kringRecipePendingStore={kringRecipePendingStoreRef.current}

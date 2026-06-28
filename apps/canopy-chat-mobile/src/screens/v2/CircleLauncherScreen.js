@@ -138,6 +138,8 @@ import CircleRecipeEditorScreen from './CircleRecipeEditorScreen.js';
 import CircleScreensPickerScreen from './CircleScreensPickerScreen.js';
 import ContactsScreen from './ContactsScreen.js';
 import ContactThreadScreen from './ContactThreadScreen.js';
+import FeedbackThreadScreen from './FeedbackThreadScreen.js';
+import { createFeedbackBotStore } from '../../../../canopy-chat/src/v2/feedbackBots.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
@@ -210,6 +212,8 @@ function WithTabBar({ active, onSelect, children }) {
 
 export default function CircleLauncherScreen({
   bundle,
+  // cluster J — the OidcSessionRN ref (App.js:187), needed to activate the feedback verify pods.
+  sessionRef = null,
   eventLog,
   kringRecipePendingStore = null,
   // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed,
@@ -247,6 +251,11 @@ export default function CircleLauncherScreen({
   }, []);
   // P5 — the contact (bot/peer) whose DM thread is open under the Contacten tab.
   const [contactThread, setContactThread] = useState(null);
+  // cluster J — persisted registry of added feedback bots (AsyncStorage), shared with the Contacten roster
+  // + the dedicated feedback thread. Created once.
+  const feedbackStoreRef = useRef(null);
+  if (!feedbackStoreRef.current) feedbackStoreRef.current = createFeedbackBotStore(AsyncStorage);
+  const feedbackStore = feedbackStoreRef.current;
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [viewAsMembers, setViewAsMembers] = useState([]);
   const [folioFiles, setFolioFiles] = useState([]);
@@ -977,6 +986,20 @@ export default function CircleLauncherScreen({
   // P5 — Contacten: the bot/peer roster + a 1:1 DM thread (mobile parity with web).
   if (view === 'contacten') {
     if (contactThread) {
+      // cluster J — a feedback bot is a co-hosted agent, not a PeerGraph peer: open the dedicated feedback
+      // thread (activates the verify pods) instead of the peer-DM thread.
+      if (contactThread.isFeedback) {
+        return (
+          <WithTabBar active="contacten" onSelect={onTab}>
+            <FeedbackThreadScreen
+              session={sessionRef?.current ?? null}
+              bot={contactThread.bot}
+              store={feedbackStore}
+              onBack={() => setContactThread(null)}
+            />
+          </WithTabBar>
+        );
+      }
       return (
         <WithTabBar active="contacten" onSelect={onTab}>
           <ContactThreadScreen
@@ -989,7 +1012,7 @@ export default function CircleLauncherScreen({
     }
     return (
       <WithTabBar active="contacten" onSelect={onTab}>
-        <ContactsScreen bundle={bundle} onOpen={(contact) => setContactThread(contact)} />
+        <ContactsScreen bundle={bundle} feedbackStore={feedbackStore} onOpen={(contact) => setContactThread(contact)} />
       </WithTabBar>
     );
   }
