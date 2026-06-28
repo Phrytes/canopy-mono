@@ -133,7 +133,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           if (m.kind === 'review') {
             return (
               <View key={m.id} style={styles.reviewBlock} testID="feedback-review">
-                {m.intro ? <Text style={styles.reviewIntro}>{m.intro}</Text> : null}
+                {m.intro ? <Text style={styles.reviewIntro}>{String(m.intro).split('\n\n')[0]}</Text> : null}
                 {(m.points || []).map((p) => {
                   const isEditing = editing && editing.mid === m.id && editing.id === p.id;
                   const changed = p.raw && p.raw !== p.text;
