@@ -242,7 +242,9 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
   );
 }
 
-let _id = 0;
+// Seed from the clock so a Fast-Refresh reload (which resets module state but KEEPS component state) can't
+// re-issue an id already in `messages` → no "two children with the same key".
+let _id = Date.now();
 function mkId() { _id += 1; return `fbt-${_id}`; }
 
 const styles = StyleSheet.create({

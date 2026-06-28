@@ -18,7 +18,9 @@ export function parseControl(text) {
   const t = (text || '').trim();
   if (t === '/start' || t === '/menu' || t === 'fp:menu') return { kind: 'menu' };
   if (t === '/help') return { kind: 'help' };
-  if (t === '/klaar' || t === '/done' || t === '/review' || t === 'fp:review') return { kind: 'review' };
+  // /bekijk is the primary "check my points so far" command — it's an in-between view, NOT a finish (you can
+  // keep sending + editing after). /klaar/done kept as aliases (habit/back-compat).
+  if (t === '/bekijk' || t === '/klaar' || t === '/done' || t === '/review' || t === 'fp:review') return { kind: 'review' };
   if (t === 'fp:consent:all') return { kind: 'consent', all: true };
   if (t.startsWith('fp:consent:')) return { kind: 'consent', ids: [t.slice('fp:consent:'.length)] };
   if (t === 'fp:cancel') return { kind: 'cancel' };

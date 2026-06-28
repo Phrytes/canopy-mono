@@ -2,7 +2,7 @@
 // language, all callers reference keys). Selected when a project's language.preferred is 'en'.
 
 export default {
-  received: 'Received ✓. Send more whenever you like, or type /done to review your points.',
+  received: 'Received ✓. Send more whenever you like, or type /review to check your points so far (you can carry on after).',
   rejected: (reason) => `This message was not stored (${reason}). Feel free to adjust it and send again.`,
 
   reviewIntro: 'These are your points (original → cleaned). Tap ✏ to adjust the wording, then send what you choose.',
@@ -53,7 +53,7 @@ export default {
   help: [
     'How it works:',
     '• Send your message(s). We clean them up and store nothing until you approve.',
-    '• /done — review your points and choose what to share.',
+    '• /review — check your points so far and choose what to share (in-between; you can carry on after).',
     '• /mine — your sent contributions.',
     '• /withdraw <id> — withdraw a contribution (while it has not yet been processed).',
   ].join('\n'),

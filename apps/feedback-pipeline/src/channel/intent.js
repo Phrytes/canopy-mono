@@ -14,7 +14,8 @@ import { chat } from '../ollama.js';
 // command, so a feedback message that merely contains a keyword ("stop met dit beleid",
 // "bekijk dit probleem") is left to the LLM/default, not mistaken for a command.
 const DET = [
-  [/^(\/)?(klaar|done|review|ik ben klaar|ben klaar|laat (het |me )?(maar )?zien|i'?m done)[.!\s]*$/i, () => ({ kind: 'review' })],
+  [/^(\/)?(bekijk|klaar|done|review|ik ben klaar|ben klaar|laat (het |me )?(maar )?zien|i'?m done)[.!\s]*$/i, () => ({ kind: 'review' })],
+  [/^(?:\/)?(?:bekijk|laat (?:me |mij )?zien|toon|show)\s+(?:mijn |m'n |my )?punten[.!?\s]*$/i, () => ({ kind: 'review' })],
   [/^(verstuur|stuur|send|submit|deel)\s+(alles|all|ze allemaal|everything)[.!\s]*$/i, () => ({ kind: 'consent', all: true })],
   [/^(alles|allemaal|all|everything)\s+(versturen|verstuur|sturen|send|delen|submit)[.!\s]*$/i, () => ({ kind: 'consent', all: true })],
   [/^(niets( versturen| te delen)?|nothing|annuleer|cancel|laat maar( zitten)?)[.!\s]*$/i, () => ({ kind: 'cancel' })],

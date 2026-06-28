@@ -6,7 +6,7 @@
 // not here, because they are jurisdiction- and project-specific.
 
 export default {
-  received: 'Ontvangen ✓. Stuur gerust meer, of typ /klaar om je punten te bekijken.',
+  received: 'Ontvangen ✓. Stuur gerust meer, of typ /bekijk om je punten tot nu toe te bekijken (je kunt daarna gewoon doorgaan).',
   rejected: (reason) => `Dit bericht is niet opgeslagen (${reason}). Pas het gerust aan en stuur opnieuw.`,
 
   reviewIntro: 'Dit zijn je punten (origineel → opgeschoond). Tik ✏ om de tekst aan te passen, en stuur wat je kiest.',
@@ -58,7 +58,7 @@ export default {
   help: [
     'Zo werkt het:',
     '• Stuur je bericht(en). We schonen ze op en bewaren niets totdat jij akkoord geeft.',
-    '• /klaar — bekijk je punten en kies wat je deelt.',
+    '• /bekijk — bekijk je punten tot nu toe en kies wat je deelt (tussentijds; je kunt daarna doorgaan).',
     '• /mijn — je verstuurde bijdragen.',
     '• /intrekken <id> — een bijdrage terugtrekken (zolang die nog niet is verwerkt).',
   ].join('\n'),
