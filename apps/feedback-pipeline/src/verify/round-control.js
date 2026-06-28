@@ -68,8 +68,7 @@ export async function pendingRoundsFor({ controlStore, projectId, participant, c
   // summary seen yet" — it must NOT throw the whole poll (which surfaced as 'geen open verificatieronde').
   let records = [];
   try { records = centralPod && typeof centralPod.list === 'function' ? await centralPod.list() : []; }
-  catch (e) { try { console.log('[verify] centralPod.list failed (non-fatal):', e?.message); } catch { /* */ } }
-  try { console.log(`[verify] pendingRoundsFor: rounds=${rounds.length} verifiedRecords=${records.length} participant=${participant} projectId=${projectId}`); } catch { /* */ }
+  catch { /* central read failed (e.g. cross-login token to the CSS container) → treat as no verified summary yet */ }
   const verified = new Set(
     records
       .filter((r) => (r.participant ?? r.user) === participant)

@@ -76,10 +76,10 @@ export function createFeedbackSurface({ config, projectId, pod, centralPod, cont
     async start(threadId) {
       active.add(String(threadId));
       await (await clientFor(threadId)).send('/help');
-      try {
-        const opened = await (await bot()).pollVerification(String(threadId));
-        if (!opened) emit({ chatId: String(threadId), text: '· (debug) geen open verificatieronde gevonden' });   // TEMP diagnostic
-      } catch (e) { emit({ chatId: String(threadId), text: `⚠ verify poll: ${e?.message ?? e}` }); }   // TEMP diagnostic
+      // poll the lead's /control/ round → on-device summary for verify. No open round is the normal case
+      // (stay silent); surface only a genuine error so the user isn't left wondering.
+      try { await (await bot()).pollVerification(String(threadId)); }
+      catch (e) { emit({ chatId: String(threadId), text: `⚠ verify poll: ${e?.message ?? e}` }); }
     },
     /** Leave feedback mode. */
     stop(threadId) { active.delete(String(threadId)); clients.get(String(threadId))?.close(); clients.delete(String(threadId)); },
