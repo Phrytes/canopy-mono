@@ -19,7 +19,7 @@ const DET = [
   [/^(alles|allemaal|all|everything)\s+(versturen|verstuur|sturen|send|delen|submit)[.!\s]*$/i, () => ({ kind: 'consent', all: true })],
   [/^(niets( versturen| te delen)?|nothing|annuleer|cancel|laat maar( zitten)?)[.!\s]*$/i, () => ({ kind: 'cancel' })],
   [/^(menu|help|\?)[.!\s]*$/i, () => ({ kind: 'menu' })],
-  [/^(mijn bijdragen|my contributions|wat heb ik (verstuurd|gedeeld)|what did i (send|submit|share))[?.!\s]*$/i, () => ({ kind: 'my-contributions' })],
+  [/^(?:toon|laat|zie|bekijk|show|view|geef)?\s*(?:mijn bijdragen|my contributions|wat heb ik (?:verstuurd|gedeeld)|what did i (?:send|submit|share))(?:\s+zien)?[?.!\s]*$/i, () => ({ kind: 'my-contributions' })],
   // edit a point by number ("bewerk punt 2", "verander punt 2", "edit 2", "change point 2") → opens its editor.
   [/^(?:bewerk|verander|wijzig|pas|edit|change)\s+(?:punt\s+|point\s+)?(\d+)\s*(?:aan)?[.!?\s]*$/i, (m) => ({ kind: 'edit-point', id: `p${m[1]}` })],
 ];
