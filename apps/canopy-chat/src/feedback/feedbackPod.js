@@ -43,14 +43,20 @@ export function podRootFromWebId(webId) {
  * server → 404. The WebID doc is public, so a plain fetch suffices; falls back to host-munging (CSS pods).
  */
 export async function discoverPodRoot(webId, fetchImpl = fetch) {
-  try {
-    const res = await fetchImpl(webId, { headers: { accept: 'text/turtle' } });
-    if (res.ok) {
-      const ttl = await res.text();
-      const m = ttl.match(/pim\/space#storage>\s*<([^>]+)>/);
-      if (m?.[1]) return m[1].endsWith('/') ? m[1] : `${m[1]}/`;
-    }
-  } catch { /* fall through to host-munging */ }
+  // RETRY: a single flaky WebID read (a network blip on id.inrupt.com) must NOT silently fall back to the
+  // host-munge — for Inrupt that writes to the IDENTITY host (id.inrupt.com/<name>/), which 404s every write.
+  // Only fall back after 3 genuine misses.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const res = await fetchImpl(webId, { headers: { accept: 'text/turtle' } });
+      if (res.ok) {
+        const ttl = await res.text();
+        const m = ttl.match(/pim\/space#storage>\s*<([^>]+)>/);
+        if (m?.[1]) return m[1].endsWith('/') ? m[1] : `${m[1]}/`;
+      }
+    } catch { /* retry, then fall through to host-munging */ }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+  }
   return podRootFromWebId(webId);
 }
 
@@ -71,7 +77,9 @@ export async function buildFeedbackVerifyPods({ session, activationUrl, projectI
   const centralPod = await makeCssCentralPod({ podBase: podRef, authedFetch: session.fetch, flat: true });
   // discover the REAL storage root (pim:storage) — NOT the WebID host. Inrupt PodSpaces stores at
   // storage.inrupt.com/<uuid>/, so munging id.inrupt.com/<user> wrote to the identity server → 404.
-  const ownBase = ownPodBase || `${await discoverPodRoot(session.webid, fetchImpl)}feedback-own/`;
+  // read the WebID with the SESSION's authed fetch (refresh-capable, reliable) rather than a bare unauth
+  // fetch — a flaky read here used to fall back to the identity host and 404 every write.
+  const ownBase = ownPodBase || `${await discoverPodRoot(session.webid, session.fetch || fetchImpl)}feedback-own/`;
   // the own pod is the participant's OWN pod — the activation service can't reach it, so ensure the
   // container exists here with the participant's own session (they own it; idempotent — 2xx OR 409/412).
   await session.fetch(ownBase, { method: 'PUT', headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"' } }).catch(() => {});
