@@ -14,6 +14,15 @@ import { configToRunOpts } from '../config/project-config.js';
 import { contributionMeta } from '../pod/signing.js';
 import { summariseOwnContributions, releaseVerifiedSummary } from '../verify/summary-round.js';
 
+/** Deterministic 8-hex content hash (djb2-xor) — no deps, portable. Used to make a stored contribution id
+ *  unique per distinct text across review rounds (positional p1/p2 ids alone collide). */
+function contributionTextHash(text) {
+  const s = String(text ?? '');
+  let h = 5381;
+  for (let i = 0; i < s.length; i += 1) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(16).padStart(8, '0');
+}
+
 export class ChannelDispatcher {
   #adapter; #pod; #participant; #opts; #projectId; #identity; #centralPod;
   #session = { messages: [], points: [], verifyDraft: null };
@@ -90,7 +99,10 @@ export class ChannelDispatcher {
     let failure = null;
     for (const p of this.#session.points) {
       if (!ids.has(p.id)) continue;
-      const cid = `${this.#participant}:${p.id}`;
+      // `p.id` (p1, p2…) is positional and restarts every review, so a later round's p1 would collide with
+      // an already-stored p1 ('duplicate contribution id'). Suffix a content hash so the stored id is unique
+      // per distinct text across rounds — while an exact-duplicate text still dedups (correct idempotency).
+      const cid = `${this.#participant}:${p.id}-${contributionTextHash(p.text)}`;
       const contribution = buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang });
       const meta = contributionMeta(this.#identity, { projectId: this.#projectId, participant: this.#participant, contribution });
       try {
