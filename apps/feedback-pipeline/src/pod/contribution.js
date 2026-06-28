@@ -11,6 +11,9 @@ import { z } from 'zod';
 export const ContributionSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
+  // The participant's ORIGINAL message, kept on their OWN pod for their records (Stage-1 review choice).
+  // Own-pod-only: aggregation/summary uses `text` (cleaned+verified), never `raw`, so it can't reach central.
+  raw: z.string().optional(),
   themeTags: z.array(z.string()).default([]),
   // COARSE time window only (e.g. "2026" or "2026-Q2") — never a precise timestamp,
   // which would be a fingerprint. Optional.
@@ -23,7 +26,9 @@ export function validateContribution(raw) {
   return ContributionSchema.parse(raw);
 }
 
-/** Build a contribution from an approved Task-1 point ({id, text}). */
+/** Build a contribution from an approved Task-1 point ({id, text, raw?}). Keeps `raw` only when it differs
+ *  from the curated text (no point storing a copy when the AI/edit changed nothing). */
 export function buildContribution(point, { timeWindow, lang, themeTags = [] } = {}) {
-  return validateContribution({ id: point.id, text: point.text, themeTags, timeWindow, lang });
+  const keepRaw = point.raw && point.raw !== point.text;
+  return validateContribution({ id: point.id, text: point.text, ...(keepRaw ? { raw: point.raw } : {}), themeTags, timeWindow, lang });
 }

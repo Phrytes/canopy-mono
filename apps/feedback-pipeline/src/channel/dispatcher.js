@@ -122,7 +122,7 @@ export class ChannelDispatcher {
       // an already-stored p1 ('duplicate contribution id'). Suffix a content hash so the stored id is unique
       // per distinct text across rounds — while an exact-duplicate text still dedups (correct idempotency).
       const cid = `${this.#participant}:${p.id}-${contributionTextHash(p.text)}`;
-      const contribution = buildContribution({ id: cid, text: p.text }, { timeWindow, lang: this.#opts.lang });
+      const contribution = buildContribution({ id: cid, text: p.text, raw: p.raw }, { timeWindow, lang: this.#opts.lang });
       const meta = contributionMeta(this.#identity, { projectId: this.#projectId, participant: this.#participant, contribution });
       try {
         await this.#pod.write(this.#participant, contribution, meta);
