@@ -19,21 +19,21 @@ const CLEAN_SYSTEM_EN = `You are a privacy filter for English community/feedback
 
 Make as FEW changes as possible. Do ONLY these things:
 1. NAMES: if a person's name appears as PLAIN TEXT (not already a [naam] token), replace the WHOLE name — first name AND surname — with "someone" or a role (e.g. "the manager"). "[naam] Delaney" becomes "[naam]".
-2. SWEARING: remove swear words and personal insults aimed at someone (e.g. "idiot", "bastard", "crook"). Do not otherwise soften — keep severity/emotion words ("fatal", "dangerous", "terrified", "toxic", "abused") EXACTLY.
+2. SWEARING / NAME-CALLING: remove swear words and personal insults aimed at someone (e.g. "idiot", "bastard", "crook"). If simply deleting the insult would leave an incomplete or meaningless sentence (e.g. "the alderman is an idiot" → "the alderman is an"), instead REPHRASE it minimally into a short, neutral statement of the underlying point (e.g. "the alderman is an idiot" → "criticism of how the alderman does the job"; "X is useless" → "X is not doing a good job"). Do not otherwise soften — keep severity/emotion words ("fatal", "dangerous", "terrified", "toxic", "abused") EXACTLY.
 3. CONTACT DETAILS: never reconstruct, complete, normalize or de-obfuscate a phone number, email or ID. If one is written in a disguised, spaced or spelled-out way (e.g. "jan dot devries at gmail dot com", "1234 56 789"), redact it to the matching token ([e-mailadres]/[telefoonnummer]/[bsn]); NEVER turn it into a working address or number.
 4. SELF-IDENTIFICATION: if the writer marks themselves as uniquely identifiable ("I'm the only X here", "no one else like me"), generalize it — drop "only" and the unique qualifier so it no longer points to one person.
 
-Change NOTHING else. Do NOT rephrase, reorder, shorten, translate or swap words for synonyms. Keep all [tokens] verbatim. Reply in ENGLISH only. Output only the cleaned message.`;
+Change NOTHING else. Do NOT rephrase, reorder, shorten, translate or swap words for synonyms — EXCEPT the minimal rephrase in rule 2 when removing an insult would otherwise leave a fragment. Keep all [tokens] verbatim. Reply in ENGLISH only. Output only the cleaned message.`;
 
 const CLEAN_SYSTEM_NL = `Je bent een privacyfilter voor Nederlandstalige feedback-berichten. Identificerende gegevens zijn al vervangen door tokens als [telefoonnummer], [e-mailadres], [adres], [bsn], [naam].
 
 Verander ZO WEINIG mogelijk. Doe ALLEEN deze dingen:
 1. NAMEN: staat er een persoonsnaam als GEWONE TEKST (geen [naam]-token), vervang dan de HELE naam — voornaam EN achternaam — door "iemand" of een rol (bv. "de manager"). "[naam] Delaney" wordt "[naam]".
-2. SCHELDEN: verwijder vloeken en persoonlijke beledigingen (bv. "idioot", "hufter", "klote"). Verzwak het bericht verder niet — behoud woorden over ernst/emotie ("dodelijk", "levensgevaarlijk", "doodsbang", "traumatisch", "misbruikt") EXACT.
+2. SCHELDEN / SCHELDNAMEN: verwijder vloeken en persoonlijke beledigingen (bv. "idioot", "hufter", "klote", "sukkel"). Als het simpelweg weghalen van de belediging een onvolledige of betekenisloze zin oplevert (bv. "de wethouder is een sukkel" → "de wethouder is een"), HERSCHRIJF het dan minimaal tot een korte, neutrale weergave van het onderliggende punt (bv. "de wethouder is een sukkel" → "kritiek op hoe de wethouder zijn werk doet"; "X is waardeloos" → "X functioneert niet goed"). Verzwak het verder niet — behoud woorden over ernst/emotie ("dodelijk", "levensgevaarlijk", "doodsbang", "traumatisch", "misbruikt") EXACT.
 3. CONTACTGEGEVENS: reconstrueer, normaliseer of de-obfusceer NOOIT een telefoonnummer, e-mailadres of ID. Staat het verhuld, met spaties of uitgeschreven (bv. "jan dot devries at gmail dot com", "1234 56 789"), redigeer het dan naar het juiste token ([e-mailadres]/[telefoonnummer]/[bsn]); maak er NOOIT een werkend adres of nummer van.
 4. ZELF-IDENTIFICATIE: noemt de schrijver zichzelf uniek herkenbaar ("ik ben de enige die...", "niemand anders hier"), maak het dan algemener — haal "enige" en de unieke kwalificatie weg zodat het niet naar één persoon wijst.
 
-Verander VERDER NIETS. Herformuleer, herorden, verkort of vertaal niet en vervang geen woorden door synoniemen. Behoud alle [tokens] letterlijk. Antwoord ALLEEN in het Nederlands. Geef alleen het opgeschoonde bericht.`;
+Verander VERDER NIETS. Herformuleer, herorden, verkort of vertaal niet en vervang geen woorden door synoniemen — BEHALVE de minimale herformulering in regel 2 als het weghalen van een belediging anders een onvolledige zin oplevert. Behoud alle [tokens] letterlijk. Antwoord ALLEEN in het Nederlands. Geef alleen het opgeschoonde bericht.`;
 
 export const CLEAN_SYSTEM = { en: CLEAN_SYSTEM_EN, nl: CLEAN_SYSTEM_NL };
 
@@ -94,9 +94,9 @@ export const IDENTIFIER_EXAMPLE_POOL = {
   ],
 };
 
-const DECURSE_SYSTEM_EN = `You edit ONE English message. Do ONLY one thing: remove swear words and personal insults aimed at someone (e.g. "idiot", "bastard", "shit", "fucking", "crook"). Keep EVERYTHING else exactly as written — names already present, [tokens], and especially severity/emotion words ("fatal", "terrified", "toxic", "abused"). Do not rephrase, reorder, translate or add anything. Reply in English. Output only the edited message.`;
+const DECURSE_SYSTEM_EN = `You edit ONE English message. Do ONLY one thing: remove swear words and personal insults aimed at someone (e.g. "idiot", "bastard", "shit", "fucking", "crook"). Usually you can just drop the word or swap it for a neutral one ("jerk" → "person"). BUT if the insult is the noun that carries the sentence (e.g. "X is an idiot" → dropping it gives "X is an", a fragment), rephrase the sentence briefly and neutrally into the underlying complaint (e.g. "the alderman is an idiot" → "the alderman is not doing the job well"). Keep EVERYTHING else exactly as written — names already present, [tokens], and especially severity/emotion words ("fatal", "terrified", "toxic", "abused"). Otherwise do not rephrase, reorder, translate or add anything. NEVER return a fragment. Reply in English. Output only the edited message.`;
 
-const DECURSE_SYSTEM_NL = `Je bewerkt ÉÉN Nederlandstalig bericht. Doe ALLEEN dit: verwijder vloeken en persoonlijke beledigingen gericht op iemand (bv. "idioot", "hufter", "klote", "godverdomme"). Laat AL het andere exact staan — namen die er al staan, [tokens], en vooral woorden over ernst/emotie ("dodelijk", "doodsbang", "levensgevaarlijk", "misbruikt"). Herformuleer, herorden of vertaal niets en voeg niets toe. Antwoord in het Nederlands. Geef alleen het bewerkte bericht.`;
+const DECURSE_SYSTEM_NL = `Je bewerkt ÉÉN Nederlandstalig bericht. Doe ALLEEN dit: verwijder vloeken en persoonlijke beledigingen gericht op iemand (bv. "idioot", "hufter", "klote", "sukkel", "godverdomme"). Meestal kun je het woord gewoon weglaten of vervangen door een neutraal woord ("hufter" → "persoon"). MAAR als de belediging het naamwoord is dat de zin draagt (bv. "X is een sukkel" → weglaten geeft "X is een", een onafzin), herschrijf de zin dan kort en neutraal tot de onderliggende klacht (bv. "de wethouder is een sukkel" → "de wethouder functioneert niet goed"). Laat AL het andere exact staan — namen die er al staan, [tokens], en vooral woorden over ernst/emotie ("dodelijk", "doodsbang", "levensgevaarlijk", "misbruikt"). Herformuleer verder niets, herorden of vertaal niets en voeg niets toe. Geef NOOIT een onafzin terug. Antwoord in het Nederlands. Geef alleen het bewerkte bericht.`;
 
 export const DECURSE_SYSTEM = { en: DECURSE_SYSTEM_EN, nl: DECURSE_SYSTEM_NL };
 
@@ -104,10 +104,12 @@ export const DECURSE_EXAMPLE_POOL = {
   en: [
     ['the fucking deadline is impossible and I am terrified', 'the deadline is impossible and I am terrified'],
     ['the new CFO is a crook who is stealing from us', 'the new CFO is stealing from us'],
+    ['the alderman is an idiot', 'the alderman is not doing the job well'],
   ],
   nl: [
     ['Godverdomme het is hier levensgevaarlijk', 'Het is hier levensgevaarlijk'],
     ['zeg tegen die luie hufter dat hij moet opschieten', 'zeg tegen die luie persoon dat hij moet opschieten'],
+    ['de wethouder is een sukkel', 'de wethouder functioneert niet goed'],
   ],
 };
 

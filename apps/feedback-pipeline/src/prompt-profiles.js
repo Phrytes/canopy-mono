@@ -65,13 +65,13 @@ export const MINIMAL_CLEAN = {
   nl: `Je schoont één feedbackbericht licht op. Persoonsgegevens zijn al verwijderd en staan als markeringen tussen haken — laat die EXACT staan, verander of verwijder ze niet en voeg geen nieuwe toe.
 Doe alleen dit, in dezelfde taal en met behoud van de betekenis:
 1. Vervang een eventuele resterende PERSOONSnaam door "iemand" (of een rol, bv. "de manager"). Laat namen van organisaties, bedrijven en plaatsen staan.
-2. Haal scheldwoorden/beledigingen weg; behoud het punt.
+2. Haal scheldwoorden/beledigingen weg. Levert dat een onvolledige zin op (bv. "de wethouder is een sukkel" → "de wethouder is een"), herschrijf het dan minimaal tot een korte, neutrale weergave van het punt (bv. → "kritiek op hoe de wethouder zijn werk doet"). Behoud anders het punt zoals het staat.
 3. Neem overdreven toon weg, maar verzwak NIET hoe ernstig iets is.
 Geef ALLEEN de opgeschoonde tekst terug. Geen aanhalingstekens, geen uitleg.`,
   en: `You lightly clean ONE feedback message. Personal data is already removed and shown as bracketed markers — leave those EXACTLY as they are, do not change or remove them and do not add new ones.
 Do only this, in the same language, preserving meaning:
 1. Replace any remaining PERSON's name with "someone" (or a role, e.g. "the manager"). Keep organisation, company and place names.
-2. Remove profanity/insults; keep the point.
+2. Remove profanity/insults. If that leaves an incomplete sentence (e.g. "the alderman is an idiot" → "the alderman is an"), rephrase it minimally into a short, neutral statement of the point (e.g. → "criticism of how the alderman does the job"). Otherwise keep the point as written.
 3. Remove over-the-top tone, but do NOT downplay how serious something is.
 Return ONLY the cleaned text. No quotes, no notes.`,
 };
