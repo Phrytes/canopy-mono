@@ -26,7 +26,7 @@ const DET = [
 
 function deterministicIntent(text) {
   if (text.split(/\s+/).filter(Boolean).length > 6) return null;   // long → content; LLM/default decides
-  for (const [re, make] of DET) if (re.test(text)) return make();
+  for (const [re, make] of DET) { const m = text.match(re); if (m) return make(m); }
   return null;
 }
 
