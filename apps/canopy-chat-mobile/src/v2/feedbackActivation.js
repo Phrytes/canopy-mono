@@ -25,7 +25,10 @@ export async function getOrCreateRecoveryHashRN(storage = AsyncStorage) {
 
 /** A {fetch, webid} shim from an OidcSessionRN, or null when not logged in (mirrors circleStoresRN). */
 export function sessionShim(session) {
-  if (!session || typeof session.isAuthenticated !== 'function' || !session.isAuthenticated() || !session.webid) return null;
+  // Rely on getAuthenticatedFetch (transparent refresh on expiry/401) + the presence of a webid — NOT a hard
+  // isAuthenticated() gate. isAuthenticated() returns false the moment the (short-lived) access token expires
+  // even though a refresh token can renew it, which wrongly reported 'not-logged-in' after the token aged out.
+  if (!session || typeof session.getAuthenticatedFetch !== 'function' || !session.webid) return null;
   let fetchFn;
   try { fetchFn = session.getAuthenticatedFetch(); } catch { return null; }
   if (typeof fetchFn !== 'function') return null;
