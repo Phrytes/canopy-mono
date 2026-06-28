@@ -329,6 +329,7 @@ export default function ChatScreen({
     startSignIn: (...a) => podAuthRef.current.startSignIn(...a),
     signOut: (...a) => podAuthRef.current.signOut(...a),
     getCurrentSession: (...a) => podAuthRef.current.getCurrentSession?.(...a),
+    getRawSessionInfo: (...a) => podAuthRef.current.getRawSessionInfo?.(...a),
     resolveIssuer: (...a) => podAuthRef.current.resolveIssuer?.(...a),
   }), []);
   useEffect(() => { onPodAuthReady?.(stablePodAuth); }, [stablePodAuth, onPodAuthReady]);

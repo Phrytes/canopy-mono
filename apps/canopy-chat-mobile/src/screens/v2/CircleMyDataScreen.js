@@ -70,7 +70,17 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
     if (!podAuth?.startSignIn) return;
     setSignInErr(''); setSigningIn(true);
     try { await podAuth.startSignIn({ issuer: issuer.trim() || undefined }); }
-    catch (e) { setSignInErr(e?.message ?? String(e)); }
+    catch (e) {
+      // DCR/discovery race: the client_id (re)registers async on mount + after a stale-client purge; a tap
+      // during that window throws CLIENT_ID_PENDING/DISCOVERY_PENDING ("registration not yet complete").
+      // Wait briefly + retry once instead of surfacing the transient error.
+      const msg = e?.message ?? String(e);
+      if (['CLIENT_ID_PENDING', 'DISCOVERY_PENDING', 'REQUEST_PENDING'].includes(e?.code) || /not yet complete/i.test(msg)) {
+        await new Promise((r) => setTimeout(r, 1500));
+        try { await podAuth.startSignIn({ issuer: issuer.trim() || undefined }); }
+        catch (e2) { setSignInErr(e2?.message ?? String(e2)); }
+      } else { setSignInErr(msg); }
+    }
     finally { setSigningIn(false); }
     load().catch(() => {});   // refresh pod status separately — its failure must not look like a sign-in error
   }, [podAuth, issuer, load]);
@@ -79,6 +89,12 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
     try { await podAuth.signOut(); await load(); } catch { /* best-effort */ }
   }, [podAuth, load]);
 
+  // Status from the actual session (podAuth), not just the stoop skill: getRawSessionInfo().webId is set
+  // whenever a session exists — including after the short access token expires (still refreshable) — so the
+  // "Me" screen doesn't lag back to "Local only" the way isAuthenticated()-based podSignInStatus does.
+  const rawSession = podAuth?.getRawSessionInfo?.() ?? null;
+  const podSignedIn = podStatus.signedIn || !!rawSession?.webId;
+  const podWebid = podStatus.webid || rawSession?.webId || '';
   const relay = [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ');
   const usage = Object.entries(metrics || {});
 
@@ -90,12 +106,12 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
       </View>
 
       <Section title={t('circle.mydata.storage')}>
-        <KV k={t('circle.mydata.pod')} v={podStatus.signedIn ? t('circle.mydata.pod_signed_in', { webid: podStatus.webid ?? '' }) : t('circle.mydata.pod_local')} />
+        <KV k={t('circle.mydata.pod')} v={podSignedIn ? t('circle.mydata.pod_signed_in', { webid: podWebid }) : t('circle.mydata.pod_local')} />
         {dataLocation.podRoot ? <KV k={t('circle.mydata.pod_root')} v={dataLocation.podRoot} /> : null}
         {relay ? <KV k={t('circle.mydata.relay')} v={relay} /> : null}
 
         {/* cluster J — pod sign-in entry (the v2 UI had none). When signed out: pod provider + Connect. */}
-        {podAuth && !podStatus.signedIn && (
+        {podAuth && !podSignedIn && (
           <View style={styles.signin}>
             <TextInput
               style={styles.signinInput}
@@ -113,7 +129,7 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
             {signInErr ? <Text style={styles.signinErr}>{signInErr}</Text> : null}
           </View>
         )}
-        {podAuth && podStatus.signedIn && (
+        {podAuth && podSignedIn && (
           <Pressable style={[styles.action, styles.actionMuted]} onPress={doSignOut} testID="mydata-pod-signout">
             <Text style={styles.actionMutedLabel}>{t('circle.mydata.pod_signout')}</Text>
           </Pressable>
