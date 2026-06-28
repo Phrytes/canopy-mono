@@ -2279,6 +2279,18 @@
       "text": "Inloggen op een pod",
       "doc": "S4 — start Solid sign-in so sealed circles store to your pod."
     },
+    "pod_connecting": {
+      "text": "Verbinden…",
+      "doc": "cluster J — pod sign-in in progress (v2 Me screen)."
+    },
+    "pod_issuer": {
+      "text": "Pod-aanbieder (URL)",
+      "doc": "cluster J — pod sign-in issuer input placeholder."
+    },
+    "pod_signout": {
+      "text": "Pod loskoppelen",
+      "doc": "cluster J — sign out of the pod (v2 Me screen)."
+    },
     "pod_root": {
       "text": "Pod-root",
       "doc": "S5 — pod root URI."

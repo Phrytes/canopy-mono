@@ -9,7 +9,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Modal, TextInput } from 'react-native';
-import { t, currentLang } from '../../core/localisation.js';
+import { t, lang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import UserLlmSettings from './UserLlmSettings.js';
@@ -55,7 +55,7 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
     const [loc, status, priv, met] = await Promise.all([
       callSkill('stoop', 'getDataLocation', {}).catch(() => null),
       callSkill('stoop', 'podSignInStatus', {}).catch(() => null),
-      callSkill('stoop', 'getPrivacyNotice', { lang: currentLang() }).catch(() => null),
+      callSkill('stoop', 'getPrivacyNotice', { lang: lang() }).catch(() => null),
       callSkill('stoop', 'getMetrics', {}).catch(() => null),
     ]);
     setDataLocation(loc ?? {});
@@ -69,9 +69,10 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
   const doSignIn = useCallback(async () => {
     if (!podAuth?.startSignIn) return;
     setSignInErr(''); setSigningIn(true);
-    try { await podAuth.startSignIn({ issuer: issuer.trim() || undefined }); await load(); }
+    try { await podAuth.startSignIn({ issuer: issuer.trim() || undefined }); }
     catch (e) { setSignInErr(e?.message ?? String(e)); }
     finally { setSigningIn(false); }
+    load().catch(() => {});   // refresh pod status separately — its failure must not look like a sign-in error
   }, [podAuth, issuer, load]);
   const doSignOut = useCallback(async () => {
     if (!podAuth?.signOut) return;
@@ -100,21 +101,21 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
               style={styles.signinInput}
               value={issuer}
               onChangeText={setIssuer}
-              placeholder={t('circle.mydata.pod_issuer', { defaultValue: 'Pod-aanbieder (URL)' })}
+              placeholder={t('circle.mydata.pod_issuer')}
               placeholderTextColor={theme.color.inkSoft}
               autoCapitalize="none"
               autoCorrect={false}
               testID="mydata-pod-issuer"
             />
             <Pressable style={[styles.action, signingIn && styles.actionMuted]} onPress={doSignIn} disabled={signingIn} testID="mydata-pod-signin">
-              <Text style={styles.actionLabel}>{signingIn ? t('circle.mydata.pod_connecting', { defaultValue: 'Verbinden…' }) : t('circle.mydata.pod_connect', { defaultValue: 'Verbind met je pod' })}</Text>
+              <Text style={styles.actionLabel}>{signingIn ? t('circle.mydata.pod_connecting') : t('circle.mydata.pod_sign_in')}</Text>
             </Pressable>
             {signInErr ? <Text style={styles.signinErr}>{signInErr}</Text> : null}
           </View>
         )}
         {podAuth && podStatus.signedIn && (
           <Pressable style={[styles.action, styles.actionMuted]} onPress={doSignOut} testID="mydata-pod-signout">
-            <Text style={styles.actionMutedLabel}>{t('circle.mydata.pod_signout', { defaultValue: 'Pod loskoppelen' })}</Text>
+            <Text style={styles.actionMutedLabel}>{t('circle.mydata.pod_signout')}</Text>
           </Pressable>
         )}
       </Section>
