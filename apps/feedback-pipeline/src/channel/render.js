@@ -21,8 +21,16 @@ export function renderMessage(msg, s = getStrings()) {
       };
     case 'review': {
       if (!msg.points?.length) return { text: s.reviewEmpty };
-      const lines = msg.points.map((p, i) => `${i + 1}. ${p.text}`);
-      const buttons = msg.points.map((p, i) => BTN(`fp:consent:${p.id}`, s.consentOne(i + 1)));
+      // per message: the curated text + (when it changed) the original underneath — the raw→curated compare.
+      const lines = msg.points.map((p, i) => {
+        const head = `${i + 1}. ${p.text}${p.edited ? ` ${s.editedTag ?? ''}`.trimEnd() : ''}`;
+        return (p.raw && p.raw !== p.text) ? `${head}\n   ${s.originalLabel ?? 'origineel'}: ${p.raw}` : head;
+      });
+      const buttons = [];
+      msg.points.forEach((p, i) => {
+        buttons.push(BTN(`fp:consent:${p.id}`, s.consentOne(i + 1)));
+        buttons.push(BTN(`fp:edit:${p.id}`, s.editOne ? s.editOne(i + 1) : `✏ ${i + 1}`));
+      });
       buttons.push(BTN('fp:consent:all', s.consentAll), BTN('fp:cancel', s.cancel));
       return { text: `${s.reviewIntro}\n\n${lines.join('\n')}`, buttons };
     }

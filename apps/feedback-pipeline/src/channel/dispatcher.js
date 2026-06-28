@@ -8,7 +8,7 @@
 // adapter's trust context.
 
 import { assertAdapter } from './adapter.js';
-import { escalates, runTask1 } from '../task1.js';
+import { escalates, runTask1, lineFor } from '../task1.js';
 import { buildContribution } from '../pod/contribution.js';
 import { configToRunOpts } from '../config/project-config.js';
 import { contributionMeta } from '../pod/signing.js';
@@ -72,13 +72,32 @@ export class ChannelDispatcher {
     return { stored: true, signal: fm.signal || null };
   }
 
-  /** Dedup the session's non-escalated messages into a reviewable point list. */
+  /** Curate the session's non-escalated messages into a reviewable list. PER-MESSAGE (1:1 with the raw)
+   *  so the user can verify raw→curated, edit the curated text, and pick what to submit. Summarisation is
+   *  the verify-summary stage's job (Stage 2), not contribute. `raw` rides along for the before/after view. */
   async review() {
-    const raws = this.#session.messages.filter((m) => !escalates(m.fm.signal, this.#gate())).map((m) => m.raw);
-    const t1 = await runTask1(this.#opts.model, raws, this.#opts);
-    this.#session.points = t1.points;
-    await this.#adapter.send({ type: 'review', points: t1.points });
-    return t1.points;
+    const msgs = this.#session.messages.filter((m) => !escalates(m.fm.signal, this.#gate()));
+    const t1 = await runTask1(this.#opts.model, msgs.map((m) => m.raw), this.#opts);
+    const points = t1.perMessage
+      .filter((m) => !m.escalated)
+      .map((m, i) => ({ id: `p${i + 1}`, text: lineFor(m), raw: m.raw, ...(lineFor(m) !== m.raw ? { curated: true } : {}) }));
+    this.#session.points = points;
+    await this.#adapter.send({ type: 'review', points });
+    return points;
+  }
+
+  /** Edit a reviewed point's curated text in place (the user's correction before consent). */
+  editPoint(id, text) {
+    const p = this.#session.points.find((x) => x.id === id);
+    if (p && typeof text === 'string' && text.trim()) { p.text = text.trim(); p.edited = true; }
+    return p;
+  }
+
+  /** Re-present the CURRENT reviewed points (after an edit) WITHOUT re-curating — re-running review()
+   *  would re-clean from the raws and discard the user's edits. */
+  async showReview() {
+    await this.#adapter.send({ type: 'review', points: this.#session.points });
+    return this.#session.points;
   }
 
   /** Consent: write the approved points to the central pod (the hand-over = the write). When

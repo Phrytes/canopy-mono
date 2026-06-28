@@ -30,6 +30,8 @@ export function parseControl(text) {
   if (t === 'fp:verify-withdraw') return { kind: 'verify-withdraw' };
   const ve = t.match(/^fp:verify-edit(?::\s*(.+))?$/);            // [edit] (then prompt) or fp:verify-edit:<text>
   if (ve) return { kind: 'verify-edit', text: ve[1]?.trim() };
+  const pe = t.match(/^fp:edit:([^:]+)(?::([\s\S]+))?$/);         // per-message [edit] (then prompt) or fp:edit:<id>:<text>
+  if (pe) return { kind: 'edit-point', id: pe[1], text: pe[2]?.trim() };
   const wd = t.match(/^(?:\/intrekken|\/withdraw|fp:withdraw:)\s*(.+)$/);
   if (wd) return { kind: 'withdraw', arg: wd[1].trim() };
   return null;
@@ -83,9 +85,14 @@ export async function runAction(action, { session, say, strings: s }) {
       if (action.text) { session.awaitingEdit = false; return void await session.dispatcher.editVerificationSummary(action.text); }
       session.awaitingEdit = true;                                 // [Edit] tapped → the next free text rewords it
       return say(s.verifyEditPrompt);
+    case 'edit-point':                                             // per-message [Bewerk] — inline text, or prompt
+      if (action.text) { session.awaitingEditPoint = null; session.dispatcher.editPoint(action.id, action.text); return void await session.dispatcher.showReview(); }
+      session.awaitingEditPoint = action.id;                       // tapped without text → the next free text edits it
+      return say(s.editPointPrompt ?? s.verifyEditPrompt);
     case 'message':
     default:
       if (session.awaitingEdit) { session.awaitingEdit = false; return void await session.dispatcher.editVerificationSummary(action.text); }
+      if (session.awaitingEditPoint) { const id = session.awaitingEditPoint; session.awaitingEditPoint = null; session.dispatcher.editPoint(id, action.text); return void await session.dispatcher.showReview(); }
       return void await session.dispatcher.handleMessage(action.text);
   }
 }

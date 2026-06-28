@@ -5,11 +5,15 @@ export default {
   received: 'Received ✓. Send more whenever you like, or type /done to review your points.',
   rejected: (reason) => `This message was not stored (${reason}). Feel free to adjust it and send again.`,
 
-  reviewIntro: 'These are your points. What would you like to share?',
+  reviewIntro: 'These are your points (original → cleaned). Tap ✏ to adjust the wording, then send what you choose.',
   reviewEmpty: 'There are no points to review yet. Send a message first.',
   consentOne: (n) => `Send ${n}`,
   consentAll: 'Send all',
   cancel: 'Send nothing',
+  editOne: (n) => `✏ ${n}`,
+  originalLabel: 'original',
+  editedTag: '(edited)',
+  editPointPrompt: 'Type your correction for this point.',
 
   escalationOffer: 'This looks like it may be urgent. Would you like us to pass this signal on?',
   escalateYes: 'Yes, pass it on',

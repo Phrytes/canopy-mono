@@ -24,6 +24,13 @@ export function escalates(signal, { layer1OnDevice = true, escalationCategories 
   return !escalationCategories || escalationCategories.includes(signal.category);
 }
 
+/** Best usable text for a per-message point: LLM-cleaned, else deterministically-floored, else raw. */
+export function lineFor(m) {
+  const c = (m?.cleaned || '').trim();
+  if (c && !c.startsWith('⚠')) return c;
+  return (m?.redacted || '').trim() || (m?.raw || '').trim();
+}
+
 /** Parse a summarised bullet list into structured, addressable points. */
 export function parsePoints(text) {
   return String(text || '')
@@ -73,15 +80,7 @@ export async function runTask1(model, rawMessages, opts = {}) {
   // Task 2 catches it.) Whether a signal ALSO enters the aggregate is a deferred decision.
   const regular = perMessage.filter((m) => !m.escalated);
   const lang = opts.lang || regular[0]?.lang || perMessage[0]?.lang || 'nl';
-  // Best usable text per message: the LLM-cleaned text, falling back to the
-  // deterministically-floored (PII/name/profanity-stripped) text, then raw — so even if the
-  // LLM soften returned empty/garbled, we still show a safe point. (raw is last resort; it's
-  // the participant's own message shown back to them, and they review before any write.)
-  const lineFor = (m) => {
-    const c = (m.cleaned || '').trim();
-    if (c && !c.startsWith('⚠')) return c;
-    return (m.redacted || '').trim() || (m.raw || '').trim();
-  };
+  // Best usable text per message: see the module-level `lineFor` (LLM-cleaned → floored → raw).
   let points = [];
   if (regular.length === 1) {
     points = parsePoints('- ' + lineFor(regular[0]));

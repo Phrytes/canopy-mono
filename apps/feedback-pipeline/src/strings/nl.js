@@ -9,9 +9,13 @@ export default {
   received: 'Ontvangen ✓. Stuur gerust meer, of typ /klaar om je punten te bekijken.',
   rejected: (reason) => `Dit bericht is niet opgeslagen (${reason}). Pas het gerust aan en stuur opnieuw.`,
 
-  reviewIntro: 'Dit zijn je punten. Wat wil je delen?',
+  reviewIntro: 'Dit zijn je punten (origineel → opgeschoond). Tik ✏ om de tekst aan te passen, en stuur wat je kiest.',
   reviewEmpty: 'Er zijn nog geen punten om te bekijken. Stuur eerst een bericht.',
   consentOne: (n) => `Verstuur ${n}`,
+  editOne: (n) => `✏ ${n}`,
+  originalLabel: 'origineel',
+  editedTag: '(aangepast)',
+  editPointPrompt: 'Typ je correctie voor dit punt.',
   consentAll: 'Alles versturen',
   cancel: 'Niets versturen',
 
