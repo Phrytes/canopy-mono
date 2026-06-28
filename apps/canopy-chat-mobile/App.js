@@ -219,7 +219,11 @@ export default function App() {
   const getCirclePodWriter = useCallback(() => circlePodWriterRef.current, []);
 
   useEffect(() => {
-    initLocalisation({ lng: 'en' }).then(() => setLocaleReady(true));
+    // Follow the device locale (English default, Dutch when the device is nl) so the app UI matches the
+    // feedback bot's language — Hermes has Intl, so no expo-localization dependency.
+    let lng = 'en';
+    try { if (String(Intl.DateTimeFormat().resolvedOptions().locale || '').toLowerCase().startsWith('nl')) lng = 'nl'; } catch { /* default en */ }
+    initLocalisation({ lng }).then(() => setLocaleReady(true));
   }, []);
 
   // SP-13.1 — the chat shell is no longer a separate routable screen, so
