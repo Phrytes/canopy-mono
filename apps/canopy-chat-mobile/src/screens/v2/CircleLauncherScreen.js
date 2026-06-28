@@ -214,6 +214,8 @@ export default function CircleLauncherScreen({
   bundle,
   // cluster J — the OidcSessionRN ref (App.js:187), needed to activate the feedback verify pods.
   sessionRef = null,
+  // cluster J — podAuth (lifted from the hidden ChatScreen) so the "Me" screen can drive pod sign-in.
+  podAuth = null,
   eventLog,
   kringRecipePendingStore = null,
   // γ-next.rules — per-kring pending-rules cache (AsyncStorage-backed,
@@ -969,7 +971,7 @@ export default function CircleLauncherScreen({
   if (view === 'mydata') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
-        <CircleMyDataScreen callSkill={bundle?.callSkill} onBack={() => setView('profile')} chatAi={chatAi} userLlm={userLlmCfg} onSaveUserLlm={onSaveUserLlm} validateUserLlm={validateUserLlmConfig} />
+        <CircleMyDataScreen callSkill={bundle?.callSkill} podAuth={podAuth} onBack={() => setView('profile')} chatAi={chatAi} userLlm={userLlmCfg} onSaveUserLlm={onSaveUserLlm} validateUserLlm={validateUserLlmConfig} />
       </WithTabBar>
     );
   }

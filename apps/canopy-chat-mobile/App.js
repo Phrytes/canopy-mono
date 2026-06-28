@@ -66,6 +66,9 @@ import { makeKringPolicyPendingStoreRN } from './src/core/kringPolicyPendingStor
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
+  // cluster J — podAuth is built in the (hidden) ChatScreen; lift it here so the visible v2 launcher can
+  // drive pod sign-in (the launcher had no sign-in entry, stranding the OidcSessionRN flow).
+  const [podAuth, setPodAuth] = useState(null);
   // 5.9b — first-run welcome gate.  States:
   //  - 'checking'  — haven't probed AsyncStorage yet (render nothing; boot
   //                  useEffect waits too).
@@ -447,11 +450,13 @@ export default function App() {
             kringPolicyDedup={kringPolicyDedupRef.current}
             sessionRef={sessionRef}
             onSessionChanged={refreshCirclePodWriter}
+            onPodAuthReady={setPodAuth}
           />
         </View>
         <CircleLauncherScreen
           bundle={bundle}
           sessionRef={sessionRef}
+          podAuth={podAuth}
           eventLog={eventLogRef.current}
           getPodWriter={getCirclePodWriter}
           kringRecipePendingStore={kringRecipePendingStoreRef.current}

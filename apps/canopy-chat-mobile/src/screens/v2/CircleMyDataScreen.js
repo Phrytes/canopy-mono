@@ -8,7 +8,7 @@
  * The backup/restore flows reuse the existing RN wizard modals — no reimpl.
  */
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Modal } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Modal, TextInput } from 'react-native';
 import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
@@ -19,9 +19,13 @@ import { enableNativePush, disableNativePush, getNativePushState } from '../../v
 
 const CHAT_AI_KEY = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
 
-export default function CircleMyDataScreen({ callSkill, onBack, chatAi, userLlm, onSaveUserLlm, validateUserLlm }) {
+export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi, userLlm, onSaveUserLlm, validateUserLlm }) {
   const [dataLocation, setDataLocation] = useState({});
   const [podStatus, setPodStatus] = useState({});
+  // cluster J — pod sign-in entry (the v2 UI had none; sign-in was stranded in the hidden ChatScreen).
+  const [issuer, setIssuer] = useState('https://login.inrupt.com');
+  const [signingIn, setSigningIn] = useState(false);
+  const [signInErr, setSignInErr] = useState('');
   const [privacy, setPrivacy] = useState([]);
   const [metrics, setMetrics] = useState({});
   const [wizard, setWizard] = useState(null);          // 'backup' | 'restore' | null
@@ -62,6 +66,18 @@ export default function CircleMyDataScreen({ callSkill, onBack, chatAi, userLlm,
 
   useEffect(() => { load(); }, [load]);
 
+  const doSignIn = useCallback(async () => {
+    if (!podAuth?.startSignIn) return;
+    setSignInErr(''); setSigningIn(true);
+    try { await podAuth.startSignIn({ issuer: issuer.trim() || undefined }); await load(); }
+    catch (e) { setSignInErr(e?.message ?? String(e)); }
+    finally { setSigningIn(false); }
+  }, [podAuth, issuer, load]);
+  const doSignOut = useCallback(async () => {
+    if (!podAuth?.signOut) return;
+    try { await podAuth.signOut(); await load(); } catch { /* best-effort */ }
+  }, [podAuth, load]);
+
   const relay = [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ');
   const usage = Object.entries(metrics || {});
 
@@ -76,6 +92,31 @@ export default function CircleMyDataScreen({ callSkill, onBack, chatAi, userLlm,
         <KV k={t('circle.mydata.pod')} v={podStatus.signedIn ? t('circle.mydata.pod_signed_in', { webid: podStatus.webid ?? '' }) : t('circle.mydata.pod_local')} />
         {dataLocation.podRoot ? <KV k={t('circle.mydata.pod_root')} v={dataLocation.podRoot} /> : null}
         {relay ? <KV k={t('circle.mydata.relay')} v={relay} /> : null}
+
+        {/* cluster J — pod sign-in entry (the v2 UI had none). When signed out: pod provider + Connect. */}
+        {podAuth && !podStatus.signedIn && (
+          <View style={styles.signin}>
+            <TextInput
+              style={styles.signinInput}
+              value={issuer}
+              onChangeText={setIssuer}
+              placeholder={t('circle.mydata.pod_issuer', { defaultValue: 'Pod-aanbieder (URL)' })}
+              placeholderTextColor={theme.color.inkSoft}
+              autoCapitalize="none"
+              autoCorrect={false}
+              testID="mydata-pod-issuer"
+            />
+            <Pressable style={[styles.action, signingIn && styles.actionMuted]} onPress={doSignIn} disabled={signingIn} testID="mydata-pod-signin">
+              <Text style={styles.actionLabel}>{signingIn ? t('circle.mydata.pod_connecting', { defaultValue: 'Verbinden…' }) : t('circle.mydata.pod_connect', { defaultValue: 'Verbind met je pod' })}</Text>
+            </Pressable>
+            {signInErr ? <Text style={styles.signinErr}>{signInErr}</Text> : null}
+          </View>
+        )}
+        {podAuth && podStatus.signedIn && (
+          <Pressable style={[styles.action, styles.actionMuted]} onPress={doSignOut} testID="mydata-pod-signout">
+            <Text style={styles.actionMutedLabel}>{t('circle.mydata.pod_signout', { defaultValue: 'Pod loskoppelen' })}</Text>
+          </Pressable>
+        )}
       </Section>
 
       <Section title={t('circle.mydata.keys')}>
@@ -201,6 +242,9 @@ const styles = StyleSheet.create({
   privacy: { gap: 2 },
   privacyTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
   privacyBody: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
+  signin: { marginTop: 10, gap: 8 },
+  signinInput: { fontSize: 14, paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
+  signinErr: { fontSize: 12, color: '#b3261e' },
   action: { alignSelf: 'flex-start', borderWidth: 1, borderColor: theme.color.accent, borderRadius: theme.radius.md, paddingVertical: 8, paddingHorizontal: 14 },
   actionLabel: { fontSize: 13, fontWeight: '600', color: theme.color.accent },
   actionActive: { backgroundColor: theme.color.accent, borderColor: theme.color.accent },

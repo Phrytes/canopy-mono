@@ -192,6 +192,9 @@ export default function ChatScreen({
   // Fired after sign-in completes / sign-out clears, so App.js can
   // refresh the launcher's pod-writer ref.  No-op when omitted.
   onSessionChanged = null,
+  // cluster J — lift podAuth up so the v2 launcher (which is the only visible UI; this ChatScreen is
+  // mounted-but-hidden) can expose a pod sign-in entry. Pod sign-in otherwise has no v2 surface.
+  onPodAuthReady = null,
 }) {
   // M1 (2026-05-29) — the agent bundle is booted ONCE in App.js (shared
   // with the circle launcher).  `bootState` is DERIVED from the props so
@@ -317,6 +320,8 @@ export default function ChatScreen({
       },
     };
   }, [authHook, onSessionChanged]);
+  // cluster J — hand podAuth to App.js so the visible v2 launcher can drive pod sign-in.
+  useEffect(() => { onPodAuthReady?.(podAuth); }, [podAuth, onPodAuthReady]);
   const scrollRef       = useRef(null);
   // threadStateRef stays in sync so fire-and-forget async handlers
   // (button taps, follow-up completions) read the latest state
