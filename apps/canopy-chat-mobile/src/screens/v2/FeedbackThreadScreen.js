@@ -58,6 +58,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
         if (cancelled) return;
         if (pods.podRef && pods.podRef !== bot.podRef && store) { try { await store.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
         const surface = createFeedbackSurface({
+          projectId: bot.projectId,   // bind the dispatcher to the activation project (verify-round match)
           llmBaseURL: FEEDBACK_LLM_BASEURL,
           llmModel: FEEDBACK_LLM_MODEL,
           pod: pods.ownPod,

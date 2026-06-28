@@ -1222,6 +1222,7 @@ function _renderFbThread(botId) {
 function _buildFbSurface(botId, pods) {
   const ft = _fbThreads.get(botId);
   ft.surface = createFeedbackSurface({
+    projectId: String(botId).replace(/^fp-bot:/, ''),   // bind the dispatcher to the activation project (verify-round match)
     llmBaseURL: FEEDBACK_LLM_BASEURL,
     llmModel: FEEDBACK_LLM_MODEL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
