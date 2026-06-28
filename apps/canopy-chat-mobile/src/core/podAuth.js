@@ -51,8 +51,12 @@ export function buildMobilePodAuth({ hook, session }) {
       const result = await hook.signIn({
         issuer: resolved?.url ?? issuer,
       });
-      if (result?.tokens) {
-        await session.adoptTokens(result.tokens);
+      // hook.signIn returns the FLAT token object ({accessToken, refreshToken, idToken, expiresAt, webid},
+      // per completeSignIn + the package README) — adopt `result` itself, NOT `result.tokens` (which never
+      // existed). The old `result.tokens` check silently skipped adoption, so sign-in "completed" with the
+      // WebID resolved but the session never authenticated.
+      if (result?.accessToken) {
+        await session.adoptTokens(result);
       }
       return result;
     },
