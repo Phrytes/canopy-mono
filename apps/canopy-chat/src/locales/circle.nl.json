@@ -19,6 +19,10 @@
     "activation_failed": {
       "text": "Activatie mislukt: {error}",
       "doc": "Feedback activation — shown when buildFeedbackVerifyPods throws."
+    },
+    "edit_hint": {
+      "text": "Pas de tekst aan en verstuur",
+      "doc": "Stage-1 inline edit — composer placeholder while reworking a curated point (✏)."
     }
   },
   "tab": {

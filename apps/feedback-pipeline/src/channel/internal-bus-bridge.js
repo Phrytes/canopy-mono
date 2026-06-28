@@ -41,8 +41,8 @@ export class InternalBusBridge {
   onMessage(handler) { this.#handler = handler; }
 
   /** Outbound reply — posted on the participant's own channel (chatId = participant address). */
-  async sendReply({ chatId, replyTo, text, buttons } = {}) {
-    this.#bus.emit(REPLY(chatId), { bridgeId: this.id, chatId, replyTo, text, buttons });
+  async sendReply({ chatId, replyTo, text, buttons, kind, points } = {}) {
+    this.#bus.emit(REPLY(chatId), { bridgeId: this.id, chatId, replyTo, text, buttons, kind, points });
   }
 
   // Inbound turn → IncomingMessage → handler. Acks `fp:done` when the turn is fully handled

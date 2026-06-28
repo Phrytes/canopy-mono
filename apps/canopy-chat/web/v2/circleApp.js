@@ -1212,12 +1212,28 @@ function _renderFbThread(botId) {
   if (!ft || _activeFbThread?.botId !== botId) return;
   renderContactThread(rootEl, {
     name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false, t,
-    onBack: () => { _activeFbThread = null; showContacts(); },
+    inputValue: ft.pendingEditText || '',
+    inputHint: ft.editingId ? t('feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : '',
+    onBack: () => { ft.editingId = null; _activeFbThread = null; showContacts(); },
     // the bot's AI clean/summarise takes a few seconds per message — show a "thinking" state so /klaar
     // doesn't look frozen.
-    onButtonTap: async (b) => { ft.busy = true; _renderFbThread(botId); try { await ft.surface?.tapButton?.(b.action ?? b.callbackData ?? b.id, botId); } finally { ft.busy = false; _renderFbThread(botId); } },
-    onSend: async (text) => { ft.busy = true; _renderFbThread(botId); try { await ft.surface?.handle?.(text, botId); } finally { ft.busy = false; _renderFbThread(botId); } },
+    onButtonTap: async (b) => {
+      const id = b.action ?? b.callbackData ?? b.id;
+      // inline edit: ✏ a point → pre-fill the composer with its current curated text (no bot round-trip).
+      const m = /^fp:edit:(p\d+)$/.exec(id || '');
+      const p = m && Array.isArray(ft.reviewPoints) ? ft.reviewPoints.find((x) => x.id === m[1]) : null;
+      if (p) { ft.editingId = p.id; ft.pendingEditText = p.text; _renderFbThread(botId); return; }
+      ft.busy = true; _renderFbThread(botId);
+      try { await ft.surface?.tapButton?.(id, botId); } finally { ft.busy = false; _renderFbThread(botId); }
+    },
+    onSend: async (text) => {
+      const editId = ft.editingId; ft.editingId = null;          // editing → rewrite that point in place
+      const toSend = editId ? `fp:edit:${editId}:${text}` : text;
+      ft.busy = true; _renderFbThread(botId);
+      try { await ft.surface?.handle?.(toSend, botId); } finally { ft.busy = false; _renderFbThread(botId); }
+    },
   });
+  ft.pendingEditText = '';   // one-shot pre-fill (renderer rebuilds the input each render)
 }
 function _buildFbSurface(botId, pods) {
   const ft = _fbThreads.get(botId);
@@ -1226,7 +1242,8 @@ function _buildFbSurface(botId, pods) {
     llmBaseURL: FEEDBACK_LLM_BASEURL,
     llmModel: FEEDBACK_LLM_MODEL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
-    emit: ({ text, buttons }) => {
+    emit: ({ text, buttons, kind, points }) => {
+      if (kind === 'review' && Array.isArray(points)) ft.reviewPoints = points;   // for inline ✏ pre-fill
       ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       _renderFbThread(botId);
     },

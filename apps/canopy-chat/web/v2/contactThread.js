@@ -21,6 +21,8 @@ export function renderContactThread(container, {
   onBack,
   onButtonTap,
   onSkillTap,
+  inputValue = '',   // pre-fill the composer (inline edit: ✏ a point → its text appears, editable)
+  inputHint = '',    // optional placeholder override (e.g. "Editing point N")
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -107,7 +109,8 @@ export function renderContactThread(container, {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'cc-cthread__input';
-  input.placeholder = tr('circle.contacts.composer', { name });
+  input.placeholder = inputHint || tr('circle.contacts.composer', { name });
+  if (inputValue) { input.value = inputValue; }
   composer.appendChild(input);
   const sendBtn = document.createElement('button');
   sendBtn.type = 'submit';

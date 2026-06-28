@@ -32,6 +32,9 @@ export class CanopyChatChannelAdapter {
   async send(msg) {
     const { text, buttons } = renderMessage(msg, this.#strings);
     if (!text && !buttons) return;
-    await this.#bridge.sendReply({ chatId: this.#chatId, replyTo: this.#replyTo, text, buttons });
+    // text+buttons stay the canonical render; for the review, also pass the structured points so a rich
+    // surface can offer inline per-point edit (pre-fill the editor with the current curated text).
+    const extra = msg?.type === 'review' && Array.isArray(msg.points) ? { kind: 'review', points: msg.points } : {};
+    await this.#bridge.sendReply({ chatId: this.#chatId, replyTo: this.#replyTo, text, buttons, ...extra });
   }
 }

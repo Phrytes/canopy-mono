@@ -32,9 +32,11 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState(null);   // inline ✏ — which point is being reworded
   const surfaceRef = useRef(null);
   const startedRef = useRef(false);
   const scrollRef = useRef(null);
+  const reviewPointsRef = useRef([]);                 // latest review points (for ✏ pre-fill)
 
   const pushBot = useCallback((text, buttons) => {
     setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', text: String(text ?? ''), buttons: Array.isArray(buttons) && buttons.length ? buttons : null }]);
@@ -64,7 +66,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           pod: pods.ownPod,
           centralPod: pods.centralPod,
           controlStore: pods.controlStore,
-          emit: ({ text, buttons }) => pushBot(text, buttons),
+          emit: ({ text, buttons, kind, points }) => { if (kind === 'review' && Array.isArray(points)) reviewPointsRef.current = points; pushBot(text, buttons); },
         });
         surfaceRef.current = surface;
         await surface.start(threadId);   // /help + the /control/ verify-round poll (emits the summary bubble)
@@ -82,18 +84,32 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
     const surface = surfaceRef.current;
     if (!text || !surface) return;
     setInput('');
+    const editId = editingId; setEditingId(null);
+    // inline edit → rewrite that point in place (fp:edit), no echoed user bubble; else a normal turn.
+    if (editId) {
+      setBusy(true);
+      try { await surface.handle(`fp:edit:${editId}:${text}`, threadId); }
+      catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
+      finally { setBusy(false); }
+      return;
+    }
     pushUser(text);
     setBusy(true);
     try { await surface.handle(text, threadId); }
     catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
     finally { setBusy(false); }
-  }, [input, threadId, pushUser, pushBot]);
+  }, [input, editingId, threadId, pushUser, pushBot]);
 
   const onButton = useCallback(async (b) => {
     const surface = surfaceRef.current;
     if (!surface) return;
+    const id = b.callbackData ?? b.action ?? b.id;
+    // inline edit: ✏ a point → pre-fill the composer with its current curated text (no bot round-trip).
+    const m = /^fp:edit:(p\d+)$/.exec(id || '');
+    const p = m ? reviewPointsRef.current.find((x) => x.id === m[1]) : null;
+    if (p) { setEditingId(p.id); setInput(p.text); return; }
     setBusy(true);
-    try { await surface.tapButton(b.callbackData ?? b.action ?? b.id, threadId); }
+    try { await surface.tapButton(id, threadId); }
     catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
     finally { setBusy(false); }
   }, [threadId, pushBot]);
@@ -145,7 +161,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder={t('circle.contacts.composer', { name })}
+          placeholder={editingId ? t('feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : t('circle.contacts.composer', { name })}
           placeholderTextColor={theme.color.inkSoft}
           autoCapitalize="none"
           onSubmitEditing={onSend}
