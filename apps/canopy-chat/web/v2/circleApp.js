@@ -1243,8 +1243,12 @@ function _buildFbSurface(botId, pods) {
     llmModel: FEEDBACK_LLM_MODEL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
     emit: ({ text, buttons, kind, points }) => {
-      if (kind === 'review' && Array.isArray(points)) ft.reviewPoints = points;   // for inline ✏ pre-fill
-      ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
+      if (kind === 'review' && Array.isArray(points)) {
+        ft.reviewPoints = points;   // for the ✏ composer pre-fill
+        ft.messages.push({ origin: 'bot', kind: 'review', intro: text, points });   // → editable per-point cards
+      } else {
+        ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
+      }
       _renderFbThread(botId);
     },
   });
