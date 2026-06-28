@@ -55,7 +55,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
       setBusy(true);
       try {
         const activationUrl = bot?.activationUrl || FEEDBACK_ACTIVATION_URL;
-        if (!activationUrl) { pushBot(t('feedback.activation_failed', { error: 'no activation URL', defaultValue: 'Activatie mislukt: geen activation-URL ingesteld.' })); return; }
+        if (!activationUrl) { pushBot(t('circle.feedback.activation_failed', { error: 'no activation URL', defaultValue: 'Activatie mislukt: geen activation-URL ingesteld.' })); return; }
         const pods = await activateMobileFeedback({ session, activationUrl, projectId: bot.projectId, code: bot.code, podRef: bot.podRef });
         if (cancelled) return;
         if (pods.podRef && pods.podRef !== bot.podRef && store) { try { await store.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
@@ -161,7 +161,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder={editingId ? t('feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : t('circle.contacts.composer', { name })}
+          placeholder={editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : t('circle.contacts.composer', { name })}
           placeholderTextColor={theme.color.inkSoft}
           autoCapitalize="none"
           onSubmitEditing={onSend}

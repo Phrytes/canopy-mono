@@ -1213,7 +1213,7 @@ function _renderFbThread(botId) {
   renderContactThread(rootEl, {
     name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false, t,
     inputValue: ft.pendingEditText || '',
-    inputHint: ft.editingId ? t('feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : '',
+    inputHint: ft.editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : '',
     onBack: () => { ft.editingId = null; _activeFbThread = null; showContacts(); },
     // the bot's AI clean/summarise takes a few seconds per message — show a "thinking" state so /klaar
     // doesn't look frozen.
@@ -1272,14 +1272,14 @@ async function showFeedbackThread(bot) {
         if (pods.podRef && pods.podRef !== bot.podRef) { try { await feedbackBotStore.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
         _buildFbSurface(botId, pods);   // rebuild the surface WITH the real own/central/control pods
       } else if (!session?.webid) {
-        ft.messages.push({ origin: 'bot', text: t('feedback.login_first', { defaultValue: 'Log eerst in op je pod om mee te doen.' }) });
+        ft.messages.push({ origin: 'bot', text: t('circle.feedback.login_first', { defaultValue: 'Log eerst in op je pod om mee te doen.' }) });
         _renderFbThread(botId);
       }
     } catch (e) {
       ft.activated = false;   // allow a retry on reopen
       const detail = e?.message ?? String(e);
       console.error('[circleApp] feedback activation failed:', e);
-      ft.messages.push({ origin: 'bot', text: t('feedback.activation_failed', { error: detail, defaultValue: `Activatie mislukt: ${detail}` }) });
+      ft.messages.push({ origin: 'bot', text: t('circle.feedback.activation_failed', { error: detail, defaultValue: `Activatie mislukt: ${detail}` }) });
       _renderFbThread(botId);
     }
   }
