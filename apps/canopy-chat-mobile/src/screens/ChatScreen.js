@@ -320,8 +320,18 @@ export default function ChatScreen({
       },
     };
   }, [authHook, onSessionChanged]);
-  // cluster J — hand podAuth to App.js so the visible v2 launcher can drive pod sign-in.
-  useEffect(() => { onPodAuthReady?.(podAuth); }, [podAuth, onPodAuthReady]);
+  // cluster J — hand podAuth to App.js so the visible v2 launcher can drive pod sign-in. podAuth's identity
+  // changes every render (its authHook dep is unstable), so expose a STABLE proxy that delegates to the
+  // latest — passing podAuth directly would fire onPodAuthReady→setState every render (infinite loop).
+  const podAuthRef = useRef(podAuth);
+  podAuthRef.current = podAuth;
+  const stablePodAuth = useMemo(() => ({
+    startSignIn: (...a) => podAuthRef.current.startSignIn(...a),
+    signOut: (...a) => podAuthRef.current.signOut(...a),
+    getCurrentSession: (...a) => podAuthRef.current.getCurrentSession?.(...a),
+    resolveIssuer: (...a) => podAuthRef.current.resolveIssuer?.(...a),
+  }), []);
+  useEffect(() => { onPodAuthReady?.(stablePodAuth); }, [stablePodAuth, onPodAuthReady]);
   const scrollRef       = useRef(null);
   // threadStateRef stays in sync so fire-and-forget async handlers
   // (button taps, follow-up completions) read the latest state
