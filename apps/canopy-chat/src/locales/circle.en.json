@@ -23,7 +23,14 @@
     "edit_hint": {
       "text": "Adjust the text and send",
       "doc": "Stage-1 inline edit — composer placeholder while reworking a curated point (✏)."
-    }
+    },
+    "original": { "text": "original", "doc": "Stage-1 review card — label before the raw original." },
+    "edited": { "text": "(edited)", "doc": "Stage-1 review card — tag on a point the user edited." },
+    "send_one": { "text": "Send", "doc": "Stage-1 review card — send this one point." },
+    "send_all": { "text": "Send all", "doc": "Stage-1 review — send all points." },
+    "send_none": { "text": "Send nothing", "doc": "Stage-1 review — send nothing." },
+    "save_edit": { "text": "Save", "doc": "Stage-1 review card — save an inline edit." },
+    "cancel_edit": { "text": "Cancel", "doc": "Stage-1 review card — cancel an inline edit." }
   },
   "tab": {
     "screens": {

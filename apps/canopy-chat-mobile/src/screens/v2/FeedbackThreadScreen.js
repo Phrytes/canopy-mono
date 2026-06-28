@@ -5,13 +5,14 @@
  * added contact (via invite link/QR), NOT a PeerGraph peer — so it gets its own
  * thread that hosts the SHARED feedback surface: activate the verify-summary pods
  * (own/central/control) from the RN session, build the surface, and route input →
- * `surface.handle` / button taps → `surface.tapButton`. Unlike ContactThreadScreen
- * this renders the bot's BUTTONS (the consent + verify-summary rails) and shows a
- * "thinking" state while the on-device AI clean/summarise runs (a few seconds).
+ * `surface.handle` / button taps → `surface.tapButton`.
  *
- * Own-pod-first: raw stays on the participant's own pod; only the verified summary
- * they approve reaches central. All curation logic is shared web≡mobile — this is
- * just the RN shell.
+ * Stage-1 review renders as editable per-point CARDS: the curated text (tap to edit
+ * in place), the original shown as a muted labelled chip (never mixed into the body
+ * text), and per-card send + a footer (send all / nothing). Own-pod-first: the raw
+ * + the edited text stay on the participant's own pod; only the verified summary
+ * (Stage 2) reaches central. All curation logic is shared web≡mobile — this is the
+ * RN shell.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
@@ -32,11 +33,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [editingId, setEditingId] = useState(null);   // inline ✏ — which point is being reworded
+  const [editing, setEditing] = useState(null);   // { mid, id, text } — the review card being edited inline
   const surfaceRef = useRef(null);
   const startedRef = useRef(false);
   const scrollRef = useRef(null);
-  const reviewPointsRef = useRef([]);                 // latest review points (for ✏ pre-fill)
 
   const pushBot = useCallback((text, buttons) => {
     setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', text: String(text ?? ''), buttons: Array.isArray(buttons) && buttons.length ? buttons : null }]);
@@ -45,8 +45,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
     setMessages((prev) => [...prev, { id: mkId(), origin: 'user', text: String(text ?? '') }]);
   }, []);
 
-  // Activate (own/central/control pods) + build the surface, then poll the lead's /control/ round. Runs
-  // once per open; persists podRef so a re-open reuses the container (the cohort code is single-use).
+  // Activate (own/central/control pods) + build the surface, then poll the lead's /control/ round.
   useEffect(() => {
     if (startedRef.current || !threadId) return undefined;
     startedRef.current = true;
@@ -66,10 +65,16 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           pod: pods.ownPod,
           centralPod: pods.centralPod,
           controlStore: pods.controlStore,
-          emit: ({ text, buttons, kind, points }) => { if (kind === 'review' && Array.isArray(points)) reviewPointsRef.current = points; pushBot(text, buttons); },
+          // a review renders as editable per-point CARDS (kind:'review'+points); everything else as a bubble.
+          emit: ({ text, buttons, kind, points }) => {
+            if (kind === 'review' && Array.isArray(points)) {
+              setEditing(null);
+              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'review', intro: String(text ?? ''), points }]);
+            } else { pushBot(text, buttons); }
+          },
         });
         surfaceRef.current = surface;
-        await surface.start(threadId);   // /help + the /control/ verify-round poll (emits the summary bubble)
+        await surface.start(threadId);   // /help + the /control/ verify-round poll
       } catch (e) {
         if (!cancelled) pushBot(`⚠ ${e?.message ?? e}`);
       } finally {
@@ -79,40 +84,35 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
     return () => { cancelled = true; };
   }, [session, bot, store, threadId, pushBot]);
 
+  // Run a control string (button callback / fp:edit / fp:consent) against the bot.
+  const tapControl = useCallback(async (cb) => {
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    setBusy(true);
+    try { await surface.handle(cb, threadId); }
+    catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
+    finally { setBusy(false); }
+  }, [threadId, pushBot]);
+
   const onSend = useCallback(async () => {
     const text = input.trim();
     const surface = surfaceRef.current;
     if (!text || !surface) return;
     setInput('');
-    const editId = editingId; setEditingId(null);
-    // inline edit → rewrite that point in place (fp:edit), no echoed user bubble; else a normal turn.
-    if (editId) {
-      setBusy(true);
-      try { await surface.handle(`fp:edit:${editId}:${text}`, threadId); }
-      catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
-      finally { setBusy(false); }
-      return;
-    }
     pushUser(text);
     setBusy(true);
     try { await surface.handle(text, threadId); }
     catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
     finally { setBusy(false); }
-  }, [input, editingId, threadId, pushUser, pushBot]);
+  }, [input, threadId, pushUser, pushBot]);
 
-  const onButton = useCallback(async (b) => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    const id = b.callbackData ?? b.action ?? b.id;
-    // inline edit: ✏ a point → pre-fill the composer with its current curated text (no bot round-trip).
-    const m = /^fp:edit:(p\d+)$/.exec(id || '');
-    const p = m ? reviewPointsRef.current.find((x) => x.id === m[1]) : null;
-    if (p) { setEditingId(p.id); setInput(p.text); return; }
-    setBusy(true);
-    try { await surface.tapButton(id, threadId); }
-    catch (e) { pushBot(`⚠ ${e?.message ?? e}`); }
-    finally { setBusy(false); }
-  }, [threadId, pushBot]);
+  const onButton = useCallback((b) => tapControl(b.callbackData ?? b.action ?? b.id), [tapControl]);
+
+  const startEdit = useCallback((mid, p) => setEditing({ mid, id: p.id, text: p.text }), []);
+  const saveEdit = useCallback(async () => {
+    const e = editing; setEditing(null);
+    if (e && String(e.text).trim()) await tapControl(`fp:edit:${e.id}:${String(e.text).trim()}`);
+  }, [editing, tapControl]);
 
   return (
     <View style={styles.wrap} testID="feedback-thread-screen">
@@ -129,30 +129,97 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
         contentContainerStyle={{ paddingVertical: 8, gap: 8 }}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd?.({ animated: true })}
       >
-        {messages.map((m) => (
-          <View key={m.id} style={[styles.msg, m.origin === 'user' ? styles.msgUser : styles.msgBot]}>
-            <View style={[styles.bubble, m.origin === 'user' ? styles.bubbleUser : styles.bubbleBot]}>
-              <Text style={m.origin === 'user' ? styles.bubbleUserText : styles.bubbleBotText} testID={`feedback-msg-${m.origin}`}>
-                {m.text}
-              </Text>
-            </View>
-            {m.buttons && (
-              <View style={styles.btnRow}>
-                {m.buttons.map((b, i) => (
-                  <Pressable
-                    key={`${m.id}-b${i}`}
-                    style={styles.btn}
-                    onPress={() => onButton(b)}
-                    accessibilityRole="button"
-                    testID={`feedback-btn-${b.callbackData ?? b.action ?? b.id ?? i}`}
-                  >
-                    <Text style={styles.btnText}>{b.label ?? String(b.callbackData ?? b.id ?? '')}</Text>
+        {messages.map((m) => {
+          if (m.kind === 'review') {
+            return (
+              <View key={m.id} style={styles.reviewBlock} testID="feedback-review">
+                {m.intro ? <Text style={styles.reviewIntro}>{m.intro}</Text> : null}
+                {(m.points || []).map((p) => {
+                  const isEditing = editing && editing.mid === m.id && editing.id === p.id;
+                  const changed = p.raw && p.raw !== p.text;
+                  return (
+                    <View key={p.id} style={styles.card} testID={`feedback-card-${p.id}`}>
+                      {isEditing ? (
+                        <>
+                          <TextInput
+                            style={styles.cardInput}
+                            value={editing.text}
+                            onChangeText={(v) => setEditing((e) => ({ ...e, text: v }))}
+                            multiline
+                            autoFocus
+                            testID={`feedback-card-input-${p.id}`}
+                          />
+                          <View style={styles.cardBtns}>
+                            <Pressable style={styles.cardBtnMuted} onPress={() => setEditing(null)}>
+                              <Text style={styles.cardBtnMutedText}>{t('circle.feedback.cancel_edit', { defaultValue: 'Annuleer' })}</Text>
+                            </Pressable>
+                            <Pressable style={styles.cardBtn} onPress={saveEdit} testID={`feedback-card-save-${p.id}`}>
+                              <Text style={styles.cardBtnText}>{t('circle.feedback.save_edit', { defaultValue: 'Opslaan' })}</Text>
+                            </Pressable>
+                          </View>
+                        </>
+                      ) : (
+                        <>
+                          <Pressable onPress={() => startEdit(m.id, p)}>
+                            <Text style={styles.cardText}>
+                              {p.text}{p.edited ? ` ${t('circle.feedback.edited', { defaultValue: '(aangepast)' })}` : ''}
+                            </Text>
+                          </Pressable>
+                          {changed ? (
+                            <View style={styles.origRow}>
+                              <Text style={styles.origLabel}>{t('circle.feedback.original', { defaultValue: 'origineel' })}</Text>
+                              <Text style={styles.origText}>{p.raw}</Text>
+                            </View>
+                          ) : null}
+                          <View style={styles.cardBtns}>
+                            <Pressable style={styles.cardBtnMuted} onPress={() => startEdit(m.id, p)} testID={`feedback-card-edit-${p.id}`}>
+                              <Text style={styles.cardBtnMutedText}>✏</Text>
+                            </Pressable>
+                            <Pressable style={styles.cardBtn} onPress={() => tapControl(`fp:consent:${p.id}`)}>
+                              <Text style={styles.cardBtnText}>{t('circle.feedback.send_one', { defaultValue: 'Verstuur' })}</Text>
+                            </Pressable>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                  );
+                })}
+                <View style={styles.reviewFooter}>
+                  <Pressable style={styles.cardBtn} onPress={() => tapControl('fp:consent:all')}>
+                    <Text style={styles.cardBtnText}>{t('circle.feedback.send_all', { defaultValue: 'Alles versturen' })}</Text>
                   </Pressable>
-                ))}
+                  <Pressable style={styles.cardBtnMuted} onPress={() => tapControl('fp:cancel')}>
+                    <Text style={styles.cardBtnMutedText}>{t('circle.feedback.send_none', { defaultValue: 'Niets versturen' })}</Text>
+                  </Pressable>
+                </View>
               </View>
-            )}
-          </View>
-        ))}
+            );
+          }
+          return (
+            <View key={m.id} style={[styles.msg, m.origin === 'user' ? styles.msgUser : styles.msgBot]}>
+              <View style={[styles.bubble, m.origin === 'user' ? styles.bubbleUser : styles.bubbleBot]}>
+                <Text style={m.origin === 'user' ? styles.bubbleUserText : styles.bubbleBotText} testID={`feedback-msg-${m.origin}`}>
+                  {m.text}
+                </Text>
+              </View>
+              {m.buttons && (
+                <View style={styles.btnRow}>
+                  {m.buttons.map((b, i) => (
+                    <Pressable
+                      key={`${m.id}-b${i}`}
+                      style={styles.btn}
+                      onPress={() => onButton(b)}
+                      accessibilityRole="button"
+                      testID={`feedback-btn-${b.callbackData ?? b.action ?? b.id ?? i}`}
+                    >
+                      <Text style={styles.btnText}>{b.label ?? String(b.callbackData ?? b.id ?? '')}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        })}
         {busy && <Text style={styles.sending}>{t('circle.contacts.thinking', { defaultValue: 'Bezig…' })}</Text>}
       </ScrollView>
 
@@ -161,7 +228,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder={editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : t('circle.contacts.composer', { name })}
+          placeholder={t('circle.contacts.composer', { name })}
           placeholderTextColor={theme.color.inkSoft}
           autoCapitalize="none"
           onSubmitEditing={onSend}
@@ -195,6 +262,21 @@ const styles = StyleSheet.create({
   btnRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   btn: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.color.accent, backgroundColor: theme.color.white },
   btnText: { fontSize: 13, fontWeight: '600', color: theme.color.accent },
+  // ── Stage-1 review cards ────────────────────────────────────────────────────
+  reviewBlock: { gap: 8, marginVertical: 4 },
+  reviewIntro: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
+  card: { backgroundColor: theme.color.white, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, padding: 12, gap: 8 },
+  cardText: { fontSize: 15, color: theme.color.ink, lineHeight: 21 },
+  origRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.color.line, paddingTop: 8 },
+  origLabel: { fontSize: 10, fontWeight: '700', color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 3 },
+  origText: { flex: 1, fontSize: 13, color: theme.color.inkSoft, fontStyle: 'italic', lineHeight: 18 },
+  cardInput: { fontSize: 15, color: theme.color.ink, lineHeight: 21, borderWidth: 1.5, borderColor: theme.color.accent, borderRadius: theme.radius.md, padding: 10, minHeight: 64, textAlignVertical: 'top', backgroundColor: theme.color.paper },
+  cardBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
+  cardBtn: { paddingVertical: 7, paddingHorizontal: 14, borderRadius: 12, backgroundColor: theme.color.accent },
+  cardBtnText: { fontSize: 13, fontWeight: '600', color: theme.color.white },
+  cardBtnMuted: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line },
+  cardBtnMutedText: { fontSize: 13, fontWeight: '600', color: theme.color.inkSoft },
+  reviewFooter: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 2 },
   sending: { fontSize: 12, color: theme.color.inkSoft, fontStyle: 'italic', paddingHorizontal: 4 },
   composer: { flexDirection: 'row', gap: 8, marginTop: 8 },
   input: { flex: 1, fontSize: 14, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
