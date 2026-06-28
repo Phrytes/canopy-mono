@@ -36,6 +36,25 @@ export function podRootFromWebId(webId) {
 }
 
 /**
+ * Discover the participant's REAL pod storage root from their WebID document's `pim:space#storage`
+ * predicate (the Solid way stoop's pod-attach uses). Critical for providers where the WebID host is NOT
+ * the storage host — e.g. Inrupt PodSpaces: WebID `https://id.inrupt.com/<user>` but storage
+ * `https://storage.inrupt.com/<uuid>/`. Munging the WebID host (podRootFromWebId) writes to the identity
+ * server → 404. The WebID doc is public, so a plain fetch suffices; falls back to host-munging (CSS pods).
+ */
+export async function discoverPodRoot(webId, fetchImpl = fetch) {
+  try {
+    const res = await fetchImpl(webId, { headers: { accept: 'text/turtle' } });
+    if (res.ok) {
+      const ttl = await res.text();
+      const m = ttl.match(/pim\/space#storage>\s*<([^>]+)>/);
+      if (m?.[1]) return m[1].endsWith('/') ? m[1] : `${m[1]}/`;
+    }
+  } catch { /* fall through to host-munging */ }
+  return podRootFromWebId(webId);
+}
+
+/**
  * Verify-summary loop wiring (own-pod-first) — activate, then return the three things the surface needs
  * from the participant's session. The raw never leaves the participant's own pod; only the verified
  * summary reaches central (proven live in scripts/verify-summary-css.js).
@@ -50,7 +69,9 @@ export async function buildFeedbackVerifyPods({ session, activationUrl, projectI
   // is single-use, so re-activating would fail. Returns podRef so the caller can persist + reuse it.
   const podRef = existingPodRef || await activateParticipant({ activationUrl, projectId, code, recoveryHash, webId: session.webid, fetchImpl });
   const centralPod = await makeCssCentralPod({ podBase: podRef, authedFetch: session.fetch, flat: true });
-  const ownBase = ownPodBase || `${podRootFromWebId(session.webid)}feedback-own/`;
+  // discover the REAL storage root (pim:storage) — NOT the WebID host. Inrupt PodSpaces stores at
+  // storage.inrupt.com/<uuid>/, so munging id.inrupt.com/<user> wrote to the identity server → 404.
+  const ownBase = ownPodBase || `${await discoverPodRoot(session.webid, fetchImpl)}feedback-own/`;
   // the own pod is the participant's OWN pod — the activation service can't reach it, so ensure the
   // container exists here with the participant's own session (they own it; idempotent — 2xx OR 409/412).
   await session.fetch(ownBase, { method: 'PUT', headers: { 'content-type': 'text/turtle', link: '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"' } }).catch(() => {});
