@@ -10,6 +10,8 @@ import { InMemoryCentralPod } from '../src/pod/central-pod.js';
 import { validateProjectConfig } from '../src/config/project-config.js';
 import { buildContribution } from '../src/pod/contribution.js';
 import { renderMessage } from '../src/channel/render.js';
+import { runAction } from '../src/channel/actions.js';
+import { getStrings } from '../src/strings/index.js';
 
 const config = () => validateProjectConfig({ projectId: 'm3', llm: { route: 'local', model: 'm' }, aggregation: { k: 1 } });
 
@@ -39,6 +41,29 @@ test('delete erases only the participant\'s own data', async () => {
   assert.equal(pod.list().filter((x) => x.participant === 'me').length, 0);
   assert.equal(pod.list().filter((x) => x.participant === 'other').length, 1);   // others untouched
   assert.match(renderMessage(adapter.sent.at(-1)).text, /2 bijdrage.*verwijderd/);
+});
+
+test('delete-all is GUARDED: the command only asks; only fp:delete-confirm erases', async () => {
+  const { d, pod } = seeded();
+  const s = getStrings('nl');
+  const said = [];
+  const session = { dispatcher: d };
+  const say = (text, buttons) => { said.push({ text, buttons }); };
+
+  // 1. the command/intent only ASKS — nothing deleted, and a confirm/cancel pair is offered
+  await runAction({ kind: 'delete-all' }, { session, say, strings: s });
+  assert.equal(pod.list().filter((x) => x.participant === 'me').length, 2, 'ask must not delete');
+  assert.match(said.at(-1).text, /zeker/i);
+  const ids = (said.at(-1).buttons || []).map((b) => b.id);
+  assert.ok(ids.includes('fp:delete-confirm') && ids.includes('fp:delete-cancel'), 'offers confirm + cancel');
+
+  // 2. cancel → still nothing deleted
+  await runAction({ kind: 'delete-cancel' }, { session, say, strings: s });
+  assert.equal(pod.list().filter((x) => x.participant === 'me').length, 2, 'cancel keeps the data');
+
+  // 3. confirm → erased
+  await runAction({ kind: 'delete-confirm' }, { session, say, strings: s });
+  assert.equal(pod.list().filter((x) => x.participant === 'me').length, 0, 'confirm erases own data');
 });
 
 test('pause/claim use an optional pod capability; graceful when unsupported', async () => {

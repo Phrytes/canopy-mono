@@ -54,12 +54,18 @@ export default {
   menuWelcome: 'Welcome. Send your message, or choose below.',
   menuReview: 'Review my points',
   menuMine: 'My contributions',
+  // delete-all (guarded: ASK → confirm). `deleted(n)` above is the result line.
+  deleteAllConfirm: 'Are you sure you want to delete ALL your contributions? This cannot be undone.',
+  deleteAllYes: 'Yes, delete all',
+  deleteAllNo: 'Cancel',
+  deleteAllCancelled: 'Nothing deleted. Your contributions are still there.',
   help: [
     'How it works:',
     '• Send your message(s). We clean them up and store nothing until you approve.',
     '• /review — check your points so far and choose what to share (in-between; you can carry on after).',
     '• /mine — your sent contributions.',
     '• /withdraw <id> — withdraw a contribution (while it has not yet been processed).',
+    '• /delete-all — erase all your contributions (asks for confirmation first).',
   ].join('\n'),
   cancelAck: 'Nothing sent. Your points stay with you only.',
   escalateYesAck: 'Thank you. We will pass this signal on to whoever is responsible.',

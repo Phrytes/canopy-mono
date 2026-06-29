@@ -27,6 +27,11 @@ export function parseControl(text) {
   if (t === 'fp:escalate:yes') return { kind: 'escalate-yes' };
   if (t === 'fp:escalate:no') return { kind: 'escalate-no' };
   if (t === '/mijn' || t === '/mine' || t === 'fp:mine') return { kind: 'my-contributions' };
+  // delete-all is GUARDED: the command (or the menu button) only ASKS; the actual erase needs the explicit
+  // fp:delete-confirm tap. Destructive + irreversible, so never one-step.
+  if (t === '/verwijderalles' || t === '/verwijder-alles' || t === '/deleteall' || t === '/delete-all' || t === 'fp:delete-all') return { kind: 'delete-all' };
+  if (t === 'fp:delete-confirm') return { kind: 'delete-confirm' };
+  if (t === 'fp:delete-cancel') return { kind: 'delete-cancel' };
   // verify-summary loop (Stage 2) button callbacks
   if (t === 'fp:verify') return { kind: 'verify' };
   if (t === 'fp:verify-withdraw') return { kind: 'verify-withdraw' };
@@ -72,6 +77,12 @@ export async function runAction(action, { session, say, strings: s }) {
       return void await session.dispatcher.command('withdraw', action.arg);
     case 'my-contributions':
       return void await session.dispatcher.command('my-contributions');
+    case 'delete-all':                                           // ASK ONLY — needs an explicit confirm tap
+      return say(s.deleteAllConfirm, [{ id: 'fp:delete-confirm', label: s.deleteAllYes }, { id: 'fp:delete-cancel', label: s.deleteAllNo }]);
+    case 'delete-confirm':                                       // confirmed → erase all (emits the count)
+      return void await session.dispatcher.command('delete');
+    case 'delete-cancel':
+      return say(s.deleteAllCancelled);
     case 'cancel':
       return say(s.cancelAck);
     case 'escalate-yes':

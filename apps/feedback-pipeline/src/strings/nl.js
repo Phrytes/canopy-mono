@@ -59,12 +59,18 @@ export default {
   menuWelcome: 'Welkom. Stuur je bericht, of kies hieronder.',
   menuReview: 'Bekijk mijn punten',
   menuMine: 'Mijn bijdragen',
+  // delete-all (guarded: ASK → confirm). `deleted(n)` above is the result line.
+  deleteAllConfirm: 'Weet je zeker dat je AL je bijdragen wilt verwijderen? Dit kan niet ongedaan worden gemaakt.',
+  deleteAllYes: 'Ja, verwijder alles',
+  deleteAllNo: 'Annuleer',
+  deleteAllCancelled: 'Niets verwijderd. Je bijdragen blijven staan.',
   help: [
     'Zo werkt het:',
     '• Stuur je bericht(en). We schonen ze op en bewaren niets totdat jij akkoord geeft.',
     '• /bekijk — bekijk je punten tot nu toe en kies wat je deelt (tussentijds; je kunt daarna doorgaan).',
     '• /mijn — je verstuurde bijdragen.',
     '• /intrekken <id> — een bijdrage terugtrekken (zolang die nog niet is verwerkt).',
+    '• /verwijder-alles — al je bijdragen wissen (vraagt eerst om bevestiging).',
   ].join('\n'),
   cancelAck: 'Niets verstuurd. Je punten blijven alleen bij jou.',
   escalateYesAck: 'Dank je. We geven dit signaal door aan wie er over gaat.',

@@ -23,6 +23,8 @@ const DET = [
   [/^(?:toon|laat|zie|bekijk|show|view|geef)?\s*(?:mijn bijdragen|my contributions|wat heb ik (?:verstuurd|gedeeld)|what did i (?:send|submit|share))(?:\s+zien)?[?.!\s]*$/i, () => ({ kind: 'my-contributions' })],
   // edit a point by number ("bewerk punt 2", "verander punt 2", "edit 2", "change point 2") → opens its editor.
   [/^(?:bewerk|verander|wijzig|pas|edit|change)\s+(?:punt\s+|point\s+)?(\d+)\s*(?:aan)?[.!?\s]*$/i, (m) => ({ kind: 'edit-point', id: `p${m[1]}` })],
+  // delete-all ("verwijder alles", "wis al mijn bijdragen", "delete everything", "clear all") → ASK (guarded).
+  [/^(?:\/)?(?:verwijder|wis|delete|clear)\s+(?:alles|alle|all|everything|(?:al\s+)?(?:mijn|m'n|my)\s+(?:bijdragen|contributions))[.!?\s]*$/i, () => ({ kind: 'delete-all' })],
 ];
 
 function deterministicIntent(text) {
