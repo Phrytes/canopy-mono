@@ -2,10 +2,10 @@
  * canopy-chat v2 — circle app boot (DEFAULT web entry, `index.html`).
  *
  * The v2 circle app is the landing page.  Per v2 §1 + §4 (and the
- * v2-design-is-canon decision), chat IS the kring view — there is NO
- * in-app route to the classic chat shell anymore (SP-13.1 removed the
- * header link; `classic.html` survives only as a static Playwright
- * fixture).  Reuses the same bundled agent factory + shared circle
+ * v2-design-is-canon decision), chat IS the kring view.  The classic
+ * chat shell (web/main.js + classic.html) was removed 2026-06-29 once
+ * the browser suite migrated to v2 and its flows had v2 equivalents.
+ * Reuses the same bundled agent factory + shared circle
  * model. Opening a circle sets the active circle (F1) and shows the
  * kring view; the admin's `policy.view` axis chooses whether that lands
  * on GESPREK (chat) or the recipe'd Scherm (§4).  "+ new circle" creates

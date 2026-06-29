@@ -220,12 +220,9 @@ export default defineConfig({
     emptyOutDir: true,
     target:      'es2022',
     rollupOptions: {
-      // Multi-page: the v2 circle app is now the default landing
-      // (index.html); the classic shell is kept reachable at classic.html.
-      input: {
-        main:    'web/index.html',   // v2 circle app (default)
-        classic: 'web/classic.html', // legacy chat shell (reference)
-      },
+      // The v2 circle app is the only build target (the classic shell was removed 2026-06-29 once the
+      // browser suite migrated to v2; its DM/feedback/calendar/etc. flows all have v2 equivalents).
+      input: { main: 'web/index.html' },
     },
   },
 });

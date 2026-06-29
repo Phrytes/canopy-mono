@@ -1,8 +1,7 @@
 /**
  * v2 circle app — web e2e (the automated guard for the launcher → create →
  * detail flow that unit tests can't cover, e.g. the create→listMyBuurts
- * integration). The v2 circle app is the default route ('/'); the classic
- * shell lives at '/classic.html'.
+ * integration). The v2 circle app is the only route ('/') — the classic shell was removed 2026-06-29.
  *
  * Run: `npx playwright test circle-v2` (needs the dev server; see
  * playwright.config.js webServer). Agent boot + createGroupV2 round-trip
