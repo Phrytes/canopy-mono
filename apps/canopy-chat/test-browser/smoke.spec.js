@@ -1,39 +1,33 @@
 /**
- * Playwright smoke test — verifies the scaffold itself works.
+ * Playwright smoke test (v2 app) — verifies the scaffold itself works:
+ *   1. The dev server is reachable + the v2 app boots with no page error.
+ *   2. The kring (GESPREK) composer renders.
+ *   3. A deterministic slash command dispatches and a bot reply bubble lands.
  *
- * What it checks:
- *   1. The dev server is reachable
- *   2. The chat shell renders + accepts a slash command
- *   3. /me returns an identity (the most basic smoke for a real
- *      browser bring-up — no signin / no peer-connect needed)
- *
- * What it DOESN'T cover (yet):
- *   - Two-tab cross-peer (see two-tab.spec.js — separate slice)
- *   - File picker (irreducibly human; runbook H-1)
- *
- * This file exists so we can `pnpm exec playwright test` and
- * confirm the harness is wired before writing real browser tests.
+ * (Migrated off the classic shell 2026-06-29 — classic's `/me` identity command has no v2 kring
+ * equivalent; identity lives on the Mij screen. The "dispatch → reply" smoke uses `/addtask`, which runs
+ * deterministically in the v2 kring.)
  */
 import { test, expect } from '@playwright/test';
+import { bootKring, sendKring, kringBubbles } from './helpers.js';
 
-test('chat shell loads + dispatches /me', async ({ page }) => {
-  await page.goto('/classic.html');
-  // The chat shell has an input the user types into; selector is
-  // best-effort — adjust if the markup changes.  We look for any
-  // input that accepts text + the input area's container.
-  const input = page.locator('input[type="text"], textarea').first();
-  await expect(input).toBeVisible({ timeout: 10_000 });
+test.setTimeout(70_000);
 
-  // Fire /me and wait for any reply to appear.  We don't assert on
-  // exact content (identity changes per run); just that a reply
-  // bubble lands.
-  await input.fill('/me');
-  // The classic shell's command-suggest dropdown (#199) swallows a lone Enter — it accepts the
-  // highlighted suggestion instead of submitting. Dismiss it first so the form actually submits.
-  await input.press('Escape');
-  await input.press('Enter');
+test('v2 app boots clean (no page error)', async ({ page }) => {
+  const errs = [];
+  page.on('pageerror', (e) => errs.push(e.message.split('\n')[0]));
+  await page.goto('/');
+  await page.waitForTimeout(4000);
+  expect(errs).toEqual([]);
+  await expect(page.locator('.circle-screens-picker, .circle-launcher')).toHaveCount(1);
+});
 
-  // Wait up to 5s for SOME message text containing 'pubKey' (the
-  // /me reply lists pubKey + stableId).
-  await expect(page.locator('body')).toContainText(/pubKey/i, { timeout: 5_000 });
+test('kring composer dispatches a command → a bot reply bubble lands', async ({ page }) => {
+  await bootKring(page, 'Smoke Circle');
+  const before = (await kringBubbles(page)).length;
+  await sendKring(page, '/addtask smoke-check');
+  const bubbles = await kringBubbles(page);
+  // the dispatch ran + rendered a reply (more bubbles than before), referencing the new task.
+  expect(bubbles.length).toBeGreaterThan(before);
+  expect(bubbles.join(' | ').toLowerCase()).toContain('smoke-check');
 });

@@ -89,8 +89,41 @@ export async function closeContexts(ctxs) {
   }
 }
 
-/** Assert a message bubble containing `needle` appears in #messages within timeoutMs. */
+/** Assert a message bubble containing `needle` appears in #messages within timeoutMs (CLASSIC shell). */
 export async function expectBubbleSoon(page, needle, timeoutMs = 45_000) {
   await expect(page.locator('#messages'))
     .toContainText(needle, { timeout: timeoutMs });
+}
+
+// ── v2 app helpers (index.html / circleApp) — the migration target ──────────────────────────────────────
+// Lifted from the per-spec `openKringComposer` (circle-kring-*.spec.js) so migrated specs share ONE boot.
+
+/** Boot the v2 app and open a kring chat composer. Resolves once `.circle-kring__composer-input` is visible. */
+export async function bootKring(page, circleName = 'Test Circle') {
+  page.on('dialog', (d) => d.accept(circleName));   // "+ new circle" name prompt
+  await page.goto('/');
+  await page.waitForTimeout(2500);
+  await page.locator('[data-tab="kringen"]').click();
+  await page.waitForTimeout(1500);
+  if (await page.locator('.circle-tile').count() === 0) {
+    await page.locator('.circle-launcher__new').click();
+    await page.waitForTimeout(5000);
+  }
+  await page.locator('.circle-tile').first().click();
+  await page.waitForTimeout(2500);
+  await page.locator('.circle-kring__view-toggle-btn', { hasText: 'Chat' }).click();
+  await page.waitForTimeout(1200);
+  await expect(page.locator('.circle-kring__composer-input')).toBeVisible();
+}
+
+/** Send a kring composer line (explicit send button — no Enter/Escape dropdown dance). */
+export async function sendKring(page, text, settleMs = 2500) {
+  await page.locator('.circle-kring__composer-input').fill(text);
+  await page.locator('.circle-kring__composer-send').click();
+  await page.waitForTimeout(settleMs);
+}
+
+/** All kring bubble texts (the v2 equivalent of reading #messages). */
+export async function kringBubbles(page) {
+  return page.locator('.circle-kring__bubble').allTextContents();
 }
