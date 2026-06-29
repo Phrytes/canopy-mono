@@ -2382,6 +2382,10 @@
       "text": "How the bot shows actions",
       "doc": "S6.C — surface-preference section heading."
     },
+    "language": {
+      "text": "Language",
+      "doc": "Mij — global app-language (NL/EN) section heading."
+    },
     "surface_pref_inline": {
       "text": "Buttons in chat",
       "doc": "S6.C — inline buttons on replies."

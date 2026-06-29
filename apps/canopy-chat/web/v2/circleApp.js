@@ -16,7 +16,7 @@
  * are covered by tests).
  */
 
-import { initLocalisation, t, detectDeviceLang, currentLang,
+import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting, seedCircleRoster,
   isNoticeboardPost,
@@ -1916,6 +1916,14 @@ async function showMyData() {
   };
   // S6.C — surface preference (how the bot shows actions); set updates the store + repaints.
   const onSetSurfacePref = (v) => { circleSurfacePref.set(v).then(rerender).catch(() => {}); };
+  // Global app language: persist the choice, switch, and re-render Mij now (other screens pick it up on next
+  // open, since every show*() calls t() fresh).
+  const onSetAppLang = async (lng) => {
+    if (lng !== 'nl' && lng !== 'en') return;
+    await setLang(lng);
+    try { localStorage.setItem('circle.app.lang', lng); } catch { /* best-effort */ }
+    showMij();
+  };
   // S6.D — is the conversational "chat" projection AI-enriched in THIS circle?
   // (user-loaded LLM + circle policy.llmTool + a configured provider).
   let chatAi = { enriched: false, reason: 'no-provider' };
@@ -1945,7 +1953,7 @@ async function showMyData() {
     // form's "Saved." confirmation; the chatAi status note refreshes on the next open.
     return null;
   };
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig });
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, appLang: currentLang(), onSetAppLang, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig });
   getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([
@@ -3156,7 +3164,9 @@ function broadcastPolicy({ circleId, policy }) {
 async function boot() {
   rootEl = document.getElementById('circle-root');
   tabBarEl = document.getElementById('circle-tabbar');
-  await initLocalisation({ lng: detectDeviceLang() });
+  // App language: a persisted user choice (the Mij toggle) wins over the device locale.
+  let _storedAppLang = null; try { _storedAppLang = localStorage.getItem('circle.app.lang'); } catch { /* no storage */ }
+  await initLocalisation({ lng: (_storedAppLang === 'nl' || _storedAppLang === 'en') ? _storedAppLang : detectDeviceLang() });
   renderCircleLauncher(rootEl, { loading: true, t });
 
   // S5 — register the web-push service worker (root-scoped /sw.js). Best-effort:

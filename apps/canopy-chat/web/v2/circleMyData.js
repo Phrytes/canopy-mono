@@ -28,6 +28,8 @@ export function renderCircleMyData(container, {
   surfacePref,            // S6.C — current 'inline' | 'screen' | 'chat'
   chatAi,                 // S6.D — { enriched, reason } for the active circle (shown under "chat")
   onSetSurfacePref,       // (value) => void
+  appLang,                // current app language 'nl' | 'en' (global UI language)
+  onSetAppLang,           // (lng) => void
   userLlm,                // the member's saved assistant endpoint config (userLlmDefault value)
   onSaveUserLlm,          // (cfg) => Promise<string|null>  — persist + apply; returns an error message or null
   validateUserLlm,        // (cfg) => string|null           — confidential-route guard for inline display
@@ -137,6 +139,21 @@ export function renderCircleMyData(container, {
       const keyByReason = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
       note.textContent = `${chatAi.enriched ? '✨ ' : ''}${tr(`circle.mydata.${keyByReason[chatAi.reason] ?? 'chat_ai_no_provider'}`)}`;
       sec.appendChild(note);
+    }
+    container.appendChild(sec);
+  }
+
+  // ── app language (global NL/EN — a user preference, applies app-wide) ───────
+  if (typeof onSetAppLang === 'function') {
+    const sec = section(tr('circle.mydata.language'));
+    for (const lg of ['nl', 'en']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mydata__pref${lg === appLang ? ' is-active' : ''}`;
+      b.dataset.lang = lg;
+      b.textContent = lg.toUpperCase();
+      b.addEventListener('click', () => onSetAppLang(lg));
+      sec.appendChild(b);
     }
     container.appendChild(sec);
   }
