@@ -75,6 +75,7 @@ import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.j
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 // "only you" vs "whole kring" — message scope (data property; the badge renders it).
 import { scopeForReply } from '../../../../canopy-chat/src/v2/messageScope.js';
+import { buildFindExtras } from '../../../../canopy-chat/src/v2/findExtras.js';
 // S6.D — is the conversational "chat" projection LLM-enriched here? (user LLM + circle permits)
 import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
@@ -1855,6 +1856,15 @@ function CircleDetail({
     // embeds[] — the bot reply references the item it acted on (web parity); title pre-filled.
     const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
     appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope, embeds });
+    // Shared find-result enrichment (skill matches + hop prompt), web≡mobile via buildFindExtras. Best-effort.
+    try {
+      const { skillMatches, hopCard } = await buildFindExtras({
+        query: reply?.payload?.query, groups: reply?.payload?.groups,
+        circleId: circle?.id, callSkill: (op, a) => rawCallSkill('stoop', op, a), t,
+      });
+      if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
+      if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
+    } catch { /* enrichment is non-essential */ }
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
 
   // 2+-field inline form submit: echo the filled values, complete the dispatch, run it (parity with web).
