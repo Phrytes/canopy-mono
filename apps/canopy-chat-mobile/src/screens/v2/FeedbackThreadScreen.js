@@ -16,6 +16,7 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t, lang } from '../../core/localisation.js';
 import { theme } from './theme.js';
@@ -28,6 +29,7 @@ const FEEDBACK_LLM_MODEL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_MODEL || undefin
 const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
 
 export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
+  const insets = useSafeAreaInsets();   // clear the status bar so the header (back + language toggle) is tappable
   const threadId = bot?.id;
   const name = bot?.name ?? bot?.label ?? threadId ?? 'Feedback';
 
@@ -138,7 +140,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
   }, [editing, tapControl]);
 
   return (
-    <View style={styles.wrap} testID="feedback-thread-screen">
+    <View style={[styles.wrap, { paddingTop: insets.top + 8 }]} testID="feedback-thread-screen">
       <View style={styles.header}>
         <Pressable onPress={onBack} accessibilityRole="button" testID="feedback-thread-back">
           <Text style={styles.back}>{tBot('circle.contacts.back')}</Text>
