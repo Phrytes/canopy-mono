@@ -16,7 +16,8 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
-import { t } from '../../core/localisation.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t, lang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { createFeedbackSurface } from '../../../../canopy-chat/src/feedback/feedbackSurface.js';
 import { activateMobileFeedback } from '../../v2/feedbackActivation.js';
@@ -34,9 +35,26 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(null);   // { mid, id, text } — the review card being edited inline
+  const [botLang, setBotLang] = useState(null);    // the participant's chosen bot language (null until loaded)
   const surfaceRef = useRef(null);
-  const startedRef = useRef(false);
+  const activatedLangRef = useRef(null);           // the lang the surface was last (re)built for
   const scrollRef = useRef(null);
+
+  // chrome (header/composer) renders in the BOT's chosen language, not the device locale.
+  const tBot = useCallback((key, params) => t(key, params, botLang || undefined), [botLang]);
+
+  // Load the per-bot language choice (persisted); default to the device locale.
+  useEffect(() => {
+    let live = true;
+    AsyncStorage.getItem(`fp.lang.${threadId}`).then((v) => { if (live) setBotLang(v === 'nl' || v === 'en' ? v : lang()); }).catch(() => { if (live) setBotLang(lang()); });
+    return () => { live = false; };
+  }, [threadId]);
+
+  const changeLang = useCallback((lg) => {
+    if (lg === botLang || (lg !== 'nl' && lg !== 'en')) return;
+    setBotLang(lg);                                 // → the surface effect re-builds the bot in this language
+    AsyncStorage.setItem(`fp.lang.${threadId}`, lg).catch(() => { /* best-effort */ });
+  }, [botLang, threadId]);
 
   const pushBot = useCallback((text, buttons) => {
     setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', text: String(text ?? ''), buttons: Array.isArray(buttons) && buttons.length ? buttons : null }]);
@@ -45,21 +63,26 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
     setMessages((prev) => [...prev, { id: mkId(), origin: 'user', text: String(text ?? '') }]);
   }, []);
 
-  // Activate (own/central/control pods) + build the surface, then poll the lead's /control/ round.
+  // Activate (own/central/control pods) + build the surface in the chosen language, then poll the lead's
+  // /control/ round. Re-runs when botLang changes (the participant switched language) → re-builds the bot in
+  // the new language and re-starts the thread (fresh /help in that language). Gated so a spurious re-render
+  // with the SAME lang doesn't re-activate.
   useEffect(() => {
-    if (startedRef.current || !threadId) return undefined;
-    startedRef.current = true;
+    if (!threadId || !botLang || activatedLangRef.current === botLang) return undefined;
+    activatedLangRef.current = botLang;
     let cancelled = false;
+    setMessages([]); setEditing(null);
     (async () => {
       setBusy(true);
       try {
         const activationUrl = bot?.activationUrl || FEEDBACK_ACTIVATION_URL;
-        if (!activationUrl) { pushBot(t('circle.feedback.activation_failed', { error: 'no activation URL', defaultValue: 'Activatie mislukt: geen activation-URL ingesteld.' })); return; }
+        if (!activationUrl) { pushBot(tBot('circle.feedback.activation_failed', { error: 'no activation URL', defaultValue: 'Activatie mislukt: geen activation-URL ingesteld.' })); return; }
         const pods = await activateMobileFeedback({ session, activationUrl, projectId: bot.projectId, code: bot.code, podRef: bot.podRef });
         if (cancelled) return;
         if (pods.podRef && pods.podRef !== bot.podRef && store) { try { await store.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
         const surface = createFeedbackSurface({
           projectId: bot.projectId,   // bind the dispatcher to the activation project (verify-round match)
+          lang: botLang,              // the participant's chosen bot language (drives text + cards + pipeline)
           llmBaseURL: FEEDBACK_LLM_BASEURL,
           llmModel: FEEDBACK_LLM_MODEL,
           pod: pods.ownPod,
@@ -82,7 +105,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [session, bot, store, threadId, pushBot]);
+  }, [session, bot, store, threadId, pushBot, botLang]);
 
   // Run a control string (button callback / fp:edit / fp:consent) against the bot.
   const tapControl = useCallback(async (cb) => {
@@ -118,9 +141,22 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
     <View style={styles.wrap} testID="feedback-thread-screen">
       <View style={styles.header}>
         <Pressable onPress={onBack} accessibilityRole="button" testID="feedback-thread-back">
-          <Text style={styles.back}>{t('circle.contacts.back')}</Text>
+          <Text style={styles.back}>{tBot('circle.contacts.back')}</Text>
         </Pressable>
-        <Text style={styles.title}>{t('circle.contacts.thread_title', { name })}</Text>
+        <Text style={styles.title} numberOfLines={1}>{tBot('circle.contacts.thread_title', { name })}</Text>
+        <View style={styles.langToggle}>
+          {['nl', 'en'].map((lg) => (
+            <Pressable
+              key={lg}
+              onPress={() => changeLang(lg)}
+              style={[styles.langBtn, botLang === lg && styles.langBtnActive]}
+              accessibilityRole="button"
+              testID={`feedback-lang-${lg}`}
+            >
+              <Text style={[styles.langBtnText, botLang === lg && styles.langBtnTextActive]}>{lg.toUpperCase()}</Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <ScrollView
@@ -132,7 +168,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
         {messages.map((m) => {
           if (m.kind === 'review') {
             // prefer the labels the BOT shipped (in its own language); fall back to the app locale.
-            const L = (k, dv) => (m.labels && m.labels[k]) || t(`circle.feedback.${k}`, { defaultValue: dv });
+            const L = (k, dv) => (m.labels && m.labels[k]) || t(`circle.feedback.${k}`, { defaultValue: dv }, botLang);
             return (
               <View key={m.id} style={styles.reviewBlock} testID="feedback-review">
                 {m.intro ? <Text style={styles.reviewIntro}>{String(m.intro).split('\n\n')[0]}</Text> : null}
@@ -222,7 +258,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
             </View>
           );
         })}
-        {busy && <Text style={styles.sending}>{t('circle.contacts.thinking', { defaultValue: 'Bezig…' })}</Text>}
+        {busy && <Text style={styles.sending}>{tBot('circle.contacts.thinking', { defaultValue: 'Bezig…' })}</Text>}
       </ScrollView>
 
       <View style={styles.composer}>
@@ -230,14 +266,14 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder={t('circle.contacts.composer', { name })}
+          placeholder={tBot('circle.contacts.composer', { name })}
           placeholderTextColor={theme.color.inkSoft}
           autoCapitalize="none"
           onSubmitEditing={onSend}
           testID="feedback-thread-input"
         />
         <Pressable style={styles.send} onPress={onSend} accessibilityRole="button" testID="feedback-thread-send">
-          <Text style={styles.sendText}>{t('circle.contacts.send')}</Text>
+          <Text style={styles.sendText}>{tBot('circle.contacts.send')}</Text>
         </Pressable>
       </View>
     </View>
@@ -251,9 +287,14 @@ function mkId() { _id += 1; return `fbt-${_id}`; }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, padding: 16, backgroundColor: theme.color.paper },
-  header: { flexDirection: 'row', alignItems: 'baseline', gap: 12, marginBottom: 8 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 },
   back: { fontSize: 13, color: theme.color.inkSoft },
-  title: { fontFamily: theme.font.serif, fontSize: 18, fontWeight: '600', color: theme.color.ink },
+  title: { fontFamily: theme.font.serif, fontSize: 18, fontWeight: '600', color: theme.color.ink, flexShrink: 1 },
+  langToggle: { flexDirection: 'row', marginLeft: 'auto', borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, overflow: 'hidden' },
+  langBtn: { paddingVertical: 4, paddingHorizontal: 10 },
+  langBtnActive: { backgroundColor: theme.color.accent },
+  langBtnText: { fontSize: 12, fontWeight: '700', color: theme.color.inkSoft },
+  langBtnTextActive: { color: theme.color.white },
   log: { flex: 1 },
   msg: { maxWidth: '88%' },
   msgUser: { alignSelf: 'flex-end' },

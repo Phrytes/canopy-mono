@@ -29,13 +29,16 @@ import { applyLlmRoute, assertCleanRouteSafe } from '../../../feedback-pipeline/
  * @param {(chatId:string)=>object} [a.identityFor]  per-thread identity (defaults to `identity`)
  * @param {(reply:{chatId:string,text:string,buttons?:Array})=>void} a.emit  render sink
  */
-export function createFeedbackSurface({ config, projectId, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit } = {}) {
+export function createFeedbackSurface({ config, projectId, lang, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit } = {}) {
   if (typeof emit !== 'function') throw new Error('createFeedbackSurface: emit(reply) is required');
   const cfg = validateProjectConfig(config || exampleProjectConfig);
   // the dispatcher's projectId drives the verify-round match; without an explicit config it defaults to
   // exampleProjectConfig.projectId, which won't equal the ACTIVATION projectId (the bot/cohort) — so the
   // verify poll filtered out the lead's round. Bind it to the activation project.
   if (projectId) cfg.projectId = projectId;
+  // `lang` lets the PARTICIPANT choose the bot's language (overriding the project default) — it drives the
+  // bot's strings + the on-device pipeline language (clean/summarise), so the whole thread + cards localise.
+  if (lang === 'nl' || lang === 'en') cfg.language = { ...cfg.language, preferred: lang };
   // route ownership → the bot: the route lives in config.llm; `llmBaseURL`/`llmModel` are the browser's
   // no-env convenience to point config.llm at its (local/loopback) endpoint + the model that endpoint
   // actually serves (the default `qwen2.5:7b-instruct` 404s on a Privatemode proxy). Install + M0 check.

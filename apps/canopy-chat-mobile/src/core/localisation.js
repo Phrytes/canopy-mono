@@ -59,9 +59,11 @@ export function setLang(lng) {
 
 export function lang() { return currentLang; }
 
-/** Translate a key.  Falls back to the key string if missing. */
-export function t(key, params) {
-  const hit = lookup(BUNDLES[currentLang], key)
+/** Translate a key.  Falls back to the key string if missing. `lng` overrides the current language for one
+ *  call (the feedback thread renders its chrome in the BOT's chosen language, not the device locale). */
+export function t(key, params, lng) {
+  const L = (lng === 'en' || lng === 'nl') ? lng : currentLang;
+  const hit = lookup(BUNDLES[L], key)
            ?? lookup(BUNDLES.en, key)
            ?? key;
   return interpolate(hit, params);
