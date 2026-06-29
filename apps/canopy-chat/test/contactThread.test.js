@@ -67,6 +67,21 @@ describe('renderContactThread', () => {
     expect(labels).toContain('circle.feedback.send_all');
   });
 
+  it('renders the language picker (langValue + onLangChange) + routes a tap', () => {
+    const onLangChange = vi.fn();
+    const el = renderContactThread(document.createElement('div'), { name: 'Bot', t, langValue: 'nl', onLangChange });
+    const btns = [...el.querySelectorAll('.cc-cthread__lang-btn')];
+    expect(btns.map((b) => b.textContent)).toEqual(['NL', 'EN']);
+    expect(el.querySelector('.cc-cthread__lang-btn.is-active').textContent).toBe('NL');
+    btns.find((b) => b.dataset.lang === 'en').click();
+    expect(onLangChange).toHaveBeenCalledWith('en');
+  });
+
+  it('omits the language picker when langValue is not set', () => {
+    const el = renderContactThread(document.createElement('div'), { name: 'Bot', t });
+    expect(el.querySelector('.cc-cthread__lang')).toBe(null);
+  });
+
   it('shows the busy + error states', () => {
     const el = renderContactThread(document.createElement('div'), { name: 'Bot', t, busy: true, error: true });
     expect(el.querySelector('.cc-cthread__sending').textContent).toBe('circle.contacts.sending');

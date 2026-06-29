@@ -23,6 +23,8 @@ export function renderContactThread(container, {
   onSkillTap,
   inputValue = '',   // pre-fill the composer (inline edit: ✏ a point → its text appears, editable)
   inputHint = '',    // optional placeholder override (e.g. "Editing point N")
+  langValue = null,        // when set (+ onLangChange), render an NL/EN picker in the header (feedback thread)
+  onLangChange = null,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -42,6 +44,21 @@ export function renderContactThread(container, {
   title.className = 'cc-cthread__title';
   title.textContent = tr('circle.contacts.thread_title', { name });
   header.appendChild(title);
+  // language picker (feedback thread): the participant chooses the BOT's language; the whole thread re-renders.
+  if ((langValue === 'nl' || langValue === 'en') && typeof onLangChange === 'function') {
+    const toggle = document.createElement('div');
+    toggle.className = 'cc-cthread__lang';
+    for (const lg of ['nl', 'en']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-cthread__lang-btn${langValue === lg ? ' is-active' : ''}`;
+      b.textContent = lg.toUpperCase();
+      b.dataset.lang = lg;
+      b.addEventListener('click', () => onLangChange(lg));
+      toggle.appendChild(b);
+    }
+    header.appendChild(toggle);
+  }
   container.appendChild(header);
 
   // ── messages ──────────────────────────────────────────────────────────────

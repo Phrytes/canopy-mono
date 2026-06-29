@@ -71,15 +71,17 @@ export async function initLocalisation({ lng = 'en', fallbackLng = 'en' } = {}) 
  *
  * @param {string} key
  * @param {object} [params]
+ * @param {'en'|'nl'} [lng]  override the active language for ONE call (the feedback thread renders its chrome
+ *                           in the BOT's chosen language, not the app locale)
  * @returns {string}
  */
-export function t(key, params) {
+export function t(key, params, lng) {
   if (!initialised) {
     // Auto-init is async; return the key so a caller-before-init
     // mistake surfaces visibly rather than as an empty string.
     return key;
   }
-  return i18next.t(key, params);
+  return i18next.t(key, (lng === 'en' || lng === 'nl') ? { ...params, lng } : params);
 }
 
 /**

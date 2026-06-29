@@ -1211,9 +1211,12 @@ function _renderFbThread(botId) {
   const ft = _fbThreads.get(botId);
   if (!ft || _activeFbThread?.botId !== botId) return;
   renderContactThread(rootEl, {
-    name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false, t,
+    name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false,
+    t: (k, p) => t(k, p, ft.botLang),                  // chrome renders in the BOT's chosen language
+    langValue: ft.botLang,
+    onLangChange: (lg) => _changeFbLang(botId, lg),
     inputValue: ft.pendingEditText || '',
-    inputHint: ft.editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }) : '',
+    inputHint: ft.editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }, ft.botLang) : '',
     onBack: () => { ft.editingId = null; _activeFbThread = null; showContacts(); },
     // the bot's AI clean/summarise takes a few seconds per message — show a "thinking" state so /klaar
     // doesn't look frozen.
@@ -1239,6 +1242,7 @@ function _buildFbSurface(botId, pods) {
   const ft = _fbThreads.get(botId);
   ft.surface = createFeedbackSurface({
     projectId: String(botId).replace(/^fp-bot:/, ''),   // bind the dispatcher to the activation project (verify-round match)
+    lang: ft.botLang,                                    // the participant's chosen bot language (text + cards + pipeline)
     llmBaseURL: FEEDBACK_LLM_BASEURL,
     llmModel: FEEDBACK_LLM_MODEL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
@@ -1258,10 +1262,28 @@ function _buildFbSurface(botId, pods) {
     appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _renderFbThread(botId); },
   });
 }
+// The participant switches the bot's language: rebuild the bot in that language (reusing the activated pods —
+// no re-activation) and re-start the thread, so text + cards + chrome all localise. Persisted per-bot.
+async function _changeFbLang(botId, lg) {
+  const ft = _fbThreads.get(botId);
+  if (!ft || (lg !== 'nl' && lg !== 'en') || lg === ft.botLang) return;
+  ft.botLang = lg;
+  try { localStorage.setItem(`fp.lang.${botId}`, lg); } catch { /* best-effort */ }
+  ft.messages = []; ft.reviewPoints = null; ft.editingId = null;
+  _buildFbSurface(botId, ft.pods || null);
+  ft.busy = true; _renderFbThread(botId);
+  try { await ft.surface.start(botId); }
+  catch (e) { ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
+  finally { ft.busy = false; _renderFbThread(botId); }
+}
 async function showFeedbackThread(bot) {
   hideCircleTabBar(tabBarEl);
   const botId = bot.id;
-  if (!_fbThreads.has(botId)) _fbThreads.set(botId, { name: bot.name, messages: [], surface: null, mount: null, activated: false });
+  if (!_fbThreads.has(botId)) {
+    let stored = null; try { stored = localStorage.getItem(`fp.lang.${botId}`); } catch { /* no storage */ }
+    const botLang = (stored === 'nl' || stored === 'en') ? stored : detectDeviceLang();
+    _fbThreads.set(botId, { name: bot.name, messages: [], surface: null, mount: null, activated: false, botLang, pods: null });
+  }
   const ft = _fbThreads.get(botId);
   _activeFbThread = { botId };
   if (!ft.surface) _buildFbSurface(botId, null);
@@ -1274,6 +1296,7 @@ async function showFeedbackThread(bot) {
       if (session?.webid && activationUrl) {
         const pods = await buildFeedbackVerifyPods({ session, activationUrl, projectId: bot.projectId, code: bot.code, recoveryHash: await getOrCreateRecoveryHash(), podRef: bot.podRef });
         if (pods.podRef && pods.podRef !== bot.podRef) { try { await feedbackBotStore.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
+        ft.pods = pods;                 // cache for a language switch (rebuild the bot without re-activating)
         _buildFbSurface(botId, pods);   // rebuild the surface WITH the real own/central/control pods
       } else if (!session?.webid) {
         ft.messages.push({ origin: 'bot', text: t('circle.feedback.login_first', { defaultValue: 'Log eerst in op je pod om mee te doen.' }) });
