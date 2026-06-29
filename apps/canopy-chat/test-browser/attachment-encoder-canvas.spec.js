@@ -12,12 +12,19 @@
  * there's no source duplication.
  */
 import { test, expect } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+// vite's dev root is `web/`, so the app's `src/` lives OUTSIDE it — vite serves out-of-root source via
+// `/@fs/<abspath>` (that's what it rewrites the app's own relative imports to). A hardcoded `/src/…` URL
+// would hit the SPA fallback and return index.html → "failed to fetch dynamically imported module".
+const ENCODER_URL = `/@fs${path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/v2/attachmentEncoder.js')}`;
 
 test('encodeImageFile produces a valid attachment record via a real Canvas', async ({ page }) => {
   await page.goto('/');
 
-  const result = await page.evaluate(async () => {
-    const { encodeImageFile } = await import('/src/v2/attachmentEncoder.js');
+  const result = await page.evaluate(async (encoderUrl) => {
+    const { encodeImageFile } = await import(encoderUrl);
 
     // Build a real PNG File from a canvas (a recognisable gradient, 800×400).
     const src = document.createElement('canvas');
@@ -39,7 +46,7 @@ test('encodeImageFile produces a valid attachment record via a real Canvas', asy
       thumbStart: att.thumbnail.slice(0, 22),
       decodes: (() => { try { atob(att.dataB64); return true; } catch { return false; } })(),
     };
-  });
+  }, ENCODER_URL);
 
   expect(result.mime).toBe('image/png');           // png input stays png
   expect(result.width).toBe(256);                  // 800→256 longest edge
