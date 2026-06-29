@@ -61,7 +61,7 @@ import {
   // Shared one-line bot reply (verb-aware Added:/Completed:) + Part D catalog scoping (drops /me etc.).
   kringReplyText, scopeCatalogToApps,
   // B (circle bot) — dispatch primitives to run an interpreted command in the kring.
-  parseInput, resolveDispatch, runDispatch, scopeReadyDispatch,
+  parseInput, resolveDispatch, runDispatch, scopeReadyDispatch, executeBulkDispatch,
 } from '@canopy-app/canopy-chat';
 // B (circle bot) — v2 free-text→LLM→command surface (shared with web). Deep-imported like the other
 // v2 modules (kringChatReceiver etc.) since they're not on the canopy-chat barrel.
@@ -1649,6 +1649,7 @@ function CircleDetail({
   // when state flips.  The map itself isn't deps-tracked.
   const deliveryStateMapRef = useRef(null);
   const feedbackMountRef = useRef(null);   // M6 — lazy feedback mount (created on first kring send)
+  const lastKringListingRef = useRef(null); // { appOrigin, items } from the last list reply, for bulk "/done all"
   if (deliveryStateMapRef.current == null) deliveryStateMapRef.current = createDeliveryStateMap();
   const [deliveryTick, setDeliveryTick] = useState(0);
   const deliveryStateFor = useCallback((msgId) => {
@@ -1856,6 +1857,8 @@ function CircleDetail({
     // embeds[] — the bot reply references the item it acted on (web parity); title pre-filled.
     const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
     appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope, embeds });
+    // Remember the most-recent listing so a bulk "/done all" can fan out over it (web≡mobile).
+    if (Array.isArray(reply?.payload?.items)) lastKringListingRef.current = { appOrigin: entry?.appOrigin, items: reply.payload.items };
     // Shared find-result enrichment (skill matches + hop prompt), web≡mobile via buildFindExtras. Best-effort.
     try {
       const { skillMatches, hopCard } = await buildFindExtras({
@@ -1866,6 +1869,17 @@ function CircleDetail({
       if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
     } catch { /* enrichment is non-essential */ }
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
+
+  // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared
+  // executeBulkDispatch). Mobile has no filter-router; cross-thread propagation is the fan-out itself.
+  const handleKringBulk = useCallback(async (route) => {
+    const itemIds = (lastKringListingRef.current?.items ?? []).map((it) => it.id).filter(Boolean);
+    if (!itemIds.length) { appendKringMessage({ actor: 'bot', text: t('circle.bulk.noList') }); return; }
+    try {
+      const { message } = await executeBulkDispatch({ bulk: route, itemIds, callSkill: rawCallSkill, opLabel: route.opId });
+      appendKringMessage({ actor: 'bot', text: message });
+    } catch (e) { appendKringMessage({ actor: 'bot', text: t('circle.bot.failed', { msg: e?.message ?? String(e) }) }); }
+  }, [appendKringMessage, rawCallSkill]);
 
   // 2+-field inline form submit: echo the filled values, complete the dispatch, run it (parity with web).
   const onFormSubmit = useCallback((values) => {
@@ -2071,6 +2085,11 @@ function CircleDetail({
         cmd = parsed && parsed.kind === 'slash' && parsed.opId ? { opId: parsed.opId, args: parsed.args || {} } : null;
       }
       if (!cmd || !cmd.opId) { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
+      // E2 bulk fan-out ("/done all"): resolveDispatch flags it; run over the last listing, bypassing clarify.
+      try {
+        const r = resolveDispatch({ kind: 'slash', opId: cmd.opId, args: cmd.args || {} }, catalog);
+        if (r && r.kind === 'bulk') return handleKringBulk(r);
+      } catch { /* not bulk → normal path */ }
       return clarify.run(cmd, { id: circle?.id });
     },
     postToKring: (text, ctx) => { if (ctx?.msgId) broadcastFanOut({ msgId: ctx.msgId, text, ts: ctx.ts ?? Date.now() }); },
@@ -2078,7 +2097,7 @@ function CircleDetail({
     onNoMatch: (_text, _ctx, opts) => { appendKringMessage({ actor: 'bot', text: (opts && opts.reply) || t('circle.bot.unknown') }); },
     // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
     onLlmUnavailable: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.basic_mode') }); },
-  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy, llmApps]);
+  }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy, llmApps, handleKringBulk]);
 
   // SP-13.2.1 / B / M6 — kring chat send: the feedback bot gets first refusal (it owns the turn only
   // for /feedback, /feedback-stop, and free text while active); otherwise echo + route to the circle bot.
