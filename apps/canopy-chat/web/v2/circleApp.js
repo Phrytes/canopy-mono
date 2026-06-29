@@ -94,6 +94,7 @@ import { withCalendarOutbound } from '../../src/core/handlers/calendarOutbound.j
 import { enrichEmbedsWithTitles } from '../../src/v2/embedResolve.js';
 // Calendar INBOUND ingest — receive invite/RSVP/cancel envelopes from peers.
 import { makeHandleCalendarInvite } from '../../src/core/handlers/calendarInvite.js';
+import { makeHandleFileShare }      from '../../src/core/handlers/fileShare.js';
 import { makeHandleCalendarRsvp }   from '../../src/core/handlers/calendarRsvp.js';
 import { makeHandleCalendarCancel } from '../../src/core/handlers/calendarCancel.js';
 // Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
@@ -681,6 +682,19 @@ function noteCircleBotTurn(r, query) {
 }
 let _kringRender = null;         // { circleId, botBubble(text), fanOut(msgId,text,ts) } — set by showKring
 let _clarifyScope = null;        // scope of the last clarify ask(), so a candidate button taps pick() on it
+const _fileShareInbox = new Map();   // fileId → {name,mime,dataB64,size} of a received peer file, for [Download]
+
+// Turn an inline base64 file body (from a received file-share) into a real browser download.
+function triggerBlobDownloadFromBase64(dataB64, name, mime) {
+  const bin = atob(dataB64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  const url = URL.createObjectURL(new Blob([bytes], { type: mime || 'application/octet-stream' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name || 'file'; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
 // One bash-style command history for the kring composer, module-level so it survives showKring re-renders
 // (the classic shell keeps a single global history too). Web↔mobile parity via the shared helper.
 const kringInputHistory = createInputHistory();
@@ -1015,6 +1029,8 @@ function buildCircleBot(agent) {
       if (action.startsWith('fp:')) { circleFeedbackMount?.surface?.tapButton?.(action, getActiveCircle()); return; }
       // a disambiguation candidate → re-run the pending command with the chosen target bound.
       if (action.startsWith('clarify:')) { circleClarify?.pick?.(action.slice('clarify:'.length), _clarifyScope || {}); return; }
+      // download a received peer file (bytes stashed when the file-share arrived).
+      if (action.startsWith('file-dl:')) { const f = _fileShareInbox.get(action.slice('file-dl:'.length)); if (f) triggerBlobDownloadFromBase64(f.dataB64, f.name, f.mime); return; }
       return;
     }
     if (screen) { openCircleScreenPanel(screen); return; }
@@ -3395,6 +3411,18 @@ async function boot() {
           }),
           'calendar-rsvp':           makeHandleCalendarRsvp({ callSkill: rawCallSkill, publishEvent: publishEventToLog }),
           'calendar-cancel':         makeHandleCalendarCancel({ callSkill: rawCallSkill, publishEvent: publishEventToLog }),
+          // a peer shared a file → announce it in the kring with a [Download] button (bytes ride in the
+          // embed; we stash them so the tap can save). Classic parity (handleFileShare).
+          'file-share':              makeHandleFileShare({
+            addMainBubble: (bubble) => {
+              const f = bubble?.embed?.snapshot;
+              if (!f?.id || !f?.name || !f?.dataB64) return;
+              _fileShareInbox.set(f.id, f);
+              _kringRender?.botBubble(t('circle.fileShare.received', { name: f.name }),
+                { buttons: [{ action: `file-dl:${f.id}`, label: t('circle.fileShare.download') }] });
+            },
+            publishEvent: publishEventToLog,
+          }),
           // OBJ-2 membership — the no-pod join handshake (shared core, same as the classic shells):
           // admin verifies an incoming redeem + replies; joiner resolves the pending request on response.
           'group-redeem-request':    makeHandleGroupRedeemRequest({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),

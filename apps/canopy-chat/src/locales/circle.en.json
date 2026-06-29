@@ -1505,6 +1505,10 @@
       "doc": "Heading for the inline skill-match list (P6.7 #345) appended under /find replies."
     }
   },
+  "fileShare": {
+    "received": { "text": "📎 {{name}} shared with you", "doc": "Kring bubble when a peer shares a file." },
+    "download": { "text": "Download", "doc": "Button on a received file-share bubble." }
+  },
   "nearbyScreen": {
     "title": {
       "text": "Nearby",

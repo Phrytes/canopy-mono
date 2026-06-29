@@ -1505,6 +1505,10 @@
       "doc": "Heading for the inline skill-match list (P6.7 #345)."
     }
   },
+  "fileShare": {
+    "received": { "text": "📎 {{name}} met je gedeeld", "doc": "Kring bubble when a peer shares a file." },
+    "download": { "text": "Downloaden", "doc": "Button on a received file-share bubble." }
+  },
   "nearbyScreen": {
     "title": {
       "text": "In de buurt",
