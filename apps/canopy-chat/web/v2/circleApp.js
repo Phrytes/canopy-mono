@@ -678,6 +678,7 @@ function noteCircleBotTurn(r, query) {
   circleAwaitingBotReply = reply && /\?/.test(reply) ? { question: reply, query: String(query || '') } : null;
 }
 let _kringRender = null;         // { circleId, botBubble(text), fanOut(msgId,text,ts) } — set by showKring
+let _clarifyScope = null;        // scope of the last clarify ask(), so a candidate button taps pick() on it
 // One bash-style command history for the kring composer, module-level so it survives showKring re-renders
 // (the classic shell keeps a single global history too). Web↔mobile parity via the shared helper.
 const kringInputHistory = createInputHistory();
@@ -974,7 +975,9 @@ function buildCircleBot(agent) {
     // General in-chat bot menus: a button may carry an `action` callback for a NON-circle bot, routed by
     // source. Feedback (fp:*) → its surface's tapButton; other in-chat bots plug in here.
     if (action) {
-      if (action.startsWith('fp:')) circleFeedbackMount?.surface?.tapButton?.(action, getActiveCircle());
+      if (action.startsWith('fp:')) { circleFeedbackMount?.surface?.tapButton?.(action, getActiveCircle()); return; }
+      // a disambiguation candidate → re-run the pending command with the chosen target bound.
+      if (action.startsWith('clarify:')) { circleClarify?.pick?.(action.slice('clarify:'.length), _clarifyScope || {}); return; }
       return;
     }
     if (screen) { openCircleScreenPanel(screen); return; }
@@ -990,9 +993,14 @@ function buildCircleBot(agent) {
     catalog: () => catalog,
     lookup,
     dispatchReady,
-    // V0: render candidates as text in the kring (interactive candidate buttons are a follow-up).
-    ask: ({ query, candidates }) => _kringRender?.botBubble(
-      `${t('circle.clarify.which', { query })}\n${candidates.map((c) => `• ${c.label}`).join('\n')}`),
+    // Interactive candidate buttons: tapping `clarify:<id>` re-runs pick() with the choice bound (the scope
+    // is captured so the tap hits the right pending command).
+    ask: ({ query, candidates }, scope) => {
+      _clarifyScope = scope;
+      _kringRender?.botBubble(
+        t('circle.clarify.which', { query }),
+        { buttons: (candidates || []).map((c) => ({ action: `clarify:${c.id}`, label: c.label })) });
+    },
     askMissing: async ({ opId, param, query }) => {
       // A non-empty label that matched nothing → "couldn't find X". But a picker command given with NO
       // value (bare `/complete-task`) shouldn't say "couldn't find '' " — list the options to choose from.
@@ -1002,7 +1010,9 @@ function buildCircleBot(agent) {
       let items = [];
       try { if (listOp) items = (await lookup(listOp, '', getActiveCircle(), entry?.appOrigin)) || []; } catch { /* keep empty */ }
       if (items.length) {
-        _kringRender?.botBubble(`${t('circle.clarify.whichMissing')}\n${items.map((c) => `• ${c.label}`).join('\n')}`);
+        // each option is an inline op-button: dispatch <opId> with the chosen id bound to the picker param.
+        _kringRender?.botBubble(t('circle.clarify.whichMissing'),
+          { buttons: items.map((c) => ({ opId, itemId: c.id, label: c.label })) });
       } else {
         _kringRender?.botBubble(t('circle.clarify.noneToPick'));
       }
