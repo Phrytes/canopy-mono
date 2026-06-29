@@ -134,8 +134,11 @@ export async function signOutOfPod({ bundle }) {
 export function podSignInStatus({ bundle }) {
   const oidc = bundle?.oidcSession;
   if (!oidc) return { signedIn: false };
+  // "Signed in" = a pod session EXISTS, not "the access token is currently unexpired". A present webid is a
+  // refresh-capable session (getAuthenticatedFetch refreshes transparently), so don't lag back to "Local only"
+  // the moment the access token expires; webid is cleared on sign-out, so this still goes false then.
   return {
-    signedIn:    oidc.isAuthenticated(),
+    signedIn:    oidc.isAuthenticated() || !!oidc.webid,
     webid:       oidc.webid ?? null,
     podAttached: !!bundle.cache?.hasInner,
   };

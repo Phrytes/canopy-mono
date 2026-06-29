@@ -169,6 +169,14 @@ describe('Stoop V1.5 Phase 20 — direct (lib) entry points', () => {
     expect(s.webid).toBe(WEBID);
     expect(s.podAttached).toBe(true);
   });
+
+  it('podSignInStatus stays signed-in on an expired-but-refreshable session, false after sign-out', () => {
+    // access token expired (isAuthenticated false) but a webid is present → still signed in (refresh-capable);
+    // don't lag the UI back to "Local only".
+    expect(podSignInStatus({ bundle: { oidcSession: { isAuthenticated: () => false, webid: WEBID } } }).signedIn).toBe(true);
+    // signed out → webid cleared → not signed in
+    expect(podSignInStatus({ bundle: { oidcSession: { isAuthenticated: () => false, webid: null } } }).signedIn).toBe(false);
+  });
 });
 
 describe('Stoop V1.5 Phase 20 — sign-in skills', () => {
