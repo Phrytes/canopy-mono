@@ -9,7 +9,7 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Modal, TextInput } from 'react-native';
-import { t, lang } from '../../core/localisation.js';
+import { t, lang, setLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import UserLlmSettings from './UserLlmSettings.js';
@@ -179,6 +179,20 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
             {chatAi.enriched ? '✨ ' : ''}{t(`circle.mydata.${CHAT_AI_KEY[chatAi.reason] ?? 'chat_ai_no_provider'}`)}
           </Text>
         ) : null}
+      </Section>
+
+      {/* global app language (NL/EN) — a user preference, applies app-wide (web≡mobile). */}
+      <Section title={t('circle.mydata.language')}>
+        {['nl', 'en'].map((lg) => (
+          <Pressable
+            key={lg}
+            style={[styles.action, lg === lang() && styles.actionActive]}
+            onPress={() => setLang(lg)}
+            testID={`mydata-lang-${lg}`}
+          >
+            <Text style={[styles.actionLabel, lg === lang() && styles.actionActiveLabel]}>{lg.toUpperCase()}</Text>
+          </Pressable>
+        ))}
       </Section>
 
       {typeof onSaveUserLlm === 'function' && (

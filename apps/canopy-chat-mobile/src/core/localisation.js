@@ -8,6 +8,7 @@
  * defect.  Mirrors apps/tasks-v0/src/lib/localisation.js + the
  * stoop-mobile equivalent.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import en from '../../locales/en.json';
 import nl from '../../locales/nl.json';
 // The shared `circle` block lives in ONE place in the canopy-chat package (src/locales/) so web + mobile
@@ -47,13 +48,26 @@ function interpolate(template, params) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, k) => (params[k] ?? `{{${k}}}`));
 }
 
+const LANG_KEY = 'circle.app.lang';
+const _langListeners = new Set();
+/** Subscribe to app-language changes (App.js re-renders the tree). Returns an unsubscribe fn. */
+export function subscribeLang(cb) { _langListeners.add(cb); return () => _langListeners.delete(cb); }
+function _notifyLang() { for (const cb of _langListeners) { try { cb(currentLang); } catch { /* ignore */ } } }
+
 export async function initLocalisation({ lng } = {}) {
-  if (lng === 'en' || lng === 'nl') currentLang = lng;
+  // A persisted user choice (the Mij toggle) wins over the passed device locale.
+  let stored = null; try { stored = await AsyncStorage.getItem(LANG_KEY); } catch { /* no storage */ }
+  if (stored === 'en' || stored === 'nl') currentLang = stored;
+  else if (lng === 'en' || lng === 'nl') currentLang = lng;
   return currentLang;
 }
 
 export function setLang(lng) {
-  if (lng === 'en' || lng === 'nl') currentLang = lng;
+  if (lng === 'en' || lng === 'nl') {
+    currentLang = lng;
+    AsyncStorage.setItem(LANG_KEY, lng).catch(() => { /* best-effort */ });
+    _notifyLang();
+  }
   return currentLang;
 }
 

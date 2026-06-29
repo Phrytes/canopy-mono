@@ -31,7 +31,7 @@ import CircleLauncherScreen from './src/screens/v2/CircleLauncherScreen.js';
 import FirstRunWelcomeScreen from './src/screens/FirstRunWelcomeScreen.js';
 import MnemonicEntryScreen from './src/screens/MnemonicEntryScreen.js';
 import MnemonicCreateScreen from './src/screens/MnemonicCreateScreen.js';
-import { initLocalisation } from './src/core/localisation.js';
+import { initLocalisation, subscribeLang } from './src/core/localisation.js';
 import { bootAgentBundle } from './src/core/agentBundle.js';
 import {
   shouldShowFirstRunWelcome, markWelcomeDismissed,
@@ -66,6 +66,8 @@ import { makeKringPolicyPendingStoreRN } from './src/core/kringPolicyPendingStor
 
 export default function App() {
   const [localeReady, setLocaleReady] = useState(false);
+  const [, setLangVersion] = useState(0);   // bumped on app-language change → re-render the tree with new t()
+  useEffect(() => subscribeLang(() => setLangVersion((v) => v + 1)), []);
   // cluster J — podAuth is built in the (hidden) ChatScreen; lift it here so the visible v2 launcher can
   // drive pod sign-in (the launcher had no sign-in entry, stranding the OidcSessionRN flow).
   const [podAuth, setPodAuth] = useState(null);
