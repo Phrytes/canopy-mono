@@ -215,6 +215,7 @@ import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
 import { findSkillMatches } from '../../src/v2/findSkillMatches.js';
 import { shouldAutoSuggestHop, buildHopPromptCard } from '../../src/v2/hopPrompt.js';
+import { executeBulkDispatch } from '../../src/bulkOps.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
@@ -682,6 +683,7 @@ function noteCircleBotTurn(r, query) {
 }
 let _kringRender = null;         // { circleId, botBubble(text), fanOut(msgId,text,ts) } — set by showKring
 let _clarifyScope = null;        // scope of the last clarify ask(), so a candidate button taps pick() on it
+let _lastKringListing = null;    // { appOrigin, items } from the most-recent list reply, for bulk "/done all"
 const _fileShareInbox = new Map();   // fileId → {name,mime,dataB64,size} of a received peer file, for [Download]
 
 // Turn an inline base64 file body (from a received file-share) into a real browser download.
@@ -973,6 +975,8 @@ function buildCircleBot(agent) {
     // is taken from the reply → no resolution needed.
     const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
     _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope, embeds });
+    // Remember the most-recent listing so a bulk "/done all" can fan out over it (classic thread.lastListing).
+    if (Array.isArray(reply?.payload?.items)) _lastKringListing = { appOrigin: entry?.appOrigin, items: reply.payload.items };
     // Classic parity (P6.6/P6.7): after a /find reply, enrich with in-circle skill matches + an optional hop
     // prompt. Best-effort — never let it break the dispatch.
     try { await appendFindExtras(reply); } catch { /* enrichment is non-essential */ }
@@ -1008,6 +1012,21 @@ function buildCircleBot(agent) {
     if (!decision.prompt) return;
     const card = buildHopPromptCard({ skillQuery: query, hopEligibleContactsCount, t });
     _kringRender?.botBubble(`${card.title}\n${card.body}`);
+  }
+
+  // E2 — run a bulk route ("/done all") over the most-recent listing's items; item-changed events fan out
+  // cross-thread via the event log. Ported from classic handleBulkRoute.
+  async function handleBulkRoute(route) {
+    const itemIds = (_lastKringListing?.items ?? []).map((it) => it.id).filter(Boolean);
+    if (!itemIds.length) { _kringRender?.botBubble(t('circle.bulk.noList')); return; }
+    try {
+      const { message } = await executeBulkDispatch({
+        bulk: route, itemIds, callSkill: rawCallSkill,
+        emitEvent: (e) => { try { publishEventToLog(e); } catch { /* swallow */ } },
+        opLabel: route.opId,
+      });
+      _kringRender?.botBubble(message);
+    } catch (e) { _kringRender?.botBubble(t('circle.bot.failed', { msg: e?.message ?? String(e) })); }
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
 
@@ -1092,6 +1111,12 @@ function buildCircleBot(agent) {
         cmd = parsed && parsed.kind === 'slash' && parsed.opId ? { opId: parsed.opId, args: parsed.args || {} } : null;
       }
       if (!cmd || !cmd.opId) { _kringRender?.botBubble(t('circle.bot.unknown')); return undefined; }
+      // E2 bulk fan-out ("/done all"): resolveDispatch flags it (the body is a bulk keyword on a mutation op).
+      // Run it over the last listing, bypassing the clarifying dispatch (which would treat "all" as a target).
+      try {
+        const r = resolveDispatch({ kind: 'slash', opId: cmd.opId, args: cmd.args || {} }, catalog);
+        if (r && r.kind === 'bulk') return handleBulkRoute(r);
+      } catch { /* not bulk → normal path */ }
       return circleClarify.run(cmd, ctx);
     },
     // A normal (non-command) message: fan out the ALREADY-appended optimistic bubble (onSend appended it

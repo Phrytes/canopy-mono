@@ -1803,6 +1803,12 @@
       "doc": "N1 — neutral buurt chat default note."
     }
   },
+  "bulk": {
+    "noList": {
+      "text": "Er is geen recente lijst om dit op toe te passen — vraag eerst een lijst op.",
+      "doc": "Circle bot reply to a bulk '/done all' when no listing was shown yet."
+    }
+  },
   "clarify": {
     "which": {
       "text": "Welke “{{query}}” bedoel je?",
