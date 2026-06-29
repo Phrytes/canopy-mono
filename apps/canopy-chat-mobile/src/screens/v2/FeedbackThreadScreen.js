@@ -38,8 +38,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(null);   // { mid, id, text } — the review card being edited inline
   const [botLang, setBotLang] = useState(null);    // the participant's chosen bot language (null until loaded)
+  const [podsReady, setPodsReady] = useState(false);
   const surfaceRef = useRef(null);
   const activatedLangRef = useRef(null);           // the lang the surface was last (re)built for
+  const podsRef = useRef(null);                    // activated pods, cached so a language switch needn't re-activate
   const scrollRef = useRef(null);
 
   // chrome (header/composer) renders in the BOT's chosen language, not the device locale.
@@ -65,23 +67,40 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
     setMessages((prev) => [...prev, { id: mkId(), origin: 'user', text: String(text ?? '') }]);
   }, []);
 
-  // Activate (own/central/control pods) + build the surface in the chosen language, then poll the lead's
-  // /control/ round. Re-runs when botLang changes (the participant switched language) → re-builds the bot in
-  // the new language and re-starts the thread (fresh /help in that language). Gated so a spurious re-render
-  // with the SAME lang doesn't re-activate.
+  // (A) Activate ONCE (own/central/control pods) — independent of language, so switching language doesn't
+  // re-activate. Caches the pods for the surface builder below.
   useEffect(() => {
-    if (!threadId || !botLang || activatedLangRef.current === botLang) return undefined;
-    activatedLangRef.current = botLang;
+    if (!threadId) return undefined;
     let cancelled = false;
-    setMessages([]); setEditing(null);
     (async () => {
-      setBusy(true);
       try {
         const activationUrl = bot?.activationUrl || FEEDBACK_ACTIVATION_URL;
         if (!activationUrl) { pushBot(tBot('circle.feedback.activation_failed', { error: 'no activation URL', defaultValue: 'Activatie mislukt: geen activation-URL ingesteld.' })); return; }
         const pods = await activateMobileFeedback({ session, activationUrl, projectId: bot.projectId, code: bot.code, podRef: bot.podRef });
         if (cancelled) return;
         if (pods.podRef && pods.podRef !== bot.podRef && store) { try { await store.add({ ...bot, podRef: pods.podRef }); } catch { /* persist best-effort */ } }
+        podsRef.current = pods;
+        setPodsReady(true);
+      } catch (e) {
+        if (!cancelled) pushBot(`⚠ ${e?.message ?? e}`);
+      }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- activation is one-shot per thread; tBot/pushBot are stable
+  }, [session, bot, store, threadId]);
+
+  // (B) Build the surface in the chosen language, reusing the cached pods (NO re-activation), then poll the
+  // lead's /control/ round. Re-runs when botLang changes → rebuild the bot + re-start the thread in the new
+  // language (fresh /help). Gated so a spurious re-render with the SAME lang doesn't rebuild.
+  useEffect(() => {
+    if (!podsReady || !botLang || activatedLangRef.current === botLang) return undefined;
+    activatedLangRef.current = botLang;
+    const pods = podsRef.current;
+    let cancelled = false;
+    setMessages([]); setEditing(null);
+    (async () => {
+      setBusy(true);
+      try {
         const surface = createFeedbackSurface({
           projectId: bot.projectId,   // bind the dispatcher to the activation project (verify-round match)
           lang: botLang,              // the participant's chosen bot language (drives text + cards + pipeline)
@@ -107,7 +126,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [session, bot, store, threadId, pushBot, botLang]);
+  }, [podsReady, botLang, threadId, bot, pushBot]);
 
   // Run a control string (button callback / fp:edit / fp:consent) against the bot.
   const tapControl = useCallback(async (cb) => {
