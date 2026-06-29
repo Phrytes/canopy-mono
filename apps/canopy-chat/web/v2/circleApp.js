@@ -212,6 +212,8 @@ import { resolveCircleEmbedder } from '../../src/v2/embedPicker.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
+import { findSkillMatches } from '../../src/v2/findSkillMatches.js';
+import { shouldAutoSuggestHop, buildHopPromptCard } from '../../src/v2/hopPrompt.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
@@ -957,6 +959,41 @@ function buildCircleBot(agent) {
     // is taken from the reply → no resolution needed.
     const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
     _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope, embeds });
+    // Classic parity (P6.6/P6.7): after a /find reply, enrich with in-circle skill matches + an optional hop
+    // prompt. Best-effort — never let it break the dispatch.
+    try { await appendFindExtras(reply); } catch { /* enrichment is non-essential */ }
+  }
+
+  // After /find returns, append (1) in-circle SKILL MATCHES for the query, and (2) a HOP PROMPT when the
+  // search came up short but the user has hop-eligible contacts + hop is on. Ported from classic main.js
+  // (appendFindExtras); the building blocks (findSkillMatches / hopPrompt) are shared.
+  async function appendFindExtras(reply) {
+    const query = typeof reply?.payload?.query === 'string' ? reply.payload.query.trim() : '';
+    if (!query) return;
+    const groups = Array.isArray(reply.payload.groups) ? reply.payload.groups : [];
+    const itemCount = groups.reduce((n, g) => n + (Array.isArray(g.items) ? g.items.length : 0), 0);
+    let members = [];
+    try { members = normalizeCircleMembers(await resolveCallSkill('listGroupMembers', { groupId: getActiveCircle() })); } catch { /* no roster */ }
+    const matches = findSkillMatches({ query, members });
+    if (matches.length > 0) {
+      const lines = matches.slice(0, 5).map((m) => `• ${m.label} — ${m.skill}`).join('\n');
+      _kringRender?.botBubble(`${t('circle.skillMatches.title')}\n${lines}`);
+    }
+    if (itemCount > 0 && matches.length > 0) return;   // already showed something useful
+    let hopGloballyOn = false; let hopEligibleContactsCount = 0;
+    try {
+      const hopMode = await resolveCallSkill('getHopMode', {});
+      hopGloballyOn = hopMode?.global === true;
+      const contacts = await resolveCallSkill('listContacts', {});
+      const list = Array.isArray(contacts?.items) ? contacts.items
+                 : Array.isArray(contacts?.contacts) ? contacts.contacts
+                 : Array.isArray(contacts) ? contacts : [];
+      hopEligibleContactsCount = list.filter((c) => c?.hopThrough === true || c?.hopThrough === 'always' || c?.hopThrough === 'with-ok').length;
+    } catch { /* defaults */ }
+    const decision = shouldAutoSuggestHop({ inCircleMatchCount: matches.length, hopEligibleContactsCount, hopGloballyOn, dismissedForSkill: false });
+    if (!decision.prompt) return;
+    const card = buildHopPromptCard({ skillQuery: query, hopEligibleContactsCount, t });
+    _kringRender?.botBubble(`${card.title}\n${card.body}`);
   }
   circleDispatchReady = dispatchReady;   // expose so onSend can run a completed follow-up
 
