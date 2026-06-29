@@ -18,6 +18,10 @@ export default {
   editPointPrompt: 'Typ je correctie voor dit punt.',
   consentAll: 'Alles versturen',
   cancel: 'Niets versturen',
+  // bare per-card labels (the rich review cards render these in the BOT's language, not the app locale)
+  reviewSend: 'Verstuur',
+  reviewSave: 'Opslaan',
+  reviewCancelEdit: 'Annuleer',
 
   escalationOffer: 'Het lijkt of dit om iets dringends gaat. Wil je dat we dit signaal doorgeven?',
   escalateYes: 'Ja, doorgeven',

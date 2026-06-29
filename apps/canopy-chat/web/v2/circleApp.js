@@ -1242,10 +1242,10 @@ function _buildFbSurface(botId, pods) {
     llmBaseURL: FEEDBACK_LLM_BASEURL,
     llmModel: FEEDBACK_LLM_MODEL,
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
-    emit: ({ text, buttons, kind, points }) => {
+    emit: ({ text, buttons, kind, points, labels }) => {
       if (kind === 'review' && Array.isArray(points)) {
         ft.reviewPoints = points;   // for the ✏ composer pre-fill
-        ft.messages.push({ origin: 'bot', kind: 'review', intro: text, points });   // → editable per-point cards
+        ft.messages.push({ origin: 'bot', kind: 'review', intro: text, points, labels });   // → editable per-point cards (labels in the bot's language)
       } else {
         ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       }

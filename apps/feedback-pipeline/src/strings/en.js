@@ -14,6 +14,10 @@ export default {
   originalLabel: 'original',
   editedTag: '(edited)',
   editPointPrompt: 'Type your correction for this point.',
+  // bare per-card labels (the rich review cards render these in the BOT's language, not the app locale)
+  reviewSend: 'Send',
+  reviewSave: 'Save',
+  reviewCancelEdit: 'Cancel',
 
   escalationOffer: 'This looks like it may be urgent. Would you like us to pass this signal on?',
   escalateYes: 'Yes, pass it on',

@@ -66,10 +66,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
           centralPod: pods.centralPod,
           controlStore: pods.controlStore,
           // a review renders as editable per-point CARDS (kind:'review'+points); everything else as a bubble.
-          emit: ({ text, buttons, kind, points }) => {
+          emit: ({ text, buttons, kind, points, labels }) => {
             if (kind === 'review' && Array.isArray(points)) {
               setEditing(null);
-              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'review', intro: String(text ?? ''), points }]);
+              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'review', intro: String(text ?? ''), points, labels }]);
             } else { pushBot(text, buttons); }
           },
         });
@@ -131,6 +131,8 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
       >
         {messages.map((m) => {
           if (m.kind === 'review') {
+            // prefer the labels the BOT shipped (in its own language); fall back to the app locale.
+            const L = (k, dv) => (m.labels && m.labels[k]) || t(`circle.feedback.${k}`, { defaultValue: dv });
             return (
               <View key={m.id} style={styles.reviewBlock} testID="feedback-review">
                 {m.intro ? <Text style={styles.reviewIntro}>{String(m.intro).split('\n\n')[0]}</Text> : null}
@@ -151,10 +153,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
                           />
                           <View style={styles.cardBtns}>
                             <Pressable style={styles.cardBtnMuted} onPress={() => setEditing(null)}>
-                              <Text style={styles.cardBtnMutedText}>{t('circle.feedback.cancel_edit', { defaultValue: 'Annuleer' })}</Text>
+                              <Text style={styles.cardBtnMutedText}>{L('cancel_edit', 'Annuleer')}</Text>
                             </Pressable>
                             <Pressable style={styles.cardBtn} onPress={saveEdit} testID={`feedback-card-save-${p.id}`}>
-                              <Text style={styles.cardBtnText}>{t('circle.feedback.save_edit', { defaultValue: 'Opslaan' })}</Text>
+                              <Text style={styles.cardBtnText}>{L('save_edit', 'Opslaan')}</Text>
                             </Pressable>
                           </View>
                         </>
@@ -162,12 +164,12 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
                         <>
                           <Pressable onPress={() => startEdit(m.id, p)}>
                             <Text style={styles.cardText}>
-                              {p.text}{p.edited ? ` ${t('circle.feedback.edited', { defaultValue: '(aangepast)' })}` : ''}
+                              {p.text}{p.edited ? ` ${L('edited', '(aangepast)')}` : ''}
                             </Text>
                           </Pressable>
                           {changed ? (
                             <View style={styles.origRow}>
-                              <Text style={styles.origLabel}>{t('circle.feedback.original', { defaultValue: 'origineel' })}</Text>
+                              <Text style={styles.origLabel}>{L('original', 'origineel')}</Text>
                               <Text style={styles.origText}>{p.raw}</Text>
                             </View>
                           ) : null}
@@ -176,7 +178,7 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
                               <Text style={styles.cardBtnMutedText}>✏</Text>
                             </Pressable>
                             <Pressable style={styles.cardBtn} onPress={() => tapControl(`fp:consent:${p.id}`)}>
-                              <Text style={styles.cardBtnText}>{t('circle.feedback.send_one', { defaultValue: 'Verstuur' })}</Text>
+                              <Text style={styles.cardBtnText}>{L('send_one', 'Verstuur')}</Text>
                             </Pressable>
                           </View>
                         </>
@@ -186,10 +188,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack }) {
                 })}
                 <View style={styles.reviewFooter}>
                   <Pressable style={styles.cardBtn} onPress={() => tapControl('fp:consent:all')}>
-                    <Text style={styles.cardBtnText}>{t('circle.feedback.send_all', { defaultValue: 'Alles versturen' })}</Text>
+                    <Text style={styles.cardBtnText}>{L('send_all', 'Alles versturen')}</Text>
                   </Pressable>
                   <Pressable style={styles.cardBtnMuted} onPress={() => tapControl('fp:cancel')}>
-                    <Text style={styles.cardBtnMutedText}>{t('circle.feedback.send_none', { defaultValue: 'Niets versturen' })}</Text>
+                    <Text style={styles.cardBtnMutedText}>{L('send_none', 'Niets versturen')}</Text>
                   </Pressable>
                 </View>
               </View>

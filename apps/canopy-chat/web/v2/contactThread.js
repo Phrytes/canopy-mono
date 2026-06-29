@@ -136,6 +136,8 @@ export function renderContactThread(container, {
  *  with a footer. Tapping the text or ✏ fires onButtonTap(fp:edit:<id>) — the host pre-fills the composer. */
 function renderReviewCards(m, tr, onButtonTap) {
   const tap = (id) => { if (typeof onButtonTap === 'function') onButtonTap({ id }, m); };
+  // prefer the labels the BOT shipped (in its own language); fall back to the app locale.
+  const L = (k) => (m.labels && m.labels[k]) || tr(`circle.feedback.${k}`);
   const block = document.createElement('div');
   block.className = 'cc-cthread__review';
   if (m.intro) {
@@ -149,14 +151,14 @@ function renderReviewCards(m, tr, onButtonTap) {
     card.className = 'cc-cthread__card';
     const txt = document.createElement('div');
     txt.className = 'cc-cthread__card-text';
-    txt.textContent = `${p.text}${p.edited ? ` ${tr('circle.feedback.edited')}` : ''}`;
+    txt.textContent = `${p.text}${p.edited ? ` ${L('edited')}` : ''}`;
     txt.title = tr('circle.feedback.edit_hint');
     txt.addEventListener('click', () => tap(`fp:edit:${p.id}`));
     card.appendChild(txt);
     if (p.raw && p.raw !== p.text) {
       const orig = document.createElement('div');
       orig.className = 'cc-cthread__card-orig';
-      const lbl = document.createElement('span'); lbl.className = 'cc-cthread__card-orig-label'; lbl.textContent = tr('circle.feedback.original');
+      const lbl = document.createElement('span'); lbl.className = 'cc-cthread__card-orig-label'; lbl.textContent = L('original');
       const ot = document.createElement('span'); ot.className = 'cc-cthread__card-orig-text'; ot.textContent = p.raw;
       orig.appendChild(lbl); orig.appendChild(ot);
       card.appendChild(orig);
@@ -167,7 +169,7 @@ function renderReviewCards(m, tr, onButtonTap) {
     edit.type = 'button'; edit.className = 'cc-cthread__card-btn cc-cthread__card-btn--muted'; edit.textContent = '✏';
     edit.addEventListener('click', () => tap(`fp:edit:${p.id}`));
     const send = document.createElement('button');
-    send.type = 'button'; send.className = 'cc-cthread__card-btn'; send.textContent = tr('circle.feedback.send_one');
+    send.type = 'button'; send.className = 'cc-cthread__card-btn'; send.textContent = L('send_one');
     send.addEventListener('click', () => tap(`fp:consent:${p.id}`));
     btns.appendChild(edit); btns.appendChild(send);
     card.appendChild(btns);
@@ -176,7 +178,7 @@ function renderReviewCards(m, tr, onButtonTap) {
   const footer = document.createElement('div');
   footer.className = 'cc-cthread__review-footer';
   const all = document.createElement('button');
-  all.type = 'button'; all.className = 'cc-cthread__card-btn'; all.textContent = tr('circle.feedback.send_all');
+  all.type = 'button'; all.className = 'cc-cthread__card-btn'; all.textContent = L('send_all');
   all.addEventListener('click', () => tap('fp:consent:all'));
   const none = document.createElement('button');
   none.type = 'button'; none.className = 'cc-cthread__card-btn cc-cthread__card-btn--muted'; none.textContent = tr('circle.feedback.send_none');

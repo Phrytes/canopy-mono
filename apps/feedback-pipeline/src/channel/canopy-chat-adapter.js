@@ -34,7 +34,16 @@ export class CanopyChatChannelAdapter {
     if (!text && !buttons) return;
     // text+buttons stay the canonical render; for the review, also pass the structured points so a rich
     // surface can offer inline per-point edit (pre-fill the editor with the current curated text).
-    const extra = msg?.type === 'review' && Array.isArray(msg.points) ? { kind: 'review', points: msg.points } : {};
+    // For the review, also pass the structured points AND the card labels in the BOT's language (s) — the
+    // rich surfaces render these instead of their app-locale strings, so the cards match the bot regardless
+    // of the participant's device locale (doorgeefluik: the bot drives its surface's language).
+    const s = this.#strings;
+    const extra = msg?.type === 'review' && Array.isArray(msg.points)
+      ? { kind: 'review', points: msg.points, labels: {
+          send_one: s.reviewSend, send_all: s.consentAll, send_none: s.cancel,
+          original: s.originalLabel, edited: s.editedTag, save_edit: s.reviewSave, cancel_edit: s.reviewCancelEdit,
+        } }
+      : {};
     await this.#bridge.sendReply({ chatId: this.#chatId, replyTo: this.#replyTo, text, buttons, ...extra });
   }
 }
