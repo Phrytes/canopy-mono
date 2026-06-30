@@ -56,11 +56,22 @@ export class CircleItemStore {
    * Create or replace a typed item. Requires `item.type` (validated against the registry when one is
    * injected); assigns a ULID `id` when absent. Returns the stored item (with its `id`).
    */
-  async put(item) {
+  async put(item, { by, now } = {}) {
     if (!item || typeof item !== 'object') throw new Error('CircleItemStore.put: an item object is required');
     if (typeof item.type !== 'string' || !item.type) throw new Error('CircleItemStore.put: item.type is required');
     const id = (typeof item.id === 'string' && item.id) ? item.id : ulid();
-    const stored = { ...item, id };
+    // Stamp the base metadata (BASE_REQUIRED: type·id·createdAt·createdBy) so every item is well-formed +
+    // validates against strict canonical schemas. createdAt/createdBy are PRESERVED on replace; updatedAt is
+    // always the write time. `by` (the actor) is injectable; `now` (an ISO-string clock) for deterministic tests.
+    const ts = (typeof now === 'function' ? now() : now) ?? new Date().toISOString();
+    const stored = {
+      ...item,
+      id,
+      createdAt: item.createdAt ?? ts,
+      createdBy: item.createdBy ?? by ?? 'unknown',
+      updatedAt: ts,
+      updatedBy: by ?? item.createdBy ?? 'unknown',
+    };
     if (this.#validate) {
       const res = this.#validate(stored);
       if (res && res.ok === false) {
