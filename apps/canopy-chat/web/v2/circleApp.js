@@ -169,6 +169,11 @@ import {
 } from '../../src/v2/userScreens.js';
 import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
+import { makeCircleLists } from './circleLists.js';        // cluster K · K2 — the composable lists feature
+import { renderContainerCard } from './containerCard.js';  // cluster K · K2 — the nested container card
+
+// One per-circle lists service for the app (v0: in-memory; a persistent/sealed DataSource is a follow-up).
+const circleLists = makeCircleLists();
 import { renderCircleScreen } from './circleScreen.js';
 import { renderRecipeEditor } from './circleRecipeEditor.js';
 // ε.6 — multi-offer catch-up chooser modal (opt-in via
@@ -2098,6 +2103,99 @@ async function showMnemonicReveal() {
   document.body.appendChild(overlay);
 }
 
+// cluster K · K2 — the composable LISTS panel: a circle's `list` containers + their `list-item` children,
+// rendered nested via projectContainer→renderContainerCard. "+ add" creates a contained child (addChildTo);
+// row-actions complete/remove. Self-contained (its own per-circle store) — doesn't touch the kring dispatch.
+function openListsPanel(circleId) {
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-screen-panel';
+  const card = document.createElement('div');
+  card.className = 'cc-screen-panel__card';
+  const head = document.createElement('div');
+  head.className = 'cc-screen-panel__head';
+  const title = document.createElement('h3');
+  title.textContent = t('circle.lists.title');
+  const close = document.createElement('button');
+  close.type = 'button'; close.className = 'cc-screen-panel__close'; close.textContent = '✕';
+  close.addEventListener('click', () => { try { overlay.remove(); } catch { /* */ } });
+  head.append(title, close); card.appendChild(head);
+  const body = document.createElement('div');
+  body.className = 'cc-lists-panel';
+  card.appendChild(body);
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  let openListId = null;     // null = the lists index; an id = that list's container card
+  let pendingAddTo = null;   // when set, an inline add-input is shown for this container node
+
+  async function draw() {
+    body.replaceChildren();
+    if (openListId) {
+      const back = document.createElement('button');
+      back.type = 'button'; back.className = 'cc-lists-panel__back'; back.textContent = `← ${t('circle.lists.title')}`;
+      back.addEventListener('click', () => { openListId = null; pendingAddTo = null; draw(); });
+      body.appendChild(back);
+      const tree = await circleLists.tree(circleId, openListId);
+      if (tree) {
+        body.appendChild(renderContainerCard(tree, {
+          t,
+          onAdd: (node) => { pendingAddTo = node.id; draw(); },   // reveal an inline add-input (no browser prompt)
+          onRowAction: async (op, node) => {
+            if (op === 'markComplete') await circleLists.markDone(circleId, node.id);
+            else if (op === 'removeItem') await circleLists.remove(circleId, node.id);
+            draw();
+          },
+        }));
+      }
+      if (pendingAddTo) {
+        const addForm = document.createElement('form');
+        addForm.className = 'cc-lists-panel__add-form';
+        const addInput = document.createElement('input');
+        addInput.type = 'text'; addInput.className = 'cc-lists-panel__add-input'; addInput.placeholder = t('circle.lists.add_prompt');
+        const addSubmit = document.createElement('button');
+        addSubmit.type = 'submit'; addSubmit.className = 'cc-lists-panel__create'; addSubmit.textContent = t('circle.lists.create');
+        addForm.append(addInput, addSubmit);
+        addForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const v = addInput.value.trim(); const target = pendingAddTo; pendingAddTo = null;
+          if (v && target) await circleLists.addItem(circleId, target, v);
+          draw();
+        });
+        body.appendChild(addForm);
+        setTimeout(() => { try { addInput.focus(); } catch { /* */ } }, 0);
+      }
+      return;
+    }
+    const lists = await circleLists.listLists(circleId);
+    if (!lists.length) {
+      const empty = document.createElement('div');
+      empty.className = 'cc-lists-panel__empty'; empty.textContent = t('circle.lists.empty');
+      body.appendChild(empty);
+    }
+    for (const l of lists) {
+      const row = document.createElement('button');
+      row.type = 'button'; row.className = 'cc-lists-panel__list'; row.dataset.listId = l.id; row.textContent = l.text;
+      row.addEventListener('click', () => { openListId = l.id; draw(); });
+      body.appendChild(row);
+    }
+    const form = document.createElement('form');
+    form.className = 'cc-lists-panel__new';
+    const input = document.createElement('input');
+    input.type = 'text'; input.className = 'cc-lists-panel__new-input'; input.placeholder = t('circle.lists.new');
+    const create = document.createElement('button');
+    create.type = 'submit'; create.className = 'cc-lists-panel__create'; create.textContent = t('circle.lists.create');
+    form.append(input, create);
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const v = input.value.trim();
+      if (v) { await circleLists.createList(circleId, v); input.value = ''; draw(); }
+    });
+    body.appendChild(form);
+  }
+  draw();
+}
+
 // S6.B — open a dedicated screen (tasks / agenda) as a dismissable panel, the
 // chat-triggered "overview" projection. Reuses the Schermen block materializer +
 // renderer (one block, scope:'all'), scoped to the active circle.
@@ -2258,6 +2356,8 @@ function showKring(id, circle, policy) {
   const more = {
     invite:   () => showCircleInvite(id),
     settings: () => showSettings(id),
+    lists:    () => openListsPanel(id),   // K2 — the composable lists/container UI
+
     mine:     () => showOverride(id),
     advisor:  () => showAdvisor(id),
     skills:   () => showSkills(id),

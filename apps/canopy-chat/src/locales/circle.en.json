@@ -1815,6 +1815,13 @@
       "doc": "K2 container card — the affordance to add a child item to a container (list/offer)."
     }
   },
+  "lists": {
+    "title":      { "text": "Lists",                              "doc": "K2 lists panel title + more-menu entry." },
+    "new":        { "text": "New list name…",                     "doc": "K2 lists panel — new-list input placeholder." },
+    "create":     { "text": "Create",                             "doc": "K2 lists panel — create-list button." },
+    "empty":      { "text": "No lists yet — create one below.",   "doc": "K2 lists panel — empty state." },
+    "add_prompt": { "text": "Add an item:",                       "doc": "K2 lists panel — prompt when adding a child to a list." }
+  },
   "clarify": {
     "which": {
       "text": "Which “{{query}}” did you mean?",

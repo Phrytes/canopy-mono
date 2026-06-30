@@ -720,6 +720,8 @@ const MORE_ITEMS = [
   // OBJ-2 — invite someone to this circle (membership QR). First so it's easy to find.
   { key: 'invite',   labelKey: 'circle.invite.menu' },
   { key: 'settings', labelKey: 'circle.settings.title' },
+  { key: 'lists',    labelKey: 'circle.lists.title' },   // K2 — composable lists/container UI
+
   { key: 'mine',     labelKey: 'circle.override.title' },
   { key: 'viewAs',   labelKey: 'circle.viewAs.title' },
   { key: 'advisor',  labelKey: 'circle.advisor.title' },
