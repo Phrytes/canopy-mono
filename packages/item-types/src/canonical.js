@@ -18,6 +18,7 @@ import { REVEAL_REQUEST_SCHEMA }    from './types/reveal-request.js';
 import { NEIGHBOURHOOD_JOB_SCHEMA } from './types/neighbourhood-job.js';
 import { VIEW_SCHEMA }              from './types/view.js';
 import { CIRCLE_SCHEMA }            from './types/circle.js';
+import { SHARED_REF_SCHEMA }        from './types/shared-ref.js';
 
 /**
  * Map of canonical name → schema. Useful for `Object.entries(...)`
@@ -43,6 +44,8 @@ export const CANONICAL_TYPES = Object.freeze({
   // SP-5 V0 additions (2026-05-20):
   'view':               VIEW_SCHEMA,
   'circle':             CIRCLE_SCHEMA,
+  // K2 (2026-07-01): cross-circle per-item share reference.
+  'shared-ref':         SHARED_REF_SCHEMA,
 });
 
 /**

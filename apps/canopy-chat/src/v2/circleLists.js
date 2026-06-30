@@ -73,7 +73,9 @@ export function makeCircleLists({ dataSource, manifests } = {}) {
       const container = await store.get(containerId);
       if (!container) return null;
       const r = resolveAddInContainer({ container, acceptsFor: policy.acceptsFor, body: hint ? `${hint} ${text}` : text });
-      if (!r || r.ambiguous) return null;   // ambiguous → the shell should pick a type (a follow-up); lists has a default
+      if (!r) return null;                                  // container accepts nothing
+      if (r.ambiguous) return { ambiguous: r.ambiguous };  // ≥2 accepted types, no default → the shell shows a type
+                                                           // picker, then re-calls addItem(…, { hint: <chosen type> })
       const childText = (r.body && r.body.trim()) ? r.body.trim() : text;
       return addChildTo(store, containerId, { type: r.type, text: childText, completedAt: null, createdBy: by });
     },

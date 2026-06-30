@@ -20,6 +20,7 @@ export {                                                 // cluster K · K2 — 
 export { projectContainer } from './projectContainer.js';   // cluster K · K2 — recursive child-render projector
 export { wireStoreMirror } from './mirrorSync.js';          // cluster L3 — attach a peer mirror to a store (no-pod sync publish)
 export { wireCircleStoreInbound } from './circleStoreInbound.js';  // cluster L3 — ingest peer envelopes into a store (inbound)
+export { shareIntoAudience, resolveSharedRef, listShared } from './shareIntoAudience.js';  // cluster K2 — cross-circle share
 export {
   ItemNotFoundError,
   PermissionDeniedError,

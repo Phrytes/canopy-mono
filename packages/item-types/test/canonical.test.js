@@ -37,7 +37,7 @@ function baseItem(type, extra = {}) {
 }
 
 describe('Canonical types — registration via default registry', () => {
-  it('the default registry has all 13 canonical types', () => {
+  it('the default registry has all 14 canonical types', () => {
     expect(list().sort()).toEqual([
       'announcement',
       'calendar-event',
@@ -50,6 +50,7 @@ describe('Canonical types — registration via default registry', () => {
       'offer',
       'request',
       'reveal-request',
+      'shared-ref',
       'task',
       'view',
     ]);
@@ -66,11 +67,11 @@ describe('Canonical types — registration via default registry', () => {
   it('registerCanonicalTypes works on a fresh registry too', () => {
     const r = createRegistry();
     registerCanonicalTypes(r);
-    expect(r.list()).toHaveLength(13);
+    expect(r.list()).toHaveLength(14);
   });
 
   it('CANONICAL_TYPES exports the schema map', () => {
-    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(13);
+    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(14);
     expect(CANONICAL_TYPES.task).toBeTruthy();
     expect(CANONICAL_TYPES.note).toBeTruthy();
   });
@@ -93,6 +94,8 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     // SP-5 V0 additions (2026-05-20):
     'view':              { title:       'Open tasks', itemType: 'task' },
     'circle':            { name:        'Gardening crew' },
+    // K2 (2026-07-01): cross-circle share reference.
+    'shared-ref':        { sourceCircle: 'crew-a', sourceId: 'dec:item/task/abc' },
   };
 
   for (const [name, extra] of Object.entries(MINIMAL)) {
