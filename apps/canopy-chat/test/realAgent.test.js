@@ -351,4 +351,12 @@ describe('createRealHouseholdAgent — L3 cutover (householdViaCircleStore, addi
     const a = await createRealHouseholdAgent();
     expect(await a.callSkill('household', 'listOpen', {})).toBeTruthy();
   });
+
+  it('flag ON: a write PUBLISHES to the per-circle peer mirror (no-pod sync, publish side)', async () => {
+    const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
+    const spy = vi.spyOn(a.householdSync.mirror, 'publishItem');   // the circle 'household' mirror
+    await a.callSkill('household', 'addItem', { type: 'shopping', text: 'milk' });
+    expect(spy).toHaveBeenCalled();                                // the CircleItemStore write fanned out
+    expect(spy.mock.calls[0][0]?.text).toBe('milk');              // …with the stored item
+  });
 });
