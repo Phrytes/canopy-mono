@@ -79,7 +79,7 @@ export class CircleItemStore {
    * Create or replace a typed item. Requires `item.type` (validated against the registry when one is
    * injected); assigns a ULID `id` when absent. Returns the stored item (with its `id`).
    */
-  async put(item, { by, now } = {}) {
+  async put(item, { by, now, sync = true } = {}) {
     if (!item || typeof item !== 'object') throw new Error('CircleItemStore.put: an item object is required');
     if (typeof item.type !== 'string' || !item.type) throw new Error('CircleItemStore.put: item.type is required');
     const id = (typeof item.id === 'string' && item.id) ? item.id : ulid();
@@ -103,7 +103,9 @@ export class CircleItemStore {
       }
     }
     await this.#source.write(this.#uri(id), JSON.stringify(stored));
-    this.#emitWrite(stored);   // publish-on-write fan-out (no-op when no sync hook is registered)
+    // `sync:false` suppresses the fan-out — used for INBOUND writes (a peer's item we just received) so a sync
+    // ingest never re-publishes the same item back to the mesh (the echo loop). Local writes default sync:true.
+    if (sync !== false) this.#emitWrite(stored);
     return stored;
   }
 
@@ -115,9 +117,9 @@ export class CircleItemStore {
   }
 
   /** Delete one item by id (no-op if absent, mirroring DataSource.delete). */
-  async delete(id) {
+  async delete(id, { sync = true } = {}) {
     if (typeof this.#source.delete === 'function') await this.#source.delete(this.#uri(id));
-    this.#emitRemove(id);   // publish-on-delete fan-out (no-op when no sync hook is registered)
+    if (sync !== false) this.#emitRemove(id);   // `sync:false` = inbound delete (don't re-publish the removal)
   }
 
   /** Every item in the circle (all types). */

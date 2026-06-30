@@ -147,10 +147,12 @@ export async function createRealHouseholdAgent(opts = {}) {
   // persistDb was passed; in-memory no-pod otherwise). Lets the cutover be device-verified before retiring the
   // agent. Dynamic import so flag-off boots never load the item-store/registry substrate.
   let householdService = null;
-  let wireStoreMirror = null;   // L3 no-pod-sync: attach the circle store to the peer mirror (publish-on-write)
+  let wireStoreMirror = null;          // L3 no-pod-sync: attach the circle store to the peer mirror (publish-on-write)
+  let wireCircleStoreInbound = null;   // …and ingest peer envelopes back into the circle store (inbound)
+  const householdSyncWired = new Set();   // circleIds whose store↔mirror sync (publish + inbound) is wired (once each)
   if (opts.householdViaCircleStore) {
     const { createHouseholdService } = await import('../../v2/householdApp.js');
-    ({ wireStoreMirror } = await import('@canopy/item-store'));
+    ({ wireStoreMirror, wireCircleStoreInbound } = await import('@canopy/item-store'));
     householdService = createHouseholdService({ dataSource: householdDataSource });
   }
   // Legacy/default store — the mirror, seeding, and standalone helpers stay on this bucket for now
@@ -882,14 +884,22 @@ export async function createRealHouseholdAgent(opts = {}) {
       // L3 cutover (flag-gated): route to the dissolved functions over the per-circle CircleItemStore.
       if (householdService) {
         const circleId = resolveHouseholdCircleId(args);
-        // L3 no-pod-sync (PUBLISH side): wire the per-circle CircleItemStore to the SAME peer mirror the legacy
-        // household store uses, so flag-on writes fan out to the circle's other devices (publish-on-write) —
-        // independent of the legacy household store. Idempotent (re-sets the hook) + best-effort (the op runs
-        // regardless). Inbound (peer → this circle store) is the next step. Wired before the op = no first-write race.
-        if (wireStoreMirror) {
+        // L3 no-pod-sync: wire the per-circle CircleItemStore to the SAME peer mirror the legacy household store
+        // uses — BIDIRECTIONAL, once per circle (inbound `subscribe` accumulates, so guard with the Set):
+        //   PUBLISH  — local writes fan out to the circle's other devices (`wireStoreMirror` → publish-on-write).
+        //   INBOUND  — peer envelopes ingest back into THIS circle store (`wireCircleStoreInbound`, id-preserving,
+        //              sync:false → no echo). Same kind/prefix the household mirror publishes. Best-effort.
+        if (wireStoreMirror && wireCircleStoreInbound && !householdSyncWired.has(circleId)) {
           try {
             const mirror = await ensureHouseholdMirror(circleId);
-            wireStoreMirror(householdService.stores.getStore(circleId), mirror);
+            const circleStore = householdService.stores.getStore(circleId);
+            wireStoreMirror(circleStore, mirror);
+            wireCircleStoreInbound({
+              notifyEnvelope: householdSubstrate.notifyEnvelope,
+              store:          circleStore,
+              prefix:         `/household/circles/${circleId}/items/`,
+            });
+            householdSyncWired.add(circleId);
           } catch { /* sync is best-effort; the op still runs locally */ }
         }
         const result = await householdService.callSkill(opId, args ?? {}, {
