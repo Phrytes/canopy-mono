@@ -58,6 +58,8 @@
     "@canopy/app-manifest": "workspace:*",
     "@canopy/chat-nav": "workspace:*",
     "@canopy/core": "workspace:*",
+    "@canopy/item-store": "workspace:*",
+    "@canopy/item-types": "workspace:*",
     "@canopy/llm-client": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
     "@canopy/pod-client": "workspace:*",
