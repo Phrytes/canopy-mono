@@ -17,6 +17,7 @@ export {                                                 // cluster K · K2/L2 �
 export {                                                 // cluster K · K2 — composable ops engine + surfacing
   addChildTo, resolveContainerAdd, buildAcceptsPolicy, resolveAddInContainer,
 } from './containerOps.js';
+export { projectContainer } from './projectContainer.js';   // cluster K · K2 — recursive child-render projector
 export {
   ItemNotFoundError,
   PermissionDeniedError,
