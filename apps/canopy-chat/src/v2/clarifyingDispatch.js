@@ -31,11 +31,11 @@ export function createClarifyingDispatch({ catalog, lookup, dispatchReady, ask, 
     const r = await clarifyCommandTargets(command, { catalog: getCatalog(), lookup, scope });
     if (r.kind === 'ready') {
       pending.delete(keyOf(scope));
-      await dispatchReady({ opId: r.opId, args: r.args }, scope);
+      await dispatchReady({ opId: r.opId, args: r.args, appOrigin: r.appOrigin }, scope);
       return r;
     }
     if (r.kind === 'clarify') {
-      pending.set(keyOf(scope), { opId: r.opId, args: r.args, param: r.param });
+      pending.set(keyOf(scope), { opId: r.opId, args: r.args, param: r.param, appOrigin: r.appOrigin });
       await ask({ opId: r.opId, param: r.param, query: r.query, candidates: r.candidates }, scope);
       return r;
     }
@@ -49,7 +49,7 @@ export function createClarifyingDispatch({ catalog, lookup, dispatchReady, ask, 
     const p = pending.get(keyOf(scope));
     if (!p) return { kind: 'no-pending' };
     pending.delete(keyOf(scope));
-    return run({ opId: p.opId, args: { ...p.args, [p.param]: candidateId } }, scope);
+    return run({ opId: p.opId, args: { ...p.args, [p.param]: candidateId }, appOrigin: p.appOrigin }, scope);
   }
 
   return { run, pick, hasPending: (scope) => pending.has(keyOf(scope)) };

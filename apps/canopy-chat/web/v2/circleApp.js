@@ -928,9 +928,9 @@ function buildCircleBot(agent) {
   const lookup = makeCircleLookup({ getBase: () => [], appCallSkill: rawCallSkill, scopeId: () => getActiveCircle() });
 
   // Run a fully-resolved {opId,args} against the catalog, scoped to the active circle, then post a reply.
-  async function dispatchReady({ opId, args }) {
+  async function dispatchReady({ opId, args, appOrigin }) {
     let route;
-    try { route = resolveDispatch({ kind: 'slash', opId, args: args || {}, command: '(bot)', body: '' }, catalog); }
+    try { route = resolveDispatch({ kind: 'slash', opId, args: args || {}, appOrigin, command: '(bot)', body: '' }, catalog); }
     catch { _kringRender?.botBubble(t('circle.bot.unknown')); return; }
     if (route.kind === 'needsForm') {
       // Conversational elicitation (chat-native, parity with mobile): a single missing field → ask for

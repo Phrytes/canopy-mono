@@ -70,7 +70,9 @@ export function createCircleDispatch({ catalog, policy, userDefault, llmProvider
         if (gate && typeof gate.evaluate === 'function') {
           const g = await gate.evaluate(stripped, ctx);
           if (g.via === 'rule' && g.command?.opId) {
-            await dispatch({ opId: g.command.opId, args: g.command.args || {} }, ctx);
+            // Carry the gate rule's owning app (K0 de-shadow) so the resolver routes a colliding bare
+            // op-id to the gate's app, not the merge's first-declarer.
+            await dispatch({ opId: g.command.opId, args: g.command.args || {}, appOrigin: g.command.appOrigin }, ctx);
             return { via: 'rule', cmd: g.command };
           }
           if (g.via === 'skip') return { via: await sink(trimmed, ctx) };
