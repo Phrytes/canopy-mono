@@ -14,6 +14,7 @@ export { createCircleStores } from './circleStores.js';  // cluster L · L1 — 
 export {                                                 // cluster K · K2/L2 — containment (ref + back-ref) over a store
   contain, uncontain, listChildren, childIdsOf, parentsOf, deleteContainer, listLoose,
 } from './containment.js';
+export { addChildTo, resolveContainerAdd } from './containerOps.js';   // cluster K · K2 — composable ops engine
 export {
   ItemNotFoundError,
   PermissionDeniedError,
