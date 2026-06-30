@@ -341,12 +341,10 @@ describe('createRealHouseholdAgent — L3 cutover (householdViaCircleStore, addi
     const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
     await a.callSkill('household', 'addItem', { type: 'shopping', text: 'milk' });
     const open = await a.callSkill('household', 'listOpen', { type: 'shopping' });
-    expect(open.map((i) => i.text)).toContain('milk');                 // served from the circle store
+    expect(open.items.map((i) => i.label)).toContain('milk');          // adapted render shape {items:[{label}]}
     const t = await a.callSkill('household', 'addTask', { text: 'fix fence' });
     expect(t.type).toBe('task');
-    expect((await a.callSkill('household', 'listTasks', {})).map((i) => i.text)).toContain('fix fence');
-    // NB the dissolved fns return clean shapes (listOpen → item[]); the legacy render expects {items:[…]}, so
-    // a thin render adapter is the next refinement once the flag-on path is device-verified (see REMAINING-WORK L3).
+    expect((await a.callSkill('household', 'listTasks', {})).items.map((i) => i.label)).toContain('fix fence');
   });
 
   it('flag OFF (default): still the legacy agent (unchanged — the other tests assert its exact shape)', async () => {

@@ -879,10 +879,17 @@ export async function createRealHouseholdAgent(opts = {}) {
     if (appOrigin === 'household') {
       // L3 cutover (flag-gated): route to the dissolved functions over the per-circle CircleItemStore.
       if (householdService) {
-        return householdService.callSkill(opId, args ?? {}, {
+        const result = await householdService.callSkill(opId, args ?? {}, {
           circleId: resolveHouseholdCircleId(args),
           by:       chatId?.pubKey,
         });
+        // Render-shape adapter: the dissolved list ops return a bare item[]; the household render expects
+        // `{items:[{…,label}]}` (label = the item's text). Mutating ops return the item / {ok} (text present
+        // → renders as-is). More adapters land as the on-device flag-on pass surfaces them.
+        if (opId === 'listOpen' || opId === 'listTasks') {
+          return { items: (Array.isArray(result) ? result : []).map((i) => ({ ...i, label: i.text ?? i.label })) };
+        }
+        return result;
       }
       const parts = [DataPart(args ?? {})];
       const result = await chatAgent.invoke(hostAgent.address, opId, parts);
