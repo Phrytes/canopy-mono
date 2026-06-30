@@ -18,6 +18,7 @@ export {                                                 // cluster K · K2 — 
   addChildTo, resolveContainerAdd, buildAcceptsPolicy, resolveAddInContainer,
 } from './containerOps.js';
 export { projectContainer } from './projectContainer.js';   // cluster K · K2 — recursive child-render projector
+export { wireStoreMirror } from './mirrorSync.js';          // cluster L3 — attach a peer mirror to a store (no-pod sync)
 export {
   ItemNotFoundError,
   PermissionDeniedError,

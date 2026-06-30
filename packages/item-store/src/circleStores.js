@@ -14,11 +14,14 @@
  * @param {{ validate?: (item:object)=>{ok:boolean,errors?:Array} }} [args.registry]  @canopy/item-types registry
  *        (injected; validates on write). Same instance for every circle so third-party `registerType`s apply uniformly.
  * @param {string} [args.rootPrefix='mem://circles/']  logical root; PodRouting maps it to the physical pod per tier.
+ * @param {(circleId:string, store:import('./CircleItemStore.js').CircleItemStore)=>void} [args.onStore]  called ONCE
+ *        when a circle's store is first created — the seam to attach a per-circle peer mirror (L3 · no-pod-sync-off-
+ *        household: `onStore: (id, s) => wireStoreMirror(s, mirrorFor(id))`). Lazy stores mean there's no other moment.
  * @returns {{ getStore:(circleId:string)=>import('./CircleItemStore.js').CircleItemStore, has:(circleId:string)=>boolean, rootFor:(circleId:string)=>string }}
  */
 import { CircleItemStore } from './CircleItemStore.js';
 
-export function createCircleStores({ dataSource, registry, rootPrefix = 'mem://circles/' } = {}) {
+export function createCircleStores({ dataSource, registry, rootPrefix = 'mem://circles/', onStore } = {}) {
   if (!dataSource || typeof dataSource.read !== 'function') {
     throw new Error('createCircleStores: a shared core.DataSource (read/write/delete/list) is required');
   }
@@ -35,6 +38,7 @@ export function createCircleStores({ dataSource, registry, rootPrefix = 'mem://c
       if (!store) {
         store = new CircleItemStore({ dataSource, rootContainer: rootFor(circleId), registry });
         stores.set(circleId, store);
+        if (typeof onStore === 'function') { try { onStore(circleId, store); } catch { /* best-effort wiring */ } }
       }
       return store;
     },

@@ -29,6 +29,7 @@ export class CircleItemStore {
   /** @type {import('@canopy/core').DataSource} */ #source;
   /** @type {string} */                            #root;
   /** @type {((item:object)=>{ok:boolean,errors?:Array})|null} */ #validate;
+  /** @type {{publishItem?:(item:object)=>any, publishItemRemoved?:(id:string)=>any}|null} */ #syncHook = null;
 
   /**
    * @param {object} args
@@ -51,6 +52,28 @@ export class CircleItemStore {
   }
 
   #uri(id) { return `${this.#root}${ITEMS_DIR}/${id}.json`; }
+
+  /**
+   * Register a SYNC HOOK — fired publish-on-write (cluster L3 / no-pod-sync-off-household). On every `put` the
+   * stored item is handed to `publishItem`; on every `delete`, the id to `publishItemRemoved`. This is the seam
+   * the household `InMemoryStore` had (`setSyncHook`) that let a peer mirror fan-out writes — now generic on the
+   * per-circle store, so the no-pod cross-device sync can ride the CircleItemStore independent of the household
+   * agent. Best-effort + non-blocking: a hook throw/rejection never fails the write. Pass `null` to detach.
+   * @param {{publishItem?:(item:object)=>any, publishItemRemoved?:(id:string)=>any}|null} hook
+   */
+  setSyncHook(hook) { this.#syncHook = (hook && typeof hook === 'object') ? hook : null; }
+
+  #emitWrite(item) {
+    const fn = this.#syncHook && this.#syncHook.publishItem;
+    if (typeof fn !== 'function') return;
+    try { const r = fn(item); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch { /* best-effort */ }
+  }
+
+  #emitRemove(id) {
+    const fn = this.#syncHook && this.#syncHook.publishItemRemoved;
+    if (typeof fn !== 'function') return;
+    try { const r = fn(id); if (r && typeof r.catch === 'function') r.catch(() => {}); } catch { /* best-effort */ }
+  }
 
   /**
    * Create or replace a typed item. Requires `item.type` (validated against the registry when one is
@@ -80,6 +103,7 @@ export class CircleItemStore {
       }
     }
     await this.#source.write(this.#uri(id), JSON.stringify(stored));
+    this.#emitWrite(stored);   // publish-on-write fan-out (no-op when no sync hook is registered)
     return stored;
   }
 
@@ -93,6 +117,7 @@ export class CircleItemStore {
   /** Delete one item by id (no-op if absent, mirroring DataSource.delete). */
   async delete(id) {
     if (typeof this.#source.delete === 'function') await this.#source.delete(this.#uri(id));
+    this.#emitRemove(id);   // publish-on-delete fan-out (no-op when no sync hook is registered)
   }
 
   /** Every item in the circle (all types). */
