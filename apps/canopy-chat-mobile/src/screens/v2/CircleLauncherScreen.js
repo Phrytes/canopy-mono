@@ -142,6 +142,7 @@ import ContactThreadScreen from './ContactThreadScreen.js';
 import FeedbackThreadScreen from './FeedbackThreadScreen.js';
 import { createFeedbackBotStore } from '../../../../canopy-chat/src/v2/feedbackBots.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
+import CircleListsScreen from './CircleListsScreen.js';   // cluster K · K2 — composable lists (web≡mobile)
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
 import CircleMyDataScreen from './CircleMyDataScreen.js';
@@ -857,7 +858,7 @@ export default function CircleLauncherScreen({
       if (selected && (
         view === 'settings' || view === 'override' || view === 'viewas'
         || view === 'advisor' || view === 'skills' || view === 'folio'
-        || view === 'rules'
+        || view === 'rules' || view === 'lists'
       )) { setView('detail'); return true; }
       // Rules consent preview → back to rules editor.
       if (selected && view === 'rulesconsent') { setView('rules'); return true; }
@@ -1039,6 +1040,9 @@ export default function CircleLauncherScreen({
         onBack={() => setView('detail')}
       />
     );
+  }
+  if (selected && view === 'lists') {   // cluster K · K2 — the composable lists/container UI (web≡mobile)
+    return <CircleListsScreen circleId={selected.id} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'settings') {
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The
@@ -1286,6 +1290,7 @@ export default function CircleLauncherScreen({
           setRecipeEditingId(null);
           setView('recipes');
         }}
+        onLists={() => setView('lists')}
       />
     );
   }
@@ -1597,7 +1602,7 @@ function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
   recipeStore = null, onStoopEvent,
-  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin,
+  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops canopy-chat's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
@@ -2219,6 +2224,9 @@ function CircleDetail({
         <View style={styles.moreMenu} testID="circle-detail-more-menu">
           <Pressable onPress={() => { setMenuOpen(false); onSettings?.(); }} style={styles.moreItem} testID="circle-detail-settings">
             <Text style={styles.moreItemText}>{t('circle.settings.title')}</Text>
+          </Pressable>
+          <Pressable onPress={() => { setMenuOpen(false); onLists?.(); }} style={styles.moreItem} testID="circle-detail-lists">
+            <Text style={styles.moreItemText}>{t('circle.lists.title')}</Text>
           </Pressable>
           <Pressable onPress={() => { setMenuOpen(false); onMine?.(); }} style={styles.moreItem} testID="circle-detail-mine">
             <Text style={styles.moreItemText}>{t('circle.override.title')}</Text>

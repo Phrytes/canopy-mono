@@ -1813,6 +1813,10 @@
     "add": {
       "text": "+ toevoegen",
       "doc": "K2 container card — the affordance to add a child item to a container (list/offer)."
+    },
+    "action": {
+      "markComplete": { "text": "Klaar",     "doc": "K2 container card — complete a list-item." },
+      "removeItem":   { "text": "Verwijder", "doc": "K2 container card — remove a list-item." }
     }
   },
   "lists": {
