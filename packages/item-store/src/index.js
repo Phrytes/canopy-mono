@@ -8,6 +8,7 @@
  */
 
 export { ItemStore, computeStatus } from './ItemStore.js';
+export { CircleItemStore } from './CircleItemStore.js';   // cluster L · L1 — per-circle, type-indexed generic store
 export {
   ItemNotFoundError,
   PermissionDeniedError,
