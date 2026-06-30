@@ -11,6 +11,9 @@ export { ItemStore, computeStatus } from './ItemStore.js';
 export { CircleItemStore } from './CircleItemStore.js';   // cluster L · L1 — per-circle, type-indexed generic store
 export { memoryDataSource } from './memoryDataSource.js'; // cluster L · L1 — Map-backed DataSource (no-pod / tests)
 export { createCircleStores } from './circleStores.js';  // cluster L · L1 — per-circle store registry (web≡mobile)
+export {                                                 // cluster K · K2/L2 — containment (ref + back-ref) over a store
+  contain, uncontain, listChildren, childIdsOf, parentsOf, deleteContainer, listLoose,
+} from './containment.js';
 export {
   ItemNotFoundError,
   PermissionDeniedError,
