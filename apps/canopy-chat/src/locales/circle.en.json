@@ -1809,6 +1809,12 @@
       "doc": "Circle bot reply to a bulk '/done all' when no listing was shown yet."
     }
   },
+  "container": {
+    "add": {
+      "text": "+ add",
+      "doc": "K2 container card — the affordance to add a child item to a container (list/offer)."
+    }
+  },
   "clarify": {
     "which": {
       "text": "Which “{{query}}” did you mean?",
