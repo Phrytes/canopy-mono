@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS_TEMPLATE = Object.freeze({
         { value: 'tasks',    label: 'Tasks' },
         { value: 'calendar', label: 'Calendar' },
         { value: 'folio',    label: 'Files' },
-        { value: 'household', label: 'Household' },
+        { value: 'household', label: 'Lists' },   // K0: household = the simple-LISTS app (vs tasks = graphs)
       ],
       next: 'storage',
     },

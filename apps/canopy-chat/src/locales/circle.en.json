@@ -906,8 +906,8 @@
         "doc": "S6.C — app label. Key MUST match the DEFAULT_CIRCLE_ORIGINS origin 'tasks' (Part G merged tasks-v0 → 'tasks')."
       },
       "household": {
-        "text": "Household",
-        "doc": "S6.C — app label (household)."
+        "text": "Lists",
+        "doc": "S6.C — app label (household). K0: structure-forward name (household = simple LISTS, vs tasks = graphs)."
       },
       "calendar": {
         "text": "Calendar",

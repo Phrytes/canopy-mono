@@ -211,7 +211,7 @@ mockHouseholdManifest.operations.find((o) => o.id === 'listOpen')
   .surfaces.chat.brief = {
     summarySkill: 'briefSummary',
     order:        10,
-    label:        'Household',
+    label:        'Lists',   // K0: household = the simple-LISTS app (vs tasks = graphs)
   };
 
 // v0.7.5 — Q33 search decl on household's list op.
