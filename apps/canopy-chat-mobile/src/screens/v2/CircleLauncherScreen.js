@@ -1810,11 +1810,13 @@ function CircleDetail({
   // B (circle bot) — run a FULLY-RESOLVED command ({opId, args}) against the circle's catalog, scoped
   // to THIS circle, and post a one-line bot reply. Local-only (the command's substrate effect reaches
   // members on its own). Target resolution / ambiguity is handled upstream by the clarifying dispatch.
-  const runCircleCommandResolved = useCallback(async ({ opId, args }) => {
+  const runCircleCommandResolved = useCallback(async ({ opId, args, appOrigin }) => {
     if (!catalog) { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
     let dispatch;
     try {
-      dispatch = resolveDispatch({ kind: 'slash', opId, args: args || {}, command: '(bot)', body: '' }, catalog);
+      // K0 de-shadow: forward the app-origin hint so a colliding bare op-id (from the gate) routes to the
+      // gate's app, not the merge's first-declarer (web≡mobile parity with circleApp.dispatchReady).
+      dispatch = resolveDispatch({ kind: 'slash', opId, args: args || {}, appOrigin, command: '(bot)', body: '' }, catalog);
     } catch { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
     if (dispatch.kind === 'needsForm') {
       // Conversational elicitation (parity with web): single missing field → ask in the kring + capture
