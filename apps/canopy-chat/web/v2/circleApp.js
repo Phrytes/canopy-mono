@@ -707,8 +707,13 @@ function buildCircleBot(agent) {
   // Merged catalog (the LLM tool list + dispatch catalog) — mirrors main.js.
   const baseSources = [
     { manifest: canopyChatManifest },
-    { manifest: agent.manifest },
+    // tasks-v0 BEFORE the household agent: a circle's items are TASKS, so colliding bare op-ids
+    // (notably `addTask`, declared by both) must resolve to tasks-v0, not household chores — matching
+    // the circle GATE which already excludes household ("household shadowed by tasks", circleGate.js).
+    // Without this, "@assistant add X" landed in the household crew while the complete-resolver/lookup
+    // (tasks-v0) found nothing → "couldn't find X in this circle" on `done X` (#49).
     { manifest: mockTasksManifest },
+    { manifest: agent.manifest },
     { manifest: mockStoopManifest },
     { manifest: mockFolioManifest },
     { manifest: calendarManifest },
