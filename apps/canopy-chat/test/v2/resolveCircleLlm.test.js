@@ -44,9 +44,14 @@ describe('resolveCircleLlm — defensive', () => {
     expect(resolveCircleLlm({ circlePolicy: { llmTool: 42 }, providers })).toBeNull();
   });
 
-  it('chosen mode but provider not configured → null', () => {
-    expect(resolveCircleLlm({ circlePolicy: { llmTool: 'cloud' }, providers: { local } })).toBeNull();
-    expect(resolveCircleLlm({ circlePolicy: { llmTool: 'user' }, userDefault: { mode: 'cloud' }, providers: { local } })).toBeNull();
+  it('cloud asked but only local configured → privacy-safe fallback to local (31a32900)', () => {
+    expect(resolveCircleLlm({ circlePolicy: { llmTool: 'cloud' }, providers: { local } })).toBe(local);
+    expect(resolveCircleLlm({ circlePolicy: { llmTool: 'user' }, userDefault: { mode: 'cloud' }, providers: { local } })).toBe(local);
+  });
+
+  it('a truly unconfigured route → null (local asked but only cloud, or empty providers)', () => {
+    expect(resolveCircleLlm({ circlePolicy: { llmTool: 'local' }, providers: { cloud } })).toBeNull();
+    expect(resolveCircleLlm({ circlePolicy: { llmTool: 'cloud' }, providers: {} })).toBeNull();
   });
 
   it('no providers map → null', () => {

@@ -23,9 +23,10 @@ describe('selectLlmClient', () => {
     expect(selectLlmClient({ llmTool: 'cloud' }, { local: LOCAL, cloud: CLOUD })).toBe(CLOUD);
   });
 
-  it("returns null when the requested provider isn't configured", () => {
-    expect(selectLlmClient({ llmTool: 'local' }, {})).toBeNull();
-    expect(selectLlmClient({ llmTool: 'cloud' }, { local: LOCAL })).toBeNull();
+  it("an unconfigured provider → null, EXCEPT cloud downgrades to a more-private local (31a32900)", () => {
+    expect(selectLlmClient({ llmTool: 'local' }, {})).toBeNull();                 // local absent → null
+    expect(selectLlmClient({ llmTool: 'cloud' }, { local: LOCAL })).toBe(LOCAL);  // privacy-safe fallback (cloud→local)
+    expect(selectLlmClient({ llmTool: 'cloud' }, {})).toBeNull();                 // nothing configured at all → null
   });
 
   it('a missing / malformed policy fails closed (null)', () => {

@@ -9,7 +9,8 @@ function mkAgent({ members = [], selfAddr = 'me', skill } = {}) {
   return {
     added,
     peer: { address: selfAddr },
-    addHouseholdPeer: (a) => { added.push(a); },
+    // Peer ops are per-circle since a77371cd: addHouseholdPeer(circleId, pubKey). Capture the peer, not the circle.
+    addHouseholdPeer: (_circleId, addr) => { added.push(addr); },
     callSkill: skill ?? vi.fn(async (app, op) => (op === 'listGroupRoster' ? { members } : {})),
   };
 }

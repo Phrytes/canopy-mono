@@ -52,12 +52,15 @@ describe('makeResolvingCallSkill — catalog short-circuit (Perf #2)', () => {
     expect(spy.calls[0].origin).toBe('tasks');
   });
 
-  it('catalog with no matching origin → ZERO probes', async () => {
+  // An op UNKNOWN to the catalog falls back to probing every origin (9fe27799): the catalog gate is a perf
+  // HINT, not a hard filter — agent skills absent from the manifest must still resolve. The perf win lives in
+  // the KNOWN-op short-circuit above; circleSourcesGate.test.js covers the agent-skill fallback end-to-end.
+  it('catalog with an UNKNOWN op → falls back to probing every origin (gate is a hint, not a filter)', async () => {
     const spy = makeSpy();
     const catalog = { opsById: new Map() };   // op declared nowhere
     const call = makeResolvingCallSkill(spy.raw, DEFAULT_CIRCLE_ORIGINS, catalog);
     await call('aspirational-op', {});
-    expect(spy.calls).toHaveLength(0);
+    expect(spy.calls).toHaveLength(DEFAULT_CIRCLE_ORIGINS.length);
   });
 
   it('respects the prefixed-key form `<origin>/<opId>`', async () => {
