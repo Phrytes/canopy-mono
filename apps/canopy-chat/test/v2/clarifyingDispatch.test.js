@@ -24,7 +24,7 @@ describe('createClarifyingDispatch', () => {
   it('dispatches directly on a unique match (no question)', async () => {
     const { cd, dispatched, asked } = harness([{ id: 'T1', label: 'wash the dishes' }, { id: 'T2', label: 'bins' }]);
     await cd.run({ opId: 'markComplete', args: { target: 'dishes' } }, { id: 'circle-A' });
-    expect(dispatched).toEqual([{ opId: 'markComplete', args: { target: 'T1' } }]);
+    expect(dispatched).toEqual([{ opId: 'markComplete', args: { target: 'T1' }, appOrigin: null }]);  // K0 — dispatch carries appOrigin
     expect(asked).toEqual([]);
   });
 
@@ -38,7 +38,7 @@ describe('createClarifyingDispatch', () => {
     expect(cd.hasPending(scope)).toBe(true);
 
     await cd.pick('T3', scope);                        // user picks the second
-    expect(dispatched).toEqual([{ opId: 'markComplete', args: { target: 'T3' } }]);
+    expect(dispatched).toEqual([{ opId: 'markComplete', args: { target: 'T3' }, appOrigin: null }]);
     expect(cd.hasPending(scope)).toBe(false);
   });
 
@@ -48,7 +48,7 @@ describe('createClarifyingDispatch', () => {
     expect(cd.hasPending({ id: 'circle-A' })).toBe(true);
     await expect(cd.pick('A', { id: 'circle-B' })).resolves.toEqual({ kind: 'no-pending' });
     await cd.pick('A', { id: 'circle-A' });
-    expect(dispatched).toEqual([{ opId: 'markComplete', args: { target: 'A' } }]);
+    expect(dispatched).toEqual([{ opId: 'markComplete', args: { target: 'A' }, appOrigin: null }]);
   });
 
   it('calls askMissing when a required target is not found', async () => {

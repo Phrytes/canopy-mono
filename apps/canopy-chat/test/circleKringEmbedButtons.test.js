@@ -33,7 +33,7 @@ describe('renderCircleKring — S6.A inline embed buttons', () => {
     expect(btn.dataset.opId).toBe('claimTask');
     expect(btn.dataset.itemId).toBe('t1');
     btn.click();
-    expect(onEmbedButton).toHaveBeenCalledWith({ opId: 'claimTask', itemId: 't1' });
+    expect(onEmbedButton).toHaveBeenCalledWith(expect.objectContaining({ opId: 'claimTask', itemId: 't1' }));  // whole button passed (47c630c1)
   });
 
   it('S6.B — renders a screen button (opens a panel) + a tap fires onEmbedButton with {screen}', () => {
@@ -48,7 +48,7 @@ describe('renderCircleKring — S6.A inline embed buttons', () => {
     expect(btn.dataset.screen).toBe('tasks');
     expect(btn.dataset.opId).toBeUndefined();
     btn.click();
-    expect(onEmbedButton).toHaveBeenCalledWith({ opId: undefined, itemId: undefined, screen: 'tasks' });
+    expect(onEmbedButton).toHaveBeenCalledWith(expect.objectContaining({ screen: 'tasks' }));
   });
 
   it('scope badge — a kring-scoped bot reply shows "whole kring"; default/self shows "only you"', () => {

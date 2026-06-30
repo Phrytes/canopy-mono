@@ -14,7 +14,7 @@ describe('clarifyCommandTargets', () => {
   it('binds the id and returns ready on a UNIQUE match', async () => {
     const lookup = lookupOf([{ id: 'T1', label: 'wash the dishes' }, { id: 'T2', label: 'take out bins' }]);
     const r = await clarifyCommandTargets({ opId: 'markComplete', args: { target: 'dishes' } }, { catalog: CATALOG, lookup, scope: { id: 'circle-A' } });
-    expect(r).toEqual({ kind: 'ready', opId: 'markComplete', args: { target: 'T1' } });
+    expect(r).toEqual({ kind: 'ready', opId: 'markComplete', args: { target: 'T1' }, appOrigin: 'tasks' });  // K0 — carries appOrigin
     // app-qualified: the op's appOrigin is passed so the picker's listOp resolves on the RIGHT app.
     expect(lookup).toHaveBeenCalledWith('listOpen', 'dishes', { id: 'circle-A' }, 'tasks');
   });
@@ -32,18 +32,18 @@ describe('clarifyCommandTargets', () => {
   it('returns unresolved when a required id-param matches NOTHING', async () => {
     const lookup = lookupOf([{ id: 'T2', label: 'take out bins' }]);
     const r = await clarifyCommandTargets({ opId: 'markComplete', args: { target: 'laundry' } }, { catalog: CATALOG, lookup });
-    expect(r).toEqual({ kind: 'unresolved', opId: 'markComplete', args: { target: 'laundry' }, param: 'target', query: 'laundry' });
+    expect(r).toEqual({ kind: 'unresolved', opId: 'markComplete', args: { target: 'laundry' }, param: 'target', query: 'laundry', appOrigin: 'tasks' });
   });
 
   it('returns unresolved when a required id-param is missing entirely', async () => {
     const r = await clarifyCommandTargets({ opId: 'markComplete', args: {} }, { catalog: CATALOG, lookup: lookupOf([]) });
-    expect(r).toEqual({ kind: 'unresolved', opId: 'markComplete', args: {}, param: 'target', query: '' });
+    expect(r).toEqual({ kind: 'unresolved', opId: 'markComplete', args: {}, param: 'target', query: '', appOrigin: 'tasks' });
   });
 
   it('passes through commands with no id-like params (ready, no lookup)', async () => {
     const lookup = vi.fn();
     const r = await clarifyCommandTargets({ opId: 'addTask', args: { title: 'milk' } }, { catalog: CATALOG, lookup });
-    expect(r).toEqual({ kind: 'ready', opId: 'addTask', args: { title: 'milk' } });
+    expect(r).toEqual({ kind: 'ready', opId: 'addTask', args: { title: 'milk' }, appOrigin: 'tasks' });
     expect(lookup).not.toHaveBeenCalled();
   });
 
