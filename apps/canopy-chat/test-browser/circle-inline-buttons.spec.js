@@ -104,7 +104,7 @@ test('S6.C deep — scoping an app out of the circle (policy.apps) drops its com
   await page.locator('.circle-kring__more').click();
   await page.locator('.circle-kring__more-item[data-action="settings"]').click();
   await page.waitForTimeout(800);
-  const taskApp = page.locator('input[data-app="tasks-v0"]');
+  const taskApp = page.locator('input[data-app="tasks"]');
   await expect(taskApp).toBeVisible({ timeout: 5000 });
   await taskApp.uncheck();
   await page.locator('.circle-settings__save').click();
@@ -134,7 +134,7 @@ test('Theme B — the guided-setup chatbot walks the basics + pre-fills the sett
 
   await page.locator('.cc-guided__btn--primary').click();              // intro → apps
   // apps step (multiselect): pick ONLY Tasks, continue → narrows policy.apps
-  await page.locator('.cc-guided input[data-value="tasks-v0"]').check();
+  await page.locator('.cc-guided input[data-value="tasks"]').check();
   await page.locator('.cc-guided__btn--primary').click();
   await page.locator('.cc-guided__btn--option').first().click();       // storage (choice)
   await page.locator('.cc-guided__btn--option').first().click();       // AI (choice)
@@ -144,6 +144,6 @@ test('Theme B — the guided-setup chatbot walks the basics + pre-fills the sett
 
   // Hand-off: panel closed, settings form PRE-FILLED — apps narrowed to just Tasks.
   await expect(page.locator('.cc-guided')).toHaveCount(0);
-  await expect(page.locator('input[data-app="tasks-v0"]')).toBeChecked({ timeout: 5000 });
+  await expect(page.locator('input[data-app="tasks"]')).toBeChecked({ timeout: 5000 });
   await expect(page.locator('input[data-app="stoop"]')).not.toBeChecked();
 });
