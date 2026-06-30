@@ -212,6 +212,10 @@ export async function bootAgentBundle(opts = {}) {
       seedStoopProfile: opts.seedStoopProfile,
       seedStoopPosts:   opts.seedStoopPosts,
       getActiveCircleId: getActiveCircle,   // per-circle store scoping — the active circle scopes chat ops
+      // L3 cutover (additive, OFF by default): EXPO_PUBLIC_HOUSEHOLD_VIA_CIRCLE_STORE=1 routes household ops
+      // to the dissolved functions over the per-circle CircleItemStore (householdApp.js) for on-device verify.
+      householdViaCircleStore: opts.householdViaCircleStore
+        ?? (process.env.EXPO_PUBLIC_HOUSEHOLD_VIA_CIRCLE_STORE === '1'),
     });
   } catch (err) {
     // Wrap with a localised-error-friendly shape so the RN UI can

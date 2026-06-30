@@ -335,3 +335,22 @@ describe('createRealHouseholdAgent — OBJ-2 household no-pod sync (S1a/S1c)', (
     expect(spy.mock.calls[0][0]?.id).toBeTruthy();
   });
 });
+
+describe('createRealHouseholdAgent — L3 cutover (householdViaCircleStore, additive flag)', () => {
+  it('flag ON: household ops route to the dissolved CircleItemStore functions', async () => {
+    const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
+    await a.callSkill('household', 'addItem', { type: 'shopping', text: 'milk' });
+    const open = await a.callSkill('household', 'listOpen', { type: 'shopping' });
+    expect(open.map((i) => i.text)).toContain('milk');                 // served from the circle store
+    const t = await a.callSkill('household', 'addTask', { text: 'fix fence' });
+    expect(t.type).toBe('task');
+    expect((await a.callSkill('household', 'listTasks', {})).map((i) => i.text)).toContain('fix fence');
+    // NB the dissolved fns return clean shapes (listOpen → item[]); the legacy render expects {items:[…]}, so
+    // a thin render adapter is the next refinement once the flag-on path is device-verified (see REMAINING-WORK L3).
+  });
+
+  it('flag OFF (default): still the legacy agent (unchanged — the other tests assert its exact shape)', async () => {
+    const a = await createRealHouseholdAgent();
+    expect(await a.callSkill('household', 'listOpen', {})).toBeTruthy();
+  });
+});

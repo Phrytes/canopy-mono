@@ -141,6 +141,16 @@ export async function createRealHouseholdAgent(opts = {}) {
   function resolveHouseholdCircleId(args) {
     return (args?.circleId ?? args?.crewId ?? args?.groupId ?? getActiveHouseholdCircleId()) || 'household';
   }
+  // cluster L · L3 — ADDITIVE dissolve cutover (flag-gated, default OFF → legacy agent, zero regression). When
+  // `opts.householdViaCircleStore` is on, household ops route to the dissolved functions over the per-circle
+  // CircleItemStore (householdApp.js) instead of the legacy hostAgent. Same DataSource (persistent if a
+  // persistDb was passed; in-memory no-pod otherwise). Lets the cutover be device-verified before retiring the
+  // agent. Dynamic import so flag-off boots never load the item-store/registry substrate.
+  let householdService = null;
+  if (opts.householdViaCircleStore) {
+    const { createHouseholdService } = await import('../../v2/householdApp.js');
+    householdService = createHouseholdService({ dataSource: householdDataSource });
+  }
   // Legacy/default store — the mirror, seeding, and standalone helpers stay on this bucket for now
   // (per-circle mirror is a later phase). Per-circle skill reads/writes resolve via getHouseholdScope.
   const householdStore = getHouseholdScope('household');
@@ -867,6 +877,13 @@ export async function createRealHouseholdAgent(opts = {}) {
 
   const callSkill = async (appOrigin, opId, args) => {
     if (appOrigin === 'household') {
+      // L3 cutover (flag-gated): route to the dissolved functions over the per-circle CircleItemStore.
+      if (householdService) {
+        return householdService.callSkill(opId, args ?? {}, {
+          circleId: resolveHouseholdCircleId(args),
+          by:       chatId?.pubKey,
+        });
+      }
       const parts = [DataPart(args ?? {})];
       const result = await chatAgent.invoke(hostAgent.address, opId, parts);
       const first = Array.isArray(result) ? result[0] : null;

@@ -3230,6 +3230,9 @@ async function boot() {
       householdPersistDb: { dbName: 'cc-household-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
       getActiveCircleId: getActiveCircle,            // per-circle store scoping — the active circle scopes chat ops
+      // L3 cutover (additive, OFF by default): set VITE_HOUSEHOLD_VIA_CIRCLE_STORE=1 to route household ops
+      // to the dissolved functions over the per-circle CircleItemStore (householdApp.js) for on-device verify.
+      householdViaCircleStore: import.meta.env?.VITE_HOUSEHOLD_VIA_CIRCLE_STORE === '1',
     });
     circleHouseholdAgent = agent;   // OBJ-2 — expose to showSettings (sibling fn) for the paired-devices panel
     // OBJ-2 — joiner-side peer-redeem sender (shared factory), correlated by circlePendingRedeems.
