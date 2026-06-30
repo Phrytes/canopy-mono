@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CircleItemStore } from '../src/CircleItemStore.js';
 import { memoryDataSource } from '../src/memoryDataSource.js';
-import { addChildTo, resolveContainerAdd } from '../src/containerOps.js';
+import { addChildTo, resolveContainerAdd, buildAcceptsPolicy, resolveAddInContainer } from '../src/containerOps.js';
 import { childIdsOf } from '../src/containment.js';
 
 const registry = {
@@ -59,5 +59,60 @@ describe('resolveContainerAdd (K0 natural-verb context resolution)', () => {
     expect(resolveContainerAdd({ accepts, hint: 'task' })).toEqual({ type: 'task', op: 'addTask' });
     // a hint that isn't accepted is ignored → falls back to default
     expect(resolveContainerAdd({ accepts, hint: 'event' })).toEqual({ type: 'note', op: 'addNote' });
+  });
+});
+
+describe('buildAcceptsPolicy (the manifest surfacing contract)', () => {
+  it('merges each app\'s accepts per container type (composable extensibility)', () => {
+    // the tasks app + a notes app independently extend what a `list` accepts
+    const tasksManifest = { accepts: { list: [{ type: 'task', op: 'addTask', default: true }], offer: [{ type: 'list', op: 'addList' }] } };
+    const notesManifest = { accepts: { list: [{ type: 'note', op: 'addNote' }] } };
+    const { acceptsFor } = buildAcceptsPolicy([tasksManifest, notesManifest]);
+    expect(acceptsFor('list').map((a) => a.type).sort()).toEqual(['note', 'task']);
+    expect(acceptsFor('list').find((a) => a.type === 'task').default).toBe(true);
+    expect(acceptsFor('offer').map((a) => a.type)).toEqual(['list']);
+    expect(acceptsFor('unknown')).toEqual([]);
+  });
+
+  it('first declarer wins on a child-type collision; ignores malformed entries', () => {
+    const { acceptsFor } = buildAcceptsPolicy([
+      { accepts: { list: [{ type: 'task', op: 'addTaskA' }, { type: 'bad' }] } },
+      { accepts: { list: [{ type: 'task', op: 'addTaskB' }] } },
+      { /* no accepts */ },
+    ]);
+    expect(acceptsFor('list')).toEqual([{ type: 'task', op: 'addTaskA' }]);
+  });
+});
+
+describe('resolveAddInContainer (the dispatch bridge)', () => {
+  const { acceptsFor } = buildAcceptsPolicy([{ accepts: {
+    list:  [{ type: 'task', op: 'addTask', default: true }, { type: 'note', op: 'addNote' }],
+    offer: [{ type: 'list', op: 'addList' }],
+  } }]);
+
+  it('bare "add X" in a list → the default child op, body preserved', () => {
+    expect(resolveAddInContainer({ container: { type: 'list' }, acceptsFor, body: 'buy milk' }))
+      .toEqual({ op: 'addTask', type: 'task', body: 'buy milk' });
+  });
+
+  it('a leading type word is the hint + is stripped ("add note remember the keys")', () => {
+    expect(resolveAddInContainer({ container: { type: 'list' }, acceptsFor, body: 'note remember the keys' }))
+      .toEqual({ op: 'addNote', type: 'note', body: 'remember the keys' });
+  });
+
+  it('single accept → that op (offer accepts only a list)', () => {
+    expect(resolveAddInContainer({ container: { type: 'offer' }, acceptsFor, body: 'moving tasks' }))
+      .toEqual({ op: 'addList', type: 'list', body: 'moving tasks' });
+  });
+
+  it('non-container / unaccepting → null (fall back to the normal add)', () => {
+    expect(resolveAddInContainer({ container: { type: 'task' }, acceptsFor, body: 'x' })).toBeNull();
+    expect(resolveAddInContainer({ container: null, acceptsFor, body: 'x' })).toBeNull();
+  });
+
+  it('ambiguous (multiple, no default, no hint) → asks which', () => {
+    const amb = buildAcceptsPolicy([{ accepts: { box: [{ type: 'task', op: 'addTask' }, { type: 'note', op: 'addNote' }] } }]).acceptsFor;
+    expect(resolveAddInContainer({ container: { type: 'box' }, acceptsFor: amb, body: 'something' }))
+      .toEqual({ ambiguous: [{ type: 'task', op: 'addTask' }, { type: 'note', op: 'addNote' }] });
   });
 });

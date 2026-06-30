@@ -56,3 +56,67 @@ export function resolveContainerAdd({ accepts, hint } = {}) {
   if (def) return { type: def.type, op: def.op };
   return { ambiguous: list.map((a) => ({ type: a.type, op: a.op })) };
 }
+
+/**
+ * buildAcceptsPolicy — assemble the container-`accepts` policy from manifests (the SURFACING contract).
+ *
+ * Each manifest declares `accepts: { <containerType>: [{ type, op, default? }, …] }` — "a function in this
+ * app can add child items of these types to a container of this type". Manifests MERGE per container type
+ * (concatenated, deduped by child type, first-declarer wins on collision) — so each app independently
+ * extends what a container accepts (the dissolve-friendly, composable extensibility: the tasks app declares
+ * "a list accepts tasks", a notes app declares "a list accepts notes", without either knowing the other).
+ *
+ * @param {Array<{accepts?:object}>} manifests
+ * @returns {{ acceptsFor: (containerType:string) => Array<{type:string,op:string,default?:boolean}> }}
+ */
+export function buildAcceptsPolicy(manifests) {
+  const byContainer = new Map();   // containerType → [{type, op, default}]
+  for (const m of (Array.isArray(manifests) ? manifests : [])) {
+    const decl = m && m.accepts;
+    if (!decl || typeof decl !== 'object') continue;
+    for (const [containerType, entries] of Object.entries(decl)) {
+      const cur = byContainer.get(containerType) || [];
+      for (const e of (Array.isArray(entries) ? entries : [])) {
+        if (!e || !e.type || !e.op) continue;
+        if (cur.some((x) => x.type === e.type)) continue;     // first declarer of a child type wins
+        cur.push({ type: e.type, op: e.op, ...(e.default ? { default: true } : {}) });
+      }
+      byContainer.set(containerType, cur);
+    }
+  }
+  return { acceptsFor: (containerType) => byContainer.get(containerType) || [] };
+}
+
+/** Strip a leading child-TYPE word from an "add X" body when it names an accepted type. */
+function parseTypeHint(body, accepts) {
+  const m = String(body || '').trim().match(/^(\S+)\s+(.*)$/);
+  if (m) {
+    const word = m[1].toLowerCase();
+    if (accepts.some((a) => a.type === word)) return { hint: word, rest: m[2] };
+  }
+  return { hint: undefined, rest: body };
+}
+
+/**
+ * resolveAddInContainer — the DISPATCH bridge (cluster K · K2 surfacing). Given the ACTIVE container item,
+ * the accepts-policy, and the raw "add X" body, resolve a bare "add" to the child-creating op — the
+ * K0-deferred natural-verb context resolution made dispatchable.
+ *   - `{ op, type, body }`        → run that op to create the child (the body has the type word stripped)
+ *   - `{ ambiguous:[{type,op}…] }`→ ask the user which child type
+ *   - `null`                      → the container accepts nothing (not composable here → normal add)
+ *
+ * @param {object} args
+ * @param {{type:string}} args.container         the active container item
+ * @param {(containerType:string)=>Array} args.acceptsFor  from `buildAcceptsPolicy`
+ * @param {string} [args.body]                   the "add X" text
+ */
+export function resolveAddInContainer({ container, acceptsFor, body = '' } = {}) {
+  if (!container || typeof container.type !== 'string') return null;
+  const accepts = (typeof acceptsFor === 'function' ? acceptsFor(container.type) : acceptsFor) || [];
+  if (!accepts.length) return null;
+  const { hint, rest } = parseTypeHint(body, accepts);
+  const r = resolveContainerAdd({ accepts, hint });
+  if (!r) return null;
+  if (r.ambiguous) return r;
+  return { op: r.op, type: r.type, body: rest };
+}
