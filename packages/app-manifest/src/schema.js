@@ -35,6 +35,32 @@
  *                                                 byte-reproducible from
  *                                                 per-op templates (PLAN §1.6).
  * @property {object}                 [requires]   SP-9, accepted-not-interpreted
+ * @property {Setting[]}              [settings]   B · Slice 2 (2026-07-01, ruling Q1): the app's
+ *                                                 declarative SETTINGS — the same shape as op params,
+ *                                                 so one renderer draws inline forms AND the creation
+ *                                                 wizard.  A third-party app declares settings like it
+ *                                                 declares op params; `validateManifest` shape-checks them.
+ */
+
+/**
+ * A declarative app setting (B · Slice 2, ruling Q1).  Mirrors {@link Param} so the same renderer
+ * handles inline forms and the admin creation wizard.  `scope` splits the two-level resolution:
+ * `'circle'` settings are the ADMIN TEMPLATE (per-circle); `'user'` settings are member PREFERENCES.
+ * The effective value is `admin-template ∩ member-prefs` (Slice 4).
+ *
+ * @typedef {object} Setting
+ * @property {string}   key           unique within `manifest.settings`.
+ * @property {string}   label         human label (English canonical; localise via `labelKey` later).
+ * @property {'toggle'|'choice'|'text'|'number'|'member'} kind
+ *                                     toggle=boolean · choice=one-of `of` · text · number ·
+ *                                     member=a circle member (webid).
+ * @property {string[]} [of]          the choices — REQUIRED when `kind==='choice'`.
+ * @property {*}        [default]     default value (shape must fit `kind`).
+ * @property {'circle'|'user'} [scope] `'circle'` (default) = admin template; `'user'` = member pref.
+ * @property {boolean}  [adminOnly]   only the circle admin may set it (even at `user` scope).
+ * @property {object}   [requiredWhen] conditional-required gate `{ otherKey: value | value[] }` —
+ *                                     the setting is required only when every named sibling matches.
+ * @property {string}   [description] LLM trigger hint / help text (helps the model know WHEN it applies).
  */
 
 /**

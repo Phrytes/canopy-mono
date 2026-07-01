@@ -32,6 +32,18 @@ export const VERBS = Object.freeze([
 ]);
 
 const VERB_SET   = new Set(VERBS);
+
+/**
+ * B · Slice 2 (ruling Q1) — frozen allow-list of setting `kind`s (the wizard/form renderer
+ * picks a control per kind).  `toggle`=checkbox, `choice`=select(of), `text`/`number`=inputs,
+ * `member`=circle-member picker.  Distinct from PARAM_KINDS (settings are user-facing config,
+ * not op arguments).
+ */
+export const SETTING_KINDS = Object.freeze(['toggle', 'choice', 'text', 'number', 'member']);
+const SETTING_KIND_SET = new Set(SETTING_KINDS);
+/** B · Slice 2 — a setting's resolution scope: `circle` = admin template, `user` = member pref. */
+export const SETTING_SCOPES = Object.freeze(['circle', 'user']);
+const SETTING_SCOPE_SET = new Set(SETTING_SCOPES);
 // v0.3.2 (canopy-chat) extended the form generator with 'date' +
 // 'webid' input kinds; Q23 reserved 'file' + 'image' for the
 // upload path.  All four pass through the validator forward-additively
@@ -233,6 +245,17 @@ export function validateManifest(manifest, opts = {}) {
           });
         }
       });
+    }
+  }
+
+  // B · Slice 2 (ruling Q1) — `manifest.settings`: the app's declarative settings, shaped like op
+  // params so one renderer draws inline forms + the creation wizard.  Shape-validated whenever present.
+  if (manifest.settings !== undefined) {
+    if (!Array.isArray(manifest.settings)) {
+      errors.push({ path: '/settings', message: 'settings must be an array if present' });
+    } else {
+      const keys = new Set();
+      manifest.settings.forEach((s, i) => validateSetting(s, `/settings/${i}`, errors, keys));
     }
   }
 
@@ -614,6 +637,68 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
           errors.push({ path: p, message: `appliesTo.type "${t}" is not in manifest.itemTypes` });
         }
       });
+    }
+  }
+}
+
+/**
+ * Validate one Setting (B · Slice 2, ruling Q1) — mirrors validateParam's rigor.  A setting is
+ * user-facing config the wizard/form renders; `default` is sanity-checked against `kind`.
+ */
+function validateSetting(s, path, errors, keySet) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) {
+    errors.push({ path, message: 'setting must be an object' });
+    return;
+  }
+  if (typeof s.key !== 'string' || s.key === '') {
+    errors.push({ path: `${path}/key`, message: 'setting.key must be a non-empty string' });
+  } else if (keySet.has(s.key)) {
+    errors.push({ path: `${path}/key`, message: `duplicate setting key "${s.key}"`, code: 'duplicate-setting' });
+  } else {
+    keySet.add(s.key);
+  }
+  if (typeof s.label !== 'string' || s.label === '') {
+    errors.push({ path: `${path}/label`, message: 'setting.label must be a non-empty string' });
+  }
+  if (!SETTING_KIND_SET.has(s.kind)) {
+    errors.push({
+      path:    `${path}/kind`,
+      message: `setting.kind must be one of ${SETTING_KINDS.join('|')} (got ${JSON.stringify(s.kind)})`,
+    });
+  }
+  if (s.kind === 'choice') {
+    if (!Array.isArray(s.of) || s.of.length === 0) {
+      errors.push({ path: `${path}/of`, message: "setting.kind='choice' requires a non-empty 'of' array" });
+    } else if (s.of.some((v) => typeof v !== 'string')) {
+      errors.push({ path: `${path}/of`, message: 'setting.of must contain only strings' });
+    }
+  }
+  if (s.scope !== undefined && !SETTING_SCOPE_SET.has(s.scope)) {
+    errors.push({ path: `${path}/scope`, message: `setting.scope must be one of ${SETTING_SCOPES.join('|')}` });
+  }
+  if (s.adminOnly !== undefined && typeof s.adminOnly !== 'boolean') {
+    errors.push({ path: `${path}/adminOnly`, message: 'setting.adminOnly must be a boolean if present' });
+  }
+  if (s.requiredWhen !== undefined) {
+    if (!s.requiredWhen || typeof s.requiredWhen !== 'object' || Array.isArray(s.requiredWhen)) {
+      errors.push({ path: `${path}/requiredWhen`, message: 'setting.requiredWhen must be an object if present' });
+    } else if (Object.keys(s.requiredWhen).length === 0) {
+      errors.push({ path: `${path}/requiredWhen`, message: 'setting.requiredWhen must have at least one key' });
+    }
+  }
+  if (s.description !== undefined && (typeof s.description !== 'string' || s.description === '')) {
+    errors.push({ path: `${path}/description`, message: 'setting.description must be a non-empty string if present' });
+  }
+  // `default` shape sanity — best-effort match against `kind`.
+  if (s.default !== undefined) {
+    const d = s.default;
+    const bad =
+      (s.kind === 'toggle' && typeof d !== 'boolean') ||
+      (s.kind === 'number' && typeof d !== 'number') ||
+      ((s.kind === 'text' || s.kind === 'member') && typeof d !== 'string') ||
+      (s.kind === 'choice' && Array.isArray(s.of) && !s.of.includes(d));
+    if (bad) {
+      errors.push({ path: `${path}/default`, message: `setting.default ${JSON.stringify(d)} doesn't fit kind '${s.kind}'`, code: 'bad-default' });
     }
   }
 }
