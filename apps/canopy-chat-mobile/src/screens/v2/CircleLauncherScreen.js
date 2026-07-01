@@ -1612,6 +1612,11 @@ function CircleDetail({
   );
   // S6.A — {appOrigin → manifest} for computing inline buttons on bot replies.
   const manifestsByOrigin = useMemo(() => buildManifestsByOrigin(), []);
+  // B · Slice 1 — the manifest sources the capability gate reads (deduped; web≡mobile with circleApp.baseSources).
+  const capabilitySources = useMemo(
+    () => [...new Set(Object.values(manifestsByOrigin))].map((manifest) => ({ manifest })),
+    [manifestsByOrigin],
+  );
   // Per-circle stoop restructure (parity with web circleApp.js `stoopCall`): the
   // prikbord + scherm noticeboard block call the raw 3-arg `callSkill('stoop', …)`
   // directly, bypassing scopeReadyDispatch — so scope them to THIS circle here.
@@ -1834,6 +1839,23 @@ function CircleDetail({
       return;
     }
     if (dispatch.kind !== 'ready')     { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
+    // B · Slice 1 — DEFAULT-DENY capability gate (web≡mobile parity with circleApp.dispatchReady). Every
+    // user-initiated dispatch (slash/LLM/gate/button/follow-up) converges on runCircleCommandResolved.
+    // Enablement comes from the SAME per-circle source the UI uses (isAppSurfaceEnabled → policy.features,
+    // already consulted for the screen button below); the pure (verb×noun) gate evaluates the capability.
+    if (circle?.id) {
+      const gateEntry = catalog?.opsById?.get(dispatch.opId);
+      const gOrigin = dispatch.appOrigin || gateEntry?.appOrigin;
+      if (gOrigin) {
+        const enabled = isAppSurfaceEnabled(gOrigin, policy, isFeatureEnabled);
+        const eff = effectiveCapabilities(capabilitySources, { apps: enabled ? [gOrigin] : [] });
+        const verdict = checkCapability({ op: gateEntry?.op, appOrigin: gOrigin, args: dispatch.args }, eff);
+        if (!verdict.allow) {
+          appendKringMessage({ actor: 'bot', text: t(verdict.code === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied') });
+          return;
+        }
+      }
+    }
     // scopeReadyDispatch takes the active-circle id STRING (it writes it into the scope arg keys);
     // an {id} object would land as the literal scope value (device-verify 2026-06-11).
     const scoped = scopeReadyDispatch(dispatch, circle?.id);
@@ -1875,7 +1897,7 @@ function CircleDetail({
       if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
       if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
     } catch { /* enrichment is non-essential */ }
-  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
+  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy, capabilitySources]);
 
   // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared
   // executeBulkDispatch). Mobile has no filter-router; cross-thread propagation is the fan-out itself.
