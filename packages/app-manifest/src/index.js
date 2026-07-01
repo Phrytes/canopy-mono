@@ -22,6 +22,19 @@ export {
   COMPOSITE_ON_ERROR,
 } from './validate.js';
 
+// B · Layer 1 (2026-07-01) — the SDK ATOM CATALOGUE: the authoritative
+// general-verb vocabulary a capability (verb × noun) keys off, plus alias
+// resolution + classification.  Superset of the legacy `VERBS`.
+export {
+  ATOMS,
+  ATOM_VERBS,
+  ATOM_VERBS_WITH_ALIASES,
+  isAtom,
+  canonicalAtom,
+  classifyVerb,
+  atomFor,
+} from './atoms.js';
+
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';
 export { renderSlash }         from './renderSlash.js';

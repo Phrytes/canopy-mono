@@ -77,6 +77,10 @@ export const tasksManifest = {
   // needed for those.
   itemTypes: ['task', 'inbox-item', 'crew-storage-policy', 'crew', 'schedule-slot', 'member'],
 
+  // B · Layer 1 — domain (non-atom) verb: `tree` (DAG traversal of the task
+  // graph — structural, not a plain `list`).  All other ops map to SDK atoms.
+  domainVerbs: ['tree'],
+
   operations: [
     {
       id:        'addTask',

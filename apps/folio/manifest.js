@@ -72,6 +72,10 @@ export const folioManifest = {
     'file',
   ],
 
+  // B · Layer 1 — domain (non-atom) verbs: `sync`/`watch` (pod ↔ local file
+  // reconciliation — genuinely orthogonal to CRUD).  Every other op is an atom.
+  domainVerbs: ['sync', 'watch'],
+
   operations: [
     /* ── Destructive ops (Q27 confirm) ─────────────────────────────── */
 

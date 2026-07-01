@@ -41,6 +41,11 @@ export const householdManifest = {
   app:       'household',
   itemTypes: [...LIST_TYPES, 'task', 'contact'],
 
+  // B · Layer 1 — domain (non-atom) verbs this manifest ships (F-SP1-e).
+  // `help` (meta) + `register` (identity act, not a plain `add contact`).
+  // Every other op maps to an SDK atom; the `{atoms:true}` validator enforces it.
+  domainVerbs: ['help', 'register'],
+
   // F-SP1-d: verbatim, sourced from the same module classifyAndExtract reads.
   systemPrompt: SYSTEM_PROMPT_CLASSIFY,
 

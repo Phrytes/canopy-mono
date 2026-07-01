@@ -107,6 +107,11 @@ export const stoopManifest = {
   app:       'stoop',
   itemTypes: ITEM_TYPES,
 
+  // B · Layer 1 — domain (non-atom) verbs: moderation (`report`/`mute`),
+  // profile/config (`set`), and neighbourhood-graph traversal (`tree`).
+  // All other ops map to SDK atoms; the `{atoms:true}` validator enforces it.
+  domainVerbs: ['report', 'mute', 'set', 'tree'],
+
   operations: [
     // ── Post + browse ───────────────────────────────────────────────
     {

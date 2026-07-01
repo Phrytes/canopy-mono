@@ -12,6 +12,7 @@
  */
 
 import { list as listCanonicalTypes } from '@canopy/item-types';
+import { isAtom } from './atoms.js';
 
 /**
  * Frozen verb allow-list mirroring `@canopy/item-store` `ItemStore`
@@ -89,6 +90,13 @@ export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
  *   `manifest.operations[].id` OR in the new `manifest.externalSkills`
  *   allow-list.  Catches typos (e.g. `'getMispelled'`) at manifest
  *   level.  Default: non-strict (existing tolerant behaviour).
+ * @param {boolean} [opts.atoms=false]
+ *   B · Layer 1 (2026-07-01) — ATOM DISCIPLINE.  When `true`, every
+ *   `op.verb` must be a known SDK atom (or alias — see `atoms.js`) OR be
+ *   declared in `manifest.domainVerbs`.  This is the fitness function
+ *   against verb drift: a new noun-specific verb can't sneak in without
+ *   either mapping to an atom or being explicitly named as domain-specific.
+ *   Default off (F-SP1-e tolerant behaviour preserved for older callers).
  *
  * @returns {{ ok: boolean, errors: Array<{path: string, message: string}> }}
  */
@@ -125,8 +133,32 @@ export function validateManifest(manifest, opts = {}) {
   } else {
     const ids = new Set();
     manifest.operations.forEach((op, i) => {
-      validateOperation(op, `/operations/${i}`, manifest, errors, ids);
+      validateOperation(op, `/operations/${i}`, manifest, errors, ids, opts);
     });
+  }
+
+  // B · Layer 1 — `manifest.domainVerbs` is the explicit allow-list of
+  // NON-atom (domain-specific) verbs this manifest ships (folio `sync`,
+  // stoop `report`/`mute`, household `register`/`help`, …).  Validated as a
+  // string array whenever present; the atom-discipline cross-check
+  // (op.verb ∈ atoms ∪ domainVerbs) only fires under `opts.atoms`.
+  if (manifest.domainVerbs !== undefined) {
+    if (!Array.isArray(manifest.domainVerbs)) {
+      errors.push({ path: '/domainVerbs', message: 'domainVerbs must be an array if present' });
+    } else {
+      manifest.domainVerbs.forEach((v, i) => {
+        if (typeof v !== 'string' || v === '') {
+          errors.push({ path: `/domainVerbs/${i}`, message: 'domainVerbs entries must be non-empty strings' });
+        } else if (isAtom(v)) {
+          // A domain verb that IS an atom is a mistake — it should just be used as the atom.
+          errors.push({
+            path:    `/domainVerbs/${i}`,
+            message: `domainVerbs entry "${v}" is an SDK atom (or alias) — use it directly, don't declare it as a domain verb`,
+            code:    'atom-in-domain-verbs',
+          });
+        }
+      });
+    }
   }
 
   if (manifest.views !== undefined) {
@@ -185,7 +217,7 @@ function knownSkillIds(manifest) {
   return set;
 }
 
-function validateOperation(op, path, manifest, errors, idSet) {
+function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
   if (!op || typeof op !== 'object') {
     errors.push({ path, message: 'operation must be an object' });
     return;
@@ -208,6 +240,19 @@ function validateOperation(op, path, manifest, errors, idSet) {
       path:    `${path}/verb`,
       message: `op.verb must be a non-empty string (got ${JSON.stringify(op.verb)})`,
     });
+  } else if (opts.atoms) {
+    // B · Layer 1 — atom discipline (opt-in).  The verb must be a known
+    // SDK atom (or alias) OR explicitly declared as a domain verb.  Drift
+    // guard: a new noun-specific verb fails here until it's mapped to an
+    // atom or named in `manifest.domainVerbs`.
+    const domainVerbs = Array.isArray(manifest?.domainVerbs) ? manifest.domainVerbs : [];
+    if (!isAtom(op.verb) && !domainVerbs.includes(op.verb)) {
+      errors.push({
+        path:    `${path}/verb`,
+        message: `op.verb "${op.verb}" is not an SDK atom (see atoms.js) and is not in manifest.domainVerbs — map it to an atom (add/list/get/update/remove/complete/claim/reassign/…) or declare it as a domain verb`,
+        code:    'unknown-verb',
+      });
+    }
   }
 
   if (op.params !== undefined) {
