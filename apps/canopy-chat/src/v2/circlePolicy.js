@@ -73,6 +73,13 @@ export const DEFAULT_CIRCLE_POLICY = {
   consensusRequired: false,
   // S6.C deep — which whole apps the circle composes; null = all DEFAULT_CIRCLE_ORIGINS.
   apps:             null,
+  // B · Slice 2 (ruling Q3) — the admin FREEDOM TEMPLATE: a partial map keyed by
+  // "<app> <atom> <noun>" → { enabled?, freedom?, consequence?, privacyFloor? }. Absent entry ⇒
+  // default-on (Q5); the capability gate (capabilityGate.js) narrows the effective set with this.
+  capabilities:     {},
+  // B · Slice 2 (ruling Q1) — per-app SETTINGS VALUES the wizard/settings form writes, keyed by
+  // "<app>.<settingKey>" → value. The manifest declares the schema; this holds the chosen values.
+  settings:         {},
 };
 
 /**
@@ -159,15 +166,23 @@ export function normalizeCirclePolicy(stored = {}) {
     // narrows (e.g. ['stoop'] for a buurt-only circle). Validation is loose here —
     // the catalog scoping intersects with the apps that actually have ops.
     apps:               Array.isArray(p.apps) ? p.apps.filter((x) => typeof x === 'string') : null,
+    // B · Slice 2 — kept as plain object maps; per-entry coercion happens at read time
+    // (freedom.js resolveRow for capabilities; the manifest schema for settings).
+    capabilities:       (p.capabilities && typeof p.capabilities === 'object' && !Array.isArray(p.capabilities)) ? p.capabilities : {},
+    settings:           (p.settings && typeof p.settings === 'object' && !Array.isArray(p.settings)) ? p.settings : {},
   };
 }
 
 /** Deep-merge an edit `patch` onto `base`, then normalise (features merge per-key). */
 export function mergeCirclePolicy(base, patch = {}) {
+  const nb = normalizeCirclePolicy(base);
   const merged = {
-    ...normalizeCirclePolicy(base),
+    ...nb,
     ...patch,
-    features: { ...normalizeCirclePolicy(base).features, ...(patch.features || {}) },
+    features:     { ...nb.features, ...(patch.features || {}) },
+    // B · Slice 2 — shallow-merge at the entry-key level (a patch replaces the whole row/value for a key).
+    capabilities: { ...nb.capabilities, ...(patch.capabilities || {}) },
+    settings:     { ...nb.settings, ...(patch.settings || {}) },
   };
   return normalizeCirclePolicy(merged);
 }
