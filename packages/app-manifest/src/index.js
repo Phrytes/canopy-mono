@@ -38,6 +38,13 @@ export {
   atomFor,
 } from './atoms.js';
 
+// B · Slice 2 (ruling Q1) — read helpers over manifest.settings (the wizard/form layer).
+export {
+  settingsOf,
+  settingDefaults,
+  isSettingRequired,
+} from './settings.js';
+
 // B · Layer 1 — the (verb × noun) CAPABILITY set derived from a manifest
 // (declared `nouns` ∪ derived from ops).  The unit the B gate authorises.
 export {
