@@ -40,3 +40,30 @@ export function isSettingRequired(setting, values = {}) {
     return Array.isArray(allowed) ? allowed.includes(v) : v === allowed;
   });
 }
+
+/**
+ * Project `manifest.settings` into render-ready FORM FIELDS (B · Slice 2) — the pure layer the web
+ * + mobile wizard/settings shells draw from (they own only the widgets). Each field resolves its
+ * current `value` (supplied `values` ?? declared default) and conditional `required` (via
+ * `isSettingRequired`), so the shell renders without re-deriving anything. `control` is the setting
+ * `kind` verbatim (toggle|choice|text|number|member) — the shell maps it to a platform widget.
+ *
+ * @param {object} manifest
+ * @param {object} [opts]
+ * @param {'circle'|'user'} [opts.scope]  restrict to one scope (admin template vs member prefs)
+ * @param {object} [opts.values]          current values (overrides defaults; drives requiredWhen)
+ * @returns {Array<{key,label,control,choices?,value,required,adminOnly,hint?,scope}>}
+ */
+export function buildSettingsForm(manifest, { scope, values = {} } = {}) {
+  return settingsOf(manifest, { scope }).map((s) => ({
+    key:       s.key,
+    label:     s.label,
+    control:   s.kind,                                             // widget hint for the shell
+    choices:   s.kind === 'choice' ? (Array.isArray(s.of) ? s.of : []) : undefined,
+    value:     values[s.key] !== undefined ? values[s.key] : s.default,
+    required:  isSettingRequired(s, values),
+    adminOnly: !!s.adminOnly,
+    hint:      s.description,
+    scope:     s.scope ?? 'circle',
+  }));
+}

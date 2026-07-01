@@ -2,7 +2,7 @@
  * settings read helpers — B · Slice 2 (settingsOf / settingDefaults / isSettingRequired).
  */
 import { describe, it, expect } from 'vitest';
-import { settingsOf, settingDefaults, isSettingRequired } from '../src/settings.js';
+import { settingsOf, settingDefaults, isSettingRequired, buildSettingsForm } from '../src/settings.js';
 
 const M = {
   app: 'demo',
@@ -46,5 +46,32 @@ describe('isSettingRequired', () => {
     const s = { key: 'x', requiredWhen: { mode: ['a', 'b'] } };
     expect(isSettingRequired(s, { mode: 'b' })).toBe(true);
     expect(isSettingRequired(s, { mode: 'c' })).toBe(false);
+  });
+});
+
+describe('buildSettingsForm', () => {
+  it('projects settings to render-ready fields, resolving value + required', () => {
+    const fields = buildSettingsForm(M, { values: { shareLoc: true } });
+    const byKey = Object.fromEntries(fields.map((f) => [f.key, f]));
+    // control = kind; choice carries its choices; value = supplied-or-default
+    expect(byKey.assignable).toMatchObject({ control: 'toggle', value: true, required: false, scope: 'circle' });
+    expect(byKey.theme).toMatchObject({ control: 'choice', choices: ['light', 'dark'], value: 'light' });
+    expect(byKey.shareLoc.value).toBe(true);                       // supplied override wins over default(false)
+    // realName is required BECAUSE shareLoc:true satisfied its requiredWhen
+    expect(byKey.realName.required).toBe(true);
+    expect(byKey.theme.choices).toEqual(['light', 'dark']);
+  });
+
+  it('honours scope + carries label/hint/adminOnly', () => {
+    const m = { app: 'x', settings: [
+      { key: 'name', label: 'Circle name', kind: 'text', scope: 'circle', adminOnly: true, description: 'Shown to members' },
+    ] };
+    const [f] = buildSettingsForm(m, { scope: 'circle' });
+    expect(f).toMatchObject({ key: 'name', label: 'Circle name', control: 'text', adminOnly: true, hint: 'Shown to members' });
+    expect(buildSettingsForm(m, { scope: 'user' })).toEqual([]);
+  });
+
+  it('empty for a manifest with no settings', () => {
+    expect(buildSettingsForm({ app: 'x' })).toEqual([]);
   });
 });

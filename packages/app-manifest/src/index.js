@@ -43,6 +43,7 @@ export {
   settingsOf,
   settingDefaults,
   isSettingRequired,
+  buildSettingsForm,
 } from './settings.js';
 
 // B · Layer 1 — the (verb × noun) CAPABILITY set derived from a manifest
