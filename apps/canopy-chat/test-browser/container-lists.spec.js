@@ -20,7 +20,7 @@ test('Lists panel: create a list, add a nested item, complete it', async ({ page
 
   // create a list
   await page.locator('.cc-lists-panel__new-input').fill('groceries');
-  await page.locator('.cc-lists-panel__create').click();
+  await page.locator('.cc-lists-panel__new-input').press('Enter');   // form submit → createList (List is the default creator)
   await page.waitForTimeout(300);
   const listRow = page.locator('.cc-lists-panel__list', { hasText: 'groceries' });
   await expect(listRow).toBeVisible();
@@ -43,4 +43,36 @@ test('Lists panel: create a list, add a nested item, complete it', async ({ page
   await itemRow.locator('[data-op="markComplete"]').click();
   await page.waitForTimeout(400);
   await expect(page.locator('.circle-container-card__row[data-type="list-item"]')).toContainText('✓ milk');
+});
+
+test('board container: "+ add" shows the ambiguous-type picker → pick Item', async ({ page }) => {
+  await bootKring(page, 'Board Circle');
+  await page.locator('.circle-kring__more').click();
+  await page.waitForTimeout(400);
+  await page.locator('.circle-kring__more-item[data-action="lists"]').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.cc-lists-panel')).toBeVisible();
+
+  // create a BOARD (the alt creator) — a container that accepts an Item OR a List, no default
+  await page.locator('.cc-lists-panel__new-input').fill('project');
+  await page.locator('.cc-lists-panel__create--alt').click();          // "Board"
+  await page.waitForTimeout(300);
+  const boardRow = page.locator('.cc-lists-panel__list[data-type="board"]', { hasText: 'project' });
+  await expect(boardRow).toBeVisible();
+  await boardRow.click();
+  await page.waitForTimeout(300);
+
+  // "+ add" on the board → the TYPE PICKER (no default → a choice), NOT a straight input
+  await page.locator('.circle-container-card__add').click();
+  await page.waitForTimeout(200);
+  await expect(page.locator('.cc-lists-panel__pick')).toBeVisible();
+  await expect(page.locator('.cc-lists-panel__pick-btn[data-pick-type="list-item"]')).toBeVisible();
+  await expect(page.locator('.cc-lists-panel__pick-btn[data-pick-type="list"]')).toBeVisible();
+
+  // pick "Item" → input → milk → the item lands as a list-item
+  await page.locator('.cc-lists-panel__pick-btn[data-pick-type="list-item"]').click();
+  await page.locator('.cc-lists-panel__add-input').fill('milk');
+  await page.locator('.cc-lists-panel__add-form .cc-lists-panel__create').click();
+  await page.waitForTimeout(400);
+  await expect(page.locator('.circle-container-card__row[data-type="list-item"]')).toContainText('milk');
 });

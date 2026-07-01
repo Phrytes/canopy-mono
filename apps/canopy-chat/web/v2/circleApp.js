@@ -169,11 +169,24 @@ import {
 } from '../../src/v2/userScreens.js';
 import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
-import { makeCircleLists } from './circleLists.js';        // cluster K · K2 — the composable lists feature
-import { renderContainerCard } from './containerCard.js';  // cluster K · K2 — the nested container card
+import { makeCircleLists } from '../../src/v2/circleLists.js';  // cluster K · K2 — composable lists (shared web≡mobile)
+import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
+import { buildHouseholdDataSource } from '../../../household/src/index.js';  // portable persistent DataSource (IDB on web)
 
-// One per-circle lists service for the app (v0: in-memory; a persistent/sealed DataSource is a follow-up).
-const circleLists = makeCircleLists();
+// One per-circle lists service for the app, PERSISTENT: an IndexedDB-backed DataSource (lists survive a reload).
+// Lazy + memoised (the DataSource build is async); falls back to in-memory if IDB is unavailable (e.g. SSR/tests).
+let _circleListsPromise = null;
+function getCircleLists() {
+  if (!_circleListsPromise) {
+    _circleListsPromise = (async () => {
+      let dataSource;
+      try { dataSource = await buildHouseholdDataSource({ dbName: 'cc-circle-lists-state', storeName: 'items' }); }
+      catch { dataSource = undefined; }   // no IDB → in-memory (makeCircleLists' default)
+      return makeCircleLists({ dataSource });
+    })();
+  }
+  return _circleListsPromise;
+}
 import { renderCircleScreen } from './circleScreen.js';
 import { renderRecipeEditor } from './circleRecipeEditor.js';
 // ε.6 — multi-offer catch-up chooser modal (opt-in via
@@ -2126,40 +2139,67 @@ function openListsPanel(circleId) {
   overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
   document.body.appendChild(overlay);
 
-  let openListId = null;     // null = the lists index; an id = that list's container card
-  let pendingAddTo = null;   // when set, an inline add-input is shown for this container node
+  let openListId = null;     // null = the container index; an id = that container's card
+  let pendingAddTo = null;   // container node id awaiting an inline add-input
+  let pendingHint = null;    // the chosen child type for the pending input (from the picker), or null = default
+  let pendingPick = null;    // { node, kinds } — a container awaiting a TYPE choice (the ambiguous-type picker)
+
+  const typeLabel = (type) => t(`circle.container.type.${type}`, undefined, type);
 
   async function draw() {
+    const svc = await getCircleLists();   // lazy persistent (IDB) service, memoised
     body.replaceChildren();
     if (openListId) {
       const back = document.createElement('button');
       back.type = 'button'; back.className = 'cc-lists-panel__back'; back.textContent = `← ${t('circle.lists.title')}`;
-      back.addEventListener('click', () => { openListId = null; pendingAddTo = null; draw(); });
+      back.addEventListener('click', () => { openListId = null; pendingAddTo = null; pendingPick = null; draw(); });
       body.appendChild(back);
-      const tree = await circleLists.tree(circleId, openListId);
+      const tree = await svc.tree(circleId, openListId);
       if (tree) {
         body.appendChild(renderContainerCard(tree, {
           t,
-          onAdd: (node) => { pendingAddTo = node.id; draw(); },   // reveal an inline add-input (no browser prompt)
+          onAdd: (node) => {
+            // K2 type picker: an AMBIGUOUS container (≥2 accepted types, no default) picks the type FIRST;
+            // a container with a default goes straight to the input.
+            const { ambiguous, kinds } = svc.addKinds(node.type);
+            if (ambiguous) { pendingPick = { node, kinds }; pendingAddTo = null; }
+            else { pendingAddTo = node.id; pendingHint = null; pendingPick = null; }
+            draw();
+          },
           onRowAction: async (op, node) => {
-            if (op === 'markComplete') await circleLists.markDone(circleId, node.id);
-            else if (op === 'removeItem') await circleLists.remove(circleId, node.id);
+            if (op === 'markComplete') await svc.markDone(circleId, node.id);
+            else if (op === 'removeItem') await svc.remove(circleId, node.id);
             draw();
           },
         }));
+      }
+      if (pendingPick) {
+        const pick = document.createElement('div');
+        pick.className = 'cc-lists-panel__pick';
+        const lbl = document.createElement('span'); lbl.className = 'cc-lists-panel__pick-label'; lbl.textContent = t('circle.lists.pick_type');
+        pick.appendChild(lbl);
+        for (const k of pendingPick.kinds) {
+          const b = document.createElement('button');
+          b.type = 'button'; b.className = 'cc-lists-panel__pick-btn'; b.dataset.pickType = k.type; b.textContent = typeLabel(k.type);
+          b.addEventListener('click', () => { pendingAddTo = pendingPick.node.id; pendingHint = k.type; pendingPick = null; draw(); });
+          pick.appendChild(b);
+        }
+        body.appendChild(pick);
       }
       if (pendingAddTo) {
         const addForm = document.createElement('form');
         addForm.className = 'cc-lists-panel__add-form';
         const addInput = document.createElement('input');
-        addInput.type = 'text'; addInput.className = 'cc-lists-panel__add-input'; addInput.placeholder = t('circle.lists.add_prompt');
+        addInput.type = 'text'; addInput.className = 'cc-lists-panel__add-input';
+        addInput.placeholder = pendingHint ? typeLabel(pendingHint) : t('circle.lists.add_prompt');
         const addSubmit = document.createElement('button');
         addSubmit.type = 'submit'; addSubmit.className = 'cc-lists-panel__create'; addSubmit.textContent = t('circle.lists.create');
         addForm.append(addInput, addSubmit);
         addForm.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const v = addInput.value.trim(); const target = pendingAddTo; pendingAddTo = null;
-          if (v && target) await circleLists.addItem(circleId, target, v);
+          const v = addInput.value.trim(); const target = pendingAddTo; const hint = pendingHint;
+          pendingAddTo = null; pendingHint = null;
+          if (v && target) await svc.addItem(circleId, target, v, undefined, hint ? { hint } : undefined);
           draw();
         });
         body.appendChild(addForm);
@@ -2167,30 +2207,40 @@ function openListsPanel(circleId) {
       }
       return;
     }
-    const lists = await circleLists.listLists(circleId);
-    if (!lists.length) {
+    // ── the container index: lists AND boards, each with a type badge ──────────────────────────────────
+    const containers = await svc.listContainers(circleId);
+    if (!containers.length) {
       const empty = document.createElement('div');
       empty.className = 'cc-lists-panel__empty'; empty.textContent = t('circle.lists.empty');
       body.appendChild(empty);
     }
-    for (const l of lists) {
+    for (const c of containers) {
       const row = document.createElement('button');
-      row.type = 'button'; row.className = 'cc-lists-panel__list'; row.dataset.listId = l.id; row.textContent = l.text;
-      row.addEventListener('click', () => { openListId = l.id; draw(); });
+      row.type = 'button'; row.className = 'cc-lists-panel__list'; row.dataset.listId = c.id; row.dataset.type = c.type;
+      const badge = document.createElement('span'); badge.className = 'cc-lists-panel__badge'; badge.textContent = typeLabel(c.type);
+      const name = document.createElement('span'); name.textContent = c.text;
+      row.append(badge, name);
+      row.addEventListener('click', () => { openListId = c.id; draw(); });
       body.appendChild(row);
     }
+    // new-container form: a name + two creators (a plain List, or a heterogeneous Board).
     const form = document.createElement('form');
     form.className = 'cc-lists-panel__new';
     const input = document.createElement('input');
     input.type = 'text'; input.className = 'cc-lists-panel__new-input'; input.placeholder = t('circle.lists.new');
-    const create = document.createElement('button');
-    create.type = 'submit'; create.className = 'cc-lists-panel__create'; create.textContent = t('circle.lists.create');
-    form.append(input, create);
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const mkList = document.createElement('button');
+    mkList.type = 'submit'; mkList.className = 'cc-lists-panel__create'; mkList.textContent = typeLabel('list');
+    const mkBoard = document.createElement('button');
+    mkBoard.type = 'button'; mkBoard.className = 'cc-lists-panel__create cc-lists-panel__create--alt'; mkBoard.textContent = typeLabel('board');
+    const submit = async (kind) => {
       const v = input.value.trim();
-      if (v) { await circleLists.createList(circleId, v); input.value = ''; draw(); }
-    });
+      if (!v) return;
+      if (kind === 'board') await svc.createBoard(circleId, v); else await svc.createList(circleId, v);
+      input.value = ''; draw();
+    };
+    form.addEventListener('submit', (e) => { e.preventDefault(); submit('list'); });
+    mkBoard.addEventListener('click', () => submit('board'));
+    form.append(input, mkList, mkBoard);
     body.appendChild(form);
   }
   draw();

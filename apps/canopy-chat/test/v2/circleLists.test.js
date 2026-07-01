@@ -82,4 +82,36 @@ describe('circleLists', () => {
     const svc = makeCircleLists({ dataSource: memoryDataSource(), manifests: [notesApp] });
     expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'note']);  // merged, list-item default wins
   });
+
+  // ── board: a HETEROGENEOUS multi-type container that drives the ambiguous-type picker ────────────────
+  it('addKinds flags the board as ambiguous, the list (default) as not', () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    expect(svc.addKinds('board')).toMatchObject({ ambiguous: true });
+    expect(svc.addKinds('board').kinds.map((k) => k.type)).toEqual(['list-item', 'list']);
+    expect(svc.addKinds('list').ambiguous).toBe(false);   // a list has a default → no picker
+  });
+
+  it('addItem to a board is AMBIGUOUS (returns the choices); a hint resolves it', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    const board = await svc.createBoard('c1', 'project');
+    expect(await svc.addItem('c1', board.id, 'buy milk'))                       // no hint → the picker's choices
+      .toMatchObject({ ambiguous: [{ type: 'list-item' }, { type: 'list' }] });
+
+    const item = await svc.addItem('c1', board.id, 'buy milk', 'a', { hint: 'list-item' });
+    expect(item).toMatchObject({ type: 'list-item', text: 'buy milk' });
+    const sub = await svc.addItem('c1', board.id, 'groceries', 'a', { hint: 'list' });
+    expect(sub.type).toBe('list');                                              // a nested sub-list
+
+    const tree = await svc.tree('c1', board.id);
+    expect(tree.children.map((c) => c.label).sort()).toEqual(['buy milk', 'groceries']);
+    expect(tree.children.find((c) => c.type === 'list').canAdd).toBe(true);     // the sub-list is itself a container
+  });
+
+  it('listContainers returns lists AND boards', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    await svc.createList('c1', 'a list');
+    await svc.createBoard('c1', 'a board');
+    expect((await svc.listContainers('c1')).map((c) => `${c.type}:${c.text}`).sort())
+      .toEqual(['board:a board', 'list:a list']);
+  });
 });

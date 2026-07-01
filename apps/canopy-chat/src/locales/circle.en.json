@@ -1817,14 +1817,20 @@
     "action": {
       "markComplete": { "text": "Done",   "doc": "K2 container card — complete a list-item." },
       "removeItem":   { "text": "Remove", "doc": "K2 container card — remove a list-item." }
+    },
+    "type": {
+      "list-item": { "text": "Item",  "doc": "K2 type picker / badge — a checklist item." },
+      "list":      { "text": "List",  "doc": "K2 type picker / badge — a list (or sub-list)." },
+      "board":     { "text": "Board", "doc": "K2 type picker / badge — a heterogeneous board (item OR sub-list)." }
     }
   },
   "lists": {
     "title":      { "text": "Lists",                              "doc": "K2 lists panel title + more-menu entry." },
-    "new":        { "text": "New list name…",                     "doc": "K2 lists panel — new-list input placeholder." },
-    "create":     { "text": "Create",                             "doc": "K2 lists panel — create-list button." },
-    "empty":      { "text": "No lists yet — create one below.",   "doc": "K2 lists panel — empty state." },
-    "add_prompt": { "text": "Add an item:",                       "doc": "K2 lists panel — prompt when adding a child to a list." }
+    "new":        { "text": "New name…",                          "doc": "K2 lists panel — new-container input placeholder." },
+    "create":     { "text": "Create",                             "doc": "K2 lists panel — create button." },
+    "empty":      { "text": "Nothing yet — create one below.",    "doc": "K2 lists panel — empty state." },
+    "add_prompt": { "text": "Add an item:",                       "doc": "K2 lists panel — prompt when adding a child to a container." },
+    "pick_type":  { "text": "Add as:",                            "doc": "K2 lists panel — the ambiguous-type picker prompt." }
   },
   "clarify": {
     "which": {

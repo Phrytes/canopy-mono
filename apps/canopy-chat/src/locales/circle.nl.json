@@ -1817,14 +1817,20 @@
     "action": {
       "markComplete": { "text": "Klaar",     "doc": "K2 container card — complete a list-item." },
       "removeItem":   { "text": "Verwijder", "doc": "K2 container card — remove a list-item." }
+    },
+    "type": {
+      "list-item": { "text": "Item",  "doc": "K2 type picker / badge — a checklist item." },
+      "list":      { "text": "Lijst", "doc": "K2 type picker / badge — a list (or sub-list)." },
+      "board":     { "text": "Bord",  "doc": "K2 type picker / badge — a heterogeneous board (item OR sub-list)." }
     }
   },
   "lists": {
     "title":      { "text": "Lijsten",                                  "doc": "K2 lists panel title + more-menu entry." },
-    "new":        { "text": "Naam nieuwe lijst…",                       "doc": "K2 lists panel — new-list input placeholder." },
-    "create":     { "text": "Maken",                                    "doc": "K2 lists panel — create-list button." },
-    "empty":      { "text": "Nog geen lijsten — maak er hieronder een.","doc": "K2 lists panel — empty state." },
-    "add_prompt": { "text": "Voeg een item toe:",                       "doc": "K2 lists panel — prompt when adding a child to a list." }
+    "new":        { "text": "Naam…",                                    "doc": "K2 lists panel — new-container input placeholder." },
+    "create":     { "text": "Maken",                                    "doc": "K2 lists panel — create button." },
+    "empty":      { "text": "Nog niets — maak er hieronder een.",       "doc": "K2 lists panel — empty state." },
+    "add_prompt": { "text": "Voeg een item toe:",                       "doc": "K2 lists panel — prompt when adding a child to a container." },
+    "pick_type":  { "text": "Toevoegen als:",                           "doc": "K2 lists panel — the ambiguous-type picker prompt." }
   },
   "clarify": {
     "which": {

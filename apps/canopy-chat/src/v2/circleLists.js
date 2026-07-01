@@ -23,6 +23,11 @@ const ITEM_SCHEMA = Object.freeze({
   properties: { type: { const: 'list-item' }, text: { type: 'string', minLength: 1 }, completedAt: { type: ['number', 'null'] } },
   required: ['type', 'text'],
 });
+// A `board` — a HETEROGENEOUS container: it accepts EITHER an item OR a sub-list, with NO default, so "+ add"
+// is a genuine CHOICE (the ambiguous case that drives the K2 type picker). Same {text} shape as a list.
+const BOARD_SCHEMA = Object.freeze({
+  type: 'object', properties: { type: { const: 'board' }, text: { type: 'string', minLength: 1 } }, required: ['type', 'text'],
+});
 
 /**
  * The lists feature's manifest-style `accepts` declaration (cluster K · K2 surfacing): a `list` CONTAINS
@@ -34,6 +39,8 @@ export const LISTS_ACCEPTS_MANIFEST = Object.freeze({
   accepts: {
     list:        [{ type: 'list-item', op: 'addItem', default: true }],
     'list-item': [{ type: 'list-item', op: 'addItem', default: true }],   // sub-items → arbitrary nesting
+    // A board accepts an item OR a sub-list, NO default → the ambiguous case (the type picker fires).
+    board:       [{ type: 'list-item', op: 'addItem' }, { type: 'list', op: 'addItem' }],
   },
 });
 
@@ -43,8 +50,10 @@ export function makeCircleLists({ dataSource, manifests } = {}) {
   registerCanonicalTypes(registry);
   registry.registerType('list', LIST_SCHEMA);
   registry.registerType('list-item', ITEM_SCHEMA);
+  registry.registerType('board', BOARD_SCHEMA);
   const stores = createCircleStores({ dataSource: dataSource || memoryDataSource(), registry });
   const s = (circleId) => stores.getStore(circleId);
+  const CONTAINER_TYPES = ['list', 'board'];   // heterogeneous containers rendered by the panel (no row-actions)
 
   // The accepts policy: the lists declaration + any injected extras (other apps extending what a list holds).
   const policy = buildAcceptsPolicy([LISTS_ACCEPTS_MANIFEST, ...(Array.isArray(manifests) ? manifests : [])]);
@@ -52,7 +61,7 @@ export function makeCircleLists({ dataSource, manifests } = {}) {
   // Render shape per type — a node can-add iff its type accepts ≥1 child type (policy-driven, not hardcoded).
   const renderFor = (item) => {
     const canAdd = policy.acceptsFor(item.type).length > 0;
-    if (item.type === 'list') return { label: item.text, canAdd };
+    if (CONTAINER_TYPES.includes(item.type)) return { label: item.text, canAdd };   // list/board = container, no row-actions
     const done = item.completedAt != null;
     return {
       label: `${done ? '✓ ' : ''}${item.text}`,
@@ -62,7 +71,8 @@ export function makeCircleLists({ dataSource, manifests } = {}) {
   };
 
   return {
-    createList: (circleId, text, by) => s(circleId).put({ type: 'list', text }, { by }),
+    createList:  (circleId, text, by) => s(circleId).put({ type: 'list', text }, { by }),
+    createBoard: (circleId, text, by) => s(circleId).put({ type: 'board', text }, { by }),   // multi-type container
     /**
      * Add a child to a container — the child TYPE is resolved from the container type's `accepts` (not fixed).
      * `opts.hint` names a specific accepted child type (e.g. a UI picker for an ambiguous container). Returns
@@ -85,7 +95,17 @@ export function makeCircleLists({ dataSource, manifests } = {}) {
     },
     remove:    (circleId, itemId) => s(circleId).delete(itemId),
     listLists: (circleId) => s(circleId).listByType('list'),
+    /** Every top-level CONTAINER in the circle (lists + boards), each tagged with its `type`. */
+    async listContainers(circleId) {
+      const all = await s(circleId).list();
+      return all.filter((i) => CONTAINER_TYPES.includes(i.type));
+    },
     tree:      (circleId, listId) => projectContainer(s(circleId), listId, { renderFor }),
+    /** The accepted child kinds for a container type, and whether the choice is AMBIGUOUS (≥2, no default). */
+    addKinds(containerType) {
+      const kinds = policy.acceptsFor(containerType);
+      return { kinds, ambiguous: kinds.length > 1 && !kinds.some((k) => k.default) };
+    },
     acceptsFor: policy.acceptsFor,   // exposed so a shell can offer a type picker when a container is ambiguous
   };
 }
