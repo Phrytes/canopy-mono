@@ -16,6 +16,11 @@ substrate is the functionality.
 
 > The model is right. **Make the architecture self-enforcing** so it stays right.
 
+## Before you debug a build/native failure
+Check **`docs/agent-notes-known-gotchas.md`** first — known monorepo-resolution (EAS/Metro
+`nodeModulesPaths`, workspace symlinks) and Android-12 native-permission traps that pass locally
+but fail on device/CI. Don't re-bisect a trap that's already written down.
+
 ## Invariants — a violation is a bug, not a style nit
 1. **Logic lives once, in shared code.** Web/mobile shells are **thin adapters/projectors**: platform UI +
    the transport/bundle adapter, *nothing else*. A shell must NOT carry dispatch / resolution / routing
