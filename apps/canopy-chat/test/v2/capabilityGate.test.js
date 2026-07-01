@@ -45,6 +45,16 @@ describe('effectiveCapabilities', () => {
     expect(eff.keys.has(capabilityKey('household', 'add', 'task'))).toBe(true);
     expect([...eff.keys].some((k) => k.startsWith('calendar '))).toBe(false);
   });
+
+  it('Slice 2: the freedom template narrows BELOW app-level (a disabled cap leaves an enabled app)', () => {
+    const template = { [capabilityKey('household', 'add', 'task')]: { enabled: false } };
+    const eff = effectiveCapabilities(sources, { apps: ['household'], capabilities: template });
+    expect(eff.keys.has(capabilityKey('household', 'add', 'shopping'))).toBe(true);   // still allowed
+    expect(eff.keys.has(capabilityKey('household', 'add', 'task'))).toBe(false);      // ← narrowed out
+    // and the gate refuses that specific op even though household is enabled
+    const r = checkCapability({ op: op('addTask'), appOrigin: 'household', args: {} }, eff);
+    expect(r).toMatchObject({ allow: false, code: 'capability-denied' });
+  });
 });
 
 describe('checkCapability — default-deny', () => {
