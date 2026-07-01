@@ -78,3 +78,24 @@ outreach/onderling-v2-publiek/
 # Zipped bundles/exports don't belong in git history (binary, non-diffable,
 # regenerable). Commit the unzipped source instead if it needs versioning.
 *.zip
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Project docs — private-by-function (task #66 file-org model).
+# See plans/PLAN-file-org-inventory.md. Living plans/notes + the frozen archive
+# stay LOCAL (one Obsidian vault) and never reach the public remote. Tracked docs
+# are docs/**, root README/QUICKSTART, and CLAUDE.md/AGENTS.md (any dir).
+# Guard: scripts/lint-doc-refs.mjs (npm run lint:docs).
+# ─────────────────────────────────────────────────────────────────────────────
+plans/
+_archive/
+# Loose private docs at repo root — function is encoded in the name prefix.
+/PLAN-*.md
+/DESIGN-*.md
+/CODING-*.md
+/VOORSTEL-*.md
+/PROPOSAL-*.md
+/NOTE-*.md
+/WIP-*.md
+/BRIEF-*.md
+/REMAINING-WORK.md
+/PROGRESS.md

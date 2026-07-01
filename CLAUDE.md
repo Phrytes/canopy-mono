@@ -52,12 +52,16 @@ substrate is the functionality.
   fired (the device-run lesson; a gate can route while the op silently fails).
 
 ## Where the truth is
-- **Master todo + roadmap (themes + the architectural spine):** `REMAINING-WORK.md`.
-- **Per-app truth:** `apps/<app>/manifest.js` + app-local CHANGELOGs + `apps/*/docs/`. (The old `Project Files/` +
-  the DESIGN-*/PLAN-* docs moved OUT to the read-only sibling worktree `../canopy projectfiles/` 2026-06-16 — read
-  for reference, do **not** treat as current; note needed edits in `PROJECTFILES-DOC-CHANGES.md`.)
+- **Doc layout (task #66 model — `plans/PLAN-file-org-inventory.md`):** function is encoded in name/location and
+  drives git. **Tracked/public:** `docs/**`, `README.md`, `QUICKSTART.md`, `CLAUDE.md`/`AGENTS.md`, app-local
+  `apps/*/docs/` + CHANGELOGs. **Private/local-only (gitignored, one Obsidian vault):** `plans/` (living
+  plans/designs/notes), `_archive/` (frozen finished docs), and root private-prefix docs (`PLAN-*`, `DESIGN-*`,
+  `REMAINING-WORK.md`, …). Guard: `npm run lint:docs` — a tracked/public file must never link into `plans/`,
+  `_archive/`, or outside the repo. New plan → `plans/`; a tracked doc links only to other tracked paths.
+- **Master todo + roadmap:** `REMAINING-WORK.md` *(private/local — the local starting point)*.
+- **Per-app truth:** `apps/<app>/manifest.js` + app-local CHANGELOGs + `apps/*/docs/`.
 - **The model, in prose:** `README.md` ("One manifest, every surface" + "Architecture invariant — three
-  layers"), `PLAN-manifest-gate-surfaces.md`, `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.
+  layers"), `plans/PLAN-manifest-gate-surfaces.md` *(private)*, `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.
 
 *(This file will be re-scoped when the repo splits — clients vs substrate/functionality vs feedback-app vs
 third-party-via-SDK; see the spine. The per-repo CLAUDE.md will narrow to that repo's slice of the waist.)*

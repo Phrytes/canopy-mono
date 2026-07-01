@@ -13,7 +13,8 @@
     "test:scenarios": "npm run test --prefix packages/integration-tests",
     "demo": "node examples/mesh-demo/index.js",
     "demo:verify": "node examples/mesh-demo/index.js",
-    "relay:start": "npm run start --prefix packages/relay"
+    "relay:start": "npm run start --prefix packages/relay",
+    "lint:docs": "node scripts/lint-doc-refs.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
