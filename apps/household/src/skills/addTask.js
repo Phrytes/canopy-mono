@@ -5,43 +5,26 @@
  * ctx   : SkillContext
  * reply : "✓ added task: <text>" + an `item.added` stateUpdate.
  *
- * When `assignee` is supplied, the task is reassigned to that webid
- * right after creation (single-pass; LWW).  SP-2 V0 has no inline DAG /
- * dependency wiring — those land via the manifest's forward-compat hook
- * to `@canopy/protocol` (PLAN guardrail #9).
+ * B · Layer 1 — this is the `add` atom resolved for the `task` noun.  The
+ * store-write, the optional inline reassignment, and the `item.added`
+ * emission live in the single shared `createHouseholdItem` create path
+ * (which `addItem` also uses for the list nouns); this handler only supplies
+ * the task-noun wording.  Behaviour is byte-identical to the pre-
+ * consolidation handler.
+ *
+ * When `assignee` is supplied, the task is reassigned to that webid right
+ * after creation (single-pass; LWW).  SP-2 V0 has no inline DAG / dependency
+ * wiring — those land via the manifest's forward-compat hook to
+ * `@canopy/protocol` (PLAN guardrail #9).
  */
+
+import { createHouseholdItem } from './createHouseholdItem.js';
 
 export async function addTask(args, ctx) {
   const { text, assignee, dueAt } = args ?? {};
 
-  if (typeof text !== 'string' || text.trim() === '') {
-    return {
-      replies:      [{ text: `Couldn't add task — text is empty.` }],
-      stateUpdates: [],
-    };
-  }
-
-  const item = await ctx.store.addItem({
-    type:    'task',
-    text:    text.trim(),
-    addedBy: ctx.senderWebid,
-    source:  { tg: { chatId: ctx.chatId, messageId: '?' } },
-    ...(typeof dueAt === 'number' ? { dueAt } : {}),
+  return createHouseholdItem('task', { text, dueAt, assignee }, ctx, {
+    emptyText: `Couldn't add task — text is empty.`,
+    reply:     (item) => `✓ added task: ${item.text}`,
   });
-
-  // Optional immediate assignment.  Best-effort: a reassign hiccup
-  // doesn't kill the user-facing "added" reply.
-  if (typeof assignee === 'string' && assignee.trim() !== ''
-      && typeof ctx.store.reassign === 'function') {
-    try { await ctx.store.reassign(item.id, assignee.trim(), ctx.senderWebid); }
-    catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[addTask] reassign threw:', err?.message ?? err);
-    }
-  }
-
-  return {
-    replies:      [{ text: `✓ added task: ${item.text}` }],
-    stateUpdates: [{ kind: 'item.added', itemId: item.id, chatId: ctx.chatId }],
-  };
 }

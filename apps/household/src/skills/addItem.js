@@ -1,14 +1,23 @@
 /**
- * skills/addItem — append a new item to the store.
+ * skills/addItem — append a new item to a household LIST.
  *
  * args  : { type: ItemType, text: string }
  * ctx   : SkillContext (carries store, chatId, senderWebid, …)
  * reply : "✓ added to <type>: <text>" + an `item.added` stateUpdate.
  *
+ * B · Layer 1 — this is the `add` atom resolved for the four LIST nouns
+ * (shopping/errand/repair/schedule).  The store-write + `item.added`
+ * emission live in the single shared `createHouseholdItem` create path
+ * (which `addTask` also uses for the `task` noun); this handler only adds
+ * the list-noun type guard.  Behaviour is byte-identical to the pre-
+ * consolidation handler.
+ *
  * Pure: no platform-specific imports.  The agent is responsible for
  * routing the returned Reply back to the bridge that originated the
  * incoming message.
  */
+
+import { createHouseholdItem } from './createHouseholdItem.js';
 
 const KNOWN_TYPES = new Set(['shopping', 'errand', 'repair', 'schedule']);
 
@@ -31,28 +40,5 @@ export async function addItem(args, ctx) {
     };
   }
 
-  if (typeof text !== 'string' || text.trim() === '') {
-    return {
-      replies: [{ text: `Couldn't add — text is empty.` }],
-      stateUpdates: [],
-    };
-  }
-
-  // TODO: messageId is not available in SkillContext — the agent
-  // strips that detail before invoking skills.  Use '?' as a
-  // placeholder; the agent will fill it in once it lands (see
-  // implementation-plan.md "convergence" section).
-  const item = await ctx.store.addItem({
-    type,
-    text: text.trim(),
-    addedBy: ctx.senderWebid,
-    source: { tg: { chatId: ctx.chatId, messageId: '?' } },
-  });
-
-  return {
-    replies: [{ text: `✓ added to ${item.type}: ${item.text}` }],
-    stateUpdates: [
-      { kind: 'item.added', itemId: item.id, chatId: ctx.chatId },
-    ],
-  };
+  return createHouseholdItem(type, { text }, ctx);
 }
