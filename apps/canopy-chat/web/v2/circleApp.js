@@ -48,6 +48,8 @@ import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '../../src/v2/followUp.js';
 import { kringReplyText } from '../../src/v2/kringReply.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
+// B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
+import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../../src/v2/mappingsStore.js';
@@ -965,6 +967,15 @@ function buildCircleBot(agent) {
       return;
     }
     if (route.kind !== 'ready')     { _kringRender?.botBubble(t('circle.bot.unknown')); return; }
+    // B · Slice 1 — DEFAULT-DENY capability gate. Every user-initiated dispatch (slash/LLM/gate/
+    // button/follow-up) converges here; internal plumbing calls rawCallSkill directly and is untouched.
+    // This closes the leak where the SCREEN button was app-gated (isOpAppEnabledForActiveCircle) but the
+    // dispatch itself was not — an op could still run when invoked directly.
+    const denyCode = await circleCapabilityDeny(route.appOrigin, route.opId, route.args);
+    if (denyCode) {
+      _kringRender?.botBubble(t(denyCode === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied'));
+      return;
+    }
     let reply;
     try { reply = await runDispatch(scopeReadyDispatch(route, getActiveCircle()), rawCallSkill); }
     catch (e) { _kringRender?.botBubble(t('circle.bot.failed', { msg: e?.message ?? String(e) })); return; }
@@ -1041,6 +1052,22 @@ function buildCircleBot(agent) {
     let policy = {};
     try { policy = (await policyStore.get(getActiveCircle())) ?? {}; } catch { /* default policy */ }
     return isAppSurfaceEnabled(appOrigin, policy, isFeatureEnabled);
+  }
+
+  // B · Slice 1 — the default-deny capability decision for a user-initiated dispatch. Returns a deny
+  // code ('app-disabled' | 'capability-denied') or null (allow). Enablement comes from the SAME
+  // per-circle source the UI uses (isOpAppEnabledForActiveCircle → policy.features), then the pure
+  // (verb × noun) gate evaluates the specific capability. Slice 1 grants an enabled app ALL its caps;
+  // Slice 2 swaps the effective set for admin-template ∩ user-prefs WITHOUT changing this call.
+  async function circleCapabilityDeny(appOrigin, opId, args) {
+    if (getActiveCircle() == null) return null;                 // outside a circle → no per-circle gate
+    const origin = appOrigin || catalog?.opsById?.get(opId)?.appOrigin;
+    if (!origin) return null;                                   // unattributable → don't block here
+    const op = catalog?.opsById?.get(opId)?.op;
+    const enabled = await isOpAppEnabledForActiveCircle(origin);
+    const eff = effectiveCapabilities(baseSources, { apps: enabled ? [origin] : [] });
+    const r = checkCapability({ op, appOrigin: origin, args }, eff);
+    return r.allow ? null : r.code;
   }
 
   // A tapped bubble button: S6.B screen button (has `screen`) → open the panel;

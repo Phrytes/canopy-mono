@@ -1809,6 +1809,16 @@
       "doc": "Circle bot reply to a bulk '/done all' when no listing was shown yet."
     }
   },
+  "gate": {
+    "appDisabled": {
+      "text": "That isn’t turned on for this circle.",
+      "doc": "B Slice 1 — capability gate refusal: the op's app is not enabled for the active circle (policy.features). The default-deny boundary at the dispatch waist."
+    },
+    "capabilityDenied": {
+      "text": "That action isn’t allowed in this circle.",
+      "doc": "B Slice 1 — capability gate refusal: the (verb × noun) capability isn't in the circle's effective set."
+    }
+  },
   "container": {
     "add": {
       "text": "+ add",
