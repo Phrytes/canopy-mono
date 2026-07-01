@@ -1,11 +1,11 @@
 # @canopy-app/folio-mobile
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md). **Known direct SDK use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct SDK use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
 >
 > **Manifest + tier policy.** Folio-mobile reads from the folio
 > manifest (declared in [`../folio/manifest.js`](../folio/manifest.js))
 > via the workspace dependency.  All RN screens are currently T3 per
-> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md); future slice
+> `DESIGN-tier-policy.md`; future slice
 > F.3 wires `ShareScreen` + `NotesListScreen` to consume the
 > manifest's Q27 confirms (deleteFromPod / forceRepush /
 > deleteLocally) via an RN-side equivalent of `createOpBinding`.
@@ -19,7 +19,7 @@ apps share `packages/*` but maintain independent Expo configurations.
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -43,7 +43,7 @@ the single-agent rule is satisfied trivially. **If/when** Folio
 adds mDNS / BLE / relay (e.g. for direct cross-device note sync
 without a pod hop), build them onto ONE `core.Agent` per
 service-context, not per-account. Project-wide convention:
-[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
+[`Project Files/conventions/single-agent.md`](../../docs/conventions/single-agent.md).
 
 ## Status
 
@@ -61,7 +61,7 @@ Folio-mobile's substrate adoption tracks alongside Folio desktop:
 | 52.16 | ACP/WAC sharing v2 (`client.sharing.*`) | `src/screens/ShareScreen.js` uses `podClient.sharing.grant({...})` with cap-token fallback |
 
 Deferred to Folio-mobile V2 (waits on the sync-engine → pseudoPod V1
-absorption — see [`Project Files/Folio/v1-mobile-functional-design-2026-05-11.md`](../../Project%20Files/Folio/v1-mobile-functional-design-2026-05-11.md)):
+absorption — see `Project Files/Folio/v1-mobile-functional-design-2026-05-11.md`):
 
 - 52.10 agent-registry per-bundle — requires the engine to run through
   pseudoPod.
@@ -167,7 +167,7 @@ Keystore).  See `src/auth/OidcSessionRN.js` for the storage keys.
 When running real-device tests against Folio-desktop, the F1–F4
 pair scenarios (ACP grant + fetch, cap-token fallback, revocation,
 conflict resolution) live in the cross-app pair-test runbook:
-[`Project Files/conventions/pair-test-runbook-2026-05-15.md`](pair-test-runbook-2026-05-15.md).
+`Project Files/conventions/pair-test-runbook-2026-05-15.md`.
 
 ## Known iOS limitations
 
@@ -202,7 +202,7 @@ wiring, screen logic, and conflict-merge helpers in isolation.
 Folio-mobile shares its settings namespace with the desktop Folio
 app — both write to `<pod>/folio/...`, NOT separate per-platform
 containers. The layout follows the project-wide convention in
-[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+[`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md):
 
 ```
 <pod>/folio/settings/shared.json              user-portable; shared with desktop Folio
@@ -238,7 +238,7 @@ settings yet. Update this section when they land.
 
 When mobile-Folio gains a "share this note" surface (likely V2),
 the project-wide rule in
-[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+`Project Files/projects/README.md`
 applies: outgoing share envelopes carry the note bytes (and resized
 attachments) inline, never a `<pod>/folio/notes/...` URL.
 

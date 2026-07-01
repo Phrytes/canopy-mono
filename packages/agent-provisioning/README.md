@@ -12,7 +12,7 @@
 > alone).
 >
 > Authored 2026-05-11 as part of standardisation Phase 50.5.b — see
-> [`Project Files/SDK/core-v2-coding-plan-2026-05-11.md`](../../Project%20Files/SDK/core-v2-coding-plan-2026-05-11.md).
+> `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`.
 
 ## Why a facade?
 
@@ -153,5 +153,5 @@ npm test
   in `@canopy/sync-engine-rn`'s `createMobileBootstrap`).
 - [`@canopy/webid-discovery`](../webid-discovery/) — WebID
   profile pointer-walk + cache.
-- [`Project Files/SDK/core-v2-functional-design-2026-05-11.md`](../../Project%20Files/SDK/core-v2-functional-design-2026-05-11.md)
+- `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   — design context.

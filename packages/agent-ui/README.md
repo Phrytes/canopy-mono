@@ -1,6 +1,6 @@
 # @canopy/agent-ui
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Localhost-only A2A glue for apps that run a UI process beside their own
 agent. Ships two thin primitives:

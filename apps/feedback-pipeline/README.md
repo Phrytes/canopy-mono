@@ -14,7 +14,7 @@
 
 Implements **step 3 ("Lokale filtering")** and the start of **step 5
 ("Aggregatie")** of the six-step feedback pipeline in
-[`Project Files/Aanpak/commerciele_verkenning.md`](../../Project%20Files/Aanpak/commerciele_verkenning.md)
+`Project Files/Aanpak/commerciele_verkenning.md`
 — the OR / zorg / whistleblower "feedback-infrastructuur" product line
 (public-facing as *Onderling*).
 

@@ -247,7 +247,7 @@ Tests now: **319 across 30 files** (Tasks).
 
 ## [0.3.7] — 2026-05-08 — V2.8 — single-agent + per-crew state via bundleResolver
 
-The desktop-side mirror of Stoop's 2026-05-08 [`single-agent-refactor`](../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md). One `core.Agent` per process serves N crews; per-crew state lives in `CrewState`; skills resolve their crew at dispatch time. Unblocks tasks-mobile Phase 41.x and stops the V2.5 path of spinning N agents for N crews.
+The desktop-side mirror of Stoop's 2026-05-08 `single-agent-refactor`. One `core.Agent` per process serves N crews; per-crew state lives in `CrewState`; skills resolve their crew at dispatch time. Unblocks tasks-mobile Phase 41.x and stops the V2.5 path of spinning N agents for N crews.
 
 Shipped in two passes within the day:
 - **Part 1** — extract `buildMeshAgent` (the foundation `core.Agent` + `policyEngine` + `trustRegistry` + identity vault).
@@ -649,15 +649,15 @@ substrates were lifted by parallel work).
 
 ### V1 design + plan documents
 
-- [`Project Files/Tasks App/advice-2026-05-07.md`](../../Project%20Files/Tasks%20App/advice-2026-05-07.md) — integration advice + high-level design.
-- [`Project Files/Tasks App/critique-2026-05-07.md`](../../Project%20Files/Tasks%20App/critique-2026-05-07.md) — design review pushback.
-- [`Project Files/Tasks App/coding-plan-2026-05-07.md`](../../Project%20Files/Tasks%20App/coding-plan-2026-05-07.md) — phased build plan; 11 phases, ~27 dev-days, ~85 tests target (actual: 176, including substrate test parities).
-- [`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md) — Stoop-side migration log for the lifted substrates.
-- [`Project Files/Substrates/apps/H4-tasks.md`](../../Project%20Files/Substrates/apps/H4-tasks.md) — substrate-composition sketch (V1 update).
+- `Project Files/Tasks App/advice-2026-05-07.md` — integration advice + high-level design.
+- `Project Files/Tasks App/critique-2026-05-07.md` — design review pushback.
+- `Project Files/Tasks App/coding-plan-2026-05-07.md` — phased build plan; 11 phases, ~27 dev-days, ~85 tests target (actual: 176, including substrate test parities).
+- `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md` — Stoop-side migration log for the lifted substrates.
+- `Project Files/Substrates/apps/H4-tasks.md` — substrate-composition sketch (V1 update).
 
-- [`Project Files/Tasks App/advice-2026-05-07.md`](../../Project%20Files/Tasks%20App/advice-2026-05-07.md) — integration advice + high-level design.
-- [`Project Files/Tasks App/critique-2026-05-07.md`](../../Project%20Files/Tasks%20App/critique-2026-05-07.md) — design review pushback.
-- [`Project Files/Tasks App/coding-plan-2026-05-07.md`](../../Project%20Files/Tasks%20App/coding-plan-2026-05-07.md) — phased build plan; 11 phases, ~35.5 dev-days, ~110 tests.
+- `Project Files/Tasks App/advice-2026-05-07.md` — integration advice + high-level design.
+- `Project Files/Tasks App/critique-2026-05-07.md` — design review pushback.
+- `Project Files/Tasks App/coding-plan-2026-05-07.md` — phased build plan; 11 phases, ~35.5 dev-days, ~110 tests.
 
 ### Phase 0 — V0 baseline + branch (2026-05-08)
 
@@ -858,7 +858,7 @@ App side (`apps/tasks-v0`):
 - `@canopy/notifier` extension: `UsageMetrics` (in-memory per-event counter).
 - `core.GroupManager` extension: canonical `issueInviteSkill` / `redeemInviteSkill` helpers.
 
-Stoop's `apps/stoop/src/lib/` files affected become re-export shims; per-PR migration plan at [`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md). **No Stoop V3 substrates touched** (e.g. `@canopy/oidc-session-rn` stays out of scope).
+Stoop's `apps/stoop/src/lib/` files affected become re-export shims; per-PR migration plan at `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`. **No Stoop V3 substrates touched** (e.g. `@canopy/oidc-session-rn` stays out of scope).
 
 ---
 

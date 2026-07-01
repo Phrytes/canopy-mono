@@ -4,7 +4,7 @@
 > Peer of [`@canopy/oidc-session-rn`](../oidc-session-rn/) (the React
 > Native variant). Extracted from `@canopy/core` 2026-05-11 as part of
 > the standardisation P1 work (Phase 50.1 — see
-> [`Project Files/SDK/core-v2-coding-plan-2026-05-11.md`](../../Project%20Files/SDK/core-v2-coding-plan-2026-05-11.md)).
+> `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`).
 
 ## What's in here
 
@@ -150,7 +150,7 @@ import { SolidVault } from '@canopy/oidc-session';
 ## Solid-auth consolidation status (Phase 52.15)
 
 Scoped + (largely) shipped 2026-05-14. Three docs in
-[`Project Files/Inrupt-migration/`](../../Project%20Files/Inrupt-migration/)
+`Project Files/Inrupt-migration/`
 capture the inventory, the substrate design, and the phase plan.
 
 - **52.15.1 / 52.15.2 / 52.15.3 shipped 2026-05-14** — multi-issuer
@@ -161,7 +161,7 @@ capture the inventory, the substrate design, and the phase plan.
   + adoption in all 5 apps.
 - **52.15.6 / 52.15.7 / 52.15.8 shipped 2026-05-14** — terminology
   contract locked in
-  [`localisation.md`](../../Project%20Files/conventions/localisation.md);
+  [`localisation.md`](../../docs/conventions/localisation.md);
   audit script at `scripts/audit-locales.mjs`.
 
 Phase 52.16 (ACP/WAC sharing via `pod-client.sharing.*`) is scoped
@@ -172,7 +172,7 @@ but not yet implemented.
 - [`@canopy/oidc-session-rn`](../oidc-session-rn/) — RN peer.
 - [`@canopy/pod-client`](../pod-client/) — `SolidOidcAuth` wraps a
   `SolidVault` session and adapts it to the `PodClient` auth contract.
-- [`Project Files/SDK/core-v2-functional-design-2026-05-11.md`](../../Project%20Files/SDK/core-v2-functional-design-2026-05-11.md)
+- `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   — design context.
-- [`Project Files/Inrupt-migration/`](../../Project%20Files/Inrupt-migration/)
+- `Project Files/Inrupt-migration/`
   — Solid-auth consolidation (Phase 52.15 + 52.16).

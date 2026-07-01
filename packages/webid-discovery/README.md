@@ -2,7 +2,7 @@
 
 > **Layer: substrate.** WebID-profile pointer-walk + resolution.
 > Authored 2026-05-11 as part of the standardisation P1 work (Phase
-> 50.2 — see [`Project Files/SDK/core-v2-coding-plan-2026-05-11.md`](../../Project%20Files/SDK/core-v2-coding-plan-2026-05-11.md)).
+> 50.2 — see `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`).
 
 ## What it does
 
@@ -163,7 +163,7 @@ npm test
   `fetch` for authenticated profile reads.
 - [`@canopy/pseudo-pod`](../pseudo-pod/) (forthcoming, P1) —
   typically supplies `read` for resolving pointers.
-- [`Project Files/SDK/core-v2-functional-design-2026-05-11.md`](../../Project%20Files/SDK/core-v2-functional-design-2026-05-11.md)
+- `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   §4b — design context.
-- [`Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md`](../../Project%20Files/Substrates/substrates-v2-functional-design-2026-05-11.md)
+- `Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md`
   §4.3 — storage-mapping pod resource; §4.6 — agent-registry pod resource.

@@ -3,7 +3,7 @@
 > **Status:** locked 2026-05-07. Project-wide convention.
 > **Companions:**
 > - [`./pod-layout-conventions.md`](./pod-layout-conventions.md) — coming once a 2nd app adopts the same shape (rule of two)
-> - [`../Stoop/pod-layout-2026-05-06.md`](../Stoop/pod-layout-2026-05-06.md) — current canonical example
+> - `../Stoop/pod-layout-2026-05-06.md` — current canonical example
 > - [`./architectural-layering.md`](./architectural-layering.md) — apps don't import each other; this convention rides on the pod, not on cross-app imports.
 > **Applies to:** every directory under `apps/` whose users sign in
 > with a Solid pod and have settings worth persisting.

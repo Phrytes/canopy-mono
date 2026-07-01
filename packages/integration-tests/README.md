@@ -10,8 +10,8 @@ identity recovery via the pod, governance role transitions mid-call,
 and so on.
 
 See:
-- [`coding-plans/sdk-test-strategy.md`](../../coding-plans/sdk-test-strategy.md) — the strategy.
-- [`coding-plans/sdk-test-implementation.md`](../../coding-plans/sdk-test-implementation.md) — task plan for T.1–T.7.
+- `coding-plans/sdk-test-strategy.md` — the strategy.
+- `coding-plans/sdk-test-implementation.md` — task plan for T.1–T.7.
 
 ## Running
 

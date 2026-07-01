@@ -4,7 +4,7 @@
 **Hardware:** laptop, **CPU-only** (no GPU), 27 GB RAM (≈1–4 GB free during the run).
 **Provider:** Ollama 0.22, local. Temperature 0.
 **Task:** (1) clean/anonymize single messages — strip personal details + profanity, EN + NL; (2) summarize a 10-message batch while merging semantic duplicates.
-**Where this fits:** step 3 ("Lokale filtering") and the start of step 5 ("Aggregatie") of the six-step feedback pipeline in [`Project Files/Aanpak/commerciele_verkenning.md`](../../../Project%20Files/Aanpak/commerciele_verkenning.md).
+**Where this fits:** step 3 ("Lokale filtering") and the start of step 5 ("Aggregatie") of the six-step feedback pipeline in `Project Files/Aanpak/commerciele_verkenning.md`.
 
 This is the baseline run with a **single generic prompt and no regex pre-pass** — i.e. "what does a raw local model do out of the box?". The app's hybrid design (regex step 1 + LLM step 2) is the response to what this run exposed. Re-run `npm run clean-smoke` / `npm run pipeline-smoke` to compare the hybrid against these numbers.
 
@@ -307,4 +307,4 @@ exercise `canonicalDomain` — that earns its keep on messy real input (civic), 
 
 ## Related
 - [`apps/household/docs/LLM-MODEL-COMPARISON.md`](../../household/docs/LLM-MODEL-COMPARISON.md) — the sibling comparison for **tool-calling/classification** (verdict: qwen2.5:3b). Different task, same "qwen2.5 family is the reliable local pick" conclusion.
-- [`Project Files/SDK/LOCAL LLM OVERVIEW.md`](../../../Project%20Files/SDK/LOCAL%20LLM%20OVERVIEW.md) — model/hardware rundown.
+- `Project Files/SDK/LOCAL LLM OVERVIEW.md` — model/hardware rundown.

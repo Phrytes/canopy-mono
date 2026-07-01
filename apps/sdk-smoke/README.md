@@ -1,13 +1,13 @@
 # sdk-smoke — two-device SDK smoke harness
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md). **Known direct SDK use:** by design — sdk-smoke's purpose is validating SDK primitives (`@canopy/core`, `@canopy/relay`, `@canopy/react-native`) on real hardware, so it consumes the SDK directly.
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct SDK use:** by design — sdk-smoke's purpose is validating SDK primitives (`@canopy/core`, `@canopy/relay`, `@canopy/react-native`) on real hardware, so it consumes the SDK directly.
 
 A stripped-down Expo app that exposes each SDK substrate area as a press-button
 test, used to validate that Tracks A–G survive on real hardware.
 
 This app is **not** an end-user demo — it has no chat UI, no Folio, no styling
 beyond what's needed to read a status pill.  See
-[`../../coding-plans/sdk-two-device-smoke.md`](../../coding-plans/sdk-two-device-smoke.md)
+`../../coding-plans/sdk-two-device-smoke.md`
 for the full plan, the 10 scenarios (S1–S10), and the bring-up runbook.
 
 ## Substrates
@@ -158,4 +158,4 @@ integrate into a test runner later if needed.
   this app deliberately doesn't extend it (Q-Smoke.3 locked 2026-04-29).
 - [`../../packages/relay/`](../../packages/relay/) — verbose logging behind
   `RELAY_VERBOSE=1` (Part 3 of the prep).
-- [`../../coding-plans/sdk-two-device-smoke.md`](../../coding-plans/sdk-two-device-smoke.md) — the plan.
+- `../../coding-plans/sdk-two-device-smoke.md` — the plan.

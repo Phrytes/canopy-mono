@@ -10,7 +10,7 @@
 |---|---|
 | **Status** | locked 2026-05-04 |
 | **Triggered by** | substrate-vs-SDK refactor audit (`Project Files/Substrates/refactor/00-Overview.md`) discovered 5 of 10 substrates were reinventing primitives the SDK already provided. |
-| **Companion docs** | [`./app-readme-scheme.md`](./app-readme-scheme.md), [`../Substrates/policies.md`](../Substrates/policies.md), [`../Substrates/refactor/00-Overview.md`](../Substrates/refactor/00-Overview.md) |
+| **Companion docs** | [`./app-readme-scheme.md`](./app-readme-scheme.md), `../Substrates/policies.md`, `../Substrates/refactor/00-Overview.md` |
 
 ---
 
@@ -74,13 +74,13 @@ read it as a reference, not modify it casually.
   preset, BLE/mDNS/Keychain adapters, MobilePushBridge).
 
 **Reference for what's in here:**
-[`Project Files/Substrates/refactor/SDK-surface-map.md`](../Substrates/refactor/SDK-surface-map.md).
+`Project Files/Substrates/refactor/SDK-surface-map.md`.
 
 ### Substrates — `packages/{item-store, agent-ui, ...}` (L1a–L1j)
 
 Reusable building blocks **on top of** the SDK. Each substrate is shaped
 by **at least two consumer specs** before its API locks (rule of two —
-see [`policies.md`](../Substrates/policies.md)).
+see `policies.md`).
 
 **Substrate authors MUST:**
 - Compose SDK primitives directly. If you find yourself implementing
@@ -164,7 +164,7 @@ provides, the choices are:
 - "Quick fixes" that bypass core because composing seemed too hard.
 
 When in doubt, the audit doc
-([`../Substrates/refactor/00-Overview.md`](../Substrates/refactor/00-Overview.md))
+(`../Substrates/refactor/00-Overview.md`)
 records the decisions and what the failure modes look like.
 
 ---
@@ -465,13 +465,13 @@ Two ongoing checks for the layering invariant:
 
 1. **Substrate audits.** `Project Files/Substrates/refactor/L1*-refactor.md`
    contain per-substrate findings. The execution checklist
-   [`01-Execution-Checklist.md`](../Substrates/refactor/01-Execution-Checklist.md)
+   `01-Execution-Checklist.md`
    tracks remediation. After Phase 5 lands, the substrates should compose
    the SDK cleanly; if any later commit reintroduces a layering violation,
    it should surface in code review against this doc.
 
 2. **App↔SDK bypass audit.** Tracked under HIGH PRIORITY in
-   [`../TODO-GENERAL.md`](../TODO-GENERAL.md). Runs after substrate
+   `../TODO-GENERAL.md`. Runs after substrate
    refactors land. Flags any app that imports from `@canopy/core` /
    `@canopy/relay` / `@canopy/pod-client` / `@canopy/react-native`
    without a corresponding justification in the app README.

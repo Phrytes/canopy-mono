@@ -2,7 +2,7 @@
 
 Build a working agent in ~20 lines.  This page is for evaluating the
 shape of the API; once you're past the smoke test, see
-[`ARCHITECTURE.md`](./ARCHITECTURE.md) for the bigger picture.
+`ARCHITECTURE.md` for the bigger picture.
 
 ---
 
@@ -330,7 +330,7 @@ A2A endpoints exposed:
 | `GET /tasks/:id` | Task status |
 | `POST /tasks/:id/cancel` | Cancel a running task |
 
-For a deeper dive see [`Design-v3/03-A2ATransport.md`](./Design-v3/03-A2ATransport.md).
+For a deeper dive see `Design-v3/03-A2ATransport.md`.
 
 **TLS in production:** front the A2A endpoint with Caddy / nginx /
 Cloudflare for HTTPS termination + rate limiting + CORS rules.
@@ -387,5 +387,5 @@ to ask the caller for more input.
   Build it, run it on two phones, run the relay on your laptop, and
   watch them gossip.
 - **Browser demo** — `examples/mesh-demo/` for a no-RN single-page version.
-- **Architecture map** — [`ARCHITECTURE.md`](./ARCHITECTURE.md) for
+- **Architecture map** — `ARCHITECTURE.md` for
   the full feature list and where things live.

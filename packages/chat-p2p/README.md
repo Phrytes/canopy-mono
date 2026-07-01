@@ -4,7 +4,7 @@
 > **Distinct from `@canopy/chat-agent`** (LLM-mediated chat).
 > Lifted from `apps/stoop/src/chat/wireChat.js` 2026-05-08 (Tasks
 > V1 = rule-of-two consumer per
-> [`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md)).
+> `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`).
 
 Peer-to-peer chat over `agent.transport.sendOneWay`.
 

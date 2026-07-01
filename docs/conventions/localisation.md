@@ -179,7 +179,7 @@ The same applies to the `{text, doc}` leaf shape (locked 2026-05-06):
 plain-string entries keep resolving, but any entry that is added,
 renamed, or edited after that date must land as `{text, doc}` —
 including a useful `doc` note. Tracked in
-[`../TODO-GENERAL.md`](../TODO-GENERAL.md) as a back-fill task.
+`../TODO-GENERAL.md` as a back-fill task.
 
 New apps must ship with locale files from the first commit, in
 `{text, doc}` shape.

@@ -5,7 +5,7 @@
 Initial release. Tasks-mobile V1 — React Native client mirroring the
 desktop tasks-v0 app's V0 + V1 + V1.5 + V2 surface, plus the V2.7
 hard-dependency UI gates and V2.8 single-agent topology. Phase 41
-of the [Tasks-mobile coding plan](../../Project%20Files/Tasks%20App/mobile-coding-plan-2026-05-08.md).
+of the Tasks-mobile coding plan.
 
 ### Headlines
 

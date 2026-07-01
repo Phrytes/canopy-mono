@@ -20,8 +20,8 @@
 | | |
 |---|---|
 | **Status** | v0.1.0-dev (in progress — see `/Project Files/canopy-chat/coding-plan.md`) |
-| **Companion docs** | [`/DESIGN-canopy-chat.md`](../../DESIGN-canopy-chat.md), [`/DESIGN-canopy-chat-journeys.md`](../../DESIGN-canopy-chat-journeys.md) |
-| **Tier policy** | See [`/DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md). canopy-chat pages are T1 (substrate-rendered by the chat shell itself) by definition. |
+| **Companion docs** | `/DESIGN-canopy-chat.md`, `/DESIGN-canopy-chat-journeys.md` |
+| **Tier policy** | See `/DESIGN-tier-policy.md`. canopy-chat pages are T1 (substrate-rendered by the chat shell itself) by definition. |
 
 ---
 
@@ -41,7 +41,7 @@ natural language into the same dispatch primitives.
 - Not an app substrate (does not own data; composes other apps'
   manifests at runtime).
 - Not a replacement for apps' own web UIs — chat sits alongside
-  the side-panel surfaces per [B.1 nav protocol](../../DESIGN-canopy-chat-journeys.md).
+  the side-panel surfaces per B.1 nav protocol.
 - Not a server — ships as a static web bundle.  Mesh agent runs
   browser-side via relay + NKN + WebRTC transports (per OQ-1.A in
   the coding plan).
@@ -216,16 +216,16 @@ inline `[Mark done]` button.
 
 This app follows:
 
-- [`architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md) — substrate composition before reinvention
-- [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md) (this file)
-- [`single-agent.md`](../../Project%20Files/conventions/single-agent.md) — one
+- [`architectural-layering.md`](../../docs/conventions/architectural-layering.md) — substrate composition before reinvention
+- [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md) (this file)
+- [`single-agent.md`](../../docs/conventions/single-agent.md) — one
   `core.Agent` per service-context; per-thread state lives outside the agent
-- [`localisation.md`](../../Project%20Files/conventions/localisation.md) —
+- [`localisation.md`](../../docs/conventions/localisation.md) —
   every user-facing string translatable from v0.1
-- [`pod-independence.md`](../../Project%20Files/conventions/pod-independence.md) —
+- [`pod-independence.md`](../../docs/conventions/pod-independence.md) —
   v0.1 ships pod-less (local thread persistence in IndexedDB); pod sync is
   opt-in v0.6
-- [`plan-tracking.md`](../../Project%20Files/conventions/plan-tracking.md) — the
+- [`plan-tracking.md`](../../docs/conventions/plan-tracking.md) — the
   coding plan at `/Project Files/canopy-chat/coding-plan.md` includes a
   per-sub-slice **Substrate-reuse gate** (added 2026-05-22) so future phases
   audit existing substrates before writing new modules.

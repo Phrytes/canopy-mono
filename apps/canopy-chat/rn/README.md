@@ -8,7 +8,7 @@
 | | |
 |---|---|
 | **Layer** | app (RN companion to `apps/canopy-chat/`) |
-| **Companion docs** | [`/DESIGN-canopy-chat.md`](../../../DESIGN-canopy-chat.md), [`/Project Files/canopy-chat/coding-plan.md`](../../../Project%20Files/canopy-chat/coding-plan.md) § Phase v0.2 sub-slice 2.9 |
+| **Companion docs** | `/DESIGN-canopy-chat.md`, `/Project Files/canopy-chat/coding-plan.md` § Phase v0.2 sub-slice 2.9 |
 
 ---
 

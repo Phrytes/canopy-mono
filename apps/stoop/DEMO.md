@@ -134,4 +134,4 @@ npm test
 
 378/378 across 34 files: the bones are in place.  V2 is mobile +
 LLM-as-agent + Q-H5 anonymity per
-[`coding-plan-v1-2026-05-05.md`](../../Project%20Files/Stoop/coding-plan-v1-2026-05-05.md).
+`coding-plan-v1-2026-05-05.md`.

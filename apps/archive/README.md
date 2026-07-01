@@ -1,6 +1,6 @@
 # Archive — read-side validator + SQLite FTS5 search over pod content
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 **Status:** v0 (lib + CLI; web UI + real-pod auth deferred).
 
@@ -11,7 +11,7 @@ search.  It's the read-heavy companion to Folio (which is write-heavy).
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -68,7 +68,7 @@ Archive v0 is single-machine and stores its state on disk (not in a
 pod), so the pod-side settings layout below is forward-looking. When
 Archive starts persisting user settings to a pod, it MUST follow the
 project-wide convention in
-[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+[`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md):
 
 ```
 <pod>/archive/settings/shared.json              user-portable
@@ -88,7 +88,7 @@ issuer, preferred locale, and last-known pod root translate cleanly.
 
 Archive is single-machine / read-only against pods today; the rule
 in
-[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+`Project Files/projects/README.md`
 becomes relevant the moment Archive grows a sharing / export feature
 that fans content out to peers (search-result-sharing, RSS-style
 fan-out, etc.). When that lands: no pod URL crosses peer transports;

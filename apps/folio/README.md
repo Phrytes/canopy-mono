@@ -1,13 +1,13 @@
 # Folio
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** Folio's surface is **declaration-only**
 > today — [`manifest.js`](./manifest.js) lists the destructive ops
 > (`deleteFromPod` Q27 danger, `forceRepush` Q27 warn, `deleteLocally`
 > Q27 info) + sync/watch ops, but the HTTP routes + RN screens keep
 > their hand-coded UX (currently all T3 per
-> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md)).  Future
+> `DESIGN-tier-policy.md`).  Future
 > slices F.2 / F.3 wire the status page + folio-mobile screens to read
 > from the manifest projection via `createOpBinding`, lifting the 3
 > hand-rolled confirm modals to one substrate-driven component.
@@ -23,7 +23,7 @@ same pod over the network.  No editor lock-in, no proprietary sync layer
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -146,7 +146,7 @@ green.
 
 When Folio introduces user-tunable settings, the layout MUST follow
 the project-wide convention in
-[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+[`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md):
 
 ```
 <pod>/folio/settings/shared.json              user-portable
@@ -169,7 +169,7 @@ once Folio implements it. **Don't slave to siblings continuously**
 — the rule is "defaults at first start, divergence allowed thereafter."
 
 Per-device blobs MUST NOT be pushed to the pod via bulk-sync (see
-the [Stoop pod-layout doc](../../Project%20Files/Stoop/pod-layout-2026-05-06.md)
+the Stoop pod-layout doc
 for the canonical implementation).
 
 **Status (2026-05-07):** Folio doesn't ship persisted settings yet;
@@ -180,16 +180,16 @@ this section is forward-looking. Update it when settings land.
 Folio is currently single-user / single-pod and doesn't fan content
 out to peers, so this rule mostly bites Folio's mobile companion
 when notes are shared. The project-wide rule in
-[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)
+`Project Files/projects/README.md`
 applies the moment Folio adds any peer-broadcast surface (e.g.
 sharing a note with a buurt-member): no pod URL ever crosses the
 wire — bytes only.
 
 ## Reference
 
-- Plan: [`../../coding-plans/track-H-app-folio.md`](../../coding-plans/track-H-app-folio.md) — phased implementation plan (A: CLI, B: web, C: mobile).
-- Design sketch: [`../../coding-plans/track-H-design-sketches.md`](../../coding-plans/track-H-design-sketches.md) §H1 — the user-facing experience.
-- Settings convention: [`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md).
+- Plan: `../../coding-plans/track-H-app-folio.md` — phased implementation plan (A: CLI, B: web, C: mobile).
+- Design sketch: `../../coding-plans/track-H-design-sketches.md` §H1 — the user-facing experience.
+- Settings convention: [`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md).
 
 ## Folder-name conventions
 

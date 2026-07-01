@@ -6,8 +6,8 @@
 | | |
 |---|---|
 | **Status** | v0.1.0 — shipped in canopy-chat v0.3.3 |
-| **Companion docs** | [`/DESIGN-canopy-chat.md`](../../DESIGN-canopy-chat.md) § "Chat ⇄ side-panel navigation (B.1)", [`/DESIGN-canopy-chat-journeys.md`](../../DESIGN-canopy-chat-journeys.md) design choice B.1 |
-| **Conventions** | [`architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md) — substrate layer; pure utilities, no app coupling |
+| **Companion docs** | `/DESIGN-canopy-chat.md` § "Chat ⇄ side-panel navigation (B.1)", `/DESIGN-canopy-chat-journeys.md` design choice B.1 |
+| **Conventions** | [`architectural-layering.md`](../../docs/conventions/architectural-layering.md) — substrate layer; pure utilities, no app coupling |
 
 ---
 

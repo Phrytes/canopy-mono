@@ -1,6 +1,6 @@
 # @canopy/sync-engine
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md). **Post-Phase 5.1 contract:** the substrate is bidirectional-only. One-shot ingest patterns must write directly through any `core.DataSource`; one-way live sync from a remote peer must compose `core.protocol.LiveSyncSkill` directly — neither shape composes this substrate.
+> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Post-Phase 5.1 contract:** the substrate is bidirectional-only. One-shot ingest patterns must write directly through any `core.DataSource`; one-way live sync from a remote peer must compose `core.protocol.LiveSyncSkill` directly — neither shape composes this substrate.
 
 Pod ↔ external-source sync engine with pluggable source adapters
 + storage convention enforcement (small=direct / big=reference).

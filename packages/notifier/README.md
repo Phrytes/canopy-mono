@@ -1,6 +1,6 @@
 # @canopy/notifier
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md). **Cross-substrate contract:** the push channel MUST compose `relay.ExpoPushSender` + `relay.PushTokenRegistry` (Phase 0 push send-half) and the chat channel MUST compose L1c chat-agent's `MessagingBridge` interface — do NOT redefine either.
+> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Cross-substrate contract:** the push channel MUST compose `relay.ExpoPushSender` + `relay.PushTokenRegistry` (Phase 0 push send-half) and the chat channel MUST compose L1c chat-agent's `MessagingBridge` interface — do NOT redefine either.
 
 Daily digest scheduler + per-event nudges + push integration.
 Channel-pluggable; time-source pluggable for tests.

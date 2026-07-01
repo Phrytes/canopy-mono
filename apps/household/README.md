@@ -1,11 +1,11 @@
 # @canopy-app/household
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** Household was the **pattern source** for
 > the NavModel substrate ([`manifest.js`](./manifest.js)); the other
 > apps' manifests follow this one's shape.  Pages follow
-> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md).  Most
+> `DESIGN-tier-policy.md`.  Most
 > household pages are T2 manifest-bound today (chat surface is the
 > primary path); web pages back-fill T1/T2 as they get substrate-
 > driven.
@@ -18,7 +18,7 @@ household state on a Solid pod.
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -38,10 +38,10 @@ This app composes the following substrate packages
 
 ## Plan documents
 
-- [`../../Project Files/projects/07-household-app/README.md`](../../Project%20Files/projects/07-household-app/README.md) — L2 design notes
-- [`../../Project Files/projects/07-household-app/implementation-plan.md`](../../Project%20Files/projects/07-household-app/implementation-plan.md) — phased rollout, parallel streams
-- [`../../Project Files/projects/07-household-app/programming-plan.md`](../../Project%20Files/projects/07-household-app/programming-plan.md) — code design / module map
-- [`../../Project Files/coding-plans/track-H-app-household.md`](../../Project%20Files/coding-plans/track-H-app-household.md) — cross-track design doc with all 14 design questions locked
+- `../../Project Files/projects/07-household-app/README.md` — L2 design notes
+- `../../Project Files/projects/07-household-app/implementation-plan.md` — phased rollout, parallel streams
+- `../../Project Files/projects/07-household-app/programming-plan.md` — code design / module map
+- `../../Project Files/coding-plans/track-H-app-household.md` — cross-track design doc with all 14 design questions locked
 
 ## Bring it up
 
@@ -87,7 +87,7 @@ optional Ollama / cloud LLM provider (Q-H2.12 lock).
 
 Household will store user-tunable settings under its own pod
 namespace, following the project-wide convention in
-[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md):
+[`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md):
 
 ```
 <pod>/household/settings/shared.json              user-portable
@@ -111,7 +111,7 @@ persisted settings yet. Update this section when they land.
 ### Personal-pod URLs do not travel peer-to-peer
 
 Per
-[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here):
+`Project Files/projects/README.md`:
 when household forwards a message between Telegram and the user's
 agent (or to another household member's agent), no pod URL appears
 in the payload. If the message contains an image, the bytes ship

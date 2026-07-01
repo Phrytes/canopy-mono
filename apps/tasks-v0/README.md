@@ -5,11 +5,11 @@
 > for this functionality inside the unified chat surface — not a separate app/build/shell. See the root
 > README's *Direction* note.
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** This app's surface is declared in
 > [`manifest.js`](./manifest.js) (NavModel substrate V0.8 / Q1–Q27).
-> Pages follow [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md):
+> Pages follow `DESIGN-tier-policy.md`:
 > **T1** substrate-rendered (`dag.html`, `mine.html`, `review.html`,
 > `inbox.html`); **T2** manifest-bound (`pod-settings.html` —
 > V0.4-adopt + Q26 requiresField); **T3** fully bespoke
@@ -46,7 +46,7 @@ V2 brought:
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for the 12-slice breakdown +
 commit refs, and
-[`../../Project Files/Tasks App/v2-web-functional-design-2026-05-11.md`](../../Project%20Files/Tasks%20App/v2-web-functional-design-2026-05-11.md)
+`../../Project Files/Tasks App/v2-web-functional-design-2026-05-11.md`
 for the design source.
 
 V0 (single-household, no Crew envelope) ships unchanged; V1 is
@@ -137,7 +137,7 @@ await ui.close();
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Notes |
 |---|---|---|
@@ -171,9 +171,9 @@ one crew). When Tasks gains a mobile / multi-crew shell:
   + `buildGroupState`. Mirror the pattern.
 
 Full propagation plan (file-level deltas Tasks will need):
-[`Project Files/Stoop/single-agent-refactor-2026-05-08.md`](../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md)
+`Project Files/Stoop/single-agent-refactor-2026-05-08.md`
 § "Tasks-app fix propagation". Project-wide convention:
-[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
+[`Project Files/conventions/single-agent.md`](../../docs/conventions/single-agent.md).
 
 ## Direct SDK use
 
@@ -186,7 +186,7 @@ Full propagation plan (file-level deltas Tasks will need):
 This app exposes the following pure-fn helpers under `src/ui/` for
 its sibling platform shell (`apps/tasks-mobile`) to consume — per the
 project rule
-[`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10):
+[`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10):
 
 | Helper | Purpose | Consumed by |
 |---|---|---|
@@ -262,10 +262,10 @@ npm run ui -- \
 
 ## V1 design + plan documents
 
-- [`Project Files/Tasks App/advice-2026-05-07.md`](../../Project%20Files/Tasks%20App/advice-2026-05-07.md) — design + recommendations.
-- [`Project Files/Tasks App/critique-2026-05-07.md`](../../Project%20Files/Tasks%20App/critique-2026-05-07.md) — honest design pushback (some items folded into V1; rest accepted as trade-offs).
-- [`Project Files/Tasks App/coding-plan-2026-05-07.md`](../../Project%20Files/Tasks%20App/coding-plan-2026-05-07.md) — phased build plan.
-- [`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md) — Stoop-side migration for the lifted substrates.
+- `Project Files/Tasks App/advice-2026-05-07.md` — design + recommendations.
+- `Project Files/Tasks App/critique-2026-05-07.md` — honest design pushback (some items folded into V1; rest accepted as trade-offs).
+- `Project Files/Tasks App/coding-plan-2026-05-07.md` — phased build plan.
+- `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md` — Stoop-side migration for the lifted substrates.
 - [`apps/tasks-v0/CHANGELOG.md`](./CHANGELOG.md) — per-phase shipping log.
 
 ## Local-only mode (V0 + V1)

@@ -20,8 +20,8 @@
 >
 > Direct SDK use is allowed only when justified in this README's
 > `## Direct SDK use` section (per
-> [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)).
-> See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
+> See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Known direct cross-app dep:** `@canopy-app/stoop` for the
 > SyncEngine-shaped factory, the skill builder, groupMirror, and
@@ -30,7 +30,7 @@
 > layering doc.
 
 Stoop V3 — React Native mobile client for the buurt-skill-app.
-Phase 40 of the [V3 mobile coding plan](../../Project%20Files/Stoop/v3-mobile-coding-plan-2026-05-08.md).
+Phase 40 of the V3 mobile coding plan.
 
 ## Status (2026-05-14 — V4 C-track shipped)
 
@@ -213,9 +213,9 @@ group-aware `getBundle` resolver that picks the right group from
 `args.groupId` / pubsub topic.
 
 This is a project-wide convention — see
-[`Project Files/conventions/single-agent.md`](../../Project%20Files/conventions/single-agent.md).
+[`Project Files/conventions/single-agent.md`](../../docs/conventions/single-agent.md).
 Don't introduce a per-group Agent. Concrete plan + rationale:
-[`Project Files/Stoop/single-agent-refactor-2026-05-08.md`](../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md).
+`Project Files/Stoop/single-agent-refactor-2026-05-08.md`.
 
 ## Substrates
 
@@ -257,7 +257,7 @@ Stoop V3's auth surface migrates with the rest.
 
 Stoop V3 mobile uses the same `mem://stoop/settings/...` pod path
 as desktop Stoop (per
-[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md)):
+[`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md)):
 
 ```
 <pod>/stoop/settings/shared.json              user-portable
@@ -270,7 +270,7 @@ mnemonic restored on phone + laptop produces matching `stableId`
 don't cross-contaminate.
 
 **Mobile-default field overrides** (per
-[`v3-mobile-functional-design-2026-05-08.md`](../../Project%20Files/Stoop/v3-mobile-functional-design-2026-05-08.md) §4g):
+`v3-mobile-functional-design-2026-05-08.md` §4g):
 
 - `pollIntervalMs`: 5000 (vs desktop's 2000) — battery-aware.
 - `onlineWindow.everyMinutes`: null on first run — push is the
@@ -279,7 +279,7 @@ don't cross-contaminate.
 ## Personal-pod URLs do not travel peer-to-peer
 
 Same project-wide rule as desktop Stoop (see
-[`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)).
+`Project Files/projects/README.md`).
 Image attachments ship as bytes (resized on the device); no pod
 URL ever crosses the wire.
 
@@ -303,7 +303,7 @@ to a follow-up).
 
 **Attachment model:** `standalone`. Same as desktop Stoop. Hub is
 planned as a **separate phone app** (per the 2026-05-08 update in
-[`projects/README.md`](../../Project%20Files/projects/README.md));
+`projects/README.md`);
 lite-mode is deferred for V1 / V2.5 / V3.
 
 ## Platform support

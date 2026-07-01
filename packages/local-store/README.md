@@ -3,7 +3,7 @@
 > **Layer:** substrate. Cross-platform.
 > Lifted from `apps/stoop/src/lib/{CachingDataSource, SyncCadence, Settings}.js`
 > on 2026-05-08 as Tasks V1 = the rule-of-two consumer (per
-> [`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md)).
+> `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`).
 
 Local-first storage for agent-SDK apps. Three exports:
 
@@ -33,7 +33,7 @@ intervals are configurable.
 ## `createSettingsModule({appId, sharedFields, deviceFields, defaults, fieldValidator?})`
 
 Per-app factory for the shared/device-split settings pattern (per
-[`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md)).
+[`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md)).
 
 ```js
 import { createSettingsModule } from '@canopy/local-store';
@@ -74,7 +74,7 @@ Stoop V1 Phase 4 invented `CachingDataSource` and `SyncCadence`.
 Stoop V2.5 Phase 23.5 added `Settings`. Phase 33 split it into the
 shared/device shape. Tasks V1 implementation needs the same three
 primitives (per
-[`Tasks App/coding-plan-2026-05-07.md`](../../Project%20Files/Tasks%20App/coding-plan-2026-05-07.md)
+`Tasks App/coding-plan-2026-05-07.md`
 Phase 1), so the rule-of-two trigger fires and the substrate is
 extracted here. Stoop's three lib files become re-export shims.
 

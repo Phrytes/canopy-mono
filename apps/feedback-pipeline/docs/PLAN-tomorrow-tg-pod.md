@@ -5,7 +5,7 @@ Each inbound message is stored in a Solid pod **twice** — the raw original and
 the cleaned/anonymized version — by **reusing** existing canopy-mono substrates,
 not forking them. This is **step 2 ("Inname van ruwe berichten") + step 3
 ("Lokale filtering")** of the feedback pipeline in
-[`commerciele_verkenning.md`](../../../Project%20Files/Aanpak/commerciele_verkenning.md).
+`commerciele_verkenning.md`.
 
 **Privacy invariant (from the design):** the raw message is visible *only to the
 user*; the cleaned version is what's *prepared for* later aggregation. Nothing

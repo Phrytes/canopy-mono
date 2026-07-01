@@ -12,6 +12,15 @@ identity, transports, and peer-to-peer reachability underneath.
 
 ---
 
+## Documentation
+
+Full docs live in **[`docs/`](./docs/)** — start with the [documentation index](./docs/README.md):
+[repository layout](./docs/repository-layout.md), [glossary](./docs/glossary.md), the
+[conventions](./docs/conventions/), and [known build/native gotchas](./docs/agent-notes-known-gotchas.md).
+Working plans and designs are kept private (local-only) by design.
+
+---
+
 ## The apps
 
 | App | What it does |
@@ -68,10 +77,10 @@ So canopy-chat's command bar is not a switch statement over apps; it is a
 projection of the merged manifest.  Adding an operation to an app's
 `manifest.js` makes it reachable from chat, slash, web, and mobile at
 once.  Design intent:
-[`DESIGN-navmodel-sketch.md`](./DESIGN-navmodel-sketch.md),
-[`DESIGN-canopy-chat.md`](./DESIGN-canopy-chat.md).  Page-rendering policy
+`DESIGN-navmodel-sketch.md`,
+`DESIGN-canopy-chat.md`.  Page-rendering policy
 (when a surface is substrate-rendered vs. hand-coded):
-[`DESIGN-tier-policy.md`](./DESIGN-tier-policy.md).
+`DESIGN-tier-policy.md`.
 
 ### The thin waist — `{opId, args}`
 
@@ -142,7 +151,7 @@ Substrates (`packages/{item-store, identity-resolver, skill-match,
 notifier, secure-agent, llm-client, …}`) compose the SDK into reusable
 building blocks; apps compose substrates.  Full public surface, every
 symbol with its `file:line`:
-[`Project Files/Substrates/refactor/SDK-surface-map.md`](./Project%20Files/Substrates/refactor/SDK-surface-map.md).
+`Project Files/Substrates/refactor/SDK-surface-map.md`.
 Minimal hands-on agent: [`QUICKSTART.md`](./QUICKSTART.md).
 
 ### Single-agent rule
@@ -152,7 +161,7 @@ routes plugged into that agent, not parallel agent instances; multi-scope
 semantics (groups, crews, accounts) live in per-scope `ItemStore` /
 `MemberMap` state **outside** the agent and dispatch at the skill level.
 Spinning up N agents to model N scopes is an anti-pattern.  Full rationale:
-[`Project Files/conventions/single-agent.md`](./Project%20Files/conventions/single-agent.md).
+[`Project Files/conventions/single-agent.md`](./docs/conventions/single-agent.md).
 
 ---
 
@@ -199,12 +208,12 @@ compose substrates and MAY use the SDK directly **only with an explicit
 justification** in the app's README.  Required reading before authoring
 code here:
 
-- [`architectural-layering.md`](./Project%20Files/conventions/architectural-layering.md) — what each layer owns, what's not acceptable.
-- [`app-readme-scheme.md`](./Project%20Files/conventions/app-readme-scheme.md) — every app under `apps/` follows this README scheme from its first commit.
-- [`localisation.md`](./Project%20Files/conventions/localisation.md) — every user-facing surface ships translatable from commit one; substrates emit error codes, not strings.
-- [`cross-app-settings.md`](./Project%20Files/conventions/cross-app-settings.md) — pod-side settings split into portable `shared.json` + per-install `devices/<id>.json`.
-- [`pod-independence.md`](./Project%20Files/conventions/pod-independence.md) — local-only mode is the floor; the pod is the portability layer, not a runtime dependency.
-- [`Substrates/policies.md`](./Project%20Files/Substrates/policies.md) — rule-of-two extraction policy (wait for the second independent need before generalising).
+- [`architectural-layering.md`](./docs/conventions/architectural-layering.md) — what each layer owns, what's not acceptable.
+- [`app-readme-scheme.md`](./docs/conventions/app-readme-scheme.md) — every app under `apps/` follows this README scheme from its first commit.
+- [`localisation.md`](./docs/conventions/localisation.md) — every user-facing surface ships translatable from commit one; substrates emit error codes, not strings.
+- [`cross-app-settings.md`](./docs/conventions/cross-app-settings.md) — pod-side settings split into portable `shared.json` + per-install `devices/<id>.json`.
+- [`pod-independence.md`](./docs/conventions/pod-independence.md) — local-only mode is the floor; the pod is the portability layer, not a runtime dependency.
+- `Substrates/policies.md` — rule-of-two extraction policy (wait for the second independent need before generalising).
 
 ### Engineering principles
 

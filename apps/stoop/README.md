@@ -5,12 +5,12 @@
 > for this functionality inside the unified chat surface — not a separate app/build/shell. See the root
 > README's *Direction* note.
 
-> **Layer: app.** Composes substrates from `packages/{item-store, skill-match, identity-resolver, agent-ui, notifier, chat-agent, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, skill-match, identity-resolver, agent-ui, notifier, chat-agent, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** Stoop's surface is declared in
 > [`manifest.js`](./manifest.js) (NavModel substrate V0.8 /
 > Q1–Q27).  Pages follow
-> [`DESIGN-tier-policy.md`](../../DESIGN-tier-policy.md):
+> `DESIGN-tier-policy.md`:
 > **T1** substrate-rendered (`mine.html`, `privacy.html`); **T2**
 > manifest-bound (`settings.html` V0.4-adopt + Q22 labelKey;
 > `profile.html` V0.4 + Q22 + Q25 + Q27 wired via `createOpBinding`);
@@ -31,14 +31,14 @@ real-device pass + closed-beta APK pending Phase 40.23.
 of Stoop's `lib/` files into shared substrates (rule of two
 satisfied by Tasks V1 as the second consumer). Per-PR migration
 work is detailed in
-[`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`](../../Project%20Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md).
+`Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`.
 Stoop's user-visible behaviour does not change; the `lib/` files
 become re-export shims around the new substrate copies.
 
 **V2 substrate adoption (2026-05-14, `0.3.0`):** Q-B `groupMirror`
 retirement (replaced by `notify-envelope` + `pseudo-pod`
 substrate path) + the full A-track UX surface from
-[`v2-web-functional-design-2026-05-11.md`](../../Project%20Files/Stoop/v2-web-functional-design-2026-05-11.md):
+`v2-web-functional-design-2026-05-11.md`:
 
 - A1 `'stale-peer'` auto-heal • A2 `fetch-resource` + `groupCheck`
 - A3 storage-policy picker on `/create-group.html`
@@ -97,20 +97,20 @@ multi-target posts with grid-snapped distance filtering,
 self-creatable groups with rotating membership codes, and full
 pod-sync coverage so a recovery phrase + pod sign-in restores
 everything on a new device. Mobile (V3 Expo) follows. Source of
-truth: [`coding-plan-v2-2026-05-07.md`](../../Project%20Files/Stoop/coding-plan-v2-2026-05-07.md);
+truth: `coding-plan-v2-2026-05-07.md`;
 design decisions in
-[`functional-design-2026-05-06.md`](../../Project%20Files/Stoop/functional-design-2026-05-06.md)
+`functional-design-2026-05-06.md`
 §§ 4e/4f/4g + the **Resolved (2026-05-07)** table at the bottom of
 § 7.
 
 V1 is non-anonymous; cryptographic anonymity (Q-H5) stays parked
 for V2 per the threat model in
-[`Project Files/Stoop/privacy-and-safety-2026-05-05.md`](../../Project%20Files/Stoop/privacy-and-safety-2026-05-05.md).
+`Project Files/Stoop/privacy-and-safety-2026-05-05.md`.
 
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -143,9 +143,9 @@ apps need to share code, extract a substrate.
 **Attachment model:** `standalone`. The Agent Hub does not exist
 yet; Stoop embeds substrates + SDK directly. Designed so a future
 migration to `hub-attached (lite)` is possible (see
-[`Project Files/AgentHub/agent-hub-design-2026-05-05.md`](../../Project%20Files/AgentHub/agent-hub-design-2026-05-05.md)
+`Project Files/AgentHub/agent-hub-design-2026-05-05.md`
 and the three rules in
-[`Project Files/conventions/app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section)).
+[`Project Files/conventions/app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section)).
 The Hub is now planned as a **separate phone app** (not a desktop
 daemon — superseded direction, 2026-05-08); lite-mode is **deferred**
 for V1 / V2.5 / V3.
@@ -216,15 +216,15 @@ always needs `--relay` for cross-device. The relay is a dumb
 
 V2 multi-process bring-up (relay-backed, two devices) is documented
 in
-[`Project Files/coding-plans/H5-V2-resume.md`](../../Project%20Files/coding-plans/H5-V2-resume.md);
+`Project Files/coding-plans/H5-V2-resume.md`;
 remaining V1 product-item scope is in
-[`Project Files/Stoop/coding-plan-v1-2026-05-05.md`](../../Project%20Files/Stoop/coding-plan-v1-2026-05-05.md).
+`Project Files/Stoop/coding-plan-v1-2026-05-05.md`.
 
 ### Settings layout
 
 Stoop V2.5 splits its persisted settings into two pod blobs per the
 project-wide convention
-([`Project Files/conventions/cross-app-settings.md`](../../Project%20Files/conventions/cross-app-settings.md)):
+([`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md)):
 
 ```
 <pod>/stoop/settings/shared.json              user-portable
@@ -254,14 +254,14 @@ matching fields. Stoop in turn doesn't currently read sibling apps'
 blobs (it predates them) — when it eventually does, the field-mapping
 table goes here.
 
-**Pod-layout doc:** [`Project Files/Stoop/pod-layout-2026-05-06.md`](../../Project%20Files/Stoop/pod-layout-2026-05-06.md)
+**Pod-layout doc:** `Project Files/Stoop/pod-layout-2026-05-06.md`
 has the cross-app pod-layout convention text in full.
 
 ### Localisation
 
 Strings live in `locales/<lang>.json`. Default is `en`; `nl` ships
 from V1 per the project localisation convention
-([`Project Files/conventions/localisation.md`](../../Project%20Files/conventions/localisation.md)).
+([`Project Files/conventions/localisation.md`](../../docs/conventions/localisation.md)).
 Add a locale by creating `locales/<xx>.json` and mirroring the keys
 from `en.json`.
 
@@ -286,7 +286,7 @@ return codes are English-only.
 ### Personal-pod URLs do not travel peer-to-peer
 
 Per the project-wide rule
-([`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#personal-pod-urls-stay-out-of-peer-to-peer-messages--applies-to-every-agentic-project-here)),
+(`Project Files/projects/README.md`),
 no user pod URL appears inside any Stoop broadcast or chat envelope.
 Image / file attachments ship as bytes (resized client-side). The
 recipient stores a local copy on receive. There is no
@@ -300,7 +300,7 @@ never against personal pods.
 ### Local-only mode
 
 Per the project-wide rule
-([`Project Files/projects/README.md`](../../Project%20Files/projects/README.md#local-only-mode-is-the-floor--applies-to-every-agentic-project-here)),
+(`Project Files/projects/README.md`),
 Stoop must work fully without an authenticated Solid pod. Pod sync
 is an opt-in upgrade for portability and multi-device; not a runtime
 prerequisite. Phase 4 of the coding plan covers the local-first
@@ -341,7 +341,7 @@ apps/stoop/
 ### Substrate candidates inside this app
 
 Per the project-wide flagging rule
-([`Project Files/Substrates/policies.md`](../../Project%20Files/Substrates/policies.md#substrate-candidate-flagging--flag-while-writing-dont-audit-later-locked-2026-05-06)),
+(`Project Files/Substrates/policies.md`),
 the following Stoop-local code is flagged as substrate candidates —
 extracted when a second app needs the shape:
 
@@ -350,7 +350,7 @@ extracted when a second app needs the shape:
 - `src/skills/index.js` moderation skill block → likely `@canopy/group-mod`.
 
 Inventory + promotion rule:
-[`Project Files/Substrates/substrate-candidates.md`](../../Project%20Files/Substrates/substrate-candidates.md).
+`Project Files/Substrates/substrate-candidates.md`.
 
 ## V0 (legacy H5) → V1 (Stoop) → V2
 
@@ -378,11 +378,11 @@ V2 (deferred per the advice doc):
 
 ## Reference
 
-- Design: [`Project Files/Stoop/advice-2026-05-05.md`](../../Project%20Files/Stoop/advice-2026-05-05.md)
-- Coding plan: [`Project Files/Stoop/coding-plan-v1-2026-05-05.md`](../../Project%20Files/Stoop/coding-plan-v1-2026-05-05.md)
-- Threat model: [`Project Files/Stoop/privacy-and-safety-2026-05-05.md`](../../Project%20Files/Stoop/privacy-and-safety-2026-05-05.md)
-- User-empathy: [`Project Files/Stoop/potential-user-complaints-2026-05-05.md`](../../Project%20Files/Stoop/potential-user-complaints-2026-05-05.md)
-- Group governance starter: [`Project Files/Stoop/group-governance-starter-2026-05-05.md`](../../Project%20Files/Stoop/group-governance-starter-2026-05-05.md)
-- Original H5 design: [`Project Files/projects/02-neighborhood-app/README.md`](../../Project%20Files/projects/02-neighborhood-app/README.md)
-- Mockup: [`Project Files/Stoop/shareskills_app_mockup.html`](../../Project%20Files/Stoop/shareskills_app_mockup.html)
-- Brainstorm: [`Project Files/Stoop/Stoop - brainstorm.txt`](../../Project%20Files/Stoop/Stoop%20-%20brainstorm.txt)
+- Design: `Project Files/Stoop/advice-2026-05-05.md`
+- Coding plan: `Project Files/Stoop/coding-plan-v1-2026-05-05.md`
+- Threat model: `Project Files/Stoop/privacy-and-safety-2026-05-05.md`
+- User-empathy: `Project Files/Stoop/potential-user-complaints-2026-05-05.md`
+- Group governance starter: `Project Files/Stoop/group-governance-starter-2026-05-05.md`
+- Original H5 design: `Project Files/projects/02-neighborhood-app/README.md`
+- Mockup: `Project Files/Stoop/shareskills_app_mockup.html`
+- Brainstorm: `Project Files/Stoop/Stoop - brainstorm.txt`

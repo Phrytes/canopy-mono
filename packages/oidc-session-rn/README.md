@@ -5,7 +5,7 @@
 > [`@canopy/oidc-session`](../oidc-session/) via `createSolidAuthNode()`.
 > **Convention:** RN-specific substrates live in their own packages
 > (locked 2026-05-08, see
-> [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
+> [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
 
 Solid OIDC sign-in for React Native:
 
@@ -56,7 +56,7 @@ capabilities}` to `@canopy/pod-client`; this substrate is
 unaffected.
 
 Full design + plan:
-[`Project Files/Inrupt-migration/`](../../Project%20Files/Inrupt-migration/).
+`Project Files/Inrupt-migration/`.
 
 ## Installation
 

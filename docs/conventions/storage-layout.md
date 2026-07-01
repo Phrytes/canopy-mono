@@ -135,7 +135,7 @@ app Y (e.g. tasks-v0) as long as both speak the canonical
   locked `conventions/cross-app-settings.md` convention.
 
 Future-rewrite design: see
-[`../Substrates/storage-migration-design-2026-05-14.md`](../Substrates/storage-migration-design-2026-05-14.md).
+`../Substrates/storage-migration-design-2026-05-14.md`.
 
 ## Agent-registry resource
 

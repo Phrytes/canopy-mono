@@ -48,7 +48,7 @@ prints the URLs.  No external network required.
 
 Stoop V1 ships `persistPath`-based local persistence; the relay
 transport story is documented in
-[`Project Files/coding-plans/H5-V2-resume.md`](../../Project%20Files/coding-plans/H5-V2-resume.md).
+`Project Files/coding-plans/H5-V2-resume.md`.
 For a multi-device pilot: launch each member's UI on their own
 machine with a stable `--persist-dir`, point all members at the
 same relay URL, and verify that a post made on device A appears
@@ -153,5 +153,5 @@ Useful counters for facilitator review:
 - Code-level issue: GitHub issue on the repo, tag `stoop-v1`.
 - UX feedback from real members: facilitator collects + files
   weekly summary.  Per
-  [`Project Files/Stoop/advice-2026-05-05.md`](../../Project%20Files/Stoop/advice-2026-05-05.md)
+  `Project Files/Stoop/advice-2026-05-05.md`
   the V1.5 priority list is driven from this loop.

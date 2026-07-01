@@ -83,7 +83,7 @@ concern.
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -107,7 +107,7 @@ For each direct import from `@canopy/core`, `@canopy/relay`,
 primitive used and the one-line justification. **The default reader
 expectation is that this section is short or empty;** every entry is
 treated as a deliberate choice and reviewed during the app↔SDK bypass
-audit (see [`Project Files/TODO-GENERAL.md`](../TODO-GENERAL.md)).
+audit (see `Project Files/TODO-GENERAL.md`).
 
 ```markdown
 ## Direct SDK use
@@ -139,7 +139,7 @@ None. All SDK access goes through substrates.
 
 Any app that uses the Agent SDK (directly or via substrates) **must
 be designed to be compatible with the per-device Agent Hub**. See
-[`Project Files/AgentHub/agent-hub-design-2026-05-05.md`](../AgentHub/agent-hub-design-2026-05-05.md)
+`Project Files/AgentHub/agent-hub-design-2026-05-05.md`
 for the design.
 
 > **2026-05-08 update.** Hub will be a **separate phone app**,
@@ -189,7 +189,7 @@ Example:
 **Attachment model:** `standalone`. The hub does not exist yet; this
 app embeds the substrate directly. Designed so a future migration to
 `hub-attached (lite)` is possible — see the four design rules in
-[`Project Files/conventions/app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section).
+[`Project Files/conventions/app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section).
 
 **Agent topology:** spawns its own household-tasks agent (Shape A).
 No shared-agent attachments planned for v0.
@@ -225,7 +225,7 @@ README points back to it.
 
 This app exposes the following pure-fn helpers under `src/ui/` for
 its sibling platform shell to consume (per
-[`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)):
+[`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)):
 
 | Helper | Purpose | Consumed by |
 |---|---|---|
@@ -332,7 +332,7 @@ npm test          # 9 integration tests
 ```
 
 V2 multi-process bring-up: see
-[`Project Files/coding-plans/H5-V2-resume.md`](../../Project%20Files/coding-plans/H5-V2-resume.md).
+`Project Files/coding-plans/H5-V2-resume.md`.
 
 ## What's in here
 
@@ -355,7 +355,7 @@ apps/neighborhood-v0/
 
 Every existing app under `apps/` must be migrated to this scheme. The
 work is tracked in
-[`Project Files/Substrates/refactor/01-Execution-Checklist.md`](../Substrates/refactor/01-Execution-Checklist.md)
+`Project Files/Substrates/refactor/01-Execution-Checklist.md`
 under the "App-README rollout" phase. Until the rollout completes, the
 following apps are non-conforming:
 

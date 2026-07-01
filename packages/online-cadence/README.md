@@ -3,7 +3,7 @@
 > **Layer:** SDK foundation (RN-flavored cadence helpers).
 > **Convention:** RN-specific substrates live in their own packages
 > (locked 2026-05-08, see
-> [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
+> [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
 
 Foreground/background cadence helpers for React Native agents:
 

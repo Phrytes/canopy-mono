@@ -53,8 +53,8 @@ React Native platform layer + adapters for the canopy agent SDK.
 ## Origins
 
 The platform layer was extracted in earlier phases (see
-[Stoop V3 Phase 40.x](../../Project%20Files/Stoop/v3-mobile-coding-plan-2026-05-08.md)
-+ [Tasks-mobile Phase 41.0](../../Project%20Files/Tasks%20App/mobile-coding-plan-2026-05-08.md)).
+Stoop V3 Phase 40.x
++ Tasks-mobile Phase 41.0).
 The Phase 41.0 lifts (L3 + L4 + L5 + L6 + L7) added `./picker`,
 `./qr`, `./mnemonic`, `./push`, `./localisation` as submodules of the same
 package — locked decision (2026-05-08) to keep the package count

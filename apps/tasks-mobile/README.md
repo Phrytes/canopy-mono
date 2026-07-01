@@ -7,8 +7,8 @@
 >
 > Direct SDK use is allowed only when justified in this README's
 > `## Direct SDK use` section (per
-> [`app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md)).
-> See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
+> See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Known direct cross-app dep:** `@canopy-app/tasks-v0` for the
 > V2.8 single-agent factories (`buildMeshAgent`, `wireSkills`,
@@ -18,7 +18,7 @@
 > 2026-05-08); see the layering doc.
 
 Tasks V1 — React Native mobile client for the per-crew tasks app.
-Phase 41 of the [Tasks-mobile coding plan](../../Project%20Files/Tasks%20App/mobile-coding-plan-2026-05-08.md).
+Phase 41 of the Tasks-mobile coding plan.
 
 ## Status (2026-05-09)
 
@@ -73,7 +73,7 @@ OIDC hook) + 52.15.5 (the picker component), both shipped.
 ## Substrates
 
 This app composes the following substrate packages
-(see [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md)):
+(see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
 | Package | Used for | Why a substrate, not direct SDK |
 |---|---|---|
@@ -108,7 +108,7 @@ This app composes the following substrate packages
 ships as a separate phone app). This app embeds the substrate
 directly. Designed so a future migration to `hub-attached (lite)` is
 possible — see the four design rules in
-[`Project Files/conventions/app-readme-scheme.md`](../../Project%20Files/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section).
+[`Project Files/conventions/app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section).
 
 **Agent topology:** runs ONE process-wide meshAgent (V2.8 shape) that
 serves N CrewStates. Multiple crews share the agent's transports +
@@ -133,7 +133,7 @@ gate, the addTask payload shape, the inbox event classifier, and
 the pubKey↔webid resolver stay in step. See the desktop shell's
 [`README.md`](../tasks-v0/README.md#shared-ui-helpers) for the
 surface table + the project rule
-[`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)
+[`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#shared-ui-glue-helpers-between-platform-shells-locked-2026-05-10)
 for the policy.
 
 The genuinely-shared locale strings (status pills, role labels,
@@ -165,7 +165,7 @@ you can — same Expo 52 / RN 0.76.9 pin.
 
 > **Pair-test scenarios** (Tasks-desktop ↔ Tasks-mobile, T1–T6) live
 > in the cross-app pair-test runbook:
-> [`Project Files/conventions/pair-test-runbook-2026-05-15.md`](pair-test-runbook-2026-05-15.md).
+> `Project Files/conventions/pair-test-runbook-2026-05-15.md`.
 > The walkthrough below covers the single-device journeys; pair
 > the two when running 41.16 on hardware.
 

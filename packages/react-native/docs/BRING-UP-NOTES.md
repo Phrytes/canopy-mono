@@ -56,7 +56,7 @@ module.exports = withCanopyPreset({
 Trap 3 from a hand-rolled copy and is the second example.
 
 **This is also the architectural rule per
-[`Project Files/conventions/architectural-layering.md`](../../../Project%20Files/conventions/architectural-layering.md):**
+[`Project Files/conventions/architectural-layering.md`](../../../docs/conventions/architectural-layering.md):**
 the metro-preset is a substrate; apps compose it; apps MUST NOT
 parallel-implement it.
 
@@ -898,7 +898,7 @@ RelayTransport stack. N groups → N agents under one identity → N
 mDNS service registrations / N WebSocket connections to the relay.
 
 **Fix:** project-wide single-agent rule —
-[`Project Files/conventions/single-agent.md`](../../../Project%20Files/conventions/single-agent.md).
+[`Project Files/conventions/single-agent.md`](../../../docs/conventions/single-agent.md).
 The service-context owns ONE `core.Agent`. Per-group state
 (`ItemStore`, `MemberMap`, `SkillMatch`, mirror) lives in a
 group-scoped factory (`buildGroupState({meshAgent, ...})` for
@@ -919,7 +919,7 @@ Reference implementation:
 
 Tasks-mobile (when it lands) inherits this pattern — see the
 "Tasks-app fix propagation" section in
-[`Project Files/Stoop/single-agent-refactor-2026-05-08.md`](../../../Project%20Files/Stoop/single-agent-refactor-2026-05-08.md).
+`Project Files/Stoop/single-agent-refactor-2026-05-08.md`.
 
 ---
 

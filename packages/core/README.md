@@ -1,6 +1,6 @@
 # @canopy/core
 
-> **Layer: SDK foundation.** This is part of the agent SDK that substrates build on. Substrates and apps compose primitives from here — they MUST NOT reinvent transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, or ULID; apps MUST justify any direct dependency in their README's `## Direct SDK use` section. See [`Project Files/conventions/architectural-layering.md`](../../Project%20Files/conventions/architectural-layering.md).
+> **Layer: SDK foundation.** This is part of the agent SDK that substrates build on. Substrates and apps compose primitives from here — they MUST NOT reinvent transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, or ULID; apps MUST justify any direct dependency in their README's `## Direct SDK use` section. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Pure-JS core of the @canopy SDK.  Runs in browser, Node, and React
 Native (no native deps in this package).  Provides:
@@ -20,7 +20,7 @@ Native (no native deps in this package).  Provides:
 
 For the bigger picture see the repo root
 [`README.md`](../../README.md), [`QUICKSTART.md`](../../QUICKSTART.md),
-and [`ARCHITECTURE.md`](../../ARCHITECTURE.md).
+and `ARCHITECTURE.md`.
 
 ---
 
@@ -70,8 +70,8 @@ a third agent calls `enableTunnelForward({ policy })` (plaintext
 bridge) or `enableSealedForwardFor(groupId)` (sealed `nacl.box`
 forward — bridge can't read content).  Callers reach the destination
 via `agent.invokeWithHop(peer, skill, parts, { group })`.  See
-[`Design-v3/hop-tunnel.md`](../../Design-v3/hop-tunnel.md) and
-[`Design-v3/blind-forward.md`](../../Design-v3/blind-forward.md).
+`Design-v3/hop-tunnel.md` and
+`Design-v3/blind-forward.md`.
 
 ---
 
@@ -102,8 +102,8 @@ Test files live under `test/` and end in `.test.js`.  Vitest.
 
 ## See also
 
-- [`Design-v3/topology.md`](../../Design-v3/topology.md) — topology +
+- `Design-v3/topology.md` — topology +
   reachability framing.
-- [`ARCHITECTURE.md`](../../ARCHITECTURE.md) — code map across all
+- `ARCHITECTURE.md` — code map across all
   three packages.
-- [`coding-plans/`](../../coding-plans/) — current work tracks.
+- `coding-plans/` — current work tracks.
