@@ -1,0 +1,96 @@
+/**
+ * capabilities — the (verb × noun) set B's gate authorises (B · Layer 1).
+ * Covers: derivation from ops (appliesTo.type AND type-enum params), declared `nouns`,
+ * the declared∪derived union, opId resolution, and the `nouns` shape validation.
+ */
+import { describe, it, expect } from 'vitest';
+import { capabilitiesOf, resolveAtom, atomsForNoun } from '../src/capabilities.js';
+import { validateManifest } from '../src/validate.js';
+
+// A manifest exercising BOTH ways an op names its noun:
+//  - addItem carries the noun in a type-enum PARAM (of: LIST_TYPES);
+//  - markComplete / claim carry it in appliesTo.type.
+const M = {
+  app: 'demo',
+  itemTypes: ['shopping', 'task'],
+  domainVerbs: ['help'],
+  nouns: {
+    shopping: { atoms: ['add', 'list', 'complete', 'remove'] },
+    task:     { atoms: ['add', 'complete', 'claim', 'update'] },   // `update` declared but no op implements it
+  },
+  operations: [
+    { id: 'addItem',      verb: 'add',      params: [{ name: 'type', kind: 'enum', of: ['shopping'] }] },
+    { id: 'listOpen',     verb: 'list',     params: [{ name: 'type', kind: 'enum', of: ['shopping'] }] },
+    { id: 'markComplete', verb: 'complete', appliesTo: { type: ['shopping', 'task'] } },
+    { id: 'removeItem',   verb: 'remove',   appliesTo: { type: ['shopping'] } },
+    { id: 'addTask',      verb: 'add',      appliesTo: { type: 'task' } },
+    { id: 'claim',        verb: 'claim',    appliesTo: { type: 'task', state: ['open'] } },
+    { id: 'help',         verb: 'help' },   // domain verb → NOT a capability
+  ],
+};
+
+describe('resolveAtom', () => {
+  it('resolves an atom×noun to the implementing opId (both param-enum and appliesTo forms)', () => {
+    expect(resolveAtom(M, 'add', 'shopping')).toBe('addItem');       // via param enum
+    expect(resolveAtom(M, 'add', 'task')).toBe('addTask');           // via appliesTo.type
+    expect(resolveAtom(M, 'complete', 'task')).toBe('markComplete'); // appliesTo array
+    expect(resolveAtom(M, 'claim', 'task')).toBe('claim');
+  });
+  it('canonicalises an alias before resolving', () => {
+    expect(resolveAtom(M, 'create', 'task')).toBe('addTask');   // create → add
+    expect(resolveAtom(M, 'grab', 'task')).toBe('claim');       // grab → claim
+  });
+  it('returns null for an unimplemented or non-atom pair', () => {
+    expect(resolveAtom(M, 'list', 'task')).toBe(null);       // declared but no listTask op
+    expect(resolveAtom(M, 'archive', 'task')).toBe(null);
+    expect(resolveAtom(M, 'frobnicate', 'task')).toBe(null);
+  });
+});
+
+describe('capabilitiesOf', () => {
+  it('unions declared nouns with ops-derived pairs, resolving opIds', () => {
+    const caps = capabilitiesOf(M);
+    const find = (noun, atom) => caps.find((c) => c.noun === noun && c.atom === atom);
+
+    // declared + implemented → source 'declared', opId filled from the op
+    expect(find('shopping', 'add')).toEqual({ noun: 'shopping', atom: 'add', opId: 'addItem', source: 'declared' });
+    // declared but NOT implemented (no op does `update` on task) → opId null
+    expect(find('task', 'update')).toEqual({ noun: 'task', atom: 'update', opId: null, source: 'declared' });
+    // domain verb `help` never becomes a capability
+    expect(caps.some((c) => c.atom === 'help')).toBe(false);
+  });
+
+  it('derives capabilities even with NO nouns declaration (un-migrated manifest)', () => {
+    const bare = { ...M, nouns: undefined };
+    const caps = capabilitiesOf(bare);
+    expect(caps.every((c) => c.source === 'derived')).toBe(true);
+    expect(caps.find((c) => c.noun === 'task' && c.atom === 'add')?.opId).toBe('addTask');
+    // no phantom list-on-task (it was only in the declaration, which is gone)
+    expect(caps.some((c) => c.noun === 'task' && c.atom === 'list')).toBe(false);
+  });
+
+  it('atomsForNoun lists the available atoms for a noun', () => {
+    expect(atomsForNoun(M, 'task')).toEqual(['add', 'claim', 'complete', 'update']);
+  });
+});
+
+describe('nouns shape validation', () => {
+  it('accepts a well-formed nouns map', () => {
+    expect(validateManifest(M).ok).toBe(true);
+  });
+  it('rejects a noun not in itemTypes', () => {
+    const bad = { ...M, nouns: { ...M.nouns, widget: { atoms: ['add'] } } };
+    const { ok, errors } = validateManifest(bad);
+    expect(ok).toBe(false);
+    expect(errors.some((e) => e.code === 'unknown-noun')).toBe(true);
+  });
+  it('rejects a non-atom in atoms[]', () => {
+    const bad = { ...M, nouns: { shopping: { atoms: ['frobnicate'] } } };
+    expect(validateManifest(bad).errors.some((e) => e.code === 'unknown-atom')).toBe(true);
+  });
+  it('rejects an ALIAS in atoms[] (declarations must be canonical)', () => {
+    const bad = { ...M, nouns: { shopping: { atoms: ['create'] } } };
+    const { errors } = validateManifest(bad);
+    expect(errors.some((e) => e.code === 'alias-in-nouns')).toBe(true);
+  });
+});

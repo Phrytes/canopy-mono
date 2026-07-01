@@ -12,7 +12,7 @@
  */
 
 import { list as listCanonicalTypes } from '@canopy/item-types';
-import { isAtom } from './atoms.js';
+import { isAtom, canonicalAtom } from './atoms.js';
 
 /**
  * Frozen verb allow-list mirroring `@canopy/item-store` `ItemStore`
@@ -158,6 +158,47 @@ export function validateManifest(manifest, opts = {}) {
           });
         }
       });
+    }
+  }
+
+  // B · Layer 1 — `manifest.nouns` declares, PER NOUN (item type), which SDK
+  // atoms apply: the (verb × noun) CAPABILITY SURFACE the B gate + the wizard
+  // read (a noun "gets the standard verbs" by listing them here, decoupled
+  // from whether a bespoke op exists yet).  Shape-validated whenever present.
+  if (manifest.nouns !== undefined) {
+    if (!manifest.nouns || typeof manifest.nouns !== 'object' || Array.isArray(manifest.nouns)) {
+      errors.push({ path: '/nouns', message: 'nouns must be an object (itemType → { atoms }) if present' });
+    } else {
+      const itemTypes = Array.isArray(manifest.itemTypes) ? manifest.itemTypes : [];
+      for (const [noun, decl] of Object.entries(manifest.nouns)) {
+        const np = `/nouns/${noun}`;
+        if (itemTypes.length && !itemTypes.includes(noun)) {
+          errors.push({ path: np, message: `nouns key "${noun}" is not in manifest.itemTypes`, code: 'unknown-noun' });
+        }
+        if (!decl || typeof decl !== 'object' || Array.isArray(decl)) {
+          errors.push({ path: np, message: 'nouns entry must be an object with an `atoms` array' });
+          continue;
+        }
+        if (!Array.isArray(decl.atoms)) {
+          errors.push({ path: `${np}/atoms`, message: 'nouns[noun].atoms must be an array' });
+          continue;
+        }
+        decl.atoms.forEach((a, i) => {
+          const ap = `${np}/atoms/${i}`;
+          if (typeof a !== 'string' || a === '') {
+            errors.push({ path: ap, message: 'atoms entries must be non-empty strings' });
+          } else if (!isAtom(a)) {
+            errors.push({ path: ap, message: `atom "${a}" is not an SDK atom (see atoms.js)`, code: 'unknown-atom' });
+          } else if (canonicalAtom(a) !== a) {
+            // Declarations must use the CANONICAL spelling, not an alias (keeps the surface unambiguous).
+            errors.push({
+              path:    ap,
+              message: `atom "${a}" is an alias — declare the canonical atom "${canonicalAtom(a)}" instead`,
+              code:    'alias-in-nouns',
+            });
+          }
+        });
+      }
     }
   }
 

@@ -35,6 +35,14 @@ export {
   atomFor,
 } from './atoms.js';
 
+// B · Layer 1 — the (verb × noun) CAPABILITY set derived from a manifest
+// (declared `nouns` ∪ derived from ops).  The unit the B gate authorises.
+export {
+  capabilitiesOf,
+  resolveAtom,
+  atomsForNoun,
+} from './capabilities.js';
+
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';
 export { renderSlash }         from './renderSlash.js';
