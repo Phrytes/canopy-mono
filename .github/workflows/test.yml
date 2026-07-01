@@ -118,3 +118,23 @@ jobs:
 
       - name: Run tests (${{ matrix.suite.label }})
         run: ${{ matrix.suite.test-cmd }}
+
+  # Docs-vs-code organization guard (task #66). Fails if a public/tracked file
+  # links into a private/ignored path (plans/, _archive/, or outside the repo),
+  # or if anything private is tracked. No dependencies — Node built-ins only.
+  # See plans/PLAN-file-org-inventory.md (local) for the model.
+  lint-docs:
+    name: lint-docs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Doc-ref lint
+        run: node scripts/lint-doc-refs.mjs
