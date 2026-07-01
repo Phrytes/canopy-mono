@@ -20,6 +20,8 @@
  */
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';   // S6.C — composable apps
+// B · Slice 2 — the manifest-driven settings form + the per-skill freedom matrix (rulings Q1/Q3).
+import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@canopy/app-manifest';
 import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
 import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 import { renderPairedDevices } from './pairedDevices.js';
@@ -57,6 +59,9 @@ export function renderCircleSettings(container, {
   onIncomingApplied,
   onIncomingDiscarded,
   onGuidedSetup,   // Theme B — open the guided-setup chatbot (pre-fills these fields)
+  // B · Slice 2 — the merged manifest sources; when present, render the manifest-driven settings form
+  // + the per-skill freedom matrix (rulings Q1/Q3). Absent ⇒ those sections don't render (older callers).
+  sources = [],
   // OBJ-2 — paired devices (no-pod sync). Host wires these when household sync is available.
   householdSelfAddr = null,
   householdPeers = [],
@@ -174,6 +179,21 @@ export function renderCircleSettings(container, {
   consRow.append(consBox, consSpan);
   consSec.appendChild(consRow);
   container.appendChild(consSec);
+
+  // B · Slice 2 (Q1) — manifest-driven per-app SETTINGS form. Values live in policy.settings keyed
+  // "<app>.<key>"; emit writes them back. Only apps that declare circle-scope settings render a block.
+  if (Array.isArray(sources) && sources.length) {
+    const forms = sources
+      .map((s) => ({ app: s?.manifest?.app, fields: buildSettingsForm(s?.manifest, { scope: 'circle', values: settingValuesForApp(policy, s?.manifest?.app) }) }))
+      .filter((f) => f.app && f.fields.length);
+    renderSettingsSection(container, { forms, tr, emit });
+
+    // B · Slice 2 (Q3) — the per-skill FREEDOM matrix over the (verb×noun) capabilities of the enabled
+    // apps, merged with the admin freedom template (policy.capabilities). This is what the gate enforces.
+    const enabledApps = Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null;
+    const matrix = buildCapabilityMatrix(sources, { enabledApps, template: policy?.capabilities || {} });
+    renderCapabilitiesSection(container, { matrix, tr, emit });
+  }
 
   // OBJ-2 — paired devices (no-pod sync). Shown only when the host wires it (household
   // sync available for this circle): this device's address + add/remove peers by address.
@@ -319,4 +339,115 @@ function section(title) {
   h.textContent = title;
   sec.appendChild(h);
   return sec;
+}
+
+/** The `policy.settings` values for one app: entries keyed "<app>.<key>" → `{ key: value }`. */
+function settingValuesForApp(policy, app) {
+  const out = {};
+  const all = (policy && typeof policy.settings === 'object' && policy.settings) || {};
+  const prefix = `${app}.`;
+  for (const [k, v] of Object.entries(all)) if (k.startsWith(prefix)) out[k.slice(prefix.length)] = v;
+  return out;
+}
+
+/** B · Slice 2 (Q1) — render the manifest-driven per-app settings form; emit `{settings:{"<app>.<key>":v}}`. */
+function renderSettingsSection(container, { forms, tr, emit }) {
+  if (!forms.length) return;
+  const sec = section(tr('circle.settings.appSettings'));
+  sec.classList.add('circle-settings__app-settings');
+  for (const { app, fields } of forms) {
+    const appHead = document.createElement('h4');
+    appHead.className = 'circle-settings__subhead';
+    appHead.textContent = tr(`circle.settings.app.${app}`, { defaultValue: app });
+    sec.appendChild(appHead);
+    for (const f of fields) {
+      const key = `${app}.${f.key}`;
+      const row = document.createElement('label');
+      row.className = 'circle-settings__setting';
+      row.dataset.setting = key;
+      const span = document.createElement('span');
+      span.textContent = f.label + (f.required ? ' *' : '');
+      let input;
+      if (f.control === 'toggle') {
+        input = document.createElement('input'); input.type = 'checkbox'; input.checked = !!f.value;
+        input.addEventListener('change', () => emit({ settings: { [key]: input.checked } }));
+      } else if (f.control === 'choice') {
+        input = document.createElement('select');
+        for (const c of (f.choices || [])) { const o = document.createElement('option'); o.value = c; o.textContent = c; o.selected = f.value === c; input.appendChild(o); }
+        input.addEventListener('change', () => emit({ settings: { [key]: input.value } }));
+      } else if (f.control === 'number') {
+        input = document.createElement('input'); input.type = 'number'; input.value = f.value ?? '';
+        input.addEventListener('change', () => emit({ settings: { [key]: input.value === '' ? undefined : Number(input.value) } }));
+      } else {   // text | member
+        input = document.createElement('input'); input.type = 'text'; input.value = f.value ?? '';
+        input.addEventListener('change', () => emit({ settings: { [key]: input.value } }));
+      }
+      input.dataset.role = 'setting-input';
+      if (f.hint) input.title = f.hint;
+      row.append(span, input);
+      sec.appendChild(row);
+    }
+  }
+  container.appendChild(sec);
+}
+
+/**
+ * B · Slice 2 (Q3) — the per-skill FREEDOM matrix. Per capability: an `enabled` toggle, a
+ * required/optional freedom select (locked to optional on a privacy-floor row), and an opt-out
+ * consequence select (greyed/hidden/limited). Each change emits the FULL row under its key so the
+ * stored template is self-contained.
+ */
+function renderCapabilitiesSection(container, { matrix, tr, emit }) {
+  if (!matrix.length) return;
+  const sec = section(tr('circle.settings.capabilities'));
+  sec.classList.add('circle-settings__capabilities');
+
+  const byApp = new Map();
+  for (const row of matrix) { if (!byApp.has(row.app)) byApp.set(row.app, []); byApp.get(row.app).push(row); }
+
+  for (const [app, rows] of byApp) {
+    const appHead = document.createElement('h4');
+    appHead.className = 'circle-settings__subhead';
+    appHead.textContent = tr(`circle.settings.app.${app}`, { defaultValue: app });
+    sec.appendChild(appHead);
+
+    for (const row of rows) {
+      const el = document.createElement('div');
+      el.className = 'circle-settings__cap-row';
+      el.dataset.cap = row.key;
+      const base = () => ({ enabled: row.enabled, freedom: row.freedom, consequence: row.consequence, privacyFloor: row.privacyFloor });
+
+      const enWrap = document.createElement('label');
+      const en = document.createElement('input');
+      en.type = 'checkbox'; en.checked = row.enabled; en.dataset.role = 'enabled';
+      en.addEventListener('change', () => emit({ capabilities: { [row.key]: { ...base(), enabled: en.checked } } }));
+      const enSpan = document.createElement('span');
+      enSpan.textContent = `${tr(`circle.settings.verb.${row.atom}`, { defaultValue: row.atom })} · ${row.noun}`;
+      enWrap.append(en, enSpan);
+      el.appendChild(enWrap);
+
+      const freeSel = document.createElement('select');
+      freeSel.dataset.role = 'freedom';
+      freeSel.disabled = row.privacyFloor || !row.enabled;   // floor → always optional; disabled cap → n/a
+      for (const lvl of FREEDOM_LEVELS) { const o = document.createElement('option'); o.value = lvl; o.textContent = tr(`circle.settings.freedom.${lvl}`); o.selected = row.freedom === lvl; freeSel.appendChild(o); }
+      freeSel.addEventListener('change', () => emit({ capabilities: { [row.key]: { ...base(), freedom: freeSel.value } } }));
+      el.appendChild(freeSel);
+
+      const consSel = document.createElement('select');
+      consSel.dataset.role = 'consequence';
+      consSel.disabled = !row.enabled || row.freedom === 'required';   // consequence only bites when opt-outable
+      for (const c of OPT_OUT_CONSEQUENCES) { const o = document.createElement('option'); o.value = c; o.textContent = tr(`circle.settings.consequence_opt.${c}`); o.selected = row.consequence === c; consSel.appendChild(o); }
+      consSel.addEventListener('change', () => emit({ capabilities: { [row.key]: { ...base(), consequence: consSel.value } } }));
+      el.appendChild(consSel);
+
+      if (row.privacyFloor) {
+        const floor = document.createElement('span');
+        floor.className = 'circle-settings__cap-floor';
+        floor.textContent = tr('circle.settings.privacyFloor');
+        el.appendChild(floor);
+      }
+      sec.appendChild(el);
+    }
+  }
+  container.appendChild(sec);
 }

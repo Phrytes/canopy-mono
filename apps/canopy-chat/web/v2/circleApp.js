@@ -3243,6 +3243,8 @@ async function showSettings(id) {
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
+    // B · Slice 2 — the merged manifest sources drive the settings form + the per-skill freedom matrix.
+    sources: baseSources,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
     note: [pendingNote(), storageNote].filter(Boolean).join(' · ') || undefined,
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The

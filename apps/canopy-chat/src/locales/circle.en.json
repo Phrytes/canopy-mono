@@ -790,6 +790,27 @@
     }
   },
   "settings": {
+
+    "appSettings": { "text": "App settings", "doc": "B/S2 Q1 \u2014 manifest-driven per-app settings form heading." },
+    "capabilities": { "text": "What members can do", "doc": "B/S2 Q3 \u2014 the per-skill freedom matrix heading." },
+    "privacyFloor": { "text": "Always optional (privacy)", "doc": "B/S2 Q3 \u2014 a privacy-floor capability can never be required." },
+    "freedom": {
+      "required": { "text": "Required", "doc": "members must use this capability." },
+      "optional": { "text": "Optional", "doc": "members may opt out." }
+    },
+    "consequence_opt": {
+      "greyed": { "text": "Greyed out", "doc": "opting out greys the affordance." },
+      "hidden": { "text": "Hidden", "doc": "opting out hides it." },
+      "limited": { "text": "Limited role", "doc": "opting out limits the role." }
+    },
+    "verb": {
+      "add": { "text": "Add", "doc": "" },
+      "list": { "text": "List", "doc": "" },
+      "complete": { "text": "Complete", "doc": "" },
+      "remove": { "text": "Remove", "doc": "" },
+      "claim": { "text": "Claim", "doc": "" },
+      "reassign": { "text": "Assign", "doc": "" }
+    },
     "title": {
       "text": "Circle settings",
       "doc": "Settings screen heading (board 4A)."

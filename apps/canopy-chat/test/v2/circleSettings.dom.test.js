@@ -104,3 +104,67 @@ describe('renderCircleSettings', () => {
     expect(info.getAttribute('aria-expanded')).toBe('false');
   });
 });
+
+describe('B · Slice 2 — settings form + freedom matrix (sources-driven)', () => {
+  const manifest = {
+    app: 'demo', itemTypes: ['task'],
+    settings: [
+      { key: 'assignable', label: 'Assignable', kind: 'toggle', default: true, scope: 'circle' },
+      { key: 'visibility', label: 'Visibility', kind: 'choice', of: ['members', 'admins'], default: 'members' },
+    ],
+    nouns: { task: { atoms: ['add', 'complete'] } },
+    operations: [
+      { id: 'addTask', verb: 'add', appliesTo: { type: 'task' } },
+      { id: 'doneTask', verb: 'complete', appliesTo: { type: 'task' } },
+    ],
+  };
+  const sources = [{ manifest }];
+  const policy = { ...DEFAULT_CIRCLE_POLICY };
+
+  it('renders the per-app settings form from manifest.settings', () => {
+    const el = mount();
+    renderCircleSettings(el, { policy, t, sources });
+    const rows = el.querySelectorAll('.circle-settings__app-settings .circle-settings__setting');
+    expect(rows).toHaveLength(2);
+    expect(el.querySelector('[data-setting="demo.assignable"] input[type=checkbox]').checked).toBe(true);
+    expect(el.querySelector('[data-setting="demo.visibility"] select').value).toBe('members');
+  });
+
+  it('renders one freedom row per (verb×noun) capability with enabled + freedom + consequence controls', () => {
+    const el = mount();
+    renderCircleSettings(el, { policy, t, sources });
+    const caps = el.querySelectorAll('.circle-settings__capabilities .circle-settings__cap-row');
+    expect(caps).toHaveLength(2);   // add·task, complete·task
+    const addRow = el.querySelector('[data-cap="demo add task"]');
+    expect(addRow.querySelector('input[data-role=enabled]').checked).toBe(true);
+    expect(addRow.querySelector('select[data-role=freedom]')).toBeTruthy();
+    expect(addRow.querySelector('select[data-role=consequence]')).toBeTruthy();
+  });
+
+  it('emits a full capability row on toggle (self-contained template entry)', () => {
+    const el = mount();
+    const onChange = vi.fn();
+    renderCircleSettings(el, { policy, t, sources, onChange });
+    const box = el.querySelector('[data-cap="demo add task"] input[data-role=enabled]');
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenCalledWith({ capabilities: { 'demo add task': { enabled: false, freedom: 'optional', consequence: 'greyed', privacyFloor: false } } });
+  });
+
+  it('emits a settings patch keyed "<app>.<key>" on change', () => {
+    const el = mount();
+    const onChange = vi.fn();
+    renderCircleSettings(el, { policy, t, sources, onChange });
+    const sel = el.querySelector('[data-setting="demo.visibility"] select');
+    sel.value = 'admins';
+    sel.dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenCalledWith({ settings: { 'demo.visibility': 'admins' } });
+  });
+
+  it('renders nothing extra when sources is absent (older callers unaffected)', () => {
+    const el = mount();
+    renderCircleSettings(el, { policy, t });
+    expect(el.querySelector('.circle-settings__capabilities')).toBeNull();
+    expect(el.querySelector('.circle-settings__app-settings')).toBeNull();
+  });
+});

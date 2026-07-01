@@ -790,6 +790,27 @@
     }
   },
   "settings": {
+
+    "appSettings": { "text": "App-instellingen", "doc": "B/S2 Q1 \u2014 manifest-driven per-app settings form heading." },
+    "capabilities": { "text": "Wat leden mogen", "doc": "B/S2 Q3 \u2014 the per-skill freedom matrix heading." },
+    "privacyFloor": { "text": "Altijd optioneel (privacy)", "doc": "B/S2 Q3 \u2014 a privacy-floor capability can never be required." },
+    "freedom": {
+      "required": { "text": "Verplicht", "doc": "members must use this capability." },
+      "optional": { "text": "Optioneel", "doc": "members may opt out." }
+    },
+    "consequence_opt": {
+      "greyed": { "text": "Grijs gemaakt", "doc": "opting out greys the affordance." },
+      "hidden": { "text": "Verborgen", "doc": "opting out hides it." },
+      "limited": { "text": "Beperkte rol", "doc": "opting out limits the role." }
+    },
+    "verb": {
+      "add": { "text": "Toevoegen", "doc": "" },
+      "list": { "text": "Lijst", "doc": "" },
+      "complete": { "text": "Afronden", "doc": "" },
+      "remove": { "text": "Verwijderen", "doc": "" },
+      "claim": { "text": "Oppakken", "doc": "" },
+      "reassign": { "text": "Toewijzen", "doc": "" }
+    },
     "title": {
       "text": "Kring-instellingen",
       "doc": "Settings screen heading (board 4A)."
