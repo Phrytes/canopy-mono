@@ -41,6 +41,7 @@ export {
   capabilitiesOf,
   resolveAtom,
   atomsForNoun,
+  opNouns,
 } from './capabilities.js';
 
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
