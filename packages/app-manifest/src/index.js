@@ -53,7 +53,17 @@ export {
   resolveAtom,
   atomsForNoun,
   opNouns,
+  capabilityKey,
 } from './capabilities.js';
+
+// B · Slice 2 (ruling Q3) — the admin freedom template + the narrowed effective set the gate reads.
+export {
+  FREEDOM_LEVELS,
+  OPT_OUT_CONSEQUENCES,
+  DEFAULT_ROW,
+  buildCapabilityMatrix,
+  effectiveCapabilityKeys,
+} from './freedom.js';
 
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';
