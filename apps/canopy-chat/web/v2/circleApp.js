@@ -52,6 +52,8 @@ import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
 // B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
 import { buildCapabilityMatrix } from '@canopy/app-manifest';
+// B · Slice 3 — the interactive list-screen surface (search + category checkboxes + capability-gated rows).
+import { renderListBlock } from './listScreen.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../../src/v2/mappingsStore.js';
@@ -595,6 +597,16 @@ let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadI
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleBaseSources = [];      // B · Slice 2/4 — the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
+let circleManifestsByOrigin = {}; // B · Slice 3 — {appOrigin → manifest}, module-scoped for the list-screen panel's row actions
+
+// B · Slice 3 — declared list-screen surfaces: a screenId → { how to fetch rows + the category field }.
+// openCircleScreenPanel renders these via renderListBlock (search + category checkboxes + capability-
+// gated row actions). A manifest `surfaces.screen` will populate this in a later pass; for now it's the
+// concrete surfaces the "contacten met k" acceptance test needs.
+const LIST_SCREENS = {
+  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category' },
+  prikbord: { appOrigin: 'stoop', listOp: 'listOpen',     categoryField: 'kind' },
+};
 let circleActiveApps = null;     // S6.C deep — the active circle's policy.apps (null = all); narrows the catalog
 let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (set in buildCircleBot, called by showKring)
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
@@ -751,6 +763,7 @@ function buildCircleBot(agent) {
     if (m.app)   manifestsByOrigin[m.app] = m;
     if (m.appId) manifestsByOrigin[m.appId] = m;
   }
+  circleManifestsByOrigin = manifestsByOrigin;   // B · Slice 3 — expose to the module-level list-screen panel
   const appRegistry = new AppRegistry();
   appRegistry.syncWithCatalog(rawCatalog.appOrigins);
   // Scope to the circle apps (Part D) — drops canopy-chat's account/transport INFRA ops (`/me` etc.) that
@@ -2325,6 +2338,33 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
   document.body.appendChild(overlay);
 
   renderCircleScreen(body, { blocks: null, t });   // loading
+
+  // B · Slice 3 — a declared LIST-SCREEN renders directly (search + category checkboxes + capability-
+  // gated row actions) instead of going through the recipe-block path.
+  const listCfg = LIST_SCREENS[screenId];
+  if (listCfg) {
+    try {
+      const res = await rawCallSkill(listCfg.appOrigin, listCfg.listOp, {});
+      const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
+      let capabilityMatrix = [];
+      try {
+        const pol = (await policyStore.get(circleId)) ?? {};
+        const ovr = (await overrideStore.get(circleId)) ?? {};
+        capabilityMatrix = buildCapabilityMatrix(circleBaseSources, {
+          enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
+          template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
+        });
+      } catch { /* best-effort */ }
+      body.innerHTML = '';
+      renderListBlock(body, {
+        block: { items, categoryField: listCfg.categoryField, manifestsByOrigin: circleManifestsByOrigin, appOrigin: listCfg.appOrigin, title: title.textContent },
+        t, capabilityMatrix,
+        onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
+      });
+    } catch { body.textContent = t('circle.screen.empty'); }
+    return;
+  }
+
   try {
     const block = { id: `panel-${screenId}`, type: screenId, config: { scope: 'all' } };
     const mat = await materializeBlock({ block, circleId, hostOps: { callSkill: rawCallSkill, eventLog, circles: circlesCache, fetchImpl: circleAuthedFetch || undefined } });
