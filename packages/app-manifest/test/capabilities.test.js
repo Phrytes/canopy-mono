@@ -73,6 +73,36 @@ describe('capabilitiesOf', () => {
     expect(atomsForNoun(M, 'task')).toEqual(['add', 'claim', 'complete', 'update']);
   });
 
+  // DECLARED-AUTHORITATIVE (decision 2026-07-02): a manifest that declares `nouns` curates its own
+  // capability surface — an op-derived pair the author didn't declare is DROPPED. This is how a broad
+  // `appliesTo` (e.g. stoop cancelRequest `type:'*'`) stops minting capabilities on internal itemTypes.
+  it('drops a derived pair the declared nouns omit (declared is authoritative)', () => {
+    const curated = {
+      app: 'curated',
+      itemTypes: ['post', 'internal'],
+      nouns: { post: { atoms: ['add', 'remove'] } },   // author declares ONLY post — `internal` omitted
+      operations: [
+        { id: 'addPost',   verb: 'add',    appliesTo: { type: 'post' } },
+        { id: 'wipeAll',   verb: 'remove', appliesTo: { type: '*' } },   // would derive remove×internal
+      ],
+    };
+    const caps = capabilitiesOf(curated);
+    const nouns = new Set(caps.map((c) => c.noun));
+    expect(nouns.has('internal')).toBe(false);                    // dropped — not declared
+    expect(caps.find((c) => c.noun === 'post' && c.atom === 'add')?.opId).toBe('addPost');
+    expect(caps.find((c) => c.noun === 'post' && c.atom === 'remove')?.opId).toBe('wipeAll'); // opId still filled
+  });
+
+  it('without a nouns declaration, ops remain the surface (derived fallback)', () => {
+    const bare = {
+      app: 'bare', itemTypes: ['post', 'internal'],
+      operations: [{ id: 'wipeAll', verb: 'remove', appliesTo: { type: '*' } }],
+    };
+    const nouns = new Set(capabilitiesOf(bare).map((c) => c.noun));
+    expect(nouns.has('post')).toBe(true);
+    expect(nouns.has('internal')).toBe(true);   // derived — no nouns decl to curate it
+  });
+
   // Regression (device-verify 2026-07-02): a VALUE-enum param (mode/action/lang/…) lists option
   // values, not item types — it must NOT become a noun. Before the fix, canopy-chat's mode:[nkn,both]
   // / lang:[en,nl] / action:[on,off] params produced junk freedom-matrix rows (submit·nkn, List·en).
