@@ -63,6 +63,7 @@ export {
   DEFAULT_ROW,
   buildCapabilityMatrix,
   effectiveCapabilityKeys,
+  affordanceTreatment,
 } from './freedom.js';
 
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';

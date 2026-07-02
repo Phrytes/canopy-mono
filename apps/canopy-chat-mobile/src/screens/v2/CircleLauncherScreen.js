@@ -71,6 +71,9 @@ import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '.
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
+// B · Slice 1/4 — the capability gate + the affordance matrix (web≡mobile, shared core).
+import { effectiveCapabilities, checkCapability } from '../../../../canopy-chat/src/v2/capabilityGate.js';
+import { buildCapabilityMatrix } from '@canopy/app-manifest';
 // S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 // "only you" vs "whole kring" — message scope (data property; the badge renders it).
@@ -1872,7 +1875,16 @@ function CircleDetail({
     const entry = catalog?.opsById?.get(dispatch.opId);
     const verb = entry?.op?.verb;
     // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
-    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    // B · Slice 4 (4c) — grey/hide affordances per the member's effective capability + consequence (web≡mobile).
+    let capMatrix = [];
+    try {
+      const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
+      capMatrix = buildCapabilityMatrix(capabilitySources, {
+        enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
+        template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
+      });
+    } catch { /* best-effort — no greying on error */ }
+    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
     // S6.B/C — a screen surface (surfaces.ui.screen) becomes an "Open …" button,
     // gated by the circle's policy.features for that app (web parity).
     const screen = entry?.op?.surfaces?.ui?.screen;
@@ -1897,7 +1909,7 @@ function CircleDetail({
       if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
       if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
     } catch { /* enrichment is non-essential */ }
-  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy, capabilitySources]);
+  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy, capabilitySources, overrideStore]);
 
   // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared
   // executeBulkDispatch). Mobile has no filter-router; cross-thread propagation is the fan-out itself.

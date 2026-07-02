@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import {
-  buildCapabilityMatrix, effectiveCapabilityKeys, capabilityKey,
+  buildCapabilityMatrix, effectiveCapabilityKeys, capabilityKey, affordanceTreatment,
   FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES, DEFAULT_ROW,
 } from '../src/index.js';
 
@@ -108,5 +108,25 @@ describe('Slice 4 — member opt-outs narrow admin-template ∩ user-prefs', () 
     const keys = effectiveCapabilityKeys(sources, {});
     expect(keys.has('tasks add task')).toBe(true);
     expect(keys.has('stoop add post')).toBe(true);
+  });
+});
+
+describe('affordanceTreatment (4c — consequence → UI)', () => {
+  const matrix = buildCapabilityMatrix(sources, {
+    template: { 'tasks add task': { enabled: false, consequence: 'hidden' }, 'tasks complete task': { freedom: 'optional', consequence: 'greyed' } },
+    optOuts: ['tasks complete task'],
+  });
+  it('authorised cap → show', () => {
+    expect(affordanceTreatment(matrix, { app: 'stoop', atom: 'add', noun: 'post' })).toBe('show');
+  });
+  it('admin-disabled cap → its consequence (hidden→hide)', () => {
+    expect(affordanceTreatment(matrix, { app: 'tasks', atom: 'add', noun: 'task' })).toBe('hide');
+  });
+  it('member-opted-out cap → its consequence (greyed→grey)', () => {
+    expect(affordanceTreatment(matrix, { app: 'tasks', atom: 'complete', noun: 'task' })).toBe('grey');
+  });
+  it('unknown/domain cap → show', () => {
+    expect(affordanceTreatment(matrix, { app: 'tasks', atom: 'help', noun: 'x' })).toBe('show');
+    expect(affordanceTreatment(matrix, {})).toBe('show');
   });
 });

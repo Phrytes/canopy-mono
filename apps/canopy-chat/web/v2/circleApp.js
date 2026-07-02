@@ -50,6 +50,8 @@ import { kringReplyText } from '../../src/v2/kringReply.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 // B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
+// B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
+import { buildCapabilityMatrix } from '@canopy/app-manifest';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../../src/v2/mappingsStore.js';
@@ -986,7 +988,20 @@ function buildCircleBot(agent) {
     const verb = entry?.op?.verb;
     // S6.A — manifest-driven inline buttons for the item(s) this reply carries
     // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
-    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    // B · Slice 4 (4c) — grey/hide inline affordances per the member's effective capability + consequence.
+    let capMatrix = [];
+    try {
+      const cid = getActiveCircle();
+      if (cid) {
+        const pol = (await policyStore.get(cid)) ?? {};
+        const ovr = (await overrideStore.get(cid)) ?? {};
+        capMatrix = buildCapabilityMatrix(baseSources, {
+          enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
+          template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
+        });
+      }
+    } catch { /* best-effort — no greying on error */ }
+    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
     // S6.B — if the dispatched op declares a screen surface (surfaces.ui.screen),
     // prepend an "Open …" button that opens a panel instead of dispatching.
     const screen = entry?.op?.surfaces?.ui?.screen;

@@ -94,3 +94,22 @@ export function effectiveCapabilityKeys(sources, opts = {}) {
   }
   return keys;
 }
+
+/**
+ * B · Slice 4 (ruling Q3) — how an AFFORDANCE for a capability should render for this member, given a
+ * pre-built matrix (`buildCapabilityMatrix` with the member's `optOuts`). An authorised cap renders
+ * normally (`'show'`); a disabled-or-opted-out cap applies the admin's consequence:
+ *   greyed → `'grey'` (show but disabled) · hidden → `'hide'` (omit) · limited → `'limit'`.
+ * A cap not in the matrix (domain verb / not gated) → `'show'`. Pure; surfaces map the result to UI.
+ *
+ * @param {Array} matrix  from buildCapabilityMatrix({..., optOuts})
+ * @param {{app:string, atom:string, noun:string}} cap
+ * @returns {'show'|'grey'|'hide'|'limit'}
+ */
+export function affordanceTreatment(matrix, { app, atom, noun } = {}) {
+  if (!atom) return 'show';
+  const row = (Array.isArray(matrix) ? matrix : []).find((r) => r.app === app && r.atom === atom && r.noun === noun);
+  if (!row) return 'show';                           // not a gated capability
+  if (row.enabled && !row.optedOut) return 'show';   // authorised → normal
+  return row.consequence === 'hidden' ? 'hide' : row.consequence === 'limited' ? 'limit' : 'grey';
+}
