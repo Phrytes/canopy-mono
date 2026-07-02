@@ -165,7 +165,9 @@
       "doc": "Heading of the cross-circle Stream tab (board 5B)."
     },
     "open": {
-      "text": "Stream",
+
+      "contacts": { "text": "Contacts", "doc": "B/S3 list-screen open label." },
+      "prikbord": { "text": "Noticeboard", "doc": "B/S3 list-screen open label." },      "text": "Stream",
       "doc": "Launcher entry that opens the cross-circle Stream."
     },
     "empty": {

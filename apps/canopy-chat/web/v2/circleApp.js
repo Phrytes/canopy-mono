@@ -2498,6 +2498,7 @@ function showKring(id, circle, policy) {
     invite:   () => showCircleInvite(id),
     settings: () => showSettings(id),
     lists:    () => openListsPanel(id),   // K2 — the composable lists/container UI
+    contacts: () => openCircleScreenPanel('contacts'),   // B · Slice 3 — the filterable list-screen (GUI entry point)
 
     mine:     () => showOverride(id),
     advisor:  () => showAdvisor(id),
@@ -2776,6 +2777,10 @@ function showKring(id, circle, policy) {
       onSend:   async (text) => {
         const line = String(text ?? '').trim();
         if (!line) return;
+        // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; the ⋯ menu is the GUI
+        // one — peer compilers to the same surface). e.g. "/contacts", "/prikbord".
+        const scr = line.match(/^\/(contacts|prikbord)\b/i);
+        if (scr && LIST_SCREENS[scr[1].toLowerCase()]) { openCircleScreenPanel(scr[1].toLowerCase()); return; }
         // Conversational follow-up: the bot previously asked for a missing field (needsForm → beginFollowUp);
         // THIS message is the answer. Append it, complete the pending dispatch, and run it — don't route it
         // to feedback or re-interpret it as a new command.
