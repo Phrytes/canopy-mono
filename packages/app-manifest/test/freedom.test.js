@@ -81,3 +81,32 @@ describe('effectiveCapabilityKeys — the gate-narrowing', () => {
     expect(keys.has('stoop add post')).toBe(true);
   });
 });
+
+describe('Slice 4 — member opt-outs narrow admin-template ∩ user-prefs', () => {
+  it('matrix marks optOutable (optional or floor) + optedOut for this member', () => {
+    const template = {
+      'tasks add task': { freedom: 'required' },              // NOT opt-outable
+      'tasks complete task': { freedom: 'optional' },          // opt-outable
+      'stoop add post': { privacyFloor: true },                // opt-outable (floor)
+    };
+    const rows = buildCapabilityMatrix(sources, { template, optOuts: ['tasks complete task', 'tasks add task', 'stoop add post'] });
+    const by = Object.fromEntries(rows.map((r) => [r.key, r]));
+    expect(by['tasks add task']).toMatchObject({ optOutable: false, optedOut: false });      // required → can't opt out
+    expect(by['tasks complete task']).toMatchObject({ optOutable: true, optedOut: true });
+    expect(by['stoop add post']).toMatchObject({ optOutable: true, optedOut: true });          // floor
+  });
+
+  it('effectiveCapabilityKeys removes opted-out OPT-OUTABLE caps only', () => {
+    const template = { 'tasks add task': { freedom: 'required' }, 'tasks complete task': { freedom: 'optional' } };
+    // member tries to opt out of BOTH — only the optional one actually leaves the set
+    const keys = effectiveCapabilityKeys(sources, { template, optOuts: ['tasks add task', 'tasks complete task'] });
+    expect(keys.has('tasks add task')).toBe(true);         // required — opt-out ignored
+    expect(keys.has('tasks complete task')).toBe(false);   // optional — opted out → gone
+  });
+
+  it('no optOuts ⇒ pure admin template (Slices 1–2 behaviour)', () => {
+    const keys = effectiveCapabilityKeys(sources, {});
+    expect(keys.has('tasks add task')).toBe(true);
+    expect(keys.has('stoop add post')).toBe(true);
+  });
+});

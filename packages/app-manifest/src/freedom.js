@@ -43,41 +43,54 @@ function resolveRow(entry = {}) {
   return { enabled, freedom, consequence, privacyFloor };
 }
 
+/** Coerce `optOuts` (Set|array|undefined) to a Set of keys. */
+function toSet(optOuts) {
+  if (optOuts instanceof Set) return optOuts;
+  return new Set(Array.isArray(optOuts) ? optOuts : []);
+}
+
 /**
  * The full per-capability matrix the wizard renders: one row per (app × atom × noun) capability of the
  * ENABLED apps, merged with the admin `template`. Rows carry the resolved freedom/consequence + the
- * implementing `opId` (or null = declared-but-unimplemented).
+ * implementing `opId` (or null = declared-but-unimplemented), plus (B · Slice 4) whether a member may
+ * opt out (`optOutable` = freedom 'optional' OR a privacy floor) and whether THIS member has (`optedOut`).
  *
  * @param {Array<{manifest:object}>} sources
  * @param {object} [opts]
  * @param {Set<string>|string[]|null} [opts.enabledApps]  apps enabled in the circle (null = all)
  * @param {object} [opts.template]  `{ "<app> <atom> <noun>": { enabled?, freedom?, consequence?, privacyFloor? } }`
- * @returns {Array<{key,app,atom,noun,opId,enabled,freedom,consequence,privacyFloor}>}
+ * @param {Set<string>|string[]} [opts.optOuts]  the member's opted-out capability keys (Slice 4)
+ * @returns {Array<{key,app,atom,noun,opId,enabled,freedom,consequence,privacyFloor,optOutable,optedOut}>}
  */
-export function buildCapabilityMatrix(sources, { enabledApps = null, template = {} } = {}) {
+export function buildCapabilityMatrix(sources, { enabledApps = null, template = {}, optOuts } = {}) {
   const rows = [];
   const tmpl = (template && typeof template === 'object') ? template : {};
+  const out = toSet(optOuts);
   for (const src of (Array.isArray(sources) ? sources : [])) {
     const manifest = src?.manifest;
     const app = manifest?.app;
     if (!app || !isAppEnabled(app, enabledApps)) continue;
     for (const cap of capabilitiesOf(manifest)) {
       const key = capabilityKey(app, cap.atom, cap.noun);
-      rows.push({ key, app, atom: cap.atom, noun: cap.noun, opId: cap.opId, ...resolveRow(tmpl[key]) });
+      const row = { key, app, atom: cap.atom, noun: cap.noun, opId: cap.opId, ...resolveRow(tmpl[key]) };
+      row.optOutable = row.freedom === 'optional' || row.privacyFloor;   // Slice 4 — a member MAY decline these
+      row.optedOut = row.optOutable && out.has(key);                     // …and THIS member has
+      rows.push(row);
     }
   }
   return rows;
 }
 
 /**
- * The narrowed capability KEY SET the Slice-1 gate authorises: every enabled-app capability whose
- * matrix row is `enabled` (admin didn't disable it). This is what makes the gate drop below app-level.
+ * The narrowed capability KEY SET the gate authorises = admin-template ∩ (not member opt-outs).
+ * A cap is authorised iff its matrix row is `enabled` (admin didn't disable it) AND the member hasn't
+ * opted out of it (only opt-outable caps can be opted out). No `optOuts` ⇒ pure admin template (Slices 1–2).
  * @returns {Set<string>}
  */
 export function effectiveCapabilityKeys(sources, opts = {}) {
   const keys = new Set();
   for (const row of buildCapabilityMatrix(sources, opts)) {
-    if (row.enabled) keys.add(row.key);
+    if (row.enabled && !row.optedOut) keys.add(row.key);
   }
   return keys;
 }

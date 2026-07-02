@@ -205,6 +205,10 @@ export const DEFAULT_MEMBER_OVERRIDE = {
     onProposal:     true,
   },
   flowThrough:        { tasksToPersonal: false, calendarToPersonal: false },
+  // B · Slice 4 (ruling Q3) — the member's capability OPT-OUTS: an array of "<app> <atom> <noun>"
+  // keys the member has declined. Only OPT-OUTABLE caps (admin freedom 'optional' OR a privacy floor)
+  // can be opted out; the effective set is admin-template ∩ (not these). Enforced at the same gate.
+  capabilityOptOuts:  [],
 };
 
 export function normalizeMemberOverride(stored = {}) {
@@ -225,6 +229,9 @@ export function normalizeMemberOverride(stored = {}) {
       tasksToPersonal:    !!ft.tasksToPersonal,
       calendarToPersonal: !!ft.calendarToPersonal,
     },
+    capabilityOptOuts:  Array.isArray(o.capabilityOptOuts)
+      ? [...new Set(o.capabilityOptOuts.filter((x) => typeof x === 'string'))]
+      : [],
   };
 }
 

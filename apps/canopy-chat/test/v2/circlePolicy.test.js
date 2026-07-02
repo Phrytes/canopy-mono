@@ -295,3 +295,16 @@ describe('B · Slice 2 — capabilities freedom template + settings values', () 
     expect(merged.settings).toEqual({ 'app.k1': 1, 'app.k2': 2 });
   });
 });
+
+describe('B · Slice 4 — member capabilityOptOuts', () => {
+  it('defaults to [], dedupes + filters non-strings on normalize', () => {
+    expect(DEFAULT_MEMBER_OVERRIDE.capabilityOptOuts).toEqual([]);
+    expect(normalizeMemberOverride({ capabilityOptOuts: ['a x y', 'a x y', 5, 'b x y'] }).capabilityOptOuts)
+      .toEqual(['a x y', 'b x y']);
+    expect(normalizeMemberOverride({ capabilityOptOuts: 'nope' }).capabilityOptOuts).toEqual([]);
+  });
+  it('merge replaces the opt-out list wholesale (UI sends the full set)', () => {
+    const merged = mergeMemberOverride({ capabilityOptOuts: ['a x y'] }, { capabilityOptOuts: ['b x y'] });
+    expect(merged.capabilityOptOuts).toEqual(['b x y']);
+  });
+});

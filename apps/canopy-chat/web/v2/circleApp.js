@@ -1054,18 +1054,25 @@ function buildCircleBot(agent) {
     return isAppSurfaceEnabled(appOrigin, policy, isFeatureEnabled);
   }
 
-  // B · Slice 1 — the default-deny capability decision for a user-initiated dispatch. Returns a deny
-  // code ('app-disabled' | 'capability-denied') or null (allow). Enablement comes from the SAME
-  // per-circle source the UI uses (isOpAppEnabledForActiveCircle → policy.features), then the pure
-  // (verb × noun) gate evaluates the specific capability. Slice 1 grants an enabled app ALL its caps;
-  // Slice 2 swaps the effective set for admin-template ∩ user-prefs WITHOUT changing this call.
+  // B · the default-deny capability decision for a user-initiated dispatch. Returns a deny code
+  // ('app-disabled' | 'capability-denied') or null (allow). App enablement comes from the SAME source
+  // the UI uses (isOpAppEnabledForActiveCircle → policy.features); the effective (verb × noun) set is
+  // admin-template (policy.capabilities, Slice 2) ∩ member opt-outs (override.capabilityOptOuts, Slice 4).
   async function circleCapabilityDeny(appOrigin, opId, args) {
-    if (getActiveCircle() == null) return null;                 // outside a circle → no per-circle gate
+    const circleId = getActiveCircle();
+    if (circleId == null) return null;                          // outside a circle → no per-circle gate
     const origin = appOrigin || catalog?.opsById?.get(opId)?.appOrigin;
     if (!origin) return null;                                   // unattributable → don't block here
     const op = catalog?.opsById?.get(opId)?.op;
     const enabled = await isOpAppEnabledForActiveCircle(origin);
-    const eff = effectiveCapabilities(baseSources, { apps: enabled ? [origin] : [] });
+    let policy = {}; let override = {};
+    try { policy = (await policyStore.get(circleId)) ?? {}; } catch { /* default */ }
+    try { override = (await overrideStore.get(circleId)) ?? {}; } catch { /* default */ }
+    const eff = effectiveCapabilities(baseSources, {
+      apps:         enabled ? [origin] : [],
+      capabilities: policy.capabilities,          // Slice 2 — the admin freedom template
+      optOuts:      override.capabilityOptOuts,   // Slice 4 — this member's declined caps
+    });
     const r = checkCapability({ op, appOrigin: origin, args }, eff);
     return r.allow ? null : r.code;
   }

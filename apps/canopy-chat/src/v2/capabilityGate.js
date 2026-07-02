@@ -40,7 +40,8 @@ export { capabilityKey };
 export function effectiveCapabilities(sources, policy = {}) {
   const appList = Array.isArray(policy?.apps) ? policy.apps : null;
   const enabledApps = appList ? new Set(appList) : null;
-  const keys = effectiveCapabilityKeys(sources, { enabledApps, template: policy?.capabilities });
+  // admin-template ∩ member opt-outs (Slice 4): `optOuts` are the current member's declined caps.
+  const keys = effectiveCapabilityKeys(sources, { enabledApps, template: policy?.capabilities, optOuts: policy?.optOuts });
   return { keys, enabledApps };
 }
 
