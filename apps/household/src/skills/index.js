@@ -5,6 +5,10 @@
  * (see `../types.js`).  The agent looks them up by id.
  */
 
+// B · Layer 1 — the single shared CREATE path behind the `add` atom
+// (addItem for list nouns, addTask for the task noun both call it).
+export { createHouseholdItem } from './createHouseholdItem.js';
+
 // SP-1 skills (user-facing list / completion / removal / help)
 export { addItem }          from './addItem.js';
 export { listOpen }         from './listOpen.js';

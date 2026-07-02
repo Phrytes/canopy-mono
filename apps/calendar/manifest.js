@@ -19,6 +19,9 @@ export const calendarManifest = {
   app:        'calendar',
   itemTypes:  ['calendar-event'],
 
+  // B · Layer 1 — every op maps to an SDK atom (no domain-specific verbs).
+  domainVerbs: [],
+
   operations: [
     /**
      * `/addappt` — create an event.  Required: title, startsAt.

@@ -20,7 +20,51 @@ export {
   classifyItemTypes,
   // P1 (feedback-extension) — composite-op `onError` policy allow-list.
   COMPOSITE_ON_ERROR,
+  // B · Slice 2 (ruling Q1) — settings-declaration allow-lists.
+  SETTING_KINDS,
+  SETTING_SCOPES,
 } from './validate.js';
+
+// B · Layer 1 (2026-07-01) — the SDK ATOM CATALOGUE: the authoritative
+// general-verb vocabulary a capability (verb × noun) keys off, plus alias
+// resolution + classification.  Superset of the legacy `VERBS`.
+export {
+  ATOMS,
+  ATOM_VERBS,
+  ATOM_VERBS_WITH_ALIASES,
+  isAtom,
+  canonicalAtom,
+  classifyVerb,
+  atomFor,
+} from './atoms.js';
+
+// B · Slice 2 (ruling Q1) — read helpers over manifest.settings (the wizard/form layer).
+export {
+  settingsOf,
+  settingDefaults,
+  isSettingRequired,
+  buildSettingsForm,
+} from './settings.js';
+
+// B · Layer 1 — the (verb × noun) CAPABILITY set derived from a manifest
+// (declared `nouns` ∪ derived from ops).  The unit the B gate authorises.
+export {
+  capabilitiesOf,
+  resolveAtom,
+  atomsForNoun,
+  opNouns,
+  capabilityKey,
+} from './capabilities.js';
+
+// B · Slice 2 (ruling Q3) — the admin freedom template + the narrowed effective set the gate reads.
+export {
+  FREEDOM_LEVELS,
+  OPT_OUT_CONSEQUENCES,
+  DEFAULT_ROW,
+  buildCapabilityMatrix,
+  effectiveCapabilityKeys,
+  affordanceTreatment,
+} from './freedom.js';
 
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';

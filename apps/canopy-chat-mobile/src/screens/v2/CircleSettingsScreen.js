@@ -16,13 +16,16 @@
  * conflicts surface — overlays the SAME modal (CircleRecipeConflictScreen)
  * used by the recipe editor with a settings-namespaced heading.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Pressable, ScrollView, Switch, TextInput, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal, DEFAULT_CIRCLE_ORIGINS,
   detectPolicyConflicts, applyPolicyResolution,
 } from '@canopy-app/canopy-chat';
+// B · Slice 2 — the shared manifest-driven settings form + per-skill freedom matrix (web≡mobile).
+import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@canopy/app-manifest';
+import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 import GuidedSetupPanel from './GuidedSetupPanel.js';
@@ -131,6 +134,17 @@ export default function CircleSettingsScreen({
     setStorageNote(null);   // §4 — any edit dismisses a stale storage-policy note
     setWorking((cur) => mergeCirclePolicy(cur, p));
   }, []);
+
+  // B · Slice 2 — the manifest sources drive the settings form + freedom matrix (web≡mobile via the
+  // shared @canopy/app-manifest projectors + the shared circlePolicy store).
+  const sources = useMemo(() => [...new Set(Object.values(buildManifestsByOrigin()))].map((m) => ({ manifest: m })), []);
+  const settingsForms = useMemo(() => (working ? sources
+    .map((s) => ({ app: s.manifest?.app, fields: buildSettingsForm(s.manifest, { scope: 'circle', values: settingValuesForApp(working, s.manifest?.app) }) }))
+    .filter((f) => f.app && f.fields.length) : []), [sources, working]);
+  const capMatrix = useMemo(() => (working ? buildCapabilityMatrix(sources, {
+    enabledApps: Array.isArray(working.apps) && working.apps.length ? working.apps : null,
+    template: working.capabilities || {},
+  }) : []), [sources, working]);
 
   const consensusActive = !!working?.consensusRequired && (working?.admins?.length ?? 0) >= 2;
 
@@ -305,6 +319,91 @@ export default function CircleSettingsScreen({
         {consensusActive ? <Text style={styles.note}>{t('circle.settings.pending')}</Text> : null}
         {storageNote ? <Text style={styles.note} testID="circle-settings-storage-note">{storageNote}</Text> : null}
 
+        {/* B · Slice 2 (Q1) — manifest-driven per-app settings form */}
+        {settingsForms.length ? (
+          <>
+            <Text style={styles.section}>{t('circle.settings.appSettings')}</Text>
+            {settingsForms.map(({ app, fields }) => (
+              <View key={app}>
+                <Text style={styles.subhead}>{t(`circle.settings.app.${app}`)}</Text>
+                {fields.map((f) => {
+                  const key = `${app}.${f.key}`;
+                  return (
+                    <View key={key} style={styles.row}>
+                      <Text style={styles.rowLabel}>{f.label}{f.required ? ' *' : ''}</Text>
+                      {f.control === 'toggle' ? (
+                        <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
+                          value={!!f.value} onValueChange={(v) => patch({ settings: { [key]: v } })} testID={`setting-${key}`} />
+                      ) : f.control === 'choice' ? (
+                        <View style={styles.chipRow}>
+                          {(f.choices || []).map((c) => (
+                            <Pressable key={c} onPress={() => patch({ settings: { [key]: c } })}
+                              style={[styles.chip, f.value === c && styles.chipOn]} testID={`setting-${key}-${c}`}>
+                              <Text style={styles.chipText}>{c}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : (
+                        <TextInput style={styles.input} value={f.value == null ? '' : String(f.value)}
+                          keyboardType={f.control === 'number' ? 'numeric' : 'default'}
+                          onChangeText={(txt) => patch({ settings: { [key]: f.control === 'number' ? (txt === '' ? undefined : Number(txt)) : txt } })}
+                          testID={`setting-${key}`} />
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </>
+        ) : null}
+
+        {/* B · Slice 2 (Q3) — the per-skill freedom matrix (what the gate enforces) */}
+        {capMatrix.length ? (
+          <>
+            <Text style={styles.section}>{t('circle.settings.capabilities')}</Text>
+            {groupByApp(capMatrix).map(([app, rows]) => (
+              <View key={app}>
+                <Text style={styles.subhead}>{t(`circle.settings.app.${app}`)}</Text>
+                {rows.map((row) => {
+                  const base = { enabled: row.enabled, freedom: row.freedom, consequence: row.consequence, privacyFloor: row.privacyFloor };
+                  return (
+                    <View key={row.key} style={styles.capRow} testID={`cap-${row.key}`}>
+                      <View style={styles.row}>
+                        <Text style={styles.rowLabel}>{`${verbLabel(row.atom)} · ${row.noun}`}</Text>
+                        <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
+                          value={row.enabled} onValueChange={(v) => patch({ capabilities: { [row.key]: { ...base, enabled: v } } })}
+                          testID={`cap-${row.key}-enabled`} />
+                      </View>
+                      {row.enabled ? (
+                        <View style={styles.chipRow}>
+                          {FREEDOM_LEVELS.map((lvl) => (
+                            <Pressable key={lvl} disabled={row.privacyFloor} onPress={() => patch({ capabilities: { [row.key]: { ...base, freedom: lvl } } })}
+                              style={[styles.chip, row.freedom === lvl && styles.chipOn, row.privacyFloor && styles.chipDisabled]}
+                              testID={`cap-${row.key}-freedom-${lvl}`}>
+                              <Text style={styles.chipText}>{t(`circle.settings.freedom.${lvl}`)}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                      {row.enabled && row.freedom === 'optional' ? (
+                        <View style={styles.chipRow}>
+                          {OPT_OUT_CONSEQUENCES.map((c) => (
+                            <Pressable key={c} onPress={() => patch({ capabilities: { [row.key]: { ...base, consequence: c } } })}
+                              style={[styles.chip, row.consequence === c && styles.chipOn]} testID={`cap-${row.key}-cons-${c}`}>
+                              <Text style={styles.chipText}>{t(`circle.settings.consequence_opt.${c}`)}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                      {row.privacyFloor ? <Text style={styles.note}>{t('circle.settings.privacyFloor')}</Text> : null}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </>
+        ) : null}
+
         {householdSelfAddr && typeof onAddHouseholdPeer === 'function' ? (
           <>
             <Text style={styles.section}>{t('circle.pairedDevices.title')}</Text>
@@ -337,6 +436,29 @@ export default function CircleSettingsScreen({
   );
 }
 
+/** B · Slice 2 — the `policy.settings` values for one app: "<app>.<key>" → `{ key: value }`. */
+function settingValuesForApp(policy, app) {
+  const out = {};
+  const all = (policy && typeof policy.settings === 'object' && policy.settings) || {};
+  const prefix = `${app}.`;
+  for (const [k, v] of Object.entries(all)) if (k.startsWith(prefix)) out[k.slice(prefix.length)] = v;
+  return out;
+}
+
+/** Group freedom-matrix rows by app (preserving order). */
+function groupByApp(matrix) {
+  const byApp = new Map();
+  for (const row of matrix) { if (!byApp.has(row.app)) byApp.set(row.app, []); byApp.get(row.app).push(row); }
+  return [...byApp.entries()];
+}
+
+/** Localised atom verb label, falling back to the atom when no key is translated (t() echoes the key on a miss). */
+function verbLabel(atom) {
+  const k = `circle.settings.verb.${atom}`;
+  const v = t(k);
+  return v && v !== k ? v : atom;
+}
+
 const styles = StyleSheet.create({
   page:        { flex: 1, paddingHorizontal: 16, paddingTop: 12, backgroundColor: theme.color.paper },
   bar:         { flexDirection: 'row', alignItems: 'center', minHeight: 22 },
@@ -362,4 +484,13 @@ const styles = StyleSheet.create({
   saveText:    { color: theme.color.white, fontSize: 15, fontWeight: '700' },
   guided:      { marginTop: 4, marginBottom: 4, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.color.accent, backgroundColor: theme.color.card, alignItems: 'center' },
   guidedText:  { color: theme.color.accent, fontSize: 14, fontWeight: '600' },
+  // B · Slice 2 — settings form + freedom matrix
+  subhead:     { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginTop: 10, marginBottom: 2 },
+  input:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5, minWidth: 90, color: theme.color.ink, textAlign: 'right' },
+  chipRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 4 },
+  chip:        { borderWidth: 1, borderColor: theme.color.line, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4, backgroundColor: theme.color.paper },
+  chipOn:      { borderColor: theme.color.accent, backgroundColor: theme.color.card },
+  chipDisabled:{ opacity: 0.4 },
+  chipText:    { fontSize: 12, color: theme.color.ink },
+  capRow:      { borderBottomWidth: 1, borderBottomColor: theme.color.line, paddingBottom: 6, marginBottom: 2 },
 });

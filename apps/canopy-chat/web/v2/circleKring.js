@@ -721,6 +721,7 @@ const MORE_ITEMS = [
   { key: 'invite',   labelKey: 'circle.invite.menu' },
   { key: 'settings', labelKey: 'circle.settings.title' },
   { key: 'lists',    labelKey: 'circle.lists.title' },   // K2 — composable lists/container UI
+  { key: 'contacts', labelKey: 'circle.screen.open.contacts' },   // B · Slice 3 — filterable list-screen (GUI entry)
 
   { key: 'mine',     labelKey: 'circle.override.title' },
   { key: 'viewAs',   labelKey: 'circle.viewAs.title' },

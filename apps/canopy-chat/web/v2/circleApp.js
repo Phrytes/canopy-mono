@@ -48,6 +48,12 @@ import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '../../src/v2/followUp.js';
 import { kringReplyText } from '../../src/v2/kringReply.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
+// B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
+import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
+// B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
+import { buildCapabilityMatrix } from '@canopy/app-manifest';
+// B · Slice 3 — the interactive list-screen surface (search + category checkboxes + capability-gated rows).
+import { renderListBlock } from './listScreen.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../../src/v2/mappingsStore.js';
@@ -590,6 +596,17 @@ let circleBot = null;            // createCircleDispatch instance (handle(text, 
 let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
+let circleBaseSources = [];      // B · Slice 2/4 — the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
+let circleManifestsByOrigin = {}; // B · Slice 3 — {appOrigin → manifest}, module-scoped for the list-screen panel's row actions
+
+// B · Slice 3 — declared list-screen surfaces: a screenId → { how to fetch rows + the category field }.
+// openCircleScreenPanel renders these via renderListBlock (search + category checkboxes + capability-
+// gated row actions). A manifest `surfaces.screen` will populate this in a later pass; for now it's the
+// concrete surfaces the "contacten met k" acceptance test needs.
+const LIST_SCREENS = {
+  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category' },
+  prikbord: { appOrigin: 'stoop', listOp: 'listOpen',     categoryField: 'kind' },
+};
 let circleActiveApps = null;     // S6.C deep — the active circle's policy.apps (null = all); narrows the catalog
 let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (set in buildCircleBot, called by showKring)
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
@@ -736,6 +753,7 @@ function buildCircleBot(agent) {
     { manifest: mockFolioManifest },
     { manifest: calendarManifest },
   ];
+  circleBaseSources = baseSources;   // B · Slice 2/4 — expose to the module-level showSettings/showOverride
   let rawCatalog = mergeManifests(baseSources, { runtime: 'browser' });
   // S6.A — manifests keyed by appOrigin, for computing inline embed buttons on
   // bot replies (computeEmbedButtons looks ops up here by the op's appOrigin).
@@ -745,6 +763,7 @@ function buildCircleBot(agent) {
     if (m.app)   manifestsByOrigin[m.app] = m;
     if (m.appId) manifestsByOrigin[m.appId] = m;
   }
+  circleManifestsByOrigin = manifestsByOrigin;   // B · Slice 3 — expose to the module-level list-screen panel
   const appRegistry = new AppRegistry();
   appRegistry.syncWithCatalog(rawCatalog.appOrigins);
   // Scope to the circle apps (Part D) — drops canopy-chat's account/transport INFRA ops (`/me` etc.) that
@@ -965,6 +984,15 @@ function buildCircleBot(agent) {
       return;
     }
     if (route.kind !== 'ready')     { _kringRender?.botBubble(t('circle.bot.unknown')); return; }
+    // B · Slice 1 — DEFAULT-DENY capability gate. Every user-initiated dispatch (slash/LLM/gate/
+    // button/follow-up) converges here; internal plumbing calls rawCallSkill directly and is untouched.
+    // This closes the leak where the SCREEN button was app-gated (isOpAppEnabledForActiveCircle) but the
+    // dispatch itself was not — an op could still run when invoked directly.
+    const denyCode = await circleCapabilityDeny(route.appOrigin, route.opId, route.args);
+    if (denyCode) {
+      _kringRender?.botBubble(t(denyCode === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied'));
+      return;
+    }
     let reply;
     try { reply = await runDispatch(scopeReadyDispatch(route, getActiveCircle()), rawCallSkill); }
     catch (e) { _kringRender?.botBubble(t('circle.bot.failed', { msg: e?.message ?? String(e) })); return; }
@@ -973,7 +1001,20 @@ function buildCircleBot(agent) {
     const verb = entry?.op?.verb;
     // S6.A — manifest-driven inline buttons for the item(s) this reply carries
     // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
-    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    // B · Slice 4 (4c) — grey/hide inline affordances per the member's effective capability + consequence.
+    let capMatrix = [];
+    try {
+      const cid = getActiveCircle();
+      if (cid) {
+        const pol = (await policyStore.get(cid)) ?? {};
+        const ovr = (await overrideStore.get(cid)) ?? {};
+        capMatrix = buildCapabilityMatrix(baseSources, {
+          enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
+          template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
+        });
+      }
+    } catch { /* best-effort — no greying on error */ }
+    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
     // S6.B — if the dispatched op declares a screen surface (surfaces.ui.screen),
     // prepend an "Open …" button that opens a panel instead of dispatching.
     const screen = entry?.op?.surfaces?.ui?.screen;
@@ -1041,6 +1082,29 @@ function buildCircleBot(agent) {
     let policy = {};
     try { policy = (await policyStore.get(getActiveCircle())) ?? {}; } catch { /* default policy */ }
     return isAppSurfaceEnabled(appOrigin, policy, isFeatureEnabled);
+  }
+
+  // B · the default-deny capability decision for a user-initiated dispatch. Returns a deny code
+  // ('app-disabled' | 'capability-denied') or null (allow). App enablement comes from the SAME source
+  // the UI uses (isOpAppEnabledForActiveCircle → policy.features); the effective (verb × noun) set is
+  // admin-template (policy.capabilities, Slice 2) ∩ member opt-outs (override.capabilityOptOuts, Slice 4).
+  async function circleCapabilityDeny(appOrigin, opId, args) {
+    const circleId = getActiveCircle();
+    if (circleId == null) return null;                          // outside a circle → no per-circle gate
+    const origin = appOrigin || catalog?.opsById?.get(opId)?.appOrigin;
+    if (!origin) return null;                                   // unattributable → don't block here
+    const op = catalog?.opsById?.get(opId)?.op;
+    const enabled = await isOpAppEnabledForActiveCircle(origin);
+    let policy = {}; let override = {};
+    try { policy = (await policyStore.get(circleId)) ?? {}; } catch { /* default */ }
+    try { override = (await overrideStore.get(circleId)) ?? {}; } catch { /* default */ }
+    const eff = effectiveCapabilities(baseSources, {
+      apps:         enabled ? [origin] : [],
+      capabilities: policy.capabilities,          // Slice 2 — the admin freedom template
+      optOuts:      override.capabilityOptOuts,   // Slice 4 — this member's declined caps
+    });
+    const r = checkCapability({ op, appOrigin: origin, args }, eff);
+    return r.allow ? null : r.code;
   }
 
   // A tapped bubble button: S6.B screen button (has `screen`) → open the panel;
@@ -2274,6 +2338,33 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
   document.body.appendChild(overlay);
 
   renderCircleScreen(body, { blocks: null, t });   // loading
+
+  // B · Slice 3 — a declared LIST-SCREEN renders directly (search + category checkboxes + capability-
+  // gated row actions) instead of going through the recipe-block path.
+  const listCfg = LIST_SCREENS[screenId];
+  if (listCfg) {
+    try {
+      const res = await rawCallSkill(listCfg.appOrigin, listCfg.listOp, {});
+      const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
+      let capabilityMatrix = [];
+      try {
+        const pol = (await policyStore.get(circleId)) ?? {};
+        const ovr = (await overrideStore.get(circleId)) ?? {};
+        capabilityMatrix = buildCapabilityMatrix(circleBaseSources, {
+          enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
+          template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
+        });
+      } catch { /* best-effort */ }
+      body.innerHTML = '';
+      renderListBlock(body, {
+        block: { items, categoryField: listCfg.categoryField, manifestsByOrigin: circleManifestsByOrigin, appOrigin: listCfg.appOrigin, title: title.textContent },
+        t, capabilityMatrix,
+        onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
+      });
+    } catch { body.textContent = t('circle.screen.empty'); }
+    return;
+  }
+
   try {
     const block = { id: `panel-${screenId}`, type: screenId, config: { scope: 'all' } };
     const mat = await materializeBlock({ block, circleId, hostOps: { callSkill: rawCallSkill, eventLog, circles: circlesCache, fetchImpl: circleAuthedFetch || undefined } });
@@ -2407,6 +2498,7 @@ function showKring(id, circle, policy) {
     invite:   () => showCircleInvite(id),
     settings: () => showSettings(id),
     lists:    () => openListsPanel(id),   // K2 — the composable lists/container UI
+    contacts: () => openCircleScreenPanel('contacts'),   // B · Slice 3 — the filterable list-screen (GUI entry point)
 
     mine:     () => showOverride(id),
     advisor:  () => showAdvisor(id),
@@ -2685,6 +2777,10 @@ function showKring(id, circle, policy) {
       onSend:   async (text) => {
         const line = String(text ?? '').trim();
         if (!line) return;
+        // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; the ⋯ menu is the GUI
+        // one — peer compilers to the same surface). e.g. "/contacts", "/prikbord".
+        const scr = line.match(/^\/(contacts|prikbord)\b/i);
+        if (scr && LIST_SCREENS[scr[1].toLowerCase()]) { openCircleScreenPanel(scr[1].toLowerCase()); return; }
         // Conversational follow-up: the bot previously asked for a missing field (needsForm → beginFollowUp);
         // THIS message is the answer. Append it, complete the pending dispatch, and run it — don't route it
         // to feedback or re-interpret it as a new command.
@@ -3119,9 +3215,14 @@ async function showViewAs(id) {
 
 async function showOverride(id) {
   let working = await overrideStore.get(id);
+  // B · Slice 4 — the circle's admin policy tells us which caps are enabled + opt-outable.
+  let circlePolicy = {};
+  try { circlePolicy = (await policyStore.get(id)) ?? {}; } catch { /* default */ }
   const rerender = () => renderCircleOverride(rootEl, {
     override: working,
     t,
+    sources: circleBaseSources,
+    policy: circlePolicy,
     onChange: (patch) => { working = mergeMemberOverride(working, patch); rerender(); },
     onBack: () => showDetail(id),
     onSave: async () => { await overrideStore.update(id, working); showDetail(id); },
@@ -3216,6 +3317,8 @@ async function showSettings(id) {
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
+    // B · Slice 2 — the merged manifest sources drive the settings form + the per-skill freedom matrix.
+    sources: circleBaseSources,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
     note: [pendingNote(), storageNote].filter(Boolean).join(' · ') || undefined,
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The

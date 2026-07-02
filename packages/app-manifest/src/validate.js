@@ -12,6 +12,7 @@
  */
 
 import { list as listCanonicalTypes } from '@canopy/item-types';
+import { isAtom, canonicalAtom } from './atoms.js';
 
 /**
  * Frozen verb allow-list mirroring `@canopy/item-store` `ItemStore`
@@ -31,6 +32,18 @@ export const VERBS = Object.freeze([
 ]);
 
 const VERB_SET   = new Set(VERBS);
+
+/**
+ * B · Slice 2 (ruling Q1) — frozen allow-list of setting `kind`s (the wizard/form renderer
+ * picks a control per kind).  `toggle`=checkbox, `choice`=select(of), `text`/`number`=inputs,
+ * `member`=circle-member picker.  Distinct from PARAM_KINDS (settings are user-facing config,
+ * not op arguments).
+ */
+export const SETTING_KINDS = Object.freeze(['toggle', 'choice', 'text', 'number', 'member']);
+const SETTING_KIND_SET = new Set(SETTING_KINDS);
+/** B · Slice 2 — a setting's resolution scope: `circle` = admin template, `user` = member pref. */
+export const SETTING_SCOPES = Object.freeze(['circle', 'user']);
+const SETTING_SCOPE_SET = new Set(SETTING_SCOPES);
 // v0.3.2 (canopy-chat) extended the form generator with 'date' +
 // 'webid' input kinds; Q23 reserved 'file' + 'image' for the
 // upload path.  All four pass through the validator forward-additively
@@ -89,6 +102,13 @@ export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
  *   `manifest.operations[].id` OR in the new `manifest.externalSkills`
  *   allow-list.  Catches typos (e.g. `'getMispelled'`) at manifest
  *   level.  Default: non-strict (existing tolerant behaviour).
+ * @param {boolean} [opts.atoms=false]
+ *   B · Layer 1 (2026-07-01) — ATOM DISCIPLINE.  When `true`, every
+ *   `op.verb` must be a known SDK atom (or alias — see `atoms.js`) OR be
+ *   declared in `manifest.domainVerbs`.  This is the fitness function
+ *   against verb drift: a new noun-specific verb can't sneak in without
+ *   either mapping to an atom or being explicitly named as domain-specific.
+ *   Default off (F-SP1-e tolerant behaviour preserved for older callers).
  *
  * @returns {{ ok: boolean, errors: Array<{path: string, message: string}> }}
  */
@@ -125,8 +145,73 @@ export function validateManifest(manifest, opts = {}) {
   } else {
     const ids = new Set();
     manifest.operations.forEach((op, i) => {
-      validateOperation(op, `/operations/${i}`, manifest, errors, ids);
+      validateOperation(op, `/operations/${i}`, manifest, errors, ids, opts);
     });
+  }
+
+  // B · Layer 1 — `manifest.domainVerbs` is the explicit allow-list of
+  // NON-atom (domain-specific) verbs this manifest ships (folio `sync`,
+  // stoop `report`/`mute`, household `register`/`help`, …).  Validated as a
+  // string array whenever present; the atom-discipline cross-check
+  // (op.verb ∈ atoms ∪ domainVerbs) only fires under `opts.atoms`.
+  if (manifest.domainVerbs !== undefined) {
+    if (!Array.isArray(manifest.domainVerbs)) {
+      errors.push({ path: '/domainVerbs', message: 'domainVerbs must be an array if present' });
+    } else {
+      manifest.domainVerbs.forEach((v, i) => {
+        if (typeof v !== 'string' || v === '') {
+          errors.push({ path: `/domainVerbs/${i}`, message: 'domainVerbs entries must be non-empty strings' });
+        } else if (isAtom(v)) {
+          // A domain verb that IS an atom is a mistake — it should just be used as the atom.
+          errors.push({
+            path:    `/domainVerbs/${i}`,
+            message: `domainVerbs entry "${v}" is an SDK atom (or alias) — use it directly, don't declare it as a domain verb`,
+            code:    'atom-in-domain-verbs',
+          });
+        }
+      });
+    }
+  }
+
+  // B · Layer 1 — `manifest.nouns` declares, PER NOUN (item type), which SDK
+  // atoms apply: the (verb × noun) CAPABILITY SURFACE the B gate + the wizard
+  // read (a noun "gets the standard verbs" by listing them here, decoupled
+  // from whether a bespoke op exists yet).  Shape-validated whenever present.
+  if (manifest.nouns !== undefined) {
+    if (!manifest.nouns || typeof manifest.nouns !== 'object' || Array.isArray(manifest.nouns)) {
+      errors.push({ path: '/nouns', message: 'nouns must be an object (itemType → { atoms }) if present' });
+    } else {
+      const itemTypes = Array.isArray(manifest.itemTypes) ? manifest.itemTypes : [];
+      for (const [noun, decl] of Object.entries(manifest.nouns)) {
+        const np = `/nouns/${noun}`;
+        if (itemTypes.length && !itemTypes.includes(noun)) {
+          errors.push({ path: np, message: `nouns key "${noun}" is not in manifest.itemTypes`, code: 'unknown-noun' });
+        }
+        if (!decl || typeof decl !== 'object' || Array.isArray(decl)) {
+          errors.push({ path: np, message: 'nouns entry must be an object with an `atoms` array' });
+          continue;
+        }
+        if (!Array.isArray(decl.atoms)) {
+          errors.push({ path: `${np}/atoms`, message: 'nouns[noun].atoms must be an array' });
+          continue;
+        }
+        decl.atoms.forEach((a, i) => {
+          const ap = `${np}/atoms/${i}`;
+          if (typeof a !== 'string' || a === '') {
+            errors.push({ path: ap, message: 'atoms entries must be non-empty strings' });
+          } else if (!isAtom(a)) {
+            errors.push({ path: ap, message: `atom "${a}" is not an SDK atom (see atoms.js)`, code: 'unknown-atom' });
+          } else if (canonicalAtom(a) !== a) {
+            // Declarations must use the CANONICAL spelling, not an alias (keeps the surface unambiguous).
+            errors.push({
+              path:    ap,
+              message: `atom "${a}" is an alias — declare the canonical atom "${canonicalAtom(a)}" instead`,
+              code:    'alias-in-nouns',
+            });
+          }
+        });
+      }
+    }
   }
 
   if (manifest.views !== undefined) {
@@ -163,6 +248,17 @@ export function validateManifest(manifest, opts = {}) {
     }
   }
 
+  // B · Slice 2 (ruling Q1) — `manifest.settings`: the app's declarative settings, shaped like op
+  // params so one renderer draws inline forms + the creation wizard.  Shape-validated whenever present.
+  if (manifest.settings !== undefined) {
+    if (!Array.isArray(manifest.settings)) {
+      errors.push({ path: '/settings', message: 'settings must be an array if present' });
+    } else {
+      const keys = new Set();
+      manifest.settings.forEach((s, i) => validateSetting(s, `/settings/${i}`, errors, keys));
+    }
+  }
+
   return { ok: errors.length === 0, errors };
 }
 
@@ -185,7 +281,7 @@ function knownSkillIds(manifest) {
   return set;
 }
 
-function validateOperation(op, path, manifest, errors, idSet) {
+function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
   if (!op || typeof op !== 'object') {
     errors.push({ path, message: 'operation must be an object' });
     return;
@@ -208,6 +304,19 @@ function validateOperation(op, path, manifest, errors, idSet) {
       path:    `${path}/verb`,
       message: `op.verb must be a non-empty string (got ${JSON.stringify(op.verb)})`,
     });
+  } else if (opts.atoms) {
+    // B · Layer 1 — atom discipline (opt-in).  The verb must be a known
+    // SDK atom (or alias) OR explicitly declared as a domain verb.  Drift
+    // guard: a new noun-specific verb fails here until it's mapped to an
+    // atom or named in `manifest.domainVerbs`.
+    const domainVerbs = Array.isArray(manifest?.domainVerbs) ? manifest.domainVerbs : [];
+    if (!isAtom(op.verb) && !domainVerbs.includes(op.verb)) {
+      errors.push({
+        path:    `${path}/verb`,
+        message: `op.verb "${op.verb}" is not an SDK atom (see atoms.js) and is not in manifest.domainVerbs — map it to an atom (add/list/get/update/remove/complete/claim/reassign/…) or declare it as a domain verb`,
+        code:    'unknown-verb',
+      });
+    }
   }
 
   if (op.params !== undefined) {
@@ -528,6 +637,68 @@ function validateOperation(op, path, manifest, errors, idSet) {
           errors.push({ path: p, message: `appliesTo.type "${t}" is not in manifest.itemTypes` });
         }
       });
+    }
+  }
+}
+
+/**
+ * Validate one Setting (B · Slice 2, ruling Q1) — mirrors validateParam's rigor.  A setting is
+ * user-facing config the wizard/form renders; `default` is sanity-checked against `kind`.
+ */
+function validateSetting(s, path, errors, keySet) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) {
+    errors.push({ path, message: 'setting must be an object' });
+    return;
+  }
+  if (typeof s.key !== 'string' || s.key === '') {
+    errors.push({ path: `${path}/key`, message: 'setting.key must be a non-empty string' });
+  } else if (keySet.has(s.key)) {
+    errors.push({ path: `${path}/key`, message: `duplicate setting key "${s.key}"`, code: 'duplicate-setting' });
+  } else {
+    keySet.add(s.key);
+  }
+  if (typeof s.label !== 'string' || s.label === '') {
+    errors.push({ path: `${path}/label`, message: 'setting.label must be a non-empty string' });
+  }
+  if (!SETTING_KIND_SET.has(s.kind)) {
+    errors.push({
+      path:    `${path}/kind`,
+      message: `setting.kind must be one of ${SETTING_KINDS.join('|')} (got ${JSON.stringify(s.kind)})`,
+    });
+  }
+  if (s.kind === 'choice') {
+    if (!Array.isArray(s.of) || s.of.length === 0) {
+      errors.push({ path: `${path}/of`, message: "setting.kind='choice' requires a non-empty 'of' array" });
+    } else if (s.of.some((v) => typeof v !== 'string')) {
+      errors.push({ path: `${path}/of`, message: 'setting.of must contain only strings' });
+    }
+  }
+  if (s.scope !== undefined && !SETTING_SCOPE_SET.has(s.scope)) {
+    errors.push({ path: `${path}/scope`, message: `setting.scope must be one of ${SETTING_SCOPES.join('|')}` });
+  }
+  if (s.adminOnly !== undefined && typeof s.adminOnly !== 'boolean') {
+    errors.push({ path: `${path}/adminOnly`, message: 'setting.adminOnly must be a boolean if present' });
+  }
+  if (s.requiredWhen !== undefined) {
+    if (!s.requiredWhen || typeof s.requiredWhen !== 'object' || Array.isArray(s.requiredWhen)) {
+      errors.push({ path: `${path}/requiredWhen`, message: 'setting.requiredWhen must be an object if present' });
+    } else if (Object.keys(s.requiredWhen).length === 0) {
+      errors.push({ path: `${path}/requiredWhen`, message: 'setting.requiredWhen must have at least one key' });
+    }
+  }
+  if (s.description !== undefined && (typeof s.description !== 'string' || s.description === '')) {
+    errors.push({ path: `${path}/description`, message: 'setting.description must be a non-empty string if present' });
+  }
+  // `default` shape sanity — best-effort match against `kind`.
+  if (s.default !== undefined) {
+    const d = s.default;
+    const bad =
+      (s.kind === 'toggle' && typeof d !== 'boolean') ||
+      (s.kind === 'number' && typeof d !== 'number') ||
+      ((s.kind === 'text' || s.kind === 'member') && typeof d !== 'string') ||
+      (s.kind === 'choice' && Array.isArray(s.of) && !s.of.includes(d));
+    if (bad) {
+      errors.push({ path: `${path}/default`, message: `setting.default ${JSON.stringify(d)} doesn't fit kind '${s.kind}'`, code: 'bad-default' });
     }
   }
 }

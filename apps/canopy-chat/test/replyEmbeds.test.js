@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { snapshotsFromReply, embedButtonsForReply, embedsFromReply } from '../src/v2/replyEmbeds.js';
 import { mockTasksManifest } from '../src/core/manifests/mockManifests.js';
+import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
 
 const manifestsByOrigin = { 'tasks': mockTasksManifest };
 
@@ -79,5 +80,30 @@ describe('embedsFromReply', () => {
   it('returns [] for an empty / error reply', () => {
     expect(embedsFromReply(null)).toEqual([]);
     expect(embedsFromReply({ error: 'nope' })).toEqual([]);
+  });
+});
+
+describe('embedButtonsForReply — B/S4 4c capability consequence', () => {
+  const APP = mockTasksManifest.app;   // === 'tasks'
+  const CLAIM = capabilityKey(APP, 'claim', 'task');
+  const reply = { task: { id: 't1', state: 'open', label: 'x' } };
+
+  it('hides an affordance whose cap is disabled with consequence hidden', () => {
+    const matrix = buildCapabilityMatrix([{ manifest: mockTasksManifest }], { template: { [CLAIM]: { enabled: false, consequence: 'hidden' } } });
+    const btns = embedButtonsForReply({ reply, appOrigin: APP, manifestsByOrigin, capabilityMatrix: matrix });
+    expect(btns.map((b) => b.opId)).not.toContain('claimTask');
+  });
+
+  it('greys (disabled:true) an affordance the member opted out of (consequence greyed)', () => {
+    const matrix = buildCapabilityMatrix([{ manifest: mockTasksManifest }], { template: { [CLAIM]: { freedom: 'optional', consequence: 'greyed' } }, optOuts: [CLAIM] });
+    const btns = embedButtonsForReply({ reply, appOrigin: APP, manifestsByOrigin, capabilityMatrix: matrix });
+    const claim = btns.find((b) => b.opId === 'claimTask');
+    expect(claim).toBeTruthy();
+    expect(claim.disabled).toBe(true);
+  });
+
+  it('no matrix ⇒ every appliesTo-gated button shows (unchanged)', () => {
+    const btns = embedButtonsForReply({ reply, appOrigin: APP, manifestsByOrigin });
+    expect(btns.some((b) => b.opId === 'claimTask' && !b.disabled)).toBe(true);
   });
 });

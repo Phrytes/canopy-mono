@@ -16,6 +16,8 @@
  */
 
 import { computeEmbedButtons } from '../core/embedButtons.js';
+// B · Slice 4 (4c) — apply the per-capability consequence (grey/hide/limit) to inline affordances.
+import { affordanceTreatment, canonicalAtom } from '@canopy/app-manifest';
 
 // Default item `type` per appOrigin so `computeEmbedButtons`' appliesTo.type
 // matches when a reply item doesn't carry an explicit `type` (a task list often
@@ -95,9 +97,10 @@ export function embedsFromReply(reply, { appOrigin } = {}) {
  * @returns {Array<{id, label, opId, itemId}>}  ride `payload.buttons`; the host's
  *          tap handler resolves the op's target arg from the catalog + dispatches.
  */
-export function embedButtonsForReply({ reply, appOrigin, manifestsByOrigin, maxButtons = 12 } = {}) {
+export function embedButtonsForReply({ reply, appOrigin, manifestsByOrigin, maxButtons = 12, capabilityMatrix = [] } = {}) {
   if (!appOrigin || !manifestsByOrigin) return [];
   const snaps = snapshotsFromReply(reply, { appOrigin });
+  const ops = manifestsByOrigin?.[appOrigin]?.operations;
   const out = [];
   const seen = new Set();
   for (const snap of snaps) {
@@ -106,7 +109,14 @@ export function embedButtonsForReply({ reply, appOrigin, manifestsByOrigin, maxB
       const key = `${b.opId}:${b.itemId}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ id: key, label: `${b.label} · ${clip(snap.label)}`, opId: b.opId, itemId: b.itemId });
+      // B · Slice 4 (4c) — grey/hide the affordance per the member's effective capability + consequence.
+      const verb = Array.isArray(ops) ? ops.find((o) => o?.id === b.opId)?.verb : undefined;
+      const treatment = affordanceTreatment(capabilityMatrix, { app: appOrigin, atom: verb ? canonicalAtom(verb) : null, noun: snap.type });
+      if (treatment === 'hide') continue;
+      out.push({
+        id: key, label: `${b.label} · ${clip(snap.label)}`, opId: b.opId, itemId: b.itemId,
+        ...(treatment === 'grey' ? { disabled: true } : {}),
+      });
       if (out.length >= maxButtons) return out;
     }
   }

@@ -165,7 +165,9 @@
       "doc": "Heading of the cross-circle Stream tab (board 5B)."
     },
     "open": {
-      "text": "Stream",
+
+      "contacts": { "text": "Contacts", "doc": "B/S3 list-screen open label." },
+      "prikbord": { "text": "Noticeboard", "doc": "B/S3 list-screen open label." },      "text": "Stream",
       "doc": "Launcher entry that opens the cross-circle Stream."
     },
     "empty": {
@@ -456,7 +458,9 @@
     }
   },
   "screen": {
-    "open_generic": {
+
+    "filter_placeholder": { "text": "Filter\u2026", "doc": "B/S3 list-screen search box placeholder." },
+    "empty": { "text": "Nothing here.", "doc": "B/S3 list-screen empty state." },    "open_generic": {
       "text": "Open overview →",
       "doc": "S6.B — generic label for a chat-triggered screen panel."
     },
@@ -790,6 +794,27 @@
     }
   },
   "settings": {
+
+    "appSettings": { "text": "App settings", "doc": "B/S2 Q1 \u2014 manifest-driven per-app settings form heading." },
+    "capabilities": { "text": "What members can do", "doc": "B/S2 Q3 \u2014 the per-skill freedom matrix heading." },
+    "privacyFloor": { "text": "Always optional (privacy)", "doc": "B/S2 Q3 \u2014 a privacy-floor capability can never be required." },
+    "freedom": {
+      "required": { "text": "Required", "doc": "members must use this capability." },
+      "optional": { "text": "Optional", "doc": "members may opt out." }
+    },
+    "consequence_opt": {
+      "greyed": { "text": "Greyed out", "doc": "opting out greys the affordance." },
+      "hidden": { "text": "Hidden", "doc": "opting out hides it." },
+      "limited": { "text": "Limited role", "doc": "opting out limits the role." }
+    },
+    "verb": {
+      "add": { "text": "Add", "doc": "" },
+      "list": { "text": "List", "doc": "" },
+      "complete": { "text": "Complete", "doc": "" },
+      "remove": { "text": "Remove", "doc": "" },
+      "claim": { "text": "Claim", "doc": "" },
+      "reassign": { "text": "Assign", "doc": "" }
+    },
     "title": {
       "text": "Circle settings",
       "doc": "Settings screen heading (board 4A)."
@@ -1044,7 +1069,8 @@
     }
   },
   "override": {
-    "title": {
+
+    "capabilities": { "text": "What you take part in", "doc": "B/S4 \u2014 the member capability opt-out section heading." },    "title": {
       "text": "My settings for this circle",
       "doc": "Personal override sheet heading (board 6A)."
     },
@@ -1807,6 +1833,16 @@
     "noList": {
       "text": "There’s no recent list to apply that to — run a list command first.",
       "doc": "Circle bot reply to a bulk '/done all' when no listing was shown yet."
+    }
+  },
+  "gate": {
+    "appDisabled": {
+      "text": "That isn’t turned on for this circle.",
+      "doc": "B Slice 1 — capability gate refusal: the op's app is not enabled for the active circle (policy.features). The default-deny boundary at the dispatch waist."
+    },
+    "capabilityDenied": {
+      "text": "That action isn’t allowed in this circle.",
+      "doc": "B Slice 1 — capability gate refusal: the (verb × noun) capability isn't in the circle's effective set."
     }
   },
   "container": {

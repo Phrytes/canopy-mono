@@ -12,6 +12,11 @@
 export const canopyChatManifest = {
   app:        'canopy-chat',
   itemTypes:  ['chat-thread', 'chat-message'],
+
+  // B · Layer 1 — domain (non-atom) verb: `help` (meta / shell command).
+  // Every other op maps to an SDK atom.
+  domainVerbs: ['help'],
+
   operations: [
     /**
      * `/help` — list every command available in the merged catalog.

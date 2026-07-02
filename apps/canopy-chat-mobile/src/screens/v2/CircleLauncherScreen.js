@@ -71,6 +71,9 @@ import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '.
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
+// B · Slice 1/4 — the capability gate + the affordance matrix (web≡mobile, shared core).
+import { effectiveCapabilities, checkCapability } from '../../../../canopy-chat/src/v2/capabilityGate.js';
+import { buildCapabilityMatrix } from '@canopy/app-manifest';
 // S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 // "only you" vs "whole kring" — message scope (data property; the badge renders it).
@@ -124,6 +127,14 @@ import {
 import { makeScreenBlocksCacheRN } from '../../core/screenBlocksCacheStorageRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
+// B · Slice 3 — the mobile list-screen surface (web≡mobile).
+import CircleListScreen from './CircleListScreen.js';
+
+// B · Slice 3 — declared list-screen surfaces (mirror of the web LIST_SCREENS): screenId → how to fetch.
+const LIST_SCREENS = {
+  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category' },
+  prikbord: { appOrigin: 'stoop', listOp: 'listOpen',     categoryField: 'kind' },
+};
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
@@ -1092,7 +1103,7 @@ export default function CircleLauncherScreen({
     );
   }
   if (selected && view === 'override') {
-    return <CircleOverrideScreen store={overrideStore} circleId={selected.id} onBack={() => setView('detail')} />;
+    return <CircleOverrideScreen store={overrideStore} policyStore={policyStore} circleId={selected.id} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'viewas') {
     // F-5.1 — real member directory loaded in onViewAs via listGroupMembers.
@@ -1612,6 +1623,11 @@ function CircleDetail({
   );
   // S6.A — {appOrigin → manifest} for computing inline buttons on bot replies.
   const manifestsByOrigin = useMemo(() => buildManifestsByOrigin(), []);
+  // B · Slice 1 — the manifest sources the capability gate reads (deduped; web≡mobile with circleApp.baseSources).
+  const capabilitySources = useMemo(
+    () => [...new Set(Object.values(manifestsByOrigin))].map((manifest) => ({ manifest })),
+    [manifestsByOrigin],
+  );
   // Per-circle stoop restructure (parity with web circleApp.js `stoopCall`): the
   // prikbord + scherm noticeboard block call the raw 3-arg `callSkill('stoop', …)`
   // directly, bypassing scopeReadyDispatch — so scope them to THIS circle here.
@@ -1834,6 +1850,23 @@ function CircleDetail({
       return;
     }
     if (dispatch.kind !== 'ready')     { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
+    // B · Slice 1 — DEFAULT-DENY capability gate (web≡mobile parity with circleApp.dispatchReady). Every
+    // user-initiated dispatch (slash/LLM/gate/button/follow-up) converges on runCircleCommandResolved.
+    // Enablement comes from the SAME per-circle source the UI uses (isAppSurfaceEnabled → policy.features,
+    // already consulted for the screen button below); the pure (verb×noun) gate evaluates the capability.
+    if (circle?.id) {
+      const gateEntry = catalog?.opsById?.get(dispatch.opId);
+      const gOrigin = dispatch.appOrigin || gateEntry?.appOrigin;
+      if (gOrigin) {
+        const enabled = isAppSurfaceEnabled(gOrigin, policy, isFeatureEnabled);
+        const eff = effectiveCapabilities(capabilitySources, { apps: enabled ? [gOrigin] : [] });
+        const verdict = checkCapability({ op: gateEntry?.op, appOrigin: gOrigin, args: dispatch.args }, eff);
+        if (!verdict.allow) {
+          appendKringMessage({ actor: 'bot', text: t(verdict.code === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied') });
+          return;
+        }
+      }
+    }
     // scopeReadyDispatch takes the active-circle id STRING (it writes it into the scope arg keys);
     // an {id} object would land as the literal scope value (device-verify 2026-06-11).
     const scoped = scopeReadyDispatch(dispatch, circle?.id);
@@ -1850,7 +1883,16 @@ function CircleDetail({
     const entry = catalog?.opsById?.get(dispatch.opId);
     const verb = entry?.op?.verb;
     // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
-    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin });
+    // B · Slice 4 (4c) — grey/hide affordances per the member's effective capability + consequence (web≡mobile).
+    let capMatrix = [];
+    try {
+      const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
+      capMatrix = buildCapabilityMatrix(capabilitySources, {
+        enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
+        template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
+      });
+    } catch { /* best-effort — no greying on error */ }
+    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
     // S6.B/C — a screen surface (surfaces.ui.screen) becomes an "Open …" button,
     // gated by the circle's policy.features for that app (web parity).
     const screen = entry?.op?.surfaces?.ui?.screen;
@@ -1875,7 +1917,7 @@ function CircleDetail({
       if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
       if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
     } catch { /* enrichment is non-essential */ }
-  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy]);
+  }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy, capabilitySources, overrideStore]);
 
   // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared
   // executeBulkDispatch). Mobile has no filter-router; cross-thread propagation is the fan-out itself.
@@ -1942,6 +1984,7 @@ function CircleDetail({
   // S6.B — chat-triggered screen panel ({screen} | null) + its materialized blocks.
   const [screenPanel, setScreenPanel] = useState(null);
   const [panelBlocks, setPanelBlocks] = useState(null);
+  const [listScreenData, setListScreenData] = useState(null);   // B · Slice 3 — { items, categoryField, appOrigin, capabilityMatrix }
   // S6.B precise scroll-to — the panel ScrollView, its content wrapper, and the
   // single highlighted row.  measureLayout(row → content) gives the row's y in
   // content space, which scrollTo consumes directly.
@@ -1967,15 +2010,38 @@ function CircleDetail({
     if (screenPanel?.highlightRef) scrollPanelToHighlight();
   }, [screenPanel?.highlightRef, panelBlocks, scrollPanelToHighlight]);
   useEffect(() => {
-    if (!screenPanel) { setPanelBlocks(null); return undefined; }
+    if (!screenPanel) { setPanelBlocks(null); setListScreenData(null); return undefined; }
     let alive = true;
-    setPanelBlocks(null);   // loading
+    setPanelBlocks(null); setListScreenData(null);   // loading
+
+    // B · Slice 3 — a declared LIST-SCREEN fetches rows + builds the member matrix, then renders the
+    // interactive CircleListScreen (search + category chips + capability-gated rows) instead of a block.
+    const listCfg = LIST_SCREENS[screenPanel.screen];
+    if (listCfg) {
+      (async () => {
+        try {
+          const res = await rawCallSkill(listCfg.appOrigin, listCfg.listOp, {});
+          const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
+          let capabilityMatrix = [];
+          try {
+            const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
+            capabilityMatrix = buildCapabilityMatrix(capabilitySources, {
+              enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
+              template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
+            });
+          } catch { /* best-effort */ }
+          if (alive) setListScreenData({ items, categoryField: listCfg.categoryField, appOrigin: listCfg.appOrigin, capabilityMatrix });
+        } catch { if (alive) setListScreenData({ items: [], categoryField: listCfg.categoryField, appOrigin: listCfg.appOrigin, capabilityMatrix: [] }); }
+      })();
+      return () => { alive = false; };
+    }
+
     const block = { id: `panel-${screenPanel.screen}`, type: screenPanel.screen, config: { scope: 'all' } };
     materializeBlock({ block, circleId: circle?.id, hostOps: { callSkill: rawCallSkill, eventLog, circles, fetchImpl: getCirclePodFetch() || undefined } })
       .then((m) => { if (alive) setPanelBlocks([m]); })
       .catch(() => { if (alive) setPanelBlocks([]); });
     return () => { alive = false; };
-  }, [screenPanel, circle?.id, rawCallSkill, eventLog, circles]);
+  }, [screenPanel, circle?.id, rawCallSkill, eventLog, circles, policy, capabilitySources, overrideStore]);
 
   // A tapped bubble button: S6.B screen button (has screen) → open the panel;
   // S6.A inline manifest button (has opId) → dispatch its op against the item;
@@ -2111,6 +2177,9 @@ function CircleDetail({
   const sendKringChat = useCallback(async () => {
     const text = composerText.trim();
     if (!text || !eventLog?.append || !circle?.id) return;
+    // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; web≡mobile).
+    const scr = text.match(/^\/(contacts|prikbord)\b/i);
+    if (scr && LIST_SCREENS[scr[1].toLowerCase()]) { setComposerText(''); setScreenPanel({ screen: scr[1].toLowerCase() }); return; }
     setComposerText('');
     // Conversational follow-up: the bot asked for a missing field (needsForm); THIS message is the answer.
     // Append it, complete the pending dispatch, and run it — don't route to feedback or re-interpret.
@@ -2228,6 +2297,10 @@ function CircleDetail({
           <Pressable onPress={() => { setMenuOpen(false); onLists?.(); }} style={styles.moreItem} testID="circle-detail-lists">
             <Text style={styles.moreItemText}>{t('circle.lists.title')}</Text>
           </Pressable>
+          {/* B · Slice 3 — the filterable list-screen (GUI entry; web≡mobile with the ⋯ menu). */}
+          <Pressable onPress={() => { setMenuOpen(false); setScreenPanel({ screen: 'contacts' }); }} style={styles.moreItem} testID="circle-detail-contacts">
+            <Text style={styles.moreItemText}>{t('circle.screen.open.contacts')}</Text>
+          </Pressable>
           <Pressable onPress={() => { setMenuOpen(false); onMine?.(); }} style={styles.moreItem} testID="circle-detail-mine">
             <Text style={styles.moreItemText}>{t('circle.override.title')}</Text>
           </Pressable>
@@ -2340,13 +2413,25 @@ function CircleDetail({
                 <Text style={styles.panelClose}>✕</Text>
               </Pressable>
             </View>
-            <ScrollView ref={panelScrollRef}>
-              <View ref={panelContentRef} collapsable={false}>
-                <CircleScreenView blocks={panelBlocks} highlightRef={screenPanel?.highlightRef}
-                  highlightRowRef={highlightRowRef} onHighlightLayout={scrollPanelToHighlight}
-                  onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
-              </View>
-            </ScrollView>
+            {listScreenData ? (
+              /* B · Slice 3 — the interactive list-screen (owns its own scroll + search). */
+              <CircleListScreen
+                items={listScreenData.items}
+                categoryField={listScreenData.categoryField}
+                manifestsByOrigin={manifestsByOrigin}
+                appOrigin={listScreenData.appOrigin}
+                capabilityMatrix={listScreenData.capabilityMatrix}
+                onRowAction={({ opId, itemId }) => { setScreenPanel(null); runCircleCommandResolved({ opId, args: { id: itemId } }); }}
+              />
+            ) : (
+              <ScrollView ref={panelScrollRef}>
+                <View ref={panelContentRef} collapsable={false}>
+                  <CircleScreenView blocks={panelBlocks} highlightRef={screenPanel?.highlightRef}
+                    highlightRowRef={highlightRowRef} onHighlightLayout={scrollPanelToHighlight}
+                    onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
+                </View>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>

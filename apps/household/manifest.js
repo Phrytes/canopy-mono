@@ -41,6 +41,26 @@ export const householdManifest = {
   app:       'household',
   itemTypes: [...LIST_TYPES, 'task', 'contact'],
 
+  // B · Layer 1 — domain (non-atom) verbs this manifest ships (F-SP1-e).
+  // `help` (meta) + `register` (identity act, not a plain `add contact`).
+  // Every other op maps to an SDK atom; the `{atoms:true}` validator enforces it.
+  domainVerbs: ['help', 'register'],
+
+  // B · Layer 1 — the (verb × noun) capability surface (PLAN-capability-arc.md).
+  // Each key is one of `itemTypes`; each `atoms` entry is a CANONICAL SDK atom
+  // verb (not an alias) from `@canopy/app-manifest`'s ATOM catalogue.  This is
+  // the forward-additive declaration the atom-validator keys off — `add` is ONE
+  // atom resolved per noun (addItem for the list nouns, addTask for `task`),
+  // both now routed through the single shared `createHouseholdItem` create path.
+  nouns: {
+    shopping: { atoms: ['add', 'list', 'complete', 'remove'] },
+    errand:   { atoms: ['add', 'list', 'complete', 'remove'] },
+    repair:   { atoms: ['add', 'list', 'complete', 'remove'] },
+    schedule: { atoms: ['add', 'list', 'complete', 'remove'] },
+    task:     { atoms: ['add', 'list', 'complete', 'remove', 'claim', 'reassign'] },
+    contact:  { atoms: [] },   // only the `register` domain verb
+  },
+
   // F-SP1-d: verbatim, sourced from the same module classifyAndExtract reads.
   systemPrompt: SYSTEM_PROMPT_CLASSIFY,
 

@@ -275,3 +275,36 @@ describe('shouldPushNotify (P6.M4 + α.5b)', () => {
     expect(shouldPushNotify(DEFAULT_MEMBER_OVERRIDE)).toBe(false);
   });
 });
+
+describe('B · Slice 2 — capabilities freedom template + settings values', () => {
+  it('default policy carries empty capabilities + settings maps', () => {
+    expect(DEFAULT_CIRCLE_POLICY.capabilities).toEqual({});
+    expect(DEFAULT_CIRCLE_POLICY.settings).toEqual({});
+  });
+  it('normalize keeps object maps + coerces bad values to {}', () => {
+    const p = normalizeCirclePolicy({ capabilities: { 'tasks add task': { enabled: false } }, settings: { 'household.assignable': true } });
+    expect(p.capabilities).toEqual({ 'tasks add task': { enabled: false } });
+    expect(p.settings).toEqual({ 'household.assignable': true });
+    expect(normalizeCirclePolicy({ capabilities: 'nope', settings: [1] }).capabilities).toEqual({});
+    expect(normalizeCirclePolicy({ settings: [1] }).settings).toEqual({});
+  });
+  it('merge shallow-merges at the entry key (patch replaces a row/value, keeps siblings)', () => {
+    const base = { capabilities: { 'a x y': { enabled: true }, 'b x y': { enabled: true } }, settings: { 'app.k1': 1 } };
+    const merged = mergeCirclePolicy(base, { capabilities: { 'b x y': { enabled: false } }, settings: { 'app.k2': 2 } });
+    expect(merged.capabilities).toEqual({ 'a x y': { enabled: true }, 'b x y': { enabled: false } });
+    expect(merged.settings).toEqual({ 'app.k1': 1, 'app.k2': 2 });
+  });
+});
+
+describe('B · Slice 4 — member capabilityOptOuts', () => {
+  it('defaults to [], dedupes + filters non-strings on normalize', () => {
+    expect(DEFAULT_MEMBER_OVERRIDE.capabilityOptOuts).toEqual([]);
+    expect(normalizeMemberOverride({ capabilityOptOuts: ['a x y', 'a x y', 5, 'b x y'] }).capabilityOptOuts)
+      .toEqual(['a x y', 'b x y']);
+    expect(normalizeMemberOverride({ capabilityOptOuts: 'nope' }).capabilityOptOuts).toEqual([]);
+  });
+  it('merge replaces the opt-out list wholesale (UI sends the full set)', () => {
+    const merged = mergeMemberOverride({ capabilityOptOuts: ['a x y'] }, { capabilityOptOuts: ['b x y'] });
+    expect(merged.capabilityOptOuts).toEqual(['b x y']);
+  });
+});

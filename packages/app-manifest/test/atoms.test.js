@@ -1,0 +1,78 @@
+/**
+ * atoms — the SDK atom catalogue (B · Layer 1).  Unit tests for the vocabulary,
+ * alias resolution, classification, and the invariants other layers rely on.
+ */
+import { describe, it, expect } from 'vitest';
+import {
+  ATOMS, ATOM_VERBS, ATOM_VERBS_WITH_ALIASES,
+  isAtom, canonicalAtom, classifyVerb, atomFor,
+} from '../src/atoms.js';
+import { VERBS } from '../src/validate.js';
+
+describe('ATOMS catalogue', () => {
+  it('every atom has the required shape', () => {
+    for (const a of ATOMS) {
+      expect(typeof a.verb).toBe('string');
+      expect(a.verb.length).toBeGreaterThan(0);
+      expect(['crud', 'lifecycle', 'graph']).toContain(a.category);
+      expect(['item', 'collection']).toContain(a.targets);
+      expect(Array.isArray(a.aliases)).toBe(true);
+      expect(typeof a.semantics).toBe('string');
+      expect(a.semantics.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('canonical verbs and aliases are globally unique (no spelling maps to two atoms)', () => {
+    const seen = new Set();
+    for (const a of ATOMS) {
+      for (const spelling of [a.verb, ...a.aliases]) {
+        expect(seen.has(spelling)).toBe(false);
+        seen.add(spelling);
+      }
+    }
+  });
+
+  it('ATOMS is frozen (drift guard — the vocabulary is authoritative)', () => {
+    expect(() => { ATOMS.push({ verb: 'hack' }); }).toThrow();
+    expect(() => { ATOM_VERBS.push('hack'); }).toThrow();
+  });
+
+  it('is a SUPERSET of the legacy item-store VERBS (back-compat)', () => {
+    for (const v of VERBS) expect(ATOM_VERBS).toContain(v);
+  });
+});
+
+describe('isAtom / canonicalAtom / classifyVerb', () => {
+  it('recognises canonical verbs', () => {
+    for (const v of ['add', 'list', 'get', 'update', 'remove', 'complete', 'claim', 'share', 'move']) {
+      expect(isAtom(v)).toBe(true);
+      expect(canonicalAtom(v)).toBe(v);
+    }
+  });
+
+  it('resolves aliases to their canonical atom', () => {
+    expect(canonicalAtom('create')).toBe('add');
+    expect(canonicalAtom('delete')).toBe('remove');
+    expect(canonicalAtom('assign')).toBe('reassign');
+    expect(canonicalAtom('edit')).toBe('update');
+    expect(canonicalAtom('patch')).toBe('update');
+    expect(canonicalAtom('read')).toBe('get');
+    expect(canonicalAtom('grab')).toBe('claim');
+    expect(canonicalAtom('done')).toBe('complete');
+    expect(ATOM_VERBS_WITH_ALIASES).toContain('create');
+  });
+
+  it('rejects domain and unknown verbs', () => {
+    for (const v of ['help', 'register', 'sync', 'watch', 'report', 'mute', 'set', 'tree', 'frobnicate']) {
+      expect(isAtom(v)).toBe(false);
+      expect(canonicalAtom(v)).toBe(null);
+      expect(classifyVerb(v)).toBe(null);
+    }
+  });
+
+  it('classifyVerb flags alias provenance + category', () => {
+    expect(classifyVerb('grab')).toMatchObject({ canonical: 'claim', category: 'lifecycle', viaAlias: true });
+    expect(classifyVerb('claim')).toMatchObject({ canonical: 'claim', viaAlias: false });
+    expect(atomFor('share')).toMatchObject({ category: 'graph' });
+  });
+});
