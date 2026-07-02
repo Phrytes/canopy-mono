@@ -2407,6 +2407,13 @@
       "text": "Relay",
       "doc": "S5 — relay operator/url."
     },
+    "relay_set": { "text": "Relayserver", "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback." },
+    "relay_save": { "text": "Opslaan & verbinden", "doc": "Persist the relay URL + reconnect the peer transport live." },
+    "relay_saving": { "text": "Verbinden…", "doc": "Relay save in progress." },
+    "relay_saved": { "text": "Verbonden via {{url}}", "doc": "Relay saved + reconnected." },
+    "relay_off": { "text": "geen relay", "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback." },
+    "relay_error": { "text": "Verbinden mislukt: {{msg}}", "doc": "Relay reconnect failed." },
+    "relay_hint": { "text": "Wijs dit naar een bereikbare relay om zonder server tussen apparaten te synchroniseren (bijv. ws://192.168.1.20:8787). Laat leeg voor de standaard.", "doc": "Relay setting help text." },
     "privacy": {
       "text": "Privacy",
       "doc": "S5 — privacy disclosure section."

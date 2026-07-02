@@ -39,6 +39,7 @@ import { buildCircleLlmProviders } from '../../src/v2/circleLlmProviders.js';
 import { createTokenGate } from '../../src/v2/tokenGate.js';
 import { circleGateRules } from '../../src/v2/circleGate.js';
 import { interpretToCommand } from '../../src/v2/interpretCommand.js';
+import { createRelayPrefStore, localStorageRelayIo, resolveRelayUrl } from '../../src/v2/relayPref.js';
 import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.js';
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../src/v2/kringMemory.js';
@@ -297,6 +298,19 @@ async function tryConnectPeerTransport(agent, peerMessageRouter) {
   } catch (err) {
     console.warn('[circleApp] peer connect failed — kring chat is local-only:', err?.message ?? err);
   }
+}
+
+// In-app relay setting (Settings → Mij): persist the URL, update the resolved value, and RECONNECT the
+// peer transport live so it takes effect without a page reload. Returns `{ ok, effective }` — the URL now
+// in use (the setting, or the env fallback when cleared). web≡mobile (mobile mirrors this in hostOps).
+async function applyRelayUrl(url) {
+  const saved = await relayPrefStore.set(url);
+  CIRCLE_RELAY_URL = resolveRelayUrl(saved, CIRCLE_RELAY_ENV);
+  if (_peerAgent) {
+    try { await tryConnectPeerTransport(_peerAgent, _peerRouter); }
+    catch (err) { return { ok: false, error: err?.message ?? String(err), effective: CIRCLE_RELAY_URL }; }
+  }
+  return { ok: true, effective: CIRCLE_RELAY_URL };
 }
 
 // γ.2 — versions adapters per kring store.  Wired here at construction
@@ -574,7 +588,14 @@ const CIRCLE_LLM_APIKEY    = import.meta.env?.VITE_CIRCLE_LLM_APIKEY ?? null;
 const CIRCLE_EMBED_APIKEY  = import.meta.env?.VITE_CIRCLE_EMBED_APIKEY ?? CIRCLE_LLM_APIKEY;
 // T3a — optional relay (ws://|wss://). When set, the agent connects relay ALONGSIDE NKN and the
 // RoutingStrategy picks the best route per peer (relay > nkn). Unset → NKN-only (unchanged).
-const CIRCLE_RELAY_URL     = import.meta.env?.VITE_CIRCLE_RELAY_URL ?? null;
+// In-app override: the relay URL set in Settings → Mij wins over the env var, so the relay is
+// configurable without a rebuild. localStorage is sync, so resolve it here at module-init — before the
+// boot-time tryConnectPeerTransport reads it. Empty setting ⇒ env fallback. `applyRelayUrl` reconnects live.
+const CIRCLE_RELAY_ENV     = import.meta.env?.VITE_CIRCLE_RELAY_URL ?? null;
+const relayPrefStore       = createRelayPrefStore(localStorageRelayIo());
+let   CIRCLE_RELAY_URL      = resolveRelayUrl(localStorageRelayIo().load(), CIRCLE_RELAY_ENV);
+let   _peerAgent           = null;   // captured at boot so a relay-setting change can reconnect live
+let   _peerRouter          = null;
 const CIRCLE_BOT_NAME      = import.meta.env?.VITE_CIRCLE_BOT_NAME ?? 'assistant';
 const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
 // Theme B — the settings-chatbot template. HQ can host an updated (open-source)
@@ -2047,7 +2068,9 @@ async function showMyData() {
     // form's "Saved." confirmation; the chatAi status note refreshes on the next open.
     return null;
   };
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, appLang: currentLang(), onSetAppLang, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig });
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, appLang: currentLang(), onSetAppLang, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig,
+    // in-app relay setting (no rebuild): the field shows the saved setting; env is the placeholder fallback.
+    relayUrl: resolveRelayUrl(localStorageRelayIo().load(), ''), relayEnvUrl: CIRCLE_RELAY_ENV, onSaveRelay: applyRelayUrl });
   getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([
@@ -3717,6 +3740,7 @@ async function boot() {
             : {}),
         },
       });
+      _peerAgent = agent; _peerRouter = peerMessageRouter;   // for applyRelayUrl (live relay reconnect)
       tryConnectPeerTransport(agent, peerMessageRouter).catch(() => { /* logged inside */ });
 
       // ε.4 — auto-fire negotiated catch-up on (re)connect, ONCE per
