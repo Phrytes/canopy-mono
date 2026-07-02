@@ -264,14 +264,16 @@ export const stoopManifest = {
     {
       id:        'cancelRequest',
       verb:      'remove',  // canonical — cancelRequest removes the item.
-      // V0.2 Q8 wildcard (2026-05-21) — cancelRequest spans ALL post
-      // types (ask/offer/lend).  The wildcard `appliesTo: {type: '*'}`
-      // surfaces cancelRequest as `itemActions[]` in every section
-      // (renderWeb's Q8 rule).  Without this, cancelRequest had no
-      // `appliesTo` and didn't surface as an itemAction anywhere; the
-      // mine.html page had to hard-code the Cancel button.  The
-      // wildcard makes the manifest the source of truth.
-      appliesTo: { type: '*' },
+      // V0.2 Q8 (2026-05-21, narrowed 2026-07-02 for #72) — cancelRequest spans the
+      // user's own POST types (ask/offer/lend + the generic request/post the `mine`
+      // section renders as).  It surfaces as `itemActions[]` in each of those sections
+      // (renderWeb's Q8 rule); without an `appliesTo` it surfaced nowhere and mine.html
+      // hard-coded Cancel.  Was `type: '*'` (ALL itemTypes) — but that blasted a phantom
+      // `remove` capability onto stoop's internal/view-shape types (report · group-rules ·
+      // rules-accept · group-leave), cluttering the B freedom matrix AND spuriously adding
+      // a Cancel button to the read-only privacy section.  Scoped to the real content nouns
+      // (same lesson as #79: an over-broad appliesTo mints phantom (verb×noun) capabilities).
+      appliesTo: { type: ['request', 'post', 'ask', 'offer', 'lend'] },
       params: [
         { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
       ],

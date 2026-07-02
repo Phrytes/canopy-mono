@@ -88,11 +88,14 @@ describe('stoop-web smoke (Slice E.1 + E.2 + E.3 + E.4)', () => {
     expect(mine.filter).toEqual({ open: true });
     // V0.2 Q7 — explicit dataSource declaration in the manifest.
     expect(mine.dataSource).toEqual({ skillId: 'listMyRequests' });
-    // V0.2 Q8 — cancelRequest with `appliesTo: {type: '*'}` surfaces
-    // as an itemAction in EVERY section (renderWeb's wildcard rule).
+    // V0.2 Q8 — cancelRequest surfaces as an itemAction on the `mine` section
+    // (renderWeb's appliesTo rule). Narrowed from `type: '*'` to the real content
+    // nouns (#72, 2026-07-02) so it stops minting phantom `remove` capabilities on
+    // stoop's internal itemTypes; the `mine` section (itemType 'request') still gets it.
     const cancel = (mine.itemActions ?? []).find((a) => a.opId === 'cancelRequest');
     expect(cancel).toBeDefined();
-    expect(cancel.appliesTo.type).toBe('*');
+    expect(cancel.appliesTo.type).toEqual(['request', 'post', 'ask', 'offer', 'lend']);
+    expect(cancel.appliesTo.type).toContain(mine.itemType);   // still covers the mine section
 
     // E.2 — privacy section.
     const privacy = nav.sections[1];
