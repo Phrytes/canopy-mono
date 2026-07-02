@@ -465,6 +465,10 @@
       "doc": "S6.B — generic label for a chat-triggered screen panel."
     },
     "open": {
+      "contacts": {
+        "text": "Contacten →",
+        "doc": "B/S3 — open the circle contacts/member list-screen from the ⋯ menu or a bot reply."
+      },
       "tasks": {
         "text": "Alle taken →",
         "doc": "S6.B — open the tasks panel from a bot reply."
@@ -827,6 +831,10 @@
       "text": "Functies",
       "doc": "Settings axis: which features the circle has."
     },
+    "view": {
+      "text": "Standaardweergave",
+      "doc": "B/Q1 — settings axis: which pane a member lands on (chat / screen / cross-stream)."
+    },
     "llmTool": {
       "text": "LLM als gereedschap",
       "doc": "Settings axis: LLM assist mode."
@@ -922,6 +930,10 @@
       "doc": "S6.C — which whole apps the circle composes (catalog scope)."
     },
     "app": {
+      "canopy-chat": {
+        "text": "Gesprek",
+        "doc": "B/Q3 — app label (canopy-chat) for the capability freedom-matrix header."
+      },
       "stoop": {
         "text": "Buurt",
         "doc": "S6.C — app label (stoop)."
@@ -992,6 +1004,22 @@
       }
     },
     "opt": {
+      "chat": {
+        "text": "Gesprek",
+        "doc": "B/Q1 — view-axis option: land on the conversation pane."
+      },
+      "screen": {
+        "text": "Scherm",
+        "doc": "B/Q1 — view-axis option: land on the screen/overview pane."
+      },
+      "cross-stream": {
+        "text": "Gesprek + Stroom",
+        "doc": "B/Q1 — view-axis option: chat, and the kring's content also flows into Stroom."
+      },
+      "user": {
+        "text": "Eigen keuze van het lid",
+        "doc": "B/Q1 — llmTool option: each member uses their own LLM setting."
+      },
       "off": {
         "text": "Uit",
         "doc": "Option label."

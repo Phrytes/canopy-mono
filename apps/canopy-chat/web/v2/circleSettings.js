@@ -30,7 +30,9 @@ import { renderPairedDevices } from './pairedDevices.js';
 // 'cross-stream'); making it editable here lets an admin pick which surface
 // a member lands on when they open the circle.  Listed first so it stays
 // the most prominent setting.
-const ENUM_AXES = ['view', 'llmTool', 'storagePosture', 'agents', 'revealPolicy', 'pod'];
+// Exported so the locale-coverage fitness guard (test/v2/circleLocaleCoverage.test.js)
+// asserts every rendered axis + its options resolve — no raw i18n keys reach a surface.
+export const ENUM_AXES = ['view', 'llmTool', 'storagePosture', 'agents', 'revealPolicy', 'pod'];
 
 /**
  * @param {HTMLElement} container
