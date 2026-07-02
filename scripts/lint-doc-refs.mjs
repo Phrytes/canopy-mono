@@ -9,7 +9,8 @@
 //      such links break on a fresh public clone.
 //   3. Any TRACKED markdown with a BROKEN relative link (target file doesn't exist) —
 //      e.g. a link left dangling after a doc move/purge.
-// WARN (exit 0): tracked root docs matching a private prefix that ought to be `git rm --cached`.
+// WARN (exit 0): tracked root docs matching a private prefix (`git rm --cached`);
+//                CLAUDE.md over its size budget (per docs/conventions/doc-structure.md).
 //
 // Usage: node scripts/lint-doc-refs.mjs   (or: npm run lint:docs)
 
@@ -32,6 +33,7 @@ const stripCode = (s) => s.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, 
 
 const hard = [];
 const warn = [];
+const notes = [];
 
 // 1. private trees must never be tracked
 for (const f of tracked) if (PRIVATE_TREE.test(f)) hard.push(`tracked file inside a private tree: ${f}`);
@@ -58,6 +60,18 @@ for (const f of tracked) {
 // 4. root private-prefix docs that are still tracked (to untrack)
 for (const f of tracked) if (!f.includes('/') && PRIVATE_PREFIX.test(f)) warn.push(f);
 
+// 5. CLAUDE.md size budget (docs/conventions/doc-structure.md) — advisory, never a hard fail
+try {
+  const c = readFileSync('CLAUDE.md', 'utf8');
+  const lines = c.split('\n').length;
+  if (lines > 150 || c.length > 12000)
+    notes.push(`CLAUDE.md is ${lines} lines / ${c.length} bytes — over the ~150-line budget. Compress per docs/conventions/doc-structure.md (relocate detail to a docs/ file, keep the rule + pointer).`);
+} catch { /* CLAUDE.md may be absent in a sub-package checkout */ }
+
+if (notes.length) {
+  console.log(`\n⚠  ${notes.length} advisory note(s):`);
+  for (const n of notes) console.log(`     - ${n}`);
+}
 if (warn.length) {
   console.log(`\n⚠  ${warn.length} tracked root doc(s) match a private prefix — untrack to make private:`);
   for (const f of warn) console.log(`     git rm --cached "${f}"`);

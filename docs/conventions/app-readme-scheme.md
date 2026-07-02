@@ -47,10 +47,6 @@ order, with these headings:
 
 <justifications — see template below; "None" is a valid value>
 
-## Agent Hub compatibility
-
-<declared hub-attachment plan — see template below; "N/A — this app does not use the Agent SDK" is a valid value>
-
 ## Shared UI helpers
 
 <for products with both a desktop + mobile shell, the helpers in
@@ -68,7 +64,7 @@ is a valid value. See template below.>
 
 Apps may add additional sections (testing, troubleshooting, CHANGELOG
 links, related apps, design pointers) — those are unconstrained. The
-six sections above are the **required spine**.
+five sections above are the **required spine**.
 
 ---
 
@@ -131,80 +127,6 @@ If the section is empty, write:
 ## Direct SDK use
 
 None. All SDK access goes through substrates.
-```
-
----
-
-## Template — the `## Agent Hub compatibility` section
-
-Any app that uses the Agent SDK (directly or via substrates) **must
-be designed to be compatible with the per-device Agent Hub**. See
-`Project Files/AgentHub/agent-hub-design-2026-05-05.md`
-for the design.
-
-> **2026-05-08 update.** Hub will be a **separate phone app**,
-> not a desktop daemon. Lite-mode is **deferred** for all current
-> apps; ship `standalone` and stay hub-compatible.
-
-The hub itself is still a design exploration — apps may run
-standalone today — but new apps must not bake in choices that
-preclude future hub-attachment. Concretely that means:
-
-- Spawn / extend agents under the user's root identity via
-  capability tokens (the SDK pattern), not via app-private identity
-  schemes.
-- Don't assume sole ownership of the relay connection, the peer/hop
-  table, or pod credentials — these are all things the hub will own
-  once it exists.
-- Treat substrate / SDK access as something that *could* be
-  redirected to a local-RPC client in the future. Avoid leaking
-  internal substrate handles across module boundaries the hub would
-  need to mediate.
-
-Each app declares **one** of the four attachment models below in
-its README:
-
-| Model | Meaning |
-|---|---|
-| `standalone` | App embeds the substrate / SDK directly. Does not attempt to attach to a hub. Default for apps shipping before the hub exists. |
-| `hub-attached (lite)` | App expects a hub to be present; talks only via the local-RPC client. Smallest binary; fails cleanly if hub absent. |
-| `hybrid` | App ships standalone but can opt into hub-attachment at runtime if a hub is detected. The richest UX, the most code. |
-| `N/A` | App does not use the Agent SDK at all. |
-
-For apps that spawn or extend agents (any model except `N/A`), also
-declare:
-
-- whether the app **spawns its own agent(s)** (Shape A) or **extends
-  an existing agent** (Shape B),
-- and if extending, which flavour: `shared inbox` / `partitioned
-  handlers` / `composed personality` (see the AgentHub design doc),
-- and the capability scope the binding requests (which groups /
-  skills the app may use as that agent).
-
-Example:
-
-```markdown
-## Agent Hub compatibility
-
-**Attachment model:** `standalone`. The hub does not exist yet; this
-app embeds the substrate directly. Designed so a future migration to
-`hub-attached (lite)` is possible — see the four design rules in
-[`Project Files/conventions/app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md#template--the--agent-hub-compatibility-section).
-
-**Agent topology:** spawns its own household-tasks agent (Shape A).
-No shared-agent attachments planned for v0.
-
-**Capability scope:** subscribe to `household:tasks`, send/receive
-task-exchange messages within that group. No pod-write capability
-beyond the household task ledger.
-```
-
-For an app that does not use the SDK at all:
-
-```markdown
-## Agent Hub compatibility
-
-N/A — this app does not use the Agent SDK.
 ```
 
 ---
@@ -308,20 +230,6 @@ None. All SDK access goes through substrates.
 construct a `core.Agent` directly — see H5-V2-resume.md step 1; this
 section will document the justification at that time.]
 
-## Agent Hub compatibility
-
-**Attachment model:** `standalone`. Hub does not exist yet; this app
-runs against substrates directly. Designed so future migration to
-`hub-attached (lite)` is possible — agents are spawned under the
-user's root identity via capability tokens, no app-private identity
-scheme.
-
-**Agent topology:** spawns its own neighborhood agent (Shape A) —
-one agent per app for v0.
-
-**Capability scope:** subscribe to the configured neighborhood
-group; broadcast skill requests + collect claims within it; pod
-writes go through `item-store` (no direct pod-client use).
 
 ## Bring it up
 
@@ -373,13 +281,6 @@ following apps are non-conforming:
 The rollout should align with the substrate refactor phases — each app's
 README gets updated when its substrate dependencies do. New apps must
 ship with this scheme from the first commit.
-
-> **Agent Hub compatibility section** (added 2026-05-05): existing
-> apps will pick up this section the next time their README is
-> touched, since the hub does not yet exist and `standalone` is the
-> correct value for all current apps. New apps must include the
-> section from their first commit, with a deliberate attachment-model
-> choice.
 
 ---
 
