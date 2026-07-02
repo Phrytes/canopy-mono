@@ -225,7 +225,7 @@ This app follows:
 - [`pod-independence.md`](../../docs/conventions/pod-independence.md) —
   v0.1 ships pod-less (local thread persistence in IndexedDB); pod sync is
   opt-in v0.6
-- [`plan-tracking.md`](../../docs/conventions/plan-tracking.md) — the
+- `plan-tracking.md` (archived) — the
   coding plan at `/Project Files/canopy-chat/coding-plan.md` includes a
   per-sub-slice **Substrate-reuse gate** (added 2026-05-22) so future phases
   audit existing substrates before writing new modules.
