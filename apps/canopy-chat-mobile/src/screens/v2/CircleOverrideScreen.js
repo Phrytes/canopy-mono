@@ -7,10 +7,13 @@
  * (claimed tasks / calendar → "My things").  Loads/saves through the
  * injected override store (AsyncStorage-backed).
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import { mergeMemberOverride } from '@canopy-app/canopy-chat';
+// B · Slice 4 — the member capability opt-out section (web≡mobile via the shared projector).
+import { buildCapabilityMatrix } from '@canopy/app-manifest';
+import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { t } from '../../core/localisation.js';
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
@@ -25,16 +28,26 @@ const PUSH_TOGGLES = [
   { key: 'onProposal',     i18n: 'on_proposal' },
 ];
 
-export default function CircleOverrideScreen({ store, circleId, onBack }) {
+export default function CircleOverrideScreen({ store, circleId, onBack, policyStore }) {
   const [working, setWorking] = useState(null);
+  const [policy, setPolicy] = useState({});
 
   useEffect(() => {
     let live = true;
     store.get(circleId).then((o) => { if (live) setWorking(o); });
+    if (policyStore?.get) policyStore.get(circleId).then((p) => { if (live) setPolicy(p || {}); }).catch(() => {});
     return () => { live = false; };
-  }, [store, circleId]);
+  }, [store, circleId, policyStore]);
 
   const patch = useCallback((p) => setWorking((cur) => mergeMemberOverride(cur, p)), []);
+
+  // B · Slice 4 — the member's opt-outable capabilities (admin freedom 'optional' or a privacy floor).
+  const sources = useMemo(() => [...new Set(Object.values(buildManifestsByOrigin()))].map((m) => ({ manifest: m })), []);
+  const optOutable = useMemo(() => (working ? buildCapabilityMatrix(sources, {
+    enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
+    template: policy?.capabilities || {},
+    optOuts: working.capabilityOptOuts || [],
+  }).filter((r) => r.enabled && r.optOutable) : []), [sources, policy, working]);
 
   const onSave = useCallback(async () => {
     if (!working) return;
@@ -94,6 +107,30 @@ export default function CircleOverrideScreen({ store, circleId, onBack }) {
             />
           </View>
         ))}
+
+        {/* B · Slice 4 — the member's capability opt-outs (checked = participate; unchecking opts out) */}
+        {optOutable.length ? (
+          <>
+            <Text style={styles.section}>{t('circle.override.capabilities')}</Text>
+            {optOutable.map((r) => {
+              const floorTag = r.privacyFloor ? ` (${t('circle.settings.privacyFloor')})` : '';
+              const current = new Set(working.capabilityOptOuts || []);
+              return (
+                <View key={r.key} style={styles.row} testID={`override-cap-${r.key}`}>
+                  <Text style={styles.rowLabel}>{`${verbLabel(r.atom)} · ${r.noun}${floorTag}`}</Text>
+                  <Switch trackColor={{ true: theme.color.accent, false: theme.color.trackOff }} thumbColor={theme.color.white}
+                    value={!r.optedOut}
+                    onValueChange={(participate) => {
+                      const next = new Set(current);
+                      if (participate) next.delete(r.key); else next.add(r.key);
+                      patch({ capabilityOptOuts: [...next] });
+                    }}
+                  />
+                </View>
+              );
+            })}
+          </>
+        ) : null}
       </ScrollView>
 
       <Pressable style={styles.save} onPress={onSave} accessibilityRole="button" testID="circle-override-save">
@@ -101,6 +138,13 @@ export default function CircleOverrideScreen({ store, circleId, onBack }) {
       </Pressable>
     </View>
   );
+}
+
+/** Localised atom verb label, falling back to the atom when no key is translated. */
+function verbLabel(atom) {
+  const k = `circle.settings.verb.${atom}`;
+  const v = t(k);
+  return v && v !== k ? v : atom;
 }
 
 const styles = StyleSheet.create({

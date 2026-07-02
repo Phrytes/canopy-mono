@@ -1092,7 +1092,7 @@ export default function CircleLauncherScreen({
     );
   }
   if (selected && view === 'override') {
-    return <CircleOverrideScreen store={overrideStore} circleId={selected.id} onBack={() => setView('detail')} />;
+    return <CircleOverrideScreen store={overrideStore} policyStore={policyStore} circleId={selected.id} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'viewas') {
     // F-5.1 — real member directory loaded in onViewAs via listGroupMembers.
