@@ -42,6 +42,16 @@ import { makeSendGroupRedeemRequest } from '../../../canopy-chat/src/core/handle
 import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
 import { AsyncStorageAdapter } from '../../../../packages/react-native/src/storage/AsyncStorageAdapter.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
+
+// The relay URL to connect with: the in-app setting (Settings → Mij) wins over the build-time env var,
+// so the no-server cross-device relay is configurable without a rebuild. Async (AsyncStorage) — boot +
+// the /peer-connect reconnect both read it fresh. Empty setting ⇒ env fallback. web≡mobile (relayPref.js).
+export async function resolveMobileRelayUrl() {
+  try { return resolveRelayUrl(await asyncStorageRelayIo(AsyncStorage).load(), process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL); }
+  catch { return process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null; }
+}
 import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
@@ -360,8 +370,8 @@ export async function bootAgentBundle(opts = {}) {
         await agent.connectPeerTransport({
           nknLib,
           onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
-          // T3a — relay alongside NKN (routed) when configured; unset → NKN-only.
-          relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null,
+          // T3a — relay alongside NKN (routed); the in-app setting wins over the env (no rebuild). unset → NKN-only.
+          relayUrl: await resolveMobileRelayUrl(),
           // T5.2d — direct WebRTC upgrade over the nkn/relay signalling path.
           rendezvous: true,
           rtcLib,

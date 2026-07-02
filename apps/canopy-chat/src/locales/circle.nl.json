@@ -2413,6 +2413,7 @@
     "relay_saved": { "text": "Verbonden via {{url}}", "doc": "Relay saved + reconnected." },
     "relay_off": { "text": "geen relay", "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback." },
     "relay_error": { "text": "Verbinden mislukt: {{msg}}", "doc": "Relay reconnect failed." },
+    "relay_saved_reload": { "text": "Opgeslagen — heropen de app om te verbinden via {{url}}", "doc": "Mobile relay save confirmation (applies on next app open; mobile has no live reconnect yet)." },
     "relay_hint": { "text": "Wijs dit naar een bereikbare relay om zonder server tussen apparaten te synchroniseren (bijv. ws://192.168.1.20:8787). Laat leeg voor de standaard.", "doc": "Relay setting help text." },
     "privacy": {
       "text": "Privacy",

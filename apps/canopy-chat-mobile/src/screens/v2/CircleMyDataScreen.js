@@ -12,6 +12,8 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Modal, TextInput } from 
 import { t, lang, setLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createRelayPrefStore, asyncStorageRelayIo } from '../../../../canopy-chat/src/v2/relayPref.js';
 import UserLlmSettings from './UserLlmSettings.js';
 import EncryptedBackupWizardModal from '../../../../canopy-chat/src/rn/wizards/encryptedBackupWizardModal.js';
 import RestoreFromMnemonicWizardModal from '../../../../canopy-chat/src/rn/wizards/restoreFromMnemonicWizardModal.js';
@@ -33,6 +35,20 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
   const [push, setPush] = useState({ supported: false, granted: false });   // S6.6 native push
   const [surfacePref, setSurfacePref] = useState(surfacePrefStore.get());    // S6.C surface preference
   const setPref = useCallback((v) => { surfacePrefStore.set(v).then(() => setSurfacePref(v)).catch(() => {}); }, []);
+
+  // In-app relay setting — point the no-server cross-device relay at a reachable server WITHOUT a rebuild
+  // (web≡mobile via relayPref.js). agentBundle/hostOps read this at connect; applies on the next app open.
+  const relayStore = React.useMemo(() => createRelayPrefStore(asyncStorageRelayIo(AsyncStorage)), []);
+  const [relayInput, setRelayInput] = useState('');
+  const [relayNote, setRelayNote] = useState('');
+  useEffect(() => { relayStore.get().then(setRelayInput).catch(() => {}); }, [relayStore]);
+  const saveRelay = useCallback(async () => {
+    try {
+      const saved = await relayStore.set(relayInput);
+      setRelayInput(saved);
+      setRelayNote(t('circle.mydata.relay_saved_reload', { url: saved || t('circle.mydata.relay_off') }));
+    } catch (e) { setRelayNote(t('circle.mydata.relay_error', { msg: e?.message ?? '' })); }
+  }, [relayStore, relayInput]);
 
   useEffect(() => { getNativePushState().then(setPush).catch(() => {}); }, []);
   const toggleNativePush = useCallback(async () => {
@@ -109,6 +125,25 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
         <KV k={t('circle.mydata.pod')} v={podSignedIn ? t('circle.mydata.pod_signed_in', { webid: podWebid }) : t('circle.mydata.pod_local')} />
         {dataLocation.podRoot ? <KV k={t('circle.mydata.pod_root')} v={dataLocation.podRoot} /> : null}
         {relay ? <KV k={t('circle.mydata.relay')} v={relay} /> : null}
+
+        {/* In-app relay setting — no-server cross-device sync, configurable without a rebuild. */}
+        <View style={styles.relayEdit}>
+          <TextInput
+            style={styles.relayInput}
+            value={relayInput}
+            onChangeText={setRelayInput}
+            placeholder={process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || 'ws://…:8787'}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            testID="relay-input"
+          />
+          <Pressable style={styles.relaySave} onPress={saveRelay} testID="relay-save">
+            <Text style={styles.relaySaveText}>{t('circle.mydata.relay_save')}</Text>
+          </Pressable>
+        </View>
+        {relayNote ? <Text style={styles.relayNote}>{relayNote}</Text> : null}
+        <Text style={styles.relayHint}>{t('circle.mydata.relay_hint')}</Text>
 
         {/* cluster J — pod sign-in entry (the v2 UI had none). When signed out: pod provider + Connect. */}
         {podAuth && !podSignedIn && (
@@ -273,6 +308,12 @@ const styles = StyleSheet.create({
   privacy: { gap: 2 },
   privacyTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink },
   privacyBody: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
+  relayEdit: { marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  relayInput: { flex: 1, fontSize: 14, paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
+  relaySave: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: theme.radius.md, backgroundColor: theme.color.terracotta },
+  relaySaveText: { fontSize: 14, fontWeight: '600', color: theme.color.white },
+  relayNote: { marginTop: 6, fontSize: 12, color: theme.color.ink },
+  relayHint: { marginTop: 4, fontSize: 12, color: theme.color.inkMuted ?? theme.color.ink },
   signin: { marginTop: 10, gap: 8 },
   signinInput: { fontSize: 14, paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
   signinErr: { fontSize: 12, color: '#b3261e' },
