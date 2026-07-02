@@ -50,3 +50,20 @@ it needs depth) a `docs/conventions/X.md`, and link them.
     compress. It never hard-fails on size; size is a judgement call.
 - Compressing never **drops** a rule — it relocates the depth and leaves the concise rule + a pointer. The set
   of rules stays complete.
+
+## The product set (keep them separate)
+
+Planning/documentation is split into distinct **products**, each with one home and audience. Detail —
+rationale, phases, cross-links — lives in `plans/PLAN-roadmap-and-docs-restructure.md` and the private
+`plans/INDEX.md` map. The rule that keeps them from collapsing back into one overloaded file:
+
+- **Coding roadmap** = `REMAINING-WORK.md` — a **lean prioritized index** only; deep per-objective detail lives
+  in `plans/objectives/*`. It must not become a detail dump. `npm run lint:docs` warns if it exceeds ~200 lines.
+- **Coding architecture** = `docs/architecture.md`; **conventions** = this folder + `CLAUDE.md`.
+- **Org/strategy roadmap** = `plans/strategy/ROADMAP.md`; **org/legal framework** = `plans/strategy/framework.md`.
+  Organization work does **not** ride in the coding roadmap.
+- **Decisions** = `docs/decisions.md` (code) + `plans/strategy/decisions.md` (org), per
+  [`decision-log.md`](./decision-log.md).
+
+When work spans two products, put it in the one whose *home* it belongs to and **cross-link**, rather than
+duplicating (duplication is the drift `CLAUDE.md` invariant #3 forbids).

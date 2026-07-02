@@ -68,6 +68,14 @@ try {
     notes.push(`CLAUDE.md is ${lines} lines / ${c.length} bytes — over the ~150-line budget. Compress per docs/conventions/doc-structure.md (relocate detail to a docs/ file, keep the rule + pointer).`);
 } catch { /* CLAUDE.md may be absent in a sub-package checkout */ }
 
+// 6. REMAINING-WORK.md stays a lean index — anti-re-merge (plans/PLAN-roadmap-and-docs-restructure.md).
+// Private/local file (gitignored), so read directly; absent in a CI checkout → skipped.
+try {
+  const lines = readFileSync('REMAINING-WORK.md', 'utf8').split('\n').length;
+  if (lines > 200)
+    notes.push(`REMAINING-WORK.md is ${lines} lines — the roadmap is ballooning back into a detail dump. Keep it a lean prioritized index; move deep detail into plans/objectives/* (per plans/PLAN-roadmap-and-docs-restructure.md).`);
+} catch { /* private/local; absent in CI */ }
+
 if (notes.length) {
   console.log(`\n⚠  ${notes.length} advisory note(s):`);
   for (const n of notes) console.log(`     - ${n}`);
