@@ -17,5 +17,4 @@ author code — several are load-bearing invariants, not style preferences.
 - **[single-agent.md](./single-agent.md)** — one `core.Agent` per service-context; transports are routes into
   it, not parallel agents.
 - **[storage-layout.md](./storage-layout.md)** — how app data is laid out in a pod.
-- **[plan-tracking.md](./plan-tracking.md)** — how work is planned and tracked.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — contribution basics.

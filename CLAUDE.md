@@ -16,6 +16,9 @@ substrate is the functionality.
 
 > The model is right. **Make the architecture self-enforcing** so it stays right.
 
+**Deeper architecture** — the waist, the end-to-end dispatch flow, the layers, and where this is going:
+[`docs/architecture.md`](docs/architecture.md). The sentence above + the invariants below are the working summary.
+
 ## Before you debug a build/native failure
 Check **`docs/agent-notes-known-gotchas.md`** first — known monorepo-resolution (EAS/Metro
 `nodeModulesPaths`, workspace symlinks) and Android-12 native-permission traps that pass locally
@@ -38,14 +41,24 @@ but fail on device/CI. Don't re-bisect a trap that's already written down.
    (`npm run coverage` in `apps/canopy-chat` → `docs/surface-coverage.md`).
 5. **Three-layer dependency invariant:** `apps/` → `packages/{substrates}` → `packages/{core, relay,
    pod-client, react-native}` (the SDK). Substrates compose the SDK and don't reinvent it; apps compose
-   substrates (SDK directly only with a justification in the app README).
+   substrates (SDK directly only with a justification in the app README). → detail:
+   [`architectural-layering.md`](docs/conventions/architectural-layering.md).
 6. **One agent per service-context.** Transports are routes into a single `core.Agent`; multi-scope state
    lives in per-scope `ItemStore`/`MemberMap` *outside* the agent. N agents for N scopes is an anti-pattern.
+   → [`single-agent.md`](docs/conventions/single-agent.md).
 7. **Functionality is placed by trust + latency — never default-to-server.** Sensitive compute (pods,
    sealing, the confidential LLM transport) stays client-side or in an **attested enclave** (Privatemode/TEE).
    "Server-side" means *extracting* code that is already server-side (pod-hosting, proxy, private LLM), not
-   moving private data onto an untrusted host.
+   moving private data onto an untrusted host. → [`pod-independence.md`](docs/conventions/pod-independence.md).
 8. **Every user-facing string goes through `t()`** with a locale entry — hardcoded English is a defect.
+   → [`localisation.md`](docs/conventions/localisation.md).
+
+## Further conventions
+Project-wide rules beyond the invariants — concise here, full detail in [`docs/conventions/`](docs/conventions/):
+- **App READMEs** follow one scheme (built-on · deviations · honest phase table) — [`app-readme-scheme.md`](docs/conventions/app-readme-scheme.md).
+- **Cross-app settings** split pod-side into portable `shared.json` + per-install `devices/<id>.json` — [`cross-app-settings.md`](docs/conventions/cross-app-settings.md).
+- **Cross-pod references** use the `embeds: [{type, ref}]` field + a permission handshake, never inlined pod URLs — [`cross-pod-refs.md`](docs/conventions/cross-pod-refs.md).
+- **Pod storage layout** is canonical, owned by `@canopy/pod-onboarding` — [`storage-layout.md`](docs/conventions/storage-layout.md).
 
 ## How to work
 - **Prefer a fitness function to a manual check.** When you fix drift, add the test/lint that makes the same
@@ -65,8 +78,9 @@ but fail on device/CI. Don't re-bisect a trap that's already written down.
   `_archive/`, or outside the repo. New plan → `plans/`; a tracked doc links only to other tracked paths.
 - **Master todo + roadmap:** `REMAINING-WORK.md` *(private/local — the local starting point)*.
 - **Per-app truth:** `apps/<app>/manifest.js` + app-local CHANGELOGs + `apps/*/docs/`.
-- **The model, in prose:** `README.md` ("One manifest, every surface" + "Architecture invariant — three
-  layers"), `plans/PLAN-manifest-gate-surfaces.md` *(private)*, `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.
+- **The architecture, in depth:** [`docs/architecture.md`](docs/architecture.md); overview in `README.md`
+  ("One manifest, every surface" + "three layers"); web/mobile detail in
+  `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.
 
 *(This file will be re-scoped when the repo splits — clients vs substrate/functionality vs feedback-app vs
 third-party-via-SDK; see the spine. The per-repo CLAUDE.md will narrow to that repo's slice of the waist.)*

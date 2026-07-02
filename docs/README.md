@@ -13,6 +13,9 @@ this order.
    projectors, substrate, pod, circle, doorgeefluik, and the transport names.
 
 ## Reference
+- **[Architecture (deep dive)](./architecture.md)** — the full model: the thin waist, the end-to-end dispatch
+  flow, the three layers, placement-by-trust, and where the project is heading. Read to understand the whole
+  system; `CLAUDE.md` + the overview are the summary.
 - **[Conventions](./conventions/)** — project-wide rules every contributor follows (layering, localisation,
   settings, pod independence, the single-agent rule, …). Read these before authoring code.
 - **[Known gotchas](./agent-notes-known-gotchas.md)** — build/native traps (EAS/Metro monorepo resolution,

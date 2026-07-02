@@ -15,8 +15,9 @@ identity, transports, and peer-to-peer reachability underneath.
 ## Documentation
 
 Full docs live in **[`docs/`](./docs/)** — start with the [documentation index](./docs/README.md):
-[repository layout](./docs/repository-layout.md), [glossary](./docs/glossary.md), the
-[conventions](./docs/conventions/), and [known build/native gotchas](./docs/agent-notes-known-gotchas.md).
+the [architecture deep-dive](./docs/architecture.md), [repository layout](./docs/repository-layout.md),
+[glossary](./docs/glossary.md), the [conventions](./docs/conventions/), and
+[known build/native gotchas](./docs/agent-notes-known-gotchas.md).
 Working plans and designs are kept private (local-only) by design.
 
 ---
