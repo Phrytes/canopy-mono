@@ -72,6 +72,31 @@ describe('capabilitiesOf', () => {
   it('atomsForNoun lists the available atoms for a noun', () => {
     expect(atomsForNoun(M, 'task')).toEqual(['add', 'claim', 'complete', 'update']);
   });
+
+  // Regression (device-verify 2026-07-02): a VALUE-enum param (mode/action/lang/…) lists option
+  // values, not item types — it must NOT become a noun. Before the fix, canopy-chat's mode:[nkn,both]
+  // / lang:[en,nl] / action:[on,off] params produced junk freedom-matrix rows (submit·nkn, List·en).
+  it('ignores non-`type` enum params (value-enums are not nouns)', () => {
+    const withValueEnums = {
+      app: 'chatty',
+      itemTypes: ['message'],
+      operations: [
+        { id: 'setTransport', verb: 'update', params: [{ name: 'mode',   kind: 'enum', of: ['nkn', 'both'] }] },
+        { id: 'listByLang',   verb: 'list',   params: [{ name: 'lang',   kind: 'enum', of: ['en', 'nl'] }] },
+        { id: 'toggle',       verb: 'update', params: [{ name: 'action', kind: 'enum', of: ['on', 'off'] }] },
+      ],
+    };
+    const caps = capabilitiesOf(withValueEnums);
+    for (const junk of ['nkn', 'both', 'en', 'nl', 'on', 'off']) {
+      expect(caps.some((c) => c.noun === junk), `phantom noun "${junk}"`).toBe(false);
+    }
+    // A `type`-named enum on the same shape still yields real nouns.
+    const withTypeEnum = {
+      app: 'listy', itemTypes: ['shopping'],
+      operations: [{ id: 'addItem', verb: 'add', params: [{ name: 'type', kind: 'enum', of: ['shopping'] }] }],
+    };
+    expect(capabilitiesOf(withTypeEnum).find((c) => c.noun === 'shopping' && c.atom === 'add')?.opId).toBe('addItem');
+  });
 });
 
 describe('nouns shape validation', () => {
