@@ -19,4 +19,6 @@ author code — several are load-bearing invariants, not style preferences.
 - **[storage-layout.md](./storage-layout.md)** — how app data is laid out in a pod.
 - **[doc-structure.md](./doc-structure.md)** — what belongs in `CLAUDE.md` vs the docs tree, and when to
   compress/enlarge `CLAUDE.md` (the rule governing this split).
+- **[decision-log.md](./decision-log.md)** — when (and where) to record a decision; the decisions log lives at
+  `docs/decisions.md` (code) / `plans/strategy/decisions.md` (org).
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — contribution basics.

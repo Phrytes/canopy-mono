@@ -60,6 +60,7 @@ Project-wide rules beyond the invariants — concise here, full detail in [`docs
 - **Cross-pod references** use the `embeds: [{type, ref}]` field + a permission handshake, never inlined pod URLs — [`cross-pod-refs.md`](docs/conventions/cross-pod-refs.md).
 - **Pod storage layout** is canonical, owned by `@canopy/pod-onboarding` — [`storage-layout.md`](docs/conventions/storage-layout.md).
 - **This file's scope + size budget** — what belongs in `CLAUDE.md` vs `docs/`, and when to compress/enlarge it — [`doc-structure.md`](docs/conventions/doc-structure.md).
+- **Record a decision** when a choice closes off alternatives / would be re-litigated / shapes architecture (→ `docs/decisions.md`) or org (→ private) — [`decision-log.md`](docs/conventions/decision-log.md).
 
 ## How to work
 - **Prefer a fitness function to a manual check.** When you fix drift, add the test/lint that makes the same
