@@ -592,6 +592,7 @@ let circleBot = null;            // createCircleDispatch instance (handle(text, 
 let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
+let circleBaseSources = [];      // B · Slice 2/4 — the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
 let circleActiveApps = null;     // S6.C deep — the active circle's policy.apps (null = all); narrows the catalog
 let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (set in buildCircleBot, called by showKring)
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
@@ -738,6 +739,7 @@ function buildCircleBot(agent) {
     { manifest: mockFolioManifest },
     { manifest: calendarManifest },
   ];
+  circleBaseSources = baseSources;   // B · Slice 2/4 — expose to the module-level showSettings/showOverride
   let rawCatalog = mergeManifests(baseSources, { runtime: 'browser' });
   // S6.A — manifests keyed by appOrigin, for computing inline embed buttons on
   // bot replies (computeEmbedButtons looks ops up here by the op's appOrigin).
@@ -3153,9 +3155,14 @@ async function showViewAs(id) {
 
 async function showOverride(id) {
   let working = await overrideStore.get(id);
+  // B · Slice 4 — the circle's admin policy tells us which caps are enabled + opt-outable.
+  let circlePolicy = {};
+  try { circlePolicy = (await policyStore.get(id)) ?? {}; } catch { /* default */ }
   const rerender = () => renderCircleOverride(rootEl, {
     override: working,
     t,
+    sources: circleBaseSources,
+    policy: circlePolicy,
     onChange: (patch) => { working = mergeMemberOverride(working, patch); rerender(); },
     onBack: () => showDetail(id),
     onSave: async () => { await overrideStore.update(id, working); showDetail(id); },
@@ -3251,7 +3258,7 @@ async function showSettings(id) {
     policy: working,
     t,
     // B · Slice 2 — the merged manifest sources drive the settings form + the per-skill freedom matrix.
-    sources: baseSources,
+    sources: circleBaseSources,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
     note: [pendingNote(), storageNote].filter(Boolean).join(' · ') || undefined,
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The

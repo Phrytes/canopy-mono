@@ -6,7 +6,12 @@
  * calendar → "My things"). Controlled render over a `memberOverride`
  * (`@canopy/circlePolicy`); toggles fire `onChange(patch)`; the host
  * merges + re-renders + persists. Pure → unit-testable under happy-dom.
+ *
+ * B · Slice 4 — also the member's capability OPT-OUTS: given the circle's admin `policy` + the merged
+ * manifest `sources`, list the OPT-OUTABLE capabilities (admin freedom 'optional' or a privacy floor)
+ * and let the member decline them. Declining writes `capabilityOptOuts`; the same gate then refuses them.
  */
+import { buildCapabilityMatrix } from '@canopy/app-manifest';
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
 const FLOW_TOGGLES = ['tasksToPersonal', 'calendarToPersonal'];
@@ -22,7 +27,7 @@ const PUSH_TOGGLES = [
   { key: 'onProposal',     i18n: 'on_proposal' },
 ];
 
-export function renderCircleOverride(container, { override, t, onChange, onBack, onSave } = {}) {
+export function renderCircleOverride(container, { override, t, onChange, onBack, onSave, sources = [], policy = {} } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
   container.innerHTML = '';
@@ -84,6 +89,9 @@ export function renderCircleOverride(container, { override, t, onChange, onBack,
   }
   container.appendChild(flowSec);
 
+  // B · Slice 4 — the member's capability opt-outs (only the opt-outable caps of enabled apps).
+  renderCapabilityOptOuts(container, { sources, policy, override, tr, emit });
+
   const save = document.createElement('button');
   save.type = 'button';
   save.className = 'circle-override__save';
@@ -92,6 +100,56 @@ export function renderCircleOverride(container, { override, t, onChange, onBack,
   container.appendChild(save);
 
   return container;
+}
+
+/**
+ * B · Slice 4 — the member's capability opt-outs. Lists the OPT-OUTABLE capabilities (admin freedom
+ * 'optional' or a privacy floor) of the enabled apps; a checked box = "I participate", unchecking =
+ * opt out. Emits the FULL updated `capabilityOptOuts` list (mergeMemberOverride replaces it wholesale).
+ */
+function renderCapabilityOptOuts(container, { sources, policy, override, tr, emit }) {
+  if (!Array.isArray(sources) || !sources.length) return;
+  const matrix = buildCapabilityMatrix(sources, {
+    enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
+    template:    policy?.capabilities || {},
+    optOuts:     override?.capabilityOptOuts || [],
+  });
+  const optOutable = matrix.filter((r) => r.enabled && r.optOutable);
+  if (!optOutable.length) return;
+
+  const current = new Set(override?.capabilityOptOuts || []);
+  const sec = document.createElement('section');
+  sec.className = 'circle-override__caps';
+  const title = document.createElement('h3');
+  title.className = 'circle-override__section-title';
+  title.textContent = tr('circle.override.capabilities');
+  sec.appendChild(title);
+
+  const byApp = new Map();
+  for (const r of optOutable) { if (!byApp.has(r.app)) byApp.set(r.app, []); byApp.get(r.app).push(r); }
+  for (const [app, rows] of byApp) {
+    const h = document.createElement('h4');
+    h.className = 'circle-override__subhead';
+    h.textContent = tr(`circle.settings.app.${app}`, { defaultValue: app });
+    sec.appendChild(h);
+    for (const r of rows) {
+      const floorTag = r.privacyFloor ? ` (${tr('circle.settings.privacyFloor')})` : '';
+      const row = toggleRow({
+        cls: 'circle-override__cap-toggle',
+        key: r.key,
+        checked: !r.optedOut,   // checked = participate; unchecking opts out
+        label: `${tr(`circle.settings.verb.${r.atom}`, { defaultValue: r.atom })} · ${r.noun}${floorTag}`,
+        onToggle: (participate) => {
+          const next = new Set(current);
+          if (participate) next.delete(r.key); else next.add(r.key);
+          emit({ capabilityOptOuts: [...next] });
+        },
+      });
+      row.dataset.cap = r.key;
+      sec.appendChild(row);
+    }
+  }
+  container.appendChild(sec);
 }
 
 function toggleRow({ cls, key, checked, label, onToggle }) {

@@ -1065,7 +1065,8 @@
     }
   },
   "override": {
-    "title": {
+
+    "capabilities": { "text": "What you take part in", "doc": "B/S4 \u2014 the member capability opt-out section heading." },    "title": {
       "text": "My settings for this circle",
       "doc": "Personal override sheet heading (board 6A)."
     },

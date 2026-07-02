@@ -1065,7 +1065,8 @@
     }
   },
   "override": {
-    "title": {
+
+    "capabilities": { "text": "Waar je aan meedoet", "doc": "B/S4 \u2014 the member capability opt-out section heading." },    "title": {
       "text": "Mijn instellingen voor deze kring",
       "doc": "Personal override sheet heading (board 6A)."
     },
