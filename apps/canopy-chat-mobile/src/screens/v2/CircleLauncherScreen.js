@@ -2297,6 +2297,10 @@ function CircleDetail({
           <Pressable onPress={() => { setMenuOpen(false); onLists?.(); }} style={styles.moreItem} testID="circle-detail-lists">
             <Text style={styles.moreItemText}>{t('circle.lists.title')}</Text>
           </Pressable>
+          {/* B · Slice 3 — the filterable list-screen (GUI entry; web≡mobile with the ⋯ menu). */}
+          <Pressable onPress={() => { setMenuOpen(false); setScreenPanel({ screen: 'contacts' }); }} style={styles.moreItem} testID="circle-detail-contacts">
+            <Text style={styles.moreItemText}>{t('circle.screen.open.contacts')}</Text>
+          </Pressable>
           <Pressable onPress={() => { setMenuOpen(false); onMine?.(); }} style={styles.moreItem} testID="circle-detail-mine">
             <Text style={styles.moreItemText}>{t('circle.override.title')}</Text>
           </Pressable>
