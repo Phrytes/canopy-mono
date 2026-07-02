@@ -351,6 +351,16 @@ export default function CircleLauncherScreen({
   // so CircleDetail can gate its feature-bound buttons (houseRules,
   // memberDirectory).  Falls back to null on read failure → the helper
   // applies feature defaults.
+  // Read the active circle's policy from the store into `selectedPolicy` (the prop CircleDetail's
+  // gate + tabs + catalog react to). Extracted so an in-place settings save can re-run it — otherwise
+  // CircleDetail keeps the policy it loaded on open and a newly-(dis)abled app stays (un)gated until
+  // the circle is fully re-opened (device-verify #80, 2026-07-02).
+  const reloadSelectedPolicy = useCallback(async () => {
+    if (!selected?.id) { setSelectedPolicy(null); return; }
+    let p = null;
+    try { p = await policyStore.get(selected.id); } catch { /* defaults */ }
+    setSelectedPolicy(p);
+  }, [selected, policyStore]);
   useEffect(() => {
     if (!selected?.id) { setSelectedPolicy(null); return; }
     let alive = true;
@@ -1098,7 +1108,9 @@ export default function CircleLauncherScreen({
         householdPeers={bundle?.agent?.listHouseholdPeers?.(selected.id) ?? []}
         onAddHouseholdPeer={(addr) => (bundle?.agent?.pairWithPeer ?? bundle?.agent?.addHouseholdPeer)?.(selected.id, addr)}
         onRemoveHouseholdPeer={(addr) => bundle?.agent?.removeHouseholdPeer?.(selected.id, addr)}
-        onBack={() => { refreshProposals(); setView('detail'); }}
+        // #80 — re-read the just-saved policy so CircleDetail's gate/tabs/catalog update live
+        // (the settings onSave awaits store.update before calling onBack, so this sees the new value).
+        onBack={() => { refreshProposals(); reloadSelectedPolicy(); setView('detail'); }}
       />
     );
   }
