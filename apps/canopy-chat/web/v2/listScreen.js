@@ -1,67 +1,25 @@
 /**
  * listScreen — B · Slice 3 web renderer for a manifest `surfaces.screen` list surface.
  *
- * Controlled DOM render over a screen MODEL (`buildScreenModel`): a search box, category checkboxes,
- * and the filtered rows each with their capability-gated action buttons (greyed/hidden per Slice 4).
- * The host owns the query/activeCategories state, rebuilds the model, and re-renders. Pure DOM →
- * unit-testable under happy-dom. Row actions + the filter/category events fire callbacks; nothing here
- * dispatches or fetches.
+ * `renderListScreen` is the CONTROLLED render over a screen MODEL (`buildScreenModel`): search box,
+ * category checkboxes, and the filtered rows each with capability-gated action buttons (greyed/hidden
+ * per Slice 4). `renderListBlock` is the STATEFUL wrapper the live panel uses: it renders the chrome
+ * (search + categories) ONCE and re-renders only the ROWS on filter — so the search box keeps focus —
+ * while owning the query/activeCategories state. Pure DOM → unit-testable under happy-dom.
  */
 
-export function renderListScreen(container, {
-  model, t, title, query = '',
-  onQuery, onToggleCategory, onRowAction,
-} = {}) {
+import { buildScreenModel } from '../../src/v2/screenModel.js';
+
+/** Render just the rows list (label + capability-gated action buttons); re-callable for partial updates. */
+export function renderListRows(listEl, { rows = [], t, onRowAction } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
-  container.innerHTML = '';
-  container.classList.add('list-screen');
-
-  if (title) {
-    const h = document.createElement('h2');
-    h.className = 'list-screen__title';
-    h.textContent = title;
-    container.appendChild(h);
-  }
-
-  // Search box — the "contacten met k" filter.
-  const search = document.createElement('input');
-  search.type = 'search';
-  search.className = 'list-screen__search';
-  search.placeholder = tr('circle.screen.filter_placeholder');
-  search.value = query;
-  search.addEventListener('input', () => { if (typeof onQuery === 'function') onQuery(search.value); });
-  container.appendChild(search);
-
-  // Category checkboxes.
-  const cats = Array.isArray(model?.categories) ? model.categories : [];
-  if (cats.length) {
-    const catBar = document.createElement('div');
-    catBar.className = 'list-screen__categories';
-    for (const c of cats) {
-      const label = document.createElement('label');
-      label.className = 'list-screen__category';
-      const box = document.createElement('input');
-      box.type = 'checkbox';
-      box.checked = !!c.checked;
-      box.dataset.category = c.id;
-      box.addEventListener('change', () => { if (typeof onToggleCategory === 'function') onToggleCategory(c.id, box.checked); });
-      const span = document.createElement('span');
-      span.textContent = `${c.id} (${c.count})`;
-      label.append(box, span);
-      catBar.appendChild(label);
-    }
-    container.appendChild(catBar);
-  }
-
-  // Rows.
-  const listEl = document.createElement('ul');
-  listEl.className = 'list-screen__rows';
-  const rows = Array.isArray(model?.rows) ? model.rows : [];
+  listEl.innerHTML = '';
   if (!rows.length) {
     const empty = document.createElement('li');
     empty.className = 'list-screen__empty';
     empty.textContent = tr('circle.screen.empty');
     listEl.appendChild(empty);
+    return;
   }
   for (const row of rows) {
     const li = document.createElement('li');
@@ -86,7 +44,108 @@ export function renderListScreen(container, {
     }
     listEl.appendChild(li);
   }
-  container.appendChild(listEl);
+}
 
+/** Build + append the search box (fires `onQuery` on input). */
+function searchBox(container, { tr, query, onQuery }) {
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'list-screen__search';
+  search.placeholder = tr('circle.screen.filter_placeholder');
+  search.value = query;
+  search.addEventListener('input', () => { if (typeof onQuery === 'function') onQuery(search.value); });
+  container.appendChild(search);
+  return search;
+}
+
+/** Build + append the category checkbox bar (fires `onToggle(id, checked)`). */
+function categoryBar(container, { categories, onToggle }) {
+  if (!categories.length) return;
+  const bar = document.createElement('div');
+  bar.className = 'list-screen__categories';
+  for (const c of categories) {
+    const label = document.createElement('label');
+    label.className = 'list-screen__category';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = !!c.checked;
+    box.dataset.category = c.id;
+    box.addEventListener('change', () => { if (typeof onToggle === 'function') onToggle(c.id, box.checked); });
+    const span = document.createElement('span');
+    span.textContent = `${c.id} (${c.count})`;
+    label.append(box, span);
+    bar.appendChild(label);
+  }
+  container.appendChild(bar);
+}
+
+/** Controlled full render over a prebuilt model (used for tests + one-shot renders). */
+export function renderListScreen(container, {
+  model, t, title, query = '', onQuery, onToggleCategory, onRowAction,
+} = {}) {
+  const tr = typeof t === 'function' ? t : (k) => k;
+  container.innerHTML = '';
+  container.classList.add('list-screen');
+  if (title) {
+    const h = document.createElement('h2');
+    h.className = 'list-screen__title';
+    h.textContent = title;
+    container.appendChild(h);
+  }
+  searchBox(container, { tr, query, onQuery });
+  categoryBar(container, { categories: Array.isArray(model?.categories) ? model.categories : [], onToggle: onToggleCategory });
+  const listEl = document.createElement('ul');
+  listEl.className = 'list-screen__rows';
+  renderListRows(listEl, { rows: Array.isArray(model?.rows) ? model.rows : [], t: tr, onRowAction });
+  container.appendChild(listEl);
+  return container;
+}
+
+/**
+ * The STATEFUL list block for the live panel. Renders the chrome (search + categories) once and
+ * re-renders only the rows on filter (search box keeps focus). Owns query + activeCategories.
+ *
+ * @param {object} block  { items, categoryField?, manifestsByOrigin?, appOrigin?, title? }
+ */
+export function renderListBlock(container, { block = {}, t, onRowAction, capabilityMatrix = [] } = {}) {
+  const tr = typeof t === 'function' ? t : (k) => k;
+  container.innerHTML = '';
+  container.classList.add('list-screen');
+  let query = '';
+  let activeCategories = null;   // null = all categories checked
+
+  const shared = { items: block.items, categoryField: block.categoryField, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
+
+  if (block.title) {
+    const h = document.createElement('h2');
+    h.className = 'list-screen__title';
+    h.textContent = block.title;
+    container.appendChild(h);
+  }
+
+  const rowsEl = document.createElement('ul');
+  rowsEl.className = 'list-screen__rows';
+  const renderRows = () => {
+    const model = buildScreenModel({ ...shared, query, activeCategories });
+    renderListRows(rowsEl, { rows: model.rows, t: tr, onRowAction });
+  };
+
+  searchBox(container, { tr, query, onQuery: (q) => { query = q; renderRows(); } });
+
+  // Categories built once from the full list; toggling updates activeCategories + re-renders rows only.
+  const allCats = buildScreenModel(shared).categories;
+  categoryBar(container, {
+    categories: allCats,
+    onToggle: (id, checked) => {
+      const base = activeCategories == null ? allCats.map((c) => c.id) : activeCategories;
+      const set = new Set(base);
+      if (checked) set.add(id); else set.delete(id);
+      activeCategories = [...set];
+      renderRows();
+    },
+  });
+
+  container.appendChild(rowsEl);
+  renderRows();
   return container;
 }

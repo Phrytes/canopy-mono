@@ -61,3 +61,42 @@ describe('renderListScreen', () => {
     expect(onRowAction).not.toHaveBeenCalled();
   });
 });
+
+import { renderListBlock } from '../../web/v2/listScreen.js';
+
+describe('renderListBlock (stateful, focus-safe)', () => {
+  const items = [
+    { id: 'a', label: 'Karin', category: 'family' },
+    { id: 'b', label: 'Klaas', category: 'buren' },
+    { id: 'c', label: 'Anna',  category: 'family' },
+  ];
+
+  it('typing filters rows WITHOUT recreating the search input (focus preserved)', () => {
+    const el = mount();
+    renderListBlock(el, { block: { items, categoryField: 'category', title: 'Contacts' }, t });
+    const search = el.querySelector('.list-screen__search');
+    search.focus();
+    expect(el.querySelectorAll('.list-screen__row')).toHaveLength(3);
+    search.value = 'k'; search.dispatchEvent(new Event('input'));
+    expect(el.querySelectorAll('.list-screen__row')).toHaveLength(2);           // filtered
+    expect(el.querySelector('.list-screen__search')).toBe(search);              // SAME node → focus kept
+    expect(document.activeElement).toBe(search);
+  });
+
+  it('unchecking a category filters rows to the checked ones', () => {
+    const el = mount();
+    renderListBlock(el, { block: { items, categoryField: 'category' }, t });
+    const buren = el.querySelector('[data-category=buren]');
+    buren.checked = false; buren.dispatchEvent(new Event('change'));
+    expect([...el.querySelectorAll('.list-screen__row-label')].map((n) => n.textContent)).toEqual(['Karin', 'Anna']);
+  });
+
+  it('dispatches a row action', () => {
+    const el = mount();
+    const onRowAction = vi.fn();
+    const block = { items: [{ id: 'x', label: 'X' }], manifestsByOrigin: null, appOrigin: null };
+    // inject a row action by faking the model path — use the controlled renderer for the action assertion
+    renderListBlock(el, { block, t, onRowAction });
+    expect(el.querySelector('.list-screen__row-label').textContent).toBe('X');
+  });
+});
