@@ -1628,6 +1628,10 @@ function CircleDetail({
     () => [...new Set(Object.values(manifestsByOrigin))].map((manifest) => ({ manifest })),
     [manifestsByOrigin],
   );
+  // B · Slice 4 — the member-override store (per-circle opt-outs) that the capability matrix reads.
+  // CircleDetail is a separate component from the outer CircleLauncherScreen, so it needs its own
+  // handle; the store is a stateless AsyncStorage wrapper, so a second instance is free.
+  const overrideStore = useMemo(() => makeMemberOverrideStoreRN(AsyncStorage), []);
   // Per-circle stoop restructure (parity with web circleApp.js `stoopCall`): the
   // prikbord + scherm noticeboard block call the raw 3-arg `callSkill('stoop', …)`
   // directly, bypassing scopeReadyDispatch — so scope them to THIS circle here.
