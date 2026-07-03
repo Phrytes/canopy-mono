@@ -994,7 +994,7 @@ export default function CircleLauncherScreen({
   if (view === 'mydata') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
-        <CircleMyDataScreen callSkill={bundle?.callSkill} podAuth={podAuth} onBack={() => setView('profile')} chatAi={chatAi} userLlm={userLlmCfg} onSaveUserLlm={onSaveUserLlm} validateUserLlm={validateUserLlmConfig} />
+        <CircleMyDataScreen callSkill={bundle?.callSkill} podAuth={podAuth} onBack={() => setView('profile')} chatAi={chatAi} userLlm={userLlmCfg} onSaveUserLlm={onSaveUserLlm} validateUserLlm={validateUserLlmConfig} onReconnectPeer={bundle?.reconnectPeer} />
       </WithTabBar>
     );
   }

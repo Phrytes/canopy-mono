@@ -22,12 +22,21 @@ export function normalizeRelayUrl(raw) {
   } catch { return ''; }
 }
 
-/** The relay URL to actually use: the in-app setting wins, else the build-time env var, else null. */
-export function resolveRelayUrl(stored, envUrl) {
-  const pref = normalizeRelayUrl(stored);
-  if (pref) return pref;
-  const env = (typeof envUrl === 'string' ? envUrl.trim() : '');
-  return env || null;
+/**
+ * The relay URL to actually use — the FIRST valid candidate in precedence order, else null. Each
+ * candidate is normalized (ws://|wss:// or dropped). Variadic so the precedence chain can grow without a
+ * refactor. Today's callers pass `(deviceSetting, envUrl)`; when circles can pin a relay (see
+ * REMAINING-WORK "per-circle relay") the chain becomes `(circleRelay, deviceSetting, envUrl, discovered)`
+ * — a circle's shared meeting-point relay wins over a member's personal default.
+ * @param {...(string|null|undefined)} candidates  in precedence order (most-specific first)
+ * @returns {string|null}
+ */
+export function resolveRelayUrl(...candidates) {
+  for (const c of candidates) {
+    const url = normalizeRelayUrl(c);
+    if (url) return url;
+  }
+  return null;
 }
 
 /**

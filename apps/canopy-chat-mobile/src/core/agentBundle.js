@@ -258,6 +258,9 @@ export async function bootAgentBundle(opts = {}) {
   // catch-up fires.  `buildPeerWiring`/`opts.onPeerMessage` are still
   // honoured for the boot-time path (tests, single-screen callers).
   const peerWiringRef = { onPeerMessage: undefined, requestCatchUp: undefined };
+  // Captured at connect so `reconnectPeer` (in-app relay setting change) can re-invoke connectPeerTransport
+  // with the fresh relay URL + the same nkn/rtc libs — a LIVE reconnect, no app reload. Mirrors web.
+  let _connNknLib = null; let _connRtcLib = null;
   if (typeof opts.buildPeerWiring === 'function') {
     try {
       const w = opts.buildPeerWiring({ agent, callSkill: agent.callSkill });
@@ -367,6 +370,7 @@ export async function bootAgentBundle(opts = {}) {
         } catch { /* absent — non-fatal, rendezvous just stays off */ }
         // Stable wrapper reads the mutable slot at delivery time, so a
         // router attached after connect still receives messages.
+        _connNknLib = nknLib; _connRtcLib = rtcLib;   // capture for reconnectPeer (live relay reconnect)
         await agent.connectPeerTransport({
           nknLib,
           onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
@@ -455,6 +459,23 @@ export async function bootAgentBundle(opts = {}) {
     pendingMap:      pendingPeerRedeems,
   });
 
+  // In-app relay setting live-reconnect: re-invoke connectPeerTransport with the FRESH relay URL + the
+  // params captured at boot. Returns { ok, effective } — the URL now in use. Mirrors web's applyRelayUrl.
+  const reconnectPeer = async () => {
+    if (typeof agent?.connectPeerTransport !== 'function') return { ok: false, error: 'no transport' };
+    const relayUrl = await resolveMobileRelayUrl();
+    try {
+      await agent.connectPeerTransport({
+        nknLib: _connNknLib ?? undefined,
+        onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
+        relayUrl,
+        rendezvous: true,
+        rtcLib: _connRtcLib ?? undefined,
+      });
+      return { ok: true, effective: relayUrl };
+    } catch (err) { return { ok: false, error: err?.message ?? String(err), effective: relayUrl }; }
+  };
+
   // 5.9c — expose `mdns` as a live getter so the launcher reads the
   // current instance (initially null, populated when the async
   // connect() resolves a tick later).  Callers should not cache the
@@ -464,6 +485,7 @@ export async function bootAgentBundle(opts = {}) {
     manifestsByOrigin,
     callSkill,
     agent,
+    reconnectPeer,
     transport,
     pendingPeerRedeems,
     sendPeerRedeem,

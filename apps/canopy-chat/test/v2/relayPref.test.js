@@ -16,17 +16,25 @@ describe('normalizeRelayUrl', () => {
   });
 });
 
-describe('resolveRelayUrl (setting wins over env, else null)', () => {
-  it('prefers the in-app setting', () => {
+describe('resolveRelayUrl (variadic precedence chain — first valid wins)', () => {
+  it('prefers the in-app setting over the env', () => {
     expect(resolveRelayUrl('ws://a:1', 'ws://env:2')).toBe('ws://a:1');
   });
-  it('falls back to the env var when unset/invalid', () => {
+  it('falls back to the env var when the setting is unset/invalid', () => {
     expect(resolveRelayUrl('', 'ws://env:2')).toBe('ws://env:2');
     expect(resolveRelayUrl('garbage', 'ws://env:2')).toBe('ws://env:2');
   });
-  it('null when neither is set', () => {
+  it('null when no candidate is valid', () => {
     expect(resolveRelayUrl('', '')).toBe(null);
     expect(resolveRelayUrl(undefined, undefined)).toBe(null);
+    expect(resolveRelayUrl()).toBe(null);
+  });
+  it('walks an N-candidate chain (future: circle > device > env > discovered)', () => {
+    // a pinned circle relay wins over everything
+    expect(resolveRelayUrl('ws://circle:1', 'ws://device:2', 'ws://env:3')).toBe('ws://circle:1');
+    // skip invalid candidates until the first valid one
+    expect(resolveRelayUrl('', 'garbage', 'ws://env:3', 'ws://disc:4')).toBe('ws://env:3');
+    expect(resolveRelayUrl(null, undefined, '', 'wss://disc:4')).toBe('wss://disc:4');
   });
 });
 

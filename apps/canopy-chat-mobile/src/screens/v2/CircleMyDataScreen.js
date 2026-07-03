@@ -21,7 +21,7 @@ import { enableNativePush, disableNativePush, getNativePushState } from '../../v
 
 const CHAT_AI_KEY = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
 
-export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi, userLlm, onSaveUserLlm, validateUserLlm }) {
+export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi, userLlm, onSaveUserLlm, validateUserLlm, onReconnectPeer }) {
   const [dataLocation, setDataLocation] = useState({});
   const [podStatus, setPodStatus] = useState({});
   // cluster J — pod sign-in entry (the v2 UI had none; sign-in was stranded in the hidden ChatScreen).
@@ -46,9 +46,18 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
     try {
       const saved = await relayStore.set(relayInput);
       setRelayInput(saved);
-      setRelayNote(t('circle.mydata.relay_saved_reload', { url: saved || t('circle.mydata.relay_off') }));
+      // Live reconnect when the host wired it (bundle.reconnectPeer); otherwise it applies on next app open.
+      if (typeof onReconnectPeer === 'function') {
+        setRelayNote(t('circle.mydata.relay_saving'));
+        const r = await onReconnectPeer();
+        setRelayNote(r && r.ok
+          ? t('circle.mydata.relay_saved', { url: r.effective || t('circle.mydata.relay_off') })
+          : t('circle.mydata.relay_error', { msg: (r && r.error) || '' }));
+      } else {
+        setRelayNote(t('circle.mydata.relay_saved_reload', { url: saved || t('circle.mydata.relay_off') }));
+      }
     } catch (e) { setRelayNote(t('circle.mydata.relay_error', { msg: e?.message ?? '' })); }
-  }, [relayStore, relayInput]);
+  }, [relayStore, relayInput, onReconnectPeer]);
 
   useEffect(() => { getNativePushState().then(setPush).catch(() => {}); }, []);
   const toggleNativePush = useCallback(async () => {
