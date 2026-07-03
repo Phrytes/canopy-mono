@@ -39,7 +39,7 @@ const LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
 /** @type {import('@canopy/app-manifest').__types__} */
 export const householdManifest = {
   app:       'household',
-  itemTypes: [...LIST_TYPES, 'task', 'contact'],
+  itemTypes: [...LIST_TYPES, 'task', 'contact', 'note'],
 
   // B · Layer 1 — domain (non-atom) verbs this manifest ships (F-SP1-e).
   // `help` (meta) + `register` (identity act, not a plain `add contact`).
@@ -59,6 +59,11 @@ export const householdManifest = {
     schedule: { atoms: ['add', 'list', 'complete', 'remove'] },
     task:     { atoms: ['add', 'list', 'complete', 'remove', 'claim', 'reassign'] },
     contact:  { atoms: [] },   // only the `register` domain verb
+    // §1b "declare a noun → get CRUD free" — a free-form circle note. Declares CRUD atoms with NO
+    // implementing op: `createHouseholdService.callCapability` serves it via `createGenericAtomHandlers`
+    // over the per-circle CircleItemStore (zero handler code). This is the live proof that a new noun
+    // added to a manifest becomes storable + gate-able at once (docs/architecture.md L84).
+    note:     { atoms: ['add', 'list', 'get', 'remove'] },
   },
 
   // F-SP1-d: verbatim, sourced from the same module classifyAndExtract reads.

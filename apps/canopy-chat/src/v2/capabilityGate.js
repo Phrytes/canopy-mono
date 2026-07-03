@@ -73,7 +73,7 @@ function concreteNouns(op, args) {
  * @returns {{ allow: boolean, code?: string, capability?: string }}
  *   `code` is a machine token: 'app-disabled' | 'capability-denied'.  The shell renders it via t().
  */
-export function checkCapability({ op, appOrigin, args } = {}, effective) {
+export function checkCapability({ op, appOrigin, args, atom: atomIn, noun: nounIn } = {}, effective) {
   const keys = effective?.keys instanceof Set ? effective.keys : new Set();
   const enabledApps = effective?.enabledApps instanceof Set ? effective.enabledApps : null;
 
@@ -83,11 +83,16 @@ export function checkCapability({ op, appOrigin, args } = {}, effective) {
   // App-level gate (matches today's policy.apps granularity).
   if (enabledApps && !enabledApps.has(appOrigin)) return { allow: false, code: 'app-disabled' };
 
+  // §1b — a GENERIC capability (a declared noun with NO implementing op, served by the generic store
+  // handler) has no `op` to read the verb/noun from; the caller passes `atom` + `noun` explicitly. Before
+  // this, an op-less dispatch fell through the `!atom` guard below and was ALLOWED UNCONDITIONALLY (the gap
+  // this closes): a generic capability must be authorised by its (atom × noun) key exactly like a bespoke op.
+  // When `op` is present (every existing caller) behaviour is byte-identical.
+  const atom = op ? canonicalAtom(op?.verb) : canonicalAtom(atomIn);
   // Domain verbs (help/sync/register/…) aren't capabilities — an enabled app may run them.
-  const atom = canonicalAtom(op?.verb);
   if (!atom) return { allow: true };
 
-  const nouns = concreteNouns(op, args);
+  const nouns = op ? concreteNouns(op, args) : (nounIn ? [nounIn] : []);
   // An atom op that names no noun, or a wildcard op, is authorized at app level (Slice 1).
   if (nouns.length === 0 || nouns.includes('*')) return { allow: true };
 
