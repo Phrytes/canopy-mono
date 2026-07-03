@@ -460,7 +460,8 @@
   "screen": {
 
     "filter_placeholder": { "text": "Filter\u2026", "doc": "B/S3 list-screen search box placeholder." },
-    "empty": { "text": "Nothing here.", "doc": "B/S3 list-screen empty state." },    "open_generic": {
+    "list_empty": { "text": "Nothing here.", "doc": "B/S3 list-with-filter screen empty state — distinct from screen.empty (the α.1c recipe-book-empty state); they collided under one key until 2026-07-03." },
+    "open_generic": {
       "text": "Open overview →",
       "doc": "S6.B — generic label for a chat-triggered screen panel."
     },

@@ -17,7 +17,7 @@ export function renderListRows(listEl, { rows = [], t, onRowAction } = {}) {
   if (!rows.length) {
     const empty = document.createElement('li');
     empty.className = 'list-screen__empty';
-    empty.textContent = tr('circle.screen.empty');
+    empty.textContent = tr('circle.screen.list_empty');
     listEl.appendChild(empty);
     return;
   }
