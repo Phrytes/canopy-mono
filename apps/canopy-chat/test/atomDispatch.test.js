@@ -9,7 +9,8 @@
  * e.g. a noun/atom is declared (via #81's `nouns`) with no implementing op, or resolveAtom drifts.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { capabilitiesOf, dispatchAtom } from '@canopy/app-manifest';
+import { capabilitiesOf, dispatchAtom, dispatchCapability } from '@canopy/app-manifest';
+import { CircleItemStore, memoryDataSource, createGenericAtomHandlers } from '@canopy/item-store';
 
 import { householdManifest }  from '../../household/manifest.js';
 import { calendarManifest }   from '../../calendar/manifest.js';
@@ -58,5 +59,67 @@ describe('atom-dispatch consistency (B · Layer 1 §1b)', () => {
     const viaAlias = await dispatchAtom(householdManifest, { atom: 'create', noun: 'task' }, spy);
     const viaCanon = await dispatchAtom(householdManifest, { atom: 'add', noun: 'task' }, spy);
     expect(viaAlias.ok && viaAlias.opId).toBe(viaCanon.opId);
+  });
+});
+
+/**
+ * End-to-end §1b: "declare a noun → get CRUD free". The two halves — app-manifest's `dispatchCapability`
+ * (routing) + item-store's `createGenericAtomHandlers` (a store-backed generic CRUD) — meet here, the one
+ * place that depends on both. A manifest that DECLARES a noun with the CRUD atoms but ships NO ops for them
+ * becomes fully operable through the standard verb vocabulary, over a real CircleItemStore.
+ */
+describe('declare a noun → get CRUD free (dispatchCapability × generic handlers × real store)', () => {
+  // A minimal app manifest: `widget` declares the five CRUD atoms; `note` ships a bespoke add op.
+  const appManifest = {
+    app: 'gadgets',
+    itemTypes: ['widget', 'note'],
+    nouns: {
+      widget: { atoms: ['add', 'list', 'get', 'update', 'remove'] },
+      note:   { atoms: ['add'] },
+    },
+    operations: [{ id: 'addNote', verb: 'add', appliesTo: { type: 'note' } }],
+  };
+
+  const mkDeps = () => {
+    const store = new CircleItemStore({
+      dataSource: memoryDataSource(), rootContainer: 'mem://gadgets/',
+      registry: { validate: () => ({ ok: true }) },
+    });
+    const generic = createGenericAtomHandlers(store);
+    const dispatch = vi.fn(async (opId, args) => ({ ranOp: opId, args }));
+    return { store, generic, dispatch };
+  };
+
+  it('a declared-but-unimplemented noun round-trips add→list→get→update→remove via the generic handlers', async () => {
+    const { generic, dispatch } = mkDeps();
+    const cap = (atom, args) => dispatchCapability(appManifest, { atom, noun: 'widget', args }, { dispatch, generic, ctx: { by: 'webid:me' } });
+
+    const added = await cap('add', { label: 'sprocket' });
+    expect(added).toMatchObject({ ok: true, via: 'generic', atom: 'add' });
+    const id = added.result.item.id;
+    expect(id).toBeTruthy();
+
+    expect((await cap('list')).result.items.map((i) => i.id)).toContain(id);
+    expect((await cap('get', { id })).result.item.label).toBe('sprocket');
+    expect((await cap('update', { id, label: 'cog' })).result.item).toMatchObject({ label: 'cog', updatedBy: 'webid:me' });
+    expect(await (await cap('remove', { id })).result).toEqual({ ok: true, id });
+    expect((await cap('get', { id })).result.ok).toBe(false);
+
+    expect(dispatch).not.toHaveBeenCalled(); // never touched the bespoke-op path
+  });
+
+  it('a bespoke op still wins over the generic handler for the same atom', async () => {
+    const { generic, dispatch } = mkDeps();
+    const r = await dispatchCapability(appManifest, { atom: 'add', noun: 'note', args: { text: 'hi' } }, { dispatch, generic });
+    expect(r).toMatchObject({ ok: true, via: 'op', opId: 'addNote' });
+    expect(dispatch).toHaveBeenCalledWith('addNote', { text: 'hi' });
+  });
+
+  it('an undeclared (atom×noun) is unimplemented — the manifest stays authoritative', async () => {
+    const { generic, dispatch } = mkDeps();
+    expect(await dispatchCapability(appManifest, { atom: 'list', noun: 'note' }, { dispatch, generic }))
+      .toMatchObject({ ok: false, code: 'unimplemented' });   // note declares only `add`
+    expect(await dispatchCapability(appManifest, { atom: 'add', noun: 'ghost' }, { dispatch, generic }))
+      .toMatchObject({ ok: false, code: 'unimplemented' });   // ghost isn't a noun
   });
 });

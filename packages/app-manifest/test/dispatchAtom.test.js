@@ -3,7 +3,8 @@
  * Routes to the EXISTING handler; alias atoms are canonicalised; unimplemented pairs are reported, not thrown.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { dispatchAtom } from '../src/dispatchAtom.js';
+import { dispatchAtom, dispatchCapability } from '../src/dispatchAtom.js';
+import { resolveCapability } from '../src/capabilities.js';
 
 const M = {
   app: 'demo',
@@ -54,5 +55,54 @@ describe('dispatchAtom', () => {
     const dispatch = vi.fn(async (opId, args) => args);
     expect((await dispatchAtom(M, { atom: 'list', noun: 'shopping' }, dispatch)).result).toEqual({});
     expect(await dispatchAtom(M, { atom: 'add', noun: 'shopping' }, null)).toEqual({ ok: false, code: 'no-dispatch', opId: 'addItem' });
+  });
+});
+
+// A manifest with a bespoke `add` op but declared-but-unimplemented `list`/`remove` on the same noun.
+const M2 = {
+  app: 'demo2',
+  itemTypes: ['post'],
+  nouns: { post: { atoms: ['add', 'list', 'remove'] } },
+  operations: [{ id: 'addPost', verb: 'add', appliesTo: { type: 'post' } }],
+};
+
+describe('resolveCapability (op | generic | none)', () => {
+  it('op when a bespoke op implements it', () => {
+    expect(resolveCapability(M2, 'add', 'post')).toEqual({ kind: 'op', opId: 'addPost' });
+    expect(resolveCapability(M2, 'create', 'post')).toEqual({ kind: 'op', opId: 'addPost' }); // alias
+  });
+  it('generic when the noun DECLARES the atom but no op implements it', () => {
+    expect(resolveCapability(M2, 'list', 'post')).toEqual({ kind: 'generic', atom: 'list', noun: 'post' });
+    expect(resolveCapability(M2, 'delete', 'post')).toEqual({ kind: 'generic', atom: 'remove', noun: 'post' }); // alias→remove
+  });
+  it('none when undeclared+unimplemented, or a non-atom verb', () => {
+    expect(resolveCapability(M2, 'complete', 'post')).toEqual({ kind: 'none' }); // not declared, no op
+    expect(resolveCapability(M2, 'frobnicate', 'post')).toEqual({ kind: 'none' }); // not an atom
+    expect(resolveCapability(M2, 'add', 'ghost')).toEqual({ kind: 'none' });      // undeclared noun
+  });
+});
+
+describe('dispatchCapability (routes bespoke op OR generic handler)', () => {
+  it('routes to the bespoke op when one exists', async () => {
+    const dispatch = vi.fn(async (opId) => `ran:${opId}`);
+    const generic = { add: vi.fn() };
+    const r = await dispatchCapability(M2, { atom: 'add', noun: 'post', args: { text: 'hi' } }, { dispatch, generic });
+    expect(r).toEqual({ ok: true, via: 'op', opId: 'addPost', result: 'ran:addPost' });
+    expect(dispatch).toHaveBeenCalledWith('addPost', { text: 'hi' });
+    expect(generic.add).not.toHaveBeenCalled();
+  });
+  it('routes to the generic handler for a declared-but-unimplemented atom (declare a noun, get CRUD free)', async () => {
+    const dispatch = vi.fn();
+    const generic = { list: vi.fn(async (noun) => ({ items: [], noun })) };
+    const r = await dispatchCapability(M2, { atom: 'list', noun: 'post' }, { dispatch, generic, ctx: { by: 'x' } });
+    expect(r).toEqual({ ok: true, via: 'generic', atom: 'list', result: { items: [], noun: 'post' } });
+    expect(generic.list).toHaveBeenCalledWith('post', {}, { by: 'x' });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+  it('unimplemented for a non-capability; no-generic when the handler is absent', async () => {
+    expect(await dispatchCapability(M2, { atom: 'complete', noun: 'post' }, { dispatch: vi.fn(), generic: {} }))
+      .toMatchObject({ ok: false, code: 'unimplemented' });
+    expect(await dispatchCapability(M2, { atom: 'list', noun: 'post' }, { dispatch: vi.fn(), generic: {} }))
+      .toEqual({ ok: false, code: 'no-generic', atom: 'list', noun: 'post' });
   });
 });

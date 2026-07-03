@@ -20,7 +20,7 @@
  * @returns {Promise<{ok:true, opId:string, result:any} | {ok:false, code:'unimplemented'|'no-dispatch', atom?:string, noun?:string, opId?:string}>}
  *   `unimplemented` = the (atom×noun) is not implemented by any op (a declared-but-unimplemented capability, or a bad pair).
  */
-import { resolveAtom } from './capabilities.js';
+import { resolveAtom, resolveCapability } from './capabilities.js';
 import { canonicalAtom } from './atoms.js';
 
 export async function dispatchAtom(manifest, { atom, noun, args = {} } = {}, dispatch) {
@@ -29,4 +29,31 @@ export async function dispatchAtom(manifest, { atom, noun, args = {} } = {}, dis
   if (typeof dispatch !== 'function') return { ok: false, code: 'no-dispatch', opId };
   const result = await dispatch(opId, args);
   return { ok: true, opId, result };
+}
+
+/**
+ * dispatchCapability — the full §1b router: resolve a capability `(atom × noun)` and run it via the bespoke
+ * op if one exists (`dispatch(opId, args)`), OR the generic store-backed handler if the noun merely DECLARES
+ * the atom (`generic[atom](noun, args, ctx)`). So a caller invokes by (atom, noun) and gets either the app's
+ * bespoke behaviour or free CRUD — "declare a noun, get CRUD". `generic` is the map from
+ * `createGenericAtomHandlers(store)` (item-store); passed in so app-manifest keeps no store dependency.
+ *
+ * @param {object} manifest
+ * @param {{atom:string, noun:string, args?:object}} cap
+ * @param {{ dispatch:(opId:string,args:object)=>any, generic?:Record<string,Function>, ctx?:object }} deps
+ * @returns {Promise<{ok:true, via:'op'|'generic', opId?:string, atom?:string, result:any}
+ *                    | {ok:false, code:'unimplemented'|'no-dispatch'|'no-generic', opId?:string, atom?:string, noun?:string}>}
+ */
+export async function dispatchCapability(manifest, { atom, noun, args = {} } = {}, { dispatch, generic = {}, ctx = {} } = {}) {
+  const res = resolveCapability(manifest, atom, noun);
+  if (res.kind === 'op') {
+    if (typeof dispatch !== 'function') return { ok: false, code: 'no-dispatch', opId: res.opId };
+    return { ok: true, via: 'op', opId: res.opId, result: await dispatch(res.opId, args) };
+  }
+  if (res.kind === 'generic') {
+    const handler = generic[res.atom];
+    if (typeof handler !== 'function') return { ok: false, code: 'no-generic', atom: res.atom, noun: res.noun };
+    return { ok: true, via: 'generic', atom: res.atom, result: await handler(res.noun, args, ctx) };
+  }
+  return { ok: false, code: 'unimplemented', atom: canonicalAtom(atom), noun };
 }
