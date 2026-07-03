@@ -13,6 +13,7 @@ const household = {
   nouns: {
     shopping: { atoms: ['add', 'list', 'complete', 'remove'] },
     task:     { atoms: ['add', 'complete', 'claim'] },
+    note:     { atoms: ['add', 'list', 'get', 'remove'] },   // §1b generic — declared, NO implementing op
   },
   operations: [
     { id: 'addItem',  verb: 'add',      params: [{ name: 'type', kind: 'enum', of: ['shopping'] }] },
@@ -95,5 +96,43 @@ describe('checkCapability — default-deny', () => {
 
   it('fails closed on a missing appOrigin (routing defect)', () => {
     expect(checkCapability({ op: op('addTask'), args: {} }, enabledAll).allow).toBe(false);
+  });
+});
+
+describe('checkCapability — GENERIC (op-less) capabilities (§1b, the gate-gap fix)', () => {
+  const enabledAll   = effectiveCapabilities(sources, { apps: null });
+  const onlyCalendar = effectiveCapabilities(sources, { apps: ['calendar'] });
+
+  it('the declared op-less `note` caps are IN the effective set (declaring a noun gates it)', () => {
+    expect(enabledAll.keys.has(capabilityKey('household', 'add', 'note'))).toBe(true);
+    expect(enabledAll.keys.has(capabilityKey('household', 'remove', 'note'))).toBe(true);
+  });
+
+  it('authorises a generic (atom×noun) via explicit atom/noun — no `op` object needed', () => {
+    const r = checkCapability({ atom: 'add', noun: 'note', appOrigin: 'household', args: { body: 'x' } }, enabledAll);
+    expect(r).toMatchObject({ allow: true, capability: capabilityKey('household', 'add', 'note') });
+  });
+
+  it('an atom ALIAS resolves the same (create→add·note)', () => {
+    expect(checkCapability({ atom: 'create', noun: 'note', appOrigin: 'household' }, enabledAll).allow).toBe(true);
+  });
+
+  it('THE GAP FIX: a generic cap of a DISABLED app is denied, not silently allowed', () => {
+    // Pre-fix, an op-less dispatch fell through `!atom` → allow:true unconditionally.
+    const r = checkCapability({ atom: 'add', noun: 'note', appOrigin: 'household' }, onlyCalendar);
+    expect(r).toMatchObject({ allow: false, code: 'app-disabled' });
+  });
+
+  it('a generic cap narrowed out by the freedom template is denied (capability-denied)', () => {
+    const template = { [capabilityKey('household', 'remove', 'note')]: { enabled: false } };
+    const eff = effectiveCapabilities(sources, { apps: ['household'], capabilities: template });
+    expect(checkCapability({ atom: 'add',    noun: 'note', appOrigin: 'household' }, eff)).toMatchObject({ allow: true });
+    expect(checkCapability({ atom: 'remove', noun: 'note', appOrigin: 'household' }, eff))
+      .toMatchObject({ allow: false, code: 'capability-denied' });
+  });
+
+  it('an undeclared generic noun (no key) is denied', () => {
+    expect(checkCapability({ atom: 'add', noun: 'ghost', appOrigin: 'household' }, enabledAll))
+      .toMatchObject({ allow: false, code: 'capability-denied' });
   });
 });
