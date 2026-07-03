@@ -48,6 +48,7 @@ export {
 
 // B · Layer 1 — the (verb × noun) CAPABILITY set derived from a manifest
 // (declared `nouns` ∪ derived from ops).  The unit the B gate authorises.
+export { dispatchAtom } from './dispatchAtom.js';
 export {
   capabilitiesOf,
   resolveAtom,
