@@ -33,6 +33,9 @@ export function renderCircleMyData(container, {
   userLlm,                // the member's saved assistant endpoint config (userLlmDefault value)
   onSaveUserLlm,          // (cfg) => Promise<string|null>  — persist + apply; returns an error message or null
   validateUserLlm,        // (cfg) => string|null           — confidential-route guard for inline display
+  relayUrl,               // in-app relay setting: the saved URL ('' / null = unset ⇒ env fallback)
+  relayEnvUrl,            // the build-time env relay URL, shown as the placeholder fallback
+  onSaveRelay,            // (url) => Promise<{ok, effective, error?}> — persist + live-reconnect the transport
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -73,6 +76,40 @@ export function renderCircleMyData(container, {
   if (dataLocation.podRoot) storage.appendChild(kv(tr('circle.mydata.pod_root'), dataLocation.podRoot));
   if (dataLocation.relayOperator || dataLocation.relayUrl) {
     storage.appendChild(kv(tr('circle.mydata.relay'), [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ')));
+  }
+  // In-app relay setting — point the no-server cross-device relay at a reachable server WITHOUT a rebuild.
+  // Empty ⇒ falls back to the build-time env var (shown as the placeholder). Saving reconnects live.
+  if (typeof onSaveRelay === 'function') {
+    const row = document.createElement('div');
+    row.className = 'cc-mydata__relay-edit';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'cc-mydata__relay-input';
+    input.value = relayUrl || '';
+    input.placeholder = relayEnvUrl || 'ws://…:8787';
+    input.setAttribute('aria-label', tr('circle.mydata.relay_set'));
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'cc-mydata__relay-save';
+    save.textContent = tr('circle.mydata.relay_save');
+    const note = document.createElement('span');
+    note.className = 'cc-mydata__relay-note';
+    save.addEventListener('click', async () => {
+      save.disabled = true; note.textContent = tr('circle.mydata.relay_saving');
+      try {
+        const r = await onSaveRelay(input.value);
+        note.textContent = r && r.ok
+          ? tr('circle.mydata.relay_saved', { url: r.effective || tr('circle.mydata.relay_off') })
+          : tr('circle.mydata.relay_error', { msg: (r && r.error) || '' });
+      } catch (e) { note.textContent = tr('circle.mydata.relay_error', { msg: e?.message ?? '' }); }
+      save.disabled = false;
+    });
+    const hint = document.createElement('p');
+    hint.className = 'cc-mydata__relay-hint';
+    hint.textContent = tr('circle.mydata.relay_hint');
+    row.appendChild(input); row.appendChild(save); row.appendChild(note);
+    storage.appendChild(row);
+    storage.appendChild(hint);
   }
   container.appendChild(storage);
 

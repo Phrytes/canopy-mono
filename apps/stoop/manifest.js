@@ -112,6 +112,24 @@ export const stoopManifest = {
   // All other ops map to SDK atoms; the `{atoms:true}` validator enforces it.
   domainVerbs: ['report', 'mute', 'set', 'tree'],
 
+  // B · Layer 1 — DECLARED-AUTHORITATIVE (verb × noun) capability surface (docs/decisions.md 2026-07-02;
+  // PLAN-capability-arc §1a). This declaration IS the member-facing capability set — a broad `appliesTo` can no
+  // longer mint phantom capabilities (this is what kept the internal itemTypes report/group-rules/rules-accept
+  // OUT after the cancelRequest narrowing). Equals the current derived set (inert), now explicit + owned here.
+  // Keys ∈ itemTypes; atoms are CANONICAL SDK atoms. NB `group-leave` (leaveGroup=remove) is an awkward-but-real
+  // gated capability — to make leaving UNgated instead, reclassify leaveGroup to a domain verb (a curation
+  // decision, not done here to stay inert).
+  nouns: {
+    post:          { atoms: ['add', 'list', 'claim', 'remove'] },
+    ask:           { atoms: ['remove'] },
+    offer:         { atoms: ['remove'] },
+    lend:          { atoms: ['complete', 'reassign', 'remove'] },
+    request:       { atoms: ['remove'] },
+    'group-leave': { atoms: ['remove'] },
+    contact:       { atoms: ['add', 'list', 'remove', 'submit'] },
+    member:        { atoms: ['add', 'list'] },
+  },
+
   operations: [
     // ── Post + browse ───────────────────────────────────────────────
     {
@@ -264,14 +282,16 @@ export const stoopManifest = {
     {
       id:        'cancelRequest',
       verb:      'remove',  // canonical — cancelRequest removes the item.
-      // V0.2 Q8 wildcard (2026-05-21) — cancelRequest spans ALL post
-      // types (ask/offer/lend).  The wildcard `appliesTo: {type: '*'}`
-      // surfaces cancelRequest as `itemActions[]` in every section
-      // (renderWeb's Q8 rule).  Without this, cancelRequest had no
-      // `appliesTo` and didn't surface as an itemAction anywhere; the
-      // mine.html page had to hard-code the Cancel button.  The
-      // wildcard makes the manifest the source of truth.
-      appliesTo: { type: '*' },
+      // V0.2 Q8 (2026-05-21, narrowed 2026-07-02 for #72) — cancelRequest spans the
+      // user's own POST types (ask/offer/lend + the generic request/post the `mine`
+      // section renders as).  It surfaces as `itemActions[]` in each of those sections
+      // (renderWeb's Q8 rule); without an `appliesTo` it surfaced nowhere and mine.html
+      // hard-coded Cancel.  Was `type: '*'` (ALL itemTypes) — but that blasted a phantom
+      // `remove` capability onto stoop's internal/view-shape types (report · group-rules ·
+      // rules-accept · group-leave), cluttering the B freedom matrix AND spuriously adding
+      // a Cancel button to the read-only privacy section.  Scoped to the real content nouns
+      // (same lesson as #79: an over-broad appliesTo mints phantom (verb×noun) capabilities).
+      appliesTo: { type: ['request', 'post', 'ask', 'offer', 'lend'] },
       params: [
         { name: 'requestId', kind: 'string', required: true, ...ID_NONEMPTY },
       ],

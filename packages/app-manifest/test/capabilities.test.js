@@ -72,6 +72,61 @@ describe('capabilitiesOf', () => {
   it('atomsForNoun lists the available atoms for a noun', () => {
     expect(atomsForNoun(M, 'task')).toEqual(['add', 'claim', 'complete', 'update']);
   });
+
+  // DECLARED-AUTHORITATIVE (decision 2026-07-02): a manifest that declares `nouns` curates its own
+  // capability surface — an op-derived pair the author didn't declare is DROPPED. This is how a broad
+  // `appliesTo` (e.g. stoop cancelRequest `type:'*'`) stops minting capabilities on internal itemTypes.
+  it('drops a derived pair the declared nouns omit (declared is authoritative)', () => {
+    const curated = {
+      app: 'curated',
+      itemTypes: ['post', 'internal'],
+      nouns: { post: { atoms: ['add', 'remove'] } },   // author declares ONLY post — `internal` omitted
+      operations: [
+        { id: 'addPost',   verb: 'add',    appliesTo: { type: 'post' } },
+        { id: 'wipeAll',   verb: 'remove', appliesTo: { type: '*' } },   // would derive remove×internal
+      ],
+    };
+    const caps = capabilitiesOf(curated);
+    const nouns = new Set(caps.map((c) => c.noun));
+    expect(nouns.has('internal')).toBe(false);                    // dropped — not declared
+    expect(caps.find((c) => c.noun === 'post' && c.atom === 'add')?.opId).toBe('addPost');
+    expect(caps.find((c) => c.noun === 'post' && c.atom === 'remove')?.opId).toBe('wipeAll'); // opId still filled
+  });
+
+  it('without a nouns declaration, ops remain the surface (derived fallback)', () => {
+    const bare = {
+      app: 'bare', itemTypes: ['post', 'internal'],
+      operations: [{ id: 'wipeAll', verb: 'remove', appliesTo: { type: '*' } }],
+    };
+    const nouns = new Set(capabilitiesOf(bare).map((c) => c.noun));
+    expect(nouns.has('post')).toBe(true);
+    expect(nouns.has('internal')).toBe(true);   // derived — no nouns decl to curate it
+  });
+
+  // Regression (device-verify 2026-07-02): a VALUE-enum param (mode/action/lang/…) lists option
+  // values, not item types — it must NOT become a noun. Before the fix, canopy-chat's mode:[nkn,both]
+  // / lang:[en,nl] / action:[on,off] params produced junk freedom-matrix rows (submit·nkn, List·en).
+  it('ignores non-`type` enum params (value-enums are not nouns)', () => {
+    const withValueEnums = {
+      app: 'chatty',
+      itemTypes: ['message'],
+      operations: [
+        { id: 'setTransport', verb: 'update', params: [{ name: 'mode',   kind: 'enum', of: ['nkn', 'both'] }] },
+        { id: 'listByLang',   verb: 'list',   params: [{ name: 'lang',   kind: 'enum', of: ['en', 'nl'] }] },
+        { id: 'toggle',       verb: 'update', params: [{ name: 'action', kind: 'enum', of: ['on', 'off'] }] },
+      ],
+    };
+    const caps = capabilitiesOf(withValueEnums);
+    for (const junk of ['nkn', 'both', 'en', 'nl', 'on', 'off']) {
+      expect(caps.some((c) => c.noun === junk), `phantom noun "${junk}"`).toBe(false);
+    }
+    // A `type`-named enum on the same shape still yields real nouns.
+    const withTypeEnum = {
+      app: 'listy', itemTypes: ['shopping'],
+      operations: [{ id: 'addItem', verb: 'add', params: [{ name: 'type', kind: 'enum', of: ['shopping'] }] }],
+    };
+    expect(capabilitiesOf(withTypeEnum).find((c) => c.noun === 'shopping' && c.atom === 'add')?.opId).toBe('addItem');
+  });
 });
 
 describe('nouns shape validation', () => {

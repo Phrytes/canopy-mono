@@ -42,6 +42,16 @@ import { makeSendGroupRedeemRequest } from '../../../canopy-chat/src/core/handle
 import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
 import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
 import { AsyncStorageAdapter } from '../../../../packages/react-native/src/storage/AsyncStorageAdapter.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
+
+// The relay URL to connect with: the in-app setting (Settings → Mij) wins over the build-time env var,
+// so the no-server cross-device relay is configurable without a rebuild. Async (AsyncStorage) — boot +
+// the /peer-connect reconnect both read it fresh. Empty setting ⇒ env fallback. web≡mobile (relayPref.js).
+export async function resolveMobileRelayUrl() {
+  try { return resolveRelayUrl(await asyncStorageRelayIo(AsyncStorage).load(), process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL); }
+  catch { return process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null; }
+}
 import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
@@ -248,6 +258,9 @@ export async function bootAgentBundle(opts = {}) {
   // catch-up fires.  `buildPeerWiring`/`opts.onPeerMessage` are still
   // honoured for the boot-time path (tests, single-screen callers).
   const peerWiringRef = { onPeerMessage: undefined, requestCatchUp: undefined };
+  // Captured at connect so `reconnectPeer` (in-app relay setting change) can re-invoke connectPeerTransport
+  // with the fresh relay URL + the same nkn/rtc libs — a LIVE reconnect, no app reload. Mirrors web.
+  let _connNknLib = null; let _connRtcLib = null;
   if (typeof opts.buildPeerWiring === 'function') {
     try {
       const w = opts.buildPeerWiring({ agent, callSkill: agent.callSkill });
@@ -357,11 +370,12 @@ export async function bootAgentBundle(opts = {}) {
         } catch { /* absent — non-fatal, rendezvous just stays off */ }
         // Stable wrapper reads the mutable slot at delivery time, so a
         // router attached after connect still receives messages.
+        _connNknLib = nknLib; _connRtcLib = rtcLib;   // capture for reconnectPeer (live relay reconnect)
         await agent.connectPeerTransport({
           nknLib,
           onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
-          // T3a — relay alongside NKN (routed) when configured; unset → NKN-only.
-          relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null,
+          // T3a — relay alongside NKN (routed); the in-app setting wins over the env (no rebuild). unset → NKN-only.
+          relayUrl: await resolveMobileRelayUrl(),
           // T5.2d — direct WebRTC upgrade over the nkn/relay signalling path.
           rendezvous: true,
           rtcLib,
@@ -445,6 +459,23 @@ export async function bootAgentBundle(opts = {}) {
     pendingMap:      pendingPeerRedeems,
   });
 
+  // In-app relay setting live-reconnect: re-invoke connectPeerTransport with the FRESH relay URL + the
+  // params captured at boot. Returns { ok, effective } — the URL now in use. Mirrors web's applyRelayUrl.
+  const reconnectPeer = async () => {
+    if (typeof agent?.connectPeerTransport !== 'function') return { ok: false, error: 'no transport' };
+    const relayUrl = await resolveMobileRelayUrl();
+    try {
+      await agent.connectPeerTransport({
+        nknLib: _connNknLib ?? undefined,
+        onPeerMessage: (addr, payload) => peerWiringRef.onPeerMessage?.(addr, payload),
+        relayUrl,
+        rendezvous: true,
+        rtcLib: _connRtcLib ?? undefined,
+      });
+      return { ok: true, effective: relayUrl };
+    } catch (err) { return { ok: false, error: err?.message ?? String(err), effective: relayUrl }; }
+  };
+
   // 5.9c — expose `mdns` as a live getter so the launcher reads the
   // current instance (initially null, populated when the async
   // connect() resolves a tick later).  Callers should not cache the
@@ -454,6 +485,7 @@ export async function bootAgentBundle(opts = {}) {
     manifestsByOrigin,
     callSkill,
     agent,
+    reconnectPeer,
     transport,
     pendingPeerRedeems,
     sendPeerRedeem,

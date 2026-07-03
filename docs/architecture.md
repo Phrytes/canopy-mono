@@ -64,6 +64,25 @@ so the map can't drift from the manifests.
 6. **Result** — flows back to the invoking surface. Verify the *result*, not just that dispatch fired: a gate
    can route correctly while the op silently fails.
 
+## Circles, types, and capabilities — one algebra
+
+A few concepts are deliberately *the same thing*, so that data, permissions, and audience line up instead of
+drifting apart:
+
+- A **circle** is one scope worn several ways at once: the **audience** of an item (who may see it), the
+  **storage key** (data is keyed by `circle + type`), the **capability-policy scope** (permissions are
+  per-circle), and the **pod routing key** — all one `circleId`. (A circle is itself an item-type.)
+- A **capability** is a **`(verb × noun)`** pair — the **verb** is a canonical **atom** (`add` · `list` ·
+  `update` · `remove` · `complete` · `claim` · `share` · …) and the **noun** is an **item-type** (`task` ·
+  `note` · `offer` · `contact` · …). So "who may do what" is a set of `(atom × item-type)` pairs, authorized
+  **per circle at `callSkill`** (default-deny).
+- A manifest **declares** its `nouns` (its capability surface); its ops just fill in the implementing `opId`.
+  The same item-type registry that validates stored data supplies the nouns.
+
+The upshot: the **type axis** (item-types), the **verb axis** (atoms), and the **scope axis** (circles) compose
+— **storage, permissions, and surfaces are all projections of one `(circle, type, verb)` space.** That is why a
+new noun added to a manifest becomes storable, gate-able, and renderable at once.
+
 ## Three layers
 
 Code depends downward only. This is a project-wide invariant (full detail:

@@ -460,11 +460,16 @@
   "screen": {
 
     "filter_placeholder": { "text": "Filter\u2026", "doc": "B/S3 list-screen search box placeholder." },
-    "empty": { "text": "Nothing here.", "doc": "B/S3 list-screen empty state." },    "open_generic": {
+    "list_empty": { "text": "Nothing here.", "doc": "B/S3 list-with-filter screen empty state — distinct from screen.empty (the α.1c recipe-book-empty state); they collided under one key until 2026-07-03." },
+    "open_generic": {
       "text": "Open overview →",
       "doc": "S6.B — generic label for a chat-triggered screen panel."
     },
     "open": {
+      "contacts": {
+        "text": "Contacts →",
+        "doc": "B/S3 — open the circle contacts/member list-screen from the ⋯ menu or a bot reply."
+      },
       "tasks": {
         "text": "All tasks →",
         "doc": "S6.B — open the tasks panel from a bot reply."
@@ -827,6 +832,10 @@
       "text": "Features",
       "doc": "Settings axis: which features the circle has."
     },
+    "view": {
+      "text": "Default view",
+      "doc": "B/Q1 — settings axis: which pane a member lands on (chat / screen / cross-stream)."
+    },
     "llmTool": {
       "text": "LLM as a tool",
       "doc": "Settings axis: LLM assist mode."
@@ -922,6 +931,10 @@
       "doc": "S6.C — which whole apps the circle composes (catalog scope)."
     },
     "app": {
+      "canopy-chat": {
+        "text": "Chat",
+        "doc": "B/Q3 — app label (canopy-chat) for the capability freedom-matrix header."
+      },
       "stoop": {
         "text": "Neighborhood",
         "doc": "S6.C — app label (stoop)."
@@ -992,6 +1005,22 @@
       }
     },
     "opt": {
+      "chat": {
+        "text": "Chat",
+        "doc": "B/Q1 — view-axis option: land on the conversation pane."
+      },
+      "screen": {
+        "text": "Screen",
+        "doc": "B/Q1 — view-axis option: land on the screen/overview pane."
+      },
+      "cross-stream": {
+        "text": "Chat + Stream",
+        "doc": "B/Q1 — view-axis option: chat, and the kring's content also flows into Stroom."
+      },
+      "user": {
+        "text": "Member's own choice",
+        "doc": "B/Q1 — llmTool option: each member uses their own LLM setting."
+      },
       "off": {
         "text": "Off",
         "doc": "Option label."
@@ -2379,6 +2408,14 @@
       "text": "Relay",
       "doc": "S5 — relay operator/url."
     },
+    "relay_set": { "text": "Relay server", "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback." },
+    "relay_save": { "text": "Save & connect", "doc": "Persist the relay URL + reconnect the peer transport live." },
+    "relay_saving": { "text": "Connecting…", "doc": "Relay save in progress." },
+    "relay_saved": { "text": "Connected via {{url}}", "doc": "Relay saved + reconnected." },
+    "relay_off": { "text": "no relay", "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback." },
+    "relay_error": { "text": "Couldn’t connect: {{msg}}", "doc": "Relay reconnect failed." },
+    "relay_saved_reload": { "text": "Saved — reopen the app to connect via {{url}}", "doc": "Mobile relay save confirmation (applies on next app open; mobile has no live reconnect yet)." },
+    "relay_hint": { "text": "Point this at a reachable relay to sync across devices with no server (e.g. ws://192.168.1.20:8787). Leave blank to use the built-in default.", "doc": "Relay setting help text." },
     "privacy": {
       "text": "Privacy",
       "doc": "S5 — privacy disclosure section."

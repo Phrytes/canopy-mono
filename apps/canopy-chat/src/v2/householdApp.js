@@ -11,8 +11,10 @@
  * The list types are registered via `registerType` (third-party-style); `task` is canonical. Every op is a
  * pure function over the circle store — no agent, no own store. (REMAINING-WORK.md cluster L.)
  */
-import { createCircleStores, memoryDataSource } from '@canopy/item-store';
+import { createCircleStores, memoryDataSource, createGenericAtomHandlers } from '@canopy/item-store';
 import { createRegistry, registerCanonicalTypes } from '@canopy/item-types';
+import { dispatchCapability } from '@canopy/app-manifest';
+import { householdManifest } from '../../../household/manifest.js';
 
 export const LIST_TYPES = Object.freeze(['shopping', 'errand', 'repair', 'schedule']);
 const COMPLETABLE = Object.freeze([...LIST_TYPES, 'task']);   // markComplete/removeItem search these (mirrors the manifest appliesTo)
@@ -84,9 +86,9 @@ const OPS = { addItem, listOpen, markComplete, removeItem, addTask, listTasks, c
  * No-pod default = in-memory; a real boot injects a persistent/sealed DataSource. Retires the legacy agent
  * once this is the live path.
  */
-export function createHouseholdService({ dataSource, registry } = {}) {
+export function createHouseholdService({ dataSource, registry, manifest = householdManifest } = {}) {
   const stores = createCircleStores({ dataSource: dataSource || memoryDataSource(), registry: registry || householdRegistry() });
-  return {
+  const service = {
     async callSkill(op, args = {}, ctx = {}) {
       const circleId = ctx.circleId ?? args.circleId;
       if (!circleId) throw new Error('householdService.callSkill: a circleId is required (scope)');
@@ -94,6 +96,31 @@ export function createHouseholdService({ dataSource, registry } = {}) {
       if (!fn) throw new Error(`householdService.callSkill: unknown op "${op}"`);
       return fn(stores.getStore(circleId), args, ctx);
     },
+    /**
+     * callCapability — the §1b atom-dispatch entry (PLAN-capability-arc §1b): invoke a capability by
+     * `(atom × noun)` instead of a bespoke op-id. A caller that speaks the standard vocabulary (the LLM
+     * interpreter, a recipe, a gate-driven affordance) says `('add','shopping')` without knowing `addItem`.
+     *
+     * Additive + bespoke-first: `dispatchCapability` routes to the app's own op when one implements the
+     * pair (identical to `callSkill(opId,…)`), and ONLY falls back to the generic store-backed CRUD when
+     * the manifest merely DECLARES the noun's atom with no op — so a new list-type declared in the
+     * `household` manifest is operable immediately ("declare a noun → get CRUD free"), with zero handler
+     * code. The bespoke `callSkill` path above is untouched (byte-identical for existing callers).
+     */
+    async callCapability(atom, noun, args = {}, ctx = {}) {
+      const circleId = ctx.circleId ?? args.circleId;
+      if (!circleId) throw new Error('householdService.callCapability: a circleId is required (scope)');
+      const store = stores.getStore(circleId);
+      // The noun IS the item type in household's model; make it explicit for the bespoke-op path
+      // (addItem reads args.type) — the generic path overrides type with the noun regardless.
+      const withType = args?.type == null ? { ...args, type: noun } : args;
+      return dispatchCapability(
+        manifest,
+        { atom, noun, args: withType },
+        { dispatch: (opId, a) => service.callSkill(opId, a, ctx), generic: createGenericAtomHandlers(store), ctx },
+      );
+    },
     stores,
   };
+  return service;
 }

@@ -67,7 +67,7 @@ export default function CircleListScreen({
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         {model.rows.length === 0 ? (
-          <Text style={styles.muted}>{t('circle.screen.empty')}</Text>
+          <Text style={styles.muted}>{t('circle.screen.list_empty')}</Text>
         ) : model.rows.map((row) => (
           <View key={row.item?.id ?? row.label} style={styles.row} testID={`list-screen-row-${row.item?.id ?? ''}`}>
             <Text style={styles.rowLabel}>{row.label}</Text>

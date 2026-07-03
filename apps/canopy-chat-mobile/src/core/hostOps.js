@@ -33,6 +33,8 @@
 // subpaths the way Node does.  Same pattern agentBundle.js uses for
 // realAgent.js.
 import { createLocalBuiltins }   from '../../../canopy-chat/src/core/localBuiltins.js';
+import AsyncStorage              from '@react-native-async-storage/async-storage';
+import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
 
 import {
   createThread, setActiveThread, updateMessages,
@@ -205,7 +207,8 @@ export function buildMobileLocalBuiltins({
       } catch { /* react-native-webrtc absent — non-fatal */ }
       await agent.connectPeerTransport({
         nknLib,
-        relayUrl: process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null,   // T3a
+        // T3a — the in-app relay setting (Settings → Mij) wins over the env var (no rebuild); unset → NKN-only.
+        relayUrl: resolveRelayUrl(await asyncStorageRelayIo(AsyncStorage).load(), process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL),
         rendezvous: true,                                             // T5.2d
         rtcLib,
       });
