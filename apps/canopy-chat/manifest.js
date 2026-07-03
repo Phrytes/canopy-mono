@@ -17,6 +17,14 @@ export const canopyChatManifest = {
   // Every other op maps to an SDK atom.
   domainVerbs: ['help'],
 
+  // §1a (declared-authoritative capability surface): INTENTIONALLY no `nouns` block.
+  // This is the shell/unifier manifest — every op is an app-level command (help/settings/
+  // mute/newthread/…) that names NO item noun, so it has ZERO (atom × noun) capabilities to
+  // curate. Adding `nouns:{}` would flip it to declared-authoritative and silently DROP any
+  // future chat-thread/chat-message capability. The `noun-declaration discipline` fitness guard
+  // (test/atom-discipline.test.js) enforces exactly this: a `nouns` block is required the moment
+  // an op here starts naming a noun (via appliesTo.type or a `type`-enum param), not before.
+
   operations: [
     /**
      * `/help` — list every command available in the merged catalog.
