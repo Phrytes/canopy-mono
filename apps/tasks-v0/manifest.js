@@ -81,6 +81,18 @@ export const tasksManifest = {
   // graph — structural, not a plain `list`).  All other ops map to SDK atoms.
   domainVerbs: ['tree'],
 
+  // B · Layer 1 — DECLARED-AUTHORITATIVE (verb × noun) capability surface (docs/decisions.md 2026-07-02;
+  // PLAN-capability-arc §1a). This declaration IS the member-facing capability set — a broad `appliesTo` can no
+  // longer mint phantom capabilities. Equals the current derived set (inert), now explicit + owned here.
+  // Keys ∈ itemTypes; atoms are CANONICAL SDK atoms.
+  nouns: {
+    task:            { atoms: ['add', 'list', 'update', 'remove', 'complete', 'claim', 'reassign', 'submit', 'approve', 'reject', 'revoke'] },
+    'inbox-item':    { atoms: ['list', 'approve', 'reject', 'remove'] },
+    'schedule-slot': { atoms: ['add', 'list'] },
+    crew:            { atoms: ['list', 'archive', 'unarchive'] },
+    member:          { atoms: ['list'] },
+  },
+
   operations: [
     {
       id:        'addTask',

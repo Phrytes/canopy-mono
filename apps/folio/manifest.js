@@ -76,6 +76,13 @@ export const folioManifest = {
   // reconciliation — genuinely orthogonal to CRUD).  Every other op is an atom.
   domainVerbs: ['sync', 'watch'],
 
+  // B · Layer 1 — DECLARED-AUTHORITATIVE (verb × noun) capability surface (docs/decisions.md 2026-07-02;
+  // PLAN-capability-arc §1a). This declaration IS the member-facing capability set. Equals the current derived
+  // set (inert), now explicit. `note` (an itemType) carries no member capability — its ops are domain/read-only.
+  nouns: {
+    file: { atoms: ['add', 'list', 'get', 'remove'] },
+  },
+
   operations: [
     /* ── Destructive ops (Q27 confirm) ─────────────────────────────── */
 

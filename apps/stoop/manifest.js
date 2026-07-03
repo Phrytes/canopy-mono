@@ -112,6 +112,24 @@ export const stoopManifest = {
   // All other ops map to SDK atoms; the `{atoms:true}` validator enforces it.
   domainVerbs: ['report', 'mute', 'set', 'tree'],
 
+  // B · Layer 1 — DECLARED-AUTHORITATIVE (verb × noun) capability surface (docs/decisions.md 2026-07-02;
+  // PLAN-capability-arc §1a). This declaration IS the member-facing capability set — a broad `appliesTo` can no
+  // longer mint phantom capabilities (this is what kept the internal itemTypes report/group-rules/rules-accept
+  // OUT after the cancelRequest narrowing). Equals the current derived set (inert), now explicit + owned here.
+  // Keys ∈ itemTypes; atoms are CANONICAL SDK atoms. NB `group-leave` (leaveGroup=remove) is an awkward-but-real
+  // gated capability — to make leaving UNgated instead, reclassify leaveGroup to a domain verb (a curation
+  // decision, not done here to stay inert).
+  nouns: {
+    post:          { atoms: ['add', 'list', 'claim', 'remove'] },
+    ask:           { atoms: ['remove'] },
+    offer:         { atoms: ['remove'] },
+    lend:          { atoms: ['complete', 'reassign', 'remove'] },
+    request:       { atoms: ['remove'] },
+    'group-leave': { atoms: ['remove'] },
+    contact:       { atoms: ['add', 'list', 'remove', 'submit'] },
+    member:        { atoms: ['add', 'list'] },
+  },
+
   operations: [
     // ── Post + browse ───────────────────────────────────────────────
     {
