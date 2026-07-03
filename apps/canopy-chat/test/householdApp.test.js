@@ -65,3 +65,51 @@ describe('household app over the circle store (L3 faithful dissolve)', () => {
     expect(reg.validate({ type: 'errand',   text: 'x', id: '1', createdAt: '2026-01-01T00:00:00Z', createdBy: 'a' }).ok).toBe(true);
   });
 });
+
+/**
+ * §1b — callCapability: invoke by (atom × noun) instead of a bespoke op-id (PLAN-capability-arc §1b).
+ * Bespoke-first: a pair a real op implements routes THROUGH that op (identical to callSkill); a noun that
+ * merely DECLARES an atom with no op falls back to the generic store-backed CRUD — "declare a noun → get
+ * CRUD free" — live on the same per-circle CircleItemStore, with zero handler code.
+ */
+describe('household callCapability — atom-dispatch over the live service (§1b)', () => {
+  it('a declared noun with a bespoke op routes THROUGH the op (bespoke-first, no generic)', async () => {
+    const svc = createHouseholdService();
+    const c = ctx('c1');
+
+    const added = await svc.callCapability('add', 'shopping', { text: 'milk' }, c);
+    expect(added).toMatchObject({ ok: true, via: 'op', opId: 'addItem' });        // routed to household's own op
+    expect((await svc.callSkill('listOpen', { type: 'shopping' }, c)).map((i) => i.text)).toEqual(['milk']);  // really stored
+
+    const done = await svc.callCapability('complete', 'shopping', { match: 'milk' }, c);
+    expect(done).toMatchObject({ ok: true, via: 'op', opId: 'markComplete' });
+    expect(await svc.callSkill('listOpen', { type: 'shopping' }, c)).toEqual([]);
+
+    expect(await svc.callCapability('add', 'task', { text: 'fix fence' }, c)).toMatchObject({ ok: true, via: 'op', opId: 'addTask' });
+    expect(await svc.callCapability('create', 'shopping', { text: 'eggs' }, c)).toMatchObject({ ok: true, via: 'op', opId: 'addItem' }); // alias
+  });
+
+  it('declare a noun → get CRUD free: a declared-but-unimplemented noun is served by the generic handler', async () => {
+    // `note` is a canonical type (registered) that household ships NO ops for — DECLARE it in the manifest
+    // with CRUD atoms and the generic handler serves it, unwritten.
+    const manifest = { app: 'household', itemTypes: ['note'], nouns: { note: { atoms: ['add', 'list', 'get', 'remove'] } }, operations: [] };
+    const svc = createHouseholdService({ manifest });
+    const c = ctx('c1');
+
+    const added = await svc.callCapability('add', 'note', { body: 'buy stamps' }, c);
+    expect(added).toMatchObject({ ok: true, via: 'generic', atom: 'add' });
+    expect(added.result.item).toMatchObject({ type: 'note', body: 'buy stamps', createdBy: 'webid:alice' });
+    const id = added.result.item.id;
+
+    expect((await svc.callCapability('list', 'note', {}, c)).result.items.map((i) => i.id)).toContain(id);
+    expect((await svc.callCapability('get', 'note', { id }, c)).result.item.body).toBe('buy stamps');
+    expect((await svc.callCapability('remove', 'note', { id }, c)).result).toEqual({ ok: true, id });
+    expect((await svc.callCapability('list', 'note', {}, c)).result.items).toEqual([]);
+  });
+
+  it('an undeclared/unimplemented capability is reported, never silently stored; scope is required', async () => {
+    const svc = createHouseholdService();
+    expect(await svc.callCapability('add', 'ghost', {}, ctx('c1'))).toMatchObject({ ok: false, code: 'unimplemented' });
+    await expect(svc.callCapability('add', 'shopping', { text: 'x' }, {})).rejects.toThrow(/circleId/);
+  });
+});
