@@ -29,6 +29,20 @@ describe('controlAgent — join', () => {
     expect(keyStore.current().version).toBe(1);
   });
 
+  it('re-adding an already-granted member (same public key) is an idempotent no-op', async () => {
+    const { agent, grants, keyStore } = setup();
+    const a = generateKeypair();
+    await agent.addMember({ webId: 'did:alice', publicKey: a.publicKey, role: 'admin' });
+    const v1 = keyStore.current();
+    // same sealing key again (e.g. seedCircleRoster re-runs, or a duplicate redeem) → no re-grant,
+    // no re-wrap, no roster duplication, no version bump.
+    const { keyResource, members } = await agent.addMember({ webId: 'did:alice', publicKey: a.publicKey });
+    expect(grants).toHaveLength(1);                       // no second ACL grant
+    expect(members.map((m) => m.webId)).toEqual(['did:alice']);  // no duplicate roster entry
+    expect(keyResource).toBe(v1);                          // exact same resource object (not rewritten)
+    expect(keyStore.current().version).toBe(1);
+  });
+
   it('a second join is an O(1) re-wrap of the SAME key (same version); both members read it', async () => {
     const { agent } = setup();
     const a = generateKeypair(); const b = generateKeypair();
