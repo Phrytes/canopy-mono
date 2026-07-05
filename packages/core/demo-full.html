@@ -12,7 +12,9 @@
     "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
     "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
     "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
-    "@canopy/core":                 "./src/index.js"
+    "@canopy/core":                 "./src/index.js",
+    "@canopy/vault":                "../vault/index.js",
+    "@canopy/transports":           "../transports/src/index.js"
   }
 }
 </script>
@@ -508,8 +510,8 @@ button.danger{background:#3d1a1a;border:1px solid var(--red);color:var(--red)}
 
 <script type="module">
 import {
-  Agent, AgentIdentity, VaultMemory, VaultLocalStorage,
-  InternalBus, InternalTransport, RelayTransport,
+  Agent, AgentIdentity,
+  InternalBus, InternalTransport,
   TextPart, DataPart, Parts,
   subscribe, publish,
   FallbackTable, RoutingStrategy,
@@ -519,6 +521,8 @@ import {
   MemorySource, StorageManager,
   DataSourcePolicy, DataSourceAccessDeniedError,
 } from '@canopy/core';
+import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
+import { RelayTransport }                 from '@canopy/transports';
 
 // ── State ──────────────────────────────────────────────────────────────────────
 

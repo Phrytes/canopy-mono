@@ -12,7 +12,9 @@
     "ed2curve":                       "https://esm.sh/ed2curve@0.3.0?deps=tweetnacl@1.0.3",
     "@scure/bip39":                   "https://esm.sh/@scure/bip39@1.4.0",
     "@scure/bip39/wordlists/english": "https://esm.sh/@scure/bip39@1.4.0/wordlists/english",
-    "@canopy/core":                 "./src/index.js"
+    "@canopy/core":                 "./src/index.js",
+    "@canopy/vault":                "../vault/index.js",
+    "@canopy/transports":           "../transports/src/index.js"
   }
 }
 </script>
@@ -218,10 +220,11 @@ canvas#dot-canvas{display:block;width:100%;height:100%;touch-action:none}
 
 <script type="module">
 import {
-  Agent, AgentIdentity, VaultMemory,
-  RelayTransport, RendezvousTransport,
+  Agent, AgentIdentity,
   DataPart, Parts,
 } from '@canopy/core';
+import { VaultMemory }                       from '@canopy/vault';
+import { RelayTransport, RendezvousTransport } from '@canopy/transports';
 import { ping as sdkPing } from './src/protocol/ping.js';
 
 // ── Peer colour palette ────────────────────────────────────────────────────────
