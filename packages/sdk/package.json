@@ -1,0 +1,23 @@
+{
+  "name": "@canopy/sdk",
+  "version": "0.1.0",
+  "description": "Batteries-included, LAYERED developer facade for @canopy. ONE import for the whole SDK. LOW layer: named re-exports of the kernel (@canopy/core) plus the default adapters (VaultMemory + Vault family from @canopy/vault, the transports from @canopy/transports, the pod pieces from @canopy/pod-client) — a dev wires adapters explicitly for maximal clarity + compatibility. HIGH layer: thin opinionated helpers built ON the low layer — createAgent({...}) (run-as-agent, Tier 3, injects the defaults) + connectSkill(agent, name, appFn) (Tier 1: map any plain app function to a skill). Purely additive; the kernel stays de-fatted (defaults live HERE, not in core).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/core": "file:../core",
+    "@canopy/transports": "file:../transports",
+    "@canopy/pod-client": "file:../pod-client",
+    "@canopy/vault": "file:../vault"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}

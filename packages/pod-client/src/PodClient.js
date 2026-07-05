@@ -38,6 +38,11 @@
  *   - Node: `FileTombstones`
  */
 import { Emitter } from '@canopy/core';
+// SolidPodSource was extracted OUT of @canopy/core into this package (Phase 1/3
+// pod-storage extraction); import it from its local module here rather than
+// from the kernel, which no longer exports it. (Completes a dangling import
+// left by that extraction; `./SolidPodSource.js` is the same module this
+// package re-exports from its own index.)
 import { SolidPodSource } from './SolidPodSource.js';
 
 import { ConflictError, mapSourceCode } from './Errors.js';
