@@ -13,7 +13,8 @@
  * actually serves the bytes), best-effort.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, VaultMemory, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 
 const ANNE = 'https://id.example/anne';

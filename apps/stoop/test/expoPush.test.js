@@ -8,7 +8,8 @@
  *     Push subscriptions to the web sender) — the dispatch fan-out.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { AgentIdentity, VaultMemory, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 import { ExpoPushSender, expoTokenOf, isExpoSubscription } from '../src/lib/ExpoPushSender.js';
 

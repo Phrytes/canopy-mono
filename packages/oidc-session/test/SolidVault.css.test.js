@@ -24,7 +24,8 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { SolidVault } from '../src/SolidVault.js';
-import { SolidPodSource, VaultMemory } from '@canopy/core';
+import { SolidPodSource } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 const CSS_URL          = process.env.CSS_URL;
 const CSS_WEBID        = process.env.CSS_WEBID;

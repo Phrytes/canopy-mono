@@ -13,7 +13,9 @@
     "test:css": "node scripts/css-sharing-harness.mjs"
   },
   "dependencies": {
-    "@canopy/core": "file:../core"
+    "@canopy/core": "file:../core",
+    "@canopy/oidc-session": "file:../oidc-session",
+    "@canopy/vault": "file:../vault"
   },
   "peerDependencies": {
     "@canopy/pseudo-pod": "*"

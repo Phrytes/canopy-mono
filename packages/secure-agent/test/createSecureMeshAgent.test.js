@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { VaultMemory } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { createSecureMeshAgent } from '../src/createSecureMeshAgent.js';
 
 // Minimal Transport-shaped fake the secure-mesh can inject + secure.

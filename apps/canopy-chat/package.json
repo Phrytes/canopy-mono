@@ -58,6 +58,7 @@
     "@canopy/app-manifest": "workspace:*",
     "@canopy/chat-nav": "workspace:*",
     "@canopy/core": "workspace:*",
+    "@canopy/oidc-session": "workspace:*",
     "@canopy/item-store": "workspace:*",
     "@canopy/item-types": "workspace:*",
     "@canopy/llm-client": "workspace:*",

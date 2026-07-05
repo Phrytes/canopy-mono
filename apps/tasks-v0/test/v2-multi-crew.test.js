@@ -14,7 +14,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DataPart, AgentIdentity, VaultMemory } from '@canopy/core';
+import { DataPart, AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { buildMultiCrewRuntime } from '../src/buildMultiCrewRuntime.js';
 

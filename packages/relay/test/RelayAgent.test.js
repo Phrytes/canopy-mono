@@ -4,11 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import WebSocket from 'ws';
 import { RelayAgent } from '../src/RelayAgent.js';
-import {
-  AgentIdentity, VaultMemory,
-  Agent, RelayTransport,
-  TextPart, DataPart, Parts,
-} from '@canopy/core';
+import { AgentIdentity, Agent, RelayTransport, TextPart, DataPart, Parts } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

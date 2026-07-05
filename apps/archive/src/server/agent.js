@@ -9,14 +9,8 @@
  * JSON args, returning a JSON object that SkillRegistry auto-wraps".
  */
 
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  defineSkill,
-} from '@canopy/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, defineSkill } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { search, findByPodUri } from '../Search.js';
 

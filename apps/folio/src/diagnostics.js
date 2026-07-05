@@ -51,7 +51,7 @@ import { promises as defaultFs } from 'node:fs';
 import { join }                  from 'node:path';
 import { randomBytes as defaultRandomBytes } from 'node:crypto';
 
-import { VaultNodeFs as DefaultVaultNodeFs } from '@canopy/core';
+import { VaultNodeFs as DefaultVaultNodeFs } from '@canopy/vault';
 
 import {
   configDir as defaultConfigDir,

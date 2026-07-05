@@ -10,9 +10,8 @@
  *   await relay.start();
  *   console.log(`Relay listening on ws://localhost:${relay.port}`);
  */
-import { Agent, AgentIdentity, VaultMemory, VaultNodeFs,
-         InternalBus, InternalTransport,
-         DataPart, Parts } from '@canopy/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, DataPart, Parts } from '@canopy/core';
+import { VaultMemory, VaultNodeFs } from '@canopy/vault';
 import { WsServerTransport } from './WsServerTransport.js';
 
 export class RelayAgent extends Agent {

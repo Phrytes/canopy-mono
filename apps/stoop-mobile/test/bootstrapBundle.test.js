@@ -6,7 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, VaultMemory } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { buildBootstrapBundle, BOOTSTRAP_GROUP_ID } from '../src/lib/bootstrapBundle.js';
 import { relabelBundleGroup } from '../src/lib/agentBundle.js';

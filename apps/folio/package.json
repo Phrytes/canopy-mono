@@ -22,6 +22,7 @@
   "dependencies": {
     "@canopy/app-manifest":            "file:../../packages/app-manifest",
     "@canopy/core":                    "file:../../packages/core",
+    "@canopy/vault": "file:../../packages/vault",
     "@canopy/oidc-session":            "file:../../packages/oidc-session",
     "@canopy/pod-client":              "file:../../packages/pod-client",
     "@canopy/pseudo-pod":              "file:../../packages/pseudo-pod",

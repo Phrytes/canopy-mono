@@ -26,13 +26,8 @@
  *     `dropTransport` / `addTransport` for partition-style topology
  *     control instead.
  */
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-} from '@canopy/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { ToggleableTransport } from './ToggleableTransport.js';
 import { MockPod }             from './MockPod.js';
 import { MockClock }           from './MockClock.js';

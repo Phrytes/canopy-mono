@@ -11,7 +11,8 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-import { AgentIdentity, VaultMemory } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { NknTransport, HI_RACE_PATTERNS } from '../../src/transport/NknTransport.js';
 
 const RUN_INTEGRATION = !!process.env.RUN_NKN_TESTS;

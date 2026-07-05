@@ -22,7 +22,9 @@ let CapabilityAuth, SolidOidcAuth, PodClient, AgentIdentity, VaultMemory, PodCap
 beforeAll(async () => {
   if (!CSS_URL) return;
   ({ PodClient, CapabilityAuth, SolidOidcAuth } = await import('../src/index.js'));
-  ({ AgentIdentity, VaultMemory, PodCapabilityToken, SolidVault } = await import('@canopy/core'));
+  ({ AgentIdentity, PodCapabilityToken } = await import('@canopy/core'));
+  ({ VaultMemory } = await import('@canopy/vault'));
+  ({ SolidVault } = await import('@canopy/oidc-session'));
 });
 
 SUITE('PodClient — CSS integration', () => {

@@ -12,7 +12,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { OAuthVault, VaultMemory, MemorySource } from '@canopy/core';
+import { MemorySource } from '@canopy/core';
+import { OAuthVault, VaultMemory } from '@canopy/vault';
 import { PersonGraph } from '@canopy/identity-resolver/person-graph';
 
 import {

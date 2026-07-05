@@ -10,20 +10,8 @@
  * peer-graph wiring can be minimal.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  PeerGraph,
-  Parts,
-  TextPart,
-  DataPart,
-  InternalBus,
-  InternalTransport,
-  Task,
-  registerTunnelReceiveSealed,
-  registerRelayReceiveSealed,
-} from '../../src/index.js';
+import { Agent, AgentIdentity, PeerGraph, Parts, TextPart, DataPart, InternalBus, InternalTransport, Task, registerTunnelReceiveSealed, registerRelayReceiveSealed } from '../../src/index.js';
+import { VaultMemory } from '@canopy/vault';
 
 async function buildTunnelMesh({ withTunnel = true } = {}) {
   const relayBus = new InternalBus();

@@ -7,7 +7,7 @@
  * Peer dependency: react-native-keychain
  */
 import * as keychain from 'react-native-keychain';
-import { Vault } from '@canopy/core';
+import { Vault } from '@canopy/vault';
 
 export class KeychainVault extends Vault {
   #service;

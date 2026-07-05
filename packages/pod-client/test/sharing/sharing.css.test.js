@@ -45,7 +45,8 @@ let PodClient, SolidOidcAuth, SolidVault, VaultMemory;
 beforeAll(async () => {
   if (!CSS_URL || !HAVE_OIDC) return;
   ({ PodClient, SolidOidcAuth } = await import('../../src/index.js'));
-  ({ SolidVault, VaultMemory }  = await import('@canopy/core'));
+  ({ VaultMemory } = await import('@canopy/vault'));
+  ({ SolidVault } = await import('@canopy/oidc-session'));
 });
 
 SUITE('client.sharing — CSS integration (ACP/WAC)', () => {

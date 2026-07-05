@@ -21,7 +21,7 @@
  */
 
 import { Emitter } from '@canopy/core';
-import { OAuthVault, VaultMemory } from '@canopy/core';
+import { OAuthVault, VaultMemory } from '@canopy/vault';
 import { PersonGraph } from '@canopy/identity-resolver/person-graph';
 
 /**

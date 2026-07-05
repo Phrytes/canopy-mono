@@ -3,7 +3,8 @@
  * VaultMemory only.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory, PodCapabilityToken } from '@canopy/core';
+import { PodCapabilityToken } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { BotIdentity } from '../../src/identity/BotIdentity.js';
 import {

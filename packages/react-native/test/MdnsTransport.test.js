@@ -38,7 +38,8 @@ vi.mock('react-native', () => ({
   },
 }));
 
-import { AgentIdentity, VaultMemory } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { b64Encode } from '../src/utils/base64.js';
 import { MdnsTransport } from '../src/transport/MdnsTransport.js';
 

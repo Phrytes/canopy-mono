@@ -39,13 +39,8 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import {
-  AgentIdentity,
-  VaultMemory,
-  PodCapabilityToken,
-  Bootstrap,
-  IdentityPodStore,
-} from '@canopy/core';
+import { AgentIdentity, PodCapabilityToken, Bootstrap, IdentityPodStore } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { PodClient, CapabilityError } from '@canopy/pod-client';
 import { MockPod }                    from '../../../src/_harness/index.js';

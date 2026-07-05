@@ -30,16 +30,8 @@
  * (the V1.5 baseline behaviour).
  */
 
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  InternalTransport,
-  TrustRegistry,
-  PolicyEngine,
-  TokenRegistry,
-  CapabilityToken,
-} from '@canopy/core';
+import { Agent, AgentIdentity, InternalTransport, TrustRegistry, PolicyEngine, TokenRegistry, CapabilityToken } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 const DEFAULT_TTL_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

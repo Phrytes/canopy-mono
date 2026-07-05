@@ -29,7 +29,8 @@
  * time, so post-construction enrichment Just Works.
  */
 
-import { GroupManager, AgentIdentity, VaultMemory } from '@canopy/core';
+import { GroupManager, AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { MemberMap, MemberMapCache, buildOnboardingSkills } from '@canopy/identity-resolver';
 import { Notifier, InMemoryScheduleStore, NoopChannel, PushChannel, PushPolicy } from '@canopy/notifier';
 import { wireChat } from '@canopy/chat-p2p';

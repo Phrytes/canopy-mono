@@ -11,13 +11,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-} from '@canopy/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { SkillMatch } from '../src/index.js';
 

@@ -2,7 +2,8 @@
  * BotIdentity unit tests.  No real pod, no filesystem — VaultMemory only.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory, AgentIdentity } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { BotIdentity } from '../../src/identity/BotIdentity.js';
 

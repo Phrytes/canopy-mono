@@ -25,7 +25,8 @@ let createCirclePodProducer, createCircleControlAgentRouter;
 beforeAll(async () => {
   if (!CSS_URL || !HAVE_OIDC) return;
   ({ PodClient, SolidOidcAuth, generateKeypair } = await import('@canopy/pod-client'));
-  ({ SolidVault, VaultMemory } = await import('@canopy/core'));
+  ({ VaultMemory } = await import('@canopy/vault'));
+  ({ SolidVault } = await import('@canopy/oidc-session'));
   ({ createCirclePodProducer, createCircleControlAgentRouter } = await import('../src/v2/circlePodProducer.js'));
 });
 

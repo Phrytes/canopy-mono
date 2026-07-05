@@ -12,13 +12,8 @@
  *     browser can redirect.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  AgentIdentity,
-  VaultMemory,
-  GroupManager,
-  defineSkill,
-  DataPart,
-} from '@canopy/core';
+import { AgentIdentity, GroupManager, defineSkill, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { MemberMap } from '@canopy/identity-resolver';
 
 import { buildOnboardingSkills } from '../src/onboarding.js';

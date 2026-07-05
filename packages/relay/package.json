@@ -16,7 +16,8 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@canopy/core": "^0.1.0"
+    "@canopy/core": "^0.1.0",
+    "@canopy/vault": "^0.1.0"
   },
   "devDependencies": {
     "@canopy/core": "file:../core",

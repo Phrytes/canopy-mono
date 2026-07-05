@@ -16,7 +16,8 @@
  * code path (no `_identitySyncCtor`) takes over automatically.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentIdentity, VaultMemory, Bootstrap } from '@canopy/core';
+import { AgentIdentity, Bootstrap } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { generateMnemonic } from '@canopy/core';
 import { attachIdentityToAgent } from '../../src/identity/IdentityWiring.js';
 

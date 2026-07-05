@@ -8,7 +8,8 @@
  * back to the primary crew (the legacy single-crew behaviour).
  */
 import { describe, it, expect } from 'vitest';
-import { DataPart, AgentIdentity, VaultMemory, InternalBus } from '@canopy/core';
+import { DataPart, AgentIdentity, InternalBus } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { createBrowserMultiCrewTasksAgent } from '../src/browser.js';
 

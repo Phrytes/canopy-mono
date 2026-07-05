@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { BotPod }     from '../../src/pods/BotPod.js';
-import { OAuthVault } from '@canopy/core';
+import { OAuthVault } from '@canopy/vault';
 
 // ── Inline MockPodClient ────────────────────────────────────────────────
 
