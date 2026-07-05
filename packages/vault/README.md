@@ -75,10 +75,9 @@ interface Vault {
 Core's `Bootstrap` accepts a vault as an arg; it doesn't
 construct one itself. This keeps core substrate-free.
 
-During the deprecation window, `@canopy/core` re-exports the
-Vault family from this package so existing
-`import { VaultMemory } from '@canopy/core'` callers keep
-working. New code should import from `@canopy/vault` directly.
+The 2026-07-05 de-fat **removed** `@canopy/core`'s deprecation re-export of the
+Vault family — `@canopy/core` no longer exports these symbols. Import them from
+`@canopy/vault` directly: `import { VaultMemory } from '@canopy/vault'`.
 
 ## Bring it up
 
