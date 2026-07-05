@@ -16,7 +16,10 @@ they fit together.
   local handler, an external agent, a model, the pod, an MCP service, or a scheduled job.
 - **Projector** — a pure function that turns the one manifest into one surface: `renderChat` (LLM tools +
   system prompt), `renderSlash` (`/commands` + grammar), `renderGate` (deterministic pre-LLM token-gate),
-  `renderWeb` (DOM pages/forms), `renderMobile` (RN NavModel). Same manifest, every surface.
+  `renderWeb` (DOM pages/forms), `renderMobile` (RN NavModel). Same manifest, every surface. The five fall in
+  **two groups**: `renderChat`/`renderSlash`/`renderGate` are **platform-agnostic input modalities** (the
+  `web ≡ mobile` invariant); `renderWeb`/`renderMobile` are **platform shells** (`renderMobile` re-exports
+  `renderWeb`'s NavModel — only the adapter differs).
 - **Gate** — the deterministic, *pre-LLM* router: it matches common phrases ("add X", "done X") to ops via
   token rules projected from the manifest, so routine input doesn't need the model.
 - **Doorgeefluik** (Dutch: "pass-through hatch") — the principle that interfaces are pass-throughs to
@@ -24,10 +27,16 @@ they fit together.
 
 ## Layers
 
-- **SDK** — the foundation packages (`core`, `relay`, `pod-client`, `react-native`): identity, transports,
-  pod access, RN platform.
+- **SDK** — the foundation packages a developer loads to run as an agent (`core`, `relay`, `pod-client`,
+  `react-native`): identity, transports, pod access, RN platform. *Honest nuance:* `core` is **not** a minimal
+  kernel today — it's fat (also carries concrete transports, pod-storage, discovery, a2a) and even depends *up* on
+  `vault`/`oidc-session` (a leftover inversion being cleaned).
 - **Substrate** — a reusable building block in `packages/` that composes the SDK (e.g. `item-store`,
-  `skill-match`, `notifier`). Apps compose substrates; substrates don't reinvent the SDK.
+  `skill-match`, `notifier`). Apps compose substrates; substrates don't reinvent the SDK. *The bucket is a
+  **gradient**, not a flat tier:* runtime-foundation (near-required: vault, oidc-session, pod-client) → feature
+  (optional: skill-match, notifier) → facade (composes others: secure-agent, agent-provisioning).
+- **Deployment / hosting layer** — server-side services outside the client apps: **pod-hosting**, relay/proxy,
+  the private-LLM enclave, rollout. Placed by trust + latency; the `feedback` deployment occupies it today.
 - **Agent** — one `core.Agent` per service-context. Transports are routes plugged into that one agent;
   multi-scope state lives in per-scope stores *outside* it. N agents for N scopes is an anti-pattern
   (the **single-agent rule**).
@@ -47,10 +56,25 @@ they fit together.
 
 ## Audience & groups
 
-- **Audience** — who can see/receive an item. A **circle** (Dutch: *kring*) is a *saved* audience — the same
-  primitive at two granularities (see `packages/circles`).
+- **Audience** — who can see/receive an item. A **circle** (Dutch: *kring*) is a *saved* audience — but the same
+  `circleId` is worn several ways at once: the **audience**, the **storage key** (data is keyed by `circle + type`),
+  the **capability-policy scope** (permissions are per-circle), and the **pod routing key**. A circle is itself an
+  item-type. (See `packages/circles`.)
 - **Governance** — closed groups (crews, neighbourhoods) run their own membership/roles; *create-group* is
   treated as a governance step, since there is no central trust authority.
+
+## Capabilities (the algebra)
+
+- **Atom** — a canonical **verb** from the fixed catalogue (`add` · `list` · `update` · `remove` · `complete` ·
+  `claim` · `share` · …). Ops name an atom; capabilities are granted per atom.
+- **Noun** — an **item-type** used as the object of a capability (`task`, `note`, `offer`, …). A manifest
+  **declares** its nouns; the item-type registry that validates stored data supplies them.
+- **Capability** — a **`(verb × noun)` = `(atom × item-type)`** pair, authorised **per circle at `callSkill`**
+  (default-deny). "Who may do what" is a set of these pairs — storage, permissions, and surfaces are all
+  projections of the one **`(circle, type, verb)`** space.
+- **Envelope** — the inter-agent message primitive on the wire: it syncs circle stores, carries direct exchanges
+  (offer→claim, request→respond), and carries identity/permission for **remote skill-acquisition** (an agent
+  authenticating into another's gated skill surface over a transport).
 
 ## Reachability (transports)
 

@@ -19,6 +19,13 @@ packages/{core, relay,         the agent SDK — identity, transports, pod clien
 Substrates compose the SDK and must not reinvent its primitives. Apps compose substrates, and may use the SDK
 directly **only with an explicit justification in the app's README**.
 
+*Reality check:* the diagram is the *intended invariant* (deps down, CI-enforced), but the middle is a
+**gradient** — runtime-foundation (vault, oidc-session, pod-client) → feature (skill-match, notifier, …) →
+facade (secure-agent, agent-provisioning) — and `core` is a **fat** kernel that still carries concrete transports,
+pod-storage, discovery, and a2a and depends *up* on `vault`/`oidc-session` (a leftover inversion being cleaned).
+There is also a region the three layers omit — a **deployment / hosting layer** (pod-hosting, relay/proxy,
+private-LLM enclave, rollout) that sits *outside* the client apps; the `feedback` deployment occupies it today.
+
 ## `apps/` — the products
 
 Each shared app has a web build and a React Native / Expo mobile counterpart; web and mobile are **peers**,
@@ -33,8 +40,8 @@ neither is the primitive one. The direction (decided 2026-06-11) is that the sep
 | **tasks-v0** (+ `tasks-mobile`) | Task ledger with DAG dependencies, skill-based dispatch, role-aware governance. |
 | **folio** (+ `-mobile`) | Markdown notes/files mirrored to and from a Solid pod. |
 | **calendar** | Appointments/events with cross-peer invite + RSVP over the mesh. |
-| **archive**, **import-bridge-v0**, **presence-v0** | Pod-content search (FTS5); external-document import; WiFi + on-LAN-agent presence attestation. |
-| **feedback-pipeline** | Local-LLM message clean/anonymize + dedup-summarize pipeline (experiment / pre-DD). |
+| **archive**, **import-bridge-v0**, **presence-v0** | Pod-content search (FTS5); external-document import; presence attestation — *presence is heading toward a **compatibility surface** for external "Proof-of-X" attestors, not a plain app.* |
+| **feedback-pipeline** | Local-LLM message clean/anonymize + dedup-summarize pipeline. *Architecturally a **deployment / hosting layer**, not a peer client app — it hosts a live Solid pod + HTTP services + a container stack; destined for its own repo.* |
 | **mesh-demo**, **sdk-smoke** | Not products — a mesh demo and a two-device SDK smoke harness. |
 
 Every app follows the [`app-readme-scheme.md`](./conventions/app-readme-scheme.md); its own `README.md` has the
