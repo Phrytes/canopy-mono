@@ -29,6 +29,7 @@ import {
   AgentConfig,
   AgentIdentity,
   OfflineTransport,
+  RendezvousTransport,
   PeerGraph,
   RoutingStrategy,
   FallbackTable,
@@ -183,6 +184,7 @@ export async function createMeshAgent(opts = {}) {
           signalingTransport: relay,
           rtcLib,
           auto: true,
+          makeTransport: (o) => new RendezvousTransport(o),
         });
       }
     }

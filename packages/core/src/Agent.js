@@ -41,7 +41,6 @@ import { registerRelayForward }                      from './skills/relayForward
 import { registerTunnelOpen }                         from './skills/tunnelOpen.js';
 import { registerTunnelOw }                           from './skills/tunnelOw.js';
 import { registerReachablePeersSkill }               from './skills/reachablePeers.js';
-import { RendezvousTransport }                       from './transport/RendezvousTransport.js';
 import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
 import { pullPeerList }                              from './discovery/pullPeerList.js';
 
@@ -758,28 +757,35 @@ export class Agent extends Emitter {
    *
    * Ref: Design-v3/rendezvous-mode.md.
    *
+   * The concrete `RendezvousTransport` lives OUTSIDE the kernel (it will move to
+   * `@canopy/transports`); the caller supplies it as a built instance or a factory, so the
+   * kernel depends only on the transport port. The `@canopy/sdk` facade / `createMeshAgent`
+   * wire the concrete for you.
+   *
    * @param {object}  opts
-   * @param {import('./transport/Transport.js').Transport} opts.signalingTransport
-   * @param {object}  [opts.rtcLib]       — { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate }
-   *                                         (browser globals are used by default)
-   * @param {object[]} [opts.iceServers]  — default: one Google STUN
+   * @param {object}  [opts.transport]           — a pre-built rendezvous transport, OR
+   * @param {(o:object)=>object} [opts.makeTransport] — factory: `({signalingTransport,identity,rtcLib,iceServers}) => transport`
+   * @param {import('./transport/Transport.js').Transport} [opts.signalingTransport] — passed to makeTransport
+   * @param {object}  [opts.rtcLib]       — passed to makeTransport
+   * @param {object[]} [opts.iceServers]  — passed to makeTransport
    * @param {boolean} [opts.auto=false]   — auto-upgrade on capability match
-   * @returns {RendezvousTransport}
+   * @returns {object} the rendezvous transport
    */
   enableRendezvous(opts = {}) {
     const existing = this.#transports.get('rendezvous');
     if (existing) return existing;
 
-    if (!opts.signalingTransport) {
-      throw new Error('enableRendezvous: signalingTransport is required');
+    const rdv = opts.transport ?? (typeof opts.makeTransport === 'function'
+      ? opts.makeTransport({
+          signalingTransport: opts.signalingTransport,
+          identity:           this.#identity,
+          rtcLib:             opts.rtcLib,
+          iceServers:         opts.iceServers,
+        })
+      : null);
+    if (!rdv) {
+      throw new Error('enableRendezvous: pass a built { transport } or a { makeTransport } factory — the kernel no longer bundles RendezvousTransport (it lives in @canopy/transports / the @canopy/sdk facade)');
     }
-
-    const rdv = new RendezvousTransport({
-      signalingTransport: opts.signalingTransport,
-      identity:           this.#identity,
-      rtcLib:             opts.rtcLib,
-      iceServers:         opts.iceServers,
-    });
     this.addTransport('rendezvous', rdv);
     this._rendezvousEnabled = true;
 
@@ -1176,17 +1182,16 @@ export class Agent extends Emitter {
    *
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('@canopy/vault').Vault}          [opts.vault]    — defaults to VaultMemory
+   * @param {import('@canopy/vault').Vault}          opts.vault      — required Vault port (inject a concrete)
    * @param {string}                                        [opts.label]
    * @param {object}                                        rest            — any other Agent constructor options
    * @returns {Promise<Agent>}
    */
   static async createNew({ transport, vault, label, ...rest } = {}) {
     if (!transport) throw new Error('Agent.createNew requires transport');
-    const { VaultMemory }    = await import('@canopy/vault');
+    if (!vault)     throw new Error('Agent.createNew requires a vault — inject a Vault port (the @canopy/sdk facade supplies a VaultMemory default)');
     const { AgentIdentity }  = await import('./identity/AgentIdentity.js');
-    const resolvedVault      = vault ?? new VaultMemory();
-    const identity           = await AgentIdentity.generate(resolvedVault);
+    const identity           = await AgentIdentity.generate(vault);
     return new Agent({ identity, transport, label, ...rest });
   }
 
@@ -1218,10 +1223,9 @@ export class Agent extends Emitter {
    */
   static async restoreFromMnemonic(mnemonic, { transport, vault, ...rest } = {}) {
     if (!transport) throw new Error('Agent.restoreFromMnemonic requires transport');
-    const { VaultMemory }   = await import('@canopy/vault');
+    if (!vault)     throw new Error('Agent.restoreFromMnemonic requires a vault — inject a Vault port');
     const { AgentIdentity } = await import('./identity/AgentIdentity.js');
-    const resolvedVault     = vault ?? new VaultMemory();
-    const identity          = await AgentIdentity.fromMnemonic(mnemonic, resolvedVault);
+    const identity          = await AgentIdentity.fromMnemonic(mnemonic, vault);
     return new Agent({ identity, transport, ...rest });
   }
 
@@ -1243,29 +1247,24 @@ export class Agent extends Emitter {
    * @returns {Promise<Agent>}
    */
   static async fromPlainObject(obj, { transport, vault, ...rest } = {}) {
-    const { VaultMemory }   = await import('@canopy/vault');
+    if (!vault) throw new Error('Agent.fromPlainObject requires a vault — inject a Vault port');
     const { AgentIdentity } = await import('./identity/AgentIdentity.js');
     const { AgentConfig }   = await import('./config/AgentConfig.js');
 
     const agentSection = obj.agent ?? obj;
-    const resolvedVault = vault ?? new VaultMemory();
 
     // Try restore first (existing key in vault), else generate
     let identity;
     try {
-      identity = await AgentIdentity.restore(resolvedVault);
+      identity = await AgentIdentity.restore(vault);
     } catch {
-      identity = await AgentIdentity.generate(resolvedVault);
+      identity = await AgentIdentity.generate(vault);
     }
 
-    // Build transport from connections config if not provided explicitly
-    let resolvedTransport = transport;
-    if (!resolvedTransport && agentSection.connections) {
-      resolvedTransport = await _buildTransportFromConnections(
-        agentSection.connections, identity
-      );
-    }
-    if (!resolvedTransport) throw new Error('Agent.fromPlainObject requires transport or connections');
+    // Transport is injected (the kernel no longer builds concrete transports from a
+    // `connections` config — that lived in the now-removed _buildTransportFromConnections).
+    const resolvedTransport = transport;
+    if (!resolvedTransport) throw new Error('Agent.fromPlainObject requires transport');
 
     const config = new AgentConfig({ file: agentSection });
 
@@ -1401,26 +1400,3 @@ export class Agent extends Emitter {
   }
 }
 
-// ── Transport factory helper ──────────────────────────────────────────────────
-
-async function _buildTransportFromConnections(connections, identity) {
-  const transports = [];
-
-  if (connections.relay?.url) {
-    const { RelayTransport } = await import('./transport/RelayTransport.js');
-    transports.push(new RelayTransport({ relayUrl: connections.relay.url, identity }));
-  }
-  if (connections.nkn != null) {
-    const { NknTransport } = await import('./transport/NknTransport.js');
-    transports.push(new NknTransport({ identity }));
-  }
-  if (connections.mqtt?.broker) {
-    const { MqttTransport } = await import('./transport/MqttTransport.js');
-    transports.push(new MqttTransport({ brokerUrl: connections.mqtt.broker, identity }));
-  }
-
-  if (transports.length === 0) throw new Error('No transport could be built from connections config');
-
-  // Return first as primary; caller can addTransport() for the rest
-  return transports[0];
-}

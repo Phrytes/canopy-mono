@@ -28,6 +28,7 @@ import { VaultMemory }                from '@canopy/vault';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 import { PeerGraph }                  from '../src/discovery/PeerGraph.js';
 import { RoutingStrategy }            from '../src/routing/RoutingStrategy.js';
+import { RendezvousTransport }        from '../src/transport/RendezvousTransport.js';
 
 // A harmless rtcLib that would throw if anyone tried to connect.
 // enableRendezvous doesn't invoke it at construction; we never call
@@ -48,7 +49,7 @@ async function makeAgent(bus) {
   });
   const agent = new Agent({ identity, transport: signal, peers, routing });
   await agent.start();
-  agent.enableRendezvous({ signalingTransport: signal, rtcLib: DUMMY_RTC });
+  agent.enableRendezvous({ signalingTransport: signal, rtcLib: DUMMY_RTC, makeTransport: (o) => new RendezvousTransport(o) });
   return { agent, routing, signal };
 }
 
