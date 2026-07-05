@@ -1,8 +1,8 @@
 # mesh-demo
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
-> **Scheme rollout deferred to Phase 8 (2026-05-04).** The full app-readme-scheme.md sections (`## Substrates` / `## Direct SDK use` / `## Bring it up` / `## What's in here`) are filled in as part of the substrate migration that ships with Phase 8 (originally Phase 6.6, rescoped because the regression check is a real-device run on the same hardware as push-wake validation). Today the app constructs a `core.Agent` directly + wires every transport — that's the right shape for an SDK demo, and the substrate migration audit will preserve the working patterns. Until then, the existing manual-bring-up + scenario docs below carry the load.
+> **Scheme rollout deferred to Phase 8 (2026-05-04).** The full app-readme-scheme.md sections (`## Substrates` / `## Direct kernel use` / `## Bring it up` / `## What's in here`) are filled in as part of the substrate migration that ships with Phase 8 (originally Phase 6.6, rescoped because the regression check is a real-device run on the same hardware as push-wake validation). Today the app constructs a `core.Agent` directly + wires every transport — that's the right shape for a kernel + adapters demo, and the substrate migration audit will preserve the working patterns. Until then, the existing manual-bring-up + scenario docs below carry the load.
 
 React Native app demonstrating cooperative mesh routing across BLE, WiFi/mDNS,
 a relay server, and WebRTC DataChannel rendezvous.
@@ -116,7 +116,7 @@ Groups B–E (peer UI, relay skill, messages, routing) are defined in
 
 ## Package boundary
 
-The SDK packages (`@canopy/core`, `@canopy/react-native`) are not modified
+The platform packages (`@canopy/core`, `@canopy/react-native`) are not modified
 by this app except for the `AsyncStorageAdapter.list()` bug fix added in
 `packages/react-native/src/storage/AsyncStorageAdapter.js`.
 
@@ -180,7 +180,7 @@ message but without the badge.
 
 ## NKN — rendezvous-less reachability
 
-Beyond mDNS / BLE / relay, the SDK also ships an `NknTransport`
+Beyond mDNS / BLE / relay, the platform also ships an `NknTransport`
 (`@canopy/core`) that connects to the
 [NKN](https://nkn.org) public messaging network.  This is useful in
 the case where two phones don't share a relay URL and have no direct

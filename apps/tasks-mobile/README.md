@@ -5,8 +5,8 @@
 > online-cadence, local-store, identity-resolver, item-store, chat-p2p,
 > notifier, skill-match, pod-client}`.
 >
-> Direct SDK use is allowed only when justified in this README's
-> `## Direct SDK use` section (per
+> Direct kernel use is allowed only when justified in this README's
+> `## Direct kernel use` section (per
 > [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
 > See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
@@ -75,7 +75,7 @@ OIDC hook) + 52.15.5 (the picker component), both shipped.
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@canopy/item-store` (L1b) | Per-crew task ledger with audit + DoD lifecycle + V2.7 dependency gating. | Pod write paths, role-policy gates, and `enforceDependencies` are reused unchanged from the desktop app. |
 | `@canopy/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile. | Same as desktop; substrate amortises across H4/H5/H7. |
@@ -94,9 +94,9 @@ This app composes the following substrate packages
 | `@canopy/react-native/push` | `setupPush` + `requestPushPermission` + `usePushOptIn` hook. | Phase 41.0 L6 lift. |
 | `@canopy/react-native/localisation` | `loadLocale({bundles, defaultLang})` resolver. | Phase 41.0 L7 lift; locales come from `apps/tasks-v0/locales/{en,nl}.json` (and a tasks-mobile-only `locales/{en,nl}.json` for mobile-screen strings). |
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/core` | `Agent`, `defineSkill`, `MemorySource`, `DataPart` | App constructs the meshAgent + per-crew CrewStates via the V2.8 factories from `@canopy-app/tasks-v0`. Direct core imports come along because the platform-shell exception applies. | The V2.8 single-agent topology is a layering primitive; constructing it goes through the desktop barrel by design. |
 | `@canopy-app/tasks-v0` | `buildMeshAgent`, `wireSkills`, `bundleResolver`, `createCrewAgent`, `buildStandardRolePolicy` | Skill registration + per-crew state + role-policy. | **Platform-shell exception** (locked 2026-05-08, same as folio + stoop) — the desktop barrel owns the skill-builder factory; mobile imports it instead of forking. |

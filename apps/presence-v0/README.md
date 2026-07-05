@@ -1,6 +1,6 @@
 # H8 — presence-v0
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Privacy-preserving proof of presence: a phone agent proves to a home
 agent that the user is physically present at the household, by
@@ -28,16 +28,16 @@ devices.
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@canopy/item-store` (L1b) | Audit trail of issued attestation tokens (`addItem` per attestation, append-only). | The pod write paths + per-field merge contracts are amortised across H4 (tasks) / H5 (neighborhood) / H8 (this app) — no need to re-implement. |
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/core` | `MemorySource` | DataSource concrete passed into `ItemStore` for tests + the V0 in-memory deployment. | `ItemStore` is `core.DataSource`-shaped post-Phase 5.2; production replaces this with a `pod-client.PodClient`-wrapped adapter at the app layer. |
-| `@canopy/core` | (Future, V1+) `transportFor(peerId)` on a `core.Agent` | Transport-classification probe distinguishing LAN-direct (mDNS / BLE) vs relay — the entire point of H8. | The transport-routing distinction is foundational SDK behavior; no substrate wraps "what transport is this peer reachable on" because every consumer's needs differ. V0 stub skips construction; V1 pulls in `core.Agent` directly. |
+| `@canopy/core` | (Future, V1+) `transportFor(peerId)` on a `core.Agent` | Transport-classification probe distinguishing LAN-direct (mDNS / BLE) vs relay — the entire point of H8. | The transport-routing distinction is foundational kernel behavior; no substrate wraps "what transport is this peer reachable on" because every consumer's needs differ. V0 stub skips construction; V1 pulls in `core.Agent` directly. |
 
 The V0 home-/prover-agent classes today don't construct a real `core.Agent` — they just hold the policy logic + audit. V1 wires `core.Agent` for the actual LAN-vs-relay probe (the H8 design intent); that addition will appear in this table when it lands.
 

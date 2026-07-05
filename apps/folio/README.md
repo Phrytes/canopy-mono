@@ -1,6 +1,6 @@
 # Folio
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** Folio's surface is **declaration-only**
 > today — [`manifest.js`](./manifest.js) lists the destructive ops
@@ -25,23 +25,23 @@ same pod over the network.  No editor lock-in, no proprietary sync layer
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync — `SyncEngine` (Folio is the pattern source for this substrate, post-Phase 5.1), `PathMap`, `scanLocal` / `scanPod` / `diff`, version helpers, fs/hash/watcher adapters (Node + RN). | The substrate exists *because* of Folio — Folio's V0.3 BidirectionalSyncEngine was lifted into the substrate in Phase 5.1. App-side `src/SyncEngine.js` is a thin subclass adding markdown-specific glue. |
 | `@canopy/pseudo-pod` (Phase D cache-mode, 2026-05-16) | Write-through offline queue + read cache for the desktop CLI daemon — `createPseudoPod`, `createSyncEnginePodClient`, plus backend factories (`createMemoryBackend`, `createNodeFsBackend`). Wired in `podCache.js` + `_podFactory.js`; cache-mode is the default since Phase D. | Platform-neutral abstraction over PodClient; backend injected by caller (Node fs on desktop, RN adapter on mobile, memory for tests). Provides offline resilience as a substrate concern, not Folio app code. |
 | `@canopy/sync-engine-rn` (L1a, RN platform) | React Native sync engine bring-up + background task scheduling (background fetch, periodic sync) — `createSyncEngine`, `registerBackgroundTask`, `defineBackgroundTask`. Consumed by folio-mobile via Folio's `src/rn/serviceFactory.js` + `backgroundTasks.js`. | RN-specific adapters (scheduler, storage, background-fetch broker) live here; Folio pre-binds the app's `SyncEngine` subclass and re-exports for folio-mobile to consume. Same substrate, RN platform. |
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/pod-client` | `PodClient` (dynamic import in `_podFactory.js:125`) | Solid pod read/write/list with `If-Match`/conflict detection — the production target the SyncEngine writes into. Imported via `await import(...)` to avoid forcing a hard dep in RN builds. | Folio is one of the canonical PodClient consumers; no substrate wraps "construct a PodClient" because the credential plumbing is per-app (mnemonic → `Bootstrap` → token). |
 | `@canopy/core` | `Bootstrap` | Mnemonic-driven identity bring-up + Solid pod credential issuance for the CLI. | Foundation primitive; substrate-of-substrates over `Bootstrap` would be over-abstraction at this stage. |
-| `@canopy/core` | `VaultNodeFs` | Node-side encrypted vault for the CLI's keypair. | Platform-specific vault concrete; the CLI is Node-only, so the matching SDK concrete is the right level. |
-| `@canopy/core` | `PodCapabilityToken` | Folio's `share` flow — issue capability tokens to other agents. | Capability-token semantics are SDK-foundational; substrates compose them, they don't wrap them. |
-| `@canopy/core` | `AgentIdentity` | Server-side `/share` endpoint (`routes.js`) — construct identity from vault on-demand to sign capability tokens. | Identity construction from keypair; per-app vault binding; same SDK-foundational tier as `Bootstrap`. No substrate wrapper exists or would be appropriate. |
+| `@canopy/core` | `VaultNodeFs` | Node-side encrypted vault for the CLI's keypair. | Platform-specific vault concrete; the CLI is Node-only, so the matching kernel concrete is the right level. |
+| `@canopy/core` | `PodCapabilityToken` | Folio's `share` flow — issue capability tokens to other agents. | Capability-token semantics are kernel-foundational; substrates compose them, they don't wrap them. |
+| `@canopy/core` | `AgentIdentity` | Server-side `/share` endpoint (`routes.js`) — construct identity from vault on-demand to sign capability tokens. | Identity construction from keypair; per-app vault binding; same kernel-foundational tier as `Bootstrap`. No substrate wrapper exists or would be appropriate. |
 | `@canopy/core` | `validateMnemonic` | CLI `init` — sanity-check user-typed mnemonics. | One-line helper; pulling a substrate around it would be silly. |
-| `@canopy/oidc-session` (Phase 52.15.2, 2026-05-14) | `createSolidAuthNode` | Desktop OIDC session bring-up + multi-issuer sign-in for `folio serve` (`serveCmd.js`, `diagnostics.js`). Replaces the lifted-out `src/auth/OidcSession.js` app-side wrapper. | Platform-specific Node auth factory; per-app credential plumbing (client-registration state, vault-backed session). SDK-direct because the issuer / vault binding is per-app, not substrate-uniform. |
+| `@canopy/oidc-session` (Phase 52.15.2, 2026-05-14) | `createSolidAuthNode` | Desktop OIDC session bring-up + multi-issuer sign-in for `folio serve` (`serveCmd.js`, `diagnostics.js`). Replaces the lifted-out `src/auth/OidcSession.js` app-side wrapper. | Platform-specific Node auth factory; per-app credential plumbing (client-registration state, vault-backed session). Kernel-direct because the issuer / vault binding is per-app, not substrate-uniform. |
 
 ## Bring it up
 

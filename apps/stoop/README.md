@@ -5,7 +5,7 @@
 > for this functionality inside the unified chat surface — not a separate app/build/shell. See the root
 > README's *Direction* note.
 
-> **Layer: app.** Composes substrates from `packages/{item-store, skill-match, identity-resolver, agent-ui, notifier, chat-agent, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, skill-match, identity-resolver, agent-ui, notifier, chat-agent, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** Stoop's surface is declared in
 > [`manifest.js`](./manifest.js) (NavModel substrate V0.8 /
@@ -20,10 +20,10 @@
 
 Buurt-skill-app: vragen, aanbod, en lenen tussen buurtgenoten —
 prikbord-not-feed, mens en machine-agents naast elkaar, decentraal
-via de @canopy agent SDK.
+via het @canopy platform.
 
 **Mobile companion:** Stoop V3 native React-Native client lives at
-[`apps/stoop-mobile/`](../stoop-mobile/) — same SDK, same skills,
+[`apps/stoop-mobile/`](../stoop-mobile/) — same platform, same skills,
 parallel UI in JSX. Wiring complete (Phases 40.14–40.22, 2026-05-08);
 real-device pass + closed-beta APK pending Phase 40.23.
 
@@ -112,7 +112,7 @@ for V2 per the threat model in
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@canopy/item-store` (L1b) | Records every Vraag / Aanbod / Te leen as a structured pod-backed item with attribution + audit. Stoop-vocabulary `type: 'ask' \| 'offer' \| 'lend' \| 'report'` slots into existing `Item.type`; lend lifecycle uses the existing `dueAt` field. | Pod write paths + per-field merge are shared with H4/H7; Stoop adds no new substrate fields. |
 | `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast over the closed buurt group + posture flag (`always` / `negotiable` / `humanInTheLoop`) + claim collection. | Pubsub-of-skills + posture is the H4/H7 shared primitive. |
@@ -125,13 +125,13 @@ Stoop **does not depend on any sibling app**. Per the convention
 finalised 2026-05-06, apps must not import from other apps; if two
 apps need to share code, extract a substrate.
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-member agent that the skill-match substrate composes. | No substrate wraps "construct an agent" — that's foundational SDK behaviour. The factory creates `core.Agent` directly so `SkillMatch` has a real agent + transport to subscribe over. |
+| `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-member agent that the skill-match substrate composes. | No substrate wraps "construct an agent" — that's foundational kernel behaviour. The factory creates `core.Agent` directly so `SkillMatch` has a real agent + transport to subscribe over. |
 | `@canopy/core` | `GroupManager`, `Agent.rotateIdentity()` | Issuing / verifying group proofs, scheduled identity rotation (Phase 9 of the coding plan). | Group cryptography + identity rotation are foundational; substrate-of-substrates would be over-abstraction. |
-| `@canopy/core` | `Agent.enableSealedForwardFor`, `Agent.enableRelayForward` | Hop / sealed-forward routing (Phase 13.3 + Phase 28). | Routing primitives are SDK-foundational and already substrate-shaped (mesh-demo proves them at scale). Stoop just wraps a UI toggle. |
+| `@canopy/core` | `Agent.enableSealedForwardFor`, `Agent.enableRelayForward` | Hop / sealed-forward routing (Phase 13.3 + Phase 28). | Routing primitives are kernel-foundational and already substrate-shaped (mesh-demo proves them at scale). Stoop just wraps a UI toggle. |
 | `@canopy/core` | `SolidVault`, `SolidPodSource` (lazy-loaded) | Solid OIDC session + pod-backed `DataSource` (Phase 20 sign-in). | Cross-app concern; will likely lift into `@canopy/oidc-session` once a 3rd consumer materialises. Stoop + Folio are the existing 2. |
 | `@canopy/core` | `Bootstrap`, `validateMnemonic`, `mnemonicToSeed` | Mnemonic validation + seed derivation for the Phase 30 device-restore flow. | Identity-bootstrap primitives; foundational. |
 | `@canopy/relay` | `RelayTransport`, group-publish, `GroupAuthVerifier` config (server-side), Phase-2 quotas + revocation list + bound verification, `PushSender` (extended by `WebPushSender` in Phase 21) | Network transport to the Stoop community relay; group registration; relay-side enforcement of Phase 2 additions; Web-Push delivery shape. | Transport wiring is per-app; the server-side relay extensions live in `@canopy/relay`, not in a substrate. `WebPushSender` is a candidate to lift back into relay alongside `ExpoPushSender` once a 2nd web-push consumer appears. |
@@ -141,7 +141,7 @@ apps need to share code, extract a substrate.
 ## Agent Hub compatibility
 
 **Attachment model:** `standalone`. The Agent Hub does not exist
-yet; Stoop embeds substrates + SDK directly. Designed so a future
+yet; Stoop embeds substrates + kernel directly. Designed so a future
 migration to `hub-attached (lite)` is possible (see
 `Project Files/AgentHub/agent-hub-design-2026-05-05.md`
 and the three rules in
@@ -293,7 +293,7 @@ recipient stores a local copy on receive. There is no
 "click → fetch from sender's pod" path; doing that would expose the
 sender's pod root and undermine `Reveals` + Phase-35 eviction.
 
-When the SDK gains a shared / group-owned storage namespace,
+When the platform gains a shared / group-owned storage namespace,
 URL-mode attachments may become possible against THAT namespace —
 never against personal pods.
 
