@@ -63,12 +63,37 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     expect(r.error).toMatch(/Couldn't find an open item/);
   });
 
-  it("markComplete with >1 candidate surfaces the disambiguation list", async () => {
+  it("markComplete with >1 candidate surfaces the disambiguation list (acts on NONE)", async () => {
     const a = await createRealHouseholdAgent();
     // 'a' appears in "Post a parcel" + "Vacuum living room" → ambiguous.
     const r = await a.callSkill('household', 'markComplete', { match: 'a' });
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/Multiple matches/);
+    // …and NOTHING was completed — both candidates are still open.
+    const list = await a.callSkill('household', 'listOpen', {});
+    expect(list.items.find((c) => c.label === 'Post a parcel')).toBeTruthy();
+    expect(list.items.find((c) => c.label === 'Vacuum living room')).toBeTruthy();
+  });
+
+  it("markComplete with exactly ONE candidate resolves + acts", async () => {
+    const a = await createRealHouseholdAgent();
+    // 'Milk' is unique → completes it (single-match resolve, not a disambiguation prompt).
+    const r = await a.callSkill('household', 'markComplete', { match: 'Milk' });
+    expect(r).toMatchObject({ ok: true, message: '✓ marked complete: Milk', text: 'Milk' });
+    const list = await a.callSkill('household', 'listOpen', {});
+    expect(list.items.find((c) => c.label === 'Milk')).toBeUndefined();
+  });
+
+  it("claim with >1 candidate surfaces the disambiguation list (acts on NONE)", async () => {
+    const a = await createRealHouseholdAgent();
+    await a.callSkill('household', 'addTask', { text: 'paint the fence' });
+    await a.callSkill('household', 'addTask', { text: 'mend the fence' });
+    const r = await a.callSkill('household', 'claim', { match: 'fence' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Multiple matches/);
+    // neither task was claimed
+    const tasks = (await a.callSkill('household', 'listTasks', {})).items;
+    expect(tasks.filter((t) => /fence/.test(t.label)).every((t) => !t.claimedBy)).toBe(true);
   });
 
   it("addItem + addTask + claim round-trip through the real skills", async () => {
@@ -336,24 +361,27 @@ describe('createRealHouseholdAgent — OBJ-2 household no-pod sync (S1a/S1c)', (
   });
 });
 
-describe('createRealHouseholdAgent — L3 cutover (householdViaCircleStore, additive flag)', () => {
-  it('flag ON: household ops route to the dissolved CircleItemStore functions', async () => {
-    const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
+describe('createRealHouseholdAgent — L3 uniform wired path (default; legacy registry retired)', () => {
+  it('household ops route to the dissolved CircleItemStore cores by default', async () => {
+    const a = await createRealHouseholdAgent();
     await a.callSkill('household', 'addItem', { type: 'shopping', text: 'milk' });
     const open = await a.callSkill('household', 'listOpen', { type: 'shopping' });
     expect(open.items.map((i) => i.label)).toContain('milk');          // adapted render shape {items:[{label}]}
     const t = await a.callSkill('household', 'addTask', { text: 'fix fence' });
-    expect(t.type).toBe('task');
+    expect(t.ok).toBe(true);                                            // chat-shell action shape {ok,message,text,itemId}
+    expect(t.text).toBe('fix fence');
     expect((await a.callSkill('household', 'listTasks', {})).items.map((i) => i.label)).toContain('fix fence');
   });
 
-  it('flag OFF (default): still the legacy agent (unchanged — the other tests assert its exact shape)', async () => {
+  it('listOpen without a type returns every OPEN item across list-types (the legacy no-type call)', async () => {
     const a = await createRealHouseholdAgent();
-    expect(await a.callSkill('household', 'listOpen', {})).toBeTruthy();
+    const open = await a.callSkill('household', 'listOpen', {});
+    // seed: Milk (shopping) + Post a parcel (errand) + Vacuum living room (task) — all three.
+    expect(open.items.map((i) => i.label).sort()).toEqual(['Milk', 'Post a parcel', 'Vacuum living room']);
   });
 
-  it('flag ON: a write PUBLISHES to the per-circle peer mirror (no-pod sync, publish side)', async () => {
-    const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
+  it('a write PUBLISHES to the per-circle peer mirror (no-pod sync, publish side)', async () => {
+    const a = await createRealHouseholdAgent();
     const spy = vi.spyOn(a.householdSync.mirror, 'publishItem');   // the circle 'household' mirror
     await a.callSkill('household', 'addItem', { type: 'shopping', text: 'milk' });
     expect(spy).toHaveBeenCalled();                                // the CircleItemStore write fanned out

@@ -178,7 +178,7 @@ import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
 import { makeCircleLists } from '../../src/v2/circleLists.js';  // cluster K · K2 — composable lists (shared web≡mobile)
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
-import { buildHouseholdDataSource } from '../../../household/src/index.js';  // portable persistent DataSource (IDB on web)
+import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so canopy-chat's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
 
 // One per-circle lists service for the app, PERSISTENT: an IndexedDB-backed DataSource (lists survive a reload).
 // Lazy + memoised (the DataSource build is async); falls back to in-memory if IDB is unavailable (e.g. SSR/tests).
@@ -3506,9 +3506,8 @@ async function boot() {
       householdPersistDb: { dbName: 'cc-household-state', storeName: 'items' },
       stoopControlAgent: circleControlAgentRouter,   // S4 — multi-member sealing on redeem/leave
       getActiveCircleId: getActiveCircle,            // per-circle store scoping — the active circle scopes chat ops
-      // L3 cutover (additive, OFF by default): set VITE_HOUSEHOLD_VIA_CIRCLE_STORE=1 to route household ops
-      // to the dissolved functions over the per-circle CircleItemStore (householdApp.js) for on-device verify.
-      householdViaCircleStore: import.meta.env?.VITE_HOUSEHOLD_VIA_CIRCLE_STORE === '1',
+      // L3 — household routes through the uniform wired path (dissolved cores over the per-circle
+      // CircleItemStore) by default; the legacy registry is retired. No flag: it's unconditional now.
     });
     circleHouseholdAgent = agent;   // OBJ-2 — expose to showSettings (sibling fn) for the paired-devices panel
     // OBJ-2 — joiner-side peer-redeem sender (shared factory), correlated by circlePendingRedeems.
