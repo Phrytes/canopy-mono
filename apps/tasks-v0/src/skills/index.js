@@ -10,6 +10,23 @@
  * field carries the JSON args, and returns a JSON object that
  * SkillRegistry auto-wraps into a single `DataPart` on the way out.
  *
+ * B★ B2 (2026-07-05) — the task-store CRUD + list + claim/complete/approve
+ * family is now expressed as pure `coreFn(crew, args, ctx)` functions wrapped
+ * by `wireSkill(coreFn, op, { storeFor })` from `@canopy/sdk`.  `wireSkill`
+ * decodes `ctx.parts` → `args` (the same DataPart-unwrap the hand-written
+ * `argsFromParts(parts)` did), validates `args` against the manifest op's
+ * declared params, resolves the per-crew store via `storeFor(ctx)`, then calls
+ * the core.  The wire behaviour is byte-identical: `storeFor` is exactly the
+ * old `bundleResolver(parts, { envelope, from })` call, and each core keeps its
+ * own `if (!crew) return { error: 'crewId required' }` guard (validation of the
+ * op's declared params happens first, but every tested path supplies them).
+ *
+ * Skills that are NOT a clean `(crew, args, ctx)` task-store shape stay
+ * hand-written `defineSkill`s below; each carries a note on why it wasn't
+ * wired (no manifest op, a return-shaped error contract wireSkill would turn
+ * into a throw, a resolver other than `bundleResolver`, or a manifest op whose
+ * params intentionally diverge from the skill's real args).
+ *
  * V2.8: skill bodies resolve a per-crew CrewState via `bundleResolver`
  * at dispatch time. Single registration on the process-wide meshAgent.
  *
@@ -21,12 +38,14 @@
  */
 
 import { defineSkill } from '@canopy/core';
+import { wireSkill } from '@canopy/sdk';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 // DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
 import { simulateSync, decorateWithLastSync } from './_syncEnvelope.js';
 import { validateCanonical } from '@canopy/item-types';
 import { saveCrewConfig, loadCrewConfig, KIND_DEFAULTS } from '../Crew.js';
+import { tasksManifest } from '../../manifest.js';
 import {
   startPodSignIn      as _startPodSignIn,
   completePodSignIn   as _completePodSignIn,
@@ -77,6 +96,304 @@ function _buildStoragePolicy(storagePolicy, groupPodUri) {
   return { policy };
 }
 
+// ── Pure cores: (crew, a, ctx) → result ──────────────────────────────────
+//
+// `crew`  the resolved CrewState (may be null when multi-crew routing misses —
+//         each core guards with `if (!crew) return { error: 'crewId required' }`).
+// `a`     the decoded args object (wireSkill's decodeArgs; identical to the old
+//         `argsFromParts(parts)` for the single-DataPart wire convention).
+// `ctx`   the full core skill context — `{ from, actorDisplayName, envelope, … }`.
+//
+// These are the byte-identical bodies of the former hand-written skills, with
+// `argsFromParts(parts)` replaced by the injected `a`, `from`→`ctx.from`, and
+// `actorDisplayName`→`ctx.actorDisplayName`.
+
+/**
+ * addTask({type='task', text, notes?, dependencies?, requiredSkills?,
+ *         dueAt?, visibility?, embeds?})
+ * Validates DAG cycle-free.  Returns the persisted task.
+ *
+ * Tasks V2 substrate-adoption (2026-05-14) — accepts `embeds: [{type,
+ * ref}, ...]` for cross-pod refs (V2 web functional design §4b).
+ */
+async function addTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  // Phase 10 — block addTask when the crew is paused or archived.
+  const lc = crew.liveCrew;
+  if (lc?.archived) return { error: 'crew-archived' };
+  if (lc?.paused)   return { error: 'crew-paused' };
+
+  // Validate optional embeds (cross-pod refs).
+  const inboundEmbeds = Array.isArray(a.embeds) ? a.embeds : [];
+  if (inboundEmbeds.length > MAX_EMBEDS_PER_TASK) {
+    return { error: `embeds-too-many:${inboundEmbeds.length}` };
+  }
+  const embeds = [];
+  for (const e of inboundEmbeds) {
+    const err = _validateEmbed(e);
+    if (err) return { error: err };
+    embeds.push({ type: e.type, ref: e.ref });
+  }
+
+  const partial = {
+    type:           a.type ?? 'task',
+    text:           a.text,
+    ...(a.notes          !== undefined ? { notes:          a.notes }          : {}),
+    ...(a.dependencies   !== undefined ? { dependencies:   a.dependencies }   : {}),
+    ...(a.requiredSkills !== undefined ? { requiredSkills: a.requiredSkills } : {}),
+    ...(a.dueAt          !== undefined ? { dueAt:          a.dueAt }          : {}),
+    ...(a.visibility     !== undefined ? { visibility:     a.visibility }     : {}),
+    // Phase 5 DoD-lifecycle fields (all optional; substrate honours them).
+    ...(a.definitionOfDone !== undefined ? { definitionOfDone: a.definitionOfDone } : {}),
+    ...(a.approval         !== undefined ? { approval:         a.approval         } : {}),
+    ...(a.master           !== undefined ? { master:           a.master           } : {}),
+    ...(a.parentTaskId     !== undefined ? { parentTaskId:     a.parentTaskId     } : {}),
+    // V2 task fields (auto-scheduling V2.4 + invoicing V2.2).
+    ...(a.scheduledAt      !== undefined ? { scheduledAt:      a.scheduledAt     } : {}),
+    ...(a.estimateMinutes  !== undefined ? { estimateMinutes:  a.estimateMinutes } : {}),
+    // Tasks V2 standardisation adoption — cross-pod refs.
+    ...(embeds.length > 0  ? { embeds } : {}),
+  };
+  // DAG cycle detection (Q-H4.8).
+  if (Array.isArray(partial.dependencies) && partial.dependencies.length > 0) {
+    const all = await crew.itemStore.listOpen();
+    const cycle = detectCycle({ id: '__new__', dependencies: partial.dependencies }, all);
+    if (cycle) {
+      throw Object.assign(
+        new Error(`addTask: dependency cycle would form: ${cycle.join(' → ')}`),
+        { code: 'DEPENDENCY_CYCLE', cycle },
+      );
+    }
+  }
+  const [task] = await crew.itemStore.addItems([partial], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+
+  // Phase 52.7 — warn-only canonical-shape validation. Adoption is
+  // observational at first: the substrate flags drift but never blocks
+  // a write (existing data + forward-additive policy).
+  try {
+    const v = validateCanonical(task);
+    if (!v.ok) console.warn('item-types[task]:', JSON.stringify(v.errors));
+  } catch { /* validator outage must not break writes */ }
+
+  // Phase 52.9.3 (Tasks V2 ninth slice, 2026-05-14) — substrate
+  // fan-out. The mirror's publishTask helper handles the URI +
+  // pseudoPod.write + notifyEnvelope.publish + recipient roster
+  // all together; here we just kick it off.
+  crew?.tasksMirror?.publishTask?.(task).catch(() => {});
+
+  return { task };
+}
+
+/**
+ * claimTask({id})
+ * Compare-and-swap; loser gets `{error: 'already-claimed', current}`.
+ */
+async function claimTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const result = await crew.itemStore.claim(a.id, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  // Phase 52.9.3 sub-slice 1 — publish the post-claim state. The
+  // substrate is the source of authorisation truth on the
+  // receiver side via applySync (gate-bypass); the receiver's
+  // local item-store doesn't re-check the claim policy.
+  if (result && !result.error) {
+    crew?.tasksMirror?.publishTask?.(result).catch(() => {});
+  }
+  return { result };
+}
+
+/**
+ * completeTask({id})
+ */
+async function completeTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  try {
+    const [completed] = await crew.itemStore.markComplete(
+      [{ id: a.id }],
+      { actor: ctx.from, actorDisplayName: ctx.actorDisplayName },
+    );
+    // Phase 52.9.3 sub-slice 1 — fan-out the completion.
+    if (completed) {
+      crew?.tasksMirror?.publishTask?.(completed).catch(() => {});
+    }
+    return { task: completed };
+  } catch (err) {
+    // V2.7 — translate the substrate's DependenciesOpenError into
+    // a structured error the UI / bot can render usefully.
+    if (err?.code === 'DEPENDENCIES_OPEN') {
+      return { error: 'has-open-dependencies', openDeps: err.openDeps };
+    }
+    throw err;
+  }
+}
+
+/**
+ * removeTask({id})  — admin-only per role policy
+ */
+async function removeTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  // Capture the item's syncedFromId BEFORE removal (the
+  // receiver-side mirror matches by the publishing device's id,
+  // which may differ from `a.id` if THIS device is itself a
+  // synced replica). We send the syncedFromId when present;
+  // otherwise our local id is the canonical one.
+  const localItem = (await crew.itemStore.listOpen()).find((i) => i.id === a.id)
+                 ?? (await crew.itemStore.listClosed()).find((i) => i.id === a.id);
+  const originalId = localItem?.source?.syncedFromId ?? a.id;
+  const [id] = await crew.itemStore.removeItems([{ id: a.id }], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  // Phase 52.9.3 sub-slice 1 — fan-out the removal.
+  crew?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
+  return { id };
+}
+
+/**
+ * `getTaskSnapshot(id)` → ItemSnapshot — Q29 (canopy-chat v0.5)
+ * snapshot factory.  Returns a thin display projection of the
+ * task suitable for embedding in a chat message.  Read-only;
+ * idempotent.
+ */
+async function getTaskSnapshotCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  if (!a.id) return { error: 'id required' };
+  const open   = await crew.itemStore.listOpen({});
+  const closed = await crew.itemStore.listClosed();
+  const all    = [...open, ...closed];
+  const target = all.find((t) => t.id === a.id);
+  if (!target) return { error: `task "${a.id}" not found` };
+  const status = effectiveStatus(target, open, closed);
+  return {
+    id:    target.id,
+    type:  target.type ?? 'task',
+    state: status,
+    title: target.text ?? target.id,
+    fields: {
+      state:    status,
+      assignee: target.assignee ?? 'unassigned',
+      ...(target.requiredSkill ? { requires: target.requiredSkill } : {}),
+    },
+  };
+}
+
+/**
+ * listOpen({type?, requiredSkill?, assignee?, status?})
+ * Returns items + computed `status` (ready/waiting/blocked).
+ */
+async function listOpenCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const filter = {};
+  if (a.type)          filter.type          = a.type;
+  if (a.requiredSkill) filter.requiredSkill = a.requiredSkill;
+  if ('assignee' in a) filter.assignee      = a.assignee;
+  const open   = await crew.itemStore.listOpen(filter);
+  const closed = await crew.itemStore.listClosed();
+  // 41.18 follow-up — every item carries:
+  //   status   — lifecycle ∪ DAG (effectiveStatus)
+  //   openDeps — unmet dependency IDs (unmetDeps); empty array
+  //              when all deps satisfied. UI gates Mark-complete
+  //              / Approve on `openDeps.length === 0` so a
+  //              claimed-but-deps-blocked task pre-disables the
+  //              CTA instead of waiting for the substrate's
+  //              DependenciesOpenError post-tap (V2.7 hard-deps).
+  const items = open.map((t) => ({
+    ...t,
+    status:   effectiveStatus(t, open, closed),
+    openDeps: unmetDeps(t, open, closed),
+  }));
+  const filtered = a.status ? items.filter((t) => t.status === a.status) : items;
+  return { items: decorateWithLastSync(filtered), _sync: simulateSync() };
+}
+
+/**
+ * listMine({})  — open tasks assigned to the calling actor.
+ * Includes DAG `status` per item so V2.7's open-deps gate
+ * surfaces in the My-work UI (disabled "Mark complete" button).
+ */
+async function listMineCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const open   = await crew.itemStore.listOpen();
+  const closed = await crew.itemStore.listClosed();
+  const items  = open
+    .filter((t) => t.assignee === ctx.from)
+    .map((t) => ({
+      ...t,
+      status:   effectiveStatus(t, open, closed),
+      openDeps: unmetDeps(t, open, closed),
+    }));
+  return { items: decorateWithLastSync(items), _sync: simulateSync() };
+}
+
+/**
+ * listClaimable({skill?})  — unassigned tasks (optionally skill-filtered).
+ */
+async function listClaimableCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const filter = { assignee: null };
+  if (a.skill) filter.requiredSkill = a.skill;
+  const items = await crew.itemStore.listOpen(filter);
+  return { items: decorateWithLastSync(items), _sync: simulateSync() };
+}
+
+/**
+ * submitTask({id, deliverable?, note?})
+ *   claimed → submitted. Assignee submits with optional artifact
+ *   reference. Substrate-side gating via `canSubmit`.
+ */
+async function submitTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const updated = await crew.itemStore.submit(a.id, {
+    ...(a.deliverable !== undefined ? { deliverable: a.deliverable } : {}),
+    ...(a.note        !== undefined ? { note:        a.note        } : {}),
+  }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  // Phase 52.9.3 sub-slice 1 — fan-out the submission.
+  if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+  return { task: updated };
+}
+
+/**
+ * approveTask({id, note?})
+ *   submitted → complete. Approver designated by item.approval.
+ */
+async function approveTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  try {
+    const updated = await crew.itemStore.approve(a.id, {
+      ...(a.note !== undefined ? { note: a.note } : {}),
+    }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+    // Phase 52.9.3 sub-slice 1 — fan-out the approval.
+    if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+    return { task: updated };
+  } catch (err) {
+    if (err?.code === 'DEPENDENCIES_OPEN') {
+      return { error: 'has-open-dependencies', openDeps: err.openDeps };
+    }
+    throw err;
+  }
+}
+
+/**
+ * rejectTask({id, note})
+ *   submitted → rejected → claimed. Note is mandatory.
+ */
+async function rejectTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const updated = await crew.itemStore.reject(a.id, { note: a.note }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  // Phase 52.9.3 sub-slice 1 — fan-out the rejection.
+  if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+  return { task: updated };
+}
+
+/**
+ * revokeTask({id, reason})
+ *   claimed → open. Master / admin / coordinator only.
+ *   Reason is mandatory; assignee gets it in the inbox + can appeal.
+ */
+async function revokeTaskCore(crew, a, ctx) {
+  if (!crew) return { error: 'crewId required' };
+  const updated = await crew.itemStore.revoke(a.id, { reason: a.reason }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  // Phase 52.9.3 sub-slice 1 — fan-out the revocation.
+  if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+  return { task: updated, previousAssignee: a.previousAssignee };
+}
+
 /**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
@@ -115,112 +432,105 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     return null;
   }
 
+  // B★ B2 — `storeFor` is the exact old crew resolution: the same
+  // `bundleResolver(parts, { envelope, from })` call every hand-written skill
+  // made, lifted to operate on the wireSkill ctx.  `wire(id, coreFn, opts)`
+  // looks the skill's op up in the tasks manifest, generates the
+  // `defineSkill`-shaped handler with `wireSkill`, and re-attaches the same
+  // description/visibility the hand-written skill declared.
+  const storeFor = (ctx) => bundleResolver(ctx.parts, { envelope: ctx.envelope, from: ctx.from });
+  const op = (id) => {
+    const found = tasksManifest.operations.find((o) => o.id === id);
+    if (!found) throw new Error(`buildSkills: no manifest op "${id}"`);
+    return found;
+  };
+  const wire = (id, coreFn, opts) => defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
+
   return [
-    /**
-     * addTask({type='task', text, notes?, dependencies?, requiredSkills?,
-     *         dueAt?, visibility?, embeds?})
-     * Validates DAG cycle-free.  Returns the persisted task.
-     *
-     * Tasks V2 substrate-adoption (2026-05-14) — accepts `embeds: [{type,
-     * ref}, ...]` for cross-pod refs (V2 web functional design §4b).
-     * Each entry references another item (a Folio note, a Stoop post,
-     * another task). Validated minimally; cap of 8. The receiving side
-     * (substrate-mirror, once Tasks adopts one) carries the shape
-     * through via the base canonical schema's `embeds` field.
-     */
-    defineSkill('addTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      // Phase 10 — block addTask when the crew is paused or archived.
-      const lc = crew.liveCrew;
-      if (lc?.archived) return { error: 'crew-archived' };
-      if (lc?.paused)   return { error: 'crew-paused' };
-
-      const a = argsFromParts(parts);
-
-      // Validate optional embeds (cross-pod refs).
-      const inboundEmbeds = Array.isArray(a.embeds) ? a.embeds : [];
-      if (inboundEmbeds.length > MAX_EMBEDS_PER_TASK) {
-        return { error: `embeds-too-many:${inboundEmbeds.length}` };
-      }
-      const embeds = [];
-      for (const e of inboundEmbeds) {
-        const err = _validateEmbed(e);
-        if (err) return { error: err };
-        embeds.push({ type: e.type, ref: e.ref });
-      }
-
-      const partial = {
-        type:           a.type ?? 'task',
-        text:           a.text,
-        ...(a.notes          !== undefined ? { notes:          a.notes }          : {}),
-        ...(a.dependencies   !== undefined ? { dependencies:   a.dependencies }   : {}),
-        ...(a.requiredSkills !== undefined ? { requiredSkills: a.requiredSkills } : {}),
-        ...(a.dueAt          !== undefined ? { dueAt:          a.dueAt }          : {}),
-        ...(a.visibility     !== undefined ? { visibility:     a.visibility }     : {}),
-        // Phase 5 DoD-lifecycle fields (all optional; substrate honours them).
-        ...(a.definitionOfDone !== undefined ? { definitionOfDone: a.definitionOfDone } : {}),
-        ...(a.approval         !== undefined ? { approval:         a.approval         } : {}),
-        ...(a.master           !== undefined ? { master:           a.master           } : {}),
-        ...(a.parentTaskId     !== undefined ? { parentTaskId:     a.parentTaskId     } : {}),
-        // V2 task fields (auto-scheduling V2.4 + invoicing V2.2).
-        ...(a.scheduledAt      !== undefined ? { scheduledAt:      a.scheduledAt     } : {}),
-        ...(a.estimateMinutes  !== undefined ? { estimateMinutes:  a.estimateMinutes } : {}),
-        // Tasks V2 standardisation adoption — cross-pod refs.
-        ...(embeds.length > 0  ? { embeds } : {}),
-      };
-      // DAG cycle detection (Q-H4.8).
-      if (Array.isArray(partial.dependencies) && partial.dependencies.length > 0) {
-        const all = await crew.itemStore.listOpen();
-        const cycle = detectCycle({ id: '__new__', dependencies: partial.dependencies }, all);
-        if (cycle) {
-          throw Object.assign(
-            new Error(`addTask: dependency cycle would form: ${cycle.join(' → ')}`),
-            { code: 'DEPENDENCY_CYCLE', cycle },
-          );
-        }
-      }
-      const [task] = await crew.itemStore.addItems([partial], { actor: from, actorDisplayName });
-
-      // Phase 52.7 — warn-only canonical-shape validation. Adoption is
-      // observational at first: the substrate flags drift but never blocks
-      // a write (existing data + forward-additive policy).
-      try {
-        const v = validateCanonical(task);
-        if (!v.ok) console.warn('item-types[task]:', JSON.stringify(v.errors));
-      } catch { /* validator outage must not break writes */ }
-
-      // Phase 52.9.3 (Tasks V2 ninth slice, 2026-05-14) — substrate
-      // fan-out. The mirror's publishTask helper handles the URI +
-      // pseudoPod.write + notifyEnvelope.publish + recipient roster
-      // all together; here we just kick it off.
-      crew?.tasksMirror?.publishTask?.(task).catch(() => {});
-
-      return { task };
-    }, {
+    // ── wireSkill-generated task-store CRUD + list + lifecycle family ──────
+    wire('addTask', addTaskCore, {
       description: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.',
       visibility:  'authenticated',
     }),
 
+    wire('claimTask', claimTaskCore, {
+      description: 'Compare-and-swap claim a task.',
+      visibility:  'authenticated',
+    }),
+
+    wire('completeTask', completeTaskCore, {
+      description: 'Mark a task complete.',
+      visibility:  'authenticated',
+    }),
+
+    wire('removeTask', removeTaskCore, {
+      description: 'Remove a task — admin only via item-store role policy.',
+      visibility:  'authenticated',
+    }),
+
+    wire('getTaskSnapshot', getTaskSnapshotCore, {
+      description: 'Snapshot a task for chat-embed (Q29 v0.5).',
+      visibility:  'authenticated',
+    }),
+
+    wire('listOpen', listOpenCore, {
+      description: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.',
+      visibility:  'authenticated',
+    }),
+
+    wire('listMine', listMineCore, {
+      description: 'List open tasks assigned to the calling actor.',
+      visibility:  'authenticated',
+    }),
+
+    wire('listClaimable', listClaimableCore, {
+      description: 'List unassigned tasks; optional `skill` filter.',
+      visibility:  'authenticated',
+    }),
+
+    // ── DoD-lifecycle skills (Tasks V1, Phase 5) ─────────────────────────
+    wire('submitTask', submitTaskCore, {
+      description: 'Submit a claimed task for approval.',
+      visibility:  'authenticated',
+    }),
+
+    wire('approveTask', approveTaskCore, {
+      description: 'Approve a submitted task.',
+      visibility:  'authenticated',
+    }),
+
+    wire('rejectTask', rejectTaskCore, {
+      description: 'Reject a submitted task with a mandatory note.',
+      visibility:  'authenticated',
+    }),
+
+    wire('revokeTask', revokeTaskCore, {
+      description: 'Revoke an assignment with a mandatory reason (master only).',
+      visibility:  'authenticated',
+    }),
+
+    // ── Hand-written skills (NOT wired — see per-skill note) ───────────────
+
     /**
-     * claimTask({id})
-     * Compare-and-swap; loser gets `{error: 'already-claimed', current}`.
+     * reassignTask({id, newAssignee})
+     * Role-policy-gated (admin / coordinator only per buildStandardRolePolicy).
+     * Gating is enforced inside ItemStore via the rolePolicy passed at construction.
+     *
+     * NOT wired: the manifest op declares `newAssignee` required, but this
+     * skill intentionally supports the unassign path (`a.newAssignee ?? null`).
+     * `wireSkill` would reject `reassignTask({id})` (unassign) as a missing
+     * required param — a behaviour change. Kept hand-written.
      */
-    defineSkill('claimTask', async ({ parts, from, envelope, actorDisplayName }) => {
+    defineSkill('reassignTask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
       if (!crew) return { error: 'crewId required' };
       const a = argsFromParts(parts);
-      const result = await crew.itemStore.claim(a.id, { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — publish the post-claim state. The
-      // substrate is the source of authorisation truth on the
-      // receiver side via applySync (gate-bypass); the receiver's
-      // local item-store doesn't re-check the claim policy.
-      if (result && !result.error) {
-        crew?.tasksMirror?.publishTask?.(result).catch(() => {});
-      }
-      return { result };
+      const updated = await crew.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
+      // Phase 52.9.3 sub-slice 1 — fan-out the reassignment.
+      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+      return { task: updated };
     }, {
-      description: 'Compare-and-swap claim a task.',
+      description: 'Reassign a task — admin/coordinator only via item-store role policy.',
       visibility:  'authenticated',
     }),
 
@@ -238,6 +548,13 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   Re-validates the DAG when dependencies change so an edit
      *   can't introduce a cycle.  Blocked when the crew is paused
      *   or archived (same gate as addTask).
+     *
+     * NOT wired: this skill has a RETURN-shaped error contract
+     * (`{error:'id required'}`, `{error:'no fields to update'}`,
+     * `{error:'not-found'}`, `{error:'permission-denied'}`) that
+     * `test/edit-task.test.js` pins as returned values. `wireSkill` would
+     * turn the manifest's `id: required` into a THROW, breaking the
+     * `{error:'id required'}` return. Kept hand-written.
      */
     defineSkill('editTask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -289,272 +606,12 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * completeTask({id})
-     */
-    defineSkill('completeTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      try {
-        const [completed] = await crew.itemStore.markComplete(
-          [{ id: a.id }],
-          { actor: from, actorDisplayName },
-        );
-        // Phase 52.9.3 sub-slice 1 — fan-out the completion.
-        if (completed) {
-          crew?.tasksMirror?.publishTask?.(completed).catch(() => {});
-        }
-        return { task: completed };
-      } catch (err) {
-        // V2.7 — translate the substrate's DependenciesOpenError into
-        // a structured error the UI / bot can render usefully.
-        if (err?.code === 'DEPENDENCIES_OPEN') {
-          return { error: 'has-open-dependencies', openDeps: err.openDeps };
-        }
-        throw err;
-      }
-    }, {
-      description: 'Mark a task complete.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * reassignTask({id, newAssignee})
-     * Role-policy-gated (admin / coordinator only per buildStandardRolePolicy).
-     * Gating is enforced inside ItemStore via the rolePolicy passed at construction.
-     */
-    defineSkill('reassignTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      const updated = await crew.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — fan-out the reassignment.
-      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
-      return { task: updated };
-    }, {
-      description: 'Reassign a task — admin/coordinator only via item-store role policy.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * removeTask({id})  — admin-only per role policy
-     */
-    defineSkill('removeTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      // Capture the item's syncedFromId BEFORE removal (the
-      // receiver-side mirror matches by the publishing device's id,
-      // which may differ from `a.id` if THIS device is itself a
-      // synced replica). We send the syncedFromId when present;
-      // otherwise our local id is the canonical one.
-      const localItem = (await crew.itemStore.listOpen()).find((i) => i.id === a.id)
-                     ?? (await crew.itemStore.listClosed()).find((i) => i.id === a.id);
-      const originalId = localItem?.source?.syncedFromId ?? a.id;
-      const [id] = await crew.itemStore.removeItems([{ id: a.id }], { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — fan-out the removal.
-      crew?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
-      return { id };
-    }, {
-      description: 'Remove a task — admin only via item-store role policy.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * listOpen({type?, requiredSkill?, assignee?, status?})
-     * Returns items + computed `status` (ready/waiting/blocked).
-     */
-    /**
-     * `getTaskSnapshot(id)` → ItemSnapshot — Q29 (canopy-chat v0.5)
-     * snapshot factory.  Returns a thin display projection of the
-     * task suitable for embedding in a chat message.  Read-only;
-     * idempotent.  When canopy-chat consumes tasks-v0's full
-     * manifest, /embed against a task surfaces a real card with
-     * lifecycle-state-gated action buttons.
-     */
-    defineSkill('getTaskSnapshot', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      if (!a.id) return { error: 'id required' };
-      const open   = await crew.itemStore.listOpen({});
-      const closed = await crew.itemStore.listClosed();
-      const all    = [...open, ...closed];
-      const target = all.find((t) => t.id === a.id);
-      if (!target) return { error: `task "${a.id}" not found` };
-      const status = effectiveStatus(target, open, closed);
-      return {
-        id:    target.id,
-        type:  target.type ?? 'task',
-        state: status,
-        title: target.text ?? target.id,
-        fields: {
-          state:    status,
-          assignee: target.assignee ?? 'unassigned',
-          ...(target.requiredSkill ? { requires: target.requiredSkill } : {}),
-        },
-      };
-    }, {
-      description: 'Snapshot a task for chat-embed (Q29 v0.5).',
-      visibility:  'authenticated',
-    }),
-
-    defineSkill('listOpen', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      const filter = {};
-      if (a.type)          filter.type          = a.type;
-      if (a.requiredSkill) filter.requiredSkill = a.requiredSkill;
-      if ('assignee' in a) filter.assignee      = a.assignee;
-      const open   = await crew.itemStore.listOpen(filter);
-      const closed = await crew.itemStore.listClosed();
-      // 41.18 follow-up — every item carries:
-      //   status   — lifecycle ∪ DAG (effectiveStatus)
-      //   openDeps — unmet dependency IDs (unmetDeps); empty array
-      //              when all deps satisfied. UI gates Mark-complete
-      //              / Approve on `openDeps.length === 0` so a
-      //              claimed-but-deps-blocked task pre-disables the
-      //              CTA instead of waiting for the substrate's
-      //              DependenciesOpenError post-tap (V2.7 hard-deps).
-      const items = open.map((t) => ({
-        ...t,
-        status:   effectiveStatus(t, open, closed),
-        openDeps: unmetDeps(t, open, closed),
-      }));
-      const filtered = a.status ? items.filter((t) => t.status === a.status) : items;
-      return { items: decorateWithLastSync(filtered), _sync: simulateSync() };
-    }, {
-      description: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * listMine({})  — open tasks assigned to the calling actor.
-     * Includes DAG `status` per item so V2.7's open-deps gate
-     * surfaces in the My-work UI (disabled "Mark complete" button).
-     */
-    defineSkill('listMine', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const open   = await crew.itemStore.listOpen();
-      const closed = await crew.itemStore.listClosed();
-      const items  = open
-        .filter((t) => t.assignee === from)
-        .map((t) => ({
-          ...t,
-          status:   effectiveStatus(t, open, closed),
-          openDeps: unmetDeps(t, open, closed),
-        }));
-      return { items: decorateWithLastSync(items), _sync: simulateSync() };
-    }, {
-      description: 'List open tasks assigned to the calling actor.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * listClaimable({skill?})  — unassigned tasks (optionally skill-filtered).
-     */
-    defineSkill('listClaimable', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      const filter = { assignee: null };
-      if (a.skill) filter.requiredSkill = a.skill;
-      const items = await crew.itemStore.listOpen(filter);
-      return { items: decorateWithLastSync(items), _sync: simulateSync() };
-    }, {
-      description: 'List unassigned tasks; optional `skill` filter.',
-      visibility:  'authenticated',
-    }),
-
-    // ── DoD-lifecycle skills (Tasks V1, Phase 5) ─────────────────────────
-
-    /**
-     * submitTask({id, deliverable?, note?})
-     *   claimed → submitted. Assignee submits with optional artifact
-     *   reference. Substrate-side gating via `canSubmit`.
-     */
-    defineSkill('submitTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      const updated = await crew.itemStore.submit(a.id, {
-        ...(a.deliverable !== undefined ? { deliverable: a.deliverable } : {}),
-        ...(a.note        !== undefined ? { note:        a.note        } : {}),
-      }, { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — fan-out the submission.
-      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
-      return { task: updated };
-    }, {
-      description: 'Submit a claimed task for approval.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * approveTask({id, note?})
-     *   submitted → complete. Approver designated by item.approval.
-     */
-    defineSkill('approveTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      try {
-        const updated = await crew.itemStore.approve(a.id, {
-          ...(a.note !== undefined ? { note: a.note } : {}),
-        }, { actor: from, actorDisplayName });
-        // Phase 52.9.3 sub-slice 1 — fan-out the approval.
-        if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
-        return { task: updated };
-      } catch (err) {
-        if (err?.code === 'DEPENDENCIES_OPEN') {
-          return { error: 'has-open-dependencies', openDeps: err.openDeps };
-        }
-        throw err;
-      }
-    }, {
-      description: 'Approve a submitted task.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * rejectTask({id, note})
-     *   submitted → rejected → claimed. Note is mandatory.
-     */
-    defineSkill('rejectTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      const updated = await crew.itemStore.reject(a.id, { note: a.note }, { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — fan-out the rejection.
-      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
-      return { task: updated };
-    }, {
-      description: 'Reject a submitted task with a mandatory note.',
-      visibility:  'authenticated',
-    }),
-
-    /**
-     * revokeTask({id, reason})
-     *   claimed → open. Master / admin / coordinator only.
-     *   Reason is mandatory; assignee gets it in the inbox + can appeal.
-     */
-    defineSkill('revokeTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
-      const a = argsFromParts(parts);
-      const updated = await crew.itemStore.revoke(a.id, { reason: a.reason }, { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — fan-out the revocation.
-      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
-      return { task: updated, previousAssignee: a.previousAssignee };
-    }, {
-      description: 'Revoke an assignment with a mandatory reason (master only).',
-      visibility:  'authenticated',
-    }),
-
-    /**
      * setApprovalMode({id, mode})
      *   Mutate the item's approval mode. App-level gating via canEditBody.
+     *
+     * NOT wired: no `operations[]` declaration in the manifest (it is a
+     * mutate-in-place primitive, not a chat/slash-callable op), so there is
+     * no op for `wireSkill` to derive from.
      */
     defineSkill('setApprovalMode', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -572,6 +629,9 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   — Tasks V2 standardisation adoption (2026-05-14). Returns the
      *   crew's storage policy `{policy, groupPodUri?}` from its
      *   `crewConfig.storage`. Defaults to `'no-pod'`.
+     *
+     * NOT wired: no `operations[]` declaration (pod-plumbing skill,
+     * referenced only via a `pod-settings` dataSource.skillId).
      */
     defineSkill('getCrewStoragePolicy', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -593,6 +653,9 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   `'no-pod'` once a pod-having policy is active (substrate-
      *   side data migration is the user's job, per
      *   `Substrates/storage-migration-design-2026-05-14.md`).
+     *
+     * NOT wired: no `operations[]` declaration (pod-plumbing skill,
+     * referenced only via `pod-settings` field.patch.opId).
      */
     defineSkill('setCrewStoragePolicy', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -627,6 +690,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   mirror). Kicks off the OIDC redirect dance. Returns the IdP
      *   authorize URL; the browser navigates there. The session is
      *   stored on `crew.oidcSession` until the callback lands.
+     *
+     * NOT wired: OIDC redirect orchestration, no `operations[]` op
+     * (modelling it would need a redirect-flow primitive the substrate
+     * doesn't yet have — manifest note at the `pod-settings` block).
      */
     defineSkill('startPodSignIn', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -643,6 +710,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   — Tasks V2 substrate-adoption. Phase 2: handles the OIDC
      *   callback + attaches a SolidPodSource to the crew's
      *   CachingDataSource.
+     *
+     * NOT wired: OIDC orchestration, no `operations[]` op.
      */
     defineSkill('completePodSignIn', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -658,6 +727,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * signOutOfPod({crewId?})
      *   — Tasks V2 substrate-adoption. Detaches the inner DataSource
      *   + clears the OIDC session. Local cache preserved.
+     *
+     * NOT wired: OIDC orchestration, no `operations[]` op.
      */
     defineSkill('signOutOfPod', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -672,6 +743,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * podSignInStatus({crewId?})
      *   — Tasks V2 substrate-adoption. Read-only `{signedIn, webid,
      *   podAttached}`.
+     *
+     * NOT wired: OIDC orchestration, no `operations[]` op.
      */
     defineSkill('podSignInStatus', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
@@ -699,6 +772,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * returns a structured `{ok: true, ready: false, restartHint}`
      * payload so the UI can show the user the right CLI command to
      * restart with the new crew bound at boot.
+     *
+     * NOT wired: platform-level skill — resolves via `resolveAnyCrew`
+     * (crewsProvider fallback), reads the shared `dataSource`, and has
+     * no `operations[]` op with matching params.
      */
     defineSkill('spawnMyCrew', async ({ parts, from, envelope }) => {
       const crew = resolveAnyCrew(parts, { envelope, from });
@@ -765,6 +842,9 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   Used by `/crews.html` to surface saved-but-not-running crews
      *   so users can see what `provisionMyCrew` persisted before
      *   multi-crew runtime lands.
+     *
+     * NOT wired: platform-level skill — resolves via `resolveAnyCrew`,
+     * reads the shared `dataSource`, and has no `operations[]` op.
      */
     defineSkill('listSavedCrewConfigs', async ({ parts, from, envelope }) => {
       const crew = resolveAnyCrew(parts, { envelope, from });
@@ -816,6 +896,12 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * to actually bind to the new crew — this skill is the V2 design's
      * §4a "creator picks one of the four §II.2 policies" step, not the
      * full bundle bring-up.
+     *
+     * NOT wired: platform-level skill — resolves via `resolveAnyCrew`,
+     * writes the shared `dataSource`, and its real args (`crewId`,
+     * `storagePolicy`, `groupPodUri`, `displayName`, `additionalMembers`)
+     * diverge from the manifest op's declared params (`name`, `kind`),
+     * so `wireSkill`'s validation would not match the skill's contract.
      */
     defineSkill('provisionMyCrew', async ({ parts, from, envelope }) => {
       const crew = resolveAnyCrew(parts, { envelope, from });
