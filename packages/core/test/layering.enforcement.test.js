@@ -30,9 +30,16 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
     expect(indexSrc).not.toMatch(/from\s+['"]@canopy\/oidc-session['"]/);
   });
 
-  it('core no longer declares @canopy/oidc-session as a dependency', () => {
-    const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}), ...(pkg.optionalDependencies || {}) };
-    expect(deps['@canopy/oidc-session']).toBeUndefined();
+  it('core has no RUNTIME dependency on vault / oidc-session (devDependencies allowed for tests)', () => {
+    const runtime = { ...(pkg.dependencies || {}), ...(pkg.optionalDependencies || {}) };
+    expect(runtime['@canopy/oidc-session']).toBeUndefined();
+    expect(runtime['@canopy/vault']).toBeUndefined();
+  });
+
+  it('the kernel (Agent.js) does not import @canopy/vault at runtime (JSDoc @param type refs are fine)', () => {
+    const agentSrc = readFileSync(join(here, '../src/Agent.js'), 'utf8');
+    expect(agentSrc).not.toMatch(/await import\(\s*['"]@canopy\/vault['"]/);
+    expect(agentSrc).not.toMatch(/^\s*import\s.*from\s*['"]@canopy\/vault['"]/m);
   });
 
   it('core still exports its own kernel surface (sanity — the barrel is intact)', () => {

@@ -12,7 +12,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/vault": "file:../vault",
     "@inrupt/solid-client": "3.0.0",
     "@inrupt/solid-client-authn-node": "4.0.0",
     "@noble/hashes": "^2.2.0",
@@ -22,6 +21,7 @@
     "tweetnacl-util": "^0.15.1"
   },
   "devDependencies": {
+    "@canopy/vault": "file:../vault",
     "@anthropic-ai/sdk": "^0.36.0",
     "vitest": "^2.1.0",
     "ws": "^8.20.0"

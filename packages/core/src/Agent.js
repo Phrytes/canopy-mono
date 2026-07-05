@@ -1176,17 +1176,16 @@ export class Agent extends Emitter {
    *
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('@canopy/vault').Vault}          [opts.vault]    — defaults to VaultMemory
+   * @param {import('@canopy/vault').Vault}          opts.vault      — required Vault port (inject a concrete)
    * @param {string}                                        [opts.label]
    * @param {object}                                        rest            — any other Agent constructor options
    * @returns {Promise<Agent>}
    */
   static async createNew({ transport, vault, label, ...rest } = {}) {
     if (!transport) throw new Error('Agent.createNew requires transport');
-    const { VaultMemory }    = await import('@canopy/vault');
+    if (!vault)     throw new Error('Agent.createNew requires a vault — inject a Vault port (the @canopy/sdk facade supplies a VaultMemory default)');
     const { AgentIdentity }  = await import('./identity/AgentIdentity.js');
-    const resolvedVault      = vault ?? new VaultMemory();
-    const identity           = await AgentIdentity.generate(resolvedVault);
+    const identity           = await AgentIdentity.generate(vault);
     return new Agent({ identity, transport, label, ...rest });
   }
 
@@ -1218,10 +1217,9 @@ export class Agent extends Emitter {
    */
   static async restoreFromMnemonic(mnemonic, { transport, vault, ...rest } = {}) {
     if (!transport) throw new Error('Agent.restoreFromMnemonic requires transport');
-    const { VaultMemory }   = await import('@canopy/vault');
+    if (!vault)     throw new Error('Agent.restoreFromMnemonic requires a vault — inject a Vault port');
     const { AgentIdentity } = await import('./identity/AgentIdentity.js');
-    const resolvedVault     = vault ?? new VaultMemory();
-    const identity          = await AgentIdentity.fromMnemonic(mnemonic, resolvedVault);
+    const identity          = await AgentIdentity.fromMnemonic(mnemonic, vault);
     return new Agent({ identity, transport, ...rest });
   }
 
@@ -1243,19 +1241,18 @@ export class Agent extends Emitter {
    * @returns {Promise<Agent>}
    */
   static async fromPlainObject(obj, { transport, vault, ...rest } = {}) {
-    const { VaultMemory }   = await import('@canopy/vault');
+    if (!vault) throw new Error('Agent.fromPlainObject requires a vault — inject a Vault port');
     const { AgentIdentity } = await import('./identity/AgentIdentity.js');
     const { AgentConfig }   = await import('./config/AgentConfig.js');
 
     const agentSection = obj.agent ?? obj;
-    const resolvedVault = vault ?? new VaultMemory();
 
     // Try restore first (existing key in vault), else generate
     let identity;
     try {
-      identity = await AgentIdentity.restore(resolvedVault);
+      identity = await AgentIdentity.restore(vault);
     } catch {
-      identity = await AgentIdentity.generate(resolvedVault);
+      identity = await AgentIdentity.generate(vault);
     }
 
     // Build transport from connections config if not provided explicitly
