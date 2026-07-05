@@ -29,3 +29,7 @@ export {
   buildWebidPointers,
   pointerPredicates,
 } from './src/initialResources.js';
+export {
+  makeResourceUriResolver,
+  sharedRefResourceUri,
+} from './src/resourceUri.js';

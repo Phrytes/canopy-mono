@@ -24,6 +24,8 @@
     "@canopy/pseudo-pod":      "file:../pseudo-pod",
     "@canopy/vault":           "file:../vault",
     "@canopy/webid-discovery": "file:../webid-discovery",
+    "@canopy/item-store":      "file:../item-store",
+    "@canopy/pod-client":      "file:../pod-client",
     "vitest": "^2.1.9"
   }
 }

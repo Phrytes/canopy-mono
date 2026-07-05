@@ -87,6 +87,93 @@ export function makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, 
 }
 
 /**
+ * WRITE-SIDE companion to `makeSharedRefPolicy` — the injectable grant(+seal) hook a SHARE performs on a
+ * pod-backed store. `shareIntoAudience` writes the `shared-ref` (memory op, unchanged) and then, if an
+ * `onShare` hook is injected, calls it so the pod layer can make the read ACTUALLY possible: create the
+ * ACP read-grant for the recipient on the SOURCE item's resource, and (optionally) re-seal so the recipient
+ * can open the envelope. No `@canopy/pod-client` import — the `sharing.grant` + `seal` surfaces are passed in
+ * (mirroring how the read policy injects `sharing.list` + `open`).
+ *
+ * Symmetry with the read gate: the read gate (`makeSharedRefPolicy.checkGrant`) asks "does recipient have a
+ * read grant on `resourceUriFor(ref)`?"; this hook is what PUTS that grant there. Same `resourceUriFor`, same
+ * `mode` ⇒ a share made by this hook resolves through that gate, and only that recipient's.
+ *
+ * @param {object} opts
+ * @param {{ grant:(o:object)=>Promise<any> }} opts.sharing  the `client.sharing` surface — we call
+ *        `sharing.grant({ resourceUri, agent, modes })` once per recipient.
+ * @param {(ref:object)=>(string|null)} [opts.resourceUriFor]  maps a `shared-ref` → the source item's pod
+ *        resource URI (the ACP target). Defaults to the logical `sourceCircle/sourceId` (a real pod injects
+ *        the storage-layout URI from `@canopy/pod-onboarding`'s `sharedRefResourceUri`).
+ * @param {string} [opts.mode='read']  the access mode to grant.
+ * @param {(item:object, ctx:{recipient:string, ref:object})=>object|Promise<object>} [opts.seal]  optional
+ *        re-seal step. In the group-key posture the recipient already holds the key so no re-seal is needed
+ *        (omit); in the recipient-wrap posture, inject a `seal` that returns the item re-sealed to include
+ *        `recipient`, and it is written back to the source store so the recipient can open it at rest.
+ * @returns {(ctx:{ref:object, item:object, recipient?:string, recipients?:string[], stores:object})=>Promise<void>}
+ */
+export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', seal } = {}) {
+  if (!sharing || typeof sharing.grant !== 'function') {
+    throw new Error('makeShareGrantHook: a { grant } sharing surface (client.sharing) is required');
+  }
+  const uriFor = typeof resourceUriFor === 'function'
+    ? resourceUriFor
+    : (ref) => (ref && ref.sourceCircle && ref.sourceId ? `${ref.sourceCircle}/${ref.sourceId}` : null);
+
+  return async function onShare({ ref, item, recipient, recipients, stores } = {}) {
+    const resourceUri = uriFor(ref);
+    if (!resourceUri) throw new Error('makeShareGrantHook: no resource URI for the shared-ref');
+
+    // Who gets the read grant. A circle share resolves to one or more recipient WebIDs at the composition
+    // layer (via @canopy/circles) and passes them in; deny-by-default: no recipient ⇒ refuse the share.
+    const who = Array.isArray(recipients) && recipients.length ? recipients
+      : (recipient ? [recipient] : []);
+    if (who.length === 0) throw new Error('makeShareGrantHook: at least one recipient is required to grant');
+
+    for (const agent of who) {
+      await sharing.grant({ resourceUri, agent, modes: [mode] });
+    }
+
+    // Optional re-seal so the (new) recipient can open the envelope at rest. Group-key postures skip this.
+    if (typeof seal === 'function' && item && ref && stores && typeof stores.getStore === 'function') {
+      const sealed = await seal(item, { recipient: who[0], recipients: who, ref });
+      if (sealed && sealed !== item) {
+        await stores.getStore(ref.sourceCircle).put({ ...sealed, id: ref.sourceId });
+      }
+    }
+  };
+}
+
+/**
+ * ONE-CALL pod-tier wiring for the cross-circle share (cluster K · the composition seam). Binds the
+ * WRITE-side grant hook and the READ-side enforcement policy to the SAME `sharing` surface, `resourceUriFor`
+ * mapping, and `mode` — so a share made through `onShare` is exactly what `policy.checkGrant` will later
+ * accept, and nothing else. The pod-backed composition point injects the live surfaces here and threads the
+ * result into `shareIntoAudience(stores, { …, onShare })` + `resolveSharedRef(stores, ref, { policy, recipient })`.
+ *
+ * No `@canopy/pod-client` import: `sharing` (`{ grant, list }` = `client.sharing`), `open`/`seal` (sealing
+ * with key custody), and `resourceUriFor` (from `@canopy/pod-onboarding`'s `sharedRefResourceUri`) are all
+ * injected. Deny-by-default is preserved on the read side; the write side refuses a grant-less share.
+ *
+ * @param {object} opts
+ * @param {{ grant:Function, list:Function }} opts.sharing  the `client.sharing` surface.
+ * @param {(ref:object)=>(string|null)} opts.resourceUriFor  the canonical source-item URI resolver.
+ * @param {string} [opts.recipient]  default recipient WebID (read gate + single-recipient shares).
+ * @param {(text:string)=>string|Promise<string>} [opts.open]  sealing open (read side).
+ * @param {(item:object, ctx:object)=>object|Promise<object>} [opts.seal]  optional re-seal (write side).
+ * @param {string} [opts.mode='read']  the access mode granted + required. Must match on both sides.
+ * @returns {{ onShare: Function, policy: { checkGrant: Function, open?: Function } }}
+ */
+export function makeCircleShareEnforcement({ sharing, resourceUriFor, recipient, open, seal, mode = 'read' } = {}) {
+  if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.list !== 'function') {
+    throw new Error('makeCircleShareEnforcement: a { grant, list } sharing surface (client.sharing) is required');
+  }
+  return {
+    onShare: makeShareGrantHook({ sharing, resourceUriFor, mode, seal }),
+    policy:  makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, mode }),
+  };
+}
+
+/**
  * Memory-substrate enforcement policy. There is no real pod to grant against, so we enforce the posture
  * that shareIntoAudience already MODELS: the `shared-ref` carries the item's required `posture` (the
  * confidentiality floor), and the recipient circle has its own confidentiality via `postureOf`. The read
