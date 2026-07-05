@@ -1,6 +1,6 @@
 # @canopy-app/folio-mobile
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct SDK use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
 >
 > **Manifest + tier policy.** Folio-mobile reads from the folio
 > manifest (declared in [`../folio/manifest.js`](../folio/manifest.js))
@@ -11,7 +11,7 @@
 > deleteLocally) via an RN-side equivalent of `createOpBinding`.
 
 Folio.C2 — React Native mobile client for [Folio](../folio/), the
-Solid-pod-backed markdown notes app built on the @canopy SDK.
+Solid-pod-backed markdown notes app built on the @canopy platform.
 
 This is a separate workspace from `apps/mesh-demo` (per Q-C1.3); the two
 apps share `packages/*` but maintain independent Expo configurations.
@@ -21,18 +21,18 @@ apps share `packages/*` but maintain independent Expo configurations.
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync (RN side: `expo-file-system` + RN watcher adapter). Pulled in via the `@canopy-app/folio` app library. | Folio shipped this substrate; mobile reuses the engine + RN adapters via Folio's app-side service factory. |
 
 The `@canopy-app/folio` workspace is **not** a substrate — it's a sibling app that exports its `SyncEngine` subclass + RN service factory for Folio Mobile to consume. This is the Folio C1 pluggable-engine pattern.
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/pod-client` | `PodClient`, `SolidOidcAuth` | Solid pod read/write/list + OIDC auth flow (mobile-side, `expo-auth-session`). | Folio is one of the canonical PodClient consumers; no substrate currently wraps "construct an authenticated PodClient from an OIDC flow on RN." Layering doc lists this as the canonical "no substrate fits yet" example. |
-| `@canopy/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is SDK-foundational; substrates compose it, they don't wrap it. |
+| `@canopy/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is kernel-foundational; substrates compose it, they don't wrap it. |
 | `@canopy/react-native` | `platform/polyfills` (entry-point side-effect import) | RN bring-up: `react-native-get-random-values` + `nacl-util` polyfills before any crypto runs. | Platform layer — RN-specific bring-up lives in `@canopy/react-native` by design; no substrate wraps it. |
 | `@canopy/react-native` | `pseudo-pod-adapter` (optional, feature-flagged) | Dynamic import in `ServiceContext.js:284`, gated on `FOLIO_PSEUDO_POD` / `EXPO_PUBLIC_FOLIO_PSEUDO_POD` env. Phase 3 OQ-6 optional caching layer: write-through queue + read cache backed by RN persistent store. | RN-specific concrete for the pseudo-pod abstraction; feature-flagged because Phase 3 is still validating the cache-mode default. Side-loaded so the bundle doesn't pull the cache layer when the flag is off. |
 
@@ -101,7 +101,7 @@ Out of scope for this slice:
 npm install --prefix apps/folio-mobile
 ```
 
-The workspace pulls Folio + the SDK packages via `file:` deps so
+The workspace pulls Folio + the platform packages via `file:` deps so
 local edits to `apps/folio/` and `packages/*` are picked up by Metro
 without re-publishing.
 

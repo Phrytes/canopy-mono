@@ -18,8 +18,8 @@
 > local-store, identity-resolver, item-store, chat-p2p, notifier,
 > skill-match, pod-client}`.
 >
-> Direct SDK use is allowed only when justified in this README's
-> `## Direct SDK use` section (per
+> Direct kernel use is allowed only when justified in this README's
+> `## Direct kernel use` section (per
 > [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
 > See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
@@ -82,7 +82,7 @@ the full Q-B retirement + A-track + C-track breakdown.
 | 40.17 | Chat + reveal handshake | ✅ |
 | 40.18 | Contacts + groups + new CreateGroupScreen | ✅ |
 | 40.19 | Settings + Push + SignIn + new AuthCallbackScreen | ✅ |
-| 40.20 | SkillMatch broadcast-scope SDK extension + SkillMatchInbox screen | ✅ |
+| 40.20 | SkillMatch broadcast-scope extension + SkillMatchInbox screen | ✅ |
 | 40.21 | AppState bridge + `expo-task-manager` background-fetch | ✅ |
 | 40.22 | Privacy polish — rotate-identity CTA + first-launch metadata warning | ✅ |
 | **40.23** | **Real-device pass (Android)** | ⏳ **TODO — see runbook below** |
@@ -233,7 +233,7 @@ Don't introduce a per-group Agent. Concrete plan + rationale:
 | `@canopy/skill-match` | Pubsub-of-skills broadcast over the closed group + claim flow. **Phase 40.20:** broadcast-scope extension (`extraAudience` constructor + `scope: 'group'\|'group+contacts'\|'group+contacts+hops'` on broadcast). |
 | `@canopy/pod-client` | Pod read/write/list when the user signs in with their Solid pod. |
 
-## Direct SDK use
+## Direct kernel use
 
 Same as desktop Stoop — composing substrates only. The cross-app
 dep `@canopy-app/stoop` is the platform-shell exception (skill
@@ -328,14 +328,14 @@ doesn't process JSX in `.js`, and adding the transform across an
 RN tree introduces its own risks — the helpers + locale-integrity
 catches the bulk of regressions).
 
-The SDK-side broadcast-scope extension lives in
+The platform-side broadcast-scope extension lives in
 `packages/skill-match/test/SkillMatch.test.js` (14 tests, all
 green, including the four Phase 40.20 cases).
 
 ## Known limitations
 
 - **Per-screen render tests** — deferred (see Tests section).
-- **`broadcastScope: 'group+contacts+hops'`** — the SDK extension
+- **`broadcastScope: 'group+contacts+hops'`** — the platform extension
   ships with the receive-side machinery, but the *send* side
   doesn't yet auto-resolve contacts / hops to `extraAudience`
   pubKeys at bundle bring-up. Stoop's `postRequest` accepts the
@@ -346,11 +346,11 @@ green, including the four Phase 40.20 cases).
 - **iOS:** out of scope.
 - **Auto-rotation cadence** — Phase 40.22 ships opt-in
   user-triggered rotation only. An automatic-cadence policy is
-  deferred (the SDK plumbing is in place — `Agent.rotateIdentity()`
+  deferred (the kernel plumbing is in place — `Agent.rotateIdentity()`
   + grace-period — but no scheduled-rotation UI yet).
 - **Sub-flow polish** — handle-claim collisions, group-rule
   preview on join, attachment download progress, failed-push
-  retry — these are SDK behaviours that work but the mobile UI
+  retry — these are platform behaviours that work but the mobile UI
   doesn't yet surface them prominently.
 - **mDNS reliability on real Wi-Fi** — bring-up testing
   2026-05-08: same-Wi-Fi peer discovery works in some sessions,
