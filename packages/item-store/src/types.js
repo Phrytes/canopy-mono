@@ -210,15 +210,27 @@
  *   actor is allowed to see.
  *
  * @property {Audience} [audience]
- *   SP-5b V0b (2026-05-21).  Match items whose effective audience
- *   (via `audienceFromItem`) deep-equals this value.
+ *   SP-5b (2026-05-21).  Match items whose effective audience (via the
+ *   `audienceFromItem` bridge — so legacy `visibility`-only items still
+ *   match) satisfies this queried audience.
  *
- *   V0b semantics are **strict equality**.  Known limitation: the
- *   string short-hand `'crew:X'` and the structured form
- *   `{kind:'circle-ref', id:'X'}` are NOT considered equivalent
- *   (normalisation lives in `@canopy/circles`; item-store can't
- *   depend on it for layering reasons).  V0c may lift
- *   `normalizeAudience` to item-types OR take a callback.
+ *   **Semantics** (see `audience.js#audienceMatches` for the full
+ *   contract):
+ *     1. **Exact match** — the item's effective audience structurally
+ *        deep-equals the filter (key-order-independent).  Covers plain
+ *        short-hands, `set`, `circle-ref`, `union`, `public`.
+ *     2. **Union membership** — a `{kind:'union', of:[…]}` item matches
+ *        when the filter satisfies ANY constituent (recursively).  So
+ *        filtering by `{kind:'circle-ref', id:'c1'}` also returns items
+ *        shared with `union(household, circle-ref c1)`.
+ *     3. **Set membership** — a `{kind:'set', members:[…]}` item matches
+ *        when the filter is a plain webid string in `members`.
+ *
+ *   Known limitation: the string short-hand `'crew:X'` and the
+ *   structured form `{kind:'circle-ref', id:'X'}` are NOT considered
+ *   equivalent (normalisation lives in `@canopy/circles`; item-store
+ *   can't depend on it for layering reasons).  A future revision may
+ *   lift `normalizeAudience` to item-types OR take a callback.
  *
  * @property {number} [since]
  *   ms epoch.  Match items with `addedAt >= since`.

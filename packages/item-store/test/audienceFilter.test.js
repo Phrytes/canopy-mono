@@ -135,6 +135,74 @@ describe('SP-5b V0b — listOpen with ListFilter.audience', () => {
   });
 });
 
+describe('SP-5b — ListFilter.audience membership (union / set / circle-ref)', () => {
+  let store;
+  beforeEach(() => store = buildStore());
+
+  it('union membership — filtering by a constituent returns the union item', async () => {
+    await store.addItems(
+      [
+        {
+          type: 'task', text: 'shared-with-both',
+          audience: { kind: 'union', of: ['household', { kind: 'circle-ref', id: 'c1' }] },
+        },
+        { type: 'task', text: 'household-only', audience: 'household' },
+        { type: 'task', text: 'other-crew',     audience: { kind: 'circle-ref', id: 'c2' } },
+      ],
+      { actor: ACTOR },
+    );
+
+    // Filtering by the circle-ref constituent returns BOTH the exact
+    // circle item (none here) AND the union item that contains it.
+    const c1 = await store.listOpen({ audience: { kind: 'circle-ref', id: 'c1' } });
+    expect(c1.map((i) => i.text)).toEqual(['shared-with-both']);
+
+    // Filtering by 'household' returns the plain-household item AND the
+    // union item (household is one of its constituents).
+    const hh = await store.listOpen({ audience: 'household' });
+    expect(hh.map((i) => i.text).sort()).toEqual(['household-only', 'shared-with-both']);
+
+    // A constituent that isn't in the union doesn't spuriously match it.
+    const c2 = await store.listOpen({ audience: { kind: 'circle-ref', id: 'c2' } });
+    expect(c2.map((i) => i.text)).toEqual(['other-crew']);
+  });
+
+  it('set membership — filtering by a member webid returns the set item', async () => {
+    await store.addItems(
+      [
+        { type: 'task', text: 'ab-set', audience: { kind: 'set', members: ['webid:a', 'webid:b'] } },
+        { type: 'task', text: 'c-only', audience: { kind: 'set', members: ['webid:c'] } },
+      ],
+      { actor: ACTOR },
+    );
+
+    const a = await store.listOpen({ audience: 'webid:a' });
+    expect(a.map((i) => i.text)).toEqual(['ab-set']);
+
+    const c = await store.listOpen({ audience: 'webid:c' });
+    expect(c.map((i) => i.text)).toEqual(['c-only']);
+
+    const none = await store.listOpen({ audience: 'webid:z' });
+    expect(none).toHaveLength(0);
+  });
+
+  it('circle-ref membership — matches exact ref and ref nested inside a union', async () => {
+    await store.addItems(
+      [
+        { type: 'task', text: 'exact-ref', audience: { kind: 'circle-ref', id: 'gardeners' } },
+        {
+          type: 'task', text: 'ref-in-union',
+          audience: { kind: 'union', of: [{ kind: 'circle-ref', id: 'gardeners' }, 'private'] },
+        },
+      ],
+      { actor: ACTOR },
+    );
+
+    const found = await store.listOpen({ audience: { kind: 'circle-ref', id: 'gardeners' } });
+    expect(found.map((i) => i.text).sort()).toEqual(['exact-ref', 'ref-in-union']);
+  });
+});
+
 describe('SP-5b V0b — listClosed with ListFilter.audience', () => {
   let store;
   beforeEach(() => store = buildStore());

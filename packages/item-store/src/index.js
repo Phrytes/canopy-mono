@@ -54,4 +54,8 @@ export { treeOf, createCrossPodRefResolver } from './embeds.js';
 // checking item.audience → item.visibility → 'household' default.
 // Item-store stores audience verbatim; resolution to member sets
 // happens in `@canopy/circles`'s `resolveAudience`.
-export { audienceFromItem } from './audience.js';
+//
+// SP-5b — `audienceMatches(itemAudience, filterAudience)` is the
+// predicate behind `ListFilter.audience`: exact structural equality
+// plus membership for `union`/`set` container audiences.
+export { audienceFromItem, audienceMatches } from './audience.js';
