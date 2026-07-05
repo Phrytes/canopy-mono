@@ -62,3 +62,4 @@ export * from '@canopy/pod-client';
 // ── HIGH layer: opinionated helpers ──────────────────────────────────────
 export { createAgent }  from './createAgent.js';
 export { connectSkill } from './connectSkill.js';
+export { wireSkill }    from './wireSkill.js';

@@ -31,14 +31,21 @@
  *   OW  { type:'cancel',        taskId }              ← CX
  *   OW  { type:'task-expired',  taskId }              ← EX (receiver → caller)
  */
-import { Task }            from './Task.js';
-import { Parts }           from '../Parts.js';
-import { genId }           from '../Envelope.js';
-import { verifyOrigin }    from '../security/originSignature.js';
-import { openTunnelOW }    from '../security/tunnelSeal.js';
+import { Task }             from './Task.js';
+import { Parts }            from '../Parts.js';
+import { genId }            from '../Envelope.js';
+import { verifyOrigin }     from '../security/originSignature.js';
+import { openTunnelOW }     from '../security/tunnelSeal.js';
+import { InternalTransport } from '../transport/InternalTransport.js';
 
 /** @param {object} x */
 const isAsyncGen = x => x && typeof x[Symbol.asyncIterator] === 'function';
+
+/** Reference to the AsyncGeneratorFunction constructor — used to detect
+ *  streaming skill handlers WITHOUT invoking them (so the B★ fast-path can
+ *  cleanly defer streaming skills to the wire path). */
+const AsyncGeneratorFunction = Object.getPrototypeOf(async function* () {}).constructor;
+const _isAsyncGenFn = fn => typeof fn === 'function' && fn instanceof AsyncGeneratorFunction;
 
 /**
  * Compute effective TTL: min of what the caller requested and the agent's
@@ -85,6 +92,27 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
     const sentAt = Date.now();
     try {
       const t  = opts._overrideTransport ?? await agent.transportFor(peerId);
+
+      // ── B★ fast-path: same-process, same-InternalBus call ───────────────────
+      // Skip mkEnvelope/encrypt/decrypt/bus-hop and run the receiver-side gate
+      // (runGatedSkill) directly on the target agent. Bounded to the common
+      // request→result case; streaming skills defer to the wire path, and
+      // InputRequired is driven in-process (see _runInProcess). Anything that
+      // needs wire-level origin signatures (relay-forward) or an un-hello'd
+      // peer falls back to the wire path below — unchanged semantics.
+      const targetAgent = _fastPathTarget(agent, peerId, skillId, t, opts);
+      if (targetAgent) {
+        // The terminal transition is applied HERE (not inside _runInProcess) so
+        // it lands one async hop after the result is known — mirroring the wire
+        // path's `await t.request()` → transition deferral, so a caller that
+        // awaits `task.send()` then `task.done()` still sees a pending Task
+        // (done() rejects on failure rather than resolving a failed snapshot).
+        const terminal = await _runInProcess(agent, targetAgent, task, taskId, skillId, parts, tokenJson, opts);
+        if      (terminal?.status === 'completed') task._transition('completed', { parts: terminal.parts });
+        else if (terminal?.status === 'failed')    task._transition('failed',    { error: terminal.error });
+        return;
+      }
+
       console.log(`[callSkill] ${skillId} → ${peerId.slice(0,12)} via ${t?.constructor?.name}`);
       const rs = await t.request(
         peerId,
@@ -125,6 +153,164 @@ export function callSkill(agent, peerId, skillId, parts, opts = {}) {
   return task;
 }
 
+// ── B★ in-process fast-path ─────────────────────────────────────────────────
+
+/**
+ * Decide whether a call can take the in-process fast-path, and if so return
+ * the target Agent to run the gate on. Returns null → use the wire path.
+ *
+ * Eligible iff: the resolved transport is an InternalTransport; the target is
+ * self or a peer on the SAME InternalBus (with a resolvable owner Agent); the
+ * call carries no relay/origin-signature claim; the caller's SecurityLayer can
+ * already reach the peer (so we don't skip a "hello first" failure the wire
+ * path would raise); and the skill is not a streaming handler (streaming keeps
+ * the wire ST/SE + cancel machinery).
+ */
+function _fastPathTarget(callerAgent, peerId, skillId, t, opts) {
+  if (!(t instanceof InternalTransport)) return null;
+  // Relay-forward / origin-signature calls verify a wire-level signature that
+  // only exists post-encrypt (Group Z) → wire path.
+  if (opts.origin) return null;
+
+  let targetAgent;
+  if (peerId === callerAgent.address) {
+    targetAgent = callerAgent;                       // self-call
+  } else {
+    const peerT = t.peerTransport?.(peerId);
+    if (!peerT || peerT.bus !== t.bus) return null;  // not a same-bus peer
+    targetAgent = peerT._ownerAgent;
+  }
+  if (!targetAgent || typeof targetAgent.skills?.get !== 'function') return null;
+
+  const sec = t.securityLayer;
+  if (sec && peerId !== callerAgent.address) {
+    // Preserve the "hello first" requirement: if the caller's SecurityLayer
+    // holds no key for the peer, the wire path would throw on encrypt — let
+    // it, so behaviour is unchanged.
+    if (!sec.getPeerKey(peerId)) return null;
+    // Group FF+1: while EITHER side is in rotation grace, the SecurityLayer
+    // attaches / consumes an inline rotation proof on the wire envelope. The
+    // fast-path skips the SecurityLayer, so stay on the wire path to preserve
+    // that auto-migration side-effect.
+    if (sec.inlineProofActive || targetAgent.security?.inlineProofActive) return null;
+  }
+
+  // Streaming skills stay on the wire path (chunk/cancel machinery lives there).
+  const skill = targetAgent.skills.get(skillId);
+  if (skill && (skill.streaming === true || _isAsyncGenFn(skill.handler))) return null;
+
+  return targetAgent;
+}
+
+/**
+ * Run a call in-process against `targetAgent` via runGatedSkill. Returns a
+ * terminal descriptor `{ status:'completed'|'failed', parts?, error? }` for the
+ * caller to apply to its Task, or null when the Task was already settled here
+ * (streaming pump) or elsewhere (cancel / TTL-expiry during IR).
+ *
+ * The receiver-side AbortController + TTL expiry are set up on the target (via
+ * onGatePassed) exactly as the wire path does, so `ctx.signal` is a real
+ * AbortSignal, a caller `task.cancel()` (a cancel OW over the shared bus)
+ * aborts the handler, and a ceiling TTL still fires — all identical to wire.
+ */
+async function _runInProcess(callerAgent, targetAgent, task, taskId, skillId, parts, tokenJson, opts) {
+  const from    = callerAgent.address;
+  const targetT = await targetAgent.transportFor(from);
+
+  let cleanup = () => {};
+  const onGatePassed = () => {
+    const controller = new AbortController();
+    targetAgent.stateManager.createTask(`abort:${taskId}`, { controller });
+
+    const effectiveTtl = _effectiveTtl(opts.ttl ?? null, targetAgent.maxTaskTtl);
+    let expiryTimer = null;
+    if (effectiveTtl !== null) {
+      expiryTimer = setTimeout(async () => {
+        controller.abort();
+        const irEntry = targetAgent.stateManager.getTask(`ir:${taskId}`);
+        if (irEntry?.rejecter) irEntry.rejecter(new Error('Task expired'));
+        targetAgent.stateManager.deleteTask(`ir:${taskId}`);
+        targetAgent.stateManager.deleteTask(`abort:${taskId}`);
+        await targetT.sendOneWay(from, { type: 'task-expired', taskId }).catch(() => {});
+      }, effectiveTtl);
+    }
+    cleanup = () => {
+      clearTimeout(expiryTimer);
+      targetAgent.stateManager.deleteTask(`abort:${taskId}`);
+    };
+    return controller.signal;
+  };
+
+  const res = await runGatedSkill(targetAgent, {
+    skillId, parts, from, token: tokenJson,
+    taskId, envelope: { _from: from }, onGatePassed,
+  });
+
+  switch (res.status) {
+    case 'completed':
+      cleanup();
+      return { status: 'completed', parts: res.parts ?? [] };
+
+    case 'failed':
+      cleanup();
+      if (res.handlerError) _emitSkillError(targetAgent, skillId, res.err);
+      return { status: 'failed', error: res.error ?? 'Remote skill failed' };
+
+    case 'stream':
+      // Reached only if a handler returns a generator WITHOUT declaring itself
+      // streaming (e.g. a connectSkill-wrapped generator). The generator has
+      // not been consumed, so no side effects have run twice. Drive it into the
+      // caller Task in-process.
+      try {
+        for await (const chunk of res.gen) {
+          if (res.ctx.signal?.aborted) { await res.gen.return?.(); break; }
+          const cp = chunk == null ? [] : Array.isArray(chunk) ? chunk : Parts.wrap(chunk);
+          task._pushChunk(cp);
+        }
+        cleanup();
+        task._transition('completed', { parts: [] });
+      } catch (err) {
+        cleanup();
+        _emitSkillError(targetAgent, skillId, err);
+        task._transition('failed', { error: err?.message ?? String(err) });
+      }
+      return null;
+
+    case 'input-required':
+      return _runInProcessInputRequired(targetAgent, targetT, taskId, skillId, from, res, cleanup);
+  }
+  return null;
+}
+
+/**
+ * In-process InputRequired driver. Round 1 already ran on the target (inside
+ * runGatedSkill, under the abort/TTL set up by _runInProcess); rounds 2+ reuse
+ * the wire helper `_handleInputRequired`, with the target's own
+ * transport-to-caller so input-required / task-input / cancel / task-expired
+ * all flow over the shared bus exactly as on the wire.
+ *
+ * Returns the terminal descriptor (or null when the round ended via cancel /
+ * TTL-expiry, where the caller Task was already settled by the cancel OW /
+ * task-expired OW). The caller (callSkill) applies the transition so the
+ * failure lands one hop after done() is awaited — matching wire RS timing.
+ */
+async function _runInProcessInputRequired(targetAgent, targetT, taskId, skillId, from, res, cleanup) {
+  const synthEnvelope = { _from: from, payload: { type: 'task', taskId, skillId } };
+  let terminal = null;
+  const resolveTerminal = (status, parts, error) => {
+    if (status !== 'completed') _emitSkillError(targetAgent, skillId, error);
+    terminal = status === 'completed'
+      ? { status: 'completed', parts }
+      : { status: 'failed', error: error?.message ?? String(error) };
+  };
+
+  await _handleInputRequired(
+    targetT, targetAgent, synthEnvelope, taskId, res.skill, res.ctx, res.irErr,
+    res.ctx.signal, cleanup, resolveTerminal,
+  );
+  return terminal;
+}
+
 // ── Inbound ───────────────────────────────────────────────────────────────────
 
 /**
@@ -155,39 +341,142 @@ export async function handleTaskRequest(agent, envelope) {
   const t = envelope._transport ?? await agent.transportFor(envelope._from);
   console.log(`[handleTaskRequest] ${skillId} from ${envelope._from?.slice(0,12)} via ${t?.constructor?.name}`);
 
+  // The gate + regular-handler path lives in runGatedSkill (shared with the
+  // B★ in-process fast-path so semantics + error strings stay identical). The
+  // wire path keeps ownership of the AbortController / TTL expiry (which needs
+  // this transport) via the onGatePassed hook, fired AFTER the gate passes and
+  // BEFORE the handler runs — exactly where it lived inline before.
+  let cleanup = () => {};
+  const onGatePassed = () => {
+    const controller = new AbortController();
+    agent.stateManager.createTask(`abort:${taskId}`, { controller });
+
+    const effectiveTtl = _effectiveTtl(reqTtl, agent.maxTaskTtl);
+    let expiryTimer    = null;
+    if (effectiveTtl !== null) {
+      expiryTimer = setTimeout(async () => {
+        controller.abort();
+        const irEntry = agent.stateManager.getTask(`ir:${taskId}`);
+        if (irEntry?.rejecter) irEntry.rejecter(new Error('Task expired'));
+        agent.stateManager.deleteTask(`ir:${taskId}`);
+        agent.stateManager.deleteTask(`abort:${taskId}`);
+        await t.sendOneWay(envelope._from, {
+          type: 'task-expired', taskId,
+        }).catch(() => {});
+      }, effectiveTtl);
+    }
+    cleanup = () => {
+      clearTimeout(expiryTimer);
+      agent.stateManager.deleteTask(`abort:${taskId}`);
+    };
+    return controller.signal;
+  };
+
+  const res = await runGatedSkill(agent, {
+    skillId, parts,
+    from:      envelope._from,
+    token:     _token,
+    origin:    _origin,
+    originSig: _originSig,
+    originTs:  _originTs,
+    taskId, envelope, onGatePassed,
+  });
+
+  // Async generator → streaming path.
+  if (res.status === 'stream') {
+    await _runStreamingHandler(t, agent, envelope, taskId, res.gen, res.ctx.signal, cleanup);
+    return true;
+  }
+
+  // Handler paused for input → multi-round IR loop.
+  if (res.status === 'input-required') {
+    await _handleInputRequired(
+      t, agent, envelope, taskId, res.skill, res.ctx, res.irErr, res.ctx.signal, cleanup,
+    );
+    return true;
+  }
+
+  if (res.status === 'completed') {
+    cleanup();
+    await t.respond(envelope._from, envelope._id, {
+      type:   'task-result',
+      taskId,
+      status: 'completed',
+      parts:  res.parts,
+    }).catch(err => agent.emit('error', err));
+    return true;
+  }
+
+  // Failed: gate denial (plain respond) vs handler error (warn + skill-error).
+  cleanup();
+  if (res.handlerError) {
+    await _respondFailed(t, agent, envelope, taskId, res.err);
+  } else {
+    await t.respond(envelope._from, envelope._id, {
+      type:   'task-result',
+      taskId,
+      status: 'failed',
+      error:  res.error,
+      parts:  [],
+    }).catch(() => {});
+  }
+  return true;
+}
+
+/**
+ * The transport-independent receiver-side gate + regular-handler result path.
+ * Runs the SAME policy → skill-lookup → group-visibility → origin-verification
+ * gate as the wire path, then invokes the skill handler for the common
+ * request→result case. Shared by both handleTaskRequest (wire) and the B★
+ * in-process fast-path so error strings + gate semantics are identical.
+ *
+ * Streaming / InputRequired handlers are NOT resolved here — they are returned
+ * to the caller (`{ status:'stream' | 'input-required', ... }`) which owns the
+ * transport-specific ST/SE + IR machinery.
+ *
+ * @param {import('../Agent.js').Agent} agent  — the RECEIVER agent
+ * @param {object} p
+ * @param {string} p.skillId
+ * @param {import('../Parts.js').Part[]} [p.parts]
+ * @param {string} p.from                       — caller address (envelope._from)
+ * @param {object|null} [p.token]               — capability token JSON
+ * @param {string|null} [p.origin]              — relay-forward origin claim
+ * @param {string|null} [p.originSig]
+ * @param {number|null} [p.originTs]
+ * @param {string} [p.taskId]
+ * @param {object|null} [p.envelope]
+ * @param {(() => AbortSignal|undefined)|null} [p.onGatePassed]  — fired once the
+ *        gate passes, before the handler runs; returns the handler's AbortSignal.
+ * @returns {Promise<{status:'completed'|'failed'|'stream'|'input-required', ...}>}
+ */
+export async function runGatedSkill(agent, {
+  skillId, parts = [], from, token = null,
+  origin = null, originSig = null, originTs = null,
+  taskId = null, envelope = null, onGatePassed = null,
+}) {
   // ── Policy check ───────────────────────────────────────────────────────────
   if (agent.policyEngine) {
     try {
       await agent.policyEngine.checkInbound({
-        peerPubKey: envelope._from,
+        peerPubKey:  from,
         skillId,
-        action:     'call',
-        token:      _token,
+        action:      'call',
+        token,
         agentPubKey: agent.pubKey,
       });
     } catch (err) {
-      await t.respond(envelope._from, envelope._id, {
-        type:   'task-result',
-        taskId,
-        status: 'failed',
-        error:  err.message,
-        parts:  [],
-      }).catch(() => {});
-      return true;
+      return { status: 'failed', error: err.message, parts: [] };
     }
   }
 
   // ── Skill lookup ───────────────────────────────────────────────────────────
   const skill = agent.skills.get(skillId);
   if (!skill || !skill.enabled) {
-    await t.respond(envelope._from, envelope._id, {
-      type:   'task-result',
-      taskId,
+    return {
       status: 'failed',
       error:  skill ? `Skill "${skillId}" is disabled` : `Unknown skill: "${skillId}"`,
       parts:  [],
-    }).catch(() => {});
-    return true;
+    };
   }
 
   // ── Group-visibility gate (Group X) ───────────────────────────────────────
@@ -201,140 +490,88 @@ export async function handleTaskRequest(agent, envelope) {
     if (gm) {
       for (const gid of skill.visibility.groups) {
         try {
-          if (await gm.hasValidProof(envelope._from, gid)) { isMember = true; break; }
+          if (await gm.hasValidProof(from, gid)) { isMember = true; break; }
         } catch { /* fail-closed */ }
       }
     }
     if (!isMember) {
-      await t.respond(envelope._from, envelope._id, {
-        type:   'task-result',
-        taskId,
-        status: 'failed',
-        error:  `Unknown skill: "${skillId}"`,
-        parts:  [],
-      }).catch(() => {});
-      return true;
+      return { status: 'failed', error: `Unknown skill: "${skillId}"`, parts: [] };
     }
   }
 
-  // ── AbortController + TTL expiry ───────────────────────────────────────────
-  const controller   = new AbortController();
-  agent.stateManager.createTask(`abort:${taskId}`, { controller });
-
-  const effectiveTtl = _effectiveTtl(reqTtl, agent.maxTaskTtl);
-  let expiryTimer    = null;
-
-  if (effectiveTtl !== null) {
-    expiryTimer = setTimeout(async () => {
-      controller.abort();
-      const irEntry = agent.stateManager.getTask(`ir:${taskId}`);
-      if (irEntry?.rejecter) irEntry.rejecter(new Error('Task expired'));
-      agent.stateManager.deleteTask(`ir:${taskId}`);
-      agent.stateManager.deleteTask(`abort:${taskId}`);
-      await t.sendOneWay(envelope._from, {
-        type: 'task-expired', taskId,
-      }).catch(() => {});
-    }, effectiveTtl);
-  }
-
-  /** Call once the handler finishes (any outcome) to release resources. */
-  const cleanup = () => {
-    clearTimeout(expiryTimer);
-    agent.stateManager.deleteTask(`abort:${taskId}`);
-  };
-
   // ── Origin signature verification (Group Z) ──────────────────────────────
-  // Default: no verified origin. If the payload carries _origin + _originSig +
+  // Default: no verified origin. If the caller carries _origin + _originSig +
   // _originTs, verify against canonicalize({ v:1, target: agent.pubKey, skill,
   // parts, ts }). On success → trust the claim. On failure → fall back to the
   // relay's pubkey and emit a security-warning. Missing sig entirely is the
-  // backward-compat case (pre-Z callers) — attribute to _from silently.
-  let verifiedOrigin = false;
-  let attributedOrigin = envelope._from;
-  if (_origin && _originSig && typeof _originTs === 'number') {
-    const res = verifyOrigin(
+  // backward-compat case (pre-Z callers) — attribute to `from` silently.
+  let verifiedOrigin   = false;
+  let attributedOrigin = from;
+  if (origin && originSig && typeof originTs === 'number') {
+    const vres = verifyOrigin(
       {
-        origin: _origin,
-        sig:    _originSig,
-        body:   { v: 1, target: agent.pubKey, skill: skillId, parts, ts: _originTs },
+        origin,
+        sig:  originSig,
+        body: { v: 1, target: agent.pubKey, skill: skillId, parts, ts: originTs },
       },
       { expectedPubKey: agent.pubKey },
     );
-    if (res.ok) {
+    if (vres.ok) {
       verifiedOrigin   = true;
-      attributedOrigin = _origin;
+      attributedOrigin = origin;
     } else {
       agent.emit('security-warning', {
         kind:   'origin-signature',
-        reason: res.reason,
+        reason: vres.reason,
         envelope,
       });
     }
-  } else if (_origin) {
-    // _origin present but no sig → treat as an unverified claim. Do NOT
-    // adopt it; fall back to the relay. No warning (pre-Z compat).
-    attributedOrigin = envelope._from;
+  } else if (origin) {
+    // _origin present but no sig → unverified claim; attribute to `from`.
+    attributedOrigin = from;
   }
 
-  // If _origin is set we came through a relay. Expose both the immediate sender
-  // (envelope._from = the relay) and the original caller (originFrom).
-  // Handlers that care about identity (e.g. chat) should prefer originFrom.
+  // Gate passed. Let the wire path stand up its AbortController + TTL now
+  // (exact original ordering: after the gate, before the handler).
+  const signal = onGatePassed ? onGatePassed() : undefined;
+
+  // If `origin` is set we came through a relay. Expose both the immediate
+  // sender (`from` = the relay) and the original caller (originFrom).
   const ctx = {
     parts,
-    from:           envelope._from,
+    from,
     originFrom:     attributedOrigin,
     originVerified: verifiedOrigin,
-    relayedBy:      _origin ? envelope._from : null,
+    relayedBy:      origin ? from : null,
     taskId,
     envelope,
     agent,
-    signal:         controller.signal,
+    signal,
   };
 
   let result;
   try {
     result = skill.handler(ctx);
   } catch (err) {
-    cleanup();
-    await _respondFailed(t, agent, envelope, taskId, err);
-    return true;
+    return { status: 'failed', error: err?.message ?? String(err), parts: [], handlerError: true, err };
   }
 
-  // Async generator → streaming path.
-  if (isAsyncGen(result)) {
-    await _runStreamingHandler(t, agent, envelope, taskId, result, controller.signal, cleanup);
-    return true;
-  }
+  // Async generator → streaming; hand back to the caller's ST/SE machinery.
+  if (isAsyncGen(result)) return { status: 'stream', gen: result, skill, ctx };
 
-  // Regular async handler.
   let resolved;
   try {
     resolved = await result;
   } catch (err) {
-    if (err?.name === 'InputRequired') {
-      await _handleInputRequired(
-        t, agent, envelope, taskId, skill, ctx, err, controller.signal, cleanup,
-      );
-      return true;
-    }
-    cleanup();
-    await _respondFailed(t, agent, envelope, taskId, err);
-    return true;
+    if (err?.name === 'InputRequired') return { status: 'input-required', irErr: err, skill, ctx };
+    return { status: 'failed', error: err?.message ?? String(err), parts: [], handlerError: true, err };
   }
 
-  cleanup();
   const outParts = resolved == null    ? []
     : Array.isArray(resolved)          ? resolved
     : Parts.wrap(resolved);
 
-  await t.respond(envelope._from, envelope._id, {
-    type:   'task-result',
-    taskId,
-    status: 'completed',
-    parts:  outParts,
-  }).catch(err => agent.emit('error', err));
-
-  return true;
+  return { status: 'completed', parts: outParts, ctx };
 }
 
 // ── OW sub-type dispatcher ────────────────────────────────────────────────────
@@ -504,7 +741,19 @@ async function _runStreamingHandler(t, agent, envelope, taskId, gen, signal, cle
  * Loops until the handler returns a result, throws a non-InputRequired error,
  * is aborted (cancel/expiry), or times out.
  */
-async function _handleInputRequired(t, agent, envelope, taskId, skill, ctx, irErr, signal, cleanup) {
+async function _handleInputRequired(t, agent, envelope, taskId, skill, ctx, irErr, signal, cleanup, resolveTerminal = null) {
+  // `resolveTerminal` (B★ in-process fast-path) redirects the terminal
+  // completion/failure to the caller Task instead of a wire RS. When null,
+  // the wire path behaviour is byte-identical to before.
+  const _completed = resolveTerminal
+    ? (parts) => resolveTerminal('completed', parts, null)
+    : (parts) => t.respond(envelope._from, envelope._id, {
+        type: 'task-result', taskId, status: 'completed', parts,
+      }).catch(() => {});
+  const _failed = resolveTerminal
+    ? (err) => resolveTerminal('failed', [], err)
+    : (err) => _respondFailed(t, agent, envelope, taskId, err);
+
   while (true) {
     if (signal?.aborted) { cleanup(); return; }
 
@@ -528,7 +777,7 @@ async function _handleInputRequired(t, agent, envelope, taskId, skill, ctx, irEr
     } catch (err) {
       cleanup();
       if (err.message !== 'Task expired' && !signal?.aborted) {
-        await _respondFailed(t, agent, envelope, taskId, err);
+        await _failed(err);
       }
       return;
     }
@@ -546,7 +795,7 @@ async function _handleInputRequired(t, agent, envelope, taskId, skill, ctx, irEr
         continue;
       }
       cleanup();
-      await _respondFailed(t, agent, envelope, taskId, err);
+      await _failed(err);
       return;
     }
 
@@ -555,19 +804,19 @@ async function _handleInputRequired(t, agent, envelope, taskId, skill, ctx, irEr
       : Array.isArray(resumed)          ? resumed
       : Parts.wrap(resumed);
 
-    await t.respond(envelope._from, envelope._id, {
-      type:   'task-result',
-      taskId,
-      status: 'completed',
-      parts:  outParts,
-    }).catch(() => {});
+    await _completed(outParts);
     return;
   }
 }
 
+/** Log + emit a skill handler error (shared by wire + fast-path). */
+function _emitSkillError(agent, skillId, err) {
+  console.warn('[taskExchange] skill error:', skillId, err?.message);
+  agent.emit('skill-error', { skillId, error: err });
+}
+
 async function _respondFailed(t, agent, envelope, taskId, err) {
-  console.warn('[taskExchange] skill error:', envelope.payload?.skillId, err?.message);
-  agent.emit('skill-error', { skillId: envelope.payload?.skillId, error: err });
+  _emitSkillError(agent, envelope.payload?.skillId, err);
   await t.respond(envelope._from, envelope._id, {
     type:   'task-result',
     taskId,

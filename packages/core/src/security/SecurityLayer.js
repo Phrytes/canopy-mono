@@ -126,6 +126,19 @@ export class SecurityLayer {
     this.#inlineProof = { proof, graceUntil: graceUntil ?? Infinity };
   }
 
+  /**
+   * True while an inline rotation proof is armed and still within its grace
+   * window — i.e. this layer is currently attaching a proof to every outbound
+   * encrypted envelope so un-notified peers auto-migrate. The B★ in-process
+   * fast-path checks this to STAY ON the wire path during rotation grace, so
+   * the inline-proof migration side-effect is never skipped (Group FF+1).
+   *
+   * @returns {boolean}
+   */
+  get inlineProofActive() {
+    return !!this.#inlineProof && Date.now() < this.#inlineProof.graceUntil;
+  }
+
   /** @returns {string} — current self pubkey */
   get selfPubKey() { return this.#identity.pubKey; }
 
