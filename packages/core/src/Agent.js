@@ -190,6 +190,7 @@ export class Agent extends Emitter {
     if (this.#started) {
       transport.useSecurityLayer(this.#security);
       transport.setReceiveHandler(env => this._dispatch(env));
+      transport._ownerAgent = this;   // B★ in-process fast-path back-ref
       transport.on('security-error', err => this.emit('security-error', err));
       transport.connect().catch(err => this.emit('error', err));
     }
@@ -368,6 +369,7 @@ export class Agent extends Emitter {
     for (const [, transport] of this.#transports) {
       transport.useSecurityLayer(this.#security);
       transport.setReceiveHandler(env => this._dispatch(env));
+      transport._ownerAgent = this;   // B★ in-process fast-path back-ref
       transport.on('security-error', err => this.emit('security-error', err));
     }
     // Connect all transports (in parallel; errors on non-primary are soft)

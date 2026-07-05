@@ -42,7 +42,7 @@
  * @param {object} ctx  core skill context ({ parts, ... })
  * @returns {object|string|Array} object (DataPart), string (TextPart) or raw Part[]
  */
-function decodeArgs(ctx) {
+export function decodeArgs(ctx) {
   const parts = ctx?.parts ?? [];
 
   // Merged DataPart fields — the common "object args" case.

@@ -40,12 +40,29 @@ export class InternalTransport extends Transport {
    */
   get bus() { return this.#bus; }
 
+  /**
+   * Look up a sibling InternalTransport on the SAME bus by address (or null).
+   * Populated on connect(); lets the B★ in-process fast-path
+   * (protocol/taskExchange.callSkill) resolve the target agent — via
+   * `peerTransport(addr)._ownerAgent` — without a bus hop. Best-effort: an
+   * unknown / not-yet-connected peer returns null and the caller falls back to
+   * the wire path.
+   *
+   * @param {string} address
+   * @returns {InternalTransport|null}
+   */
+  peerTransport(address) {
+    return this.#bus.__peers?.get(address) ?? null;
+  }
+
   async connect() {
+    (this.#bus.__peers ??= new Map()).set(this.address, this);
     this.#bus.on(`msg:${this.address}`, this.#listener);
     this.emit('connect', { address: this.address });
   }
 
   async disconnect() {
+    this.#bus.__peers?.delete(this.address);
     this.#bus.off(`msg:${this.address}`, this.#listener);
     this.emit('disconnect');
   }
