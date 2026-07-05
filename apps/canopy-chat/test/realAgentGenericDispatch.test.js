@@ -17,8 +17,8 @@ import { encodeGenericOpId } from '@canopy/app-manifest';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 
 describe('createRealHouseholdAgent — §1b 1d generic op-id dispatch at callSkill', () => {
-  it('flag ON: a generic add:note op-id stores a note; a subsequent list:note returns it', async () => {
-    const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
+  it('a generic add:note op-id stores a note; a subsequent list:note returns it', async () => {
+    const a = await createRealHouseholdAgent();
 
     const addOp = encodeGenericOpId('household', 'add', 'note');
     const added = await a.callSkill('household', addOp, { circleId: 'c1', body: 'buy stamps' });
@@ -39,16 +39,13 @@ describe('createRealHouseholdAgent — §1b 1d generic op-id dispatch at callSki
   });
 
   it('regression: a non-generic (bespoke) household op still routes normally via callSkill', async () => {
-    const a = await createRealHouseholdAgent({ householdViaCircleStore: true });
+    const a = await createRealHouseholdAgent();
     await a.callSkill('household', 'addItem', { circleId: 'c1', type: 'shopping', text: 'milk' });
     const open = await a.callSkill('household', 'listOpen', { circleId: 'c1', type: 'shopping' });
     expect(open.items.map((i) => i.label)).toContain('milk');
   });
 
-  it('flag OFF (no householdService): a generic op-id returns a structured error, not a throw', async () => {
-    const a = await createRealHouseholdAgent();   // default: householdViaCircleStore off
-    const addOp = encodeGenericOpId('household', 'add', 'note');
-    const r = await a.callSkill('household', addOp, { circleId: 'c1', body: 'buy stamps' });
-    expect(r).toEqual({ ok: false, error: 'generic-capability-unavailable' });
-  });
+  // NB the former "flag OFF → generic-capability-unavailable" case is retired: L3 makes the wired
+  // household service unconditional, so household's generic capability is always available. The
+  // structured-error branch now only fires for a non-household app with no generic handler.
 });

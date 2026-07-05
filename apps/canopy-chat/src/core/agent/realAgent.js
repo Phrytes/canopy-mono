@@ -63,23 +63,24 @@ async function restoreOrGenerate(vault) {
 import {
   CalendarStore, registerCalendarSkills,
 } from '@canopy-app/calendar';
-// Part G household — Option B: the REAL standalone `apps/household` agent
-// replaces the chore-vocab inline skills below.  `householdManifest` (item/
-// task vocab) is the catalog source of truth; `HOUSEHOLD_SKILL_REGISTRY` maps
-// opId → the real `(args, ctx)` skill; `InMemoryStore` is its backing store.
-//
 // Imported by RELATIVE path (not the `@canopy-app/household` package name)
 // because canopy-chat doesn't carry household as a workspace dep yet (the
 // dissolve is in progress).  Mirrors canopy-chat-mobile/composeManifests.js,
 // which relative-imports the sibling app sources for the same reason.
-import {
-  householdManifest,
-  HOUSEHOLD_SKILL_REGISTRY,
-  InMemoryStore as HouseholdStore,
-  buildHouseholdSubstrateStack,
-  wireHouseholdSubstrateMirror,
-  buildHouseholdDataSource,
-} from '../../../../household/src/index.js';
+//
+// L3 — canopy-chat no longer depends on the legacy household skill registry
+// (`skillRegistry.js` → `HOUSEHOLD_SKILL_REGISTRY`) or the legacy `HouseholdAgent`.
+// Household ops route through the dissolved pure cores (`v2/householdApp.js`) on a
+// dedicated in-process agent via `wireSkill` (see below). We import ONLY the store +
+// the no-pod cross-device sync substrate from their submodules — NOT `index.js`, which
+// re-exports the retired `HOUSEHOLD_SKILL_REGISTRY` / `HouseholdAgent`. The `InMemoryStore`
+// (`HouseholdStore`) survives here solely as the no-pod sync mirror's substrate backing;
+// the live item data lives in the per-circle `CircleItemStore` (householdService).
+import { InMemoryStore as HouseholdStore } from '../../../../household/src/storage/InMemoryStore.js';
+import { buildHouseholdSubstrateStack }    from '../../../../household/src/lib/substrateStack.js';
+import { wireHouseholdSubstrateMirror }    from '../../../../household/src/substrateMirror.js';
+import { buildHouseholdDataSource }        from '../../../../household/src/storage/persist.js';
+import { householdManifest }               from '../../../../household/manifest.js';
 import { createSecureMeshEnvelopeAdapter } from '../sync/secureMeshEnvelopeAdapter.js';
 import { isGenericOpId, decodeGenericOpId } from '@canopy/app-manifest';
 
@@ -143,26 +144,22 @@ export async function createRealHouseholdAgent(opts = {}) {
   function resolveHouseholdCircleId(args) {
     return (args?.circleId ?? args?.crewId ?? args?.groupId ?? getActiveHouseholdCircleId()) || 'household';
   }
-  // cluster L · L3 — ADDITIVE dissolve cutover (flag-gated, default OFF → legacy agent, zero regression). When
-  // `opts.householdViaCircleStore` is on, household ops route to the dissolved functions over the per-circle
-  // CircleItemStore (householdApp.js) instead of the legacy hostAgent. Same DataSource (persistent if a
-  // persistDb was passed; in-memory no-pod otherwise). Lets the cutover be device-verified before retiring the
-  // agent. Dynamic import so flag-off boots never load the item-store/registry substrate.
-  let householdService = null;
-  let householdApp = null;             // B1 — the householdApp.js module (pure cores) for wireSkill registration below
+  // cluster L · L3 — household is now the UNIFORM wired path by DEFAULT (the legacy agent is retired).
+  // Household ops route to the dissolved pure cores (`v2/householdApp.js`) over the per-circle
+  // CircleItemStore, via `wireSkill` on a dedicated in-process household agent (built below). Same
+  // DataSource (persistent if a persistDb was passed; in-memory no-pod otherwise). `opts.householdViaCircleStore`
+  // is accepted but no longer gates anything — the wired path is unconditional (there is no legacy fallback).
+  const householdApp = await import('../../v2/householdApp.js');   // pure cores for the wireSkill registration below
+  const { wireStoreMirror, wireCircleStoreInbound } = await import('@canopy/item-store');
   let householdAgent = null;           // B1 — dedicated in-process agent hosting the wireSkill-wrapped pure cores
-  let wireStoreMirror = null;          // L3 no-pod-sync: attach the circle store to the peer mirror (publish-on-write)
-  let wireCircleStoreInbound = null;   // …and ingest peer envelopes back into the circle store (inbound)
   const householdSyncWired = new Set();   // circleIds whose store↔mirror sync (publish + inbound) is wired (once each)
-  if (opts.householdViaCircleStore) {
-    householdApp = await import('../../v2/householdApp.js');
-    ({ wireStoreMirror, wireCircleStoreInbound } = await import('@canopy/item-store'));
-    householdService = householdApp.createHouseholdService({ dataSource: householdDataSource });
-  }
-  // Legacy/default store — the mirror, seeding, and standalone helpers stay on this bucket for now
-  // (per-circle mirror is a later phase). Per-circle skill reads/writes resolve via getHouseholdScope.
-  const householdStore = getHouseholdScope('household');
-
+  const householdService = householdApp.createHouseholdService({ dataSource: householdDataSource });
+  // The wired household ops (dissolved cores on `householdAgent`). Everything else on the 'household'
+  // app-origin (calendar_* passthrough, addMember, getChoreSnapshot, resolveContact, help, registerName)
+  // routes to `hostAgent`; `household_briefSummary` is derived from the wired store (see callSkill).
+  const HOUSEHOLD_WIRED_OPS = new Set([
+    'addItem', 'addTask', 'markComplete', 'removeItem', 'claim', 'reassign', 'listOpen', 'listTasks',
+  ]);
   // v0.7.12 — multi-pod RSVP coordination (simulated for the demo).
   // calendar.addEvent calls this when attendees are present; default
   // is no-op (registerCalendarSkills's inviteAttendee:null path).
@@ -293,8 +290,31 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
     return mirror;
   }
+  // L3 no-pod-sync — bridge a circle's CircleItemStore (the live wired data) to its peer mirror,
+  // BIDIRECTIONALLY, ONCE per circle (guard with the Set; inbound `subscribe` accumulates):
+  //   PUBLISH — local writes fan out to the circle's other devices (`wireStoreMirror` → publish-on-write).
+  //   INBOUND — peer envelopes ingest back into THIS circle store (`wireCircleStoreInbound`, id-preserving,
+  //             no echo). Same kind/prefix the household mirror publishes. Best-effort (op still runs locally).
+  async function ensureHouseholdCircleSync(circleId) {
+    const id = (typeof circleId === 'string' && circleId) ? circleId : 'household';
+    if (householdSyncWired.has(id)) return;
+    try {
+      const mirror      = await ensureHouseholdMirror(id);
+      const circleStore = householdService.stores.getStore(id);
+      wireStoreMirror(circleStore, mirror);
+      wireCircleStoreInbound({
+        notifyEnvelope: householdSubstrate.notifyEnvelope,
+        store:          circleStore,
+        prefix:         `/household/circles/${id}/items/`,
+      });
+      householdSyncWired.add(id);
+    } catch { /* sync is best-effort; the op still runs locally */ }
+  }
   // Legacy bucket's mirror (back-compat default for un-scoped peer ops + the seed/demo path).
   const householdMirror = await ensureHouseholdMirror('household');
+  // Wire the default 'household' circle's store↔mirror sync eagerly at boot so an inbound peer envelope
+  // that arrives BEFORE the first local household op still ingests into the wired store.
+  await ensureHouseholdCircleSync('household');
 
   async function persistHouseholdPeers(circleId) {
     const m = householdMirrors.get(circleId || 'household');
@@ -317,7 +337,7 @@ export async function createRealHouseholdAgent(opts = {}) {
   async function republishHouseholdItemsToNewPeer(circleId) {
     const id = circleId || 'household';
     let items = [];
-    try { items = await getHouseholdScope(id).listOpen({}); } catch { return; }
+    try { items = await householdApp.listOpen(householdService.stores.getStore(id), {}); } catch { return; }
     const mirror = await ensureHouseholdMirror(id);
     for (const it of (Array.isArray(items) ? items : [])) {
       try { mirror.publishItem(it); } catch { /* best-effort */ }
@@ -387,87 +407,45 @@ export async function createRealHouseholdAgent(opts = {}) {
     });
   }
 
-  /* ─────────── Part G household — REAL `apps/household` skills ─────────── */
-  // Register the REAL household skills (skillRegistry.js) on the host agent,
-  // each wrapped so the chat-shell sees its expected renderer shape via
-  // `adaptHouseholdReply`.  The real skills take `(args, ctx)` and return the
-  // text-bridge shape `{ replies, stateUpdates }`; we adapt that here.
-  //
-  // ctx = { store: householdStore, senderWebid: <caller>, chatId, agent }.
-  const HOUSEHOLD_CHAT_ID = 'cc-default';
-  // Track item text by id so the action-reply adapter (which only gets an
-  // itemId in `stateUpdates`) can surface the affected item's text without a
-  // second store round-trip.  Populated on every list/add.
-  const householdItemText = new Map();   // itemId → text
-
-  /** Register one real household skill, adapting its reply for the chat shell. */
-  function registerHouseholdSkill(opId, skill) {
-    hostAgent.register(opId, async ({ parts, from }) => {
-      const args = parts?.[0]?.data ?? {};
-      // Per-circle scope: this circle's store (args.circleId, else the shell's active circle, else the
-      // legacy bucket) + its OWN mirror (ensuring it wires the per-circle sync hook before any write).
-      const circleId = resolveHouseholdCircleId(args);
-      const store  = getHouseholdScope(circleId);
-      const mirror = await ensureHouseholdMirror(circleId);
-      const ctx  = {
-        store,
-        senderWebid: from ?? 'webid:local-demo-user',
-        chatId:      HOUSEHOLD_CHAT_ID,
-        agent:       hostAgent,
-        householdMirror: mirror,   // OBJ-2 — per-circle: S1d publish-on-write fans out under this circle's scope
-      };
-      const out = await skill(args, ctx);
-      const payload = await adaptHouseholdReply(opId, out, store, args);
-      return [DataPart(payload)];
-    });
-  }
-
-  for (const [opId, skill] of Object.entries(HOUSEHOLD_SKILL_REGISTRY)) {
-    // `classifyAndExtract` is a slow-path internal (LLM classifier), not a
-    // user-facing op — skip it (no chat surface, different signature).
-    if (opId === 'classifyAndExtract') continue;
-    registerHouseholdSkill(opId, skill);
-  }
-
-  /* ─────────── B★ B1 — household via the uniform route + wireSkill (L3) ───────────
-   * The dissolved-onto-CircleItemStore path (opts.householdViaCircleStore) no longer
-   * DIRECT-CALLS `householdService.callSkill(opId, …)`.  The existing pure cores in
-   * `v2/householdApp.js` are registered on a DEDICATED in-process household agent via
-   * `wireSkill(core, householdOp, { storeFor })` — the same manifest-op-derives-the-handler
-   * mechanism B2 (tasks-v0) uses — and the `'household'` branch of callSkill routes through
-   * `chatAgent.invoke(householdAgent.address, opId, parts)` so it takes the merged S1
-   * InternalTransport fast-path AND passes the callSkill security gate (runGatedSkill).
+  /* ─────────── L3 — household via the uniform route + wireSkill (the DEFAULT, legacy retired) ───────────
+   * The dissolved-onto-CircleItemStore cores in `v2/householdApp.js` are registered on a DEDICATED
+   * in-process household agent via `wireSkill(core, householdOp, { storeFor })` — the same
+   * manifest-op-derives-the-handler mechanism B2 (tasks-v0) uses — and the `'household'` branch of
+   * callSkill routes through `chatAgent.invoke(householdAgent.address, opId, parts)` so household ops
+   * take the merged S1 InternalTransport fast-path AND pass the callSkill security gate.
    *
-   *   • storeFor — the SAME per-circle CircleItemStore resolution the direct-call branch
-   *     used: `householdService.stores.getStore(circleId)`.  circleId is injected into the
-   *     DataPart args at invoke time (below), so it resolves identically here.
-   *   • `by` — the acting member.  The cores read `ctx.by`; the invoke context carries the
-   *     caller as `ctx.from` (= chatId.pubKey in-process), so `withBy` threads it through,
-   *     matching the old `by: chatId?.pubKey`.
-   *   • listOpen/listTasks cores return a BARE ARRAY of items; each item carries a `.type`
-   *     field, which `Parts.wrap` would mistake for a Part[].  `listWrap` boxes them in
-   *     `{ items }` so invoke always yields a clean DataPart.
-   *
-   * NB: the legacy `registerHouseholdSkill` loop above (flag-OFF default path) is NOT removed
-   * — it, and `HOUSEHOLD_SKILL_REGISTRY`/`skillRegistry.js`, stay the live default surface and
-   * are pinned by ~30 realAgent.test.js cases (seed store + `{replies,stateUpdates}` shapes +
-   * listOpen-without-type). Retiring them is DEFERRED L3 scope (see the B1 report). */
-  if (householdService) {
+   *   • storeFor — the per-circle CircleItemStore: `householdService.stores.getStore(circleId)`.
+   *     circleId is injected into the DataPart args at invoke time (below), so it resolves identically here.
+   *   • `by` — the acting member.  The cores read `ctx.by`; the invoke context carries the caller as
+   *     `ctx.from` (= chatId.pubKey in-process), so `withBy` threads it through.
+   *   • listOpen/listTasks cores return a BARE ARRAY of items; `listWrap` boxes them in `{ items }` so
+   *     invoke always yields a clean DataPart (an array would be mis-read as a Part[]).
+   *   • listOpen's manifest `type` param is REQUIRED, but the dissolved app (like the legacy one) supports
+   *     listOpen WITHOUT a type = "all open items across every list-type". We wire that op with a `type`-
+   *     optional CLONE of the manifest op so `wireSkill`'s validation permits the no-type call; the core
+   *     (householdApp.listOpen) reads the whole store when `type` is absent.  The shared manifest is
+   *     untouched (addItem's `type` stays required; the standalone household app is unaffected). */
+  {
     const householdId    = await restoreOrGenerate(makeBrowserVault('cc-household-agent-id:'));
     householdAgent       = new Agent({ identity: householdId, transport: new InternalTransport(bus, householdId.pubKey) });
     const hhOp = (id) => {
       const found = householdManifest.operations.find((o) => o.id === id);
-      if (!found) throw new Error(`realAgent B1: no household manifest op "${id}"`);
+      if (!found) throw new Error(`realAgent L3: no household manifest op "${id}"`);
       return found;
     };
-    // Same resolution as the direct-call branch (args.circleId is injected at invoke).
+    // listOpen supports the no-type ("all open") call the legacy path allowed — clone the op with the
+    // `type` param made OPTIONAL so wireSkill's required-param validation doesn't reject it.
+    const typeOptional = (op) => ({
+      ...op,
+      params: (op.params ?? []).map((p) => (p.name === 'type' ? { ...p, required: false } : p)),
+    });
     const storeFor = (ctx) =>
       householdService.stores.getStore(resolveHouseholdCircleId(ctx.parts?.[0]?.data ?? {}));
     // Thread the acting member (`by`) from the invoke context into the pure core's ctx.
     const withBy   = (coreFn) => (store, a, ctx) => coreFn(store, a, { ...ctx, by: ctx.from ?? chatId?.pubKey });
     // Box the bare-array list cores so invoke returns a DataPart, not an array-mistaken-for-Parts.
     const listWrap = (coreFn) => async (store, a, ctx) => ({ items: await coreFn(store, a, ctx) });
-    const wire     = (id, coreFn) => householdAgent.register(id, wireSkill(coreFn, hhOp(id), { storeFor }));
+    const wire     = (id, coreFn, op = hhOp(id)) => householdAgent.register(id, wireSkill(coreFn, op, { storeFor }));
 
     wire('addItem',      withBy(householdApp.addItem));
     wire('addTask',      withBy(householdApp.addTask));
@@ -475,7 +453,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     wire('claim',        withBy(householdApp.claim));
     wire('reassign',     withBy(householdApp.reassign));
     wire('removeItem',   householdApp.removeItem);          // no `by`
-    wire('listOpen',     listWrap(householdApp.listOpen));
+    wire('listOpen',     listWrap(householdApp.listOpen), typeOptional(hhOp('listOpen')));
     wire('listTasks',    listWrap(householdApp.listTasks));
   }
 
@@ -493,9 +471,10 @@ export async function createRealHouseholdAgent(opts = {}) {
       return [DataPart({ ok: false, error: 'name required' })];
     }
     try {
-      await householdStore.addItem({
-        type: 'contact', text: name, addedBy: from ?? 'webid:local-demo-user',
-      });
+      await householdService.stores.getStore('household').put(
+        { type: 'contact', text: name, addedBy: from ?? 'webid:local-demo-user' },
+        { by: from ?? 'webid:local-demo-user' },
+      );
     } catch { /* defensive — the member reply doesn't depend on the write */ }
     return [DataPart({
       ok:         true,
@@ -509,7 +488,7 @@ export async function createRealHouseholdAgent(opts = {}) {
   // id-prefix / keyword) from the store and shapes it as an ItemSnapshot.
   hostAgent.register('getChoreSnapshot', async ({ parts }) => {
     const id = String(parts?.[0]?.data?.choreId ?? '').trim();
-    const open = await householdStore.listOpen();
+    const open = await householdApp.listOpen(householdService.stores.getStore('household'), {});
     const target = open.find((it) => it.id === id)
       ?? (id.length >= 4 ? open.find((it) => it.id.startsWith(id.toUpperCase())) : null)
       ?? open.find((it) => it.text.toLowerCase().includes(id.toLowerCase()));
@@ -523,7 +502,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       title: target.text,
       fields: {
         state:       'open',
-        assigned_to: target.claimedBy ?? 'unassigned',
+        assigned_to: target.claimedBy ?? target.assignee ?? 'unassigned',
       },
     })];
   });
@@ -574,12 +553,10 @@ export async function createRealHouseholdAgent(opts = {}) {
   // out of the box.  Deterministic order (added oldest-first); skip via
   // opts.seedHousehold:false (clean-slate fixtures).
   if (opts.seedHousehold !== false) {
+    const seedStore = householdService.stores.getStore('household');
     for (const seed of SEED_HOUSEHOLD_ITEMS) {
       try {
-        const item = await householdStore.addItem({
-          type: seed.type, text: seed.text, addedBy: 'webid:local-demo-user',
-        });
-        householdItemText.set(item.id, item.text);
+        await householdApp.addItem(seedStore, { type: seed.type, text: seed.text }, { by: 'webid:local-demo-user' });
       } catch (err) {
         if (typeof console !== 'undefined') {
           console.warn('[realAgent] seed household item failed:', err?.message ?? err);
@@ -952,47 +929,26 @@ export async function createRealHouseholdAgent(opts = {}) {
           by:       chatId?.pubKey,
         });
       }
-      // Flag OFF (no householdService) or an app with no generic handler → a structured error,
-      // mirroring how callSkill surfaces skill errors (never throw for this boundary case).
+      // An app with no generic handler → a structured error, mirroring how callSkill
+      // surfaces skill errors (never throw for this boundary case).
       return { ok: false, error: 'generic-capability-unavailable' };
     }
     if (appOrigin === 'household') {
-      // L3 cutover (flag-gated): route to the dissolved functions over the per-circle CircleItemStore.
-      if (householdService) {
-        const circleId = resolveHouseholdCircleId(args);
-        // L3 no-pod-sync: wire the per-circle CircleItemStore to the SAME peer mirror the legacy household store
-        // uses — BIDIRECTIONAL, once per circle (inbound `subscribe` accumulates, so guard with the Set):
-        //   PUBLISH  — local writes fan out to the circle's other devices (`wireStoreMirror` → publish-on-write).
-        //   INBOUND  — peer envelopes ingest back into THIS circle store (`wireCircleStoreInbound`, id-preserving,
-        //              sync:false → no echo). Same kind/prefix the household mirror publishes. Best-effort.
-        if (wireStoreMirror && wireCircleStoreInbound && !householdSyncWired.has(circleId)) {
-          try {
-            const mirror = await ensureHouseholdMirror(circleId);
-            const circleStore = householdService.stores.getStore(circleId);
-            wireStoreMirror(circleStore, mirror);
-            wireCircleStoreInbound({
-              notifyEnvelope: householdSubstrate.notifyEnvelope,
-              store:          circleStore,
-              prefix:         `/household/circles/${circleId}/items/`,
-            });
-            householdSyncWired.add(circleId);
-          } catch { /* sync is best-effort; the op still runs locally */ }
-        }
-        // B★ B1 — route through the UNIFORM invoke to the wireSkill-wrapped pure cores on the
-        // dedicated household agent (S1 InternalTransport fast-path + the callSkill security gate),
-        // replacing the former direct `householdService.callSkill(opId, …)` call. circleId is injected
-        // into the DataPart args so the wired `storeFor` resolves the SAME per-circle CircleItemStore.
-        const parts  = await chatAgent.invoke(householdAgent.address, opId, [DataPart({ ...(args ?? {}), circleId })]);
-        const data   = Array.isArray(parts) ? parts[0]?.data : null;
-        // Render-shape adapter: the dissolved list ops return their items in `{items}` (listWrap);
-        // the household render expects `{items:[{…,label}]}` (label = the item's text). Mutating ops
-        // return the item / {ok} (text present → renders as-is).
-        if (opId === 'listOpen' || opId === 'listTasks') {
-          const items = Array.isArray(data?.items) ? data.items : [];
-          return { items: items.map((i) => ({ ...i, label: i.text ?? i.label })) };
-        }
-        return data ?? null;
+      const circleId = resolveHouseholdCircleId(args);
+      // The DISSOLVED cores route through the uniform invoke to the wireSkill-wrapped pure cores on the
+      // dedicated household agent (S1 InternalTransport fast-path + the callSkill security gate). circleId
+      // is injected into the DataPart args so the wired `storeFor` resolves the per-circle CircleItemStore.
+      if (HOUSEHOLD_WIRED_OPS.has(opId)) {
+        // Wire this circle's CircleItemStore ↔ its peer mirror (publish + inbound), once per circle.
+        await ensureHouseholdCircleSync(circleId);
+        const parts = await chatAgent.invoke(householdAgent.address, opId, [DataPart({ ...(args ?? {}), circleId })]);
+        const data  = Array.isArray(parts) ? parts[0]?.data : null;
+        return adaptWiredHouseholdReply(opId, data, args);
       }
+      // /brief contributor — derived from the wired store (the dissolved app has no briefSummary core).
+      if (opId === 'household_briefSummary') return householdBriefSummary(circleId);
+      // Everything else on the 'household' app-origin (calendar_* passthrough, addMember, getChoreSnapshot,
+      // resolveContact, help, registerName) is a hostAgent skill — route it there unchanged.
       const parts = [DataPart(args ?? {})];
       const result = await chatAgent.invoke(hostAgent.address, opId, parts);
       const first = Array.isArray(result) ? result[0] : null;
@@ -1438,141 +1394,90 @@ export async function createRealHouseholdAgent(opts = {}) {
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };
 
-  /* ─────────── Part G household — reply-impedance adapter ─────────── */
-  // The real `apps/household` skills return the text-bridge shape
-  // `{ replies: [{text}|{items,message}|{ok}], stateUpdates: [{kind,itemId}] }`.
-  // canopy-chat's renderer expects the mock-era renderer shapes:
-  //   - LIST   → { items: [{id, label, type, state}], _sync }
-  //   - ACTION → { ok, message, text, itemId, _sync }  (or {ok:false,error})
-  //   - OTHER  → { message } / { items, message } / { ok:true }
-  // This adapter bridges the two so /add · /list · /done · /task · /claim ·
-  // /register round-trip cleanly through the existing chat-shell renderer.
+  /* ─────────── L3 household — wired-core → chat-shell reply adapter ─────────── */
+  // The dissolved cores (`v2/householdApp.js`) return thin values: list ops → `{items:[…]}`
+  // (bare store items); addItem/addTask → the stored item; markComplete/claim/reassign →
+  // `{ok, item}` (or `{ok:false, error}`); removeItem → `{ok, removed}`. canopy-chat's renderer
+  // expects the chat-shell shapes the legacy path produced:
+  //   - LIST   → { items: [{id, label, text, type, state}], _sync }
+  //   - ACTION → { ok, message, text, itemId, _sync }  (or {ok:false, error})
+  // This adapter re-shapes the wired-core outputs so /add · /list · /done · /task · /claim
+  // round-trip through the existing chat-shell renderer exactly as before.
 
-  const HH_LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
-
-  /** First reply object's text (defensive against empty replies). */
-  function firstReplyText(out) {
-    const r = Array.isArray(out?.replies) ? out.replies[0] : null;
-    return (r && typeof r.text === 'string') ? r.text : '';
-  }
-  /** stateUpdate of a given kind (or the first one) → its itemId. */
-  function stateUpdateId(out, kind) {
-    const ups = Array.isArray(out?.stateUpdates) ? out.stateUpdates : [];
-    const hit = kind ? ups.find((u) => u?.kind === kind) : ups[0];
-    return hit?.itemId ?? null;
-  }
-
-  /**
-   * @param {string} opId    the household op
-   * @param {object} out     the real skill's {replies, stateUpdates}
-   * @param {object} store   householdStore (read fresh for list ops)
-   * @param {object} args    the dispatch args (carries the requested type)
-   */
-  async function adaptHouseholdReply(opId, out, store, args) {
-    out = out ?? { replies: [], stateUpdates: [] };
-
-    /* ── LIST ops — ignore the rendered text; read the store directly so the
-       structured list + per-item `ui` buttons (markComplete/claim) render. ── */
+  /** Adapt a wired household-core reply (list OR mutation) to the chat-shell shape. */
+  function adaptWiredHouseholdReply(opId, data, args) {
     if (opId === 'listOpen' || opId === 'listTasks') {
-      const type = opId === 'listTasks'
-        ? 'task'
-        : (HH_LIST_TYPES.includes(String(args?.type ?? '')) ? String(args.type) : undefined);
-      let items = [];
-      try {
-        items = await store.listOpen(type !== undefined ? { type } : {});
-      } catch { items = []; }
-      // v0.6 — annotate every-other row with a synthetic `_lastSync` so the
-      // per-row 'stale Xh ago' badge has something to render (demo parity).
+      const items = Array.isArray(data?.items) ? data.items : [];
+      // v0.6 — annotate every-other row with a synthetic `_lastSync` so the per-row
+      // 'stale Xh ago' badge has something to render (demo parity).
       const now = Date.now();
       return {
-        items: items.map((it, i) => {
-          householdItemText.set(it.id, it.text);
-          return {
-            id:    it.id,
-            label: it.text,
-            text:  it.text,
-            type:  it.type,
-            state: 'open',
-            ...(it.claimedBy ? { claimedBy: it.claimedBy } : {}),
-            ...(i % 2 === 0 ? { _lastSync: now - 3 * 3_600_000 } : {}),   // 3h ago
-          };
-        }),
+        items: items.map((it, i) => ({
+          id:    it.id,
+          label: it.text,
+          text:  it.text,
+          type:  it.type,
+          state: 'open',
+          ...(it.assignee ? { claimedBy: it.assignee } : {}),
+          ...(i % 2 === 0 ? { _lastSync: now - 3 * 3_600_000 } : {}),   // 3h ago
+        })),
         _sync: simulateSync(),
       };
     }
+    return adaptWiredHouseholdAction(opId, data, args);
+  }
 
-    /* ── household_briefSummary — {items, message} | {ok:true} ── */
-    if (opId === 'household_briefSummary') {
-      const r = Array.isArray(out.replies) ? out.replies[0] : null;
-      if (r && Array.isArray(r.items)) return { items: r.items, message: r.message };
-      return { ok: true };   // empty → /brief skips the section
-    }
-
-    /* ── help — single text reply → {message} ── */
-    if (opId === 'help') {
-      return { ok: true, message: firstReplyText(out) };
-    }
-
-    /* ── ACTION ops — {ok, message, text, itemId, _sync} ── */
-    const ADD_KINDS = {
-      addItem:      'item.added',
-      addTask:      'item.added',
-      registerName: 'item.added',
-      markComplete: 'item.completed',
-      removeItem:   'item.removed',
-      claim:        'item.claimed',
-      reassign:     'item.reassigned',
+  /** Adapt a wired mutation-core reply → `{ ok, message, text, itemId, _sync }` (or `{ ok:false, error }`). */
+  function adaptWiredHouseholdAction(opId, data, args) {
+    const publish = (itemId, message) => {
+      if (!itemId) return;
+      publishEvent({
+        app:     'household',
+        type:    'item-changed',
+        actor:   'webid:local-demo-user',
+        itemRef: { app: 'household', id: itemId },
+        payload: { message },
+      });
     };
-    if (opId in ADD_KINDS) {
-      const message = firstReplyText(out);
-      const itemId  = stateUpdateId(out, ADD_KINDS[opId]);
-      const hadUpdate = Array.isArray(out.stateUpdates) && out.stateUpdates.length > 0;
 
-      // markComplete / removeItem / claim / reassign with NO stateUpdate means
-      // either "not found" or ">1 candidates" (the skill renders a
-      // disambiguation list in `replies[0].text`).  Surface that as a soft
-      // failure so the user sees the message instead of a false "✓".
-      const RESOLVING = new Set(['markComplete', 'removeItem', 'claim', 'reassign']);
-      if (RESOLVING.has(opId) && !hadUpdate) {
-        return { ok: false, error: message || `Couldn't ${opId}.` };
+    // Resolving ops (find-by-match): a miss surfaces as a soft failure so the user sees a
+    // message, not a false "✓".  The dissolved cores resolve the FIRST open text match (no
+    // disambiguation) — same store, simpler match than the legacy multi-candidate prompt.
+    if (opId === 'markComplete' || opId === 'removeItem' || opId === 'claim' || opId === 'reassign') {
+      if (!data || data.ok === false) {
+        const noun = (opId === 'claim' || opId === 'reassign') ? 'open task' : 'open item';
+        return { ok: false, error: `Couldn't find an ${noun} matching '${String(args?.match ?? '')}'.` };
       }
-
-      // The real `stateUpdates` carry only an itemId — recover the affected
-      // item text from the message ("✓ marked complete: <text>") or our
-      // id→text cache, so the verb-aware kring reply can read "Done: <text>".
-      let text = (itemId && householdItemText.get(itemId)) ?? '';
-      if (!text) {
-        const m = message.match(/:\s*(.+)$/);
-        if (m) text = m[1].trim();
+      const item   = data.item ?? null;
+      const text   = item?.text ?? '';
+      const itemId = item?.id ?? data.removed ?? undefined;
+      let message;
+      switch (opId) {
+        case 'markComplete': message = `✓ marked complete: ${text}`; break;
+        case 'removeItem':   message = `✓ removed: ${text}`; break;
+        case 'claim':        message = `✓ claimed: ${text}`; break;
+        default:             message = `✓ reassigned: ${text} → ${String(args?.assignee ?? '').trim()}`; break;
       }
-      // Keep the cache fresh on adds so later list/done can resolve the text.
-      if (itemId && (opId === 'addItem' || opId === 'addTask' || opId === 'registerName') && text) {
-        householdItemText.set(itemId, text);
-      }
-
-      // Publish an item-changed event for the J8 reactive demo + the
-      // household-alerts thread (parity with the old inline skills).
-      if (itemId) {
-        publishEvent({
-          app:     'household',
-          type:    'item-changed',
-          actor:   'webid:local-demo-user',
-          itemRef: { app: 'household', id: itemId },
-          payload: { message },
-        });
-      }
-
-      return {
-        ok:      true,
-        message,
-        ...(text ? { text } : {}),
-        ...(itemId ? { itemId } : {}),
-        _sync:   simulateSync(),
-      };
+      publish(itemId, message);
+      return { ok: true, message, ...(text ? { text } : {}), ...(itemId ? { itemId } : {}), _sync: simulateSync() };
     }
 
-    /* ── default: surface the first reply text as a message ── */
-    return { ok: true, message: firstReplyText(out) };
+    // addItem / addTask — `data` is the stored item.
+    const item    = data ?? {};
+    const text    = item.text ?? '';
+    const message = opId === 'addTask' ? `✓ added task: ${text}` : `✓ added to ${item.type}: ${text}`;
+    publish(item.id, message);
+    return { ok: true, message, ...(text ? { text } : {}), ...(item.id ? { itemId: item.id } : {}), _sync: simulateSync() };
+  }
+
+  /** /brief contributor — derive household's slot from the wired store's open items. */
+  async function householdBriefSummary(circleId) {
+    let open = [];
+    try { open = await householdApp.listOpen(householdService.stores.getStore(circleId), {}); }
+    catch { open = []; }
+    if (!open.length) return { ok: true };   // empty → /brief skips the section
+    const items = open.slice(0, 5).map((it) => ({ id: it.id, label: it.text }));
+    return { items, message: `${open.length} open household item${open.length === 1 ? '' : 's'}` };
   }
 
   /**
@@ -2301,28 +2206,23 @@ export async function createRealHouseholdAgent(opts = {}) {
     // claimTask.  Hosts wire `makeAfterClaimHook` here once the agent +
     // override store are both available.
     setAfterClaimHook(fn) { claimRouterRef.hook = typeof fn === 'function' ? fn : null; },
-    // Part G — reset/state now operate on the REAL household store.  `reset()`
-    // wipes every open item + reseeds the demo items; `state()` returns the
-    // current open items (async — the store is ItemStore-backed).
+    // L3 — reset/state operate on the wired per-circle CircleItemStore (the live household data).
+    // `reset()` wipes every open item + reseeds the demo items; `state()` returns the current open items.
     async reset() {
-      const open = await householdStore.listOpen({});
+      const store = householdService.stores.getStore('household');
+      const open = await householdApp.listOpen(store, {});
       for (const it of open) {
-        try { await householdStore.remove(it.id); } catch { /* defensive */ }
+        try { await store.delete(it.id); } catch { /* defensive */ }
       }
-      householdItemText.clear();
       if (opts.seedHousehold !== false) {
         for (const seed of SEED_HOUSEHOLD_ITEMS) {
-          try {
-            const item = await householdStore.addItem({
-              type: seed.type, text: seed.text, addedBy: 'webid:local-demo-user',
-            });
-            householdItemText.set(item.id, item.text);
-          } catch { /* defensive */ }
+          try { await householdApp.addItem(store, { type: seed.type, text: seed.text }, { by: 'webid:local-demo-user' }); }
+          catch { /* defensive */ }
         }
       }
     },
     async state() {
-      try { return await householdStore.listOpen({}); }
+      try { return await householdApp.listOpen(householdService.stores.getStore('household'), {}); }
       catch { return []; }
     },
     meta: {

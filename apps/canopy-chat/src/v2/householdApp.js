@@ -52,7 +52,15 @@ async function findOpenByMatch(store, match, types) {
 
 // ── household's ops, faithful, over the circle store (ctx.by = the acting member) ──────────────────────
 export const addItem = (store, { type, text }, { by } = {}) => store.put({ type, text, completedAt: null }, { by });
-export const listOpen = async (store, { type }) => (await store.listByType(type)).filter((i) => i.completedAt == null);
+// listOpen with a `type` filters that list-type; WITHOUT a type it returns every OPEN item across all
+// list-types + tasks (the legacy household path allowed this "all open" call, e.g. `/list` with no arg
+// and the /brief contributor). `contact` items (household members) are excluded — they aren't list rows.
+export const listOpen = async (store, { type } = {}) => {
+  const all = (type === undefined || type === null)
+    ? (await store.list()).filter((i) => i && i.type !== 'contact')
+    : await store.listByType(type);
+  return all.filter((i) => i.completedAt == null);
+};
 export async function markComplete(store, { match }, { by } = {}) {
   const it = await findOpenByMatch(store, match, COMPLETABLE);
   if (!it) return { ok: false, error: 'item not found' };
