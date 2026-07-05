@@ -11,8 +11,24 @@
  * SP-2 introduces canonical types alongside.
  */
 
-import { list as listCanonicalTypes } from '@canopy/item-types';
+import { list as listCanonicalTypes, metadata as registryTypeMetadata } from '@canopy/item-types';
 import { isAtom, canonicalAtom } from './atoms.js';
+
+/**
+ * L4 ≡ B — registry recognition. True when the shared `@canopy/item-types`
+ * registry recognises `t` as a declared noun/item-type, either by its
+ * canonical name OR a legacy alias (`registryTypeMetadata` resolves aliases,
+ * returning `null` only for genuinely unknown names). This is the single
+ * source-of-truth check the manifest validator uses to converge a manifest's
+ * declared nouns (`manifest.itemTypes`, of which `manifest.nouns` keys are a
+ * subset) with the registry.
+ *
+ * @param {string} t
+ * @returns {boolean}
+ */
+export function isRegistryType(t) {
+  return typeof t === 'string' && t !== '' && registryTypeMetadata(t) !== null;
+}
 
 /**
  * Frozen verb allow-list mirroring `@canopy/item-store` `ItemStore`
@@ -109,15 +125,35 @@ export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
  *   against verb drift: a new noun-specific verb can't sneak in without
  *   either mapping to an atom or being explicitly named as domain-specific.
  *   Default off (F-SP1-e tolerant behaviour preserved for older callers).
+ * @param {boolean} [opts.strictNouns=false]
+ *   L4 ≡ B (2026-07-05) — REGISTRY-NOUN DISCIPLINE. The `@canopy/item-types`
+ *   registry is the source of truth for nouns. By DEFAULT every declared
+ *   `manifest.itemTypes` entry (and, transitively, every `manifest.nouns` key —
+ *   nouns keys must be a subset of itemTypes) that the registry does not
+ *   recognise is reported as a NON-BLOCKING WARNING (`result.warnings`,
+ *   code `noncanonical-itemtype`) — F-SP1-a app-local types keep validating.
+ *   When `true`, those same findings become hard ERRORS (default-deny toward
+ *   `(verb × noun) = (atom × item-type)`): a manifest may only declare nouns
+ *   the shared registry knows. Opt-in so existing apps that still carry
+ *   app-local nouns don't hard-break.
  *
- * @returns {{ ok: boolean, errors: Array<{path: string, message: string}> }}
+ * @returns {{ ok: boolean, errors: Array<{path: string, message: string}>, warnings: Array<{path: string, message: string, code?: string}> }}
+ *   `ok` reflects `errors` only — warnings never flip `ok`. `warnings` is
+ *   always present (empty array when clean); forward-additive for callers that
+ *   only read `{ ok, errors }`.
  */
 export function validateManifest(manifest, opts = {}) {
   const errors = [];
+  /** @type {Array<{path: string, message: string, code?: string}>} */
+  const warnings = [];
   const strict = !!opts.strict;
+  const strictNouns = !!opts.strictNouns;
+  // L4 ≡ B — a registry-unknown noun/item-type is an ERROR under strictNouns
+  // (default-deny) and otherwise a non-blocking WARNING (F-SP1-a compatible).
+  const registrySink = strictNouns ? errors : warnings;
 
   if (!manifest || typeof manifest !== 'object') {
-    return { ok: false, errors: [{ path: '/', message: 'manifest must be an object' }] };
+    return { ok: false, errors: [{ path: '/', message: 'manifest must be an object' }], warnings };
   }
 
   if (typeof manifest.app !== 'string' || manifest.app === '') {
@@ -136,6 +172,17 @@ export function validateManifest(manifest, opts = {}) {
         errors.push({ path: p, message: `duplicate itemType "${t}"` });
       } else {
         seen.add(t);
+        // L4 ≡ B — converge the declared noun surface with the shared
+        // `@canopy/item-types` registry (source of truth). A registry-unknown
+        // type is a WARNING by default (F-SP1-a app-local types keep working)
+        // and a hard ERROR under `opts.strictNouns` (default-deny).
+        if (!isRegistryType(t)) {
+          registrySink.push({
+            path:    p,
+            message: `itemType "${t}" is not declared in the @canopy/item-types registry (the registry is the source of truth for nouns)`,
+            code:    'noncanonical-itemtype',
+          });
+        }
       }
     });
   }
@@ -259,7 +306,7 @@ export function validateManifest(manifest, opts = {}) {
     }
   }
 
-  return { ok: errors.length === 0, errors };
+  return { ok: errors.length === 0, errors, warnings };
 }
 
 /**

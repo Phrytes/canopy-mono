@@ -4,6 +4,7 @@ import {
   VERBS,
   isCanonicalVerb,
   classifyItemTypes,
+  isRegistryType,
 } from '../src/index.js';
 
 const ok = (m) => validateManifest(m).ok;
@@ -841,5 +842,72 @@ describe('classifyItemTypes', () => {
     expect(appLocal).toEqual(expect.arrayContaining(['shopping', 'errand']));
     expect(canonical).not.toContain('shopping');
     expect(appLocal).not.toContain('task');
+  });
+});
+
+describe('L4 ≡ B — nouns converge with the @canopy/item-types registry', () => {
+  const M = (itemTypes, extra = {}) => ({
+    app: 'a',
+    itemTypes,
+    operations: [{ id: 'x', verb: 'add', params: [] }],
+    ...extra,
+  });
+
+  describe('isRegistryType', () => {
+    it('recognises canonical types', () => {
+      expect(isRegistryType('task')).toBe(true);
+      expect(isRegistryType('calendar-event')).toBe(true);
+    });
+    it('recognises legacy aliases (alias-aware)', () => {
+      // supply-offer/demand-offer/lend-request are registry aliases (canonical.js).
+      expect(isRegistryType('supply-offer')).toBe(true);
+    });
+    it('rejects app-local / unknown / malformed names', () => {
+      expect(isRegistryType('shopping')).toBe(false);
+      expect(isRegistryType('')).toBe(false);
+      expect(isRegistryType(undefined)).toBe(false);
+    });
+  });
+
+  it('result always carries a warnings array (forward-additive)', () => {
+    const r = validateManifest(M(['task']));
+    expect(Array.isArray(r.warnings)).toBe(true);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it('canonical + alias itemTypes produce NO registry warning', () => {
+    expect(validateManifest(M(['task', 'note', 'supply-offer'])).warnings).toEqual([]);
+  });
+
+  it('a registry-unknown itemType is a non-blocking WARNING by default (F-SP1-a)', () => {
+    const r = validateManifest(M(['task', 'shopping']));
+    expect(r.ok).toBe(true);                 // still valid — app-local types keep working
+    expect(r.errors).toEqual([]);
+    const w = r.warnings.find((x) => x.code === 'noncanonical-itemtype');
+    expect(w).toBeTruthy();
+    expect(w.path).toBe('/itemTypes/1');
+    expect(w.message).toMatch(/shopping/);
+  });
+
+  it('strictNouns turns the same finding into a hard ERROR (default-deny)', () => {
+    const r = validateManifest(M(['task', 'shopping']), { strictNouns: true });
+    expect(r.ok).toBe(false);
+    expect(r.warnings).toEqual([]);          // moved to errors
+    const e = r.errors.find((x) => x.code === 'noncanonical-itemtype');
+    expect(e).toBeTruthy();
+    expect(e.path).toBe('/itemTypes/1');
+  });
+
+  it('strictNouns still accepts an all-registry surface', () => {
+    const r = validateManifest(M(['task', 'note', 'contact']), { strictNouns: true });
+    expect(r.ok).toBe(true);
+    expect(r.errors).toEqual([]);
+  });
+
+  it('registry warning does not double-fire with structural errors', () => {
+    // duplicate app-local itemType: one duplicate error + one registry warning per distinct string.
+    const r = validateManifest(M(['shopping', 'shopping']));
+    expect(r.errors.some((x) => /duplicate/.test(x.message))).toBe(true);
+    expect(r.warnings.filter((x) => x.code === 'noncanonical-itemtype')).toHaveLength(1);
   });
 });

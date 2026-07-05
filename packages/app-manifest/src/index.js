@@ -18,6 +18,8 @@ export {
   VERBS,
   isCanonicalVerb,
   classifyItemTypes,
+  // L4 ≡ B — registry recognition for a declared noun/item-type (alias-aware).
+  isRegistryType,
   // P1 (feedback-extension) — composite-op `onError` policy allow-list.
   COMPOSITE_ON_ERROR,
   // B · Slice 2 (ruling Q1) — settings-declaration allow-lists.
