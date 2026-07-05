@@ -22,6 +22,9 @@ export { projectContainer } from './projectContainer.js';   // cluster K · K2 �
 export { wireStoreMirror } from './mirrorSync.js';          // cluster L3 — attach a peer mirror to a store (no-pod sync publish)
 export { wireCircleStoreInbound } from './circleStoreInbound.js';  // cluster L3 — ingest peer envelopes into a store (inbound)
 export { shareIntoAudience, resolveSharedRef, listShared } from './shareIntoAudience.js';  // cluster K2 — cross-circle share
+export {                                                 // cluster K — injectable ACP/seal enforcement on the cross-circle read
+  makeSharedRefPolicy, makePosturePolicy, unsealItem,
+} from './sharedRefPolicy.js';
 export {
   ItemNotFoundError,
   PermissionDeniedError,

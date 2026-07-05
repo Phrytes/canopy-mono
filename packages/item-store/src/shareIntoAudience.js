@@ -47,11 +47,53 @@ export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircle
   return { ok: true, ref };
 }
 
-/** Resolve a `shared-ref` to its source item — crosses circles (🔒-gated on real pods). Null if absent/invalid. */
-export async function resolveSharedRef(stores, ref) {
+/**
+ * Resolve a `shared-ref` to its source item — the read that CROSSES circles (🔒-gated on real pods).
+ * Null if absent/invalid.
+ *
+ * ENFORCEMENT (cluster K · additive, backward-compatible). Pass an injected `policy` (see
+ * `sharedRefPolicy.js`) to gate + unseal the cross-circle read:
+ *   1. `policy.checkGrant({ ref, recipient, stores })` — DENY-BY-DEFAULT: if it returns falsy or throws,
+ *      resolve to `null` (the recipient was NOT granted this item). On a real pod this checks a live
+ *      ACP/WAC grant via `client.sharing`; on the memory substrate it enforces the modeled posture floor.
+ *   2. read the source item (unchanged path).
+ *   3. `policy.open(item, { ref, recipient })` — unseal sealed content (sealing/`open`). If it throws
+ *      (e.g. the reader isn't a recipient of the envelope) resolve to `null` — never leak ciphertext.
+ *
+ * With NO policy the behaviour is EXACTLY as before: read and return the source item. Enforcement engages
+ * only when a policy is supplied (i.e. when the read is pod-backed / the caller wired the pod layer).
+ *
+ * @param {{getStore:(id:string)=>object}} stores
+ * @param {object} ref  the `shared-ref` item
+ * @param {object} [opts]
+ * @param {{ checkGrant?:Function, open?:Function }} [opts.policy]  injected enforcement surface
+ * @param {string} [opts.recipient]  who is reading (passed to the policy; used for the grant check)
+ */
+export async function resolveSharedRef(stores, ref, opts = {}) {
   if (!stores || typeof stores.getStore !== 'function') return null;
   if (!ref || ref.type !== 'shared-ref' || !ref.sourceCircle || !ref.sourceId) return null;
-  return stores.getStore(ref.sourceCircle).get(ref.sourceId);
+
+  const policy = opts && opts.policy;
+  const recipient = opts && opts.recipient;
+
+  // 1. Grant gate — deny-by-default when a policy is present but the grant check fails/throws.
+  if (policy && typeof policy.checkGrant === 'function') {
+    let allowed = false;
+    try { allowed = await policy.checkGrant({ ref, recipient, stores }); }
+    catch { allowed = false; }
+    if (!allowed) return null;
+  }
+
+  // 2. The source read.
+  const item = await stores.getStore(ref.sourceCircle).get(ref.sourceId);
+  if (!item) return null;
+
+  // 3. Unseal — a throw here means the reader can't open the envelope ⇒ deny (don't leak ciphertext).
+  if (policy && typeof policy.open === 'function') {
+    try { return await policy.open(item, { ref, recipient }); }
+    catch { return null; }
+  }
+  return item;
 }
 
 /** Everything shared INTO a circle (its `shared-ref`s). */
