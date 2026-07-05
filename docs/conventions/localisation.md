@@ -18,7 +18,7 @@ is a refactor. **Build for translation from the first commit.**
    (UI label, error message, push body, email subject, CLI prompt)
    is referenced by key, not inlined.
 2. **Strings live in per-app locale files.** Not in substrates, not
-   in the SDK.
+   in the kernel.
 3. **Substrates emit error codes, never user-facing strings.** Apps
    are responsible for translating substrate error codes into
    localised text. This keeps substrates locale-agnostic.
@@ -144,13 +144,13 @@ function PrikbordHeader() {
 
 ## Substrate-side rules
 
-Substrates (`packages/<name>` that compose the SDK) must:
+Substrates (`packages/<name>` that compose the kernel + adapters) must:
 
 - Throw / emit errors with `code` strings (e.g. `'relay.unknown_recipient'`), **not** locale-bound message strings.
 - Optionally include a `defaultMessage` field in English for developer-debug logs only — never displayed to end-users without translation.
 - Document each error code in the substrate's README so app authors know what keys to provide translations for.
 
-The SDK packages (`@canopy/{core,relay,pod-client,react-native}`)
+The kernel + adapter packages (`@canopy/{core, transports, pod-client, vault, relay, react-native}`)
 follow the same rule: error codes, no user-facing strings.
 
 ## What's required in each app's README

@@ -1,4 +1,4 @@
-# Architectural layering — core > substrates > apps
+# Architectural layering — kernel > substrates > apps
 
 > **This is a project-wide invariant.** Any AI or human working on this
 > repo MUST keep it top-of-mind. New code that violates the layering
@@ -9,7 +9,7 @@
 | | |
 |---|---|
 | **Status** | locked 2026-05-04 |
-| **Triggered by** | substrate-vs-SDK refactor audit (`Project Files/Substrates/refactor/00-Overview.md`) discovered 5 of 10 substrates were reinventing primitives the SDK already provided. |
+| **Triggered by** | substrate-vs-kernel refactor audit (`Project Files/Substrates/refactor/00-Overview.md`) discovered 5 of 10 substrates were reinventing primitives the kernel already provided. |
 | **Companion docs** | [`./app-readme-scheme.md`](./app-readme-scheme.md), `../Substrates/policies.md`, `../Substrates/refactor/00-Overview.md` |
 
 ---
@@ -18,16 +18,19 @@
 
 The codebase has **three layers**, and dependencies flow strictly
 downward: **apps** depend on **substrates**, **substrates** depend on
-**core**. Apps **may** consume the core SDK directly when no substrate
-fits, but every such direct dependency must be **justified explicitly**
-in the app's README. Substrates **must not** reinvent primitives that
-core already provides — if the substrate's API is reshaping something
-the SDK has, the substrate is wrong, not the SDK.
+the **kernel** (`@canopy/core`) + its **adapters** (`@canopy/transports`,
+`@canopy/pod-client`, `@canopy/vault`). Apps **may** consume the kernel
+directly when no substrate fits, but every such direct dependency must be
+**justified explicitly** in the app's README. Substrates **must not**
+reinvent primitives the kernel already provides — if the substrate's API
+is reshaping something the kernel has, the substrate is wrong, not the
+kernel. (The dev-facing **SDK is `@canopy/sdk`** — the layered facade over
+the whole platform; see [`../architecture.md`](../architecture.md).)
 
 ```
 ┌───────────────────────────────────────────────────────────────────┐
 │  apps/                                                            │
-│  Apps compose substrates.  Direct SDK use is allowed when         │
+│  Apps compose substrates.  Direct kernel use is allowed when      │
 │  justified — see app-readme-scheme.md.                            │
 └────┬────────────────────────────────────────────────────────────┬─┘
      │                                                            │
@@ -37,16 +40,17 @@ the SDK has, the substrate is wrong, not the SDK.
 │  packages/{item-store, agent-ui, skill-match, notifier,       │  │
 │            identity-resolver, sync-engine, chat-agent,        │  │
 │            llm-client, oauth-vault, pod-search}               │  │
-│  Substrates compose core.  They MUST NOT reinvent SDK         │  │
+│  Substrates compose core.  They MUST NOT reinvent kernel      │  │
 │  primitives.  When they do, that is a bug — see audit.        │  │
 └────────────────────────────┬──────────────────────────────────┘  │
                              │                                     │
                              ▼                                     ▼
 ┌───────────────────────────────────────────────────────────────────┐
-│  packages/{core, relay, pod-client, react-native}                 │
-│  Agent SDK.  The foundational layer.  Owns: identity, transport,  │
-│  routing, security, A2A, skills, protocols, permissions, storage  │
-│  primitives, RN platform bring-up.                                │
+│  packages/core — the KERNEL: Agent, envelope, skill registry,     │
+│  callSkill gate, identity, InternalTransport, + the PORTS          │
+│  (Transport / DataSource / ActorResolver). Concrete ADAPTERS live  │
+│  OUTSIDE: @canopy/transports, @canopy/pod-client, @canopy/vault.   │
+│  Dev entry = @canopy/sdk (the facade over the whole platform).     │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -54,39 +58,36 @@ the SDK has, the substrate is wrong, not the SDK.
 
 ## What each layer owns
 
-### Core (the SDK) — `packages/core`, `packages/relay`, `packages/pod-client`, `packages/react-native`
+### The kernel + adapters — `packages/core` + `@canopy/transports` · `@canopy/pod-client` · `@canopy/vault`
 
-The foundation. **Stable** — substrate authors and app authors should
-read it as a reference, not modify it casually.
+The foundation. **Stable** — substrate + app authors read it as a reference, not modify it casually.
 
-- `@canopy/core` — identity, vault, security, transports
-  (`RelayTransport`, `LocalTransport`, `MqttTransport`, `NknTransport`,
-  `RendezvousTransport`, `OfflineTransport`), routing strategies,
-  agent class, skill registry + `defineSkill`, protocols (pubSub,
-  SkillsPubSub, taskExchange, messaging, …), permissions
-  (PolicyEngine, CapabilityToken, GroupManager), storage
-  (SolidPodSource, SolidVault, MergeContracts, FederatedReader,
-  PodStorageConvention), A2A.
-- `@canopy/relay` — relay broker + offline queue + multi-recipient
-  fan-out + group auth + push wake (E2c).
-- `@canopy/pod-client` — high-level pod read/write/list/conflict.
-- `@canopy/react-native` — RN platform layer (polyfills, Metro
-  preset, BLE/mDNS/Keychain adapters, MobilePushBridge).
-
-**Reference for what's in here:**
-`Project Files/Substrates/refactor/SDK-surface-map.md`.
+- `@canopy/core` — the **KERNEL**: identity, security, routing, the `Agent` class, skill registry +
+  `defineSkill`, protocols (pubSub, SkillsPubSub, taskExchange, messaging, …), permissions (PolicyEngine,
+  CapabilityToken, GroupManager), `InternalTransport`, and the **ports** (`Transport`/`DataSource`/`ActorResolver`,
+  see [`ports.md`](./ports.md)). It holds **no concrete adapters** and depends *up* on nothing (guarded by
+  `packages/core/test/layering.enforcement.test.js`).
+- `@canopy/transports` — the concrete network transports (`Nkn`/`Mqtt`/`Relay`/`Rendezvous`), extracted OUT of the
+  kernel; each an adapter over the `Transport` port.
+- `@canopy/pod-client` — high-level Solid pod read/write/list/conflict **plus** the on-pod storage adapters
+  (`SolidPodSource`/`PodExporter`) and on-pod identity (`IdentityPodStore`/`IdentitySync`) — all moved out of core.
+- `@canopy/vault` — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
+- `@canopy/relay` — relay broker + offline queue + multi-recipient fan-out + group auth + push wake.
+- `@canopy/react-native` — RN platform layer (polyfills, Metro preset, BLE/mDNS/Keychain adapters, MobilePushBridge).
+- `@canopy/sdk` — **the developer SDK**: the layered facade over the whole platform (low layer re-exports the
+  above; high layer = `createAgent` / `connectSkill`).
 
 ### Substrates — `packages/{item-store, agent-ui, ...}` (L1a–L1j)
 
-Reusable building blocks **on top of** the SDK. Each substrate is shaped
+Reusable building blocks **on top of** the kernel + adapters. Each substrate is shaped
 by **at least two consumer specs** before its API locks (rule of two —
 see `policies.md`).
 
 **Substrate authors MUST:**
-- Compose SDK primitives directly. If you find yourself implementing
+- Compose kernel + adapter primitives directly. If you find yourself implementing
   something that "looks like" a `Vault` / `Transport` / `MergeContract` /
-  `OAuthVault` / event emitter — stop. The SDK has it.
-- Declare every SDK package they use in `package.json` `dependencies`
+  `OAuthVault` / event emitter — stop. The kernel + adapters have it.
+- Declare every kernel/adapter package they use in `package.json` `dependencies`
   (or `peerDependencies` for RN). Zero `@canopy/*` deps is a code
   smell for a substrate; the audit flagged that as the structural
   signature of SDK-bypass.
@@ -98,10 +99,10 @@ see `policies.md`).
 
 **Substrate authors MUST NOT:**
 - Reinvent transports, vaults, auth, merge contracts, push primitives,
-  skill registries, identity, or any other SDK abstraction.
+  skill registries, identity, or any other kernel or adapter abstraction.
 - Ship "InMemory*" fakes that have no production partner. If your
   substrate's only concrete implementation is an in-memory backend, it
-  isn't built on the SDK — it's parallel to it.
+  isn't built on the kernel — it's parallel to it.
 - Reach into another substrate's internals. Compose via the public
   exports.
 
@@ -113,11 +114,11 @@ Thin compositions. App-specific glue + UI on top of substrates.
 - Declare in their README which substrates they consume and what for
   (see [`app-readme-scheme.md`](./app-readme-scheme.md) for the
   required sections).
-- **Justify every direct SDK use.** Direct dependencies on
+- **Justify every direct kernel use.** Direct dependencies on
   `@canopy/core` / `@canopy/relay` / `@canopy/pod-client` /
   `@canopy/react-native` are allowed but must be listed in the
   README with a one-line reason — typically "no substrate yet for X".
-  An unjustified direct SDK dep is treated as a bug; either the app is
+  An unjustified direct kernel dep is treated as a bug; either the app is
   reaching past a substrate that should have served it, or a substrate
   needs to be created (rule of two when a second app needs it).
 - Stay extraction-clean (cf. `coding-plans/track-H-apps.md` §
@@ -125,7 +126,7 @@ Thin compositions. App-specific glue + UI on top of substrates.
   use only public package APIs.
 
 **Apps MAY:**
-- Use the SDK directly *when no substrate fits*, with the README
+- Use the kernel directly *when no substrate fits*, with the README
   justification above. Folio mobile is the canonical example: it uses
   `pod-client.PodClient` and `core.Bootstrap` directly because no
   substrate currently wraps that flow, and the layering would actually
@@ -135,32 +136,32 @@ Thin compositions. App-specific glue + UI on top of substrates.
 - Ship code that another app should consume. Cross-app imports are
   banned. If app A has a thing app B wants, it goes to a substrate
   (after rule-of-two).
-- Modify substrate or SDK source from inside `apps/`. PRs touching
+- Modify substrate, kernel, or adapter source from inside `apps/`. PRs touching
   packages must call themselves out as such.
 
 ---
 
-## How to handle disagreement with the SDK
+## How to handle disagreement with the kernel
 
-When a substrate or app needs something the SDK *almost but not quite*
+When a substrate or app needs something the kernel *almost but not quite*
 provides, the choices are:
 
 1. **Compose** what's there + add app/substrate-local logic. Default
    answer.
-2. **Extend the SDK** with a small additive change — a new method, a
+2. **Extend the kernel** with a small additive change — a new method, a
    new export, a re-export of an existing internal. Open a PR against
    `packages/core` (or wherever fits). This is what we did for
    `RelayTransport.registerPushToken` and `SolidPodSource.list({recursive})`
    on 2026-05-04 — both were small, additive, and shipped with tests
    in the same session.
-3. **Lift a pattern from a working app or substrate** to the SDK or to
+3. **Lift a pattern from a working app or substrate** to the kernel or to
    a substrate, after the rule-of-two check. The audit identified
    several such candidates (Household's `MemberWebIdMap`, Folio's
    `serviceBuilder` pattern).
 
 **What is NOT acceptable:**
-- Forking an SDK abstraction inside a substrate.
-- Reinventing an SDK abstraction inside an app to dodge an awkward fit.
+- Forking a kernel abstraction inside a substrate.
+- Reinventing a kernel abstraction inside an app to dodge an awkward fit.
 - "Quick fixes" that bypass core because composing seemed too hard.
 
 When in doubt, the audit doc
@@ -401,16 +402,18 @@ substrate:
 Every one of these patterns lets the substrate stay invisible
 to core while letting apps + facades wire things up cleanly.
 
-### Transitional compat shims
+### Transitional compat shims — REMOVED (2026-07-05)
 
-The Phase 50.1 and 50.1.A migrations needed time-limited
-deprecation re-exports in core (`SolidVault` re-exporting from
-`@canopy/oidc-session`; `Vault*` re-exporting from
-`@canopy/vault`). These **are layering violations** — but
-they're deliberate, documented, and removable. Each has a
-follow-up phase that drops the shim after callers migrate.
-**New compat shims must be approved by the same explicit
-process** (a follow-up phase that removes them).
+The Phase 50.1/50.1.A migrations left time-limited deprecation
+re-exports in core (`SolidVault` from `@canopy/oidc-session`;
+`Vault*` from `@canopy/vault`) — deliberate layering violations
+awaiting removal. The **2026-07-05 de-fat deleted all of them**
+(and moved the concrete transports → `@canopy/transports`,
+pod-storage + on-pod identity → `@canopy/pod-client`). Core now
+imports/re-exports **nothing** from an adapter, and
+`packages/core/test/layering.enforcement.test.js` fails CI if any
+returns. **New compat shims are not allowed** — depend on the
+**port**, not a re-export.
 
 ### Where "consume substrate X" work lives
 
@@ -447,12 +450,14 @@ result of this rule:
 ### Verification
 
 - Grep `packages/core/src/**/*.js` for imports from any
-  `@canopy/<substrate>` package. The only acceptable matches
-  are the deprecation re-exports in `packages/core/src/index.js`
-  (and they're explicitly marked as such with a comment).
+  `@canopy/<adapter-or-substrate>` package. As of the 2026-07-05
+  de-fat there are **no acceptable matches** — the deprecation
+  re-exports are gone. `packages/core/test/layering.enforcement.test.js`
+  guards this (kernel imports/re-exports nothing from vault /
+  oidc-session / transports / pod-*).
 - Grep `packages/core/package.json` `dependencies` for any
-  `@canopy/<substrate>`. The only acceptable entries are
-  those backing the deprecation re-exports.
+  `@canopy/*` — there should be **none** at runtime (`@canopy/vault`
+  is a devDependency for the kernel's tests only).
 - Grep substrate package.json files for circular references
   to `@canopy/core` in `dependencies` (devDeps for tests are
   fine).
@@ -467,7 +472,7 @@ Two ongoing checks for the layering invariant:
    contain per-substrate findings. The execution checklist
    `01-Execution-Checklist.md`
    tracks remediation. After Phase 5 lands, the substrates should compose
-   the SDK cleanly; if any later commit reintroduces a layering violation,
+   the kernel + adapters cleanly; if any later commit reintroduces a layering violation,
    it should surface in code review against this doc.
 
 2. **App↔SDK bypass audit.** Tracked under HIGH PRIORITY in

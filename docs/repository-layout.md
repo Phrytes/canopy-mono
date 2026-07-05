@@ -2,29 +2,35 @@
 
 How this monorepo is arranged: the three layers of code, the apps and packages, and where documentation lives.
 
-## The three-layer invariant
+## The layers — kernel · adapters · substrates · apps
 
-Code depends downward only — **apps → substrates → SDK**. This is a project-wide rule (see
+Code depends downward only — **apps → substrates → kernel**. This is a project-wide rule (see
 [`conventions/architectural-layering.md`](./conventions/architectural-layering.md)):
 
 ```
 apps/                          thin compositions — per-app glue + UI
   ↓
-packages/{substrates}          reusable building blocks (item-store, skill-match, notifier, …)
+packages/{substrates}          reusable building blocks (item-store, skill-match, notifier, pod-client, …)
   ↓
-packages/{core, relay,         the agent SDK — identity, transports, pod client, RN platform
-          pod-client, react-native}
+packages/core                  the KERNEL — a lean set of PORTS (Transport/DataSource/ActorResolver)
+                               + kernel logic (Agent, envelope, skill registry, callSkill gate)
 ```
 
-Substrates compose the SDK and must not reinvent its primitives. Apps compose substrates, and may use the SDK
-directly **only with an explicit justification in the app's README**.
+Substrates compose the kernel + adapters and must not reinvent the kernel. Apps compose substrates, and may use
+the kernel directly **only with an explicit justification in the app's README**.
 
-*Reality check:* the diagram is the *intended invariant* (deps down, CI-enforced), but the middle is a
-**gradient** — runtime-foundation (vault, oidc-session, pod-client) → feature (skill-match, notifier, …) →
-facade (secure-agent, agent-provisioning) — and `core` is a **fat** kernel that still carries concrete transports,
-pod-storage, discovery, and a2a and depends *up* on `vault`/`oidc-session` (a leftover inversion being cleaned).
-There is also a region the three layers omit — a **deployment / hosting layer** (pod-hosting, relay/proxy,
-private-LLM enclave, rollout) that sits *outside* the client apps; the `feedback` deployment occupies it today.
+- **The kernel (`core`)** holds only ports + kernel logic. The concrete **adapters** live outside it — network
+  transports in `@canopy/transports`, Solid-pod storage + on-pod identity in `@canopy/pod-client`, the vault
+  family in `@canopy/vault` — and nothing in the kernel depends *up* on an adapter (guarded by
+  `packages/core/test/layering.enforcement.test.js`).
+- **`@canopy/sdk` is "the SDK"** — the dev-facing **facade** over the whole **platform** (kernel + adapters +
+  substrates): a *low* layer that re-exports the pieces (pass your own explicitly) and a *high* layer
+  (`createAgent` · `connectSkill`). See [`conventions/ports.md`](./conventions/ports.md) for the contract a
+  third-party adapter satisfies.
+- The substrate tier is a **gradient**: runtime-foundation (vault, oidc-session, pod-client) → feature
+  (skill-match, notifier, …) → facade (secure-agent, agent-provisioning). Extracted under a **rule of two**.
+- A region the layers omit: a **deployment / hosting layer** (pod-hosting, relay/proxy, private-LLM enclave,
+  rollout) *outside* the client apps; the `feedback` deployment occupies it today.
 
 ## `apps/` — the products
 
@@ -47,14 +53,21 @@ neither is the primitive one. The direction (decided 2026-06-11) is that the sep
 Every app follows the [`app-readme-scheme.md`](./conventions/app-readme-scheme.md); its own `README.md` has the
 honest "demoable vs. primitive-complete" phase table.
 
-## `packages/` — SDK and substrates
+## `packages/` — the platform (kernel · adapters · SDK) + substrates
 
-**The agent SDK (foundation):**
-- `core` — identity + vault, security (SecurityLayer, hello handshake, capability tokens), transports
-  (Relay/Local/Mqtt/Nkn/Rendezvous/Offline/Internal), routing, the `Agent` class, skill registry, protocols.
+**Kernel + adapters (what `@canopy/sdk` re-exports):**
+- `core` — the **KERNEL**: the `Agent`, envelope/parts, skill registry, `callSkill` security gate, identity,
+  `InternalTransport`, and the **ports** (`Transport`/`DataSource`/`ActorResolver` — see
+  [`conventions/ports.md`](./conventions/ports.md)). Concrete adapters live outside it.
+- `transports` (`@canopy/transports`) — the concrete network transports (Nkn/Mqtt/Relay/Rendezvous), each an
+  adapter over the kernel's `Transport` port.
+- `pod-client` — high-level Solid pod client (read/write/list/patch, conflict resolution, tombstones) **plus** the
+  on-pod storage adapters (`SolidPodSource`/`PodExporter`) and on-pod identity (`IdentityPodStore`/`IdentitySync`).
+- `vault` — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth) over the kernel's vault port.
 - `relay` — Node WebSocket relay: rendezvous signalling + proxy fallback + fan-out + group auth + push wake.
-- `pod-client` — high-level Solid pod client (read/write/list/patch, conflict resolution, tombstones).
 - `react-native` — RN platform layer: BLE, mDNS, KeychainVault, push bridge, `createMeshAgent`, Metro preset.
+- `sdk` (`@canopy/sdk`) — **the developer SDK**: the layered facade — re-exports the above (low layer) + adds
+  `createAgent()` / `connectSkill()` (high layer). "Import one thing, done."
 
 **The manifest layer** (one declaration → every surface):
 - `app-manifest` — the manifest schema, validator, and pure projectors (`renderChat`/`renderSlash`/`renderGate`
