@@ -36,6 +36,15 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     expect(unexpected).toEqual([]);
   });
 
+  // ⚠️ KNOWN-FAILING — DEFERRED (recorded REMAINING-WORK.md §M test-hygiene, 2026-07-05).
+  // Pre-existing (verified it fails identically at commit 0baf6921, before the §1b generic-noun work —
+  // NOT a regression). Root cause: `composeManifests().appOrigins` orders **tasks BEFORE household**
+  // (a deliberate op-id-collision workaround, #49: both declare bare `addTask`, tasks must win), but
+  // `buildNavModels()` orders **household before tasks** — so the two "same order" lists diverge.
+  // DEFERRED to Objective D: the slash-collision policy (prefix-all + per-host override) + the dissolve
+  // rework op-id namespacing/app-origin ordering, which dissolves the #49 hack this test trips over —
+  // fixing the order here in isolation would prematurely decide mobile nav order + likely be churned.
+  // (Cheap interim if ever needed: align buildNavModels to the manifestList order.)
   it('composeManifests and buildNavModels return the same apps in the same order', () => {
     // 2026-05-26 dual-truth contract — see docs/manifest-pipeline.md
     // for the rationale.  A household-missing bug surfaced exactly
