@@ -83,6 +83,9 @@ export {
 // test/layering.enforcement.test.js). Transport (base), InternalBus/
 // InternalTransport, LocalTransport, OfflineTransport and HubDelegateTransport
 // stay here.
+// `Transport` is a PORT — the compatibility contract a third-party network
+// adapter implements (extend it, override `_put`). See docs/conventions/ports.md
+// and test/conformance/transportConformance.js.
 export { Transport }                      from './transport/Transport.js';
 export { InternalBus, InternalTransport } from './transport/InternalTransport.js';
 export { HubDelegateTransport }           from './transport/HubDelegateTransport.js';
@@ -93,9 +96,12 @@ export { OfflineTransport }               from './transport/OfflineTransport.js'
 export { defineSkill }         from './skills/defineSkill.js';
 export { makeFetchResourceSkill } from './skills/fetchResource.js';
 
-// Phase 50.9 — ActorResolver interface (a contract; the substrate
-// `@canopy/agent-registry` implements it). The in-memory helper is
-// for tests + minimal apps.
+// Phase 50.9 — `ActorResolver` is a PORT: a STRUCTURAL (duck-typed) contract,
+// not a class — there is no runtime symbol to export, only the `@typedef` in
+// permissions/ActorResolver.js (the substrate `@canopy/agent-registry`
+// implements it). The in-memory helper below is the reference adapter, for
+// tests + minimal apps. See docs/conventions/ports.md and
+// test/conformance/actorResolverConformance.js.
 export { createInMemoryActorResolver } from './permissions/ActorResolver.js';
 export { SkillRegistry }       from './skills/SkillRegistry.js';
 export { registerRelayForward }        from './skills/relayForward.js';
@@ -191,6 +197,9 @@ export { sendA2ATask }      from './a2a/a2aTaskSend.js';
 export { sendA2AStreamTask } from './a2a/a2aTaskSubscribe.js';
 
 // ── Storage (Group I) ────────────────────────────────────────────────────────
+// `DataSource` is a PORT — the compatibility contract a third-party storage
+// adapter implements (extend it, implement read/write/delete/list). See
+// docs/conventions/ports.md and test/conformance/dataSourceConformance.js.
 export { DataSource }        from './storage/DataSource.js';
 export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';

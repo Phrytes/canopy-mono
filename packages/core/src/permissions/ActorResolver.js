@@ -1,4 +1,16 @@
 /**
+ * ┌─ PORT ──────────────────────────────────────────────────────────────────────┐
+ * │ `ActorResolver` is the interface a third-party actor-registry adapter          │
+ * │ implements to stay compatible with the @canopy SDK. Unlike Transport/          │
+ * │ DataSource it is a STRUCTURAL (duck-typed) interface, not a base class — there  │
+ * │ is no class to `extend`; an adapter is any object matching the `@typedef`       │
+ * │ below. "Compatible" = *satisfies this port*: expose a `resolve()` (and,         │
+ * │ optionally, `register()`/`revoke()`). Reference adapter:                        │
+ * │ `createInMemoryActorResolver()` (this file); the substrate impl lives in        │
+ * │ `@canopy/agent-registry`. Prove conformance with                              │
+ * │ `assertActorResolverConformance()` (test/conformance/actorResolverConformance.js).│
+ * └──────────────────────────────────────────────────────────────────────────────┘
+ *
  * ActorResolver — an interface (contract) for resolving agent identifiers.
  *
  * Core defines the **shape**; the actual implementation lives in
