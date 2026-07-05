@@ -65,6 +65,7 @@
     "@canopy/manifest-host": "workspace:*",
     "@canopy/pod-client": "workspace:*",
     "@canopy/pod-routing": "workspace:*",
+    "@canopy/sdk": "workspace:*",
     "@canopy/secure-agent": "workspace:*",
     "@canopy/vault": "workspace:*",
     "@inrupt/solid-client": "^3.0.0",
