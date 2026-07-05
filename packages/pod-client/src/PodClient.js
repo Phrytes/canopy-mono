@@ -37,10 +37,8 @@
  *   - RN:   `AsyncStorageTombstones`
  *   - Node: `FileTombstones`
  */
-import {
-  Emitter,
-  SolidPodSource,
-} from '@canopy/core';
+import { Emitter } from '@canopy/core';
+import { SolidPodSource } from './SolidPodSource.js';
 
 import { ConflictError, mapSourceCode } from './Errors.js';
 import { ConflictResolver }             from './ConflictResolver.js';
