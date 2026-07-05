@@ -84,7 +84,11 @@ function collectRealSkillIds() {
   const ids = new Set();
   for (const src of SKILL_SOURCES) {
     const text = readFileSync(src, 'utf8');
-    for (const m of text.matchAll(/defineSkill\(['"]([A-Za-z_][\w-]*)['"]/g)) {
+    // A runtime skill is declared either hand-written via `defineSkill('<id>', …)`
+    // or (B★ B3) via the `wire('<id>', coreFn, …)` helper, which calls
+    // `defineSkill(id, wireSkill(coreFn, op, …), …)` under the hood. Both forms
+    // register a real skill, so the drift canary recognises both.
+    for (const m of text.matchAll(/(?:defineSkill|wire)\(['"]([A-Za-z_][\w-]*)['"]/g)) {
       ids.add(m[1]);
     }
   }

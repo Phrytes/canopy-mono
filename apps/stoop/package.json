@@ -50,6 +50,7 @@
     "@canopy/pod-routing": "file:../../packages/pod-routing",
     "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",
     "@canopy/relay": "file:../../packages/relay",
+    "@canopy/sdk": "file:../../packages/sdk",
     "@canopy/skill-match": "file:../../packages/skill-match",
     "i18next": "^23.15.0",
     "tweetnacl": "^1.0.3"

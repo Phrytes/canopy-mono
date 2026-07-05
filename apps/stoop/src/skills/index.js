@@ -34,9 +34,32 @@
  *     author into a `display: {handle, displayName?, isRevealed, render}`
  *     block when a `Reveals` store is wired.  Legacy callers without
  *     a reveals store get the raw item shape unchanged.
+ *
+ * B★ B3 (2026-07-05) — the op-having skills that fit the pure-core shape are
+ * now expressed as module-level `coreFn(scope, args, ctx)` functions wrapped by
+ * `wireSkill(coreFn, op, { storeFor })` from `@canopy/sdk` (mirrors tasks-v0's
+ * B2).  `wireSkill` decodes `ctx.parts` → `args` (the same DataPart-unwrap the
+ * hand-written `dataArgs(parts)` did), validates `args` against the manifest
+ * op's declared params, resolves the per-bundle `scope` via `storeFor(ctx)`,
+ * then calls the core.  Stoop has no per-call `bundleResolver` in the
+ * single-bundle path (skills close over the `buildSkills` dep bag directly), so
+ * `storeFor` returns that exact bag verbatim as `scope` — the byte-identical
+ * analogue of B2's `bundleResolver(parts,{envelope,from})→crew`.  The
+ * `getBundle` multi-group path is unchanged: `_buildScopedSkills` still rebuilds
+ * the (now wireSkill-wrapped) array per group and delegates.
+ *
+ * Only the wireable universe — the ~33 skills that have a matching `manifest.js`
+ * op — is in scope.  Of those, the ones whose op params would make `wireSkill`
+ * THROW where a test pins a returned error (conflict class a), or whose real
+ * args diverge from the op's declared params (class c), or that treat an
+ * op-required param as optional/nullable (class b), stay hand-written below with
+ * a one-line note.  The ~96 skills with NO manifest op also stay hand-written
+ * (nothing for `wireSkill` to derive from).
  */
 
 import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@canopy/core';
+import { wireSkill } from '@canopy/sdk';
+import { stoopManifest } from '../../manifest.js';
 import nacl from 'tweetnacl';
 import { resolve as resolveMember } from '@canopy/identity-resolver';
 import { validateCanonical } from '@canopy/item-types';
@@ -405,6 +428,203 @@ function _peerIngestVerdict({ evictionRoster, muted, evictWebid, muteKeys } = {}
   return null;
 }
 
+// ── B★ B3 pure cores: (scope, a, ctx) → result ───────────────────────────────
+//
+// `scope`  the resolved per-bundle dep bag (what `buildSkills` closes over):
+//          `{ store, members, reveals, notifier, muted, metrics, groupId,
+//             chat, bundle, controlAgent, skillMatch, localActor, … }`.
+// `a`      the decoded args object (wireSkill's decodeArgs; identical to the old
+//          `dataArgs(parts)` for the single-DataPart wire convention).
+// `ctx`    the full core skill context — `{ from, parts, envelope, agent, … }`.
+//
+// These are byte-identical bodies of the former hand-written skills, with
+// `dataArgs(parts)` → `a`, `from` → `ctx.from`, and closure deps → `scope.*`.
+// Each keeps its own return-shaped guards (empty-string / business errors);
+// wireSkill only pre-empts the MISSING op-required-param case (→ throw), which
+// no test pins for these skills.
+
+async function listMyRequestsCore(scope, a, ctx) {
+  const { store, members, reveals, groupId } = scope;
+  const open = await store.listOpen();
+  const mine = open.filter((i) => i.addedBy === ctx.from);
+  const items = await hydrateItems(mine, { members, reveals, viewerWebid: ctx.from, groupId });
+  return { items: decorateWithLastSync(items), _sync: simulateSync() };
+}
+
+async function cancelRequestCore(scope, a, ctx) {
+  const { store, notifier, metrics } = scope;
+  const [id] = await store.removeItems(
+    [{ id: a.requestId }],
+    { actor: ctx.from },
+  );
+  // Also cancel any lend reminder if one was scheduled.
+  if (notifier) {
+    try { await notifier.cancel(`due:${a.requestId}`); } catch {}
+  }
+  metrics?.record?.('cancel-request');
+  return { id, _sync: simulateSync() };
+}
+
+async function assignLendCore(scope, a, ctx) {
+  const { store } = scope;
+  if (typeof a.itemId        !== 'string' || !a.itemId)        return { error: 'itemId required' };
+  if (typeof a.borrowerWebid !== 'string' || !a.borrowerWebid) return { error: 'borrowerWebid required' };
+
+  const current = await store.getById(a.itemId);
+  if (!current)              return { error: 'not-found' };
+  if (current.type !== 'lend') return { error: 'not-a-lend' };
+  if (current.completedAt)   return { error: 'already-returned', current };
+
+  const claimResult = await store.claim(a.itemId, { actor: a.borrowerWebid });
+  if (claimResult.error) {
+    return { error: 'already-assigned', current: claimResult.current };
+  }
+  return { item: claimResult, by: ctx.from, _sync: simulateSync() };
+}
+
+async function mutePeerCore(scope, a, ctx) {
+  const { members, muted, metrics } = scope;
+  const key = await _resolveMuteKey(a, members);
+  if (!key) return { error: 'peerStableId or peerWebid required' };
+  muted?.add(key);
+  metrics?.record?.('mute-peer');
+  return { muted: key, _sync: simulateSync() };
+}
+
+async function getHolidayModeCore(scope, a, ctx) {
+  const { members } = scope;
+  if (!members) return { holidayMode: false };
+  const me = await members.resolveByWebid(ctx.from);
+  return { holidayMode: me?.holidayMode === true };
+}
+
+async function getGroupRulesCore(scope, a, ctx) {
+  const { store } = scope;
+  if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
+  const all = await store.listOpen({ type: 'group-rules' });
+  // Latest-wins: prefer addedAt (ms epoch), fall back to ULID
+  // tiebreak.  Robust against sub-millisecond ULID collisions.
+  let latest = null;
+  for (const it of all) {
+    if (it.source?.groupId !== a.groupId) continue;
+    if (!latest) { latest = it; continue; }
+    const tsA = latest.addedAt ?? 0;
+    const tsB = it.addedAt     ?? 0;
+    if (tsB > tsA || (tsB === tsA && it.id > latest.id)) latest = it;
+  }
+  return { rules: latest };
+}
+
+async function listGroupMembersCore(scope, a, ctx) {
+  const { store, members, groupId } = scope;
+  const _groupId = a.groupId ?? groupId;
+  if (!members) return { members: [] };
+  const list = await members.list();
+  // Per-circle scoping: derive THIS group's membership from the redemption audit
+  // trail — `membership-redemption` items carry `source.groupId` + `redeemedBy`
+  // (the same source EvictionRoster reduces). Founders (admin/coordinator) are
+  // always kept (they CREATE a group, never redeem its own code). Fall back to the
+  // full roster when the group has no redemption data yet (legacy single-buurt /
+  // seeded members) so existing single-group setups are unchanged.
+  let redemptions = [];
+  try { redemptions = await store.listOpen({ type: 'membership-redemption' }); } catch { redemptions = []; }
+  const forGroup = redemptions.filter((i) => i?.source?.groupId === _groupId);
+  if (forGroup.length === 0) return { groupId: _groupId, members: list };
+  const joined = new Set(forGroup.map((i) => i?.source?.redeemedBy).filter(Boolean));
+  // webid → the sealing PUBLIC key the joiner published on redeem — lets a sealed circle's
+  // producer seed its group-key roster with members who joined before it was live.
+  const sealKeys = new Map();
+  for (const r of forGroup) {
+    const { redeemedBy, sealingPublicKey } = r?.source ?? {};
+    if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
+  }
+  const scoped = list
+    .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
+    .map((m) => (sealKeys.has(m.webid) ? { ...m, sealingPublicKey: sealKeys.get(m.webid) } : m));
+  return { groupId: _groupId, members: scoped };
+}
+
+async function respondToItemCore(scope, a, ctx) {
+  const { chat, store, members, bundle } = scope;
+  if (!chat) return { error: 'chat-not-wired' };
+  if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
+  if (typeof a.body !== 'string' || !a.body) return { error: 'body required' };
+
+  // Look up by direct id first (single-agent path), then fall
+  // back to the cross-agent path: the substrate mirror writes
+  // incoming broadcasts with a fresh ULID +
+  // `source.requestId === <broadcast-id>`.
+  let post = await store.getById(a.itemId);
+  if (!post) {
+    const open = await store.listOpen({});
+    post = open.find(i => i?.source?.requestId === a.itemId) ?? null;
+  }
+  if (!post) return { error: 'not-found' };
+
+  // Resolve the post-author's pubKey from the broadcast metadata
+  // (substrate mirror writes `source.fromPubKey`) or from MemberMap.
+  let toPubKey = post.source?.fromPubKey ?? null;
+  let toWebid  = post.source?.from ?? post.addedBy ?? null;
+  let toStableId = null;
+  if (members && toWebid) {
+    const peer = await members.resolveByWebid(toWebid);
+    toStableId = peer?.stableId ?? null;
+    if (!toPubKey) toPubKey = peer?.pubKey ?? null;
+  }
+
+  // Soft-claim locally so it shows in the requester's listMyRequests
+  // when the broadcast loops back (substrate mirror writes their copy).
+  try { await store.claim(a.itemId, { actor: ctx.from }); } catch { /* race-OK */ }
+
+  // Send the chat message.
+  const r = await chat.send({
+    toStableId,
+    toWebid,
+    toPubKey,
+    threadId: a.itemId,
+    body:     a.body,
+    subtype:  'chat-message',
+  });
+  if (!r.ok) return { error: r.reason };
+
+  // Phase 22: feed the post body into my Layer-2 interest profile —
+  // responding is the canonical "I care about this" signal.
+  if (bundle?.interestProfile && typeof post.text === 'string') {
+    try { updateInterest(bundle.interestProfile, post.text); } catch {}
+  }
+
+  return { ok: true, threadId: a.itemId, itemId: r.itemId };
+}
+
+async function signOutOfPodCore(scope, a, ctx) {
+  const { bundle, metrics } = scope;
+  const r = await signOutOfPod({ bundle });
+  metrics?.record?.('pod-sign-out');
+  return r;
+}
+
+async function addContactCore(scope, a, ctx) {
+  const { bundle, metrics } = scope;
+  if (!bundle?.contacts) return { error: 'no-contacts' };
+  if (typeof a.webid !== 'string' || !a.webid) return { error: 'webid required' };
+  try {
+    const m = await bundle.contacts.addContact(a);
+    metrics?.record?.('contact-added');
+    return { contact: m };
+  } catch (err) {
+    return { error: err?.message ?? String(err) };
+  }
+}
+
+async function removeContactCore(scope, a, ctx) {
+  const { bundle, metrics } = scope;
+  if (!bundle?.contacts) return { error: 'no-contacts' };
+  if (typeof a.webid !== 'string' || !a.webid) return { error: 'webid required' };
+  await bundle.contacts.removeContact(a.webid);
+  metrics?.record?.('contact-removed');
+  return { ok: true };
+}
+
 export function buildSkills({
   store,
   skillMatch,
@@ -444,6 +664,25 @@ export function buildSkills({
   // groupId through here so list-shaped skills can scope reveal lookups.
   const groupId = explicitGroupId ?? skillMatch?.group ?? null;
 
+  // B★ B3 — the per-bundle dep bag every skill closes over, packaged as the
+  // `scope` wireSkill hands each core.  Stoop's single-bundle path has no
+  // per-call resolver (the bag is fixed for this buildSkills call), so
+  // `storeFor` returns it verbatim — the byte-identical analogue of B2's
+  // `bundleResolver(parts,{envelope,from})`.  `wire(id, coreFn, opts)` looks the
+  // op up in `stoopManifest`, generates the `defineSkill`-shaped handler via
+  // `wireSkill`, and re-attaches the same description/visibility.
+  const scope = {
+    store, skillMatch, notifier, reveals, members, controlAgent,
+    muted, localActor, groupId, dataLocationConfig, chat, metrics, bundle,
+  };
+  const storeFor = () => scope;
+  const op = (id) => {
+    const found = stoopManifest.operations.find((o) => o.id === id);
+    if (!found) throw new Error(`buildSkills: no manifest op "${id}"`);
+    return found;
+  };
+  const wire = (id, coreFn, opts) => defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
+
   return [
     /**
      * postRequest({text, intent?, kind?, requiredSkills?, dueAt?, timeoutMs?, expectClaims?})
@@ -464,6 +703,10 @@ export function buildSkills({
      * into the bundle, schedules a return reminder via
      * `notifier.scheduleBefore({ cancelKey: 'due:<itemId>' })`.
      */
+    // B★ B3 NOT wired (conflict c): the op's `intent` enum (ask/offer/lend) is
+    // narrower than the skill's real contract — `intentToCanonicalDraft` also
+    // accepts request/report/bespoke intents; wireSkill's enum check would
+    // reject those valid inputs. Kept hand-written.
     defineSkill('postRequest', async ({ parts, from }) => {
       const a = dataArgs(parts);
 
@@ -779,19 +1022,7 @@ export function buildSkills({
     /**
      * cancelRequest({requestId})
      */
-    defineSkill('cancelRequest', async ({ parts, from }) => {
-      const a = dataArgs(parts);
-      const [id] = await store.removeItems(
-        [{ id: a.requestId }],
-        { actor: from },
-      );
-      // Also cancel any lend reminder if one was scheduled.
-      if (notifier) {
-        try { await notifier.cancel(`due:${a.requestId}`); } catch {}
-      }
-      metrics?.record?.('cancel-request');
-      return { id, _sync: simulateSync() };
-    }, {
+    wire('cancelRequest', cancelRequestCore, {
       description: 'Cancel an open request.',
       visibility:  'authenticated',
     }),
@@ -799,12 +1030,7 @@ export function buildSkills({
     /**
      * listMyRequests({})  — open requests posted by `from`.
      */
-    defineSkill('listMyRequests', async ({ from }) => {
-      const open = await store.listOpen();
-      const mine = open.filter((i) => i.addedBy === from);
-      const items = await hydrateItems(mine, { members, reveals, viewerWebid: from, groupId });
-      return { items: decorateWithLastSync(items), _sync: simulateSync() };
-    }, {
+    wire('listMyRequests', listMyRequestsCore, {
       description: 'List open requests posted by the calling actor.',
       visibility:  'authenticated',
     }),
@@ -827,6 +1053,9 @@ export function buildSkills({
      * Item-store's `listOpen` only filters by `type`; the `kind`
      * post-filter happens in JS.
      */
+    // B★ B3 NOT wired (conflict c): a test pins `listOpen({intent:'report'})`
+    // (web.test.js) — 'report' is outside the op's `intent` enum
+    // (ask/offer/lend), so wireSkill would throw. Kept hand-written.
     defineSkill('listOpen', async ({ parts, from }) => {
       const a = dataArgs(parts);
       const filter = {};
@@ -895,6 +1124,9 @@ export function buildSkills({
      * device-independent path (the platform-parity principle). Stoop
      * *emits* embeds (`postRequest`) but did not *walk* them until now.
      */
+    // B★ B3 NOT wired (conflict a): getItemTree.test.js pins
+    // `getItemTree({})` → returned `.error` matching /itemId/, but the op
+    // declares itemId required so wireSkill would THROW instead. Kept hand-written.
     defineSkill('getItemTree', async ({ parts }) => {
       const a = dataArgs(parts);
       if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
@@ -959,22 +1191,7 @@ export function buildSkills({
      * Composes `item-store.claim`'s CAS — race-safe between two
      * borrowers grabbing the same item.
      */
-    defineSkill('assignLend', async ({ parts, from }) => {
-      const a = dataArgs(parts);
-      if (typeof a.itemId        !== 'string' || !a.itemId)        return { error: 'itemId required' };
-      if (typeof a.borrowerWebid !== 'string' || !a.borrowerWebid) return { error: 'borrowerWebid required' };
-
-      const current = await store.getById(a.itemId);
-      if (!current)              return { error: 'not-found' };
-      if (current.type !== 'lend') return { error: 'not-a-lend' };
-      if (current.completedAt)   return { error: 'already-returned', current };
-
-      const claimResult = await store.claim(a.itemId, { actor: a.borrowerWebid });
-      if (claimResult.error) {
-        return { error: 'already-assigned', current: claimResult.current };
-      }
-      return { item: claimResult, by: from, _sync: simulateSync() };
-    }, {
+    wire('assignLend', assignLendCore, {
       description: 'Assign a lent item to a borrower without closing it.',
       visibility:  'authenticated',
     }),
@@ -983,6 +1200,9 @@ export function buildSkills({
      * markReturned({requestId})  — close out a lend.
      * Cancels the scheduled return reminder + marks the item complete.
      */
+    // B★ B3 NOT wired (conflict c): the skill accepts `a.requestId ?? a.itemId`
+    // (itemId alias), but the op declares only `requestId` required — wireSkill
+    // would reject an itemId-only call the skill supports. Kept hand-written.
     defineSkill('markReturned', async ({ parts, from }) => {
       const a = dataArgs(parts);
       // 2026-05-27 slash audit close-out — accept the user-facing slash
@@ -1014,6 +1234,9 @@ export function buildSkills({
     /**
      * reportPost({itemId, reason?})  — append a `kind: 'report'` item.
      */
+    // B★ B3 NOT wired (conflict a): phase3.test.js pins
+    // `reportPost({})` → `{error:'itemId required'}` as a RETURNED value, but the
+    // op declares itemId required so wireSkill would THROW instead. Kept hand-written.
     defineSkill('reportPost', async ({ parts, from }) => {
       const a = dataArgs(parts);
       if (typeof a.itemId !== 'string' || !a.itemId) {
@@ -1046,14 +1269,7 @@ export function buildSkills({
      * one is known; otherwise stored as `webid:<webid>` so old
      * callers' state survives without losing entries.
      */
-    defineSkill('mutePeer', async ({ parts }) => {
-      const a = dataArgs(parts);
-      const key = await _resolveMuteKey(a, members);
-      if (!key) return { error: 'peerStableId or peerWebid required' };
-      muted?.add(key);
-      metrics?.record?.('mute-peer');
-      return { muted: key, _sync: simulateSync() };
-    }, {
+    wire('mutePeer', mutePeerCore, {
       description: 'Locally mute a peer (does not affect anyone else). Prefer peerStableId; peerWebid back-compat.',
       visibility:  'authenticated',
     }),
@@ -1112,6 +1328,9 @@ export function buildSkills({
      *   picks a `categoryId` from the fixed taxonomy (Phase 12).
      *   `status` defaults to `'active'`.
      */
+    // B★ B3 NOT wired (conflict c): the op declares `skills` as `kind:'string'`,
+    // but the skill also accepts a raw array (web/mobile pass the array directly) —
+    // wireSkill's string check would reject the array form. Kept hand-written.
     defineSkill('setMySkills', async ({ parts, from }) => {
       const a = dataArgs(parts);
       // 2026-05-27 slash audit close-out — the chat-shell's slash
@@ -1203,6 +1422,10 @@ export function buildSkills({
      *   a connected pod).  Doesn't touch per-skill `status` — those
      *   stay where the user left them.
      */
+    // B★ B3 NOT wired (conflict a+c): phase23.test.js pins
+    // `setHolidayMode({})` → `{error:'on (bool) required'}` returned, and the op
+    // declares `on` as enum on/off while the skill wants a BOOLEAN — wireSkill's
+    // enum check would reject the real boolean input. Kept hand-written.
     defineSkill('setHolidayMode', async ({ parts, from }) => {
       const a = dataArgs(parts);
       if (typeof a.on !== 'boolean') return { error: 'on (bool) required' };
@@ -1218,11 +1441,7 @@ export function buildSkills({
     /**
      * getHolidayMode()  — Phase 23.4.  Read the calling actor's flag.
      */
-    defineSkill('getHolidayMode', async ({ from }) => {
-      if (!members) return { holidayMode: false };
-      const me = await members.resolveByWebid(from);
-      return { holidayMode: me?.holidayMode === true };
-    }, {
+    wire('getHolidayMode', getHolidayModeCore, {
       description: 'Read the calling actor\'s holiday-mode flag.',
       visibility:  'authenticated',
     }),
@@ -1328,6 +1547,10 @@ export function buildSkills({
      * that want a "shall we both reveal?" handshake compose this
      * skill on top of `chat-agent`'s MessagingBridge.
      */
+    // B★ B3 NOT wired (conflict c): the op declares params `peer`/`action`
+    // (the chat-shell vocab the realAgent adapter translates), but the skill's
+    // real args are `peerWebid`/`showDisplayName` — wireSkill would validate the
+    // wrong param names (and throw on required `peer`). Kept hand-written.
     defineSkill('setPeerReveal', async ({ parts }) => {
       const a = dataArgs(parts);
       if (typeof a.peerWebid !== 'string' || !a.peerWebid) {
@@ -2236,22 +2459,7 @@ export function buildSkills({
      * getGroupRules({groupId})
      *   — return the latest `group-rules` item for `groupId` (or null).
      */
-    defineSkill('getGroupRules', async ({ parts }) => {
-      const a = dataArgs(parts);
-      if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
-      const all = await store.listOpen({ type: 'group-rules' });
-      // Latest-wins: prefer addedAt (ms epoch), fall back to ULID
-      // tiebreak.  Robust against sub-millisecond ULID collisions.
-      let latest = null;
-      for (const it of all) {
-        if (it.source?.groupId !== a.groupId) continue;
-        if (!latest) { latest = it; continue; }
-        const tsA = latest.addedAt ?? 0;
-        const tsB = it.addedAt     ?? 0;
-        if (tsB > tsA || (tsB === tsA && it.id > latest.id)) latest = it;
-      }
-      return { rules: latest };
-    }, {
+    wire('getGroupRules', getGroupRulesCore, {
       description: 'Return the latest group-rules item for a group.',
       visibility:  'authenticated',
     }),
@@ -2470,6 +2678,9 @@ export function buildSkills({
      *   to admin / other members is V2 (needs chat-agent integration);
      *   V1 leaves a footprint in item-store the admin can spot.
      */
+    // B★ B3 NOT wired (conflict a): phase10.test.js pins
+    // `leaveGroup({})` → `{error:'groupId required'}` returned, but the op
+    // declares groupId required so wireSkill would THROW instead. Kept hand-written.
     defineSkill('leaveGroup', async ({ parts, from }) => {
       const a = dataArgs(parts);
       if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
@@ -2655,57 +2866,7 @@ export function buildSkills({
      *   thread's first chat-message; the post's claim is recorded
      *   (via item-store.claim) so the requester sees a claim too.
      */
-    defineSkill('respondToItem', async ({ parts, from }) => {
-      if (!chat) return { error: 'chat-not-wired' };
-      const a = dataArgs(parts);
-      if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
-      if (typeof a.body !== 'string' || !a.body) return { error: 'body required' };
-
-      // Look up by direct id first (single-agent path), then fall
-      // back to the cross-agent path: the substrate mirror writes
-      // incoming broadcasts with a fresh ULID +
-      // `source.requestId === <broadcast-id>`.
-      let post = await store.getById(a.itemId);
-      if (!post) {
-        const open = await store.listOpen({});
-        post = open.find(i => i?.source?.requestId === a.itemId) ?? null;
-      }
-      if (!post) return { error: 'not-found' };
-
-      // Resolve the post-author's pubKey from the broadcast metadata
-      // (substrate mirror writes `source.fromPubKey`) or from MemberMap.
-      let toPubKey = post.source?.fromPubKey ?? null;
-      let toWebid  = post.source?.from ?? post.addedBy ?? null;
-      let toStableId = null;
-      if (members && toWebid) {
-        const peer = await members.resolveByWebid(toWebid);
-        toStableId = peer?.stableId ?? null;
-        if (!toPubKey) toPubKey = peer?.pubKey ?? null;
-      }
-
-      // Soft-claim locally so it shows in the requester's listMyRequests
-      // when the broadcast loops back (substrate mirror writes their copy).
-      try { await store.claim(a.itemId, { actor: from }); } catch { /* race-OK */ }
-
-      // Send the chat message.
-      const r = await chat.send({
-        toStableId,
-        toWebid,
-        toPubKey,
-        threadId: a.itemId,
-        body:     a.body,
-        subtype:  'chat-message',
-      });
-      if (!r.ok) return { error: r.reason };
-
-      // Phase 22: feed the post body into my Layer-2 interest profile —
-      // responding is the canonical "I care about this" signal.
-      if (bundle?.interestProfile && typeof post.text === 'string') {
-        try { updateInterest(bundle.interestProfile, post.text); } catch {}
-      }
-
-      return { ok: true, threadId: a.itemId, itemId: r.itemId };
-    }, {
+    wire('respondToItem', respondToItemCore, {
       description: 'Open a chat thread on a post + send the first message; soft-claims the post.',
       visibility:  'authenticated',
     }),
@@ -2750,34 +2911,7 @@ export function buildSkills({
      *   — return the members of a group as MemberMap entries.
      *   `groupId` defaults to the bundle's current group.
      */
-    defineSkill('listGroupMembers', async ({ parts }) => {
-      const a = dataArgs(parts);
-      const _groupId = a.groupId ?? groupId;
-      if (!members) return { members: [] };
-      const list = await members.list();
-      // Per-circle scoping: derive THIS group's membership from the redemption audit
-      // trail — `membership-redemption` items carry `source.groupId` + `redeemedBy`
-      // (the same source EvictionRoster reduces). Founders (admin/coordinator) are
-      // always kept (they CREATE a group, never redeem its own code). Fall back to the
-      // full roster when the group has no redemption data yet (legacy single-buurt /
-      // seeded members) so existing single-group setups are unchanged.
-      let redemptions = [];
-      try { redemptions = await store.listOpen({ type: 'membership-redemption' }); } catch { redemptions = []; }
-      const forGroup = redemptions.filter((i) => i?.source?.groupId === _groupId);
-      if (forGroup.length === 0) return { groupId: _groupId, members: list };
-      const joined = new Set(forGroup.map((i) => i?.source?.redeemedBy).filter(Boolean));
-      // webid → the sealing PUBLIC key the joiner published on redeem — lets a sealed circle's
-      // producer seed its group-key roster with members who joined before it was live.
-      const sealKeys = new Map();
-      for (const r of forGroup) {
-        const { redeemedBy, sealingPublicKey } = r?.source ?? {};
-        if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
-      }
-      const scoped = list
-        .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
-        .map((m) => (sealKeys.has(m.webid) ? { ...m, sealingPublicKey: sealKeys.get(m.webid) } : m));
-      return { groupId: _groupId, members: scoped };
-    }, {
+    wire('listGroupMembers', listGroupMembersCore, {
       description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey when known).',
       visibility:  'authenticated',
     }),
@@ -3293,6 +3427,9 @@ export function buildSkills({
      *   themselves whether to accept; trustOffer is a *suggestion*,
      *   not coerced.
      */
+    // B★ B3 NOT wired (conflict c): the op declares param `trust`, but the skill
+    // reads `a.trustOffer` (+ `a.peerAddr`) and needs `ctx.agent` — the declared
+    // param diverges from the real args. Kept hand-written.
     defineSkill('getContactShareQr', async ({ parts, from, agent }) => {
       const a = dataArgs(parts);
       const trustOffer = (a.trustOffer === 'vertrouwd' || a.trustOffer === 'bekend')
@@ -3540,11 +3677,7 @@ export function buildSkills({
      *   — Phase 20.  Clears OIDC tokens + detaches the pod inner.
      *   Local cache state is preserved.
      */
-    defineSkill('signOutOfPod', async () => {
-      const r = await signOutOfPod({ bundle });
-      metrics?.record?.('pod-sign-out');
-      return r;
-    }, {
+    wire('signOutOfPod', signOutOfPodCore, {
       description: 'Sign out of the pod; local cache is preserved.',
       visibility:  'authenticated',
     }),
@@ -3762,36 +3895,22 @@ export function buildSkills({
      *   Asymmetric: doesn't notify the contact themselves
      *   (Phase 24.6 wires the contact-add-request envelope).
      */
-    defineSkill('addContact', async ({ parts }) => {
-      const a = dataArgs(parts);
-      if (!bundle?.contacts) return { error: 'no-contacts' };
-      if (typeof a.webid !== 'string' || !a.webid) return { error: 'webid required' };
-      try {
-        const m = await bundle.contacts.addContact(a);
-        metrics?.record?.('contact-added');
-        return { contact: m };
-      } catch (err) {
-        return { error: err?.message ?? String(err) };
-      }
-    }, {
+    wire('addContact', addContactCore, {
       description: 'Add or update a 1:1 contact.',
       visibility:  'authenticated',
     }),
 
     /** removeContact({webid}) — drop a contact (and remove from any lists). */
-    defineSkill('removeContact', async ({ parts }) => {
-      const a = dataArgs(parts);
-      if (!bundle?.contacts) return { error: 'no-contacts' };
-      if (typeof a.webid !== 'string' || !a.webid) return { error: 'webid required' };
-      await bundle.contacts.removeContact(a.webid);
-      metrics?.record?.('contact-removed');
-      return { ok: true };
-    }, {
+    wire('removeContact', removeContactCore, {
       description: 'Remove a 1:1 contact (drops MemberMap entry; removes from lists).',
       visibility:  'authenticated',
     }),
 
     /** setContactTrust({webid, level: 'bekend'|'vertrouwd'|null}) */
+    // B★ B3 NOT wired (conflict b+c): the op declares `level` required with enum
+    // known/trusted/none, but the skill treats level optional (`a.level ?? null`)
+    // and its real value space is bekend/vertrouwd/null (realAgent translates) —
+    // both the required-ness and the enum values diverge. Kept hand-written.
     defineSkill('setContactTrust', async ({ parts }) => {
       const a = dataArgs(parts);
       if (!bundle?.contacts) return { error: 'no-contacts' };
@@ -3837,6 +3956,9 @@ export function buildSkills({
     }),
 
     /** listContacts({minTrust?, tag?}) — filter by trust or tag. */
+    // B★ B3 NOT wired (conflict c): the op declares the filter param `min-trust`
+    // (hyphenated, translated by realAgent), but the skill reads `a.minTrust` —
+    // the declared param name diverges from the real arg. Kept hand-written.
     defineSkill('listContacts', async ({ parts }) => {
       const a = dataArgs(parts);
       if (!bundle?.contacts) return { contacts: [] };
