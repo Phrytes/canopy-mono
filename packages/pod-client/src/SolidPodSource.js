@@ -41,7 +41,7 @@ import {
   createContainerAt,
 } from '@inrupt/solid-client';
 
-import { DataSource } from './DataSource.js';
+import { DataSource } from '@canopy/core';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 

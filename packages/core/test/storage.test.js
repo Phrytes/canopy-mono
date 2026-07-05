@@ -6,7 +6,6 @@ import { join }        from 'node:path';
 import { DataSource }             from '../src/storage/DataSource.js';
 import { MemorySource }           from '../src/storage/MemorySource.js';
 import { FileSystemSource }       from '../src/storage/FileSystemSource.js';
-import { SolidPodSource }         from '../src/storage/SolidPodSource.js';
 import { StorageManager }         from '../src/storage/StorageManager.js';
 import { DataSourcePolicy,
          DataSourceAccessDeniedError } from '../src/permissions/DataSourcePolicy.js';
@@ -152,28 +151,10 @@ describe('FileSystemSource', () => {
 
 // ── SolidPodSource ───────────────────────────────────────────────────────────
 //
-// Detailed unit tests with mocked fetch live in
-// `test/storage/SolidPodSource.unit.test.js`.  CSS integration tests
-// (gated by `CSS_URL`) live in `test/storage/SolidPodSource.css.test.js`.
-// Here we only assert the constructor/shape so the existing suite keeps
-// covering it.
-
-describe('SolidPodSource (smoke)', () => {
-  it('exposes the DataSource API and the new `exists` method', () => {
-    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });
-    expect(typeof s.read).toBe('function');
-    expect(typeof s.write).toBe('function');
-    expect(typeof s.delete).toBe('function');
-    expect(typeof s.list).toBe('function');
-    expect(typeof s.exists).toBe('function');
-    expect(s.podUrl).toBe('https://pod.example.org/');
-  });
-
-  it('query() throws INVALID_ARGUMENT (not supported on LDP)', async () => {
-    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });
-    await expect(s.query({})).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
-  });
-});
+// SolidPodSource moved OUT of core into `@canopy/pod-client`. Its unit tests
+// (mocked fetch), CSS integration tests, and the constructor/shape smoke test
+// now live in `packages/pod-client/test/SolidPodSource.unit.test.js` and
+// `SolidPodSource.css.test.js`.
 
 // ── DataSourcePolicy ──────────────────────────────────────────────────────────
 

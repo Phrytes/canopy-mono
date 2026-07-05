@@ -193,13 +193,14 @@ export { DataSource }        from './storage/DataSource.js';
 export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';
 export { FileSystemSource }  from './storage/FileSystemSource.js';
-export { SolidPodSource }    from './storage/SolidPodSource.js';
+// NOTE: `SolidPodSource` lives in `@canopy/pod-client` — import it directly.
+// The concrete Solid pod DataSource + its portable archive pair (`PodExporter`
+// / `PodImporter`) were extracted OUT of `core`; it no longer re-exports them
+// (guarded by test/layering.enforcement.test.js).
 // NOTE: `SolidVault` lives in `@canopy/oidc-session` — import it directly.
 // `core` no longer re-exports it, and no longer depends on `@canopy/oidc-session`
 // at all (kills that inversion; guarded by test/layering.enforcement.test.js).
 export { StorageManager }    from './storage/StorageManager.js';
-export { PodExporter }       from './storage/PodExporter.js';
-export { PodImporter }       from './storage/PodImporter.js';
 export {
   setUnionWithDedupe,
   appendOnlyEventLog,

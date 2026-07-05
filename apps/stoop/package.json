@@ -45,6 +45,7 @@
     "@canopy/notifier": "file:../../packages/notifier",
     "@canopy/notify-envelope": "file:../../packages/notify-envelope",
     "@canopy/oidc-session": "file:../../packages/oidc-session",
+    "@canopy/pod-client": "file:../../packages/pod-client",
     "@canopy/pod-onboarding": "file:../../packages/pod-onboarding",
     "@canopy/pod-routing": "file:../../packages/pod-routing",
     "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",

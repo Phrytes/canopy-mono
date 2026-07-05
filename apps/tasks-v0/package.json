@@ -55,6 +55,7 @@
     "@canopy/notifier": "file:../../packages/notifier",
     "@canopy/notify-envelope": "file:../../packages/notify-envelope",
     "@canopy/oidc-session": "file:../../packages/oidc-session",
+    "@canopy/pod-client": "file:../../packages/pod-client",
     "@canopy/pod-routing": "file:../../packages/pod-routing",
     "@canopy/relay": "file:../../packages/relay",
     "@canopy/skill-match": "file:../../packages/skill-match",

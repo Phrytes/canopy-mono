@@ -28,6 +28,12 @@ export {
   mapSourceCode,
 } from './Errors.js';
 
+// Pod storage adapter + portable archive export/import (extracted from
+// @canopy/core — the concrete Solid pod DataSource and its backup pair).
+export { SolidPodSource } from './SolidPodSource.js';
+export { PodExporter }    from './PodExporter.js';
+export { PodImporter }    from './PodImporter.js';
+
 export { Auth } from './Auth/Auth.js';
 export { CapabilityAuth } from './Auth/CapabilityAuth.js';
 export { SolidOidcAuth }  from './Auth/SolidOidcAuth.js';

@@ -53,6 +53,17 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
     for (const s of ['Agent', 'AgentIdentity', 'Emitter', 'Parts']) expect(core[s], `core must still export ${s}`).toBeDefined();
   });
 
+  it('the barrel no longer re-exports the pod-storage adapters (SolidPodSource / PodExporter / PodImporter live in @canopy/pod-client)', () => {
+    // Extracted OUT to @canopy/pod-client — core must NOT re-export them, and
+    // src/index.js must have no export-from their old ./storage/ paths.
+    for (const s of ['SolidPodSource', 'PodExporter', 'PodImporter']) {
+      expect(core[s], `core should not re-export ${s} (it lives in @canopy/pod-client)`).toBeUndefined();
+    }
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/SolidPodSource\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/PodExporter\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/PodImporter\.js['"]/);
+  });
+
   it('the barrel keeps the Transport base + InternalTransport but no longer re-exports the concrete network transports (import from @canopy/transports)', () => {
     // Kept in core (base + kernel-adjacent transports).
     expect(core.Transport, 'core must still export the Transport base').toBeDefined();

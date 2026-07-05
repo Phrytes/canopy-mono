@@ -16,7 +16,8 @@
  * scripts, no node-only adapters, no testbed launcher.
  */
 
-import { AgentIdentity, InternalTransport, SolidPodSource } from '@canopy/core';
+import { AgentIdentity, InternalTransport } from '@canopy/core';
+import { SolidPodSource } from '@canopy/pod-client';
 
 import { createNeighborhoodAgent } from './Agent.js';
 import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.js';
