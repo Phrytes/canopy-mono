@@ -58,6 +58,7 @@
     "@canopy/pod-client": "file:../../packages/pod-client",
     "@canopy/pod-routing": "file:../../packages/pod-routing",
     "@canopy/relay": "file:../../packages/relay",
+    "@canopy/sdk": "file:../../packages/sdk",
     "@canopy/skill-match": "file:../../packages/skill-match",
     "i18next": "^26.0.10",
     "ical.js": "^2.2.1",
