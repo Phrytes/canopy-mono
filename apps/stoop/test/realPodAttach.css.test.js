@@ -10,7 +10,8 @@
  * Gated on CSS_URL + client-credentials (skips clean otherwise).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { InternalBus, VaultMemory, DataPart } from '@canopy/core';
+import { InternalBus, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { createBrowserStoopAgent } from '../src/browser.js';
 
 const CSS_URL = process.env.CSS_URL;

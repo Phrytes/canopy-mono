@@ -11,7 +11,8 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
 import { startRelay } from '../src/server.js';
-import { AgentIdentity, GroupManager, VaultMemory } from '@canopy/core';
+import { AgentIdentity, GroupManager } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 function openClient(url) {
   return new Promise((resolve, reject) => {

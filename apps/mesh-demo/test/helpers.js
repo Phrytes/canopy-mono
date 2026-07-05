@@ -8,16 +8,8 @@
  * only depends on the Agent API, not on which transports it runs, so this
  * substitution is valid.
  */
-import {
-  Agent,
-  AgentConfig,
-  AgentIdentity,
-  InternalBus,
-  InternalTransport,
-  PeerGraph,
-  TrustRegistry,
-  VaultMemory,
-} from '@canopy/core';
+import { Agent, AgentConfig, AgentIdentity, InternalBus, InternalTransport, PeerGraph, TrustRegistry } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 /**
  * Create a test agent pair sharing an InternalBus.

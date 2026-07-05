@@ -10,19 +10,8 @@
  *
  * Alice and Carol share no transport; the only path between them is Bob.
  */
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  PeerGraph,
-  DataPart,
-  Parts,
-  TextPart,
-  InternalBus,
-  InternalTransport,
-  RoutingStrategy,
-  registerRelayReceiveSealed,
-}                            from '../../src/index.js';
+import { Agent, AgentIdentity, PeerGraph, DataPart, Parts, TextPart, InternalBus, InternalTransport, RoutingStrategy, registerRelayReceiveSealed } from '../../src/index.js';
+import { VaultMemory } from '@canopy/vault';
 
 /**
  * Build the three agents with the correct topology and return them

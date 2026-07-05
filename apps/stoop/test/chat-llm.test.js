@@ -19,9 +19,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  AgentIdentity, VaultMemory, InternalBus, InternalTransport, DataPart,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { mockProvider, LlmClient } from '@canopy/llm-client';
 
 import { createNeighborhoodAgent } from '../src/index.js';

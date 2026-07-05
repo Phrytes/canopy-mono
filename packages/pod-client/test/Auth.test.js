@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { AgentIdentity, VaultMemory, PodCapabilityToken } from '@canopy/core';
+import { AgentIdentity, PodCapabilityToken } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import {
   AuthError,

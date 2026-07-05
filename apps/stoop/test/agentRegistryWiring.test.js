@@ -11,12 +11,8 @@
  *   - Soft-fail on transient errors — bundle still wires up.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { createNeighborhoodAgent }    from '../src/index.js';
 import { attachSubstrateMirror }      from '../src/substrateMirror.js';
 

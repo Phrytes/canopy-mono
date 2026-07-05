@@ -240,8 +240,8 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     // PolicyEngine should reject because the token is revoked.
     // To simulate this cleanly, we re-import the token into a brand
     // new vault + agent on the same bus.
-    const { AgentIdentity, VaultMemory, InternalTransport, TrustRegistry, TokenRegistry, Agent, CapabilityToken } =
-      await import('@canopy/core');
+    const { AgentIdentity, InternalTransport, TrustRegistry, TokenRegistry, Agent, CapabilityToken } = await import('@canopy/core');
+    const { VaultMemory } = await import('@canopy/vault');
     const v   = new VaultMemory();
     const id  = await AgentIdentity.generate(v);
     const tx  = new InternalTransport(crew.agent.transport.bus, id.pubKey, { identity: id });

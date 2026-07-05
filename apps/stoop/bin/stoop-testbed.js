@@ -30,13 +30,8 @@
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import {
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  GroupManager,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, GroupManager } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 
 import { createNeighborhoodAgent }   from '../src/Agent.js';

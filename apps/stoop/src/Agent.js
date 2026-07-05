@@ -16,14 +16,8 @@
  *     apps wire the channels)
  */
 
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  MemorySource,
-} from '@canopy/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, MemorySource } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { ItemStore } from '@canopy/item-store';
 import { MemberMap, Reveals, buildIdentitySkills }    from '@canopy/identity-resolver';
 import { SkillMatch }                                 from '@canopy/skill-match';

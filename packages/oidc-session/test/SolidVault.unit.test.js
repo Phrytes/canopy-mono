@@ -22,7 +22,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { VaultMemory } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { SolidVault, _setSessionFactory } from '../src/SolidVault.js';
 
 const WEBID  = 'https://alice.example/profile/card#me';

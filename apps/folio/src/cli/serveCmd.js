@@ -17,7 +17,7 @@
  *   --host  <ip>      (default 127.0.0.1; do NOT bind to 0.0.0.0)
  *   --watch           start the SyncEngine watcher immediately
  */
-import { VaultNodeFs }     from '@canopy/core';
+import { VaultNodeFs } from '@canopy/vault';
 
 import { SyncEngine }      from '../SyncEngine.js';
 import { requireConfig }   from './_config.js';

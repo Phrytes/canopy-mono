@@ -33,17 +33,8 @@
  *     instance so the UI's group dropdown can navigate between them.
  */
 import { parseArgs } from 'node:util';
-import {
-  AgentIdentity,
-  VaultNodeFs,
-  InternalBus,
-  InternalTransport,
-  RelayTransport,
-  Agent,
-  RoutingStrategy,
-  FallbackTable,
-  PeerGraph,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, RelayTransport, Agent, RoutingStrategy, FallbackTable, PeerGraph } from '@canopy/core';
+import { VaultNodeFs } from '@canopy/vault';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';

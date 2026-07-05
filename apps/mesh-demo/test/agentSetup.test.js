@@ -12,10 +12,8 @@
  *  - Multi-transport: addTransport / removeTransport / getTransport
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  InternalBus, InternalTransport, Agent, AgentConfig,
-  AgentIdentity, VaultMemory, PeerGraph,
-} from '@canopy/core';
+import { InternalBus, InternalTransport, Agent, AgentConfig, AgentIdentity, PeerGraph } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { makeAgent } from './helpers.js';
 
 // ── Agent accessors ───────────────────────────────────────────────────────────

@@ -73,13 +73,8 @@ import { parseArgs } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve as resolvePath } from 'node:path';
-import {
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  FileSystemSource,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, FileSystemSource } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 import { CachingDataSource } from '@canopy/local-store';
 import { renderWeb }         from '@canopy/app-manifest';

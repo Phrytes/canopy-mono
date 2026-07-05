@@ -20,11 +20,8 @@ import { promises as fs } from 'node:fs';
 import { homedir }        from 'node:os';
 import { join, resolve }  from 'node:path';
 
-import {
-  Bootstrap,
-  VaultNodeFs,
-  validateMnemonic,
-} from '@canopy/core';
+import { Bootstrap, validateMnemonic } from '@canopy/core';
+import { VaultNodeFs } from '@canopy/vault';
 
 import { configDir, saveConfig, loadConfig } from './_config.js';
 import { prompt, confirm, closePrompt }      from './_prompt.js';

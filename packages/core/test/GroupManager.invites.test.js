@@ -7,7 +7,8 @@
  * specific member pubKey.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentIdentity, VaultMemory, GroupManager } from '../src/index.js';
+import { AgentIdentity, GroupManager } from '../src/index.js';
+import { VaultMemory } from '@canopy/vault';
 
 describe('GroupManager — invite tokens', () => {
   let admin, member, gm;

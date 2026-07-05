@@ -22,15 +22,8 @@
  *     meshAgent transparently.
  */
 
-import {
-  Agent,
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  TrustRegistry,
-  PolicyEngine,
-} from '@canopy/core';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, TrustRegistry, PolicyEngine } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 const DEFAULT_IDENTITY_VAULT_PATH = 'mem://tasks/process/agent-identity-vault.json';
 

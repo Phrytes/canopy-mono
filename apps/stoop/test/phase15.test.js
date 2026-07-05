@@ -12,13 +12,8 @@ import { describe, it, expect } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import {
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  DataPart,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { createNeighborhoodAgent } from '../src/index.js';
 

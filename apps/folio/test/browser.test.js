@@ -9,10 +9,8 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import {
-  AgentIdentity, InternalBus, InternalTransport, Agent, DataPart,
-  PodCapabilityToken, VaultMemory,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, Agent, DataPart, PodCapabilityToken } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { createBrowserFolioAgent } from '../src/browser.js';
 

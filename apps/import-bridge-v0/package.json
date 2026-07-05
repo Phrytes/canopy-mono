@@ -9,6 +9,7 @@
   "scripts": { "test": "vitest run", "test:watch": "vitest" },
   "dependencies": {
     "@canopy/core":             "file:../../packages/core",
+    "@canopy/vault": "file:../../packages/vault",
     "@canopy/sync-engine":      "file:../../packages/sync-engine",
     "@canopy/identity-resolver":"file:../../packages/identity-resolver"
   },

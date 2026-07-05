@@ -14,7 +14,8 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { AgentIdentity, VaultMemory } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCrewAgent } from '../src/Crew.js';

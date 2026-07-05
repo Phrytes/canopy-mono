@@ -28,20 +28,10 @@ export {
 } from './Parts.js';
 
 // ── Identity ────────────────────────────────────────────────────────────────
-// Deprecated re-exports: the Vault family lives in `@canopy/vault`
-// since 2026-05-11 (standardisation Phase 50.1.A). The re-exports here
-// keep existing `import { VaultMemory } from '@canopy/core'` callers
-// working during the deprecation window; new code should import from
-// `@canopy/vault` directly.
-export {
-  Vault,
-  VaultMemory,
-  VaultLocalStorage,
-  VaultIndexedDB,
-  VaultNodeFs,
-  OAuthVault,
-  makeAuthorizedFetch,
-} from '@canopy/vault';
+// NOTE: the Vault family (Vault, VaultMemory, VaultLocalStorage, VaultIndexedDB,
+// VaultNodeFs, OAuthVault, makeAuthorizedFetch) lives in `@canopy/vault` — import
+// it directly. `core` no longer re-exports it (kills the core→vault re-export
+// inversion; guarded by test/layering.enforcement.test.js).
 export { AgentIdentity }      from './identity/AgentIdentity.js';
 export { KeyRotation }        from './identity/KeyRotation.js';
 export { Bootstrap }          from './identity/Bootstrap.js';
@@ -201,11 +191,9 @@ export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';
 export { FileSystemSource }  from './storage/FileSystemSource.js';
 export { SolidPodSource }    from './storage/SolidPodSource.js';
-// Deprecated re-export: `SolidVault` lives in `@canopy/oidc-session` since
-// 2026-05-11 (standardisation Phase 50.1). The re-export here keeps existing
-// `import { SolidVault } from '@canopy/core'` callers working during the
-// deprecation window; new code should import from `@canopy/oidc-session`.
-export { SolidVault }        from '@canopy/oidc-session';
+// NOTE: `SolidVault` lives in `@canopy/oidc-session` — import it directly.
+// `core` no longer re-exports it, and no longer depends on `@canopy/oidc-session`
+// at all (kills that inversion; guarded by test/layering.enforcement.test.js).
 export { StorageManager }    from './storage/StorageManager.js';
 export { PodExporter }       from './storage/PodExporter.js';
 export { PodImporter }       from './storage/PodImporter.js';

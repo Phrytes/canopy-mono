@@ -51,7 +51,8 @@ vi.mock('react-native-ble-plx', () => ({
   State: { PoweredOn: 'PoweredOn', PoweredOff: 'PoweredOff', Unauthorized: 'Unauthorized' },
 }));
 
-import { AgentIdentity, VaultMemory } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { BleTransport, SERVICE_UUID, CHARACTERISTIC_UUID } from '../src/transport/BleTransport.js';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

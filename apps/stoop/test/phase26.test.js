@@ -8,13 +8,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  DataPart,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 import { cellFor, cellCenter, distanceKm, snapToGrid, DISTANCE_PRESETS } from '../src/lib/geo.js';
 import { _setHttpFactory } from '../src/lib/geocode.js';

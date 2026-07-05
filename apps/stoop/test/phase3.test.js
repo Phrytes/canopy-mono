@@ -8,13 +8,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  AgentIdentity,
-  VaultMemory,
-  InternalBus,
-  InternalTransport,
-  DataPart,
-} from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { Reveals } from '@canopy/identity-resolver';
 import { Notifier, InMemoryScheduleStore } from '@canopy/notifier';
 import { InMemoryBridge } from '@canopy/chat-agent';

@@ -12,12 +12,8 @@
  * Ref: Design-v3/blind-forward.md §5-§7, CODING-PLAN Group BB4.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  Agent, AgentIdentity, VaultMemory, PeerGraph,
-  InternalBus, InternalTransport,
-  TextPart, DataPart, Parts,
-  registerRelayForward, registerRelayReceiveSealed,
-}                                 from '../src/index.js';
+import { Agent, AgentIdentity, PeerGraph, InternalBus, InternalTransport, TextPart, DataPart, Parts, registerRelayForward, registerRelayReceiveSealed } from '../src/index.js';
+import { VaultMemory } from '@canopy/vault';
 
 async function buildTriad() {
   // Alice  <— relay-bus —>  Bob  <— loop-bus —>  Carol

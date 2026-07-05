@@ -22,12 +22,8 @@
  *   - Background the app on the phone before running this so you exercise
  *     the actual push-wake path (not the connected fast-path).
  */
-import {
-  Agent,
-  AgentIdentity,
-  RelayTransport,
-  VaultMemory,
-} from '@canopy/core';
+import { Agent, AgentIdentity, RelayTransport } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 const [, , relayUrl, phonePubKey] = process.argv;
 

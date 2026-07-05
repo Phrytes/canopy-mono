@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@canopy/core": "file:../../packages/core",
+    "@canopy/vault": "file:../../packages/vault",
     "@canopy/react-native": "file:../../packages/react-native",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/native": "^6.1.18",

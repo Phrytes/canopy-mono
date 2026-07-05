@@ -27,13 +27,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import {
-  Bootstrap,
-  AgentIdentity,
-  IdentityPodStore,
-  IdentitySync,
-  VaultMemory,
-} from '@canopy/core';
+import { Bootstrap, AgentIdentity, IdentityPodStore, IdentitySync } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 // IdentitySync's vault-cache prefix is internal; mirrored here so we can
 // inspect the cache directly.  See `packages/core/src/identity/IdentitySync.js`

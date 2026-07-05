@@ -5,7 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import { WebSocket } from 'ws';
 import { startRelay } from '../src/server.js';
-import { AgentIdentity, GroupManager, VaultMemory } from '@canopy/core';
+import { AgentIdentity, GroupManager } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 
 // ── Self-signed cert fixture, generated per test run so there is no ─────────
 // ── on-disk state. Uses selfsigned library if present, otherwise skips TLS. ──

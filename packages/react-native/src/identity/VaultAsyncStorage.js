@@ -30,7 +30,7 @@
  * Task #222.5 (2026-05-24) — part of canopy-chat-mobile's Hermes
  * storage path.  See Project Files/canopy-chat/mobile-roadmap-2026-05-24.md.
  */
-import { Vault } from '@canopy/core';
+import { Vault } from '@canopy/vault';
 
 export class VaultAsyncStorage extends Vault {
   #prefix;
