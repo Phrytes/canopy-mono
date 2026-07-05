@@ -53,6 +53,17 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
     for (const s of ['Agent', 'AgentIdentity', 'Emitter', 'Parts']) expect(core[s], `core must still export ${s}`).toBeDefined();
   });
 
+  it('the barrel no longer re-exports the pod-storage adapters (SolidPodSource / PodExporter / PodImporter live in @canopy/pod-client)', () => {
+    // Extracted OUT to @canopy/pod-client — core must NOT re-export them, and
+    // src/index.js must have no export-from their old ./storage/ paths.
+    for (const s of ['SolidPodSource', 'PodExporter', 'PodImporter']) {
+      expect(core[s], `core should not re-export ${s} (it lives in @canopy/pod-client)`).toBeUndefined();
+    }
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/SolidPodSource\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/PodExporter\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/PodImporter\.js['"]/);
+  });
+
   it('the barrel keeps the Transport base + InternalTransport but no longer re-exports the concrete network transports (import from @canopy/transports)', () => {
     // Kept in core (base + kernel-adjacent transports).
     expect(core.Transport, 'core must still export the Transport base').toBeDefined();
@@ -60,6 +71,22 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
     // Extracted OUT to @canopy/transports — core must NOT re-export them.
     for (const s of ['NknTransport', 'MqttTransport', 'RelayTransport', 'RendezvousTransport']) {
       expect(core[s], `core should not re-export ${s} (it lives in @canopy/transports)`).toBeUndefined();
+    }
+  });
+
+  it('the barrel no longer re-exports the on-pod identity family (import from @canopy/pod-client)', () => {
+    // IdentityPodStore / IdentitySync / migrateVaultToPod store/migrate/sync
+    // identity ON a pod — they were extracted OUT to @canopy/pod-client (SDK pod
+    // layer). Kernel identity (AgentIdentity / KeyRotation / Bootstrap) stays here.
+    for (const s of ['IdentityPodStore', 'IdentitySync', 'migrateVaultToPod']) {
+      expect(core[s], `core should not re-export ${s} (it lives in @canopy/pod-client)`).toBeUndefined();
+    }
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/IdentityPodStore\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/IdentitySync\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/migrateVaultToPod\.js['"]/);
+    // Kernel identity must remain.
+    for (const s of ['AgentIdentity', 'KeyRotation', 'Bootstrap']) {
+      expect(core[s], `core must still export kernel identity ${s}`).toBeDefined();
     }
   });
 });

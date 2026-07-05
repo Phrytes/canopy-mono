@@ -28,6 +28,12 @@ export {
   mapSourceCode,
 } from './Errors.js';
 
+// Pod storage adapter + portable archive export/import (extracted from
+// @canopy/core — the concrete Solid pod DataSource and its backup pair).
+export { SolidPodSource } from './SolidPodSource.js';
+export { PodExporter }    from './PodExporter.js';
+export { PodImporter }    from './PodImporter.js';
+
 export { Auth } from './Auth/Auth.js';
 export { CapabilityAuth } from './Auth/CapabilityAuth.js';
 export { SolidOidcAuth }  from './Auth/SolidOidcAuth.js';
@@ -56,6 +62,14 @@ export {
   createControlAgent, createPodKeyStore, readGroupKey, createMemberSealingIdentity,
   resolveCircleStorage, circleStorageClient,
 } from './sealing/index.js';
+
+// Identity-on-pod (extracted from @canopy/core — Track B / identity-pod-schema).
+// On-pod identity store, vault→pod migration, and the pod↔vault identity
+// sync engine. These operate ON a pod, so they live at the SDK pod layer;
+// AgentIdentity / Bootstrap / KeyRotation (kernel identity) stay in @canopy/core.
+export { IdentityPodStore } from './identity/IdentityPodStore.js';
+export { IdentitySync, vaultCacheKeyFor, resourcePathFromCacheKey } from './identity/IdentitySync.js';
+export { migrateVaultToPod } from './identity/migrateVaultToPod.js';
 
 // A6 — Delete-scope primitive (TombstoneStore + per-platform adapters).
 export { TombstoneStore }         from './TombstoneStore.js';

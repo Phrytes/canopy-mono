@@ -11,8 +11,8 @@
  */
 
 import crypto from 'node:crypto';
-import { encode as b64encode, decode as b64decode } from '../../crypto/b64.js';
-import { AgentIdentity } from '../AgentIdentity.js';
+import { b64encode, b64decode } from '@canopy/core';
+import { AgentIdentity } from '@canopy/core';
 import { serializeManifest } from './turtle.js';
 
 const ENC_SUFFIX = '.enc';

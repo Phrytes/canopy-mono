@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { SolidPodSource } from '../../src/storage/SolidPodSource.js';
+import { SolidPodSource } from '../src/SolidPodSource.js';
 
 const CSS_URL  = process.env.CSS_URL;
 const SCRATCH  = process.env.CSS_SCRATCH ?? 'scratch/';

@@ -35,9 +35,11 @@ export {
 export { AgentIdentity }      from './identity/AgentIdentity.js';
 export { KeyRotation }        from './identity/KeyRotation.js';
 export { Bootstrap }          from './identity/Bootstrap.js';
-export { IdentityPodStore }   from './identity/IdentityPodStore.js';
-export { IdentitySync }       from './identity/IdentitySync.js';
-export { migrateVaultToPod }  from './identity/migrateVaultToPod.js';
+// NOTE: IdentityPodStore, IdentitySync and migrateVaultToPod were extracted OUT
+// of core into `@canopy/pod-client` — they store/migrate/sync identity ON a pod
+// (SDK pod layer), not kernel identity. Import them from '@canopy/pod-client'.
+// `core` no longer re-exports them (guarded by test/layering.enforcement.test.js).
+// AgentIdentity / KeyRotation / Bootstrap (kernel identity) stay here.
 export { CloudBackup }                 from './identity/CloudBackup.js';
 export { CloudAdapter, MemoryAdapter } from './identity/CloudAdapter.js';
 export {
@@ -193,13 +195,14 @@ export { DataSource }        from './storage/DataSource.js';
 export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';
 export { FileSystemSource }  from './storage/FileSystemSource.js';
-export { SolidPodSource }    from './storage/SolidPodSource.js';
+// NOTE: `SolidPodSource` lives in `@canopy/pod-client` — import it directly.
+// The concrete Solid pod DataSource + its portable archive pair (`PodExporter`
+// / `PodImporter`) were extracted OUT of `core`; it no longer re-exports them
+// (guarded by test/layering.enforcement.test.js).
 // NOTE: `SolidVault` lives in `@canopy/oidc-session` — import it directly.
 // `core` no longer re-exports it, and no longer depends on `@canopy/oidc-session`
 // at all (kills that inversion; guarded by test/layering.enforcement.test.js).
 export { StorageManager }    from './storage/StorageManager.js';
-export { PodExporter }       from './storage/PodExporter.js';
-export { PodImporter }       from './storage/PodImporter.js';
 export {
   setUnionWithDedupe,
   appendOnlyEventLog,
