@@ -87,4 +87,50 @@ SUITE('per-circle producer — real-pod routing (CSS)', () => {
     expect(rawText).toBeTruthy();
     expect(rawText).not.toContain(bob.privateKey);
   }, 60_000);
+
+  it('p3 circle on a real pod: bootstrap provisions the key; recipient strategy round-trips + non-member is denied', async () => {
+    const { createSealedPodClient, createSealedPodDataSource } = await import('@canopy/pod-client');
+    const podClient = await makeRealPodClient();
+    const circleId = `p3-${generateKeypair().publicKey.replace(/[^a-zA-Z0-9]/g, '').slice(-12)}`;
+    const vault = new MemVault();
+    const outsider = generateKeypair();
+
+    const prod = await createCirclePodProducer({
+      circleId, storagePosture: 'p3', vault,
+      generateKeypair,
+      makePodClient: () => podClient,
+      circleRootUri: `${podBase}/${circleId}`,
+    });
+    expect(prod.storagePosture).toBe('p3');
+
+    // provisioned: a granted member resolves a real recipient strategy (was NULL before this branch → L1b dormant)
+    const self = await prod.sealingIdentity.ensure();
+    const strategy = await prod.controlAgent.sealingStrategy(self.privateKey);
+    expect(strategy).not.toBeNull();
+    expect(strategy.open(strategy.seal('p3 op een echte pod'))).toBe('p3 op een echte pod');
+
+    // L1b engages: a sealed pod-backed DataSource (derived from the SAME strategy) round-trips on the real pod
+    const ds = createSealedPodDataSource({ podSource: adaptPodClientToSource(podClient), strategy });
+    expect(ds.sealed).toBe(true);
+    const uri = `${podBase}/${circleId}/items/p3.json`;
+    await ds.write(uri, JSON.stringify({ hoi: 'p3' }));
+    expect(JSON.parse(await ds.read(uri))).toEqual({ hoi: 'p3' });
+
+    // the group-key resource (membership gate) persisted on the pod, host-blind
+    const sealed = createSealedPodClient(podClient, strategy);
+    expect(sealed).toBeTruthy();
+
+    // a non-granted member never gets plaintext
+    await expect(prod.controlAgent.sealingStrategy(outsider.privateKey)).rejects.toThrow();
+  }, 60_000);
 });
+
+/** Present a real PodClient under the minimal `SolidPodSource` read/write/delete/list shape. */
+function adaptPodClientToSource(podClient) {
+  return {
+    async read(uri) { const r = await podClient.read(uri, { decode: 'string' }); return { content: typeof r === 'string' ? r : r?.content }; },
+    write: (uri, content, opts) => podClient.write(uri, content, { contentType: 'application/json', ...opts }),
+    delete: (uri, opts) => podClient.delete(uri, opts),
+    async list(prefix) { const r = await podClient.list(prefix); return { entries: (r?.entries ?? r ?? []).map((e) => (typeof e === 'string' ? { uri: e } : e)) }; },
+  };
+}

@@ -57,6 +57,14 @@ export function createControlAgent({ sharing, containerUri, keyStore, controller
     /** Join: grant ACL + add the member to the group key (O(1) re-wrap, or bootstrap the first key). */
     async addMember({ webId, publicKey, role = 'member' }) {
       const m = normalizeMember({ webId, publicKey, role });
+      // Idempotent: a member already holding the group key (same sealing public key) is a
+      // no-op — no re-grant, no re-wrap, no roster duplication. Re-wrapping the SAME key to
+      // the SAME recipient set would be harmless (same version, same group key) but would
+      // duplicate the roster entry and churn the resource; skipping keeps "provision only
+      // when the member set actually changed".
+      if (members.some((x) => x.publicKey === m.publicKey)) {
+        return { keyResource: await keyStore.read(), members: members.slice() };
+      }
       await sharing.grant({ containerUri, agent: m.webId, modes });
       const cur = await keyStore.read();
       const currentPubs = recipientsWithController(members.map((x) => x.publicKey));

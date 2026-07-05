@@ -7,7 +7,7 @@
  * verify (circleSealing.css.test.js).
  */
 import { describe, it, expect } from 'vitest';
-import { PodClient, createSealedPodClient, generateKeypair } from '@canopy/pod-client';
+import { PodClient, createSealedPodClient, createSealedPodDataSource, generateKeypair } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../src/v2/circlePodProducer.js';
 
@@ -147,5 +147,89 @@ describe('createCirclePodProducer', () => {
     const a = await (await mk('x')).sealingIdentity.ensure();
     const b = await (await mk('y')).sealingIdentity.ensure();
     expect(a.publicKey).not.toBe(b.publicKey);
+  });
+});
+
+/**
+ * Group-key PROVISIONING at the substrate seam (the gap this branch closes): a sealed
+ * circle's bootstrap must write the group-key resource AND yield a non-null content
+ * strategy that engages L1b's `createSealedPodDataSource` for a granted member — while a
+ * non-granted member never gets plaintext. Covers BOTH sealed postures (p2 group-key,
+ * p3 recipient) — p3 previously returned a null strategy (the discovered bug), so L1b
+ * stayed dormant for it.
+ */
+describe('circle group-key provisioning → getCircleSealStrategy activates L1b', () => {
+  /** A minimal in-memory `SolidPodSource`-shaped source for `createSealedPodDataSource`. */
+  function memPodSource() {
+    const store = new Map();
+    return {
+      async read(uri) { if (!store.has(uri)) { const e = new Error('nf'); e.code = 'NOT_FOUND'; throw e; } return { content: store.get(uri) }; },
+      async write(uri, content) { store.set(uri, String(content)); },
+      async delete(uri) { store.delete(uri); },
+      async list(prefix) { return { entries: [...store.keys()].filter((k) => k.startsWith(prefix)).map((uri) => ({ uri })) }; },
+    };
+  }
+
+  for (const posture of ['p2', 'p3']) {
+    it(`${posture}: bootstrap provisions the key; a granted member round-trips through createSealedPodDataSource`, async () => {
+      const vault = new MemVault();
+      const prod = await createCirclePodProducer({ circleId: `prov-${posture}`, storagePosture: posture, vault, generateKeypair, makePodClient });
+
+      // bootstrap wrote the group-key resource to the circle's pod key store
+      const keyRes = await prod.podClient.read(`${prod.circleRootUri}/.keys/group.json`, { decode: 'string' });
+      expect(typeof keyRes === 'string' ? keyRes : keyRes?.content).toBeTruthy();
+
+      // a granted member (the local self identity) resolves a real, non-null strategy
+      const self = await prod.sealingIdentity.ensure();
+      const strategy = await prod.controlAgent.sealingStrategy(self.privateKey);
+      expect(strategy).not.toBeNull();
+
+      // …and that strategy engages L1b: a sealed pod-backed DataSource round-trips plaintext
+      const ds = createSealedPodDataSource({ podSource: memPodSource(), strategy });
+      expect(ds.sealed).toBe(true);
+      const uri = `${prod.circleRootUri}/items/x.json`;
+      await ds.write(uri, JSON.stringify({ hoi: 'kring' }));
+      expect(JSON.parse(await ds.read(uri))).toEqual({ hoi: 'kring' });
+      expect(await ds.list(`${prod.circleRootUri}/items/`)).toEqual([uri]);
+    });
+
+    it(`${posture}: a NON-granted member gets no plaintext (strategy gate rejects; ciphertext stays sealed)`, async () => {
+      const vault = new MemVault();
+      const outsider = generateKeypair();
+      const prod = await createCirclePodProducer({ circleId: `deny-${posture}`, storagePosture: posture, vault, generateKeypair, makePodClient });
+
+      // the outsider is not a recipient of the group-key resource → the strategy gate rejects
+      // (getCircleSealStrategy catches this → null, so L1b never engages with a bogus strategy).
+      await expect(prod.controlAgent.sealingStrategy(outsider.privateKey)).rejects.toThrow();
+
+      // and even holding the ciphertext, the outsider's key cannot open content sealed to the roster
+      const self = await prod.sealingIdentity.ensure();
+      const insider = await prod.controlAgent.sealingStrategy(self.privateKey);
+      const sealed = insider.seal('geheim');
+      const { recipientStrategy, groupKeyStrategy, generateGroupKey } = await import('@canopy/pod-client');
+      const outsiderStrat = posture === 'p3'
+        ? recipientStrategy({ recipients: [outsider.publicKey], privateKey: outsider.privateKey })
+        : groupKeyStrategy({ groupKey: generateGroupKey() /* a valid but WRONG group key */ });
+      expect(() => outsiderStrat.open(sealed)).toThrow();   // no silent plaintext
+    });
+  }
+
+  it('re-bootstrap is idempotent: no rotation, no duplicate roster, SAME group key', async () => {
+    const vault = new MemVault();
+    const prod = await createCirclePodProducer({ circleId: 'idem', storagePosture: 'p2', vault, generateKeypair, makePodClient });
+    const self = await prod.sealingIdentity.ensure();
+    const before = (await prod.controlAgent.sealingStrategy(self.privateKey)).seal('v1-ct');
+
+    // a second bootstrap must NOT rotate (it would break the ≥1-version invariant + orphan prior ciphertext)
+    const second = await prod.controlAgent.bootstrap();
+    expect(second).toBeNull();                                            // idempotent no-op
+    const after = await prod.controlAgent.sealingStrategy(self.privateKey);
+    expect(after.open(before)).toBe('v1-ct');                            // same group key still opens prior ciphertext
+
+    // re-adding an already-granted member is likewise a no-op (no roster duplication, no re-wrap)
+    const membersBefore = prod.controlAgent.members().length;
+    const selfEntry = prod.controlAgent.members()[0];
+    await prod.controlAgent.addMember({ webId: 'dup', publicKey: selfEntry.publicKey, role: 'member' });
+    expect(prod.controlAgent.members().length).toBe(membersBefore);       // unchanged
   });
 });

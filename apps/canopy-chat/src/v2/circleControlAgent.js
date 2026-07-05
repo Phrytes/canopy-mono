@@ -74,13 +74,36 @@ export function createCircleControlAgent({
     /**
      * Resolve the circle's CONTENT seal/open strategy once the caller's group key
      * is unwrappable (the member is a current recipient). Throws if revoked / not a
-     * recipient (the group key was rotated away from them). p2 = group-key seal.
+     * recipient (the group key was rotated away from them). Returns null when the
+     * circle hasn't been bootstrapped yet (no key resource) — the caller then falls
+     * back to a plain client rather than sealing with missing material.
+     *
+     * The group-key resource is the AUTHORISATION gate for BOTH sealed postures: a
+     * member proves current membership by unwrapping it (a revoked/never-granted key
+     * throws → the caller sees null, never plaintext). The resolved strategy then
+     * differs by posture:
+     *   • p2 — GROUP-KEY seal: content is encrypted under the shared `groupKey`.
+     *   • p3 — RECIPIENT seal: content is sealed directly to the CURRENT roster's
+     *          public keys (writer is host-blind) + opened with the member's own key.
+     *          Recipients = every current member + the controller, taken from the
+     *          control-agent roster so a p3 writer seals to exactly who can read.
      *
      * @param {string} privateKey  the member's sealing private key.
      * @returns {Promise<{ seal: Function, open: Function } | null>}
      */
     async sealingStrategy(privateKey) {
       const groupKey = await readGroupKey({ keyStore, privateKey });
+      if (groupKey == null) return null;   // not bootstrapped → plain client (no seal with missing key)
+      if (storagePosture === 'p3') {
+        // Content is recipient-sealed, not group-key-sealed: gather the current roster's
+        // public keys (+ the controller, always a recipient) so a writer seals to all
+        // members. `groupKey` above only served as the membership gate (already passed).
+        const recipients = [...new Set([
+          ...agent.members().map((m) => m.publicKey),
+          controllerKey.publicKey,
+        ].filter(Boolean))];
+        return resolveCircleStorage({ posture: 'p3', recipients, privateKey });
+      }
       return resolveCircleStorage({ posture: storagePosture, groupKey });
     },
   };
