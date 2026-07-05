@@ -37,11 +37,12 @@ function baseItem(type, extra = {}) {
 }
 
 describe('Canonical types — registration via default registry', () => {
-  it('the default registry has all 14 canonical types', () => {
+  it('the default registry has all 15 canonical types', () => {
     expect(list().sort()).toEqual([
       'announcement',
       'calendar-event',
       'chat-message',
+      'chat-thread',
       'circle',
       'claim',
       'contact',
@@ -67,11 +68,11 @@ describe('Canonical types — registration via default registry', () => {
   it('registerCanonicalTypes works on a fresh registry too', () => {
     const r = createRegistry();
     registerCanonicalTypes(r);
-    expect(r.list()).toHaveLength(14);
+    expect(r.list()).toHaveLength(15);
   });
 
   it('CANONICAL_TYPES exports the schema map', () => {
-    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(14);
+    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(15);
     expect(CANONICAL_TYPES.task).toBeTruthy();
     expect(CANONICAL_TYPES.note).toBeTruthy();
   });
@@ -83,6 +84,7 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     'task':              { text:        'paint the fence' },
     'note':              { body:        'hello world' },
     'chat-message':      { body:        'hi!' },
+    'chat-thread':       { name:        'Main' },
     'offer':             { body:        'ladder available, lend it to whoever needs it' },
     'request':           { body:        'looking to borrow a drill this weekend' },
     'claim':             { itemRef:     'pseudo-pod://x/y/z' },
