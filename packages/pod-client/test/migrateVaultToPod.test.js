@@ -18,9 +18,9 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import nacl from 'tweetnacl';
 
 import { VaultMemory }      from '@canopy/vault';
-import { Bootstrap }        from '../../src/identity/Bootstrap.js';
-import { AgentIdentity }    from '../../src/identity/AgentIdentity.js';
-import { IdentityPodStore } from '../../src/identity/IdentityPodStore.js';
+import { Bootstrap }        from '@canopy/core';
+import { AgentIdentity }    from '@canopy/core';
+import { IdentityPodStore } from '../src/identity/IdentityPodStore.js';
 import {
   migrateVaultToPod,
   MIGRATED_FLAG_KEY,
@@ -29,7 +29,7 @@ import {
   EXACT_SKIP_KEYS,
   buildSelfDeviceMapping,
   mapVaultKeyToSchema,
-} from '../../src/identity/migrateVaultToPod.js';
+} from '../src/identity/migrateVaultToPod.js';
 
 // ── MockPodClient ──────────────────────────────────────────────────────────
 

@@ -43,6 +43,7 @@
   },
   "peerDependencies": {
     "@canopy/core": "^0.1.0",
+    "@canopy/pod-client": "^0.1.0",
     "@canopy/transports": "^0.1.0",
     "@canopy/vault": "^0.1.0",
     "@react-native-async-storage/async-storage": "*",
@@ -64,6 +65,7 @@
   },
   "devDependencies": {
     "@canopy/core": "file:../core",
+    "@canopy/pod-client": "file:../pod-client",
     "react": "^19.0.0",
     "vitest": "^2.1.0"
   }

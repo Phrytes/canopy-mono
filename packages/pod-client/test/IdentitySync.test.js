@@ -14,16 +14,16 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import nacl from 'tweetnacl';
 
-import { Bootstrap }        from '../../src/identity/Bootstrap.js';
-import { AgentIdentity }    from '../../src/identity/AgentIdentity.js';
-import { IdentityPodStore } from '../../src/identity/IdentityPodStore.js';
+import { Bootstrap }        from '@canopy/core';
+import { AgentIdentity }    from '@canopy/core';
+import { IdentityPodStore } from '../src/identity/IdentityPodStore.js';
 import {
   IdentitySync,
   vaultCacheKeyFor,
   resourcePathFromCacheKey,
   VAULT_CACHE_PREFIX,
   DEFAULT_RESOURCES,
-}                           from '../../src/identity/IdentitySync.js';
+}                           from '../src/identity/IdentitySync.js';
 import { VaultMemory }      from '@canopy/vault';
 
 // ── MockPodClient ──────────────────────────────────────────────────────────
