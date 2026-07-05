@@ -5,7 +5,7 @@
  * See docs/conventions/ports.md.
  */
 import { describe, it } from 'vitest';
-import { assertActorResolverConformance } from './actorResolverConformance.js';
+import { assertActorResolverConformance } from '@canopy/core/conformance';
 import { createInMemoryActorResolver } from '../../src/permissions/ActorResolver.js';
 
 describe('ActorResolver port — createInMemoryActorResolver (reference adapter)', () => {

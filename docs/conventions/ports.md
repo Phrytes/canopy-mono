@@ -84,8 +84,9 @@ substrate implementation lives in `@canopy/agent-registry`.
 ## Conformance harness
 
 The harness is the executable form of the contract. Each port ships an `assert…Conformance(makeImpl, {label})`
-helper under `packages/core/test/conformance/`; point it at any implementation and it asserts the required
-methods exist **and** the port's behaviours actually hold:
+helper, exported from the **`@canopy/core/conformance`** subpath (source: `packages/core/src/conformance/`).
+Point it at any implementation and it asserts the required methods exist **and** the port's behaviours
+actually hold:
 
 | Port | Helper | Reference impls it runs against |
 |---|---|---|
@@ -98,13 +99,16 @@ and exercises one-way delivery, request/response correlation, and `AS` auto-ACK 
 own `_put`. (The `RendezvousTransport` run is gated on the `node-datachannel` WebRTC polyfill being installable,
 and skips cleanly where it isn't — same as the existing rendezvous suite.)
 
-A third party writing a new adapter should wire the matching helper into their own test suite (the helpers
-live under `packages/core/test/conformance/` — import them by relative path, or copy them into your package):
+A third party writing a new adapter wires the matching helper into their own test suite by importing the
+first-class `@canopy/core/conformance` subpath — no relative paths, no copying:
 
 ```js
-import { assertTransportConformance } from '../path/to/core/test/conformance/transportConformance.js';
+import { assertTransportConformance } from '@canopy/core/conformance';
 
 it('MyTransport satisfies the Transport port', async () => {
   await assertTransportConformance(makeMyConnectedPair, { label: 'MyTransport' });
 });
 ```
+
+The helpers assert via `vitest`'s `expect`, so run them from a `vitest` test (vitest is a peer requirement of
+this subpath); they are otherwise runner-agnostic — they only take your factory and assert.

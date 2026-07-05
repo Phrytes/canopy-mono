@@ -7,7 +7,7 @@
  * of "compatible with the @canopy SDK". See docs/conventions/ports.md.
  */
 import { describe, it } from 'vitest';
-import { assertTransportConformance } from './transportConformance.js';
+import { assertTransportConformance } from '@canopy/core/conformance';
 import { InternalBus, InternalTransport } from '../../src/transport/InternalTransport.js';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
 import { RendezvousTransport } from '@canopy/transports';

@@ -9,7 +9,7 @@
  * "Implement the port + pass this harness = compatible with the @canopy SDK."
  */
 import { expect } from 'vitest';
-import { DataSource } from '../../src/storage/DataSource.js';
+import { DataSource } from '../storage/DataSource.js';
 
 export const REQUIRED_DATASOURCE_METHODS = Object.freeze([
   'read', 'write', 'delete', 'list', 'query',
