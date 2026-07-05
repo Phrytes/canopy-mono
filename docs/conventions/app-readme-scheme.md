@@ -25,7 +25,7 @@ A consistent README structure makes the layering legible in two reads:
 
 A new contributor (human or AI) should be able to answer #2 without
 opening `package.json` — and should be able to spot a layering
-violation immediately if direct SDK use isn't justified.
+violation immediately if direct kernel use isn't justified.
 
 ---
 
@@ -72,7 +72,7 @@ five sections above are the **required spine**.
 
 List every `@canopy/<substrate>` package the app imports, what the
 app uses each for, and a single sentence per substrate explaining why
-that substrate (rather than direct SDK use) is the right home for that
+that substrate (rather than direct kernel use) is the right home for that
 concern.
 
 ```markdown
@@ -91,7 +91,7 @@ This app composes the following substrate packages
 
 Concrete examples below. Apps with zero substrate dependencies (rare
 — typically only `apps/sdk-smoke` and `apps/mesh-demo` since they
-deliberately exercise the SDK directly) write `*None.* See "Direct
+deliberately exercise the kernel directly) write `*None.* See "Direct
 SDK use" below for why.`
 
 ---
@@ -108,7 +108,7 @@ audit (see `Project Files/TODO-GENERAL.md`).
 ```markdown
 ## Direct SDK use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/core` | `Agent`, `defineSkill` | App constructs the agent itself + registers app-specific skills. | No substrate wraps "construct an agent"; that's foundational. Substrate-of-substrates would be over-abstraction. |
 | `@canopy/react-native` | `MobilePushBridge`, `ExpoNotificationsAdapter` | RN-side push receiver. | Platform layer — by design, RN-specific bring-up lives in `@canopy/react-native`. No substrate wraps it. |
@@ -126,7 +126,7 @@ If the section is empty, write:
 ```markdown
 ## Direct SDK use
 
-None. All SDK access goes through substrates.
+None. All kernel access goes through substrates.
 ```
 
 ---
@@ -225,7 +225,7 @@ plan.
 
 ## Direct SDK use
 
-None. All SDK access goes through substrates.
+None. All kernel access goes through substrates.
 [Once the V2 multi-process smoke lands the app will additionally
 construct a `core.Agent` directly — see H5-V2-resume.md step 1; this
 section will document the justification at that time.]
@@ -269,7 +269,7 @@ following apps are non-conforming:
 
 - `apps/folio-mobile` — has a README but no Substrates / Direct SDK use sections.
 - `apps/folio` — same.
-- `apps/sdk-smoke` — same; deliberately uses SDK directly (the smoke harness exists to test it), so the Direct SDK section will be substantial.
+- `apps/sdk-smoke` — same; deliberately uses the kernel directly (the smoke harness exists to test it), so the Direct SDK section will be substantial.
 - `apps/mesh-demo` — same; pending migration to substrates per checklist.
 - `apps/household` — same.
 - `apps/tasks-v0` — same.

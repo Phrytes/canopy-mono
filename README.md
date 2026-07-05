@@ -3,11 +3,11 @@
 A platform for **decentralized agent apps** — web and mobile apps whose
 users exchange messages, data, and tasks **without a required central
 server**.  Each app declares its surface once, as data; a unified chat
-shell composes them all, and a portable agent SDK gives every app
+shell composes them all, and a portable platform gives every app
 identity, transports, and peer-to-peer reachability underneath.
 
 > **Working name in public material:** *Onderling*.  This monorepo is the
-> engineering home; the agent SDK ships under the `@canopy/*` scope and the
+> engineering home; the platform ships under the `@canopy/*` scope and the
 > apps under `@canopy-app/*`.
 
 ---
@@ -123,36 +123,34 @@ model problems. The plan, in order: **(0)** architectural *fitness functions* �
 check so drift can't merge; **(1)** consolidate the remaining duplication; **(2)** split the repos along the
 now-enforced seams — thin **clients** (web + mobile) · **substrate/functionality** (the packages + the
 already-server-side pod-hosting / proxy / private-LLM) · the **feedback app** in its own repo (project-start,
-KLAI compat) · **third-party apps** that build against the Solid pod + agent SDK (pod **ACPs** are the access
+KLAI compat) · **third-party apps** that build against the Solid pod + `@canopy/sdk` (pod **ACPs** are the access
 contract) without touching this repo. Sensitive compute stays client-side or in an **attested enclave** —
 functionality is placed by *trust + latency*, never default-to-server. The contract at every seam is the
-manifest (for surfaces) and the SDK + pod ACPs (for external apps). See `REMAINING-WORK.md` →
+manifest (for surfaces) and `@canopy/sdk` + pod ACPs (for external apps). See `REMAINING-WORK.md` →
 "★ Architectural spine" and `CLAUDE.md`. *(This README gets a full rewrite once the repos are split.)*
 
 ---
 
-## How it works — the agent SDK
+## How it works — the platform + `@canopy/sdk`
 
-Four packages, pure-JS-first, running in browser, Node, and React Native.
+Pure-JS-first, running in browser, Node, and React Native. The **developer SDK is `@canopy/sdk`** — one import
+that fronts the whole platform (`createAgent()` + `connectSkill()`, plus re-exports of every piece below so you
+can wire your own). The platform underneath:
 
-- **`@canopy/core`** — identity + vault, security (SecurityLayer, hello
-  handshake, capability tokens, group manager), transports (Relay / Local /
-  Mqtt / Nkn / Rendezvous / Offline / Internal), routing, the `Agent` class,
-  the skill registry + `defineSkill`, protocols (pubSub / taskExchange /
-  messaging / …), and storage primitives (SolidPodSource, MergeContracts,
-  FederatedReader, PodStorageConvention).
-- **`@canopy/relay`** — Node-only WebSocket relay: rendezvous signalling +
-  proxy fallback + multi-recipient fan-out + group auth + push wake.
-- **`@canopy/pod-client`** — high-level Solid pod client: read, write, list,
-  conflict resolution, tombstone tracking.
-- **`@canopy/react-native`** — RN platform layer: BLE, mDNS, KeychainVault,
-  MobilePushBridge, the `createMeshAgent` factory, polyfills + Metro preset.
+- **`@canopy/core`** — the **kernel**: identity, security (SecurityLayer, hello handshake, capability tokens,
+  group manager), routing, the `Agent` class, the skill registry + `defineSkill`, protocols (pubSub /
+  taskExchange / messaging / …), `InternalTransport`, and the **ports** (`Transport` / `DataSource` /
+  `ActorResolver` — the compatibility contract, see [`docs/conventions/ports.md`](./docs/conventions/ports.md)).
+- **`@canopy/transports`** — the concrete network transports (Nkn / Mqtt / Relay / Rendezvous), adapters over
+  the kernel's `Transport` port.
+- **`@canopy/pod-client`** — high-level Solid pod client (read / write / list / conflict resolution / tombstones)
+  plus the on-pod storage + identity adapters (`SolidPodSource`, `IdentityPodStore`).
+- **`@canopy/vault`** — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
+- **`@canopy/relay`** — Node WebSocket relay: rendezvous signalling + proxy fallback + fan-out + group auth + push wake.
+- **`@canopy/react-native`** — RN platform layer: BLE, mDNS, KeychainVault, MobilePushBridge, `createMeshAgent`, Metro preset.
 
-Substrates (`packages/{item-store, identity-resolver, skill-match,
-notifier, secure-agent, llm-client, …}`) compose the SDK into reusable
-building blocks; apps compose substrates.  Full public surface, every
-symbol with its `file:line`:
-`Project Files/Substrates/refactor/SDK-surface-map.md`.
+Substrates (`packages/{item-store, identity-resolver, skill-match, notifier, secure-agent, llm-client, …}`)
+compose the kernel + adapters into reusable building blocks; apps compose substrates.
 Minimal hands-on agent: [`QUICKSTART.md`](./QUICKSTART.md).
 
 ### Single-agent rule
@@ -191,7 +189,7 @@ based on which transports have a live link to the peer.
 
 ## Architecture invariant — three layers
 
-> **Apps depend on substrates, substrates depend on the agent SDK. This is
+> **Apps depend on substrates, substrates depend on the kernel. This is
 > a project-wide invariant — keep it top-of-mind.**
 
 ```
@@ -200,12 +198,14 @@ apps/                       ←  thin compositions; per-app glue + UI
 packages/{item-store, identity-resolver, skill-match, notifier,
   secure-agent, app-manifest, manifest-host, llm-client, …}
   ↓                            ←  substrates; reusable building blocks
-packages/{core, relay, pod-client, react-native}
-                               ←  the agent SDK; the foundation
+packages/core                  ←  the KERNEL: ports + kernel logic
+                               (adapters live outside — @canopy/transports,
+                                @canopy/pod-client, @canopy/vault; the dev
+                                entry is @canopy/sdk, the facade over the platform)
 ```
 
-Substrates compose the SDK and MUST NOT reinvent its primitives.  Apps
-compose substrates and MAY use the SDK directly **only with an explicit
+Substrates compose the kernel + adapters and MUST NOT reinvent the kernel.  Apps
+compose substrates and MAY use the kernel directly **only with an explicit
 justification** in the app's README.  Required reading before authoring
 code here:
 
@@ -220,7 +220,7 @@ code here:
 
 - **Local-only mode is the floor; pod is portability.** Every app works
   fully without an authenticated pod.  Shared-state apps without a pod fall
-  back to SDK `MergeContracts` + relay `group-publish` for P2P replication.
+  back to kernel `MergeContracts` + relay `group-publish` for P2P replication.
 - **Pod is truth, local cache is reality.** When a pod *is* configured it is
   authoritative but slow; UI reads from the local cache and syncs on a
   cadence with optimistic, queued writes.  A pod outage must not break the app.
@@ -259,7 +259,7 @@ trap log:
 ## Running things
 
 ```bash
-# Monorepo root — install + run the SDK package test suites
+# Monorepo root — install + run the package test suites
 npm install
 npm test                              # core + react-native + relay + pod-client + integration-tests
 npm run test:core                     # individual suites: :rn :relay :pod-client :scenarios
@@ -288,7 +288,7 @@ npm start                                         # subsequent JS-only changes
 
 ## Status
 
-**Research preview / PoC.**  The SDK package boundaries are stable
+**Research preview / PoC.**  The platform's package boundaries are stable
 and core is in active development.  As of the current milestone:
 
 - **canopy-chat web + `canopy-chat-mobile` shells are live**, both composing

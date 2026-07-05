@@ -41,7 +41,7 @@ Tests use [Vitest](https://vitest.dev). Unit tests live under
 
 ## Other expectations
 
-- Read `CLAUDE.md` for the project's working agreements before touching the SDK
-  surface (transport primitives, security wrapping, decisions already made).
+- Read `CLAUDE.md` for the project's working agreements before touching the kernel
+  or its adapters (transport primitives, security wrapping, decisions already made).
 - Don't add top-level dependencies without an explicit conversation.
 - Design-first: spec lives under `Design/` — code follows docs.

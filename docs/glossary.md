@@ -27,14 +27,22 @@ they fit together.
 
 ## Layers
 
-- **SDK** — the foundation packages a developer loads to run as an agent (`core`, `relay`, `pod-client`,
-  `react-native`): identity, transports, pod access, RN platform. *Honest nuance:* `core` is **not** a minimal
-  kernel today — it's fat (also carries concrete transports, pod-storage, discovery, a2a) and even depends *up* on
-  `vault`/`oidc-session` (a leftover inversion being cleaned).
-- **Substrate** — a reusable building block in `packages/` that composes the SDK (e.g. `item-store`,
-  `skill-match`, `notifier`). Apps compose substrates; substrates don't reinvent the SDK. *The bucket is a
-  **gradient**, not a flat tier:* runtime-foundation (near-required: vault, oidc-session, pod-client) → feature
-  (optional: skill-match, notifier) → facade (composes others: secure-agent, agent-provisioning).
+- **Kernel** (`packages/core`) — the lean bottom of the stack: the `Agent`, envelope/parts, the skill registry,
+  the `callSkill` security gate, identity, `InternalTransport`, and the **ports**. It holds *no concrete adapters*
+  and depends *up* on nothing (fitness-fn-guarded).
+- **Port** — an interface the kernel declares as its **compatibility contract**: `Transport`, `DataSource`,
+  `ActorResolver`. A third-party adapter is compatible iff it *implements the port + passes its conformance harness*
+  (see [`conventions/ports.md`](./conventions/ports.md)).
+- **Adapter** — a concrete implementation of a port, living **outside** the kernel: network transports in
+  `@canopy/transports`, Solid-pod storage + on-pod identity in `@canopy/pod-client`, the Vault family in `@canopy/vault`.
+- **Platform** — the whole reusable foundation: kernel + adapters + substrates. The thing a dev builds on.
+- **SDK** (`@canopy/sdk`) — **the** dev-facing front door to the platform: a *layered facade*. Low layer
+  re-exports the kernel + default adapters (pass your own explicitly); high layer adds `createAgent()`
+  (batteries-included run-as-agent) + `connectSkill()` (map any app function to a skill). "Import one thing, done."
+- **Substrate** — a reusable building block in `packages/` that composes the kernel + adapters (e.g. `item-store`,
+  `skill-match`, `notifier`). Apps compose substrates; substrates don't reinvent the kernel. *The tier is a
+  **gradient**:* runtime-foundation (near-required: vault, oidc-session, pod-client) → feature (optional:
+  skill-match, notifier) → facade (composes others: secure-agent, agent-provisioning).
 - **Deployment / hosting layer** — server-side services outside the client apps: **pod-hosting**, relay/proxy,
   the private-LLM enclave, rollout. Placed by trust + latency; the `feedback` deployment occupies it today.
 - **Agent** — one `core.Agent` per service-context. Transports are routes plugged into that one agent;
@@ -52,7 +60,7 @@ they fit together.
 - **ACP** — Access Control Policy on a pod; the access contract third-party apps build against.
 - **Local-first** — local cache is reality (fast, always available); the pod is truth (authoritative but
   slow). Writes are optimistic and queued; a pod outage must not break the app.
-- **MergeContract** — the SDK's per-field merge rules that let shared-state apps replicate P2P without a pod.
+- **MergeContract** — the kernel's per-field merge rules that let shared-state apps replicate P2P without a pod.
 
 ## Audience & groups
 
@@ -89,5 +97,5 @@ they fit together.
 
 ## Names
 
-- **canopy / Onderling** — *canopy* is the engineering name (SDK ships as `@canopy/*`, apps as `@canopy-app/*`);
+- **canopy / Onderling** — *canopy* is the engineering name (the platform ships as `@canopy/*`, apps as `@canopy-app/*`);
   ***Onderling*** is the working name in public/product material.

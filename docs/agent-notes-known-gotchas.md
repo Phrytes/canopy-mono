@@ -16,10 +16,10 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
 - **EAS strips `node_modules` → Metro can't resolve `packages/core` deps.**
   EAS Build removes every `node_modules/` from the upload (to shrink transfer), then runs `npm ci`
   **only in the app directory**. So `packages/core/node_modules` never exists on the build server,
-  and the moment Metro processes a file under `packages/core/src/` it fails to resolve that SDK's
+  and the moment Metro processes a file under `packages/core/src/` it fails to resolve the kernel's
   crypto deps (`tweetnacl`, `@scure/bip39`, `@noble/*`).
   **Fix:** add `packages/core/node_modules` to Metro's `resolver.nodeModulesPaths` as a fallback.
-  **Caveat (important):** add *only* that path — it holds the SDK's crypto deps and nothing else.
+  **Caveat (important):** add *only* that path — it holds the kernel's crypto deps and nothing else.
   Do **NOT** add `packages/react-native/node_modules`; it contains React Native **native modules**,
   and putting those on `nodeModulesPaths` causes duplicate-native-module conflicts.
   **Generalizes:** if a future build hits this with another package, find which package's source
