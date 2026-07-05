@@ -26,6 +26,7 @@
     "@canopy/webid-discovery": "file:../webid-discovery",
     "@canopy/item-store":      "file:../item-store",
     "@canopy/pod-client":      "file:../pod-client",
+    "@canopy/oidc-session":    "file:../oidc-session",
     "vitest": "^2.1.9"
   }
 }
