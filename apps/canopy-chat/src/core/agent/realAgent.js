@@ -27,6 +27,7 @@ import {
   Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
+import { wireSkill } from '@canopy/sdk';
 import { createSecureMeshAgent } from '@canopy/secure-agent';
 import { createBrowserMultiCrewTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
@@ -148,13 +149,15 @@ export async function createRealHouseholdAgent(opts = {}) {
   // persistDb was passed; in-memory no-pod otherwise). Lets the cutover be device-verified before retiring the
   // agent. Dynamic import so flag-off boots never load the item-store/registry substrate.
   let householdService = null;
+  let householdApp = null;             // B1 — the householdApp.js module (pure cores) for wireSkill registration below
+  let householdAgent = null;           // B1 — dedicated in-process agent hosting the wireSkill-wrapped pure cores
   let wireStoreMirror = null;          // L3 no-pod-sync: attach the circle store to the peer mirror (publish-on-write)
   let wireCircleStoreInbound = null;   // …and ingest peer envelopes back into the circle store (inbound)
   const householdSyncWired = new Set();   // circleIds whose store↔mirror sync (publish + inbound) is wired (once each)
   if (opts.householdViaCircleStore) {
-    const { createHouseholdService } = await import('../../v2/householdApp.js');
+    householdApp = await import('../../v2/householdApp.js');
     ({ wireStoreMirror, wireCircleStoreInbound } = await import('@canopy/item-store'));
-    householdService = createHouseholdService({ dataSource: householdDataSource });
+    householdService = householdApp.createHouseholdService({ dataSource: householdDataSource });
   }
   // Legacy/default store — the mirror, seeding, and standalone helpers stay on this bucket for now
   // (per-circle mirror is a later phase). Per-circle skill reads/writes resolve via getHouseholdScope.
@@ -426,6 +429,56 @@ export async function createRealHouseholdAgent(opts = {}) {
     registerHouseholdSkill(opId, skill);
   }
 
+  /* ─────────── B★ B1 — household via the uniform route + wireSkill (L3) ───────────
+   * The dissolved-onto-CircleItemStore path (opts.householdViaCircleStore) no longer
+   * DIRECT-CALLS `householdService.callSkill(opId, …)`.  The existing pure cores in
+   * `v2/householdApp.js` are registered on a DEDICATED in-process household agent via
+   * `wireSkill(core, householdOp, { storeFor })` — the same manifest-op-derives-the-handler
+   * mechanism B2 (tasks-v0) uses — and the `'household'` branch of callSkill routes through
+   * `chatAgent.invoke(householdAgent.address, opId, parts)` so it takes the merged S1
+   * InternalTransport fast-path AND passes the callSkill security gate (runGatedSkill).
+   *
+   *   • storeFor — the SAME per-circle CircleItemStore resolution the direct-call branch
+   *     used: `householdService.stores.getStore(circleId)`.  circleId is injected into the
+   *     DataPart args at invoke time (below), so it resolves identically here.
+   *   • `by` — the acting member.  The cores read `ctx.by`; the invoke context carries the
+   *     caller as `ctx.from` (= chatId.pubKey in-process), so `withBy` threads it through,
+   *     matching the old `by: chatId?.pubKey`.
+   *   • listOpen/listTasks cores return a BARE ARRAY of items; each item carries a `.type`
+   *     field, which `Parts.wrap` would mistake for a Part[].  `listWrap` boxes them in
+   *     `{ items }` so invoke always yields a clean DataPart.
+   *
+   * NB: the legacy `registerHouseholdSkill` loop above (flag-OFF default path) is NOT removed
+   * — it, and `HOUSEHOLD_SKILL_REGISTRY`/`skillRegistry.js`, stay the live default surface and
+   * are pinned by ~30 realAgent.test.js cases (seed store + `{replies,stateUpdates}` shapes +
+   * listOpen-without-type). Retiring them is DEFERRED L3 scope (see the B1 report). */
+  if (householdService) {
+    const householdId    = await restoreOrGenerate(makeBrowserVault('cc-household-agent-id:'));
+    householdAgent       = new Agent({ identity: householdId, transport: new InternalTransport(bus, householdId.pubKey) });
+    const hhOp = (id) => {
+      const found = householdManifest.operations.find((o) => o.id === id);
+      if (!found) throw new Error(`realAgent B1: no household manifest op "${id}"`);
+      return found;
+    };
+    // Same resolution as the direct-call branch (args.circleId is injected at invoke).
+    const storeFor = (ctx) =>
+      householdService.stores.getStore(resolveHouseholdCircleId(ctx.parts?.[0]?.data ?? {}));
+    // Thread the acting member (`by`) from the invoke context into the pure core's ctx.
+    const withBy   = (coreFn) => (store, a, ctx) => coreFn(store, a, { ...ctx, by: ctx.from ?? chatId?.pubKey });
+    // Box the bare-array list cores so invoke returns a DataPart, not an array-mistaken-for-Parts.
+    const listWrap = (coreFn) => async (store, a, ctx) => ({ items: await coreFn(store, a, ctx) });
+    const wire     = (id, coreFn) => householdAgent.register(id, wireSkill(coreFn, hhOp(id), { storeFor }));
+
+    wire('addItem',      withBy(householdApp.addItem));
+    wire('addTask',      withBy(householdApp.addTask));
+    wire('markComplete', withBy(householdApp.markComplete));
+    wire('claim',        withBy(householdApp.claim));
+    wire('reassign',     withBy(householdApp.reassign));
+    wire('removeItem',   householdApp.removeItem);          // no `by`
+    wire('listOpen',     listWrap(householdApp.listOpen));
+    wire('listTasks',    listWrap(householdApp.listTasks));
+  }
+
   // v0.4 — household membership demo.  The real manifest declares
   // `registerName` (writes a `contact` item); the legacy `/addmember`
   // membership demo + the cross-app follow-up chain (followUps.js) still
@@ -507,11 +560,15 @@ export async function createRealHouseholdAgent(opts = {}) {
   await Promise.all([
     hostAgent.start(),
     chatAgent.start(),
+    ...(householdAgent ? [householdAgent.start()] : []),   // B1 — the wireSkill household agent (flag-on)
   ]);
 
   // hello-exchange so each agent knows the other.  InternalBus
   // delivers synchronously enough that one hello is sufficient.
   await chatAgent.hello(hostAgent.address);
+  // B1 — seed chatAgent's SecurityLayer with the household agent's key so
+  // `chatAgent.invoke(householdAgent.address, …)` takes the S1 fast-path.
+  if (householdAgent) await chatAgent.hello(householdAgent.address);
 
   // Seed a few household items so `/list shopping` + `/brief` are non-empty
   // out of the box.  Deterministic order (added oldest-first); skip via
@@ -921,17 +978,20 @@ export async function createRealHouseholdAgent(opts = {}) {
             householdSyncWired.add(circleId);
           } catch { /* sync is best-effort; the op still runs locally */ }
         }
-        const result = await householdService.callSkill(opId, args ?? {}, {
-          circleId,
-          by:       chatId?.pubKey,
-        });
-        // Render-shape adapter: the dissolved list ops return a bare item[]; the household render expects
-        // `{items:[{…,label}]}` (label = the item's text). Mutating ops return the item / {ok} (text present
-        // → renders as-is). More adapters land as the on-device flag-on pass surfaces them.
+        // B★ B1 — route through the UNIFORM invoke to the wireSkill-wrapped pure cores on the
+        // dedicated household agent (S1 InternalTransport fast-path + the callSkill security gate),
+        // replacing the former direct `householdService.callSkill(opId, …)` call. circleId is injected
+        // into the DataPart args so the wired `storeFor` resolves the SAME per-circle CircleItemStore.
+        const parts  = await chatAgent.invoke(householdAgent.address, opId, [DataPart({ ...(args ?? {}), circleId })]);
+        const data   = Array.isArray(parts) ? parts[0]?.data : null;
+        // Render-shape adapter: the dissolved list ops return their items in `{items}` (listWrap);
+        // the household render expects `{items:[{…,label}]}` (label = the item's text). Mutating ops
+        // return the item / {ok} (text present → renders as-is).
         if (opId === 'listOpen' || opId === 'listTasks') {
-          return { items: (Array.isArray(result) ? result : []).map((i) => ({ ...i, label: i.text ?? i.label })) };
+          const items = Array.isArray(data?.items) ? data.items : [];
+          return { items: items.map((i) => ({ ...i, label: i.text ?? i.label })) };
         }
-        return result;
+        return data ?? null;
       }
       const parts = [DataPart(args ?? {})];
       const result = await chatAgent.invoke(hostAgent.address, opId, parts);
