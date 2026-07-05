@@ -13,7 +13,7 @@
  * Ref: Design-v3/rendezvous-mode.md §11 AA2, CODING-PLAN Group AA.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { RendezvousTransport }            from '../../src/transport/RendezvousTransport.js';
+import { RendezvousTransport }            from '@canopy/transports';
 import { InternalBus, InternalTransport } from '../../src/transport/InternalTransport.js';
 import { AgentIdentity }                  from '../../src/identity/AgentIdentity.js';
 import { VaultMemory }                    from '@canopy/vault';

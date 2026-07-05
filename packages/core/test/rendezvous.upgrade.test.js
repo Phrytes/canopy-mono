@@ -26,7 +26,7 @@ import { InternalBus, InternalTransport }        from '../src/transport/Internal
 import { PeerGraph }                             from '../src/discovery/PeerGraph.js';
 import { RoutingStrategy }                       from '../src/routing/RoutingStrategy.js';
 import { DataPart, Parts }                       from '../src/Parts.js';
-import { RendezvousTransport }                   from '../src/transport/RendezvousTransport.js';
+import { RendezvousTransport }                   from '@canopy/transports';
 
 // Optional polyfill — skip the suite if it fails to load.
 let rtcLib = null;

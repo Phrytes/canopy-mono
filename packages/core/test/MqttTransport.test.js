@@ -8,7 +8,7 @@
  *   MQTT_BROKER=wss://broker.hivemq.com:8884/mqtt RUN_MQTT_TESTS=1 npm test -- test/MqttTransport.test.js
  */
 import { describe, it, expect } from 'vitest';
-import { MqttTransport } from '../src/transport/MqttTransport.js';
+import { MqttTransport } from '@canopy/transports';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
 import { VaultMemory }   from '@canopy/vault';
 

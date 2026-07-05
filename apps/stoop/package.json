@@ -35,6 +35,7 @@
     "@canopy/chat-agent": "file:../../packages/chat-agent",
     "@canopy/chat-p2p": "file:../../packages/chat-p2p",
     "@canopy/core": "file:../../packages/core",
+    "@canopy/transports": "file:../../packages/transports",
     "@canopy/vault": "file:../../packages/vault",
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",
     "@canopy/item-store": "file:../../packages/item-store",

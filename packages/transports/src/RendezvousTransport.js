@@ -54,7 +54,7 @@
  *   await rdv.connectToPeer(peerAddress);  // initiates WebRTC handshake
  *   await rdv._put(peerAddress, envelope); // send via DataChannel
  */
-import { Transport } from './Transport.js';
+import { Transport } from '@canopy/core';
 
 const CHANNEL_LABEL  = 'canopy';
 const OPEN_TIMEOUT   = 30_000;   // ms
@@ -69,7 +69,7 @@ export class RendezvousTransport extends Transport {
 
   /**
    * @param {object} opts
-   * @param {import('./Transport.js').Transport}                    opts.signalingTransport
+   * @param {import('@canopy/core').Transport}                    opts.signalingTransport
    * @param {import('../identity/AgentIdentity.js').AgentIdentity} opts.identity
    * @param {object} [opts.rtcLib]    — { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate }
    * @param {object[]} [opts.iceServers]   — default: Google STUN

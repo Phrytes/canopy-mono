@@ -74,14 +74,17 @@ export {
 }                                            from './security/helloGates.js';
 
 // ── Transport ────────────────────────────────────────────────────────────────
+// NOTE: the concrete network transports (RelayTransport, MqttTransport,
+// NknTransport, RendezvousTransport) were extracted OUT of core into
+// `@canopy/transports` — import them from there. `core` no longer re-exports
+// them (kills the kernel→concrete-adapter coupling; guarded by
+// test/layering.enforcement.test.js). Transport (base), InternalBus/
+// InternalTransport, LocalTransport, OfflineTransport and HubDelegateTransport
+// stay here.
 export { Transport }                      from './transport/Transport.js';
 export { InternalBus, InternalTransport } from './transport/InternalTransport.js';
 export { HubDelegateTransport }           from './transport/HubDelegateTransport.js';
-export { RelayTransport }                 from './transport/RelayTransport.js';
-export { MqttTransport }                  from './transport/MqttTransport.js';
-export { NknTransport }                   from './transport/NknTransport.js';
 export { LocalTransport }                 from './transport/LocalTransport.js';
-export { RendezvousTransport }            from './transport/RendezvousTransport.js';
 export { OfflineTransport }               from './transport/OfflineTransport.js';
 
 // ── Skills ────────────────────────────────────────────────────────────────────

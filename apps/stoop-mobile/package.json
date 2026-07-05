@@ -15,6 +15,7 @@
   "dependencies": {
     "@canopy-app/stoop": "file:../stoop",
     "@canopy/core": "file:../../packages/core",
+    "@canopy/transports": "file:../../packages/transports",
     "@canopy/vault": "file:../../packages/vault",
     "@canopy/chat-p2p": "file:../../packages/chat-p2p",
     "@canopy/identity-resolver": "file:../../packages/identity-resolver",

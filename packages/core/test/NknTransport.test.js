@@ -8,7 +8,7 @@
  *   RUN_NKN_TESTS=1 npm test -- test/NknTransport.test.js
  */
 import { describe, it, expect } from 'vitest';
-import { NknTransport }  from '../src/transport/NknTransport.js';
+import { NknTransport }  from '@canopy/transports';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
 import { VaultMemory }   from '@canopy/vault';
 

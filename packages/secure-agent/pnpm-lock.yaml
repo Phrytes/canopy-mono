@@ -11,6 +11,9 @@ importers:
       '@canopy/core':
         specifier: workspace:*
         version: link:../core
+      '@canopy/transports':
+        specifier: workspace:*
+        version: link:../transports
       '@canopy/vault':
         specifier: workspace:*
         version: link:../vault
