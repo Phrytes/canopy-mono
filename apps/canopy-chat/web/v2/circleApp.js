@@ -24,7 +24,8 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
 // the producer just consumes the injected makePodClient/generateKeypair.
-import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth } from '@canopy/pod-client';
+import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
+  createSealedPodDataSource, podGroupPrefix } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
@@ -180,10 +181,10 @@ import { makeCircleLists } from '../../src/v2/circleLists.js';  // cluster K · 
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
 import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so canopy-chat's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
 
-// One per-circle lists service for the app, PERSISTENT: an IndexedDB-backed DataSource (lists survive a reload).
+// The app-wide DEFAULT lists service, PERSISTENT: an IndexedDB-backed DataSource (lists survive a reload).
 // Lazy + memoised (the DataSource build is async); falls back to in-memory if IDB is unavailable (e.g. SSR/tests).
 let _circleListsPromise = null;
-function getCircleLists() {
+function getDefaultCircleLists() {
   if (!_circleListsPromise) {
     _circleListsPromise = (async () => {
       let dataSource;
@@ -193,6 +194,47 @@ function getCircleLists() {
     })();
   }
   return _circleListsPromise;
+}
+
+// L1b — a SEALED, POD-BACKED lists service per circle (opt-in). When a pod session is present AND the circle
+// resolves a sealing strategy (a sealed p2/p3 posture with an available group key), the circle's lists persist
+// to the user's REAL pod with content sealed at rest under the group key — the keys BE the canonical
+// `resourceUriFor` pod URIs (rootPrefix = `<podRoot>/group/`). Absent a session/strategy this returns null and
+// the caller keeps the IDB/memory default, so NOTHING breaks when no pod session is configured (additive).
+const _podCircleListsByCircle = new Map();   // circleId → Promise<listsSvc | null>
+async function getPodCircleLists(circleId, policy) {
+  if (!circleId || !circleAuthedFetch || !circleRealPodRouting?.podRoot) return null;
+  if (!_podCircleListsByCircle.has(circleId)) {
+    _podCircleListsByCircle.set(circleId, (async () => {
+      try {
+        // The circle's CONTENT seal/open strategy (group-key custody via its control-agent). p0/p1 or a
+        // not-yet-provisioned group key → null; we then decline the pod path rather than write plaintext.
+        const strategy = await getCircleSealStrategy(circleId, policy);
+        if (!strategy) return null;
+        const dataSource = createSealedPodDataSource({
+          fetch: circleAuthedFetch,
+          podUrl: circleRealPodRouting.podRoot,
+          strategy,
+        });
+        // K plug-in point: with this DataSource live, cross-circle sharing is one
+        //   makeCircleShareEnforcement({ sharing: prod.podClient.sharing, resourceUriFor:
+        //     sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot })), open: strategy.open,
+        //     seal: strategy.seal }) — all inputs (sharing via createCirclePodSharing, the strategy, podRoot)
+        // are already resolved here/in ensureCirclePod. Left unwired until the app-level share op lands.
+        return makeCircleLists({ dataSource, rootPrefix: podGroupPrefix(circleRealPodRouting.podRoot) });
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[circleApp] pod-backed lists unavailable:', err?.message ?? err);
+        return null;
+      }
+    })());
+  }
+  return _podCircleListsByCircle.get(circleId);
+}
+
+// Resolve the lists service for a circle: the sealed pod-backed one when available, else the app default.
+async function getCircleLists(circleId, policy) {
+  const pod = await getPodCircleLists(circleId, policy);
+  return pod || getDefaultCircleLists();
 }
 import { renderCircleScreen } from './circleScreen.js';
 import { renderRecipeEditor } from './circleRecipeEditor.js';
@@ -2234,7 +2276,11 @@ function openListsPanel(circleId) {
   const typeLabel = (type) => t(`circle.container.type.${type}`, undefined, type);
 
   async function draw() {
-    const svc = await getCircleLists();   // lazy persistent (IDB) service, memoised
+    // L1b — sealed pod-backed lists for this circle when a pod session + sealing strategy exist
+    // (else the memoised IDB/memory default). policyStore holds the circle's storagePosture.
+    let listsPolicy = null;
+    try { listsPolicy = (await policyStore.get(circleId)) ?? {}; } catch { /* default posture */ }
+    const svc = await getCircleLists(circleId, listsPolicy);
     body.replaceChildren();
     if (openListId) {
       const back = document.createElement('button');

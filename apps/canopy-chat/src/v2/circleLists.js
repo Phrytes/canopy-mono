@@ -44,14 +44,21 @@ export const LISTS_ACCEPTS_MANIFEST = Object.freeze({
   },
 });
 
-/** A self-contained lists service: per-circle store + policy-driven create/add/complete/remove + render tree. */
-export function makeCircleLists({ dataSource, manifests } = {}) {
+/**
+ * A self-contained lists service: per-circle store + policy-driven create/add/complete/remove + render tree.
+ *
+ * `rootPrefix` (optional) is the logical root the per-circle stores namespace under. It's the seam for the
+ * L1b pod tier: pass `podGroupPrefix(podRoot)` (`<podRoot>/group/`) alongside a sealed pod DataSource so the
+ * store's physical keys BE the canonical `resourceUriFor` pod URIs (`<podRoot>/group/<circleId>/items/<id>.json`).
+ * Omitted → `createCircleStores`' `mem://circles/` default (the no-pod memory/IDB path).
+ */
+export function makeCircleLists({ dataSource, manifests, rootPrefix } = {}) {
   const registry = createRegistry();
   registerCanonicalTypes(registry);
   registry.registerType('list', LIST_SCHEMA);
   registry.registerType('list-item', ITEM_SCHEMA);
   registry.registerType('board', BOARD_SCHEMA);
-  const stores = createCircleStores({ dataSource: dataSource || memoryDataSource(), registry });
+  const stores = createCircleStores({ dataSource: dataSource || memoryDataSource(), registry, rootPrefix });
   const s = (circleId) => stores.getStore(circleId);
   const CONTAINER_TYPES = ['list', 'board'];   // heterogeneous containers rendered by the panel (no row-actions)
 
