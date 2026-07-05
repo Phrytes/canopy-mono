@@ -17,9 +17,17 @@
  * @param {number} [args.posture]      the item's required confidentiality (default: the item's own `posture`, else 0)
  * @param {(circleId:string)=>number} [args.postureOf]  the target circle's confidentiality (for the floor check;
  *        omit to skip the floor). Refuses when `postureOf(toCircleId) < posture`.
- * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, required?:number, target?:number}>}
+ * @param {(ctx:{ref:object,item:object,recipient?:string,recipients?:string[],stores:object})=>Promise<void>} [args.onShare]
+ *        INJECTED WRITE-SIDE pod hook (additive · cluster K pod-tier). When the store is pod-backed the
+ *        composition injects `makeShareGrantHook(...)` here: after the `shared-ref` is written, the hook
+ *        creates the ACP read-grant for the recipient on the source item's resource (and optionally re-seals).
+ *        The memory path leaves it undefined ⇒ behaviour is EXACTLY as before. A throw from the hook fails the
+ *        share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
+ * @param {string} [args.recipient]        the recipient WebID to grant to (pod-backed shares); passed to `onShare`.
+ * @param {string[]} [args.recipients]     multiple recipient WebIDs (a circle share resolves members here).
+ * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, required?:number, target?:number, cause?:any}>}
  */
-export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircleId, by, posture, postureOf } = {}) {
+export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircleId, by, posture, postureOf, onShare, recipient, recipients } = {}) {
   if (!stores || typeof stores.getStore !== 'function' || !itemId || !fromCircleId || !toCircleId) {
     return { ok: false, error: 'missing-args' };
   }
@@ -44,6 +52,17 @@ export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircle
     sharedBy:     by ?? 'unknown',
     posture:      required,
   }, { by });
+
+  // WRITE-SIDE pod hook (additive). On a pod-backed store this creates the ACP read-grant + (re-)seals so the
+  // recipient can actually read the ref. Deny-safe: if the grant can't be made, the share FAILS — we never
+  // report a share that would resolve to `null` on read. Memory path (no hook) is untouched.
+  if (typeof onShare === 'function') {
+    try {
+      await onShare({ ref, item, recipient, recipients, stores });
+    } catch (cause) {
+      return { ok: false, error: 'share-grant-failed', cause };
+    }
+  }
   return { ok: true, ref };
 }
 
