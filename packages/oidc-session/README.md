@@ -135,15 +135,10 @@ documented in `test/SolidVault.css.test.js`.
 
 ## Deprecation re-export
 
-`@canopy/core` continues to re-export `SolidVault` from its top-level
-during the deprecation window. New consumers should import from
-`@canopy/oidc-session` directly:
+The 2026-07-05 de-fat **removed** `@canopy/core`'s re-export of `SolidVault` — import
+it from `@canopy/oidc-session` directly:
 
 ```js
-// old (still works, deprecated)
-import { SolidVault } from '@canopy/core';
-
-// new (preferred)
 import { SolidVault } from '@canopy/oidc-session';
 ```
 
