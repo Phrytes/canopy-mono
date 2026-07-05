@@ -13,7 +13,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { ItemStore, audienceFromItem } from '../src/index.js';
+import { ItemStore, audienceFromItem, audienceMatches } from '../src/index.js';
 import { MemorySource } from '@canopy/core';
 
 const ACTOR = 'webid:alice';
@@ -127,5 +127,64 @@ describe('SP-5b V0a — ItemStore stores audience verbatim', () => {
     expect(item.visibility).toBe('private');
     expect(item.audience).toBe('crew:abc');
     expect(audienceFromItem(item)).toBe('crew:abc');
+  });
+});
+
+describe('SP-5b — audienceMatches predicate', () => {
+  it('exact match on plain string short-hands', () => {
+    expect(audienceMatches('crew:A', 'crew:A')).toBe(true);
+    expect(audienceMatches('crew:A', 'crew:B')).toBe(false);
+    expect(audienceMatches('household', 'household')).toBe(true);
+  });
+
+  it('exact match on structured audiences (key-order independent)', () => {
+    expect(audienceMatches(
+      { kind: 'circle-ref', id: 'X' },
+      { id: 'X', kind: 'circle-ref' },
+    )).toBe(true);
+    expect(audienceMatches(
+      { kind: 'circle-ref', id: 'X' },
+      { kind: 'circle-ref', id: 'Y' },
+    )).toBe(false);
+  });
+
+  it('union membership — filter satisfies any constituent', () => {
+    const item = { kind: 'union', of: ['household', { kind: 'circle-ref', id: 'c1' }] };
+    expect(audienceMatches(item, 'household')).toBe(true);
+    expect(audienceMatches(item, { kind: 'circle-ref', id: 'c1' })).toBe(true);
+    // A constituent NOT in the union does not match.
+    expect(audienceMatches(item, { kind: 'circle-ref', id: 'c2' })).toBe(false);
+    // The whole union still matches itself (exact).
+    expect(audienceMatches(item, item)).toBe(true);
+  });
+
+  it('union membership recurses into nested unions', () => {
+    const nested = {
+      kind: 'union',
+      of: ['private', { kind: 'union', of: [{ kind: 'circle-ref', id: 'deep' }] }],
+    };
+    expect(audienceMatches(nested, { kind: 'circle-ref', id: 'deep' })).toBe(true);
+  });
+
+  it('set membership — a plain webid in members matches', () => {
+    const item = { kind: 'set', members: ['webid:a', 'webid:b'] };
+    expect(audienceMatches(item, 'webid:a')).toBe(true);
+    expect(audienceMatches(item, 'webid:b')).toBe(true);
+    expect(audienceMatches(item, 'webid:c')).toBe(false);
+    // The whole set still matches itself (exact).
+    expect(audienceMatches(item, item)).toBe(true);
+  });
+
+  it('circle-ref membership only via exact or inside a union', () => {
+    // A bare circle-ref item matches only the identical ref…
+    expect(audienceMatches({ kind: 'circle-ref', id: 'X' }, { kind: 'circle-ref', id: 'X' })).toBe(true);
+    // …and the short-hand 'crew:X' is NOT normalised to it.
+    expect(audienceMatches({ kind: 'circle-ref', id: 'X' }, 'crew:X')).toBe(false);
+  });
+
+  it('public matches only the public filter (not treated as covering everything)', () => {
+    expect(audienceMatches({ kind: 'public' }, { kind: 'public' })).toBe(true);
+    expect(audienceMatches({ kind: 'public' }, 'household')).toBe(false);
+    expect(audienceMatches({ kind: 'public' }, { kind: 'circle-ref', id: 'X' })).toBe(false);
   });
 });
