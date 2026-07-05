@@ -27,7 +27,7 @@
  * orchestration stays app-local — it composes existing primitives.
  */
 
-import { SolidPodSource } from '@canopy/core';
+import { SolidPodSource } from '@canopy/pod-client';
 import { createSolidAuthNode } from '@canopy/oidc-session';
 import { attachPodToBundle, detachPodFromBundle } from './attachPodToBundle.js';
 

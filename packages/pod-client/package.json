@@ -15,7 +15,9 @@
   "dependencies": {
     "@canopy/core": "file:../core",
     "@canopy/oidc-session": "file:../oidc-session",
-    "@canopy/vault": "file:../vault"
+    "@canopy/vault": "file:../vault",
+    "@inrupt/solid-client": "3.0.0",
+    "tweetnacl": "^1.0.3"
   },
   "peerDependencies": {
     "@canopy/pseudo-pod": "*"
@@ -25,7 +27,6 @@
   },
   "devDependencies": {
     "@canopy/pseudo-pod": "file:../pseudo-pod",
-    "@inrupt/solid-client": "3.0.0",
     "vitest": "^2.1.0"
   }
 }

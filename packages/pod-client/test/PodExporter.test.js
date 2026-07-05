@@ -13,9 +13,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import nacl from 'tweetnacl';
 
-import { PodExporter } from '../../src/storage/PodExporter.js';
-import { PodImporter } from '../../src/storage/PodImporter.js';
-import { Bootstrap }   from '../../src/identity/Bootstrap.js';
+import { PodExporter } from '../src/PodExporter.js';
+import { PodImporter } from '../src/PodImporter.js';
+import { Bootstrap }   from '@canopy/core';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

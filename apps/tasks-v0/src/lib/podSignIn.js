@@ -51,7 +51,7 @@
  * platforms. Web callers pass `callbackUrl` exactly as before.
  */
 
-import { SolidPodSource } from '@canopy/core';
+import { SolidPodSource } from '@canopy/pod-client';
 import { createSolidAuthNode } from '@canopy/oidc-session';
 import { attachTasksBundle, detachTasksBundle } from './attachTasksBundle.js';
 

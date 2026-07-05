@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SolidPodSource } from '../../src/storage/SolidPodSource.js';
+import { SolidPodSource } from '../src/SolidPodSource.js';
 
 const POD = 'https://pod.example.org/';
 
@@ -465,5 +465,24 @@ describe('SolidPodSource — constructor', () => {
     const s = new SolidPodSource({ podUrl: POD });
     // Don't call it — just confirm construction doesn't throw.
     expect(s).toBeInstanceOf(SolidPodSource);
+  });
+});
+
+// Smoke assertions relocated from @canopy/core's `test/storage.test.js`
+// when SolidPodSource moved out of core into @canopy/pod-client.
+describe('SolidPodSource (smoke)', () => {
+  it('exposes the DataSource API and the new `exists` method', () => {
+    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });
+    expect(typeof s.read).toBe('function');
+    expect(typeof s.write).toBe('function');
+    expect(typeof s.delete).toBe('function');
+    expect(typeof s.list).toBe('function');
+    expect(typeof s.exists).toBe('function');
+    expect(s.podUrl).toBe('https://pod.example.org/');
+  });
+
+  it('query() throws INVALID_ARGUMENT (not supported on LDP)', async () => {
+    const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });
+    await expect(s.query({})).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
   });
 });

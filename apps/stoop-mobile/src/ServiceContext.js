@@ -54,7 +54,7 @@ import {
 import * as BackgroundFetch                      from 'expo-background-fetch';
 import * as SecureStore                           from 'expo-secure-store';
 import { OidcSessionRN }                          from '@canopy/oidc-session-rn';
-import { SolidPodSource }                         from '@canopy/core';
+import { SolidPodSource }                         from '@canopy/pod-client';
 
 const Ctx = createContext(null);
 
