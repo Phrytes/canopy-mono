@@ -63,16 +63,37 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     expect(r.error).toMatch(/Couldn't find an open item/);
   });
 
-  it("markComplete resolves the FIRST open text match (wired path — resolve-first, no disambiguation prompt)", async () => {
+  it("markComplete with >1 candidate surfaces the disambiguation list (acts on NONE)", async () => {
     const a = await createRealHouseholdAgent();
-    // 'a' appears in "Post a parcel" (errand) + "Vacuum living room" (task). The dissolved core
-    // resolves the first open match by list-type order (shopping→errand→…→task), so it completes
-    // "Post a parcel" rather than prompting to disambiguate (the legacy multi-candidate prompt is gone).
+    // 'a' appears in "Post a parcel" + "Vacuum living room" → ambiguous.
     const r = await a.callSkill('household', 'markComplete', { match: 'a' });
-    expect(r.ok).toBe(true);
-    expect(r.message).toBe('✓ marked complete: Post a parcel');
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Multiple matches/);
+    // …and NOTHING was completed — both candidates are still open.
     const list = await a.callSkill('household', 'listOpen', {});
-    expect(list.items.find((c) => c.label === 'Post a parcel')).toBeUndefined();
+    expect(list.items.find((c) => c.label === 'Post a parcel')).toBeTruthy();
+    expect(list.items.find((c) => c.label === 'Vacuum living room')).toBeTruthy();
+  });
+
+  it("markComplete with exactly ONE candidate resolves + acts", async () => {
+    const a = await createRealHouseholdAgent();
+    // 'Milk' is unique → completes it (single-match resolve, not a disambiguation prompt).
+    const r = await a.callSkill('household', 'markComplete', { match: 'Milk' });
+    expect(r).toMatchObject({ ok: true, message: '✓ marked complete: Milk', text: 'Milk' });
+    const list = await a.callSkill('household', 'listOpen', {});
+    expect(list.items.find((c) => c.label === 'Milk')).toBeUndefined();
+  });
+
+  it("claim with >1 candidate surfaces the disambiguation list (acts on NONE)", async () => {
+    const a = await createRealHouseholdAgent();
+    await a.callSkill('household', 'addTask', { text: 'paint the fence' });
+    await a.callSkill('household', 'addTask', { text: 'mend the fence' });
+    const r = await a.callSkill('household', 'claim', { match: 'fence' });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Multiple matches/);
+    // neither task was claimed
+    const tasks = (await a.callSkill('household', 'listTasks', {})).items;
+    expect(tasks.filter((t) => /fence/.test(t.label)).every((t) => !t.claimedBy)).toBe(true);
   });
 
   it("addItem + addTask + claim round-trip through the real skills", async () => {

@@ -38,16 +38,34 @@ export function householdRegistry() {
   return reg;
 }
 
-/** Find an OPEN item (completedAt null) whose text contains `match`, among `types` (mirrors the skill logic). */
-async function findOpenByMatch(store, match, types) {
-  const needle = String(match ?? '').toLowerCase().trim();
-  if (!needle) return null;
+const MATCH_MIN_PREFIX_LEN = 6;   // id-prefix resolution only kicks in for reasonably long inputs
+
+/**
+ * Resolve ALL open (completedAt null) items matching `match`, among `types`, using the legacy skill's
+ * resolution order: id-exact → id-prefix (≥6 chars) → text-contains (case-insensitive). Returns an array
+ * so callers can distinguish 0 / 1 / >1 (the >1 case is the disambiguation prompt — never auto-act).
+ */
+async function findOpenMatches(store, match, types) {
+  const m = String(match ?? '').trim();
+  if (!m) return [];
+  const open = [];
   for (const t of types) {
-    const open = (await store.listByType(t)).filter((i) => i.completedAt == null);
-    const hit = open.find((i) => String(i.text ?? '').toLowerCase().includes(needle));
-    if (hit) return hit;
+    for (const i of await store.listByType(t)) {
+      if (i && i.completedAt == null) open.push(i);
+    }
   }
-  return null;
+  // 1) id exact
+  const exact = open.find((i) => i.id === m);
+  if (exact) return [exact];
+  // 2) id-prefix (case-insensitive; only when the input is long enough to avoid false hits)
+  if (m.length >= MATCH_MIN_PREFIX_LEN) {
+    const upper = m.toUpperCase();
+    const prefixHits = open.filter((i) => String(i.id ?? '').toUpperCase().startsWith(upper));
+    if (prefixHits.length > 0) return prefixHits;
+  }
+  // 3) text-contains, case-insensitive
+  const lower = m.toLowerCase();
+  return open.filter((i) => String(i.text ?? '').toLowerCase().includes(lower));
 }
 
 // ── household's ops, faithful, over the circle store (ctx.by = the acting member) ──────────────────────
@@ -61,29 +79,35 @@ export const listOpen = async (store, { type } = {}) => {
     : await store.listByType(type);
   return all.filter((i) => i.completedAt == null);
 };
+// {match}-based mutating ops resolve candidates and NEVER act on an ambiguous match: 0 → not found,
+// >1 → `{ ok:false, ambiguous:[…candidates] }` (the caller renders a disambiguation prompt), 1 → act.
 export async function markComplete(store, { match }, { by } = {}) {
-  const it = await findOpenByMatch(store, match, COMPLETABLE);
-  if (!it) return { ok: false, error: 'item not found' };
-  return { ok: true, item: await store.put({ ...it, completedAt: Date.now() }, { by }) };
+  const hits = await findOpenMatches(store, match, COMPLETABLE);
+  if (hits.length === 0) return { ok: false, error: 'item not found' };
+  if (hits.length > 1)   return { ok: false, ambiguous: hits };
+  return { ok: true, item: await store.put({ ...hits[0], completedAt: Date.now() }, { by }) };
 }
 export async function removeItem(store, { match }) {
-  const it = await findOpenByMatch(store, match, COMPLETABLE);
-  if (!it) return { ok: false, error: 'item not found' };
-  await store.delete(it.id);
-  return { ok: true, removed: it.id };
+  const hits = await findOpenMatches(store, match, COMPLETABLE);
+  if (hits.length === 0) return { ok: false, error: 'item not found' };
+  if (hits.length > 1)   return { ok: false, ambiguous: hits };
+  await store.delete(hits[0].id);
+  return { ok: true, removed: hits[0].id };
 }
 export const addTask = (store, { text, assignee, dueAt }, { by } = {}) =>
   store.put({ type: 'task', text, completedAt: null, ...(assignee ? { assignee } : {}), ...(dueAt ? { dueAt } : {}) }, { by });
 export const listTasks = async (store) => (await store.listByType('task')).filter((i) => i.completedAt == null);
 export async function claim(store, { match }, { by } = {}) {
-  const it = await findOpenByMatch(store, match, ['task']);
-  if (!it) return { ok: false, error: 'item not found' };
-  return { ok: true, item: await store.put({ ...it, assignee: by }, { by }) };
+  const hits = await findOpenMatches(store, match, ['task']);
+  if (hits.length === 0) return { ok: false, error: 'item not found' };
+  if (hits.length > 1)   return { ok: false, ambiguous: hits };
+  return { ok: true, item: await store.put({ ...hits[0], assignee: by }, { by }) };
 }
 export async function reassign(store, { match, assignee }, { by } = {}) {
-  const it = await findOpenByMatch(store, match, ['task']);
-  if (!it) return { ok: false, error: 'item not found' };
-  return { ok: true, item: await store.put({ ...it, assignee }, { by }) };
+  const hits = await findOpenMatches(store, match, ['task']);
+  if (hits.length === 0) return { ok: false, error: 'item not found' };
+  if (hits.length > 1)   return { ok: false, ambiguous: hits };
+  return { ok: true, item: await store.put({ ...hits[0], assignee }, { by }) };
 }
 
 const OPS = { addItem, listOpen, markComplete, removeItem, addTask, listTasks, claim, reassign };

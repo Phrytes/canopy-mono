@@ -1440,10 +1440,18 @@ export async function createRealHouseholdAgent(opts = {}) {
       });
     };
 
-    // Resolving ops (find-by-match): a miss surfaces as a soft failure so the user sees a
-    // message, not a false "✓".  The dissolved cores resolve the FIRST open text match (no
-    // disambiguation) — same store, simpler match than the legacy multi-candidate prompt.
+    // Resolving ops (find-by-match): a miss surfaces as a soft failure so the user sees a message,
+    // not a false "✓".  On MORE THAN ONE open match the core returns `{ambiguous:[…]}` and acts on none
+    // — reproduce the legacy chat-shell disambiguation prompt (identical text/shape) so the user picks by
+    // id-prefix rather than the tool silently completing the wrong item.
     if (opId === 'markComplete' || opId === 'removeItem' || opId === 'claim' || opId === 'reassign') {
+      if (Array.isArray(data?.ambiguous)) {
+        const lines = data.ambiguous.map((it) => `- [${String(it.id ?? '').slice(0, 8)}] ${it.text}`);
+        return {
+          ok:    false,
+          error: `Multiple matches for '${String(args?.match ?? '')}'. Reply with the id-prefix:\n${lines.join('\n')}`,
+        };
+      }
       if (!data || data.ok === false) {
         const noun = (opId === 'claim' || opId === 'reassign') ? 'open task' : 'open item';
         return { ok: false, error: `Couldn't find an ${noun} matching '${String(args?.match ?? '')}'.` };
