@@ -82,3 +82,54 @@ action ungated (e.g. "leave group"), reclassify its op to a DOMAIN verb, don't j
 `nouns` migration (declare = the current clean derived set, then curate) is tracked as the `#72`/`#81` tail. Both
 the freedom matrix (`buildCapabilityMatrix`) and the gate (`effectiveCapabilityKeys`) route through
 `capabilitiesOf`, so it applies to enforcement AND UI consistently.
+
+---
+
+## 2026-07-05 — One uniform invocation route (internal transport is a fast-path), over one pure core
+
+**Status:** settled (design ruling; not yet implemented — tracked in the roadmap as the B "invocation route" item).
+
+**Context:** functions were reachable two ways that had drifted apart — a legacy A2A/`defineSkill`/envelope **wire**
+route (tasks, stoop) and a direct in-process **store** route (household). An earlier framing proposed keeping *two
+co-equal projections* of every function (a local caller + a wire wrapper), which invites drift and forces a
+synthetic self-to-self envelope round-trip for local calls.
+
+**Decision:** every function is **one pure core** `(store, args, ctx) → result`, invoked through **one uniform
+route** — always `invoke(op, args, target)` via the transport — where the **internal transport is a fast-path**
+that keeps the `callSkill` security gate and the uniform interface but **skips serialization for in-process
+calls**. The separate direct-core-call route is **dropped**; the pure core survives only as the implementation the
+wire-wrapper wraps (plus a unit-test / composition surface), not an app-facing route. The wire wrapper is
+**generated** from the manifest op (`wireSkill(coreFn, manifestOp)` supplies args/validation/scope).
+
+**Alternatives / why:** over "two co-equal projections" (the earlier framing, now **superseded**) — two routes
+drift, and a local call shouldn't build an envelope to talk to itself. A uniform route with a local fast-path is
+both cheap and singular, so there is one code path to keep correct.
+
+**Consequences:** the inter-agent **wire is permanent** — it carries remote skill-acquisition, circle-sync, and
+the bot / remote-handler integration tiers (identity + permission live in the envelope); "apps dissolve into
+canopy-chat" is a **UI** consolidation, not removal of the serialization substrate. Follow-on: household regains a
+first-class wire route via the uniform route (retire the legacy household agent); tasks/stoop extract pure cores
+over their stores (dropping the synthetic-envelope round-trip).
+
+---
+
+## 2026-07-05 — Feedback is a deployment/hosting layer, not a peer client app
+
+**Status:** settled (architectural classification; the code carve is tracked in the roadmap).
+
+**Context:** the apps roster listed `feedback-pipeline` alongside client apps like household. But feedback hosts a
+**live Solid-pod server**, runs HTTP services (portal / activation / MCP), has a TEE aggregation boundary, and
+ships a full Docker deploy stack — none of which client apps have; canopy-chat only *consumes* it. The flat "apps"
+picture hid this.
+
+**Decision:** treat feedback as a **deployment / hosting layer** — server-side services + pod-hosting + rollout —
+architecturally distinct from client apps, and the concrete instance of *placement by trust + latency* (extract
+what is already server-side; keep private compute client-side or in an enclave). It is destined for its **own
+repo**.
+
+**Alternatives / why:** over keeping it a peer "app" — that flattening put a full-stack deployment next to a thin
+client app, obscuring the client/server boundary the eventual repo split runs along.
+
+**Consequences:** a clear-splits-now step (before the repo split): carve **`feedback-core`** (browser-safe, with
+an `exports` surface so canopy-chat stops deep-relative-importing) → **`feedback-server`** → **`feedback-deploy`**.
+Recorded as a distinct layer in the architecture + repository-layout docs.

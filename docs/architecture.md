@@ -44,7 +44,10 @@ per-operation surface hints. It is the single source of truth every surface read
 | `renderMobile` | a React Native NavModel (screens/nav) | GUI |
 
 `renderChat` and `renderGate`/`renderSlash` are the two halves of the *input* side — the LLM path and the
-deterministic path, from the same manifest. `@canopy/manifest-host` composes *N* apps' manifests at runtime
+deterministic path, from the same manifest. Read the five as **two groups, not a flat list**: those three are
+**platform-agnostic input modalities** (identical on web and mobile — this *is* the `web ≡ mobile` invariant),
+while `renderWeb`/`renderMobile` are thin **platform shells** — and `renderMobile` is literally a re-export of
+`renderWeb`'s NavModel, differing only in the platform adapter. `@canopy/manifest-host` composes *N* apps' manifests at runtime
 (namespaced `appId.opId`, collision detection). Because every surface is a projection, **adding an op to a
 `manifest.js` makes it reachable from chat, slash, gate, web, and mobile at once** — and the coverage snapshot
 (`npm run coverage` → `apps/canopy-chat/docs/surface-coverage.md`) records which surfaces each op is wired for,
@@ -63,6 +66,19 @@ so the map can't drift from the manifests.
    LLM, a read/write against the Solid pod, an MCP tool, or a scheduled job.
 6. **Result** — flows back to the invoking surface. Verify the *result*, not just that dispatch fired: a gate
    can route correctly while the op silently fails.
+
+## Chat and screens compose (and trigger each other)
+
+There are two surface *families* over the waist, not one: **conversational** (chat/gate/slash) and **screen**
+(the web/mobile GUI). They don't merely render the same op in parallel — they **compose and trigger each other**.
+Today, in the web shell: an op that declares `surfaces.ui.screen` gets an **"Open" button** that opens a
+full-screen panel (`openCircleScreenPanel`); conversely a **row action inside a screen posts `{opId, args}` back
+through the same waist** (`dispatchReady`). So a chat command can open a screen, and a screen action can drive a
+chat flow. Three treatments — **inline menu · full-screen panel · chat** — are chosen per user.
+
+*Honest state:* the screen registry is still a **hardcoded `LIST_SCREENS` map**, not yet the manifest-driven
+`surfaces.screen` projection; and the loop is wired in **web** — mobile has the shared pure pieces but its
+panel-openers are still DOM-specific. Closing both is roadmap work.
 
 ## Circles, types, and capabilities — one algebra
 
@@ -105,6 +121,22 @@ packages/{core, relay,      the agent SDK — identity, transports, pod client, 
 
 See [`repository-layout.md`](./repository-layout.md) for the full apps + packages map.
 
+**Where the code differs from the diagram (today).** The three layers are the *intended invariant* (deps point
+down), and CI enforces the direction — but the middle bucket is really a **gradient**, not one flat tier:
+runtime-foundation substrates (vault, oidc-session, pod-client) that almost every agent needs, then optional
+feature substrates (skill-match, notifier, …), then facades that compose others (secure-agent,
+agent-provisioning). And `core` is **not a minimal kernel**: it's a **fat** package that also carries concrete
+transports, pod-storage, discovery, and a2a, and it currently even depends *up* on `vault`/`oidc-session` (a
+leftover **inversion** from when those were extracted out of it). The direction is to slim `core` to a kernel of
+**ports** (the `Transport`/`DataSource`/`ActorResolver` interfaces) with the concrete adapters moved out, so the
+diagram and the dependency graph finally match — that is active roadmap work.
+
+**A fourth region the diagram omits: the deployment / hosting layer.** Client apps host nothing. Server-side
+services — **pod-HOSTING**, relay/proxy, the private-LLM enclave, rollout — form a separate layer, placed by
+trust + latency (below), that sits *outside* the client apps. The `feedback` deployment occupies it today (it
+runs a live Solid-pod host, HTTP services, and a container stack that no client app has). This is where the
+eventual repo split's server side lives.
+
 ## Placement by trust + latency — never default-to-server
 
 *Where* functionality runs is decided by **trust and latency, not convenience**. Sensitive compute (pod
@@ -116,6 +148,17 @@ moving private data onto an untrusted host. Correspondingly:
   pod. Shared-state apps without a pod replicate P2P via SDK `MergeContracts` + relay group-publish.
 - **Pod is truth, local cache is reality.** When a pod is configured it's authoritative but slow; the UI reads
   the local cache and syncs on a cadence with optimistic, queued writes. A pod outage must not break the app.
+
+## Agents interacting (the inter-agent axis)
+
+The flow above is **intra-agent**: one interface → the waist → dispatch → functionality. Equally fundamental is
+the **inter-agent** axis — agents as **peers exchanging over a transport**, carried by an **envelope**. One wire
+carries three things: it **syncs circle stores** (with no pod, a write fans out to circle members as envelopes),
+it carries **direct exchanges** (offer→claim, request→respond), and it enables **remote skill-acquisition** — an
+agent authenticates into *another* agent's gated skill surface over a transport, with identity, permission, and
+validation travelling **in the envelope**. This is what lets functionality resolve on an external agent
+(consequence #2 above), and it's the substrate the developer-integration on-ramps (a connected bot, a remote
+handler) build on. The paths that carry it are below.
 
 ## Reachability
 
