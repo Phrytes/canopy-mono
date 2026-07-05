@@ -42,6 +42,13 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
     expect(agentSrc).not.toMatch(/^\s*import\s.*from\s*['"]@canopy\/vault['"]/m);
   });
 
+  it('the kernel (Agent.js) constructs/imports no concrete network transport (they are injected)', () => {
+    const agentSrc = readFileSync(join(here, '../src/Agent.js'), 'utf8');
+    expect(agentSrc).not.toMatch(/new\s+(Rendezvous|Nkn|Mqtt|Relay)Transport\s*\(/);
+    expect(agentSrc).not.toMatch(/^\s*import\s.*(Rendezvous|Nkn|Mqtt|Relay)Transport.*from\s*['"]\.\/transport\//m);
+    expect(agentSrc).not.toMatch(/await import\(\s*['"]\.\/transport\/(Rendezvous|Nkn|Mqtt|Relay)Transport/);
+  });
+
   it('core still exports its own kernel surface (sanity — the barrel is intact)', () => {
     for (const s of ['Agent', 'AgentIdentity', 'Emitter', 'Parts']) expect(core[s], `core must still export ${s}`).toBeDefined();
   });

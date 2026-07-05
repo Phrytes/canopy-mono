@@ -10,7 +10,7 @@
  *
  * Alice and Carol share no transport; the only path between them is Bob.
  */
-import { Agent, AgentIdentity, PeerGraph, DataPart, Parts, TextPart, InternalBus, InternalTransport, RoutingStrategy, registerRelayReceiveSealed } from '../../src/index.js';
+import { Agent, AgentIdentity, PeerGraph, DataPart, Parts, TextPart, InternalBus, InternalTransport, RoutingStrategy, RendezvousTransport, registerRelayReceiveSealed } from '../../src/index.js';
 import { VaultMemory } from '@canopy/vault';
 
 /**
@@ -186,8 +186,8 @@ export async function buildMesh({ log, rendezvous = false, rtcLib, tunnel = fals
   // ── Optional: enable rendezvous on alice ↔ bob (Group AA) ─────────────────
   if (rendezvous) {
     if (!rtcLib) throw new Error('buildMesh: rendezvous=true requires rtcLib');
-    alice.enableRendezvous({ signalingTransport: aliceRelay, rtcLib, auto: true });
-    bob  .enableRendezvous({ signalingTransport: bobRelay,   rtcLib, auto: true });
+    alice.enableRendezvous({ signalingTransport: aliceRelay, rtcLib, auto: true, makeTransport: (o) => new RendezvousTransport(o) });
+    bob  .enableRendezvous({ signalingTransport: bobRelay,   rtcLib, auto: true, makeTransport: (o) => new RendezvousTransport(o) });
   }
 
   // ── Group BB: the receiver skill is registered on everyone so any agent

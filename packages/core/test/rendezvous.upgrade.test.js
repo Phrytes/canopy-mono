@@ -26,6 +26,7 @@ import { InternalBus, InternalTransport }        from '../src/transport/Internal
 import { PeerGraph }                             from '../src/discovery/PeerGraph.js';
 import { RoutingStrategy }                       from '../src/routing/RoutingStrategy.js';
 import { DataPart, Parts }                       from '../src/Parts.js';
+import { RendezvousTransport }                   from '../src/transport/RendezvousTransport.js';
 
 // Optional polyfill — skip the suite if it fails to load.
 let rtcLib = null;
@@ -66,7 +67,7 @@ async function makePair({ auto = true } = {}) {
   const bob   = mkAgent(bId, bSig);
   await alice.start(); await bob.start();
 
-  alice.enableRendezvous({ signalingTransport: aSig, rtcLib, auto });
+  alice.enableRendezvous({ signalingTransport: aSig, rtcLib, auto, makeTransport: (o) => new RendezvousTransport(o) });
   bob.enableRendezvous  ({ signalingTransport: bSig, rtcLib, auto });
 
   // Both sides register a trivial echo skill so invoke() can succeed.
@@ -180,7 +181,7 @@ d('Agent.enableRendezvous + auto-upgrade', () => {
       identity: bId, transport: bSig, peers: new PeerGraph(),
     });
     await alice.start(); await bob.start();
-    alice.enableRendezvous({ signalingTransport: aSig, rtcLib, auto: true });
+    alice.enableRendezvous({ signalingTransport: aSig, rtcLib, auto: true, makeTransport: (o) => new RendezvousTransport(o) });
     // Bob never calls enableRendezvous → bob's capabilities.rendezvous === false.
 
     let upgraded = false;
