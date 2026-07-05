@@ -76,6 +76,7 @@ reg.registerType('my-app/widget', WIDGET_SCHEMA);
 | `task`              | `text`                 | Tasks app + cross-app: TODO with lifecycle. |
 | `note`              | `body`                 | Markdown / frontmatter blob.                |
 | `chat-message`      | `body`                 | Threaded chat line.                         |
+| `chat-thread`       | `name`                 | Named conversation container holding chat-message items. |
 | `offer`             | `body`                 | "I have X available." Author's stance: providing. Inner `kind`: `lend` / `share` / `give` / `sell` / `help` / `other`. |
 | `request`           | `body`                 | "I want X." Author's stance: looking for something. Inner `kind`: `borrow` / `share` / `receive` / `buy` / `help` / `other`. |
 | `claim`             | `itemRef`              | A specific claim against an offer or request. Coordination lifecycle (requested → agreed → in-progress → completed | cancelled). |

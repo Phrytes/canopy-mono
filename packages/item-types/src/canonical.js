@@ -8,6 +8,7 @@
 import { TASK_SCHEMA }              from './types/task.js';
 import { NOTE_SCHEMA }              from './types/note.js';
 import { CHAT_MESSAGE_SCHEMA }      from './types/chat-message.js';
+import { CHAT_THREAD_SCHEMA }       from './types/chat-thread.js';
 import { OFFER_SCHEMA }             from './types/offer.js';
 import { REQUEST_SCHEMA }           from './types/request.js';
 import { CLAIM_SCHEMA }             from './types/claim.js';
@@ -33,6 +34,9 @@ export const CANONICAL_TYPES = Object.freeze({
   'task':               TASK_SCHEMA,
   'note':               NOTE_SCHEMA,
   'chat-message':       CHAT_MESSAGE_SCHEMA,
+  // #81 (2026-07-05): canonical companion to chat-message — the
+  // conversation container canopy-chat's shell declares alongside it.
+  'chat-thread':        CHAT_THREAD_SCHEMA,
   'offer':              OFFER_SCHEMA,
   'request':            REQUEST_SCHEMA,
   'claim':              CLAIM_SCHEMA,
