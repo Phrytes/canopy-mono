@@ -52,4 +52,14 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
   it('core still exports its own kernel surface (sanity — the barrel is intact)', () => {
     for (const s of ['Agent', 'AgentIdentity', 'Emitter', 'Parts']) expect(core[s], `core must still export ${s}`).toBeDefined();
   });
+
+  it('the barrel keeps the Transport base + InternalTransport but no longer re-exports the concrete network transports (import from @canopy/transports)', () => {
+    // Kept in core (base + kernel-adjacent transports).
+    expect(core.Transport, 'core must still export the Transport base').toBeDefined();
+    expect(core.InternalTransport, 'core must still export InternalTransport').toBeDefined();
+    // Extracted OUT to @canopy/transports — core must NOT re-export them.
+    for (const s of ['NknTransport', 'MqttTransport', 'RelayTransport', 'RendezvousTransport']) {
+      expect(core[s], `core should not re-export ${s} (it lives in @canopy/transports)`).toBeUndefined();
+    }
+  });
 });

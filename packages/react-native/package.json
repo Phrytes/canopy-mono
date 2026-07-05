@@ -43,6 +43,7 @@
   },
   "peerDependencies": {
     "@canopy/core": "^0.1.0",
+    "@canopy/transports": "^0.1.0",
     "@canopy/vault": "^0.1.0",
     "@react-native-async-storage/async-storage": "*",
     "react-native-ble-plx": "*",

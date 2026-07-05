@@ -12,9 +12,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core":   "workspace:*",
-    "@canopy/vault":  "workspace:*",
-    "@noble/hashes":  "^1.5.0"
+    "@canopy/core":       "workspace:*",
+    "@canopy/transports": "workspace:*",
+    "@canopy/vault":      "workspace:*",
+    "@noble/hashes":      "^1.5.0"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

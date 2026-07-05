@@ -12,8 +12,7 @@
  *   - Soft warn at 20 s if still connecting
  *   - Hard timeout at 90 s → seedless retry (different node pool)
  */
-import { Transport } from './Transport.js';
-import { encode as b64encode } from '../crypto/b64.js';
+import { Transport, b64encode } from '@canopy/core';
 
 export class NknTransport extends Transport {
   #client    = null;

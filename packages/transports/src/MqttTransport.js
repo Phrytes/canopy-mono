@@ -20,7 +20,7 @@
  *   });
  *   await t.connect();
  */
-import { Transport } from './Transport.js';
+import { Transport } from '@canopy/core';
 
 const PREFIX = 'canopy';
 

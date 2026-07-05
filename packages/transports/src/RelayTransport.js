@@ -20,7 +20,7 @@
  * Reconnect: automatically reconnects with exponential backoff on close/error.
  * Uses `ws` in Node.js; falls back to globalThis.WebSocket in browsers.
  */
-import { Transport } from './Transport.js';
+import { Transport } from '@canopy/core';
 
 const MAX_BACKOFF_MS = 30_000;
 const PUSH_ACK_TIMEOUT_MS = 5_000;

@@ -51,11 +51,13 @@ import {
   AgentIdentity,
   InternalBus,
   InternalTransport,
+  RoutingStrategy,
+} from '@canopy/core';
+import {
   NknTransport,
   RelayTransport,
   RendezvousTransport,
-  RoutingStrategy,
-} from '@canopy/core';
+} from '@canopy/transports';
 
 import {
   tokenGate,

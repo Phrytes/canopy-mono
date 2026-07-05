@@ -28,8 +28,9 @@ import {
 } from '@canopy-app/stoop';
 import {
   Agent, AgentConfig, FallbackTable, InternalBus, InternalTransport,
-  PeerGraph, RelayTransport, RoutingStrategy,
+  PeerGraph, RoutingStrategy,
 } from '@canopy/core';
+import { RelayTransport } from '@canopy/transports';
 import { SkillMatch }                      from '@canopy/skill-match';
 // Subpath imports — pulling from `@canopy/react-native`'s barrel
 // would re-evaluate KeychainVault, whose `react-native-keychain` TS

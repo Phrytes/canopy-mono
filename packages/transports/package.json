@@ -1,0 +1,26 @@
+{
+  "name": "@canopy/transports",
+  "version": "0.1.0",
+  "description": "Concrete network transports (NknTransport, MqttTransport, RelayTransport, RendezvousTransport) extracted out of @canopy/core. Each extends the core Transport base and lazy-imports its native lib (nkn-sdk / mqtt / ws / WebRTC), so the kernel stays free of concrete-adapter dependencies (de-fats packages/core; guarded by core/test/layering.enforcement.test.js).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "ws": "^8.20.0"
+  },
+  "optionalDependencies": {
+    "node-datachannel": "^0.32.2",
+    "nkn-sdk": "^1.3.6",
+    "mqtt": "^5.0.0"
+  },
+  "devDependencies": {
+    "@canopy/core": "file:../core",
+    "vitest": "^2.1.0"
+  }
+}

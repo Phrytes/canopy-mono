@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@canopy/vault": "file:../vault",
+    "@canopy/transports": "file:../transports",
     "@anthropic-ai/sdk": "^0.36.0",
     "vitest": "^2.1.0",
     "ws": "^8.20.0"

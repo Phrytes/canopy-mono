@@ -10,7 +10,8 @@
  *
  * Alice and Carol share no transport; the only path between them is Bob.
  */
-import { Agent, AgentIdentity, PeerGraph, DataPart, Parts, TextPart, InternalBus, InternalTransport, RoutingStrategy, RendezvousTransport, registerRelayReceiveSealed } from '../../src/index.js';
+import { Agent, AgentIdentity, PeerGraph, DataPart, Parts, TextPart, InternalBus, InternalTransport, RoutingStrategy, registerRelayReceiveSealed } from '../../src/index.js';
+import { RendezvousTransport } from '@canopy/transports';
 import { VaultMemory } from '@canopy/vault';
 
 /**

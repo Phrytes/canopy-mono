@@ -29,11 +29,11 @@ import {
   AgentConfig,
   AgentIdentity,
   OfflineTransport,
-  RendezvousTransport,
   PeerGraph,
   RoutingStrategy,
   FallbackTable,
 } from '@canopy/core';
+import { RendezvousTransport } from '@canopy/transports';
 
 import { KeychainVault }         from './identity/KeychainVault.js';
 import { attachIdentityToAgent } from './identity/IdentityWiring.js';
