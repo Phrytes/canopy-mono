@@ -26,7 +26,12 @@ import { SYSTEM_PROMPT_CLASSIFY } from '../llm/prompts.js';
 export const V0_TOOL_CATALOG = Object.freeze([
   {
     id: 'addItem',
-    description: 'Add a new open item to the household pod.',
+    // BLESSED 2026-07-05: was 'Add a new open item to the household pod.'; the `household` manifest's
+    // addItem `surfaces.chat.hint` (the source of truth) was intentionally improved to a more specific
+    // LLM hint, so `manifest-equivalence.test` (renderChat === V0) drifted. Blessed the improvement into
+    // this reference so V0 tracks the current tool description (this catalog is also runtime-used, so the
+    // household classify path gets the better hint too). Keep byte-equal to manifest.js's addItem hint.
+    description: 'Add an item to a household LIST — type is one of shopping, errand, repair, schedule. Use this for "add X to the shopping/groceries/errand/repair list".',
     schema: {
       type: 'object',
       properties: {
