@@ -50,9 +50,9 @@
 
 import nacl  from 'tweetnacl';
 
-import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
-import { Bootstrap }      from './Bootstrap.js';
-import { AgentIdentity }  from './AgentIdentity.js';
+import { b64encode, b64decode } from '@canopy/core';
+import { Bootstrap }      from '@canopy/core';
+import { AgentIdentity }  from '@canopy/core';
 import {
   serializeManifest,
   parseManifest,

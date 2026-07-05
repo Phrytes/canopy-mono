@@ -42,7 +42,7 @@
  * Tracked in `coding-plans/track-B-identity-sync.md` §B3.
  */
 
-import { Emitter } from '../Emitter.js';
+import { Emitter } from '@canopy/core';
 
 const VAULT_CACHE_PREFIX = 'identity-cache:';
 

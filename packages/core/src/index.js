@@ -35,9 +35,11 @@ export {
 export { AgentIdentity }      from './identity/AgentIdentity.js';
 export { KeyRotation }        from './identity/KeyRotation.js';
 export { Bootstrap }          from './identity/Bootstrap.js';
-export { IdentityPodStore }   from './identity/IdentityPodStore.js';
-export { IdentitySync }       from './identity/IdentitySync.js';
-export { migrateVaultToPod }  from './identity/migrateVaultToPod.js';
+// NOTE: IdentityPodStore, IdentitySync and migrateVaultToPod were extracted OUT
+// of core into `@canopy/pod-client` — they store/migrate/sync identity ON a pod
+// (SDK pod layer), not kernel identity. Import them from '@canopy/pod-client'.
+// `core` no longer re-exports them (guarded by test/layering.enforcement.test.js).
+// AgentIdentity / KeyRotation / Bootstrap (kernel identity) stay here.
 export { CloudBackup }                 from './identity/CloudBackup.js';
 export { CloudAdapter, MemoryAdapter } from './identity/CloudAdapter.js';
 export {

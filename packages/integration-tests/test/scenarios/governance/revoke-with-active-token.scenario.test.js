@@ -39,7 +39,8 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { AgentIdentity, PodCapabilityToken, Bootstrap, IdentityPodStore } from '@canopy/core';
+import { AgentIdentity, PodCapabilityToken, Bootstrap } from '@canopy/core';
+import { IdentityPodStore } from '@canopy/pod-client';
 import { VaultMemory } from '@canopy/vault';
 
 import { PodClient, CapabilityError } from '@canopy/pod-client';

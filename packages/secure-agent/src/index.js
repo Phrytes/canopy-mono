@@ -71,5 +71,5 @@ export {
   GroupManager,
   A2ATLSLayer,
   A2AAuth,
-  migrateVaultToPod,
 } from '@canopy/core';
+export { migrateVaultToPod } from '@canopy/pod-client';

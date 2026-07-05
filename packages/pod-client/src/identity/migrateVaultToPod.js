@@ -53,7 +53,7 @@
  */
 
 import { IdentityPodStore } from './IdentityPodStore.js';
-import { Bootstrap }        from './Bootstrap.js';
+import { Bootstrap }        from '@canopy/core';
 
 /** Vault key the migrator uses to record idempotency. */
 export const MIGRATED_FLAG_KEY = 'identity-migration:migrated-at';

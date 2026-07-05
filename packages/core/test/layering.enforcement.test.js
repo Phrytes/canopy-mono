@@ -73,4 +73,20 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
       expect(core[s], `core should not re-export ${s} (it lives in @canopy/transports)`).toBeUndefined();
     }
   });
+
+  it('the barrel no longer re-exports the on-pod identity family (import from @canopy/pod-client)', () => {
+    // IdentityPodStore / IdentitySync / migrateVaultToPod store/migrate/sync
+    // identity ON a pod — they were extracted OUT to @canopy/pod-client (SDK pod
+    // layer). Kernel identity (AgentIdentity / KeyRotation / Bootstrap) stays here.
+    for (const s of ['IdentityPodStore', 'IdentitySync', 'migrateVaultToPod']) {
+      expect(core[s], `core should not re-export ${s} (it lives in @canopy/pod-client)`).toBeUndefined();
+    }
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/IdentityPodStore\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/IdentitySync\.js['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/migrateVaultToPod\.js['"]/);
+    // Kernel identity must remain.
+    for (const s of ['AgentIdentity', 'KeyRotation', 'Bootstrap']) {
+      expect(core[s], `core must still export kernel identity ${s}`).toBeDefined();
+    }
+  });
 });

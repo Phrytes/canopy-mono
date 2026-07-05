@@ -19,10 +19,10 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import crypto from 'node:crypto';
 import nacl   from 'tweetnacl';
 
-import { Bootstrap }        from '../../src/identity/Bootstrap.js';
-import { AgentIdentity }    from '../../src/identity/AgentIdentity.js';
-import { IdentityPodStore } from '../../src/identity/IdentityPodStore.js';
-import { parseManifest }    from '../../src/identity/identitySerializers/turtle.js';
+import { Bootstrap }        from '@canopy/core';
+import { AgentIdentity }    from '@canopy/core';
+import { IdentityPodStore } from '../src/identity/IdentityPodStore.js';
+import { parseManifest }    from '../src/identity/identitySerializers/turtle.js';
 
 // ── MockPodClient ──────────────────────────────────────────────────────────
 
@@ -326,7 +326,7 @@ describe('IdentityPodStore contentHash determinism', () => {
 
     // Recompute hash directly via the manifest module → must match the
     // stored manifest's contentHash.
-    const { computeContentHash } = await import('../../src/identity/identitySerializers/manifest.js');
+    const { computeContentHash } = await import('../src/identity/identitySerializers/manifest.js');
     const recomputed = await computeContentHash(a.podClient, 'https://alice.example/canopy/');
     const manifestUri = 'https://alice.example/canopy/manifest.ttl';
     const stored = parseManifest(a.podClient.store.get(manifestUri).content).contentHash;

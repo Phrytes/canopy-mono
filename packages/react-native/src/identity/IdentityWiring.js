@@ -24,7 +24,8 @@
  * `agent.stop()` cleans up the sync loop and the AppState listener.
  */
 
-import { Bootstrap, IdentityPodStore } from '@canopy/core';
+import { Bootstrap } from '@canopy/core';
+import { IdentityPodStore } from '@canopy/pod-client';
 
 // IdentitySync is shipped by B3 (running in parallel).  We reference it via
 // dynamic import inside `attachIdentityToAgent` so this file can be required
@@ -48,7 +49,7 @@ import { Bootstrap, IdentityPodStore } from '@canopy/core';
  * @param {object} opts.pod.podClient                      caller-supplied PodClient (from `@canopy/pod-client`)
  * @param {string} opts.pod.podRoot                        pod root URI; identity container will be at `<podRoot>/canopy/`
  * @param {number} [opts.pod.intervalMs=300_000]           IdentitySync polling interval (5 min default per Q-B.4)
- * @param {Function} [opts.pod._identitySyncCtor]          (test-only) inject IdentitySync constructor; default: lazy `import('@canopy/core').IdentitySync`
+ * @param {Function} [opts.pod._identitySyncCtor]          (test-only) inject IdentitySync constructor; default: lazy `import('@canopy/pod-client').IdentitySync`
  * @returns {Promise<{ bootstrap: object, podStore: object, sync: object, dispose: () => void }>}
  */
 export async function attachIdentityToAgent({ vault, identity, pod } = {}) {
@@ -94,12 +95,12 @@ export async function attachIdentityToAgent({ vault, identity, pod } = {}) {
   // B3 lands.  The dynamic import resolves immediately once B3 is merged.
   let IdentitySyncCtor = pod._identitySyncCtor;
   if (!IdentitySyncCtor) {
-    const core = await import('@canopy/core');
-    IdentitySyncCtor = core.IdentitySync;
+    const podClient = await import('@canopy/pod-client');
+    IdentitySyncCtor = podClient.IdentitySync;
     if (!IdentitySyncCtor) {
       throw new Error(
-        'attachIdentityToAgent: IdentitySync is not exported from @canopy/core. ' +
-        'B3 must be merged, or pass pod._identitySyncCtor explicitly.',
+        'attachIdentityToAgent: IdentitySync is not exported from @canopy/pod-client. ' +
+        'pass pod._identitySyncCtor explicitly.',
       );
     }
   }

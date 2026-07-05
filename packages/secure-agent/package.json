@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@canopy/core":       "workspace:*",
+    "@canopy/pod-client": "workspace:*",
     "@canopy/transports": "workspace:*",
     "@canopy/vault":      "workspace:*",
     "@noble/hashes":      "^1.5.0"

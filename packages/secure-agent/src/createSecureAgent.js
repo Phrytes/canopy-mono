@@ -67,8 +67,8 @@ import {
   ROLES,
   GroupManager,
   A2ATLSLayer,
-  migrateVaultToPod as migrateVaultToPodFn,
 } from '@canopy/core';
+import { migrateVaultToPod as migrateVaultToPodFn } from '@canopy/pod-client';
 import { createRateLimiter } from './rateLimit.js';
 import { loadPFSChain }      from './pfs.js';
 
