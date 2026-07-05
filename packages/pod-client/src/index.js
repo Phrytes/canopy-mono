@@ -31,6 +31,9 @@ export {
 // Pod storage adapter + portable archive export/import (extracted from
 // @canopy/core — the concrete Solid pod DataSource and its backup pair).
 export { SolidPodSource } from './SolidPodSource.js';
+// L1b — sealed, pod-backed `core.DataSource` (SolidPodSource + createSealedPodClient → read/write/delete/list),
+// so a per-circle CircleItemStore can persist to a real pod with content sealed at rest under the group key.
+export { createSealedPodDataSource, podGroupPrefix } from './sealedPodDataSource.js';
 export { PodExporter }    from './PodExporter.js';
 export { PodImporter }    from './PodImporter.js';
 

@@ -33,6 +33,16 @@ describe('circleLists', () => {
     expect((await b.tree('c1', list.id)).children.map((c) => c.label)).toContain('milk');
   });
 
+  it('rootPrefix threads to the store keys (L1b: keys become canonical pod URIs)', async () => {
+    // The pod tier passes rootPrefix = `<podRoot>/group/`; the store then keys items under
+    // `<rootPrefix><circleId>/items/<id>.json` — i.e. `resourceUriFor('fam','<id>.json')`.
+    const ds = memoryDataSource();
+    const svc = makeCircleLists({ dataSource: ds, rootPrefix: 'https://alice.pod/group/' });
+    const list = await svc.createList('fam', 'groceries');
+    const keys = [...ds._map.keys()];
+    expect(keys).toContain(`https://alice.pod/group/fam/items/${list.id}.json`);
+  });
+
   it('scopes lists per circle', async () => {
     const svc = makeCircleLists({ dataSource: memoryDataSource() });
     await svc.createList('c1', 'in c1');
