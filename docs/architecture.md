@@ -129,7 +129,9 @@ agent-provisioning). And `core` is **not a minimal kernel**: it's a **fat** pack
 transports, pod-storage, discovery, and a2a, and it currently even depends *up* on `vault`/`oidc-session` (a
 leftover **inversion** from when those were extracted out of it). The direction is to slim `core` to a kernel of
 **ports** (the `Transport`/`DataSource`/`ActorResolver` interfaces) with the concrete adapters moved out, so the
-diagram and the dependency graph finally match — that is active roadmap work.
+diagram and the dependency graph finally match — that is active roadmap work. The ports are now the named,
+documented compatibility contract — "implement the port + pass its conformance harness = compatible with the
+SDK" — see [`conventions/ports.md`](./conventions/ports.md).
 
 **A fourth region the diagram omits: the deployment / hosting layer.** Client apps host nothing. Server-side
 services — **pod-HOSTING**, relay/proxy, the private-LLM enclave, rollout — form a separate layer, placed by

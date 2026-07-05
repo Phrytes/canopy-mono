@@ -1,4 +1,14 @@
 /**
+ * ┌─ PORT ──────────────────────────────────────────────────────────────────────┐
+ * │ `Transport` is the interface a third-party adapter implements to stay        │
+ * │ compatible with the @canopy SDK. "Compatible" = *satisfies this port*:        │
+ * │ extend this base class, implement `_put(to, envelope)`, and the inherited     │
+ * │ primitives (send/request/ack/hello + reply-correlation + auto-ACK) work       │
+ * │ unchanged. Reference adapters: `InternalTransport` (in @canopy/core) and       │
+ * │ Nkn/Mqtt/Relay/Rendezvous (in @canopy/transports). Prove conformance with     │
+ * │ `assertTransportConformance()` (test/conformance/transportConformance.js).    │
+ * └──────────────────────────────────────────────────────────────────────────────┘
+ *
  * Transport base class.
  *
  * Provides the four interaction primitives as default envelope-based
@@ -10,6 +20,50 @@
  * Auto-ACK: AS (AckSend) envelopes are automatically acknowledged at the
  * transport level — the receiver's transport sends AK before dispatching
  * the payload to the application layer.
+ *
+ * ── The port contract (what an adapter must provide/uphold) ────────────────────
+ *
+ * REQUIRED to implement (override):
+ *   • `_put(to, envelope) → Promise<void>`
+ *       Put one (already-encrypted, or HI-plaintext) envelope on the wire toward
+ *       `to`. The ONLY method a minimal adapter must override. Reject the promise
+ *       if the envelope cannot be handed to the wire.
+ *
+ * SHOULD override when the transport is not address-agnostic:
+ *   • `connect() → Promise<void>` / `disconnect() → Promise<void>`
+ *       Establish / tear down the underlying channel. Default: no-op.
+ *   • `canReach(peerAddress) → boolean`
+ *       Whether this transport can deliver to `peerAddress` right now. Default:
+ *       `true` (address-agnostic once connected). Peer-scoped transports (e.g.
+ *       Rendezvous) must return `true` only for peers with a live channel.
+ *   • `forgetPeer(address) → void`
+ *       Drop cached per-peer state. Default: no-op.
+ *
+ * PROVIDED by this base (do NOT re-implement — call, don't override):
+ *   • `sendOneWay(to, payload)`      — OW, fire-and-forget.
+ *   • `publishOneWay(to, topic, payload)` — OW with a wire-level topic hint.
+ *   • `sendAck(to, payload, timeout?) → Promise<AK envelope>` — deliver + await AK.
+ *   • `request(to, payload, timeout?) → Promise<RS envelope>` — RQ + await RS.
+ *   • `respond(to, replyToId, payload)` — RS reply to a prior RQ.
+ *   • `sendHello(to, payload)`       — HI, signed plaintext introduction.
+ *   • `publishEnvelope({kind, recipients, …})` / `subscribeEnvelopes(cb)` — the
+ *     notification-envelope fan-out (Phase 50.7).
+ *   • `setReceiveHandler(fn)` / `get receiveHandler` — inbound dispatch wiring.
+ *   • `useSecurityLayer(layer)` / `get securityLayer` — outbound/inbound crypto.
+ *   • `get address` / `get identity` — this transport's wire address + identity.
+ *
+ * LIFECYCLE CONTRACT the base enforces on top of `_put` (an adapter gets these
+ * for free once `_put` and inbound `_receive(rawEnvelope)` are wired):
+ *   1. Reply correlation — `request`/`sendAck` register a pending promise keyed by
+ *      the outbound envelope `_id`; an inbound RS/AK with a matching `_re` resolves
+ *      it (and is NOT dispatched to the application handler).
+ *   2. Auto-ACK — an inbound AS envelope is acknowledged (AK sent back to `_from`)
+ *      before the AS is also dispatched to the application handler.
+ *   3. Dispatch — every other inbound envelope goes to the `receiveHandler` (or is
+ *      emitted as an `'envelope'` event when no handler is set).
+ *
+ * An adapter's inbound path MUST call `this._receive(rawEnvelope)` for each
+ * envelope it pulls off the wire so the base can run steps 1–3.
  */
 import { Emitter }               from '../Emitter.js';
 import { mkEnvelope, P, REPLY_CODES } from '../Envelope.js';

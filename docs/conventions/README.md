@@ -16,6 +16,8 @@ author code — several are load-bearing invariants, not style preferences.
   layer, not a runtime dependency.
 - **[single-agent.md](./single-agent.md)** — one `core.Agent` per service-context; transports are routes into
   it, not parallel agents.
+- **[ports.md](./ports.md)** — the `Transport` / `DataSource` / `ActorResolver` ports the SDK kernel defines:
+  the compatibility contract a third-party adapter implements, plus the conformance harness that checks it.
 - **[storage-layout.md](./storage-layout.md)** — how app data is laid out in a pod.
 - **[doc-structure.md](./doc-structure.md)** — what belongs in `CLAUDE.md` vs the docs tree, and when to
   compress/enlarge `CLAUDE.md` (the rule governing this split).

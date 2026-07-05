@@ -1,0 +1,110 @@
+# Ports — the compatibility contract
+
+A **port** is an interface that `@canopy/core` (the SDK kernel) defines and depends on, but does **not**
+implement. The concrete implementations — the **adapters** — live outside the kernel: in `@canopy/transports`,
+`@canopy/pod-client`, `@canopy/agent-registry`, or a third party's own package. The kernel talks to adapters
+only through the port.
+
+This is what lets the kernel stay small and lets anyone reimplement an adapter: **"compatible with the @canopy
+SDK" means exactly "satisfies the port."** Two things make that concrete and checkable:
+
+1. The port is a documented interface, exported from `@canopy/core`.
+2. A **conformance harness** turns "satisfies the port" into a test you can run against any implementation.
+
+> Implement the port **and** pass its conformance harness = your adapter is compatible.
+
+There are three ports today.
+
+## `Transport` — the network adapter port
+
+**Shape:** a base class, `packages/core/src/transport/Transport.js`, exported as `Transport` from
+`@canopy/core`. An adapter `extends Transport`.
+
+**What an adapter must do:**
+
+- **Implement `_put(to, envelope) → Promise<void>`** — put one (already-encrypted, or `HI`-plaintext) envelope
+  on the wire toward `to`. This is the *only* method a minimal adapter must override.
+- **Call `this._receive(rawEnvelope)`** for each envelope it pulls off the wire, so the base class can run
+  reply-correlation, auto-ACK, and dispatch.
+- **Override the lifecycle hooks where relevant:** `connect()` / `disconnect()`, and — for *peer-scoped*
+  transports whose reachability is per-peer (e.g. WebRTC rendezvous) — `canReach(peerAddress)` and
+  `forgetPeer(address)`. Address-agnostic transports inherit the sensible defaults.
+
+**What the base class provides for free** (an adapter must not re-implement these): the four interaction
+primitives (`sendOneWay`, `sendAck`, `request`, `respond`, plus `sendHello`, `publishOneWay`,
+`publishEnvelope`/`subscribeEnvelopes`), and three lifecycle behaviours layered on top of `_put`:
+
+1. **Reply correlation** — `request`/`sendAck` register a pending promise keyed by the outbound envelope
+   `_id`; an inbound `RS`/`AK` whose `_re` matches resolves it (and is not dispatched to the app).
+2. **Auto-ACK** — an inbound `AS` envelope is acknowledged (`AK` back to the sender) *before* the `AS` is also
+   dispatched to the application handler.
+3. **Dispatch** — every other inbound envelope goes to the registered `receiveHandler` (or the `'envelope'`
+   event when none is set).
+
+**Reference adapters:** `InternalTransport` (in `@canopy/core`, in-process bus) and
+`NknTransport` / `MqttTransport` / `RelayTransport` / `RendezvousTransport` (in `@canopy/transports`).
+
+## `DataSource` — the storage adapter port
+
+**Shape:** a base class, `packages/core/src/storage/DataSource.js`, exported as `DataSource`. An adapter
+`extends DataSource`. Paths are opaque forward-slash keys (e.g. `notes/hello.txt`); every method is async.
+
+**Contract:**
+
+- `read(path)` → the stored value, or `null` when the path is absent.
+- `write(path, data)` → create-or-overwrite; resolves when durable.
+- `delete(path)` → remove the path; a **no-op** (never throws) when absent.
+- `list(prefix='')` → every stored path that starts with `prefix`.
+- `query(filter={})` → **optional** structured query. Adapters that can't support it leave the base method
+  throwing; callers must treat `query` as best-effort.
+
+**Reference adapters:** `MemorySource` / `IndexedDBSource` / `FileSystemSource` (in `@canopy/core`) and
+`SolidPodSource` (in `@canopy/pod-client`).
+
+## `ActorResolver` — the actor-registry adapter port
+
+**Shape:** a **structural (duck-typed) interface**, not a base class — a `@typedef` in
+`packages/core/src/permissions/ActorResolver.js`. An adapter is any object matching the shape; there is no
+class to `extend` and no runtime symbol to import (only the reference factory below). It resolves between an
+agent's identifiers: `pubKey` (Ed25519, base64url), `webid` (URI), and `agentUri` (URI).
+
+**Contract:**
+
+- **`resolve(identifier)` (required)** → look up an agent by *any* of its identifiers; return the canonical
+  `ActorRecord` on a hit, `null` on a miss. May be sync or async.
+- `register(record)` (optional) — register an agent. Read-only adapters may omit it.
+- `revoke(identifier)` (optional) — mark an agent revoked.
+
+Core defines the interface but never imports the substrate; apps inject a resolver into core consumers
+(`PolicyEngine`, `CapabilityToken.verify`) by dependency injection.
+
+**Reference adapter:** `createInMemoryActorResolver()` (in `@canopy/core`, for tests + minimal apps); the
+substrate implementation lives in `@canopy/agent-registry`.
+
+## Conformance harness
+
+The harness is the executable form of the contract. Each port ships an `assert…Conformance(makeImpl, {label})`
+helper under `packages/core/test/conformance/`; point it at any implementation and it asserts the required
+methods exist **and** the port's behaviours actually hold:
+
+| Port | Helper | Reference impls it runs against |
+|---|---|---|
+| `Transport` | `assertTransportConformance(makePair, {label})` | `InternalTransport`, `RendezvousTransport` |
+| `DataSource` | `assertDataSourceConformance(makeSource, {label, supportsQuery})` | `MemorySource` |
+| `ActorResolver` | `assertActorResolverConformance(makeResolver, {label})` | `createInMemoryActorResolver` |
+
+`assertTransportConformance` takes a factory that returns a *connected pair* `{ a, b, addrA, addrB, teardown }`
+and exercises one-way delivery, request/response correlation, and `AS` auto-ACK end-to-end over the adapter's
+own `_put`. (The `RendezvousTransport` run is gated on the `node-datachannel` WebRTC polyfill being installable,
+and skips cleanly where it isn't — same as the existing rendezvous suite.)
+
+A third party writing a new adapter should wire the matching helper into their own test suite (the helpers
+live under `packages/core/test/conformance/` — import them by relative path, or copy them into your package):
+
+```js
+import { assertTransportConformance } from '../path/to/core/test/conformance/transportConformance.js';
+
+it('MyTransport satisfies the Transport port', async () => {
+  await assertTransportConformance(makeMyConnectedPair, { label: 'MyTransport' });
+});
+```
