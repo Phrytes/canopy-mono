@@ -80,6 +80,7 @@ import {
   buildHouseholdDataSource,
 } from '../../../../household/src/index.js';
 import { createSecureMeshEnvelopeAdapter } from '../sync/secureMeshEnvelopeAdapter.js';
+import { isGenericOpId, decodeGenericOpId } from '@canopy/app-manifest';
 
 // Deterministic seed for the real household store.  Three open items across
 // list types so `/list shopping` + the brief demo are non-empty out of the
@@ -880,6 +881,24 @@ export async function createRealHouseholdAgent(opts = {}) {
   }
 
   const callSkill = async (appOrigin, opId, args) => {
+    // §1b 1d — generic-capability dispatch. A synthetic op-id (`__generic__:app:atom:noun`)
+    // carries a manifest-DECLARED noun that has no bespoke op-id; decode it at the waist and
+    // route to the app's capability entry ("declare a noun → get CRUD free"). ADDITIVE: a
+    // normal (non-generic) opId isn't matched here and flows to the branches below unchanged.
+    if (isGenericOpId(opId)) {
+      const g = decodeGenericOpId(opId);
+      // household is the only app with a capability entry today; `by`/`circleId` are sourced
+      // exactly like the bespoke household path below (chatId.pubKey actor · resolved circle).
+      if (g?.app === 'household' && householdService) {
+        return householdService.callCapability(g.atom, g.noun, args ?? {}, {
+          circleId: resolveHouseholdCircleId(args),
+          by:       chatId?.pubKey,
+        });
+      }
+      // Flag OFF (no householdService) or an app with no generic handler → a structured error,
+      // mirroring how callSkill surfaces skill errors (never throw for this boundary case).
+      return { ok: false, error: 'generic-capability-unavailable' };
+    }
     if (appOrigin === 'household') {
       // L3 cutover (flag-gated): route to the dissolved functions over the per-circle CircleItemStore.
       if (householdService) {

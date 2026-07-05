@@ -26,4 +26,13 @@ describe('kringReplyText', () => {
     expect(kringReplyText({ payload: {} }, { t })).toBe('circle.bot.done');
     expect(kringReplyText(null, { t })).toBe('circle.bot.done');
   });
+
+  it('§1b: unwraps a GENERIC capability reply {via:generic, result} — add shows the note body, list enumerates', () => {
+    // add·note → dispatchCapability envelope around the stored item (content field is `body`)
+    const add = { payload: { ok: true, via: 'generic', atom: 'add', result: { ok: true, item: { type: 'note', body: 'buy stamps' } } } };
+    expect(kringReplyText(add, { verb: 'add', t })).toBe('circle.bot.added:{"label":"buy stamps"}');
+    // list·note → the items live under result.items; bodies are enumerated
+    const list = { payload: { ok: true, via: 'generic', atom: 'list', result: { items: [{ type: 'note', body: 'stamps' }, { type: 'note', body: 'milk' }] } } };
+    expect(kringReplyText(list, { verb: 'list', t })).toBe('• stamps\n• milk');
+  });
 });

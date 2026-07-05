@@ -18,10 +18,15 @@ export function kringReplyText(reply, { verb, t } = {}) {
   if (reply && reply.error) {
     return tr('circle.bot.failed', { msg: (reply.error && reply.error.message) || String(reply.error || '') });
   }
-  const p = reply ? reply.payload : null;
-  // The human label of the affected item, across the shapes the apps return.
+  const p0 = reply ? reply.payload : null;
+  // §1b — a GENERIC capability reply wraps the effect under `{via:'generic', result}` (dispatchCapability's
+  // envelope). Unwrap it so the SAME label/items rendering applies (add → "Added: …", list → enumerated).
+  const p = (p0 && typeof p0 === 'object' && p0.via === 'generic' && p0.result && typeof p0.result === 'object')
+    ? p0.result
+    : p0;
+  // The human label of the affected item, across the shapes the apps return (`body` = the generic note field).
   const label = (p && typeof p === 'object')
-    ? (p.task?.text ?? p.title ?? p.text ?? p.item?.label ?? p.name ?? null)
+    ? (p.task?.text ?? p.title ?? p.text ?? p.item?.label ?? p.item?.body ?? p.body ?? p.name ?? null)
     : (typeof p === 'string' && p.trim() ? p : null);
   if (label) {
     if (verb === 'complete') return tr('circle.bot.completed', { label });
@@ -31,7 +36,7 @@ export function kringReplyText(reply, { verb, t } = {}) {
   if (p && Array.isArray(p.items)) {
     if (p.items.length === 0) return tr('circle.bot.listEmpty');
     // Enumerate the items (a "what's on the shopping list?" answer should SHOW them, not just count).
-    const labels = p.items.map((it) => (it && (it.label ?? it.text ?? it.title ?? it.name ?? it.id)) || '').filter(Boolean);
+    const labels = p.items.map((it) => (it && (it.label ?? it.text ?? it.title ?? it.body ?? it.name ?? it.id)) || '').filter(Boolean);
     if (!labels.length) return tr('circle.bot.listed', { n: p.items.length });
     const shown = labels.slice(0, 12).map((l) => `• ${l}`).join('\n');
     return labels.length > 12 ? `${shown}\n…(+${labels.length - 12} more)` : shown;

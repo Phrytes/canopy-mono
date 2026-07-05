@@ -26,6 +26,7 @@
 
 import { validateManifest }   from '@canopy/app-manifest';
 import { createManifestHost } from '@canopy/manifest-host';
+import { synthesizeGenericOps } from './genericOpSynth.js';
 
 /**
  * @typedef {object} MergedCatalog
@@ -82,6 +83,8 @@ export function mergeManifests(sources, opts = {}) {
   const briefDecls    = new Map();        // v0.7 Q30 — canonicalKey → {summarySkill, order?, label?, appOrigin}
   const searchDecls   = new Map();        // v0.7.5 Q33 — canonicalKey → {searchSkill, appOrigin}
   const appOrigins  = [];
+  /** @type {object[]} manifests that mounted OK — replayed in the §1b synthetic-op pass below. */
+  const mountedManifests = [];
   /** @type {Map<string, string>} command → first-mounting appId */
   const commandOwner = new Map();
   const commandMenu = [];
@@ -137,6 +140,7 @@ export function mergeManifests(sources, opts = {}) {
     }
 
     appOrigins.push(m.app);
+    mountedManifests.push(m);
 
     for (const op of m.operations ?? []) {
       // Q32 runtime filter — drop ops that don't run in our runtime.
@@ -204,6 +208,38 @@ export function mergeManifests(sources, opts = {}) {
       // Q33 (v0.7.5) search-skill lookup.
       const searchSkill = mounted.rendered.searchFor?.(op.id);
       if (searchSkill) searchDecls.set(canonicalKey, { searchSkill, appOrigin: m.app });
+    }
+  }
+
+  // §1b sub-slice 1c — SYNTHETIC ops for GENERIC (op-less) capabilities.
+  // "Declare a noun → get CRUD free": a manifest can declare a noun with CRUD atoms and NO implementing
+  // op. `synthesizeGenericOps` turns each such op-less capability into a synthetic op (id encodes
+  // `(app, atom, noun)` via `encodeGenericOpId`) so the EXISTING projectors (renderSlash /
+  // buildToolDescriptors) and the op-keyed gate carry it unchanged. ADDITIVE, run AFTER all real ops so
+  // real ops always win command-ownership — and it NEVER shadows a real op-id (the `__generic__:` prefix
+  // can't collide, and `synthesizeGenericOps` already drops any capability a bespoke op implements).
+  for (const m of mountedManifests) {
+    for (const synthOp of synthesizeGenericOps(m)) {
+      // Runtime filter for parity with real ops (synthetic ops are runtime-agnostic → always kept).
+      if (!matchesRuntime(synthOp.runtime ?? 'both', wantRuntime)) continue;
+      // Guard: never shadow a real op already in the catalog (belt-and-braces — ids can't collide).
+      if (opsById.has(synthOp.id)) continue;
+
+      // commandMenu: first-wins by slash command (real ops already claimed theirs above).
+      const command = synthOp.surfaces?.slash?.command;
+      if (command && !synthOp.surfaces.slash.standaloneOnly) {
+        const owner = commandOwner.get(command);
+        if (owner && owner !== m.app) {
+          warnings.push(
+            `slash collision: "${command}" declared by both "${owner}" and "${m.app}"; v0.1 keeps the first.`,
+          );
+        } else {
+          commandOwner.set(command, m.app);
+          commandMenu.push({ command, opId: synthOp.id, appOrigin: m.app });
+        }
+      }
+
+      opsById.set(synthOp.id, { op: synthOp, appOrigin: m.app });
     }
   }
 
