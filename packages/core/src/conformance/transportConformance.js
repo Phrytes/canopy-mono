@@ -26,8 +26,8 @@
  * their wire addresses and an optional `teardown()`.
  */
 import { expect } from 'vitest';
-import { Transport } from '../../src/transport/Transport.js';
-import { P }         from '../../src/Envelope.js';
+import { Transport } from '../transport/Transport.js';
+import { P }         from '../Envelope.js';
 
 /** Methods every Transport (base + adapter) must expose. */
 export const REQUIRED_TRANSPORT_METHODS = Object.freeze([
@@ -52,8 +52,8 @@ async function waitFor(cond, timeout, label) {
  * Assert that `makePair` yields a Transport implementation satisfying the port.
  *
  * @param {() => Promise<{
- *   a: import('../../src/transport/Transport.js').Transport,
- *   b: import('../../src/transport/Transport.js').Transport,
+ *   a: import('../transport/Transport.js').Transport,
+ *   b: import('../transport/Transport.js').Transport,
  *   addrA: string, addrB: string,
  *   teardown?: () => (void | Promise<void>),
  * }>} makePair

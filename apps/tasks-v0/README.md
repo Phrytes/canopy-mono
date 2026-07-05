@@ -5,7 +5,7 @@
 > for this functionality inside the unified chat surface — not a separate app/build/shell. See the root
 > README's *Direction* note.
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, local-store, chat-p2p, identity-resolver, notifier, skill-match}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
 > **Manifest + tier policy.** This app's surface is declared in
 > [`manifest.js`](./manifest.js) (NavModel substrate V0.8 / Q1–Q27).
@@ -175,9 +175,9 @@ Full propagation plan (file-level deltas Tasks will need):
 § "Tasks-app fix propagation". Project-wide convention:
 [`Project Files/conventions/single-agent.md`](../../docs/conventions/single-agent.md).
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-household agent that the substrates compose; `MemorySource` is the default DataSource for `ItemStore`. | No substrate wraps "construct an agent"; `MemorySource` is the in-memory `core.DataSource` concrete (apps swap in a `pod-client.PodClient` adapter for production). |
 

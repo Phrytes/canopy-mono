@@ -39,10 +39,12 @@ but fail on device/CI. Don't re-bisect a trap that's already written down.
 4. **The manifest is the source of truth for surfaces.** Add an op/surface to `manifest.js`, never a
    per-shell switch statement. After any manifest change, regenerate + commit the coverage snapshot
    (`npm run coverage` in `apps/canopy-chat` → `docs/surface-coverage.md`).
-5. **Three-layer dependency invariant:** `apps/` → `packages/{substrates}` → `packages/{core, relay,
-   pod-client, react-native}` (the SDK). Substrates compose the SDK and don't reinvent it; apps compose
-   substrates (SDK directly only with a justification in the app README). → detail:
-   [`architectural-layering.md`](docs/conventions/architectural-layering.md).
+5. **Three-layer dependency invariant:** `apps/` → `packages/{substrates}` → `packages/core` (the **kernel** —
+   a lean set of ports + kernel logic). Concrete adapters live *outside* the kernel (`@canopy/transports`,
+   `@canopy/pod-client`, `@canopy/vault`); nothing in the kernel depends *up* on an adapter. The dev-facing
+   **SDK is `@canopy/sdk`** (the layered facade over the platform). Substrates compose the kernel + adapters and
+   don't reinvent the kernel; apps compose substrates (kernel directly only with a justification in the app
+   README). → detail: [`architectural-layering.md`](docs/conventions/architectural-layering.md).
 6. **One agent per service-context.** Transports are routes into a single `core.Agent`; multi-scope state
    lives in per-scope `ItemStore`/`MemberMap` *outside* the agent. N agents for N scopes is an anti-pattern.
    → [`single-agent.md`](docs/conventions/single-agent.md).

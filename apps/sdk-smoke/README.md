@@ -1,8 +1,8 @@
 # sdk-smoke — two-device SDK smoke harness
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct SDK use:** by design — sdk-smoke's purpose is validating SDK primitives (`@canopy/core`, `@canopy/relay`, `@canopy/react-native`) on real hardware, so it consumes the SDK directly.
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** by design — sdk-smoke's purpose is validating kernel + adapter primitives (`@canopy/core`, `@canopy/relay`, `@canopy/react-native`) on real hardware, so it consumes the kernel + adapters directly.
 
-A stripped-down Expo app that exposes each SDK substrate area as a press-button
+A stripped-down Expo app that exposes each kernel/adapter area as a press-button
 test, used to validate that Tracks A–G survive on real hardware.
 
 This app is **not** an end-user demo — it has no chat UI, no Folio, no styling
@@ -12,16 +12,16 @@ for the full plan, the 10 scenarios (S1–S10), and the bring-up runbook.
 
 ## Substrates
 
-*None.* By design — see "Direct SDK use" below.
+*None.* By design — see "Direct kernel use" below.
 
-`sdk-smoke` exists to validate the SDK foundation (Tracks A–G) on real hardware. Composing substrates here would defeat the purpose: it would mean the harness depended on the very abstractions the substrates layer wraps, hiding regressions in the SDK from the smoke run. The exemption is explicitly noted in the architectural-layering doc.
+`sdk-smoke` exists to validate the kernel + adapters (Tracks A–G) on real hardware. Composing substrates here would defeat the purpose: it would mean the harness depended on the very abstractions the substrates layer wraps, hiding regressions in the kernel + adapters from the smoke run. The exemption is explicitly noted in the architectural-layering doc.
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `Bootstrap`, `RelayTransport`, `RendezvousTransport`, `OfflineTransport`, `defineSkill`, capability tokens, A2A bridge | Each scenario (S1–S10) exercises a different SDK area: bootstrap, vault migration, pod sync, capability share, identity rotation, governance, skills-pubsub, A2A-sealed, battery-sleep, etc. | This is the harness whose entire purpose is exercising the SDK directly — the architectural-layering doc lists `sdk-smoke` as the canonical exemption. Substrate composition would defeat the point. |
-| `@canopy/relay` | `RelayTransport` (client side), token register | Real-relay validation: scenarios that need a remote peer use the relay for connection. | Same as above — the relay is the SDK transport whose hardware behavior is under test. |
+| `@canopy/core` | `Agent`, `AgentIdentity`, `Bootstrap`, `RelayTransport`, `RendezvousTransport`, `OfflineTransport`, `defineSkill`, capability tokens, A2A bridge | Each scenario (S1–S10) exercises a different kernel/adapter area: bootstrap, vault migration, pod sync, capability share, identity rotation, governance, skills-pubsub, A2A-sealed, battery-sleep, etc. | This is the harness whose entire purpose is exercising the kernel + adapters directly — the architectural-layering doc lists `sdk-smoke` as the canonical exemption. Substrate composition would defeat the point. |
+| `@canopy/relay` | `RelayTransport` (client side), token register | Real-relay validation: scenarios that need a remote peer use the relay for connection. | Same as above — the relay is the transport adapter whose hardware behavior is under test. |
 | `@canopy/react-native` | `KeychainVault`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`, `ExpoNotificationsAdapter`, `createMeshAgent`, `requestMeshPermissions`, `platform/polyfills` | RN platform layer — every scenario runs on a real device, so RN-specific bring-up is exercised end-to-end. | Same as above. |
 | `@canopy/pod-client` | `PodClient` | Pod-sync scenarios (S3, S4) write/read against a real Solid pod. | Same as above. |
 

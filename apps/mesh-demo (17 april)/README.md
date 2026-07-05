@@ -91,7 +91,7 @@ Groups B–E (peer UI, relay skill, messages, routing) are defined in
 
 ## Package boundary
 
-The SDK packages (`@canopy/core`, `@canopy/react-native`) are not modified
+The platform packages (`@canopy/core`, `@canopy/react-native`) are not modified
 by this app except for the `AsyncStorageAdapter.list()` bug fix added in
 `packages/react-native/src/storage/AsyncStorageAdapter.js`.
 

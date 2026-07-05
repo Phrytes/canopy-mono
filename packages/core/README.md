@@ -79,10 +79,11 @@ via `agent.invokeWithHop(peer, skill, parts, { group })`.  See
 
 ```js
 import {
-  Agent, AgentIdentity, VaultMemory,
-  RelayTransport, NknTransport,
+  Agent, AgentIdentity,
   TextPart, Parts,
 } from '@canopy/core';
+import { VaultMemory }              from '@canopy/vault';
+import { RelayTransport, NknTransport } from '@canopy/transports';
 ```
 
 Phone factory (`createMeshAgent`) lives in `@canopy/react-native`.

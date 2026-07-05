@@ -73,7 +73,7 @@ Decisions documented after the v0.3.4 substrate-reuse audit (see
 | `@canopy/agent-ui` | Out-of-process agent ↔ UI via HTTP+SSE.  canopy-chat uses in-process `InternalBus` (simpler; matches the static-web deployment of OQ-1.A).  Revisit if relay-bound agents land. |
 | `@canopy/agent-provisioning` | Production-style facade (vault + OIDC + webid + transports).  `realAgent.js`'s manual wiring is intentionally minimal for the in-browser demo; the facade may replace it once OIDC handoff (J6, v0.6) is real. |
 
-## Direct SDK use
+## Direct kernel use
 
 `src/web/realAgent.js` imports `Agent`, `AgentIdentity`,
 `InternalBus`, `InternalTransport`, `DataPart` from `@canopy/core`

@@ -99,39 +99,43 @@ The upshot: the **type axis** (item-types), the **verb axis** (atoms), and the *
 — **storage, permissions, and surfaces are all projections of one `(circle, type, verb)` space.** That is why a
 new noun added to a manifest becomes storable, gate-able, and renderable at once.
 
-## Three layers
+## The layers — kernel, adapters, substrates, apps
 
-Code depends downward only. This is a project-wide invariant (full detail:
+Code depends downward only — a project-wide invariant (full detail:
 [`conventions/architectural-layering.md`](./conventions/architectural-layering.md)):
 
 ```
-apps/                       thin compositions — per-app glue + UI
+apps/                        thin compositions — per-app glue + UI
   ↓
-packages/{substrates}       reusable building blocks — item-store, skill-match, notifier, app-manifest, …
+packages/{substrates}        reusable building blocks — item-store, skill-match, notifier, app-manifest,
+                             pod-client, sync-engine, … (a gradient: runtime-foundation → feature → facade)
   ↓
-packages/{core, relay,      the agent SDK — identity, transports, pod client, RN platform
-          pod-client, react-native}
+packages/core                the KERNEL — a lean set of PORTS + kernel logic
 ```
 
-- **SDK** gives every app identity + vault, security (SecurityLayer, hello handshake, capability tokens),
-  transports, routing, the `Agent` class, the skill registry, and storage primitives.
-- **Substrates** compose the SDK into reusable pieces and **must not reinvent its primitives**. Extracted
-  under a **rule of two** — generalise on the second independent need, not the first.
-- **Apps** compose substrates, and use the SDK directly only with a justification in the app README.
+- **The kernel (`packages/core`) is lean.** It holds the `Agent`, envelope/parts, the skill registry, the
+  `callSkill` security gate, `InternalTransport`, and the **ports** — `Transport` · `DataSource` · `ActorResolver`.
+  The ports are the **named compatibility contract**: *implement the port + pass its conformance harness =
+  compatible with the kernel* ([`conventions/ports.md`](./conventions/ports.md)). The concrete **adapters** live
+  OUTSIDE the kernel — network transports in **`@canopy/transports`**, Solid-pod storage + on-pod identity in
+  **`@canopy/pod-client`**, the vault family in **`@canopy/vault`** — and nothing in the kernel depends *up* on an
+  adapter (guarded by `test/layering.enforcement.test.js`).
+- **The developer SDK is `@canopy/sdk`** — the fat, batteries-included facade, **layered**: a *low* layer
+  re-exports the kernel + default adapters (pass your own explicitly → maximal clarity/compatibility), and a
+  *high* layer adds `createAgent()` (run-as-agent, defaults injected) + `connectSkill(agent, name, appFn)` (map any
+  app function to a skill). "Import one thing, done"; drop a layer for full control. Defaults (e.g. `VaultMemory`)
+  live in the facade, never the kernel.
+- **Substrates** compose the kernel + adapters into reusable pieces and **must not reinvent the kernel**. They
+  form a **gradient**: *runtime-foundation* (vault, oidc-session, pod-client — near-required for a networked
+  agent) → *feature* (skill-match, notifier, pod-search — optional) → *facade* (secure-agent, agent-provisioning —
+  compose others). Extracted under a **rule of two** — generalise on the second independent need, not the first.
+- **Apps** compose substrates (or `@canopy/sdk`), using the kernel directly only with a justification in the app
+  README.
 
-See [`repository-layout.md`](./repository-layout.md) for the full apps + packages map.
-
-**Where the code differs from the diagram (today).** The three layers are the *intended invariant* (deps point
-down), and CI enforces the direction — but the middle bucket is really a **gradient**, not one flat tier:
-runtime-foundation substrates (vault, oidc-session, pod-client) that almost every agent needs, then optional
-feature substrates (skill-match, notifier, …), then facades that compose others (secure-agent,
-agent-provisioning). And `core` is **not a minimal kernel**: it's a **fat** package that also carries concrete
-transports, pod-storage, discovery, and a2a, and it currently even depends *up* on `vault`/`oidc-session` (a
-leftover **inversion** from when those were extracted out of it). The direction is to slim `core` to a kernel of
-**ports** (the `Transport`/`DataSource`/`ActorResolver` interfaces) with the concrete adapters moved out, so the
-diagram and the dependency graph finally match — that is active roadmap work. The ports are now the named,
-documented compatibility contract — "implement the port + pass its conformance harness = compatible with the
-SDK" — see [`conventions/ports.md`](./conventions/ports.md).
+See [`repository-layout.md`](./repository-layout.md) for the full apps + packages map. *(History: `core` was a
+**fat** package that also carried the concrete transports, pod-storage, and pod-identity and even depended up on
+`vault`/`oidc-session`; the 2026-07-05 de-fat extracted all of that out and made the kernel a lean set of ports —
+the diagram and the dependency graph now match.)*
 
 **A fourth region the diagram omits: the deployment / hosting layer.** Client apps host nothing. Server-side
 services — **pod-HOSTING**, relay/proxy, the private-LLM enclave, rollout — form a separate layer, placed by
@@ -147,7 +151,7 @@ access, sealing, the confidential LLM transport) stays client-side or in an **at
 moving private data onto an untrusted host. Correspondingly:
 
 - **Local-only mode is the floor; the pod is portability.** Every app works fully without an authenticated
-  pod. Shared-state apps without a pod replicate P2P via SDK `MergeContracts` + relay group-publish.
+  pod. Shared-state apps without a pod replicate P2P via kernel `MergeContracts` + relay group-publish.
 - **Pod is truth, local cache is reality.** When a pod is configured it's authoritative but slow; the UI reads
   the local cache and syncs on a cadence with optimistic, queued writes. A pod outage must not break the app.
 
@@ -180,7 +184,7 @@ relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
   *self-enforcing* so the code stops drifting — turn each invariant into a CI fitness function, consolidate
   the remaining duplication, then split the repo along the now-enforced seams: thin **clients** (web + mobile),
   **substrate/functionality** (packages + already-server-side pod-hosting/proxy/private-LLM), the **feedback
-  app**, and **third-party apps** that build against the Solid pod + agent SDK (pod ACPs are the access
+  app**, and **third-party apps** that build against the Solid pod + `@canopy/sdk` (pod ACPs are the access
   contract) without touching this repo.
 
 ## Where to go next

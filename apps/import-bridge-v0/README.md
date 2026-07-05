@@ -1,6 +1,6 @@
 # H6 — import-bridge-v0
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct SDK use is allowed only when justified in this README's `## Direct SDK use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct SDK use:** writes directly through any `core.DataSource` (Phase 5.1 — one-shot ingest does not compose `@canopy/sync-engine`).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** writes directly through any `core.DataSource` (Phase 5.1 — one-shot ingest does not compose `@canopy/sync-engine`).
 
 Document import bridge.  Fetches documents from external services
 (Google Docs, Notion, etc.), converts them to markdown, and writes
@@ -15,13 +15,13 @@ Docs connector skeleton + MockConnector for tests.
 This app composes the following substrate packages
 (see [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md)):
 
-| Package | Used for | Why a substrate, not direct SDK |
+| Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
 | `@canopy/identity-resolver` (L1h) | `PersonGraph` — cross-source Person records, auto-linked when two connectors observe the same identifier. | Cross-source identity reconciliation is reused by H4/H5/H7; the merge rules don't belong inline in the import bridge. |
 
-## Direct SDK use
+## Direct kernel use
 
-| SDK package | Primitive | Used for | Justification |
+| Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
 | `@canopy/core` | `Emitter` | Agent extends it to surface `synced` events per imported item. | Substrate-portable emitter; substrates and apps share the same primitive — using `node:events` would break RN. |
 | `@canopy/core` | `OAuthVault`, `VaultMemory` | Per-connector OAuth credentials with auto-refresh (Google, Notion, …). | `@canopy/oauth-vault` (L1g) was deleted 2026-05-04 as a duplicate of `core.OAuthVault`; this is the only place to compose. |

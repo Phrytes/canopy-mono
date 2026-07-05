@@ -4,7 +4,7 @@
  * the definition of "compatible with the @canopy SDK". See docs/conventions/ports.md.
  */
 import { describe, it } from 'vitest';
-import { assertDataSourceConformance } from './dataSourceConformance.js';
+import { assertDataSourceConformance } from '@canopy/core/conformance';
 import { MemorySource } from '../../src/storage/MemorySource.js';
 
 describe('DataSource port — MemorySource (reference adapter)', () => {
