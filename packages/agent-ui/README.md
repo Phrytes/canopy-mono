@@ -29,8 +29,9 @@ localhost-only (`Project Files/Substrates/L1d-agent-ui.md`).
 ## Server side
 
 ```js
-import { Agent, defineSkill, AgentIdentity, VaultMemory,
+import { Agent, defineSkill, AgentIdentity,
          InternalBus, InternalTransport } from '@canopy/core';
+import { VaultMemory } from '@canopy/vault';
 import { mountLocalUi } from '@canopy/agent-ui';
 
 // Build a real core.Agent.  Apps usually do this inside their own
