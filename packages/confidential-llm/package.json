@@ -1,0 +1,22 @@
+{
+  "name": "@canopy/confidential-llm",
+  "version": "0.1.0",
+  "description": "Phone-side confidential LLM (Objective F, invariant #7 — trust by attestation, not by host). Client verifies an enclave's SEV-SNP-style attestation report (measurement + RA-TLS channel binding + signature chain) BEFORE any prompt leaves the device; a deny-by-default gateway routes the LLM call through the attested endpoint via an injected @canopy/llm-client, and REFUSES with no silent downgrade if attestation fails. verifyChain/llm/transport are injected (mock-tested; real TEE/CVM + AMD cert chain are the deferred Fb M7/M8 deploy side).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./attestation": "./src/attestation.js",
+    "./gateway": "./src/confidentialLlm.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/llm-client": "file:../llm-client"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
