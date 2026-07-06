@@ -8,8 +8,12 @@
  * legacy ItemStore needed it because it minted its own ids). Writes use `{sync:false}` so an ingest never
  * re-publishes the same item back to the mesh (the echo loop). Filtered by the envelope `ref` prefix → per-circle.
  *
- * (v0 is last-received-wins: `put` re-stamps `updatedAt` to the local ingest time, so origin timestamps aren't
- * preserved — a version-vector / origin-clock refinement is a follow-up. Functionally the item appears on peers.)
+ * Ingest is CAUSAL, not last-received-wins (Objective L): writes go through `put(payload, {sync:false, origin:true})`,
+ * which PRESERVES the payload's origin `updatedAt`/`updatedBy` (instead of re-stamping to local ingest time) and
+ * keeps the causally-newer side — a peer's OLDER edit can no longer clobber a newer local one just because it
+ * arrived later; true concurrency resolves by a deterministic writer-id tiebreak. This is origin-timestamp +
+ * writer-id last-writer-wins at item granularity (not a field-level merge); payloads without origin metadata fall
+ * back to last-received-wins so pre-metadata peers still ingest. See `causalMerge.js` for guarantees/limits.
  *
  * @param {object} args
  * @param {{subscribe:(opts:{kind:string,callback:Function})=>(()=>void)}} args.notifyEnvelope  @canopy/notify-envelope (injected)
@@ -33,8 +37,9 @@ export function wireCircleStoreInbound({
       if (!inScope(env && env.ref)) return;
       const payload = env && env.payload;
       if (!payload || typeof payload.id !== 'string' || !payload.id) return;
-      // id-preserving idempotent ingest; sync:false → no re-publish (echo guard).
-      Promise.resolve(store.put(payload, { sync: false })).catch(() => { /* best-effort; next sync reconciles */ });
+      // id-preserving idempotent ingest; sync:false → no re-publish (echo guard); origin:true → causal merge
+      // (preserve origin clock/writer, keep the causally-newer side — no arrival-order clobbering).
+      Promise.resolve(store.put(payload, { sync: false, origin: true })).catch(() => { /* best-effort; next sync reconciles */ });
     },
   });
 
