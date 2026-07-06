@@ -22,6 +22,7 @@
  * shareIntoAudience / resolveSharedRef expect (they call getStore(circleId) synchronously).
  */
 import { shareIntoAudience, resolveSharedRef, listShared } from '@canopy/item-store';
+import { normalizeCirclePolicy } from './circlePolicy.js';
 
 /**
  * A synchronous `{ getStore(circleId) }` registry over already-resolved per-circle stores. The substrate
@@ -59,16 +60,33 @@ export function makeCrossCircleStores(storeByCircle) {
  * @param {(circleId:string)=>Promise<{onShare?:Function, policy?:object}|null>} [args.enforcementFor]
  *        the pod-tier binder for a circle (built at the pod site). Null ⇒ memory path (no grant/seal).
  * @param {(circleId:string)=>number} [args.postureOf]  target confidentiality (the posture-floor check).
+ * @param {(circleId:string)=>(object|Promise<object>)} [args.policyOf]  the SOURCE circle's admin policy
+ *        lookup (its `sharePosture` + `admins`). Injected so the caller wires the real per-circle policy;
+ *        normalized via normalizeCirclePolicy. Missing/unreadable ⇒ default `'closed'` (deny-by-default).
  * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, cause?:any}>}
  */
 export async function shareItemAcrossCircles({
   resolveService, itemId, fromCircleId, toCircleId, by,
-  recipient, recipients, enforcementFor, postureOf,
+  recipient, recipients, enforcementFor, postureOf, policyOf,
 } = {}) {
   if (typeof resolveService !== 'function' || !itemId || !fromCircleId || !toCircleId) {
     return { ok: false, error: 'missing-args' };
   }
   if (fromCircleId === toCircleId) return { ok: false, error: 'same-circle' };
+
+  // slice 2 — INITIATOR GATE by the SOURCE circle's sharePosture (crypto-free; the write/read mechanics below
+  // are unchanged when the gate passes). Missing/unreadable policy ⇒ normalizeCirclePolicy → default 'closed'
+  // (deny-by-default, consistent with slice 1).
+  let srcPolicy;
+  try { srcPolicy = typeof policyOf === 'function' ? await policyOf(fromCircleId) : undefined; }
+  catch { srcPolicy = undefined; }
+  const policy = normalizeCirclePolicy(srcPolicy);
+  const posture = policy.sharePosture;
+  if (posture === 'closed') return { ok: false, error: 'sharing-closed' };
+  if (posture === 'registered' && !policy.admins.includes(by)) {
+    return { ok: false, error: 'sharing-admin-only' };
+  }
+  // 'copy' / 'trusted' ⇒ any member may initiate → proceed.
 
   const [fromSvc, toSvc] = await Promise.all([resolveService(fromCircleId), resolveService(toCircleId)]);
   if (!fromSvc?.stores || !toSvc?.stores) return { ok: false, error: 'no-stores' };
