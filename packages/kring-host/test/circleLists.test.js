@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { memoryDataSource } from '@canopy/item-store';
-import { makeCircleLists } from '../../src/v2/circleLists.js';
+import { makeCircleLists } from '../src/circleLists.js';
 
 describe('circleLists', () => {
   it('create → add (contained) → complete', async () => {
