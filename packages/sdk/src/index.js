@@ -29,37 +29,39 @@
  *
  * Defaults live HERE (in the facade), never back in @canopy/core — the
  * kernel stays de-fatted; this package restores the DX on top of it.
+ *
+ * ── SP-9: the barrel is now the SUM of the sub-path slices ───────────────
+ * The batteries-included surface below is carved into importable sub-paths
+ * so a consumer can take ONLY the pieces they need (core base vs each
+ * extension) rather than the whole barrel:
+ *   - `@canopy/sdk/core`       → the kernel base            (./core.js)
+ *   - `@canopy/sdk/transports` → default network transports (./transports.js)
+ *   - `@canopy/sdk/vault`      → default Vault family        (./vault.js)
+ *   - `@canopy/sdk/pod`        → default pod-client surface  (./pod.js)
+ *   - `@canopy/sdk/high`       → createAgent/connectSkill/…  (./high.js)
+ *   - `@canopy/sdk/requires`   → capability vocab + validator(./requires.js)
+ * This barrel simply re-exports every slice, so the aggregate named surface
+ * is UNCHANGED — every existing `import { X } from '@canopy/sdk'` still
+ * resolves to the same symbol.
  */
 
-// ── LOW layer: the kernel ────────────────────────────────────────────────
-export * from '@canopy/core';
+// ── LOW layer: the kernel base ───────────────────────────────────────────
+export * from './core.js';
 
-// ── LOW layer: default adapters (concrete pieces de-fatted out of core) ──
+// ── LOW layer: default adapter extensions (de-fatted out of core) ────────
 // Vault family (VaultMemory is createAgent's default) + OAuth helper.
-export {
-  Vault,
-  VaultMemory,
-  VaultLocalStorage,
-  VaultIndexedDB,
-  VaultNodeFs,
-  OAuthVault,
-  makeAuthorizedFetch,
-} from '@canopy/vault';
+export * from './vault.js';
 
 // Concrete network transports (the base Transport + InternalTransport /
-// OfflineTransport stay in @canopy/core, re-exported above).
-export {
-  NknTransport,
-  MqttTransport,
-  RelayTransport,
-  RendezvousTransport,
-} from '@canopy/transports';
+// OfflineTransport stay in @canopy/core, re-exported by ./core.js).
+export * from './transports.js';
 
 // Pod pieces — the whole @canopy/pod-client public surface (PodClient, Auth,
 // SolidPodSource, ConflictResolver, sealing/sharing/tombstones, …).
-export * from '@canopy/pod-client';
+export * from './pod.js';
 
 // ── HIGH layer: opinionated helpers ──────────────────────────────────────
-export { createAgent }  from './createAgent.js';
-export { connectSkill } from './connectSkill.js';
-export { wireSkill }    from './wireSkill.js';
+export * from './high.js';
+
+// ── SP-9: requires vocabulary + validator (the SP-10 seam) ───────────────
+export { CAPABILITIES, REQUIRES_CODES, validateRequires } from './requires.js';
