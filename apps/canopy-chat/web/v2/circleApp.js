@@ -25,7 +25,8 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
-  createSealedPodDataSource, podGroupPrefix } from '@canopy/pod-client';
+  createSealedPodDataSource, podGroupPrefix,
+  recipientStrategy as podRecipientStrategy } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
@@ -180,7 +181,7 @@ import { renderCircleKring } from './circleKring.js';
 import { makeCircleLists } from '../../src/v2/circleLists.js';  // cluster K · K2 — composable lists (shared web≡mobile)
 // cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
-import { makeCircleShareEnforcement } from '@canopy/item-store';
+import { makeCircleShareEnforcement, sealItem } from '@canopy/item-store';
 import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
 import { shareItemAcrossCircles, listSharedResolved } from '../../src/v2/circleShare.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
@@ -269,8 +270,13 @@ async function getCircleShareEnforcement(circleId, policy) {
           return null;
         }
         const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot }));
-        // seal OMITTED — group-key posture: the recipient already holds the key via the roster, so the
-        // substrate's makeShareGrantHook skips re-seal (no source-item rewrite). open unseals on read.
+        // Enforcement `seal` is OMITTED here on PURPOSE: the cross-circle recipient re-seal (share-policy
+        // slice 3b) is layered ABOVE the enforcement binder, in `copy` mode — `shareItemAcrossCircles` writes
+        // a SEPARATE object sealed to the recipients' roster keys (`sealCopyToRecipients`) and grants on THAT,
+        // leaving the source's canonical group-key item untouched (never locks the source's own members out).
+        // On read, `open: strategy.open` unseals a group-key source; `composeReaderOpen` (in circleShare) adds
+        // the reader's OWN recipient opener so a copy re-sealed to them decrypts. A same-circle group-key
+        // share needs no re-seal (recipient already holds the key via the roster).
         return makeCircleShareEnforcement({ sharing, resourceUriFor, open: strategy.open });
       } catch (err) {
         if (typeof console !== 'undefined') console.warn('[circleApp] share enforcement unavailable:', err?.message ?? err);
@@ -305,11 +311,22 @@ async function shareItemIntoCircle({ itemId, fromCircleId, toCircleId, by, recip
       who = members.map((m) => m.webid ?? m.id).filter(Boolean);
     } catch { who = undefined; }
   }
+  // slice 3a — resolve each recipient's SEALING PUBLIC KEY from the TARGET circle's roster, so a cross-circle
+  // recipient (NOT in the source's group key) can decrypt the re-sealed content. A recipient missing from the
+  // target roster resolves to no key ⇒ deny-by-default (dropped from the re-seal; the grant hook still refuses
+  // a keyless recipient-seal). Best-effort: a plaintext/unprovisioned source just gets an empty key set.
+  const whoList = Array.isArray(who) && who.length ? who : (recipient ? [recipient] : []);
+  let recipientKeys = [];
+  try {
+    recipientKeys = (await Promise.all(whoList.map((w) => recipientSealKeyFor(toCircleId, w)))).filter(Boolean);
+  } catch { recipientKeys = []; }
   return shareItemAcrossCircles({
     resolveService: _circleServiceFor,
     enforcementFor: _shareEnforcementFor,
     // slice 2 — the initiator gate reads the SOURCE circle's admin policy (sharePosture + admins).
     policyOf: _circlePolicy,
+    // slice 3b — recipient re-seal: the resolved keys + the injected copy-mode re-sealer (pod-client crypto).
+    recipientKeys, sealCopy: sealCopyToRecipients,
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
     recipient, recipients: who,
   });
@@ -322,16 +339,82 @@ async function _shareEnforcementFor(circleId) {
 }
 
 /**
+ * share-policy slice 3a — resolve a recipient's SEALING PUBLIC KEY from the TARGET circle's roster (the
+ * redemption trail the control agent already holds). NO publish, NO WebID network resolution (per
+ * ADVICE-cross-circle-sharing-key-model.md): the circle-scoped key is already local. Two roster sources,
+ * both circle-scoped:
+ *   1. the circle's control-agent roster (`ensureCirclePod → controlAgent.members()` → {webId, publicKey}) —
+ *      the exact keys the circle wraps its group key to, and
+ *   2. stoop `listGroupMembers` ({webid, sealingPublicKey}), the authoritative redemption roster.
+ * Returns null when the recipient isn't in the target roster ⇒ deny-by-default: no re-seal, their share is
+ * refused (consistent with the existing `share-grant-failed`).
+ *
+ * @param {string} circleId  the TARGET circle to share INTO
+ * @param {string} webId     the recipient's WebID
+ * @returns {Promise<string|null>}
+ */
+async function recipientSealKeyFor(circleId, webId) {
+  if (!circleId || !webId) return null;
+  // 1. Control-agent roster (in-app, circle-scoped) — the group-key recipient public keys.
+  try {
+    const prod = await ensureCirclePod(circleId, await _circlePolicy(circleId));
+    const members = typeof prod?.controlAgent?.members === 'function' ? prod.controlAgent.members() : [];
+    const k = recipientSealKeyFromMembers(members, webId);
+    if (k) return k;
+  } catch { /* fall through to the stoop roster */ }
+  // 2. stoop listGroupMembers — the redemption roster carries each joiner's sealingPublicKey.
+  try {
+    const res = await resolveCallSkill('listGroupMembers', { groupId: circleId });
+    return recipientSealKeyFromMembers(res, webId);
+  } catch { return null; }
+}
+
+/**
+ * slice 3b — an injected COPY re-sealer: `(item, keys) => item with its content fields sealed to `keys``
+ * (recipientStrategy, host-blind: needs only public keys). item-store's `sealItem` walks the CONTENT fields
+ * (structural keys stay plaintext), the pod-client `recipientStrategy` supplies the crypto — so circleShare
+ * stays pod-client-free (the seal is injected from this pod layer).
+ */
+function sealCopyToRecipients(item, keys) {
+  const strat = podRecipientStrategy({ recipients: keys });
+  return sealItem(item, (text) => strat.seal(text));
+}
+
+/**
+ * slice 3b — the READER's own per-text opener for a circle: `recipientStrategy({privateKey}).open` built from
+ * this device's per-circle sealing identity. Opens content re-sealed to THIS reader's key (copy mode). Null
+ * when no sealing identity is available (plaintext / not provisioned) → the read falls back to the source
+ * enforcement's own `open`.
+ *
+ * @param {string} circleId  the circle the reader is reading shared items INTO (their own key context)
+ * @returns {Promise<((text:string)=>string)|null>}
+ */
+async function circleReaderOpen(circleId) {
+  try {
+    const prod = await ensureCirclePod(circleId, await _circlePolicy(circleId));
+    if (!prod?.sealingIdentity?.ensure) return null;
+    const idKey = await prod.sealingIdentity.ensure();
+    if (!idKey?.privateKey) return null;
+    const strat = podRecipientStrategy({ privateKey: idKey.privateKey });
+    return (text) => strat.open(text);
+  } catch { return null; }
+}
+
+/**
  * cluster K — the READ path: everything shared INTO `circleId`, resolved deny-by-default. A ref this reader
  * isn't a recipient of resolves to null and is dropped (never surfaced) — no plaintext/ciphertext leak.
  * `recipient` is my WebID on a pod (the grant-check subject); memory path ignores it (no policy).
  */
 async function listSharedItems(circleId, { recipient } = {}) {
+  // slice 3b — the reader's OWN opener (their per-circle sealing key) so content re-sealed to them (copy mode)
+  // decrypts; a non-recipient's opener throws ⇒ resolveSharedRef drops the ref (deny-by-default, no leak).
+  const readerOpen = await circleReaderOpen(circleId);
   return listSharedResolved({
     resolveService: _circleServiceFor,
     enforcementFor: _shareEnforcementFor,
     circleId,
     recipient: recipient ?? circleOwnerWebId ?? undefined,
+    readerOpen: readerOpen ?? undefined,
   });
 }
 import { renderCircleScreen } from './circleScreen.js';
@@ -377,7 +460,7 @@ import { buildCircleEmbedProviders } from '../../src/v2/circleEmbedProviders.js'
 import { resolveCircleEmbedder } from '../../src/v2/embedPicker.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
-import { normalizeCircleMembers } from '../../src/v2/circleMembers.js';
+import { normalizeCircleMembers, recipientSealKeyFromMembers } from '../../src/v2/circleMembers.js';
 import { buildFindExtras } from '../../src/v2/findExtras.js';
 import { executeBulkDispatch } from '../../src/bulkOps.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
