@@ -12,3 +12,15 @@ export { NknTransport }        from './NknTransport.js';
 export { MqttTransport }       from './MqttTransport.js';
 export { RelayTransport }      from './RelayTransport.js';
 export { RendezvousTransport } from './RendezvousTransport.js';
+
+// Inject-a-channel A2A transport across a network boundary (the #63 network
+// tail). Injected/mock-tested like the other injected substrates; real
+// HTTP/WebSocket/DPoP drivers + a listening server are DEFERRED. See
+// NetworkTransport.js.
+export {
+  NetworkTransport,
+  createNetworkTransport,
+  handleNetworkRequest,
+  encodeFrame,
+  decodeFrame,
+} from './NetworkTransport.js';
