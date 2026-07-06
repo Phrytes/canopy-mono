@@ -308,6 +308,8 @@ async function shareItemIntoCircle({ itemId, fromCircleId, toCircleId, by, recip
   return shareItemAcrossCircles({
     resolveService: _circleServiceFor,
     enforcementFor: _shareEnforcementFor,
+    // slice 2 — the initiator gate reads the SOURCE circle's admin policy (sharePosture + admins).
+    policyOf: _circlePolicy,
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
     recipient, recipients: who,
   });

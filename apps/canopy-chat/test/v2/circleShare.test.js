@@ -34,13 +34,17 @@ function podEnforcement(sharing) {
   return makeCircleShareEnforcement({ sharing, resourceUriFor, open: (text) => text });
 }
 
+// slice 2 — the initiator gate reads the SOURCE circle's sharePosture (default 'closed' now REFUSES).
+// The write/read success-path tests supply a permissive policyOf so they still exercise the substrate.
+const openPolicyOf = () => ({ sharePosture: 'trusted' });
+
 describe('circleShare — app-level cross-circle SHARE op', () => {
   it('MEMORY path (no enforcement): writes a shared-ref into the target + resolves back to the source', async () => {
     const svc = makeCircleLists();                       // one registry spanning all circles (the memory/IDB default)
     const resolveService = async () => svc;
     const src = await svc.createList('A', 'secret plan', 'alice');
 
-    const r = await shareItemAcrossCircles({ resolveService, itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice' });
+    const r = await shareItemAcrossCircles({ resolveService, policyOf: openPolicyOf, itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice' });
     expect(r.ok).toBe(true);
     expect(r.ref).toMatchObject({ type: 'shared-ref', sourceCircle: 'A', sourceId: src.id, sharedBy: 'alice' });
 
@@ -59,7 +63,7 @@ describe('circleShare — app-level cross-circle SHARE op', () => {
     const src = await svc.createList('A', 'confidential note', 'alice');
 
     const r = await shareItemAcrossCircles({
-      resolveService, enforcementFor,
+      resolveService, enforcementFor, policyOf: openPolicyOf,
       itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice',
       recipients: ['webid:bob'],
     });
@@ -88,8 +92,8 @@ describe('circleShare — app-level cross-circle SHARE op', () => {
     const src = await svc.createList('A', 'x', 'alice');
 
     const r = await shareItemAcrossCircles({
-      resolveService, enforcementFor: () => enforcement,
-      itemId: src.id, fromCircleId: 'A', toCircleId: 'B',   // no recipient / recipients
+      resolveService, enforcementFor: () => enforcement, policyOf: openPolicyOf,
+      itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice',   // no recipient / recipients
     });
     expect(r.ok).toBe(false);
     expect(r.error).toBe('share-grant-failed');
@@ -112,5 +116,70 @@ describe('circleShare — app-level cross-circle SHARE op', () => {
     expect(stores.getStore('A')).toBe(a);
     expect(stores.getStore('B')).toBe(b);
     expect(() => stores.getStore('C')).toThrow(/no resolved store/);
+  });
+});
+
+// slice 2 — the INITIATOR GATE: WHO may initiate a share is decided by the SOURCE circle's sharePosture
+// (+ admins for 'registered'). Crypto-free; when the gate PASSES the write/read mechanics are unchanged.
+describe('circleShare — initiator gate by source sharePosture (slice 2)', () => {
+  // Share op that refuses before touching the substrate ⇒ nothing gets written into the target.
+  async function shareWith(policyOf, extra = {}) {
+    const svc = makeCircleLists();
+    const resolveService = async () => svc;
+    const src = await svc.createList('A', 'plan', 'alice');
+    const r = await shareItemAcrossCircles({
+      resolveService, policyOf,
+      itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice', ...extra,
+    });
+    const surfaced = await listSharedResolved({ resolveService, circleId: 'B' });
+    return { r, surfaced };
+  }
+
+  it('closed (the default) → refuses with sharing-closed and writes nothing', async () => {
+    const { r, surfaced } = await shareWith(() => ({ sharePosture: 'closed' }));
+    expect(r).toEqual({ ok: false, error: 'sharing-closed' });
+    expect(surfaced).toEqual([]);
+  });
+
+  it('missing/unreadable policy → treated as closed (deny-by-default), nothing written', async () => {
+    // No policyOf at all.
+    const { r, surfaced } = await shareWith(undefined);
+    expect(r).toEqual({ ok: false, error: 'sharing-closed' });
+    expect(surfaced).toEqual([]);
+
+    // policyOf that throws ⇒ also treated as closed.
+    const threw = await shareWith(() => { throw new Error('unreadable'); });
+    expect(threw.r).toEqual({ ok: false, error: 'sharing-closed' });
+    expect(threw.surfaced).toEqual([]);
+  });
+
+  it('registered + non-admin initiator → sharing-admin-only, nothing written', async () => {
+    const { r, surfaced } = await shareWith(() => ({ sharePosture: 'registered', admins: ['carol'] }));
+    expect(r).toEqual({ ok: false, error: 'sharing-admin-only' });
+    expect(surfaced).toEqual([]);
+  });
+
+  it('registered + admin initiator → proceeds (writes the shared-ref)', async () => {
+    const { r, surfaced } = await shareWith(() => ({ sharePosture: 'registered', admins: ['alice'] }));
+    expect(r.ok).toBe(true);
+    expect(r.ref).toMatchObject({ type: 'shared-ref', sourceCircle: 'A', sharedBy: 'alice' });
+    expect(surfaced.map((x) => x.item.text)).toEqual(['plan']);
+  });
+
+  it('copy → any member may initiate → proceeds', async () => {
+    const { r, surfaced } = await shareWith(() => ({ sharePosture: 'copy' }));
+    expect(r.ok).toBe(true);
+    expect(surfaced.map((x) => x.item.text)).toEqual(['plan']);
+  });
+
+  it('trusted → any member may initiate → proceeds', async () => {
+    const { r, surfaced } = await shareWith(() => ({ sharePosture: 'trusted' }));
+    expect(r.ok).toBe(true);
+    expect(surfaced.map((x) => x.item.text)).toEqual(['plan']);
+  });
+
+  it('accepts a Promise-returning policyOf (async per-circle lookup)', async () => {
+    const { r } = await shareWith(async () => ({ sharePosture: 'copy' }));
+    expect(r.ok).toBe(true);
   });
 });
