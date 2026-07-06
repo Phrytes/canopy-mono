@@ -24,6 +24,12 @@ export const CIRCLE_POLICY_ENUMS = {
   // 'p2' client-side E2E group-key seal (household default); 'p3' sealed-at-rest, opened for processing.
   // Resolved by `@canopy/pod-client` `resolveCircleStorage` → a SealedPodClient strategy (or none for p0).
   storagePosture:       ['p0', 'p1', 'p2', 'p3'],
+  // sharePosture — how an item is EXPOSED to an outsider when shared out of the circle
+  // (admin-set, per-circle; see PLAN-circle-share-policy §3). 'closed' = external sharing off;
+  // 'copy' = re-seal a fresh copy to the recipient; 'trusted' = member grants to a WebID (canonical,
+  // recipient-sealed); 'registered' = admins-only, reader WebIDs added as recipients on the canonical item.
+  // Slice 1: policy field only — the initiator gate + re-seal wiring land in later slices.
+  sharePosture:         ['closed', 'copy', 'trusted', 'registered'],
   agents:               ['yes', 'admin-approval', 'no'],
   revealPolicy:         ['pairwise', 'open'],
   pod:                  ['none', 'shared', 'personal', 'hybrid'],
@@ -62,6 +68,7 @@ export const DEFAULT_CIRCLE_POLICY = {
   view:             'screen',
   llmTool:          'off',
   storagePosture:   'p0',   // sealing OFF by default; the household app sets 'p2' on its circles
+  sharePosture:     'closed', // INTERIM default pending product decision (PLAN-circle-share-policy §8) — 'copy' vs 'closed'
   agents:           'admin-approval',
   revealPolicy:     'pairwise',
   pod:              'none',
@@ -154,6 +161,7 @@ export function normalizeCirclePolicy(stored = {}) {
     view:               pickEnum('view'),
     llmTool:            pickEnum('llmTool'),
     storagePosture:     pickEnum('storagePosture'),
+    sharePosture:       pickEnum('sharePosture'),
     agents:             pickEnum('agents'),
     revealPolicy:       pickEnum('revealPolicy'),
     pod:                pickEnum('pod'),

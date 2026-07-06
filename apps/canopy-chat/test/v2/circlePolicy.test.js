@@ -155,6 +155,41 @@ describe('circlePolicy · ε.6 catchUpChooserMode', () => {
   });
 });
 
+describe('circlePolicy · sharePosture (PLAN-circle-share-policy slice 1)', () => {
+  it("defaults to 'closed' (INTERIM conservative default)", () => {
+    expect(DEFAULT_CIRCLE_POLICY.sharePosture).toBe('closed');
+    expect(normalizeCirclePolicy().sharePosture).toBe('closed');
+    expect(normalizeCirclePolicy({}).sharePosture).toBe('closed');
+  });
+
+  it('is present on the normalised policy', () => {
+    expect(normalizeCirclePolicy()).toHaveProperty('sharePosture');
+  });
+
+  it('round-trips each valid mode', () => {
+    for (const mode of ['closed', 'copy', 'trusted', 'registered']) {
+      const p = normalizeCirclePolicy({ sharePosture: mode });
+      expect(p.sharePosture).toBe(mode);
+      // idempotent
+      expect(normalizeCirclePolicy(p).sharePosture).toBe(mode);
+    }
+  });
+
+  it("invalid value clamps to the default ('closed')", () => {
+    expect(normalizeCirclePolicy({ sharePosture: 'bogus' }).sharePosture).toBe('closed');
+    expect(normalizeCirclePolicy({ sharePosture: 42 }).sharePosture).toBe('closed');
+    expect(normalizeCirclePolicy({ sharePosture: null }).sharePosture).toBe('closed');
+  });
+
+  it('merges through mergeCirclePolicy without disturbing other axes', () => {
+    const base = normalizeCirclePolicy({ pod: 'shared', storagePosture: 'p2' });
+    const next = mergeCirclePolicy(base, { sharePosture: 'trusted' });
+    expect(next.sharePosture).toBe('trusted');
+    expect(next.pod).toBe('shared');
+    expect(next.storagePosture).toBe('p2');
+  });
+});
+
 describe('circlePolicy · mergeCirclePolicy', () => {
   it('applies a patch over a base without dropping other features', () => {
     const base = normalizeCirclePolicy({ features: { noticeboard: true }, pod: 'shared' });
