@@ -1,0 +1,19 @@
+{
+  "name":        "pod-search-embeddings-demo",
+  "version":     "0.1.0",
+  "private":     true,
+  "type":        "module",
+  "description": "pod-search V2 embeddings demo (52.25) — provision → persist → reload (backfill, no re-embed) → hybrid query, offline against a pseudo-pod with the mock embed provider (no live Ollama).",
+  "scripts": {
+    "start": "node index.js",
+    "test":  "vitest run"
+  },
+  "dependencies": {
+    "@canopy/pod-search":  "file:../../packages/pod-search",
+    "@canopy/llm-client":  "file:../../packages/llm-client",
+    "@canopy/pseudo-pod":  "file:../../packages/pseudo-pod"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.9"
+  }
+}

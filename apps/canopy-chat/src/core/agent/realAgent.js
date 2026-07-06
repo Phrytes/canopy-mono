@@ -774,6 +774,11 @@ export async function createRealHouseholdAgent(opts = {}) {
     podRoot:       opts.folioPodRoot,
     seedFiles:     opts.folioSeedFiles,   // pass [] for clean-slate fixtures
     label:         'FolioAgent(cc)',
+    // 52.25 — the `/zoek` semantic embedder. Absent ⇒ lexical-only (the
+    // default; llmTool:'off' / no Ollama). The circle shell wires the
+    // policy-resolved embedder post-boot via `setFolioNoteEmbedder`, so no
+    // embed call is ever made unless the circle's embed policy permits.
+    noteEmbedder:  opts.folioNoteEmbedder,
   });
   await chatAgent.hello(folioAgent.address);
 
@@ -2252,6 +2257,13 @@ export async function createRealHouseholdAgent(opts = {}) {
     // (a PodClient + container) / clears on sign-out.  Lights up the
     // "My pod" toggle in the circle Folio browser.  Pass null to detach.
     setFolioPodSource: (src) => folioAgent.setPodSource?.(src) ?? null,
+    // 52.25 — wire the `/zoek` semantic embedder from the ACTIVE circle's
+    // embed policy (embedTool ?? llmTool). The circle shell resolves the
+    // embedder (`resolveCircleEmbedder`) and calls this on circle switch /
+    // settings change; pass null (policy 'off' / unconfigured) to revert
+    // `/zoek` to lexical-only. Rebuilds the note index on the next `/zoek`
+    // when the embedder identity changes.
+    setFolioNoteEmbedder: (e) => folioAgent.setNoteEmbedder?.(e) ?? null,
     // S4 — route stoop's items to the user's REAL pod on sign-in (parity with folio/
     // calendar). Delegates to the stoop agent's attachPod (builds a SolidPodSource +
     // activates the already-built pod-routing write-through). Pass {podRoot, webid, fetch}.

@@ -24,7 +24,7 @@ describe('Slice F.1 — folio manifest validation', () => {
     expect(folioManifest.itemTypes).toEqual(['note', 'file']);
   });
 
-  it('carries the merged op set (7 app ops + 7 chat-shell ops = 14)', () => {
+  it('carries the merged op set (7 app ops + 8 chat-shell ops = 15)', () => {
     const ids = folioManifest.operations.map((o) => o.id);
     expect(ids).toEqual([
       // folio's own app ops
@@ -33,8 +33,10 @@ describe('Slice F.1 — folio manifest validation', () => {
       // chat-shell ops folded in from the former mockFolioManifest
       'readNote', 'shareFolder', 'getFileSnapshot',
       'downloadFile', 'saveToMyPod', 'folioStatus', 'listFiles',
+      // 52.25 — pod-search V2 semantic note search (/zoek)
+      'searchNotes',
     ]);
-    expect(folioManifest.operations).toHaveLength(14);
+    expect(folioManifest.operations).toHaveLength(15);
   });
 
   it('declares a "files" view with shape: list + listFiles dataSource', () => {
