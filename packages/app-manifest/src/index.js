@@ -72,6 +72,12 @@ export {
   affordanceTreatment,
 } from './freedom.js';
 
+// §6 standardisation — the manifest-conformance standard as a reusable check:
+// structural validity + atom discipline + §1a noun-declaration discipline +
+// projector totality. Runs per manifest; the cross-app fitness test asserts it
+// over every apps/*/manifest.js. See src/conformance.js for the rule rationale.
+export { manifestConformance } from './conformance.js';
+
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';
 export { renderSlash }         from './renderSlash.js';
