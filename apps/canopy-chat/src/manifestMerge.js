@@ -25,7 +25,7 @@
  */
 
 import { validateManifest }   from '@canopy/app-manifest';
-import { createManifestHost } from '@canopy/manifest-host';
+import { createManifestHost, resolveSlash } from '@canopy/manifest-host';
 import { synthesizeGenericOps } from './genericOpSynth.js';
 
 /**
@@ -48,6 +48,13 @@ import { synthesizeGenericOps } from './genericOpSynth.js';
  *   Per OQ-1.A: canopy-chat in the browser passes 'browser' so folio's
  *   sync/watch family (runtime: 'node') stays out of the catalog.  A
  *   future sidecar deployment passes 'both' to re-include them.
+ * @property {Object<string,string>} [slashOverrides]
+ *   Objective D — per-host slash-collision WINNER pins (`command → appId`;
+ *   keys bare `'done'` or slash-prefixed `'/done'`). For a command declared by
+ *   ≥2 apps, the bare token resolves to the pinned app; the losers stay
+ *   reachable via their app-qualified form (`/tasks:done`). Absent a pin, a
+ *   colliding bare token is surfaced as AMBIGUOUS (offer the choices) rather
+ *   than silently firing the first declarer.  Inert when no command collides.
  */
 
 /**
@@ -61,8 +68,16 @@ import { synthesizeGenericOps } from './genericOpSynth.js';
  *     declarations surface in `opsById` as `'<appOrigin>/<opId>'`
  *     (`'tasks-v0/markComplete'`).  The FIRST declaration keeps the
  *     bare form (no churn for solo apps).
- *   - Slash collisions still apply first-wins on the bare command
- *     (apps coordinate slash names per the existing convention).
+ *   - Slash collisions (a command declared by ≥2 apps) follow the
+ *     Objective-D policy: prefix-all + per-host override.  Every declarer
+ *     gets an app-qualified command (`/tasks:done`, `/stoop:done`) in the
+ *     commandMenu; the BARE token resolves to the `slashOverrides` winner if
+ *     pinned, else the bare entry is marked `{ambiguous, choices}` (the parser
+ *     surfaces the choices instead of firing one app).  Non-colliding commands
+ *     keep the bare form unchanged — in practice apps coordinate slash names,
+ *     so this whole pass is inert (no collisions → no qualified forms added).
+ *     The resolution is exposed as `catalog.slashPolicy` (from
+ *     `@canopy/manifest-host`'s `resolveSlash`).
  *
  * @param {Array<{ manifest: object, callSkill?: Function }>} sources
  * @param {MergeOptions} [opts]
@@ -88,6 +103,16 @@ export function mergeManifests(sources, opts = {}) {
   /** @type {Map<string, string>} command → first-mounting appId */
   const commandOwner = new Map();
   const commandMenu = [];
+  // Objective D — EVERY declarer of a slash command (not just the first-wins
+  // winner), so the post-pass can detect collisions and project the qualified
+  // forms. command → [{opId, appOrigin, body?}], in mount/declaration order.
+  /** @type {Map<string, Array<{opId:string, appOrigin:string, body?:string}>>} */
+  const commandDeclarers = new Map();
+  const recordDeclarer = (command, opId, appOrigin, body) => {
+    const arr = commandDeclarers.get(command) ?? [];
+    arr.push(body ? { opId, appOrigin, body } : { opId, appOrigin });
+    commandDeclarers.set(command, arr);
+  };
 
   // Pre-pass 1: collect bare op-ids per app + identify collisions
   // across apps so we can apply prefix-on-collision in a second pass.
@@ -154,6 +179,9 @@ export function mergeManifests(sources, opts = {}) {
       // already introspects every app). Skipped here = no collision, no warning.
       if (op?.surfaces?.slash?.command && !op.surfaces.slash.standaloneOnly) {
         const command = op.surfaces.slash.command;
+        // Objective D — record EVERY declarer (winner + losers) so the
+        // post-pass can project qualified forms + apply the collision policy.
+        recordDeclarer(command, op.id, m.app, op.surfaces.slash.body);
         const owner   = commandOwner.get(command);
         if (owner && owner !== m.app) {
           warnings.push(
@@ -228,6 +256,7 @@ export function mergeManifests(sources, opts = {}) {
       // commandMenu: first-wins by slash command (real ops already claimed theirs above).
       const command = synthOp.surfaces?.slash?.command;
       if (command && !synthOp.surfaces.slash.standaloneOnly) {
+        recordDeclarer(command, synthOp.id, m.app, synthOp.surfaces.slash.body);
         const owner = commandOwner.get(command);
         if (owner && owner !== m.app) {
           warnings.push(
@@ -243,8 +272,57 @@ export function mergeManifests(sources, opts = {}) {
     }
   }
 
+  // Objective D — slash-collision policy (prefix-all + per-host override).
+  // Build the collision list (a command declared by ≥2 DISTINCT apps) and run
+  // the pure resolver.  Fully ADDITIVE + dormant when nothing collides: apps
+  // coordinate slash names, so `collisions` is empty in production and the
+  // commandMenu is byte-unchanged.
+  const collisions = [];
+  for (const [command, decls] of commandDeclarers) {
+    const appIds = [...new Set(decls.map((d) => d.appOrigin))];
+    if (appIds.length > 1) collisions.push({ command, appIds });
+  }
+  const slashPolicy = resolveSlash(collisions, opts.slashOverrides ?? {});
+  for (const entry of slashPolicy.entries) {
+    const decls = commandDeclarers.get(entry.command) ?? [];
+    const declFor = (appId) => decls.find((d) => d.appOrigin === appId);
+    // Qualified forms — one per declarer, ALWAYS available (prefix-all).
+    for (const q of entry.qualified) {
+      const d = declFor(q.appId);
+      if (!d) continue;
+      const qEntry = { command: q.command, opId: d.opId, appOrigin: d.appOrigin };
+      if (d.body) qEntry.body = d.body;
+      commandMenu.push(qEntry);
+    }
+    // Bare token — the winner (override) or ambiguous-with-choices.
+    const idx = commandMenu.findIndex((e) => e.command === entry.command);
+    if (idx < 0) continue;
+    if (entry.bare.status === 'winner') {
+      const d = declFor(entry.bare.appId);
+      if (d) {
+        const winEntry = { command: entry.command, opId: d.opId, appOrigin: d.appOrigin };
+        if (d.body) winEntry.body = d.body;
+        commandMenu[idx] = winEntry;
+      }
+    } else {
+      // Ambiguous: strip the silently-fired opId; carry the qualified choices
+      // so the parser returns kind:'ambiguous' and the shell offers them.
+      // Keep an `appOrigin` (the first declarer) purely so the entry survives
+      // catalog scoping/filtering (which key on appOrigin) — it is NEVER used
+      // to dispatch (the missing opId + `ambiguous` flag block that).
+      commandMenu[idx] = {
+        command: entry.command,
+        ambiguous: true,
+        appOrigin: entry.appIds[0],
+        appIds: entry.appIds,
+        choices: entry.qualified.map((q) => ({ command: q.command, appId: q.appId })),
+      };
+    }
+  }
+
   return {
     commandMenu,
+    slashPolicy,
     opsById,
     replyShapeFor:    (opId) => replyShape.get(opId),
     followUpsFor:     (opId) => followUps.get(opId),

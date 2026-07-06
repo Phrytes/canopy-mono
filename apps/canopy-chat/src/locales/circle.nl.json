@@ -1925,6 +1925,16 @@
       "doc": "Shown after whichMissing when the picker's list is empty."
     }
   },
+  "slash": {
+    "ambiguous": {
+      "text": "“{{command}}” wordt hier door meer dan één app gebruikt. Kies welke:",
+      "doc": "Circle bot reply when a colliding bare slash command is AMBIGUOUS (prefix-all policy, no per-host override): offers the app-qualified choices instead of silently firing one app."
+    },
+    "ambiguousChoice": {
+      "text": "{{appId}} · {{command}}",
+      "doc": "Button label for each app-qualified choice offered when a bare slash command is ambiguous."
+    }
+  },
   "bot": {
     "ok": {
       "text": "✓ {{label}}",

@@ -1925,6 +1925,16 @@
       "doc": "Shown after whichMissing when the picker's list is empty (no open items to choose)."
     }
   },
+  "slash": {
+    "ambiguous": {
+      "text": "“{{command}}” is claimed by more than one app here. Pick which one:",
+      "doc": "Circle bot reply when a colliding bare slash command is AMBIGUOUS (prefix-all policy, no per-host override): offers the app-qualified choices instead of silently firing one app."
+    },
+    "ambiguousChoice": {
+      "text": "{{appId}} · {{command}}",
+      "doc": "Button label for each app-qualified choice offered when a bare slash command is ambiguous (e.g. 'tasks · /tasks:done')."
+    }
+  },
   "bot": {
     "ok": {
       "text": "✓ {{label}}",
