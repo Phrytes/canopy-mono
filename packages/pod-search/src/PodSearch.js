@@ -631,6 +631,13 @@ export class PodSearch {
 
   /** @returns {number} number of indexed items */
   get size() { return this.#items.size; }
+
+  /**
+   * @returns {object|null} the injected StorageBackend-shaped vector store.
+   * Exposed (read-only) so the 52.24 backfill orchestrator can persist its
+   * resumable cursor in the same store as the index, without a separate wire.
+   */
+  get vectorStore() { return this.#vectorStore; }
 }
 
 /**
