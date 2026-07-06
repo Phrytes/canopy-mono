@@ -407,6 +407,32 @@
       "doc": "Theme B — flow finished."
     }
   },
+  "recipeApply": {
+    "button": {
+      "text": "📦 Apply recipe",
+      "doc": "B #64 — open the apply-recipe panel from circle settings."
+    },
+    "heading": {
+      "text": "Apply recipe",
+      "doc": "B #64 — apply-recipe panel heading."
+    },
+    "placeholder": {
+      "text": "Paste a recipe URL or JSON…",
+      "doc": "B #64 — recipe source input placeholder (URL or JSON)."
+    },
+    "apply": {
+      "text": "Apply",
+      "doc": "B #64 — apply the pasted recipe to this circle."
+    },
+    "applied": {
+      "text": "Recipe applied — review the settings below.",
+      "doc": "B #64 — recipe applied successfully."
+    },
+    "error": {
+      "text": "Recipe could not be applied.",
+      "doc": "B #64 — recipe rejected (unknown capability/feature/setting, or untrusted)."
+    }
+  },
   "kring": {
     "more": {
       "text": "More",

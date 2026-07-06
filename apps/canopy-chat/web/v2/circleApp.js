@@ -109,6 +109,8 @@ import { makeHandleCalendarCancel } from '../../src/core/handlers/calendarCancel
 // Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
 import { renderGuidedSetup } from './guidedSetupPanel.js';
 import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
+// B #64 — apply an authored remote recipe (loaded+validated → active circle policy) via the shared apply-wiring.
+import { loadAndApplyRecipe } from '../../src/v2/recipeApply.js';
 // S6.C (per-circle) — gate an app's surfaces by the circle's policy.features.
 import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
@@ -3677,6 +3679,19 @@ async function showSettings(id) {
     onGuidedSetup: () => openGuidedSetupPanel({
       onDone: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
     }),
+    // B #64 — apply an authored remote recipe as this circle's active policy. All-or-nothing through
+    // the SAME store + gate (loadAndApplyRecipe → policyStore.update); the shell only shows a status.
+    onApplyRecipe: async (source) => {
+      const res = await loadAndApplyRecipe({
+        source, circleId: id, sources: circleBaseSources, policyStore,
+        fetch: circleAuthedFetch || (typeof globalThis.fetch === 'function' ? globalThis.fetch : undefined),
+      });
+      if (!res.ok) return t('circle.recipeApply.error');
+      // The recipe is now persisted; sync the edit buffer + redraw so the toggles reflect it.
+      working = res.policy;
+      rerender();
+      return t('circle.recipeApply.applied');
+    },
     onBack: () => showDetail(id),
     onSave: async () => {
       if (!consensusActive()) {

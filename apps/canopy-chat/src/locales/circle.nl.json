@@ -407,6 +407,32 @@
       "doc": "Theme B — flow finished."
     }
   },
+  "recipeApply": {
+    "button": {
+      "text": "📦 Recept toepassen",
+      "doc": "B #64 — open the apply-recipe panel from circle settings."
+    },
+    "heading": {
+      "text": "Recept toepassen",
+      "doc": "B #64 — apply-recipe panel heading."
+    },
+    "placeholder": {
+      "text": "Plak een recept-URL of JSON…",
+      "doc": "B #64 — recipe source input placeholder (URL or JSON)."
+    },
+    "apply": {
+      "text": "Toepassen",
+      "doc": "B #64 — apply the pasted recipe to this circle."
+    },
+    "applied": {
+      "text": "Recept toegepast — bekijk de instellingen hieronder.",
+      "doc": "B #64 — recipe applied successfully."
+    },
+    "error": {
+      "text": "Recept kon niet worden toegepast.",
+      "doc": "B #64 — recipe rejected (unknown capability/feature/setting, or untrusted)."
+    }
+  },
   "kring": {
     "more": {
       "text": "Meer",

@@ -61,6 +61,9 @@ export function renderCircleSettings(container, {
   onIncomingApplied,
   onIncomingDiscarded,
   onGuidedSetup,   // Theme B — open the guided-setup chatbot (pre-fills these fields)
+  // B #64 — apply an AUTHORED REMOTE recipe (URL/JSON) as this circle's active policy. Host wires the
+  // async load+apply (shared `loadAndApplyRecipe`); the shell only collects the source + shows a status.
+  onApplyRecipe,
   // B · Slice 2 — the merged manifest sources; when present, render the manifest-driven settings form
   // + the per-skill freedom matrix (rulings Q1/Q3). Absent ⇒ those sections don't render (older callers).
   sources = [],
@@ -96,6 +99,37 @@ export function renderCircleSettings(container, {
     guided.textContent = tr('circle.guided.button');
     guided.addEventListener('click', () => onGuidedSetup());
     container.appendChild(guided);
+  }
+
+  // B #64 — apply an authored remote recipe. Opt-in (host wires onApplyRecipe); the manual form still works.
+  if (typeof onApplyRecipe === 'function') {
+    const sec = section(tr('circle.recipeApply.heading'));
+    sec.classList.add('circle-settings__recipe');
+    const input = document.createElement('textarea');
+    input.className = 'circle-settings__recipe-source';
+    input.dataset.role = 'recipe-source';
+    input.rows = 2;
+    input.placeholder = tr('circle.recipeApply.placeholder');
+    const status = document.createElement('div');
+    status.className = 'circle-settings__recipe-status';
+    status.dataset.role = 'recipe-status';
+    const apply = document.createElement('button');
+    apply.type = 'button';
+    apply.className = 'circle-settings__recipe-apply';
+    apply.textContent = tr('circle.recipeApply.apply');
+    apply.addEventListener('click', async () => {
+      const src = (input.value || '').trim();
+      if (!src) return;
+      apply.disabled = true;
+      status.textContent = '';
+      try {
+        const msg = await onApplyRecipe(src);
+        if (typeof msg === 'string' && msg) status.textContent = msg;
+      } catch { status.textContent = tr('circle.recipeApply.error'); }
+      finally { apply.disabled = false; }
+    });
+    sec.append(input, apply, status);
+    container.appendChild(sec);
   }
 
   // Axis 1 — features (toggles)

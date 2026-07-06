@@ -51,6 +51,23 @@ describe('renderCircleSettings', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it('B #64 — renders the apply-recipe section only when onApplyRecipe is wired, and fires it with the source', async () => {
+    const el = mount();
+    // absent by default
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t });
+    expect(el.querySelector('.circle-settings__recipe')).toBeNull();
+
+    // wired → section renders + click passes the trimmed source, status shows the returned message
+    const onApplyRecipe = vi.fn().mockResolvedValue('circle.recipeApply.applied');
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, onApplyRecipe });
+    const input = el.querySelector('textarea[data-role=recipe-source]');
+    input.value = '  {"capabilities":{}}  ';
+    el.querySelector('.circle-settings__recipe-apply').click();
+    await Promise.resolve(); await Promise.resolve();
+    expect(onApplyRecipe).toHaveBeenCalledWith('{"capabilities":{}}');
+    expect(el.querySelector('[data-role=recipe-status]').textContent).toBe('circle.recipeApply.applied');
+  });
+
   it('renders the consensus toggle and honours custom saveLabel + note', () => {
     const el = mount();
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, saveLabel: 'Send proposal', note: 'pending note' });
