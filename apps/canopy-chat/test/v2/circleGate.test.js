@@ -145,3 +145,36 @@ describe('circle bot + manifest gate — routing precedence', () => {
     expect(dispatched).toEqual([{ opId: 'fromLlm', args: {} }]);
   });
 });
+
+// ── Part A parity: createGate (host-level) ≡ the old direct renderGate projection ──────────────
+// circleGate.js used to build the manifest half by importing app-manifest's `renderGate` directly via
+// a deep relative path; it now consumes `@canopy/manifest-host`'s `createGate`. These assert the two
+// paths are byte-for-byte equivalent over the REAL circle manifests, so the switch is behaviour-safe.
+import { renderGate } from '@canopy/app-manifest';
+import { createGate } from '@canopy/manifest-host';
+import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
+import { calendarManifest } from '../../../calendar/manifest.js';
+import { CIRCLE_GATE_TRAIL } from '../../src/v2/circleGateLexicon.js';
+
+describe('Part A — createGate parity with the old direct renderGate path', () => {
+  const CIRCLE = [mockTasksManifest, mockStoopManifest, mockFolioManifest, calendarManifest];
+  const probes = [
+    'add buy milk', 'done sok', 'sok done', 'claim t1', 'post need a drill',
+    'share notes', 'afwas klaar', 'noteer melk', 'random free text with no verb',
+  ];
+
+  for (const locale of ['en', 'nl']) {
+    it(`same rules + same command results for every probe (${locale})`, () => {
+      const opts = { locale, trailLexicon: CIRCLE_GATE_TRAIL };
+      const composed = createGate(CIRCLE, opts).rules;
+      const direct   = renderGate(CIRCLE, opts);
+      expect(composed.length).toBe(direct.length);
+      for (let i = 0; i < direct.length; i++) {
+        expect(composed[i].name).toBe(direct[i].name);
+        for (const p of probes) {
+          expect(composed[i].command(p)).toEqual(direct[i].command(p));
+        }
+      }
+    });
+  }
+});

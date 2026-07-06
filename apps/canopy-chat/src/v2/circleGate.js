@@ -5,8 +5,11 @@
 // household's TG-bot uses (`renderSlash`). So the deterministic gate, the slash surface, and the LLM
 // tool surface (`renderChat`) all read one source of truth instead of a parallel hand-written copy.
 //
-// Relative import of the substrate (not the '@canopy/app-manifest' alias) so the same module resolves
-// under both vite (web) and metro (mobile imports this file from canopy-chat/src/v2).
+// Part A (manifest-gate-surfaces): the gate is now composed at the HOST level — `createGate` from
+// `@canopy/manifest-host` projects the circle apps' manifests into gate rules via app-manifest's
+// `renderGate` under the hood (same rules, same first-match-wins order). canopy-chat no longer reaches
+// past the host into `@canopy/app-manifest/src/renderGate.js`; it consumes the substrate's public API,
+// exactly as `manifestMerge.js` already consumes `createManifestHost`.
 //
 // Part C (2026-06-11): projects the circle apps' manifests so the gate covers tasks/stoop/folio/
 // calendar user-action verbs. Cross-app verb collisions (share/accept/reject/cancel) were resolved at
@@ -18,7 +21,7 @@
 // mis-target a chore. Household ops still reach the LLM path; household's own gate verbs serve the
 // household TG-bot surface (its real manifest), not the circle.
 
-import { renderGate } from '../../../../packages/app-manifest/src/renderGate.js';
+import { createGate } from '@canopy/manifest-host';
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../core/manifests/mockManifests.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
 import { CIRCLE_GATE_TRAIL, DEFAULT_GATE_LOCALE } from './circleGateLexicon.js';
@@ -48,12 +51,12 @@ export function circleGateRules(locale = DEFAULT_GATE_LOCALE) {
     // recognised list-type/tasks keyword (e.g. "what lists do we have") returns null → falls through.
     { name: 'household:listOpen(typed-list-read)', test: HH_LIST_READ,  command: householdListRead },
     { name: 'household:listTasks(read)',           test: HH_TASKS_READ, command: householdTasksRead },
-    ...renderGate([
+    ...createGate([
       mockTasksManifest,
       mockStoopManifest,
       mockFolioManifest,
       calendarManifest,
-    ], { locale: loc, trailLexicon: CIRCLE_GATE_TRAIL }),
+    ], { locale: loc, trailLexicon: CIRCLE_GATE_TRAIL }).rules,
   ];
 }
 
