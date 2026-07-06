@@ -105,6 +105,80 @@ describe('request/response correlation over a mock loopback (no crypto)', () => 
   });
 });
 
+describe('multi-frame streaming exchange over a bidirectional loopback', () => {
+  /**
+   * A streaming skill produces, for ONE request id, N `stream-chunk` OW frames
+   * (fresh `_id`, no `_re`) followed by the terminal `task-result` RS (`_re` =
+   * the RQ `_id`) — the SAME frames the in-process `callSkill` streaming path
+   * carries (see @canopy/core taskExchange `_runStreamingHandler`). This proves
+   * the frame-agnostic NetworkTransport carries that exchange unchanged over the
+   * push channel: chunks route to the caller's receiveHandler, the terminal RS
+   * resolves the pending request. (The pure request→response `handleNetworkRequest`
+   * fetch seam CANNOT carry this — there is no back-channel for the OW chunks.)
+   */
+  function loopback() {
+    let A, B;
+    A = new NetworkTransport({ address: 'A', send: (f) => queueMicrotask(() => B.receiveFrame(f)) });
+    B = new NetworkTransport({ address: 'B', send: (f) => queueMicrotask(() => A.receiveFrame(f)) });
+    return { A, B };
+  }
+
+  it('carries N stream-chunk OWs + a terminal RS for ONE request id, in order', async () => {
+    const { A, B } = loopback();
+
+    // B is a streaming "skill": on an RQ it emits 3 stream-chunk OWs correlated
+    // to the request's taskId, then the terminal task-result RS.
+    B.setReceiveHandler(async (env) => {
+      const { taskId } = env.payload;
+      for (const n of [1, 2, 3]) {
+        await B.sendOneWay(env._from, { type: 'stream-chunk', taskId, parts: [{ text: `chunk-${n}` }] });
+      }
+      await B.respond(env._from, env._id, { type: 'task-result', taskId, status: 'completed', parts: [] });
+    });
+
+    // A collects inbound stream-chunk OWs; request() resolves on the terminal RS
+    // (the RS is correlated by _re and is NOT delivered to the receiveHandler).
+    const chunks = [];
+    A.setReceiveHandler((env) => {
+      if (env.payload?.type === 'stream-chunk') chunks.push(env.payload.parts[0].text);
+    });
+
+    const rs = await A.request('B', { type: 'task', taskId: 't1', skillId: 'stream' }, 1_000);
+    expect(rs.payload.status).toBe('completed');
+    expect(rs.payload.taskId).toBe('t1');
+    expect(chunks).toEqual(['chunk-1', 'chunk-2', 'chunk-3']);  // all chunks arrived, in order
+  });
+
+  it('interleaved streams on the same channel stay correlated by taskId', async () => {
+    const { A, B } = loopback();
+    B.setReceiveHandler(async (env) => {
+      const { taskId, skillId } = env.payload;
+      // Emit taskId-tagged chunks so the caller can demux two concurrent streams.
+      for (const n of [1, 2]) {
+        await B.sendOneWay(env._from, { type: 'stream-chunk', taskId, parts: [{ text: `${skillId}:${n}` }] });
+      }
+      await B.respond(env._from, env._id, { type: 'task-result', taskId, status: 'completed', parts: [] });
+    });
+
+    const byTask = new Map();
+    A.setReceiveHandler((env) => {
+      if (env.payload?.type !== 'stream-chunk') return;
+      const list = byTask.get(env.payload.taskId) ?? [];
+      list.push(env.payload.parts[0].text);
+      byTask.set(env.payload.taskId, list);
+    });
+
+    const [r1, r2] = await Promise.all([
+      A.request('B', { type: 'task', taskId: 'ta', skillId: 'x' }, 1_000),
+      A.request('B', { type: 'task', taskId: 'tb', skillId: 'y' }, 1_000),
+    ]);
+    expect(r1.payload.taskId).toBe('ta');
+    expect(r2.payload.taskId).toBe('tb');
+    expect(byTask.get('ta')).toEqual(['x:1', 'x:2']);
+    expect(byTask.get('tb')).toEqual(['y:1', 'y:2']);
+  });
+});
+
 describe('fetch/HTTP serve mode — handleNetworkRequest', () => {
   it('drives an inbound RQ and returns the correlated RS frame (no push channel)', async () => {
     // B is a fetch-style server: its send() must NEVER be called (the RS comes
