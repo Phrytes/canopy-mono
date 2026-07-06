@@ -5,8 +5,9 @@
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".":      "./index.js",
-    "./node": "./src/NodeFsBackend.js"
+    ".":        "./index.js",
+    "./node":   "./src/NodeFsBackend.js",
+    "./memory": "./src/MemoryBackend.js"
   },
   "scripts": {
     "test": "vitest run",

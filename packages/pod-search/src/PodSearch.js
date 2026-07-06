@@ -56,8 +56,15 @@ export class PodSearch {
   /** @type {object | null} StorageBackend-shaped — seam for 52.23 persistence */ #vectorStore;
   /** @type {((event: object) => void) | null} */ #audit;
   /** @type {VectorIndex} */ #vectorIndex = new VectorIndex();
-  /** @type {Map<string, Float32Array>} content-hash cache key → vector (in-memory only in V0) */ #vecCache = new Map();
+  /** @type {Map<string, Float32Array>} content-hash cache key → vector (restart-safe via #vectorStore since 52.23) */ #vecCache = new Map();
   /** @type {string | null} modelId the current index was built with */ #indexModelId = null;
+
+  // ── persistence (52.23) ── §3.4 on-store layout:
+  //   private/state/search-index/<scope>/manifest
+  //   private/state/search-index/<scope>/items/<itemId>
+  /** @type {string} store key for the manifest */ #manifestKey;
+  /** @type {string} store key prefix for item records */ #itemsPrefix;
+  /** @type {Promise<void> | null} memoised hydrate promise (reload runs once) */ #loadPromise = null;
 
   /**
    * @param {object} args
@@ -66,13 +73,15 @@ export class PodSearch {
    *        optional EmbeddingProvider-shaped object (duck-typed, injected). Absent ⇒ lexical-only.
    * @param {(text: string) => Promise<string>} [args.hash]
    *        optional platform-wired SHA-256; used for the content-hash cache key. Absent ⇒ raw text is the key.
-   * @param {object} [args.vectorStore]     optional StorageBackend-shaped store — seam for 52.23 persistence
+   * @param {object} [args.vectorStore]     optional StorageBackend-shaped store — enables 52.23 persistence
+   * @param {string} [args.scope='default'] index scope — namespaces the on-store layout under
+   *        `private/state/search-index/<scope>/`. Distinct scopes may share one `vectorStore`.
    * @param {object} [args.chunking]        optional { version, maxChars, splitAt, overlap } — defaults to chunkingV1
-   * @param {(event: object) => void} [args.audit]  optional audit hook (degradation events)
+   * @param {(event: object) => void} [args.audit]  optional audit hook (degradation + invalidation events)
    * @param {object} [args.podClient]       optional — V1 will use this to read items from the pod
    * @param {string} [args.rootContainer]   optional — V1
    */
-  constructor({ schema, embedder, hash, vectorStore, chunking, audit } = {}) {
+  constructor({ schema, embedder, hash, vectorStore, scope, chunking, audit } = {}) {
     if (!schema || typeof schema.fields !== 'object') {
       throw new TypeError('PodSearch: schema.fields required');
     }
@@ -98,8 +107,18 @@ export class PodSearch {
     this.#chunking = resolveChunking(chunking);
     this.#embedder = embedder ?? null;
     this.#hash = hash ?? null;
-    this.#vectorStore = vectorStore ?? null; // seam — persistence is 52.23
+    this.#vectorStore = vectorStore ?? null;
     this.#audit = audit ?? null;
+
+    // §3.4 on-store layout keys (owner-only derived data).
+    const base = `private/state/search-index/${scope ?? 'default'}/`;
+    this.#manifestKey = `${base}manifest`;
+    this.#itemsPrefix = `${base}items/`;
+  }
+
+  /** Store key for one item's persisted vector record. */
+  #itemKey(id) {
+    return `${this.#itemsPrefix}${encodeURIComponent(String(id))}`;
   }
 
   // ── indexing ────────────────────────────────────────────────────
@@ -116,6 +135,7 @@ export class PodSearch {
    */
   async indexBatch(items) {
     if (!Array.isArray(items)) return;
+    await this.#ensureLoaded(); // warm the restart-safe cache + vector index first
     for (const it of items) {
       const id = it[this.#primaryField];
       if (id === undefined || id === null) {
@@ -127,13 +147,20 @@ export class PodSearch {
   }
 
   async deleteById(id) {
+    await this.#ensureLoaded();
     this.#items.delete(id);
     this.#vectorIndex.delete(id); // clear the vector side too
+    // Tombstone: evict the persisted vectors so no orphan survives a restart.
+    if (this.#vectorStore) {
+      await this.#vectorStore.delete(this.#itemKey(id));
+      if (this.#semanticEnabled()) await this.#persistManifest();
+    }
   }
 
   /**
-   * Wipe + rebuild the index.  V0 is in-memory so there's nothing to
-   * do beyond clearing — including the vector index + cache.
+   * Wipe + rebuild the index — clears the in-memory vector index + cache
+   * AND purges the persisted `items/*` records and manifest so a rebuild
+   * starts from a clean store (no orphan vectors).
    *
    * @param {object} [scope]  V1+ — selective rebuild
    */
@@ -142,6 +169,14 @@ export class PodSearch {
     this.#vectorIndex.clear();
     this.#vecCache.clear();
     this.#indexModelId = null;
+    if (this.#vectorStore) {
+      for (const k of await this.#vectorStore.list(this.#itemsPrefix)) {
+        await this.#vectorStore.delete(k);
+      }
+      await this.#vectorStore.delete(this.#manifestKey);
+    }
+    // Store is now empty; mark hydration done so we don't re-read it.
+    this.#loadPromise = Promise.resolve();
   }
 
   // ── query ───────────────────────────────────────────────────────
@@ -172,6 +207,7 @@ export class PodSearch {
     mode = 'lexical',
     minScore,
   } = {}) {
+    await this.#ensureLoaded();
     let candidates = [...this.#items.values()];
 
     // Filter-then-rank: facet filters apply BEFORE ranking in every path.
@@ -208,6 +244,7 @@ export class PodSearch {
    * @returns {Promise<{items: object[], total: number, facets: object}>}
    */
   async similar(id, { limit = DEFAULT_LIMIT } = {}) {
+    await this.#ensureLoaded();
     const vecs = this.#vectorIndex.getVectors(id);
     if (!vecs || vecs.length === 0) return { items: [], total: 0, facets: {} };
     const hits = this.#vectorIndex.search(vecs, { excludeId: id });
@@ -335,18 +372,20 @@ export class PodSearch {
     for (const it of items) {
       const id = it[this.#primaryField];
       const text = this.#embeddableText(it);
+      const contentHash = await this.#chunkHash(text);
       const chunks = chunkText(text, this.#chunking);
       const keyed = [];
       for (const chunk of chunks) {
-        const key = await this.#cacheKey(modelId, chunk);
-        keyed.push({ chunk, key });
+        const h = await this.#chunkHash(chunk);
+        const key = this.#cacheKey(modelId, h);
+        keyed.push({ chunk, key, hash: h });
         if (!this.#vecCache.has(key) && !seenMiss.has(key)) {
           seenMiss.add(key);
           missTexts.push(chunk);
           missKeys.push(key);
         }
       }
-      perItem.push({ id, keyed });
+      perItem.push({ id, keyed, contentHash });
     }
 
     // Embed only the misses — one batched call.
@@ -373,6 +412,25 @@ export class PodSearch {
       this.#vectorIndex.replace(id, vecs);
     }
     this.#indexModelId = modelId;
+
+    // Persist (§3.4). Absent vectorStore ⇒ pure in-memory (52.22 behaviour).
+    if (this.#vectorStore) {
+      for (const { id, keyed, contentHash } of perItem) {
+        if (keyed.length === 0) {
+          // No embeddable text → tombstone any stale persisted record.
+          await this.#vectorStore.delete(this.#itemKey(id));
+          continue;
+        }
+        const chunks = keyed.map(({ key, hash }, seq) => ({
+          field: null, // chunkingV1 concatenates embed fields before splitting
+          seq,
+          hash,
+          vecB64: f32ToB64(this.#vecCache.get(key)),
+        }));
+        await this.#putJson(this.#itemKey(id), { itemId: id, contentHash, chunks });
+      }
+      await this.#persistManifest();
+    }
   }
 
   /** Concatenation of the item's `embed: true` fields (skips empties). */
@@ -385,13 +443,99 @@ export class PodSearch {
   }
 
   /**
-   * Cache key for "may I reuse this vector?": `${modelId}:${chunkingV}:${hash(text)}`.
-   * `hash` is optional in V0 — absent, the raw chunk text is the key
-   * (still deterministic; persistence phase wires a real SHA-256).
+   * Content hash of a chunk (or the item's embeddable text).  `hash` is
+   * optional — absent, the raw text is the hash (still deterministic).
+   * The persistence layer stores this per chunk so the restart-safe cache
+   * key can be reconstructed on reload.
    */
-  async #cacheKey(modelId, text) {
-    const h = this.#hash ? await this.#hash(text) : text;
-    return `${modelId}:${this.#chunking.version}:${h}`;
+  async #chunkHash(text) {
+    return this.#hash ? await this.#hash(text) : text;
+  }
+
+  /**
+   * Cache key for "may I reuse this vector?": `${modelId}:${chunkingV}:${contentHash}`.
+   * Restart-safe since 52.23 — the same key is reconstructed on reload
+   * from the persisted manifest + per-chunk hash.
+   */
+  #cacheKey(modelId, hash) {
+    return `${modelId}:${this.#chunking.version}:${hash}`;
+  }
+
+  // ── persistence lifecycle (52.23) ───────────────────────────────
+
+  /**
+   * Hydrate the vector index + restart-safe cache from `vectorStore`
+   * exactly once (memoised).  No embed calls: restart ≠ re-embed.
+   * When the persisted manifest's model or chunking version no longer
+   * matches the current embedder/chunking, the stale index is purged and
+   * rebuilt lazily (never served as if it were the current model).
+   */
+  #ensureLoaded() {
+    if (!this.#vectorStore) return Promise.resolve();
+    if (!this.#loadPromise) this.#loadPromise = this.#hydrate();
+    return this.#loadPromise;
+  }
+
+  async #hydrate() {
+    const manifest = await this.#getJson(this.#manifestKey);
+    if (!manifest) return; // nothing persisted → fresh index
+
+    // Invalidation: model or chunking swap ⇒ persisted vectors are stale.
+    const staleModel = !!this.#embedder && manifest.modelId !== this.#embedder.id;
+    const staleChunk = manifest.chunkingV !== this.#chunking.version;
+    if (staleModel || staleChunk) {
+      this.#audit?.({
+        type: 'index-invalidated',
+        reason: staleModel ? 'model' : 'chunking',
+        persisted: { modelId: manifest.modelId, chunkingV: manifest.chunkingV },
+        current: { modelId: this.#embedder?.id ?? null, chunkingV: this.#chunking.version },
+      });
+      // Purge so the rebuild starts clean — no wrong-model orphan vectors.
+      for (const k of await this.#vectorStore.list(this.#itemsPrefix)) {
+        await this.#vectorStore.delete(k);
+      }
+      await this.#vectorStore.delete(this.#manifestKey);
+      return;
+    }
+
+    // Compatible: rebuild the vector index + cache from the store.
+    for (const k of await this.#vectorStore.list(this.#itemsPrefix)) {
+      const rec = await this.#getJson(k);
+      if (!rec || !Array.isArray(rec.chunks)) continue;
+      const vecs = [];
+      for (const ch of rec.chunks) {
+        const v = b64ToF32(ch.vecB64);
+        vecs.push(v);
+        this.#vecCache.set(this.#cacheKey(manifest.modelId, ch.hash), v);
+      }
+      if (vecs.length) this.#vectorIndex.replace(rec.itemId, vecs);
+    }
+    this.#indexModelId = manifest.modelId;
+  }
+
+  /** Write/update the `manifest` (§3.4). */
+  async #persistManifest() {
+    if (!this.#vectorStore) return;
+    const count = (await this.#vectorStore.list(this.#itemsPrefix)).length;
+    await this.#putJson(this.#manifestKey, {
+      modelId: this.#embedder?.id ?? this.#indexModelId,
+      dim: this.#vectorIndex.dim,
+      chunkingV: this.#chunking.version,
+      count,
+      builtAt: new Date().toISOString(),
+    });
+  }
+
+  /** JSON put — serialise so string- and object-backed stores both work. */
+  async #putJson(key, obj) {
+    await this.#vectorStore.put(key, JSON.stringify(obj));
+  }
+
+  /** JSON get — tolerate stores that hand back the raw object or a string. */
+  async #getJson(key) {
+    const rec = await this.#vectorStore.get(key);
+    if (!rec || rec.bytes == null) return null;
+    return typeof rec.bytes === 'string' ? JSON.parse(rec.bytes) : rec.bytes;
   }
 
   // ── helpers ─────────────────────────────────────────────────────
@@ -498,6 +642,39 @@ export class PodSearch {
  * @param {number} k
  * @returns {string[]}  fused id order (best first)
  */
+// ── vector ↔ base64 codec (§3.4 `vecB64`) ──────────────────────────
+// Portable across web / RN / Node: prefer the platform btoa/atob, fall
+// back to Buffer. Vectors are stored little-endian Float32 as base64.
+
+/** @param {string} bin binary string @returns {string} base64 */
+function b64encode(bin) {
+  if (typeof btoa === 'function') return btoa(bin);
+  return Buffer.from(bin, 'binary').toString('base64');
+}
+
+/** @param {string} b64 @returns {string} binary string */
+function b64decode(b64) {
+  if (typeof atob === 'function') return atob(b64);
+  return Buffer.from(b64, 'base64').toString('binary');
+}
+
+/** @param {Float32Array} vec @returns {string} base64 of the raw bytes */
+function f32ToB64(vec) {
+  const f = vec instanceof Float32Array ? vec : Float32Array.from(vec);
+  const bytes = new Uint8Array(f.buffer, f.byteOffset, f.byteLength);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
+  return b64encode(bin);
+}
+
+/** @param {string} b64 @returns {Float32Array} */
+function b64ToF32(b64) {
+  const bin = b64decode(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i += 1) bytes[i] = bin.charCodeAt(i);
+  return new Float32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+}
+
 function rrf(rankings, k = RRF_K) {
   const scores = new Map();
   for (const ids of rankings) {
