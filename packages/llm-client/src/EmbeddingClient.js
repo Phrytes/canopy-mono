@@ -109,3 +109,105 @@ export class EmbeddingClient {
   /** The model id the provider is pinned to (for index versioning / re-embed). */
   get model()       { return this.#provider.model ?? null; }
 }
+
+/**
+ * `createEmbeddingsClient` — the §3.1-named entry: the Embedder the pod-search V2
+ * indexer/query path builds against. It's the same provider-agnostic + audit-hook
+ * composition as `EmbeddingClient` above, but shaped to the §3.1 contract:
+ *
+ *   const client = createEmbeddingsClient({ provider: ollamaEmbedProvider({ ... }) });
+ *   const { vectors, modelId, dim } = await client.embed(['is the milk thing open?']);
+ *
+ * Differences from the `EmbeddingClient` class (both are exported; existing
+ * consumers of the class are untouched):
+ *   - returns a `{ vectors, modelId, dim }` envelope, not a bare vector array —
+ *     `modelId` is the index-versioning key, `dim` lets the caller size a store.
+ *   - errors are CODES (conventions/localisation.md), never strings:
+ *       · `E_EMBED_EMPTY_INPUT`  — empty array or all-blank inputs (nothing to embed)
+ *       · `E_EMBED_PROVIDER`     — transport/provider failure (wraps a non-coded throw)
+ *       · `E_EMBED_DIM_MISMATCH` — the provider returned vectors of inconsistent dim
+ *
+ * Privacy: identical to the class — the audit hook records only COUNT + DIMS,
+ * never the embedded text.
+ *
+ * @param {object} args
+ * @param {import('./types.js').EmbeddingProvider} args.provider
+ * @param {(entry: object) => Promise<void>|void} [args.audit]
+ * @returns {{ embed: (texts: string[], opts?: object) => Promise<{ vectors: (Float32Array|number[])[], modelId: string|null, dim: number }>, providerId: string, modelId: string|null }}
+ */
+export function createEmbeddingsClient({ provider, audit } = {}) {
+  if (!provider || typeof provider.embed !== 'function') {
+    throw new TypeError('createEmbeddingsClient: provider with embed() required');
+  }
+  const auditHook = typeof audit === 'function' ? audit : () => {};
+  const modelId   = provider.id ?? provider.model ?? null;
+
+  /**
+   * @param {string[]|string} texts
+   * @param {object} [opts]
+   * @returns {Promise<{ vectors: (Float32Array|number[])[], modelId: string|null, dim: number }>}
+   */
+  async function embed(texts, opts = {}) {
+    const input = Array.isArray(texts) ? texts : [texts];
+    // Empty / all-blank input is a caller error, not an empty success — a
+    // silent [] hides "you asked to embed nothing" from the indexer.
+    if (input.length === 0 || input.every((t) => String(t ?? '').trim() === '')) {
+      throw embedError('E_EMBED_EMPTY_INPUT', 'no non-blank text to embed');
+    }
+
+    const ts = Date.now();
+    let vectors;
+    try {
+      vectors = await provider.embed(input, opts);
+    } catch (err) {
+      try {
+        await auditHook({
+          ts, kind: 'embed.error', providerId: provider.id,
+          input:  { count: input.length },                 // NB: no text (privacy)
+          output: { code: err?.code ?? 'E_EMBED_PROVIDER' },
+        });
+      } catch { /* audit failures must never crash the caller */ }
+      // Already a coded embed error (e.g. the provider's own E_EMBED_PROVIDER) →
+      // pass through; any other throw → wrap as a transport/provider failure.
+      throw isEmbedError(err) ? err
+        : embedError('E_EMBED_PROVIDER', err?.message ?? String(err), err);
+    }
+
+    const dim = dimOf(vectors);   // throws E_EMBED_DIM_MISMATCH on ragged output
+    try {
+      await auditHook({
+        ts, kind: 'embed.ok', providerId: provider.id,
+        input:  { count: input.length },
+        output: { count: vectors?.length ?? 0, dims: dim },
+      });
+    } catch { /* same */ }
+
+    return { vectors, modelId, dim };
+  }
+
+  return { embed, providerId: provider.id, modelId };
+}
+
+/** Uniform coded error (code on `.code`, per localisation.md — no user strings). */
+function embedError(code, detail, cause) {
+  return Object.assign(new Error(`${code}: ${detail}`), { code, ...(cause ? { cause } : {}) });
+}
+
+const EMBED_CODES = new Set(['E_EMBED_PROVIDER', 'E_EMBED_DIM_MISMATCH', 'E_EMBED_EMPTY_INPUT']);
+function isEmbedError(err) { return !!err && EMBED_CODES.has(err.code); }
+
+/**
+ * All vectors must share one dim (one vector space) or cosine is meaningless.
+ * Returns the common dim; throws `E_EMBED_DIM_MISMATCH` on a ragged batch.
+ */
+function dimOf(vectors) {
+  const rows = Array.isArray(vectors) ? vectors : [];
+  if (rows.length === 0) return 0;
+  const dim = rows[0]?.length ?? 0;
+  for (const v of rows) {
+    if ((v?.length ?? 0) !== dim) {
+      throw embedError('E_EMBED_DIM_MISMATCH', `expected all vectors dim=${dim}, got ${v?.length ?? 0}`);
+    }
+  }
+  return dim;
+}
