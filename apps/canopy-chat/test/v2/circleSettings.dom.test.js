@@ -68,6 +68,61 @@ describe('renderCircleSettings', () => {
     expect(el.querySelector('[data-role=recipe-status]').textContent).toBe('circle.recipeApply.applied');
   });
 
+  it('B consent-card — with onReviewRecipe wired, Apply shows the consent card; Agree applies with declined opt-outs', async () => {
+    const el = mount();
+    const onReviewRecipe = vi.fn().mockResolvedValue({
+      ok: true,
+      recipe: { capabilities: { task: { atoms: ['complete'] } } },
+      model: {
+        enabledCaps: [{ key: 'tasks complete task', app: 'tasks', atom: 'complete', noun: 'task' }],
+        features: [], settings: [],
+        consent: { keys: ['tasks complete task'], items: [{ key: 'tasks complete task', app: 'tasks', atom: 'complete', noun: 'task', optedOut: false }] },
+      },
+    });
+    const onApplyRecipe = vi.fn().mockResolvedValue('circle.recipeApply.applied');
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, onReviewRecipe, onApplyRecipe });
+
+    el.querySelector('textarea[data-role=recipe-source]').value = '{"capabilities":{"task":{"atoms":["complete"]}}}';
+    el.querySelector('.circle-settings__recipe-apply').click();
+    await Promise.resolve(); await Promise.resolve();
+
+    // review was requested; nothing applied yet — the consent card is shown
+    expect(onReviewRecipe).toHaveBeenCalledWith('{"capabilities":{"task":{"atoms":["complete"]}}}');
+    expect(onApplyRecipe).not.toHaveBeenCalled();
+    const card = document.querySelector('.recipe-consent-card');
+    expect(card).not.toBeNull();
+
+    // decline the optional cap, then Agree → applies with the declined key
+    const box = card.querySelector('input[data-opt-cap="tasks complete task"]');
+    box.checked = false; box.dispatchEvent(new Event('change'));
+    card.querySelector('.recipe-consent-card__agree').click();
+    await Promise.resolve(); await Promise.resolve();
+
+    expect(onApplyRecipe).toHaveBeenCalledTimes(1);
+    const [src, opts] = onApplyRecipe.mock.calls[0];
+    expect(src).toBe('{"capabilities":{"task":{"atoms":["complete"]}}}');
+    expect(opts.declinedKeys).toEqual(['tasks complete task']);
+    expect(el.querySelector('[data-role=recipe-status]').textContent).toBe('circle.recipeApply.applied');
+  });
+
+  it('B consent-card — Decline shows the declined status and applies nothing', async () => {
+    const el = mount();
+    const onReviewRecipe = vi.fn().mockResolvedValue({
+      ok: true, recipe: {},
+      model: { enabledCaps: [], features: [], settings: [], consent: { keys: [], items: [] } },
+    });
+    const onApplyRecipe = vi.fn();
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, onReviewRecipe, onApplyRecipe });
+    el.querySelector('textarea[data-role=recipe-source]').value = '{}';
+    el.querySelector('.circle-settings__recipe-apply').click();
+    await Promise.resolve(); await Promise.resolve();
+    const card = document.querySelector('.recipe-consent-card');
+    const declineBtn = [...card.querySelectorAll('button')].find((b) => !b.classList.contains('recipe-consent-card__agree'));
+    declineBtn.click();
+    expect(onApplyRecipe).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-role=recipe-status]').textContent).toBe('circle.recipeConsent.declined');
+  });
+
   it('renders the consensus toggle and honours custom saveLabel + note', () => {
     const el = mount();
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, saveLabel: 'Send proposal', note: 'pending note' });

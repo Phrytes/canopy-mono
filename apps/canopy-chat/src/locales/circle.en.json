@@ -433,6 +433,40 @@
       "doc": "B #64 — recipe rejected (unknown capability/feature/setting, or untrusted)."
     }
   },
+  "recipeConsent": {
+    "title": {
+      "text": "Review this recipe",
+      "doc": "B consent-card — heading of the reviewed apply-recipe card."
+    },
+    "intro": {
+      "text": "This recipe would change what this circle can do. Review it before applying.",
+      "doc": "B consent-card — intro line under the recipe consent card heading."
+    },
+    "enables": {
+      "text": "This recipe will turn on:",
+      "doc": "B consent-card — label above the list of capabilities/features/settings the recipe enables."
+    },
+    "optional": {
+      "text": "Optional — you can opt out:",
+      "doc": "B consent-card — label above the opt-out checkboxes for the opt-outable capabilities."
+    },
+    "optional_hint": {
+      "text": "Unchecked items won't be enabled for you.",
+      "doc": "B consent-card — hint explaining the opt-out checkboxes."
+    },
+    "agree": {
+      "text": "Agree & apply",
+      "doc": "B consent-card — confirm button: apply the recipe with the chosen opt-outs."
+    },
+    "decline": {
+      "text": "Decline",
+      "doc": "B consent-card — decline button: nothing is applied."
+    },
+    "declined": {
+      "text": "Not applied.",
+      "doc": "B consent-card — status shown after the user declines the recipe."
+    }
+  },
   "kring": {
     "more": {
       "text": "More",

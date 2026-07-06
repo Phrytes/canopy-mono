@@ -25,6 +25,8 @@ import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSE
 import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
 import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 import { renderPairedDevices } from './pairedDevices.js';
+// B · consent-card — REVIEWED recipe apply: load → show the consent card → Agree/Decline (no silent apply).
+import { renderRecipeConsentCard } from './recipeConsentCard.js';
 
 // 5.9a — `view` is the per-circle default-pane axis ('chat' / 'screen' /
 // 'cross-stream'); making it editable here lets an admin pick which surface
@@ -64,6 +66,10 @@ export function renderCircleSettings(container, {
   // B #64 — apply an AUTHORED REMOTE recipe (URL/JSON) as this circle's active policy. Host wires the
   // async load+apply (shared `loadAndApplyRecipe`); the shell only collects the source + shows a status.
   onApplyRecipe,
+  // B · consent-card — REVIEW seam (shared `loadRecipeForReview`): (source) => { ok, model, recipe } | { ok:false, message }.
+  // When wired, applying a recipe first shows the consent card; onApplyRecipe(source, { declinedKeys, recipe, model })
+  // is called only on Agree, with the user's declined optional caps.
+  onReviewRecipe,
   // B · Slice 2 — the merged manifest sources; when present, render the manifest-driven settings form
   // + the per-skill freedom matrix (rulings Q1/Q3). Absent ⇒ those sections don't render (older callers).
   sources = [],
@@ -101,8 +107,11 @@ export function renderCircleSettings(container, {
     container.appendChild(guided);
   }
 
-  // B #64 — apply an authored remote recipe. Opt-in (host wires onApplyRecipe); the manual form still works.
-  if (typeof onApplyRecipe === 'function') {
+  // B #64 + consent-card — apply an authored remote recipe. Opt-in; the manual form still works.
+  // When `onReviewRecipe` is wired (production), applying a recipe is a REVIEWED action: load → show the
+  // consent card (what it would enable + opt-out checkboxes) → on Agree apply, on Decline nothing. A caller
+  // that wires ONLY `onApplyRecipe` (no review seam) keeps the older immediate-apply behaviour.
+  if (typeof onReviewRecipe === 'function' || typeof onApplyRecipe === 'function') {
     const sec = section(tr('circle.recipeApply.heading'));
     sec.classList.add('circle-settings__recipe');
     const input = document.createElement('textarea');
@@ -123,8 +132,31 @@ export function renderCircleSettings(container, {
       apply.disabled = true;
       status.textContent = '';
       try {
-        const msg = await onApplyRecipe(src);
-        if (typeof msg === 'string' && msg) status.textContent = msg;
+        if (typeof onReviewRecipe === 'function') {
+          // REVIEWED path: load + build the review model, then show the consent card. Nothing is applied
+          // until the user Agrees; Agree flows through the host's onApplyRecipe with the declined opt-outs.
+          const res = await onReviewRecipe(src);
+          if (!res || res.ok === false || !res.model) {
+            status.textContent = (res && typeof res.message === 'string' && res.message) || tr('circle.recipeApply.error');
+          } else {
+            renderRecipeConsentCard(res.model, {
+              t: tr,
+              onDecline: () => { status.textContent = tr('circle.recipeConsent.declined'); },
+              onAgree: async ({ declinedKeys }) => {
+                apply.disabled = true;
+                try {
+                  const msg = await onApplyRecipe(src, { declinedKeys, recipe: res.recipe, model: res.model });
+                  if (typeof msg === 'string' && msg) status.textContent = msg;
+                } catch { status.textContent = tr('circle.recipeApply.error'); }
+                finally { apply.disabled = false; }
+              },
+            });
+          }
+        } else {
+          // Fallback (older callers): immediate apply, no review card.
+          const msg = await onApplyRecipe(src);
+          if (typeof msg === 'string' && msg) status.textContent = msg;
+        }
       } catch { status.textContent = tr('circle.recipeApply.error'); }
       finally { apply.disabled = false; }
     });
