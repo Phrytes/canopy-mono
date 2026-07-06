@@ -68,6 +68,7 @@
     "@canopy/pod-onboarding": "workspace:*",
     "@canopy/pod-routing": "workspace:*",
     "@canopy/pod-search": "workspace:*",
+    "@canopy/recipe-loader": "workspace:*",
     "@canopy/sdk": "workspace:*",
     "@canopy/secure-agent": "workspace:*",
     "@canopy/vault": "workspace:*",
