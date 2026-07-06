@@ -12,6 +12,13 @@
  *   true for cloud providers; consumers can use this to surface a
  *   privacy warning before calling.
  *
+ * @property {string} [endpoint]
+ *   Optional endpoint label (base URL) — read by usage metering to attribute
+ *   events and handy for debugging. Additive; core dispatch never reads it.
+ *
+ * @property {string} [model]
+ *   Optional model id label — read by usage metering. Additive.
+ *
  * @property {(req: LlmRequest) => Promise<LlmInvocationResult>} invoke
  */
 

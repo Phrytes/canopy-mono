@@ -32,11 +32,17 @@
  * @param {(req: import('../types.js').LlmRequest) => Promise<import('../types.js').LlmInvocationResult>} [args.invoke]
  *   Function mode: full control.  Overrides `responses` if provided.
  * @param {string} [args.id='mock']
+ * @param {string} [args.model]     optional model label (read by usage metering)
+ * @param {string} [args.endpoint]  optional endpoint label (read by usage metering)
  * @returns {import('../types.js').LlmProvider}
  */
-export function mockProvider({ responses, invoke, id = 'mock' } = {}) {
+export function mockProvider({ responses, invoke, id = 'mock', model, endpoint } = {}) {
+  const labels = {
+    ...(model    !== undefined ? { model }    : {}),
+    ...(endpoint !== undefined ? { endpoint } : {}),
+  };
   if (typeof invoke === 'function') {
-    return { id, requiresKey: false, invoke };
+    return { id, requiresKey: false, ...labels, invoke };
   }
   if (!Array.isArray(responses) || responses.length === 0) {
     throw new TypeError('mockProvider: provide `responses[]` or `invoke()`');
@@ -45,6 +51,7 @@ export function mockProvider({ responses, invoke, id = 'mock' } = {}) {
   return {
     id,
     requiresKey: false,
+    ...labels,
     async invoke() {
       const r = responses[cursor % responses.length];
       cursor++;

@@ -18,30 +18,55 @@
  *     audit:    (entry) => botPod.appendAudit(entry),
  *   });
  *   const result = await llm.invoke({ system, messages, tools });
+ *
+ * Per-customer usage metering (optional, injected seam — see metering.js):
+ *
+ *   const llm = new LlmClient({
+ *     provider, meter: usageSink, customerId: 'acme', endpoint: 'enclave',
+ *   });
+ *   // …or attribute per call (a shared multi-tenant client):
+ *   await llm.invoke(req, { customerId: 'acme' });
+ *
+ * When no `meter` is supplied the client behaves byte-identically to before.
  */
+import { usageForCompletion } from './metering.js';
 
 export class LlmClient {
   /** @type {import('./types.js').LlmProvider} */ #provider;
   /** @type {(entry: import('./types.js').AuditEntry) => Promise<void>|void} */ #audit;
+  /** @type {import('./metering.js').MeterSink|null} */ #meter;
+  #customerId; #endpoint; #model;
 
   /**
    * @param {object} args
    * @param {import('./types.js').LlmProvider} args.provider
    * @param {(entry: import('./types.js').AuditEntry) => Promise<void>|void} [args.audit]
+   * @param {import('./metering.js').MeterSink} [args.meter]
+   *   Usage sink; called once per successful invoke with a `UsageEvent`.
+   *   Omit for the exact prior behaviour (no metering).
+   * @param {string} [args.customerId]  default tenant attribution (per-call overridable)
+   * @param {string} [args.endpoint]    endpoint label for events (defaults to provider.endpoint)
+   * @param {string} [args.model]       model label for events (defaults to provider.model)
    */
-  constructor({ provider, audit }) {
+  constructor({ provider, audit, meter, customerId, endpoint, model } = {}) {
     if (!provider || typeof provider.invoke !== 'function') {
       throw new TypeError('LlmClient: provider with invoke() required');
     }
-    this.#provider = provider;
-    this.#audit    = typeof audit === 'function' ? audit : () => {};
+    this.#provider   = provider;
+    this.#audit      = typeof audit === 'function' ? audit : () => {};
+    this.#meter      = typeof meter === 'function' ? meter : null;
+    this.#customerId = customerId ?? null;
+    this.#endpoint   = endpoint ?? provider.endpoint ?? null;
+    this.#model      = model ?? provider.model ?? null;
   }
 
   /**
    * @param {import('./types.js').LlmRequest} req
+   * @param {{customerId?: string, endpoint?: string, model?: string}} [ctx]
+   *   Per-call metering attribution; overrides the construction-time defaults.
    * @returns {Promise<import('./types.js').LlmInvocationResult>}
    */
-  async invoke(req) {
+  async invoke(req, ctx = {}) {
     const ts = Date.now();
     let result;
     try {
@@ -63,6 +88,21 @@ export class LlmClient {
         output: result,
       });
     } catch { /* same */ }
+    if (this.#meter) {
+      try {
+        const usage = usageForCompletion(req, result);
+        this.#meter({
+          customerId:       ctx.customerId ?? this.#customerId,
+          endpoint:         ctx.endpoint   ?? this.#endpoint,
+          model:            ctx.model      ?? this.#model,
+          promptTokens:     usage.promptTokens,
+          completionTokens: usage.completionTokens,
+          requests:         1,
+          estimated:        usage.estimated,
+          kind:             'completion',
+        });
+      } catch { /* metering must never crash the agent */ }
+    }
     return result;
   }
 

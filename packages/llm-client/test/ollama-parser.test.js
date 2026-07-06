@@ -425,6 +425,21 @@ describe('ollamaProvider — apiKey (Privatemode / OpenAI-gateway auth)', () => 
     await provider.invoke({ system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [] });
     expect(captured.Authorization).toBeUndefined();
   });
+
+  it('merges the endpoint headers block into every request', async () => {
+    let captured;
+    const fakeFetch = async (url, init) => { captured = init.headers; return okResp(); };
+    const provider = ollamaProvider({ fetchFn: fakeFetch, headers: { 'X-Tenant': 'acme' } });
+    await provider.invoke({ system: 's', messages: [{ role: 'user', content: 'hi' }], tools: [] });
+    expect(captured['X-Tenant']).toBe('acme');
+    expect(captured['Content-Type']).toBe('application/json');   // base headers intact
+  });
+
+  it('exposes endpoint + model labels for metering', () => {
+    const provider = ollamaProvider({ baseUrl: 'http://h:11434/', model: 'm' });
+    expect(provider.endpoint).toBe('http://h:11434');
+    expect(provider.model).toBe('m');
+  });
 });
 
 describe('parseOpenAIChatResponse — loose-recovery integration', () => {
