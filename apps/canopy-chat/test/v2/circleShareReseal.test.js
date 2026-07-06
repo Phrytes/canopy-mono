@@ -141,6 +141,103 @@ describe('slice 3 — REAL-KEY re-seal (CANONICAL in-place via the enforcement s
   });
 });
 
+describe('option 2 — trusted/registered ride the COPY re-seal mechanism (real distinct keys)', () => {
+  // Shared real-key setup: a source group key (bob/eve NOT in it), a recipient (bob), a non-recipient (eve).
+  function makeWorld() {
+    const groupKey = generateGroupKey();
+    const source = groupKeyStrategy({ groupKey });
+    const bob = generateKeypair();
+    const eve = generateKeypair();
+    const svc = makeCircleLists();
+    const resolveService = async () => svc;
+    const sharing = fakeSharing();
+    const enforcement = makeCircleShareEnforcement({ sharing, resourceUriFor, open: source.open });
+    const enforcementFor = (cid) => (cid === 'A' ? enforcement : null);
+    return { svc, resolveService, sharing, enforcement, enforcementFor, bob, eve };
+  }
+
+  it('TRUSTED posture: writes a recipient-sealed copy; bob (recipient) decrypts, eve (non-recipient, granted) cannot', async () => {
+    const { svc, resolveService, sharing, enforcementFor, bob, eve } = makeWorld();
+    const src = await svc.createList('A', 'trusted plan', 'alice');
+
+    const r = await shareItemAcrossCircles({
+      resolveService, enforcementFor, policyOf: () => ({ sharePosture: 'trusted' }),
+      itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice',
+      recipients: ['webid:bob'], recipientKeys: [bob.publicKey], sealCopy: sealCopyToRecipients,
+    });
+    expect(r.ok).toBe(true);
+
+    // Source untouched; a SEPARATE sealed copy was minted (host sees ciphertext, not plaintext).
+    expect((await svc.stores.getStore('A').get(src.id)).text).toBe('trusted plan');
+    const copyId = r.ref.sourceId;
+    expect(copyId).not.toBe(src.id);
+    const copyAtRest = await svc.stores.getStore('A').get(copyId);
+    expect(isSealed(copyAtRest.text)).toBe(true);
+    expect(copyAtRest.text).not.toContain('trusted plan');
+
+    // Bob decrypts with HIS key.
+    const bobOpen = (t) => recipientStrategy({ privateKey: bob.privateKey }).open(t);
+    const forBob = await listSharedResolved({ resolveService, enforcementFor, circleId: 'B', recipient: 'webid:bob', readerOpen: bobOpen });
+    expect(forBob.map((x) => x.item.text)).toEqual(['trusted plan']);
+
+    // Eve — granted the ACP read, but her wrong key can't open → dropped, no leak.
+    await sharing.grant({ resourceUri: resourceUriFor(r.ref), agent: 'webid:eve', modes: ['read'] });
+    const eveOpen = (t) => recipientStrategy({ privateKey: eve.privateKey }).open(t);
+    const forEve = await listSharedResolved({ resolveService, enforcementFor, circleId: 'B', recipient: 'webid:eve', readerOpen: eveOpen });
+    expect(forEve).toEqual([]);
+  });
+
+  it('REGISTERED posture (admin initiator): writes a recipient-sealed copy; bob decrypts, eve (granted) cannot', async () => {
+    const { svc, resolveService, sharing, enforcementFor, bob, eve } = makeWorld();
+    const src = await svc.createList('A', 'registered plan', 'alice');
+
+    // alice IS an admin → registered gate passes → copy re-seal fires.
+    const r = await shareItemAcrossCircles({
+      resolveService, enforcementFor,
+      policyOf: () => ({ sharePosture: 'registered', admins: ['alice'] }),
+      itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice',
+      recipients: ['webid:bob'], recipientKeys: [bob.publicKey], sealCopy: sealCopyToRecipients,
+    });
+    expect(r.ok).toBe(true);
+
+    expect((await svc.stores.getStore('A').get(src.id)).text).toBe('registered plan');
+    const copyId = r.ref.sourceId;
+    expect(copyId).not.toBe(src.id);
+    expect(isSealed((await svc.stores.getStore('A').get(copyId)).text)).toBe(true);
+
+    const bobOpen = (t) => recipientStrategy({ privateKey: bob.privateKey }).open(t);
+    const forBob = await listSharedResolved({ resolveService, enforcementFor, circleId: 'B', recipient: 'webid:bob', readerOpen: bobOpen });
+    expect(forBob.map((x) => x.item.text)).toEqual(['registered plan']);
+
+    await sharing.grant({ resourceUri: resourceUriFor(r.ref), agent: 'webid:eve', modes: ['read'] });
+    const eveOpen = (t) => recipientStrategy({ privateKey: eve.privateKey }).open(t);
+    const forEve = await listSharedResolved({ resolveService, enforcementFor, circleId: 'B', recipient: 'webid:eve', readerOpen: eveOpen });
+    expect(forEve).toEqual([]);
+  });
+
+  it('REGISTERED posture (NON-admin initiator): slice-2 gate refuses; NO copy is written, nothing surfaces to B', async () => {
+    const { svc, resolveService, enforcementFor, bob } = makeWorld();
+    const src = await svc.createList('A', 'registered plan', 'alice');
+    const beforeIds = (await svc.stores.getStore('A').list()).map((x) => x.id);
+
+    // mallory is NOT in admins → registered gate refuses BEFORE any re-seal.
+    const r = await shareItemAcrossCircles({
+      resolveService, enforcementFor,
+      policyOf: () => ({ sharePosture: 'registered', admins: ['alice'] }),
+      itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'mallory',
+      recipients: ['webid:bob'], recipientKeys: [bob.publicKey], sealCopy: sealCopyToRecipients,
+    });
+    expect(r).toEqual({ ok: false, error: 'sharing-admin-only' });
+
+    // No copy object was minted in the source store, and nothing surfaced into B.
+    const afterIds = (await svc.stores.getStore('A').list()).map((x) => x.id);
+    expect(afterIds).toEqual(beforeIds);
+    const bobOpen = (t) => recipientStrategy({ privateKey: bob.privateKey }).open(t);
+    const forBob = await listSharedResolved({ resolveService, enforcementFor, circleId: 'B', recipient: 'webid:bob', readerOpen: bobOpen });
+    expect(forBob).toEqual([]);
+  });
+});
+
 describe('slice 3a — recipientSealKeyFromMembers (roster lookup, deny-by-default)', () => {
   const bob = generateKeypair();
   it('returns the sealing pubkey for a roster member (stoop listGroupMembers shape)', () => {
