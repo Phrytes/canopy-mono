@@ -13,6 +13,9 @@ export {
   queryIndex, semanticQuery, serializeIndex, parseIndex, shardKeyFor,
 } from './sealedIndex.js';
 export { createControlAgent } from './controlAgent.js';
+export {
+  createResourceKeyGrant, openGrantedResource, resourceScope,
+} from './resourceKeyGrant.js';
 export { createPodKeyStore, readGroupKey } from './podKeyStore.js';
 export { createMemberSealingIdentity } from './memberIdentity.js';
 export { resolveCircleStorage, circleStorageClient } from './resolveCircleStorage.js';
