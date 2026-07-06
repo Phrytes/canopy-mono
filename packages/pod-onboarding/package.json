@@ -5,7 +5,8 @@
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./resourceUri": "./src/resourceUri.js"
   },
   "scripts": {
     "test": "vitest run",
