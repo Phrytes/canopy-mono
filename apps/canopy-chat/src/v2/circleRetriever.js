@@ -18,14 +18,33 @@
  * the Privatemode enclave / Ollama / any `/v1/embeddings` route — see
  * `circleEmbedProviders` + `embedPicker`), ranks by cosine, and GRACEFULLY FALLS
  * BACK to lexical if the embedder is absent or errors (enclave unreachable).
- * `makeCircleRetriever` auto-tiers (semantic when an embedder is configured, else
- * lexical). The gate/dispatch/interpret are unchanged — same `retrieve` seam.
+ * The gate/dispatch/interpret are unchanged — same `retrieve` seam.
  *
  * Placement (invariant #7): embeddings go in the SAME trust boundary as the chat
- * LLM — enclave for sealed circles, NOT a plain remote. (V0 here embeds items
- * on-query; the amortized path — store sealed per-item vectors at index-time +
- * `sealedIndex.semanticQuery` — is a follow-up; the `embed` seam is identical.)
+ * LLM — enclave for sealed circles, NOT a plain remote.
+ *
+ * ── L RAG-wiring (this file, feature/l-rag-semantic-retrieve) ──
+ * `makeCircleRetriever` now backs retrieval with a PERSISTENT `@canopy/pod-search`
+ * hybrid index (`makePodSearchRetriever`) instead of re-embedding the whole
+ * candidate set on every query. Each circle's items are indexed ONCE into a
+ * per-circle `PodSearch` (content-hash cache ⇒ an unchanged item is never
+ * re-embedded; a `vectorStore` ⇒ vectors survive a restart, under
+ * `private/state/search-index/` by construction — never `sharing/`), and each
+ * `retrieve()` runs `query({mode:'hybrid'})` (RRF k=60 of the lexical + cosine
+ * rankings — a synonym/paraphrase match a pure-lexical query misses). The
+ * embedder is resolved from the circle's embed policy exactly as folio `/zoek`
+ * does (`resolveCircleEmbedder`, `llmTool`/`embedTool` gate): NO embedder /
+ * `llmTool:'off'` ⇒ hybrid silently degrades to LEXICAL with ZERO embed calls.
+ * The retriever's OUTPUT SHAPE is unchanged (`{id,type,text}` context entries the
+ * token gate + `interpret.contextLine` consume) — the PodSearch backing is an
+ * internal upgrade. The on-the-fly `makeSemanticRetriever`/`lexicalRank` path is
+ * kept as a graceful fallback behind the same gate (a PodSearch build error).
+ *
+ * DEFERRED SEAM: the feedback token-gate (a separate branch) can reuse this same
+ * `makePodSearchRetriever` for its corpus; wire it there, not here.
  */
+
+import { PodSearch, hash as defaultHash } from '@canopy/pod-search';
 
 // Minimal bilingual stop-word set (EN + NL) so common glue words don't inflate
 // the overlap score. Kept tiny on purpose — it's a relevance nudge, not an NLP
@@ -168,15 +187,158 @@ export function makeSemanticRetriever({ embed, loadItems, limit = 5, minScore = 
   };
 }
 
-/**
- * The gate-facing retriever factory: auto-tiers — SEMANTIC when an `embed` is
- * configured (resolved from the circle's embed policy via `resolveCircleEmbedder`),
- * else TIER-1 LEXICAL. One call site for the shells; the seam is the same.
+/* ─── PodSearch-backed retriever (L RAG-wiring) ─────────────────────────────
  *
- * @param {{embed?:Function, loadItems:Function, limit?:number}} a
+ * The circle-item corpus wired onto `@canopy/pod-search` — the persistent,
+ * hybrid sibling of the on-the-fly tiers above. Mirrors folio's `/zoek`
+ * consumer (`apps/folio/src/folioSearch.js`): a tiny schema, an embedder
+ * normaliser, a row projector, then index-once + `query({mode:'hybrid'})`.
  */
-export function makeCircleRetriever({ embed, loadItems, limit = 5 } = {}) {
-  return typeof embed === 'function'
-    ? makeSemanticRetriever({ embed, loadItems, limit })
-    : makeLexicalRetriever({ loadItems, limit });
+
+/**
+ * The circle-item schema. `id` is the primary key; `text` (the item's label) is
+ * the lexically-searchable AND embeddable surface; `kind` is a facet. `oid`
+ * (the item's ORIGINAL id, possibly null) rides along as a stored passthrough so
+ * the context entry round-trips to the exact `toContextEntry` shape.
+ */
+export const CIRCLE_ITEM_SCHEMA = {
+  fields: {
+    id:   { primary: true },
+    text: { fts: true, weight: 1, embed: true },
+    kind: { facet: true },
+  },
+};
+
+/**
+ * Project a loaded circle item (the `{id,label,kind,…}` `loadCircleItems`
+ * returns — tolerant of plain strings / other shapes too) onto a PodSearch row.
+ * A missing id is synthesised (from the text, else the batch index) so the row
+ * is always indexable; the ORIGINAL id is preserved in `oid` for round-trip.
+ *
+ * @param {object|string} row
+ * @param {number} i  batch index (id-of-last-resort)
+ */
+export function circleItemFromRow(row, i = 0) {
+  const text = searchableText(row);
+  const isObj = row != null && typeof row === 'object';
+  const oid = isObj ? (row.id ?? null) : null;
+  const kind = isObj ? (row.kind ?? row.type ?? null) : null;
+  const id = oid != null ? String(oid) : (text ? `t:${text}` : `i:${i}`);
+  const item = { id, text, oid };
+  if (kind != null) item.kind = String(kind);
+  return item;
+}
+
+/**
+ * Rebuild the `{id,type,text}` context entry from a PodSearch result row —
+ * byte-identical to `toContextEntry` for a normalised object item, so the token
+ * gate / `interpret.contextLine` contract is unchanged.
+ */
+function indexedToContextEntry(item) {
+  const kind = item?.kind ?? null;
+  const label = item?.text || (item?.oid != null ? String(item.oid) : '');
+  return { id: item?.oid ?? null, type: kind, text: kind ? `${kind}: ${label}` : label };
+}
+
+/**
+ * Normalise an injected embedder to the shape PodSearch reads (`{id, dim?, embed}`).
+ * Same adapter folio uses: a mock provider already carries `.id`; an
+ * `@canopy/llm-client` `EmbeddingClient` exposes `.model`/`.providerId` instead,
+ * so the resolved circle embedder can be handed in RAW. Anything without an
+ * `embed()` ⇒ `undefined` (lexical-only, no embed call).
+ */
+function normalizeEmbedder(e) {
+  if (!e || typeof e.embed !== 'function') return undefined;
+  if (typeof e.id === 'string') return e;
+  const id = e.model ?? e.providerId ?? e.modelId ?? 'circle-embedder';
+  return { id, ...(e.dim !== undefined ? { dim: e.dim } : {}), embed: (t, o) => e.embed(t, o) };
+}
+
+/**
+ * PodSearch-backed circle retriever. Keeps a per-circle `PodSearch` (keyed by
+ * `ctx.circleId`, scoped `<scope>/<circleId>` on the store so circles never
+ * bleed into each other), indexes that circle's loaded items into it, and runs a
+ * `hybrid` query. Restart-safe when a `vectorStore` is injected; embed-once via
+ * the content-hash cache regardless. Degrades GRACEFULLY: a null/absent embedder
+ * ⇒ lexical-only hybrid, NO embed call; a PodSearch failure ⇒ the on-the-fly
+ * `makeSemanticRetriever`/`lexicalRank` fallback (same gate, same output shape).
+ *
+ * `embedder` may be an embedder OBJECT, or a resolver `(ctx)=>embedder|null`
+ * (sync/async) — the latter re-checks the circle's embed policy per turn and
+ * rebuilds the circle's index when the resolved embedder identity changes
+ * (mirrors folio's `setNoteEmbedder`).
+ *
+ * @param {{embedder?:object|Function, loadItems:Function, limit?:number,
+ *          hash?:Function, vectorStore?:object, scope?:string, minScore?:number,
+ *          audit?:Function}} a
+ * @returns {(text:string, ctx?:object)=>Promise<Array>}
+ */
+export function makePodSearchRetriever({
+  embedder, loadItems, limit = 5,
+  hash = defaultHash, vectorStore, scope = 'circle-rag', minScore, audit,
+} = {}) {
+  const resolve = typeof embedder === 'function' ? embedder : () => embedder;
+  const cache = new Map(); // circleKey → { search, embedderRef }
+
+  return async (text, ctx = {}) => {
+    if (typeof loadItems !== 'function') return [];
+    let items = [];
+    try { items = (await loadItems(ctx)) || []; } catch { return []; }
+
+    let resolved;
+    try { resolved = await resolve(ctx); } catch { resolved = null; }
+    const emb = normalizeEmbedder(resolved);
+
+    const circleKey = ctx?.circleId != null ? String(ctx.circleId) : '__default__';
+    let entry = cache.get(circleKey);
+    if (!entry || entry.embedderRef !== (emb ?? null)) {
+      entry = {
+        embedderRef: emb ?? null,
+        search: new PodSearch({
+          schema: CIRCLE_ITEM_SCHEMA,
+          embedder: emb, hash, vectorStore,
+          scope: `${scope}/${circleKey}`, audit,
+        }),
+      };
+      cache.set(circleKey, entry);
+    }
+
+    const rows = items.map((it, i) => circleItemFromRow(it, i)).filter((r) => r.text);
+    try {
+      if (rows.length) await entry.search.indexBatch(rows);
+      const res = await entry.search.query({ text: String(text ?? ''), mode: 'hybrid', limit, minScore });
+      return (res?.items || []).map(indexedToContextEntry);
+    } catch {
+      // PodSearch build/index/query failed → graceful on-the-fly fallback, same
+      // gate + same output shape. Reuse the already-loaded items (no re-load).
+      if (emb) {
+        return makeSemanticRetriever({ embed: emb.embed, loadItems: () => items, limit, minScore: minScore ?? 0 })(text, ctx);
+      }
+      return lexicalRank(items, text, { limit });
+    }
+  };
+}
+
+/**
+ * The gate-facing retriever factory. Backed by the persistent `@canopy/pod-search`
+ * hybrid index (`makePodSearchRetriever`): SEMANTIC + lexical fused when an
+ * embedder is configured (resolved from the circle's embed policy via
+ * `resolveCircleEmbedder`), else LEXICAL-only with zero embed calls. One call
+ * site for the shells; the `retrieve` seam + `{id,type,text}` output are the same.
+ *
+ * Back-compat: a bare `embed(texts)→vectors` fn is still accepted (wrapped into
+ * an embedder object) so the existing shell wiring / tests keep working; prefer
+ * passing `embedder` (an object or a policy resolver) for per-turn gating +
+ * persistence seams (`vectorStore`, `scope`, `hash`, `minScore`, `audit`).
+ *
+ * @param {{embed?:Function, embedder?:object|Function, loadItems:Function,
+ *          limit?:number, hash?:Function, vectorStore?:object, scope?:string,
+ *          minScore?:number, audit?:Function}} a
+ */
+export function makeCircleRetriever({
+  embed, embedder, loadItems, limit = 5,
+  hash, vectorStore, scope, minScore, audit,
+} = {}) {
+  const resolvedEmbedder = embedder ?? (typeof embed === 'function' ? { id: 'circle-embed', embed } : undefined);
+  return makePodSearchRetriever({ embedder: resolvedEmbedder, loadItems, limit, hash, vectorStore, scope, minScore, audit });
 }
