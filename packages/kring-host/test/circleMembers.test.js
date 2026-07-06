@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeCircleMembers, circleMemberCount } from '../../src/v2/circleMembers.js';
+import { normalizeCircleMembers, circleMemberCount } from '../src/circleMembers.js';
 
 describe('normalizeCircleMembers', () => {
   it('maps the raw stoop skill shape { members: [{ webid, handle, displayName }] }', () => {

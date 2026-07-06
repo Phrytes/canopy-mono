@@ -4,7 +4,7 @@
  * Pure JS factory; no DOM/RN dependencies.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { createDeliveryStateMap } from '../../src/v2/deliveryState.js';
+import { createDeliveryStateMap } from '../src/deliveryState.js';
 
 describe('createDeliveryStateMap', () => {
   it('returns null for unknown ids', () => {

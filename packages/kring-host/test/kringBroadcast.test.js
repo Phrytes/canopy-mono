@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { kringChatMessageEvent, broadcastKringFanOut, classifyFanOut } from '../../src/v2/kringBroadcast.js';
+import { kringChatMessageEvent, broadcastKringFanOut, classifyFanOut } from '../src/kringBroadcast.js';
 
 const mapOf = () => {
   const m = new Map();
