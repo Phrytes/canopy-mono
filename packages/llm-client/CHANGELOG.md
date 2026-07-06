@@ -2,6 +2,35 @@
 
 Versioning per `Project Files/Substrates/policies.md`.
 
+## [Unreleased]
+
+### Added — configurable endpoint block + per-customer usage metering (Objective S)
+
+Two additive, backward-compatible seams. When their args are omitted, every
+existing `LlmClient` / `EmbeddingClient` / provider construction behaves
+byte-identically.
+
+**Configurable endpoint block** — `resolveEndpoint(config, {name?, customerId?})`
+(`src/endpoints.js`, also exported as `@canopy/llm-client/endpoints`). An
+`EndpointConfig` names endpoints (`{baseUrl, model, apiKey?, headers?}`) with an
+optional `default` and a `customers` map; the resolver returns a flat arg bag that
+spreads straight into `ollamaProvider(...)` / `openaiEmbeddingsProvider(...)`.
+Selection order: explicit `name` → `customers[customerId]` → `config.default` →
+the sole endpoint. Providers now accept an optional `headers` block (merged into
+every request, alongside `apiKey`) and expose `endpoint` + `model` labels.
+
+**Per-customer usage metering** — an injectable sink (no global state, no DB).
+Pass `meter` (+ `customerId` / `endpoint` / `model`, or per-call `ctx`) to a
+client; after each successful call it emits one `UsageEvent`
+`{customerId, endpoint, model, promptTokens, completionTokens, requests,
+estimated, kind}`. Tokens come from the provider response when exposed
+(OpenAI-style `usage.{prompt,completion}_tokens` **or** Ollama native
+`prompt_eval_count`/`eval_count`); otherwise a char/4 estimate flagged
+`estimated: true`. `createUsageAggregator()` (`src/metering.js`, exported as
+`@canopy/llm-client/metering`) is an in-memory roll-up for tests. Sink failures
+never crash the call (same guard as the audit hook). Embeddings are metered as
+requests + estimated prompt tokens (completion 0).
+
 ## [0.2.0] — 2026-05-03
 
 ### Added — loose tool-call recovery for small / Q4 models

@@ -7,6 +7,8 @@
   "exports": {
     ".":                          "./src/index.js",
     "./routeSafety":              "./src/routeSafety.js",
+    "./endpoints":                "./src/endpoints.js",
+    "./metering":                 "./src/metering.js",
     "./providers/ollama":         "./src/providers/ollama.js",
     "./providers/mock":           "./src/providers/mock.js",
     "./providers/embeddings":     "./src/providers/embeddings.js",

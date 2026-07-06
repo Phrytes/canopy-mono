@@ -58,6 +58,9 @@ export function ollamaProvider({
   // `Authorization: Bearer <project-key>`. Sent only when set, so the default
   // local-Ollama path is unchanged.
   apiKey         = null,
+  // Optional extra headers merged into every request (e.g. an endpoint's auth/routing
+  // block from the endpoint config). Additive: unset → identical headers as before.
+  headers        = null,
   // Abort the request after this many ms so an unreachable / stalled endpoint (e.g. a dropped
   // `adb reverse` to a local ollama) fails FAST and gracefully instead of hanging the turn for
   // minutes (device-verify 2026-06-11: a flaky reverse hung an interpret call ~5 min). 0/false
@@ -67,6 +70,10 @@ export function ollamaProvider({
   return {
     id: 'ollama',
     requiresKey: false,
+    // Endpoint + model labels — used by usage metering to attribute events, and
+    // handy for debugging. Additive fields; nothing existing reads them.
+    endpoint: baseUrl.replace(/\/$/, ''),
+    model,
     async invoke({ system, messages, tools, options }) {
       const opts = { ...(defaultOptions ?? {}), ...(options ?? {}) };
       const baseBody = {
@@ -97,6 +104,7 @@ export function ollamaProvider({
             'Content-Type': 'application/json',
             'Accept':       'application/json',
             ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            ...(headers && typeof headers === 'object' ? headers : {}),
           },
           body:    JSON.stringify(body),
           ...(ctl ? { signal: ctl.signal } : {}),

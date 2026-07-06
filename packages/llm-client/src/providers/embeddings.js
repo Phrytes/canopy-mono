@@ -37,6 +37,8 @@ export function openaiEmbeddingsProvider({
   baseUrl,
   model     = DEFAULT_MODEL,
   apiKey    = null,
+  // Optional extra headers merged into every request (endpoint auth/routing block).
+  headers   = null,
   fetchFn   = globalThis.fetch,
   timeoutMs = 12000,
 } = {}) {
@@ -50,6 +52,8 @@ export function openaiEmbeddingsProvider({
   return {
     id: 'openai-embeddings',
     model,
+    // Endpoint label for usage metering / debugging (additive).
+    endpoint: host,
     requiresKey: !!apiKey,
     /**
      * @param {string[]|string} texts
@@ -71,6 +75,7 @@ export function openaiEmbeddingsProvider({
             'Content-Type': 'application/json',
             'Accept':       'application/json',
             ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+            ...(headers && typeof headers === 'object' ? headers : {}),
           },
           body: JSON.stringify({ model: opts.model ?? model, input }),
           ...(ctl ? { signal: ctl.signal } : {}),
