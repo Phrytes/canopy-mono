@@ -13,7 +13,12 @@
     "./kringBroadcast": "./src/kringBroadcast.js",
     "./mappingsStore":  "./src/mappingsStore.js",
     "./objectVersionsStorage": "./src/objectVersionsStorage.js",
-    "./mappingsLoader":        "./src/mappingsLoader.js"
+    "./mappingsLoader":        "./src/mappingsLoader.js",
+    "./circleSkills":     "./src/circleSkills.js",
+    "./circleHop":        "./src/circleHop.js",
+    "./findSkillMatches": "./src/findSkillMatches.js",
+    "./hopPrompt":        "./src/hopPrompt.js",
+    "./findExtras":       "./src/findExtras.js"
   },
   "scripts": {
     "test":       "vitest run",

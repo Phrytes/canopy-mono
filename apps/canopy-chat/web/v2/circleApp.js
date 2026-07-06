@@ -48,7 +48,7 @@ import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
 import { makeCircleLookup } from '../../src/v2/circleLookup.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
-import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '../../src/v2/followUp.js';
+import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@canopy/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 // B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
@@ -59,7 +59,7 @@ import { buildCapabilityMatrix } from '@canopy/app-manifest';
 import { renderListBlock } from './listScreen.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../../src/v2/mappingsStore.js';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
 import { verifyMappings, mappingsToSources } from '../../src/mappings.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';
 import { buildConsentModel, installMapping } from '../../src/v2/extensionInstall.js';
@@ -126,9 +126,9 @@ import { EventLog } from '../../src/eventLog.js';
 // δ.2 — per-message delivery state for optimistic kring chat sends.
 // Sibling of the EventLog (which stays append-only); read at render
 // time by circleKring to surface pending/failed icons.
-import { createDeliveryStateMap } from '../../src/v2/deliveryState.js';
+import { createDeliveryStateMap } from '@canopy/kring-host/deliveryState';
 // Phase 2 — shared kring chat send primitives (optimistic event + best-effort fan-out), web + mobile.
-import { kringChatMessageEvent, broadcastKringFanOut } from '../../src/v2/kringBroadcast.js';
+import { kringChatMessageEvent, broadcastKringFanOut } from '@canopy/kring-host/kringBroadcast';
 // "only you" vs "whole kring" — message scope (a data property; the badge renders it).
 import { scopeForReply } from '../../src/v2/messageScope.js';
 import {
@@ -178,7 +178,7 @@ import {
 } from '../../src/v2/userScreens.js';
 import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
-import { makeCircleLists } from '../../src/v2/circleLists.js';  // cluster K · K2 — composable lists (shared web≡mobile)
+import { makeCircleLists } from '@canopy/kring-host/circleLists';  // cluster K · K2 — composable lists (shared web≡mobile)
 // cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
 import { makeCircleShareEnforcement, sealItem } from '@canopy/item-store';
@@ -426,8 +426,8 @@ import { renderRecipeEditor } from './circleRecipeEditor.js';
 import { renderCatchUpChooser } from './catchUpChooserModal.js';
 import { renderScreensPicker } from './circleScreensPicker.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
-import { normalizeHopMode } from '../../src/v2/circleHop.js';
-import { mergeSkill, normalizeSkill } from '../../src/v2/circleSkills.js';
+import { normalizeHopMode } from '@canopy/kring-host/circleHop';
+import { mergeSkill, normalizeSkill } from '@canopy/kring-host/circleSkills';
 import { buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
 import { myThingsFromListFiles } from '../../src/v2/folioMyThings.js';
 import {
@@ -453,7 +453,7 @@ import { renderRulesEditor } from './circleRulesEditor.js';
 // per kring store at construction time; snapshots every save into
 // `cc.versions.<storeName>.<circleId>`.  Invisible to the UI in γ.2;
 // γ.3 will surface the history.
-import { localStorageObjectVersions } from '../../src/v2/objectVersionsStorage.js';
+import { localStorageObjectVersions } from '@canopy/kring-host/objectVersionsStorage';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -462,8 +462,8 @@ import { buildCircleEmbedProviders } from '../../src/v2/circleEmbedProviders.js'
 import { resolveCircleEmbedder } from '../../src/v2/embedPicker.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
-import { normalizeCircleMembers, recipientSealKeyFromMembers } from '../../src/v2/circleMembers.js';
-import { buildFindExtras } from '../../src/v2/findExtras.js';
+import { normalizeCircleMembers, recipientSealKeyFromMembers } from '@canopy/kring-host/circleMembers';
+import { buildFindExtras } from '@canopy/kring-host/findExtras';
 import { executeBulkDispatch } from '../../src/bulkOps.js';
 import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';

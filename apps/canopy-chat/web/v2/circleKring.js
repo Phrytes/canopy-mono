@@ -601,7 +601,7 @@ function renderBubble(row, {
  * value. On submit it calls `onFormSubmit(values)` — the host completes the dispatch via
  * `completeMultiFieldFollowUp`. Pure DOM; no module state.
  *
- * @param {import('../../src/v2/followUp.js').PendingFormFollowUp} pending
+ * @param {import('@canopy/kring-host/followUp').PendingFormFollowUp} pending
  * @param {{ tr: function, onFormSubmit: (values: Object<string,string>) => void }} ctx
  */
 function renderPendingForm(pending, { tr, onFormSubmit }) {

@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../src/v2/mappingsStore.js';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
 
 /** Minimal localStorage fake (getItem/setItem/removeItem/key/length). */
 function fakeStorage() {

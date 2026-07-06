@@ -3,7 +3,7 @@
  * @vitest-environment node
  */
 import { describe, it, expect } from 'vitest';
-import { buildFindExtras } from '../src/v2/findExtras.js';
+import { buildFindExtras } from '../src/findExtras.js';
 
 const t = (k) => k;
 

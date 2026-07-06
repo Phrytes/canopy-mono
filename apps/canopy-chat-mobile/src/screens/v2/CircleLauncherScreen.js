@@ -78,7 +78,7 @@ import { buildCapabilityMatrix } from '@canopy/app-manifest';
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 // "only you" vs "whole kring" — message scope (data property; the badge renders it).
 import { scopeForReply } from '../../../../canopy-chat/src/v2/messageScope.js';
-import { buildFindExtras } from '../../../../canopy-chat/src/v2/findExtras.js';
+import { buildFindExtras } from '@canopy/kring-host/findExtras';
 // S6.D — is the conversational "chat" projection LLM-enriched here? (user LLM + circle permits)
 import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';

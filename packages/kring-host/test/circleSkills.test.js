@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
   MATCH_SOURCES, buildSkillMatches,
-} from '../../src/v2/circleSkills.js';
+} from '../src/circleSkills.js';
 
 describe('circleSkills · normalizeSkill', () => {
   it('fills defaults for an empty/garbage input', () => {

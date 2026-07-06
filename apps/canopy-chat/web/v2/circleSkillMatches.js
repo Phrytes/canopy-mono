@@ -7,7 +7,7 @@
  * input shows a "no matches" state. Pure render → unit-testable under
  * happy-dom; mirrors circleStream's list renderer.
  */
-import { buildSkillMatches } from '../../src/v2/circleSkills.js';
+import { buildSkillMatches } from '@canopy/kring-host/circleSkills';
 
 export function renderSkillMatches(container, {
   matches = [], t, onBack,

@@ -19,7 +19,7 @@
 // exports map intentionally doesn't list internal v2 modules).
 import {
   createObjectVersionsAdapter,
-} from '../../../canopy-chat/src/v2/objectVersionsStorage.js';
+} from '@canopy/kring-host/objectVersionsStorage';
 
 /** Generic `{load(key), save(key, value)}` IO over AsyncStorage. */
 export function asyncObjectVersionsIo(storage) {
