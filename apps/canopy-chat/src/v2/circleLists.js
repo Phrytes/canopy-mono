@@ -78,6 +78,10 @@ export function makeCircleLists({ dataSource, manifests, rootPrefix } = {}) {
   };
 
   return {
+    // cluster K — the underlying per-circle store registry (createCircleStores). Exposed so the app-level
+    // cross-circle SHARE op (circleShare.js) can thread shareIntoAudience / resolveSharedRef through the
+    // SAME sealed-or-memory stores this service persists to. Read-only handle; the lists API is unchanged.
+    stores,
     createList:  (circleId, text, by) => s(circleId).put({ type: 'list', text }, { by }),
     createBoard: (circleId, text, by) => s(circleId).put({ type: 'board', text }, { by }),   // multi-type container
     /**

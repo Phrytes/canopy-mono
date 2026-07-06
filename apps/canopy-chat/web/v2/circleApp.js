@@ -178,6 +178,11 @@ import {
 import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
 import { makeCircleLists } from '../../src/v2/circleLists.js';  // cluster K · K2 — composable lists (shared web≡mobile)
+// cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
+// pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
+import { makeCircleShareEnforcement } from '@canopy/item-store';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
+import { shareItemAcrossCircles, listSharedResolved } from '../../src/v2/circleShare.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
 import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so canopy-chat's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
 
@@ -216,11 +221,15 @@ async function getPodCircleLists(circleId, policy) {
           podUrl: circleRealPodRouting.podRoot,
           strategy,
         });
-        // K plug-in point: with this DataSource live, cross-circle sharing is one
-        //   makeCircleShareEnforcement({ sharing: prod.podClient.sharing, resourceUriFor:
-        //     sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot })), open: strategy.open,
-        //     seal: strategy.seal }) — all inputs (sharing via createCirclePodSharing, the strategy, podRoot)
-        // are already resolved here/in ensureCirclePod. Left unwired until the app-level share op lands.
+        // K plug-in point — NOW WIRED (app-level share op). With this sealed DataSource live, cross-circle
+        // sharing binds through `getCircleShareEnforcement(circleId, policy)` below, which builds
+        //   makeCircleShareEnforcement({ sharing: prod.podClient.sharing,
+        //     resourceUriFor: sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot })),
+        //     open: strategy.open })
+        // — all inputs (sharing via prod.podClient, the strategy, podRoot) are resolved here / in
+        // ensureCirclePod. Deviation from the original note: `seal` is OMITTED — the live posture is the
+        // group-key one (p2/p3 group-key provisioning), where the recipient already holds the key via the
+        // roster, so the substrate's makeShareGrantHook explicitly skips re-seal (no source-item rewrite).
         return makeCircleLists({ dataSource, rootPrefix: podGroupPrefix(circleRealPodRouting.podRoot) });
       } catch (err) {
         if (typeof console !== 'undefined') console.warn('[circleApp] pod-backed lists unavailable:', err?.message ?? err);
@@ -235,6 +244,93 @@ async function getPodCircleLists(circleId, policy) {
 async function getCircleLists(circleId, policy) {
   const pod = await getPodCircleLists(circleId, policy);
   return pod || getDefaultCircleLists();
+}
+
+// cluster K — the POD-TIER enforcement binder for a circle's cross-circle SHARE, built at the K plug-in
+// point (the sealed-pod path above). Returns `{ onShare, policy }` (write-grant + read-gate over ONE
+// `resourceUriFor` + mode) when the circle's pod path is ACTIVE — a signed-in real-pod routing, the
+// pod-client's ACP `sharing` surface, AND a resolved sealing strategy. Absent any of those it returns
+// null and the share op degrades to the in-memory `shared-ref` behaviour (no grant, no seal, no read
+// gate) — the memory/IDB default is byte-unchanged.
+const _shareEnforcementByCircle = new Map();   // circleId → Promise<{onShare,policy} | null>
+async function getCircleShareEnforcement(circleId, policy) {
+  if (!circleId) return null;
+  const podRoot = circleRealPodRouting?.podRoot;
+  if (!podRoot) return null;                                  // not signed in → memory path
+  if (!_shareEnforcementByCircle.has(circleId)) {
+    _shareEnforcementByCircle.set(circleId, (async () => {
+      try {
+        const prod     = await ensureCirclePod(circleId, policy);
+        const strategy = await getCircleSealStrategy(circleId, policy);
+        const sharing  = prod?.podClient?.sharing;             // client.sharing = { grant, list } (resourceUri shape)
+        // Require BOTH a real ACP sharing surface AND a resolved seal strategy (p2/p3). p0/p1 or an
+        // unprovisioned group key → null (decline the pod path rather than grant against plaintext).
+        if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.list !== 'function' || !strategy) {
+          return null;
+        }
+        const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot }));
+        // seal OMITTED — group-key posture: the recipient already holds the key via the roster, so the
+        // substrate's makeShareGrantHook skips re-seal (no source-item rewrite). open unseals on read.
+        return makeCircleShareEnforcement({ sharing, resourceUriFor, open: strategy.open });
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[circleApp] share enforcement unavailable:', err?.message ?? err);
+        return null;
+      }
+    })());
+  }
+  return _shareEnforcementByCircle.get(circleId);
+}
+
+// Read a circle's policy (storagePosture etc.) best-effort — drives the sealed-pod path for that circle.
+async function _circlePolicy(circleId) {
+  try { return (await policyStore.get(circleId)) ?? {}; } catch { return {}; }
+}
+// Resolve a circle's lists service using its own policy (shared by the share write + read paths).
+async function _circleServiceFor(circleId) {
+  return getCircleLists(circleId, await _circlePolicy(circleId));
+}
+
+/**
+ * cluster K — the app-level cross-circle SHARE write op. Shares ONE item from `fromCircleId` into
+ * `toCircleId`'s audience: writes the `shared-ref` into the target AND (pod-active source) lands the ACP
+ * read-grant (+ seal via the group key) so the target's members can actually resolve it. Recipients default
+ * to the TARGET circle's member WebIDs (a circle share → its members); a pod share REFUSES with no recipient.
+ */
+async function shareItemIntoCircle({ itemId, fromCircleId, toCircleId, by, recipient, recipients } = {}) {
+  let who = recipients;
+  if ((!Array.isArray(who) || who.length === 0) && !recipient) {
+    // Resolve the target circle's member WebIDs (reuses the existing stoop roster op).
+    try {
+      const members = normalizeCircleMembers(await resolveCallSkill('listGroupMembers', { groupId: toCircleId }));
+      who = members.map((m) => m.webid ?? m.id).filter(Boolean);
+    } catch { who = undefined; }
+  }
+  return shareItemAcrossCircles({
+    resolveService: _circleServiceFor,
+    enforcementFor: _shareEnforcementFor,
+    itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
+    recipient, recipients: who,
+  });
+}
+
+// Resolve a circle's {onShare, policy} binder with that circle's own policy; null-safe for enforcementFor.
+async function _shareEnforcementFor(circleId) {
+  try { return await getCircleShareEnforcement(circleId, await _circlePolicy(circleId)); }
+  catch { return null; }
+}
+
+/**
+ * cluster K — the READ path: everything shared INTO `circleId`, resolved deny-by-default. A ref this reader
+ * isn't a recipient of resolves to null and is dropped (never surfaced) — no plaintext/ciphertext leak.
+ * `recipient` is my WebID on a pod (the grant-check subject); memory path ignores it (no policy).
+ */
+async function listSharedItems(circleId, { recipient } = {}) {
+  return listSharedResolved({
+    resolveService: _circleServiceFor,
+    enforcementFor: _shareEnforcementFor,
+    circleId,
+    recipient: recipient ?? circleOwnerWebId ?? undefined,
+  });
 }
 import { renderCircleScreen } from './circleScreen.js';
 import { renderRecipeEditor } from './circleRecipeEditor.js';
@@ -2850,6 +2946,32 @@ function showKring(id, circle, policy) {
         // one — peer compilers to the same surface). e.g. "/contacts", "/prikbord".
         const scr = line.match(/^\/(contacts|prikbord)\b/i);
         if (scr && LIST_SCREENS[scr[1].toLowerCase()]) { openCircleScreenPanel(scr[1].toLowerCase()); return; }
+        // cluster K — the cross-circle SHARE op, minimal slash surface (rich picker UI deferred; see report).
+        //   /shareitem <itemId> [to] <targetCircleId>  — share one item from THIS circle into another's audience
+        //   /shared                                    — list what's shared INTO this circle (deny-by-default read)
+        // A note bubble to the kring stream (bot actor) reports the result — same _kringRender seam the bot uses.
+        const kringNote = (text) => {
+          const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-bot`;
+          eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text }));
+          rerender();
+        };
+        const shareCmd = line.match(/^\/shareitem\s+(\S+)\s+(?:to\s+)?(\S+)\s*$/i);
+        if (shareCmd) {
+          const [, itemId, toCircleId] = shareCmd;
+          const r = await shareItemIntoCircle({ itemId, fromCircleId: id, toCircleId });
+          kringNote(r?.ok
+            ? t('circle.share.done', { item: itemId, circle: toCircleId })
+            : t('circle.share.failed', { error: r?.error ?? 'unknown' }));
+          return;
+        }
+        if (/^\/shared\b/i.test(line)) {
+          const items = await listSharedItems(id);
+          kringNote(items.length
+            ? t('circle.share.list', { count: items.length })
+              + '\n' + items.map(({ item }) => `• ${item.text ?? item.type ?? item.id}`).join('\n')
+            : t('circle.share.empty'));
+          return;
+        }
         // Conversational follow-up: the bot previously asked for a missing field (needsForm → beginFollowUp);
         // THIS message is the answer. Append it, complete the pending dispatch, and run it — don't route it
         // to feedback or re-interpret it as a new command.

@@ -1897,6 +1897,12 @@
     "add_prompt": { "text": "Voeg een item toe:",                       "doc": "K2 lists panel — prompt when adding a child to a container." },
     "pick_type":  { "text": "Toevoegen als:",                           "doc": "K2 lists panel — the ambiguous-type picker prompt." }
   },
+  "share": {
+    "done":   { "text": "\"{{item}}\" gedeeld met {{circle}}.",         "doc": "cluster K cross-circle share — success note for /shareitem." },
+    "failed": { "text": "Delen mislukt: {{error}}.",                    "doc": "cluster K cross-circle share — failure note for /shareitem." },
+    "list":   { "text": "Gedeeld met deze kring ({{count}}):",          "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
+    "empty":  { "text": "Nog niets met deze kring gedeeld.",            "doc": "cluster K cross-circle share — empty state for /shared." }
+  },
   "clarify": {
     "which": {
       "text": "Welke “{{query}}” bedoel je?",
