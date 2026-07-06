@@ -1,0 +1,20 @@
+{
+  "name": "@canopy/blob-gateway",
+  "version": "0.1.0",
+  "description": "Media substrate: client-side-encrypt a blob → untrusted bucket + a cross-pod-ref manifest line in the pod; a deny-by-default poortwachter (verifyToken → ACL → presigned URL). Bucket/token/acl are injected (cloud-agnostic).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test":       "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/pod-client": "file:../pod-client"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
