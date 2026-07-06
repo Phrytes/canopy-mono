@@ -2,8 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   lexicalRank, makeLexicalRetriever,
   cosineSim, makeSemanticRetriever, makeCircleRetriever,
+  makePodSearchRetriever, circleItemFromRow, CIRCLE_ITEM_SCHEMA,
 } from '../../src/v2/circleRetriever.js';
 import { mockEmbeddingsProvider } from '@canopy/llm-client';
+import { createMemoryBackend } from '@canopy/pseudo-pod/memory';
 
 // Normalized circle items (the shape loadCircleItems returns: {id,label,kind,...}).
 const ITEMS = [
@@ -122,5 +124,138 @@ describe('makeCircleRetriever — auto-tiers', () => {
   it('uses lexical when no embedder is configured', async () => {
     const out = await makeCircleRetriever({ loadItems })('quantum entanglement');
     expect(out).toEqual([]);   // lexical: zero overlap → nothing
+  });
+});
+
+/* ─── PodSearch-backed hybrid retriever (L RAG-wiring) ───────────────────────
+ *
+ * Everything runs against a deterministic MOCK embedder + an in-memory pseudo-pod
+ * store — no live model, no real pod. The mock maps keywords onto a 3-axis
+ * concept space [vehicle, food, weather] so "car" lands on the vehicle axis and
+ * matches "automobile" — a synonym a pure-lexical query never finds.
+ */
+function conceptEmbedder({ id = 'mock:concept', dim = 3 } = {}) {
+  const vecFor = (t) => {
+    const s = String(t).toLowerCase();
+    if (/\b(car|automobile|dealership|vehicle)\b/.test(s)) return [1, 0, 0.05]; // vehicle
+    if (/\b(soup|lunch|recipe|food)\b/.test(s))            return [0, 1, 0];    // food
+    if (/\b(sunny|weather|forecast|rain)\b/.test(s))       return [0, 0, 1];    // weather
+    return new Array(dim).fill(0);
+  };
+  const emb = {
+    id, dim, calls: 0,
+    async embed(texts) { emb.calls += 1; return texts.map((t) => Float32Array.from(vecFor(t))); },
+  };
+  return emb;
+}
+
+// Circle items in the {id,label,kind,…} shape loadCircleItems returns. Only the
+// dealership item literally contains "car"; the automobile item is the synonym a
+// lexical "car" query misses but a hybrid one recovers.
+const RAG_ITEMS = [
+  { id: 't1', kind: 'task', label: 'fix my automobile before the winter' },
+  { id: 'p1', kind: 'post', label: 'car dealership visit on Friday' },
+  { id: 't2', kind: 'task', label: 'buy soup for lunch' },
+  { id: 'e1', kind: 'calendar-event', label: 'sunny weather forecast' },
+];
+
+describe('makePodSearchRetriever — persistent hybrid index', () => {
+  const loadItems = async () => RAG_ITEMS;
+
+  it('HYBRID surfaces a synonym match a pure-lexical query misses', async () => {
+    const retrieve = makePodSearchRetriever({ embedder: conceptEmbedder(), loadItems, minScore: 0.1 });
+    const out = await retrieve('car', { circleId: 'c1' });
+    const ids = out.map((c) => c.id);
+    expect(ids).toContain('p1');   // literal "car" (lexical would find this)
+    expect(ids).toContain('t1');   // "automobile" — the semantic-only recall
+    expect(ids).not.toContain('t2'); // food: dropped (cosine 0 < minScore)
+    expect(ids).not.toContain('e1'); // weather: dropped
+  });
+
+  it('output shape is unchanged: {id,type,text} with "<kind>: <label>"', async () => {
+    const retrieve = makePodSearchRetriever({ embedder: conceptEmbedder(), loadItems, minScore: 0.1 });
+    const out = await retrieve('car', { circleId: 'c1' });
+    const p1 = out.find((c) => c.id === 'p1');
+    expect(p1).toEqual({ id: 'p1', type: 'post', text: 'post: car dealership visit on Friday' });
+  });
+
+  it('embeds ONCE — a repeat query does not re-embed unchanged items', async () => {
+    const embedder = conceptEmbedder();
+    const retrieve = makePodSearchRetriever({ embedder, loadItems, minScore: 0.1 });
+    await retrieve('car', { circleId: 'c1' });
+    const afterFirst = embedder.calls;
+    await retrieve('soup', { circleId: 'c1' });   // same corpus, new query
+    // The 4 item embeds are cached (content-hash); only the new query embed fires.
+    expect(embedder.calls).toBe(afterFirst + 1);
+  });
+
+  it('NO embedder / llmTool:off ⇒ lexical-only hybrid, ZERO embed calls', async () => {
+    const embedder = conceptEmbedder();
+    // Simulate the policy gate: off ⇒ the resolver hands back null (no embedder).
+    const retrieve = makePodSearchRetriever({ embedder: () => null, loadItems });
+    const out = await retrieve('car', { circleId: 'c1' });
+    expect(out.map((c) => c.id)).toEqual(['p1']);   // only the literal "car" note
+    expect(embedder.calls).toBe(0);                 // never invoked
+  });
+
+  it('a policy resolver re-checks per turn (off → lexical, no embed)', async () => {
+    const embedder = conceptEmbedder();
+    let mode = 'off';
+    const retrieve = makePodSearchRetriever({
+      embedder: () => (mode === 'on' ? embedder : null), loadItems, minScore: 0.1,
+    });
+    // off: lexical-only, no embed.
+    expect((await retrieve('car', { circleId: 'c1' })).map((c) => c.id)).toEqual(['p1']);
+    expect(embedder.calls).toBe(0);
+    // policy flips on: the circle's index rebuilds with the embedder → synonym recall.
+    mode = 'on';
+    expect((await retrieve('car', { circleId: 'c1' })).map((c) => c.id)).toContain('t1');
+    expect(embedder.calls).toBeGreaterThan(0);
+  });
+
+  it('persists vectors ONLY under private/state/search-index/ (never sharing/)', async () => {
+    const store = createMemoryBackend();
+    const retrieve = makePodSearchRetriever({
+      embedder: conceptEmbedder(), loadItems, vectorStore: store, scope: 'circle-rag', minScore: 0.1,
+    });
+    await retrieve('car', { circleId: 'c1' });
+    const keys = await store.list('');
+    expect(keys.length).toBeGreaterThan(0);
+    for (const k of keys) {
+      expect(k.startsWith('private/state/search-index/circle-rag/c1/')).toBe(true);
+      expect(k.includes('sharing/')).toBe(false);
+    }
+  });
+
+  it('scopes per circle — one circle\'s items never bleed into another', async () => {
+    const store = createMemoryBackend();
+    const retrieve = makePodSearchRetriever({ embedder: conceptEmbedder(), loadItems, vectorStore: store, minScore: 0.1 });
+    await retrieve('car', { circleId: 'c1' });
+    await retrieve('car', { circleId: 'c2' });
+    const keys = await store.list('');
+    expect(keys.some((k) => k.includes('/circle-rag/c1/'))).toBe(true);
+    expect(keys.some((k) => k.includes('/circle-rag/c2/'))).toBe(true);
+  });
+
+  it('best-effort: a throwing loader yields no context', async () => {
+    const retrieve = makePodSearchRetriever({ embedder: conceptEmbedder(), loadItems: async () => { throw new Error('x'); } });
+    expect(await retrieve('car', { circleId: 'c1' })).toEqual([]);
+  });
+});
+
+describe('circleItemFromRow — schema projection', () => {
+  it('projects a normalized circle item, preserving the original id in oid', () => {
+    expect(circleItemFromRow({ id: 't1', kind: 'task', label: 'return the ladder' }))
+      .toEqual({ id: 't1', text: 'return the ladder', oid: 't1', kind: 'task' });
+  });
+  it('synthesises an id for an id-less item but keeps oid null', () => {
+    const row = circleItemFromRow({ label: 'no id here' }, 3);
+    expect(row.oid).toBe(null);
+    expect(row.id).toBe('t:no id here');
+    expect(row.text).toBe('no id here');
+  });
+  it('the schema marks one primary + an embeddable text field', () => {
+    expect(CIRCLE_ITEM_SCHEMA.fields.id.primary).toBe(true);
+    expect(CIRCLE_ITEM_SCHEMA.fields.text.embed).toBe(true);
   });
 });

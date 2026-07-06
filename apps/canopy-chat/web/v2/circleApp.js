@@ -1170,13 +1170,15 @@ function buildCircleBot(agent) {
   };
   // Apply the member's saved endpoint config at boot (falls back to env when unset).
   userLlmStore.get().then((v) => { circleApplyUserLlm(v); }).catch(() => {});
-  // Per-turn embedder resolution: rides the circle's embed policy (embedTool ??
-  // llmTool). Throws 'no-embedder' when off/unconfigured → the semantic retriever
-  // falls back to tier-1 lexical (strict upgrade, never a regression).
-  const resolveEmbed = async (texts) => {
-    const embedder = resolveCircleEmbedder({ circlePolicy: await policyFor(), userDefault, providers: embedProviders });
-    if (!embedder) throw new Error('no-embedder');
-    return embedder.embed(texts);
+  // Per-turn embedder resolution for the circle RAG retriever: rides the circle's
+  // embed policy (embedTool ?? llmTool), reusing the SAME resolution folio /zoek
+  // uses (`resolveCircleEmbedder` over the live `embedProviders`). Returns the
+  // resolved `EmbeddingClient` OBJECT (the PodSearch-backed retriever normalises
+  // it — `{model}` → `{id}`), or `null` when off/unconfigured → the hybrid index
+  // degrades to LEXICAL-only with NO embed call (invariant #7 + llmTool gate).
+  const resolveCircleRagEmbedder = async () => {
+    try { return resolveCircleEmbedder({ circlePolicy: await policyFor(), userDefault, providers: embedProviders }) || null; }
+    catch { return null; }
   };
   const policyIo = localStoragePolicyIo();
   async function policyFor() {
@@ -1465,14 +1467,20 @@ function buildCircleBot(agent) {
     // Smart chat off / unreachable → plain-language "basic mode" reply (contextual indicator, no badge).
     onLlmUnavailable: () => { _kringRender?.botBubble(t('circle.bot.basic_mode')); },
     // F-retrieve: on the via:'llm' path the gate pulls the circle's relevant items
-    // into the LLM prompt (grounding + fewer tokens). `makeCircleRetriever` auto-tiers
-    // — tier-2 SEMANTIC when an embed route is configured (rides the circle's embed
-    // policy via `resolveEmbed`), else tier-1 LEXICAL; an embedder error falls back
-    // to lexical. Ranking lives once in circleRetriever; `loadItems` is the shell adapter.
+    // into the LLM prompt (grounding + fewer tokens). `makeCircleRetriever` is now
+    // backed by a PERSISTENT `@canopy/pod-search` hybrid index — the circle's items
+    // are indexed once (embed-once via the content-hash cache; restart-safe when a
+    // vectorStore is wired) and each turn runs a HYBRID (lexical+semantic RRF)
+    // query. `embedder` rides the circle's embed policy (`resolveCircleRagEmbedder`,
+    // same resolution as folio /zoek); null when off/unconfigured → LEXICAL-only,
+    // NO embed call. Ranking lives once in circleRetriever; `loadItems` is the
+    // shell adapter. (Persistence seam: pass `vectorStore` here to persist vectors
+    // under private/state/search-index/circle-rag/<circleId>/ — deferred until the
+    // circle exposes a StorageBackend, exactly as folio's noteVectorStore is.)
     gate: createTokenGate({
       rules: circleGateRules(currentLang()),
       retrieve: makeCircleRetriever({
-        embed: CIRCLE_EMBED_BASEURL ? resolveEmbed : undefined,
+        embedder: CIRCLE_EMBED_BASEURL ? resolveCircleRagEmbedder : undefined,
         loadItems: (ctx) => loadCircleItems({
           callSkill: resolveCallSkill,
           circleId: ctx?.circleId ?? getActiveCircle(),
