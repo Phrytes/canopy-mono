@@ -1,0 +1,151 @@
+{
+  "$schema": "dep-boundary-baseline/v0",
+  "description": "CEILING of known cross-package raw-src reach-ins (CLAUDE.md invariant #5). lint:deps FAILS on any violation NOT listed here; removing entries is always allowed. Regenerate with: node scripts/lint-dep-boundaries.mjs --update",
+  "generatedAt": "2026-07-06",
+  "total": 23,
+  "byCategory": {
+    "runtime": 14,
+    "script": 2,
+    "test": 7
+  },
+  "violations": [
+    {
+      "file": "apps/canopy-chat-mobile/src/core/agentBundle.js",
+      "specifier": "../../../../packages/core/src/a2a/a2aDiscover.js",
+      "reachesInto": "@canopy/core",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/agentBundle.js",
+      "specifier": "../../../../packages/core/src/a2a/a2aTaskSend.js",
+      "reachesInto": "@canopy/core",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/agentBundle.js",
+      "specifier": "../../../../packages/core/src/discovery/PeerGraph.js",
+      "reachesInto": "@canopy/core",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/agentBundle.js",
+      "specifier": "../../../../packages/react-native/src/identity/VaultAsyncStorage.js",
+      "reachesInto": "@canopy/react-native",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/agentBundle.js",
+      "specifier": "../../../../packages/react-native/src/storage/AsyncStorageAdapter.js",
+      "reachesInto": "@canopy/react-native",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/circlePods.js",
+      "specifier": "../../../../packages/react-native/src/identity/VaultAsyncStorage.js",
+      "reachesInto": "@canopy/react-native",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/navModel.js",
+      "specifier": "../../../../packages/app-manifest/src/renderMobile.js",
+      "reachesInto": "@canopy/app-manifest",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/src/core/restoreFromMnemonic.js",
+      "specifier": "../../../../packages/react-native/src/identity/VaultAsyncStorage.js",
+      "reachesInto": "@canopy/react-native",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/test/contactSkillsBootRN.test.js",
+      "specifier": "../../../packages/core/src/a2a/a2aTaskSend.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    },
+    {
+      "file": "apps/canopy-chat-mobile/test/contactSkillsBootRN.test.js",
+      "specifier": "../../../packages/core/src/discovery/PeerGraph.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    },
+    {
+      "file": "apps/canopy-chat/scripts/surface-coverage.mjs",
+      "specifier": "../../../packages/app-manifest/src/index.js",
+      "reachesInto": "@canopy/app-manifest",
+      "category": "script"
+    },
+    {
+      "file": "apps/canopy-chat/src/feedback/feedbackSurface.js",
+      "specifier": "../../../../packages/core/src/transport/InternalTransport.js",
+      "reachesInto": "@canopy/core",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat/src/v2/curation.js",
+      "specifier": "../../../../packages/sync-engine/src/objectDiff.js",
+      "reachesInto": "@canopy/sync-engine",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat/src/v2/policyConflict.js",
+      "specifier": "../../../../packages/sync-engine/src/objectDiff.js",
+      "reachesInto": "@canopy/sync-engine",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat/src/v2/recipeConflict.js",
+      "specifier": "../../../../packages/sync-engine/src/objectDiff.js",
+      "reachesInto": "@canopy/sync-engine",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat/src/v2/rulesConflict.js",
+      "specifier": "../../../../packages/sync-engine/src/objectDiff.js",
+      "reachesInto": "@canopy/sync-engine",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/canopy-chat/test/feedback/feedbackSurface.test.js",
+      "specifier": "../../../../packages/core/src/transport/InternalTransport.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    },
+    {
+      "file": "apps/feedback-pipeline/scripts/mockup-project-smoke.js",
+      "specifier": "../../../packages/core/src/transport/InternalTransport.js",
+      "reachesInto": "@canopy/core",
+      "category": "script"
+    },
+    {
+      "file": "apps/feedback-pipeline/src/pod/project-seal.js",
+      "specifier": "../../../../packages/pod-client/src/sealing/envelope.js",
+      "reachesInto": "@canopy/pod-client",
+      "category": "runtime"
+    },
+    {
+      "file": "apps/feedback-pipeline/test/handshake.test.js",
+      "specifier": "../../../packages/core/src/identity/AgentIdentity.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    },
+    {
+      "file": "apps/feedback-pipeline/test/internal-bus-bridge.test.js",
+      "specifier": "../../../packages/core/src/transport/InternalTransport.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    },
+    {
+      "file": "apps/feedback-pipeline/test/mockup-project.test.js",
+      "specifier": "../../../packages/core/src/transport/InternalTransport.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    },
+    {
+      "file": "apps/feedback-pipeline/test/signer-hook.test.js",
+      "specifier": "../../../packages/core/src/identity/AgentIdentity.js",
+      "reachesInto": "@canopy/core",
+      "category": "test"
+    }
+  ]
+}
