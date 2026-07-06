@@ -7,6 +7,9 @@ author code — several are load-bearing invariants, not style preferences.
   each layer owns and what is not acceptable. The core invariant.
 - **[app-readme-scheme.md](./app-readme-scheme.md)** — the README scheme every app under `apps/` follows from
   its first commit (including the honest phase table).
+- **[manifest-standard.md](./manifest-standard.md)** — what a *conformant* app manifest must satisfy
+  (structural validity, atom discipline, noun-declaration discipline, projector totality) so the manifest stays
+  the single source of truth for surfaces (invariant #4); enforced by a cross-app fitness function.
 - **[localisation.md](./localisation.md)** — every user-facing surface ships translatable from commit one;
   substrates emit error codes, not strings.
 - **[cross-app-settings.md](./cross-app-settings.md)** — pod-side settings split into portable `shared.json` +
