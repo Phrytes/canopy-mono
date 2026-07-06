@@ -29,6 +29,7 @@ This app composes the following substrate packages
 |---|---|---|
 | `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync — `SyncEngine` (Folio is the pattern source for this substrate, post-Phase 5.1), `PathMap`, `scanLocal` / `scanPod` / `diff`, version helpers, fs/hash/watcher adapters (Node + RN). | The substrate exists *because* of Folio — Folio's V0.3 BidirectionalSyncEngine was lifted into the substrate in Phase 5.1. App-side `src/SyncEngine.js` is a thin subclass adding markdown-specific glue. |
 | `@canopy/pseudo-pod` (Phase D cache-mode, 2026-05-16) | Write-through offline queue + read cache for the desktop CLI daemon — `createPseudoPod`, `createSyncEnginePodClient`, plus backend factories (`createMemoryBackend`, `createNodeFsBackend`). Wired in `podCache.js` + `_podFactory.js`; cache-mode is the default since Phase D. | Platform-neutral abstraction over PodClient; backend injected by caller (Node fs on desktop, RN adapter on mobile, memory for tests). Provides offline resilience as a substrate concern, not Folio app code. |
+| `@canopy/pod-search` (V2 first consumer, Phase 52.25) | The `/zoek` **semantic note search** — `src/folioSearch.js` builds a `PodSearch` over the note corpus (title + body are `embed:true`), and the browser agent's `searchNotes` op runs `query({ mode })`. Uses pod-search's `hash` adapter for the content-hash cache key; an optional `vectorStore` persists vectors under `private/state/search-index/`. | The FTS5/vector index, the chunking + content-hash embed cache, RRF hybrid fusion, and the restart-safe persistence all live in the substrate; Folio is a thin consumer that maps note rows onto items and injects a policy-resolved embedder. The embedder is **injected, duck-typed** (llmTool:'off' / no Ollama ⇒ no embedder ⇒ lexical), so folio never imports `@canopy/llm-client`. |
 | `@canopy/sync-engine-rn` (L1a, RN platform) | React Native sync engine bring-up + background task scheduling (background fetch, periodic sync) — `createSyncEngine`, `registerBackgroundTask`, `defineBackgroundTask`. Consumed by folio-mobile via Folio's `src/rn/serviceFactory.js` + `backgroundTasks.js`. | RN-specific adapters (scheduler, storage, background-fetch broker) live here; Folio pre-binds the app's `SyncEngine` subclass and re-exports for folio-mobile to consume. Same substrate, RN platform. |
 
 ## Direct kernel use
@@ -93,6 +94,16 @@ Phase A (CLI) and Phase B.1.server (Express + WebSocket) are shipped:
 - `folio` CLI (Folio.A2) — `init / sync / watch / status / share / conflicts / rm`.
 - Local web server (Folio.B1.server) — Express + WebSocket on
   `http://127.0.0.1:8888`; consumed by the upcoming web UI (B1.ui).
+- **`/zoek` semantic note search (Phase 52.25)** — `src/folioSearch.js`
+  wires the note corpus onto `@canopy/pod-search` V2; the browser agent's
+  `searchNotes` op (`manifest.js`, slash `/zoek`, Part-C verbs
+  `zoek/search/find`) offers lexical **and** semantic/hybrid ranking. The
+  embedder is injected by the host (canopy-chat resolves it from the active
+  circle's `embedTool ?? llmTool` policy); with the policy `off` or no
+  provider available, `/zoek` degrades to **lexical-only** and makes no
+  embed call. **Follow-up:** RN wiring of pod-search's `hash` adapter via
+  `expo-crypto` (`packages/react-native/platform`) + a real pod-backed note
+  body read (the in-process index is title/name-only until then).
 
 ```js
 import { SyncEngine } from '@canopy-app/folio';

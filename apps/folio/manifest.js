@@ -360,6 +360,32 @@ export const folioManifest = {
         chat:  { reply: 'list', hint: 'list files in folio' },
       },
     },
+    /**
+     * `/zoek` — SEMANTIC note search (pod-search V2 first consumer, 52.25).
+     * The meaning-aware sibling of `searchFiles`: ranks notes via
+     * `@canopy/pod-search`, so a query finds a note by synonym/paraphrase,
+     * not just a filename substring. Degrades to lexical when the circle's
+     * embed policy is off / no embedder is available (llmTool:'off'), so the
+     * op is always answerable. `mode` is optional (defaults to semantic when
+     * available, lexical otherwise); the handler flags a `degraded:'lexical'`
+     * result when semantic was asked for but unavailable.
+     */
+    {
+      id:    'searchNotes', verb: 'list',
+      params: [
+        { name: 'query', kind: 'string', required: true },
+        { name: 'mode',  kind: 'string', required: false },   // 'lexical' | 'semantic' | 'hybrid'
+      ],
+      runtime: 'browser',
+      surfaces: {
+        // `/zoek <text>` → the default 'match' body rule binds the body to
+        // the first required param (`query`). The Part-C gate ALSO matches
+        // the bare verbs "zoek/search/find <text>" → searchNotes{query}.
+        slash: { command: '/zoek',
+          match: { verbs: ['zoek', 'zoeken', 'search', 'find'], body: 'text-only', arg: 'query' } },
+        chat:  { reply: 'list', hint: 'search folio notes by meaning (semantic when available)' },
+      },
+    },
   ],
 
   views: [

@@ -40,6 +40,7 @@ import {
 
 import { mintShareToken } from './autoShare.js';
 import { listPodFolio } from './folioPodList.js';
+import { buildFolioNoteSearch, indexFolioNotes, searchFolioNotes } from './folioSearch.js';
 
 // N5 — Drive tree (folder navigation + rich rows).  Pure JS, node-free,
 // RN-free; safe to pull into the browser bundle (unlike the `.` barrel,
@@ -105,6 +106,16 @@ function simulateSync() {
  * @param {string}         [args.podRoot]        reserved; used as the token's `pod` field
  *                                               in shareFolder when set
  * @param {Array}          [args.seedFiles]      override demo seeds; pass [] for clean
+ * @param {object}         [args.noteEmbedder]   duck-typed embedder for `/zoek` semantic
+ *                                               mode (a mock provider or an
+ *                                               `@canopy/llm-client` EmbeddingClient).
+ *                                               Absent ⇒ lexical-only (llmTool:'off' /
+ *                                               no-Ollama path). Wired by canopy-chat
+ *                                               from the circle's embed policy; may also
+ *                                               be attached post-boot via `setNoteEmbedder`.
+ * @param {object}         [args.noteVectorStore] optional StorageBackend-shaped store ⇒
+ *                                               vectors persist under private/state/search-index/
+ * @param {(e:object)=>void} [args.noteAudit]    optional pod-search audit hook
  * @returns {Promise<{
  *   agent:    Agent,
  *   identity: AgentIdentity,
@@ -120,6 +131,9 @@ export async function createBrowserFolioAgent({
   podClient,
   podRoot,
   seedFiles,
+  noteEmbedder,
+  noteVectorStore,
+  noteAudit,
 }) {
   if (!bus)           throw new TypeError('createBrowserFolioAgent: bus required');
   if (!identityVault) throw new TypeError('createBrowserFolioAgent: identityVault required');
@@ -245,6 +259,58 @@ export async function createBrowserFolioAgent({
     })];
   });
 
+  /* ─── searchNotes — `/zoek`: pod-search over the note corpus (52.25) ──
+   *
+   * The SEMANTIC sibling of `searchFiles`. Where `searchFiles` is a
+   * name/path substring match, `/zoek` ranks notes by MEANING via
+   * `@canopy/pod-search` — so "car" finds a note about "automobile repair".
+   *
+   * Degrades per Q3 (option a) + the llmTool policy: with no `noteEmbedder`
+   * injected (llmTool:'off' / no Ollama) the index is lexical-only, and a
+   * `mode:'semantic'` request gracefully returns the LEXICAL ranking (the
+   * reply's `degraded:'lexical'` flags it) rather than an empty
+   * E_SEMANTIC_UNAVAILABLE. No embed call is ever made without an embedder.
+   */
+  let noteSearch = null;
+  let builtWithEmbedder;             // embedder identity the current index was built with
+  async function ensureNoteSearch() {
+    if (!noteSearch || builtWithEmbedder !== noteEmbedder) {
+      noteSearch = buildFolioNoteSearch({
+        embedder: noteEmbedder, vectorStore: noteVectorStore, audit: noteAudit,
+      });
+      builtWithEmbedder = noteEmbedder;
+    }
+    // Upsert the current corpus. The content-hash cache makes an unchanged
+    // note free (no re-embed); absent an embedder this is a pure lexical index.
+    await indexFolioNotes(noteSearch, files);
+    return noteSearch;
+  }
+
+  agent.register('searchNotes', async ({ parts }) => {
+    const a = parts?.[0]?.data ?? {};
+    const text = String(a.query ?? a.text ?? '').trim();
+    const requested = (a.mode === 'semantic' || a.mode === 'hybrid') ? a.mode : 'lexical';
+    if (!text) return [DataPart({ items: [], mode: requested, semantic: false })];
+
+    const search = await ensureNoteSearch();
+    const ready = search.semanticReady;
+    // Asked for semantic/hybrid but the index has no embedder → lexical.
+    const mode = (requested !== 'lexical' && !ready) ? 'lexical' : requested;
+
+    const res = await searchFolioNotes(search, {
+      text, mode, limit: a.limit ?? 20, minScore: a.minScore, filters: a.filters,
+    });
+    const reply = {
+      items:    res.items.map((n) => ({ id: n.id, label: n.name ?? n.title, type: 'file', path: n.path ?? n.id })),
+      total:    res.total,
+      mode,
+      semantic: ready,
+    };
+    if (mode !== requested) reply.degraded = 'lexical';   // semantic asked, none available
+    if (res.code)           reply.code = res.code;
+    return [DataPart(reply)];
+  });
+
   /* ─── getFileSnapshot — Q29 cardSnapshotSkill for /embed-file ─── */
   agent.register('getFileSnapshot', async ({ parts }) => {
     const a = parts?.[0]?.data ?? {};
@@ -350,6 +416,13 @@ export async function createBrowserFolioAgent({
       return podSource;
     },
     getPodSource: () => podSource,
+    // 52.25 — attach / swap the `/zoek` semantic embedder after boot. The
+    // folio agent is global while the embed policy is per-circle, so
+    // canopy-chat resolves the embedder from the active circle's
+    // llmTool/embedTool policy and wires it here (null ⇒ back to lexical).
+    // A changed embedder identity rebuilds the index on the next `/zoek`.
+    setNoteEmbedder: (e) => { noteEmbedder = e ?? undefined; return noteEmbedder ?? null; },
+    getNoteSearch:   () => noteSearch,
     close:   () => agent.close?.(),
   };
 }

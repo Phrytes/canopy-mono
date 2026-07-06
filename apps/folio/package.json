@@ -25,6 +25,7 @@
     "@canopy/vault": "file:../../packages/vault",
     "@canopy/oidc-session":            "file:../../packages/oidc-session",
     "@canopy/pod-client":              "file:../../packages/pod-client",
+    "@canopy/pod-search":              "file:../../packages/pod-search",
     "@canopy/pseudo-pod":              "file:../../packages/pseudo-pod",
     "@canopy/sync-engine":             "file:../../packages/sync-engine",
     "@canopy/sync-engine-rn":          "file:../../packages/sync-engine-rn",

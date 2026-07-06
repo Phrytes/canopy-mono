@@ -858,6 +858,7 @@ let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (se
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
 let circleApplyUserLlm = null;   // (cfg) => {ok,mode}|{ok:false,error} — rebuild the live LLM/embed providers from the member's settings
 let circleEmbedButtonTap = null; // S6.A — dispatch an inline embed button {opId,itemId} from a bot reply
+let circleSyncFolioNoteEmbedder = null; // 52.25 — re-wire folio /zoek's embedder from the active circle's embed policy
 // S6.C — per-user surface preference (inline / screen / minimal); hydrated at boot.
 const circleSurfacePref = createSurfacePrefStore(localStorageSurfacePrefIo());
 let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
@@ -1163,6 +1164,8 @@ function buildCircleBot(agent) {
   circleApplyUserLlm = (cfg) => {
     const r = applyUserLlmRuntime({ userCfg: cfg, env: ENV_LLM, llmProviders, embedProviders });
     if (r.ok) userDefault = { ...cfg, mode: r.mode };
+    // 52.25 — the embed providers just changed → re-wire folio /zoek's embedder.
+    try { circleSyncFolioNoteEmbedder?.(); } catch { /* /zoek stays lexical */ }
     return r;
   };
   // Apply the member's saved endpoint config at boot (falls back to env when unset).
@@ -2736,6 +2739,9 @@ async function showDetail(id) {
   // so items added here fan out to them. Member-only + deduped; safe to call often.
   feedHouseholdRosterForCircle?.(id)?.catch?.(() => {});
   try { sessionStorage.setItem('cc.activeCircle', id); } catch { /* ignore */ }
+  // 52.25 — this circle's embed policy may differ from the last → re-resolve
+  // folio /zoek's embedder (or null it for an 'off' circle). Best-effort.
+  try { circleSyncFolioNoteEmbedder?.(); } catch { /* /zoek stays lexical */ }
   // P6.3 — bump the seenAt marker so the next launcher render clears
   // this circle's unread badge.
   writeSeenAt(bumpSeenAt(readSeenAt(), id));
@@ -3785,6 +3791,22 @@ async function boot() {
       // CircleItemStore) by default; the legacy registry is retired. No flag: it's unconditional now.
     });
     circleHouseholdAgent = agent;   // OBJ-2 — expose to showSettings (sibling fn) for the paired-devices panel
+    // 52.25 — wire folio `/zoek`'s SEMANTIC embedder from the ACTIVE circle's
+    // embed policy (embedTool ?? llmTool), reusing the SAME resolution the
+    // circle retriever uses (`resolveCircleEmbedder` over the live
+    // `embedProviders`). Injects `null` for policy 'off'/unconfigured → `/zoek`
+    // stays lexical-only, and NO embed call is ever made (invariant #7: same
+    // trust boundary + policy gate as the chat LLM). Re-run on circle switch
+    // (showDetail) and on a settings change (circleApplyUserLlm).
+    circleSyncFolioNoteEmbedder = async () => {
+      if (typeof agent?.setFolioNoteEmbedder !== 'function') return;
+      let embedder = null;
+      try {
+        embedder = resolveCircleEmbedder({ circlePolicy: await policyFor(), userDefault, providers: embedProviders });
+      } catch { embedder = null; }
+      agent.setFolioNoteEmbedder(embedder || null);
+    };
+    circleSyncFolioNoteEmbedder();
     // OBJ-2 — joiner-side peer-redeem sender (shared factory), correlated by circlePendingRedeems.
     circleSendPeerRedeem = makeSendGroupRedeemRequest({
       sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
