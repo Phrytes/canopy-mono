@@ -8,8 +8,10 @@
 //   chat   — surfaces.chat            (the LLM tool / chat affordance; renderChat)
 //   slash  — surfaces.slash.command   (the explicit /command; renderSlash command form)
 //   gate   — surfaces.slash.match     (the deterministic NL verbs; renderGate / renderSlash)
-//   screen — surfaces.ui OR a CREATIVE_VERB (add/register)  (web/mobile page/affordance; renderWeb ≡
-//            renderMobile, V0-aliased — one column)
+//   screen — surfaces.ui OR surfaces.page OR a CREATIVE_VERB (add/register)  (web/mobile
+//            page/affordance; renderWeb ≡ renderMobile, V0-aliased — one column).  D / SP-3b:
+//            `surfaces.page` (side-panel / modal / screen) now counts — it projects to
+//            NavModel.pages[] via renderWeb, so a declared page IS a web/mobile surface.
 //   inline — surfaces.ui.control === 'button'  (the inline button/menu affordance)
 
 import { CREATIVE_VERBS } from './renderWeb.js';
@@ -18,7 +20,7 @@ const SURFACES = [
   { key: 'chat',   label: 'chat',       detect: (s)     => !!s.chat },
   { key: 'slash',  label: 'slash',      detect: (s)     => !!(s.slash && s.slash.command) },
   { key: 'gate',   label: 'gate',       detect: (s)     => !!(s.slash && s.slash.match) },
-  { key: 'screen', label: 'web/mobile', detect: (s, op) => !!s.ui || CREATIVE_VERBS.has(op.verb) },
+  { key: 'screen', label: 'web/mobile', detect: (s, op) => !!s.ui || !!s.page || CREATIVE_VERBS.has(op.verb) },
   { key: 'inline', label: 'inline',     detect: (s)     => !!(s.ui && s.ui.control === 'button') },
 ];
 

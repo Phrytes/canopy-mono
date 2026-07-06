@@ -35,6 +35,20 @@ describe('renderCoverage', () => {
     expect(byId.ghost).toMatchObject({ chat: false, slash: false, gate: false, screen: false, inline: false });
   });
 
+  // D / SP-3b — a `surfaces.page` op (side-panel / modal / screen) is a
+  // web/mobile surface (projects to NavModel.pages[]), but NOT an inline
+  // button.  Before this slice the coverage matrix was blind to it.
+  it('an op with surfaces.page (no surfaces.ui) counts as web/mobile, not inline', () => {
+    const cov = renderCoverage({
+      appId: 'pagey',
+      operations: [
+        { id: 'settings', verb: 'list', surfaces: { slash: { command: '/settings' }, page: { kind: 'side-panel', title: 'Settings' } } },
+      ],
+    });
+    const row = cov.rows.find((r) => r.op === 'settings');
+    expect(row).toMatchObject({ chat: false, slash: true, screen: true, inline: false });
+  });
+
   it('totals count present cells', () => {
     expect(cov.totals.ops).toBe(5);
     expect(cov.totals.chat).toBe(2);

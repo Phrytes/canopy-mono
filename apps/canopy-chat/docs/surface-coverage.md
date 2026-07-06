@@ -31,7 +31,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `set-relay` | submit | ✅ | ✅ | · | · | · |  |
 |  | `transport-mode` | submit | ✅ | ✅ | · | · | · |  |
 |  | `transports` | list | ✅ | ✅ | · | · | · |  |
-|  | `settings` | list | ✅ | ✅ | · | · | · |  |
+|  | `settings` | list | ✅ | ✅ | · | ✅ | · |  |
 |  | `mute` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `unmute` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `muted` | list | ✅ | ✅ | · | · | · |  |
@@ -119,10 +119,10 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `removeContact` | remove | ✅ | ✅ | · | ✅ | ✅ |  |
 |  | `setContactTrust` | submit | ✅ | ✅ | · | · | · |  |
 |  | `getContactShareQr` | list | ✅ | ✅ | · | · | · |  |
-|  | `restoreFromMnemonicWizard` | submit | ✅ | ✅ | · | · | · |  |
+|  | `restoreFromMnemonicWizard` | submit | ✅ | ✅ | · | ✅ | · |  |
 |  | `conflictDisputeWizard` | add | ✅ | ✅ | · | ✅ | ✅ |  |
 |  | `postAudienceWizard` | add | ✅ | ✅ | · | ✅ | · |  |
-|  | `encryptedBackupWizard` | list | ✅ | ✅ | · | · | · |  |
+|  | `encryptedBackupWizard` | list | ✅ | ✅ | · | ✅ | · |  |
 |  | `createGroupWizard` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `joinGroupWizard` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `getCurrentGroup` | list | ✅ | ✅ | · | · | · |  |
@@ -155,7 +155,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `podStatus` | list | ✅ | ✅ | · | · | · |  |
 |  | `getIcsFeed` | list | ✅ | ✅ | · | · | · |  |
 |---|---|---|---|---|---|---|---|---|
-| **totals** | 150 ops | | 147 | 124 | 33 | 75 | 42 | |
+| **totals** | 150 ops | | 147 | 124 | 33 | 78 | 42 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 

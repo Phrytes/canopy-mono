@@ -86,6 +86,18 @@ const MULTI_STATE = {
   ],
 };
 
+// D / SP-3b — surfaces.page → NavModel.pages[]; equivalence must hold for
+// pages too (route carried for the mobile adapter).
+const PAGES = {
+  app:       'pg',
+  itemTypes: [],
+  operations: [
+    { id: 'settings', verb: 'list', surfaces: { page: { kind: 'side-panel', title: 'Settings' } } },
+    { id: 'restore',  verb: 'do',   surfaces: { page: { kind: 'modal', title: 'Restore', route: '/restore' } } },
+  ],
+  views: [],
+};
+
 /* ─── tests ─────────────────────────────────────────────────────────── */
 
 describe('cross-surface equivalence: renderWeb ≡ renderMobile (JSON)', () => {
@@ -93,6 +105,7 @@ describe('cross-surface equivalence: renderWeb ≡ renderMobile (JSON)', () => {
     ['empty manifest',                 EMPTY],
     ['type-enum fallback manifest',    TYPE_ENUM],
     ['multi-state appliesTo manifest', MULTI_STATE],
+    ['page-surface manifest',          PAGES],
   ])('%s — renderWeb(m) and renderMobile(m) are JSON-equal', (_label, m) => {
     expect(JSON.stringify(renderWeb(m))).toBe(JSON.stringify(renderMobile(m)));
   });
@@ -101,6 +114,7 @@ describe('cross-surface equivalence: renderWeb ≡ renderMobile (JSON)', () => {
     ['empty manifest',                 EMPTY],
     ['type-enum fallback manifest',    TYPE_ENUM],
     ['multi-state appliesTo manifest', MULTI_STATE],
+    ['page-surface manifest',          PAGES],
   ])('%s — deep-equal as objects (not just JSON-equal)', (_label, m) => {
     expect(renderMobile(m)).toEqual(renderWeb(m));
   });

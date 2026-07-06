@@ -1157,3 +1157,61 @@ describe("renderWeb V0.2 — Q8 appliesTo.type: '*' wildcard", () => {
     expect(asks.itemActions.map((a) => a.opId)).not.toContain('submitTask');
   });
 });
+
+/* ─── D / SP-3b — surfaces.page → NavModel.pages[] ─────────────────── */
+
+// A manifest whose ops declare `surfaces.page` (the #180-validated shape).
+const PAGE_SYNTH = {
+  app: 'pagey',
+  itemTypes: [],
+  views: [],
+  operations: [
+    {
+      id: 'settings', verb: 'list',
+      surfaces: {
+        slash: { command: '/settings' },
+        chat:  { hint: 'open Settings in a side panel' },
+        page:  { kind: 'side-panel', title: 'Settings' },
+      },
+    },
+    {
+      id: 'restore', verb: 'do',
+      surfaces: { page: { kind: 'modal', title: 'Restore identity', route: '/restore' } },
+    },
+    // No page surface → must NOT appear in pages[].
+    { id: 'noop', verb: 'do', surfaces: { chat: { hint: 'x' } } },
+  ],
+};
+
+describe('renderWeb — pages (D / SP-3b, surfaces.page)', () => {
+  it('projects one Page per op with surfaces.page, in declaration order', () => {
+    const nav = renderWeb(PAGE_SYNTH);
+    expect(nav.pages.map((p) => p.opId)).toEqual(['settings', 'restore']);
+  });
+
+  it('passes kind + title through verbatim', () => {
+    const nav = renderWeb(PAGE_SYNTH);
+    const settings = nav.pages.find((p) => p.opId === 'settings');
+    expect(settings).toEqual({ opId: 'settings', kind: 'side-panel', title: 'Settings' });
+  });
+
+  it('carries the mobile `route` so the same projection feeds renderMobile', () => {
+    const nav = renderWeb(PAGE_SYNTH);
+    const restore = nav.pages.find((p) => p.opId === 'restore');
+    expect(restore).toEqual({ opId: 'restore', kind: 'modal', title: 'Restore identity', route: '/restore' });
+  });
+
+  it('OMITS the pages key entirely when no op declares surfaces.page (shape unchanged)', () => {
+    const nav = renderWeb({ app: 'empty', itemTypes: [], views: [], operations: [] });
+    expect(nav).not.toHaveProperty('pages');
+    expect(nav).toEqual({ app: 'empty', sections: [], globals: [] });
+  });
+
+  it('passes an optional labelKey through (Q22 localisation discipline)', () => {
+    const nav = renderWeb({
+      app: 'l', itemTypes: [], views: [],
+      operations: [{ id: 's', verb: 'list', surfaces: { page: { kind: 'screen', title: 'S', labelKey: 'circle.settings.title' } } }],
+    });
+    expect(nav.pages[0]).toEqual({ opId: 's', kind: 'screen', title: 'S', labelKey: 'circle.settings.title' });
+  });
+});
