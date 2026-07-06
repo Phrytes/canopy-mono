@@ -61,6 +61,7 @@
     "@canopy/oidc-session": "workspace:*",
     "@canopy/item-store": "workspace:*",
     "@canopy/item-types": "workspace:*",
+    "@canopy/kring-host": "workspace:*",
     "@canopy/llm-client": "workspace:*",
     "@canopy/manifest-host": "workspace:*",
     "@canopy/pod-client": "workspace:*",
