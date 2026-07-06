@@ -25,6 +25,15 @@ import { shareIntoAudience, resolveSharedRef, listShared, unsealItem } from '@ca
 import { normalizeCirclePolicy } from './circlePolicy.js';
 
 /**
+ * Which share postures ride the COPY re-seal mechanism (a SEPARATE object sealed to the recipient(s), source
+ * untouched). Decision "option 2": `trusted` and `registered` currently share the SAME copy mechanism as
+ * `copy` — the only difference between the three is WHO MAY INITIATE (the slice-2 initiator gate), which is
+ * already enforced above. Revocable multi-recipient *canonical* sharing (a mixed-mode envelope that re-wraps
+ * the source in place, revocably, without minting a copy) is DEFERRED (option 1 — PLAN §5 / §8).
+ */
+export const usesCopyReseal = (p) => p === 'copy' || p === 'trusted' || p === 'registered';
+
+/**
  * slice 3b — compose a source-circle enforcement `policy` with the READER's OWN opener so a cross-circle
  * recipient can decrypt content re-sealed to THEIR key. Copy mode wraps the content to the recipient's
  * TARGET-circle sealing key, so the reader opens with their target-circle private key (`readerOpen`); a
@@ -95,8 +104,9 @@ export function makeCrossCircleStores(storeByCircle) {
  *        decrypt. Absent ⇒ no re-seal (group-key posture / plaintext source).
  * @param {(item:object, keys:string[])=>(object|Promise<object>)} [args.sealCopy]  share-policy slice 3b —
  *        an injected recipient re-sealer (built from `@canopy/pod-client` `recipientStrategy` + item-store's
- *        `sealItem`; pod-layer, so this module stays pod-client-free). Used by `copy` mode to produce a
- *        SEPARATE object sealed to the recipient(s), leaving the source untouched.
+ *        `sealItem`; pod-layer, so this module stays pod-client-free). Used by the copy-reseal postures
+ *        (`copy`/`trusted`/`registered` — see usesCopyReseal) to produce a SEPARATE object sealed to the
+ *        recipient(s), leaving the source untouched.
  * @param {(circleId:string)=>Promise<{onShare?:Function, policy?:object}|null>} [args.enforcementFor]
  *        the pod-tier binder for a circle (built at the pod site). Null ⇒ memory path (no grant/seal).
  * @param {(circleId:string)=>number} [args.postureOf]  target confidentiality (the posture-floor check).
@@ -126,7 +136,8 @@ export async function shareItemAcrossCircles({
   if (posture === 'registered' && !policy.admins.includes(by)) {
     return { ok: false, error: 'sharing-admin-only' };
   }
-  // 'copy' / 'trusted' ⇒ any member may initiate → proceed.
+  // 'copy' / 'trusted' ⇒ any member may initiate → proceed. All three of copy/trusted/registered then ride the
+  // SAME copy re-seal mechanism below (usesCopyReseal); the posture only decided WHO could initiate.
 
   const [fromSvc, toSvc] = await Promise.all([resolveService(fromCircleId), resolveService(toCircleId)]);
   if (!fromSvc?.stores || !toSvc?.stores) return { ok: false, error: 'no-stores' };
@@ -140,12 +151,17 @@ export async function shareItemAcrossCircles({
   // Null ⇒ memory path: shareIntoAudience just writes the ref (unchanged behaviour).
   const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
 
-  // slice 3b — COPY mode: write a SEPARATE object sealed to the recipient(s), source UNTOUCHED, and share
-  // THAT copy (the shared-ref points at the copy; the ACP grant lands on the copy). Cleanest re-seal — works
-  // for ANY source posture (the source item is read through its own store, opened at rest, then re-sealed
-  // fresh to the recipients' keys), and never locks the source's own members out of the canonical item.
+  // COPY re-seal: write a SEPARATE object sealed to the recipient(s), source UNTOUCHED, and share THAT copy
+  // (the shared-ref points at the copy; the ACP grant lands on the copy). Cleanest re-seal — works for ANY
+  // source posture (the source item is read through its own store, opened at rest, then re-sealed fresh to the
+  // recipients' keys), and never locks the source's own members out of the canonical item.
+  //
+  // Decision "option 2": `copy`, `trusted`, AND `registered` all ride this ONE mechanism (usesCopyReseal). The
+  // three postures differ ONLY in who may initiate (the slice-2 gate above: `closed` refuses, `registered`
+  // admin-only, `copy`/`trusted` any member); the re-seal mechanism is now shared. Revocable multi-recipient
+  // *canonical* sharing (a mixed-mode in-place envelope) is DEFERRED — see PLAN §5 / §8.
   const keys = Array.isArray(recipientKeys) ? recipientKeys.filter(Boolean) : [];
-  if (posture === 'copy' && enforcement?.onShare && typeof sealCopy === 'function' && keys.length) {
+  if (usesCopyReseal(posture) && enforcement?.onShare && typeof sealCopy === 'function' && keys.length) {
     const fromStore = stores.getStore(fromCircleId);
     const srcItem = await fromStore.get(itemId);
     if (!srcItem) return { ok: false, error: 'item-not-found' };
@@ -164,8 +180,10 @@ export async function shareItemAcrossCircles({
     });
   }
 
-  // trusted / registered (and copy without a pod/keys) — canonical path: write the ref to the source item and
-  // let the enforcement's injected `seal` (if any) re-wrap IN PLACE, fed the recipients' sealing keys.
+  // Fallback (no pod/keys, or an enforcement without onShare) — canonical path: write the ref to the source
+  // item and let the enforcement's injected `seal` (if any) re-wrap IN PLACE, fed the recipients' sealing keys.
+  // A copy-reseal posture (copy/trusted/registered) reaches here only when the copy branch's preconditions
+  // (pod onShare + a sealer + recipient keys) aren't ALL met, degrading to the pre-re-seal behaviour.
   return shareIntoAudience(stores, {
     itemId, fromCircleId, toCircleId, by, recipient, recipients, recipientKeys: keys, postureOf,
     onShare: enforcement?.onShare,

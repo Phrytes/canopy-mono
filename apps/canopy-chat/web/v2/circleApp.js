@@ -271,9 +271,11 @@ async function getCircleShareEnforcement(circleId, policy) {
         }
         const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot }));
         // Enforcement `seal` is OMITTED here on PURPOSE: the cross-circle recipient re-seal (share-policy
-        // slice 3b) is layered ABOVE the enforcement binder, in `copy` mode — `shareItemAcrossCircles` writes
-        // a SEPARATE object sealed to the recipients' roster keys (`sealCopyToRecipients`) and grants on THAT,
-        // leaving the source's canonical group-key item untouched (never locks the source's own members out).
+        // slice 3b) is layered ABOVE the enforcement binder, in the COPY re-seal path — `shareItemAcrossCircles`
+        // writes a SEPARATE object sealed to the recipients' roster keys (`sealCopyToRecipients`) and grants on
+        // THAT, leaving the source's canonical group-key item untouched (never locks the source's own members
+        // out). Decision "option 2": `trusted`/`registered` currently ride this SAME copy mechanism (they differ
+        // only in who may INITIATE — the slice-2 gate); revocable multi-recipient *canonical* is deferred.
         // On read, `open: strategy.open` unseals a group-key source; `composeReaderOpen` (in circleShare) adds
         // the reader's OWN recipient opener so a copy re-sealed to them decrypts. A same-circle group-key
         // share needs no re-seal (recipient already holds the key via the roster).
