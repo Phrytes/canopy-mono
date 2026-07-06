@@ -14,7 +14,7 @@ import {
   createObjectVersionsAdapter,
   localStorageVersionsIo,
   localStorageObjectVersions,
-} from '../../src/v2/objectVersionsStorage.js';
+} from '../src/objectVersionsStorage.js';
 
 /** Map-backed storage matching globalThis.localStorage shape. */
 function mockLocalStorage() {

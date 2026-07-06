@@ -1,36 +1,21 @@
 /**
- * Shared extension-mapping loader (feedback-extension P2 — web≡mobile core).
+ * mappingsLoader — COMPAT WRAPPER (repo-split W4, objective F).
  *
- * Platform-independent: the caller injects the store (web localStorage /
- * mobile AsyncStorage / a real pseudo-pod) + the base catalog. Loads the pod
- * `mappings/` folder, runs the sandbox verify gate (`verifyMappings`) against
- * the catalog, and returns the `mergeManifests` sources for the accepted
- * mappings (to merge in) plus the rejected/dropped for surfacing. Both the web
- * (`circleApp.js`) and mobile (`agentBundle.js`) composition roots call this so
- * the load+verify path lives ONCE.
+ * The neutral load+verify path moved into the platform-neutral substrate
+ * `@canopy/kring-host` (`./mappingsLoader`). It could not `export *` re-export like the pure W3 leaves,
+ * because its verify gate (`verifyMappings`, `mappingsToSources`) lives in the app-local `../mappings.js`
+ * — which itself depends on the app-local `composite.js` (`verifyComposite`, destined for
+ * `@canopy/manifest-host`, not kring-host), so `mappings.js` can't move into the substrate honestly yet.
+ *
+ * The substrate loader therefore takes those two functions by INJECTION. This shim is the app-side
+ * composition seam: it binds canopy-chat's `verifyMappings`/`mappingsToSources` into the neutral loader so
+ * existing callers (web `circleApp.js`, mobile `agentBundle.js`, the test) keep calling
+ * `loadVerifyMappings({ store, deviceId, catalog })` unchanged.
  */
-
-import { loadMappings } from '@canopy/pod-routing/mappings';
+import { loadVerifyMappings as loadVerifyMappingsNeutral } from '@canopy/kring-host/mappingsLoader';
 import { verifyMappings, mappingsToSources } from '../mappings.js';
 
-/**
- * @param {object} args
- * @param {{list:Function, read:Function}} args.store   pseudo-pod-subset store
- * @param {string} args.deviceId
- * @param {{ opsById: Map }} args.catalog               the base catalog to verify against
- * @returns {Promise<{ sources: Array<{manifest:object}>, accepted: object[],
- *                     rejected: Array<{id,missing}>, dropped: Array<{id,errors}>,
- *                     mappingOrigins: string[] }>}
- */
-export async function loadVerifyMappings({ store, deviceId, catalog }) {
-  const { mappings } = await loadMappings({ pseudoPod: store, deviceId });
-  const { accepted, rejected } = verifyMappings(mappings, catalog);
-  const { sources, dropped } = mappingsToSources(accepted);
-  return {
-    sources,
-    accepted,
-    rejected,
-    dropped,
-    mappingOrigins: sources.map((s) => s.manifest.app),
-  };
+/** @type {typeof loadVerifyMappingsNeutral} */
+export function loadVerifyMappings(args) {
+  return loadVerifyMappingsNeutral({ verifyMappings, mappingsToSources, ...args });
 }

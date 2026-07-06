@@ -11,7 +11,9 @@
     "./followUp":       "./src/followUp.js",
     "./deliveryState":  "./src/deliveryState.js",
     "./kringBroadcast": "./src/kringBroadcast.js",
-    "./mappingsStore":  "./src/mappingsStore.js"
+    "./mappingsStore":  "./src/mappingsStore.js",
+    "./objectVersionsStorage": "./src/objectVersionsStorage.js",
+    "./mappingsLoader":        "./src/mappingsLoader.js"
   },
   "scripts": {
     "test":       "vitest run",
@@ -19,7 +21,9 @@
   },
   "dependencies": {
     "@canopy/item-store": "workspace:*",
-    "@canopy/item-types": "workspace:*"
+    "@canopy/item-types": "workspace:*",
+    "@canopy/pod-routing": "workspace:*",
+    "@canopy/sync-engine": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
