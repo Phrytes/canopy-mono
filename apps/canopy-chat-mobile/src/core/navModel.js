@@ -9,7 +9,7 @@
  * live in ../rn/screens/.
  */
 // Relative imports — see composeManifests.js for the rationale.
-import { renderMobile } from '../../../../packages/app-manifest/src/renderMobile.js';
+import { renderMobile } from '@canopy/app-manifest';
 
 import { canopyChatManifest } from '../../../canopy-chat/src/index.js';
 import {

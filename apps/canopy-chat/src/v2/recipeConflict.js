@@ -41,7 +41,7 @@
  * (matches `kringRecipe.freshBlockId`).
  */
 
-import { objectDiff } from '../../../../packages/sync-engine/src/objectDiff.js';
+import { objectDiff } from '@canopy/sync-engine/objectDiff';
 
 /**
  * @typedef {object} BlockConflict

@@ -39,9 +39,9 @@ import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactT
 import { withCalendarOutbound } from '../../../canopy-chat/src/core/handlers/calendarOutbound.js';
 // OBJ-2 membership — shared joiner-side peer-redeem sender (correlated by the bundle's pending-map).
 import { makeSendGroupRedeemRequest } from '../../../canopy-chat/src/core/handlers/groupRedeem.js';
-import { sendA2ATask } from '../../../../packages/core/src/a2a/a2aTaskSend.js';
-import { PeerGraph } from '../../../../packages/core/src/discovery/PeerGraph.js';
-import { AsyncStorageAdapter } from '../../../../packages/react-native/src/storage/AsyncStorageAdapter.js';
+import { sendA2ATask } from '@canopy/core';
+import { PeerGraph } from '@canopy/core';
+import { AsyncStorageAdapter } from '@canopy/react-native/storage/AsyncStorageAdapter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
 
@@ -52,7 +52,7 @@ export async function resolveMobileRelayUrl() {
   try { return resolveRelayUrl(await asyncStorageRelayIo(AsyncStorage).load(), process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL); }
   catch { return process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null; }
 }
-import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
+import { discoverA2A } from '@canopy/core';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
 // so importing agentBundle.js doesn't transitively pull in
@@ -66,7 +66,7 @@ import { discoverA2A } from '../../../../packages/core/src/a2a/a2aDiscover.js';
 //
 // VaultAsyncStorage from @canopy/react-native is pure JS, accepts an
 // injected asyncStorage instance so vitest works without an RN runtime.
-import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
+import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
 
 async function loadCreateRealHouseholdAgent() {
   const mod = await import('../../../canopy-chat/src/core/agent/realAgent.js');
