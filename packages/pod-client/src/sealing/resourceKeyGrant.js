@@ -58,8 +58,29 @@ export function resourceScope(resourceId) {
  *   (issuer trust-tier, pod ACL / `PodCapabilityToken` path scopes, rate limits) plugs in at the pod. The
  *   core primitive is self-contained without it: the signed, subject-bound, resource-scoped, revocable
  *   token IS the capability.
+ * @param {{ grant: Function, revoke: Function }} [opts.sharing]
+ *   OPTIONAL pod ACP surface (`client.sharing` — grant/revoke, already enforcing the SHARING_GRANT_NOOP /
+ *   SHARING_REVOKE_NOOP contract: a no-op SDK return THROWS). This is the deferred **pod-side ACL wiring**
+ *   (S card). The token gate above stays AUTHORITATIVE and decides IF a grant may issue; the ACP is only the
+ *   pod-side ENFORCEMENT reflection of an ALREADY-authorized grant (defence in depth — so the pod itself
+ *   denies the resource, not just the key custodian). When present:
+ *     • `releaseKey` on the happy path (token verified, subject-bound, in-scope, not revoked, checkGrant ok)
+ *       ALSO lands `sharing.grant({ resourceUri, agent, modes })`. A token-DENIED release lands NO ACP grant
+ *       and hands over NO key — the gate is not bypassed.
+ *     • `revoke({ tokenId, resourceId|resourceUri, agent })` ALSO calls `sharing.revoke(...)`, so the grantee
+ *       loses the key (future `releaseKey` denied) AND the pod denies the resource.
+ *   A no-op ACP change PROPAGATES (the SHARING_*_NOOP throw is never swallowed). Mirrors `createCanonicalShare`.
+ *   When ABSENT, behaviour is exactly as before — a key-only grant/revoke (full back-compat).
+ * @param {(resourceId: string) => (string|null)} [opts.resourceUriFor]
+ *   OPTIONAL map from an internal `resourceId` (the keyring key) to the pod resource URI the ACP targets.
+ *   Defaults to identity (resourceId IS the URI). A per-call `resourceUri` always overrides it.
+ * @param {import('../sharing/index.js').ShareMode[]} [opts.modes=['read']]
+ *   The ACP mode(s) the pairing grants/revokes. Per-resource key grants are read-only by design.
  */
-export function createResourceKeyGrant({ identity, tokenRegistry = null, checkGrant = null } = {}) {
+export function createResourceKeyGrant({
+  identity, tokenRegistry = null, checkGrant = null,
+  sharing = null, resourceUriFor = null, modes = ['read'],
+} = {}) {
   if (!identity || typeof identity.sign !== 'function' || !identity.pubKey) {
     throw new Error('createResourceKeyGrant: an AgentIdentity (with sign + pubKey) is required');
   }
@@ -69,6 +90,17 @@ export function createResourceKeyGrant({ identity, tokenRegistry = null, checkGr
   if (checkGrant != null && typeof checkGrant !== 'function') {
     throw new Error('createResourceKeyGrant: checkGrant must be a function');
   }
+  if (sharing != null && (typeof sharing.grant !== 'function' || typeof sharing.revoke !== 'function')) {
+    throw new Error('createResourceKeyGrant: sharing must expose grant/revoke');
+  }
+  if (resourceUriFor != null && typeof resourceUriFor !== 'function') {
+    throw new Error('createResourceKeyGrant: resourceUriFor must be a function');
+  }
+
+  // Map an internal resourceId (keyring key) → the pod resource URI the ACP targets. A per-call `resourceUri`
+  // wins; else `resourceUriFor(resourceId)`; else the resourceId IS the URI.
+  const uriFor = (resourceId, resourceUri) =>
+    resourceUri || (resourceUriFor ? resourceUriFor(resourceId) : null) || resourceId;
 
   // resourceId → CEK (b64url 32-byte symmetric key). The broker's secret keyring.
   const keyring = new Map();
@@ -133,53 +165,100 @@ export function createResourceKeyGrant({ identity, tokenRegistry = null, checkGr
      * @param {string} opts.resourceId            — the resource whose key is requested.
      * @param {string} opts.requesterSealPubKey   — caller's X25519 SEALING pubkey (from generateKeypair) to
      *                                               receive the wrapped CEK.
+     * @param {string} [opts.agent]                — ACP grant subject (grantee's WebID) when a `sharing` surface
+     *                                               is injected; defaults to `requesterPubKey`.
+     * @param {string} [opts.resourceUri]          — ACP target URI; defaults to `resourceUriFor(resourceId)`
+     *                                               or the `resourceId` itself.
+     * @param {import('../sharing/index.js').ShareMode[]} [opts.modes]  — override the construction-time modes.
      * @returns {Promise<{ wrappedKey: string, resourceId: string } | { denied: true, reason: string }>}
      */
-    async releaseKey({ token, requesterPubKey, resourceId, requesterSealPubKey } = {}) {
-      try {
-        if (!token)                return deny('no-token');
-        if (!requesterPubKey)      return deny('no-requester');
-        if (!requesterSealPubKey)  return deny('no-seal-pubkey');
+    async releaseKey({ token, requesterPubKey, resourceId, requesterSealPubKey, agent, resourceUri, modes: callModes } = {}) {
+      // ── Gate (deny-by-default) — the token gate is AUTHORITATIVE. Any failure denies here, BEFORE any key
+      //    handover or ACP grant. An unexpected throw inside the gate also denies (never leak a key).
+      const cek = await (async () => {
+        try {
+          if (!token)                return deny('no-token');
+          if (!requesterPubKey)      return deny('no-requester');
+          if (!requesterSealPubKey)  return deny('no-seal-pubkey');
 
-        const cek = keyring.get(resourceId);
-        if (!cek) return deny('unknown-resource');
+          const k = keyring.get(resourceId);
+          if (!k) return deny('unknown-resource');
 
-        let parsed;
-        try { parsed = token instanceof CapabilityToken ? token : CapabilityToken.fromJSON(token); }
-        catch { return deny('malformed-token'); }
+          let parsed;
+          try { parsed = token instanceof CapabilityToken ? token : CapabilityToken.fromJSON(token); }
+          catch { return deny('malformed-token'); }
 
-        // Signature + expiry + agent binding (only grants THIS broker issued verify).
-        let ok;
-        try { ok = CapabilityToken.verify(parsed, identity.pubKey); } catch { ok = false; }
-        if (!ok) return deny('invalid-token');
+          // Signature + expiry + agent binding (only grants THIS broker issued verify).
+          let ok;
+          try { ok = CapabilityToken.verify(parsed, identity.pubKey); } catch { ok = false; }
+          if (!ok) return deny('invalid-token');
 
-        // Subject binding — the token may only be used by the peer it was issued to (no theft/forwarding).
-        if (parsed.subject !== requesterPubKey) return deny('subject-mismatch');
+          // Subject binding — the token may only be used by the peer it was issued to (no theft/forwarding).
+          if (parsed.subject !== requesterPubKey) return deny('subject-mismatch');
 
-        // Resource scope — per-resource isolation via the token model's own matcher.
-        if (!skillMatches(parsed.skill, resourceScope(resourceId))) return deny('wrong-scope');
+          // Resource scope — per-resource isolation via the token model's own matcher.
+          if (!skillMatches(parsed.skill, resourceScope(resourceId))) return deny('wrong-scope');
 
-        // Revocation.
-        if (await isRevoked(parsed.id)) return deny('revoked');
+          // Revocation.
+          if (await isRevoked(parsed.id)) return deny('revoked');
 
-        // Optional pod-side ACL seam (issuer trust-tier / pod ACL / rate limit).
-        if (checkGrant) {
-          let granted = false;
-          try { granted = await checkGrant({ token: parsed, requesterPubKey, resourceId }); } catch { granted = false; }
-          if (granted !== true) return deny('acl');
+          // Optional pod-side ACL seam (issuer trust-tier / pod ACL / rate limit).
+          if (checkGrant) {
+            let granted = false;
+            try { granted = await checkGrant({ token: parsed, requesterPubKey, resourceId }); } catch { granted = false; }
+            if (granted !== true) return deny('acl');
+          }
+          return k; // gate passed — hand back THIS resource's CEK
+        } catch (err) {
+          return deny('error', err);
         }
+      })();
+      if (cek && cek.denied) return cek; // gate denied → NO key handover, NO ACP grant (gate authoritative)
 
-        // Happy path — wrap THIS resource's CEK to the requester's sealing pubkey.
-        return { wrappedKey: seal(cek, requesterSealPubKey), resourceId };
-      } catch (err) {
-        return deny('error', err); // never leak a key on an unexpected throw
+      // ── Happy path — wrap THIS resource's CEK to the requester's sealing pubkey.
+      const wrappedKey = seal(cek, requesterSealPubKey);
+
+      // ── Pod-side ACP reflection (defence in depth). Mirrors createCanonicalShare.share: pair the key
+      //    handover with an ACP read-grant on THIS resource. A SHARING_GRANT_NOOP (a grant that landed nothing)
+      //    THROWS out of here — we never report a key handover that the pod didn't actually authorize.
+      if (sharing) {
+        await sharing.grant({
+          resourceUri: uriFor(resourceId, resourceUri),
+          agent: agent || requesterPubKey,
+          modes: callModes || modes,
+        });
       }
+
+      return { wrappedKey, resourceId };
     },
 
-    /** Revoke a previously-issued grant by token id. Subsequent `releaseKey` with it is denied. */
-    async revoke(tokenId) {
-      if (tokenRegistry) return tokenRegistry.revoke(tokenId);
-      localRevoked.add(tokenId);
+    /**
+     * Revoke a previously-issued grant. Subsequent `releaseKey` with the token is denied (key custody).
+     *
+     * @param {string|object} arg
+     *   • STRING — a token id: key-custody revocation only (back-compat; no ACP touched).
+     *   • OBJECT `{ tokenId, resourceId?, resourceUri?, agent?, modes? }` — when a `sharing` surface is injected
+     *     AND `agent` is supplied, ALSO calls `sharing.revoke(...)` so the pod denies the resource too. The
+     *     key-custody revocation runs FIRST (fail-safe: the grantee is denied the key even if ACP throws); a
+     *     SHARING_REVOKE_NOOP then PROPAGATES (a no-op ACP revoke is never mistaken for success).
+     */
+    async revoke(arg) {
+      const { tokenId, resourceId, resourceUri, agent, modes: callModes } =
+        typeof arg === 'string' ? { tokenId: arg } : (arg || {});
+
+      // 1. KEY CUSTODY — mark the token revoked first, so the grantee can no longer obtain the CEK.
+      if (tokenRegistry) await tokenRegistry.revoke(tokenId);
+      else localRevoked.add(tokenId);
+
+      // 2. ACP REVOKE — pod-side reflection. Only when a sharing surface is injected AND we know the subject.
+      //    A no-op (SHARING_REVOKE_NOOP) throws and PROPAGATES — never swallowed.
+      if (sharing && agent) {
+        await sharing.revoke({
+          resourceUri: uriFor(resourceId, resourceUri),
+          agent,
+          modes: callModes || modes,
+        });
+      }
     },
   };
 }
