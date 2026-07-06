@@ -56,14 +56,21 @@ function makeAuthFetch(linkHeader) {
   return f;
 }
 
-/** Fake Inrupt universalAccess module that logs calls. */
+/** Fake Inrupt universalAccess module that logs calls.
+ *
+ * The real `@inrupt/solid-client` `universalAccess.set*Access` returns the
+ * RESULTING Access object on success and `null` when it could not apply the
+ * change; `client.sharing.grant` relies on that contract to surface silent
+ * no-ops (see packages/pod-client/src/sharing/index.js — SHARING_GRANT_NOOP).
+ * The setters therefore echo the applied `access` back (non-null) so the grant
+ * is recognised as landed. */
 function makeFakeInrupt() {
   const log = { setAgent: [], setPublic: [] };
   return {
     log,
     universalAccess: {
-      async setAgentAccess(uri, agent, access) { log.setAgent.push({ uri, agent, access }); },
-      async setPublicAccess(uri, access)       { log.setPublic.push({ uri, access }); },
+      async setAgentAccess(uri, agent, access) { log.setAgent.push({ uri, agent, access }); return { ...access }; },
+      async setPublicAccess(uri, access)       { log.setPublic.push({ uri, access });        return { ...access }; },
       async getAgentAccess()  { return { read: false, append: false, write: false, controlRead: false, controlWrite: false }; },
       async getPublicAccess() { return { read: false, append: false, write: false, controlRead: false, controlWrite: false }; },
     },

@@ -241,9 +241,18 @@ async function _runInProcess(callerAgent, targetAgent, task, taskId, skillId, pa
     return controller.signal;
   };
 
+  // Hand the handler an envelope whose `payload` mirrors the wire RQ
+  // (handleTaskRequest passes the full decrypted envelope). Handlers that
+  // read `envelope.payload._token` (e.g. cap-token `actingAs` resolution)
+  // must behave identically on the fast-path and the wire path.
   const res = await runGatedSkill(targetAgent, {
     skillId, parts, from, token: tokenJson,
-    taskId, envelope: { _from: from }, onGatePassed,
+    taskId,
+    envelope: {
+      _from:   from,
+      payload: { type: 'task', taskId, skillId, parts, _token: tokenJson },
+    },
+    onGatePassed,
   });
 
   switch (res.status) {

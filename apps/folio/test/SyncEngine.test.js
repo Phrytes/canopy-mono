@@ -735,9 +735,20 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
     return state;
   }
 
+  // ENV NOTE: every test in this describe block drives a REAL wall-clock
+  // watcher vigil (debounce + stableMs windows via setTimeout — no fake
+  // timers). The assertions are all polled through `waitFor` below, so a
+  // correct engine passes regardless of speed; the only failure mode under
+  // heavy CPU contention (e.g. the full 27-file suite in parallel) is the
+  // poll deadline being exhausted before late-firing timers settle. The
+  // deadline is therefore generous (5s) purely to absorb contention — it does
+  // NOT change pass/fail semantics for a healthy engine, only the ceiling a
+  // slow machine is allowed before the assertion gives up. Do not shrink it to
+  // "speed up" the suite; that just reintroduces contention flakiness.
+  //
   // Helper: poll until `predicate()` returns true, capped at `timeoutMs` of
   // wall clock.  Uses real-time setTimeout (so no fake-timer interference).
-  async function waitFor(predicate, timeoutMs = 1500, intervalMs = 10) {
+  async function waitFor(predicate, timeoutMs = 5000, intervalMs = 10) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       if (await predicate()) return true;
@@ -915,6 +926,13 @@ describe('SyncEngine — watcher sha-stability (Folio v2.6)', () => {
     expect(settled).toBe(true);
 
     // No premature firing — runOnce only counts after the stable decision.
+    // runOnce dispatches ASYNCHRONOUSLY once the vigil settles, so wait for
+    // the count to land rather than sampling it synchronously right after the
+    // 'stable' decision (that sample races the async runOnce under CPU
+    // contention → intermittent `expected 0 to be 1`). Mirrors the stable-case
+    // test above. We still assert exactly one fire (no premature/double run).
+    const ran = await waitFor(() => syncedCount.count >= 1);
+    expect(ran).toBe(true);
     expect(syncedCount.count).toBe(1);
 
     e._disarmForTest();
