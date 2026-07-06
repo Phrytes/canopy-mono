@@ -53,6 +53,17 @@ export {
   PFS_VERSION, DEFAULT_MAX_SKIP,
 } from './pfs.js';
 
+// B #63 Tier-2 — remote-handler dispatch tier + revocable ocap + live registration.
+// Composes the kernel's callSkill (agent.invoke) + PolicyEngine + CapabilityToken
+// + TokenRegistry to resolve an op to an external agent and gate it with a grant.
+export {
+  RemoteHandlerRegistry,
+  dispatchRemoteOp,
+  grantRemoteCapability,
+  enableIssuerRevocation,
+  NOT_REMOTE,
+} from './remoteHandlers.js';
+
 // S5 + S7 — re-export the substrate primitives the factory wires
 export {
   TrustRegistry,
