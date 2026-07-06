@@ -85,6 +85,14 @@ export function createManifestHost() {
       return Array.from(mounts.keys());
     },
 
+    // The mounted manifests in mount-insertion order — the composed set the
+    // host is running.  Used by `createGate` to project the deterministic
+    // token-gate from the host's manifests (renderGate needs the raw manifests,
+    // not the rendered/namespaced compose() view).
+    manifests() {
+      return Array.from(mounts.values()).map((m) => m.manifest);
+    },
+
     compose() {
       return composeMounts(mounts);
     },
@@ -203,5 +211,6 @@ function composeMounts(mounts) {
  * @property {(appId: string, manifest: object, opts: object) => MountedApp} mount
  * @property {(appId: string) => void} unmount
  * @property {() => string[]} list
+ * @property {() => object[]} manifests
  * @property {() => object} compose
  */
