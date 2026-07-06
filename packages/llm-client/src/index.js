@@ -27,10 +27,18 @@ export {
 } from './metering.js';
 
 // Embeddings (F-retrieve tier-2 / NL search) — sibling of the chat client.
-export { EmbeddingClient } from './EmbeddingClient.js';
+// `EmbeddingClient` (class, bare-vector return) is the original; pod-search V2
+// builds against `createEmbeddingsClient` (§3.1: `{ vectors, modelId, dim }` +
+// coded errors). Both share the same provider-agnostic + audit-hook composition.
+export { EmbeddingClient, createEmbeddingsClient } from './EmbeddingClient.js';
 export {
   openaiEmbeddingsProvider,
   parseEmbeddingsResponse,
   EMBEDDINGS_DEFAULT_MODEL,
 } from './providers/embeddings.js';
+export {
+  ollamaEmbedProvider,
+  parseOllamaEmbedResponse,
+  OLLAMA_EMBED_DEFAULT_MODEL,
+} from './providers/ollama-embed.js';
 export { mockEmbeddingsProvider } from './providers/mockEmbeddings.js';

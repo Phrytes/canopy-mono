@@ -12,6 +12,7 @@
     "./providers/ollama":         "./src/providers/ollama.js",
     "./providers/mock":           "./src/providers/mock.js",
     "./providers/embeddings":     "./src/providers/embeddings.js",
+    "./providers/ollama-embed":   "./src/providers/ollama-embed.js",
     "./providers/mockEmbeddings": "./src/providers/mockEmbeddings.js"
   },
   "scripts": {
