@@ -12,6 +12,11 @@
 
 export { createPodOnboarding }   from './src/PodOnboarding.js';
 export { provisionDefault }      from './src/provisionDefault.js';
+export { seedOnboardingPod }     from './src/seedOnboardingPod.js';
+export {
+  createCustomerRegister,
+  CUSTOMER_STATUS,
+} from './src/customerRegister.js';
 export { restoreFromMnemonic }   from './src/restoreFromMnemonic.js';
 export { signOut }               from './src/signOut.js';
 export { upgradeToTwoPods }      from './src/upgradeToTwoPods.js';
