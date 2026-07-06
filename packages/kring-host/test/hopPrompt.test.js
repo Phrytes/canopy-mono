@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import {
   shouldAutoSuggestHop, buildHopPromptCard,
   rememberDismissed, hasDismissed, MAX_HOPS,
-} from '../../src/v2/hopPrompt.js';
+} from '../src/hopPrompt.js';
 
 describe('shouldAutoSuggestHop', () => {
   it('prompts when there are no in-circle matches + at least one eligible contact + hop is on', () => {

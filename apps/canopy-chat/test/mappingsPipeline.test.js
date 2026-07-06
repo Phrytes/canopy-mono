@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { writeMapping, loadMappings } from '@canopy/pod-routing/mappings';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../src/v2/mappingsStore.js';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
 import { verifyMappings, mappingsToSources } from '../src/mappings.js';
 import { mergeManifests } from '../src/manifestMerge.js';
 

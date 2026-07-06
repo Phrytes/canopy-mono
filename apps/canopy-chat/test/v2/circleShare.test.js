@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { makeCircleShareEnforcement } from '@canopy/item-store';
 import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '../../src/v2/circleLists.js';
+import { makeCircleLists } from '@canopy/kring-host/circleLists';
 import { shareItemAcrossCircles, listSharedResolved, makeCrossCircleStores } from '../../src/v2/circleShare.js';
 
 // A fake ACP `sharing` surface ({ grant, list }, the client.sharing shape). Records grants; answers list()

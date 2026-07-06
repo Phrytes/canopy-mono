@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { buildConsentModel, installMapping, uninstallMapping } from '../src/v2/extensionInstall.js';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../src/v2/mappingsStore.js';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
 
 const catalog = {
   opsById: new Map([

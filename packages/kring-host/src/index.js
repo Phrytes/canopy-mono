@@ -25,3 +25,12 @@ export { WEB_MAPPINGS_DEVICE, localStorageMappingsStore } from './mappingsStore.
 // mappingsLoader (app-local verify gate now INJECTED; the canopy-chat shim binds it).
 export { createObjectVersionsAdapter, localStorageVersionsIo, localStorageObjectVersions } from './objectVersionsStorage.js';
 export { loadVerifyMappings } from './mappingsLoader.js';
+
+// W5 extraction: the /find-enrichment cluster (findExtras + its shared building blocks findSkillMatches
+// and hopPrompt) plus the two pure skill/hop model leaves those depend on (circleSkills, circleHop). All
+// pure-neutral: their only deps are each other + the already-extracted circleMembers leaf.
+export { SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill, MATCH_SOURCES, buildSkillMatches } from './circleSkills.js';
+export { MAX_HOPS, normalizeHopMode, buildHopChain, makeHopRelayRequest } from './circleHop.js';
+export { findSkillMatches, tokenize } from './findSkillMatches.js';
+export { shouldAutoSuggestHop, buildHopPromptCard, rememberDismissed, hasDismissed } from './hopPrompt.js';
+export { buildFindExtras } from './findExtras.js';

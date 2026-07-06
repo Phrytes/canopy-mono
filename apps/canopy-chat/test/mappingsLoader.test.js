@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { writeMapping } from '@canopy/pod-routing/mappings';
 import { loadVerifyMappings } from '../src/v2/mappingsLoader.js';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '../src/v2/mappingsStore.js';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
 
 function fakeStorage() {
   const map = new Map();

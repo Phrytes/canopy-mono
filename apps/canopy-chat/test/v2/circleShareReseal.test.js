@@ -21,11 +21,11 @@ import {
 } from '@canopy/pod-client';
 import { makeCircleShareEnforcement, sealItem } from '@canopy/item-store';
 import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '../../src/v2/circleLists.js';
+import { makeCircleLists } from '@canopy/kring-host/circleLists';
 import {
   shareItemAcrossCircles, listSharedResolved, composeReaderOpen,
 } from '../../src/v2/circleShare.js';
-import { recipientSealKeyFromMembers } from '../../src/v2/circleMembers.js';
+import { recipientSealKeyFromMembers } from '@canopy/kring-host/circleMembers';
 
 const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: 'https://pod.example/' }));
 

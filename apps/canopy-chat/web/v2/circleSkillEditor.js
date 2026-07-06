@@ -8,7 +8,7 @@
  * button fires `onSave`, Back fires `onBack`. Pure render → unit-testable
  * under happy-dom. Local discovery is out of scope for this slice.
  */
-import { SKILL_AXES } from '../../src/v2/circleSkills.js';
+import { SKILL_AXES } from '@canopy/kring-host/circleSkills';
 
 const AXES = ['openness', 'posture', 'status', 'radius'];
 

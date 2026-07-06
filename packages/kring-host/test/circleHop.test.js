@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   MAX_HOPS, normalizeHopMode, buildHopChain, makeHopRelayRequest,
-} from '../../src/v2/circleHop.js';
+} from '../src/circleHop.js';
 
 describe('normalizeHopMode', () => {
   it('coerces the global flag to a boolean', () => {

@@ -2,7 +2,7 @@
  * P6.7 — skill-match source-side tests.
  */
 import { describe, it, expect } from 'vitest';
-import { findSkillMatches, tokenize, MATCH_SOURCES } from '../../src/v2/findSkillMatches.js';
+import { findSkillMatches, tokenize, MATCH_SOURCES } from '../src/findSkillMatches.js';
 
 describe('tokenize', () => {
   it('lowercases + splits on non-letters', () => {
