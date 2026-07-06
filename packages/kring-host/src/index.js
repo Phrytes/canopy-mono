@@ -19,3 +19,9 @@ export { pickPromptKey, beginFollowUp, beginFormFollowUp, completeMultiFieldFoll
 export { createDeliveryStateMap } from './deliveryState.js';
 export { kringChatMessageEvent, PERMANENT_FANOUT_REASONS, classifyFanOut, broadcastKringFanOut } from './kringBroadcast.js';
 export { WEB_MAPPINGS_DEVICE, localStorageMappingsStore } from './mappingsStore.js';
+
+// W4 extraction: two v2 leaves untangled from their invariant-violating couplings — objectVersionsStorage
+// (deep-import of sync-engine/src repointed onto the `@canopy/sync-engine/objectVersions` subpath) and
+// mappingsLoader (app-local verify gate now INJECTED; the canopy-chat shim binds it).
+export { createObjectVersionsAdapter, localStorageVersionsIo, localStorageObjectVersions } from './objectVersionsStorage.js';
+export { loadVerifyMappings } from './mappingsLoader.js';
