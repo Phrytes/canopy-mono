@@ -46,6 +46,25 @@
  * @property {string}   app                manifest.app verbatim
  * @property {Section[]} sections          one per manifest.view (declaration order)
  * @property {Affordance[]} globals        top-level affordances (e.g. global Help)
+ * @property {Page[]}   [pages]            top-level PAGE surfaces (SP-3b, D) —
+ *                                         one per op with `surfaces.page`
+ *                                         (declaration order).  Key is OMITTED
+ *                                         when the manifest declares no page
+ *                                         surface, so the NavModel shape is
+ *                                         unchanged for page-less manifests.
+ *
+ * @typedef {object} Page
+ * @property {string}   opId               op that opens this page (dispatch key)
+ * @property {'side-panel'|'modal'|'screen'} kind  mirrors surfaces.page.kind
+ * @property {string}   [title]            mirrors surfaces.page.title (panel header)
+ * @property {string}   [route]            mirrors surfaces.page.route (mobile nav
+ *                                         route; web adapter ignores it — the
+ *                                         NavModel stays platform-neutral so the
+ *                                         same projection feeds renderMobile)
+ * @property {string}   [labelKey]         Q22 localisation key passthrough (see
+ *                                         Affordance.labelKey) — absent today, but
+ *                                         forward-additive so a localised page
+ *                                         title can be looked up via `t()`.
  *
  * @typedef {object} Section
  * @property {string}   id                 mirrors view.id
@@ -373,6 +392,29 @@
  * verifies it's either declared in `manifest.operations[].id` OR in
  * the new `manifest.externalSkills?: string[]` allow-list.  Default
  * (no `strict` opt) keeps the existing tolerant behaviour.
+ *
+ * ──── D / SP-3b — `surfaces.page` projection (renderWeb tail, 2026-07)
+ *
+ * The renderWeb-tail slice of Objective D (all surfaces manifest-driven).
+ * Ops that open a persistent rich-UI surface declare `surfaces.page`
+ * (validated by #180: `{kind: 'side-panel'|'modal'|'screen', title?,
+ * route?}`) — the Settings side-panel, the Cluster-C wizards (restore
+ * identity, dispute, audience picker, encrypted backup, create/join
+ * buurt), etc.  Before this slice, renderWeb DROPPED these declarations:
+ * pages surfaced neither in the NavModel nor in renderCoverage's
+ * web/mobile column, so the coverage snapshot under-counted the web
+ * surface (invariant #4 honesty gap).
+ *
+ * Projection: each `surfaces.page` op becomes a `NavModel.pages[]` entry
+ * (declaration order, deterministic).  Platform-neutral — `route` (the
+ * mobile nav route) rides along so the SAME projection feeds
+ * renderMobile; the web adapter ignores it.  renderWeb ≡ renderMobile
+ * holds by construction (renderMobile re-exports renderWeb).
+ *
+ * Forward-additive: the `pages` KEY is omitted when a manifest declares
+ * no page surface, so page-less manifests keep the exact
+ * `{app, sections, globals}` shape.  renderCoverage's `screen` detector
+ * now also counts `surfaces.page` (a page IS a web/mobile surface).
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -423,11 +465,25 @@ export function renderWeb(manifest) {
   // (b) Sections — one per view; preserve declaration order (Q2).
   const sections = views.map((view) => buildSection(view, ops, manifest));
 
-  return {
+  // (c) Pages — D / SP-3b: ops with `surfaces.page` project to top-level
+  //     PAGE surfaces (Settings side-panel, Cluster-C wizards, …).
+  //     Declaration order, deterministic.  Kept OUT of the return object
+  //     when empty so page-less manifests keep the {app, sections,
+  //     globals} shape.
+  const pages = [];
+  for (const op of ops) {
+    const page = op?.surfaces?.page;
+    if (!page || typeof page !== 'object' || Array.isArray(page)) continue;
+    pages.push(buildPage(op, page));
+  }
+
+  const nav = {
     app: typeof manifest.app === 'string' ? manifest.app : '',
     sections,
     globals,
   };
+  if (pages.length > 0) nav.pages = pages;
+  return nav;
 }
 
 /* ─── internals ──────────────────────────────────────────────────── */
@@ -601,6 +657,23 @@ function findTypeEnumParam(op) {
     }
   }
   return null;
+}
+
+/**
+ * D / SP-3b — project one `surfaces.page` declaration into a NavModel
+ * Page.  Pure passthrough of the #180-validated shape (`kind` required;
+ * `title`/`route` optional).  `route` (mobile nav route) is carried so
+ * the same projection feeds renderMobile; the web adapter ignores it.
+ */
+function buildPage(op, page) {
+  const out = { opId: op.id, kind: page.kind };
+  if (typeof page.title === 'string' && page.title !== '') out.title = page.title;
+  if (typeof page.route === 'string' && page.route !== '') out.route = page.route;
+  // Q22-style localisation key passthrough — a consumer with a `t()`
+  // resolves the localised page title via `labelKey`; others fall back
+  // to `title`.  Forward-additive (no manifest declares it yet).
+  if (typeof page.labelKey === 'string' && page.labelKey !== '') out.labelKey = page.labelKey;
+  return out;
 }
 
 function buildAffordance(op, manifest, placement, prefilledParams) {
