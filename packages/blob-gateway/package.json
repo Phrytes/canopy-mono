@@ -5,13 +5,18 @@
   "type": "module",
   "main": "src/index.js",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./adapters/s3": "./src/adapters/s3Bucket.js",
+    "./adapters/solid-verifier": "./src/adapters/solidVerifier.js",
+    "./adapters/pod-acl": "./src/adapters/podAcl.js",
+    "./http": "./src/httpGate.js"
   },
   "scripts": {
     "test":       "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@canopy/oidc-session": "file:../oidc-session",
     "@canopy/pod-client": "file:../pod-client"
   },
   "devDependencies": {
