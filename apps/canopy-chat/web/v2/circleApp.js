@@ -26,6 +26,8 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
+  // objective L — the revocable canonical cross-circle share controller (share=grant, revoke=rotate).
+  createCanonicalShare,
   recipientStrategy as podRecipientStrategy } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
@@ -187,7 +189,7 @@ import { makeCircleLists } from '@canopy/kring-host/circleLists';  // cluster K 
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
 import { makeCircleShareEnforcement, sealItem } from '@canopy/item-store';
 import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { shareItemAcrossCircles, listSharedResolved } from '../../src/v2/circleShare.js';
+import { shareItemAcrossCircles, listSharedResolved, revokeItemShare } from '../../src/v2/circleShare.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
 import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so canopy-chat's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
 
@@ -274,16 +276,47 @@ async function getCircleShareEnforcement(circleId, policy) {
           return null;
         }
         const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot }));
+        // objective L — the CANONICAL controller, built from the SAME pod site as the copy-reseal deps:
+        //   • sharing        = prod.podClient.sharing (grant + revoke, resourceUri shape) — the ACP surface,
+        //   • keyStore       = the control agent's group-key resource (`${root}/.keys/group.json`),
+        //   • controllerKey  = THIS device's per-circle sealing identity — already a recipient of the group
+        //     key (producer seeds it into the bootstrap roster), so it can unwrap-to-re-wrap on every grant,
+        //   • resourceUriFor = the same shared-ref → source-resource resolver the read gate/grant hook use,
+        //   • currentRecipients = the live origin roster's sealing keys, so a grant re-wraps the group key to
+        //     the origin members PLUS the outside recipient (never drops the origin members).
+        // Built best-effort; a circle whose control agent / sealing identity isn't resolvable simply skips the
+        // canonical hooks (the four copy/closed postures are unaffected).
+        let canonicalShare;
+        try {
+          const controlAgent = prod?.controlAgent;
+          const idKey = prod?.sealingIdentity ? await prod.sealingIdentity.ensure() : null;
+          if (controlAgent?.keyStore && idKey?.publicKey && idKey?.privateKey && typeof sharing.revoke === 'function') {
+            canonicalShare = createCanonicalShare({
+              sharing,
+              keyStore: controlAgent.keyStore,
+              controllerKey: { publicKey: idKey.publicKey, privateKey: idKey.privateKey },
+              resourceUriFor,
+            });
+          }
+        } catch { canonicalShare = undefined; }
         // Enforcement `seal` is OMITTED here on PURPOSE: the cross-circle recipient re-seal (share-policy
         // slice 3b) is layered ABOVE the enforcement binder, in the COPY re-seal path — `shareItemAcrossCircles`
         // writes a SEPARATE object sealed to the recipients' roster keys (`sealCopyToRecipients`) and grants on
         // THAT, leaving the source's canonical group-key item untouched (never locks the source's own members
         // out). Decision "option 2": `trusted`/`registered` currently ride this SAME copy mechanism (they differ
-        // only in who may INITIATE — the slice-2 gate); revocable multi-recipient *canonical* is deferred.
+        // only in who may INITIATE — the slice-2 gate). The `canonical` posture rides the SEPARATE onShareCanonical
+        // / revokeCanonical hooks (createCanonicalShare above), routed in circleShare by isCanonicalPosture.
         // On read, `open: strategy.open` unseals a group-key source; `composeReaderOpen` (in circleShare) adds
         // the reader's OWN recipient opener so a copy re-sealed to them decrypts. A same-circle group-key
         // share needs no re-seal (recipient already holds the key via the roster).
-        return makeCircleShareEnforcement({ sharing, resourceUriFor, open: strategy.open });
+        return makeCircleShareEnforcement({
+          sharing, resourceUriFor, open: strategy.open,
+          canonicalShare,
+          currentRecipients: () => {
+            try { return (prod?.controlAgent?.members?.() ?? []).map((m) => m.publicKey).filter(Boolean); }
+            catch { return []; }
+          },
+        });
       } catch (err) {
         if (typeof console !== 'undefined') console.warn('[circleApp] share enforcement unavailable:', err?.message ?? err);
         return null;
@@ -335,6 +368,22 @@ async function shareItemIntoCircle({ itemId, fromCircleId, toCircleId, by, recip
     recipientKeys, sealCopy: sealCopyToRecipients,
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
     recipient, recipients: who,
+  });
+}
+
+/**
+ * objective L — UN-SHARE (revoke) a recipient's canonical access to an item. Only the `canonical` posture
+ * has a revocable in-place grant to rotate; other postures return `not-canonical`. There is no dedicated UI
+ * trigger for this yet (a "stop sharing" affordance on a shared item is a follow-up); this is the wired,
+ * invocable callable path (used by the substrate test + any future member-removal / un-share event). Rotates
+ * the item's group key to the remaining origin recipients + ACP-revokes the departing WebID(s).
+ */
+async function unshareItemFromCircle({ itemId, fromCircleId, toCircleId, recipient, recipients, remainingRecipients } = {}) {
+  return revokeItemShare({
+    resolveService: _circleServiceFor,
+    enforcementFor: _shareEnforcementFor,
+    policyOf: _circlePolicy,
+    itemId, fromCircleId, toCircleId, recipient, recipients, remainingRecipients,
   });
 }
 
@@ -3107,6 +3156,17 @@ function showKring(id, circle, policy) {
           kringNote(r?.ok
             ? t('circle.share.done', { item: itemId, circle: toCircleId })
             : t('circle.share.failed', { error: r?.error ?? 'unknown' }));
+          return;
+        }
+        // objective L — REVOKE a recipient's canonical access (only meaningful for a `canonical` circle):
+        //   /unshareitem <itemId> <recipientWebId>   — rotate the item's group key + ACP-revoke the recipient
+        const unshareCmd = line.match(/^\/unshareitem\s+(\S+)\s+(\S+)\s*$/i);
+        if (unshareCmd) {
+          const [, itemId, recipient] = unshareCmd;
+          const r = await unshareItemFromCircle({ itemId, fromCircleId: id, recipient });
+          kringNote(r?.ok
+            ? t('circle.share.revoked', { item: itemId, recipient })
+            : t('circle.share.revoke_failed', { error: r?.error ?? 'unknown' }));
           return;
         }
         if (/^\/shared\b/i.test(line)) {

@@ -15,6 +15,7 @@ import {
   createCircleStores, memoryDataSource,
   shareIntoAudience, resolveSharedRef, listShared,
   makeSharedRefPolicy, makePosturePolicy,
+  makeCircleShareEnforcement, makeCanonicalShareHook,
 } from '../src/index.js';
 
 function mkStores() {
@@ -174,5 +175,73 @@ describe('resolveSharedRef — backward compatibility', () => {
     expect((await resolveSharedRef(stores, ref)).text).toBe('plain');       // 2-arg call unchanged
     expect((await listShared(stores, 'B')).length).toBe(1);
     expect(await resolveSharedRef(stores, { type: 'task' })).toBeNull();    // invalid ref still null
+  });
+});
+
+/* ── objective L — canonical share/revoke binder branch (share-as-grant, no copy) ────────────────── */
+
+// A fake createCanonicalShare controller recording share/revoke calls (the pod-client crypto is out of scope
+// here — item-store only orchestrates the per-recipient loop + roster bookkeeping).
+function fakeCanonicalShare() {
+  const shares = []; const revokes = [];
+  return {
+    shares, revokes,
+    async share(args) { shares.push(args); return { keyResource: {}, resourceUri: 'u' }; },
+    async revoke(args) { revokes.push(args); return { keyResource: {}, resourceUri: 'u' }; },
+  };
+}
+
+describe('makeCircleShareEnforcement — canonical branch (objective L)', () => {
+  it('WITHOUT canonicalShare: the binder shape is byte-identical (only { onShare, policy })', () => {
+    const enf = makeCircleShareEnforcement({ sharing: { grant() {}, list() {} }, resourceUriFor: () => 'u' });
+    expect(Object.keys(enf).sort()).toEqual(['onShare', 'policy']);
+    expect(enf.onShareCanonical).toBeUndefined();
+    expect(enf.revokeCanonical).toBeUndefined();
+  });
+
+  it('WITH canonicalShare: adds onShareCanonical + revokeCanonical, leaving onShare/policy intact', () => {
+    const enf = makeCircleShareEnforcement({
+      sharing: { grant() {}, list() {} }, resourceUriFor: () => 'u', canonicalShare: fakeCanonicalShare(),
+    });
+    expect(typeof enf.onShare).toBe('function');       // the four postures' hook — unchanged
+    expect(typeof enf.policy.checkGrant).toBe('function');
+    expect(typeof enf.onShareCanonical).toBe('function');
+    expect(typeof enf.revokeCanonical).toBe('function');
+  });
+});
+
+describe('makeCanonicalShareHook (objective L)', () => {
+  it('onShare grants each recipient IN, seeding + accumulating the roster so origin members are not dropped', async () => {
+    const canon = fakeCanonicalShare();
+    const hook = makeCanonicalShareHook({ canonicalShare: canon, currentRecipients: () => ['origin-key'] });
+    const ref = { type: 'shared-ref', sourceCircle: 'A', sourceId: 'x' };
+    await hook.onShare({ ref, recipients: ['did:bob', 'did:carol'], recipientKeys: ['bob-key', 'carol-key'] });
+
+    expect(canon.shares).toHaveLength(2);
+    // First grant re-wraps to the origin roster + bob; second to origin + bob + carol (never drops earlier keys).
+    expect(canon.shares[0]).toMatchObject({ recipient: 'did:bob', recipientKey: 'bob-key', currentRecipients: ['origin-key'], ref });
+    expect(canon.shares[1]).toMatchObject({ recipient: 'did:carol', recipientKey: 'carol-key', currentRecipients: ['origin-key', 'bob-key'] });
+  });
+
+  it('onShare denies a keyless recipient (deny-by-default) and refuses a recipient-less share', async () => {
+    const hook = makeCanonicalShareHook({ canonicalShare: fakeCanonicalShare() });
+    await expect(hook.onShare({ ref: {}, recipients: ['did:bob'], recipientKeys: [] })).rejects.toThrow(/sealing public key/);
+    await expect(hook.onShare({ ref: {}, recipients: [] })).rejects.toThrow(/at least one recipient/);
+  });
+
+  it('revoke rotates to the remaining recipients (defaulting to the origin roster) + ACP-revokes each departing WebID', async () => {
+    const canon = fakeCanonicalShare();
+    const hook = makeCanonicalShareHook({ canonicalShare: canon, currentRecipients: () => ['origin-key'] });
+    const ref = { sourceCircle: 'A', sourceId: 'x' };
+    await hook.revoke({ ref, recipient: 'did:bob' });                                  // default remaining = roster
+    expect(canon.revokes[0]).toMatchObject({ recipient: 'did:bob', remainingRecipients: ['origin-key'], ref });
+
+    await hook.revoke({ ref, recipients: ['did:bob'], remainingRecipients: ['k1', 'k2'] });  // explicit remaining
+    expect(canon.revokes[1]).toMatchObject({ recipient: 'did:bob', remainingRecipients: ['k1', 'k2'] });
+  });
+
+  it('validates its injected controller', () => {
+    expect(() => makeCanonicalShareHook({})).toThrow(/canonicalShare/);
+    expect(() => makeCanonicalShareHook({ canonicalShare: { share() {} } })).toThrow(/share, revoke/);
   });
 });

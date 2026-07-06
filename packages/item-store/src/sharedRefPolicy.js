@@ -213,6 +213,68 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
 }
 
 /**
+ * CANONICAL share hook (objective L) — the WRITE-side companion for the `canonical` posture. Where
+ * `makeShareGrantHook` grants a plain ACP read and (optionally) re-seals a COPY, this instead composes the
+ * injected `createCanonicalShare` controller (`@canopy/pod-client`) so a share GRANTS the recipient INTO the
+ * item's group-key resource (`grantMember` → O(1) key re-wrap) AND lands the ACP read grant — NO copy is
+ * written; `shareIntoAudience` still writes ONLY the `shared-ref` pointer. The recipient then opens the
+ * CANONICAL resource in place. `revoke` rotates the group key to the remaining recipients + ACP-revokes.
+ *
+ * No `@canopy/pod-client` import here: the `canonicalShare` controller (with `share`/`revoke`) is INJECTED,
+ * exactly as `sharing`/`seal` are injected for the copy postures. item-store only orchestrates the per-
+ * recipient loop and the roster bookkeeping the substrate's `grantMember`/`rotate` require.
+ *
+ * @param {object} opts
+ * @param {{ share:Function, revoke:Function }} opts.canonicalShare  a `createCanonicalShare(...)` controller.
+ * @param {string[]|(()=>string[]|Promise<string[]>)} [opts.currentRecipients]  the EXISTING roster's sealing
+ *        PUBLIC KEYS (the origin circle's members already holding the group key). Passed to `grantMember` so a
+ *        grant re-wraps the SAME key to the roster PLUS the new recipient — omitting it would drop the origin
+ *        members from the resource. A thunk is resolved at share time (the live roster). Default: none.
+ * @returns {{ onShare: Function, revoke: Function }}
+ */
+export function makeCanonicalShareHook({ canonicalShare, currentRecipients } = {}) {
+  if (!canonicalShare || typeof canonicalShare.share !== 'function' || typeof canonicalShare.revoke !== 'function') {
+    throw new Error('makeCanonicalShareHook: a canonicalShare with { share, revoke } is required');
+  }
+  const rosterKeys = async () => {
+    const base = typeof currentRecipients === 'function' ? await currentRecipients() : currentRecipients;
+    return Array.isArray(base) ? base.filter(Boolean) : [];
+  };
+  const recipientsOf = (recipient, recipients) =>
+    (Array.isArray(recipients) && recipients.length ? recipients : (recipient ? [recipient] : []));
+
+  return {
+    // WRITE — grant each recipient a revocable key + ACP read on the CANONICAL resource (no copy).
+    async onShare({ ref, recipient, recipients, recipientKeys } = {}) {
+      const who = recipientsOf(recipient, recipients);
+      if (who.length === 0) throw new Error('makeCanonicalShareHook: at least one recipient is required to grant');
+      const keys = Array.isArray(recipientKeys) ? recipientKeys : [];
+      // Seed the roster with the origin circle's existing recipients so each grant re-wraps to them + the new
+      // recipient; accumulate each newly-granted key so a multi-recipient share doesn't drop earlier grantees.
+      const roster = [...(await rosterKeys())];
+      for (let i = 0; i < who.length; i += 1) {
+        const recipientKey = keys[i];
+        if (!recipientKey) throw new Error('makeCanonicalShareHook: a sealing public key is required per recipient');
+        // Snapshot the roster per grant (a copy, not the mutable accumulator) so the substrate re-wraps the
+        // group key to exactly the recipients granted SO FAR + this one.
+        await canonicalShare.share({ recipient: who[i], recipientKey, currentRecipients: [...roster], ref });
+        roster.push(recipientKey);
+      }
+    },
+    // REVOKE — rotate the group key to the REMAINING recipients (the origin roster keeps access) + ACP-revoke
+    // each departing recipient. Forward-secrecy caveat is the substrate's (rotation governs FUTURE content).
+    async revoke({ ref, recipient, recipients, remainingRecipients } = {}) {
+      const who = recipientsOf(recipient, recipients);
+      if (who.length === 0) throw new Error('makeCanonicalShareHook: at least one recipient is required to revoke');
+      const remaining = Array.isArray(remainingRecipients) ? remainingRecipients.filter(Boolean) : (await rosterKeys());
+      for (const agent of who) {
+        await canonicalShare.revoke({ recipient: agent, remainingRecipients: remaining, ref });
+      }
+    },
+  };
+}
+
+/**
  * ONE-CALL pod-tier wiring for the cross-circle share (cluster K · the composition seam). Binds the
  * WRITE-side grant hook and the READ-side enforcement policy to the SAME `sharing` surface, `resourceUriFor`
  * mapping, and `mode` — so a share made through `onShare` is exactly what `policy.checkGrant` will later
@@ -223,23 +285,38 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
  * with key custody), and `resourceUriFor` (from `@canopy/pod-onboarding`'s `sharedRefResourceUri`) are all
  * injected. Deny-by-default is preserved on the read side; the write side refuses a grant-less share.
  *
+ * CANONICAL branch (objective L, additive): when a `canonicalShare` controller is injected, the returned
+ * object ALSO carries `onShareCanonical` + `revokeCanonical` (from `makeCanonicalShareHook`). The four
+ * existing postures are byte-identical — `onShare`/`policy` are unchanged; the canonical hooks are extra
+ * fields the caller routes to only for `sharePosture === 'canonical'`.
+ *
  * @param {object} opts
  * @param {{ grant:Function, list:Function }} opts.sharing  the `client.sharing` surface.
  * @param {(ref:object)=>(string|null)} opts.resourceUriFor  the canonical source-item URI resolver.
  * @param {string} [opts.recipient]  default recipient WebID (read gate + single-recipient shares).
  * @param {(text:string)=>string|Promise<string>} [opts.open]  sealing open (read side).
  * @param {(item:object, ctx:object)=>object|Promise<object>} [opts.seal]  optional re-seal (write side).
+ * @param {{ share:Function, revoke:Function }} [opts.canonicalShare]  a `createCanonicalShare(...)` controller
+ *        (objective L). Injected from the SAME pod site; enables the canonical grant/revoke hooks.
+ * @param {string[]|(()=>string[]|Promise<string[]>)} [opts.currentRecipients]  origin roster sealing keys for
+ *        the canonical hook (see makeCanonicalShareHook).
  * @param {string} [opts.mode='read']  the access mode granted + required. Must match on both sides.
- * @returns {{ onShare: Function, policy: { checkGrant: Function, open?: Function } }}
+ * @returns {{ onShare: Function, policy: { checkGrant: Function, open?: Function }, onShareCanonical?: Function, revokeCanonical?: Function }}
  */
-export function makeCircleShareEnforcement({ sharing, resourceUriFor, recipient, open, seal, mode = 'read' } = {}) {
+export function makeCircleShareEnforcement({ sharing, resourceUriFor, recipient, open, seal, canonicalShare, currentRecipients, mode = 'read' } = {}) {
   if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.list !== 'function') {
     throw new Error('makeCircleShareEnforcement: a { grant, list } sharing surface (client.sharing) is required');
   }
-  return {
+  const out = {
     onShare: makeShareGrantHook({ sharing, resourceUriFor, mode, seal }),
     policy:  makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, mode }),
   };
+  if (canonicalShare) {
+    const canon = makeCanonicalShareHook({ canonicalShare, currentRecipients });
+    out.onShareCanonical = canon.onShare;
+    out.revokeCanonical  = canon.revoke;
+  }
+  return out;
 }
 
 /**
