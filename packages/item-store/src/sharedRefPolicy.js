@@ -43,6 +43,42 @@ export async function unsealItem(item, openText) {
 }
 
 /**
+ * Structural/identity keys that must stay PLAINTEXT when a re-seal walks an item (they drive listing,
+ * attribution and shared-ref resolution — `type` feeds `listByType`, `id` is the resource key). Sealing
+ * them would make an item unlistable / unresolvable in its own circle. Everything else (the user CONTENT,
+ * e.g. `text`/`body`/`title`) is what a recipient re-seal actually needs to protect.
+ */
+export const SEAL_RESERVED_KEYS = Object.freeze(new Set([
+  'id', 'type', 'posture', 'status', 'role',
+  'sourceCircle', 'sourceId', 'sourceType', 'sharedBy', 'sharedCopyOf',
+  'createdBy', 'addedBy', 'by', 'audience', 'visibility',
+]));
+
+/**
+ * WRITE-SIDE symmetric companion to `unsealItem` — walk an item's own CONTENT string fields and run each
+ * through `sealText` (a per-string sealer, e.g. the injected `recipientStrategy({recipients}).seal`), leaving
+ * the reserved structural keys (`SEAL_RESERVED_KEYS`) untouched so the item stays listable/attributable.
+ * Returns a NEW item (never mutates the stored one). The crypto is INJECTED — item-store never imports
+ * `@canopy/pod-client` (invariant #5); `sealText` carries the recipient public keys in its closure.
+ *
+ * Read-side symmetry: `unsealItem(item, open)` opens EVERY string field, and a non-sealed field passes
+ * through `open` unchanged — so sealing only the content fields here round-trips cleanly (the reserved
+ * plaintext keys pass straight through the reader's `open`).
+ *
+ * @param {object} item
+ * @param {(text:string)=>string|Promise<string>} sealText
+ * @param {{reserved?:Set<string>}} [opts]
+ */
+export async function sealItem(item, sealText, { reserved = SEAL_RESERVED_KEYS } = {}) {
+  if (!item || typeof item !== 'object' || typeof sealText !== 'function') return item;
+  const out = { ...item };
+  for (const [k, v] of Object.entries(item)) {
+    if (typeof v === 'string' && v.length > 0 && !reserved.has(k)) out[k] = await sealText(v);
+  }
+  return out;
+}
+
+/**
  * Pod-backed enforcement policy. Adapts the injected pod-layer surfaces to the policy contract.
  *
  * @param {object} opts
@@ -80,8 +116,11 @@ export function makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, 
         Array.isArray(g?.modes) && g.modes.includes(mode) &&
         (g.subject === 'public' || g.agent === who));
     },
+    // `open` is item-level (walks every string field). `openText` exposes the RAW per-text opener so a
+    // caller (e.g. slice-3b's `composeReaderOpen`) can combine it with the reader's own per-text opener at
+    // the field level — both throw on a foreign sealed field, so the combination stays deny-by-default.
     ...(typeof open === 'function'
-      ? { open: (item) => unsealItem(item, open) }
+      ? { open: (item) => unsealItem(item, open), openText: open }
       : {}),
   };
 }
@@ -105,11 +144,15 @@ export function makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, 
  *        resource URI (the ACP target). Defaults to the logical `sourceCircle/sourceId` (a real pod injects
  *        the storage-layout URI from `@canopy/pod-onboarding`'s `sharedRefResourceUri`).
  * @param {string} [opts.mode='read']  the access mode to grant.
- * @param {(item:object, ctx:{recipient:string, ref:object})=>object|Promise<object>} [opts.seal]  optional
- *        re-seal step. In the group-key posture the recipient already holds the key so no re-seal is needed
- *        (omit); in the recipient-wrap posture, inject a `seal` that returns the item re-sealed to include
- *        `recipient`, and it is written back to the source store so the recipient can open it at rest.
- * @returns {(ctx:{ref:object, item:object, recipient?:string, recipients?:string[], stores:object})=>Promise<void>}
+ * @param {(item:object, ctx:{recipient:string, recipients:string[], recipientKeys:string[], ref:object})=>object|Promise<object>} [opts.seal]
+ *        optional re-seal step. In the group-key posture the recipient already holds the key so no re-seal is
+ *        needed (omit); in the recipient-wrap posture, inject a `seal` (e.g. built from
+ *        `recipientStrategy({recipients}).seal` via `sealItem`) that returns the item re-sealed to the
+ *        recipient(s), and it is written back to the source store so the recipient can open it at rest. The
+ *        recipients' SEALING PUBLIC KEYS arrive as `recipientKeys` (resolved by the share op against the
+ *        TARGET circle's roster — slice 3a), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal
+ *        that needs keys but gets none should throw ⇒ the share fails.
+ * @returns {(ctx:{ref:object, item:object, recipient?:string, recipients?:string[], recipientKeys?:string[], stores:object})=>Promise<void>}
  */
 export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', seal } = {}) {
   if (!sharing || typeof sharing.grant !== 'function') {
@@ -119,7 +162,7 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
     ? resourceUriFor
     : (ref) => (ref && ref.sourceCircle && ref.sourceId ? `${ref.sourceCircle}/${ref.sourceId}` : null);
 
-  return async function onShare({ ref, item, recipient, recipients, stores } = {}) {
+  return async function onShare({ ref, item, recipient, recipients, recipientKeys, stores } = {}) {
     const resourceUri = uriFor(ref);
     if (!resourceUri) throw new Error('makeShareGrantHook: no resource URI for the shared-ref');
 
@@ -133,9 +176,13 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
       await sharing.grant({ resourceUri, agent, modes: [mode] });
     }
 
-    // Optional re-seal so the (new) recipient can open the envelope at rest. Group-key postures skip this.
+    // Optional re-seal so the (new) recipient can open the envelope at rest. Group-key postures skip this
+    // (recipient already holds the key via the roster). The recipients' SEALING PUBLIC KEYS (slice 3a,
+    // resolved by the share op against the TARGET circle's roster) arrive as `recipientKeys` and are handed
+    // to the injected `seal` so it wraps to keys, not WebIDs.
     if (typeof seal === 'function' && item && ref && stores && typeof stores.getStore === 'function') {
-      const sealed = await seal(item, { recipient: who[0], recipients: who, ref });
+      const keys = Array.isArray(recipientKeys) ? recipientKeys.filter(Boolean) : [];
+      const sealed = await seal(item, { recipient: who[0], recipients: who, recipientKeys: keys, ref });
       if (sealed && sealed !== item) {
         await stores.getStore(ref.sourceCircle).put({ ...sealed, id: ref.sourceId });
       }

@@ -15,6 +15,7 @@ import {
   createCircleStores, memoryDataSource,
   shareIntoAudience, resolveSharedRef,
   makeShareGrantHook, makeCircleShareEnforcement,
+  sealItem, unsealItem, SEAL_RESERVED_KEYS,
 } from '../src/index.js';
 
 function mkStores() {
@@ -167,6 +168,40 @@ describe('makeCircleShareEnforcement — write-grant + read-gate agree by constr
 
   it('requires a { grant, list } surface', () => {
     expect(() => makeCircleShareEnforcement({ sharing: { grant() {} }, resourceUriFor: uriForRef })).toThrow(/grant, list/);
+  });
+});
+
+// share-policy slice 3b — the seam that carries the recipients' SEALING KEYS to the injected re-seal, and
+// the symmetric `sealItem`/`unsealItem` content walk (structural keys stay plaintext).
+describe('slice 3b — recipientKeys reach the seal; sealItem round-trips with unsealItem', () => {
+  it('shareIntoAudience threads recipientKeys through onShare → seal', async () => {
+    const stores = mkStores();
+    const item = await stores.getStore('A').put({ type: 'note', body: 'plaintext body' });
+    const sharing = fakeSharing();
+    let seenKeys = null;
+    // seal records the recipientKeys it received; wraps content to them (fake).
+    const seal = (it, { recipientKeys }) => { seenKeys = recipientKeys; return { ...it, body: `K[${recipientKeys.join(',')}]:${it.body}` }; };
+    const onShare = makeShareGrantHook({ sharing, resourceUriFor: uriForRef, seal });
+
+    await shareIntoAudience(stores, {
+      itemId: item.id, fromCircleId: 'A', toCircleId: 'B', recipient: 'bob',
+      recipientKeys: ['PUBKEY-bob'], onShare,
+    });
+    expect(seenKeys).toEqual(['PUBKEY-bob']);
+    expect((await stores.getStore('A').get(item.id)).body).toBe('K[PUBKEY-bob]:plaintext body');
+  });
+
+  it('sealItem seals CONTENT fields but leaves structural keys plaintext; unsealItem reverses it', async () => {
+    const item = { id: 'abc', type: 'list', posture: 2, text: 'secret', title: 'plan', createdBy: 'alice' };
+    const sealed = await sealItem(item, (t) => `S:${t}`);
+    // structural keys untouched…
+    for (const k of SEAL_RESERVED_KEYS) if (k in item) expect(sealed[k]).toBe(item[k]);
+    // …content sealed.
+    expect(sealed.text).toBe('S:secret');
+    expect(sealed.title).toBe('S:plan');
+    // symmetric open (plaintext passes through the reader's opener).
+    const opened = await unsealItem(sealed, (t) => (t.startsWith('S:') ? t.slice(2) : t));
+    expect(opened).toEqual(item);
   });
 });
 

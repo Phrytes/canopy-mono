@@ -21,8 +21,40 @@
  * SYNCHRONOUS `{ getStore }` facade over the pre-resolved per-circle stores — exactly the shape
  * shareIntoAudience / resolveSharedRef expect (they call getStore(circleId) synchronously).
  */
-import { shareIntoAudience, resolveSharedRef, listShared } from '@canopy/item-store';
+import { shareIntoAudience, resolveSharedRef, listShared, unsealItem } from '@canopy/item-store';
 import { normalizeCirclePolicy } from './circlePolicy.js';
+
+/**
+ * slice 3b — compose a source-circle enforcement `policy` with the READER's OWN opener so a cross-circle
+ * recipient can decrypt content re-sealed to THEIR key. Copy mode wraps the content to the recipient's
+ * TARGET-circle sealing key, so the reader opens with their target-circle private key (`readerOpen`); a
+ * group-key (p2) source still opens with the source enforcement's own opener (`policy.openText`).
+ *
+ * Combined at the PER-TEXT level (deny-by-default, leak-safe): plaintext passes straight through; a sealed
+ * field is opened by whichever key fits — the reader's (`readerOpen`) or the source group's (`openText`).
+ * A recipient opener passes plaintext through and THROWS on a foreign envelope (it never returns ciphertext),
+ * so if NEITHER key opens a sealed field the combined opener throws ⇒ `resolveSharedRef` drops the ref.
+ * `checkGrant` is untouched.
+ *
+ * @param {{checkGrant?:Function, open?:Function, openText?:Function}|null} policy  the source-circle policy
+ * @param {(text:string)=>string|Promise<string>} [readerOpen]  the reader's per-text opener (their key)
+ */
+export function composeReaderOpen(policy, readerOpen) {
+  if (typeof readerOpen !== 'function') return policy ?? undefined;
+  const groupOpenText = typeof policy?.openText === 'function' ? policy.openText : null;
+  const perTextOpen = async (text) => {
+    if (typeof text !== 'string') return text;
+    // The reader's own key first (copy-mode content sealed to them). A recipient opener returns plaintext
+    // unchanged and throws on a foreign envelope — so a success here is either plaintext or MY decrypt.
+    try { return await readerOpen(text); } catch { /* not mine — try the source group opener */ }
+    if (groupOpenText) return groupOpenText(text);   // group source: decrypts, or throws on a foreign envelope
+    throw new Error('composeReaderOpen: not a recipient of this sealed field');
+  };
+  return {
+    ...(policy || {}),
+    open: (item) => unsealItem(item, perTextOpen),
+  };
+}
 
 /**
  * A synchronous `{ getStore(circleId) }` registry over already-resolved per-circle stores. The substrate
@@ -57,6 +89,14 @@ export function makeCrossCircleStores(storeByCircle) {
  * @param {string} [args.by]
  * @param {string} [args.recipient]           single recipient WebID (pod grant target)
  * @param {string[]} [args.recipients]        multiple recipient WebIDs (a circle share → its members)
+ * @param {string[]} [args.recipientKeys]     share-policy slice 3a — the recipients' SEALING PUBLIC KEYS,
+ *        resolved by the caller against the TARGET circle's roster (`recipientSealKeyFor(toCircleId,…)`).
+ *        Threaded to the write-side re-seal so a cross-circle recipient (NOT in the source's group key) can
+ *        decrypt. Absent ⇒ no re-seal (group-key posture / plaintext source).
+ * @param {(item:object, keys:string[])=>(object|Promise<object>)} [args.sealCopy]  share-policy slice 3b —
+ *        an injected recipient re-sealer (built from `@canopy/pod-client` `recipientStrategy` + item-store's
+ *        `sealItem`; pod-layer, so this module stays pod-client-free). Used by `copy` mode to produce a
+ *        SEPARATE object sealed to the recipient(s), leaving the source untouched.
  * @param {(circleId:string)=>Promise<{onShare?:Function, policy?:object}|null>} [args.enforcementFor]
  *        the pod-tier binder for a circle (built at the pod site). Null ⇒ memory path (no grant/seal).
  * @param {(circleId:string)=>number} [args.postureOf]  target confidentiality (the posture-floor check).
@@ -67,7 +107,7 @@ export function makeCrossCircleStores(storeByCircle) {
  */
 export async function shareItemAcrossCircles({
   resolveService, itemId, fromCircleId, toCircleId, by,
-  recipient, recipients, enforcementFor, postureOf, policyOf,
+  recipient, recipients, recipientKeys, sealCopy, enforcementFor, postureOf, policyOf,
 } = {}) {
   if (typeof resolveService !== 'function' || !itemId || !fromCircleId || !toCircleId) {
     return { ok: false, error: 'missing-args' };
@@ -100,8 +140,34 @@ export async function shareItemAcrossCircles({
   // Null ⇒ memory path: shareIntoAudience just writes the ref (unchanged behaviour).
   const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
 
+  // slice 3b — COPY mode: write a SEPARATE object sealed to the recipient(s), source UNTOUCHED, and share
+  // THAT copy (the shared-ref points at the copy; the ACP grant lands on the copy). Cleanest re-seal — works
+  // for ANY source posture (the source item is read through its own store, opened at rest, then re-sealed
+  // fresh to the recipients' keys), and never locks the source's own members out of the canonical item.
+  const keys = Array.isArray(recipientKeys) ? recipientKeys.filter(Boolean) : [];
+  if (posture === 'copy' && enforcement?.onShare && typeof sealCopy === 'function' && keys.length) {
+    const fromStore = stores.getStore(fromCircleId);
+    const srcItem = await fromStore.get(itemId);
+    if (!srcItem) return { ok: false, error: 'item-not-found' };
+    let copy;
+    try {
+      const sealed = await sealCopy(srcItem, keys);
+      // Drop the source id so `put` MINTS a fresh resource (a separate object) — never overwrites the source.
+      const { id: _srcId, ...sealedNoId } = sealed;
+      copy = await fromStore.put({ ...sealedNoId, sharedCopyOf: itemId }, { by });
+    } catch (cause) {
+      return { ok: false, error: 'share-seal-failed', cause };
+    }
+    return shareIntoAudience(stores, {
+      itemId: copy.id, fromCircleId, toCircleId, by, recipient, recipients, postureOf,
+      onShare: enforcement.onShare,   // grant on the copy; no further re-seal (already sealed to the recipients)
+    });
+  }
+
+  // trusted / registered (and copy without a pod/keys) — canonical path: write the ref to the source item and
+  // let the enforcement's injected `seal` (if any) re-wrap IN PLACE, fed the recipients' sealing keys.
   return shareIntoAudience(stores, {
-    itemId, fromCircleId, toCircleId, by, recipient, recipients, postureOf,
+    itemId, fromCircleId, toCircleId, by, recipient, recipients, recipientKeys: keys, postureOf,
     onShare: enforcement?.onShare,
   });
 }
@@ -115,10 +181,13 @@ export async function shareItemAcrossCircles({
  * @param {string} args.circleId              the target circle whose shared items we surface
  * @param {string} [args.recipient]           who is reading (the grant-check subject; my WebID on a pod)
  * @param {(circleId:string)=>Promise<{policy?:object}|null>} [args.enforcementFor]  source-circle binder
+ * @param {(text:string)=>string|Promise<string>} [args.readerOpen]  slice 3b — the READER's own per-text
+ *        opener (their TARGET-circle sealing key). Composed with the source enforcement's `open` so content
+ *        re-sealed to the reader (copy mode) decrypts; a non-recipient's opener throws ⇒ the ref is dropped.
  * @returns {Promise<Array<{ref:object, item:object}>>}  only the refs that RESOLVED (deny-safe)
  */
 export async function listSharedResolved({
-  resolveService, circleId, recipient, enforcementFor,
+  resolveService, circleId, recipient, enforcementFor, readerOpen,
 } = {}) {
   if (typeof resolveService !== 'function' || !circleId) return [];
   const svc = await resolveService(circleId);
@@ -135,8 +204,10 @@ export async function listSharedResolved({
       [ref.sourceCircle,  srcSvc.stores.getStore(ref.sourceCircle)],
     ]));
     const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(ref.sourceCircle) : null;
+    // slice 3b — compose the reader's own opener so a copy re-sealed to the reader's key decrypts.
+    const policy = composeReaderOpen(enforcement?.policy, readerOpen);
     // DENY-BY-DEFAULT: null (non-recipient / unopenable) is dropped — no plaintext, no ciphertext.
-    const item = await resolveSharedRef(stores, ref, { policy: enforcement?.policy, recipient });
+    const item = await resolveSharedRef(stores, ref, { policy, recipient });
     if (item) out.push({ ref, item });
   }
   return out;

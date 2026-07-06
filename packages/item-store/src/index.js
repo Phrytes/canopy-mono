@@ -23,7 +23,8 @@ export { wireStoreMirror } from './mirrorSync.js';          // cluster L3 — at
 export { wireCircleStoreInbound } from './circleStoreInbound.js';  // cluster L3 — ingest peer envelopes into a store (inbound)
 export { shareIntoAudience, resolveSharedRef, listShared } from './shareIntoAudience.js';  // cluster K2 — cross-circle share
 export {                                                 // cluster K — injectable ACP/seal enforcement on the cross-circle read
-  makeSharedRefPolicy, makePosturePolicy, makeShareGrantHook, makeCircleShareEnforcement, unsealItem,
+  makeSharedRefPolicy, makePosturePolicy, makeShareGrantHook, makeCircleShareEnforcement,
+  unsealItem, sealItem, SEAL_RESERVED_KEYS,               // share-policy slice 3b — write-side content re-seal (symmetric to unsealItem)
 } from './sharedRefPolicy.js';
 export {
   ItemNotFoundError,

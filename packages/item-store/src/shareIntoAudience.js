@@ -25,9 +25,12 @@
  *        share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
  * @param {string} [args.recipient]        the recipient WebID to grant to (pod-backed shares); passed to `onShare`.
  * @param {string[]} [args.recipients]     multiple recipient WebIDs (a circle share resolves members here).
+ * @param {string[]} [args.recipientKeys]  the recipients' SEALING PUBLIC KEYS (share-policy slice 3a — resolved
+ *        against the TARGET circle's roster). Passed through to `onShare` so the injected `seal` re-wraps the
+ *        content to keys (not WebIDs). Omit for the group-key posture (recipient already holds the key).
  * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, required?:number, target?:number, cause?:any}>}
  */
-export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircleId, by, posture, postureOf, onShare, recipient, recipients } = {}) {
+export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircleId, by, posture, postureOf, onShare, recipient, recipients, recipientKeys } = {}) {
   if (!stores || typeof stores.getStore !== 'function' || !itemId || !fromCircleId || !toCircleId) {
     return { ok: false, error: 'missing-args' };
   }
@@ -58,7 +61,7 @@ export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircle
   // report a share that would resolve to `null` on read. Memory path (no hook) is untouched.
   if (typeof onShare === 'function') {
     try {
-      await onShare({ ref, item, recipient, recipients, stores });
+      await onShare({ ref, item, recipient, recipients, recipientKeys, stores });
     } catch (cause) {
       return { ok: false, error: 'share-grant-failed', cause };
     }

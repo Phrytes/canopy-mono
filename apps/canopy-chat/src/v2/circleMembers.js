@@ -44,3 +44,34 @@ export function normalizeCircleMembers(result) {
 export function circleMemberCount(result) {
   return normalizeCircleMembers(result).length;
 }
+
+/**
+ * share-policy slice 3a — resolve a member's SEALING PUBLIC KEY from a circle roster. Pure + injectable so
+ * `recipientSealKeyFor(circleId, webId)` (circleApp) and its mobile peer share ONE lookup and it's testable
+ * without a live pod.
+ *
+ * Accepts either roster shape the target circle already holds:
+ *   • stoop `listGroupMembers` → `[{ webid, sealingPublicKey }]` (the redemption trail — see
+ *     `listGroupMembersCore`), or
+ *   • the circle control-agent roster → `[{ webId, publicKey }]` (the group-key recipient keys).
+ *
+ * Returns the recipient's sealing pubkey, or `null` when they're not in THIS roster (→ deny-by-default: no
+ * re-seal, the share to that recipient is refused). No publish, no WebID network resolution (per the advice).
+ *
+ * @param {Array<object>|{members?:Array<object>}} roster  a member list (or a `{members}` result)
+ * @param {string} webId  the recipient's WebID
+ * @returns {string|null}
+ */
+export function recipientSealKeyFromMembers(roster, webId) {
+  if (!webId) return null;
+  const list = Array.isArray(roster) ? roster
+    : (roster && Array.isArray(roster.members) ? roster.members : []);
+  for (const m of list) {
+    if (!m || typeof m !== 'object') continue;
+    const id = m.webid ?? m.webId ?? m.id ?? null;
+    if (id !== webId) continue;
+    const key = m.sealingPublicKey ?? m.publicKey ?? null;
+    return (typeof key === 'string' && key.length > 0) ? key : null;
+  }
+  return null;
+}
