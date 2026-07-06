@@ -13,6 +13,7 @@ export {
   queryIndex, semanticQuery, serializeIndex, parseIndex, shardKeyFor,
 } from './sealedIndex.js';
 export { createControlAgent } from './controlAgent.js';
+export { createCanonicalShare } from './canonicalShare.js';   // objective L — revocable canonical cross-circle share
 export {
   createResourceKeyGrant, openGrantedResource, resourceScope,
 } from './resourceKeyGrant.js';
