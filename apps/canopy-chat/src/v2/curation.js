@@ -11,7 +11,7 @@
  * imports of its own — no cross-package dependency plumbing needed.
  */
 
-import { objectDiff, deepEqual } from '../../../../packages/sync-engine/src/objectDiff.js';
+import { objectDiff, deepEqual } from '@canopy/sync-engine/objectDiff';
 
 const isObj = (v) => v != null && typeof v === 'object';
 

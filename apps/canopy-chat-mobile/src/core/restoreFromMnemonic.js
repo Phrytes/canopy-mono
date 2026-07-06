@@ -22,7 +22,7 @@
  * decision tree against a Map-backed mock — no RN runtime needed.
  */
 import { AgentIdentity, validateMnemonic } from '@canopy/core';
-import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
+import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
 
 const REQUIRED_WORDS = 24;
 const CHAT_VAULT_PREFIX = 'cc-chat-id:';

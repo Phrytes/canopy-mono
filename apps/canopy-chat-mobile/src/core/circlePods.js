@@ -11,7 +11,7 @@
  * can import this without an AsyncStorage native module); the group-key resource persists
  * there for durability across reloads.
  */
-import { VaultAsyncStorage } from '../../../../packages/react-native/src/identity/VaultAsyncStorage.js';
+import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth } from '@canopy/pod-client';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../canopy-chat/src/v2/circlePodProducer.js';

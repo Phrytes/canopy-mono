@@ -19,8 +19,10 @@
 
     "./identity":                     "./src/identity/index.js",
     "./identity/bootstrap":           "./src/identity/bootstrapIdentity.js",
+    "./identity/VaultAsyncStorage":   "./src/identity/VaultAsyncStorage.js",
 
     "./storage":                      "./src/storage/index.js",
+    "./storage/AsyncStorageAdapter":  "./src/storage/AsyncStorageAdapter.js",
     "./pseudo-pod-adapter":           "./src/pseudo-pod-adapter/index.js",
     "./hub-discovery":                "./src/hub-discovery/index.js",
     "./hub-binding":                  "./src/hub-binding/index.js",
