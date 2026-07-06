@@ -111,6 +111,8 @@ import { renderGuidedSetup } from './guidedSetupPanel.js';
 import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
 // B #64 — apply an authored remote recipe (loaded+validated → active circle policy) via the shared apply-wiring.
 import { loadAndApplyRecipe } from '../../src/v2/recipeApply.js';
+// B · consent-card — REVIEWED recipe apply: load→review model, then apply-with-opt-outs through the SAME gate.
+import { loadRecipeForReview, applyReviewedRecipe } from '../../src/v2/recipeConsent.js';
 // S6.C (per-circle) — gate an app's surfaces by the circle's policy.features.
 import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
@@ -3648,6 +3650,10 @@ async function showSettings(id) {
     kringPolicyPendingStore.clear(id).catch(() => { /* ignore */ });
   };
 
+  // B · consent-card — the recipe reviewed in the consent card (cached between review + Agree so the loaded
+  // recipe is reused for apply, avoiding a second load/verify round-trip).
+  let _reviewedRecipe = null;
+
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
@@ -3679,14 +3685,35 @@ async function showSettings(id) {
     onGuidedSetup: () => openGuidedSetupPanel({
       onDone: (patch) => { working = mergeCirclePolicy(working, patch); rerender(); },
     }),
-    // B #64 — apply an authored remote recipe as this circle's active policy. All-or-nothing through
-    // the SAME store + gate (loadAndApplyRecipe → policyStore.update); the shell only shows a status.
-    onApplyRecipe: async (source) => {
-      const res = await loadAndApplyRecipe({
-        source, circleId: id, sources: circleBaseSources, policyStore,
+    // B · consent-card — REVIEW an authored recipe BEFORE applying: load + build the review model (what it
+    // would enable + the opt-outable caps). Nothing is persisted here; circleSettings shows the consent card.
+    // The loaded recipe is cached so Agree reuses it (no double-load, no divergence).
+    onReviewRecipe: async (source) => {
+      const res = await loadRecipeForReview({
+        source, sources: circleBaseSources, policy: working,
         fetch: circleAuthedFetch || (typeof globalThis.fetch === 'function' ? globalThis.fetch : undefined),
       });
+      if (!res.ok) return { ok: false, message: t('circle.recipeApply.error') };
+      _reviewedRecipe = { source, recipe: res.recipe, model: res.model };
+      return { ok: true, model: res.model, recipe: res.recipe };
+    },
+    // B · consent-card — AGREE: apply the REVIEWED recipe with the user's declined optional caps. All-or-
+    // nothing through the SAME store + gate (applyReviewedRecipe → applyRecipeToCircle → policyStore.update);
+    // the declined caps become this member's `capabilityOptOuts` via the existing override-store seam, so the
+    // gate's effective set = the recipe allowlist MINUS the declined optional caps. No bypass, no fork.
+    onApplyRecipe: async (source, { declinedKeys = [], recipe, model } = {}) => {
+      const reviewed = (_reviewedRecipe && _reviewedRecipe.source === source) ? _reviewedRecipe : null;
+      const useRecipe = recipe ?? reviewed?.recipe;
+      const useModel  = model  ?? reviewed?.model;
+      if (!useRecipe || !useModel) return t('circle.recipeApply.error');
+      const res = await applyReviewedRecipe({
+        circleId: id, recipe: useRecipe, model: useModel, declinedKeys,
+        sources: circleBaseSources, policyStore,
+        // Record the member's declined optional caps as capabilityOptOuts (the seam the gate honours).
+        recordOptOuts: (optOuts) => overrideStore.update(id, { capabilityOptOuts: optOuts }),
+      });
       if (!res.ok) return t('circle.recipeApply.error');
+      _reviewedRecipe = null;
       // The recipe is now persisted; sync the edit buffer + redraw so the toggles reflect it.
       working = res.policy;
       rerender();
