@@ -35,7 +35,17 @@
  */
 
 /**
- * @typedef {SlashParseResult | UnknownParseResult} ParseResult
+ * @typedef {object} AmbiguousParseResult
+ * @property {'ambiguous'}  kind
+ * @property {string}       command    the colliding bare command (e.g. '/done')
+ * @property {string}       body       raw body after the command (preserved for a re-issued qualified command)
+ * @property {Array<{command:string, appId:string}>} choices  the app-qualified alternatives to offer
+ * @property {string[]}     appIds     the apps that declared this command
+ * @property {string|null}  threadId
+ */
+
+/**
+ * @typedef {SlashParseResult | AmbiguousParseResult | UnknownParseResult} ParseResult
  */
 
 /**
@@ -97,6 +107,21 @@ export function parseSlash(trimmed, catalog, ctx = {}) {
   // existing manifests' command declarations).
   const entry = catalog.commandMenu.find((e) => e.command === command);
   if (!entry) return null;
+
+  // Objective D — a colliding bare command with no per-host override winner is
+  // AMBIGUOUS (prefix-all policy): don't silently fire one app — hand back the
+  // app-qualified choices so the caller can offer them. The qualified forms
+  // (`/tasks:done`) are ordinary commandMenu entries and parse as normal slash.
+  if (entry.ambiguous) {
+    return {
+      kind:     'ambiguous',
+      command,
+      body,
+      choices:  Array.isArray(entry.choices) ? entry.choices : [],
+      appIds:   Array.isArray(entry.appIds) ? entry.appIds : [],
+      threadId,
+    };
+  }
 
   const bodyRule = entry.body ?? 'match';
   const args     = parseBody(body, bodyRule);

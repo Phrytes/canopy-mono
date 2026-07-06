@@ -1361,6 +1361,9 @@ function buildCircleBot(agent) {
     // source. Feedback (fp:*) → its surface's tapButton; other in-chat bots plug in here.
     if (action) {
       if (action.startsWith('fp:')) { circleFeedbackMount?.surface?.tapButton?.(action, getActiveCircle()); return; }
+      // Objective D — an ambiguous-slash choice: re-issue the chosen app-qualified command (with the
+      // original body preserved) through the normal bot dispatch, which now parses to a unique app.
+      if (action.startsWith('slash:')) { circleBot?.handle?.(action.slice('slash:'.length), {}); return; }
       // a disambiguation candidate → re-run the pending command with the chosen target bound.
       if (action.startsWith('clarify:')) { circleClarify?.pick?.(action.slice('clarify:'.length), _clarifyScope || {}); return; }
       // download a received peer file (bytes stashed when the file-share arrived).
@@ -1423,13 +1426,30 @@ function buildCircleBot(agent) {
       let cmd = input;
       if (typeof input === 'string') {
         const parsed = catalog ? parseInput(input, catalog) : null;
-        cmd = parsed && parsed.kind === 'slash' && parsed.opId ? { opId: parsed.opId, args: parsed.args || {} } : null;
+        // Objective D — a colliding bare slash (`/done`) with no per-host override is AMBIGUOUS: offer the
+        // app-qualified choices (`/tasks:done`, `/stoop:done`) instead of silently firing one app. The
+        // qualified forms — and an overridden bare token — parse as normal `slash` and route below.
+        if (parsed && parsed.kind === 'ambiguous') {
+          const suffix = parsed.body ? ` ${parsed.body}` : '';
+          _kringRender?.botBubble(
+            t('circle.slash.ambiguous', { command: parsed.command }),
+            { buttons: (parsed.choices || []).map((c) => ({
+                action: `slash:${c.command}${suffix}`,
+                label:  t('circle.slash.ambiguousChoice', { appId: c.appId, command: c.command }),
+              })) });
+          return undefined;
+        }
+        // Carry the command's declared owner (appOrigin) so a qualified form routes to the RIGHT app even
+        // when the underlying op-id also collides (resolveDispatch reads the hint to pick the prefixed key).
+        cmd = parsed && parsed.kind === 'slash' && parsed.opId
+          ? { opId: parsed.opId, args: parsed.args || {}, appOrigin: parsed.appOrigin }
+          : null;
       }
       if (!cmd || !cmd.opId) { _kringRender?.botBubble(t('circle.bot.unknown')); return undefined; }
       // E2 bulk fan-out ("/done all"): resolveDispatch flags it (the body is a bulk keyword on a mutation op).
       // Run it over the last listing, bypassing the clarifying dispatch (which would treat "all" as a target).
       try {
-        const r = resolveDispatch({ kind: 'slash', opId: cmd.opId, args: cmd.args || {} }, catalog);
+        const r = resolveDispatch({ kind: 'slash', opId: cmd.opId, args: cmd.args || {}, appOrigin: cmd.appOrigin }, catalog);
         if (r && r.kind === 'bulk') return handleBulkRoute(r);
       } catch { /* not bulk → normal path */ }
       return circleClarify.run(cmd, ctx);
