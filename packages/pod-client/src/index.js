@@ -62,7 +62,7 @@ export {
   buildGroupKeyResource, unwrapGroupKey, grantMember, rotateGroupKeyResource,
   createSealedIndex, upsertEntry, removeEntry, getEntry, decodePseudonym,
   queryIndex, semanticQuery, serializeIndex, parseIndex, shardKeyFor,
-  createControlAgent, createPodKeyStore, readGroupKey, createMemberSealingIdentity,
+  createControlAgent, createCanonicalShare, createPodKeyStore, readGroupKey, createMemberSealingIdentity,
   resolveCircleStorage, circleStorageClient,
 } from './sealing/index.js';
 

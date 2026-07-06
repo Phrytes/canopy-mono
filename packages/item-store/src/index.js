@@ -26,6 +26,7 @@ export { recoverCircleFromCaches, writeRecoveredInto } from './podRecovery.js'; 
 export { shareIntoAudience, resolveSharedRef, listShared } from './shareIntoAudience.js';  // cluster K2 — cross-circle share
 export {                                                 // cluster K — injectable ACP/seal enforcement on the cross-circle read
   makeSharedRefPolicy, makePosturePolicy, makeShareGrantHook, makeCircleShareEnforcement,
+  SHARE_POSTURES, isCanonicalPosture,                     // objective L — revocable `canonical` posture (share-as-grant, no copy)
   unsealItem, sealItem, SEAL_RESERVED_KEYS,               // share-policy slice 3b — write-side content re-seal (symmetric to unsealItem)
 } from './sharedRefPolicy.js';
 export {

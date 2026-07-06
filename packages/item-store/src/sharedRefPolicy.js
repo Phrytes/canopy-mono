@@ -26,6 +26,28 @@
  */
 
 /**
+ * The share postures the substrate recognizes — the confidentiality/exposure policy a circle applies when an
+ * item is shared OUT of it (admin-set, per-circle). The first four are shipped:
+ *   • `closed`     — external sharing off.
+ *   • `copy`       — a fresh sealed COPY is written into the recipient circle (source untouched).
+ *   • `trusted`    — copy mechanism; differs only in WHO MAY INITIATE (a member).
+ *   • `registered` — copy mechanism; admins-only initiation.
+ * and `canonical` is objective L (the deferred "revocable canonical"): NO copy — the item stays canonical in
+ * its origin circle and the recipient gets a REVOCABLE KEY GRANT to open it IN PLACE (see
+ * `@canopy/pod-client`'s `createCanonicalShare`: grantMember + ACP grant to share, rotateGroupKeyResource +
+ * ACP revoke to deny). Enum-only here; the app's circle-policy mirrors this list for its settings surface.
+ */
+export const SHARE_POSTURES = Object.freeze(['closed', 'copy', 'trusted', 'registered', 'canonical']);
+
+/**
+ * True when a posture shares the CANONICAL item in place (grant, not copy) — objective L. Under this posture
+ * `shareIntoAudience` writes ONLY the pointer `shared-ref` into the recipient circle (never a duplicated
+ * item), and the recipient reads the origin resource through the shared-ref path; access is the revocable
+ * key grant. Complement of the copy-reseal postures (`copy` / `trusted` / `registered`).
+ */
+export const isCanonicalPosture = (p) => p === 'canonical';
+
+/**
  * Walk an item's own string fields and run each through `openText`. `openText` (the sealing/`open` shape)
  * passes non-sealed text through unchanged, so this is safe to run over every string field — plaintext
  * stays plaintext, only sealed envelopes are opened. Returns a NEW item (never mutates the stored one).

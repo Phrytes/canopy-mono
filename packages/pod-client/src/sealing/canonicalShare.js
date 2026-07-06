@@ -1,0 +1,164 @@
+// canonicalShare.js — objective L: the REVOCABLE CANONICAL cross-circle share.
+//
+// The `canonical` sharePosture (alongside closed / copy / trusted / registered): expose a sealed item to a
+// recipient OUTSIDE its origin circle WITHOUT copying it. The item stays CANONICAL in its origin circle —
+// there is exactly one copy, in one place — and the recipient's access is a REVOCABLE KEY GRANT. The
+// recipient reads the canonical resource (origin URI) IN PLACE through the shared-ref path.
+//
+// This is COMPOSITION, not new crypto. It reuses the same two substrates the household control-agent
+// already stands on (controlAgent.js), but scoped to ONE resource and to OUTSIDE recipients rather than a
+// whole container's membership:
+//   • share  = grantMember(item's group-key resource, +recipient's sealing key)  [O(1) re-wrap, same version]
+//              + sharing.grant({ resourceUri, agent, modes:['read'] })            [the ACP read grant]
+//              ⇒ the recipient can unwrapGroupKey → openWithGroupKey the canonical item. NO copy is written
+//                into the recipient circle.
+//   • revoke = drop the recipient from the roster,
+//              rotateGroupKeyResource(new group key → the REMAINING recipients)   [forward secrecy, +version]
+//              + sharing.revoke({ resourceUri, agent, modes:['read'] })           [ACP denies the resource]
+//              ⇒ content sealed under the NEW group key can't be opened by the revoked recipient, and the
+//                pod denies them the resource.
+//
+// The SHARING_GRANT_NOOP / SHARING_REVOKE_NOOP contract (sharing/index.js, hardened 2026-05-16) is
+// respected transitively: `sharing.grant`/`sharing.revoke` THROW on a null/undefined SDK return (a no-op
+// that changed nothing), so a share/revoke that didn't actually land propagates as a throw here — it is
+// never mistaken for success. We do NOT swallow it.
+//
+// ── CAVEAT — the standard crypto-revocation limit (stated honestly) ─────────────────────────────────────
+// Rotation revokes access to FUTURE content only: anything sealed under the NEW group key (re-sealed or
+// newly written after the rotation) is unreadable to the revoked recipient. It CANNOT un-seal what the
+// recipient already decrypted or cached before revocation — that plaintext is out of our hands. Revocation
+// here means "no further access", not "un-see". A caller who needs the revoked recipient locked out of
+// EXISTING content must RE-SEAL that content under the new group key after revoke (see `reseal` below).
+
+import {
+  grantMember, rotateGroupKeyResource, buildGroupKeyResource, unwrapGroupKey,
+} from './groupKeyResource.js';
+import { generateGroupKey, sealWithGroupKey } from './envelope.js';
+
+/**
+ * Build a canonical-share controller for a single sealed resource. Pure orchestration — pod I/O is injected
+ * exactly as `createControlAgent` injects it:
+ *
+ * @param {object} a
+ * @param {{ grant: Function, revoke: Function }} a.sharing   the ACP surface (client.sharing) — grant/revoke
+ *        already enforce the SHARING_GRANT_NOOP / SHARING_REVOKE_NOOP contract (a no-op throws).
+ * @param {{ read: () => any, write: (res:any) => any }} a.keyStore  reads/writes the item's group-key
+ *        resource on the pod (e.g. `/.keys/<item>-vN.json`).
+ * @param {{ publicKey: string, privateKey: string }} a.controllerKey  the origin-side granter's keypair. It
+ *        is always a recipient of the key resource, so it can unwrap-to-re-wrap on every grant/rotate.
+ * @param {string} [a.resourceUri]  the canonical item's pod resource URI (the ACP target). May instead be
+ *        supplied per-call, or derived via `resourceUriFor(ref)`.
+ * @param {(ref:object)=>(string|null)} [a.resourceUriFor]  maps a shared-ref → the canonical resource URI.
+ * @param {string} [a.mode='read']  the ACP mode granted/revoked (canonical sharing is read-only by design).
+ */
+export function createCanonicalShare({ sharing, keyStore, controllerKey, resourceUri, resourceUriFor, mode = 'read' } = {}) {
+  if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.revoke !== 'function') {
+    throw new Error('createCanonicalShare: sharing with grant/revoke required');
+  }
+  if (!keyStore || typeof keyStore.read !== 'function' || typeof keyStore.write !== 'function') {
+    throw new Error('createCanonicalShare: keyStore with read/write required');
+  }
+  if (!controllerKey || !controllerKey.publicKey || !controllerKey.privateKey) {
+    throw new Error('createCanonicalShare: controllerKey { publicKey, privateKey } required');
+  }
+  const withController = (pubs) => [...new Set([...pubs.filter(Boolean), controllerKey.publicKey])];
+
+  function uriFor(ref) {
+    const uri = resourceUri
+      || (typeof resourceUriFor === 'function' ? resourceUriFor(ref) : null)
+      || (ref && ref.sourceCircle && ref.sourceId ? `${ref.sourceCircle}/${ref.sourceId}` : null);
+    if (!uri) throw new Error('createCanonicalShare: no canonical resource URI (pass resourceUri / resourceUriFor / a shared-ref)');
+    return uri;
+  }
+
+  return {
+    /**
+     * SHARE — grant an OUTSIDE recipient revocable access to the canonical item, IN PLACE (no copy).
+     *
+     * @param {object} p
+     * @param {string} p.recipient        the recipient's WebID (the ACP grant subject).
+     * @param {string} p.recipientKey     the recipient's SEALING public key (added to the group-key resource).
+     * @param {string[]} [p.currentRecipients]  the roster's other sealing public keys (origin members already
+     *        holding the key). The controller is always included automatically.
+     * @param {object} [p.ref]            a shared-ref, if the URI is derived from it.
+     * @returns {Promise<{keyResource:object, resourceUri:string}>}
+     */
+    async share({ recipient, recipientKey, currentRecipients = [], ref } = {}) {
+      if (!recipient) throw new Error('canonicalShare.share: recipient WebID required');
+      if (!recipientKey) throw new Error('canonicalShare.share: recipient sealing public key required');
+      const uri = uriFor(ref);
+
+      // 1. KEY GRANT — add the recipient's sealing key to the item's group-key resource. O(1) re-wrap of the
+      //    SAME key at the SAME version (grantMember), or bootstrap the first resource if none exists yet.
+      const cur = await keyStore.read();
+      const next = cur
+        ? grantMember(cur, {
+            newRecipient: recipientKey,
+            granterPrivateKey: controllerKey.privateKey,
+            currentRecipients: withController(currentRecipients),
+          })
+        : buildGroupKeyResource({
+            version: 1,
+            groupKey: generateGroupKey(),
+            recipients: withController([...currentRecipients, recipientKey]),
+          });
+      await keyStore.write(next);
+
+      // 2. ACP READ GRANT on the canonical resource. Throws SHARING_GRANT_NOOP if nothing landed — we let it
+      //    propagate so a share that didn't actually grant is never reported as success.
+      await sharing.grant({ resourceUri: uri, agent: recipient, modes: [mode] });
+
+      return { keyResource: next, resourceUri: uri };
+    },
+
+    /**
+     * REVOKE — deny an outside recipient future access. Rotate the group key to the REMAINING recipients and
+     * ACP-revoke the resource. Post-revocation the recipient can open neither the new group key nor the
+     * resource; a still-granted recipient is unaffected.
+     *
+     * @param {object} p
+     * @param {string} p.recipient           the recipient's WebID (the ACP revoke subject).
+     * @param {string[]} [p.remainingRecipients]  the sealing public keys that KEEP access (the roster minus
+     *        the revoked recipient). The controller is always kept.
+     * @param {object} [p.ref]
+     * @returns {Promise<{keyResource:object, resourceUri:string}>}
+     */
+    async revoke({ recipient, remainingRecipients = [], ref } = {}) {
+      if (!recipient) throw new Error('canonicalShare.revoke: recipient WebID required');
+      const uri = uriFor(ref);
+
+      // 1. ROTATE — a fresh group key + new version, sealed ONLY to the remaining recipients (+controller).
+      //    The revoked recipient is absent from the new resource ⇒ unwrapGroupKey throws for them, so content
+      //    under the new key is unreadable to them (forward secrecy). Remaining recipients get the new key.
+      const cur = await keyStore.read();
+      const next = rotateGroupKeyResource({
+        previous: cur,
+        recipients: withController(remainingRecipients),
+      });
+      await keyStore.write(next);
+
+      // 2. ACP REVOKE. Throws SHARING_REVOKE_NOOP on a null SDK return (a revoke that changed nothing) — we
+      //    let it propagate so a no-op revoke surfaces instead of silently "succeeding".
+      await sharing.revoke({ resourceUri: uri, agent: recipient, modes: [mode] });
+
+      return { keyResource: next, resourceUri: uri };
+    },
+
+    /**
+     * RE-SEAL existing content under the CURRENT group key. Optional companion to `revoke`: rotation alone
+     * only locks the revoked recipient out of FUTURE content; to also deny them content that already exists,
+     * re-seal it under the post-rotation key. The revoked recipient — absent from the new key resource —
+     * then cannot open the re-sealed text either. (It still can't un-see anything they cached beforehand.)
+     *
+     * @param {string} plaintext   the already-opened content to re-seal under the current group key.
+     * @param {string} [granterPrivateKey]  a current recipient's private key (defaults to the controller's).
+     * @returns {Promise<string>}  the content sealed under the current group key.
+     */
+    async reseal(plaintext, granterPrivateKey = controllerKey.privateKey) {
+      const cur = await keyStore.read();
+      if (!cur) throw new Error('canonicalShare.reseal: no group-key resource to re-seal under');
+      const groupKey = unwrapGroupKey(cur, granterPrivateKey);
+      return sealWithGroupKey(plaintext, groupKey);
+    },
+  };
+}
