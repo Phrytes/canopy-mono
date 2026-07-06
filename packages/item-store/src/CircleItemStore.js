@@ -22,6 +22,7 @@
  *   await store.listByType('task');                            // the type index
  */
 import { ulid } from './ulid.js';
+import { causalWinner } from './causalMerge.js';
 
 const ITEMS_DIR = 'items';
 
@@ -78,22 +79,36 @@ export class CircleItemStore {
   /**
    * Create or replace a typed item. Requires `item.type` (validated against the registry when one is
    * injected); assigns a ULID `id` when absent. Returns the stored item (with its `id`).
+   *
+   * `origin:true` — INBOUND CAUSAL INGEST (Objective L). Used by the sync inbound path for a peer's item so the
+   * merge resolves by CAUSAL order, not arrival order:
+   *   1. Origin metadata is PRESERVED, not re-stamped: `updatedAt`/`updatedBy` keep the payload's values (the
+   *      origin's write clock + writer id) instead of being overwritten with the local ingest time — so the
+   *      causal relationship survives transport. (Payload lacking them falls back to the local `ts`.)
+   *   2. Before writing, the stored copy is compared via `causalWinner`: a causally-OLDER inbound item does NOT
+   *      overwrite a newer local edit (it returns the existing item, no write, no fan-out); a causally-newer
+   *      inbound wins; true concurrency resolves by a deterministic writer-id tiebreak. See `causalMerge.js`
+   *      for the guarantees/limits (item-level last-writer-wins, not a field merge). Payloads with no parseable
+   *      `updatedAt` fall back to last-received-wins, so pre-metadata peers still ingest (backward-compatible).
+   * Default `origin:false` keeps today's behaviour: `updatedAt` is always the local write time.
    */
-  async put(item, { by, now, sync = true } = {}) {
+  async put(item, { by, now, sync = true, origin = false } = {}) {
     if (!item || typeof item !== 'object') throw new Error('CircleItemStore.put: an item object is required');
     if (typeof item.type !== 'string' || !item.type) throw new Error('CircleItemStore.put: item.type is required');
     const id = (typeof item.id === 'string' && item.id) ? item.id : ulid();
     // Stamp the base metadata (BASE_REQUIRED: type·id·createdAt·createdBy) so every item is well-formed +
-    // validates against strict canonical schemas. createdAt/createdBy are PRESERVED on replace; updatedAt is
-    // always the write time. `by` (the actor) is injectable; `now` (an ISO-string clock) for deterministic tests.
+    // validates against strict canonical schemas. createdAt/createdBy are PRESERVED on replace. For a LOCAL
+    // write updatedAt is always the write time; for an `origin` (inbound) write it PRESERVES the payload's
+    // origin clock/writer so causal order can be recovered (falls back to `ts` when the payload omits them).
+    // `by` (the actor) is injectable; `now` (an ISO-string clock) for deterministic tests.
     const ts = (typeof now === 'function' ? now() : now) ?? new Date().toISOString();
     const stored = {
       ...item,
       id,
       createdAt: item.createdAt ?? ts,
       createdBy: item.createdBy ?? by ?? 'unknown',
-      updatedAt: ts,
-      updatedBy: by ?? item.createdBy ?? 'unknown',
+      updatedAt: origin ? (item.updatedAt ?? ts) : ts,
+      updatedBy: origin ? (item.updatedBy ?? by ?? item.createdBy ?? 'unknown') : (by ?? item.createdBy ?? 'unknown'),
     };
     if (this.#validate) {
       const res = this.#validate(stored);
@@ -101,6 +116,13 @@ export class CircleItemStore {
         const msg = (res.errors || []).map((e) => e?.message || JSON.stringify(e)).join('; ');
         throw new Error(`CircleItemStore.put: invalid "${stored.type}": ${msg || 'unknown type / schema error'}`);
       }
+    }
+    if (origin) {
+      // Causal guard: keep the causally-newer side. Compare against the RAW payload (its real origin clock) so a
+      // payload without `updatedAt` correctly falls back to last-received-wins rather than tying on the fallback
+      // `ts`. A causally-older inbound is dropped: return the existing item unchanged, no write, no fan-out.
+      const existing = await this.get(id);
+      if (existing && causalWinner(existing, item) === 'local') return existing;
     }
     await this.#source.write(this.#uri(id), JSON.stringify(stored));
     // `sync:false` suppresses the fan-out — used for INBOUND writes (a peer's item we just received) so a sync
