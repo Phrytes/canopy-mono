@@ -344,6 +344,79 @@ describe('joinGroupState', () => {
     expect(r.result).toBeUndefined();
     expect(state.submitError).toBe('bad handle');
   });
+
+  /* ── B · Slice 4 — consent-at-join ─────────────────────────── */
+
+  const consentSources = [{
+    manifest: {
+      app: 'tasks', itemTypes: ['task'],
+      nouns: { task: { atoms: ['add', 'complete'] } },
+      operations: [
+        { id: 'addTask', verb: 'add', appliesTo: { type: 'task' } },
+        { id: 'doneTask', verb: 'complete', appliesTo: { type: 'task' } },
+      ],
+    },
+  }];
+  // admin: 'add task' required (mandatory), 'complete task' optional (opt-outable)
+  const consentInvite = {
+    kind: 'membershipCode', groupId: 'b1', code: 'c1',
+    apps: ['tasks'],
+    capabilities: { 'tasks add task': { freedom: 'required' }, 'tasks complete task': { freedom: 'optional' } },
+  };
+
+  it('buildJoinConsent surfaces only the opt-outable caps from the embedded template', () => {
+    const state = JG.initialState();
+    state.invite = consentInvite;
+    JG.buildJoinConsent({ state, sources: consentSources });
+    expect(state.consentModel.keys).toEqual(['tasks complete task']);   // the required cap is not offered
+    expect(state.capabilityOptOuts).toEqual([]);
+  });
+
+  it('buildJoinConsent with no embedded template ⇒ empty model (no-op step)', () => {
+    const state = JG.initialState();
+    state.invite = { kind: 'membershipCode', groupId: 'b1', code: 'c1' };
+    JG.buildJoinConsent({ state, sources: consentSources });
+    expect(state.consentModel.items).toEqual([]);
+  });
+
+  it('setConsentDecline records an opt-outable cap and refuses a mandatory one', () => {
+    const state = JG.initialState();
+    state.invite = consentInvite;
+    JG.buildJoinConsent({ state, sources: consentSources });
+    JG.setConsentDecline(state, 'tasks complete task', true);
+    expect(state.capabilityOptOuts).toEqual(['tasks complete task']);
+    // a mandatory cap can never be declined — dropped by the model validation
+    JG.setConsentDecline(state, 'tasks add task', true);
+    expect(state.capabilityOptOuts).toEqual(['tasks complete task']);
+    // opting back in removes it
+    JG.setConsentDecline(state, 'tasks complete task', false);
+    expect(state.capabilityOptOuts).toEqual([]);
+  });
+
+  it('finalSubmit carries capabilityOptOuts out in the success envelope', async () => {
+    const state = JG.initialState();
+    state.invite = consentInvite;
+    state.handle = 'anne';
+    JG.buildJoinConsent({ state, sources: consentSources });
+    JG.setConsentDecline(state, 'tasks complete task', true);
+    const callSkill = vi.fn()
+      .mockResolvedValueOnce({ ok: true })   // setMyHandle
+      .mockResolvedValueOnce({ ok: true });  // redeemMembershipCode
+    const { result } = await JG.finalSubmit({ state, callSkill });
+    expect(result.capabilityOptOuts).toEqual(['tasks complete task']);
+  });
+
+  it('finalSubmit with no opt-outs leaves capabilityOptOuts off the envelope (unchanged behaviour)', async () => {
+    const state = JG.initialState();
+    state.invite = consentInvite;
+    state.handle = 'anne';
+    JG.buildJoinConsent({ state, sources: consentSources });
+    const callSkill = vi.fn()
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: true });
+    const { result } = await JG.finalSubmit({ state, callSkill });
+    expect(result.capabilityOptOuts).toBeUndefined();
+  });
 });
 
 // ── createGroup ─────────────────────────────────────────────────

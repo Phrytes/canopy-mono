@@ -42,6 +42,8 @@ import {
   initialState,
   fetchGroupRules,
   finalSubmit,
+  buildJoinConsent,
+  setConsentDecline,
 } from '../../core/wizards/joinGroupState.js';
 import { RULES_FIELDS } from '../../v2/circleRules.js';
 import { t } from '../../localisation.js';
@@ -62,13 +64,17 @@ const PRIVACY_NOTICE_EN = PRIVACY_NOTICE.en;
  * @param {Function}    [opts.onDispatched]  fired after final success with the redeemInvite reply
  */
 export function renderJoinGroupWizard(opts) {
-  const { container, doc, args, callSkill, onClose, onDispatched, sendPeerRedeem } = opts;
+  const { container, doc, args, callSkill, onClose, onDispatched, sendPeerRedeem, sources } = opts;
 
   // Wizard state — kept in-scope, re-renders rebuild the DOM from it.
   const state = initialState();
 
   // Decode the invite arg (URL form or pre-decoded object).
   decodeInvite(args?.invite, state);
+
+  // B · Slice 4 — build the join-time capability consent model from the invite's embedded freedom
+  // template + the host-injected manifest sources. No template / no sources ⇒ empty model (no-op step).
+  buildJoinConsent({ state, sources });
 
   // Kick off the rules fetch when state.step === 1.
   if (state.invite && !state.inviteParseError) {
@@ -178,11 +184,61 @@ function renderRulesStep(container, doc, state, onNext, onCancel, rerender) {
   checkRow.appendChild(doc.createTextNode(' I have read and accept the rules.'));
   wrap.appendChild(checkRow);
 
+  // B · Slice 4 — consent-at-join: the circle's OPT-OUTABLE capabilities. Rendered as part of the
+  // Agree/Decline screen; unchecking a cap records an opt-out into state.capabilityOptOuts, which the
+  // host writes to the member's prefs so the gate's effective set (admin ∩ user) drops it from join.
+  renderConsentCaps(wrap, doc, state, rerender);
+
   container.appendChild(wrap);
   renderActions(container, doc, [
     { label: 'Decline', onClick: onCancel, kind: 'secondary' },
     { label: 'Next →', onClick: onNext, disabled: !state.rulesAccepted, kind: 'primary' },
   ]);
+}
+
+/**
+ * B · Slice 4 — the join-time capability consent section. Lists the circle's opt-outable caps (from
+ * `state.consentModel`, built off the invite's freedom template). A checked box = "I take part";
+ * unchecking opts out. Renders nothing when the model is empty (no template / all-mandatory).
+ */
+function renderConsentCaps(wrap, doc, state, rerender) {
+  const items = Array.isArray(state.consentModel?.items) ? state.consentModel.items : [];
+  if (items.length === 0) return;
+
+  const sec = doc.createElement('section');
+  sec.className = 'cc-wizard-consent';
+
+  const h = doc.createElement('h4');
+  h.className = 'cc-wizard-consent-title';
+  h.textContent = t('circle.join.consent.title');
+  sec.appendChild(h);
+
+  const blurb = doc.createElement('p');
+  blurb.className = 'cc-wizard-consent-blurb';
+  blurb.textContent = t('circle.join.consent.blurb');
+  sec.appendChild(blurb);
+
+  const declined = new Set(Array.isArray(state.capabilityOptOuts) ? state.capabilityOptOuts : []);
+  for (const cap of items) {
+    const row = doc.createElement('label');
+    row.className = 'cc-wizard-consent-cap';
+    row.dataset.cap = cap.key;
+    const box = doc.createElement('input');
+    box.type = 'checkbox';
+    box.dataset.cap = cap.key;
+    box.checked = !declined.has(cap.key);   // checked = take part; unchecked = opt out
+    box.addEventListener('change', () => {
+      setConsentDecline(state, cap.key, !box.checked);
+      rerender();
+    });
+    const floorTag = cap.privacyFloor
+      ? ` (${t('circle.settings.privacyFloor')})`
+      : '';
+    const label = `${t(`circle.settings.verb.${cap.atom}`, { defaultValue: cap.atom })} · ${cap.noun}${floorTag}`;
+    row.append(box, doc.createTextNode(` ${label}`));
+    sec.appendChild(row);
+  }
+  wrap.appendChild(sec);
 }
 
 function renderPrivacyStep(container, doc, state, onNext, onBack, onCancel, rerender) {

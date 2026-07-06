@@ -300,6 +300,11 @@ export function encodeMembershipCodeUrl(result) {
     expiresAt: result.expiresAt,
     ...(result.adminPeerAddr ? { adminPeerAddr: result.adminPeerAddr } : {}),
     ...(result.rules    ? { rules:    result.rules    } : {}),
+    // B · Slice 4 — embed the circle's freedom template so the joiner can review + opt out of
+    // OPT-OUTABLE capabilities at join (see circleConsent.js). Symmetric with the embedded rules doc.
+    ...(result.capabilities && typeof result.capabilities === 'object' && !Array.isArray(result.capabilities) && Object.keys(result.capabilities).length
+      ? { capabilities: result.capabilities } : {}),
+    ...(Array.isArray(result.apps) && result.apps.length ? { apps: result.apps } : {}),
   };
   const json = JSON.stringify(payload);
   if (typeof globalThis.btoa !== 'function') return `stoop-invite://${json}`;

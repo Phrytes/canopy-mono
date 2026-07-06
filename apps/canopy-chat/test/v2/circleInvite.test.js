@@ -22,6 +22,28 @@ describe('buildCircleInviteUri', () => {
     expect(await buildCircleInviteUri({})).toEqual({ error: 'missing-args' });
   });
 
+  it('B/S4 — embeds the freedom template (capabilities + apps) when passed, so the joiner can opt out', async () => {
+    const callSkill = vi.fn(async (app, op) =>
+      (op === 'getCurrentMembershipCode' ? { code: 'C', expiresAt: 1 } : {}));
+    const capabilities = { 'tasks complete task': { freedom: 'optional' } };
+    const r = await buildCircleInviteUri({ callSkill, circleId: 'c', capabilities, apps: ['tasks'] });
+    // decode the payload back out of the stoop-invite:// URI
+    const b64 = r.uri.replace(/^stoop-invite:\/\//, '');
+    const decoded = JSON.parse(Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+    expect(decoded.capabilities).toEqual(capabilities);
+    expect(decoded.apps).toEqual(['tasks']);
+  });
+
+  it('B/S4 — omits the template when there is none (invite unchanged for un-configured circles)', async () => {
+    const callSkill = vi.fn(async (app, op) =>
+      (op === 'getCurrentMembershipCode' ? { code: 'C', expiresAt: 1 } : {}));
+    const r = await buildCircleInviteUri({ callSkill, circleId: 'c', capabilities: {}, apps: [] });
+    const b64 = r.uri.replace(/^stoop-invite:\/\//, '');
+    const decoded = JSON.parse(Buffer.from(b64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
+    expect('capabilities' in decoded).toBe(false);
+    expect('apps' in decoded).toBe(false);
+  });
+
   it('mints a fresh code (rotateMyGroupCode) when there is no active one', async () => {
     const callSkill = vi.fn(async (app, op) => {
       if (op === 'getCurrentMembershipCode') return { error: 'no-code' };

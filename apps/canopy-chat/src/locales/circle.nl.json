@@ -64,7 +64,11 @@
   },
   "join": {
     "button": { "text": "Lid worden van een kring", "doc": "OBJ-2 — launcher entry to join an existing circle from an invite." },
-    "paste":  { "text": "Plak de uitnodigingslink van het andere apparaat:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." }
+    "paste":  { "text": "Plak de uitnodigingslink van het andere apparaat:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." },
+    "consent": {
+      "title": { "text": "Waar je aan meedoet", "doc": "B/S4 — join-wizard consent heading over the circle's opt-outable capabilities." },
+      "blurb": { "text": "Dit is optioneel in deze kring. Vink uit waar je liever niet aan meedoet — je kunt dit later aanpassen in je kringinstellingen.", "doc": "B/S4 — explains the opt-outable capability checkboxes at join." }
+    }
   },
   "invite": {
     "menu":       { "text": "Uitnodigen voor deze kring", "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR." },
