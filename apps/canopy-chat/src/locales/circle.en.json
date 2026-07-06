@@ -64,7 +64,11 @@
   },
   "join": {
     "button": { "text": "Join a circle", "doc": "OBJ-2 — launcher entry to join an existing circle from an invite." },
-    "paste":  { "text": "Paste the invite link from the other device:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." }
+    "paste":  { "text": "Paste the invite link from the other device:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." },
+    "consent": {
+      "title": { "text": "What you take part in", "doc": "B/S4 — join-wizard consent heading over the circle's opt-outable capabilities." },
+      "blurb": { "text": "These are optional in this circle. Uncheck anything you'd rather not take part in — you can change this later in your circle settings.", "doc": "B/S4 — explains the opt-outable capability checkboxes at join." }
+    }
   },
   "invite": {
     "menu":       { "text": "Invite to this circle", "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR." },

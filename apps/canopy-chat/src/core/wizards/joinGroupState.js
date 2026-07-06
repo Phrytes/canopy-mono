@@ -11,6 +11,8 @@
  * without an explicit polyfill check.
  */
 
+import { buildJoinConsentModel, optOutsFromDeclined } from '../../v2/circleConsent.js';
+
 /* ─── Locale strings ────────────────────────────────────────── */
 
 /**
@@ -175,6 +177,52 @@ export async function fetchGroupRules({ state, callSkill }) {
   return state;
 }
 
+/* ─── Consent-at-join (B · Slice 4) ─────────────────────────── */
+
+/**
+ * B · Slice 4 — build the join-time capability CONSENT MODEL from the invite's embedded freedom
+ * template (`invite.capabilities` + `invite.apps`) and the host-injected manifest `sources`. Sets
+ * `state.consentModel` (the opt-outable caps the joiner reviews) and resets `state.capabilityOptOuts`
+ * to whatever the model already records. Pure — the shared model both web + RN wizards render.
+ *
+ * Additive: with no embedded template OR no sources, the model is empty and the consent step is a
+ * no-op (a joiner who opts out of nothing behaves exactly as before).
+ *
+ * @param {{state:object, sources?:Array<{manifest:object}>}} a
+ * @returns {object} the mutated state
+ */
+export function buildJoinConsent({ state, sources } = {}) {
+  const inv = state?.invite;
+  const template = (inv?.capabilities && typeof inv.capabilities === 'object' && !Array.isArray(inv.capabilities))
+    ? inv.capabilities : {};
+  // Consent-at-join surfaces the admin's PER-CAP freedom choices. With no authored template there is
+  // nothing template-driven to review — stay a no-op (an un-configured circle is default-on today).
+  if (Object.keys(template).length === 0) {
+    state.consentModel = { items: [], keys: [] };
+    state.capabilityOptOuts = [];
+    return state;
+  }
+  const policy = { apps: Array.isArray(inv?.apps) ? inv.apps : null, capabilities: template };
+  state.consentModel = buildJoinConsentModel(Array.isArray(sources) ? sources : [], policy, {
+    optOuts: state.capabilityOptOuts,
+  });
+  // Keep only still-valid opt-outs (a template change could have made a previously-declined cap mandatory).
+  state.capabilityOptOuts = optOutsFromDeclined(state.consentModel, state.capabilityOptOuts);
+  return state;
+}
+
+/**
+ * B · Slice 4 — record/clear the joiner's decision for one capability. `declined === true` opts out
+ * (adds the key); `false` opts back in (removes it). Only opt-outable keys in the consent model survive
+ * (`optOutsFromDeclined` drops anything mandatory/unknown), so a mandatory cap can never be declined.
+ */
+export function setConsentDecline(state, key, declined) {
+  const cur = new Set(Array.isArray(state?.capabilityOptOuts) ? state.capabilityOptOuts : []);
+  if (declined) cur.add(key); else cur.delete(key);
+  state.capabilityOptOuts = optOutsFromDeclined(state.consentModel, [...cur]);
+  return state;
+}
+
 /* ─── Initial state + final-submit chain ───────────────────── */
 
 export function initialState() {
@@ -188,6 +236,9 @@ export function initialState() {
     rulesAccepted:    false,
     privacyAccepted:  false,
     shareAddress:     true,         // mesh-consent default ON (Slice 4)
+    // B · Slice 4 — the join-time capability consent (opt-outable caps + this joiner's declines).
+    consentModel:     { items: [], keys: [] },
+    capabilityOptOuts: [],
     handle:           '',
     submitting:       false,
     submitError:      null,
@@ -211,6 +262,11 @@ export async function finalSubmit({ state, callSkill, sendPeerRedeem }) {
   state.submitError = null;
   try {
     const result = await runFinalSubmitChain(state, callSkill, sendPeerRedeem);
+    // B · Slice 4 — carry the joiner's declined caps out with the success envelope so the host records
+    // them into the member's prefs (`override.capabilityOptOuts`), feeding the gate's admin ∩ user set.
+    if (result && Array.isArray(state.capabilityOptOuts) && state.capabilityOptOuts.length) {
+      result.capabilityOptOuts = [...state.capabilityOptOuts];
+    }
     state.submitting = false;
     return { result, state };
   } catch (err) {

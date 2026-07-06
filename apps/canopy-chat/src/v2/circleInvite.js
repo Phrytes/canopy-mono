@@ -23,10 +23,16 @@ import { initialState, decodeInvite, finalSubmit } from '../core/wizards/joinGro
  * Build a `stoop-invite://` URI for an EXISTING circle so the admin can show it as a QR.
  * Admin-gated by the substrate (getCurrentMembershipCode returns {error:'admin-only'} otherwise).
  *
- * @param {{ callSkill:Function, circleId:string, adminPeerAddr?:string|null }} a
+ * B · Slice 4 — the invite optionally EMBEDS the circle's freedom template (`capabilities` +
+ * `apps`), symmetric with the embedded rules doc. It lets the joiner review the circle's OPT-OUTABLE
+ * capabilities at join (before redeeming) and record their opt-outs — see `circleConsent.js`. Purely
+ * additive: an invite built without a policy carries no template and the join consent step is a no-op.
+ *
+ * @param {{ callSkill:Function, circleId:string, adminPeerAddr?:string|null,
+ *           capabilities?:object|null, apps?:string[]|null }} a
  * @returns {Promise<{uri:string, expiresAt?:number} | {error:string}>}
  */
-export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr = null } = {}) {
+export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr = null, capabilities = null, apps = null } = {}) {
   if (typeof callSkill !== 'function' || !circleId) return { error: 'missing-args' };
   let res;
   try { res = await callSkill('stoop', 'getCurrentMembershipCode', { groupId: circleId }); }
@@ -44,7 +50,14 @@ export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr 
     if (!rot?.code) return { error: rot?.error || 'no-code' };
     code = rot.code; expiresAt = rot.expiresAt;
   }
-  const invite = { groupId: circleId, code, expiresAt, ...(adminPeerAddr ? { adminPeerAddr } : {}) };
+  const invite = {
+    groupId: circleId, code, expiresAt,
+    ...(adminPeerAddr ? { adminPeerAddr } : {}),
+    // B · Slice 4 — embed the freedom template so the joiner can review + opt out at join.
+    ...(capabilities && typeof capabilities === 'object' && !Array.isArray(capabilities) && Object.keys(capabilities).length
+      ? { capabilities } : {}),
+    ...(Array.isArray(apps) && apps.length ? { apps } : {}),
+  };
   return { uri: encodeMembershipCodeUrl(invite), expiresAt };
 }
 

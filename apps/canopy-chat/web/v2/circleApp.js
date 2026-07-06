@@ -2376,9 +2376,19 @@ function showJoinCircle() {
   mountMyDataWizard(renderJoinGroupWizard, {
     args: { invite },
     sendPeerRedeem: circleSendPeerRedeem,
+    // B · Slice 4 — the merged manifest sources let the wizard build the join-time capability consent
+    // model from the invite's embedded freedom template.
+    sources: circleBaseSources,
     onDispatched: async (reply) => {
       const gid = reply?.groupId ?? reply?.joinedGroupId ?? null;
       if (gid) { try { await feedHouseholdRosterForCircle?.(gid); } catch { /* best-effort */ } }
+      // B · Slice 4 — record the joiner's capability opt-outs into their prefs for this circle, so the
+      // gate's effective set (admin-template ∩ user-opt-outs) drops the declined caps from the first
+      // dispatch. Opt-out-nothing ⇒ no write (unchanged behaviour).
+      if (gid && Array.isArray(reply?.capabilityOptOuts) && reply.capabilityOptOuts.length) {
+        try { await overrideStore.update(gid, { capabilityOptOuts: reply.capabilityOptOuts }); }
+        catch { /* best-effort — a failed prefs write must not break the join */ }
+      }
       try { circlesCache = await loadCircles(sources); showLauncher(); } catch { /* */ }
     },
   });
@@ -2388,8 +2398,18 @@ function showJoinCircle() {
 // stoop-invite:// QR for another device to scan/paste. Shown in the same modal overlay.
 async function showCircleInvite(circleId) {
   const adminPeerAddr = circleHouseholdAgent?.householdSelfAddr ?? null;
+  // B · Slice 4 — embed the circle's freedom template in the invite so the joiner can review its
+  // opt-outable capabilities at join (see circleConsent.js). Best-effort: a missing policy just omits it.
+  let invitePolicy = {};
+  try { invitePolicy = (await policyStore.get(circleId)) ?? {}; } catch { /* default — no template embedded */ }
   let r;
-  try { r = await buildCircleInviteUri({ callSkill: rawCallSkill, circleId, adminPeerAddr }); }
+  try {
+    r = await buildCircleInviteUri({
+      callSkill: rawCallSkill, circleId, adminPeerAddr,
+      capabilities: invitePolicy.capabilities,
+      apps:         invitePolicy.apps,
+    });
+  }
   catch { r = { error: 'failed' }; }
   const overlay = document.createElement('div');
   overlay.className = 'cc-mydata-modal';
