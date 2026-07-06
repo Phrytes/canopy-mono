@@ -1965,7 +1965,9 @@
     "done":   { "text": "\"{{item}}\" gedeeld met {{circle}}.",         "doc": "cluster K cross-circle share — success note for /shareitem." },
     "failed": { "text": "Delen mislukt: {{error}}.",                    "doc": "cluster K cross-circle share — failure note for /shareitem." },
     "list":   { "text": "Gedeeld met deze kring ({{count}}):",          "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
-    "empty":  { "text": "Nog niets met deze kring gedeeld.",            "doc": "cluster K cross-circle share — empty state for /shared." }
+    "empty":  { "text": "Nog niets met deze kring gedeeld.",            "doc": "cluster K cross-circle share — empty state for /shared." },
+    "revoked":       { "text": "Toegang van {{recipient}} tot \"{{item}}\" ingetrokken.", "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)." },
+    "revoke_failed": { "text": "Delen intrekken mislukt: {{error}}.",                      "doc": "objective L canonical share — failure note for /unshareitem." }
   },
   "clarify": {
     "which": {

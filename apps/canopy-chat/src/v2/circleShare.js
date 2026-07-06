@@ -21,15 +21,16 @@
  * SYNCHRONOUS `{ getStore }` facade over the pre-resolved per-circle stores — exactly the shape
  * shareIntoAudience / resolveSharedRef expect (they call getStore(circleId) synchronously).
  */
-import { shareIntoAudience, resolveSharedRef, listShared, unsealItem } from '@canopy/item-store';
+import { shareIntoAudience, resolveSharedRef, listShared, unsealItem, isCanonicalPosture } from '@canopy/item-store';
 import { normalizeCirclePolicy } from './circlePolicy.js';
 
 /**
  * Which share postures ride the COPY re-seal mechanism (a SEPARATE object sealed to the recipient(s), source
  * untouched). Decision "option 2": `trusted` and `registered` currently share the SAME copy mechanism as
  * `copy` — the only difference between the three is WHO MAY INITIATE (the slice-2 initiator gate), which is
- * already enforced above. Revocable multi-recipient *canonical* sharing (a mixed-mode envelope that re-wraps
- * the source in place, revocably, without minting a copy) is DEFERRED (option 1 — PLAN §5 / §8).
+ * already enforced above. The `canonical` posture (objective L) is the COMPLEMENT: it re-wraps the source in
+ * place, revocably, WITHOUT minting a copy — it rides `enforcement.onShareCanonical` (createCanonicalShare),
+ * NOT this copy path (see the canonical branch in shareItemAcrossCircles + isCanonicalPosture).
  */
 export const usesCopyReseal = (p) => p === 'copy' || p === 'trusted' || p === 'registered';
 
@@ -151,6 +152,22 @@ export async function shareItemAcrossCircles({
   // Null ⇒ memory path: shareIntoAudience just writes the ref (unchanged behaviour).
   const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
 
+  const keys = Array.isArray(recipientKeys) ? recipientKeys.filter(Boolean) : [];
+
+  // CANONICAL (objective L) — share the item IN PLACE, revocably, with NO copy. `usesCopyReseal` is false for
+  // this posture, so it never rides the copy branch below; instead `shareIntoAudience` writes ONLY the
+  // `shared-ref` pointer and the pod-tier `onShareCanonical` hook GRANTS the recipient(s) into the source
+  // item's group-key resource (createCanonicalShare.share: key re-wrap + ACP read grant). The recipient then
+  // opens the CANONICAL resource in place — never a duplicated item (no `sharedCopyOf`). Absent a canonical
+  // enforcement (memory path / no pod / not signed in), it degrades to the plain `shared-ref` write — the
+  // pre-L in-memory behaviour, byte-for-byte (no grant).
+  if (isCanonicalPosture(posture)) {
+    return shareIntoAudience(stores, {
+      itemId, fromCircleId, toCircleId, by, recipient, recipients, recipientKeys: keys, postureOf,
+      onShare: enforcement?.onShareCanonical,   // grant IN PLACE; undefined on the memory path → plain ref write
+    });
+  }
+
   // COPY re-seal: write a SEPARATE object sealed to the recipient(s), source UNTOUCHED, and share THAT copy
   // (the shared-ref points at the copy; the ACP grant lands on the copy). Cleanest re-seal — works for ANY
   // source posture (the source item is read through its own store, opened at rest, then re-sealed fresh to the
@@ -158,9 +175,8 @@ export async function shareItemAcrossCircles({
   //
   // Decision "option 2": `copy`, `trusted`, AND `registered` all ride this ONE mechanism (usesCopyReseal). The
   // three postures differ ONLY in who may initiate (the slice-2 gate above: `closed` refuses, `registered`
-  // admin-only, `copy`/`trusted` any member); the re-seal mechanism is now shared. Revocable multi-recipient
-  // *canonical* sharing (a mixed-mode in-place envelope) is DEFERRED — see PLAN §5 / §8.
-  const keys = Array.isArray(recipientKeys) ? recipientKeys.filter(Boolean) : [];
+  // admin-only, `copy`/`trusted` any member); the re-seal mechanism is now shared. The revocable in-place
+  // *canonical* posture is handled ABOVE (its own branch — no copy); see isCanonicalPosture.
   if (usesCopyReseal(posture) && enforcement?.onShare && typeof sealCopy === 'function' && keys.length) {
     const fromStore = stores.getStore(fromCircleId);
     const srcItem = await fromStore.get(itemId);
@@ -180,7 +196,7 @@ export async function shareItemAcrossCircles({
     });
   }
 
-  // Fallback (no pod/keys, or an enforcement without onShare) — canonical path: write the ref to the source
+  // Fallback (no pod/keys, or an enforcement without onShare) — in-place ref path: write the ref to the source
   // item and let the enforcement's injected `seal` (if any) re-wrap IN PLACE, fed the recipients' sealing keys.
   // A copy-reseal posture (copy/trusted/registered) reaches here only when the copy branch's preconditions
   // (pod onShare + a sealer + recipient keys) aren't ALL met, degrading to the pre-re-seal behaviour.
@@ -188,6 +204,68 @@ export async function shareItemAcrossCircles({
     itemId, fromCircleId, toCircleId, by, recipient, recipients, recipientKeys: keys, postureOf,
     onShare: enforcement?.onShare,
   });
+}
+
+/**
+ * UN-SHARE (objective L) — REVOKE a recipient's canonical access to an item shared out of `fromCircleId`.
+ * Only the `canonical` posture has a revocable in-place grant to rotate; the copy postures minted a SEPARATE
+ * object (deleting that copy is a different op) and `closed` never shared, so those return `not-canonical`.
+ *
+ * The revoke composes the pod-tier `enforcement.revokeCanonical` (createCanonicalShare.revoke): rotate the
+ * item's group key to the REMAINING recipients (forward secrecy) + ACP-revoke the departing recipient(s). It
+ * then best-effort drops the `shared-ref` pointer from the target circle so the item stops surfacing there —
+ * though the deny-by-default read gate ALREADY drops it for the revoked recipient (ACP revoke), so the
+ * pointer cleanup is cosmetic, not the security boundary.
+ *
+ * @param {object} args
+ * @param {(circleId:string)=>Promise<{stores:{getStore:Function}}|null>} args.resolveService
+ * @param {string} args.itemId
+ * @param {string} args.fromCircleId               the SOURCE (origin) circle the canonical item lives in
+ * @param {string} [args.toCircleId]               the target circle to drop the `shared-ref` pointer from
+ * @param {string} [args.recipient]                a single recipient WebID to revoke
+ * @param {string[]} [args.recipients]             multiple recipient WebIDs to revoke
+ * @param {string[]} [args.remainingRecipients]    sealing keys that KEEP access (defaults to the origin roster)
+ * @param {(circleId:string)=>Promise<{revokeCanonical?:Function}|null>} [args.enforcementFor]
+ * @param {(circleId:string)=>(object|Promise<object>)} [args.policyOf]  the SOURCE circle's admin policy
+ * @returns {Promise<{ok:true}|{ok:false, error:string, cause?:any}>}
+ */
+export async function revokeItemShare({
+  resolveService, itemId, fromCircleId, toCircleId,
+  recipient, recipients, remainingRecipients, enforcementFor, policyOf,
+} = {}) {
+  if (typeof resolveService !== 'function' || !itemId || !fromCircleId) return { ok: false, error: 'missing-args' };
+
+  let srcPolicy;
+  try { srcPolicy = typeof policyOf === 'function' ? await policyOf(fromCircleId) : undefined; }
+  catch { srcPolicy = undefined; }
+  if (!isCanonicalPosture(normalizeCirclePolicy(srcPolicy).sharePosture)) return { ok: false, error: 'not-canonical' };
+
+  const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
+  if (typeof enforcement?.revokeCanonical !== 'function') return { ok: false, error: 'no-canonical-enforcement' };
+
+  // The `shared-ref` shape the canonical controller derives the source resource URI from (resourceUriFor).
+  const ref = { type: 'shared-ref', sourceCircle: fromCircleId, sourceId: itemId };
+  try {
+    await enforcement.revokeCanonical({ ref, recipient, recipients, remainingRecipients });
+  } catch (cause) {
+    return { ok: false, error: 'revoke-failed', cause };
+  }
+
+  // Best-effort: drop the target circle's pointer(s) to this canonical item (cosmetic — the ACP revoke +
+  // group-key rotation are the boundary). Skipped silently if the store lacks a delete or the target is absent.
+  if (toCircleId) {
+    try {
+      const toSvc = await resolveService(toCircleId);
+      const store = toSvc?.stores?.getStore?.(toCircleId);
+      if (store && typeof store.delete === 'function') {
+        const refs = await listShared({ getStore: () => store }, toCircleId);
+        for (const r of refs) {
+          if (r?.sourceCircle === fromCircleId && r?.sourceId === itemId) await store.delete(r.id);
+        }
+      }
+    } catch { /* best-effort */ }
+  }
+  return { ok: true };
 }
 
 /**

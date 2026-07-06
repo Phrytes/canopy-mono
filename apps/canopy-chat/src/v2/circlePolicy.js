@@ -28,8 +28,11 @@ export const CIRCLE_POLICY_ENUMS = {
   // (admin-set, per-circle; see PLAN-circle-share-policy §3). 'closed' = external sharing off;
   // 'copy' = re-seal a fresh copy to the recipient; 'trusted' = member grants to a WebID (canonical,
   // recipient-sealed); 'registered' = admins-only, reader WebIDs added as recipients on the canonical item.
-  // Slice 1: policy field only — the initiator gate + re-seal wiring land in later slices.
-  sharePosture:         ['closed', 'copy', 'trusted', 'registered'],
+  // 'canonical' (objective L) = REVOCABLE canonical share: NO copy — the item stays canonical in its origin
+  // circle and the recipient gets a revocable KEY GRANT (group-key wrap + ACP grant) to open it IN PLACE;
+  // un-sharing rotates the key + ACP-revokes. Mirrors item-store's SHARE_POSTURES; routed via
+  // `@canopy/pod-client` createCanonicalShare (share=grant, revoke=rotate). See circleShare.js.
+  sharePosture:         ['closed', 'copy', 'trusted', 'registered', 'canonical'],
   agents:               ['yes', 'admin-approval', 'no'],
   revealPolicy:         ['pairwise', 'open'],
   pod:                  ['none', 'shared', 'personal', 'hybrid'],

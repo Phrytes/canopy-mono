@@ -1965,7 +1965,9 @@
     "done":   { "text": "Shared \"{{item}}\" into {{circle}}.",     "doc": "cluster K cross-circle share — success note for /shareitem." },
     "failed": { "text": "Share failed: {{error}}.",                 "doc": "cluster K cross-circle share — failure note for /shareitem." },
     "list":   { "text": "Shared into this circle ({{count}}):",     "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
-    "empty":  { "text": "Nothing shared into this circle yet.",     "doc": "cluster K cross-circle share — empty state for /shared." }
+    "empty":  { "text": "Nothing shared into this circle yet.",     "doc": "cluster K cross-circle share — empty state for /shared." },
+    "revoked":       { "text": "Revoked {{recipient}}'s access to \"{{item}}\".", "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)." },
+    "revoke_failed": { "text": "Un-share failed: {{error}}.",                     "doc": "objective L canonical share — failure note for /unshareitem." }
   },
   "clarify": {
     "which": {
