@@ -514,6 +514,7 @@ describe('renderWeb D-mig-1a — list-surface field selectors', () => {
         dataSource:    { skillId: 'listContacts' },
         labelField:    'label',
         categoryField: 'category',
+        searchFields:  ['label', 'handle'],
       },
       {
         id:            'prikbord',
@@ -548,6 +549,19 @@ describe('renderWeb D-mig-1a — list-surface field selectors', () => {
     expect(plain).not.toHaveProperty('labelField');
     expect(plain).not.toHaveProperty('categoryField');
   });
+
+  // D-mig-2 — the filter grammar passthrough.
+  it('projects searchFields onto the contacts section (verbatim)', () => {
+    const c = renderWeb(MANIFEST).sections.find((s) => s.id === 'contacts');
+    expect(c.searchFields).toEqual(['label', 'handle']);
+  });
+
+  it('a view without searchFields projects none (consumer defaults to [labelField])', () => {
+    const p = renderWeb(MANIFEST).sections.find((s) => s.id === 'prikbord');
+    expect(p).not.toHaveProperty('searchFields');
+    const plain = renderWeb(MANIFEST).sections.find((s) => s.id === 'plain');
+    expect(plain).not.toHaveProperty('searchFields');
+  });
 });
 
 /* ─── D-mig-1a: real stoop manifest projects contacts + prikbord ─────── */
@@ -561,6 +575,8 @@ describe('renderWeb D-mig-1a — stoop manifest projection', () => {
     expect(c.dataSource).toEqual({ skillId: 'listContacts' });
     expect(c.labelField).toBe('label');
     expect(c.categoryField).toBe('category');
+    // D-mig-2 — contacts declare a genuine secondary searchable field (handle).
+    expect(c.searchFields).toEqual(['label', 'handle']);
   });
 
   it('stoop prikbord section carries listOpen + kind + post', async () => {
@@ -570,6 +586,9 @@ describe('renderWeb D-mig-1a — stoop manifest projection', () => {
     expect(p.itemType).toBe('post');
     expect(p.dataSource).toEqual({ skillId: 'listOpen' });
     expect(p.categoryField).toBe('kind');
+    // D-mig-2 — prikbord's label IS the post body; searchFields formalises the
+    // label-only default explicitly (no distinct secondary field exists).
+    expect(p.searchFields).toEqual(['label']);
     expect(p).not.toHaveProperty('labelField');
   });
 });

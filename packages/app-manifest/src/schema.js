@@ -220,6 +220,15 @@
  *                                                 groups/filters list rows
  *                                                 (e.g. 'category', 'kind').
  *                                                 Additive; optional.
+ * @property {string[]}               [searchFields]   D-mig-2 — which item fields
+ *                                                 the free-text list filter matches
+ *                                                 (case-insensitive contains; an
+ *                                                 item matches if ANY listed field
+ *                                                 contains the query).  Default
+ *                                                 `[labelField]` downstream ⇒ a view
+ *                                                 without it searches only the label,
+ *                                                 exactly as before.  Additive;
+ *                                                 back-compatible.
  */
 
 /**

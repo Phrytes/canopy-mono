@@ -843,6 +843,19 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
     errors.push({ path: `${path}/categoryField`, message: 'view.categoryField must be a string if present' });
   }
 
+  // D-mig-2 — optional free-text search-field selector.  Mirrors the
+  // labelField/categoryField checks above, but the value is a string[]
+  // (WHICH item fields the text filter matches).  Present-but-not-an-
+  // array-of-strings → a validation error; absent → unchanged (the
+  // consumer defaults to `[labelField]`, so behaviour is back-compatible).
+  if (v.searchFields !== undefined) {
+    if (!Array.isArray(v.searchFields)) {
+      errors.push({ path: `${path}/searchFields`, message: 'view.searchFields must be an array of strings if present' });
+    } else if (v.searchFields.some((f) => typeof f !== 'string' || f === '')) {
+      errors.push({ path: `${path}/searchFields`, message: 'view.searchFields entries must be non-empty strings' });
+    }
+  }
+
   // Q17 (V0.3, 2026-05-21) — view.shape: 'list' | 'record' (default 'list').
   // Forward-additive; existing manifests (no `shape` field) → implicit 'list'.
   if (v.shape !== undefined && v.shape !== 'list' && v.shape !== 'record') {

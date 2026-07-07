@@ -28,8 +28,14 @@ function distinctCategories(items, field) {
 /**
  * @param {object} args
  * @param {object[]} args.items                 the raw rows (from the screen's dataSource skill)
- * @param {string}  [args.query]                free-text filter (matched against `labelField`, case-insensitive)
+ * @param {string}  [args.query]                free-text filter (case-insensitive contains; matches an item
+ *                                              when ANY of `searchFields` contains the query)
  * @param {string}  [args.labelField='label']   which item field is the row label
+ * @param {string[]} [args.searchFields]         D-mig-2 — which item fields the free-text `query` matches.
+ *                                              An item matches iff ANY listed field (case-insensitive)
+ *                                              contains the query.  Absent/empty ⇒ `[labelField]` ⇒ the
+ *                                              pre-D-mig-2 label-only behaviour, byte-identical (the
+ *                                              "contacten met k" acceptance).
  * @param {string}  [args.categoryField]        which item field groups the rows (enables category checkboxes)
  * @param {string[]|null} [args.activeCategories]  checked categories (null = all checked); an item shows iff its
  *                                              category is checked
@@ -50,7 +56,7 @@ function distinctCategories(items, field) {
  *            categories: Array<{id:string,count:number,checked:boolean}> }}
  */
 export function buildScreenModel({
-  items = [], query = '', labelField = 'label', categoryField,
+  items = [], query = '', labelField = 'label', searchFields, categoryField,
   activeCategories = null, defaultAudience, audience, manifestsByOrigin, appOrigin, capabilityMatrix = [],
 } = {}) {
   const rawList = Array.isArray(items) ? items : [];
@@ -67,11 +73,22 @@ export function buildScreenModel({
   const active = activeCategories == null ? null : new Set(activeCategories);
   const q = String(query || '').trim().toLowerCase();
   const labelOf = (it) => String(it?.[labelField] ?? it?.label ?? it?.id ?? '');
+  // D-mig-2 — the free-text filter grammar: the manifest declares WHICH
+  // item fields the query matches.  Default `[labelField]` ⇒ label-only
+  // search (the pre-D-mig-2 behaviour, byte-identical).  An item matches
+  // when ANY listed field contains the query — same lowercase-contains
+  // predicate as before, just iterated over the field list.
+  const fields = Array.isArray(searchFields) && searchFields.length ? searchFields : [labelField];
+  // The label field keeps its `labelField ?? label ?? id` fallback (so the
+  // default `[labelField]` case is byte-identical); other fields read plain.
+  const valueOf = (it, f) => (f === labelField ? labelOf(it) : String(it?.[f] ?? ''));
+  const matchesQuery = (it) =>
+    fields.some((f) => valueOf(it, f).toLowerCase().includes(q));
 
   // Filter: category checkboxes first, then the text query.
   const filtered = list.filter((it) => {
     if (active && categoryField && !active.has(it?.[categoryField])) return false;
-    return !q || labelOf(it).toLowerCase().includes(q);
+    return !q || matchesQuery(it);
   });
 
   // Row actions in ONE pass (capability-gated + Slice-4 treatment), grouped back per item by itemId.

@@ -131,8 +131,12 @@ import CircleOverrideScreen from './CircleOverrideScreen.js';
 import CircleListScreen from './CircleListScreen.js';
 
 // B · Slice 3 — declared list-screen surfaces (mirror of the web LIST_SCREENS): screenId → how to fetch.
+// D-mig-2 note: mobile is still on this hardcoded literal (web retired it in 1b by
+// consuming the projected manifest section; mobile's migration is a separate step).
+// `searchFields` mirrors stoop's `contacts` view so mobile's text search matches the
+// same fields as web (web≡mobile) — search a contact by label OR handle.
 const LIST_SCREENS = {
-  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category' },
+  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category', searchFields: ['label', 'handle'] },
   prikbord: { appOrigin: 'stoop', listOp: 'listOpen',     categoryField: 'kind' },
 };
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
@@ -2065,8 +2069,8 @@ function CircleDetail({
               template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
             });
           } catch { /* best-effort */ }
-          if (alive) setListScreenData({ items, categoryField: listCfg.categoryField, appOrigin: listCfg.appOrigin, capabilityMatrix });
-        } catch { if (alive) setListScreenData({ items: [], categoryField: listCfg.categoryField, appOrigin: listCfg.appOrigin, capabilityMatrix: [] }); }
+          if (alive) setListScreenData({ items, categoryField: listCfg.categoryField, searchFields: listCfg.searchFields, appOrigin: listCfg.appOrigin, capabilityMatrix });
+        } catch { if (alive) setListScreenData({ items: [], categoryField: listCfg.categoryField, searchFields: listCfg.searchFields, appOrigin: listCfg.appOrigin, capabilityMatrix: [] }); }
       })();
       return () => { alive = false; };
     }
@@ -2459,6 +2463,7 @@ function CircleDetail({
               <CircleListScreen
                 items={listScreenData.items}
                 categoryField={listScreenData.categoryField}
+                searchFields={listScreenData.searchFields}
                 manifestsByOrigin={manifestsByOrigin}
                 appOrigin={listScreenData.appOrigin}
                 capabilityMatrix={listScreenData.capabilityMatrix}

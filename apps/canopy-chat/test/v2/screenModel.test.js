@@ -23,6 +23,47 @@ describe('buildScreenModel — text filter', () => {
   });
 });
 
+describe('buildScreenModel — D-mig-2 searchFields (the filter grammar)', () => {
+  // Contacts whose label is a display name but whose `handle` is distinct —
+  // exactly stoop's contact row shape (label = displayName ?? handle ?? webid).
+  const people = [
+    { id: 'a', label: 'Karin de Vries', handle: 'kdv' },
+    { id: 'b', label: 'Anna Bakker',    handle: 'zephyr' },   // handle unrelated to label
+    { id: 'c', label: 'Bob Jansen',     handle: 'bjan' },
+  ];
+
+  it('back-compat: no searchFields ⇒ [labelField] ⇒ label-only search (the "contacten met k")', () => {
+    // Identical to the labelField-only default: only labels containing "k".
+    const withFields = buildScreenModel({ items: people, query: 'k', searchFields: ['label'] });
+    const withoutFields = buildScreenModel({ items: people, query: 'k' });
+    expect(withoutFields.rows.map((r) => r.item.id)).toEqual(['a', 'b']);        // Karin, Anna Bakker
+    expect(withFields.rows.map((r) => r.item.id)).toEqual(withoutFields.rows.map((r) => r.item.id));
+  });
+
+  it('back-compat: the handle field is NOT searched by default (label-only)', () => {
+    // 'zephyr' is only in Anna's handle — with no searchFields it must not match.
+    const { rows } = buildScreenModel({ items: people, query: 'zephyr' });
+    expect(rows).toHaveLength(0);
+  });
+
+  it('matches an item that hits the SECOND field but not the label', () => {
+    const { rows } = buildScreenModel({ items: people, query: 'zephyr', searchFields: ['label', 'handle'] });
+    expect(rows.map((r) => r.item.id)).toEqual(['b']);   // only Anna, via handle
+  });
+
+  it('an item matches if ANY searchField contains the query (label OR handle)', () => {
+    const { rows } = buildScreenModel({ items: people, query: 'b', searchFields: ['label', 'handle'] });
+    // 'b' hits Anna Bakker (label), Bob Jansen (label), bjan (handle b) → a,b,c;
+    // Karin has no 'b' in label or handle 'kdv'.
+    expect(rows.map((r) => r.item.id)).toEqual(['b', 'c']);
+  });
+
+  it('empty searchFields falls back to [labelField] (back-compatible)', () => {
+    const { rows } = buildScreenModel({ items: people, query: 'zephyr', searchFields: [] });
+    expect(rows).toHaveLength(0);   // handle NOT searched → no label match
+  });
+});
+
 describe('buildScreenModel — category checkboxes', () => {
   it('lists categories with counts + all-checked by default', () => {
     const { categories } = buildScreenModel({ items: contacts, categoryField: 'category' });
