@@ -1100,6 +1100,10 @@ export default function CircleLauncherScreen({
         proposalStore={proposalStore}
         circleId={selected.id}
         callSkill={bundle?.callSkill}
+        // B · consent-card — inject the member-override store (records declined optional caps as
+        // capabilityOptOuts) + the pod session's authed fetch, exactly as web circleApp.js does.
+        overrideStore={overrideStore}
+        podFetch={getCirclePodFetch() || undefined}
         incomingPolicy={incomingPolicy}
         onIncomingApplied={clearIncomingPolicy}
         onIncomingDiscarded={clearIncomingPolicy}
