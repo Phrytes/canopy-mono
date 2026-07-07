@@ -32,7 +32,7 @@ export function CrewSettingsScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  if (!svc?.activeCrewId) {
+  if (!svc?.activeCircleId) {
     return (
       <View style={{ flex: 1, padding: SPACING.xl, backgroundColor: COLORS.background }}>
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.md }}>

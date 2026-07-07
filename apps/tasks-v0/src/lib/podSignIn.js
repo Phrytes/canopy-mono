@@ -195,7 +195,7 @@ export async function completePodSignIn({
     podRouting:        crew.podRouting  ?? null,
     pseudoPod:         crew.pseudoPod   ?? null,
     substrateDeviceId: crew.substrateDeviceId ?? null,
-    crewId:            crew.crewId      ?? null,
+    circleId:            crew.circleId      ?? null,
   };
   await attachTasksBundle({
     bundle: bundleProxy,
@@ -203,7 +203,7 @@ export async function completePodSignIn({
     podRoot,
     webid:  info?.webid ?? oidc.webid ?? null,
     fetch:  fetchFn,
-    crewId: crew.crewId ?? null,
+    circleId: crew.circleId ?? null,
   });
 
   return { ok: true, webid: info?.webid ?? oidc.webid ?? null, podRoot };

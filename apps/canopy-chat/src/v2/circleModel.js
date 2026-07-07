@@ -3,7 +3,7 @@
  *
  * A "circle" is the EXISTING circle/group/crew label, not a new entity
  * (see `@canopy/circles` + `CIRCLE_ID_IS_CREW_ID_ALIAS`: circle.id ≡
- * task.crewId). This module normalises the circle-like sources the host
+ * task.circleId). This module normalises the circle-like sources the host
  * already exposes — tasks crews (`getMyCrews`), stoop groups, and
  * `@canopy/circles` items — into one launcher list (board 1B). Pure and
  * host-injected so the same logic feeds the web launcher (`web/v2/`) and
@@ -12,7 +12,7 @@
 
 /** Normalise one circle-like raw item to a launcher tile, or null if it has no id. */
 export function normalizeCircle(raw = {}) {
-  const id = raw.id ?? raw.crewId ?? raw.circleId ?? raw.groupId ?? null;
+  const id = raw.id ?? raw.circleId ?? raw.circleId ?? raw.groupId ?? null;
   if (!id) return null;
   const fromArray = Array.isArray(raw.members) ? raw.members.length : null;
   const memberCount = raw.memberCount ?? fromArray ?? raw.counts?.members ?? null;
@@ -28,7 +28,7 @@ export function normalizeCircle(raw = {}) {
 
 /**
  * Merge circle-like items from several host sources, de-duping by id.
- * Because crewId ≡ circleId, the same group seen via two sources collapses
+ * Because circleId ≡ circleId, the same group seen via two sources collapses
  * into one tile, with later sources filling gaps left by earlier ones.
  */
 export function mergeCircles(...sources) {

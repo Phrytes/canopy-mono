@@ -76,7 +76,7 @@ export function buildCustomRoleSkills({ bundleResolver } = {}) {
   return [
     defineSkill('listKnownRoles', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const lc = crew.liveCrew ?? {};
       const customs = (lc.customRoles ?? []).map((r) => ({ id: r.id, rank: r.rank, source: 'crew' }));
       // listKnownRoles from core returns ids only; merge ranks from
@@ -100,7 +100,7 @@ export function buildCustomRoleSkills({ bundleResolver } = {}) {
 
     defineSkill('registerCrewCustomRole', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
@@ -131,7 +131,7 @@ export function buildCustomRoleSkills({ bundleResolver } = {}) {
 
     defineSkill('unregisterCrewCustomRole', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);

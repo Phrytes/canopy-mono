@@ -67,7 +67,7 @@ describe('characterization: dag.html', () => {
     // once owner confirms which fields to lock as gold-standard.
     const TASK_TEXT = 'dag-corpus seed task';
     await fixture.callSkill('addTask', {
-      crewId: 'characterization-crew',
+      circleId: 'characterization-crew',
       text:   TASK_TEXT,
     });
 

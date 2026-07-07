@@ -6,8 +6,8 @@ import {
 } from '../../src/v2/circleModel.js';
 
 describe('circleModel · normalizeCircle', () => {
-  it('normalises a crew (crewId ≡ circleId) with counts', () => {
-    expect(normalizeCircle({ crewId: 'abc', name: 'Huis', counts: { members: 4 } }))
+  it('normalises a crew (circleId ≡ circleId) with counts', () => {
+    expect(normalizeCircle({ circleId: 'abc', name: 'Huis', counts: { members: 4 } }))
       .toMatchObject({ id: 'abc', name: 'Huis', memberCount: 4 });
   });
 
@@ -24,9 +24,9 @@ describe('circleModel · normalizeCircle', () => {
 });
 
 describe('circleModel · mergeCircles', () => {
-  it('de-dupes by id (crewId ≡ circleId) and fills gaps from later sources', () => {
+  it('de-dupes by id (circleId ≡ circleId) and fills gaps from later sources', () => {
     const merged = mergeCircles(
-      [{ crewId: 'g1', name: 'G1', counts: { members: 2 } }],
+      [{ circleId: 'g1', name: 'G1', counts: { members: 2 } }],
       [{ id: 'g1', name: 'G1', lastActivity: '2026-05-28T10:00:00Z' }],
       [{ id: 'g2', name: 'G2' }],
     );
@@ -45,7 +45,7 @@ describe('circleModel · mergeCircles', () => {
 describe('circleModel · loadCircles', () => {
   it('aggregates fetchers and tolerates a failing source', async () => {
     const list = await loadCircles({
-      fetchCrews: async () => [{ crewId: 'a', name: 'A' }],
+      fetchCrews: async () => [{ circleId: 'a', name: 'A' }],
       fetchGroups: async () => { throw new Error('boom'); },
       fetchCircles: async () => [{ id: 'b', name: 'B' }],
     });

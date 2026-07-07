@@ -3,7 +3,7 @@
  *
  * Lifted to `@canopy/react-native/storage` 2026-05-09 (Phase 41.0.b
  * A5). Tasks-mobile uses the same factory with
- * `{keyNamespace: 'tasks:crews', idField: 'crewId'}` in Phase 41.7.
+ * `{keyNamespace: 'tasks:crews', idField: 'circleId'}` in Phase 41.7.
  */
 
 import { createBundleRegistry } from '@canopy/react-native/storage';

@@ -8,9 +8,9 @@
  * the CachingDataSource forwards reads/writes through to
  * `<user-pod>/profile/skills.json` (same path, same shape).
  *
- * Per-crew vocabulary lives at `mem://tasks/crews/<crewId>/skills.json`.
- * Per-crew member projection at `mem://tasks/crews/<crewId>/skills/<webid-encoded>.json`.
- * Per-crew posture at `mem://user/posture/<crewId>.json`.
+ * Per-crew vocabulary lives at `mem://tasks/crews/<circleId>/skills.json`.
+ * Per-crew member projection at `mem://tasks/crews/<circleId>/skills/<webid-encoded>.json`.
+ * Per-crew posture at `mem://user/posture/<circleId>.json`.
  *
  * Schemas (all optional fields nullable):
  *
@@ -69,17 +69,17 @@ import { argsFromParts } from '../bundleResolver.js';
 
 const CANONICAL_PROFILE_PATH = 'mem://user/profile/skills.json';
 
-function _crewVocabPath(crewId, root = 'mem://tasks/crews/') {
-  return `${root}${crewId}/skills.json`;
+function _crewVocabPath(circleId, root = 'mem://tasks/crews/') {
+  return `${root}${circleId}/skills.json`;
 }
 
-function _crewMemberSkillsPath(crewId, webid, root = 'mem://tasks/crews/') {
+function _crewMemberSkillsPath(circleId, webid, root = 'mem://tasks/crews/') {
   // URL-encode webid so it's safe as a path segment.
-  return `${root}${crewId}/skills/${encodeURIComponent(webid)}.json`;
+  return `${root}${circleId}/skills/${encodeURIComponent(webid)}.json`;
 }
 
-function _posturePath(crewId, root = 'mem://user/posture/') {
-  return `${root}${crewId}.json`;
+function _posturePath(circleId, root = 'mem://user/posture/') {
+  return `${root}${circleId}.json`;
 }
 
 // ── Read / write helpers ───────────────────────────────────────────────────
@@ -235,15 +235,15 @@ export async function writeCanonicalProfile({
  *
  * @param {object} args
  * @param {object} args.dataSource
- * @param {string} args.crewId
+ * @param {string} args.circleId
  * @param {string} [args.rootContainer]
  * @returns {Promise<{schemaVersion, skills} | null>}
  */
-export async function readCrewVocabulary({ dataSource, crewId, rootContainer }) {
-  if (typeof crewId !== 'string' || !crewId) {
-    throw new TypeError('readCrewVocabulary: crewId required');
+export async function readCrewVocabulary({ dataSource, circleId, rootContainer }) {
+  if (typeof circleId !== 'string' || !circleId) {
+    throw new TypeError('readCrewVocabulary: circleId required');
   }
-  const raw = await _safeRead(dataSource, _crewVocabPath(crewId, rootContainer));
+  const raw = await _safeRead(dataSource, _crewVocabPath(circleId, rootContainer));
   if (!raw) return null;
   return {
     schemaVersion: 1,
@@ -256,13 +256,13 @@ export async function readCrewVocabulary({ dataSource, crewId, rootContainer }) 
  * caller — the helper does NO authz on its own).
  */
 export async function writeCrewVocabulary({
-  dataSource, crewId, skills, rootContainer,
+  dataSource, circleId, skills, rootContainer,
 }) {
   const blob = {
     schemaVersion: 1,
     skills:        _normaliseVocabList(skills),
   };
-  await _safeWrite(dataSource, _crewVocabPath(crewId, rootContainer), blob);
+  await _safeWrite(dataSource, _crewVocabPath(circleId, rootContainer), blob);
   return blob;
 }
 
@@ -270,15 +270,15 @@ export async function writeCrewVocabulary({
  * Read the per-crew skill projection for a given member webid.
  */
 export async function readMyCrewSkills({
-  dataSource, crewId, webid, rootContainer,
+  dataSource, circleId, webid, rootContainer,
 }) {
-  if (typeof crewId !== 'string' || !crewId) {
-    throw new TypeError('readMyCrewSkills: crewId required');
+  if (typeof circleId !== 'string' || !circleId) {
+    throw new TypeError('readMyCrewSkills: circleId required');
   }
   if (typeof webid !== 'string' || !webid) {
     throw new TypeError('readMyCrewSkills: webid required');
   }
-  const raw = await _safeRead(dataSource, _crewMemberSkillsPath(crewId, webid, rootContainer));
+  const raw = await _safeRead(dataSource, _crewMemberSkillsPath(circleId, webid, rootContainer));
   if (!raw) return null;
   return {
     webid,
@@ -289,14 +289,14 @@ export async function readMyCrewSkills({
 
 /** Write the per-crew skill projection for a member. */
 export async function writeMyCrewSkills({
-  dataSource, crewId, webid, skills, rootContainer, now,
+  dataSource, circleId, webid, skills, rootContainer, now,
 }) {
   const blob = {
     webid,
     skills:    _normaliseSkillList(skills),
     updatedAt: Number.isFinite(now) ? now : Date.now(),
   };
-  await _safeWrite(dataSource, _crewMemberSkillsPath(crewId, webid, rootContainer), blob);
+  await _safeWrite(dataSource, _crewMemberSkillsPath(circleId, webid, rootContainer), blob);
   return blob;
 }
 
@@ -305,12 +305,12 @@ export async function writeMyCrewSkills({
  * 'always' | 'negotiable' | 'never').
  */
 export async function readPostureForCrew({
-  dataSource, crewId, postureRoot,
+  dataSource, circleId, postureRoot,
 }) {
-  if (typeof crewId !== 'string' || !crewId) {
-    throw new TypeError('readPostureForCrew: crewId required');
+  if (typeof circleId !== 'string' || !circleId) {
+    throw new TypeError('readPostureForCrew: circleId required');
   }
-  const raw = await _safeRead(dataSource, _posturePath(crewId, postureRoot));
+  const raw = await _safeRead(dataSource, _posturePath(circleId, postureRoot));
   if (!raw) return null;
   const tags = _normalisePostureTags(raw.tags);
   return {
@@ -321,14 +321,14 @@ export async function readPostureForCrew({
 
 /** Write the per-crew posture file. */
 export async function writePostureForCrew({
-  dataSource, crewId, posture, postureRoot, now,
+  dataSource, circleId, posture, postureRoot, now,
 }) {
   const tags = _normalisePostureTags(posture?.tags);
   const blob = {
     tags,
     updatedAt: Number.isFinite(now) ? now : Date.now(),
   };
-  await _safeWrite(dataSource, _posturePath(crewId, postureRoot), blob);
+  await _safeWrite(dataSource, _posturePath(circleId, postureRoot), blob);
   return blob;
 }
 
@@ -405,13 +405,13 @@ export function prefilledFormShape({
  *
  * Two skills:
  *
- *   - `getMySkillsFormShape({crewId?})` — UI calls this to populate
- *     the edit-skills form. The args.crewId field is optional: when
- *     omitted, the resolved crew's own crewId is used. Returns
+ *   - `getMySkillsFormShape({circleId?})` — UI calls this to populate
+ *     the edit-skills form. The args.circleId field is optional: when
+ *     omitted, the resolved crew's own circleId is used. Returns
  *     `{prefilled, vocabSuggestions, taxonomyHints, canonicalProfile,
  *     crewVocabulary}` for the UI.
  *
- *   - `editMySkillsForCrew({crewId?, skills, persistToCanonicalProfile?})`
+ *   - `editMySkillsForCrew({circleId?, skills, persistToCanonicalProfile?})`
  *     — UI calls this on submit. Always writes the per-crew member
  *     projection. If `persistToCanonicalProfile` is true, also writes
  *     the canonical profile (caller must have surfaced the opt-in
@@ -436,15 +436,15 @@ export function buildProfileSkills({
   return [
     defineSkill('getMySkillsFormShape', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const crewId = (typeof a.crewId === 'string' && a.crewId) ? a.crewId : crew.crewId;
-      if (typeof crewId !== 'string' || !crewId) {
-        return { error: 'crewId required' };
+      const circleId = (typeof a.circleId === 'string' && a.circleId) ? a.circleId : crew.circleId;
+      if (typeof circleId !== 'string' || !circleId) {
+        return { error: 'circleId required' };
       }
       const [canonicalProfile, crewVocabulary] = await Promise.all([
         readCanonicalProfile({ dataSource: crew.dataSource, path: canonicalPath }),
-        readCrewVocabulary({ dataSource: crew.dataSource, crewId, rootContainer: crewRoot }),
+        readCrewVocabulary({ dataSource: crew.dataSource, circleId, rootContainer: crewRoot }),
       ]);
       return {
         canonicalProfile,
@@ -457,12 +457,12 @@ export function buildProfileSkills({
 
     defineSkill('editMySkillsForCrew', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const webid = from ?? a.webid;
-      const crewId = (typeof a.crewId === 'string' && a.crewId) ? a.crewId : crew.crewId;
-      if (typeof crewId !== 'string' || !crewId) {
-        return { error: 'crewId required' };
+      const circleId = (typeof a.circleId === 'string' && a.circleId) ? a.circleId : crew.circleId;
+      if (typeof circleId !== 'string' || !circleId) {
+        return { error: 'circleId required' };
       }
       if (!Array.isArray(a.skills)) {
         return { error: 'skills array required' };
@@ -474,7 +474,7 @@ export function buildProfileSkills({
       // Always write the per-crew projection.
       const projection = await writeMyCrewSkills({
         dataSource:    crew.dataSource,
-        crewId,
+        circleId,
         webid,
         skills:        a.skills,
         rootContainer: crewRoot,

@@ -19,7 +19,7 @@ import { useService } from '../ServiceContext.js';
 
 export function useActiveRole() {
   const svc = useService();
-  const cs  = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;
+  const cs  = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
   const actor = svc?.identity?.webid ?? svc?.identity?.pubKey ?? null;
 
   const role = resolveActorRole({ from: actor, crewState: cs });

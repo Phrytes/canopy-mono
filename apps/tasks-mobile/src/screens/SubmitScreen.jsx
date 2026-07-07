@@ -38,7 +38,7 @@ export function SubmitScreen() {
   const taskId = route?.params?.id;
 
   // Look up the task via listOpen — same pattern as TaskDetailScreen.
-  const list = useSkillResult('listOpen', {}, [svc?.activeCrewId, taskId]);
+  const list = useSkillResult('listOpen', {}, [svc?.activeCircleId, taskId]);
   const task = useMemo(() => {
     const items = Array.isArray(list?.data?.items) ? list.data.items : [];
     return items.find((it) => it?.id === taskId) ?? null;
@@ -76,13 +76,13 @@ export function SubmitScreen() {
       if (isPhoto) {
         const id  = photoId();
         const ref = deliverableRef({
-          crewId: svc?.activeCrewId,
+          circleId: svc?.activeCircleId,
           taskId,
           photoId: id,
         });
         // Write the JPEG bytes (decoded from base64) into the cache so
         // approvers can fetch via `dataSource.read(ref)`.
-        const cache = svc?.crews?.get(svc?.activeCrewId)?.dataSource;
+        const cache = svc?.crews?.get(svc?.activeCircleId)?.dataSource;
         if (cache?.write) {
           // V1: store the data-URL form so the approver's UI can
           // render directly from the value. A future revision can

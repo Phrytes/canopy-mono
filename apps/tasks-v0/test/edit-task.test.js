@@ -31,7 +31,7 @@ const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
 const CREW = {
-  crewId:  'edit-task-test-crew',
+  circleId:  'edit-task-test-crew',
   name:    'Edit-Task Test',
   kind:    'project',
   members: [

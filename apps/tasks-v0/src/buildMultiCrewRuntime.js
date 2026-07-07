@@ -22,9 +22,9 @@
  *
  * - `meshAgent` — the single shared agent that owns the skill registry.
  * - `primaryBundle` — the primary-crew bundle from `createCrewAgent`.
- * - `crewsMap` — `Map<crewId, CrewState>` the bundleResolver picks from.
+ * - `crewsMap` — `Map<circleId, CrewState>` the bundleResolver picks from.
  * - `localStoreBundle` — backing storage (shared across crews).
- * - `spawnCrewInProcess(crewId)` — in-process sibling-crew spawner,
+ * - `spawnCrewInProcess(circleId)` — in-process sibling-crew spawner,
  *   already stashed on every CrewState via `._spawnCrewInProcess`.
  *
  * After this returns, `meshAgent.start()` has been awaited; skills
@@ -42,7 +42,7 @@ const DEFAULT_ANNE = 'https://id.example/anne';
 
 /**
  * @param {object} [opts]
- * @param {string} [opts.primaryCrewId='primary-crew']
+ * @param {string} [opts.primaryCircleId='primary-crew']
  * @param {string} [opts.primaryCrewName='Primary']
  * @param {string} [opts.primaryCrewKind='project']
  * @param {Array<{webid: string, displayName: string, role: string}>}
@@ -52,7 +52,7 @@ const DEFAULT_ANNE = 'https://id.example/anne';
  *           Optional caller-supplied bundle; defaults to `buildBundle()`.
  */
 export async function buildMultiCrewRuntime({
-  primaryCrewId   = 'primary-crew',
+  primaryCircleId   = 'primary-crew',
   primaryCrewName = 'Primary',
   primaryCrewKind = 'project',
   primaryMembers  = [{ webid: DEFAULT_ANNE, displayName: 'Anne', role: 'admin' }],
@@ -65,7 +65,7 @@ export async function buildMultiCrewRuntime({
   });
 
   const primaryConfig = {
-    crewId:  primaryCrewId,
+    circleId:  primaryCircleId,
     name:    primaryCrewName,
     kind:    primaryCrewKind,
     members: primaryMembers,
@@ -81,11 +81,11 @@ export async function buildMultiCrewRuntime({
     wireOnboardingSkills: false,
   });
   const primaryCrewState = primaryBundle._crewState;
-  const crewsMap = new Map([[primaryCrewState.crewId, primaryCrewState]]);
+  const crewsMap = new Map([[primaryCrewState.circleId, primaryCrewState]]);
 
-  async function spawnCrewInProcess(crewId) {
-    if (crewsMap.has(crewId)) return crewsMap.get(crewId);
-    const path = `mem://tasks/crews/${crewId}/config.json`;
+  async function spawnCrewInProcess(circleId) {
+    if (crewsMap.has(circleId)) return crewsMap.get(circleId);
+    const path = `mem://tasks/crews/${circleId}/config.json`;
     const raw  = await localStoreBundle.cache.read(path);
     if (!raw) throw new Error(`no saved config at ${path}`);
     const cfg  = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -100,7 +100,7 @@ export async function buildMultiCrewRuntime({
     });
     const cs = spawned._crewState;
     cs._spawnCrewInProcess = spawnCrewInProcess;
-    crewsMap.set(cfg.crewId, cs);
+    crewsMap.set(cfg.circleId, cs);
     return cs;
   }
   primaryCrewState._spawnCrewInProcess = spawnCrewInProcess;

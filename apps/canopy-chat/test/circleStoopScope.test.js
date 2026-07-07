@@ -19,7 +19,7 @@ describe('keepForCircle', () => {
   it('keeps a matching hint, drops a non-matching one', () => {
     expect(keepForCircle({ groupId: 'circle-a' }, 'circle-a')).toBe(true);
     expect(keepForCircle({ groupId: 'circle-b' }, 'circle-a')).toBe(false);
-    expect(keepForCircle({ crewId: 'circle-a' }, 'circle-a')).toBe(true);  // crewId alias
+    expect(keepForCircle({ circleId: 'circle-a' }, 'circle-a')).toBe(true);  // circleId alias
   });
 });
 

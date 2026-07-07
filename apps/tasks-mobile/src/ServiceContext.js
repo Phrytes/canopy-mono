@@ -24,7 +24,7 @@
  *
  * The provider blocks rendering until step 6 completes. Children see
  * `useService()` returning `{status, meshAgent, identity, crews,
- * activeCrewId, joinCrew, leaveCrew, setActiveCrew, activeBundle}`.
+ * activeCircleId, joinCrew, leaveCrew, setActiveCrew, activeBundle}`.
  *
  * `activeBundle` is the back-compat shape stoop-mobile + folio-mobile
  * use — `{agent, members, groupId}` — so the lifted hooks
@@ -95,7 +95,7 @@ async function _defaultVaultFactory() {
  *   @param {() => Promise<object>} [props.boot.vaultFactory]
  *   @param {object} [props.boot.localStoreBundle]      inject a pre-built bundle
  *   @param {object} [props.boot.innerDataSource]       wrap this in CachingDataSource
- *   @param {Array<{crewId: string, config: object}>} [props.boot.initialCrews]
+ *   @param {Array<{circleId: string, config: object}>} [props.boot.initialCrews]
  *     bypass the AsyncStorage-backed registry; used by tests + dev
  *     bring-up to seed crews without touching AsyncStorage.
  *   @param {object} [props.boot.AppState]              inject a stub
@@ -106,7 +106,7 @@ export function ServiceProvider({ children, boot = {} }) {
   const [meshAgent,     setMeshAgent]     = useState(null);
   const [identity,      setIdentity]      = useState(null);
   const [error,         setError]         = useState(null);
-  const [activeCrewId,  setActiveCrewId]  = useState(null);
+  const [activeCircleId,  setActiveCircleId]  = useState(null);
   // The crews Map mutates in place across joinCrew/leaveCrew. We bump
   // a version counter to force rerenders that read its contents.
   const [crewsVersion,  setCrewsVersion]  = useState(0);
@@ -155,7 +155,7 @@ export function ServiceProvider({ children, boot = {} }) {
 
   /**
    * Add a crew. If `setActive` is true (default when there's no
-   * active crew yet), also flips activeCrewId.
+   * active crew yet), also flips activeCircleId.
    */
   const joinCrew = useCallback(async (crewConfig, { setActive } = {}) => {
     const cs = await buildCrewState({
@@ -163,42 +163,42 @@ export function ServiceProvider({ children, boot = {} }) {
       localStoreBundle: localStoreBundleRef.current,
       meshAgent:        meshAgentRef.current,   // M1-S3: wire substrate
     });
-    crewsRef.current.set(cs.crewId, cs);
+    crewsRef.current.set(cs.circleId, cs);
     _rebuildAllMembers();
     _bumpCrews();
     // Persist via the registry. The skills resolver reads through
     // crewsRef on next dispatch — no re-registration needed.
     if (registryRef.current) {
       try {
-        await registryRef.current.add({ crewId: cs.crewId, config: crewConfig });
+        await registryRef.current.add({ circleId: cs.circleId, config: crewConfig });
       } catch { /* registry persistence failure mustn't break boot */ }
     }
-    if (setActive ?? (activeCrewId == null)) {
-      setActiveCrewId(cs.crewId);
-      registryRef.current?.setActiveId(cs.crewId).catch(() => {});
+    if (setActive ?? (activeCircleId == null)) {
+      setActiveCircleId(cs.circleId);
+      registryRef.current?.setActiveId(cs.circleId).catch(() => {});
     }
     return cs;
-  }, [_rebuildAllMembers, _bumpCrews, activeCrewId]);
+  }, [_rebuildAllMembers, _bumpCrews, activeCircleId]);
 
-  const leaveCrew = useCallback(async (crewId) => {
-    if (!crewsRef.current.has(crewId)) return;
-    crewsRef.current.delete(crewId);
+  const leaveCrew = useCallback(async (circleId) => {
+    if (!crewsRef.current.has(circleId)) return;
+    crewsRef.current.delete(circleId);
     _rebuildAllMembers();
     _bumpCrews();
     if (registryRef.current) {
-      try { await registryRef.current.remove(crewId); }
+      try { await registryRef.current.remove(circleId); }
       catch { /* noop */ }
     }
-    if (activeCrewId === crewId) {
+    if (activeCircleId === circleId) {
       const next = crewsRef.current.keys().next().value ?? null;
-      setActiveCrewId(next);
+      setActiveCircleId(next);
       registryRef.current?.setActiveId(next).catch(() => {});
     }
-  }, [_rebuildAllMembers, _bumpCrews, activeCrewId]);
+  }, [_rebuildAllMembers, _bumpCrews, activeCircleId]);
 
-  const setActiveCrew = useCallback((crewId) => {
-    setActiveCrewId(crewId);
-    registryRef.current?.setActiveId(crewId).catch(() => {});
+  const setActiveCrew = useCallback((circleId) => {
+    setActiveCircleId(circleId);
+    registryRef.current?.setActiveId(circleId).catch(() => {});
   }, []);
 
   // ── Pod attachment (Phase 41.15 + M4 depth uplift) ────────────────
@@ -233,11 +233,11 @@ export function ServiceProvider({ children, boot = {} }) {
     // principle, mirror of stoop commit 11a269a). Best-effort inside;
     // never blocks local-first use (pod-independence.md).
     //
-    // The active crew's crewId is used for routing; when Tasks attaches
+    // The active crew's circleId is used for routing; when Tasks attaches
     // the pod at the bundle (device) level, we pass the active crew id
     // so _podCtx routes that crew's data. Multiple crews can re-attach
-    // if needed via the shared pathMap (crewId-parameterised rules).
-    const activeId = activeCrewId ?? crewsRef.current.keys().next()?.value ?? null;
+    // if needed via the shared pathMap (circleId-parameterised rules).
+    const activeId = activeCircleId ?? crewsRef.current.keys().next()?.value ?? null;
     await attachTasksBundle({
       bundle:    { cache: bundle.cache, _podCtx: bundle._podCtx ?? null,
                    podRouting: bundle.podRouting ?? null, pseudoPod: bundle.pseudoPod ?? null,
@@ -246,7 +246,7 @@ export function ServiceProvider({ children, boot = {} }) {
       podRoot,
       webid:     session.webid ?? tokens.webid ?? null,
       fetch:     fetchFn,
-      crewId:    activeId,
+      circleId:    activeId,
     });
 
     podSessionRef.current = session;
@@ -261,7 +261,7 @@ export function ServiceProvider({ children, boot = {} }) {
       webid: session.webid ?? tokens.webid ?? null,
       podRoot,
     });
-  }, [activeCrewId]);
+  }, [activeCircleId]);
 
   const detachPod = useCallback(async () => {
     const bundle = localStoreBundleRef.current;
@@ -328,20 +328,20 @@ export function ServiceProvider({ children, boot = {} }) {
         // 4. Restore joined crews.
         const registry = createBundleRegistry({
           keyNamespace: DEFAULT_BUNDLE_NAMESPACE,
-          idField:      'crewId',
+          idField:      'circleId',
         });
         registryRef.current = registry;
 
         const entries = initialCrews ?? await registry.list().catch(() => []);
         for (const entry of entries) {
-          const cfg = entry.config ?? entry; // direct config or {crewId, config}
-          if (!cfg?.crewId) continue;
+          const cfg = entry.config ?? entry; // direct config or {circleId, config}
+          if (!cfg?.circleId) continue;
           const cs = await buildCrewState({
             crewConfig:       cfg,
             localStoreBundle: bundle,
             meshAgent:        agent,   // M1-S3: wire substrate per crew
           });
-          crewsRef.current.set(cs.crewId, cs);
+          crewsRef.current.set(cs.circleId, cs);
         }
         _rebuildAllMembers();
         if (cancelled) return;
@@ -356,10 +356,10 @@ export function ServiceProvider({ children, boot = {} }) {
           // bundleResolver path (which carries the right CrewState's
           // members).
           getBundle: (args, ctx) => {
-            const crewId = args?.crewId
+            const circleId = args?.circleId
               ?? ctx?.envelope?.topic?.split('/')[0]
-              ?? activeCrewIdRef.current;
-            const cs = crewsRef.current.get(crewId);
+              ?? activeCircleIdRef.current;
+            const cs = crewsRef.current.get(circleId);
             if (cs) return { members: cs.members };
             // Fallback to the aggregate so identity skills still
             // resolve cross-crew lookups.
@@ -476,7 +476,7 @@ export function ServiceProvider({ children, boot = {} }) {
         const stored = await registry.getActiveId().catch(() => null);
         if (cancelled) return;
         const fallback = crewsRef.current.keys().next().value ?? null;
-        setActiveCrewId(stored && crewsRef.current.has(stored) ? stored : fallback);
+        setActiveCircleId(stored && crewsRef.current.has(stored) ? stored : fallback);
 
         setMeshAgent(agent);
         setIdentity(idResult.identity);
@@ -513,10 +513,10 @@ export function ServiceProvider({ children, boot = {} }) {
     }
   }
 
-  // We need a ref that mirrors activeCrewId for the wireSkills
+  // We need a ref that mirrors activeCircleId for the wireSkills
   // closure (which captures values at registration time).
-  const activeCrewIdRef = useRef(activeCrewId);
-  useEffect(() => { activeCrewIdRef.current = activeCrewId; }, [activeCrewId]);
+  const activeCircleIdRef = useRef(activeCircleId);
+  useEffect(() => { activeCircleIdRef.current = activeCircleId; }, [activeCircleId]);
 
   // M1-S3: keep meshAgentRef in sync with the state value (set
   // directly in the boot effect above; this handles hot reloads).
@@ -525,13 +525,13 @@ export function ServiceProvider({ children, boot = {} }) {
   // ── Public value ────────────────────────────────────────────────────
   const value = useMemo(() => {
     const activeBundle = (() => {
-      if (!meshAgent || !activeCrewId) return null;
-      const cs = crewsRef.current.get(activeCrewId);
+      if (!meshAgent || !activeCircleId) return null;
+      const cs = crewsRef.current.get(activeCircleId);
       if (!cs) return null;
       return {
         agent:     meshAgent,
-        groupId:   cs.crewId,
-        crewId:    cs.crewId,
+        groupId:   cs.circleId,
+        circleId:    cs.circleId,
         members:   cs.members,
         itemStore: cs.itemStore,
         skillMatch: null,
@@ -543,8 +543,8 @@ export function ServiceProvider({ children, boot = {} }) {
       error,
       identity,
       meshAgent,
-      activeCrewId,
-      activeGroupId: activeCrewId,
+      activeCircleId,
+      activeGroupId: activeCircleId,
       activeBundle,
       crewsVersion,
       crews:        crewsRef.current,
@@ -557,7 +557,7 @@ export function ServiceProvider({ children, boot = {} }) {
       bulkSync,
     };
   // crewsVersion ensures consumers re-render when crews mutate.
-  }, [status, error, identity, meshAgent, activeCrewId, crewsVersion,
+  }, [status, error, identity, meshAgent, activeCircleId, crewsVersion,
       joinCrew, leaveCrew, setActiveCrew, podStatus, attachPod, detachPod, bulkSync]);
 
   return (

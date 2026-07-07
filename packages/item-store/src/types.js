@@ -184,7 +184,7 @@
  *   'private' / 'me'  — owner only
  *   'household'       — household members (legacy Visibility's default)
  *   'role:NAME'       — actors in the named role
- *   'crew:ID'         — alias for circle-ref (per circle.id ≡ task.crewId)
+ *   'crew:ID'         — alias for circle-ref (per circle.id ≡ task.circleId)
  *   'circle:ID'       — circle-ref by id
  *
  * Resolution helpers (`normalizeAudience` / `resolveAudience` /

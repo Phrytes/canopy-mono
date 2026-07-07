@@ -34,7 +34,7 @@ export function LifecycleSection() {
   const { t }        = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs       = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;
+  const cs       = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
   const live     = cs?.liveCrew ?? {};
   const archived = !!live.archived;
   const paused   = !!live.paused;

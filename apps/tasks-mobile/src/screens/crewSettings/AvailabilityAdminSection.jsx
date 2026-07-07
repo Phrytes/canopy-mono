@@ -24,7 +24,7 @@ export function AvailabilityAdminSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES } = useTheme();
 
-  const cs = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;
+  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
   const enabled = !!cs?.liveCrew?.availabilityHints?.enabled;
 
   const setEnabled = useSkill('setAvailabilityEnabled');

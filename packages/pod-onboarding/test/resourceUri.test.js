@@ -1,7 +1,7 @@
 /**
  * resourceUri — the canonical circle-item → pod-resource-URI resolver (cluster K pod-tier wiring).
  *
- * Verifies the storage-layout convention (storage-layout.md · `group/<crewId>/<type>/`): a circle IS a
+ * Verifies the storage-layout convention (storage-layout.md · `group/<circleId>/<type>/`): a circle IS a
  * crew, so `resourceUriFor(circle, item)` lands under `<pod>/group/<circle>/<container>/<item>`, keyed by
  * what the object is (never by app), with path segments URL-encoded so an id can't traverse containers.
  */

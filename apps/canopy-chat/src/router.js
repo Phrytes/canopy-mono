@@ -259,14 +259,14 @@ const MUTATE_VERBS = new Set(['complete', 'claim', 'submit', 'approve', 'reject'
  * them together so whichever key a given app's resolver checks resolves
  * to the active circle.
  */
-const SCOPE_KEYS = ['circleId', 'crewId', 'groupId', '_scope'];
+const SCOPE_KEYS = ['circleId', 'groupId', '_scope'];
 
 /**
  * F1 active-circle → app-scope sync (Phase 5.3).
  *
  * When a circle is open, item-creating dispatches should land inside
  * that circle.  The tasks / stoop resolvers already pick their crew /
- * group from an explicit scope arg (`args.crewId → args._scope → topic`
+ * group from an explicit scope arg (`args.circleId → args._scope → topic`
  * for tasks; per-call `args.groupId` for stoop), so binding the active
  * circle is just: inject that id as the scope arg on a *create*
  * dispatch.  The created item then carries the circle tag, readable
@@ -289,7 +289,7 @@ const SCOPE_KEYS = ['circleId', 'crewId', 'groupId', '_scope'];
  * NB (corrected 2026-06-11): canopy-chat is MULTI-POD in practice — each circle has its own
  * tasks/stoop peer + item-store — so the scope arg is load-bearing for routing, not just a forward-
  * compatible tag. A mutation dispatched without it lands on the wrong crew (device-verified
- * "item not found" on `done <task>`). stoop is per-call group-aware; tasks routes by crewId.
+ * "item not found" on `done <task>`). stoop is per-call group-aware; tasks routes by circleId.
  *
  * Pure: the host reads `getActiveCircle()` and passes the id in.
  *

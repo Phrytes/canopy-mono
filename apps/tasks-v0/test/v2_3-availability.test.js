@@ -19,7 +19,7 @@ const KID   = 'https://id.example/kid';
 const THIS_WEEK = isoWeekOf(new Date());
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [

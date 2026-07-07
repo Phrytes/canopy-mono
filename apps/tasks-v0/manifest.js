@@ -798,8 +798,8 @@ export const tasksManifest = {
     },
     /**
      * #190 (B3, 2026-05-23) — crew admin surface.  getCrewConfig +
-     * pause/unpause (crewControls).  All accept a crewId; auto-injected
-     * from opts.tasksCrewConfig.crewId by realAgent.
+     * pause/unpause (crewControls).  All accept a circleId; auto-injected
+     * from opts.tasksCrewConfig.circleId by realAgent.
      */
     {
       id:    'getCrewConfig', verb: 'list',
@@ -1036,13 +1036,13 @@ export const tasksManifest = {
      *
      * V0.3 Q17 (`shape: 'record'`) — `getCrewStoragePolicy` returns a
      * singleton `{policy, groupPodUri?}` object, NOT a list.  Q15
-     * (`argsFromContext`) — `crewId` is a RUNTIME-derived arg
+     * (`argsFromContext`) — `circleId` is a RUNTIME-derived arg
      * (URL `?crew=...`), not static; the page (or its host) supplies
-     * `$crewId` via the fetch-section context.
+     * `$circleId` via the fetch-section context.
      *
      * V0.4 Q18 (`view.fields[]`) — declares the two editable fields
      * of the storage policy with their patch ops.  Both target
-     * `setCrewStoragePolicy({crewId, storagePolicy, groupPodUri?})`
+     * `setCrewStoragePolicy({circleId, storagePolicy, groupPodUri?})`
      * — a FLAT skill (no nested `{patch: {...}}` wrapper), so Q21
      * `argWrapper` is NOT needed here (omitted).  Same flat shape
      * as stoop's `setHopMode({global})` field.
@@ -1069,11 +1069,11 @@ export const tasksManifest = {
       shape: 'record',                              // V0.3 Q17 — singleton
       dataSource: {
         skillId:         'getCrewStoragePolicy',
-        // V0.3 Q15 — `crewId` is runtime-derived (browser URL); the
+        // V0.3 Q15 — `circleId` is runtime-derived (browser URL); the
         // page supplies it via the fetch-section context.  Omitted
         // when the host has no active crew (the skill itself replies
-        // `{error: 'crewId required'}` in that case).
-        argsFromContext: { crewId: '$crewId' },
+        // `{error: 'circleId required'}` in that case).
+        argsFromContext: { circleId: '$circleId' },
       },
       // V0.4 Q18 — two representative editable fields of the storage
       // policy.  Both dispatch through `setCrewStoragePolicy` (one-way
@@ -1088,7 +1088,7 @@ export const tasksManifest = {
           // policy is active).
           choices: ['centralised', 'decentralised', 'hybrid'],
           // Flat patch — dispatch is
-          // `setCrewStoragePolicy({crewId, storagePolicy: <value>})`.
+          // `setCrewStoragePolicy({circleId, storagePolicy: <value>})`.
           // No `argWrapper` (skill takes flat args, not `{patch: ...}`).
           patch:   { opId: 'setCrewStoragePolicy', argName: 'storagePolicy' },
         },

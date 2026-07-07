@@ -140,7 +140,7 @@ describe('scheduleEnvelope — end-to-end with the Notifier scheduler', () => {
       payload:     { body: 'expiring offer reminder' },
       recipients:  ['agent://bob', 'agent://carol'],
       fromActor:   'agent://anne',
-      crewId:      'buurt-abc',
+      circleId:      'buurt-abc',
     });
 
     // Before the timer fires, nothing has been published.
@@ -156,7 +156,7 @@ describe('scheduleEnvelope — end-to-end with the Notifier scheduler', () => {
       payload:     { body: 'expiring offer reminder' },
       recipients:  ['agent://bob', 'agent://carol'],
       fromActor:   'agent://anne',
-      crewId:      'buurt-abc',
+      circleId:      'buurt-abc',
     });
 
     await notifier.stop();
@@ -177,7 +177,7 @@ describe('scheduleEnvelope — end-to-end with the Notifier scheduler', () => {
     expect(p.etag).toBeUndefined();
     expect(p.payload).toBeUndefined();
     expect(p.fromActor).toBeUndefined();
-    expect(p.crewId).toBeUndefined();
+    expect(p.circleId).toBeUndefined();
     await notifier.stop();
     vi.useRealTimers();
   });

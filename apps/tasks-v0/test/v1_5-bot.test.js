@@ -35,7 +35,7 @@ const KID_CHAT   = '333';
 const RANDO_CHAT = '999';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [

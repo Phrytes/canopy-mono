@@ -19,21 +19,21 @@ import { buildStandardRolePolicy } from '../src/rolePolicy.js';
 const ANNE = 'webid://anne';
 const BOB  = 'webid://bob';
 
-function buildCrewState(crewId, roles) {
+function buildCrewState(circleId, roles) {
   const dataSource = new MemorySource();
   const itemStore = new ItemStore({
     dataSource,
-    rootContainer: `mem://tasks/crews/${crewId}/`,
+    rootContainer: `mem://tasks/crews/${circleId}/`,
     rolePolicy:    buildStandardRolePolicy(roles),
     enforceDependencies: true,
   });
   let liveCrew = Object.freeze({
-    crewId, name: crewId, kind: 'household',
+    circleId, name: circleId, kind: 'household',
     members: Object.keys(roles).map((webid) => ({ webid, role: roles[webid] })),
     customRoles: [],
   });
   return {
-    get crewId() { return liveCrew.crewId; },
+    get circleId() { return liveCrew.circleId; },
     get liveCrew() { return liveCrew; },
     crewMutator(patch) { liveCrew = Object.freeze({ ...liveCrew, ...patch }); },
     roles, itemStore, dataSource,
@@ -46,7 +46,7 @@ function buildCrewState(crewId, roles) {
 const mk = () => {
   const crew = buildCrewState('crew-a', { [ANNE]: 'admin', [BOB]: 'member' });
   const svc = createTasksService({ bundleResolver: singleCrewResolver(crew) });
-  return { crew, svc, ctx: { crewId: 'crew-a', by: ANNE } };
+  return { crew, svc, ctx: { circleId: 'crew-a', by: ANNE } };
 };
 
 describe('tasks-v0 §1b callCapability (op→atom adapter)', () => {
@@ -97,7 +97,7 @@ describe('tasks-v0 §1b callCapability (op→atom adapter)', () => {
 
   it('guards: unknown op on callSkill throws; bundleResolver is required', async () => {
     const { svc } = mk();
-    await expect(svc.callSkill('nopeOp', {}, { crewId: 'crew-a', by: ANNE })).rejects.toThrow(/unknown op/);
+    await expect(svc.callSkill('nopeOp', {}, { circleId: 'crew-a', by: ANNE })).rejects.toThrow(/unknown op/);
     expect(() => createTasksService({})).toThrow(/bundleResolver/);
   });
 });

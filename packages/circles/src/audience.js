@@ -23,7 +23,7 @@
  *   'circle:ID'        → { kind: 'circle-ref', id: ID }
  *
  * NOTE — `crew:ID` is an alias for `circle:ID` because `circle.id` and
- * `task.crewId` share the same string identifier space.  See
+ * `task.circleId` share the same string identifier space.  See
  * `CIRCLE_ID_IS_CREW_ID_ALIAS` in `@canopy/item-types/src/types/circle.js`.
  */
 

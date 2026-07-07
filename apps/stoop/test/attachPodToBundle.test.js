@@ -1,7 +1,7 @@
 /**
  * attachPodToBundle / detachPodFromBundle — the device-independent
  * pod-attach activation shared by Stoop web + mobile (platform-parity
- * principle). Bundle-derived identity/agentInfo/crewId; best-effort
+ * principle). Bundle-derived identity/agentInfo/circleId; best-effort
  * provisioning; _podCtx wired; attachInner last.
  */
 
@@ -39,17 +39,17 @@ describe('attachPodToBundle', () => {
     expect(bundle._podCtx.classify).toBe(classify);
     expect(bundle._podCtx.reverse).toBe(reverseResolve);
     expect(bundle._podCtx.podRouting).toBe(bundle.podRouting);
-    expect(bundle._podCtx.crewId).toBe('bliep');           // ← from bundle.groupId
+    expect(bundle._podCtx.circleId).toBe('bliep');           // ← from bundle.groupId
     expect(bundle._podCtx.active).toBe(true);
     expect(bundle.cache.attachInner).toHaveBeenCalledWith(source);
   });
 
-  it('explicit crewId overrides the bundle groupId', async () => {
+  it('explicit circleId overrides the bundle groupId', async () => {
     const bundle = mkBundle();
     await attachPodToBundle({
-      bundle, source: {}, podRoot: 'https://pod/me/', fetch: headOkFetch, crewId: 'other-crew',
+      bundle, source: {}, podRoot: 'https://pod/me/', fetch: headOkFetch, circleId: 'other-crew',
     });
-    expect(bundle._podCtx.crewId).toBe('other-crew');
+    expect(bundle._podCtx.circleId).toBe('other-crew');
   });
 
   it('provision failure never blocks attach (best-effort)', async () => {

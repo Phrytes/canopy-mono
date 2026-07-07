@@ -5,7 +5,7 @@
  * onto a circle's shared pod.  This module is the drive lens — given a
  * flat file list (e.g. from `listFiles`) and an active `circleId`, it
  * scopes the list to that circle (reusing `scopeItems`/`itemCircleId` —
- * circleId ≡ crewId ≡ groupId, plus `circle:ID` / `crew:ID` shorthand),
+ * circleId ≡ circleId ≡ groupId, plus `circle:ID` / `crew:ID` shorthand),
  * normalizes each entry, and returns rows newest-first.  Pure: the host
  * does the fetching; web + mobile share this and the renderers stay thin.
  */

@@ -64,7 +64,7 @@ const KIND_DEFAULTS = Object.freeze({
  * @property {string} [role]
  *
  * @typedef {object} CrewConfig
- * @property {string} crewId
+ * @property {string} circleId
  * @property {string} name
  * @property {string} kind                      'household' | 'project' | 'team' | 'friends' | 'maintenance'
  * @property {Array<CrewMember>} members
@@ -72,7 +72,7 @@ const KIND_DEFAULTS = Object.freeze({
  * @property {number} [subtasksAdminApprovalDepth]
  *
  * @typedef {object} CrewState
- * @property {string} crewId                    getter delegating to liveCrew.crewId
+ * @property {string} circleId                    getter delegating to liveCrew.circleId
  * @property {CrewConfig} liveCrew              frozen current config (mutated via crewMutator)
  * @property {(patch: object) => void} crewMutator
  * @property {Object<string, string>} roles     per-webid role map
@@ -93,9 +93,9 @@ const KIND_DEFAULTS = Object.freeze({
  * @property {string|null} substrateDeviceId    M1-S3: device identifier for the substrate
  * @property {object|null} groupManager         M2-S8: per-crew GroupManager (issue/redeem invites)
  * @property {(() => Promise<object>)|null} onSpawn  M2-S8: server-side spawn hook (null on mobile)
- * @property {string} crewIdForOnboarding       M2-S8: crewId used as groupId for invites
+ * @property {string} circleIdForOnboarding       M2-S8: circleId used as groupId for invites
  * @property {object} _podCtx                   M4 — pod-routing context.
- *   {classify, reverse, podRouting, crewId, vars, active}. classify +
+ *   {classify, reverse, podRouting, circleId, vars, active}. classify +
  *   reverse pre-populated from Tasks podPathMap; podRouting + active
  *   filled by attachTasksBundle at sign-in (mirror of stoop c49c768).
  */
@@ -117,8 +117,8 @@ const KIND_DEFAULTS = Object.freeze({
  * @returns {Promise<CrewState>}
  */
 export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent } = {}) {
-  if (!crewConfig || typeof crewConfig.crewId !== 'string' || !crewConfig.crewId) {
-    throw new TypeError('buildCrewState: crewConfig.crewId required');
+  if (!crewConfig || typeof crewConfig.circleId !== 'string' || !crewConfig.circleId) {
+    throw new TypeError('buildCrewState: crewConfig.circleId required');
   }
   const crew = _normaliseConfig(crewConfig);
   // M1-S1: normalized storage is available on crew.storage.
@@ -151,7 +151,7 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
 
   const itemStore = new ItemStore({
     dataSource,
-    rootContainer:        `mem://tasks/crews/${crew.crewId}/`,
+    rootContainer:        `mem://tasks/crews/${crew.circleId}/`,
     rolePolicy:           buildStandardRolePolicy(roles, { actorResolver }),
     enforceDependencies:  true,
   });
@@ -160,7 +160,7 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
 
   let liveCrew = Object.freeze(crew);
   const crewState = {
-    get crewId()   { return liveCrew.crewId; },
+    get circleId()   { return liveCrew.circleId; },
     get liveCrew() { return liveCrew; },
     crewMutator(patch) {
       liveCrew = Object.freeze({ ...liveCrew, ...patch });
@@ -199,20 +199,20 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
     // server-side spawn hook), same as the CLI member-join path.
     groupManager:        null,
     onSpawn:             null,
-    crewIdForOnboarding: crew.crewId,
+    circleIdForOnboarding: crew.circleId,
     // M4: active pod-routing context. Populated with the Tasks
     // podPathMap classify/reverse functions so the innerKeyMap on
     // the shared local-store bundle can route logical keys to pod
     // URIs when a pod is attached. Starts inactive (active:false)
     // so no-pod operation is byte-neutral (pod-independence.md).
     // `attachTasksBundle` (called by ServiceContext.attachPod) fills
-    // podRouting + crewId + sets active:true at sign-in time.
+    // podRouting + circleId + sets active:true at sign-in time.
     _podCtx: {
       active:    false,
       classify,
       reverse:   reverseResolve,
       podRouting: null,   // filled by attachTasksBundle at sign-in
-      crewId:    crew.crewId,
+      circleId:    crew.circleId,
       vars:      {},
     },
   };
@@ -264,7 +264,7 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
     if (tasksSubstrate) {
       try {
         const regResult = registerAgentBundle(meshAgent, {
-          capabilities: ['tasks', 'tasks-v0', `crew:${crew.crewId}`],
+          capabilities: ['tasks', 'tasks-v0', `crew:${crew.circleId}`],
           pseudoPod:    tasksSubstrate.pseudoPod,
           podRouting:   tasksSubstrate.podRouting,
         });
@@ -284,7 +284,7 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
           itemStore:       crewState.itemStore,
           notifyEnvelope:  tasksSubstrate.notifyEnvelope,
           pseudoPod:       tasksSubstrate.pseudoPod,
-          crewId:          crew.crewId,
+          circleId:          crew.circleId,
           peers,
           selfPubKey:      meshAgent.address ?? null,
         });
@@ -301,8 +301,8 @@ export async function buildCrewState({ crewConfig, localStoreBundle, meshAgent }
 function _normaliseConfig(c) {
   const kind = c.kind ?? 'household';
   return {
-    crewId:                     c.crewId,
-    name:                       c.name ?? c.crewId,
+    circleId:                     c.circleId,
+    name:                       c.name ?? c.circleId,
     kind,
     members:                    Array.isArray(c.members) ? c.members : [],
     customRoles:                Array.isArray(c.customRoles) ? c.customRoles : [],
@@ -317,7 +317,7 @@ function _normaliseConfig(c) {
     // availabilityHints, bot, pushPolicy, pushTokens, …).
     ...Object.fromEntries(
       Object.entries(c).filter(([k]) =>
-        !['crewId', 'name', 'kind', 'members', 'customRoles',
+        !['circleId', 'name', 'kind', 'members', 'customRoles',
           'subtasksAdminApprovalDepth', 'storage'].includes(k),
       ),
     ),

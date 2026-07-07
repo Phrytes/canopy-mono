@@ -10,7 +10,7 @@
  * completePodSignIn` both call this, so the routing/provisioning/
  * classifier behave identically on both.
  *
- * Derives `identity` / `agentInfo` / `crewId` from the bundle (which
+ * Derives `identity` / `agentInfo` / `circleId` from the bundle (which
  * carries `agent.identity`, `groupId`, `deviceId`/`substrateDeviceId`,
  * `localActor` on both platforms); callers may override any.
  *
@@ -31,17 +31,17 @@ import { ensurePodProvisioned }     from './existingPodProvisioner.js';
  * @param {Function} a.fetch   authed fetch (used by provisioning)
  * @param {object} [a.identity]
  * @param {object} [a.agentInfo]  `{deviceId, agentUri}`
- * @param {string} [a.crewId]
+ * @param {string} [a.circleId]
  */
 export async function attachPodToBundle({
   bundle, source, podRoot, webid, fetch: authedFetch,
-  identity, agentInfo, crewId,
+  identity, agentInfo, circleId,
 }) {
   if (!bundle?.cache?.attachInner) {
     throw new Error('attachPodToBundle: bundle missing cache.attachInner (cache:false?)');
   }
   const id   = identity ?? bundle.agent?.identity ?? null;
-  const crew = crewId   ?? bundle.groupId ?? null;
+  const crew = circleId   ?? bundle.groupId ?? null;
   const info = agentInfo ?? {
     deviceId: bundle.deviceId ?? bundle.substrateDeviceId ?? bundle.agent?.address ?? 'stoop-device',
     agentUri: bundle.localActor ?? webid ?? 'agent://stoop',
@@ -64,7 +64,7 @@ export async function attachPodToBundle({
     bundle._podCtx.classify   = classify;
     bundle._podCtx.reverse    = reverseResolve;
     bundle._podCtx.podRouting = bundle.podRouting ?? null;
-    bundle._podCtx.crewId     = crew;
+    bundle._podCtx.circleId     = crew;
     bundle._podCtx.vars       = {};
     bundle._podCtx.active     = !!(bundle.podRouting && classify);
   }

@@ -29,7 +29,7 @@ const ANNE_CHAT = '111';
 const KID_CHAT  = '222';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [
@@ -358,7 +358,7 @@ describe('V1.5 — cap-token-bound bot agent', () => {
 
     // Manually craft a persisted-but-expired entry to bypass the
     // "ttlDays > 0" guard.
-    const path = `mem://tasks/crews/${CREW.crewId}/botAgents/${encodeURIComponent(ANNE_CHAT)}.json`;
+    const path = `mem://tasks/crews/${CREW.circleId}/botAgents/${encodeURIComponent(ANNE_CHAT)}.json`;
     sharedStore.set(path, JSON.stringify({
       binding: { chatId: ANNE_CHAT, webid: ANNE, botPubKey: 'fake', tokenId: 'fake', issuedAt: 1, expiresAt: 1 },
       vault:   { foo: 'bar' },     // doesn't matter — never read

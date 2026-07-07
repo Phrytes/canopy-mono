@@ -156,7 +156,7 @@ async function materializeTasks(block, activeCircleIds, { callSkill, myWebid, ci
   const circleNameMap = new Map((circles ?? []).map((c) => [c?.id, c?.name ?? '']));
   const buckets = await Promise.all(activeCircleIds.map(async (cid) => {
     try {
-      const res = await callSkill('tasks', 'listOpen', { crewId: cid });
+      const res = await callSkill('tasks', 'listOpen', { circleId: cid });
       const raw = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
       return raw.map((t) => ({
         id:         t.id,

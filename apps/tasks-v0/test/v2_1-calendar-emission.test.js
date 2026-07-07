@@ -26,7 +26,7 @@ const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [
@@ -53,7 +53,7 @@ describe('V2.1 — buildIcsFor', () => {
       { id: 'task-2', text: 'Subtask request', type: 'subtask-request', dueAt: 1715000000000 },     // skipped
       { id: 'task-3', text: 'No deadline', addedBy: ANNE },                                          // skipped
     ];
-    const ics = buildIcsFor({ crewId: 'crew-x', crewName: 'X', member: ANNE, tasks });
+    const ics = buildIcsFor({ circleId: 'crew-x', crewName: 'X', member: ANNE, tasks });
     expect(ics).toContain('PRODID:-//Tasks V2//crew-x//EN');
     expect(ics).toContain('SUMMARY:Pay invoice');
     expect(ics).not.toContain('SUMMARY:Subtask request');
@@ -62,8 +62,8 @@ describe('V2.1 — buildIcsFor', () => {
 
   it('UIDs are stable across re-emissions', () => {
     const tasks = [{ id: 'task-1', text: 'A', dueAt: 1715000000000, addedBy: ANNE }];
-    const a = buildIcsFor({ crewId: 'x', crewName: 'X', member: ANNE, tasks, now: 1 });
-    const b = buildIcsFor({ crewId: 'x', crewName: 'X', member: ANNE, tasks, now: 2 });
+    const a = buildIcsFor({ circleId: 'x', crewName: 'X', member: ANNE, tasks, now: 1 });
+    const b = buildIcsFor({ circleId: 'x', crewName: 'X', member: ANNE, tasks, now: 2 });
     // The two emissions use the same UID even though `now` changes.
     expect(a).toContain('UID:task-1');
     expect(b).toContain('UID:task-1');
@@ -71,13 +71,13 @@ describe('V2.1 — buildIcsFor', () => {
 
   it('completed task → STATUS:COMPLETED', () => {
     const tasks = [{ id: 'task-1', text: 'A', dueAt: 1715000000000, addedBy: ANNE, completedAt: 1715100000000 }];
-    const ics = buildIcsFor({ crewId: 'x', crewName: 'X', member: ANNE, tasks });
+    const ics = buildIcsFor({ circleId: 'x', crewName: 'X', member: ANNE, tasks });
     expect(ics).toContain('STATUS:COMPLETED');
   });
 
   it('non-relevant member → empty calendar', () => {
     const tasks = [{ id: 'task-1', text: 'A', dueAt: 1715000000000, addedBy: ANNE, assignee: ANNE }];
-    const ics = buildIcsFor({ crewId: 'x', crewName: 'X', member: KID, tasks });
+    const ics = buildIcsFor({ circleId: 'x', crewName: 'X', member: KID, tasks });
     expect(ics).not.toContain('SUMMARY:A');
   });
 });
@@ -103,7 +103,7 @@ describe('V2.1 — wireCalendarEmission (debounce + write)', () => {
     const wire = wireCalendarEmission({
       itemStore,
       dataSource,
-      crew:    { crewId: 'x', name: 'X' },
+      crew:    { circleId: 'x', name: 'X' },
       member:  ANNE,
       path:    'mem://test/ical.ics',
       debounceMs: 50,
@@ -130,7 +130,7 @@ describe('V2.1 — wireCalendarEmission (debounce + write)', () => {
     ]);
     const wire = wireCalendarEmission({
       itemStore, dataSource,
-      crew:   { crewId: 'x', name: 'X' },
+      crew:   { circleId: 'x', name: 'X' },
       member: ANNE,
       path:   'mem://test/ical.ics',
       debounceMs: 60_000,

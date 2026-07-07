@@ -69,7 +69,7 @@ export function TaskDetailScreen() {
 
   // Lookup. V1 ships listOpen + listMine; we call listOpen and find
   // the matching id. (A future getItem skill would replace this.)
-  const list = useSkillResult('listOpen', {}, [svc?.activeCrewId, id]);
+  const list = useSkillResult('listOpen', {}, [svc?.activeCircleId, id]);
 
   const task = useMemo(() => {
     const items = Array.isArray(list?.data?.items) ? list.data.items : [];
@@ -96,7 +96,7 @@ export function TaskDetailScreen() {
 
   const status = useMemo(() => task ? describeTaskStatus(task) : null, [task]);
   const actor  = svc?.identity?.webid ?? svc?.identity?.pubKey ?? null;
-  const cs     = svc?.crews?.get?.(svc?.activeCrewId);
+  const cs     = svc?.crews?.get?.(svc?.activeCircleId);
   // 41.18 follow-up — pubKey ↔ webid resolution via the shared
   // helper so mobile + desktop stay in step. See
   // `apps/tasks-v0/src/ui/effectiveActor.js`.

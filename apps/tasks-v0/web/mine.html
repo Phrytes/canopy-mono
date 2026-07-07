@@ -242,7 +242,7 @@
 
     /** Lookup an itemAction by opId in a section (used for prefilledParams
      *  passthrough — V0 tasks ops have no prefills, but Slice C
-     *  multi-app composition adds prefilledParams for crewId/podId). */
+     *  multi-app composition adds prefilledParams for circleId/podId). */
     function _action(section, opId) {
       return (section?.itemActions ?? []).find((a) => a.opId === opId);
     }

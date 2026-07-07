@@ -6,7 +6,7 @@
  * Wires the V2.5 `getMyCrews` skill via useSkillResult. Each row
  * shows the crew's name + kind chip + four counters
  * (open / overdue / for-review / mine). Tap "Jump in" → flips
- * activeCrewId via svc.setActiveCrew + navigates Workspace.
+ * activeCircleId via svc.setActiveCrew + navigates Workspace.
  *
  * The list is busiest-first per the V2.5 aggregator's sort order.
  */
@@ -27,11 +27,11 @@ export function CrewsDashboardScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const list = useSkillResult('getMyCrews', {}, [svc?.activeCrewId]);
+  const list = useSkillResult('getMyCrews', {}, [svc?.activeCircleId]);
   const items = Array.isArray(list?.data?.crews) ? list.data.crews : [];
 
-  const onJumpIn = useCallback((crewId) => {
-    svc?.setActiveCrew?.(crewId);
+  const onJumpIn = useCallback((circleId) => {
+    svc?.setActiveCrew?.(circleId);
     nav.navigate(ROUTES.Workspace);
   }, [svc, nav]);
 
@@ -40,7 +40,7 @@ export function CrewsDashboardScreen() {
       <FlatList
         contentContainerStyle={{ padding: SPACING.md, flexGrow: 1 }}
         data={items}
-        keyExtractor={(c) => String(c.crewId)}
+        keyExtractor={(c) => String(c.circleId)}
         refreshControl={
           <RefreshControl refreshing={!!list?.loading} onRefresh={() => list.refresh().catch(() => {})} />
         }
@@ -52,7 +52,7 @@ export function CrewsDashboardScreen() {
           </View>
         }
         renderItem={({ item }) => (
-          <CrewRow crew={item} onJumpIn={() => onJumpIn(item.crewId)} />
+          <CrewRow crew={item} onJumpIn={() => onJumpIn(item.circleId)} />
         )}
       />
 
@@ -94,7 +94,7 @@ function CrewRow({ crew, onJumpIn }) {
     <Pressable
       onPress={onJumpIn}
       accessibilityRole="button"
-      accessibilityLabel={`crews-row-${crew.crewId}`}
+      accessibilityLabel={`crews-row-${crew.circleId}`}
       style={({ pressed }) => [
         {
           backgroundColor: COLORS.surface,
@@ -117,7 +117,7 @@ function CrewRow({ crew, onJumpIn }) {
             color:      COLORS.text,
           }}
         >
-          {crew?.name ?? crew?.crewId}
+          {crew?.name ?? crew?.circleId}
         </Text>
         {crew?.kind ? (
           <View style={{

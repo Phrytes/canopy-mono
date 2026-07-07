@@ -125,7 +125,7 @@ export function buildBundle({
     classify:  null,
     reverse:   null,
     podRouting: null,
-    crewId:    null,
+    circleId:    null,
     vars:      null,
   };
 
@@ -134,7 +134,7 @@ export function buildBundle({
       if (!podCtx.active
           || typeof podCtx.classify !== 'function'
           || !podCtx.podRouting) return p;
-      const c = podCtx.classify(p, { crewId: podCtx.crewId });
+      const c = podCtx.classify(p, { circleId: podCtx.circleId });
       if (!c) return p; // unroutable → identity (no-pod safe)
       const base = podCtx.podRouting.resolve(c.storageFn, podCtx.vars || {});
       if (typeof base !== 'string' || base.length === 0) return p;
@@ -148,7 +148,7 @@ export function buildBundle({
           || !podCtx.podRouting) return u;
       const logical = podCtx.reverse({
         resolve: (fn, v) => podCtx.podRouting.resolve(fn, v),
-        crewId:  podCtx.crewId,
+        circleId:  podCtx.circleId,
         podUri:  u,
         vars:    podCtx.vars || {},
       });
@@ -195,14 +195,14 @@ async function buildBundleWithPersistImpl({
   // The podCtx / innerKeyMap shape is identical to the sync path.
   const podCtx = {
     active: false, classify: null, reverse: null, podRouting: null,
-    crewId: null, vars: null,
+    circleId: null, vars: null,
   };
   const podInnerKeyMap = {
     toInner: (p) => {
       if (!podCtx.active
           || typeof podCtx.classify !== 'function'
           || !podCtx.podRouting) return p;
-      const c = podCtx.classify(p, { crewId: podCtx.crewId });
+      const c = podCtx.classify(p, { circleId: podCtx.circleId });
       if (!c) return p;
       const base = podCtx.podRouting.resolve(c.storageFn, podCtx.vars || {});
       if (typeof base !== 'string' || base.length === 0) return p;
@@ -214,7 +214,7 @@ async function buildBundleWithPersistImpl({
           || !podCtx.podRouting) return u;
       const logical = podCtx.reverse({
         resolve: (fn, v) => podCtx.podRouting.resolve(fn, v),
-        crewId:  podCtx.crewId,
+        circleId:  podCtx.circleId,
         podUri:  u,
         vars:    podCtx.vars || {},
       });

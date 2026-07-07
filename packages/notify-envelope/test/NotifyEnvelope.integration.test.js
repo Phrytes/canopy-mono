@@ -150,7 +150,7 @@ describe('Integration — no-pod crew (full-payload always)', () => {
       payload:    { body: 'ladder lenen' },
       recipients: ['bob'],
       fromActor:  'pseudo-pod://anne/agent',
-      crewId:     'household-xyz',
+      circleId:     'household-xyz',
     });
 
     expect(got).toHaveLength(1);

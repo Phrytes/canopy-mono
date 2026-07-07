@@ -91,7 +91,7 @@
 - [ ] **Second device** → Welcome → "Scan an invite QR" → camera
       opens (permission prompt OK)
 - [ ] Scan device-A's QR → `redeemInvite` routes by the invite's
-      `groupId` (no manual crewId needed) → device B builds the
+      `groupId` (no manual circleId needed) → device B builds the
       CrewState + lands in the joined crew's Workspace
 - [ ] On device A, the crew's MemberMap grows device B's member
       (visible in CrewSettings → members)

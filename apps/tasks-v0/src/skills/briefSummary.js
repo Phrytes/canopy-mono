@@ -41,7 +41,7 @@ export function buildBriefSummarySkill({ bundleResolver } = {}) {
   return [
     defineSkill('tasks_briefSummary', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const open = await crew.itemStore.listOpen({ type: 'task' });
       const all  = Array.isArray(open) ? open : [];
       if (all.length === 0) {

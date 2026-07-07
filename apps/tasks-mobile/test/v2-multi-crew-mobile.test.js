@@ -38,7 +38,7 @@ const BOB  = 'webid://bob';
 const KID  = 'webid://kid';
 
 const CREW_ALPHA = {
-  crewId: 'crew-alpha',
+  circleId: 'crew-alpha',
   name:   'Alpha',
   kind:   'household',
   members: [
@@ -48,7 +48,7 @@ const CREW_ALPHA = {
 };
 
 const CREW_BETA = {
-  crewId: 'crew-beta',
+  circleId: 'crew-beta',
   name:   'Beta',
   kind:   'project',
   members: [
@@ -88,11 +88,11 @@ describe('M2 — multi-crew itemStoreRoot isolation (Slice 7 parity)', () => {
     // Distinct ItemStore instances; the root prefix is what stops
     // cross-crew addTask leakage.
     expect(csA.itemStore).not.toBe(csB.itemStore);
-    expect(csA.crewId).toBe('crew-alpha');
-    expect(csB.crewId).toBe('crew-beta');
+    expect(csA.circleId).toBe('crew-alpha');
+    expect(csB.circleId).toBe('crew-beta');
   });
 
-  it('addTask routed by crewId stays isolated to that crew', async () => {
+  it('addTask routed by circleId stays isolated to that crew', async () => {
     const { meshAgent } = await bootHarness('M2IsolationTest');
     const csA = await buildCrewState({ crewConfig: CREW_ALPHA });
     const csB = await buildCrewState({ crewConfig: CREW_BETA });
@@ -110,11 +110,11 @@ describe('M2 — multi-crew itemStoreRoot isolation (Slice 7 parity)', () => {
 
     const addTask = meshAgent.skills.get('addTask');
     await addTask.handler({
-      parts: [DataPart({ crewId: 'crew-alpha', text: 'A1' })],
+      parts: [DataPart({ circleId: 'crew-alpha', text: 'A1' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
     await addTask.handler({
-      parts: [DataPart({ crewId: 'crew-beta', text: 'B1' })],
+      parts: [DataPart({ circleId: 'crew-beta', text: 'B1' })],
       from: KID, agent: meshAgent, envelope: null,
     });
 
@@ -132,8 +132,8 @@ describe('M2-S8 — per-crew GroupManager on the CrewState', () => {
     const cs = await buildCrewState({ crewConfig: CREW_ALPHA });
     expect(cs.groupManager).toBeNull();
     expect(cs.onSpawn).toBeNull();
-    // crewIdForOnboarding is always set (it is the routing groupId).
-    expect(cs.crewIdForOnboarding).toBe('crew-alpha');
+    // circleIdForOnboarding is always set (it is the routing groupId).
+    expect(cs.circleIdForOnboarding).toBe('crew-alpha');
   });
 
   it('is built from the meshAgent identity+vault when supplied', async () => {
@@ -142,7 +142,7 @@ describe('M2-S8 — per-crew GroupManager on the CrewState', () => {
     expect(cs.groupManager).toBeTruthy();
     expect(typeof cs.groupManager.issueInvite).toBe('function');
     expect(typeof cs.groupManager.redeemInvite).toBe('function');
-    expect(cs.crewIdForOnboarding).toBe('crew-alpha');
+    expect(cs.circleIdForOnboarding).toBe('crew-alpha');
   });
 });
 
@@ -179,7 +179,7 @@ describe('M2-S8 — multi-crew onboarding skills register + dispatch', () => {
     const issue = meshAgent.skills.get('issueInvite');
     expect(issue).toBeTruthy();
     const issued = await issue.handler({
-      parts: [DataPart({ crewId: 'crew-alpha', role: 'member' })],
+      parts: [DataPart({ circleId: 'crew-alpha', role: 'member' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
     expect(issued?.invite).toBeTruthy();
@@ -248,7 +248,7 @@ describe('M2-S10 — redeemInvite updates the substrate-mirror peer roster', () 
 
     const issue = meshAgent.skills.get('issueInvite');
     const issued = await issue.handler({
-      parts: [DataPart({ crewId: 'crew-alpha', role: 'member' })],
+      parts: [DataPart({ circleId: 'crew-alpha', role: 'member' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
     const redeem = meshAgent.skills.get('redeemInvite');
@@ -291,7 +291,7 @@ describe('M2 — substrate-mirror fan-out is wired through shared skills', () =>
       expect(typeof cs.tasksMirror.addPeer).toBe('function');
     }
     // Regardless: crew core state stays intact (best-effort contract).
-    expect(cs.crewId).toBe('crew-alpha');
+    expect(cs.circleId).toBe('crew-alpha');
     // M4: _podCtx is pre-populated (classify/reverse loaded; inactive).
     expect(cs._podCtx?.active).toBe(false);
   });

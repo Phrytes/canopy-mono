@@ -7,7 +7,7 @@
  * `makeSharedRefPolicy` (which only takes an injected `resourceUriFor`).
  *
  * Canonical layout (storage-layout.md · "Canonical sub-container layout"): crew/circle-scoped data lives
- * under `group/<crewId>/<type>/`. A circle IS a crew in this model, so an item's resource is:
+ * under `group/<circleId>/<type>/`. A circle IS a crew in this model, so an item's resource is:
  *
  *     <pod>/group/<circleId>/<container>/<itemId>
  *

@@ -6,7 +6,7 @@
  * handlers (`({parts, from, envelope}) => …`) whose structured args ride in a single `DataPart` and whose crew is
  * resolved from `parts` by a `bundleResolver`. So this adapter is a thin DataPart WRAPPER over the existing
  * `buildSkills`, adding NOTHING to the per-op logic:
- *   - `callSkill(opId, args, ctx)`   — invoke a skill by id with a synthetic `[DataPart({...args, crewId})]`.
+ *   - `callSkill(opId, args, ctx)`   — invoke a skill by id with a synthetic `[DataPart({...args, circleId})]`.
  *   - `callCapability(atom, noun, …)` — resolve `(atom×noun)`→opId against the tasks manifest and dispatch,
  *     BESPOKE-OP-FIRST via `dispatchCapability`. `generic:{}` is passed deliberately: tasks-v0 has no
  *     `CircleItemStore`, and every declared tasks noun already has an implementing op, so the generic-CRUD
@@ -40,10 +40,10 @@ export function createTasksService({ bundleResolver, crewsProvider, manifest = t
     async callSkill(opId, args = {}, ctx = {}) {
       const handler = byId.get(opId);
       if (!handler) throw new Error(`tasksService.callSkill: unknown op "${opId}"`);
-      // The crew is resolved from the DataPart (multiCrewResolver reads `crewId`/`_scope`); a singleCrewResolver
-      // ignores it. crewId ≡ circleId (CIRCLE_ID_IS_CREW_ID_ALIAS).
-      const scopeId = ctx.crewId ?? ctx.circleId ?? args.crewId;
-      const data = scopeId != null ? { ...args, crewId: scopeId } : { ...args };
+      // The crew is resolved from the DataPart (multiCrewResolver reads `circleId`/`_scope`); a singleCrewResolver
+      // ignores it. circleId ≡ circleId (CIRCLE_ID_IS_CREW_ID_ALIAS).
+      const scopeId = ctx.circleId ?? ctx.circleId ?? args.circleId;
+      const data = scopeId != null ? { ...args, circleId: scopeId } : { ...args };
       return handler({ parts: [DataPart(data)], from: ctx.by ?? ctx.from, envelope: ctx.envelope ?? null, agent: ctx.agent });
     },
 

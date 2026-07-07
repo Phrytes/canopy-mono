@@ -39,7 +39,7 @@ export function EditSkillsScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const shape = useSkillResult('getMySkillsFormShape', {}, [svc?.activeCrewId]);
+  const shape = useSkillResult('getMySkillsFormShape', {}, [svc?.activeCircleId]);
   const editSk = useSkill('editMySkillsForCrew');
 
   const data = shape?.data ?? null;

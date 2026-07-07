@@ -8,9 +8,9 @@
  *   3. Set up `crewsMap` + `_spawnCrewInProcess` callback.
  *   4. wireSkills ONCE with `multiCrewResolver(crewsMap)`.
  *   5. Provision a sibling crew via `provisionMyCrew`.
- *   6. Call `spawnMyCrew({crewId})` — should hit the in-process path
+ *   6. Call `spawnMyCrew({circleId})` — should hit the in-process path
  *      (`ready: true`) and add the sibling to the runtime map.
- *   7. addTask routed by crewId reaches the right ItemStore (isolation).
+ *   7. addTask routed by circleId reaches the right ItemStore (isolation).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -53,10 +53,10 @@ describe('Tasks V2 multi-crew runtime', () => {
     expect(addDef).toBeTruthy();
   });
 
-  it('addTask routes to the primary crew when crewId matches', async () => {
+  it('addTask routes to the primary crew when circleId matches', async () => {
     const { meshAgent, primaryBundle } = await buildMultiCrew();
     const r = await callSkill(meshAgent, 'addTask', {
-      crewId: 'primary-crew',
+      circleId: 'primary-crew',
       text:   'walk the dog',
     });
     expect(r?.task?.text).toBe('walk the dog');
@@ -69,7 +69,7 @@ describe('Tasks V2 multi-crew runtime', () => {
 
     // Save a sibling crew config via provisionMyCrew (routed to primary).
     await callSkill(meshAgent, 'provisionMyCrew', {
-      crewId: 'primary-crew',          // route to primary's dataSource
+      circleId: 'primary-crew',          // route to primary's dataSource
       name:   'no-op',                  // (this should error — already-exists)
     }).catch(() => {});
 
@@ -78,10 +78,10 @@ describe('Tasks V2 multi-crew runtime', () => {
     // need the active-crew check.
     await meshAgent.skills.get('provisionMyCrew').handler({
       parts: [DataPart({
-        crewId: 'sibling-crew',
+        circleId: 'sibling-crew',
         name:   'Sibling',
         kind:   'team',
-        // Route to primary's dataSource (default crewId resolution).
+        // Route to primary's dataSource (default circleId resolution).
       })],
       from: ANNE,
       agent: meshAgent,
@@ -90,7 +90,7 @@ describe('Tasks V2 multi-crew runtime', () => {
 
     // Spawn the sibling crew in-process.
     const spawnResult = await callSkill(meshAgent, 'spawnMyCrew', {
-      crewId: 'sibling-crew',
+      circleId: 'sibling-crew',
     });
     expect(spawnResult?.ok).toBe(true);
     expect(spawnResult?.ready).toBe(true);
@@ -99,7 +99,7 @@ describe('Tasks V2 multi-crew runtime', () => {
 
     // addTask now routes to sibling's ItemStore.
     await callSkill(meshAgent, 'addTask', {
-      crewId: 'sibling-crew',
+      circleId: 'sibling-crew',
       text:   'sibling-only task',
     });
 
@@ -114,12 +114,12 @@ describe('Tasks V2 multi-crew runtime', () => {
   it('spawnMyCrew is idempotent — second call returns same CrewState', async () => {
     const { meshAgent, crewsMap } = await buildMultiCrew();
     await meshAgent.skills.get('provisionMyCrew').handler({
-      parts: [DataPart({ crewId: 'idem-crew', name: 'Idem', kind: 'household' })],
+      parts: [DataPart({ circleId: 'idem-crew', name: 'Idem', kind: 'household' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
-    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'idem-crew' });
+    await callSkill(meshAgent, 'spawnMyCrew', { circleId: 'idem-crew' });
     const csOnce = crewsMap.get('idem-crew');
-    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'idem-crew' });
+    await callSkill(meshAgent, 'spawnMyCrew', { circleId: 'idem-crew' });
     const csTwice = crewsMap.get('idem-crew');
     expect(csOnce).toBe(csTwice);
     expect(crewsMap.size).toBe(2);
@@ -128,14 +128,14 @@ describe('Tasks V2 multi-crew runtime', () => {
   it('getMyCrews enumerates every spawned crew', async () => {
     const { meshAgent } = await buildMultiCrew();
     await meshAgent.skills.get('provisionMyCrew').handler({
-      parts: [DataPart({ crewId: 'extra-1', name: 'Extra One' })],
+      parts: [DataPart({ circleId: 'extra-1', name: 'Extra One' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
-    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'extra-1' });
-    const r = await callSkill(meshAgent, 'getMyCrews', { crewId: 'primary-crew' });
+    await callSkill(meshAgent, 'spawnMyCrew', { circleId: 'extra-1' });
+    const r = await callSkill(meshAgent, 'getMyCrews', { circleId: 'primary-crew' });
     expect(r?.crews ?? r?.error).toBeTruthy();
     if (r?.crews) {
-      const ids = r.crews.map(c => c.crewId).sort();
+      const ids = r.crews.map(c => c.circleId).sort();
       expect(ids).toContain('primary-crew');
       expect(ids).toContain('extra-1');
     }
@@ -148,21 +148,21 @@ describe('Tasks V2 multi-crew — onboarding dispatch', () => {
 
     // Provision + spawn a sibling crew first.
     await meshAgent.skills.get('provisionMyCrew').handler({
-      parts: [{ type: 'DataPart', data: { crewId: 'second-crew', name: 'Second', kind: 'team' } }],
+      parts: [{ type: 'DataPart', data: { circleId: 'second-crew', name: 'Second', kind: 'team' } }],
       from: ANNE, agent: meshAgent, envelope: null,
     });
-    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'second-crew' });
+    await callSkill(meshAgent, 'spawnMyCrew', { circleId: 'second-crew' });
     expect(crewsMap.size).toBe(2);
 
     // Each crew has its own GroupManager.
     const primaryInvite = await callSkill(meshAgent, 'issueInvite', {
-      crewId: 'primary-crew',
+      circleId: 'primary-crew',
       role:   'member',
     });
     expect(primaryInvite?.invite?.groupId).toBe('primary-crew');
 
     const secondInvite = await callSkill(meshAgent, 'issueInvite', {
-      crewId: 'second-crew',
+      circleId: 'second-crew',
       role:   'admin',
     });
     expect(secondInvite?.invite?.groupId).toBe('second-crew');
@@ -173,14 +173,14 @@ describe('Tasks V2 multi-crew — onboarding dispatch', () => {
     const { meshAgent, crewsMap } = await buildMultiCrew();
 
     await meshAgent.skills.get('provisionMyCrew').handler({
-      parts: [{ type: 'DataPart', data: { crewId: 'redeem-crew', name: 'Redeem' } }],
+      parts: [{ type: 'DataPart', data: { circleId: 'redeem-crew', name: 'Redeem' } }],
       from: ANNE, agent: meshAgent, envelope: null,
     });
-    await callSkill(meshAgent, 'spawnMyCrew', { crewId: 'redeem-crew' });
+    await callSkill(meshAgent, 'spawnMyCrew', { circleId: 'redeem-crew' });
 
     // Issue invite for redeem-crew.
     const { invite } = await callSkill(meshAgent, 'issueInvite', {
-      crewId: 'redeem-crew',
+      circleId: 'redeem-crew',
       role:   'member',
     });
     expect(invite).toBeTruthy();
@@ -189,7 +189,7 @@ describe('Tasks V2 multi-crew — onboarding dispatch', () => {
     // no spawn hook in the test setup).
     const memberIdentity = await AgentIdentity.generate(new VaultMemory());
 
-    // Redeem without explicit crewId — the multi-crew wrapper infers
+    // Redeem without explicit circleId — the multi-crew wrapper infers
     // it from `invite.groupId`.
     const r = await callSkill(meshAgent, 'redeemInvite', {
       invite,
@@ -216,12 +216,12 @@ describe('Tasks V2 multi-crew — onboarding dispatch', () => {
       invite: { groupId: 'nonexistent', token: 'x', role: 'member', expiresAt: Date.now() + 60_000 },
       memberPubKey: memberIdentity.pubKey,
     });
-    expect(r?.error).toMatch(/crewId required/);
+    expect(r?.error).toMatch(/circleId required/);
   });
 
-  it('issueInvite errors when crewId routing misses', async () => {
+  it('issueInvite errors when circleId routing misses', async () => {
     const { meshAgent } = await buildMultiCrew();
-    const r = await callSkill(meshAgent, 'issueInvite', { crewId: 'never-spawned', role: 'member' });
-    expect(r?.error).toMatch(/crewId required/);
+    const r = await callSkill(meshAgent, 'issueInvite', { circleId: 'never-spawned', role: 'member' });
+    expect(r?.error).toMatch(/circleId required/);
   });
 });

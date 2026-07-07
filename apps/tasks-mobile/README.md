@@ -114,7 +114,7 @@ possible — see the four design rules in
 serves N CrewStates. Multiple crews share the agent's transports +
 identity vault; per-crew state (ItemStore, MemberMap, chat
 controller, calendar emission, invoicing, bot agents) lives in
-`Map<crewId, CrewState>`. Same factory exposed by the desktop tasks
+`Map<circleId, CrewState>`. Same factory exposed by the desktop tasks
 app (`@canopy-app/tasks-v0/MeshAgent`).
 
 **Capability scope:** subscribe to each joined crew's group;

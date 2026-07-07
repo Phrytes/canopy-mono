@@ -602,7 +602,7 @@ export function ServiceProvider({ children, deps = {} }) {
       webid,
       fetch:    fetchFn,
       identity: identityRef.current,
-      crewId:   activeGroupId ?? undefined,
+      circleId:   activeGroupId ?? undefined,
     });
 
     setPodSession(session);

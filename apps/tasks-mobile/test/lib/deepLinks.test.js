@@ -67,10 +67,10 @@ describe('actionToNavigation', () => {
     expect(r.name).toBe(ROUTES.TaskDetail);
     expect(r.params.id).toBe('t1');
   });
-  it('maps crew → Workspace with {crewId}', () => {
+  it('maps crew → Workspace with {circleId}', () => {
     const r = actionToNavigation({ kind: 'crew', params: { id: 'c1' } });
     expect(r.name).toBe(ROUTES.Workspace);
-    expect(r.params.crewId).toBe('c1');
+    expect(r.params.circleId).toBe('c1');
   });
   it('maps invite → OnboardScan with pendingInvite', () => {
     const r = actionToNavigation({ kind: 'invite', params: { token: { groupId: 'x', code: 'y' } } });

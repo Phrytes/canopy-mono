@@ -84,7 +84,7 @@ export function ComposeScreen() {
 
   // Open tasks for the deps picker. Filter out the parent task (can't
   // depend on yourself) + already-closed.
-  const open = useSkillResult('listOpen', {}, [svc?.activeCrewId]);
+  const open = useSkillResult('listOpen', {}, [svc?.activeCircleId]);
   const openItems = useMemo(() => {
     const items = Array.isArray(open?.data?.items) ? open.data.items : [];
     return items.filter((it) => it?.id && it.id !== parentTaskIdParam);
@@ -92,7 +92,7 @@ export function ComposeScreen() {
 
   // Active crew members for the master picker.
   const members = useMemo(() => {
-    const cs = svc?.crews?.get?.(svc?.activeCrewId);
+    const cs = svc?.crews?.get?.(svc?.activeCircleId);
     return cs?.liveCrew?.members ?? [];
   }, [svc]);
 

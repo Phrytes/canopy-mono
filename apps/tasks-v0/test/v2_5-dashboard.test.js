@@ -13,14 +13,14 @@ const ANNE = 'https://id.example/anne';
 const KID  = 'https://id.example/kid';
 
 const CREW_A = {
-  crewId: 'crew-a', name: 'Crew A', kind: 'project',
+  circleId: 'crew-a', name: 'Crew A', kind: 'project',
   members: [
     { webid: ANNE, displayName: 'Anne', role: 'admin' },
     { webid: KID,  displayName: 'Kid',  role: 'member' },
   ],
 };
 const CREW_B = {
-  crewId: 'crew-b', name: 'Crew B', kind: 'household',
+  circleId: 'crew-b', name: 'Crew B', kind: 'household',
   members: [
     { webid: ANNE, displayName: 'Anne', role: 'admin' },
     // KID is NOT in crew B.
@@ -42,7 +42,7 @@ describe('V2.5 — aggregateCrews (pure)', () => {
     const r = aggregateCrews({
       crews: [
         {
-          crew: { crewId: 'a', name: 'A', kind: 'project' },
+          crew: { circleId: 'a', name: 'A', kind: 'project' },
           openTasks: [
             { id: '1', dueAt: now - 1000, assignee: ANNE },                // overdue + mine
             { id: '2', assignee: KID, reviewLog: [{ decision: 'submit' }] }, // submitted
@@ -61,13 +61,13 @@ describe('V2.5 — aggregateCrews (pure)', () => {
   it('sorts busiest first', () => {
     const r = aggregateCrews({
       crews: [
-        { crew: { crewId: 'a', name: 'A' }, openTasks: [{ id: '1' }] },
-        { crew: { crewId: 'b', name: 'B' }, openTasks: [{ id: '1' }, { id: '2' }, { id: '3' }] },
-        { crew: { crewId: 'c', name: 'C' }, openTasks: [{ id: '1' }, { id: '2' }] },
+        { crew: { circleId: 'a', name: 'A' }, openTasks: [{ id: '1' }] },
+        { crew: { circleId: 'b', name: 'B' }, openTasks: [{ id: '1' }, { id: '2' }, { id: '3' }] },
+        { crew: { circleId: 'c', name: 'C' }, openTasks: [{ id: '1' }, { id: '2' }] },
       ],
       actor: ANNE,
     });
-    expect(r.map((c) => c.crewId)).toEqual(['b', 'c', 'a']);
+    expect(r.map((c) => c.circleId)).toEqual(['b', 'c', 'a']);
   });
 });
 
@@ -80,7 +80,7 @@ describe('V2.5 — getMyCrews skill', () => {
     await call(crew, 'addTask', { text: 'A1' }, ANNE);
     const r = await call(crew, 'getMyCrews', {}, ANNE);
     expect(r.crews).toHaveLength(1);
-    expect(r.crews[0].crewId).toBe('crew-a');
+    expect(r.crews[0].circleId).toBe('crew-a');
     expect(r.crews[0].counts.open).toBe(1);
     await crew.close();
   });
@@ -109,7 +109,7 @@ describe('V2.5 — getMyCrews skill', () => {
     // KID is only in CREW_A; the dashboard skill on crewB should
     // still hide CREW_B from KID.
     const r = await call(crewB, 'getMyCrews', {}, KID);
-    expect(r.crews.map((c) => c.crewId)).toEqual(['crew-a']);
+    expect(r.crews.map((c) => c.circleId)).toEqual(['crew-a']);
     await crewA.close();
     await crewB.close();
   });

@@ -33,7 +33,7 @@ export function ProfileMineScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const get   = useSkillResult('getMyProfile', {}, [svc?.activeCrewId]);
+  const get   = useSkillResult('getMyProfile', {}, [svc?.activeCircleId]);
   const setHandleSkill   = useSkill('setMyHandle');
   const setNameSkill     = useSkill('setMyDisplayName');
   const setAvatarSkill   = useSkill('setMyAvatarUrl');
@@ -60,7 +60,7 @@ export function ProfileMineScreen() {
       if (!photo) return;
       // Store as a data-URL alongside the user's profile namespace
       // (mirrors the deliverable photo pattern).
-      const cs = svc?.crews?.get(svc?.activeCrewId);
+      const cs = svc?.crews?.get(svc?.activeCircleId);
       const ref = `mem://user/avatars/${svc?.identity?.pubKey ?? 'me'}.jpg`;
       try { await cs?.dataSource?.write?.(ref, `data:image/jpeg;base64,${photo.dataB64}`); }
       catch { /* swallow — avatar URL still updates */ }

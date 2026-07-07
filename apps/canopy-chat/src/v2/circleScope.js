@@ -3,7 +3,7 @@
  *
  * F1: given an active `circleId`, decide which items belong to it. An
  * item is "in" a circle if any of its circle references match — it
- * carries `circleId` / `crewId` (alias, CIRCLE_ID_IS_CREW_ID_ALIAS) /
+ * carries `circleId` / `circleId` (alias, CIRCLE_ID_IS_CREW_ID_ALIAS) /
  * `groupId`, or an `audience` shorthand like `circle:ID` / `crew:ID`
  * (or the structured `{kind:'circle-ref', id}`). Self-contained — no
  * `@canopy/circles` import — so it stays portable for Metro/RN.
@@ -14,7 +14,7 @@
 /** The circle id an item is scoped to, or null if it carries none. */
 export function itemCircleId(item = {}) {
   if (item.circleId) return item.circleId;
-  if (item.crewId) return item.crewId;
+  if (item.circleId) return item.circleId;
   if (item.groupId) return item.groupId;
   // Stoop persists the per-call circle scope NESTED, not at the top level:
   //  • real posts → source.targets[{ kind:'group', groupId }] (the write path injects it)

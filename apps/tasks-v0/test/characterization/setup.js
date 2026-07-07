@@ -27,7 +27,7 @@ export const FRITS = 'https://id.example/frits';
 export const KID   = 'https://id.example/kid';
 
 export const DEFAULT_CREW = Object.freeze({
-  crewId:  'characterization-crew',
+  circleId:  'characterization-crew',
   name:    'Characterization Crew',
   kind:    'project',
   members: [
@@ -77,13 +77,13 @@ export async function buildCharacterizationFixture({
     wireOnboardingSkills: false,
     identity:             id,
     transport:            new InternalTransport(bus, id.pubKey),
-    label:                `Crew(${crewConfig.crewId})-characterization`,
+    label:                `Crew(${crewConfig.circleId})-characterization`,
   });
 
   const tasksConfig = {
     actor,
     roles: Object.fromEntries(crewConfig.members.map((m) => [m.webid, m.role])),
-    crew:  { crewId: crewConfig.crewId, name: crewConfig.name, kind: crewConfig.kind },
+    crew:  { circleId: crewConfig.circleId, name: crewConfig.name, kind: crewConfig.kind },
   };
 
   // Slice B.1 — `dag.html` (and future renderWeb pages) consume

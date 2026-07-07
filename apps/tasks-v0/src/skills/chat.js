@@ -39,7 +39,7 @@ export function buildChatSkills({ bundleResolver } = {}) {
   return [
     defineSkill('sendChatMessage', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.threadId !== 'string' || !a.threadId) {
         return { error: 'threadId required' };
@@ -72,7 +72,7 @@ export function buildChatSkills({ bundleResolver } = {}) {
 
     defineSkill('getChatThread', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.threadId !== 'string' || !a.threadId) {
         return { error: 'threadId required' };
@@ -91,7 +91,7 @@ export function buildChatSkills({ bundleResolver } = {}) {
 
     defineSkill('listChatThreads', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const all = await crew.itemStore.listOpen({ type: CHAT_TYPE });
       /** @type {Map<string, object>} */
       const byThread = new Map();

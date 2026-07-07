@@ -27,7 +27,7 @@ export function MetricsScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const result  = useSkillResult('getMetrics', {}, [svc?.activeCrewId]);
+  const result  = useSkillResult('getMetrics', {}, [svc?.activeCircleId]);
   const data    = result?.data ?? null;
   const loading = !!result?.loading;
   const error   = result?.error ?? null;

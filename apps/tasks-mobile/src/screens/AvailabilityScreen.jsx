@@ -30,7 +30,7 @@ export function AvailabilityScreen() {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const week = useMemo(() => isoWeekOf(), []);
-  const get = useSkillResult('getMyAvailability', { week }, [svc?.activeCrewId, week]);
+  const get = useSkillResult('getMyAvailability', { week }, [svc?.activeCircleId, week]);
   const setCell = useSkill('setMyAvailability');
   const setOptIn = useSkill('setAvailabilityOptIn');
 
@@ -39,7 +39,7 @@ export function AvailabilityScreen() {
 
   useEffect(() => {
     setLocal({});
-  }, [svc?.activeCrewId, week]);
+  }, [svc?.activeCircleId, week]);
 
   const remote = get?.data?.week ?? get?.data ?? {};
   const grid = useMemo(() => {
@@ -53,7 +53,7 @@ export function AvailabilityScreen() {
 
   const optedIn = !!(get?.data?.optedIn);
   const crewEnabled =
-    svc?.crews?.get(svc?.activeCrewId)?.liveCrew?.availabilityHints?.enabled ?? true;
+    svc?.crews?.get(svc?.activeCircleId)?.liveCrew?.availabilityHints?.enabled ?? true;
 
   const onToggleCell = useCallback(async (day, half) => {
     const cur = local[`${day}.${half}`] ?? remote?.[day]?.[half] ?? 'unknown';

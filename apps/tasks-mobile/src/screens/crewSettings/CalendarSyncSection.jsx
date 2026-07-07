@@ -22,12 +22,12 @@ export function CalendarSyncSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;
+  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
   const enabled = !!cs?.liveCrew?.calendarEmission?.enabled;
 
   const setEmission = useSkill('setCalendarEmission');
-  const url   = useSkillResult('getCalendarEmissionUrl',    { memberWebid: actor }, [svc?.activeCrewId, actor]);
-  const status = useSkillResult('getCalendarEmissionStatus', { memberWebid: actor }, [svc?.activeCrewId, actor]);
+  const url   = useSkillResult('getCalendarEmissionUrl',    { memberWebid: actor }, [svc?.activeCircleId, actor]);
+  const status = useSkillResult('getCalendarEmissionStatus', { memberWebid: actor }, [svc?.activeCircleId, actor]);
 
   const onToggle = useCallback(async (next) => {
     if (!isAdminOrCoord) return;

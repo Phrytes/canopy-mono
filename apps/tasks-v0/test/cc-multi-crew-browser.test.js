@@ -1,7 +1,7 @@
 /**
  * createBrowserMultiCrewTasksAgent — per-circle task isolation.
  *
- * The canopy-chat circle work treats `circleId ≡ crewId`, so a task
+ * The canopy-chat circle work treats `circleId ≡ circleId`, so a task
  * created while a circle is open must land in that circle's crew and
  * stay isolated from other circles.  This proves the browser multi-crew
  * factory routes + isolates storage, and that unscoped calls still fall
@@ -31,7 +31,7 @@ async function build() {
     bus:           new InternalBus(),
     identityVault: new VaultMemory(),
     primaryCrewConfig: {
-      crewId:  'cc-default',
+      circleId:  'cc-default',
       name:    'CC',
       kind:    'household',
       members: [{ webid: ANNE, displayName: 'Anne', role: 'admin' }],
@@ -49,7 +49,7 @@ describe('createBrowserMultiCrewTasksAgent', () => {
   it('unscoped addTask routes to the primary crew (legacy behaviour)', async () => {
     const { agent } = await build();
     await call(agent, 'addTask', { text: 'primary task' });
-    const primary = await call(agent, 'listOpen', { crewId: 'cc-default' });
+    const primary = await call(agent, 'listOpen', { circleId: 'cc-default' });
     expect((primary.items ?? []).map((t) => t.text)).toContain('primary task');
   });
 
@@ -58,11 +58,11 @@ describe('createBrowserMultiCrewTasksAgent', () => {
     await ensureCrew('circle-a');
     await ensureCrew('circle-b');
 
-    await call(agent, 'addTask', { crewId: 'circle-a', text: 'A task' });
-    await call(agent, 'addTask', { crewId: 'circle-b', text: 'B task' });
+    await call(agent, 'addTask', { circleId: 'circle-a', text: 'A task' });
+    await call(agent, 'addTask', { circleId: 'circle-b', text: 'B task' });
 
-    const a = await call(agent, 'listOpen', { crewId: 'circle-a' });
-    const b = await call(agent, 'listOpen', { crewId: 'circle-b' });
+    const a = await call(agent, 'listOpen', { circleId: 'circle-a' });
+    const b = await call(agent, 'listOpen', { circleId: 'circle-b' });
     const aTexts = (a.items ?? []).map((t) => t.text);
     const bTexts = (b.items ?? []).map((t) => t.text);
 
@@ -72,7 +72,7 @@ describe('createBrowserMultiCrewTasksAgent', () => {
     expect(bTexts).not.toContain('A task');
   });
 
-  it('_scope is honoured as a crewId alias', async () => {
+  it('_scope is honoured as a circleId alias', async () => {
     const { agent, ensureCrew } = await build();
     await ensureCrew('circle-s');
     await call(agent, 'addTask', { _scope: 'circle-s', text: 'scoped task' });

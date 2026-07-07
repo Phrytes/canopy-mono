@@ -51,8 +51,8 @@ export function PodSettingsScreen() {
 
   const setCrewStoragePolicy = useSkill('setCrewStoragePolicy');
 
-  const activeCrewId = svc?.activeCrewId;
-  const activeCs     = activeCrewId ? svc?.crews?.get?.(activeCrewId) : null;
+  const activeCircleId = svc?.activeCircleId;
+  const activeCs     = activeCircleId ? svc?.crews?.get?.(activeCircleId) : null;
   const currentStorage = activeCs?.liveCrew?.storage ?? { policy: 'no-pod', groupPodUri: null };
 
   const [showUpgrade, setShowUpgrade]   = useState(false);
@@ -67,12 +67,12 @@ export function PodSettingsScreen() {
   const needsPodUri = upgradePolicy === 'centralised' || upgradePolicy === 'hybrid';
 
   const onUpgrade = useCallback(async () => {
-    if (!activeCrewId || !setCrewStoragePolicy?.call) return;
+    if (!activeCircleId || !setCrewStoragePolicy?.call) return;
     setUpgradeBusy(true);
     setUpgradeError(null);
     try {
       const result = await setCrewStoragePolicy.call({
-        crewId:      activeCrewId,
+        circleId:      activeCircleId,
         storagePolicy: upgradePolicy,
         ...(needsPodUri && upgradePodUri.trim() ? { groupPodUri: upgradePodUri.trim() } : {}),
       });
@@ -87,7 +87,7 @@ export function PodSettingsScreen() {
     } finally {
       setUpgradeBusy(false);
     }
-  }, [activeCrewId, setCrewStoragePolicy, upgradePolicy, upgradePodUri, needsPodUri]);
+  }, [activeCircleId, setCrewStoragePolicy, upgradePolicy, upgradePodUri, needsPodUri]);
 
   // Section 2: agent-registry status
   const registryStatus = activeCs?.agentRegistry
@@ -163,7 +163,7 @@ export function PodSettingsScreen() {
       {/* ── Section 1: Storage policy ─────────────────────────────── */}
       <SectionHeader title={t('mobile.pod_settings.section_storage', 'Storage policy')} />
 
-      {!activeCrewId ? (
+      {!activeCircleId ? (
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm, marginBottom: SPACING.lg }}>
           {t('mobile.pod_settings.no_crew', 'No active crew.')}
         </Text>

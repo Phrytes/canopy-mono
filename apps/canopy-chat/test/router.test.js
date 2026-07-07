@@ -229,11 +229,11 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
     replyShape: 'text', verb, args,
   });
 
-  it("injects the active circle as circleId/crewId/groupId/_scope on an 'add' verb", () => {
+  it("injects the active circle as circleId/circleId/groupId/_scope on an 'add' verb", () => {
     const r = scopeReadyDispatch(ready('add', { text: 'buy milk' }), 'circle-1');
     expect(r.args).toEqual({
       text: 'buy milk',
-      circleId: 'circle-1', crewId: 'circle-1', groupId: 'circle-1', _scope: 'circle-1',
+      circleId: 'circle-1', circleId: 'circle-1', groupId: 'circle-1', _scope: 'circle-1',
     });
   });
 
@@ -245,7 +245,7 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
 
   it('the created item carries the circle tag (itemCircleId reads it back)', () => {
     // The substrate persists the scope arg onto the item; itemCircleId
-    // resolves it via circleId/crewId/groupId — so a task created with
+    // resolves it via circleId/circleId/groupId — so a task created with
     // these args belongs to the active circle.
     const r = scopeReadyDispatch(ready('add', { text: 't' }), 'circle-X');
     expect(itemCircleId(r.args)).toBe('circle-X');
@@ -266,7 +266,7 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
     // else the wrong crew reports "item not found" (device-verified on `done <task>`).
     for (const v of ['claim', 'complete', 'submit', 'approve', 'reject', 'remove']) {
       const r = scopeReadyDispatch(ready(v, { id: 'task-9' }), 'c1');
-      expect(itemCircleId(r.args)).toBe('c1');     // crewId/circleId/groupId now bound to the active circle
+      expect(itemCircleId(r.args)).toBe('c1');     // circleId/circleId/groupId now bound to the active circle
       expect(r.args.id).toBe('task-9');            // the target id is preserved
     }
   });
@@ -283,15 +283,15 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
   });
 
   it("respects an explicit scope the caller already chose (doesn't override)", () => {
-    const input = ready('add', { text: 't', crewId: 'explicit-crew' });
+    const input = ready('add', { text: 't', circleId: 'explicit-crew' });
     const r = scopeReadyDispatch(input, 'active-circle');
     expect(r).toBe(input);                  // untouched wholesale
-    expect(r.args.crewId).toBe('explicit-crew');
+    expect(r.args.circleId).toBe('explicit-crew');
   });
 
   it('treats an empty-string scope arg as unset → injects', () => {
-    const r = scopeReadyDispatch(ready('add', { text: 't', crewId: '' }), 'c1');
-    expect(r.args.crewId).toBe('c1');
+    const r = scopeReadyDispatch(ready('add', { text: 't', circleId: '' }), 'c1');
+    expect(r.args.circleId).toBe('c1');
   });
 
   it('only touches ready dispatches (needsForm / null pass through)', () => {
@@ -306,7 +306,7 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
 
     const addRoute = resolveDispatch(parseInput('/donow', catalog), catalog);  // verb 'add'
     const scoped = scopeReadyDispatch(addRoute, 'circle-7');
-    expect(scoped.args.crewId).toBe('circle-7');
+    expect(scoped.args.circleId).toBe('circle-7');
     expect(itemCircleId(scoped.args)).toBe('circle-7');
   });
 });

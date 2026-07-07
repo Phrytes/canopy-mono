@@ -6,7 +6,7 @@
  * `.ics` for that member and write it to a configurable pod path.
  *
  * Path convention:
- *   <member-pod>/tasks/calendars/<crewId>.ics
+ *   <member-pod>/tasks/calendars/<circleId>.ics
  *
  * In local-only mode (no pod attached) the path is still meaningful —
  * the local-store cache stores it under the same key, and a future
@@ -53,8 +53,8 @@ export function wireCalendarEmission({
   if (typeof member !== 'string' || !member) {
     throw new TypeError('wireCalendarEmission: member (webid) required');
   }
-  const crewId = crew?.crewId ?? 'unknown';
-  const fullPath = path ?? defaultEmissionPath(crewId);
+  const circleId = crew?.circleId ?? 'unknown';
+  const fullPath = path ?? defaultEmissionPath(circleId);
 
   let timer = null;
   let lastIcs = null;
@@ -70,7 +70,7 @@ export function wireCalendarEmission({
     const removed = diffRemoved(prevTasks, tasks);
     if (removed.length > 0) {
       try {
-        const cancelIcs = buildCancellationIcs(removed, { crewId });
+        const cancelIcs = buildCancellationIcs(removed, { circleId });
         if (cancelIcs) {
           // Cancellation goes into the same file (clients de-dup by UID
           // + STATUS:CANCELLED). Keeps the URL stable.
@@ -84,7 +84,7 @@ export function wireCalendarEmission({
     }
 
     const ics = buildIcsFor({
-      crewId, crewName: crew?.name ?? crewId, member, tasks, now: now(),
+      circleId, crewName: crew?.name ?? circleId, member, tasks, now: now(),
     });
     prevTasks = tasks;
     if (ics === lastIcs) return;     // diff-before-write
@@ -121,8 +121,8 @@ export function wireCalendarEmission({
  * Convention path the calendar is written to. Apps wanting to expose
  * a `https://`-shaped URL translate this in the UI layer.
  */
-export function defaultEmissionPath(crewId) {
-  return `mem://user/tasks/calendars/${encodeURIComponent(crewId)}.ics`;
+export function defaultEmissionPath(circleId) {
+  return `mem://user/tasks/calendars/${encodeURIComponent(circleId)}.ics`;
 }
 
 // Append cancellations to the existing ICS string. Calendar clients

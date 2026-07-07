@@ -35,7 +35,7 @@ const BOB  = 'webid://bob';
 const KID  = 'webid://kid';
 
 const CREW_ALPHA = {
-  crewId: 'crew-alpha',
+  circleId: 'crew-alpha',
   name:   'Alpha',
   kind:   'household',
   members: [
@@ -45,7 +45,7 @@ const CREW_ALPHA = {
 };
 
 const CREW_BETA = {
-  crewId: 'crew-beta',
+  circleId: 'crew-beta',
   name:   'Beta',
   kind:   'project',
   members: [
@@ -97,7 +97,7 @@ describe('buildLocalStoreBundle', () => {
 describe('buildCrewState', () => {
   it('produces the V2.8 CrewState shape', async () => {
     const cs = await buildCrewState({ crewConfig: CREW_ALPHA });
-    expect(cs.crewId).toBe('crew-alpha');
+    expect(cs.circleId).toBe('crew-alpha');
     expect(cs.liveCrew.kind).toBe('household');
     expect(cs.roles).toEqual({ [ANNE]: 'admin', [BOB]: 'member' });
     expect(cs.itemStore).toBeTruthy();
@@ -158,9 +158,9 @@ describe('end-to-end — meshAgent + multi-crew dispatch', () => {
     const addTask = meshAgent.skills.get('addTask');
     expect(addTask).toBeTruthy();
 
-    // Add a task to crew-alpha via crewId arg.
+    // Add a task to crew-alpha via circleId arg.
     const r1 = await addTask.handler({
-      parts:    [DataPart({ crewId: 'crew-alpha', text: 'A1' })],
+      parts:    [DataPart({ circleId: 'crew-alpha', text: 'A1' })],
       from:     ANNE,
       agent:    meshAgent,
       envelope: null,
@@ -169,7 +169,7 @@ describe('end-to-end — meshAgent + multi-crew dispatch', () => {
 
     // Add to crew-beta. KID is admin there.
     const r2 = await addTask.handler({
-      parts:    [DataPart({ crewId: 'crew-beta', text: 'B1' })],
+      parts:    [DataPart({ circleId: 'crew-beta', text: 'B1' })],
       from:     KID,
       agent:    meshAgent,
       envelope: null,
@@ -204,7 +204,7 @@ describe('end-to-end — joinCrew flow (re-reading the live crews Map)', () => {
     });
     await meshAgent.start();
 
-    // Initially no crews — addTask without crewId returns the strict-null error.
+    // Initially no crews — addTask without circleId returns the strict-null error.
     const addTask = meshAgent.skills.get('addTask');
     const noCrew = await addTask.handler({
       parts:    [DataPart({ text: 'X' })],
@@ -212,7 +212,7 @@ describe('end-to-end — joinCrew flow (re-reading the live crews Map)', () => {
       agent:    meshAgent,
       envelope: null,
     });
-    expect(noCrew?.error).toBe('crewId required');
+    expect(noCrew?.error).toBe('circleId required');
 
     // Now "join" — mutate the live Map (this is what ServiceContext's
     // joinCrew does behind the scenes; resolver picks it up on next dispatch).
@@ -220,7 +220,7 @@ describe('end-to-end — joinCrew flow (re-reading the live crews Map)', () => {
     crews.set('crew-alpha', csA);
 
     const r = await addTask.handler({
-      parts:    [DataPart({ crewId: 'crew-alpha', text: 'A1' })],
+      parts:    [DataPart({ circleId: 'crew-alpha', text: 'A1' })],
       from:     ANNE,
       agent:    meshAgent,
       envelope: null,

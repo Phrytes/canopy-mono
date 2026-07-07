@@ -8,25 +8,25 @@
 
 ---
 
-## ⚠ Alias note — `circle.id ≡ task.crewId`
+## ⚠ Alias note — `circle.id ≡ task.circleId`
 
-**A `circle.id` value and a `task.crewId` value share the SAME string
+**A `circle.id` value and a `task.circleId` value share the SAME string
 identifier space.**  Today's tasks-v0 / pod-routing code uses
-`crewId`; this package introduces `circle` as a more general saved
+`circleId`; this package introduces `circle` as a more general saved
 audience with `id: string`.  They are aliases of one identifier
 space, NOT two parallel ones.
 
-If a task has `crewId: "abc-123"` and a circle exists with
+If a task has `circleId: "abc-123"` and a circle exists with
 `id: "abc-123"`, they describe the **same** group.
 
 Why this matters:
-- Searching `crewId` surfaces task / pod-routing code; searching
+- Searching `circleId` surfaces task / pod-routing code; searching
   `circle.id` surfaces circles-substrate code — they're the same
   identifier.
-- `crewPolicy(crewId)` (pod-routing) still resolves storage for a
+- `crewPolicy(circleId)` (pod-routing) still resolves storage for a
   group; the matching `circle` item layers audience resolution over
   the same identifier.
-- A future "rename `crewId` → `circleId` everywhere" refactor is
+- A future "rename `circleId` → `circleId` everywhere" refactor is
   SP-5b / a later cleanup, after consumers exist and the rename has a
   proven shape.
 

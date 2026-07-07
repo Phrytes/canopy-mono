@@ -34,7 +34,7 @@ export function DagScreen() {
   const tree = useSkillResult(
     'getDagTree',
     rootId ? { rootId } : {},
-    [svc?.activeCrewId, rootId],
+    [svc?.activeCircleId, rootId],
   );
 
   const rows = useMemo(() => flattenDagTree(tree?.data), [tree?.data]);

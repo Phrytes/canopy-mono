@@ -21,7 +21,7 @@ import { attachTasksBundle, detachTasksBundle } from '@canopy-app/tasks-v0/lib/a
 import { classify, reverseResolve } from '@canopy-app/tasks-v0/lib/podPathMap';
 
 const BASE_CREW = {
-  crewId:  'mobile-crew',
+  circleId:  'mobile-crew',
   name:    'Mobile Crew',
   kind:    'team',
   members: [{ webid: 'https://alice.pod/profile/card#me', role: 'admin' }],
@@ -43,18 +43,18 @@ describe('M4 — buildCrewState._podCtx is pre-populated', () => {
     expect(cs._podCtx.podRouting).toBeNull();
   });
 
-  it('crewId is set from the crew config', async () => {
+  it('circleId is set from the crew config', async () => {
     const cs = await buildCrewState({ crewConfig: BASE_CREW });
-    expect(cs._podCtx.crewId).toBe('mobile-crew');
+    expect(cs._podCtx.circleId).toBe('mobile-crew');
   });
 });
 
 // ── attachTasksBundle activates the _podCtx ──────────────────────────
 
 describe('M4 — attachTasksBundle activates _podCtx on a CrewState-shaped bundle', () => {
-  function mkBundle(crewId) {
+  function mkBundle(circleId) {
     const _podCtx = { active: false, classify: null, reverse: null,
-                      podRouting: null, crewId, vars: null };
+                      podRouting: null, circleId, vars: null };
     return {
       _podCtx,
       cache:           { attachInner: vi.fn(async () => {}) },

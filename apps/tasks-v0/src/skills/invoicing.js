@@ -31,8 +31,8 @@ function isoMonthOf(epochMs) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-function invoicePath(crewId, webid, isoMonth) {
-  return `mem://tasks/crews/${encodeURIComponent(crewId)}/invoicing/${encodeURIComponent(webid)}/${encodeURIComponent(isoMonth)}.json`;
+function invoicePath(circleId, webid, isoMonth) {
+  return `mem://tasks/crews/${encodeURIComponent(circleId)}/invoicing/${encodeURIComponent(webid)}/${encodeURIComponent(isoMonth)}.json`;
 }
 
 /**
@@ -41,15 +41,15 @@ function invoicePath(crewId, webid, isoMonth) {
  *
  * @param {object} args
  * @param {object} args.dataSource
- * @param {string} args.crewId
+ * @param {string} args.circleId
  * @param {object} args.member       crew member object (for rate lookup)
  * @param {object} args.task         the just-completed task
  */
-export async function recordInvoiceLine({ dataSource, crewId, member, task }) {
-  if (!dataSource?.write || !crewId || !member?.webid || !task?.id) return;
+export async function recordInvoiceLine({ dataSource, circleId, member, task }) {
+  if (!dataSource?.write || !circleId || !member?.webid || !task?.id) return;
   const completedAt = task.completedAt ?? Date.now();
   const month       = isoMonthOf(completedAt);
-  const path        = invoicePath(crewId, member.webid, month);
+  const path        = invoicePath(circleId, member.webid, month);
 
   const line = {
     taskId:      task.id,
@@ -89,7 +89,7 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
   return [
     defineSkill('getCompensation', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const lc = crew.liveCrew ?? {};
       const target = a.memberWebid ?? from;
@@ -104,7 +104,7 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
       const month = typeof a.month === 'string' && /^\d{4}-\d{2}$/.test(a.month)
         ? a.month
         : isoMonthOf(Date.now());
-      const path = invoicePath(lc.crewId ?? 'unknown', target, month);
+      const path = invoicePath(lc.circleId ?? 'unknown', target, month);
       let lines = [];
       try {
         const raw = await crew.dataSource.read(path);
@@ -129,7 +129,7 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
 
     defineSkill('setMemberCompensation', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
@@ -157,7 +157,7 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
 
     defineSkill('setCompensationEnabled', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);

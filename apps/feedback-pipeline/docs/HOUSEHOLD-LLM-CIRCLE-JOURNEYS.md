@@ -136,7 +136,7 @@ What already exists (the foundation is ~80% there; gaps are WIRING, not new arch
 
 | Behavior | Where | Status |
 |---|---|---|
-| Shared group-pod model | `household/src/pods/HouseholdPod.js`; `pod-routing` `'centralised'` policy → `group/<crewId>` → `groupPodUri` | ✅ exists |
+| Shared group-pod model | `household/src/pods/HouseholdPod.js`; `pod-routing` `'centralised'` policy → `group/<circleId>` → `groupPodUri` | ✅ exists |
 | **Pod ACL grant/revoke API** (ACP **and** WAC) | `pod-client/src/sharing/index.js` `grant():259`, `revoke():322` | ✅ **built but never called** |
 | Join → grant access | `identity-resolver/onboardingSkills.js redeemInvite` + `addMember` | 🔶 roster updated, **`grant()` not called** (~10-line add) |
 | Leave → revoke access | — | ⬜ **missing** — new small `leaveGroup`/`removeMember` skill → `revoke()` |

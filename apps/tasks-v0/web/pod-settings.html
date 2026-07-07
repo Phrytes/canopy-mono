@@ -123,10 +123,10 @@
       document.getElementById('storage-new-pod-uri').required = needsPod;
     }
 
-    // The `bundleResolver` on the server side needs a crewId; Tasks's
+    // The `bundleResolver` on the server side needs a circleId; Tasks's
     // app.js wraps callSkill with the active crew. We pass it explicitly
     // when known (URL param `?crew=...`).
-    function activeCrewId() {
+    function activeCircleId() {
       const params = new URLSearchParams(window.location.search);
       return params.get('crew') ?? null;
     }
@@ -134,7 +134,7 @@
     async function refreshStorage() {
       const statusEl = document.getElementById('storage-status');
       try {
-        const args = activeCrewId() ? { crewId: activeCrewId() } : {};
+        const args = activeCircleId() ? { circleId: activeCircleId() } : {};
         const r = await callSkill('getCrewStoragePolicy', args);
         if (r?.error) { statusEl.textContent = `Error: ${r.error}`; return; }
         const policy = r?.policy ?? 'no-pod';
@@ -156,7 +156,7 @@
       // `bundle.agentRegistry`; we surface the agentUri convention.
       const pre = document.getElementById('registry-summary');
       try {
-        const args = activeCrewId() ? { crewId: activeCrewId() } : {};
+        const args = activeCircleId() ? { circleId: activeCircleId() } : {};
         const r = await callSkill('whoAmI', args).catch(() => null);
         if (r?.agent) {
           pre.textContent = `Registered. agentUri: agent://${r.agent.pubKey ?? '(unknown)'}\nrole: ${r.agent.role ?? 'device'}\ndeviceId: ${r.agent.deviceId ?? '(none)'}`;
@@ -175,7 +175,7 @@
       const issuerInput = document.getElementById('signin-issuer');
       const submitBtn   = form.querySelector('button[type="submit"]');
       try {
-        const args = activeCrewId() ? { crewId: activeCrewId() } : {};
+        const args = activeCircleId() ? { circleId: activeCircleId() } : {};
         const r = await callSkill('podSignInStatus', args);
         if (r?.signedIn) {
           const webid = r.webid ?? '(unknown)';
@@ -206,7 +206,7 @@
       try {
         const args = {
           callbackUrl: window.location.href,
-          ...(activeCrewId() ? { crewId: activeCrewId() } : {}),
+          ...(activeCircleId() ? { circleId: activeCircleId() } : {}),
         };
         const r = await callSkill('completePodSignIn', args);
         if (r?.error) {
@@ -232,7 +232,7 @@
         const args = {
           issuer,
           redirectUrl: window.location.origin + window.location.pathname,
-          ...(activeCrewId() ? { crewId: activeCrewId() } : {}),
+          ...(activeCircleId() ? { circleId: activeCircleId() } : {}),
         };
         const r = await callSkill('startPodSignIn', args);
         if (!r?.ok) {
@@ -249,7 +249,7 @@
       const fb = document.getElementById('signin-feedback');
       fb.textContent = 'Signing out…';
       try {
-        const args = activeCrewId() ? { crewId: activeCrewId() } : {};
+        const args = activeCircleId() ? { circleId: activeCircleId() } : {};
         const r = await callSkill('signOutOfPod', args);
         if (r?.error) {
           fb.textContent = `Error: ${r.error}`;
@@ -272,7 +272,7 @@
       status.textContent = 'Upgrading…';
       try {
         const args = {
-          ...(activeCrewId() ? { crewId: activeCrewId() } : {}),
+          ...(activeCircleId() ? { circleId: activeCircleId() } : {}),
           storagePolicy: sel.value,
           ...(podUri ? { groupPodUri: podUri } : {}),
         };

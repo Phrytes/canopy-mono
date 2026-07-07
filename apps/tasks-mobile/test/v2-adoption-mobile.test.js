@@ -27,7 +27,7 @@ const ANNE = 'webid://anne';
 const BOB  = 'webid://bob';
 
 const BASE_CREW = {
-  crewId:  'test-crew',
+  circleId:  'test-crew',
   name:    'Test',
   kind:    'household',
   members: [
@@ -103,7 +103,7 @@ describe('M1-S3 — buildCrewState without meshAgent', () => {
     expect(typeof cs._podCtx.reverse).toBe('function');
     expect(cs._podCtx.active).toBe(false);   // inactive until pod attached
     expect(cs._podCtx.podRouting).toBeNull(); // wired at attach time
-    expect(cs._podCtx.crewId).toBe('test-crew');
+    expect(cs._podCtx.circleId).toBe('test-crew');
   });
 });
 
@@ -136,7 +136,7 @@ describe('M1-S3 — buildCrewState with stubbed meshAgent', () => {
     const agent = { address: 'broken-test-agent' };
     const cs = await buildCrewState({ crewConfig: BASE_CREW, meshAgent: agent });
     // Core crew state is always present.
-    expect(cs.crewId).toBe('test-crew');
+    expect(cs.circleId).toBe('test-crew');
     expect(cs.liveCrew.name).toBe('Test');
     // _podCtx is always populated at M4 (classify/reverse pre-loaded; inactive).
     expect(cs._podCtx?.active).toBe(false);

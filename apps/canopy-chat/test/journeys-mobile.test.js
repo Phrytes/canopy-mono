@@ -155,10 +155,10 @@ describe('JM-1 — compose across apps (stoop → DM → task)', () => {
 
     // First need a crew to add a task to.
     const crew = await ws.userInput('/crew-new "Test Household" --kind=household');
-    expect(crew.payload.crewId ?? crew.payload.ok).toBeTruthy();
+    expect(crew.payload.circleId ?? crew.payload.ok).toBeTruthy();
 
     const task = await ws.userInput(
-      `/addtask text="Bring ladder Saturday" --crewId=${crew.payload.crewId}`,
+      `/addtask text="Bring ladder Saturday" --circleId=${crew.payload.circleId}`,
     );
     expect(task.payload.ok).toBe(true);
     expect(task.payload.itemId).toBeTruthy();
@@ -242,11 +242,11 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
 
   it('addSubtask wires parent.dependencies + creates a child task', async () => {
     const crew = await ws.userInput('/crew-new "Saturday Garden" --kind=household');
-    const crewId = crew.payload.crewId;
-    expect(crewId).toBeTruthy();
+    const circleId = crew.payload.circleId;
+    expect(circleId).toBeTruthy();
 
     const parent = await ws.userInput(
-      `/addtask text="Saturday garden cleanup" --crewId=${crewId}`,
+      `/addtask text="Saturday garden cleanup" --circleId=${circleId}`,
     );
     const parentId = parent.payload.itemId;
     expect(parentId).toBeTruthy();
@@ -256,7 +256,7 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
     const sub = await ws.callSkill('tasks', 'addSubtask', {
       parentTaskId: parentId,
       text:         'Bring extra bags',
-      crewId,
+      circleId,
     });
     // Substrate returns either {task} (success) or {queued} (depth
     // gate).  Depth 1 is below the default gate (3), so we expect
@@ -266,7 +266,7 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
     if (sub.task) {
       // Parent's dependencies should include the new sub-task id.
       // Read via listOpen — the substrate path the chat-shell uses.
-      const list = await ws.callSkill('tasks', 'listOpen', { crewId });
+      const list = await ws.callSkill('tasks', 'listOpen', { circleId });
       const parentAfter = (list.items ?? []).find((i) => i.id === parentId);
       expect(parentAfter).toBeTruthy();
       expect(parentAfter.dependencies ?? []).toContain(sub.task.id);

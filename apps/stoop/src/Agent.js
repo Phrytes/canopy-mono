@@ -186,19 +186,19 @@ export async function createNeighborhoodAgent({
   // Phase 2.4 (pod-routing): a mutable pod-context the closure
   // `innerKeyMap` reads.  `attachPod` (mobile ServiceContext /
   // desktop) fills it after a pod is attached:
-  //   { active, classify, podRouting, crewId, vars }
+  //   { active, classify, podRouting, circleId, vars }
   // While inactive (the no-pod default) `toInner`/`fromInner` are
   // pure identity → CachingDataSource stays byte-neutral
   // (pod-independence.md).  See apps/stoop/src/lib/podPathMap.js.
   const podCtx = {
-    active: false, classify: null, podRouting: null, crewId: null, vars: null,
+    active: false, classify: null, podRouting: null, circleId: null, vars: null,
   };
   const _podInnerKeyMap = {
     toInner: (p) => {
       if (!podCtx.active
           || typeof podCtx.classify !== 'function'
           || !podCtx.podRouting) return p;
-      const c = podCtx.classify(p, { crewId: podCtx.crewId });
+      const c = podCtx.classify(p, { circleId: podCtx.circleId });
       if (!c) return p; // unroutable → SolidPodSource fail-loud surfaces the gap
       const base = podCtx.podRouting.resolve(c.storageFn, podCtx.vars || {});
       if (typeof base !== 'string' || base.length === 0) return p;
@@ -215,7 +215,7 @@ export async function createNeighborhoodAgent({
           || !podCtx.podRouting) return u;
       const logical = podCtx.reverse({
         resolve: (fn, v) => podCtx.podRouting.resolve(fn, v),
-        crewId:  podCtx.crewId,
+        circleId:  podCtx.circleId,
         podUri:  u,
         vars:    podCtx.vars || {},
       });

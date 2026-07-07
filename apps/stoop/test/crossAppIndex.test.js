@@ -25,16 +25,16 @@ const resolve = (fn) =>
 
 // The exact innerKeyMap Agent.js builds (classify+resolve+join /
 // reverseResolve), bound to crew 'C'.
-const crewId = 'C';
+const circleId = 'C';
 const innerKeyMap = {
   toInner: (p) => {
-    const c = classify(p, { crewId });
+    const c = classify(p, { circleId });
     if (!c) return p;
     const b = resolve(c.storageFn);
     if (!b) return p;
     return b.endsWith('/') ? b + c.tail : `${b}/${c.tail}`;
   },
-  fromInner: (u) => reverseResolve({ resolve, crewId, podUri: u }) ?? u,
+  fromInner: (u) => reverseResolve({ resolve, circleId, podUri: u }) ?? u,
 };
 
 function mkInner(seed) {

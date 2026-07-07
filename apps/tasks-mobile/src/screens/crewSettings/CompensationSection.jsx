@@ -23,14 +23,14 @@ export function CompensationSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;
+  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
   const liveCrew = cs?.liveCrew ?? null;
   const enabled  = !!liveCrew?.compensation?.enabled;
   const members  = liveCrew?.members ?? [];
 
   const setEnabled = useSkill('setCompensationEnabled');
   const setMember  = useSkill('setMemberCompensation');
-  const myRollup   = useSkillResult('getCompensation', { memberWebid: actor }, [svc?.activeCrewId, actor]);
+  const myRollup   = useSkillResult('getCompensation', { memberWebid: actor }, [svc?.activeCircleId, actor]);
 
   const onToggleEnabled = useCallback(async (next) => {
     if (!isAdmin) return;

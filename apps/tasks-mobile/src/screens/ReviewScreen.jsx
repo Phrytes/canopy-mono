@@ -45,7 +45,7 @@
  *
  * Skill dispatch:
  *   The screen keeps its `useSkill('approveTask')` / `useSkill('rejectTask')`
- *   bindings — those hooks own the activeCrewId-injection + reply
+ *   bindings — those hooks own the activeCircleId-injection + reply
  *   parts-unwrapping path. The adapter only DECLARES which actions
  *   may surface on each item; the bound hooks DISPATCH. (Same split as
  *   C.1's `useAdapterSection` for data: adapter declares, hook
@@ -105,7 +105,7 @@ export function ReviewScreen() {
   // (V0.2 Q7 — `listAwaitingApproval`). Same `useAdapterSection`
   // pattern as Workspace + MyWork.
   const { section, data, loading, refresh } =
-    useAdapterSection(adapter, 'review', [svc?.activeCrewId]);
+    useAdapterSection(adapter, 'review', [svc?.activeCircleId]);
   const list = { data, loading, refresh };
 
   const approve = useSkill('approveTask');

@@ -54,7 +54,7 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
   return [
     defineSkill('suggestSchedule', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const a = argsFromParts(parts);
       const lookaheadDays = Number.isFinite(a.lookaheadDays) && a.lookaheadDays > 0
@@ -94,7 +94,7 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
 
     defineSkill('acceptSchedule', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const a = argsFromParts(parts);
       if (typeof a.taskId !== 'string' || !a.taskId) return { error: 'taskId required' };
@@ -117,7 +117,7 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
 
     defineSkill('rejectSchedule', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const a = argsFromParts(parts);
       if (typeof a.taskId !== 'string' || !a.taskId) return { error: 'taskId required' };

@@ -207,14 +207,14 @@ describe('materializeScreen · α.4 — tasks block (multi-kring)', () => {
     const calls = [];
     const callSkill = vi.fn(async (app, op, args) => {
       calls.push([app, op, args]);
-      if (args.crewId === 'g1') return { items: [
+      if (args.circleId === 'g1') return { items: [
         { id: 't-g1-mine', text: 'g1 mine', assignee: 'webid:me', addedAt: 100 },
         { id: 't-g1-bob',  text: 'g1 bob',  assignee: 'webid:bob', addedAt: 200 },
       ] };
-      if (args.crewId === 'g2') return { items: [
+      if (args.circleId === 'g2') return { items: [
         { id: 't-g2-mine', text: 'g2 mine', assignee: 'webid:me', addedAt: 300 },
       ] };
-      if (args.crewId === 'g3') return { items: [] };
+      if (args.circleId === 'g3') return { items: [] };
       return { items: [] };
     });
     const screen = addBlock(emptyScreen('Mijn dingen'), 'tasks');
@@ -229,16 +229,16 @@ describe('materializeScreen · α.4 — tasks block (multi-kring)', () => {
     expect(out[0].content.items[0].circleName).toBe('Helpman');
     expect(out[0].content.items[1].circleName).toBe('Selwerd');
     // Called once per circle.
-    expect(calls.map((c) => c[2].crewId)).toEqual(['g1', 'g2', 'g3']);
+    expect(calls.map((c) => c[2].circleId)).toEqual(['g1', 'g2', 'g3']);
   });
 
   it('Q5: muted circles drop entirely from the merge', async () => {
     const callSkill = vi.fn(async (app, op, args) => {
-      if (args.crewId === 'g2') return { items: [
+      if (args.circleId === 'g2') return { items: [
         { id: 't-g2', text: 'g2 mine', assignee: 'webid:me' },
       ] };
       return { items: [
-        { id: `t-${args.crewId}-mine`, text: 'x', assignee: 'webid:me' },
+        { id: `t-${args.circleId}-mine`, text: 'x', assignee: 'webid:me' },
       ] };
     });
     const screen = addBlock(emptyScreen('Stream'), 'tasks');
@@ -254,8 +254,8 @@ describe('materializeScreen · α.4 — tasks block (multi-kring)', () => {
 
   it('scope:"all" returns every open task across active kringen', async () => {
     const callSkill = vi.fn(async (app, op, args) => ({ items: [
-      { id: `${args.crewId}-a`, assignee: 'webid:me' },
-      { id: `${args.crewId}-b` },  // unassigned
+      { id: `${args.circleId}-a`, assignee: 'webid:me' },
+      { id: `${args.circleId}-b` },  // unassigned
     ] }));
     let screen = addBlock(emptyScreen('Stream'), 'tasks', { scope: 'all' });
     const out = await materializeScreen({

@@ -23,13 +23,13 @@ describe('photoPresets — preset shape', () => {
 
 describe('photoPresets.deliverableRef', () => {
   it('anchors photos under the crew\'s namespace', () => {
-    const ref = deliverableRef({ crewId: 'crew-a', taskId: 'urn:uuid:t1', photoId: 'abc' });
+    const ref = deliverableRef({ circleId: 'crew-a', taskId: 'urn:uuid:t1', photoId: 'abc' });
     expect(ref).toBe('mem://tasks/crews/crew-a/deliverables/urn:uuid:t1/abc.jpg');
   });
   it('throws when any required field is missing', () => {
-    expect(() => deliverableRef({ taskId: 't1', photoId: 'p' })).toThrow(/crewId/);
-    expect(() => deliverableRef({ crewId: 'c', photoId: 'p' })).toThrow(/taskId/);
-    expect(() => deliverableRef({ crewId: 'c', taskId: 't1' })).toThrow(/photoId/);
+    expect(() => deliverableRef({ taskId: 't1', photoId: 'p' })).toThrow(/circleId/);
+    expect(() => deliverableRef({ circleId: 'c', photoId: 'p' })).toThrow(/taskId/);
+    expect(() => deliverableRef({ circleId: 'c', taskId: 't1' })).toThrow(/photoId/);
   });
 });
 

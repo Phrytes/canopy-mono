@@ -17,7 +17,7 @@
  *
  * The dataSource comes from the resolved CrewState — it's the
  * process-level CachingDataSource shared across crews (the inbox is
- * cross-app, per-USER, so the crewId only matters for resolving
+ * cross-app, per-USER, so the circleId only matters for resolving
  * which CrewState's dataSource to use; in practice they all share).
  */
 
@@ -58,7 +58,7 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
   return [
     defineSkill('listMyInbox', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const since = Number.isFinite(a.since) ? a.since : 0;
       const limit = Number.isFinite(a.limit) ? Math.max(1, Math.min(500, a.limit)) : 100;
@@ -74,7 +74,7 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
 
     defineSkill('inboxBadgeCount', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const all = await _listAll(crew.dataSource, root);
       const cutoff = Date.now() - BADGE_WINDOW_MS;
       const recent = all.filter((i) => (i.addedAt ?? 0) >= cutoff);
@@ -85,7 +85,7 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
 
     defineSkill('clearInboxItem', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.id !== 'string' || !a.id) return { error: 'id required' };
       try {
@@ -100,7 +100,7 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
 
     defineSkill('clearInbox', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const olderThanMs = Number.isFinite(a.olderThanMs) ? a.olderThanMs : 0;
       const cutoff = olderThanMs > 0 ? Date.now() - olderThanMs : Number.POSITIVE_INFINITY;

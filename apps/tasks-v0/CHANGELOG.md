@@ -76,13 +76,13 @@ reassign/remove).
 - **Slice 2** (`ea5166c`): `/welcome.html` create-crew wizard
   + `provisionMyCrew` skill. Validates crew-id slug + name +
   kind + storage + optional additional members. Refuses to
-  overwrite an existing crewId. `/crews.html` empty-state links
+  overwrite an existing circleId. `/crews.html` empty-state links
   to `/welcome.html`.
 - **Slice 3** (`203607c`): agent-registry on `createCrewAgent`.
   Helper `registerAgentBundle` lifted from Stoop's app code into
   `@canopy/agent-registry`. Tasks builds a standalone-mode
   pseudoPod per crew + registers with capabilities `['tasks',
-  'tasks-v0', \`crew:<crewId>\`]`. `bundle.pseudoPod` +
+  'tasks-v0', \`crew:<circleId>\`]`. `bundle.pseudoPod` +
   `bundle.agentRegistry` exposed.
 - **Slice 4** (`cfe832c`): `/onboard.html` (invite-redemption,
   paste-link with JSON or `tasks-invite://` URL scheme) +
@@ -114,7 +114,7 @@ reassign/remove).
   `crewsMap = new Map` + `_spawnCrewInProcess` closure
   → `wireSkills` ONCE with `multiCrewResolver`. New
   `itemStoreRoot` opt on `createTasksAgent` for per-crew URI
-  prefix (`mem://tasks/crews/<crewId>/`) to prevent addTask
+  prefix (`mem://tasks/crews/<circleId>/`) to prevent addTask
   writes from leaking across crews. Platform-level skills
   (`provisionMyCrew`, `listSavedCrewConfigs`, `spawnMyCrew`)
   fall back to any crew when strict routing misses.
@@ -123,7 +123,7 @@ reassign/remove).
   and stashes on CrewState. New
   `buildMultiCrewOnboardingSkills({bundleResolver})` registers
   `issueInvite` + `redeemInvite` ONCE with per-call CrewState
-  resolution; `redeemInvite` routes by `args.crewId` OR
+  resolution; `redeemInvite` routes by `args.circleId` OR
   (when omitted) by `invite.groupId`.
 
 ### Slices 9–12 — Phase 52.9.3 substrate-mirror
@@ -133,7 +133,7 @@ reassign/remove).
   + `apps/tasks-v0/src/substrateMirror.js` mirror Stoop's
   pattern. `wireTasksSubstrateMirror` subscribes to
   `kind: 'task'` envelopes, URI-prefix filters by
-  `/tasks/crews/<crewId>/tasks/`, dedupes via
+  `/tasks/crews/<circleId>/tasks/`, dedupes via
   `source.syncedFromId`. `createCrewAgent` wires per-crew mirror.
   `addTask` publishes via notifyEnvelope.
 - **Slice 10** (`26611a3`): sub-slices 2–4 — stale-peer
@@ -256,19 +256,19 @@ Shipped in two passes within the day:
 ### What shipped
 
 - ✅ `src/MeshAgent.js` — `buildMeshAgent({identity, transport, localStoreBundle, identityVault, label})`. Default vault path `mem://tasks/process/agent-identity-vault.json` (per-process, not per-crew). V1.5 self-trust set; V2.0 vault-snapshot persistence preserved.
-- ✅ `src/bundleResolver.js` — `singleCrewResolver(crewState)` + `multiCrewResolver(crews: Map)`. Multi-crew resolution order: `args.crewId` → `<crewId>/...` topic prefix → strict `null`. Strict-on-miss is intentional: silent fallback would convert a multi-crew leak into a successful single-crew op.
+- ✅ `src/bundleResolver.js` — `singleCrewResolver(crewState)` + `multiCrewResolver(crews: Map)`. Multi-crew resolution order: `args.circleId` → `<circleId>/...` topic prefix → strict `null`. Strict-on-miss is intentional: silent fallback would convert a multi-crew leak into a successful single-crew op.
 - ✅ `src/wireSkills.js` — single-registration root. Imports every builder; passes `bundleResolver` through; takes `members` (single-crew) or `getBundle` (multi-crew) for identity skills; supplies a no-op `userSettings` so observability still registers on the V0 zero-config path.
-- ✅ Every `src/skills/*.js` builder switched to the `(parts, ctx)` resolver shape — `buildSkills`, `buildProfileSkills`, `buildAppealSkill`, `buildSubtaskSkills`, `buildInboxSkills`, `buildWorkspaceSkills`, `buildObservabilitySkills`, `buildCrewControlSkills`, `buildCustomRoleSkills`, `buildBotBindingSkills`, `buildCalendarEmissionSkills`, `buildInvoicingSkills`, `buildAvailabilitySkills`, `buildPlannerSkills`, `buildDashboardSkills`, `buildForceCompleteSkill`, `buildBotSkills`. Every body opens with `const crew = bundleResolver(parts, {envelope, from}); if (!crew) return {error: 'crewId required'};` and reads `crew.itemStore` / `crew.liveCrew` / `crew.dataSource` / `crew.roles` etc.
+- ✅ Every `src/skills/*.js` builder switched to the `(parts, ctx)` resolver shape — `buildSkills`, `buildProfileSkills`, `buildAppealSkill`, `buildSubtaskSkills`, `buildInboxSkills`, `buildWorkspaceSkills`, `buildObservabilitySkills`, `buildCrewControlSkills`, `buildCustomRoleSkills`, `buildBotBindingSkills`, `buildCalendarEmissionSkills`, `buildInvoicingSkills`, `buildAvailabilitySkills`, `buildPlannerSkills`, `buildDashboardSkills`, `buildForceCompleteSkill`, `buildBotSkills`. Every body opens with `const crew = bundleResolver(parts, {envelope, from}); if (!crew) return {error: 'circleId required'};` and reads `crew.itemStore` / `crew.liveCrew` / `crew.dataSource` / `crew.roles` etc.
 - ✅ `src/Agent.js#createTasksAgent` and `src/Crew.js#createCrewAgent` → V0/V1 convenience wrappers around `buildMeshAgent` + minimal CrewState + `wireSkills(singleCrewResolver(...))`. External shape unchanged — every existing test passes the bundle through `createCrewAgent` and continues to work.
 - ✅ `bin/tasks-ui.js`:
   - `--crew` (single) — unchanged shape; goes through `createCrewAgent`.
-  - `--crew-list <path>` (new, multi) — boots one meshAgent + N CrewStates and runs an in-process `addTask` smoke probe per crewId, asserting cross-crew ItemStore isolation, then exits. List file shape: `{"crews": ["./a.crew.json", ...]}`. Fixtures live at `tmp/oss-tools.crew.json`, `tmp/book-club.crew.json`, `tmp/two-crews.list.json`.
-- ✅ `web/app.js` — `callSkill` auto-injects `crewId` from `tasks-config.json` into every args object so the single-crew web flow keeps working without per-call boilerplate.
-- ✅ Bot — `bot/skills.js`'s `callUnderlying` injects `crewId` into the inner skill's parts so the inner `bundleResolver(parts, ...)` resolves the right CrewState in multi-crew mode.
+  - `--crew-list <path>` (new, multi) — boots one meshAgent + N CrewStates and runs an in-process `addTask` smoke probe per circleId, asserting cross-crew ItemStore isolation, then exits. List file shape: `{"crews": ["./a.crew.json", ...]}`. Fixtures live at `tmp/oss-tools.crew.json`, `tmp/book-club.crew.json`, `tmp/two-crews.list.json`.
+- ✅ `web/app.js` — `callSkill` auto-injects `circleId` from `tasks-config.json` into every args object so the single-crew web flow keeps working without per-call boilerplate.
+- ✅ Bot — `bot/skills.js`'s `callUnderlying` injects `circleId` into the inner skill's parts so the inner `bundleResolver(parts, ...)` resolves the right CrewState in multi-crew mode.
 
 ### Tests
 
-- ✅ New `test/v2_8-single-agent.test.js` — 5 tests: one meshAgent serves two CrewStates with isolated ItemStores; strict resolution returns `{error: 'crewId required'}` when no crewId + no topic; `singleCrewResolver` keeps the V0 back-compat path; cross-crew role-policy gate fires when caller has no role in the resolved crew; `<crewId>/...` envelope topic resolves the right crew.
+- ✅ New `test/v2_8-single-agent.test.js` — 5 tests: one meshAgent serves two CrewStates with isolated ItemStores; strict resolution returns `{error: 'circleId required'}` when no circleId + no topic; `singleCrewResolver` keeps the V0 back-compat path; cross-crew role-policy gate fires when caller has no role in the resolved crew; `<circleId>/...` envelope topic resolves the right crew.
 - ✅ All 319 prior tests pass unchanged. **Tests now: 324 across 31 files** (Tasks).
 - ✅ Stoop's 435/41 still green — V2.8 has no Stoop impact (Stoop's own single-agent refactor predates this).
 
@@ -285,7 +285,7 @@ Shipped in two passes within the day:
 
 ### Deferred
 
-- **A web crew-picker** for `--crew-list` mode: today the multi-crew launcher is CLI-only. The web UI assumes a single crew; a multi-crew picker (route per crewId, per-tab `tasks-config.json` injection) lives in tasks-mobile's plan and isn't needed before mobile ships.
+- **A web crew-picker** for `--crew-list` mode: today the multi-crew launcher is CLI-only. The web UI assumes a single crew; a multi-crew picker (route per circleId, per-tab `tasks-config.json` injection) lives in tasks-mobile's plan and isn't needed before mobile ships.
 - A separately-exported `buildCrewState({meshAgent, crewConfig, localStoreBundle, ...})` from `Crew.js` — the runbook contemplated lifting it, but the multi-crew smoke uses the test-fixture pattern (a 30-line inline CrewState) and `createCrewAgent` already exposes the V1+ enrichment path. Lift this when a third consumer (mobile + multi-crew CLI counts as two — wait for #3) demands it.
 
 ## [0.3.5] — 2026-05-08 — V2.5 — cross-crew dashboard + bot crews
@@ -295,7 +295,7 @@ Capability **S** from the V2 functional design. One screen lists every crew the 
 ### App-side
 
 - ✅ `src/dashboard/aggregator.js` — pure `aggregateCrews({crews, actor, roleOf, now})`. Filters out `subtask-request` items; submitted-but-not-approved items count as awaiting-approval (admin/coord see all, members see only their own mastered ones). Sorts busiest first.
-- ✅ `src/skills/dashboard.js` — `getMyCrews()` skill. Filters bundles to those where `roleOf(actor)` returns a defined role (other-crew leakage is impossible by construction). Returns `{crews: [{crewId, name, kind, counts}]}`.
+- ✅ `src/skills/dashboard.js` — `getMyCrews()` skill. Filters bundles to those where `roleOf(actor)` returns a defined role (other-crew leakage is impossible by construction). Returns `{crews: [{circleId, name, kind, counts}]}`.
 - ✅ `src/Crew.js` — accepts a new `crewBundlesProvider` parameter. Default returns `[selfBundle]` (single-crew launches); multi-crew launchers pass a closure that returns every bundle they built. Registers `getMyCrews` on every bundle so any crew's UI can surface the dashboard.
 - ✅ `src/bot/dispatch.js` — verbs `crews` / `my crews` route to `bot.crews`. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — `bot.crews` calls `getMyCrews` for the actingAs webid; renders one line per crew with name + kind chip + open/overdue/mine counts. `policy: 'requires-token'`.
@@ -403,11 +403,11 @@ Capability **P** from the V2 functional design. Crews with `compensation.enabled
 ### App-side
 
 - ✅ `src/skills/invoicing.js` — three skills + one helper:
-  - `recordInvoiceLine({dataSource, crewId, member, task})` — internal helper, idempotent (won't double-append the same `taskId`).
+  - `recordInvoiceLine({dataSource, circleId, member, task})` — internal helper, idempotent (won't double-append the same `taskId`).
   - `getCompensation({memberWebid?, month?})` — admin OR self only. Returns `{lines, totals: {count, hours, amount?}, currency}`. Amount is `hours × member.rate`, marked informational.
   - `setMemberCompensation({memberWebid, compensated, rate?})` — admin only.
   - `setCompensationEnabled({enabled})` — admin only.
-- ✅ `src/Crew.js` — wires the `item-completed` listener when `liveCrew.compensation.enabled === true`; re-attaches/detaches when toggled. Path scheme: `mem://tasks/crews/<crewId>/invoicing/<webid>/<isoMonth>.json`. `_normaliseConfig` extended with `compensation: {enabled, defaultRate, currency}` (default disabled).
+- ✅ `src/Crew.js` — wires the `item-completed` listener when `liveCrew.compensation.enabled === true`; re-attaches/detaches when toggled. Path scheme: `mem://tasks/crews/<circleId>/invoicing/<webid>/<isoMonth>.json`. `_normaliseConfig` extended with `compensation: {enabled, defaultRate, currency}` (default disabled).
 - ✅ `src/skills/index.js` — `addTask` now passes `scheduledAt` + `estimateMinutes` through to ItemStore.
 - ✅ `src/bot/dispatch.js` — verbs `invoice` / `invoicing` / `comp` route to `bot.invoice`. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — new `bot.invoice` calls `getCompensation` for the actingAs webid; renders chat-formatted table; non-pros get the friendly empty-state. `policy: 'requires-token'`.
@@ -425,13 +425,13 @@ Tests now: **259 across 23 files** (Tasks). Stoop's 429 + core's 1279 still gree
 
 Capability **N** from the V2 functional design. Tasks now emits per-member `.ics` calendars to the local-store cache (and onward to the user's pod when attached). Members subscribe once in their phone calendar app — new tasks show up automatically.
 
-- ✅ `src/calendar/emitter.js` — pure `buildIcsFor({crewId, crewName, member, tasks, now})` + `buildCancellationIcs(removed)` + `diffRemoved(prev, next)`. Filters relevant tasks per member (assigned / mastered / approver of). UID = task.id so re-emissions update existing calendar events.
+- ✅ `src/calendar/emitter.js` — pure `buildIcsFor({circleId, crewName, member, tasks, now})` + `buildCancellationIcs(removed)` + `diffRemoved(prev, next)`. Filters relevant tasks per member (assigned / mastered / approver of). UID = task.id so re-emissions update existing calendar events.
 - ✅ `src/calendar/wireCalendarEmission.js` — `wireCalendarEmission({itemStore, dataSource, crew, member, path, debounceMs})` subscribes to item events; debounces 60 s; rebuilds the ICS and writes to the per-member path. `flushNow()` for tests. Returns `{detach}` for clean shutdown.
 - ✅ `src/skills/calendarEmission.js` — three skills:
   - `setCalendarEmission({enabled})` — admin/coord only. Toggles `liveCrew.calendarEmission.enabled`. Invokes the `onChange` callback so Crew.js re-wires the per-member emission loops immediately.
   - `getCalendarEmissionUrl()` — self only. Returns the per-member path the calendar app subscribes to.
   - `getCalendarEmissionStatus()` — self only. Read-only flag + URL.
-- ✅ `src/Crew.js` — wires emission loops on boot when `liveCrew.calendarEmission.enabled === true`; re-wires when the toggle changes; cleans up on `close()`. Path scheme: `mem://user/tasks/calendars/<crewId>-<webid>.ics`. `_normaliseConfig` extended with `calendarEmission` field (default `{enabled: false}`).
+- ✅ `src/Crew.js` — wires emission loops on boot when `liveCrew.calendarEmission.enabled === true`; re-wires when the toggle changes; cleans up on `close()`. Path scheme: `mem://user/tasks/calendars/<circleId>-<webid>.ics`. `_normaliseConfig` extended with `calendarEmission` field (default `{enabled: false}`).
 - ✅ `src/bot/dispatch.js` — new verbs `calendar` / `cal` / `sync` route to `bot.calendar`. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — new `bot.calendar` skill calls `getCalendarEmissionUrl` for the actingAs webid; replies with the URL or the friendly off-state hint. `policy: 'requires-token'` per V1.5 follow-up A.
 - ✅ `web/crew.html` — new "Calendar sync" panel between Bot bindings and Cadences. Toggle (admin/coord) + per-member URL display + off-state empty-state copy.
@@ -442,7 +442,7 @@ Tests now: **249 across 21 files** (Tasks).
 
 ## [0.3.0] — 2026-05-08 — V2.0 — tasks-agent identity persistence
 
-First V2 phase. Closes the V1.5 follow-up R1 carried into the V2 design: the tasks agent's vault is now snapshot-persisted under `mem://tasks/crews/<crewId>/agent/identity-vault.json` so its pubKey survives CLI restarts.
+First V2 phase. Closes the V1.5 follow-up R1 carried into the V2 design: the tasks agent's vault is now snapshot-persisted under `mem://tasks/crews/<circleId>/agent/identity-vault.json` so its pubKey survives CLI restarts.
 
 - ✅ `Crew.js` — at boot, attempts to restore the vault from the per-crew path; if absent, generates a fresh identity and persists the snapshot. Idempotent: `restoreFromSnapshot → AgentIdentity.restore` reads the same seed each time. Per-crew path scheme means multi-crew installs don't collide.
 - ✅ `Agent.js` — `createTasksAgent` accepts an optional `identityVault` parameter for callers that bypass `Crew.js`. Same restore-or-generate logic, kept consistent so both entry points work.
@@ -464,7 +464,7 @@ Closes the three deferred items flagged at the bottom of [0.2.4].
 ### B — Persist bot identities (cap-token bindings survive CLI restart)
 
 - ✅ Substrate (core): `VaultMemory.snapshot()` + `VaultMemory.fromSnapshot(obj)` for callers that want to persist a vault's contents to a regular DataSource. Plain JSON-safe shape; encryption-at-rest is the caller's job.
-- ✅ App: `BotAgentRegistry({bus, tasksAgent, dataSource, crewId})` — when `dataSource` + `crewId` are supplied, `issue` writes `{binding, vault: snapshot, token}` to `mem://tasks/crews/<crewId>/botAgents/<chatId>.json`; `revoke` deletes it. `Crew.js` wires the bundle's cache + crew id automatically.
+- ✅ App: `BotAgentRegistry({bus, tasksAgent, dataSource, circleId})` — when `dataSource` + `circleId` are supplied, `issue` writes `{binding, vault: snapshot, token}` to `mem://tasks/crews/<circleId>/botAgents/<chatId>.json`; `revoke` deletes it. `Crew.js` wires the bundle's cache + crew id automatically.
 - ✅ App: `restoreAll()` runs at Crew boot. For each persisted entry: rebuilds the bot's vault + identity + agent; hellos the tasks agent. The persisted token's `agentId` is the previous tasks-agent pubKey (which doesn't survive identity regeneration, since tasks-agent identity persistence is a V2 item) — so the registry **auto-rotates the token** against the current tasks agent on restore. Bot identity stays stable, token gets fresh expiry. Boot prints `[BotAgentRegistry] restored=N expired=M failed=K`.
 - ✅ App: expired persisted entries are dropped from storage and skipped (so the admin re-issues at next UI visit).
 - ✅ Tests: 2 added — restart-survival end-to-end (issue, close, fresh boot, dispatch via restored bot still works); expired entries are pruned.
@@ -495,7 +495,7 @@ The previous V1.5 work shipped chat-bot dispatch via direct in-process handler c
 
 ### Tasks-app additions
 
-- ✅ New `apps/tasks-v0/src/bot/BotAgentRegistry.js` — per-binding bot agent factory. Each `(crewId, chatId)` binding gets its own fresh `AgentIdentity`, `VaultMemory`, `TokenRegistry`, and `Agent` instance on the shared `InternalBus`. Hello'd into the tasks agent at issue-time so SecurityLayer establishes a session. Token: wildcard skill scope, `constraints: { actingAs: webid, scope: 'bot' }`, default 30-day TTL.
+- ✅ New `apps/tasks-v0/src/bot/BotAgentRegistry.js` — per-binding bot agent factory. Each `(circleId, chatId)` binding gets its own fresh `AgentIdentity`, `VaultMemory`, `TokenRegistry`, and `Agent` instance on the shared `InternalBus`. Hello'd into the tasks agent at issue-time so SecurityLayer establishes a session. Token: wildcard skill scope, `constraints: { actingAs: webid, scope: 'bot' }`, default 30-day TTL.
 - ✅ Two new admin-only skills in `src/skills/botBindings.js`:
   - `issueBotToken({chatId, ttlDays?})` — promotes a binding from trust-map to cap-token mode. Refuses unbound chatIds.
   - `revokeBotToken({chatId})` — revokes the held token + tears down the bot agent. Binding falls back to trust-map mode (unless `removeBotChatBinding` is also called).
@@ -679,12 +679,12 @@ substrates were lifted by parallel work).
 
 - ✅ New `src/Crew.js` — `CrewConfig` schema, `loadCrewConfig` / `saveCrewConfig`, `createCrewAgent` factory.
 - ✅ Crew kinds: `'household' | 'project' | 'team' | 'friends' | 'maintenance'`. `KIND_DEFAULTS` per kind (e.g. `subtasksAdminApprovalDepth`: household 3, project 4, friends 2).
-- ✅ Pod schema established: `<crew-pod>/crews/<crewId>/config.json` (and sibling `members/`, `skills.json`, `cadences.json`, `tasks/` to be populated by later phases).
+- ✅ Pod schema established: `<crew-pod>/crews/<circleId>/config.json` (and sibling `members/`, `skills.json`, `cadences.json`, `tasks/` to be populated by later phases).
 - ✅ `createCrewAgent` wires (when applicable):
   - `MemberMap` seeded from `crewConfig.members`.
-  - `MemberMapCache.attach` against the localStoreBundle's cache so the roster auto-persists under `mem://tasks/crews/<crewId>/members/`.
+  - `MemberMapCache.attach` against the localStoreBundle's cache so the roster auto-persists under `mem://tasks/crews/<circleId>/members/`.
   - A `core.GroupManager` bound to the agent's identity + vault.
-  - `buildOnboardingSkills` from identity-resolver — registers `issueInvite` + `redeemInvite` skills with the right `groupId = crewId`.
+  - `buildOnboardingSkills` from identity-resolver — registers `issueInvite` + `redeemInvite` skills with the right `groupId = circleId`.
 - ✅ `wireOnboardingSkills: false` opt-out for tests / agents that don't need invites.
 - ✅ V0 zero-config path: `createCrewAgent({})` returns an implicit-household crew indistinguishable from `createTasksAgent` defaults.
 - ✅ Tests: 9 added in `test/phase2-crew.test.js` (config round-trip, missing-config fallback, kind defaults, zero-config implicit household, member-map auto-persist via MemberMapCache, onboarding skill registration + actual invite issuance, opt-out). Total now 55/55 passing.
@@ -693,12 +693,12 @@ substrates were lifted by parallel work).
 
 - ✅ New `src/skills/profile.js` — canonical-profile, crew-vocabulary, per-crew-member-skills, and per-crew-posture readers + writers, all over a `core.DataSource` (composes the local-store bundle).
 - ✅ Canonical user-skills profile path: **`mem://user/profile/skills.json`** — intentionally NOT app-namespaced, so Stoop / Tasks / Folio / future apps read the same blob.
-- ✅ Crew skill vocabulary at `<crew-pod>/crews/<crewId>/skills.json`; per-crew member projection at `<crew-pod>/crews/<crewId>/skills/<webid-encoded>.json`; per-crew posture at `<user-pod>/posture/<crewId>.json`.
+- ✅ Crew skill vocabulary at `<crew-pod>/crews/<circleId>/skills.json`; per-crew member projection at `<crew-pod>/crews/<circleId>/skills/<webid-encoded>.json`; per-crew posture at `<user-pod>/posture/<circleId>.json`.
 - ✅ Tag normalisation: leans on the shipped `@canopy/identity-resolver/normaliseTag` so NL "schilderen" / EN "painting" / "schilderwerk" all canonicalise to one tag — cross-language matching works out of the box. Off-taxonomy `categoryId` values get nulled; duplicates dedupe by canonical tag.
 - ✅ `prefilledFormShape({canonicalProfile, crewVocabulary, taxonomy?})` — pure function, returns `{prefilled, vocabSuggestions, taxonomyHints}` for the UI's three lists. `prefilled` annotated with `inCrewVocabulary`. Handles null inputs.
 - ✅ Two new skills auto-registered on `createCrewAgent` when a `localStoreBundle` is supplied:
-  - `getMySkillsFormShape({crewId})` — returns the prefilled shape.
-  - `editMySkillsForCrew({crewId, skills, persistToCanonicalProfile?})` — always writes the per-crew projection; mirrors to canonical profile only when the opt-in flag is set (per pod-data-sharing caution principles).
+  - `getMySkillsFormShape({circleId})` — returns the prefilled shape.
+  - `editMySkillsForCrew({circleId, skills, persistToCanonicalProfile?})` — always writes the per-crew projection; mirrors to canonical profile only when the opt-in flag is set (per pod-data-sharing caution principles).
 - ✅ Webid taken from `from` (envelope) preferred over args; rejects calls without a webid.
 - ✅ Tests: 18 added in `test/phase3-profile.test.js`. Total now **73/73 passing**.
 
@@ -763,7 +763,7 @@ UI surface (`apps/tasks-v0/web/`):
 - ✅ Refreshed `style.css` — new pills for the 4 lifecycle states + inbox-entry layout + tree-children indentation + nav badge.
 
 CLI:
-- ✅ `bin/tasks-ui.js` extends `/tasks-config.json` overlay to include `crew: {crewId, name, kind}` when a Crew envelope is wired (UI uses this for context).
+- ✅ `bin/tasks-ui.js` extends `/tasks-config.json` overlay to include `crew: {circleId, name, kind}` when a Crew envelope is wired (UI uses this for context).
 
 Tests: 11 added in `test/phase8-ui.test.js`; V0 baseline test text-assertions updated for the renamed nav. Total now **143/143 passing**.
 

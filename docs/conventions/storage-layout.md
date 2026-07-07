@@ -63,7 +63,7 @@ expect them.
 │   │                          keyed by WHAT the object is — never by app
 │   └── with-<webid>/        — per-recipient auto-share folders (Phase 52.16)
 ├── group/               — crew-scoped; location per the crew §II.2 policy
-│   └── <crewId>/<type>/     — e.g. group/<crewId>/items/
+│   └── <circleId>/<type>/     — e.g. group/<circleId>/items/
 └── inbox/               — public-write (LDP inbox convention)
 ```
 
@@ -96,7 +96,7 @@ that apps know to look up) and valued by **destination URI**.
 
 Storage-function names are **type/domain-keyed and app-agnostic**
 (`<type>` or `<domain>/<type>` — e.g. `items`, `photos`,
-`profile-public`, `group/<crewId>/items`). They name **what the
+`profile-public`, `group/<circleId>/items`). They name **what the
 object is**, never **which app wrote it**. Apps register the
 function names they use when bootstrapping; users edit the mapping
 via app settings or (eventually) the Hub-web-console.
@@ -116,7 +116,7 @@ app Y (e.g. tasks-v0) as long as both speak the canonical
 `@canopy/item-types` schema for that type. Concretely:
 
 - One container per canonical type (`sharing/<type>/`, or
-  `group/<crewId>/<type>/` for crew-scoped data); the type name is
+  `group/<circleId>/<type>/` for crew-scoped data); the type name is
   the `@canopy/item-types` taxonomy name.
 - Cross-app **reuse** rides the shared `item-types` schema; cross-app
   **references** ride the `embeds: [{type, ref}]` field

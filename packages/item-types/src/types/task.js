@@ -25,7 +25,7 @@ export const TASK_SCHEMA = {
     },
     assignee:     { type: 'string' },
     dependencies: { type: 'array', items: { type: 'string' } },
-    crewId:       { type: 'string' },
+    circleId:       { type: 'string' },
     dod:          { type: 'string' },
     approver:     { type: 'string' },
   },

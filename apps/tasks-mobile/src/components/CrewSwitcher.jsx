@@ -25,13 +25,13 @@ export function CrewSwitcher() {
     if (!svc) return;
     const ids = Array.from(svc.crews.keys());
     if (ids.length < 2) return;
-    const cur = svc.activeCrewId;
+    const cur = svc.activeCircleId;
     const idx = ids.indexOf(cur);
     const next = ids[(idx + 1) % ids.length];
     svc.setActiveCrew(next);
   }, [svc]);
 
-  const activeId = svc?.activeCrewId;
+  const activeId = svc?.activeCircleId;
   const active = activeId ? svc?.crews?.get(activeId) : null;
   const nameOrId = active?.liveCrew?.name ?? activeId ?? t('mobile.crew_switch.no_crews');
   const canCycle = (svc?.crews?.size ?? 0) >= 2;

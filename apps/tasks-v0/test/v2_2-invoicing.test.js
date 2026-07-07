@@ -23,7 +23,7 @@ const FRITS = 'https://id.example/frits';
 const CAROL = 'https://id.example/carol';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [

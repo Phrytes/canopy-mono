@@ -35,7 +35,7 @@ export function CadenceSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cur   = useSkillResult('getCrewCadences', {}, [svc?.activeCrewId]);
+  const cur   = useSkillResult('getCrewCadences', {}, [svc?.activeCircleId]);
   const setSk = useSkill('setCrewCadences');
 
   const [draft, setDraft] = useState(null);

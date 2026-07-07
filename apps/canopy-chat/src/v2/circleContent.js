@@ -42,7 +42,7 @@ export function normalizeContentItem(raw = {}, kind = null) {
     label: raw.title ?? raw.text ?? raw.name ?? raw.summary ?? (id != null ? String(id) : ''),
     kind: raw.kind ?? kind ?? null,
     circleId: raw.circleId,
-    crewId: raw.crewId,
+    circleId: raw.circleId,
     groupId: raw.groupId,
     audience: raw.audience,
   };
@@ -51,14 +51,14 @@ export function normalizeContentItem(raw = {}, kind = null) {
 function keepForCircle(item, circleId) {
   if (!circleId) return true;
   const hasHint =
-    item.circleId != null || item.crewId != null || item.groupId != null || item.audience != null;
+    item.circleId != null || item.circleId != null || item.groupId != null || item.audience != null;
   if (!hasHint) return true; // op already scoped via args — trust it
   return isInCircle(item, circleId);
 }
 
 export async function loadCircleItems({ callSkill, circleId, sources = DEFAULT_SOURCES } = {}) {
   if (typeof callSkill !== 'function') return [];
-  const args = circleId ? { circleId, crewId: circleId, groupId: circleId } : {};
+  const args = circleId ? { circleId, groupId: circleId } : {};
   const lists = await Promise.all(
     sources.map(async (s) => {
       try {

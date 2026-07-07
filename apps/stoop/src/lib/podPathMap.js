@@ -12,8 +12,8 @@
  * pod-routing storage-function and `tail` is the resource path
  * within it (each segment percent-encoded so `:`-bearing ids like
  * `webid:local:<peer>` are pod-safe).  The (family ↔ logical-prefix)
- * pairing is a bijection so `unclassify` round-trips.  `crewId` is
- * orthogonal runtime context (injected into `group/<crewId>/…`); the
+ * pairing is a bijection so `unclassify` round-trips.  `circleId` is
+ * orthogonal runtime context (injected into `group/<circleId>/…`); the
  * logical key never encodes it, so `unclassify` drops it.
  *
  * Returns `null` for keys that are intentionally NOT type-routed:
@@ -37,8 +37,8 @@ function encTail(p) { return p; }
 function decTail(p) { return p; }
 
 // Ordered rules. `prefix` = logical prefix; `family` = a stable,
-// injective key that `unclassify` maps back to `prefix`; `fn(crewId)`
-// = the pod-routing storage-function. `crew` rules require a crewId.
+// injective key that `unclassify` maps back to `prefix`; `fn(circleId)`
+// = the pod-routing storage-function. `crew` rules require a circleId.
 const RULES = [
   { family: 'g-items',   prefix: 'mem://neighborhood/items/',   crew: true,
     fn: (c) => `group/${c}/items` },
@@ -65,10 +65,10 @@ const RULES = [
 
 /**
  * @param {string} memPath  a `mem://…` logical key
- * @param {{crewId?: string}} [ctx]
+ * @param {{circleId?: string}} [ctx]
  * @returns {{storageFn: string, tail: string} | null}
  */
-export function classify(memPath, { crewId } = {}) {
+export function classify(memPath, { circleId } = {}) {
   if (typeof memPath !== 'string' || !memPath.startsWith('mem://')) return null;
   // Out of scope (owned by cross-app-settings.md).
   if (memPath.startsWith('mem://stoop/settings')) return null;
@@ -76,7 +76,7 @@ export function classify(memPath, { crewId } = {}) {
   for (const r of RULES) {
     const hit = r.exact ? memPath === r.prefix : memPath.startsWith(r.prefix);
     if (!hit) continue;
-    if (r.crew && (typeof crewId !== 'string' || crewId.length === 0)) {
+    if (r.crew && (typeof circleId !== 'string' || circleId.length === 0)) {
       // crew-scoped key but no active crew → caller skips (Phase 2.4
       // only routes when a crew + pod are present).
       return null;
@@ -86,14 +86,14 @@ export function classify(memPath, { crewId } = {}) {
       // private/state keeps the full `stoop/…` sub-path verbatim.
       ? encTail(memPath.slice('mem://'.length))
       : encTail(rel);
-    return { storageFn: r.fn(crewId), tail };
+    return { storageFn: r.fn(circleId), tail };
   }
   return null;
 }
 
 /**
  * Inverse of {@link classify}: `(storageFn, tail) → mem:// key`.
- * `crewId` in a `group/<crewId>/…` storageFn is parsed out and
+ * `circleId` in a `group/<circleId>/…` storageFn is parsed out and
  * discarded (the logical key never encodes it).
  *
  * @param {string} storageFn
@@ -112,7 +112,7 @@ export function unclassify(storageFn, tail) {
   }
   if (storageFn.startsWith('group/')) {
     const rest = storageFn.slice('group/'.length);
-    const sub  = rest.slice(rest.indexOf('/') + 1); // drop <crewId>/
+    const sub  = rest.slice(rest.indexOf('/') + 1); // drop <circleId>/
     const decoded = decTail(tail);
     if (sub === 'items')            return 'mem://neighborhood/items/'   + decoded;
     if (sub === 'members')          return 'mem://neighborhood/members/' + decoded;
@@ -132,24 +132,24 @@ export function unclassify(storageFn, tail) {
  * the cross-app type-index read path).
  *
  * Pure — the caller injects `resolve` (= `podRouting.resolve`).
- * Tries every distinct storage-function (crew ones need `crewId`),
+ * Tries every distinct storage-function (crew ones need `circleId`),
  * longest matching base wins, then `unclassify`. Returns null when
  * the URI is under no known base (caller falls back to identity).
  *
  * @param {object} a
  * @param {(storageFn:string, vars?:object)=>string|null} a.resolve
- * @param {string} [a.crewId]
+ * @param {string} [a.circleId]
  * @param {string} a.podUri
  * @param {object} [a.vars]
  * @returns {string|null}
  */
-export function reverseResolve({ resolve, crewId, podUri, vars } = {}) {
+export function reverseResolve({ resolve, circleId, podUri, vars } = {}) {
   if (typeof resolve !== 'function' || typeof podUri !== 'string' || !podUri) {
     return null;
   }
   const fns = new Set();
   for (const r of RULES) {
-    if (r.crew) { if (crewId) fns.add(r.fn(crewId)); }
+    if (r.crew) { if (circleId) fns.add(r.fn(circleId)); }
     else fns.add(r.fn());
   }
   let best = null;

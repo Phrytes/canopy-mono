@@ -14,7 +14,7 @@ keep per-scope state **outside** the agent — typically a
 the agent. Skills register on the agent **once**, with a
 context-resolver (`getBundle(args, ctx)`) so dispatch picks the
 right scope based on the call's `args.scopeId` (e.g. `groupId`,
-`crewId`) or the inbound envelope's pubsub topic.
+`circleId`) or the inbound envelope's pubsub topic.
 
 ## Why
 
