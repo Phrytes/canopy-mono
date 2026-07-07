@@ -1967,7 +1967,14 @@
     "list":   { "text": "Shared into this circle ({{count}}):",     "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
     "empty":  { "text": "Nothing shared into this circle yet.",     "doc": "cluster K cross-circle share — empty state for /shared." },
     "revoked":       { "text": "Revoked {{recipient}}'s access to \"{{item}}\".", "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)." },
-    "revoke_failed": { "text": "Un-share failed: {{error}}.",                     "doc": "objective L canonical share — failure note for /unshareitem." }
+    "revoke_failed": { "text": "Un-share failed: {{error}}.",                     "doc": "objective L canonical share — failure note for /unshareitem." },
+    "outbound_title":  { "text": "Shared out of this circle",                     "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares." },
+    "outbound_empty":  { "text": "This circle hasn't shared any items out.",       "doc": "objective L — empty state for the outbound-shares section." },
+    "outbound_row":    { "text": "\"{{item}}\" → {{circle}}",                       "doc": "objective L — one outbound-share row (source item → target circle)." },
+    "stop":            { "text": "Stop sharing",                                    "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)." },
+    "not_revocable":   { "text": "Copy/trusted shares can't be un-shared in place.", "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)." },
+    "member_revoked":       { "text": "Revoked the removed member from {{count}} shared item(s).",       "doc": "objective L — notice after auto-revoking a removed member's canonical grants." },
+    "member_revoke_failed": { "text": "Couldn't revoke {{count}} shared item(s) for the removed member.", "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)." }
   },
   "clarify": {
     "which": {

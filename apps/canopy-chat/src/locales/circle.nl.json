@@ -1967,7 +1967,14 @@
     "list":   { "text": "Gedeeld met deze kring ({{count}}):",          "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
     "empty":  { "text": "Nog niets met deze kring gedeeld.",            "doc": "cluster K cross-circle share — empty state for /shared." },
     "revoked":       { "text": "Toegang van {{recipient}} tot \"{{item}}\" ingetrokken.", "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)." },
-    "revoke_failed": { "text": "Delen intrekken mislukt: {{error}}.",                      "doc": "objective L canonical share — failure note for /unshareitem." }
+    "revoke_failed": { "text": "Delen intrekken mislukt: {{error}}.",                      "doc": "objective L canonical share — failure note for /unshareitem." },
+    "outbound_title":  { "text": "Gedeeld vanuit deze cirkel",                    "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares." },
+    "outbound_empty":  { "text": "Deze cirkel heeft nog niets gedeeld.",          "doc": "objective L — empty state for the outbound-shares section." },
+    "outbound_row":    { "text": "\"{{item}}\" → {{circle}}",                      "doc": "objective L — one outbound-share row (source item → target circle)." },
+    "stop":            { "text": "Delen stoppen",                                 "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)." },
+    "not_revocable":   { "text": "Kopie-/vertrouwd-delen kan niet ter plekke worden ingetrokken.", "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)." },
+    "member_revoked":       { "text": "Verwijderd lid ingetrokken bij {{count}} gedeeld(e) item(s).",       "doc": "objective L — notice after auto-revoking a removed member's canonical grants." },
+    "member_revoke_failed": { "text": "Kon {{count}} gedeeld(e) item(s) niet intrekken voor het verwijderde lid.", "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)." }
   },
   "clarify": {
     "which": {
