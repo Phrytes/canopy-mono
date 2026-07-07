@@ -12,13 +12,17 @@ import { buildScreenModel } from '../../../../canopy-chat/src/v2/screenModel.js'
 import { t } from '../../core/localisation.js';
 
 export default function CircleListScreen({
-  items = [], categoryField, manifestsByOrigin, appOrigin, capabilityMatrix = [],
+  items = [], categoryField, searchFields, manifestsByOrigin, appOrigin, capabilityMatrix = [],
   title, onRowAction, onClose,
 }) {
   const [query, setQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState(null);   // null = all checked
 
-  const shared = { items, categoryField, manifestsByOrigin, appOrigin, capabilityMatrix };
+  // D-mig-2 — `searchFields` (WHICH item fields the text search matches) is
+  // threaded into the SHARED buildScreenModel so mobile search behaves
+  // identically to web (web≡mobile).  Absent → consumer defaults to
+  // `[labelField]` (label-only search, unchanged).
+  const shared = { items, categoryField, searchFields, manifestsByOrigin, appOrigin, capabilityMatrix };
   const model = useMemo(() => buildScreenModel({ ...shared, query, activeCategories }),
     [items, categoryField, appOrigin, capabilityMatrix, query, activeCategories]);
   const allCats = useMemo(() => buildScreenModel(shared).categories, [items, categoryField, appOrigin, capabilityMatrix]);

@@ -97,6 +97,12 @@
  * @property {string}   [categoryField]    mirrors view.categoryField (D-mig-1a).
  *                                         Which item field groups/filters list
  *                                         rows (e.g. 'category', 'kind').
+ * @property {string[]} [searchFields]     mirrors view.searchFields (D-mig-2).
+ *                                         Which item fields the free-text list
+ *                                         filter matches (case-insensitive
+ *                                         contains; ANY field hit = match).
+ *                                         Downstream defaults to `[labelField]`
+ *                                         when unset (label-only search, as before).
  * @property {Affordance[]} affordances    per-section actions (e.g. add-form)
  * @property {ItemAction[]} itemActions    per-item state-gated buttons
  *
@@ -518,6 +524,12 @@ function buildSection(view, ops, manifest) {
   // of a hardcoded LIST_SCREENS literal.  Absent → unset (back-compatible).
   if (view.labelField    !== undefined) section.labelField    = view.labelField;
   if (view.categoryField !== undefined) section.categoryField = view.categoryField;
+  // D-mig-2 — the free-text filter grammar: WHICH item fields the list's
+  // text search matches.  Passed through verbatim (same pattern as
+  // labelField/categoryField above) so the consumer (buildScreenModel)
+  // searches across the declared fields instead of only the label.
+  // Absent → unset ⇒ consumer defaults to `[labelField]` (back-compatible).
+  if (view.searchFields  !== undefined) section.searchFields  = view.searchFields;
   // SP-5b — project the view's declared audience so the list-render seam
   // (e.g. canopy-chat `buildScreenModel`) can DEFAULT its ListFilter.audience
   // to it.  The schema field is `view.defaultAudience` (schema.js); an explicit

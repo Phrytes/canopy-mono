@@ -1210,6 +1210,13 @@ export const stoopManifest = {
       dataSource:    { skillId: 'listContacts' },
       labelField:    'label',
       categoryField: 'category',
+      // D-mig-2 — the free-text filter grammar.  A contact row (the
+      // listContacts reply adapter, realAgent.js) carries `label`
+      // (displayName ?? handle ?? webid) AND a distinct `handle` field —
+      // so searching by handle when the label shows a display name is a
+      // GENUINE secondary field.  An item matches if the query hits label
+      // OR handle (case-insensitive contains).
+      searchFields:  ['label', 'handle'],
     },
     //  prikbord → listOpen (spans ask/offer/lend; the reply adapter maps
     //      those canonical rows to the chat-shell `type:'post'`, same type
@@ -1222,6 +1229,14 @@ export const stoopManifest = {
       type:          'post',
       dataSource:    { skillId: 'listOpen' },
       categoryField: 'kind',
+      // D-mig-2 — the free-text filter grammar.  A prikbord post row (the
+      // listOpen reply adapter, realAgent.js) sets `label = post.text` —
+      // the label ALREADY IS the full post body.  There is no separate
+      // title/summary field distinct from the label to search, so we
+      // declare the default explicitly (`['label']`) rather than invent a
+      // field the data doesn't carry.  Formalises the default: a prikbord
+      // search matches the post body, exactly as before.
+      searchFields:  ['label'],
     },
   ],
 };

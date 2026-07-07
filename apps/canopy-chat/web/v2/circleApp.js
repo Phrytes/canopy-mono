@@ -2693,6 +2693,10 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
     const { section, appOrigin } = found;
     const categoryField = section.categoryField;
     const labelField = section.labelField ?? 'label';
+    // D-mig-2 — WHICH item fields the text search matches, sourced from the
+    // projected section (like categoryField/labelField).  Absent → the
+    // consumer defaults to `[labelField]` (label-only search, as before).
+    const searchFields = section.searchFields;
     try {
       const res = await rawCallSkill(appOrigin, section.dataSource.skillId, section.dataSource.args ?? {});
       const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
@@ -2707,7 +2711,7 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
       } catch { /* best-effort */ }
       body.innerHTML = '';
       renderListBlock(body, {
-        block: { items, categoryField, labelField, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
+        block: { items, categoryField, labelField, searchFields, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
       });

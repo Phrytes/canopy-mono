@@ -209,6 +209,33 @@ describe('validateManifest', () => {
     });
   });
 
+  describe('D-mig-2 view.searchFields', () => {
+    const base = (overrides) => ({
+      app: 'a',
+      itemTypes: ['task'],
+      operations: [],
+      views: [{ id: 'v', title: 'V', type: 'task', ...overrides }],
+    });
+
+    it('accepts a string[] searchFields', () => {
+      expect(ok(base({ searchFields: ['label', 'handle'] }))).toBe(true);
+    });
+
+    it('accepts a view without searchFields (back-compatible → default [labelField])', () => {
+      expect(ok(base({}))).toBe(true);
+    });
+
+    it('rejects a non-array searchFields', () => {
+      const e = errs(base({ searchFields: 'label' }));
+      expect(e.some((x) => /view.searchFields must be an array of strings/.test(x.message))).toBe(true);
+    });
+
+    it('rejects a searchFields with a non-string entry', () => {
+      const e = errs(base({ searchFields: ['label', 123] }));
+      expect(e.some((x) => /view.searchFields entries must be non-empty strings/.test(x.message))).toBe(true);
+    });
+  });
+
   describe('V0.3 Q15/Q16 dataSource sanity check', () => {
     const base = (dataSource) => ({
       app: 'a',
