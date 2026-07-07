@@ -12,12 +12,15 @@ export function renderCircleAdminPanel(container, {
   members = [],
   reports = [],
   muted = [],
+  outboundShares = [],
+  outboundCanonical = false,
   busy = false,
   notice = null,
   t,
   onRemove,
   onAnnounce,
   onUnmute,
+  onStopShare,
   onBack,
 } = {}) {
   if (!container) return container;
@@ -180,6 +183,52 @@ export function renderCircleAdminPanel(container, {
     mutSection.appendChild(list);
   }
   container.appendChild(mutSection);
+
+  // ── outbound shares (objective L — per-share "Stop sharing") ───────────────
+  // Lists what THIS circle has shared OUT (source item → target circle). A "Stop sharing" button appears ONLY
+  // when the circle's posture is `canonical` (a revocable in-place grant); for copy/trusted/registered the
+  // share is a SEPARATE object (not revocable in place), so the row shows the `not_revocable` note instead.
+  const shareSection = document.createElement('section');
+  shareSection.className = 'cc-admin__section';
+  const shareTitle = document.createElement('h3');
+  shareTitle.className = 'cc-admin__section-title';
+  shareTitle.textContent = tr('circle.share.outbound_title');
+  shareSection.appendChild(shareTitle);
+  if (!outboundShares.length) {
+    const empty = document.createElement('p');
+    empty.className = 'cc-admin__empty';
+    empty.textContent = tr('circle.share.outbound_empty');
+    shareSection.appendChild(empty);
+  } else {
+    const list = document.createElement('ul');
+    list.className = 'cc-admin__share-list';
+    for (const s of outboundShares) {
+      const li = document.createElement('li');
+      li.className = 'cc-admin__share';
+      li.dataset.itemId = s.itemId ?? '';
+      li.dataset.circle = s.toCircleId ?? '';
+      const label = document.createElement('span');
+      label.className = 'cc-admin__share-row';
+      label.textContent = tr('circle.share.outbound_row', { item: s.itemId, circle: s.toCircleId });
+      li.appendChild(label);
+      if (outboundCanonical) {
+        const stop = document.createElement('button');
+        stop.type = 'button';
+        stop.className = 'cc-admin__share-stop';
+        stop.textContent = tr('circle.share.stop');
+        stop.addEventListener('click', () => { if (typeof onStopShare === 'function') onStopShare(s); });
+        li.appendChild(stop);
+      } else {
+        const note = document.createElement('span');
+        note.className = 'cc-admin__share-note';
+        note.textContent = tr('circle.share.not_revocable');
+        li.appendChild(note);
+      }
+      list.appendChild(li);
+    }
+    shareSection.appendChild(list);
+  }
+  container.appendChild(shareSection);
 
   if (busy) {
     const b = document.createElement('div');

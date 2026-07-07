@@ -188,8 +188,10 @@ import { renderCircleKring } from './circleKring.js';
 import { makeCircleLists } from '@canopy/kring-host/circleLists';  // cluster K · K2 — composable lists (shared web≡mobile)
 // cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
-import { sealItem } from '@canopy/item-store';
-import { shareItemAcrossCircles, listSharedResolved, revokeItemShare } from '../../src/v2/circleShare.js';
+import { sealItem, isCanonicalPosture } from '@canopy/item-store';
+import {
+  shareItemAcrossCircles, listSharedResolved, revokeItemShare, listOutboundShares, revokeAllForMember,
+} from '../../src/v2/circleShare.js';
 // The platform-neutral enforcement assembly (web≡mobile — mobile's circlePods.js calls the SAME builder).
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
@@ -487,7 +489,7 @@ import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
 import { normalizeCircleMembers, recipientSealKeyFromMembers } from '@canopy/kring-host/circleMembers';
 import { buildFindExtras } from '@canopy/kring-host/findExtras';
 import { executeBulkDispatch } from '../../src/bulkOps.js';
-import { mergeCirclePolicy, mergeMemberOverride } from '../../src/v2/circlePolicy.js';
+import { mergeCirclePolicy, mergeMemberOverride, normalizeCirclePolicy } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
 // P6.10 #348 — agent-add admin approval store (board 4B).
@@ -3602,6 +3604,8 @@ async function showAdmin(id) {
   let members = [];
   let reports = [];
   let muted = [];
+  let outboundShares = [];          // objective L — this circle's outbound canonical shares (Stop-sharing rows)
+  let outboundCanonical = false;    // circle-level posture gate: only a `canonical` circle can revoke in place
   let busy = false;
   let notice = null;
 
@@ -3614,21 +3618,70 @@ async function showAdmin(id) {
     members = Array.isArray(mem?.members) ? mem.members : [];
     reports = Array.isArray(rep?.reports) ? rep.reports : [];   // admin-only; {error} → []
     muted = Array.isArray(mut?.peers) ? mut.peers : [];
+    // objective L — enumerate what THIS circle has shared OUT (across the known circles) + whether its posture
+    // is `canonical` (the only revocable-in-place posture). Both best-effort — a failure just hides the section.
+    try {
+      outboundShares = await listOutboundShares({
+        resolveService: _circleServiceFor,
+        fromCircleId: id,
+        circleIds: circlesCache.map((c) => c.id),
+      });
+    } catch { outboundShares = []; }
+    try {
+      outboundCanonical = isCanonicalPosture(normalizeCirclePolicy(await _circlePolicy(id)).sharePosture);
+    } catch { outboundCanonical = false; }
     rerender();
   }
   const rerender = () => renderCircleAdminPanel(rootEl, {
-    members, reports, muted, busy, notice, t,
+    members, reports, muted, outboundShares, outboundCanonical, busy, notice, t,
     onBack: () => showDetail(id),
+    // objective L — "Stop sharing": revoke ONE canonical share in place (rotate key + ACP-revoke). Reuses the
+    // same revoke path the /unshareitem slash uses (unshareItemFromCircle → revokeItemShare). Since a
+    // shared-ref carries no per-recipient list, we drop the pointer + rotate to the remaining origin roster.
+    onStopShare: async (s) => {
+      if (!s?.itemId) return;
+      notice = null; busy = true; rerender();
+      const r = await unshareItemFromCircle({ itemId: s.itemId, fromCircleId: id, toCircleId: s.toCircleId })
+        .catch((cause) => ({ ok: false, error: cause?.message ?? 'unknown' }));
+      notice = r?.ok
+        ? t('circle.share.revoked', { item: s.itemId, recipient: s.toCircleId })
+        : t('circle.share.revoke_failed', { error: r?.error ?? 'unknown' });
+      busy = false; await load();
+    },
     onUnmute: async (key) => {
       try { await rawCallSkill('stoop', 'unmutePeer', key.startsWith('webid:') ? { peerWebid: key.slice(6) } : { peerStableId: key }); } catch { /* */ }
       await load();
     },
     onRemove: async (m) => {
       notice = null; busy = true; rerender();
+      let removed = false;
       try {
         const r = await rawCallSkill('stoop', 'removeMember', { groupId: id, memberWebid: m.webid, memberStableId: m.stableId });
         if (r?.error) notice = t('circle.admin.refused');
+        else removed = true;
       } catch { notice = t('circle.admin.refused'); }
+      // objective L — auto-revoke: on a SUCCESSFUL removal, rotate this circle's outbound canonical shares away
+      // from the departing member (reuses revokeAllForMember → revokeItemShare). BEST-EFFORT — a revoke failure
+      // must NOT block the removal; surface a count notice instead. remainingRecipients = the remaining members'
+      // origin-circle sealing keys (best-effort; empty ⇒ omit and let the enforcement default to the origin roster).
+      if (removed && m.webid) {
+        try {
+          const remaining = (await Promise.all(
+            members.filter((x) => x.webid && x.webid !== m.webid).map((x) => recipientSealKeyFor(id, x.webid)),
+          )).filter(Boolean);
+          const res = await revokeAllForMember({
+            resolveService: _circleServiceFor,
+            enforcementFor: _shareEnforcementFor,
+            policyOf: _circlePolicy,
+            fromCircleId: id,
+            circleIds: circlesCache.map((c) => c.id),
+            recipient: m.webid,
+            remainingRecipients: remaining.length ? remaining : undefined,
+          });
+          if (res.revoked > 0) notice = t('circle.share.member_revoked', { count: res.revoked });
+          if (res.failed.length > 0) notice = t('circle.share.member_revoke_failed', { count: res.failed.length });
+        } catch { /* best-effort — the removal already succeeded, never block it */ }
+      }
       busy = false; await load();
     },
     onAnnounce: async (text) => {
