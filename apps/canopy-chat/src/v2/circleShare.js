@@ -269,6 +269,96 @@ export async function revokeItemShare({
 }
 
 /**
+ * objective L follow-up — OUTBOUND canonical shares: enumerate what circle `fromCircleId` has shared OUT into
+ * the given candidate circles, by scanning each target circle's `shared-ref`s for `sourceCircle === fromCircleId`.
+ *
+ * ENUMERABILITY (stated honestly): a `shared-ref` persists only (source item, target circle) — NOT the
+ * per-recipient grant list (recipients are resolved from the target roster at share time and never stored). So
+ * this is the finest grain the substrate bookkeeping supports: (itemId, toCircleId) pairs, not (item, recipient).
+ * De-dupes identical (itemId, toCircleId) pointers. There is no cross-circle index, so the caller must supply the
+ * candidate `circleIds` to scan (e.g. the user's own circles).
+ *
+ * @param {object} args
+ * @param {(circleId:string)=>Promise<{stores:{getStore:Function}}|null>} args.resolveService
+ * @param {string} args.fromCircleId    the SOURCE circle whose outbound shares we list
+ * @param {string[]} args.circleIds     candidate target circles to scan
+ * @returns {Promise<Array<{toCircleId:string, itemId:string, sourceType?:string}>>}
+ */
+export async function listOutboundShares({ resolveService, fromCircleId, circleIds } = {}) {
+  if (typeof resolveService !== 'function' || !fromCircleId || !Array.isArray(circleIds)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const toCircleId of circleIds) {
+    if (!toCircleId || toCircleId === fromCircleId) continue;
+    let svc;
+    try { svc = await resolveService(toCircleId); } catch { svc = null; }
+    if (!svc?.stores) continue;
+    let refs;
+    try { refs = await listShared(svc.stores, toCircleId); } catch { refs = []; }
+    for (const ref of refs) {
+      if (ref?.sourceCircle !== fromCircleId || !ref?.sourceId) continue;
+      const key = `${toCircleId}\u0000${ref.sourceId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ toCircleId, itemId: ref.sourceId, sourceType: ref.sourceType });
+    }
+  }
+  return out;
+}
+
+/**
+ * objective L follow-up — AUTO-REVOKE a departing member. When `recipient` is removed from / leaves
+ * `fromCircleId`, revoke their canonical access to every item that circle SHARED OUT — reusing the SAME revoke
+ * path (`revokeItemShare` → `enforcement.revokeCanonical`), never a second revoke mechanism.
+ *
+ * ENUMERABILITY / OVER-REVOCATION (honest): because the substrate stores no per-recipient grant list (see
+ * listOutboundShares), we cannot tell WHICH of a circle's outbound shares a given member actually received. We
+ * therefore rotate EVERY outbound canonical share of the circle away from the departing member. That over-revokes
+ * (a member who never received a given share still triggers its key rotation) but is forward-secret and leaks
+ * nothing. A precise "revoke only what this member held, keep every OTHER recipient exactly" needs new
+ * bookkeeping — a per-item recipient registry — which the `shared-ref` does not carry today.
+ *
+ * Non-canonical source circles are a silent no-op (`revokeItemShare` returns `not-canonical`, counted as
+ * `skipped`). Best-effort: one revoke failing never throws — it is collected in `failed` so the caller can
+ * surface it WITHOUT blocking the member removal.
+ *
+ * @param {object} args
+ * @param {(circleId:string)=>Promise<{stores:{getStore:Function}}|null>} args.resolveService
+ * @param {(circleId:string)=>Promise<{revokeCanonical?:Function}|null>} [args.enforcementFor]
+ * @param {(circleId:string)=>(object|Promise<object>)} [args.policyOf]
+ * @param {string} args.fromCircleId    the circle the member is removed from / leaving (the SHARE source)
+ * @param {string[]} args.circleIds     candidate target circles to scan for this circle's outbound shares
+ * @param {string} args.recipient       the departing member's WebID (the ACP revoke subject)
+ * @param {string[]} [args.remainingRecipients]  sealing keys that KEEP access (defaults to the origin roster)
+ * @returns {Promise<{ok:boolean, attempted:number, revoked:number, skipped:number,
+ *                     failed:Array<{itemId:string, toCircleId:string, error:string}>}>}
+ */
+export async function revokeAllForMember({
+  resolveService, enforcementFor, policyOf, fromCircleId, circleIds, recipient, remainingRecipients,
+} = {}) {
+  if (typeof resolveService !== 'function' || !fromCircleId || !recipient) {
+    return { ok: false, attempted: 0, revoked: 0, skipped: 0, failed: [] };
+  }
+  const shares = await listOutboundShares({ resolveService, fromCircleId, circleIds });
+  let revoked = 0;
+  let skipped = 0;
+  const failed = [];
+  for (const { itemId, toCircleId } of shares) {
+    let r;
+    try {
+      r = await revokeItemShare({
+        resolveService, enforcementFor, policyOf,
+        itemId, fromCircleId, toCircleId, recipient, remainingRecipients,
+      });
+    } catch (cause) { r = { ok: false, error: 'revoke-threw', cause }; }
+    if (r?.ok) revoked += 1;
+    else if (r?.error === 'not-canonical') skipped += 1;
+    else failed.push({ itemId, toCircleId, error: r?.error ?? 'unknown' });
+  }
+  return { ok: failed.length === 0, attempted: shares.length, revoked, skipped, failed };
+}
+
+/**
  * The READ path: everything shared INTO `circleId`, resolved through the source's enforcement policy.
  * DENY-BY-DEFAULT — a ref the reader isn't a recipient of resolves to null and is DROPPED (never surfaced).
  *
