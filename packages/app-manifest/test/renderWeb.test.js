@@ -496,6 +496,84 @@ describe('renderWeb V0.2 — Q7 view.dataSource', () => {
   });
 });
 
+/* ─── D-mig-1a: view.labelField + view.categoryField passthrough ─────── */
+
+describe('renderWeb D-mig-1a — list-surface field selectors', () => {
+  const MANIFEST = {
+    app:       'dmig',
+    itemTypes: ['contact', 'post'],
+    operations: [
+      { id: 'listContacts', verb: 'list', appliesTo: { type: 'contact' }, params: [] },
+      { id: 'listOpen',     verb: 'list', params: [] },
+    ],
+    views: [
+      {
+        id:            'contacts',
+        title:         'Contacts',
+        type:          'contact',
+        dataSource:    { skillId: 'listContacts' },
+        labelField:    'label',
+        categoryField: 'category',
+      },
+      {
+        id:            'prikbord',
+        title:         'Prikbord',
+        type:          'post',
+        dataSource:    { skillId: 'listOpen' },
+        categoryField: 'kind',
+      },
+      // A view WITHOUT the new fields — must remain unchanged.
+      { id: 'plain', title: 'Plain', type: 'post' },
+    ],
+  };
+
+  it('projects labelField + categoryField onto the contacts section', () => {
+    const c = renderWeb(MANIFEST).sections.find((s) => s.id === 'contacts');
+    expect(c.labelField).toBe('label');
+    expect(c.categoryField).toBe('category');
+    expect(c.dataSource).toEqual({ skillId: 'listContacts' });
+    expect(c.itemType).toBe('contact');
+  });
+
+  it('projects categoryField (kind) onto the prikbord section; labelField absent', () => {
+    const p = renderWeb(MANIFEST).sections.find((s) => s.id === 'prikbord');
+    expect(p.categoryField).toBe('kind');
+    expect(p).not.toHaveProperty('labelField');
+    expect(p.dataSource).toEqual({ skillId: 'listOpen' });
+    expect(p.itemType).toBe('post');
+  });
+
+  it('a view without the new fields projects neither (back-compatible)', () => {
+    const plain = renderWeb(MANIFEST).sections.find((s) => s.id === 'plain');
+    expect(plain).not.toHaveProperty('labelField');
+    expect(plain).not.toHaveProperty('categoryField');
+  });
+});
+
+/* ─── D-mig-1a: real stoop manifest projects contacts + prikbord ─────── */
+
+describe('renderWeb D-mig-1a — stoop manifest projection', () => {
+  it('stoop contacts section carries listContacts + label + category', async () => {
+    const { stoopManifest } = await import('../../../apps/stoop/manifest.js');
+    const c = renderWeb(stoopManifest).sections.find((s) => s.id === 'contacts');
+    expect(c).toBeDefined();
+    expect(c.itemType).toBe('contact');
+    expect(c.dataSource).toEqual({ skillId: 'listContacts' });
+    expect(c.labelField).toBe('label');
+    expect(c.categoryField).toBe('category');
+  });
+
+  it('stoop prikbord section carries listOpen + kind + post', async () => {
+    const { stoopManifest } = await import('../../../apps/stoop/manifest.js');
+    const p = renderWeb(stoopManifest).sections.find((s) => s.id === 'prikbord');
+    expect(p).toBeDefined();
+    expect(p.itemType).toBe('post');
+    expect(p.dataSource).toEqual({ skillId: 'listOpen' });
+    expect(p.categoryField).toBe('kind');
+    expect(p).not.toHaveProperty('labelField');
+  });
+});
+
 describe('renderWeb V0.2 — Q9 view.readOnly', () => {
   const MANIFEST = {
     app:       'ro',

@@ -1191,7 +1191,38 @@ export const stoopManifest = {
     // `view.type ∈ manifest.itemTypes`; 'post' + 'contact' are declared
     // as app-local types above.
     { id: 'feed',     title: 'Feed',     type: 'post' },
-    { id: 'contacts', title: 'Contacts', type: 'contact' },
+
+    // ──── D-mig-1a (objective D, step 1a) — project the live LIST-screen
+    //      surfaces (contacts + prikbord) FROM this manifest.  These two
+    //      views make renderWeb able to project what the canopy-chat
+    //      `LIST_SCREENS` literal (web/v2/circleApp.js) hardcodes today:
+    //      the row LABEL field + the group/filter CATEGORY field.  Purely
+    //      additive groundwork — the live list path still reads LIST_SCREENS
+    //      until a later step swaps it to consume these sections.
+    //
+    //  contacts → listContacts (appliesTo type:'contact'); the ContactBook
+    //      rows carry a `category` field (LIST_SCREENS `categoryField:
+    //      'category'`) and render `row.label` (default label field).
+    {
+      id:            'contacts',
+      title:         'Contacts',
+      type:          'contact',
+      dataSource:    { skillId: 'listContacts' },
+      labelField:    'label',
+      categoryField: 'category',
+    },
+    //  prikbord → listOpen (spans ask/offer/lend; the reply adapter maps
+    //      those canonical rows to the chat-shell `type:'post'`, same type
+    //      the `feed` view uses).  Prikbord rows group by `kind`
+    //      (LIST_SCREENS `categoryField:'kind'`); labelField omitted — the
+    //      default 'label' matches what listScreen.js renders (`row.label`).
+    {
+      id:            'prikbord',
+      title:         'Prikbord',
+      type:          'post',
+      dataSource:    { skillId: 'listOpen' },
+      categoryField: 'kind',
+    },
   ],
 };
 

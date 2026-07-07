@@ -182,6 +182,33 @@ describe('validateManifest', () => {
     });
   });
 
+  describe('D-mig-1a view.labelField + view.categoryField', () => {
+    const base = (overrides) => ({
+      app: 'a',
+      itemTypes: ['task'],
+      operations: [],
+      views: [{ id: 'v', title: 'V', type: 'task', ...overrides }],
+    });
+
+    it('accepts string labelField + categoryField', () => {
+      expect(ok(base({ labelField: 'label', categoryField: 'kind' }))).toBe(true);
+    });
+
+    it('accepts a view without labelField/categoryField (back-compatible)', () => {
+      expect(ok(base({}))).toBe(true);
+    });
+
+    it('rejects a non-string labelField', () => {
+      const e = errs(base({ labelField: 123 }));
+      expect(e.some((x) => /view.labelField must be a string/.test(x.message))).toBe(true);
+    });
+
+    it('rejects a non-string categoryField', () => {
+      const e = errs(base({ categoryField: { field: 'kind' } }));
+      expect(e.some((x) => /view.categoryField must be a string/.test(x.message))).toBe(true);
+    });
+  });
+
   describe('V0.3 Q15/Q16 dataSource sanity check', () => {
     const base = (dataSource) => ({
       app: 'a',

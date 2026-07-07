@@ -90,6 +90,13 @@
  *                                         needing custom data fetchers
  *                                         like `listMine`, `listMyRequests`,
  *                                         `getDagTree`).
+ * @property {string}   [labelField]       mirrors view.labelField (D-mig-1a).
+ *                                         Which item field supplies a list
+ *                                         row's label; downstream defaults to
+ *                                         'label' when unset.
+ * @property {string}   [categoryField]    mirrors view.categoryField (D-mig-1a).
+ *                                         Which item field groups/filters list
+ *                                         rows (e.g. 'category', 'kind').
  * @property {Affordance[]} affordances    per-section actions (e.g. add-form)
  * @property {ItemAction[]} itemActions    per-item state-gated buttons
  *
@@ -505,6 +512,12 @@ function buildSection(view, ops, manifest) {
   // Optional fields — only set when present (keep NavModel JSON minimal).
   if (view.filter     !== undefined) section.filter     = view.filter;
   if (view.sort       !== undefined) section.sort       = view.sort;
+  // D-mig-1a — list-surface field selectors.  Passed through verbatim
+  // (same pattern as `view.filter` above) so the list-render seam can
+  // project a row's label + group/filter field FROM the manifest instead
+  // of a hardcoded LIST_SCREENS literal.  Absent → unset (back-compatible).
+  if (view.labelField    !== undefined) section.labelField    = view.labelField;
+  if (view.categoryField !== undefined) section.categoryField = view.categoryField;
   // SP-5b — project the view's declared audience so the list-render seam
   // (e.g. canopy-chat `buildScreenModel`) can DEFAULT its ListFilter.audience
   // to it.  The schema field is `view.defaultAudience` (schema.js); an explicit
