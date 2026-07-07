@@ -11,6 +11,7 @@
  */
 
 import { embedButtonsForReply } from './replyEmbeds.js';
+import { audienceFromItem, audienceMatches } from '@canopy/item-store';
 
 /** Distinct category values (in first-seen order) for `categoryField`. */
 function distinctCategories(items, field) {
@@ -32,6 +33,16 @@ function distinctCategories(items, field) {
  * @param {string}  [args.categoryField]        which item field groups the rows (enables category checkboxes)
  * @param {string[]|null} [args.activeCategories]  checked categories (null = all checked); an item shows iff its
  *                                              category is checked
+ * @param {*}       [args.defaultAudience]      SP-5b — the view's declared `defaultAudience`
+ *                                              (projected from the manifest `view` via
+ *                                              renderWeb's `section.audience`).  When set, the
+ *                                              list is pre-filtered to items whose EFFECTIVE
+ *                                              audience (`audienceFromItem`) matches it
+ *                                              (`audienceMatches`) — so a view shows only the
+ *                                              items its declared audience covers.  Absent →
+ *                                              no audience filter (unchanged behaviour).
+ * @param {*}       [args.audience]             SP-5b — an explicit caller audience filter; when
+ *                                              provided it OVERRIDES `defaultAudience`.
  * @param {object}  [args.manifestsByOrigin]    for computing row actions (with `appOrigin`)
  * @param {string}  [args.appOrigin]
  * @param {Array}   [args.capabilityMatrix]     the member's matrix → row actions inherit greying/hiding (Slice 4)
@@ -40,9 +51,19 @@ function distinctCategories(items, field) {
  */
 export function buildScreenModel({
   items = [], query = '', labelField = 'label', categoryField,
-  activeCategories = null, manifestsByOrigin, appOrigin, capabilityMatrix = [],
+  activeCategories = null, defaultAudience, audience, manifestsByOrigin, appOrigin, capabilityMatrix = [],
 } = {}) {
-  const list = Array.isArray(items) ? items : [];
+  const rawList = Array.isArray(items) ? items : [];
+  // SP-5b — audience membership is a HARD pre-filter (a scope), applied before
+  // category/text filtering so it also constrains the category checkboxes and
+  // their counts.  An explicit caller `audience` overrides the view's declared
+  // `defaultAudience`; when neither is set the list passes through untouched
+  // (fully back-compatible).  Reuses the item-store audience predicate rather
+  // than reimplementing it.
+  const effectiveAudience = audience !== undefined ? audience : defaultAudience;
+  const list = effectiveAudience === undefined
+    ? rawList
+    : rawList.filter((it) => audienceMatches(audienceFromItem(it), effectiveAudience));
   const active = activeCategories == null ? null : new Set(activeCategories);
   const q = String(query || '').trim().toLowerCase();
   const labelOf = (it) => String(it?.[labelField] ?? it?.label ?? it?.id ?? '');
