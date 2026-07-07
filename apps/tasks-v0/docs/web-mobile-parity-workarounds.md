@@ -129,10 +129,10 @@ boundaries, not absorb.
 > activeBundle.groupId` on every skill call."
 
 Mobile's `useSkill` hook auto-injects `_scope` in the DataPart; web
-forms must explicitly pass `crewId` in args if multi-crew.  Resolver
+forms must explicitly pass `circleId` in args if multi-crew.  Resolver
 accepts both.
 
-**For projector:** ensure the web adapter plumbs `crewId` into args
+**For projector:** ensure the web adapter plumbs `circleId` into args
 explicitly when multi-crew (no auto-injection).
 
 ### 2. Actor identity carrier differences
@@ -191,7 +191,7 @@ rather than reimplementing.
 V2 substrate adoption shipped 2026-05-14; multi-crew resolver is < 1
 week old.  The `_scope` injection (mobile-specific) is documented
 inline but minimally exercised in production.  If web adds multi-crew
-later, the `crewId` vs `_scope` branching should be tested end-to-end
+later, the `circleId` vs `_scope` branching should be tested end-to-end
 with both shells.
 
 ### 2. Pod provisioning — deferred, app-specific
@@ -227,7 +227,7 @@ proof.
    with mobile.
 2. **Record the adapter boundaries** (§B.1–5): Ensure the web
    adapter wires `LocalUiAuth` to set `from = webid`, plumbs
-   `crewId` into multi-crew args, and loads locales from
+   `circleId` into multi-crew args, and loads locales from
    `locales/shared/` + `locales/` (web-local).
 3. **Note the open areas** (§C): Multi-crew resolver newness; pod
    provisioning callback-injected; characterization corpus gates

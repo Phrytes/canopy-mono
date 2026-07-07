@@ -31,7 +31,7 @@ describe('normalizeFolioFile', () => {
 describe('buildCircleFiles', () => {
   it('keeps files matching the circle + untagged files, drops other-circle files', () => {
     const files = [
-      { id: 'a', updatedAt: 300, crewId: 'crew-1' },
+      { id: 'a', updatedAt: 300, circleId: 'crew-1' },
       { id: 'b', updatedAt: 200 },                       // untagged
       { id: 'c', updatedAt: 100, circleId: 'other' },    // other circle
       { id: 'd', updatedAt: 50,  audience: 'circle:crew-1' },

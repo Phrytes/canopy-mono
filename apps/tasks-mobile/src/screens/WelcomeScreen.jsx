@@ -54,9 +54,9 @@ export function WelcomeScreen() {
     try {
       const pubKey = svc?.identity?.pubKey ?? 'local';
       const actor  = svc?.identity?.webid ?? `webid://local-${pubKey.slice(0, 12)}`;
-      const crewId = `crew-${Date.now().toString(36)}`;
+      const circleId = `crew-${Date.now().toString(36)}`;
       await svc.joinCrew({
-        crewId,
+        circleId,
         name: crewName.trim() || 'My household',
         kind: crewKind,
         members: [

@@ -42,7 +42,7 @@ await ne.publish({
   payload:    { text: 'paint the fence' },
   recipients: ['agent://bob', 'agent://carol'],
   fromActor:  'agent://anne',
-  crewId:     'buurt-abc',
+  circleId:     'buurt-abc',
 });
 
 ne.subscribe({
@@ -160,7 +160,7 @@ reconnect retries the same entry.
 ```text
 createNotifyEnvelope({ transport, pseudoPod, podRouting, uploadFn?, queueBackend?, logger? })
 
-ne.publish({ type, ref, payload?, etag?, _v?, recipients, fromActor?, crewId? })
+ne.publish({ type, ref, payload?, etag?, _v?, recipients, fromActor?, circleId? })
   → { mode: 'envelope-only' | 'full-payload', queued: boolean, decision }
   // _v (Phase 52.14): Lamport version forwarded on full-payload envelopes.
 

@@ -13,7 +13,7 @@ So: per-circle **ItemStore** within the single agent.
 
 ## The insight
 `tasks-v0` is the reference pattern: per-circle stores keyed by `rootContainer =
-mem://tasks/crews/<crewId>/`, lazily spawned via `ensureCrew(crewId)`
+mem://tasks/crews/<circleId>/`, lazily spawned via `ensureCrew(circleId)`
 (`apps/tasks-v0/src/browser.js:204-224`). `ItemStore.#listAllItems` lists by the root prefix,
 so **one shared DataSource + N ItemStores with distinct roots** partitions reads/writes with no
 per-call filter and no leak surface. Give household the same treatment.
@@ -27,7 +27,7 @@ The active `circleId` already arrives in `args` for create/mutate verbs (`scopeR
 ## Phases (land web first, commit per phase)
 
 - **Phase 1 — thread circleId.** In the `household` branch of `callSkill` (`realAgent.js:820-826`)
-  resolve `circleId = args.circleId ?? args.crewId ?? args.groupId ?? 'household'` (legacy bucket
+  resolve `circleId = args.circleId ?? args.circleId ?? args.groupId ?? 'household'` (legacy bucket
   default). Gap: **read verbs** (`listOpen`/`list`) aren't in the scope-injection sets
   (`router.js:244-262`) → a chat `/list` carries no circleId. Fix: inject scope for read verbs too
   (preferred), or fall back to an injected `getActiveCircleId()`. Detail view already scoped.
@@ -42,7 +42,7 @@ The active `circleId` already arrives in `args` for create/mutate verbs (`scopeR
 
 - **Phase 5 (do early) — fitness test.** Boot one agent, drive real `callSkill`: add Milk to A →
   `listOpen` in B is empty, in A present; assert `getHouseholdScope('A') !== getHouseholdScope('B')`.
-  Repeat for tasks (`crewId`) + stoop (`groupId`). The drift guard (CLAUDE.md "prefer a fitness
+  Repeat for tasks (`circleId`) + stoop (`groupId`). The drift guard (CLAUDE.md "prefer a fitness
   function").
 
 - **Phase 3 — tasks + stoop.** tasks-v0: verify (already per-crew); fix the chat `/mytasks` read-scope

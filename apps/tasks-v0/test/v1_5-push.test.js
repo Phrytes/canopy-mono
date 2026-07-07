@@ -27,7 +27,7 @@ const KID_TOKEN   = 'ExponentPushToken[kid]';
 
 function makeCrew(overrides = {}) {
   return {
-    crewId:  'oss-tools',
+    circleId:  'oss-tools',
     name:    'OSS Tools NL',
     kind:    'project',
     members: [

@@ -52,7 +52,7 @@ export function makeCircleLookup({ getBase, appCallSkill, scopeId } = {}) {
       const sid = (typeof scopeId === 'function')
         ? scopeId()
         : (scope?.id ?? (typeof scope === 'string' ? scope : null));
-      const scopeArgs = sid ? { crewId: sid, circleId: sid, groupId: sid } : {};
+      const scopeArgs = sid ? { circleId: sid, groupId: sid } : {};
       const arr = normalizeList(await appCallSkill(app, listOp, scopeArgs));
       const seen = new Set(base.map((c) => c.id));
       for (const it of arr) {

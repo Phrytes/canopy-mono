@@ -3,7 +3,7 @@
  *
  * Device-independent analog of apps/stoop/test/attachPodToBundle.test.js,
  * adapted for Tasks. Asserts: setAnchor + _podCtx(classify/reverse)
- * + attachInner(source); bundle-derived crewId; provision callback
+ * + attachInner(source); bundle-derived circleId; provision callback
  * called best-effort; detach resets active + anchor.
  *
  * NOTE: written, not run here — orchestrator verifies in the main
@@ -20,7 +20,7 @@ function mkBundle(extra = {}) {
     classify:  null,
     reverse:   null,
     podRouting: null,
-    crewId:    null,
+    circleId:    null,
     vars:      null,
   };
   return {
@@ -29,7 +29,7 @@ function mkBundle(extra = {}) {
     podRouting:      { setAnchor: vi.fn(), resolve: vi.fn(() => 'https://pod.example/fn/') },
     pseudoPod:       null,
     substrateDeviceId: 'dev-1',
-    crewId:          'crew-test',
+    circleId:          'crew-test',
     ...extra,
   };
 }
@@ -48,18 +48,18 @@ describe('attachTasksBundle', () => {
     expect(bundle._podCtx.classify).toBe(classify);
     expect(bundle._podCtx.reverse).toBe(reverseResolve);
     expect(bundle._podCtx.podRouting).toBe(bundle.podRouting);
-    expect(bundle._podCtx.crewId).toBe('crew-test');   // ← from bundle.crewId
+    expect(bundle._podCtx.circleId).toBe('crew-test');   // ← from bundle.circleId
     expect(bundle._podCtx.active).toBe(true);
     expect(bundle.cache.attachInner).toHaveBeenCalledWith(source);
   });
 
-  it('explicit crewId overrides bundle.crewId', async () => {
+  it('explicit circleId overrides bundle.circleId', async () => {
     const bundle = mkBundle();
     await attachTasksBundle({
       bundle, source: {}, podRoot: 'https://pod.example/me/', fetch: headOkFetch,
-      crewId: 'override-crew',
+      circleId: 'override-crew',
     });
-    expect(bundle._podCtx.crewId).toBe('override-crew');
+    expect(bundle._podCtx.circleId).toBe('override-crew');
   });
 
   it('calls the provision callback when supplied', async () => {

@@ -256,7 +256,7 @@ describe('graceful-degradation — cache-mode edge cases', () => {
       pseudoPod: cachePod,
       podRouting,
       uploadFn: async (entry) => {
-        // entry shape: { uri, payload, etag, type, recipients, fromActor, crewId }
+        // entry shape: { uri, payload, etag, type, recipients, fromActor, circleId }
         // For this test, we delegate to realPod.uploader so we share
         // the same fake pod state.
         return realPod.uploader(entry.uri, entry.payload, entry.etag);

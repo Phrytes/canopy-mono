@@ -42,7 +42,7 @@ export function buildCrewControlSkills({ bundleResolver } = {}) {
   return [
     defineSkill('pauseCrew', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -55,7 +55,7 @@ export function buildCrewControlSkills({ bundleResolver } = {}) {
 
     defineSkill('unpauseCrew', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -68,7 +68,7 @@ export function buildCrewControlSkills({ bundleResolver } = {}) {
 
     defineSkill('archiveCrew', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') {
         return { error: 'admin required' };
@@ -81,7 +81,7 @@ export function buildCrewControlSkills({ bundleResolver } = {}) {
 
     defineSkill('unarchiveCrew', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') {
         return { error: 'admin required' };

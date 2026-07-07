@@ -15,7 +15,7 @@ const needsForm = (missing) => ({
   kind: 'needsForm', opId: 'addEvent', appOrigin: 'calendar',
   missing,
   params: missing.map((name) => ({ name, kind: 'string' })),
-  prefilledArgs: { crewId: 'c1' },
+  prefilledArgs: { circleId: 'c1' },
 });
 
 describe('multi-field needsForm → inline form substrate', () => {
@@ -36,7 +36,7 @@ describe('multi-field needsForm → inline form substrate', () => {
     const ready = completeMultiFieldFollowUp({ pending, values: { title: 'Buurt-bbq', date: '2026-07-01' } });
     expect(ready).toMatchObject({
       kind: 'ready', opId: 'addEvent',
-      args: { crewId: 'c1', title: 'Buurt-bbq', date: '2026-07-01' },
+      args: { circleId: 'c1', title: 'Buurt-bbq', date: '2026-07-01' },
     });
   });
 });

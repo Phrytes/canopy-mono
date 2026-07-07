@@ -16,7 +16,7 @@ function roundtrip(mem, ctx) {
 
 describe('podPathMap.classify/unclassify', () => {
   it('offers/requests → group/<crew>/items (round-trips)', () => {
-    const c = roundtrip('mem://neighborhood/items/01ABC.json', { crewId: 'C' });
+    const c = roundtrip('mem://neighborhood/items/01ABC.json', { circleId: 'C' });
     expect(c).toEqual({ storageFn: 'group/C/items', tail: '01ABC.json' });
   });
 
@@ -24,24 +24,24 @@ describe('podPathMap.classify/unclassify', () => {
     // Real runtime key: MemberMapCache already encodeURIComponent's
     // the peer id, so the mem:// segment is ALREADY `webid%3Alocal%3A…`.
     // The classifier must NOT re-encode it (that produced `%253A`).
-    const c = roundtrip('mem://neighborhood/members/webid%3Alocal%3AOVUaJV0', { crewId: 'C' });
+    const c = roundtrip('mem://neighborhood/members/webid%3Alocal%3AOVUaJV0', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/members');
     expect(c.tail).toBe('webid%3Alocal%3AOVUaJV0');     // verbatim — no %253A
     expect(c.tail).not.toContain('%253A');
   });
 
   it('item attachments → group/<crew>/item-attachments (distinct from items)', () => {
-    const c = roundtrip('mem://stoop/items/01X/attachments/a.jpg', { crewId: 'C' });
+    const c = roundtrip('mem://stoop/items/01X/attachments/a.jpg', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/item-attachments');
   });
 
   it('group governance → group/<crew>/governance', () => {
-    const c = roundtrip('mem://neighborhood/groups/G1/config.json', { crewId: 'C' });
+    const c = roundtrip('mem://neighborhood/groups/G1/config.json', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/governance');
   });
 
   it('group audit log → group/<crew>/audit (device-pass #2 UNROUTED gap)', () => {
-    const c = roundtrip('mem://neighborhood/audit/01KRVSN68BDV6JA896N7N4RJBY.json', { crewId: 'C' });
+    const c = roundtrip('mem://neighborhood/audit/01KRVSN68BDV6JA896N7N4RJBY.json', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/audit');
     expect(c.tail).toBe('01KRVSN68BDV6JA896N7N4RJBY.json');
   });

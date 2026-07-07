@@ -4,7 +4,7 @@ import { loadCircles } from '../../src/v2/circleModel.js';
 
 const callSkill = async (op) => {
   if (op === 'getMyCrews') {
-    return { crews: [{ crewId: 'c1', name: 'Crew', counts: { members: 3 } }] };
+    return { crews: [{ circleId: 'c1', name: 'Crew', counts: { members: 3 } }] };
   }
   if (op === 'listMyBuurts') {
     return { buurts: ['selwerd', 'akkerstraat'] };

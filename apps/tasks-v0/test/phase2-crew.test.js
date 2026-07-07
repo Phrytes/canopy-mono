@@ -43,7 +43,7 @@ const BOB   = 'https://id.example/bob';
 const CAROL = 'https://id.example/carol';
 
 const SAMPLE_CONFIG = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [
@@ -60,9 +60,9 @@ describe('Phase 2 — Crew envelope', () => {
 
       const loaded = await loadCrewConfig({
         dataSource: bundle.cache,
-        crewId:     'oss-tools',
+        circleId:     'oss-tools',
       });
-      expect(loaded.crewId).toBe('oss-tools');
+      expect(loaded.circleId).toBe('oss-tools');
       expect(loaded.name).toBe('OSS Tools NL');
       expect(loaded.kind).toBe('project');
       expect(loaded.members).toHaveLength(2);
@@ -75,9 +75,9 @@ describe('Phase 2 — Crew envelope', () => {
       const bundle = buildBundle();
       const loaded = await loadCrewConfig({
         dataSource: bundle.cache,
-        crewId:     'fresh-crew',
+        circleId:     'fresh-crew',
       });
-      expect(loaded.crewId).toBe('fresh-crew');
+      expect(loaded.circleId).toBe('fresh-crew');
       expect(loaded.kind).toBe('household');
       expect(loaded.members).toEqual([]);
       expect(loaded.subtasksAdminApprovalDepth).toBe(3);
@@ -87,8 +87,8 @@ describe('Phase 2 — Crew envelope', () => {
       const bundle = buildBundle();
       const loaded = await loadCrewConfig({
         dataSource: bundle.cache,
-        crewId:     'maintenance-crew',
-        fallback:   { crewId: 'maintenance-crew', name: 'Buurttuin', kind: 'maintenance' },
+        circleId:     'maintenance-crew',
+        fallback:   { circleId: 'maintenance-crew', name: 'Buurttuin', kind: 'maintenance' },
       });
       expect(loaded.kind).toBe('maintenance');
       expect(loaded.name).toBe('Buurttuin');
@@ -97,7 +97,7 @@ describe('Phase 2 — Crew envelope', () => {
     it('rejects bad inputs', async () => {
       await expect(loadCrewConfig({})).rejects.toThrow(/dataSource/);
       const bundle = buildBundle();
-      await expect(loadCrewConfig({ dataSource: bundle.cache })).rejects.toThrow(/crewId/);
+      await expect(loadCrewConfig({ dataSource: bundle.cache })).rejects.toThrow(/circleId/);
     });
   });
 
@@ -116,7 +116,7 @@ describe('Phase 2 — Crew envelope', () => {
       });
       expect(result.agent).toBeDefined();
       expect(result.itemStore).toBeDefined();
-      expect(result.crew.crewId).toBe('household');
+      expect(result.crew.circleId).toBe('household');
       expect(result.crew.kind).toBe('household');
       expect(result.localStore).toBeNull();
       // Contract update 2026-05-14 (Tasks V2 seventh slice): the
@@ -138,7 +138,7 @@ describe('Phase 2 — Crew envelope', () => {
       });
 
       expect(result.localStore).toBe(lsBundle);
-      expect(result.crew.crewId).toBe('oss-tools');
+      expect(result.crew.circleId).toBe('oss-tools');
       expect(result.memberMapCacheDetach).toBeTypeOf('function');
 
       // Add a member to the live MemberMap; expect it to appear in the

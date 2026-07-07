@@ -30,11 +30,11 @@ export const AVATAR_PRESET = Object.freeze({
  * Per-task deliverable storage path. Anchors the photo under the
  * crew's local-store namespace so isolation is automatic.
  */
-export function deliverableRef({ crewId, taskId, photoId }) {
-  if (typeof crewId !== 'string' || !crewId) throw new TypeError('deliverableRef: crewId required');
+export function deliverableRef({ circleId, taskId, photoId }) {
+  if (typeof circleId !== 'string' || !circleId) throw new TypeError('deliverableRef: circleId required');
   if (typeof taskId !== 'string' || !taskId) throw new TypeError('deliverableRef: taskId required');
   if (typeof photoId !== 'string' || !photoId) throw new TypeError('deliverableRef: photoId required');
-  return `mem://tasks/crews/${crewId}/deliverables/${taskId}/${photoId}.jpg`;
+  return `mem://tasks/crews/${circleId}/deliverables/${taskId}/${photoId}.jpg`;
 }
 
 /**

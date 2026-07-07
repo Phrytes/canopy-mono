@@ -26,16 +26,16 @@ const resolve = (fn) =>
   fn.startsWith('group/') ? `https://grp.pod/${fn.slice('group/'.length)}/`
   : null;
 
-// Exact innerKeyMap buildBundle now builds (M4), bound to crewId 'household'.
+// Exact innerKeyMap buildBundle now builds (M4), bound to circleId 'household'.
 const innerKeyMap = {
   toInner: (p) => {
-    const c = classify(p, { crewId: CREW });
+    const c = classify(p, { circleId: CREW });
     if (!c) return p;
     const base = resolve(c.storageFn);
     if (!base) return p;
     return base + c.tail;
   },
-  fromInner: (u) => reverseResolve({ resolve, crewId: CREW, podUri: u }) ?? u,
+  fromInner: (u) => reverseResolve({ resolve, circleId: CREW, podUri: u }) ?? u,
 };
 
 function mkInner(seed) {

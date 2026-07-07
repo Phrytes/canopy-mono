@@ -2,7 +2,7 @@
  * aggregator — Tasks V2.5 cross-crew dashboard.
  *
  * Pure function over a list of crew bundles. For each one, projects:
- *   { crewId, name, kind, counts: {open, overdue, awaitingApproval, mine} }
+ *   { circleId, name, kind, counts: {open, overdue, awaitingApproval, mine} }
  *
  * Counts:
  *   - open               — items with no `completedAt` (excl. subtask-request)
@@ -19,7 +19,7 @@ const SUBTASK_REQ = 'subtask-request';
 
 /**
  * @typedef {object} CrewSummary
- * @property {string} crewId
+ * @property {string} circleId
  * @property {string} name
  * @property {string} kind
  * @property {{open: number, overdue: number, awaitingApproval: number, mine: number}} counts
@@ -66,8 +66,8 @@ export function aggregateCrews({ crews, actor, roleOf, now = Date.now() }) {
     }
 
     out.push({
-      crewId: crew.crewId ?? 'unknown',
-      name:   crew.name ?? crew.crewId ?? 'unknown',
+      circleId: crew.circleId ?? 'unknown',
+      name:   crew.name ?? crew.circleId ?? 'unknown',
       kind:   crew.kind ?? 'household',
       counts: { open, overdue, awaitingApproval, mine },
     });

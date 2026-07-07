@@ -9,7 +9,7 @@
  *   - tasks://auth/callback?code=...    → AuthCallback (Phase 41.15)
  *   - tasks://invite?token=<base64url>  → OnboardScan with prefilled invite
  *   - tasks://post?id=<taskId>          → TaskDetail
- *   - tasks://crew?id=<crewId>          → Workspace (after setActiveCrew)
+ *   - tasks://crew?id=<circleId>          → Workspace (after setActiveCrew)
  *
  * `actionToNavigation(action)` maps the parsed action to a
  * `(routeName, params)` pair that nav.navigate consumes.
@@ -45,12 +45,12 @@ const TASKS_PARSERS = {
   },
 
   // Phase 41.18.4 — appeal deep-link:
-  //   tasks://appeal?taskId=<taskId>[&crewId=<crewId>]
+  //   tasks://appeal?taskId=<taskId>[&circleId=<circleId>]
   appeal: (query) => {
     if (!query.taskId) return null;
     return { kind: 'appeal', params: {
       taskId: query.taskId,
-      crewId: query.crewId ?? null,
+      circleId: query.circleId ?? null,
     } };
   },
 
@@ -95,7 +95,7 @@ export function actionToNavigation(action) {
     case 'invite':        return { name: ROUTES.OnboardScan,    params: { pendingInvite: action.params?.token } };
     case 'auth_callback': return { name: ROUTES.AuthCallback,   params: action.params };
     case 'post':          return { name: ROUTES.TaskDetail,     params: { id: action.params?.id } };
-    case 'crew':          return { name: ROUTES.Workspace,      params: { crewId: action.params?.id } };
+    case 'crew':          return { name: ROUTES.Workspace,      params: { circleId: action.params?.id } };
     case 'appeal':        return { name: ROUTES.ChatThread,     params: {
       threadId:        `appeal:${action.params?.taskId}`,
       appealForTaskId: action.params?.taskId,

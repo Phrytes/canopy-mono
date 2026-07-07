@@ -34,7 +34,7 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
   return [
     defineSkill('setCalendarEmission', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -55,7 +55,7 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
 
     defineSkill('getCalendarEmissionUrl', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) {
         return { error: 'webid required (from envelope)' };
       }
@@ -70,7 +70,7 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
       }
       // Per-member path so each member subscribes to their own filtered
       // calendar (containing tasks they're assigned, master, or approver of).
-      const path = `mem://user/tasks/calendars/${encodeURIComponent(lc.crewId ?? 'unknown')}-${encodeURIComponent(from)}.ics`;
+      const path = `mem://user/tasks/calendars/${encodeURIComponent(lc.circleId ?? 'unknown')}-${encodeURIComponent(from)}.ics`;
       return {
         enabled: true,
         path,
@@ -86,7 +86,7 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
 
     defineSkill('getCalendarEmissionStatus', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const lc = crew.liveCrew ?? {};
       const enabled = !!lc.calendarEmission?.enabled;
       const role = crew.roles?.[from];
@@ -95,7 +95,7 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
         enabled,
         canToggle,
         ...(enabled && from
-          ? { path: `mem://user/tasks/calendars/${encodeURIComponent(lc.crewId ?? 'unknown')}-${encodeURIComponent(from)}.ics` }
+          ? { path: `mem://user/tasks/calendars/${encodeURIComponent(lc.circleId ?? 'unknown')}-${encodeURIComponent(from)}.ics` }
           : {}),
       };
     }, {

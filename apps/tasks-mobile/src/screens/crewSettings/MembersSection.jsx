@@ -24,7 +24,7 @@ export function MembersSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs = svc?.activeCrewId ? svc.crews.get(svc.activeCrewId) : null;
+  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
   const members = cs?.liveCrew?.members ?? [];
 
   if (members.length === 0) {

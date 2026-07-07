@@ -26,8 +26,8 @@ function mkResolve({ ring = false } = {}) {
 }
 
 // Reproduce Agent.js toInner's join exactly.
-function toInner(resolve, mem, crewId) {
-  const c = classify(mem, { crewId });
+function toInner(resolve, mem, circleId) {
+  const c = classify(mem, { circleId });
   if (!c) return null;
   const base = resolve(c.storageFn);
   if (!base) return null;
@@ -55,22 +55,22 @@ describe('podPathMap.reverseResolve — round-trips toInner', () => {
       it(`${label}: ${mem}`, () => {
         const podUri = toInner(resolve, mem, 'C');
         expect(podUri).not.toBeNull();
-        expect(reverseResolve({ resolve, crewId: 'C', podUri })).toBe(mem);
+        expect(reverseResolve({ resolve, circleId: 'C', podUri })).toBe(mem);
       });
     }
   }
 
   it('returns null for a URI under no known storage-function base', () => {
-    expect(reverseResolve({ resolve: mkResolve(), crewId: 'C', podUri: 'https://grp.pod/C/unknown/x' }))
+    expect(reverseResolve({ resolve: mkResolve(), circleId: 'C', podUri: 'https://grp.pod/C/unknown/x' }))
       .toBeNull();
-    expect(reverseResolve({ resolve: mkResolve(), crewId: 'C', podUri: 'https://elsewhere.pod/x' }))
+    expect(reverseResolve({ resolve: mkResolve(), circleId: 'C', podUri: 'https://elsewhere.pod/x' }))
       .toBeNull();
   });
 
   it('items vs item-attachments bases do not cross-match (longest base wins)', () => {
     const resolve = mkResolve();
     const att = toInner(resolve, 'mem://stoop/items/01X/attachments/a.jpg', 'C');
-    expect(reverseResolve({ resolve, crewId: 'C', podUri: att }))
+    expect(reverseResolve({ resolve, circleId: 'C', podUri: att }))
       .toBe('mem://stoop/items/01X/attachments/a.jpg');
   });
 

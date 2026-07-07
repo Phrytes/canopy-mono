@@ -11,7 +11,7 @@ import { createCrewAgent } from '../src/Crew.js';
 const ANNE = 'https://id.example/anne';
 
 const CREW_ON = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [{ webid: ANNE, displayName: 'Anne', role: 'admin' }],

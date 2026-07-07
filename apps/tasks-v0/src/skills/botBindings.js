@@ -50,7 +50,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
   return [
     defineSkill('getBotChatBindings', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -94,7 +94,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
 
     defineSkill('setBotChatBinding', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
 
@@ -126,7 +126,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
 
     defineSkill('removeBotChatBinding', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
 
@@ -169,7 +169,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
      */
     defineSkill('issueBotToken', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const botAgentRegistry = crew.botAgentRegistry;
@@ -216,7 +216,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
      */
     defineSkill('revokeBotToken', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const botAgentRegistry = crew.botAgentRegistry;

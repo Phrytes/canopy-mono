@@ -25,7 +25,7 @@
  * @property {*}        [payload]              — full-payload mode body
  * @property {string}   [etag]
  * @property {string}   [fromActor]
- * @property {string}   [crewId]
+ * @property {string}   [circleId]
  * @property {string}   [cancelKey]
  *
  * @typedef {object} EnvelopeBridge
@@ -90,7 +90,7 @@ export function createEnvelopeBridge({
     payload,
     etag,
     fromActor,
-    crewId,
+    circleId,
     cancelKey,
   } = {}) {
     if (typeof triggerAt !== 'number') {
@@ -127,7 +127,7 @@ export function createEnvelopeBridge({
           ...(etag      != null       ? { etag }      : {}),
           ...(fromActor != null       ? { fromActor } : {}),
           recipients,
-          ...(crewId    != null       ? { crewId }    : {}),
+          ...(circleId    != null       ? { circleId }    : {}),
         });
       } catch (_err) {
         // Best-effort fan-out: notify-envelope owns its own queueing

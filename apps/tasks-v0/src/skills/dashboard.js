@@ -3,11 +3,11 @@
  *
  *   - `getMyCrews()` — self only. Returns one row per crew the actor
  *     belongs to (across every CrewState the meshAgent knows about),
- *     each with `{crewId, name, kind, counts: {open, overdue,
+ *     each with `{circleId, name, kind, counts: {open, overdue,
  *     awaitingApproval, mine}}`.
  *
  * After V2.8: registered ONCE on the meshAgent. The skill enumerates
- * crews via `crewsProvider()` (returns `Map<crewId, CrewState>` or
+ * crews via `crewsProvider()` (returns `Map<circleId, CrewState>` or
  * any iterable of CrewStates) and filters to crews where the actor
  * has a role.
  */
@@ -39,7 +39,7 @@ export function buildDashboardSkills({ bundleResolver, crewsProvider } = {}) {
   return [
     defineSkill('getMyCrews', async ({ parts, from, envelope }) => {
       const ctxCrew = bundleResolver(parts, { envelope, from });
-      if (!ctxCrew) return { error: 'crewId required' };
+      if (!ctxCrew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       // V2.5 multi-crew launches plumb a per-CrewState override
       // provider (`_dashboardCrewsProvider`) so the dashboard sees
@@ -65,7 +65,7 @@ export function buildDashboardSkills({ bundleResolver, crewsProvider } = {}) {
         crews: inputs,
         actor: from,
         roleOf: (actor, crew) => {
-          const cs = eligible.find((x) => x.liveCrew?.crewId === crew?.crewId);
+          const cs = eligible.find((x) => x.liveCrew?.circleId === crew?.circleId);
           return cs?.roles?.[actor];
         },
       });

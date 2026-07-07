@@ -23,7 +23,7 @@ function defaultEntry(overrides = {}) {
     type:       'task',
     recipients: ['agent://bob'],
     fromActor:  'agent://anne',
-    crewId:     'buurt-abc',
+    circleId:     'buurt-abc',
     ...overrides,
   };
 }

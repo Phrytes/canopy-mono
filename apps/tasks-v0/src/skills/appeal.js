@@ -45,7 +45,7 @@ export function buildAppealSkill({ bundleResolver } = {}) {
   return [
     defineSkill('appealTask', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.taskId !== 'string' || !a.taskId) {
         return { error: 'taskId required' };

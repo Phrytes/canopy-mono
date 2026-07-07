@@ -14,7 +14,7 @@
 /**
  * Best-effort circle id for a logged event.  Events don't carry a
  * first-class circleId, so we read the usual audience fields off the
- * payload (circleId ≡ crewId ≡ groupId — see [[circleid-crewid-alias]]),
+ * payload (circleId ≡ circleId ≡ groupId — see [[circleid-crewid-alias]]),
  * falling back to the itemRef.  Returns null when the event isn't
  * circle-scoped (it still shows in the Stream, just untagged).
  */
@@ -22,7 +22,7 @@ export function eventCircleId(event) {
   const p = event && typeof event.payload === 'object' && event.payload ? event.payload : {};
   return (
     p.circleId
-    ?? p.crewId
+    ?? p.circleId
     ?? p.groupId
     ?? p.buurtId
     ?? p.audience

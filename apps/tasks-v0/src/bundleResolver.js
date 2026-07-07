@@ -9,16 +9,16 @@
  *
  *   - `singleCrewResolver(crewState)` — always returns the same
  *     CrewState. Used by single-crew launches (web app, most tests,
- *     the V0 zero-config path). Skills don't need to pass `crewId`.
+ *     the V0 zero-config path). Skills don't need to pass `circleId`.
  *
  *   - `multiCrewResolver(crews)` — picks the right CrewState from a
- *     `Map<crewId, CrewState>`. Strict resolution order:
- *       1. `args.crewId` from the first DataPart
+ *     `Map<circleId, CrewState>`. Strict resolution order:
+ *       1. `args.circleId` from the first DataPart
  *       2. `args._scope` from the first DataPart (mobile React
  *          bindings inject `_scope: activeBundle.groupId` — same
- *          value as the crewId; see
+ *          value as the circleId; see
  *          `packages/sync-engine-rn/src/react/createReactBindings.js`)
- *       3. `<crewId>/...` prefix on `envelope.topic`
+ *       3. `<circleId>/...` prefix on `envelope.topic`
  *       4. strict `null` (no silent fallback to "first crew")
  *
  *     Strict-null-on-miss is intentional. Silent fallback would
@@ -53,18 +53,18 @@ export function singleCrewResolver(crewState) {
  */
 export function multiCrewResolver(crews) {
   if (!(crews instanceof Map)) {
-    throw new TypeError('multiCrewResolver: Map<crewId, CrewState> required');
+    throw new TypeError('multiCrewResolver: Map<circleId, CrewState> required');
   }
   return (parts, ctx = {}) => {
     const args = _argsFromParts(parts);
-    if (typeof args.crewId === 'string' && args.crewId) {
-      return crews.get(args.crewId) ?? null;
+    if (typeof args.circleId === 'string' && args.circleId) {
+      return crews.get(args.circleId) ?? null;
     }
     // Phase 41.18 follow-up: mobile React bindings inject
-    // `_scope: activeBundle.groupId` (which equals the crewId) on
+    // `_scope: activeBundle.groupId` (which equals the circleId) on
     // every skill call. Honour it so the multi-crew resolver
     // dispatches correctly without each screen having to plumb
-    // crewId through manually.
+    // circleId through manually.
     if (typeof args._scope === 'string' && args._scope) {
       const cs = crews.get(args._scope);
       if (cs) return cs;

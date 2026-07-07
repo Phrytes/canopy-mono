@@ -26,7 +26,7 @@ export function CrewConfigSection() {
 
   const [open, setOpen] = useState(false);
 
-  const config = useSkillResult('getCrewConfig', {}, [svc?.activeCrewId, open]);
+  const config = useSkillResult('getCrewConfig', {}, [svc?.activeCircleId, open]);
 
   if (!isAdmin) {
     return (

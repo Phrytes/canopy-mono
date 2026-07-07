@@ -78,7 +78,7 @@ export function createPodRouting({
   /**
    * Resolve a storage-function path to a concrete URI.
    *
-   * For `group/<crewId>/...` paths we run the crew-policy lookup
+   * For `group/<circleId>/...` paths we run the crew-policy lookup
    * first, since the policy decides whether the group lives on a
    * pod or in the pseudo-pod replication-ring.
    */
@@ -91,17 +91,17 @@ export function createPodRouting({
     if (storageFn.startsWith('group/')) {
       const rest = storageFn.slice('group/'.length);
       const slash = rest.indexOf('/');
-      const crewId = slash === -1 ? rest : rest.slice(0, slash);
+      const circleId = slash === -1 ? rest : rest.slice(0, slash);
       const tail   = slash === -1 ? '' : rest.slice(slash + 1);
-      if (crewId.length > 0) {
+      if (circleId.length > 0) {
         // Explicit override mapping wins.
         const explicit = matchMapping(storageFn, mappings);
         if (explicit && explicit.pattern !== 'group/*') {
           return joinUriTail(substituteVars(explicit.uri, vars), substituteVars(explicit.tail, vars));
         }
-        const policy = crewPolicy(crewId);
+        const policy = crewPolicy(circleId);
         if (policy.policy === 'centralised' && policy.groupPodUri) {
-          const base = _stripTrailingSlash(policy.groupPodUri) + `/${crewId}/`;
+          const base = _stripTrailingSlash(policy.groupPodUri) + `/${circleId}/`;
           return joinUriTail(base, tail);
         }
         if (policy.policy === 'decentralised') {
@@ -113,10 +113,10 @@ export function createPodRouting({
           // centralised, own pod instead of the group pod). A no-pod
           // user (no anchor) falls back to the replication ring.
           if (anchorPodUri) {
-            const base = _stripTrailingSlash(anchorPodUri) + `/${crewId}/`;
+            const base = _stripTrailingSlash(anchorPodUri) + `/${circleId}/`;
             return joinUriTail(base, tail);
           }
-          return `pseudo-pod://${deviceId}/group/${crewId}/${tail}`;
+          return `pseudo-pod://${deviceId}/group/${circleId}/${tail}`;
         }
         if (policy.policy === 'hybrid') {
           // Canonical ledger (the crew's `group/*` data) lives on the
@@ -127,15 +127,15 @@ export function createPodRouting({
           // ledger-vs-draft split is all V1 models. No groupPodUri →
           // replication ring.
           if (policy.groupPodUri) {
-            const base = _stripTrailingSlash(policy.groupPodUri) + `/${crewId}/`;
+            const base = _stripTrailingSlash(policy.groupPodUri) + `/${circleId}/`;
             return joinUriTail(base, tail);
           }
-          return `pseudo-pod://${deviceId}/group/${crewId}/${tail}`;
+          return `pseudo-pod://${deviceId}/group/${circleId}/${tail}`;
         }
         if (policy.policy === 'no-pod') {
           // Replication-ring (eager P2P fan-out; the groupMirror
           // substitute). No pod involved by design.
-          return `pseudo-pod://${deviceId}/group/${crewId}/${tail}`;
+          return `pseudo-pod://${deviceId}/group/${circleId}/${tail}`;
         }
         // Unknown policy → fall through to generic mapping.
       }
@@ -147,9 +147,9 @@ export function createPodRouting({
     return joinUriTail(baseUri, substituteVars(m.tail, vars));
   }
 
-  function crewPolicy(crewId) {
-    if (typeof crewId !== 'string' || crewId.length === 0) return defaults.crewPolicyDefault;
-    const fromConfig = loadedConfig?.crewPolicies?.[crewId];
+  function crewPolicy(circleId) {
+    if (typeof circleId !== 'string' || circleId.length === 0) return defaults.crewPolicyDefault;
+    const fromConfig = loadedConfig?.crewPolicies?.[circleId];
     if (fromConfig) return fromConfig;
     return defaults.crewPolicyDefault;
   }
@@ -201,10 +201,10 @@ export function createPodRouting({
     await reload();
   }
 
-  async function setCrewPolicy(crewId, policy) {
-    if (typeof crewId !== 'string' || crewId.length === 0) {
+  async function setCrewPolicy(circleId, policy) {
+    if (typeof circleId !== 'string' || circleId.length === 0) {
       throw Object.assign(
-        new Error('setCrewPolicy: `crewId` is required'),
+        new Error('setCrewPolicy: `circleId` is required'),
         { code: 'INVALID_ARGUMENT' },
       );
     }
@@ -215,7 +215,7 @@ export function createPodRouting({
     };
     const next = {
       ...current,
-      crewPolicies: { ...(current.crewPolicies ?? {}), [crewId]: policy },
+      crewPolicies: { ...(current.crewPolicies ?? {}), [circleId]: policy },
     };
     await writeConfig({ pseudoPod, uri: configUri, config: next });
     await reload();

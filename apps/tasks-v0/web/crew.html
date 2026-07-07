@@ -226,7 +226,7 @@
         return;
       }
       const crew = cfgRes.crew ?? {};
-      document.getElementById('crew-name').textContent = crew.name ?? crew.crewId ?? '(no crew)';
+      document.getElementById('crew-name').textContent = crew.name ?? crew.circleId ?? '(no crew)';
       document.getElementById('crew-meta').textContent =
         `kind: ${crew.kind ?? 'household'} · sub-task admin-approval depth: ${crew.subtasksAdminApprovalDepth ?? 3}`;
 
@@ -305,7 +305,7 @@
         dd.textContent = v;
         sl.append(dt, dd);
       }
-      row('crewId',       crew.crewId);
+      row('circleId',       crew.circleId);
       row('kind',         crew.kind);
       row('default approval', crew.dodPolicy?.defaultApproval ?? 'self-mark');
       row('subtasksAdminApprovalDepth', String(crew.subtasksAdminApprovalDepth ?? 3));

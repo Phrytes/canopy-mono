@@ -154,7 +154,7 @@ describe('kringRecipeBlocks · α.1b — materializeBlock (data-fetching types)'
     expect(r.content.items).toEqual([]);
   });
 
-  it('tasks: carries embeds[] + resolves them to live titles (crewId = circle id)', async () => {
+  it('tasks: carries embeds[] + resolves them to live titles (circleId = circle id)', async () => {
     const callSkill = vi.fn(async (app, op, args) => {
       if (app === 'tasks' && op === 'listOpen') {
         return { items: [{ id: 't1', text: 'Fix the gate', assignee: 'webid:me',
@@ -213,11 +213,11 @@ describe('kringRecipeBlocks · α.1b — materializeBlock (data-fetching types)'
 });
 
 describe('kringRecipeBlocks · α.4 — tasks block (per-kring)', () => {
-  it('calls tasks-v0.listOpen with crewId, filters by assignee=myWebid, caps to limit', async () => {
+  it('calls tasks-v0.listOpen with circleId, filters by assignee=myWebid, caps to limit', async () => {
     const callSkill = vi.fn(async (app, op, args) => {
       expect(app).toBe('tasks');
       expect(op).toBe('listOpen');
-      expect(args.crewId).toBe('g1');
+      expect(args.circleId).toBe('g1');
       return { items: [
         { id: 't1', text: 'one', assignee: 'webid:me' },
         { id: 't2', text: 'two', assignee: 'webid:bob' },

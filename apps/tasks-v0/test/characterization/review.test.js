@@ -79,7 +79,7 @@ describe('characterization: review.html', () => {
     const TASK_TEXT = 'submitted task for the review-queue corpus';
 
     await fixture.callSkill('addTask', {
-      crewId: 'characterization-crew',
+      circleId: 'characterization-crew',
       text:   TASK_TEXT,
     });
 
@@ -92,8 +92,8 @@ describe('characterization: review.html', () => {
 
     // tasks-v0 skills take `{id}` (not `{taskId}`) — see
     // src/skills/index.js claimTask/submitTask defineSkill bodies.
-    await fixture.callSkill('claimTask',  { crewId: 'characterization-crew', id: created.id });
-    await fixture.callSkill('submitTask', { crewId: 'characterization-crew', id: created.id });
+    await fixture.callSkill('claimTask',  { circleId: 'characterization-crew', id: created.id });
+    await fixture.callSkill('submitTask', { circleId: 'characterization-crew', id: created.id });
 
     // After submit, the task is still in the itemStore with Anne as
     // assignee.  The detailed state-machine assertions (status field

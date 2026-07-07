@@ -49,13 +49,13 @@ async function setup() {
  * Spawn a sibling crew via the real provisionMyCrew + spawnMyCrew
  * SDK path so the second mount-target lives.
  */
-async function spawnSiblingCrew(meshAgent, crewId) {
+async function spawnSiblingCrew(meshAgent, circleId) {
   await meshAgent.skills.get('provisionMyCrew').handler({
-    parts: [DataPart({ crewId, name: `Sibling ${crewId}`, kind: 'team' })],
+    parts: [DataPart({ circleId, name: `Sibling ${circleId}`, kind: 'team' })],
     from:  ANNE, agent: meshAgent, envelope: null,
   });
   await meshAgent.skills.get('spawnMyCrew').handler({
-    parts: [DataPart({ crewId })],
+    parts: [DataPart({ circleId })],
     from:  ANNE, agent: meshAgent, envelope: null,
   });
 }
@@ -87,7 +87,7 @@ describe('SP-4b: tasks-v0 multi-crew through manifest-host', () => {
     const composed = host.compose();
 
     const reply = await composed.toolHandlers['tasks.addTask'](
-      { crewId: 'primary-crew', text: 'paint the hallway' },
+      { circleId: 'primary-crew', text: 'paint the hallway' },
       { actorWebid: ANNE },
     );
 
@@ -108,11 +108,11 @@ describe('SP-4b: tasks-v0 multi-crew through manifest-host', () => {
 
     const composed = host.compose();
     await composed.toolHandlers['tasks.addTask'](
-      { crewId: 'primary-crew', text: 'primary-only-task' },
+      { circleId: 'primary-crew', text: 'primary-only-task' },
       { actorWebid: ANNE },
     );
     await composed.toolHandlers['tasks.addTask'](
-      { crewId: 'sibling-crew', text: 'sibling-only-task' },
+      { circleId: 'sibling-crew', text: 'sibling-only-task' },
       { actorWebid: ANNE },
     );
 

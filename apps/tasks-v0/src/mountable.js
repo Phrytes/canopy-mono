@@ -28,7 +28,7 @@
  *      different from household's bridge convention; document for
  *      future consumers.
  *
- * Multi-crew note: the chat-agent's per-call `crewId` is passed through
+ * Multi-crew note: the chat-agent's per-call `circleId` is passed through
  * `args` (the LLM declares it as a tool arg) OR injected by the
  * consumer's `toSkillCtx` closure (e.g. a per-session crew binding).
  * V0 demo uses the latter — see `examples/manifest-host-demo/`.
@@ -67,7 +67,7 @@ export function createTasksMountable({ meshAgent, crewsMap, manifest = tasksMani
     throw new TypeError('createTasksMountable: meshAgent with .skills.get required');
   }
   if (!(crewsMap instanceof Map)) {
-    throw new TypeError('createTasksMountable: crewsMap (Map<crewId, CrewState>) required');
+    throw new TypeError('createTasksMountable: crewsMap (Map<circleId, CrewState>) required');
   }
 
   const skillRegistry = {};

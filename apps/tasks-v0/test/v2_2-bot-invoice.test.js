@@ -12,7 +12,7 @@ const ANNE  = 'https://id.example/anne';
 const CAROL = 'https://id.example/carol';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [

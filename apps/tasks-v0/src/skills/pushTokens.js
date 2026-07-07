@@ -41,7 +41,7 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
   return [
     defineSkill('setMyPushToken', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) {
         return { error: 'webid required (from envelope)' };
       }
@@ -108,7 +108,7 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
 
     defineSkill('getMyPushTokens', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) {
         return { error: 'webid required (from envelope)' };
       }

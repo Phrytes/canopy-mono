@@ -928,7 +928,7 @@ export function buildSkills({
                 _v,
                 recipients: substrateRecipients,
                 ...(publisherPubKey ? { fromActor: publisherPubKey } : {}),
-                crewId:     groupId,
+                circleId:     groupId,
               });
             } catch (_err) {
               // best-effort fan-out (parity with skillMatch.broadcast)

@@ -34,7 +34,7 @@ const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [
@@ -200,7 +200,7 @@ describe('V1.5 — boot-time custom-role re-registration', () => {
     const crew2 = await createCrewAgent({
       crewConfig: {
         ...CREW,
-        crewId: 'oss-tools-boot',
+        circleId: 'oss-tools-boot',
         customRoles: [{ id, rank: 38 }],
       },
       localStoreBundle:     lsBundle2,

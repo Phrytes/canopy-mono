@@ -55,7 +55,7 @@ export function CreateCrewScreen() {
   const provisionMyCrew = useSkill('provisionMyCrew');
 
   const [name,          setName]          = useState('');
-  const [crewId,        setCrewId]        = useState('');
+  const [circleId,        setCircleId]        = useState('');
   const [kind,          setKind]          = useState('household');
   const [policy,        setPolicy]        = useState('no-pod');
   const [groupPodUri,   setGroupPodUri]   = useState('');
@@ -64,13 +64,13 @@ export function CreateCrewScreen() {
 
   const onNameChange = useCallback((text) => {
     setName(text);
-    setCrewId(_slugify(text));
+    setCircleId(_slugify(text));
   }, []);
 
   const needsPodUri = policy === 'centralised' || policy === 'hybrid';
 
   const canSubmit = name.trim().length > 0
-    && CREW_ID_RE.test(crewId)
+    && CREW_ID_RE.test(circleId)
     && !busy;
 
   const onSubmit = useCallback(async () => {
@@ -89,7 +89,7 @@ export function CreateCrewScreen() {
       // survives restarts. joinCrew builds the runtime CrewState.
       if (provisionMyCrew?.call) {
         await provisionMyCrew.call({
-          crewId:  crewId.trim(),
+          circleId:  circleId.trim(),
           name:    name.trim(),
           kind,
           storage,
@@ -99,7 +99,7 @@ export function CreateCrewScreen() {
       }
 
       await svc.joinCrew({
-        crewId:  crewId.trim(),
+        circleId:  circleId.trim(),
         name:    name.trim(),
         kind,
         storage,
@@ -119,7 +119,7 @@ export function CreateCrewScreen() {
     } finally {
       setBusy(false);
     }
-  }, [canSubmit, svc, provisionMyCrew, crewId, name, kind, policy, groupPodUri, needsPodUri, nav]);
+  }, [canSubmit, svc, provisionMyCrew, circleId, name, kind, policy, groupPodUri, needsPodUri, nav]);
 
   return (
     <ScrollView
@@ -150,8 +150,8 @@ export function CreateCrewScreen() {
       {/* Crew ID */}
       <SectionLabel label={t('mobile.create_crew.id_label', 'Crew ID (slug)')} />
       <TextInput
-        value={crewId}
-        onChangeText={setCrewId}
+        value={circleId}
+        onChangeText={setCircleId}
         placeholder="my-household"
         placeholderTextColor={COLORS.textMuted}
         autoCapitalize="none"
@@ -159,10 +159,10 @@ export function CreateCrewScreen() {
         accessibilityLabel="create-crew-id"
         style={[
           _inputStyle(COLORS, SPACING, FONT_SIZES, RADII),
-          !CREW_ID_RE.test(crewId) && crewId.length > 0 && { borderColor: COLORS.danger },
+          !CREW_ID_RE.test(circleId) && circleId.length > 0 && { borderColor: COLORS.danger },
         ]}
       />
-      {!CREW_ID_RE.test(crewId) && crewId.length > 0 ? (
+      {!CREW_ID_RE.test(circleId) && circleId.length > 0 ? (
         <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.xs, marginTop: SPACING.xs }}>
           {t('mobile.create_crew.id_error', 'Use lowercase letters, digits and hyphens only.')}
         </Text>

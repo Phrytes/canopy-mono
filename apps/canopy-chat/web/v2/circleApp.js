@@ -2944,11 +2944,11 @@ function showKring(id, circle, policy) {
   }
 
   async function enrichNoticeboardEmbeds() {
-    const crewId = getActiveCircle();
+    const circleId = getActiveCircle();
     let changed = false;
     await Promise.all(noticeboardPosts.map(async (p) => {
       if (!Array.isArray(p.embeds) || !p.embeds.length) return;
-      const enriched = await enrichEmbedsWithTitles({ callSkill: rawCallSkill, embeds: p.embeds, crewId, fetchImpl: circleAuthedFetch || undefined });
+      const enriched = await enrichEmbedsWithTitles({ callSkill: rawCallSkill, embeds: p.embeds, circleId, fetchImpl: circleAuthedFetch || undefined });
       if (enriched.some((e) => e && e.title)) { p.embeds = enriched; changed = true; }
     }));
     if (changed) rerender();
@@ -4313,7 +4313,7 @@ async function boot() {
             try {
               return await agent.callSkill('tasks', 'addTask', {
                 text,
-                crewId:           'cc-default',
+                circleId:           'cc-default',
                 originCircleId,
                 originCircleName,
                 originTaskId,

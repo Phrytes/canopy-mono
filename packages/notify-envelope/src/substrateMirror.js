@@ -32,7 +32,7 @@
  * @param {string|((scopeId:string)=>string)} args.uriPrefix
  * @param {(payload:object, fromPubKey:string|null)=>object} args.toDraft
  * @param {(local:object, next:object)=>string} [args.inferAction]
- * @param {string|null} [args.scopeField]       e.g. 'crewId' | 'circleId' — stamped on published envelopes
+ * @param {string|null} [args.scopeField]       e.g. 'circleId' | 'circleId' — stamped on published envelopes
  * @param {Array<{pubKey:string}>} [args.peers]
  * @param {string|null} [args.selfPubKey]
  * @returns {Promise<{

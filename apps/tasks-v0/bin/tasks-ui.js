@@ -29,11 +29,11 @@
  *     --crew-list  ./two-crews.list.json
  *
  * `--crew-list <path>` boots ONE meshAgent + N CrewStates and runs an
- * in-process smoke probe (`addTask` against each crewId, asserting
+ * in-process smoke probe (`addTask` against each circleId, asserting
  * cross-crew isolation), then exits. The list file shape is
  * `{"crews": ["./a.crew.json", "./b.crew.json"]}` — paths are resolved
  * relative to the list file. The HTTP UI is skipped in this mode; the
- * V2.8 web UX for multi-crew (crew picker + per-tab crewId injection)
+ * V2.8 web UX for multi-crew (crew picker + per-tab circleId injection)
  * lives in tasks-mobile.
  *
  * `--telegram-token <token>` activates the V1.5 chat-bot. Set the
@@ -54,7 +54,7 @@
  *
  * The V1 Crew config file shape (see `src/Crew.js` § CrewConfig):
  *   {
- *     "crewId": "oss-tools",
+ *     "circleId": "oss-tools",
  *     "name":   "OSS Tools NL",
  *     "kind":   "project",
  *     "members": [...],
@@ -175,19 +175,19 @@ if (values['crew-list']) {
     const dataSource = new (await import('@canopy/core')).MemorySource();
     const itemStore = new ItemStore({
       dataSource,
-      rootContainer: `mem://tasks/crews/${cfg.crewId}/`,
+      rootContainer: `mem://tasks/crews/${cfg.circleId}/`,
       rolePolicy:    buildStandardRolePolicy(roles),
       enforceDependencies: true,
     });
     let liveCrew = Object.freeze({
-      crewId:     cfg.crewId,
-      name:       cfg.name ?? cfg.crewId,
+      circleId:     cfg.circleId,
+      name:       cfg.name ?? cfg.circleId,
       kind:       cfg.kind ?? 'household',
       members:    cfg.members ?? [],
       customRoles: cfg.customRoles ?? [],
     });
-    crews.set(cfg.crewId, {
-      get crewId()   { return liveCrew.crewId; },
+    crews.set(cfg.circleId, {
+      get circleId()   { return liveCrew.circleId; },
       get liveCrew() { return liveCrew; },
       crewMutator(patch) { liveCrew = Object.freeze({ ...liveCrew, ...patch }); },
       roles,
@@ -214,8 +214,8 @@ if (values['crew-list']) {
 
   console.log(`V2.8 multi-crew smoke: 1 meshAgent, ${crews.size} CrewStates`);
   console.log(`  pubKey: ${meshAgent.identity?.pubKey ?? '(unknown)'}`);
-  for (const [crewId, st] of crews) {
-    console.log(`  • ${crewId}: ${st.liveCrew.members.length} member(s)`);
+  for (const [circleId, st] of crews) {
+    console.log(`  • ${circleId}: ${st.liveCrew.members.length} member(s)`);
   }
 
   // Probe: addTask per crew via the registered handler, assert isolation.
@@ -224,29 +224,29 @@ if (values['crew-list']) {
     console.error('FAIL: addTask not registered');
     process.exit(1);
   }
-  for (const [crewId, st] of crews) {
+  for (const [circleId, st] of crews) {
     const adminWebid = Object.entries(st.roles).find(([, r]) => r === 'admin')?.[0]
                     ?? Object.keys(st.roles)[0];
     if (!adminWebid) {
-      console.error(`FAIL: ${crewId} has no member to act as`);
+      console.error(`FAIL: ${circleId} has no member to act as`);
       process.exit(1);
     }
     const r = await addDef.handler({
-      parts:    [DataPart({ crewId, text: `smoke-task-${crewId}` })],
+      parts:    [DataPart({ circleId, text: `smoke-task-${circleId}` })],
       from:     adminWebid,
       agent:    meshAgent,
       envelope: null,
     });
     if (r?.error || !r?.task) {
-      console.error(`FAIL: ${crewId} addTask returned ${JSON.stringify(r)}`);
+      console.error(`FAIL: ${circleId} addTask returned ${JSON.stringify(r)}`);
       process.exit(1);
     }
   }
   // Isolation check: each ItemStore holds exactly its own probe item.
-  for (const [crewId, st] of crews) {
+  for (const [circleId, st] of crews) {
     const open = await st.itemStore.listOpen();
-    if (open.length !== 1 || open[0].text !== `smoke-task-${crewId}`) {
-      console.error(`FAIL: ${crewId} isolation broken — listOpen()=${JSON.stringify(open)}`);
+    if (open.length !== 1 || open[0].text !== `smoke-task-${circleId}`) {
+      console.error(`FAIL: ${circleId} isolation broken — listOpen()=${JSON.stringify(open)}`);
       process.exit(1);
     }
   }
@@ -348,12 +348,12 @@ if (values.crew) {
       agent:                meshAgent,
       registerSkills:       false,
       wireOnboardingSkills: false,
-      label:                `Crew(${crewConfig.crewId ?? 'unknown'})-${values.actor}`,
+      label:                `Crew(${crewConfig.circleId ?? 'unknown'})-${values.actor}`,
       ...(pushSender ? { pushSender } : {}),
     });
 
     const primaryCrewState = bundle._crewState;
-    const crewsMap = new Map([[primaryCrewState.crewId, primaryCrewState]]);
+    const crewsMap = new Map([[primaryCrewState.circleId, primaryCrewState]]);
 
     /**
      * Closure-captured spawn callback the `spawnMyCrew` skill invokes
@@ -363,12 +363,12 @@ if (values.crew) {
      * `issueInvite`/`redeemInvite` are not registered in multi-crew
      * mode (multi-crew dispatch for them is a follow-up).
      */
-    async function spawnCrewInProcess(crewId) {
-      if (typeof crewId !== 'string' || !crewId) {
-        throw new Error('spawnCrewInProcess: crewId required');
+    async function spawnCrewInProcess(circleId) {
+      if (typeof circleId !== 'string' || !circleId) {
+        throw new Error('spawnCrewInProcess: circleId required');
       }
-      if (crewsMap.has(crewId)) return crewsMap.get(crewId);
-      const path = `mem://tasks/crews/${crewId}/config.json`;
+      if (crewsMap.has(circleId)) return crewsMap.get(circleId);
+      const path = `mem://tasks/crews/${circleId}/config.json`;
       const raw = await localStoreBundle.cache.read(path);
       if (!raw) throw new Error(`spawnCrewInProcess: no saved config at ${path}`);
       const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -380,14 +380,14 @@ if (values.crew) {
         agent:                meshAgent,
         registerSkills:       false,
         wireOnboardingSkills: false,
-        label:                `Crew(${cfg.crewId})-${values.actor}`,
+        label:                `Crew(${cfg.circleId})-${values.actor}`,
         ...(pushSender ? { pushSender } : {}),
       });
       const cs = spawned._crewState;
       // Make the spawn callback visible on the new CrewState too, so
       // subsequent spawnMyCrew calls routed to it can spawn further.
       cs._spawnCrewInProcess = spawnCrewInProcess;
-      crewsMap.set(cfg.crewId, cs);
+      crewsMap.set(cfg.circleId, cs);
       return cs;
     }
     primaryCrewState._spawnCrewInProcess = spawnCrewInProcess;
@@ -418,7 +418,7 @@ if (values.crew) {
       localStoreBundle,
       identity: id,
       transport,
-      label:    `Crew(${crewConfig.crewId ?? 'unknown'})-${values.actor}`,
+      label:    `Crew(${crewConfig.circleId ?? 'unknown'})-${values.actor}`,
       ...(pushSender ? { pushSender } : {}),
     });
   }
@@ -464,7 +464,7 @@ const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 const tasksConfig = JSON.stringify({
   actor: values.actor,
   roles,
-  ...(bundle.crew ? { crew: { crewId: bundle.crew.crewId, name: bundle.crew.name, kind: bundle.crew.kind } } : {}),
+  ...(bundle.crew ? { crew: { circleId: bundle.crew.circleId, name: bundle.crew.name, kind: bundle.crew.kind } } : {}),
 });
 
 // Slice B.1 (2026-05-20) — surface the NavModel for the renderWeb-

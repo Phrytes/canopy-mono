@@ -9,7 +9,7 @@
  * injected).
  *
  * Today resolves the two types with a reliable local snapshot op:
- *   task           → tasks    getTaskSnapshot (needs crewId = the circle id)
+ *   task           → tasks    getTaskSnapshot (needs circleId = the circle id)
  *   calendar-event → calendar  getEventSnapshot
  * Cross-pod (http) refs resolve by fetching the public item URL and extracting
  * its title (fetch is injected — pure + SSR/test-safe). Stoop/folio TYPES that
@@ -79,7 +79,7 @@ async function resolveCrossPodResult(ref, fetchImpl) {
  * public refs resolve and protected ones come back `{denied}` (the 🔒 chip).
  * @returns {Promise<{title:string}|{denied:true}|null>}
  */
-async function resolveEmbedResult({ callSkill, embed, crewId, fetchImpl = globalThis.fetch } = {}) {
+async function resolveEmbedResult({ callSkill, embed, circleId, fetchImpl = globalThis.fetch } = {}) {
   if (!embed || !embed.type || !embed.ref) return null;
   if (/^https?:\/\//i.test(String(embed.ref))) {
     return resolveCrossPodResult(String(embed.ref), fetchImpl);
@@ -90,7 +90,7 @@ async function resolveEmbedResult({ callSkill, embed, crewId, fetchImpl = global
   // Try the ref verbatim, then its local-id tail (refs come in both shapes).
   for (const id of [String(embed.ref), localId(embed.ref)]) {
     try {
-      const snap = await callSkill(r.app, r.op, { id, ...(crewId ? { crewId } : {}) });
+      const snap = await callSkill(r.app, r.op, { id, ...(circleId ? { circleId } : {}) });
       if (snap && !snap.error) {
         const title = snap.title ?? snap.label ?? null;
         if (title) return { title: String(title) };
@@ -116,10 +116,10 @@ export async function resolveEmbedTitle(args = {}) {
  * embeds pass through unchanged. Resolves concurrently.
  * @returns {Promise<object[]>}
  */
-export async function enrichEmbedsWithTitles({ callSkill, embeds, crewId, fetchImpl = globalThis.fetch } = {}) {
+export async function enrichEmbedsWithTitles({ callSkill, embeds, circleId, fetchImpl = globalThis.fetch } = {}) {
   if (!Array.isArray(embeds) || embeds.length === 0) return Array.isArray(embeds) ? embeds : [];
   return Promise.all(embeds.map(async (e) => {
-    const r = await resolveEmbedResult({ callSkill, embed: e, crewId, fetchImpl });
+    const r = await resolveEmbedResult({ callSkill, embed: e, circleId, fetchImpl });
     if (r?.title) return { ...e, title: r.title };
     if (r?.denied) return { ...e, denied: true };
     return e;

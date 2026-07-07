@@ -93,10 +93,10 @@ export function createNotifyEnvelope({
    *                                      receivers ignore it.
    * @param {string[]} input.recipients
    * @param {string} [input.fromActor]
-   * @param {string} [input.crewId]    — informational (queued in metadata)
+   * @param {string} [input.circleId]    — informational (queued in metadata)
    * @returns {Promise<{mode: 'envelope-only'|'full-payload', queued: boolean, decision: object}>}
    */
-  async function publish({ type, ref, payload, etag, _v, recipients, fromActor, crewId } = {}) {
+  async function publish({ type, ref, payload, etag, _v, recipients, fromActor, circleId } = {}) {
     if (typeof type !== 'string' || type.length === 0) {
       throw Object.assign(
         new Error('publish: type is required'),
@@ -157,7 +157,7 @@ export function createNotifyEnvelope({
         type,
         recipients,
         fromActor,
-        crewId,
+        circleId,
       });
       queued = true;
     }

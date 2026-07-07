@@ -47,7 +47,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
   return [
     defineSkill('getCrewConfig', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const lc = crew.liveCrew;
       return { crew: lc ? { ...lc } : null };
     }, {
@@ -56,7 +56,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
 
     defineSkill('listAwaitingApproval', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const open = await crew.itemStore.listOpen();
       const closed = await crew.itemStore.listClosed();
       const pending = open
@@ -76,7 +76,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
 
     defineSkill('listSubtaskRequests', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -89,7 +89,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
 
     defineSkill('getDagTree', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const open   = await crew.itemStore.listOpen();
       const closed = await crew.itemStore.listClosed();
@@ -110,7 +110,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
 
     defineSkill('listMyMasteredTasks', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       if (!from) return { items: [] };
       const open = await crew.itemStore.listOpen();
       const closed = await crew.itemStore.listClosed();
@@ -127,7 +127,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
     }),
 
     /**
-     * getItemTree({itemId, crewId?}) — M4 Phase 3.3c decentralised
+     * getItemTree({itemId, circleId?}) — M4 Phase 3.3c decentralised
      * cross-pod read path.
      *
      * Walks the task's `embeds`/`dependencies` graph via item-store's
@@ -149,7 +149,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
      */
     defineSkill('getItemTree', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
 

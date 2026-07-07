@@ -54,7 +54,7 @@ export function buildObservabilitySkills({ bundleResolver, userSettings: fallbac
   return [
     defineSkill('getMetrics', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const tracker = crew.metricsTracker;
       if (!tracker?.snapshot) return { error: 'metricsTracker not wired for this crew' };
       return { snapshot: tracker.snapshot() };
@@ -64,7 +64,7 @@ export function buildObservabilitySkills({ bundleResolver, userSettings: fallbac
 
     defineSkill('getCrewCadences', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const lc = crew.liveCrew ?? {};
       return { cadences: { ...(lc.cadences ?? {}) } };
     }, {
@@ -73,7 +73,7 @@ export function buildObservabilitySkills({ bundleResolver, userSettings: fallbac
 
     defineSkill('setCrewCadences', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -89,7 +89,7 @@ export function buildObservabilitySkills({ bundleResolver, userSettings: fallbac
 
     defineSkill('getMyCadenceOverrides', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const settings = await settingsOf(crew).loadShared();
       return { overrides: { ...(settings.cadenceOverrides ?? {}) } };
     }, {
@@ -98,7 +98,7 @@ export function buildObservabilitySkills({ bundleResolver, userSettings: fallbac
 
     defineSkill('setMyCadenceOverrides', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const sanitised = sanitiseCadenceMap(a.overrides ?? {});
       await settingsOf(crew).updateShared({ cadenceOverrides: sanitised });
@@ -109,7 +109,7 @@ export function buildObservabilitySkills({ bundleResolver, userSettings: fallbac
 
     defineSkill('resolveMyCadence', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.eventType !== 'string' || !a.eventType) {
         return { error: 'eventType required' };

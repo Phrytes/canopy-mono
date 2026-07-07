@@ -10,7 +10,7 @@
  * The plan flagged this as "deferred until both apps are running" —
  * tasks-mobile is now starting, so the lift trips the rule of two.
  *
- * Each entry is opaque (a `{groupId | crewId, displayName?, role?,
+ * Each entry is opaque (a `{groupId | circleId, displayName?, role?,
  * joinedAt?, ...}` object). The substrate doesn't validate per-app
  * fields beyond the required id field; apps cast the read result.
  */
@@ -25,7 +25,7 @@ async function _loadAsyncStorage() {
 
 /**
  * @typedef {object} BundleEntry
- * @property {string} id          required — `groupId` for stoop, `crewId` for tasks
+ * @property {string} id          required — `groupId` for stoop, `circleId` for tasks
  * @property {string} [displayName]
  * @property {number} [joinedAt]  epoch-ms
  * (apps add app-specific fields freely; the substrate passes them through)

@@ -5,9 +5,9 @@ import {
 } from '../../src/v2/activeCircle.js';
 
 describe('circleScope · itemCircleId', () => {
-  it('reads circleId / crewId (alias) / groupId', () => {
+  it('reads circleId / circleId (alias) / groupId', () => {
     expect(itemCircleId({ circleId: 'a' })).toBe('a');
-    expect(itemCircleId({ crewId: 'b' })).toBe('b');
+    expect(itemCircleId({ circleId: 'b' })).toBe('b');
     expect(itemCircleId({ groupId: 'c' })).toBe('c');
   });
   it('reads circle:/crew: audience shorthands and circle-ref objects', () => {
@@ -25,7 +25,7 @@ describe('circleScope · itemCircleId', () => {
 describe('circleScope · isInCircle / scopeItems', () => {
   const items = [
     { id: 1, circleId: 'home' },
-    { id: 2, crewId: 'home' },        // alias → same circle
+    { id: 2, circleId: 'home' },        // alias → same circle
     { id: 3, audience: 'circle:buurt' },
     { id: 4 },                        // unscoped item
   ];
@@ -33,7 +33,7 @@ describe('circleScope · isInCircle / scopeItems', () => {
     expect(isInCircle({ circleId: 'home' }, null)).toBe(true);
     expect(scopeItems(items, null)).toHaveLength(4);
   });
-  it('filters to the active circle (crewId aliases circleId)', () => {
+  it('filters to the active circle (circleId aliases circleId)', () => {
     expect(scopeItems(items, 'home').map((i) => i.id)).toEqual([1, 2]);
     expect(scopeItems(items, 'buurt').map((i) => i.id)).toEqual([3]);
   });

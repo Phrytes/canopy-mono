@@ -105,7 +105,7 @@
         <h3 data-i18n="welcome.result_heading">Crew config saved</h3>
         <p data-i18n="welcome.result_intro">
           Your crew config has been persisted. Restart Tasks with the
-          new crewId bound at boot (Tasks-v0 binds to one crew per
+          new circleId bound at boot (Tasks-v0 binds to one crew per
           process; multi-crew runtime is a follow-up).
         </p>
         <pre id="create-summary" style="font-family: ui-monospace, Menlo, monospace; font-size: 0.92rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.6rem 1rem; white-space: pre-wrap;"></pre>
@@ -149,7 +149,7 @@
       const storagePolicy = document.querySelector('input[name="storage-policy"]:checked')?.value || 'no-pod';
       const groupPodUri   = document.getElementById('g-pod-uri').value.trim();
       const args = {
-        crewId:        document.getElementById('g-id').value.trim(),
+        circleId:        document.getElementById('g-id').value.trim(),
         name:          document.getElementById('g-name').value.trim(),
         kind:          document.querySelector('input[name="kind"]:checked')?.value || 'household',
         ...(document.getElementById('g-display').value.trim()
@@ -164,7 +164,7 @@
           fb.textContent = `Error: ${r.error}`;
           return;
         }
-        fb.textContent = `Created crew "${r.crewId}".`;
+        fb.textContent = `Created crew "${r.circleId}".`;
         document.getElementById('create-result').hidden = false;
         document.getElementById('create-summary').textContent = JSON.stringify(r, null, 2);
       } catch (err) {

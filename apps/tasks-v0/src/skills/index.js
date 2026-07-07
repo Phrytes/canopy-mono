@@ -18,7 +18,7 @@
  * declared params, resolves the per-crew store via `storeFor(ctx)`, then calls
  * the core.  The wire behaviour is byte-identical: `storeFor` is exactly the
  * old `bundleResolver(parts, { envelope, from })` call, and each core keeps its
- * own `if (!crew) return { error: 'crewId required' }` guard (validation of the
+ * own `if (!crew) return { error: 'circleId required' }` guard (validation of the
  * op's declared params happens first, but every tested path supplies them).
  *
  * Skills that are NOT a clean `(crew, args, ctx)` task-store shape stay
@@ -99,7 +99,7 @@ function _buildStoragePolicy(storagePolicy, groupPodUri) {
 // ── Pure cores: (crew, a, ctx) → result ──────────────────────────────────
 //
 // `crew`  the resolved CrewState (may be null when multi-crew routing misses —
-//         each core guards with `if (!crew) return { error: 'crewId required' }`).
+//         each core guards with `if (!crew) return { error: 'circleId required' }`).
 // `a`     the decoded args object (wireSkill's decodeArgs; identical to the old
 //         `argsFromParts(parts)` for the single-DataPart wire convention).
 // `ctx`   the full core skill context — `{ from, actorDisplayName, envelope, … }`.
@@ -117,7 +117,7 @@ function _buildStoragePolicy(storagePolicy, groupPodUri) {
  * ref}, ...]` for cross-pod refs (V2 web functional design §4b).
  */
 async function addTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   // Phase 10 — block addTask when the crew is paused or archived.
   const lc = crew.liveCrew;
   if (lc?.archived) return { error: 'crew-archived' };
@@ -189,7 +189,7 @@ async function addTaskCore(crew, a, ctx) {
  * Compare-and-swap; loser gets `{error: 'already-claimed', current}`.
  */
 async function claimTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const result = await crew.itemStore.claim(a.id, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — publish the post-claim state. The
   // substrate is the source of authorisation truth on the
@@ -205,7 +205,7 @@ async function claimTaskCore(crew, a, ctx) {
  * completeTask({id})
  */
 async function completeTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   try {
     const [completed] = await crew.itemStore.markComplete(
       [{ id: a.id }],
@@ -230,7 +230,7 @@ async function completeTaskCore(crew, a, ctx) {
  * removeTask({id})  — admin-only per role policy
  */
 async function removeTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   // Capture the item's syncedFromId BEFORE removal (the
   // receiver-side mirror matches by the publishing device's id,
   // which may differ from `a.id` if THIS device is itself a
@@ -252,7 +252,7 @@ async function removeTaskCore(crew, a, ctx) {
  * idempotent.
  */
 async function getTaskSnapshotCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   if (!a.id) return { error: 'id required' };
   const open   = await crew.itemStore.listOpen({});
   const closed = await crew.itemStore.listClosed();
@@ -278,7 +278,7 @@ async function getTaskSnapshotCore(crew, a, ctx) {
  * Returns items + computed `status` (ready/waiting/blocked).
  */
 async function listOpenCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const filter = {};
   if (a.type)          filter.type          = a.type;
   if (a.requiredSkill) filter.requiredSkill = a.requiredSkill;
@@ -308,7 +308,7 @@ async function listOpenCore(crew, a, ctx) {
  * surfaces in the My-work UI (disabled "Mark complete" button).
  */
 async function listMineCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const open   = await crew.itemStore.listOpen();
   const closed = await crew.itemStore.listClosed();
   const items  = open
@@ -325,7 +325,7 @@ async function listMineCore(crew, a, ctx) {
  * listClaimable({skill?})  — unassigned tasks (optionally skill-filtered).
  */
 async function listClaimableCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const filter = { assignee: null };
   if (a.skill) filter.requiredSkill = a.skill;
   const items = await crew.itemStore.listOpen(filter);
@@ -338,7 +338,7 @@ async function listClaimableCore(crew, a, ctx) {
  *   reference. Substrate-side gating via `canSubmit`.
  */
 async function submitTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const updated = await crew.itemStore.submit(a.id, {
     ...(a.deliverable !== undefined ? { deliverable: a.deliverable } : {}),
     ...(a.note        !== undefined ? { note:        a.note        } : {}),
@@ -353,7 +353,7 @@ async function submitTaskCore(crew, a, ctx) {
  *   submitted → complete. Approver designated by item.approval.
  */
 async function approveTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   try {
     const updated = await crew.itemStore.approve(a.id, {
       ...(a.note !== undefined ? { note: a.note } : {}),
@@ -374,7 +374,7 @@ async function approveTaskCore(crew, a, ctx) {
  *   submitted → rejected → claimed. Note is mandatory.
  */
 async function rejectTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const updated = await crew.itemStore.reject(a.id, { note: a.note }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the rejection.
   if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
@@ -387,7 +387,7 @@ async function rejectTaskCore(crew, a, ctx) {
  *   Reason is mandatory; assignee gets it in the inbox + can appeal.
  */
 async function revokeTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'crewId required' };
+  if (!crew) return { error: 'circleId required' };
   const updated = await crew.itemStore.revoke(a.id, { reason: a.reason }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the revocation.
   if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
@@ -400,10 +400,10 @@ async function revokeTaskCore(crew, a, ctx) {
  * @param {() => Iterable<object>} [args.crewsProvider]
  *   Optional. Used by **platform-level** skills (`provisionMyCrew`,
  *   `listSavedCrewConfigs`, `spawnMyCrew`) as a fallback when the
- *   regular routing-via-args.crewId resolution misses. Those skills
+ *   regular routing-via-args.circleId resolution misses. Those skills
  *   write/read shared local-store state and don't care which crew
  *   they're "associated" with, so they pick the first available crew
- *   instead of returning a crewId-required error. Crew-strict skills
+ *   instead of returning a circleId-required error. Crew-strict skills
  *   (addTask, claimTask, etc.) still strict-null on miss.
  * @returns {Array<object>} array of `defineSkill` definitions
  */
@@ -417,7 +417,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
    * routing first, fall back to the first crew in `crewsProvider()`
    * when the lookup misses. Single-crew launches get the same
    * behaviour as before (`bundleResolver` returns the single crew
-   * regardless of `args.crewId`).
+   * regardless of `args.circleId`).
    */
   function resolveAnyCrew(parts, ctx) {
     const direct = bundleResolver(parts, ctx);
@@ -523,7 +523,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('reassignTask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const updated = await crew.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
       // Phase 52.9.3 sub-slice 1 — fan-out the reassignment.
@@ -558,7 +558,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('editTask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const lc = crew.liveCrew;
       if (lc?.archived) return { error: 'crew-archived' };
       if (lc?.paused)   return { error: 'crew-paused' };
@@ -615,7 +615,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('setApprovalMode', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const updated = await crew.itemStore.setApprovalMode(a.id, a.mode, { actor: from, actorDisplayName });
       return { task: updated };
@@ -625,7 +625,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * getCrewStoragePolicy({crewId})
+     * getCrewStoragePolicy({circleId})
      *   — Tasks V2 standardisation adoption (2026-05-14). Returns the
      *   crew's storage policy `{policy, groupPodUri?}` from its
      *   `crewConfig.storage`. Defaults to `'no-pod'`.
@@ -635,7 +635,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('getCrewStoragePolicy', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const storage = crew.liveCrew?.storage ?? { policy: 'no-pod' };
       return {
         policy:      storage.policy ?? 'no-pod',
@@ -647,7 +647,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * setCrewStoragePolicy({crewId, storagePolicy, groupPodUri?})
+     * setCrewStoragePolicy({circleId, storagePolicy, groupPodUri?})
      *   — Tasks V2 standardisation adoption (2026-05-14). Admin /
      *   coordinator only. **One-way**: rejects downgrade to
      *   `'no-pod'` once a pod-having policy is active (substrate-
@@ -659,7 +659,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('setCrewStoragePolicy', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       // Admin / coordinator gate via the crew's role map.
       const role = crew.liveCrew?.members?.find?.((m) => m.webid === from)?.role
@@ -678,14 +678,14 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (typeof crew.crewMutator === 'function') {
         crew.crewMutator({ storage: next });
       }
-      return { crewId: crew.liveCrew?.crewId ?? a.crewId ?? null, storage: next };
+      return { circleId: crew.liveCrew?.circleId ?? a.circleId ?? null, storage: next };
     }, {
       description: 'Tasks V2: admin-only upgrade of the crew storage policy. One-way.',
       visibility:  'authenticated',
     }),
 
     /**
-     * startPodSignIn({issuer, redirectUrl, crewId?})
+     * startPodSignIn({issuer, redirectUrl, circleId?})
      *   — Tasks V2 substrate-adoption (2026-05-14, Phase 52.15.3
      *   mirror). Kicks off the OIDC redirect dance. Returns the IdP
      *   authorize URL; the browser navigates there. The session is
@@ -697,7 +697,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('startPodSignIn', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       return _startPodSignIn({ crew, issuer: a.issuer, redirectUrl: a.redirectUrl });
     }, {
@@ -706,7 +706,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * completePodSignIn({callbackUrl, crewId?})
+     * completePodSignIn({callbackUrl, circleId?})
      *   — Tasks V2 substrate-adoption. Phase 2: handles the OIDC
      *   callback + attaches a SolidPodSource to the crew's
      *   CachingDataSource.
@@ -715,7 +715,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('completePodSignIn', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       return _completePodSignIn({ crew, callbackUrl: a.callbackUrl });
     }, {
@@ -724,7 +724,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * signOutOfPod({crewId?})
+     * signOutOfPod({circleId?})
      *   — Tasks V2 substrate-adoption. Detaches the inner DataSource
      *   + clears the OIDC session. Local cache preserved.
      *
@@ -732,7 +732,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('signOutOfPod', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       return _signOutOfPod({ crew });
     }, {
       description: 'Sign out of the active pod; preserves local cache.',
@@ -740,7 +740,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * podSignInStatus({crewId?})
+     * podSignInStatus({circleId?})
      *   — Tasks V2 substrate-adoption. Read-only `{signedIn, webid,
      *   podAttached}`.
      *
@@ -748,7 +748,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      */
     defineSkill('podSignInStatus', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       return _podSignInStatus({ crew });
     }, {
       description: 'Read the current pod-sign-in state for this crew.',
@@ -756,7 +756,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * spawnMyCrew({crewId})
+     * spawnMyCrew({circleId})
      *
      * Tasks V2 substrate-adoption (2026-05-14, sixth slice). Loads a
      * saved CrewConfig from the local store + (when the CLI is wired
@@ -764,7 +764,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * shared meshAgent + adds it to the runtime crewsMap.
      *
      * **In-process spawning** requires the host CLI to expose a
-     * `_spawnCrewInProcess(crewId)` callback on the resolved crew's
+     * `_spawnCrewInProcess(circleId)` callback on the resolved crew's
      * `_crewState`. The `bin/tasks-ui.js` `--multi-crew` path wires
      * this; the default single-crew path does NOT.
      *
@@ -781,16 +781,16 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       const crew = resolveAnyCrew(parts, { envelope, from });
       if (!crew?.dataSource?.read) return { error: 'no-data-source' };
       const a = argsFromParts(parts);
-      if (typeof a.crewId !== 'string' || !a.crewId) {
-        return { error: 'crewId required' };
+      if (typeof a.circleId !== 'string' || !a.circleId) {
+        return { error: 'circleId required' };
       }
-      if (a.crewId === crew?.liveCrew?.crewId) {
+      if (a.circleId === crew?.liveCrew?.circleId) {
         return { error: 'crew-already-active' };
       }
       // Load the saved config to confirm it exists + is well-formed.
       // `loadCrewConfig` has a fallback for missing entries — we want a
       // strict "exists?" check here so the UI can surface "no such crew".
-      const path = `mem://tasks/crews/${a.crewId}/config.json`;
+      const path = `mem://tasks/crews/${a.circleId}/config.json`;
       let cfg;
       try {
         const raw = await crew.dataSource.read(path);
@@ -799,18 +799,18 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       } catch (err) {
         return { error: `load-failed:${err?.message ?? err}` };
       }
-      if (!cfg || cfg.crewId !== a.crewId) {
+      if (!cfg || cfg.circleId !== a.circleId) {
         return { error: 'crew-not-found' };
       }
 
       // In-process spawn path (multi-crew runtime).
       if (typeof crew._spawnCrewInProcess === 'function') {
         try {
-          const spawned = await crew._spawnCrewInProcess(a.crewId);
+          const spawned = await crew._spawnCrewInProcess(a.circleId);
           return {
             ok:     true,
             ready:  true,
-            crewId: spawned?.liveCrew?.crewId ?? a.crewId,
+            circleId: spawned?.liveCrew?.circleId ?? a.circleId,
             name:   spawned?.liveCrew?.name ?? cfg.name,
             kind:   spawned?.liveCrew?.kind ?? cfg.kind,
           };
@@ -823,10 +823,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       return {
         ok:           true,
         ready:        false,
-        crewId:       cfg.crewId,
+        circleId:       cfg.circleId,
         name:         cfg.name,
         kind:         cfg.kind,
-        restartHint:  `Restart the tasks UI bound to "${cfg.crewId}". The single-crew CLI takes \`--crew=<path-to-config.json>\`; the saved config lives at \`mem://tasks/crews/${cfg.crewId}/config.json\` in the local-store. Multi-crew in-process runtime is a follow-up (see Project Files/Tasks App/v2-web-functional-design-2026-05-11.md §6a).`,
+        restartHint:  `Restart the tasks UI bound to "${cfg.circleId}". The single-crew CLI takes \`--crew=<path-to-config.json>\`; the saved config lives at \`mem://tasks/crews/${cfg.circleId}/config.json\` in the local-store. Multi-crew in-process runtime is a follow-up (see Project Files/Tasks App/v2-web-functional-design-2026-05-11.md §6a).`,
       };
     }, {
       description: 'Tasks V2: spawn a saved crew on the running agent (multi-crew runtime) OR return a restart hint when the CLI is single-crew mode.',
@@ -836,9 +836,9 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     /**
      * listSavedCrewConfigs()
      *   — Tasks V2 substrate-adoption (2026-05-14). Scans the local
-     *   store for `mem://tasks/crews/<crewId>/config.json` entries and
+     *   store for `mem://tasks/crews/<circleId>/config.json` entries and
      *   returns the saved CrewConfigs. Includes a `running` flag per
-     *   entry: `true` iff the active bundle is bound to that crewId.
+     *   entry: `true` iff the active bundle is bound to that circleId.
      *   Used by `/crews.html` to surface saved-but-not-running crews
      *   so users can see what `provisionMyCrew` persisted before
      *   multi-crew runtime lands.
@@ -856,27 +856,27 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         return { error: `list-failed:${err?.message ?? err}` };
       }
       const configs = [];
-      const runningId = crew?.liveCrew?.crewId ?? null;
+      const runningId = crew?.liveCrew?.circleId ?? null;
       for (const path of paths ?? []) {
         if (!path.endsWith('/config.json')) continue;
         try {
           const raw = await crew.dataSource.read(path);
           if (!raw) continue;
           const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-          if (!cfg?.crewId) continue;
+          if (!cfg?.circleId) continue;
           configs.push({
-            crewId:  cfg.crewId,
-            name:    cfg.name ?? cfg.crewId,
+            circleId:  cfg.circleId,
+            name:    cfg.name ?? cfg.circleId,
             kind:    cfg.kind ?? 'household',
             storage: cfg.storage ?? { policy: 'no-pod' },
             members: Array.isArray(cfg.members)
               ? cfg.members.map(m => ({ webid: m.webid, displayName: m.displayName ?? null, role: m.role ?? 'member' }))
               : [],
-            running: cfg.crewId === runningId,
+            running: cfg.circleId === runningId,
           });
         } catch { /* skip malformed config */ }
       }
-      configs.sort((a, b) => a.crewId.localeCompare(b.crewId));
+      configs.sort((a, b) => a.circleId.localeCompare(b.circleId));
       return { configs };
     }, {
       description: 'Tasks V2: list saved CrewConfigs in the local store with a running-flag per entry.',
@@ -884,21 +884,21 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * provisionMyCrew({crewId, name, kind, storagePolicy?, groupPodUri?,
+     * provisionMyCrew({circleId, name, kind, storagePolicy?, groupPodUri?,
      *                  displayName?, additionalMembers?})
      *
      * Tasks V2 standardisation adoption (2026-05-14). Persists a fresh
      * `CrewConfig` into the local-store at
-     * `mem://tasks/crews/<crewId>/config.json` with the caller as
+     * `mem://tasks/crews/<circleId>/config.json` with the caller as
      * admin. Used by `/welcome.html`'s wizard for first-run
      * crew provisioning. The caller still needs to restart Tasks with
-     * `--crew=...` (or supply the new crewId at boot) for the runtime
+     * `--crew=...` (or supply the new circleId at boot) for the runtime
      * to actually bind to the new crew — this skill is the V2 design's
      * §4a "creator picks one of the four §II.2 policies" step, not the
      * full bundle bring-up.
      *
      * NOT wired: platform-level skill — resolves via `resolveAnyCrew`,
-     * writes the shared `dataSource`, and its real args (`crewId`,
+     * writes the shared `dataSource`, and its real args (`circleId`,
      * `storagePolicy`, `groupPodUri`, `displayName`, `additionalMembers`)
      * diverge from the manifest op's declared params (`name`, `kind`),
      * so `wireSkill`'s validation would not match the skill's contract.
@@ -908,8 +908,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (!crew?.dataSource?.write) return { error: 'no-data-source' };
 
       const a = argsFromParts(parts);
-      if (typeof a.crewId !== 'string' || !/^[a-z0-9](?:[a-z0-9_-]{1,30}[a-z0-9])?$/.test(a.crewId)) {
-        return { error: 'crewId-invalid' };
+      if (typeof a.circleId !== 'string' || !/^[a-z0-9](?:[a-z0-9_-]{1,30}[a-z0-9])?$/.test(a.circleId)) {
+        return { error: 'circleId-invalid' };
       }
       if (typeof a.name !== 'string' || a.name.length === 0) {
         return { error: 'name-required' };
@@ -922,10 +922,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
 
       // Don't overwrite an existing crew with the same id (the wizard
       // surfaces a clear error to the user).
-      const path = `mem://tasks/crews/${a.crewId}/config.json`;
+      const path = `mem://tasks/crews/${a.circleId}/config.json`;
       try {
         const existing = await crew.dataSource.read(path);
-        if (existing) return { error: 'crewId-already-exists' };
+        if (existing) return { error: 'circleId-already-exists' };
       } catch { /* read-miss is the happy path */ }
 
       // Build the member list. Caller becomes admin; optional
@@ -955,11 +955,11 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
 
       const saved = await saveCrewConfig({
         dataSource: crew.dataSource,
-        config:     { crewId: a.crewId, name: a.name, kind, members, storage },
+        config:     { circleId: a.circleId, name: a.name, kind, members, storage },
       });
 
       return {
-        crewId:  saved.crewId,
+        circleId:  saved.circleId,
         name:    saved.name,
         kind:    saved.kind,
         storage: saved.storage,

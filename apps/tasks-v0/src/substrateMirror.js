@@ -21,7 +21,7 @@
  * @param {import('@canopy/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope   — shared per-bundle instance.
  * @param {object} args.pseudoPod        — shared per-bundle instance.
- * @param {string} args.crewId           — crew identifier (URI namespace).
+ * @param {string} args.circleId           — crew identifier (URI namespace).
  * @param {Array<{pubKey: string}>} [args.peers]
  * @param {string} [args.selfPubKey]     — local agent address; filtered out (self).
  * @returns {Promise<{
@@ -85,7 +85,7 @@ export async function wireTasksSubstrateMirror({
   itemStore,
   notifyEnvelope,
   pseudoPod,
-  crewId,
+  circleId,
   peers = [],
   selfPubKey = null,
 }) {
@@ -93,12 +93,12 @@ export async function wireTasksSubstrateMirror({
     itemStore,
     notifyEnvelope,
     pseudoPod,
-    scopeId:     crewId,
+    scopeId:     circleId,
     kind:        'task',
     uriPrefix:   (id) => `/tasks/crews/${id}/tasks/`,
     toDraft:     taskDraft,
     inferAction: taskInferAction,
-    scopeField:  'crewId',
+    scopeField:  'circleId',
     peers,
     selfPubKey,
   });

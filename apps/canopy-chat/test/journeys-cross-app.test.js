@@ -390,10 +390,10 @@ describe('CC-TK.1 — provision a crew', () => {
     const r = await ws.userInput('/crew-new "Oosterpoort" --kind=household');
     expect(r.payload.ok).toBe(true);
     // Post-integration: real provisionMyCrew demands a slug-shaped
-    // crewId; canopy-chat's adapter derives one from the name
+    // circleId; canopy-chat's adapter derives one from the name
     // (`"Oosterpoort"` → `oosterpoort`).  No `crew-` prefix.
-    expect(typeof r.payload.crewId).toBe('string');
-    expect(r.payload.crewId.length).toBeGreaterThan(0);
+    expect(typeof r.payload.circleId).toBe('string');
+    expect(r.payload.circleId.length).toBeGreaterThan(0);
   });
 });
 
@@ -458,7 +458,7 @@ describe('CC-TK.F1 — active-circle → app-scope binding (5.3)', () => {
     // a crew/group-aware resolver routes the write into that circle.
     const dispatched = calls[0];
     expect(dispatched.opId).toBe(route.opId);
-    expect(dispatched.args.crewId).toBe('oosterpoort');
+    expect(dispatched.args.circleId).toBe('oosterpoort');
     expect(dispatched.args._scope).toBe('oosterpoort');
     expect(dispatched.args.groupId).toBe('oosterpoort');
     expect(itemCircleId(dispatched.args)).toBe('oosterpoort');
@@ -467,13 +467,13 @@ describe('CC-TK.F1 — active-circle → app-scope binding (5.3)', () => {
   it('a read dispatch (/mytasks) is NOT scoped to the active circle', async () => {
     const { route, calls } = await dispatchInCircle('/mytasks', 'oosterpoort');
     expect(route.verb).toBe('list');
-    expect(calls[0].args.crewId).toBeUndefined();
+    expect(calls[0].args.circleId).toBeUndefined();
     expect(calls[0].args._scope).toBeUndefined();
   });
 
   it('an explicit scope arg wins over the active circle (no override)', async () => {
-    const { calls } = await dispatchInCircle('/addtask "fix tap" --crewId=plumbing-crew', 'oosterpoort');
-    expect(calls[0].args.crewId).toBe('plumbing-crew');   // caller's choice preserved
+    const { calls } = await dispatchInCircle('/addtask "fix tap" --circleId=plumbing-crew', 'oosterpoort');
+    expect(calls[0].args.circleId).toBe('plumbing-crew');   // caller's choice preserved
     expect(calls[0].args._scope).toBeUndefined();          // not layered on top
   });
 

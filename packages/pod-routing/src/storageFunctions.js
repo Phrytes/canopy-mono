@@ -16,8 +16,8 @@ export const CANONICAL_STORAGE_FUNCTIONS = Object.freeze([
   'private/drafts',         // patterned: 'private/drafts/<app>'
   'sharing/profile-public',
   'sharing',                // patterned: 'sharing/<resource>'
-  'group',                  // patterned: 'group/<crewId>/<container>'
-  'personal-in-group',      // patterned: 'personal-in-group/<crewId>'
+  'group',                  // patterned: 'group/<circleId>/<container>'
+  'personal-in-group',      // patterned: 'personal-in-group/<circleId>'
 ]);
 
 /**

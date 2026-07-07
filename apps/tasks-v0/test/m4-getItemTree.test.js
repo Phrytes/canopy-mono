@@ -22,7 +22,7 @@ const CREW_ID = 'test-crew';
 function skillsWith(itemMap) {
   // Minimal bundleResolver: always returns this one crew object.
   const crew = {
-    crewId:    CREW_ID,
+    circleId:    CREW_ID,
     itemStore: {
       getById: async (id) => itemMap[id] ?? null,
     },
@@ -38,7 +38,7 @@ function call(skill, args) {
   return skill.handler({
     parts: [{ type: 'DataPart', data: args }],
     from:  'urn:me',
-    envelope: { data: { crewId: CREW_ID } },
+    envelope: { data: { circleId: CREW_ID } },
   });
 }
 

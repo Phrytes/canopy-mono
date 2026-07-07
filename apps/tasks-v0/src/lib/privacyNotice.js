@@ -66,7 +66,7 @@ export const PRIVACY_NOTICE = Object.freeze({
     {
       heading: 'Agenda-uitvoer (V2.1) — alleen op je eigen pod',
       body:    'Wanneer een admin "Agenda-koppeling" aanzet, schrijft Tasks een per-lid `.ics`-bestand naar ' +
-               '`<jouw-pod>/tasks/calendars/<crewId>.ics` met je toegewezen + master-taken. ' +
+               '`<jouw-pod>/tasks/calendars/<circleId>.ics` met je toegewezen + master-taken. ' +
                'Andere leden zien dit bestand niet — alleen jij abonneert er met je telefoonagenda op. ' +
                'De URL is niet versleuteld; iedereen die de URL achterhaalt kan meelezen, ' +
                'dus deel hem alleen met agenda-apps die je vertrouwt.',
@@ -149,7 +149,7 @@ export const PRIVACY_NOTICE = Object.freeze({
     {
       heading: 'Calendar emission (V2.1) — only on your own pod',
       body:    'When an admin enables "Calendar sync", Tasks writes a per-member `.ics` file to ' +
-               '`<your-pod>/tasks/calendars/<crewId>.ics` containing your assigned + mastered tasks. ' +
+               '`<your-pod>/tasks/calendars/<circleId>.ics` containing your assigned + mastered tasks. ' +
                'Other members never see this file — only you subscribe to it from your phone calendar. ' +
                'The URL is not authenticated; anyone who learns the URL can read along, ' +
                'so share it only with calendar apps you trust.',

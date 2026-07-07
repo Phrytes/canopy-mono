@@ -84,7 +84,7 @@ export function WorkspaceScreen() {
   // resolution + useSkillResult).  Same data + lifecycle; cleaner
   // call site.
   const { section, data, loading, refresh } =
-    useAdapterSection(adapter, 'open', [svc?.activeCrewId, filter]);
+    useAdapterSection(adapter, 'open', [svc?.activeCircleId, filter]);
   const list = { data, loading, refresh };  // shape compatibility
 
   const items = useMemo(() => {

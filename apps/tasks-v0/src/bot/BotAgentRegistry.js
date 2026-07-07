@@ -23,7 +23,7 @@
  *
  * Persistence (V1.5 follow-up B): when a `dataSource` is supplied,
  * each bot agent's vault snapshot + binding metadata is written to
- * `mem://tasks/crews/<crewId>/botAgents/<chatId>.json`. On Crew
+ * `mem://tasks/crews/<circleId>/botAgents/<chatId>.json`. On Crew
  * boot, `restoreAll()` loads them and re-spawns the bot agents
  * against the same identity, so cap-token bindings survive a CLI
  * restart. Without `dataSource`, bot identities stay ephemeral
@@ -59,7 +59,7 @@ export class BotAgentRegistry {
   #bus;
   #tasksAgent;
   #dataSource;
-  #crewId;
+  #circleId;
   /** Map<chatId, BotEntry> */
   #entries = new Map();
   /** V1.5 follow-up C — issuer-side revocation list. Set<tokenId>. */
@@ -71,12 +71,12 @@ export class BotAgentRegistry {
    * @param {import('@canopy/core').Agent}        args.tasksAgent
    * @param {object} [args.dataSource]
    *   V1.5 follow-up B — when supplied, bindings persist under
-   *   `mem://tasks/crews/<crewId>/botAgents/<chatId>.json` so
+   *   `mem://tasks/crews/<circleId>/botAgents/<chatId>.json` so
    *   cap-token bindings survive CLI restarts. Caller must pass
-   *   `crewId` alongside.
-   * @param {string} [args.crewId]
+   *   `circleId` alongside.
+   * @param {string} [args.circleId]
    */
-  constructor({ bus, tasksAgent, dataSource, crewId }) {
+  constructor({ bus, tasksAgent, dataSource, circleId }) {
     if (!bus) throw new TypeError('BotAgentRegistry: bus required');
     if (!tasksAgent?.policyEngine) {
       throw new TypeError('BotAgentRegistry: tasksAgent must have a PolicyEngine wired');
@@ -84,7 +84,7 @@ export class BotAgentRegistry {
     this.#bus = bus;
     this.#tasksAgent = tasksAgent;
     this.#dataSource = dataSource ?? null;
-    this.#crewId     = crewId     ?? null;
+    this.#circleId     = circleId     ?? null;
     // V1.5 follow-up C — feed the tasks agent's PolicyEngine our
     // local revocation set so revoked tokens fail at the verifier
     // even if the holder still has the blob stored.
@@ -97,10 +97,10 @@ export class BotAgentRegistry {
   isRevoked(tokenId) { return this.#revoked.has(tokenId); }
 
   /** True when `dataSource` was supplied — bindings will be persisted. */
-  get persisting() { return !!(this.#dataSource && this.#crewId); }
+  get persisting() { return !!(this.#dataSource && this.#circleId); }
 
   #pathFor(chatId) {
-    return `mem://tasks/crews/${this.#crewId}/botAgents/${encodeURIComponent(chatId)}.json`;
+    return `mem://tasks/crews/${this.#circleId}/botAgents/${encodeURIComponent(chatId)}.json`;
   }
 
   /**
@@ -229,7 +229,7 @@ export class BotAgentRegistry {
    */
   async restoreAll() {
     if (!this.persisting) return { restored: 0, expired: 0, failed: 0 };
-    const root = `mem://tasks/crews/${this.#crewId}/botAgents/`;
+    const root = `mem://tasks/crews/${this.#circleId}/botAgents/`;
     let listing = [];
     try {
       const r = await this.#dataSource.list?.(root);
@@ -271,7 +271,7 @@ export class BotAgentRegistry {
         await agent.hello(this.#tasksAgent.address);
 
         // V2.0 — with persisted tasks-agent identity (Crew.js writes
-        // the agent vault to `mem://tasks/crews/<crewId>/agent/
+        // the agent vault to `mem://tasks/crews/<circleId>/agent/
         // identity-vault.json` on first boot and restores from it
         // afterwards), the token's `agentId` matches the current
         // tasks agent's pubKey across restarts; the auto-rotate

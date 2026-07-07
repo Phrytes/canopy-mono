@@ -30,7 +30,7 @@
  * @property {string} type
  * @property {string[]} recipients
  * @property {string} [fromActor]
- * @property {string} [crewId]
+ * @property {string} [circleId]
  * @property {string} queuedAt   — ISO timestamp
  */
 
@@ -82,7 +82,7 @@ export function createPendingQueue({
       type:       entry.type,
       recipients: Array.isArray(entry.recipients) ? [...entry.recipients] : [],
       ...(entry.fromActor  != null ? { fromActor:  entry.fromActor } : {}),
-      ...(entry.crewId     != null ? { crewId:     entry.crewId } : {}),
+      ...(entry.circleId     != null ? { circleId:     entry.circleId } : {}),
       queuedAt:   entry.queuedAt ?? now(),
     };
     await backend.put(QUEUE_PREFIX + id, record);

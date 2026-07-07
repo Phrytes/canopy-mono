@@ -8,7 +8,7 @@
  *   - `setAvailabilityEnabled({enabled})`           — admin only.
  *
  * Hints persist as JSON blobs at:
- *   `mem://tasks/crews/<crewId>/availability/<webid>.json`
+ *   `mem://tasks/crews/<circleId>/availability/<webid>.json`
  *
  * Trust boundary:
  *   - 'unknown' is the absent state. Coordinator view shows 'unknown'
@@ -24,8 +24,8 @@ import { defineSkill } from '@canopy/core';
 import { AvailabilityHints, isoWeekOf } from '../availability/AvailabilityHints.js';
 import { argsFromParts } from '../bundleResolver.js';
 
-function hintPath(crewId, webid) {
-  return `mem://tasks/crews/${encodeURIComponent(crewId)}/availability/${encodeURIComponent(webid)}.json`;
+function hintPath(circleId, webid) {
+  return `mem://tasks/crews/${encodeURIComponent(circleId)}/availability/${encodeURIComponent(webid)}.json`;
 }
 
 async function loadHints(dataSource, path) {
@@ -70,7 +70,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
   return [
     defineSkill('setAvailabilityEnabled', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
@@ -87,7 +87,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
 
     defineSkill('setAvailabilityOptIn', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.optedIn !== 'boolean') return { error: 'optedIn (boolean) required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required (from envelope)' };
@@ -105,7 +105,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
       });
       // Opting OUT also clears the persisted hints — no leftover data.
       if (!a.optedIn) {
-        try { await crew.dataSource.delete?.(hintPath(lc.crewId, from)); } catch { /* noop */ }
+        try { await crew.dataSource.delete?.(hintPath(lc.circleId, from)); } catch { /* noop */ }
       }
       return { ok: true, optedIn: a.optedIn };
     }, {
@@ -115,14 +115,14 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
 
     defineSkill('setMyAvailability', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const lc = crew.liveCrew ?? {};
       if (!lc.availabilityHints?.enabled) return { error: 'availability-hints-disabled' };
       if (!isOptedIn(lc, from))           return { error: 'not opted in — call setAvailabilityOptIn first' };
 
-      const path = hintPath(lc.crewId, from);
+      const path = hintPath(lc.circleId, from);
       const hints = await loadHints(crew.dataSource, path);
       try {
         hints.set({ week: a.week, day: a.day, half: a.half, state: a.state });
@@ -138,7 +138,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
 
     defineSkill('getMyAvailability', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const lc = crew.liveCrew ?? {};
@@ -146,7 +146,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
       const week = typeof a.week === 'string' && /^\d{4}-W\d{2}$/.test(a.week)
         ? a.week
         : isoWeekOf(new Date());
-      const path = hintPath(lc.crewId, from);
+      const path = hintPath(lc.circleId, from);
       const hints = await loadHints(crew.dataSource, path);
       return {
         enabled: true,
@@ -161,7 +161,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
 
     defineSkill('getCrewAvailability', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
@@ -180,7 +180,7 @@ export function buildAvailabilitySkills({ bundleResolver } = {}) {
           out.push({ webid: m.webid, displayName: m.displayName, grid: {} });
           continue;
         }
-        const path = hintPath(lc.crewId, m.webid);
+        const path = hintPath(lc.circleId, m.webid);
         const hints = await loadHints(crew.dataSource, path);
         out.push({ webid: m.webid, displayName: m.displayName, grid: hints.weekGrid(week) });
       }

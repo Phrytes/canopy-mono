@@ -85,8 +85,8 @@ function MainMenu() {
   if (!open) return null;
 
   const podSignedIn = !!svc?.podStatus?.signedIn;
-  const activeCrewId = svc?.activeCrewId;
-  const activeCrew   = activeCrewId ? svc?.crews?.get?.(activeCrewId) : null;
+  const activeCircleId = svc?.activeCircleId;
+  const activeCrew   = activeCircleId ? svc?.crews?.get?.(activeCircleId) : null;
 
   const sections = [
     {
@@ -106,7 +106,7 @@ function MainMenu() {
           icon: 'sparkles-outline',
           label: t('mobile.main_menu.edit_skills', 'My skills (this crew)'),
           onPress: () => go(ROUTES.EditSkills),
-          disabled: !activeCrewId,
+          disabled: !activeCircleId,
         },
       ],
     },
@@ -118,13 +118,13 @@ function MainMenu() {
           icon: 'settings-outline',
           label: t('mobile.main_menu.crew_settings', 'Crew settings'),
           onPress: () => go(ROUTES.CrewSettings),
-          disabled: !activeCrewId,
+          disabled: !activeCircleId,
         },
         {
           icon: 'git-network-outline',
           label: t('mobile.main_menu.dag', 'Sub-task tree'),
           onPress: () => go(ROUTES.Dag),
-          disabled: !activeCrewId,
+          disabled: !activeCircleId,
         },
       ],
     },

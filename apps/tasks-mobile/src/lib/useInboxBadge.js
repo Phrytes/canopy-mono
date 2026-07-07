@@ -4,7 +4,7 @@
  * Phase 41.18.2 (2026-05-10).
  *
  * Returns `{count, totalCount, refresh, loading, error}` keyed on the
- * active crewId so the badge updates when the user switches crews.
+ * active circleId so the badge updates when the user switches crews.
  * Used by the InboxScreen header + the Workspace screen's "Inbox"
  * shortcut chip.
  *
@@ -29,7 +29,7 @@ export function useInboxBadge() {
   const [error,      setError]      = useState(null);
 
   const fetchOnce = async () => {
-    if (!svc?.activeCrewId) return;
+    if (!svc?.activeCircleId) return;
     setLoading(true);
     try {
       const r = await skill.call({});
@@ -53,7 +53,7 @@ export function useInboxBadge() {
     timer = setInterval(fetchOnce, POLL_MS);
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [svc?.activeCrewId]);
+  }, [svc?.activeCircleId]);
 
   // Refresh on inbox-changed events (push wakes us, sync wakes us, …).
   useAgentEvent('inboxChanged', () => { fetchOnce().catch(() => {}); });

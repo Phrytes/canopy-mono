@@ -57,7 +57,7 @@
  *   - **Badge header** — `useInboxBadge` is a separate skill
  *     (`inboxBadgeCount`); not part of the section data source.
  *   - **Skill dispatch** — `useSkill('approveSubtaskProposal')` etc.
- *     still own activeCrewId injection + reply unwrap (same split as
+ *     still own activeCircleId injection + reply unwrap (same split as
  *     C.3 review: substrate declares, screen dispatches).
  */
 
@@ -109,7 +109,7 @@ export function InboxScreen() {
   // (V0.2 Q7 — `listMyInbox` with `{limit: 200}`).  V0.3 hook owns
   // the useSkillResult plumbing.
   const { section, data, loading, refresh } =
-    useAdapterSection(adapter, 'inbox', [svc?.activeCrewId]);
+    useAdapterSection(adapter, 'inbox', [svc?.activeCircleId]);
   const list = { data, loading, refresh };
 
   const approveProposal = useSkill('approveSubtaskProposal');

@@ -34,7 +34,7 @@ async function makeCrew(storage) {
   const bundle = buildBundle();
   const crew = await createCrewAgent({
     crewConfig: {
-      crewId:  'oss-tools',
+      circleId:  'oss-tools',
       name:    'OSS Tools NL',
       kind:    'project',
       members: [
@@ -52,7 +52,7 @@ describe('Tasks V2 — addTask embeds', () => {
   it('persists embeds on the stored task', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'addTask', {
-      crewId: 'oss-tools',
+      circleId: 'oss-tools',
       text:   'Paint the bench',
       embeds: [
         { type: 'supply-offer', ref: 'https://anne.pod/sharing/stoop/abc' },
@@ -68,7 +68,7 @@ describe('Tasks V2 — addTask embeds', () => {
   it('omits embeds when none supplied (V1 back-compat)', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'addTask', {
-      crewId: 'oss-tools',
+      circleId: 'oss-tools',
       text:   'Plain task',
     });
     expect(r.task.embeds).toBeUndefined();
@@ -77,7 +77,7 @@ describe('Tasks V2 — addTask embeds', () => {
   it('rejects entries missing type', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'addTask', {
-      crewId: 'oss-tools',
+      circleId: 'oss-tools',
       text:   'x',
       embeds: [{ ref: 'pseudo-pod://abc/x' }],
     });
@@ -87,7 +87,7 @@ describe('Tasks V2 — addTask embeds', () => {
   it('rejects entries missing ref', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'addTask', {
-      crewId: 'oss-tools',
+      circleId: 'oss-tools',
       text:   'x',
       embeds: [{ type: 'task' }],
     });
@@ -101,7 +101,7 @@ describe('Tasks V2 — addTask embeds', () => {
       ref:  `pseudo-pod://abc/tasks/t-${i}`,
     }));
     const r = await callSkill(crew.agent, 'addTask', {
-      crewId: 'oss-tools',
+      circleId: 'oss-tools',
       text:   'x',
       embeds: tooMany,
     });
@@ -113,7 +113,7 @@ describe('Tasks V2 — crewConfig.storage', () => {
   it('defaults to no-pod when storage is omitted', async () => {
     const { crew } = await makeCrew();
     expect(crew.bundle?.crewState ?? crew.crewState ?? {}).toBeTruthy();
-    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { crewId: 'oss-tools' });
+    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
     expect(r).toEqual({ policy: 'no-pod', groupPodUri: null });
   });
 
@@ -122,13 +122,13 @@ describe('Tasks V2 — crewConfig.storage', () => {
       policy:      'centralised',
       groupPodUri: 'https://buurt.pod/',
     });
-    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { crewId: 'oss-tools' });
+    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
     expect(r).toEqual({ policy: 'centralised', groupPodUri: 'https://buurt.pod/' });
   });
 
   it('forward-additive: unknown policies fall back to no-pod silently', async () => {
     const { crew } = await makeCrew({ policy: 'fancy-future-mode' });
-    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { crewId: 'oss-tools' });
+    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
     expect(r.policy).toBe('no-pod');
   });
 });
@@ -204,36 +204,36 @@ describe('Tasks V2 — agent-registry on bundle bring-up', () => {
 });
 
 describe('Tasks V2 — spawnMyCrew', () => {
-  it('rejects when crewId is missing', async () => {
+  it('rejects when circleId is missing', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'spawnMyCrew', {});
-    expect(r?.error).toMatch(/crewId required/);
+    expect(r?.error).toMatch(/circleId required/);
   });
 
-  it('rejects when the requested crewId is already active', async () => {
+  it('rejects when the requested circleId is already active', async () => {
     const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'oss-tools' });
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'oss-tools' });
     expect(r?.error).toBe('crew-already-active');
   });
 
   it('rejects when no saved config exists', async () => {
     const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'never-provisioned' });
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'never-provisioned' });
     expect(r?.error).toBe('crew-not-found');
   });
 
   it('returns a structured restart hint when no in-process spawner is wired', async () => {
     const { crew } = await makeCrew();
     await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'sibling-crew',
+      circleId: 'sibling-crew',
       name:   'Sibling',
       kind:   'team',
     });
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'sibling-crew' });
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'sibling-crew' });
     expect(r).toMatchObject({
       ok:     true,
       ready:  false,
-      crewId: 'sibling-crew',
+      circleId: 'sibling-crew',
       name:   'Sibling',
       kind:   'team',
     });
@@ -243,20 +243,20 @@ describe('Tasks V2 — spawnMyCrew', () => {
   it('honours an in-process spawner when one is wired', async () => {
     const { crew } = await makeCrew();
     await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'inproc-crew',
+      circleId: 'inproc-crew',
       name:   'In-Process',
       kind:   'household',
     });
     // The bundleResolver returns the CrewState (not the bundle) per
     // V2.8 single-agent semantics; attach the spawner there.
-    crew._crewState._spawnCrewInProcess = async (crewId) => ({
-      liveCrew: { crewId, name: 'In-Process', kind: 'household' },
+    crew._crewState._spawnCrewInProcess = async (circleId) => ({
+      liveCrew: { circleId, name: 'In-Process', kind: 'household' },
     });
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { crewId: 'inproc-crew' });
+    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'inproc-crew' });
     expect(r).toEqual({
       ok:     true,
       ready:  true,
-      crewId: 'inproc-crew',
+      circleId: 'inproc-crew',
       name:   'In-Process',
       kind:   'household',
     });
@@ -277,17 +277,17 @@ describe('Tasks V2 — listSavedCrewConfigs', () => {
   it('lists configs persisted via provisionMyCrew + marks running flag', async () => {
     const { crew } = await makeCrew();
     await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'saved-1',
+      circleId: 'saved-1',
       name:   'Saved One',
       kind:   'team',
     });
     await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'saved-2',
+      circleId: 'saved-2',
       name:   'Saved Two',
       kind:   'friends',
     });
     const r = await callSkill(crew.agent, 'listSavedCrewConfigs', {});
-    const ids = r.configs.map(c => c.crewId).sort();
+    const ids = r.configs.map(c => c.circleId).sort();
     expect(ids).toEqual(['saved-1', 'saved-2']);
     // Neither is the running crew — running crew (oss-tools from
     // makeCrew) wasn't provisioned via provisionMyCrew.
@@ -299,10 +299,10 @@ describe('Tasks V2 — listSavedCrewConfigs', () => {
     // Save a config for the running crew (mimic what createCrewAgent
     // would do once it writes the config on bring-up).
     await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'oss-tools',
+      circleId: 'oss-tools',
       name:   'Shadow copy',
     });
-    // crewId-already-exists is expected; let's persist via a different id
+    // circleId-already-exists is expected; let's persist via a different id
     const r = await callSkill(crew.agent, 'listSavedCrewConfigs', {});
     expect(Array.isArray(r.configs)).toBe(true);
   });
@@ -312,25 +312,25 @@ describe('Tasks V2 — provisionMyCrew', () => {
   it('persists a fresh crew config with the caller as admin', async () => {
     const { crew, bundle } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'fresh-crew',
+      circleId: 'fresh-crew',
       name:   'A Fresh Crew',
       kind:   'project',
     });
-    expect(r.crewId).toBe('fresh-crew');
+    expect(r.circleId).toBe('fresh-crew');
     expect(r.kind).toBe('project');
     expect(r.members[0]).toMatchObject({ webid: ANNE, role: 'admin' });
     // Reload from the dataSource to confirm persistence.
     const raw = await bundle.cache.read('mem://tasks/crews/fresh-crew/config.json');
     expect(raw).toBeTruthy();
     const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    expect(cfg.crewId).toBe('fresh-crew');
+    expect(cfg.circleId).toBe('fresh-crew');
     expect(cfg.storage).toEqual({ policy: 'no-pod' });
   });
 
   it('honours storagePolicy + groupPodUri', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId:        'pod-crew',
+      circleId:        'pod-crew',
       name:          'Pod Crew',
       kind:          'team',
       storagePolicy: 'centralised',
@@ -342,48 +342,48 @@ describe('Tasks V2 — provisionMyCrew', () => {
   it('rejects centralised without groupPodUri', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId:        'no-uri',
+      circleId:        'no-uri',
       name:          'X',
       storagePolicy: 'centralised',
     });
     expect(r?.error).toMatch(/storage-policy-needs-groupPodUri:centralised/);
   });
 
-  it('rejects malformed crewId', async () => {
+  it('rejects malformed circleId', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'Bad ID with spaces',
+      circleId: 'Bad ID with spaces',
       name:   'X',
     });
-    expect(r?.error).toBe('crewId-invalid');
+    expect(r?.error).toBe('circleId-invalid');
   });
 
   it('rejects empty name', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'ok-id',
+      circleId: 'ok-id',
       name:   '',
     });
     expect(r?.error).toBe('name-required');
   });
 
-  it('refuses to overwrite an existing crewId', async () => {
+  it('refuses to overwrite an existing circleId', async () => {
     const { crew } = await makeCrew();
     await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'twin',
+      circleId: 'twin',
       name:   'First Take',
     });
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'twin',
+      circleId: 'twin',
       name:   'Second Take',
     });
-    expect(r?.error).toBe('crewId-already-exists');
+    expect(r?.error).toBe('circleId-already-exists');
   });
 
   it('accepts additional members (de-duped on webid)', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'multi',
+      circleId: 'multi',
       name:   'Multi-member',
       additionalMembers: [
         { webid: BOB,  displayName: 'Bob',  role: 'member' },
@@ -398,7 +398,7 @@ describe('Tasks V2 — provisionMyCrew', () => {
   it('falls back to household kind on unknown kind', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      crewId: 'unknown-kind',
+      circleId: 'unknown-kind',
       name:   'X',
       kind:   'not-a-real-kind',
     });
@@ -410,12 +410,12 @@ describe('Tasks V2 — setCrewStoragePolicy', () => {
   it('upgrades no-pod → centralised', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
-      crewId:        'oss-tools',
+      circleId:        'oss-tools',
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',
     });
     expect(r.storage).toEqual({ policy: 'centralised', groupPodUri: 'https://anne.pod/' });
-    const after = await callSkill(crew.agent, 'getCrewStoragePolicy', { crewId: 'oss-tools' });
+    const after = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
     expect(after.policy).toBe('centralised');
   });
 
@@ -425,7 +425,7 @@ describe('Tasks V2 — setCrewStoragePolicy', () => {
       groupPodUri: 'https://anne.pod/',
     });
     const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
-      crewId:        'oss-tools',
+      circleId:        'oss-tools',
       storagePolicy: 'no-pod',
     });
     expect(r?.error).toBe('storage-policy-downgrade-not-supported');
@@ -434,7 +434,7 @@ describe('Tasks V2 — setCrewStoragePolicy', () => {
   it('rejects non-admin', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
-      crewId:        'oss-tools',
+      circleId:        'oss-tools',
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',
     }, BOB);
@@ -444,7 +444,7 @@ describe('Tasks V2 — setCrewStoragePolicy', () => {
   it('rejects centralised without groupPodUri', async () => {
     const { crew } = await makeCrew();
     const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
-      crewId:        'oss-tools',
+      circleId:        'oss-tools',
       storagePolicy: 'centralised',
     });
     expect(r?.error).toMatch(/storage-policy-needs-groupPodUri:centralised/);

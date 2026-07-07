@@ -249,7 +249,7 @@ async function materializeTasks(block, circleId, { callSkill, myWebid, fetchImpl
   if (typeof callSkill !== 'function' || !circleId) {
     return { blockId: block.id, type: 'tasks', status: 'empty', content: { items: [] } };
   }
-  const res = await callSkill('tasks', 'listOpen', { crewId: circleId });
+  const res = await callSkill('tasks', 'listOpen', { circleId: circleId });
   const raw = Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []);
   const filtered = scope === 'all'
     ? raw
@@ -265,11 +265,11 @@ async function materializeTasks(block, circleId, { callSkill, myWebid, fetchImpl
     embeds:   Array.isArray(t.embeds) ? t.embeds
               : (Array.isArray(t.source?.embeds) ? t.source.embeds : []),
   }));
-  // Resolve embed refs to live titles (crewId = circle id; fetchImpl = the pod
+  // Resolve embed refs to live titles (circleId = circle id; fetchImpl = the pod
   // session's authed fetch, for the user's own private cross-pod refs). Best-effort.
   items = await Promise.all(items.map(async (it) => (
     it.embeds.length
-      ? { ...it, embeds: await enrichEmbedsWithTitles({ callSkill, embeds: it.embeds, crewId: circleId, fetchImpl }) }
+      ? { ...it, embeds: await enrichEmbedsWithTitles({ callSkill, embeds: it.embeds, circleId: circleId, fetchImpl }) }
       : it
   )));
   return {

@@ -14,7 +14,7 @@ describe('makeCircleLookup', () => {
     const appCallSkill = vi.fn(async (app, op, args) => { calls.push([app, op, args]); return { tasks: [{ id: 'b', title: 'Bins' }, { id: 'c', title: 'Cook' }] }; });
     const lookup = makeCircleLookup({ getBase: () => [{ id: 'a', label: 'Wash' }, { id: 'b', label: 'Bins(base)' }], appCallSkill });
     const out = await lookup('listOpen', 'cook', { id: 'c1' }, 'tasks');
-    expect(calls[0]).toEqual(['tasks', 'listOpen', { crewId: 'c1', circleId: 'c1', groupId: 'c1' }]);
+    expect(calls[0]).toEqual(['tasks', 'listOpen', { circleId: 'c1', circleId: 'c1', groupId: 'c1' }]);
     expect(out.map((c) => c.id)).toEqual(['a', 'b', 'c']);          // 'b' from base wins; 'c' added live
     expect(out.find((c) => c.id === 'b').label).toBe('Bins(base)'); // base not overwritten by the live dup
   });
@@ -23,7 +23,7 @@ describe('makeCircleLookup', () => {
     const appCallSkill = vi.fn(async () => []);
     const lookup = makeCircleLookup({ appCallSkill, scopeId: () => 'active-circle' });
     await lookup('listOpen', 'x', { id: 'thread-9' }, 'tasks');   // scope.id is the thread, NOT the circle
-    expect(appCallSkill).toHaveBeenCalledWith('tasks', 'listOpen', { crewId: 'active-circle', circleId: 'active-circle', groupId: 'active-circle' });
+    expect(appCallSkill).toHaveBeenCalledWith('tasks', 'listOpen', { circleId: 'active-circle', circleId: 'active-circle', groupId: 'active-circle' });
   });
 
   it('scopeId() returning null → no-circle scope (empty fetch args), NOT the thread id (web non-circle thread)', async () => {

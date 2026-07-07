@@ -153,16 +153,16 @@ export async function createTasksAgent({
   const useExternalCrew = typeof crewProvider === 'function';
   const useExternalMutator = typeof externalMutator === 'function';
   let internalLiveCrew = Object.freeze({
-    crewId:     V0_DEFAULT_CREW_ID,
+    circleId:     V0_DEFAULT_CREW_ID,
     name:       'Household',
     kind:       'household',
     members:    initialMembers ?? [],
     customRoles: [],
   });
   const crewState = {
-    get crewId() {
+    get circleId() {
       const lc = useExternalCrew ? crewProvider() : internalLiveCrew;
-      return lc?.crewId ?? V0_DEFAULT_CREW_ID;
+      return lc?.circleId ?? V0_DEFAULT_CREW_ID;
     },
     get liveCrew() {
       return useExternalCrew ? crewProvider() : internalLiveCrew;

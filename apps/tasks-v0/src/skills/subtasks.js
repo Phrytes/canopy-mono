@@ -58,7 +58,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
   return [
     defineSkill('addSubtask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.parentTaskId !== 'string' || !a.parentTaskId) {
         return { error: 'parentTaskId required' };
@@ -184,7 +184,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
 
     defineSkill('approveSubtaskRequest', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
@@ -233,7 +233,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
 
     defineSkill('declineSubtaskRequest', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const role = crew.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
@@ -274,7 +274,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
      */
     defineSkill('proposeSubtask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.parentTaskId !== 'string' || !a.parentTaskId) {
         return { error: 'parentTaskId required' };
@@ -343,7 +343,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
      */
     defineSkill('approveSubtaskProposal', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.proposalId !== 'string' || !a.proposalId) {
         return { error: 'proposalId required' };
@@ -406,7 +406,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
 
     defineSkill('declineSubtaskProposal', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.proposalId !== 'string' || !a.proposalId) {
         return { error: 'proposalId required' };
@@ -442,7 +442,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
      */
     defineSkill('forceSpawnSubtask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);

@@ -7,7 +7,7 @@
  *   1. The manifest validates with the new view added.
  *   2. The `pod-settings` view declares `shape: 'record'` (Q17).
  *   3. The view declares a `dataSource` with `getCrewStoragePolicy` +
- *      `argsFromContext.crewId` (Q15 — runtime-derived arg).
+ *      `argsFromContext.circleId` (Q15 — runtime-derived arg).
  *   4. The view declares `fields[]` (Q18) with both editable fields
  *      of the storage policy (policy + groupPodUri), each with a
  *      `patch` declaration pointing at `setCrewStoragePolicy`.
@@ -49,11 +49,11 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     // Q17 — singleton record (getCrewStoragePolicy returns
     // {policy, groupPodUri?}, not an array).
     expect(view.shape).toBe('record');
-    // Q15 — `crewId` is RUNTIME-derived (browser URL `?crew=...`);
+    // Q15 — `circleId` is RUNTIME-derived (browser URL `?crew=...`);
     // the page passes it via the fetch-section context substitution.
     expect(view.dataSource).toEqual({
       skillId:         'getCrewStoragePolicy',
-      argsFromContext: { crewId: '$crewId' },
+      argsFromContext: { circleId: '$circleId' },
     });
     // Q18 — fields[] declares the editable subset.
     expect(Array.isArray(view.fields)).toBe(true);
@@ -105,7 +105,7 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(section.shape).toBe('record');
     expect(section.dataSource).toEqual({
       skillId:         'getCrewStoragePolicy',
-      argsFromContext: { crewId: '$crewId' },
+      argsFromContext: { circleId: '$circleId' },
     });
     expect(Array.isArray(section.fields)).toBe(true);
     expect(section.fields.length).toBe(2);

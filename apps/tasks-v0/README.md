@@ -165,7 +165,7 @@ one crew). When Tasks gains a mobile / multi-crew shell:
   layer per-crew state (ItemStore + MemberMap + SkillMatch + bot +
   bridges, …) onto it via a `buildCrewState({meshAgent, crewConfig,
   ...})` factory. Skills register on the agent ONCE with a
-  `getBundle` resolver picking the crew from `args.crewId` /
+  `getBundle` resolver picking the crew from `args.circleId` /
   topic.
 - Reference implementation: `apps/stoop-mobile`'s `ServiceContext`
   + `buildGroupState`. Mirror the pattern.
@@ -238,7 +238,7 @@ npm run ui -- --actor https://id.example/anne --config ./household.json
 # V1 Crew mode (full envelope: DoD lifecycle + sub-tasks + inbox + …):
 cat > oss-tools.crew.json <<'EOF'
 {
-  "crewId": "oss-tools",
+  "circleId": "oss-tools",
   "name":   "OSS Tools NL",
   "kind":   "project",
   "members": [

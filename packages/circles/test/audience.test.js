@@ -9,7 +9,7 @@
  *     public-absorbs-union.  Missing circle = empty set (not throw).
  *   - inAudience: positive + negative + public-everyone.
  *   - The crew:ID ↔ circle:ID alias resolves to identical normalized
- *     forms (the documented circle.id ≡ task.crewId aliasing).
+ *     forms (the documented circle.id ≡ task.circleId aliasing).
  */
 
 import { describe, it, expect } from 'vitest';

@@ -31,7 +31,7 @@ export function DeliverablePhoto({ deliverable, thumbSize = 96 }) {
     if (!isPhoto || !zoom) return;
     let cancelled = false;
     (async () => {
-      const cs = svc?.crews?.get(svc?.activeCrewId);
+      const cs = svc?.crews?.get(svc?.activeCircleId);
       if (!cs?.dataSource?.read) return;
       try {
         const v = await cs.dataSource.read(deliverable.ref);

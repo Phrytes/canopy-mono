@@ -121,13 +121,13 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       const bundle = buildBundle();
       await writeCrewVocabulary({
         dataSource: bundle.cache,
-        crewId:     'oss-tools',
+        circleId:     'oss-tools',
         skills: [
           { tag: 'frontend',       categoryId: null, label: 'Frontend dev', description: 'JS/TS, React, etc.' },
           { tag: 'design-review',  categoryId: null, label: 'Design review' },
         ],
       });
-      const got = await readCrewVocabulary({ dataSource: bundle.cache, crewId: 'oss-tools' });
+      const got = await readCrewVocabulary({ dataSource: bundle.cache, circleId: 'oss-tools' });
       expect(got.skills).toHaveLength(2);
       expect(got.skills[0].label).toBe('Frontend dev');
       expect(got.skills[0].description).toBe('JS/TS, React, etc.');
@@ -135,7 +135,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
     it('returns null on missing vocabulary blob', async () => {
       const bundle = buildBundle();
-      const got = await readCrewVocabulary({ dataSource: bundle.cache, crewId: 'never-existed' });
+      const got = await readCrewVocabulary({ dataSource: bundle.cache, circleId: 'never-existed' });
       expect(got).toBeNull();
     });
   });
@@ -145,13 +145,13 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       const bundle = buildBundle();
       await writeMyCrewSkills({
         dataSource: bundle.cache,
-        crewId:     'oss-tools',
+        circleId:     'oss-tools',
         webid:      ANNE,
         skills: [{ tag: 'frontend' }, { tag: 'on-call' }],
       });
       const got = await readMyCrewSkills({
         dataSource: bundle.cache,
-        crewId:     'oss-tools',
+        circleId:     'oss-tools',
         webid:      ANNE,
       });
       expect(got.webid).toBe(ANNE);
@@ -160,10 +160,10 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
     it('keeps Anne and Bob projections distinct', async () => {
       const bundle = buildBundle();
-      await writeMyCrewSkills({ dataSource: bundle.cache, crewId: 'c', webid: ANNE, skills: [{ tag: 'a' }] });
-      await writeMyCrewSkills({ dataSource: bundle.cache, crewId: 'c', webid: BOB,  skills: [{ tag: 'b' }] });
-      const a = await readMyCrewSkills({ dataSource: bundle.cache, crewId: 'c', webid: ANNE });
-      const b = await readMyCrewSkills({ dataSource: bundle.cache, crewId: 'c', webid: BOB });
+      await writeMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: ANNE, skills: [{ tag: 'a' }] });
+      await writeMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: BOB,  skills: [{ tag: 'b' }] });
+      const a = await readMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: ANNE });
+      const b = await readMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: BOB });
       expect(a.skills[0].tag).toBe('a');
       expect(b.skills[0].tag).toBe('b');
     });
@@ -174,7 +174,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       const bundle = buildBundle();
       await writePostureForCrew({
         dataSource: bundle.cache,
-        crewId:     'oss-tools',
+        circleId:     'oss-tools',
         posture:    {
           tags: {
             frontend:        'always',
@@ -184,7 +184,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
           },
         },
       });
-      const got = await readPostureForCrew({ dataSource: bundle.cache, crewId: 'oss-tools' });
+      const got = await readPostureForCrew({ dataSource: bundle.cache, circleId: 'oss-tools' });
       expect(got.tags.frontend).toBe('always');
       expect(got.tags['design-review']).toBe('negotiable');
       expect(got.tags['on-call']).toBe('never');
@@ -193,7 +193,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
     it('returns null when no posture blob exists', async () => {
       const bundle = buildBundle();
-      const got = await readPostureForCrew({ dataSource: bundle.cache, crewId: 'fresh-crew' });
+      const got = await readPostureForCrew({ dataSource: bundle.cache, circleId: 'fresh-crew' });
       expect(got).toBeNull();
     });
   });
@@ -252,7 +252,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       const lsBundle = buildBundle();
       const result = await createCrewAgent({
         crewConfig: {
-          crewId: 'oss-tools',
+          circleId: 'oss-tools',
           name:   'OSS Tools NL',
           kind:   'project',
           members: [
@@ -289,7 +289,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       });
       await writeCrewVocabulary({
         dataSource: lsBundle.cache,
-        crewId:     'oss-tools',
+        circleId:     'oss-tools',
         skills: [
           { tag: 'frontend',      categoryId: null, label: 'Frontend' },
           { tag: 'design-review', categoryId: null, label: 'Design review' },
@@ -298,14 +298,14 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
       const result = await createCrewAgent({
         crewConfig: {
-          crewId: 'oss-tools', name: 'OSS Tools', kind: 'project',
+          circleId: 'oss-tools', name: 'OSS Tools', kind: 'project',
           members: [{ webid: ANNE, role: 'admin' }],
         },
         localStoreBundle:     lsBundle,
         wireOnboardingSkills: false,
       });
 
-      const res = await callSkill(result.agent, 'getMySkillsFormShape', { crewId: 'oss-tools' }, ANNE);
+      const res = await callSkill(result.agent, 'getMySkillsFormShape', { circleId: 'oss-tools' }, ANNE);
       expect(res.canonicalProfile.skills[0].tag).toBe('frontend');
       expect(res.crewVocabulary.skills).toHaveLength(2);
       expect(res.prefilled).toHaveLength(1);
@@ -318,7 +318,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       const lsBundle = buildBundle();
       const result = await createCrewAgent({
         crewConfig: {
-          crewId: 'oss-tools', name: 'OSS Tools', kind: 'project',
+          circleId: 'oss-tools', name: 'OSS Tools', kind: 'project',
           members: [{ webid: ANNE, role: 'admin' }],
         },
         localStoreBundle:     lsBundle,
@@ -332,7 +332,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
       // First submit WITHOUT mirroring to canonical profile.
       const r1 = await callSkill(result.agent, 'editMySkillsForCrew',
-        { crewId: 'oss-tools', skills: submitted },
+        { circleId: 'oss-tools', skills: submitted },
         ANNE,
       );
       expect(r1.projection.webid).toBe(ANNE);
@@ -345,7 +345,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
       // Now submit again WITH the opt-in checkbox.
       const r2 = await callSkill(result.agent, 'editMySkillsForCrew',
-        { crewId: 'oss-tools', skills: submitted, persistToCanonicalProfile: true },
+        { circleId: 'oss-tools', skills: submitted, persistToCanonicalProfile: true },
         ANNE,
       );
       expect(r2.canonicalProfile).toBeTruthy();
@@ -359,14 +359,14 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       const lsBundle = buildBundle();
       const result = await createCrewAgent({
         crewConfig: {
-          crewId: 'oss-tools', name: 'OSS Tools', kind: 'project',
+          circleId: 'oss-tools', name: 'OSS Tools', kind: 'project',
           members: [{ webid: ANNE, role: 'admin' }],
         },
         localStoreBundle:     lsBundle,
         wireOnboardingSkills: false,
       });
       const r = await callSkill(result.agent, 'editMySkillsForCrew',
-        { crewId: 'oss-tools', skills: [] }, undefined);
+        { circleId: 'oss-tools', skills: [] }, undefined);
       expect(r.error).toMatch(/webid required/);
     });
   });

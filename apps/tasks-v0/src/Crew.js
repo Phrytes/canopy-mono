@@ -11,7 +11,7 @@
  * differently per kind. Apps surface the kind in UI labels.
  *
  * Pod schema (when a pod is configured; otherwise local-only):
- *   <crew-pod>/crews/<crewId>/
+ *   <crew-pod>/crews/<circleId>/
  *     config.json          — this CrewConfig object
  *     skills.json          — Phase 3: skill vocabulary
  *     cadences.json        — Phase 6: deadline / nudge / approver cadences
@@ -67,7 +67,7 @@ import { loadSettings, updateSettings } from './storage/settings.js';
  * @property {number} rank
  *
  * @typedef CrewConfig
- * @property {string} crewId
+ * @property {string} circleId
  * @property {string} name
  * @property {CrewKind} kind
  * @property {CrewMember[]} members
@@ -84,7 +84,7 @@ import { loadSettings, updateSettings } from './storage/settings.js';
 
 /** @type {CrewConfig} */
 export const IMPLICIT_HOUSEHOLD_CONFIG = Object.freeze({
-  crewId:                       'household',
+  circleId:                       'household',
   name:                         'Household',
   kind:                         'household',
   members:                      [],
@@ -121,18 +121,18 @@ export const KIND_DEFAULTS = Object.freeze({
  */
 export async function loadCrewConfig({
   dataSource,
-  crewId,
+  circleId,
   fallback,
   rootContainer = 'mem://tasks/crews/',
 }) {
   if (!dataSource?.read) {
     throw new TypeError('loadCrewConfig: dataSource with .read() required');
   }
-  if (typeof crewId !== 'string' || !crewId) {
-    throw new TypeError('loadCrewConfig: crewId required');
+  if (typeof circleId !== 'string' || !circleId) {
+    throw new TypeError('loadCrewConfig: circleId required');
   }
 
-  const path = `${rootContainer}${crewId}/config.json`;
+  const path = `${rootContainer}${circleId}/config.json`;
   let raw;
   try {
     raw = await dataSource.read(path);
@@ -141,11 +141,11 @@ export async function loadCrewConfig({
   }
 
   if (raw == null) {
-    return _normaliseConfig(fallback ?? { ...IMPLICIT_HOUSEHOLD_CONFIG, crewId });
+    return _normaliseConfig(fallback ?? { ...IMPLICIT_HOUSEHOLD_CONFIG, circleId });
   }
 
   const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-  return _normaliseConfig({ crewId, ...parsed });
+  return _normaliseConfig({ circleId, ...parsed });
 }
 
 /** Save a CrewConfig to its canonical pod path. */
@@ -158,7 +158,7 @@ export async function saveCrewConfig({
     throw new TypeError('saveCrewConfig: dataSource with .write() required');
   }
   const c = _normaliseConfig(config);
-  const path = `${rootContainer}${c.crewId}/config.json`;
+  const path = `${rootContainer}${c.circleId}/config.json`;
   await dataSource.write(path, c);
   return c;
 }
@@ -167,8 +167,8 @@ function _normaliseConfig(raw) {
   if (!raw || typeof raw !== 'object') {
     throw new TypeError('CrewConfig: object required');
   }
-  if (typeof raw.crewId !== 'string' || !raw.crewId) {
-    throw new TypeError('CrewConfig: crewId required');
+  if (typeof raw.circleId !== 'string' || !raw.circleId) {
+    throw new TypeError('CrewConfig: circleId required');
   }
   const kind = KIND_DEFAULTS[raw.kind] ? raw.kind : 'household';
   // V2 standardisation adoption — `storage` carries one of four
@@ -177,8 +177,8 @@ function _normaliseConfig(raw) {
   // config loader doesn't reject older saved files).
   const storage = _normaliseStorage(raw.storage);
   return Object.freeze({
-    crewId:                       raw.crewId,
-    name:                         raw.name ?? raw.crewId,
+    circleId:                       raw.circleId,
+    name:                         raw.name ?? raw.circleId,
     kind,
     storage,
     members:                      Array.isArray(raw.members) ? raw.members : [],
@@ -306,7 +306,7 @@ export async function createCrewAgent({
   // stable across CLI restarts. Cap-tokens issued to bot agents
   // (V1.5) then survive without auto-rotate. First boot writes a
   // fresh snapshot; subsequent boots restore from it.
-  const identityVaultPath = `mem://tasks/crews/${crew.crewId}/agent/identity-vault.json`;
+  const identityVaultPath = `mem://tasks/crews/${crew.circleId}/agent/identity-vault.json`;
   let v   = vault   ?? null;
   let id  = identity ?? null;
   let restoredFromSnapshot = false;
@@ -347,7 +347,7 @@ export async function createCrewAgent({
     notifier,
     identity:     id,
     transport,
-    label:        label ?? `Crew(${crew.crewId})`,
+    label:        label ?? `Crew(${crew.circleId})`,
     crewProvider,
     crewMutator,
     agent:        sharedAgent,
@@ -357,7 +357,7 @@ export async function createCrewAgent({
     // root so writes don't leak across crews on the same localStore.
     // Single-crew path preserves the legacy `mem://tasks/` root.
     itemStoreRoot: sharedAgent
-      ? `mem://tasks/crews/${crew.crewId}/`
+      ? `mem://tasks/crews/${crew.circleId}/`
       : undefined,
   });
 
@@ -375,12 +375,12 @@ export async function createCrewAgent({
   let groupManager = providedGroupManager ?? new GroupManager({ identity: id, vault: v });
   crewState.groupManager = groupManager;
   crewState.onSpawn      = onSpawn ?? null;
-  crewState.crewIdForOnboarding = crew.crewId;
+  crewState.circleIdForOnboarding = crew.circleId;
   if (wireOnboardingSkills) {
     for (const def of buildOnboardingSkills({
       groupManager,
       members: bundle.members,
-      groupId: crew.crewId,
+      groupId: crew.circleId,
       onSpawn,
     })) {
       bundle.agent.skills.register(def);
@@ -402,7 +402,7 @@ export async function createCrewAgent({
     memberMapCacheDetach = MemberMapCache.attach({
       map:           bundle.members,
       dataSource:    localStoreBundle.cache,
-      rootContainer: `mem://tasks/crews/${crew.crewId}/`,
+      rootContainer: `mem://tasks/crews/${crew.circleId}/`,
     });
 
     // Phase 6 — peer-to-peer chat substrate (for the appeal flow).
@@ -446,7 +446,7 @@ export async function createCrewAgent({
           bus:        sharedBus,
           tasksAgent: bundle.agent,
           dataSource: localStoreBundle.cache,
-          crewId:     liveCrew.crewId,
+          circleId:     liveCrew.circleId,
         })
       : null;
     crewState.botAgentRegistry = botAgentRegistry;
@@ -473,7 +473,7 @@ export async function createCrewAgent({
           dataSource: localStoreBundle.cache,
           crew:       liveCrew,
           member:     m.webid,
-          path:       `mem://user/tasks/calendars/${encodeURIComponent(liveCrew.crewId)}-${encodeURIComponent(m.webid)}.ics`,
+          path:       `mem://user/tasks/calendars/${encodeURIComponent(liveCrew.circleId)}-${encodeURIComponent(m.webid)}.ics`,
         });
         calendarEmissionDetaches.push(wire.detach);
       }
@@ -495,7 +495,7 @@ export async function createCrewAgent({
         if (!member?.compensated) return;
         await recordInvoiceLine({
           dataSource: localStoreBundle.cache,
-          crewId:     liveCrew.crewId,
+          circleId:     liveCrew.circleId,
           member,
           task:       item,
         });
@@ -695,7 +695,7 @@ export async function createCrewAgent({
   // (it comes from the substrate stack, built here).
   if (localStoreBundle?._podCtx && bundle.podRouting) {
     localStoreBundle._podCtx.podRouting = bundle.podRouting;
-    localStoreBundle._podCtx.crewId     = localStoreBundle._podCtx.crewId ?? crew.crewId;
+    localStoreBundle._podCtx.circleId     = localStoreBundle._podCtx.circleId ?? crew.circleId;
   }
   // Stash on CrewState so multi-crew skill bodies can access per-crew
   // substrate handles via bundleResolver. M4: also stash _podCtx so
@@ -712,7 +712,7 @@ export async function createCrewAgent({
     podDeviceId:  substrateDeviceId,
     agent:        bundle.agent,
     opts: {
-      capabilities: ['tasks', 'tasks-v0', `crew:${crew.crewId}`],
+      capabilities: ['tasks', 'tasks-v0', `crew:${crew.circleId}`],
       name:         crew.name,
     },
   });
@@ -728,7 +728,7 @@ export async function createCrewAgent({
         itemStore:       bundle.itemStore,
         notifyEnvelope:  bundle.notifyEnvelope,
         pseudoPod:       bundle.pseudoPod,
-        crewId:          crew.crewId,
+        circleId:          crew.circleId,
         peers:           (crew.members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
         selfPubKey:      bundle.agent?.address ?? null,
       });

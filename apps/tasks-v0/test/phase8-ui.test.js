@@ -28,7 +28,7 @@ const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
 const CREW = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [
@@ -62,7 +62,7 @@ beforeAll(async () => {
       '/tasks-config.json': JSON.stringify({
         actor: ANNE,
         roles: Object.fromEntries(CREW.members.map((m) => [m.webid, m.role])),
-        crew:  { crewId: CREW.crewId, name: CREW.name, kind: CREW.kind },
+        crew:  { circleId: CREW.circleId, name: CREW.name, kind: CREW.kind },
       }),
     },
   });
@@ -121,14 +121,14 @@ describe('Phase 8 — UI pages serve', () => {
     const cfg = await res.json();
     expect(cfg.actor).toBe(ANNE);
     expect(cfg.roles[ANNE]).toBe('admin');
-    expect(cfg.crew?.crewId).toBe('oss-tools');
+    expect(cfg.crew?.circleId).toBe('oss-tools');
   });
 });
 
 describe('Phase 8 — workspace + inbox skills are wired', () => {
   it('getCrewConfig returns the live crew', async () => {
     const r = await callSkill('getCrewConfig');
-    expect(r.crew?.crewId).toBe('oss-tools');
+    expect(r.crew?.circleId).toBe('oss-tools');
     expect(r.crew?.kind).toBe('project');
     expect(r.crew?.members).toHaveLength(3);
   });

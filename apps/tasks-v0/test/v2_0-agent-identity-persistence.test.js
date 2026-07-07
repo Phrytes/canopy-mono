@@ -3,7 +3,7 @@
  *
  * Asserts:
  *   - createCrewAgent persists the tasks agent's vault under
- *     mem://tasks/crews/<crewId>/agent/identity-vault.json on first boot.
+ *     mem://tasks/crews/<circleId>/agent/identity-vault.json on first boot.
  *   - A second createCrewAgent against the same local-store cache
  *     restores the vault → same pubKey, deviceId, stableId.
  *   - Multi-crew: two crews on the same shared store get DIFFERENT
@@ -21,13 +21,13 @@ import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCrewAgent } from '../src/Crew.js';
 
 const CREW_A = {
-  crewId:  'crew-a',
+  circleId:  'crew-a',
   name:    'Crew A',
   kind:    'project',
   members: [{ webid: 'https://id.example/anne', displayName: 'Anne', role: 'admin' }],
 };
 const CREW_B = {
-  crewId:  'crew-b',
+  circleId:  'crew-b',
   name:    'Crew B',
   kind:    'project',
   members: [{ webid: 'https://id.example/anne', displayName: 'Anne', role: 'admin' }],

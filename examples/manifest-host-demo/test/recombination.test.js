@@ -8,7 +8,7 @@
  *   - LLM-driven tool calls dispatch through the composed
  *     `toolHandlers` and reach the right app's store;
  *   - multi-crew dispatch through the host preserves crew
- *     isolation (the `tasks.addTask({crewId:'primary-crew', text})`
+ *     isolation (the `tasks.addTask({circleId:'primary-crew', text})`
  *     call lands in primary crew's itemStore, not anywhere else);
  *   - the chat-agent's reply pipeline produces an outbox entry per
  *     turn.

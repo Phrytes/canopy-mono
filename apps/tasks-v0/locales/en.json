@@ -115,7 +115,7 @@
     "storage_group_pod_label": { "text": "Pod URI of the shared group pod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." },
     "submit":                  { "text": "Create crew", "doc": "Submit CTA on the wizard." },
     "result_heading":          { "text": "Crew config saved", "doc": "Heading of the success card on /welcome.html." },
-    "result_intro":            { "text": "Your crew config has been persisted. Restart Tasks with the new crewId bound at boot (Tasks-v0 binds to one crew per process; multi-crew runtime is a follow-up).", "doc": "Lead text under the success card." },
+    "result_intro":            { "text": "Your crew config has been persisted. Restart Tasks with the new circleId bound at boot (Tasks-v0 binds to one crew per process; multi-crew runtime is a follow-up).", "doc": "Lead text under the success card." },
     "result_footer":           { "text": "See <a href=\"/crews.html\">/crews.html</a> for the full crew list.", "doc": "Footer hint under the success card. Contains an inline link." }
   },
   "onboard": {

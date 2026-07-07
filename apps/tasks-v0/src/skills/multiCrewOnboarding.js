@@ -30,7 +30,7 @@ function dataArgs(parts) {
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
  *   Resolves a CrewState from skill args. The CrewState must expose
- *   `groupManager`, `members`, and `crewIdForOnboarding` (set in
+ *   `groupManager`, `members`, and `circleIdForOnboarding` (set in
  *   `createCrewAgent` when the crew is built — including the
  *   multi-crew `wireOnboardingSkills: false` path).
  * @returns {Array<object>}
@@ -42,18 +42,18 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
 
   return [
     /**
-     * issueInvite({crewId, ttlMs?, role?}) → {invite}
+     * issueInvite({circleId, ttlMs?, role?}) → {invite}
      *
-     * Multi-crew variant: `crewId` is mandatory for routing. The
+     * Multi-crew variant: `circleId` is mandatory for routing. The
      * resolved CrewState supplies the per-crew GroupManager.
      */
     defineSkill('issueInvite', async ({ parts, from, envelope }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew?.groupManager) return { error: 'crewId required' };
+      if (!crew?.groupManager) return { error: 'circleId required' };
       const a = dataArgs(parts);
       const ttlMs = Number.isFinite(a.ttlMs) ? a.ttlMs : DEFAULT_TTL_MS;
       const role  = a.role ?? 'member';
-      const groupId = crew.crewIdForOnboarding ?? crew.liveCrew?.crewId ?? crew.crewId;
+      const groupId = crew.circleIdForOnboarding ?? crew.liveCrew?.circleId ?? crew.circleId;
       const invite = await crew.groupManager.issueInvite(groupId, { expiresIn: ttlMs, role });
       return { invite };
     }, {
@@ -67,14 +67,14 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
      *      spawnedUrl?}
      *
      * Multi-crew variant: the invite carries the groupId; we look
-     * the matching CrewState up via that. The routing arg `crewId`
+     * the matching CrewState up via that. The routing arg `circleId`
      * is OPTIONAL — when omitted, we infer it from `invite.groupId`.
      */
     defineSkill('redeemInvite', async ({ parts, from, envelope }) => {
       const a = dataArgs(parts);
       if (!a.invite) return { error: 'invite required' };
 
-      // Routing: caller may pass `crewId`; otherwise infer from the
+      // Routing: caller may pass `circleId`; otherwise infer from the
       // invite payload. The resolver runs in two passes if the
       // caller didn't supply one — first with what they passed, then
       // (when that fails) with the invite's groupId.
@@ -82,15 +82,15 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
       if (!crew?.groupManager) {
         const groupIdFromInvite = a.invite?.groupId ?? null;
         if (groupIdFromInvite) {
-          // Synthesize parts with the inferred crewId so the
+          // Synthesize parts with the inferred circleId so the
           // bundleResolver picks the right CrewState.
           const synthParts = [
-            { type: 'DataPart', data: { ...a, crewId: groupIdFromInvite } },
+            { type: 'DataPart', data: { ...a, circleId: groupIdFromInvite } },
           ];
           crew = bundleResolver(synthParts, { envelope, from });
         }
       }
-      if (!crew?.groupManager) return { error: 'crewId required (no matching crew)' };
+      if (!crew?.groupManager) return { error: 'circleId required (no matching crew)' };
 
       if (!(await crew.groupManager.verifyInvite(a.invite))) {
         return { error: 'invalid or expired invite' };
@@ -157,7 +157,7 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
         ...(spawnedUrl ? { spawnedUrl } : {}),
       };
     }, {
-      description: 'Multi-crew: redeem an invite — routes by args.crewId or invite.groupId.',
+      description: 'Multi-crew: redeem an invite — routes by args.circleId or invite.groupId.',
       visibility:  'public',
     }),
   ];

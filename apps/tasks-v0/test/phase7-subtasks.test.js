@@ -39,7 +39,7 @@ const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
 const CREW_BASE = {
-  crewId:  'oss-tools',
+  circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
   members: [

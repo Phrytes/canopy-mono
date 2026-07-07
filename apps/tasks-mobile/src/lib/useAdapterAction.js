@@ -27,7 +27,7 @@
  *
  * Enrichment mirrors useSkill exactly: `_scope` (group/crew id) is
  * auto-injected; the agent's `invoke(localPeer, skillId, parts)` is
- * called; reply parts are unwrapped.  Same activeCrewId semantics as
+ * called; reply parts are unwrapped.  Same activeCircleId semantics as
  * the existing per-op `useSkill('id').call(args)` pattern.
  *
  * V0.6 status: lives in tasks-mobile.  Lift to a shared

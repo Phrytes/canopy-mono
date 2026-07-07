@@ -77,7 +77,7 @@ export function OnboardScanScreen() {
         }
         // r.crewConfig is the canonical config the redeem skill returns
         // on success. Tasks-mobile builds the CrewState locally + flips
-        // activeCrewId via ServiceContext.
+        // activeCircleId via ServiceContext.
         if (r?.crewConfig) {
           await svc.joinCrew(r.crewConfig, { setActive: true });
         }

@@ -27,7 +27,7 @@ export function buildForceCompleteSkill({ bundleResolver } = {}) {
   return [
     defineSkill('forceCompleteTask', async ({ parts, from, envelope, actorDisplayName }) => {
       const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'crewId required' };
+      if (!crew) return { error: 'circleId required' };
       const role = crew.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);

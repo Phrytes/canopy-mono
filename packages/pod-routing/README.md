@@ -62,8 +62,8 @@ functional design §4.3.1:
 | `private/drafts/<app>`     | `<anchor>/private/drafts/<app>`           | `pseudo-pod://<device>/private/drafts/<app>`   |
 | `sharing/profile-public`   | `<anchor>/sharing/public/profile-card`    | `pseudo-pod://<device>/sharing/public/profile-card` |
 | `sharing/<resource>`       | `<anchor>/sharing/<resource>`             | `pseudo-pod://<device>/sharing/<resource>`     |
-| `group/<crewId>/<container>` | per crew policy (centralised → group pod; no-pod → pseudo-pod) | pseudo-pod replication-ring |
-| `personal-in-group/<crewId>` | `<anchor>/personal-in-group/<crewId>`   | `pseudo-pod://<device>/personal-in-group/<crewId>` |
+| `group/<circleId>/<container>` | per crew policy (centralised → group pod; no-pod → pseudo-pod) | pseudo-pod replication-ring |
+| `personal-in-group/<circleId>` | `<anchor>/personal-in-group/<circleId>`   | `pseudo-pod://<device>/personal-in-group/<circleId>` |
 
 Apps can declare additional storage-function names:
 
@@ -80,12 +80,12 @@ the mapping table (see below).
 
 ```
 resolve(storageFn, vars)
-  → if storageFn starts with 'group/<crewId>/':
-       (a) explicit mapping wins (a user-overridden 'group/<crewId>/*')
-       (b) crewPolicy(crewId) decides:
-           - centralised → groupPodUri/<crewId>/<tail>
+  → if storageFn starts with 'group/<circleId>/':
+       (a) explicit mapping wins (a user-overridden 'group/<circleId>/*')
+       (b) crewPolicy(circleId) decides:
+           - centralised → groupPodUri/<circleId>/<tail>
            - no-pod / decentralised / hybrid →
-               pseudo-pod://<device>/group/<crewId>/<tail>
+               pseudo-pod://<device>/group/<circleId>/<tail>
   → else: match the storageFn against the merged mapping table
        (defaults + user overrides) by exact-match-first,
        longest-prefix-glob-second
@@ -181,7 +181,7 @@ createPodRouting({ pseudoPod, deviceId, anchorPodUri?, reachabilityTTLms?, now? 
 
 // Resolution
 routing.resolve(storageFn, vars?)        → uri | null
-routing.crewPolicy(crewId)               → { policy, groupPodUri? }
+routing.crewPolicy(circleId)               → { policy, groupPodUri? }
 routing.listStorageFunctions()           → string[]
 routing.registerStorageFunction(name)    → void
 
@@ -193,7 +193,7 @@ routing.markPodUnreachable(uri?)         → void
 // Config I/O
 await routing.reload()                   → StorageMappingConfig | null
 await routing.updateMapping({fn, uri})   → void
-await routing.setCrewPolicy(crewId, p)   → void
+await routing.setCrewPolicy(circleId, p)   → void
 
 // Introspection
 routing.configResourceUri

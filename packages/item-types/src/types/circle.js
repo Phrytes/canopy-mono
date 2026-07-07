@@ -6,21 +6,21 @@
  *
  * ──── ALIAS NOTE — CIRCLE ID ≡ CREW ID (SP-5 V0, 2026-05-20) ──────
  *
- * **A `circle.id` value and a `task.crewId` value share the SAME
- * string identifier space.**  i.e. if a task has `crewId: "abc-123"`
+ * **A `circle.id` value and a `task.circleId` value share the SAME
+ * string identifier space.**  i.e. if a task has `circleId: "abc-123"`
  * and a circle exists with `id: "abc-123"`, they describe the
  * *same* group.  V0 ships this as a documented alias rather than
- * renaming `crewId` to `circleId` across the codebase — the rename
+ * renaming `circleId` to `circleId` across the codebase — the rename
  * is mechanical but big-blast-radius and not needed yet.
  *
  * Why this matters for future readers:
- *   - Searching the codebase for `crewId` will surface task / pod-
+ *   - Searching the codebase for `circleId` will surface task / pod-
  *     routing code; searching for `circle.id` will surface circles-
  *     substrate code.  They refer to the same underlying group.
- *   - Pod-routing's `crewPolicy(crewId)` resolves storage paths for
+ *   - Pod-routing's `crewPolicy(circleId)` resolves storage paths for
  *     a group; the matching `circle` item adds the audience-resolve
  *     layer over that same identifier.
- *   - A future "kill crewId, use circle.id everywhere" refactor is
+ *   - A future "kill circleId, use circle.id everywhere" refactor is
  *     SP-5b (or later) once consumers exist.
  *
  * The marker constant `CIRCLE_ID_IS_CREW_ID_ALIAS` (exported below)
@@ -40,7 +40,7 @@ import { BASE_PROPERTIES, BASE_REQUIRED, NAMESPACE } from '../baseSchema.js';
 /**
  * Greppable marker — searching for this constant surfaces the alias
  * comment above as the canonical reference.  Do NOT remove without
- * also resolving the alias (rename `crewId` everywhere, or break the
+ * also resolving the alias (rename `circleId` everywhere, or break the
  * shared-identifier-space contract).
  */
 export const CIRCLE_ID_IS_CREW_ID_ALIAS = true;
@@ -49,7 +49,7 @@ export const CIRCLE_SCHEMA = {
   iri:         `${NAMESPACE}Circle`,
   description:
     'A saved audience: a named set of members + optional named roles. ' +
-    'circle.id and task.crewId share the same string identifier space ' +
+    'circle.id and task.circleId share the same string identifier space ' +
     '(see CIRCLE_ID_IS_CREW_ID_ALIAS in src/types/circle.js).',
   type:        'object',
   required:    [...BASE_REQUIRED, 'name'],

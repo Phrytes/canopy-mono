@@ -32,7 +32,7 @@ const DEFAULT_DURATION_MIN = 30;
 
 /**
  * @param {object} args
- * @param {string} args.crewId
+ * @param {string} args.circleId
  * @param {string} args.crewName
  * @param {string} args.member            — webid of the calendar's owner
  * @param {Array<object>} args.tasks      — all open + closed tasks (we
@@ -41,19 +41,19 @@ const DEFAULT_DURATION_MIN = 30;
  * @param {number} [args.now=Date.now()]
  * @returns {string}                       iCal-formatted string
  */
-export function buildIcsFor({ crewId, crewName, member, tasks, now = Date.now() }) {
-  if (typeof crewId !== 'string' || !crewId) {
-    throw new TypeError('buildIcsFor: crewId required');
+export function buildIcsFor({ circleId, crewName, member, tasks, now = Date.now() }) {
+  if (typeof circleId !== 'string' || !circleId) {
+    throw new TypeError('buildIcsFor: circleId required');
   }
   if (!Array.isArray(tasks)) {
     throw new TypeError('buildIcsFor: tasks[] required');
   }
 
   const cal = new ICAL.Component(['vcalendar', [], []]);
-  cal.updatePropertyWithValue('prodid', `-//Tasks V2//${crewId}//EN`);
+  cal.updatePropertyWithValue('prodid', `-//Tasks V2//${circleId}//EN`);
   cal.updatePropertyWithValue('version', '2.0');
   cal.updatePropertyWithValue('method', 'PUBLISH');
-  cal.updatePropertyWithValue('x-wr-calname', `Tasks: ${crewName ?? crewId}`);
+  cal.updatePropertyWithValue('x-wr-calname', `Tasks: ${crewName ?? circleId}`);
 
   for (const t of tasks) {
     if (!_isCalendarRelevant(t, member)) continue;
@@ -138,13 +138,13 @@ function _toIcalDateTime(iso) {
  *
  * @param {Array<{id: string}>} removed
  * @param {object} [args]
- * @param {string} [args.crewId='unknown']
+ * @param {string} [args.circleId='unknown']
  * @returns {string}
  */
-export function buildCancellationIcs(removed, { crewId = 'unknown' } = {}) {
+export function buildCancellationIcs(removed, { circleId = 'unknown' } = {}) {
   if (!Array.isArray(removed) || removed.length === 0) return '';
   const cal = new ICAL.Component(['vcalendar', [], []]);
-  cal.updatePropertyWithValue('prodid', `-//Tasks V2//${crewId}//EN`);
+  cal.updatePropertyWithValue('prodid', `-//Tasks V2//${circleId}//EN`);
   cal.updatePropertyWithValue('version', '2.0');
   cal.updatePropertyWithValue('method', 'CANCEL');
   for (const r of removed) {

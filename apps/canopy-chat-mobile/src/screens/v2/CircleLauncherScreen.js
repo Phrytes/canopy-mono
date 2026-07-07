@@ -761,7 +761,7 @@ export default function CircleLauncherScreen({
         try {
           return await bundle.callSkill('tasks', 'addTask', {
             text,
-            crewId:           'cc-default',
+            circleId:           'cc-default',
             originCircleId,
             originCircleName,
             originTaskId,
@@ -2006,7 +2006,7 @@ function CircleDetail({
   // items (tasks + stoop posts, circle-scoped). Part C cross-app: ALSO pull the op's OWN list via the
   // auto-resolving callSkill (makeResolvingCallSkill probes the right app by opId), so labels for item
   // types NOT in the preloaded set — folio files (listFiles), calendar events (listEvents) — resolve
-  // too. Scoped to the circle (crewId/circleId/groupId); deduped by id; best-effort (failures keep base).
+  // too. Scoped to the circle (circleId/circleId/groupId); deduped by id; best-effort (failures keep base).
   // B (clarification) — the SHARED circle lookup (Phase 3, src/v2/circleLookup): base = the circle's
   // already-loaded items (tasks + stoop posts), plus the op's OWN list via the app-qualified
   // rawCallSkill (so `listOpen` resolves on the right app, not probe-first-origin). Was an inline copy.

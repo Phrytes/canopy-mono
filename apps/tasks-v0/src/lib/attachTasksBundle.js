@@ -45,20 +45,20 @@ import { classify, reverseResolve } from './podPathMap.js';
  * @param {Function} a.fetch       authenticated fetch
  * @param {object} [a.agentInfo]   `{deviceId, agentUri}` — passed to
  *   `provision` if supplied.
- * @param {string} [a.crewId]      override if the bundle doesn't carry it
+ * @param {string} [a.circleId]      override if the bundle doesn't carry it
  * @param {Function} [a.provision] optional `async ({podRoot, webid,
  *   fetch, pseudoPod, agentInfo}) => void` provisioner. Best-effort:
  *   failures are swallowed. When absent the step is skipped.
  */
 export async function attachTasksBundle({
   bundle, source, podRoot, webid, fetch: authedFetch,
-  agentInfo, crewId, provision,
+  agentInfo, circleId, provision,
 }) {
   if (!bundle?.cache?.attachInner) {
     throw new Error('attachTasksBundle: bundle missing cache.attachInner (cache:false?)');
   }
 
-  const crew = crewId ?? bundle.crewId ?? bundle.groupId ?? null;
+  const crew = circleId ?? bundle.circleId ?? bundle.groupId ?? null;
   const info = agentInfo ?? {
     deviceId: bundle.substrateDeviceId ?? bundle.deviceId ?? bundle.agent?.address ?? 'tasks-device',
     agentUri: bundle.localActor ?? webid ?? 'agent://tasks',
@@ -88,7 +88,7 @@ export async function attachTasksBundle({
     bundle._podCtx.classify   = classify;
     bundle._podCtx.reverse    = reverseResolve;
     bundle._podCtx.podRouting = bundle.podRouting ?? null;
-    bundle._podCtx.crewId     = crew;
+    bundle._podCtx.circleId     = crew;
     bundle._podCtx.vars       = {};
     bundle._podCtx.active     = !!(bundle.podRouting && classify);
   }

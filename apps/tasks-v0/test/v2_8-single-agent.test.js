@@ -3,9 +3,9 @@
  *
  * Asserts the V2.8 contract:
  *   1. One `core.Agent` (process-level) serves N CrewStates.
- *   2. `multiCrewResolver` picks the right CrewState by `args.crewId`.
- *   3. Strict resolution — when neither `args.crewId` nor a topic
- *      envelope identifies a crew, skills return `{error: 'crewId required'}`.
+ *   2. `multiCrewResolver` picks the right CrewState by `args.circleId`.
+ *   3. Strict resolution — when neither `args.circleId` nor a topic
+ *      envelope identifies a crew, skills return `{error: 'circleId required'}`.
  *   4. Cross-crew isolation — a call addressed to crew B never touches
  *      crew A's ItemStore.
  *
@@ -34,21 +34,21 @@ const KID   = 'webid://kid';
 const ROLES_A = { [ANNE]: 'admin', [BOB]: 'member' };
 const ROLES_B = { [KID]: 'admin' };
 
-function buildCrewState(crewId, members, roles) {
+function buildCrewState(circleId, members, roles) {
   const dataSource = new MemorySource();
   const itemStore = new ItemStore({
     dataSource,
-    rootContainer: `mem://tasks/crews/${crewId}/`,
+    rootContainer: `mem://tasks/crews/${circleId}/`,
     rolePolicy:    buildStandardRolePolicy(roles),
     enforceDependencies: true,
   });
   let liveCrew = Object.freeze({
-    crewId, name: crewId, kind: 'household',
+    circleId, name: circleId, kind: 'household',
     members: members.map((webid) => ({ webid, role: roles[webid] ?? 'member' })),
     customRoles: [],
   });
   return {
-    get crewId() { return liveCrew.crewId; },
+    get circleId() { return liveCrew.circleId; },
     get liveCrew() { return liveCrew; },
     crewMutator(patch) { liveCrew = Object.freeze({ ...liveCrew, ...patch }); },
     roles,
@@ -98,20 +98,20 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     });
     await meshAgent.start();
 
-    // addTask with crewId='crew-a' lands in crewA's store.
-    const r1 = await callSkill(meshAgent, 'addTask', { crewId: 'crew-a', text: 'A1' }, ANNE);
+    // addTask with circleId='crew-a' lands in crewA's store.
+    const r1 = await callSkill(meshAgent, 'addTask', { circleId: 'crew-a', text: 'A1' }, ANNE);
     expect(r1.task.text).toBe('A1');
     expect((await crewA.itemStore.listOpen()).length).toBe(1);
     expect((await crewB.itemStore.listOpen()).length).toBe(0);
 
-    // addTask with crewId='crew-b' lands in crewB's store only.
-    const r2 = await callSkill(meshAgent, 'addTask', { crewId: 'crew-b', text: 'B1' }, KID);
+    // addTask with circleId='crew-b' lands in crewB's store only.
+    const r2 = await callSkill(meshAgent, 'addTask', { circleId: 'crew-b', text: 'B1' }, KID);
     expect(r2.task.text).toBe('B1');
     expect((await crewA.itemStore.listOpen()).length).toBe(1);
     expect((await crewB.itemStore.listOpen()).length).toBe(1);
   });
 
-  it('strict resolution — call without crewId returns {error:"crewId required"}', async () => {
+  it('strict resolution — call without circleId returns {error:"circleId required"}', async () => {
     const { meshAgent } = await buildMeshAgent({ label: 'TestMesh2' });
     const crewA = buildCrewState('crew-a', [ANNE], { [ANNE]: 'admin' });
     const crewB = buildCrewState('crew-b', [BOB],  { [BOB]: 'admin' });
@@ -126,9 +126,9 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     });
     await meshAgent.start();
 
-    // No crewId in args, no topic envelope → strict null → 'crewId required'.
+    // No circleId in args, no topic envelope → strict null → 'circleId required'.
     const r = await callSkill(meshAgent, 'addTask', { text: 'no-crew' }, ANNE);
-    expect(r.error).toBe('crewId required');
+    expect(r.error).toBe('circleId required');
   });
 
   it('mobile React-bindings _scope path resolves to the right crew', async () => {
@@ -136,8 +136,8 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     // `packages/sync-engine-rn/src/react/createReactBindings.js`
     // injects `_scope: activeBundle.groupId` into every skill call.
     // The multiCrewResolver must read `_scope` (in addition to
-    // `args.crewId`) so mobile dispatches succeed without each
-    // screen having to plumb crewId through manually.
+    // `args.circleId`) so mobile dispatches succeed without each
+    // screen having to plumb circleId through manually.
     const { meshAgent } = await buildMeshAgent({ label: 'TestMeshScope' });
     const crewA = buildCrewState('crew-a', [ANNE], { [ANNE]: 'admin' });
     const crewB = buildCrewState('crew-b', [BOB],  { [BOB]: 'admin' });
@@ -152,7 +152,7 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     });
     await meshAgent.start();
 
-    // _scope alone is enough — no explicit crewId arg.
+    // _scope alone is enough — no explicit circleId arg.
     const rA = await callSkill(meshAgent, 'addTask', { text: 'A-via-scope', _scope: 'crew-a' }, ANNE);
     expect(rA.task.text).toBe('A-via-scope');
 
@@ -165,7 +165,7 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     expect(listA.items.map((it) => it.text)).not.toContain('B-via-scope');
   });
 
-  it('explicit crewId wins over _scope when both are present', async () => {
+  it('explicit circleId wins over _scope when both are present', async () => {
     const { meshAgent } = await buildMeshAgent({ label: 'TestMeshScopeWin' });
     const crewA = buildCrewState('crew-a', [ANNE, BOB], { [ANNE]: 'admin', [BOB]: 'admin' });
     const crewB = buildCrewState('crew-b', [ANNE, BOB], { [ANNE]: 'admin', [BOB]: 'admin' });
@@ -180,10 +180,10 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     });
     await meshAgent.start();
 
-    // crewId='crew-b' + _scope='crew-a' → crewId wins; the task
+    // circleId='crew-b' + _scope='crew-a' → circleId wins; the task
     // lands in crew-b's store.
     const r = await callSkill(meshAgent, 'addTask', {
-      text: 'override', crewId: 'crew-b', _scope: 'crew-a',
+      text: 'override', circleId: 'crew-b', _scope: 'crew-a',
     }, ANNE);
     expect(r.task.text).toBe('override');
 
@@ -205,7 +205,7 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     });
     await meshAgent.start();
 
-    // No crewId in args — single-crew resolver returns crewA anyway.
+    // No circleId in args — single-crew resolver returns crewA anyway.
     const r = await callSkill(meshAgent, 'addTask', { text: 'no-arg-crew' }, ANNE);
     expect(r.task.text).toBe('no-arg-crew');
   });
@@ -227,14 +227,14 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
 
     // pauseCrew is admin/coord-only and looks up the role on
     // crew.roles. ANNE is admin in crew-a but NOT a member of crew-b
-    // → calling pauseCrew with crewId='crew-b' from ANNE returns the
+    // → calling pauseCrew with circleId='crew-b' from ANNE returns the
     // role-required error and crew-b stays unpaused.
-    const r = await callSkill(meshAgent, 'pauseCrew', { crewId: 'crew-b' }, ANNE);
+    const r = await callSkill(meshAgent, 'pauseCrew', { circleId: 'crew-b' }, ANNE);
     expect(r.error).toMatch(/admin or coordinator required/i);
     expect(crewB.liveCrew.paused).toBeFalsy();
   });
 
-  it('topic-envelope resolution — `<crewId>/...` envelope topic resolves the right crew', async () => {
+  it('topic-envelope resolution — `<circleId>/...` envelope topic resolves the right crew', async () => {
     const { meshAgent } = await buildMeshAgent({ label: 'TestMeshTopic' });
     const crewA = buildCrewState('crew-a', [ANNE], { [ANNE]: 'admin' });
     const crewB = buildCrewState('crew-b', [BOB],  { [BOB]: 'admin' });
@@ -249,7 +249,7 @@ describe('V2.8 — single meshAgent, multi-crew via bundleResolver', () => {
     });
     await meshAgent.start();
 
-    // No crewId in args, but envelope.topic='crew-b/something' → resolver
+    // No circleId in args, but envelope.topic='crew-b/something' → resolver
     // picks crew-b. Tested by hand-invoking the registered handler with
     // a synthesized envelope.
     const def = meshAgent.skills.get('addTask');

@@ -3,7 +3,7 @@
  *
  * The data half of the dissolve: storage is keyed by **circle (scope) + data-type**, NOT by app-origin.
  * One store per circle (the `rootContainer` is the circle's routed pod path — `PodRouting` already keys the
- * pod by `crewId ≡ circleId`). Items are typed (`{id, type, …}`) and validated against the injected registry
+ * pod by `circleId ≡ circleId`). Items are typed (`{id, type, …}`) and validated against the injected registry
  * (`@canopy/item-types`) on write. So ANY function over the registry's types can read/write here, and
  * `app-origin` is demoted to a capability/provenance TAG, not the storage key.
  *

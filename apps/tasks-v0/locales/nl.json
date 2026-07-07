@@ -115,7 +115,7 @@
     "storage_group_pod_label": { "text": "Pod-URI van de gedeelde groepspod", "doc": "Label of the optional groupPodUri input (centralised / hybrid only)." },
     "submit":                  { "text": "Crew aanmaken", "doc": "Submit CTA on the wizard." },
     "result_heading":          { "text": "Crew-config opgeslagen", "doc": "Heading of the success card on /welcome.html." },
-    "result_intro":            { "text": "Je crew-config is opgeslagen. Herstart Tasks met de nieuwe crewId aan boot gebonden (Tasks-v0 bindt aan één crew per proces; multi-crew runtime volgt later).", "doc": "Lead text under the success card." },
+    "result_intro":            { "text": "Je crew-config is opgeslagen. Herstart Tasks met de nieuwe circleId aan boot gebonden (Tasks-v0 bindt aan één crew per proces; multi-crew runtime volgt later).", "doc": "Lead text under the success card." },
     "result_footer":           { "text": "Zie <a href=\"/crews.html\">/crews.html</a> voor de volledige lijst.", "doc": "Footer hint under the success card." }
   },
   "onboard": {

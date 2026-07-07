@@ -8,7 +8,7 @@
  *   import { useSkill } from './lib/useSkill.js';
  *
  *   const post = useSkill('addTask');
- *   await post.call({ text: 'buy milk' });    // crewId auto-injected
+ *   await post.call({ text: 'buy milk' });    // circleId auto-injected
  */
 
 import {

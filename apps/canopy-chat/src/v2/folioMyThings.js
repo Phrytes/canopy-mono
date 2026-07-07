@@ -9,7 +9,7 @@
  * An item is "mine + private" when:
  *  - `owner` (or `ownerId` / `authorId`) matches my webid (or owner is
  *    absent — legacy items default to mine), AND
- *  - it carries no circle hint (no circleId/crewId/groupId/audience).
+ *  - it carries no circle hint (no circleId/circleId/groupId/audience).
  *
  * The companion to this view is [[folioSharedFilters]] (P6.M8), which
  * powers the "Shared by me / Shared with me" toggles on the same screen.

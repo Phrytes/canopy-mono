@@ -38,7 +38,7 @@ export function CadenceOverridesScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cur     = useSkillResult('getMyCadenceOverrides', {}, [svc?.activeCrewId]);
+  const cur     = useSkillResult('getMyCadenceOverrides', {}, [svc?.activeCircleId]);
   const setSk   = useSkill('setMyCadenceOverrides');
   const resolve = useSkill('resolveMyCadence');
 

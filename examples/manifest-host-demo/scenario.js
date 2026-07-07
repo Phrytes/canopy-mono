@@ -45,7 +45,7 @@ export const DEMO_LLM_SCRIPT = [
   },
   // Turn 2 — user: "add a task: paint the hallway"
   {
-    toolCall:       { id: 'tasks.addTask', args: { crewId: 'primary-crew', text: 'paint the hallway' } },
+    toolCall:       { id: 'tasks.addTask', args: { circleId: 'primary-crew', text: 'paint the hallway' } },
     classification: 'actionable',
   },
   // Turn 3 — user: "what's on my shopping list?"
@@ -69,7 +69,7 @@ export function buildSystemPrompt(perAppSystemPrompts) {
     'You are a multi-app assistant.  You have access to tools from these apps:',
     ...apps.map((a) => `  - ${a}`),
     'Use the appropriate tool for each request.  For tools whose id starts with',
-    '"tasks.", default to crewId: "primary-crew" if the user does not specify one.',
+    '"tasks.", default to circleId: "primary-crew" if the user does not specify one.',
   ].join('\n');
 }
 

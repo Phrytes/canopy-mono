@@ -77,9 +77,9 @@ export function MyWorkScreen() {
   // Same data shape; same lifecycle.  Skill ids + args come from the
   // manifest's Q7 dataSource declarations on the mine/mastered/
   // claimable views.
-  const mine      = useAdapterSection(adapter, 'mine',      [svc?.activeCrewId]);
-  const mastered  = useAdapterSection(adapter, 'mastered',  [svc?.activeCrewId]);
-  const claimable = useAdapterSection(adapter, 'claimable', [svc?.activeCrewId]);
+  const mine      = useAdapterSection(adapter, 'mine',      [svc?.activeCircleId]);
+  const mastered  = useAdapterSection(adapter, 'mastered',  [svc?.activeCircleId]);
+  const claimable = useAdapterSection(adapter, 'claimable', [svc?.activeCircleId]);
 
   const onPressTask = useCallback((id) => {
     nav.navigate(ROUTES.TaskDetail, { id });
