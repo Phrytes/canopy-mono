@@ -46,6 +46,20 @@
 
 import { PodSearch, hash as defaultHash } from '@canopy/pod-search';
 
+/**
+ * Default semantic cosine floor for circle RAG retrieval. pod-search stores
+ * vectors unit-normalised, so a hybrid/semantic hit's score is a cosine in
+ * roughly [0..1]; anything below this floor is an ≈orthogonal, near-noise match
+ * that gets DROPPED before it can pollute the RRF fusion (better no context than
+ * irrelevant context). `0.1` is the same conservative floor the pod-search
+ * vector-layer tests and the existing circle-RAG tests exercise, and is
+ * consistent with folio `/zoek`'s `minScore` units (folio hardcodes no default —
+ * it forwards a caller-supplied value — so there is no folio default to match;
+ * 0.1 is the shared, defensible convention). Overridable per call via
+ * `makeCircleRetriever({ minScore })` (pass `0` to disable the floor).
+ */
+export const DEFAULT_CIRCLE_RAG_MIN_SCORE = 0.1;
+
 // Minimal bilingual stop-word set (EN + NL) so common glue words don't inflate
 // the overlap score. Kept tiny on purpose — it's a relevance nudge, not an NLP
 // pipeline; the deferred semantic tier handles real paraphrase.
@@ -331,13 +345,19 @@ export function makePodSearchRetriever({
  * passing `embedder` (an object or a policy resolver) for per-turn gating +
  * persistence seams (`vectorStore`, `scope`, `hash`, `minScore`, `audit`).
  *
+ * `minScore` DEFAULTS to `DEFAULT_CIRCLE_RAG_MIN_SCORE` (a semantic cosine floor
+ * that drops near-noise hybrid matches) so EVERY shell gets the floor by
+ * construction — web ≡ mobile, no per-shell literal to drift. Override per call
+ * (pass `0` to disable). The floor only bites the semantic/hybrid path; lexical-
+ * only retrieval (no embedder) is unaffected, so the graceful fallback is intact.
+ *
  * @param {{embed?:Function, embedder?:object|Function, loadItems:Function,
  *          limit?:number, hash?:Function, vectorStore?:object, scope?:string,
  *          minScore?:number, audit?:Function}} a
  */
 export function makeCircleRetriever({
   embed, embedder, loadItems, limit = 5,
-  hash, vectorStore, scope, minScore, audit,
+  hash, vectorStore, scope, minScore = DEFAULT_CIRCLE_RAG_MIN_SCORE, audit,
 } = {}) {
   const resolvedEmbedder = embedder ?? (typeof embed === 'function' ? { id: 'circle-embed', embed } : undefined);
   return makePodSearchRetriever({ embedder: resolvedEmbedder, loadItems, limit, hash, vectorStore, scope, minScore, audit });

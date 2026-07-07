@@ -3,6 +3,7 @@ import {
   lexicalRank, makeLexicalRetriever,
   cosineSim, makeSemanticRetriever, makeCircleRetriever,
   makePodSearchRetriever, circleItemFromRow, CIRCLE_ITEM_SCHEMA,
+  DEFAULT_CIRCLE_RAG_MIN_SCORE,
 } from '../../src/v2/circleRetriever.js';
 import { mockEmbeddingsProvider } from '@canopy/llm-client';
 import { createMemoryBackend } from '@canopy/pseudo-pod/memory';
@@ -124,6 +125,68 @@ describe('makeCircleRetriever — auto-tiers', () => {
   it('uses lexical when no embedder is configured', async () => {
     const out = await makeCircleRetriever({ loadItems })('quantum entanglement');
     expect(out).toEqual([]);   // lexical: zero overlap → nothing
+  });
+});
+
+describe('makeCircleRetriever — default minScore floor + vectorStore wiring', () => {
+  // A 2-axis mock embedder: the query "alpha" and the 'hit' item land on the same
+  // axis (cosine 1); the 'weak' item ("zeta") lands almost orthogonally so its
+  // cosine to the query is a deliberate 0.05 — ABOVE zero but BELOW the 0.1
+  // default floor. 'weak' shares no lexical token with "alpha" either, so nothing
+  // but the semantic floor decides whether it surfaces.
+  function weakEmbedder() {
+    const dim = 2;
+    const vecFor = (s) => {
+      const t = String(s).toLowerCase();
+      if (t.includes('alpha')) return [1, 0];                         // cosine 1 with query
+      if (t.includes('zeta'))  return [0.05, Math.sqrt(1 - 0.0025)];  // cosine 0.05 with query
+      return [0, 1];                                                  // orthogonal → cosine 0
+    };
+    const emb = {
+      id: 'mock:weak', dim, calls: 0,
+      async embed(texts) { emb.calls += 1; return texts.map((x) => Float32Array.from(vecFor(x))); },
+    };
+    return emb;
+  }
+  const WEAK_ITEMS = [
+    { id: 'hit',  kind: 'task', label: 'alpha task' },
+    { id: 'weak', kind: 'post', label: 'zeta note' },
+  ];
+  const loadWeak = async () => WEAK_ITEMS;
+
+  it('the exported default is 0.1 (the shared near-noise cosine floor)', () => {
+    expect(DEFAULT_CIRCLE_RAG_MIN_SCORE).toBe(0.1);
+  });
+
+  it('applies the default minScore when NONE is passed → drops sub-threshold matches', async () => {
+    const out = await makeCircleRetriever({ embedder: weakEmbedder(), loadItems: loadWeak })('alpha', { circleId: 'w1' });
+    const ids = out.map((c) => c.id);
+    expect(ids).toContain('hit');        // cosine 1 — kept
+    expect(ids).not.toContain('weak');   // cosine 0.05 < default 0.1 → floored out
+  });
+
+  it('minScore is overridable — passing 0 lifts the floor so the 0.05 match survives', async () => {
+    const out = await makeCircleRetriever({ embedder: weakEmbedder(), loadItems: loadWeak, minScore: 0 })('alpha', { circleId: 'w2' });
+    expect(out.map((c) => c.id)).toContain('weak');   // floor lifted → sub-0.1 match returns
+  });
+
+  it('a stricter override floors MORE — minScore just above the hit keeps nothing semantic', async () => {
+    // hit's own cosine is 1.0; a floor of 1.1 drops even it from the semantic side.
+    // (Lexical still surfaces 'hit' via "alpha" overlap, so hybrid ≈ lexical here.)
+    const out = await makeCircleRetriever({ embedder: weakEmbedder(), loadItems: loadWeak, minScore: 1.1 })('alpha', { circleId: 'w3' });
+    expect(out.map((c) => c.id)).not.toContain('weak');
+  });
+
+  it('threads vectorStore end-to-end: makeCircleRetriever → makePodSearchRetriever → PodSearch persists to the injected store', async () => {
+    const store = createMemoryBackend();
+    const retrieve = makeCircleRetriever({
+      embedder: conceptEmbedder(), loadItems: async () => RAG_ITEMS, vectorStore: store, scope: 'circle-rag',
+    });
+    await retrieve('car', { circleId: 'cx' });
+    const keys = await store.list('');
+    expect(keys.length).toBeGreaterThan(0);   // vectors reached the injected store
+    // …and only under the private search-index scope (never sharing/).
+    expect(keys.every((k) => k.startsWith('private/state/search-index/circle-rag/cx/'))).toBe(true);
   });
 });
 

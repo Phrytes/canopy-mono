@@ -481,7 +481,7 @@ import { localStorageObjectVersions } from '@canopy/kring-host/objectVersionsSto
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
-import { makeCircleRetriever } from '../../src/v2/circleRetriever.js';
+import { makeCircleRetriever, DEFAULT_CIRCLE_RAG_MIN_SCORE } from '../../src/v2/circleRetriever.js';
 import { buildCircleEmbedProviders } from '../../src/v2/circleEmbedProviders.js';
 import { resolveCircleEmbedder } from '../../src/v2/embedPicker.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
@@ -1498,9 +1498,7 @@ function buildCircleBot(agent) {
     // query. `embedder` rides the circle's embed policy (`resolveCircleRagEmbedder`,
     // same resolution as folio /zoek); null when off/unconfigured → LEXICAL-only,
     // NO embed call. Ranking lives once in circleRetriever; `loadItems` is the
-    // shell adapter. (Persistence seam: pass `vectorStore` here to persist vectors
-    // under private/state/search-index/circle-rag/<circleId>/ — deferred until the
-    // circle exposes a StorageBackend, exactly as folio's noteVectorStore is.)
+    // shell adapter.
     gate: createTokenGate({
       rules: circleGateRules(currentLang()),
       retrieve: makeCircleRetriever({
@@ -1509,6 +1507,20 @@ function buildCircleBot(agent) {
           callSkill: resolveCallSkill,
           circleId: ctx?.circleId ?? getActiveCircle(),
         }),
+        // Semantic cosine floor: weak/near-noise hybrid matches are dropped
+        // before they reach the LLM prompt. Threaded explicitly from the shared
+        // default (also applied by construction inside makeCircleRetriever, so
+        // web ≡ mobile); raise it here to be stricter, pass 0 to disable.
+        minScore: DEFAULT_CIRCLE_RAG_MIN_SCORE,
+        // Persistence seam (vectorStore): threaded end-to-end into PodSearch
+        // (makeCircleRetriever → makePodSearchRetriever → new PodSearch), so a
+        // real StorageBackend under private/state/search-index/circle-rag/<id>/
+        // makes vectors survive a restart. PENDING: the only store reachable at
+        // this site is the circle's IN-MEMORY pseudo-pod backend
+        // (createMemoryBackend, lost on restart) — wiring that would FAKE
+        // persistence, so it stays absent, exactly as folio's noteVectorStore.
+        // Inject a persistent StorageBackend here once the circle exposes one.
+        vectorStore: undefined,
       }),
     }),
     botName: CIRCLE_BOT_NAME,
