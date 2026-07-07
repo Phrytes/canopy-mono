@@ -976,6 +976,26 @@
       "hybrid": {
         "text": "Een gedeelde pod plus persoonlijke pods: gemeenschappelijke items worden gedeeld, privé-items blijven bij elk lid.",
         "doc": "Consequence of pod=hybrid."
+      },
+      "closed": {
+        "text": "Items kunnen niet buiten deze kring gedeeld worden. Delen naar buiten staat uit.",
+        "doc": "Consequence of sharePosture=closed."
+      },
+      "copy": {
+        "text": "Bij delen gaat er een aparte, opnieuw verzegelde kopie naar de ontvanger. Die heeft een eigen kopie — latere wijzigingen in de kring bereiken die niet, en je kunt hem niet terugtrekken.",
+        "doc": "Consequence of sharePosture=copy."
+      },
+      "trusted": {
+        "text": "Het live item zelf wordt ter plekke gedeeld: de ontvanger krijgt een sleutel om de kopie van de kring te openen, er wordt geen duplicaat gemaakt. Elk lid mag een item zo delen.",
+        "doc": "Consequence of sharePosture=trusted."
+      },
+      "registered": {
+        "text": "Hetzelfde live, ter-plekke delen als 'Live delen (leden)', maar alleen een beheerder mag een ontvanger toevoegen. Leden kunnen items niet zelf naar buiten delen.",
+        "doc": "Consequence of sharePosture=registered."
+      },
+      "canonical": {
+        "text": "Het item blijft op zijn plek in deze kring — er wordt geen kopie gemaakt. De ontvanger krijgt een intrekbare sleutel om het te openen. Bij stoppen met delen wordt de sleutel geroteerd zodat de toegang vervalt.",
+        "doc": "Consequence of sharePosture=canonical."
       }
     },
     "send_proposal": {
@@ -1148,6 +1168,26 @@
       "p3": {
         "text": "Verzegeld in rust",
         "doc": "Storage posture option (p3)."
+      },
+      "closed": {
+        "text": "Niet buiten de kring delen",
+        "doc": "sharePosture option (closed) — external sharing off."
+      },
+      "copy": {
+        "text": "Verzegelde kopie",
+        "doc": "sharePosture option (copy) — re-seal a fresh copy to the recipient."
+      },
+      "trusted": {
+        "text": "Live delen (leden)",
+        "doc": "sharePosture option (trusted) — any member may grant a live canonical share to a recipient."
+      },
+      "registered": {
+        "text": "Live delen (alleen beheerders)",
+        "doc": "sharePosture option (registered) — same live share, but only an admin may add recipients."
+      },
+      "canonical": {
+        "text": "Live delen, intrekbaar",
+        "doc": "sharePosture option (canonical) — the item stays in place; the recipient gets a revocable key grant to open it, no copy."
       }
     },
     "conflict": {
@@ -1159,6 +1199,10 @@
     "storagePosture": {
       "text": "Opslag (in rust)",
       "doc": "Kring-instellingen — opslaghouding in rust (menukaart P0–P3)."
+    },
+    "sharePosture": {
+      "text": "Delen buiten de kring",
+      "doc": "Objective L — settings axis: how an item is exposed to an outsider when shared out of the circle (CIRCLE_POLICY_ENUMS.sharePosture: closed/copy/trusted/registered/canonical)."
     }
   },
   "override": {

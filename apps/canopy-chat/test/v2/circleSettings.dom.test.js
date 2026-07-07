@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleSettings } from '../../web/v2/circleSettings.js';
-import { DEFAULT_CIRCLE_POLICY } from '../../src/v2/circlePolicy.js';
+import { DEFAULT_CIRCLE_POLICY, mergeCirclePolicy } from '../../src/v2/circlePolicy.js';
 import { pageForOp } from '../../src/v2/pageProjection.js';
 import { canopyChatManifest } from '../../manifest.js';
 
@@ -9,13 +9,15 @@ const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }
 
 describe('renderCircleSettings', () => {
-  it('renders 8 feature toggles + 6 enum axes reflecting the policy (5.9a: + view, + storagePosture)', () => {
+  it('renders 8 feature toggles + 7 enum axes reflecting the policy (5.9a: + view, + storagePosture; obj L: + sharePosture)', () => {
     const el = mount();
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t });
     expect(el.querySelectorAll('.circle-settings__feature input[type=checkbox]')).toHaveLength(8);
-    expect(el.querySelectorAll('.circle-settings__axis')).toHaveLength(6);
+    expect(el.querySelectorAll('.circle-settings__axis')).toHaveLength(7);
     expect(el.querySelector('input[data-feature=chat]').checked).toBe(true);
     expect(el.querySelector('.circle-settings__axis[data-axis=pod] input[value=none]').checked).toBe(true);
+    // obj L — sharePosture axis is editable; default 'closed' reflects DEFAULT_CIRCLE_POLICY.
+    expect(el.querySelector('.circle-settings__axis[data-axis=sharePosture] input[value=closed]').checked).toBe(true);
     // 5.9a — view axis is editable; default flipped to 'screen' so
     // tap-on-kring opens the per-circle detail instead of auto-
     // routing to the classic chat shell (see DEFAULT_CIRCLE_POLICY).
@@ -154,10 +156,10 @@ describe('renderCircleSettings', () => {
     const el = mount();
     const tc = (k) => (k.startsWith('circle.settings.consequence.') ? `why ${k.split('.').pop()}` : k);
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tc });
-    // 3 view + 4 llmTool + 4 storagePosture (p0–p3) + 3 agents + 2 revealPolicy + 4 pod = 20 enum options
-    expect(el.querySelectorAll('.circle-settings__info')).toHaveLength(20);
+    // 3 view + 4 llmTool + 4 storagePosture (p0–p3) + 5 sharePosture + 3 agents + 2 revealPolicy + 4 pod = 25 enum options
+    expect(el.querySelectorAll('.circle-settings__info')).toHaveLength(25);
     const panels = el.querySelectorAll('.circle-settings__consequence');
-    expect(panels).toHaveLength(20);
+    expect(panels).toHaveLength(25);
     for (const p of panels) expect(p.hidden).toBe(true);
   });
 
@@ -176,6 +178,63 @@ describe('renderCircleSettings', () => {
     info.click();
     expect(panel.hidden).toBe(true);
     expect(info.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+/**
+ * Objective L — the sharePosture axis. It reuses the SAME generic radio +
+ * consequence renderer as every other enum axis; these prove the 5 posture
+ * options render with real locale labels/consequence copy (both langs) and
+ * that selecting one round-trips through the circlePolicy store.
+ */
+describe('renderCircleSettings — sharePosture axis (objective L)', () => {
+  // Mirror t(): walk the { text, doc } tree to the leaf .text, echo the key on a miss.
+  const makeT = (tree) => (key) => {
+    const path = key.replace(/^circle\./, '').split('.');
+    let node = tree;
+    for (const seg of path) { if (node == null || typeof node !== 'object') return key; node = node[seg]; }
+    return node && typeof node === 'object' && typeof node.text === 'string' ? node.text : key;
+  };
+
+  it('renders all 5 posture options with resolved locale labels (nl + en)', async () => {
+    for (const lang of ['en', 'nl']) {
+      const tree = (await import(`../../src/locales/circle.${lang}.json`)).default;
+      const tt = makeT(tree);
+      const el = mount();
+      renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tt });
+      const axis = el.querySelector('.circle-settings__axis[data-axis=sharePosture]');
+      expect(axis).not.toBeNull();
+      const radios = axis.querySelectorAll('input[type=radio][name=sharePosture]');
+      expect([...radios].map((r) => r.value)).toEqual(['closed', 'copy', 'trusted', 'registered', 'canonical']);
+      // axis header + each option label + each consequence panel are real strings (no raw key leaked)
+      expect(axis.querySelector('.circle-settings__section-title').textContent).not.toContain('circle.settings.sharePosture');
+      for (const opt of ['closed', 'copy', 'trusted', 'registered', 'canonical']) {
+        const span = axis.querySelector(`input[value=${opt}]`).closest('.circle-settings__opt').querySelector('span');
+        expect(span.textContent).toBe(tt(`circle.settings.opt.${opt}`));
+        expect(span.textContent.startsWith('circle.settings.')).toBe(false);
+        const panel = axis.querySelector(`.circle-settings__consequence[data-opt=${opt}]`);
+        expect(panel).not.toBeNull();
+        expect(panel.textContent).toBe(tt(`circle.settings.consequence.${opt}`));
+      }
+    }
+  });
+
+  it('fires onChange({ sharePosture }) on select and round-trips through mergeCirclePolicy', () => {
+    const el = mount();
+    const onChange = vi.fn();
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t, onChange });
+    const canonical = el.querySelector('.circle-settings__axis[data-axis=sharePosture] input[value=canonical]');
+    canonical.checked = true;
+    canonical.dispatchEvent(new Event('change'));
+    expect(onChange).toHaveBeenCalledWith({ sharePosture: 'canonical' });
+
+    // the emitted patch persists through the same policy path as every other axis
+    const persisted = mergeCirclePolicy(DEFAULT_CIRCLE_POLICY, onChange.mock.calls[0][0]);
+    expect(persisted.sharePosture).toBe('canonical');
+    // and a re-render off the persisted policy shows the chosen option checked
+    const el2 = mount();
+    renderCircleSettings(el2, { policy: persisted, t });
+    expect(el2.querySelector('.circle-settings__axis[data-axis=sharePosture] input[value=canonical]').checked).toBe(true);
   });
 });
 

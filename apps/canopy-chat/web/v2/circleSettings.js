@@ -38,7 +38,10 @@ import { pageLabel } from '../../src/v2/pageProjection.js';
 // the most prominent setting.
 // Exported so the locale-coverage fitness guard (test/v2/circleLocaleCoverage.test.js)
 // asserts every rendered axis + its options resolve — no raw i18n keys reach a surface.
-export const ENUM_AXES = ['view', 'llmTool', 'storagePosture', 'agents', 'revealPolicy', 'pod'];
+// `sharePosture` sits right after `storagePosture`: both are the circle's
+// content-boundary axes (at-rest vs. shared-out). It reuses the SAME generic
+// radio/consequence renderer below — no bespoke control (see CIRCLE_POLICY_ENUMS.sharePosture).
+export const ENUM_AXES = ['view', 'llmTool', 'storagePosture', 'sharePosture', 'agents', 'revealPolicy', 'pod'];
 
 /**
  * @param {HTMLElement} container
