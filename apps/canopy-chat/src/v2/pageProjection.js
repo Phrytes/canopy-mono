@@ -14,18 +14,26 @@
  * `manifest.surfaces.page.labelKey → renderWeb → pageLabel → t()`,
  * never a hardcoded string.
  */
-import { renderWeb } from '@canopy/app-manifest';
+import { renderWeb, renderMobile } from '@canopy/app-manifest';
 
 /**
  * All top-level PAGE surfaces a manifest projects, in declaration order.
- * Empty array when the manifest declares no `surfaces.page` op (renderWeb
+ * Empty array when the manifest declares no `surfaces.page` op (the projector
  * omits the `pages` key in that case — see renderWeb.js SP-3b).
  *
+ * `renderer` selects the projector so this ONE shared module serves BOTH
+ * surfaces (invariant #1/#2): web passes the default `renderWeb`, mobile the
+ * sibling `manifestPagesMobile`/`pageForOpMobile` (which inject `renderMobile`).
+ * V0 renderMobile === renderWeb, so today both yield identical pages; keeping
+ * the seam here means a future mobile-only NavModel field never forks the
+ * selection/label logic.
+ *
  * @param {object} manifest
+ * @param {Function} [renderer] — the pure projector (`renderWeb` | `renderMobile`)
  * @returns {Array<{opId: string, kind: string, title?: string, route?: string, labelKey?: string}>}
  */
-export function manifestPages(manifest) {
-  const nav = renderWeb(manifest);
+export function manifestPages(manifest, renderer = renderWeb) {
+  const nav = renderer(manifest);
   return Array.isArray(nav.pages) ? nav.pages : [];
 }
 
@@ -35,10 +43,26 @@ export function manifestPages(manifest) {
  *
  * @param {object} manifest
  * @param {string} opId
+ * @param {Function} [renderer] — the pure projector (`renderWeb` | `renderMobile`)
  * @returns {object|null}
  */
-export function pageForOp(manifest, opId) {
-  return manifestPages(manifest).find((p) => p.opId === opId) ?? null;
+export function pageForOp(manifest, opId, renderer = renderWeb) {
+  return manifestPages(manifest, renderer).find((p) => p.opId === opId) ?? null;
+}
+
+/**
+ * Mobile siblings — SAME selection logic, `renderMobile` projector. A mobile
+ * RN screen selects its header page over `renderMobile(manifest).pages` here
+ * instead of duplicating the selection in the screen (invariant #1/#3).
+ *
+ * @param {object} manifest
+ * @param {string} opId
+ */
+export function manifestPagesMobile(manifest) {
+  return manifestPages(manifest, renderMobile);
+}
+export function pageForOpMobile(manifest, opId) {
+  return pageForOp(manifest, opId, renderMobile);
 }
 
 /**
