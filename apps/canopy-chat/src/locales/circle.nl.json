@@ -2016,6 +2016,8 @@
     "share_out_heading": { "text": "Een item delen",                              "doc": "objective L — mobile share screen: heading of the section listing this circle's own items each with a Share affordance." },
     "share_action":    { "text": "Delen",                                         "doc": "objective L — per-item Share affordance on the mobile share screen (opens the target-circle input)." },
     "target_placeholder": { "text": "Doel-kring id",                              "doc": "objective L — mobile share screen: placeholder for entering the target circle to share an item into." },
+    "pick_label":      { "text": "Kies een kring",                                 "doc": "objective L — mobile share screen: label above the target-circle PICKER (list of the user's other circles)." },
+    "pick_empty":      { "text": "Geen andere kringen om naar te delen.",          "doc": "objective L — mobile share screen: empty state when the user has no circle other than the source to share into." },
     "outbound_title":  { "text": "Gedeeld vanuit deze cirkel",                    "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares." },
     "outbound_empty":  { "text": "Deze cirkel heeft nog niets gedeeld.",          "doc": "objective L — empty state for the outbound-shares section." },
     "outbound_row":    { "text": "\"{{item}}\" → {{circle}}",                      "doc": "objective L — one outbound-share row (source item → target circle)." },

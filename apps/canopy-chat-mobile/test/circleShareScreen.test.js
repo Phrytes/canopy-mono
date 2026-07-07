@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import {
-  loadShareableItems, loadSharedRows, shareRowFrom, shareOut, stopSharing,
+  loadShareableItems, loadSharedRows, shareRowFrom, shareOut, stopSharing, pickableCircles,
 } from '../src/core/circleShareScreen.js';
 
 // A fake lists service exposing only the store surface loadShareableItems reads.
@@ -36,6 +36,41 @@ describe('circle share screen model (objective L)', () => {
       { id: 'i1', text: 'Groceries', type: 'list' },
       { id: 'i2', text: 'Milk', type: 'list-item' },
     ]);
+  });
+
+  it('pickableCircles offers the OTHER circles as targets and EXCLUDES the source circle', () => {
+    const circles = [
+      { id: 'A', name: 'Household' },   // source — excluded
+      { id: 'B', name: 'Street' },
+      { id: 'C', name: 'Book club' },
+      { id: '', name: 'no-id' },        // no id — dropped
+    ];
+    const targets = pickableCircles({ circles, sourceCircleId: 'A' });
+    expect(targets).toEqual([
+      { id: 'B', name: 'Street' },
+      { id: 'C', name: 'Book club' },
+    ]);
+    // A picked target id feeds straight into shareOut → shareItemIntoCircle({ toCircleId }).
+    expect(targets.map((c) => c.id)).not.toContain('A');
+  });
+
+  it('pickableCircles falls back to the id as label when a circle has no name, and is empty when only the source exists', () => {
+    expect(pickableCircles({ circles: [{ id: 'A', name: 'Only me' }], sourceCircleId: 'A' })).toEqual([]);
+    expect(pickableCircles({ circles: [{ id: 'B' }], sourceCircleId: 'A' })).toEqual([{ id: 'B', name: 'B' }]);
+    expect(pickableCircles({ circles: undefined, sourceCircleId: 'A' })).toEqual([]);
+  });
+
+  it('picking a circle then confirming shares that circle\'s id as toCircleId (picker → shareItemIntoCircle)', async () => {
+    const shareItemIntoCircle = vi.fn(async () => ({ ok: true, ref: {} }));
+    const circles = [{ id: 'A', name: 'Household' }, { id: 'B', name: 'Street' }];
+    const targets = pickableCircles({ circles, sourceCircleId: 'A' });
+    const picked = targets[0];   // user selects "Street"
+    const s = await shareOut({
+      itemId: 'i1', fromCircleId: 'A', toCircleId: picked.id, by: 'did:alice', recipient: 'did:bob',
+      policyOf: async () => ({}), deps: { shareItemIntoCircle },
+    });
+    expect(shareItemIntoCircle).toHaveBeenCalledWith(expect.objectContaining({ toCircleId: 'B', itemId: 'i1', fromCircleId: 'A' }));
+    expect(s.ok).toBe(true);
   });
 
   it('shareOut calls shareItemIntoCircle with the right args and returns a done status', async () => {
