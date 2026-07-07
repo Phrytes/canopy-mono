@@ -154,6 +154,7 @@ import FeedbackThreadScreen from './FeedbackThreadScreen.js';
 import { createFeedbackBotStore } from '../../../../canopy-chat/src/v2/feedbackBots.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
 import CircleListsScreen from './CircleListsScreen.js';   // cluster K · K2 — composable lists (web≡mobile)
+import CircleShareScreen from './CircleShareScreen.js';   // objective L — cross-circle share UI (web≡mobile)
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
 import CircleMyDataScreen from './CircleMyDataScreen.js';
@@ -1065,6 +1066,9 @@ export default function CircleLauncherScreen({
   if (selected && view === 'lists') {   // cluster K · K2 — the composable lists/container UI (web≡mobile)
     return <CircleListsScreen circleId={selected.id} onBack={() => setView('detail')} />;
   }
+  if (selected && view === 'share') {   // objective L — the cross-circle share UI (web≡mobile)
+    return <CircleShareScreen circleId={selected.id} policy={selectedPolicy} onBack={() => setView('detail')} />;
+  }
   if (selected && view === 'settings') {
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The
     // resolver is opt-in; when `incomingPolicy` is null the editor
@@ -1318,6 +1322,7 @@ export default function CircleLauncherScreen({
           setView('recipes');
         }}
         onLists={() => setView('lists')}
+        onShare={() => setView('share')}
       />
     );
   }
@@ -1629,7 +1634,7 @@ function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
   recipeStore = null, onStoopEvent,
-  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists,
+  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops canopy-chat's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
@@ -2317,6 +2322,12 @@ function CircleDetail({
           <Pressable onPress={() => { setMenuOpen(false); onLists?.(); }} style={styles.moreItem} testID="circle-detail-lists">
             <Text style={styles.moreItemText}>{t('circle.lists.title')}</Text>
           </Pressable>
+          {/* objective L — cross-circle share screen (share out + see shared + stop sharing; web≡mobile). */}
+          {typeof onShare === 'function' && (
+            <Pressable onPress={() => { setMenuOpen(false); onShare(); }} style={styles.moreItem} testID="circle-detail-share">
+              <Text style={styles.moreItemText}>{t('circle.share.screen_title')}</Text>
+            </Pressable>
+          )}
           {/* B · Slice 3 — the filterable list-screen (GUI entry; web≡mobile with the ⋯ menu). */}
           <Pressable onPress={() => { setMenuOpen(false); setScreenPanel({ screen: 'contacts' }); }} style={styles.moreItem} testID="circle-detail-contacts">
             <Text style={styles.moreItemText}>{t('circle.screen.open.contacts')}</Text>

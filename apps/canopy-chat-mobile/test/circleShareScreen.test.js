@@ -1,0 +1,95 @@
+/**
+ * circleShareScreen — the portable interaction model behind the RN cross-circle SHARE screen
+ * (objective L · invariant #2 web≡mobile). Vitest can't render RN components (see vitest.config.js), so
+ * this exercises `src/core/circleShareScreen.js` with the composition-root wrappers FAKED — proving the
+ * screen is a thin adapter that:
+ *   • enumerates the circle's own items to share out (drops `shared-ref` pointers),
+ *   • the Share action calls `shareItemIntoCircle` with the right args,
+ *   • the shared-list renders rows from `listSharedItems` with canonical gating,
+ *   • the "Stop sharing" action calls `unshareItemFromCircle` for a CANONICAL row only, and a copy row
+ *     surfaces `not_revocable` WITHOUT touching the revoke wrapper.
+ */
+import { describe, it, expect, vi } from 'vitest';
+import {
+  loadShareableItems, loadSharedRows, shareRowFrom, shareOut, stopSharing,
+} from '../src/core/circleShareScreen.js';
+
+// A fake lists service exposing only the store surface loadShareableItems reads.
+function fakeListsService(itemsByCircle) {
+  return { stores: { getStore: (id) => ({ list: async () => itemsByCircle[id] ?? [] }) } };
+}
+
+describe('circle share screen model (objective L)', () => {
+  it('loadShareableItems lists the circle\'s own items and drops shared-ref pointers', async () => {
+    const deps = {
+      getCircleLists: vi.fn(async () => fakeListsService({
+        A: [
+          { id: 'i1', type: 'list', text: 'Groceries' },
+          { id: 'i2', type: 'list-item', text: 'Milk' },
+          { id: 'r1', type: 'shared-ref', sourceCircle: 'B', sourceId: 'x' },   // dropped
+        ],
+      })),
+    };
+    const items = await loadShareableItems({ circleId: 'A', policy: { sharePosture: 'canonical' }, deps });
+    expect(deps.getCircleLists).toHaveBeenCalledWith('A', { sharePosture: 'canonical' });
+    expect(items).toEqual([
+      { id: 'i1', text: 'Groceries', type: 'list' },
+      { id: 'i2', text: 'Milk', type: 'list-item' },
+    ]);
+  });
+
+  it('shareOut calls shareItemIntoCircle with the right args and returns a done status', async () => {
+    const shareItemIntoCircle = vi.fn(async () => ({ ok: true, ref: {} }));
+    const policyOf = async () => ({ sharePosture: 'canonical' });
+    const s = await shareOut({
+      itemId: 'i1', fromCircleId: 'A', toCircleId: '  B  ', by: 'did:alice', recipient: 'did:bob',
+      policyOf, deps: { shareItemIntoCircle },
+    });
+    expect(shareItemIntoCircle).toHaveBeenCalledWith({
+      itemId: 'i1', fromCircleId: 'A', toCircleId: 'B', by: 'did:alice', recipient: 'did:bob', policyOf,
+    });
+    expect(s).toEqual({ ok: true, statusKey: 'circle.share.done', params: { item: 'i1', circle: 'B' } });
+  });
+
+  it('shareOut refuses a missing/same-circle target WITHOUT calling the wrapper', async () => {
+    const shareItemIntoCircle = vi.fn();
+    const noTarget = await shareOut({ itemId: 'i1', fromCircleId: 'A', toCircleId: '', deps: { shareItemIntoCircle } });
+    const sameCircle = await shareOut({ itemId: 'i1', fromCircleId: 'A', toCircleId: 'A', deps: { shareItemIntoCircle } });
+    expect(shareItemIntoCircle).not.toHaveBeenCalled();
+    expect(noTarget.ok).toBe(false);
+    expect(noTarget.statusKey).toBe('circle.share.failed');
+    expect(sameCircle.ok).toBe(false);
+  });
+
+  it('loadSharedRows renders rows from listSharedItems with canonical gating', async () => {
+    const listSharedItems = vi.fn(async () => [
+      { ref: { sourceCircle: 'A', sourceId: 'i1' }, item: { text: 'canonical plan' } },        // in place → canonical
+      { ref: { sourceCircle: 'A', sourceId: 'i2' }, item: { text: 'a copy', sharedCopyOf: 'i9' } }, // copy → not
+    ]);
+    const rows = await loadSharedRows({ circleId: 'B', recipient: 'did:bob', deps: { listSharedItems } });
+    expect(listSharedItems).toHaveBeenCalledWith('B', { recipient: 'did:bob', policyOf: undefined });
+    expect(rows.map((r) => [r.label, r.canonical])).toEqual([
+      ['canonical plan', true],
+      ['a copy', false],
+    ]);
+  });
+
+  it('stopSharing calls unshareItemFromCircle for a CANONICAL row and returns revoked', async () => {
+    const unshareItemFromCircle = vi.fn(async () => ({ ok: true }));
+    const policyOf = async () => ({ sharePosture: 'canonical' });
+    const row = shareRowFrom({ ref: { sourceCircle: 'A', sourceId: 'i1' }, item: { text: 'canonical plan' } });
+    const s = await stopSharing({ row, toCircleId: 'B', recipient: 'did:bob', policyOf, deps: { unshareItemFromCircle } });
+    expect(unshareItemFromCircle).toHaveBeenCalledWith({
+      itemId: 'i1', fromCircleId: 'A', toCircleId: 'B', recipient: 'did:bob', policyOf,
+    });
+    expect(s).toEqual({ ok: true, statusKey: 'circle.share.revoked', params: { recipient: 'did:bob', item: 'i1' } });
+  });
+
+  it('stopSharing on a NON-canonical (copy) row surfaces not_revocable WITHOUT calling the wrapper', async () => {
+    const unshareItemFromCircle = vi.fn();
+    const row = shareRowFrom({ ref: { sourceCircle: 'A', sourceId: 'i2' }, item: { text: 'a copy', sharedCopyOf: 'i9' } });
+    const s = await stopSharing({ row, toCircleId: 'B', deps: { unshareItemFromCircle } });
+    expect(unshareItemFromCircle).not.toHaveBeenCalled();
+    expect(s).toEqual({ ok: false, statusKey: 'circle.share.not_revocable', params: undefined });
+  });
+});
