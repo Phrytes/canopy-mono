@@ -833,6 +833,16 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
     errors.push({ path: `${path}/title`, message: 'view.title must be a string' });
   }
 
+  // D-mig-1a — optional list-surface field selectors.  Mirrors the
+  // view.title string check: present-but-non-string → a validation error;
+  // absent → unchanged (back-compatible).
+  if (v.labelField !== undefined && typeof v.labelField !== 'string') {
+    errors.push({ path: `${path}/labelField`, message: 'view.labelField must be a string if present' });
+  }
+  if (v.categoryField !== undefined && typeof v.categoryField !== 'string') {
+    errors.push({ path: `${path}/categoryField`, message: 'view.categoryField must be a string if present' });
+  }
+
   // Q17 (V0.3, 2026-05-21) — view.shape: 'list' | 'record' (default 'list').
   // Forward-additive; existing manifests (no `shape` field) → implicit 'list'.
   if (v.shape !== undefined && v.shape !== 'list' && v.shape !== 'record') {

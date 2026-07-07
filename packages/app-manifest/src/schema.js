@@ -211,6 +211,15 @@
  * @property {object}                 [filter]     e.g. { open: true }
  * @property {string}                 [defaultAudience]  SP-5,
  *                                                 accepted-not-interpreted.
+ * @property {string}                 [labelField] D-mig-1a — which item field
+ *                                                 supplies a list row's label
+ *                                                 (default 'label' downstream).
+ *                                                 Additive; a view without it is
+ *                                                 unchanged.
+ * @property {string}                 [categoryField]  D-mig-1a — which item field
+ *                                                 groups/filters list rows
+ *                                                 (e.g. 'category', 'kind').
+ *                                                 Additive; optional.
  */
 
 /**
