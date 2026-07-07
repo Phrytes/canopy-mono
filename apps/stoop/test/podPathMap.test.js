@@ -15,7 +15,7 @@ function roundtrip(mem, ctx) {
 }
 
 describe('podPathMap.classify/unclassify', () => {
-  it('offers/requests → group/<crew>/items (round-trips)', () => {
+  it('offers/requests → group/<circle>/items (round-trips)', () => {
     const c = roundtrip('mem://neighborhood/items/01ABC.json', { circleId: 'C' });
     expect(c).toEqual({ storageFn: 'group/C/items', tail: '01ABC.json' });
   });
@@ -30,17 +30,17 @@ describe('podPathMap.classify/unclassify', () => {
     expect(c.tail).not.toContain('%253A');
   });
 
-  it('item attachments → group/<crew>/item-attachments (distinct from items)', () => {
+  it('item attachments → group/<circle>/item-attachments (distinct from items)', () => {
     const c = roundtrip('mem://stoop/items/01X/attachments/a.jpg', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/item-attachments');
   });
 
-  it('group governance → group/<crew>/governance', () => {
+  it('group governance → group/<circle>/governance', () => {
     const c = roundtrip('mem://neighborhood/groups/G1/config.json', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/governance');
   });
 
-  it('group audit log → group/<crew>/audit (device-pass #2 UNROUTED gap)', () => {
+  it('group audit log → group/<circle>/audit (device-pass #2 UNROUTED gap)', () => {
     const c = roundtrip('mem://neighborhood/audit/01KRVSN68BDV6JA896N7N4RJBY.json', { circleId: 'C' });
     expect(c.storageFn).toBe('group/C/audit');
     expect(c.tail).toBe('01KRVSN68BDV6JA896N7N4RJBY.json');
@@ -67,7 +67,7 @@ describe('podPathMap.classify/unclassify', () => {
     expect(classify('mem://stoop/settings/devices/d.json')).toBeNull();
     expect(classify('mem://neighborhood/weird/x')).toBeNull();
     expect(classify('not-a-mem-key')).toBeNull();
-    // crew-scoped key but no active crew → skip (don't half-route)
+    // circle-scoped key but no active circle → skip (don't half-route)
     expect(classify('mem://neighborhood/items/1.json')).toBeNull();
     expect(classify('mem://neighborhood/items/1.json', {})).toBeNull();
   });

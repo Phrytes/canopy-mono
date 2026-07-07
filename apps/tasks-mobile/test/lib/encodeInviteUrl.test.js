@@ -43,7 +43,7 @@ describe('issue → scan round-trip', () => {
 
   it('round-trips Unicode payloads', () => {
     const token = {
-      groupId:   'crew-éxpand',
+      groupId:   'circle-éxpand',
       code:      'caf€',
       expiresAt: 1234567890,
     };

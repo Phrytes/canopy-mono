@@ -22,7 +22,7 @@ const SHARED = {
 const MOBILE = {
   mobile: {
     welcome: {
-      create_cta: { text: 'Create a new crew', doc: 'mobile-only' },
+      create_cta: { text: 'Create a new circle', doc: 'mobile-only' },
     },
   },
   // Override one shared label.
@@ -36,7 +36,7 @@ const MOBILE = {
 describe('mergeLocales', () => {
   it('merges disjoint top-level namespaces', () => {
     const out = mergeLocales(SHARED, MOBILE);
-    expect(out.mobile.welcome.create_cta.text).toBe('Create a new crew');
+    expect(out.mobile.welcome.create_cta.text).toBe('Create a new circle');
     expect(out.shared.roles.admin.text).toBe('admin');
   });
 
@@ -59,7 +59,7 @@ describe('lookupKey', () => {
   it('reads a leaf via dotted path', () => {
     expect(lookupKey(merged, 'shared.status.submitted')).toBe('submitted');
     expect(lookupKey(merged, 'shared.status.claimed')).toBe('mine');
-    expect(lookupKey(merged, 'mobile.welcome.create_cta')).toBe('Create a new crew');
+    expect(lookupKey(merged, 'mobile.welcome.create_cta')).toBe('Create a new circle');
   });
 
   it('returns the fallback when the path is absent', () => {

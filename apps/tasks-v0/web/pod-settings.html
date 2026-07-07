@@ -11,7 +11,7 @@
     - field declarations documented; the page enforces Q26 conditional
       display (groupPodUri hidden when policy is 'decentralised') via
       its own DOM logic
-  Skills referenced: getCrewStoragePolicy, setCrewStoragePolicy (manifest-
+  Skills referenced: getCircleStoragePolicy, setCircleStoragePolicy (manifest-
     declared), plus pod-sign-in flow skills (auth-side).
 -->
 <html lang="en">
@@ -26,8 +26,8 @@
   <header>
     <nav>
       <a href="/">Workspace</a>
-      <a href="/crews.html">Crews</a>
-      <a href="/crew.html">Crew</a>
+      <a href="/circles.html">Circles</a>
+      <a href="/circle.html">Circle</a>
       <a href="/pod-settings.html" class="active">Pod settings</a>
     </nav>
     <div id="actor"></div>
@@ -37,14 +37,14 @@
     <section>
       <h2 data-i18n="pod_settings.heading">Pod settings</h2>
       <p class="hint" data-i18n="pod_settings.intro">
-        Where the active crew's state lives, and how this device is
+        Where the active circle's state lives, and how this device is
         attached to it. The full state-mapping editor lives in the
         Hub-web-console (post-P5).
       </p>
 
-      <!-- Crew storage policy ──────────────────────────────────────── -->
+      <!-- Circle storage policy ──────────────────────────────────────── -->
       <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
-        <h3 style="margin-top: 0;" data-i18n="pod_settings.storage_heading">Crew storage policy</h3>
+        <h3 style="margin-top: 0;" data-i18n="pod_settings.storage_heading">Circle storage policy</h3>
         <p class="hint" id="storage-status" data-i18n="pod_settings.storage_loading">Loading…</p>
         <p class="hint" id="storage-upgrade-note" hidden data-i18n="pod_settings.storage_upgrade_oneway">
           Once pod-having → no way back to no-pod. Substrate handles
@@ -72,7 +72,7 @@
       <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
         <h3 style="margin-top: 0;" data-i18n="pod_settings.signin_heading">Solid pod sign-in</h3>
         <p class="hint" data-i18n="pod_settings.signin_intro">
-          Pod sign-in lets the crew's state mirror through to your own
+          Pod sign-in lets the circle's state mirror through to your own
           pod for stronger persistence. Pick an issuer (the Solid
           provider that holds your pod) and authorize the redirect.
         </p>
@@ -93,7 +93,7 @@
       <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
         <h3 style="margin-top: 0;" data-i18n="pod_settings.registry_heading">Agent registry</h3>
         <p class="hint" data-i18n="pod_settings.registry_intro">
-          This device is registered in the crew's local agent registry
+          This device is registered in the circle's local agent registry
           under <code>pseudo-pod://&lt;deviceId&gt;/private/agent-registry</code>.
           Other agents can look up this device by pubKey, deviceId, or
           agentUri.
@@ -124,18 +124,18 @@
     }
 
     // The `bundleResolver` on the server side needs a circleId; Tasks's
-    // app.js wraps callSkill with the active crew. We pass it explicitly
-    // when known (URL param `?crew=...`).
+    // app.js wraps callSkill with the active circle. We pass it explicitly
+    // when known (URL param `?circle=...`).
     function activeCircleId() {
       const params = new URLSearchParams(window.location.search);
-      return params.get('crew') ?? null;
+      return params.get('circle') ?? null;
     }
 
     async function refreshStorage() {
       const statusEl = document.getElementById('storage-status');
       try {
         const args = activeCircleId() ? { circleId: activeCircleId() } : {};
-        const r = await callSkill('getCrewStoragePolicy', args);
+        const r = await callSkill('getCircleStoragePolicy', args);
         if (r?.error) { statusEl.textContent = `Error: ${r.error}`; return; }
         const policy = r?.policy ?? 'no-pod';
         const label = POLICY_LABELS[policy] ?? POLICY_LABELS['no-pod'];
@@ -161,7 +161,7 @@
         if (r?.agent) {
           pre.textContent = `Registered. agentUri: agent://${r.agent.pubKey ?? '(unknown)'}\nrole: ${r.agent.role ?? 'device'}\ndeviceId: ${r.agent.deviceId ?? '(none)'}`;
         } else {
-          pre.textContent = 'Registry status unavailable from this surface; the bundle\'s agent-registry handle is wired in the server (createCrewAgent → registerAgentBundle).';
+          pre.textContent = 'Registry status unavailable from this surface; the bundle\'s agent-registry handle is wired in the server (createCircleAgent → registerAgentBundle).';
         }
       } catch {
         pre.textContent = 'Registry status unavailable.';
@@ -276,7 +276,7 @@
           storagePolicy: sel.value,
           ...(podUri ? { groupPodUri: podUri } : {}),
         };
-        const r = await callSkill('setCrewStoragePolicy', args);
+        const r = await callSkill('setCircleStoragePolicy', args);
         if (r?.error) {
           status.textContent = `Error: ${r.error}`;
           return;

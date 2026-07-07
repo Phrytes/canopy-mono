@@ -26,9 +26,9 @@ export function buildForceCompleteSkill({ bundleResolver } = {}) {
 
   return [
     defineSkill('forceCompleteTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
       if (typeof a.id !== 'string' || !a.id.trim()) {
@@ -38,7 +38,7 @@ export function buildForceCompleteSkill({ bundleResolver } = {}) {
         return { error: 'reason required (mandatory for force-complete; recorded in the audit log)' };
       }
       try {
-        const [completed] = await crew.itemStore.markComplete(
+        const [completed] = await circle.itemStore.markComplete(
           [{ id: a.id }],
           {
             actor:            from,

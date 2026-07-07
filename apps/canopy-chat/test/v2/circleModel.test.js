@@ -6,7 +6,7 @@ import {
 } from '../../src/v2/circleModel.js';
 
 describe('circleModel · normalizeCircle', () => {
-  it('normalises a crew (circleId ≡ circleId) with counts', () => {
+  it('normalises a circle (circleId ≡ circleId) with counts', () => {
     expect(normalizeCircle({ circleId: 'abc', name: 'Huis', counts: { members: 4 } }))
       .toMatchObject({ id: 'abc', name: 'Huis', memberCount: 4 });
   });
@@ -45,7 +45,7 @@ describe('circleModel · mergeCircles', () => {
 describe('circleModel · loadCircles', () => {
   it('aggregates fetchers and tolerates a failing source', async () => {
     const list = await loadCircles({
-      fetchCrews: async () => [{ circleId: 'a', name: 'A' }],
+      fetchTasksCircles: async () => [{ circleId: 'a', name: 'A' }],
       fetchGroups: async () => { throw new Error('boom'); },
       fetchCircles: async () => [{ id: 'b', name: 'B' }],
     });

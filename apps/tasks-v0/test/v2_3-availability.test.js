@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 import { AvailabilityHints, isoWeekOf, halfDayOf } from '../src/availability/AvailabilityHints.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
@@ -18,7 +18,7 @@ const KID   = 'https://id.example/kid';
 // empty. Pure AvailabilityHints tests below don't prune, so they keep fixed weeks.
 const THIS_WEEK = isoWeekOf(new Date());
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -30,23 +30,23 @@ const CREW = {
   availabilityHints: { enabled: true, optedIn: [] },
 };
 
-function call(crew, name, data, from) {
-  return crew.agent.skills.get(name).handler({
+function call(circle, name, data, from) {
+  return circle.agent.skills.get(name).handler({
     parts: [{ type: 'DataPart', data: data ?? {} }],
     from,
-    agent: crew.agent,
+    agent: circle.agent,
     envelope: null,
   });
 }
 
 async function setup(overrides = {}) {
   const bundle = buildBundle();
-  const crew = await createCrewAgent({
-    crewConfig:           { ...CREW, ...overrides },
+  const circle = await createCircleAgent({
+    circleConfig:           { ...CIRCLE, ...overrides },
     localStoreBundle:     bundle,
     wireOnboardingSkills: false,
   });
-  return { bundle, crew };
+  return { bundle, circle };
 }
 
 describe('V2.3 — AvailabilityHints (pure)', () => {
@@ -102,73 +102,73 @@ describe('V2.3 — AvailabilityHints (pure)', () => {
 
 describe('V2.3 — availability skills', () => {
   it('member must opt in before setting availability', async () => {
-    const { crew } = await setup();
-    const r = await call(crew, 'setMyAvailability',
+    const { circle } = await setup();
+    const r = await call(circle, 'setMyAvailability',
       { week: '2026-W19', day: 'mon', half: 'am', state: 'open' }, KID);
     expect(r.error).toMatch(/not opted in/);
-    await crew.close();
+    await circle.close();
   });
 
   it('opt in → set → read own grid', async () => {
-    const { crew } = await setup();
-    expect((await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID)).ok).toBe(true);
-    const r = await call(crew, 'setMyAvailability',
+    const { circle } = await setup();
+    expect((await call(circle, 'setAvailabilityOptIn', { optedIn: true }, KID)).ok).toBe(true);
+    const r = await call(circle, 'setMyAvailability',
       { week: THIS_WEEK, day: 'mon', half: 'am', state: 'open' }, KID);
     expect(r.ok).toBe(true);
-    const own = await call(crew, 'getMyAvailability', { week: THIS_WEEK }, KID);
+    const own = await call(circle, 'getMyAvailability', { week: THIS_WEEK }, KID);
     expect(own.grid).toEqual({ 'mon-am': 'open' });
-    await crew.close();
+    await circle.close();
   });
 
-  it('coordinator sees full crew grid; member sees only own', async () => {
-    const { crew } = await setup();
-    await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID);
-    await call(crew, 'setMyAvailability',
+  it('coordinator sees full circle grid; member sees only own', async () => {
+    const { circle } = await setup();
+    await call(circle, 'setAvailabilityOptIn', { optedIn: true }, KID);
+    await call(circle, 'setMyAvailability',
       { week: THIS_WEEK, day: 'tue', half: 'pm', state: 'tight' }, KID);
-    const coordView = await call(crew, 'getCrewAvailability', { week: THIS_WEEK }, FRITS);
+    const coordView = await call(circle, 'getCircleAvailability', { week: THIS_WEEK }, FRITS);
     expect(coordView.members).toHaveLength(3);
     const kidEntry = coordView.members.find((m) => m.webid === KID);
     expect(kidEntry.grid).toEqual({ 'tue-pm': 'tight' });
     // Member is denied.
-    const denied = await call(crew, 'getCrewAvailability', { week: '2026-W19' }, KID);
+    const denied = await call(circle, 'getCircleAvailability', { week: '2026-W19' }, KID);
     expect(denied.error).toMatch(/admin or coordinator/);
-    await crew.close();
+    await circle.close();
   });
 
   it('opted-out member shows empty grid to coordinator (no opt-in disclosure)', async () => {
-    const { crew } = await setup();
+    const { circle } = await setup();
     // Only Kid opts in.
-    await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID);
-    const view = await call(crew, 'getCrewAvailability', { week: '2026-W19' }, ANNE);
+    await call(circle, 'setAvailabilityOptIn', { optedIn: true }, KID);
+    const view = await call(circle, 'getCircleAvailability', { week: '2026-W19' }, ANNE);
     const annieEntry = view.members.find((m) => m.webid === ANNE);
     expect(annieEntry.grid).toEqual({});      // indistinguishable from opted-in-but-empty
-    await crew.close();
+    await circle.close();
   });
 
-  it('disabling crew-wide rejects all set/opt-in calls', async () => {
-    const { crew } = await setup();
-    await call(crew, 'setAvailabilityEnabled', { enabled: false }, ANNE);
-    expect((await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID)).error).toMatch(/disabled/);
-    expect((await call(crew, 'setMyAvailability',
+  it('disabling circle-wide rejects all set/opt-in calls', async () => {
+    const { circle } = await setup();
+    await call(circle, 'setAvailabilityEnabled', { enabled: false }, ANNE);
+    expect((await call(circle, 'setAvailabilityOptIn', { optedIn: true }, KID)).error).toMatch(/disabled/);
+    expect((await call(circle, 'setMyAvailability',
       { week: '2026-W19', day: 'mon', half: 'am', state: 'open' }, KID)).error).toMatch(/disabled/);
-    await crew.close();
+    await circle.close();
   });
 
   it('non-admin denied on setAvailabilityEnabled', async () => {
-    const { crew } = await setup();
-    expect((await call(crew, 'setAvailabilityEnabled', { enabled: false }, FRITS)).error).toMatch(/admin/);
-    await crew.close();
+    const { circle } = await setup();
+    expect((await call(circle, 'setAvailabilityEnabled', { enabled: false }, FRITS)).error).toMatch(/admin/);
+    await circle.close();
   });
 
   it('opting out clears persisted hints', async () => {
-    const { crew, bundle } = await setup();
-    await call(crew, 'setAvailabilityOptIn', { optedIn: true }, KID);
-    await call(crew, 'setMyAvailability',
+    const { circle, bundle } = await setup();
+    await call(circle, 'setAvailabilityOptIn', { optedIn: true }, KID);
+    await call(circle, 'setMyAvailability',
       { week: '2026-W19', day: 'mon', half: 'am', state: 'open' }, KID);
-    const path = `mem://tasks/crews/oss-tools/availability/${encodeURIComponent(KID)}.json`;
+    const path = `mem://tasks/circles/oss-tools/availability/${encodeURIComponent(KID)}.json`;
     expect(await bundle.cache.read(path)).toBeTruthy();
-    await call(crew, 'setAvailabilityOptIn', { optedIn: false }, KID);
+    await call(circle, 'setAvailabilityOptIn', { optedIn: false }, KID);
     expect(await bundle.cache.read(path)).toBeNull();
-    await crew.close();
+    await circle.close();
   });
 });

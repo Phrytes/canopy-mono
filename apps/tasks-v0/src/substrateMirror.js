@@ -4,7 +4,7 @@
  *
  * OBJ-2 S2: now a THIN wrapper over the shared generic `wireItemMirror`
  * (`@canopy/notify-envelope`), which household also uses. Tasks-specific bits:
- * the envelope `kind` ('task'), the per-crew URI namespace, the full task draft
+ * the envelope `kind` ('task'), the per-circle URI namespace, the full task draft
  * (dependencies / requiredSkills / approval / parentTaskId / scheduling / …),
  * and an action inference that also reads the review-log (submit/approve/reject).
  *
@@ -21,7 +21,7 @@
  * @param {import('@canopy/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope   — shared per-bundle instance.
  * @param {object} args.pseudoPod        — shared per-bundle instance.
- * @param {string} args.circleId           — crew identifier (URI namespace).
+ * @param {string} args.circleId           — circle identifier (URI namespace).
  * @param {Array<{pubKey: string}>} [args.peers]
  * @param {string} [args.selfPubKey]     — local agent address; filtered out (self).
  * @returns {Promise<{
@@ -95,7 +95,7 @@ export async function wireTasksSubstrateMirror({
     pseudoPod,
     scopeId:     circleId,
     kind:        'task',
-    uriPrefix:   (id) => `/tasks/crews/${id}/tasks/`,
+    uriPrefix:   (id) => `/tasks/circles/${id}/tasks/`,
     toDraft:     taskDraft,
     inferAction: taskInferAction,
     scopeField:  'circleId',

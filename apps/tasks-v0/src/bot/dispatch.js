@@ -45,7 +45,7 @@ const HELP_TEXT = `Tasks bot — quick commands:
   week                       show my own week (7×2 grid)
   plan                       suggest slots for my open assignments
   accept <id> [N]            accept the Nth suggestion for <id> (default 1)
-  crews                      list every crew I'm in with counts
+  circles                      list every circle I'm in with counts
   proposals                  list open subtask-proposals for me to consent to
   propose <pid> <text>       propose a sub-task on a submitted parent (master/coord)
   accept-proposal <id>       approve a proposal (assignee only) → spawn + roll back parent
@@ -123,8 +123,8 @@ export function dispatch(rawText) {
   if (text === 'plan' || text === 'schedule') {
     return { kind: 'skill', skillId: 'bot.plan', args: {} };
   }
-  if (text === 'crews' || text === 'my crews') {
-    return { kind: 'skill', skillId: 'bot.crews', args: {} };
+  if (text === 'circles' || text === 'my circles') {
+    return { kind: 'skill', skillId: 'bot.circles', args: {} };
   }
   if (text === 'proposals' || text === 'my proposals') {
     return { kind: 'skill', skillId: 'bot.listProposals', args: {} };

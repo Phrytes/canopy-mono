@@ -2,7 +2,7 @@
  * useNativeCalendarLiveSync — Phase 41.18.5 (2026-05-10).
  *
  * Auto-applies `nativeCalendar.diffEvents` + `applyDiff` whenever
- * the active crew's task list changes — closing the gap noted in
+ * the active circle's task list changes — closing the gap noted in
  * Phase 41.12 where the Settings screen had a manual "Sync now"
  * button but no listener that fired on agent events.
  *

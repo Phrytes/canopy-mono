@@ -44,7 +44,7 @@ export function configResourceUri({ deviceId, anchorPodUri }) {
  * @property {number} version
  * @property {string} [defaultPolicy]  — hint: 'one-pod' | 'two-pod' | 'no-pod'
  * @property {Object<string,string>} mappings
- * @property {Object<string, {policy: string, groupPodUri?: string}>} crewPolicies
+ * @property {Object<string, {policy: string, groupPodUri?: string}>} circlePolicies
  * @property {string} [updatedAt]
  */
 
@@ -93,14 +93,14 @@ export function _normaliseConfig(raw) {
     // Substrate-internal — no console here.
   }
   const mappings = (raw.mappings && typeof raw.mappings === 'object') ? { ...raw.mappings } : {};
-  const crewPolicies = (raw.crewPolicies && typeof raw.crewPolicies === 'object')
-    ? { ...raw.crewPolicies }
+  const circlePolicies = (raw.circlePolicies && typeof raw.circlePolicies === 'object')
+    ? { ...raw.circlePolicies }
     : {};
   return Object.freeze({
     version,
     defaultPolicy: typeof raw.defaultPolicy === 'string' ? raw.defaultPolicy : undefined,
     mappings:      Object.freeze(mappings),
-    crewPolicies:  Object.freeze(crewPolicies),
+    circlePolicies:  Object.freeze(circlePolicies),
     updatedAt:     typeof raw.updatedAt === 'string' ? raw.updatedAt : undefined,
   });
 }

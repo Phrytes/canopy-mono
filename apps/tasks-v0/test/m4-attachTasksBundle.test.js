@@ -29,7 +29,7 @@ function mkBundle(extra = {}) {
     podRouting:      { setAnchor: vi.fn(), resolve: vi.fn(() => 'https://pod.example/fn/') },
     pseudoPod:       null,
     substrateDeviceId: 'dev-1',
-    circleId:          'crew-test',
+    circleId:          'circle-test',
     ...extra,
   };
 }
@@ -48,7 +48,7 @@ describe('attachTasksBundle', () => {
     expect(bundle._podCtx.classify).toBe(classify);
     expect(bundle._podCtx.reverse).toBe(reverseResolve);
     expect(bundle._podCtx.podRouting).toBe(bundle.podRouting);
-    expect(bundle._podCtx.circleId).toBe('crew-test');   // ← from bundle.circleId
+    expect(bundle._podCtx.circleId).toBe('circle-test');   // ← from bundle.circleId
     expect(bundle._podCtx.active).toBe(true);
     expect(bundle.cache.attachInner).toHaveBeenCalledWith(source);
   });
@@ -57,9 +57,9 @@ describe('attachTasksBundle', () => {
     const bundle = mkBundle();
     await attachTasksBundle({
       bundle, source: {}, podRoot: 'https://pod.example/me/', fetch: headOkFetch,
-      circleId: 'override-crew',
+      circleId: 'override-circle',
     });
-    expect(bundle._podCtx.circleId).toBe('override-crew');
+    expect(bundle._podCtx.circleId).toBe('override-circle');
   });
 
   it('calls the provision callback when supplied', async () => {

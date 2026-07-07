@@ -25,18 +25,18 @@ sub-task spawning + in-app inbox + local calendar conflict view +
 per-event observability.
 
 **Status:** **V2 (`0.4.0`) shipped 2026-05-14 — full standardisation
-adoption + multi-crew runtime + cross-device substrate-mirror.**
+adoption + multi-circle runtime + cross-device substrate-mirror.**
 V1 (`0.2.0`) shipped 2026-05-08. 122/122 tests across 7 test files.
 
 V2 brought:
-- `embeds:[{type,ref}]` on `addTask` + `crewConfig.storage` (§II.2:
+- `embeds:[{type,ref}]` on `addTask` + `circleConfig.storage` (§II.2:
   no-pod / centralised / decentralised / hybrid).
-- `/welcome.html` create-crew wizard + `provisionMyCrew` skill.
-- agent-registry per crew bundle (Phase 52.10).
+- `/welcome.html` create-circle wizard + `provisionMyCircle` skill.
+- agent-registry per circle bundle (Phase 52.10).
 - `/onboard.html` invite redemption + `/pod-settings.html` storage
   policy + pod OIDC sign-in (Phase 52.15.3 via `createSolidAuthNode`).
-- `bin/tasks-ui.js --multi-crew` flag: shared meshAgent + crewsMap +
-  `spawnMyCrew` skill + multi-crew onboarding dispatch.
+- `bin/tasks-ui.js --multi-circle` flag: shared meshAgent + circlesMap +
+  `spawnMyCircle` skill + multi-circle onboarding dispatch.
 - Phase 52.9.3 substrate-mirror: every mutation
   (add/claim/complete/submit/approve/reject/revoke/reassign/remove)
   fans out via `notifyEnvelope.publish`, applied on receivers via
@@ -49,15 +49,15 @@ commit refs, and
 `../../Project Files/Tasks App/v2-web-functional-design-2026-05-11.md`
 for the design source.
 
-V0 (single-household, no Crew envelope) ships unchanged; V1 is
-additive — `createCrewAgent` wires the V1+ surface; the legacy
+V0 (single-household, no Circle envelope) ships unchanged; V1 is
+additive — `createCircleAgent` wires the V1+ surface; the legacy
 `createTasksAgent` keeps working for V0 callers.
 
 ## What's in here
 
 ### Composition + envelope
-- **`src/Agent.js`** — V0 factory `createTasksAgent({roles, members | pod, ...})`. Returns `{agent, itemStore, members, notifier, skillMatch, localStore}`. V1 callers usually go through `createCrewAgent` instead.
-- **`src/Crew.js`** — V1 factory `createCrewAgent({crewConfig, localStoreBundle, ...})`. Wires Crew envelope + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `wireChat` (peer chat for the appeal flow) + `Notifier` + `wireIssuerNotifications` + `MetricsTracker`. `crew.kind ∈ household | project | team | friends | maintenance` drives per-kind defaults; `crew.paused` / `crew.archived` flip via `pauseCrew`/`archiveCrew` skills. Exposes `bundle.close()` for clean shutdown.
+- **`src/Agent.js`** — V0 factory `createTasksAgent({roles, members | pod, ...})`. Returns `{agent, itemStore, members, notifier, skillMatch, localStore}`. V1 callers usually go through `createCircleAgent` instead.
+- **`src/Circle.js`** — V1 factory `createCircleAgent({circleConfig, localStoreBundle, ...})`. Wires Circle envelope + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `wireChat` (peer chat for the appeal flow) + `Notifier` + `wireIssuerNotifications` + `MetricsTracker`. `circle.kind ∈ household | project | team | friends | maintenance` drives per-kind defaults; `circle.paused` / `circle.archived` flip via `pauseCircle`/`archiveCircle` skills. Exposes `bundle.close()` for clean shutdown.
 
 ### Storage + lifecycle helpers
 - **`src/storage/buildBundle.js`** — wraps `local-store.CachingDataSource` for offline-first reads + write-through-on-pod-attach.
@@ -68,23 +68,23 @@ additive — `createCrewAgent` wires the V1+ surface; the legacy
 
 ### Skills (auto-registered per phase)
 - **`src/skills/index.js`** — `addTask` (with paused/archived gate) + `claimTask` / `completeTask` / `reassignTask` / `removeTask` / `listOpen` / `listMine` / `listClaimable` + Phase 5 `submitTask` / `approveTask` / `rejectTask` / `revokeTask` / `setApprovalMode`.
-- **`src/skills/profile.js`** — Phase 3 canonical profile + crew vocab (`getMySkillsFormShape` / `editMySkillsForCrew`).
+- **`src/skills/profile.js`** — Phase 3 canonical profile + circle vocab (`getMySkillsFormShape` / `editMySkillsForCircle`).
 - **`src/skills/subtasks.js`** — Phase 7 `addSubtask` + `approveSubtaskRequest` / `declineSubtaskRequest`.
 - **`src/skills/appeal.js`** — Phase 6 `appealTask` (opens chat-p2p thread to master).
 - **`src/skills/inbox.js`** — Phase 8 `listMyInbox` / `inboxBadgeCount` / `clearInboxItem` / `clearInbox`.
-- **`src/skills/workspace.js`** — Phase 8 UI helpers (`getCrewConfig` / `listAwaitingApproval` / `listSubtaskRequests` / `getDagTree` / `listMyMasteredTasks`).
+- **`src/skills/workspace.js`** — Phase 8 UI helpers (`getCircleConfig` / `listAwaitingApproval` / `listSubtaskRequests` / `getDagTree` / `listMyMasteredTasks`).
 - **`src/skills/observability.js`** — Phase 9 `getMetrics` / cadence config skills.
-- **`src/skills/crewControls.js`** — Phase 10 `pauseCrew` / `unpauseCrew` / `archiveCrew` / `unarchiveCrew` / `getPrivacyNotice`.
+- **`src/skills/circleControls.js`** — Phase 10 `pauseCircle` / `unpauseCircle` / `archiveCircle` / `unarchiveCircle` / `getPrivacyNotice`.
 
 ### Notifications + observability
 - **`src/bridges/InAppInboxBridge.js`** — `MessagingBridge` that writes per-recipient notifications to `mem://user/inbox/<id>.json`. Substrate-candidate flagged.
 - **`src/notifications/wireIssuerNotifications.js`** — subscribes itemStore events; routes to per-recipient inbox bridges.
 - **`src/observability/metrics.js`** — `MetricsTracker` over notifier's `UsageMetrics` + bounded latency reservoirs (time-to-claim / submit-to-approval).
-- **`src/observability/cadence.js`** — `resolveCadence({eventType, baseline, crew, user})` (user > crew > baseline).
+- **`src/observability/cadence.js`** — `resolveCadence({eventType, baseline, circle, user})` (user > circle > baseline).
 - **`src/calendar/iCalReader.js`** — Phase 4 local-only `parseIcsToBusy` + `readMyCalendar`. **No network freebusy skill** — calendar data stays on the user's device.
 
 ### Localisation + privacy
-- **`locales/{en,nl}.json`** — `{text, doc}` leaf shape (project convention); ~60 keys per language covering nav, status pills, actions, composer, crew labels, inbox event chips, error codes.
+- **`locales/{en,nl}.json`** — `{text, doc}` leaf shape (project convention); ~60 keys per language covering nav, status pills, actions, composer, circle labels, inbox event chips, error codes.
 - **`src/lib/localisation.js`** — `i18next` wrapper with `unwrapLeaves` so callers write `t('common.save')` directly.
 - **`src/lib/privacyNotice.js`** — closed-beta notice content; 6 items in nl + en; surfaced via `getPrivacyNotice` skill + `/privacy.html`.
 
@@ -94,13 +94,13 @@ Seven screens served by `mountLocalUi({staticDir})` from `@canopy/agent-ui` on `
 - `mine.html` — Assigned / I'm master of / Ready to claim + per-user cadence overrides
 - `review.html` — approver inbox
 - `dag.html` — sub-task tree
-- `crew.html` — members + settings + stats + admin cadence config + pending sub-task requests
+- `circle.html` — members + settings + stats + admin cadence config + pending sub-task requests
 - `inbox.html` — notifications with action-button routing (approve/decline/appeal)
 - `privacy.html` — closed-beta privacy notice (en/nl picker)
 Plus shared `app.js` (skill client + `lifecycleStatus` + `mountInboxBadge` + `renderTasks`) and `style.css`.
 
 ### CLI
-- **`bin/tasks-ui.js`** — V0 (`--role` / `--config`) and V1 (`--crew <crewconfig.json>`) modes. `--storage-root <path>` enables `core.FileSystemSource`-backed restart-survival.
+- **`bin/tasks-ui.js`** — V0 (`--role` / `--config`) and V1 (`--circle <circleconfig.json>`) modes. `--storage-root <path>` enables `core.FileSystemSource`-backed restart-survival.
 
 ## Usage
 
@@ -150,22 +150,22 @@ This app composes the following substrate packages
 | `@canopy/chat-p2p` (NEW) | `wireChat({...})` for the Phase 6 appeal flow (peer-to-peer chat thread between assignee and master). | Lifted from Stoop's `wireChat.js` 2026-05-08. |
 
 App-level glue is `~1100 LOC` of skills + bridges + observability +
-crew envelope, none of which duplicate substrate functionality.
+circle envelope, none of which duplicate substrate functionality.
 
 ## Architecture: ONE `core.Agent` per service-context
 
-Tasks-v0's `createCrewAgent` is currently CLI-shaped (one process =
-one crew). When Tasks gains a mobile / multi-crew shell:
+Tasks-v0's `createCircleAgent` is currently CLI-shaped (one process =
+one circle). When Tasks gains a mobile / multi-circle shell:
 
-- **Don't** call `createCrewAgent` once per crew — that creates N
+- **Don't** call `createCircleAgent` once per circle — that creates N
   agents with N transport stacks (mDNS / relay / etc.) under one
   identity, which is the anti-pattern the project-wide single-agent
   rule was written to prevent.
 - **Do** build ONE `core.Agent` at the service-context level and
-  layer per-crew state (ItemStore + MemberMap + SkillMatch + bot +
-  bridges, …) onto it via a `buildCrewState({meshAgent, crewConfig,
+  layer per-circle state (ItemStore + MemberMap + SkillMatch + bot +
+  bridges, …) onto it via a `buildCircleState({meshAgent, circleConfig,
   ...})` factory. Skills register on the agent ONCE with a
-  `getBundle` resolver picking the crew from `args.circleId` /
+  `getBundle` resolver picking the circle from `args.circleId` /
   topic.
 - Reference implementation: `apps/stoop-mobile`'s `ServiceContext`
   + `buildGroupState`. Mirror the pattern.
@@ -193,7 +193,7 @@ project rule
 | `taskStatus`     | `describeTaskStatus(item)` rolls up the lifecycle ∪ DAG status + V2.7 deps gate (`depsBlocked`, `canClose`, `openDepIds`); `shouldOfferForceComplete` / `shouldProposeSubtask` for admin/master overrides. | `web/app.js`, `apps/tasks-mobile/src/screens/*.jsx` |
 | `composeArgs`    | `buildAddTaskArgs(form)` / `buildForceSpawnArgs(form)` — pure-fn translators from compose-form state to the `addTask` / `forceSpawnSubtask` skill payloads. | both shells |
 | `inboxClassify`  | `kindOf(event)` + `proposalIdOf(event)` + `requestIdOf(event)` — inbox event-kind taxonomy used to pick the right card layout. | both shells |
-| `effectiveActor` | `resolveActorWebid({from, envelope, crewState})` + `resolveActorRole({...})` + `buildActorAliases(members)` — pubKey ↔ webid resolution against the crew's role table. Mobile's React-bindings dispatch carries `from = pubKey`; the desktop's relay path will hit the same shape. | both shells (mobile via `useActiveRole`; desktop's role policy via `buildStandardRolePolicy(roles, {aliases})`) |
+| `effectiveActor` | `resolveActorWebid({from, envelope, circleState})` + `resolveActorRole({...})` + `buildActorAliases(members)` — pubKey ↔ webid resolution against the circle's role table. Mobile's React-bindings dispatch carries `from = pubKey`; the desktop's relay path will hit the same shape. | both shells (mobile via `useActiveRole`; desktop's role policy via `buildStandardRolePolicy(roles, {aliases})`) |
 | `localisationMerge`      | `mergeLocales(shared, shellLocal)` + `lookupKey(bundle, path, fallback)` — deep-merge helpers for the shared locale namespace. | both shells |
 
 Tests live in `test/ui/*.test.js` and run on this app's vitest config
@@ -201,7 +201,7 @@ Tests live in `test/ui/*.test.js` and run on this app's vitest config
 these tests; it imports the helper and trusts the shared coverage.
 
 **Locale parallel.** The genuinely-shared strings (status pills,
-role labels, crew kinds, approval modes) live in
+role labels, circle kinds, approval modes) live in
 `apps/tasks-v0/locales/shared/{en,nl}.json`. Both shells merge that
 bundle on top of their own — see
 `apps/tasks-mobile/src/LocalisationProvider.js` for the consumer pattern.
@@ -235,8 +235,8 @@ cat > household.json <<'EOF'
 EOF
 npm run ui -- --actor https://id.example/anne --config ./household.json
 
-# V1 Crew mode (full envelope: DoD lifecycle + sub-tasks + inbox + …):
-cat > oss-tools.crew.json <<'EOF'
+# V1 Circle mode (full envelope: DoD lifecycle + sub-tasks + inbox + …):
+cat > oss-tools.circle.json <<'EOF'
 {
   "circleId": "oss-tools",
   "name":   "OSS Tools NL",
@@ -250,14 +250,14 @@ cat > oss-tools.crew.json <<'EOF'
   "dodPolicy": {"defaultApproval": "self-mark"}
 }
 EOF
-npm run ui -- --actor https://id.example/anne --crew ./oss-tools.crew.json
+npm run ui -- --actor https://id.example/anne --circle ./oss-tools.circle.json
 
-# V1 Crew mode WITH restart-survival via a local FS-backed bundle:
+# V1 Circle mode WITH restart-survival via a local FS-backed bundle:
 npm run ui -- \
   --actor https://id.example/anne \
-  --crew  ./oss-tools.crew.json \
+  --circle  ./oss-tools.circle.json \
   --storage-root ./.tasks-data
-# Now the inbox + crew roster + tasks survive `Ctrl-C` + relaunch.
+# Now the inbox + circle roster + tasks survive `Ctrl-C` + relaunch.
 ```
 
 ## V1 design + plan documents
@@ -284,23 +284,23 @@ operation*.
 
 ## V0 vs V1 vs V1.5+
 
-V0 (`createTasksAgent`, no Crew envelope):
+V0 (`createTasksAgent`, no Circle envelope):
 - Single household, 4-6 members, high trust.
 - Standard 5-role policy.
 - DAG dependencies + cycle detection.
 - Compare-and-swap claim flow.
 - Skill-tagged tasks (via L1e).
 
-V1 (`createCrewAgent`, shipped 2026-05-08):
-- **Crew envelope** (multi-tenant, role-aware, decentralised; `crew.kind ∈ household | project | team | friends | maintenance`).
+V1 (`createCircleAgent`, shipped 2026-05-08):
+- **Circle envelope** (multi-tenant, role-aware, decentralised; `circle.kind ∈ household | project | team | friends | maintenance`).
 - **DoD lifecycle** on item-store (`submitted` + `rejected` states + `approval` modes `self-mark` / `creator` / `webid:X`).
-- **Sub-tasks by the accepter** with admin-approval threshold (`crew.subtasksAdminApprovalDepth`, default 3; spawns past it queue admin approval).
+- **Sub-tasks by the accepter** with admin-approval threshold (`circle.subtasksAdminApprovalDepth`, default 3; spawns past it queue admin approval).
 - **Master per task** + `revoke` (mandatory reason) + `appeal` (chat thread to master, 7-day window).
 - **Local calendar conflict view** — `parseIcsToBusy` reads pod-mirrored `*.ics`; no network freebusy skill.
 - **In-app inbox** via `InAppInboxBridge` (per-recipient `MessagingBridge`); routes inbox button taps for approve/decline/appeal.
 - **Skill-import** from canonical `<user-pod>/profile/skills.json` with prefilled-edit-before-submit form.
-- **Per-event observability** — `MetricsTracker` over notifier's `UsageMetrics` + bounded latency reservoirs; admin/coord cadence config + per-user overrides (user > crew > baseline).
-- **Crew lifecycle** — `pauseCrew` (blocks new tasks) / `archiveCrew` (read-only ledger).
+- **Per-event observability** — `MetricsTracker` over notifier's `UsageMetrics` + bounded latency reservoirs; admin/coord cadence config + per-user overrides (user > circle > baseline).
+- **Circle lifecycle** — `pauseCircle` (blocks new tasks) / `archiveCircle` (read-only ledger).
 - **Closed-beta privacy notice** in nl + en, surfaced via `getPrivacyNotice` + `/privacy.html`.
 - **Local-only mode** is a hard rule — works without a Solid pod connection.
 
@@ -312,7 +312,7 @@ V1.5 (deferred, ~7 dev-days):
 
 V2+ (demand-driven):
 - Auto-scheduling planner.
-- Cross-crew dashboard.
+- Cross-circle dashboard.
 - Real-time collaboration on a deliverable doc (waits for project #1 OSS-doc-tool integration).
 - Compensated-role flag + invoicing primitives.
 - Cryptographic anonymity (waits for Stoop V2's Q-H5 unpark).
@@ -329,14 +329,14 @@ V2+ (demand-driven):
 | `test/web.test.js`                | 10 | V0 web UI smoke (static serving, agent card, `/tasks-config.json`, role-policy via HTTP). |
 | `test/phase1-local-store.test.js` |  6 | `buildBundle` + `localStoreBundle` integration with `createTasksAgent`; V0 zero-config preserved. |
 | `test/phase1-settings.test.js`    |  6 | Tasks-bound `createSettingsModule`; defaults + validators + round-trip. |
-| `test/phase2-crew.test.js`        |  9 | CrewConfig load/save + missing-config fallback + per-kind defaults + onboardingSkills + MemberMapCache auto-persist. |
-| `test/phase3-profile.test.js`     | 18 | Canonical profile + crew vocab + posture round-trips; tag canonicalisation; `prefilledFormShape`; live skills. |
+| `test/phase2-circle.test.js`        |  9 | CircleConfig load/save + missing-config fallback + per-kind defaults + onboardingSkills + MemberMapCache auto-persist. |
+| `test/phase3-profile.test.js`     | 18 | Canonical profile + circle vocab + posture round-trips; tag canonicalisation; `prefilledFormShape`; live skills. |
 | `test/phase4-calendar.test.js`    | 14 | `parseIcsToBusy` (one-shot, RRULE, all-day, VTIMEZONE, range edges) + `readMyCalendar`. |
 | `test/phase5-dod.test.js`         | 15 | App-side DoD lifecycle through `submitTask`/`approveTask`/`rejectTask`/`revokeTask`/`setApprovalMode` + role-policy gates. |
 | `test/phase6-inbox.test.js`       | 14 | `InAppInboxBridge` + issuer-notification routing + `appealTask` authz + 7-day window. |
 | `test/phase7-subtasks.test.js`    | 16 | dag-tree helpers + addSubtask + admin-approval queuing + approve/decline + status integration. |
 | `test/phase8-ui.test.js`          | 11 | All 6 UI pages serve + nav skeleton + workspace + inbox + creator-approval cycle end-to-end. |
-| `test/phase9-observability.test.js` | 16 | MetricsTracker + cadence resolution + setCrewCadences (admin-gated) + setMyCadenceOverrides. |
+| `test/phase9-observability.test.js` | 16 | MetricsTracker + cadence resolution + setCircleCadences (admin-gated) + setMyCadenceOverrides. |
 | `test/phase10-lifecycle.test.js`  | 17 | localisation init/translate/interpolate; locale `{text, doc}` schema validation; en+nl key-set parity; pause/archive flow + addTask gate; privacy notice content. |
 
 Plus the substrate-level item-store tests (`packages/item-store/test/ItemStore.dod.test.js` — 24 substrate tests) cover the DoD lifecycle at the substrate layer.

@@ -6,10 +6,10 @@
  *   1. `addSubtask({parentTaskId, ...partial})` — claimer-of-parent
  *      OR parent's master OR admin/coord can spawn. Computes the
  *      sub-task's depth via `parentTaskId` walk; if depth >
- *      `crewConfig.subtasksAdminApprovalDepth` (default 3),
+ *      `circleConfig.subtasksAdminApprovalDepth` (default 3),
  *      INSTEAD of creating the sub-task immediately, files a
  *      `type: 'subtask-request'` item in the same item-store and
- *      returns `{queued: true, requestId}`. Crew admins receive
+ *      returns `{queued: true, requestId}`. Circle admins receive
  *      an inbox notification (wired separately).
  *
  *   2. `approveSubtaskRequest({requestId})` — admin / coordinator
@@ -57,8 +57,8 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('addSubtask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.parentTaskId !== 'string' || !a.parentTaskId) {
         return { error: 'parentTaskId required' };
@@ -70,7 +70,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
         return { error: 'webid required (from envelope)' };
       }
 
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const parent = await itemStore.getById(a.parentTaskId);
       if (!parent) return { error: 'parent task not found', parentTaskId: a.parentTaskId };
       if (parent.completedAt) {
@@ -78,7 +78,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
       }
 
       // Authz: caller must be parent's assignee OR master OR admin/coord.
-      const role = crew.roles?.[from];
+      const role = circle.roles?.[from];
       const isAdminish = role === 'admin' || role === 'coordinator';
       const allowed =
         isAdminish ||
@@ -110,7 +110,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
       const allTasks  = [...allOpen, ...allClosed];
       const newDepth  = depthOf(a.parentTaskId, allTasks) + 1;
 
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const threshold = Number.isFinite(lc?.subtasksAdminApprovalDepth)
         ? lc.subtasksAdminApprovalDepth
         : DEFAULT_ADMIN_APPROVAL_DEPTH;
@@ -178,22 +178,22 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
         depth:  newDepth,
       };
     }, {
-      description: 'Spawn a sub-task. Past the crew\'s admin-approval depth, files a request instead.',
+      description: 'Spawn a sub-task. Past the circle\'s admin-approval depth, files a request instead.',
       visibility:  'authenticated',
     }),
 
     defineSkill('approveSubtaskRequest', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const role = crew.roles?.[from];
+      const role = circle.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
       }
       if (typeof a.requestId !== 'string' || !a.requestId) {
         return { error: 'requestId required' };
       }
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const req = await itemStore.getById(a.requestId);
       if (!req) return { error: 'request not found', requestId: a.requestId };
       if (req.type !== REQUEST_TYPE) {
@@ -232,17 +232,17 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('declineSubtaskRequest', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const role = crew.roles?.[from];
+      const role = circle.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
       }
       if (typeof a.requestId !== 'string' || !a.requestId) {
         return { error: 'requestId required' };
       }
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const req = await itemStore.getById(a.requestId);
       if (!req) return { error: 'request not found', requestId: a.requestId };
       if (req.type !== REQUEST_TYPE) {
@@ -273,8 +273,8 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
      * this is the after-submit equivalent).
      */
     defineSkill('proposeSubtask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.parentTaskId !== 'string' || !a.parentTaskId) {
         return { error: 'parentTaskId required' };
@@ -282,7 +282,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
       if (typeof a.text !== 'string' || !a.text.trim()) {
         return { error: 'text required' };
       }
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const parent = await itemStore.getById(a.parentTaskId);
       if (!parent) return { error: 'parent task not found', parentTaskId: a.parentTaskId };
       if (parent.completedAt) return { error: 'parent task is already complete' };
@@ -292,7 +292,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
       if (!parent.assignee) {
         return { error: 'parent has no assignee — propose-flow needs someone to consent' };
       }
-      const role = crew.roles?.[from];
+      const role = circle.roles?.[from];
       const isAdminish = role === 'admin' || role === 'coordinator';
       const isMaster   = (parent.master ?? parent.addedBy) === from;
       if (!isAdminish && !isMaster) {
@@ -342,13 +342,13 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
      * reviewLog as history).
      */
     defineSkill('approveSubtaskProposal', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.proposalId !== 'string' || !a.proposalId) {
         return { error: 'proposalId required' };
       }
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const prop = await itemStore.getById(a.proposalId);
       if (!prop) return { error: 'proposal not found', proposalId: a.proposalId };
       if (prop.type !== PROPOSAL_TYPE) {
@@ -405,13 +405,13 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('declineSubtaskProposal', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.proposalId !== 'string' || !a.proposalId) {
         return { error: 'proposalId required' };
       }
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const prop = await itemStore.getById(a.proposalId);
       if (!prop) return { error: 'proposal not found', proposalId: a.proposalId };
       if (prop.type !== PROPOSAL_TYPE) {
@@ -441,9 +441,9 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
      * so the override is auditable.
      */
     defineSkill('forceSpawnSubtask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
       if (typeof a.parentTaskId !== 'string' || !a.parentTaskId) {
@@ -455,7 +455,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
       if (typeof a.reason !== 'string' || !a.reason.trim()) {
         return { error: 'reason required (mandatory; recorded in the audit log)' };
       }
-      const itemStore = crew.itemStore;
+      const itemStore = circle.itemStore;
       const parent = await itemStore.getById(a.parentTaskId);
       if (!parent) return { error: 'parent task not found', parentTaskId: a.parentTaskId };
       if (parent.completedAt) return { error: 'parent task is already complete' };

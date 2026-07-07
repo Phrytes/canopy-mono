@@ -26,7 +26,7 @@
  * @param {import('@canopy/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope
  * @param {object} args.pseudoPod
- * @param {string} args.scopeId                 crew/circle id (URI namespace)
+ * @param {string} args.scopeId                 circle/circle id (URI namespace)
  * @param {string} args.kind                    envelope kind for item writes
  * @param {string} [args.removedKind]           envelope kind for hard-deletes (default `${kind}-removed`)
  * @param {string|((scopeId:string)=>string)} args.uriPrefix

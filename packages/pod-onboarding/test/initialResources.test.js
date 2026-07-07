@@ -30,8 +30,8 @@ describe('buildInitialStorageMapping', () => {
     expect(sm.mappings['sharing/*']).toBe('https://anne.pod/sharing/');
     expect(sm.mappings['sharing/profile-public'])
       .toBe('https://anne.pod/sharing/public/profile-card');
-    expect(sm.crewPolicies).toEqual({});
-    expect(sm.crewPolicyDefault).toEqual({
+    expect(sm.circlePolicies).toEqual({});
+    expect(sm.circlePolicyDefault).toEqual({
       policy:      'centralised',
       groupPodUri: 'https://anne.pod',
     });

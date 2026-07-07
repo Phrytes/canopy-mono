@@ -5,7 +5,7 @@
  * Phase 41.18 follow-up (2026-05-10).
  *
  * Why this exists: after Phase 41.18 added a dozen screens
- * (CrewSettings, EditSkills, CadenceOverrides, Metrics, Privacy,
+ * (CircleSettings, EditSkills, CadenceOverrides, Metrics, Privacy,
  * Availability, …), only a handful had entry points. The bottom-tab
  * bar takes 5 slots; everything else needs a single discoverable
  * surface. This is a slide-from-left drawer-style modal listing the
@@ -86,7 +86,7 @@ function MainMenu() {
 
   const podSignedIn = !!svc?.podStatus?.signedIn;
   const activeCircleId = svc?.activeCircleId;
-  const activeCrew   = activeCircleId ? svc?.crews?.get?.(activeCircleId) : null;
+  const activeCircle   = activeCircleId ? svc?.circles?.get?.(activeCircleId) : null;
 
   const sections = [
     {
@@ -104,20 +104,20 @@ function MainMenu() {
         },
         {
           icon: 'sparkles-outline',
-          label: t('mobile.main_menu.edit_skills', 'My skills (this crew)'),
+          label: t('mobile.main_menu.edit_skills', 'My skills (this circle)'),
           onPress: () => go(ROUTES.EditSkills),
           disabled: !activeCircleId,
         },
       ],
     },
     {
-      title: t('mobile.main_menu.section_crew', 'Crew') +
-        (activeCrew?.liveCrew?.name ? ` · ${activeCrew.liveCrew.name}` : ''),
+      title: t('mobile.main_menu.section_circle', 'Circle') +
+        (activeCircle?.liveCircle?.name ? ` · ${activeCircle.liveCircle.name}` : ''),
       items: [
         {
           icon: 'settings-outline',
-          label: t('mobile.main_menu.crew_settings', 'Crew settings'),
-          onPress: () => go(ROUTES.CrewSettings),
+          label: t('mobile.main_menu.circle_settings', 'Circle settings'),
+          onPress: () => go(ROUTES.CircleSettings),
           disabled: !activeCircleId,
         },
         {
@@ -177,7 +177,7 @@ function MainMenu() {
             paddingTop: 48,
           }}
         >
-          {/* Header — identity / crew summary */}
+          {/* Header — identity / circle summary */}
           <View style={{
             paddingHorizontal: SPACING.lg,
             paddingBottom: SPACING.lg,
@@ -187,9 +187,9 @@ function MainMenu() {
               {svc?.identity?.handle ?? svc?.identity?.displayName ?? t('mobile.main_menu.signed_out_title', 'Tasks')}
             </Text>
             <Text style={{ fontSize: FONT_SIZES.xs, color: COLORS.textMuted, marginTop: 2 }}>
-              {activeCrew?.liveCrew?.name
-                ? t('mobile.main_menu.in_crew', null).replace('{name}', activeCrew.liveCrew.name)
-                : t('mobile.main_menu.no_active_crew', 'No active crew')}
+              {activeCircle?.liveCircle?.name
+                ? t('mobile.main_menu.in_circle', null).replace('{name}', activeCircle.liveCircle.name)
+                : t('mobile.main_menu.no_active_circle', 'No active circle')}
             </Text>
           </View>
 

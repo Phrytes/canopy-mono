@@ -25,7 +25,7 @@
  * surfaces — including ones added to the manifest later, without code
  * changes on the screen.
  *
- * Enrichment mirrors useSkill exactly: `_scope` (group/crew id) is
+ * Enrichment mirrors useSkill exactly: `_scope` (group/circle id) is
  * auto-injected; the agent's `invoke(localPeer, skillId, parts)` is
  * called; reply parts are unwrapped.  Same activeCircleId semantics as
  * the existing per-op `useSkill('id').call(args)` pattern.

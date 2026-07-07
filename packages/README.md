@@ -289,7 +289,7 @@ integration, native Android, or major new projects:
   `claim` (needs a UX disambiguation step at post time — the `kind`
   subfield's verb (`lend` / `borrow` / `give` / etc.) decides direction).
   Stoop `groupMirror` retirement (2-week dual-runtime per plan).
-  Tasks-mobile `actorResolver` ↑ swap data source from crew.members
+  Tasks-mobile `actorResolver` ↑ swap data source from circle.members
   to an agent-registry sync cache when wired.
 - **Native Android** — `HubDiscoveryModule.kt` + `HubBindingModule.kt`
   implementations alongside Hub-Android's own Android build pipeline.

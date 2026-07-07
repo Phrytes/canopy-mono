@@ -4,10 +4,10 @@
  * Covers:
  *   1. MetricsTracker counters tick on item-* events.
  *   2. Latency reservoirs record time-to-claim + submit-to-approval.
- *   3. resolveCadence layering — user > crew > baseline.
+ *   3. resolveCadence layering — user > circle > baseline.
  *   4. sanitiseCadenceMap drops bad entries.
- *   5. Live skills via createCrewAgent — getMetrics, getCrewCadences,
- *      setCrewCadences (admin/coord only), getMyCadenceOverrides,
+ *   5. Live skills via createCircleAgent — getMetrics, getCircleCadences,
+ *      setCircleCadences (admin/coord only), getMyCadenceOverrides,
  *      setMyCadenceOverrides, resolveMyCadence.
  *   6. Share-with-admin gating: V1 keeps metrics local — getMetrics
  *      returns the local snapshot regardless of caller (no auto-share).
@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { MetricsTracker, COUNTER_NAMES } from '../src/observability/metrics.js';
 import { resolveCadence, sanitiseCadenceMap, BASELINE_CADENCES } from '../src/observability/cadence.js';
 
@@ -26,7 +26,7 @@ const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -98,27 +98,27 @@ describe('Phase 9 — resolveCadence (pure)', () => {
     expect(r.suppressed).toBe(false);
   });
 
-  it('crew overrides the baseline', () => {
+  it('circle overrides the baseline', () => {
     const r = resolveCadence({
       eventType: 'task-completed',
-      crew:      { 'task-completed': { channel: 'silent' } },
+      circle:      { 'task-completed': { channel: 'silent' } },
     });
     expect(r.channel).toBe('silent');
   });
 
-  it('user overrides the crew', () => {
+  it('user overrides the circle', () => {
     const r = resolveCadence({
       eventType: 'task-completed',
-      crew:      { 'task-completed': { channel: 'silent' } },
+      circle:      { 'task-completed': { channel: 'silent' } },
       user:      { 'task-completed': { channel: 'inbox' } },
     });
     expect(r.channel).toBe('inbox');
   });
 
-  it('user `suppressed: true` wins over crew `suppressed: false`', () => {
+  it('user `suppressed: true` wins over circle `suppressed: false`', () => {
     const r = resolveCadence({
       eventType: 'task-completed',
-      crew:      { 'task-completed': { suppressed: false } },
+      circle:      { 'task-completed': { suppressed: false } },
       user:      { 'task-completed': { suppressed: true } },
     });
     expect(r.suppressed).toBe(true);
@@ -148,31 +148,31 @@ describe('Phase 9 — sanitiseCadenceMap drops bad input', () => {
 
 // ── Live skill tests ───────────────────────────────────────────────────────
 
-describe('Phase 9 — live skills via createCrewAgent', () => {
+describe('Phase 9 — live skills via createCircleAgent', () => {
   let lsBundle;
-  let crew;
+  let circle;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   it('getMetrics returns counter + latency snapshot; counts grow as events fire', async () => {
-    const before = await callSkill(crew.agent, 'getMetrics', {}, ANNE);
+    const before = await callSkill(circle.agent, 'getMetrics', {}, ANNE);
     const beforeCount = before.snapshot.counters[COUNTER_NAMES.ADDED]?.count ?? 0;
 
-    await callSkill(crew.agent, 'addTask', { text: 'measured' }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: (await crew.itemStore.listOpen())[0].id }, KID);
+    await callSkill(circle.agent, 'addTask', { text: 'measured' }, ANNE);
+    await callSkill(circle.agent, 'claimTask', { id: (await circle.itemStore.listOpen())[0].id }, KID);
 
-    const after = await callSkill(crew.agent, 'getMetrics', {}, ANNE);
+    const after = await callSkill(circle.agent, 'getMetrics', {}, ANNE);
     const addedCount = after.snapshot.counters[COUNTER_NAMES.ADDED]?.count ?? 0;
     const claimedCount = after.snapshot.counters[COUNTER_NAMES.CLAIMED]?.count ?? 0;
     expect(addedCount).toBe(beforeCount + 1);
@@ -184,56 +184,56 @@ describe('Phase 9 — live skills via createCrewAgent', () => {
   });
 
   it('full submit→approve cycle records latency.submit-to-approval', async () => {
-    await callSkill(crew.agent, 'addTask', {
+    await callSkill(circle.agent, 'addTask', {
       text: 'reviewable', approval: 'creator',
     }, ANNE);
-    const taskId = (await crew.itemStore.listOpen())[0].id;
-    await callSkill(crew.agent, 'claimTask', { id: taskId }, KID);
-    await callSkill(crew.agent, 'submitTask', { id: taskId }, KID);
+    const taskId = (await circle.itemStore.listOpen())[0].id;
+    await callSkill(circle.agent, 'claimTask', { id: taskId }, KID);
+    await callSkill(circle.agent, 'submitTask', { id: taskId }, KID);
     // Tiny pause so submitAt < completedAt deterministically.
     await new Promise((r) => setTimeout(r, 5));
-    await callSkill(crew.agent, 'approveTask', { id: taskId }, ANNE);
+    await callSkill(circle.agent, 'approveTask', { id: taskId }, ANNE);
 
-    const r = await callSkill(crew.agent, 'getMetrics', {}, ANNE);
+    const r = await callSkill(circle.agent, 'getMetrics', {}, ANNE);
     expect(r.snapshot.counters[COUNTER_NAMES.SUBMITTED]?.count).toBeGreaterThanOrEqual(1);
     expect(r.snapshot.counters[COUNTER_NAMES.APPROVED]?.count).toBeGreaterThanOrEqual(1);
     expect(r.snapshot.latencies['latency.submit-to-approval']?.count).toBeGreaterThanOrEqual(1);
   });
 
-  it('getCrewCadences + setCrewCadences (admin/coord only)', async () => {
-    const empty = await callSkill(crew.agent, 'getCrewCadences', {}, ANNE);
+  it('getCircleCadences + setCircleCadences (admin/coord only)', async () => {
+    const empty = await callSkill(circle.agent, 'getCircleCadences', {}, ANNE);
     expect(empty.cadences).toEqual({});
 
     // Non-admin denied.
-    const denied = await callSkill(crew.agent, 'setCrewCadences',
+    const denied = await callSkill(circle.agent, 'setCircleCadences',
       { cadences: { 'task-completed': { channel: 'silent' } } }, KID);
     expect(denied.error).toMatch(/admin|coordinator/i);
 
     // Admin allowed.
-    const ok = await callSkill(crew.agent, 'setCrewCadences',
+    const ok = await callSkill(circle.agent, 'setCircleCadences',
       { cadences: { 'task-completed': { channel: 'silent' } } }, ANNE);
     expect(ok.cadences['task-completed'].channel).toBe('silent');
 
-    const after = await callSkill(crew.agent, 'getCrewCadences', {}, ANNE);
+    const after = await callSkill(circle.agent, 'getCircleCadences', {}, ANNE);
     expect(after.cadences['task-completed'].channel).toBe('silent');
   });
 
-  it('setMyCadenceOverrides + resolveMyCadence — user overrides crew overrides baseline', async () => {
-    // Crew sets "missed-deadline" to silent.
-    await callSkill(crew.agent, 'setCrewCadences',
+  it('setMyCadenceOverrides + resolveMyCadence — user overrides circle overrides baseline', async () => {
+    // Circle sets "missed-deadline" to silent.
+    await callSkill(circle.agent, 'setCircleCadences',
       { cadences: { 'missed-deadline': { channel: 'silent' } } }, ANNE);
 
-    // Resolve with no user override → crew wins.
-    const r1 = await callSkill(crew.agent, 'resolveMyCadence',
+    // Resolve with no user override → circle wins.
+    const r1 = await callSkill(circle.agent, 'resolveMyCadence',
       { eventType: 'missed-deadline' }, KID);
     expect(r1.resolved.channel).toBe('silent');
 
     // User sets the same event back to inbox.
-    await callSkill(crew.agent, 'setMyCadenceOverrides',
+    await callSkill(circle.agent, 'setMyCadenceOverrides',
       { overrides: { 'missed-deadline': { channel: 'inbox' } } }, KID);
 
     // Resolve → user wins.
-    const r2 = await callSkill(crew.agent, 'resolveMyCadence',
+    const r2 = await callSkill(circle.agent, 'resolveMyCadence',
       { eventType: 'missed-deadline' }, KID);
     expect(r2.resolved.channel).toBe('inbox');
   });
@@ -241,23 +241,23 @@ describe('Phase 9 — live skills via createCrewAgent', () => {
   it('subtask-request counter ticks when a queued request is filed', async () => {
     // Threshold 1 so a depth-2 spawn queues.
     const lsBundle2 = buildBundle();
-    const crew2 = await createCrewAgent({
-      crewConfig:           { ...CREW, subtasksAdminApprovalDepth: 1 },
+    const circle2 = await createCircleAgent({
+      circleConfig:           { ...CIRCLE, subtasksAdminApprovalDepth: 1 },
       localStoreBundle:     lsBundle2,
       wireOnboardingSkills: false,
     });
 
-    const r1 = await callSkill(crew2.agent, 'addTask', { text: 'Root' }, ANNE);
-    const r2 = await callSkill(crew2.agent, 'addSubtask',
+    const r1 = await callSkill(circle2.agent, 'addTask', { text: 'Root' }, ANNE);
+    const r2 = await callSkill(circle2.agent, 'addSubtask',
       { parentTaskId: r1.task.id, text: 'Child' }, ANNE);
-    await callSkill(crew2.agent, 'addSubtask',
+    await callSkill(circle2.agent, 'addSubtask',
       { parentTaskId: r2.task.id, text: 'Grandchild' }, ANNE);
     await new Promise((r) => setTimeout(r, 10));
 
-    const m = await callSkill(crew2.agent, 'getMetrics', {}, ANNE);
+    const m = await callSkill(circle2.agent, 'getMetrics', {}, ANNE);
     expect(m.snapshot.counters[COUNTER_NAMES.SUBTASK_REQUEST]?.count).toBeGreaterThanOrEqual(1);
 
-    await crew2.close?.();
+    await circle2.close?.();
   });
 });
 

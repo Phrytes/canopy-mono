@@ -8,7 +8,7 @@
  * Topology (composes four real app agents on a shared InternalBus):
  *   - hostAgent   — household skills + calendar
  *   - chatAgent   — user-facing surface (via @canopy/secure-agent)
- *   - tasksCrew   — real tasks-v0 Crew agent
+ *   - tasksCircle   — real tasks-v0 Circle agent
  *   - stoopAgent  — real Stoop NeighborhoodAgent
  *   - folioAgent  — real Folio browser agent (web-only handlers today)
  *
@@ -29,7 +29,7 @@ import {
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
 import { createSecureMeshAgent } from '@canopy/secure-agent';
-import { createBrowserMultiCrewTasksAgent } from '@canopy-app/tasks-v0/browser';
+import { createBrowserMultiCircleTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
 import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
 
@@ -348,7 +348,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     try { return !(householdMirrors.get(circleId || 'household')?.listPeers?.() ?? []).includes(pubKey); } catch { return true; }
   }
 
-  // v0.6 demo — household runs as a 'decentralized' crew with three
+  // v0.6 demo — household runs as a 'decentralized' circle with three
   // simulated peers.  Mostly online; one randomly unreachable so the
   // sync-hint UI surfaces a recognisable pattern.  Real apps populate
   // _sync from their actual sync-engine state.
@@ -565,16 +565,16 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
-  /* ─── tasks-v0 real crew agent (slice 1 — integration plan
+  /* ─── tasks-v0 real circle agent (slice 1 — integration plan
    *     2026-05-23) ─────────────────────────────────────────────
    *
    * Replaces the previous mock-task handlers (~210 lines) with
-   * the actual tasks-v0 Crew agent composed in-process.  Boots
+   * the actual tasks-v0 Circle agent composed in-process.  Boots
    * 110 real skills (addTask, claimTask, completeTask, submitTask,
    * approveTask, rejectTask, listMyInbox, listOpen, listMine,
-   * getTaskSnapshot, provisionMyCrew, …).
+   * getTaskSnapshot, provisionMyCircle, …).
    *
-   * Separate identity vault prefix so crew identity is isolated
+   * Separate identity vault prefix so circle identity is isolated
    * from chat identity (per integration-plan decision #2).
    */
   const tasksIdentityVault = opts.tasksIdentityVault
@@ -585,10 +585,10 @@ export async function createRealHouseholdAgent(opts = {}) {
   // role; without the chatAgent's pubKey in the member list, every
   // call from canopy-chat would be treated as a stranger + denied
   // by RolePolicy.
-  const tasksCrew = await createBrowserMultiCrewTasksAgent({
+  const tasksCircle = await createBrowserMultiCircleTasksAgent({
     bus,
     identityVault: tasksIdentityVault,
-    primaryCrewConfig: opts.tasksCrewConfig ?? {
+    primaryCircleConfig: opts.tasksCircleConfig ?? {
       circleId:  'cc-default',
       name:    'Canopy-chat tasks',
       kind:    'household',
@@ -598,7 +598,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         { webid: chatId.pubKey, displayName: 'me', role: 'admin' },
         // Aliases so existing CC tests that mention 'webid:anne'
         // / 'webid:karl' / 'webid:maria' still resolve to known
-        // crew members.
+        // circle members.
         { webid: 'webid:anne',  displayName: 'Anne',  role: 'coordinator' },
         { webid: 'webid:karl',  displayName: 'Karl',  role: 'member'      },
         { webid: 'webid:maria', displayName: 'Maria', role: 'member'      },
@@ -612,23 +612,23 @@ export async function createRealHouseholdAgent(opts = {}) {
     // 4 demo tasks (the data-loss bug behind the
     // `cc.firstBootSeeded.v1` workaround in App.js).
     persistDb: opts.tasksPersistDb,
-    label: 'TasksCrew(cc)',
+    label: 'TasksCircle(cc)',
   });
-  await chatAgent.hello(tasksCrew.address);
+  await chatAgent.hello(tasksCircle.address);
 
-  // Pre-seed the demo crew with the same 4 tasks the mock used —
+  // Pre-seed the demo circle with the same 4 tasks the mock used —
   // existing tests + the user-facing demo expect /mytasks to show
   // these out of the box.  Skip when caller passes seedTasks:false
   // (clean-slate fixtures, e.g. for persistence tests).
   //
-  // Perf #1 (2026-05-30): also skip seeding when the crew already
+  // Perf #1 (2026-05-30): also skip seeding when the circle already
   // has tasks (warm-boot after persisted storage).  One cheap listOpen
   // probe avoids 4 sequential addTask round-trips that were blocking
   // every boot on mobile.  Fail-open: if the probe errors, seed anyway.
   if (opts.seedTasks !== false) {
     let alreadySeeded = false;
     try {
-      const probe  = await chatAgent.invoke(tasksCrew.address, 'listOpen', [DataPart({})]);
+      const probe  = await chatAgent.invoke(tasksCircle.address, 'listOpen', [DataPart({})]);
       const data   = Array.isArray(probe) ? probe[0]?.data : null;
       const items  = Array.isArray(data?.items) ? data.items : [];
       alreadySeeded = items.length > 0;
@@ -642,7 +642,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       ];
       for (const seed of SEED_TASKS) {
         try {
-          await chatAgent.invoke(tasksCrew.address, 'addTask', [DataPart(seed)]);
+          await chatAgent.invoke(tasksCircle.address, 'addTask', [DataPart(seed)]);
         } catch (err) {
           if (typeof console !== 'undefined') {
             console.warn('[realAgent] seed task failed:', err.message ?? err);
@@ -652,14 +652,14 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
-  // 2026-05-24 — track crews provisioned via /crew-new at runtime.
-  // The tasks-v0 agent runs in single-crew topology (one CrewState
-  // wired at boot); provisionMyCrew persists a config to the
-  // dataSource but doesn't instantiate a CrewState the dashboard
-  // can see.  Until multi-crew topology lands as a separate slice
-  // (#127-#131-ish), the /crews adapter appends these "pending"
-  // entries so the user gets visible feedback on /crew-new.
-  const provisionedCrews = new Map();   // circleId → {name, kind, provisionedAt}
+  // 2026-05-24 — track circles provisioned via /circle-new at runtime.
+  // The tasks-v0 agent runs in single-circle topology (one CircleState
+  // wired at boot); provisionMyCircle persists a config to the
+  // dataSource but doesn't instantiate a CircleState the dashboard
+  // can see.  Until multi-circle topology lands as a separate slice
+  // (#127-#131-ish), the /circles adapter appends these "pending"
+  // entries so the user gets visible feedback on /circle-new.
+  const provisionedCircles = new Map();   // circleId → {name, kind, provisionedAt}
 
   /* ─── stoop real agent (slice 2b — integration plan 2026-05-23) ──
    *
@@ -787,7 +787,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    *
    * Routing targets:
    *   - 'household'  → hostAgent (chores, members, calendar skills)
-   *   - 'tasks'      → tasksCrew.address (the REAL tasks crew agent
+   *   - 'tasks'      → tasksCircle.address (the REAL tasks circle agent
    *                    via slice-1 integration; 110 skills).  Part G
    *                    (2026-06-17): the app-origin is now `'tasks'`
    *                    (was `'tasks-v0'`) — the merged manifest's
@@ -798,21 +798,21 @@ export async function createRealHouseholdAgent(opts = {}) {
    *   - 'folio'      → folioAgent.address (slice-4 web-only agent)
    *
    * Some opIds are renamed across the boundary (the chat surface
-   * uses `myInbox` historically; the real tasks crew exposes
+   * uses `myInbox` historically; the real tasks circle exposes
    * `listMyInbox`).  These SEMANTIC aliases are product decisions
    * (NOT drift); adapt here so the chat-shell renderer stays stable.
    */
   const TASKS_OP_ALIAS = {
-    myInbox:  'listMyInbox',                  // canopy-chat → real tasks crew
+    myInbox:  'listMyInbox',                  // canopy-chat → real tasks circle
     // listMine on real tasks-v0 filters by t.assignee === from (only
     // tasks ALREADY assigned to me).  The chat-shell semantic of
-    // /mytasks is broader — "everything actionable in my crew".  Map
+    // /mytasks is broader — "everything actionable in my circle".  Map
     // to listOpen so the chat user sees what they expect.
     listMine: 'listOpen',
     // F1 circle content (5.3) — `loadCircleItems` reads a circle's
     // tasks via the unique source op `getMyTasks` (no app defines it,
     // so `makeResolvingCallSkill` probes past stoop/household and lands
-    // here).  Map to listOpen scoped to the resolved crew (= circle).
+    // here).  Map to listOpen scoped to the resolved circle (= circle).
     getMyTasks: 'listOpen',
     // briefSummary / searchTasks: tasks-v0 doesn't expose these as
     // own skills today; canopy-chat derives them from listOpen below.
@@ -909,13 +909,13 @@ export async function createRealHouseholdAgent(opts = {}) {
     return groupTarget?.groupId;
   }
 
-  /** Slugify a name → safe circleId for provisionMyCrew. */
+  /** Slugify a name → safe circleId for provisionMyCircle. */
   function _slugifyCircleId(name) {
     const slug = String(name ?? '')
       .toLowerCase()
       .replace(/[^a-z0-9_-]+/g, '-')
       .replace(/^-+|-+$/g, '')
-      .slice(0, 30) || 'crew';
+      .slice(0, 30) || 'circle';
     return /^[a-z0-9]/.test(slug) ? slug : `c-${slug}`;
   }
 
@@ -960,7 +960,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       return first?.data ?? null;
     }
     if (appOrigin === 'tasks') {
-      // Derived ops (not in the real crew agent): build the reply
+      // Derived ops (not in the real circle agent): build the reply
       // from listMine + a small shape adapter.
       if (opId === 'briefSummary' || opId === 'tasks_briefSummary') {
         const list = await callSkill('tasks', 'listMine', {});
@@ -989,8 +989,8 @@ export async function createRealHouseholdAgent(opts = {}) {
       // in the Part G dissolve (2026-06-17): the manifest now declares
       // the real `note` param directly, so no shell-side vocab bridge.
       let realArgs = args ?? {};
-      if (realOpId === 'provisionMyCrew' && !realArgs.circleId && realArgs.name) {
-        // /crew-new sends a human name; real skill demands a slug.
+      if (realOpId === 'provisionMyCircle' && !realArgs.circleId && realArgs.name) {
+        // /circle-new sends a human name; real skill demands a slug.
         realArgs = { ...realArgs, circleId: _slugifyCircleId(realArgs.name) };
       }
       // Pass through any reject note so the adapter can append it
@@ -1003,36 +1003,36 @@ export async function createRealHouseholdAgent(opts = {}) {
           ? Number(realArgs['ttl-hours']) : 24;
         realArgs = { ...realArgs, ttlMs: hours * 60 * 60 * 1000 };
       }
-      // #190 (B3) — crew admin skills require circleId; auto-inject
-      // from the configured crew so the user doesn't have to type it.
-      const CREW_AUTO_INJECT = new Set([
-        'getCrewConfig', 'pauseCrew', 'unpauseCrew',
-        'archiveCrew',   'unarchiveCrew', 'issueInvite',
-        'listAwaitingApproval', 'getMyCrews',
+      // #190 (B3) — circle admin skills require circleId; auto-inject
+      // from the configured circle so the user doesn't have to type it.
+      const CIRCLE_AUTO_INJECT = new Set([
+        'getCircleConfig', 'pauseCircle', 'unpauseCircle',
+        'archiveCircle',   'unarchiveCircle', 'issueInvite',
+        'listAwaitingApproval', 'getMyCircles',
         'suggestSchedule', 'acceptSchedule',
         'getMyAvailability', 'setMyAvailability', 'setAvailabilityOptIn',
-        'getCrewAvailability', 'listCrewMembers',
+        'getCircleAvailability', 'listCircleMembers',
       ]);
-      // 2026-05-24 — listCrewMembers is a derived op (no real skill);
-      // dispatch to getCrewConfig + the adapter unpacks members[].
-      if (realOpId === 'listCrewMembers') {
-        realArgs = { ...realArgs, _derivedFromGetCrewConfig: true };
+      // 2026-05-24 — listCircleMembers is a derived op (no real skill);
+      // dispatch to getCircleConfig + the adapter unpacks members[].
+      if (realOpId === 'listCircleMembers') {
+        realArgs = { ...realArgs, _derivedFromGetCircleConfig: true };
         // Swap to the real skill name; adapter inspects opId (not
-        // realOpId) so it still hits the listCrewMembers branch.
+        // realOpId) so it still hits the listCircleMembers branch.
         const parts = [DataPart({ circleId: realArgs.circleId })];
-        const result = await chatAgent.invoke(tasksCrew.address, 'getCrewConfig', parts);
+        const result = await chatAgent.invoke(tasksCircle.address, 'getCircleConfig', parts);
         const first = Array.isArray(result) ? result[0] : null;
-        return adaptTasksReply('listCrewMembers', first?.data ?? null);
+        return adaptTasksReply('listCircleMembers', first?.data ?? null);
       }
-      if (CREW_AUTO_INJECT.has(realOpId) && !realArgs.circleId) {
-        const circleId = opts.tasksCrewConfig?.circleId ?? 'cc-default';
+      if (CIRCLE_AUTO_INJECT.has(realOpId) && !realArgs.circleId) {
+        const circleId = opts.tasksCircleConfig?.circleId ?? 'cc-default';
         realArgs = { ...realArgs, circleId };
       }
-      if (realOpId === 'archiveCrew' && realArgs.confirm !== true) {
+      if (realOpId === 'archiveCircle' && realArgs.confirm !== true) {
         // Q27 two-step confirm.
         return {
           ok: false,
-          error: 'Archiving the crew puts it read-only. Re-run with --confirm=true to proceed.',
+          error: 'Archiving the circle puts it read-only. Re-run with --confirm=true to proceed.',
         };
       }
       if (realOpId === 'suggestSchedule' && realArgs['lookahead-days']) {
@@ -1100,16 +1100,16 @@ export async function createRealHouseholdAgent(opts = {}) {
           }
         }
       }
-      // F1 multi-crew (5.3) — when the dispatch carries a circle scope
-      // (circleId injected by scopeReadyDispatch, or an explicit crew),
-      // make sure that circle's crew exists before routing.  Unscoped
+      // F1 multi-circle (5.3) — when the dispatch carries a circle scope
+      // (circleId injected by scopeReadyDispatch, or an explicit circle),
+      // make sure that circle's circle exists before routing.  Unscoped
       // calls leave circleId unset → resolver falls back to the primary
-      // crew (legacy single-crew behaviour).  ensureCrew is idempotent.
+      // circle (legacy single-circle behaviour).  ensureCircle is idempotent.
       if (typeof realArgs.circleId === 'string' && realArgs.circleId) {
-        await tasksCrew.ensureCrew(realArgs.circleId);
+        await tasksCircle.ensureCircle(realArgs.circleId);
       }
       const parts = [DataPart(realArgs)];
-      const result = await chatAgent.invoke(tasksCrew.address, realOpId, parts);
+      const result = await chatAgent.invoke(tasksCircle.address, realOpId, parts);
       const first = Array.isArray(result) ? result[0] : null;
       const data  = first?.data ?? null;
       if (data && noteHint) data.noteHint = noteHint;
@@ -1534,7 +1534,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         message: `✓ Added task: ${task.text ?? task.title ?? task.id}`,
         itemId:  task.id,
         // S6.A — carry the mock-era `state` + `type` the manifest's appliesTo gates
-        // on (the real crew uses `status`), so inline buttons compute on the reply.
+        // on (the real circle uses `status`), so inline buttons compute on the reply.
         task:    { ...task, type: 'task', state: _statusToChatState(task.status, task) },
         _sync:   simulateSync(),
       };
@@ -1559,7 +1559,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         ? ` — ${data.noteHint}` : '';
       // P6.5 — claim router: when the override has
       // flowThrough.tasksToPersonal, mirror the claimed task into the
-      // personal crew so it shows up in "Mijn dingen".  Fire-and-forget;
+      // personal circle so it shows up in "Mijn dingen".  Fire-and-forget;
       // the chat-shell envelope returns immediately.  Default hook is a
       // no-op so existing tests keep their behaviour.
       if (opId === 'claimTask' && typeof claimRouterRef.hook === 'function') {
@@ -1582,12 +1582,12 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:   simulateSync(),
       };
     }
-    // Task-less base — a circle with no tasks crew yet.  bundleResolver
+    // Task-less base — a circle with no tasks circle yet.  bundleResolver
     // returns null, so the read-only list skills answer {error:'circleId
     // required'}.  For a LIST op that's not a failure: there's simply
     // nothing to list.  Normalise to an empty result so loadCircleItems /
     // /mytasks render "no tasks" instead of an error bubble.  (Write ops
-    // like addTask keep the error — you can't add to a crew that isn't there.)
+    // like addTask keep the error — you can't add to a circle that isn't there.)
     if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox'
          || opId === 'myInbox' || opId === 'getMyTasks' || opId === 'listClaimable')
         && data?.error === 'circleId required') {
@@ -1646,7 +1646,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         ? new Date(inv.expiresAt).toISOString()
         : '(no expiry)';
       return {
-        title:    'Crew invite',
+        title:    'Circle invite',
         role:     inv?.role ?? 'member',
         expires,
         invite:   qrUri,   // classified as kind:'qr' by classifyFieldKind
@@ -1658,8 +1658,8 @@ export async function createRealHouseholdAgent(opts = {}) {
       const memberCount = Array.isArray(data.members) ? data.members.length : '?';
       return {
         ok: true,
-        message: `✓ Joined crew. ${memberCount} members visible. /mytasks shows the crew's tasks.`,
-        crew:   data,
+        message: `✓ Joined circle. ${memberCount} members visible. /mytasks shows the circle's tasks.`,
+        circle:   data,
         _sync:  simulateSync(),
       };
     }
@@ -1670,8 +1670,8 @@ export async function createRealHouseholdAgent(opts = {}) {
       if (data.enabled === false) {
         return {
           title:   'Availability',
-          status:  'disabled-for-crew',
-          message: 'Availability hints aren\'t enabled for this crew yet. Ask an admin to enable them, then /availability-opt-in on to start setting your week.',
+          status:  'disabled-for-circle',
+          message: 'Availability hints aren\'t enabled for this circle yet. Ask an admin to enable them, then /availability-opt-in on to start setting your week.',
         };
       }
       const week = data.week ?? '(this week)';
@@ -1714,7 +1714,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       return {
         ok: true,
         message: data.optedIn
-          ? '✓ Opted in. Your availability hints are visible to your crew.'
+          ? '✓ Opted in. Your availability hints are visible to your circle.'
           : '✓ Opted out. Coordinator sees you as "unknown" (indistinguishable from non-opted).',
         _sync: simulateSync(),
       };
@@ -1772,21 +1772,21 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:   simulateSync(),
       };
     }
-    // #191 (B5) — getMyCrews: {crews: [{circleId, name, kind, counts}]}
-    // → chat-shell list with crew-shape rows.  Each row's label
+    // #191 (B5) — getMyCircles: {circles: [{circleId, name, kind, counts}]}
+    // → chat-shell list with circle-shape rows.  Each row's label
     // surfaces counters inline so the user sees the dashboard at a
     // glance without expanding rows.
-    if (opId === 'getMyCrews' && Array.isArray(data.crews)) {
-      // 2026-05-24 — fold in provisionedCrews (pending entries from
-      // /crew-new since boot) so the user sees feedback even though
-      // the dashboard's crewsProvider doesn't auto-pick them up.
-      const knownIds = new Set(data.crews.map((c) => c.circleId));
+    if (opId === 'getMyCircles' && Array.isArray(data.circles)) {
+      // 2026-05-24 — fold in provisionedCircles (pending entries from
+      // /circle-new since boot) so the user sees feedback even though
+      // the dashboard's circlesProvider doesn't auto-pick them up.
+      const knownIds = new Set(data.circles.map((c) => c.circleId));
       const pendingItems = [];
-      for (const [circleId, info] of provisionedCrews.entries()) {
+      for (const [circleId, info] of provisionedCircles.entries()) {
         if (knownIds.has(circleId)) continue;   // active now (after reload)
         pendingItems.push({
           id:    circleId,
-          type:  'crew',
+          type:  'circle',
           label: `${info.name} (${info.kind}) — (pending — reload to activate)`,
           circleId,
           name:  info.name,
@@ -1795,14 +1795,14 @@ export async function createRealHouseholdAgent(opts = {}) {
           counts: { open: 0, overdue: 0, mine: 0, awaitingApproval: 0 },
         });
       }
-      if (data.crews.length === 0 && pendingItems.length === 0) {
+      if (data.circles.length === 0 && pendingItems.length === 0) {
         return {
           items:   [],
-          message: 'You\'re not in any crews yet. Use /crew-new to create one.',
+          message: 'You\'re not in any circles yet. Use /circle-new to create one.',
         };
       }
       let totalOpen = 0, totalOverdue = 0, totalMine = 0, totalApproval = 0;
-      const items = data.crews.map((c) => {
+      const items = data.circles.map((c) => {
         const cnt = c.counts ?? {};
         totalOpen     += cnt.open ?? 0;
         totalOverdue  += cnt.overdue ?? 0;
@@ -1816,7 +1816,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         ].filter(Boolean).join(' · ');
         return {
           id:    c.circleId,
-          type:  'crew',
+          type:  'circle',
           label: `${c.name} (${c.kind}) — ${stats}`,
           circleId: c.circleId,
           name:   c.name,
@@ -1829,111 +1829,111 @@ export async function createRealHouseholdAgent(opts = {}) {
         ? ` + ${pendingItems.length} pending (reload to activate)` : '';
       return {
         items: allItems,
-        message: `Crews: ${data.crews.length}${pendingSuffix} · Total: ${totalOpen} open, ${totalOverdue} overdue, ${totalMine} mine, ${totalApproval} awaiting approval`,
+        message: `Circles: ${data.circles.length}${pendingSuffix} · Total: ${totalOpen} open, ${totalOverdue} overdue, ${totalMine} mine, ${totalApproval} awaiting approval`,
         _sync: simulateSync(),
       };
     }
-    // #190 (B3) — getCrewConfig: {crew: {...}} or {crew: null} →
+    // #190 (B3) — getCircleConfig: {circle: {...}} or {circle: null} →
     // record reply with members + paused/archived state.
-    if (opId === 'getCrewConfig') {
-      const crew = data.crew;
-      if (!crew) {
+    if (opId === 'getCircleConfig') {
+      const circle = data.circle;
+      if (!circle) {
         return {
-          title:   'Crew config',
+          title:   'Circle config',
           status:  'not-found',
-          message: 'No crew config found for this id.',
+          message: 'No circle config found for this id.',
         };
       }
       // 2026-05-24 — DON'T inline members[] here.  The record renderer
       // JSON-stringifies arrays of objects (unreadable).  Use the
-      // separate /crew-members list reply (see listCrewMembers below).
+      // separate /circle-members list reply (see listCircleMembers below).
       return {
-        title:       'Crew config',
-        circleId:      crew.circleId,
-        name:        crew.name ?? crew.circleId,
-        kind:        crew.kind ?? 'household',
-        memberCount: Array.isArray(crew.members) ? crew.members.length : 0,
-        paused:      !!crew.paused,
-        archived:    !!crew.archived,
-        hint:        'Use /crew-members for the member list.',
+        title:       'Circle config',
+        circleId:      circle.circleId,
+        name:        circle.name ?? circle.circleId,
+        kind:        circle.kind ?? 'household',
+        memberCount: Array.isArray(circle.members) ? circle.members.length : 0,
+        paused:      !!circle.paused,
+        archived:    !!circle.archived,
+        hint:        'Use /circle-members for the member list.',
       };
     }
-    // 2026-05-24 — listCrewMembers (derived from getCrewConfig): list
+    // 2026-05-24 — listCircleMembers (derived from getCircleConfig): list
     // reply with one row per member, role surfaced inline.
-    if (opId === 'listCrewMembers') {
-      const crew = data?.crew;
-      if (!crew || !Array.isArray(crew.members)) {
-        return { items: [], message: 'No crew config — try /crew-info first.' };
+    if (opId === 'listCircleMembers') {
+      const circle = data?.circle;
+      if (!circle || !Array.isArray(circle.members)) {
+        return { items: [], message: 'No circle config — try /circle-info first.' };
       }
       return {
-        items: crew.members.map((m) => ({
+        items: circle.members.map((m) => ({
           id:    m.webid,
           type:  'member',
           webid: m.webid,
           label: `${m.displayName ?? m.webid.slice(0, 12)} (${m.role ?? 'member'})`,
           role:  m.role ?? 'member',
         })),
-        message: `${crew.members.length} member${crew.members.length === 1 ? '' : 's'} in ${crew.name ?? crew.circleId}`,
+        message: `${circle.members.length} member${circle.members.length === 1 ? '' : 's'} in ${circle.name ?? circle.circleId}`,
         _sync: simulateSync(),
       };
     }
-    // #190 — pauseCrew / unpauseCrew / archiveCrew / unarchiveCrew:
+    // #190 — pauseCircle / unpauseCircle / archiveCircle / unarchiveCircle:
     // real returns {ok, paused?, archived?} → friendly text reply.
-    if (opId === 'pauseCrew' && data.ok) {
+    if (opId === 'pauseCircle' && data.ok) {
       return {
         ok: true,
         message: data.paused
-          ? '⏸️ Crew paused. No new tasks; existing tasks remain workable.'
-          : '✓ Crew already unpaused.',
+          ? '⏸️ Circle paused. No new tasks; existing tasks remain workable.'
+          : '✓ Circle already unpaused.',
         _sync: simulateSync(),
       };
     }
-    if (opId === 'unpauseCrew' && data.ok) {
+    if (opId === 'unpauseCircle' && data.ok) {
       return {
         ok: true,
         message: data.paused
-          ? '✓ Crew is paused.'
-          : '▶️ Crew resumed. New tasks can be added again.',
+          ? '✓ Circle is paused.'
+          : '▶️ Circle resumed. New tasks can be added again.',
         _sync: simulateSync(),
       };
     }
-    if (opId === 'archiveCrew' && data.ok) {
+    if (opId === 'archiveCircle' && data.ok) {
       return {
         ok: true,
         message: data.archived
-          ? '📦 Crew archived. Read-only ledger; use /unarchive-crew to reverse.'
-          : '✓ Crew already unarchived.',
+          ? '📦 Circle archived. Read-only ledger; use /unarchive-circle to reverse.'
+          : '✓ Circle already unarchived.',
         _sync: simulateSync(),
       };
     }
-    if (opId === 'unarchiveCrew' && data.ok) {
+    if (opId === 'unarchiveCircle' && data.ok) {
       return {
         ok: true,
         message: data.archived
-          ? '✓ Crew is archived.'
-          : '✓ Crew unarchived. Active again.',
+          ? '✓ Circle is archived.'
+          : '✓ Circle unarchived. Active again.',
         _sync: simulateSync(),
       };
     }
-    // provisionMyCrew: real returns {crew: {...}} (or similar) →
+    // provisionMyCircle: real returns {circle: {...}} (or similar) →
     // adapt to mock-era {ok, message, circleId}.  2026-05-24: also
-    // track newly-provisioned crews in provisionedCrews so /crews
+    // track newly-provisioned circles in provisionedCircles so /circles
     // shows them as pending entries (substrate doesn't auto-bind
-    // a CrewState; needs reload + multi-crew topology).
-    if (opId === 'provisionMyCrew') {
-      const circleId = data.circleId ?? data.crew?.circleId ?? data.id ?? null;
-      if (circleId && !provisionedCrews.has(circleId)) {
-        provisionedCrews.set(circleId, {
-          name: data.crew?.name ?? data.name ?? circleId,
-          kind: data.crew?.kind ?? data.kind ?? 'household',
+    // a CircleState; needs reload + multi-circle topology).
+    if (opId === 'provisionMyCircle') {
+      const circleId = data.circleId ?? data.circle?.circleId ?? data.id ?? null;
+      if (circleId && !provisionedCircles.has(circleId)) {
+        provisionedCircles.set(circleId, {
+          name: data.circle?.name ?? data.name ?? circleId,
+          kind: data.circle?.kind ?? data.kind ?? 'household',
           provisionedAt: Date.now(),
         });
       }
       return {
         ok:      true,
-        message: `✓ Crew "${circleId ?? '?'}" provisioned. It shows in /crews as "(pending)" — full activation requires multi-crew topology (deferred slice).`,
+        message: `✓ Circle "${circleId ?? '?'}" provisioned. It shows in /circles as "(pending)" — full activation requires multi-circle topology (deferred slice).`,
         circleId,
-        crew:    data.crew ?? data,
+        circle:    data.circle ?? data,
         _sync:   simulateSync(),
       };
     }

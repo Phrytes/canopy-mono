@@ -1,7 +1,7 @@
 # M3 — Tasks-mobile real-device acceptance checklist
 
 > Re-baselined runbook (was Phase 41.16). The surface changed under
-> M1/M2/S5 — storage-policy picker, multi-crew onboarding dispatch,
+> M1/M2/S5 — storage-policy picker, multi-circle onboarding dispatch,
 > cross-device substrate fan-out, and pod OIDC sign-in now exist —
 > so this supersedes the old 13-journey README runbook.
 >
@@ -9,7 +9,7 @@
 > `adb devices` shows it). **Two devices required** for the
 > cross-device substrate fan-out journey (J5) — that is the
 > acceptance gate. One device + a desktop `bin/tasks-ui.js
-> --multi-crew` install also works for J5.
+> --multi-circle` install also works for J5.
 >
 > Date: ___________  Tester: ___________  Device(s): ___________
 >
@@ -43,26 +43,26 @@
 
 - [ ] Welcome screen renders
 - [ ] Identity auto-generates via `KeychainVault` (no visible prompt)
-- [ ] Status flips to no-crews; Welcome onboarding stack is shown
-      (bottom-tab `Main` shell only after a crew exists)
-- [ ] Welcome shows BOTH CTAs: the quick "Create a new crew" path
+- [ ] Status flips to no-circles; Welcome onboarding stack is shown
+      (bottom-tab `Main` shell only after a circle exists)
+- [ ] Welcome shows BOTH CTAs: the quick "Create a new circle" path
       AND the secondary "Create with storage policy…" (M1-S2) link
 
-## J2 — Create a crew with a storage policy (M1-S1/S2)
+## J2 — Create a circle with a storage policy (M1-S1/S2)
 
-- [ ] Welcome → "Create with storage policy…" → CreateCrewScreen
+- [ ] Welcome → "Create with storage policy…" → CreateCircleScreen
       (modal) renders
-- [ ] Crew name input; **Crew ID slug auto-derives** from the name
+- [ ] Circle name input; **Circle ID slug auto-derives** from the name
       and is editable; invalid slug (caps/spaces) shows the inline
       validation error + red border
-- [ ] Crew-kind chip row renders 5 options (household / project /
+- [ ] Circle-kind chip row renders 5 options (household / project /
       team / friends / maintenance)
 - [ ] **Storage-policy radio renders ALL FOUR**: no-pod (default) /
       centralised / decentralised / hybrid, each with its hint line
 - [ ] **Picking centralised OR hybrid reveals the group-pod-URI
       input**; picking no-pod / decentralised hides it again
-- [ ] Submit → `provisionMyCrew` persists the config → `joinCrew`
-      builds the runtime CrewState → nav resets to `Main` +
+- [ ] Submit → `provisionMyCircle` persists the config → `joinCircle`
+      builds the runtime CircleState → nav resets to `Main` +
       `OnboardIssue(freshlyCreated:true)`
 - [ ] OnboardIssueScreen shows the admin invite QR. Verify the QR
       renders + scans cleanly with a separate scanner app
@@ -76,34 +76,34 @@
       upgradeable radios (centralised / decentralised / hybrid; no
       no-pod — one-way, no downgrade)
 - [ ] Pick centralised → pod-URI field appears; submit →
-      `setCrewStoragePolicy` → "Storage policy updated."; Section 1
+      `setCircleStoragePolicy` → "Storage policy updated."; Section 1
       reflects the new policy
 - [ ] (Negative) attempting to downgrade is not offered (no no-pod
       option in the upgrade form) — one-way contract holds
-- [ ] Section 2 (Agent registry): after the crew is up, status reads
+- [ ] Section 2 (Agent registry): after the circle is up, status reads
       **"Registered"** (a meshAgent + substrate were both available
       — M1-S3). If "Not registered", see Appendix A3
 
-## J4 — Multi-crew onboarding dispatch (M2-S8)
+## J4 — Multi-circle onboarding dispatch (M2-S8)
 
-- [ ] From the active crew, OnboardIssueScreen → `issueInvite`
+- [ ] From the active circle, OnboardIssueScreen → `issueInvite`
       returns an invite; QR renders
 - [ ] **Second device** → Welcome → "Scan an invite QR" → camera
       opens (permission prompt OK)
 - [ ] Scan device-A's QR → `redeemInvite` routes by the invite's
       `groupId` (no manual circleId needed) → device B builds the
-      CrewState + lands in the joined crew's Workspace
-- [ ] On device A, the crew's MemberMap grows device B's member
-      (visible in CrewSettings → members)
-- [ ] Create a SECOND crew on device A (J2 again, different slug);
-      add a task in each crew → **tasks do NOT leak across crews**
-      (per-crew `mem://tasks/crews/<id>/` itemStoreRoot — M2 Slice-7
-      parity). Workspace switched to crew A shows only A's tasks
+      CircleState + lands in the joined circle's Workspace
+- [ ] On device A, the circle's MemberMap grows device B's member
+      (visible in CircleSettings → members)
+- [ ] Create a SECOND circle on device A (J2 again, different slug);
+      add a task in each circle → **tasks do NOT leak across circles**
+      (per-circle `mem://tasks/circles/<id>/` itemStoreRoot — M2 Slice-7
+      parity). Workspace switched to circle A shows only A's tasks
 
 ## J5 — Cross-device substrate fan-out  ★ ACCEPTANCE GATE ★
 
 > Mirrors Stoop's S1–S5 substrate-fan-out pair scenarios. Two
-> devices (A, B) both joined to the same crew (via J4).
+> devices (A, B) both joined to the same circle (via J4).
 
 - [ ] **S1 add fan-out:** add a task on A (ComposeScreen) → **B's
       Workspace shows it within ~5s** (notifyEnvelope fan-out via
@@ -212,7 +212,7 @@ Pull-to-refresh target < 500 ms.
 `react-native-keychain` not autolinked (rebuild the dev client);
 AsyncStorage autolinking; a `react-native-keychain` ABI break.
 Agent-registry "Not registered" usually means the substrate stack
-failed best-effort — check `adb logcat | grep buildCrewState`.
+failed best-effort — check `adb logcat | grep buildCircleState`.
 
 **A4 — Pod sign-in "redirect didn't return":** `app.json` declares
 `scheme: "tasks"`; `expo-auth-session`'s redirect computes to

@@ -5,10 +5,10 @@
  *   1. localisation wrapper — initLocalisation loads en + nl; t() unwraps `{text, doc}`
  *      leaves; missing keys fall back to the key.
  *   2. PRIVACY_NOTICE shape — same item count + headings in both langs.
- *   3. crewControls skills — pause/unpause/archive/unarchive (admin /
+ *   3. circleControls skills — pause/unpause/archive/unarchive (admin /
  *      coord gating) + getPrivacyNotice.
- *   4. addTask gate — paused crew rejects with `error: 'crew-paused'`;
- *      archived crew rejects with `error: 'crew-archived'`; resuming
+ *   4. addTask gate — paused circle rejects with `error: 'circle-paused'`;
+ *      archived circle rejects with `error: 'circle-archived'`; resuming
  *      restores the path.
  *   5. Locale loader — every value matches the project's `{text, doc}`
  *      shape. (Convention check.)
@@ -22,7 +22,7 @@ import { dirname, join } from 'node:path';
 import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { initLocalisation, t, setLang, currentLang, __test__ } from '../src/lib/localisation.js';
 import { PRIVACY_NOTICE, privacyNoticeFor } from '../src/lib/privacyNotice.js';
 
@@ -30,7 +30,7 @@ const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -171,93 +171,93 @@ describe('Phase 10 — privacy notice', () => {
 
 // ── Live skill tests ───────────────────────────────────────────────────────
 
-describe('Phase 10 — crewControls + addTask gate', () => {
+describe('Phase 10 — circleControls + addTask gate', () => {
   let lsBundle;
-  let crew;
+  let circle;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
-  it('pauseCrew sets crew.paused; addTask blocked; unpauseCrew restores', async () => {
-    const before = await callSkill(crew.agent, 'addTask', { text: 'Pre-pause' }, ANNE);
+  it('pauseCircle sets circle.paused; addTask blocked; unpauseCircle restores', async () => {
+    const before = await callSkill(circle.agent, 'addTask', { text: 'Pre-pause' }, ANNE);
     expect(before.task?.id).toBeTruthy();
 
-    const p = await callSkill(crew.agent, 'pauseCrew', {}, ANNE);
+    const p = await callSkill(circle.agent, 'pauseCircle', {}, ANNE);
     expect(p.ok).toBe(true);
     expect(p.paused).toBe(true);
 
-    const blocked = await callSkill(crew.agent, 'addTask', { text: 'During pause' }, ANNE);
-    expect(blocked.error).toBe('crew-paused');
+    const blocked = await callSkill(circle.agent, 'addTask', { text: 'During pause' }, ANNE);
+    expect(blocked.error).toBe('circle-paused');
 
     // Existing tasks remain claimable / completable.
-    const claim = await callSkill(crew.agent, 'claimTask', { id: before.task.id }, KID);
+    const claim = await callSkill(circle.agent, 'claimTask', { id: before.task.id }, KID);
     expect(claim.result?.assignee).toBe(KID);
 
     // Unpause restores addTask.
-    const u = await callSkill(crew.agent, 'unpauseCrew', {}, ANNE);
+    const u = await callSkill(circle.agent, 'unpauseCircle', {}, ANNE);
     expect(u.paused).toBe(false);
-    const after = await callSkill(crew.agent, 'addTask', { text: 'Post-pause' }, ANNE);
+    const after = await callSkill(circle.agent, 'addTask', { text: 'Post-pause' }, ANNE);
     expect(after.task?.id).toBeTruthy();
   });
 
-  it('archiveCrew blocks addTask; unarchive restores', async () => {
-    const ar = await callSkill(crew.agent, 'archiveCrew', {}, ANNE);
+  it('archiveCircle blocks addTask; unarchive restores', async () => {
+    const ar = await callSkill(circle.agent, 'archiveCircle', {}, ANNE);
     expect(ar.archived).toBe(true);
-    const blocked = await callSkill(crew.agent, 'addTask', { text: 'Hi' }, ANNE);
-    expect(blocked.error).toBe('crew-archived');
-    const ua = await callSkill(crew.agent, 'unarchiveCrew', {}, ANNE);
+    const blocked = await callSkill(circle.agent, 'addTask', { text: 'Hi' }, ANNE);
+    expect(blocked.error).toBe('circle-archived');
+    const ua = await callSkill(circle.agent, 'unarchiveCircle', {}, ANNE);
     expect(ua.archived).toBe(false);
-    const after = await callSkill(crew.agent, 'addTask', { text: 'Hi again' }, ANNE);
+    const after = await callSkill(circle.agent, 'addTask', { text: 'Hi again' }, ANNE);
     expect(after.task?.id).toBeTruthy();
   });
 
   it('archive precedence: archived takes priority over paused in the error code', async () => {
-    await callSkill(crew.agent, 'pauseCrew', {}, ANNE);
-    await callSkill(crew.agent, 'archiveCrew', {}, ANNE);
-    const r = await callSkill(crew.agent, 'addTask', { text: 'Hi' }, ANNE);
-    expect(r.error).toBe('crew-archived');
+    await callSkill(circle.agent, 'pauseCircle', {}, ANNE);
+    await callSkill(circle.agent, 'archiveCircle', {}, ANNE);
+    const r = await callSkill(circle.agent, 'addTask', { text: 'Hi' }, ANNE);
+    expect(r.error).toBe('circle-archived');
   });
 
   it('non-admin cannot pause / unpause / archive / unarchive', async () => {
-    expect((await callSkill(crew.agent, 'pauseCrew',     {}, KID)).error).toMatch(/admin|coord/i);
-    expect((await callSkill(crew.agent, 'archiveCrew',   {}, KID)).error).toMatch(/admin/i);
-    expect((await callSkill(crew.agent, 'unarchiveCrew', {}, KID)).error).toMatch(/admin/i);
+    expect((await callSkill(circle.agent, 'pauseCircle',     {}, KID)).error).toMatch(/admin|coord/i);
+    expect((await callSkill(circle.agent, 'archiveCircle',   {}, KID)).error).toMatch(/admin/i);
+    expect((await callSkill(circle.agent, 'unarchiveCircle', {}, KID)).error).toMatch(/admin/i);
     // coordinator CAN pause but NOT archive.
-    expect((await callSkill(crew.agent, 'pauseCrew',   {}, FRITS)).ok).toBe(true);
-    expect((await callSkill(crew.agent, 'archiveCrew', {}, FRITS)).error).toMatch(/admin/i);
+    expect((await callSkill(circle.agent, 'pauseCircle',   {}, FRITS)).ok).toBe(true);
+    expect((await callSkill(circle.agent, 'archiveCircle', {}, FRITS)).error).toMatch(/admin/i);
   });
 
   it('getPrivacyNotice returns localised content', async () => {
-    const en = await callSkill(crew.agent, 'getPrivacyNotice', { lang: 'en' }, ANNE);
+    const en = await callSkill(circle.agent, 'getPrivacyNotice', { lang: 'en' }, ANNE);
     expect(en.lang).toBe('en');
     expect(en.items.length).toBeGreaterThanOrEqual(6);
     expect(en.items[0].heading).toBeTruthy();
     expect(en.items[0].body).toMatch(/encrypted/i);
 
-    const nl = await callSkill(crew.agent, 'getPrivacyNotice', { lang: 'nl' }, ANNE);
+    const nl = await callSkill(circle.agent, 'getPrivacyNotice', { lang: 'nl' }, ANNE);
     expect(nl.lang).toBe('nl');
     expect(nl.items.length).toBe(en.items.length);
     expect(nl.items[0].body).toMatch(/versleuteld/i);
 
     // Unknown lang falls back to en.
-    const xx = await callSkill(crew.agent, 'getPrivacyNotice', { lang: 'xx' }, ANNE);
+    const xx = await callSkill(circle.agent, 'getPrivacyNotice', { lang: 'xx' }, ANNE);
     expect(xx.items).toEqual(en.items);
   });
 
-  it('getCrewConfig surfaces the paused / archived flags', async () => {
-    await callSkill(crew.agent, 'pauseCrew', {}, ANNE);
-    const c = await callSkill(crew.agent, 'getCrewConfig');
-    expect(c.crew.paused).toBe(true);
-    expect(c.crew.archived).toBe(false);
+  it('getCircleConfig surfaces the paused / archived flags', async () => {
+    await callSkill(circle.agent, 'pauseCircle', {}, ANNE);
+    const c = await callSkill(circle.agent, 'getCircleConfig');
+    expect(c.circle.paused).toBe(true);
+    expect(c.circle.archived).toBe(false);
   });
 });

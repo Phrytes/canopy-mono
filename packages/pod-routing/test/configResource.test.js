@@ -49,14 +49,14 @@ describe('readConfig / writeConfig', () => {
       config: {
         version: CONFIG_VERSION,
         mappings:    { 'sharing/*': 'pseudo-pod://d1/sharing/' },
-        crewPolicies: { 'crew-a': { policy: 'no-pod' } },
+        circlePolicies: { 'circle-a': { policy: 'no-pod' } },
       },
     });
     const got = await readConfig({ pseudoPod, uri });
     expect(got).toBeTruthy();
     expect(got.version).toBe(CONFIG_VERSION);
     expect(got.mappings).toEqual({ 'sharing/*': 'pseudo-pod://d1/sharing/' });
-    expect(got.crewPolicies).toEqual({ 'crew-a': { policy: 'no-pod' } });
+    expect(got.circlePolicies).toEqual({ 'circle-a': { policy: 'no-pod' } });
     expect(typeof got.updatedAt).toBe('string');
   });
 
@@ -95,7 +95,7 @@ describe('readConfig / writeConfig', () => {
     await writeConfig({
       pseudoPod,
       uri,
-      config: { version: CONFIG_VERSION, mappings: {}, crewPolicies: {}, updatedAt: fixed },
+      config: { version: CONFIG_VERSION, mappings: {}, circlePolicies: {}, updatedAt: fixed },
     });
     const got = await readConfig({ pseudoPod, uri });
     expect(got?.updatedAt).toBe(fixed);
@@ -107,11 +107,11 @@ describe('readConfig / writeConfig', () => {
     await writeConfig({
       pseudoPod,
       uri,
-      config: { version: CONFIG_VERSION, mappings: { 'a/*': '/x/' }, crewPolicies: {} },
+      config: { version: CONFIG_VERSION, mappings: { 'a/*': '/x/' }, circlePolicies: {} },
     });
     const got = await readConfig({ pseudoPod, uri });
     expect(Object.isFrozen(got)).toBe(true);
     expect(Object.isFrozen(got.mappings)).toBe(true);
-    expect(Object.isFrozen(got.crewPolicies)).toBe(true);
+    expect(Object.isFrozen(got.circlePolicies)).toBe(true);
   });
 });

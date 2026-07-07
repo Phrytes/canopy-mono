@@ -1,6 +1,6 @@
 /**
  * `contact` type — a person the user knows. Shared across all
- * three apps (Tasks crew membership, Stoop contacts, Folio
+ * three apps (Tasks circle membership, Stoop contacts, Folio
  * share recipients).
  */
 

@@ -1,5 +1,5 @@
 /**
- * createCrossPodRefResolver — Phase 3.3c. The decentralised-crew
+ * createCrossPodRefResolver — Phase 3.3c. The decentralised-circle
  * cross-pod read path: dispatch the 3 canonical embeds ref shapes,
  * permission-safe, and compose with the real `treeOf` walker.
  */

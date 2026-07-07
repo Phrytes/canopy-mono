@@ -725,19 +725,19 @@
 
     "storage_heading":              { "text": "Opslag van de groepsstaat", "doc": "A5 — heading of the storage-policy section on /group.html." },
     "storage_loading":              { "text": "Aan het laden…", "doc": "Initial placeholder under the storage-policy heading." },
-    "storage_upgrade_oneway":       { "text": "Eenmaal pod-having → niet meer terug naar no-pod.", "doc": "Note shown above the disabled upgrade row when the crew is already pod-having." },
+    "storage_upgrade_oneway":       { "text": "Eenmaal pod-having → niet meer terug naar no-pod.", "doc": "Note shown above the disabled upgrade row when the circle is already pod-having." },
     "storage_new_policy_label":     { "text": "Nieuwe opslagvorm", "doc": "Label for the upgrade-target select on /group.html." },
     "storage_centralised_short":    { "text": "Centraal op een pod", "doc": "Short label for the centralised option in the upgrade select." },
     "storage_decentralised_short":  { "text": "Op ieders eigen pod", "doc": "Short label for the decentralised option in the upgrade select." },
     "storage_hybrid_short":         { "text": "Gemengd", "doc": "Short label for the hybrid option in the upgrade select." },
     "storage_pod_uri_label":        { "text": "Pod-URI", "doc": "Label for the groupPodUri input on /group.html upgrade row." },
-    "storage_upgrade_btn":          { "text": "Upgrade", "doc": "CTA on /group.html that calls setCrewStoragePolicy." },
+    "storage_upgrade_btn":          { "text": "Upgrade", "doc": "CTA on /group.html that calls setCircleStoragePolicy." },
     "storage_upgrading":            { "text": "Aan het upgraden…", "doc": "Inline status while the upgrade is in flight." },
     "storage_upgraded":             { "text": "Opslag bijgewerkt.", "doc": "Inline success status after the upgrade." },
-    "storage_no_pod_label":         { "text": "Op jullie eigen apparaten (no-pod).", "doc": "Full label shown on /group.html when the crew is no-pod." },
-    "storage_centralised_label":    { "text": "Op een gedeelde Solid-pod.", "doc": "Full label shown on /group.html when the crew is centralised." },
-    "storage_decentralised_label":  { "text": "Iedereen op z'n eigen pod (cross-pod refs).", "doc": "Full label shown on /group.html when the crew is decentralised." },
-    "storage_hybrid_label":         { "text": "Gemengd — ledger op gedeelde pod, drafts lokaal.", "doc": "Full label shown on /group.html when the crew is hybrid." }
+    "storage_no_pod_label":         { "text": "Op jullie eigen apparaten (no-pod).", "doc": "Full label shown on /group.html when the circle is no-pod." },
+    "storage_centralised_label":    { "text": "Op een gedeelde Solid-pod.", "doc": "Full label shown on /group.html when the circle is centralised." },
+    "storage_decentralised_label":  { "text": "Iedereen op z'n eigen pod (cross-pod refs).", "doc": "Full label shown on /group.html when the circle is decentralised." },
+    "storage_hybrid_label":         { "text": "Gemengd — ledger op gedeelde pod, drafts lokaal.", "doc": "Full label shown on /group.html when the circle is hybrid." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Pod-aanmelding voltooien", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

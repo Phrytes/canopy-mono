@@ -19,7 +19,7 @@
  *                           can filter (follow-up #342).
  *
  * Pure / DI: tests drive the helper with stub `getOverride` + a sink
- * `addToPersonalCrew`; no real agent / no storage needed.
+ * `addToPersonalCircle`; no real agent / no storage needed.
  */
 import { shouldRouteClaimToPersonal } from './circleEnforcement.js';
 
@@ -31,13 +31,13 @@ import { shouldRouteClaimToPersonal } from './circleEnforcement.js';
  * @param {string}  args.circleId            origin circle id
  * @param {string}  [args.circleName]        human label for the via-tag
  * @param {(id: string) => Promise<object|null>} args.getOverride
- * @param {(payload: {text:string, originCircleId:string, originCircleName?:string, originTaskId?:string, tag:string}) => Promise<object|null>} args.addToPersonalCrew
+ * @param {(payload: {text:string, originCircleId:string, originCircleName?:string, originTaskId?:string, tag:string}) => Promise<object|null>} args.addToPersonalCircle
  * @returns {Promise<{routed:boolean, mirroredTaskId?:string|null, reason?:string}>}
  */
-export async function routeClaim({ task, circleId, circleName, getOverride, addToPersonalCrew } = {}) {
+export async function routeClaim({ task, circleId, circleName, getOverride, addToPersonalCircle } = {}) {
   if (!task || typeof task !== 'object') return { routed: false, reason: 'no-task' };
   if (typeof circleId !== 'string' || !circleId) return { routed: false, reason: 'no-circle' };
-  if (typeof addToPersonalCrew !== 'function') return { routed: false, reason: 'no-sink' };
+  if (typeof addToPersonalCircle !== 'function') return { routed: false, reason: 'no-sink' };
 
   let route = false;
   try {
@@ -52,7 +52,7 @@ export async function routeClaim({ task, circleId, circleName, getOverride, addT
 
   let mirrored = null;
   try {
-    mirrored = await addToPersonalCrew({
+    mirrored = await addToPersonalCircle({
       text,
       originCircleId:   circleId,
       originCircleName: typeof circleName === 'string' ? circleName : undefined,
@@ -75,17 +75,17 @@ function pickText(task) {
 
 /**
  * Build a host's `afterClaimHook` from a `getOverride` accessor + an
- * `addToPersonalCrew` sink.  The agent calls the resulting fn after
+ * `addToPersonalCircle` sink.  The agent calls the resulting fn after
  * every successful `claimTask`; it returns `{routed, ...}` so the host
  * can log / surface the side-effect.
  */
-export function makeAfterClaimHook({ getOverride, addToPersonalCrew, resolveCircleName } = {}) {
+export function makeAfterClaimHook({ getOverride, addToPersonalCircle, resolveCircleName } = {}) {
   return async function afterClaimHook({ task, circleId } = {}) {
     if (!circleId) return { routed: false, reason: 'no-circle' };
     let circleName;
     if (typeof resolveCircleName === 'function') {
       try { circleName = await resolveCircleName(circleId); } catch { /* optional */ }
     }
-    return routeClaim({ task, circleId, circleName, getOverride, addToPersonalCrew });
+    return routeClaim({ task, circleId, circleName, getOverride, addToPersonalCircle });
   };
 }

@@ -23,7 +23,7 @@ Why this matters:
 - Searching `circleId` surfaces task / pod-routing code; searching
   `circle.id` surfaces circles-substrate code — they're the same
   identifier.
-- `crewPolicy(circleId)` (pod-routing) still resolves storage for a
+- `circlePolicy(circleId)` (pod-routing) still resolves storage for a
   group; the matching `circle` item layers audience resolution over
   the same identifier.
 - A future "rename `circleId` → `circleId` everywhere" refactor is
@@ -62,7 +62,7 @@ Recognised string short-hands:
 | `'private'` / `'me'`| `[ctx.me]`                                          |
 | `'household'`       | `ctx.householdMembers ?? []`                        |
 | `'role:NAME'`       | `ctx.roleMembers?.[NAME] ?? []`                     |
-| `'crew:ID'`         | same as `{kind:'circle-ref', id: ID}` (alias)       |
+| `'circle:ID'`         | same as `{kind:'circle-ref', id: ID}` (alias)       |
 | `'circle:ID'`       | same as `{kind:'circle-ref', id: ID}`               |
 
 Pure helpers:
@@ -112,13 +112,13 @@ import {
   createCirclesStore,
 } from '@canopy/circles';
 
-const audience = normalizeAudience('crew:gardening-crew');
-// → { kind: 'circle-ref', id: 'gardening-crew' }
+const audience = normalizeAudience('circle:gardening-circle');
+// → { kind: 'circle-ref', id: 'gardening-circle' }
 
 const circlesStore = createCirclesStore({ itemStore });
 
 const c = await circlesStore.create(
-  { name: 'Gardening crew', members: ['alice', 'bob'] },
+  { name: 'Gardening circle', members: ['alice', 'bob'] },
   { actor: 'me' },
 );
 

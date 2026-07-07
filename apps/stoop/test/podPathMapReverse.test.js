@@ -17,7 +17,7 @@ function mkResolve({ ring = false } = {}) {
       const rest = storageFn.slice('group/'.length);
       return ring
         ? `pseudo-pod://dev/group/${rest}`
-        : `https://grp.pod/${rest}`;        // groupPodUri/<crew>/<cat>
+        : `https://grp.pod/${rest}`;        // groupPodUri/<circle>/<cat>
     }
     if (storageFn === 'private/state')   return 'https://my.pod/private/state';
     if (storageFn === 'sharing/threads') return 'https://my.pod/sharing/threads';

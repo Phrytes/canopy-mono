@@ -1,10 +1,10 @@
 /**
- * CadenceSection — admin-only crew-wide cadence config.
+ * CadenceSection — admin-only circle-wide cadence config.
  *
  * Phase 41.18.3 (2026-05-10).
  *
- * Wraps `getCrewCadences` + `setCrewCadences`. Same shape as
- * CadenceOverridesScreen but on the crew-side configuration —
+ * Wraps `getCircleCadences` + `setCircleCadences`. Same shape as
+ * CadenceOverridesScreen but on the circle-side configuration —
  * admin/coordinator only per the underlying skill's gating.
  *
  * V1 surface: per-event intervalMs text input, sparse map saved
@@ -35,8 +35,8 @@ export function CadenceSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cur   = useSkillResult('getCrewCadences', {}, [svc?.activeCircleId]);
-  const setSk = useSkill('setCrewCadences');
+  const cur   = useSkillResult('getCircleCadences', {}, [svc?.activeCircleId]);
+  const setSk = useSkill('setCircleCadences');
 
   const [draft, setDraft] = useState(null);
   const [busy,  setBusy]  = useState(false);
@@ -87,7 +87,7 @@ export function CadenceSection() {
   if (!isAdmin) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t('mobile.crew_settings.admin_only')}
+        {t('mobile.circle_settings.admin_only')}
       </Text>
     );
   }
@@ -95,7 +95,7 @@ export function CadenceSection() {
   return (
     <View>
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginBottom: SPACING.sm }}>
-        {t('mobile.crew_settings.cadence_intro')}
+        {t('mobile.circle_settings.cadence_intro')}
       </Text>
       {KNOWN_EVENTS.map((evt) => {
         const value = draft?.[evt]?.intervalMs;
@@ -107,11 +107,11 @@ export function CadenceSection() {
             <TextInput
               value={value == null ? '' : String(value)}
               onChangeText={(s) => onChangeMs(evt, s)}
-              placeholder={t('mobile.cadence.placeholder_crew')}
+              placeholder={t('mobile.cadence.placeholder_circle')}
               placeholderTextColor={COLORS.textMuted}
               keyboardType="numeric"
               autoCorrect={false}
-              accessibilityLabel={`cadence-crew-${evt}`}
+              accessibilityLabel={`cadence-circle-${evt}`}
               style={{
                 marginTop: SPACING.xs,
                 borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
@@ -133,7 +133,7 @@ export function CadenceSection() {
         onPress={onSave}
         disabled={busy || !dirty}
         accessibilityRole="button"
-        accessibilityLabel="cadence-crew-save"
+        accessibilityLabel="cadence-circle-save"
         style={{
           marginTop: SPACING.md,
           alignSelf: 'flex-start',

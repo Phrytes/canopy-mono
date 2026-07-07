@@ -18,7 +18,7 @@ import {
   buildPodSignInSkillsMobile,
 } from '../src/lib/podSignInSkillsMobile.js';
 
-/** CachingDataSource-shaped stub (what podCrewProvider exposes). */
+/** CachingDataSource-shaped stub (what podCircleProvider exposes). */
 function makeDataSource() {
   let inner = null;
   return {
@@ -55,19 +55,19 @@ function callSkill(def, data) {
 }
 
 describe('M1-S5 — buildPodSignInSkillsMobile surface', () => {
-  it('throws without podCrewProvider', () => {
+  it('throws without podCircleProvider', () => {
     expect(() => buildPodSignInSkillsMobile({ sessionFactory: () => ({}) }))
-      .toThrow(/podCrewProvider required/);
+      .toThrow(/podCircleProvider required/);
   });
 
   it('throws without sessionFactory', () => {
-    expect(() => buildPodSignInSkillsMobile({ podCrewProvider: () => null }))
+    expect(() => buildPodSignInSkillsMobile({ podCircleProvider: () => null }))
       .toThrow(/sessionFactory required/);
   });
 
   it('registers exactly the four tasks-v0 Slice-5 skill ids', () => {
     const defs = buildPodSignInSkillsMobile({
-      podCrewProvider: () => null,
+      podCircleProvider: () => null,
       sessionFactory:  () => makeFakeRnSession(),
     });
     expect(defs.map((d) => d.id).sort()).toEqual([
@@ -76,9 +76,9 @@ describe('M1-S5 — buildPodSignInSkillsMobile surface', () => {
   });
 });
 
-describe('M1-S5 — skill dispatch (no pod-capable crew)', () => {
+describe('M1-S5 — skill dispatch (no pod-capable circle)', () => {
   const defs = buildPodSignInSkillsMobile({
-    podCrewProvider: () => null,
+    podCircleProvider: () => null,
     sessionFactory:  () => makeFakeRnSession(),
   });
   const byId = Object.fromEntries(defs.map((d) => [d.id, d]));
@@ -91,13 +91,13 @@ describe('M1-S5 — skill dispatch (no pod-capable crew)', () => {
     expect(await callSkill(byId.signOutOfPod)).toEqual({ ok: true });
   });
 
-  it('startPodSignIn returns the structured no-crew error', async () => {
+  it('startPodSignIn returns the structured no-circle error', async () => {
     const r = await callSkill(byId.startPodSignIn, { issuer: 'x', redirectUrl: 'y' });
     expect(r.ok).toBe(false);
     expect(typeof r.error).toBe('string');
   });
 
-  it('completePodSignIn returns the structured no-crew error', async () => {
+  it('completePodSignIn returns the structured no-circle error', async () => {
     const r = await callSkill(byId.completePodSignIn, { tokens: { accessToken: 'AT' } });
     expect(r.ok).toBe(false);
   });
@@ -107,12 +107,12 @@ describe('M1-S5 — completePodSignIn RN tokens path through the shared seam', (
   it('adopts tokens onto the injected session + attaches the pod inner', async () => {
     const ds      = makeDataSource();
     const session = makeFakeRnSession();
-    const crew    = { dataSource: ds, oidcSession: null };
+    const circle    = { dataSource: ds, oidcSession: null };
     const sessionFactory   = vi.fn(() => session);
     const dataSourceFactory = vi.fn(({ podUrl }) => ({ _pod: podUrl }));
 
     const defs = buildPodSignInSkillsMobile({
-      podCrewProvider: () => crew,
+      podCircleProvider: () => circle,
       sessionFactory,
       dataSourceFactory,
     });
@@ -137,7 +137,7 @@ describe('M1-S5 — completePodSignIn RN tokens path through the shared seam', (
     const out = await callSkill(byId.signOutOfPod);
     expect(out).toEqual({ ok: true });
     expect(ds.hasInner).toBe(false);
-    expect(crew.oidcSession).toBeNull();
+    expect(circle.oidcSession).toBeNull();
   });
 });
 
@@ -146,7 +146,7 @@ describe('M1-S5 — ServiceContext registers the skills on the meshAgent', () =>
   // formed (id + handler) so agent.skills.register accepts them.
   it('every def has an id + async handler + visibility metadata', () => {
     const defs = buildPodSignInSkillsMobile({
-      podCrewProvider: () => null,
+      podCircleProvider: () => null,
       sessionFactory:  () => makeFakeRnSession(),
     });
     for (const d of defs) {

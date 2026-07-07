@@ -4,7 +4,7 @@
  * Task #227 (2026-05-24).
  *
  * Mirrors the substrate's role policy from
- * `apps/tasks-v0/src/skills/crewControls.js`:
+ * `apps/tasks-v0/src/skills/circleControls.js`:
  *   - admin  → pause + unpause + archive + unarchive
  *   - coord  → pause + unpause only
  *   - others → read-only label, no CTAs
@@ -21,7 +21,7 @@ import { describe, it, expect } from 'vitest';
 import { lifecycleControlsFor } from '../../src/lib/lifecycleControls.js';
 
 describe('lifecycleControlsFor — admin', () => {
-  it('admin on an active crew can pause + archive (not unpause/unarchive)', () => {
+  it('admin on an active circle can pause + archive (not unpause/unarchive)', () => {
     const r = lifecycleControlsFor({ role: 'admin', paused: false, archived: false });
     expect(r.stateKey).toBe('active');
     expect(r.canPause).toBe(true);
@@ -31,7 +31,7 @@ describe('lifecycleControlsFor — admin', () => {
     expect(r.showReadOnly).toBe(false);
   });
 
-  it('admin on a paused crew can unpause + archive', () => {
+  it('admin on a paused circle can unpause + archive', () => {
     const r = lifecycleControlsFor({ role: 'admin', paused: true, archived: false });
     expect(r.stateKey).toBe('paused');
     expect(r.canPause).toBe(false);
@@ -40,7 +40,7 @@ describe('lifecycleControlsFor — admin', () => {
     expect(r.canUnarchive).toBe(false);
   });
 
-  it('admin on an archived crew can only unarchive (archived wins over paused)', () => {
+  it('admin on an archived circle can only unarchive (archived wins over paused)', () => {
     const r = lifecycleControlsFor({ role: 'admin', paused: true, archived: true });
     expect(r.stateKey).toBe('archived');
     expect(r.canPause).toBe(false);
@@ -59,7 +59,7 @@ describe('lifecycleControlsFor — coordinator', () => {
     expect(r.showReadOnly).toBe(false);
   });
 
-  it('coord on a paused crew can unpause but NOT archive', () => {
+  it('coord on a paused circle can unpause but NOT archive', () => {
     const r = lifecycleControlsFor({ role: 'coordinator', paused: true, archived: false });
     expect(r.canUnpause).toBe(true);
     expect(r.canPause).toBe(false);
@@ -67,7 +67,7 @@ describe('lifecycleControlsFor — coordinator', () => {
     expect(r.canUnarchive).toBe(false);
   });
 
-  it('coord on an archived crew sees no CTAs (only admins can unarchive)', () => {
+  it('coord on an archived circle sees no CTAs (only admins can unarchive)', () => {
     const r = lifecycleControlsFor({ role: 'coordinator', paused: false, archived: true });
     expect(r.canPause).toBe(false);
     expect(r.canUnpause).toBe(false);
@@ -75,7 +75,7 @@ describe('lifecycleControlsFor — coordinator', () => {
     expect(r.canUnarchive).toBe(false);
     // Coord still owns the section header (not the member read-only
     // bail-out) — they keep getting state-aware copy, just no usable
-    // CTAs while the crew is archived.
+    // CTAs while the circle is archived.
     expect(r.showReadOnly).toBe(false);
     expect(r.showAnyControl).toBe(false);
   });

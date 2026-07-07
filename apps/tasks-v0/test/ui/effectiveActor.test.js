@@ -1,5 +1,5 @@
 /**
- * effectiveActor — pubKey ↔ webid resolution against the crew's
+ * effectiveActor — pubKey ↔ webid resolution against the circle's
  * roles map + alias map.
  *
  * Phase 41.18 follow-up (2026-05-10).
@@ -25,39 +25,39 @@ const ANNE_PUBKEY = 'pk-anne-aabbcc';
 const BOB_WEBID   = 'webid://bob';
 const BOB_PUBKEY  = 'pk-bob-deadbeef';
 
-const CREW = {
+const CIRCLE = {
   roles: { [ANNE_WEBID]: 'admin', [BOB_WEBID]: 'member' },
   actorAliases: { [ANNE_PUBKEY]: ANNE_WEBID, [BOB_PUBKEY]: BOB_WEBID },
 };
 
 describe('resolveActorWebid', () => {
   it('returns the from value when it directly matches a roles key', () => {
-    expect(resolveActorWebid({ from: ANNE_WEBID, crewState: CREW })).toBe(ANNE_WEBID);
+    expect(resolveActorWebid({ from: ANNE_WEBID, circleState: CIRCLE })).toBe(ANNE_WEBID);
   });
 
   it('resolves a pubKey through the alias map', () => {
-    expect(resolveActorWebid({ from: ANNE_PUBKEY, crewState: CREW })).toBe(ANNE_WEBID);
-    expect(resolveActorWebid({ from: BOB_PUBKEY,  crewState: CREW })).toBe(BOB_WEBID);
+    expect(resolveActorWebid({ from: ANNE_PUBKEY, circleState: CIRCLE })).toBe(ANNE_WEBID);
+    expect(resolveActorWebid({ from: BOB_PUBKEY,  circleState: CIRCLE })).toBe(BOB_WEBID);
   });
 
   it('falls through to envelope._origin on relay-forwarded calls', () => {
     expect(resolveActorWebid({
       from: 'pk-relay',
       envelope: { _origin: ANNE_WEBID },
-      crewState: CREW,
+      circleState: CIRCLE,
     })).toBe(ANNE_WEBID);
 
     // Origin is a pubKey → resolve via aliases too.
     expect(resolveActorWebid({
       from: 'pk-relay',
       envelope: { _origin: BOB_PUBKEY },
-      crewState: CREW,
+      circleState: CIRCLE,
     })).toBe(BOB_WEBID);
   });
 
   it('unknown actor returns null', () => {
-    expect(resolveActorWebid({ from: 'unknown', crewState: CREW })).toBeNull();
-    expect(resolveActorWebid({ from: null,      crewState: CREW })).toBeNull();
+    expect(resolveActorWebid({ from: 'unknown', circleState: CIRCLE })).toBeNull();
+    expect(resolveActorWebid({ from: null,      circleState: CIRCLE })).toBeNull();
   });
 
   it('alias entry whose webid isn\'t in roles returns null (defensive)', () => {
@@ -65,24 +65,24 @@ describe('resolveActorWebid', () => {
       roles: {},
       actorAliases: { [ANNE_PUBKEY]: ANNE_WEBID }, // webid removed from roles
     };
-    expect(resolveActorWebid({ from: ANNE_PUBKEY, crewState: stale })).toBeNull();
+    expect(resolveActorWebid({ from: ANNE_PUBKEY, circleState: stale })).toBeNull();
   });
 
-  it('no crewState → returns from unchanged', () => {
+  it('no circleState → returns from unchanged', () => {
     expect(resolveActorWebid({ from: ANNE_WEBID })).toBe(ANNE_WEBID);
   });
 });
 
 describe('resolveActorRole', () => {
   it('looks up role through the alias map', () => {
-    expect(resolveActorRole({ from: ANNE_WEBID,  crewState: CREW })).toBe('admin');
-    expect(resolveActorRole({ from: ANNE_PUBKEY, crewState: CREW })).toBe('admin');
-    expect(resolveActorRole({ from: BOB_PUBKEY,  crewState: CREW })).toBe('member');
+    expect(resolveActorRole({ from: ANNE_WEBID,  circleState: CIRCLE })).toBe('admin');
+    expect(resolveActorRole({ from: ANNE_PUBKEY, circleState: CIRCLE })).toBe('admin');
+    expect(resolveActorRole({ from: BOB_PUBKEY,  circleState: CIRCLE })).toBe('member');
   });
 
   it('returns null for unknown actors', () => {
-    expect(resolveActorRole({ from: 'unknown', crewState: CREW })).toBeNull();
-    expect(resolveActorRole({ from: ANNE_WEBID, crewState: null })).toBeNull();
+    expect(resolveActorRole({ from: 'unknown', circleState: CIRCLE })).toBeNull();
+    expect(resolveActorRole({ from: ANNE_WEBID, circleState: null })).toBeNull();
   });
 });
 

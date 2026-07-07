@@ -85,7 +85,7 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
     if (appOrigin === 'household')   return agent.callSkill(appOrigin, opId, args);
     if (appOrigin === 'tasks') {
       // Post-slice-1 (integration-plan 2026-05-23): tasks-v0 is the
-      // real crew agent.  Route directly; realAgent.callSkill knows
+      // real circle agent.  Route directly; realAgent.callSkill knows
       // how to reach it + adapt the briefSummary/searchTasks ops.
       return agent.callSkill('tasks', opId, args);
     }
@@ -382,16 +382,16 @@ describe('CC-ST.9 — mute a noisy peer', () => {
  * Tasks-v0 — CC-TK
  * ══════════════════════════════════════════════════════════ */
 
-describe('CC-TK.1 — provision a crew', () => {
+describe('CC-TK.1 — provision a circle', () => {
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
 
-  it('/crew-new "Oosterpoort" --kind=household returns a crew id', async () => {
-    const r = await ws.userInput('/crew-new "Oosterpoort" --kind=household');
+  it('/circle-new "Oosterpoort" --kind=household returns a circle id', async () => {
+    const r = await ws.userInput('/circle-new "Oosterpoort" --kind=household');
     expect(r.payload.ok).toBe(true);
-    // Post-integration: real provisionMyCrew demands a slug-shaped
+    // Post-integration: real provisionMyCircle demands a slug-shaped
     // circleId; canopy-chat's adapter derives one from the name
-    // (`"Oosterpoort"` → `oosterpoort`).  No `crew-` prefix.
+    // (`"Oosterpoort"` → `oosterpoort`).  No `circle-` prefix.
     expect(typeof r.payload.circleId).toBe('string');
     expect(r.payload.circleId.length).toBeGreaterThan(0);
   });
@@ -455,7 +455,7 @@ describe('CC-TK.F1 — active-circle → app-scope binding (5.3)', () => {
     expect(route.verb).toBe('add');
     expect(reply.error).toBeUndefined();
     // The dispatched op carries the active circle on every scope key, so
-    // a crew/group-aware resolver routes the write into that circle.
+    // a circle/group-aware resolver routes the write into that circle.
     const dispatched = calls[0];
     expect(dispatched.opId).toBe(route.opId);
     expect(dispatched.args.circleId).toBe('oosterpoort');
@@ -472,17 +472,17 @@ describe('CC-TK.F1 — active-circle → app-scope binding (5.3)', () => {
   });
 
   it('an explicit scope arg wins over the active circle (no override)', async () => {
-    const { calls } = await dispatchInCircle('/addtask "fix tap" --circleId=plumbing-crew', 'oosterpoort');
-    expect(calls[0].args.circleId).toBe('plumbing-crew');   // caller's choice preserved
+    const { calls } = await dispatchInCircle('/addtask "fix tap" --circleId=plumbing-circle', 'oosterpoort');
+    expect(calls[0].args.circleId).toBe('plumbing-circle');   // caller's choice preserved
     expect(calls[0].args._scope).toBeUndefined();          // not layered on top
   });
 
-  it('a task created in circle A is filtered to A and absent from B (real multi-crew separation)', async () => {
+  it('a task created in circle A is filtered to A and absent from B (real multi-circle separation)', async () => {
     await dispatchInCircle('/addtask "alpha task"', 'circle-a');
     await dispatchInCircle('/addtask "beta task"',  'circle-b');
 
     // Read each circle the way the circle detail view does (loadCircleItems
-    // → getMyTasks → tasks-v0 listOpen, scoped to the circle's crew).
+    // → getMyTasks → tasks-v0 listOpen, scoped to the circle's circle).
     const resolving = makeResolvingCallSkill(ws.callSkill);
     const aItems = await loadCircleItems({ callSkill: resolving, circleId: 'circle-a' });
     const bItems = await loadCircleItems({ callSkill: resolving, circleId: 'circle-b' });
@@ -495,12 +495,12 @@ describe('CC-TK.F1 — active-circle → app-scope binding (5.3)', () => {
     expect(bLabels).not.toContain('alpha task');
   });
 
-  it('unscoped tasks stay in the primary crew, not leaked into a circle', async () => {
-    // The boot seeds 4 tasks into the primary (cc-default) crew.
+  it('unscoped tasks stay in the primary circle, not leaked into a circle', async () => {
+    // The boot seeds 4 tasks into the primary (cc-default) circle.
     const resolving = makeResolvingCallSkill(ws.callSkill);
     const circleItems = await loadCircleItems({ callSkill: resolving, circleId: 'fresh-circle' });
     const labels = circleItems.map((i) => i.label);
-    expect(labels).not.toContain('Fix the leaky tap');   // a seeded primary-crew task
+    expect(labels).not.toContain('Fix the leaky tap');   // a seeded primary-circle task
   });
 });
 
@@ -611,7 +611,7 @@ describe('CC-TK.7 — inbox of mentions', () => {
     const sub = await ws.userInput(`/submit ${open.id}`);
     // Real tasks-v0 inbox is populated by the approver-mention
     // mechanism (Phase 52.9.3 substrate-mirror notifyEnvelope).
-    // In canopy-chat's single-user crew without a separate
+    // In canopy-chat's single-user circle without a separate
     // approver agent there's no mention to deliver — submit just
     // updates the task state.  Verify the chain works:
     expect(sub.payload.ok).toBe(true);
@@ -945,7 +945,7 @@ describe('CC-XA.7 — help discovery', () => {
     const r = await ws.userInput('/help');
     const msg = r.payload.message;
     // At least one of the new ops should be discoverable.
-    expect(msg).toMatch(/\/add-chore|\/nudge|\/stoop-profile|\/crew-new|\/submit|\/inbox|\/folio-status|\/help-with/);
+    expect(msg).toMatch(/\/add-chore|\/nudge|\/stoop-profile|\/circle-new|\/submit|\/inbox|\/folio-status|\/help-with/);
   });
 });
 

@@ -4,7 +4,7 @@
  * Phase 41.18.2 (2026-05-10).
  *
  * Returns `{count, totalCount, refresh, loading, error}` keyed on the
- * active circleId so the badge updates when the user switches crews.
+ * active circleId so the badge updates when the user switches circles.
  * Used by the InboxScreen header + the Workspace screen's "Inbox"
  * shortcut chip.
  *

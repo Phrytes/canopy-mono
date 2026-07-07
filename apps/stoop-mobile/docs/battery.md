@@ -99,4 +99,4 @@ an issue + investigate before promoting to closed-beta.
 
 If push round-trip in foreground is > 5s, suspect the push token
 registration with `MobilePushBridge` — verify the token landed
-in `crewConfig.pushTokens` on the sender side.
+in `circleConfig.pushTokens` on the sender side.

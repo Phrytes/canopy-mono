@@ -117,7 +117,7 @@ export function MyWorkScreen() {
 
   // Phase 41.18 follow-up — when all three sections are empty,
   // collapse to a single "all clear" message instead of three
-  // stacked empties. Less noise on a fresh crew.
+  // stacked empties. Less noise on a fresh circle.
   const allEmpty = sections.every((s) => s.items.length === 0);
 
   return (

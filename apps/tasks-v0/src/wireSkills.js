@@ -2,27 +2,27 @@
  * wireSkills — V2.8 single-registration root.
  *
  * Registers every Tasks skill on the process-wide meshAgent ONCE.
- * Skills resolve their per-crew CrewState at dispatch time via the
+ * Skills resolve their per-circle CircleState at dispatch time via the
  * supplied `bundleResolver`. See `./bundleResolver.js` for the
- * single/multi-crew strategies.
+ * single/multi-circle strategies.
  *
- * Design: this is the only place skills get registered. Crew.js
- * goes from "register N times per crew" to "build CrewState; wire
+ * Design: this is the only place skills get registered. Circle.js
+ * goes from "register N times per circle" to "build CircleState; wire
  * once" — see Stoop's 2026-05-08 single-agent-refactor for the
  * functional sketch this mirrors.
  *
  * Mandatory args:
  *   - `meshAgent` — the target `core.Agent`
- *   - `bundleResolver` — `(parts, ctx) → CrewState | null`
+ *   - `bundleResolver` — `(parts, ctx) → CircleState | null`
  *   - `userSettings` — `{loadShared, updateShared}` for observability
  *
  * Optional:
- *   - `crewsProvider` — `() => Iterable<CrewState>` for the dashboard
- *     skill. Defaults to a single-crew iterator if omitted.
+ *   - `circlesProvider` — `() => Iterable<CircleState>` for the dashboard
+ *     skill. Defaults to a single-circle iterator if omitted.
  *   - `members` — when supplied, identity-resolver registers in the
- *     classic single-crew shape with this MemberMap. For multi-crew,
- *     pass `getBundle` instead (returns `{members}` per resolved crew).
- *   - `getBundle` — `(args, ctx) => {members} | null` for multi-crew
+ *     classic single-circle shape with this MemberMap. For multi-circle,
+ *     pass `getBundle` instead (returns `{members}` per resolved circle).
+ *   - `getBundle` — `(args, ctx) => {members} | null` for multi-circle
  *     identity skills.
  */
 
@@ -39,7 +39,7 @@ import { buildWorkspaceSkills } from './skills/workspace.js';
 // Q30 (DESIGN gap #1, closed 2026-05-27) — `tasks_briefSummary`.
 import { buildBriefSummarySkill } from './skills/briefSummary.js';
 import { buildObservabilitySkills } from './skills/observability.js';
-import { buildCrewControlSkills } from './skills/crewControls.js';
+import { buildCircleControlSkills } from './skills/circleControls.js';
 import { buildCustomRoleSkills } from './skills/customRoles.js';
 import { buildBotBindingSkills } from './skills/botBindings.js';
 import { buildCalendarEmissionSkills } from './skills/calendarEmission.js';
@@ -57,7 +57,7 @@ import { buildBotSkills } from './bot/skills.js';
  * @param {{loadShared, updateShared}} [args.userSettings]
  *   Optional. When omitted, a no-op default is supplied so the
  *   observability skills register but report empty state when called.
- * @param {() => Iterable<object>} [args.crewsProvider]
+ * @param {() => Iterable<object>} [args.circlesProvider]
  * @param {object} [args.members]
  * @param {(args: object, ctx?: object) => object | null} [args.getBundle]
  * @returns {{registered: string[]}}
@@ -66,7 +66,7 @@ export function wireSkills({
   meshAgent,
   bundleResolver,
   userSettings,
-  crewsProvider,
+  circlesProvider,
   members,
   getBundle,
 } = {}) {
@@ -84,24 +84,24 @@ export function wireSkills({
     updateShared: async () => ({}),
   };
 
-  const cp = typeof crewsProvider === 'function'
-    ? crewsProvider
+  const cp = typeof circlesProvider === 'function'
+    ? circlesProvider
     : () => {
-        // Default: derive single-crew iterator by resolving the empty parts.
-        const crew = bundleResolver([], {});
-        return crew ? [crew] : [];
+        // Default: derive single-circle iterator by resolving the empty parts.
+        const circle = bundleResolver([], {});
+        return circle ? [circle] : [];
       };
 
   const idsArgs = members
     ? { members }
     : (typeof getBundle === 'function' ? { getBundle } : null);
   if (!idsArgs) {
-    throw new TypeError('wireSkills: pass either `members` (single-crew) or `getBundle` (multi-crew) for identity skills');
+    throw new TypeError('wireSkills: pass either `members` (single-circle) or `getBundle` (multi-circle) for identity skills');
   }
 
   const allBuilders = [
     buildIdentitySkills(idsArgs),
-    buildSkills({ bundleResolver, crewsProvider: cp }),
+    buildSkills({ bundleResolver, circlesProvider: cp }),
     buildProfileSkills({ bundleResolver }),
     buildAppealSkill({ bundleResolver }),
     buildChatSkills({ bundleResolver }),
@@ -111,14 +111,14 @@ export function wireSkills({
     buildWorkspaceSkills({ bundleResolver }),
     buildBriefSummarySkill({ bundleResolver }),
     buildObservabilitySkills({ bundleResolver, userSettings: us }),
-    buildCrewControlSkills({ bundleResolver }),
+    buildCircleControlSkills({ bundleResolver }),
     buildCustomRoleSkills({ bundleResolver }),
     buildBotBindingSkills({ bundleResolver }),
     buildCalendarEmissionSkills({ bundleResolver }),
     buildInvoicingSkills({ bundleResolver }),
     buildAvailabilitySkills({ bundleResolver }),
     buildPlannerSkills({ bundleResolver }),
-    buildDashboardSkills({ bundleResolver, crewsProvider: cp }),
+    buildDashboardSkills({ bundleResolver, circlesProvider: cp }),
     buildForceCompleteSkill({ bundleResolver }),
     buildBotSkills({ bundleResolver }),
   ];

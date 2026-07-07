@@ -16,8 +16,8 @@ vs mobile (`apps/canopy-chat-mobile/src/screens/`) vs the shared `apps/canopy-ch
 > tested:
 > 1. **circleLookup scope leak** — on a non-circle thread `getActiveCircle()` is null, and the
 >    `?? scope?.id` fallback leaked the THREAD id ('main') as a circleId → live fetch hit a non-existent
->    crew → `/complete-task <label>` returned "item not found". Fix: `scopeId` is authoritative when
->    provided (null = default crew). (`circleLookup.js` + unit test.)
+>    circle → `/complete-task <label>` returned "item not found". Fix: `scopeId` is authoritative when
+>    provided (null = default circle). (`circleLookup.js` + unit test.)
 > 2. **`_match` bound too late** — the parser leaves the positional body under `_match`; the router bound
 >    it to the id-param only in `resolveDispatch`, AFTER `resolveTextArgsInPlace` ran, so the resolver saw
 >    no id-param value and never looked the label up. Fix: bind `_match` first in `resolveTextArgsInPlace`

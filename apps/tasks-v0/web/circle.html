@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Tasks — Crew + members + settings</title>
+  <title>Tasks — Circle + members + settings</title>
   <link rel="stylesheet" href="/style.css">
   <!-- Post-V0 (#272, 2026-05-27) — runtime locale loader; reads ?lng= or localStorage. -->
   <script type="module" src="/lib/i18nAutoBoot.js"></script>
@@ -15,8 +15,8 @@
       <a href="/review.html">Review</a>
       <a href="/dag.html">DAG</a>
       <a href="/availability.html">Availability</a>
-      <a href="/crew.html" class="active">Crew</a>
-      <a href="/crews.html">Crews</a>
+      <a href="/circle.html" class="active">Circle</a>
+      <a href="/circles.html">Circles</a>
       <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
@@ -24,8 +24,8 @@
 
   <main>
     <section id="info">
-      <h2 id="crew-name">…</h2>
-      <p id="crew-meta" style="font-size:0.85rem;color:var(--muted)"></p>
+      <h2 id="circle-name">…</h2>
+      <p id="circle-meta" style="font-size:0.85rem;color:var(--muted)"></p>
     </section>
 
     <section id="members">
@@ -36,7 +36,7 @@
     <section id="requests" hidden>
       <h3>Pending sub-task requests</h3>
       <p style="font-size:0.85rem;color:var(--muted)">
-        Requests filed past the crew's <code>subtasksAdminApprovalDepth</code>
+        Requests filed past the circle's <code>subtasksAdminApprovalDepth</code>
         threshold. Admin / coordinator approves or declines.
       </p>
       <ul id="requests-list"></ul>
@@ -74,7 +74,7 @@
         rank order. The role is registered in the
         <code>core.Roles</code> process-global registry on boot
         (so V1 add-task / claim / role checks honour it) and
-        persisted in <code>crew.customRoles</code>.
+        persisted in <code>circle.customRoles</code>.
       </p>
       <table id="customroles-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
         <thead><tr><th style="text-align:left">Role</th><th style="text-align:right">Rank</th><th>Source</th><th></th></tr></thead>
@@ -83,7 +83,7 @@
       <form id="customrole-add" style="display:flex;gap:0.5rem;align-items:flex-end;margin-top:0.6rem">
         <label style="flex:1">
           <span>New role id</span>
-          <input id="customrole-id" type="text" placeholder="e.g. kitchen-crew" required>
+          <input id="customrole-id" type="text" placeholder="e.g. kitchen-circle" required>
         </label>
         <label>
           <span>Rank (1-99)</span>
@@ -96,7 +96,7 @@
     <section id="botbindings" hidden>
       <h3>Bot bindings (admin only)</h3>
       <p style="font-size:0.85rem;color:var(--muted)">
-        Maps Telegram chatIds to crew member webids. When a bound
+        Maps Telegram chatIds to circle member webids. When a bound
         chatId messages the bot, commands dispatch as that webid
         (role policy, audit log etc. apply). Unbound chatIds get a
         friendly hint reply with their chatId — admin pastes it here
@@ -121,7 +121,7 @@
           <input id="botbinding-chatid" type="text" placeholder="e.g. 123456789" required>
         </label>
         <label style="flex:2">
-          <span>Crew member</span>
+          <span>Circle member</span>
           <select id="botbinding-webid" required></select>
         </label>
         <button type="submit">Bind</button>
@@ -185,7 +185,7 @@
       <h3>Cadence config (admin / coordinator)</h3>
       <p style="font-size:0.85rem;color:var(--muted)">
         Per-event delivery channel + suppression. User-side overrides
-        layer on top (User &gt; Crew &gt; Baseline).
+        layer on top (User &gt; Circle &gt; Baseline).
       </p>
       <table id="cadences-table" style="width:100%;font-size:0.9rem;border-collapse:collapse">
         <thead><tr><th style="text-align:left">Event</th><th>Channel</th><th>Suppressed</th><th></th></tr></thead>
@@ -212,27 +212,27 @@
     async function refresh() {
       let cfgRes;
       try {
-        cfgRes = await callSkill('getCrewConfig');
+        cfgRes = await callSkill('getCircleConfig');
       } catch (err) {
         // Surface the V0-mode hint into the members section (the most
         // prominent block on the page) and bail.
         renderV1NotAvailable(
           document.getElementById('members-list'),
           err,
-          'Crew + settings + stats are V1 features.',
+          'Circle + settings + stats are V1 features.',
         );
-        document.getElementById('crew-name').textContent = '(V1 mode required)';
-        document.getElementById('crew-meta').textContent = '';
+        document.getElementById('circle-name').textContent = '(V1 mode required)';
+        document.getElementById('circle-meta').textContent = '';
         return;
       }
-      const crew = cfgRes.crew ?? {};
-      document.getElementById('crew-name').textContent = crew.name ?? crew.circleId ?? '(no crew)';
-      document.getElementById('crew-meta').textContent =
-        `kind: ${crew.kind ?? 'household'} · sub-task admin-approval depth: ${crew.subtasksAdminApprovalDepth ?? 3}`;
+      const circle = cfgRes.circle ?? {};
+      document.getElementById('circle-name').textContent = circle.name ?? circle.circleId ?? '(no circle)';
+      document.getElementById('circle-meta').textContent =
+        `kind: ${circle.kind ?? 'household'} · sub-task admin-approval depth: ${circle.subtasksAdminApprovalDepth ?? 3}`;
 
       const ml = document.getElementById('members-list');
       ml.innerHTML = '';
-      const members = crew.members ?? [];
+      const members = circle.members ?? [];
       if (members.length === 0) {
         ml.innerHTML = '<li class="empty">No members.</li>';
       } else {
@@ -305,11 +305,11 @@
         dd.textContent = v;
         sl.append(dt, dd);
       }
-      row('circleId',       crew.circleId);
-      row('kind',         crew.kind);
-      row('default approval', crew.dodPolicy?.defaultApproval ?? 'self-mark');
-      row('subtasksAdminApprovalDepth', String(crew.subtasksAdminApprovalDepth ?? 3));
-      row('member count', String((crew.members ?? []).length));
+      row('circleId',       circle.circleId);
+      row('kind',         circle.kind);
+      row('default approval', circle.dodPolicy?.defaultApproval ?? 'self-mark');
+      row('subtasksAdminApprovalDepth', String(circle.subtasksAdminApprovalDepth ?? 3));
+      row('member count', String((circle.members ?? []).length));
 
       // Stats — counters + latencies.
       const stats = await callSkill('getMetrics').catch(() => ({ snapshot: {} }));
@@ -362,7 +362,7 @@
           if (rmBtn) {
             rmBtn.addEventListener('click', async () => {
               if (!confirm(`Remove custom role "${r.id}"? Members holding it will need to be re-assigned a different role.`)) return;
-              const res = await callSkill('unregisterCrewCustomRole', { roleId: r.id });
+              const res = await callSkill('unregisterCircleCustomRole', { roleId: r.id });
               if (res.error) alert(`Error: ${res.error}`);
               await refresh();
             });
@@ -376,7 +376,7 @@
           const id   = document.getElementById('customrole-id').value.trim();
           const rank = Number(document.getElementById('customrole-rank').value);
           if (!id || !Number.isFinite(rank)) return;
-          const res = await callSkill('registerCrewCustomRole', { roleId: id, rank });
+          const res = await callSkill('registerCircleCustomRole', { roleId: id, rank });
           if (res.error) {
             alert(`Error: ${res.error}`);
             return;
@@ -457,7 +457,7 @@
         // Populate the member dropdown.
         const sel = document.getElementById('botbinding-webid');
         sel.innerHTML = '';
-        for (const m of crew.members ?? []) {
+        for (const m of circle.members ?? []) {
           const opt = document.createElement('option');
           opt.value = m.webid;
           opt.textContent = `${m.displayName ?? shortWebid(m.webid)} — ${m.webid}`;
@@ -490,9 +490,9 @@
         const tbody  = document.querySelector('#compensation-table tbody');
 
         const isAdmin = role === 'admin';
-        const myMember = (crew.members ?? []).find((m) => m?.webid === me);
+        const myMember = (circle.members ?? []).find((m) => m?.webid === me);
         const amPaidPro = !!myMember?.compensated;
-        const enabled  = !!crew.compensation?.enabled;
+        const enabled  = !!circle.compensation?.enabled;
 
         if (!isAdmin && !amPaidPro) {
           // Hide entirely; nothing to show.
@@ -512,7 +512,7 @@
             monthIn.value = ym;
             tbody.innerHTML = '';
             const targets = isAdmin
-              ? (crew.members ?? []).filter((m) => m?.compensated)
+              ? (circle.members ?? []).filter((m) => m?.compensated)
               : [myMember];
             for (const m of targets) {
               const r = await callSkill('getCompensation', { memberWebid: m.webid, month: ym }).catch(() => ({ totals: {} }));
@@ -587,7 +587,7 @@
         const tbody = document.querySelector('#cadences-table tbody');
         tbody.innerHTML = '';
         const events = ['missed-deadline', 'task-completed', 'task-submitted', 'task-rejected', 'task-revoked', 'subtask-request'];
-        const cadRes = await callSkill('getCrewCadences');
+        const cadRes = await callSkill('getCircleCadences');
         const cadences = cadRes.cadences ?? {};
         for (const ev of events) {
           const cur = cadences[ev] ?? {};
@@ -615,7 +615,7 @@
             if (key === 'channel') next[ev].channel = el.value;
             if (key === 'suppressed') next[ev].suppressed = el.checked;
           });
-          await callSkill('setCrewCadences', { cadences: next });
+          await callSkill('setCircleCadences', { cadences: next });
           await refresh();
         });
         sec.appendChild(save);

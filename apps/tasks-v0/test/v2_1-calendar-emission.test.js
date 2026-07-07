@@ -19,13 +19,13 @@ import { describe, it, expect } from 'vitest';
 import { buildIcsFor, diffRemoved } from '../src/calendar/emitter.js';
 import { wireCalendarEmission } from '../src/calendar/wireCalendarEmission.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -37,11 +37,11 @@ const CREW = {
   calendarEmission: { enabled: true },
 };
 
-function call(crew, name, data, from) {
-  return crew.agent.skills.get(name).handler({
+function call(circle, name, data, from) {
+  return circle.agent.skills.get(name).handler({
     parts: [{ type: 'DataPart', data: data ?? {} }],
     from,
-    agent: crew.agent,
+    agent: circle.agent,
     envelope: null,
   });
 }
@@ -53,8 +53,8 @@ describe('V2.1 — buildIcsFor', () => {
       { id: 'task-2', text: 'Subtask request', type: 'subtask-request', dueAt: 1715000000000 },     // skipped
       { id: 'task-3', text: 'No deadline', addedBy: ANNE },                                          // skipped
     ];
-    const ics = buildIcsFor({ circleId: 'crew-x', crewName: 'X', member: ANNE, tasks });
-    expect(ics).toContain('PRODID:-//Tasks V2//crew-x//EN');
+    const ics = buildIcsFor({ circleId: 'circle-x', circleName: 'X', member: ANNE, tasks });
+    expect(ics).toContain('PRODID:-//Tasks V2//circle-x//EN');
     expect(ics).toContain('SUMMARY:Pay invoice');
     expect(ics).not.toContain('SUMMARY:Subtask request');
     expect(ics).not.toContain('No deadline');
@@ -62,8 +62,8 @@ describe('V2.1 — buildIcsFor', () => {
 
   it('UIDs are stable across re-emissions', () => {
     const tasks = [{ id: 'task-1', text: 'A', dueAt: 1715000000000, addedBy: ANNE }];
-    const a = buildIcsFor({ circleId: 'x', crewName: 'X', member: ANNE, tasks, now: 1 });
-    const b = buildIcsFor({ circleId: 'x', crewName: 'X', member: ANNE, tasks, now: 2 });
+    const a = buildIcsFor({ circleId: 'x', circleName: 'X', member: ANNE, tasks, now: 1 });
+    const b = buildIcsFor({ circleId: 'x', circleName: 'X', member: ANNE, tasks, now: 2 });
     // The two emissions use the same UID even though `now` changes.
     expect(a).toContain('UID:task-1');
     expect(b).toContain('UID:task-1');
@@ -71,13 +71,13 @@ describe('V2.1 — buildIcsFor', () => {
 
   it('completed task → STATUS:COMPLETED', () => {
     const tasks = [{ id: 'task-1', text: 'A', dueAt: 1715000000000, addedBy: ANNE, completedAt: 1715100000000 }];
-    const ics = buildIcsFor({ circleId: 'x', crewName: 'X', member: ANNE, tasks });
+    const ics = buildIcsFor({ circleId: 'x', circleName: 'X', member: ANNE, tasks });
     expect(ics).toContain('STATUS:COMPLETED');
   });
 
   it('non-relevant member → empty calendar', () => {
     const tasks = [{ id: 'task-1', text: 'A', dueAt: 1715000000000, addedBy: ANNE, assignee: ANNE }];
-    const ics = buildIcsFor({ circleId: 'x', crewName: 'X', member: KID, tasks });
+    const ics = buildIcsFor({ circleId: 'x', circleName: 'X', member: KID, tasks });
     expect(ics).not.toContain('SUMMARY:A');
   });
 });
@@ -103,7 +103,7 @@ describe('V2.1 — wireCalendarEmission (debounce + write)', () => {
     const wire = wireCalendarEmission({
       itemStore,
       dataSource,
-      crew:    { circleId: 'x', name: 'X' },
+      circle:    { circleId: 'x', name: 'X' },
       member:  ANNE,
       path:    'mem://test/ical.ics',
       debounceMs: 50,
@@ -130,7 +130,7 @@ describe('V2.1 — wireCalendarEmission (debounce + write)', () => {
     ]);
     const wire = wireCalendarEmission({
       itemStore, dataSource,
-      crew:   { circleId: 'x', name: 'X' },
+      circle:   { circleId: 'x', name: 'X' },
       member: ANNE,
       path:   'mem://test/ical.ics',
       debounceMs: 60_000,
@@ -142,56 +142,56 @@ describe('V2.1 — wireCalendarEmission (debounce + write)', () => {
   });
 });
 
-describe('V2.1 — calendar emission skills (Crew-level)', () => {
+describe('V2.1 — calendar emission skills (Circle-level)', () => {
   it('member is denied on setCalendarEmission', async () => {
     const bundle = buildBundle();
-    const crew = await createCrewAgent({
-      crewConfig:           { ...CREW, calendarEmission: { enabled: false } },
+    const circle = await createCircleAgent({
+      circleConfig:           { ...CIRCLE, calendarEmission: { enabled: false } },
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
-    expect((await call(crew, 'setCalendarEmission', { enabled: true }, KID)).error).toMatch(/admin/);
-    await crew.close();
+    expect((await call(circle, 'setCalendarEmission', { enabled: true }, KID)).error).toMatch(/admin/);
+    await circle.close();
   });
 
   it('admin can toggle; getCalendarEmissionUrl returns per-member path when enabled', async () => {
     const bundle = buildBundle();
-    const crew = await createCrewAgent({
-      crewConfig:           { ...CREW, calendarEmission: { enabled: false } },
+    const circle = await createCircleAgent({
+      circleConfig:           { ...CIRCLE, calendarEmission: { enabled: false } },
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
 
-    const off = await call(crew, 'getCalendarEmissionUrl', {}, ANNE);
+    const off = await call(circle, 'getCalendarEmissionUrl', {}, ANNE);
     expect(off.enabled).toBe(false);
     expect(off.url).toBeNull();
 
-    const tog = await call(crew, 'setCalendarEmission', { enabled: true }, ANNE);
+    const tog = await call(circle, 'setCalendarEmission', { enabled: true }, ANNE);
     expect(tog.ok).toBe(true);
 
-    const onAnne  = await call(crew, 'getCalendarEmissionUrl', {}, ANNE);
-    const onAuthor = await call(crew, 'getCalendarEmissionUrl', {}, FRITS);
+    const onAnne  = await call(circle, 'getCalendarEmissionUrl', {}, ANNE);
+    const onAuthor = await call(circle, 'getCalendarEmissionUrl', {}, FRITS);
     expect(onAnne.enabled).toBe(true);
     expect(onAnne.url).toContain('oss-tools');
     expect(onAnne.url).toContain(encodeURIComponent(ANNE));
     expect(onAuthor.url).toContain(encodeURIComponent(FRITS));
     expect(onAnne.url).not.toBe(onAuthor.url);
 
-    await crew.close();
+    await circle.close();
   });
 
   it('end-to-end: emission writes a per-member ics blob containing the task', async () => {
     const bundle = buildBundle();
-    const crew = await createCrewAgent({
-      crewConfig:           CREW,         // emission enabled
+    const circle = await createCircleAgent({
+      circleConfig:           CIRCLE,         // emission enabled
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
-    const r = await call(crew, 'addTask', { text: 'V2.1 e2e', dueAt: Date.now() + 86_400_000 }, ANNE);
+    const r = await call(circle, 'addTask', { text: 'V2.1 e2e', dueAt: Date.now() + 86_400_000 }, ANNE);
     expect(r.task?.id).toBeTruthy();
     // Wait past the debounce window (60s default) — too slow for a
     // unit test; instead, drive the wire helper directly so we can
-    // call flushNow. For end-to-end via Crew, we settle for the
+    // call flushNow. For end-to-end via Circle, we settle for the
     // initial-write-on-attach + verifying the path key exists.
     // (Full debounce-respecting behaviour is covered by the unit
     // tests above.)
@@ -201,7 +201,7 @@ describe('V2.1 — calendar emission skills (Crew-level)', () => {
     const blob = await localStoreMap.read(path);
     expect(blob).toBeTruthy();
     expect(blob).toContain('PRODID:-//Tasks V2//oss-tools//EN');
-    await crew.close();
+    await circle.close();
   });
 });
 

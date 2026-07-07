@@ -1,11 +1,11 @@
 /**
- * Substrate-stack builder for Tasks-v0 crew bundles.
+ * Substrate-stack builder for Tasks-v0 circle bundles.
  *
  * Mirror of Stoop's `apps/stoop/src/lib/substrateStack.js`. Wires
  * `@canopy/pseudo-pod` + `@canopy/pod-routing` +
- * `@canopy/notify-envelope` per crew bundle so the substrate-shaped
+ * `@canopy/notify-envelope` per circle bundle so the substrate-shaped
  * task-mirror (`wireTasksSubstrateMirror`) can fan-out task writes
- * across crew member devices.
+ * across circle member devices.
  *
  * Phase 52.9.3 (2026-05-14, Tasks V2 ninth slice).
  *
@@ -25,7 +25,7 @@ import { createNotifyEnvelope }                 from '@canopy/notify-envelope';
  * @param {string} [args.deviceId]   — defaults to `agent.address`.
  * @param {object} [args.existingPseudoPod] — when supplied, reuse it
  *   instead of constructing a new one. Tasks V2 third slice already
- *   built a per-crew pseudoPod for agent-registry; the multi-crew
+ *   built a per-circle pseudoPod for agent-registry; the multi-circle
  *   fan-out work can keep using it.
  * @returns {{ pseudoPod, podRouting, notifyEnvelope, transport, deviceId, stop }}
  */

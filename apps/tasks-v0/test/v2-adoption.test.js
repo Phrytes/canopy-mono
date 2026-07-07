@@ -4,16 +4,16 @@
  * Covers:
  *   - `addTask({embeds: [{type, ref}, ...]})` persists embeds on the
  *     stored task; cap of 8; validates entries.
- *   - `crewConfig.storage` carries the §II.2 policy. Default
+ *   - `circleConfig.storage` carries the §II.2 policy. Default
  *     `'no-pod'`. Centralised/hybrid honour a `groupPodUri`.
- *   - `getCrewStoragePolicy` reads from `liveCrew.storage`.
- *   - `setCrewStoragePolicy` upgrades the policy; admin-only; one-way
+ *   - `getCircleStoragePolicy` reads from `liveCircle.storage`.
+ *   - `setCircleStoragePolicy` upgrades the policy; admin-only; one-way
  *     (rejects downgrade to no-pod once pod-having).
  */
 
 import { describe, it, expect } from 'vitest';
 import { DataPart } from '@canopy/core';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
 
 const ANNE = 'https://id.example/anne';
@@ -30,10 +30,10 @@ async function callSkill(agent, skillId, args, fromWebid = ANNE) {
   });
 }
 
-async function makeCrew(storage) {
+async function makeCircle(storage) {
   const bundle = buildBundle();
-  const crew = await createCrewAgent({
-    crewConfig: {
+  const circle = await createCircleAgent({
+    circleConfig: {
       circleId:  'oss-tools',
       name:    'OSS Tools NL',
       kind:    'project',
@@ -45,13 +45,13 @@ async function makeCrew(storage) {
     },
     localStoreBundle: bundle,
   });
-  return { crew, bundle };
+  return { circle, bundle };
 }
 
 describe('Tasks V2 — addTask embeds', () => {
   it('persists embeds on the stored task', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'addTask', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'addTask', {
       circleId: 'oss-tools',
       text:   'Paint the bench',
       embeds: [
@@ -66,8 +66,8 @@ describe('Tasks V2 — addTask embeds', () => {
   });
 
   it('omits embeds when none supplied (V1 back-compat)', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'addTask', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'addTask', {
       circleId: 'oss-tools',
       text:   'Plain task',
     });
@@ -75,8 +75,8 @@ describe('Tasks V2 — addTask embeds', () => {
   });
 
   it('rejects entries missing type', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'addTask', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'addTask', {
       circleId: 'oss-tools',
       text:   'x',
       embeds: [{ ref: 'pseudo-pod://abc/x' }],
@@ -85,8 +85,8 @@ describe('Tasks V2 — addTask embeds', () => {
   });
 
   it('rejects entries missing ref', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'addTask', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'addTask', {
       circleId: 'oss-tools',
       text:   'x',
       embeds: [{ type: 'task' }],
@@ -95,12 +95,12 @@ describe('Tasks V2 — addTask embeds', () => {
   });
 
   it('caps embeds at 8 per task', async () => {
-    const { crew } = await makeCrew();
+    const { circle } = await makeCircle();
     const tooMany = Array.from({ length: 9 }, (_, i) => ({
       type: 'task',
       ref:  `pseudo-pod://abc/tasks/t-${i}`,
     }));
-    const r = await callSkill(crew.agent, 'addTask', {
+    const r = await callSkill(circle.agent, 'addTask', {
       circleId: 'oss-tools',
       text:   'x',
       embeds: tooMany,
@@ -109,66 +109,66 @@ describe('Tasks V2 — addTask embeds', () => {
   });
 });
 
-describe('Tasks V2 — crewConfig.storage', () => {
+describe('Tasks V2 — circleConfig.storage', () => {
   it('defaults to no-pod when storage is omitted', async () => {
-    const { crew } = await makeCrew();
-    expect(crew.bundle?.crewState ?? crew.crewState ?? {}).toBeTruthy();
-    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
+    const { circle } = await makeCircle();
+    expect(circle.bundle?.circleState ?? circle.circleState ?? {}).toBeTruthy();
+    const r = await callSkill(circle.agent, 'getCircleStoragePolicy', { circleId: 'oss-tools' });
     expect(r).toEqual({ policy: 'no-pod', groupPodUri: null });
   });
 
   it('honours centralised + groupPodUri from the config', async () => {
-    const { crew } = await makeCrew({
+    const { circle } = await makeCircle({
       policy:      'centralised',
       groupPodUri: 'https://buurt.pod/',
     });
-    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
+    const r = await callSkill(circle.agent, 'getCircleStoragePolicy', { circleId: 'oss-tools' });
     expect(r).toEqual({ policy: 'centralised', groupPodUri: 'https://buurt.pod/' });
   });
 
   it('forward-additive: unknown policies fall back to no-pod silently', async () => {
-    const { crew } = await makeCrew({ policy: 'fancy-future-mode' });
-    const r = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
+    const { circle } = await makeCircle({ policy: 'fancy-future-mode' });
+    const r = await callSkill(circle.agent, 'getCircleStoragePolicy', { circleId: 'oss-tools' });
     expect(r.policy).toBe('no-pod');
   });
 });
 
 describe('Tasks V2 — pod sign-in skills', () => {
   it('podSignInStatus returns signedIn:false when nothing is wired', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'podSignInStatus', {});
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'podSignInStatus', {});
     expect(r).toEqual({ signedIn: false });
   });
 
   it('startPodSignIn requires issuer + redirectUrl', async () => {
-    const { crew } = await makeCrew();
-    const r1 = await callSkill(crew.agent, 'startPodSignIn', { redirectUrl: 'https://example/cb' });
+    const { circle } = await makeCircle();
+    const r1 = await callSkill(circle.agent, 'startPodSignIn', { redirectUrl: 'https://example/cb' });
     expect(r1?.error).toMatch(/issuer required/);
-    const r2 = await callSkill(crew.agent, 'startPodSignIn', { issuer: 'https://idp.example' });
+    const r2 = await callSkill(circle.agent, 'startPodSignIn', { issuer: 'https://idp.example' });
     expect(r2?.error).toMatch(/redirectUrl required/);
   });
 
   it('signOutOfPod is a no-op when no session', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'signOutOfPod', {});
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'signOutOfPod', {});
     expect(r).toEqual({ ok: true });
   });
 
   it('completePodSignIn rejects when no sign-in is in progress', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'completePodSignIn', { callbackUrl: 'https://example/cb' });
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'completePodSignIn', { callbackUrl: 'https://example/cb' });
     expect(r?.error).toMatch(/no sign-in in progress/);
   });
 });
 
 describe('Tasks V2 — agent-registry on bundle bring-up', () => {
   it('attaches bundle.agentRegistry with this agent registered', async () => {
-    const { crew } = await makeCrew();
-    expect(crew.agentRegistry).toBeTruthy();
-    expect(typeof crew.agentRegistry.list).toBe('function');
-    const agents = await crew.agentRegistry.list();
+    const { circle } = await makeCircle();
+    expect(circle.agentRegistry).toBeTruthy();
+    expect(typeof circle.agentRegistry.list).toBe('function');
+    const agents = await circle.agentRegistry.list();
     expect(agents.length).toBeGreaterThanOrEqual(1);
-    const pubKey = crew.agent?.identity?.pubKey ?? crew.agent?.address ?? null;
+    const pubKey = circle.agent?.identity?.pubKey ?? circle.agent?.address ?? null;
     const me = agents.find(a => a.pubKey === pubKey);
     expect(me).toBeTruthy();
     expect(me.role).toBe('device');
@@ -176,162 +176,162 @@ describe('Tasks V2 — agent-registry on bundle bring-up', () => {
     expect(me.capabilities).toContain('tasks-v0');
   });
 
-  it('records crew context in the capabilities tag', async () => {
-    const { crew } = await makeCrew();
-    const agents = await crew.agentRegistry.list();
-    const me = agents.find(a => a.pubKey === (crew.agent?.identity?.pubKey ?? crew.agent?.address));
-    expect(me.capabilities).toContain('crew:oss-tools');
+  it('records circle context in the capabilities tag', async () => {
+    const { circle } = await makeCircle();
+    const agents = await circle.agentRegistry.list();
+    const me = agents.find(a => a.pubKey === (circle.agent?.identity?.pubKey ?? circle.agent?.address));
+    expect(me.capabilities).toContain('circle:oss-tools');
   });
 
-  it('records the crew name on the entry', async () => {
-    const { crew } = await makeCrew();
-    const agents = await crew.agentRegistry.list();
-    const me = agents.find(a => a.pubKey === (crew.agent?.identity?.pubKey ?? crew.agent?.address));
+  it('records the circle name on the entry', async () => {
+    const { circle } = await makeCircle();
+    const agents = await circle.agentRegistry.list();
+    const me = agents.find(a => a.pubKey === (circle.agent?.identity?.pubKey ?? circle.agent?.address));
     expect(me.name).toBe('OSS Tools NL');
   });
 
   it('lookups work by pubKey, deviceId, and agentUri', async () => {
-    const { crew } = await makeCrew();
-    const pubKey = crew.agent?.identity?.pubKey ?? crew.agent?.address;
-    const deviceId = crew.agent?.identity?.deviceId ?? null;
-    expect((await crew.agentRegistry.lookup(pubKey))?.pubKey).toBe(pubKey);
+    const { circle } = await makeCircle();
+    const pubKey = circle.agent?.identity?.pubKey ?? circle.agent?.address;
+    const deviceId = circle.agent?.identity?.deviceId ?? null;
+    expect((await circle.agentRegistry.lookup(pubKey))?.pubKey).toBe(pubKey);
     if (deviceId) {
-      expect((await crew.agentRegistry.lookup(deviceId))?.pubKey).toBe(pubKey);
+      expect((await circle.agentRegistry.lookup(deviceId))?.pubKey).toBe(pubKey);
     }
-    expect((await crew.agentRegistry.lookup(`agent://${pubKey}`))?.pubKey).toBe(pubKey);
-    expect(await crew.agentRegistry.lookup('unknown')).toBe(null);
+    expect((await circle.agentRegistry.lookup(`agent://${pubKey}`))?.pubKey).toBe(pubKey);
+    expect(await circle.agentRegistry.lookup('unknown')).toBe(null);
   });
 });
 
-describe('Tasks V2 — spawnMyCrew', () => {
+describe('Tasks V2 — spawnMyCircle', () => {
   it('rejects when circleId is missing', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'spawnMyCrew', {});
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'spawnMyCircle', {});
     expect(r?.error).toMatch(/circleId required/);
   });
 
   it('rejects when the requested circleId is already active', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'oss-tools' });
-    expect(r?.error).toBe('crew-already-active');
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'spawnMyCircle', { circleId: 'oss-tools' });
+    expect(r?.error).toBe('circle-already-active');
   });
 
   it('rejects when no saved config exists', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'never-provisioned' });
-    expect(r?.error).toBe('crew-not-found');
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'spawnMyCircle', { circleId: 'never-provisioned' });
+    expect(r?.error).toBe('circle-not-found');
   });
 
   it('returns a structured restart hint when no in-process spawner is wired', async () => {
-    const { crew } = await makeCrew();
-    await callSkill(crew.agent, 'provisionMyCrew', {
-      circleId: 'sibling-crew',
+    const { circle } = await makeCircle();
+    await callSkill(circle.agent, 'provisionMyCircle', {
+      circleId: 'sibling-circle',
       name:   'Sibling',
       kind:   'team',
     });
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'sibling-crew' });
+    const r = await callSkill(circle.agent, 'spawnMyCircle', { circleId: 'sibling-circle' });
     expect(r).toMatchObject({
       ok:     true,
       ready:  false,
-      circleId: 'sibling-crew',
+      circleId: 'sibling-circle',
       name:   'Sibling',
       kind:   'team',
     });
-    expect(r.restartHint).toMatch(/sibling-crew/);
+    expect(r.restartHint).toMatch(/sibling-circle/);
   });
 
   it('honours an in-process spawner when one is wired', async () => {
-    const { crew } = await makeCrew();
-    await callSkill(crew.agent, 'provisionMyCrew', {
-      circleId: 'inproc-crew',
+    const { circle } = await makeCircle();
+    await callSkill(circle.agent, 'provisionMyCircle', {
+      circleId: 'inproc-circle',
       name:   'In-Process',
       kind:   'household',
     });
-    // The bundleResolver returns the CrewState (not the bundle) per
+    // The bundleResolver returns the CircleState (not the bundle) per
     // V2.8 single-agent semantics; attach the spawner there.
-    crew._crewState._spawnCrewInProcess = async (circleId) => ({
-      liveCrew: { circleId, name: 'In-Process', kind: 'household' },
+    circle._circleState._spawnCircleInProcess = async (circleId) => ({
+      liveCircle: { circleId, name: 'In-Process', kind: 'household' },
     });
-    const r = await callSkill(crew.agent, 'spawnMyCrew', { circleId: 'inproc-crew' });
+    const r = await callSkill(circle.agent, 'spawnMyCircle', { circleId: 'inproc-circle' });
     expect(r).toEqual({
       ok:     true,
       ready:  true,
-      circleId: 'inproc-crew',
+      circleId: 'inproc-circle',
       name:   'In-Process',
       kind:   'household',
     });
   });
 });
 
-describe('Tasks V2 — listSavedCrewConfigs', () => {
-  it('returns the running crew with running:true', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'listSavedCrewConfigs', {});
+describe('Tasks V2 — listSavedCircleConfigs', () => {
+  it('returns the running circle with running:true', async () => {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'listSavedCircleConfigs', {});
     expect(r?.configs).toBeTruthy();
-    // The running crew has its config saved via createCrewAgent's
-    // upstream wiring? Actually no — createCrewAgent doesn't write
+    // The running circle has its config saved via createCircleAgent's
+    // upstream wiring? Actually no — createCircleAgent doesn't write
     // the config automatically. So an empty list is fine here, and
     // we re-test below after provisioning.
   });
 
-  it('lists configs persisted via provisionMyCrew + marks running flag', async () => {
-    const { crew } = await makeCrew();
-    await callSkill(crew.agent, 'provisionMyCrew', {
+  it('lists configs persisted via provisionMyCircle + marks running flag', async () => {
+    const { circle } = await makeCircle();
+    await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'saved-1',
       name:   'Saved One',
       kind:   'team',
     });
-    await callSkill(crew.agent, 'provisionMyCrew', {
+    await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'saved-2',
       name:   'Saved Two',
       kind:   'friends',
     });
-    const r = await callSkill(crew.agent, 'listSavedCrewConfigs', {});
+    const r = await callSkill(circle.agent, 'listSavedCircleConfigs', {});
     const ids = r.configs.map(c => c.circleId).sort();
     expect(ids).toEqual(['saved-1', 'saved-2']);
-    // Neither is the running crew — running crew (oss-tools from
-    // makeCrew) wasn't provisioned via provisionMyCrew.
+    // Neither is the running circle — running circle (oss-tools from
+    // makeCircle) wasn't provisioned via provisionMyCircle.
     expect(r.configs.every(c => c.running === false)).toBe(true);
   });
 
-  it('flags the running crew when its config is saved', async () => {
-    const { crew } = await makeCrew();
-    // Save a config for the running crew (mimic what createCrewAgent
+  it('flags the running circle when its config is saved', async () => {
+    const { circle } = await makeCircle();
+    // Save a config for the running circle (mimic what createCircleAgent
     // would do once it writes the config on bring-up).
-    await callSkill(crew.agent, 'provisionMyCrew', {
+    await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'oss-tools',
       name:   'Shadow copy',
     });
     // circleId-already-exists is expected; let's persist via a different id
-    const r = await callSkill(crew.agent, 'listSavedCrewConfigs', {});
+    const r = await callSkill(circle.agent, 'listSavedCircleConfigs', {});
     expect(Array.isArray(r.configs)).toBe(true);
   });
 });
 
-describe('Tasks V2 — provisionMyCrew', () => {
-  it('persists a fresh crew config with the caller as admin', async () => {
-    const { crew, bundle } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      circleId: 'fresh-crew',
-      name:   'A Fresh Crew',
+describe('Tasks V2 — provisionMyCircle', () => {
+  it('persists a fresh circle config with the caller as admin', async () => {
+    const { circle, bundle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
+      circleId: 'fresh-circle',
+      name:   'A Fresh Circle',
       kind:   'project',
     });
-    expect(r.circleId).toBe('fresh-crew');
+    expect(r.circleId).toBe('fresh-circle');
     expect(r.kind).toBe('project');
     expect(r.members[0]).toMatchObject({ webid: ANNE, role: 'admin' });
     // Reload from the dataSource to confirm persistence.
-    const raw = await bundle.cache.read('mem://tasks/crews/fresh-crew/config.json');
+    const raw = await bundle.cache.read('mem://tasks/circles/fresh-circle/config.json');
     expect(raw).toBeTruthy();
     const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    expect(cfg.circleId).toBe('fresh-crew');
+    expect(cfg.circleId).toBe('fresh-circle');
     expect(cfg.storage).toEqual({ policy: 'no-pod' });
   });
 
   it('honours storagePolicy + groupPodUri', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
-      circleId:        'pod-crew',
-      name:          'Pod Crew',
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
+      circleId:        'pod-circle',
+      name:          'Pod Circle',
       kind:          'team',
       storagePolicy: 'centralised',
       groupPodUri:   'https://team.pod/',
@@ -340,8 +340,8 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 
   it('rejects centralised without groupPodUri', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
       circleId:        'no-uri',
       name:          'X',
       storagePolicy: 'centralised',
@@ -350,8 +350,8 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 
   it('rejects malformed circleId', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'Bad ID with spaces',
       name:   'X',
     });
@@ -359,8 +359,8 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 
   it('rejects empty name', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'ok-id',
       name:   '',
     });
@@ -368,12 +368,12 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 
   it('refuses to overwrite an existing circleId', async () => {
-    const { crew } = await makeCrew();
-    await callSkill(crew.agent, 'provisionMyCrew', {
+    const { circle } = await makeCircle();
+    await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'twin',
       name:   'First Take',
     });
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'twin',
       name:   'Second Take',
     });
@@ -381,8 +381,8 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 
   it('accepts additional members (de-duped on webid)', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'multi',
       name:   'Multi-member',
       additionalMembers: [
@@ -396,8 +396,8 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 
   it('falls back to household kind on unknown kind', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'provisionMyCrew', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'provisionMyCircle', {
       circleId: 'unknown-kind',
       name:   'X',
       kind:   'not-a-real-kind',
@@ -406,25 +406,25 @@ describe('Tasks V2 — provisionMyCrew', () => {
   });
 });
 
-describe('Tasks V2 — setCrewStoragePolicy', () => {
+describe('Tasks V2 — setCircleStoragePolicy', () => {
   it('upgrades no-pod → centralised', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'setCircleStoragePolicy', {
       circleId:        'oss-tools',
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',
     });
     expect(r.storage).toEqual({ policy: 'centralised', groupPodUri: 'https://anne.pod/' });
-    const after = await callSkill(crew.agent, 'getCrewStoragePolicy', { circleId: 'oss-tools' });
+    const after = await callSkill(circle.agent, 'getCircleStoragePolicy', { circleId: 'oss-tools' });
     expect(after.policy).toBe('centralised');
   });
 
   it('rejects downgrade to no-pod', async () => {
-    const { crew } = await makeCrew({
+    const { circle } = await makeCircle({
       policy:      'centralised',
       groupPodUri: 'https://anne.pod/',
     });
-    const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
+    const r = await callSkill(circle.agent, 'setCircleStoragePolicy', {
       circleId:        'oss-tools',
       storagePolicy: 'no-pod',
     });
@@ -432,8 +432,8 @@ describe('Tasks V2 — setCrewStoragePolicy', () => {
   });
 
   it('rejects non-admin', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'setCircleStoragePolicy', {
       circleId:        'oss-tools',
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',
@@ -442,8 +442,8 @@ describe('Tasks V2 — setCrewStoragePolicy', () => {
   });
 
   it('rejects centralised without groupPodUri', async () => {
-    const { crew } = await makeCrew();
-    const r = await callSkill(crew.agent, 'setCrewStoragePolicy', {
+    const { circle } = await makeCircle();
+    const r = await callSkill(circle.agent, 'setCircleStoragePolicy', {
       circleId:        'oss-tools',
       storagePolicy: 'centralised',
     });

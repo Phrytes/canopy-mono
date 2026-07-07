@@ -1,0 +1,6 @@
+{
+  "circles": [
+    "./oss-tools.circle.json",
+    "./book-club.circle.json"
+  ]
+}

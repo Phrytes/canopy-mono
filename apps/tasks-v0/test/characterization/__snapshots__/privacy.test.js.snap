@@ -15,7 +15,7 @@ exports[`characterization: privacy.html > initial HTML snapshot (static privacy 
       <a href="/mine.html">My work</a>
       <a href="/review.html">Review</a>
       <a href="/dag.html">DAG</a>
-      <a href="/crew.html">Crew</a>
+      <a href="/circle.html">Circle</a>
       <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>

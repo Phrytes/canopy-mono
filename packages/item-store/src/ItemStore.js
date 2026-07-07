@@ -802,7 +802,7 @@ export class ItemStore extends Emitter {
     // the queried plain-string webid is a member.  See
     // `audience.js#audienceMatches` for the full semantics.
     //
-    // Still NOT normalised: `'crew:X'` (short-hand) and
+    // Still NOT normalised: `'circle:X'` (short-hand) and
     // `{kind:'circle-ref', id:'X'}` (structured) are not equivalent —
     // normalisation lives in `@canopy/circles` (layering).
     if (filter.audience !== undefined) {

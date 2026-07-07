@@ -231,7 +231,7 @@ export const householdManifest = {
         slash: {
           // `/grab` (not `/claim`): in canopy-chat's unified catalog, `/claim`
           // + the "claim/pak/neem" gate verbs are owned by tasks-v0 (the
-          // dedicated crew-task system).  Household's task-claim uses a distinct
+          // dedicated circle-task system).  Household's task-claim uses a distinct
           // command + verbs so the two never collide (Part G de-ambiguation
           // 2026-06-18; backwards-compat intentionally dropped).
           command: '/grab',

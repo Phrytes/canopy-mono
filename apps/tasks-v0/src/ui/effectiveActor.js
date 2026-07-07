@@ -1,6 +1,6 @@
 /**
  * effectiveActor — resolve the caller's identity to a webid the
- * crew's roles map can find.
+ * circle's roles map can find.
  *
  * Phase 41.18 follow-up (2026-05-10) — created alongside the
  * `apps/tasks-v0/src/ui/` lift per the
@@ -23,7 +23,7 @@
  *
  *   - Desktop relay path (future): an envelope arriving over a
  *     relay carries `_from = relay.pubKey` and `_origin =
- *     <originating-actor>`. The crew's role-policy gate must look
+ *     <originating-actor>`. The circle's role-policy gate must look
  *     at the origin, not the relay.
  *
  * Both shells benefit from the same resolver: take whatever the
@@ -39,14 +39,14 @@
 
 /**
  * Resolve a caller identifier (pubKey or webid) to the webid the
- * crew's roles table expects. Returns `null` when no resolution is
+ * circle's roles table expects. Returns `null` when no resolution is
  * possible.
  *
  * Resolution order:
- *   1. The supplied `from` matches a key in `crewState.roles`     → return as-is
- *   2. The supplied `from` matches a key in `crewState.actorAliases`
- *      (pubKey → webid map; populated by `buildCrewState` from the
- *      crew's members)                                            → return aliased webid
+ *   1. The supplied `from` matches a key in `circleState.roles`     → return as-is
+ *   2. The supplied `from` matches a key in `circleState.actorAliases`
+ *      (pubKey → webid map; populated by `buildCircleState` from the
+ *      circle's members)                                            → return aliased webid
  *   3. The envelope carries an `_origin` (relay-forwarded call)
  *      that resolves through 1 or 2                                → return that
  *   4. fallback                                                    → null
@@ -54,13 +54,13 @@
  * @param {object} args
  * @param {string|null} [args.from]              dispatch-layer `from`
  * @param {object} [args.envelope]               raw inbound envelope (for `_origin`)
- * @param {object} [args.crewState]              `{roles, actorAliases}` shape
+ * @param {object} [args.circleState]              `{roles, actorAliases}` shape
  * @returns {string|null}                        webid suitable for `roles[<webid>]`
  */
-export function resolveActorWebid({ from = null, envelope = null, crewState = null } = {}) {
-  if (!crewState) return from ?? null;
-  const roles   = crewState.roles ?? {};
-  const aliases = crewState.actorAliases ?? {};
+export function resolveActorWebid({ from = null, envelope = null, circleState = null } = {}) {
+  if (!circleState) return from ?? null;
+  const roles   = circleState.roles ?? {};
+  const aliases = circleState.actorAliases ?? {};
 
   const lookup = (id) => {
     if (typeof id !== 'string' || !id) return null;
@@ -83,7 +83,7 @@ export function resolveActorWebid({ from = null, envelope = null, crewState = nu
 }
 
 /**
- * Look up the caller's role in the active crew, going through the
+ * Look up the caller's role in the active circle, going through the
  * alias map. Returns `null` when the caller isn't a member.
  *
  * Used by mobile's `useActiveRole` hook + by every UI gate that
@@ -92,23 +92,23 @@ export function resolveActorWebid({ from = null, envelope = null, crewState = nu
  * @param {object} args
  * @param {string|null} [args.from]
  * @param {object} [args.envelope]
- * @param {object} [args.crewState]
+ * @param {object} [args.circleState]
  * @returns {string|null}                role label ('admin' | 'coordinator' | 'member' | 'observer' | 'external-volunteer' | custom | null)
  */
-export function resolveActorRole({ from = null, envelope = null, crewState = null } = {}) {
-  if (!crewState) return null;
-  const webid = resolveActorWebid({ from, envelope, crewState });
+export function resolveActorRole({ from = null, envelope = null, circleState = null } = {}) {
+  if (!circleState) return null;
+  const webid = resolveActorWebid({ from, envelope, circleState });
   if (!webid) return null;
-  return crewState.roles?.[webid] ?? null;
+  return circleState.roles?.[webid] ?? null;
 }
 
 /**
  * Build the alias map shape that `buildStandardRolePolicy(roles,
- * {aliases})` expects, from a list of crew members.
+ * {aliases})` expects, from a list of circle members.
  *
  * Mirror of the inline construction in
- * `apps/tasks-mobile/src/lib/buildCrewState.js` — extracted here so
- * the desktop's Crew.js can use the same shape when relay-forwarded
+ * `apps/tasks-mobile/src/lib/buildCircleState.js` — extracted here so
+ * the desktop's Circle.js can use the same shape when relay-forwarded
  * calls land an `_origin` that's a pubKey rather than a webid.
  *
  * @param {Array<{webid?: string, pubKey?: string}>} members
@@ -125,15 +125,15 @@ export function buildActorAliases(members = []) {
 }
 
 /**
- * Phase 52.11 migration helper — adapt a crew-members list to the
+ * Phase 52.11 migration helper — adapt a circle-members list to the
  * `actorResolver` shape that `buildStandardRolePolicy` accepts.
  *
  * Returned object exposes a SYNC `resolveSync(id) → {webid?: string}`
  * — role policies gate every read/write so the lookup must be
  * non-promise. For V0 the resolver is just a wrapper around the
- * crew's local member list (same data as `buildActorAliases`). When
+ * circle's local member list (same data as `buildActorAliases`). When
  * `@canopy/agent-registry` is wired into mobile (real PoC
- * dogfooding), apps swap the data source from `crew.members` to a
+ * dogfooding), apps swap the data source from `circle.members` to a
  * sync cache over the registry — interface stays identical so the
  * substrate side doesn't move.
  *

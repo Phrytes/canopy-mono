@@ -2,8 +2,8 @@
  * canopy-chat v2 — circle sources adapter (shared web + mobile).
  *
  * Maps the host's dispatch onto the `loadCircles` fetchers, reusing
- * EXISTING ops only — `getMyCrews` (tasks crews, shape
- * `{crews:[{circleId,name,kind,counts}]}`) and `getCurrentGroup` (the stoop
+ * EXISTING ops only — `getMyCircles` (tasks circles, shape
+ * `{circles:[{circleId,name,kind,counts}]}`) and `getCurrentGroup` (the stoop
  * buurt record behind `/groups`) — plus an optional `@canopy/circles`
  * store. No new ops are invented; the host injects `callSkill` (web: its
  * dispatch; mobile: hostOps) so the same adapter drives both launchers.
@@ -16,9 +16,9 @@ export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
   };
 
   return {
-    fetchCrews: async () => {
-      const res = await call('getMyCrews');
-      return Array.isArray(res?.crews) ? res.crews : [];
+    fetchTasksCircles: async () => {
+      const res = await call('getMyCircles');
+      return Array.isArray(res?.circles) ? res.circles : [];
     },
     fetchGroups: async () => {
       // listMyBuurts → { buurts: [groupId, ...] } — ALL buurts the actor is
@@ -87,7 +87,7 @@ export function makeResolvingCallSkill(rawCallSkill, origins = DEFAULT_CIRCLE_OR
     // The catalog gate (Perf #2) skips an origin the catalog says doesn't declare
     // the op — but ONLY when the catalog positively knows the op on SOME origin
     // (an "aspirational op" like getFeed/listNotes declared elsewhere). Essential
-    // circle-source ops that are AGENT skills, not manifest ops — `getMyCrews`
+    // circle-source ops that are AGENT skills, not manifest ops — `getMyCircles`
     // (tasks), `listMyBuurts` (stoop) — appear on NO origin in the catalog, so the
     // per-origin gate used to skip them everywhere → loadCircles returned nothing →
     // "No circles yet" on every reload. When the op is unknown to the catalog, try

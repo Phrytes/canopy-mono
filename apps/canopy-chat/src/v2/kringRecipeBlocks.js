@@ -235,12 +235,12 @@ async function materializeAgenda(block, { callSkill } = {}) {
 }
 
 /**
- * α.4 — tasks block.  Calls the tasks crew's listOpen scoped to the
- * circleId (treated as the crew id by canopy-chat's resolver) +
+ * α.4 — tasks block.  Calls the tasks circle's listOpen scoped to the
+ * circleId (treated as the circle id by canopy-chat's resolver) +
  * filters by scope:
  *   'assigned-to-me' — task.assignee equals myWebid (or undefined when
  *                      myWebid isn't known — single-user dev)
- *   'all'            — every open task in the crew
+ *   'all'            — every open task in the circle
  * Caps to limit, returns `{items: [{id, text, state, assignee, circleId}]}`.
  */
 async function materializeTasks(block, circleId, { callSkill, myWebid, fetchImpl } = {}) {

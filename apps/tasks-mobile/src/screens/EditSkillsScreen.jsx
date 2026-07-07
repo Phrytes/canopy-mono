@@ -1,13 +1,13 @@
 /**
- * EditSkillsScreen — edit my skills for the active crew.
+ * EditSkillsScreen — edit my skills for the active circle.
  *
  * Phase 41.18.3 (2026-05-10).
  *
- * Wraps `getMySkillsFormShape` + `editMySkillsForCrew`. The form's
+ * Wraps `getMySkillsFormShape` + `editMySkillsForCircle`. The form's
  * three sections are:
  *
  *   - Prefilled — rows from my canonical profile (toggle to keep / drop).
- *   - Suggested — crew vocabulary entries I haven't claimed yet (toggle
+ *   - Suggested — circle vocabulary entries I haven't claimed yet (toggle
  *                 to add).
  *   - Free entry — comma-separated tags I want to add that aren't in
  *                  either list yet.
@@ -15,7 +15,7 @@
  * On Save:
  *   - Walk the prefilled + suggested toggles.
  *   - Append any free-entry tags.
- *   - Call `editMySkillsForCrew({skills: [...]})` with the resulting list.
+ *   - Call `editMySkillsForCircle({skills: [...]})` with the resulting list.
  *
  * The "Persist to canonical profile" opt-in is surfaced as a separate
  * toggle — same caution principle the desktop uses (pod-data-sharing
@@ -40,7 +40,7 @@ export function EditSkillsScreen() {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const shape = useSkillResult('getMySkillsFormShape', {}, [svc?.activeCircleId]);
-  const editSk = useSkill('editMySkillsForCrew');
+  const editSk = useSkill('editMySkillsForCircle');
 
   const data = shape?.data ?? null;
   const prefilled       = useMemo(() => Array.isArray(data?.prefilled)       ? data.prefilled       : [], [data]);

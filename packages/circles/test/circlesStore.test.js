@@ -94,12 +94,12 @@ describe('createCirclesStore', () => {
   describe('create', () => {
     it('writes a circle item with text:name (substrate compat)', async () => {
       const c = await circles.create(
-        { name: 'Gardening crew', members: ['alice', 'bob'] },
+        { name: 'Gardening circle', members: ['alice', 'bob'] },
         { actor: 'me' },
       );
       expect(c.type).toBe('circle');
-      expect(c.name).toBe('Gardening crew');
-      expect(c.text).toBe('Gardening crew');
+      expect(c.name).toBe('Gardening circle');
+      expect(c.text).toBe('Gardening circle');
       expect(c.members).toEqual(['alice', 'bob']);
       expect(c.createdBy).toBe('me');
       expect(c.id).toBeTruthy();

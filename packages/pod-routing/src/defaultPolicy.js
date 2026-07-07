@@ -34,13 +34,13 @@ export function buildDefaultPolicy({ anchorPodUri, deviceId }) {
       'private/*':              privateBase,
       'sharing/*':              sharingBase,
       'sharing/profile-public': profileCard,
-      'group/*':                groupLocal,         // overridden per-crew when policy is centralised
+      'group/*':                groupLocal,         // overridden per-circle when policy is centralised
       'personal-in-group/*':    personalInGroup,
     },
-    // For unknown crews, default to no-pod replication-ring storage
+    // For unknown circles, default to no-pod replication-ring storage
     // when there's no anchor pod, or centralised on the anchor pod
     // when there is one.
-    crewPolicyDefault: hasPod
+    circlePolicyDefault: hasPod
       ? { policy: 'centralised', groupPodUri: anchorPodUri }
       : { policy: 'no-pod' },
   };

@@ -1,8 +1,8 @@
 /**
- * V1.5 — push side-channel wiring through Crew.
+ * V1.5 — push side-channel wiring through Circle.
  *
  * Asserts that:
- *   - When `pushSender` is supplied AND `crewConfig.pushTokens` maps
+ *   - When `pushSender` is supplied AND `circleConfig.pushTokens` maps
  *     a recipient, immediate notifications (completed / submitted /
  *     rejected / revoked) reach the push sender — alongside the
  *     existing inbox dispatch.
@@ -10,13 +10,13 @@
  *     push doesn't.
  *   - Without `pushSender`, push wiring is dormant — V1 behaviour
  *     unchanged.
- *   - `pushPolicy.maxPerDay` is honoured at the Crew level.
+ *   - `pushPolicy.maxPerDay` is honoured at the Circle level.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
@@ -25,7 +25,7 @@ const KID   = 'https://id.example/kid';
 const ANNE_TOKEN  = 'ExponentPushToken[anne]';
 const KID_TOKEN   = 'ExponentPushToken[kid]';
 
-function makeCrew(overrides = {}) {
+function makeCircle(overrides = {}) {
   return {
     circleId:  'oss-tools',
     name:    'OSS Tools NL',
@@ -55,45 +55,45 @@ function makeFakePushSender() {
   };
 }
 
-describe('V1.5 — Crew push side-channel', () => {
+describe('V1.5 — Circle push side-channel', () => {
   let bundle;
-  let crew;
+  let circle;
   let push;
 
   async function setup({ overrides = {}, withPushSender = true } = {}) {
     bundle = buildBundle();
     push   = withPushSender ? makeFakePushSender() : null;
-    crew = await createCrewAgent({
-      crewConfig:           makeCrew(overrides),
+    circle = await createCircleAgent({
+      circleConfig:           makeCircle(overrides),
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
       ...(withPushSender ? { pushSender: push } : {}),
     });
   }
 
-  beforeEach(() => { bundle = null; crew = null; push = null; });
+  beforeEach(() => { bundle = null; circle = null; push = null; });
 
   it('item-completed → push fires for the master with a token', async () => {
     await setup();
-    const add = crew.agent.skills.get('addTask');
+    const add = circle.agent.skills.get('addTask');
     const r = await add.handler({
       parts: [{ type: 'DataPart', data: { text: 'Trash' } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
-    const claim = crew.agent.skills.get('claimTask');
+    const claim = circle.agent.skills.get('claimTask');
     await claim.handler({
       parts: [{ type: 'DataPart', data: { id: r.task.id } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
-    const done = crew.agent.skills.get('completeTask');
+    const done = circle.agent.skills.get('completeTask');
     await done.handler({
       parts: [{ type: 'DataPart', data: { id: r.task.id } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
 
@@ -107,27 +107,27 @@ describe('V1.5 — Crew push side-channel', () => {
   it('skips push when the recipient has no bound token', async () => {
     // Master = FRITS this time, who has no pushTokens entry.
     await setup();
-    const add = crew.agent.skills.get('addTask');
+    const add = circle.agent.skills.get('addTask');
     const r = await add.handler({
       parts: [{ type: 'DataPart', data: { text: 'Bug fix', master: FRITS } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
-    const claim = crew.agent.skills.get('claimTask');
+    const claim = circle.agent.skills.get('claimTask');
     await claim.handler({
       parts: [{ type: 'DataPart', data: { id: r.task.id } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     push.send.mockClear();
     push.calls.length = 0;
-    const done = crew.agent.skills.get('completeTask');
+    const done = circle.agent.skills.get('completeTask');
     await done.handler({
       parts: [{ type: 'DataPart', data: { id: r.task.id } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     await new Promise((res) => setTimeout(res, 5));
@@ -141,56 +141,56 @@ describe('V1.5 — Crew push side-channel', () => {
   it('without a pushSender, no push wiring is attached (V1 behaviour)', async () => {
     await setup({ withPushSender: false });
     expect(push).toBeNull();
-    const add = crew.agent.skills.get('addTask');
+    const add = circle.agent.skills.get('addTask');
     const r = await add.handler({
       parts: [{ type: 'DataPart', data: { text: 'No-push task' } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
-    const claim = crew.agent.skills.get('claimTask');
+    const claim = circle.agent.skills.get('claimTask');
     await claim.handler({
       parts: [{ type: 'DataPart', data: { id: r.task.id } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
-    const done = crew.agent.skills.get('completeTask');
+    const done = circle.agent.skills.get('completeTask');
     await done.handler({
       parts: [{ type: 'DataPart', data: { id: r.task.id } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     // Nothing to assert against `push` because we didn't create one.
-    // The point is just that the Crew built without crashing.
-    expect(crew.agent).toBeTruthy();
+    // The point is just that the Circle built without crashing.
+    expect(circle.agent).toBeTruthy();
   });
 
-  it('honours pushPolicy.maxPerDay set on the crew config', async () => {
+  it('honours pushPolicy.maxPerDay set on the circle config', async () => {
     await setup({ overrides: { pushPolicy: { maxPerDay: 1 } } });
 
     // Two completions back-to-back, both notifying Anne (master).
     async function makeAndComplete(text) {
-      const add = crew.agent.skills.get('addTask');
+      const add = circle.agent.skills.get('addTask');
       const r = await add.handler({
         parts: [{ type: 'DataPart', data: { text } }],
         from:  ANNE,
-        agent: crew.agent,
+        agent: circle.agent,
         envelope: null,
       });
-      const claim = crew.agent.skills.get('claimTask');
+      const claim = circle.agent.skills.get('claimTask');
       await claim.handler({
         parts: [{ type: 'DataPart', data: { id: r.task.id } }],
         from:  KID,
-        agent: crew.agent,
+        agent: circle.agent,
         envelope: null,
       });
-      const done = crew.agent.skills.get('completeTask');
+      const done = circle.agent.skills.get('completeTask');
       await done.handler({
         parts: [{ type: 'DataPart', data: { id: r.task.id } }],
         from:  KID,
-        agent: crew.agent,
+        agent: circle.agent,
         envelope: null,
       });
     }

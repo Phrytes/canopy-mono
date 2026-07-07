@@ -9,7 +9,7 @@
  *   - tasks://auth/callback?code=...    → AuthCallback (Phase 41.15)
  *   - tasks://invite?token=<base64url>  → OnboardScan with prefilled invite
  *   - tasks://post?id=<taskId>          → TaskDetail
- *   - tasks://crew?id=<circleId>          → Workspace (after setActiveCrew)
+ *   - tasks://circle?id=<circleId>          → Workspace (after setActiveCircle)
  *
  * `actionToNavigation(action)` maps the parsed action to a
  * `(routeName, params)` pair that nav.navigate consumes.
@@ -39,9 +39,9 @@ const TASKS_PARSERS = {
     return { kind: 'post', params: { id: query.id } };
   },
 
-  crew: (query) => {
+  circle: (query) => {
     if (!query.id) return null;
-    return { kind: 'crew', params: { id: query.id } };
+    return { kind: 'circle', params: { id: query.id } };
   },
 
   // Phase 41.18.4 — appeal deep-link:
@@ -80,8 +80,8 @@ export function parseDeepLink(input) {
 /**
  * Map a parsed action onto a `(routeName, params)` pair.
  *
- * Returns null for `unknown`. The active-crew side-effect for the
- * `crew` kind is the caller's responsibility (App.js's listener
+ * Returns null for `unknown`. The active-circle side-effect for the
+ * `circle` kind is the caller's responsibility (App.js's listener
  * handles it).
  *
  * @param {{kind: string, params?: object}} action
@@ -95,7 +95,7 @@ export function actionToNavigation(action) {
     case 'invite':        return { name: ROUTES.OnboardScan,    params: { pendingInvite: action.params?.token } };
     case 'auth_callback': return { name: ROUTES.AuthCallback,   params: action.params };
     case 'post':          return { name: ROUTES.TaskDetail,     params: { id: action.params?.id } };
-    case 'crew':          return { name: ROUTES.Workspace,      params: { circleId: action.params?.id } };
+    case 'circle':          return { name: ROUTES.Workspace,      params: { circleId: action.params?.id } };
     case 'appeal':        return { name: ROUTES.ChatThread,     params: {
       threadId:        `appeal:${action.params?.taskId}`,
       appealForTaskId: action.params?.taskId,

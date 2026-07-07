@@ -140,7 +140,7 @@ const sa = await createSecureAgent({
 });
 
 // Closed-group membership (admin issues, members hold + present)
-const proof = await sa.groups.issueProof('pk-alice', 'crew-1', { role: 'member' });
+const proof = await sa.groups.issueProof('pk-alice', 'circle-1', { role: 'member' });
 
 // One-shot vault → pod migration (Track B)
 const report = await sa.migrateVaultToPod({
@@ -190,7 +190,7 @@ const sa = await createSecureAgent({
 // TrustRegistry — per-peer trust state, vault-backed
 await sa.trust.setTier('pk-alice', 'trusted');
 await sa.trust.getTier('pk-alice');                          // → 'trusted'
-await sa.trust.addGroup('pk-alice', 'crew-1');
+await sa.trust.addGroup('pk-alice', 'circle-1');
 
 // CapabilityToken — grant Alice the right to invoke our 'echo' skill
 const token = await sa.caps.issue({

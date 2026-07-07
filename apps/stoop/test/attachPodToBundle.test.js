@@ -28,7 +28,7 @@ function mkBundle(extra = {}) {
 const headOkFetch = vi.fn(async () => ({ ok: true }));
 
 describe('attachPodToBundle', () => {
-  it('setAnchor + _podCtx(classify/reverse) + attachInner(source); derives crew from bundle', async () => {
+  it('setAnchor + _podCtx(classify/reverse) + attachInner(source); derives circle from bundle', async () => {
     const bundle = mkBundle();
     const source = { tag: 'SolidPodSource' };
     await attachPodToBundle({
@@ -47,9 +47,9 @@ describe('attachPodToBundle', () => {
   it('explicit circleId overrides the bundle groupId', async () => {
     const bundle = mkBundle();
     await attachPodToBundle({
-      bundle, source: {}, podRoot: 'https://pod/me/', fetch: headOkFetch, circleId: 'other-crew',
+      bundle, source: {}, podRoot: 'https://pod/me/', fetch: headOkFetch, circleId: 'other-circle',
     });
-    expect(bundle._podCtx.circleId).toBe('other-crew');
+    expect(bundle._podCtx.circleId).toBe('other-circle');
   });
 
   it('provision failure never blocks attach (best-effort)', async () => {

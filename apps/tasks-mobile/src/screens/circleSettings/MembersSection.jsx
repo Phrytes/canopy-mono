@@ -1,9 +1,9 @@
 /**
- * MembersSection — read-only list of crew members + role chips.
+ * MembersSection — read-only list of circle members + role chips.
  *
  * Phase 41.8.2 (2026-05-09).
  *
- * Reads members + roles from the active CrewState directly (no skill
+ * Reads members + roles from the active CircleState directly (no skill
  * round-trip — the data is already local). Tap a row → ProfileOther.
  */
 
@@ -24,13 +24,13 @@ export function MembersSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
-  const members = cs?.liveCrew?.members ?? [];
+  const cs = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
+  const members = cs?.liveCircle?.members ?? [];
 
   if (members.length === 0) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t('mobile.crew_settings.members_empty')}
+        {t('mobile.circle_settings.members_empty')}
       </Text>
     );
   }
@@ -42,7 +42,7 @@ export function MembersSection() {
           key={m.webid}
           onPress={() => nav.navigate(ROUTES.ProfileOther, { webid: m.webid })}
           accessibilityRole="button"
-          accessibilityLabel={`crew-settings-member-${m.webid}`}
+          accessibilityLabel={`circle-settings-member-${m.webid}`}
           style={({ pressed }) => [
             {
               flexDirection: 'row', alignItems: 'center',
@@ -76,7 +76,7 @@ export function MembersSection() {
             backgroundColor: COLORS.surfaceMuted,
           }}>
             <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-              {t(`mobile.crew_settings.role_${m.role ?? 'member'}`, m.role ?? 'member')}
+              {t(`mobile.circle_settings.role_${m.role ?? 'member'}`, m.role ?? 'member')}
             </Text>
           </View>
         </Pressable>

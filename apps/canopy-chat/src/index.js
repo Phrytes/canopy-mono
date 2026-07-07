@@ -189,7 +189,7 @@ export {
 } from './v2/screenBlocksCacheStorage.js';
 // P6.3 — per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
-// P6.5 — claim router: mirror claimed tasks into the personal crew
+// P6.5 — claim router: mirror claimed tasks into the personal circle
 // when the per-circle override has flowThrough.tasksToPersonal.
 export { routeClaim, makeAfterClaimHook } from './v2/claimRouter.js';
 // P6.4 — wederkerigheid (chat-off consumer-side): pure helpers + the

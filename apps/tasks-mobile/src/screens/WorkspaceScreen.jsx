@@ -1,5 +1,5 @@
 /**
- * WorkspaceScreen — list of open tasks for the active crew, with
+ * WorkspaceScreen — list of open tasks for the active circle, with
  * filter chips + FAB to compose.
  *
  * Phase 41.4.1 (2026-05-09).
@@ -15,7 +15,7 @@
  *
  * Why keep `useSkillResult` instead of going imperative via the
  * adapter's `fetchSection`?  The hook owns the
- * mount/refresh/dep-tracking lifecycle that pull-to-refresh + crew-
+ * mount/refresh/dep-tracking lifecycle that pull-to-refresh + circle-
  * switch already work against.  Adapter-driven dispatch via the
  * imperative path is a separate slice (web today uses imperative
  * `callSkill` because it has no React lifecycle).

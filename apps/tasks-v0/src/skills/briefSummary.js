@@ -17,8 +17,8 @@
  * `items` is up to `MAX_ITEMS` rows with `{id, label}` and `message`
  * is the one-line aggregate ("N open tasks").
  *
- * Reads through the per-crew ItemStore — same data path the
- * `listOpen` skill uses.  Per-call: requires a resolvable crew via
+ * Reads through the per-circle ItemStore — same data path the
+ * `listOpen` skill uses.  Per-call: requires a resolvable circle via
  * the standard bundleResolver pattern.
  */
 
@@ -40,9 +40,9 @@ export function buildBriefSummarySkill({ bundleResolver } = {}) {
   }
   return [
     defineSkill('tasks_briefSummary', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const open = await crew.itemStore.listOpen({ type: 'task' });
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const open = await circle.itemStore.listOpen({ type: 'task' });
       const all  = Array.isArray(open) ? open : [];
       if (all.length === 0) {
         // brief.js's isEmpty skips this section.

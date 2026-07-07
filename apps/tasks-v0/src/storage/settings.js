@@ -13,7 +13,7 @@
  *
  *   shared (user-portable):
  *     - `pushPreferences`        — per-event opt-out / louder / quieter
- *     - `cadenceOverrides`       — per-event cadence override (user > crew > app)
+ *     - `cadenceOverrides`       — per-event cadence override (user > circle > app)
  *     - `defaultCalendarShared`  — bool; whether calendar-conflict view is enabled
  *
  *   device (per-install):

@@ -11,7 +11,7 @@
 **File:** `apps/tasks-mobile/App.js:89–331`
 
 Two-tier model: **outer stack** (Welcome / Main / detail-modals) +
-**inner tab navigator** (Workspace, MyWork, Review, Inbox, Crews).
+**inner tab navigator** (Workspace, MyWork, Review, Inbox, Circles).
 
 ```javascript
 const Stack = createNativeStackNavigator();
@@ -25,7 +25,7 @@ function MainTabs() {
         <Tabs.Screen name={ROUTES.MyWork}    component={MyWorkScreen} />
         <Tabs.Screen name={ROUTES.Review}    component={ReviewScreen} />
         <Tabs.Screen name={ROUTES.Inbox}     component={InboxTabScreen} />
-        <Tabs.Screen name={ROUTES.Crews}     component={CrewsDashboardScreen} />
+        <Tabs.Screen name={ROUTES.Circles}     component={CirclesDashboardScreen} />
       </Tabs.Navigator>
     </MainMenuProvider>
   );
@@ -81,10 +81,10 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
   `declineSubtaskRequest`, `clearInboxItem`, `clearInbox`.
   **NavModel:** all 7 MISSING.
 
-### Crews tab (1 screen)
+### Circles tab (1 screen)
 
-- **CrewsDashboardScreen** — V2.5 cross-crew dashboard + counters +
-  Jump-in.  Skills: `getMyCrews`.  **NavModel:** MISSING (cross-crew
+- **CirclesDashboardScreen** — V2.5 cross-circle dashboard + counters +
+  Jump-in.  Skills: `getMyCircles`.  **NavModel:** MISSING (cross-circle
   view not in manifest).
 
 ### Navigation / DAG (1 screen)
@@ -105,7 +105,7 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
 - **SettingsScreen** — per-device + shared settings + push opt-in.
   Skills: `setMyPushToken`.  **NavModel:** MISSING.
 - **EditSkillsScreen** — Phase 41.18.3 skills editor.  Skills:
-  `getMySkillsFormShape`, `editMySkillsForCrew`.  **NavModel:**
+  `getMySkillsFormShape`, `editMySkillsForCircle`.  **NavModel:**
   MISSING.
 - **CadenceOverridesScreen** — per-user cadence (Phase 41.18.3).
   Skills: `getMyCadenceOverrides`, `setMyCadenceOverrides`,
@@ -114,7 +114,7 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
   **NavModel:** MISSING.
 - **PrivacyScreen** — closed-beta privacy notice.  Skills:
   `getPrivacyNotice`.  **NavModel:** MISSING.
-- **CrewSettingsScreen** — 6 sub-panels (lifecycle, members, roles,
+- **CircleSettingsScreen** — 6 sub-panels (lifecycle, members, roles,
   bot bindings, calendar sync, etc.).  **NavModel:** per-section
   varies.
 
@@ -123,13 +123,13 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
 - **PodSignInScreen** — Solid OIDC flow.  Substrate hook
   `useTasksAuth`.  **NavModel:** MISSING.
 - **PodSettingsScreen** — pod & storage settings (M1-S4).  Skills:
-  `setCrewStoragePolicy`, `signOutOfPod`, `podSignInStatus`.
+  `setCircleStoragePolicy`, `signOutOfPod`, `podSignInStatus`.
   **NavModel:** MISSING.
 
-### Crew creation (1 screen)
+### Circle creation (1 screen)
 
-- **CreateCrewScreen** — 4-step wizard + storage-policy picker.
-  Skills: `provisionMyCrew`, `joinCrew`.  **NavModel:** MISSING.
+- **CreateCircleScreen** — 4-step wizard + storage-policy picker.
+  Skills: `provisionMyCircle`, `joinCircle`.  **NavModel:** MISSING.
 
 ### Chat / appeals (1 screen)
 
@@ -146,7 +146,7 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
 
 - **WelcomeScreen / OnboardScanScreen / OnboardRestoreScreen /
   OnboardIssueScreen / AuthCallbackScreen** — first-run flow.
-  Skills: `joinCrew`, `redeemInvite`, `restoreIdentity`,
+  Skills: `joinCircle`, `redeemInvite`, `restoreIdentity`,
   `issueInvite`.  **NavModel:** all MISSING (onboarding flow).
 
 ---
@@ -164,16 +164,16 @@ ops covered.  Missing:
 | Inbox           | listMyInbox, approve/declineSubtaskProposal/Request, clearInbox(Item) | 7 |
 | Sub-tasks       | addSubtask, proposeSubtask, forceSpawnSubtask, forceCompleteTask | 4 |
 | User profile    | getMyProfile, setMyHandle, setMyDisplayName, setMyAvatarUrl, setHolidayMode | 5 |
-| Settings        | setMyPushToken, getMy/setMy Availability + AvailabilityOptIn, getMy/setMy CadenceOverrides, resolveMyCadence, getMetrics, getPrivacyNotice, getMySkillsFormShape, editMySkillsForCrew | 12 |
-| Crew + Pod      | provisionMyCrew, setCrewStoragePolicy, signOutOfPod          | 3 |
+| Settings        | setMyPushToken, getMy/setMy Availability + AvailabilityOptIn, getMy/setMy CadenceOverrides, resolveMyCadence, getMetrics, getPrivacyNotice, getMySkillsFormShape, editMySkillsForCircle | 12 |
+| Circle + Pod      | provisionMyCircle, setCircleStoragePolicy, signOutOfPod          | 3 |
 | Chat + bot      | getChatThread, sendChatMessage, appealTask, issueBotToken    | 4 |
-| Cross-crew      | getMyCrews, listMyMasteredTasks, listAwaitingApproval        | 3 |
+| Cross-circle      | getMyCircles, listMyMasteredTasks, listAwaitingApproval        | 3 |
 
 **Total ops missing for full mobile parity: 38+.**
 
 **Missing views:** reviewer queue (`listAwaitingApproval`),
 `mastered` (mine.mastered section), `inbox`, `availability`, `dag`,
-`crews`, `profile`, `settings`, `privacy`, `metrics`.
+`circles`, `profile`, `settings`, `privacy`, `metrics`.
 
 ---
 
@@ -205,7 +205,7 @@ ops covered.  Missing:
 - `MemberPickerSheet` — RN bottom sheet → web modal dialog.
 - `PlannerCards` — V2.4; reusable.
 - `MainMenu` — RN drawer; web hamburger or sidebar.
-- `CrewSwitcher` — dropdown; reusable.
+- `CircleSwitcher` — dropdown; reusable.
 
 ### State management
 
@@ -231,13 +231,13 @@ SubmitScreen.  Add 4 sub-task ops to manifest.
 **Phase 3 — Inbox & notifications (new feature):** InboxScreen.
 Add 7 inbox ops.
 
-**Phase 4 — User & crew settings:** ProfileMineScreen,
+**Phase 4 — User & circle settings:** ProfileMineScreen,
 SettingsScreen, EditSkillsScreen, CadenceOverridesScreen,
-AvailabilityScreen, CrewSettingsScreen, MetricsScreen, PrivacyScreen.
+AvailabilityScreen, CircleSettingsScreen, MetricsScreen, PrivacyScreen.
 Add 15+ ops.
 
-**Phase 5 — Pod & crew creation:** PodSignInScreen,
-PodSettingsScreen, CreateCrewScreen.  Add 3 ops.
+**Phase 5 — Pod & circle creation:** PodSignInScreen,
+PodSettingsScreen, CreateCircleScreen.  Add 3 ops.
 
 **Phase 6 — Chat & bot (optional V1):** ChatThreadScreen,
 IssueBotTokenScreen.  Add 4 ops.

@@ -51,7 +51,7 @@ export async function getActor() {
   }
 }
 
-/** Read tasks-config.json for {actor, roles, crew?}. */
+/** Read tasks-config.json for {actor, roles, circle?}. */
 export async function getConfig() {
   try {
     const res = await fetch('/tasks-config.json');
@@ -388,7 +388,7 @@ export function escapeHtml(s) {
 /**
  * Mount the inbox badge into a nav link element. Polls every 30s.
  * Silently no-ops if the `inboxBadgeCount` skill isn't registered
- * (V0 mode without `--crew`); after the first failure we stop
+ * (V0 mode without `--circle`); after the first failure we stop
  * polling to keep the network panel quiet.
  *
  * @param {HTMLElement} navLink — the <a href="/inbox.html">…</a> element
@@ -441,7 +441,7 @@ export function mountLive(_events, callback) {
  * Render a friendly "feature not available" panel into a container
  * when a V1-only skill isn't reachable from this agent (typical
  * cause: the CLI is in V0 mode — `--role` / `--config` instead of
- * `--crew`).
+ * `--circle`).
  *
  * @param {HTMLElement} root           container to render into
  * @param {Error|object} err           the thrown / rejection value
@@ -456,8 +456,8 @@ export function renderV1NotAvailable(root, err, hintForV0) {
   p.style.color = 'var(--muted)';
   p.innerHTML =
     `<strong>${escapeHtml(hintForV0)}</strong><br>` +
-    `This page needs the V1 Crew envelope. Restart the CLI with ` +
-    `<code>--crew &lt;crewconfig.json&gt;</code> instead of <code>--role</code> / <code>--config</code>.<br>` +
+    `This page needs the V1 Circle envelope. Restart the CLI with ` +
+    `<code>--circle &lt;circleconfig.json&gt;</code> instead of <code>--role</code> / <code>--config</code>.<br>` +
     `<small>(Underlying error: <code>${escapeHtml(msg)}</code>)</small>`;
   root.appendChild(p);
 }

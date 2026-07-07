@@ -1,21 +1,21 @@
 /**
- * Tasks-mobile V2 multi-crew + substrate-mirror parity (M2) —
+ * Tasks-mobile V2 multi-circle + substrate-mirror parity (M2) —
  * device-independent vitest coverage.
  *
- * M2 (2026-05-18). Mirrors apps/tasks-v0/test/v2-multi-crew.test.js
+ * M2 (2026-05-18). Mirrors apps/tasks-v0/test/v2-multi-circle.test.js
  * (Slices 7–8) + v2-substrate-mirror.test.js (Slices 9–12) where the
  * coverage is device-independent (no native modules / real fs /
  * keychain).
  *
  * Findings recap (see the M2 report):
- *   - Slice 7 (itemStoreRoot per-crew prefix) was ALREADY at parity
- *     in buildCrewState — these tests pin that contract.
- *   - Slice 8 (multi-crew onboarding dispatch) was the real gap:
- *     issueInvite/redeemInvite were never registered + the CrewState
+ *   - Slice 7 (itemStoreRoot per-circle prefix) was ALREADY at parity
+ *     in buildCircleState — these tests pin that contract.
+ *   - Slice 8 (multi-circle onboarding dispatch) was the real gap:
+ *     issueInvite/redeemInvite were never registered + the CircleState
  *     carried no GroupManager. M2-S8 wires both. Tests below assert
  *     the GroupManager is stashed + the skills register + dispatch.
  *   - Slices 11–12 (mutation fan-out) live entirely in the shared
- *     skills (skills/index.js) and fire whenever crew.tasksMirror is
+ *     skills (skills/index.js) and fire whenever circle.tasksMirror is
  *     set — covered by M1-S3. Here we pin that addTask fan-out
  *     reaches a peer mirror through the shared substrate.
  */
@@ -26,19 +26,19 @@ import { MemorySource, DataPart } from '@canopy/core';
 import { bootstrapIdentity } from '@canopy/react-native/identity/bootstrap';
 import { buildMeshAgent }    from '@canopy-app/tasks-v0/MeshAgent';
 import { wireSkills }        from '@canopy-app/tasks-v0/wireSkills';
-import { multiCrewResolver } from '@canopy-app/tasks-v0/bundleResolver';
-import { buildMultiCrewOnboardingSkills } from '@canopy-app/tasks-v0/multiCrewOnboarding';
+import { multiCircleResolver } from '@canopy-app/tasks-v0/bundleResolver';
+import { buildMultiCircleOnboardingSkills } from '@canopy-app/tasks-v0/multiCircleOnboarding';
 import { MemberMap }         from '@canopy/identity-resolver';
 
 import { buildLocalStoreBundle } from '../src/lib/buildLocalStoreBundle.js';
-import { buildCrewState }        from '../src/lib/buildCrewState.js';
+import { buildCircleState }        from '../src/lib/buildCircleState.js';
 
 const ANNE = 'webid://anne';
 const BOB  = 'webid://bob';
 const KID  = 'webid://kid';
 
-const CREW_ALPHA = {
-  circleId: 'crew-alpha',
+const CIRCLE_ALPHA = {
+  circleId: 'circle-alpha',
   name:   'Alpha',
   kind:   'household',
   members: [
@@ -47,8 +47,8 @@ const CREW_ALPHA = {
   ],
 };
 
-const CREW_BETA = {
-  circleId: 'crew-beta',
+const CIRCLE_BETA = {
+  circleId: 'circle-beta',
   name:   'Beta',
   kind:   'project',
   members: [
@@ -79,42 +79,42 @@ async function bootHarness(label) {
   return { meshAgent, bundle, identity: idResult.identity };
 }
 
-// ── Slice 7 — per-crew itemStoreRoot isolation (ALREADY at parity) ──
+// ── Slice 7 — per-circle itemStoreRoot isolation (ALREADY at parity) ──
 
-describe('M2 — multi-crew itemStoreRoot isolation (Slice 7 parity)', () => {
-  it('each CrewState ItemStore uses the mem://tasks/crews/<id>/ root', async () => {
-    const csA = await buildCrewState({ crewConfig: CREW_ALPHA });
-    const csB = await buildCrewState({ crewConfig: CREW_BETA });
+describe('M2 — multi-circle itemStoreRoot isolation (Slice 7 parity)', () => {
+  it('each CircleState ItemStore uses the mem://tasks/circles/<id>/ root', async () => {
+    const csA = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
+    const csB = await buildCircleState({ circleConfig: CIRCLE_BETA });
     // Distinct ItemStore instances; the root prefix is what stops
-    // cross-crew addTask leakage.
+    // cross-circle addTask leakage.
     expect(csA.itemStore).not.toBe(csB.itemStore);
-    expect(csA.circleId).toBe('crew-alpha');
-    expect(csB.circleId).toBe('crew-beta');
+    expect(csA.circleId).toBe('circle-alpha');
+    expect(csB.circleId).toBe('circle-beta');
   });
 
-  it('addTask routed by circleId stays isolated to that crew', async () => {
+  it('addTask routed by circleId stays isolated to that circle', async () => {
     const { meshAgent } = await bootHarness('M2IsolationTest');
-    const csA = await buildCrewState({ crewConfig: CREW_ALPHA });
-    const csB = await buildCrewState({ crewConfig: CREW_BETA });
-    const crews = new Map([['crew-alpha', csA], ['crew-beta', csB]]);
+    const csA = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
+    const csB = await buildCircleState({ circleConfig: CIRCLE_BETA });
+    const circles = new Map([['circle-alpha', csA], ['circle-beta', csB]]);
 
     wireSkills({
       meshAgent,
-      bundleResolver: multiCrewResolver(crews),
-      crewsProvider:  () => crews.values(),
+      bundleResolver: multiCircleResolver(circles),
+      circlesProvider:  () => circles.values(),
       members:        new MemberMap({
-        initial: [...CREW_ALPHA.members, ...CREW_BETA.members],
+        initial: [...CIRCLE_ALPHA.members, ...CIRCLE_BETA.members],
       }),
     });
     await meshAgent.start();
 
     const addTask = meshAgent.skills.get('addTask');
     await addTask.handler({
-      parts: [DataPart({ circleId: 'crew-alpha', text: 'A1' })],
+      parts: [DataPart({ circleId: 'circle-alpha', text: 'A1' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
     await addTask.handler({
-      parts: [DataPart({ circleId: 'crew-beta', text: 'B1' })],
+      parts: [DataPart({ circleId: 'circle-beta', text: 'B1' })],
       from: KID, agent: meshAgent, envelope: null,
     });
 
@@ -127,50 +127,50 @@ describe('M2 — multi-crew itemStoreRoot isolation (Slice 7 parity)', () => {
 
 // ── Slice 8 — GroupManager + onboarding dispatch (the M2 fix) ───────
 
-describe('M2-S8 — per-crew GroupManager on the CrewState', () => {
+describe('M2-S8 — per-circle GroupManager on the CircleState', () => {
   it('is null when no meshAgent supplied', async () => {
-    const cs = await buildCrewState({ crewConfig: CREW_ALPHA });
+    const cs = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
     expect(cs.groupManager).toBeNull();
     expect(cs.onSpawn).toBeNull();
     // circleIdForOnboarding is always set (it is the routing groupId).
-    expect(cs.circleIdForOnboarding).toBe('crew-alpha');
+    expect(cs.circleIdForOnboarding).toBe('circle-alpha');
   });
 
   it('is built from the meshAgent identity+vault when supplied', async () => {
     const { meshAgent } = await bootHarness('M2GroupManagerTest');
-    const cs = await buildCrewState({ crewConfig: CREW_ALPHA, meshAgent });
+    const cs = await buildCircleState({ circleConfig: CIRCLE_ALPHA, meshAgent });
     expect(cs.groupManager).toBeTruthy();
     expect(typeof cs.groupManager.issueInvite).toBe('function');
     expect(typeof cs.groupManager.redeemInvite).toBe('function');
-    expect(cs.circleIdForOnboarding).toBe('crew-alpha');
+    expect(cs.circleIdForOnboarding).toBe('circle-alpha');
   });
 });
 
-describe('M2-S8 — multi-crew onboarding skills register + dispatch', () => {
-  it('buildMultiCrewOnboardingSkills returns issueInvite + redeemInvite', () => {
-    const defs = buildMultiCrewOnboardingSkills({
-      bundleResolver: multiCrewResolver(new Map()),
+describe('M2-S8 — multi-circle onboarding skills register + dispatch', () => {
+  it('buildMultiCircleOnboardingSkills returns issueInvite + redeemInvite', () => {
+    const defs = buildMultiCircleOnboardingSkills({
+      bundleResolver: multiCircleResolver(new Map()),
     });
     const ids = defs.map((d) => d.id);
     expect(ids).toContain('issueInvite');
     expect(ids).toContain('redeemInvite');
   });
 
-  it('issueInvite then redeemInvite round-trips through the per-crew GroupManager', async () => {
+  it('issueInvite then redeemInvite round-trips through the per-circle GroupManager', async () => {
     const { meshAgent } = await bootHarness('M2OnboardingTest');
-    const csA = await buildCrewState({ crewConfig: CREW_ALPHA, meshAgent });
-    const crews = new Map([['crew-alpha', csA]]);
+    const csA = await buildCircleState({ circleConfig: CIRCLE_ALPHA, meshAgent });
+    const circles = new Map([['circle-alpha', csA]]);
 
     wireSkills({
       meshAgent,
-      bundleResolver: multiCrewResolver(crews),
-      crewsProvider:  () => crews.values(),
-      members:        new MemberMap({ initial: CREW_ALPHA.members }),
+      bundleResolver: multiCircleResolver(circles),
+      circlesProvider:  () => circles.values(),
+      members:        new MemberMap({ initial: CIRCLE_ALPHA.members }),
     });
     // Register the M2-S8 onboarding wrapper ONCE (mirrors
     // ServiceContext step 5b).
-    for (const def of buildMultiCrewOnboardingSkills({
-      bundleResolver: multiCrewResolver(crews),
+    for (const def of buildMultiCircleOnboardingSkills({
+      bundleResolver: multiCircleResolver(circles),
     })) {
       meshAgent.skills.register(def);
     }
@@ -179,7 +179,7 @@ describe('M2-S8 — multi-crew onboarding skills register + dispatch', () => {
     const issue = meshAgent.skills.get('issueInvite');
     expect(issue).toBeTruthy();
     const issued = await issue.handler({
-      parts: [DataPart({ circleId: 'crew-alpha', role: 'member' })],
+      parts: [DataPart({ circleId: 'circle-alpha', role: 'member' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
     expect(issued?.invite).toBeTruthy();
@@ -200,16 +200,16 @@ describe('M2-S8 — multi-crew onboarding skills register + dispatch', () => {
     });
     expect(redeemed?.error).toBeUndefined();
     expect(redeemed?.memberPubKey).toBe(NEW_PK);
-    // The member is added to the crew's MemberMap.
+    // The member is added to the circle's MemberMap.
     const members = await csA.members.list();
     expect(members.some((m) => m.pubKey === NEW_PK)).toBe(true);
   });
 
-  it('redeemInvite without a matching crew returns a structured error', async () => {
+  it('redeemInvite without a matching circle returns a structured error', async () => {
     const { meshAgent } = await bootHarness('M2OnboardingMissTest');
-    const crews = new Map();
-    for (const def of buildMultiCrewOnboardingSkills({
-      bundleResolver: multiCrewResolver(crews),
+    const circles = new Map();
+    for (const def of buildMultiCircleOnboardingSkills({
+      bundleResolver: multiCircleResolver(circles),
     })) {
       meshAgent.skills.register(def);
     }
@@ -226,9 +226,9 @@ describe('M2-S8 — multi-crew onboarding skills register + dispatch', () => {
 // ── Slice 10 — live peer-roster (redeemInvite → tasksMirror.addPeer) ─
 
 describe('M2-S10 — redeemInvite updates the substrate-mirror peer roster', () => {
-  it('addPeer is called on the crew tasksMirror after a successful redeem', async () => {
+  it('addPeer is called on the circle tasksMirror after a successful redeem', async () => {
     const { meshAgent } = await bootHarness('M2PeerRosterTest');
-    const csA = await buildCrewState({ crewConfig: CREW_ALPHA, meshAgent });
+    const csA = await buildCircleState({ circleConfig: CIRCLE_ALPHA, meshAgent });
 
     // Stub the tasksMirror so we can observe the addPeer call without
     // depending on real transport fan-out (device-independent).
@@ -238,9 +238,9 @@ describe('M2-S10 — redeemInvite updates the substrate-mirror peer roster', () 
       getPeers: () => [...added],
     };
 
-    const crews = new Map([['crew-alpha', csA]]);
-    for (const def of buildMultiCrewOnboardingSkills({
-      bundleResolver: multiCrewResolver(crews),
+    const circles = new Map([['circle-alpha', csA]]);
+    for (const def of buildMultiCircleOnboardingSkills({
+      bundleResolver: multiCircleResolver(circles),
     })) {
       meshAgent.skills.register(def);
     }
@@ -248,7 +248,7 @@ describe('M2-S10 — redeemInvite updates the substrate-mirror peer roster', () 
 
     const issue = meshAgent.skills.get('issueInvite');
     const issued = await issue.handler({
-      parts: [DataPart({ circleId: 'crew-alpha', role: 'member' })],
+      parts: [DataPart({ circleId: 'circle-alpha', role: 'member' })],
       from: ANNE, agent: meshAgent, envelope: null,
     });
     const redeem = meshAgent.skills.get('redeemInvite');
@@ -269,11 +269,11 @@ describe('M2-S10 — redeemInvite updates the substrate-mirror peer roster', () 
 // ── Slices 9/11/12 — mutation fan-out is shared-skill driven ────────
 
 describe('M2 — substrate-mirror fan-out is wired through shared skills', () => {
-  it('CrewState exposes a tasksMirror slot (null until substrate wires)', async () => {
-    const cs = await buildCrewState({ crewConfig: CREW_ALPHA });
+  it('CircleState exposes a tasksMirror slot (null until substrate wires)', async () => {
+    const cs = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
     // M1-S3 reserves the slot; substrate fills it best-effort when a
     // meshAgent is supplied. The shared skills/index.js fan-out calls
-    // `crew?.tasksMirror?.publishTask?.(...)` — a null slot is a safe
+    // `circle?.tasksMirror?.publishTask?.(...)` — a null slot is a safe
     // no-op, a populated slot fans out. No mobile-specific fan-out
     // code exists or is needed (platform parity via shared skills).
     expect('tasksMirror' in cs).toBe(true);
@@ -282,7 +282,7 @@ describe('M2 — substrate-mirror fan-out is wired through shared skills', () =>
 
   it('with a meshAgent the substrate slots get populated best-effort', async () => {
     const { meshAgent } = await bootHarness('M2MirrorWireTest');
-    const cs = await buildCrewState({ crewConfig: CREW_ALPHA, meshAgent });
+    const cs = await buildCircleState({ circleConfig: CIRCLE_ALPHA, meshAgent });
     // pseudoPod + notifyEnvelope are the substrate the shared mirror
     // publishes through. When present, tasksMirror is wired too.
     if (cs.pseudoPod && cs.notifyEnvelope) {
@@ -290,8 +290,8 @@ describe('M2 — substrate-mirror fan-out is wired through shared skills', () =>
       expect(typeof cs.tasksMirror.publishTask).toBe('function');
       expect(typeof cs.tasksMirror.addPeer).toBe('function');
     }
-    // Regardless: crew core state stays intact (best-effort contract).
-    expect(cs.circleId).toBe('crew-alpha');
+    // Regardless: circle core state stays intact (best-effort contract).
+    expect(cs.circleId).toBe('circle-alpha');
     // M4: _podCtx is pre-populated (classify/reverse loaded; inactive).
     expect(cs._podCtx?.active).toBe(false);
   });

@@ -4,7 +4,7 @@
  * Proves `createTasksService().callCapability(atom, noun, args, ctx)` invokes a task op by its ATOM + NOUN
  * (the stable vocabulary) instead of the bespoke op-id — BESPOKE-OP-FIRST, over the REAL tasks skills, with no
  * change to any per-op logic. tasks-v0 isn't store-dissolved, so this rides the legacy DataPart/bundleResolver
- * path (crew construction mirrors v2_8-single-agent.test.js).
+ * path (circle construction mirrors v2_8-single-agent.test.js).
  */
 import { describe, it, expect } from 'vitest';
 
@@ -13,29 +13,29 @@ import { MemberMap } from '@canopy/identity-resolver';
 import { MemorySource, DataPart } from '@canopy/core';
 
 import { createTasksService } from '../src/Service.js';
-import { singleCrewResolver } from '../src/bundleResolver.js';
+import { singleCircleResolver } from '../src/bundleResolver.js';
 import { buildStandardRolePolicy } from '../src/rolePolicy.js';
 
 const ANNE = 'webid://anne';
 const BOB  = 'webid://bob';
 
-function buildCrewState(circleId, roles) {
+function buildCircleState(circleId, roles) {
   const dataSource = new MemorySource();
   const itemStore = new ItemStore({
     dataSource,
-    rootContainer: `mem://tasks/crews/${circleId}/`,
+    rootContainer: `mem://tasks/circles/${circleId}/`,
     rolePolicy:    buildStandardRolePolicy(roles),
     enforceDependencies: true,
   });
-  let liveCrew = Object.freeze({
+  let liveCircle = Object.freeze({
     circleId, name: circleId, kind: 'household',
     members: Object.keys(roles).map((webid) => ({ webid, role: roles[webid] })),
     customRoles: [],
   });
   return {
-    get circleId() { return liveCrew.circleId; },
-    get liveCrew() { return liveCrew; },
-    crewMutator(patch) { liveCrew = Object.freeze({ ...liveCrew, ...patch }); },
+    get circleId() { return liveCircle.circleId; },
+    get liveCircle() { return liveCircle; },
+    circleMutator(patch) { liveCircle = Object.freeze({ ...liveCircle, ...patch }); },
     roles, itemStore, dataSource,
     members: new MemberMap({ initial: Object.keys(roles).map((webid) => ({ webid })) }),
     chatController: null, botAgentRegistry: null, metricsTracker: null,
@@ -44,37 +44,37 @@ function buildCrewState(circleId, roles) {
 }
 
 const mk = () => {
-  const crew = buildCrewState('crew-a', { [ANNE]: 'admin', [BOB]: 'member' });
-  const svc = createTasksService({ bundleResolver: singleCrewResolver(crew) });
-  return { crew, svc, ctx: { circleId: 'crew-a', by: ANNE } };
+  const circle = buildCircleState('circle-a', { [ANNE]: 'admin', [BOB]: 'member' });
+  const svc = createTasksService({ bundleResolver: singleCircleResolver(circle) });
+  return { circle, svc, ctx: { circleId: 'circle-a', by: ANNE } };
 };
 
 describe('tasks-v0 §1b callCapability (op→atom adapter)', () => {
   it('add·task routes THROUGH the bespoke addTask op and really stores', async () => {
-    const { crew, svc, ctx } = mk();
+    const { circle, svc, ctx } = mk();
     const r = await svc.callCapability('add', 'task', { text: 'buy milk' }, ctx);
     expect(r).toMatchObject({ ok: true, via: 'op', opId: 'addTask' });
-    expect((await crew.itemStore.listOpen()).map((t) => t.text)).toContain('buy milk');
+    expect((await circle.itemStore.listOpen()).map((t) => t.text)).toContain('buy milk');
   });
 
   it('an alias atom canonicalises to the same op (create→add→addTask)', async () => {
-    const { crew, svc, ctx } = mk();
+    const { circle, svc, ctx } = mk();
     const r = await svc.callCapability('create', 'task', { text: 'sweep' }, ctx);
     expect(r).toMatchObject({ ok: true, via: 'op', opId: 'addTask' });
-    expect((await crew.itemStore.listOpen()).map((t) => t.text)).toContain('sweep');
+    expect((await circle.itemStore.listOpen()).map((t) => t.text)).toContain('sweep');
   });
 
   it('lifecycle atoms route to their bespoke ops (claim→claimTask, complete→completeTask)', async () => {
-    const { crew, svc, ctx } = mk();
+    const { circle, svc, ctx } = mk();
     await svc.callCapability('add', 'task', { text: 'mow lawn' }, ctx);
-    const [task] = await crew.itemStore.listOpen();
+    const [task] = await circle.itemStore.listOpen();
 
     const claimed = await svc.callCapability('claim', 'task', { id: task.id }, ctx);
     expect(claimed).toMatchObject({ ok: true, via: 'op', opId: 'claimTask' });
 
     const done = await svc.callCapability('complete', 'task', { id: task.id }, ctx);
     expect(done).toMatchObject({ ok: true, via: 'op', opId: 'completeTask' });
-    expect(await crew.itemStore.listOpen()).toEqual([]);   // completed → off the open list
+    expect(await circle.itemStore.listOpen()).toEqual([]);   // completed → off the open list
   });
 
   it('an undeclared/unimplemented (atom×noun) is reported, never silently run', async () => {
@@ -87,7 +87,7 @@ describe('tasks-v0 §1b callCapability (op→atom adapter)', () => {
     // via the adapter
     const a = mk();
     const viaCap = await a.svc.callCapability('add', 'task', { text: 'parity' }, a.ctx);
-    // via the raw skill handler (the legacy path), same crew shape
+    // via the raw skill handler (the legacy path), same circle shape
     const b = mk();
     const viaSkill = await b.svc.callSkill('addTask', { text: 'parity' }, b.ctx);
     expect(viaCap.result.task.text).toBe('parity');
@@ -97,7 +97,7 @@ describe('tasks-v0 §1b callCapability (op→atom adapter)', () => {
 
   it('guards: unknown op on callSkill throws; bundleResolver is required', async () => {
     const { svc } = mk();
-    await expect(svc.callSkill('nopeOp', {}, { circleId: 'crew-a', by: ANNE })).rejects.toThrow(/unknown op/);
+    await expect(svc.callSkill('nopeOp', {}, { circleId: 'circle-a', by: ANNE })).rejects.toThrow(/unknown op/);
     expect(() => createTasksService({})).toThrow(/bundleResolver/);
   });
 });

@@ -95,9 +95,9 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     'neighbourhood-job': { body:        'paint the wall' },
     // SP-5 V0 additions (2026-05-20):
     'view':              { title:       'Open tasks', itemType: 'task' },
-    'circle':            { name:        'Gardening crew' },
+    'circle':            { name:        'Gardening circle' },
     // K2 (2026-07-01): cross-circle share reference.
-    'shared-ref':        { sourceCircle: 'crew-a', sourceId: 'dec:item/task/abc' },
+    'shared-ref':        { sourceCircle: 'circle-a', sourceId: 'dec:item/task/abc' },
   };
 
   for (const [name, extra] of Object.entries(MINIMAL)) {

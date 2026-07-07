@@ -18,7 +18,7 @@
  * See `Project Files/canopy-chat/slash-coverage-audit-2026-05-24.md`.
  *
  * Folio is structurally different from the item-store apps (tasks-v0,
- * stoop, household): it doesn't have an ItemStore + crew-scoped items.
+ * stoop, household): it doesn't have an ItemStore + circle-scoped items.
  * Its "items" are markdown files mirrored to a Solid pod via
  * `@canopy/sync-engine`.  Its "skills" are HTTP route handlers
  * (`apps/folio/src/server/routes.js`) + CLI commands

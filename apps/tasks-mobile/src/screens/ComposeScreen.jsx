@@ -12,7 +12,7 @@
  *   - requiredSkills (comma-separated free text — V2 taxonomy form
  *     belongs to the skills-editor surface; here we keep it free)
  *   - definitionOfDone.kind ('text' | 'photo')
- *   - dependencies[] — multi-select against the crew's open tasks
+ *   - dependencies[] — multi-select against the circle's open tasks
  *   - master         — single-select webid (defaults to caller)
  *   - approvalMode   — 'auto' | 'approval' | 'dual-approval'
  *   - parentTaskId   — pre-set when navigating with `parent` route
@@ -90,10 +90,10 @@ export function ComposeScreen() {
     return items.filter((it) => it?.id && it.id !== parentTaskIdParam);
   }, [open?.data, parentTaskIdParam]);
 
-  // Active crew members for the master picker.
+  // Active circle members for the master picker.
   const members = useMemo(() => {
-    const cs = svc?.crews?.get?.(svc?.activeCircleId);
-    return cs?.liveCrew?.members ?? [];
+    const cs = svc?.circles?.get?.(svc?.activeCircleId);
+    return cs?.liveCircle?.members ?? [];
   }, [svc]);
 
   const canSubmit = text.trim().length > 0 && !busy

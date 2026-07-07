@@ -4,7 +4,7 @@
  * Covers:
  *   1. InAppInboxBridge — sendReply writes a notification item; bad
  *      args reject; cross-recipient delivery rejected.
- *   2. wireIssuerNotifications subscribed via createCrewAgent:
+ *   2. wireIssuerNotifications subscribed via createCircleAgent:
  *      - item-completed → master inbox entry
  *      - item-submitted → designated approver inbox entry
  *      - item-rejected  → assignee inbox entry
@@ -24,7 +24,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { InAppInboxBridge } from '../src/bridges/InAppInboxBridge.js';
 import { APPEAL_WINDOW_MS } from '../src/skills/appeal.js';
 
@@ -32,7 +32,7 @@ const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -113,31 +113,31 @@ describe('Phase 6 — InAppInboxBridge', () => {
   });
 });
 
-describe('Phase 6 — issuer notifications via createCrewAgent', () => {
+describe('Phase 6 — issuer notifications via createCircleAgent', () => {
   let lsBundle;
-  let crew;
+  let circle;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
-    // The Crew member roster pre-loads roles; createTasksAgent infers
+    // The Circle member roster pre-loads roles; createTasksAgent infers
     // them. The actor for skill calls must match an entry in the roster.
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   it('item-completed → master/issuer receives a "task completed" inbox entry', async () => {
-    const { task } = await callSkill(crew.agent, 'addTask', {
+    const { task } = await callSkill(circle.agent, 'addTask', {
       text: 'Take out trash',
     }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'completeTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'claimTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'completeTask', { id: task.id }, KID);
 
     // Let the async event loop flush.
     await new Promise((r) => setTimeout(r, 20));
@@ -149,12 +149,12 @@ describe('Phase 6 — issuer notifications via createCrewAgent', () => {
   });
 
   it('item-submitted → designated approver receives a "review needed" inbox entry', async () => {
-    const { task } = await callSkill(crew.agent, 'addTask', {
+    const { task } = await callSkill(circle.agent, 'addTask', {
       text:     'Paint',
       approval: 'creator',
     }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'submitTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'claimTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'submitTask', { id: task.id }, KID);
 
     await new Promise((r) => setTimeout(r, 20));
 
@@ -165,9 +165,9 @@ describe('Phase 6 — issuer notifications via createCrewAgent', () => {
   });
 
   it('item-revoked → previous assignee receives a notification with reason + appeal button', async () => {
-    const { task } = await callSkill(crew.agent, 'addTask', { text: 'Build' }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'revokeTask', {
+    const { task } = await callSkill(circle.agent, 'addTask', { text: 'Build' }, ANNE);
+    await callSkill(circle.agent, 'claimTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'revokeTask', {
       id:     task.id,
       reason: 'overcommitted',
     }, ANNE);
@@ -182,13 +182,13 @@ describe('Phase 6 — issuer notifications via createCrewAgent', () => {
   });
 
   it('item-rejected → assignee receives a "rejected" inbox entry with the note', async () => {
-    const { task } = await callSkill(crew.agent, 'addTask', {
+    const { task } = await callSkill(circle.agent, 'addTask', {
       text:     'Paint',
       approval: 'creator',
     }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'submitTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'rejectTask', {
+    await callSkill(circle.agent, 'claimTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'submitTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'rejectTask', {
       id:   task.id,
       note: 'photo of the side missing',
     }, ANNE);
@@ -204,7 +204,7 @@ describe('Phase 6 — issuer notifications via createCrewAgent', () => {
   it('item-added with dueAt → schedules a missed-deadline job; completion cancels it', async () => {
     const dueAt = Date.now() + 60_000;   // 1 minute future
 
-    const { task } = await callSkill(crew.agent, 'addTask', {
+    const { task } = await callSkill(circle.agent, 'addTask', {
       text:  'Time-bound',
       dueAt,
     }, ANNE);
@@ -213,20 +213,20 @@ describe('Phase 6 — issuer notifications via createCrewAgent', () => {
     await new Promise((r) => setTimeout(r, 20));
 
     // Inspect the notifier's schedule store directly — a job with
-    // cancelKey `due:<id>` should be queued. Crew exposes the store
+    // cancelKey `due:<id>` should be queued. Circle exposes the store
     // on the bundle's notifier as `.scheduleStore` (the notifier's
     // own #store is private).
-    const scheduledBefore = await crew.notifier.scheduleStore.listAll();
+    const scheduledBefore = await circle.notifier.scheduleStore.listAll();
     const dueJobBefore = scheduledBefore.find((j) => j.cancelKey === `due:${task.id}`);
     expect(dueJobBefore).toBeTruthy();
     expect(dueJobBefore.triggerAt).toBe(dueAt);
 
     // Now complete the task — the wired listener should cancel the job.
-    await callSkill(crew.agent, 'claimTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'completeTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'claimTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'completeTask', { id: task.id }, KID);
     await new Promise((r) => setTimeout(r, 20));
 
-    const scheduledAfter = await crew.notifier.scheduleStore.listAll();
+    const scheduledAfter = await circle.notifier.scheduleStore.listAll();
     const dueJobAfter = scheduledAfter.find((j) => j.cancelKey === `due:${task.id}`);
     expect(dueJobAfter).toBeFalsy();
 
@@ -239,49 +239,49 @@ describe('Phase 6 — issuer notifications via createCrewAgent', () => {
 
 describe('Phase 6 — appealTask skill', () => {
   let lsBundle;
-  let crew;
+  let circle;
   let task;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
-    const r = await callSkill(crew.agent, 'addTask', { text: 'Build' }, ANNE);
+    const r = await callSkill(circle.agent, 'addTask', { text: 'Build' }, ANNE);
     task = r.task;
-    await callSkill(crew.agent, 'claimTask', { id: task.id }, KID);
-    await callSkill(crew.agent, 'revokeTask', {
+    await callSkill(circle.agent, 'claimTask', { id: task.id }, KID);
+    await callSkill(circle.agent, 'revokeTask', {
       id:     task.id,
       reason: 'overcommitted',
     }, ANNE);
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   it('rejects calls without a taskId', async () => {
-    const r = await callSkill(crew.agent, 'appealTask', {}, KID);
+    const r = await callSkill(circle.agent, 'appealTask', {}, KID);
     expect(r.error).toMatch(/taskId/);
   });
 
   it('rejects calls from a webid that is not the previous assignee', async () => {
-    const r = await callSkill(crew.agent, 'appealTask', { taskId: task.id }, FRITS);
+    const r = await callSkill(circle.agent, 'appealTask', { taskId: task.id }, FRITS);
     expect(r.error).toMatch(/previous assignee/i);
   });
 
   it('rejects when the task has not been revoked', async () => {
-    const r2 = await callSkill(crew.agent, 'addTask', { text: 'Other' }, ANNE);
-    const r = await callSkill(crew.agent, 'appealTask', { taskId: r2.task.id }, KID);
+    const r2 = await callSkill(circle.agent, 'addTask', { text: 'Other' }, ANNE);
+    const r = await callSkill(circle.agent, 'appealTask', { taskId: r2.task.id }, KID);
     expect(r.error).toMatch(/has not been revoked/i);
   });
 
   it('rejects after the 7-day appeal window expires', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(Date.now() + APPEAL_WINDOW_MS + 1000);
-    const r = await callSkill(crew.agent, 'appealTask', { taskId: task.id }, KID);
+    const r = await callSkill(circle.agent, 'appealTask', { taskId: task.id }, KID);
     expect(r.error).toMatch(/window expired/i);
     vi.useRealTimers();
   });
@@ -289,10 +289,10 @@ describe('Phase 6 — appealTask skill', () => {
   it('returns a "chat-not-wired" error when chatController is missing', async () => {
     // V2.8 — appealTask is now always registered (single-registration
     // root). Without a localStoreBundle, wireChat is not invoked, so
-    // the resolved CrewState has `chatController: null` and the skill
+    // the resolved CircleState has `chatController: null` and the skill
     // body returns the documented `chat-not-wired` graceful fallback.
-    const lite = await createCrewAgent({
-      crewConfig:           CREW,
+    const lite = await createCircleAgent({
+      circleConfig:           CIRCLE,
       wireOnboardingSkills: false,
     });
     expect(lite.agent.skills.has('appealTask')).toBe(true);

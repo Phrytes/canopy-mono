@@ -1,14 +1,14 @@
 /**
- * SP-4b proof — tasks-v0 multi-crew mounts cleanly into `@canopy/
- * manifest-host` with multi-crew dispatch preserved end-to-end.
+ * SP-4b proof — tasks-v0 multi-circle mounts cleanly into `@canopy/
+ * manifest-host` with multi-circle dispatch preserved end-to-end.
  *
- * Mounts the real `buildMultiCrewRuntime` output (the same machinery
- * tasks-ui.js's --multi-crew CLI builds) into a fresh manifest-host
+ * Mounts the real `buildMultiCircleRuntime` output (the same machinery
+ * tasks-ui.js's --multi-circle CLI builds) into a fresh manifest-host
  * via `createTasksMountable`, then drives the composed view's
- * namespaced tool handlers + asserts crew isolation holds.
+ * namespaced tool handlers + asserts circle isolation holds.
  *
  * Key claim: the host operates on the chat surface; bundleResolver
- * stays untouched and continues to do per-call crew dispatch.  They
+ * stays untouched and continues to do per-call circle dispatch.  They
  * are orthogonal layers.
  */
 
@@ -17,7 +17,7 @@ import { DataPart } from '@canopy/core';
 
 import { createManifestHost } from '@canopy/manifest-host';
 
-import { buildMultiCrewRuntime } from '../src/buildMultiCrewRuntime.js';
+import { buildMultiCircleRuntime } from '../src/buildMultiCircleRuntime.js';
 import { createTasksMountable }  from '../src/mountable.js';
 import { tasksManifest }         from '../manifest.js';
 
@@ -28,15 +28,15 @@ const ANNE = 'https://id.example/anne';
  * former mockTasksManifest that resolve through realAgent.js (alias /
  * derivation), NOT a same-named mountable skill:
  *   - myInbox        → aliased to `listMyInbox`
- *   - listCrewMembers→ derived from `getCrewConfig` (members[] unpack)
+ *   - listCircleMembers→ derived from `getCircleConfig` (members[] unpack)
  */
-const CHAT_SHELL_ALIAS_OPS = new Set(['myInbox', 'listCrewMembers']);
+const CHAT_SHELL_ALIAS_OPS = new Set(['myInbox', 'listCircleMembers']);
 
 async function setup() {
-  const runtime  = await buildMultiCrewRuntime({ label: 'sp-4b-mount-test' });
+  const runtime  = await buildMultiCircleRuntime({ label: 'sp-4b-mount-test' });
   const mountable = createTasksMountable({
     meshAgent: runtime.meshAgent,
-    crewsMap:  runtime.crewsMap,
+    circlesMap:  runtime.circlesMap,
   });
 
   const host = createManifestHost();
@@ -46,21 +46,21 @@ async function setup() {
 }
 
 /**
- * Spawn a sibling crew via the real provisionMyCrew + spawnMyCrew
+ * Spawn a sibling circle via the real provisionMyCircle + spawnMyCircle
  * SDK path so the second mount-target lives.
  */
-async function spawnSiblingCrew(meshAgent, circleId) {
-  await meshAgent.skills.get('provisionMyCrew').handler({
+async function spawnSiblingCircle(meshAgent, circleId) {
+  await meshAgent.skills.get('provisionMyCircle').handler({
     parts: [DataPart({ circleId, name: `Sibling ${circleId}`, kind: 'team' })],
     from:  ANNE, agent: meshAgent, envelope: null,
   });
-  await meshAgent.skills.get('spawnMyCrew').handler({
+  await meshAgent.skills.get('spawnMyCircle').handler({
     parts: [DataPart({ circleId })],
     from:  ANNE, agent: meshAgent, envelope: null,
   });
 }
 
-describe('SP-4b: tasks-v0 multi-crew through manifest-host', () => {
+describe('SP-4b: tasks-v0 multi-circle through manifest-host', () => {
   it('mountable exposes a skillRegistry covering every manifest op', async () => {
     const { mountable } = await setup();
     for (const op of tasksManifest.operations) {
@@ -82,12 +82,12 @@ describe('SP-4b: tasks-v0 multi-crew through manifest-host', () => {
     }
   });
 
-  it('addTask via the host dispatches to the primary crew\'s itemStore', async () => {
+  it('addTask via the host dispatches to the primary circle\'s itemStore', async () => {
     const { host, primaryBundle } = await setup();
     const composed = host.compose();
 
     const reply = await composed.toolHandlers['tasks.addTask'](
-      { circleId: 'primary-crew', text: 'paint the hallway' },
+      { circleId: 'primary-circle', text: 'paint the hallway' },
       { actorWebid: ANNE },
     );
 
@@ -96,28 +96,28 @@ describe('SP-4b: tasks-v0 multi-crew through manifest-host', () => {
     expect(reply.replies[0].type).toBe('text');
 
     // The actual side-effect we care about: the task landed in primary
-    // crew's itemStore.
+    // circle's itemStore.
     const items = await primaryBundle.itemStore.listOpen();
     expect(items.map((i) => i.text)).toContain('paint the hallway');
   });
 
-  it('multi-crew isolation holds through the host (crew A vs crew B)', async () => {
-    const { host, meshAgent, crewsMap } = await setup();
-    await spawnSiblingCrew(meshAgent, 'sibling-crew');
-    expect(crewsMap.size).toBe(2);
+  it('multi-circle isolation holds through the host (circle A vs circle B)', async () => {
+    const { host, meshAgent, circlesMap } = await setup();
+    await spawnSiblingCircle(meshAgent, 'sibling-circle');
+    expect(circlesMap.size).toBe(2);
 
     const composed = host.compose();
     await composed.toolHandlers['tasks.addTask'](
-      { circleId: 'primary-crew', text: 'primary-only-task' },
+      { circleId: 'primary-circle', text: 'primary-only-task' },
       { actorWebid: ANNE },
     );
     await composed.toolHandlers['tasks.addTask'](
-      { circleId: 'sibling-crew', text: 'sibling-only-task' },
+      { circleId: 'sibling-circle', text: 'sibling-only-task' },
       { actorWebid: ANNE },
     );
 
-    const primaryItems = await crewsMap.get('primary-crew').itemStore.listOpen();
-    const siblingItems = await crewsMap.get('sibling-crew').itemStore.listOpen();
+    const primaryItems = await circlesMap.get('primary-circle').itemStore.listOpen();
+    const siblingItems = await circlesMap.get('sibling-circle').itemStore.listOpen();
 
     expect(primaryItems.map((i) => i.text)).toContain('primary-only-task');
     expect(primaryItems.map((i) => i.text)).not.toContain('sibling-only-task');

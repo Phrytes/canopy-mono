@@ -13,7 +13,7 @@ So: per-circle **ItemStore** within the single agent.
 
 ## The insight
 `tasks-v0` is the reference pattern: per-circle stores keyed by `rootContainer =
-mem://tasks/crews/<circleId>/`, lazily spawned via `ensureCrew(circleId)`
+mem://tasks/circles/<circleId>/`, lazily spawned via `ensureCircle(circleId)`
 (`apps/tasks-v0/src/browser.js:204-224`). `ItemStore.#listAllItems` lists by the root prefix,
 so **one shared DataSource + N ItemStores with distinct roots** partitions reads/writes with no
 per-call filter and no leak surface. Give household the same treatment.
@@ -45,7 +45,7 @@ The active `circleId` already arrives in `args` for create/mutate verbs (`scopeR
   Repeat for tasks (`circleId`) + stoop (`groupId`). The drift guard (CLAUDE.md "prefer a fitness
   function").
 
-- **Phase 3 — tasks + stoop.** tasks-v0: verify (already per-crew); fix the chat `/mytasks` read-scope
+- **Phase 3 — tasks + stoop.** tasks-v0: verify (already per-circle); fix the chat `/mytasks` read-scope
   gap. stoop: close the read-leak — ensure every per-circle read goes through the `groupId`-tag +
   `keepForCircle` filter (full per-store parity via `createNeighborhoodCluster` is a follow-up).
 

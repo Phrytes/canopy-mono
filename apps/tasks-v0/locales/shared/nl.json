@@ -11,18 +11,18 @@
       "unknown":   { "text": "—",            "doc": "Status pill — status is missing/garbage; rendered as a dash." }
     },
     "roles": {
-      "admin":              { "text": "admin",              "doc": "Crew role — admin (full powers)." },
-      "coordinator":        { "text": "coördinator",        "doc": "Crew role — coordinator." },
-      "member":             { "text": "lid",                "doc": "Crew role — regular member." },
-      "observer":           { "text": "observator",         "doc": "Crew role — read-only." },
-      "external-volunteer": { "text": "externe vrijwilliger", "doc": "Crew role — external; can claim tagged tasks only." }
+      "admin":              { "text": "admin",              "doc": "Circle role — admin (full powers)." },
+      "coordinator":        { "text": "coördinator",        "doc": "Circle role — coordinator." },
+      "member":             { "text": "lid",                "doc": "Circle role — regular member." },
+      "observer":           { "text": "observator",         "doc": "Circle role — read-only." },
+      "external-volunteer": { "text": "externe vrijwilliger", "doc": "Circle role — external; can claim tagged tasks only." }
     },
-    "crew_kinds": {
-      "household":   { "text": "huishouden",  "doc": "Crew kind chip — a household." },
-      "project":     { "text": "project",     "doc": "Crew kind chip — a time-bound project." },
-      "team":        { "text": "team",        "doc": "Crew kind chip — a standing team." },
-      "friends":     { "text": "vrienden",    "doc": "Crew kind chip — a circle of friends." },
-      "maintenance": { "text": "onderhoud",   "doc": "Crew kind chip — a maintenance crew." }
+    "circle_kinds": {
+      "household":   { "text": "huishouden",  "doc": "Circle kind chip — a household." },
+      "project":     { "text": "project",     "doc": "Circle kind chip — a time-bound project." },
+      "team":        { "text": "team",        "doc": "Circle kind chip — a standing team." },
+      "friends":     { "text": "vrienden",    "doc": "Circle kind chip — a circle of friends." },
+      "maintenance": { "text": "onderhoud",   "doc": "Circle kind chip — a maintenance circle." }
     },
     "approval_modes": {
       "self-mark":     { "text": "zelf afvinken",            "doc": "Approval mode — assignee marks complete; no review." },

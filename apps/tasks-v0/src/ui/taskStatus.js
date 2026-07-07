@@ -92,7 +92,7 @@ export function shouldProposeSubtask(item, actor) {
  *
  * @param {object} item
  * @param {string} actor      caller's webid (or pubKey on mobile)
- * @param {string} role       caller's role in the active crew
+ * @param {string} role       caller's role in the active circle
  */
 export function shouldOfferForceComplete(item, actor, role) {
   if (!item) return false;

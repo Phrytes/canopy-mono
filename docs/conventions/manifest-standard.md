@@ -59,7 +59,7 @@ raised per failing projector, tagged with the surface key.
 ## What is not a conformance failure
 
 The registry (`@canopy/item-types`) is the source of truth for nouns, but app-local (non-registry) item types
-are permitted (F-SP1-a): household's `shopping` / `errand`, tasks-v0's `crew` / `schedule-slot`, and so on.
+are permitted (F-SP1-a): household's `shopping` / `errand`, tasks-v0's `circle` / `schedule-slot`, and so on.
 Requiring every declared noun to be registry-canonical would fail four of the six current apps, so that rule
 (`validateManifest`'s opt-in `strictNouns`) is **not** part of the standard. Registry-noncanonical nouns are
 instead surfaced as non-blocking `warnings` (code `noncanonical-itemtype`) on the conformance result — a

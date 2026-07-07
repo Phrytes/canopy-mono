@@ -48,7 +48,7 @@ split into:
 | 9 | approveSubtaskRequest + decline | `approveSubtaskRequest`, `declineSubtaskRequest` | realAgent.js:854 | `tasks-mobile/src/screens/InboxScreen.jsx:117-118` | ✅ | — |
 | 10 | forceSpawnSubtask | `forceSpawnSubtask` | realAgent.js:854 | `tasks-mobile/src/screens/ComposeScreen.jsx:56` | ✅ | — |
 | 11 | listMine / myInbox | `listMine`→`listOpen`, `myInbox`→`listMyInbox` | realAgent.js:621-627 | `InboxScreen.jsx`, `MyWorkScreen.jsx` (via adapter) | ✅ (via alias) | — |
-| 12 | Crew controls (pause/unpause/archive/unarchive) | `pauseCrew`, `unpauseCrew`, `archiveCrew`, `unarchiveCrew` | realAgent.js:781-787 | `CreateCrewScreen.jsx:55` (provision only) | ⚠️ partial | **#220.2** |
+| 12 | Circle controls (pause/unpause/archive/unarchive) | `pauseCircle`, `unpauseCircle`, `archiveCircle`, `unarchiveCircle` | realAgent.js:781-787 | `CreateCircleScreen.jsx:55` (provision only) | ⚠️ partial | **#220.2** |
 | 13 | Invites (issue/redeem) | `issueInvite`, `redeemInvite` | realAgent.js:854 | `OnboardIssueScreen.jsx:51`, `OnboardScanScreen.jsx:45` | ✅ | — |
 | 14 | Availability | `getMyAvailability`, `setMyAvailability` | realAgent.js:854 | `tasks-mobile/src/screens/AvailabilityScreen.jsx:33-34` | ✅ | — |
 | 15 | Planner: suggest/acceptSchedule | `suggestSchedule`, `acceptSchedule` | realAgent.js:854 | `PlannerCards.jsx` (uses `useNativeCalendarLiveSync`) | ⚠️ different | **#220.4** |
@@ -90,10 +90,10 @@ fields the web `/edit-task` slash exposes.
 **Slice fit:** per-app screen addition. Could ship before #222.
 **Est:** ~3–4h.
 
-### #220.2 — Crew pause/unpause/archive/unarchive on tasks-mobile
+### #220.2 — Circle pause/unpause/archive/unarchive on tasks-mobile
 
-`tasks-mobile/src/screens/CreateCrewScreen.jsx` handles provision
-but `CrewSettingsScreen` (referenced in tasks-mobile routes) lacks
+`tasks-mobile/src/screens/CreateCircleScreen.jsx` handles provision
+but `CircleSettingsScreen` (referenced in tasks-mobile routes) lacks
 admin lifecycle toggles. Substrate skills exist; mobile needs the
 UI toggles + permission gating.
 

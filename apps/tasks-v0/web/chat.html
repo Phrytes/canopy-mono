@@ -57,8 +57,8 @@
       <a href="/review.html" data-i18n="nav.review">Review</a>
       <a href="/dag.html" data-i18n="nav.dag">DAG</a>
       <a href="/availability.html">Availability</a>
-      <a href="/crew.html" data-i18n="nav.crew">Crew</a>
-      <a href="/crews.html">Crews</a>
+      <a href="/circle.html" data-i18n="nav.circle">Circle</a>
+      <a href="/circles.html">Circles</a>
       <a href="/inbox.html" id="nav-inbox" data-i18n="nav.inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
@@ -106,7 +106,7 @@
      *     come from /lib/chatThread.js (shared with mobile).
      *   - List refresh piggybacks on the existing mountLive() poll
      *     (the chat-p2p substrate writes chat-message items into the
-     *     per-crew item-store, so item-added / item-removed cover
+     *     per-circle item-store, so item-added / item-removed cover
      *     inbound deliveries the same way the inbox/mine pages
      *     consume them).
      */
@@ -157,7 +157,7 @@
           const r = await callSkill('getChatThread', { threadId: route.threadId });
           if (r?.error) {
             // Render an explicit error instead of perma-loading; the
-            // chat-not-wired case (V0 mode without a crew envelope)
+            // chat-not-wired case (V0 mode without a circle envelope)
             // shows up here.
             renderError(r.error);
             messages = [];
@@ -279,7 +279,7 @@
 
       await refresh();
       // Same polling pattern inbox.html / mine.html use; the chat-p2p
-      // substrate writes inbound chat-message items into the per-crew
+      // substrate writes inbound chat-message items into the per-circle
       // item-store, so `item-added` covers peer deliveries.
       mountLive(['item-added', 'item-removed'], refresh);
     }

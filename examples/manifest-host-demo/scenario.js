@@ -1,7 +1,7 @@
 /**
  * Recombination demo — shared scenario.
  *
- * One process hosts household + tasks-v0 (multi-crew) together via
+ * One process hosts household + tasks-v0 (multi-circle) together via
  * `@canopy/manifest-host`.  A chat-agent drives a mocked LLM over the
  * composed tool catalog.  Both apps' state mutates from one
  * conversation; the demo runner (`index.js`) logs the trace and the
@@ -23,7 +23,7 @@ import {
 }                                              from '@canopy-app/household';
 import {
   tasksManifest,
-  buildMultiCrewRuntime,
+  buildMultiCircleRuntime,
   createTasksMountable,
 }                                              from '@canopy-app/tasks-v0';
 
@@ -45,7 +45,7 @@ export const DEMO_LLM_SCRIPT = [
   },
   // Turn 2 — user: "add a task: paint the hallway"
   {
-    toolCall:       { id: 'tasks.addTask', args: { circleId: 'primary-crew', text: 'paint the hallway' } },
+    toolCall:       { id: 'tasks.addTask', args: { circleId: 'primary-circle', text: 'paint the hallway' } },
     classification: 'actionable',
   },
   // Turn 3 — user: "what's on my shopping list?"
@@ -69,7 +69,7 @@ export function buildSystemPrompt(perAppSystemPrompts) {
     'You are a multi-app assistant.  You have access to tools from these apps:',
     ...apps.map((a) => `  - ${a}`),
     'Use the appropriate tool for each request.  For tools whose id starts with',
-    '"tasks.", default to circleId: "primary-crew" if the user does not specify one.',
+    '"tasks.", default to circleId: "primary-circle" if the user does not specify one.',
   ].join('\n');
 }
 
@@ -87,14 +87,14 @@ export async function setupRecombinationDemo({ llmScript = DEMO_LLM_SCRIPT } = {
   const householdStore     = new InMemoryStore();
   const householdMountable = createHouseholdMountable({ store: householdStore });
 
-  // (2) tasks-v0 multi-crew runtime — the same machinery
-  //     `bin/tasks-ui.js --multi-crew` constructs, in-process.
-  const tasksRuntime = await buildMultiCrewRuntime({
+  // (2) tasks-v0 multi-circle runtime — the same machinery
+  //     `bin/tasks-ui.js --multi-circle` constructs, in-process.
+  const tasksRuntime = await buildMultiCircleRuntime({
     label: 'recombination-demo',
   });
   const tasksMountable = createTasksMountable({
     meshAgent: tasksRuntime.meshAgent,
-    crewsMap:  tasksRuntime.crewsMap,
+    circlesMap:  tasksRuntime.circlesMap,
   });
 
   // (3) host composition — mount both apps; everything namespaced.

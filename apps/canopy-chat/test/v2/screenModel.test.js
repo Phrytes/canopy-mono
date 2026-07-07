@@ -105,14 +105,14 @@ describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → L
   // Items with an effective audience (via item-store's audienceFromItem:
   // `audience` field wins, else legacy `visibility`, else 'household').
   const items = [
-    { id: 'a', label: 'Alpha', audience: 'crew:abc' },
-    { id: 'b', label: 'Bravo', audience: 'crew:xyz' },
-    { id: 'c', label: 'Charlie', visibility: 'crew:abc' }, // legacy field resolves too
+    { id: 'a', label: 'Alpha', audience: 'circle:abc' },
+    { id: 'b', label: 'Bravo', audience: 'circle:xyz' },
+    { id: 'c', label: 'Charlie', visibility: 'circle:abc' }, // legacy field resolves too
     { id: 'd', label: 'Delta' },                            // → 'household' default
   ];
 
   it('defaultAudience filters the list to items whose effective audience matches', () => {
-    const { rows } = buildScreenModel({ items, defaultAudience: 'crew:abc' });
+    const { rows } = buildScreenModel({ items, defaultAudience: 'circle:abc' });
     expect(rows.map((r) => r.item.id)).toEqual(['a', 'c']);
   });
 
@@ -122,7 +122,7 @@ describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → L
   });
 
   it('explicit audience OVERRIDES the view default', () => {
-    const { rows } = buildScreenModel({ items, defaultAudience: 'crew:abc', audience: 'crew:xyz' });
+    const { rows } = buildScreenModel({ items, defaultAudience: 'circle:abc', audience: 'circle:xyz' });
     expect(rows.map((r) => r.item.id)).toEqual(['b']);
   });
 
@@ -133,11 +133,11 @@ describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → L
 
   it('audience filter also constrains category checkboxes + counts', () => {
     const cat = [
-      { id: 'a', label: 'Alpha', category: 'x', audience: 'crew:abc' },
-      { id: 'b', label: 'Bravo', category: 'y', audience: 'crew:xyz' },
-      { id: 'c', label: 'Charlie', category: 'x', audience: 'crew:abc' },
+      { id: 'a', label: 'Alpha', category: 'x', audience: 'circle:abc' },
+      { id: 'b', label: 'Bravo', category: 'y', audience: 'circle:xyz' },
+      { id: 'c', label: 'Charlie', category: 'x', audience: 'circle:abc' },
     ];
-    const { categories } = buildScreenModel({ items: cat, categoryField: 'category', defaultAudience: 'crew:abc' });
+    const { categories } = buildScreenModel({ items: cat, categoryField: 'category', defaultAudience: 'circle:abc' });
     expect(categories).toEqual([{ id: 'x', count: 2, checked: true }]);
   });
 });

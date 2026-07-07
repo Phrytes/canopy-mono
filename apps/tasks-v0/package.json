@@ -13,7 +13,7 @@
     "./wireSkills": "./src/wireSkills.js",
     "./bundleResolver": "./src/bundleResolver.js",
     "./substrateMirror": "./src/substrateMirror.js",
-    "./multiCrewOnboarding": "./src/skills/multiCrewOnboarding.js",
+    "./multiCircleOnboarding": "./src/skills/multiCircleOnboarding.js",
     "./lib/podSignIn": "./src/lib/podSignIn.js",
     "./lib/substrateStack": "./src/lib/substrateStack.js",
     "./lib/attachTasksBundle": "./src/lib/attachTasksBundle.js",

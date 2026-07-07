@@ -1,6 +1,6 @@
 /**
  * wireIssuerNotifications — schedule + dispatch issuer-facing
- * notifications for a Tasks crew.
+ * notifications for a Tasks circle.
  *
  * Wires the bundle's `Notifier` to `itemStore` events:
  *

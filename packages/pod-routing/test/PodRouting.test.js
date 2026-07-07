@@ -59,22 +59,22 @@ describe('podRouting.setAnchor — no-pod → pod and back', () => {
     const r = createPodRouting({ pseudoPod: mkPod(), deviceId: 'd' });
     // starts no-pod
     expect(r.resolve('private/identity-vault')).toBe('pseudo-pod://d/private/identity-vault');
-    expect(r.crewPolicy('c')).toEqual({ policy: 'no-pod' });
+    expect(r.circlePolicy('c')).toEqual({ policy: 'no-pod' });
 
-    // attach a pod → defaults + crew policy re-point to the anchor.
+    // attach a pod → defaults + circle policy re-point to the anchor.
     // (configResourceUri is intentionally anchor-independent in V0 —
     // the storage-mapping always lives in the local pseudo-pod mirror;
     // setAnchor returns it for forward-compat.)
     const cfg = r.setAnchor('https://anne.pod');
     expect(r.resolve('private/identity-vault')).toBe('https://anne.pod/private/identity-vault');
-    expect(r.crewPolicy('c')).toEqual({ policy: 'centralised', groupPodUri: 'https://anne.pod' });
+    expect(r.circlePolicy('c')).toEqual({ policy: 'centralised', groupPodUri: 'https://anne.pod' });
     expect(r.anchorPodUri).toBe('https://anne.pod');
     expect(cfg).toBe(r.configResourceUri);
 
     // revert to no-pod
     r.setAnchor(null);
     expect(r.resolve('private/identity-vault')).toBe('pseudo-pod://d/private/identity-vault');
-    expect(r.crewPolicy('c')).toEqual({ policy: 'no-pod' });
+    expect(r.circlePolicy('c')).toEqual({ policy: 'no-pod' });
     expect(r.anchorPodUri).toBe(null);
   });
 
@@ -103,27 +103,27 @@ describe('podRouting.resolve — defaults (pod-having)', () => {
     expect(r.resolve('sharing/tasks/abc')).toBe('https://anne.pod/sharing/tasks/abc');
   });
 
-  it('default crew policy is centralised on the anchor pod', () => {
+  it('default circle policy is centralised on the anchor pod', () => {
     const r = createPodRouting({
       pseudoPod:    mkPod(),
       deviceId:     'd',
       anchorPodUri: 'https://anne.pod',
     });
-    expect(r.crewPolicy('any-crew')).toEqual({
+    expect(r.circlePolicy('any-circle')).toEqual({
       policy:      'centralised',
       groupPodUri: 'https://anne.pod',
     });
   });
 });
 
-describe('podRouting.resolve — group routing via crew policy', () => {
-  it('centralised crew resolves to groupPodUri', async () => {
+describe('podRouting.resolve — group routing via circle policy', () => {
+  it('centralised circle resolves to groupPodUri', async () => {
     const r = createPodRouting({
       pseudoPod:    mkPod('d'),
       deviceId:     'd',
       anchorPodUri: 'https://anne.pod',
     });
-    await r.setCrewPolicy('buurt-abc', {
+    await r.setCirclePolicy('buurt-abc', {
       policy:      'centralised',
       groupPodUri: 'https://anne.pod',
     });
@@ -131,46 +131,46 @@ describe('podRouting.resolve — group routing via crew policy', () => {
       .toBe('https://anne.pod/buurt-abc/tasks/x');
   });
 
-  it('no-pod crew resolves to pseudo-pod replication-ring path', async () => {
+  it('no-pod circle resolves to pseudo-pod replication-ring path', async () => {
     const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
-    await r.setCrewPolicy('household-xyz', { policy: 'no-pod' });
+    await r.setCirclePolicy('household-xyz', { policy: 'no-pod' });
     expect(r.resolve('group/household-xyz/tasks/x'))
       .toBe('pseudo-pod://d/group/household-xyz/tasks/x');
   });
 
-  it('decentralised crew resolves to the user’s OWN anchor pod (crew-scoped)', async () => {
+  it('decentralised circle resolves to the user’s OWN anchor pod (circle-scoped)', async () => {
     const r = createPodRouting({
       pseudoPod:    mkPod('d'),
       deviceId:     'd',
       anchorPodUri: 'https://me.pod',
     });
-    await r.setCrewPolicy('nb', { policy: 'decentralised' });
+    await r.setCirclePolicy('nb', { policy: 'decentralised' });
     expect(r.resolve('group/nb/items/1.json'))
       .toBe('https://me.pod/nb/items/1.json');
   });
 
   it('decentralised with NO anchor pod falls back to the replication ring', async () => {
     const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
-    await r.setCrewPolicy('nb', { policy: 'decentralised' });
+    await r.setCirclePolicy('nb', { policy: 'decentralised' });
     expect(r.resolve('group/nb/items/1.json'))
       .toBe('pseudo-pod://d/group/nb/items/1.json');
   });
 
-  it('hybrid ledger resolves to the shared group pod (== centralised for crew data)', async () => {
+  it('hybrid ledger resolves to the shared group pod (== centralised for circle data)', async () => {
     const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
-    await r.setCrewPolicy('hh', { policy: 'hybrid', groupPodUri: 'https://grp.pod' });
+    await r.setCirclePolicy('hh', { policy: 'hybrid', groupPodUri: 'https://grp.pod' });
     expect(r.resolve('group/hh/items/1.json'))
       .toBe('https://grp.pod/hh/items/1.json');
   });
 
   it('hybrid with no groupPodUri falls back to the replication ring', async () => {
     const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
-    await r.setCrewPolicy('hh', { policy: 'hybrid' });
+    await r.setCirclePolicy('hh', { policy: 'hybrid' });
     expect(r.resolve('group/hh/items/1.json'))
       .toBe('pseudo-pod://d/group/hh/items/1.json');
   });
 
-  it('explicit mapping overrides crew-policy resolution', async () => {
+  it('explicit mapping overrides circle-policy resolution', async () => {
     const r = createPodRouting({
       pseudoPod:    mkPod('d'),
       deviceId:     'd',
@@ -186,12 +186,12 @@ describe('podRouting.resolve — group routing via crew policy', () => {
 
   it('group routing uses the explicit policy.groupPodUri', async () => {
     const r = createPodRouting({ pseudoPod: mkPod('d'), deviceId: 'd' });
-    await r.setCrewPolicy('crew-x', {
+    await r.setCirclePolicy('circle-x', {
       policy:      'centralised',
       groupPodUri: 'https://bob.pod',
     });
-    expect(r.resolve('group/crew-x/notes/n1'))
-      .toBe('https://bob.pod/crew-x/notes/n1');
+    expect(r.resolve('group/circle-x/notes/n1'))
+      .toBe('https://bob.pod/circle-x/notes/n1');
   });
 });
 

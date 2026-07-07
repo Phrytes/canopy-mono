@@ -154,7 +154,7 @@ describe('substrates-v2 substrate-pipeline — end-to-end composition', () => {
     );
     expect(localMapping?.bytes?.version).toBe(2);
 
-    // 3. Pod-routing reads that mirror + drives reachability + crew policy.
+    // 3. Pod-routing reads that mirror + drives reachability + circle policy.
     const podRouting = createPodRouting({
       pseudoPod,
       deviceId:     DEVICE_ID,

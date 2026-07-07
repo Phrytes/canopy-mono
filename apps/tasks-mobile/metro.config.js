@@ -20,7 +20,7 @@ module.exports = withCanopyPreset({
 
   // Tasks-mobile imports the @canopy-app/tasks-v0 barrel for the
   // V2.8 single-agent factories (buildMeshAgent, wireSkills,
-  // bundleResolver, createCrewAgent) — same platform-shell pattern
+  // bundleResolver, createCircleAgent) — same platform-shell pattern
   // as stoop-mobile + folio-mobile, documented in
   // Project Files/conventions/architectural-layering.md.
   watchFolders: [
@@ -174,13 +174,13 @@ module.exports = withCanopyPreset({
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/Crew')) {
+      if (moduleName.startsWith('@canopy-app/tasks-v0/Circle')) {
         return {
-          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/Crew.js'),
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/Circle.js'),
           type:     'sourceFile',
         };
       }
-      // M1-S3 substrate helpers + M2-S8 multi-crew onboarding —
+      // M1-S3 substrate helpers + M2-S8 multi-circle onboarding —
       // shared device-independent paths (platform parity, NOT mobile
       // forks). The deeper `/lib/substrateStack` MUST precede `/lib`
       // so the longest prefix wins (same trap as the vitest aliases).
@@ -196,9 +196,9 @@ module.exports = withCanopyPreset({
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/multiCrewOnboarding')) {
+      if (moduleName.startsWith('@canopy-app/tasks-v0/multiCircleOnboarding')) {
         return {
-          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCrewOnboarding.js'),
+          filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCircleOnboarding.js'),
           type:     'sourceFile',
         };
       }

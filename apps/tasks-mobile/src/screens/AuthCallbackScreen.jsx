@@ -53,7 +53,7 @@ export function AuthCallbackScreen() {
   }, [svc]);
 
   const onContinue = useCallback(() => {
-    nav.navigate(svc?.crews?.size > 0 ? ROUTES.Workspace : ROUTES.Welcome);
+    nav.navigate(svc?.circles?.size > 0 ? ROUTES.Workspace : ROUTES.Welcome);
   }, [nav, svc]);
 
   return (

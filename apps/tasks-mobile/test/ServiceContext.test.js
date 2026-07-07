@@ -10,8 +10,8 @@
  *   1. bootstrapIdentity (substrate Phase 41.0.b A3)
  *   2. buildLocalStoreBundle (mobile-local helper)
  *   3. buildMeshAgent (V2.8 — apps/tasks-v0/src/MeshAgent.js)
- *   4. buildCrewState per joined crew (mobile-local helper)
- *   5. wireSkills(meshAgent, multiCrewResolver(crews))
+ *   4. buildCircleState per joined circle (mobile-local helper)
+ *   5. wireSkills(meshAgent, multiCircleResolver(circles))
  *
  * Verifying the chain end-to-end here gives us strong confidence that
  * the React-state wiring on top is just glue. (RN-side rendering is
@@ -24,18 +24,18 @@ import { MemorySource, DataPart } from '@canopy/core';
 import { bootstrapIdentity } from '@canopy/react-native/identity/bootstrap';
 import { buildMeshAgent }    from '@canopy-app/tasks-v0/MeshAgent';
 import { wireSkills }        from '@canopy-app/tasks-v0/wireSkills';
-import { multiCrewResolver } from '@canopy-app/tasks-v0/bundleResolver';
+import { multiCircleResolver } from '@canopy-app/tasks-v0/bundleResolver';
 import { MemberMap }         from '@canopy/identity-resolver';
 
 import { buildLocalStoreBundle } from '../src/lib/buildLocalStoreBundle.js';
-import { buildCrewState }        from '../src/lib/buildCrewState.js';
+import { buildCircleState }        from '../src/lib/buildCircleState.js';
 
 const ANNE = 'webid://anne';
 const BOB  = 'webid://bob';
 const KID  = 'webid://kid';
 
-const CREW_ALPHA = {
-  circleId: 'crew-alpha',
+const CIRCLE_ALPHA = {
+  circleId: 'circle-alpha',
   name:   'Alpha',
   kind:   'household',
   members: [
@@ -44,8 +44,8 @@ const CREW_ALPHA = {
   ],
 };
 
-const CREW_BETA = {
-  circleId: 'crew-beta',
+const CIRCLE_BETA = {
+  circleId: 'circle-beta',
   name:   'Beta',
   kind:   'project',
   members: [
@@ -94,11 +94,11 @@ describe('buildLocalStoreBundle', () => {
   });
 });
 
-describe('buildCrewState', () => {
-  it('produces the V2.8 CrewState shape', async () => {
-    const cs = await buildCrewState({ crewConfig: CREW_ALPHA });
-    expect(cs.circleId).toBe('crew-alpha');
-    expect(cs.liveCrew.kind).toBe('household');
+describe('buildCircleState', () => {
+  it('produces the V2.8 CircleState shape', async () => {
+    const cs = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
+    expect(cs.circleId).toBe('circle-alpha');
+    expect(cs.liveCircle.kind).toBe('household');
     expect(cs.roles).toEqual({ [ANNE]: 'admin', [BOB]: 'member' });
     expect(cs.itemStore).toBeTruthy();
     expect(cs.members).toBeTruthy();
@@ -109,24 +109,24 @@ describe('buildCrewState', () => {
     expect(cs.metricsTracker).toBeNull();
   });
 
-  it('crewMutator updates liveCrew immutably', async () => {
-    const cs = await buildCrewState({ crewConfig: CREW_ALPHA });
-    const before = cs.liveCrew;
-    cs.crewMutator({ paused: true });
-    expect(cs.liveCrew.paused).toBe(true);
+  it('circleMutator updates liveCircle immutably', async () => {
+    const cs = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
+    const before = cs.liveCircle;
+    cs.circleMutator({ paused: true });
+    expect(cs.liveCircle.paused).toBe(true);
     // Old reference is unchanged (frozen-copy pattern).
     expect(before.paused).toBeUndefined();
-    expect(Object.isFrozen(cs.liveCrew)).toBe(true);
+    expect(Object.isFrozen(cs.liveCircle)).toBe(true);
   });
 
   it('honours the kind\'s default subtasksAdminApprovalDepth', async () => {
-    const cs = await buildCrewState({ crewConfig: { ...CREW_ALPHA, subtasksAdminApprovalDepth: undefined, kind: 'project' } });
-    expect(cs.liveCrew.subtasksAdminApprovalDepth).toBe(4); // project default
+    const cs = await buildCircleState({ circleConfig: { ...CIRCLE_ALPHA, subtasksAdminApprovalDepth: undefined, kind: 'project' } });
+    expect(cs.liveCircle.subtasksAdminApprovalDepth).toBe(4); // project default
   });
 });
 
-describe('end-to-end — meshAgent + multi-crew dispatch', () => {
-  it('one meshAgent serves N crews; addTask via the registered handler routes to the right ItemStore', async () => {
+describe('end-to-end — meshAgent + multi-circle dispatch', () => {
+  it('one meshAgent serves N circles; addTask via the registered handler routes to the right ItemStore', async () => {
     const vault = makeStubVault();
     const idResult = await bootstrapIdentity({ keychainService: 'tasks', vault });
     const bundle = await buildLocalStoreBundle({ inner: new MemorySource() });
@@ -136,21 +136,21 @@ describe('end-to-end — meshAgent + multi-crew dispatch', () => {
       label:            'TasksMobileTest',
     });
 
-    const csA = await buildCrewState({ crewConfig: CREW_ALPHA });
-    const csB = await buildCrewState({ crewConfig: CREW_BETA });
-    const crews = new Map([
-      ['crew-alpha', csA],
-      ['crew-beta',  csB],
+    const csA = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
+    const csB = await buildCircleState({ circleConfig: CIRCLE_BETA });
+    const circles = new Map([
+      ['circle-alpha', csA],
+      ['circle-beta',  csB],
     ]);
 
     const allMembers = new MemberMap({
-      initial: [...CREW_ALPHA.members, ...CREW_BETA.members],
+      initial: [...CIRCLE_ALPHA.members, ...CIRCLE_BETA.members],
     });
 
     wireSkills({
       meshAgent,
-      bundleResolver: multiCrewResolver(crews),
-      crewsProvider:  () => crews.values(),
+      bundleResolver: multiCircleResolver(circles),
+      circlesProvider:  () => circles.values(),
       members:        allMembers,
     });
     await meshAgent.start();
@@ -158,18 +158,18 @@ describe('end-to-end — meshAgent + multi-crew dispatch', () => {
     const addTask = meshAgent.skills.get('addTask');
     expect(addTask).toBeTruthy();
 
-    // Add a task to crew-alpha via circleId arg.
+    // Add a task to circle-alpha via circleId arg.
     const r1 = await addTask.handler({
-      parts:    [DataPart({ circleId: 'crew-alpha', text: 'A1' })],
+      parts:    [DataPart({ circleId: 'circle-alpha', text: 'A1' })],
       from:     ANNE,
       agent:    meshAgent,
       envelope: null,
     });
     expect(r1?.task?.text).toBe('A1');
 
-    // Add to crew-beta. KID is admin there.
+    // Add to circle-beta. KID is admin there.
     const r2 = await addTask.handler({
-      parts:    [DataPart({ circleId: 'crew-beta', text: 'B1' })],
+      parts:    [DataPart({ circleId: 'circle-beta', text: 'B1' })],
       from:     KID,
       agent:    meshAgent,
       envelope: null,
@@ -184,8 +184,8 @@ describe('end-to-end — meshAgent + multi-crew dispatch', () => {
   });
 });
 
-describe('end-to-end — joinCrew flow (re-reading the live crews Map)', () => {
-  it('a crew added after wireSkills is reachable by the resolver', async () => {
+describe('end-to-end — joinCircle flow (re-reading the live circles Map)', () => {
+  it('a circle added after wireSkills is reachable by the resolver', async () => {
     const vault = makeStubVault();
     const idResult = await bootstrapIdentity({ keychainService: 'tasks', vault });
     const bundle = await buildLocalStoreBundle({ inner: new MemorySource() });
@@ -195,32 +195,32 @@ describe('end-to-end — joinCrew flow (re-reading the live crews Map)', () => {
       label:            'TasksMobileJoinTest',
     });
 
-    const crews = new Map();
+    const circles = new Map();
     wireSkills({
       meshAgent,
-      bundleResolver: multiCrewResolver(crews),
-      crewsProvider:  () => crews.values(),
+      bundleResolver: multiCircleResolver(circles),
+      circlesProvider:  () => circles.values(),
       members:        new MemberMap({ initial: [] }),
     });
     await meshAgent.start();
 
-    // Initially no crews — addTask without circleId returns the strict-null error.
+    // Initially no circles — addTask without circleId returns the strict-null error.
     const addTask = meshAgent.skills.get('addTask');
-    const noCrew = await addTask.handler({
+    const noCircle = await addTask.handler({
       parts:    [DataPart({ text: 'X' })],
       from:     ANNE,
       agent:    meshAgent,
       envelope: null,
     });
-    expect(noCrew?.error).toBe('circleId required');
+    expect(noCircle?.error).toBe('circleId required');
 
     // Now "join" — mutate the live Map (this is what ServiceContext's
-    // joinCrew does behind the scenes; resolver picks it up on next dispatch).
-    const csA = await buildCrewState({ crewConfig: CREW_ALPHA });
-    crews.set('crew-alpha', csA);
+    // joinCircle does behind the scenes; resolver picks it up on next dispatch).
+    const csA = await buildCircleState({ circleConfig: CIRCLE_ALPHA });
+    circles.set('circle-alpha', csA);
 
     const r = await addTask.handler({
-      parts:    [DataPart({ circleId: 'crew-alpha', text: 'A1' })],
+      parts:    [DataPart({ circleId: 'circle-alpha', text: 'A1' })],
       from:     ANNE,
       agent:    meshAgent,
       envelope: null,

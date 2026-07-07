@@ -4,13 +4,13 @@
  * The page renders a per-member weekly availability grid (open / tight /
  * unavailable). Backed by the buildAvailabilitySkills set
  * (setAvailabilityEnabled, setAvailabilityOptIn, setMyAvailability,
- * getMyAvailability, getCrewAvailability). Zero existing test coverage
+ * getMyAvailability, getCircleAvailability). Zero existing test coverage
  * for the page itself.
  *
  * Captures:
  *   - Page-serves test: 200 + non-empty HTML + `<html` substring.
  *   - Structural snapshot via `normaliseSnapshot` + `toMatchSnapshot`.
- *   - `getMyAvailability` returns without error on a fresh crew (the
+ *   - `getMyAvailability` returns without error on a fresh circle (the
  *     feature is disabled by default → enabled:false shape).
  *
  * Discipline: minimal assertions, no domain-state introspection. We
@@ -18,7 +18,7 @@
  * feature-flag lifecycle is its own characterization target.
  *
  * TODO (corpus-next): exercise setAvailabilityEnabled → opt-in →
- * setMyAvailability → getCrewAvailability and lock the grid-shape
+ * setMyAvailability → getCircleAvailability and lock the grid-shape
  * output once owner confirms which fields are gold-standard.
  */
 
@@ -53,11 +53,11 @@ describe('characterization: availability.html', () => {
     expect(snap, 'availability.html structural baseline').toMatchSnapshot();
   });
 
-  it('getMyAvailability returns the feature-disabled shape on a fresh crew', async () => {
+  it('getMyAvailability returns the feature-disabled shape on a fresh circle', async () => {
     const r = await fixture.callSkill('getMyAvailability');
     expect(r).toBeTruthy();
     expect(r.error).toBeUndefined();
-    // availabilityHints is OFF by default on a fresh crew →
+    // availabilityHints is OFF by default on a fresh circle →
     // skill returns {enabled:false, week:null, grid:{}}.
     expect(r.enabled).toBe(false);
   });

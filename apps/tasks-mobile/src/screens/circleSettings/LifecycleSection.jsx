@@ -1,5 +1,5 @@
 /**
- * LifecycleSection — crew lifecycle controls.
+ * LifecycleSection — circle lifecycle controls.
  *
  * Phase 41.18.2 (2026-05-10).
  * Task #227 (2026-05-24): coordinators can now pause/unpause; archive
@@ -7,11 +7,11 @@
  * read-only label. Gating is computed by the pure helper
  * `lib/lifecycleControls.js` so it can be unit-tested without React.
  *
- * Wraps the four crewControls skills:
- *   - pauseCrew     — admin OR coordinator, soft-disables addTask
- *   - unpauseCrew   — admin OR coordinator, undo
- *   - archiveCrew   — admin only, read-only state
- *   - unarchiveCrew — admin only
+ * Wraps the four circleControls skills:
+ *   - pauseCircle     — admin OR coordinator, soft-disables addTask
+ *   - unpauseCircle   — admin OR coordinator, undo
+ *   - archiveCircle   — admin only, read-only state
+ *   - unarchiveCircle — admin only
  *
  * Renders the current state ("active" / "paused" / "archived") + the
  * CTAs the caller is allowed to invoke.
@@ -34,8 +34,8 @@ export function LifecycleSection() {
   const { t }        = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs       = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
-  const live     = cs?.liveCrew ?? {};
+  const cs       = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
+  const live     = cs?.liveCircle ?? {};
   const archived = !!live.archived;
   const paused   = !!live.paused;
 
@@ -48,10 +48,10 @@ export function LifecycleSection() {
     showReadOnly,
   } = lifecycleControlsFor({ role, paused, archived });
 
-  const pauseSk     = useSkill('pauseCrew');
-  const unpauseSk   = useSkill('unpauseCrew');
-  const archiveSk   = useSkill('archiveCrew');
-  const unarchiveSk = useSkill('unarchiveCrew');
+  const pauseSk     = useSkill('pauseCircle');
+  const unpauseSk   = useSkill('unpauseCircle');
+  const archiveSk   = useSkill('archiveCircle');
+  const unarchiveSk = useSkill('unarchiveCircle');
 
   const [busy,           setBusy]           = useState(false);
   const [error,          setError]          = useState(null);
@@ -85,7 +85,7 @@ export function LifecycleSection() {
   if (showReadOnly) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t(`mobile.crew_settings.lifecycle_state_${stateKey}_member`)}
+        {t(`mobile.circle_settings.lifecycle_state_${stateKey}_member`)}
       </Text>
     );
   }
@@ -110,18 +110,18 @@ export function LifecycleSection() {
             fontSize: FONT_SIZES.xs, fontWeight: '600',
             textTransform: 'uppercase', letterSpacing: 0.5,
           }}>
-            {t(`mobile.crew_settings.lifecycle_state_${stateKey}`)}
+            {t(`mobile.circle_settings.lifecycle_state_${stateKey}`)}
           </Text>
         </View>
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, flex: 1 }}>
-          {t(`mobile.crew_settings.lifecycle_hint_${stateKey}`)}
+          {t(`mobile.circle_settings.lifecycle_hint_${stateKey}`)}
         </Text>
       </View>
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm }}>
         {canPause ? (
           <CtaBtn
-            label={t('mobile.crew_settings.lifecycle_pause')}
+            label={t('mobile.circle_settings.lifecycle_pause')}
             onPress={onPause}
             disabled={busy}
             variant="warning"
@@ -129,7 +129,7 @@ export function LifecycleSection() {
         ) : null}
         {canUnpause ? (
           <CtaBtn
-            label={t('mobile.crew_settings.lifecycle_unpause')}
+            label={t('mobile.circle_settings.lifecycle_unpause')}
             onPress={onUnpause}
             disabled={busy}
             variant="primary"
@@ -137,7 +137,7 @@ export function LifecycleSection() {
         ) : null}
         {canArchive ? (
           <CtaBtn
-            label={t('mobile.crew_settings.lifecycle_archive')}
+            label={t('mobile.circle_settings.lifecycle_archive')}
             onPress={() => setShowArchive(true)}
             disabled={busy}
             variant="danger"
@@ -145,7 +145,7 @@ export function LifecycleSection() {
         ) : null}
         {canUnarchive ? (
           <CtaBtn
-            label={t('mobile.crew_settings.lifecycle_unarchive')}
+            label={t('mobile.circle_settings.lifecycle_unarchive')}
             onPress={() => setShowUnarchive(true)}
             disabled={busy}
             variant="primary"
@@ -161,18 +161,18 @@ export function LifecycleSection() {
 
       <ConfirmModal
         visible={showArchive}
-        title={t('mobile.crew_settings.lifecycle_archive_confirm_title')}
-        body={t('mobile.crew_settings.lifecycle_archive_confirm_body')}
-        confirmLabel={t('mobile.crew_settings.lifecycle_archive')}
+        title={t('mobile.circle_settings.lifecycle_archive_confirm_title')}
+        body={t('mobile.circle_settings.lifecycle_archive_confirm_body')}
+        confirmLabel={t('mobile.circle_settings.lifecycle_archive')}
         destructive
         onConfirm={onArchive}
         onCancel={() => setShowArchive(false)}
       />
       <ConfirmModal
         visible={showUnarchive}
-        title={t('mobile.crew_settings.lifecycle_unarchive_confirm_title')}
-        body={t('mobile.crew_settings.lifecycle_unarchive_confirm_body')}
-        confirmLabel={t('mobile.crew_settings.lifecycle_unarchive')}
+        title={t('mobile.circle_settings.lifecycle_unarchive_confirm_title')}
+        body={t('mobile.circle_settings.lifecycle_unarchive_confirm_body')}
+        confirmLabel={t('mobile.circle_settings.lifecycle_unarchive')}
         onConfirm={onUnarchive}
         onCancel={() => setShowUnarchive(false)}
       />

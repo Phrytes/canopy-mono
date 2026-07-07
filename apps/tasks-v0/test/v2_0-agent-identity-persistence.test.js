@@ -2,12 +2,12 @@
  * V2.0 — tasks-agent identity persistence.
  *
  * Asserts:
- *   - createCrewAgent persists the tasks agent's vault under
- *     mem://tasks/crews/<circleId>/agent/identity-vault.json on first boot.
- *   - A second createCrewAgent against the same local-store cache
+ *   - createCircleAgent persists the tasks agent's vault under
+ *     mem://tasks/circles/<circleId>/agent/identity-vault.json on first boot.
+ *   - A second createCircleAgent against the same local-store cache
  *     restores the vault → same pubKey, deviceId, stableId.
- *   - Multi-crew: two crews on the same shared store get DIFFERENT
- *     identities (per-crew path scheme prevents collisions).
+ *   - Multi-circle: two circles on the same shared store get DIFFERENT
+ *     identities (per-circle path scheme prevents collisions).
  *   - When `identity` is supplied externally (tests + CLI override),
  *     the persistence path is skipped.
  */
@@ -18,17 +18,17 @@ import { AgentIdentity } from '@canopy/core';
 import { VaultMemory } from '@canopy/vault';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
-const CREW_A = {
-  circleId:  'crew-a',
-  name:    'Crew A',
+const CIRCLE_A = {
+  circleId:  'circle-a',
+  name:    'Circle A',
   kind:    'project',
   members: [{ webid: 'https://id.example/anne', displayName: 'Anne', role: 'admin' }],
 };
-const CREW_B = {
-  circleId:  'crew-b',
-  name:    'Crew B',
+const CIRCLE_B = {
+  circleId:  'circle-b',
+  name:    'Circle B',
   kind:    'project',
   members: [{ webid: 'https://id.example/anne', displayName: 'Anne', role: 'admin' }],
 };
@@ -39,54 +39,54 @@ describe('V2.0 — tasks-agent identity persistence', () => {
 
     // Boot 1.
     const bundle1 = buildBundle({ localStore: sharedStore });
-    const crew1 = await createCrewAgent({
-      crewConfig:           CREW_A,
+    const circle1 = await createCircleAgent({
+      circleConfig:           CIRCLE_A,
       localStoreBundle:     bundle1,
       wireOnboardingSkills: false,
     });
-    const pubKey1   = crew1.agent.pubKey;
-    const deviceId1 = crew1.agent.identity.deviceId;
-    const stableId1 = crew1.agent.identity.stableId;
-    await crew1.close();
+    const pubKey1   = circle1.agent.pubKey;
+    const deviceId1 = circle1.agent.identity.deviceId;
+    const stableId1 = circle1.agent.identity.stableId;
+    await circle1.close();
 
     // Persistent blob lives at the convention path.
-    expect(sharedStore.has('mem://tasks/crews/crew-a/agent/identity-vault.json')).toBe(true);
+    expect(sharedStore.has('mem://tasks/circles/circle-a/agent/identity-vault.json')).toBe(true);
 
     // Boot 2 — same store.
     const bundle2 = buildBundle({ localStore: sharedStore });
-    const crew2 = await createCrewAgent({
-      crewConfig:           CREW_A,
+    const circle2 = await createCircleAgent({
+      circleConfig:           CIRCLE_A,
       localStoreBundle:     bundle2,
       wireOnboardingSkills: false,
     });
-    expect(crew2.agent.pubKey).toBe(pubKey1);
-    expect(crew2.agent.identity.deviceId).toBe(deviceId1);
-    expect(crew2.agent.identity.stableId).toBe(stableId1);
-    await crew2.close();
+    expect(circle2.agent.pubKey).toBe(pubKey1);
+    expect(circle2.agent.identity.deviceId).toBe(deviceId1);
+    expect(circle2.agent.identity.stableId).toBe(stableId1);
+    await circle2.close();
   });
 
-  it('multi-crew on same store keeps identities isolated', async () => {
+  it('multi-circle on same store keeps identities isolated', async () => {
     const sharedStore = new Map();
 
     const bundleA = buildBundle({ localStore: sharedStore });
-    const crewA   = await createCrewAgent({
-      crewConfig:           CREW_A,
+    const circleA   = await createCircleAgent({
+      circleConfig:           CIRCLE_A,
       localStoreBundle:     bundleA,
       wireOnboardingSkills: false,
     });
     const bundleB = buildBundle({ localStore: sharedStore });
-    const crewB   = await createCrewAgent({
-      crewConfig:           CREW_B,
+    const circleB   = await createCircleAgent({
+      circleConfig:           CIRCLE_B,
       localStoreBundle:     bundleB,
       wireOnboardingSkills: false,
     });
 
-    expect(crewA.agent.pubKey).not.toBe(crewB.agent.pubKey);
-    expect(sharedStore.has('mem://tasks/crews/crew-a/agent/identity-vault.json')).toBe(true);
-    expect(sharedStore.has('mem://tasks/crews/crew-b/agent/identity-vault.json')).toBe(true);
+    expect(circleA.agent.pubKey).not.toBe(circleB.agent.pubKey);
+    expect(sharedStore.has('mem://tasks/circles/circle-a/agent/identity-vault.json')).toBe(true);
+    expect(sharedStore.has('mem://tasks/circles/circle-b/agent/identity-vault.json')).toBe(true);
 
-    await crewA.close();
-    await crewB.close();
+    await circleA.close();
+    await circleB.close();
   });
 
   it('external identity override skips the persistence path', async () => {
@@ -95,16 +95,16 @@ describe('V2.0 — tasks-agent identity persistence', () => {
     const id  = await AgentIdentity.generate(v);
 
     const bundle = buildBundle({ localStore: sharedStore });
-    const crew   = await createCrewAgent({
-      crewConfig:           CREW_A,
+    const circle   = await createCircleAgent({
+      circleConfig:           CIRCLE_A,
       localStoreBundle:     bundle,
       identity:             id,
       vault:                v,
       wireOnboardingSkills: false,
     });
-    expect(crew.agent.pubKey).toBe(id.pubKey);
+    expect(circle.agent.pubKey).toBe(id.pubKey);
     // Did NOT persist a snapshot because identity was supplied.
-    expect(sharedStore.has('mem://tasks/crews/crew-a/agent/identity-vault.json')).toBe(false);
-    await crew.close();
+    expect(sharedStore.has('mem://tasks/circles/circle-a/agent/identity-vault.json')).toBe(false);
+    await circle.close();
   });
 });

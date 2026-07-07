@@ -9,16 +9,16 @@ of the Tasks-mobile coding plan.
 
 ### Headlines
 
-- One `core.Agent` per process serves N CrewStates (V2.8 single-agent
-  pattern). Skills register once via `wireSkills + multiCrewResolver`;
-  joining/leaving a crew mutates the live `crews` Map without a
+- One `core.Agent` per process serves N CircleStates (V2.8 single-agent
+  pattern). Skills register once via `wireSkills + multiCircleResolver`;
+  joining/leaving a circle mutates the live `circles` Map without a
   re-registration pass.
 - 17 substrate primitives lifted from stoop-mobile in Phase 41.0 +
   41.0.b — every `lib/*.js` and `components/*.js` Tasks-mobile
   reaches for is shared with the wider mobile fleet.
-- 19 screens + 6 crew-settings sub-sections covering every V1 user
+- 19 screens + 6 circle-settings sub-sections covering every V1 user
   journey: onboarding, workspace, my-work + planner, review, DAG,
-  inbox, crew dashboard, profile, settings, availability grid, crew
+  inbox, circle dashboard, profile, settings, availability grid, circle
   admin, pod sign-in.
 - V2.7-aware UI throughout: deps-blocked tasks gate Mark-complete /
   Approve; admins see Force-complete with a mandatory-reason modal;
@@ -33,13 +33,13 @@ of the Tasks-mobile coding plan.
 | 41.0  | 7 substrate lifts (L1–L7): hooks, online-cadence, picker, qr, mnemonic, push, localisation | 47 |
 | 41.0.b | 10 more substrate lifts (A1–A7 + B0–B4): identity-resolver/display, identity bootstrap, storage, deepLinks, theme, components | 13 |
 | 41.1  | Workspace scaffold (Expo 52 / RN 0.76.9, navigator skeleton) | 1 |
-| 41.2  | ServiceContext (boot, agent, crews Map, identity vault, AppState bridge) | 13 |
+| 41.2  | ServiceContext (boot, agent, circles Map, identity vault, AppState bridge) | 13 |
 | 41.3  | Onboarding (Welcome / Scan / Restore / Issue) + qrClassifiers | 17 |
 | 41.4  | Workspace + TaskDetail + Compose; V2.7 gate UI | 14 |
 | 41.5  | MyWork (3 sections) + Planner cards + photo-deliverable submit | 10 |
-| 41.6  | Review + DAG + Inbox + crew-context switch | 9 |
-| 41.7  | Crews dashboard | 3 |
-| 41.8  | Crew settings (6 admin panels) | 5 |
+| 41.6  | Review + DAG + Inbox + circle-context switch | 9 |
+| 41.7  | Circles dashboard | 3 |
+| 41.8  | Circle settings (6 admin panels) | 5 |
 | 41.9  | Availability grid + opt-in | 9 |
 | 41.10 | Profile (mine + other) — handle/avatar/skills/recovery | — |
 | 41.11 | Settings + push opt-in | — |
@@ -54,9 +54,9 @@ of the Tasks-mobile coding plan.
 
 | Package | Used for |
 |---|---|
-| `@canopy/item-store` (L1b) | Per-crew task ledger with audit + DoD lifecycle + V2.7 dependency gating |
+| `@canopy/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating |
 | `@canopy/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile; display + skills helpers |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast for crew-wide skill availability |
+| `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability |
 | `@canopy/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours) |
 | `@canopy/chat-p2p` | Appeal flow chat threads |
 | `@canopy/local-store` | `CachingDataSource` + `Settings` split |
@@ -74,7 +74,7 @@ of the Tasks-mobile coding plan.
 - **Live wireCalendarEmission listener** that diffs into the native
   calendar in real-time as `task.scheduledAt` changes (currently
   V1 ships native-write-on-demand only).
-- **CrewSwitcher** mounted on Workspace/MyWork/Review headers — V1
+- **CircleSwitcher** mounted on Workspace/MyWork/Review headers — V1
   reaches the screens via the route table; the bottom-tab shell
   with persistent header chip lands in V1.x polish.
 - **Identity restore** — `svc.restoreIdentity({mnemonic})` is wired
@@ -83,10 +83,10 @@ of the Tasks-mobile coding plan.
   stub. Implement when V1.x lands on a real device.
 - **Push token-relay registration** — V1 logs the registered token;
   the actual relay-side persistence (per-app `pushTokens` map in the
-  crew config) is a V1.x follow-up.
+  circle config) is a V1.x follow-up.
 - **Bottom-tab navigation shell** — V1.0 uses a flat stack with
   header navigation. Bottom tabs (Workspace / MyWork / Review /
-  Inbox / Crews) for thumb-reach are V1.x.
+  Inbox / Circles) for thumb-reach are V1.x.
 
 ### Test status
 

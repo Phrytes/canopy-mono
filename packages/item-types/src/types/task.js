@@ -1,5 +1,5 @@
 /**
- * `task` type — a shared crew task with optional dependencies +
+ * `task` type — a shared circle task with optional dependencies +
  * DoD lifecycle. Owned by the Tasks app but expressed in
  * substrate-shared terms.
  */
@@ -8,7 +8,7 @@ import { BASE_PROPERTIES, BASE_REQUIRED, NAMESPACE } from '../baseSchema.js';
 
 export const TASK_SCHEMA = {
   iri:         `${NAMESPACE}Task`,
-  description: 'A shared crew task. May reference other items via embeds + dependencies.',
+  description: 'A shared circle task. May reference other items via embeds + dependencies.',
   type:        'object',
   required:    [...BASE_REQUIRED, 'text'],
   properties: {

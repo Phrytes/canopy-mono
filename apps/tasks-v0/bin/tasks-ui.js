@@ -16,34 +16,34 @@
  *     [--port    8080] \
  *     [--storage-root ./.tasks-data]
  *
- * Usage (V1 Crew mode):
+ * Usage (V1 Circle mode):
  *   node bin/tasks-ui.js \
  *     --actor    https://id.example/anne \
- *     --crew     ./oss-tools.crew.json \
+ *     --circle     ./oss-tools.circle.json \
  *     [--storage-root ./.tasks-data] \
  *     [--telegram-token "$TG_BOT_TOKEN"]
  *
- * Usage (V2.8 multi-crew smoke):
+ * Usage (V2.8 multi-circle smoke):
  *   node bin/tasks-ui.js \
  *     --actor      https://id.example/anne \
- *     --crew-list  ./two-crews.list.json
+ *     --circle-list  ./two-circles.list.json
  *
- * `--crew-list <path>` boots ONE meshAgent + N CrewStates and runs an
+ * `--circle-list <path>` boots ONE meshAgent + N CircleStates and runs an
  * in-process smoke probe (`addTask` against each circleId, asserting
- * cross-crew isolation), then exits. The list file shape is
- * `{"crews": ["./a.crew.json", "./b.crew.json"]}` — paths are resolved
+ * cross-circle isolation), then exits. The list file shape is
+ * `{"circles": ["./a.circle.json", "./b.circle.json"]}` — paths are resolved
  * relative to the list file. The HTTP UI is skipped in this mode; the
- * V2.8 web UX for multi-crew (crew picker + per-tab circleId injection)
+ * V2.8 web UX for multi-circle (circle picker + per-tab circleId injection)
  * lives in tasks-mobile.
  *
  * `--telegram-token <token>` activates the V1.5 chat-bot. Set the
  * token via env var to keep it out of shell history; map chatIds to
- * webids in the crew config's `bot.chatBindings`. Requires V1
- * (`--crew`) — the `bot.*` skills aren't registered in V0 mode.
+ * webids in the circle config's `bot.chatBindings`. Requires V1
+ * (`--circle`) — the `bot.*` skills aren't registered in V0 mode.
  *
  * `--push` activates the V1.5 Expo push side-channel. Notifications
- * dispatch to device tokens declared in `crewConfig.pushTokens`.
- * Conservative gating via `crewConfig.pushPolicy` (humanInTheLoop +
+ * dispatch to device tokens declared in `circleConfig.pushTokens`.
+ * Conservative gating via `circleConfig.pushPolicy` (humanInTheLoop +
  * per-day cap + quiet hours).
  *
  * The V0 config file shape:
@@ -52,7 +52,7 @@
  *     "members": [...]
  *   }
  *
- * The V1 Crew config file shape (see `src/Crew.js` § CrewConfig):
+ * The V1 Circle config file shape (see `src/Circle.js` § CircleConfig):
  *   {
  *     "circleId": "oss-tools",
  *     "name":   "OSS Tools NL",
@@ -64,7 +64,7 @@
  * `--storage-root <path>` enables local-only-mode-with-restart-survival:
  *   - Wraps `core.FileSystemSource` rooted at the path in a
  *     `local-store.CachingDataSource`.
- *   - Tasks ledger + crew rosters + skill profile + inbox all
+ *   - Tasks ledger + circle rosters + skill profile + inbox all
  *     persist across CLI restarts.
  *   - When omitted, the CLI uses an in-memory-only bundle
  *     (everything lost at exit; fine for one-off poking).
@@ -86,32 +86,32 @@ const { values } = parseArgs({
     actor:           { type: 'string' },
     role:            { type: 'string' },
     config:          { type: 'string' },
-    crew:            { type: 'string' },
-    'crew-list':     { type: 'string' },
+    circle:            { type: 'string' },
+    'circle-list':     { type: 'string' },
     port:            { type: 'string' },
     'storage-root':  { type: 'string' },
     // V1.5 — chat bot. `--telegram-token <token>` activates the
     // bot bridge (TelegramBridge from @canopy/chat-agent). The
-    // crew config's `bot.chatBindings` map decides which chatId
+    // circle config's `bot.chatBindings` map decides which chatId
     // dispatches as which webid.
     'telegram-token': { type: 'string' },
     // V1.5 — Expo push side-channel. Without `--push`, push wiring
     // stays dormant. With it, the CLI imports `@canopy/relay`'s
-    // `ExpoPushSender` lazily and Crew dispatches notifications to
-    // the per-webid tokens declared in `crewConfig.pushTokens`.
+    // `ExpoPushSender` lazily and Circle dispatches notifications to
+    // the per-webid tokens declared in `circleConfig.pushTokens`.
     push: { type: 'boolean' },
-    // V2 standardisation adoption (2026-05-14, multi-crew runtime).
-    // `--multi-crew` opts the `--crew` path into the shared-agent
-    // architecture: one meshAgent + N crew bundles routed via
-    // `multiCrewResolver(crewsMap)`. Enables in-process spawning of
-    // saved CrewConfigs (the `spawnMyCrew` skill's _spawnCrewInProcess
-    // callback wires up). Default off — preserves V1 single-crew
+    // V2 standardisation adoption (2026-05-14, multi-circle runtime).
+    // `--multi-circle` opts the `--circle` path into the shared-agent
+    // architecture: one meshAgent + N circle bundles routed via
+    // `multiCircleResolver(circlesMap)`. Enables in-process spawning of
+    // saved CircleConfigs (the `spawnMyCircle` skill's _spawnCircleInProcess
+    // callback wires up). Default off — preserves V1 single-circle
     // boot semantics. Limitation: onboarding skills (issueInvite /
-    // redeemInvite) are NOT registered in multi-crew mode yet; they
-    // currently register last-write-wins per createCrewAgent. Use the
-    // single-crew CLI for invite operations until a multi-crew
+    // redeemInvite) are NOT registered in multi-circle mode yet; they
+    // currently register last-write-wins per createCircleAgent. Use the
+    // single-circle CLI for invite operations until a multi-circle
     // dispatch lands.
-    'multi-crew': { type: 'boolean' },
+    'multi-circle': { type: 'boolean' },
   },
 });
 
@@ -119,24 +119,24 @@ if (!values.actor) {
   console.error('--actor <webid> is required');
   process.exit(2);
 }
-if (!values.role && !values.config && !values.crew && !values['crew-list']) {
-  console.error('one of --role <role> | --config <path> | --crew <path> | --crew-list <path> is required');
+if (!values.role && !values.config && !values.circle && !values['circle-list']) {
+  console.error('one of --role <role> | --config <path> | --circle <path> | --circle-list <path> is required');
   process.exit(2);
 }
 
-// ── V2.8 multi-crew smoke (early exit; no HTTP UI) ─────────────────────────
-if (values['crew-list']) {
-  const listPath = resolvePath(values['crew-list']);
+// ── V2.8 multi-circle smoke (early exit; no HTTP UI) ─────────────────────────
+if (values['circle-list']) {
+  const listPath = resolvePath(values['circle-list']);
   const listDir  = dirname(listPath);
   let listFile;
   try {
     listFile = JSON.parse(await readFile(listPath, 'utf8'));
   } catch (err) {
-    console.error(`--crew-list: failed to read ${listPath}: ${err?.message ?? err}`);
+    console.error(`--circle-list: failed to read ${listPath}: ${err?.message ?? err}`);
     process.exit(2);
   }
-  if (!Array.isArray(listFile?.crews) || listFile.crews.length === 0) {
-    console.error('--crew-list: file must contain {"crews": ["./a.json", ...]} with at least one path');
+  if (!Array.isArray(listFile?.circles) || listFile.circles.length === 0) {
+    console.error('--circle-list: file must contain {"circles": ["./a.json", ...]} with at least one path');
     process.exit(2);
   }
 
@@ -145,17 +145,17 @@ if (values['crew-list']) {
   const { DataPart }  = await import('@canopy/core');
   const { buildMeshAgent }  = await import('../src/MeshAgent.js');
   const { wireSkills }      = await import('../src/wireSkills.js');
-  const { multiCrewResolver } = await import('../src/bundleResolver.js');
+  const { multiCircleResolver } = await import('../src/bundleResolver.js');
   const { buildStandardRolePolicy } = await import('../src/rolePolicy.js');
 
-  // Load every crew config first so we can fail fast on bad input.
-  const crewConfigs = [];
-  for (const rel of listFile.crews) {
-    const crewPath = resolvePath(listDir, rel);
+  // Load every circle config first so we can fail fast on bad input.
+  const circleConfigs = [];
+  for (const rel of listFile.circles) {
+    const circlePath = resolvePath(listDir, rel);
     try {
-      crewConfigs.push(JSON.parse(await readFile(crewPath, 'utf8')));
+      circleConfigs.push(JSON.parse(await readFile(circlePath, 'utf8')));
     } catch (err) {
-      console.error(`--crew-list: failed to load ${crewPath}: ${err?.message ?? err}`);
+      console.error(`--circle-list: failed to load ${circlePath}: ${err?.message ?? err}`);
       process.exit(2);
     }
   }
@@ -163,33 +163,33 @@ if (values['crew-list']) {
   // ONE meshAgent for the whole process.
   const { meshAgent } = await buildMeshAgent({ label: 'TasksMeshAgent(multi)' });
 
-  // Build a minimal CrewState per crewConfig — same shape as
-  // test/v2_8-single-agent.test.js fixture (no per-crew V1+ wiring;
+  // Build a minimal CircleState per circleConfig — same shape as
+  // test/v2_8-single-agent.test.js fixture (no per-circle V1+ wiring;
   // the smoke only needs the substrate's dispatch path).
-  const crews = new Map();
+  const circles = new Map();
   const allMembers = [];
-  for (const cfg of crewConfigs) {
+  for (const cfg of circleConfigs) {
     const roles = Object.fromEntries(
       (cfg.members ?? []).map((m) => [m.webid, m.role ?? 'member']),
     );
     const dataSource = new (await import('@canopy/core')).MemorySource();
     const itemStore = new ItemStore({
       dataSource,
-      rootContainer: `mem://tasks/crews/${cfg.circleId}/`,
+      rootContainer: `mem://tasks/circles/${cfg.circleId}/`,
       rolePolicy:    buildStandardRolePolicy(roles),
       enforceDependencies: true,
     });
-    let liveCrew = Object.freeze({
+    let liveCircle = Object.freeze({
       circleId:     cfg.circleId,
       name:       cfg.name ?? cfg.circleId,
       kind:       cfg.kind ?? 'household',
       members:    cfg.members ?? [],
       customRoles: cfg.customRoles ?? [],
     });
-    crews.set(cfg.circleId, {
-      get circleId()   { return liveCrew.circleId; },
-      get liveCrew() { return liveCrew; },
-      crewMutator(patch) { liveCrew = Object.freeze({ ...liveCrew, ...patch }); },
+    circles.set(cfg.circleId, {
+      get circleId()   { return liveCircle.circleId; },
+      get liveCircle() { return liveCircle; },
+      circleMutator(patch) { liveCircle = Object.freeze({ ...liveCircle, ...patch }); },
       roles,
       itemStore,
       dataSource,
@@ -206,25 +206,25 @@ if (values['crew-list']) {
 
   wireSkills({
     meshAgent,
-    bundleResolver: multiCrewResolver(crews),
-    crewsProvider:  () => crews.values(),
+    bundleResolver: multiCircleResolver(circles),
+    circlesProvider:  () => circles.values(),
     members:        new MemberMap({ initial: allMembers }),
   });
   await meshAgent.start();
 
-  console.log(`V2.8 multi-crew smoke: 1 meshAgent, ${crews.size} CrewStates`);
+  console.log(`V2.8 multi-circle smoke: 1 meshAgent, ${circles.size} CircleStates`);
   console.log(`  pubKey: ${meshAgent.identity?.pubKey ?? '(unknown)'}`);
-  for (const [circleId, st] of crews) {
-    console.log(`  • ${circleId}: ${st.liveCrew.members.length} member(s)`);
+  for (const [circleId, st] of circles) {
+    console.log(`  • ${circleId}: ${st.liveCircle.members.length} member(s)`);
   }
 
-  // Probe: addTask per crew via the registered handler, assert isolation.
+  // Probe: addTask per circle via the registered handler, assert isolation.
   const addDef = meshAgent.skills.get('addTask');
   if (!addDef) {
     console.error('FAIL: addTask not registered');
     process.exit(1);
   }
-  for (const [circleId, st] of crews) {
+  for (const [circleId, st] of circles) {
     const adminWebid = Object.entries(st.roles).find(([, r]) => r === 'admin')?.[0]
                     ?? Object.keys(st.roles)[0];
     if (!adminWebid) {
@@ -243,14 +243,14 @@ if (values['crew-list']) {
     }
   }
   // Isolation check: each ItemStore holds exactly its own probe item.
-  for (const [circleId, st] of crews) {
+  for (const [circleId, st] of circles) {
     const open = await st.itemStore.listOpen();
     if (open.length !== 1 || open[0].text !== `smoke-task-${circleId}`) {
       console.error(`FAIL: ${circleId} isolation broken — listOpen()=${JSON.stringify(open)}`);
       process.exit(1);
     }
   }
-  console.log(`OK: addTask routed to the right crew for all ${crews.size} crew(s); ItemStores isolated.`);
+  console.log(`OK: addTask routed to the right circle for all ${circles.size} circle(s); ItemStores isolated.`);
   process.exit(0);
 }
 
@@ -259,9 +259,9 @@ const port = Number(values.port ?? 0);
 
 // Storage bundle. Three modes:
 //   - --storage-root <path>   → FileSystemSource-backed bundle (restart-survival)
-//   - --crew (no --storage-root) → in-memory CachingDataSource bundle
+//   - --circle (no --storage-root) → in-memory CachingDataSource bundle
 //                                  (V1 skills register against it; nothing persists)
-//   - V0 mode (--role / --config without --crew) → no bundle; createTasksAgent
+//   - V0 mode (--role / --config without --circle) → no bundle; createTasksAgent
 //                                  defaults to a bare MemorySource for the ItemStore
 //                                  and the V1 helper skills are not registered.
 let localStoreBundle = null;
@@ -277,10 +277,10 @@ if (values['storage-root']) {
     async close()         {},
   };
   console.log(`Local-only storage root: ${root}`);
-} else if (values.crew) {
-  // V1 Crew mode without --storage-root: build an ephemeral in-memory
+} else if (values.circle) {
+  // V1 Circle mode without --storage-root: build an ephemeral in-memory
   // bundle so all the V1 helper skills (inbox / workspace / observability /
-  // crew-controls / appeal) get registered against a real CachingDataSource.
+  // circle-controls / appeal) get registered against a real CachingDataSource.
   // Nothing persists across CLI restarts — add --storage-root for that.
   const cache = new CachingDataSource({});
   localStoreBundle = {
@@ -298,14 +298,14 @@ const bus = new InternalBus();
 const transport = new InternalTransport(bus, id.pubKey);
 
 const { createTasksAgent } = await import('../src/index.js');
-const { createCrewAgent }  = await import('../src/Crew.js');
+const { createCircleAgent }  = await import('../src/Circle.js');
 
 let bundle;
 let roles, members;
 
-if (values.crew) {
-  // V1 Crew mode.
-  const crewConfig = JSON.parse(await readFile(values.crew, 'utf8'));
+if (values.circle) {
+  // V1 Circle mode.
+  const circleConfig = JSON.parse(await readFile(values.circle, 'utf8'));
 
   // V1.5 — optional push sender (Expo). Lazy-import so users who
   // don't pass --push don't pay for the relay dep at startup.
@@ -320,112 +320,112 @@ if (values.crew) {
     }
   }
 
-  // V2 standardisation adoption (2026-05-14) — multi-crew runtime
-  // (`--multi-crew`) builds the meshAgent first and threads it
-  // through createCrewAgent. The primary crew gets `registerSkills:
+  // V2 standardisation adoption (2026-05-14) — multi-circle runtime
+  // (`--multi-circle`) builds the meshAgent first and threads it
+  // through createCircleAgent. The primary circle gets `registerSkills:
   // false + wireOnboardingSkills: false` so the CLI owns the single
-  // wireSkills call. `_spawnCrewInProcess` lives on the CrewState
-  // and the `spawnMyCrew` skill invokes it to add more bundles to
-  // `crewsMap`.
-  if (values['multi-crew']) {
+  // wireSkills call. `_spawnCircleInProcess` lives on the CircleState
+  // and the `spawnMyCircle` skill invokes it to add more bundles to
+  // `circlesMap`.
+  if (values['multi-circle']) {
     const { buildMeshAgent } = await import('../src/MeshAgent.js');
     const { wireSkills }     = await import('../src/wireSkills.js');
-    const { multiCrewResolver } = await import('../src/bundleResolver.js');
-    const { buildMultiCrewOnboardingSkills } = await import('../src/skills/multiCrewOnboarding.js');
+    const { multiCircleResolver } = await import('../src/bundleResolver.js');
+    const { buildMultiCircleOnboardingSkills } = await import('../src/skills/multiCircleOnboarding.js');
 
     const { meshAgent } = await buildMeshAgent({
       identity:        id,
       transport,
       localStoreBundle,
-      label:           `Tasks-MultiCrew-${values.actor}`,
+      label:           `Tasks-MultiCircle-${values.actor}`,
     });
 
-    bundle = await createCrewAgent({
-      crewConfig,
+    bundle = await createCircleAgent({
+      circleConfig,
       localStoreBundle,
       identity:             id,
       transport,
       agent:                meshAgent,
       registerSkills:       false,
       wireOnboardingSkills: false,
-      label:                `Crew(${crewConfig.circleId ?? 'unknown'})-${values.actor}`,
+      label:                `Circle(${circleConfig.circleId ?? 'unknown'})-${values.actor}`,
       ...(pushSender ? { pushSender } : {}),
     });
 
-    const primaryCrewState = bundle._crewState;
-    const crewsMap = new Map([[primaryCrewState.circleId, primaryCrewState]]);
+    const primaryCircleState = bundle._circleState;
+    const circlesMap = new Map([[primaryCircleState.circleId, primaryCircleState]]);
 
     /**
-     * Closure-captured spawn callback the `spawnMyCrew` skill invokes
-     * to bring up a saved CrewConfig in-process. Adds the fresh
-     * CrewState to `crewsMap` so the multiCrewResolver routes future
-     * skill calls to it. Onboarding skills aren't wired per-crew;
-     * `issueInvite`/`redeemInvite` are not registered in multi-crew
-     * mode (multi-crew dispatch for them is a follow-up).
+     * Closure-captured spawn callback the `spawnMyCircle` skill invokes
+     * to bring up a saved CircleConfig in-process. Adds the fresh
+     * CircleState to `circlesMap` so the multiCircleResolver routes future
+     * skill calls to it. Onboarding skills aren't wired per-circle;
+     * `issueInvite`/`redeemInvite` are not registered in multi-circle
+     * mode (multi-circle dispatch for them is a follow-up).
      */
-    async function spawnCrewInProcess(circleId) {
+    async function spawnCircleInProcess(circleId) {
       if (typeof circleId !== 'string' || !circleId) {
-        throw new Error('spawnCrewInProcess: circleId required');
+        throw new Error('spawnCircleInProcess: circleId required');
       }
-      if (crewsMap.has(circleId)) return crewsMap.get(circleId);
-      const path = `mem://tasks/crews/${circleId}/config.json`;
+      if (circlesMap.has(circleId)) return circlesMap.get(circleId);
+      const path = `mem://tasks/circles/${circleId}/config.json`;
       const raw = await localStoreBundle.cache.read(path);
-      if (!raw) throw new Error(`spawnCrewInProcess: no saved config at ${path}`);
+      if (!raw) throw new Error(`spawnCircleInProcess: no saved config at ${path}`);
       const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
-      const spawned = await createCrewAgent({
-        crewConfig:           cfg,
+      const spawned = await createCircleAgent({
+        circleConfig:           cfg,
         localStoreBundle,
         identity:             id,
         transport,
         agent:                meshAgent,
         registerSkills:       false,
         wireOnboardingSkills: false,
-        label:                `Crew(${cfg.circleId})-${values.actor}`,
+        label:                `Circle(${cfg.circleId})-${values.actor}`,
         ...(pushSender ? { pushSender } : {}),
       });
-      const cs = spawned._crewState;
-      // Make the spawn callback visible on the new CrewState too, so
-      // subsequent spawnMyCrew calls routed to it can spawn further.
-      cs._spawnCrewInProcess = spawnCrewInProcess;
-      crewsMap.set(cfg.circleId, cs);
+      const cs = spawned._circleState;
+      // Make the spawn callback visible on the new CircleState too, so
+      // subsequent spawnMyCircle calls routed to it can spawn further.
+      cs._spawnCircleInProcess = spawnCircleInProcess;
+      circlesMap.set(cfg.circleId, cs);
       return cs;
     }
-    primaryCrewState._spawnCrewInProcess = spawnCrewInProcess;
+    primaryCircleState._spawnCircleInProcess = spawnCircleInProcess;
 
     wireSkills({
       meshAgent,
-      bundleResolver: multiCrewResolver(crewsMap),
-      crewsProvider:  () => crewsMap.values(),
+      bundleResolver: multiCircleResolver(circlesMap),
+      circlesProvider:  () => circlesMap.values(),
       members:        bundle.members,
     });
 
-    // Multi-crew onboarding dispatch — registers `issueInvite` +
-    // `redeemInvite` ONCE with per-call CrewState resolution. Closes
+    // Multi-circle onboarding dispatch — registers `issueInvite` +
+    // `redeemInvite` ONCE with per-call CircleState resolution. Closes
     // the gap that V2 sixth slice flagged as "known limitation in
-    // --multi-crew mode" (per-crew onboarding skills last-write-wins).
-    for (const def of buildMultiCrewOnboardingSkills({
-      bundleResolver: multiCrewResolver(crewsMap),
+    // --multi-circle mode" (per-circle onboarding skills last-write-wins).
+    for (const def of buildMultiCircleOnboardingSkills({
+      bundleResolver: multiCircleResolver(circlesMap),
     })) {
       meshAgent.skills.register(def);
     }
 
     await meshAgent.start();
   } else {
-    // Default V1 Crew mode — single-crew, skills register inside
-    // createCrewAgent's createTasksAgent path.
-    bundle = await createCrewAgent({
-      crewConfig,
+    // Default V1 Circle mode — single-circle, skills register inside
+    // createCircleAgent's createTasksAgent path.
+    bundle = await createCircleAgent({
+      circleConfig,
       localStoreBundle,
       identity: id,
       transport,
-      label:    `Crew(${crewConfig.circleId ?? 'unknown'})-${values.actor}`,
+      label:    `Circle(${circleConfig.circleId ?? 'unknown'})-${values.actor}`,
       ...(pushSender ? { pushSender } : {}),
     });
   }
-  roles   = Object.fromEntries((crewConfig.members ?? []).map((m) => [m.webid, m.role]));
-  members = crewConfig.members ?? [];
+  roles   = Object.fromEntries((circleConfig.members ?? []).map((m) => [m.webid, m.role]));
+  members = circleConfig.members ?? [];
   if (!roles[values.actor]) {
-    console.error(`--crew: ${values.crew} doesn't list a role for ${values.actor}`);
+    console.error(`--circle: ${values.circle} doesn't list a role for ${values.actor}`);
     process.exit(2);
   }
 } else {
@@ -464,7 +464,7 @@ const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 const tasksConfig = JSON.stringify({
   actor: values.actor,
   roles,
-  ...(bundle.crew ? { crew: { circleId: bundle.crew.circleId, name: bundle.crew.name, kind: bundle.crew.kind } } : {}),
+  ...(bundle.circle ? { circle: { circleId: bundle.circle.circleId, name: bundle.circle.name, kind: bundle.circle.kind } } : {}),
 });
 
 // Slice B.1 (2026-05-20) — surface the NavModel for the renderWeb-
@@ -606,12 +606,12 @@ process.on('unhandledRejection', (err) => {
 });
 
 // V1.5 — wire the Telegram bot if `--telegram-token` was supplied.
-// Requires V1 Crew mode (the `bot.*` skills are only registered when
-// `localStoreBundle` is present, which `--crew` always provides).
+// Requires V1 Circle mode (the `bot.*` skills are only registered when
+// `localStoreBundle` is present, which `--circle` always provides).
 let botCleanup = null;
 if (values['telegram-token']) {
-  if (!values.crew) {
-    console.error('  ⚠ --telegram-token ignored: needs --crew (V1 mode)');
+  if (!values.circle) {
+    console.error('  ⚠ --telegram-token ignored: needs --circle (V1 mode)');
   } else {
     try {
       // Pre-flight the token via Telegram's /getMe so a bad token
@@ -632,7 +632,7 @@ if (values['telegram-token']) {
       const { wireBotChannel } = await import('../src/bot/wireBotChannel.js');
       // Pass a live provider so bindings added via the V1.5
       // setBotChatBinding skill propagate without restart.
-      const liveBindings = () => bundle.getCrew?.()?.bot?.chatBindings ?? bundle.crew?.bot?.chatBindings ?? {};
+      const liveBindings = () => bundle.getCircle?.()?.bot?.chatBindings ?? bundle.circle?.bot?.chatBindings ?? {};
       const bindingCount = Object.keys(liveBindings()).length;
 
       const tg = new TelegramBridge({
@@ -648,7 +648,7 @@ if (values['telegram-token']) {
       botCleanup = r.detach;
       console.log(`  bot:    Telegram bridge active (${bindingCount} chatBinding${bindingCount === 1 ? '' : 's'})`);
       if (bindingCount === 0) {
-        console.log('          (no chatBindings yet — add some under crew.bot.chatBindings)');
+        console.log('          (no chatBindings yet — add some under circle.bot.chatBindings)');
       }
     } catch (err) {
       const msg = err?.message ?? String(err);

@@ -13,8 +13,8 @@
       <a href="/review.html">Review</a>
       <a href="/dag.html">DAG</a>
       <a href="/availability.html">Availability</a>
-      <a href="/crew.html">Crew</a>
-      <a href="/crews.html">Crews</a>
+      <a href="/circle.html">Circle</a>
+      <a href="/circles.html">Circles</a>
       <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
@@ -52,7 +52,7 @@
     <section id="my-cadence">
       <h3>My notification preferences</h3>
       <p style="font-size:0.85rem;color:var(--muted)">
-        Per-event overrides. Falls back to the crew default (then the
+        Per-event overrides. Falls back to the circle default (then the
         app baseline) when an entry is left blank. Suppressed events
         are dropped silently — useful for "stop pinging me about
         completed tasks".
@@ -310,7 +310,7 @@
           <td>${ev}</td>
           <td>
             <select data-ev="${ev}" data-key="channel">
-              <option value="" ${!cur.channel ? 'selected' : ''}>(crew default)</option>
+              <option value="" ${!cur.channel ? 'selected' : ''}>(circle default)</option>
               <option value="inbox" ${cur.channel === 'inbox' ? 'selected' : ''}>inbox</option>
               <option value="silent" ${cur.channel === 'silent' ? 'selected' : ''}>silent</option>
             </select>

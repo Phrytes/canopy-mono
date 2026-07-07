@@ -1,7 +1,7 @@
 /**
  * Calendar write-side — Tasks V2.1.
  *
- * Builds an `.ics` string for a member of a crew that calendar
+ * Builds an `.ics` string for a member of a circle that calendar
  * applications (Google Calendar, Apple Calendar, Proton, …) can
  * subscribe to. One VEVENT per task that has either:
  *   - `dueAt`         → all-day or timed event at the deadline
@@ -33,7 +33,7 @@ const DEFAULT_DURATION_MIN = 30;
 /**
  * @param {object} args
  * @param {string} args.circleId
- * @param {string} args.crewName
+ * @param {string} args.circleName
  * @param {string} args.member            — webid of the calendar's owner
  * @param {Array<object>} args.tasks      — all open + closed tasks (we
  *   filter inside this function so the caller doesn't have to know the
@@ -41,7 +41,7 @@ const DEFAULT_DURATION_MIN = 30;
  * @param {number} [args.now=Date.now()]
  * @returns {string}                       iCal-formatted string
  */
-export function buildIcsFor({ circleId, crewName, member, tasks, now = Date.now() }) {
+export function buildIcsFor({ circleId, circleName, member, tasks, now = Date.now() }) {
   if (typeof circleId !== 'string' || !circleId) {
     throw new TypeError('buildIcsFor: circleId required');
   }
@@ -53,7 +53,7 @@ export function buildIcsFor({ circleId, crewName, member, tasks, now = Date.now(
   cal.updatePropertyWithValue('prodid', `-//Tasks V2//${circleId}//EN`);
   cal.updatePropertyWithValue('version', '2.0');
   cal.updatePropertyWithValue('method', 'PUBLISH');
-  cal.updatePropertyWithValue('x-wr-calname', `Tasks: ${crewName ?? circleId}`);
+  cal.updatePropertyWithValue('x-wr-calname', `Tasks: ${circleName ?? circleId}`);
 
   for (const t of tasks) {
     if (!_isCalendarRelevant(t, member)) continue;

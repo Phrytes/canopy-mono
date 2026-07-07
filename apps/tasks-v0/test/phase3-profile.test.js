@@ -1,14 +1,14 @@
 /**
- * Phase 3 — canonical user profile + per-crew vocabulary tests.
+ * Phase 3 — canonical user profile + per-circle vocabulary tests.
  *
  * Covers:
  *   1. Canonical profile read/write round-trip + missing-blob fallback (null).
- *   2. Crew vocabulary read/write round-trip.
+ *   2. Circle vocabulary read/write round-trip.
  *   3. prefilledFormShape — intersection of profile + vocab + taxonomy.
- *   4. Per-crew member-skills projection round-trip.
- *   5. Per-crew posture round-trip.
- *   6. `getMySkillsFormShape` skill (live; via createCrewAgent).
- *   7. `editMySkillsForCrew` skill — writes per-crew projection;
+ *   4. Per-circle member-skills projection round-trip.
+ *   5. Per-circle posture round-trip.
+ *   6. `getMySkillsFormShape` skill (live; via createCircleAgent).
+ *   7. `editMySkillsForCircle` skill — writes per-circle projection;
  *      optionally mirrors to canonical profile.
  *   8. Tag normalisation — duplicates dedupe by canonical tag.
  *   9. Off-taxonomy categoryId is dropped (set to null).
@@ -19,17 +19,17 @@ import { describe, it, expect } from 'vitest';
 import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import {
   CANONICAL_PROFILE_PATH,
   readCanonicalProfile,
   writeCanonicalProfile,
-  readCrewVocabulary,
-  writeCrewVocabulary,
-  readMyCrewSkills,
-  writeMyCrewSkills,
-  readPostureForCrew,
-  writePostureForCrew,
+  readCircleVocabulary,
+  writeCircleVocabulary,
+  readMyCircleSkills,
+  writeMyCircleSkills,
+  readPostureForCircle,
+  writePostureForCircle,
   prefilledFormShape,
 } from '../src/skills/profile.js';
 
@@ -47,7 +47,7 @@ async function callSkill(agent, skillId, args, fromWebid) {
   });
 }
 
-describe('Phase 3 — canonical profile + crew vocabulary', () => {
+describe('Phase 3 — canonical profile + circle vocabulary', () => {
   describe('canonical profile read/write', () => {
     it('returns null when no profile blob exists', async () => {
       const bundle = buildBundle();
@@ -116,10 +116,10 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
     });
   });
 
-  describe('crew vocabulary read/write', () => {
+  describe('circle vocabulary read/write', () => {
     it('round-trips a vocabulary including label + description', async () => {
       const bundle = buildBundle();
-      await writeCrewVocabulary({
+      await writeCircleVocabulary({
         dataSource: bundle.cache,
         circleId:     'oss-tools',
         skills: [
@@ -127,7 +127,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
           { tag: 'design-review',  categoryId: null, label: 'Design review' },
         ],
       });
-      const got = await readCrewVocabulary({ dataSource: bundle.cache, circleId: 'oss-tools' });
+      const got = await readCircleVocabulary({ dataSource: bundle.cache, circleId: 'oss-tools' });
       expect(got.skills).toHaveLength(2);
       expect(got.skills[0].label).toBe('Frontend dev');
       expect(got.skills[0].description).toBe('JS/TS, React, etc.');
@@ -135,21 +135,21 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
     it('returns null on missing vocabulary blob', async () => {
       const bundle = buildBundle();
-      const got = await readCrewVocabulary({ dataSource: bundle.cache, circleId: 'never-existed' });
+      const got = await readCircleVocabulary({ dataSource: bundle.cache, circleId: 'never-existed' });
       expect(got).toBeNull();
     });
   });
 
-  describe('per-crew member-skills projection', () => {
+  describe('per-circle member-skills projection', () => {
     it('round-trips per-webid', async () => {
       const bundle = buildBundle();
-      await writeMyCrewSkills({
+      await writeMyCircleSkills({
         dataSource: bundle.cache,
         circleId:     'oss-tools',
         webid:      ANNE,
         skills: [{ tag: 'frontend' }, { tag: 'on-call' }],
       });
-      const got = await readMyCrewSkills({
+      const got = await readMyCircleSkills({
         dataSource: bundle.cache,
         circleId:     'oss-tools',
         webid:      ANNE,
@@ -160,19 +160,19 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
     it('keeps Anne and Bob projections distinct', async () => {
       const bundle = buildBundle();
-      await writeMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: ANNE, skills: [{ tag: 'a' }] });
-      await writeMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: BOB,  skills: [{ tag: 'b' }] });
-      const a = await readMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: ANNE });
-      const b = await readMyCrewSkills({ dataSource: bundle.cache, circleId: 'c', webid: BOB });
+      await writeMyCircleSkills({ dataSource: bundle.cache, circleId: 'c', webid: ANNE, skills: [{ tag: 'a' }] });
+      await writeMyCircleSkills({ dataSource: bundle.cache, circleId: 'c', webid: BOB,  skills: [{ tag: 'b' }] });
+      const a = await readMyCircleSkills({ dataSource: bundle.cache, circleId: 'c', webid: ANNE });
+      const b = await readMyCircleSkills({ dataSource: bundle.cache, circleId: 'c', webid: BOB });
       expect(a.skills[0].tag).toBe('a');
       expect(b.skills[0].tag).toBe('b');
     });
   });
 
-  describe('per-crew posture', () => {
+  describe('per-circle posture', () => {
     it('round-trips posture per tag, drops invalid values', async () => {
       const bundle = buildBundle();
-      await writePostureForCrew({
+      await writePostureForCircle({
         dataSource: bundle.cache,
         circleId:     'oss-tools',
         posture:    {
@@ -184,7 +184,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
           },
         },
       });
-      const got = await readPostureForCrew({ dataSource: bundle.cache, circleId: 'oss-tools' });
+      const got = await readPostureForCircle({ dataSource: bundle.cache, circleId: 'oss-tools' });
       expect(got.tags.frontend).toBe('always');
       expect(got.tags['design-review']).toBe('negotiable');
       expect(got.tags['on-call']).toBe('never');
@@ -193,7 +193,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
     it('returns null when no posture blob exists', async () => {
       const bundle = buildBundle();
-      const got = await readPostureForCrew({ dataSource: bundle.cache, circleId: 'fresh-crew' });
+      const got = await readPostureForCircle({ dataSource: bundle.cache, circleId: 'fresh-circle' });
       expect(got).toBeNull();
     });
   });
@@ -208,7 +208,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
         ],
         updatedAt: 1,
       };
-      const crewVocabulary = {
+      const circleVocabulary = {
         schemaVersion: 1,
         skills: [
           { tag: 'schilderen', categoryId: 'klusjes', label: 'Schilderwerk' },
@@ -216,17 +216,17 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
         ],
       };
 
-      const shape = prefilledFormShape({ canonicalProfile, crewVocabulary });
+      const shape = prefilledFormShape({ canonicalProfile, circleVocabulary });
 
-      // Prefilled: both of Anne's tags, with `inCrewVocabulary` annotation.
+      // Prefilled: both of Anne's tags, with `inCircleVocabulary` annotation.
       expect(shape.prefilled).toHaveLength(2);
       const schilderen = shape.prefilled.find((s) => s.tag === 'schilderen');
-      expect(schilderen.inCrewVocabulary).toBe(true);
+      expect(schilderen.inCircleVocabulary).toBe(true);
       expect(schilderen.label).toBe('Schilderwerk');
       const frontend = shape.prefilled.find((s) => s.tag === 'frontend');
-      expect(frontend.inCrewVocabulary).toBe(false);
+      expect(frontend.inCircleVocabulary).toBe(false);
 
-      // Vocab suggestions: tags the crew lists that the user doesn't have.
+      // Vocab suggestions: tags the circle lists that the user doesn't have.
       expect(shape.vocabSuggestions).toHaveLength(1);
       expect(shape.vocabSuggestions[0].tag).toBe('tuinieren');
 
@@ -239,7 +239,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
     });
 
     it('handles null inputs without crashing', () => {
-      const shape = prefilledFormShape({ canonicalProfile: null, crewVocabulary: null });
+      const shape = prefilledFormShape({ canonicalProfile: null, circleVocabulary: null });
       expect(shape.prefilled).toEqual([]);
       expect(shape.vocabSuggestions).toEqual([]);
       // Taxonomy hints come from the shipped TAXONOMY — should be > 0.
@@ -247,11 +247,11 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
     });
   });
 
-  describe('skill registration via createCrewAgent', () => {
-    it('registers getMySkillsFormShape + editMySkillsForCrew when localStoreBundle is supplied', async () => {
+  describe('skill registration via createCircleAgent', () => {
+    it('registers getMySkillsFormShape + editMySkillsForCircle when localStoreBundle is supplied', async () => {
       const lsBundle = buildBundle();
-      const result = await createCrewAgent({
-        crewConfig: {
+      const result = await createCircleAgent({
+        circleConfig: {
           circleId: 'oss-tools',
           name:   'OSS Tools NL',
           kind:   'project',
@@ -264,30 +264,30 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
         wireOnboardingSkills: false,  // not needed for this test
       });
       expect(result.agent.skills.has('getMySkillsFormShape')).toBe(true);
-      expect(result.agent.skills.has('editMySkillsForCrew')).toBe(true);
+      expect(result.agent.skills.has('editMySkillsForCircle')).toBe(true);
     });
 
     it('still registers profile skills when no localStoreBundle is supplied (V2.8 single-registration)', async () => {
       // V2.8 — every skill registers on the meshAgent regardless of
       // optional substrate wiring. Without a localStoreBundle, the
-      // CrewState's `dataSource` is the V0 default MemorySource and
+      // CircleState's `dataSource` is the V0 default MemorySource and
       // the profile skills work against in-memory storage. Tests
       // before V2.8 expected zero registration in this case.
-      const result = await createCrewAgent({
+      const result = await createCircleAgent({
         wireOnboardingSkills: false,
       });
       expect(result.agent.skills.has('getMySkillsFormShape')).toBe(true);
-      expect(result.agent.skills.has('editMySkillsForCrew')).toBe(true);
+      expect(result.agent.skills.has('editMySkillsForCircle')).toBe(true);
     });
 
     it('getMySkillsFormShape returns the expected three-list shape', async () => {
       const lsBundle = buildBundle();
-      // Seed user profile + crew vocab.
+      // Seed user profile + circle vocab.
       await writeCanonicalProfile({
         dataSource: lsBundle.cache,
         skills: [{ tag: 'frontend', categoryId: null, level: 'expert' }],
       });
-      await writeCrewVocabulary({
+      await writeCircleVocabulary({
         dataSource: lsBundle.cache,
         circleId:     'oss-tools',
         skills: [
@@ -296,8 +296,8 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
         ],
       });
 
-      const result = await createCrewAgent({
-        crewConfig: {
+      const result = await createCircleAgent({
+        circleConfig: {
           circleId: 'oss-tools', name: 'OSS Tools', kind: 'project',
           members: [{ webid: ANNE, role: 'admin' }],
         },
@@ -307,17 +307,17 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
 
       const res = await callSkill(result.agent, 'getMySkillsFormShape', { circleId: 'oss-tools' }, ANNE);
       expect(res.canonicalProfile.skills[0].tag).toBe('frontend');
-      expect(res.crewVocabulary.skills).toHaveLength(2);
+      expect(res.circleVocabulary.skills).toHaveLength(2);
       expect(res.prefilled).toHaveLength(1);
-      expect(res.prefilled[0].inCrewVocabulary).toBe(true);
+      expect(res.prefilled[0].inCircleVocabulary).toBe(true);
       expect(res.vocabSuggestions).toHaveLength(1);
       expect(res.vocabSuggestions[0].tag).toBe('design-review');
     });
 
-    it('editMySkillsForCrew writes the projection AND optionally the canonical profile', async () => {
+    it('editMySkillsForCircle writes the projection AND optionally the canonical profile', async () => {
       const lsBundle = buildBundle();
-      const result = await createCrewAgent({
-        crewConfig: {
+      const result = await createCircleAgent({
+        circleConfig: {
           circleId: 'oss-tools', name: 'OSS Tools', kind: 'project',
           members: [{ webid: ANNE, role: 'admin' }],
         },
@@ -331,7 +331,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       ];
 
       // First submit WITHOUT mirroring to canonical profile.
-      const r1 = await callSkill(result.agent, 'editMySkillsForCrew',
+      const r1 = await callSkill(result.agent, 'editMySkillsForCircle',
         { circleId: 'oss-tools', skills: submitted },
         ANNE,
       );
@@ -344,7 +344,7 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       expect(noProfile).toBeNull();
 
       // Now submit again WITH the opt-in checkbox.
-      const r2 = await callSkill(result.agent, 'editMySkillsForCrew',
+      const r2 = await callSkill(result.agent, 'editMySkillsForCircle',
         { circleId: 'oss-tools', skills: submitted, persistToCanonicalProfile: true },
         ANNE,
       );
@@ -355,17 +355,17 @@ describe('Phase 3 — canonical profile + crew vocabulary', () => {
       expect(profile.skills).toHaveLength(2);
     });
 
-    it('editMySkillsForCrew rejects calls without a from webid', async () => {
+    it('editMySkillsForCircle rejects calls without a from webid', async () => {
       const lsBundle = buildBundle();
-      const result = await createCrewAgent({
-        crewConfig: {
+      const result = await createCircleAgent({
+        circleConfig: {
           circleId: 'oss-tools', name: 'OSS Tools', kind: 'project',
           members: [{ webid: ANNE, role: 'admin' }],
         },
         localStoreBundle:     lsBundle,
         wireOnboardingSkills: false,
       });
-      const r = await callSkill(result.agent, 'editMySkillsForCrew',
+      const r = await callSkill(result.agent, 'editMySkillsForCircle',
         { circleId: 'oss-tools', skills: [] }, undefined);
       expect(r.error).toMatch(/webid required/);
     });

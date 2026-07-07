@@ -62,7 +62,7 @@ expect them.
 │   │                          (items/, offers/, tasks/, notes/, photos/, …);
 │   │                          keyed by WHAT the object is — never by app
 │   └── with-<webid>/        — per-recipient auto-share folders (Phase 52.16)
-├── group/               — crew-scoped; location per the crew §II.2 policy
+├── group/               — circle-scoped; location per the circle §II.2 policy
 │   └── <circleId>/<type>/     — e.g. group/<circleId>/items/
 └── inbox/               — public-write (LDP inbox convention)
 ```
@@ -116,7 +116,7 @@ app Y (e.g. tasks-v0) as long as both speak the canonical
 `@canopy/item-types` schema for that type. Concretely:
 
 - One container per canonical type (`sharing/<type>/`, or
-  `group/<circleId>/<type>/` for crew-scoped data); the type name is
+  `group/<circleId>/<type>/` for circle-scoped data); the type name is
   the `@canopy/item-types` taxonomy name.
 - Cross-app **reuse** rides the shared `item-types` schema; cross-app
   **references** ride the `embeds: [{type, ref}]` field

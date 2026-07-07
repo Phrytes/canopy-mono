@@ -3,8 +3,8 @@ import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/cir
 import { loadCircles } from '../../src/v2/circleModel.js';
 
 const callSkill = async (op) => {
-  if (op === 'getMyCrews') {
-    return { crews: [{ circleId: 'c1', name: 'Crew', counts: { members: 3 } }] };
+  if (op === 'getMyCircles') {
+    return { circles: [{ circleId: 'c1', name: 'Circle', counts: { members: 3 } }] };
   }
   if (op === 'listMyBuurts') {
     return { buurts: ['selwerd', 'akkerstraat'] };
@@ -13,9 +13,9 @@ const callSkill = async (op) => {
 };
 
 describe('circleSources', () => {
-  it('fetchCrews reads getMyCrews.crews', async () => {
+  it('fetchTasksCircles reads getMyCircles.circles', async () => {
     const s = circleSourcesFromAgent({ callSkill });
-    expect(await s.fetchCrews()).toHaveLength(1);
+    expect(await s.fetchTasksCircles()).toHaveLength(1);
   });
 
   it('fetchGroups maps listMyBuurts groupId strings to circle objects', async () => {
@@ -31,7 +31,7 @@ describe('circleSources', () => {
     expect(await s.fetchCircles()).toEqual([{ id: 'z', name: 'Z' }]);
   });
 
-  it('feeds loadCircles end-to-end (crews + buurts merged + normalised)', async () => {
+  it('feeds loadCircles end-to-end (circles + buurts merged + normalised)', async () => {
     const list = await loadCircles(circleSourcesFromAgent({ callSkill }));
     expect(list.map((c) => c.id).sort()).toEqual(['akkerstraat', 'c1', 'selwerd']);
     expect(list.find((c) => c.id === 'c1').memberCount).toBe(3);
@@ -39,7 +39,7 @@ describe('circleSources', () => {
 
   it('tolerates a missing callSkill', async () => {
     const s = circleSourcesFromAgent({});
-    expect(await s.fetchCrews()).toEqual([]);
+    expect(await s.fetchTasksCircles()).toEqual([]);
     expect(await s.fetchGroups()).toEqual([]);
   });
 });
@@ -49,12 +49,12 @@ describe('makeResolvingCallSkill', () => {
     const calls = [];
     const raw = async (app, op, args) => {
       calls.push([app, op]);
-      return app === 'tasks' && op === 'getMyCrews' ? { crews: [], echoed: args.x } : null;
+      return app === 'tasks' && op === 'getMyCircles' ? { circles: [], echoed: args.x } : null;
     };
     const resolve = makeResolvingCallSkill(raw, ['stoop', 'tasks', 'folio']);
-    const res = await resolve('getMyCrews', { x: 7 });
-    expect(res).toEqual({ crews: [], echoed: 7 });
-    expect(calls).toEqual([['stoop', 'getMyCrews'], ['tasks', 'getMyCrews']]); // stopped at first hit
+    const res = await resolve('getMyCircles', { x: 7 });
+    expect(res).toEqual({ circles: [], echoed: 7 });
+    expect(calls).toEqual([['stoop', 'getMyCircles'], ['tasks', 'getMyCircles']]); // stopped at first hit
   });
 
   it('returns null when every origin yields null/throws or callSkill is missing', async () => {

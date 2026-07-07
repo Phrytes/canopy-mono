@@ -51,7 +51,7 @@ describe('embedChipsOf', () => {
 describe('shortRef', () => {
   it('takes the last meaningful segment, strips .json, truncates', () => {
     expect(shortRef('urn:dec:item:T2')).toBe('T2');
-    expect(shortRef('https://alice.pod/crews/c1/items/X.json')).toBe('X');
+    expect(shortRef('https://alice.pod/circles/c1/items/X.json')).toBe('X');
     expect(shortRef('pseudo-pod://alice-device/offers/abc')).toBe('abc');
     expect(shortRef('')).toBe('');
   });

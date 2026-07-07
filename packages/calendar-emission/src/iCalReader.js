@@ -4,7 +4,7 @@
  * **Local matching only.** No `getFreeBusy` skill, no network
  * exchange. The user reads their own pod-mirrored (or local) `.ics`
  * files and the claim flow shows them THEIR conflicts on a proposed
- * deadline. Other crew members' calendars never cross the wire.
+ * deadline. Other circle members' calendars never cross the wire.
  *
  * Calendar data flow (recap from
  * `Project Files/Tasks App/advice-2026-05-07.md` § Input 1):

@@ -13,7 +13,7 @@
  *                                                  (Phase 41.13 — admin issue)
  *   3. tasks://contact?uri=<urlencoded-uri>      → contact-share URI
  *   4. BIP-39 12/24-word recovery phrase         → mnemonic restore
- *   5. (future) tasks://crew-config             → multi-crew bootstrap
+ *   5. (future) tasks://circle-config             → multi-circle bootstrap
  */
 
 import { parseTokenParam } from '@canopy/react-native/deepLinks';

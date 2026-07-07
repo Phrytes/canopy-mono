@@ -1,7 +1,7 @@
 # manifest-host recombination demo
 
 > **SP-4b + SP-11 (merged 2026-05-20).**  Composes household +
-> tasks-v0 (with its real multi-crew runtime) in one process via
+> tasks-v0 (with its real multi-circle runtime) in one process via
 > `@canopy/manifest-host`, drives a chat-agent over the merged tool
 > catalog with a scripted LLM, and shows state landing in both apps'
 > stores from one conversation.
@@ -17,15 +17,15 @@
    merges N manifests into one toolCatalog with `appId.opId`
    namespacing.  The chat-agent uses that merged catalog directly,
    one mount per app.
-2. **Multi-crew dispatch through the host** — tasks-v0's real
-   multi-crew machinery (`bundleResolver` / `wireSkills` /
-   `CrewState`, the same code `bin/tasks-ui.js --multi-crew`
+2. **Multi-circle dispatch through the host** — tasks-v0's real
+   multi-circle machinery (`bundleResolver` / `wireSkills` /
+   `CircleState`, the same code `bin/tasks-ui.js --multi-circle`
    constructs) is mounted via the host's `toSkillCtx` adapter.
-   bundleResolver still dispatches per-crew internally; the host
-   doesn't know or care about crews — orthogonal layers.
+   bundleResolver still dispatches per-circle internally; the host
+   doesn't know or care about circles — orthogonal layers.
 3. **Zero changes to either app's production code** — household uses
    its existing skills + manifest; tasks-v0 uses its existing
-   meshAgent + multi-crew runtime.  The host integrates additively
+   meshAgent + multi-circle runtime.  The host integrates additively
    via new `mountable.js` shims (one per app).
 4. **Policy decisions made deliberately** — `perAppSystemPrompts`
    composed via the **generic preamble** policy (the host README's
@@ -65,7 +65,7 @@ command collisions:  0
 — final state —
 household.lists:
   shopping: [bread]
-tasks.primary-crew open items:
+tasks.primary-circle open items:
   paint the hallway
 
 ✓ done
@@ -108,16 +108,16 @@ npm test
                                                 │
                                                 ▼
                                      ┌────────────────────┐
-                                     │ multi-crew runtime │
-                                     │   crewsMap         │
-                                     │   ├ primary-crew   │
-                                     │   └ sibling-crew … │
+                                     │ multi-circle runtime │
+                                     │   circlesMap         │
+                                     │   ├ primary-circle   │
+                                     │   └ sibling-circle … │
                                      └────────────────────┘
 ```
 
 ### Key design choices
 
-- **`bundleResolver` stays untouched.**  Multi-crew dispatch was never
+- **`bundleResolver` stays untouched.**  Multi-circle dispatch was never
   meant to live in the host layer; the host operates on the chat
   surface, bundleResolver operates on the mesh skill graph.  They are
   orthogonal — which is exactly what SP-4b's framing correction made

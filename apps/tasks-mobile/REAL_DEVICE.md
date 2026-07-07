@@ -52,8 +52,8 @@ anyway. Together with the kernel bump, ENOSPC should not return.
 - [ ] Welcome → "Scan invite QR" pops the camera. If "Camera
       permission denied" loops, the OS permissions request returned
       `denied` once; clear app data + retry.
-- [ ] Scan a QR generated from `bin/tasks-ui.js --crew-list
-      ./tmp/two-crews.list.json` (encoded as `tasks://invite?token=`
+- [ ] Scan a QR generated from `bin/tasks-ui.js --circle-list
+      ./tmp/two-circles.list.json` (encoded as `tasks://invite?token=`
       via the desktop IssueScreen flow, or `expo url` to deep-link
       directly with a valid invite token).
 - [ ] After joining, Workspace renders. The FAB is bottom-right;
@@ -86,7 +86,7 @@ anyway. Together with the kernel bump, ENOSPC should not return.
 
 - Cap-tokens are bound to the issuing agent's pubKey + the chatId.
   If the bot client was rebuilt against a different identity (e.g.
-  you re-installed the app), revoke the old token in CrewSettings
+  you re-installed the app), revoke the old token in CircleSettings
   and re-issue.
 - The `tasks://bot-token?...` payload is a few hundred bytes —
   fits in a Version 25 QR. If a phone struggles to scan, increase

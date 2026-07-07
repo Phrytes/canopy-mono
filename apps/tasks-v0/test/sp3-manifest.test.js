@@ -23,23 +23,23 @@ import { buildSkills }            from '../src/skills/index.js';
 import { buildWorkspaceSkills }   from '../src/skills/workspace.js';
 import { buildInboxSkills }       from '../src/skills/inbox.js';
 import { buildSubtaskSkills }     from '../src/skills/subtasks.js';
-import { buildCrewControlSkills } from '../src/skills/crewControls.js';
+import { buildCircleControlSkills } from '../src/skills/circleControls.js';
 // Part G (2026-06-17) — the merged manifest now carries the chat-shell
 // surface ops, whose skills live in these additional builders (the same
 // set `wireSkills` registers).  Expand the coverage check to include them.
 import { buildAvailabilitySkills }       from '../src/skills/availability.js';
 import { buildPlannerSkills }            from '../src/skills/planner.js';
 import { buildDashboardSkills }          from '../src/skills/dashboard.js';
-import { buildMultiCrewOnboardingSkills } from '../src/skills/multiCrewOnboarding.js';
+import { buildMultiCircleOnboardingSkills } from '../src/skills/multiCircleOnboarding.js';
 
 /**
  * Part G (2026-06-17) — chat-shell ops whose dispatch resolves through
  * realAgent.js (alias / derivation), NOT a same-named `defineSkill`:
  *   - myInbox        → aliased to `listMyInbox` (TASKS_OP_ALIAS)
- *   - listCrewMembers→ derived from `getCrewConfig` (members[] unpack)
+ *   - listCircleMembers→ derived from `getCircleConfig` (members[] unpack)
  * These are intentional product semantics; exempt from the 1:1 check.
  */
-const CHAT_SHELL_ALIAS_OPS = new Set(['myInbox', 'listCrewMembers']);
+const CHAT_SHELL_ALIAS_OPS = new Set(['myInbox', 'listCircleMembers']);
 
 describe('SP-3 V0: tasks-v0 manifest', () => {
   it('validateManifest = ok', () => {
@@ -59,16 +59,16 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
       ...buildWorkspaceSkills({ bundleResolver: () => null }),
       ...buildInboxSkills({ bundleResolver: () => null }),
       ...buildSubtaskSkills({ bundleResolver: () => null }),
-      // Q27 adoption (2026-05-21) — archiveCrew + unarchiveCrew
+      // Q27 adoption (2026-05-21) — archiveCircle + unarchiveCircle
       // declared in the manifest; their defineSkill lives in
-      // buildCrewControlSkills.
-      ...buildCrewControlSkills({ bundleResolver: () => null }),
+      // buildCircleControlSkills.
+      ...buildCircleControlSkills({ bundleResolver: () => null }),
       // Part G (2026-06-17) — chat-shell surface ops folded in from the
       // former mockTasksManifest; their skills live in these builders.
       ...buildAvailabilitySkills({ bundleResolver: () => null }),
       ...buildPlannerSkills({ bundleResolver: () => null }),
-      ...buildDashboardSkills({ bundleResolver: () => null, crewsProvider: () => [] }),
-      ...buildMultiCrewOnboardingSkills({ bundleResolver: () => null }),
+      ...buildDashboardSkills({ bundleResolver: () => null, circlesProvider: () => [] }),
+      ...buildMultiCircleOnboardingSkills({ bundleResolver: () => null }),
     ];
     const skillIds = new Set(defs.map((d) => d.id));
     for (const op of tasksManifest.operations) {
@@ -149,32 +149,32 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
     expect(openKeys).not.toContain('approveTask');
   });
 
-  // V0.8 Q27 adoption (2026-05-21) — crew lifecycle ops.
-  it('archiveCrew declares Q27 confirm with severity:warn + Dutch-friendly message', () => {
-    const op = tasksManifest.operations.find((o) => o.id === 'archiveCrew');
+  // V0.8 Q27 adoption (2026-05-21) — circle lifecycle ops.
+  it('archiveCircle declares Q27 confirm with severity:warn + Dutch-friendly message', () => {
+    const op = tasksManifest.operations.find((o) => o.id === 'archiveCircle');
     expect(op).toBeTruthy();
-    expect(op.appliesTo).toEqual({ type: 'crew' });
+    expect(op.appliesTo).toEqual({ type: 'circle' });
     expect(op.surfaces.ui.confirm).toEqual({
       severity: 'warn',
-      message:  'Archive this crew?  Items are kept; new tasks are blocked until you unarchive.',
+      message:  'Archive this circle?  Items are kept; new tasks are blocked until you unarchive.',
     });
   });
 
-  it('unarchiveCrew has NO confirm (undo path; low-barrier)', () => {
-    const op = tasksManifest.operations.find((o) => o.id === 'unarchiveCrew');
+  it('unarchiveCircle has NO confirm (undo path; low-barrier)', () => {
+    const op = tasksManifest.operations.find((o) => o.id === 'unarchiveCircle');
     expect(op).toBeTruthy();
-    expect(op.appliesTo).toEqual({ type: 'crew' });
+    expect(op.appliesTo).toEqual({ type: 'circle' });
     expect(op.surfaces.ui).not.toHaveProperty('confirm');
   });
 
-  it("archive ops do NOT surface on a task's inline keyboard (appliesTo: 'crew' scope)", () => {
+  it("archive ops do NOT surface on a task's inline keyboard (appliesTo: 'circle' scope)", () => {
     const stub = Object.fromEntries(
       tasksManifest.operations.map((op) => [op.id, async () => ({})]),
     );
     const out = renderChat(tasksManifest, { skillRegistry: stub, toSkillCtx: (c) => c });
     const openKeys = out.inlineKeyboardFor({ id: 't', type: 'task', state: 'open' })
       .map((b) => b.callbackData.split(':')[0]);
-    expect(openKeys).not.toContain('archiveCrew');
-    expect(openKeys).not.toContain('unarchiveCrew');
+    expect(openKeys).not.toContain('archiveCircle');
+    expect(openKeys).not.toContain('unarchiveCircle');
   });
 });

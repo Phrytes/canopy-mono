@@ -1,10 +1,10 @@
 /**
  * canopy-chat v2 — circle model (shared web + mobile).
  *
- * A "circle" is the EXISTING circle/group/crew label, not a new entity
+ * A "circle" is the EXISTING circle/group/circle label, not a new entity
  * (see `@canopy/circles` + `CIRCLE_ID_IS_CREW_ID_ALIAS`: circle.id ≡
  * task.circleId). This module normalises the circle-like sources the host
- * already exposes — tasks crews (`getMyCrews`), stoop groups, and
+ * already exposes — tasks circles (`getMyCircles`), stoop groups, and
  * `@canopy/circles` items — into one launcher list (board 1B). Pure and
  * host-injected so the same logic feeds the web launcher (`web/v2/`) and
  * the mobile screen (`screens/v2/`).
@@ -68,13 +68,13 @@ function pickLatest(x, y) {
  * source is tolerated — it contributes nothing rather than breaking the
  * launcher. Result is sorted most-recent-activity first, then by name.
  */
-export async function loadCircles({ fetchCrews, fetchGroups, fetchCircles } = {}) {
-  const [crews, groups, circles] = await Promise.all([
-    safe(fetchCrews),
+export async function loadCircles({ fetchTasksCircles, fetchGroups, fetchCircles } = {}) {
+  const [tasksCircles, groups, circles] = await Promise.all([
+    safe(fetchTasksCircles),
     safe(fetchGroups),
     safe(fetchCircles),
   ]);
-  return mergeCircles(crews, groups, circles).sort(byActivityThenName);
+  return mergeCircles(tasksCircles, groups, circles).sort(byActivityThenName);
 }
 
 async function safe(fn) {

@@ -4,16 +4,16 @@
  *
  * Three skills:
  *   - `setCalendarEmission({enabled})` — admin/coord. Toggles
- *     `liveCrew.calendarEmission.enabled`.
+ *     `liveCircle.calendarEmission.enabled`.
  *   - `getCalendarEmissionUrl()`       — self. Returns the URL the
  *     calling actor's calendar app subscribes to.
  *   - `getCalendarEmissionStatus()`    — self. Returns whether
- *     emission is on for the crew, plus the actor's URL when it is.
+ *     emission is on for the circle, plus the actor's URL when it is.
  *
  * The actual emit-loop lives in `../calendar/wireCalendarEmission.js`
- * and is wired by `Crew.js` per-member when `liveCrew.calendarEmission?.enabled`
- * is true. The skill calls `crew.onCalendarEmissionChange?.()` after
- * toggling so Crew.js can attach/detach the per-member loops.
+ * and is wired by `Circle.js` per-member when `liveCircle.calendarEmission?.enabled`
+ * is true. The skill calls `circle.onCalendarEmissionChange?.()` after
+ * toggling so Circle.js can attach/detach the per-member loops.
  */
 
 import { defineSkill } from '@canopy/core';
@@ -23,8 +23,8 @@ import { argsFromParts } from '../bundleResolver.js';
 /**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
- *   Resolver returns a CrewState; per-CrewState `onCalendarEmissionChange`
- *   callback wires the rewire loop in `Crew.js`.
+ *   Resolver returns a CircleState; per-CircleState `onCalendarEmissionChange`
+ *   callback wires the rewire loop in `Circle.js`.
  */
 export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
   if (typeof bundleResolver !== 'function') {
@@ -33,9 +33,9 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('setCalendarEmission', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
       }
@@ -43,23 +43,23 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
       if (typeof a.enabled !== 'boolean') {
         return { error: 'enabled (boolean) required' };
       }
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const next = { ...(lc.calendarEmission ?? {}), enabled: a.enabled };
-      crew.crewMutator({ calendarEmission: next });
-      try { crew.onCalendarEmissionChange?.(); } catch { /* re-wire failure must not break the toggle skill */ }
+      circle.circleMutator({ calendarEmission: next });
+      try { circle.onCalendarEmissionChange?.(); } catch { /* re-wire failure must not break the toggle skill */ }
       return { ok: true, enabled: a.enabled };
     }, {
-      description: 'Toggle calendar emission for the crew (admin/coord only).',
+      description: 'Toggle calendar emission for the circle (admin/coord only).',
       visibility:  'authenticated',
     }),
 
     defineSkill('getCalendarEmissionUrl', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) {
         return { error: 'webid required (from envelope)' };
       }
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const enabled = !!lc.calendarEmission?.enabled;
       if (!enabled) {
         return {
@@ -85,11 +85,11 @@ export function buildCalendarEmissionSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('getCalendarEmissionStatus', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const lc = crew.liveCrew ?? {};
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const lc = circle.liveCircle ?? {};
       const enabled = !!lc.calendarEmission?.enabled;
-      const role = crew.roles?.[from];
+      const role = circle.roles?.[from];
       const canToggle = role === 'admin' || role === 'coordinator';
       return {
         enabled,

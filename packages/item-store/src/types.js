@@ -184,7 +184,7 @@
  *   'private' / 'me'  — owner only
  *   'household'       — household members (legacy Visibility's default)
  *   'role:NAME'       — actors in the named role
- *   'crew:ID'         — alias for circle-ref (per circle.id ≡ task.circleId)
+ *   'circle:ID'         — alias for circle-ref (per circle.id ≡ task.circleId)
  *   'circle:ID'       — circle-ref by id
  *
  * Resolution helpers (`normalizeAudience` / `resolveAudience` /
@@ -226,7 +226,7 @@
  *     3. **Set membership** — a `{kind:'set', members:[…]}` item matches
  *        when the filter is a plain webid string in `members`.
  *
- *   Known limitation: the string short-hand `'crew:X'` and the
+ *   Known limitation: the string short-hand `'circle:X'` and the
  *   structured form `{kind:'circle-ref', id:'X'}` are NOT considered
  *   equivalent (normalisation lives in `@canopy/circles`; item-store
  *   can't depend on it for layering reasons).  A future revision may

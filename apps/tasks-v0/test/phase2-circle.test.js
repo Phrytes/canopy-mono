@@ -1,12 +1,12 @@
 /**
- * Phase 2 — Crew envelope tests.
+ * Phase 2 — Circle envelope tests.
  *
  * Covers:
- *   1. CrewConfig load / save round-trip via a CachingDataSource.
+ *   1. CircleConfig load / save round-trip via a CachingDataSource.
  *   2. Missing-config fallback (returns implicit-household defaults).
- *   3. createCrewAgent zero-config = V0 implicit-household path
+ *   3. createCircleAgent zero-config = V0 implicit-household path
  *      (still works when nothing is supplied).
- *   4. createCrewAgent with a localStoreBundle wires MemberMapCache
+ *   4. createCircleAgent with a localStoreBundle wires MemberMapCache
  *      so member additions auto-persist to the bundle's cache.
  *   5. Onboarding skills (`issueInvite`, `redeemInvite`) get
  *      registered when wireOnboardingSkills is on (default).
@@ -21,10 +21,10 @@ import { DataPart } from '@canopy/core';
 import {
   IMPLICIT_HOUSEHOLD_CONFIG as _IMPLICIT,
   KIND_DEFAULTS,
-  loadCrewConfig,
-  saveCrewConfig,
-  createCrewAgent,
-} from '../src/Crew.js';
+  loadCircleConfig,
+  saveCircleConfig,
+  createCircleAgent,
+} from '../src/Circle.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
 
 async function callSkill(agent, skillId, args, fromWebid) {
@@ -52,13 +52,13 @@ const SAMPLE_CONFIG = {
   ],
 };
 
-describe('Phase 2 — Crew envelope', () => {
+describe('Phase 2 — Circle envelope', () => {
   describe('config loader', () => {
-    it('round-trips a config through saveCrewConfig + loadCrewConfig', async () => {
+    it('round-trips a config through saveCircleConfig + loadCircleConfig', async () => {
       const bundle = buildBundle();
-      await saveCrewConfig({ dataSource: bundle.cache, config: SAMPLE_CONFIG });
+      await saveCircleConfig({ dataSource: bundle.cache, config: SAMPLE_CONFIG });
 
-      const loaded = await loadCrewConfig({
+      const loaded = await loadCircleConfig({
         dataSource: bundle.cache,
         circleId:     'oss-tools',
       });
@@ -73,11 +73,11 @@ describe('Phase 2 — Crew envelope', () => {
 
     it('falls back to implicit-household defaults when no config blob exists', async () => {
       const bundle = buildBundle();
-      const loaded = await loadCrewConfig({
+      const loaded = await loadCircleConfig({
         dataSource: bundle.cache,
-        circleId:     'fresh-crew',
+        circleId:     'fresh-circle',
       });
-      expect(loaded.circleId).toBe('fresh-crew');
+      expect(loaded.circleId).toBe('fresh-circle');
       expect(loaded.kind).toBe('household');
       expect(loaded.members).toEqual([]);
       expect(loaded.subtasksAdminApprovalDepth).toBe(3);
@@ -85,19 +85,19 @@ describe('Phase 2 — Crew envelope', () => {
 
     it('uses the explicit fallback when supplied + no blob present', async () => {
       const bundle = buildBundle();
-      const loaded = await loadCrewConfig({
+      const loaded = await loadCircleConfig({
         dataSource: bundle.cache,
-        circleId:     'maintenance-crew',
-        fallback:   { circleId: 'maintenance-crew', name: 'Buurttuin', kind: 'maintenance' },
+        circleId:     'maintenance-circle',
+        fallback:   { circleId: 'maintenance-circle', name: 'Buurttuin', kind: 'maintenance' },
       });
       expect(loaded.kind).toBe('maintenance');
       expect(loaded.name).toBe('Buurttuin');
     });
 
     it('rejects bad inputs', async () => {
-      await expect(loadCrewConfig({})).rejects.toThrow(/dataSource/);
+      await expect(loadCircleConfig({})).rejects.toThrow(/dataSource/);
       const bundle = buildBundle();
-      await expect(loadCrewConfig({ dataSource: bundle.cache })).rejects.toThrow(/circleId/);
+      await expect(loadCircleConfig({ dataSource: bundle.cache })).rejects.toThrow(/circleId/);
     });
   });
 
@@ -109,46 +109,46 @@ describe('Phase 2 — Crew envelope', () => {
     });
   });
 
-  describe('createCrewAgent — zero-config implicit household', () => {
-    it('boots with no crewConfig + no localStoreBundle (V0 parity)', async () => {
-      const result = await createCrewAgent({
-        wireOnboardingSkills: false,  // skip per-crew skill registration
+  describe('createCircleAgent — zero-config implicit household', () => {
+    it('boots with no circleConfig + no localStoreBundle (V0 parity)', async () => {
+      const result = await createCircleAgent({
+        wireOnboardingSkills: false,  // skip per-circle skill registration
       });
       expect(result.agent).toBeDefined();
       expect(result.itemStore).toBeDefined();
-      expect(result.crew.circleId).toBe('household');
-      expect(result.crew.kind).toBe('household');
+      expect(result.circle.circleId).toBe('household');
+      expect(result.circle.kind).toBe('household');
       expect(result.localStore).toBeNull();
       // Contract update 2026-05-14 (Tasks V2 seventh slice): the
-      // GroupManager is always constructed + stashed on CrewState
-      // for multi-crew dispatch. `wireOnboardingSkills:false` only
-      // skips per-crew skill registration.
+      // GroupManager is always constructed + stashed on CircleState
+      // for multi-circle dispatch. `wireOnboardingSkills:false` only
+      // skips per-circle skill registration.
       expect(result.groupManager).toBeTruthy();
     });
   });
 
-  describe('createCrewAgent — with localStoreBundle', () => {
+  describe('createCircleAgent — with localStoreBundle', () => {
     it('uses the bundle cache for the ItemStore AND wires MemberMapCache for the roster', async () => {
       const lsBundle = buildBundle();
 
-      const result = await createCrewAgent({
-        crewConfig:           SAMPLE_CONFIG,
+      const result = await createCircleAgent({
+        circleConfig:           SAMPLE_CONFIG,
         localStoreBundle:     lsBundle,
         wireOnboardingSkills: false,
       });
 
       expect(result.localStore).toBe(lsBundle);
-      expect(result.crew.circleId).toBe('oss-tools');
+      expect(result.circle.circleId).toBe('oss-tools');
       expect(result.memberMapCacheDetach).toBeTypeOf('function');
 
       // Add a member to the live MemberMap; expect it to appear in the
-      // cache under the per-crew rootContainer.
+      // cache under the per-circle rootContainer.
       await result.members.addMember({ webid: CAROL, displayName: 'Carol', role: 'member' });
 
       // Give the cache write a microtask to flush.
       await new Promise((r) => setTimeout(r, 20));
 
-      const keys = await lsBundle.cache.list('mem://tasks/crews/oss-tools/members/');
+      const keys = await lsBundle.cache.list('mem://tasks/circles/oss-tools/members/');
       expect(keys.length).toBeGreaterThan(0);
       const persisted = await Promise.all(keys.map((k) => lsBundle.cache.read(k)));
       const flat = persisted.map((v) => (typeof v === 'string' ? JSON.parse(v) : v));
@@ -158,10 +158,10 @@ describe('Phase 2 — Crew envelope', () => {
     });
   });
 
-  describe('createCrewAgent — onboarding skills', () => {
+  describe('createCircleAgent — onboarding skills', () => {
     it('registers issueInvite + redeemInvite when wireOnboardingSkills is on (default)', async () => {
-      const result = await createCrewAgent({
-        crewConfig: { ...SAMPLE_CONFIG },
+      const result = await createCircleAgent({
+        circleConfig: { ...SAMPLE_CONFIG },
       });
 
       expect(result.groupManager).toBeDefined();
@@ -174,18 +174,18 @@ describe('Phase 2 — Crew envelope', () => {
       expect(inviteRes.invite.groupId).toBe('oss-tools');
     });
 
-    it('skips skill registration when wireOnboardingSkills:false (but still builds GroupManager for multi-crew dispatch)', async () => {
+    it('skips skill registration when wireOnboardingSkills:false (but still builds GroupManager for multi-circle dispatch)', async () => {
       // Contract update 2026-05-14 (Tasks V2 seventh slice): the
-      // GroupManager is always constructed + stashed on the CrewState
-      // so the multi-crew onboarding wrapper can find it per call.
-      // Only the per-crew skill registration is skipped — the CLI's
-      // --multi-crew path registers the wrapper once instead.
-      const result = await createCrewAgent({
-        crewConfig:           SAMPLE_CONFIG,
+      // GroupManager is always constructed + stashed on the CircleState
+      // so the multi-circle onboarding wrapper can find it per call.
+      // Only the per-circle skill registration is skipped — the CLI's
+      // --multi-circle path registers the wrapper once instead.
+      const result = await createCircleAgent({
+        circleConfig:           SAMPLE_CONFIG,
         wireOnboardingSkills: false,
       });
       expect(result.groupManager).toBeTruthy();
-      expect(result._crewState.groupManager).toBe(result.groupManager);
+      expect(result._circleState.groupManager).toBe(result.groupManager);
       expect(result.agent.skills.has('issueInvite')).toBe(false);
       expect(result.agent.skills.has('redeemInvite')).toBe(false);
     });

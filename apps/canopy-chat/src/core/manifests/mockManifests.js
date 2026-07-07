@@ -30,7 +30,7 @@
  * tasks-v0 manifest — Part G dissolve (2026-06-17).
  *
  * This file's former `mockTasksManifest` literal (the chat-shell slash/
- * gate surface for the REAL tasks-v0 crew skills) has been FOLDED INTO
+ * gate surface for the REAL tasks-v0 circle skills) has been FOLDED INTO
  * the real `apps/tasks-v0/manifest.js`, which is now the ONE tasks
  * manifest (same move folio made — see the `mockFolioManifest`
  * re-export below).  We re-export it under the historical name so every
@@ -39,7 +39,7 @@
  *
  * The merged manifest's `.app` is now `'tasks'` (NOT `'tasks-v0'`): the
  * catalog (`manifestMerge.js`) keys ops by `m.app`, so dispatch now
- * routes the tasks crew under appOrigin `'tasks'` (realAgent.js's
+ * routes the tasks circle under appOrigin `'tasks'` (realAgent.js's
  * callSkill matches `'tasks'`).  The vocab adapter bridges
  * (rejectTask reason→note, submitTask note-default) are removed — the
  * manifest declares the real `note` param directly.  The Q29 claimTask

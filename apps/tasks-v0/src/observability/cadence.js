@@ -3,10 +3,10 @@
  *
  * Three layers, narrowest wins:
  *
- *   1. **App baseline** — hardcoded sane defaults so a fresh crew
+ *   1. **App baseline** — hardcoded sane defaults so a fresh circle
  *      with no config + no user overrides still works.
- *   2. **Crew default** — `crewConfig.cadences[<eventType>]`. Editable
- *      by admin/coord via `setCrewCadences`.
+ *   2. **Circle default** — `circleConfig.cadences[<eventType>]`. Editable
+ *      by admin/coord via `setCircleCadences`.
  *   3. **User override** — `userSettings.cadenceOverrides[<eventType>]`.
  *      Editable per user via `setMyCadenceOverrides`.
  *
@@ -19,7 +19,7 @@
  *                 deadline). `missed-deadline-30min` style.
  *
  * Pure function — no I/O. Apps fetch the layers and call
- * `resolveCadence({eventType, baseline, crew, user})` to get the
+ * `resolveCadence({eventType, baseline, circle, user})` to get the
  * effective config.
  */
 
@@ -44,18 +44,18 @@ const VALID_CHANNELS = new Set(['inbox', 'push', 'silent']);
  * @param {object} args
  * @param {string} args.eventType
  * @param {object} [args.baseline]   defaults to BASELINE_CADENCES
- * @param {object} [args.crew]       crewConfig.cadences (per-event map)
+ * @param {object} [args.circle]       circleConfig.cadences (per-event map)
  * @param {object} [args.user]       userSettings.cadenceOverrides (per-event map)
  * @returns {{channel: string, suppressed: boolean, leadMs: number}}
  */
-export function resolveCadence({ eventType, baseline, crew, user } = {}) {
+export function resolveCadence({ eventType, baseline, circle, user } = {}) {
   if (typeof eventType !== 'string' || !eventType) {
     throw new TypeError('resolveCadence: eventType required');
   }
   const layers = [
     BASELINE_CADENCES[eventType] ?? {},
     (baseline ?? {})[eventType]  ?? {},
-    (crew ?? {})[eventType]      ?? {},
+    (circle ?? {})[eventType]      ?? {},
     (user ?? {})[eventType]      ?? {},
   ];
   const merged = { channel: 'inbox', suppressed: false, leadMs: 0 };
@@ -71,7 +71,7 @@ export function resolveCadence({ eventType, baseline, crew, user } = {}) {
 
 /**
  * Validate a cadence-config map shape. Returns a sanitised copy
- * (drops bad entries) — used by `setCrewCadences` /
+ * (drops bad entries) — used by `setCircleCadences` /
  * `setMyCadenceOverrides` skills before persisting.
  */
 export function sanitiseCadenceMap(map) {

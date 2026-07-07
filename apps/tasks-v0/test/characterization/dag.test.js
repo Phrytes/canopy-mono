@@ -9,7 +9,7 @@
  * Captures:
  *   - Page-serves test: 200 + non-empty HTML + `<html` substring.
  *   - Structural snapshot via `normaliseSnapshot` + `toMatchSnapshot`.
- *   - `getDagTree` skill returns without error on an empty crew + on
+ *   - `getDagTree` skill returns without error on an empty circle + on
  *     a small graph seeded via the fixture's substrate.
  *
  * Discipline: minimal assertions, no domain-state introspection
@@ -48,10 +48,10 @@ describe('characterization: dag.html', () => {
     expect(snap, 'dag.html structural baseline').toMatchSnapshot();
   });
 
-  it('getDagTree returns an empty top-level forest on a fresh crew', async () => {
+  it('getDagTree returns an empty top-level forest on a fresh circle', async () => {
     const r = await fixture.callSkill('getDagTree');
     // Skill returns either {trees: []} (no rootId) or {tree} (with rootId).
-    // On an empty crew the trees forest is empty.
+    // On an empty circle the trees forest is empty.
     expect(r).toBeTruthy();
     expect(r.error).toBeUndefined();
     expect(Array.isArray(r.trees)).toBe(true);
@@ -67,7 +67,7 @@ describe('characterization: dag.html', () => {
     // once owner confirms which fields to lock as gold-standard.
     const TASK_TEXT = 'dag-corpus seed task';
     await fixture.callSkill('addTask', {
-      circleId: 'characterization-crew',
+      circleId: 'characterization-circle',
       text:   TASK_TEXT,
     });
 
@@ -77,7 +77,7 @@ describe('characterization: dag.html', () => {
     expect(r.trees.length).toBeGreaterThan(0);
 
     // Substrate-side cross-check: the new task is in itemStore.
-    const items = await fixture.crewState.itemStore.listOpen({ type: 'task' });
+    const items = await fixture.circleState.itemStore.listOpen({ type: 'task' });
     expect(items.some((it) => it.text === TASK_TEXT)).toBe(true);
   });
 });

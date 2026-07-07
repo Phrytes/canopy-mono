@@ -9,7 +9,7 @@
  *      dependencies gain the child id.
  *   3. addSubtask authz — random member rejected; parent's master,
  *      assignee, admin, coordinator allowed.
- *   4. addSubtask depth threshold — depth > crew.subtasksAdminApprovalDepth
+ *   4. addSubtask depth threshold — depth > circle.subtasksAdminApprovalDepth
  *      queues a `subtask-request` instead of creating directly.
  *   5. approveSubtaskRequest — admin approves; sub-task is created
  *      under the original requester; request marked complete.
@@ -28,7 +28,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import {
   childrenOf, treeOf, ancestorChain, depthOf, wouldCreateParentCycle,
 } from '../src/dag-tree.js';
@@ -38,7 +38,7 @@ const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW_BASE = {
+const CIRCLE_BASE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -120,31 +120,31 @@ describe('Phase 7 — dag-tree helpers (pure)', () => {
   });
 });
 
-// ── Live skill tests via createCrewAgent ──────────────────────────────────
+// ── Live skill tests via createCircleAgent ──────────────────────────────────
 
 describe('Phase 7 — addSubtask (live, with depth threshold)', () => {
   let lsBundle;
-  let crew;
+  let circle;
 
-  async function freshCrew(crewConfig = CREW_BASE) {
+  async function freshCircle(circleConfig = CIRCLE_BASE) {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig,
+    circle = await createCircleAgent({
+      circleConfig,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
   }
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   it('basic spawn: assignee creates a sub-task; child carries parentTaskId; parent gains the dep edge', async () => {
-    await freshCrew();
-    const { task: parent } = await callSkill(crew.agent, 'addTask', { text: 'Build shed' }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: parent.id }, KID);
+    await freshCircle();
+    const { task: parent } = await callSkill(circle.agent, 'addTask', { text: 'Build shed' }, ANNE);
+    await callSkill(circle.agent, 'claimTask', { id: parent.id }, KID);
 
-    const r = await callSkill(crew.agent, 'addSubtask', {
+    const r = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id,
       text:         'Order planks',
     }, KID);
@@ -154,17 +154,17 @@ describe('Phase 7 — addSubtask (live, with depth threshold)', () => {
     expect(r.task.master).toBe(KID);     // spawner is master of the child
     expect(r.depth).toBe(1);
 
-    const updatedParent = await crew.itemStore.getById(parent.id);
+    const updatedParent = await circle.itemStore.getById(parent.id);
     expect(updatedParent.dependencies).toContain(r.task.id);
   });
 
   it('master can spawn even when not the assignee', async () => {
-    await freshCrew();
-    const { task: parent } = await callSkill(crew.agent, 'addTask',
+    await freshCircle();
+    const { task: parent } = await callSkill(circle.agent, 'addTask',
       { text: 'Build shed' }, FRITS);   // master = the author
-    await callSkill(crew.agent, 'claimTask', { id: parent.id }, KID);
+    await callSkill(circle.agent, 'claimTask', { id: parent.id }, KID);
 
-    const r = await callSkill(crew.agent, 'addSubtask', {
+    const r = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id,
       text:         'Source materials',
     }, FRITS);
@@ -174,11 +174,11 @@ describe('Phase 7 — addSubtask (live, with depth threshold)', () => {
   });
 
   it('admin can spawn under someone else\'s parent task', async () => {
-    await freshCrew();
-    const { task: parent } = await callSkill(crew.agent, 'addTask',
+    await freshCircle();
+    const { task: parent } = await callSkill(circle.agent, 'addTask',
       { text: 'Build shed' }, FRITS);
-    await callSkill(crew.agent, 'claimTask', { id: parent.id }, KID);
-    const r = await callSkill(crew.agent, 'addSubtask', {
+    await callSkill(circle.agent, 'claimTask', { id: parent.id }, KID);
+    const r = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id, text: 'Admin nudge',
     }, ANNE);
     expect(r.queued).toBe(false);
@@ -186,38 +186,38 @@ describe('Phase 7 — addSubtask (live, with depth threshold)', () => {
   });
 
   it('rejects callers who are neither assignee, master, admin, nor coordinator', async () => {
-    await freshCrew();
-    const { task: parent } = await callSkill(crew.agent, 'addTask',
+    await freshCircle();
+    const { task: parent } = await callSkill(circle.agent, 'addTask',
       { text: 'Build shed' }, ANNE);
     // Kid is NOT the assignee, NOT the master, just a member.
-    const r = await callSkill(crew.agent, 'addSubtask', {
+    const r = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id, text: 'Sneaky',
     }, KID);
     expect(r.error).toMatch(/assignee|master|admin/i);
   });
 
   it('rejects an unknown parentTaskId', async () => {
-    await freshCrew();
-    const r = await callSkill(crew.agent, 'addSubtask', {
+    await freshCircle();
+    const r = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: '01XYZ', text: 'orphan',
     }, ANNE);
     expect(r.error).toMatch(/parent task not found/i);
   });
 
-  it('depth > crew.subtasksAdminApprovalDepth queues an admin-approval request', async () => {
+  it('depth > circle.subtasksAdminApprovalDepth queues an admin-approval request', async () => {
     // Use threshold 1 so going past it is easy: parent (depth 0) →
     // child (depth 1, allowed) → grandchild (depth 2, queued).
-    await freshCrew({ ...CREW_BASE, subtasksAdminApprovalDepth: 1 });
+    await freshCircle({ ...CIRCLE_BASE, subtasksAdminApprovalDepth: 1 });
 
-    const { task: parent } = await callSkill(crew.agent, 'addTask',
+    const { task: parent } = await callSkill(circle.agent, 'addTask',
       { text: 'Root' }, ANNE);
-    const r1 = await callSkill(crew.agent, 'addSubtask', {
+    const r1 = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id, text: 'Child',
     }, ANNE);
     expect(r1.queued).toBe(false);
 
     // Grandchild — depth 2 > threshold 1 → queued.
-    const r2 = await callSkill(crew.agent, 'addSubtask', {
+    const r2 = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: r1.task.id, text: 'Grandchild',
     }, ANNE);
     expect(r2.queued).toBe(true);
@@ -226,7 +226,7 @@ describe('Phase 7 — addSubtask (live, with depth threshold)', () => {
     expect(r2.threshold).toBe(1);
 
     // The actual sub-task does NOT exist yet — only the request item.
-    const open = await crew.itemStore.listOpen();
+    const open = await circle.itemStore.listOpen();
     const grandchildren = open.filter((i) => i.parentTaskId === r1.task.id);
     expect(grandchildren).toHaveLength(0);
     const requests = open.filter((i) => i.type === 'subtask-request');
@@ -238,28 +238,28 @@ describe('Phase 7 — addSubtask (live, with depth threshold)', () => {
 
 describe('Phase 7 — approve / decline subtask requests', () => {
   let lsBundle;
-  let crew;
+  let circle;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           { ...CREW_BASE, subtasksAdminApprovalDepth: 1 },
+    circle = await createCircleAgent({
+      circleConfig:           { ...CIRCLE_BASE, subtasksAdminApprovalDepth: 1 },
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   async function spawnQueued() {
-    const { task: parent } = await callSkill(crew.agent, 'addTask',
+    const { task: parent } = await callSkill(circle.agent, 'addTask',
       { text: 'Root' }, ANNE);
-    const r1 = await callSkill(crew.agent, 'addSubtask', {
+    const r1 = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id, text: 'Child',
     }, ANNE);
-    const r2 = await callSkill(crew.agent, 'addSubtask', {
+    const r2 = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: r1.task.id, text: 'Grandchild',
     }, ANNE);
     return { parent, child: r1.task, requestId: r2.requestId };
@@ -268,45 +268,45 @@ describe('Phase 7 — approve / decline subtask requests', () => {
   it('approveSubtaskRequest: admin approves → sub-task is created, request closed', async () => {
     const { child, requestId } = await spawnQueued();
 
-    const r = await callSkill(crew.agent, 'approveSubtaskRequest',
+    const r = await callSkill(circle.agent, 'approveSubtaskRequest',
       { requestId }, ANNE);
     expect(r.ok).toBe(true);
     expect(r.task).toBeDefined();
     expect(r.task.parentTaskId).toBe(child.id);
 
     // Request is closed.
-    const reqAfter = await crew.itemStore.getById(requestId);
+    const reqAfter = await circle.itemStore.getById(requestId);
     expect(reqAfter.completedAt).toBeGreaterThan(0);
 
     // Parent's dependencies gained the new sub-task id.
-    const childAfter = await crew.itemStore.getById(child.id);
+    const childAfter = await circle.itemStore.getById(child.id);
     expect(childAfter.dependencies).toContain(r.task.id);
   });
 
   it('declineSubtaskRequest: admin declines → no sub-task created; request closed with note', async () => {
     const { child, requestId } = await spawnQueued();
 
-    const r = await callSkill(crew.agent, 'declineSubtaskRequest', {
+    const r = await callSkill(circle.agent, 'declineSubtaskRequest', {
       requestId,
       note:      'Out of scope',
     }, ANNE);
     expect(r.ok).toBe(true);
 
-    const reqAfter = await crew.itemStore.getById(requestId);
+    const reqAfter = await circle.itemStore.getById(requestId);
     expect(reqAfter.completedAt).toBeGreaterThan(0);
     expect(reqAfter.notes).toMatch(/Out of scope/);
 
     // No sub-task under `child`.
-    const open = await crew.itemStore.listOpen();
+    const open = await circle.itemStore.listOpen();
     const grand = open.filter((i) => i.parentTaskId === child.id);
     expect(grand).toHaveLength(0);
   });
 
   it('non-admin cannot approve / decline', async () => {
     const { requestId } = await spawnQueued();
-    const a = await callSkill(crew.agent, 'approveSubtaskRequest', { requestId }, KID);
+    const a = await callSkill(circle.agent, 'approveSubtaskRequest', { requestId }, KID);
     expect(a.error).toMatch(/admin|coordinator/i);
-    const d = await callSkill(crew.agent, 'declineSubtaskRequest', { requestId }, KID);
+    const d = await callSkill(circle.agent, 'declineSubtaskRequest', { requestId }, KID);
     expect(d.error).toMatch(/admin|coordinator/i);
   });
 
@@ -329,40 +329,40 @@ describe('Phase 7 — approve / decline subtask requests', () => {
 
 describe('Phase 7 — sub-task status feeds back into computeStatus', () => {
   let lsBundle;
-  let crew;
+  let circle;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW_BASE,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE_BASE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   it('parent with one open sub-task is "waiting"; flips to "ready" when the sub-task completes', async () => {
-    const { task: parent } = await callSkill(crew.agent, 'addTask', { text: 'Root' }, ANNE);
-    await callSkill(crew.agent, 'claimTask', { id: parent.id }, KID);
-    const sub = await callSkill(crew.agent, 'addSubtask', {
+    const { task: parent } = await callSkill(circle.agent, 'addTask', { text: 'Root' }, ANNE);
+    await callSkill(circle.agent, 'claimTask', { id: parent.id }, KID);
+    const sub = await callSkill(circle.agent, 'addSubtask', {
       parentTaskId: parent.id, text: 'Child',
     }, KID);
 
     // Parent now has the child as a dependency → 'waiting'.
-    const open1 = await crew.itemStore.listOpen();
-    const closed1 = await crew.itemStore.listClosed();
+    const open1 = await circle.itemStore.listOpen();
+    const closed1 = await circle.itemStore.listClosed();
     expect(computeStatus(open1.find((t) => t.id === parent.id), open1, closed1)).toBe('waiting');
 
     // Complete the sub-task.
-    await callSkill(crew.agent, 'claimTask', { id: sub.task.id }, KID);
-    await callSkill(crew.agent, 'completeTask', { id: sub.task.id }, KID);
+    await callSkill(circle.agent, 'claimTask', { id: sub.task.id }, KID);
+    await callSkill(circle.agent, 'completeTask', { id: sub.task.id }, KID);
 
     // Parent flips to 'ready' (no remaining open dependencies).
-    const open2 = await crew.itemStore.listOpen();
-    const closed2 = await crew.itemStore.listClosed();
+    const open2 = await circle.itemStore.listOpen();
+    const closed2 = await circle.itemStore.listClosed();
     expect(computeStatus(open2.find((t) => t.id === parent.id), open2, closed2)).toBe('ready');
   });
 });

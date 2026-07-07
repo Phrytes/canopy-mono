@@ -30,7 +30,7 @@ import { buildSkills }                    from '../../tasks-v0/src/skills/index.
 import { buildWorkspaceSkills }           from '../../tasks-v0/src/skills/workspace.js';
 import { buildInboxSkills }               from '../../tasks-v0/src/skills/inbox.js';
 import { buildSubtaskSkills }             from '../../tasks-v0/src/skills/subtasks.js';
-import { buildCrewControlSkills }         from '../../tasks-v0/src/skills/crewControls.js';
+import { buildCircleControlSkills }         from '../../tasks-v0/src/skills/circleControls.js';
 import { buildAppealSkill }               from '../../tasks-v0/src/skills/appeal.js';
 import { buildAvailabilitySkills }        from '../../tasks-v0/src/skills/availability.js';
 import { buildBotBindingSkills }          from '../../tasks-v0/src/skills/botBindings.js';
@@ -40,7 +40,7 @@ import { buildCustomRoleSkills }          from '../../tasks-v0/src/skills/custom
 import { buildDashboardSkills }           from '../../tasks-v0/src/skills/dashboard.js';
 import { buildForceCompleteSkill }        from '../../tasks-v0/src/skills/forceComplete.js';
 import { buildInvoicingSkills }           from '../../tasks-v0/src/skills/invoicing.js';
-import { buildMultiCrewOnboardingSkills } from '../../tasks-v0/src/skills/multiCrewOnboarding.js';
+import { buildMultiCircleOnboardingSkills } from '../../tasks-v0/src/skills/multiCircleOnboarding.js';
 import { buildObservabilitySkills }       from '../../tasks-v0/src/skills/observability.js';
 import { buildPlannerSkills }             from '../../tasks-v0/src/skills/planner.js';
 import { buildProfileSkills }             from '../../tasks-v0/src/skills/profile.js';
@@ -48,7 +48,7 @@ import { buildPushTokenSkills }           from '../../tasks-v0/src/skills/pushTo
 
 const HERE       = dirname(fileURLToPath(import.meta.url));
 const SCREENS    = join(HERE, '..', 'src', 'screens');
-const SCREENS_C  = join(SCREENS, 'crewSettings');  // crew-settings sub-tree
+const SCREENS_C  = join(SCREENS, 'circleSettings');  // circle-settings sub-tree
 const LIB        = join(HERE, '..', 'src', 'lib');
 
 // Substrate / cross-app skills tasks-mobile may invoke that aren't in
@@ -131,21 +131,21 @@ function collectScreenSkillIds() {
 function collectRealSkillIds() {
   const stub = { bundleResolver: () => null };
   const defs = [
-    ...buildSkills({ ...stub, crewsProvider: () => [] }),
+    ...buildSkills({ ...stub, circlesProvider: () => [] }),
     ...buildWorkspaceSkills(stub),
     ...buildInboxSkills(stub),
     ...buildSubtaskSkills(stub),
-    ...buildCrewControlSkills(stub),
+    ...buildCircleControlSkills(stub),
     ...buildAppealSkill(stub),
     ...buildAvailabilitySkills(stub),
     ...buildBotBindingSkills(stub),
     ...buildCalendarEmissionSkills(stub),
     ...buildChatSkills(stub),
     ...buildCustomRoleSkills(stub),
-    ...buildDashboardSkills({ ...stub, crewsProvider: () => [] }),
+    ...buildDashboardSkills({ ...stub, circlesProvider: () => [] }),
     ...buildForceCompleteSkill(stub),
     ...buildInvoicingSkills(stub),
-    ...buildMultiCrewOnboardingSkills(stub),
+    ...buildMultiCircleOnboardingSkills(stub),
     ...buildObservabilitySkills(stub),
     ...buildPlannerSkills(stub),
     ...buildProfileSkills(stub),

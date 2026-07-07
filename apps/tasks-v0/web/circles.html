@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title data-i18n="dashboard.page_title">Tasks — Crews</title>
+  <title data-i18n="dashboard.page_title">Tasks — Circles</title>
   <link rel="stylesheet" href="/style.css">
   <!-- Post-V0 (#272, 2026-05-27) — runtime locale loader; reads ?lng= or localStorage. -->
   <script type="module" src="/lib/i18nAutoBoot.js"></script>
@@ -15,8 +15,8 @@
       <a href="/review.html">Review</a>
       <a href="/dag.html">DAG</a>
       <a href="/availability.html">Availability</a>
-      <a href="/crew.html">Crew</a>
-      <a href="/crews.html" class="active">Crews</a>
+      <a href="/circle.html">Circle</a>
+      <a href="/circles.html" class="active">Circles</a>
       <a href="/welcome.html">Welcome</a>
       <a href="/onboard.html">Join</a>
       <a href="/pod-settings.html">Pod</a>
@@ -27,14 +27,14 @@
 
   <main>
     <section>
-      <h2 data-i18n="dashboard.heading">Your crews</h2>
+      <h2 data-i18n="dashboard.heading">Your circles</h2>
       <p style="font-size:0.85rem;color:var(--muted)" data-i18n="dashboard.intro">
-        One row per crew you belong to. Counters refresh as tasks change.
+        One row per circle you belong to. Counters refresh as tasks change.
       </p>
-      <table id="crews-table" style="width:100%;border-collapse:collapse;font-size:0.95rem;margin-top:0.6rem">
+      <table id="circles-table" style="width:100%;border-collapse:collapse;font-size:0.95rem;margin-top:0.6rem">
         <thead>
           <tr>
-            <th style="text-align:left">Crew</th>
+            <th style="text-align:left">Circle</th>
             <th style="text-align:right">Open</th>
             <th style="text-align:right">Overdue</th>
             <th style="text-align:right">Review</th>
@@ -47,17 +47,17 @@
     </section>
 
     <section id="saved-section" hidden style="margin-top: 1.5rem;">
-      <h2 data-i18n="dashboard.saved_heading">Saved crew configs (not currently running)</h2>
+      <h2 data-i18n="dashboard.saved_heading">Saved circle configs (not currently running)</h2>
       <p style="font-size: 0.85rem; color: var(--muted);" data-i18n="dashboard.saved_intro">
-        Crews you provisioned via <a href="/welcome.html">/welcome.html</a> but
-        aren't currently bound to the running process. Multi-crew runtime is a
-        follow-up; for now you can switch by restarting with the right crew at
+        Circles you provisioned via <a href="/welcome.html">/welcome.html</a> but
+        aren't currently bound to the running process. Multi-circle runtime is a
+        follow-up; for now you can switch by restarting with the right circle at
         boot.
       </p>
       <table id="saved-table" style="width:100%;border-collapse:collapse;font-size:0.95rem;margin-top:0.6rem">
         <thead>
           <tr>
-            <th style="text-align:left">Crew</th>
+            <th style="text-align:left">Circle</th>
             <th style="text-align:left">Kind</th>
             <th style="text-align:left">Storage</th>
             <th style="text-align:right">Members</th>
@@ -78,20 +78,20 @@
     mountInboxBadge(document.getElementById('nav-inbox'));
 
     async function refresh() {
-      const tbody = document.querySelector('#crews-table tbody');
+      const tbody = document.querySelector('#circles-table tbody');
       let r;
-      try { r = await callSkill('getMyCrews'); }
+      try { r = await callSkill('getMyCircles'); }
       catch (err) {
-        renderV1NotAvailable(tbody, err, 'Cross-crew dashboard is a V2.5 feature.');
+        renderV1NotAvailable(tbody, err, 'Cross-circle dashboard is a V2.5 feature.');
         return;
       }
-      const crews = r?.crews ?? [];
+      const circles = r?.circles ?? [];
       tbody.innerHTML = '';
-      if (crews.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">No crews yet. <a href="/welcome.html">Create one →</a></td></tr>';
+      if (circles.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty" style="color:var(--muted);font-style:italic">No circles yet. <a href="/welcome.html">Create one →</a></td></tr>';
         return;
       }
-      for (const c of crews) {
+      for (const c of circles) {
         const tr = document.createElement('tr');
         const c1 = c.counts ?? {};
         tr.innerHTML = `
@@ -104,7 +104,7 @@
           <td style="text-align:right">${c1.awaitingApproval ?? 0}</td>
           <td style="text-align:right">${c1.mine ?? 0}</td>
           <td style="text-align:right">
-            <a href="/?crew=${encodeURIComponent(c.circleId)}" target="_blank" class="role-chip" style="text-decoration:none">Jump in</a>
+            <a href="/?circle=${encodeURIComponent(c.circleId)}" target="_blank" class="role-chip" style="text-decoration:none">Jump in</a>
           </td>`;
         tbody.appendChild(tr);
       }
@@ -112,7 +112,7 @@
 
     async function refreshSaved() {
       let r;
-      try { r = await callSkill('listSavedCrewConfigs'); }
+      try { r = await callSkill('listSavedCircleConfigs'); }
       catch (err) {
         // Skill missing on older builds — hide the section silently.
         document.getElementById('saved-section').hidden = true;
@@ -138,7 +138,7 @@
           <td>${escapeHtml(c.storage?.policy ?? 'no-pod')}${podSuffix}</td>
           <td style="text-align:right">${(c.members ?? []).length}</td>
           <td style="text-align:right">
-            <button class="role-chip spawn-btn" data-crew-id="${escapeHtml(c.circleId)}" style="cursor:pointer">Spawn</button>
+            <button class="role-chip spawn-btn" data-circle-id="${escapeHtml(c.circleId)}" style="cursor:pointer">Spawn</button>
             <div class="spawn-result" style="font-size:0.8rem;color:var(--muted);margin-top:0.3rem;max-width:280px;word-break:break-word;text-align:left"></div>
           </td>`;
         tbody.appendChild(tr);
@@ -150,16 +150,16 @@
           const resultEl = btn.parentElement.querySelector('.spawn-result');
           resultEl.textContent = 'Spawning…';
           try {
-            const r = await callSkill('spawnMyCrew', { circleId });
+            const r = await callSkill('spawnMyCircle', { circleId });
             if (r?.error) {
               resultEl.textContent = `Error: ${r.error}`;
               return;
             }
             if (r.ready) {
-              resultEl.innerHTML = `Spawned. <a href="/?crew=${encodeURIComponent(circleId)}" target="_blank">Open workspace →</a>`;
+              resultEl.innerHTML = `Spawned. <a href="/?circle=${encodeURIComponent(circleId)}" target="_blank">Open workspace →</a>`;
               await refreshSaved();
             } else {
-              resultEl.innerHTML = `<strong>Restart needed.</strong> ${escapeHtml(r.restartHint ?? 'Multi-crew runtime is a follow-up.')}`;
+              resultEl.innerHTML = `<strong>Restart needed.</strong> ${escapeHtml(r.restartHint ?? 'Multi-circle runtime is a follow-up.')}`;
             }
           } catch (err) {
             resultEl.textContent = `Error: ${err.message ?? err}`;

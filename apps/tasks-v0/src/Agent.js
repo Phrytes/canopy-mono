@@ -11,9 +11,9 @@
  *   - L1f Notifier (deadline reminders, daily digest) — optional
  *
  * V2.8: Skills register ONCE via `wireSkills` against a per-process
- * meshAgent. The minimal CrewState that V0 builds carries just the
+ * meshAgent. The minimal CircleState that V0 builds carries just the
  * itemStore + dataSource + roles + members; richer wiring (chat,
- * bot, metrics) is left null and surfaced by `createCrewAgent`.
+ * bot, metrics) is left null and surfaced by `createCircleAgent`.
  *
  * Apps that want HTTP exposure call `mountLocalUi(bundle.agent)` from
  * `@canopy/agent-ui`; that wraps `core.A2ATransport` on 127.0.0.1.
@@ -29,9 +29,9 @@ import { SkillMatch } from '@canopy/skill-match';
 import { buildStandardRolePolicy } from './rolePolicy.js';
 import { buildMeshAgent } from './MeshAgent.js';
 import { wireSkills } from './wireSkills.js';
-import { singleCrewResolver } from './bundleResolver.js';
+import { singleCircleResolver } from './bundleResolver.js';
 
-const V0_DEFAULT_CREW_ID = 'household';
+const V0_DEFAULT_CIRCLE_ID = 'household';
 
 /**
  * High-level tasks-agent factory.
@@ -50,18 +50,18 @@ const V0_DEFAULT_CREW_ID = 'household';
  * @param {object} [args.identity]
  * @param {object} [args.transport]
  * @param {string} [args.label='TasksAgent']
- * @param {() => object} [args.crewProvider]
- *   When supplied, the V2.8 CrewState's `liveCrew` getter delegates
- *   to this. Used by `createCrewAgent` so its richer config is the
+ * @param {() => object} [args.circleProvider]
+ *   When supplied, the V2.8 CircleState's `liveCircle` getter delegates
+ *   to this. Used by `createCircleAgent` so its richer config is the
  *   one observed by the registered skills.
  * @param {string} [args.identityVault]
  * @returns {Promise<{
  *   agent: object, itemStore: object, members: MemberMap,
  *   notifier: object | null, skillMatch: SkillMatch | null,
- *   localStore: object | null, _crewState: object,
+ *   localStore: object | null, _circleState: object,
  * }>}
- *   `_crewState` is exposed so `createCrewAgent` can enrich the
- *   per-crew wiring (chat / bot / metrics) without a second
+ *   `_circleState` is exposed so `createCircleAgent` can enrich the
+ *   per-circle wiring (chat / bot / metrics) without a second
  *   skill-registration pass.
  */
 export async function createTasksAgent({
@@ -75,20 +75,20 @@ export async function createTasksAgent({
   identity,
   transport,
   label = 'TasksAgent',
-  crewProvider,
-  crewMutator: externalMutator,
+  circleProvider,
+  circleMutator: externalMutator,
   identityVault,
-  // Multi-crew runtime (2026-05-14, Tasks V2 sixth slice) —
-  // a pre-built `core.Agent` to reuse across crew bundles; when
+  // Multi-circle runtime (2026-05-14, Tasks V2 sixth slice) —
+  // a pre-built `core.Agent` to reuse across circle bundles; when
   // truthy, `registerSkills` defaults to false so the CLI owns the
   // single wireSkills call.
   agent: sharedAgent,
   registerSkills,
-  // Multi-crew runtime — per-crew item-store rootContainer. When
-  // multiple crews share a single localStoreBundle, each needs its
-  // own URI prefix so addTask writes don't leak across crews. The
+  // Multi-circle runtime — per-circle item-store rootContainer. When
+  // multiple circles share a single localStoreBundle, each needs its
+  // own URI prefix so addTask writes don't leak across circles. The
   // legacy `'mem://tasks/'` is preserved as the default for the
-  // single-crew path.
+  // single-circle path.
   itemStoreRoot,
 }) {
   if (!roles || typeof roles !== 'object') {
@@ -145,40 +145,40 @@ export async function createTasksAgent({
     await skillMatch.start();
   }
 
-  // ── CrewState (V2.8) ─────────────────────────────────────────────────────
-  // V0 zero-config path — internal liveCrew + mutator (implicit household).
-  // V1+ path (createCrewAgent) — passes its own crewProvider + crewMutator
+  // ── CircleState (V2.8) ─────────────────────────────────────────────────────
+  // V0 zero-config path — internal liveCircle + mutator (implicit household).
+  // V1+ path (createCircleAgent) — passes its own circleProvider + circleMutator
   // so its richer config is the one observed by skills + the one its own
   // wiring (rewireCalendarEmission, rewireInvoicing, etc.) reads from.
-  const useExternalCrew = typeof crewProvider === 'function';
+  const useExternalCircle = typeof circleProvider === 'function';
   const useExternalMutator = typeof externalMutator === 'function';
-  let internalLiveCrew = Object.freeze({
-    circleId:     V0_DEFAULT_CREW_ID,
+  let internalLiveCircle = Object.freeze({
+    circleId:     V0_DEFAULT_CIRCLE_ID,
     name:       'Household',
     kind:       'household',
     members:    initialMembers ?? [],
     customRoles: [],
   });
-  const crewState = {
+  const circleState = {
     get circleId() {
-      const lc = useExternalCrew ? crewProvider() : internalLiveCrew;
-      return lc?.circleId ?? V0_DEFAULT_CREW_ID;
+      const lc = useExternalCircle ? circleProvider() : internalLiveCircle;
+      return lc?.circleId ?? V0_DEFAULT_CIRCLE_ID;
     },
-    get liveCrew() {
-      return useExternalCrew ? crewProvider() : internalLiveCrew;
+    get liveCircle() {
+      return useExternalCircle ? circleProvider() : internalLiveCircle;
     },
-    crewMutator(patch) {
+    circleMutator(patch) {
       if (useExternalMutator) {
         externalMutator(patch);
       } else {
-        internalLiveCrew = Object.freeze({ ...internalLiveCrew, ...patch });
+        internalLiveCircle = Object.freeze({ ...internalLiveCircle, ...patch });
       }
     },
     roles,
     itemStore,
     dataSource,
     members,
-    // V1+ wiring slots — left null on the V0 path; createCrewAgent
+    // V1+ wiring slots — left null on the V0 path; createCircleAgent
     // sets these post-construction.
     chatController:    null,
     botAgentRegistry:  null,
@@ -189,18 +189,18 @@ export async function createTasksAgent({
   };
 
   // ── Skills (V2.8 — single registration via wireSkills) ───────────────────
-  // Default behaviour: register skills here (single-crew path).
-  // Multi-crew runtime (Tasks V2 sixth slice): when `registerSkills:
+  // Default behaviour: register skills here (single-circle path).
+  // Multi-circle runtime (Tasks V2 sixth slice): when `registerSkills:
   // false` or when a shared `agent` is supplied (and the caller didn't
   // override), skip — the CLI calls wireSkills ONCE with a
-  // multi-crew bundleResolver.
+  // multi-circle bundleResolver.
   const shouldRegisterSkills = typeof registerSkills === 'boolean'
     ? registerSkills
     : !sharedAgent;
   if (shouldRegisterSkills) {
     wireSkills({
       meshAgent: agent,
-      bundleResolver: singleCrewResolver(crewState),
+      bundleResolver: singleCircleResolver(circleState),
       members,
     });
   }
@@ -216,7 +216,7 @@ export async function createTasksAgent({
     notifier,
     skillMatch,
     localStore: localStoreBundle ?? null,
-    _crewState: crewState,
+    _circleState: circleState,
   };
 }
 

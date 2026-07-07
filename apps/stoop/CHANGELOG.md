@@ -172,12 +172,12 @@ Phase 52.9.2 `groupMirror` retirement.
   §II.2 policies (`no-pod` default / `centralised` /
   `decentralised` / `hybrid`). New `createGroupV2` opt
   `storagePolicy` + `groupPodUri`; persists in the rules item
-  + pushes to `podRouting.setCrewPolicy`.
+  + pushes to `podRouting.setCirclePolicy`.
 - **A4 — `embeds:[{type, ref}]` on `postRequest`** with chip
   rendering on prikbord cards (`renderEmbedChips` in `web/app.js`
   + CSS). Cross-pod refs (V2 web functional design §4b).
 - **A5 — `/group.html` storage section + upgrade row**. New
-  `setCrewStoragePolicy` skill (admin/coordinator-only,
+  `setCircleStoragePolicy` skill (admin/coordinator-only,
   one-way: rejects downgrade to no-pod).
 - **A6 — `/profile.html` "My Solid pods" section**: display
   pod-attach status via existing `podSignInStatus` + sign-out
