@@ -403,6 +403,18 @@ export const canopyChatManifest = {
     /**
      * `/me` — v0.7.P3a.  Shows the user's persistent agent identity
      * info: chat-agent stableId + pubKey + NKN address.
+     *
+     * D / SP-3b consumer-switch (second surface) — the "Me" op ALSO
+     * surfaces as the "Mij" (Me) profile screen, the top-level self
+     * surface (handle · skills · location).  Declaring `surfaces.page`
+     * makes the manifest the source of truth for that screen's header:
+     * the running profile renderer (renderCircleProfile) derives its
+     * label from renderWeb(manifest).pages[].labelKey via t(), instead
+     * of a hardcoded tr('circle.profile.title').  `kind: 'screen'` (a
+     * full nav destination, not a side-panel/modal); `route` is the
+     * mobile nav route carried for renderMobile (the web adapter ignores
+     * it).  `title` stays as the English fallback for consumers without
+     * a t() (renderWeb's Page.title passthrough).
      */
     {
       id:    'me',
@@ -411,6 +423,7 @@ export const canopyChatManifest = {
       surfaces: {
         slash: { command: '/me' },
         chat:  { reply: 'text', hint: 'show your agent identity (pubKey, NKN address)' },
+        page:  { kind: 'screen', route: 'mij', title: 'Me', labelKey: 'circle.profile.title' },
       },
     },
 

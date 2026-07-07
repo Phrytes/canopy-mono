@@ -2243,8 +2243,17 @@ async function showMij() {
     rerender();
   }
 
+  // D / SP-3b consumer-switch (second live surface) — the "Mij" profile header
+  // is sourced from the manifest PAGE projection.  renderWeb(canopyChatManifest)
+  // projects the `me` op's `surfaces.page` into pages[]; pageForOp selects it and
+  // its labelKey → t() drives the header label (invariant #4 — the manifest is
+  // the source of truth for surfaces; no more hardcoded tr('circle.profile.title')).
+  const profilePage = pageForOp(canopyChatManifest, 'me');
+
   const rerender = () => renderCircleProfile(rootEl, {
     profile, categories, geocodeResult, busy, t,
+    // D / SP-3b — the projected PAGE surface drives the header label (Q22 labelKey via t()).
+    profilePage,
     onSaveProfile: async ({ handle, displayName }) => {
       busy = true; rerender();
       try {

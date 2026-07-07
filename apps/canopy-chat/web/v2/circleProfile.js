@@ -6,7 +6,14 @@
  * (`circleApp.js` showMij) loads `getMyProfile`/`listSkillCategories` and
  * dispatches the stoop mutations behind the callbacks. Personal skills here are
  * DISTINCT from `showSkills` (which is the circle's openness *policy*).
+ *
+ * D / SP-3b consumer-switch (second live surface) — the "Mij" (Me) screen
+ * header is sourced from the manifest PAGE projection: the `me` op declares
+ * `surfaces.page`, renderWeb projects it into NavModel.pages[], and the header
+ * label flows `page.labelKey → t()` via the shared `pageLabel` selector — not a
+ * hardcoded tr('circle.profile.title'). Pure selector lives in shared src.
  */
+import { pageLabel } from '../../src/v2/pageProjection.js';
 
 export function renderCircleProfile(container, {
   profile = {},
@@ -22,6 +29,12 @@ export function renderCircleProfile(container, {
   onClearLocation,
   onAvailability,
   onMyData,
+  // D / SP-3b consumer-switch — the projected PAGE surface for the `me` op
+  // (renderWeb(manifest).pages[] entry, selected via pageForOp). When present,
+  // the header label is derived from `page.labelKey` via t() (Q22), making this
+  // a genuine runtime consumer of the manifest projection. Absent (older callers
+  // / tests) ⇒ the header falls back to tr('circle.profile.title') bit-for-bit.
+  profilePage = null,
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -30,7 +43,11 @@ export function renderCircleProfile(container, {
 
   const heading = document.createElement('h2');
   heading.className = 'cc-profile__title';
-  heading.textContent = tr('circle.profile.title');
+  // D / SP-3b consumer-switch — label FROM the manifest projection: the `me`
+  // op's `surfaces.page.labelKey`, projected by renderWeb, resolved through t()
+  // (Q22). Falls back to the raw page.title, then to the pre-existing
+  // tr('circle.profile.title') when no projected page is passed.
+  heading.textContent = pageLabel(profilePage, tr, tr('circle.profile.title'));
   container.appendChild(heading);
 
   // ── identity (handle + display name) ────────────────────────────────────
