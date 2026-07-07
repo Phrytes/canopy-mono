@@ -26,8 +26,6 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
-  // objective L — the revocable canonical cross-circle share controller (share=grant, revoke=rotate).
-  createCanonicalShare,
   recipientStrategy as podRecipientStrategy } from '@canopy/pod-client';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
@@ -190,9 +188,10 @@ import { renderCircleKring } from './circleKring.js';
 import { makeCircleLists } from '@canopy/kring-host/circleLists';  // cluster K · K2 — composable lists (shared web≡mobile)
 // cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
-import { makeCircleShareEnforcement, sealItem } from '@canopy/item-store';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
+import { sealItem } from '@canopy/item-store';
 import { shareItemAcrossCircles, listSharedResolved, revokeItemShare } from '../../src/v2/circleShare.js';
+// The platform-neutral enforcement assembly (web≡mobile — mobile's circlePods.js calls the SAME builder).
+import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
 import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so canopy-chat's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
 
@@ -273,52 +272,19 @@ async function getCircleShareEnforcement(circleId, policy) {
         const prod     = await ensureCirclePod(circleId, policy);
         const strategy = await getCircleSealStrategy(circleId, policy);
         const sharing  = prod?.podClient?.sharing;             // client.sharing = { grant, list } (resourceUri shape)
-        // Require BOTH a real ACP sharing surface AND a resolved seal strategy (p2/p3). p0/p1 or an
-        // unprovisioned group key → null (decline the pod path rather than grant against plaintext).
-        if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.list !== 'function' || !strategy) {
-          return null;
-        }
-        const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: podRoot }));
-        // objective L — the CANONICAL controller, built from the SAME pod site as the copy-reseal deps:
-        //   • sharing        = prod.podClient.sharing (grant + revoke, resourceUri shape) — the ACP surface,
-        //   • keyStore       = the control agent's group-key resource (`${root}/.keys/group.json`),
-        //   • controllerKey  = THIS device's per-circle sealing identity — already a recipient of the group
-        //     key (producer seeds it into the bootstrap roster), so it can unwrap-to-re-wrap on every grant,
-        //   • resourceUriFor = the same shared-ref → source-resource resolver the read gate/grant hook use,
-        //   • currentRecipients = the live origin roster's sealing keys, so a grant re-wraps the group key to
-        //     the origin members PLUS the outside recipient (never drops the origin members).
-        // Built best-effort; a circle whose control agent / sealing identity isn't resolvable simply skips the
-        // canonical hooks (the four copy/closed postures are unaffected).
-        let canonicalShare;
-        try {
-          const controlAgent = prod?.controlAgent;
-          const idKey = prod?.sealingIdentity ? await prod.sealingIdentity.ensure() : null;
-          if (controlAgent?.keyStore && idKey?.publicKey && idKey?.privateKey && typeof sharing.revoke === 'function') {
-            canonicalShare = createCanonicalShare({
-              sharing,
-              keyStore: controlAgent.keyStore,
-              controllerKey: { publicKey: idKey.publicKey, privateKey: idKey.privateKey },
-              resourceUriFor,
-            });
-          }
-        } catch { canonicalShare = undefined; }
-        // Enforcement `seal` is OMITTED here on PURPOSE: the cross-circle recipient re-seal (share-policy
-        // slice 3b) is layered ABOVE the enforcement binder, in the COPY re-seal path — `shareItemAcrossCircles`
-        // writes a SEPARATE object sealed to the recipients' roster keys (`sealCopyToRecipients`) and grants on
-        // THAT, leaving the source's canonical group-key item untouched (never locks the source's own members
-        // out). Decision "option 2": `trusted`/`registered` currently ride this SAME copy mechanism (they differ
-        // only in who may INITIATE — the slice-2 gate). The `canonical` posture rides the SEPARATE onShareCanonical
-        // / revokeCanonical hooks (createCanonicalShare above), routed in circleShare by isCanonicalPosture.
-        // On read, `open: strategy.open` unseals a group-key source; `composeReaderOpen` (in circleShare) adds
-        // the reader's OWN recipient opener so a copy re-sealed to them decrypts. A same-circle group-key
-        // share needs no re-seal (recipient already holds the key via the roster).
-        return makeCircleShareEnforcement({
-          sharing, resourceUriFor, open: strategy.open,
-          canonicalShare,
-          currentRecipients: () => {
-            try { return (prod?.controlAgent?.members?.() ?? []).map((m) => m.publicKey).filter(Boolean); }
-            catch { return []; }
-          },
+        // This device's per-circle sealing identity (the canonical controller key — already a group-key
+        // recipient). Best-effort; absent ⇒ the shared builder skips the canonical hooks.
+        let idKey = null;
+        try { idKey = prod?.sealingIdentity ? await prod.sealingIdentity.ensure() : null; } catch { idKey = null; }
+        // The platform-neutral assembly lives ONCE in shared src (circleShareEnforcement.js) — web≡mobile call
+        // the SAME builder. It requires a real ACP `sharing` (grant+list) AND a resolved seal strategy (p2/p3);
+        // otherwise it returns null (decline the pod path — the memory/IDB default is byte-unchanged). It also
+        // wires the CANONICAL controller (objective L) from the control agent's group-key resource + this
+        // device's sealing identity, re-wrapping the group key to the live origin roster on every grant.
+        return buildCircleShareEnforcement({
+          sharing, strategy, podRoot,
+          controlAgent: prod?.controlAgent,
+          idKey,
         });
       } catch (err) {
         if (typeof console !== 'undefined') console.warn('[circleApp] share enforcement unavailable:', err?.message ?? err);

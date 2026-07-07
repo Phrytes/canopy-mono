@@ -13,18 +13,27 @@
  */
 import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth } from '@canopy/pod-client';
+import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth,
+  createSealedPodDataSource, podGroupPrefix } from '@canopy/pod-client';
+import { makeCircleLists } from '@canopy/kring-host/circleLists';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../canopy-chat/src/v2/circlePodProducer.js';
 import { realPodRouting } from '../../../canopy-chat/src/v2/circleRealPod.js';
 import { createCirclePodSharing } from '../../../canopy-chat/src/v2/circlePodSharing.js';
+// cluster K · objective L — the SHARED cross-circle SHARE logic + the platform-neutral enforcement assembly.
+// Mobile calls the SAME builder + ops as web (circleApp.js) — invariant #1/#2, no mobile fork.
+import { buildCircleShareEnforcement } from '../../../canopy-chat/src/v2/circleShareEnforcement.js';
+import { shareItemAcrossCircles, listSharedResolved, revokeItemShare } from '../../../canopy-chat/src/v2/circleShare.js';
+import { buildHouseholdDataSource } from '../../../household/src/index.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
 let podSessionRef = null;                     // App-owned OidcSessionRN ref — set by setCirclePodSession
+let asyncStorageRef = null;                   // raw RN AsyncStorage — for the default (non-pod) lists DataSource
 const circlePods = new Map();                 // circleId → producer
 const circleSealStrategies = new Map();       // circleId → {seal,open} | null
 
 /** Wire the durable AsyncStorage vault (call once at app boot with the RN AsyncStorage). */
 export function initCirclePods(asyncStorage) {
+  if (asyncStorage) asyncStorageRef = asyncStorage;
   if (asyncStorage && !circleVault) {
     circleVault = new VaultAsyncStorage({ prefix: 'cc-circle-pod:', asyncStorage });
   }
@@ -122,4 +131,150 @@ export async function getCircleSealStrategy(circleId, policy) {
   } catch { strat = null; }
   circleSealStrategies.set(circleId, strat);
   return strat;
+}
+
+// ── cluster K · objective L — the cross-circle SHARE composition root (RN mirror of web circleApp.js) ────────
+// Web≡mobile by construction: the SHARED share ops (circleShare.js) + the SHARED enforcement assembly
+// (circleShareEnforcement.js) are wired here to the mobile pod objects (session/routing/producer). Absent a
+// pod session + a sealing strategy the pod path declines (returns null) and the op degrades to the in-memory
+// `shared-ref` behaviour — the same additive fallback web uses. No mobile-specific share/seal reimplementation.
+
+// The app-wide DEFAULT lists service, persistent via an AsyncStorage-backed DataSource (in-memory fallback).
+// Lazy + memoised. Mirrors web's getDefaultCircleLists (IDB there).
+let _defaultListsPromise = null;
+function getDefaultCircleLists() {
+  if (!_defaultListsPromise) {
+    _defaultListsPromise = (async () => {
+      let dataSource;
+      try {
+        // AsyncStorage-backed on device (durable); in-memory when no store is wired (SSR/tests).
+        dataSource = asyncStorageRef
+          ? await buildHouseholdDataSource({ dbName: 'cc-circle-lists-state', asyncStorage: asyncStorageRef })
+          : undefined;
+      } catch { dataSource = undefined; }   // no store → in-memory (makeCircleLists' default)
+      return makeCircleLists({ dataSource });
+    })();
+  }
+  return _defaultListsPromise;
+}
+
+// A SEALED, POD-BACKED lists service per circle (opt-in). Present only when signed in (real-pod routing +
+// authed fetch) AND the circle resolves a sealing strategy (p2/p3 with a group key). Absent → null and the
+// caller keeps the default lists, so nothing breaks with no pod session (additive). Mirrors web getPodCircleLists.
+const _podCircleListsByCircle = new Map();   // circleId → Promise<listsSvc | null>
+export async function getPodCircleLists(circleId, policy) {
+  const routing = getActiveRealPodRouting();
+  const authedFetch = getCirclePodFetch();
+  if (!circleId || !authedFetch || !routing?.podRoot) return null;
+  if (!_podCircleListsByCircle.has(circleId)) {
+    _podCircleListsByCircle.set(circleId, (async () => {
+      try {
+        const strategy = await getCircleSealStrategy(circleId, policy);
+        if (!strategy) return null;   // p0/p1 or no group key → decline rather than write plaintext to the pod
+        const dataSource = createSealedPodDataSource({ fetch: authedFetch, podUrl: routing.podRoot, strategy });
+        return makeCircleLists({ dataSource, rootPrefix: podGroupPrefix(routing.podRoot) });
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[circlePods] pod-backed lists unavailable:', err?.message ?? err);
+        return null;
+      }
+    })());
+  }
+  return _podCircleListsByCircle.get(circleId);
+}
+
+/** Resolve a circle's lists service: the sealed pod-backed one when available, else the app default. */
+export async function getCircleLists(circleId, policy) {
+  const pod = await getPodCircleLists(circleId, policy);
+  return pod || getDefaultCircleLists();
+}
+
+// The POD-TIER enforcement binder for a circle's cross-circle SHARE — built from the SHARED assembly. Returns
+// the `{onShare, onShareCanonical, revokeCanonical, policy}` binder when the pod path is ACTIVE (signed-in
+// real-pod routing + the pod-client's ACP `sharing` + a resolved seal strategy); else null (memory path).
+const _shareEnforcementByCircle = new Map();   // circleId → Promise<enforcement | null>
+export async function getCircleShareEnforcement(circleId, policy) {
+  if (!circleId) return null;
+  const routing = getActiveRealPodRouting();
+  const podRoot = routing?.podRoot;
+  if (!podRoot) return null;                    // not signed in → memory path
+  if (!_shareEnforcementByCircle.has(circleId)) {
+    _shareEnforcementByCircle.set(circleId, (async () => {
+      try {
+        const prod     = await ensureCirclePod(circleId, policy);
+        const strategy = await getCircleSealStrategy(circleId, policy);
+        const sharing  = prod?.podClient?.sharing;   // client.sharing = { grant, list, revoke } (resourceUri shape)
+        let idKey = null;
+        try { idKey = prod?.sealingIdentity ? await prod.sealingIdentity.ensure() : null; } catch { idKey = null; }
+        // The SAME platform-neutral builder web uses — requires a real ACP sharing + seal strategy, wires the
+        // canonical controller from the control agent's group-key resource + this device's sealing identity.
+        return buildCircleShareEnforcement({ sharing, strategy, podRoot, controlAgent: prod?.controlAgent, idKey });
+      } catch (err) {
+        if (typeof console !== 'undefined') console.warn('[circlePods] share enforcement unavailable:', err?.message ?? err);
+        return null;
+      }
+    })());
+  }
+  return _shareEnforcementByCircle.get(circleId);
+}
+
+// A best-effort per-circle policy lookup. Mobile has no per-circle admin policy store wired into this module
+// yet, so real callers should pass `policyOf` explicitly (the source circle's `sharePosture`/`admins`). The
+// default returns {} → normalizeCirclePolicy → 'closed' (deny-by-default). NOTE (follow-up): wire a mobile
+// circle-policy store here so the initiator gate reads the live posture without the caller threading it.
+const _defaultPolicyOf = async () => ({});
+
+// Build the resolveService / enforcementFor pair for a share op, closing over the effective policy lookup so
+// each circle picks its own pod-vs-default lists + enforcement (mirrors web's _circleServiceFor / _shareEnforcementFor).
+function _shareResolvers(policyOf) {
+  const pol = typeof policyOf === 'function' ? policyOf : _defaultPolicyOf;
+  const resolveService = async (id) => getCircleLists(id, await pol(id));
+  const enforcementFor = async (id) => {
+    try { return await getCircleShareEnforcement(id, await pol(id)); } catch { return null; }
+  };
+  return { resolveService, enforcementFor, policyOf: pol };
+}
+
+/**
+ * SHARE one item from `fromCircleId` into `toCircleId`'s audience — the mobile-wired path into the shared
+ * `shareItemAcrossCircles`. Canonical posture grants IN PLACE (no copy) via the enforcement's onShareCanonical;
+ * the copy postures re-seal via `sealCopy` + `recipientKeys`. Callers may inject `resolveService`/`enforcementFor`
+ * (the composition root's own by default) and MUST pass `policyOf` (the source circle's admin policy) for the
+ * initiator gate. There is no mobile SHARE UI screen yet — this is the invocable composition-root wiring.
+ */
+export async function shareItemIntoCircle({
+  itemId, fromCircleId, toCircleId, by, recipient, recipients, recipientKeys, sealCopy,
+  resolveService, enforcementFor, policyOf,
+} = {}) {
+  const r = _shareResolvers(policyOf);
+  return shareItemAcrossCircles({
+    resolveService: resolveService ?? r.resolveService,
+    enforcementFor: enforcementFor ?? r.enforcementFor,
+    policyOf: r.policyOf,
+    recipientKeys, sealCopy,
+    itemId, fromCircleId, toCircleId, by, recipient, recipients,
+  });
+}
+
+/** The READ path: everything shared INTO `circleId`, resolved deny-by-default (a non-recipient's ref is dropped). */
+export async function listSharedItems(circleId, { recipient, resolveService, enforcementFor, policyOf } = {}) {
+  const r = _shareResolvers(policyOf);
+  return listSharedResolved({
+    resolveService: resolveService ?? r.resolveService,
+    enforcementFor: enforcementFor ?? r.enforcementFor,
+    circleId, recipient,
+  });
+}
+
+/** UN-SHARE (revoke) a recipient's canonical access — rotate the group key + ACP-revoke. `not-canonical` otherwise. */
+export async function unshareItemFromCircle({
+  itemId, fromCircleId, toCircleId, recipient, recipients, remainingRecipients,
+  resolveService, enforcementFor, policyOf,
+} = {}) {
+  const r = _shareResolvers(policyOf);
+  return revokeItemShare({
+    resolveService: resolveService ?? r.resolveService,
+    enforcementFor: enforcementFor ?? r.enforcementFor,
+    policyOf: r.policyOf,
+    itemId, fromCircleId, toCircleId, recipient, recipients, remainingRecipients,
+  });
 }
