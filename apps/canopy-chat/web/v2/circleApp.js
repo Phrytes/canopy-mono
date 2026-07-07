@@ -57,6 +57,9 @@ import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
 // B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
 import { buildCapabilityMatrix } from '@canopy/app-manifest';
+// D / SP-3b consumer-switch — select the projected PAGE surface (renderWeb) for
+// the settings op so the live settings header is manifest-driven (invariant #4).
+import { pageForOp } from '../../src/v2/pageProjection.js';
 // B · Slice 3 — the interactive list-screen surface (search + category checkboxes + capability-gated rows).
 import { renderListBlock } from './listScreen.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
@@ -3714,9 +3717,18 @@ async function showSettings(id) {
   // recipe is reused for apply, avoiding a second load/verify round-trip).
   let _reviewedRecipe = null;
 
+  // D / SP-3b consumer-switch — the settings header is now sourced from the
+  // manifest PAGE projection.  renderWeb(canopyChatManifest) projects the
+  // `settings` op's `surfaces.page` into pages[]; pageForOp selects it and its
+  // labelKey → t() drives the header label (invariant #4 — the manifest is the
+  // source of truth for surfaces; no more hardcoded tr('circle.settings.title')).
+  const settingsPage = pageForOp(canopyChatManifest, 'settings');
+
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
+    // D / SP-3b — the projected PAGE surface drives the header label (Q22 labelKey via t()).
+    settingsPage,
     // B · Slice 2 — the merged manifest sources drive the settings form + the per-skill freedom matrix.
     sources: circleBaseSources,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,

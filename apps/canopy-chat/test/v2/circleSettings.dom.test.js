@@ -2,6 +2,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleSettings } from '../../web/v2/circleSettings.js';
 import { DEFAULT_CIRCLE_POLICY } from '../../src/v2/circlePolicy.js';
+import { pageForOp } from '../../src/v2/pageProjection.js';
+import { canopyChatManifest } from '../../manifest.js';
 
 const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }
@@ -238,5 +240,50 @@ describe('B · Slice 2 — settings form + freedom matrix (sources-driven)', () 
     renderCircleSettings(el, { policy, t });
     expect(el.querySelector('.circle-settings__capabilities')).toBeNull();
     expect(el.querySelector('.circle-settings__app-settings')).toBeNull();
+  });
+});
+
+/**
+ * D / SP-3b consumer-switch — the settings header is now a genuine consumer of
+ * the manifest PAGE projection (renderWeb → NavModel.pages[]).  These prove the
+ * rendered <h2> label comes FROM the projection's labelKey via t(), not from a
+ * hardcoded string — closing invariant #4's "zero consumers of .pages" gap.
+ */
+describe('renderCircleSettings — header sourced from the manifest page projection (D / SP-3b)', () => {
+  it('renders the header label from page.labelKey via t() (NOT a hardcoded string)', () => {
+    const el = mount();
+    // A projected page with a labelKey; a t() that TAGS the key so we can prove
+    // the label was resolved via t(labelKey) and did not come from a literal.
+    const settingsPage = { opId: 'settings', kind: 'side-panel', title: 'Settings', labelKey: 'my.page.key' };
+    const tagT = (k) => `PROJECTED:${k}`;
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tagT, settingsPage });
+    const head = el.querySelector('.circle-settings__title');
+    expect(head.textContent).toBe('PROJECTED:my.page.key');
+    // And crucially NOT the previously-hardcoded key/string.
+    expect(head.textContent).not.toBe('PROJECTED:circle.settings.title');
+  });
+
+  it('uses the REAL manifest projection: the live settings op → header label', () => {
+    // End-to-end with the actual manifest: renderWeb projects the settings op's
+    // surfaces.page (labelKey: circle.settings.title); the header resolves it.
+    const el = mount();
+    const settingsPage = pageForOp(canopyChatManifest, 'settings');
+    expect(settingsPage?.labelKey).toBe('circle.settings.title');
+    const tagT = (k) => `T:${k}`;
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tagT, settingsPage });
+    expect(el.querySelector('.circle-settings__title').textContent).toBe('T:circle.settings.title');
+  });
+
+  it('falls back to the raw page.title when the projection has no labelKey', () => {
+    const el = mount();
+    const settingsPage = { opId: 'settings', kind: 'side-panel', title: 'Instellingen' };
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: (k) => k, settingsPage });
+    expect(el.querySelector('.circle-settings__title').textContent).toBe('Instellingen');
+  });
+
+  it('falls back to tr(circle.settings.title) when no projected page is passed (older callers unchanged)', () => {
+    const el = mount();
+    renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: (k) => `T:${k}` });
+    expect(el.querySelector('.circle-settings__title').textContent).toBe('T:circle.settings.title');
   });
 });
