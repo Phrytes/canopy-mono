@@ -129,16 +129,12 @@ import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
 // B · Slice 3 — the mobile list-screen surface (web≡mobile).
 import CircleListScreen from './CircleListScreen.js';
-
-// B · Slice 3 — declared list-screen surfaces (mirror of the web LIST_SCREENS): screenId → how to fetch.
-// D-mig-2 note: mobile is still on this hardcoded literal (web retired it in 1b by
-// consuming the projected manifest section; mobile's migration is a separate step).
-// `searchFields` mirrors stoop's `contacts` view so mobile's text search matches the
-// same fields as web (web≡mobile) — search a contact by label OR handle.
-const LIST_SCREENS = {
-  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category', searchFields: ['label', 'handle'] },
-  prikbord: { appOrigin: 'stoop', listOp: 'listOpen',     categoryField: 'kind' },
-};
+// D-mig-mobile-1b — list-screen config is now SOURCED from the projected manifest
+// section (shared `sectionForScreen`), mirroring web 1b. The old hardcoded
+// list-screen literal is retired: each screenId resolves to `{section, appOrigin}`
+// over the composed manifests, and the section's dataSource/labelField/categoryField/
+// searchFields drive the fetch + render — no per-shell duplication (invariant #1/#3).
+import { sectionForScreen } from '../../../../canopy-chat/src/v2/pageProjection.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
@@ -2055,11 +2051,20 @@ function CircleDetail({
 
     // B · Slice 3 — a declared LIST-SCREEN fetches rows + builds the member matrix, then renders the
     // interactive CircleListScreen (search + category chips + capability-gated rows) instead of a block.
-    const listCfg = LIST_SCREENS[screenPanel.screen];
-    if (listCfg) {
+    // D-mig-mobile-1b — resolve the list-screen config from the projected manifest
+    // section (shared selector) instead of the retired hardcoded literal. Fetch
+    // mechanism is UNCHANGED: raw 3-arg callSkill(appOrigin, skillId, args).
+    const found = sectionForScreen(manifestsByOrigin, screenPanel.screen);
+    if (found) {
+      const { section, appOrigin } = found;
+      const skillId = section.dataSource?.skillId;
+      const args = section.dataSource?.args ?? {};
+      const categoryField = section.categoryField;
+      const searchFields = section.searchFields;
+      const labelField = section.labelField ?? 'label';
       (async () => {
         try {
-          const res = await rawCallSkill(listCfg.appOrigin, listCfg.listOp, {});
+          const res = await rawCallSkill(appOrigin, skillId, args);
           const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
           let capabilityMatrix = [];
           try {
@@ -2069,8 +2074,8 @@ function CircleDetail({
               template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
             });
           } catch { /* best-effort */ }
-          if (alive) setListScreenData({ items, categoryField: listCfg.categoryField, searchFields: listCfg.searchFields, appOrigin: listCfg.appOrigin, capabilityMatrix });
-        } catch { if (alive) setListScreenData({ items: [], categoryField: listCfg.categoryField, searchFields: listCfg.searchFields, appOrigin: listCfg.appOrigin, capabilityMatrix: [] }); }
+          if (alive) setListScreenData({ items, categoryField, searchFields, labelField, appOrigin, capabilityMatrix });
+        } catch { if (alive) setListScreenData({ items: [], categoryField, searchFields, labelField, appOrigin, capabilityMatrix: [] }); }
       })();
       return () => { alive = false; };
     }
@@ -2080,7 +2085,7 @@ function CircleDetail({
       .then((m) => { if (alive) setPanelBlocks([m]); })
       .catch(() => { if (alive) setPanelBlocks([]); });
     return () => { alive = false; };
-  }, [screenPanel, circle?.id, rawCallSkill, eventLog, circles, policy, capabilitySources, overrideStore]);
+  }, [screenPanel, circle?.id, rawCallSkill, eventLog, circles, policy, capabilitySources, overrideStore, manifestsByOrigin]);
 
   // A tapped bubble button: S6.B screen button (has screen) → open the panel;
   // S6.A inline manifest button (has opId) → dispatch its op against the item;
@@ -2218,7 +2223,7 @@ function CircleDetail({
     if (!text || !eventLog?.append || !circle?.id) return;
     // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; web≡mobile).
     const scr = text.match(/^\/(contacts|prikbord)\b/i);
-    if (scr && LIST_SCREENS[scr[1].toLowerCase()]) { setComposerText(''); setScreenPanel({ screen: scr[1].toLowerCase() }); return; }
+    if (scr && sectionForScreen(manifestsByOrigin, scr[1].toLowerCase())) { setComposerText(''); setScreenPanel({ screen: scr[1].toLowerCase() }); return; }
     setComposerText('');
     // Conversational follow-up: the bot asked for a missing field (needsForm); THIS message is the answer.
     // Append it, complete the pending dispatch, and run it — don't route to feedback or re-interpret.
@@ -2263,7 +2268,7 @@ function CircleDetail({
     // surface as an unhandled promise rejection. noteBotTurn arms the conversational follow-up if the
     // bot replied with a question.
     Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).then((r) => noteBotTurn(r, text)).catch(() => {});
-  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn]);
+  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin]);
 
   // δ.2 — tap-to-retry on the failed icon.  Looks up the original
   // text from the eventLog so we don't have to remember it elsewhere.
@@ -2464,6 +2469,7 @@ function CircleDetail({
                 items={listScreenData.items}
                 categoryField={listScreenData.categoryField}
                 searchFields={listScreenData.searchFields}
+                labelField={listScreenData.labelField}
                 manifestsByOrigin={manifestsByOrigin}
                 appOrigin={listScreenData.appOrigin}
                 capabilityMatrix={listScreenData.capabilityMatrix}
