@@ -387,6 +387,8 @@
 .circle-folio__crumb-sep { color: var(--muted); }
 .circle-folio__glyph { flex: none; font-size: 16px; line-height: 1; }
 .circle-folio__row--folder .circle-folio__name { font-weight: 700; }
+/* B · Slice 4 — a file row whose OPEN (get × file) is denied for this member. */
+.circle-folio__row--denied { opacity: 0.45; cursor: not-allowed; }
 .circle-folio__count, .circle-folio__size { margin-left: auto; color: var(--muted); font-size: 12px; }
 
 /* N5 — file-source toggle (In-app / My pod) + connect-pod prompt */

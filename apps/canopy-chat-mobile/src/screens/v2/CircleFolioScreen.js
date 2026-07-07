@@ -26,6 +26,9 @@ import {
   buildSharedFiles, FOLIO_SHARE_FILTERS,
   // N5 — Drive tree helpers (source-agnostic; pure, node-free).
   folioLevel, glyphForFile, formatFileSize,
+  // B · Slice 4 — SAME capability-treatment lookup the list surface uses,
+  // for the file-OPEN row action (get × file). Shared seam; web≡mobile.
+  folioFileOpenTreatment,
 } from '@canopy-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
@@ -36,9 +39,19 @@ export default function CircleFolioScreen({
   myCircles = [],
   onBack,
   onOpen,
+  // B · Slice 4 — the acting member's capability matrix + folio app origin.
+  // The file-OPEN row action (get × file) is greyed/hidden per this matrix,
+  // matching the web renderer + list surface. Absent/empty ⇒ 'show'.
+  capabilityMatrix = [],
+  appOrigin = 'folio',
 }) {
   const [shareFilter, setShareFilter] = useState(null);
   const [currentPath, setCurrentPath] = useState('');   // N5 — folder being viewed
+  // Uniform across all file rows (same get × file capability): resolve once.
+  const openTreatment = useMemo(
+    () => folioFileOpenTreatment({ capabilityMatrix, appOrigin }),
+    [capabilityMatrix, appOrigin],
+  );
 
   const rows = useMemo(() => {
     if (shareFilter && Array.isArray(rawFiles)) {
@@ -129,14 +142,20 @@ export default function CircleFolioScreen({
             </Pressable>
           ))}
           {level.files.map((file) => {
+            // B · Slice 4 — gate the file-OPEN row action: 'hide' omits the row,
+            // 'grey' renders it disabled + dimmed, 'show' behaves as before.
+            if (openTreatment === 'hide') return null;
+            const denied = openTreatment === 'grey';
             const size = formatFileSize(typeof file.bytes === 'number' ? file.bytes : file.size);
             return (
               <Pressable
                 key={file.id}
-                style={styles.row}
+                style={[styles.row, denied && styles.rowDenied]}
                 accessibilityRole="button"
+                accessibilityState={{ disabled: denied }}
+                disabled={denied}
                 testID={`folio-row-${file.id}`}
-                onPress={() => onOpen?.(file)}
+                onPress={() => { if (!denied) onOpen?.(file); }}
               >
                 <Text style={styles.glyph}>{glyphForFile(file.name)}</Text>
                 <Text style={styles.name} numberOfLines={1}>{file.name}</Text>
@@ -164,6 +183,7 @@ const styles = StyleSheet.create({
   title:  { fontSize: 24, fontWeight: '600', fontFamily: theme.font.serif, color: theme.color.ink, marginVertical: 10 },
   list:   { gap: 6, paddingBottom: 32 },
   row:    { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card },
+  rowDenied: { opacity: 0.45 },   // B · Slice 4 — file-OPEN denied for this member
   glyph:  { fontSize: 16 },
   name:   { fontSize: 14, color: theme.color.ink, flexShrink: 1 },
   folderName: { fontWeight: '700' },

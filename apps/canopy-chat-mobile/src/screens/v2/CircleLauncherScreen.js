@@ -275,6 +275,10 @@ export default function CircleLauncherScreen({
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [viewAsMembers, setViewAsMembers] = useState([]);
   const [folioFiles, setFolioFiles] = useState([]);
+  // B · Slice 4 — the acting member's capability matrix for the folio file
+  // browser. Gates the file-OPEN row action (get × file) the SAME way the list
+  // surface gates its row buttons. Empty until built ⇒ 'show' ⇒ unchanged.
+  const [folioCapMatrix, setFolioCapMatrix] = useState([]);
   const [skillDraft, setSkillDraft] = useState(null);
   const [rulesDoc, setRulesDoc] = useState(null);
   const [rulesPreview, setRulesPreview] = useState(null);
@@ -417,6 +421,26 @@ export default function CircleLauncherScreen({
   const policyStore       = useMemo(() => makeCirclePolicyStoreRN(AsyncStorage), []);
   const overrideStore     = useMemo(() => makeMemberOverrideStoreRN(AsyncStorage), []);
   const availabilityStore = useMemo(() => makeAvailabilityStoreRN(AsyncStorage), []);
+  // B · Slice 4 — build the folio capability matrix from the selected circle's
+  // policy + this member's opt-outs (same inputs the list surface uses). Feeds
+  // CircleFolioScreen so its file-OPEN row action greys/hides per the gate.
+  useEffect(() => {
+    if (!selected?.id) { setFolioCapMatrix([]); return; }
+    let alive = true;
+    (async () => {
+      let matrix = [];
+      try {
+        const sources = [...new Set(Object.values(buildManifestsByOrigin()))].map((manifest) => ({ manifest }));
+        const ovr = await overrideStore.get(selected.id);
+        matrix = buildCapabilityMatrix(sources, {
+          enabledApps: Array.isArray(selectedPolicy?.apps) && selectedPolicy.apps.length ? selectedPolicy.apps : null,
+          template: selectedPolicy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
+        });
+      } catch { /* best-effort — empty ⇒ show */ }
+      if (alive) setFolioCapMatrix(matrix);
+    })();
+    return () => { alive = false; };
+  }, [selected, selectedPolicy, overrideStore]);
   // P6.2 — multi-admin proposal store.  Settings consults this to persist
   // pending consensus proposals + commit on unanimous approval.
   const proposalStore     = useMemo(() => makeProposalStoreRN(AsyncStorage), []);
@@ -1180,6 +1204,8 @@ export default function CircleLauncherScreen({
         rawFiles={rawFolioFiles}
         circleId={selected.id}
         myCircles={circles}
+        capabilityMatrix={folioCapMatrix}
+        appOrigin="folio"
         onBack={() => setView('detail')}
       />
     );

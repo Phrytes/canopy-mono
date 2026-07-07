@@ -8,7 +8,9 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { folioLevel, glyphForFile, formatFileSize } from '@canopy-app/canopy-chat';
+import { folioLevel, glyphForFile, formatFileSize, folioFileOpenTreatment } from '@canopy-app/canopy-chat';
+import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
+import { folioManifest } from '../../folio/manifest.js';
 import enRaw from '../locales/en.json';
 import nlRaw from '../locales/nl.json';
 import { sharedCircleLocale } from '@canopy-app/canopy-chat';
@@ -48,6 +50,23 @@ describe('mobile folio Drive tree (folioLevel re-export)', () => {
   it('rich-row helpers drive the glyph + size shown per file', () => {
     expect(glyphForFile('lease.pdf')).toBe('📕');
     expect(formatFileSize(102400)).toBe('100 KB');
+  });
+});
+
+// B · Slice 4 — CircleFolioScreen gates its file-OPEN row action (get × file)
+// through this shared seam (the same substrate cadence as folioLevel above):
+// the screen maps the returned treatment to show / disabled-dim / omitted.
+describe('mobile folio file-OPEN capability gate (folioFileOpenTreatment re-export)', () => {
+  const denyOpen = (consequence) => buildCapabilityMatrix([{ manifest: folioManifest }], {
+    template: { [capabilityKey('folio', 'get', 'file')]: { enabled: false, consequence } },
+  });
+  it('is re-exported from the canopy-chat package the screen imports', () => {
+    expect(typeof folioFileOpenTreatment).toBe('function');
+  });
+  it('granted (empty matrix) ⇒ show; denied greyed ⇒ grey; denied hidden ⇒ hide', () => {
+    expect(folioFileOpenTreatment({ capabilityMatrix: [] })).toBe('show');
+    expect(folioFileOpenTreatment({ capabilityMatrix: denyOpen('greyed') })).toBe('grey');
+    expect(folioFileOpenTreatment({ capabilityMatrix: denyOpen('hidden') })).toBe('hide');
   });
 });
 

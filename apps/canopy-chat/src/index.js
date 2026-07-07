@@ -259,7 +259,7 @@ export {
   SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
   MATCH_SOURCES, buildSkillMatches,
 } from '@canopy/kring-host/circleSkills';
-export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles } from './v2/circleFolio.js';
+export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles, folioFileOpenTreatment } from './v2/circleFolio.js';
 // N5 — Drive tree (folder nav + rich rows).  Re-exported from folio's
 // browser-safe barrel so web + mobile share one import path (folio/browser
 // carries no node deps; realAgent already pulls it into both bundles).
