@@ -10,6 +10,46 @@
  * does the fetching; web + mobile share this and the renderers stay thin.
  */
 import { scopeItems, itemCircleId } from './circleScope.js';
+// B · Slice 4 — the SAME per-capability treatment lookup the list surface's
+// row buttons run through (via replyEmbeds → embedButtonsForReply). Reused
+// here so the folio file-OPEN row inherits identical greying/hiding.
+import { affordanceTreatment } from '@canopy/app-manifest';
+
+/**
+ * B · Slice 4 — capability treatment for the folio file-OPEN row action.
+ *
+ * The drive browser's ONLY per-file row-action is "open the file": the file
+ * row is a button whose click fires `onOpen`. Opening = reading a single file
+ * by id → the `get` atom on noun 'file' (a member capability declared in
+ * folio's manifest `nouns.file.atoms`). This runs that (get × file) through
+ * the EXACT same `affordanceTreatment(capabilityMatrix, …)` lookup the list
+ * surface uses for its row buttons — so folio's file row is no longer the one
+ * hand-built surface that skips the gate.
+ *
+ * Returns 'show' | 'grey' | 'hide' ('limit' collapses to 'grey' — a file row
+ * is either openable or not). NOTE (honest caveat): every file row shares the
+ * same (get × file) capability, so the treatment is UNIFORM — a denied member
+ * has EVERY file row greyed, and a 'hidden' consequence omits every file row.
+ * Because this surface's row is BOTH the file listing and the open affordance,
+ * a 'hidden' get×file therefore also removes the file NAME from view (that name
+ * is nominally the separately-gated `list` capability). A GRANTED member is
+ * unaffected — returns 'show', so the row behaves exactly as before.
+ *
+ * The OTHER folio file ops (deleteFromPod/deleteLocally → remove, downloadFile
+ * → list, saveToMyPod → add, verifyPodState → get, forceRepush/syncOnce/watch*
+ * → domain sync/watch) are NOT rendered as row buttons on this drive surface —
+ * they live on the chat/list surface where `embedButtonsForReply` already gates
+ * them. So there is nothing else to gate here.
+ *
+ * @param {object} [opts]
+ * @param {Array}  [opts.capabilityMatrix=[]]  the member's built matrix (Slice 4)
+ * @param {string} [opts.appOrigin='folio']
+ * @returns {'show'|'grey'|'hide'}
+ */
+export function folioFileOpenTreatment({ capabilityMatrix = [], appOrigin = 'folio' } = {}) {
+  const treatment = affordanceTreatment(capabilityMatrix, { app: appOrigin, atom: 'get', noun: 'file' });
+  return treatment === 'hide' ? 'hide' : treatment === 'show' ? 'show' : 'grey';
+}
 
 /**
  * Normalize a raw Folio file into a stable row shape.  Tolerant of

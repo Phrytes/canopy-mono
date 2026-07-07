@@ -3422,6 +3422,10 @@ function showFolio(id) {
   let needsPod = false;            // pod selected but no pod connected yet
   let lastListResult = null;       // raw `listFiles` result for re-projection
   let files = buildCircleFiles({ files: [], circleId: id });
+  // B · Slice 4 — the acting member's capability matrix, gating the file-OPEN
+  // row action (get × file) the SAME way the list surface gates its row
+  // buttons. Built async (below); empty until then ⇒ 'show' (unchanged).
+  let capabilityMatrix = [];
 
   function project() {
     // Pod source — rows ARE the user's pod; no circle-scoping / share lens.
@@ -3455,6 +3459,22 @@ function showFolio(id) {
       .catch(() => { needsPod = sourceMode === 'pod'; if (getActiveCircle() === id) rerender(); });
   }
 
+  // B · Slice 4 — build the member's capability matrix (same inputs the list
+  // surface uses at renderListBlock), then re-render so the folio file-OPEN
+  // row action greys/hides per the gate. Best-effort: any failure leaves the
+  // matrix empty ⇒ 'show' ⇒ behaviour identical to before this slice.
+  async function loadCaps() {
+    try {
+      const pol = (await policyStore.get(id)) ?? {};
+      const ovr = (await overrideStore.get(id)) ?? {};
+      capabilityMatrix = buildCapabilityMatrix(circleBaseSources, {
+        enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
+        template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
+      });
+    } catch { /* best-effort */ }
+    if (getActiveCircle() === id) rerender();
+  }
+
   const rerender = () => renderCircleFolioBrowser(rootEl, {
     files,
     filter,
@@ -3463,6 +3483,9 @@ function showFolio(id) {
     sourceMode,
     needsPod,
     t,
+    // B · Slice 4 — gate the file-OPEN row action (get × file) for this member.
+    capabilityMatrix,
+    appOrigin: 'folio',
     // Changing the row set (filter / share toggle) resets folder depth.
     onFilter: (f) => { filter = f; currentPath = ''; rerender(); },
     onShareFilter: (next) => {
@@ -3490,6 +3513,7 @@ function showFolio(id) {
   });
   rerender();
   load();
+  loadCaps();   // B · Slice 4 — resolve the capability matrix, then re-render.
 }
 
 // Circle rules document (boards 3B/3C) — editor persists per circle

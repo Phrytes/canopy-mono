@@ -18,16 +18,31 @@
  */
 
 import { folioLevel, glyphForFile, formatFileSize } from '@canopy-app/folio/browser';
+// B · Slice 4 — resolve the file-OPEN row action's capability treatment
+// (get × file) from the member's matrix. Shared logic lives in src/; this
+// renderer stays a thin adapter that just applies the returned treatment.
+import { folioFileOpenTreatment } from '../../src/v2/circleFolio.js';
 
 const FILTERS = ['all', 'favourites', 'recent'];
 // P6.M8 #350 — share-toggle row above the filter strip.
 const SHARE_FILTERS = ['shared-by-me', 'shared-with-me'];
 
-/** Append a rich file row (glyph · name · size) to `list`. */
-function appendFileRow(list, file, { tr, onOpen }) {
+/**
+ * Append a rich file row (glyph · name · size) to `list`.
+ *
+ * B · Slice 4 — `openTreatment` (from `folioFileOpenTreatment`) gates the row's
+ * OPEN affordance, matching the list surface's row buttons:
+ *   'show' → clickable open row (unchanged for a granted member);
+ *   'grey' → rendered disabled + greyed, click suppressed;
+ *   'hide' → row omitted entirely (nothing appended).
+ */
+function appendFileRow(list, file, { tr, onOpen, openTreatment = 'show' }) {
+  if (openTreatment === 'hide') return;   // gate: omit the open affordance (mirrors list surface's 'hidden' consequence)
+  const denied = openTreatment === 'grey';
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'circle-folio__row';
+  if (denied) { el.disabled = true; el.classList.add('circle-folio__row--denied'); }
   el.dataset.fileId = file.id;
 
   const glyph = document.createElement('span');
@@ -50,7 +65,7 @@ function appendFileRow(list, file, { tr, onOpen }) {
     el.appendChild(sz);
   }
 
-  el.addEventListener('click', () => { if (typeof onOpen === 'function') onOpen(file); });
+  el.addEventListener('click', () => { if (!denied && typeof onOpen === 'function') onOpen(file); });
   list.appendChild(el);
 }
 
@@ -75,10 +90,17 @@ export function renderCircleFolioBrowser(container, {
   onSourceMode,
   needsPod = false,
   loading = false,
+  // B · Slice 4 — the acting member's capability matrix + folio app origin.
+  // The file-OPEN row action (get × file) is greyed/hidden per this matrix,
+  // matching the list surface. Absent/empty ⇒ 'show' ⇒ unchanged behaviour.
+  capabilityMatrix = [],
+  appOrigin = 'folio',
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const navigable = typeof onNavigate === 'function';
   const podMode = sourceMode === 'pod';
+  // Uniform across all file rows (same get × file capability): resolve once.
+  const openTreatment = folioFileOpenTreatment({ capabilityMatrix, appOrigin });
   container.innerHTML = '';
   container.classList.add('circle-folio');
 
@@ -243,7 +265,7 @@ export function renderCircleFolioBrowser(container, {
       list.appendChild(el);
     }
 
-    for (const file of level.files) appendFileRow(list, file, { tr, onOpen });
+    for (const file of level.files) appendFileRow(list, file, { tr, onOpen, openTreatment });
     container.appendChild(list);
     return container;
   }
@@ -265,7 +287,7 @@ export function renderCircleFolioBrowser(container, {
 
   const list = document.createElement('div');
   list.className = 'circle-folio__list';
-  for (const file of files) appendFileRow(list, file, { tr, onOpen });
+  for (const file of files) appendFileRow(list, file, { tr, onOpen, openTreatment });
   container.appendChild(list);
 
   return container;
