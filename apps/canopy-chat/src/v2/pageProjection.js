@@ -66,6 +66,46 @@ export function pageForOpMobile(manifest, opId) {
 }
 
 /**
+ * D-mig-1b (objective D, step 1b) — the shared SECTION selector over
+ * renderWeb's list-surface projection (`NavModel.sections[]`).
+ *
+ * Resolves a live list-screen's config FROM the composed manifests instead
+ * of a hardcoded literal: iterate the `manifestsByOrigin` values, run the
+ * pure projector, and find the section whose `id === screenId`.  Returns
+ * `{ section, appOrigin }` — `appOrigin` is the owning manifest's
+ * `app`/`appId` (the key `rawCallSkill` dispatches under) — or `null` when
+ * no manifest projects that section.
+ *
+ * Pure + projector-agnostic (invariant #1): accepts a `renderer` param like
+ * the page selectors, defaulting to `renderWeb`, so the ONE shared module
+ * serves both surfaces and never forks the selection logic.
+ *
+ * @param {Object<string, object>} manifestsByOrigin — {appOrigin → manifest}
+ * @param {string} screenId — the projected section id (e.g. 'contacts')
+ * @param {Function} [renderer] — the pure projector (`renderWeb` | `renderMobile`)
+ * @returns {{ section: object, appOrigin: string }|null}
+ */
+export function sectionForScreen(manifestsByOrigin, screenId, renderer = renderWeb) {
+  if (!manifestsByOrigin || typeof manifestsByOrigin !== 'object') return null;
+  if (typeof screenId !== 'string' || !screenId) return null;
+  const seen = new Set();
+  for (const manifest of Object.values(manifestsByOrigin)) {
+    if (!manifest || typeof manifest !== 'object' || seen.has(manifest)) continue;
+    seen.add(manifest);   // a manifest keyed under both app + appId is scanned once
+    const nav = renderer(manifest);
+    const sections = Array.isArray(nav.sections) ? nav.sections : [];
+    const section = sections.find((s) => s && s.id === screenId);
+    if (section) {
+      const appOrigin = typeof manifest.app === 'string' && manifest.app
+        ? manifest.app
+        : (typeof manifest.appId === 'string' ? manifest.appId : '');
+      return { section, appOrigin };
+    }
+  }
+  return null;
+}
+
+/**
  * Localised header label for a projected `Page` (Q22 discipline):
  *   1. `page.labelKey` via `t()` when both are present (the manifest's
  *      localisation key — invariant #8);
