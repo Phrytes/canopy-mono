@@ -976,6 +976,26 @@
       "hybrid": {
         "text": "A shared pod plus personal pods: common items are shared, private items stay with each member.",
         "doc": "Consequence of pod=hybrid."
+      },
+      "closed": {
+        "text": "Items can't be shared outside this circle. Sharing out is turned off.",
+        "doc": "Consequence of sharePosture=closed."
+      },
+      "copy": {
+        "text": "Sharing out sends a separate, freshly sealed copy to the recipient. They get their own copy — later edits in the circle don't reach it, and you can't take it back.",
+        "doc": "Consequence of sharePosture=copy."
+      },
+      "trusted": {
+        "text": "The live item itself is shared in place: the recipient is given a key to open the circle's own copy, no duplicate is made. Any member can share an item this way.",
+        "doc": "Consequence of sharePosture=trusted."
+      },
+      "registered": {
+        "text": "Same live, in-place sharing as 'Live share (members)', but only an admin may add a recipient. Members can't share items out on their own.",
+        "doc": "Consequence of sharePosture=registered."
+      },
+      "canonical": {
+        "text": "The item stays in place in this circle — no copy is made. The recipient gets a revocable key to open it. Un-sharing rotates the key so they lose access.",
+        "doc": "Consequence of sharePosture=canonical."
       }
     },
     "send_proposal": {
@@ -1148,6 +1168,26 @@
       "p3": {
         "text": "Sealed at rest",
         "doc": "Storage posture option (p3)."
+      },
+      "closed": {
+        "text": "Don't share out",
+        "doc": "sharePosture option (closed) — external sharing off."
+      },
+      "copy": {
+        "text": "Sealed copy",
+        "doc": "sharePosture option (copy) — re-seal a fresh copy to the recipient."
+      },
+      "trusted": {
+        "text": "Live share (members)",
+        "doc": "sharePosture option (trusted) — any member may grant a live canonical share to a recipient."
+      },
+      "registered": {
+        "text": "Live share (admins only)",
+        "doc": "sharePosture option (registered) — same live share, but only an admin may add recipients."
+      },
+      "canonical": {
+        "text": "Live share, revocable",
+        "doc": "sharePosture option (canonical) — the item stays in place; the recipient gets a revocable key grant to open it, no copy."
       }
     },
     "conflict": {
@@ -1159,6 +1199,10 @@
     "storagePosture": {
       "text": "Storage (at rest)",
       "doc": "Circle settings — at-rest storage posture axis (menukaart P0–P3)."
+    },
+    "sharePosture": {
+      "text": "Sharing out of the circle",
+      "doc": "Objective L — settings axis: how an item is exposed to an outsider when shared out of the circle (CIRCLE_POLICY_ENUMS.sharePosture: closed/copy/trusted/registered/canonical)."
     }
   },
   "override": {
