@@ -817,6 +817,13 @@
 .cc-admin__muted { display: flex; align-items: center; gap: 10px; }
 .cc-admin__muted-key { flex: 1 1 auto; font-size: 13px; color: var(--ink); word-break: break-all; }
 .cc-admin__unmute { cursor: pointer; font: inherit; font-size: 13px; padding: 5px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+/* ── objective L — admin outbound-share list (per-share "Stop sharing") ───── */
+.cc-admin__share-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cc-admin__share { display: flex; align-items: center; gap: 10px; }
+.cc-admin__share-row { flex: 1 1 auto; font-size: 13px; color: var(--ink); word-break: break-all; }
+.cc-admin__share-note { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+.cc-admin__share-stop { cursor: pointer; font: inherit; font-size: 13px; padding: 5px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.cc-admin__share-stop:hover { border-color: #b3261e; color: #b3261e; }
 .cc-prikbord__due { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
 .cc-prikbord__due-input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
 
