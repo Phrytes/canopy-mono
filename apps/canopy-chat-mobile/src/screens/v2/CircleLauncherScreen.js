@@ -1074,6 +1074,7 @@ export default function CircleLauncherScreen({
       <CircleShareScreen
         circleId={selected.id} policy={selectedPolicy}
         by={actorWebId} recipient={actorWebId}
+        circles={circles}
         onBack={() => setView('detail')}
       />
     );

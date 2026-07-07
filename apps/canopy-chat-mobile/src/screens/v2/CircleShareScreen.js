@@ -11,17 +11,19 @@
  *     share gets a "Stop sharing" action (`unshareItemFromCircle`); a copy shows the `not_revocable` note.
  * Every string goes through `t()` and prefers the SHARED `circle.share.*` keys (invariants #3/#8).
  */
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
-import { loadShareableItems, loadSharedRows, shareOut, stopSharing } from '../../core/circleShareScreen.js';
+import { loadShareableItems, loadSharedRows, shareOut, stopSharing, pickableCircles } from '../../core/circleShareScreen.js';
 
-export default function CircleShareScreen({ circleId, policy, by, recipient, onBack }) {
+export default function CircleShareScreen({ circleId, policy, by, recipient, circles, onBack }) {
   const [items, setItems] = useState([]);       // this circle's own shareable items
   const [rows, setRows] = useState([]);          // shared INTO this circle (resolved rows)
-  const [pendingShare, setPendingShare] = useState(null);   // itemId whose target-input is open
-  const [target, setTarget] = useState('');
+  const [pendingShare, setPendingShare] = useState(null);   // itemId whose target-picker is open
+  const [target, setTarget] = useState('');      // the picked target circle id (empty until one is selected)
+  // The pickable targets: the user's circles minus THIS (source) circle. Reuses the launcher's loaded list.
+  const targets = useMemo(() => pickableCircles({ circles, sourceCircleId: circleId }), [circles, circleId]);
   const [status, setStatus] = useState(null);    // { statusKey, params }
   const policyOf = useCallback(async () => policy || {}, [policy]);
 
@@ -67,15 +69,36 @@ export default function CircleShareScreen({ circleId, policy, by, recipient, onB
               </Pressable>
             </View>
             {pendingShare === it.id ? (
-              <View style={styles.targetRow}>
-                <TextInput
-                  style={styles.input} value={target} onChangeText={setTarget} autoFocus
-                  placeholder={t('circle.share.target_placeholder')} placeholderTextColor={theme.color.inkSoft}
-                  onSubmitEditing={() => doShare(it.id)} testID={`share-target-${it.id}`}
-                />
-                <Pressable style={styles.primary} onPress={() => doShare(it.id)} testID={`share-confirm-${it.id}`}>
-                  <Text style={styles.primaryText}>{t('circle.share.share_action')}</Text>
-                </Pressable>
+              <View style={styles.picker} testID={`share-picker-${it.id}`}>
+                <Text style={styles.pickLabel}>{t('circle.share.pick_label')}</Text>
+                {targets.length === 0 ? (
+                  <Text style={styles.muted} testID={`share-picker-empty-${it.id}`}>{t('circle.share.pick_empty')}</Text>
+                ) : (
+                  <>
+                    {targets.map((c) => {
+                      const chosen = target === c.id;
+                      return (
+                        <Pressable
+                          key={c.id}
+                          style={[styles.pickOption, chosen && styles.pickOptionChosen]}
+                          onPress={() => setTarget(c.id)}
+                          testID={`share-target-option-${it.id}-${c.id}`}
+                        >
+                          <Text style={[styles.pickOptionText, chosen && styles.pickOptionTextChosen]} numberOfLines={1}>{c.name}</Text>
+                          <Text style={styles.pickOptionId} numberOfLines={1}>{c.id}</Text>
+                        </Pressable>
+                      );
+                    })}
+                    <Pressable
+                      style={[styles.primary, !target && styles.primaryDisabled]}
+                      disabled={!target}
+                      onPress={() => doShare(it.id)}
+                      testID={`share-confirm-${it.id}`}
+                    >
+                      <Text style={styles.primaryText}>{t('circle.share.share_action')}</Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
             ) : null}
           </View>
@@ -126,9 +149,15 @@ const styles = StyleSheet.create({
   muted: { fontSize: 13, color: theme.color.inkSoft, fontStyle: 'italic' },
   chip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.color.accent },
   chipText: { fontSize: 12, fontWeight: '600', color: theme.color.accent },
-  targetRow: { flexDirection: 'row', gap: 8 },
-  input: { flex: 1, fontSize: 14, paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, color: theme.color.ink, backgroundColor: theme.color.white },
-  primary: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: theme.radius.md, backgroundColor: theme.color.accent, justifyContent: 'center' },
+  picker: { gap: 8 },
+  pickLabel: { fontSize: 12, fontWeight: '600', color: theme.color.inkSoft },
+  pickOption: { paddingVertical: 9, paddingHorizontal: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, backgroundColor: theme.color.white },
+  pickOptionChosen: { borderColor: theme.color.accent, backgroundColor: theme.color.paper },
+  pickOptionText: { fontSize: 14, color: theme.color.ink },
+  pickOptionTextChosen: { fontWeight: '700', color: theme.color.accent },
+  pickOptionId: { fontSize: 11, color: theme.color.inkSoft },
+  primary: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: theme.radius.md, backgroundColor: theme.color.accent, justifyContent: 'center', alignItems: 'center' },
+  primaryDisabled: { opacity: 0.4 },
   primaryText: { fontSize: 14, fontWeight: '600', color: theme.color.white },
   secondary: { paddingVertical: 7, paddingHorizontal: 12, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.line },
   secondaryText: { fontSize: 13, color: theme.color.inkSoft },

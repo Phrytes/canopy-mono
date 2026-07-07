@@ -74,6 +74,20 @@ export async function loadSharedRows({ circleId, recipient, policyOf, deps = def
   return (Array.isArray(entries) ? entries : []).map(shareRowFrom);
 }
 
+/**
+ * The pickable share targets: the user's circles MINUS the source circle (you can't share an item into
+ * its own circle — `shareOut` rejects `same-circle` anyway, so it must never be offered). Reuses the SAME
+ * circle list the launcher already loaded (`loadCircles`) — no refetch/reimplementation of the registry.
+ * Maps each to a stable `{ id, name }` render shape; a nameless circle falls back to its id as the label.
+ *
+ * @returns {Array<{id:string, name:string}>}
+ */
+export function pickableCircles({ circles, sourceCircleId } = {}) {
+  return (Array.isArray(circles) ? circles : [])
+    .filter((c) => c && c.id && c.id !== sourceCircleId)
+    .map((c) => ({ id: c.id, name: c.name ?? c.title ?? String(c.id) }));
+}
+
 /** A t()-ready status: `{ ok, statusKey, params }` — the caller renders `t(statusKey, params)`. */
 function status(ok, statusKey, params) { return { ok, statusKey, params }; }
 
