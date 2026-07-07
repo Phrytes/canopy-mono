@@ -27,6 +27,10 @@ import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 import { renderPairedDevices } from './pairedDevices.js';
 // B · consent-card — REVIEWED recipe apply: load → show the consent card → Agree/Decline (no silent apply).
 import { renderRecipeConsentCard } from './recipeConsentCard.js';
+// D / SP-3b consumer-switch — the settings header label is sourced from the
+// manifest PAGE projection (`renderWeb(manifest).pages[].labelKey`) via t(),
+// not a hardcoded tr('circle.settings.title') call.  Pure selector in shared src.
+import { pageLabel } from '../../src/v2/pageProjection.js';
 
 // 5.9a — `view` is the per-circle default-pane axis ('chat' / 'screen' /
 // 'cross-stream'); making it editable here lets an admin pick which surface
@@ -78,6 +82,13 @@ export function renderCircleSettings(container, {
   householdPeers = [],
   onAddHouseholdPeer,
   onRemoveHouseholdPeer,
+  // D / SP-3b consumer-switch — the projected PAGE surface for this settings
+  // op (`renderWeb(manifest).pages[]` entry, selected via pageForOp).  When
+  // present, the header label is derived from `page.labelKey` via t() (Q22),
+  // making this a genuine runtime consumer of the manifest projection.  Absent
+  // (older callers / tests) ⇒ the header falls back to tr('circle.settings.title')
+  // bit-for-bit, so nothing regresses.
+  settingsPage = null,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
@@ -93,7 +104,11 @@ export function renderCircleSettings(container, {
 
   const head = document.createElement('h2');
   head.className = 'circle-settings__title';
-  head.textContent = tr('circle.settings.title');
+  // D / SP-3b consumer-switch — label FROM the manifest projection: the
+  // settings op's `surfaces.page.labelKey`, projected by renderWeb, resolved
+  // through t() (Q22).  Falls back to the raw page.title, then to the
+  // pre-existing tr('circle.settings.title') when no projected page is passed.
+  head.textContent = pageLabel(settingsPage, tr, tr('circle.settings.title'));
   container.appendChild(head);
 
   // Theme B — a chat-guided setup that walks you through the basics, then hands

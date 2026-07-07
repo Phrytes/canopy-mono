@@ -577,7 +577,13 @@ export const canopyChatManifest = {
       surfaces: {
         slash: { command: '/settings' },
         chat:  { hint: 'open Settings in a side panel' },
-        page:  { kind: 'side-panel', title: 'Settings' },
+        // Q22 localisation passthrough (D / SP-3b consumer-switch): the
+        // running Settings surface (renderCircleSettings) derives its
+        // header label from renderWeb(manifest).pages[].labelKey via
+        // t(), instead of a hardcoded tr('circle.settings.title') call.
+        // `title` stays as the English fallback for consumers without a
+        // t() (renderWeb's Page.title passthrough).
+        page:  { kind: 'side-panel', title: 'Settings', labelKey: 'circle.settings.title' },
       },
     },
 
