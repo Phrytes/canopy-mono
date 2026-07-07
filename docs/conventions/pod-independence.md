@@ -26,9 +26,9 @@ design preserves it.
 | Today's capability | Tomorrow's mechanism |
 |---|---|
 | Stoop's `groupMirror` — group state across member devices, no pod needed | Pseudo-pod replication ring + `notify-envelope` full-payload fan-out (Phase 52.2 + 52.4); Phase 52.9.2 retired `groupMirror` cleanly with parity-tested substitute |
-| Tasks's relay-fan-out — task ledger across crew, no pod needed | Same substrate (`notify-envelope` + `pseudo-pod`); no-pod crew policy is one of four §II.2 policies |
+| Tasks's relay-fan-out — task ledger across circle, no pod needed | Same substrate (`notify-envelope` + `pseudo-pod`); no-pod circle policy is one of four §II.2 policies |
 | Try-the-app-for-a-week-before-pod | Pseudo-pod **standalone mode** (Phase 52.2 V0); apps work fully against the local pseudo-pod without ever provisioning a Solid pod |
-| BLE-only campsite crews (no internet) | Pseudo-pod replication ring travels over BLE skill calls — no relay needed; substrate is transport-agnostic |
+| BLE-only campsite circles (no internet) | Pseudo-pod replication ring travels over BLE skill calls — no relay needed; substrate is transport-agnostic |
 | Mnemonic restore reconstructing identity locally | No-pod users: restore is local-only; vault lives in pseudo-pod, replicated across user's own devices. Pod-having users: vault lives at `<pod>/private/identity-vault` — a documented limitation in the interim (web console in P5 Hub track handles edge cases) |
 | Conflict resolution without a central authority | Phase 52.14 Q-D — Lamport-style `_v` per resource + 3-way `writeFromPeer` compare. No central coordinator needed |
 | Sharing without OIDC | Cap-token issuance via `PodCapabilityToken` stays as the no-pod sharing primitive (Phase 52.16). ACP/WAC is the **upgrade** for pod-having users, never the **replacement** |
@@ -54,7 +54,7 @@ based on three inputs (§II.6 in the functional design):
 
 - **Content nature.** Persistent (handled by `notify-envelope`)
   vs ephemeral (handled by `notifier`).
-- **Crew preference.** The §II.2 policy on the crew
+- **Circle preference.** The §II.2 policy on the circle
   (centralised / decentralised / hybrid / no-pod).
 - **Current pod reachability.** Consulted before every persistent
   write via `pod-routing.isPodReachable(uri)`.
@@ -69,12 +69,12 @@ makes graceful degradation work — the substrate handles the
 Because §II.2 policies are **preferences with graceful
 degradation** (locked 2026-05-11):
 
-- Pod-having crews **don't lose offline capability** when they
+- Pod-having circles **don't lose offline capability** when they
   migrate from pre-standardisation (groupMirror / relay-fan-out).
 - The substrate's replication-ring mode is the **universal
   baseline**; the pod is a **promotable ring member** whose
   participation is gated by reachability.
-- Apps that attached a pod to a crew during the transition keep
+- Apps that attached a pod to a circle during the transition keep
   working offline; data syncs when connectivity returns.
 
 This is the architecture-level guarantee that makes the
@@ -102,7 +102,7 @@ verified by parity tests. The retirement passed the audit.
 - `Project Files/standardisation-transition-2026-05-11.md` §V.6 —
   source of the principle
 - `Project Files/standardisation-plan-restructured-2026-05-10.md`
-  §II.2 — four crew policies (centralised / decentralised /
+  §II.2 — four circle policies (centralised / decentralised /
   hybrid / no-pod)
 - `Project Files/standardisation-plan-restructured-2026-05-10.md`
   §II.6 — persistent-write patterns + graceful degradation

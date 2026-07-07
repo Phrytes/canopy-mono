@@ -11,7 +11,7 @@
  *
  * Locale bundles are merged from three sources, shell-local wins:
  *   - `apps/tasks-v0/locales/shared/{en,nl}.json` — strings rendered
- *     by both desktop + mobile (status pills, role labels, crew
+ *     by both desktop + mobile (status pills, role labels, circle
  *     kinds, approval modes).
  *   - `apps/tasks-v0/locales/{en,nl}.json` — desktop-only strings
  *     reused by mobile via the platform-shell exception.

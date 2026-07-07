@@ -6,11 +6,11 @@
  *
  *   1. The manifest validates with the new view added.
  *   2. The `pod-settings` view declares `shape: 'record'` (Q17).
- *   3. The view declares a `dataSource` with `getCrewStoragePolicy` +
+ *   3. The view declares a `dataSource` with `getCircleStoragePolicy` +
  *      `argsFromContext.circleId` (Q15 — runtime-derived arg).
  *   4. The view declares `fields[]` (Q18) with both editable fields
  *      of the storage policy (policy + groupPodUri), each with a
- *      `patch` declaration pointing at `setCrewStoragePolicy`.
+ *      `patch` declaration pointing at `setCircleStoragePolicy`.
  *   5. Renderweb projects the section verbatim (shape + dataSource +
  *      fields[]), so the page can drive its hand-coded UI from the
  *      manifest as the source-of-truth.
@@ -37,22 +37,22 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(ok, JSON.stringify(errors, null, 2)).toBe(true);
   });
 
-  it("'crew-storage-policy' is registered as an app-local itemType", () => {
-    expect(tasksManifest.itemTypes).toContain('crew-storage-policy');
+  it("'circle-storage-policy' is registered as an app-local itemType", () => {
+    expect(tasksManifest.itemTypes).toContain('circle-storage-policy');
   });
 
   it("the `pod-settings` view declares shape: 'record' + dataSource + fields", () => {
     const view = tasksManifest.views.find((v) => v.id === 'pod-settings');
     expect(view).toBeTruthy();
     expect(view.title).toBe('Pod settings');
-    expect(view.type).toBe('crew-storage-policy');
-    // Q17 — singleton record (getCrewStoragePolicy returns
+    expect(view.type).toBe('circle-storage-policy');
+    // Q17 — singleton record (getCircleStoragePolicy returns
     // {policy, groupPodUri?}, not an array).
     expect(view.shape).toBe('record');
-    // Q15 — `circleId` is RUNTIME-derived (browser URL `?crew=...`);
+    // Q15 — `circleId` is RUNTIME-derived (browser URL `?circle=...`);
     // the page passes it via the fetch-section context substitution.
     expect(view.dataSource).toEqual({
-      skillId:         'getCrewStoragePolicy',
+      skillId:         'getCircleStoragePolicy',
       argsFromContext: { circleId: '$circleId' },
     });
     // Q18 — fields[] declares the editable subset.
@@ -60,7 +60,7 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(view.fields.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('fields[] declares policy + groupPodUri with setCrewStoragePolicy patch ops', () => {
+  it('fields[] declares policy + groupPodUri with setCircleStoragePolicy patch ops', () => {
     const view = tasksManifest.views.find((v) => v.id === 'pod-settings');
     const byName = Object.fromEntries(view.fields.map((f) => [f.name, f]));
 
@@ -70,7 +70,7 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(byName.policy.type).toBe('enum');
     expect(byName.policy.choices).toEqual(['centralised', 'decentralised', 'hybrid']);
     expect(byName.policy.patch).toEqual({
-      opId: 'setCrewStoragePolicy', argName: 'storagePolicy',
+      opId: 'setCircleStoragePolicy', argName: 'storagePolicy',
     });
 
     // groupPodUri — free-form URL string; flat-arg patch (no
@@ -78,7 +78,7 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(byName.groupPodUri).toBeTruthy();
     expect(byName.groupPodUri.type).toBe('string');
     expect(byName.groupPodUri.patch).toEqual({
-      opId: 'setCrewStoragePolicy', argName: 'groupPodUri',
+      opId: 'setCircleStoragePolicy', argName: 'groupPodUri',
     });
     // No Q21 argWrapper on either field — assert absence so a future
     // accidental wrap doesn't slip in silently.
@@ -101,26 +101,26 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     const section = nav.sections.find((s) => s.id === 'pod-settings');
     expect(section).toBeTruthy();
     expect(section.title).toBe('Pod settings');
-    expect(section.itemType).toBe('crew-storage-policy');
+    expect(section.itemType).toBe('circle-storage-policy');
     expect(section.shape).toBe('record');
     expect(section.dataSource).toEqual({
-      skillId:         'getCrewStoragePolicy',
+      skillId:         'getCircleStoragePolicy',
       argsFromContext: { circleId: '$circleId' },
     });
     expect(Array.isArray(section.fields)).toBe(true);
     expect(section.fields.length).toBe(2);
     const byName = Object.fromEntries(section.fields.map((f) => [f.name, f]));
-    expect(byName.policy.patch.opId).toBe('setCrewStoragePolicy');
+    expect(byName.policy.patch.opId).toBe('setCircleStoragePolicy');
     expect(byName.policy.patch.argName).toBe('storagePolicy');
-    expect(byName.groupPodUri.patch.opId).toBe('setCrewStoragePolicy');
+    expect(byName.groupPodUri.patch.opId).toBe('setCircleStoragePolicy');
     expect(byName.groupPodUri.patch.argName).toBe('groupPodUri');
     // V0.7 Q26 — requiresField gate survives projection (defensive
     // copy of the value array).
     expect(byName.groupPodUri.requiresField).toEqual({
       policy: ['centralised', 'hybrid'],
     });
-    // No creative-verb affordances surface here — getCrewStoragePolicy
-    // and setCrewStoragePolicy are NOT in manifest.operations[] (they're
+    // No creative-verb affordances surface here — getCircleStoragePolicy
+    // and setCircleStoragePolicy are NOT in manifest.operations[] (they're
     // pod-plumbing skills, mirroring stoop's getSettings/updateSettings
     // choice).  Same V0.3 #6 territory as stoop's settings view.
     expect(section.affordances).toEqual([]);

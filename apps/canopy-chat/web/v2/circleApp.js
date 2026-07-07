@@ -95,7 +95,7 @@ import { selectSurfaceButtons, createSurfacePrefStore, localStorageSurfacePrefIo
 // S6.D — is the conversational "chat" projection enriched by an LLM here? (user-loaded LLM + circle permits)
 import { resolveChatAi } from '../../src/v2/chatAi.js';
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
-// four-tier crew storage policy (admin-gated, one-way) instead of going nowhere.
+// four-tier circle storage policy (admin-gated, one-way) instead of going nowhere.
 import { pushCircleStoragePolicy } from '../../src/v2/circleStoragePolicy.js';
 // Real ACP `sharing` for sealed circles on a real pod — a member redeem grants pod
 // read of the circle container (true multi-device). Verified in circlePod2Pod.css.test.js.
@@ -1014,7 +1014,7 @@ function buildCircleBot(agent) {
     // tasks-v0 BEFORE the household agent: a circle's items are TASKS, so colliding bare op-ids
     // (notably `addTask`, declared by both) must resolve to tasks-v0, not household chores — matching
     // the circle GATE which already excludes household ("household shadowed by tasks", circleGate.js).
-    // Without this, "@assistant add X" landed in the household crew while the complete-resolver/lookup
+    // Without this, "@assistant add X" landed in the household circle while the complete-resolver/lookup
     // (tasks-v0) found nothing → "couldn't find X in this circle" on `done X` (#49).
     { manifest: mockTasksManifest },
     { manifest: agent.manifest },
@@ -3870,7 +3870,7 @@ async function showSettings(id) {
         try { broadcastPolicy({ circleId: id, policy: working }); }
         catch (err) { console.warn('[kring-policy] broadcast scheduling failed:', err?.message ?? err); }
         // §4 storage-policy bridge — when the pod tier changed, drive stoop's
-        // authoritative crew storage policy. The skill owns admin-gating + the
+        // authoritative circle storage policy. The skill owns admin-gating + the
         // one-way guard; on failure we keep the local save and show a note.
         if (working?.pod !== baselinePod && typeof rawCallSkill === 'function') {
           const res = await pushCircleStoragePolicy({
@@ -4301,15 +4301,15 @@ async function boot() {
       }, 1500);
       // P6.5 — wire the claim-router hook now that callSkill + override
       // store are both available.  On claim with `tasksToPersonal` on,
-      // mirror the claimed task into the primary crew so it shows up in
-      // "Mijn dingen".  Uses the existing primary crew (`cc-default`);
+      // mirror the claimed task into the primary circle so it shows up in
+      // "Mijn dingen".  Uses the existing primary circle (`cc-default`);
       // future slice (P6.5-followup) will surface the resulting mirror
       // tasks in an "ON YOUR LIST" section on the circle detail.
       if (typeof agent.setAfterClaimHook === 'function') {
         agent.setAfterClaimHook(makeAfterClaimHook({
           getOverride:       (id) => overrideStore.get(id),
           resolveCircleName: async (id) => circlesCache.find((c) => c.id === id)?.name ?? null,
-          addToPersonalCrew: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
+          addToPersonalCircle: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
             try {
               return await agent.callSkill('tasks', 'addTask', {
                 text,

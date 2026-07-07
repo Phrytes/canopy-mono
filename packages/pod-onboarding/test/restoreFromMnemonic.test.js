@@ -37,7 +37,7 @@ describe('restoreFromMnemonic — pseudo-pod replica path', () => {
     });
     await pseudoPod.write(
       `pseudo-pod://${deviceId}/private/storage-mapping`,
-      { version: 2, mappings: {}, crewPolicies: {} },
+      { version: 2, mappings: {}, circlePolicies: {} },
     );
     await pseudoPod.write(
       `pseudo-pod://${deviceId}/private/agent-registry`,

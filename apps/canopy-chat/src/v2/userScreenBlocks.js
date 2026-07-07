@@ -143,7 +143,7 @@ async function materializeAgenda(block, activeCircleIds, { callSkill } = {}) {
 
 /**
  * α.4 — tasks block across multiple kringen.  Query each active kring's
- * tasks crew, filter by scope, merge + cap.  The "Mijn dingen" screen
+ * tasks circle, filter by scope, merge + cap.  The "Mijn dingen" screen
  * uses scope:'assigned-to-me' across kringFilter=ALL to aggregate every
  * task assigned to the user across the kringen they're in.
  */

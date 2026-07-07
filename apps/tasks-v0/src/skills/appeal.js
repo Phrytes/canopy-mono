@@ -8,7 +8,7 @@
  *
  * Substrate composition:
  *   - `@canopy/chat-p2p`'s `wireChat({...})` factory provides the
- *     `send(...)` controller. Tasks's Crew agent wires it once at
+ *     `send(...)` controller. Tasks's Circle agent wires it once at
  *     boot; the appeal skill grabs the resulting controller and
  *     calls `send(...)` to deliver the opening message.
  *   - The thread id is `appeal:<taskId>` so the UI's per-task chat
@@ -44,8 +44,8 @@ export function buildAppealSkill({ bundleResolver } = {}) {
   }
   return [
     defineSkill('appealTask', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.taskId !== 'string' || !a.taskId) {
         return { error: 'taskId required' };
@@ -54,7 +54,7 @@ export function buildAppealSkill({ bundleResolver } = {}) {
         return { error: 'webid required (from envelope)' };
       }
 
-      const item = await crew.itemStore.getById(a.taskId);
+      const item = await circle.itemStore.getById(a.taskId);
       if (!item) return { error: 'task not found', taskId: a.taskId };
 
       // Find the most recent `revoke` entry in the reviewLog.
@@ -70,7 +70,7 @@ export function buildAppealSkill({ bundleResolver } = {}) {
       // item's current assignee == null + caller-was-recently-claimed
       // heuristic only if the audit log is missing — in V1 the audit
       // log is the source of truth.
-      const audit = await crew.itemStore.auditLog({ itemId: a.taskId, action: 'revoke' });
+      const audit = await circle.itemStore.auditLog({ itemId: a.taskId, action: 'revoke' });
       const lastRevokeAudit = audit[audit.length - 1];
       const previousAssignee = lastRevokeAudit?.details?.previousAssignee ?? null;
 
@@ -91,12 +91,12 @@ export function buildAppealSkill({ bundleResolver } = {}) {
         };
       }
 
-      const chatController = crew.chatController;
+      const chatController = circle.chatController;
       if (!chatController?.send) {
         return {
           error:  'chat-not-wired',
           taskId: a.taskId,
-          info:   'crew has no @canopy/chat-p2p controller; appeal needs a peer chat substrate',
+          info:   'circle has no @canopy/chat-p2p controller; appeal needs a peer chat substrate',
         };
       }
 

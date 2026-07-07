@@ -4,7 +4,7 @@
  *
  * Phase 41.3.2 (2026-05-09).
  *
- *   - kind 'invite'    → call `redeemInvite` skill, joinCrew on success
+ *   - kind 'invite'    → call `redeemInvite` skill, joinCircle on success
  *   - kind 'bot-token' → Phase 41.13 — toast for now
  *   - kind 'contact'   → Phase 41.4+ — toast for now
  *   - kind 'recovery'  → navigate to OnboardRestore prefilled
@@ -66,7 +66,7 @@ export function OnboardScanScreen() {
         const r = await redeem.call({
           invite: res.payload.token,
           // displayName + memberPubKey come from the active identity
-          // wired through createCrewAgent / V2.8's CrewState — the
+          // wired through createCircleAgent / V2.8's CircleState — the
           // skill reads them from the actor context. Tasks-mobile
           // doesn't need to pass them here.
         });
@@ -75,11 +75,11 @@ export function OnboardScanScreen() {
           setHint(t('mobile.scan.redeem_failed', null).replace('{reason}', r.error));
           return;
         }
-        // r.crewConfig is the canonical config the redeem skill returns
-        // on success. Tasks-mobile builds the CrewState locally + flips
+        // r.circleConfig is the canonical config the redeem skill returns
+        // on success. Tasks-mobile builds the CircleState locally + flips
         // activeCircleId via ServiceContext.
-        if (r?.crewConfig) {
-          await svc.joinCrew(r.crewConfig, { setActive: true });
+        if (r?.circleConfig) {
+          await svc.joinCircle(r.circleConfig, { setActive: true });
         }
         nav.navigate(ROUTES.Workspace ?? ROUTES.Welcome);
       } catch (err) {

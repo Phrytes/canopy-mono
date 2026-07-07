@@ -4,7 +4,7 @@
  *
  *   node examples/manifest-host-demo/index.js
  *
- * Composes household + tasks-v0 (multi-crew) in one process via
+ * Composes household + tasks-v0 (multi-circle) in one process via
  * `@canopy/manifest-host`, drives a chat-agent over the merged tool
  * catalog with a scripted LLM, prints the conversation + final state.
  *
@@ -55,7 +55,7 @@ async function main() {
     log(`  ${type}: [${items.map((i) => i.text).join(', ')}]`);
   }
   const tasksItems = await runtime.tasksRuntime.primaryBundle.itemStore.listOpen();
-  log('tasks.primary-crew open items:');
+  log('tasks.primary-circle open items:');
   for (const it of tasksItems) {
     log(`  ${it.text}`);
   }

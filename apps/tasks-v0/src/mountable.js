@@ -9,7 +9,7 @@
  *     (`(args, skillCtx) → {replies, stateUpdates}`) — what
  *     `host.mount({skillRegistry, toSkillCtx, …})` expects.
  *
- * SP-4b/SP-11 (2026-05-20): tasks-v0's existing wireSkills + multi-crew
+ * SP-4b/SP-11 (2026-05-20): tasks-v0's existing wireSkills + multi-circle
  * bundleResolver machinery is the production wiring; mounting through
  * the host doesn't replace it — it bridges to it.  The adapter:
  *
@@ -17,7 +17,7 @@
  *      args as a `DataPart` (the convention `skills/index.js` line 9–11
  *      documents) and forwarding `skillCtx.actorWebid` as `from`.
  *   2. Calls the SDK handler — which calls `bundleResolver(parts, ctx)`
- *      internally to resolve the right `CrewState`.  Multi-crew
+ *      internally to resolve the right `CircleState`.  Multi-circle
  *      dispatch is therefore preserved end-to-end without the host or
  *      `renderChat` having to know about it.
  *   3. Wraps the SDK reply (a plain JSON object) as a single text
@@ -28,9 +28,9 @@
  *      different from household's bridge convention; document for
  *      future consumers.
  *
- * Multi-crew note: the chat-agent's per-call `circleId` is passed through
+ * Multi-circle note: the chat-agent's per-call `circleId` is passed through
  * `args` (the LLM declares it as a tool arg) OR injected by the
- * consumer's `toSkillCtx` closure (e.g. a per-session crew binding).
+ * consumer's `toSkillCtx` closure (e.g. a per-session circle binding).
  * V0 demo uses the latter — see `examples/manifest-host-demo/`.
  */
 
@@ -40,15 +40,15 @@ import { tasksManifest } from '../manifest.js';
 
 /**
  * Build a `host.mount()`-compatible shape from a live tasks-v0 mesh
- * agent + crewsMap.
+ * agent + circlesMap.
  *
  * @param {object} args
  * @param {object} args.meshAgent
- *   The meshAgent returned by `buildMultiCrewRuntime` (or the
- *   single-crew equivalent).  Used to look up SDK skill defs by id.
- * @param {Map<string, object>} args.crewsMap
- *   The live crewsMap.  Exposed so consumers can introspect or write
- *   per-session crew-binding logic.
+ *   The meshAgent returned by `buildMultiCircleRuntime` (or the
+ *   single-circle equivalent).  Used to look up SDK skill defs by id.
+ * @param {Map<string, object>} args.circlesMap
+ *   The live circlesMap.  Exposed so consumers can introspect or write
+ *   per-session circle-binding logic.
  * @param {{operations: Array<{id: string}>}} [args.manifest]
  *   Defaults to `tasksManifest` (the SP-3 V0 manifest with 12 ops).
  *   Override for tests that mount a subset.
@@ -57,17 +57,17 @@ import { tasksManifest } from '../manifest.js';
  *   skillRegistry: Record<string, function>,
  *   toSkillCtx:    (toolCtx: object) => object,
  *   onStateUpdates?: (updates: Array) => void,
- *   crewsMap:      Map<string, object>,
+ *   circlesMap:      Map<string, object>,
  * }}
- *   The crewsMap is re-exposed so consumers can read it without
+ *   The circlesMap is re-exposed so consumers can read it without
  *   passing two refs around.
  */
-export function createTasksMountable({ meshAgent, crewsMap, manifest = tasksManifest }) {
+export function createTasksMountable({ meshAgent, circlesMap, manifest = tasksManifest }) {
   if (!meshAgent || typeof meshAgent.skills?.get !== 'function') {
     throw new TypeError('createTasksMountable: meshAgent with .skills.get required');
   }
-  if (!(crewsMap instanceof Map)) {
-    throw new TypeError('createTasksMountable: crewsMap (Map<circleId, CrewState>) required');
+  if (!(circlesMap instanceof Map)) {
+    throw new TypeError('createTasksMountable: circlesMap (Map<circleId, CircleState>) required');
   }
 
   const skillRegistry = {};
@@ -81,7 +81,7 @@ export function createTasksMountable({ meshAgent, crewsMap, manifest = tasksMani
     skillRegistry,
     toSkillCtx: (toolCtx) => toolCtx,  // identity — SDK skill reads `from` not the ctx
     onStateUpdates: () => {},          // SDK skills mutate itemStore directly
-    crewsMap,                          // re-exposed for consumer introspection
+    circlesMap,                          // re-exposed for consumer introspection
   };
 }
 

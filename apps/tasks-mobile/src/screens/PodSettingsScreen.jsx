@@ -6,7 +6,7 @@
  *
  * Sections:
  *   1. Storage policy — current policy display + upgrade row
- *      (one-way, no downgrade). Calls `setCrewStoragePolicy`.
+ *      (one-way, no downgrade). Calls `setCircleStoragePolicy`.
  *   2. Agent-registry status — reads `activeCs.agentRegistry`.
  *   3. Pod sign-in card — M1-S5. Status display + entry point.
  *      The actual PKCE OAuth runs on the dedicated PodSignInScreen
@@ -49,11 +49,11 @@ export function PodSettingsScreen() {
   const { t }      = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const setCrewStoragePolicy = useSkill('setCrewStoragePolicy');
+  const setCircleStoragePolicy = useSkill('setCircleStoragePolicy');
 
   const activeCircleId = svc?.activeCircleId;
-  const activeCs     = activeCircleId ? svc?.crews?.get?.(activeCircleId) : null;
-  const currentStorage = activeCs?.liveCrew?.storage ?? { policy: 'no-pod', groupPodUri: null };
+  const activeCs     = activeCircleId ? svc?.circles?.get?.(activeCircleId) : null;
+  const currentStorage = activeCs?.liveCircle?.storage ?? { policy: 'no-pod', groupPodUri: null };
 
   const [showUpgrade, setShowUpgrade]   = useState(false);
   const [upgradePolicy, setUpgradePolicy] = useState(
@@ -67,11 +67,11 @@ export function PodSettingsScreen() {
   const needsPodUri = upgradePolicy === 'centralised' || upgradePolicy === 'hybrid';
 
   const onUpgrade = useCallback(async () => {
-    if (!activeCircleId || !setCrewStoragePolicy?.call) return;
+    if (!activeCircleId || !setCircleStoragePolicy?.call) return;
     setUpgradeBusy(true);
     setUpgradeError(null);
     try {
-      const result = await setCrewStoragePolicy.call({
+      const result = await setCircleStoragePolicy.call({
         circleId:      activeCircleId,
         storagePolicy: upgradePolicy,
         ...(needsPodUri && upgradePodUri.trim() ? { groupPodUri: upgradePodUri.trim() } : {}),
@@ -87,12 +87,12 @@ export function PodSettingsScreen() {
     } finally {
       setUpgradeBusy(false);
     }
-  }, [activeCircleId, setCrewStoragePolicy, upgradePolicy, upgradePodUri, needsPodUri]);
+  }, [activeCircleId, setCircleStoragePolicy, upgradePolicy, upgradePodUri, needsPodUri]);
 
   // Section 2: agent-registry status
   const registryStatus = activeCs?.agentRegistry
     ? 'registered'
-    : (activeCs ? 'not-registered' : 'no-crew');
+    : (activeCs ? 'not-registered' : 'no-circle');
 
   // ── Section 3: pod OIDC sign-in (M1-S5) ───────────────────────────
   // The PKCE OAuth runs on the dedicated PodSignInScreen (it owns
@@ -131,7 +131,7 @@ export function PodSettingsScreen() {
   const onPodSignIn = useCallback(() => {
     // Navigate to the dedicated sign-in screen. It runs the PKCE
     // flow via useTasksAuth + svc.attachPod (which syncs the shared
-    // podCrew holder so this screen's status skill reflects it on
+    // podCircle holder so this screen's status skill reflects it on
     // return). Same flow + shared podSignIn.js orchestration as
     // before — just isolated to the screen that owns the hook.
     nav.navigate(ROUTES.PodSignIn);
@@ -165,7 +165,7 @@ export function PodSettingsScreen() {
 
       {!activeCircleId ? (
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm, marginBottom: SPACING.lg }}>
-          {t('mobile.pod_settings.no_crew', 'No active crew.')}
+          {t('mobile.pod_settings.no_circle', 'No active circle.')}
         </Text>
       ) : (
         <>
@@ -242,10 +242,10 @@ export function PodSettingsScreen() {
                     }} />
                     <View style={{ flex: 1 }}>
                       <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, fontWeight: active ? '600' : '400' }}>
-                        {t(`mobile.create_crew.policy_${p}`, p)}
+                        {t(`mobile.create_circle.policy_${p}`, p)}
                       </Text>
                       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-                        {t(`mobile.create_crew.policy_hint_${p}`, '')}
+                        {t(`mobile.create_circle.policy_hint_${p}`, '')}
                       </Text>
                     </View>
                   </Pressable>
@@ -255,7 +255,7 @@ export function PodSettingsScreen() {
                 <TextInput
                   value={upgradePodUri}
                   onChangeText={setUpgradePodUri}
-                  placeholder="https://pod.example/groups/my-crew/"
+                  placeholder="https://pod.example/groups/my-circle/"
                   placeholderTextColor={COLORS.textMuted}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -320,12 +320,12 @@ export function PodSettingsScreen() {
         value={t(`mobile.pod_settings.registry_${registryStatus}`,
           registryStatus === 'registered' ? 'Registered' :
           registryStatus === 'not-registered' ? 'Not registered' :
-          'No active crew')}
+          'No active circle')}
       />
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginBottom: SPACING.lg, lineHeight: 18 }}>
         {t('mobile.pod_settings.registry_hint',
           'The agent-registry records which capabilities this device exposes ' +
-          '(tasks, tasks-v0, crew:<id>). Registered when a meshAgent + substrate ' +
+          '(tasks, tasks-v0, circle:<id>). Registered when a meshAgent + substrate ' +
           'are both available.')}
       </Text>
 

@@ -4,7 +4,7 @@
  * `embedChips.js` surfaces the reference; this upgrades it from a bare ref to
  * the referenced item's actual title (so a stoop post embedding a task shows
  * "Fix the gate", not "urn:dec:item:T2"). Best-effort + graceful: any failure
- * (unknown type, cross-pod ref, missing crew, not found) leaves the embed
+ * (unknown type, cross-pod ref, missing circle, not found) leaves the embed
  * unchanged so the chip keeps its label/ref. PURE + shared web↔mobile (callSkill
  * injected).
  *

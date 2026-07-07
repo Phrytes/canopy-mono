@@ -37,7 +37,7 @@ export function buildInitialStorageMapping({ podUri, deviceId }) {
       { code: 'INVALID_ARGUMENT' },
     );
   }
-  const { mappings, crewPolicyDefault } = buildDefaultPolicy({
+  const { mappings, circlePolicyDefault } = buildDefaultPolicy({
     anchorPodUri: podUri,
     deviceId,
   });
@@ -45,8 +45,8 @@ export function buildInitialStorageMapping({ podUri, deviceId }) {
     version:       CONFIG_VERSION,
     defaultPolicy: 'one-pod',
     mappings,
-    crewPolicies:  {},
-    crewPolicyDefault,
+    circlePolicies:  {},
+    circlePolicyDefault,
     updatedAt:     new Date().toISOString(),
   };
 }

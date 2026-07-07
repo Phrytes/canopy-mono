@@ -4,7 +4,7 @@
  * F1: given an active `circleId`, decide which items belong to it. An
  * item is "in" a circle if any of its circle references match — it
  * carries `circleId` / `circleId` (alias, CIRCLE_ID_IS_CREW_ID_ALIAS) /
- * `groupId`, or an `audience` shorthand like `circle:ID` / `crew:ID`
+ * `groupId`, or an `audience` shorthand like `circle:ID` / `circle:ID`
  * (or the structured `{kind:'circle-ref', id}`). Self-contained — no
  * `@canopy/circles` import — so it stays portable for Metro/RN.
  *
@@ -37,7 +37,7 @@ function circleRefFromShorthand(str) {
   const i = str.indexOf(':');
   if (i < 0) return null;
   const prefix = str.slice(0, i);
-  if (prefix === 'circle' || prefix === 'crew') return str.slice(i + 1) || null;
+  if (prefix === 'circle' || prefix === 'circle') return str.slice(i + 1) || null;
   return null;
 }
 

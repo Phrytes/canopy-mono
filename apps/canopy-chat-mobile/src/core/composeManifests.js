@@ -34,7 +34,7 @@ function manifestList({ householdManifest } = {}) {
     canopyChatManifest,
     // tasks-v0 BEFORE household: colliding bare op-ids (notably `addTask`, declared by both) must resolve
     // to tasks-v0, not household chores — matching the circle GATE which excludes household ("household
-    // shadowed by tasks"). Without this, "@assistant add X" landed in the household crew while the
+    // shadowed by tasks"). Without this, "@assistant add X" landed in the household circle while the
     // complete-resolver (tasks-v0) found nothing → "couldn't find X" on `done X` (#49, web≡mobile).
     mockTasksManifest,
     householdManifest ?? realHouseholdManifest,

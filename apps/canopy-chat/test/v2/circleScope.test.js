@@ -10,9 +10,9 @@ describe('circleScope · itemCircleId', () => {
     expect(itemCircleId({ circleId: 'b' })).toBe('b');
     expect(itemCircleId({ groupId: 'c' })).toBe('c');
   });
-  it('reads circle:/crew: audience shorthands and circle-ref objects', () => {
+  it('reads circle:/circle: audience shorthands and circle-ref objects', () => {
     expect(itemCircleId({ audience: 'circle:x' })).toBe('x');
-    expect(itemCircleId({ audience: 'crew:y' })).toBe('y');
+    expect(itemCircleId({ audience: 'circle:y' })).toBe('y');
     expect(itemCircleId({ audience: { kind: 'circle-ref', id: 'z' } })).toBe('z');
   });
   it('returns null for unscoped / unrelated audiences', () => {

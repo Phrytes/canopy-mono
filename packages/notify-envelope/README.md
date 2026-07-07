@@ -8,7 +8,7 @@ ref scheme + the pod-reachability cache.
 
 Also owns the **pending-pod-upload queue** that powers the graceful-
 degradation gate: a pod-having writer that's offline still emits to
-the crew via replication-ring, and queues the resource for upload on
+the circle via replication-ring, and queues the resource for upload on
 reconnect.
 
 > Standardisation Phase **52.4** — see
@@ -129,7 +129,7 @@ When the substrate is `start()`ed, it subscribes to
 ## Pending-pod-upload queue
 
 Locked 2026-05-11. The queue solves the "writer momentarily offline"
-case for pod-having crews. Per-write flow when reachability says
+case for pod-having circles. Per-write flow when reachability says
 *unreachable*:
 
 1. `pseudoPod.write(...)` stores locally (the V0 substrate doesn't

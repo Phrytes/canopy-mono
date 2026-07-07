@@ -31,12 +31,12 @@ describe('normalizeFolioFile', () => {
 describe('buildCircleFiles', () => {
   it('keeps files matching the circle + untagged files, drops other-circle files', () => {
     const files = [
-      { id: 'a', updatedAt: 300, circleId: 'crew-1' },
+      { id: 'a', updatedAt: 300, circleId: 'circle-1' },
       { id: 'b', updatedAt: 200 },                       // untagged
       { id: 'c', updatedAt: 100, circleId: 'other' },    // other circle
-      { id: 'd', updatedAt: 50,  audience: 'circle:crew-1' },
+      { id: 'd', updatedAt: 50,  audience: 'circle:circle-1' },
     ];
-    const rows = buildCircleFiles({ files, circleId: 'crew-1' });
+    const rows = buildCircleFiles({ files, circleId: 'circle-1' });
     expect(rows.map((r) => r.id)).toEqual(['a', 'b', 'd']);
   });
 
@@ -55,21 +55,21 @@ describe('buildCircleFiles', () => {
   });
 
   it('a null circleId keeps everything (unscoped)', () => {
-    const files = [{ id: 'x', circleId: 'crew-1' }, { id: 'y' }];
+    const files = [{ id: 'x', circleId: 'circle-1' }, { id: 'y' }];
     expect(buildCircleFiles({ files }).map((r) => r.id).sort()).toEqual(['x', 'y']);
   });
 
   it('returns [] for empty / missing inputs', () => {
     expect(buildCircleFiles()).toEqual([]);
-    expect(buildCircleFiles({ files: [], circleId: 'crew-1' })).toEqual([]);
-    expect(buildCircleFiles({ files: [null, undefined], circleId: 'crew-1' })).toEqual([]);
+    expect(buildCircleFiles({ files: [], circleId: 'circle-1' })).toEqual([]);
+    expect(buildCircleFiles({ files: [null, undefined], circleId: 'circle-1' })).toEqual([]);
   });
 });
 
 describe('circleFilesFromListFiles', () => {
   it('extracts the listFiles { items } shape and scopes to the circle', () => {
     const res = { items: [{ id: 'a', name: 'a.md' }, { id: 'b', name: 'b.md', circleId: 'other' }], _sync: {} };
-    const rows = circleFilesFromListFiles(res, 'crew-1');
+    const rows = circleFilesFromListFiles(res, 'circle-1');
     expect(rows.map((r) => r.id).sort()).toEqual(['a']); // 'b' tagged to another circle is dropped
   });
 
@@ -79,7 +79,7 @@ describe('circleFilesFromListFiles', () => {
   });
 
   it('tolerates null / malformed results', () => {
-    expect(circleFilesFromListFiles(null, 'crew-1')).toEqual([]);
-    expect(circleFilesFromListFiles({}, 'crew-1')).toEqual([]);
+    expect(circleFilesFromListFiles(null, 'circle-1')).toEqual([]);
+    expect(circleFilesFromListFiles({}, 'circle-1')).toEqual([]);
   });
 });

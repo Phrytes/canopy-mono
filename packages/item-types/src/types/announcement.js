@@ -1,13 +1,13 @@
 /**
- * `announcement` type — a broadcast to a crew (or sub-audience).
- * Stoop's group announcements; Tasks's crew-wide notices.
+ * `announcement` type — a broadcast to a circle (or sub-audience).
+ * Stoop's group announcements; Tasks's circle-wide notices.
  */
 
 import { BASE_PROPERTIES, BASE_REQUIRED, NAMESPACE } from '../baseSchema.js';
 
 export const ANNOUNCEMENT_SCHEMA = {
   iri:         `${NAMESPACE}Announcement`,
-  description: 'A broadcast post to a crew or sub-audience.',
+  description: 'A broadcast post to a circle or sub-audience.',
   type:        'object',
   required:    [...BASE_REQUIRED, 'body'],
   properties: {

@@ -3,31 +3,31 @@
  *
  * Mirror of Stoop's `apps/stoop/src/lib/podSignIn.js`. Glue between
  * `createSolidAuthNode` (browser-redirect Solid OIDC, via
- * `@canopy/oidc-session`) and the crew bundle's
+ * `@canopy/oidc-session`) and the circle bundle's
  * `CachingDataSource`. Four operations:
  *
- *   - `startPodSignIn({ crew, issuer, redirectUrl })`
+ *   - `startPodSignIn({ circle, issuer, redirectUrl })`
  *       → Kicks off OIDC. Returns the IdP authorize URL the browser
  *         should navigate to.
  *
- *   - `completePodSignIn({ crew, callbackUrl, dataSourceFactory? })`
+ *   - `completePodSignIn({ circle, callbackUrl, dataSourceFactory? })`
  *       → After the IdP redirect lands on `redirectUrl`, completes
  *         the dance + builds a `SolidPodSource` (or whatever
  *         `dataSourceFactory` returns) + calls
- *         `crew.dataSource.attachInner(podSource)`. Returns
+ *         `circle.dataSource.attachInner(podSource)`. Returns
  *         `{ ok, webid, podRoot }`.
  *
- *   - `signOutOfPod({ crew })`
+ *   - `signOutOfPod({ circle })`
  *       → Clears OIDC session + detaches the inner DataSource (cache
  *         keeps local state so the user keeps working offline).
  *
- *   - `podSignInStatus({ crew })`
+ *   - `podSignInStatus({ circle })`
  *       → Read-only `{signedIn, webid, podAttached}`.
  *
- * The `oidcSession` instance lives on `crew.oidcSession` (lazily
+ * The `oidcSession` instance lives on `circle.oidcSession` (lazily
  * created on first sign-in attempt; reused across attempts). Tasks
- * runs one crew per process today so per-crew session-state is fine;
- * when multi-crew runtime lands, each crew gets its own session slot.
+ * runs one circle per process today so per-circle session-state is fine;
+ * when multi-circle runtime lands, each circle gets its own session slot.
  *
  * ── Session-injection seam (Tasks V2 Slice 5 / mobile S5, 2026-05-18) ──
  *
@@ -66,27 +66,27 @@ function defaultVault() {
 }
 
 /**
- * Ensure `crew.oidcSession` exists, building it via the default Node
+ * Ensure `circle.oidcSession` exists, building it via the default Node
  * factory unless an injected `sessionFactory` is supplied.
  *
- * @param {object} crew
+ * @param {object} circle
  * @param {(opts: {vault: object, clientName: string}) => object} [sessionFactory]
  *   Optional. When provided, used INSTEAD of `createSolidAuthNode`
- *   to construct the per-crew session. The default (no factory) path
+ *   to construct the per-circle session. The default (no factory) path
  *   is unchanged — same lazy `createSolidAuthNode({vault, clientName})`
  *   call the web app has always used.
  */
-function ensureSession(crew, sessionFactory) {
-  if (!crew.oidcSession) {
+function ensureSession(circle, sessionFactory) {
+  if (!circle.oidcSession) {
     const make = typeof sessionFactory === 'function'
       ? sessionFactory
       : createSolidAuthNode;
-    crew.oidcSession = make({
-      vault: crew.oidcVault ?? defaultVault(),
+    circle.oidcSession = make({
+      vault: circle.oidcVault ?? defaultVault(),
       clientName: 'Tasks',
     });
   }
-  return crew.oidcSession;
+  return circle.oidcSession;
 }
 
 /**
@@ -94,14 +94,14 @@ function ensureSession(crew, sessionFactory) {
  * `redirectUrl` is the IdP authorize URL the browser should
  * navigate to.
  */
-export async function startPodSignIn({ crew, issuer, redirectUrl, sessionFactory }) {
-  if (!crew?.dataSource || typeof crew.dataSource.attachInner !== 'function') {
-    return { ok: false, error: 'crew missing CachingDataSource (was cache: false?)' };
+export async function startPodSignIn({ circle, issuer, redirectUrl, sessionFactory }) {
+  if (!circle?.dataSource || typeof circle.dataSource.attachInner !== 'function') {
+    return { ok: false, error: 'circle missing CachingDataSource (was cache: false?)' };
   }
   if (!issuer)      return { ok: false, error: 'issuer required' };
   if (!redirectUrl) return { ok: false, error: 'redirectUrl required' };
 
-  const oidc = ensureSession(crew, sessionFactory);
+  const oidc = ensureSession(circle, sessionFactory);
   try {
     const r = await oidc.start({ issuer, redirectUrl });
     return { ok: true, redirectUrl: r.redirectUrl };
@@ -112,7 +112,7 @@ export async function startPodSignIn({ crew, issuer, redirectUrl, sessionFactory
 
 /**
  * Phase 2 of sign-in. Completes the OIDC dance + attaches a
- * pod-backed DataSource to the crew's CachingDataSource.
+ * pod-backed DataSource to the circle's CachingDataSource.
  *
  * Two mutually-exclusive auth-completion inputs:
  *   - `callbackUrl` (web / Node default): runs
@@ -123,17 +123,17 @@ export async function startPodSignIn({ crew, issuer, redirectUrl, sessionFactory
  *     them onto the (optionally injected) session. `startPodSignIn`
  *     need not have run first in this mode.
  *
- * @param {object}   args.crew
+ * @param {object}   args.circle
  * @param {string}   [args.callbackUrl]        web path
  * @param {object}   [args.tokens]             RN path (adoptTokens)
  * @param {Function} [args.dataSourceFactory]  existing seam (unchanged)
  * @param {Function} [args.sessionFactory]     session-injection seam
  */
 export async function completePodSignIn({
-  crew, callbackUrl, tokens, dataSourceFactory, sessionFactory,
+  circle, callbackUrl, tokens, dataSourceFactory, sessionFactory,
 }) {
-  if (!crew?.dataSource || typeof crew.dataSource.attachInner !== 'function') {
-    return { ok: false, error: 'crew missing CachingDataSource (was cache: false?)' };
+  if (!circle?.dataSource || typeof circle.dataSource.attachInner !== 'function') {
+    return { ok: false, error: 'circle missing CachingDataSource (was cache: false?)' };
   }
 
   let oidc;
@@ -143,7 +143,7 @@ export async function completePodSignIn({
     // session. ensureSession honours an injected sessionFactory; the
     // RN caller injects an `OidcSessionRN`-shaped session whose
     // `adoptTokens` persists the bearer token.
-    oidc = ensureSession(crew, sessionFactory);
+    oidc = ensureSession(circle, sessionFactory);
     if (typeof oidc.adoptTokens !== 'function') {
       return { ok: false, error: 'session does not support adoptTokens (tokens path needs an RN-style session)' };
     }
@@ -156,10 +156,10 @@ export async function completePodSignIn({
   } else {
     // Web path — UNCHANGED. Requires a session started by
     // startPodSignIn, then handleCallback(callbackUrl).
-    if (!crew?.oidcSession) {
+    if (!circle?.oidcSession) {
       return { ok: false, error: 'no sign-in in progress; call startPodSignIn first' };
     }
-    oidc = crew.oidcSession;
+    oidc = circle.oidcSession;
     try {
       info = await oidc.handleCallback(callbackUrl);
     } catch (err) {
@@ -185,17 +185,17 @@ export async function completePodSignIn({
   // provisioning behave identically on web and mobile (platform-parity
   // principle, mirror of stoop commit 11a269a).
   //
-  // `crew` here is a `{dataSource: CachingDataSource, …}` shaped holder
+  // `circle` here is a `{dataSource: CachingDataSource, …}` shaped holder
   // — it maps to `bundle.cache` in the attachTasksBundle contract.
-  // We adapt: pass `cache: crew.dataSource` as the bundle so the helper
-  // calls `crew.dataSource.attachInner(inner)`.
+  // We adapt: pass `cache: circle.dataSource` as the bundle so the helper
+  // calls `circle.dataSource.attachInner(inner)`.
   const bundleProxy = {
-    cache:             crew.dataSource,
-    _podCtx:           crew._podCtx     ?? null,
-    podRouting:        crew.podRouting  ?? null,
-    pseudoPod:         crew.pseudoPod   ?? null,
-    substrateDeviceId: crew.substrateDeviceId ?? null,
-    circleId:            crew.circleId      ?? null,
+    cache:             circle.dataSource,
+    _podCtx:           circle._podCtx     ?? null,
+    podRouting:        circle.podRouting  ?? null,
+    pseudoPod:         circle.pseudoPod   ?? null,
+    substrateDeviceId: circle.substrateDeviceId ?? null,
+    circleId:            circle.circleId      ?? null,
   };
   await attachTasksBundle({
     bundle: bundleProxy,
@@ -203,32 +203,32 @@ export async function completePodSignIn({
     podRoot,
     webid:  info?.webid ?? oidc.webid ?? null,
     fetch:  fetchFn,
-    circleId: crew.circleId ?? null,
+    circleId: circle.circleId ?? null,
   });
 
   return { ok: true, webid: info?.webid ?? oidc.webid ?? null, podRoot };
 }
 
 /** Detach inner + clear OIDC session. Local cache is preserved. */
-export async function signOutOfPod({ crew }) {
+export async function signOutOfPod({ circle }) {
   // M4: deactivate routing (_podCtx.active = false + revert anchor).
-  detachTasksBundle({ bundle: { _podCtx: crew?._podCtx ?? null, podRouting: crew?.podRouting ?? null } });
-  if (crew?.dataSource?.attachInner) await crew.dataSource.attachInner(null);
-  if (crew?.oidcSession?.logout) {
-    try { await crew.oidcSession.logout(); } catch { /* best-effort */ }
+  detachTasksBundle({ bundle: { _podCtx: circle?._podCtx ?? null, podRouting: circle?.podRouting ?? null } });
+  if (circle?.dataSource?.attachInner) await circle.dataSource.attachInner(null);
+  if (circle?.oidcSession?.logout) {
+    try { await circle.oidcSession.logout(); } catch { /* best-effort */ }
   }
-  crew.oidcSession = null;
+  circle.oidcSession = null;
   return { ok: true };
 }
 
 /** Read-only status. */
-export function podSignInStatus({ crew }) {
-  const oidc = crew?.oidcSession;
+export function podSignInStatus({ circle }) {
+  const oidc = circle?.oidcSession;
   if (!oidc) return { signedIn: false };
   return {
     signedIn:    oidc.isAuthenticated(),
     webid:       oidc.webid ?? null,
-    podAttached: !!crew.dataSource?.hasInner,
+    podAttached: !!circle.dataSource?.hasInner,
   };
 }
 

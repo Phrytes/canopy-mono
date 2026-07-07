@@ -4,13 +4,13 @@
  * The existing `web.test.js` covers the V0 baseline (index.html + mine.html
  * + a few skill calls + path traversal). This file extends with:
  *   1. The 5 new pages serve.
- *   2. New skills the UI calls are reachable from createCrewAgent.
+ *   2. New skills the UI calls are reachable from createCircleAgent.
  *   3. End-to-end through the UI's `addTask → claimTask → submitTask
  *      → approveTask` pipeline (with `approval: 'creator'`).
  *   4. Inbox skills (listMyInbox, inboxBadgeCount, clearInboxItem).
- *   5. Crew + workspace helper skills (getCrewConfig, listAwaitingApproval,
+ *   5. Circle + workspace helper skills (getCircleConfig, listAwaitingApproval,
  *      getDagTree, listMyMasteredTasks).
- *   6. /tasks-config.json overlay carries crew context.
+ *   6. /tasks-config.json overlay carries circle context.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -21,13 +21,13 @@ import { VaultMemory } from '@canopy/vault';
 import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -39,30 +39,30 @@ const CREW = {
 };
 const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
-let lsBundle, crew, ui, baseUrl;
+let lsBundle, circle, ui, baseUrl;
 
 beforeAll(async () => {
   const id  = await AgentIdentity.generate(new VaultMemory());
   const bus = new InternalBus();
   lsBundle = buildBundle();
-  crew = await createCrewAgent({
-    crewConfig:           CREW,
+  circle = await createCircleAgent({
+    circleConfig:           CIRCLE,
     localStoreBundle:     lsBundle,
     wireOnboardingSkills: false,
     identity:             id,
     transport:            new InternalTransport(bus, id.pubKey),
-    label:                'Crew(oss-tools)-anne',
+    label:                'Circle(oss-tools)-anne',
   });
 
-  ui = await mountLocalUi(crew.agent, {
+  ui = await mountLocalUi(circle.agent, {
     port:        0,
     staticDir:   WEB_DIR,
     a2aTLSLayer: new LocalUiAuth({ localActor: ANNE }),
     extraStaticFiles: {
       '/tasks-config.json': JSON.stringify({
         actor: ANNE,
-        roles: Object.fromEntries(CREW.members.map((m) => [m.webid, m.role])),
-        crew:  { circleId: CREW.circleId, name: CREW.name, kind: CREW.kind },
+        roles: Object.fromEntries(CIRCLE.members.map((m) => [m.webid, m.role])),
+        circle:  { circleId: CIRCLE.circleId, name: CIRCLE.name, kind: CIRCLE.kind },
       }),
     },
   });
@@ -71,7 +71,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await ui?.stop?.();
-  await crew?.close?.();
+  await circle?.close?.();
 });
 
 async function fetchText(path) {
@@ -94,8 +94,8 @@ async function callSkill(skillId, args = {}) {
 }
 
 describe('Phase 8 — UI pages serve', () => {
-  it('serves all 6 pages (index, mine, review, dag, crew, inbox)', async () => {
-    for (const path of ['/', '/mine.html', '/review.html', '/dag.html', '/crew.html', '/inbox.html']) {
+  it('serves all 6 pages (index, mine, review, dag, circle, inbox)', async () => {
+    for (const path of ['/', '/mine.html', '/review.html', '/dag.html', '/circle.html', '/inbox.html']) {
       const html = await fetchText(path);
       expect(html).toMatch(/<html/);
       // Every page links to the shared style and app.js
@@ -104,33 +104,33 @@ describe('Phase 8 — UI pages serve', () => {
     }
   });
 
-  it('every page carries the same nav skeleton (Workspace / My work / Review / DAG / Crew / Inbox)', async () => {
-    for (const path of ['/', '/mine.html', '/review.html', '/dag.html', '/crew.html', '/inbox.html']) {
+  it('every page carries the same nav skeleton (Workspace / My work / Review / DAG / Circle / Inbox)', async () => {
+    for (const path of ['/', '/mine.html', '/review.html', '/dag.html', '/circle.html', '/inbox.html']) {
       const html = await fetchText(path);
       expect(html).toContain('Workspace');
       expect(html).toContain('My work');
       expect(html).toContain('Review');
       expect(html).toContain('DAG');
-      expect(html).toContain('Crew');
+      expect(html).toContain('Circle');
       expect(html).toContain('Inbox');
     }
   });
 
-  it('/tasks-config.json carries the actor + role + crew context', async () => {
+  it('/tasks-config.json carries the actor + role + circle context', async () => {
     const res = await fetch(new URL('/tasks-config.json', baseUrl));
     const cfg = await res.json();
     expect(cfg.actor).toBe(ANNE);
     expect(cfg.roles[ANNE]).toBe('admin');
-    expect(cfg.crew?.circleId).toBe('oss-tools');
+    expect(cfg.circle?.circleId).toBe('oss-tools');
   });
 });
 
 describe('Phase 8 — workspace + inbox skills are wired', () => {
-  it('getCrewConfig returns the live crew', async () => {
-    const r = await callSkill('getCrewConfig');
-    expect(r.crew?.circleId).toBe('oss-tools');
-    expect(r.crew?.kind).toBe('project');
-    expect(r.crew?.members).toHaveLength(3);
+  it('getCircleConfig returns the live circle', async () => {
+    const r = await callSkill('getCircleConfig');
+    expect(r.circle?.circleId).toBe('oss-tools');
+    expect(r.circle?.kind).toBe('project');
+    expect(r.circle?.members).toHaveLength(3);
   });
 
   it('listAwaitingApproval returns submitted items', async () => {

@@ -1,5 +1,5 @@
 /**
- * podPathMap — Tasks' `mem://tasks/crews/<circleId>/…` logical-key ↔
+ * podPathMap — Tasks' `mem://tasks/circles/<circleId>/…` logical-key ↔
  * canonical storage-function classifier (Tasks M4 / Phase 3.3 parity
  * with Stoop's `apps/stoop/src/lib/podPathMap.js`).
  *
@@ -16,7 +16,7 @@
  *
  * Tasks logical key space (from ItemStore + per-skill writers):
  *
- *   mem://tasks/crews/<circleId>/          ← itemStore rootContainer
+ *   mem://tasks/circles/<circleId>/          ← itemStore rootContainer
  *     items/<id>.json                     → group/<c>/items
  *     audit/<entry>.json                  → group/<c>/audit
  *     members/<webid>.json                → group/<c>/members
@@ -46,48 +46,48 @@
 // `family` = a stable injective key used by `reverseResolve`;
 // `fn(circleId)` = the pod-routing storage-function (same vocabulary
 // as Stoop — the shared `packages/pod-routing` README).
-// `crew: true` rules require a circleId at classify-time.
+// `circle: true` rules require a circleId at classify-time.
 
 const RULES = [
   // Core task ledger: items/ and audit/ both route to the canonical
   // items / audit storage functions (separate families for bijection).
   {
-    family: 't-items',   prefix: 'mem://tasks/crews/',   sub: 'items/',   crew: true,
+    family: 't-items',   prefix: 'mem://tasks/circles/',   sub: 'items/',   circle: true,
     fn: (c) => `group/${c}/items`,
   },
   {
-    family: 't-audit',   prefix: 'mem://tasks/crews/',   sub: 'audit/',   crew: true,
+    family: 't-audit',   prefix: 'mem://tasks/circles/',   sub: 'audit/',   circle: true,
     fn: (c) => `group/${c}/audit`,
   },
   {
-    family: 't-members', prefix: 'mem://tasks/crews/',   sub: 'members/', crew: true,
+    family: 't-members', prefix: 'mem://tasks/circles/',   sub: 'members/', circle: true,
     fn: (c) => `group/${c}/members`,
   },
   {
-    family: 't-gov',     prefix: 'mem://tasks/crews/',   sub: 'config.json', crew: true, exact: true,
+    family: 't-gov',     prefix: 'mem://tasks/circles/',   sub: 'config.json', circle: true, exact: true,
     fn: (c) => `group/${c}/governance`,
   },
   {
-    family: 't-avail',   prefix: 'mem://tasks/crews/',   sub: 'availability/', crew: true,
+    family: 't-avail',   prefix: 'mem://tasks/circles/',   sub: 'availability/', circle: true,
     fn: (c) => `group/${c}/availability`,
   },
   {
-    family: 't-skills',  prefix: 'mem://tasks/crews/',   sub: 'skills',   crew: true,
+    family: 't-skills',  prefix: 'mem://tasks/circles/',   sub: 'skills',   circle: true,
     fn: (c) => `group/${c}/skills`,
   },
   {
-    family: 't-inv',     prefix: 'mem://tasks/crews/',   sub: 'invoicing/', crew: true,
+    family: 't-inv',     prefix: 'mem://tasks/circles/',   sub: 'invoicing/', circle: true,
     fn: (c) => `group/${c}/invoicing`,
   },
   {
-    family: 't-bots',    prefix: 'mem://tasks/crews/',   sub: 'botAgents/', crew: true,
+    family: 't-bots',    prefix: 'mem://tasks/circles/',   sub: 'botAgents/', circle: true,
     fn: (c) => `group/${c}/bot-agents`,
   },
-  // Agent vault — private/state. Per-crew, so circleId prefixes, but
+  // Agent vault — private/state. Per-circle, so circleId prefixes, but
   // the content is not shared: it's the PKCE identity vault. Routable
   // but NOT in localOnlyPrefixes (we want it on the user's own pod).
   {
-    family: 't-vault',   prefix: 'mem://tasks/crews/',   sub: 'agent/', crew: true,
+    family: 't-vault',   prefix: 'mem://tasks/circles/',   sub: 'agent/', circle: true,
     fn: (c) => `group/${c}/private-state`,
   },
 ];
@@ -105,8 +105,8 @@ export function classify(key, { circleId = null } = {}) {
   if (typeof key !== 'string') return null;
 
   for (const rule of RULES) {
-    if (!rule.crew) {
-      // Non-crew rules (currently none — placeholder for future).
+    if (!rule.circle) {
+      // Non-circle rules (currently none — placeholder for future).
       if (rule.exact) {
         if (key === rule.prefix + rule.sub) {
           return { storageFn: rule.fn(), tail: '' };
@@ -118,16 +118,16 @@ export function classify(key, { circleId = null } = {}) {
       continue;
     }
 
-    // Crew-prefixed rules: `mem://tasks/crews/<circleId>/<sub>…`
+    // Circle-prefixed rules: `mem://tasks/circles/<circleId>/<sub>…`
     if (typeof circleId !== 'string' || !circleId) continue;
-    const crewPrefix = `${rule.prefix}${circleId}/`;
+    const circlePrefix = `${rule.prefix}${circleId}/`;
 
     if (rule.exact) {
-      if (key === crewPrefix + rule.sub) {
+      if (key === circlePrefix + rule.sub) {
         return { storageFn: rule.fn(circleId), tail: '' };
       }
-    } else if (key.startsWith(crewPrefix + rule.sub)) {
-      const tail = key.slice((crewPrefix + rule.sub).length);
+    } else if (key.startsWith(circlePrefix + rule.sub)) {
+      const tail = key.slice((circlePrefix + rule.sub).length);
       return { storageFn: rule.fn(circleId), tail };
     }
   }
@@ -154,7 +154,7 @@ export function reverseResolve({ resolve, circleId, podUri, vars = {} }) {
   if (typeof podUri !== 'string' || !podUri) return null;
 
   for (const rule of RULES) {
-    if (!rule.crew) continue;
+    if (!rule.circle) continue;
     if (typeof circleId !== 'string' || !circleId) continue;
 
     const base = resolve(rule.fn(circleId), vars);
@@ -164,12 +164,12 @@ export function reverseResolve({ resolve, circleId, podUri, vars = {} }) {
     if (!podUri.startsWith(prefix)) continue;
 
     const tail = podUri.slice(prefix.length);
-    const crewPrefix = `mem://tasks/crews/${circleId}/`;
+    const circlePrefix = `mem://tasks/circles/${circleId}/`;
 
     if (rule.exact) {
-      return crewPrefix + rule.sub;
+      return circlePrefix + rule.sub;
     }
-    return crewPrefix + rule.sub + tail;
+    return circlePrefix + rule.sub + tail;
   }
 
   return null;

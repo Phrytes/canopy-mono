@@ -82,7 +82,7 @@ export function SubmitScreen() {
         });
         // Write the JPEG bytes (decoded from base64) into the cache so
         // approvers can fetch via `dataSource.read(ref)`.
-        const cache = svc?.crews?.get(svc?.activeCircleId)?.dataSource;
+        const cache = svc?.circles?.get(svc?.activeCircleId)?.dataSource;
         if (cache?.write) {
           // V1: store the data-URL form so the approver's UI can
           // render directly from the value. A future revision can

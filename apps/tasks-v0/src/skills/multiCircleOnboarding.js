@@ -1,18 +1,18 @@
 /**
- * multiCrewOnboarding — Tasks V2 multi-crew runtime (2026-05-14).
+ * multiCircleOnboarding — Tasks V2 multi-circle runtime (2026-05-14).
  *
  * `buildOnboardingSkills` in `@canopy/identity-resolver` is per-
- * crew: its closure captures `groupManager`, `members`, `groupId`,
- * `onSpawn` once. Registering it from `createCrewAgent` for each
- * crew would silently last-write-wins the global skill registry,
- * dropping all but the latest crew's GroupManager.
+ * circle: its closure captures `groupManager`, `members`, `groupId`,
+ * `onSpawn` once. Registering it from `createCircleAgent` for each
+ * circle would silently last-write-wins the global skill registry,
+ * dropping all but the latest circle's GroupManager.
  *
  * This wrapper registers `issueInvite` + `redeemInvite` ONCE against
- * the meshAgent. Each call resolves the right CrewState from
- * `bundleResolver` and reads the per-crew GroupManager + MemberMap
- * + onSpawn hook that `createCrewAgent` stashed on it.
+ * the meshAgent. Each call resolves the right CircleState from
+ * `bundleResolver` and reads the per-circle GroupManager + MemberMap
+ * + onSpawn hook that `createCircleAgent` stashed on it.
  *
- * Wire it from `bin/tasks-ui.js --multi-crew` AFTER `wireSkills` so
+ * Wire it from `bin/tasks-ui.js --multi-circle` AFTER `wireSkills` so
  * the rest of the skill surface is already registered.
  */
 
@@ -29,35 +29,35 @@ function dataArgs(parts) {
 /**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
- *   Resolves a CrewState from skill args. The CrewState must expose
+ *   Resolves a CircleState from skill args. The CircleState must expose
  *   `groupManager`, `members`, and `circleIdForOnboarding` (set in
- *   `createCrewAgent` when the crew is built — including the
- *   multi-crew `wireOnboardingSkills: false` path).
+ *   `createCircleAgent` when the circle is built — including the
+ *   multi-circle `wireOnboardingSkills: false` path).
  * @returns {Array<object>}
  */
-export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
+export function buildMultiCircleOnboardingSkills({ bundleResolver } = {}) {
   if (typeof bundleResolver !== 'function') {
-    throw new TypeError('buildMultiCrewOnboardingSkills: bundleResolver required');
+    throw new TypeError('buildMultiCircleOnboardingSkills: bundleResolver required');
   }
 
   return [
     /**
      * issueInvite({circleId, ttlMs?, role?}) → {invite}
      *
-     * Multi-crew variant: `circleId` is mandatory for routing. The
-     * resolved CrewState supplies the per-crew GroupManager.
+     * Multi-circle variant: `circleId` is mandatory for routing. The
+     * resolved CircleState supplies the per-circle GroupManager.
      */
     defineSkill('issueInvite', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew?.groupManager) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle?.groupManager) return { error: 'circleId required' };
       const a = dataArgs(parts);
       const ttlMs = Number.isFinite(a.ttlMs) ? a.ttlMs : DEFAULT_TTL_MS;
       const role  = a.role ?? 'member';
-      const groupId = crew.circleIdForOnboarding ?? crew.liveCrew?.circleId ?? crew.circleId;
-      const invite = await crew.groupManager.issueInvite(groupId, { expiresIn: ttlMs, role });
+      const groupId = circle.circleIdForOnboarding ?? circle.liveCircle?.circleId ?? circle.circleId;
+      const invite = await circle.groupManager.issueInvite(groupId, { expiresIn: ttlMs, role });
       return { invite };
     }, {
-      description: 'Multi-crew: issue a single-use invite for the routed crew (admin-only).',
+      description: 'Multi-circle: issue a single-use invite for the routed circle (admin-only).',
       visibility:  'authenticated',
     }),
 
@@ -66,8 +66,8 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
      *   → {groupProof, memberPubKey, webid, displayName, members,
      *      spawnedUrl?}
      *
-     * Multi-crew variant: the invite carries the groupId; we look
-     * the matching CrewState up via that. The routing arg `circleId`
+     * Multi-circle variant: the invite carries the groupId; we look
+     * the matching CircleState up via that. The routing arg `circleId`
      * is OPTIONAL — when omitted, we infer it from `invite.groupId`.
      */
     defineSkill('redeemInvite', async ({ parts, from, envelope }) => {
@@ -78,21 +78,21 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
       // invite payload. The resolver runs in two passes if the
       // caller didn't supply one — first with what they passed, then
       // (when that fails) with the invite's groupId.
-      let crew = bundleResolver(parts, { envelope, from });
-      if (!crew?.groupManager) {
+      let circle = bundleResolver(parts, { envelope, from });
+      if (!circle?.groupManager) {
         const groupIdFromInvite = a.invite?.groupId ?? null;
         if (groupIdFromInvite) {
           // Synthesize parts with the inferred circleId so the
-          // bundleResolver picks the right CrewState.
+          // bundleResolver picks the right CircleState.
           const synthParts = [
             { type: 'DataPart', data: { ...a, circleId: groupIdFromInvite } },
           ];
-          crew = bundleResolver(synthParts, { envelope, from });
+          circle = bundleResolver(synthParts, { envelope, from });
         }
       }
-      if (!crew?.groupManager) return { error: 'circleId required (no matching crew)' };
+      if (!circle?.groupManager) return { error: 'circleId required (no matching circle)' };
 
-      if (!(await crew.groupManager.verifyInvite(a.invite))) {
+      if (!(await circle.groupManager.verifyInvite(a.invite))) {
         return { error: 'invalid or expired invite' };
       }
 
@@ -103,7 +103,7 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
       let memberPubKey = a.memberPubKey ?? null;
       let spawnedUrl;
 
-      const onSpawn = crew.onSpawn ?? null;
+      const onSpawn = circle.onSpawn ?? null;
       if (onSpawn) {
         let spawn;
         try {
@@ -123,7 +123,7 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
 
       let proof;
       try {
-        proof = await crew.groupManager.redeemInvite(a.invite, memberPubKey);
+        proof = await circle.groupManager.redeemInvite(a.invite, memberPubKey);
       } catch (err) {
         return { error: err?.message ?? 'redemption failed' };
       }
@@ -131,7 +131,7 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
       const finalWebid       = webid       ?? `urn:pubkey:${memberPubKey}`;
       const finalDisplayName = displayName ?? finalWebid.split(':').pop().slice(0, 12);
 
-      await crew.members.addMember({
+      await circle.members.addMember({
         webid:       finalWebid,
         displayName: finalDisplayName,
         role:        proof.role,
@@ -143,11 +143,11 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
       // next addTask fan-out reaches them. Best-effort (the local
       // member-map update above is the source of truth; the mirror
       // roster is a downstream cache for fan-out routing).
-      if (typeof crew.tasksMirror?.addPeer === 'function') {
-        try { await crew.tasksMirror.addPeer(memberPubKey); } catch { /* swallow */ }
+      if (typeof circle.tasksMirror?.addPeer === 'function') {
+        try { await circle.tasksMirror.addPeer(memberPubKey); } catch { /* swallow */ }
       }
 
-      const allMembers = await crew.members.list();
+      const allMembers = await circle.members.list();
       return {
         groupProof: proof,
         memberPubKey,
@@ -157,7 +157,7 @@ export function buildMultiCrewOnboardingSkills({ bundleResolver } = {}) {
         ...(spawnedUrl ? { spawnedUrl } : {}),
       };
     }, {
-      description: 'Multi-crew: redeem an invite — routes by args.circleId or invite.groupId.',
+      description: 'Multi-circle: redeem an invite — routes by args.circleId or invite.groupId.',
       visibility:  'public',
     }),
   ];

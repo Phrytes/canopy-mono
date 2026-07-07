@@ -19,9 +19,9 @@
  * bound to a `member` webid cannot approve tasks (just like in the
  * web UI) — they get a `permission denied` reply.
  *
- * V2.8: bot skills resolve a CrewState via `bundleResolver` then
+ * V2.8: bot skills resolve a CircleState via `bundleResolver` then
  * inject `circleId` into every inner-skill `callUnderlying` call so
- * the inner skill's own bundleResolver picks the same crew.
+ * the inner skill's own bundleResolver picks the same circle.
  */
 
 import { defineSkill } from '@canopy/core';
@@ -53,7 +53,7 @@ const BOT_SKILL_OPTS = {
  * V1.5 cap-token path: when the inbound envelope carries a token
  * with `constraints.actingAs`, the bot is authorised to act AS that
  * webid. We honour it instead of `envelope._from` (which is the
- * bot's own pubKey, not a crew member).
+ * bot's own pubKey, not a circle member).
  *
  * Legacy direct-call path: `from` is set explicitly by
  * `wireBotChannel` to the bound webid; envelope is null.
@@ -128,9 +128,9 @@ function _formatTree(node, depth = 0) {
  * viewers can tell apart UI vs bot actions.
  *
  * V2.8: we inject `circleId` into the inner skill's args so its own
- * `bundleResolver(parts, ctx)` picks the same crew the bot resolved.
- * In single-crew mode this is harmless (singleCrewResolver ignores
- * args); in multi-crew mode it's load-bearing.
+ * `bundleResolver(parts, ctx)` picks the same circle the bot resolved.
+ * In single-circle mode this is harmless (singleCircleResolver ignores
+ * args); in multi-circle mode it's load-bearing.
  */
 async function callUnderlying(agent, skillId, args, from, circleId) {
   const def = agent.skills.get(skillId);
@@ -157,50 +157,50 @@ export function buildBotSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('bot.listOpen', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'listOpen', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'listOpen', {}, actor, circle.circleId);
       const items = (r?.items ?? []).filter((it) => it.type !== 'subtask-request').slice(0, 20);
       if (items.length === 0) return { text: 'No open tasks.' };
       return { text: `*Open (${items.length}):*\n` + items.map(_formatItemLine).join('\n') };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: list open tasks (chat-formatted).' }),
 
     defineSkill('bot.listMine', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'listMine', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'listMine', {}, actor, circle.circleId);
       const items = (r?.items ?? []).slice(0, 20);
       if (items.length === 0) return { text: 'Nothing assigned to you.' };
       return { text: `*Assigned to you (${items.length}):*\n` + items.map(_formatItemLine).join('\n') };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: list my assignments.' }),
 
     defineSkill('bot.listMyMasteredTasks', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'listMyMasteredTasks', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'listMyMasteredTasks', {}, actor, circle.circleId);
       const items = (r?.items ?? []).filter((it) => it.type !== 'subtask-request').slice(0, 20);
       if (items.length === 0) return { text: 'You don\'t master any open tasks.' };
       return { text: `*You master (${items.length}):*\n` + items.map(_formatItemLine).join('\n') };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: list tasks where I am master.' }),
 
     defineSkill('bot.listAwaitingApproval', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'listAwaitingApproval', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'listAwaitingApproval', {}, actor, circle.circleId);
       const items = (r?.items ?? []).slice(0, 20);
       if (items.length === 0) return { text: 'No submissions awaiting approval.' };
       return { text: `*Awaiting approval (${items.length}):*\n` + items.map(_formatItemLine).join('\n') };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: submitted tasks waiting on an approver.' }),
 
     defineSkill('bot.listMyInbox', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'listMyInbox', { limit: 20 }, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'listMyInbox', { limit: 20 }, actor, circle.circleId);
       const items = (r?.items ?? []).slice(0, 20);
       if (items.length === 0) return { text: 'Inbox is empty. ✓' };
       const lines = items.map((it) => {
@@ -211,25 +211,25 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: my inbox notifications.' }),
 
     defineSkill('bot.whatBlocks', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.rootId);
+      const resolved = await _resolveId(circle.itemStore, a.rootId);
       if (resolved.error) return { text: resolved.error };
-      const r = await callUnderlying(agent, 'getDagTree', { rootId: resolved.id }, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'getDagTree', { rootId: resolved.id }, actor, circle.circleId);
       if (!r?.tree) return { text: `Task \`${_shortId(resolved.id)}\` has no sub-tree.` };
       return { text: '```\n' + _formatTree(r.tree).trimEnd() + '\n```' };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: render the sub-task tree under <id>.' }),
 
     defineSkill('bot.claim', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
-      const r = await callUnderlying(agent, 'claimTask', { id: resolved.id }, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'claimTask', { id: resolved.id }, actor, circle.circleId);
       if (r?.result?.error === 'already-claimed') {
         return { text: `Already claimed by ${String(r.result.current.assignee ?? '?').split('/').pop()}.` };
       }
@@ -240,14 +240,14 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: claim an open task.' }),
 
     defineSkill('bot.markComplete', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
       try {
-        const r = await callUnderlying(agent, 'completeTask', { id: resolved.id }, actor, crew.circleId);
+        const r = await callUnderlying(agent, 'completeTask', { id: resolved.id }, actor, circle.circleId);
         if (r?.error === 'has-open-dependencies') {
           const shortIds = (r.openDeps ?? []).map(_shortId).join(', ');
           return { text: `Can't close — ${r.openDeps?.length ?? 0} open sub-task(s): ${shortIds}.` };
@@ -260,16 +260,16 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: mark a task complete (self-mark mode).' }),
 
     defineSkill('bot.submit', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
       const args = { id: resolved.id };
       if (a.note) args.note = a.note;
       try {
-        const r = await callUnderlying(agent, 'submitTask', args, actor, crew.circleId);
+        const r = await callUnderlying(agent, 'submitTask', args, actor, circle.circleId);
         if (r?.task) return { text: `Submitted \`${_shortId(resolved.id)}\` for review ✓` };
         return { text: `Submit error: ${JSON.stringify(r)}` };
       } catch (err) {
@@ -278,14 +278,14 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: submit a task for review.' }),
 
     defineSkill('bot.approve', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
       try {
-        const r = await callUnderlying(agent, 'approveTask', { id: resolved.id }, actor, crew.circleId);
+        const r = await callUnderlying(agent, 'approveTask', { id: resolved.id }, actor, circle.circleId);
         if (r?.error === 'has-open-dependencies') {
           const shortIds = (r.openDeps ?? []).map(_shortId).join(', ');
           return { text: `Can't approve — ${r.openDeps?.length ?? 0} open sub-task(s): ${shortIds}.` };
@@ -298,15 +298,15 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: approve a submitted task.' }),
 
     defineSkill('bot.reject', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
       if (!a.note) return { text: 'Reject needs a `reason: <text>` (mandatory).' };
       try {
-        const r = await callUnderlying(agent, 'rejectTask', { id: resolved.id, note: a.note }, actor, crew.circleId);
+        const r = await callUnderlying(agent, 'rejectTask', { id: resolved.id, note: a.note }, actor, circle.circleId);
         if (r?.task) return { text: `Rejected \`${_shortId(resolved.id)}\` ✓` };
         return { text: `Reject error: ${JSON.stringify(r)}` };
       } catch (err) {
@@ -315,15 +315,15 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: reject a submission with a mandatory reason.' }),
 
     defineSkill('bot.revoke', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
       if (!a.reason) return { text: 'Revoke needs a `reason: <text>` (mandatory).' };
       try {
-        const r = await callUnderlying(agent, 'revokeTask', { id: resolved.id, reason: a.reason }, actor, crew.circleId);
+        const r = await callUnderlying(agent, 'revokeTask', { id: resolved.id, reason: a.reason }, actor, circle.circleId);
         if (r?.task) return { text: `Revoked \`${_shortId(resolved.id)}\` ✓` };
         return { text: `Revoke error: ${JSON.stringify(r)}` };
       } catch (err) {
@@ -331,27 +331,27 @@ export function buildBotSkills({ bundleResolver } = {}) {
       }
     }, { ...BOT_SKILL_OPTS, description: 'Bot: revoke an assignment with a mandatory reason.' }),
 
-    defineSkill('bot.crews', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+    defineSkill('bot.circles', async ({ parts, from, envelope, agent }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'getMyCrews', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'getMyCircles', {}, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
-      const crews = r?.crews ?? [];
-      if (crews.length === 0) return { text: 'You don\'t belong to any crews yet.' };
-      const lines = crews.map((c) => {
+      const circles = r?.circles ?? [];
+      if (circles.length === 0) return { text: 'You don\'t belong to any circles yet.' };
+      const lines = circles.map((c) => {
         const c1 = c.counts ?? {};
         const overdue = c1.overdue > 0 ? ` · ${c1.overdue} overdue` : '';
         return `• *${c.name}* (${c.kind}): ${c1.open ?? 0} open${overdue} · ${c1.mine ?? 0} mine`;
       });
-      return { text: '*Your crews:*\n' + lines.join('\n') };
-    }, { ...BOT_SKILL_OPTS, description: 'Bot: list every crew the calling actor belongs to.' }),
+      return { text: '*Your circles:*\n' + lines.join('\n') };
+    }, { ...BOT_SKILL_OPTS, description: 'Bot: list every circle the calling actor belongs to.' }),
 
     defineSkill('bot.plan', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'suggestSchedule', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'suggestSchedule', {}, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
       const sugg = (r?.suggestions ?? []).slice(0, 3);
       if (sugg.length === 0) return { text: 'No suggestions — nothing in your queue with a deadline.' };
@@ -373,8 +373,8 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: top-3 suggested slots for my open assignments.' }),
 
     defineSkill('bot.accept', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
       const taskId = a.taskId;
@@ -382,7 +382,7 @@ export function buildBotSkills({ bundleResolver } = {}) {
       // Re-suggest then take the Nth — simpler than maintaining a
       // chatId-keyed cache and survives restarts. Slight cost in
       // recompute but the planner is sub-second.
-      const sugg = await callUnderlying(agent, 'suggestSchedule', {}, actor, crew.circleId);
+      const sugg = await callUnderlying(agent, 'suggestSchedule', {}, actor, circle.circleId);
       if (sugg?.error) return { text: `Error: ${sugg.error}` };
       const matches = (sugg?.suggestions ?? []).filter(
         (s) => s.taskId === taskId || s.taskId.toLowerCase().startsWith(String(taskId).toLowerCase()),
@@ -395,15 +395,15 @@ export function buildBotSkills({ bundleResolver } = {}) {
         taskId:    target.taskId,
         slotStart: target.slotStart,
         slotEnd:   target.slotEnd,
-      }, actor, crew.circleId);
+      }, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
       const when = new Date(target.slotStart).toLocaleString();
       return { text: `Accepted \`${_shortId(target.taskId)}\` for ${when}.` };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: accept a planner suggestion for a task.' }),
 
     defineSkill('bot.available', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
       const state = String(a.state ?? '').toLowerCase();
@@ -420,18 +420,18 @@ export function buildBotSkills({ bundleResolver } = {}) {
       const yearStart = new Date(Date.UTC(isoDay.getUTCFullYear(), 0, 4));
       const weekNo = Math.ceil(((isoDay - yearStart) / 86_400_000 + 1) / 7);
       const week = `${isoDay.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
-      const r = await callUnderlying(agent, 'setMyAvailability', { week, day, half, state }, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'setMyAvailability', { week, day, half, state }, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
       return { text: `Set ${day} ${half}: *${state}*. (Week ${week}.)` };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: set my availability for the current half-day.' }),
 
     defineSkill('bot.week', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'getMyAvailability', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'getMyAvailability', {}, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
-      if (!r?.enabled) return { text: 'Availability hints are off for this crew.' };
+      if (!r?.enabled) return { text: 'Availability hints are off for this circle.' };
       if (!r?.optedIn) return { text: 'You haven\'t opted in. Open the Availability page in the web UI to opt in.' };
       const days = ['mon','tue','wed','thu','fri','sat','sun'];
       const symbols = { open: '✓', tight: '~', unavailable: '✗', unknown: '·' };
@@ -448,10 +448,10 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: render my week as a chip grid.' }),
 
     defineSkill('bot.invoice', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'getCompensation', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'getCompensation', {}, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
       const lines = r?.lines ?? [];
       if (lines.length === 0) {
@@ -471,13 +471,13 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: this month\'s compensation lines for the calling member.' }),
 
     defineSkill('bot.calendar', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
-      const r = await callUnderlying(agent, 'getCalendarEmissionUrl', {}, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'getCalendarEmissionUrl', {}, actor, circle.circleId);
       if (r?.error) return { text: `Error: ${r.error}` };
       if (!r?.enabled) {
-        return { text: 'Calendar sync is off for this crew. An admin can turn it on with `setCalendarEmission`.' };
+        return { text: 'Calendar sync is off for this circle. An admin can turn it on with `setCalendarEmission`.' };
       }
       return {
         text: `Subscribe in your phone calendar:\n\`${r.url}\`\n\n(One-time setup. New tasks show up automatically afterwards.)`,
@@ -485,13 +485,13 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: subscribe URL for the calling member.' }),
 
     defineSkill('bot.appeal', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.taskId);
+      const resolved = await _resolveId(circle.itemStore, a.taskId);
       if (resolved.error) return { text: resolved.error };
-      const r = await callUnderlying(agent, 'appealTask', { taskId: resolved.id }, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'appealTask', { taskId: resolved.id }, actor, circle.circleId);
       if (r?.ok) return { text: `Appeal opened for \`${_shortId(resolved.id)}\` ✓` };
       return { text: `Appeal error: ${r?.error ?? JSON.stringify(r)}` };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: open a chat thread with the master to appeal a revoke.' }),
@@ -499,14 +499,14 @@ export function buildBotSkills({ bundleResolver } = {}) {
     // V2.7 — post-submit consent flow (chat-side mirror of the web UI).
 
     defineSkill('bot.propose', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.parentTaskId);
+      const resolved = await _resolveId(circle.itemStore, a.parentTaskId);
       if (resolved.error) return { text: resolved.error };
       const r = await callUnderlying(agent, 'proposeSubtask',
-        { parentTaskId: resolved.id, text: a.text }, actor, crew.circleId);
+        { parentTaskId: resolved.id, text: a.text }, actor, circle.circleId);
       if (r?.error) return { text: `Propose error: ${r.error}` };
       if (r?.queued) {
         const who = String(r.assignee ?? '').split('/').pop() || r.assignee;
@@ -516,13 +516,13 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: propose a sub-task on a submitted parent (master/coord).' }),
 
     defineSkill('bot.acceptProposal', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.proposalId);
+      const resolved = await _resolveId(circle.itemStore, a.proposalId);
       if (resolved.error) return { text: resolved.error };
-      const r = await callUnderlying(agent, 'approveSubtaskProposal', { proposalId: resolved.id }, actor, crew.circleId);
+      const r = await callUnderlying(agent, 'approveSubtaskProposal', { proposalId: resolved.id }, actor, circle.circleId);
       if (r?.error) return { text: `Accept error: ${r.error}` };
       if (r?.ok) {
         return {
@@ -533,25 +533,25 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: approve a subtask-proposal (assignee only).' }),
 
     defineSkill('bot.declineProposal', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.proposalId);
+      const resolved = await _resolveId(circle.itemStore, a.proposalId);
       if (resolved.error) return { text: resolved.error };
       const r = await callUnderlying(agent, 'declineSubtaskProposal',
-        { proposalId: resolved.id, note: a.note }, actor, crew.circleId);
+        { proposalId: resolved.id, note: a.note }, actor, circle.circleId);
       if (r?.error) return { text: `Decline error: ${r.error}` };
       return { text: `Declined \`${_shortId(resolved.id)}\` ✓ — your submission stays valid.` };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: decline a subtask-proposal (assignee only).' }),
 
     defineSkill('bot.listProposals', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       // List subtask-proposal items targeting `actor`. Inline against the
-      // resolved crew's itemStore.
-      const open = await crew.itemStore.listOpen({ type: 'subtask-proposal' });
+      // resolved circle's itemStore.
+      const open = await circle.itemStore.listOpen({ type: 'subtask-proposal' });
       const mine = open.filter((it) => it?.source?.targetAssignee === actor);
       if (mine.length === 0) {
         return { text: 'No subtask-proposals waiting on you. ✓' };
@@ -567,14 +567,14 @@ export function buildBotSkills({ bundleResolver } = {}) {
     }, { ...BOT_SKILL_OPTS, description: 'Bot: list open subtask-proposals waiting on the calling actor.' }),
 
     defineSkill('bot.forceComplete', async ({ parts, from, envelope, agent }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { text: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { text: 'circleId required' };
       const actor = effectiveActor({ from, envelope });
       const a = argsFromParts(parts);
-      const resolved = await _resolveId(crew.itemStore, a.id);
+      const resolved = await _resolveId(circle.itemStore, a.id);
       if (resolved.error) return { text: resolved.error };
       const r = await callUnderlying(agent, 'forceCompleteTask',
-        { id: resolved.id, reason: a.reason }, actor, crew.circleId);
+        { id: resolved.id, reason: a.reason }, actor, circle.circleId);
       if (r?.error) return { text: `Force-complete error: ${r.error}` };
       return { text: `Force-completed \`${_shortId(resolved.id)}\` ✓ — reason recorded in audit log.` };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: admin force-complete past the dependency gate (mandatory reason).' }),

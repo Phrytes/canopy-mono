@@ -5,14 +5,14 @@ import {
 } from '../../src/v2/circleStream.js';
 
 const circles = [
-  { id: 'crew-1', name: 'Garden crew' },
+  { id: 'circle-1', name: 'Garden circle' },
   { id: 'grp-9',  name: 'Block 9' },
 ];
 
 describe('eventCircleId', () => {
   it('reads circleId / circleId / groupId / buurtId off the payload', () => {
-    expect(eventCircleId({ payload: { circleId: 'crew-1' } })).toBe('crew-1');
-    expect(eventCircleId({ payload: { circleId: 'crew-1' } })).toBe('crew-1');
+    expect(eventCircleId({ payload: { circleId: 'circle-1' } })).toBe('circle-1');
+    expect(eventCircleId({ payload: { circleId: 'circle-1' } })).toBe('circle-1');
     expect(eventCircleId({ payload: { groupId: 'grp-9' } })).toBe('grp-9');
     expect(eventCircleId({ payload: { buurtId: 'grp-9' } })).toBe('grp-9');
   });
@@ -29,13 +29,13 @@ describe('buildCircleStream', () => {
   it('tags each event with its circle name and keeps newest-first', () => {
     const events = [
       { id: 'e1', ts: 300, app: 'stoop',    type: 'buurt-post',   payload: { groupId: 'grp-9' } },
-      { id: 'e2', ts: 100, app: 'tasks', type: 'task-claimed', payload: { circleId: 'crew-1' } },
+      { id: 'e2', ts: 100, app: 'tasks', type: 'task-claimed', payload: { circleId: 'circle-1' } },
       { id: 'e3', ts: 200, app: 'household',type: 'note-added',   payload: {} },
     ];
     const rows = buildCircleStream({ events, circles });
     expect(rows.map((r) => r.id)).toEqual(['e1', 'e3', 'e2']); // ts desc
     expect(rows[0]).toMatchObject({ circleId: 'grp-9', circleName: 'Block 9', app: 'stoop' });
-    expect(rows[2]).toMatchObject({ circleId: 'crew-1', circleName: 'Garden crew' });
+    expect(rows[2]).toMatchObject({ circleId: 'circle-1', circleName: 'Garden circle' });
   });
 
   it('keeps un-scoped events (no circle) untagged rather than dropping them', () => {
@@ -64,8 +64,8 @@ describe('buildKringStream (SP-13)', () => {
     { id: 'a', ts: 300, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'vraag' } },
     { id: 'b', ts: 250, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'aanbod' } },
     { id: 'c', ts: 200, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'grp-9',  kind: 'leen' } },
-    { id: 'd', ts: 150, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'crew-1', kind: 'vraag' } },
-    { id: 'e', ts: 100, app: 'tasks', type: 'task-claimed', payload: { circleId: 'crew-1' } },
+    { id: 'd', ts: 150, app: 'stoop',    type: 'buurt-post', payload: { groupId: 'circle-1', kind: 'vraag' } },
+    { id: 'e', ts: 100, app: 'tasks', type: 'task-claimed', payload: { circleId: 'circle-1' } },
     { id: 'f', ts:  50, app: 'household',type: 'note-added',   payload: {} },
   ];
 

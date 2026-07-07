@@ -1,15 +1,15 @@
 /**
- * lifecycleControls — pure helper deciding which crew-lifecycle CTAs
- * a given role may see, given the crew's current paused/archived
+ * lifecycleControls — pure helper deciding which circle-lifecycle CTAs
+ * a given role may see, given the circle's current paused/archived
  * state.
  *
  * Task #227 (2026-05-24).
  *
  * Mirrors the substrate gating in
- * `apps/tasks-v0/src/skills/crewControls.js`:
+ * `apps/tasks-v0/src/skills/circleControls.js`:
  *
- *   - pauseCrew / unpauseCrew  → admin OR coordinator
- *   - archiveCrew / unarchiveCrew → admin only
+ *   - pauseCircle / unpauseCircle  → admin OR coordinator
+ *   - archiveCircle / unarchiveCircle → admin only
  *
  * Members + observers see no toggles (just a read-only label, surfaced
  * by `LifecycleSection`'s render path).

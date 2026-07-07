@@ -13,7 +13,7 @@
  *     for unset (member, week, half) tuples without distinguishing
  *     "never set" from "explicitly cleared".
  *   - Hints older than `STALE_AFTER_WEEKS` ISO weeks are filtered out
- *     of `getCrewAvailability` reads (visible "expired" state would
+ *     of `getCircleAvailability` reads (visible "expired" state would
  *     leak the absence — drop them entirely).
  */
 

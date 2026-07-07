@@ -1,14 +1,14 @@
 /**
  * circleStoragePolicy — bridge the circle's local `pod` axis to stoop's
- * authoritative four-tier crew storage policy.
+ * authoritative four-tier circle storage policy.
  *
- * A circle is a stoop crew ([[circleid-crewid-alias]]); stoop owns the REAL
- * storage-tier decision (admin-gated, one-way — `setCrewStoragePolicy` /
- * `getCrewStoragePolicy` in apps/stoop/src/skills). canopy-chat's circle
+ * A circle is a stoop circle ([[circleid-crewid-alias]]); stoop owns the REAL
+ * storage-tier decision (admin-gated, one-way — `setCircleStoragePolicy` /
+ * `getCircleStoragePolicy` in apps/stoop/src/skills). canopy-chat's circle
  * settings expose a local `pod` enum (`none|shared|personal|hybrid`) that, until
  * now, went nowhere. This module is the pure mapping + the call orchestration
  * (over an injected `callSkill`) so a circle admin's pod choice actually drives
- * stoop's `podRouting.setCrewPolicy`. Web + mobile share this; the shells inject
+ * stoop's `podRouting.setCirclePolicy`. Web + mobile share this; the shells inject
  * their `callSkill` + active circle id.
  *
  * The `pod` axis ↔ stoop tier is 1:1:
@@ -58,7 +58,7 @@ export function tierToPodAxis(tier) {
 export async function loadCircleStoragePod({ callSkill, circleId } = {}) {
   if (typeof callSkill !== 'function' || !circleId) return null;
   try {
-    const r = await callSkill('stoop', 'getCrewStoragePolicy', { groupId: circleId });
+    const r = await callSkill('stoop', 'getCircleStoragePolicy', { groupId: circleId });
     if (!r || typeof r !== 'object' || r.error) return null;
     return { pod: tierToPodAxis(r.policy), groupPodUri: r.groupPodUri ?? null };
   } catch {
@@ -67,7 +67,7 @@ export async function loadCircleStoragePod({ callSkill, circleId } = {}) {
 }
 
 /**
- * Push a circle's chosen `pod` value to stoop's crew storage policy. Admin-only
+ * Push a circle's chosen `pod` value to stoop's circle storage policy. Admin-only
  * + one-way (no downgrade to no-pod) are enforced BY THE SKILL — this surfaces
  * the result/error verbatim so the shell can show a localized notice.
  *
@@ -84,7 +84,7 @@ export async function pushCircleStoragePolicy({ callSkill, circleId, pod, groupP
   const storagePolicy = podAxisToTier(pod);
   let r;
   try {
-    r = await callSkill('stoop', 'setCrewStoragePolicy', {
+    r = await callSkill('stoop', 'setCircleStoragePolicy', {
       groupId: circleId,
       storagePolicy,
       ...(groupPodUri ? { groupPodUri } : {}),

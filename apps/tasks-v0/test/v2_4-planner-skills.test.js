@@ -6,12 +6,12 @@ import { describe, it, expect } from 'vitest';
 
 import { dispatch } from '../src/bot/dispatch.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE = 'https://id.example/anne';
 const KID  = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -21,23 +21,23 @@ const CREW = {
   ],
 };
 
-function call(crew, name, data, from) {
-  return crew.agent.skills.get(name).handler({
+function call(circle, name, data, from) {
+  return circle.agent.skills.get(name).handler({
     parts: [{ type: 'DataPart', data: data ?? {} }],
     from,
-    agent: crew.agent,
+    agent: circle.agent,
     envelope: null,
   });
 }
 
 async function setup() {
   const bundle = buildBundle();
-  const crew = await createCrewAgent({
-    crewConfig:           CREW,
+  const circle = await createCircleAgent({
+    circleConfig:           CIRCLE,
     localStoreBundle:     bundle,
     wireOnboardingSkills: false,
   });
-  return { bundle, crew };
+  return { bundle, circle };
 }
 
 describe('V2.4 — planner skills', () => {
@@ -50,32 +50,32 @@ describe('V2.4 — planner skills', () => {
   });
 
   it('suggestSchedule returns suggestions for own assignments only', async () => {
-    const { crew } = await setup();
+    const { circle } = await setup();
     const dueAt = Date.now() + 3 * 86_400_000;
-    const r = await call(crew, 'addTask', { text: 'mine', dueAt, estimateMinutes: 60 }, ANNE);
-    await call(crew, 'claimTask', { id: r.task.id }, KID);
+    const r = await call(circle, 'addTask', { text: 'mine', dueAt, estimateMinutes: 60 }, ANNE);
+    await call(circle, 'claimTask', { id: r.task.id }, KID);
 
-    const sugg = await call(crew, 'suggestSchedule', {}, KID);
+    const sugg = await call(circle, 'suggestSchedule', {}, KID);
     expect(sugg.suggestions).toHaveLength(1);
     expect(sugg.suggestions[0].taskId).toBe(r.task.id);
 
     // Anne (not assignee) sees nothing — listOpen({assignee: ANNE}) is empty.
-    const anneSugg = await call(crew, 'suggestSchedule', {}, ANNE);
+    const anneSugg = await call(circle, 'suggestSchedule', {}, ANNE);
     expect(anneSugg.suggestions).toEqual([]);
-    await crew.close();
+    await circle.close();
   });
 
   it('acceptSchedule sets scheduledAt; only assignee may accept', async () => {
-    const { crew } = await setup();
+    const { circle } = await setup();
     const dueAt = Date.now() + 3 * 86_400_000;
-    const r = await call(crew, 'addTask', { text: 'pickme', dueAt, estimateMinutes: 60 }, ANNE);
-    await call(crew, 'claimTask', { id: r.task.id }, KID);
+    const r = await call(circle, 'addTask', { text: 'pickme', dueAt, estimateMinutes: 60 }, ANNE);
+    await call(circle, 'claimTask', { id: r.task.id }, KID);
 
-    const sugg = await call(crew, 'suggestSchedule', {}, KID);
+    const sugg = await call(circle, 'suggestSchedule', {}, KID);
     const target = sugg.suggestions[0];
     expect(target).toBeTruthy();
 
-    const okR = await call(crew, 'acceptSchedule', {
+    const okR = await call(circle, 'acceptSchedule', {
       taskId:    target.taskId,
       slotStart: target.slotStart,
       slotEnd:   target.slotEnd,
@@ -84,52 +84,52 @@ describe('V2.4 — planner skills', () => {
     expect(okR.task.scheduledAt).toBe(target.slotStart);
 
     // Anne (not assignee) is denied.
-    const denied = await call(crew, 'acceptSchedule', {
+    const denied = await call(circle, 'acceptSchedule', {
       taskId: r.task.id, slotStart: target.slotStart, slotEnd: target.slotEnd,
     }, ANNE);
     expect(denied.error).toMatch(/assignee/);
-    await crew.close();
+    await circle.close();
   });
 
   it('rejectSchedule is a true no-op (returns ok)', async () => {
-    const { crew } = await setup();
-    const r = await call(crew, 'rejectSchedule', { taskId: 'fake' }, KID);
+    const { circle } = await setup();
+    const r = await call(circle, 'rejectSchedule', { taskId: 'fake' }, KID);
     expect(r).toEqual({ ok: true, taskId: 'fake' });
-    await crew.close();
+    await circle.close();
   });
 });
 
 describe('V2.4 — bot.plan / bot.accept', () => {
   it('bot.plan returns top-3; bot.accept commits the chosen suggestion', async () => {
-    const { crew } = await setup();
+    const { circle } = await setup();
     const dueAt = Date.now() + 3 * 86_400_000;
-    const r = await call(crew, 'addTask', { text: 'pickme', dueAt, estimateMinutes: 60 }, ANNE);
-    await call(crew, 'claimTask', { id: r.task.id }, KID);
+    const r = await call(circle, 'addTask', { text: 'pickme', dueAt, estimateMinutes: 60 }, ANNE);
+    await call(circle, 'claimTask', { id: r.task.id }, KID);
 
-    const planDef = crew.agent.skills.get('bot.plan');
-    const planReply = await planDef.handler({ parts: [], from: KID, agent: crew.agent, envelope: null });
+    const planDef = circle.agent.skills.get('bot.plan');
+    const planReply = await planDef.handler({ parts: [], from: KID, agent: circle.agent, envelope: null });
     expect(planReply.text).toMatch(/Top suggestions/);
 
-    const accDef = crew.agent.skills.get('bot.accept');
+    const accDef = circle.agent.skills.get('bot.accept');
     const accReply = await accDef.handler({
       parts: [{ type: 'DataPart', data: { taskId: r.task.id, n: 1 } }],
-      from: KID, agent: crew.agent, envelope: null,
+      from: KID, agent: circle.agent, envelope: null,
     });
     expect(accReply.text).toMatch(/Accepted/);
 
-    const updated = await crew.itemStore.getById(r.task.id);
+    const updated = await circle.itemStore.getById(r.task.id);
     expect(updated.scheduledAt).toBeGreaterThan(0);
-    await crew.close();
+    await circle.close();
   });
 
   it('bot.accept without a matching suggestion replies with the friendly hint', async () => {
-    const { crew } = await setup();
-    const accDef = crew.agent.skills.get('bot.accept');
+    const { circle } = await setup();
+    const accDef = circle.agent.skills.get('bot.accept');
     const reply = await accDef.handler({
       parts: [{ type: 'DataPart', data: { taskId: 'nonexistent', n: 1 } }],
-      from: KID, agent: crew.agent, envelope: null,
+      from: KID, agent: circle.agent, envelope: null,
     });
     expect(reply.text).toMatch(/no suggestions/i);
-    await crew.close();
+    await circle.close();
   });
 });

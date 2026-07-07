@@ -1,5 +1,5 @@
 /**
- * botBindings — V1.5 admin management of `crew.bot.chatBindings`.
+ * botBindings — V1.5 admin management of `circle.bot.chatBindings`.
  *
  * Three skills:
  *
@@ -8,9 +8,9 @@
  *                                         overwrite a binding.
  *   - `removeBotChatBinding({chatId})`  — admin only. Remove one.
  *
- * Mutates `liveCrew.bot.chatBindings` through the same `crewMutator`
- * pattern crewControls / customRoles already use. Restart-survival
- * comes via the existing crew-config persistence (whatever path the
+ * Mutates `liveCircle.bot.chatBindings` through the same `circleMutator`
+ * pattern circleControls / customRoles already use. Restart-survival
+ * comes via the existing circle-config persistence (whatever path the
  * caller wired up) — these skills don't touch storage directly.
  *
  * Validation:
@@ -18,7 +18,7 @@
  *     numeric, but other bridges may use other shapes — we accept
  *     anything non-empty and let the bridge reject malformed ids
  *     at dispatch time.
- *   - `webid` must be a non-empty string AND be a known crew member.
+ *   - `webid` must be a non-empty string AND be a known circle member.
  *     Binding to a non-member is almost certainly a typo; rejecting
  *     it early surfaces the mistake before the user wonders why
  *     their commands are silently denied.
@@ -28,12 +28,12 @@ import { defineSkill } from '@canopy/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 
-function liveBot(crew) {
-  if (crew?.bot && typeof crew.bot === 'object') {
-    const cb = crew.bot.chatBindings && typeof crew.bot.chatBindings === 'object'
-      ? crew.bot.chatBindings
+function liveBot(circle) {
+  if (circle?.bot && typeof circle.bot === 'object') {
+    const cb = circle.bot.chatBindings && typeof circle.bot.chatBindings === 'object'
+      ? circle.bot.chatBindings
       : {};
-    return { ...crew.bot, chatBindings: { ...cb } };
+    return { ...circle.bot, chatBindings: { ...cb } };
   }
   return { chatBindings: {} };
 }
@@ -49,15 +49,15 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('getBotChatBindings', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
       }
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const bindings = lc.bot?.chatBindings ?? {};
-      const botAgentRegistry = crew.botAgentRegistry;
+      const botAgentRegistry = circle.botAgentRegistry;
       // Index any cap-token bindings by chatId for the mode column.
       const tokenIndex = new Map();
       if (botAgentRegistry) {
@@ -93,9 +93,9 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('setBotChatBinding', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
 
       const a = argsFromParts(parts);
@@ -108,26 +108,26 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
       const chatId = a.chatId.trim();
       const webid  = a.webid.trim();
 
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const isMember = (lc.members ?? []).some((m) => m?.webid === webid);
       if (!isMember) {
-        return { error: 'webid is not a crew member', webid };
+        return { error: 'webid is not a circle member', webid };
       }
 
       const nextBot = liveBot(lc);
       nextBot.chatBindings[chatId] = webid;
-      crew.crewMutator({ bot: nextBot });
+      circle.circleMutator({ bot: nextBot });
 
       return { ok: true, chatId, webid };
     }, {
-      description: 'Bind a chatId to a crew member webid (admin only).',
+      description: 'Bind a chatId to a circle member webid (admin only).',
       visibility:  'authenticated',
     }),
 
     defineSkill('removeBotChatBinding', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
 
       const a = argsFromParts(parts);
@@ -136,17 +136,17 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
       }
       const chatId = a.chatId.trim();
 
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const nextBot = liveBot(lc);
       if (!(chatId in nextBot.chatBindings)) {
         return { error: 'chatId not bound', chatId };
       }
       delete nextBot.chatBindings[chatId];
-      crew.crewMutator({ bot: nextBot });
+      circle.circleMutator({ bot: nextBot });
 
       // V1.5 — also revoke any cap-token bot agent for this chatId.
       // Best-effort; the binding itself is gone regardless.
-      const botAgentRegistry = crew.botAgentRegistry;
+      const botAgentRegistry = circle.botAgentRegistry;
       if (botAgentRegistry?.get(chatId)) {
         try { await botAgentRegistry.revoke({ chatId }); } catch { /* noop */ }
       }
@@ -168,11 +168,11 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
      * Replaces any existing cap-token for the same chatId (rotates).
      */
     defineSkill('issueBotToken', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
-      const botAgentRegistry = crew.botAgentRegistry;
+      const botAgentRegistry = circle.botAgentRegistry;
       if (!botAgentRegistry) {
         return { error: 'cap-token mode not available — bus or PolicyEngine missing' };
       }
@@ -182,7 +182,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
         return { error: 'chatId required' };
       }
       const chatId = a.chatId.trim();
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const webid = lc.bot?.chatBindings?.[chatId];
       if (!webid) {
         return { error: 'chatId is not bound; setBotChatBinding first', chatId };
@@ -215,11 +215,11 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
      * binding entirely, call `removeBotChatBinding` instead.
      */
     defineSkill('revokeBotToken', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
-      const botAgentRegistry = crew.botAgentRegistry;
+      const botAgentRegistry = circle.botAgentRegistry;
       if (!botAgentRegistry) {
         return { error: 'cap-token mode not available' };
       }

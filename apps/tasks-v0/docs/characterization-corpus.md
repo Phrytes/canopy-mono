@@ -24,7 +24,7 @@
 For each page, two-layer snapshot:
 
 1. **Static HTML** — the raw HTML fetched from `mountLocalUi` after
-   first paint, with a deterministic actor + crew context.  Catches:
+   first paint, with a deterministic actor + circle context.  Catches:
    structural changes, removed/added affordances, role-gated visibility.
 
 2. **Interaction matrix** — for the page's primary affordances (a few
@@ -42,8 +42,8 @@ characterization tests live under
 Shared setup in `test/characterization/setup.js` exposes:
 
 ```js
-buildCharacterizationFixture({ actor, crewConfig?, extraStaticFiles? })
-  → { baseUrl, bundle, crewState, fetchPage(name), teardown }
+buildCharacterizationFixture({ actor, circleConfig?, extraStaticFiles? })
+  → { baseUrl, bundle, circleState, fetchPage(name), teardown }
 ```
 
 This keeps every characterization test small (3–10 lines of setup +
@@ -80,8 +80,8 @@ Last updated: 2026-05-20.
 | `inbox.html`        | Stable     | None                         | ✅ landed 2026-05-20  | —       |
 | `availability.html` | Stable     | None                         | ✅ landed 2026-05-20  | —       |
 | `privacy.html`      | Stable     | Static HTML check only       | ✅ landed 2026-05-20  | —       |
-| `crews.html`        | IN-FLIGHT  | phase8-ui.test.js (partial)  | ⏸ HOLD until V2 settles  | —       |
-| `crew.html`         | IN-FLIGHT  | phase8-ui.test.js (partial)  | ⏸ HOLD until V2 settles  | —       |
+| `circles.html`        | IN-FLIGHT  | phase8-ui.test.js (partial)  | ⏸ HOLD until V2 settles  | —       |
+| `circle.html`         | IN-FLIGHT  | phase8-ui.test.js (partial)  | ⏸ HOLD until V2 settles  | —       |
 | `onboard.html`      | IN-FLIGHT  | Active development (5 commits)| ⏸ HOLD until V2 settles  | —       |
 | `pod-settings.html` | IN-FLIGHT  | Active development           | ⏸ HOLD until V2 settles  | —       |
 | `welcome.html`      | IN-FLIGHT  | Active development           | ⏸ HOLD until V2 settles  | —       |
@@ -91,7 +91,7 @@ have rich existing test coverage; review/dag/inbox/availability have
 NONE — these are the **highest-value** corpus additions because
 nothing else gates regression on them today.
 
-**In-flight pages (5):** all part of the V2 multi-crew slice; touched
+**In-flight pages (5):** all part of the V2 multi-circle slice; touched
 in the last ~10 commits.  Hold off corpus work — snapshotting an
 in-flight target locks in a transient state.  Add to the corpus as
 each page's V2 work settles.
@@ -119,7 +119,7 @@ Order by value-per-effort (highest first):
 7. **index.html** — same; existing tests are rich, but a clean
    characterization snapshot is still cheap insurance.
 
-When the V2 multi-crew slice lands and the 5 in-flight pages settle,
+When the V2 multi-circle slice lands and the 5 in-flight pages settle,
 add them in the same pattern (status table updated to "Stable", row
 moved to the active corpus).
 

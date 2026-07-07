@@ -3,8 +3,8 @@
  *
  * Skills the workspace UI calls to compose its screens:
  *
- *   - `getCrewConfig()` — read-only snapshot of the live CrewConfig.
- *     The UI uses this for: members chips on /crew, role display,
+ *   - `getCircleConfig()` — read-only snapshot of the live CircleConfig.
+ *     The UI uses this for: members chips on /circle, role display,
  *     subtasksAdminApprovalDepth in /add, etc.
  *
  *   - `listAwaitingApproval()` — items in the `submitted` lifecycle
@@ -13,7 +13,7 @@
  *
  *   - `listSubtaskRequests()` — items of type `subtask-request` that
  *     are not yet completed. Admin/coord only. Powers the admin
- *     queue surface inside /crew.
+ *     queue surface inside /circle.
  *
  *   - `getDagTree({rootId})` — returns the `treeOf` projection
  *     starting at `rootId` (or, when `rootId` omitted, every
@@ -45,20 +45,20 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
   }
 
   return [
-    defineSkill('getCrewConfig', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const lc = crew.liveCrew;
-      return { crew: lc ? { ...lc } : null };
+    defineSkill('getCircleConfig', async ({ parts, from, envelope }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const lc = circle.liveCircle;
+      return { circle: lc ? { ...lc } : null };
     }, {
-      description: 'Read the live CrewConfig (read-only snapshot).',
+      description: 'Read the live CircleConfig (read-only snapshot).',
     }),
 
     defineSkill('listAwaitingApproval', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const open = await crew.itemStore.listOpen();
-      const closed = await crew.itemStore.listClosed();
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const open = await circle.itemStore.listOpen();
+      const closed = await circle.itemStore.listClosed();
       const pending = open
         .filter((it) => itemStoreComputeStatus(it) === 'submitted')
         // V2.7 — include DAG `status` so the Review UI can disable the
@@ -75,24 +75,24 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('listSubtaskRequests', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin or coordinator required' };
       }
-      const open = await crew.itemStore.listOpen({ type: 'subtask-request' });
+      const open = await circle.itemStore.listOpen({ type: 'subtask-request' });
       return { items: open };
     }, {
       description: 'List pending subtask-request items (admin/coord only).',
     }),
 
     defineSkill('getDagTree', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const open   = await crew.itemStore.listOpen();
-      const closed = await crew.itemStore.listClosed();
+      const open   = await circle.itemStore.listOpen();
+      const closed = await circle.itemStore.listClosed();
       const all = [...open, ...closed];
 
       if (typeof a.rootId === 'string' && a.rootId) {
@@ -109,11 +109,11 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('listMyMasteredTasks', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (!from) return { items: [] };
-      const open = await crew.itemStore.listOpen();
-      const closed = await crew.itemStore.listClosed();
+      const open = await circle.itemStore.listOpen();
+      const closed = await circle.itemStore.listClosed();
       const mastered = open
         .filter((it) => (it.master ?? it.addedBy) === from)
         .map((it) => ({
@@ -148,15 +148,15 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
      * forward-compatibility.
      */
     defineSkill('getItemTree', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.itemId !== 'string' || !a.itemId) return { error: 'itemId required' };
 
       // Bridge both embeds shapes: top-level (Tasks canonical) and
       // source.embeds (Stoop-originated items embedded by reference).
       const getItem = async (id) => {
-        const it = await crew.itemStore.getById(id).catch(() => null);
+        const it = await circle.itemStore.getById(id).catch(() => null);
         if (!it) return null;
         return {
           ...it,
@@ -165,8 +165,8 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
         };
       };
 
-      const pseudoPodRead = typeof crew.pseudoPod?.read === 'function'
-        ? (ref) => crew.pseudoPod.read(ref)
+      const pseudoPodRead = typeof circle.pseudoPod?.read === 'function'
+        ? (ref) => circle.pseudoPod.read(ref)
         : undefined;
 
       const resolveExternalRef = createCrossPodRefResolver({

@@ -51,7 +51,7 @@ export {
 } from './dag.js';
 
 // Cross-app embeds traversal (Phase 52.6.1) + the cross-pod-ref
-// resolver (Phase 3.3c — decentralised crew read path).
+// resolver (Phase 3.3c — decentralised circle read path).
 export { treeOf, createCrossPodRefResolver } from './embeds.js';
 
 // SP-5b V0a (2026-05-21) — audience field bridge.

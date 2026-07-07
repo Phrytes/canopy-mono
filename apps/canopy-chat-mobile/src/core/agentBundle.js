@@ -183,7 +183,7 @@ export async function bootAgentBundle(opts = {}) {
   // user-added tasks + re-runs the 4-seed dance (the data-loss bug
   // behind the `cc.firstBootSeeded.v1` flag in App.js).
   // createRealHouseholdAgent threads `opts.tasksPersistDb` into
-  // createBrowserMultiCrewTasksAgent → buildBundle → tasks-v0's own
+  // createBrowserMultiCircleTasksAgent → buildBundle → tasks-v0's own
   // persistPicker (mirrors stoop's three-adapter shape).
   const tasksPersistDb = opts.tasksPersistDb
     ?? (opts.asyncStorage

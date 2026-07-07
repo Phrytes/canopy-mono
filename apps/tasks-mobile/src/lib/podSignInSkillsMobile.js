@@ -33,9 +33,9 @@
  * structured "use the RN hook" error on RN since `OidcSessionRN`
  * has no `.start()`); screens drive sign-in through `useTasksAuth`.
  *
- * The active crew's local-store bundle cache is the
+ * The active circle's local-store bundle cache is the
  * `CachingDataSource` the shared module attaches the pod inner to —
- * we present it as `crew.dataSource` so podSignIn.js's
+ * we present it as `circle.dataSource` so podSignIn.js's
  * `attachInner`/`hasInner` calls land on the same cache
  * `ServiceContext.attachPod` uses (single source of pod-attach
  * truth on mobile).
@@ -59,14 +59,14 @@ function _args(parts) {
  * Build the four pod-sign-in skill definitions.
  *
  * @param {object} args
- * @param {() => object|null} args.podCrewProvider
- *   Returns a `crew`-shaped object `{dataSource, oidcSession?,
+ * @param {() => object|null} args.podCircleProvider
+ *   Returns a `circle`-shaped object `{dataSource, oidcSession?,
  *   oidcVault?}` whose `dataSource` is the active local-store bundle
  *   cache (CachingDataSource). Returning `null` yields a structured
  *   `{ok:false}` (no pod cache available — e.g. cache:false).
  *   ServiceContext keeps a single mutable holder so the same object
  *   carries `oidcSession` across the start/complete/status/signout
- *   calls (mirrors tasks-v0's per-crew `crew.oidcSession` slot).
+ *   calls (mirrors tasks-v0's per-circle `circle.oidcSession` slot).
  * @param {() => object} args.sessionFactory
  *   Builds the device OIDC session (an `OidcSessionRN`-shaped
  *   object exposing `adoptTokens`/`isAuthenticated`/
@@ -79,18 +79,18 @@ function _args(parts) {
  * @returns {Array<object>}
  */
 export function buildPodSignInSkillsMobile({
-  podCrewProvider,
+  podCircleProvider,
   sessionFactory,
   dataSourceFactory,
 } = {}) {
-  if (typeof podCrewProvider !== 'function') {
-    throw new TypeError('buildPodSignInSkillsMobile: podCrewProvider required');
+  if (typeof podCircleProvider !== 'function') {
+    throw new TypeError('buildPodSignInSkillsMobile: podCircleProvider required');
   }
   if (typeof sessionFactory !== 'function') {
     throw new TypeError('buildPodSignInSkillsMobile: sessionFactory required');
   }
 
-  const NO_CREW = { ok: false, error: 'no pod-capable crew (bundle cache unavailable)' };
+  const NO_CIRCLE = { ok: false, error: 'no pod-capable circle (bundle cache unavailable)' };
 
   return [
     /**
@@ -101,11 +101,11 @@ export function buildPodSignInSkillsMobile({
      * error (OidcSessionRN has no `.start()`). Screens use the hook.
      */
     defineSkill('startPodSignIn', async ({ parts }) => {
-      const crew = podCrewProvider();
-      if (!crew) return NO_CREW;
+      const circle = podCircleProvider();
+      if (!circle) return NO_CIRCLE;
       const a = _args(parts);
       return startPodSignIn({
-        crew,
+        circle,
         issuer:      a.issuer,
         redirectUrl: a.redirectUrl,
         sessionFactory,
@@ -123,11 +123,11 @@ export function buildPodSignInSkillsMobile({
      * and attaches it to the bundle cache.
      */
     defineSkill('completePodSignIn', async ({ parts }) => {
-      const crew = podCrewProvider();
-      if (!crew) return NO_CREW;
+      const circle = podCircleProvider();
+      if (!circle) return NO_CIRCLE;
       const a = _args(parts);
       return completePodSignIn({
-        crew,
+        circle,
         tokens:      a.tokens,
         callbackUrl: a.callbackUrl,   // web-shaped callers still work
         sessionFactory,
@@ -144,9 +144,9 @@ export function buildPodSignInSkillsMobile({
      * is preserved so the user keeps working offline.
      */
     defineSkill('signOutOfPod', async () => {
-      const crew = podCrewProvider();
-      if (!crew) return { ok: true };   // nothing attached → no-op success
-      return signOutOfPod({ crew });
+      const circle = podCircleProvider();
+      if (!circle) return { ok: true };   // nothing attached → no-op success
+      return signOutOfPod({ circle });
     }, {
       description: 'Sign out of the pod; local cache is preserved.',
       visibility:  'authenticated',
@@ -158,9 +158,9 @@ export function buildPodSignInSkillsMobile({
      * consumes.
      */
     defineSkill('podSignInStatus', async () => {
-      const crew = podCrewProvider();
-      if (!crew) return { signedIn: false };
-      return podSignInStatus({ crew });
+      const circle = podCircleProvider();
+      if (!circle) return { signedIn: false };
+      return podSignInStatus({ circle });
     }, {
       description: 'Read-only Solid pod sign-in status.',
       visibility:  'authenticated',

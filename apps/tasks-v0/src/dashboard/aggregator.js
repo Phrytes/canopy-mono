@@ -1,7 +1,7 @@
 /**
- * aggregator — Tasks V2.5 cross-crew dashboard.
+ * aggregator — Tasks V2.5 cross-circle dashboard.
  *
- * Pure function over a list of crew bundles. For each one, projects:
+ * Pure function over a list of circle bundles. For each one, projects:
  *   { circleId, name, kind, counts: {open, overdue, awaitingApproval, mine} }
  *
  * Counts:
@@ -11,14 +11,14 @@
  *                          (admin/coord see all submitted items)
  *   - mine               — open AND `assignee === actor`
  *
- * `aggregateCrews({crews, actor, now?})` returns the array sorted with
- * the busiest crews first. Pure — no I/O. Caller owns Crew lifecycle.
+ * `aggregateCircles({circles, actor, now?})` returns the array sorted with
+ * the busiest circles first. Pure — no I/O. Caller owns Circle lifecycle.
  */
 
 const SUBTASK_REQ = 'subtask-request';
 
 /**
- * @typedef {object} CrewSummary
+ * @typedef {object} CircleSummary
  * @property {string} circleId
  * @property {string} name
  * @property {string} kind
@@ -27,25 +27,25 @@ const SUBTASK_REQ = 'subtask-request';
 
 /**
  * @param {object} args
- * @param {Array<{crew: object, openTasks: object[]}>} args.crews
- *   Pre-computed input — caller (the skill or test) reads each crew's
- *   open items via the crew's ItemStore and shapes them into this list.
+ * @param {Array<{circle: object, openTasks: object[]}>} args.circles
+ *   Pre-computed input — caller (the skill or test) reads each circle's
+ *   open items via the circle's ItemStore and shapes them into this list.
  * @param {string} args.actor
- * @param {(actor: string, crew: object) => string | undefined} [args.roleOf]
- *   Optional role lookup per crew. Used to decide "all submitted vs
+ * @param {(actor: string, circle: object) => string | undefined} [args.roleOf]
+ *   Optional role lookup per circle. Used to decide "all submitted vs
  *   only the ones I'd approve". Defaults to a no-op (member view).
  * @param {number} [args.now=Date.now()]
- * @returns {CrewSummary[]}
+ * @returns {CircleSummary[]}
  */
-export function aggregateCrews({ crews, actor, roleOf, now = Date.now() }) {
-  if (!Array.isArray(crews)) throw new TypeError('crews[] required');
+export function aggregateCircles({ circles, actor, roleOf, now = Date.now() }) {
+  if (!Array.isArray(circles)) throw new TypeError('circles[] required');
   if (typeof actor !== 'string' || !actor) throw new TypeError('actor required');
 
   const out = [];
-  for (const entry of crews) {
-    const crew = entry?.crew ?? {};
+  for (const entry of circles) {
+    const circle = entry?.circle ?? {};
     const tasks = entry?.openTasks ?? [];
-    const role  = typeof roleOf === 'function' ? roleOf(actor, crew) : 'member';
+    const role  = typeof roleOf === 'function' ? roleOf(actor, circle) : 'member';
 
     let open = 0;
     let overdue = 0;
@@ -66,9 +66,9 @@ export function aggregateCrews({ crews, actor, roleOf, now = Date.now() }) {
     }
 
     out.push({
-      circleId: crew.circleId ?? 'unknown',
-      name:   crew.name ?? crew.circleId ?? 'unknown',
-      kind:   crew.kind ?? 'household',
+      circleId: circle.circleId ?? 'unknown',
+      name:   circle.name ?? circle.circleId ?? 'unknown',
+      kind:   circle.kind ?? 'household',
       counts: { open, overdue, awaitingApproval, mine },
     });
   }

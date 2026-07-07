@@ -1,5 +1,5 @@
 /**
- * CustomRolesSection — V1.5 custom-role registry per crew.
+ * CustomRolesSection — V1.5 custom-role registry per circle.
  *
  * Phase 41.8.3 (2026-05-09).
  *
@@ -22,8 +22,8 @@ export function CustomRolesSection() {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const list = useSkillResult('listKnownRoles', {});
-  const reg  = useSkill('registerCrewCustomRole');
-  const unreg = useSkill('unregisterCrewCustomRole');
+  const reg  = useSkill('registerCircleCustomRole');
+  const unreg = useSkill('unregisterCircleCustomRole');
 
   const [id, setId]     = useState('');
   const [rank, setRank] = useState('5');
@@ -63,7 +63,7 @@ export function CustomRolesSection() {
   if (!isAdmin) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t('mobile.crew_settings.admin_only')}
+        {t('mobile.circle_settings.admin_only')}
       </Text>
     );
   }
@@ -72,7 +72,7 @@ export function CustomRolesSection() {
     <View>
       {customs.length === 0 ? (
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm, marginBottom: SPACING.md }}>
-          {t('mobile.crew_settings.custom_roles_empty')}
+          {t('mobile.circle_settings.custom_roles_empty')}
         </Text>
       ) : customs.map((r) => (
         <View
@@ -110,7 +110,7 @@ export function CustomRolesSection() {
         <TextInput
           value={id}
           onChangeText={setId}
-          placeholder={t('mobile.crew_settings.custom_role_id_placeholder')}
+          placeholder={t('mobile.circle_settings.custom_role_id_placeholder')}
           placeholderTextColor={COLORS.textMuted}
           autoCapitalize="none"
           accessibilityLabel="custom-role-id-input"
@@ -143,7 +143,7 @@ export function CustomRolesSection() {
           }}
         >
           <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.sm, fontWeight: '600' }}>
-            {t('mobile.crew_settings.custom_role_add')}
+            {t('mobile.circle_settings.custom_role_add')}
           </Text>
         </Pressable>
       </View>

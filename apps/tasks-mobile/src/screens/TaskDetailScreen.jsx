@@ -23,7 +23,7 @@
  *       - Revoke (master/admin/coordinator) — claimed → ready, with
  *         a mandatory reason.
  *       - Reassign (admin/coordinator) — pick a new webid from the
- *         crew via `MemberPickerSheet`. Pass `null` to clear.
+ *         circle via `MemberPickerSheet`. Pass `null` to clear.
  *       - Remove (admin only) — destructive confirm.
  *       - Change approval-mode (master) — auto / approval / dual.
  *       - Force-spawn sub-task (admin) — routes to ComposeScreen
@@ -96,14 +96,14 @@ export function TaskDetailScreen() {
 
   const status = useMemo(() => task ? describeTaskStatus(task) : null, [task]);
   const actor  = svc?.identity?.webid ?? svc?.identity?.pubKey ?? null;
-  const cs     = svc?.crews?.get?.(svc?.activeCircleId);
+  const cs     = svc?.circles?.get?.(svc?.activeCircleId);
   // 41.18 follow-up — pubKey ↔ webid resolution via the shared
   // helper so mobile + desktop stay in step. See
   // `apps/tasks-v0/src/ui/effectiveActor.js`.
-  const role = resolveActorRole({ from: actor, crewState: cs });
+  const role = resolveActorRole({ from: actor, circleState: cs });
   const isAdmin       = role === 'admin' || role === 'coordinator';
   const isAdminOnly   = role === 'admin';
-  const members       = cs?.liveCrew?.members ?? [];
+  const members       = cs?.liveCircle?.members ?? [];
 
   const isMaster = task && actor &&
     (task.master === actor || task.addedBy === actor);
@@ -533,7 +533,7 @@ export function TaskDetailScreen() {
             edit here: those have dedicated lifecycle CTAs and the
             substrate's editTask doesn't model lifecycle-aware
             permissions yet (gating happens via canEditBody +
-            crew paused/archived). */}
+            circle paused/archived). */}
         {(status.kind === 'ready' || status.kind === 'waiting'
           || status.kind === 'blocked' || status.kind === 'claimed') ? (
           <Action

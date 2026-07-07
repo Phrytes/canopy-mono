@@ -3,7 +3,7 @@
  *
  * The household pilot (`apps/canopy-chat/src/v2/householdApp.js`) exposed `callCapability(atom, noun, args)` over
  * a dissolved `CircleItemStore`. tasks-v0 is NOT dissolved — its ops are legacy `@canopy/core` `defineSkill`
- * handlers (`({parts, from, envelope}) => …`) whose structured args ride in a single `DataPart` and whose crew is
+ * handlers (`({parts, from, envelope}) => …`) whose structured args ride in a single `DataPart` and whose circle is
  * resolved from `parts` by a `bundleResolver`. So this adapter is a thin DataPart WRAPPER over the existing
  * `buildSkills`, adding NOTHING to the per-op logic:
  *   - `callSkill(opId, args, ctx)`   — invoke a skill by id with a synthetic `[DataPart({...args, circleId})]`.
@@ -25,22 +25,22 @@ import { tasksManifest } from '../manifest.js';
 
 /**
  * @param {object}   deps
- * @param {(parts:Array, ctx?:object) => object|null} deps.bundleResolver  resolves the CrewState (per v2.8 single-agent).
- * @param {() => Iterable<object>} [deps.crewsProvider]                     dashboard/fallback crew iteration.
+ * @param {(parts:Array, ctx?:object) => object|null} deps.bundleResolver  resolves the CircleState (per v2.8 single-agent).
+ * @param {() => Iterable<object>} [deps.circlesProvider]                     dashboard/fallback circle iteration.
  * @param {object}   [deps.manifest]  defaults to the real tasks manifest (injectable for tests).
  */
-export function createTasksService({ bundleResolver, crewsProvider, manifest = tasksManifest } = {}) {
+export function createTasksService({ bundleResolver, circlesProvider, manifest = tasksManifest } = {}) {
   if (typeof bundleResolver !== 'function') {
     throw new TypeError('createTasksService: bundleResolver(parts, ctx) required');
   }
-  const byId = new Map(buildSkills({ bundleResolver, crewsProvider }).map((s) => [s.id, s.handler]));
+  const byId = new Map(buildSkills({ bundleResolver, circlesProvider }).map((s) => [s.id, s.handler]));
 
   const service = {
     /** Invoke an op by id with structured args (the DataPart wrapper the legacy skills expect). */
     async callSkill(opId, args = {}, ctx = {}) {
       const handler = byId.get(opId);
       if (!handler) throw new Error(`tasksService.callSkill: unknown op "${opId}"`);
-      // The crew is resolved from the DataPart (multiCrewResolver reads `circleId`/`_scope`); a singleCrewResolver
+      // The circle is resolved from the DataPart (multiCircleResolver reads `circleId`/`_scope`); a singleCircleResolver
       // ignores it. circleId ≡ circleId (CIRCLE_ID_IS_CREW_ID_ALIAS).
       const scopeId = ctx.circleId ?? ctx.circleId ?? args.circleId;
       const data = scopeId != null ? { ...args, circleId: scopeId } : { ...args };

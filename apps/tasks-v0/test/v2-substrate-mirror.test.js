@@ -2,7 +2,7 @@
  * Tasks V2 Phase 52.9.3 — substrate-mirror fan-out.
  *
  * Verifies the addTask cross-device fan-out path:
- *   1. Two crew bundles on separate agents (Anne + Bob), peered to
+ *   1. Two circle bundles on separate agents (Anne + Bob), peered to
  *      each other on a shared InternalBus.
  *   2. Anne calls addTask; the task lands in Anne's itemStore.
  *   3. The notifyEnvelope publish reaches Bob's bundle; Bob's
@@ -16,15 +16,15 @@
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
 import { VaultMemory } from '@canopy/vault';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
 
 const ANNE = 'https://id.example/anne';
 const BOB  = 'https://id.example/bob';
 
-const CREW_CONFIG = {
-  circleId:  'fan-out-crew',
-  name:    'Fan-out Test Crew',
+const CIRCLE_CONFIG = {
+  circleId:  'fan-out-circle',
+  name:    'Fan-out Test Circle',
   kind:    'project',
   members: [
     { webid: ANNE, displayName: 'Anne', role: 'admin'  },
@@ -54,15 +54,15 @@ async function buildPeeredBundles() {
   const txA = new InternalTransport(bus, idA.pubKey);
   const txB = new InternalTransport(bus, idB.pubKey);
 
-  const anneBundle = await createCrewAgent({
-    crewConfig:       CREW_CONFIG,
+  const anneBundle = await createCircleAgent({
+    circleConfig:       CIRCLE_CONFIG,
     localStoreBundle: lsA,
     identity:         idA,
     transport:        txA,
     label:            'Anne',
   });
-  const bobBundle = await createCrewAgent({
-    crewConfig:       CREW_CONFIG,
+  const bobBundle = await createCircleAgent({
+    circleConfig:       CIRCLE_CONFIG,
     localStoreBundle: lsB,
     identity:         idB,
     transport:        txB,
@@ -87,7 +87,7 @@ describe('Tasks V2 Phase 52.9.3 — substrate-mirror fan-out', () => {
     const { anneBundle, bobBundle } = await buildPeeredBundles();
 
     const r = await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'fan-out-crew',
+      circleId: 'fan-out-circle',
       text:   'shared task',
     }, ANNE);
     expect(r?.task?.text).toBe('shared task');
@@ -104,12 +104,12 @@ describe('Tasks V2 Phase 52.9.3 — substrate-mirror fan-out', () => {
   it('inbound envelope from a different circleId is silently dropped', async () => {
     const { anneBundle, bobBundle } = await buildPeeredBundles();
 
-    // Manually publish a task envelope tagged for a DIFFERENT crew.
+    // Manually publish a task envelope tagged for a DIFFERENT circle.
     // Bob's substrate-mirror should NOT mirror it into his itemStore.
-    const fakeUri = `pseudo-pod://${anneBundle.substrateDeviceId}/tasks/crews/some-other-crew/tasks/abc`;
+    const fakeUri = `pseudo-pod://${anneBundle.substrateDeviceId}/tasks/circles/some-other-circle/tasks/abc`;
     const fakePayload = {
       id:   'fake-task',
-      text: 'wrong-crew-task',
+      text: 'wrong-circle-task',
       type: 'task',
     };
 
@@ -123,10 +123,10 @@ describe('Tasks V2 Phase 52.9.3 — substrate-mirror fan-out', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     const bobItems = await bobBundle.itemStore.listOpen();
-    expect(bobItems.map(i => i.text)).not.toContain('wrong-crew-task');
+    expect(bobItems.map(i => i.text)).not.toContain('wrong-circle-task');
   });
 
-  it('A2-equivalent — fetch-resource is registered with groupCheck on every crew bundle', async () => {
+  it('A2-equivalent — fetch-resource is registered with groupCheck on every circle bundle', async () => {
     const { anneBundle, idB } = await buildPeeredBundles();
     const fetchDef = anneBundle.agent.skills.get('fetch-resource');
     expect(fetchDef).toBeTruthy();
@@ -159,7 +159,7 @@ describe('Tasks V2 Phase 52.9.3 — substrate-mirror fan-out', () => {
     void idB; // pubKey only used for routing above
 
     await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'fan-out-crew',
+      circleId: 'fan-out-circle',
       text:   'idempotent task',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -228,14 +228,14 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     const { anneBundle, bobBundle } = await buildPeeredBundles();
 
     const addRes = await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'fan-out-crew',
+      circleId: 'fan-out-circle',
       text:   'task to claim',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Bob has the task; Anne claims it. The claim should sync to Bob.
     await callSkill(anneBundle.agent, 'claimTask', {
-      circleId: 'fan-out-crew',
+      circleId: 'fan-out-circle',
       id:     addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -251,18 +251,18 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     const { anneBundle, bobBundle } = await buildPeeredBundles();
 
     const addRes = await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'fan-out-crew',
+      circleId: 'fan-out-circle',
       text:   'task to complete',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     // Claim then complete.
     await callSkill(anneBundle.agent, 'claimTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id,
+      circleId: 'fan-out-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
     await callSkill(anneBundle.agent, 'completeTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id,
+      circleId: 'fan-out-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -280,24 +280,24 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     // Anne adds, claims, and submits with `approval: 'creator'` so
     // BOB is the approver (Anne created the task → master=Anne but
     // approval=creator means the issuer signs off; in our 2-member
-    // crew, that's still Anne. To make Bob the approver, use
+    // circle, that's still Anne. To make Bob the approver, use
     // explicit approval=<bob>). For this test we just exercise the
     // state-machine replication on Anne's side and check Bob sees
     // it: Anne is the assignee + approver.
     const addRes = await callSkill(anneBundle.agent, 'addTask', {
-      circleId:   'fan-out-crew',
+      circleId:   'fan-out-circle',
       text:     'lifecycle task',
       approval: 'creator',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await callSkill(anneBundle.agent, 'claimTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id,
+      circleId: 'fan-out-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await callSkill(anneBundle.agent, 'submitTask', {
-      circleId:      'fan-out-crew',
+      circleId:      'fan-out-circle',
       id:          addRes.task.id,
       deliverable: { kind: 'url', ref: 'https://example/proof' },
     }, ANNE);
@@ -310,7 +310,7 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     expect(synced.reviewLog?.some((r) => r.decision === 'submit')).toBe(true);
 
     await callSkill(anneBundle.agent, 'rejectTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id, note: 'try again',
+      circleId: 'fan-out-circle', id: addRes.task.id, note: 'try again',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -319,10 +319,10 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     expect(synced.reviewLog?.some((r) => r.decision === 'reject')).toBe(true);
 
     await callSkill(anneBundle.agent, 'submitTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id,
+      circleId: 'fan-out-circle', id: addRes.task.id,
     }, ANNE);
     await callSkill(anneBundle.agent, 'approveTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id,
+      circleId: 'fan-out-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -344,7 +344,7 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     const txA = new InternalTransport(bus, idA.pubKey);
     const txB = new InternalTransport(bus, idB.pubKey);
     const cfg = {
-      circleId:  'reassign-crew',
+      circleId:  'reassign-circle',
       name:    'Reassign Test',
       kind:    'project',
       members: [
@@ -352,25 +352,25 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
         { webid: BOB,  role: 'admin' },
       ],
     };
-    const anneBundle = await createCrewAgent({ crewConfig: cfg, localStoreBundle: lsA, identity: idA, transport: txA });
-    const bobBundle  = await createCrewAgent({ crewConfig: cfg, localStoreBundle: lsB, identity: idB, transport: txB });
+    const anneBundle = await createCircleAgent({ circleConfig: cfg, localStoreBundle: lsA, identity: idA, transport: txA });
+    const bobBundle  = await createCircleAgent({ circleConfig: cfg, localStoreBundle: lsB, identity: idB, transport: txB });
     anneBundle.agent.addPeer(idB.pubKey, idB.pubKey);
     bobBundle.agent.addPeer(idA.pubKey, idA.pubKey);
     await anneBundle.tasksMirror?.addPeer(idB.pubKey);
     await bobBundle.tasksMirror?.addPeer(idA.pubKey);
 
     const addRes = await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'reassign-crew', text: 'reassignable',
+      circleId: 'reassign-circle', text: 'reassignable',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await callSkill(anneBundle.agent, 'claimTask', {
-      circleId: 'reassign-crew', id: addRes.task.id,
+      circleId: 'reassign-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await callSkill(anneBundle.agent, 'reassignTask', {
-      circleId: 'reassign-crew', id: addRes.task.id, newAssignee: BOB,
+      circleId: 'reassign-circle', id: addRes.task.id, newAssignee: BOB,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -384,17 +384,17 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     const { anneBundle, bobBundle } = await buildPeeredBundles();
 
     const addRes = await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'fan-out-crew', text: 'revokable',
+      circleId: 'fan-out-circle', text: 'revokable',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await callSkill(anneBundle.agent, 'claimTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id,
+      circleId: 'fan-out-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     await callSkill(anneBundle.agent, 'revokeTask', {
-      circleId: 'fan-out-crew', id: addRes.task.id, reason: 'changed mind',
+      circleId: 'fan-out-circle', id: addRes.task.id, reason: 'changed mind',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -414,7 +414,7 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     const txA = new InternalTransport(bus, idA.pubKey);
     const txB = new InternalTransport(bus, idB.pubKey);
     const adminConfig = {
-      circleId:  'remove-crew',
+      circleId:  'remove-circle',
       name:    'Removal Test',
       kind:    'project',
       members: [
@@ -422,11 +422,11 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
         { webid: BOB,  role: 'admin' },
       ],
     };
-    const anneBundle = await createCrewAgent({
-      crewConfig: adminConfig, localStoreBundle: lsA, identity: idA, transport: txA, label: 'Anne',
+    const anneBundle = await createCircleAgent({
+      circleConfig: adminConfig, localStoreBundle: lsA, identity: idA, transport: txA, label: 'Anne',
     });
-    const bobBundle = await createCrewAgent({
-      crewConfig: adminConfig, localStoreBundle: lsB, identity: idB, transport: txB, label: 'Bob',
+    const bobBundle = await createCircleAgent({
+      circleConfig: adminConfig, localStoreBundle: lsB, identity: idB, transport: txB, label: 'Bob',
     });
     anneBundle.agent.addPeer(idB.pubKey, idB.pubKey);
     bobBundle.agent.addPeer(idA.pubKey, idA.pubKey);
@@ -434,14 +434,14 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 1 — mutation fan-out', () => {
     await bobBundle.tasksMirror?.addPeer(idA.pubKey);
 
     const addRes = await callSkill(anneBundle.agent, 'addTask', {
-      circleId: 'remove-crew',
+      circleId: 'remove-circle',
       text:   'task to delete',
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect((await bobBundle.itemStore.listOpen()).some((i) => i.text === 'task to delete')).toBe(true);
 
     await callSkill(anneBundle.agent, 'removeTask', {
-      circleId: 'remove-crew', id: addRes.task.id,
+      circleId: 'remove-circle', id: addRes.task.id,
     }, ANNE);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -456,13 +456,13 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 4 — live peer-roster updates', () =>
   it('redeemInvite adds the new member to the substrate-mirror roster', async () => {
     const { anneBundle } = await buildPeeredBundles();
 
-    // Provision + spawn a sibling crew on Anne's side, then redeem
+    // Provision + spawn a sibling circle on Anne's side, then redeem
     // an invite for a brand-new member; verify the mirror's peers set
     // gained the new pubKey.
     //
-    // Single-crew mode here: invites go to the running crew. We
-    // use the existing per-crew onboarding skill (which createCrewAgent
-    // registered in single-crew mode via wireOnboardingSkills:true).
+    // Single-circle mode here: invites go to the running circle. We
+    // use the existing per-circle onboarding skill (which createCircleAgent
+    // registered in single-circle mode via wireOnboardingSkills:true).
     const issuedInvite = await callSkill(anneBundle.agent, 'issueInvite', {
       role: 'member',
     }, ANNE);
@@ -472,13 +472,13 @@ describe('Tasks V2 Phase 52.9.3 sub-slice 4 — live peer-roster updates', () =>
     const before = anneBundle.tasksMirror.getPeers();
     expect(before).not.toContain(newMemberId.pubKey);
 
-    // V1 (single-crew) redeemInvite is bound per-crew. Multi-crew
+    // V1 (single-circle) redeemInvite is bound per-circle. Multi-circle
     // dispatch + tasksMirror.addPeer integration is the more general
-    // path. This test verifies the wiring exists at the multi-crew
+    // path. This test verifies the wiring exists at the multi-circle
     // wrapper level — we exercise that path explicitly:
-    const { buildMultiCrewOnboardingSkills } = await import('../src/skills/multiCrewOnboarding.js');
-    const mockResolver = () => anneBundle._crewState;
-    const skills = buildMultiCrewOnboardingSkills({ bundleResolver: mockResolver });
+    const { buildMultiCircleOnboardingSkills } = await import('../src/skills/multiCircleOnboarding.js');
+    const mockResolver = () => anneBundle._circleState;
+    const skills = buildMultiCircleOnboardingSkills({ bundleResolver: mockResolver });
     const redeem = skills.find(s => s.id === 'redeemInvite');
     const r = await redeem.handler({
       parts: [DataPart({

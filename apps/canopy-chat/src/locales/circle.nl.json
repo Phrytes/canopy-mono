@@ -1043,7 +1043,7 @@
     "storage_err": {
       "generic": {
         "text": "Kon de opslaglocatie van de kring niet bijwerken — je lokale instellingen zijn wel bewaard.",
-        "doc": "§4 — storage-policy bridge: fallback when stoop rejects setCrewStoragePolicy."
+        "doc": "§4 — storage-policy bridge: fallback when stoop rejects setCircleStoragePolicy."
       },
       "admin-only": {
         "text": "Alleen een kringbeheerder kan de opslaglocatie wijzigen.",

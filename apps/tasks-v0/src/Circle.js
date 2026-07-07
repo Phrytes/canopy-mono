@@ -1,31 +1,31 @@
 /**
- * Crew — Tasks V1 multi-tenant envelope around `createTasksAgent`.
+ * Circle — Tasks V1 multi-tenant envelope around `createTasksAgent`.
  *
- * A Crew is a closed-group container for tasks, members, role
+ * A Circle is a closed-group container for tasks, members, role
  * config, skill vocabulary, cadences, and DoD defaults. A user
- * belongs to N crews; one agent runs per crew (V1 path) or one
- * meshAgent runs per process and many CrewStates share it (V2.8
+ * belongs to N circles; one agent runs per circle (V1 path) or one
+ * meshAgent runs per process and many CircleStates share it (V2.8
  * path — see `./MeshAgent.js` + `./wireSkills.js`).
  *
- * Crew kinds influence DEFAULTS only — the substrate doesn't behave
+ * Circle kinds influence DEFAULTS only — the substrate doesn't behave
  * differently per kind. Apps surface the kind in UI labels.
  *
  * Pod schema (when a pod is configured; otherwise local-only):
- *   <crew-pod>/crews/<circleId>/
- *     config.json          — this CrewConfig object
+ *   <circle-pod>/circles/<circleId>/
+ *     config.json          — this CircleConfig object
  *     skills.json          — Phase 3: skill vocabulary
  *     cadences.json        — Phase 6: deadline / nudge / approver cadences
  *     members/             — Phase 2: per-member auto-persisted (MemberMapCache)
  *     tasks/               — the existing item-store layout
  *
- * Zero-config path: `createCrewAgent({})` with no `crewConfig` and no
- * `pod` returns an implicit-household crew that is identical to V0's
+ * Zero-config path: `createCircleAgent({})` with no `circleConfig` and no
+ * `pod` returns an implicit-household circle that is identical to V0's
  * `createTasksAgent` defaults. V0 callers don't have to touch this.
  *
- * V2.8: createCrewAgent calls createTasksAgent (which now wires the
+ * V2.8: createCircleAgent calls createTasksAgent (which now wires the
  * V2.8 single-agent + bundleResolver pattern) and then ENRICHES the
- * `_crewState` it returns with the V1+ wiring (chat, bot, metrics,
- * notifier-channels). Skills resolve their CrewState at dispatch
+ * `_circleState` it returns with the V1+ wiring (chat, bot, metrics,
+ * notifier-channels). Skills resolve their CircleState at dispatch
  * time, so post-construction enrichment Just Works.
  */
 
@@ -54,9 +54,9 @@ import { loadSettings, updateSettings } from './storage/settings.js';
 // ── Config defaults ────────────────────────────────────────────────────────
 
 /**
- * @typedef {'household' | 'project' | 'team' | 'friends' | 'maintenance'} CrewKind
+ * @typedef {'household' | 'project' | 'team' | 'friends' | 'maintenance'} CircleKind
  *
- * @typedef CrewMember
+ * @typedef CircleMember
  * @property {string} webid
  * @property {string} [displayName]
  * @property {string} [pubKey]              — base64url Ed25519 pubKey
@@ -66,11 +66,11 @@ import { loadSettings, updateSettings } from './storage/settings.js';
  * @property {string} id
  * @property {number} rank
  *
- * @typedef CrewConfig
+ * @typedef CircleConfig
  * @property {string} circleId
  * @property {string} name
- * @property {CrewKind} kind
- * @property {CrewMember[]} members
+ * @property {CircleKind} kind
+ * @property {CircleMember[]} members
  * @property {CustomRoleDef[]} [customRoles]
  * @property {Array<object>} [skills]                — Phase 3 vocabulary
  * @property {object} [cadences]                     — Phase 6 cadence defaults
@@ -82,7 +82,7 @@ import { loadSettings, updateSettings } from './storage/settings.js';
  *   `{maxPerDay?: number, quietHours?: [number, number] | null}`
  */
 
-/** @type {CrewConfig} */
+/** @type {CircleConfig} */
 export const IMPLICIT_HOUSEHOLD_CONFIG = Object.freeze({
   circleId:                       'household',
   name:                         'Household',
@@ -92,18 +92,18 @@ export const IMPLICIT_HOUSEHOLD_CONFIG = Object.freeze({
   subtasksAdminApprovalDepth:   3,
   // Tasks V2 standardisation adoption (2026-05-14) — storage
   // policy mirrors Stoop V2's A3 picker. `no-pod` keeps V1 UX
-  // parity. Centralised/hybrid need `groupPodUri` set on the crew
-  // (validated by the V2 createCrewAgent / setCrewStoragePolicy
+  // parity. Centralised/hybrid need `groupPodUri` set on the circle
+  // (validated by the V2 createCircleAgent / setCircleStoragePolicy
   // path). §II.2 of the standardisation plan.
   storage:                      Object.freeze({ policy: 'no-pod' }),
 });
 
-/** Storage policies recognised on `crewConfig.storage`. */
-export const CREW_STORAGE_POLICIES = Object.freeze(
+/** Storage policies recognised on `circleConfig.storage`. */
+export const CIRCLE_STORAGE_POLICIES = Object.freeze(
   ['no-pod', 'centralised', 'decentralised', 'hybrid'],
 );
 
-/** Per-kind defaults for crew creation wizards. */
+/** Per-kind defaults for circle creation wizards. */
 export const KIND_DEFAULTS = Object.freeze({
   household:    { subtasksAdminApprovalDepth: 3 },
   project:      { subtasksAdminApprovalDepth: 4 },
@@ -115,21 +115,21 @@ export const KIND_DEFAULTS = Object.freeze({
 // ── Config loader ──────────────────────────────────────────────────────────
 
 /**
- * Load a CrewConfig from a Solid pod (or the local cache). Falls back
+ * Load a CircleConfig from a Solid pod (or the local cache). Falls back
  * to the supplied object on NOT_FOUND so the implicit-household path
  * works without a pod.
  */
-export async function loadCrewConfig({
+export async function loadCircleConfig({
   dataSource,
   circleId,
   fallback,
-  rootContainer = 'mem://tasks/crews/',
+  rootContainer = 'mem://tasks/circles/',
 }) {
   if (!dataSource?.read) {
-    throw new TypeError('loadCrewConfig: dataSource with .read() required');
+    throw new TypeError('loadCircleConfig: dataSource with .read() required');
   }
   if (typeof circleId !== 'string' || !circleId) {
-    throw new TypeError('loadCrewConfig: circleId required');
+    throw new TypeError('loadCircleConfig: circleId required');
   }
 
   const path = `${rootContainer}${circleId}/config.json`;
@@ -148,14 +148,14 @@ export async function loadCrewConfig({
   return _normaliseConfig({ circleId, ...parsed });
 }
 
-/** Save a CrewConfig to its canonical pod path. */
-export async function saveCrewConfig({
+/** Save a CircleConfig to its canonical pod path. */
+export async function saveCircleConfig({
   dataSource,
   config,
-  rootContainer = 'mem://tasks/crews/',
+  rootContainer = 'mem://tasks/circles/',
 }) {
   if (!dataSource?.write) {
-    throw new TypeError('saveCrewConfig: dataSource with .write() required');
+    throw new TypeError('saveCircleConfig: dataSource with .write() required');
   }
   const c = _normaliseConfig(config);
   const path = `${rootContainer}${c.circleId}/config.json`;
@@ -165,10 +165,10 @@ export async function saveCrewConfig({
 
 function _normaliseConfig(raw) {
   if (!raw || typeof raw !== 'object') {
-    throw new TypeError('CrewConfig: object required');
+    throw new TypeError('CircleConfig: object required');
   }
   if (typeof raw.circleId !== 'string' || !raw.circleId) {
-    throw new TypeError('CrewConfig: circleId required');
+    throw new TypeError('CircleConfig: circleId required');
   }
   const kind = KIND_DEFAULTS[raw.kind] ? raw.kind : 'household';
   // V2 standardisation adoption — `storage` carries one of four
@@ -225,7 +225,7 @@ function _normaliseConfig(raw) {
 }
 
 /**
- * Normalise the optional `storage` field of a CrewConfig. Tasks V2
+ * Normalise the optional `storage` field of a CircleConfig. Tasks V2
  * standardisation adoption (2026-05-14). Pre-V2 configs that omit
  * the field default to `'no-pod'`. Unknown / malformed policies fall
  * back to `'no-pod'` (forward-additive policy).
@@ -234,7 +234,7 @@ function _normaliseStorage(raw) {
   if (!raw || typeof raw !== 'object') {
     return Object.freeze({ policy: 'no-pod' });
   }
-  const policy = CREW_STORAGE_POLICIES.includes(raw.policy) ? raw.policy : 'no-pod';
+  const policy = CIRCLE_STORAGE_POLICIES.includes(raw.policy) ? raw.policy : 'no-pod';
   if (policy === 'centralised' || policy === 'hybrid') {
     const groupPodUri = typeof raw.groupPodUri === 'string' && raw.groupPodUri.length > 0
       ? raw.groupPodUri
@@ -244,24 +244,24 @@ function _normaliseStorage(raw) {
   return Object.freeze({ policy });
 }
 
-// ── Crew agent factory ────────────────────────────────────────────────────
+// ── Circle agent factory ────────────────────────────────────────────────────
 
 /**
- * High-level Crew agent factory. Wraps `createTasksAgent` and adds:
+ * High-level Circle agent factory. Wraps `createTasksAgent` and adds:
  *
- *   - GroupManager (so the agent can issue/redeem invites for this crew)
+ *   - GroupManager (so the agent can issue/redeem invites for this circle)
  *   - MemberMapCache (auto-persists the member roster through the
  *     localStoreBundle's CachingDataSource — no "save" button)
  *   - Onboarding skills (`issueInvite`, `redeemInvite`) registered on
  *     the agent via `buildOnboardingSkills` from identity-resolver.
- *   - V2.8 enrichment of the `_crewState` returned by createTasksAgent
+ *   - V2.8 enrichment of the `_circleState` returned by createTasksAgent
  *     with chatController, botAgentRegistry, metricsTracker, and
  *     onCalendarEmissionChange / onCompensationChange callbacks. The
  *     V2.8 skills look these up at dispatch time, so enriching after
  *     skill registration is fine.
  */
-export async function createCrewAgent({
-  crewConfig,
+export async function createCircleAgent({
+  circleConfig,
   localStoreBundle,
   groupManager: providedGroupManager,
   wireOnboardingSkills = true,
@@ -275,38 +275,38 @@ export async function createCrewAgent({
   notifier,
   pushSender,
   bus,
-  crewBundlesProvider,
-  // Multi-crew runtime (2026-05-14, Tasks V2 sixth slice) — when
+  circleBundlesProvider,
+  // Multi-circle runtime (2026-05-14, Tasks V2 sixth slice) — when
   // supplied, share this `core.Agent` instead of building one per
-  // crew. `registerSkills: false` (default when `agent` is given)
-  // tells `createTasksAgent` to skip its single-crew wireSkills
+  // circle. `registerSkills: false` (default when `agent` is given)
+  // tells `createTasksAgent` to skip its single-circle wireSkills
   // call — the CLI owns the wireSkills invocation.
   agent: sharedAgent,
   registerSkills,
 } = {}) {
-  const crew = _normaliseConfig(crewConfig ?? { ...IMPLICIT_HOUSEHOLD_CONFIG });
+  const circle = _normaliseConfig(circleConfig ?? { ...IMPLICIT_HOUSEHOLD_CONFIG });
 
-  // V1.5 — boot-time re-register the crew's custom roles into the
+  // V1.5 — boot-time re-register the circle's custom roles into the
   // process-global `core.Roles` registry, so a fresh CLI launch
-  // honours roles persisted in `crew.customRoles`.
-  if (Array.isArray(crew.customRoles) && crew.customRoles.length > 0) {
-    applyCustomRoles(crew.customRoles);
+  // honours roles persisted in `circle.customRoles`.
+  if (Array.isArray(circle.customRoles) && circle.customRoles.length > 0) {
+    applyCustomRoles(circle.customRoles);
   }
 
-  // Build the per-webid role map from the crew's members unless the
+  // Build the per-webid role map from the circle's members unless the
   // caller overrode it (tests may want to wedge in different roles).
   const roles = rolesOverride ?? Object.fromEntries(
-    crew.members.map((m) => [m.webid, m.role ?? 'member']),
+    circle.members.map((m) => [m.webid, m.role ?? 'member']),
   );
 
   // Identity + vault — created here so we can hand them to GroupManager.
   //
   // V2.0 — when the local-store bundle is supplied, we persist the
-  // vault snapshot to a per-crew path so the tasks agent's pubKey is
+  // vault snapshot to a per-circle path so the tasks agent's pubKey is
   // stable across CLI restarts. Cap-tokens issued to bot agents
   // (V1.5) then survive without auto-rotate. First boot writes a
   // fresh snapshot; subsequent boots restore from it.
-  const identityVaultPath = `mem://tasks/crews/${crew.circleId}/agent/identity-vault.json`;
+  const identityVaultPath = `mem://tasks/circles/${circle.circleId}/agent/identity-vault.json`;
   let v   = vault   ?? null;
   let id  = identity ?? null;
   let restoredFromSnapshot = false;
@@ -329,65 +329,65 @@ export async function createCrewAgent({
     } catch { /* persistence failure must not break boot */ }
   }
 
-  // `liveCrew` is the mutable pointer that admin/coord skills swap
-  // (frozen-copy pattern). createTasksAgent's V2.8 CrewState reads it
-  // via the supplied crewProvider + crewMutator below.
-  let liveCrew = crew;
-  const crewProvider = () => liveCrew;
-  const crewMutator  = (patch) => { liveCrew = Object.freeze({ ...liveCrew, ...patch }); };
+  // `liveCircle` is the mutable pointer that admin/coord skills swap
+  // (frozen-copy pattern). createTasksAgent's V2.8 CircleState reads it
+  // via the supplied circleProvider + circleMutator below.
+  let liveCircle = circle;
+  const circleProvider = () => liveCircle;
+  const circleMutator  = (patch) => { liveCircle = Object.freeze({ ...liveCircle, ...patch }); };
 
   // Build the underlying tasks agent. We pass the seed members so
   // the MemberMap starts populated; MemberMapCache then auto-persists
   // any future mutations.
   const bundle = await createTasksAgent({
     roles,
-    members:    crew.members,
+    members:    circle.members,
     localStoreBundle,
     skillMatch,
     notifier,
     identity:     id,
     transport,
-    label:        label ?? `Crew(${crew.circleId})`,
-    crewProvider,
-    crewMutator,
+    label:        label ?? `Circle(${circle.circleId})`,
+    circleProvider,
+    circleMutator,
     agent:        sharedAgent,
     registerSkills,
-    // Multi-crew runtime — when a shared agent is supplied (the CLI's
-    // multi-crew path), each crew bundle MUST use its own item-store
-    // root so writes don't leak across crews on the same localStore.
-    // Single-crew path preserves the legacy `mem://tasks/` root.
+    // Multi-circle runtime — when a shared agent is supplied (the CLI's
+    // multi-circle path), each circle bundle MUST use its own item-store
+    // root so writes don't leak across circles on the same localStore.
+    // Single-circle path preserves the legacy `mem://tasks/` root.
     itemStoreRoot: sharedAgent
-      ? `mem://tasks/crews/${crew.circleId}/`
+      ? `mem://tasks/circles/${circle.circleId}/`
       : undefined,
   });
 
-  const crewState = bundle._crewState;
+  const circleState = bundle._circleState;
 
   // Optional GroupManager + onboarding skills.
   //
-  // Multi-crew runtime (2026-05-14, Tasks V2 seventh slice) — always
-  // build the GroupManager and stash it on `crewState` (plus the
-  // optional `onSpawn` hook). The CLI's `--multi-crew` path skips the
-  // per-crew skill registration (`wireOnboardingSkills: false`) and
-  // instead registers `buildMultiCrewOnboardingSkills` once against
+  // Multi-circle runtime (2026-05-14, Tasks V2 seventh slice) — always
+  // build the GroupManager and stash it on `circleState` (plus the
+  // optional `onSpawn` hook). The CLI's `--multi-circle` path skips the
+  // per-circle skill registration (`wireOnboardingSkills: false`) and
+  // instead registers `buildMultiCircleOnboardingSkills` once against
   // the meshAgent; that wrapper resolves the right groupManager from
-  // the CrewState per call via the multi-crew bundleResolver.
+  // the CircleState per call via the multi-circle bundleResolver.
   let groupManager = providedGroupManager ?? new GroupManager({ identity: id, vault: v });
-  crewState.groupManager = groupManager;
-  crewState.onSpawn      = onSpawn ?? null;
-  crewState.circleIdForOnboarding = crew.circleId;
+  circleState.groupManager = groupManager;
+  circleState.onSpawn      = onSpawn ?? null;
+  circleState.circleIdForOnboarding = circle.circleId;
   if (wireOnboardingSkills) {
     for (const def of buildOnboardingSkills({
       groupManager,
       members: bundle.members,
-      groupId: crew.circleId,
+      groupId: circle.circleId,
       onSpawn,
     })) {
       bundle.agent.skills.register(def);
     }
   }
 
-  // MemberMapCache + V1+ wiring (V2.8 — enrich the CrewState).
+  // MemberMapCache + V1+ wiring (V2.8 — enrich the CircleState).
   let memberMapCacheDetach = null;
   let notifierBundle       = null;
   let chatController       = null;
@@ -402,7 +402,7 @@ export async function createCrewAgent({
     memberMapCacheDetach = MemberMapCache.attach({
       map:           bundle.members,
       dataSource:    localStoreBundle.cache,
-      rootContainer: `mem://tasks/crews/${crew.circleId}/`,
+      rootContainer: `mem://tasks/circles/${circle.circleId}/`,
     });
 
     // Phase 6 — peer-to-peer chat substrate (for the appeal flow).
@@ -414,20 +414,20 @@ export async function createCrewAgent({
       metrics:       null,
       localActor:    rolesOverride
         ? Object.keys(rolesOverride)[0] ?? null
-        : (crew.members[0]?.webid ?? null),
+        : (circle.members[0]?.webid ?? null),
       localStableId: id?.stableId ?? null,
     });
-    crewState.chatController = chatController;
+    circleState.chatController = chatController;
 
-    // Phase 9 — observability metrics tracker (per-crew via CrewState).
+    // Phase 9 — observability metrics tracker (per-circle via CircleState).
     const m = buildMetrics({ itemStore: bundle.itemStore });
     bundle.metrics = m.tracker;
     metricsDetach  = m.detach;
-    crewState.metricsTracker = m.tracker;
+    circleState.metricsTracker = m.tracker;
 
     // Phase 9 — userSettings bound for observability skills.
     const deviceId = id?.deviceId ?? id?.pubKey ?? 'local-device';
-    crewState.userSettings = {
+    circleState.userSettings = {
       loadShared:   async () => loadSettings({ dataSource: localStoreBundle.cache, deviceId }),
       updateShared: async (patch) => updateSettings({
         dataSource: localStoreBundle.cache, deviceId, patch,
@@ -446,10 +446,10 @@ export async function createCrewAgent({
           bus:        sharedBus,
           tasksAgent: bundle.agent,
           dataSource: localStoreBundle.cache,
-          circleId:     liveCrew.circleId,
+          circleId:     liveCircle.circleId,
         })
       : null;
-    crewState.botAgentRegistry = botAgentRegistry;
+    circleState.botAgentRegistry = botAgentRegistry;
     if (botAgentRegistry?.persisting) {
       try {
         const r = await botAgentRegistry.restoreAll();
@@ -461,41 +461,41 @@ export async function createCrewAgent({
     }
 
     // V2.1 — wire the per-member emission loop when enabled. The
-    // calendar-emission skill calls `crewState.onCalendarEmissionChange()`
+    // calendar-emission skill calls `circleState.onCalendarEmissionChange()`
     // when the toggle flips; we hook it here.
     function rewireCalendarEmission() {
       for (const d of calendarEmissionDetaches) try { d?.(); } catch { /* noop */ }
       calendarEmissionDetaches = [];
-      if (!liveCrew.calendarEmission?.enabled) return;
-      for (const m of liveCrew.members ?? []) {
+      if (!liveCircle.calendarEmission?.enabled) return;
+      for (const m of liveCircle.members ?? []) {
         const wire = wireCalendarEmission({
           itemStore:  bundle.itemStore,
           dataSource: localStoreBundle.cache,
-          crew:       liveCrew,
+          circle:       liveCircle,
           member:     m.webid,
-          path:       `mem://user/tasks/calendars/${encodeURIComponent(liveCrew.circleId)}-${encodeURIComponent(m.webid)}.ics`,
+          path:       `mem://user/tasks/calendars/${encodeURIComponent(liveCircle.circleId)}-${encodeURIComponent(m.webid)}.ics`,
         });
         calendarEmissionDetaches.push(wire.detach);
       }
     }
-    crewState.onCalendarEmissionChange = rewireCalendarEmission;
+    circleState.onCalendarEmissionChange = rewireCalendarEmission;
     rewireCalendarEmission();
 
     // V2.2 — invoicing item-completed listener. The setMemberCompensation /
-    // setCompensationEnabled skills call `crewState.onCompensationChange()`
+    // setCompensationEnabled skills call `circleState.onCompensationChange()`
     // to re-attach the listener.
     function rewireInvoicing() {
       if (invoicingDetach) try { invoicingDetach(); } catch { /* noop */ }
       invoicingDetach = null;
-      if (!liveCrew.compensation?.enabled) return;
+      if (!liveCircle.compensation?.enabled) return;
       const handler = async (item) => {
         const completer = item?.completedBy ?? item?.assignee;
         if (!completer) return;
-        const member = (liveCrew.members ?? []).find((m) => m?.webid === completer);
+        const member = (liveCircle.members ?? []).find((m) => m?.webid === completer);
         if (!member?.compensated) return;
         await recordInvoiceLine({
           dataSource: localStoreBundle.cache,
-          circleId:     liveCrew.circleId,
+          circleId:     liveCircle.circleId,
           member,
           task:       item,
         });
@@ -503,22 +503,22 @@ export async function createCrewAgent({
       bundle.itemStore.on('item-completed', handler);
       invoicingDetach = () => bundle.itemStore.off?.('item-completed', handler);
     }
-    crewState.onCompensationChange = rewireInvoicing;
+    circleState.onCompensationChange = rewireInvoicing;
     rewireInvoicing();
 
-    // V2.5 — multi-crew dashboard. Default crewsProvider returns just THIS
-    // CrewState (single-crew CLI). Multi-crew launches pass a closure
-    // that returns every CrewState the launcher built.
-    if (typeof crewBundlesProvider === 'function') {
-      // External provider — wrap it into a CrewState iterator. Each
-      // provided bundle exposes {crew, itemStore, roleOf} (V2.5 shape).
-      crewState._dashboardCrewsProvider = () => {
-        const bundles = crewBundlesProvider() ?? [];
+    // V2.5 — multi-circle dashboard. Default circlesProvider returns just THIS
+    // CircleState (single-circle CLI). Multi-circle launches pass a closure
+    // that returns every CircleState the launcher built.
+    if (typeof circleBundlesProvider === 'function') {
+      // External provider — wrap it into a CircleState iterator. Each
+      // provided bundle exposes {circle, itemStore, roleOf} (V2.5 shape).
+      circleState._dashboardCirclesProvider = () => {
+        const bundles = circleBundlesProvider() ?? [];
         return bundles.map((b) => ({
-          get liveCrew() { return b.crew; },
+          get liveCircle() { return b.circle; },
           get itemStore() { return b.itemStore; },
           roles: typeof b.roleOf === 'function'
-            ? new Proxy({}, { get: (_, k) => b.roleOf(k, b.crew) })
+            ? new Proxy({}, { get: (_, k) => b.roleOf(k, b.circle) })
             : (b.roles ?? {}),
         }));
       };
@@ -538,18 +538,18 @@ export async function createCrewAgent({
     } else {
       notifierChannels = null;
     }
-    crewState.notifierChannels = notifierChannels;
+    circleState.notifierChannels = notifierChannels;
 
     if (notifierChannels) {
       // V1.5 — optional push side-channel.
       let pushBundle = null;
-      const pushTokens = liveCrew.pushTokens && typeof liveCrew.pushTokens === 'object'
-        ? liveCrew.pushTokens
+      const pushTokens = liveCircle.pushTokens && typeof liveCircle.pushTokens === 'object'
+        ? liveCircle.pushTokens
         : {};
       if (pushSender && Object.keys(pushTokens).length > 0) {
         const pushChannel = new PushChannel({ pushSender });
         notifierChannels.push = pushChannel;
-        const policyOpts = liveCrew.pushPolicy ?? {};
+        const policyOpts = liveCircle.pushPolicy ?? {};
         const pushPolicy = new PushPolicy({
           send: ({ recipient, payload }) => pushChannel.sendReply({
             chatId: recipient,
@@ -563,7 +563,7 @@ export async function createCrewAgent({
         pushBundle = {
           channel: pushChannel,
           policy:  pushPolicy,
-          tokenFor: (webid) => liveCrew.pushTokens?.[webid] ?? null,
+          tokenFor: (webid) => liveCircle.pushTokens?.[webid] ?? null,
         };
       }
 
@@ -667,7 +667,7 @@ export async function createCrewAgent({
   //     `<pseudo-pod>/private/agent-registry`.
   //   • Phase 52.9.3 (Tasks V2 ninth slice): wire the substrate stack
   //     (`pseudoPod` + `podRouting` + `notifyEnvelope`) + the
-  //     per-crew tasks-mirror so addTask writes fan-out cross-device.
+  //     per-circle tasks-mirror so addTask writes fan-out cross-device.
   //
   // Both pieces are best-effort: a failure to build any of them
   // doesn't break bundle bring-up.
@@ -695,29 +695,29 @@ export async function createCrewAgent({
   // (it comes from the substrate stack, built here).
   if (localStoreBundle?._podCtx && bundle.podRouting) {
     localStoreBundle._podCtx.podRouting = bundle.podRouting;
-    localStoreBundle._podCtx.circleId     = localStoreBundle._podCtx.circleId ?? crew.circleId;
+    localStoreBundle._podCtx.circleId     = localStoreBundle._podCtx.circleId ?? circle.circleId;
   }
-  // Stash on CrewState so multi-crew skill bodies can access per-crew
+  // Stash on CircleState so multi-circle skill bodies can access per-circle
   // substrate handles via bundleResolver. M4: also stash _podCtx so
   // completePodSignIn → attachTasksBundle can activate routing for
-  // the crew's dataSource (the shared local-store bundle's cache).
-  crewState.pseudoPod      = bundle.pseudoPod;
-  crewState.notifyEnvelope = bundle.notifyEnvelope;
-  crewState.substrateDeviceId = substrateDeviceId;
-  crewState._podCtx        = localStoreBundle?._podCtx ?? null;
-  crewState.podRouting     = bundle.podRouting;
+  // the circle's dataSource (the shared local-store bundle's cache).
+  circleState.pseudoPod      = bundle.pseudoPod;
+  circleState.notifyEnvelope = bundle.notifyEnvelope;
+  circleState.substrateDeviceId = substrateDeviceId;
+  circleState._podCtx        = localStoreBundle?._podCtx ?? null;
+  circleState.podRouting     = bundle.podRouting;
 
   bundle.agentRegistry = await registerAgentBundle({
     pseudoPod:    bundle.pseudoPod,
     podDeviceId:  substrateDeviceId,
     agent:        bundle.agent,
     opts: {
-      capabilities: ['tasks', 'tasks-v0', `crew:${crew.circleId}`],
-      name:         crew.name,
+      capabilities: ['tasks', 'tasks-v0', `circle:${circle.circleId}`],
+      name:         circle.name,
     },
   });
 
-  // Per-crew substrate mirror — fans out addTask writes to peers
+  // Per-circle substrate mirror — fans out addTask writes to peers
   // and applies inbound task envelopes to the local itemStore. Only
   // wired when the full substrate stack came up (notifyEnvelope is
   // required). Selfless tests that don't need fan-out can still run.
@@ -728,24 +728,24 @@ export async function createCrewAgent({
         itemStore:       bundle.itemStore,
         notifyEnvelope:  bundle.notifyEnvelope,
         pseudoPod:       bundle.pseudoPod,
-        circleId:          crew.circleId,
-        peers:           (crew.members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
+        circleId:          circle.circleId,
+        peers:           (circle.members ?? []).filter(m => m?.pubKey).map(m => ({ pubKey: m.pubKey })),
         selfPubKey:      bundle.agent?.address ?? null,
       });
-      crewState.tasksMirror = tasksMirror;
+      circleState.tasksMirror = tasksMirror;
       bundle.tasksMirror    = tasksMirror;
     } catch (_err) { /* best-effort; addTask still works locally */ }
   }
 
   // Phase 52.2.x (mirror of Stoop A2, 2026-05-14) — register
   // `fetch-resource` skill with a `groupCheck` callback that admits
-  // only current crew peers. Defensive: nothing in Tasks calls
+  // only current circle peers. Defensive: nothing in Tasks calls
   // fetch-resource against another Tasks peer today, but cross-app
   // refs (e.g. a Stoop post embedding a Tasks task) + future
-  // envelope-only mode both want this gate in place. Multi-crew
-  // single-agent setups: first crew wins; subsequent attaches see
+  // envelope-only mode both want this gate in place. Multi-circle
+  // single-agent setups: first circle wins; subsequent attaches see
   // the skill already registered and skip. The skill reads from
-  // THIS crew's pseudoPod only.
+  // THIS circle's pseudoPod only.
   try {
     if (bundle.agent?.skills && !bundle.agent.skills.get?.('fetch-resource') && bundle.pseudoPod?.fetchResourceSkill) {
       const peersFor = () => {
@@ -769,9 +769,9 @@ export async function createCrewAgent({
     issuerNotifyDetach,
     chatController,
     groupManager,
-    crew,
-    /** Returns the current (mutated) live CrewConfig. */
-    getCrew: () => liveCrew,
+    circle,
+    /** Returns the current (mutated) live CircleConfig. */
+    getCircle: () => liveCircle,
     /** V1.5 — cap-token bot agent registry. `null` when unavailable. */
     botAgentRegistry,
     async close() {

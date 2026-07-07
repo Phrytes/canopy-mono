@@ -12,7 +12,7 @@
  * The caller wires up:
  *   - `transport`  — exposes `publishEnvelope` + `subscribeEnvelopes`.
  *   - `pseudoPod`  — the local Solid-shaped store.
- *   - `podRouting` — for crew policy + reachability.
+ *   - `podRouting` — for circle policy + reachability.
  *   - `uploadFn`   — optional; the pod-write path (`pod-client` once
  *                    Phase 52.6 lands; tests pass a mock).
  *

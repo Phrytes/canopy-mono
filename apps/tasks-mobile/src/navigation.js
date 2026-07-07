@@ -5,7 +5,7 @@
  *
  * Each screen file imports from here so route-name typos are
  * impossible. The list grows as later phases add screens (Workspace
- * 41.4, MyWork 41.5, Review/Inbox/Dag 41.6, Crews 41.7, …).
+ * 41.4, MyWork 41.5, Review/Inbox/Dag 41.6, Circles 41.7, …).
  */
 
 export const ROUTES = Object.freeze({
@@ -16,7 +16,7 @@ export const ROUTES = Object.freeze({
   OnboardIssue:   'OnboardIssue',
 
   // Phase 41.18 follow-up — bottom-tab shell. Outer-stack route
-  // that hosts Workspace / MyWork / Review / Inbox / Crews as
+  // that hosts Workspace / MyWork / Review / Inbox / Circles as
   // tabs. Detail screens push OVER this shell.
   Main:           'Main',
 
@@ -34,8 +34,8 @@ export const ROUTES = Object.freeze({
   Dag:            'Dag',
   Inbox:          'Inbox',
 
-  // Phase 41.7 — Cross-crew dashboard.
-  Crews:          'Crews',
+  // Phase 41.7 — Cross-circle dashboard.
+  Circles:          'Circles',
 
   // Phase 41.9–41.11 — User-side admin: availability / profile / settings.
   Availability:   'Availability',
@@ -43,8 +43,8 @@ export const ROUTES = Object.freeze({
   ProfileOther:   'ProfileOther',
   Settings:       'Settings',
 
-  // Phase 41.8 — Crew settings (six sections).
-  CrewSettings:   'CrewSettings',
+  // Phase 41.8 — Circle settings (six sections).
+  CircleSettings:   'CircleSettings',
 
   // Phase 41.13 — Bot binding QR.
   IssueBotToken:  'IssueBotToken',
@@ -64,8 +64,8 @@ export const ROUTES = Object.freeze({
   // Phase 41.18.4 — Appeal flow + chat-thread surface (parity completion).
   ChatThread:        'ChatThread',
 
-  // M1-S2 — full create-crew wizard (storage-policy picker).
-  CreateCrew:        'CreateCrew',
+  // M1-S2 — full create-circle wizard (storage-policy picker).
+  CreateCircle:        'CreateCircle',
 
   // M1-S4 — Pod & storage settings screen.
   PodSettings:       'PodSettings',

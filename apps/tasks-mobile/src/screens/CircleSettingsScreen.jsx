@@ -1,10 +1,10 @@
 /**
- * CrewSettingsScreen — top-level container for the six per-crew
+ * CircleSettingsScreen — top-level container for the six per-circle
  * admin/settings panels.
  *
  * Phase 41.8.1 (2026-05-09).
  *
- * Each section is its own component (src/screens/crewSettings/*.jsx)
+ * Each section is its own component (src/screens/circleSettings/*.jsx)
  * — keeps this screen thin and the sections independently testable.
  * Sections gate themselves by role via `useActiveRole`; this screen
  * just lays them out.
@@ -17,17 +17,17 @@ import { useTheme } from '@canopy/react-native/theme';
 import { useService } from '../ServiceContext.js';
 import { useLocalisation }    from '../LocalisationProvider.js';
 
-import { MembersSection }            from './crewSettings/MembersSection.jsx';
-import { CustomRolesSection }        from './crewSettings/CustomRolesSection.jsx';
-import { BotBindingsSection }        from './crewSettings/BotBindingsSection.jsx';
-import { CompensationSection }       from './crewSettings/CompensationSection.jsx';
-import { CalendarSyncSection }       from './crewSettings/CalendarSyncSection.jsx';
-import { AvailabilityAdminSection }  from './crewSettings/AvailabilityAdminSection.jsx';
-import { LifecycleSection }          from './crewSettings/LifecycleSection.jsx';
-import { CrewConfigSection }         from './crewSettings/CrewConfigSection.jsx';
-import { CadenceSection }            from './crewSettings/CadenceSection.jsx';
+import { MembersSection }            from './circleSettings/MembersSection.jsx';
+import { CustomRolesSection }        from './circleSettings/CustomRolesSection.jsx';
+import { BotBindingsSection }        from './circleSettings/BotBindingsSection.jsx';
+import { CompensationSection }       from './circleSettings/CompensationSection.jsx';
+import { CalendarSyncSection }       from './circleSettings/CalendarSyncSection.jsx';
+import { AvailabilityAdminSection }  from './circleSettings/AvailabilityAdminSection.jsx';
+import { LifecycleSection }          from './circleSettings/LifecycleSection.jsx';
+import { CircleConfigSection }         from './circleSettings/CircleConfigSection.jsx';
+import { CadenceSection }            from './circleSettings/CadenceSection.jsx';
 
-export function CrewSettingsScreen() {
+export function CircleSettingsScreen() {
   const svc = useService();
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
@@ -36,7 +36,7 @@ export function CrewSettingsScreen() {
     return (
       <View style={{ flex: 1, padding: SPACING.xl, backgroundColor: COLORS.background }}>
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.md }}>
-          {t('mobile.crew_settings.no_active_crew')}
+          {t('mobile.circle_settings.no_active_circle')}
         </Text>
       </View>
     );
@@ -47,32 +47,32 @@ export function CrewSettingsScreen() {
       style={{ flex: 1, backgroundColor: COLORS.background }}
       contentContainerStyle={{ padding: SPACING.lg }}
     >
-      <Section title={t('mobile.crew_settings.section_lifecycle')}>
+      <Section title={t('mobile.circle_settings.section_lifecycle')}>
         <LifecycleSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_members')}>
+      <Section title={t('mobile.circle_settings.section_members')}>
         <MembersSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_custom_roles')}>
+      <Section title={t('mobile.circle_settings.section_custom_roles')}>
         <CustomRolesSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_bot_bindings')}>
+      <Section title={t('mobile.circle_settings.section_bot_bindings')}>
         <BotBindingsSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_compensation')}>
+      <Section title={t('mobile.circle_settings.section_compensation')}>
         <CompensationSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_calendar_sync')}>
+      <Section title={t('mobile.circle_settings.section_calendar_sync')}>
         <CalendarSyncSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_availability_admin')}>
+      <Section title={t('mobile.circle_settings.section_availability_admin')}>
         <AvailabilityAdminSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_cadence')}>
+      <Section title={t('mobile.circle_settings.section_cadence')}>
         <CadenceSection />
       </Section>
-      <Section title={t('mobile.crew_settings.section_crew_config')}>
-        <CrewConfigSection />
+      <Section title={t('mobile.circle_settings.section_circle_config')}>
+        <CircleConfigSection />
       </Section>
     </ScrollView>
   );

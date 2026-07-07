@@ -9,7 +9,7 @@
  *   - the page is stable (not touched in any of the last ~10 commits).
  *
  * Captures:
- *   - Empty-state initial HTML (deterministic actor + crew).
+ *   - Empty-state initial HTML (deterministic actor + circle).
  *   - HTML after a fixture lifecycle: addTask → claimTask →
  *     submitTask, leaving one item in the review queue.
  *   - The `listAwaitingApproval` skill result for the same state.
@@ -58,7 +58,7 @@ describe('characterization: review.html', () => {
     expect(snap, 'review.html structural baseline').toMatchSnapshot();
   });
 
-  it('listAwaitingApproval returns [] on a fresh crew', async () => {
+  it('listAwaitingApproval returns [] on a fresh circle', async () => {
     const r = await fixture.callSkill('listAwaitingApproval');
     // Substrate returns a JSON object after DataPart wrapping; the
     // approvals array is empty.
@@ -72,28 +72,28 @@ describe('characterization: review.html', () => {
     // submitTask skill chain.  We assert SUBSTRATE state directly
     // (status/assignee on the item) rather than `listAwaitingApproval`
     // — the latter applies the approval-policy gate, which depends on
-    // crew config (approver routing) and is its own characterization
+    // circle config (approver routing) and is its own characterization
     // target.  TODO (corpus-next): characterize listAwaitingApproval
     // separately once approval policy is documented for the fixture
-    // crew.
+    // circle.
     const TASK_TEXT = 'submitted task for the review-queue corpus';
 
     await fixture.callSkill('addTask', {
-      circleId: 'characterization-crew',
+      circleId: 'characterization-circle',
       text:   TASK_TEXT,
     });
 
     // Resolve the task-id by introspecting the live itemStore — more
     // robust than parsing addTask's reply shape (which has shifted
     // across V1/V2 in tasks-v0's history).
-    const items   = await fixture.crewState.itemStore.listOpen({ type: 'task' });
+    const items   = await fixture.circleState.itemStore.listOpen({ type: 'task' });
     const created = items.find((it) => it.text === TASK_TEXT);
     expect(created, 'addTask must persist the task to the itemStore').toBeTruthy();
 
     // tasks-v0 skills take `{id}` (not `{taskId}`) — see
     // src/skills/index.js claimTask/submitTask defineSkill bodies.
-    await fixture.callSkill('claimTask',  { circleId: 'characterization-crew', id: created.id });
-    await fixture.callSkill('submitTask', { circleId: 'characterization-crew', id: created.id });
+    await fixture.callSkill('claimTask',  { circleId: 'characterization-circle', id: created.id });
+    await fixture.callSkill('submitTask', { circleId: 'characterization-circle', id: created.id });
 
     // After submit, the task is still in the itemStore with Anne as
     // assignee.  The detailed state-machine assertions (status field
@@ -101,7 +101,7 @@ describe('characterization: review.html', () => {
     // characterization work — left as TODO in
     // `docs/characterization-corpus.md` until owner confirms which
     // fields to lock as gold-standard.
-    const after = (await fixture.crewState.itemStore.listOpen({ type: 'task' }))
+    const after = (await fixture.circleState.itemStore.listOpen({ type: 'task' }))
       .find((it) => it.id === created.id);
     expect(after, 'task should still exist after submit').toBeTruthy();
     expect(after.assignee, 'Anne is the assignee after claim').toBe(ANNE);

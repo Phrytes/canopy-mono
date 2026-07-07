@@ -169,14 +169,14 @@ describe('createRealHouseholdAgent — Agent boot + skill dispatch', () => {
     expect(items.some((e) => (e.label ?? e.title ?? '').includes('Lunch'))).toBe(true);
   });
 
-  it('task-less base: getMyTasks on an unknown crew → empty list, not an error', async () => {
-    // A circle with no tasks crew yet: bundleResolver can't resolve the crew,
+  it('task-less base: getMyTasks on an unknown circle → empty list, not an error', async () => {
+    // A circle with no tasks circle yet: bundleResolver can't resolve the circle,
     // so the real list skill answers {error:'circleId required'}.  For a READ-only
     // list op that's not a failure (there's nothing to list) — the adapter
     // normalises it to {items: []} so the circle screen renders "no tasks"
     // instead of an error bubble.
     const a = await createRealHouseholdAgent();
-    const r = await a.callSkill('tasks', 'getMyTasks', { circleId: 'ghost-crew-xyz' });
+    const r = await a.callSkill('tasks', 'getMyTasks', { circleId: 'ghost-circle-xyz' });
     expect(r).toBeTruthy();
     expect(r.error).toBeUndefined();
     expect(Array.isArray(r.items)).toBe(true);

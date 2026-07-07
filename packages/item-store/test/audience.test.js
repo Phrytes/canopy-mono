@@ -43,19 +43,19 @@ describe('SP-5b V0a — audienceFromItem bridge', () => {
 
   it('item with audience set → returns audience (overrides visibility)', () => {
     expect(audienceFromItem({ audience: 'public' })).toBe('public');
-    expect(audienceFromItem({ audience: 'crew:gardeners' })).toBe('crew:gardeners');
+    expect(audienceFromItem({ audience: 'circle:gardeners' })).toBe('circle:gardeners');
   });
 
   it('audience wins when both audience + visibility are set', () => {
-    const item = { audience: 'crew:abc', visibility: 'private' };
-    expect(audienceFromItem(item)).toBe('crew:abc');
+    const item = { audience: 'circle:abc', visibility: 'private' };
+    expect(audienceFromItem(item)).toBe('circle:abc');
   });
 
   it('structured audience passes through verbatim', () => {
     const set = { kind: 'set', members: ['a', 'b'] };
     expect(audienceFromItem({ audience: set })).toEqual(set);
 
-    const ref = { kind: 'circle-ref', id: 'crew-1' };
+    const ref = { kind: 'circle-ref', id: 'circle-1' };
     expect(audienceFromItem({ audience: ref })).toEqual(ref);
 
     const union = { kind: 'union', of: ['household', { kind: 'circle-ref', id: 'c1' }] };
@@ -72,14 +72,14 @@ describe('SP-5b V0a — ItemStore stores audience verbatim', () => {
 
   it('addItems persists item.audience when supplied', async () => {
     const [item] = await store.addItems(
-      [{ type: 'task', text: 'paint the fence', audience: 'crew:gardeners' }],
+      [{ type: 'task', text: 'paint the fence', audience: 'circle:gardeners' }],
       { actor: ACTOR },
     );
-    expect(item.audience).toBe('crew:gardeners');
+    expect(item.audience).toBe('circle:gardeners');
 
     // Read-back via listOpen confirms storage.
     const open = await store.listOpen();
-    expect(open[0].audience).toBe('crew:gardeners');
+    expect(open[0].audience).toBe('circle:gardeners');
   });
 
   it('addItems omits audience field when not supplied (forward-additive)', async () => {
@@ -93,7 +93,7 @@ describe('SP-5b V0a — ItemStore stores audience verbatim', () => {
   it('addItems stores structured audience (set / circle-ref / union)', async () => {
     const audiences = [
       { kind: 'set',        members: ['x', 'y'] },
-      { kind: 'circle-ref', id:      'crew-1'    },
+      { kind: 'circle-ref', id:      'circle-1'    },
       { kind: 'union',      of:      ['household', { kind: 'circle-ref', id: 'c1' }] },
       { kind: 'public' },
     ];
@@ -121,19 +121,19 @@ describe('SP-5b V0a — ItemStore stores audience verbatim', () => {
 
   it('items with BOTH audience + visibility — both stored; audience wins via the bridge', async () => {
     const [item] = await store.addItems(
-      [{ type: 'task', text: 'x', visibility: 'private', audience: 'crew:abc' }],
+      [{ type: 'task', text: 'x', visibility: 'private', audience: 'circle:abc' }],
       { actor: ACTOR },
     );
     expect(item.visibility).toBe('private');
-    expect(item.audience).toBe('crew:abc');
-    expect(audienceFromItem(item)).toBe('crew:abc');
+    expect(item.audience).toBe('circle:abc');
+    expect(audienceFromItem(item)).toBe('circle:abc');
   });
 });
 
 describe('SP-5b — audienceMatches predicate', () => {
   it('exact match on plain string short-hands', () => {
-    expect(audienceMatches('crew:A', 'crew:A')).toBe(true);
-    expect(audienceMatches('crew:A', 'crew:B')).toBe(false);
+    expect(audienceMatches('circle:A', 'circle:A')).toBe(true);
+    expect(audienceMatches('circle:A', 'circle:B')).toBe(false);
     expect(audienceMatches('household', 'household')).toBe(true);
   });
 
@@ -178,8 +178,8 @@ describe('SP-5b — audienceMatches predicate', () => {
   it('circle-ref membership only via exact or inside a union', () => {
     // A bare circle-ref item matches only the identical ref…
     expect(audienceMatches({ kind: 'circle-ref', id: 'X' }, { kind: 'circle-ref', id: 'X' })).toBe(true);
-    // …and the short-hand 'crew:X' is NOT normalised to it.
-    expect(audienceMatches({ kind: 'circle-ref', id: 'X' }, 'crew:X')).toBe(false);
+    // …and the short-hand 'circle:X' is NOT normalised to it.
+    expect(audienceMatches({ kind: 'circle-ref', id: 'X' }, 'circle:X')).toBe(false);
   });
 
   it('public matches only the public filter (not treated as covering everything)', () => {

@@ -17,7 +17,7 @@ set -euo pipefail
 
 # ── Defaults (override via env) ───────────────────────────────────────────
 ACTOR="${ACTOR:-https://id.example/anne}"
-CREW="${CREW:-/tmp/oss-tools.crew.json}"
+CIRCLE="${CIRCLE:-/tmp/oss-tools.circle.json}"
 STORAGE_ROOT="${STORAGE_ROOT:-./.tasks-data}"
 PORT="${PORT:-8080}"
 PUSH="${PUSH:-0}"   # set PUSH=1 to also enable --push (Expo)
@@ -60,14 +60,14 @@ if command -v curl >/dev/null 2>&1; then
   echo 'Pre-flight OK (Telegram /getMe → 200)'
 fi
 
-if [ ! -r "$CREW" ]; then
-  echo "ERROR: crew config not readable at: $CREW" >&2
+if [ ! -r "$CIRCLE" ]; then
+  echo "ERROR: circle config not readable at: $CIRCLE" >&2
   exit 2
 fi
 
 ARGS=(
   --actor          "$ACTOR"
-  --crew           "$CREW"
+  --circle           "$CIRCLE"
   --storage-root   "$STORAGE_ROOT"
   --port           "$PORT"
   --telegram-token "$TG_TOKEN"
@@ -78,7 +78,7 @@ fi
 
 echo "Launching tasks-ui:"
 echo "  actor:        $ACTOR"
-echo "  crew:         $CREW"
+echo "  circle:         $CIRCLE"
 echo "  storage-root: $STORAGE_ROOT"
 echo "  port:         $PORT"
 echo "  push:         $([ "$PUSH" = "1" ] && echo on || echo off)"

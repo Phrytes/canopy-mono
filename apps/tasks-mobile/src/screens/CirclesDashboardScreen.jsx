@@ -1,12 +1,12 @@
 /**
- * CrewsDashboardScreen — V2.5 cross-crew dashboard.
+ * CirclesDashboardScreen — V2.5 cross-circle dashboard.
  *
  * Phase 41.7.1 (2026-05-09).
  *
- * Wires the V2.5 `getMyCrews` skill via useSkillResult. Each row
- * shows the crew's name + kind chip + four counters
+ * Wires the V2.5 `getMyCircles` skill via useSkillResult. Each row
+ * shows the circle's name + kind chip + four counters
  * (open / overdue / for-review / mine). Tap "Jump in" → flips
- * activeCircleId via svc.setActiveCrew + navigates Workspace.
+ * activeCircleId via svc.setActiveCircle + navigates Workspace.
  *
  * The list is busiest-first per the V2.5 aggregator's sort order.
  */
@@ -21,17 +21,17 @@ import { useSkillResult } from '../lib/useSkill.js';
 import { useLocalisation }        from '../LocalisationProvider.js';
 import { ROUTES }         from '../navigation.js';
 
-export function CrewsDashboardScreen() {
+export function CirclesDashboardScreen() {
   const nav = useNavigation();
   const svc = useService();
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const list = useSkillResult('getMyCrews', {}, [svc?.activeCircleId]);
-  const items = Array.isArray(list?.data?.crews) ? list.data.crews : [];
+  const list = useSkillResult('getMyCircles', {}, [svc?.activeCircleId]);
+  const items = Array.isArray(list?.data?.circles) ? list.data.circles : [];
 
   const onJumpIn = useCallback((circleId) => {
-    svc?.setActiveCrew?.(circleId);
+    svc?.setActiveCircle?.(circleId);
     nav.navigate(ROUTES.Workspace);
   }, [svc, nav]);
 
@@ -47,16 +47,16 @@ export function CrewsDashboardScreen() {
         ListEmptyComponent={
           <View style={{ padding: SPACING.xl, alignItems: 'center' }}>
             <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.md, textAlign: 'center' }}>
-              {t('mobile.crews.empty')}
+              {t('mobile.circles.empty')}
             </Text>
           </View>
         }
         renderItem={({ item }) => (
-          <CrewRow crew={item} onJumpIn={() => onJumpIn(item.circleId)} />
+          <CircleRow circle={item} onJumpIn={() => onJumpIn(item.circleId)} />
         )}
       />
 
-      {/* 41.18 follow-up — let users create another crew without
+      {/* 41.18 follow-up — let users create another circle without
           having to leave-all-then-onboard. Routes to Welcome's
           create-modal via a flag the screen could honour, or
           most simply just sends them to Welcome which already
@@ -64,7 +64,7 @@ export function CrewsDashboardScreen() {
       <Pressable
         onPress={() => nav.navigate(ROUTES.Welcome, { openCreate: true })}
         accessibilityRole="button"
-        accessibilityLabel="crews-new-crew"
+        accessibilityLabel="circles-new-circle"
         style={({ pressed }) => [
           {
             position: 'absolute',
@@ -79,22 +79,22 @@ export function CrewsDashboardScreen() {
         ]}
       >
         <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.md, fontWeight: '600' }}>
-          {t('mobile.crews.new_crew', '+ New crew')}
+          {t('mobile.circles.new_circle', '+ New circle')}
         </Text>
       </Pressable>
     </View>
   );
 }
 
-function CrewRow({ crew, onJumpIn }) {
+function CircleRow({ circle, onJumpIn }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
   const { t } = useLocalisation();
-  const counts = crew?.counts ?? {};
+  const counts = circle?.counts ?? {};
   return (
     <Pressable
       onPress={onJumpIn}
       accessibilityRole="button"
-      accessibilityLabel={`crews-row-${crew.circleId}`}
+      accessibilityLabel={`circles-row-${circle.circleId}`}
       style={({ pressed }) => [
         {
           backgroundColor: COLORS.surface,
@@ -117,16 +117,16 @@ function CrewRow({ crew, onJumpIn }) {
             color:      COLORS.text,
           }}
         >
-          {crew?.name ?? crew?.circleId}
+          {circle?.name ?? circle?.circleId}
         </Text>
-        {crew?.kind ? (
+        {circle?.kind ? (
           <View style={{
             paddingVertical: 2, paddingHorizontal: SPACING.sm,
             borderRadius: RADII.pill,
             backgroundColor: COLORS.surfaceMuted,
           }}>
             <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-              {t(`mobile.crews.kind_${crew.kind}`, crew.kind)}
+              {t(`mobile.circles.kind_${circle.kind}`, circle.kind)}
             </Text>
           </View>
         ) : null}
@@ -134,28 +134,28 @@ function CrewRow({ crew, onJumpIn }) {
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm }}>
         <Counter
-          label={t('mobile.crews.counter_open',    null).replace('{count}', String(counts.open    ?? 0))}
+          label={t('mobile.circles.counter_open',    null).replace('{count}', String(counts.open    ?? 0))}
           color={COLORS.text}
         />
         <Counter
-          label={t('mobile.crews.counter_overdue', null).replace('{count}', String(counts.overdue ?? 0))}
+          label={t('mobile.circles.counter_overdue', null).replace('{count}', String(counts.overdue ?? 0))}
           color={COLORS.danger}
           bold={(counts.overdue ?? 0) > 0}
         />
         <Counter
-          label={t('mobile.crews.counter_review',  null).replace('{count}', String(counts.awaitingApproval ?? 0))}
+          label={t('mobile.circles.counter_review',  null).replace('{count}', String(counts.awaitingApproval ?? 0))}
           color={COLORS.warning}
           bold={(counts.awaitingApproval ?? 0) > 0}
         />
         <Counter
-          label={t('mobile.crews.counter_mine',    null).replace('{count}', String(counts.mine    ?? 0))}
+          label={t('mobile.circles.counter_mine',    null).replace('{count}', String(counts.mine    ?? 0))}
           color={COLORS.info}
         />
       </View>
 
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: SPACING.md }}>
         <Text style={{ color: COLORS.primary, fontSize: FONT_SIZES.sm, fontWeight: '600' }}>
-          {t('mobile.crews.jump_in')} →
+          {t('mobile.circles.jump_in')} →
         </Text>
       </View>
     </Pressable>

@@ -7,7 +7,7 @@ NKN, A2A, etc. — are **routes** plugged into that one agent via
 are not agent-like entities; they are pluggable per-peer
 reachability primitives the agent picks among at send time.
 
-Apps with multiple scopes (groups, accounts, projects, crews, …)
+Apps with multiple scopes (groups, accounts, projects, circles, …)
 keep per-scope state **outside** the agent — typically a
 `Map<scopeId, ScopeState>` where each `ScopeState` has its own
 `ItemStore` / `MemberMap` / `SkillMatch` / mirror but **shares**
@@ -79,7 +79,7 @@ function getBundle(args, ctx) {
 This pattern is currently implemented per-app:
 - `apps/stoop-mobile`'s `ServiceContext` + `buildGroupState`.
 - (Future) `apps/tasks-v0` / `apps/tasks-mobile`'s equivalent for
-  multi-crew.
+  multi-circle.
 
 When the second consumer (Tasks) implements it, lift the common
 helpers to a substrate — likely `@canopy/scoped-skill-bus` or

@@ -59,7 +59,7 @@ const pod = createPseudoPod({
   mode:     'replication-ring',
   deviceId: 'laptop-anne',
   transport: agent.transport,          // exposes publishEnvelope()
-  getPeers:  () => crew.peerAddresses, // dynamic peer set
+  getPeers:  () => circle.peerAddresses, // dynamic peer set
   fromActor: agent.actorUri,
 });
 

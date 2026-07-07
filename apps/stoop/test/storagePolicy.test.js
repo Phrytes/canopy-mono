@@ -2,14 +2,14 @@
  * A3 / A5 (substrate-adoption) — storage-policy skills.
  *
  * V2 web functional design §4a/§4c. Four §II.2 policies on the
- * crew level: `no-pod` (V1 parity default) / `centralised` /
+ * circle level: `no-pod` (V1 parity default) / `centralised` /
  * `decentralised` / `hybrid`.
  *
  * Covers:
  *   - createGroupV2 accepts `storagePolicy`; default is `no-pod`.
  *   - centralised + hybrid require `groupPodUri`.
- *   - getCrewStoragePolicy reads from pod-routing → rules-item → default.
- *   - setCrewStoragePolicy is admin-only and one-way (no downgrade).
+ *   - getCircleStoragePolicy reads from pod-routing → rules-item → default.
+ *   - setCircleStoragePolicy is admin-only and one-way (no downgrade).
  */
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
@@ -132,15 +132,15 @@ describe('A3 — createGroupV2 storage policy', () => {
       rules:         {},
       storagePolicy: 'decentralised',
     });
-    const policy = bundle.podRouting.crewPolicy('g-8');
+    const policy = bundle.podRouting.circlePolicy('g-8');
     expect(policy.policy).toBe('decentralised');
   });
 });
 
-describe('A3 — getCrewStoragePolicy', () => {
+describe('A3 — getCircleStoragePolicy', () => {
   it('returns no-pod default when nothing is configured', async () => {
     const bundle = await makeBundle();
-    const r = await callSkill(bundle.agent, 'getCrewStoragePolicy', { groupId: 'never-created' });
+    const r = await callSkill(bundle.agent, 'getCircleStoragePolicy', { groupId: 'never-created' });
     expect(r).toEqual({ policy: 'no-pod', groupPodUri: null });
   });
 
@@ -153,12 +153,12 @@ describe('A3 — getCrewStoragePolicy', () => {
       storagePolicy: 'centralised',
       groupPodUri:   'https://buurt.pod/',
     });
-    const r = await callSkill(bundle.agent, 'getCrewStoragePolicy', { groupId: 'g-live' });
+    const r = await callSkill(bundle.agent, 'getCircleStoragePolicy', { groupId: 'g-live' });
     expect(r).toEqual({ policy: 'centralised', groupPodUri: 'https://buurt.pod/' });
   });
 });
 
-describe('A5 — setCrewStoragePolicy', () => {
+describe('A5 — setCircleStoragePolicy', () => {
   it('upgrades no-pod → centralised', async () => {
     const bundle = await makeBundle();
     await callSkill(bundle.agent, 'createGroupV2', {
@@ -166,13 +166,13 @@ describe('A5 — setCrewStoragePolicy', () => {
       name:    'Test',
       rules:   {},
     });
-    const r = await callSkill(bundle.agent, 'setCrewStoragePolicy', {
+    const r = await callSkill(bundle.agent, 'setCircleStoragePolicy', {
       groupId:       'g-upgrade',
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',
     });
     expect(r.storage).toEqual({ policy: 'centralised', groupPodUri: 'https://anne.pod/' });
-    expect(bundle.podRouting.crewPolicy('g-upgrade').policy).toBe('centralised');
+    expect(bundle.podRouting.circlePolicy('g-upgrade').policy).toBe('centralised');
   });
 
   it('rejects downgrade to no-pod', async () => {
@@ -184,7 +184,7 @@ describe('A5 — setCrewStoragePolicy', () => {
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',
     });
-    const r = await callSkill(bundle.agent, 'setCrewStoragePolicy', {
+    const r = await callSkill(bundle.agent, 'setCircleStoragePolicy', {
       groupId:       'g-locked',
       storagePolicy: 'no-pod',
     });
@@ -201,7 +201,7 @@ describe('A5 — setCrewStoragePolicy', () => {
       name:    'Test',
       rules:   {},
     });
-    const r = await callSkill(bundle.agent, 'setCrewStoragePolicy', {
+    const r = await callSkill(bundle.agent, 'setCircleStoragePolicy', {
       groupId:       'g-perm',
       storagePolicy: 'centralised',
       groupPodUri:   'https://anne.pod/',

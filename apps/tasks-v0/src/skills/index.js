@@ -11,23 +11,23 @@
  * SkillRegistry auto-wraps into a single `DataPart` on the way out.
  *
  * B★ B2 (2026-07-05) — the task-store CRUD + list + claim/complete/approve
- * family is now expressed as pure `coreFn(crew, args, ctx)` functions wrapped
+ * family is now expressed as pure `coreFn(circle, args, ctx)` functions wrapped
  * by `wireSkill(coreFn, op, { storeFor })` from `@canopy/sdk`.  `wireSkill`
  * decodes `ctx.parts` → `args` (the same DataPart-unwrap the hand-written
  * `argsFromParts(parts)` did), validates `args` against the manifest op's
- * declared params, resolves the per-crew store via `storeFor(ctx)`, then calls
+ * declared params, resolves the per-circle store via `storeFor(ctx)`, then calls
  * the core.  The wire behaviour is byte-identical: `storeFor` is exactly the
  * old `bundleResolver(parts, { envelope, from })` call, and each core keeps its
- * own `if (!crew) return { error: 'circleId required' }` guard (validation of the
+ * own `if (!circle) return { error: 'circleId required' }` guard (validation of the
  * op's declared params happens first, but every tested path supplies them).
  *
- * Skills that are NOT a clean `(crew, args, ctx)` task-store shape stay
+ * Skills that are NOT a clean `(circle, args, ctx)` task-store shape stay
  * hand-written `defineSkill`s below; each carries a note on why it wasn't
  * wired (no manifest op, a return-shaped error contract wireSkill would turn
  * into a throw, a resolver other than `bundleResolver`, or a manifest op whose
  * params intentionally diverge from the skill's real args).
  *
- * V2.8: skill bodies resolve a per-crew CrewState via `bundleResolver`
+ * V2.8: skill bodies resolve a per-circle CircleState via `bundleResolver`
  * at dispatch time. Single registration on the process-wide meshAgent.
  *
  * `from` carries the caller's identifier (the actor webid).  Skill
@@ -44,7 +44,7 @@ import { argsFromParts } from '../bundleResolver.js';
 // DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
 import { simulateSync, decorateWithLastSync } from './_syncEnvelope.js';
 import { validateCanonical } from '@canopy/item-types';
-import { saveCrewConfig, loadCrewConfig, KIND_DEFAULTS } from '../Crew.js';
+import { saveCircleConfig, loadCircleConfig, KIND_DEFAULTS } from '../Circle.js';
 import { tasksManifest } from '../../manifest.js';
 import {
   startPodSignIn      as _startPodSignIn,
@@ -69,15 +69,15 @@ function _validateEmbed(e) {
 }
 
 /**
- * Tasks V2 (2026-05-14) — crew storage policies (§II.2 of the
+ * Tasks V2 (2026-05-14) — circle storage policies (§II.2 of the
  * standardisation plan). Mirror of Stoop's A3 picker.
  */
-const CREW_STORAGE_POLICIES = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
+const CIRCLE_STORAGE_POLICIES = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
 
 function _validateStoragePolicy(storagePolicy, groupPodUri) {
   if (typeof storagePolicy === 'undefined' || storagePolicy === null) return null;
   if (typeof storagePolicy !== 'string') return 'storage-policy-not-string';
-  if (!CREW_STORAGE_POLICIES.includes(storagePolicy)) return `storage-policy-unknown:${storagePolicy}`;
+  if (!CIRCLE_STORAGE_POLICIES.includes(storagePolicy)) return `storage-policy-unknown:${storagePolicy}`;
   if (storagePolicy === 'centralised' || storagePolicy === 'hybrid') {
     if (typeof groupPodUri !== 'string' || groupPodUri.length === 0) {
       return `storage-policy-needs-groupPodUri:${storagePolicy}`;
@@ -87,7 +87,7 @@ function _validateStoragePolicy(storagePolicy, groupPodUri) {
 }
 
 function _buildStoragePolicy(storagePolicy, groupPodUri) {
-  const policy = (typeof storagePolicy === 'string' && CREW_STORAGE_POLICIES.includes(storagePolicy))
+  const policy = (typeof storagePolicy === 'string' && CIRCLE_STORAGE_POLICIES.includes(storagePolicy))
     ? storagePolicy
     : 'no-pod';
   if (policy === 'centralised' || policy === 'hybrid') {
@@ -96,10 +96,10 @@ function _buildStoragePolicy(storagePolicy, groupPodUri) {
   return { policy };
 }
 
-// ── Pure cores: (crew, a, ctx) → result ──────────────────────────────────
+// ── Pure cores: (circle, a, ctx) → result ──────────────────────────────────
 //
-// `crew`  the resolved CrewState (may be null when multi-crew routing misses —
-//         each core guards with `if (!crew) return { error: 'circleId required' }`).
+// `circle`  the resolved CircleState (may be null when multi-circle routing misses —
+//         each core guards with `if (!circle) return { error: 'circleId required' }`).
 // `a`     the decoded args object (wireSkill's decodeArgs; identical to the old
 //         `argsFromParts(parts)` for the single-DataPart wire convention).
 // `ctx`   the full core skill context — `{ from, actorDisplayName, envelope, … }`.
@@ -116,12 +116,12 @@ function _buildStoragePolicy(storagePolicy, groupPodUri) {
  * Tasks V2 substrate-adoption (2026-05-14) — accepts `embeds: [{type,
  * ref}, ...]` for cross-pod refs (V2 web functional design §4b).
  */
-async function addTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
-  // Phase 10 — block addTask when the crew is paused or archived.
-  const lc = crew.liveCrew;
-  if (lc?.archived) return { error: 'crew-archived' };
-  if (lc?.paused)   return { error: 'crew-paused' };
+async function addTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
+  // Phase 10 — block addTask when the circle is paused or archived.
+  const lc = circle.liveCircle;
+  if (lc?.archived) return { error: 'circle-archived' };
+  if (lc?.paused)   return { error: 'circle-paused' };
 
   // Validate optional embeds (cross-pod refs).
   const inboundEmbeds = Array.isArray(a.embeds) ? a.embeds : [];
@@ -156,7 +156,7 @@ async function addTaskCore(crew, a, ctx) {
   };
   // DAG cycle detection (Q-H4.8).
   if (Array.isArray(partial.dependencies) && partial.dependencies.length > 0) {
-    const all = await crew.itemStore.listOpen();
+    const all = await circle.itemStore.listOpen();
     const cycle = detectCycle({ id: '__new__', dependencies: partial.dependencies }, all);
     if (cycle) {
       throw Object.assign(
@@ -165,7 +165,7 @@ async function addTaskCore(crew, a, ctx) {
       );
     }
   }
-  const [task] = await crew.itemStore.addItems([partial], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  const [task] = await circle.itemStore.addItems([partial], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
 
   // Phase 52.7 — warn-only canonical-shape validation. Adoption is
   // observational at first: the substrate flags drift but never blocks
@@ -179,7 +179,7 @@ async function addTaskCore(crew, a, ctx) {
   // fan-out. The mirror's publishTask helper handles the URI +
   // pseudoPod.write + notifyEnvelope.publish + recipient roster
   // all together; here we just kick it off.
-  crew?.tasksMirror?.publishTask?.(task).catch(() => {});
+  circle?.tasksMirror?.publishTask?.(task).catch(() => {});
 
   return { task };
 }
@@ -188,15 +188,15 @@ async function addTaskCore(crew, a, ctx) {
  * claimTask({id})
  * Compare-and-swap; loser gets `{error: 'already-claimed', current}`.
  */
-async function claimTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
-  const result = await crew.itemStore.claim(a.id, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+async function claimTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
+  const result = await circle.itemStore.claim(a.id, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — publish the post-claim state. The
   // substrate is the source of authorisation truth on the
   // receiver side via applySync (gate-bypass); the receiver's
   // local item-store doesn't re-check the claim policy.
   if (result && !result.error) {
-    crew?.tasksMirror?.publishTask?.(result).catch(() => {});
+    circle?.tasksMirror?.publishTask?.(result).catch(() => {});
   }
   return { result };
 }
@@ -204,16 +204,16 @@ async function claimTaskCore(crew, a, ctx) {
 /**
  * completeTask({id})
  */
-async function completeTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
+async function completeTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
   try {
-    const [completed] = await crew.itemStore.markComplete(
+    const [completed] = await circle.itemStore.markComplete(
       [{ id: a.id }],
       { actor: ctx.from, actorDisplayName: ctx.actorDisplayName },
     );
     // Phase 52.9.3 sub-slice 1 — fan-out the completion.
     if (completed) {
-      crew?.tasksMirror?.publishTask?.(completed).catch(() => {});
+      circle?.tasksMirror?.publishTask?.(completed).catch(() => {});
     }
     return { task: completed };
   } catch (err) {
@@ -229,19 +229,19 @@ async function completeTaskCore(crew, a, ctx) {
 /**
  * removeTask({id})  — admin-only per role policy
  */
-async function removeTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
+async function removeTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
   // Capture the item's syncedFromId BEFORE removal (the
   // receiver-side mirror matches by the publishing device's id,
   // which may differ from `a.id` if THIS device is itself a
   // synced replica). We send the syncedFromId when present;
   // otherwise our local id is the canonical one.
-  const localItem = (await crew.itemStore.listOpen()).find((i) => i.id === a.id)
-                 ?? (await crew.itemStore.listClosed()).find((i) => i.id === a.id);
+  const localItem = (await circle.itemStore.listOpen()).find((i) => i.id === a.id)
+                 ?? (await circle.itemStore.listClosed()).find((i) => i.id === a.id);
   const originalId = localItem?.source?.syncedFromId ?? a.id;
-  const [id] = await crew.itemStore.removeItems([{ id: a.id }], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+  const [id] = await circle.itemStore.removeItems([{ id: a.id }], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the removal.
-  crew?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
+  circle?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
   return { id };
 }
 
@@ -251,11 +251,11 @@ async function removeTaskCore(crew, a, ctx) {
  * task suitable for embedding in a chat message.  Read-only;
  * idempotent.
  */
-async function getTaskSnapshotCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
+async function getTaskSnapshotCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
   if (!a.id) return { error: 'id required' };
-  const open   = await crew.itemStore.listOpen({});
-  const closed = await crew.itemStore.listClosed();
+  const open   = await circle.itemStore.listOpen({});
+  const closed = await circle.itemStore.listClosed();
   const all    = [...open, ...closed];
   const target = all.find((t) => t.id === a.id);
   if (!target) return { error: `task "${a.id}" not found` };
@@ -277,14 +277,14 @@ async function getTaskSnapshotCore(crew, a, ctx) {
  * listOpen({type?, requiredSkill?, assignee?, status?})
  * Returns items + computed `status` (ready/waiting/blocked).
  */
-async function listOpenCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
+async function listOpenCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
   const filter = {};
   if (a.type)          filter.type          = a.type;
   if (a.requiredSkill) filter.requiredSkill = a.requiredSkill;
   if ('assignee' in a) filter.assignee      = a.assignee;
-  const open   = await crew.itemStore.listOpen(filter);
-  const closed = await crew.itemStore.listClosed();
+  const open   = await circle.itemStore.listOpen(filter);
+  const closed = await circle.itemStore.listClosed();
   // 41.18 follow-up — every item carries:
   //   status   — lifecycle ∪ DAG (effectiveStatus)
   //   openDeps — unmet dependency IDs (unmetDeps); empty array
@@ -307,10 +307,10 @@ async function listOpenCore(crew, a, ctx) {
  * Includes DAG `status` per item so V2.7's open-deps gate
  * surfaces in the My-work UI (disabled "Mark complete" button).
  */
-async function listMineCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
-  const open   = await crew.itemStore.listOpen();
-  const closed = await crew.itemStore.listClosed();
+async function listMineCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
+  const open   = await circle.itemStore.listOpen();
+  const closed = await circle.itemStore.listClosed();
   const items  = open
     .filter((t) => t.assignee === ctx.from)
     .map((t) => ({
@@ -324,11 +324,11 @@ async function listMineCore(crew, a, ctx) {
 /**
  * listClaimable({skill?})  — unassigned tasks (optionally skill-filtered).
  */
-async function listClaimableCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
+async function listClaimableCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
   const filter = { assignee: null };
   if (a.skill) filter.requiredSkill = a.skill;
-  const items = await crew.itemStore.listOpen(filter);
+  const items = await circle.itemStore.listOpen(filter);
   return { items: decorateWithLastSync(items), _sync: simulateSync() };
 }
 
@@ -337,14 +337,14 @@ async function listClaimableCore(crew, a, ctx) {
  *   claimed → submitted. Assignee submits with optional artifact
  *   reference. Substrate-side gating via `canSubmit`.
  */
-async function submitTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
-  const updated = await crew.itemStore.submit(a.id, {
+async function submitTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
+  const updated = await circle.itemStore.submit(a.id, {
     ...(a.deliverable !== undefined ? { deliverable: a.deliverable } : {}),
     ...(a.note        !== undefined ? { note:        a.note        } : {}),
   }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the submission.
-  if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+  if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
   return { task: updated };
 }
 
@@ -352,14 +352,14 @@ async function submitTaskCore(crew, a, ctx) {
  * approveTask({id, note?})
  *   submitted → complete. Approver designated by item.approval.
  */
-async function approveTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
+async function approveTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
   try {
-    const updated = await crew.itemStore.approve(a.id, {
+    const updated = await circle.itemStore.approve(a.id, {
       ...(a.note !== undefined ? { note: a.note } : {}),
     }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
     // Phase 52.9.3 sub-slice 1 — fan-out the approval.
-    if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+    if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
     return { task: updated };
   } catch (err) {
     if (err?.code === 'DEPENDENCIES_OPEN') {
@@ -373,11 +373,11 @@ async function approveTaskCore(crew, a, ctx) {
  * rejectTask({id, note})
  *   submitted → rejected → claimed. Note is mandatory.
  */
-async function rejectTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
-  const updated = await crew.itemStore.reject(a.id, { note: a.note }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+async function rejectTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
+  const updated = await circle.itemStore.reject(a.id, { note: a.note }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the rejection.
-  if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+  if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
   return { task: updated };
 }
 
@@ -386,44 +386,44 @@ async function rejectTaskCore(crew, a, ctx) {
  *   claimed → open. Master / admin / coordinator only.
  *   Reason is mandatory; assignee gets it in the inbox + can appeal.
  */
-async function revokeTaskCore(crew, a, ctx) {
-  if (!crew) return { error: 'circleId required' };
-  const updated = await crew.itemStore.revoke(a.id, { reason: a.reason }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
+async function revokeTaskCore(circle, a, ctx) {
+  if (!circle) return { error: 'circleId required' };
+  const updated = await circle.itemStore.revoke(a.id, { reason: a.reason }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
   // Phase 52.9.3 sub-slice 1 — fan-out the revocation.
-  if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+  if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
   return { task: updated, previousAssignee: a.previousAssignee };
 }
 
 /**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
- * @param {() => Iterable<object>} [args.crewsProvider]
- *   Optional. Used by **platform-level** skills (`provisionMyCrew`,
- *   `listSavedCrewConfigs`, `spawnMyCrew`) as a fallback when the
+ * @param {() => Iterable<object>} [args.circlesProvider]
+ *   Optional. Used by **platform-level** skills (`provisionMyCircle`,
+ *   `listSavedCircleConfigs`, `spawnMyCircle`) as a fallback when the
  *   regular routing-via-args.circleId resolution misses. Those skills
- *   write/read shared local-store state and don't care which crew
- *   they're "associated" with, so they pick the first available crew
- *   instead of returning a circleId-required error. Crew-strict skills
+ *   write/read shared local-store state and don't care which circle
+ *   they're "associated" with, so they pick the first available circle
+ *   instead of returning a circleId-required error. Circle-strict skills
  *   (addTask, claimTask, etc.) still strict-null on miss.
  * @returns {Array<object>} array of `defineSkill` definitions
  */
-export function buildSkills({ bundleResolver, crewsProvider } = {}) {
+export function buildSkills({ bundleResolver, circlesProvider } = {}) {
   if (typeof bundleResolver !== 'function') {
     throw new TypeError('buildSkills: bundleResolver(parts, ctx) required');
   }
 
   /**
-   * Resolve a crew for a platform-level skill — try the strict
-   * routing first, fall back to the first crew in `crewsProvider()`
-   * when the lookup misses. Single-crew launches get the same
-   * behaviour as before (`bundleResolver` returns the single crew
+   * Resolve a circle for a platform-level skill — try the strict
+   * routing first, fall back to the first circle in `circlesProvider()`
+   * when the lookup misses. Single-circle launches get the same
+   * behaviour as before (`bundleResolver` returns the single circle
    * regardless of `args.circleId`).
    */
-  function resolveAnyCrew(parts, ctx) {
+  function resolveAnyCircle(parts, ctx) {
     const direct = bundleResolver(parts, ctx);
     if (direct) return direct;
-    if (typeof crewsProvider === 'function') {
-      const iter = crewsProvider();
+    if (typeof circlesProvider === 'function') {
+      const iter = circlesProvider();
       if (iter && typeof iter[Symbol.iterator] === 'function') {
         const first = iter[Symbol.iterator]().next();
         if (!first.done && first.value) return first.value;
@@ -432,7 +432,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     return null;
   }
 
-  // B★ B2 — `storeFor` is the exact old crew resolution: the same
+  // B★ B2 — `storeFor` is the exact old circle resolution: the same
   // `bundleResolver(parts, { envelope, from })` call every hand-written skill
   // made, lifted to operate on the wireSkill ctx.  `wire(id, coreFn, opts)`
   // looks the skill's op up in the tasks manifest, generates the
@@ -449,7 +449,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
   return [
     // ── wireSkill-generated task-store CRUD + list + lifecycle family ──────
     wire('addTask', addTaskCore, {
-      description: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.',
+      description: 'Create a task; rejects on dependency cycles. Blocked when circle is paused/archived.',
       visibility:  'authenticated',
     }),
 
@@ -522,12 +522,12 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * required param — a behaviour change. Kept hand-written.
      */
     defineSkill('reassignTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const updated = await crew.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
+      const updated = await circle.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
       // Phase 52.9.3 sub-slice 1 — fan-out the reassignment.
-      if (updated) crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+      if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
       return { task: updated };
     }, {
       description: 'Reassign a task — admin/coordinator only via item-store role policy.',
@@ -546,7 +546,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   change any combination of the allowed fields in one call.
      *
      *   Re-validates the DAG when dependencies change so an edit
-     *   can't introduce a cycle.  Blocked when the crew is paused
+     *   can't introduce a cycle.  Blocked when the circle is paused
      *   or archived (same gate as addTask).
      *
      * NOT wired: this skill has a RETURN-shaped error contract
@@ -557,11 +557,11 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * `{error:'id required'}` return. Kept hand-written.
      */
     defineSkill('editTask', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const lc = crew.liveCrew;
-      if (lc?.archived) return { error: 'crew-archived' };
-      if (lc?.paused)   return { error: 'crew-paused' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const lc = circle.liveCircle;
+      if (lc?.archived) return { error: 'circle-archived' };
+      if (lc?.paused)   return { error: 'circle-paused' };
 
       const a = argsFromParts(parts);
       if (typeof a.id !== 'string' || !a.id) return { error: 'id required' };
@@ -579,7 +579,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
 
       // DAG cycle re-check when dependencies change.
       if (Array.isArray(patch.dependencies) && patch.dependencies.length > 0) {
-        const all = await crew.itemStore.listOpen();
+        const all = await circle.itemStore.listOpen();
         const cycle = detectCycle({ id: a.id, dependencies: patch.dependencies }, all);
         if (cycle) {
           throw Object.assign(
@@ -590,10 +590,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       }
 
       try {
-        const updated = await crew.itemStore.update(a.id, patch, { actor: from, actorDisplayName });
-        // Re-publish through the substrate mirror so other crew
+        const updated = await circle.itemStore.update(a.id, patch, { actor: from, actorDisplayName });
+        // Re-publish through the substrate mirror so other circle
         // members see the update (same fan-out as addTask).
-        crew?.tasksMirror?.publishTask?.(updated).catch(() => {});
+        circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
         return { task: updated };
       } catch (err) {
         if (err?.code === 'ITEM_NOT_FOUND') return { error: 'not-found' };
@@ -601,7 +601,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         throw err;
       }
     }, {
-      description: 'Patch body fields on an existing task (text, notes, dueAt, …); paused/archived crews blocked.',
+      description: 'Patch body fields on an existing task (text, notes, dueAt, …); paused/archived circles blocked.',
       visibility:  'authenticated',
     }),
 
@@ -614,10 +614,10 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * no op for `wireSkill` to derive from.
      */
     defineSkill('setApprovalMode', async ({ parts, from, envelope, actorDisplayName }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const updated = await crew.itemStore.setApprovalMode(a.id, a.mode, { actor: from, actorDisplayName });
+      const updated = await circle.itemStore.setApprovalMode(a.id, a.mode, { actor: from, actorDisplayName });
       return { task: updated };
     }, {
       description: 'Change the approval mode of an existing task.',
@@ -625,29 +625,29 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     }),
 
     /**
-     * getCrewStoragePolicy({circleId})
+     * getCircleStoragePolicy({circleId})
      *   — Tasks V2 standardisation adoption (2026-05-14). Returns the
-     *   crew's storage policy `{policy, groupPodUri?}` from its
-     *   `crewConfig.storage`. Defaults to `'no-pod'`.
+     *   circle's storage policy `{policy, groupPodUri?}` from its
+     *   `circleConfig.storage`. Defaults to `'no-pod'`.
      *
      * NOT wired: no `operations[]` declaration (pod-plumbing skill,
      * referenced only via a `pod-settings` dataSource.skillId).
      */
-    defineSkill('getCrewStoragePolicy', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const storage = crew.liveCrew?.storage ?? { policy: 'no-pod' };
+    defineSkill('getCircleStoragePolicy', async ({ parts, from, envelope }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const storage = circle.liveCircle?.storage ?? { policy: 'no-pod' };
       return {
         policy:      storage.policy ?? 'no-pod',
         groupPodUri: storage.groupPodUri ?? null,
       };
     }, {
-      description: "Tasks V2: read the crew's storage policy (§II.2: no-pod / centralised / decentralised / hybrid).",
+      description: "Tasks V2: read the circle's storage policy (§II.2: no-pod / centralised / decentralised / hybrid).",
       visibility:  'authenticated',
     }),
 
     /**
-     * setCrewStoragePolicy({circleId, storagePolicy, groupPodUri?})
+     * setCircleStoragePolicy({circleId, storagePolicy, groupPodUri?})
      *   — Tasks V2 standardisation adoption (2026-05-14). Admin /
      *   coordinator only. **One-way**: rejects downgrade to
      *   `'no-pod'` once a pod-having policy is active (substrate-
@@ -657,30 +657,30 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * NOT wired: no `operations[]` declaration (pod-plumbing skill,
      * referenced only via `pod-settings` field.patch.opId).
      */
-    defineSkill('setCrewStoragePolicy', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+    defineSkill('setCircleStoragePolicy', async ({ parts, from, envelope }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      // Admin / coordinator gate via the crew's role map.
-      const role = crew.liveCrew?.members?.find?.((m) => m.webid === from)?.role
-        ?? crew?.roles?.[from] ?? null;
+      // Admin / coordinator gate via the circle's role map.
+      const role = circle.liveCircle?.members?.find?.((m) => m.webid === from)?.role
+        ?? circle?.roles?.[from] ?? null;
       if (role !== 'admin' && role !== 'coordinator') {
         return { error: 'admin-only' };
       }
       const err = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
       if (err) return { error: err };
       const next = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
-      const current = crew.liveCrew?.storage ?? { policy: 'no-pod' };
+      const current = circle.liveCircle?.storage ?? { policy: 'no-pod' };
       if (current.policy && current.policy !== 'no-pod' && next.policy === 'no-pod') {
         return { error: 'storage-policy-downgrade-not-supported' };
       }
-      // Apply via the frozen-copy mutator (crewState.crewMutator).
-      if (typeof crew.crewMutator === 'function') {
-        crew.crewMutator({ storage: next });
+      // Apply via the frozen-copy mutator (circleState.circleMutator).
+      if (typeof circle.circleMutator === 'function') {
+        circle.circleMutator({ storage: next });
       }
-      return { circleId: crew.liveCrew?.circleId ?? a.circleId ?? null, storage: next };
+      return { circleId: circle.liveCircle?.circleId ?? a.circleId ?? null, storage: next };
     }, {
-      description: 'Tasks V2: admin-only upgrade of the crew storage policy. One-way.',
+      description: 'Tasks V2: admin-only upgrade of the circle storage policy. One-way.',
       visibility:  'authenticated',
     }),
 
@@ -689,17 +689,17 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      *   — Tasks V2 substrate-adoption (2026-05-14, Phase 52.15.3
      *   mirror). Kicks off the OIDC redirect dance. Returns the IdP
      *   authorize URL; the browser navigates there. The session is
-     *   stored on `crew.oidcSession` until the callback lands.
+     *   stored on `circle.oidcSession` until the callback lands.
      *
      * NOT wired: OIDC redirect orchestration, no `operations[]` op
      * (modelling it would need a redirect-flow primitive the substrate
      * doesn't yet have — manifest note at the `pod-settings` block).
      */
     defineSkill('startPodSignIn', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      return _startPodSignIn({ crew, issuer: a.issuer, redirectUrl: a.redirectUrl });
+      return _startPodSignIn({ circle, issuer: a.issuer, redirectUrl: a.redirectUrl });
     }, {
       description: 'Phase 1 of pod sign-in: returns the IdP authorize URL.',
       visibility:  'authenticated',
@@ -708,16 +708,16 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
     /**
      * completePodSignIn({callbackUrl, circleId?})
      *   — Tasks V2 substrate-adoption. Phase 2: handles the OIDC
-     *   callback + attaches a SolidPodSource to the crew's
+     *   callback + attaches a SolidPodSource to the circle's
      *   CachingDataSource.
      *
      * NOT wired: OIDC orchestration, no `operations[]` op.
      */
     defineSkill('completePodSignIn', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      return _completePodSignIn({ crew, callbackUrl: a.callbackUrl });
+      return _completePodSignIn({ circle, callbackUrl: a.callbackUrl });
     }, {
       description: 'Phase 2 of pod sign-in: completes the OIDC dance + attaches the pod-backed DataSource.',
       visibility:  'authenticated',
@@ -731,9 +731,9 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * NOT wired: OIDC orchestration, no `operations[]` op.
      */
     defineSkill('signOutOfPod', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      return _signOutOfPod({ crew });
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      return _signOutOfPod({ circle });
     }, {
       description: 'Sign out of the active pod; preserves local cache.',
       visibility:  'authenticated',
@@ -747,120 +747,120 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
      * NOT wired: OIDC orchestration, no `operations[]` op.
      */
     defineSkill('podSignInStatus', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      return _podSignInStatus({ crew });
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      return _podSignInStatus({ circle });
     }, {
-      description: 'Read the current pod-sign-in state for this crew.',
+      description: 'Read the current pod-sign-in state for this circle.',
       visibility:  'authenticated',
     }),
 
     /**
-     * spawnMyCrew({circleId})
+     * spawnMyCircle({circleId})
      *
      * Tasks V2 substrate-adoption (2026-05-14, sixth slice). Loads a
-     * saved CrewConfig from the local store + (when the CLI is wired
-     * for multi-crew runtime) brings up a fresh crew bundle on the
-     * shared meshAgent + adds it to the runtime crewsMap.
+     * saved CircleConfig from the local store + (when the CLI is wired
+     * for multi-circle runtime) brings up a fresh circle bundle on the
+     * shared meshAgent + adds it to the runtime circlesMap.
      *
      * **In-process spawning** requires the host CLI to expose a
-     * `_spawnCrewInProcess(circleId)` callback on the resolved crew's
-     * `_crewState`. The `bin/tasks-ui.js` `--multi-crew` path wires
-     * this; the default single-crew path does NOT.
+     * `_spawnCircleInProcess(circleId)` callback on the resolved circle's
+     * `_circleState`. The `bin/tasks-ui.js` `--multi-circle` path wires
+     * this; the default single-circle path does NOT.
      *
-     * When the callback is missing (single-crew mode), the skill
+     * When the callback is missing (single-circle mode), the skill
      * returns a structured `{ok: true, ready: false, restartHint}`
      * payload so the UI can show the user the right CLI command to
-     * restart with the new crew bound at boot.
+     * restart with the new circle bound at boot.
      *
-     * NOT wired: platform-level skill — resolves via `resolveAnyCrew`
-     * (crewsProvider fallback), reads the shared `dataSource`, and has
+     * NOT wired: platform-level skill — resolves via `resolveAnyCircle`
+     * (circlesProvider fallback), reads the shared `dataSource`, and has
      * no `operations[]` op with matching params.
      */
-    defineSkill('spawnMyCrew', async ({ parts, from, envelope }) => {
-      const crew = resolveAnyCrew(parts, { envelope, from });
-      if (!crew?.dataSource?.read) return { error: 'no-data-source' };
+    defineSkill('spawnMyCircle', async ({ parts, from, envelope }) => {
+      const circle = resolveAnyCircle(parts, { envelope, from });
+      if (!circle?.dataSource?.read) return { error: 'no-data-source' };
       const a = argsFromParts(parts);
       if (typeof a.circleId !== 'string' || !a.circleId) {
         return { error: 'circleId required' };
       }
-      if (a.circleId === crew?.liveCrew?.circleId) {
-        return { error: 'crew-already-active' };
+      if (a.circleId === circle?.liveCircle?.circleId) {
+        return { error: 'circle-already-active' };
       }
       // Load the saved config to confirm it exists + is well-formed.
-      // `loadCrewConfig` has a fallback for missing entries — we want a
-      // strict "exists?" check here so the UI can surface "no such crew".
-      const path = `mem://tasks/crews/${a.circleId}/config.json`;
+      // `loadCircleConfig` has a fallback for missing entries — we want a
+      // strict "exists?" check here so the UI can surface "no such circle".
+      const path = `mem://tasks/circles/${a.circleId}/config.json`;
       let cfg;
       try {
-        const raw = await crew.dataSource.read(path);
-        if (!raw) return { error: 'crew-not-found' };
+        const raw = await circle.dataSource.read(path);
+        if (!raw) return { error: 'circle-not-found' };
         cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
       } catch (err) {
         return { error: `load-failed:${err?.message ?? err}` };
       }
       if (!cfg || cfg.circleId !== a.circleId) {
-        return { error: 'crew-not-found' };
+        return { error: 'circle-not-found' };
       }
 
-      // In-process spawn path (multi-crew runtime).
-      if (typeof crew._spawnCrewInProcess === 'function') {
+      // In-process spawn path (multi-circle runtime).
+      if (typeof circle._spawnCircleInProcess === 'function') {
         try {
-          const spawned = await crew._spawnCrewInProcess(a.circleId);
+          const spawned = await circle._spawnCircleInProcess(a.circleId);
           return {
             ok:     true,
             ready:  true,
-            circleId: spawned?.liveCrew?.circleId ?? a.circleId,
-            name:   spawned?.liveCrew?.name ?? cfg.name,
-            kind:   spawned?.liveCrew?.kind ?? cfg.kind,
+            circleId: spawned?.liveCircle?.circleId ?? a.circleId,
+            name:   spawned?.liveCircle?.name ?? cfg.name,
+            kind:   spawned?.liveCircle?.kind ?? cfg.kind,
           };
         } catch (err) {
           return { error: `spawn-failed:${err?.message ?? err}` };
         }
       }
 
-      // Single-crew runtime: structured restart hint.
+      // Single-circle runtime: structured restart hint.
       return {
         ok:           true,
         ready:        false,
         circleId:       cfg.circleId,
         name:         cfg.name,
         kind:         cfg.kind,
-        restartHint:  `Restart the tasks UI bound to "${cfg.circleId}". The single-crew CLI takes \`--crew=<path-to-config.json>\`; the saved config lives at \`mem://tasks/crews/${cfg.circleId}/config.json\` in the local-store. Multi-crew in-process runtime is a follow-up (see Project Files/Tasks App/v2-web-functional-design-2026-05-11.md §6a).`,
+        restartHint:  `Restart the tasks UI bound to "${cfg.circleId}". The single-circle CLI takes \`--circle=<path-to-config.json>\`; the saved config lives at \`mem://tasks/circles/${cfg.circleId}/config.json\` in the local-store. Multi-circle in-process runtime is a follow-up (see Project Files/Tasks App/v2-web-functional-design-2026-05-11.md §6a).`,
       };
     }, {
-      description: 'Tasks V2: spawn a saved crew on the running agent (multi-crew runtime) OR return a restart hint when the CLI is single-crew mode.',
+      description: 'Tasks V2: spawn a saved circle on the running agent (multi-circle runtime) OR return a restart hint when the CLI is single-circle mode.',
       visibility:  'authenticated',
     }),
 
     /**
-     * listSavedCrewConfigs()
+     * listSavedCircleConfigs()
      *   — Tasks V2 substrate-adoption (2026-05-14). Scans the local
-     *   store for `mem://tasks/crews/<circleId>/config.json` entries and
-     *   returns the saved CrewConfigs. Includes a `running` flag per
+     *   store for `mem://tasks/circles/<circleId>/config.json` entries and
+     *   returns the saved CircleConfigs. Includes a `running` flag per
      *   entry: `true` iff the active bundle is bound to that circleId.
-     *   Used by `/crews.html` to surface saved-but-not-running crews
-     *   so users can see what `provisionMyCrew` persisted before
-     *   multi-crew runtime lands.
+     *   Used by `/circles.html` to surface saved-but-not-running circles
+     *   so users can see what `provisionMyCircle` persisted before
+     *   multi-circle runtime lands.
      *
-     * NOT wired: platform-level skill — resolves via `resolveAnyCrew`,
+     * NOT wired: platform-level skill — resolves via `resolveAnyCircle`,
      * reads the shared `dataSource`, and has no `operations[]` op.
      */
-    defineSkill('listSavedCrewConfigs', async ({ parts, from, envelope }) => {
-      const crew = resolveAnyCrew(parts, { envelope, from });
-      if (!crew?.dataSource?.list) return { error: 'no-data-source' };
+    defineSkill('listSavedCircleConfigs', async ({ parts, from, envelope }) => {
+      const circle = resolveAnyCircle(parts, { envelope, from });
+      if (!circle?.dataSource?.list) return { error: 'no-data-source' };
       let paths;
       try {
-        paths = await crew.dataSource.list('mem://tasks/crews/');
+        paths = await circle.dataSource.list('mem://tasks/circles/');
       } catch (err) {
         return { error: `list-failed:${err?.message ?? err}` };
       }
       const configs = [];
-      const runningId = crew?.liveCrew?.circleId ?? null;
+      const runningId = circle?.liveCircle?.circleId ?? null;
       for (const path of paths ?? []) {
         if (!path.endsWith('/config.json')) continue;
         try {
-          const raw = await crew.dataSource.read(path);
+          const raw = await circle.dataSource.read(path);
           if (!raw) continue;
           const cfg = typeof raw === 'string' ? JSON.parse(raw) : raw;
           if (!cfg?.circleId) continue;
@@ -879,33 +879,33 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       configs.sort((a, b) => a.circleId.localeCompare(b.circleId));
       return { configs };
     }, {
-      description: 'Tasks V2: list saved CrewConfigs in the local store with a running-flag per entry.',
+      description: 'Tasks V2: list saved CircleConfigs in the local store with a running-flag per entry.',
       visibility:  'authenticated',
     }),
 
     /**
-     * provisionMyCrew({circleId, name, kind, storagePolicy?, groupPodUri?,
+     * provisionMyCircle({circleId, name, kind, storagePolicy?, groupPodUri?,
      *                  displayName?, additionalMembers?})
      *
      * Tasks V2 standardisation adoption (2026-05-14). Persists a fresh
-     * `CrewConfig` into the local-store at
-     * `mem://tasks/crews/<circleId>/config.json` with the caller as
+     * `CircleConfig` into the local-store at
+     * `mem://tasks/circles/<circleId>/config.json` with the caller as
      * admin. Used by `/welcome.html`'s wizard for first-run
-     * crew provisioning. The caller still needs to restart Tasks with
-     * `--crew=...` (or supply the new circleId at boot) for the runtime
-     * to actually bind to the new crew — this skill is the V2 design's
+     * circle provisioning. The caller still needs to restart Tasks with
+     * `--circle=...` (or supply the new circleId at boot) for the runtime
+     * to actually bind to the new circle — this skill is the V2 design's
      * §4a "creator picks one of the four §II.2 policies" step, not the
      * full bundle bring-up.
      *
-     * NOT wired: platform-level skill — resolves via `resolveAnyCrew`,
+     * NOT wired: platform-level skill — resolves via `resolveAnyCircle`,
      * writes the shared `dataSource`, and its real args (`circleId`,
      * `storagePolicy`, `groupPodUri`, `displayName`, `additionalMembers`)
      * diverge from the manifest op's declared params (`name`, `kind`),
      * so `wireSkill`'s validation would not match the skill's contract.
      */
-    defineSkill('provisionMyCrew', async ({ parts, from, envelope }) => {
-      const crew = resolveAnyCrew(parts, { envelope, from });
-      if (!crew?.dataSource?.write) return { error: 'no-data-source' };
+    defineSkill('provisionMyCircle', async ({ parts, from, envelope }) => {
+      const circle = resolveAnyCircle(parts, { envelope, from });
+      if (!circle?.dataSource?.write) return { error: 'no-data-source' };
 
       const a = argsFromParts(parts);
       if (typeof a.circleId !== 'string' || !/^[a-z0-9](?:[a-z0-9_-]{1,30}[a-z0-9])?$/.test(a.circleId)) {
@@ -920,11 +920,11 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
       if (storageErr) return { error: storageErr };
       const storage = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
 
-      // Don't overwrite an existing crew with the same id (the wizard
+      // Don't overwrite an existing circle with the same id (the wizard
       // surfaces a clear error to the user).
-      const path = `mem://tasks/crews/${a.circleId}/config.json`;
+      const path = `mem://tasks/circles/${a.circleId}/config.json`;
       try {
-        const existing = await crew.dataSource.read(path);
+        const existing = await circle.dataSource.read(path);
         if (existing) return { error: 'circleId-already-exists' };
       } catch { /* read-miss is the happy path */ }
 
@@ -953,8 +953,8 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         }
       }
 
-      const saved = await saveCrewConfig({
-        dataSource: crew.dataSource,
+      const saved = await saveCircleConfig({
+        dataSource: circle.dataSource,
         config:     { circleId: a.circleId, name: a.name, kind, members, storage },
       });
 
@@ -966,7 +966,7 @@ export function buildSkills({ bundleResolver, crewsProvider } = {}) {
         members: saved.members,
       };
     }, {
-      description: 'Tasks V2: provision a fresh crew config (caller becomes admin).',
+      description: 'Tasks V2: provision a fresh circle config (caller becomes admin).',
       visibility:  'authenticated',
     }),
   ];

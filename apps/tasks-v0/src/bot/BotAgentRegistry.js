@@ -7,7 +7,7 @@
  *     to the bot's pubKey, with `constraints.actingAs = webid`.
  *     Wildcard skill scope (V1.5 trade-off — see CHANGELOG); the
  *     role-policy gate on each Tasks skill still applies because
- *     the bot's pubKey is not a crew member webid.
+ *     the bot's pubKey is not a circle member webid.
  *   - Shares the tasks agent's `InternalBus`, so bot.invoke(tasksPubKey, ...)
  *     routes through the real protocol stack: outbound `callSkill`
  *     attaches the held token, inbound `handleTaskRequest` runs
@@ -23,7 +23,7 @@
  *
  * Persistence (V1.5 follow-up B): when a `dataSource` is supplied,
  * each bot agent's vault snapshot + binding metadata is written to
- * `mem://tasks/crews/<circleId>/botAgents/<chatId>.json`. On Crew
+ * `mem://tasks/circles/<circleId>/botAgents/<chatId>.json`. On Circle
  * boot, `restoreAll()` loads them and re-spawns the bot agents
  * against the same identity, so cap-token bindings survive a CLI
  * restart. Without `dataSource`, bot identities stay ephemeral
@@ -71,7 +71,7 @@ export class BotAgentRegistry {
    * @param {import('@canopy/core').Agent}        args.tasksAgent
    * @param {object} [args.dataSource]
    *   V1.5 follow-up B — when supplied, bindings persist under
-   *   `mem://tasks/crews/<circleId>/botAgents/<chatId>.json` so
+   *   `mem://tasks/circles/<circleId>/botAgents/<chatId>.json` so
    *   cap-token bindings survive CLI restarts. Caller must pass
    *   `circleId` alongside.
    * @param {string} [args.circleId]
@@ -100,7 +100,7 @@ export class BotAgentRegistry {
   get persisting() { return !!(this.#dataSource && this.#circleId); }
 
   #pathFor(chatId) {
-    return `mem://tasks/crews/${this.#circleId}/botAgents/${encodeURIComponent(chatId)}.json`;
+    return `mem://tasks/circles/${this.#circleId}/botAgents/${encodeURIComponent(chatId)}.json`;
   }
 
   /**
@@ -221,7 +221,7 @@ export class BotAgentRegistry {
 
   /**
    * V1.5 follow-up B — re-spawn bot agents from persisted snapshots.
-   * Called from Crew boot AFTER the tasks agent + dataSource are up.
+   * Called from Circle boot AFTER the tasks agent + dataSource are up.
    * Skips entries whose token has already expired (the admin will need
    * to re-issue) and tears down their persistent rows.
    *
@@ -229,7 +229,7 @@ export class BotAgentRegistry {
    */
   async restoreAll() {
     if (!this.persisting) return { restored: 0, expired: 0, failed: 0 };
-    const root = `mem://tasks/crews/${this.#circleId}/botAgents/`;
+    const root = `mem://tasks/circles/${this.#circleId}/botAgents/`;
     let listing = [];
     try {
       const r = await this.#dataSource.list?.(root);
@@ -270,8 +270,8 @@ export class BotAgentRegistry {
         await agent.start();
         await agent.hello(this.#tasksAgent.address);
 
-        // V2.0 — with persisted tasks-agent identity (Crew.js writes
-        // the agent vault to `mem://tasks/crews/<circleId>/agent/
+        // V2.0 — with persisted tasks-agent identity (Circle.js writes
+        // the agent vault to `mem://tasks/circles/<circleId>/agent/
         // identity-vault.json` on first boot and restores from it
         // afterwards), the token's `agentId` matches the current
         // tasks agent's pubKey across restarts; the auto-rotate
@@ -336,7 +336,7 @@ export class BotAgentRegistry {
   }
 
   /**
-   * Tear down ALL bot agents. Called from `Crew.close()`.
+   * Tear down ALL bot agents. Called from `Circle.close()`.
    */
   async closeAll() {
     for (const entry of this.#entries.values()) {

@@ -1,6 +1,6 @@
 /**
  * circleStoragePolicy — the bridge from the circle `pod` axis to stoop's
- * authoritative four-tier crew storage policy. Pure mapping + call
+ * authoritative four-tier circle storage policy. Pure mapping + call
  * orchestration over a fake callSkill (no pod, no network).
  */
 import { describe, it, expect, vi } from 'vitest';
@@ -26,10 +26,10 @@ describe('pod ↔ tier mapping', () => {
 });
 
 describe('pushCircleStoragePolicy', () => {
-  it('calls stoop.setCrewStoragePolicy with the mapped tier + circleId as groupId', async () => {
+  it('calls stoop.setCircleStoragePolicy with the mapped tier + circleId as groupId', async () => {
     const callSkill = vi.fn(async () => ({ groupId: 'c-1', storage: { policy: 'centralised', groupPodUri: 'https://pod/' } }));
     const r = await pushCircleStoragePolicy({ callSkill, circleId: 'c-1', pod: 'shared', groupPodUri: 'https://pod/' });
-    expect(callSkill).toHaveBeenCalledWith('stoop', 'setCrewStoragePolicy', {
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'setCircleStoragePolicy', {
       groupId: 'c-1', storagePolicy: 'centralised', groupPodUri: 'https://pod/',
     });
     expect(r).toEqual({ ok: true, storage: { policy: 'centralised', groupPodUri: 'https://pod/' } });
@@ -38,7 +38,7 @@ describe('pushCircleStoragePolicy', () => {
   it('omits groupPodUri when not supplied (e.g. decentralised)', async () => {
     const callSkill = vi.fn(async () => ({ storage: { policy: 'decentralised' } }));
     await pushCircleStoragePolicy({ callSkill, circleId: 'c-1', pod: 'personal' });
-    expect(callSkill).toHaveBeenCalledWith('stoop', 'setCrewStoragePolicy', { groupId: 'c-1', storagePolicy: 'decentralised' });
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'setCircleStoragePolicy', { groupId: 'c-1', storagePolicy: 'decentralised' });
   });
 
   it('surfaces the one-way downgrade rejection verbatim', async () => {
@@ -67,10 +67,10 @@ describe('pushCircleStoragePolicy', () => {
 });
 
 describe('loadCircleStoragePod', () => {
-  it('reads stoop.getCrewStoragePolicy and hydrates the pod axis', async () => {
+  it('reads stoop.getCircleStoragePolicy and hydrates the pod axis', async () => {
     const callSkill = vi.fn(async () => ({ policy: 'decentralised', groupPodUri: null }));
     const r = await loadCircleStoragePod({ callSkill, circleId: 'c-1' });
-    expect(callSkill).toHaveBeenCalledWith('stoop', 'getCrewStoragePolicy', { groupId: 'c-1' });
+    expect(callSkill).toHaveBeenCalledWith('stoop', 'getCircleStoragePolicy', { groupId: 'c-1' });
     expect(r).toEqual({ pod: 'personal', groupPodUri: null });
   });
 

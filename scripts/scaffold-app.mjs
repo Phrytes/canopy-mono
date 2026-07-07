@@ -299,7 +299,7 @@ The scaffolded app uses the **minimum viable** substrate stack:
 | Identity vault | \`VaultMemory\` (ephemeral) | \`VaultNodeFs\` (Node) or \`KeychainVault\` (RN) |
 | Transport | \`InternalTransport\` (in-process) | \`RelayTransport\` (NKN/relay) + optional \`BleTransport\` / \`MdnsTransport\` |
 | Storage | (none) | \`@canopy/pseudo-pod\` for local, \`@canopy/pod-client\` for real Solid pods |
-| Fan-out | (none) | \`@canopy/notify-envelope\` for crew-replicated writes |
+| Fan-out | (none) | \`@canopy/notify-envelope\` for circle-replicated writes |
 | Item shape | (free-form) | \`@canopy/item-types\` canonical taxonomy |
 
 See \`Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md\`

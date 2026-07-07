@@ -3,7 +3,7 @@
  *
  * Phase 41.18.2 (2026-05-10).
  *
- * Wraps `getPrivacyNotice({lang})` from tasks-v0's crewControls
+ * Wraps `getPrivacyNotice({lang})` from tasks-v0's circleControls
  * skills. Renders each item as a heading + paragraph block, mirroring
  * `apps/tasks-v0/web/privacy.html`. Picks the language from the active
  * Localisation locale.

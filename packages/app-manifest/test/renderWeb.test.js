@@ -140,25 +140,25 @@ describe('renderWeb V0', () => {
     it('section.audience passed through when present (V0 NavModel ignores; SP-5b consumer reads)', () => {
       const nav = renderWeb({
         ...SYNTH,
-        views: [{ id: 'shared', title: 'Shared', type: 'task', audience: 'crew:abc' }],
+        views: [{ id: 'shared', title: 'Shared', type: 'task', audience: 'circle:abc' }],
       });
-      expect(nav.sections[0].audience).toBe('crew:abc');
+      expect(nav.sections[0].audience).toBe('circle:abc');
     });
 
     it('SP-5b — section.audience defaults from view.defaultAudience (the schema field)', () => {
       const nav = renderWeb({
         ...SYNTH,
-        views: [{ id: 'shared', title: 'Shared', type: 'task', defaultAudience: 'crew:abc' }],
+        views: [{ id: 'shared', title: 'Shared', type: 'task', defaultAudience: 'circle:abc' }],
       });
-      expect(nav.sections[0].audience).toBe('crew:abc');
+      expect(nav.sections[0].audience).toBe('circle:abc');
     });
 
     it('SP-5b — explicit view.audience overrides view.defaultAudience', () => {
       const nav = renderWeb({
         ...SYNTH,
-        views: [{ id: 'shared', title: 'Shared', type: 'task', audience: 'crew:explicit', defaultAudience: 'crew:default' }],
+        views: [{ id: 'shared', title: 'Shared', type: 'task', audience: 'circle:explicit', defaultAudience: 'circle:default' }],
       });
-      expect(nav.sections[0].audience).toBe('crew:explicit');
+      expect(nav.sections[0].audience).toBe('circle:explicit');
     });
 
     it('SP-5b — section.audience ABSENT when neither audience nor defaultAudience declared', () => {

@@ -3,9 +3,9 @@
  *
  * Phase 41.18.4 (2026-05-10) — added so the mobile appeal-thread
  * screen has a concrete read/send surface. The substrate side is
- * already wired in Crew.js (chat-p2p `wireChat({...})` writes
- * `chat-message` items into the per-crew item-store + the
- * controller is exposed at `crew.chatController`).
+ * already wired in Circle.js (chat-p2p `wireChat({...})` writes
+ * `chat-message` items into the per-circle item-store + the
+ * controller is exposed at `circle.chatController`).
  *
  * Skills:
  *   - `sendChatMessage({toWebid, threadId, body})` — peer-to-peer
@@ -38,8 +38,8 @@ export function buildChatSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('sendChatMessage', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.threadId !== 'string' || !a.threadId) {
         return { error: 'threadId required' };
@@ -47,7 +47,7 @@ export function buildChatSkills({ bundleResolver } = {}) {
       if (typeof a.body !== 'string' || a.body.trim().length === 0) {
         return { error: 'body required' };
       }
-      const ctrl = crew.chatController;
+      const ctrl = circle.chatController;
       if (!ctrl?.send) {
         return { error: 'chat-not-wired' };
       }
@@ -71,13 +71,13 @@ export function buildChatSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('getChatThread', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.threadId !== 'string' || !a.threadId) {
         return { error: 'threadId required' };
       }
-      const all = await crew.itemStore.listOpen({ type: CHAT_TYPE });
+      const all = await circle.itemStore.listOpen({ type: CHAT_TYPE });
       const messages = all
         .filter((i) => i?.source?.threadId === a.threadId)
         .sort((p, q) =>
@@ -90,9 +90,9 @@ export function buildChatSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('listChatThreads', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const all = await crew.itemStore.listOpen({ type: CHAT_TYPE });
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const all = await circle.itemStore.listOpen({ type: CHAT_TYPE });
       /** @type {Map<string, object>} */
       const byThread = new Map();
       for (const m of all) {

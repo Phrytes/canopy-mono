@@ -35,7 +35,7 @@ import { classify, reverseResolve } from './podPathMap.js';
  * Activate pod routing + attach the inner DataSource on a Tasks bundle.
  *
  * @param {object} a
- * @param {object} a.bundle        a Tasks CrewState / crewBundle object;
+ * @param {object} a.bundle        a Tasks CircleState / circleBundle object;
  *   must have `cache.attachInner`. May have `_podCtx`, `podRouting`,
  *   `pseudoPod`.
  * @param {object} a.source        the constructed inner DataSource
@@ -58,7 +58,7 @@ export async function attachTasksBundle({
     throw new Error('attachTasksBundle: bundle missing cache.attachInner (cache:false?)');
   }
 
-  const crew = circleId ?? bundle.circleId ?? bundle.groupId ?? null;
+  const circle = circleId ?? bundle.circleId ?? bundle.groupId ?? null;
   const info = agentInfo ?? {
     deviceId: bundle.substrateDeviceId ?? bundle.deviceId ?? bundle.agent?.address ?? 'tasks-device',
     agentUri: bundle.localActor ?? webid ?? 'agent://tasks',
@@ -88,7 +88,7 @@ export async function attachTasksBundle({
     bundle._podCtx.classify   = classify;
     bundle._podCtx.reverse    = reverseResolve;
     bundle._podCtx.podRouting = bundle.podRouting ?? null;
-    bundle._podCtx.circleId     = crew;
+    bundle._podCtx.circleId     = circle;
     bundle._podCtx.vars       = {};
     bundle._podCtx.active     = !!(bundle.podRouting && classify);
   }

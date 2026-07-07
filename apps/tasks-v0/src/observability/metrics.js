@@ -15,9 +15,9 @@
  * snapshots to their pod on a foreground cadence — V1 ships
  * in-memory only.
  *
- * The crew admin surfaces the snapshot via the `getMetrics` skill;
+ * The circle admin surfaces the snapshot via the `getMetrics` skill;
  * the snapshot is locally aggregated (per-device). User opt-in to
- * share with the crew admin is wired at the skill layer (a future
+ * share with the circle admin is wired at the skill layer (a future
  * V2 sync). Per the pod-data-sharing caution principles, V1 keeps
  * the snapshot strictly local.
  */

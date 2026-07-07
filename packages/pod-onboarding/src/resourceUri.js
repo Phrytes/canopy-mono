@@ -6,8 +6,8 @@
  * derivation lives HERE, not in `@canopy/item-store` (which must stay pod-agnostic) and not baked into
  * `makeSharedRefPolicy` (which only takes an injected `resourceUriFor`).
  *
- * Canonical layout (storage-layout.md · "Canonical sub-container layout"): crew/circle-scoped data lives
- * under `group/<circleId>/<type>/`. A circle IS a crew in this model, so an item's resource is:
+ * Canonical layout (storage-layout.md · "Canonical sub-container layout"): circle/circle-scoped data lives
+ * under `group/<circleId>/<type>/`. A circle IS a circle in this model, so an item's resource is:
  *
  *     <pod>/group/<circleId>/<container>/<itemId>
  *

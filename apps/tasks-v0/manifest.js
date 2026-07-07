@@ -60,22 +60,22 @@ export const tasksManifest = {
    * `clearInboxItem` itemAction.
    */
   /*
-   * Slice B.2.4 (2026-05-20) — `'crew-storage-policy'` joins as an
+   * Slice B.2.4 (2026-05-20) — `'circle-storage-policy'` joins as an
    * app-local (non-canonical, F-SP1-a) item type so the `pod-settings`
-   * view can declare `view.type: 'crew-storage-policy'`
+   * view can declare `view.type: 'circle-storage-policy'`
    * (validateView pins `view.type` ∈ `manifest.itemTypes`).  Like
    * stoop's `'group-rules'` placeholder for its settings view, the
-   * crew storage policy is a SINGLETON record (one merged object:
+   * circle storage policy is a SINGLETON record (one merged object:
    * `{policy, groupPodUri?}`), not a list of items.  See V0.3 Q17
    * (`shape: 'record'`) — the view encodes that reality.
    */
   // Part G (2026-06-17) — 'schedule-slot' + 'member' folded in from the former
-  // mockTasksManifest (the suggest/acceptSchedule + listCrewMembers ops gate on
+  // mockTasksManifest (the suggest/acceptSchedule + listCircleMembers ops gate on
   // them).  'subtask-request' / 'subtask-proposal' already model the inbox-kind
   // subtask ops via `appliesTo.kind` on 'inbox-item'; the mock's standalone
   // subtask ops (addSubtask / proposeSubtask) gate on 'task', so no new type is
   // needed for those.
-  itemTypes: ['task', 'inbox-item', 'crew-storage-policy', 'crew', 'schedule-slot', 'member'],
+  itemTypes: ['task', 'inbox-item', 'circle-storage-policy', 'circle', 'schedule-slot', 'member'],
 
   // B · Layer 1 — domain (non-atom) verb: `tree` (DAG traversal of the task
   // graph — structural, not a plain `list`).  All other ops map to SDK atoms.
@@ -89,7 +89,7 @@ export const tasksManifest = {
     task:            { atoms: ['add', 'list', 'update', 'remove', 'complete', 'claim', 'reassign', 'submit', 'approve', 'reject', 'revoke'] },
     'inbox-item':    { atoms: ['list', 'approve', 'reject', 'remove'] },
     'schedule-slot': { atoms: ['add', 'list'] },
-    crew:            { atoms: ['list', 'archive', 'unarchive'] },
+    circle:            { atoms: ['list', 'archive', 'unarchive'] },
     member:          { atoms: ['list'] },
   },
 
@@ -115,7 +115,7 @@ export const tasksManifest = {
             body:         'text-only',
             dropTrailing: ['to', 'aan', 'op', 'toe'],
           } },
-        chat: { reply: 'text', hint: 'Create a task; rejects on dependency cycles. Blocked when crew is paused/archived.' },
+        chat: { reply: 'text', hint: 'Create a task; rejects on dependency cycles. Blocked when circle is paused/archived.' },
       },
     },
     {
@@ -600,63 +600,63 @@ export const tasksManifest = {
     },
 
     /*
-     * Q27 adoption (V0.8, 2026-05-21) — crew lifecycle ops.
+     * Q27 adoption (V0.8, 2026-05-21) — circle lifecycle ops.
      *
-     * `archiveCrew` hides a crew from active workflows but does NOT
-     * delete items.  Reversible via `unarchiveCrew`.  Admin-only —
+     * `archiveCircle` hides a circle from active workflows but does NOT
+     * delete items.  Reversible via `unarchiveCircle`.  Admin-only —
      * the skill enforces the role check; the manifest declares the
      * affordance + severity hint.
      *
-     * No `appliesTo` — these are crew-scoped, not per-item.  No
-     * view surfaces them today (the crew dashboard is hand-coded);
-     * future slices can wire a `crews` view that surfaces them.
+     * No `appliesTo` — these are circle-scoped, not per-item.  No
+     * view surfaces them today (the circle dashboard is hand-coded);
+     * future slices can wire a `circles` view that surfaces them.
      * Chat surface lets the chat agent dispatch them by name.
      */
     {
-      id:        'archiveCrew',
+      id:        'archiveCircle',
       verb:      'archive',
       // Part G (2026-06-17) — the mock declared a `confirm` flag; realAgent's
       // Q27 two-step gate reads `args.confirm`.  Additive (real had no params).
       params:    [
         { name: 'confirm', kind: 'boolean', required: false },
       ],
-      // 'crew' itemType is the natural scope for crew-lifecycle ops.
-      // Crews aren't surfaced by any view today (the crew dashboard
+      // 'circle' itemType is the natural scope for circle-lifecycle ops.
+      // Circles aren't surfaced by any view today (the circle dashboard
       // is hand-coded); appliesTo keeps the op off task-level inline
       // keyboards while letting chat agents address it by name.
-      appliesTo: { type: 'crew' },
+      appliesTo: { type: 'circle' },
       surfaces: {
         // Part G (2026-06-17) — slash folded in from mockTasksManifest.
-        slash: { command: '/archive-crew', body: 'flags' },
-        chat: { reply: 'text', hint: 'Archive this crew — admin only. Hides it from active workflows; items are kept.' },
+        slash: { command: '/archive-circle', body: 'flags' },
+        chat: { reply: 'text', hint: 'Archive this circle — admin only. Hides it from active workflows; items are kept.' },
         ui: {
           control: 'button',
-          label:   'Archive crew',
+          label:   'Archive circle',
           confirm: {
             severity: 'warn',
-            message:  'Archive this crew?  Items are kept; new tasks are blocked until you unarchive.',
+            message:  'Archive this circle?  Items are kept; new tasks are blocked until you unarchive.',
           },
         },
       },
     },
     {
-      id:        'unarchiveCrew',
+      id:        'unarchiveCircle',
       verb:      'unarchive',
       params:    [],
-      appliesTo: { type: 'crew' },
+      appliesTo: { type: 'circle' },
       surfaces: {
         // Part G (2026-06-17) — slash folded in from mockTasksManifest.
-        slash: { command: '/unarchive-crew' },
-        chat: { reply: 'text', hint: 'Unarchive this crew — admin only.  Resumes new-task creation.' },
+        slash: { command: '/unarchive-circle' },
+        chat: { reply: 'text', hint: 'Unarchive this circle — admin only.  Resumes new-task creation.' },
         // No confirm — unarchive is the undo path; low-barrier reversal.
-        ui:   { control: 'button', label: 'Unarchive crew' },
+        ui:   { control: 'button', label: 'Unarchive circle' },
       },
     },
 
     /* ── Chat-shell ops (Part G dissolve, 2026-06-17) ───────────────────
      * Folded in from canopy-chat's former `mockTasksManifest`.  These are
-     * the circle/chat-shell surface for the REAL tasks-v0 crew skills
-     * (handlers via createBrowserMultiCrewTasksAgent / realAgent).  Each
+     * the circle/chat-shell surface for the REAL tasks-v0 circle skills
+     * (handlers via createBrowserMultiCircleTasksAgent / realAgent).  Each
      * declares `surfaces.slash` (+ a Part-C gate `match` where the op has a
      * casual NL phrasing), so the circle LLM + the deterministic gate read
      * them straight from this one manifest.  Params speak the REAL skill's
@@ -690,12 +690,12 @@ export const tasksManifest = {
       },
     },
     /**
-     * v0.7.cc — `/crew-new <name> --kind=<household|project|team|...>`.
-     * Mirrors tasks-v0 V2's provisionMyCrew.  Returns a crew id +
+     * v0.7.cc — `/circle-new <name> --kind=<household|project|team|...>`.
+     * Mirrors tasks-v0 V2's provisionMyCircle.  Returns a circle id +
      * suggested next ops (invite a member, add the first task).
      */
     {
-      id:    'provisionMyCrew', verb: 'add',
+      id:    'provisionMyCircle', verb: 'add',
       params: [
         { name: 'name', kind: 'string', required: true },
         { name: 'kind', kind: 'enum',
@@ -703,8 +703,8 @@ export const tasksManifest = {
           required: false },
       ],
       surfaces: {
-        slash: { command: '/crew-new', body: 'flags' },
-        chat:  { reply: 'text', hint: 'provision a new crew' },
+        slash: { command: '/circle-new', body: 'flags' },
+        chat:  { reply: 'text', hint: 'provision a new circle' },
       },
     },
     /**
@@ -784,64 +784,64 @@ export const tasksManifest = {
       },
     },
     /**
-     * #191 (B5, 2026-05-23) — cross-crew dashboard.  getMyCrews +
-     * per-crew counters (open / overdue / mine / awaitingApproval).
+     * #191 (B5, 2026-05-23) — cross-circle dashboard.  getMyCircles +
+     * per-circle counters (open / overdue / mine / awaitingApproval).
      */
     {
-      id:    'getMyCrews', verb: 'list',
-      appliesTo: { type: 'crew' },
+      id:    'getMyCircles', verb: 'list',
+      appliesTo: { type: 'circle' },
       params: [],
       surfaces: {
-        slash: { command: '/crews' },
-        chat:  { reply: 'list', hint: 'cross-crew dashboard with per-crew counters' },
+        slash: { command: '/circles' },
+        chat:  { reply: 'list', hint: 'cross-circle dashboard with per-circle counters' },
       },
     },
     /**
-     * #190 (B3, 2026-05-23) — crew admin surface.  getCrewConfig +
-     * pause/unpause (crewControls).  All accept a circleId; auto-injected
-     * from opts.tasksCrewConfig.circleId by realAgent.
+     * #190 (B3, 2026-05-23) — circle admin surface.  getCircleConfig +
+     * pause/unpause (circleControls).  All accept a circleId; auto-injected
+     * from opts.tasksCircleConfig.circleId by realAgent.
      */
     {
-      id:    'getCrewConfig', verb: 'list',
+      id:    'getCircleConfig', verb: 'list',
       params: [],
       surfaces: {
-        slash: { command: '/crew-info' },
-        chat:  { reply: 'record', hint: 'show crew config (kind, paused/archived, counts)' },
+        slash: { command: '/circle-info' },
+        chat:  { reply: 'record', hint: 'show circle config (kind, paused/archived, counts)' },
       },
     },
     /**
-     * 2026-05-24 — /crew-members = list reply with one clickable row per
-     * member.  Derived from getCrewConfig (realAgent unpacks members[]).
+     * 2026-05-24 — /circle-members = list reply with one clickable row per
+     * member.  Derived from getCircleConfig (realAgent unpacks members[]).
      */
     {
-      id:    'listCrewMembers', verb: 'list',
+      id:    'listCircleMembers', verb: 'list',
       appliesTo: { type: 'member' },
       params: [],
       surfaces: {
-        slash: { command: '/crew-members' },
-        chat:  { reply: 'list', hint: 'list members of your crew (with role)' },
+        slash: { command: '/circle-members' },
+        chat:  { reply: 'list', hint: 'list members of your circle (with role)' },
       },
     },
     {
-      id:    'pauseCrew', verb: 'submit',
+      id:    'pauseCircle', verb: 'submit',
       params: [],
       surfaces: {
-        slash: { command: '/pause-crew' },
-        chat:  { reply: 'text', hint: 'pause the crew (no new tasks; existing tasks remain workable)' },
+        slash: { command: '/pause-circle' },
+        chat:  { reply: 'text', hint: 'pause the circle (no new tasks; existing tasks remain workable)' },
       },
     },
     {
-      id:    'unpauseCrew', verb: 'submit',
+      id:    'unpauseCircle', verb: 'submit',
       params: [],
       surfaces: {
-        slash: { command: '/unpause-crew' },
-        chat:  { reply: 'text', hint: 'resume the crew after a pause' },
+        slash: { command: '/unpause-circle' },
+        chat:  { reply: 'text', hint: 'resume the circle after a pause' },
       },
     },
     /**
-     * #187 (A9, 2026-05-23) — crew invite + redeem.  issueInvite /
+     * #187 (A9, 2026-05-23) — circle invite + redeem.  issueInvite /
      * redeemInvite.  /invite mints a single-use code; /redeem-invite
-     * joins the crew that issued the token.
+     * joins the circle that issued the token.
      */
     {
       id:    'issueInvite', verb: 'add',
@@ -851,7 +851,7 @@ export const tasksManifest = {
       ],
       surfaces: {
         slash: { command: '/invite', body: 'flags' },
-        chat:  { reply: 'record', hint: 'mint a single-use crew invite (admin-only)' },
+        chat:  { reply: 'record', hint: 'mint a single-use circle invite (admin-only)' },
       },
     },
     {
@@ -862,7 +862,7 @@ export const tasksManifest = {
       ],
       surfaces: {
         slash: { command: '/redeem-invite', body: 'flags' },
-        chat:  { reply: 'text', hint: 'join a crew using an invite token' },
+        chat:  { reply: 'text', hint: 'join a circle using an invite token' },
       },
     },
     /**
@@ -1034,20 +1034,20 @@ export const tasksManifest = {
      * keeps its rich custom UI (pod-sign-in flow, conditional
      * groupPodUri row, localisation labels — auto-rendering would regress).
      *
-     * V0.3 Q17 (`shape: 'record'`) — `getCrewStoragePolicy` returns a
+     * V0.3 Q17 (`shape: 'record'`) — `getCircleStoragePolicy` returns a
      * singleton `{policy, groupPodUri?}` object, NOT a list.  Q15
      * (`argsFromContext`) — `circleId` is a RUNTIME-derived arg
-     * (URL `?crew=...`), not static; the page (or its host) supplies
+     * (URL `?circle=...`), not static; the page (or its host) supplies
      * `$circleId` via the fetch-section context.
      *
      * V0.4 Q18 (`view.fields[]`) — declares the two editable fields
      * of the storage policy with their patch ops.  Both target
-     * `setCrewStoragePolicy({circleId, storagePolicy, groupPodUri?})`
+     * `setCircleStoragePolicy({circleId, storagePolicy, groupPodUri?})`
      * — a FLAT skill (no nested `{patch: {...}}` wrapper), so Q21
      * `argWrapper` is NOT needed here (omitted).  Same flat shape
      * as stoop's `setHopMode({global})` field.
      *
-     * `setCrewStoragePolicy` and `getCrewStoragePolicy` are NOT
+     * `setCircleStoragePolicy` and `getCircleStoragePolicy` are NOT
      * declared in `operations[]` (same choice stoop made for
      * `getSettings`/`updateSettings`/`setHopMode`).  They are
      * pod-plumbing skills, not chat/slash-callable primary flows.
@@ -1065,18 +1065,18 @@ export const tasksManifest = {
     {
       id:    'pod-settings',
       title: 'Pod settings',
-      type:  'crew-storage-policy',
+      type:  'circle-storage-policy',
       shape: 'record',                              // V0.3 Q17 — singleton
       dataSource: {
-        skillId:         'getCrewStoragePolicy',
+        skillId:         'getCircleStoragePolicy',
         // V0.3 Q15 — `circleId` is runtime-derived (browser URL); the
         // page supplies it via the fetch-section context.  Omitted
-        // when the host has no active crew (the skill itself replies
+        // when the host has no active circle (the skill itself replies
         // `{error: 'circleId required'}` in that case).
         argsFromContext: { circleId: '$circleId' },
       },
       // V0.4 Q18 — two representative editable fields of the storage
-      // policy.  Both dispatch through `setCrewStoragePolicy` (one-way
+      // policy.  Both dispatch through `setCircleStoragePolicy` (one-way
       // upgrade; admin/coordinator gated server-side).
       fields: [
         {
@@ -1088,9 +1088,9 @@ export const tasksManifest = {
           // policy is active).
           choices: ['centralised', 'decentralised', 'hybrid'],
           // Flat patch — dispatch is
-          // `setCrewStoragePolicy({circleId, storagePolicy: <value>})`.
+          // `setCircleStoragePolicy({circleId, storagePolicy: <value>})`.
           // No `argWrapper` (skill takes flat args, not `{patch: ...}`).
-          patch:   { opId: 'setCrewStoragePolicy', argName: 'storagePolicy' },
+          patch:   { opId: 'setCircleStoragePolicy', argName: 'storagePolicy' },
         },
         {
           name:  'groupPodUri',
@@ -1105,7 +1105,7 @@ export const tasksManifest = {
           // B.2.4 was the originating signal; V0.7 closed the
           // substrate gap.
           requiresField: { policy: ['centralised', 'hybrid'] },
-          patch: { opId: 'setCrewStoragePolicy', argName: 'groupPodUri' },
+          patch: { opId: 'setCircleStoragePolicy', argName: 'groupPodUri' },
         },
       ],
     },

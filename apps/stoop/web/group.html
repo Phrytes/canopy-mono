@@ -346,7 +346,7 @@
 
     async function refreshStorage() {
       try {
-        const r = await callSkill('getCrewStoragePolicy', { groupId });
+        const r = await callSkill('getCircleStoragePolicy', { groupId });
         const policy = r?.policy ?? 'no-pod';
         const label = (POLICY_LABELS[policy] ?? POLICY_LABELS['no-pod'])();
         const statusEl = document.getElementById('storage-status');
@@ -372,7 +372,7 @@
       const podUri = document.getElementById('storage-new-pod-uri').value.trim();
       status.textContent = t('group.storage_upgrading', 'Aan het upgraden…');
       try {
-        const r = await callSkill('setCrewStoragePolicy', {
+        const r = await callSkill('setCircleStoragePolicy', {
           groupId,
           storagePolicy: sel.value,
           ...(podUri ? { groupPodUri: podUri } : {}),

@@ -23,10 +23,10 @@ export function CompensationSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
-  const liveCrew = cs?.liveCrew ?? null;
-  const enabled  = !!liveCrew?.compensation?.enabled;
-  const members  = liveCrew?.members ?? [];
+  const cs = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
+  const liveCircle = cs?.liveCircle ?? null;
+  const enabled  = !!liveCircle?.compensation?.enabled;
+  const members  = liveCircle?.members ?? [];
 
   const setEnabled = useSkill('setCompensationEnabled');
   const setMember  = useSkill('setMemberCompensation');
@@ -35,8 +35,8 @@ export function CompensationSection() {
   const onToggleEnabled = useCallback(async (next) => {
     if (!isAdmin) return;
     await setEnabled.call({ enabled: !!next }).catch(() => {});
-    // The crew config will refresh through the next ServiceContext-level
-    // crewMutator pass; for V1.0 we rely on parent-screen refresh.
+    // The circle config will refresh through the next ServiceContext-level
+    // circleMutator pass; for V1.0 we rely on parent-screen refresh.
   }, [isAdmin, setEnabled]);
 
   const onToggleMember = useCallback(async (memberWebid, compensated) => {
@@ -54,7 +54,7 @@ export function CompensationSection() {
   if (!isAdmin && !enabled) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t('mobile.crew_settings.compensation_disabled')}
+        {t('mobile.circle_settings.compensation_disabled')}
       </Text>
     );
   }
@@ -67,7 +67,7 @@ export function CompensationSection() {
           marginBottom: SPACING.md,
         }}>
           <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm }}>
-            {t('mobile.crew_settings.compensation_enable_label')}
+            {t('mobile.circle_settings.compensation_enable_label')}
           </Text>
           <Switch
             value={enabled}
@@ -121,7 +121,7 @@ function MemberRow({ member, onToggle, onSetRate, colors, sp, fz, ra, t }) {
       {member.compensated ? (
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: sp.sm }}>
           <Text style={{ color: colors.textMuted, fontSize: fz.xs, marginRight: sp.sm }}>
-            {t('mobile.crew_settings.compensation_rate_label')}
+            {t('mobile.circle_settings.compensation_rate_label')}
           </Text>
           <TextInput
             value={rate}
@@ -150,17 +150,17 @@ function RollupSummary({ rollup, colors, sp, fz, t }) {
       backgroundColor: colors.surface,
     }}>
       <Text style={{ color: colors.text, fontSize: fz.sm, fontWeight: '600', marginBottom: sp.sm }}>
-        {t('mobile.crew_settings.compensation_rollup_title')}
+        {t('mobile.circle_settings.compensation_rollup_title')}
       </Text>
       <Text style={{ color: colors.textMuted, fontSize: fz.xs }}>
-        {t('mobile.crew_settings.compensation_rollup_count', null).replace('{count}', String(totals.count ?? 0))}
+        {t('mobile.circle_settings.compensation_rollup_count', null).replace('{count}', String(totals.count ?? 0))}
       </Text>
       <Text style={{ color: colors.textMuted, fontSize: fz.xs }}>
-        {t('mobile.crew_settings.compensation_rollup_hours', null).replace('{hours}', String(totals.hours ?? 0))}
+        {t('mobile.circle_settings.compensation_rollup_hours', null).replace('{hours}', String(totals.hours ?? 0))}
       </Text>
       {Number.isFinite(totals.amount) ? (
         <Text style={{ color: colors.textMuted, fontSize: fz.xs }}>
-          {t('mobile.crew_settings.compensation_rollup_amount', null)
+          {t('mobile.circle_settings.compensation_rollup_amount', null)
             .replace('{amount}', String(totals.amount))
             .replace('{currency}', rollup?.currency ?? '€')}
         </Text>

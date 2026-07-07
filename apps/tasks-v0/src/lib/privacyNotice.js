@@ -19,12 +19,12 @@
  * Items 5-6 cover V1-era Tasks-specific pod-data flows:
  *   - Calendar read stays local (no network freebusy).
  *   - Pod-data-sharing caution principles (skills, deliverables) —
- *     defaults explicitly opt-in per crew.
+ *     defaults explicitly opt-in per circle.
  *
  * Items 7-9 added 2026-05-08 for the V2 pod paths:
  *   - Calendar emission (V2.1) — VEVENT files written to your own pod.
- *   - Invoicing (V2.2) — paid-pro lines on the crew pod.
- *   - Availability hints (V2.3) — coarse half-day chips on the crew pod.
+ *   - Invoicing (V2.2) — paid-pro lines on the circle pod.
+ *   - Availability hints (V2.3) — coarse half-day chips on the circle pod.
  */
 
 export const PRIVACY_NOTICE = Object.freeze({
@@ -41,26 +41,26 @@ export const PRIVACY_NOTICE = Object.freeze({
     },
     {
       heading: 'Misbruik en aansprakelijkheid',
-      body:    'Iedere admin van een crew is verantwoordelijk voor wie er lid is. ' +
+      body:    'Iedere admin van een circle is verantwoordelijk voor wie er lid is. ' +
                'Bij ernstig misbruik kan een admin een lid verwijderen (of laten verwijderen door de relay-operator). ' +
                'Tasks heeft geen centrale moderator.',
     },
     {
       heading: 'Hoe groepen beheerd worden',
-      body:    'Een crew is een gesloten groep met expliciete uitnodigingen. ' +
-               'De admin van de crew bepaalt wie lid wordt en welke rol iemand krijgt. ' +
+      body:    'Een circle is een gesloten groep met expliciete uitnodigingen. ' +
+               'De admin van de circle bepaalt wie lid wordt en welke rol iemand krijgt. ' +
                'Lidmaatschap kan verlopen of worden ingetrokken.',
     },
     {
       heading: 'Je agenda blijft op je apparaat',
       body:    'Tasks leest jouw agenda lokaal — een externe import-bridge schrijft .ics-bestanden naar je pod, ' +
-               'maar Tasks deelt die agenda nooit met andere crew-leden. ' +
+               'maar Tasks deelt die agenda nooit met andere circle-leden. ' +
                'Je krijgt alleen zelf je conflicten te zien wanneer je een taak claimt.',
     },
     {
       heading: 'Voorzichtig met pod-data delen',
       body:    'Skills, deliverables en agenda-data zitten op je eigen pod. ' +
-               'Tasks deelt geen van die items automatisch met andere crews; je kiest per crew expliciet wat je deelt. ' +
+               'Tasks deelt geen van die items automatisch met andere circles; je kiest per circle expliciet wat je deelt. ' +
                'De ACP\'s van je pod zijn de uiteindelijke verdedigingslinie.',
     },
     {
@@ -73,16 +73,16 @@ export const PRIVACY_NOTICE = Object.freeze({
     },
     {
       heading: 'Vergoeding-regels (V2.2) — alleen voor admins en de paid-pro',
-      body:    'In crews met "Vergoeding bijhouden" aan, krijgt elke afgeronde taak van een paid-pro-lid ' +
-               'een regel in `<crew-pod>/tasks/invoicing/<webid>/<jaarmaand>.json`. ' +
+      body:    'In circles met "Vergoeding bijhouden" aan, krijgt elke afgeronde taak van een paid-pro-lid ' +
+               'een regel in `<circle-pod>/tasks/invoicing/<webid>/<jaarmaand>.json`. ' +
                'De rol-policy beperkt het lezen tot admins en de paid-pro zelf; ' +
                'andere leden krijgen 403. Het bedrag (uren × tarief) is informatief — Tasks is geen factureerapp.',
     },
     {
-      heading: 'Beschikbaarheid-hints (V2.3) — grof, opt-in per crew',
+      heading: 'Beschikbaarheid-hints (V2.3) — grof, opt-in per circle',
       body:    'Hints zijn één van vier waarden (`open` / `tight` / `unavailable` / `unknown`) ' +
-               'per (lid, ISO-week, halve dag), opgeslagen in `<crew-pod>/tasks/availability/<webid>.json`. ' +
-               'Coördinatoren zien jouw chips wanneer ze een toewijzing kiezen — alleen wanneer je per-crew opt-in hebt aangezet. ' +
+               'per (lid, ISO-week, halve dag), opgeslagen in `<circle-pod>/tasks/availability/<webid>.json`. ' +
+               'Coördinatoren zien jouw chips wanneer ze een toewijzing kiezen — alleen wanneer je per-circle opt-in hebt aangezet. ' +
                'Niet-opted-in leden zijn niet te onderscheiden van opted-in-maar-leeg (beide tonen `unknown`).',
     },
     {
@@ -124,26 +124,26 @@ export const PRIVACY_NOTICE = Object.freeze({
     },
     {
       heading: 'Abuse and accountability',
-      body:    'Each crew admin is responsible for who is a member. ' +
+      body:    'Each circle admin is responsible for who is a member. ' +
                'In serious abuse cases, an admin can remove a member (or have the relay operator do so). ' +
                'Tasks has no central moderator.',
     },
     {
       heading: 'How groups are managed',
-      body:    'A crew is a closed group with explicit invitations. ' +
+      body:    'A circle is a closed group with explicit invitations. ' +
                'The admin chooses who joins and what role they get. ' +
                'Memberships can expire or be revoked.',
     },
     {
       heading: 'Your calendar stays on your device',
       body:    'Tasks reads your calendar locally — an external import-bridge writes .ics files to your pod, ' +
-               'but Tasks never shares that calendar with other crew members. ' +
+               'but Tasks never shares that calendar with other circle members. ' +
                'You only see your own conflicts when claiming a task.',
     },
     {
       heading: 'Be careful sharing pod data',
       body:    'Skills, deliverables, and calendar data live on your own pod. ' +
-               'Tasks does not automatically share any of those items with other crews; you opt-in per crew. ' +
+               'Tasks does not automatically share any of those items with other circles; you opt-in per circle. ' +
                'Your pod\'s ACPs are the ultimate line of defence.',
     },
     {
@@ -156,16 +156,16 @@ export const PRIVACY_NOTICE = Object.freeze({
     },
     {
       heading: 'Invoicing lines (V2.2) — admins and the paid-pro only',
-      body:    'In crews with "Track compensation" enabled, every task a paid-pro member completes ' +
-               'gets a row in `<crew-pod>/tasks/invoicing/<webid>/<isoMonth>.json`. ' +
+      body:    'In circles with "Track compensation" enabled, every task a paid-pro member completes ' +
+               'gets a row in `<circle-pod>/tasks/invoicing/<webid>/<isoMonth>.json`. ' +
                'The role policy restricts reads to admins and the paid-pro themselves; ' +
                'other members get a 403. The amount (hours × rate) is informational — Tasks is not a billing app.',
     },
     {
-      heading: 'Availability hints (V2.3) — coarse, per-crew opt-in',
+      heading: 'Availability hints (V2.3) — coarse, per-circle opt-in',
       body:    'Hints are one of four values (`open` / `tight` / `unavailable` / `unknown`) ' +
-               'per (member, ISO-week, half-day), stored at `<crew-pod>/tasks/availability/<webid>.json`. ' +
-               'Coordinators see your chips when picking an assignee — only when you\'ve opted in for that crew. ' +
+               'per (member, ISO-week, half-day), stored at `<circle-pod>/tasks/availability/<webid>.json`. ' +
+               'Coordinators see your chips when picking an assignee — only when you\'ve opted in for that circle. ' +
                'Members who haven\'t opted in are indistinguishable from opted-in-but-empty (both show `unknown`).',
     },
     {

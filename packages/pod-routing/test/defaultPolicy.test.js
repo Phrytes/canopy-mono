@@ -17,16 +17,16 @@ describe('buildDefaultPolicy — pod-having user', () => {
       'sharing/profile-public': 'https://anne.pod/sharing/public/profile-card',
       'personal-in-group/*':    'https://anne.pod/personal-in-group/',
     });
-    // group routing defaults to pseudo-pod, overridden per-crew by crewPolicies.
+    // group routing defaults to pseudo-pod, overridden per-circle by circlePolicies.
     expect(p.mappings['group/*']).toBe('pseudo-pod://laptop-anne/group/');
   });
 
-  it('default crew policy is centralised on the anchor pod', () => {
+  it('default circle policy is centralised on the anchor pod', () => {
     const p = buildDefaultPolicy({
       anchorPodUri: 'https://anne.pod',
       deviceId:     'laptop-anne',
     });
-    expect(p.crewPolicyDefault).toEqual({
+    expect(p.circlePolicyDefault).toEqual({
       policy:      'centralised',
       groupPodUri: 'https://anne.pod',
     });
@@ -56,17 +56,17 @@ describe('buildDefaultPolicy — no-pod user', () => {
     });
   });
 
-  it('default crew policy is no-pod', () => {
+  it('default circle policy is no-pod', () => {
     const p = buildDefaultPolicy({
       anchorPodUri: null,
       deviceId:     'laptop-no-pod',
     });
-    expect(p.crewPolicyDefault).toEqual({ policy: 'no-pod' });
+    expect(p.circlePolicyDefault).toEqual({ policy: 'no-pod' });
   });
 
   it('treats undefined anchorPodUri the same as null', () => {
     const p = buildDefaultPolicy({ deviceId: 'd' });
-    expect(p.crewPolicyDefault).toEqual({ policy: 'no-pod' });
+    expect(p.circlePolicyDefault).toEqual({ policy: 'no-pod' });
     expect(p.mappings['private/*']).toBe('pseudo-pod://d/private/');
   });
 });

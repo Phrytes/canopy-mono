@@ -670,7 +670,7 @@ function renderRefChips(container, doc, refs) {
     file:            '📄',
     contact:         '👤',
     member:          '👥',
-    crew:            '🎯',
+    circle:            '🎯',
   };
   const wrap = doc.createElement('div');
   wrap.className = 'cc-field-refs';

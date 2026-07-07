@@ -64,7 +64,7 @@ function jsonStable(v) {
  *  1. **Exact match.**  `itemAudience` structurally deep-equals
  *     `filterAudience` (key-order-independent).  This is the original
  *     SP-5b V0b behaviour and covers every plain short-hand
- *     (`'crew:A'`, `'household'`, `'private'`, …), `set`, `circle-ref`,
+ *     (`'circle:A'`, `'household'`, `'private'`, …), `set`, `circle-ref`,
  *     `union`, and `public` value against an identical filter.
  *
  *  2. **Union membership.**  When `itemAudience` is
@@ -83,7 +83,7 @@ function jsonStable(v) {
  *  - `{kind:'public'}` items match ONLY the `{kind:'public'}` filter
  *    (public is NOT treated as covering every possible target — that
  *    would silently broaden every audience query).
- *  - **Not normalised.**  The string short-hand `'crew:X'` and the
+ *  - **Not normalised.**  The string short-hand `'circle:X'` and the
  *    structured `{kind:'circle-ref', id:'X'}` are still NOT equivalent
  *    — normalisation lives in `@canopy/circles`, which item-store can't
  *    depend on (layering).  A store may inject a `normalizeAudience`

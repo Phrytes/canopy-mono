@@ -3,19 +3,19 @@
 ## [Unreleased] — canopy-chat browser integration (2026-05-23, `ab6f32f`)
 
 New export: `@canopy-app/tasks-v0/browser` →
-`createBrowserTasksAgent({bus, identityVault, crewConfig, label})`.
+`createBrowserTasksAgent({bus, identityVault, circleConfig, label})`.
 
-Lets canopy-chat compose a real Crew agent in-process (no bin/
+Lets canopy-chat compose a real Circle agent in-process (no bin/
 launcher needed; tasks-v0/src has zero node imports).  Replaces
 canopy-chat's ~210 lines of mock task handlers with the actual
-110-skill crew agent on a shared InternalBus.
+110-skill circle agent on a shared InternalBus.
 
 Plan + per-app integration details:
 `Project Files/canopy-chat/integration-plan-2026-05-23.md` §
 "Slice 1: tasks-v0 → canopy-chat browser".
 
 122/122 tasks-v0 tests still green; no app-side changes — just a
-new browser entry that wraps the existing `createCrewAgent` with
+new browser entry that wraps the existing `createCircleAgent` with
 the minimal opts canopy-chat needs.
 
 ## [Unreleased] — Slice B.1 (2026-05-20) — dag.html via renderWeb (view-only)
@@ -56,9 +56,9 @@ assertions).
 ## [0.4.0] — 2026-05-14 — V2 substrate adoption (12 slices, full web track)
 
 The entire Tasks V2 web track shipped today across 12 slices.
-Substrate adoption (item-types canonical task + crew storage
-policy + agent-registry + pod OIDC), multi-crew runtime
-(`--multi-crew` CLI + `spawnMyCrew` + multi-crew onboarding
+Substrate adoption (item-types canonical task + circle storage
+policy + agent-registry + pod OIDC), multi-circle runtime
+(`--multi-circle` CLI + `spawnMyCircle` + multi-circle onboarding
 dispatch), and substrate-mirror cross-device fan-out (every
 mutation: add/claim/complete/submit/approve/reject/revoke/
 reassign/remove).
@@ -69,20 +69,20 @@ reassign/remove).
 
 - **Slice 1** (`0e92e15`): `embeds:[{type, ref}]` field on
   `addTask` (cap 8, validated, persisted via item-store);
-  `crewConfig.storage` field with four §II.2 policies (`no-pod`
-  default); `getCrewStoragePolicy` + `setCrewStoragePolicy`
+  `circleConfig.storage` field with four §II.2 policies (`no-pod`
+  default); `getCircleStoragePolicy` + `setCircleStoragePolicy`
   skills. Item-store's `#materialise` now propagates `embeds`
   through (was missing).
-- **Slice 2** (`ea5166c`): `/welcome.html` create-crew wizard
-  + `provisionMyCrew` skill. Validates crew-id slug + name +
+- **Slice 2** (`ea5166c`): `/welcome.html` create-circle wizard
+  + `provisionMyCircle` skill. Validates circle-id slug + name +
   kind + storage + optional additional members. Refuses to
-  overwrite an existing circleId. `/crews.html` empty-state links
+  overwrite an existing circleId. `/circles.html` empty-state links
   to `/welcome.html`.
-- **Slice 3** (`203607c`): agent-registry on `createCrewAgent`.
+- **Slice 3** (`203607c`): agent-registry on `createCircleAgent`.
   Helper `registerAgentBundle` lifted from Stoop's app code into
   `@canopy/agent-registry`. Tasks builds a standalone-mode
-  pseudoPod per crew + registers with capabilities `['tasks',
-  'tasks-v0', \`crew:<circleId>\`]`. `bundle.pseudoPod` +
+  pseudoPod per circle + registers with capabilities `['tasks',
+  'tasks-v0', \`circle:<circleId>\`]`. `bundle.pseudoPod` +
   `bundle.agentRegistry` exposed.
 - **Slice 4** (`cfe832c`): `/onboard.html` (invite-redemption,
   paste-link with JSON or `tasks-invite://` URL scheme) +
@@ -97,32 +97,32 @@ reassign/remove).
   `createSolidAuthNode` from `@canopy/oidc-session`.
   `/pod-settings.html`'s sign-in card unlocked: issuer input
   + redirect flow + callback handler + sign-out. New
-  `listSavedCrewConfigs` skill + `/crews.html`'s "Saved crew
-  configs" table for crews provisioned but not currently bound.
+  `listSavedCircleConfigs` skill + `/circles.html`'s "Saved circle
+  configs" table for circles provisioned but not currently bound.
 
-### Slices 6–8 — multi-crew runtime
+### Slices 6–8 — multi-circle runtime
 
-- **Slice 6** (`2f4b31b`): multi-crew substrate enablement —
+- **Slice 6** (`2f4b31b`): multi-circle substrate enablement —
   `buildMeshAgent({agent})` reuses existing core.Agent;
-  `createTasksAgent({agent, registerSkills})` + `createCrewAgent`
-  forward both opts. New `spawnMyCrew` skill (in-process when
-  the host CLI wires `_spawnCrewInProcess`; structured restart
-  hint otherwise) + `/crews.html` Spawn button.
-- **Slice 7** (`7ab7c98`): `bin/tasks-ui.js --multi-crew` flag.
-  Builds meshAgent once → primary crew with
+  `createTasksAgent({agent, registerSkills})` + `createCircleAgent`
+  forward both opts. New `spawnMyCircle` skill (in-process when
+  the host CLI wires `_spawnCircleInProcess`; structured restart
+  hint otherwise) + `/circles.html` Spawn button.
+- **Slice 7** (`7ab7c98`): `bin/tasks-ui.js --multi-circle` flag.
+  Builds meshAgent once → primary circle with
   `registerSkills: false + wireOnboardingSkills: false` →
-  `crewsMap = new Map` + `_spawnCrewInProcess` closure
-  → `wireSkills` ONCE with `multiCrewResolver`. New
-  `itemStoreRoot` opt on `createTasksAgent` for per-crew URI
-  prefix (`mem://tasks/crews/<circleId>/`) to prevent addTask
-  writes from leaking across crews. Platform-level skills
-  (`provisionMyCrew`, `listSavedCrewConfigs`, `spawnMyCrew`)
-  fall back to any crew when strict routing misses.
-- **Slice 8** (`c247401`): multi-crew onboarding-skill
-  dispatch. `createCrewAgent` always builds the GroupManager
-  and stashes on CrewState. New
-  `buildMultiCrewOnboardingSkills({bundleResolver})` registers
-  `issueInvite` + `redeemInvite` ONCE with per-call CrewState
+  `circlesMap = new Map` + `_spawnCircleInProcess` closure
+  → `wireSkills` ONCE with `multiCircleResolver`. New
+  `itemStoreRoot` opt on `createTasksAgent` for per-circle URI
+  prefix (`mem://tasks/circles/<circleId>/`) to prevent addTask
+  writes from leaking across circles. Platform-level skills
+  (`provisionMyCircle`, `listSavedCircleConfigs`, `spawnMyCircle`)
+  fall back to any circle when strict routing misses.
+- **Slice 8** (`c247401`): multi-circle onboarding-skill
+  dispatch. `createCircleAgent` always builds the GroupManager
+  and stashes on CircleState. New
+  `buildMultiCircleOnboardingSkills({bundleResolver})` registers
+  `issueInvite` + `redeemInvite` ONCE with per-call CircleState
   resolution; `redeemInvite` routes by `args.circleId` OR
   (when omitted) by `invite.groupId`.
 
@@ -133,12 +133,12 @@ reassign/remove).
   + `apps/tasks-v0/src/substrateMirror.js` mirror Stoop's
   pattern. `wireTasksSubstrateMirror` subscribes to
   `kind: 'task'` envelopes, URI-prefix filters by
-  `/tasks/crews/<circleId>/tasks/`, dedupes via
-  `source.syncedFromId`. `createCrewAgent` wires per-crew mirror.
+  `/tasks/circles/<circleId>/tasks/`, dedupes via
+  `source.syncedFromId`. `createCircleAgent` wires per-circle mirror.
   `addTask` publishes via notifyEnvelope.
 - **Slice 10** (`26611a3`): sub-slices 2–4 — stale-peer
   auto-heal in `wireTasksSubstrateMirror`; `fetch-resource` +
-  `groupCheck` registered per crew bundle; live peer-roster
+  `groupCheck` registered per circle bundle; live peer-roster
   updates from `redeemInvite` via `tasksMirror.addPeer`.
 - **Slice 11** (`530eea4`): substrate mutation fan-out (option
   c from the slice-10 sketch). New
@@ -175,9 +175,9 @@ reassign/remove).
 
 122/122 Tasks tests across 7 test files:
 - `v2-adoption.test.js` (36) — slices 1–6
-- `v2-multi-crew.test.js` (9) — slices 7–8
+- `v2-multi-circle.test.js` (9) — slices 7–8
 - `v2-substrate-mirror.test.js` (12) — slices 9–12
-- `phase2-crew.test.js` (9), `phase5-dod.test.js` (15),
+- `phase2-circle.test.js` (9), `phase5-dod.test.js` (15),
   `phase10-lifecycle.test.js` (17), `integration.test.js` (24)
 
 ### Commits
@@ -225,7 +225,7 @@ Tests now: **308 across 29 files** (Tasks) + **61 across 4 files** (item-store) 
 - ✅ `src/skills/index.js` + `src/skills/workspace.js` — `listMine`, `listMyMasteredTasks`, and `listAwaitingApproval` now annotate items with the DAG `status` so the gate state surfaces in My work + Review (V1 only computed it on `listOpen`).
 - ✅ `web/{index,mine,review}.html` — ctx wires `onForceComplete` and `onProposeSubtask`. `onComplete` and `onApprove` translate `{error: 'has-open-dependencies', openDeps[]}` to a `alert(…)` for the rare case the disabled-button is bypassed by a race.
 - ✅ `web/inbox.html` — handles two new button-id prefixes: `approveSubtaskProposal:<proposalId>` (with a confirm-dialog warning about the auto-rollback) and `declineSubtaskProposal:<proposalId>` (with an optional decline-note prompt). New `eventLabel` case for `subtask-proposal`.
-- ✅ `src/Crew.js` — new `subtask-proposal` listener routes the proposal to the parent's assignee's inbox with `[Approve]` / `[Decline]` buttons (mirrors the existing `subtask-request → admin inbox` listener).
+- ✅ `src/Circle.js` — new `subtask-proposal` listener routes the proposal to the parent's assignee's inbox with `[Approve]` / `[Decline]` buttons (mirrors the existing `subtask-request → admin inbox` listener).
 
 CLI smoke after the wiring: starts cleanly, all V1+V1.5+V2 capabilities still work.
 
@@ -245,67 +245,67 @@ The original V2.7 design said *"No new bot verbs for V2.7. The propose/approve f
 
 Tests now: **319 across 30 files** (Tasks).
 
-## [0.3.7] — 2026-05-08 — V2.8 — single-agent + per-crew state via bundleResolver
+## [0.3.7] — 2026-05-08 — V2.8 — single-agent + per-circle state via bundleResolver
 
-The desktop-side mirror of Stoop's 2026-05-08 `single-agent-refactor`. One `core.Agent` per process serves N crews; per-crew state lives in `CrewState`; skills resolve their crew at dispatch time. Unblocks tasks-mobile Phase 41.x and stops the V2.5 path of spinning N agents for N crews.
+The desktop-side mirror of Stoop's 2026-05-08 `single-agent-refactor`. One `core.Agent` per process serves N circles; per-circle state lives in `CircleState`; skills resolve their circle at dispatch time. Unblocks tasks-mobile Phase 41.x and stops the V2.5 path of spinning N agents for N circles.
 
 Shipped in two passes within the day:
 - **Part 1** — extract `buildMeshAgent` (the foundation `core.Agent` + `policyEngine` + `trustRegistry` + identity vault).
-- **Part 2** — add `wireSkills` + `bundleResolver`; rewrite every `defineSkill` body to resolve its CrewState via the resolver. 17 files mechanically updated; test surface bypassed because every test goes through `createCrewAgent` (now a single-crew convenience wrapper around the new primitives).
+- **Part 2** — add `wireSkills` + `bundleResolver`; rewrite every `defineSkill` body to resolve its CircleState via the resolver. 17 files mechanically updated; test surface bypassed because every test goes through `createCircleAgent` (now a single-circle convenience wrapper around the new primitives).
 
 ### What shipped
 
-- ✅ `src/MeshAgent.js` — `buildMeshAgent({identity, transport, localStoreBundle, identityVault, label})`. Default vault path `mem://tasks/process/agent-identity-vault.json` (per-process, not per-crew). V1.5 self-trust set; V2.0 vault-snapshot persistence preserved.
-- ✅ `src/bundleResolver.js` — `singleCrewResolver(crewState)` + `multiCrewResolver(crews: Map)`. Multi-crew resolution order: `args.circleId` → `<circleId>/...` topic prefix → strict `null`. Strict-on-miss is intentional: silent fallback would convert a multi-crew leak into a successful single-crew op.
-- ✅ `src/wireSkills.js` — single-registration root. Imports every builder; passes `bundleResolver` through; takes `members` (single-crew) or `getBundle` (multi-crew) for identity skills; supplies a no-op `userSettings` so observability still registers on the V0 zero-config path.
-- ✅ Every `src/skills/*.js` builder switched to the `(parts, ctx)` resolver shape — `buildSkills`, `buildProfileSkills`, `buildAppealSkill`, `buildSubtaskSkills`, `buildInboxSkills`, `buildWorkspaceSkills`, `buildObservabilitySkills`, `buildCrewControlSkills`, `buildCustomRoleSkills`, `buildBotBindingSkills`, `buildCalendarEmissionSkills`, `buildInvoicingSkills`, `buildAvailabilitySkills`, `buildPlannerSkills`, `buildDashboardSkills`, `buildForceCompleteSkill`, `buildBotSkills`. Every body opens with `const crew = bundleResolver(parts, {envelope, from}); if (!crew) return {error: 'circleId required'};` and reads `crew.itemStore` / `crew.liveCrew` / `crew.dataSource` / `crew.roles` etc.
-- ✅ `src/Agent.js#createTasksAgent` and `src/Crew.js#createCrewAgent` → V0/V1 convenience wrappers around `buildMeshAgent` + minimal CrewState + `wireSkills(singleCrewResolver(...))`. External shape unchanged — every existing test passes the bundle through `createCrewAgent` and continues to work.
+- ✅ `src/MeshAgent.js` — `buildMeshAgent({identity, transport, localStoreBundle, identityVault, label})`. Default vault path `mem://tasks/process/agent-identity-vault.json` (per-process, not per-circle). V1.5 self-trust set; V2.0 vault-snapshot persistence preserved.
+- ✅ `src/bundleResolver.js` — `singleCircleResolver(circleState)` + `multiCircleResolver(circles: Map)`. Multi-circle resolution order: `args.circleId` → `<circleId>/...` topic prefix → strict `null`. Strict-on-miss is intentional: silent fallback would convert a multi-circle leak into a successful single-circle op.
+- ✅ `src/wireSkills.js` — single-registration root. Imports every builder; passes `bundleResolver` through; takes `members` (single-circle) or `getBundle` (multi-circle) for identity skills; supplies a no-op `userSettings` so observability still registers on the V0 zero-config path.
+- ✅ Every `src/skills/*.js` builder switched to the `(parts, ctx)` resolver shape — `buildSkills`, `buildProfileSkills`, `buildAppealSkill`, `buildSubtaskSkills`, `buildInboxSkills`, `buildWorkspaceSkills`, `buildObservabilitySkills`, `buildCircleControlSkills`, `buildCustomRoleSkills`, `buildBotBindingSkills`, `buildCalendarEmissionSkills`, `buildInvoicingSkills`, `buildAvailabilitySkills`, `buildPlannerSkills`, `buildDashboardSkills`, `buildForceCompleteSkill`, `buildBotSkills`. Every body opens with `const circle = bundleResolver(parts, {envelope, from}); if (!circle) return {error: 'circleId required'};` and reads `circle.itemStore` / `circle.liveCircle` / `circle.dataSource` / `circle.roles` etc.
+- ✅ `src/Agent.js#createTasksAgent` and `src/Circle.js#createCircleAgent` → V0/V1 convenience wrappers around `buildMeshAgent` + minimal CircleState + `wireSkills(singleCircleResolver(...))`. External shape unchanged — every existing test passes the bundle through `createCircleAgent` and continues to work.
 - ✅ `bin/tasks-ui.js`:
-  - `--crew` (single) — unchanged shape; goes through `createCrewAgent`.
-  - `--crew-list <path>` (new, multi) — boots one meshAgent + N CrewStates and runs an in-process `addTask` smoke probe per circleId, asserting cross-crew ItemStore isolation, then exits. List file shape: `{"crews": ["./a.crew.json", ...]}`. Fixtures live at `tmp/oss-tools.crew.json`, `tmp/book-club.crew.json`, `tmp/two-crews.list.json`.
-- ✅ `web/app.js` — `callSkill` auto-injects `circleId` from `tasks-config.json` into every args object so the single-crew web flow keeps working without per-call boilerplate.
-- ✅ Bot — `bot/skills.js`'s `callUnderlying` injects `circleId` into the inner skill's parts so the inner `bundleResolver(parts, ...)` resolves the right CrewState in multi-crew mode.
+  - `--circle` (single) — unchanged shape; goes through `createCircleAgent`.
+  - `--circle-list <path>` (new, multi) — boots one meshAgent + N CircleStates and runs an in-process `addTask` smoke probe per circleId, asserting cross-circle ItemStore isolation, then exits. List file shape: `{"circles": ["./a.circle.json", ...]}`. Fixtures live at `tmp/oss-tools.circle.json`, `tmp/book-club.circle.json`, `tmp/two-circles.list.json`.
+- ✅ `web/app.js` — `callSkill` auto-injects `circleId` from `tasks-config.json` into every args object so the single-circle web flow keeps working without per-call boilerplate.
+- ✅ Bot — `bot/skills.js`'s `callUnderlying` injects `circleId` into the inner skill's parts so the inner `bundleResolver(parts, ...)` resolves the right CircleState in multi-circle mode.
 
 ### Tests
 
-- ✅ New `test/v2_8-single-agent.test.js` — 5 tests: one meshAgent serves two CrewStates with isolated ItemStores; strict resolution returns `{error: 'circleId required'}` when no circleId + no topic; `singleCrewResolver` keeps the V0 back-compat path; cross-crew role-policy gate fires when caller has no role in the resolved crew; `<circleId>/...` envelope topic resolves the right crew.
+- ✅ New `test/v2_8-single-agent.test.js` — 5 tests: one meshAgent serves two CircleStates with isolated ItemStores; strict resolution returns `{error: 'circleId required'}` when no circleId + no topic; `singleCircleResolver` keeps the V0 back-compat path; cross-circle role-policy gate fires when caller has no role in the resolved circle; `<circleId>/...` envelope topic resolves the right circle.
 - ✅ All 319 prior tests pass unchanged. **Tests now: 324 across 31 files** (Tasks).
 - ✅ Stoop's 435/41 still green — V2.8 has no Stoop impact (Stoop's own single-agent refactor predates this).
 
 ### Smokes
 
-- `bin/tasks-ui.js --crew ./tmp/oss-tools.crew.json --storage-root ./.tasks-data/<dir>` boots cleanly (one meshAgent, agent pubKey printed, listening on a 127.0.0.1 port).
-- `bin/tasks-ui.js --crew-list ./tmp/two-crews.list.json` boots one meshAgent + 2 CrewStates and prints `OK: addTask routed to the right crew for all 2 crew(s); ItemStores isolated.` before exiting 0.
+- `bin/tasks-ui.js --circle ./tmp/oss-tools.circle.json --storage-root ./.tasks-data/<dir>` boots cleanly (one meshAgent, agent pubKey printed, listening on a 127.0.0.1 port).
+- `bin/tasks-ui.js --circle-list ./tmp/two-circles.list.json` boots one meshAgent + 2 CircleStates and prints `OK: addTask routed to the right circle for all 2 circle(s); ItemStores isolated.` before exiting 0.
 
 ### What this enables
 
-- Tasks-mobile Phase 41.2's `ServiceContext` can `import { buildMeshAgent, wireSkills, multiCrewResolver } from '@canopy-app/tasks-v0'` and have the V2.8 shape from day one — no per-crew agent multiplication.
-- Multi-crew CLI launches stop spinning N agents (the V2.5 dashboard path).
+- Tasks-mobile Phase 41.2's `ServiceContext` can `import { buildMeshAgent, wireSkills, multiCircleResolver } from '@canopy-app/tasks-v0'` and have the V2.8 shape from day one — no per-circle agent multiplication.
+- Multi-circle CLI launches stop spinning N agents (the V2.5 dashboard path).
 - Future `@canopy/scoped-skill-bus` lift (if Stoop or another app trips the rule of two on this factory shape) lands without a Tasks rewrite.
 
 ### Deferred
 
-- **A web crew-picker** for `--crew-list` mode: today the multi-crew launcher is CLI-only. The web UI assumes a single crew; a multi-crew picker (route per circleId, per-tab `tasks-config.json` injection) lives in tasks-mobile's plan and isn't needed before mobile ships.
-- A separately-exported `buildCrewState({meshAgent, crewConfig, localStoreBundle, ...})` from `Crew.js` — the runbook contemplated lifting it, but the multi-crew smoke uses the test-fixture pattern (a 30-line inline CrewState) and `createCrewAgent` already exposes the V1+ enrichment path. Lift this when a third consumer (mobile + multi-crew CLI counts as two — wait for #3) demands it.
+- **A web circle-picker** for `--circle-list` mode: today the multi-circle launcher is CLI-only. The web UI assumes a single circle; a multi-circle picker (route per circleId, per-tab `tasks-config.json` injection) lives in tasks-mobile's plan and isn't needed before mobile ships.
+- A separately-exported `buildCircleState({meshAgent, circleConfig, localStoreBundle, ...})` from `Circle.js` — the runbook contemplated lifting it, but the multi-circle smoke uses the test-fixture pattern (a 30-line inline CircleState) and `createCircleAgent` already exposes the V1+ enrichment path. Lift this when a third consumer (mobile + multi-circle CLI counts as two — wait for #3) demands it.
 
-## [0.3.5] — 2026-05-08 — V2.5 — cross-crew dashboard + bot crews
+## [0.3.5] — 2026-05-08 — V2.5 — cross-circle dashboard + bot circles
 
-Capability **S** from the V2 functional design. One screen lists every crew the user belongs to with four counters (open / overdue / awaitingApproval / mine). Promoted from the V2.5-deferred line in the V1 plan after re-reading: Tasks doesn't need H7 Archive, since V1's per-crew skills already expose the counts.
+Capability **S** from the V2 functional design. One screen lists every circle the user belongs to with four counters (open / overdue / awaitingApproval / mine). Promoted from the V2.5-deferred line in the V1 plan after re-reading: Tasks doesn't need H7 Archive, since V1's per-circle skills already expose the counts.
 
 ### App-side
 
-- ✅ `src/dashboard/aggregator.js` — pure `aggregateCrews({crews, actor, roleOf, now})`. Filters out `subtask-request` items; submitted-but-not-approved items count as awaiting-approval (admin/coord see all, members see only their own mastered ones). Sorts busiest first.
-- ✅ `src/skills/dashboard.js` — `getMyCrews()` skill. Filters bundles to those where `roleOf(actor)` returns a defined role (other-crew leakage is impossible by construction). Returns `{crews: [{circleId, name, kind, counts}]}`.
-- ✅ `src/Crew.js` — accepts a new `crewBundlesProvider` parameter. Default returns `[selfBundle]` (single-crew launches); multi-crew launchers pass a closure that returns every bundle they built. Registers `getMyCrews` on every bundle so any crew's UI can surface the dashboard.
-- ✅ `src/bot/dispatch.js` — verbs `crews` / `my crews` route to `bot.crews`. HELP_TEXT updated.
-- ✅ `src/bot/skills.js` — `bot.crews` calls `getMyCrews` for the actingAs webid; renders one line per crew with name + kind chip + open/overdue/mine counts. `policy: 'requires-token'`.
-- ✅ `web/crews.html` — new page; one row per crew with four counters + "Jump in" button (opens per-crew workspace in a new tab). `mountLive` subscription so counters refresh in real-time.
-- ✅ Nav links added to every web page — Crews sits between Crew and Inbox.
+- ✅ `src/dashboard/aggregator.js` — pure `aggregateCircles({circles, actor, roleOf, now})`. Filters out `subtask-request` items; submitted-but-not-approved items count as awaiting-approval (admin/coord see all, members see only their own mastered ones). Sorts busiest first.
+- ✅ `src/skills/dashboard.js` — `getMyCircles()` skill. Filters bundles to those where `roleOf(actor)` returns a defined role (other-circle leakage is impossible by construction). Returns `{circles: [{circleId, name, kind, counts}]}`.
+- ✅ `src/Circle.js` — accepts a new `circleBundlesProvider` parameter. Default returns `[selfBundle]` (single-circle launches); multi-circle launchers pass a closure that returns every bundle they built. Registers `getMyCircles` on every bundle so any circle's UI can surface the dashboard.
+- ✅ `src/bot/dispatch.js` — verbs `circles` / `my circles` route to `bot.circles`. HELP_TEXT updated.
+- ✅ `src/bot/skills.js` — `bot.circles` calls `getMyCircles` for the actingAs webid; renders one line per circle with name + kind chip + open/overdue/mine counts. `policy: 'requires-token'`.
+- ✅ `web/circles.html` — new page; one row per circle with four counters + "Jump in" button (opens per-circle workspace in a new tab). `mountLive` subscription so counters refresh in real-time.
+- ✅ Nav links added to every web page — Circles sits between Circle and Inbox.
 - ✅ `locales/{en,nl}.json` — 11 new keys under `dashboard.*` with `{text, doc}` leaves.
 
 ### Tests
 
-- ✅ 6 added in `test/v2_5-dashboard.test.js`: pure aggregator counters; busiest-first sort; single-crew launcher returns own crew; multi-crew filters by membership (other-crew leakage prevented); dispatcher routing for `crews`; `bot.crews` end-to-end render.
+- ✅ 6 added in `test/v2_5-dashboard.test.js`: pure aggregator counters; busiest-first sort; single-circle launcher returns own circle; multi-circle filters by membership (other-circle leakage prevented); dispatcher routing for `circles`; `bot.circles` end-to-end render.
 
 Tests now: **297 across 28 files** (Tasks). Stoop's 429 + core's 1279 still green.
 
@@ -322,7 +322,7 @@ V2 implements the V2 functional design (`Project Files/Tasks App/functional-desi
 | **V2.2** | Compensated-role + invoicing + bot invoice | 10 |
 | **V2.3** | Availability hints + bot available/week | 18 |
 | **V2.4** | Auto-scheduling planner + bot plan/accept | 14 |
-| **V2.5** | Cross-crew dashboard + bot crews | 6 |
+| **V2.5** | Cross-circle dashboard + bot circles | 6 |
 | **Total** | | **65 new tests, 297 total** |
 
 Substrate touches kept to an absolute minimum (per the rule-of-two policy):
@@ -336,7 +336,7 @@ V2.6 (deferred) carries forward: persisted revocation list, cryptographic anonym
 
 ## [0.3.4] — 2026-05-08 — V2.4 — auto-scheduling planner + bot plan/accept
 
-Capability **O** from the V2 functional design. Greedy planner suggests concrete slots for the calling actor's open assignments given (a) busy spans from V1's calendar reader, (b) `crew.workingHours` (defaults Mon-Fri 09:00-17:00), (c) each task's `dueAt` + `estimateMinutes`. Suggestions only — every slot needs a click.
+Capability **O** from the V2 functional design. Greedy planner suggests concrete slots for the calling actor's open assignments given (a) busy spans from V1's calendar reader, (b) `circle.workingHours` (defaults Mon-Fri 09:00-17:00), (c) each task's `dueAt` + `estimateMinutes`. Suggestions only — every slot needs a click.
 
 ### App-side
 
@@ -345,7 +345,7 @@ Capability **O** from the V2 functional design. Greedy planner suggests concrete
   - `suggestSchedule({lookaheadDays?})` — self only. Reads my open assignments + free/busy from V1 calendar adapter + working hours.
   - `acceptSchedule({taskId, slotStart, slotEnd})` — self only. Sets `task.scheduledAt = slotStart` (and `estimateMinutes` if absent). V2.1's calendar emission picks it up automatically.
   - `rejectSchedule({taskId})` — self only. No-op (UI affordance only).
-- ✅ `src/Crew.js` — registers planner skills.
+- ✅ `src/Circle.js` — registers planner skills.
 - ✅ `src/rolePolicy.js` — narrow new exception in `canEditBody`: assignee may patch `scheduledAt` + `estimateMinutes` on their own assignment via `acceptSchedule`. Pattern matches the existing dependencies-only narrow exception (Phase 7).
 - ✅ `src/bot/dispatch.js` — verbs `plan` / `schedule` route to `bot.plan`. `accept <id> [N]` (default N=1) routes to `bot.accept`. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — `bot.plan` renders top-3 suggestions as a numbered list with reason chips. `bot.accept` re-runs `suggestSchedule` (no chatId-keyed cache — survives restart, sub-second cost) and accepts the Nth match. Both `policy: 'requires-token'`.
@@ -361,7 +361,7 @@ Tests now: **291 across 27 files** (Tasks).
 
 ## [0.3.3] — 2026-05-08 — V2.3 — availability hints + bot available/week
 
-Capability **Q** from the V2 functional design. Members opt in per-crew to publish a coarse `open` / `tight` / `unavailable` chip per (ISO-week, half-day). Coordinators see the chips when picking assignees.
+Capability **Q** from the V2 functional design. Members opt in per-circle to publish a coarse `open` / `tight` / `unavailable` chip per (ISO-week, half-day). Coordinators see the chips when picking assignees.
 
 **Privacy reminder (per design § Q):** opted-out members are indistinguishable from opted-in-but-empty in the coordinator view. Both render as `unknown`. Hints older than 4 ISO weeks are pruned at read time.
 
@@ -375,14 +375,14 @@ The V2.1 design called for chat-p2p broadcast. After looking at the chat-p2p sub
 - ✅ `src/skills/availability.js` — five skills:
   - `setAvailabilityEnabled({enabled})` — admin only.
   - `setAvailabilityOptIn({optedIn})` — self only. Opting out deletes the persisted blob.
-  - `setMyAvailability({week, day, half, state})` — self only; rejects when crew is disabled or member not opted in.
+  - `setMyAvailability({week, day, half, state})` — self only; rejects when circle is disabled or member not opted in.
   - `getMyAvailability({week?})` — self only.
-  - `getCrewAvailability({week?})` — admin/coord only. Members not opted in show as `{}` (indistinguishable).
-- ✅ `src/Crew.js` — registers the skills; `_normaliseConfig` extended with `availabilityHints: {enabled, optedIn[]}` (default disabled).
+  - `getCircleAvailability({week?})` — admin/coord only. Members not opted in show as `{}` (indistinguishable).
+- ✅ `src/Circle.js` — registers the skills; `_normaliseConfig` extended with `availabilityHints: {enabled, optedIn[]}` (default disabled).
 - ✅ `src/bot/dispatch.js` — verbs `available <state>` / `avail <state>` route to `bot.available`. `week` / `my week` route to `bot.week`. `available` without state replies with valid-state list. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — `bot.available` sets the *current* half-day (computed from `now()`); `bot.week` renders the actor's own week as a code-fenced 7×2 grid of state symbols. Both `policy: 'requires-token'`.
-- ✅ `web/availability.html` — new page with 7×2 cell grid; clicking rotates `unknown → open → tight → unavailable → unknown`. Per-member opt-in toggle; off-state empty-state copy when crew has hints disabled.
-- ✅ Nav links added on every web page (index/mine/review/dag/crew/inbox).
+- ✅ `web/availability.html` — new page with 7×2 cell grid; clicking rotates `unknown → open → tight → unavailable → unknown`. Per-member opt-in toggle; off-state empty-state copy when circle has hints disabled.
+- ✅ Nav links added on every web page (index/mine/review/dag/circle/inbox).
 - ✅ `locales/{en,nl}.json` — 12 new keys under `availability.*` with `{text, doc}` leaves (both languages).
 
 ### Tests
@@ -394,7 +394,7 @@ Tests now: **277 across 25 files** (Tasks). Stoop's 429 + core's 1279 still gree
 
 ## [0.3.2] — 2026-05-08 — V2.2 — compensated-role + invoicing + bot invoice
 
-Capability **P** from the V2 functional design. Crews with `compensation.enabled` track invoice lines per (paid-pro, ISO month) when those members complete tasks. Per-month totals are surfaced on the Crew page (admin + paid-pro view) and via `bot.invoice`.
+Capability **P** from the V2 functional design. Circles with `compensation.enabled` track invoice lines per (paid-pro, ISO month) when those members complete tasks. Per-month totals are surfaced on the Circle page (admin + paid-pro view) and via `bot.invoice`.
 
 ### Substrate touch (additive)
 
@@ -407,11 +407,11 @@ Capability **P** from the V2 functional design. Crews with `compensation.enabled
   - `getCompensation({memberWebid?, month?})` — admin OR self only. Returns `{lines, totals: {count, hours, amount?}, currency}`. Amount is `hours × member.rate`, marked informational.
   - `setMemberCompensation({memberWebid, compensated, rate?})` — admin only.
   - `setCompensationEnabled({enabled})` — admin only.
-- ✅ `src/Crew.js` — wires the `item-completed` listener when `liveCrew.compensation.enabled === true`; re-attaches/detaches when toggled. Path scheme: `mem://tasks/crews/<circleId>/invoicing/<webid>/<isoMonth>.json`. `_normaliseConfig` extended with `compensation: {enabled, defaultRate, currency}` (default disabled).
+- ✅ `src/Circle.js` — wires the `item-completed` listener when `liveCircle.compensation.enabled === true`; re-attaches/detaches when toggled. Path scheme: `mem://tasks/circles/<circleId>/invoicing/<webid>/<isoMonth>.json`. `_normaliseConfig` extended with `compensation: {enabled, defaultRate, currency}` (default disabled).
 - ✅ `src/skills/index.js` — `addTask` now passes `scheduledAt` + `estimateMinutes` through to ItemStore.
 - ✅ `src/bot/dispatch.js` — verbs `invoice` / `invoicing` / `comp` route to `bot.invoice`. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — new `bot.invoice` calls `getCompensation` for the actingAs webid; renders chat-formatted table; non-pros get the friendly empty-state. `policy: 'requires-token'`.
-- ✅ `web/crew.html` — new "Compensation" panel between Bot bindings and Calendar sync. Visible only to admin OR paid-pro members. Admin-only toggle + per-pro month-selector + count/hours/amount table + "informational, not authoritative" footnote.
+- ✅ `web/circle.html` — new "Compensation" panel between Bot bindings and Calendar sync. Visible only to admin OR paid-pro members. Admin-only toggle + per-pro month-selector + count/hours/amount table + "informational, not authoritative" footnote.
 - ✅ `locales/{en,nl}.json` — 10 new keys under `compensation.*` with `{text, doc}` leaves (both languages).
 
 ### Tests
@@ -425,29 +425,29 @@ Tests now: **259 across 23 files** (Tasks). Stoop's 429 + core's 1279 still gree
 
 Capability **N** from the V2 functional design. Tasks now emits per-member `.ics` calendars to the local-store cache (and onward to the user's pod when attached). Members subscribe once in their phone calendar app — new tasks show up automatically.
 
-- ✅ `src/calendar/emitter.js` — pure `buildIcsFor({circleId, crewName, member, tasks, now})` + `buildCancellationIcs(removed)` + `diffRemoved(prev, next)`. Filters relevant tasks per member (assigned / mastered / approver of). UID = task.id so re-emissions update existing calendar events.
-- ✅ `src/calendar/wireCalendarEmission.js` — `wireCalendarEmission({itemStore, dataSource, crew, member, path, debounceMs})` subscribes to item events; debounces 60 s; rebuilds the ICS and writes to the per-member path. `flushNow()` for tests. Returns `{detach}` for clean shutdown.
+- ✅ `src/calendar/emitter.js` — pure `buildIcsFor({circleId, circleName, member, tasks, now})` + `buildCancellationIcs(removed)` + `diffRemoved(prev, next)`. Filters relevant tasks per member (assigned / mastered / approver of). UID = task.id so re-emissions update existing calendar events.
+- ✅ `src/calendar/wireCalendarEmission.js` — `wireCalendarEmission({itemStore, dataSource, circle, member, path, debounceMs})` subscribes to item events; debounces 60 s; rebuilds the ICS and writes to the per-member path. `flushNow()` for tests. Returns `{detach}` for clean shutdown.
 - ✅ `src/skills/calendarEmission.js` — three skills:
-  - `setCalendarEmission({enabled})` — admin/coord only. Toggles `liveCrew.calendarEmission.enabled`. Invokes the `onChange` callback so Crew.js re-wires the per-member emission loops immediately.
+  - `setCalendarEmission({enabled})` — admin/coord only. Toggles `liveCircle.calendarEmission.enabled`. Invokes the `onChange` callback so Circle.js re-wires the per-member emission loops immediately.
   - `getCalendarEmissionUrl()` — self only. Returns the per-member path the calendar app subscribes to.
   - `getCalendarEmissionStatus()` — self only. Read-only flag + URL.
-- ✅ `src/Crew.js` — wires emission loops on boot when `liveCrew.calendarEmission.enabled === true`; re-wires when the toggle changes; cleans up on `close()`. Path scheme: `mem://user/tasks/calendars/<circleId>-<webid>.ics`. `_normaliseConfig` extended with `calendarEmission` field (default `{enabled: false}`).
+- ✅ `src/Circle.js` — wires emission loops on boot when `liveCircle.calendarEmission.enabled === true`; re-wires when the toggle changes; cleans up on `close()`. Path scheme: `mem://user/tasks/calendars/<circleId>-<webid>.ics`. `_normaliseConfig` extended with `calendarEmission` field (default `{enabled: false}`).
 - ✅ `src/bot/dispatch.js` — new verbs `calendar` / `cal` / `sync` route to `bot.calendar`. HELP_TEXT updated.
 - ✅ `src/bot/skills.js` — new `bot.calendar` skill calls `getCalendarEmissionUrl` for the actingAs webid; replies with the URL or the friendly off-state hint. `policy: 'requires-token'` per V1.5 follow-up A.
-- ✅ `web/crew.html` — new "Calendar sync" panel between Bot bindings and Cadences. Toggle (admin/coord) + per-member URL display + off-state empty-state copy.
+- ✅ `web/circle.html` — new "Calendar sync" panel between Bot bindings and Cadences. Toggle (admin/coord) + per-member URL display + off-state empty-state copy.
 - ✅ `locales/{en,nl}.json` — 8 new keys under `calendar.*` with `{text, doc}` leaves.
-- ✅ Tests: 14 added across `test/v2_1-calendar-emission.test.js` (11 — pure ics builder, diff, debounce, end-to-end via Crew) and `test/v2_1-bot-calendar.test.js` (3 — dispatcher routing + bot skill behaviour both on and off).
+- ✅ Tests: 14 added across `test/v2_1-calendar-emission.test.js` (11 — pure ics builder, diff, debounce, end-to-end via Circle) and `test/v2_1-bot-calendar.test.js` (3 — dispatcher routing + bot skill behaviour both on and off).
 
 Tests now: **249 across 21 files** (Tasks).
 
 ## [0.3.0] — 2026-05-08 — V2.0 — tasks-agent identity persistence
 
-First V2 phase. Closes the V1.5 follow-up R1 carried into the V2 design: the tasks agent's vault is now snapshot-persisted under `mem://tasks/crews/<circleId>/agent/identity-vault.json` so its pubKey survives CLI restarts.
+First V2 phase. Closes the V1.5 follow-up R1 carried into the V2 design: the tasks agent's vault is now snapshot-persisted under `mem://tasks/circles/<circleId>/agent/identity-vault.json` so its pubKey survives CLI restarts.
 
-- ✅ `Crew.js` — at boot, attempts to restore the vault from the per-crew path; if absent, generates a fresh identity and persists the snapshot. Idempotent: `restoreFromSnapshot → AgentIdentity.restore` reads the same seed each time. Per-crew path scheme means multi-crew installs don't collide.
-- ✅ `Agent.js` — `createTasksAgent` accepts an optional `identityVault` parameter for callers that bypass `Crew.js`. Same restore-or-generate logic, kept consistent so both entry points work.
+- ✅ `Circle.js` — at boot, attempts to restore the vault from the per-circle path; if absent, generates a fresh identity and persists the snapshot. Idempotent: `restoreFromSnapshot → AgentIdentity.restore` reads the same seed each time. Per-circle path scheme means multi-circle installs don't collide.
+- ✅ `Agent.js` — `createTasksAgent` accepts an optional `identityVault` parameter for callers that bypass `Circle.js`. Same restore-or-generate logic, kept consistent so both entry points work.
 - ✅ `BotAgentRegistry` — auto-rotate-on-restore branch from V1.5 follow-up B (0.2.5) is **no longer the common path**: with stable tasks-agent identity, persisted bot tokens' `agentId` matches across boots and stays valid. Defensive fallback retained for the case where the agent vault is wiped but bot vaults persist (e.g. partial cleanup).
-- ✅ Tests: 3 added in `test/v2_0-agent-identity-persistence.test.js` (first boot persists; second boot restores; multi-crew isolation; external-identity override skips persistence). `test/v1_5-bot-cap-token.test.js` restart-survival assertion updated — `tokenId` is now stable across restart (was `not.toBe(originalTokenId)`).
+- ✅ Tests: 3 added in `test/v2_0-agent-identity-persistence.test.js` (first boot persists; second boot restores; multi-circle isolation; external-identity override skips persistence). `test/v1_5-bot-cap-token.test.js` restart-survival assertion updated — `tokenId` is now stable across restart (was `not.toBe(originalTokenId)`).
 
 Tests now: **235 across 19 files** (Tasks). Core + Stoop unaffected.
 
@@ -464,8 +464,8 @@ Closes the three deferred items flagged at the bottom of [0.2.4].
 ### B — Persist bot identities (cap-token bindings survive CLI restart)
 
 - ✅ Substrate (core): `VaultMemory.snapshot()` + `VaultMemory.fromSnapshot(obj)` for callers that want to persist a vault's contents to a regular DataSource. Plain JSON-safe shape; encryption-at-rest is the caller's job.
-- ✅ App: `BotAgentRegistry({bus, tasksAgent, dataSource, circleId})` — when `dataSource` + `circleId` are supplied, `issue` writes `{binding, vault: snapshot, token}` to `mem://tasks/crews/<circleId>/botAgents/<chatId>.json`; `revoke` deletes it. `Crew.js` wires the bundle's cache + crew id automatically.
-- ✅ App: `restoreAll()` runs at Crew boot. For each persisted entry: rebuilds the bot's vault + identity + agent; hellos the tasks agent. The persisted token's `agentId` is the previous tasks-agent pubKey (which doesn't survive identity regeneration, since tasks-agent identity persistence is a V2 item) — so the registry **auto-rotates the token** against the current tasks agent on restore. Bot identity stays stable, token gets fresh expiry. Boot prints `[BotAgentRegistry] restored=N expired=M failed=K`.
+- ✅ App: `BotAgentRegistry({bus, tasksAgent, dataSource, circleId})` — when `dataSource` + `circleId` are supplied, `issue` writes `{binding, vault: snapshot, token}` to `mem://tasks/circles/<circleId>/botAgents/<chatId>.json`; `revoke` deletes it. `Circle.js` wires the bundle's cache + circle id automatically.
+- ✅ App: `restoreAll()` runs at Circle boot. For each persisted entry: rebuilds the bot's vault + identity + agent; hellos the tasks agent. The persisted token's `agentId` is the previous tasks-agent pubKey (which doesn't survive identity regeneration, since tasks-agent identity persistence is a V2 item) — so the registry **auto-rotates the token** against the current tasks agent on restore. Bot identity stays stable, token gets fresh expiry. Boot prints `[BotAgentRegistry] restored=N expired=M failed=K`.
 - ✅ App: expired persisted entries are dropped from storage and skipped (so the admin re-issues at next UI visit).
 - ✅ Tests: 2 added — restart-survival end-to-end (issue, close, fresh boot, dispatch via restored bot still works); expired entries are pruned.
 
@@ -503,16 +503,16 @@ The previous V1.5 work shipped chat-bot dispatch via direct in-process handler c
 - ✅ `wireBotChannel` flips dispatch mode per chatId: cap-token bindings go through `botAgent.invoke(tasksAgent.address, skillId, ...)` (real PolicyEngine path); legacy trust-map bindings keep the in-process direct-handler call. Both paths return the same `{text, buttons?}` shape.
 - ✅ `bot.*` skill handlers now call a new `effectiveActor({from, envelope})` helper that reads `envelope.payload._token.constraints.actingAs` when present. So even though `envelope._from = bot.pubKey` on the cap-token path, the underlying Tasks skills run as the bound webid — role policy + audit log attribution work correctly.
 - ✅ `removeBotChatBinding` also tears down any cap-token bot agent for the chatId (best-effort).
-- ✅ `Crew.js` exposes `bundle.botAgentRegistry` (or `null` when the substrate can't be wired — e.g. NKN-only deployments).
+- ✅ `Circle.js` exposes `bundle.botAgentRegistry` (or `null` when the substrate can't be wired — e.g. NKN-only deployments).
 - ✅ CLI passes the registry through to `wireBotChannel`.
 
 ### UI
 
-- ✅ Bindings panel on the Crew page gains a `Mode` column (chip: `trust` / `cap-token` / `expired`), an `Expires` column (date + days remaining), an "Issue token" button (admin enters TTL), and a "Revoke" button.
+- ✅ Bindings panel on the Circle page gains a `Mode` column (chip: `trust` / `cap-token` / `expired`), an `Expires` column (date + days remaining), an "Issue token" button (admin enters TTL), and a "Revoke" button.
 
 ### Known V1.5 trade-offs
 
-- **Wildcard skill scope.** The token grants `skill: '*'` because PolicyEngine's skill match is exact (no `bot.*` prefix support). The role-policy gate on each Tasks skill still defends against bot calling non-bot skills (the bot's pubKey is not a crew member webid → `roleOf(botPubKey)` returns undefined → role check fails). V2 can scope the token via a small core-side change (e.g. `skill: ['bot.listOpen', 'bot.claim', …]` array).
+- **Wildcard skill scope.** The token grants `skill: '*'` because PolicyEngine's skill match is exact (no `bot.*` prefix support). The role-policy gate on each Tasks skill still defends against bot calling non-bot skills (the bot's pubKey is not a circle member webid → `roleOf(botPubKey)` returns undefined → role check fails). V2 can scope the token via a small core-side change (e.g. `skill: ['bot.listOpen', 'bot.claim', …]` array).
 - **Bot identities are ephemeral.** On CLI restart, all cap-token bindings are dead and admins must re-issue (the binding entry persists through the existing chatBinding map; just the cap-token + bot identity are gone). Persistence requires vault serialisation + secure key storage on disk; deferred to V2.
 - **No server-side revocation list.** PolicyEngine doesn't consult a revocation list; revocation is recorded in the bot's own `TokenRegistry` (so subsequent bot calls skip the token). Sufficient for in-process bots; cross-process bots in V2 will need a revocation-list check on the verifier side.
 
@@ -533,17 +533,17 @@ Tests now: **228 across 18 files** (Tasks) + **1272 / 13 skipped** (core) — al
 
 ## [0.2.3] — 2026-05-08 — V1.5 polish (bot bindings UI)
 
-Removes the "edit JSON, restart" friction for managing the bot's `chatId → webid` map. Admins can now bind / rebind / remove from inside the Crew page, and the bot picks up changes immediately.
+Removes the "edit JSON, restart" friction for managing the bot's `chatId → webid` map. Admins can now bind / rebind / remove from inside the Circle page, and the bot picks up changes immediately.
 
 - ✅ New `src/skills/botBindings.js` — three skills:
   - `getBotChatBindings()` — admin/coordinator. Returns `[{chatId, webid}]`.
   - `setBotChatBinding({chatId, webid})` — admin only. Adds or overwrites; rejects unknown webid (catches typos before the user wonders why their commands silently deny).
   - `removeBotChatBinding({chatId})` — admin only. Removes existing; errors on unknown chatId.
-  - Mutates `liveCrew.bot.chatBindings` through the same `crewMutator` pattern crewControls / customRoles already use.
-- ✅ `Crew.js` now exposes `getCrew()` returning the live (mutated) config; the existing `crew` field stays the boot-time snapshot (frozen). Both surfaces documented.
+  - Mutates `liveCircle.bot.chatBindings` through the same `circleMutator` pattern circleControls / customRoles already use.
+- ✅ `Circle.js` now exposes `getCircle()` returning the live (mutated) config; the existing `circle` field stays the boot-time snapshot (frozen). Both surfaces documented.
 - ✅ `wireBotChannel` accepts `chatBindings` as either an object (legacy) or a `() => object` provider (live). Bot reads bindings fresh on each incoming message — no restart needed after the admin adds a binding.
 - ✅ `bin/tasks-ui.js` passes a live provider to `wireBotChannel` so the CLI picks up admin-side mutations on the fly.
-- ✅ New "Bot bindings (admin only)" panel on `web/crew.html` between Custom roles and Cadences. Table of current bindings (with a Remove button per row) + an Add form (chatId text input + crew member dropdown). Inline help points at `/getUpdates` for finding chatIds.
+- ✅ New "Bot bindings (admin only)" panel on `web/circle.html` between Custom roles and Cadences. Table of current bindings (with a Remove button per row) + an Add form (chatId text input + circle member dropdown). Inline help points at `/getUpdates` for finding chatIds.
 - ✅ Tests: 7 added in `test/v1_5-bot-bindings.test.js` — member denied; coordinator can read but not write; add/list; overwrite; remove + missing-chatId error; empty-input rejection; end-to-end via `InMemoryBridge` proving an admin-bound chatId immediately starts dispatching as the bound webid (no restart).
 
 Tests now: **219 across 17 files** (Tasks).
@@ -552,7 +552,7 @@ Tests now: **219 across 17 files** (Tasks).
 
 ### V1.5 — bot CLI plumbing
 
-- ✅ `bin/tasks-ui.js` now accepts `--telegram-token <token>`. With a real token it lazy-imports `TelegramBridge` from `@canopy/chat-agent/bridges/telegram` (peer dep `telegraf` is hoisted automatically) and constructs `wireBotChannel` against `crewConfig.bot.chatBindings`. Without the flag the bot stays dormant. Failures during launch are caught and surfaced as a single warning line so the UI still serves.
+- ✅ `bin/tasks-ui.js` now accepts `--telegram-token <token>`. With a real token it lazy-imports `TelegramBridge` from `@canopy/chat-agent/bridges/telegram` (peer dep `telegraf` is hoisted automatically) and constructs `wireBotChannel` against `circleConfig.bot.chatBindings`. Without the flag the bot stays dormant. Failures during launch are caught and surfaced as a single warning line so the UI still serves.
 - ✅ Long-polling default; mode override is via the bridge constructor, not the CLI (Telegram needs the URL up-front for webhook mode anyway).
 - ✅ Cleanup wired into `SIGINT`/`SIGTERM`: bot detaches before the UI stops.
 
@@ -568,11 +568,11 @@ Substrate lift (rule-of-two): `PushPolicy` was sitting at `apps/stoop/src/lib/Pu
 
 App-side:
 
-- ✅ `Crew.js` accepts an optional `pushSender` (any `relay.PushSender`-shaped object). When supplied AND `crewConfig.pushTokens` maps any webid → device token, Crew constructs a `PushChannel` + `PushPolicy` and registers them under `notifierChannels.push`.
+- ✅ `Circle.js` accepts an optional `pushSender` (any `relay.PushSender`-shaped object). When supplied AND `circleConfig.pushTokens` maps any webid → device token, Circle constructs a `PushChannel` + `PushPolicy` and registers them under `notifierChannels.push`.
 - ✅ `wireIssuerNotifications` extended with optional `{pushChannel, pushPolicy, tokenFor}`. Every immediate notification (completed / submitted / rejected / revoked) is offered to the policy on top of the inbox dispatch; `humanInTheLoop: true` is set so the policy gates correctly. Unbound recipients silently skip push.
-- ✅ CrewConfig schema gained `pushTokens: {[webid]: token}` and `pushPolicy: {maxPerDay?, quietHours?}`. `_normaliseConfig` now preserves both.
-- ✅ CLI `--push` flag lazy-imports `@canopy/relay`'s `ExpoPushSender` and forwards it to `createCrewAgent`. `@canopy/relay` added as a tasks-v0 dependency.
-- ✅ Tests: 4 added in `test/v1_5-push.test.js` — push fires for the master with a bound token; skipped when the recipient has no token; dormant without `pushSender`; honours `pushPolicy.maxPerDay` from the crew config.
+- ✅ CircleConfig schema gained `pushTokens: {[webid]: token}` and `pushPolicy: {maxPerDay?, quietHours?}`. `_normaliseConfig` now preserves both.
+- ✅ CLI `--push` flag lazy-imports `@canopy/relay`'s `ExpoPushSender` and forwards it to `createCircleAgent`. `@canopy/relay` added as a tasks-v0 dependency.
+- ✅ Tests: 4 added in `test/v1_5-push.test.js` — push fires for the master with a bound token; skipped when the recipient has no token; dormant without `pushSender`; honours `pushPolicy.maxPerDay` from the circle config.
 
 Tests now: **212 across 16 files** (Tasks) + **53 across 5 files** (notifier) + Stoop's full 429-test suite still green after the substrate lift.
 
@@ -586,8 +586,8 @@ Tests now: **212 across 16 files** (Tasks) + **53 across 5 files** (notifier) + 
   Approvers can now decide on submissions with full context; previously the Review queue showed only title + status.
 
 ### Bug fix
-- ✅ Fixed `--crew` mode without `--storage-root` not registering V1 helper skills (`getCrewConfig` / `listAwaitingApproval` / `getDagTree` / `listMyInbox` / `getMetrics` / `pauseCrew` / `getPrivacyNotice` / `listKnownRoles` / etc.). The CLI now builds an ephemeral in-memory `CachingDataSource` bundle whenever `--crew` is used; `--storage-root` adds restart-survival on top. Console line distinguishes the two modes.
-- ✅ V1-only pages (`review.html` / `dag.html` / `crew.html` / `inbox.html`) now fail visibly via a new `renderV1NotAvailable(root, err, hint)` helper instead of staying stuck on `Loading…` when the V1 skills aren't registered. `mountInboxBadge` stops polling after 2 consecutive failures so V0 mode doesn't spam the network panel.
+- ✅ Fixed `--circle` mode without `--storage-root` not registering V1 helper skills (`getCircleConfig` / `listAwaitingApproval` / `getDagTree` / `listMyInbox` / `getMetrics` / `pauseCircle` / `getPrivacyNotice` / `listKnownRoles` / etc.). The CLI now builds an ephemeral in-memory `CachingDataSource` bundle whenever `--circle` is used; `--storage-root` adds restart-survival on top. Console line distinguishes the two modes.
+- ✅ V1-only pages (`review.html` / `dag.html` / `circle.html` / `inbox.html`) now fail visibly via a new `renderV1NotAvailable(root, err, hint)` helper instead of staying stuck on `Loading…` when the V1 skills aren't registered. `mountInboxBadge` stops polling after 2 consecutive failures so V0 mode doesn't spam the network panel.
 
 ### V1.5 — chat-bot bridge
 
@@ -596,9 +596,9 @@ Substrate already shipped: `chat-agent.TelegramBridge` + `InMemoryBridge`. App-l
 - ✅ Added `@canopy/chat-agent` dep to `apps/tasks-v0`.
 - ✅ New `src/bot/dispatch.js` — pure parser; mirrors `apps/household/src/parsers/regexCommands.js` but for Tasks. 14 commands: `open`/`list`, `mine`, `master`, `review`, `inbox`, `blocks <id>`/`tree <id>`, `claim <id>`, `done <id>`/`complete <id>`, `submit <id> note: ...`, `approve <id>`, `reject <id> reason: ...`, `revoke <id> reason: ...`, `appeal <id>`, `help`/`?`. Dispatches return `{kind: 'skill'|'reply'|'unknown'}` so the wiring layer formats consistently.
 - ✅ New `src/bot/skills.js` — `bot.*` skill set (12 skills) wrapping the V1 surface. Each skill returns chat-shaped `{text}` (or `{text, buttons}`) instead of raw JSON; resolves short id prefixes (≥6 chars) to a unique full ULID; renders sub-task trees as code-block-fenced ASCII; surfaces `permission denied` errors from the role-policy gate as friendly chat replies.
-- ✅ New `src/bot/wireBotChannel.js` — `wireBotChannel({agent, bridges, chatBindings})`. Generic over `MessagingBridge` instances (TelegramBridge for production, InMemoryBridge for tests). Caller supplies `{<chatId>: <webid>}` map (typically from `crew.bot.chatBindings`); unbound chatIds get a friendly hint reply. Returns `{detach}` for clean shutdown.
-- ✅ `Crew.js` always registers `bot.*` skills when `localStoreBundle` is present (registration is cheap; activation gated by the caller wiring a real bridge).
-- ✅ CrewConfig schema extended: `bot.chatBindings: {<chatId>: <webid>}`.
+- ✅ New `src/bot/wireBotChannel.js` — `wireBotChannel({agent, bridges, chatBindings})`. Generic over `MessagingBridge` instances (TelegramBridge for production, InMemoryBridge for tests). Caller supplies `{<chatId>: <webid>}` map (typically from `circle.bot.chatBindings`); unbound chatIds get a friendly hint reply. Returns `{detach}` for clean shutdown.
+- ✅ `Circle.js` always registers `bot.*` skills when `localStoreBundle` is present (registration is cheap; activation gated by the caller wiring a real bridge).
+- ✅ CircleConfig schema extended: `bot.chatBindings: {<chatId>: <webid>}`.
 - ✅ Tests: 21 added in `test/v1_5-bot.test.js` — pure dispatch parser (every command + edge cases incl. malformed ids + missing reasons), end-to-end via `chat-agent.InMemoryBridge` (unbound chat hint, help text, empty-state, full claim→done cycle, full submit→approve cycle, missing-reason errors, permission-denied surfacing for member chat, audit log records the actor on bot-driven actions, unknown-command help).
 
 Tests now: **208 across 15 files** (+21 from 187).
@@ -609,13 +609,13 @@ Substrate already shipped (`core.Roles.registerCustomRole` exists since Track D)
 
 - ✅ Added `Roles` exports to `@canopy/core`'s public barrel: `ROLES`, `isStandardRole`, `roleRank`, `isKnownRole`, `registerCustomRole`, `unregisterCustomRole`, `canPromote`, `listKnownRoles` (one-line additive change).
 - ✅ New `apps/tasks-v0/src/skills/customRoles.js`:
-  - `applyCustomRoles(customRoles)` — boot-time helper that re-registers a CrewConfig's custom roles into the process-global registry. Idempotent (skips already-registered ids).
-  - `registerCrewCustomRole({roleId, rank})` skill — admin-only. Validates against `core.Roles.registerCustomRole` (rank uniqueness, no standard-role collisions); persists into `liveCrew.customRoles`.
-  - `unregisterCrewCustomRole({roleId})` skill — admin-only. Refuses to unregister standard roles.
-  - `listKnownRoles()` skill — read-only union of standard roles (with their canonical ranks) + crew-config customs + any process-registry customs not in the crew config (surfaces drift).
-- ✅ `Crew.js` calls `applyCustomRoles(crew.customRoles)` at boot so a crew config with custom roles re-registers them on a fresh CLI launch.
-- ✅ `crew.html` — new "Custom roles (admin only)" section with a table of every known role (showing rank + source: standard/crew/process) + a small "add new role" form (id + rank).
-- ✅ Tests: 11 added in `test/v1_5-custom-roles.test.js` covering listKnownRoles standard surface, register/unregister round-trip, admin-only gate (coord + member rejected), validation (empty id, non-numeric rank, standard collision, duplicate rank), boot-time re-registration via `createCrewAgent({crewConfig: {customRoles: [...]}})`, and the dual source surfacing (crew vs process).
+  - `applyCustomRoles(customRoles)` — boot-time helper that re-registers a CircleConfig's custom roles into the process-global registry. Idempotent (skips already-registered ids).
+  - `registerCircleCustomRole({roleId, rank})` skill — admin-only. Validates against `core.Roles.registerCustomRole` (rank uniqueness, no standard-role collisions); persists into `liveCircle.customRoles`.
+  - `unregisterCircleCustomRole({roleId})` skill — admin-only. Refuses to unregister standard roles.
+  - `listKnownRoles()` skill — read-only union of standard roles (with their canonical ranks) + circle-config customs + any process-registry customs not in the circle config (surfaces drift).
+- ✅ `Circle.js` calls `applyCustomRoles(circle.customRoles)` at boot so a circle config with custom roles re-registers them on a fresh CLI launch.
+- ✅ `circle.html` — new "Custom roles (admin only)" section with a table of every known role (showing rank + source: standard/circle/process) + a small "add new role" form (id + rank).
+- ✅ Tests: 11 added in `test/v1_5-custom-roles.test.js` covering listKnownRoles standard surface, register/unregister round-trip, admin-only gate (coord + member rejected), validation (empty id, non-numeric rank, standard collision, duplicate rank), boot-time re-registration via `createCircleAgent({circleConfig: {customRoles: [...]}})`, and the dual source surfacing (circle vs process).
 
 **Tests now: 187 across 14 files** (V1's 176 + 11 new).
 
@@ -632,7 +632,7 @@ substrates were lifted by parallel work).
 - ✅ Local-only mode works end-to-end without a pod connection.
 - ✅ Cold-boot inbox shows cached entries (CachingDataSource).
 - ✅ Calendar conflict view reads pod-mirrored `*.ics` (no network freebusy).
-- ✅ Sub-task spawn past `crew.subtasksAdminApprovalDepth` queues admin approval.
+- ✅ Sub-task spawn past `circle.subtasksAdminApprovalDepth` queues admin approval.
 - ✅ Revoke with mandatory reason → previous-assignee inbox + appeal flow.
 - ✅ Approval mode `creator` works end-to-end (claim → submit → approve / reject).
 - ✅ Skill-import-from-pod prefilled-form helper available.
@@ -643,7 +643,7 @@ substrates were lifted by parallel work).
 
 ### V1 acceptance gates — partial
 
-- ⚠️ **Crew switcher UI** — not built. V1 ships `--crew <path>` per launch; switching crews means restart-with-different-config. Multi-crew-switcher screen is V1.5 work.
+- ⚠️ **Circle switcher UI** — not built. V1 ships `--circle <path>` per launch; switching circles means restart-with-different-config. Multi-circle-switcher screen is V1.5 work.
 - ⚠️ **Localisation back-fill** — localisation scaffolding shipped (`locales/{en,nl}.json` + `lib/localisation.js` + 60+ keyed strings + privacy notice in both langs). HTML pages still ship hardcoded English; `data-i18n` attribute back-fill is opportunistic per touched page.
 - ⚠️ **Inrupt-migration** — undecided. Tasks V1 ships local-only-mode-by-default; pod sign-in surface is the same legacy bespoke UX Stoop / Folio currently use. Documented inheritance.
 
@@ -675,42 +675,42 @@ substrates were lifted by parallel work).
 - ✅ `bundle.localOnlyPrefixes` defaults to `['mem://tasks/settings/devices/', 'mem://tasks/settings/.migrated-from-v2']` so per-device settings never sync to a pod.
 - ✅ Tests: 12 added (6 in `test/phase1-local-store.test.js` + 6 in `test/phase1-settings.test.js`). Total now 46/46 passing.
 
-### Phase 2 — Crew envelope (2026-05-08)
+### Phase 2 — Circle envelope (2026-05-08)
 
-- ✅ New `src/Crew.js` — `CrewConfig` schema, `loadCrewConfig` / `saveCrewConfig`, `createCrewAgent` factory.
-- ✅ Crew kinds: `'household' | 'project' | 'team' | 'friends' | 'maintenance'`. `KIND_DEFAULTS` per kind (e.g. `subtasksAdminApprovalDepth`: household 3, project 4, friends 2).
-- ✅ Pod schema established: `<crew-pod>/crews/<circleId>/config.json` (and sibling `members/`, `skills.json`, `cadences.json`, `tasks/` to be populated by later phases).
-- ✅ `createCrewAgent` wires (when applicable):
-  - `MemberMap` seeded from `crewConfig.members`.
-  - `MemberMapCache.attach` against the localStoreBundle's cache so the roster auto-persists under `mem://tasks/crews/<circleId>/members/`.
+- ✅ New `src/Circle.js` — `CircleConfig` schema, `loadCircleConfig` / `saveCircleConfig`, `createCircleAgent` factory.
+- ✅ Circle kinds: `'household' | 'project' | 'team' | 'friends' | 'maintenance'`. `KIND_DEFAULTS` per kind (e.g. `subtasksAdminApprovalDepth`: household 3, project 4, friends 2).
+- ✅ Pod schema established: `<circle-pod>/circles/<circleId>/config.json` (and sibling `members/`, `skills.json`, `cadences.json`, `tasks/` to be populated by later phases).
+- ✅ `createCircleAgent` wires (when applicable):
+  - `MemberMap` seeded from `circleConfig.members`.
+  - `MemberMapCache.attach` against the localStoreBundle's cache so the roster auto-persists under `mem://tasks/circles/<circleId>/members/`.
   - A `core.GroupManager` bound to the agent's identity + vault.
   - `buildOnboardingSkills` from identity-resolver — registers `issueInvite` + `redeemInvite` skills with the right `groupId = circleId`.
 - ✅ `wireOnboardingSkills: false` opt-out for tests / agents that don't need invites.
-- ✅ V0 zero-config path: `createCrewAgent({})` returns an implicit-household crew indistinguishable from `createTasksAgent` defaults.
-- ✅ Tests: 9 added in `test/phase2-crew.test.js` (config round-trip, missing-config fallback, kind defaults, zero-config implicit household, member-map auto-persist via MemberMapCache, onboarding skill registration + actual invite issuance, opt-out). Total now 55/55 passing.
+- ✅ V0 zero-config path: `createCircleAgent({})` returns an implicit-household circle indistinguishable from `createTasksAgent` defaults.
+- ✅ Tests: 9 added in `test/phase2-circle.test.js` (config round-trip, missing-config fallback, kind defaults, zero-config implicit household, member-map auto-persist via MemberMapCache, onboarding skill registration + actual invite issuance, opt-out). Total now 55/55 passing.
 
-### Phase 3 — canonical user-skills profile + per-crew vocabulary (2026-05-08)
+### Phase 3 — canonical user-skills profile + per-circle vocabulary (2026-05-08)
 
-- ✅ New `src/skills/profile.js` — canonical-profile, crew-vocabulary, per-crew-member-skills, and per-crew-posture readers + writers, all over a `core.DataSource` (composes the local-store bundle).
+- ✅ New `src/skills/profile.js` — canonical-profile, circle-vocabulary, per-circle-member-skills, and per-circle-posture readers + writers, all over a `core.DataSource` (composes the local-store bundle).
 - ✅ Canonical user-skills profile path: **`mem://user/profile/skills.json`** — intentionally NOT app-namespaced, so Stoop / Tasks / Folio / future apps read the same blob.
-- ✅ Crew skill vocabulary at `<crew-pod>/crews/<circleId>/skills.json`; per-crew member projection at `<crew-pod>/crews/<circleId>/skills/<webid-encoded>.json`; per-crew posture at `<user-pod>/posture/<circleId>.json`.
+- ✅ Circle skill vocabulary at `<circle-pod>/circles/<circleId>/skills.json`; per-circle member projection at `<circle-pod>/circles/<circleId>/skills/<webid-encoded>.json`; per-circle posture at `<user-pod>/posture/<circleId>.json`.
 - ✅ Tag normalisation: leans on the shipped `@canopy/identity-resolver/normaliseTag` so NL "schilderen" / EN "painting" / "schilderwerk" all canonicalise to one tag — cross-language matching works out of the box. Off-taxonomy `categoryId` values get nulled; duplicates dedupe by canonical tag.
-- ✅ `prefilledFormShape({canonicalProfile, crewVocabulary, taxonomy?})` — pure function, returns `{prefilled, vocabSuggestions, taxonomyHints}` for the UI's three lists. `prefilled` annotated with `inCrewVocabulary`. Handles null inputs.
-- ✅ Two new skills auto-registered on `createCrewAgent` when a `localStoreBundle` is supplied:
+- ✅ `prefilledFormShape({canonicalProfile, circleVocabulary, taxonomy?})` — pure function, returns `{prefilled, vocabSuggestions, taxonomyHints}` for the UI's three lists. `prefilled` annotated with `inCircleVocabulary`. Handles null inputs.
+- ✅ Two new skills auto-registered on `createCircleAgent` when a `localStoreBundle` is supplied:
   - `getMySkillsFormShape({circleId})` — returns the prefilled shape.
-  - `editMySkillsForCrew({circleId, skills, persistToCanonicalProfile?})` — always writes the per-crew projection; mirrors to canonical profile only when the opt-in flag is set (per pod-data-sharing caution principles).
+  - `editMySkillsForCircle({circleId, skills, persistToCanonicalProfile?})` — always writes the per-circle projection; mirrors to canonical profile only when the opt-in flag is set (per pod-data-sharing caution principles).
 - ✅ Webid taken from `from` (envelope) preferred over args; rejects calls without a webid.
 - ✅ Tests: 18 added in `test/phase3-profile.test.js`. Total now **73/73 passing**.
 
 ### Phase 5.5 — CLI improvements (2026-05-08)
 
 - ✅ `bin/tasks-ui.js` gains `--storage-root <path>` flag — wraps `core.FileSystemSource` rooted at the path in a `local-store.CachingDataSource` and threads it through as `localStoreBundle`. Local-only mode now survives CLI restarts.
-- ✅ `bin/tasks-ui.js` gains `--crew <path>` flag — loads a CrewConfig JSON and uses `createCrewAgent` instead of the legacy V0 path. Surfaces every V1 wiring (MemberMapCache, onboarding skills, profile skills, calendar adapter, in-app inbox, appeal flow) without changing the existing V0 `--role` / `--config` invocations.
+- ✅ `bin/tasks-ui.js` gains `--circle <path>` flag — loads a CircleConfig JSON and uses `createCircleAgent` instead of the legacy V0 path. Surfaces every V1 wiring (MemberMapCache, onboarding skills, profile skills, calendar adapter, in-app inbox, appeal flow) without changing the existing V0 `--role` / `--config` invocations.
 
 ### Phase 11 — docs + privacy page + acceptance pass (2026-05-08)
 
 - ✅ New `web/privacy.html` — closed-beta privacy notice page; en/nl picker; calls `getPrivacyNotice` skill.
-- ✅ Updated `apps/tasks-v0/README.md` with the V1 surface, V1/V1.5/V2+ split, full file inventory, V1 + Crew CLI examples, test-coverage table.
+- ✅ Updated `apps/tasks-v0/README.md` with the V1 surface, V1/V1.5/V2+ split, full file inventory, V1 + Circle CLI examples, test-coverage table.
 - ✅ Updated `Project Files/Substrates/apps/H4-tasks.md` to reflect the V1 substrate composition + new substrate dependencies (`local-store`, `chat-p2p`) + V1 design locks.
 - ✅ Finalised this CHANGELOG with a top-level `0.2.0` entry + acceptance gates summary (passed / partial).
 - ✅ Final acceptance run: **176/176 tests passing** across 13 files; Stoop 429/429 untouched.
@@ -718,52 +718,52 @@ substrates were lifted by parallel work).
 ### Phase 10 — localisation + archive + pause + privacy notice (2026-05-08)
 
 - ✅ Added `i18next@^26` dependency.
-- ✅ New `locales/en.json` + `locales/nl.json` — every leaf carries the project-mandated `{text, doc}` shape (per `Project Files/conventions/localisation.md`); `doc` field is mandatory and explains where the string appears + tone. Coverage: common, nav, status pills, action labels, composer fields, crew labels, inbox event chips, error codes (~60 keys per language).
+- ✅ New `locales/en.json` + `locales/nl.json` — every leaf carries the project-mandated `{text, doc}` shape (per `Project Files/conventions/localisation.md`); `doc` field is mandatory and explains where the string appears + tone. Coverage: common, nav, status pills, action labels, composer fields, circle labels, inbox event chips, error codes (~60 keys per language).
 - ✅ New `src/lib/localisation.js` — i18next wrapper. `unwrapLeaves()` transforms `{text, doc}` pairs to bare strings at init time so callers write `t('common.save')` (not `t('common.save.text')`). Falls back to the key when missing; supports `{{params}}` interpolation; `setLang(lng)` for runtime switching. Mirrors Stoop's wrapper pattern.
 - ✅ New `src/lib/privacyNotice.js` — `PRIVACY_NOTICE` (frozen) with 6 items per language. Inherits items 1-4 from Stoop's notice (encryption, relay surface, abuse-tracing, group governance) + 2 Tasks-specific items (calendar-stays-on-device + pod-data-sharing caution principles).
-- ✅ New `src/skills/crewControls.js`:
-  - `pauseCrew()` / `unpauseCrew()` — admin/coord only. Sets `crew.paused = true|false`.
-  - `archiveCrew()` / `unarchiveCrew()` — admin only. Sets `crew.archived = true|false`. Reversible (does NOT delete items).
+- ✅ New `src/skills/circleControls.js`:
+  - `pauseCircle()` / `unpauseCircle()` — admin/coord only. Sets `circle.paused = true|false`.
+  - `archiveCircle()` / `unarchiveCircle()` — admin only. Sets `circle.archived = true|false`. Reversible (does NOT delete items).
   - `getPrivacyNotice({lang?})` — returns the localised closed-beta notice; defaults to `en`.
-- ✅ `Crew.js`'s `_normaliseConfig` honours `paused` + `archived` flags (default `false`); the shared `crewMutator` is reused by both observability + crewControls; `liveCrew` is now declared before `createTasksAgent` so a `crewProvider` can flow into the base agent.
-- ✅ `addTask` skill (`src/skills/index.js`) accepts an optional `crewProvider` and gates: `crew.archived` → `{error: 'crew-archived'}`; `crew.paused` → `{error: 'crew-paused'}`; archive takes precedence over pause when both are set. V0 zero-config path (no `crewProvider`) never blocks.
+- ✅ `Circle.js`'s `_normaliseConfig` honours `paused` + `archived` flags (default `false`); the shared `circleMutator` is reused by both observability + circleControls; `liveCircle` is now declared before `createTasksAgent` so a `circleProvider` can flow into the base agent.
+- ✅ `addTask` skill (`src/skills/index.js`) accepts an optional `circleProvider` and gates: `circle.archived` → `{error: 'circle-archived'}`; `circle.paused` → `{error: 'circle-paused'}`; archive takes precedence over pause when both are set. V0 zero-config path (no `circleProvider`) never blocks.
 - ✅ Tests: 17 added in `test/phase10-lifecycle.test.js` covering localisation init/translate/interpolate/fallback, locale-file `{text, doc}` schema validation, en+nl key-set parity, privacy-notice shape + content, pause/unpause/archive/unarchive flow + addTask gate + admin-only authz + privacy-notice skill. Total now **176/176 passing**.
 
 ### Phase 9 — observability stats + cadence config (2026-05-08)
 
 - ✅ New `src/observability/metrics.js` — `MetricsTracker` composes `@canopy/notifier`'s `UsageMetrics` for counters + adds bounded latency reservoirs (default 200 samples per name; FIFO eviction). Tracks per-name p50/p90/max via `_percentile`.
 - ✅ `buildMetrics({itemStore})` auto-subscribes to `item-added`/`item-claimed`/`item-submitted`/`item-rejected`/`item-revoked`/`item-completed`/`item-removed`. Counters: `task.added` / `task.claimed` / `task.submitted` / `task.rejected` / `task.revoked` / `task.approved` / `task.completed` / `subtask.request` / `subtask.approved` / `subtask.declined`. Latencies: `latency.time-to-claim` (added → claimed), `latency.submit-to-approval` (submit → completed when approval mode is non-self-mark).
-- ✅ New `src/observability/cadence.js` — `resolveCadence({eventType, baseline?, crew?, user?})` layered config (user > crew > baseline). `sanitiseCadenceMap(map)` drops invalid entries. `BASELINE_CADENCES` covers all 6 V1 event types.
+- ✅ New `src/observability/cadence.js` — `resolveCadence({eventType, baseline?, circle?, user?})` layered config (user > circle > baseline). `sanitiseCadenceMap(map)` drops invalid entries. `BASELINE_CADENCES` covers all 6 V1 event types.
 - ✅ New `src/skills/observability.js`:
   - `getMetrics()` — read-only snapshot (locally aggregated; V1 keeps strictly local per pod-data-sharing caution principles).
-  - `getCrewCadences()` / `setCrewCadences({cadences})` (admin/coord only).
+  - `getCircleCadences()` / `setCircleCadences({cadences})` (admin/coord only).
   - `getMyCadenceOverrides()` / `setMyCadenceOverrides({overrides})` (Settings shared blob).
   - `resolveMyCadence({eventType})` — returns the effective config given all three layers.
-- ✅ `Crew.js` wires metrics + observability skills + persists user overrides via `Settings`. The `liveCrew` pointer is mutable (admin's `setCrewCadences` swaps in a new frozen copy).
+- ✅ `Circle.js` wires metrics + observability skills + persists user overrides via `Settings`. The `liveCircle` pointer is mutable (admin's `setCircleCadences` swaps in a new frozen copy).
 - ✅ UI:
-  - `crew.html` — new "Stats" section (counter + latency tables) + "Cadence config" admin/coord editor with per-event channel + suppressed dropdowns.
-  - `mine.html` — new "My notification preferences" section letting users override the crew defaults.
+  - `circle.html` — new "Stats" section (counter + latency tables) + "Cadence config" admin/coord editor with per-event channel + suppressed dropdowns.
+  - `mine.html` — new "My notification preferences" section letting users override the circle defaults.
 - ✅ Tests: 16 added in `test/phase9-observability.test.js`. Total now **159/159 passing**.
 
 ### Phase 8 — workspace UI shell + 7 screens (2026-05-08)
 
 Server-side helper skills:
 - ✅ New `src/skills/inbox.js` — `listMyInbox({since?, limit?})`, `inboxBadgeCount()`, `clearInboxItem({id})`, `clearInbox({olderThanMs?})`. Reads `mem://user/inbox/*.json` (the path the Phase 6 InAppInboxBridge writes to).
-- ✅ New `src/skills/workspace.js` — `getCrewConfig()`, `listAwaitingApproval()`, `listSubtaskRequests()` (admin/coord only), `getDagTree({rootId?})` (uses Phase 7's `treeOf`), `listMyMasteredTasks()`.
-- ✅ Both auto-registered in `createCrewAgent` when a `localStoreBundle` is supplied.
+- ✅ New `src/skills/workspace.js` — `getCircleConfig()`, `listAwaitingApproval()`, `listSubtaskRequests()` (admin/coord only), `getDagTree({rootId?})` (uses Phase 7's `treeOf`), `listMyMasteredTasks()`.
+- ✅ Both auto-registered in `createCircleAgent` when a `localStoreBundle` is supplied.
 
 UI surface (`apps/tasks-v0/web/`):
 - ✅ Refreshed `index.html` — V1 add-task composer with `definitionOfDone` + approval-mode picker (`self-mark` / `creator` / `webid:X`); status filter extended to cover the 7 statuses (`ready`/`waiting`/`blocked`/`claimed`/`submitted`/`rejected` — `complete` items are in the closed list); inbox badge in nav.
 - ✅ Refreshed `mine.html` — split into 3 sections: "Assigned to me" + "I'm master of" + "Ready to claim".
 - ✅ New `review.html` — approver inbox; client-side filter against `item.approval` (`creator` / `webid:X`) plus admin/coord override.
 - ✅ New `dag.html` — read-only sub-task tree via `getDagTree`; per-node status pill; indented children.
-- ✅ New `crew.html` — crew name + meta; member chips with role labels (+ optional `paid-pro`); pending sub-task requests with `[Approve]`/`[Decline]` buttons (admin/coord only); settings dump.
+- ✅ New `circle.html` — circle name + meta; member chips with role labels (+ optional `paid-pro`); pending sub-task requests with `[Approve]`/`[Decline]` buttons (admin/coord only); settings dump.
 - ✅ New `inbox.html` — list of `kind:'notification'` items, dismiss-per-item + clear-all; routes button taps for `approveSubtaskRequest:` / `declineSubtaskRequest:` / `appeal:`.
 - ✅ Refreshed `app.js` — `lifecycleStatus`, `mountInboxBadge`, `getConfig`, expanded `renderTasks` with submit/approve/reject/revoke/add-subtask actions gated by role + lifecycle state; `getActor`+`getConfig` helpers.
 - ✅ Refreshed `style.css` — new pills for the 4 lifecycle states + inbox-entry layout + tree-children indentation + nav badge.
 
 CLI:
-- ✅ `bin/tasks-ui.js` extends `/tasks-config.json` overlay to include `crew: {circleId, name, kind}` when a Crew envelope is wired (UI uses this for context).
+- ✅ `bin/tasks-ui.js` extends `/tasks-config.json` overlay to include `circle: {circleId, name, kind}` when a Circle envelope is wired (UI uses this for context).
 
 Tests: 11 added in `test/phase8-ui.test.js`; V0 baseline test text-assertions updated for the renamed nav. Total now **143/143 passing**.
 
@@ -771,11 +771,11 @@ Tests: 11 added in `test/phase8-ui.test.js`; V0 baseline test text-assertions up
 
 - ✅ New `src/dag-tree.js` — pure helpers: `childrenOf(parentId, allTasks)`, `treeOf(rootId, allTasks)` (recursive {id, item, children}), `ancestorChain(taskId, allTasks)` (root → … → self), `depthOf(taskId, allTasks)` (top-level=0), `wouldCreateParentCycle(parentId, newChildId, allTasks)` (early-rejection helper). All pure; no I/O.
 - ✅ New `src/skills/subtasks.js` with three skills:
-  - `addSubtask({parentTaskId, text, ...})` — caller must be parent's assignee, master, admin, or coordinator. Computes `newDepth = depthOf(parent) + 1`; if `> crew.subtasksAdminApprovalDepth` (default 3), files a `type: 'subtask-request'` item and returns `{queued: true, requestId}`. Otherwise creates the sub-task with `parentTaskId` set + spawner as `master`, AND appends the new id to the parent's `dependencies` so `computeStatus` reports the parent as `waiting`. Cycle-checked via `wouldCreateParentCycle` before write.
+  - `addSubtask({parentTaskId, text, ...})` — caller must be parent's assignee, master, admin, or coordinator. Computes `newDepth = depthOf(parent) + 1`; if `> circle.subtasksAdminApprovalDepth` (default 3), files a `type: 'subtask-request'` item and returns `{queued: true, requestId}`. Otherwise creates the sub-task with `parentTaskId` set + spawner as `master`, AND appends the new id to the parent's `dependencies` so `computeStatus` reports the parent as `waiting`. Cycle-checked via `wouldCreateParentCycle` before write.
   - `approveSubtaskRequest({requestId})` — admin/coordinator only. Reads the queued request and creates the actual sub-task on behalf of the original requester; updates the parent's `dependencies`; closes the request item.
   - `declineSubtaskRequest({requestId, note?})` — admin/coordinator only. Marks the request complete with the decline note in `notes`. The spawner sees a `task-completed` inbox entry via the existing wireIssuerNotifications listener.
-- ✅ `Crew.js` extended:
-  - Auto-registers the three sub-task skills via `buildSubtaskSkills({itemStore, crewProvider, roleOf})`.
+- ✅ `Circle.js` extended:
+  - Auto-registers the three sub-task skills via `buildSubtaskSkills({itemStore, circleProvider, roleOf})`.
   - Adds an `item-added` listener that detects `type: 'subtask-request'` and broadcasts an inbox notification to every admin / coordinator with `[Approve]` / `[Decline]` buttons (button ids `approveSubtaskRequest:<id>` / `declineSubtaskRequest:<id>` so the UI can wire them).
 - ✅ Role-policy narrow exception: `canEditBody` now allows the parent's `assignee` or `master` to append to `dependencies` ONLY (single-field patch). Unblocks the spawn-flow's parent-update without granting wider edit rights.
 - ✅ Tests: 16 added in `test/phase7-subtasks.test.js`. Total now **132/132 passing**.
@@ -786,7 +786,7 @@ Tests: 11 added in `test/phase8-ui.test.js`; V0 baseline test text-assertions up
 - ✅ New `src/bridges/InAppInboxBridge.js` — implements the `MessagingBridge` shape (`start`/`stop`/`onMessage`/`sendReply`); writes `kind: 'notification'` items to a per-recipient inbox container (default `mem://user/inbox/`). Cross-recipient delivery rejected (one bridge per webid; broadcasting is somebody else's problem). Substrate-candidate flagged for `@canopy/chat-agent` once a 2nd consumer wants the same shape.
 - ✅ New `src/notifications/wireIssuerNotifications.js` — subscribes to `item-added` (with `dueAt`), `item-completed`, `item-submitted`, `item-rejected`, `item-revoked`, `item-removed` and routes them to the right recipient's inbox via per-webid `InAppInboxBridge` instances. Mutates the shared `channels` map so the notifier picks up runtime additions lazily. Returns `{detach}` for shutdown.
 - ✅ New `src/skills/appeal.js` — `appealTask({taskId, body?})` skill. Authz: caller must equal `previousAssignee` (read from the revoke audit-log entry) AND the revoke must be ≤ 7 days old (`APPEAL_WINDOW_MS`). On success, calls `chat-p2p.wireChat`'s `send(...)` with `threadId: appeal:<taskId>` and either the user's body or a polite pre-fill quoting the revoke reason. Graceful `chat-not-wired` error when `wireChat` isn't composed.
-- ✅ `createCrewAgent` (when `localStoreBundle` is supplied) now wires:
+- ✅ `createCircleAgent` (when `localStoreBundle` is supplied) now wires:
   - `wireChat` from `@canopy/chat-p2p` against the bundle's ItemStore + MemberMap (gives the agent peer-to-peer chat capability).
   - `appealTask` skill (depends on `chatController`).
   - `Notifier` from `@canopy/notifier` with `InMemoryScheduleStore`; exposed as `bundle.notifier.scheduleStore` so tests + UI can introspect pending jobs (the notifier's own `#store` is private).
@@ -840,14 +840,14 @@ App side (`apps/tasks-v0`):
 
 ### V1 scope (in progress — see coding plan for phase-by-phase)
 
-- **Crew envelope** (multi-tenant container around tasks; replaces V0's implicit-household).
+- **Circle envelope** (multi-tenant container around tasks; replaces V0's implicit-household).
 - **DoD lifecycle** on item-store: `submitted` + `rejected` states + approval modes.
 - **Sub-tasks by the accepter** + admin-approval threshold beyond depth N.
 - **Master + revoke (with reason) + appeal flow** via new `@canopy/chat-p2p` substrate.
 - **Local calendar conflict view** (no network freebusy; reads `*.ics` from pod or local mode).
 - **In-app inbox** as a `MessagingBridge`, backed by new `@canopy/local-store` substrate.
 - **Skill import from canonical user-pod profile** with prefilled-edit-before-submit form.
-- **Per-crew skill vocabulary** + cadence config + observability stats.
+- **Per-circle skill vocabulary** + cadence config + observability stats.
 - **Local-only mode** is a hard rule — app boots without a Solid pod.
 
 ### Substrate movements during V1 (lifted from Stoop, rule of two satisfied)

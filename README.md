@@ -29,7 +29,7 @@ Working plans and designs are kept private (local-only) by design.
 | **canopy-chat** | The front door — one chat UI. Slash commands (and a future LLM layer) dispatch to whichever app owns the operation. Ships as a static web bundle; the mesh agent runs **browser-side**. |
 | **household** | Shared household state (chores, lists) on a Solid pod; chat- or Telegram-driven, optionally LLM-mediated. |
 | **stoop** | Neighbourhood (*buurt*) sharing — borrow / lend / give, prikbord posts, skill-matching, closed groups with their own governance. |
-| **tasks-v0** | Tasks and crews — claim, complete, review, schedule, availability, crew invites. |
+| **tasks-v0** | Tasks and circles — claim, complete, review, schedule, availability, circle invites. |
 | **folio** | Share files and folders to and from Solid pods. |
 | **calendar** | Appointments and events with cross-peer invite + RSVP over the mesh. |
 
@@ -157,7 +157,7 @@ Minimal hands-on agent: [`QUICKSTART.md`](./QUICKSTART.md).
 
 Every app builds **one** `core.Agent` per service-context.  Transports are
 routes plugged into that agent, not parallel agent instances; multi-scope
-semantics (groups, crews, accounts) live in per-scope `ItemStore` /
+semantics (groups, circles, accounts) live in per-scope `ItemStore` /
 `MemberMap` state **outside** the agent and dispatch at the skill level.
 Spinning up N agents to model N scopes is an anti-pattern.  Full rationale:
 [`Project Files/conventions/single-agent.md`](./docs/conventions/single-agent.md).

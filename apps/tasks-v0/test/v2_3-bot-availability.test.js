@@ -6,12 +6,12 @@ import { describe, it, expect } from 'vitest';
 
 import { dispatch } from '../src/bot/dispatch.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE = 'https://id.example/anne';
 const KID  = 'https://id.example/kid';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -22,11 +22,11 @@ const CREW = {
   availabilityHints: { enabled: true, optedIn: [KID] },
 };
 
-function call(crew, name, data, from) {
-  return crew.agent.skills.get(name).handler({
+function call(circle, name, data, from) {
+  return circle.agent.skills.get(name).handler({
     parts: [{ type: 'DataPart', data: data ?? {} }],
     from,
-    agent: crew.agent,
+    agent: circle.agent,
     envelope: null,
   });
 }
@@ -46,57 +46,57 @@ describe('V2.3 — bot.available / bot.week', () => {
 
   it('bot.available sets the current half-day for the actor', async () => {
     const bundle = buildBundle();
-    const crew = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
-    const def = crew.agent.skills.get('bot.available');
+    const def = circle.agent.skills.get('bot.available');
     const reply = await def.handler({
       parts: [{ type: 'DataPart', data: { state: 'open' } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     expect(reply.text).toMatch(/open/);
     // Persisted blob should exist.
-    const path = `mem://tasks/crews/oss-tools/availability/${encodeURIComponent(KID)}.json`;
+    const path = `mem://tasks/circles/oss-tools/availability/${encodeURIComponent(KID)}.json`;
     expect(await bundle.cache.read(path)).toBeTruthy();
-    await crew.close();
+    await circle.close();
   });
 
   it('bot.available with bogus state replies with valid-state list', async () => {
     const bundle = buildBundle();
-    const crew = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
-    const def = crew.agent.skills.get('bot.available');
+    const def = circle.agent.skills.get('bot.available');
     const reply = await def.handler({
       parts: [{ type: 'DataPart', data: { state: 'bogus' } }],
       from:  KID,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     expect(reply.text).toMatch(/Valid states/i);
-    await crew.close();
+    await circle.close();
   });
 
   it('bot.week renders the grid for an opted-in member', async () => {
     const bundle = buildBundle();
-    const crew = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
-    // KID is opted in via CREW.optedIn, so bot.week renders the current-week grid
+    // KID is opted in via CIRCLE.optedIn, so bot.week renders the current-week grid
     // (empty cells show as 'unknown'). No hint seed needed — the asserts below check
     // the rendered week header + day labels, not any stored value.
-    const def = crew.agent.skills.get('bot.week');
-    const reply = await def.handler({ parts: [], from: KID, agent: crew.agent, envelope: null });
+    const def = circle.agent.skills.get('bot.week');
+    const reply = await def.handler({ parts: [], from: KID, agent: circle.agent, envelope: null });
     expect(reply.text).toMatch(/Week/);
     expect(reply.text).toContain('mon');
-    await crew.close();
+    await circle.close();
   });
 });

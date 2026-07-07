@@ -1,11 +1,11 @@
 /**
- * CadenceOverridesScreen — per-user cadence overrides for the active crew.
+ * CadenceOverridesScreen — per-user cadence overrides for the active circle.
  *
  * Phase 41.18.3 (2026-05-10).
  *
  * Wraps `getMyCadenceOverrides` + `setMyCadenceOverrides` and surfaces
  * `resolveMyCadence` for one event so the user can preview the
- * effective cadence (user > crew > baseline) without guessing.
+ * effective cadence (user > circle > baseline) without guessing.
  *
  * V1 surface: a tiny grid of (eventType × intervalMs) text inputs.
  * Cadences are sparse — only the entries the user wants to override

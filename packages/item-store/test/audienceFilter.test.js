@@ -7,7 +7,7 @@
  *   - structured audiences match by deep-equality
  *   - bridge: items with only `visibility` are matchable by the
  *     legacy short-hand (via audienceFromItem)
- *   - V0b limitation: 'crew:X' and {kind:'circle-ref', id:'X'} are
+ *   - V0b limitation: 'circle:X' and {kind:'circle-ref', id:'X'} are
  *     NOT considered equivalent (documented; deferred to V0c)
  */
 
@@ -33,8 +33,8 @@ describe('SP-5b V0b — listOpen with ListFilter.audience', () => {
   it('absent filter.audience returns all items (existing behaviour)', async () => {
     await store.addItems(
       [
-        { type: 'task', text: 'one',   audience: 'crew:A' },
-        { type: 'task', text: 'two',   audience: 'crew:B' },
+        { type: 'task', text: 'one',   audience: 'circle:A' },
+        { type: 'task', text: 'two',   audience: 'circle:B' },
         { type: 'task', text: 'three' },
       ],
       { actor: ACTOR },
@@ -46,23 +46,23 @@ describe('SP-5b V0b — listOpen with ListFilter.audience', () => {
   it('filter.audience matches items with the same string short-hand', async () => {
     await store.addItems(
       [
-        { type: 'task', text: 'a-1', audience: 'crew:A' },
-        { type: 'task', text: 'a-2', audience: 'crew:A' },
-        { type: 'task', text: 'b-1', audience: 'crew:B' },
+        { type: 'task', text: 'a-1', audience: 'circle:A' },
+        { type: 'task', text: 'a-2', audience: 'circle:A' },
+        { type: 'task', text: 'b-1', audience: 'circle:B' },
       ],
       { actor: ACTOR },
     );
-    const onlyA = await store.listOpen({ audience: 'crew:A' });
+    const onlyA = await store.listOpen({ audience: 'circle:A' });
     expect(onlyA.map((i) => i.text).sort()).toEqual(['a-1', 'a-2']);
   });
 
   it('filter.audience matches items with deep-equal structured audience', async () => {
-    const ref = { kind: 'circle-ref', id: 'crew-X' };
+    const ref = { kind: 'circle-ref', id: 'circle-X' };
     await store.addItems(
       [
         { type: 'task', text: 'matches',   audience: ref },
         { type: 'task', text: 'noaudience' },
-        { type: 'task', text: 'different', audience: { kind: 'circle-ref', id: 'crew-Y' } },
+        { type: 'task', text: 'different', audience: { kind: 'circle-ref', id: 'circle-Y' } },
       ],
       { actor: ACTOR },
     );
@@ -105,29 +105,29 @@ describe('SP-5b V0b — listOpen with ListFilter.audience', () => {
   it('audience filter composes with other filters (type)', async () => {
     await store.addItems(
       [
-        { type: 'task',  text: 't-a', audience: 'crew:A' },
-        { type: 'task',  text: 't-b', audience: 'crew:B' },
-        { type: 'offer', text: 'o-a', audience: 'crew:A' },
+        { type: 'task',  text: 't-a', audience: 'circle:A' },
+        { type: 'task',  text: 't-b', audience: 'circle:B' },
+        { type: 'offer', text: 'o-a', audience: 'circle:A' },
       ],
       { actor: ACTOR },
     );
 
-    const taskACrew = await store.listOpen({ type: 'task', audience: 'crew:A' });
-    expect(taskACrew.map((i) => i.text)).toEqual(['t-a']);
+    const taskACircle = await store.listOpen({ type: 'task', audience: 'circle:A' });
+    expect(taskACircle.map((i) => i.text)).toEqual(['t-a']);
   });
 
   it('V0b limitation — string short-hand and structured form NOT considered equivalent', async () => {
-    // Strict equality means 'crew:X' (string) and {kind:'circle-ref',id:'X'}
+    // Strict equality means 'circle:X' (string) and {kind:'circle-ref',id:'X'}
     // (object) don't match each other.  Deferred to V0c.
     await store.addItems(
       [
-        { type: 'task', text: 'short-hand', audience: 'crew:X' },
+        { type: 'task', text: 'short-hand', audience: 'circle:X' },
         { type: 'task', text: 'structured', audience: { kind: 'circle-ref', id: 'X' } },
       ],
       { actor: ACTOR },
     );
 
-    const sh = await store.listOpen({ audience: 'crew:X' });
+    const sh = await store.listOpen({ audience: 'circle:X' });
     expect(sh.map((i) => i.text)).toEqual(['short-hand']);
 
     const str = await store.listOpen({ audience: { kind: 'circle-ref', id: 'X' } });
@@ -147,7 +147,7 @@ describe('SP-5b — ListFilter.audience membership (union / set / circle-ref)', 
           audience: { kind: 'union', of: ['household', { kind: 'circle-ref', id: 'c1' }] },
         },
         { type: 'task', text: 'household-only', audience: 'household' },
-        { type: 'task', text: 'other-crew',     audience: { kind: 'circle-ref', id: 'c2' } },
+        { type: 'task', text: 'other-circle',     audience: { kind: 'circle-ref', id: 'c2' } },
       ],
       { actor: ACTOR },
     );
@@ -164,7 +164,7 @@ describe('SP-5b — ListFilter.audience membership (union / set / circle-ref)', 
 
     // A constituent that isn't in the union doesn't spuriously match it.
     const c2 = await store.listOpen({ audience: { kind: 'circle-ref', id: 'c2' } });
-    expect(c2.map((i) => i.text)).toEqual(['other-crew']);
+    expect(c2.map((i) => i.text)).toEqual(['other-circle']);
   });
 
   it('set membership — filtering by a member webid returns the set item', async () => {
@@ -210,17 +210,17 @@ describe('SP-5b V0b — listClosed with ListFilter.audience', () => {
   it('also filters closed items by audience', async () => {
     const [a, _b] = await store.addItems(
       [
-        { type: 'task', text: 'closed-a', audience: 'crew:A' },
-        { type: 'task', text: 'closed-b', audience: 'crew:B' },
+        { type: 'task', text: 'closed-a', audience: 'circle:A' },
+        { type: 'task', text: 'closed-b', audience: 'circle:B' },
       ],
       { actor: ACTOR },
     );
     await store.markComplete([{ id: a.id }], { actor: ACTOR });
 
-    const closedA = await store.listClosed({ audience: 'crew:A' });
+    const closedA = await store.listClosed({ audience: 'circle:A' });
     expect(closedA.map((i) => i.text)).toEqual(['closed-a']);
 
-    const closedB = await store.listClosed({ audience: 'crew:B' });
+    const closedB = await store.listClosed({ audience: 'circle:B' });
     expect(closedB).toHaveLength(0);  // not yet completed
   });
 });

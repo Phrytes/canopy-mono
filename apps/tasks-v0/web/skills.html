@@ -15,8 +15,8 @@
       <a href="/skills.html" class="active" data-i18n="skills.nav_label">Skills</a>
       <a href="/dag.html">DAG</a>
       <a href="/availability.html">Availability</a>
-      <a href="/crew.html">Crew</a>
-      <a href="/crews.html">Crews</a>
+      <a href="/circle.html">Circle</a>
+      <a href="/circles.html">Circles</a>
       <a href="/inbox.html" id="nav-inbox">Inbox</a>
     </nav>
     <div id="actor"></div>
@@ -24,15 +24,15 @@
 
   <main>
     <section id="skills-section">
-      <h2 data-i18n="skills.section_heading">My skills for the active crew</h2>
+      <h2 data-i18n="skills.section_heading">My skills for the active circle</h2>
       <p class="hint" data-i18n="skills.section_intro">
-        Crew-scoped tagging.  Skills you mark here let task auto-match
-        suggest you for matching tasks, and let crew planners pick you
+        Circle-scoped tagging.  Skills you mark here let task auto-match
+        suggest you for matching tasks, and let circle planners pick you
         for the right slots.  Three sources:
       </p>
       <ul class="hint" style="margin-top: -0.4rem;">
         <li data-i18n="skills.bullet_prefilled"><strong>Prefilled</strong> — already on your canonical profile (toggle to keep / drop)</li>
-        <li data-i18n="skills.bullet_suggested"><strong>Suggested</strong> — crew vocabulary you haven't claimed yet (toggle to add)</li>
+        <li data-i18n="skills.bullet_suggested"><strong>Suggested</strong> — circle vocabulary you haven't claimed yet (toggle to add)</li>
         <li data-i18n="skills.bullet_free"><strong>Free entry</strong> — comma-separated tags you want to add</li>
       </ul>
 
@@ -46,7 +46,7 @@
           <h3 style="margin-top: 0;" data-i18n="skills.prefilled_heading">Prefilled (from your profile)</h3>
           <p class="hint" data-i18n="skills.prefilled_intro">
             These are already on your canonical profile.  Untick any
-            you DON'T want surfaced to this crew.
+            you DON'T want surfaced to this circle.
           </p>
           <ul id="prefilled-list" class="skill-list"></ul>
           <p id="prefilled-empty" class="hint" hidden data-i18n="skills.prefilled_empty">
@@ -57,14 +57,14 @@
 
         <!-- Suggestions ───────────────────────────────────────── -->
         <div class="code-card" style="margin-top: 1rem; background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
-          <h3 style="margin-top: 0;" data-i18n="skills.suggestions_heading">Suggested (crew vocabulary)</h3>
+          <h3 style="margin-top: 0;" data-i18n="skills.suggestions_heading">Suggested (circle vocabulary)</h3>
           <p class="hint" data-i18n="skills.suggestions_intro">
-            Tags other crew members use that you haven't claimed yet.
+            Tags other circle members use that you haven't claimed yet.
             Tick to add.
           </p>
           <ul id="suggestions-list" class="skill-list"></ul>
           <p id="suggestions-empty" class="hint" hidden data-i18n="skills.suggestions_empty">
-            No suggestions — the crew vocabulary is fresh.
+            No suggestions — the circle vocabulary is fresh.
           </p>
         </div>
 
@@ -86,7 +86,7 @@
           <p class="hint" data-i18n="skills.persist_intro">
             Off by default — same caution principle as pod-data sharing
             (default-deny).  When ON, the saved skill set also lands on
-            your canonical profile, surfacing across every crew you join.
+            your canonical profile, surfacing across every circle you join.
           </p>
           <label style="display: flex; align-items: center; gap: 0.5rem;">
             <input id="persist-canonical" type="checkbox">
@@ -129,7 +129,7 @@
      * Mirrors apps/tasks-mobile/src/screens/EditSkillsScreen.jsx.
      * Two skill calls:
      *   - getMySkillsFormShape (load) — returns { prefilled, vocabSuggestions, taxonomyHints }
-     *   - editMySkillsForCrew (save)   — receives { skills: [{tag, ...}, ...], persistToProfile }
+     *   - editMySkillsForCircle (save)   — receives { skills: [{tag, ...}, ...], persistToProfile }
      *
      * Each row in prefilled / suggestions is a {tag, …meta} object.
      * The user toggles individual rows + can add free-entry tags +
@@ -256,7 +256,7 @@
 
         const skills = [...fromToggles, ...fromFree];
 
-        await callSkill('editMySkillsForCrew', {
+        await callSkill('editMySkillsForCircle', {
           skills,
           persistToProfile: !!persistCB.checked,
         });

@@ -44,7 +44,7 @@
  * then calls the core.  Stoop has no per-call `bundleResolver` in the
  * single-bundle path (skills close over the `buildSkills` dep bag directly), so
  * `storeFor` returns that exact bag verbatim as `scope` — the byte-identical
- * analogue of B2's `bundleResolver(parts,{envelope,from})→crew`.  The
+ * analogue of B2's `bundleResolver(parts,{envelope,from})→circle`.  The
  * `getBundle` multi-group path is unchanged: `_buildScopedSkills` still rebuilds
  * the (now wireSkill-wrapped) array per group and delegates.
  *
@@ -1657,7 +1657,7 @@ export function buildSkills({
 
       // A3 (2026-05-14) — storage policy (§II.2 of the standardisation
       // plan). Default `'no-pod'` keeps V1 UX parity. Centralised /
-      // hybrid require a `groupPodUri` (otherwise the crew has nowhere
+      // hybrid require a `groupPodUri` (otherwise the circle has nowhere
       // to land its canonical state). Decentralised + no-pod ignore it.
       const storageErr = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
       if (storageErr) return { error: storageErr };
@@ -1708,7 +1708,7 @@ export function buildSkills({
       // rules item carries the policy + a future bundle bring-up can
       // hydrate from there.
       try {
-        await bundle?.podRouting?.setCrewPolicy?.(a.groupId, storage);
+        await bundle?.podRouting?.setCirclePolicy?.(a.groupId, storage);
       } catch { /* best-effort; rules-item is the source of truth */ }
 
       metrics?.record?.('group-create-v2');
@@ -1729,17 +1729,17 @@ export function buildSkills({
     }),
 
     /**
-     * getCrewStoragePolicy({groupId})
-     *   — A3 (2026-05-14). Returns the crew's storage policy
+     * getCircleStoragePolicy({groupId})
+     *   — A3 (2026-05-14). Returns the circle's storage policy
      *   `{policy, groupPodUri?}`. Pulls from `bundle.podRouting`
      *   first (live config), falls back to the latest group-rules
      *   item, then to the default `'no-pod'`. Used by /group.html
      *   + /create-group.html UI.
      */
-    defineSkill('getCrewStoragePolicy', async ({ parts }) => {
+    defineSkill('getCircleStoragePolicy', async ({ parts }) => {
       const a = dataArgs(parts);
       if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
-      const live = bundle?.podRouting?.crewPolicy?.(a.groupId);
+      const live = bundle?.podRouting?.circlePolicy?.(a.groupId);
       if (live && typeof live === 'object' && typeof live.policy === 'string') {
         return { policy: live.policy, groupPodUri: live.groupPodUri ?? null };
       }
@@ -1750,20 +1750,20 @@ export function buildSkills({
       }
       return { policy: 'no-pod', groupPodUri: null };
     }, {
-      description: "A3: read the crew's storage policy (§II.2: no-pod / centralised / decentralised / hybrid).",
+      description: "A3: read the circle's storage policy (§II.2: no-pod / centralised / decentralised / hybrid).",
       visibility:  'authenticated',
     }),
 
     /**
-     * setCrewStoragePolicy({groupId, storagePolicy, groupPodUri?})
-     *   — A3 / A5 (2026-05-14). Admin-only. Updates the crew's
+     * setCircleStoragePolicy({groupId, storagePolicy, groupPodUri?})
+     *   — A3 / A5 (2026-05-14). Admin-only. Updates the circle's
      *   storage policy. **One-way** by design (§4c of the V2 web
      *   functional design): downgrade to `'no-pod'` is rejected
      *   once a pod-having policy is active. Substrate data
      *   migration is the user's concern (per the
      *   `storage-migration-design-2026-05-14.md` decision).
      */
-    defineSkill('setCrewStoragePolicy', async ({ parts, from }) => {
+    defineSkill('setCircleStoragePolicy', async ({ parts, from }) => {
       const a = dataArgs(parts);
       if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
       if (members) {
@@ -1774,21 +1774,21 @@ export function buildSkills({
       const err = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
       if (err) return { error: err };
       const next = _buildStoragePolicy(a.storagePolicy, a.groupPodUri);
-      const currentLive = bundle?.podRouting?.crewPolicy?.(a.groupId);
+      const currentLive = bundle?.podRouting?.circlePolicy?.(a.groupId);
       const currentRules = (await _findLatestGroupRules(store, a.groupId))?.source?.rules?.storage;
       const current = (currentLive && currentLive.policy) ? currentLive : currentRules;
       if (current && current.policy && current.policy !== 'no-pod' && next.policy === 'no-pod') {
         return { error: 'storage-policy-downgrade-not-supported' };
       }
       try {
-        await bundle?.podRouting?.setCrewPolicy?.(a.groupId, next);
+        await bundle?.podRouting?.setCirclePolicy?.(a.groupId, next);
       } catch (e) {
         return { error: `storage-policy-write-failed:${e?.message ?? 'unknown'}` };
       }
       metrics?.record?.('group-storage-policy-update');
       return { groupId: a.groupId, storage: next, _sync: simulateSync() };
     }, {
-      description: 'A3/A5: admin-only upgrade of the crew storage policy. One-way.',
+      description: 'A3/A5: admin-only upgrade of the circle storage policy. One-way.',
       visibility:  'authenticated',
     }),
 

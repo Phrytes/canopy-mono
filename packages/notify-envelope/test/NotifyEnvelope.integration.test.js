@@ -2,11 +2,11 @@
  * End-to-end: two notify-envelope substrates over a shared fake
  * bus. Verifies the three acceptance criteria from plan §52.4:
  *
- *   (a) Centralised crew online → envelope-only on the wire;
+ *   (a) Centralised circle online → envelope-only on the wire;
  *       recipient fetches lazily.
- *   (b) Centralised crew offline → full-payload fan-out;
+ *   (b) Centralised circle offline → full-payload fan-out;
  *       pending queue holds; drain on reconnect emits envelope-only.
- *   (c) No-pod crew → full-payload fan-out always; receiver pseudo-pod
+ *   (c) No-pod circle → full-payload fan-out always; receiver pseudo-pod
  *       holds the canonical copy.
  */
 
@@ -56,7 +56,7 @@ function makePeer({ bus, address, deviceId, anchorPodUri = null, uploadFn }) {
   return { ne, pseudoPod, podRouting, transport, address };
 }
 
-describe('Integration — centralised crew, online (envelope-only)', () => {
+describe('Integration — centralised circle, online (envelope-only)', () => {
   it('Anne writes envelope-only; Bob receives envelope without payload', async () => {
     const bus = makeBus();
     const anne = makePeer({ bus, address: 'anne', deviceId: 'anne', anchorPodUri: 'https://anne.pod' });
@@ -84,7 +84,7 @@ describe('Integration — centralised crew, online (envelope-only)', () => {
   });
 });
 
-describe('Integration — centralised crew, offline (full-payload + queue)', () => {
+describe('Integration — centralised circle, offline (full-payload + queue)', () => {
   it('Anne offline → full-payload fan-out; queue holds; drain re-emits envelope', async () => {
     const bus = makeBus();
     const uploaded = [];
@@ -134,7 +134,7 @@ describe('Integration — centralised crew, offline (full-payload + queue)', () 
   });
 });
 
-describe('Integration — no-pod crew (full-payload always)', () => {
+describe('Integration — no-pod circle (full-payload always)', () => {
   it('Anne (no pod) writes full-payload; Bob auto-writeFromPeer; queue stays empty', async () => {
     const bus = makeBus();
     const anne = makePeer({ bus, address: 'anne', deviceId: 'anne' });

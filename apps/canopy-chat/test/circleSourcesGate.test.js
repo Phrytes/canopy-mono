@@ -1,6 +1,6 @@
 /**
  * Regression: circles whose source op is ABSENT from the manifest catalog must still
- * load. `listMyBuurts` (stoop) + `getMyCrews` are agent skills, not manifest ops; the
+ * load. `listMyBuurts` (stoop) + `getMyCircles` are agent skills, not manifest ops; the
  * catalog "perf gate" used to skip them on every origin → loadCircles returned nothing
  * → "No circles yet" on reload even though the data persisted. (Fix in circleSources.js.)
  */
@@ -16,21 +16,21 @@ describe('makeResolvingCallSkill — catalog gate', () => {
       if (origin === 'stoop' && opId === 'listMyBuurts') return { buurts: ['kleurenwiezen', 'boi'] };
       return null;
     };
-    // catalog knows getMyCrews@tasks but NOTHING about listMyBuurts
-    const catalog = { opsById: new Map([['tasks/getMyCrews', { appOrigin: 'tasks' }]]) };
+    // catalog knows getMyCircles@tasks but NOTHING about listMyBuurts
+    const catalog = { opsById: new Map([['tasks/getMyCircles', { appOrigin: 'tasks' }]]) };
     const callSkill = makeResolvingCallSkill(raw, undefined, () => catalog);
     const r = await callSkill('listMyBuurts', {});
     expect(r).toEqual({ buurts: ['kleurenwiezen', 'boi'] });
     expect(calls).toContain('stoop/listMyBuurts');     // stoop was NOT skipped
   });
 
-  it('still gates a catalog-KNOWN op to its declared origin (getMyCrews → tasks only)', async () => {
+  it('still gates a catalog-KNOWN op to its declared origin (getMyCircles → tasks only)', async () => {
     const calls = [];
-    const raw = async (origin, opId) => { calls.push(origin); if (origin === 'tasks' && opId === 'getMyCrews') return { crews: [] }; return null; };
-    const catalog = { opsById: new Map([['tasks/getMyCrews', { appOrigin: 'tasks' }]]) };
+    const raw = async (origin, opId) => { calls.push(origin); if (origin === 'tasks' && opId === 'getMyCircles') return { circles: [] }; return null; };
+    const catalog = { opsById: new Map([['tasks/getMyCircles', { appOrigin: 'tasks' }]]) };
     const callSkill = makeResolvingCallSkill(raw, undefined, () => catalog);
-    await callSkill('getMyCrews', {});
-    expect(calls).not.toContain('stoop');   // skipped: catalog says getMyCrews is on tasks
+    await callSkill('getMyCircles', {});
+    expect(calls).not.toContain('stoop');   // skipped: catalog says getMyCircles is on tasks
     expect(calls).toContain('tasks');
   });
 

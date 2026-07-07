@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest';
 // that adding a new role to the table propagates to all the boolean
 // shortcuts cleanly.
 function deriveRole(svc) {
-  const cs    = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
+  const cs    = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
   const actor = svc?.identity?.webid ?? svc?.identity?.pubKey ?? null;
   const role  = (cs && actor) ? (cs.roles?.[actor] ?? null) : null;
   return {
@@ -37,42 +37,42 @@ function makeSvc({ activeCircleId, roles = {}, actor = ANNE } = {}) {
   return {
     activeCircleId,
     identity: { webid: actor },
-    crews: new Map(activeCircleId ? [[activeCircleId, cs]] : []),
+    circles: new Map(activeCircleId ? [[activeCircleId, cs]] : []),
   };
 }
 
 describe('useActiveRole — derivation', () => {
-  it('returns null role when no crew is active', () => {
+  it('returns null role when no circle is active', () => {
     const r = deriveRole(makeSvc({ activeCircleId: null }));
     expect(r.role).toBeNull();
     expect(r.isAdmin).toBe(false);
     expect(r.isAdminOrCoord).toBe(false);
   });
 
-  it('returns the actor\'s role for the active crew', () => {
-    const r = deriveRole(makeSvc({ activeCircleId: 'crew-a', roles: { [ANNE]: 'admin' } }));
+  it('returns the actor\'s role for the active circle', () => {
+    const r = deriveRole(makeSvc({ activeCircleId: 'circle-a', roles: { [ANNE]: 'admin' } }));
     expect(r.role).toBe('admin');
     expect(r.isAdmin).toBe(true);
     expect(r.isAdminOrCoord).toBe(true);
     expect(r.isMember).toBe(false);
   });
 
-  it('returns null when the actor isn\'t a member of the active crew', () => {
-    const r = deriveRole(makeSvc({ activeCircleId: 'crew-a', roles: { [BOB]: 'admin' } }));
+  it('returns null when the actor isn\'t a member of the active circle', () => {
+    const r = deriveRole(makeSvc({ activeCircleId: 'circle-a', roles: { [BOB]: 'admin' } }));
     expect(r.role).toBeNull();
     expect(r.isAdmin).toBe(false);
   });
 
   it('coordinator gates admin-or-coord shortcut', () => {
-    const r = deriveRole(makeSvc({ activeCircleId: 'crew-a', roles: { [ANNE]: 'coordinator' } }));
+    const r = deriveRole(makeSvc({ activeCircleId: 'circle-a', roles: { [ANNE]: 'coordinator' } }));
     expect(r.isCoordinator).toBe(true);
     expect(r.isAdminOrCoord).toBe(true);
     expect(r.isAdmin).toBe(false);
   });
 
   it('member / observer roles surface their booleans', () => {
-    const m = deriveRole(makeSvc({ activeCircleId: 'crew-a', roles: { [ANNE]: 'member' } }));
-    const o = deriveRole(makeSvc({ activeCircleId: 'crew-a', roles: { [ANNE]: 'observer' } }));
+    const m = deriveRole(makeSvc({ activeCircleId: 'circle-a', roles: { [ANNE]: 'member' } }));
+    const o = deriveRole(makeSvc({ activeCircleId: 'circle-a', roles: { [ANNE]: 'observer' } }));
     expect(m.isMember).toBe(true);
     expect(o.isObserver).toBe(true);
     expect(m.isAdminOrCoord).toBe(false);

@@ -7,7 +7,7 @@
  * (tests), or any other MessagingBridge a future app introduces.
  *
  * Caller supplies a `chatBindings: {<chatId>: <webid>}` map (typically
- * sourced from the crew config under `crew.bot.chatBindings`). When
+ * sourced from the circle config under `circle.bot.chatBindings`). When
  * the bot receives a message:
  *   1. Look up the sender's chatId in the bindings.
  *   2. If unbound: reply with a friendly "you're not bound to a webid"
@@ -17,7 +17,7 @@
  *   5. Post the result text + buttons back via `bridge.sendReply`.
  *
  * Returns `{detach}` so apps can stop the bridge handlers cleanly on
- * crew shutdown.
+ * circle shutdown.
  */
 
 import { dispatch } from './dispatch.js';
@@ -83,7 +83,7 @@ export async function wireBotChannel({ agent, bridges, chatBindings, botAgentReg
     if (!def) {
       await bridge.sendReply({
         chatId,
-        text: `Internal error: bot skill \`${action.skillId}\` is not registered. (Tip: start with \`--crew\` so V1.5 bot.* skills register.)`,
+        text: `Internal error: bot skill \`${action.skillId}\` is not registered. (Tip: start with \`--circle\` so V1.5 bot.* skills register.)`,
       });
       return;
     }

@@ -126,7 +126,7 @@ describe('JM-1 — compose across apps (stoop → DM → task)', () => {
    *   got a ladder?" (stoop).  Anne taps [Help with] → spawns a DM
    *   with Frits; mid-conversation, she clicks [Convert to task] →
    *   spawns a tasks-v0 task for "Bring ladder Saturday" in her
-   *   household crew, with an embed-card linking back to the stoop
+   *   household circle, with an embed-card linking back to the stoop
    *   post.
    *
    * Substrate spine tested here:
@@ -153,12 +153,12 @@ describe('JM-1 — compose across apps (stoop → DM → task)', () => {
     const help = await ws.userInput(`/help-with ${postId}`);
     expect(help.payload.threadId).toBe(`help-${postId}`);
 
-    // First need a crew to add a task to.
-    const crew = await ws.userInput('/crew-new "Test Household" --kind=household');
-    expect(crew.payload.circleId ?? crew.payload.ok).toBeTruthy();
+    // First need a circle to add a task to.
+    const circle = await ws.userInput('/circle-new "Test Household" --kind=household');
+    expect(circle.payload.circleId ?? circle.payload.ok).toBeTruthy();
 
     const task = await ws.userInput(
-      `/addtask text="Bring ladder Saturday" --circleId=${crew.payload.circleId}`,
+      `/addtask text="Bring ladder Saturday" --circleId=${circle.payload.circleId}`,
     );
     expect(task.payload.ok).toBe(true);
     expect(task.payload.itemId).toBeTruthy();
@@ -227,7 +227,7 @@ describe('JM-6 — voice-memo DM', () => {
 describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', () => {
   /*
    * Roadmap quote:
-   *   Anne's crew is doing "Saturday garden cleanup" (parent task).
+   *   Anne's circle is doing "Saturday garden cleanup" (parent task).
    *   Mid-thread in canopy-chat-mobile, Frits says "I'll need
    *   someone to bring extra bags".  Anne taps [Spawn sub-task] on
    *   the parent's embed-card — sub-task spawned via #219 substrate,
@@ -241,8 +241,8 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
   beforeEach(async () => { ws = await bootWorkspace(); });
 
   it('addSubtask wires parent.dependencies + creates a child task', async () => {
-    const crew = await ws.userInput('/crew-new "Saturday Garden" --kind=household');
-    const circleId = crew.payload.circleId;
+    const circle = await ws.userInput('/circle-new "Saturday Garden" --kind=household');
+    const circleId = circle.payload.circleId;
     expect(circleId).toBeTruthy();
 
     const parent = await ws.userInput(

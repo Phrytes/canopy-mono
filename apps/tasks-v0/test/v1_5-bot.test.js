@@ -21,7 +21,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { InMemoryBridge } from '@canopy/chat-agent';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { wireBotChannel } from '../src/bot/wireBotChannel.js';
 import { dispatch, HELP_TEXT } from '../src/bot/dispatch.js';
 
@@ -34,7 +34,7 @@ const FRITS_CHAT = '222';
 const KID_CHAT   = '333';
 const RANDO_CHAT = '999';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -135,29 +135,29 @@ describe('V1.5 — dispatch (pure)', () => {
 
 describe('V1.5 — wireBotChannel end-to-end', () => {
   let lsBundle;
-  let crew;
+  let circle;
   let bridge;
   let detach;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
     bridge = new InMemoryBridge({ id: 'test-bot' });
     const r = await wireBotChannel({
-      agent:        crew.agent,
+      agent:        circle.agent,
       bridges:      [{ bridge, name: 'test' }],
-      chatBindings: CREW.bot.chatBindings,
+      chatBindings: CIRCLE.bot.chatBindings,
     });
     detach = r.detach;
   });
 
   afterEach(async () => {
     await detach?.();
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   /** Helper: fire a chat message + return the bot's last reply text. */
@@ -194,11 +194,11 @@ describe('V1.5 — wireBotChannel end-to-end', () => {
 
   it('full claim → done flow over chat (self-mark approval)', async () => {
     // Anne adds a task via the agent.
-    const addDef = crew.agent.skills.get('addTask');
+    const addDef = circle.agent.skills.get('addTask');
     const addRes = await addDef.handler({
       parts: [{ type: 'DataPart', data: { text: 'Take out the trash' } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     const taskId = addRes.task.id;
@@ -222,11 +222,11 @@ describe('V1.5 — wireBotChannel end-to-end', () => {
   });
 
   it('full submit → approve flow (creator approval mode)', async () => {
-    const addDef = crew.agent.skills.get('addTask');
+    const addDef = circle.agent.skills.get('addTask');
     const addRes = await addDef.handler({
       parts: [{ type: 'DataPart', data: { text: 'Paint fence', approval: 'creator' } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     const id = addRes.task.id;
@@ -252,11 +252,11 @@ describe('V1.5 — wireBotChannel end-to-end', () => {
   });
 
   it('member chat trying to approve a creator-mode task is denied', async () => {
-    const addDef = crew.agent.skills.get('addTask');
+    const addDef = circle.agent.skills.get('addTask');
     const addRes = await addDef.handler({
       parts: [{ type: 'DataPart', data: { text: 'Paint', approval: 'creator' } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     const short = addRes.task.id.slice(0, 8);
@@ -267,16 +267,16 @@ describe('V1.5 — wireBotChannel end-to-end', () => {
   });
 
   it('audit log records the (via bot) display name on bot-driven actions', async () => {
-    const addDef = crew.agent.skills.get('addTask');
+    const addDef = circle.agent.skills.get('addTask');
     const addRes = await addDef.handler({
       parts: [{ type: 'DataPart', data: { text: 'Audit-test' } }],
       from:  ANNE,
-      agent: crew.agent,
+      agent: circle.agent,
       envelope: null,
     });
     const short = addRes.task.id.slice(0, 8);
     await ask(KID_CHAT, `claim ${short}`);
-    const log = await crew.itemStore.auditLog({ itemId: addRes.task.id });
+    const log = await circle.itemStore.auditLog({ itemId: addRes.task.id });
     const claim = log.find((e) => e.action === 'claim');
     expect(claim?.actor).toBe(KID);
     expect(claim?.actorDisplayName).toMatch(/via bot/i);

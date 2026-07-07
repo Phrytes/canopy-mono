@@ -38,29 +38,29 @@ function decTail(p) { return p; }
 
 // Ordered rules. `prefix` = logical prefix; `family` = a stable,
 // injective key that `unclassify` maps back to `prefix`; `fn(circleId)`
-// = the pod-routing storage-function. `crew` rules require a circleId.
+// = the pod-routing storage-function. `circle` rules require a circleId.
 const RULES = [
-  { family: 'g-items',   prefix: 'mem://neighborhood/items/',   crew: true,
+  { family: 'g-items',   prefix: 'mem://neighborhood/items/',   circle: true,
     fn: (c) => `group/${c}/items` },
-  { family: 'g-members', prefix: 'mem://neighborhood/members/', crew: true,
+  { family: 'g-members', prefix: 'mem://neighborhood/members/', circle: true,
     fn: (c) => `group/${c}/members` },
-  { family: 'g-gov',     prefix: 'mem://neighborhood/groups/',  crew: true,
+  { family: 'g-gov',     prefix: 'mem://neighborhood/groups/',  circle: true,
     fn: (c) => `group/${c}/governance` },
-  { family: 'g-audit',   prefix: 'mem://neighborhood/audit/',   crew: true,
+  { family: 'g-audit',   prefix: 'mem://neighborhood/audit/',   circle: true,
     fn: (c) => `group/${c}/audit` },
   // Attachments live under `mem://stoop/items/<id>/attachments/…`;
   // distinct family so the round-trip stays bijective vs g-items.
-  { family: 'g-att',     prefix: 'mem://stoop/items/',          crew: true,
+  { family: 'g-att',     prefix: 'mem://stoop/items/',          circle: true,
     fn: (c) => `group/${c}/item-attachments` },
-  { family: 's-threads', prefix: 'mem://stoop/threads/',        crew: false,
+  { family: 's-threads', prefix: 'mem://stoop/threads/',        circle: false,
     fn: () => 'sharing/threads' },
   // Private app-state (non-shareable plumbing). Tail keeps the
   // `stoop/…` sub-key under `private/state` (D4 — app sub-key OK).
-  { family: 'priv',      prefix: 'mem://stoop/reveals.json',           crew: false, exact: true, fn: () => 'private/state' },
-  { family: 'priv',      prefix: 'mem://stoop/push-subscriptions.json', crew: false, exact: true, fn: () => 'private/state' },
-  { family: 'priv',      prefix: 'mem://stoop/interest-profile.json',  crew: false, exact: true, fn: () => 'private/state' },
-  { family: 'priv',      prefix: 'mem://stoop/lists/',                 crew: false, fn: () => 'private/state' },
-  { family: 'priv',      prefix: 'mem://stoop/avatars/',               crew: false, fn: () => 'private/state' },
+  { family: 'priv',      prefix: 'mem://stoop/reveals.json',           circle: false, exact: true, fn: () => 'private/state' },
+  { family: 'priv',      prefix: 'mem://stoop/push-subscriptions.json', circle: false, exact: true, fn: () => 'private/state' },
+  { family: 'priv',      prefix: 'mem://stoop/interest-profile.json',  circle: false, exact: true, fn: () => 'private/state' },
+  { family: 'priv',      prefix: 'mem://stoop/lists/',                 circle: false, fn: () => 'private/state' },
+  { family: 'priv',      prefix: 'mem://stoop/avatars/',               circle: false, fn: () => 'private/state' },
 ];
 
 /**
@@ -76,9 +76,9 @@ export function classify(memPath, { circleId } = {}) {
   for (const r of RULES) {
     const hit = r.exact ? memPath === r.prefix : memPath.startsWith(r.prefix);
     if (!hit) continue;
-    if (r.crew && (typeof circleId !== 'string' || circleId.length === 0)) {
-      // crew-scoped key but no active crew → caller skips (Phase 2.4
-      // only routes when a crew + pod are present).
+    if (r.circle && (typeof circleId !== 'string' || circleId.length === 0)) {
+      // circle-scoped key but no active circle → caller skips (Phase 2.4
+      // only routes when a circle + pod are present).
       return null;
     }
     const rel = r.exact ? '' : memPath.slice(r.prefix.length);
@@ -132,7 +132,7 @@ export function unclassify(storageFn, tail) {
  * the cross-app type-index read path).
  *
  * Pure — the caller injects `resolve` (= `podRouting.resolve`).
- * Tries every distinct storage-function (crew ones need `circleId`),
+ * Tries every distinct storage-function (circle ones need `circleId`),
  * longest matching base wins, then `unclassify`. Returns null when
  * the URI is under no known base (caller falls back to identity).
  *
@@ -149,7 +149,7 @@ export function reverseResolve({ resolve, circleId, podUri, vars } = {}) {
   }
   const fns = new Set();
   for (const r of RULES) {
-    if (r.crew) { if (circleId) fns.add(r.fn(circleId)); }
+    if (r.circle) { if (circleId) fns.add(r.fn(circleId)); }
     else fns.add(r.fn());
   }
   let best = null;

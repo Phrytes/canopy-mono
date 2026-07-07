@@ -7,9 +7,9 @@
  *     collisions for this two-app combo);
  *   - LLM-driven tool calls dispatch through the composed
  *     `toolHandlers` and reach the right app's store;
- *   - multi-crew dispatch through the host preserves crew
- *     isolation (the `tasks.addTask({circleId:'primary-crew', text})`
- *     call lands in primary crew's itemStore, not anywhere else);
+ *   - multi-circle dispatch through the host preserves circle
+ *     isolation (the `tasks.addTask({circleId:'primary-circle', text})`
+ *     call lands in primary circle's itemStore, not anywhere else);
  *   - the chat-agent's reply pipeline produces an outbox entry per
  *     turn.
  *
@@ -79,7 +79,7 @@ describe('SP-4b + SP-11: recombination demo (household + tasks-v0)', () => {
       expect(shopping.map((i) => i.text)).toContain('bread');
     });
 
-    it('turn 2 (tasks.addTask) writes to primary crew\'s itemStore (multi-crew dispatch through host)', async () => {
+    it('turn 2 (tasks.addTask) writes to primary circle\'s itemStore (multi-circle dispatch through host)', async () => {
       // Run turns 1 then 2 — scripted LLM advances its cursor each call.
       await runScriptedConversation(runtime, [
         DEMO_USER_MESSAGES[0],
@@ -113,7 +113,7 @@ describe('SP-4b + SP-11: recombination demo (household + tasks-v0)', () => {
       const householdShopping = await runtime.householdStore.listOpen({ type: 'shopping' });
       expect(householdShopping.map((i) => i.text)).toContain('bread');
 
-      // Tasks side — paint the hallway is in primary crew's itemStore.
+      // Tasks side — paint the hallway is in primary circle's itemStore.
       const tasksItems = await runtime.tasksRuntime.primaryBundle.itemStore.listOpen();
       expect(tasksItems.map((i) => i.text)).toContain('paint the hallway');
 

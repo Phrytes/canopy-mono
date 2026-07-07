@@ -2,13 +2,13 @@
  * MeshAgent — Tasks V2.8 process-level shared agent.
  *
  * Lifts the `core.Agent` + `policyEngine` + `trustRegistry` +
- * `tokenRegistry` + identity vault out of `createCrewAgent` so a
- * single agent serves every crew the process knows about. Mirrors
+ * `tokenRegistry` + identity vault out of `createCircleAgent` so a
+ * single agent serves every circle the process knows about. Mirrors
  * Stoop's 2026-05-08 single-agent refactor (see
  * `Project Files/Stoop/single-agent-refactor-2026-05-08.md` § "Tasks-app
- * fix propagation"). Per-crew state lives in `CrewState` (see
- * `./Crew.js`); skills register once via `./wireSkills.js` with a
- * `bundleResolver` that picks the right CrewState per call.
+ * fix propagation"). Per-circle state lives in `CircleState` (see
+ * `./Circle.js`); skills register once via `./wireSkills.js` with a
+ * `bundleResolver` that picks the right CircleState per call.
  *
  * Why one agent per process:
  *   - One transport stack (one mDNS registration, one relay socket,
@@ -16,7 +16,7 @@
  *   - One PolicyEngine + TrustRegistry + TokenRegistry — V1.5 self-trust
  *     is set once.
  *   - One identity vault — V2.0's restart-survival snapshot lives at
- *     a process-level path, not per-crew.
+ *     a process-level path, not per-circle.
  *   - Cap-token-bound bot agents (V1.5) still spin up per binding;
  *     they share the same bus the meshAgent uses, so they reach the
  *     meshAgent transparently.
@@ -54,11 +54,11 @@ export async function buildMeshAgent({
   label = 'TasksMeshAgent',
   agent: existingAgent,
 } = {}) {
-  // Multi-crew runtime (2026-05-14, Tasks V2 sixth slice) — when a
+  // Multi-circle runtime (2026-05-14, Tasks V2 sixth slice) — when a
   // pre-built `core.Agent` is supplied, reuse it instead of creating
   // a fresh one. The caller owns identity/transport/vault/policy/trust
   // wiring. Used by `bin/tasks-ui.js` to share one agent across N
-  // crew bundles. Returns the same surface shape as the
+  // circle bundles. Returns the same surface shape as the
   // build-from-scratch path.
   if (existingAgent) {
     return {
@@ -109,7 +109,7 @@ export async function buildMeshAgent({
   });
 
   // PolicyEngine wires SkillRegistry (already on agent.skills) + the
-  // trust registry above. Same pattern as V1.5 Crew.js — shadow the
+  // trust registry above. Same pattern as V1.5 Circle.js — shadow the
   // read-only getter on the instance with an own property.
   const policyEngine = new PolicyEngine({
     trustRegistry,

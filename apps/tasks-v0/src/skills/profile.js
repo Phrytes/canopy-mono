@@ -1,6 +1,6 @@
 /**
- * profile — canonical user-skills profile + per-crew skill vocabulary
- * + per-crew member-skills projection + per-crew posture (Phase 3).
+ * profile — canonical user-skills profile + per-circle skill vocabulary
+ * + per-circle member-skills projection + per-circle posture (Phase 3).
  *
  * Canonical user profile lives at `mem://user/profile/skills.json`
  * — intentionally NOT app-namespaced so Stoop, Tasks, Folio etc. can
@@ -8,9 +8,9 @@
  * the CachingDataSource forwards reads/writes through to
  * `<user-pod>/profile/skills.json` (same path, same shape).
  *
- * Per-crew vocabulary lives at `mem://tasks/crews/<circleId>/skills.json`.
- * Per-crew member projection at `mem://tasks/crews/<circleId>/skills/<webid-encoded>.json`.
- * Per-crew posture at `mem://user/posture/<circleId>.json`.
+ * Per-circle vocabulary lives at `mem://tasks/circles/<circleId>/skills.json`.
+ * Per-circle member projection at `mem://tasks/circles/<circleId>/skills/<webid-encoded>.json`.
+ * Per-circle posture at `mem://user/posture/<circleId>.json`.
  *
  * Schemas (all optional fields nullable):
  *
@@ -27,7 +27,7 @@
  *     lastUsed?:   epoch-ms,
  *   }
  *
- *   CrewVocabulary = {
+ *   CircleVocabulary = {
  *     schemaVersion: 1,
  *     skills: VocabEntry[],
  *   }
@@ -37,13 +37,13 @@
  *     description?: <free text>,
  *   }
  *
- *   CrewMemberSkills = {
+ *   CircleMemberSkills = {
  *     webid: string,
  *     skills: SkillEntry[],
  *     updatedAt: epoch-ms,
  *   }
  *
- *   CrewPosture = {
+ *   CirclePosture = {
  *     tags: { [tag]: 'always' | 'negotiable' | 'never' },
  *     updatedAt: epoch-ms,
  *   }
@@ -55,7 +55,7 @@
  *
  * The `prefilledFormShape({...})` helper computes the UI's three
  * lists (prefilled / vocabSuggestions / freeFormFromProfile) by
- * intersecting the user's canonical profile with the crew's
+ * intersecting the user's canonical profile with the circle's
  * vocabulary. The UI defaults `prefilled` to selected and the other
  * two to unselected.
  */
@@ -69,11 +69,11 @@ import { argsFromParts } from '../bundleResolver.js';
 
 const CANONICAL_PROFILE_PATH = 'mem://user/profile/skills.json';
 
-function _crewVocabPath(circleId, root = 'mem://tasks/crews/') {
+function _circleVocabPath(circleId, root = 'mem://tasks/circles/') {
   return `${root}${circleId}/skills.json`;
 }
 
-function _crewMemberSkillsPath(circleId, webid, root = 'mem://tasks/crews/') {
+function _circleMemberSkillsPath(circleId, webid, root = 'mem://tasks/circles/') {
   // URL-encode webid so it's safe as a path segment.
   return `${root}${circleId}/skills/${encodeURIComponent(webid)}.json`;
 }
@@ -231,7 +231,7 @@ export async function writeCanonicalProfile({
 }
 
 /**
- * Read a crew's skill vocabulary.
+ * Read a circle's skill vocabulary.
  *
  * @param {object} args
  * @param {object} args.dataSource
@@ -239,11 +239,11 @@ export async function writeCanonicalProfile({
  * @param {string} [args.rootContainer]
  * @returns {Promise<{schemaVersion, skills} | null>}
  */
-export async function readCrewVocabulary({ dataSource, circleId, rootContainer }) {
+export async function readCircleVocabulary({ dataSource, circleId, rootContainer }) {
   if (typeof circleId !== 'string' || !circleId) {
-    throw new TypeError('readCrewVocabulary: circleId required');
+    throw new TypeError('readCircleVocabulary: circleId required');
   }
-  const raw = await _safeRead(dataSource, _crewVocabPath(circleId, rootContainer));
+  const raw = await _safeRead(dataSource, _circleVocabPath(circleId, rootContainer));
   if (!raw) return null;
   return {
     schemaVersion: 1,
@@ -252,33 +252,33 @@ export async function readCrewVocabulary({ dataSource, circleId, rootContainer }
 }
 
 /**
- * Write a crew's skill vocabulary (admin/coordinator-gated by the
+ * Write a circle's skill vocabulary (admin/coordinator-gated by the
  * caller — the helper does NO authz on its own).
  */
-export async function writeCrewVocabulary({
+export async function writeCircleVocabulary({
   dataSource, circleId, skills, rootContainer,
 }) {
   const blob = {
     schemaVersion: 1,
     skills:        _normaliseVocabList(skills),
   };
-  await _safeWrite(dataSource, _crewVocabPath(circleId, rootContainer), blob);
+  await _safeWrite(dataSource, _circleVocabPath(circleId, rootContainer), blob);
   return blob;
 }
 
 /**
- * Read the per-crew skill projection for a given member webid.
+ * Read the per-circle skill projection for a given member webid.
  */
-export async function readMyCrewSkills({
+export async function readMyCircleSkills({
   dataSource, circleId, webid, rootContainer,
 }) {
   if (typeof circleId !== 'string' || !circleId) {
-    throw new TypeError('readMyCrewSkills: circleId required');
+    throw new TypeError('readMyCircleSkills: circleId required');
   }
   if (typeof webid !== 'string' || !webid) {
-    throw new TypeError('readMyCrewSkills: webid required');
+    throw new TypeError('readMyCircleSkills: webid required');
   }
-  const raw = await _safeRead(dataSource, _crewMemberSkillsPath(circleId, webid, rootContainer));
+  const raw = await _safeRead(dataSource, _circleMemberSkillsPath(circleId, webid, rootContainer));
   if (!raw) return null;
   return {
     webid,
@@ -287,8 +287,8 @@ export async function readMyCrewSkills({
   };
 }
 
-/** Write the per-crew skill projection for a member. */
-export async function writeMyCrewSkills({
+/** Write the per-circle skill projection for a member. */
+export async function writeMyCircleSkills({
   dataSource, circleId, webid, skills, rootContainer, now,
 }) {
   const blob = {
@@ -296,19 +296,19 @@ export async function writeMyCrewSkills({
     skills:    _normaliseSkillList(skills),
     updatedAt: Number.isFinite(now) ? now : Date.now(),
   };
-  await _safeWrite(dataSource, _crewMemberSkillsPath(circleId, webid, rootContainer), blob);
+  await _safeWrite(dataSource, _circleMemberSkillsPath(circleId, webid, rootContainer), blob);
   return blob;
 }
 
 /**
- * Read the user's posture for a crew (per-tag willingness:
+ * Read the user's posture for a circle (per-tag willingness:
  * 'always' | 'negotiable' | 'never').
  */
-export async function readPostureForCrew({
+export async function readPostureForCircle({
   dataSource, circleId, postureRoot,
 }) {
   if (typeof circleId !== 'string' || !circleId) {
-    throw new TypeError('readPostureForCrew: circleId required');
+    throw new TypeError('readPostureForCircle: circleId required');
   }
   const raw = await _safeRead(dataSource, _posturePath(circleId, postureRoot));
   if (!raw) return null;
@@ -319,8 +319,8 @@ export async function readPostureForCrew({
   };
 }
 
-/** Write the per-crew posture file. */
-export async function writePostureForCrew({
+/** Write the per-circle posture file. */
+export async function writePostureForCircle({
   dataSource, circleId, posture, postureRoot, now,
 }) {
   const tags = _normalisePostureTags(posture?.tags);
@@ -335,49 +335,49 @@ export async function writePostureForCrew({
 // ── UI prefilled-form helper ───────────────────────────────────────────────
 
 /**
- * Build the three-list UI shape for "edit my skills for this crew":
+ * Build the three-list UI shape for "edit my skills for this circle":
  *
  *   - `prefilled`: tags the user has on their canonical profile.
- *     Each entry is annotated with `inCrewVocabulary` (whether the
- *     crew explicitly lists this tag).
- *   - `vocabSuggestions`: tags the crew lists that the user does NOT
+ *     Each entry is annotated with `inCircleVocabulary` (whether the
+ *     circle explicitly lists this tag).
+ *   - `vocabSuggestions`: tags the circle lists that the user does NOT
  *     have on their canonical profile (suggest enabling).
  *   - `taxonomyHints`: TAXONOMY categories with no user-claimed tag
- *     and no crew-vocab entry — surfaced as a "consider adding"
+ *     and no circle-vocab entry — surfaced as a "consider adding"
  *     row in the UI. Optional; the UI may ignore.
  *
  * Pure function — no I/O.
  *
  * @param {object} args
  * @param {{schemaVersion, skills, updatedAt} | null} args.canonicalProfile
- * @param {{schemaVersion, skills} | null} args.crewVocabulary
+ * @param {{schemaVersion, skills} | null} args.circleVocabulary
  * @param {object} [args.taxonomy]   — defaults to the shipped TAXONOMY
  * @returns {{prefilled, vocabSuggestions, taxonomyHints}}
  */
 export function prefilledFormShape({
   canonicalProfile,
-  crewVocabulary,
+  circleVocabulary,
   taxonomy = TAXONOMY,
 } = {}) {
   const profileSkills = canonicalProfile?.skills ?? [];
-  const vocabSkills   = crewVocabulary?.skills   ?? [];
+  const vocabSkills   = circleVocabulary?.skills   ?? [];
 
   const profileByTag = new Map(profileSkills.map((s) => [s.tag, s]));
   const vocabByTag   = new Map(vocabSkills.map((s) => [s.tag, s]));
 
   // 1) Prefilled — user's canonical skills, each annotated with whether
-  //    the crew vocabulary lists this tag.
+  //    the circle vocabulary lists this tag.
   const prefilled = profileSkills.map((s) => {
     const v = vocabByTag.get(s.tag);
     return {
       ...s,
-      inCrewVocabulary: !!v,
+      inCircleVocabulary: !!v,
       label:       v?.label ?? null,
       description: v?.description ?? null,
     };
   });
 
-  // 2) Vocab suggestions — crew tags the user hasn't claimed.
+  // 2) Vocab suggestions — circle tags the user hasn't claimed.
   const vocabSuggestions = vocabSkills
     .filter((v) => !profileByTag.has(v.tag))
     .map((v) => ({ ...v }));
@@ -407,12 +407,12 @@ export function prefilledFormShape({
  *
  *   - `getMySkillsFormShape({circleId?})` — UI calls this to populate
  *     the edit-skills form. The args.circleId field is optional: when
- *     omitted, the resolved crew's own circleId is used. Returns
+ *     omitted, the resolved circle's own circleId is used. Returns
  *     `{prefilled, vocabSuggestions, taxonomyHints, canonicalProfile,
- *     crewVocabulary}` for the UI.
+ *     circleVocabulary}` for the UI.
  *
- *   - `editMySkillsForCrew({circleId?, skills, persistToCanonicalProfile?})`
- *     — UI calls this on submit. Always writes the per-crew member
+ *   - `editMySkillsForCircle({circleId?, skills, persistToCanonicalProfile?})`
+ *     — UI calls this on submit. Always writes the per-circle member
  *     projection. If `persistToCanonicalProfile` is true, also writes
  *     the canonical profile (caller must have surfaced the opt-in
  *     checkbox per pod-data-sharing caution principles).
@@ -420,13 +420,13 @@ export function prefilledFormShape({
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
  * @param {string} [args.canonicalPath]
- * @param {string} [args.crewRoot]          — crew root container override
+ * @param {string} [args.circleRoot]          — circle root container override
  * @param {string} [args.postureRoot]
  */
 export function buildProfileSkills({
   bundleResolver,
   canonicalPath = CANONICAL_PROFILE_PATH,
-  crewRoot,
+  circleRoot,
   postureRoot,
 } = {}) {
   if (typeof bundleResolver !== 'function') {
@@ -435,32 +435,32 @@ export function buildProfileSkills({
 
   return [
     defineSkill('getMySkillsFormShape', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const circleId = (typeof a.circleId === 'string' && a.circleId) ? a.circleId : crew.circleId;
+      const circleId = (typeof a.circleId === 'string' && a.circleId) ? a.circleId : circle.circleId;
       if (typeof circleId !== 'string' || !circleId) {
         return { error: 'circleId required' };
       }
-      const [canonicalProfile, crewVocabulary] = await Promise.all([
-        readCanonicalProfile({ dataSource: crew.dataSource, path: canonicalPath }),
-        readCrewVocabulary({ dataSource: crew.dataSource, circleId, rootContainer: crewRoot }),
+      const [canonicalProfile, circleVocabulary] = await Promise.all([
+        readCanonicalProfile({ dataSource: circle.dataSource, path: canonicalPath }),
+        readCircleVocabulary({ dataSource: circle.dataSource, circleId, rootContainer: circleRoot }),
       ]);
       return {
         canonicalProfile,
-        crewVocabulary,
-        ...prefilledFormShape({ canonicalProfile, crewVocabulary }),
+        circleVocabulary,
+        ...prefilledFormShape({ canonicalProfile, circleVocabulary }),
       };
     }, {
-      description: 'Read the prefilled-form shape for editing my skills in a crew.',
+      description: 'Read the prefilled-form shape for editing my skills in a circle.',
     }),
 
-    defineSkill('editMySkillsForCrew', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+    defineSkill('editMySkillsForCircle', async ({ parts, from, envelope }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const webid = from ?? a.webid;
-      const circleId = (typeof a.circleId === 'string' && a.circleId) ? a.circleId : crew.circleId;
+      const circleId = (typeof a.circleId === 'string' && a.circleId) ? a.circleId : circle.circleId;
       if (typeof circleId !== 'string' || !circleId) {
         return { error: 'circleId required' };
       }
@@ -471,13 +471,13 @@ export function buildProfileSkills({
         return { error: 'webid required (from envelope or args)' };
       }
 
-      // Always write the per-crew projection.
-      const projection = await writeMyCrewSkills({
-        dataSource:    crew.dataSource,
+      // Always write the per-circle projection.
+      const projection = await writeMyCircleSkills({
+        dataSource:    circle.dataSource,
         circleId,
         webid,
         skills:        a.skills,
-        rootContainer: crewRoot,
+        rootContainer: circleRoot,
       });
 
       // Optional canonical-profile mirror — opt-in per pod-data-sharing
@@ -485,7 +485,7 @@ export function buildProfileSkills({
       let canonicalProfile = null;
       if (a.persistToCanonicalProfile === true) {
         canonicalProfile = await writeCanonicalProfile({
-          dataSource: crew.dataSource,
+          dataSource: circle.dataSource,
           skills: a.skills,
           path:   canonicalPath,
         });
@@ -493,7 +493,7 @@ export function buildProfileSkills({
 
       return { projection, canonicalProfile };
     }, {
-      description: 'Submit my edited skill list for a crew (and optionally mirror to canonical profile).',
+      description: 'Submit my edited skill list for a circle (and optionally mirror to canonical profile).',
     }),
   ];
 }

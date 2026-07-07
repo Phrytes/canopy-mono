@@ -18,7 +18,7 @@
  *                                      circle where the user set
  *                                      `flowThrough.tasksToPersonal`,
  *                                      route the resulting "mine" task
- *                                      into the personal crew instead
+ *                                      into the personal circle instead
  *                                      of leaving it in the circle's.
  *
  * Every predicate is host-injection-shaped: the caller passes the data
@@ -126,13 +126,13 @@ export async function isInboundAgentBlocked({
 }
 
 /* ──────────────────────────────────────────────────────────────────
- * Flow-through: claimed tasks land in the personal crew.
+ * Flow-through: claimed tasks land in the personal circle.
  * ────────────────────────────────────────────────────────────────── */
 
 /**
  * Pure router decision: when the local user claims a task in `circleId`
  * AND has `override.flowThrough.tasksToPersonal === true`, the claim
- * should land in the personal crew rather than staying in the circle's.
+ * should land in the personal circle rather than staying in the circle's.
  * `5.7c` (the follow-up) wires this into the tasks claim handler to
  * actually re-scope the resulting task.
  *

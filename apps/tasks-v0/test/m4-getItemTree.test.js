@@ -17,18 +17,18 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildWorkspaceSkills } from '../src/skills/workspace.js';
 
-const CREW_ID = 'test-crew';
+const CIRCLE_ID = 'test-circle';
 
 function skillsWith(itemMap) {
-  // Minimal bundleResolver: always returns this one crew object.
-  const crew = {
-    circleId:    CREW_ID,
+  // Minimal bundleResolver: always returns this one circle object.
+  const circle = {
+    circleId:    CIRCLE_ID,
     itemStore: {
       getById: async (id) => itemMap[id] ?? null,
     },
     pseudoPod: null,
   };
-  const bundleResolver = () => crew;
+  const bundleResolver = () => circle;
 
   const skills = buildWorkspaceSkills({ bundleResolver });
   return skills.find((s) => s.id === 'getItemTree');
@@ -38,7 +38,7 @@ function call(skill, args) {
   return skill.handler({
     parts: [{ type: 'DataPart', data: args }],
     from:  'urn:me',
-    envelope: { data: { circleId: CREW_ID } },
+    envelope: { data: { circleId: CIRCLE_ID } },
   });
 }
 
@@ -53,7 +53,7 @@ describe('getItemTree skill (Tasks M4 Phase 3.3c)', () => {
     const skill = skillsWith({
       T1: {
         id: 'T1', type: 'task', text: 'root',
-        embeds: [{ type: 'task', ref: 'https://alice.pod/crews/c1/items/X.json' }],
+        embeds: [{ type: 'task', ref: 'https://alice.pod/circles/c1/items/X.json' }],
       },
     });
     const { tree, error } = await call(skill, { itemId: 'T1' });

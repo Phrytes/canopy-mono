@@ -151,7 +151,7 @@ describe('requestCatchUpFromKnownPeers — 0-peer short-circuit (Perf #4)', () =
   });
 });
 
-// ── Perf #1: seeding skipped when crew is already populated ──────
+// ── Perf #1: seeding skipped when circle is already populated ──────
 
 describe('createRealHouseholdAgent — seed-once budget (Perf #1)', () => {
   it('boots with seedTasks:false ⇒ NO addTask invocations (sanity, fast path)', async () => {
@@ -168,7 +168,7 @@ describe('createRealHouseholdAgent — seed-once budget (Perf #1)', () => {
     };
     void invocations;   // sanity-bound; assertion below is via listOpen post-boot.
 
-    // After a clean boot with seeding DISABLED, listOpen sees the empty crew.
+    // After a clean boot with seeding DISABLED, listOpen sees the empty circle.
     const r = await a.callSkill('tasks', 'listOpen', {});
     const items = Array.isArray(r?.items) ? r.items : [];
     expect(items).toHaveLength(0);   // no seeds, no leftover state.

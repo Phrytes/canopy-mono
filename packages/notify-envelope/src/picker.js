@@ -6,7 +6,7 @@
  *   - 'envelope-only'  — pod-having + reachable. Tiny payload
  *                        ({kind, ref, etag, fromActor, timestamp});
  *                        recipients fetch by ref.
- *   - 'full-payload'   — no-pod crew, OR pod-having writer that's
+ *   - 'full-payload'   — no-pod circle, OR pod-having writer that's
  *                        currently offline. Whole resource over the
  *                        wire; recipients write it into their local
  *                        pseudo-pod replication ring.

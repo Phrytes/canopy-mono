@@ -36,14 +36,14 @@ describe('LocalisationProvider — merged tasks-v0 + tasks-mobile bundles', () =
   it('resolves a tasks-mobile-only key', async () => {
     const localisation = loadLocale({ bundles: BUNDLES, defaultLang: 'en' });
     await localisation.initLocalisation({ lng: 'en' });
-    expect(localisation.t('mobile.no_crews.title')).toBe('No crews yet');
+    expect(localisation.t('mobile.no_circles.title')).toBe('No circles yet');
     expect(localisation.t('mobile.boot.loading')).toBe('Booting…');
   });
 
   it('resolves the same mobile key in Dutch', async () => {
     const localisation = loadLocale({ bundles: BUNDLES, defaultLang: 'en' });
     await localisation.initLocalisation({ lng: 'nl' });
-    expect(localisation.t('mobile.no_crews.title')).toBe('Nog geen crews');
+    expect(localisation.t('mobile.no_circles.title')).toBe('Nog geen kringen');
   });
 
   it('resolves a tasks-v0 (desktop) key through the merged bundle', async () => {

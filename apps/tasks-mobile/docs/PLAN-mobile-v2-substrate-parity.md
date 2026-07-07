@@ -76,11 +76,11 @@ merge? **No. Keep them split.** Evidence from the stoop commits:
 - **Phase 3.1+3.2 (`2fcbe6c`) changed zero public API.** The 34-line
   diff is internal to `PodRouting.resolve()` — it changes *which URI*
   `decentralised`/`hybrid` resolve to, not the method signature,
-  `setCrewPolicy`, `crewPolicy`, or the policy enum. Consuming it is a
+  `setCirclePolicy`, `circlePolicy`, or the policy enum. Consuming it is a
   **transparent inherit** of the shared dep — zero tasks code change.
 - **tasks-v0 0.4.0 already ships the full 4-policy surface**
-  (`CREW_STORAGE_POLICIES = ['no-pod','centralised','decentralised',
-  'hybrid']` in skills/Crew/picker). M1 mirrors **all four** to
+  (`CIRCLE_STORAGE_POLICIES = ['no-pod','centralised','decentralised',
+  'hybrid']` in skills/Circle/picker). M1 mirrors **all four** to
   mobile. M4 adds **no UI, no skill, no app wiring** — the depth is
   entirely inside the shared package.
 - The only app-level Phase-3 work (`podPathMap`/`fromInner`/cross-app
@@ -144,9 +144,9 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
 
 | tasks-v0 0.4.0 slice | tasks-mobile work | stoop-mobile precedent |
 |---|---|---|
-| S1 — `embeds[]` + crew `storage` policy + get/set policy skills | embed-ref slot on the compose screen; storage-policy picker on create-crew + crew-settings | `PostComposeScreen` embed slot; `CreateGroupScreen` 4-radio policy picker |
-| S2 — `/welcome.html` create-crew wizard + `provisionMyCrew` | create-crew wizard screen → `provisionMyCrew` | stoop-mobile create-group wizard |
-| S3 — agent-registry on `createCrewAgent` (`registerAgentBundle`) | register on bundle bring-up in `ServiceContext`/`buildCrewState` | stoop-mobile `agentBundle`/`bootstrapBundle` `registerAgentBundle` |
+| S1 — `embeds[]` + circle `storage` policy + get/set policy skills | embed-ref slot on the compose screen; storage-policy picker on create-circle + circle-settings | `PostComposeScreen` embed slot; `CreateGroupScreen` 4-radio policy picker |
+| S2 — `/welcome.html` create-circle wizard + `provisionMyCircle` | create-circle wizard screen → `provisionMyCircle` | stoop-mobile create-group wizard |
+| S3 — agent-registry on `createCircleAgent` (`registerAgentBundle`) | register on bundle bring-up in `ServiceContext`/`buildCircleState` | stoop-mobile `agentBundle`/`bootstrapBundle` `registerAgentBundle` |
 | S4 — `/onboard.html` + `/pod-settings.html` | onboard (invite redeem) + pod-settings screen (policy display + upgrade row + registry status) | stoop-mobile onboard + profile "My Solid pods" |
 | S5 — pod OIDC sign-in (`startPodSignIn`/`completePodSignIn`/`signOutOfPod`/`podSignInStatus`) | wire the 4 skills behind the pod-settings sign-in card (uses `@canopy/oidc-session-rn` already in deps) | stoop-mobile `ProfileMineScreen` pod sign-in |
 
@@ -169,20 +169,20 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
   coverage where it is device-independent).
 - [ ] **Stay at the V0 pod-routing tier.** No decentralised/hybrid.
 
-### M2 — Multi-crew + mirror fan-out parity (mirror Slices 6–12)
+### M2 — Multi-circle + mirror fan-out parity (mirror Slices 6–12)
 
-- [ ] Multi-crew runtime: `tasks-mobile` already ships the V2.8
-  single-agent / live `crews` Map pattern (per `CHANGELOG.md
+- [ ] Multi-circle runtime: `tasks-mobile` already ships the V2.8
+  single-agent / live `circles` Map pattern (per `CHANGELOG.md
   [mobile-0.1.0]`). Verify it lines up with tasks-v0 Slices 6–8
-  (`spawnMyCrew`, multi-crew onboarding dispatch, per-crew
-  `itemStoreRoot` URI prefix to stop cross-crew `addTask` leakage);
+  (`spawnMyCircle`, multi-circle onboarding dispatch, per-circle
+  `itemStoreRoot` URI prefix to stop cross-circle `addTask` leakage);
   extend where it diverges.
 - [ ] Substrate-mirror cross-device fan-out (Slices 9–12): wire
-  `wireTasksSubstrateMirror` per crew; fan out **every** mutation —
+  `wireTasksSubstrateMirror` per circle; fan out **every** mutation —
   add/claim/complete/submit/approve/reject/revoke/reassign/remove —
   via the shared `ItemStore.applySync`/`removeSync` gate-bypass path
   (`@canopy/item-store`, already shared). Stale-peer auto-heal +
-  `fetch-resource`/`groupCheck` per crew bundle inherit from the
+  `fetch-resource`/`groupCheck` per circle bundle inherit from the
   shared `wireTasksSubstrateMirror` (no mobile-specific code).
 - [ ] Live peer-roster updates from `redeemInvite` →
   `tasksMirror.addPeer`.
@@ -194,7 +194,7 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
   on `apps/stoop-mobile/docs/phase-40-23-checklist.md` (per-journey
   tick-list, two-device for the cross-device journeys).
 - [ ] Two-device cross-device fan-out journey is the acceptance gate
-  (mirror Stoop's S1–S5 pair scenarios): create crew on A → join on
+  (mirror Stoop's S1–S5 pair scenarios): create circle on A → join on
   B → mutate on A → observe on B via substrate-mirror.
 - [ ] Reuse stoop-mobile's dev client (same Expo 52 / RN 0.76.9 pin;
   Tasks' native modules are a near-superset — saves a native rebuild).
@@ -274,6 +274,6 @@ is its own future plan; this doc does **not** cover them.
   hold the whole track until the stoop agent fully finishes? (M1–M3
   are parallel-safe if isolated; the only cost of starting now is
   worktree discipline.)
-- Multi-crew (M2): is `tasks-mobile`'s existing V2.8 topology already
+- Multi-circle (M2): is `tasks-mobile`'s existing V2.8 topology already
   at Slice 6–8 parity, or does it predate it? Needs a code read at
   M2 start to size the delta.

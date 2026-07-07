@@ -15,10 +15,10 @@
  *   - `clearInboxItem({id})` — delete one inbox notification.
  *   - `clearInbox({olderThanMs?})` — bulk-delete; optional age cutoff.
  *
- * The dataSource comes from the resolved CrewState — it's the
- * process-level CachingDataSource shared across crews (the inbox is
+ * The dataSource comes from the resolved CircleState — it's the
+ * process-level CachingDataSource shared across circles (the inbox is
  * cross-app, per-USER, so the circleId only matters for resolving
- * which CrewState's dataSource to use; in practice they all share).
+ * which CircleState's dataSource to use; in practice they all share).
  */
 
 import { defineSkill } from '@canopy/core';
@@ -57,12 +57,12 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
 
   return [
     defineSkill('listMyInbox', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const since = Number.isFinite(a.since) ? a.since : 0;
       const limit = Number.isFinite(a.limit) ? Math.max(1, Math.min(500, a.limit)) : 100;
-      const all = await _listAll(crew.dataSource, root);
+      const all = await _listAll(circle.dataSource, root);
       const filtered = all
         .filter((i) => (i.addedAt ?? 0) >= since)
         .sort((x, y) => (y.addedAt ?? 0) - (x.addedAt ?? 0))
@@ -73,9 +73,9 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
     }),
 
     defineSkill('inboxBadgeCount', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const all = await _listAll(crew.dataSource, root);
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const all = await _listAll(circle.dataSource, root);
       const cutoff = Date.now() - BADGE_WINDOW_MS;
       const recent = all.filter((i) => (i.addedAt ?? 0) >= cutoff);
       return { count: recent.length, totalCount: all.length };
@@ -84,12 +84,12 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
     }),
 
     defineSkill('clearInboxItem', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       if (typeof a.id !== 'string' || !a.id) return { error: 'id required' };
       try {
-        await crew.dataSource.delete(`${root}${a.id}.json`);
+        await circle.dataSource.delete(`${root}${a.id}.json`);
         return { ok: true, id: a.id };
       } catch (err) {
         return { error: `delete failed: ${err?.message ?? err}` };
@@ -99,17 +99,17 @@ export function buildInboxSkills({ bundleResolver, container = DEFAULT_INBOX_CON
     }),
 
     defineSkill('clearInbox', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const olderThanMs = Number.isFinite(a.olderThanMs) ? a.olderThanMs : 0;
       const cutoff = olderThanMs > 0 ? Date.now() - olderThanMs : Number.POSITIVE_INFINITY;
-      const all = await _listAll(crew.dataSource, root);
+      const all = await _listAll(circle.dataSource, root);
       const toDelete = all.filter((i) => olderThanMs === 0 || (i.addedAt ?? 0) <= cutoff);
       let deleted = 0;
       for (const i of toDelete) {
         try {
-          await crew.dataSource.delete(i._path);
+          await circle.dataSource.delete(i._path);
           deleted++;
         } catch { /* skip */ }
       }

@@ -4,7 +4,7 @@
  * audience is referenced by id (e.g. `{kind: 'circle-ref', id}`) in
  * the `@canopy/circles` audience model.
  *
- * ──── ALIAS NOTE — CIRCLE ID ≡ CREW ID (SP-5 V0, 2026-05-20) ──────
+ * ──── ALIAS NOTE — CIRCLE ID ≡ CIRCLE ID (SP-5 V0, 2026-05-20) ──────
  *
  * **A `circle.id` value and a `task.circleId` value share the SAME
  * string identifier space.**  i.e. if a task has `circleId: "abc-123"`
@@ -17,7 +17,7 @@
  *   - Searching the codebase for `circleId` will surface task / pod-
  *     routing code; searching for `circle.id` will surface circles-
  *     substrate code.  They refer to the same underlying group.
- *   - Pod-routing's `crewPolicy(circleId)` resolves storage paths for
+ *   - Pod-routing's `circlePolicy(circleId)` resolves storage paths for
  *     a group; the matching `circle` item adds the audience-resolve
  *     layer over that same identifier.
  *   - A future "kill circleId, use circle.id everywhere" refactor is

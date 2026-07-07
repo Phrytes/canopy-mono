@@ -159,7 +159,7 @@ function _placeholder({ id, type, ref, source, reason }) {
  *   - `pseudo-pod://<dev>/…`   → injected `pseudoPodRead(ref)`
  *   - `http(s)://…`            → injected `podFetch(ref)` (GET)
  *
- * This is the decentralised-crew read path: a member's item embeds
+ * This is the decentralised-circle read path: a member's item embeds
  * a ref into ANOTHER member's pod; the walker resolves it through
  * here. Pure — every I/O is injected. A permission failure throws
  * `{code:'PERMISSION_DENIED'}` so the walker yields a precise

@@ -1,17 +1,17 @@
 /**
- * createBrowserMultiCrewTasksAgent — per-circle task isolation.
+ * createBrowserMultiCircleTasksAgent — per-circle task isolation.
  *
  * The canopy-chat circle work treats `circleId ≡ circleId`, so a task
- * created while a circle is open must land in that circle's crew and
- * stay isolated from other circles.  This proves the browser multi-crew
+ * created while a circle is open must land in that circle's circle and
+ * stay isolated from other circles.  This proves the browser multi-circle
  * factory routes + isolates storage, and that unscoped calls still fall
- * back to the primary crew (the legacy single-crew behaviour).
+ * back to the primary circle (the legacy single-circle behaviour).
  */
 import { describe, it, expect } from 'vitest';
 import { DataPart, AgentIdentity, InternalBus } from '@canopy/core';
 import { VaultMemory } from '@canopy/vault';
 
-import { createBrowserMultiCrewTasksAgent } from '../src/browser.js';
+import { createBrowserMultiCircleTasksAgent } from '../src/browser.js';
 
 const ANNE = 'https://id.example/anne';
 
@@ -27,10 +27,10 @@ async function call(agent, skillId, args, from = ANNE) {
 }
 
 async function build() {
-  return createBrowserMultiCrewTasksAgent({
+  return createBrowserMultiCircleTasksAgent({
     bus:           new InternalBus(),
     identityVault: new VaultMemory(),
-    primaryCrewConfig: {
+    primaryCircleConfig: {
       circleId:  'cc-default',
       name:    'CC',
       kind:    'household',
@@ -39,14 +39,14 @@ async function build() {
   });
 }
 
-describe('createBrowserMultiCrewTasksAgent', () => {
-  it('boots with the primary crew in the map', async () => {
-    const { crewsMap, primaryCrewState } = await build();
-    expect(crewsMap.size).toBe(1);
-    expect(crewsMap.get('cc-default')).toBe(primaryCrewState);
+describe('createBrowserMultiCircleTasksAgent', () => {
+  it('boots with the primary circle in the map', async () => {
+    const { circlesMap, primaryCircleState } = await build();
+    expect(circlesMap.size).toBe(1);
+    expect(circlesMap.get('cc-default')).toBe(primaryCircleState);
   });
 
-  it('unscoped addTask routes to the primary crew (legacy behaviour)', async () => {
+  it('unscoped addTask routes to the primary circle (legacy behaviour)', async () => {
     const { agent } = await build();
     await call(agent, 'addTask', { text: 'primary task' });
     const primary = await call(agent, 'listOpen', { circleId: 'cc-default' });
@@ -54,9 +54,9 @@ describe('createBrowserMultiCrewTasksAgent', () => {
   });
 
   it('a task created in circle A is isolated from circle B', async () => {
-    const { agent, ensureCrew } = await build();
-    await ensureCrew('circle-a');
-    await ensureCrew('circle-b');
+    const { agent, ensureCircle } = await build();
+    await ensureCircle('circle-a');
+    await ensureCircle('circle-b');
 
     await call(agent, 'addTask', { circleId: 'circle-a', text: 'A task' });
     await call(agent, 'addTask', { circleId: 'circle-b', text: 'B task' });
@@ -73,18 +73,18 @@ describe('createBrowserMultiCrewTasksAgent', () => {
   });
 
   it('_scope is honoured as a circleId alias', async () => {
-    const { agent, ensureCrew } = await build();
-    await ensureCrew('circle-s');
+    const { agent, ensureCircle } = await build();
+    await ensureCircle('circle-s');
     await call(agent, 'addTask', { _scope: 'circle-s', text: 'scoped task' });
     const s = await call(agent, 'listOpen', { _scope: 'circle-s' });
     expect((s.items ?? []).map((t) => t.text)).toContain('scoped task');
   });
 
-  it('ensureCrew is idempotent', async () => {
-    const { ensureCrew, crewsMap } = await build();
-    const a1 = await ensureCrew('circle-x');
-    const a2 = await ensureCrew('circle-x');
+  it('ensureCircle is idempotent', async () => {
+    const { ensureCircle, circlesMap } = await build();
+    const a1 = await ensureCircle('circle-x');
+    const a2 = await ensureCircle('circle-x');
     expect(a1).toBe(a2);
-    expect(crewsMap.has('circle-x')).toBe(true);
+    expect(circlesMap.has('circle-x')).toBe(true);
   });
 });

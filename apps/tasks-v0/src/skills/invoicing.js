@@ -5,19 +5,19 @@
  *
  *   - `recordInvoiceLine` (helper, not a registered skill) — appends a
  *     `{taskId, completedAt, hours, notes, rate?}` row to
- *     `<crew-pod>/tasks/invoicing/<webid>/<isoMonth>.json`.
+ *     `<circle-pod>/tasks/invoicing/<webid>/<isoMonth>.json`.
  *
  *   - `getCompensation({memberWebid, month?})` — admin OR self only.
  *     Returns `{lines, totals}`. `totals.amount` (rate × hours) is
  *     informational, not authoritative — see V2.2 risk §4.
  *
  *   - `setMemberCompensation({memberWebid, compensated, rate?})` —
- *     admin only. Mutates the live crew config.
+ *     admin only. Mutates the live circle config.
  *
  *   - `setCompensationEnabled({enabled})` — admin only. Toggles the
- *     crew-level switch.
+ *     circle-level switch.
  *
- * `wireInvoicing` (in `Crew.js`) listens for `item-completed` events
+ * `wireInvoicing` (in `Circle.js`) listens for `item-completed` events
  * and dispatches `recordInvoiceLine` when the completer is a paid-pro.
  * The blob shape is intentionally minimal so any spreadsheet can pull it.
  */
@@ -32,7 +32,7 @@ function isoMonthOf(epochMs) {
 }
 
 function invoicePath(circleId, webid, isoMonth) {
-  return `mem://tasks/crews/${encodeURIComponent(circleId)}/invoicing/${encodeURIComponent(webid)}/${encodeURIComponent(isoMonth)}.json`;
+  return `mem://tasks/circles/${encodeURIComponent(circleId)}/invoicing/${encodeURIComponent(webid)}/${encodeURIComponent(isoMonth)}.json`;
 }
 
 /**
@@ -42,7 +42,7 @@ function invoicePath(circleId, webid, isoMonth) {
  * @param {object} args
  * @param {object} args.dataSource
  * @param {string} args.circleId
- * @param {object} args.member       crew member object (for rate lookup)
+ * @param {object} args.member       circle member object (for rate lookup)
  * @param {object} args.task         the just-completed task
  */
 export async function recordInvoiceLine({ dataSource, circleId, member, task }) {
@@ -78,8 +78,8 @@ export async function recordInvoiceLine({ dataSource, circleId, member, task }) 
 /**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
- *   Resolver returns a CrewState; per-CrewState `onCompensationChange`
- *   callback re-attaches the item-completed listener in `Crew.js`.
+ *   Resolver returns a CircleState; per-CircleState `onCompensationChange`
+ *   callback re-attaches the item-completed listener in `Circle.js`.
  */
 export function buildInvoicingSkills({ bundleResolver } = {}) {
   if (typeof bundleResolver !== 'function') {
@@ -88,16 +88,16 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('getCompensation', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const target = a.memberWebid ?? from;
       if (typeof target !== 'string' || !target) {
         return { error: 'memberWebid required (or call as self)' };
       }
       // Admin sees anyone; member sees only own.
-      const role = crew.roles?.[from];
+      const role = circle.roles?.[from];
       if (role !== 'admin' && from !== target) {
         return { error: 'admin required to view another member\'s compensation' };
       }
@@ -107,7 +107,7 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
       const path = invoicePath(lc.circleId ?? 'unknown', target, month);
       let lines = [];
       try {
-        const raw = await crew.dataSource.read(path);
+        const raw = await circle.dataSource.read(path);
         if (raw) lines = typeof raw === 'string' ? JSON.parse(raw) : raw;
         if (!Array.isArray(lines)) lines = [];
       } catch { /* lines stays [] */ }
@@ -128,18 +128,18 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('setMemberCompensation', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
       if (typeof a.memberWebid !== 'string' || !a.memberWebid.trim()) {
         return { error: 'memberWebid required' };
       }
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const members = lc.members ?? [];
       const idx = members.findIndex((m) => m?.webid === a.memberWebid);
-      if (idx < 0) return { error: 'memberWebid is not a crew member' };
+      if (idx < 0) return { error: 'memberWebid is not a circle member' };
       const next = members.map((m, i) => i === idx
         ? {
             ...m,
@@ -147,8 +147,8 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
             ...(Number.isFinite(a.rate) ? { rate: a.rate } : {}),
           }
         : m);
-      crew.crewMutator({ members: next });
-      try { crew.onCompensationChange?.(); } catch { /* noop */ }
+      circle.circleMutator({ members: next });
+      try { circle.onCompensationChange?.(); } catch { /* noop */ }
       return { ok: true, memberWebid: a.memberWebid };
     }, {
       description: 'Mark a member as compensated and (optionally) set their rate (admin only).',
@@ -156,19 +156,19 @@ export function buildInvoicingSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('setCompensationEnabled', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
-      const role = crew.roles?.[from];
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const role = circle.roles?.[from];
       if (role !== 'admin') return { error: 'admin required' };
       const a = argsFromParts(parts);
       if (typeof a.enabled !== 'boolean') return { error: 'enabled (boolean) required' };
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const next = { ...(lc.compensation ?? {}), enabled: a.enabled };
-      crew.crewMutator({ compensation: next });
-      try { crew.onCompensationChange?.(); } catch { /* noop */ }
+      circle.circleMutator({ compensation: next });
+      try { circle.onCompensationChange?.(); } catch { /* noop */ }
       return { ok: true, enabled: a.enabled };
     }, {
-      description: 'Turn the per-crew invoicing/compensation feature on or off (admin only).',
+      description: 'Turn the per-circle invoicing/compensation feature on or off (admin only).',
       visibility:  'authenticated',
     }),
   ];

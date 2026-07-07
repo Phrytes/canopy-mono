@@ -4,7 +4,7 @@
  * Phase 41.18 follow-up (2026-05-10).
  *
  * Repro: on the mobile React path, `from` at skill-dispatch time is
- * `agent.pubKey` (no `LocalUiAuth` injecting the webid). The crew's
+ * `agent.pubKey` (no `LocalUiAuth` injecting the webid). The circle's
  * roles map is keyed on webid → without the alias path the role
  * lookup misses and every gated skill returns "permission denied".
  *

@@ -1,9 +1,9 @@
 /**
- * CrewConfigSection — admin-only read-only dump of getCrewConfig.
+ * CircleConfigSection — admin-only read-only dump of getCircleConfig.
  *
  * Phase 41.18.2 (2026-05-10).
  *
- * Useful for support flows ("send me a screenshot of the crew config")
+ * Useful for support flows ("send me a screenshot of the circle config")
  * — same shape as Stoop's debug surface. Mirrors stoop-mobile's
  * "tap-to-reveal" pattern so the section stays collapsed by default
  * (debug surfaces shouldn't dominate the settings screen).
@@ -18,7 +18,7 @@ import { useLocalisation }    from '../../LocalisationProvider.js';
 import { useActiveRole } from '../../lib/useActiveRole.js';
 import { useService } from '../../ServiceContext.js';
 
-export function CrewConfigSection() {
+export function CircleConfigSection() {
   const svc = useService();
   const { isAdmin } = useActiveRole();
   const { t } = useLocalisation();
@@ -26,12 +26,12 @@ export function CrewConfigSection() {
 
   const [open, setOpen] = useState(false);
 
-  const config = useSkillResult('getCrewConfig', {}, [svc?.activeCircleId, open]);
+  const config = useSkillResult('getCircleConfig', {}, [svc?.activeCircleId, open]);
 
   if (!isAdmin) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t('mobile.crew_settings.admin_only')}
+        {t('mobile.circle_settings.admin_only')}
       </Text>
     );
   }
@@ -41,10 +41,10 @@ export function CrewConfigSection() {
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityRole="button"
-        accessibilityLabel="crew-config-reveal"
+        accessibilityLabel="circle-config-reveal"
       >
         <Text style={{ color: COLORS.primary, fontSize: FONT_SIZES.sm }}>
-          {t('mobile.crew_settings.crew_config_reveal')}
+          {t('mobile.circle_settings.circle_config_reveal')}
         </Text>
       </Pressable>
     );
@@ -65,11 +65,11 @@ export function CrewConfigSection() {
         alignItems: 'center', marginBottom: SPACING.sm,
       }}>
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-          {t('mobile.crew_settings.crew_config_hint')}
+          {t('mobile.circle_settings.circle_config_hint')}
         </Text>
         <Pressable onPress={() => setOpen(false)} accessibilityRole="button">
           <Text style={{ color: COLORS.primary, fontSize: FONT_SIZES.sm }}>
-            {t('mobile.crew_settings.crew_config_hide')}
+            {t('mobile.circle_settings.circle_config_hide')}
           </Text>
         </Pressable>
       </View>
@@ -83,7 +83,7 @@ export function CrewConfigSection() {
         }}
       >
         <Text
-          accessibilityLabel="crew-config-json"
+          accessibilityLabel="circle-config-json"
           selectable
           style={{
             fontFamily: 'monospace',

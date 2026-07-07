@@ -3,7 +3,7 @@
  *
  * Combines:
  *   - the default policy (built from anchorPodUri + deviceId);
- *   - the user's mappings + crew policies loaded from the config
+ *   - the user's mappings + circle policies loaded from the config
  *     resource (or empty when no config exists yet);
  *   - the reachability cache;
  *   - the resolver pipeline (exact match → glob → default).
@@ -78,7 +78,7 @@ export function createPodRouting({
   /**
    * Resolve a storage-function path to a concrete URI.
    *
-   * For `group/<circleId>/...` paths we run the crew-policy lookup
+   * For `group/<circleId>/...` paths we run the circle-policy lookup
    * first, since the policy decides whether the group lives on a
    * pod or in the pseudo-pod replication-ring.
    */
@@ -87,7 +87,7 @@ export function createPodRouting({
     const vars = _vars(callerVars);
     const mappings = _effectiveMappings();
 
-    // Crew-aware group routing.
+    // Circle-aware group routing.
     if (storageFn.startsWith('group/')) {
       const rest = storageFn.slice('group/'.length);
       const slash = rest.indexOf('/');
@@ -99,17 +99,17 @@ export function createPodRouting({
         if (explicit && explicit.pattern !== 'group/*') {
           return joinUriTail(substituteVars(explicit.uri, vars), substituteVars(explicit.tail, vars));
         }
-        const policy = crewPolicy(circleId);
+        const policy = circlePolicy(circleId);
         if (policy.policy === 'centralised' && policy.groupPodUri) {
           const base = _stripTrailingSlash(policy.groupPodUri) + `/${circleId}/`;
           return joinUriTail(base, tail);
         }
         if (policy.policy === 'decentralised') {
-          // Each member keeps the crew's data on THEIR OWN pod;
+          // Each member keeps the circle's data on THEIR OWN pod;
           // cross-member reads ride cross-pod `embeds` refs (the
           // read/index path — Phase 3.3, `conventions/
           // cross-pod-refs.md`). No shared group pod → route to the
-          // user's anchor pod, crew-scoped (same shape as
+          // user's anchor pod, circle-scoped (same shape as
           // centralised, own pod instead of the group pod). A no-pod
           // user (no anchor) falls back to the replication ring.
           if (anchorPodUri) {
@@ -119,7 +119,7 @@ export function createPodRouting({
           return `pseudo-pod://${deviceId}/group/${circleId}/${tail}`;
         }
         if (policy.policy === 'hybrid') {
-          // Canonical ledger (the crew's `group/*` data) lives on the
+          // Canonical ledger (the circle's `group/*` data) lives on the
           // shared group pod — identical to `centralised` for the
           // data Stoop emits today. Members' personal drafts are the
           // `personal-in-group/*` storage-function (resolved by the
@@ -147,11 +147,11 @@ export function createPodRouting({
     return joinUriTail(baseUri, substituteVars(m.tail, vars));
   }
 
-  function crewPolicy(circleId) {
-    if (typeof circleId !== 'string' || circleId.length === 0) return defaults.crewPolicyDefault;
-    const fromConfig = loadedConfig?.crewPolicies?.[circleId];
+  function circlePolicy(circleId) {
+    if (typeof circleId !== 'string' || circleId.length === 0) return defaults.circlePolicyDefault;
+    const fromConfig = loadedConfig?.circlePolicies?.[circleId];
     if (fromConfig) return fromConfig;
-    return defaults.crewPolicyDefault;
+    return defaults.circlePolicyDefault;
   }
 
   function isPodReachable(uri) {
@@ -191,7 +191,7 @@ export function createPodRouting({
     const current = loadedConfig ?? {
       version: CONFIG_VERSION,
       mappings: {},
-      crewPolicies: {},
+      circlePolicies: {},
     };
     const next = {
       ...current,
@@ -201,21 +201,21 @@ export function createPodRouting({
     await reload();
   }
 
-  async function setCrewPolicy(circleId, policy) {
+  async function setCirclePolicy(circleId, policy) {
     if (typeof circleId !== 'string' || circleId.length === 0) {
       throw Object.assign(
-        new Error('setCrewPolicy: `circleId` is required'),
+        new Error('setCirclePolicy: `circleId` is required'),
         { code: 'INVALID_ARGUMENT' },
       );
     }
     const current = loadedConfig ?? {
       version: CONFIG_VERSION,
       mappings: {},
-      crewPolicies: {},
+      circlePolicies: {},
     };
     const next = {
       ...current,
-      crewPolicies: { ...(current.crewPolicies ?? {}), [circleId]: policy },
+      circlePolicies: { ...(current.circlePolicies ?? {}), [circleId]: policy },
     };
     await writeConfig({ pseudoPod, uri: configUri, config: next });
     await reload();
@@ -263,7 +263,7 @@ export function createPodRouting({
   return {
     // Resolution
     resolve,
-    crewPolicy,
+    circlePolicy,
     listStorageFunctions,
     registerStorageFunction,
 
@@ -275,7 +275,7 @@ export function createPodRouting({
     // Config I/O
     reload,
     updateMapping,
-    setCrewPolicy,
+    setCirclePolicy,
     setAnchor,
 
     // Introspection

@@ -1,6 +1,6 @@
 /* Tasks V1 web UI — minimal calmness-language styling.
    V0 baseline + Phase 8 additions: extra status pills, sub-task
-   indentation in DAG view, inbox sheet, crew settings layout. */
+   indentation in DAG view, inbox sheet, circle settings layout. */
 
 :root {
   --fg: #1f2937;

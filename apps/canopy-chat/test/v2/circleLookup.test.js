@@ -28,8 +28,8 @@ describe('makeCircleLookup', () => {
 
   it('scopeId() returning null → no-circle scope (empty fetch args), NOT the thread id (web non-circle thread)', async () => {
     // Web's classic shell on the `main` thread: getActiveCircle() is null, scope is the THREAD whose
-    // id 'main' is NOT a crew id. The fetch must go out unscoped (default crew) so labels still resolve,
-    // not scoped to a non-existent crew 'main' (which returned nothing → `/complete-task` "item not found").
+    // id 'main' is NOT a circle id. The fetch must go out unscoped (default circle) so labels still resolve,
+    // not scoped to a non-existent circle 'main' (which returned nothing → `/complete-task` "item not found").
     const appCallSkill = vi.fn(async () => []);
     const lookup = makeCircleLookup({ appCallSkill, scopeId: () => null });
     await lookup('listOpen', 'x', { id: 'main' }, 'tasks');

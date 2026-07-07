@@ -8,8 +8,7 @@
  *     householdMembers / roleMembers / getCircle.  union flattening +
  *     public-absorbs-union.  Missing circle = empty set (not throw).
  *   - inAudience: positive + negative + public-everyone.
- *   - The crew:ID ↔ circle:ID alias resolves to identical normalized
- *     forms (the documented circle.id ≡ task.circleId aliasing).
+ *   - 'circle:ID' short-hand → {kind:'circle-ref', id}.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -39,11 +38,8 @@ describe('normalizeAudience', () => {
     expect(normalizeAudience('role:admin')).toEqual({ kind: 'role', name: 'admin' });
   });
 
-  it("'crew:ID' and 'circle:ID' both → {kind:'circle-ref', id}  (the documented alias)", () => {
-    expect(normalizeAudience('crew:abc-123')).toEqual({ kind: 'circle-ref', id: 'abc-123' });
+  it("'circle:ID' → {kind:'circle-ref', id}", () => {
     expect(normalizeAudience('circle:abc-123')).toEqual({ kind: 'circle-ref', id: 'abc-123' });
-    // The whole point of the alias: identical normalized form.
-    expect(normalizeAudience('crew:abc-123')).toEqual(normalizeAudience('circle:abc-123'));
   });
 
   it('structured {kind:set, members} → defensive copy', () => {
@@ -72,7 +68,6 @@ describe('normalizeAudience', () => {
     ['',         /unknown audience short-hand/],
     ['nope',     /unknown audience short-hand/],
     ['role:',    /empty role name/],
-    ['crew:',    /empty id/],
     ['circle:',  /empty id/],
   ])('rejects %j', (input, re) => {
     expect(() => normalizeAudience(input)).toThrow(re);
@@ -170,13 +165,12 @@ describe('resolveAudience', () => {
     expect(r).toBe(PUBLIC);
   });
 
-  it('crew:ID and circle:ID resolve identically (alias)', async () => {
+  it('circle:ID resolves to the circle members via ctx.getCircle', async () => {
     const ctx = {
       getCircle: async (id) => (id === 'g' ? { id, members: ['x', 'y'] } : null),
     };
-    const r1 = await resolveAudience('crew:g',   ctx);
-    const r2 = await resolveAudience('circle:g', ctx);
-    expect([...r1].sort()).toEqual([...r2].sort());
+    const r = await resolveAudience('circle:g', ctx);
+    expect([...r].sort()).toEqual(['x', 'y']);
   });
 });
 

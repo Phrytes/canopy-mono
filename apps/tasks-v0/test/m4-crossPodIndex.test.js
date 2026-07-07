@@ -19,7 +19,7 @@ import { describe, it, expect } from 'vitest';
 import { CachingDataSource } from '@canopy/local-store';
 import { classify, reverseResolve } from '../src/lib/podPathMap.js';
 
-const CREW = 'household';
+const CIRCLE = 'household';
 
 // Pod-routing resolver (centralised on grp.pod).
 const resolve = (fn) =>
@@ -29,13 +29,13 @@ const resolve = (fn) =>
 // Exact innerKeyMap buildBundle now builds (M4), bound to circleId 'household'.
 const innerKeyMap = {
   toInner: (p) => {
-    const c = classify(p, { circleId: CREW });
+    const c = classify(p, { circleId: CIRCLE });
     if (!c) return p;
     const base = resolve(c.storageFn);
     if (!base) return p;
     return base + c.tail;
   },
-  fromInner: (u) => reverseResolve({ resolve, circleId: CREW, podUri: u }) ?? u,
+  fromInner: (u) => reverseResolve({ resolve, circleId: CIRCLE, podUri: u }) ?? u,
 };
 
 function mkInner(seed) {
@@ -57,20 +57,20 @@ describe('Tasks M4 — cross-pod type-index via pullFromInner (innerKeyMap seam)
     });
     const cache = new CachingDataSource({ inner, innerKeyMap });
 
-    const n = await cache.pullFromInner(`mem://tasks/crews/${CREW}/items/`);
+    const n = await cache.pullFromInner(`mem://tasks/circles/${CIRCLE}/items/`);
     expect(n).toBe(2);
 
     // Both re-keyed to logical mem:// space.
-    const t1 = await cache.read(`mem://tasks/crews/${CREW}/items/01DEVICED.json`);
-    const t2 = await cache.read(`mem://tasks/crews/${CREW}/items/01DEVICEE.json`);
+    const t1 = await cache.read(`mem://tasks/circles/${CIRCLE}/items/01DEVICED.json`);
+    const t2 = await cache.read(`mem://tasks/circles/${CIRCLE}/items/01DEVICEE.json`);
     expect(JSON.parse(t1).text).toBe('device D');
     expect(JSON.parse(t2).text).toBe('device E');
 
     // Logical listing shows exactly the two items.
-    const listed = await cache.list(`mem://tasks/crews/${CREW}/items/`);
+    const listed = await cache.list(`mem://tasks/circles/${CIRCLE}/items/`);
     expect(listed.sort()).toEqual([
-      `mem://tasks/crews/${CREW}/items/01DEVICED.json`,
-      `mem://tasks/crews/${CREW}/items/01DEVICEE.json`,
+      `mem://tasks/circles/${CIRCLE}/items/01DEVICED.json`,
+      `mem://tasks/circles/${CIRCLE}/items/01DEVICEE.json`,
     ]);
   });
 
@@ -82,9 +82,9 @@ describe('Tasks M4 — cross-pod type-index via pullFromInner (innerKeyMap seam)
     });
     const cache = new CachingDataSource({ inner, innerKeyMap });
 
-    const n = await cache.pullFromInner(`mem://tasks/crews/${CREW}/members/`);
+    const n = await cache.pullFromInner(`mem://tasks/circles/${CIRCLE}/members/`);
     expect(n).toBe(2);
-    const listed = await cache.list(`mem://tasks/crews/${CREW}/members/`);
+    const listed = await cache.list(`mem://tasks/circles/${CIRCLE}/members/`);
     expect(listed).toHaveLength(2);
     // Items must NOT appear in members listing.
     expect(listed.every((k) => k.includes('/members/'))).toBe(true);
@@ -97,7 +97,7 @@ describe('Tasks M4 — cross-pod type-index via pullFromInner (innerKeyMap seam)
     // Activate innerKeyMap by simulating an attached inner source.
     // In production `attachTasksBundle` sets _podCtx.active; here we
     // prove the toInner mapping directly through the live innerKeyMap.
-    const key   = `mem://tasks/crews/${CREW}/items/01ZNEW.json`;
+    const key   = `mem://tasks/circles/${CIRCLE}/items/01ZNEW.json`;
     const value = '{"id":"01ZNEW","type":"task"}';
 
     // Exercise the mapping directly (no attachInner needed for this

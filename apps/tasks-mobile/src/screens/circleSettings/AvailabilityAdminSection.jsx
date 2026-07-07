@@ -1,5 +1,5 @@
 /**
- * AvailabilityAdminSection — V2.3 admin toggle for the per-crew
+ * AvailabilityAdminSection — V2.3 admin toggle for the per-circle
  * availability hints feature.
  *
  * Phase 41.8.7 (2026-05-09).
@@ -24,8 +24,8 @@ export function AvailabilityAdminSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES } = useTheme();
 
-  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
-  const enabled = !!cs?.liveCrew?.availabilityHints?.enabled;
+  const cs = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
+  const enabled = !!cs?.liveCircle?.availabilityHints?.enabled;
 
   const setEnabled = useSkill('setAvailabilityEnabled');
 
@@ -40,10 +40,10 @@ export function AvailabilityAdminSection() {
     }}>
       <View style={{ flex: 1, marginRight: SPACING.md }}>
         <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm }}>
-          {t('mobile.crew_settings.availability_admin_label')}
+          {t('mobile.circle_settings.availability_admin_label')}
         </Text>
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginTop: 2 }}>
-          {t('mobile.crew_settings.availability_admin_hint')}
+          {t('mobile.circle_settings.availability_admin_hint')}
         </Text>
       </View>
       <Switch

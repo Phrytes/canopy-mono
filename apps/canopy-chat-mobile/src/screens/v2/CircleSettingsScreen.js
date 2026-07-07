@@ -36,7 +36,7 @@ import RecipeConsentCard from './RecipeConsentCard.js';
 // recordOptOuts + presents the native consent card. No recipe/consent logic is reimplemented here.
 import { loadRecipeForReview, applyReviewedRecipe } from '../../core/recipeConsentWiring.js';
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
-// four-tier crew storage policy (shared with web; pure mapping + call).
+// four-tier circle storage policy (shared with web; pure mapping + call).
 import { pushCircleStoragePolicy } from '../../../../canopy-chat/src/v2/circleStoragePolicy.js';
 // D / SP-3b consumer-switch (MOBILE parity) — the screen header is sourced from
 // the manifest PAGE projection: the `settings` op declares `surfaces.page` with
@@ -66,7 +66,7 @@ const SETTINGS_PAGE = pageForOpMobile(canopyChatManifest, 'settings');
 export default function CircleSettingsScreen({
   store, proposalStore, circleId, onBack,
   // §4 storage-policy bridge — the host injects the agent's raw callSkill so a
-  // pod-tier change drives stoop.setCrewStoragePolicy (web parity).
+  // pod-tier change drives stoop.setCircleStoragePolicy (web parity).
   callSkill,
   // B · consent-card — the member-override store (records the declined optional caps as
   // `capabilityOptOuts`, the exact seam the gate honours) + the pod session's authed fetch (loads a
@@ -258,7 +258,7 @@ export default function CircleSettingsScreen({
     } else {
       await store.update(circleId, working);
       // §4 storage-policy bridge — when the pod tier changed, drive stoop's
-      // authoritative crew storage policy (web parity). The skill owns
+      // authoritative circle storage policy (web parity). The skill owns
       // admin-gating + the one-way guard; a rejection surfaces as a note and
       // never blocks the local save.
       if (working?.pod !== baselinePodRef.current && typeof callSkill === 'function') {

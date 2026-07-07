@@ -66,12 +66,12 @@ import { SubmitScreen }         from './src/screens/SubmitScreen.jsx';
 import { ReviewScreen }         from './src/screens/ReviewScreen.jsx';
 import { DagScreen }            from './src/screens/DagScreen.jsx';
 import { InboxScreen }          from './src/screens/InboxScreen.jsx';
-import { CrewsDashboardScreen } from './src/screens/CrewsDashboardScreen.jsx';
+import { CirclesDashboardScreen } from './src/screens/CirclesDashboardScreen.jsx';
 import { AvailabilityScreen }   from './src/screens/AvailabilityScreen.jsx';
 import { ProfileMineScreen }    from './src/screens/ProfileMineScreen.jsx';
 import { ProfileOtherScreen }   from './src/screens/ProfileOtherScreen.jsx';
 import { SettingsScreen }       from './src/screens/SettingsScreen.jsx';
-import { CrewSettingsScreen }   from './src/screens/CrewSettingsScreen.jsx';
+import { CircleSettingsScreen }   from './src/screens/CircleSettingsScreen.jsx';
 import { IssueBotTokenScreen }  from './src/screens/IssueBotTokenScreen.jsx';
 import { PodSignInScreen }      from './src/screens/PodSignInScreen.jsx';
 import { AuthCallbackScreen }   from './src/screens/AuthCallbackScreen.jsx';
@@ -80,9 +80,9 @@ import { PrivacyScreen }        from './src/screens/PrivacyScreen.jsx';
 import { EditSkillsScreen }     from './src/screens/EditSkillsScreen.jsx';
 import { CadenceOverridesScreen } from './src/screens/CadenceOverridesScreen.jsx';
 import { ChatThreadScreen }     from './src/screens/ChatThreadScreen.jsx';
-import { CreateCrewScreen }     from './src/screens/CreateCrewScreen.jsx';   // M1-S2
+import { CreateCircleScreen }     from './src/screens/CreateCircleScreen.jsx';   // M1-S2
 import { PodSettingsScreen }    from './src/screens/PodSettingsScreen.jsx';  // M1-S4
-import { CrewSwitcher }         from './src/components/CrewSwitcher.jsx';
+import { CircleSwitcher }         from './src/components/CircleSwitcher.jsx';
 import { MainMenuProvider, MainMenuButton } from './src/components/MainMenu.jsx';
 import { useInboxBadge }        from './src/lib/useInboxBadge.js';
 
@@ -90,7 +90,7 @@ const Stack = createNativeStackNavigator();
 const Tabs  = createBottomTabNavigator();
 
 // Phase 41.18 follow-up — bottom-tab shell over the five main
-// destinations (Workspace / MyWork / Review / Inbox / Crews). The
+// destinations (Workspace / MyWork / Review / Inbox / Circles). The
 // outer stack pushes detail + modal screens OVER the tab shell and
 // hides the tab bar via `screenOptions`. Mirrors stoop-mobile's
 // pattern (App.js's `ShellTabs`).
@@ -99,7 +99,7 @@ const TAB_ICONS = {
   MyWork:    { active: 'list',         inactive: 'list-outline' },
   Review:    { active: 'checkmark-done', inactive: 'checkmark-done-outline' },
   Inbox:     { active: 'notifications', inactive: 'notifications-outline' },
-  Crews:     { active: 'people',       inactive: 'people-outline' },
+  Circles:     { active: 'people',       inactive: 'people-outline' },
 };
 
 function _tabIcon(routeName) {
@@ -159,7 +159,7 @@ function MainTabs() {
           headerLeft:              () => <MainMenuButton />,
           headerRight:             () => (
             <View style={{ paddingRight: 12 }}>
-              <CrewSwitcher />
+              <CircleSwitcher />
             </View>
           ),
           tabBarActiveTintColor:   TASKS_TOKENS.COLORS.primary,
@@ -173,7 +173,7 @@ function MainTabs() {
         <Tabs.Screen name={ROUTES.MyWork}    component={MyWorkScreen}         options={{ title: 'Mine' }} />
         <Tabs.Screen name={ROUTES.Review}    component={ReviewScreen}         options={{ title: 'Review' }} />
         <Tabs.Screen name={ROUTES.Inbox}     component={InboxTabScreen}       options={{ title: 'Inbox' }} />
-        <Tabs.Screen name={ROUTES.Crews}     component={CrewsDashboardScreen} options={{ title: 'Crews' }} />
+        <Tabs.Screen name={ROUTES.Circles}     component={CirclesDashboardScreen} options={{ title: 'Circles' }} />
       </Tabs.Navigator>
     </MainMenuProvider>
   );
@@ -270,9 +270,9 @@ function BootGate() {
     );
   }
 
-  // Once a crew exists, the user lands inside the bottom-tab shell
+  // Once a circle exists, the user lands inside the bottom-tab shell
   // (Main). Otherwise we boot into the Welcome onboarding stack.
-  const initialRoute = svc.crews.size > 0 ? ROUTES.Main : ROUTES.Welcome;
+  const initialRoute = svc.circles.size > 0 ? ROUTES.Main : ROUTES.Welcome;
 
   return (
     <NavigationContainer>
@@ -286,7 +286,7 @@ function BootGate() {
         <Stack.Screen name={ROUTES.OnboardRestore} component={OnboardRestoreScreen} />
         <Stack.Screen name={ROUTES.OnboardIssue}   component={OnboardIssueScreen} />
         {/* Main = the bottom-tab shell (Workspace + MyWork + Review +
-            Inbox + Crews). Detail / modal routes push OVER this. */}
+            Inbox + Circles). Detail / modal routes push OVER this. */}
         <Stack.Screen name={ROUTES.Main}           component={MainTabs} />
         <Stack.Screen name={ROUTES.TaskDetail}     component={TaskDetailScreen}
                       options={{ headerShown: true, title: '' }} />
@@ -304,8 +304,8 @@ function BootGate() {
                       options={{ headerShown: true, title: 'Profile' }} />
         <Stack.Screen name={ROUTES.Settings}       component={SettingsScreen}
                       options={{ headerShown: true, title: 'Settings' }} />
-        <Stack.Screen name={ROUTES.CrewSettings}   component={CrewSettingsScreen}
-                      options={{ headerShown: true, title: 'Crew settings' }} />
+        <Stack.Screen name={ROUTES.CircleSettings}   component={CircleSettingsScreen}
+                      options={{ headerShown: true, title: 'Circle settings' }} />
         <Stack.Screen name={ROUTES.IssueBotToken}  component={IssueBotTokenScreen}
                       options={{ headerShown: true, title: 'Bot token QR' }} />
         <Stack.Screen name={ROUTES.PodSignIn}      component={PodSignInScreen}
@@ -323,8 +323,8 @@ function BootGate() {
         <Stack.Screen name={ROUTES.ChatThread}     component={ChatThreadScreen}
                       options={{ headerShown: true, title: 'Chat' }} />
         {/* M1-S2 — full wizard with storage-policy picker */}
-        <Stack.Screen name={ROUTES.CreateCrew}    component={CreateCrewScreen}
-                      options={{ presentation: 'modal', headerShown: true, title: 'New crew' }} />
+        <Stack.Screen name={ROUTES.CreateCircle}    component={CreateCircleScreen}
+                      options={{ presentation: 'modal', headerShown: true, title: 'New circle' }} />
         {/* M1-S4 — pod & storage settings */}
         <Stack.Screen name={ROUTES.PodSettings}   component={PodSettingsScreen}
                       options={{ headerShown: true, title: 'Pod & storage' }} />

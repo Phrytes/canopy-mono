@@ -3,11 +3,11 @@
  *
  * Phase 41.3.4 (2026-05-09).
  *
- * Calls `issueInvite({ttlMs, role})` via the active crew, encodes the
+ * Calls `issueInvite({ttlMs, role})` via the active circle, encodes the
  * payload as `tasks://invite?token=<base64url-json>`, renders via
  * `<QrCodeView>` from `@canopy/react-native/qr/view`.
  *
- * Reachable from CrewSettings (Phase 41.8) — the V1 UI doesn't link
+ * Reachable from CircleSettings (Phase 41.8) — the V1 UI doesn't link
  * here from Welcome since you need an active admin role first.
  */
 

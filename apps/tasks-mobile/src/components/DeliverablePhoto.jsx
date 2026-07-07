@@ -4,7 +4,7 @@
  *
  * Phase 41.6.2 (2026-05-09).
  *
- * Reads the photo bytes via the active crew's `dataSource.read(ref)`
+ * Reads the photo bytes via the active circle's `dataSource.read(ref)`
  * — SubmitScreen writes the data-URL form (Phase 41.5), so the
  * Image src consumes the value verbatim.
  */
@@ -31,7 +31,7 @@ export function DeliverablePhoto({ deliverable, thumbSize = 96 }) {
     if (!isPhoto || !zoom) return;
     let cancelled = false;
     (async () => {
-      const cs = svc?.crews?.get(svc?.activeCircleId);
+      const cs = svc?.circles?.get(svc?.activeCircleId);
       if (!cs?.dataSource?.read) return;
       try {
         const v = await cs.dataSource.read(deliverable.ref);

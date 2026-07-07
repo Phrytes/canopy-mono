@@ -41,7 +41,7 @@ export async function attachPodToBundle({
     throw new Error('attachPodToBundle: bundle missing cache.attachInner (cache:false?)');
   }
   const id   = identity ?? bundle.agent?.identity ?? null;
-  const crew = circleId   ?? bundle.groupId ?? null;
+  const circle = circleId   ?? bundle.groupId ?? null;
   const info = agentInfo ?? {
     deviceId: bundle.deviceId ?? bundle.substrateDeviceId ?? bundle.agent?.address ?? 'stoop-device',
     agentUri: bundle.localActor ?? webid ?? 'agent://stoop',
@@ -64,7 +64,7 @@ export async function attachPodToBundle({
     bundle._podCtx.classify   = classify;
     bundle._podCtx.reverse    = reverseResolve;
     bundle._podCtx.podRouting = bundle.podRouting ?? null;
-    bundle._podCtx.circleId     = crew;
+    bundle._podCtx.circleId     = circle;
     bundle._podCtx.vars       = {};
     bundle._podCtx.active     = !!(bundle.podRouting && classify);
   }

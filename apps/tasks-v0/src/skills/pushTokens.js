@@ -2,17 +2,17 @@
  * setMyPushToken skill — Tasks Phase 41.18.5 (2026-05-10).
  *
  * Lets the mobile app register its Expo push token on the active
- * crew so the relay-side push sender (V1.5 PushChannel) can wake
+ * circle so the relay-side push sender (V1.5 PushChannel) can wake
  * the device. Two-tenant-friendly shape:
  *
- *   crew.config.pushTokens[webid] = {
+ *   circle.config.pushTokens[webid] = {
  *     <appKey>: { token, platform, registeredAt },
  *     ...
  *   }
  *
  * The legacy shape (`pushTokens[webid] = '<token-string>'`) used by
  * V1.5 desktop pushes still works on the read side: see
- * `apps/tasks-v0/src/Crew.js`'s `tokenFor` reader. New writes always
+ * `apps/tasks-v0/src/Circle.js`'s `tokenFor` reader. New writes always
  * land in the per-app shape.
  *
  * Tasks-mobile passes `appKey: 'tasks'`. If a future Stoop install
@@ -40,8 +40,8 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('setMyPushToken', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) {
         return { error: 'webid required (from envelope)' };
       }
@@ -57,7 +57,7 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
       if (!token) {
         // Empty token → unregister this app's entry (token rotation
         // on Expo: previous one becomes invalid).
-        const existing = (crew.liveCrew?.pushTokens ?? {})[from];
+        const existing = (circle.liveCircle?.pushTokens ?? {})[from];
         if (!existing || typeof existing !== 'object') {
           // Either no entry or a legacy string. In both cases there
           // is nothing app-keyed to remove.
@@ -65,17 +65,17 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
         }
         const next = { ...existing };
         delete next[appKey];
-        const nextAll = { ...(crew.liveCrew?.pushTokens ?? {}) };
+        const nextAll = { ...(circle.liveCircle?.pushTokens ?? {}) };
         if (Object.keys(next).length === 0) {
           delete nextAll[from];
         } else {
           nextAll[from] = next;
         }
-        crew.crewMutator({ pushTokens: nextAll });
+        circle.circleMutator({ pushTokens: nextAll });
         return { ok: true, removed: true, appKey };
       }
 
-      const existing = (crew.liveCrew?.pushTokens ?? {})[from];
+      const existing = (circle.liveCircle?.pushTokens ?? {})[from];
       const perWebid = (existing && typeof existing === 'object' && !Array.isArray(existing))
         ? { ...existing }
         : {};
@@ -91,9 +91,9 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
         registeredAt: Date.now(),
       };
 
-      const nextAll = { ...(crew.liveCrew?.pushTokens ?? {}) };
+      const nextAll = { ...(circle.liveCircle?.pushTokens ?? {}) };
       nextAll[from] = perWebid;
-      crew.crewMutator({ pushTokens: nextAll });
+      circle.circleMutator({ pushTokens: nextAll });
 
       return {
         ok:       true,
@@ -102,17 +102,17 @@ export function buildPushTokenSkills({ bundleResolver } = {}) {
         tokenHint: token.slice(0, 12) + '…',
       };
     }, {
-      description: 'Register or rotate this app\'s push token for the calling actor on the active crew.',
+      description: 'Register or rotate this app\'s push token for the calling actor on the active circle.',
       visibility:  'authenticated',
     }),
 
     defineSkill('getMyPushTokens', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) {
         return { error: 'webid required (from envelope)' };
       }
-      const entry = (crew.liveCrew?.pushTokens ?? {})[from];
+      const entry = (circle.liveCircle?.pushTokens ?? {})[from];
       if (entry == null) return { entry: null };
       // Mask tokens — never echo the full string back. Caller can
       // verify registration by comparing the `tokenHint` fingerprint.

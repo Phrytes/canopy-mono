@@ -36,14 +36,14 @@ export default defineConfig({
       // (platform parity — NOT mobile forks). Deep paths before barrel.
       '@canopy-app/tasks-v0/lib/substrateStack':  path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
       '@canopy-app/tasks-v0/substrateMirror':     path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
-      // M2-S8: multi-crew onboarding-skill dispatch (issueInvite /
+      // M2-S8: multi-circle onboarding-skill dispatch (issueInvite /
       // redeemInvite, registered once). Shared, not forked.
-      '@canopy-app/tasks-v0/multiCrewOnboarding': path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCrewOnboarding.js'),
+      '@canopy-app/tasks-v0/multiCircleOnboarding': path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCircleOnboarding.js'),
       '@canopy-app/tasks-v0/lib':                 path.resolve(repoRoot, 'apps/tasks-v0/src/lib'),
       '@canopy-app/tasks-v0/MeshAgent':       path.resolve(repoRoot, 'apps/tasks-v0/src/MeshAgent.js'),
       '@canopy-app/tasks-v0/wireSkills':      path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
       '@canopy-app/tasks-v0/bundleResolver':  path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
-      '@canopy-app/tasks-v0/Crew':            path.resolve(repoRoot, 'apps/tasks-v0/src/Crew.js'),
+      '@canopy-app/tasks-v0/Circle':            path.resolve(repoRoot, 'apps/tasks-v0/src/Circle.js'),
       '@canopy-app/tasks-v0/locales/en':            path.resolve(repoRoot, 'apps/tasks-v0/locales/en.json'),
       '@canopy-app/tasks-v0/locales/nl':            path.resolve(repoRoot, 'apps/tasks-v0/locales/nl.json'),
       '@canopy-app/tasks-v0/locales/shared/en':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/en.json'),

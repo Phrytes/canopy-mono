@@ -725,19 +725,19 @@
 
     "storage_heading":              { "text": "Group state storage", "doc": "A5 — heading of the storage-policy section on /group.html." },
     "storage_loading":              { "text": "Loading…", "doc": "Initial placeholder under the storage-policy heading." },
-    "storage_upgrade_oneway":       { "text": "Once pod-having → no way back to no-pod.", "doc": "Note shown above the disabled upgrade row when the crew is already pod-having." },
+    "storage_upgrade_oneway":       { "text": "Once pod-having → no way back to no-pod.", "doc": "Note shown above the disabled upgrade row when the circle is already pod-having." },
     "storage_new_policy_label":     { "text": "New storage form", "doc": "Label for the upgrade-target select on /group.html." },
     "storage_centralised_short":    { "text": "Centralised on a pod", "doc": "Short label for the centralised option in the upgrade select." },
     "storage_decentralised_short":  { "text": "Each member on own pod", "doc": "Short label for the decentralised option in the upgrade select." },
     "storage_hybrid_short":         { "text": "Hybrid", "doc": "Short label for the hybrid option in the upgrade select." },
     "storage_pod_uri_label":        { "text": "Pod URI", "doc": "Label for the groupPodUri input on /group.html upgrade row." },
-    "storage_upgrade_btn":          { "text": "Upgrade", "doc": "CTA on /group.html that calls setCrewStoragePolicy." },
+    "storage_upgrade_btn":          { "text": "Upgrade", "doc": "CTA on /group.html that calls setCircleStoragePolicy." },
     "storage_upgrading":            { "text": "Upgrading…", "doc": "Inline status while the upgrade is in flight." },
     "storage_upgraded":             { "text": "Storage updated.", "doc": "Inline success status after the upgrade." },
-    "storage_no_pod_label":         { "text": "On your own devices (no-pod).", "doc": "Full label shown on /group.html when the crew is no-pod. Different from create-group's wizard label." },
-    "storage_centralised_label":    { "text": "On a shared Solid pod.", "doc": "Full label shown on /group.html when the crew is centralised." },
-    "storage_decentralised_label":  { "text": "Each member on their own pod (cross-pod refs).", "doc": "Full label shown on /group.html when the crew is decentralised." },
-    "storage_hybrid_label":         { "text": "Hybrid — ledger on shared pod, drafts local.", "doc": "Full label shown on /group.html when the crew is hybrid." }
+    "storage_no_pod_label":         { "text": "On your own devices (no-pod).", "doc": "Full label shown on /group.html when the circle is no-pod. Different from create-group's wizard label." },
+    "storage_centralised_label":    { "text": "On a shared Solid pod.", "doc": "Full label shown on /group.html when the circle is centralised." },
+    "storage_decentralised_label":  { "text": "Each member on their own pod (cross-pod refs).", "doc": "Full label shown on /group.html when the circle is decentralised." },
+    "storage_hybrid_label":         { "text": "Hybrid — ledger on shared pod, drafts local.", "doc": "Full label shown on /group.html when the circle is hybrid." }
   },
   "auth_callback": {
     "page_title":      { "text": "Stoop — Completing pod sign-in", "doc": "Browser tab title for /auth-callback.html, the OIDC redirect target page." },

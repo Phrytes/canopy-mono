@@ -257,13 +257,13 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
   });
 
   it("does NOT scope 'create' (a new container must not inherit the open circle)", () => {
-    const input = ready('create', { name: 'New crew' });
+    const input = ready('create', { name: 'New circle' });
     expect(scopeReadyDispatch(input, 'c1')).toBe(input);
   });
 
-  it('DOES scope id-targeted mutations to the active circle (multi-pod crew routing)', () => {
-    // canopy-chat is multi-pod: a mutation needs the circle's crew/group to FIND its target item,
-    // else the wrong crew reports "item not found" (device-verified on `done <task>`).
+  it('DOES scope id-targeted mutations to the active circle (multi-pod circle routing)', () => {
+    // canopy-chat is multi-pod: a mutation needs the circle's circle/group to FIND its target item,
+    // else the wrong circle reports "item not found" (device-verified on `done <task>`).
     for (const v of ['claim', 'complete', 'submit', 'approve', 'reject', 'remove']) {
       const r = scopeReadyDispatch(ready(v, { id: 'task-9' }), 'c1');
       expect(itemCircleId(r.args)).toBe('c1');     // circleId/circleId/groupId now bound to the active circle
@@ -283,10 +283,10 @@ describe('scopeReadyDispatch — F1 active-circle binding (5.3)', () => {
   });
 
   it("respects an explicit scope the caller already chose (doesn't override)", () => {
-    const input = ready('add', { text: 't', circleId: 'explicit-crew' });
+    const input = ready('add', { text: 't', circleId: 'explicit-circle' });
     const r = scopeReadyDispatch(input, 'active-circle');
     expect(r).toBe(input);                  // untouched wholesale
-    expect(r.args.circleId).toBe('explicit-crew');
+    expect(r.args.circleId).toBe('explicit-circle');
   });
 
   it('treats an empty-string scope arg as unset → injects', () => {

@@ -68,7 +68,7 @@ they fit together.
   `circleId` is worn several ways at once: the **audience**, the **storage key** (data is keyed by `circle + type`),
   the **capability-policy scope** (permissions are per-circle), and the **pod routing key**. A circle is itself an
   item-type. (See `packages/circles`.)
-- **Governance** — closed groups (crews, neighbourhoods) run their own membership/roles; *create-group* is
+- **Governance** — closed groups (circles, neighbourhoods) run their own membership/roles; *create-group* is
   treated as a governance step, since there is no central trust authority.
 
 ## Capabilities (the algebra)

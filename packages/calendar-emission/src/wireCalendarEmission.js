@@ -1,7 +1,7 @@
 /**
  * wireCalendarEmission — Tasks V2.1.
  *
- * Subscribes a per-member calendar-emission listener to the crew's
+ * Subscribes a per-member calendar-emission listener to the circle's
  * itemStore. On every relevant event, debounce 60 s, then rebuild the
  * `.ics` for that member and write it to a configurable pod path.
  *
@@ -31,9 +31,9 @@ const RELEVANT_EVENTS = [
  * @param {object} args
  * @param {object} args.itemStore             — emits the events above
  * @param {object} args.dataSource            — local-store cache
- * @param {object} args.crew                  — live crew config
+ * @param {object} args.circle                  — live circle config
  * @param {string} args.member                — webid of the calendar's owner
- * @param {string} [args.path]                — defaults to per-crew mem:// path
+ * @param {string} [args.path]                — defaults to per-circle mem:// path
  * @param {number} [args.debounceMs=60000]
  * @param {() => number} [args.now]
  * @returns {{ detach: () => void, flushNow: () => Promise<void> }}
@@ -42,7 +42,7 @@ const RELEVANT_EVENTS = [
 export function wireCalendarEmission({
   itemStore,
   dataSource,
-  crew,
+  circle,
   member,
   path,
   debounceMs = DEFAULT_DEBOUNCE_MS,
@@ -53,7 +53,7 @@ export function wireCalendarEmission({
   if (typeof member !== 'string' || !member) {
     throw new TypeError('wireCalendarEmission: member (webid) required');
   }
-  const circleId = crew?.circleId ?? 'unknown';
+  const circleId = circle?.circleId ?? 'unknown';
   const fullPath = path ?? defaultEmissionPath(circleId);
 
   let timer = null;
@@ -84,7 +84,7 @@ export function wireCalendarEmission({
     }
 
     const ics = buildIcsFor({
-      circleId, crewName: crew?.name ?? circleId, member, tasks, now: now(),
+      circleId, circleName: circle?.name ?? circleId, member, tasks, now: now(),
     });
     prevTasks = tasks;
     if (ics === lastIcs) return;     // diff-before-write

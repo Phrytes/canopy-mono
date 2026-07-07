@@ -12,7 +12,7 @@
  *     up on the next debounce.
  *   - `rejectSchedule({taskId})` — self only. No-op (UI affordance).
  *
- * Working hours come from `liveCrew.workingHours` first, then from
+ * Working hours come from `liveCircle.workingHours` first, then from
  * `member.workingHours` if set (per-member override), else default
  * Mon-Fri 09:00-17:00.
  */
@@ -31,13 +31,13 @@ const DEFAULT_WORKING_HOURS = Object.freeze([
   { day: 'fri', start: '09:00', end: '17:00' },
 ]);
 
-function workingHoursFor(crew, webid) {
-  const member = (crew?.members ?? []).find((m) => m?.webid === webid);
+function workingHoursFor(circle, webid) {
+  const member = (circle?.members ?? []).find((m) => m?.webid === webid);
   if (Array.isArray(member?.workingHours?.windows) && member.workingHours.windows.length > 0) {
     return member.workingHours.windows;
   }
-  if (Array.isArray(crew?.workingHours?.windows) && crew.workingHours.windows.length > 0) {
-    return crew.workingHours.windows;
+  if (Array.isArray(circle?.workingHours?.windows) && circle.workingHours.windows.length > 0) {
+    return circle.workingHours.windows;
   }
   return [...DEFAULT_WORKING_HOURS];
 }
@@ -53,8 +53,8 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
 
   return [
     defineSkill('suggestSchedule', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const a = argsFromParts(parts);
       const lookaheadDays = Number.isFinite(a.lookaheadDays) && a.lookaheadDays > 0
@@ -63,7 +63,7 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
       const now = Date.now();
       const range = { start: now, end: now + lookaheadDays * 86_400_000 };
 
-      const open = await crew.itemStore.listOpen({ assignee: from });
+      const open = await circle.itemStore.listOpen({ assignee: from });
       const tasks = open
         .filter((t) => Number.isFinite(t.dueAt))
         .map((t) => ({
@@ -76,11 +76,11 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
 
       let busyEvents = [];
       try {
-        busyEvents = await readMyCalendar({ dataSource: crew.dataSource, range });
+        busyEvents = await readMyCalendar({ dataSource: circle.dataSource, range });
       } catch { /* no calendar available — busy stays empty */ }
       const busySpans = busyEvents.map((e) => ({ start: e.start, end: e.end }));
 
-      const lc = crew.liveCrew ?? {};
+      const lc = circle.liveCircle ?? {};
       const workingHours = workingHoursFor(lc, from);
 
       const suggestions = suggestPure({
@@ -93,14 +93,14 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('acceptSchedule', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const a = argsFromParts(parts);
       if (typeof a.taskId !== 'string' || !a.taskId) return { error: 'taskId required' };
       if (!Number.isFinite(a.slotStart))             return { error: 'slotStart (ms) required' };
       if (!Number.isFinite(a.slotEnd))               return { error: 'slotEnd (ms) required' };
-      const task = await crew.itemStore.getById(a.taskId);
+      const task = await circle.itemStore.getById(a.taskId);
       if (!task)            return { error: 'task not found' };
       if (task.assignee !== from) return { error: 'only the assignee can accept a schedule' };
       const estimateMinutes = Math.round((a.slotEnd - a.slotStart) / 60_000);
@@ -108,7 +108,7 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
       if (!Number.isFinite(task.estimateMinutes) && estimateMinutes > 0) {
         patch.estimateMinutes = estimateMinutes;
       }
-      const updated = await crew.itemStore.update(a.taskId, patch, { actor: from });
+      const updated = await circle.itemStore.update(a.taskId, patch, { actor: from });
       return { ok: true, task: updated };
     }, {
       description: 'Accept a proposed slot for one of my tasks (self only).',
@@ -116,8 +116,8 @@ export function buildPlannerSkills({ bundleResolver } = {}) {
     }),
 
     defineSkill('rejectSchedule', async ({ parts, from, envelope }) => {
-      const crew = bundleResolver(parts, { envelope, from });
-      if (!crew) return { error: 'circleId required' };
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
       if (typeof from !== 'string' || !from) return { error: 'webid required' };
       const a = argsFromParts(parts);
       if (typeof a.taskId !== 'string' || !a.taskId) return { error: 'taskId required' };

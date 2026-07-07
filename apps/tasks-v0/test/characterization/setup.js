@@ -1,7 +1,7 @@
 /**
  * Shared characterization-corpus harness.
  *
- * Reuses `mountLocalUi` + `createCrewAgent` from the existing
+ * Reuses `mountLocalUi` + `createCircleAgent` from the existing
  * `phase8-ui.test.js` pattern; centralises the boilerplate so each
  * per-page characterization test is small.
  *
@@ -19,16 +19,16 @@ import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
 import { renderWeb }                 from '@canopy/app-manifest';
 
 import { buildBundle }       from '../../src/storage/buildBundle.js';
-import { createCrewAgent }   from '../../src/Crew.js';
+import { createCircleAgent }   from '../../src/Circle.js';
 import { tasksManifest }     from '../../manifest.js';
 
 export const ANNE  = 'https://id.example/anne';
 export const FRITS = 'https://id.example/frits';
 export const KID   = 'https://id.example/kid';
 
-export const DEFAULT_CREW = Object.freeze({
-  circleId:  'characterization-crew',
-  name:    'Characterization Crew',
+export const DEFAULT_CIRCLE = Object.freeze({
+  circleId:  'characterization-circle',
+  name:    'Characterization Circle',
   kind:    'project',
   members: [
     { webid: ANNE,  displayName: 'Anne',  role: 'admin' },
@@ -48,14 +48,14 @@ const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web')
  *
  * @param {object} [opts]
  * @param {string} [opts.actor=ANNE]
- * @param {object} [opts.crewConfig=DEFAULT_CREW]
+ * @param {object} [opts.circleConfig=DEFAULT_CIRCLE]
  * @param {object} [opts.extraStaticFiles]
  *   Additional static files to serve (merged with the default
  *   `/tasks-config.json` overlay).
  * @returns {Promise<{
  *   baseUrl: string,
  *   bundle: object,
- *   crewState: object,
+ *   circleState: object,
  *   fetchPage: (name: string) => Promise<string>,
  *   fetchJson: (path: string) => Promise<any>,
  *   callSkill: (skillId: string, args?: object) => Promise<any>,
@@ -64,26 +64,26 @@ const WEB_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web')
  */
 export async function buildCharacterizationFixture({
   actor       = ANNE,
-  crewConfig  = DEFAULT_CREW,
+  circleConfig  = DEFAULT_CIRCLE,
   extraStaticFiles,
 } = {}) {
   const id  = await AgentIdentity.generate(new VaultMemory());
   const bus = new InternalBus();
   const lsBundle = buildBundle();
 
-  const bundle = await createCrewAgent({
-    crewConfig,
+  const bundle = await createCircleAgent({
+    circleConfig,
     localStoreBundle:     lsBundle,
     wireOnboardingSkills: false,
     identity:             id,
     transport:            new InternalTransport(bus, id.pubKey),
-    label:                `Crew(${crewConfig.circleId})-characterization`,
+    label:                `Circle(${circleConfig.circleId})-characterization`,
   });
 
   const tasksConfig = {
     actor,
-    roles: Object.fromEntries(crewConfig.members.map((m) => [m.webid, m.role])),
-    crew:  { circleId: crewConfig.circleId, name: crewConfig.name, kind: crewConfig.kind },
+    roles: Object.fromEntries(circleConfig.members.map((m) => [m.webid, m.role])),
+    circle:  { circleId: circleConfig.circleId, name: circleConfig.name, kind: circleConfig.kind },
   };
 
   // Slice B.1 — `dag.html` (and future renderWeb pages) consume
@@ -156,7 +156,7 @@ export async function buildCharacterizationFixture({
     baseUrl: ui.url,
 
     bundle,
-    crewState: bundle._crewState,
+    circleState: bundle._circleState,
 
     fetchPage(name) {
       return fetch(`${ui.url}/${name}`).then((r) => r.text());

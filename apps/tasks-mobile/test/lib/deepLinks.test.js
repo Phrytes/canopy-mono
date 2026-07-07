@@ -27,16 +27,16 @@ describe('parseDeepLink — Tasks scheme', () => {
   it('classifies tasks://post?id=t1 → post', () => {
     expect(parseDeepLink('tasks://post?id=t1').kind).toBe('post');
   });
-  it('classifies tasks://crew?id=c1 → crew', () => {
-    expect(parseDeepLink('tasks://crew?id=c1').kind).toBe('crew');
+  it('classifies tasks://circle?id=c1 → circle', () => {
+    expect(parseDeepLink('tasks://circle?id=c1').kind).toBe('circle');
   });
   it('classifies invite with valid token (signed)', () => {
-    const token = JSON.stringify({ groupId: 'crew-a', signature: 'sig' });
+    const token = JSON.stringify({ groupId: 'circle-a', signature: 'sig' });
     const url = `tasks://invite?token=${encodeURIComponent(token)}`;
     expect(parseDeepLink(url).kind).toBe('invite');
   });
   it('classifies invite with code', () => {
-    const token = JSON.stringify({ groupId: 'crew-a', code: 'short-code' });
+    const token = JSON.stringify({ groupId: 'circle-a', code: 'short-code' });
     const url = `tasks://invite?token=${encodeURIComponent(token)}`;
     expect(parseDeepLink(url).kind).toBe('invite');
   });
@@ -67,8 +67,8 @@ describe('actionToNavigation', () => {
     expect(r.name).toBe(ROUTES.TaskDetail);
     expect(r.params.id).toBe('t1');
   });
-  it('maps crew → Workspace with {circleId}', () => {
-    const r = actionToNavigation({ kind: 'crew', params: { id: 'c1' } });
+  it('maps circle → Workspace with {circleId}', () => {
+    const r = actionToNavigation({ kind: 'circle', params: { id: 'c1' } });
     expect(r.name).toBe(ROUTES.Workspace);
     expect(r.params.circleId).toBe('c1');
   });

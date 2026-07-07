@@ -135,8 +135,8 @@ shell / per-circle config); the host itself is policy-free.
 
 ## What V0 does NOT do (SP-4b scope)
 
-- **No tasks-v0 multi-crew generalisation.** tasks-v0's V2.8 topology
-  (`bundleResolver` / `wireSkills` / `CrewState`) is real production
+- **No tasks-v0 multi-circle generalisation.** tasks-v0's V2.8 topology
+  (`bundleResolver` / `wireSkills` / `CircleState`) is real production
   code with 542 passing tests; generalising it through the host is
   SP-4b, with its own regression gate.
 - **No collision resolution.** The host detects collisions; picking a
@@ -188,5 +188,5 @@ interface ComposedView {
 
 - **SP-4 V0** (this package) — host substrate; tested standalone
   against synthetic manifests; **zero changes to existing apps**.
-- **SP-4b** — tasks-v0 multi-crew generalisation through the host.
+- **SP-4b** — tasks-v0 multi-circle generalisation through the host.
   See `CODING-uniforme-representatie.md` § SP-4b.

@@ -22,9 +22,9 @@ describe('photoPresets — preset shape', () => {
 });
 
 describe('photoPresets.deliverableRef', () => {
-  it('anchors photos under the crew\'s namespace', () => {
-    const ref = deliverableRef({ circleId: 'crew-a', taskId: 'urn:uuid:t1', photoId: 'abc' });
-    expect(ref).toBe('mem://tasks/crews/crew-a/deliverables/urn:uuid:t1/abc.jpg');
+  it('anchors photos under the circle\'s namespace', () => {
+    const ref = deliverableRef({ circleId: 'circle-a', taskId: 'urn:uuid:t1', photoId: 'abc' });
+    expect(ref).toBe('mem://tasks/circles/circle-a/deliverables/urn:uuid:t1/abc.jpg');
   });
   it('throws when any required field is missing', () => {
     expect(() => deliverableRef({ taskId: 't1', photoId: 'p' })).toThrow(/circleId/);

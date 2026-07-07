@@ -3,7 +3,7 @@
   "version":     "0.1.0",
   "private":     true,
   "type":        "module",
-  "description": "SP-4b + SP-11 recombination demo — household + tasks-v0 (multi-crew) composed in one @canopy/manifest-host, driven by a chat-agent with a mocked LLM. Proves: cross-app tool dispatch, multi-crew isolation through the host, namespaced (appId.opId) routing.",
+  "description": "SP-4b + SP-11 recombination demo — household + tasks-v0 (multi-circle) composed in one @canopy/manifest-host, driven by a chat-agent with a mocked LLM. Proves: cross-app tool dispatch, multi-circle isolation through the host, namespaced (appId.opId) routing.",
   "scripts": {
     "start": "node index.js",
     "test":  "vitest run"

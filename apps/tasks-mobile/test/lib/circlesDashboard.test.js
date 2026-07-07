@@ -1,11 +1,11 @@
 /**
- * Crews dashboard — busyTotal helper.
+ * Circles dashboard — busyTotal helper.
  *
  * Phase 41.7.3 (2026-05-09).
  */
 
 import { describe, it, expect } from 'vitest';
-import { busyTotal } from '../../src/screens/CrewsDashboardScreen.jsx';
+import { busyTotal } from '../../src/screens/CirclesDashboardScreen.jsx';
 
 describe('busyTotal', () => {
   it('sums the four counters', () => {

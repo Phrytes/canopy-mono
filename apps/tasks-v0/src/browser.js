@@ -1,9 +1,9 @@
 /**
  * tasks-v0 — browser entry for canopy-chat composition.
  *
- * Lets canopy-chat boot a real tasks-v0 Crew agent inside its own
+ * Lets canopy-chat boot a real tasks-v0 Circle agent inside its own
  * browser bundle, sharing an `InternalBus` so canopy-chat's
- * chatAgent can `.invoke(crewAgent.address, skillId, parts)` to
+ * chatAgent can `.invoke(circleAgent.address, skillId, parts)` to
  * reach every real task skill (addTask / claimTask / submitTask /
  * approveTask / listMyInbox / ...).
  *
@@ -27,21 +27,21 @@ import {
 } from '@canopy/core';
 
 import { buildBundle }     from './storage/buildBundle.js';
-import { createCrewAgent } from './Crew.js';
+import { createCircleAgent } from './Circle.js';
 import { buildMeshAgent }  from './MeshAgent.js';
 import { wireSkills }      from './wireSkills.js';
-import { multiCrewResolver, argsFromParts } from './bundleResolver.js';
-import { buildMultiCrewOnboardingSkills }   from './skills/multiCrewOnboarding.js';
+import { multiCircleResolver, argsFromParts } from './bundleResolver.js';
+import { buildMultiCircleOnboardingSkills }   from './skills/multiCircleOnboarding.js';
 
 /**
- * Build a tasks-v0 Crew agent on the shared bus.
+ * Build a tasks-v0 Circle agent on the shared bus.
  *
  * @param {object} args
  * @param {InternalBus}    args.bus           shared bus (canopy-chat owns it)
- * @param {object}         args.identityVault Vault for the crew agent's identity;
+ * @param {object}         args.identityVault Vault for the circle agent's identity;
  *                                            separate from the chat vault so
- *                                            crews don't pollute chat identity
- * @param {object}         args.crewConfig    {circleId, name, kind, members}
+ *                                            circles don't pollute chat identity
+ * @param {object}         args.circleConfig    {circleId, name, kind, members}
  * @param {object}         [args.persistDb]   Pass-through to `buildBundle`'s
  *                                            `persistDb` opt; mirrors stoop's
  *                                            `createBrowserStoopAgent`.  Pass
@@ -49,9 +49,9 @@ import { buildMultiCrewOnboardingSkills }   from './skills/multiCrewOnboarding.j
  *                                            browser path) or `{dbName,
  *                                            asyncStorage}` (RN).  Omit for
  *                                            in-memory only.
- * @param {string}         [args.label='TasksCrew']
+ * @param {string}         [args.label='TasksCircle']
  * @returns {Promise<{
- *   crew:    ReturnType<typeof createCrewAgent>,
+ *   circle:    ReturnType<typeof createCircleAgent>,
  *   address: string,
  *   close:   () => Promise<void>,
  * }>}
@@ -59,15 +59,15 @@ import { buildMultiCrewOnboardingSkills }   from './skills/multiCrewOnboarding.j
 export async function createBrowserTasksAgent({
   bus,
   identityVault,
-  crewConfig,
+  circleConfig,
   persistDb,
-  label = 'TasksCrew',
+  label = 'TasksCircle',
 }) {
   if (!bus) throw new TypeError('createBrowserTasksAgent: bus required');
   if (!identityVault) throw new TypeError('createBrowserTasksAgent: identityVault required');
-  if (!crewConfig?.circleId) throw new TypeError('createBrowserTasksAgent: crewConfig.circleId required');
+  if (!circleConfig?.circleId) throw new TypeError('createBrowserTasksAgent: circleConfig.circleId required');
 
-  // Per-crew identity, persisted in the supplied vault.  Survives
+  // Per-circle identity, persisted in the supplied vault.  Survives
   // page reloads when the vault is VaultLocalStorage / VaultIndexedDB.
   const identity = await (async () => {
     if (await identityVault.has('agent-privkey')) {
@@ -84,8 +84,8 @@ export async function createBrowserTasksAgent({
     ? await buildBundle({ persistDb })
     : buildBundle();
 
-  const crew = await createCrewAgent({
-    crewConfig,
+  const circle = await createCircleAgent({
+    circleConfig,
     localStoreBundle,
     // 2026-05-24 — flipped to true so canopy-chat's /invite + /redeem-invite
     // slashes (A9 #187) and /join-group wizard (C2 #196) actually reach
@@ -98,69 +98,69 @@ export async function createBrowserTasksAgent({
   });
 
   return {
-    crew,
+    circle,
     address: identity.pubKey,
-    close:   () => crew.close?.(),
+    close:   () => circle.close?.(),
   };
 }
 
 /**
- * Build a MULTI-crew tasks-v0 runtime on canopy-chat's shared bus.
+ * Build a MULTI-circle tasks-v0 runtime on canopy-chat's shared bus.
  *
- * Mirrors `buildMultiCrewRuntime` (the CLI / test fixture) but composes
+ * Mirrors `buildMultiCircleRuntime` (the CLI / test fixture) but composes
  * onto a caller-owned `bus` + identity vault instead of generating its
- * own.  One `meshAgent` owns the skill registry; a `crewsMap` of
- * CrewStates is dispatched by `multiCrewResolver` from `args.circleId` /
- * `args._scope`.  Each crew gets its own item-store root
- * (`mem://tasks/crews/<circleId>/`), so storage is split per crew — and
+ * own.  One `meshAgent` owns the skill registry; a `circlesMap` of
+ * CircleStates is dispatched by `multiCircleResolver` from `args.circleId` /
+ * `args._scope`.  Each circle gets its own item-store root
+ * (`mem://tasks/circles/<circleId>/`), so storage is split per circle — and
  * since `circleId ≡ circleId` (CIRCLE_ID_IS_CREW_ID_ALIAS), per circle.
  *
  * canopy-chat addition over the CLI runtime:
- *   - `ensureCrew(circleId)` lazily spawns a crew the first time a circle
+ *   - `ensureCircle(circleId)` lazily spawns a circle the first time a circle
  *     is touched (no pre-saved config needed — it inherits the primary
- *     crew's members so the local actor stays recognised).
- *   - the resolver falls back to the PRIMARY crew for unscoped calls,
- *     preserving the legacy single-crew behaviour every existing
+ *     circle's members so the local actor stays recognised).
+ *   - the resolver falls back to the PRIMARY circle for unscoped calls,
+ *     preserving the legacy single-circle behaviour every existing
  *     chat-shell flow + test relies on.
  *
  * @param {object} args
  * @param {InternalBus} args.bus               shared bus (canopy-chat owns it)
  * @param {object}      args.identityVault      Vault for the mesh agent identity
- * @param {object}      args.primaryCrewConfig  {circleId, name, kind, members}
+ * @param {object}      args.primaryCircleConfig  {circleId, name, kind, members}
  * @param {object}      [args.persistDb]        Pass-through to `buildBundle`'s
  *                                              `persistDb` opt for restart-
- *                                              survival.  All crews — primary
- *                                              + spawned via `ensureCrew` —
+ *                                              survival.  All circles — primary
+ *                                              + spawned via `ensureCircle` —
  *                                              share the SAME
  *                                              `localStoreBundle` (the same
  *                                              `CachingDataSource`); a single
  *                                              persistDb covers them all.
- *                                              Each crew namespaces its items
+ *                                              Each circle namespaces its items
  *                                              under
- *                                              `mem://tasks/crews/<circleId>/`
+ *                                              `mem://tasks/circles/<circleId>/`
  *                                              so the shared cache stays
  *                                              collision-free.
  * @param {string}      [args.label='TasksMeshAgent(cc)']
  * @returns {Promise<{
  *   agent:   object,            // the shared meshAgent (invoke target)
  *   address: string,            // meshAgent pubKey
- *   crewsMap: Map<string, object>,
- *   ensureCrew: (circleId: string, cfg?: object) => Promise<object|null>,
- *   primaryCrewState: object,
+ *   circlesMap: Map<string, object>,
+ *   ensureCircle: (circleId: string, cfg?: object) => Promise<object|null>,
+ *   primaryCircleState: object,
  *   close: () => Promise<void>,
  * }>}
  */
-export async function createBrowserMultiCrewTasksAgent({
+export async function createBrowserMultiCircleTasksAgent({
   bus,
   identityVault,
-  primaryCrewConfig,
+  primaryCircleConfig,
   persistDb,
   label = 'TasksMeshAgent(cc)',
 }) {
-  if (!bus) throw new TypeError('createBrowserMultiCrewTasksAgent: bus required');
-  if (!identityVault) throw new TypeError('createBrowserMultiCrewTasksAgent: identityVault required');
-  if (!primaryCrewConfig?.circleId) {
-    throw new TypeError('createBrowserMultiCrewTasksAgent: primaryCrewConfig.circleId required');
+  if (!bus) throw new TypeError('createBrowserMultiCircleTasksAgent: bus required');
+  if (!identityVault) throw new TypeError('createBrowserMultiCircleTasksAgent: identityVault required');
+  if (!primaryCircleConfig?.circleId) {
+    throw new TypeError('createBrowserMultiCircleTasksAgent: primaryCircleConfig.circleId required');
   }
 
   const identity = await (async () => {
@@ -170,8 +170,8 @@ export async function createBrowserMultiCrewTasksAgent({
     return AgentIdentity.generate(identityVault);
   })();
 
-  // Shared cache across primary + all spawned crews (each namespaces
-  // items under mem://tasks/crews/<circleId>/).  When `persistDb` is set,
+  // Shared cache across primary + all spawned circles (each namespaces
+  // items under mem://tasks/circles/<circleId>/).  When `persistDb` is set,
   // one persistence adapter covers them all.
   const localStoreBundle = persistDb
     ? await buildBundle({ persistDb })
@@ -184,8 +184,8 @@ export async function createBrowserMultiCrewTasksAgent({
     label,
   });
 
-  const primaryBundle = await createCrewAgent({
-    crewConfig:           primaryCrewConfig,
+  const primaryBundle = await createCircleAgent({
+    circleConfig:           primaryCircleConfig,
     localStoreBundle,
     identity,
     transport:            meshAgent.transport,
@@ -193,22 +193,22 @@ export async function createBrowserMultiCrewTasksAgent({
     registerSkills:       false,   // wireSkills owns registration below
     wireOnboardingSkills: false,
   });
-  const primaryCrewState = primaryBundle._crewState;
-  const crewsMap = new Map([[primaryCrewState.circleId, primaryCrewState]]);
+  const primaryCircleState = primaryBundle._circleState;
+  const circlesMap = new Map([[primaryCircleState.circleId, primaryCircleState]]);
 
-  // Members inherited by lazily-spawned circle crews so the local actor
-  // (chat agent pubKey, registered admin on the primary crew) is
+  // Members inherited by lazily-spawned circle circles so the local actor
+  // (chat agent pubKey, registered admin on the primary circle) is
   // recognised — and not denied by RolePolicy — in every circle.
-  const inheritedMembers = primaryCrewConfig.members ?? [];
+  const inheritedMembers = primaryCircleConfig.members ?? [];
 
-  async function ensureCrew(circleId, cfg = {}) {
+  async function ensureCircle(circleId, cfg = {}) {
     if (typeof circleId !== 'string' || !circleId) return null;
-    if (crewsMap.has(circleId)) return crewsMap.get(circleId);
-    const spawned = await createCrewAgent({
-      crewConfig: {
+    if (circlesMap.has(circleId)) return circlesMap.get(circleId);
+    const spawned = await createCircleAgent({
+      circleConfig: {
         circleId,
         name:    cfg.name    ?? circleId,
-        kind:    cfg.kind    ?? primaryCrewConfig.kind ?? 'circle',
+        kind:    cfg.kind    ?? primaryCircleConfig.kind ?? 'circle',
         members: cfg.members ?? inheritedMembers,
       },
       localStoreBundle,
@@ -218,17 +218,17 @@ export async function createBrowserMultiCrewTasksAgent({
       registerSkills:       false,
       wireOnboardingSkills: false,
     });
-    const cs = spawned._crewState;
-    crewsMap.set(circleId, cs);
+    const cs = spawned._circleState;
+    circlesMap.set(circleId, cs);
     return cs;
   }
 
   // cc dispatch resolver: a scoped call (circleId/_scope) routes to that
-  // crew; an unscoped call falls back to the primary crew (the legacy
-  // single-crew path).  A scoped-but-unspawned circleId returns null —
-  // the caller `ensureCrew()`s before dispatch, so this stays a guard
-  // against silent cross-crew leaks rather than a hot path.
-  const baseResolver = multiCrewResolver(crewsMap);
+  // circle; an unscoped call falls back to the primary circle (the legacy
+  // single-circle path).  A scoped-but-unspawned circleId returns null —
+  // the caller `ensureCircle()`s before dispatch, so this stays a guard
+  // against silent cross-circle leaks rather than a hot path.
+  const baseResolver = multiCircleResolver(circlesMap);
   function ccBundleResolver(parts, ctx) {
     const hit = baseResolver(parts, ctx);
     if (hit) return hit;
@@ -236,17 +236,17 @@ export async function createBrowserMultiCrewTasksAgent({
     const scoped =
       (typeof args.circleId === 'string' && args.circleId) ||
       (typeof args._scope === 'string' && args._scope);
-    return scoped ? null : primaryCrewState;
+    return scoped ? null : primaryCircleState;
   }
 
   wireSkills({
     meshAgent,
     bundleResolver: ccBundleResolver,
-    crewsProvider:  () => crewsMap.values(),
+    circlesProvider:  () => circlesMap.values(),
     members:        primaryBundle.members,
   });
 
-  for (const def of buildMultiCrewOnboardingSkills({ bundleResolver: ccBundleResolver })) {
+  for (const def of buildMultiCircleOnboardingSkills({ bundleResolver: ccBundleResolver })) {
     meshAgent.skills.register(def);
   }
 
@@ -255,9 +255,9 @@ export async function createBrowserMultiCrewTasksAgent({
   return {
     agent:   meshAgent,
     address: identity.pubKey,
-    crewsMap,
-    ensureCrew,
-    primaryCrewState,
+    circlesMap,
+    ensureCircle,
+    primaryCircleState,
     close:   () => meshAgent.close?.(),
   };
 }

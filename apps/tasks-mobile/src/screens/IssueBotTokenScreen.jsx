@@ -6,7 +6,7 @@
  * Phase 41.13 (2026-05-09).
  *
  * Replaces the TODO alert in BotBindingsSection. Reachable from
- * CrewSettings → Bot bindings → Issue token QR. Route param
+ * CircleSettings → Bot bindings → Issue token QR. Route param
  * `{chatId, webid}` identifies the binding to issue against; the
  * skill returns the cap-token blob which we encode into a
  * `tasks://bot-token?...` URL.

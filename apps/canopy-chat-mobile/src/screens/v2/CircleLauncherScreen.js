@@ -26,7 +26,7 @@ import {
   defaultViewModeFromPolicy,
   // P6.3 — per-circle activity preview + unread badge.
   buildTilePreviews, bumpSeenAt,
-  // P6.5 #342 — claim-router hook (mirror claimed tasks to my own crew).
+  // P6.5 #342 — claim-router hook (mirror claimed tasks to my own circle).
   makeAfterClaimHook,
   // P6.8 #346 — Nearby/HIER model + label helpers (board 8C).
   buildNearbyModel,
@@ -748,7 +748,7 @@ export default function CircleLauncherScreen({
   // P6.5 #342 — wire the claim-router hook once the bundle is ready.
   // On claimTask, the host hook reads the per-circle override; when
   // `flowThrough.tasksToPersonal` is true the claimed task is mirrored
-  // into the user's primary crew ('cc-default') tagged `via:<circleId>`
+  // into the user's primary circle ('cc-default') tagged `via:<circleId>`
   // so the "ON YOUR LIST" section below can surface it.  Web wires the
   // same hook from circleApp.js — keep this parallel.
   useEffect(() => {
@@ -756,7 +756,7 @@ export default function CircleLauncherScreen({
     bundle.agent.setAfterClaimHook(makeAfterClaimHook({
       getOverride:       (id) => overrideStore.get(id),
       resolveCircleName: async (id) => circles.find((c) => c.id === id)?.name ?? null,
-      addToPersonalCrew: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
+      addToPersonalCircle: async ({ text, originCircleId, originCircleName, originTaskId, tag }) => {
         if (typeof bundle.callSkill !== 'function') return null;
         try {
           return await bundle.callSkill('tasks', 'addTask', {

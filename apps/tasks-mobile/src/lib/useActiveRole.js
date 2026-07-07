@@ -1,6 +1,6 @@
 /**
  * useActiveRole — hook returning the caller's role in the active
- * crew, plus a per-role boolean shortcut.
+ * circle, plus a per-role boolean shortcut.
  *
  * Phase 41.8 (2026-05-09).
  * 41.18 follow-up — resolves the actor through the shared
@@ -10,7 +10,7 @@
  *                   pod attached, no real webid) finds its role
  *                   the same way the substrate's role policy does.
  *
- * Used by every CrewSettings section to gate its UI:
+ * Used by every CircleSettings section to gate its UI:
  *   const { role, isAdmin, isCoordinator } = useActiveRole();
  */
 
@@ -19,10 +19,10 @@ import { useService } from '../ServiceContext.js';
 
 export function useActiveRole() {
   const svc = useService();
-  const cs  = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
+  const cs  = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
   const actor = svc?.identity?.webid ?? svc?.identity?.pubKey ?? null;
 
-  const role = resolveActorRole({ from: actor, crewState: cs });
+  const role = resolveActorRole({ from: actor, circleState: cs });
 
   return {
     role,

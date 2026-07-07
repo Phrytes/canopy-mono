@@ -48,7 +48,7 @@ export function SettingsScreen() {
   const settingsHook = useSettings();
   const settings = settingsHook?.settings ?? null;
 
-  // 41.18.5 — register the Expo push token on the active crew via
+  // 41.18.5 — register the Expo push token on the active circle via
   // the new `setMyPushToken` skill. Token rotation re-fires this
   // callback; an empty token unregisters this app's entry.
   const setMyPushToken = useSkill('setMyPushToken');

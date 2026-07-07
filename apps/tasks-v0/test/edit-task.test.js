@@ -17,21 +17,21 @@
  *   - empty patch (no allowed fields supplied) → error
  *   - not-found id → error: 'not-found'
  *   - dependency cycle re-check on edit
- *   - paused / archived crew blocks edit (same gate as addTask)
+ *   - paused / archived circle blocks edit (same gate as addTask)
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { DataPart } from '@canopy/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 
 const ANNE  = 'https://id.example/anne';
 const FRITS = 'https://id.example/frits';
 const KID   = 'https://id.example/kid';
 
-const CREW = {
-  circleId:  'edit-task-test-crew',
+const CIRCLE = {
+  circleId:  'edit-task-test-circle',
   name:    'Edit-Task Test',
   kind:    'project',
   members: [
@@ -54,19 +54,19 @@ async function callSkill(agent, skillId, args, fromWebid) {
 
 describe('#219 — editTask skill', () => {
   let lsBundle;
-  let crew;
+  let circle;
   let taskA;
   let taskB;
 
   beforeEach(async () => {
     lsBundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     lsBundle,
       wireOnboardingSkills: false,
     });
-    const a = await callSkill(crew.agent, 'addTask', { text: 'Buy groceries' }, ANNE);
-    const b = await callSkill(crew.agent, 'addTask', { text: 'Take out trash' }, ANNE);
+    const a = await callSkill(circle.agent, 'addTask', { text: 'Buy groceries' }, ANNE);
+    const b = await callSkill(circle.agent, 'addTask', { text: 'Take out trash' }, ANNE);
     taskA = a.task;
     taskB = b.task;
     expect(taskA?.id).toBeTruthy();
@@ -74,11 +74,11 @@ describe('#219 — editTask skill', () => {
   });
 
   afterEach(async () => {
-    await crew?.close?.();
+    await circle?.close?.();
   });
 
   it('patches text + notes; returns updated task', async () => {
-    const r = await callSkill(crew.agent, 'editTask', {
+    const r = await callSkill(circle.agent, 'editTask', {
       id:    taskA.id,
       text:  'Buy groceries (Saturday)',
       notes: 'Lidl + AH; veg-only',
@@ -94,7 +94,7 @@ describe('#219 — editTask skill', () => {
 
   it('patches multiple fields in one call (dueAt + estimateMinutes)', async () => {
     const due = '2026-06-01T12:00:00Z';
-    const r = await callSkill(crew.agent, 'editTask', {
+    const r = await callSkill(circle.agent, 'editTask', {
       id:               taskA.id,
       dueAt:            due,
       estimateMinutes:  45,
@@ -110,12 +110,12 @@ describe('#219 — editTask skill', () => {
     // (claim/submit/approve/complete). The skill whitelists allowed
     // fields, so supplying ONLY a forbidden field is the same as
     // supplying an empty patch.
-    const r1 = await callSkill(crew.agent, 'editTask', {
+    const r1 = await callSkill(circle.agent, 'editTask', {
       id: taskA.id, assignee: KID,
     }, ANNE);
     expect(r1.error).toBe('no fields to update');
 
-    const r2 = await callSkill(crew.agent, 'editTask', {
+    const r2 = await callSkill(circle.agent, 'editTask', {
       id: taskA.id, completedAt: Date.now(),
     }, ANNE);
     expect(r2.error).toBe('no fields to update');
@@ -123,7 +123,7 @@ describe('#219 — editTask skill', () => {
     // Mixed patch: forbidden field silently dropped, allowed field
     // still applied.  Verifies the filter is a per-field whitelist,
     // not an all-or-nothing reject.
-    const r3 = await callSkill(crew.agent, 'editTask', {
+    const r3 = await callSkill(circle.agent, 'editTask', {
       id: taskA.id, assignee: KID, text: 'Renamed legitimately',
     }, ANNE);
     expect(r3.error).toBeUndefined();
@@ -132,47 +132,47 @@ describe('#219 — editTask skill', () => {
   });
 
   it('errors on missing id', async () => {
-    const r = await callSkill(crew.agent, 'editTask', { text: 'no id' }, ANNE);
+    const r = await callSkill(circle.agent, 'editTask', { text: 'no id' }, ANNE);
     expect(r.error).toBe('id required');
   });
 
   it('errors on empty patch (only id supplied, no fields)', async () => {
-    const r = await callSkill(crew.agent, 'editTask', { id: taskA.id }, ANNE);
+    const r = await callSkill(circle.agent, 'editTask', { id: taskA.id }, ANNE);
     expect(r.error).toBe('no fields to update');
   });
 
   it('returns error:not-found for unknown id', async () => {
-    const r = await callSkill(crew.agent, 'editTask', {
+    const r = await callSkill(circle.agent, 'editTask', {
       id: '01ZZZNOTREAL', text: 'whatever',
     }, ANNE);
     expect(r.error).toBe('not-found');
   });
 
-  it('paused crew rejects edit with error:crew-paused', async () => {
-    await callSkill(crew.agent, 'pauseCrew', {}, ANNE);
-    const r = await callSkill(crew.agent, 'editTask', {
+  it('paused circle rejects edit with error:circle-paused', async () => {
+    await callSkill(circle.agent, 'pauseCircle', {}, ANNE);
+    const r = await callSkill(circle.agent, 'editTask', {
       id: taskA.id, text: 'During pause',
     }, ANNE);
-    expect(r.error).toBe('crew-paused');
+    expect(r.error).toBe('circle-paused');
   });
 
-  it('archived crew rejects edit with error:crew-archived', async () => {
-    await callSkill(crew.agent, 'archiveCrew', {}, ANNE);
-    const r = await callSkill(crew.agent, 'editTask', {
+  it('archived circle rejects edit with error:circle-archived', async () => {
+    await callSkill(circle.agent, 'archiveCircle', {}, ANNE);
+    const r = await callSkill(circle.agent, 'editTask', {
       id: taskA.id, text: 'During archive',
     }, ANNE);
-    expect(r.error).toBe('crew-archived');
+    expect(r.error).toBe('circle-archived');
   });
 
   it('dependency cycle re-check: setting deps that form a cycle is rejected', async () => {
     // Make A depend on B first (legal — DAG: B → A).
-    const ok = await callSkill(crew.agent, 'editTask', {
+    const ok = await callSkill(circle.agent, 'editTask', {
       id: taskA.id, dependencies: [taskB.id],
     }, ANNE);
     expect(ok.error).toBeUndefined();
 
     // Now try to make B depend on A — would close the cycle A→B→A.
-    await expect(callSkill(crew.agent, 'editTask', {
+    await expect(callSkill(circle.agent, 'editTask', {
       id: taskB.id, dependencies: [taskA.id],
     }, ANNE)).rejects.toThrow(/cycle/i);
   });

@@ -1,11 +1,11 @@
 /**
  * bundleRegistry — AsyncStorage-backed list of bundles (groups,
- * crews, …) the user has joined + a pointer at the active one.
+ * circles, …) the user has joined + a pointer at the active one.
  *
  * Lifted from apps/stoop-mobile/src/lib/groupRegistry.js 2026-05-09
  * (Phase 41.0.b A5; Tasks-mobile is the second consumer — its
- * `CrewBundles.js` in Phase 41.7 reuses this shape verbatim with
- * `keyNamespace: 'tasks:crews'`).
+ * `CircleBundles.js` in Phase 41.7 reuses this shape verbatim with
+ * `keyNamespace: 'tasks:circles'`).
  *
  * The plan flagged this as "deferred until both apps are running" —
  * tasks-mobile is now starting, so the lift trips the rule of two.
@@ -35,7 +35,7 @@ async function _loadAsyncStorage() {
  * Build a registry instance for one app's bundles.
  *
  * @param {object} args
- * @param {string} args.keyNamespace  AsyncStorage key prefix, e.g. `'stoop:groups'` or `'tasks:crews'`
+ * @param {string} args.keyNamespace  AsyncStorage key prefix, e.g. `'stoop:groups'` or `'tasks:circles'`
  * @param {string} [args.idField='id'] field on each entry that uniquely identifies the bundle
  * @param {object} [args.storage]      inject for tests; defaults to AsyncStorage at first use
  * @returns {{

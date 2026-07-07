@@ -1,9 +1,9 @@
 /**
- * CalendarSyncSection — V2.1 calendar emission per crew.
+ * CalendarSyncSection — V2.1 calendar emission per circle.
  *
  * Phase 41.8.6 (2026-05-09).
  *
- * Admin/coord toggle for the crew-wide setting, plus a per-member
+ * Admin/coord toggle for the circle-wide setting, plus a per-member
  * URL display + status that members copy into their calendar app.
  */
 
@@ -22,8 +22,8 @@ export function CalendarSyncSection() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const cs = svc?.activeCircleId ? svc.crews.get(svc.activeCircleId) : null;
-  const enabled = !!cs?.liveCrew?.calendarEmission?.enabled;
+  const cs = svc?.activeCircleId ? svc.circles.get(svc.activeCircleId) : null;
+  const enabled = !!cs?.liveCircle?.calendarEmission?.enabled;
 
   const setEmission = useSkill('setCalendarEmission');
   const url   = useSkillResult('getCalendarEmissionUrl',    { memberWebid: actor }, [svc?.activeCircleId, actor]);
@@ -45,7 +45,7 @@ export function CalendarSyncSection() {
           marginBottom: SPACING.md,
         }}>
           <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm }}>
-            {t('mobile.crew_settings.calendar_enable_label')}
+            {t('mobile.circle_settings.calendar_enable_label')}
           </Text>
           <Switch
             value={enabled}
@@ -62,7 +62,7 @@ export function CalendarSyncSection() {
           backgroundColor: COLORS.surface,
         }}>
           <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, fontWeight: '500', marginBottom: SPACING.sm }}>
-            {t('mobile.crew_settings.calendar_url_label')}
+            {t('mobile.circle_settings.calendar_url_label')}
           </Text>
           <Text
             selectable
@@ -72,24 +72,24 @@ export function CalendarSyncSection() {
           </Text>
           {myStatus?.lastEmittedAt ? (
             <Text style={{ marginTop: SPACING.sm, color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-              {t('mobile.crew_settings.calendar_last_emitted', null)
+              {t('mobile.circle_settings.calendar_last_emitted', null)
                 .replace('{when}', _formatTime(myStatus.lastEmittedAt))}
             </Text>
           ) : null}
           {Number.isFinite(myStatus?.eventCount) ? (
             <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-              {t('mobile.crew_settings.calendar_event_count', null)
+              {t('mobile.circle_settings.calendar_event_count', null)
                 .replace('{count}', String(myStatus.eventCount))}
             </Text>
           ) : null}
         </View>
       ) : enabled ? (
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-          {t('mobile.crew_settings.calendar_url_pending')}
+          {t('mobile.circle_settings.calendar_url_pending')}
         </Text>
       ) : (
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-          {t('mobile.crew_settings.calendar_disabled')}
+          {t('mobile.circle_settings.calendar_disabled')}
         </Text>
       )}
     </View>

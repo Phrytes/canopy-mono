@@ -42,8 +42,8 @@ routing.resolve('sharing/tasks/abc');
 //   → 'https://anne.pod/sharing/tasks/abc'
 
 routing.resolve('group/buurt-abc/tasks/x');
-//   → 'https://anne.pod/buurt-abc/tasks/x'   (centralised crew)
-//   or 'pseudo-pod://laptop-anne/group/buurt-abc/tasks/x'  (no-pod crew)
+//   → 'https://anne.pod/buurt-abc/tasks/x'   (centralised circle)
+//   or 'pseudo-pod://laptop-anne/group/buurt-abc/tasks/x'  (no-pod circle)
 
 routing.isPodReachable();          // true / false (cache-backed)
 ```
@@ -62,7 +62,7 @@ functional design §4.3.1:
 | `private/drafts/<app>`     | `<anchor>/private/drafts/<app>`           | `pseudo-pod://<device>/private/drafts/<app>`   |
 | `sharing/profile-public`   | `<anchor>/sharing/public/profile-card`    | `pseudo-pod://<device>/sharing/public/profile-card` |
 | `sharing/<resource>`       | `<anchor>/sharing/<resource>`             | `pseudo-pod://<device>/sharing/<resource>`     |
-| `group/<circleId>/<container>` | per crew policy (centralised → group pod; no-pod → pseudo-pod) | pseudo-pod replication-ring |
+| `group/<circleId>/<container>` | per circle policy (centralised → group pod; no-pod → pseudo-pod) | pseudo-pod replication-ring |
 | `personal-in-group/<circleId>` | `<anchor>/personal-in-group/<circleId>`   | `pseudo-pod://<device>/personal-in-group/<circleId>` |
 
 Apps can declare additional storage-function names:
@@ -82,7 +82,7 @@ the mapping table (see below).
 resolve(storageFn, vars)
   → if storageFn starts with 'group/<circleId>/':
        (a) explicit mapping wins (a user-overridden 'group/<circleId>/*')
-       (b) crewPolicy(circleId) decides:
+       (b) circlePolicy(circleId) decides:
            - centralised → groupPodUri/<circleId>/<tail>
            - no-pod / decentralised / hybrid →
                pseudo-pod://<device>/group/<circleId>/<tail>
@@ -122,7 +122,7 @@ Wire shape (forward-additive):
     "sharing/*": "https://anne.pod/sharing/",
     "group/buurt-abc/*": "https://anne.pod/sharing/stoop/abc/"
   },
-  "crewPolicies": {
+  "circlePolicies": {
     "buurt-abc":     {"policy": "centralised", "groupPodUri": "https://anne.pod"},
     "household-xyz": {"policy": "no-pod"},
     "project-def":   {"policy": "decentralised"}
@@ -136,7 +136,7 @@ API:
 ```js
 await routing.reload();
 await routing.updateMapping({ fn: 'sharing/*', uri: 'https://other.pod/sharing/' });
-await routing.setCrewPolicy('buurt-xyz', { policy: 'no-pod' });
+await routing.setCirclePolicy('buurt-xyz', { policy: 'no-pod' });
 ```
 
 `reload()` pulls the latest config from the pseudo-pod. `null`
@@ -181,7 +181,7 @@ createPodRouting({ pseudoPod, deviceId, anchorPodUri?, reachabilityTTLms?, now? 
 
 // Resolution
 routing.resolve(storageFn, vars?)        → uri | null
-routing.crewPolicy(circleId)               → { policy, groupPodUri? }
+routing.circlePolicy(circleId)               → { policy, groupPodUri? }
 routing.listStorageFunctions()           → string[]
 routing.registerStorageFunction(name)    → void
 
@@ -193,7 +193,7 @@ routing.markPodUnreachable(uri?)         → void
 // Config I/O
 await routing.reload()                   → StorageMappingConfig | null
 await routing.updateMapping({fn, uri})   → void
-await routing.setCrewPolicy(circleId, p)   → void
+await routing.setCirclePolicy(circleId, p)   → void
 
 // Introspection
 routing.configResourceUri
@@ -216,7 +216,7 @@ routing.defaults                         // computed default policy
 - **Migration logic.** Moving from one-pod to two-pod, or adding
   a second pod, requires ref-rewriting in already-written
   resources. Open question per the functional design §4.3.6.
-- **`decentralised` and `hybrid` crew policies.** V0 treats both
+- **`decentralised` and `hybrid` circle policies.** V0 treats both
   as "use the pseudo-pod replication-ring" (same as `no-pod`).
   Future work splits them: `decentralised` stores per-member on
   each member's pod; `hybrid` mixes per-resource.

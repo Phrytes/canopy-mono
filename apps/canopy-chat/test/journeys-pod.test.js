@@ -129,12 +129,12 @@ describe.skipIf(!HAS_AB)('CC-FO.6 — receive a file + save to my pod (Alice ↔
 /* ─── CC-TK.2 — invite redemption across pods ─────────── */
 
 describe.skipIf(!HAS_AB)('CC-TK.2 — onboard with a real invite (Alice issues, Bob redeems)', () => {
-  it.todo('TODO when wired: Alice /crew-new + invite, Bob /onboard --invite, both see the crew', async () => {
+  it.todo('TODO when wired: Alice /circle-new + invite, Bob /onboard --invite, both see the circle', async () => {
     // When enabled (tasks-v0 V2 path):
-    //   1. Alice: /crew-new "test-crew" --kind=team
-    //   2. Alice: /invite-issue --crew=<id>  → returns code
+    //   1. Alice: /circle-new "test-circle" --kind=team
+    //   2. Alice: /invite-issue --circle=<id>  → returns code
     //   3. Bob:   /onboard --invite=<code>
-    //   4. Both Alice + Bob's /mytasks include the crew
+    //   4. Both Alice + Bob's /mytasks include the circle
     expect(A_WEBID && B_WEBID).toBeTruthy();
   });
 });

@@ -38,7 +38,7 @@ import { buildSkills }                 from '../src/skills/index.js';
 import { buildWorkspaceSkills }        from '../src/skills/workspace.js';
 import { buildInboxSkills }            from '../src/skills/inbox.js';
 import { buildSubtaskSkills }          from '../src/skills/subtasks.js';
-import { buildCrewControlSkills }      from '../src/skills/crewControls.js';
+import { buildCircleControlSkills }      from '../src/skills/circleControls.js';
 import { buildAppealSkill }            from '../src/skills/appeal.js';
 import { buildAvailabilitySkills }     from '../src/skills/availability.js';
 import { buildBotBindingSkills }       from '../src/skills/botBindings.js';
@@ -48,7 +48,7 @@ import { buildCustomRoleSkills }       from '../src/skills/customRoles.js';
 import { buildDashboardSkills }        from '../src/skills/dashboard.js';
 import { buildForceCompleteSkill }     from '../src/skills/forceComplete.js';
 import { buildInvoicingSkills }        from '../src/skills/invoicing.js';
-import { buildMultiCrewOnboardingSkills } from '../src/skills/multiCrewOnboarding.js';
+import { buildMultiCircleOnboardingSkills } from '../src/skills/multiCircleOnboarding.js';
 import { buildObservabilitySkills }    from '../src/skills/observability.js';
 import { buildPlannerSkills }          from '../src/skills/planner.js';
 import { buildProfileSkills }          from '../src/skills/profile.js';
@@ -97,21 +97,21 @@ function collectRealSkillIds() {
   // Mirror wireSkills() — every builder that registers skills onto
   // the agent.  Keep this list in sync when new builders surface.
   const defs = [
-    ...buildSkills({ ...stub, crewsProvider: () => [] }),
+    ...buildSkills({ ...stub, circlesProvider: () => [] }),
     ...buildWorkspaceSkills(stub),
     ...buildInboxSkills(stub),
     ...buildSubtaskSkills(stub),
-    ...buildCrewControlSkills(stub),
+    ...buildCircleControlSkills(stub),
     ...buildAppealSkill(stub),
     ...buildAvailabilitySkills(stub),
     ...buildBotBindingSkills(stub),
     ...buildCalendarEmissionSkills(stub),
     ...buildChatSkills(stub),
     ...buildCustomRoleSkills(stub),
-    ...buildDashboardSkills({ ...stub, crewsProvider: () => [] }),
+    ...buildDashboardSkills({ ...stub, circlesProvider: () => [] }),
     ...buildForceCompleteSkill(stub),
     ...buildInvoicingSkills(stub),
-    ...buildMultiCrewOnboardingSkills(stub),
+    ...buildMultiCircleOnboardingSkills(stub),
     ...buildObservabilitySkills(stub),
     ...buildPlannerSkills(stub),
     ...buildProfileSkills(stub),

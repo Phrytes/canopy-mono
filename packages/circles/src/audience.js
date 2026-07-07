@@ -19,12 +19,11 @@
  *   'private' / 'me'   → { kind: 'set', members: [ctx.me] }
  *   'household'        → { kind: 'set', members: ctx.householdMembers ?? [] }
  *   'role:NAME'        → { kind: 'set', members: ctx.roleMembers?.[NAME] ?? [] }
- *   'crew:ID'          → { kind: 'circle-ref', id: ID }   (alias, see README)
  *   'circle:ID'        → { kind: 'circle-ref', id: ID }
  *
- * NOTE — `crew:ID` is an alias for `circle:ID` because `circle.id` and
- * `task.circleId` share the same string identifier space.  See
- * `CIRCLE_ID_IS_CREW_ID_ALIAS` in `@canopy/item-types/src/types/circle.js`.
+ * NOTE — `circle.id` and `task.circleId` share the same string
+ * identifier space.  See `CIRCLE_ID_IS_CREW_ID_ALIAS` in
+ * `@canopy/item-types/src/types/circle.js`.
  */
 
 /**
@@ -52,8 +51,8 @@ export function normalizeAudience(a) {
       if (!name) throw new TypeError(`normalizeAudience: empty role name in "${a}"`);
       return { kind: 'role', name };
     }
-    if (a.startsWith('crew:') || a.startsWith('circle:')) {
-      const id = a.slice(a.indexOf(':') + 1);
+    if (a.startsWith('circle:')) {
+      const id = a.slice('circle:'.length);
       if (!id) throw new TypeError(`normalizeAudience: empty id in "${a}"`);
       return { kind: 'circle-ref', id };
     }

@@ -295,11 +295,11 @@ export default function App() {
         dlog.boot('booting agent bundle (App)');
         // Perf — first-boot seed flag.  tasks-v0's CachingDataSource
         // is not persistent on mobile, so the listOpen probe inside
-        // realAgent always sees an empty crew and re-seeds 4 addTasks
+        // realAgent always sees an empty circle and re-seeds 4 addTasks
         // (+ setMyHandle + setMyDisplayName for stoop profile).  Cost:
         // ~2.5s of the cold-boot wall clock on every launch.  This
         // flag flips after the first successful boot so subsequent
-        // boots skip the seed regardless of crew persistence.  When
+        // boots skip the seed regardless of circle persistence.  When
         // tasks-v0 gains AsyncStorage persistence the flag becomes
         // redundant (the probe will return non-empty); leaving the
         // flag in place is harmless.

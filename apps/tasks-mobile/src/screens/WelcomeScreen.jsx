@@ -1,20 +1,20 @@
 /**
  * WelcomeScreen — empty-state landing for first launch + after a
- * sign-out / leave-all-crews. Shows three onboarding paths:
+ * sign-out / leave-all-circles. Shows three onboarding paths:
  *
- *   1. Create a new crew  (→ creates the crew + jumps to OnboardIssue
+ *   1. Create a new circle  (→ creates the circle + jumps to OnboardIssue
  *      so the admin can issue invites for the rest of the household /
  *      project / team. The first-run path most users want.)
  *   2. Scan an invite QR  (→ ROUTES.OnboardScan)
  *   3. Restore from recovery phrase  (→ ROUTES.OnboardRestore)
  *
  * Phase 41.3.1 (2026-05-09).
- * 41.16 follow-up — added a solo-crew affordance.
- * 41.18 follow-up — promoted "solo crew (testing)" to a first-class
- *                   "Create a new crew" flow with kind picker + a
+ * 41.16 follow-up — added a solo-circle affordance.
+ * 41.18 follow-up — promoted "solo circle (testing)" to a first-class
+ *                   "Create a new circle" flow with kind picker + a
  *                   handoff into OnboardIssue (the existing invite-
  *                   QR screen). This makes the mobile bring-up path
- *                   match the desktop's `--crew` + invite flow.
+ *                   match the desktop's `--circle` + invite flow.
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -36,29 +36,29 @@ export function WelcomeScreen() {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
   const [showCreate, setShowCreate] = useState(false);
-  const [crewName,   setCrewName]   = useState('My household');
-  const [crewKind,   setCrewKind]   = useState('household');
+  const [circleName,   setCircleName]   = useState('My household');
+  const [circleKind,   setCircleKind]   = useState('household');
   const [busy,       setBusy]       = useState(false);
   const [error,      setError]      = useState(null);
 
-  // 41.18 follow-up — CrewsDashboard's "+ New crew" FAB navigates
+  // 41.18 follow-up — CirclesDashboard's "+ New circle" FAB navigates
   // here with `{openCreate: true}`. Open the modal automatically.
   useEffect(() => {
     if (route?.params?.openCreate) setShowCreate(true);
   }, [route?.params?.openCreate]);
 
-  const onCreateCrew = useCallback(async () => {
-    if (!svc?.joinCrew || busy) return;
+  const onCreateCircle = useCallback(async () => {
+    if (!svc?.joinCircle || busy) return;
     setBusy(true);
     setError(null);
     try {
       const pubKey = svc?.identity?.pubKey ?? 'local';
       const actor  = svc?.identity?.webid ?? `webid://local-${pubKey.slice(0, 12)}`;
-      const circleId = `crew-${Date.now().toString(36)}`;
-      await svc.joinCrew({
+      const circleId = `circle-${Date.now().toString(36)}`;
+      await svc.joinCircle({
         circleId,
-        name: crewName.trim() || 'My household',
-        kind: crewKind,
+        name: circleName.trim() || 'My household',
+        kind: circleKind,
         members: [
           {
             webid:       actor,
@@ -86,7 +86,7 @@ export function WelcomeScreen() {
     } finally {
       setBusy(false);
     }
-  }, [svc, busy, crewName, crewKind, nav]);
+  }, [svc, busy, circleName, circleKind, nav]);
 
   return (
     <View
@@ -141,15 +141,15 @@ export function WelcomeScreen() {
             fontWeight: '600',
           }}
         >
-          {t('mobile.welcome.create_cta', 'Create a new crew')}
+          {t('mobile.welcome.create_cta', 'Create a new circle')}
         </Text>
       </Pressable>
 
       {/* M1-S2 — full wizard with storage-policy picker */}
       <Pressable
-        onPress={() => nav.navigate(ROUTES.CreateCrew)}
+        onPress={() => nav.navigate(ROUTES.CreateCircle)}
         accessibilityRole="button"
-        accessibilityLabel="welcome-create-crew-wizard-cta"
+        accessibilityLabel="welcome-create-circle-wizard-cta"
         style={({ pressed }) => [
           {
             paddingVertical: SPACING.sm,
@@ -160,7 +160,7 @@ export function WelcomeScreen() {
         ]}
       >
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs }}>
-          {t('mobile.welcome.create_crew_wizard_cta', 'Create with storage policy…')}
+          {t('mobile.welcome.create_circle_wizard_cta', 'Create with storage policy…')}
         </Text>
       </Pressable>
 
@@ -230,7 +230,7 @@ export function WelcomeScreen() {
               fontSize: FONT_SIZES.lg, fontWeight: '600',
               color: COLORS.text, marginBottom: SPACING.sm,
             }}>
-              {t('mobile.welcome.create_modal_title', 'Create a new crew')}
+              {t('mobile.welcome.create_modal_title', 'Create a new circle')}
             </Text>
             <Text style={{
               fontSize: FONT_SIZES.sm, color: COLORS.textMuted,
@@ -241,14 +241,14 @@ export function WelcomeScreen() {
             </Text>
 
             <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, marginBottom: SPACING.xs }}>
-              {t('mobile.welcome.create_name_label', 'Crew name')}
+              {t('mobile.welcome.create_name_label', 'Circle name')}
             </Text>
             <TextInput
-              value={crewName}
-              onChangeText={setCrewName}
+              value={circleName}
+              onChangeText={setCircleName}
               placeholder="My household"
               placeholderTextColor={COLORS.textMuted}
-              accessibilityLabel="create-crew-name-input"
+              accessibilityLabel="create-circle-name-input"
               style={{
                 borderWidth: 1, borderColor: COLORS.border, borderRadius: RADII.sm,
                 padding: SPACING.md, fontSize: FONT_SIZES.md, color: COLORS.text,
@@ -258,24 +258,24 @@ export function WelcomeScreen() {
             />
 
             <Text style={{ color: COLORS.text, fontSize: FONT_SIZES.sm, marginBottom: SPACING.xs }}>
-              {t('mobile.welcome.create_kind_label', 'Crew type')}
+              {t('mobile.welcome.create_kind_label', 'Circle type')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
               {[
-                { id: 'household',   label: t('mobile.crews.kind_household')   },
-                { id: 'project',     label: t('mobile.crews.kind_project')     },
-                { id: 'team',        label: t('mobile.crews.kind_team')        },
-                { id: 'friends',     label: t('mobile.crews.kind_friends')     },
-                { id: 'maintenance', label: t('mobile.crews.kind_maintenance') },
+                { id: 'household',   label: t('mobile.circles.kind_household')   },
+                { id: 'project',     label: t('mobile.circles.kind_project')     },
+                { id: 'team',        label: t('mobile.circles.kind_team')        },
+                { id: 'friends',     label: t('mobile.circles.kind_friends')     },
+                { id: 'maintenance', label: t('mobile.circles.kind_maintenance') },
               ].map((c) => {
-                const active = crewKind === c.id;
+                const active = circleKind === c.id;
                 return (
                   <Pressable
                     key={c.id}
-                    onPress={() => setCrewKind(c.id)}
+                    onPress={() => setCircleKind(c.id)}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
-                    accessibilityLabel={`create-crew-kind-${c.id}`}
+                    accessibilityLabel={`create-circle-kind-${c.id}`}
                     style={{
                       paddingVertical: SPACING.xs,
                       paddingHorizontal: SPACING.sm,
@@ -319,21 +319,21 @@ export function WelcomeScreen() {
                 </Text>
               </Pressable>
               <Pressable
-                onPress={onCreateCrew}
-                disabled={busy || !crewName.trim()}
+                onPress={onCreateCircle}
+                disabled={busy || !circleName.trim()}
                 accessibilityRole="button"
-                accessibilityLabel="create-crew-submit"
+                accessibilityLabel="create-circle-submit"
                 style={{
                   paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
                   borderRadius: RADII.sm, marginLeft: SPACING.sm,
-                  backgroundColor: (busy || !crewName.trim()) ? COLORS.surfaceMuted : COLORS.primary,
+                  backgroundColor: (busy || !circleName.trim()) ? COLORS.surfaceMuted : COLORS.primary,
                 }}
               >
                 {busy ? (
                   <ActivityIndicator color={COLORS.textInverse} />
                 ) : (
                   <Text style={{
-                    color: (!crewName.trim()) ? COLORS.textMuted : COLORS.textInverse,
+                    color: (!circleName.trim()) ? COLORS.textMuted : COLORS.textInverse,
                     fontSize: FONT_SIZES.md, fontWeight: '600',
                   }}>
                     {t('mobile.welcome.create_submit', 'Create + invite')}

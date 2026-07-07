@@ -90,7 +90,7 @@ async function bootTestWorkspace() {
     if (appOrigin === 'household') return agent.callSkill(appOrigin, opId, args);
     if (appOrigin === 'tasks') {
       // Post-slice-1 (integration-plan 2026-05-23): tasks-v0 is the
-      // real crew agent composed in realAgent.js.
+      // real circle agent composed in realAgent.js.
       return agent.callSkill('tasks', opId, args);
     }
     if (appOrigin === 'stoop') {

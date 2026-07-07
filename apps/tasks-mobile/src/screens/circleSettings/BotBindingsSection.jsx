@@ -1,5 +1,5 @@
 /**
- * BotBindingsSection — V1.5 chat-bot bindings per crew.
+ * BotBindingsSection — V1.5 chat-bot bindings per circle.
  *
  * Phase 41.8.4 (2026-05-09).
  *
@@ -62,7 +62,7 @@ export function BotBindingsSection() {
   if (!isAdmin) {
     return (
       <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm }}>
-        {t('mobile.crew_settings.admin_only')}
+        {t('mobile.circle_settings.admin_only')}
       </Text>
     );
   }
@@ -71,7 +71,7 @@ export function BotBindingsSection() {
     <View>
       {entries.length === 0 ? (
         <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.sm, marginBottom: SPACING.md }}>
-          {t('mobile.crew_settings.bot_bindings_empty')}
+          {t('mobile.circle_settings.bot_bindings_empty')}
         </Text>
       ) : entries.map(([cid, wid]) => (
         <View
@@ -99,7 +99,7 @@ export function BotBindingsSection() {
               }}
             >
               <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.xs }}>
-                {t('mobile.crew_settings.issue_token_cta')}
+                {t('mobile.circle_settings.issue_token_cta')}
               </Text>
             </Pressable>
             <Pressable
@@ -123,7 +123,7 @@ export function BotBindingsSection() {
         <TextInput
           value={chatId}
           onChangeText={setChatId}
-          placeholder={t('mobile.crew_settings.bot_chat_id_placeholder')}
+          placeholder={t('mobile.circle_settings.bot_chat_id_placeholder')}
           placeholderTextColor={COLORS.textMuted}
           autoCapitalize="none"
           accessibilityLabel="bot-chat-id-input"
@@ -132,7 +132,7 @@ export function BotBindingsSection() {
         <TextInput
           value={webid}
           onChangeText={setWebid}
-          placeholder={t('mobile.crew_settings.bot_webid_placeholder')}
+          placeholder={t('mobile.circle_settings.bot_webid_placeholder')}
           placeholderTextColor={COLORS.textMuted}
           autoCapitalize="none"
           accessibilityLabel="bot-webid-input"
@@ -150,7 +150,7 @@ export function BotBindingsSection() {
           }}
         >
           <Text style={{ color: COLORS.textInverse, fontSize: FONT_SIZES.sm, fontWeight: '600' }}>
-            {t('mobile.crew_settings.bot_binding_add')}
+            {t('mobile.circle_settings.bot_binding_add')}
           </Text>
         </Pressable>
 

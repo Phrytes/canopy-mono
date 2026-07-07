@@ -1,17 +1,17 @@
 /**
- * CreateCrewScreen — full create-crew wizard with §II.2 storage-policy
+ * CreateCircleScreen — full create-circle wizard with §II.2 storage-policy
  * picker + optional group pod URI.
  *
- * M1-S2 (2026-05-18). Mirrors tasks-v0's `/welcome.html` create-crew
+ * M1-S2 (2026-05-18). Mirrors tasks-v0's `/welcome.html` create-circle
  * wizard and stoop-mobile's CreateGroupScreen 4-radio policy picker.
  *
  * Flow:
  *   1. Name + kind (5 chips)
- *   2. Crew ID slug (auto-generated from name, editable)
+ *   2. Circle ID slug (auto-generated from name, editable)
  *   3. Storage policy (4 radios: no-pod / centralised / decentralised
  *      / hybrid) with per-policy hints
  *   4. Group pod URI (shown only for centralised / hybrid)
- *   → calls `provisionMyCrew` skill then `joinCrew`
+ *   → calls `provisionMyCircle` skill then `joinCircle`
  *   → resets stack to Main + OnboardIssue (freshlyCreated=true)
  *
  * Note: WelcomeScreen has its own quick-create modal for the common
@@ -31,28 +31,28 @@ import { useSkill }   from '../lib/useSkill.js';
 import { useLocalisation }    from '../LocalisationProvider.js';
 import { ROUTES }     from '../navigation.js';
 
-const CREW_ID_RE = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$/;
+const CIRCLE_ID_RE = /^[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$|^[a-z0-9]$/;
 
-/** Slugify a name into a valid crew-id proposal. */
+/** Slugify a name into a valid circle-id proposal. */
 function _slugify(name) {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 48)
-    || `crew-${Date.now().toString(36)}`;
+    || `circle-${Date.now().toString(36)}`;
 }
 
-const CREW_KINDS = ['household', 'project', 'team', 'friends', 'maintenance'];
+const CIRCLE_KINDS = ['household', 'project', 'team', 'friends', 'maintenance'];
 const STORAGE_POLICIES = ['no-pod', 'centralised', 'decentralised', 'hybrid'];
 
-export function CreateCrewScreen() {
+export function CreateCircleScreen() {
   const nav        = useNavigation();
   const svc        = useService();
   const { t }      = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const provisionMyCrew = useSkill('provisionMyCrew');
+  const provisionMyCircle = useSkill('provisionMyCircle');
 
   const [name,          setName]          = useState('');
   const [circleId,        setCircleId]        = useState('');
@@ -70,11 +70,11 @@ export function CreateCrewScreen() {
   const needsPodUri = policy === 'centralised' || policy === 'hybrid';
 
   const canSubmit = name.trim().length > 0
-    && CREW_ID_RE.test(circleId)
+    && CIRCLE_ID_RE.test(circleId)
     && !busy;
 
   const onSubmit = useCallback(async () => {
-    if (!canSubmit || !svc?.joinCrew) return;
+    if (!canSubmit || !svc?.joinCircle) return;
     setBusy(true);
     setError(null);
     try {
@@ -85,10 +85,10 @@ export function CreateCrewScreen() {
         ? { policy, groupPodUri: groupPodUri.trim() }
         : { policy, groupPodUri: null };
 
-      // provisionMyCrew persists the config to local-store so it
-      // survives restarts. joinCrew builds the runtime CrewState.
-      if (provisionMyCrew?.call) {
-        await provisionMyCrew.call({
+      // provisionMyCircle persists the config to local-store so it
+      // survives restarts. joinCircle builds the runtime CircleState.
+      if (provisionMyCircle?.call) {
+        await provisionMyCircle.call({
           circleId:  circleId.trim(),
           name:    name.trim(),
           kind,
@@ -98,7 +98,7 @@ export function CreateCrewScreen() {
         });
       }
 
-      await svc.joinCrew({
+      await svc.joinCircle({
         circleId:  circleId.trim(),
         name:    name.trim(),
         kind,
@@ -119,7 +119,7 @@ export function CreateCrewScreen() {
     } finally {
       setBusy(false);
     }
-  }, [canSubmit, svc, provisionMyCrew, circleId, name, kind, policy, groupPodUri, needsPodUri, nav]);
+  }, [canSubmit, svc, provisionMyCircle, circleId, name, kind, policy, groupPodUri, needsPodUri, nav]);
 
   return (
     <ScrollView
@@ -130,25 +130,25 @@ export function CreateCrewScreen() {
       }}
     >
       <Text style={{ fontSize: FONT_SIZES.xl, fontWeight: '600', color: COLORS.text, marginBottom: SPACING.sm }}>
-        {t('mobile.create_crew.title', 'Create a new crew')}
+        {t('mobile.create_circle.title', 'Create a new circle')}
       </Text>
       <Text style={{ fontSize: FONT_SIZES.sm, color: COLORS.textMuted, marginBottom: SPACING.xl, lineHeight: 20 }}>
-        {t('mobile.create_crew.subtitle', 'Choose a storage policy before creating.')}
+        {t('mobile.create_circle.subtitle', 'Choose a storage policy before creating.')}
       </Text>
 
-      {/* Crew name */}
-      <SectionLabel label={t('mobile.create_crew.name_label', 'Crew name')} required />
+      {/* Circle name */}
+      <SectionLabel label={t('mobile.create_circle.name_label', 'Circle name')} required />
       <TextInput
         value={name}
         onChangeText={onNameChange}
-        placeholder={t('mobile.create_crew.name_placeholder', 'My household')}
+        placeholder={t('mobile.create_circle.name_placeholder', 'My household')}
         placeholderTextColor={COLORS.textMuted}
-        accessibilityLabel="create-crew-name"
+        accessibilityLabel="create-circle-name"
         style={_inputStyle(COLORS, SPACING, FONT_SIZES, RADII)}
       />
 
-      {/* Crew ID */}
-      <SectionLabel label={t('mobile.create_crew.id_label', 'Crew ID (slug)')} />
+      {/* Circle ID */}
+      <SectionLabel label={t('mobile.create_circle.id_label', 'Circle ID (slug)')} />
       <TextInput
         value={circleId}
         onChangeText={setCircleId}
@@ -156,34 +156,34 @@ export function CreateCrewScreen() {
         placeholderTextColor={COLORS.textMuted}
         autoCapitalize="none"
         autoCorrect={false}
-        accessibilityLabel="create-crew-id"
+        accessibilityLabel="create-circle-id"
         style={[
           _inputStyle(COLORS, SPACING, FONT_SIZES, RADII),
-          !CREW_ID_RE.test(circleId) && circleId.length > 0 && { borderColor: COLORS.danger },
+          !CIRCLE_ID_RE.test(circleId) && circleId.length > 0 && { borderColor: COLORS.danger },
         ]}
       />
-      {!CREW_ID_RE.test(circleId) && circleId.length > 0 ? (
+      {!CIRCLE_ID_RE.test(circleId) && circleId.length > 0 ? (
         <Text style={{ color: COLORS.danger, fontSize: FONT_SIZES.xs, marginTop: SPACING.xs }}>
-          {t('mobile.create_crew.id_error', 'Use lowercase letters, digits and hyphens only.')}
+          {t('mobile.create_circle.id_error', 'Use lowercase letters, digits and hyphens only.')}
         </Text>
       ) : null}
 
-      {/* Crew kind */}
-      <SectionLabel label={t('mobile.create_crew.kind_label', 'Crew type')} />
+      {/* Circle kind */}
+      <SectionLabel label={t('mobile.create_circle.kind_label', 'Circle type')} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: SPACING.lg }}>
-        {CREW_KINDS.map((k) => (
+        {CIRCLE_KINDS.map((k) => (
           <Chip
             key={k}
-            label={t(`mobile.crews.kind_${k}`, k)}
+            label={t(`mobile.circles.kind_${k}`, k)}
             active={kind === k}
             onPress={() => setKind(k)}
-            accessibilityLabel={`create-crew-kind-${k}`}
+            accessibilityLabel={`create-circle-kind-${k}`}
           />
         ))}
       </View>
 
       {/* Storage policy */}
-      <SectionLabel label={t('mobile.create_crew.policy_label', 'Storage policy')} />
+      <SectionLabel label={t('mobile.create_circle.policy_label', 'Storage policy')} />
       <View style={{ marginBottom: SPACING.lg }}>
         {STORAGE_POLICIES.map((p) => {
           const active = policy === p;
@@ -193,7 +193,7 @@ export function CreateCrewScreen() {
               onPress={() => setPolicy(p)}
               accessibilityRole="radio"
               accessibilityState={{ selected: active }}
-              accessibilityLabel={`create-crew-policy-${p}`}
+              accessibilityLabel={`create-circle-policy-${p}`}
               style={{
                 flexDirection: 'row', alignItems: 'flex-start',
                 paddingVertical: SPACING.md, paddingHorizontal: SPACING.md,
@@ -211,10 +211,10 @@ export function CreateCrewScreen() {
               }} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontWeight: '600', color: COLORS.text, fontSize: FONT_SIZES.md }}>
-                  {t(`mobile.create_crew.policy_${p}`, p)}
+                  {t(`mobile.create_circle.policy_${p}`, p)}
                 </Text>
                 <Text style={{ color: COLORS.textMuted, fontSize: FONT_SIZES.xs, marginTop: 2 }}>
-                  {t(`mobile.create_crew.policy_hint_${p}`, '')}
+                  {t(`mobile.create_circle.policy_hint_${p}`, '')}
                 </Text>
               </View>
             </Pressable>
@@ -225,16 +225,16 @@ export function CreateCrewScreen() {
       {/* Group pod URI — centralised / hybrid only */}
       {needsPodUri ? (
         <>
-          <SectionLabel label={t('mobile.create_crew.pod_uri_label', 'Group pod URI')} />
+          <SectionLabel label={t('mobile.create_circle.pod_uri_label', 'Group pod URI')} />
           <TextInput
             value={groupPodUri}
             onChangeText={setGroupPodUri}
-            placeholder="https://pod.example/groups/my-crew/"
+            placeholder="https://pod.example/groups/my-circle/"
             placeholderTextColor={COLORS.textMuted}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="url"
-            accessibilityLabel="create-crew-pod-uri"
+            accessibilityLabel="create-circle-pod-uri"
             style={[_inputStyle(COLORS, SPACING, FONT_SIZES, RADII), { marginBottom: SPACING.lg }]}
           />
         </>
@@ -264,7 +264,7 @@ export function CreateCrewScreen() {
           onPress={onSubmit}
           disabled={!canSubmit}
           accessibilityRole="button"
-          accessibilityLabel="create-crew-submit"
+          accessibilityLabel="create-circle-submit"
           style={{
             paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg,
             borderRadius: RADII.sm,
@@ -278,7 +278,7 @@ export function CreateCrewScreen() {
               color: canSubmit ? COLORS.textInverse : COLORS.textMuted,
               fontSize: FONT_SIZES.md, fontWeight: '600',
             }}>
-              {t('mobile.create_crew.submit', 'Create + invite')}
+              {t('mobile.create_circle.submit', 'Create + invite')}
             </Text>
           )}
         </Pressable>

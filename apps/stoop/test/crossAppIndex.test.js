@@ -24,7 +24,7 @@ const resolve = (fn) =>
   : null;
 
 // The exact innerKeyMap Agent.js builds (classify+resolve+join /
-// reverseResolve), bound to crew 'C'.
+// reverseResolve), bound to circle 'C'.
 const circleId = 'C';
 const innerKeyMap = {
   toInner: (p) => {
@@ -50,7 +50,7 @@ function mkInner(seed) {
 
 describe('Phase 3.3b — cross-app type-index via pullFromInner', () => {
   it('enumerates every object of a type regardless of authoring app', async () => {
-    // The canonical crew `items` container holds objects written by
+    // The canonical circle `items` container holds objects written by
     // DIFFERENT apps (Stoop + a hypothetical other app following the
     // same type-keyed standard) — same container because it is keyed
     // by type, not by app.

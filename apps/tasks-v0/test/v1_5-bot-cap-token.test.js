@@ -19,7 +19,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { InMemoryBridge } from '@canopy/chat-agent';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
-import { createCrewAgent } from '../src/Crew.js';
+import { createCircleAgent } from '../src/Circle.js';
 import { wireBotChannel } from '../src/bot/wireBotChannel.js';
 
 const ANNE  = 'https://id.example/anne';
@@ -28,7 +28,7 @@ const KID   = 'https://id.example/kid';
 const ANNE_CHAT = '111';
 const KID_CHAT  = '222';
 
-const CREW = {
+const CIRCLE = {
   circleId:  'oss-tools',
   name:    'OSS Tools NL',
   kind:    'project',
@@ -38,46 +38,46 @@ const CREW = {
   ],
 };
 
-function call(crew, name, data, from) {
-  return crew.agent.skills.get(name).handler({
+function call(circle, name, data, from) {
+  return circle.agent.skills.get(name).handler({
     parts: [{ type: 'DataPart', data: data ?? {} }],
     from,
-    agent: crew.agent,
+    agent: circle.agent,
     envelope: null,
   });
 }
 
 describe('V1.5 — cap-token-bound bot agent', () => {
-  let crew;
+  let circle;
 
   beforeEach(async () => {
     const bundle = buildBundle();
-    crew = await createCrewAgent({
-      crewConfig:           CREW,
+    circle = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle,
       wireOnboardingSkills: false,
     });
   });
 
   afterEach(async () => {
-    try { await crew.close(); } catch { /* noop */ }
+    try { await circle.close(); } catch { /* noop */ }
   });
 
   it('exposes a BotAgentRegistry on the bundle', async () => {
-    expect(crew.botAgentRegistry).toBeTruthy();
-    expect(typeof crew.botAgentRegistry.issue).toBe('function');
-    expect(typeof crew.botAgentRegistry.revoke).toBe('function');
+    expect(circle.botAgentRegistry).toBeTruthy();
+    expect(typeof circle.botAgentRegistry.issue).toBe('function');
+    expect(typeof circle.botAgentRegistry.revoke).toBe('function');
   });
 
   it('issueBotToken spawns a bot agent + holds a token; getBotChatBindings reflects mode', async () => {
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    const r = await call(crew, 'issueBotToken', { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    const r = await call(circle, 'issueBotToken', { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
     expect(r.ok).toBe(true);
     expect(r.tokenId).toBeTruthy();
     expect(r.botPubKey).toBeTruthy();
     expect(r.expiresAt).toBeGreaterThan(Date.now());
 
-    const bindings = await call(crew, 'getBotChatBindings', {}, ANNE);
+    const bindings = await call(circle, 'getBotChatBindings', {}, ANNE);
     expect(bindings.items).toMatchObject([{
       chatId: ANNE_CHAT,
       webid:  ANNE,
@@ -85,39 +85,39 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     }]);
 
     // Bot agent is in the registry.
-    const entry = crew.botAgentRegistry.get(ANNE_CHAT);
+    const entry = circle.botAgentRegistry.get(ANNE_CHAT);
     expect(entry).toBeTruthy();
     expect(entry.binding.tokenId).toBe(r.tokenId);
     expect(entry.binding.webid).toBe(ANNE);
   });
 
   it('issueBotToken refuses unbound chatIds', async () => {
-    const r = await call(crew, 'issueBotToken', { chatId: 'unbound', ttlDays: 1 }, ANNE);
+    const r = await call(circle, 'issueBotToken', { chatId: 'unbound', ttlDays: 1 }, ANNE);
     expect(r.error).toMatch(/not bound/);
   });
 
   it('member is denied on issue / revoke', async () => {
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    expect((await call(crew, 'issueBotToken',  { chatId: ANNE_CHAT },              KID)).error).toMatch(/admin/);
-    expect((await call(crew, 'revokeBotToken', { chatId: ANNE_CHAT },              KID)).error).toMatch(/admin/);
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    expect((await call(circle, 'issueBotToken',  { chatId: ANNE_CHAT },              KID)).error).toMatch(/admin/);
+    expect((await call(circle, 'revokeBotToken', { chatId: ANNE_CHAT },              KID)).error).toMatch(/admin/);
   });
 
   it('end-to-end cap-token dispatch: chat → invoke → PolicyEngine → handler runs as actingAs', async () => {
     // Anne adds a task (UI path).
-    const addRes = await call(crew, 'addTask', { text: 'Cap-token test task' }, ANNE);
+    const addRes = await call(circle, 'addTask', { text: 'Cap-token test task' }, ANNE);
     const taskId = addRes.task.id;
 
     // Bind chat 111 → Anne, then issue cap-token.
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
 
     // Wire a bridge that goes through wireBotChannel with the registry.
     const bridge = new InMemoryBridge({ id: 'capt-bot' });
     const channel = await wireBotChannel({
-      agent:            crew.agent,
+      agent:            circle.agent,
       bridges:          [{ bridge, name: 'test' }],
-      chatBindings:     () => crew.getCrew()?.bot?.chatBindings ?? {},
-      botAgentRegistry: crew.botAgentRegistry,
+      chatBindings:     () => circle.getCircle()?.bot?.chatBindings ?? {},
+      botAgentRegistry: circle.botAgentRegistry,
     });
 
     bridge.outbox.length = 0;
@@ -130,31 +130,31 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     // Audit log: the addTask we did directly + nothing from the bot
     // (read-only listOpen). So just confirm the log exists and the
     // action attribution makes sense for direct UI calls.
-    const log = await crew.itemStore.auditLog({ itemId: taskId });
+    const log = await circle.itemStore.auditLog({ itemId: taskId });
     expect(log.find((e) => e.action === 'add')?.actor).toBe(ANNE);
 
     await channel.detach();
   });
 
   it('cap-token claim records (via bot) in the audit log for the actingAs webid', async () => {
-    const addRes = await call(crew, 'addTask', { text: 'Claim through cap-token bot' }, ANNE);
+    const addRes = await call(circle, 'addTask', { text: 'Claim through cap-token bot' }, ANNE);
     const id = addRes.task.id;
 
-    await call(crew, 'setBotChatBinding', { chatId: KID_CHAT, webid: KID }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: KID_CHAT, ttlDays: 1 }, ANNE);
+    await call(circle, 'setBotChatBinding', { chatId: KID_CHAT, webid: KID }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: KID_CHAT, ttlDays: 1 }, ANNE);
 
     const bridge = new InMemoryBridge({ id: 'capt-bot-claim' });
     const channel = await wireBotChannel({
-      agent:            crew.agent,
+      agent:            circle.agent,
       bridges:          [{ bridge, name: 'test' }],
-      chatBindings:     () => crew.getCrew()?.bot?.chatBindings ?? {},
-      botAgentRegistry: crew.botAgentRegistry,
+      chatBindings:     () => circle.getCircle()?.bot?.chatBindings ?? {},
+      botAgentRegistry: circle.botAgentRegistry,
     });
 
     await bridge.simulateIncoming({ chatId: KID_CHAT, text: `claim ${id.slice(0, 8)}` });
     await new Promise((r) => setTimeout(r, 30));
 
-    const log = await crew.itemStore.auditLog({ itemId: id });
+    const log = await circle.itemStore.auditLog({ itemId: id });
     const claim = log.find((e) => e.action === 'claim');
     expect(claim).toBeTruthy();
     // V1.5 cap-token: actor = the bound webid (KID), not the bot's pubKey.
@@ -165,29 +165,29 @@ describe('V1.5 — cap-token-bound bot agent', () => {
   });
 
   it('revokeBotToken returns the binding to trust-map mode', async () => {
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
-    expect(crew.botAgentRegistry.get(ANNE_CHAT)).toBeTruthy();
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    expect(circle.botAgentRegistry.get(ANNE_CHAT)).toBeTruthy();
 
-    const r = await call(crew, 'revokeBotToken', { chatId: ANNE_CHAT }, ANNE);
+    const r = await call(circle, 'revokeBotToken', { chatId: ANNE_CHAT }, ANNE);
     expect(r).toEqual({ ok: true, chatId: ANNE_CHAT });
-    expect(crew.botAgentRegistry.get(ANNE_CHAT)).toBeNull();
+    expect(circle.botAgentRegistry.get(ANNE_CHAT)).toBeNull();
 
-    const after = await call(crew, 'getBotChatBindings', {}, ANNE);
+    const after = await call(circle, 'getBotChatBindings', {}, ANNE);
     expect(after.items).toMatchObject([{ chatId: ANNE_CHAT, webid: ANNE, mode: 'trust' }]);
   });
 
   it('removeBotChatBinding also tears down any cap-token bot agent', async () => {
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
-    await call(crew, 'removeBotChatBinding', { chatId: ANNE_CHAT }, ANNE);
-    expect(crew.botAgentRegistry.get(ANNE_CHAT)).toBeNull();
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    await call(circle, 'removeBotChatBinding', { chatId: ANNE_CHAT }, ANNE);
+    expect(circle.botAgentRegistry.get(ANNE_CHAT)).toBeNull();
   });
 
   it('cap-token is scoped to bot.* — TokenRegistry.get matches bot skills only', async () => {
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
-    const entry = crew.botAgentRegistry.get(ANNE_CHAT);
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    const entry = circle.botAgentRegistry.get(ANNE_CHAT);
     expect(entry).toBeTruthy();
 
     // The bot's TokenRegistry lookup for any bot.* skill returns the
@@ -195,7 +195,7 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     // proving the V1.5 follow-up A scope is honoured at the holder
     // side. PolicyEngine line 165 also enforces the same on the
     // verifier side; covered in packages/core/test/Permissions.test.js.
-    const tasksId = crew.agent.pubKey;
+    const tasksId = circle.agent.pubKey;
     const t1 = await entry.tokenRegistry.get(tasksId, 'bot.listOpen');
     expect(t1?.id).toBe(entry.binding.tokenId);
     const t2 = await entry.tokenRegistry.get(tasksId, 'bot.claim');
@@ -208,32 +208,32 @@ describe('V1.5 — cap-token-bound bot agent', () => {
   });
 
   it('revoked token is rejected by PolicyEngine even when held in the bot vault (server-side revocation)', async () => {
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
-    const entry = crew.botAgentRegistry.get(ANNE_CHAT);
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    const entry = circle.botAgentRegistry.get(ANNE_CHAT);
     expect(entry).toBeTruthy();
 
     // Sanity: bot.* invoke works pre-revoke.
-    const okParts = await entry.agent.invoke(crew.agent.address, 'bot.listOpen', [
+    const okParts = await entry.agent.invoke(circle.agent.address, 'bot.listOpen', [
       { type: 'DataPart', data: {} },
     ], { timeout: 5000 });
     expect(okParts).toBeDefined();
 
     // Capture the token blob + bot agent BEFORE revoke (revoke
     // tears down the bot, so we'd lose the handle otherwise).
-    const tokenBlob = await entry.tokenRegistry.get(crew.agent.address, 'bot.listOpen');
+    const tokenBlob = await entry.tokenRegistry.get(circle.agent.address, 'bot.listOpen');
     expect(tokenBlob).toBeTruthy();
     const botAgent = entry.agent;
 
     // Mark token revoked on the issuer side WITHOUT killing the bot
     // vault — simulate the "stolen token still present in attacker's
     // wallet" scenario.
-    crew.botAgentRegistry.isRevoked; // method exists
+    circle.botAgentRegistry.isRevoked; // method exists
     // eslint-disable-next-line no-underscore-dangle
     // Use the public API but skip the agent.stop() side-effect by
     // calling revoke and then NOT counting on the bot agent.
-    await crew.botAgentRegistry.revoke({ chatId: ANNE_CHAT });
-    expect(crew.botAgentRegistry.isRevoked(tokenBlob.id)).toBe(true);
+    await circle.botAgentRegistry.revoke({ chatId: ANNE_CHAT });
+    expect(circle.botAgentRegistry.isRevoked(tokenBlob.id)).toBe(true);
 
     // Re-create a fresh bot agent that holds the same token blob
     // (the "attacker still has the stolen token") and invoke.
@@ -244,7 +244,7 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     const { VaultMemory } = await import('@canopy/vault');
     const v   = new VaultMemory();
     const id  = await AgentIdentity.generate(v);
-    const tx  = new InternalTransport(crew.agent.transport.bus, id.pubKey, { identity: id });
+    const tx  = new InternalTransport(circle.agent.transport.bus, id.pubKey, { identity: id });
     const tr  = new TrustRegistry(v);
     // Token's subject is the OLD bot's pubKey, not the new id, so
     // PolicyEngine's "subject must equal peerPubKey" check rejects
@@ -253,12 +253,12 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     // path.
     void Agent; void tx; void tr;
 
-    const denied = await crew.agent.policyEngine.checkInbound({
+    const denied = await circle.agent.policyEngine.checkInbound({
       peerPubKey: botAgent.pubKey,
       skillId:    'bot.listOpen',
       action:     'call',
       token:      tokenBlob.toJSON(),
-      agentPubKey: crew.agent.pubKey,
+      agentPubKey: circle.agent.pubKey,
     }).catch((e) => e);
     expect(denied?.name).toBe('PolicyDeniedError');
     expect(denied?.code).toBe('INVALID_TOKEN');
@@ -266,16 +266,16 @@ describe('V1.5 — cap-token-bound bot agent', () => {
 
     // Sanity: a non-revoked token still passes the same path.
     // Issue a fresh binding/token and check.
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    await call(crew, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
-    const entry2 = crew.botAgentRegistry.get(ANNE_CHAT);
-    const tok2   = await entry2.tokenRegistry.get(crew.agent.address, 'bot.listOpen');
-    const ok = await crew.agent.policyEngine.checkInbound({
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'issueBotToken',     { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
+    const entry2 = circle.botAgentRegistry.get(ANNE_CHAT);
+    const tok2   = await entry2.tokenRegistry.get(circle.agent.address, 'bot.listOpen');
+    const ok = await circle.agent.policyEngine.checkInbound({
       peerPubKey: entry2.agent.pubKey,
       skillId:    'bot.listOpen',
       action:     'call',
       token:      tok2.toJSON(),
-      agentPubKey: crew.agent.pubKey,
+      agentPubKey: circle.agent.pubKey,
     });
     expect(ok.allowed).toBe(true);
   });
@@ -287,14 +287,14 @@ describe('V1.5 — cap-token-bound bot agent', () => {
 
     // ── Boot 1: issue a cap-token binding.
     const bundle1 = buildBundle({ localStore: sharedStore });
-    const crew1   = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle1   = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle1,
       wireOnboardingSkills: false,
     });
-    expect(crew1.botAgentRegistry?.persisting).toBe(true);
-    await call(crew1, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
-    const issued = await call(crew1, 'issueBotToken',
+    expect(circle1.botAgentRegistry?.persisting).toBe(true);
+    await call(circle1, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    const issued = await call(circle1, 'issueBotToken',
       { chatId: ANNE_CHAT, ttlDays: 1 }, ANNE);
     expect(issued.ok).toBe(true);
     const originalTokenId   = issued.tokenId;
@@ -304,22 +304,22 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     const persistedKey = [...sharedStore.keys()].find((k) => k.includes('/botAgents/'));
     expect(persistedKey).toBeTruthy();
 
-    // close crew1 — bot agent stops; persistent blob stays.
-    await crew1.close();
+    // close circle1 — bot agent stops; persistent blob stays.
+    await circle1.close();
 
-    // ── Boot 2: same store. Crew should restore.
+    // ── Boot 2: same store. Circle should restore.
     const bundle2 = buildBundle({ localStore: sharedStore });
-    const crew2   = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle2   = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle2,
       wireOnboardingSkills: false,
     });
-    // Force a re-bind of the chatId in the crew config (it doesn't
-    // persist across crew constructions in this test setup; the
+    // Force a re-bind of the chatId in the circle config (it doesn't
+    // persist across circle constructions in this test setup; the
     // BotAgentRegistry restore is what actually matters).
-    await call(crew2, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle2, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
 
-    const restoredEntry = crew2.botAgentRegistry.get(ANNE_CHAT);
+    const restoredEntry = circle2.botAgentRegistry.get(ANNE_CHAT);
     expect(restoredEntry).toBeTruthy();
     // V2.0 — both bot identity AND token are stable across restarts.
     // Bot vault is snapshot-restored (since V1.5 follow-up B); tasks
@@ -329,13 +329,13 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     expect(restoredEntry.binding.tokenId).toBe(originalTokenId);
 
     // It actually works — bot can still invoke bot.* skills.
-    await call(crew2, 'addTask', { text: 'restored-bot test' }, ANNE);
+    await call(circle2, 'addTask', { text: 'restored-bot test' }, ANNE);
     const bridge = new InMemoryBridge({ id: 'restored-bot' });
     const channel = await wireBotChannel({
-      agent:            crew2.agent,
+      agent:            circle2.agent,
       bridges:          [{ bridge, name: 'test' }],
-      chatBindings:     () => crew2.getCrew()?.bot?.chatBindings ?? {},
-      botAgentRegistry: crew2.botAgentRegistry,
+      chatBindings:     () => circle2.getCircle()?.bot?.chatBindings ?? {},
+      botAgentRegistry: circle2.botAgentRegistry,
     });
     bridge.outbox.length = 0;
     await bridge.simulateIncoming({ chatId: ANNE_CHAT, text: 'open' });
@@ -343,51 +343,51 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     expect(bridge.outbox.map((o) => o.text).join('\n')).toMatch(/restored-bot test/);
 
     await channel.detach();
-    await crew2.close();
+    await circle2.close();
   });
 
   it('restoreAll skips expired tokens + drops their persistent rows', async () => {
     const sharedStore = new Map();
     const bundle1 = buildBundle({ localStore: sharedStore });
-    const crew1   = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle1   = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle1,
       wireOnboardingSkills: false,
     });
-    await call(crew1, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle1, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
 
     // Manually craft a persisted-but-expired entry to bypass the
     // "ttlDays > 0" guard.
-    const path = `mem://tasks/crews/${CREW.circleId}/botAgents/${encodeURIComponent(ANNE_CHAT)}.json`;
+    const path = `mem://tasks/circles/${CIRCLE.circleId}/botAgents/${encodeURIComponent(ANNE_CHAT)}.json`;
     sharedStore.set(path, JSON.stringify({
       binding: { chatId: ANNE_CHAT, webid: ANNE, botPubKey: 'fake', tokenId: 'fake', issuedAt: 1, expiresAt: 1 },
       vault:   { foo: 'bar' },     // doesn't matter — never read
       token:   { id: 'fake' },
     }));
-    await crew1.close();
+    await circle1.close();
 
     const bundle2 = buildBundle({ localStore: sharedStore });
-    const crew2   = await createCrewAgent({
-      crewConfig:           CREW,
+    const circle2   = await createCircleAgent({
+      circleConfig:           CIRCLE,
       localStoreBundle:     bundle2,
       wireOnboardingSkills: false,
     });
-    expect(crew2.botAgentRegistry.get(ANNE_CHAT)).toBeNull();
+    expect(circle2.botAgentRegistry.get(ANNE_CHAT)).toBeNull();
     expect(sharedStore.has(path)).toBe(false);
-    await crew2.close();
+    await circle2.close();
   });
 
   it('legacy trust-map binding (no token) still dispatches via direct path', async () => {
-    await call(crew, 'addTask', { text: 'Legacy trust test' }, ANNE);
-    await call(crew, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
+    await call(circle, 'addTask', { text: 'Legacy trust test' }, ANNE);
+    await call(circle, 'setBotChatBinding', { chatId: ANNE_CHAT, webid: ANNE }, ANNE);
     // No issueBotToken — legacy path.
 
     const bridge = new InMemoryBridge({ id: 'legacy-bot' });
     const channel = await wireBotChannel({
-      agent:            crew.agent,
+      agent:            circle.agent,
       bridges:          [{ bridge, name: 'test' }],
-      chatBindings:     () => crew.getCrew()?.bot?.chatBindings ?? {},
-      botAgentRegistry: crew.botAgentRegistry,
+      chatBindings:     () => circle.getCircle()?.bot?.chatBindings ?? {},
+      botAgentRegistry: circle.botAgentRegistry,
     });
 
     bridge.outbox.length = 0;

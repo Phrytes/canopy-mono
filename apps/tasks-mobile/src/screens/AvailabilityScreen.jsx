@@ -8,7 +8,7 @@
  * optimistic update locally first.
  *
  * Per-member opt-in toggle at the top: `setAvailabilityOptIn({optedIn})`.
- * When the crew has hints disabled (`liveCrew.availabilityHints.enabled
+ * When the circle has hints disabled (`liveCircle.availabilityHints.enabled
  * === false`), we render an off-state empty banner instead of the grid.
  */
 
@@ -52,8 +52,8 @@ export function AvailabilityScreen() {
   }, [remote, local]);
 
   const optedIn = !!(get?.data?.optedIn);
-  const crewEnabled =
-    svc?.crews?.get(svc?.activeCircleId)?.liveCrew?.availabilityHints?.enabled ?? true;
+  const circleEnabled =
+    svc?.circles?.get(svc?.activeCircleId)?.liveCircle?.availabilityHints?.enabled ?? true;
 
   const onToggleCell = useCallback(async (day, half) => {
     const cur = local[`${day}.${half}`] ?? remote?.[day]?.[half] ?? 'unknown';
@@ -69,11 +69,11 @@ export function AvailabilityScreen() {
     finally { get.refresh().catch(() => {}); }
   }, [setOptIn, get]);
 
-  if (!crewEnabled) {
+  if (!circleEnabled) {
     return (
       <View style={{ flex: 1, padding: SPACING.xl, backgroundColor: COLORS.background }}>
         <Text style={{ fontSize: FONT_SIZES.md, color: COLORS.textMuted }}>
-          {t('mobile.availability.crew_disabled')}
+          {t('mobile.availability.circle_disabled')}
         </Text>
       </View>
     );
