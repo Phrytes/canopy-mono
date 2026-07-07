@@ -144,6 +144,30 @@ describe('renderWeb V0', () => {
       });
       expect(nav.sections[0].audience).toBe('crew:abc');
     });
+
+    it('SP-5b — section.audience defaults from view.defaultAudience (the schema field)', () => {
+      const nav = renderWeb({
+        ...SYNTH,
+        views: [{ id: 'shared', title: 'Shared', type: 'task', defaultAudience: 'crew:abc' }],
+      });
+      expect(nav.sections[0].audience).toBe('crew:abc');
+    });
+
+    it('SP-5b — explicit view.audience overrides view.defaultAudience', () => {
+      const nav = renderWeb({
+        ...SYNTH,
+        views: [{ id: 'shared', title: 'Shared', type: 'task', audience: 'crew:explicit', defaultAudience: 'crew:default' }],
+      });
+      expect(nav.sections[0].audience).toBe('crew:explicit');
+    });
+
+    it('SP-5b — section.audience ABSENT when neither audience nor defaultAudience declared', () => {
+      const nav = renderWeb({
+        ...SYNTH,
+        views: [{ id: 'plain', title: 'Plain', type: 'task' }],
+      });
+      expect(nav.sections[0]).not.toHaveProperty('audience');
+    });
   });
 
   describe('affordances (verb===add ops)', () => {

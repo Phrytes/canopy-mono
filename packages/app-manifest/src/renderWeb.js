@@ -73,7 +73,12 @@
  * @property {object}   [filter]           mirrors view.filter
  * @property {{by: string, direction?: 'asc'|'desc'}} [sort]
  *                                         mirrors view.sort (Q5)
- * @property {*}        [audience]         mirrors view.audience (SP-5b consumer)
+ * @property {*}        [audience]         the view's declared audience for the
+ *                                         list-render seam to default its
+ *                                         ListFilter.audience (SP-5b consumer).
+ *                                         Sourced from view.defaultAudience
+ *                                         (schema.js) — an explicit view.audience,
+ *                                         if a manifest sets one, overrides it.
  * @property {{skillId: string, args?: object}} [dataSource]
  *                                         mirrors view.dataSource (V0.2 Q7).
  *                                         When present, adapters call this
@@ -500,7 +505,12 @@ function buildSection(view, ops, manifest) {
   // Optional fields — only set when present (keep NavModel JSON minimal).
   if (view.filter     !== undefined) section.filter     = view.filter;
   if (view.sort       !== undefined) section.sort       = view.sort;
-  if (view.audience   !== undefined) section.audience   = view.audience;
+  // SP-5b — project the view's declared audience so the list-render seam
+  // (e.g. canopy-chat `buildScreenModel`) can DEFAULT its ListFilter.audience
+  // to it.  The schema field is `view.defaultAudience` (schema.js); an explicit
+  // `view.audience`, if a manifest carries one, wins over the declared default.
+  if (view.audience !== undefined) section.audience = view.audience;
+  else if (view.defaultAudience !== undefined) section.audience = view.defaultAudience;
   // Q7 (2026-05-21) — explicit data-source declaration; adapters use
   // this in preference to the default `listOpen({type, ...filter})`
   // heuristic.  Validate-loose: shape correctness is the adapter's

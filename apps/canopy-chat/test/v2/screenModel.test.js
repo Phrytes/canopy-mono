@@ -59,3 +59,44 @@ describe('buildScreenModel — capability-gated row actions (reuse Slice 4)', ()
     expect(rows[0].actions.some((a) => a.opId === 'claimTask')).toBe(false);
   });
 });
+
+describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → ListFilter.audience)', () => {
+  // Items with an effective audience (via item-store's audienceFromItem:
+  // `audience` field wins, else legacy `visibility`, else 'household').
+  const items = [
+    { id: 'a', label: 'Alpha', audience: 'crew:abc' },
+    { id: 'b', label: 'Bravo', audience: 'crew:xyz' },
+    { id: 'c', label: 'Charlie', visibility: 'crew:abc' }, // legacy field resolves too
+    { id: 'd', label: 'Delta' },                            // → 'household' default
+  ];
+
+  it('defaultAudience filters the list to items whose effective audience matches', () => {
+    const { rows } = buildScreenModel({ items, defaultAudience: 'crew:abc' });
+    expect(rows.map((r) => r.item.id)).toEqual(['a', 'c']);
+  });
+
+  it('no defaultAudience/audience → list unchanged (back-compatible)', () => {
+    const { rows } = buildScreenModel({ items });
+    expect(rows.map((r) => r.item.id)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('explicit audience OVERRIDES the view default', () => {
+    const { rows } = buildScreenModel({ items, defaultAudience: 'crew:abc', audience: 'crew:xyz' });
+    expect(rows.map((r) => r.item.id)).toEqual(['b']);
+  });
+
+  it('the household default matches items with no audience field', () => {
+    const { rows } = buildScreenModel({ items, defaultAudience: 'household' });
+    expect(rows.map((r) => r.item.id)).toEqual(['d']);
+  });
+
+  it('audience filter also constrains category checkboxes + counts', () => {
+    const cat = [
+      { id: 'a', label: 'Alpha', category: 'x', audience: 'crew:abc' },
+      { id: 'b', label: 'Bravo', category: 'y', audience: 'crew:xyz' },
+      { id: 'c', label: 'Charlie', category: 'x', audience: 'crew:abc' },
+    ];
+    const { categories } = buildScreenModel({ items: cat, categoryField: 'category', defaultAudience: 'crew:abc' });
+    expect(categories).toEqual([{ id: 'x', count: 2, checked: true }]);
+  });
+});
