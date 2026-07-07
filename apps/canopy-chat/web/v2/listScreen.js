@@ -116,7 +116,7 @@ export function renderListBlock(container, { block = {}, t, onRowAction, capabil
 
   // D-mig-2 — `searchFields` (WHICH item fields the text search matches) is
   // sourced from the projected section, alongside labelField/categoryField.
-  const shared = { items: block.items, categoryField: block.categoryField, labelField: block.labelField, searchFields: block.searchFields, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
+  const shared = { items: block.items, categoryField: block.categoryField, labelField: block.labelField, searchFields: block.searchFields, defaultAudience: block.defaultAudience, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
 
   if (block.title) {
     const h = document.createElement('h2');

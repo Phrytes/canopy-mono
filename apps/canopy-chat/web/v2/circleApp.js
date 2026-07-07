@@ -2711,7 +2711,7 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
       } catch { /* best-effort */ }
       body.innerHTML = '';
       renderListBlock(body, {
-        block: { items, categoryField, labelField, searchFields, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
+        block: { items, categoryField, labelField, searchFields, defaultAudience: section.audience, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
       });

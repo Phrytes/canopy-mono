@@ -99,4 +99,17 @@ describe('renderListBlock (stateful, focus-safe)', () => {
     renderListBlock(el, { block, t, onRowAction });
     expect(el.querySelector('.list-screen__row-label').textContent).toBe('X');
   });
+
+  it('threads block.defaultAudience → buildScreenModel: filters rows by the section audience (SP-5b fetched-items path)', () => {
+    const el = mount();
+    const items = [
+      { id: 'a', label: 'Alpha',   audience: 'crew:abc' },
+      { id: 'b', label: 'Bravo',   audience: 'crew:xyz' },
+      { id: 'c', label: 'Charlie', visibility: 'crew:abc' }, // legacy audience field resolves too
+    ];
+    // Without the threading (pre-fix) all 3 render; with block.defaultAudience the live list path
+    // now audience-filters the FETCHED items (the projected section's view.defaultAudience → section.audience).
+    renderListBlock(el, { block: { items, defaultAudience: 'crew:abc' }, t });
+    expect([...el.querySelectorAll('.list-screen__row-label')].map((n) => n.textContent)).toEqual(['Alpha', 'Charlie']);
+  });
 });
