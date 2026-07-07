@@ -47,6 +47,7 @@ import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.
 import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
 import { makeCircleLookup } from '../../src/v2/circleLookup.js';
+import { sectionForScreen } from '../../src/v2/pageProjection.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@canopy/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
@@ -869,14 +870,11 @@ let circleCatalog = null;        // the merged dispatch catalog (built in buildC
 let circleBaseSources = [];      // B · Slice 2/4 — the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
 let circleManifestsByOrigin = {}; // B · Slice 3 — {appOrigin → manifest}, module-scoped for the list-screen panel's row actions
 
-// B · Slice 3 — declared list-screen surfaces: a screenId → { how to fetch rows + the category field }.
-// openCircleScreenPanel renders these via renderListBlock (search + category checkboxes + capability-
-// gated row actions). A manifest `surfaces.screen` will populate this in a later pass; for now it's the
-// concrete surfaces the "contacten met k" acceptance test needs.
-const LIST_SCREENS = {
-  contacts: { appOrigin: 'stoop', listOp: 'listContacts', categoryField: 'category' },
-  prikbord: { appOrigin: 'stoop', listOp: 'listOpen',     categoryField: 'kind' },
-};
+// D-mig-1b — the declared list-screen surfaces (contacts + prikbord) are now
+// projected FROM the composed manifests: openCircleScreenPanel resolves each
+// screen's config (appOrigin / fetch skill / label + category field) via
+// `sectionForScreen(circleManifestsByOrigin, screenId)` over renderWeb's
+// NavModel.sections[] — no hardcoded screen literal remains.
 let circleActiveApps = null;     // S6.C deep — the active circle's policy.apps (null = all); narrows the catalog
 let circleRescopeCatalog = null; // re-scope the catalog to circleActiveApps (set in buildCircleBot, called by showKring)
 let circleDispatchReady = null;  // buildCircleBot's dispatchReady({opId,args}) — used to run a completed follow-up
@@ -2687,12 +2685,16 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
 
   renderCircleScreen(body, { blocks: null, t });   // loading
 
-  // B · Slice 3 — a declared LIST-SCREEN renders directly (search + category checkboxes + capability-
-  // gated row actions) instead of going through the recipe-block path.
-  const listCfg = LIST_SCREENS[screenId];
-  if (listCfg) {
+  // D-mig-1b — a declared LIST-SCREEN renders directly (search + category checkboxes + capability-
+  // gated row actions) instead of going through the recipe-block path.  Its config is now SOURCED
+  // from the projected manifest section (renderWeb's NavModel.sections[]) — not a hardcoded literal.
+  const found = sectionForScreen(circleManifestsByOrigin, screenId);
+  if (found) {
+    const { section, appOrigin } = found;
+    const categoryField = section.categoryField;
+    const labelField = section.labelField ?? 'label';
     try {
-      const res = await rawCallSkill(listCfg.appOrigin, listCfg.listOp, {});
+      const res = await rawCallSkill(appOrigin, section.dataSource.skillId, section.dataSource.args ?? {});
       const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
       let capabilityMatrix = [];
       try {
@@ -2705,7 +2707,7 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
       } catch { /* best-effort */ }
       body.innerHTML = '';
       renderListBlock(body, {
-        block: { items, categoryField: listCfg.categoryField, manifestsByOrigin: circleManifestsByOrigin, appOrigin: listCfg.appOrigin, title: title.textContent },
+        block: { items, categoryField, labelField, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
       });
@@ -3131,7 +3133,7 @@ function showKring(id, circle, policy) {
         // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; the ⋯ menu is the GUI
         // one — peer compilers to the same surface). e.g. "/contacts", "/prikbord".
         const scr = line.match(/^\/(contacts|prikbord)\b/i);
-        if (scr && LIST_SCREENS[scr[1].toLowerCase()]) { openCircleScreenPanel(scr[1].toLowerCase()); return; }
+        if (scr && sectionForScreen(circleManifestsByOrigin, scr[1].toLowerCase())) { openCircleScreenPanel(scr[1].toLowerCase()); return; }
         // cluster K — the cross-circle SHARE op, minimal slash surface (rich picker UI deferred; see report).
         //   /shareitem <itemId> [to] <targetCircleId>  — share one item from THIS circle into another's audience
         //   /shared                                    — list what's shared INTO this circle (deny-by-default read)

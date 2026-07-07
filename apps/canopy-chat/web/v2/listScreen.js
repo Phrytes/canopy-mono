@@ -105,7 +105,7 @@ export function renderListScreen(container, {
  * The STATEFUL list block for the live panel. Renders the chrome (search + categories) once and
  * re-renders only the rows on filter (search box keeps focus). Owns query + activeCategories.
  *
- * @param {object} block  { items, categoryField?, manifestsByOrigin?, appOrigin?, title? }
+ * @param {object} block  { items, categoryField?, labelField?, manifestsByOrigin?, appOrigin?, title? }
  */
 export function renderListBlock(container, { block = {}, t, onRowAction, capabilityMatrix = [] } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -114,7 +114,7 @@ export function renderListBlock(container, { block = {}, t, onRowAction, capabil
   let query = '';
   let activeCategories = null;   // null = all categories checked
 
-  const shared = { items: block.items, categoryField: block.categoryField, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
+  const shared = { items: block.items, categoryField: block.categoryField, labelField: block.labelField, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
 
   if (block.title) {
     const h = document.createElement('h2');
