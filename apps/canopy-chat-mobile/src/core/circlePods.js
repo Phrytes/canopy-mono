@@ -24,6 +24,10 @@ import { createCirclePodSharing } from '../../../canopy-chat/src/v2/circlePodSha
 import { buildCircleShareEnforcement } from '../../../canopy-chat/src/v2/circleShareEnforcement.js';
 import { shareItemAcrossCircles, listSharedResolved, revokeItemShare } from '../../../canopy-chat/src/v2/circleShare.js';
 import { buildHouseholdDataSource } from '../../../household/src/index.js';
+// objective L follow-up — the mobile per-circle policy store (AsyncStorage-backed, `cc.circlePolicy.<id>`
+// keys). Mirror of web circleApp.js's module-level `policyStore`: the composition-root's `policyOf` reads the
+// LIVE per-circle `sharePosture` from here instead of the deny-by-default `{}`.
+import { makeCirclePolicyStoreRN } from './circleStoresRN.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
 let podSessionRef = null;                     // App-owned OidcSessionRN ref — set by setCirclePodSession
@@ -52,6 +56,17 @@ export function getCirclePodFetch() {
         && typeof s.getAuthenticatedFetch === 'function') {
       return s.getAuthenticatedFetch();
     }
+  } catch { /* best-effort */ }
+  return null;
+}
+
+/** The signed-in member's WebID (the acting identity), or null when signed out. objective L — threaded as
+ *  `by`/`recipient` into the share/read wrappers so the initiator + read gates see a REAL actor. Mirrors web's
+ *  `circleOwnerWebId` (the signed-in webid). Lean: reads only the session's webid (no authenticated fetch). */
+export function getCircleActorWebId() {
+  const s = podSessionRef?.current ?? podSessionRef;
+  try {
+    if (s && typeof s.isAuthenticated === 'function' && s.isAuthenticated() && s.webid) return s.webid;
   } catch { /* best-effort */ }
   return null;
 }
@@ -217,11 +232,27 @@ export async function getCircleShareEnforcement(circleId, policy) {
   return _shareEnforcementByCircle.get(circleId);
 }
 
-// A best-effort per-circle policy lookup. Mobile has no per-circle admin policy store wired into this module
-// yet, so real callers should pass `policyOf` explicitly (the source circle's `sharePosture`/`admins`). The
-// default returns {} → normalizeCirclePolicy → 'closed' (deny-by-default). NOTE (follow-up): wire a mobile
-// circle-policy store here so the initiator gate reads the live posture without the caller threading it.
-const _defaultPolicyOf = async () => ({});
+// objective L follow-up — the composition-root's per-circle policy SOURCE, mirroring web circleApp.js's
+// module-level `policyStore` + `_circlePolicy`. Lazily built from the AsyncStorage wired via `initCirclePods`;
+// reads the SAME `cc.circlePolicy.<id>` keys the launcher's store writes, so the initiator gate sees the LIVE
+// per-circle `sharePosture` (normalized via normalizeCirclePolicy inside the store's `.get`). Null until a
+// store is wired (no AsyncStorage) — then `policyOf` falls back to {} (deny-by-default), unchanged + safe.
+let _circlePolicyStore = null;
+function getCirclePolicyStore() {
+  if (!_circlePolicyStore && asyncStorageRef) {
+    try { _circlePolicyStore = makeCirclePolicyStoreRN(asyncStorageRef); } catch { _circlePolicyStore = null; }
+  }
+  return _circlePolicyStore;
+}
+
+// Read a circle's REAL policy (`sharePosture`/`admins`/`storagePosture`) best-effort — the mobile mirror of
+// web's `_circlePolicy`. Absent a store (no session/AsyncStorage) it returns {} → normalizeCirclePolicy →
+// 'closed' (deny-by-default), the same safe fallback as before.
+const _defaultPolicyOf = async (circleId) => {
+  const store = getCirclePolicyStore();
+  if (!store || !circleId) return {};
+  try { return (await store.get(circleId)) ?? {}; } catch { return {}; }
+};
 
 // Build the resolveService / enforcementFor pair for a share op, closing over the effective policy lookup so
 // each circle picks its own pod-vs-default lists + enforcement (mirrors web's _circleServiceFor / _shareEnforcementFor).
@@ -251,7 +282,9 @@ export async function shareItemIntoCircle({
     enforcementFor: enforcementFor ?? r.enforcementFor,
     policyOf: r.policyOf,
     recipientKeys, sealCopy,
-    itemId, fromCircleId, toCircleId, by, recipient, recipients,
+    // objective L — thread the signed-in member's WebID as the initiator (mirrors web's `by ?? LOCAL_ACTOR`),
+    // so the source circle's initiator gate sees a real actor. Null when signed out ⇒ deny-by-default holds.
+    itemId, fromCircleId, toCircleId, by: by ?? getCircleActorWebId() ?? undefined, recipient, recipients,
   });
 }
 
@@ -261,7 +294,9 @@ export async function listSharedItems(circleId, { recipient, resolveService, enf
   return listSharedResolved({
     resolveService: resolveService ?? r.resolveService,
     enforcementFor: enforcementFor ?? r.enforcementFor,
-    circleId, recipient,
+    // objective L — default the read subject to the signed-in member's WebID (mirrors web's
+    // `recipient ?? circleOwnerWebId`), so the deny-by-default read gate resolves against a real identity.
+    circleId, recipient: recipient ?? getCircleActorWebId() ?? undefined,
   });
 }
 

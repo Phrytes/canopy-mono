@@ -99,7 +99,7 @@ import { resolveCircleEmbedder } from '../../../../canopy-chat/src/v2/embedPicke
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
-import { getCircleSealStrategy, seedCircleRosterFor, getCirclePodFetch } from '../../core/circlePods.js';
+import { getCircleSealStrategy, seedCircleRosterFor, getCirclePodFetch, getCircleActorWebId } from '../../core/circlePods.js';
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
@@ -1067,7 +1067,16 @@ export default function CircleLauncherScreen({
     return <CircleListsScreen circleId={selected.id} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'share') {   // objective L — the cross-circle share UI (web≡mobile)
-    return <CircleShareScreen circleId={selected.id} policy={selectedPolicy} onBack={() => setView('detail')} />;
+    // Thread the signed-in member's WebID as the acting identity (initiator gate `by` + read subject
+    // `recipient`), mirroring web's circleOwnerWebId. Null when signed out ⇒ the wrappers keep deny-by-default.
+    const actorWebId = getCircleActorWebId();
+    return (
+      <CircleShareScreen
+        circleId={selected.id} policy={selectedPolicy}
+        by={actorWebId} recipient={actorWebId}
+        onBack={() => setView('detail')}
+      />
+    );
   }
   if (selected && view === 'settings') {
     // γ-next.policy — broadcast cache → editor → γ.4 resolver.  The
