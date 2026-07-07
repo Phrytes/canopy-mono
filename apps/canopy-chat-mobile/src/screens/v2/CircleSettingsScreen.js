@@ -30,6 +30,11 @@ import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 import GuidedSetupPanel from './GuidedSetupPanel.js';
 import PairedDevices from './PairedDevices.js';
+import RecipeConsentCard from './RecipeConsentCard.js';
+// B · consent-card — the REVIEWED apply-recipe seam. The load/review/apply LOGIC is the SHARED
+// canopy-chat model (web wires the identical pair); this screen only injects fetch/sources/policyStore/
+// recordOptOuts + presents the native consent card. No recipe/consent logic is reimplemented here.
+import { loadRecipeForReview, applyReviewedRecipe } from '../../core/recipeConsentWiring.js';
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
 // four-tier crew storage policy (shared with web; pure mapping + call).
 import { pushCircleStoragePolicy } from '../../../../canopy-chat/src/v2/circleStoragePolicy.js';
@@ -49,6 +54,12 @@ export default function CircleSettingsScreen({
   // §4 storage-policy bridge — the host injects the agent's raw callSkill so a
   // pod-tier change drives stoop.setCrewStoragePolicy (web parity).
   callSkill,
+  // B · consent-card — the member-override store (records the declined optional caps as
+  // `capabilityOptOuts`, the exact seam the gate honours) + the pod session's authed fetch (loads a
+  // remote recipe URL from the user's own pod). Mirror of web `circleApp.js`'s overrideStore +
+  // circleAuthedFetch injections. Absent → the recipe apply affordance falls back gracefully.
+  overrideStore,
+  podFetch,
   // γ.4 — opt-in conflict resolver.  See file header for the deferred
   // source plumbing; existing call sites pass none of these opts.
   incomingPolicy = null,
@@ -66,6 +77,13 @@ export default function CircleSettingsScreen({
   const [guidedOpen, setGuidedOpen] = useState(false);   // Theme B — guided-setup chatbot modal
   const [storageNote, setStorageNote] = useState(null);  // §4 — stoop storage-policy rejection note
   const baselinePodRef = useRef(undefined);              // §4 — pod tier at load (push only on change)
+
+  // B · consent-card — REVIEWED apply-recipe state (source input → review model → native consent card).
+  const [recipeSource, setRecipeSource] = useState('');
+  const [recipeStatus, setRecipeStatus] = useState(null);   // status line under the input (localised)
+  const [recipeBusy, setRecipeBusy] = useState(false);
+  const [reviewRecipe, setReviewRecipe] = useState(null);   // the loaded recipe (Agree reuses it — no re-load)
+  const [reviewModel, setReviewModel] = useState(null);     // buildRecipeConsentModel result → drives the card
 
   // γ.4 — conflict resolver state (parallel to recipe-editor pattern).
   const [conflictReport, setConflictReport] = useState(null);
@@ -147,6 +165,65 @@ export default function CircleSettingsScreen({
   }) : []), [sources, working]);
 
   const consensusActive = !!working?.consensusRequired && (working?.admins?.length ?? 0) >= 2;
+
+  // B · consent-card — LOAD + REVIEW: load the pasted recipe (URL/JSON) via the SHARED loadRecipeForReview,
+  // build the review model, then open the native consent card. Nothing is persisted here (mirror of web's
+  // onReviewRecipe). The pod session's authed fetch resolves a recipe URL on the user's own pod; falls back
+  // to the RN global fetch (web parity: circleAuthedFetch || globalThis.fetch).
+  const loadForReview = useCallback(async () => {
+    const src = (recipeSource || '').trim();
+    if (!src || recipeBusy) return;
+    setRecipeBusy(true);
+    setRecipeStatus(null);
+    try {
+      const res = await loadRecipeForReview({
+        source: src, sources, policy: working,
+        fetch: podFetch || (typeof globalThis.fetch === 'function' ? globalThis.fetch : undefined),
+      });
+      if (!res.ok || !res.model) {
+        setRecipeStatus(t('circle.recipeApply.error'));
+      } else {
+        setReviewRecipe(res.recipe);
+        setReviewModel(res.model);   // opens the consent card
+      }
+    } catch {
+      setRecipeStatus(t('circle.recipeApply.error'));
+    } finally {
+      setRecipeBusy(false);
+    }
+  }, [recipeSource, recipeBusy, sources, working, podFetch]);
+
+  // B · consent-card — AGREE: apply the REVIEWED recipe with the user's declined optional caps. All-or-
+  // nothing through the SAME store + gate (applyReviewedRecipe → applyRecipeToCircle → policyStore.update);
+  // the declined caps become this member's `capabilityOptOuts` via the injected override store, so the gate's
+  // effective set = the recipe allowlist MINUS the declined optional caps. No bypass, no fork (web parity).
+  const onAgreeRecipe = useCallback(async ({ declinedKeys = [] } = {}) => {
+    setReviewModel(null);
+    if (!reviewRecipe || !reviewModel) { setRecipeStatus(t('circle.recipeApply.error')); return; }
+    try {
+      const res = await applyReviewedRecipe({
+        circleId, recipe: reviewRecipe, model: reviewModel, declinedKeys,
+        sources, policyStore: store,
+        recordOptOuts: overrideStore
+          ? (optOuts) => overrideStore.update(circleId, { capabilityOptOuts: optOuts })
+          : undefined,
+      });
+      if (!res.ok) { setRecipeStatus(t('circle.recipeApply.error')); return; }
+      setWorking(res.policy);   // the recipe is persisted; reflect it in the edit buffer + toggles
+      setRecipeStatus(t('circle.recipeApply.applied'));
+      setReviewRecipe(null);
+      setRecipeSource('');
+    } catch {
+      setRecipeStatus(t('circle.recipeApply.error'));
+    }
+  }, [circleId, reviewRecipe, reviewModel, sources, store, overrideStore]);
+
+  // B · consent-card — DECLINE: nothing is applied (mirror of web onDecline).
+  const onDeclineRecipe = useCallback(() => {
+    setReviewModel(null);
+    setReviewRecipe(null);
+    setRecipeStatus(t('circle.recipeConsent.declined'));
+  }, []);
 
   const onSave = useCallback(async () => {
     if (!working) return;
@@ -230,6 +307,31 @@ export default function CircleSettingsScreen({
         >
           <Text style={styles.guidedText}>{t('circle.guided.button')}</Text>
         </Pressable>
+
+        {/* B · consent-card — apply an authored recipe (URL/JSON) as REVIEWED action: load → native consent
+            card (what it enables + opt-out switches) → Agree applies, Decline nothing. Same shared model as web. */}
+        <Text style={styles.section}>{t('circle.recipeApply.heading')}</Text>
+        <TextInput
+          style={styles.recipeInput}
+          value={recipeSource}
+          onChangeText={setRecipeSource}
+          placeholder={t('circle.recipeApply.placeholder')}
+          placeholderTextColor={theme.color.inkSoft}
+          multiline
+          autoCapitalize="none"
+          autoCorrect={false}
+          testID="recipe-source"
+        />
+        <Pressable
+          style={[styles.recipeApply, recipeBusy && styles.recipeApplyBusy]}
+          onPress={loadForReview}
+          disabled={recipeBusy}
+          accessibilityRole="button"
+          testID="recipe-apply"
+        >
+          <Text style={styles.recipeApplyText}>{t('circle.recipeApply.apply')}</Text>
+        </Pressable>
+        {recipeStatus ? <Text style={styles.note} testID="recipe-status">{recipeStatus}</Text> : null}
 
         <Text style={styles.section}>{t('circle.settings.features')}</Text>
         {CIRCLE_FEATURES.map((f) => (
@@ -432,6 +534,12 @@ export default function CircleSettingsScreen({
       onDone={(p) => patch(p)}
       onClose={() => setGuidedOpen(false)}
     />
+    <RecipeConsentCard
+      visible={!!reviewModel}
+      model={reviewModel}
+      onAgree={onAgreeRecipe}
+      onDecline={onDeclineRecipe}
+    />
     </>
   );
 }
@@ -484,6 +592,11 @@ const styles = StyleSheet.create({
   saveText:    { color: theme.color.white, fontSize: 15, fontWeight: '700' },
   guided:      { marginTop: 4, marginBottom: 4, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: theme.color.accent, backgroundColor: theme.color.card, alignItems: 'center' },
   guidedText:  { color: theme.color.accent, fontSize: 14, fontWeight: '600' },
+  // B · consent-card — apply-recipe source input + button
+  recipeInput:  { borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, minHeight: 52, color: theme.color.ink, backgroundColor: theme.color.paper, textAlignVertical: 'top' },
+  recipeApply:  { marginTop: 8, padding: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
+  recipeApplyBusy: { opacity: 0.5 },
+  recipeApplyText: { color: theme.color.white, fontSize: 14, fontWeight: '700' },
   // B · Slice 2 — settings form + freedom matrix
   subhead:     { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginTop: 10, marginBottom: 2 },
   input:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5, minWidth: 90, color: theme.color.ink, textAlign: 'right' },
