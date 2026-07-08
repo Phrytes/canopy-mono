@@ -3,6 +3,7 @@ export {
   recipientId, generateKeypair, generateGroupKey, isSealed,
   seal, open, sealWithGroupKey, openWithGroupKey,
   makeSealer, makeOpener, makeGroupSealer, makeGroupOpener,
+  sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey,
 } from './envelope.js';
 export { createSealedPodClient, recipientStrategy, groupKeyStrategy } from './SealedPodClient.js';
 export {

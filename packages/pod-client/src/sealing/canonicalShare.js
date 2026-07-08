@@ -12,6 +12,13 @@
 //              + sharing.grant({ resourceUri, agent, modes:['read'] })            [the ACP read grant]
 //              ⇒ the recipient can unwrapGroupKey → openWithGroupKey the canonical item. NO copy is written
 //                into the recipient circle.
+//   • shareToPublishedKey (Phase 2) = the SAME grant, for a recipient OUTSIDE the origin circle whose sealing
+//              key you do NOT hold from the roster. You source it from their PUBLISHED NETWORK IDENTITY (their
+//              Ed25519 network public key) via `sealingPublicKeyFromNetworkKey` — the same ed2curve
+//              Ed25519→Curve25519 map `AgentIdentity` already uses for nacl.box, wrapped into the envelope's
+//              own X25519 SPKI DER. It is a KEY-SOURCING step, NOT a new cipher: the derived key flows through
+//              the IDENTICAL grantMember/unwrapGroupKey/rotate primitives. The recipient opens in place by
+//              deriving their sealing PRIVATE key from the same network identity (`sealingKeyPairFromNetworkKey`).
 //   • revoke = drop the recipient from the roster,
 //              rotateGroupKeyResource(new group key → the REMAINING recipients)   [forward secrecy, +version]
 //              + sharing.revoke({ resourceUri, agent, modes:['read'] })           [ACP denies the resource]
@@ -33,7 +40,7 @@
 import {
   grantMember, rotateGroupKeyResource, buildGroupKeyResource, unwrapGroupKey,
 } from './groupKeyResource.js';
-import { generateGroupKey, sealWithGroupKey } from './envelope.js';
+import { generateGroupKey, sealWithGroupKey, sealingPublicKeyFromNetworkKey } from './envelope.js';
 
 /**
  * Build a canonical-share controller for a single sealed resource. Pure orchestration — pod I/O is injected
@@ -71,23 +78,13 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
     return uri;
   }
 
-  return {
     /**
-     * SHARE — grant an OUTSIDE recipient revocable access to the canonical item, IN PLACE (no copy).
-     *
-     * @param {object} p
-     * @param {string} p.recipient        the recipient's WebID (the ACP grant subject).
-     * @param {string} p.recipientKey     the recipient's SEALING public key (added to the group-key resource).
-     * @param {string[]} [p.currentRecipients]  the roster's other sealing public keys (origin members already
-     *        holding the key). The controller is always included automatically.
-     * @param {object} [p.ref]            a shared-ref, if the URI is derived from it.
-     * @returns {Promise<{keyResource:object, resourceUri:string}>}
+     * The grant CORE, shared by `share` (roster key) and `shareToPublishedKey` (network-derived key). Given a
+     * recipient's SEALING public key, wrap the group key to it (O(1) re-wrap at the same version, or bootstrap
+     * the first resource) + ACP-grant read on the canonical resource. Not exposed — callers use the two
+     * fronts below so the *source* of the sealing key stays explicit.
      */
-    async share({ recipient, recipientKey, currentRecipients = [], ref } = {}) {
-      if (!recipient) throw new Error('canonicalShare.share: recipient WebID required');
-      if (!recipientKey) throw new Error('canonicalShare.share: recipient sealing public key required');
-      const uri = uriFor(ref);
-
+  const _grantSealingKey = async ({ recipient, recipientKey, currentRecipients, uri }) => {
       // 1. KEY GRANT — add the recipient's sealing key to the item's group-key resource. O(1) re-wrap of the
       //    SAME key at the SAME version (grantMember), or bootstrap the first resource if none exists yet.
       const cur = await keyStore.read();
@@ -108,7 +105,60 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
       //    propagate so a share that didn't actually grant is never reported as success.
       await sharing.grant({ resourceUri: uri, agent: recipient, modes: [mode] });
 
-      return { keyResource: next, resourceUri: uri };
+      return { keyResource: next, resourceUri: uri, recipientKey };
+    };
+
+  return {
+    /**
+     * SHARE — grant an OUTSIDE recipient revocable access to the canonical item, IN PLACE (no copy), using a
+     * sealing public key you ALREADY hold (e.g. from the origin circle roster).
+     *
+     * @param {object} p
+     * @param {string} p.recipient        the recipient's WebID (the ACP grant subject).
+     * @param {string} p.recipientKey     the recipient's SEALING public key (added to the group-key resource).
+     * @param {string[]} [p.currentRecipients]  the roster's other sealing public keys (origin members already
+     *        holding the key). The controller is always included automatically.
+     * @param {object} [p.ref]            a shared-ref, if the URI is derived from it.
+     * @returns {Promise<{keyResource:object, resourceUri:string}>}
+     */
+    async share({ recipient, recipientKey, currentRecipients = [], ref } = {}) {
+      if (!recipient) throw new Error('canonicalShare.share: recipient WebID required');
+      if (!recipientKey) throw new Error('canonicalShare.share: recipient sealing public key required');
+      return _grantSealingKey({ recipient, recipientKey, currentRecipients, uri: uriFor(ref) });
+    },
+
+    /**
+     * SHARE TO PUBLISHED KEY (Phase 2) — grant a recipient OUTSIDE the origin circle, one whose sealing key
+     * you do NOT hold from the roster. You source it from their PUBLISHED NETWORK IDENTITY: their Ed25519
+     * network public key (as `AgentIdentity.pubKey` publishes it). This derives the matching X25519 SEALING
+     * public key (`sealingPublicKeyFromNetworkKey` — the same ed2curve map `AgentIdentity` uses for nacl.box,
+     * NO new cipher) and grants to it exactly like `share`. The recipient opens IN PLACE by deriving their
+     * sealing PRIVATE key from the same network identity (`sealingKeyPairFromNetworkKey`).
+     *
+     * OPTIONAL minimal handshake (`verify`): before granting, the caller can assert the published key is the
+     * one they mean to grant to (e.g. matched against a QR/contact-card fingerprint). `verify(networkKey)`
+     * returning `false` (or throwing) ABORTS the grant — nothing is written, nothing is ACP-granted. A full
+     * contact-exchange/attestation handshake is Phase-3 follow-up; this is the minimal guard hook.
+     *
+     * @param {object} p
+     * @param {string} p.recipient              the recipient's WebID (the ACP grant subject).
+     * @param {string} p.recipientNetworkKey    the recipient's PUBLISHED Ed25519 network public key (b64url).
+     * @param {string[]} [p.currentRecipients]  the origin members' sealing public keys (kept; controller auto-added).
+     * @param {(networkKey:string)=>boolean} [p.verify]  optional guard — must return truthy to proceed.
+     * @param {object} [p.ref]
+     * @returns {Promise<{keyResource:object, resourceUri:string, recipientKey:string}>}  `recipientKey` is the
+     *          derived sealing public key (so the caller can track/revoke this out-of-circle recipient later).
+     */
+    async shareToPublishedKey({ recipient, recipientNetworkKey, currentRecipients = [], verify, ref } = {}) {
+      if (!recipient) throw new Error('canonicalShare.shareToPublishedKey: recipient WebID required');
+      if (!recipientNetworkKey) throw new Error('canonicalShare.shareToPublishedKey: recipient published network key required');
+      if (typeof verify === 'function' && !verify(recipientNetworkKey)) {
+        throw new Error('canonicalShare.shareToPublishedKey: published network key failed verification — grant aborted');
+      }
+      // SOURCE the sealing key from the published network identity. Throws on a malformed / non-Ed25519 key,
+      // so a bad published key is refused before anything is written or granted.
+      const recipientKey = sealingPublicKeyFromNetworkKey(recipientNetworkKey);
+      return _grantSealingKey({ recipient, recipientKey, currentRecipients, uri: uriFor(ref) });
     },
 
     /**

@@ -27,6 +27,7 @@
 //     resource). grant = one wrap; rotate = a new group key version.
 
 import nacl from 'tweetnacl';
+import ed2curve from 'ed2curve';
 import { hkdf } from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 
@@ -77,6 +78,47 @@ export function generateKeypair() {
     privateKey: b64u(wrapPriv(kp.secretKey)),
     recipientId: recipientId(pub),
   };
+}
+
+// ── OUT-OF-CIRCLE recipients: derive a SEALING key from a PUBLISHED NETWORK identity key ────────────
+// A network identity (core `AgentIdentity`) publishes an **Ed25519** public key as its network address.
+// The sealing substrate wraps to **X25519** keys. These two functions bridge that gap with the SAME
+// birational Ed25519→Curve25519 map `AgentIdentity` already uses for `nacl.box` (ed2curve) — NO new
+// cipher, NO new key-agreement: the derived X25519 key is wrapped into the exact SPKI/PKCS8 DER the
+// envelope already encodes, so `seal`/`grantMember`/`open` treat it identically to a native sealing key.
+// This is what lets you grant a recipient OUTSIDE the origin circle: you don't have their sealing key
+// from the roster, but you DO have their published network key, and its sealing counterpart is derivable.
+
+/**
+ * GRANTER side (public only) — convert a recipient's PUBLISHED Ed25519 network public key (b64url of the
+ * raw 32-byte key, as `AgentIdentity.pubKey` publishes it) into the X25519 SEALING public key (b64url
+ * SPKI DER) that `seal`/`grantMember` wrap the group key to. Throws on a malformed / non-Ed25519 key.
+ */
+export function sealingPublicKeyFromNetworkKey(networkPublicKeyB64) {
+  const ed = unb64u(networkPublicKeyB64);
+  if (ed.length !== 32) throw new Error('sealingPublicKeyFromNetworkKey: expected a 32-byte Ed25519 public key');
+  const curve = ed2curve.convertPublicKey(ed);
+  if (!curve) throw new Error('sealingPublicKeyFromNetworkKey: not a valid Ed25519 public key');
+  return b64u(wrapPub(curve));
+}
+
+/**
+ * RECIPIENT side — derive the X25519 SEALING keypair (b64url DER, same shape as `generateKeypair`) from an
+ * Ed25519 NETWORK secret (b64url of a 32-byte seed OR a 64-byte nacl secret key). An out-of-circle recipient
+ * who holds only their network identity uses this to obtain the private key that `open`/`unwrapGroupKey`
+ * need — its `publicKey` is byte-identical to `sealingPublicKeyFromNetworkKey(networkPublicKey)`, so it
+ * unwraps a group key granted to their published network key. Throws on a malformed key.
+ */
+export function sealingKeyPairFromNetworkKey(networkSecretB64) {
+  const sk = unb64u(networkSecretB64);
+  const signKP = sk.length === 32 ? nacl.sign.keyPair.fromSeed(sk)
+    : sk.length === 64 ? { publicKey: sk.subarray(32), secretKey: sk }
+      : null;
+  if (!signKP) throw new Error('sealingKeyPairFromNetworkKey: expected a 32-byte seed or 64-byte secret key');
+  const boxKP = ed2curve.convertKeyPair(signKP);
+  if (!boxKP) throw new Error('sealingKeyPairFromNetworkKey: not a valid Ed25519 key');
+  const pub = b64u(wrapPub(boxKP.publicKey));
+  return { publicKey: pub, privateKey: b64u(wrapPriv(boxKP.secretKey)), recipientId: recipientId(pub) };
 }
 
 /** A fresh 256-bit symmetric group key (b64url). Distribute it by sealing it to members (RECIPIENT mode). */

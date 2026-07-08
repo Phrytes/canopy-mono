@@ -18,6 +18,7 @@
     "@canopy/oidc-session": "file:../oidc-session",
     "@canopy/vault": "file:../vault",
     "@inrupt/solid-client": "3.0.0",
+    "ed2curve": "^0.3.0",
     "tweetnacl": "^1.0.3"
   },
   "peerDependencies": {
