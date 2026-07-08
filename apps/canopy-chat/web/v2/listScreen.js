@@ -46,6 +46,23 @@ export function renderListRows(listEl, { rows = [], t, onRowAction } = {}) {
   }
 }
 
+/**
+ * SP-5b Option A — non-dismissible caption telling the user this list is
+ * audience-scoped. Rendered under the title whenever the model carries an
+ * `audienceScope` (the normalised audience `buildScreenModel` filtered by).
+ * NON-dismissible on purpose: this is a visibility *scope*, not a user filter,
+ * so there is no clear/close control. Generic text (no circle name) because the
+ * pure model carries only the audience id. Shared helper → web≡mobile by
+ * construction from the same model field.
+ */
+function audienceScopeCaption(container, { tr, audienceScope }) {
+  if (audienceScope == null) return;
+  const caption = document.createElement('p');
+  caption.className = 'list-screen__scope-caption';
+  caption.textContent = tr('circle.screen.audience_scope');
+  container.appendChild(caption);
+}
+
 /** Build + append the search box (fires `onQuery` on input). */
 function searchBox(container, { tr, query, onQuery }) {
   const search = document.createElement('input');
@@ -92,6 +109,7 @@ export function renderListScreen(container, {
     h.textContent = title;
     container.appendChild(h);
   }
+  audienceScopeCaption(container, { tr, audienceScope: model?.audienceScope });
   searchBox(container, { tr, query, onQuery });
   categoryBar(container, { categories: Array.isArray(model?.categories) ? model.categories : [], onToggle: onToggleCategory });
   const listEl = document.createElement('ul');
@@ -118,12 +136,18 @@ export function renderListBlock(container, { block = {}, t, onRowAction, capabil
   // sourced from the projected section, alongside labelField/categoryField.
   const shared = { items: block.items, categoryField: block.categoryField, labelField: block.labelField, searchFields: block.searchFields, defaultAudience: block.defaultAudience, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
 
+  // Build the base model ONCE for the chrome: its categories seed the category
+  // bar and its `audienceScope` drives the SP-5b scope caption (both are
+  // query/activeCategories-independent, so they don't change on filter).
+  const baseModel = buildScreenModel(shared);
+
   if (block.title) {
     const h = document.createElement('h2');
     h.className = 'list-screen__title';
     h.textContent = block.title;
     container.appendChild(h);
   }
+  audienceScopeCaption(container, { tr, audienceScope: baseModel.audienceScope });
 
   const rowsEl = document.createElement('ul');
   rowsEl.className = 'list-screen__rows';
@@ -135,7 +159,7 @@ export function renderListBlock(container, { block = {}, t, onRowAction, capabil
   searchBox(container, { tr, query, onQuery: (q) => { query = q; renderRows(); } });
 
   // Categories built once from the full list; toggling updates activeCategories + re-renders rows only.
-  const allCats = buildScreenModel(shared).categories;
+  const allCats = baseModel.categories;
   categoryBar(container, {
     categories: allCats,
     onToggle: (id, checked) => {

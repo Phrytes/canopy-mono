@@ -66,5 +66,10 @@ describe('circle settings/screen locale coverage', () => {
         expect(resolve(tree, `circle.screen.open.${screen}`), `circle.screen.open.${screen}`).toBeTypeOf('string');
       }
     });
+
+    it(`[${lang}] the SP-5b audience-scope caption resolves`, () => {
+      // Non-dismissible caption a scoped list renders under its title.
+      expect(resolve(tree, 'circle.screen.audience_scope'), 'circle.screen.audience_scope').toBeTypeOf('string');
+    });
   }
 });

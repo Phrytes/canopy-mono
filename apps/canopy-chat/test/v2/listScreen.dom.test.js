@@ -100,6 +100,26 @@ describe('renderListBlock (stateful, focus-safe)', () => {
     expect(el.querySelector('.list-screen__row-label').textContent).toBe('X');
   });
 
+  it('SP-5b Option A: renders a non-dismissible scope caption when the list is audience-scoped', () => {
+    const el = mount();
+    const items = [
+      { id: 'a', label: 'Alpha', audience: 'circle:abc' },
+      { id: 'b', label: 'Bravo', audience: 'circle:xyz' },
+    ];
+    renderListBlock(el, { block: { items, defaultAudience: 'circle:abc' }, t });
+    const caption = el.querySelector('.list-screen__scope-caption');
+    expect(caption).toBeTruthy();
+    expect(caption.textContent).toBe('circle.screen.audience_scope');   // through t()
+    // Non-dismissible: no clear/close control inside the caption.
+    expect(caption.querySelector('button')).toBeNull();
+  });
+
+  it('SP-5b Option A: no scope caption when the list is unscoped', () => {
+    const el = mount();
+    renderListBlock(el, { block: { items }, t });
+    expect(el.querySelector('.list-screen__scope-caption')).toBeNull();
+  });
+
   it('threads block.defaultAudience → buildScreenModel: filters rows by the section audience (SP-5b fetched-items path)', () => {
     const el = mount();
     const items = [

@@ -127,5 +127,13 @@ export function buildScreenModel({
       }))
     : [];
 
-  return { rows, categories };
+  // SP-5b Option A — the EFFECTIVE audience scope this model filtered by
+  // (normalised), or null when the list is unscoped.  Purely additive: a
+  // renderer can surface a "this list is audience-scoped" caption from a
+  // shared model field, so web≡mobile by construction.  The scope carries
+  // only the normalised audience id (no human circle name — the pure model
+  // doesn't have one), so the caption stays deliberately generic.
+  const audienceScope = effectiveAudience === undefined ? null : normFilter;
+
+  return { rows, categories, audienceScope };
 }
