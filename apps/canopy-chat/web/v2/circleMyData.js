@@ -36,6 +36,9 @@ export function renderCircleMyData(container, {
   relayUrl,               // in-app relay setting: the saved URL ('' / null = unset ⇒ env fallback)
   relayEnvUrl,            // the build-time env relay URL, shown as the placeholder fallback
   onSaveRelay,            // (url) => Promise<{ok, effective, error?}> — persist + live-reconnect the transport
+  onOpenRelayPanel,       // Objective D / Surface 4 (#180): () => void — open the set-relay op in the docked
+                          // side-panel (openPagePanel). When provided, the relay row is an entry button that
+                          // routes through the generic panel instead of the bespoke inline form below.
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -78,8 +81,28 @@ export function renderCircleMyData(container, {
     storage.appendChild(kv(tr('circle.mydata.relay'), [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ')));
   }
   // In-app relay setting — point the no-server cross-device relay at a reachable server WITHOUT a rebuild.
-  // Empty ⇒ falls back to the build-time env var (shown as the placeholder). Saving reconnects live.
-  if (typeof onSaveRelay === 'function') {
+  // Objective D / Surface 4 (#180): when the host wires `onOpenRelayPanel`, the edit is routed through the
+  // generic docked side-panel (openPagePanel's simple-form for the `set-relay` op) instead of the bespoke
+  // inline field. The button is the entry point; the panel builds the form from set-relay's params + dispatches.
+  if (typeof onOpenRelayPanel === 'function') {
+    const row = document.createElement('div');
+    row.className = 'cc-mydata__relay-edit';
+    const current = document.createElement('span');
+    current.className = 'cc-mydata__relay-note';
+    current.textContent = tr('circle.mydata.relay_current', { url: relayUrl || relayEnvUrl || tr('circle.mydata.relay_off') });
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'cc-mydata__relay-open';
+    open.textContent = tr('circle.mydata.relay_open');
+    open.addEventListener('click', () => onOpenRelayPanel());
+    const hint = document.createElement('p');
+    hint.className = 'cc-mydata__relay-hint';
+    hint.textContent = tr('circle.mydata.relay_hint');
+    row.appendChild(current);
+    row.appendChild(open);
+    storage.appendChild(row);
+    storage.appendChild(hint);
+  } else if (typeof onSaveRelay === 'function') {
     const row = document.createElement('div');
     row.className = 'cc-mydata__relay-edit';
     const input = document.createElement('input');

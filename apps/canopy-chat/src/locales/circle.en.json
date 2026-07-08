@@ -2548,6 +2548,8 @@
       "doc": "S5 — relay operator/url."
     },
     "relay_set": { "text": "Relay server", "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback." },
+    "relay_open": { "text": "Set relay server…", "doc": "Entry button that opens the relay-URL editor in the docked side-panel (openPagePanel, set-relay surfaces.page)." },
+    "relay_current": { "text": "Relay: {{url}}", "doc": "Current in-app relay setting shown beside the open-panel button." },
     "relay_save": { "text": "Save & connect", "doc": "Persist the relay URL + reconnect the peer transport live." },
     "relay_saving": { "text": "Connecting…", "doc": "Relay save in progress." },
     "relay_saved": { "text": "Connected via {{url}}", "doc": "Relay saved + reconnected." },
