@@ -160,6 +160,8 @@ import ContactsScreen from './ContactsScreen.js';
 import ContactThreadScreen from './ContactThreadScreen.js';
 import FeedbackThreadScreen from './FeedbackThreadScreen.js';
 import { createFeedbackBotStore } from '../../../../canopy-chat/src/v2/feedbackBots.js';
+// objective L · Phase 2 — the Contacten roster feeds CircleShareScreen's out-of-circle recipient picker.
+import { listContacts, mergeContacts, stoopContactToRow } from '../../../../canopy-chat/src/v2/contactsSource.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
 import CircleListsScreen from './CircleListsScreen.js';   // cluster K · K2 — composable lists (web≡mobile)
 import CircleShareScreen from './CircleShareScreen.js';   // objective L — cross-circle share UI (web≡mobile)
@@ -739,6 +741,21 @@ export default function CircleLauncherScreen({
     }
   }, [callSkill, bundle]);
 
+  // objective L · Phase 2 — the unified Contacten roster (PeerGraph bots/peers + stoop ContactBook people),
+  // via the SAME shared helpers ContactsScreen uses. Fed to CircleShareScreen for the out-of-circle recipient
+  // picker. Loaded lazily when the share view opens (below); best-effort, never blocks the launcher.
+  const [shareContacts, setShareContacts] = useState([]);
+  const loadShareContacts = useCallback(async () => {
+    try {
+      const [peerRows, stoopRes] = await Promise.all([
+        listContacts(bundle?.peerGraph ?? null).catch(() => []),
+        (typeof bundle?.callSkill === 'function' ? bundle.callSkill('stoop', 'listContacts', {}) : Promise.resolve(null)).catch(() => null),
+      ]);
+      const stoopRows = (Array.isArray(stoopRes?.contacts) ? stoopRes.contacts : []).map(stoopContactToRow).filter(Boolean);
+      setShareContacts(mergeContacts(peerRows, stoopRows));
+    } catch { setShareContacts([]); }
+  }, [bundle]);
+
   // The stoop store hydrates from AsyncStorage a beat AFTER the agent bundle is
   // ready, so the first load can race ahead of it and return 0 circles (the
   // persisted ones look "lost" until the next manual reload). Retry a few times
@@ -1125,7 +1142,7 @@ export default function CircleLauncherScreen({
       <CircleShareScreen
         circleId={selected.id} policy={selectedPolicy}
         by={actorWebId} recipient={actorWebId}
-        circles={circles}
+        circles={circles} contacts={shareContacts}
         onBack={() => setView('detail')}
       />
     );
@@ -1386,7 +1403,7 @@ export default function CircleLauncherScreen({
           setView('recipes');
         }}
         onLists={() => setView('lists')}
-        onShare={() => setView('share')}
+        onShare={() => { loadShareContacts(); setView('share'); }}
       />
     );
   }

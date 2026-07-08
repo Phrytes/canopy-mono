@@ -23,7 +23,7 @@ import { createCirclePodSharing } from '../../../canopy-chat/src/v2/circlePodSha
 // cluster K · objective L — the SHARED cross-circle SHARE logic + the platform-neutral enforcement assembly.
 // Mobile calls the SAME builder + ops as web (circleApp.js) — invariant #1/#2, no mobile fork.
 import { buildCircleShareEnforcement } from '../../../canopy-chat/src/v2/circleShareEnforcement.js';
-import { shareItemAcrossCircles, listSharedResolved, revokeItemShare } from '../../../canopy-chat/src/v2/circleShare.js';
+import { shareItemAcrossCircles, shareItemToPublishedKey as sharedShareItemToPublishedKey, listSharedResolved, revokeItemShare } from '../../../canopy-chat/src/v2/circleShare.js';
 import { buildHouseholdDataSource } from '../../../household/src/index.js';
 // objective L follow-up — the mobile per-circle policy store (AsyncStorage-backed, `cc.circlePolicy.<id>`
 // keys). Mirror of web circleApp.js's module-level `policyStore`: the composition-root's `policyOf` reads the
@@ -291,6 +291,26 @@ export async function shareItemIntoCircle({
     // objective L — thread the signed-in member's WebID as the initiator (mirrors web's `by ?? LOCAL_ACTOR`),
     // so the source circle's initiator gate sees a real actor. Null when signed out ⇒ deny-by-default holds.
     itemId, fromCircleId, toCircleId, by: by ?? getCircleActorWebId() ?? undefined, recipient, recipients,
+  });
+}
+
+/**
+ * objective L · Phase 2 — SHARE one canonical item OUT to an OUT-OF-CIRCLE recipient by their PUBLISHED
+ * network key (the mobile mirror of web circleApp.js's `shareItemToContact`). Thin pass-through to the SHARED
+ * `shareItemToPublishedKey` — no mobile fork of the share/grant logic. The `recipientNetworkKey` is the
+ * contact's `pubKey`/`peerAddr` the recipient picker read off the roster row (see `pickableRecipients`).
+ */
+export async function shareItemToPublishedKey({
+  itemId, fromCircleId, toCircleId, by, recipient, recipientNetworkKey, verify,
+  resolveService, enforcementFor, policyOf,
+} = {}) {
+  const r = _shareResolvers(policyOf);
+  return sharedShareItemToPublishedKey({
+    resolveService: resolveService ?? r.resolveService,
+    enforcementFor: enforcementFor ?? r.enforcementFor,
+    policyOf: r.policyOf,
+    itemId, fromCircleId, toCircleId, by: by ?? getCircleActorWebId() ?? undefined,
+    recipient, recipientNetworkKey, verify,
   });
 }
 

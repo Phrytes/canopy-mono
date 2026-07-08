@@ -12,18 +12,26 @@
  */
 import {
   shareItemIntoCircle as defaultShareItemIntoCircle,
+  shareItemToPublishedKey as defaultShareItemToPublishedKey,
   listSharedItems as defaultListSharedItems,
   unshareItemFromCircle as defaultUnshareItemFromCircle,
   getCircleLists as defaultGetCircleLists,
 } from './circlePods.js';
+// objective L · Phase 2 — the SHARED (web≡mobile) out-of-circle recipient selector. Mobile uses the SAME
+// selector web's `renderRecipientPicker` does — no mobile fork (invariants #1/#2).
+import { pickableRecipients } from '../../../canopy-chat/src/v2/shareRecipients.js';
 
 /** The default wrapper set — the live composition root. Tests inject a fake `deps` in its place. */
 export const defaultShareDeps = {
   shareItemIntoCircle: defaultShareItemIntoCircle,
+  shareItemToPublishedKey: defaultShareItemToPublishedKey,
   listSharedItems: defaultListSharedItems,
   unshareItemFromCircle: defaultUnshareItemFromCircle,
   getCircleLists: defaultGetCircleLists,
 };
+
+// Re-export the shared selector so the RN view imports its ONE recipient projection from the screen model.
+export { pickableRecipients };
 
 /**
  * The source circle's own items that can be shared OUT — resolved through the SAME lists service the
@@ -107,6 +115,31 @@ export async function shareOut({
   catch (e) { return status(false, 'circle.share.failed', { error: e?.message ?? 'error' }); }
   if (r?.ok) return status(true, 'circle.share.done', { item: itemId, circle: target });
   return status(false, 'circle.share.failed', { error: r?.error ?? 'unknown' });
+}
+
+/**
+ * objective L · Phase 2 — share one of the circle's items OUT to an OUT-OF-CIRCLE PERSON (a contact),
+ * ALONGSIDE `shareOut` (share to a circle's members). Thin pass-through to `shareItemToPublishedKey`; the
+ * `recipientNetworkKey` is the contact's published key the SHARED `pickableRecipients` selector produced.
+ * The pointer still lands in a distinct `toCircleId` (the op's target-circle requirement). Returns a status
+ * keyed to `circle.share.to_person_done` / `circle.share.to_person_failed`.
+ */
+export async function shareToRecipient({
+  itemId, fromCircleId, toCircleId, recipient, recipientNetworkKey, name, by, verify, policyOf,
+  deps = defaultShareDeps,
+} = {}) {
+  const target = String(toCircleId ?? '').trim();
+  if (!itemId || !fromCircleId || !target) return status(false, 'circle.share.to_person_failed', { error: 'missing' });
+  if (target === fromCircleId) return status(false, 'circle.share.to_person_failed', { error: 'same-circle' });
+  if (!recipient || !recipientNetworkKey) return status(false, 'circle.share.to_person_failed', { error: 'missing-recipient' });
+  let r;
+  try {
+    r = await deps.shareItemToPublishedKey({
+      itemId, fromCircleId, toCircleId: target, by, recipient, recipientNetworkKey, verify, policyOf,
+    });
+  } catch (e) { return status(false, 'circle.share.to_person_failed', { error: e?.message ?? 'error' }); }
+  if (r?.ok) return status(true, 'circle.share.to_person_done', { item: itemId, name: name ?? recipient });
+  return status(false, 'circle.share.to_person_failed', { error: r?.error ?? 'unknown' });
 }
 
 /**

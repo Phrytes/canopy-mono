@@ -195,8 +195,10 @@ import { makeCircleLists } from '@canopy/kring-host/circleLists';  // cluster K 
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
 import { sealItem, isCanonicalPosture } from '@canopy/item-store';
 import {
-  shareItemAcrossCircles, listSharedResolved, revokeItemShare, listOutboundShares, revokeAllForMember,
+  shareItemAcrossCircles, shareItemToPublishedKey, listSharedResolved, revokeItemShare, listOutboundShares, revokeAllForMember,
 } from '../../src/v2/circleShare.js';
+// objective L · Phase 2 — the out-of-circle recipient picker (thin DOM over the SHARED `pickableRecipients`).
+import { renderRecipientPicker } from './recipientPicker.js';
 // The platform-neutral enforcement assembly (web≡mobile — mobile's circlePods.js calls the SAME builder).
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
@@ -360,6 +362,23 @@ async function unshareItemFromCircle({ itemId, fromCircleId, toCircleId, recipie
     enforcementFor: _shareEnforcementFor,
     policyOf: _circlePolicy,
     itemId, fromCircleId, toCircleId, recipient, recipients, remainingRecipients,
+  });
+}
+
+/**
+ * objective L · Phase 2 — SHARE one canonical item OUT to an OUT-OF-CIRCLE contact, identified by their
+ * PUBLISHED network key (the `recipientNetworkKey` the recipient picker read straight off the contact row).
+ * Thin pass-through to the SHARED `shareItemToPublishedKey` (no share/seal logic here); the composition root
+ * supplies the same resolveService / enforcementFor / policyOf trio the circle-share path uses. The pointer
+ * lands in `toCircleId` (the op requires a distinct target circle — see the placement note in the report).
+ */
+async function shareItemToContact({ itemId, fromCircleId, toCircleId, by, recipient, recipientNetworkKey, verify } = {}) {
+  return shareItemToPublishedKey({
+    resolveService: _circleServiceFor,
+    enforcementFor: _shareEnforcementFor,
+    policyOf: _circlePolicy,
+    itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
+    recipient, recipientNetworkKey, verify,
   });
 }
 
@@ -1613,6 +1632,46 @@ async function loadAllContacts() {
     loadStoopContacts(),
   ]);
   return mergeContacts(peerRows, stoopRows);
+}
+
+/**
+ * objective L · Phase 2 — open the OUT-OF-CIRCLE recipient picker overlay. Lists the Contacten roster's
+ * pickable recipients (the SHARED `pickableRecipients` selector, applied inside `renderRecipientPicker`);
+ * selecting one dispatches `shareItemToContact` with the contact's published key as `recipientNetworkKey`,
+ * ALONGSIDE the existing share-to-circle path (`/shareitem` → shareItemIntoCircle). A self-contained modal
+ * appended to the body so it doesn't disturb the kring render state. Resolves the result note back to the caller.
+ */
+async function openRecipientPicker({ itemId, fromCircleId, toCircleId, onResult } = {}) {
+  const contacts = await loadAllContacts().catch(() => []);
+  // Self-contained centered modal (inline styles, like the catch-up overlay) so it needs no CSS file.
+  const backdrop = document.createElement('div');
+  backdrop.className = 'cc-recipient-overlay';
+  backdrop.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:1002', 'display:flex',
+    'align-items:center', 'justify-content:center', 'background:rgba(0,0,0,0.4)',
+  ].join(';');
+  const overlay = document.createElement('div');
+  overlay.style.cssText = [
+    'background:#fff', 'border-radius:12px', 'padding:16px', 'max-width:min(92vw,420px)',
+    'max-height:80vh', 'overflow:auto', 'box-shadow:0 6px 24px rgba(0,0,0,0.25)',
+    'font-family:system-ui,sans-serif',
+  ].join(';');
+  backdrop.appendChild(overlay);
+  document.body.appendChild(backdrop);
+  const close = () => backdrop.remove();
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });   // click-outside closes
+  renderRecipientPicker(overlay, {
+    contacts, itemId, t,
+    onCancel: close,
+    onPick: async (r) => {
+      const res = await shareItemToContact({
+        itemId, fromCircleId, toCircleId,
+        recipient: r.id, recipientNetworkKey: r.recipientNetworkKey,
+      }).catch((cause) => ({ ok: false, error: cause?.message ?? 'unknown' }));
+      close();
+      onResult?.(res, r);
+    },
+  });
 }
 
 // P5 — add a bot to the app PeerGraph (an https agent-card URL → discoverA2A;
@@ -3229,6 +3288,22 @@ function showKring(id, circle, policy) {
           kringNote(r?.ok
             ? t('circle.share.done', { item: itemId, circle: toCircleId })
             : t('circle.share.failed', { error: r?.error ?? 'unknown' }));
+          return;
+        }
+        // objective L · Phase 2 — share an item OUT to an out-of-circle PERSON (a contact), ALONGSIDE the
+        // share-to-circle path above. Opens the recipient picker (pickable contacts by published key);
+        // selecting one grants them the canonical item in place (shareItemToPublishedKey). The pointer lands
+        // in <targetCircleId> (the op requires a distinct target circle to hold the shared-ref bookkeeping).
+        //   /sharewith <itemId> [to] <targetCircleId>
+        const shareWithCmd = line.match(/^\/sharewith\s+(\S+)\s+(?:to\s+)?(\S+)\s*$/i);
+        if (shareWithCmd) {
+          const [, itemId, toCircleId] = shareWithCmd;
+          await openRecipientPicker({
+            itemId, fromCircleId: id, toCircleId,
+            onResult: (r, recip) => kringNote(r?.ok
+              ? t('circle.share.to_person_done', { item: itemId, name: recip?.name ?? recip?.id ?? '' })
+              : t('circle.share.to_person_failed', { error: r?.error ?? 'unknown' })),
+          });
           return;
         }
         // objective L — REVOKE a recipient's canonical access (only meaningful for a `canonical` circle):
