@@ -46,12 +46,20 @@ describe('circle share screen — out-of-circle recipient (web≡mobile)', () =>
     expect(s).toEqual({ ok: true, statusKey: 'circle.share.to_person_done', params: { item: 'i1', name: 'Dave' } });
   });
 
-  it('gates a missing/same-circle target and a keyless recipient WITHOUT calling the wrapper', async () => {
+  it('gates a same-circle target and a keyless recipient WITHOUT calling the wrapper', async () => {
     const shareItemToPublishedKey = vi.fn();
     const base = { itemId: 'i1', fromCircleId: 'A', recipient: 'did:dave', recipientNetworkKey: 'KEY', deps: { shareItemToPublishedKey } };
-    expect((await shareToRecipient({ ...base, toCircleId: '' })).ok).toBe(false);
     expect((await shareToRecipient({ ...base, toCircleId: 'A' })).ok).toBe(false);          // same circle
     expect((await shareToRecipient({ ...base, toCircleId: 'B', recipientNetworkKey: '' })).ok).toBe(false);  // no key
     expect(shareItemToPublishedKey).not.toHaveBeenCalled();
+  });
+
+  it('a MISSING toCircleId is now a valid person-share — the wrapper IS called with toCircleId undefined', async () => {
+    const shareItemToPublishedKey = vi.fn(async () => ({ ok: true, ref: {} }));
+    const base = { itemId: 'i1', fromCircleId: 'A', recipient: 'did:dave', recipientNetworkKey: 'KEY', deps: { shareItemToPublishedKey } };
+    const s = await shareToRecipient({ ...base, toCircleId: '' });   // empty target ⇒ a pure person-share
+    expect(s.ok).toBe(true);
+    expect(shareItemToPublishedKey).toHaveBeenCalledTimes(1);
+    expect(shareItemToPublishedKey.mock.calls[0][0]).toMatchObject({ itemId: 'i1', fromCircleId: 'A', toCircleId: undefined, recipient: 'did:dave' });
   });
 });

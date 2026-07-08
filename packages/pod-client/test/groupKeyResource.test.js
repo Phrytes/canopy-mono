@@ -155,3 +155,28 @@ describe('groupKeyResource — historic-key retention (Phase 3)', () => {
     expect(openSealedAcrossVersions(v1Content, v2b, alice.privateKey)).toBe('pre-carol history');
   });
 });
+
+describe('groupKeyResource — grantMember includeHistory (opt-in retroactive access)', () => {
+  it('DEFAULT withholds pre-grant history; includeHistory=true re-wraps retained versions via extra[]', () => {
+    const alice = generateKeypair();   // present since v1 (the granter)
+    const dave  = generateKeypair();   // out-of-circle joiner
+    const gk1 = generateGroupKey();
+    const v1 = buildGroupKeyResource({ version: 1, groupKey: gk1, recipients: [alice.publicKey] });
+    const v1Content = sealWithGroupKey('pre-grant history', gk1);
+    const v2 = rotateGroupKeyResource({ previous: v1, recipients: [alice.publicKey] });   // history=[v1]
+
+    // DEFAULT — dave gets the CURRENT version only; the retained v1 is NOT re-wrapped to him.
+    const grantedDefault = grantMember(v2, { newRecipient: dave.publicKey, granterPrivateKey: alice.privateKey, currentRecipients: [alice.publicKey] });
+    expect(readableGroupKeys(grantedDefault, dave.privateKey).map((k) => k.version).sort()).toEqual([2]);
+    expect(() => openSealedAcrossVersions(v1Content, grantedDefault, dave.privateKey)).toThrow();
+    // ...but alice (an original v1 recipient) is never dropped.
+    expect(readableGroupKeys(grantedDefault, alice.privateKey).map((k) => k.version).sort()).toEqual([1, 2]);
+
+    // OPT-IN — includeHistory re-wraps v1's key to dave (an extra[] envelope); he now opens pre-grant content.
+    const grantedHistory = grantMember(v2, { newRecipient: dave.publicKey, granterPrivateKey: alice.privateKey, currentRecipients: [alice.publicKey], includeHistory: true });
+    expect(readableGroupKeys(grantedHistory, dave.privateKey).map((k) => k.version).sort()).toEqual([1, 2]);
+    expect(openSealedAcrossVersions(v1Content, grantedHistory, dave.privateKey)).toBe('pre-grant history');
+    // The original v1 envelope is untouched — alice keeps her access (no recipient dropped, forward-secret).
+    expect(unwrapGroupKeyVersion(grantedHistory, alice.privateKey, 1)).toBe(gk1);
+  });
+});

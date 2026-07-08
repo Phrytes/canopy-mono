@@ -26,7 +26,8 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 // the producer just consumes the injected makePodClient/generateKeypair.
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
-  recipientStrategy as podRecipientStrategy } from '@canopy/pod-client';
+  recipientStrategy as podRecipientStrategy,
+  sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
 import { createPseudoPod } from '@canopy/pseudo-pod';
 import { pickWebBackend } from '../../src/web/persistentBackend.js';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
@@ -369,16 +370,23 @@ async function unshareItemFromCircle({ itemId, fromCircleId, toCircleId, recipie
  * objective L · Phase 2 — SHARE one canonical item OUT to an OUT-OF-CIRCLE contact, identified by their
  * PUBLISHED network key (the `recipientNetworkKey` the recipient picker read straight off the contact row).
  * Thin pass-through to the SHARED `shareItemToPublishedKey` (no share/seal logic here); the composition root
- * supplies the same resolveService / enforcementFor / policyOf trio the circle-share path uses. The pointer
- * lands in `toCircleId` (the op requires a distinct target circle — see the placement note in the report).
+ * supplies the same resolveService / enforcementFor / policyOf trio the circle-share path uses, PLUS the
+ * injected copy-seal + network-key derivation the `silent` policy path needs. `toCircleId` is now OPTIONAL (a
+ * pure person-share needs none); `includeHistory` (default off) opts the recipient into the pre-grant history.
+ * The `shareOutOfCircle` policy axis decides prohibit / notify / silent.
  */
-async function shareItemToContact({ itemId, fromCircleId, toCircleId, by, recipient, recipientNetworkKey, verify } = {}) {
+async function shareItemToContact({ itemId, fromCircleId, toCircleId, by, recipient, recipientNetworkKey, verify, includeHistory } = {}) {
   return shareItemToPublishedKey({
     resolveService: _circleServiceFor,
     enforcementFor: _shareEnforcementFor,
     policyOf: _circlePolicy,
+    sealCopy: sealCopyToRecipients,
+    sealingKeyFromNetworkKey: podSealingPublicKeyFromNetworkKey,
+    // FLAGGED — the exact circle/admin notify payload+recipients is a product decision (see report). This
+    // best-effort emitter just records that an out-of-circle share happened; wire to the real channel later.
+    notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
-    recipient, recipientNetworkKey, verify,
+    recipient, recipientNetworkKey, verify, includeHistory,
   });
 }
 

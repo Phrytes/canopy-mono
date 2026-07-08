@@ -96,15 +96,18 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
      * the first resource) + ACP-grant read on the canonical resource. Not exposed — callers use the two
      * fronts below so the *source* of the sealing key stays explicit.
      */
-  const _grantSealingKey = async ({ recipient, recipientKey, currentRecipients, uri }) => {
+  const _grantSealingKey = async ({ recipient, recipientKey, currentRecipients, uri, includeHistory = false }) => {
       // 1. KEY GRANT — add the recipient's sealing key to the item's group-key resource. O(1) re-wrap of the
       //    SAME key at the SAME version (grantMember), or bootstrap the first resource if none exists yet.
+      //    `includeHistory` (default false) ALSO re-wraps the retained historic versions to the recipient
+      //    (grantMember's `extra` envelopes) — an EXPLICIT opt-in; the default gives the current version only.
       const cur = await keyStore.read();
       const next = cur
         ? grantMember(cur, {
             newRecipient: recipientKey,
             granterPrivateKey: controllerKey.privateKey,
             currentRecipients: withController(currentRecipients),
+            includeHistory,
           })
         : buildGroupKeyResource({
             version: 1,
@@ -133,10 +136,10 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
      * @param {object} [p.ref]            a shared-ref, if the URI is derived from it.
      * @returns {Promise<{keyResource:object, resourceUri:string}>}
      */
-    async share({ recipient, recipientKey, currentRecipients = [], ref } = {}) {
+    async share({ recipient, recipientKey, currentRecipients = [], includeHistory = false, ref } = {}) {
       if (!recipient) throw new Error('canonicalShare.share: recipient WebID required');
       if (!recipientKey) throw new Error('canonicalShare.share: recipient sealing public key required');
-      return _grantSealingKey({ recipient, recipientKey, currentRecipients, uri: uriFor(ref) });
+      return _grantSealingKey({ recipient, recipientKey, currentRecipients, uri: uriFor(ref), includeHistory });
     },
 
     /**
@@ -161,7 +164,7 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
      * @returns {Promise<{keyResource:object, resourceUri:string, recipientKey:string}>}  `recipientKey` is the
      *          derived sealing public key (so the caller can track/revoke this out-of-circle recipient later).
      */
-    async shareToPublishedKey({ recipient, recipientNetworkKey, currentRecipients = [], verify, ref } = {}) {
+    async shareToPublishedKey({ recipient, recipientNetworkKey, currentRecipients = [], includeHistory = false, verify, ref } = {}) {
       if (!recipient) throw new Error('canonicalShare.shareToPublishedKey: recipient WebID required');
       if (!recipientNetworkKey) throw new Error('canonicalShare.shareToPublishedKey: recipient published network key required');
       if (typeof verify === 'function' && !verify(recipientNetworkKey)) {
@@ -170,7 +173,7 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
       // SOURCE the sealing key from the published network identity. Throws on a malformed / non-Ed25519 key,
       // so a bad published key is refused before anything is written or granted.
       const recipientKey = sealingPublicKeyFromNetworkKey(recipientNetworkKey);
-      return _grantSealingKey({ recipient, recipientKey, currentRecipients, uri: uriFor(ref) });
+      return _grantSealingKey({ recipient, recipientKey, currentRecipients, uri: uriFor(ref), includeHistory });
     },
 
     /**
