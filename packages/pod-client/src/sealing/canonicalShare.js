@@ -36,9 +36,21 @@
 // recipient already decrypted or cached before revocation — that plaintext is out of our hands. Revocation
 // here means "no further access", not "un-see". A caller who needs the revoked recipient locked out of
 // EXISTING content must RE-SEAL that content under the new group key after revoke (see `reseal` below).
+//
+// ── PHASE 3 — HISTORIC-KEY RETENTION (open across rotations) ─────────────────────────────────────────────
+// Rotation now RETAINS the outgoing group-key version (groupKeyResource.js `history`), so a STILL-GRANTED
+// recipient can open content sealed under an OLDER version they lived through — read the canonical item IN
+// PLACE across rotations via `open(sealedText, readerPrivateKey)`. This does NOT weaken forward secrecy: each
+// retained version's envelope only lets its OWN recipients unwrap its key, so a revoked recipient — absent
+// from every post-revocation version — still cannot open content sealed after their removal. Retention only
+// restores a current recipient's access to content that predates a rotation, never a revoked recipient's
+// access to content that postdates their revocation. A freshly-granted OUT-OF-CIRCLE recipient still gets the
+// CURRENT version only (grant carries history forward untouched) — never retroactive access to pre-grant
+// history. Expanding that (grant historic versions) is a deliberate POLICY choice, not the default.
 
 import {
   grantMember, rotateGroupKeyResource, buildGroupKeyResource, unwrapGroupKey,
+  openSealedAcrossVersions,
 } from './groupKeyResource.js';
 import { generateGroupKey, sealWithGroupKey, sealingPublicKeyFromNetworkKey } from './envelope.js';
 
@@ -209,6 +221,26 @@ export function createCanonicalShare({ sharing, keyStore, controllerKey, resourc
       if (!cur) throw new Error('canonicalShare.reseal: no group-key resource to re-seal under');
       const groupKey = unwrapGroupKey(cur, granterPrivateKey);
       return sealWithGroupKey(plaintext, groupKey);
+    },
+
+    /**
+     * OPEN — read the canonical item IN PLACE across key rotations (Phase 3). Given a recipient's private key,
+     * resolve the group-key VERSION the content was sealed under from the resource's retained history and
+     * open it — so a still-granted recipient opens BOTH pre- and post-rotation content, while a REVOKED
+     * recipient (absent from every post-revocation version) cannot open content sealed after their removal
+     * (forward secrecy). Version resolution is by authenticated trial (see `openSealedAcrossVersions`); the
+     * content itself carries no version tag, so nothing about the sealed item changed. Non-sealed text passes
+     * through unchanged.
+     *
+     * @param {string} sealedText        the group-key-sealed canonical item body.
+     * @param {string} readerPrivateKey  the reader's sealing private key (roster key or network-derived).
+     * @returns {Promise<string>}        the plaintext, or throws if the reader holds no version that opens it.
+     */
+    async open(sealedText, readerPrivateKey) {
+      if (!readerPrivateKey) throw new Error('canonicalShare.open: reader private key required');
+      const cur = await keyStore.read();
+      if (!cur) throw new Error('canonicalShare.open: no group-key resource for this item');
+      return openSealedAcrossVersions(sealedText, cur, readerPrivateKey);
     },
   };
 }
