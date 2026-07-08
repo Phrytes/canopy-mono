@@ -127,7 +127,7 @@ import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
-import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
 import { feedbackBotFromInput, createFeedbackBotStore } from '../../src/v2/feedbackBots.js';
@@ -909,11 +909,12 @@ let circleOwnerWebId = null;   // signed-in webid — owner of the ACP grants fo
 // event (recipient's full bytes arrived) can refresh whatever board is on screen.
 let noticeboardRefreshHook = null;
 
-// ── Phase 5 — circle bot + feedback in the kring composer ───────────────────────────────────────
+// ── Phase 5 — circle bot in the kring composer ───────────────────────────────────────────────────
 // Mirrors mobile CircleLauncherScreen on the SHARED engine: createCircleDispatch (gate→interpret→
-// dispatch) + createClarifyingDispatch (label→id) + makeCircleLookup (live fetch) + the token gate +
-// createFeedbackMount. Built once post-agent-boot (buildCircleBot). The bot/feedback render INTO the
-// kring stream via `_kringRender`, a small per-circle bridge that showKring sets each time it opens.
+// dispatch) + createClarifyingDispatch (label→id) + makeCircleLookup (live fetch) + the token gate.
+// Built once post-agent-boot (buildCircleBot). The bot renders INTO the kring stream via `_kringRender`,
+// a small per-circle bridge that showKring sets each time it opens. (Feedback is NOT in the kring
+// composer — since F2 it attaches via the fp-bot contact thread; see showFeedbackThread.)
 const CIRCLE_LLM_BASEURL   = import.meta.env?.VITE_CIRCLE_LLM_BASEURL ?? null;
 const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined;
 // Per-call LLM timeout. The provider's 12s default is fine for a fast cloud/enclave model
@@ -959,7 +960,6 @@ const feedbackBotStore = createFeedbackBotStore(typeof localStorage !== 'undefin
 const _fbThreads = new Map();   // botId → { name, messages:[], surface, mount, activated }
 let _activeFbThread = null;     // { botId }
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
-let circleFeedbackMount = null;  // createFeedbackMount (tryHandle(text, threadId))
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
 let circleBaseSources = [];      // B · Slice 2/4 — the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
@@ -1316,27 +1316,10 @@ function buildCircleBot(agent) {
     return { llmTool: raw && typeof raw.llmTool === 'string' ? raw.llmTool : CIRCLE_LLM_POLICY };
   }
 
-  // Feedback — bubbles render into the kring stream (the mount wraps a surface; appendBotBubble routes
-  // to the current kring's botBubble). appendUserBubble ECHOES the user's line (matches mobile): in this
-  // composer the feedback mount gets first refusal BEFORE the optimistic append, so without this the
-  // user's feedback messages vanished until /feedback-stop (2026-06-12). The echo is local-only (not
-  // fanned out to peers), so a private feedback message isn't broadcast to the circle.
-  const feedbackSurface = createFeedbackSurface({
-    llmBaseURL: FEEDBACK_LLM_BASEURL,
-    llmModel: FEEDBACK_LLM_MODEL,
-    // General in-chat bot menus: pass the bot's buttons through as `action` callbacks (routed by source in
-    // circleEmbedButtonTap). Feedback's PRIMARY surface is the dedicated fp-bot thread, but if it's used
-    // in-kring its consent/verify buttons render here too (no longer dropped).
-    emit: ({ text, buttons }) => {
-      const acts = (buttons || []).map((b) => ({ action: b.id, label: b.label }));
-      if (text || acts.length) _kringRender?.botBubble(text || '', acts.length ? { buttons: acts } : undefined);
-    },
-  });
-  circleFeedbackMount = createFeedbackMount({
-    surface: feedbackSurface,
-    appendUserBubble: (_tid, text) => { if (text) _kringRender?.userBubble(text); },
-    appendBotBubble:  (_tid, text) => _kringRender?.botBubble(text),
-  });
+  // Feedback (F2, 2026-07-08): the in-kring `/feedback` composer mount was RETIRED. Feedback now attaches
+  // ONLY through the added-agent path — the `fp-bot` contact (invite/QR → feedbackBotStore → its dedicated
+  // thread, see showFeedbackThread), which builds its own surface/mount. The hardwired kring-composer
+  // coupling (a `/feedback` op + an inline surface built here) is gone; the F1 public barrel import stays.
 
   // Live, app-qualified label→candidate lookup (no preloaded base here — the kring stream isn't an item
   // list; the live fetch + the op's appOrigin do the work, scoped to the active circle).
@@ -1490,9 +1473,9 @@ function buildCircleBot(agent) {
   // gate's `arg` / a picker param / else `id`).
   circleEmbedButtonTap = ({ opId, itemId, screen, action }) => {
     // General in-chat bot menus: a button may carry an `action` callback for a NON-circle bot, routed by
-    // source. Feedback (fp:*) → its surface's tapButton; other in-chat bots plug in here.
+    // source. (Feedback's fp:* buttons render in the fp-bot thread, handled there by onButtonTap →
+    // surface.tapButton — no longer in the kring composer since F2 retired the in-kring mount.)
     if (action) {
-      if (action.startsWith('fp:')) { circleFeedbackMount?.surface?.tapButton?.(action, getActiveCircle()); return; }
       // Objective D — an ambiguous-slash choice: re-issue the chosen app-qualified command (with the
       // original body preserved) through the normal bot dispatch, which now parses to a unique app.
       if (action.startsWith('slash:')) { circleBot?.handle?.(action.slice('slash:'.length), {}); return; }
@@ -1866,6 +1849,11 @@ function _buildFbSurface(botId, pods) {
     lang: ft.botLang,                                    // the participant's chosen bot language (text + cards + pipeline)
     llmBaseURL: FEEDBACK_LLM_BASEURL,
     llmModel: FEEDBACK_LLM_MODEL,
+    // Seam 4 — hand the bot a SIGNER CLOSURE ({publicKey, sign()}) derived from this device's chat identity
+    // (the same AgentIdentity the shared-copy opener uses), NOT the raw key. The surface only wires it to
+    // the bot for a verify-enabled project (privacy.verify), so today's non-verify example is unaffected;
+    // when verify is on, consent contributions are signed and a verify pod accepts them. null → unsigned.
+    identityFor: () => signerForIdentity(circleCoreAgent?.identity),
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
     emit: ({ text, buttons, kind, points, labels }) => {
       if (kind === 'review' && Array.isArray(points)) {
@@ -3441,10 +3429,9 @@ function showKring(id, circle, policy) {
           if (circleBot) { noteCircleBotTurn(await circleBot.handle(addressed, { id, msgId: aMsgId, ts: Date.now(), history }), line); }
           return;
         }
-        // Phase 5 — the feedback bot gets first refusal (owns /feedback, /feedback-stop, the bot's own
-        // slash cmds + free text while active); else the circle bot routes the turn (gate → interpret →
-        // dispatch), with plain messages fanning out. Both render into the kring stream via _kringRender.
-        if (circleFeedbackMount && await circleFeedbackMount.tryHandle(line, id)) { rerender(); return; }
+        // Phase 5 — the circle bot routes the turn (gate → interpret → dispatch), with plain messages
+        // fanning out; replies render into the kring stream via _kringRender. (F2: the in-kring feedback
+        // mount was retired — feedback lives in the fp-bot contact thread, not the kring composer.)
         // Optimistic local append + best-effort peer fan-out. The msgId is shared so receiver-side dedup
         // suppresses any echo. δ.2 tracks delivery state (pending → sent | failed) for the bubble icon.
         const msgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;

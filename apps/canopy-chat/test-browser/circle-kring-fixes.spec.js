@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // Fixes from the 2026-06-12 real-run review of the kring bot:
 //   #2 infra ops (/me) scoped out → graceful, not a raw "circle.bot.failed" key / crash
 //   #3 bare picker command (/complete-task) lists options, not «couldn't find ""»
-//   #4 feedback echoes the user's own messages (they used to vanish until /feedback-stop)
+//   #4 feedback echoes the user's own messages — RETIRED with the in-kring feedback mount (F2 2026-07-08)
 //   #5 add vs complete replies are distinct (Added: / Completed:), not an identical "✓ X"
 test.setTimeout(70000);
 
@@ -58,10 +58,5 @@ test('#3 bare /complete-task lists options, never «couldn\'t find ""»', async 
   expect(b).toMatch(/which one do you mean|nothing to pick/i);
 });
 
-test('#4 feedback echoes the user\'s messages (no longer vanish until /feedback-stop)', async ({ page }) => {
-  await openKringComposer(page);
-  await send(page, '/feedback');                  // enter feedback mode (guidance bubble)
-  await send(page, 'my private note one');        // a collected feedback message
-  const b = await blob(page);
-  expect(b, `feedback message was not echoed: ${b}`).toContain('my private note one');
-});
+// (F2, 2026-07-08) The `#4 feedback echoes` test was retired with the in-kring feedback mount. The user↔bot
+// echo now lives in the fp-bot contact thread (createFeedbackMount, covered by the feedbackMount vitest).

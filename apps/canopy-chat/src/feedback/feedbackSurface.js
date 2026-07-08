@@ -25,9 +25,12 @@ import {
  *                                browser — the bot owns the route).
  * @param {object} [a.pod]        a CentralPod (value/Promise/thunk); defaults to in-memory
  * @param {object} [a.bus]        the participant's shared InternalBus (defaults to a private one)
- * @param {{publicKey:string,privateKey:string}} [a.identity]  the participant's signing identity
- *                                (consent is signed when present; from the canopy-chat vault)
- * @param {(chatId:string)=>object} [a.identityFor]  per-thread identity (defaults to `identity`)
+ * @param {{publicKey:string,sign:(b:Uint8Array)=>Uint8Array}} [a.identity]  the participant's SIGNER
+ *                                (seam 4 — a `{publicKey, sign()}` closure from the canopy-chat vault;
+ *                                consent is signed with it. A raw `{publicKey, privateKey}` keypair is
+ *                                also accepted for standalone use. The signer is only wired to the bot
+ *                                when the project requires signatures — see the `privacy.verify` gate below.)
+ * @param {(chatId:string)=>object} [a.identityFor]  per-thread signer (defaults to `identity`)
  * @param {(reply:{chatId:string,text:string,buttons?:Array})=>void} a.emit  render sink
  */
 export function createFeedbackSurface({ config, projectId, lang, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit } = {}) {
@@ -49,7 +52,13 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   assertCleanRouteSafe(cfg.llm || {});
 
   const sharedBus = bus || new InternalBus();
-  const idFor = identityFor || (identity ? () => identity : undefined);
+  // Seam 4 (F2): the signer is wired to the bot ONLY when the project requires signatures. For a
+  // non-verify project (today's example) the signer stays INERT — behaviour is exactly as before F2
+  // (unsigned writes, no signer object crosses into the bot). A verify-enabled project gets the
+  // per-thread signer, which the dispatcher uses to sign consent contributions (never the raw key).
+  const idFor = cfg.privacy?.verify
+    ? (identityFor || (identity ? () => identity : undefined))
+    : undefined;
 
   // one co-hosted bot multiplexes all threads (keyed by chatId); pod resolved lazily so a real
   // CssCentralPod (built from the browser session after activation) can be supplied async.
@@ -124,6 +133,23 @@ export function parseFeedbackInvite(input) {
   const projectId = params.get('projectId');
   const code = params.get('code');
   return projectId && code ? { projectId, code } : null;
+}
+
+/**
+ * Seam 4 (DECIDED 2026-07-08) — turn the host's core `AgentIdentity` into a SIGNER CLOSURE
+ * `{ publicKey, sign(bytes) }` the feedback bot signs consent with. The private key stays
+ * ENCAPSULATED in the identity: only `publicKey` + a `sign()` closure cross the seam, never the raw
+ * key (the encapsulated-secret pattern, cf. `openerForIdentity` / `AgentIdentity.sharedCopyOpener`).
+ * Feedback's `contributionMeta` accepts exactly this shape (`sign(bytes)` + `publicKey`). Returns null
+ * when no identity is available (→ the surface wires no signer; a verify project then rejects, a
+ * non-verify project is unaffected).
+ *
+ * @param {{pubKey?:string, sign?:(b:Uint8Array)=>Uint8Array}|null} identity  core AgentIdentity (e.g. `agent.sa.agent.identity`)
+ * @returns {{publicKey:string, sign:(b:Uint8Array)=>Uint8Array}|null}
+ */
+export function signerForIdentity(identity) {
+  if (!identity || typeof identity.sign !== 'function' || !identity.pubKey) return null;
+  return { publicKey: identity.pubKey, sign: (bytes) => identity.sign(bytes) };
 }
 
 /**
