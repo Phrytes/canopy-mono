@@ -103,3 +103,98 @@ export function localStorageAvailabilityIo(storage = globalThis.localStorage) {
     },
   };
 }
+
+/* ────────────────────────────────────────────────────────────────────
+ * Making the availability pref SHAREABLE (Objective D — Surface 3a).
+ *
+ * Availability is a device-local *pref* (holiday + quiet hours), but its
+ * value must be readable by OTHER agents (the planner, other members'
+ * agents) — a device-local-only store hides it. We reuse the exact
+ * shareable-substrate pattern the circle-policy store already uses
+ * (`podPolicyIo`/`tieredPolicyIo`): mirror the local value to a pod
+ * resource that peers read.
+ *
+ * DESIGN DECISION — where the shared copy lives: a PER-USER pod resource
+ * (`canopy/cc-availability/availability.json`), NOT a per-circle item.
+ * Rationale: the pref is cross-circle + per-user by definition (see the
+ * module header), so a single per-user home is the one truth; publishing
+ * it under each circle would duplicate it N times. This deliberately does
+ * NOT route through tasks-v0's `setMyAvailability` — that op is a DIFFERENT
+ * feature (a per-circle weekly AM/PM *grid* at
+ * `mem://tasks/circles/<circleId>/availability/<webid>.json`), not the
+ * holiday/quiet-hours pref. The two are distinct substrates by design.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/** Per-user pod resource for the cross-circle availability pref. */
+const AVAILABILITY_RESOURCE = 'availability.json';
+
+/**
+ * JSON IO over a `createPodWriter`-shaped writer, keyless (the pref is
+ * per-user, one record). `getWriter` is a thunk so the host can wire the
+ * store before a Solid session has restored (returns `null` while no
+ * writer is configured → load/save are no-ops and the composite falls
+ * through to the local side). Mirrors `podPolicyIo`, minus the circleId.
+ *
+ * @param {object} opts
+ * @param {() => object|null} opts.getWriter — thunk returning a podWriter or null
+ * @param {string} [opts.app='cc-availability']
+ */
+export function podAvailabilityIo({ getWriter, app = 'cc-availability' } = {}) {
+  if (typeof getWriter !== 'function') {
+    throw new TypeError('podAvailabilityIo: getWriter thunk required');
+  }
+  return {
+    load: async () => {
+      const w = getWriter();
+      if (!w || typeof w.read !== 'function') return null;
+      try {
+        const res = await w.read(app, AVAILABILITY_RESOURCE);
+        if (!res?.ok || typeof res.body !== 'string') return null;
+        return JSON.parse(res.body);
+      } catch {
+        return null;
+      }
+    },
+    save: async (value) => {
+      const w = getWriter();
+      if (!w || typeof w.write !== 'function') return;
+      try {
+        await w.write(app, AVAILABILITY_RESOURCE, JSON.stringify(value), 'application/json');
+      } catch {
+        /* a pod-write failure must not break the local-canonical write */
+      }
+    },
+  };
+}
+
+/**
+ * Compose a local (canonical) IO with a pod (mirror) IO for the keyless
+ * availability pref. Unlike circle policy there is no `pod` axis to gate
+ * on — the pref is inherently meant to be shared, so writes ALWAYS mirror
+ * to the pod (a no-op when no writer is wired). Reads prefer the local
+ * value; when local is empty they fall through to the pod and seed local,
+ * so another device — or another member's agent — picks up the shared
+ * value on first read.
+ *
+ * @param {{load, save}} localIo
+ * @param {{load, save}} podIo
+ * @returns {{load, save}}
+ */
+export function tieredAvailabilityIo(localIo, podIo) {
+  return {
+    load: async () => {
+      const localValue = await localIo.load();
+      if (localValue != null) return localValue;
+      const podValue = await podIo.load();
+      if (podValue != null) {
+        try { await localIo.save(podValue); } catch { /* mirror-down best-effort */ }
+        return podValue;
+      }
+      return null;
+    },
+    save: async (value) => {
+      await localIo.save(value);
+      await podIo.save(value);
+    },
+  };
+}
