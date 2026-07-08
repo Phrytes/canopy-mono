@@ -2024,7 +2024,16 @@
     "stop":            { "text": "Delen stoppen",                                 "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)." },
     "not_revocable":   { "text": "Kopie-/vertrouwd-delen kan niet ter plekke worden ingetrokken.", "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)." },
     "member_revoked":       { "text": "Verwijderd lid ingetrokken bij {{count}} gedeeld(e) item(s).",       "doc": "objective L — notice after auto-revoking a removed member's canonical grants." },
-    "member_revoke_failed": { "text": "Kon {{count}} gedeeld(e) item(s) niet intrekken voor het verwijderde lid.", "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)." }
+    "member_revoke_failed": { "text": "Kon {{count}} gedeeld(e) item(s) niet intrekken voor het verwijderde lid.", "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)." },
+    "to_person_heading": { "text": "Delen met een persoon",                        "doc": "objective L Phase 2 — heading of the out-of-circle recipient picker (shareItemToPublishedKey)." },
+    "no_contacts":       { "text": "Geen contacten met een netwerkadres om mee te delen.", "doc": "objective L Phase 2 — empty state when no contact carries a published network key." },
+    "pick_cancel":       { "text": "Annuleren",                                     "doc": "objective L Phase 2 — cancel/close the recipient picker." },
+    "to_person_done":    { "text": "\"{{item}}\" gedeeld met {{name}}.",            "doc": "objective L Phase 2 — success note after granting an out-of-circle contact via shareItemToPublishedKey." },
+    "to_person_failed":  { "text": "Delen met een persoon mislukt: {{error}}.",     "doc": "objective L Phase 2 — failure note for the out-of-circle person share." },
+    "trust": {
+      "bekend":    { "text": "bekend",    "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'bekend')." },
+      "vertrouwd": { "text": "vertrouwd", "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'vertrouwd')." }
+    }
   },
   "clarify": {
     "which": {

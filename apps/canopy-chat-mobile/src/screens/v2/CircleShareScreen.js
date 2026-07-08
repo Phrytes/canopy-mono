@@ -15,15 +15,18 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
-import { loadShareableItems, loadSharedRows, shareOut, stopSharing, pickableCircles } from '../../core/circleShareScreen.js';
+import { loadShareableItems, loadSharedRows, shareOut, shareToRecipient, stopSharing, pickableCircles, pickableRecipients } from '../../core/circleShareScreen.js';
 
-export default function CircleShareScreen({ circleId, policy, by, recipient, circles, onBack }) {
+export default function CircleShareScreen({ circleId, policy, by, recipient, circles, contacts, onBack }) {
   const [items, setItems] = useState([]);       // this circle's own shareable items
   const [rows, setRows] = useState([]);          // shared INTO this circle (resolved rows)
   const [pendingShare, setPendingShare] = useState(null);   // itemId whose target-picker is open
   const [target, setTarget] = useState('');      // the picked target circle id (empty until one is selected)
   // The pickable targets: the user's circles minus THIS (source) circle. Reuses the launcher's loaded list.
   const targets = useMemo(() => pickableCircles({ circles, sourceCircleId: circleId }), [circles, circleId]);
+  // objective L · Phase 2 — the pickable OUT-OF-CIRCLE recipients: the SAME shared selector web uses, over the
+  // Contacten roster. A contact carries the published network key on `pubKey`/`peerAddr` → `recipientNetworkKey`.
+  const recipients = useMemo(() => pickableRecipients(contacts), [contacts]);
   const [status, setStatus] = useState(null);    // { statusKey, params }
   const policyOf = useCallback(async () => policy || {}, [policy]);
 
@@ -42,6 +45,18 @@ export default function CircleShareScreen({ circleId, policy, by, recipient, cir
     setPendingShare(null); setTarget('');
     if (s.ok) reloadShared();
   }, [circleId, target, by, recipient, policyOf, reloadShared]);
+
+  // objective L · Phase 2 — grant an out-of-circle CONTACT the canonical item in place (shareItemToPublishedKey),
+  // reusing the picked target circle as the pointer sink. ALONGSIDE doShare (share to a circle's members).
+  const doShareToRecipient = useCallback(async (itemId, r) => {
+    const s = await shareToRecipient({
+      itemId, fromCircleId: circleId, toCircleId: target,
+      recipient: r.id, recipientNetworkKey: r.recipientNetworkKey, name: r.name, by, policyOf,
+    });
+    setStatus({ statusKey: s.statusKey, params: s.params });
+    setPendingShare(null); setTarget('');
+    if (s.ok) reloadShared();
+  }, [circleId, target, by, policyOf, reloadShared]);
 
   const doStop = useCallback(async (row) => {
     const s = await stopSharing({ row, toCircleId: circleId, recipient, policyOf });
@@ -97,6 +112,24 @@ export default function CircleShareScreen({ circleId, policy, by, recipient, cir
                     >
                       <Text style={styles.primaryText}>{t('circle.share.share_action')}</Text>
                     </Pressable>
+                    {/* objective L · Phase 2 — OUT-OF-CIRCLE person share, alongside the share-to-circle path.
+                        Enabled once a target circle is picked (the pointer sink); selecting a contact grants
+                        them the canonical item in place via shareItemToPublishedKey. */}
+                    <Text style={styles.pickLabel}>{t('circle.share.to_person_heading')}</Text>
+                    {recipients.length === 0 ? (
+                      <Text style={styles.muted} testID={`share-people-empty-${it.id}`}>{t('circle.share.no_contacts')}</Text>
+                    ) : recipients.map((r) => (
+                      <Pressable
+                        key={r.id}
+                        style={[styles.pickOption, !target && styles.primaryDisabled]}
+                        disabled={!target}
+                        onPress={() => doShareToRecipient(it.id, r)}
+                        testID={`share-recipient-option-${it.id}-${r.id}`}
+                      >
+                        <Text style={styles.pickOptionText} numberOfLines={1}>{r.name}</Text>
+                        {r.trustLevel ? <Text style={styles.pickOptionId} numberOfLines={1}>{t(`circle.share.trust.${r.trustLevel}`)}</Text> : null}
+                      </Pressable>
+                    ))}
                   </>
                 )}
               </View>
