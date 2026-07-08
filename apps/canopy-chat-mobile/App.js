@@ -312,6 +312,10 @@ export default function App() {
           // identity keypair — stays stable across reboots (otherwise a
           // peer's cached peerAddr from a /share-my-contact QR breaks).
           asyncStorage: AsyncStorage,
+          // SILENT out-of-circle delivery — the writer thunk for the bundle's TIERED "shared with me" store
+          // (received sealed copies mirror to the user's pod once signed in; local-only while null). Same
+          // thunk the launcher's other tiered stores read (getCirclePodWriter → circlePodWriterRef.current).
+          getSharedWithMePodWriter: getCirclePodWriter,
           // S4 — multi-member sealing: route stoop redeem/leave to the circle's producer.
           stoopControlAgent: circleControlAgentRouter,
           // Extension mappings (feedback-extension P2) — load installed extensions from AsyncStorage at boot,

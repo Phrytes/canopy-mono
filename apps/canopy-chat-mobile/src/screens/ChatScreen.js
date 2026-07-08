@@ -86,6 +86,9 @@ import { makeHandleHelpWithAccepted, makeHandleHelpWithResponse }
 import { makeHandleCalendarInvite }
                                from '../../../canopy-chat/src/core/handlers/calendarInvite.js';
 import { makeHandleFileShare } from '../../../canopy-chat/src/core/handlers/fileShare.js';
+// SILENT out-of-circle delivery — inbound `shared-copy` handler: lands a relayed sealed COPY into the per-user
+// "shared with me" store (the launcher lists + opens it). Shared core (web≡mobile), same as circleApp.js.
+import { makeHandleSharedCopy } from '../../../canopy-chat/src/core/handlers/sharedCopyReceive.js';
 import { computeEmbedButtons } from '../../../canopy-chat/src/core/embedButtons.js';
 import { makeCalendarOutboundHook }
                                from '../../../canopy-chat/src/core/handlers/calendarOutbound.js';
@@ -399,7 +402,7 @@ export default function ChatScreen({
   // Bundle H (#268) — inbound peer-router (port of web/main.js:346) +
   // catch-up trigger (port of main.js:1338), built over the live agent
   // + callSkill.
-  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel, pendingPeerRedeems }) => {
+  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel, pendingPeerRedeems, sharedWithMeStore }) => {
     const sendPeer = (addr, payload) => agent.sendPeerMessage(addr, payload);
     const getMyPubKey = () =>
       agent?.identity?.chat?.pubKey ?? agent?.identity?.host?.webid ?? null;
@@ -577,6 +580,13 @@ export default function ChatScreen({
       'file-share':            makeHandleFileShare({
         addMainBubble, publishEvent,
       }),
+      // SILENT out-of-circle delivery — a peer pushed a sealed COPY straight to us; persist it into the
+      // per-user "shared with me" store (the launcher's Mij inbox lists + opens it with this device's own
+      // network-derived sealing key). web≡mobile: SAME handler + store web registers in circleApp.js. Guarded
+      // — with no store on the bundle (older boot) the subtype simply isn't routed.
+      ...(sharedWithMeStore
+        ? { 'shared-copy': makeHandleSharedCopy({ store: sharedWithMeStore, publishEvent }) }
+        : {}),
       // ε.1 — kring chat-message: routes through the shared inbox
       // (App.js owns the singleton).  The inbox handles envelope
       // validation, msgId dedup, ingest mirror into stoop's itemStore
@@ -685,7 +695,7 @@ export default function ChatScreen({
       appOrigins: [...bootState.bundle.catalog.appOrigins],
       opCount:    bootState.bundle.catalog.opsById?.size ?? 0,
     });
-    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel, pendingPeerRedeems: bootState.bundle.pendingPeerRedeems }));
+    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel, pendingPeerRedeems: bootState.bundle.pendingPeerRedeems, sharedWithMeStore: bootState.bundle.sharedWithMeStore }));
   }, [bootState, buildPeerWiring]);
 
   // Auto-scroll on every new message in the active thread.

@@ -18,6 +18,8 @@ import {
   podPolicyIo, tieredPolicyIo,
   // Objective D — publish the availability pref to the shared substrate.
   podAvailabilityIo, tieredAvailabilityIo,
+  // SILENT out-of-circle delivery — the per-user "shared with me" store (received sealed copies).
+  createSharedWithMeStore, podSharedWithMeIo, tieredSharedWithMeIo,
   // P6.2 — multi-admin proposal persistence on RN.
   createProposalStore,
   // α.1a — scherm recipe book store.
@@ -103,6 +105,22 @@ export function makeAvailabilityStoreRN(storage, { getPodWriter } = {}) {
     getWriter: typeof getPodWriter === 'function' ? getPodWriter : () => null,
   });
   return createAvailabilityStore(tieredAvailabilityIo(localIo, podIo));
+}
+
+/**
+ * SILENT out-of-circle delivery — the per-user "shared with me" store on RN. Received sealed copies stay
+ * device-canonical (AsyncStorage, key `cc.sharedWithMe` — SAME key web uses) AND mirror to a per-user pod
+ * resource via the shared `tieredSharedWithMeIo` (leak-safe: only sealed ciphertext + structural metadata),
+ * so copies SURVIVE + SYNC across the user's devices. Pass a `getPodWriter` thunk (a `createPodWriter`-shaped
+ * writer, or null) to publish; omit it and behaviour is local-only. Mirrors `makeAvailabilityStoreRN` exactly
+ * (web≡mobile: the SAME tiered factory web wires in circleApp.js).
+ */
+export function makeSharedWithMeStoreRN(storage, { getPodWriter } = {}) {
+  const localIo = asyncFixedIo('cc.sharedWithMe', storage);
+  const podIo   = podSharedWithMeIo({
+    getWriter: typeof getPodWriter === 'function' ? getPodWriter : () => null,
+  });
+  return createSharedWithMeStore(tieredSharedWithMeIo(localIo, podIo));
 }
 
 /**

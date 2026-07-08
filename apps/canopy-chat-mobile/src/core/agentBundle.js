@@ -44,6 +44,12 @@ import { PeerGraph } from '@canopy/core';
 import { AsyncStorageAdapter } from '@canopy/react-native/storage/AsyncStorageAdapter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
+// SILENT out-of-circle delivery — the per-user "shared with me" store (TIERED: AsyncStorage canonical + pod
+// mirror) and THIS device's network-derived sealing OPENER. Both are shared-src logic (web≡mobile): the store
+// factory mirrors web's tiered wiring in circleApp.js; the opener bridge injects the pod-client sealing adapter
+// into the ENCAPSULATED identity secret (only the closure escapes).
+import { makeSharedWithMeStoreRN } from './circleStoresRN.js';
+import { openerForIdentity } from '../../../canopy-chat/src/v2/sharedCopyOpener.js';
 
 // The relay URL to connect with: the in-app setting (Settings → Mij) wins over the build-time env var,
 // so the no-server cross-device relay is configurable without a rebuild. Async (AsyncStorage) — boot +
@@ -233,6 +239,21 @@ export async function bootAgentBundle(opts = {}) {
       code:  'AGENT_WIRING_FAILED',
     });
   }
+
+  // SILENT out-of-circle delivery — the per-user "shared with me" inbox (received sealed copies).
+  //   • STORE (TIERED): AsyncStorage-canonical + pod-mirror (`makeSharedWithMeStoreRN`, the SAME tiered
+  //     wiring web uses in circleApp.js). The receive handler (ChatScreen buildPeerWiring, subtype
+  //     `shared-copy`) persists inbound copies here; the launcher's SharedWithMeScreen lists + opens them.
+  //     `opts.getSharedWithMePodWriter` is the writer thunk (App.js's `getCirclePodWriter`): null while
+  //     unsigned → local-only; a live writer once the Solid session restores → copies SYNC across devices.
+  //   • OPENER: built ONCE from the chat agent's identity (`agent.sa.agent.identity` — the same one the peer
+  //     address, hence the recipient network key, derives from) via the shared `openerForIdentity` bridge.
+  //     The network secret stays ENCAPSULATED in the identity; only the opener closure escapes. Null when no
+  //     identity → the view degrades to a deny-safe no-op on tap.
+  const sharedWithMeStore = makeSharedWithMeStoreRN(AsyncStorage, {
+    getPodWriter: typeof opts.getSharedWithMePodWriter === 'function' ? opts.getSharedWithMePodWriter : undefined,
+  });
+  const sharedWithMeOpener = openerForIdentity(agent?.sa?.agent?.identity ?? null);
 
   // Cross-peer transport.  Bundle G2 (#264, 2026-05-27): NKN is the
   // primary public layer.  Mobile loads nkn-sdk as a runtime peer-dep
@@ -492,6 +513,10 @@ export async function bootAgentBundle(opts = {}) {
     contactChannel,
     coreAgent,
     discoverA2A,
+    // SILENT out-of-circle delivery — the receive handler (ChatScreen) persists into this store; the launcher
+    // lists + opens from it. `sharedWithMeOpener` is this device's network-derived sealing opener (or null).
+    sharedWithMeStore,
+    sharedWithMeOpener,
     get mdns() { return mdns; },
     attachPeerWiring,
     dispose: async () => {

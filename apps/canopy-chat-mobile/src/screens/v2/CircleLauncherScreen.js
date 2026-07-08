@@ -451,6 +451,21 @@ export default function CircleLauncherScreen({
   const availabilityStore = useMemo(() => makeAvailabilityStoreRN(AsyncStorage, {
     getPodWriter: () => sessionToPodWriterRN(sessionRef?.current ?? null),
   }), []);
+  // SILENT out-of-circle delivery — the per-user "shared with me" inbox. The store is instantiated ON THE
+  // BUNDLE (agentBundle.js) so the ChatScreen receive handler + this launcher share ONE instance; here we just
+  // LOAD its list when the Mij sub-view opens (web≡mobile: mirrors web's `showSharedWithMe` reading the store).
+  const sharedWithMeStore = bundle?.sharedWithMeStore ?? null;
+  const [sharedWithMeList, setSharedWithMeList] = useState([]);
+  useEffect(() => {
+    if (view !== 'sharedWithMe' || !sharedWithMeStore) return;
+    let alive = true;
+    (async () => {
+      let list = [];
+      try { list = await sharedWithMeStore.list(); } catch { list = []; }
+      if (alive) setSharedWithMeList(list);
+    })();
+    return () => { alive = false; };
+  }, [view, sharedWithMeStore]);
   // B · Slice 4 — build the folio capability matrix from the selected circle's
   // policy + this member's opt-outs (same inputs the list surface uses). Feeds
   // CircleFolioScreen so its file-OPEN row action greys/hides per the gate.
@@ -1063,14 +1078,14 @@ export default function CircleLauncherScreen({
   // SILENT out-of-circle delivery — the personal, cross-circle "shared with me" inbox
   // (sealed copies peers pushed to this device). Sub-view of Mij; back returns to profile.
   // web ≡ mobile: renders the SAME SharedWithMeScreen over the SAME shared selector web uses.
-  // `received` comes from the per-user shared-with-me store when the bundle exposes it, else
-  // the empty state. FLAG (crypto-track follow-up, same as web): the network-derived sealing
-  // `opener` is not yet injected here — a null opener makes a row tap a deny-safe no-op.
+  // `received` is loaded from the bundle's per-user shared-with-me store (the effect above);
+  // `opener` is this device's own network-derived sealing opener (bundle.sharedWithMeOpener,
+  // built from the encapsulated identity secret). A null opener makes a row tap a deny-safe no-op.
   if (view === 'sharedWithMe') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
         <SharedWithMeScreen
-          received={bundle?.sharedWithMe ?? []}
+          received={sharedWithMeList}
           opener={bundle?.sharedWithMeOpener ?? null}
           onBack={() => setView('profile')}
         />
