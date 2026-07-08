@@ -382,9 +382,19 @@ async function shareItemToContact({ itemId, fromCircleId, toCircleId, by, recipi
     policyOf: _circlePolicy,
     sealCopy: sealCopyToRecipients,
     sealingKeyFromNetworkKey: podSealingPublicKeyFromNetworkKey,
-    // FLAGGED — the exact circle/admin notify payload+recipients is a product decision (see report). This
-    // best-effort emitter just records that an out-of-circle share happened; wire to the real channel later.
+    // NOTICE emitters (routed by the circle's `notifyOutOfCircle` setting): `admins` pings the circle admins,
+    // `post` lands a category-tagged noticeboard post. Both best-effort — a notice never fails the share.
+    // `notify` (admins) → @canopy/notify-envelope wiring is a follow-up; today it records the event.
     notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
+    // `post` → write the tagged post to the source circle's noticeboard item store (reuses the existing
+    // `type:'post'` machinery). The `category:'permission-log'` tag lets a future logging section filter it out.
+    post: async (taggedPost) => {
+      try {
+        const svc = await _circleServiceFor(taggedPost.fromCircleId);
+        const store = svc?.stores?.getStore?.(taggedPost.fromCircleId);
+        if (store && typeof store.put === 'function') await store.put(taggedPost, { by: taggedPost.by });
+      } catch { /* best-effort */ }
+    },
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
     recipient, recipientNetworkKey, verify, includeHistory,
   });

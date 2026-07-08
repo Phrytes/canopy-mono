@@ -218,7 +218,10 @@ export async function shareItemAcrossCircles({
  *       ACP read grant on the CANONICAL resource — NO copy). A `shared-ref` pointer is written into `toCircleId`
  *       when one is given (so the recipient surfaces it via `listSharedResolved`); with NO `toCircleId` the
  *       grant lands on the source resource directly and the (unpersisted) ref is returned for the caller to
- *       relay. THEN a best-effort `notify(...)` is emitted to tell the circle/admins an item was shared out.
+ *       relay. THEN a best-effort NOTICE is emitted so the circle knows an item was shared out — its TARGET is
+ *       the per-circle `notifyOutOfCircle` setting (circlePolicy.js): `'admins'` (default) pings the circle's
+ *       admins via the injected `notify` emitter; `'post'` lands a category-tagged noticeboard post via the
+ *       injected `post` emitter instead. See `emitOutOfCircleNotice`.
  *   • `silent`   → COPY: a SEPARATE object sealed to the recipient's network-derived key (privacy — leaves NO
  *       ACP grant or shared-ref trace on the CANONICAL item), reusing the copy-reseal machinery. See
  *       `shareSilentCopyToPublishedKey`.
@@ -250,14 +253,18 @@ export async function shareItemAcrossCircles({
  *        re-sealer (pod-layer; keeps this module pod-client-free) — REQUIRED for the `silent` copy path.
  * @param {(networkKey:string)=>string} [args.sealingKeyFromNetworkKey]  derive the recipient's SEALING public
  *        key from their published network key (pod-client `sealingPublicKeyFromNetworkKey`) — silent path.
- * @param {(payload:object)=>any} [args.notify]  best-effort emitter called on a successful `notify`-mode share
- *        (payload/recipients are a product-tunable — see report). Never blocks/fails the share.
+ * @param {(payload:object)=>any} [args.notify]  best-effort ADMINS emitter — called on a successful
+ *        `notify`-mode share when `notifyOutOfCircle === 'admins'` (the default). The composition root wires it
+ *        to `@canopy/notify-envelope` (the admin peers). Never blocks/fails the share.
+ * @param {(post:object)=>any} [args.post]  best-effort NOTICEBOARD-post emitter — called instead of `notify`
+ *        when `notifyOutOfCircle === 'post'`. Receives a category-tagged post (`category:'permission-log'` +
+ *        `logKind`) the composition root writes to the circle's board. Never blocks/fails the share.
  * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, cause?:any}>}
  */
 export async function shareItemToPublishedKey({
   resolveService, itemId, fromCircleId, toCircleId, by,
   recipient, recipientNetworkKey, includeHistory = false, verify,
-  enforcementFor, postureOf, policyOf, sealCopy, sealingKeyFromNetworkKey, notify,
+  enforcementFor, postureOf, policyOf, sealCopy, sealingKeyFromNetworkKey, notify, post,
 } = {}) {
   if (typeof resolveService !== 'function' || !itemId || !fromCircleId) {
     return { ok: false, error: 'missing-args' };
@@ -271,7 +278,8 @@ export async function shareItemToPublishedKey({
   let srcPolicy;
   try { srcPolicy = typeof policyOf === 'function' ? await policyOf(fromCircleId) : undefined; }
   catch { srcPolicy = undefined; }
-  const outOfCircle = normalizeCirclePolicy(srcPolicy).shareOutOfCircle;
+  const policy = normalizeCirclePolicy(srcPolicy);
+  const outOfCircle = policy.shareOutOfCircle;
   if (outOfCircle === 'prohibit') return { ok: false, error: 'share-prohibited' };
 
   const fromSvc = await resolveService(fromCircleId);
@@ -300,12 +308,36 @@ export async function shareItemToPublishedKey({
     : undefined;
   const result = await grantToPublishedKey({ stores, fromCircleId, toCircleId, itemId, by, recipient, postureOf, onShare });
 
-  if (result.ok && typeof notify === 'function') {
-    // Best-effort — a notify failure never fails the (already-landed) share. Payload/recipients are FLAGGED.
-    try { await notify({ event: 'item-shared-out-of-circle', itemId, fromCircleId, toCircleId, recipient, by }); }
-    catch { /* best-effort */ }
+  if (result.ok) {
+    // Best-effort NOTICE (never fails the already-landed share). TARGET is the per-circle setting.
+    await emitOutOfCircleNotice({
+      target: policy.notifyOutOfCircle, itemId, fromCircleId, toCircleId, recipient, by, notify, post,
+    });
   }
   return result;
+}
+
+/**
+ * Emit the out-of-circle NOTICE for a landed `notify`-mode share. The TARGET is a per-circle policy setting
+ * (`notifyOutOfCircle`, circlePolicy.js): `'admins'` (default) pings the circle's admins via the injected
+ * `notify` emitter; `'post'` writes a NOTICEBOARD post via the injected `post` emitter instead. Both emitters
+ * are injected from the composition root (this module stays transport-free) and BEST-EFFORT — a notice failure
+ * never fails the already-landed share.
+ *
+ * The `'post'` path tags the post `category:'permission-log'` + `logKind:'item-shared-out-of-circle'` so a
+ * FUTURE dedicated "logging" section can filter these permission notices OUT of the main board. The logging
+ * section itself is DEFERRED — today the post just carries the forward-compatible tag (`type:'post'`, so it
+ * reuses the existing noticeboard item machinery).
+ */
+async function emitOutOfCircleNotice({ target, itemId, fromCircleId, toCircleId, recipient, by, notify, post }) {
+  const payload = { event: 'item-shared-out-of-circle', itemId, fromCircleId, toCircleId, recipient, by };
+  try {
+    if (target === 'post' && typeof post === 'function') {
+      await post({ type: 'post', category: 'permission-log', logKind: 'item-shared-out-of-circle', ...payload });
+    } else if (typeof notify === 'function') {
+      await notify(payload);
+    }
+  } catch { /* best-effort — a notice failure never fails the share */ }
 }
 
 /**
