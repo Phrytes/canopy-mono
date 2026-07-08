@@ -85,6 +85,9 @@ import { renderJoinGroupWizard } from '../../src/web/wizards/joinGroupWizard.js'
 // S5 — web-push subscription orchestration (client half; server delivery is a
 // Node-hosted stoop with VAPID keys). The SW receiver lives at web/sw.js.
 import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/webPushClient.js';
+// Objective D / Surface 4 (#180) — generic docked side-panel renderer for manifest ops
+// that declare `surfaces.page` (first LIVE consumer: the my-data relay-URL editor).
+import { openPagePanel } from '../../src/web/pagePanel.js';
 // S5 — client-side image-attachment encoder (Canvas resize + thumbnail → the
 // inbound shape stoop.postRequest expects).
 import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
@@ -2388,9 +2391,39 @@ async function showMyData() {
     // form's "Saved." confirmation; the chatAi status note refreshes on the next open.
     return null;
   };
+  // Objective D / Surface 4 (#180) — route the relay-URL editor through the generic
+  // docked side-panel (openPagePanel's simple-form). The `set-relay` manifest op is
+  // the FORM CONTRACT (params url · clear + surfaces.page); dispatch resolves to
+  // applyRelayUrl — the circle shell's live in-app relay setting. (agent.callSkill
+  // has no 'canopy-chat' builtin route in this shell, so the op binds to its real
+  // handler right here, at the waist.) The panel builds + validates the form, shows
+  // errors on {ok:false}, closes on success, and offers "← back to chat".
+  const setRelayOp = canopyChatManifest.operations.find((o) => o.id === 'set-relay');
+  const openRelayPanel = () => {
+    if (!setRelayOp) return;
+    let panel = document.getElementById('page-panel');
+    if (!panel) {
+      panel = document.createElement('aside');
+      panel.id = 'page-panel';
+      panel.className = 'cc-page-panel';
+      panel.hidden = true;
+      document.body.appendChild(panel);
+    }
+    // Localise the panel title via the op's labelKey without mutating the shared
+    // manifest (openPagePanel's simple-form reads surfaces.page.title verbatim).
+    const pg = setRelayOp.surfaces.page;
+    const op = { ...setRelayOp, surfaces: { ...setRelayOp.surfaces, page: { ...pg, title: (pg.labelKey && t(pg.labelKey)) || pg.title } } };
+    openPagePanel({
+      container: panel, doc: document, op, appOrigin: 'canopy-chat',
+      callSkill: async (_origin, _opId, args) => applyRelayUrl(args?.clear ? '' : String(args?.url ?? '')),
+      onClose: () => {}, onDispatched: () => rerender(), t,
+      backTo: { returnTo: getActiveCircle() || 'chat', label: t('circle.mydata.back'), onNavigate: () => {} },
+    });
+  };
   const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, appLang: currentLang(), onSetAppLang, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig,
     // in-app relay setting (no rebuild): the field shows the saved setting; env is the placeholder fallback.
-    relayUrl: resolveRelayUrl(localStorageRelayIo().load(), ''), relayEnvUrl: CIRCLE_RELAY_ENV, onSaveRelay: applyRelayUrl });
+    // Objective D / Surface 4: onOpenRelayPanel routes editing into the docked side-panel (openPagePanel).
+    relayUrl: resolveRelayUrl(localStorageRelayIo().load(), ''), relayEnvUrl: CIRCLE_RELAY_ENV, onSaveRelay: applyRelayUrl, onOpenRelayPanel: openRelayPanel });
   getWebPushState().then((s) => { notifications = s; rerender(); }).catch(() => {});
   rerender();
   const [loc, status, priv, met] = await Promise.all([

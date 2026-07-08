@@ -536,6 +536,12 @@ export const canopyChatManifest = {
       surfaces: {
         slash: { command: '/set-relay', body: 'flags' },
         chat:  { reply: 'text', hint: 'set the canopy relay URL (or --clear to drop it)' },
+        // Objective D / Surface 4 (#180) — first LIVE consumer of openPagePanel's
+        // simple-form path (web `pagePanel.js`).  The docked side-panel auto-builds
+        // a form from these params (url · clear) and dispatches via callSkill.
+        // `title` is the English fallback; a consumer with a t() localises via
+        // `labelKey` (as the running my-data control does when it opens the panel).
+        page:  { kind: 'side-panel', title: 'Relay server', labelKey: 'circle.mydata.relay_set' },
       },
     },
 

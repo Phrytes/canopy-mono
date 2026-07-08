@@ -28,7 +28,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `publish-peer` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `rotate-identity` | add | ✅ | ✅ | · | ✅ | · |  |
 |  | `security-status` | list | ✅ | ✅ | · | · | · |  |
-|  | `set-relay` | submit | ✅ | ✅ | · | · | · |  |
+|  | `set-relay` | submit | ✅ | ✅ | · | ✅ | · |  |
 |  | `transport-mode` | submit | ✅ | ✅ | · | · | · |  |
 |  | `transports` | list | ✅ | ✅ | · | · | · |  |
 |  | `settings` | list | ✅ | ✅ | · | ✅ | · |  |
@@ -155,7 +155,7 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `podStatus` | list | ✅ | ✅ | · | · | · |  |
 |  | `getIcsFeed` | list | ✅ | ✅ | · | · | · |  |
 |---|---|---|---|---|---|---|---|---|
-| **totals** | 150 ops | | 147 | 124 | 33 | 79 | 42 | |
+| **totals** | 150 ops | | 147 | 124 | 33 | 80 | 42 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 
