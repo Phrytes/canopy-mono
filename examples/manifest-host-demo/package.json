@@ -14,6 +14,7 @@
     "@canopy/chat-agent":    "file:../../packages/chat-agent",
     "@canopy/llm-client":    "file:../../packages/llm-client",
     "@canopy/item-store":    "file:../../packages/item-store",
+    "@canopy/circles":       "file:../../packages/circles",
     "@canopy-app/household": "file:../../apps/household",
     "@canopy-app/tasks-v0":  "file:../../apps/tasks-v0",
     "@canopy-app/stoop":     "file:../../apps/stoop"

@@ -23,6 +23,9 @@ import {
   setupRecombinationDemo,
   runScriptedConversation,
   demoCrossAppEmbed,
+  demoSavedCrossCircleView,
+  SV_CIRCLE_GARDEN,
+  SV_CIRCLE_TOOLSHED,
   DEMO_USER_MESSAGES,
 } from '../scenario.js';
 
@@ -131,11 +134,10 @@ describe('SP-4b + SP-11: recombination demo (household + tasks-v0)', () => {
  *   (1) stoop as a 3rd mounted app — three apps composed cleanly.
  *   (2) a canonical cross-app `embeds:[{type,ref}]` reference resolved
  *       across two apps' stores.
- *
- * (Piece (3) — a saved cross-circle view — depends on SP-8, which is
- *  NOT built: `@canopy/circles` README explicitly scopes out "cross-
- *  circle query" + "saved-view resolution" to SP-5b. So piece (3) is
- *  deliberately absent here rather than fabricated.)
+ *   (3) a saved CROSS-CIRCLE view — now unblocked by SP-8
+ *       (`@canopy/circles` `makeSavedView`/`resolveSavedView` +
+ *       `@canopy/item-store` `ListFilter.audiences`).  See the dedicated
+ *       describe block below.
  * ════════════════════════════════════════════════════════════════════ */
 
 describe('SP-11b: stoop as a 3rd mounted app', () => {
@@ -258,5 +260,64 @@ describe('SP-11b: cross-app embed reference (canonical embeds:[{type,ref}])', ()
     expect(tree.embeds[0].source).toBe('placeholder');
     expect(tree.embeds[0].reason).toBe('NOT_FOUND');
     expect(tree.embeds[0].type).toBe('task');
+  });
+});
+
+describe('SP-11b: saved cross-circle view (SP-8 makeSavedView / resolveSavedView)', () => {
+  it('the saved view spans the two LISTED circle-refs as a union', async () => {
+    const { view, viewAudiences } = await demoSavedCrossCircleView();
+
+    // The view is the canonical `view` item, its audience a UNION of
+    // the two circle-refs the view spans.
+    expect(view.type).toBe('view');
+    expect(view.itemType).toBe('note');
+    expect(view.audience).toEqual({
+      kind: 'union',
+      of:   [SV_CIRCLE_GARDEN, SV_CIRCLE_TOOLSHED],
+    });
+
+    // The normalised audience SET (what feeds `ListFilter.audiences`)
+    // is exactly the two listed circles.
+    expect(viewAudiences).toEqual([SV_CIRCLE_GARDEN, SV_CIRCLE_TOOLSHED]);
+  });
+
+  it('resolves to the UNION of items across BOTH listed circles', async () => {
+    const { resolved, listedIds } = await demoSavedCrossCircleView();
+
+    const texts = resolved.map((i) => i.text).sort();
+    // Garden's two notes + tool-library's one note — the union across
+    // the two circles the view spans.
+    expect(texts).toEqual([
+      'borrow the drill',   // tool-library
+      'order tomato seeds', // garden
+      'prune the roses',    // garden
+    ]);
+
+    // Both circles are actually represented (a genuine UNION, not just
+    // one circle's items).
+    const circles = new Set(resolved.map((i) => i.audience.id));
+    expect(circles).toEqual(new Set(['garden-committee', 'tool-library']));
+
+    // The resolved set is exactly the seeded notes of the listed circles.
+    expect(resolved.map((i) => i.id).sort()).toEqual([...listedIds].sort());
+  });
+
+  it('EXCLUDES items in a third, unlisted circle', async () => {
+    const { resolved } = await demoSavedCrossCircleView();
+
+    // The unlisted circle's note must not surface — the view never
+    // named `private-notes`.
+    expect(resolved.map((i) => i.text)).not.toContain('diary — do not share');
+    expect(resolved.map((i) => i.audience.id)).not.toContain('private-notes');
+  });
+
+  it('narrows within the union by the view itemType (wrong-type item excluded)', async () => {
+    const { resolved } = await demoSavedCrossCircleView();
+
+    // A `type:'event'` item lives in a LISTED circle (garden), yet the
+    // view's `itemType: 'note'` filters it out — audience AND type both
+    // apply.
+    expect(resolved.every((i) => i.type === 'note')).toBe(true);
+    expect(resolved.map((i) => i.text)).not.toContain('garden open day');
   });
 });

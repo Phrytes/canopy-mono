@@ -15,7 +15,13 @@
 import { LlmClient, mockProvider }            from '@canopy/llm-client';
 import { ChatAgent, InMemoryBridge }          from '@canopy/chat-agent';
 import { createManifestHost }                 from '@canopy/manifest-host';
-import { treeOf, createCrossPodRefResolver }  from '@canopy/item-store';
+import {
+  treeOf, createCrossPodRefResolver,
+  ItemStore, memoryDataSource,
+}                                              from '@canopy/item-store';
+import {
+  makeSavedView, resolveSavedView, savedViewAudiences,
+}                                              from '@canopy/circles';
 
 import {
   InMemoryStore,
@@ -268,6 +274,89 @@ export async function demoCrossAppEmbed(runtime, {
   });
 
   return { task, householdItem, ref, tree };
+}
+
+/* ─── saved cross-circle view (SP-11b piece 3 · SP-8) ────────────── */
+
+/**
+ * The three circles the saved-view demo spans.  The saved view UNIONS
+ * the first two; the third is deliberately UNLISTED so we can prove the
+ * resolved list EXCLUDES it (a cross-circle view returns items visible
+ * to ANY listed circle, and only those).
+ */
+export const SV_CIRCLE_GARDEN   = { kind: 'circle-ref', id: 'garden-committee' };  // listed
+export const SV_CIRCLE_TOOLSHED = { kind: 'circle-ref', id: 'tool-library' };      // listed
+export const SV_CIRCLE_PRIVATE  = { kind: 'circle-ref', id: 'private-notes' };     // UNLISTED
+const SV_ACTOR                  = 'https://id.example/anne';
+
+/**
+ * Demonstrate a **saved cross-circle view** (SP-8, the piece SP-11b
+ * originally skipped for want of `@canopy/circles`' saved-view helpers).
+ *
+ * `resolveSavedView` runs ONE cross-circle query
+ * (`store.listOpen({type, audiences})`) against ONE `@canopy/item-store`
+ * `ItemStore` whose items carry different `circle-ref` audiences.  The
+ * mounted demo apps each keep a per-circle-ISOLATED store (tasks-v0 has
+ * a separate `itemStore` per circle; household is a single-audience
+ * store), so none of them can host a single store holding items across
+ * several circles at once.  We therefore construct a dedicated
+ * `ItemStore` for this piece rather than contorting a mounted app — it
+ * is exactly the substrate surface `resolveSavedView` duck-types
+ * (`listOpen(filter)` with `audiences` support, added by SP-8).
+ *
+ * The saved view itself is the canonical `@canopy/item-types` `view`
+ * item `makeSavedView` builds: `audience = union(garden, tool-library)`.
+ *
+ * @returns {Promise<{
+ *   store: ItemStore, view: object, seeded: object[], resolved: object[],
+ *   listedIds: string[], excluded: object[],
+ * }>}
+ */
+export async function demoSavedCrossCircleView() {
+  const store = new ItemStore({
+    dataSource:    memoryDataSource(),
+    rootContainer: 'mem://saved-view/',
+  });
+
+  // Notes across THREE circles — two listed, one not.
+  const seeded = await store.addItems([
+    { type: 'note', text: 'order tomato seeds',   audience: SV_CIRCLE_GARDEN },
+    { type: 'note', text: 'prune the roses',      audience: SV_CIRCLE_GARDEN },
+    { type: 'note', text: 'borrow the drill',     audience: SV_CIRCLE_TOOLSHED },
+    { type: 'note', text: 'diary — do not share', audience: SV_CIRCLE_PRIVATE }, // unlisted
+  ], { actor: SV_ACTOR });
+
+  // A different itemType in a LISTED circle — proves the view's
+  // `itemType` narrows WITHIN the union (it must NOT be returned).
+  await store.addItems(
+    [{ type: 'event', text: 'garden open day', audience: SV_CIRCLE_GARDEN }],
+    { actor: SV_ACTOR },
+  );
+
+  // Build the saved view: a UNION of the two listed circle-refs.
+  const view = makeSavedView({
+    title:     'Garden + tool-library notes',
+    itemType:  'note',
+    audiences: [SV_CIRCLE_GARDEN, SV_CIRCLE_TOOLSHED],
+  });
+
+  // Resolve → the UNIONED note list spanning both listed circles.
+  const resolved = await resolveSavedView(view, store);
+
+  // Bookkeeping for the demo/test: which seeded items SHOULD appear
+  // (the two listed circles' notes) vs. which must be excluded (the
+  // unlisted circle's note + the wrong-type event).
+  const listedIds = seeded
+    .filter((i) => i.audience.id !== SV_CIRCLE_PRIVATE.id)
+    .map((i) => i.id);
+  const excluded = seeded.filter((i) => i.audience.id === SV_CIRCLE_PRIVATE.id);
+
+  return {
+    store, view, seeded, resolved, listedIds, excluded,
+    // the normalised audience SET the view spans (SP-8 helper) — the
+    // exact set handed to `ListFilter.audiences`.
+    viewAudiences: savedViewAudiences(view),
+  };
 }
 
 /**
