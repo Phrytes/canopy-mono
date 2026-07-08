@@ -28,10 +28,9 @@ describe('#237 folio surface — manifest exposure', () => {
     //  - shareFolder backs /share
     //  - saveToMyPod / downloadFile are file-card buttons (appliesTo:file)
     //  - folioStatus backs /folio-status
-    // NOTE: listFiles is registered by the real folio agent but is NOT
-    // in mockFolioManifest — it's invokable via callSkill (substrate
-    // dispatch ignores the manifest) but has no UI/slash entry today.
-    // That's a gap (see report) but not a regression.
+    // NOTE: listFiles is now IN the merged folioManifest (folded in via the
+    // Part-G dissolve) with a /files slash + list surface, and is invokable
+    // via callSkill as always.
     for (const need of [
       'getFileSnapshot', 'shareFolder', 'saveToMyPod', 'downloadFile', 'folioStatus',
     ]) {
