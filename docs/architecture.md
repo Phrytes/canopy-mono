@@ -67,6 +67,33 @@ so the map can't drift from the manifests.
 6. **Result** — flows back to the invoking surface. Verify the *result*, not just that dispatch fired: a gate
    can route correctly while the op silently fails.
 
+## Retrieval (RAG) — grounding the circle bot
+
+Each circle has an assistant (the "circle bot"). Before it answers via the LLM, it retrieves the circle's own
+relevant items and weaves them into the prompt, so answers are grounded in the circle's real data (chores,
+tasks, notes, messages) rather than the model's guesses.
+
+**Flow.** The pre-LLM gate (`tokenGate.js`) routes each message: a deterministic command (`/done milk`) fires
+directly with no model; anything else takes the `via:'llm'` path, where the gate calls `retrieve(text, ctx)`,
+slices to `maxContext` (5), and injects the results as context.
+
+**Two tiers** (`circleRetriever.js`):
+- **Tier-1 lexical** — keyword match, always available, no model needed.
+- **Tier-2 semantic** — ranks by meaning (a query for "car" finds "automobile"). Needs an embedder.
+
+**Engine.** Tier-2 is backed by a per-circle `@canopy/pod-search` hybrid index (`makePodSearchRetriever`),
+scoped `circle-rag/<circleId>` so circles never bleed into each other. Items are embedded once (content-hash
+cache — unchanged items are never re-embedded) and each turn runs `query({mode:'hybrid'})` — reciprocal rank
+fusion (k=60) over the lexical and cosine rankings. A `vectorStore` seam makes it restart-safe (embed once,
+survive a reload) when a circle-scoped `StorageBackend` is injected.
+
+**Policy & privacy** (invariant #7 — placed by trust):
+- Gated by `llmTool: 'off'` ⇒ no LLM and no semantic retrieval.
+- The embedder is policy-resolved (local Ollama / attested enclave); no embedder ⇒ tier-1 lexical only, zero
+  embed calls — a graceful degrade, never an error.
+- Retrieval is local; embeddings run only through the configured provider, so nothing leaves the device unless
+  that provider's base URL says so. Vectors live under `private/state/search-index/`, never under `sharing/`.
+
 ## Chat and screens compose (and trigger each other)
 
 There are two surface *families* over the waist, not one: **conversational** (chat/gate/slash) and **screen**
