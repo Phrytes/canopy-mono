@@ -44,6 +44,16 @@ export const CIRCLE_POLICY_ENUMS = {
   //                sealed to the recipient's network-derived key), NOT the canonical in-place grant (which
   //                would leave an ACP grant + shared-ref trace on the canonical item).
   shareOutOfCircle:     ['prohibit', 'notify', 'silent'],
+  // notifyOutOfCircle — the TARGET of the `notify` mode's notification (only consulted when
+  // shareOutOfCircle === 'notify'; ignored for 'prohibit'/'silent'). Admin-set, per-circle.
+  // See circleShare.js `shareItemToPublishedKey` (the notify branch).
+  //   'admins' — (default, the quieter option) ping the circle's ADMINS via @canopy/notify-envelope
+  //              with { event:'item-shared-out-of-circle', itemId, fromCircleId, recipient, by }.
+  //   'post'   — write a NOTICEBOARD post to the circle instead, tagged `category:'permission-log'`
+  //              (+ `logKind`) so a FUTURE dedicated "logging" section can filter these permission
+  //              notices OUT of the main board. (That logging section is DEFERRED; the post just
+  //              carries the forward-compatible tag today.)
+  notifyOutOfCircle:    ['admins', 'post'],
   agents:               ['yes', 'admin-approval', 'no'],
   revealPolicy:         ['pairwise', 'open'],
   pod:                  ['none', 'shared', 'personal', 'hybrid'],
@@ -88,6 +98,9 @@ export const DEFAULT_CIRCLE_POLICY = {
   // told it happened. 'prohibit' would break the shipped op by default; 'silent' would hide out-of-circle
   // sharing from admins by default (surprising, less transparent). Revisit with product.
   shareOutOfCircle: 'notify',
+  // Notify TARGET (only consulted when shareOutOfCircle === 'notify'). Default 'admins' — the quieter
+  // option: ping the admins rather than land a post on the (shared) board. See CIRCLE_POLICY_ENUMS.
+  notifyOutOfCircle: 'admins',
   agents:           'admin-approval',
   revealPolicy:     'pairwise',
   pod:              'none',
@@ -182,6 +195,7 @@ export function normalizeCirclePolicy(stored = {}) {
     storagePosture:     pickEnum('storagePosture'),
     sharePosture:       pickEnum('sharePosture'),
     shareOutOfCircle:   pickEnum('shareOutOfCircle'),
+    notifyOutOfCircle:  pickEnum('notifyOutOfCircle'),
     agents:             pickEnum('agents'),
     revealPolicy:       pickEnum('revealPolicy'),
     pod:                pickEnum('pod'),

@@ -308,16 +308,27 @@ export async function shareItemToPublishedKey({
   resolveService, enforcementFor, policyOf,
 } = {}) {
   const r = _shareResolvers(policyOf);
+  const resolveSvc = resolveService ?? r.resolveService;
   return sharedShareItemToPublishedKey({
-    resolveService: resolveService ?? r.resolveService,
+    resolveService: resolveSvc,
     enforcementFor: enforcementFor ?? r.enforcementFor,
     policyOf: r.policyOf,
     // The `silent` policy path's injected pod-layer crypto (mirror of web circleApp.js — the seal is a shell
     // adapter, kept out of shared src). `sealingKeyFromNetworkKey` derives the recipient's sealing key.
     sealCopy: _sealCopyToRecipients,
     sealingKeyFromNetworkKey: podSealingPublicKeyFromNetworkKey,
-    // FLAGGED payload/recipients — best-effort record that an out-of-circle share happened (see report).
+    // NOTICE emitters routed by the circle's `notifyOutOfCircle` setting (mirror of web circleApp.js).
+    // `notify` (admins) → @canopy/notify-envelope wiring is a follow-up; today it records the event.
     notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
+    // `post` → write the tagged post to the source circle's noticeboard item store (reuses `type:'post'`).
+    // The `category:'permission-log'` tag lets a future logging section filter it out of the main board.
+    post: async (taggedPost) => {
+      try {
+        const svc = await resolveSvc(taggedPost.fromCircleId);
+        const store = svc?.stores?.getStore?.(taggedPost.fromCircleId);
+        if (store && typeof store.put === 'function') await store.put(taggedPost, { by: taggedPost.by });
+      } catch { /* best-effort */ }
+    },
     itemId, fromCircleId, toCircleId, by: by ?? getCircleActorWebId() ?? undefined,
     recipient, recipientNetworkKey, verify, includeHistory,
   });
