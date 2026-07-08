@@ -88,6 +88,20 @@ export function createCircleControlAgent({
      *          Recipients = every current member + the controller, taken from the
      *          control-agent roster so a p3 writer seals to exactly who can read.
      *
+     * ── PLUMBING GAP (Phase 3 cross-version reader) ─────────────────────────────────
+     * This p2 path still resolves ONLY the current group key (via `readGroupKey`), so
+     * a still-entitled member cannot yet open p2 content sealed under an OLDER version
+     * (before a rotation they lived through) — the cross-version reader is NOT wired in
+     * here. The clean seam exists: pass the retained key RESOURCE + this private key to
+     * `resolveCircleStorage({ posture: 'p2', resource, privateKey })` (its resource form
+     * builds `groupKeyStrategy({ resource, privateKey })`, which opens across every
+     * version the reader can unwrap while preserving forward secrecy). Doing so also
+     * CHANGES this method's access contract — a revoked member would then get a
+     * read-only historic strategy (opens pre-revocation content, cannot seal or open
+     * post-revocation content) instead of the current blanket throw, and a never-member
+     * would get `null` instead of a throw. That is an access-policy decision (it flips
+     * several app-level security tests), left for review rather than silently wired.
+     *
      * @param {string} privateKey  the member's sealing private key.
      * @returns {Promise<{ seal: Function, open: Function } | null>}
      */
