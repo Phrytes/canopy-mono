@@ -2921,18 +2921,23 @@ function showKring(id, circle, policy) {
   // circle composes (policy.apps); null = all. Re-scopes on every circle-open.
   circleActiveApps = Array.isArray(policy?.apps) ? policy.apps : null;
   try { circleRescopeCatalog?.(); } catch { /* catalog stays at the previous scope */ }
-  const allowRules   = isFeatureEnabled(policy, 'houseRules');
-  const allowViewAs  = isFeatureEnabled(policy, 'memberDirectory');
-  const allowFiles   = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
+  // D / Surface 2 — `more` is the host's callback bag keyed by manifest action
+  // id (NOT a roster: `renderCircleKring` projects the roster + gates from
+  // `manifest.actions`).  The feature gate now lives ONCE in the manifest
+  // (`requires`), evaluated by the shared `circleActions` selector against this
+  // `policy` — so viewAs/files/rules are wired UNCONDITIONALLY here (no local
+  // `isFeatureEnabled` pre-filter); the projection hides them when off.
   const more = {
     invite:   () => showCircleInvite(id),
     settings: () => showSettings(id),
     lists:    () => openListsPanel(id),   // K2 — the composable lists/container UI
     contacts: () => openCircleScreenPanel('contacts'),   // B · Slice 3 — the filterable list-screen (GUI entry point)
-
-    mine:     () => showOverride(id),
+    override: () => showOverride(id),
+    viewAs:   () => showViewAs(id),
     advisor:  () => showAdvisor(id),
     skills:   () => showSkills(id),
+    files:    () => showFolio(id),
+    rules:    () => showRules(id),
     // α.1d — recipe editor (scherm-mode page composition).  Available
     // to everyone for V0; admin-gating + multi-admin consensus are
     // follow-up slices.
@@ -2941,9 +2946,6 @@ function showKring(id, circle, policy) {
     // admin-gated server-side; shown to everyone for V0 (a non-admin's action is
     // refused with a notice). Role-gating the menu entry is a follow-up.
     admin:    () => showAdmin(id),
-    ...(allowViewAs ? { viewAs: () => showViewAs(id) } : {}),
-    ...(allowFiles  ? { files:  () => showFolio(id) } : {}),
-    ...(allowRules  ? { rules:  () => showRules(id) } : {}),
   };
   // SP-13.3 — per-kring bottom tabs derived from policy.features.
   const tabs = buildKringTabs(policy, t);
@@ -3111,6 +3113,8 @@ function showKring(id, circle, policy) {
     });
     renderCircleKring(rootEl, {
       circle, rows, t,
+      // D / Surface 2 — feeds the ⋯ overflow menu's manifest-projected feature gate.
+      policy,
       tabs, activeTab,
       viewMode,
       screenBlocks,

@@ -809,35 +809,53 @@ export const canopyChatManifest = {
   ],
 
   /**
-   * Nav-chrome (D / Surface 2) — the circle DETAIL ACTION BAR.  These
-   * sibling-screen buttons WERE hand-written and had DIVERGED across the two
-   * shells: web (`web/v2/circleDetail.js` `.circle-detail__bar`) carried
-   * back/mine/settings/viewAs/advisor/skills/files/rules; mobile
-   * (`CircleLauncherScreen.js` `CircleDetail` ⋯-menu) ADDED recipes/admin/
-   * lists/share.  Same drift the tab bar killed (invariant #2/#3, by
-   * construction two files held the roster).  Declared ONCE here; both shells
-   * project the bar from `renderWeb(manifest).actions` via the shared
-   * `circleActions` selector (`src/v2/actionProjection.js`), so web ≡ mobile.
+   * Nav-chrome (D / Surface 2) — the circle DETAIL ACTION BAR + the live kring
+   * ⋯ overflow menu.  These sibling-screen buttons WERE hand-written and had
+   * DIVERGED across THREE places: web detail bar (`circleDetail.js`
+   * `.circle-detail__bar`), the LIVE web kring menu (`circleKring.js`'s
+   * hardcoded `MORE_ITEMS`), and the mobile (`CircleLauncherScreen.js`
+   * `CircleDetail` ⋯-menu).  Same drift the tab bar killed (invariant #2/#3, by
+   * construction the roster lived in multiple files).  Declared ONCE here; all
+   * consumers project the bar/menu from `renderWeb(manifest).actions` via the
+   * shared `circleActions` selector (`src/v2/actionProjection.js`), so the
+   * web live menu ≡ mobile menu ≡ detail bar by construction.
    *
    * Targets: most destinations are shell-owned nav screens (the shell owns the
    * surface, no op backs them) → `{kind:'nav', to}` app-nav roots, exactly like
    * the screens/kringen/contacten tabs.  `settings` reuses the existing
    * `settings` op (its `surfaces.page` side-panel) → `{kind:'op', opId:'settings'}`.
    *
+   * ORDER mirrors the live web kring menu (the surface users see): back is FIRST
+   * (the detail-bar back button; both ⋯ menus filter it out — the shells render
+   * back as a header affordance, not a menu row), then the web menu order
+   * invite · settings · lists · contacts · override · viewAs · advisor · skills ·
+   * files · rules · recipes · admin, then the mobile-only `share`.
+   *
    * Gating (`requires`) carries the EXISTING feature-flag gates verbatim
    * (`isFeatureEnabled(policy, …)`, OR semantics), NOT the finer capability
-   * matrix — those keys are what both shells gate on today, so behaviour is
-   * byte-for-byte preserved.  `platforms: ['mobile']` on `share` DECLARES that
-   * the cross-circle share SCREEN exists on mobile only (no web CircleShareScreen
-   * yet — see circle.share.screen_title locale doc); the gap lives in the
-   * manifest, not a divergent hardcoded list.
+   * matrix — those keys are what the shells gate on today, so behaviour is
+   * byte-for-byte preserved.  This is now the SINGLE feature gate (the web
+   * shell's `showKring` no longer recomputes it).  `platforms` DECLARES a
+   * platform gap so it lives in the manifest, not a divergent hardcoded list:
+   * `share` is mobile-only (no web CircleShareScreen yet — see
+   * circle.share.screen_title locale doc).  `invite` + `contacts` exist on BOTH
+   * platforms (each shell wires its own mechanism as the callback — web
+   * showCircleInvite / openCircleScreenPanel, mobile openCircleInvite /
+   * setScreenPanel — the doorgeefluik model), so neither is platform-flagged.
    *
-   * Ids + locale keys preserved EXACTLY (the ones the hand-written buttons used).
+   * A menu item shows iff (a) its `requires` gate passes for the policy AND
+   * (b) the host wired a callback for its id (web `more[id]`, mobile handler) —
+   * so a shell that has no screen for a destination simply omits the callback.
+   *
+   * Ids + locale keys preserved EXACTLY (the ones the hand-written rosters used).
    */
   actions: [
     { id: 'back',     labelKey: 'circle.back',                 target: { kind: 'nav', to: 'back' } },
-    { id: 'override', labelKey: 'circle.override.title',       target: { kind: 'nav', to: 'override' } },
+    { id: 'invite',   labelKey: 'circle.invite.menu',          target: { kind: 'nav', to: 'invite' } },
     { id: 'settings', labelKey: 'circle.settings.title',       target: { kind: 'op',  opId: 'settings' } },
+    { id: 'lists',    labelKey: 'circle.lists.title',          target: { kind: 'nav', to: 'lists' } },
+    { id: 'contacts', labelKey: 'circle.screen.open.contacts', target: { kind: 'nav', to: 'contacts' } },
+    { id: 'override', labelKey: 'circle.override.title',       target: { kind: 'nav', to: 'override' } },
     { id: 'viewAs',   labelKey: 'circle.viewAs.title',         target: { kind: 'nav', to: 'viewAs' },   requires: ['memberDirectory'] },
     { id: 'advisor',  labelKey: 'circle.advisor.title',        target: { kind: 'nav', to: 'advisor' } },
     { id: 'skills',   labelKey: 'circle.skills.editor_title',  target: { kind: 'nav', to: 'skills' } },
@@ -845,7 +863,6 @@ export const canopyChatManifest = {
     { id: 'rules',    labelKey: 'circle.rules.title',          target: { kind: 'nav', to: 'rules' },     requires: ['houseRules'] },
     { id: 'recipes',  labelKey: 'circle.recipe.editor.book_title', target: { kind: 'nav', to: 'recipes' } },
     { id: 'admin',    labelKey: 'circle.admin.title',          target: { kind: 'nav', to: 'admin' } },
-    { id: 'lists',    labelKey: 'circle.lists.title',          target: { kind: 'nav', to: 'lists' } },
     { id: 'share',    labelKey: 'circle.share.screen_title',   target: { kind: 'nav', to: 'share' },     platforms: ['mobile'] },
   ],
 };

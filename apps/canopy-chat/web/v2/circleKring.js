@@ -40,6 +40,10 @@ import { renderCircleScreen } from './circleScreen.js';
 import { renderCircleNoticeboard } from './circleNoticeboard.js';
 import { suggestCommands } from '../../src/v2/commandSuggest.js';
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../src/v2/embedChips.js';
+// D / Surface 2 — the ⋯ overflow roster is PROJECTED from manifest.actions via
+// the shared selector (platform + feature gated), NOT a hardcoded MORE_ITEMS list.
+import { circleActions } from '../../src/v2/actionProjection.js';
+import { canopyChatManifest } from '../../src/index.js';
 
 export function renderCircleKring(container, {
   circle = {},
@@ -103,6 +107,10 @@ export function renderCircleKring(container, {
   // its own). `null` = host hasn't loaded it → falls back to the placeholder.
   //   `{ posts, intent, busy, onPost, onAction, onIntent }`
   noticeboard = null,
+  // D / Surface 2 — the circle policy the ⋯ overflow menu's feature gate reads.
+  // The roster + its `requires` gates are projected from manifest.actions; this
+  // is the ONLY feature-gate input (the host no longer pre-filters `more`).
+  policy = null,
   t,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -149,7 +157,7 @@ export function renderCircleKring(container, {
     header.appendChild(toggle);
   }
 
-  const moreActions = collectMoreActions(more, tr);
+  const moreActions = collectMoreActions(more, tr, policy);
   if (moreActions.length > 0) {
     const moreBtn = document.createElement('button');
     moreBtn.type = 'button';
@@ -716,32 +724,23 @@ function pickSender(row) {
   return null;
 }
 
-const MORE_ITEMS = [
-  // OBJ-2 — invite someone to this circle (membership QR). First so it's easy to find.
-  { key: 'invite',   labelKey: 'circle.invite.menu' },
-  { key: 'settings', labelKey: 'circle.settings.title' },
-  { key: 'lists',    labelKey: 'circle.lists.title' },   // K2 — composable lists/container UI
-  { key: 'contacts', labelKey: 'circle.screen.open.contacts' },   // B · Slice 3 — filterable list-screen (GUI entry)
-
-  { key: 'mine',     labelKey: 'circle.override.title' },
-  { key: 'viewAs',   labelKey: 'circle.viewAs.title' },
-  { key: 'advisor',  labelKey: 'circle.advisor.title' },
-  { key: 'skills',   labelKey: 'circle.skills.editor_title' },
-  { key: 'files',    labelKey: 'circle.folio.title' },
-  { key: 'rules',    labelKey: 'circle.rules.title' },
-  // α.1d — edit per-kring scherm recipes (multiple, one marked active).
-  { key: 'recipes',  labelKey: 'circle.recipe.editor.book_title' },
-  // S3 — group admin: member roster + remove + announcements (admin-gated ops).
-  { key: 'admin',    labelKey: 'circle.admin.title' },
-];
-
-function collectMoreActions(more, tr) {
+// D / Surface 2 — the ⋯ overflow roster is PROJECTED from `manifest.actions`
+// via the shared `circleActions` selector, NOT a hardcoded list (the old
+// `MORE_ITEMS` literal is gone — invariants #1/#3/#4).  The roster carries the
+// order + locale keys + `requires`/`platforms` gates ONCE, in the manifest.
+//
+// An item shows iff (a) its `requires` gate passes for `policy` AND its
+// `platforms` includes web (both handled by `circleActions({policy, platform:'web'})`)
+// AND (b) the host wired a `more[id]` callback for it.  Keyed by the projected
+// action id, so the host's `more` object keys match the manifest ids directly
+// (the mobile shell projects the SAME roster → web ≡ mobile by construction).
+function collectMoreActions(more, tr, policy) {
   if (!more || typeof more !== 'object') return [];
   const out = [];
-  for (const item of MORE_ITEMS) {
-    const fn = more[item.key];
+  for (const action of circleActions(canopyChatManifest, { policy, platform: 'web' })) {
+    const fn = more[action.id];
     if (typeof fn === 'function') {
-      out.push({ id: item.key, label: tr(item.labelKey), run: fn });
+      out.push({ id: action.id, label: tr(action.labelKey), run: fn });
     }
   }
   return out;
