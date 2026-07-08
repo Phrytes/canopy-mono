@@ -15,6 +15,7 @@
 import {
   setupRecombinationDemo,
   runScriptedConversation,
+  demoCrossAppEmbed,
   DEMO_USER_MESSAGES,
 } from './scenario.js';
 
@@ -62,6 +63,29 @@ async function main() {
   log();
 
   await runtime.teardown();
+  log();
+
+  // ── SP-11b — cross-surface recombination polish ──────────────────
+  log('— SP-11b: cross-surface recombination —');
+  const three = await setupRecombinationDemo({ mountStoop: true });
+  log('mounted apps:        ' + three.host.list().join(', '));
+  log('composed toolCatalog: ' + three.composed.toolCatalog.length + ' tools');
+  for (const app of three.host.list()) {
+    log(`  ${app} tools:` .padEnd(20) +
+      three.composed.toolCatalog.filter((t) => t.id.startsWith(app + '.')).length);
+  }
+  log('command collisions:  ' + three.composed.collisions.length);
+  log('per-app prompts:     ' + Object.keys(three.composed.perAppSystemPrompts).sort().join(', '));
+  log();
+
+  log('cross-app embed reference (household → tasks, canonical {type,ref}):');
+  const { householdItem, ref, tree } = await demoCrossAppEmbed(three);
+  const embedded = tree.embeds[0];
+  log(`  household item "${householdItem.text}" embeds ${ref}`);
+  log(`  → resolved (${embedded.source}) ${embedded.type}: "${embedded.item?.text}"`);
+  await three.teardown();
+  log();
+
   log('✓ done');
 }
 
