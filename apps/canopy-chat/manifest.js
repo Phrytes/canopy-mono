@@ -47,40 +47,13 @@ export const canopyChatManifest = {
       },
     },
 
-    /**
-     * `/feedback [code]` / `/feedback-stop` — enter / leave the feedback bot (M11).
-     *
-     * Declared here purely for DISCOVERABILITY: with these on the manifest, `/feedback` shows in
-     * `/help` and the slash autosuggest. EXECUTION is intercepted upstream in `main.js handleUserText`
-     * (a `/feedback` / `/feedback-stop` match runs before catalog dispatch — it needs the pod session
-     * + the feedback surface), so these ops are never dispatched through the catalog.
+    /*
+     * NOTE (feedback-split F2, 2026-07-08): the `/feedback` + `/feedback-stop` ops were RETIRED here.
+     * Feedback is no longer a hardwired kring-composer slash command; it attaches through the
+     * added-agent path (the `fp-bot` contact — invite/QR → `feedbackBotStore` → its own thread),
+     * per `plans/design/DESIGN-feedback-surface-contract.md` §Registration. The manifest is the
+     * source of truth for surfaces (invariant #4); an op with no live surface no longer belongs here.
      */
-    {
-      id:    'feedback',
-      verb:  'add',
-      params: [
-        { name: 'code', kind: 'string', required: false },
-      ],
-      surfaces: {
-        slash: { command: '/feedback', body: 'code?' },
-        chat:  {
-          reply: 'text',
-          hint:  'start the feedback assistant (optional participation code)',
-        },
-      },
-    },
-    {
-      id:    'feedback-stop',
-      verb:  'add',
-      params: [],
-      surfaces: {
-        slash: { command: '/feedback-stop' },
-        chat:  {
-          reply: 'text',
-          hint:  'leave feedback mode',
-        },
-      },
-    },
 
     /**
      * `/newthread <name>` — create a new chat thread.

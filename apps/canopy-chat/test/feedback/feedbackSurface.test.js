@@ -7,9 +7,10 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { startMockLlm } from '../../../feedback-pipeline/test/helpers/mock-llm.js';
 import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-pod.js';
-import { InternalBus } from '@canopy/core';
+import { randomBytes } from 'node:crypto';
+import { InternalBus, AgentIdentity } from '@canopy/core';
 import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from '../../../feedback-pipeline/src/pod/signing.js';
-import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
 
 let mock;
 beforeAll(async () => { mock = await startMockLlm(); });
@@ -62,6 +63,39 @@ test('consent is SIGNED with the participant identity (accepted by a verify pod)
   await surface.handle('ik ben klaar', 's');
   await surface.tapButton('fp:consent:all', 's');   // a button TAP drives consent
   expect(pod.forAggregation().length).toBe(1);        // signed → verified → aggregated
+});
+
+test('seam 4 — a signer CLOSURE (from the host AgentIdentity) signs consent, accepted by a verify pod', async () => {
+  // The host hands the bot a { publicKey, sign() } closure, NOT the raw key (private key stays
+  // encapsulated in the AgentIdentity). contributionMeta signs consent with it → a verify pod accepts.
+  const agent = new AgentIdentity({ seed: new Uint8Array(randomBytes(32)), vault: {} });
+  const signer = signerForIdentity(agent);
+  expect(signer).toEqual({ publicKey: agent.pubKey, sign: expect.any(Function) });   // closure shape, no privateKey
+  const roster = new IdentityRoster();
+  roster.bind('cc:z', signer.publicKey);
+  const pod = new InMemoryCentralPod({ verify: makeContributionVerifier({ roster, projectId: 'canopy-chat' }) });
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg({ privacy: { verify: true } }), pod, identityFor: () => signer, emit: (r) => replies.push(r) });
+
+  await surface.start('z');
+  await surface.handle('De GGZ-wachtlijst is veel te lang', 'z');
+  await surface.handle('ik ben klaar', 'z');
+  await surface.tapButton('fp:consent:all', 'z');
+  expect(pod.forAggregation().length).toBe(1);        // closure-signed → verified → aggregated
+});
+
+test('seam 4 — the signer is INERT for a non-verify project (no signing attempted)', async () => {
+  // Gate: for a project WITHOUT privacy.verify (today's default), the surface wires no signer to the bot,
+  // so consent writes stay unsigned exactly as before F2 — the injected sign() is never called.
+  let signCalls = 0;
+  const signer = { publicKey: 'ignored', sign: () => { signCalls += 1; return new Uint8Array(64); } };
+  const { surface, pod } = setup({ surface: { identityFor: () => signer } });   // cfg() has no privacy.verify
+  await surface.start('n');
+  await surface.handle('De GGZ-wachtlijst is te lang', 'n');
+  await surface.handle('ik ben klaar', 'n');
+  await surface.tapButton('fp:consent:all', 'n');
+  expect(pod.list().length).toBe(1);   // the write still lands (unsigned)
+  expect(signCalls).toBe(0);           // no signer wired for a non-verify project
 });
 
 test('parseFeedbackInvite reads a project-invite link', () => {

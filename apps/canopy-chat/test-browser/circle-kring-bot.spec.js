@@ -61,11 +61,5 @@ test('"@assistant done X" resolves the label + completes (bot reply, no error bu
   expect(blob).not.toContain('couldn');           // not "couldn't find"
 });
 
-test('/feedback in the kring composer → the feedback bot replies (chain now browser-safe)', async ({ page }) => {
-  await openKringComposer(page);
-  const before = await page.locator('.circle-kring__bubble').count();
-  await send(page, '/feedback');
-  const bubbles = await page.locator('.circle-kring__bubble').allTextContents();
-  console.log('=== bubbles after /feedback:', JSON.stringify(bubbles.slice(-4)));
-  expect(bubbles.length).toBeGreaterThan(before);   // feedback bot posted guidance into the kring
-});
+// (F2, 2026-07-08) The `/feedback in the kring composer` test was retired: the in-kring feedback mount is
+// gone. Feedback's surface is the dedicated fp-bot contact thread (covered by the contactThread vitest).
