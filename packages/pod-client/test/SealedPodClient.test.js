@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   createSealedPodClient, recipientStrategy, groupKeyStrategy,
   generateKeypair, generateGroupKey, isSealed,
+  buildGroupKeyResource, rotateGroupKeyResource,
 } from '../src/sealing/index.js';
 
 // A Map-backed fake PodClient: stores raw bytes (what the host would hold). read echoes opts so we can
@@ -69,6 +70,81 @@ describe('SealedPodClient — group-key strategy', () => {
     const lines = inner.store.get('/log').split('\n');
     expect(lines.every(isSealed)).toBe(true);
     expect(lines).toHaveLength(2);
+  });
+});
+
+// ── Phase 3 — the GENERAL sealed-pod content reader opens across key-rotation versions ──────────────────
+// Real crypto throughout (no cipher mocks): content is sealed/opened through an actual SealedPodClient over
+// the group-key strategy; the host (fakeInner) holds only ciphertext.
+describe('SealedPodClient — group-key strategy, cross-version reader (Phase 3)', () => {
+  it('CRYPTO 1 — a still-granted member opens BOTH pre- and post-rotation content through the general reader', async () => {
+    const alice = generateKeypair(); const bob = generateKeypair();  // both present at v1
+    const inner = fakeInner();
+
+    // v1: alice + bob. Alice writes pre-rotation content — sealed under the CURRENT (v1) group key.
+    const v1 = rotateGroupKeyResource({ previous: null, recipients: [alice.publicKey, bob.publicKey] });
+    const v1Client = createSealedPodClient(inner, groupKeyStrategy({ resource: v1, privateKey: alice.privateKey }));
+    await v1Client.write('/pre', 'sealed under v1');
+    expect(isSealed(inner.store.get('/pre'))).toBe(true);          // host holds ciphertext
+    expect(inner.store.get('/pre')).not.toContain('sealed under v1');
+
+    // bob leaves → rotate to alice only; v1 is retained in history[].
+    const v2 = rotateGroupKeyResource({ previous: v1, recipients: [alice.publicKey] });
+    const v2Client = createSealedPodClient(inner, groupKeyStrategy({ resource: v2, privateKey: alice.privateKey }));
+    await v2Client.write('/post', 'sealed under v2');
+
+    // Alice's CURRENT (v2) reader opens BOTH, resolving the version across retained history — this is the
+    // bug fix: pre-rotation content is no longer unopenable after a rotation for a still-entitled member.
+    expect((await v2Client.read('/pre')).content).toBe('sealed under v1');   // historic version
+    expect((await v2Client.read('/post')).content).toBe('sealed under v2');  // current version
+  });
+
+  it('CRYPTO 2 — a member revoked at the rotation cannot open post-revocation content, but CAN still open pre-revocation content (forward secrecy)', async () => {
+    const alice = generateKeypair(); const bob = generateKeypair();  // bob is revoked at the rotation
+    const inner = fakeInner();
+
+    const v1 = rotateGroupKeyResource({ previous: null, recipients: [alice.publicKey, bob.publicKey] });
+    const v1Client = createSealedPodClient(inner, groupKeyStrategy({ resource: v1, privateKey: alice.privateKey }));
+    await v1Client.write('/pre', 'bob was entitled to this');
+
+    const v2 = rotateGroupKeyResource({ previous: v1, recipients: [alice.publicKey] });   // bob revoked
+    const aliceV2 = createSealedPodClient(inner, groupKeyStrategy({ resource: v2, privateKey: alice.privateKey }));
+    await aliceV2.write('/post', 'after bob left');
+
+    // Bob reads through the general reader with the post-rotation resource: his key unwraps ONLY the retained
+    // v1 envelope, so his readable set is {v1}. He opens the pre-revocation content he was entitled to...
+    const bobReader = createSealedPodClient(inner, groupKeyStrategy({ resource: v2, privateKey: bob.privateKey }));
+    expect((await bobReader.read('/pre')).content).toBe('bob was entitled to this');
+    // ...but holds NO version that opens post-revocation content → the read throws (forward secrecy intact).
+    await expect(bobReader.read('/post')).rejects.toThrow();
+    // ...and he cannot SEAL under the current version at all (not a current recipient).
+    expect(() => groupKeyStrategy({ resource: v2, privateKey: bob.privateKey }).seal('write attempt')).toThrow(/not a recipient/);
+  });
+
+  it('CRYPTO 3 — never-rotated content opens unchanged (single-key back-compat + resource form agree)', async () => {
+    const gk = generateGroupKey();
+    const inner = fakeInner();
+
+    // Single-key path — byte-identical to the pre-Phase-3 reader.
+    const a = createSealedPodClient(inner, groupKeyStrategy({ groupKey: gk }));
+    await a.write('/list', 'milk, bread');
+    const b = createSealedPodClient(inner, groupKeyStrategy({ groupKey: gk }));
+    expect((await b.read('/list')).content).toBe('milk, bread');
+
+    // The cross-version reader over a single (v1, no history) resource opens that SAME never-rotated content
+    // identically — the fast path degenerates to exactly the single-key open.
+    const alice = generateKeypair();
+    const v1 = buildGroupKeyResource({ version: 1, groupKey: gk, recipients: [alice.publicKey] });
+    expect(v1.history).toBeUndefined();
+    const viaResource = createSealedPodClient(inner, groupKeyStrategy({ resource: v1, privateKey: alice.privateKey }));
+    expect((await viaResource.read('/list')).content).toBe('milk, bread');
+  });
+
+  it('the resource form requires a private key; the empty form still throws', () => {
+    const alice = generateKeypair();
+    const v1 = buildGroupKeyResource({ version: 1, groupKey: generateGroupKey(), recipients: [alice.publicKey] });
+    expect(() => groupKeyStrategy({ resource: v1 })).toThrow(/private key/);
+    expect(() => groupKeyStrategy({})).toThrow();
   });
 });
 

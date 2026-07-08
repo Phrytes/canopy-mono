@@ -13,6 +13,7 @@ import {
   seal as recipientSeal, open as recipientOpen,
   sealWithGroupKey, openWithGroupKey,
 } from './envelope.js';
+import { unwrapGroupKey, openSealedAcrossVersions } from './groupKeyResource.js';
 
 /**
  * @param {object} inner   a PodClient (or compatible: read/write/append/list/...)
@@ -78,9 +79,45 @@ export function recipientStrategy({ recipients, privateKey } = {}) {
   };
 }
 
-/** Group-key strategy: seal/open under one shared symmetric key (the household shared pod). */
-export function groupKeyStrategy({ groupKey } = {}) {
-  if (!groupKey) throw new Error('groupKeyStrategy: a group key is required');
+/**
+ * Group-key strategy: seal/open under the household shared pod's group key. Two constructions, both
+ * returning the same `{ seal, open }` shape:
+ *
+ *   • SINGLE-KEY (back-compat): `groupKeyStrategy({ groupKey })`. `seal` and `open` both use that one
+ *     symmetric key — byte-for-byte the pre-Phase-3 behaviour. Content that has never rotated round-trips
+ *     exactly as before (the single-version fast path).
+ *
+ *   • CROSS-VERSION reader (Phase 3): `groupKeyStrategy({ resource, privateKey })`, where `resource` is the
+ *     retained group-key resource (the CURRENT version + its `history[]` of prior versions) and `privateKey`
+ *     is the reader's sealing key. `open` resolves the version the content was sealed under by AUTHENTICATED
+ *     TRIAL across EVERY version this reader can unwrap (`openSealedAcrossVersions` → `readableGroupKeys`), so
+ *     ordinary content sealed under an OLDER key version — before a rotation the reader lived through — still
+ *     opens for a still-entitled member. `seal` ALWAYS writes under the CURRENT version (`unwrapGroupKey`,
+ *     unwrapped lazily): a caller who is not a current recipient (a revoked member) throws on `seal` and
+ *     cannot write new content.
+ *
+ *     FORWARD SECRECY: `readableGroupKeys(resource, privateKey)` yields ONLY the versions whose envelope this
+ *     private key is a recipient of. A reader revoked at a rotation is absent from the current version's
+ *     envelope and from every later one, so their readable set holds ONLY pre-revocation versions — they can
+ *     open old (pre-revocation) content they were already entitled to, and NEVER content sealed under a
+ *     post-revocation key (that trial finds no key that opens it → throws). Retention only restores a current
+ *     member's access to pre-rotation content; it never grants a revoked member access to post-revocation
+ *     content.
+ */
+export function groupKeyStrategy({ groupKey, resource, privateKey } = {}) {
+  if (resource) {
+    if (!privateKey) throw new Error('groupKeyStrategy: a private key is required to open a group-key resource across versions');
+    return {
+      // seal ALWAYS under the CURRENT version; unwrapGroupKey throws if this key is not a current recipient
+      // (a revoked member can't write). Unwrapped lazily so an open-only reader (revoked, historic access)
+      // can still be constructed without throwing here.
+      seal: (text) => sealWithGroupKey(text, unwrapGroupKey(resource, privateKey)),
+      // open across every version this reader can unwrap (current + retained history). Non-sealed text passes
+      // through; sealed content the reader holds no version for throws — the forward-secrecy denial.
+      open: (text) => openSealedAcrossVersions(text, resource, privateKey),
+    };
+  }
+  if (!groupKey) throw new Error('groupKeyStrategy: a group key (or a resource + private key) is required');
   return {
     seal: (text) => sealWithGroupKey(text, groupKey),
     open: (text) => openWithGroupKey(text, groupKey),
