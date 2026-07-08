@@ -30,6 +30,19 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   workspace symlinking is what fixed it. Same "symlink integrity" family as the EAS trap above —
   if resolution breaks, check that the workspace symlinks are intact first.
 
+- **New `@canopy/*` workspace dep → its `node_modules` symlink must be materialized (or `pnpm install` re-run).**
+  Adding a `@canopy/*` dep to a package's `package.json` — or repointing a raw-`src` reach-in onto a public
+  `@canopy/<pkg>` specifier — only resolves once that package has `node_modules/@canopy/<pkg> →
+  ../../../../packages/<pkg>`, which `pnpm install` creates from the declared dep. If you can't run a full install
+  (the offline store is often incomplete here), materialize the link by hand, mirroring an existing one (e.g.
+  `@canopy/redaction`). **Tell:** an import that resolves in one package but throws `ERR_MODULE_NOT_FOUND` in
+  another. *Concrete (2026-07-08):* feedback-split F1 added `@canopy/{core,pod-client,pseudo-pod}` to
+  `apps/feedback-pipeline`; links were materialized by hand pending the next install.
+  **Same family — a fresh `git worktree` has NO `node_modules`:** before running a worktree's tests, wire them by
+  symlinking the main tree's root `node_modules` + each `apps/*/node_modules` & `packages/*/node_modules`. And note
+  the Agent-tool `isolation: worktree` branches from stale `origin/master` here (local master is unpushed) — pin
+  worktrees to local `HEAD` instead. (See the `worktree-base-stale-gotcha` agent memory.)
+
 ## Android 12+ instant crash on BLE / mDNS
 
 **Root cause.** On Android 12+ (API 31+), BLE calls require runtime-granted `ACCESS_FINE_LOCATION`

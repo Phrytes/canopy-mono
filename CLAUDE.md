@@ -23,6 +23,9 @@ substrate is the functionality.
 Check **`docs/agent-notes-known-gotchas.md`** first — known monorepo-resolution (EAS/Metro
 `nodeModulesPaths`, workspace symlinks) and Android-12 native-permission traps that pass locally
 but fail on device/CI. Don't re-bisect a trap that's already written down.
+**Keep it current:** when you hit a new build/native/monorepo-resolution trap — or *introduce* one (e.g. a new
+workspace dep that needs its `node_modules` link materialized) — record it there in the same turn. A read-first
+file only helps if it's written to.
 
 ## Invariants — a violation is a bug, not a style nit
 1. **Logic lives once, in shared code.** Web/mobile shells are **thin adapters/projectors**: platform UI +
