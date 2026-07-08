@@ -385,6 +385,14 @@ async function shareItemToContact({ itemId, fromCircleId, toCircleId, by, recipi
     // FLAGGED — the exact circle/admin notify payload+recipients is a product decision (see report). This
     // best-effort emitter just records that an out-of-circle share happened; wire to the real channel later.
     notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
+    // SILENT delivery (Frits' call) — push the sealed COPY over the relay directly to the recipient's peer.
+    // The recipient's peer address IS their published network key (`recipientNetworkKey`); the peer transport
+    // (agent.sendPeerMessage) is the SAME channel the no-pod sync + file-share fan-out ride. Best-effort inside
+    // the shared op. Guarded so a boot with no live agent degrades to pointer-only (no throw).
+    sendSharedCopy: (to, envelope) =>
+      (typeof _peerAgent?.sendPeerMessage === 'function'
+        ? _peerAgent.sendPeerMessage(to, envelope)
+        : Promise.resolve()),
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
     recipient, recipientNetworkKey, verify, includeHistory,
   });
@@ -537,6 +545,10 @@ import {
 } from '../../src/v2/circlePolicyStore.js';
 // β.5 — per-user "pin to top" store + adapter.
 import { createCirclePinStore, localStoragePinIo } from '../../src/v2/circlePinStore.js';
+// SILENT out-of-circle delivery — the per-user "shared with me" store + adapter, and the inbound handler that
+// lands relayed sealed copies into it (peer router subtype `shared-copy`).
+import { createSharedWithMeStore, localStorageSharedWithMeIo } from '../../src/v2/sharedWithMeStore.js';
+import { makeHandleSharedCopy } from '../../src/core/handlers/sharedCopyReceive.js';
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
@@ -662,6 +674,10 @@ const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 // β.5 — pin store (single keyless map at `cc.circlePinned`).
 const pinStore = createCirclePinStore(localStoragePinIo());
+// SILENT out-of-circle delivery — per-user "shared with me" store (append-only list at `cc.sharedWithMe`).
+// Received sealed copies land here via the peer router `shared-copy` handler (below); openable only with this
+// user's own network-derived sealing key.
+const sharedWithMeStore = createSharedWithMeStore(localStorageSharedWithMeIo());
 // Objective D (Surface 3a) — availability is a device-local pref, but its
 // value must be readable by other agents. Mirror it to a per-user pod
 // resource via the same tiered pattern circle-policy uses. The writer is
@@ -4388,6 +4404,12 @@ async function boot() {
               _kringRender?.botBubble(t('circle.fileShare.received', { name: f.name }),
                 { buttons: [{ action: `file-dl:${f.id}`, label: t('circle.fileShare.download') }] });
             },
+            publishEvent: publishEventToLog,
+          }),
+          // SILENT out-of-circle delivery — a peer pushed a sealed COPY straight to us. Land it in the per-user
+          // "shared with me" store; the surface opens each with this device's own network-derived sealing key.
+          'shared-copy':             makeHandleSharedCopy({
+            store:        sharedWithMeStore,
             publishEvent: publishEventToLog,
           }),
           // OBJ-2 membership — the no-pod join handshake (shared core, same as the classic shells):

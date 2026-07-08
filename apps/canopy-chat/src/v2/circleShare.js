@@ -252,12 +252,16 @@ export async function shareItemAcrossCircles({
  *        key from their published network key (pod-client `sealingPublicKeyFromNetworkKey`) — silent path.
  * @param {(payload:object)=>any} [args.notify]  best-effort emitter called on a successful `notify`-mode share
  *        (payload/recipients are a product-tunable — see report). Never blocks/fails the share.
+ * @param {(to:string, envelope:object)=>any} [args.sendSharedCopy]  SILENT path only — best-effort relay sender
+ *        that pushes the sealed COPY to the recipient's peer (`to` = their published network key = peer address)
+ *        as a `{subtype:'shared-copy', sealed, itemMeta, from}` envelope. Injected from the composition root
+ *        (`agent.sendPeerMessage`), keeping this module transport-free. Absent ⇒ no delivery (pointer-only).
  * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, cause?:any}>}
  */
 export async function shareItemToPublishedKey({
   resolveService, itemId, fromCircleId, toCircleId, by,
   recipient, recipientNetworkKey, includeHistory = false, verify,
-  enforcementFor, postureOf, policyOf, sealCopy, sealingKeyFromNetworkKey, notify,
+  enforcementFor, postureOf, policyOf, sealCopy, sealingKeyFromNetworkKey, notify, sendSharedCopy,
 } = {}) {
   if (typeof resolveService !== 'function' || !itemId || !fromCircleId) {
     return { ok: false, error: 'missing-args' };
@@ -289,7 +293,7 @@ export async function shareItemToPublishedKey({
   if (outOfCircle === 'silent') {
     return shareSilentCopyToPublishedKey({
       stores, fromCircleId, toCircleId, itemId, by, recipient, recipientNetworkKey,
-      enforcement, sealCopy, sealingKeyFromNetworkKey, postureOf,
+      enforcement, sealCopy, sealingKeyFromNetworkKey, postureOf, sendSharedCopy,
     });
   }
 
@@ -340,14 +344,38 @@ async function grantToPublishedKey({ stores, fromCircleId, toCircleId, itemId, b
  * (discovery via `listSharedResolved`); with none the copy is ACP-granted directly and the pointer is returned
  * for out-of-band relay. Missing the injected sealer/derivation/pod hook ⇒ degrade to a plain (unsealed) copy —
  * the memory fallback, mirroring `shareItemAcrossCircles`' copy branch.
+ *
+ * DELIVERY (Frits' call) — the sealed copy is ALSO pushed over the relay directly to the recipient's peer as a
+ * typed `{ subtype:'shared-copy', sealed, itemMeta, from }` envelope, via the injected `sendSharedCopy` (the
+ * composition root wires it to `agent.sendPeerMessage`, keeping this module transport-free). The recipient's
+ * peer address IS their published network key (`recipientNetworkKey` = the contact's `peerAddr`/`pubKey`). The
+ * send is BEST-EFFORT: a relay failure never fails the already-minted+granted copy (mirrors the `notify` seam).
+ * The recipient's app ingests the envelope into a "shared with me" store (see makeHandleSharedCopy) and opens
+ * each copy with the sealing key derived from its OWN network identity — no pod pointer required for delivery.
  */
 async function shareSilentCopyToPublishedKey({
   stores, fromCircleId, toCircleId, itemId, by, recipient, recipientNetworkKey,
-  enforcement, sealCopy, sealingKeyFromNetworkKey, postureOf,
+  enforcement, sealCopy, sealingKeyFromNetworkKey, postureOf, sendSharedCopy,
 }) {
   const fromStore = stores.getStore(fromCircleId);
   const srcItem = await fromStore.get(itemId);
   if (!srcItem) return { ok: false, error: 'item-not-found' };
+
+  // Best-effort relay delivery of the minted copy to the recipient's peer (their network key = their address).
+  const deliverCopy = async (copy) => {
+    if (typeof sendSharedCopy !== 'function' || !recipientNetworkKey) return;
+    const envelope = {
+      subtype: 'shared-copy',
+      sealed:  copy,
+      itemMeta: {
+        sourceCircle: fromCircleId, sourceType: srcItem.type,
+        sharedCopyOf: itemId, copyId: copy.id, silent: true,
+      },
+      from: by ?? 'unknown',
+    };
+    try { await sendSharedCopy(recipientNetworkKey, envelope); }
+    catch { /* best-effort — the copy is already minted + granted; delivery is fire-and-forget */ }
+  };
 
   let recipientKey = null;
   if (typeof sealingKeyFromNetworkKey === 'function') {
@@ -363,6 +391,9 @@ async function shareSilentCopyToPublishedKey({
       const { id: _srcId, ...sealedNoId } = sealed;
       copy = await fromStore.put({ ...sealedNoId, sharedCopyOf: itemId }, { by });
     } catch (cause) { return { ok: false, error: 'share-seal-failed', cause }; }
+
+    // Push the sealed copy over the relay to the recipient's peer (independent of the pod-pointer landing below).
+    await deliverCopy(copy);
 
     if (toCircleId) {
       // Deliver via a shared-ref to the COPY in the delivery circle (grant lands on the copy, source untouched).
@@ -382,6 +413,7 @@ async function shareSilentCopyToPublishedKey({
   // Degraded memory path — still produce a SEPARATE object (a plain copy) so the op's shape holds; no grant.
   const { id: _id, ...srcNoId } = srcItem;
   const copy = await fromStore.put({ ...srcNoId, sharedCopyOf: itemId }, { by });
+  await deliverCopy(copy);
   const ref = {
     type: 'shared-ref', sourceCircle: fromCircleId, sourceId: copy.id, sourceType: srcItem.type,
     sharedBy: by ?? 'unknown', silent: true,
