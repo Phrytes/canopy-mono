@@ -414,7 +414,7 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     if (!Array.isArray(op.params)) {
       errors.push({ path: `${path}/params`, message: 'params must be an array if present' });
     } else {
-      op.params.forEach((p, j) => validateParam(p, `${path}/params/${j}`, errors));
+      op.params.forEach((p, j) => validateParam(p, `${path}/params/${j}`, errors, manifest));
     }
   }
 
@@ -794,7 +794,7 @@ function validateSetting(s, path, errors, keySet) {
   }
 }
 
-function validateParam(p, path, errors) {
+function validateParam(p, path, errors, manifest) {
   if (!p || typeof p !== 'object') {
     errors.push({ path, message: 'param must be an object' });
     return;
@@ -822,6 +822,23 @@ function validateParam(p, path, errors) {
       errors.push({ path: `${path}/of`, message: "param.of must be 'itemTypes' or an array of strings" });
     } else if (p.of.some((v) => typeof v !== 'string')) {
       errors.push({ path: `${path}/of`, message: 'param.of array must contain only strings' });
+    } else if (p.name === 'type' && Array.isArray(manifest?.itemTypes)) {
+      // Completeness parity with appliesTo.type (see validateOperation): an op
+      // names its noun EITHER via `appliesTo.type` OR via a `type`-named enum
+      // param whose inline `of` lists the item types (the `opNouns` convention
+      // in capabilities.js — only a param NAMED `type` names nouns; value-enums
+      // like mode/action/lang list option VALUES, not nouns, so they are NOT
+      // cross-checked). appliesTo.type is validated against manifest.itemTypes;
+      // this makes the symmetric param path enforce the SAME registry loop, so
+      // a noun that isn't a declared itemType can't slip through silently.
+      p.of.forEach((v, i) => {
+        if (v !== '*' && !manifest.itemTypes.includes(v)) {
+          errors.push({
+            path:    `${path}/of/${i}`,
+            message: `param.of "${v}" is not in manifest.itemTypes`,
+          });
+        }
+      });
     }
   }
 

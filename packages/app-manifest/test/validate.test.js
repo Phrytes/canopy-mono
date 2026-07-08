@@ -131,6 +131,50 @@ describe('validateManifest', () => {
     expect(e.some((x) => /not in manifest.itemTypes/.test(x.message))).toBe(true);
   });
 
+  // Completeness parity with appliesTo.type: an op may name its noun EITHER via
+  // appliesTo.type OR via a `type`-named enum param whose inline `of` lists the
+  // item types (the opNouns convention). appliesTo.type is cross-checked against
+  // manifest.itemTypes; the symmetric `type`-enum param must be too — else a
+  // noun that isn't a declared itemType slips through silently.
+  it("a `type`-enum param's inline `of` must reference manifest.itemTypes", () => {
+    const e = errs({
+      app: 'a', itemTypes: ['task'],
+      operations: [{
+        id: 'addItem', verb: 'add',
+        params: [
+          { name: 'type', kind: 'enum', of: ['task', 'bogus'], required: true },
+          { name: 'text', kind: 'string', required: true },
+        ],
+      }],
+    });
+    expect(e.some((x) => /"bogus"/.test(x.message) && /not in manifest.itemTypes/.test(x.message))).toBe(true);
+  });
+
+  it("a `type`-enum param whose inline `of` is all declared itemTypes passes", () => {
+    expect(ok({
+      app: 'a', itemTypes: ['task', 'note'],
+      operations: [{
+        id: 'addItem', verb: 'add',
+        params: [
+          { name: 'type', kind: 'enum', of: ['task', 'note'], required: true },
+          { name: 'text', kind: 'string', required: true },
+        ],
+      }],
+    })).toBe(true);
+  });
+
+  it("a value-enum param named other than `type` is NOT cross-checked against itemTypes", () => {
+    // mode/action/lang enums list option VALUES, not nouns — they must never be
+    // forced to be itemTypes (regression guard for the scoped fix).
+    expect(ok({
+      app: 'a', itemTypes: ['task'],
+      operations: [{
+        id: 'setMode', verb: 'add',
+        params: [{ name: 'mode', kind: 'enum', of: ['nkn', 'relay', 'both'], required: true }],
+      }],
+    })).toBe(true);
+  });
+
   it('views: duplicate id + bad type rejected', () => {
     const e = errs({
       app: 'a', itemTypes: ['task'],
