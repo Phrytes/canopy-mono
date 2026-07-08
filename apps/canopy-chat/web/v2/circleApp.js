@@ -557,7 +557,7 @@ import {
 import { createCirclePinStore, localStoragePinIo } from '../../src/v2/circlePinStore.js';
 // SILENT out-of-circle delivery — the per-user "shared with me" store + adapter, and the inbound handler that
 // lands relayed sealed copies into it (peer router subtype `shared-copy`).
-import { createSharedWithMeStore, localStorageSharedWithMeIo } from '../../src/v2/sharedWithMeStore.js';
+import { createSharedWithMeStore, localStorageSharedWithMeIo, podSharedWithMeIo, tieredSharedWithMeIo } from '../../src/v2/sharedWithMeStore.js';
 import { makeHandleSharedCopy } from '../../src/core/handlers/sharedCopyReceive.js';
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
@@ -684,28 +684,40 @@ const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 // β.5 — pin store (single keyless map at `cc.circlePinned`).
 const pinStore = createCirclePinStore(localStoragePinIo());
-// SILENT out-of-circle delivery — per-user "shared with me" store (append-only list at `cc.sharedWithMe`).
-// Received sealed copies land here via the peer router `shared-copy` handler (below); openable only with this
-// user's own network-derived sealing key.
-const sharedWithMeStore = createSharedWithMeStore(localStorageSharedWithMeIo());
-// Objective D (Surface 3a) — availability is a device-local pref, but its
-// value must be readable by other agents. Mirror it to a per-user pod
-// resource via the same tiered pattern circle-policy uses. The writer is
-// built lazily from the restored Solid session (`window.canopyPodSession`,
-// set once sign-in completes below) and memoised; while unsigned the thunk
-// returns null and the store is local-only (unchanged behaviour).
-let _availabilityPodWriter = null;
-const availabilityPodWriter = () => {
-  if (_availabilityPodWriter) return _availabilityPodWriter;
+// Per-user pod writer — built lazily from the restored Solid session
+// (`window.canopyPodSession`, set once sign-in completes below) and
+// memoised. While unsigned the thunk returns null, so every store wired
+// through it stays local-only (unchanged behaviour). SHARED by the
+// availability pref AND the "shared with me" list (both mirror a per-user
+// pod resource under `canopy/<app>/`).
+let _perUserPodWriter = null;
+const perUserPodWriter = () => {
+  if (_perUserPodWriter) return _perUserPodWriter;
   const s = (typeof window !== 'undefined' && window.canopyPodSession) || null;
   if (!s || typeof s.fetch !== 'function' || typeof s.webid !== 'string') return null;
-  try { _availabilityPodWriter = createPodWriter(s); } catch { return null; }
-  return _availabilityPodWriter;
+  try { _perUserPodWriter = createPodWriter(s); } catch { return null; }
+  return _perUserPodWriter;
 };
+// SILENT out-of-circle delivery — per-user "shared with me" store. TIERED
+// (Frits' call): localStorage (`cc.sharedWithMe`) is canonical; when a
+// signed-in pod writer is present the sealed copies are mirrored to
+// `canopy/cc-shared-with-me/received.json` so they SURVIVE + SYNC across the
+// user's devices. Received copies land here via the peer router
+// `shared-copy` handler (below); openable only with this user's own
+// network-derived sealing key. Unsigned → local-only, unchanged.
+const sharedWithMeStore = createSharedWithMeStore(
+  tieredSharedWithMeIo(
+    localStorageSharedWithMeIo(),
+    podSharedWithMeIo({ getWriter: perUserPodWriter }),
+  ),
+);
+// Objective D (Surface 3a) — availability is a device-local pref, but its
+// value must be readable by other agents. Mirror it to a per-user pod
+// resource via the same tiered pattern circle-policy uses.
 const availabilityStore = createAvailabilityStore(
   tieredAvailabilityIo(
     localStorageAvailabilityIo(),
-    podAvailabilityIo({ getWriter: availabilityPodWriter }),
+    podAvailabilityIo({ getWriter: perUserPodWriter }),
   ),
 );
 // P6.2 — persisted pending proposals (multi-admin consensus).

@@ -11,12 +11,15 @@
  * composes an AsyncStorage adapter at the same key. The factory never touches a platform global — the shell
  * injects the concrete IO at the call site (invariant #1/#2: logic lives once, web ≡ mobile).
  *
- * PERSISTENCE — FLAGGED (product call): the entries carry SEALED ciphertext + structural metadata only (openable
- * solely with THIS user's network-derived sealing key), so persisting to localStorage/AsyncStorage leaks
- * nothing. The default IO below is that local per-user store, mirroring the existing pin/policy stores. Whether
- * the "shared with me" list should instead be session-only (cleared on sign-out) or promoted to the pod
- * (`shared.json` cross-app-settings) is a product decision — see report. Dedupe is by copy id so a redelivered
- * envelope never doubles a row.
+ * PERSISTENCE — TIERED (product call, Frits): the entries carry SEALED ciphertext + structural metadata only
+ * (openable solely with THIS user's network-derived sealing key), so persisting them leaks nothing — safe to
+ * store on the pod. Local (localStorage/AsyncStorage) stays the canonical device store; when a signed-in pod
+ * writer is present the list is MIRRORED to a per-user pod resource so received copies SURVIVE + SYNC across the
+ * user's devices. This reuses the exact tiered pattern the availability pref uses
+ * (`podAvailabilityIo`/`tieredAvailabilityIo` in memberAvailability.js): `podSharedWithMeIo({getWriter})` +
+ * `tieredSharedWithMeIo(local, pod)`. Unsigned → the pod writer thunk returns null and the store is local-only
+ * (unchanged). Dedupe is by copy id so a redelivered envelope — or the same copy seen on two devices — never
+ * doubles a row.
  */
 
 export function createSharedWithMeStore({ load, save } = {}) {
@@ -70,6 +73,113 @@ export function localStorageSharedWithMeIo(storage = globalThis.localStorage) {
       catch { /* quota / disabled — the list still holds in-memory this session */ }
     },
   };
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * TIERED persistence — mirror received copies to a per-user pod resource
+ * so they SURVIVE + SYNC across the user's devices (Frits' call).
+ *
+ * We reuse the SAME shareable-substrate pattern the availability pref
+ * uses (`podAvailabilityIo`/`tieredAvailabilityIo`), NOT a divergent
+ * home: a per-user pod resource under the `canopy/<app>/` namespace,
+ * written through a `createPodWriter`-shaped writer. The list holds only
+ * sealed ciphertext + structural metadata, so it is leak-safe on the pod.
+ *
+ * DESIGN — where the shared copy lives: a PER-USER pod resource
+ * (`canopy/cc-shared-with-me/received.json`), NOT a per-circle item. The
+ * "shared with me" inbox is cross-circle + per-user by definition (it
+ * collects copies pushed to THIS user out of any circle), so a single
+ * per-user home is the one truth — mirroring the availability pref's home.
+ * ──────────────────────────────────────────────────────────────────── */
+
+/** Per-user pod resource for the received "shared with me" list. */
+const SHARED_WITH_ME_RESOURCE = 'received.json';
+
+/**
+ * JSON IO over a `createPodWriter`-shaped writer for the per-user
+ * "shared with me" list. `getWriter` is a thunk so the host can wire the
+ * store before a Solid session has restored (returns `null` while no
+ * writer is configured → load/save are no-ops and the composite falls
+ * through to the local side). Mirrors `podAvailabilityIo`.
+ *
+ * @param {object} opts
+ * @param {() => object|null} opts.getWriter — thunk returning a podWriter or null
+ * @param {string} [opts.app='cc-shared-with-me']
+ */
+export function podSharedWithMeIo({ getWriter, app = 'cc-shared-with-me' } = {}) {
+  if (typeof getWriter !== 'function') {
+    throw new TypeError('podSharedWithMeIo: getWriter thunk required');
+  }
+  return {
+    load: async () => {
+      const w = getWriter();
+      if (!w || typeof w.read !== 'function') return null;
+      try {
+        const res = await w.read(app, SHARED_WITH_ME_RESOURCE);
+        if (!res?.ok || typeof res.body !== 'string') return null;
+        return JSON.parse(res.body);
+      } catch {
+        return null;
+      }
+    },
+    save: async (value) => {
+      const w = getWriter();
+      if (!w || typeof w.write !== 'function') return;
+      try {
+        await w.write(app, SHARED_WITH_ME_RESOURCE, JSON.stringify(value), 'application/json');
+      } catch {
+        /* a pod-write failure must not break the local-canonical write */
+      }
+    },
+  };
+}
+
+/**
+ * Compose a local (canonical) IO with a pod (mirror) IO for the received
+ * list. Unlike the availability pref (a single record — local wins, pod
+ * only fills an empty local), the "shared with me" list GROWS on multiple
+ * devices, so hydration MERGES both sides by copy id (union, newest-first)
+ * and seeds local with any pod-only copies so this device holds them
+ * offline. Writes always mirror to the pod (a no-op when no writer is
+ * wired). Unsigned (getWriter→null) → pod side is inert and the store is
+ * local-only, unchanged.
+ *
+ * @param {{load, save}} localIo
+ * @param {{load, save}} podIo
+ * @returns {{load, save}}
+ */
+export function tieredSharedWithMeIo(localIo, podIo) {
+  return {
+    load: async () => {
+      const localList = normalizeEntries(await safeLoad(localIo));
+      const podList   = normalizeEntries(await safeLoad(podIo));
+      if (podList.length === 0) return localList;          // nothing to merge in
+      const merged = mergeEntriesById(localList, podList);
+      if (merged.length !== localList.length) {
+        // pod carried copies this device lacked → seed local so they persist offline.
+        try { await localIo.save(merged); } catch { /* mirror-down best-effort */ }
+      }
+      return merged;
+    },
+    save: async (value) => {
+      await localIo.save(value);
+      await podIo.save(value);
+    },
+  };
+}
+
+async function safeLoad(io) {
+  try { return typeof io?.load === 'function' ? await io.load() : null; }
+  catch { return null; }
+}
+
+/** Union of normalized entry lists, deduped by copy id (first seen wins), newest-first. */
+function mergeEntriesById(...lists) {
+  const byId = new Map();
+  for (const list of lists) {
+    for (const e of list) if (!byId.has(e.id)) byId.set(e.id, e);
+  }
+  return normalizeEntries([...byId.values()]);
 }
 
 /** Coerce one raw entry into `{ id, sealed, itemMeta, from, receivedAt }`; null if it has no sealed payload. */
