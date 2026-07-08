@@ -304,6 +304,33 @@ describe('makePodSearchRetriever — persistent hybrid index', () => {
     const retrieve = makePodSearchRetriever({ embedder: conceptEmbedder(), loadItems: async () => { throw new Error('x'); } });
     expect(await retrieve('car', { circleId: 'c1' })).toEqual([]);
   });
+
+  it('EMBED-ONCE ON RELOAD: a FRESH retriever over the SAME vectorStore hydrates, never re-embeds items', async () => {
+    // This is the whole point of wiring the vectorStore seam (circleApp.js /
+    // CircleLauncherScreen.js): survive a "restart". We model the restart by
+    // building a brand-new retriever (fresh PodSearch instances, empty in-memory
+    // caches) over the SAME persisted store the first one wrote to.
+    const store = createMemoryBackend();
+    const embedder = conceptEmbedder();
+    const build = () => makePodSearchRetriever({
+      embedder, loadItems, vectorStore: store, scope: 'circle-rag', minScore: 0.1,
+    });
+
+    // First boot: index + hybrid query. The corpus is embedded ONCE (the item
+    // vectors, one batched call) plus the query embed.
+    const out1 = await build()('car', { circleId: 'cx' });
+    expect(out1.map((c) => c.id)).toContain('t1');   // synonym recall ⇒ embeddings are live + persisted
+    const afterBoot = embedder.calls;
+    expect(afterBoot).toBeGreaterThan(0);
+
+    // Reload: a NEW retriever over the SAME store. On indexBatch, PodSearch
+    // #hydrate rebuilds the content-hash cache from
+    // private/state/search-index/circle-rag/cx/, so all 4 item chunks are cache
+    // HITS ⇒ zero item embeds. Only the (uncached) query text is embedded again.
+    const out2 = await build()('car', { circleId: 'cx' });
+    expect(out2.map((c) => c.id)).toContain('t1');   // recall still works — served from PERSISTED vectors
+    expect(embedder.calls).toBe(afterBoot + 1);      // +1 = the query embed ONLY; items were NOT re-embedded
+  });
 });
 
 describe('circleItemFromRow — schema projection', () => {
