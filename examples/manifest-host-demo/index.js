@@ -16,6 +16,7 @@ import {
   setupRecombinationDemo,
   runScriptedConversation,
   demoCrossAppEmbed,
+  demoSavedCrossCircleView,
   DEMO_USER_MESSAGES,
 } from './scenario.js';
 
@@ -84,6 +85,18 @@ async function main() {
   log(`  household item "${householdItem.text}" embeds ${ref}`);
   log(`  → resolved (${embedded.source}) ${embedded.type}: "${embedded.item?.text}"`);
   await three.teardown();
+  log();
+
+  log('saved cross-circle view (SP-8 makeSavedView / resolveSavedView):');
+  const sv = await demoSavedCrossCircleView();
+  log(`  view "${sv.view.title}" spans: ` +
+    sv.viewAudiences.map((a) => a.id).join(' ∪ '));
+  log(`  resolved ${sv.resolved.length} item(s) across both circles:`);
+  for (const it of sv.resolved) {
+    log(`    - "${it.text}"  [${it.audience.id}]`);
+  }
+  log(`  excluded (unlisted circle): ` +
+    sv.excluded.map((i) => `"${i.text}" [${i.audience.id}]`).join(', '));
   log();
 
   log('✓ done');
