@@ -807,6 +807,47 @@ export const canopyChatManifest = {
     { id: 'contacten', labelKey: 'circle.tab.contacten', target: { kind: 'nav', to: 'contacten' } },
     { id: 'mij',       labelKey: 'circle.tab.mij',       target: { kind: 'op',  opId: 'me' } },
   ],
+
+  /**
+   * Nav-chrome (D / Surface 2) — the circle DETAIL ACTION BAR.  These
+   * sibling-screen buttons WERE hand-written and had DIVERGED across the two
+   * shells: web (`web/v2/circleDetail.js` `.circle-detail__bar`) carried
+   * back/mine/settings/viewAs/advisor/skills/files/rules; mobile
+   * (`CircleLauncherScreen.js` `CircleDetail` ⋯-menu) ADDED recipes/admin/
+   * lists/share.  Same drift the tab bar killed (invariant #2/#3, by
+   * construction two files held the roster).  Declared ONCE here; both shells
+   * project the bar from `renderWeb(manifest).actions` via the shared
+   * `circleActions` selector (`src/v2/actionProjection.js`), so web ≡ mobile.
+   *
+   * Targets: most destinations are shell-owned nav screens (the shell owns the
+   * surface, no op backs them) → `{kind:'nav', to}` app-nav roots, exactly like
+   * the screens/kringen/contacten tabs.  `settings` reuses the existing
+   * `settings` op (its `surfaces.page` side-panel) → `{kind:'op', opId:'settings'}`.
+   *
+   * Gating (`requires`) carries the EXISTING feature-flag gates verbatim
+   * (`isFeatureEnabled(policy, …)`, OR semantics), NOT the finer capability
+   * matrix — those keys are what both shells gate on today, so behaviour is
+   * byte-for-byte preserved.  `platforms: ['mobile']` on `share` DECLARES that
+   * the cross-circle share SCREEN exists on mobile only (no web CircleShareScreen
+   * yet — see circle.share.screen_title locale doc); the gap lives in the
+   * manifest, not a divergent hardcoded list.
+   *
+   * Ids + locale keys preserved EXACTLY (the ones the hand-written buttons used).
+   */
+  actions: [
+    { id: 'back',     labelKey: 'circle.back',                 target: { kind: 'nav', to: 'back' } },
+    { id: 'override', labelKey: 'circle.override.title',       target: { kind: 'nav', to: 'override' } },
+    { id: 'settings', labelKey: 'circle.settings.title',       target: { kind: 'op',  opId: 'settings' } },
+    { id: 'viewAs',   labelKey: 'circle.viewAs.title',         target: { kind: 'nav', to: 'viewAs' },   requires: ['memberDirectory'] },
+    { id: 'advisor',  labelKey: 'circle.advisor.title',        target: { kind: 'nav', to: 'advisor' } },
+    { id: 'skills',   labelKey: 'circle.skills.editor_title',  target: { kind: 'nav', to: 'skills' } },
+    { id: 'files',    labelKey: 'circle.folio.title',          target: { kind: 'nav', to: 'files' },    requires: ['lists', 'notes'] },
+    { id: 'rules',    labelKey: 'circle.rules.title',          target: { kind: 'nav', to: 'rules' },     requires: ['houseRules'] },
+    { id: 'recipes',  labelKey: 'circle.recipe.editor.book_title', target: { kind: 'nav', to: 'recipes' } },
+    { id: 'admin',    labelKey: 'circle.admin.title',          target: { kind: 'nav', to: 'admin' } },
+    { id: 'lists',    labelKey: 'circle.lists.title',          target: { kind: 'nav', to: 'lists' } },
+    { id: 'share',    labelKey: 'circle.share.screen_title',   target: { kind: 'nav', to: 'share' },     platforms: ['mobile'] },
+  ],
 };
 
 export default canopyChatManifest;

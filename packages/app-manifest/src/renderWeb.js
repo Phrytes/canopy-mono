@@ -59,6 +59,14 @@
  *                                         manifest declares no tabs, so tab-less
  *                                         manifests keep the {app, sections,
  *                                         globals} shape.  See "Nav-chrome" below.
+ * @property {NavItem[]} [actions]         NAV-CHROME (D / Surface 2) — the ordered
+ *                                         DETAIL ACTION BAR (per-detail buttons to
+ *                                         sibling screens), one per
+ *                                         `manifest.actions` entry (declaration
+ *                                         order).  SAME NavItem shape as `tabs`,
+ *                                         plus the optional `requires`/`platforms`
+ *                                         gate fields.  Key OMITTED when the
+ *                                         manifest declares no actions.
  *
  * @typedef {object} NavItem
  * @property {string}   id                 stable nav-item id (the shell keys its
@@ -69,6 +77,15 @@
  *                                         lookup); passed through verbatim.
  * @property {NavTarget} target            what the item SELECTS — a nav root
  *                                         (no op) or an op dispatch.  See NavTarget.
+ * @property {string[]} [requires]         NAV-CHROME (D / Surface 2) — feature
+ *                                         keys gating a detail-bar action; the
+ *                                         consumer shows it when ANY is enabled
+ *                                         (OR).  Carried verbatim; the projector
+ *                                         does not evaluate it.
+ * @property {string[]} [platforms]        NAV-CHROME (D / Surface 2) — platform
+ *                                         tags the action is available on (absent
+ *                                         → all).  Declares a platform gap in the
+ *                                         manifest instead of a divergent hardcode.
  *
  * @typedef {{kind: 'nav', to: string} | {kind: 'op', opId: string}} NavTarget
  *   Discriminated union — the SHARED nav-chrome vocabulary:
@@ -558,6 +575,20 @@ export function renderWeb(manifest) {
     }
   }
 
+  // (e) Nav-chrome actions — D / Surface 2: the ordered DETAIL ACTION BAR
+  //     (the circle detail bar's sibling-screen buttons).  Projected verbatim
+  //     from `manifest.actions` (declaration order), carrying the optional
+  //     gate fields (`requires`/`platforms`) so the context-gating rides
+  //     through the projection.  Kept OUT of the return object when empty so
+  //     action-less manifests keep the {app, sections, globals} shape.
+  const actions = [];
+  if (Array.isArray(manifest.actions)) {
+    for (const action of manifest.actions) {
+      if (!action || typeof action !== 'object' || Array.isArray(action)) continue;
+      actions.push(buildAction(action));
+    }
+  }
+
   const nav = {
     app: typeof manifest.app === 'string' ? manifest.app : '',
     sections,
@@ -565,6 +596,7 @@ export function renderWeb(manifest) {
   };
   if (pages.length > 0) nav.pages = pages;
   if (tabs.length > 0) nav.tabs = tabs;
+  if (actions.length > 0) nav.actions = actions;
   return nav;
 }
 
@@ -788,6 +820,33 @@ function buildTab(tab) {
   if (typeof tab.icon === 'string' && tab.icon !== '') out.icon = tab.icon;
   const target = buildNavTarget(tab.target);
   if (target) out.target = target;
+  return out;
+}
+
+/**
+ * Nav-chrome (D / Surface 2) — project one `manifest.actions[]` entry into a
+ * NavModel NavItem for the DETAIL ACTION BAR.  A SIBLING of `buildTab`: same
+ * `{ id, labelKey, icon?, target }` NavItem shape + `buildNavTarget`, PLUS the
+ * optional gate fields (`requires`/`platforms`) copied through verbatim so the
+ * action's context-gating is declared in the manifest and rides the projection
+ * (the app-side selector — canopy-chat `actionProjection.js` — evaluates them).
+ * Pure passthrough of the validated shape.  Shared, deterministic: renderMobile
+ * re-exports renderWeb, so renderWeb ≡ renderMobile for the actions projection.
+ */
+function buildAction(action) {
+  const out = { id: action.id, labelKey: action.labelKey };
+  if (typeof action.icon === 'string' && action.icon !== '') out.icon = action.icon;
+  const target = buildNavTarget(action.target);
+  if (target) out.target = target;
+  // Gate fields — defensive copy; only set when a valid non-empty string array
+  // (the validator rejects other shapes up front).  Kept out otherwise so a
+  // gate-less action projects the exact tab-shape NavItem.
+  for (const field of ['requires', 'platforms']) {
+    const v = action[field];
+    if (Array.isArray(v) && v.length > 0 && v.every((x) => typeof x === 'string' && x !== '')) {
+      out[field] = [...v];
+    }
+  }
   return out;
 }
 

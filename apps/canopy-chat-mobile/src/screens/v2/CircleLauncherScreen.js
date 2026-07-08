@@ -69,6 +69,10 @@ import {
 import { embedButtonsForReply, embedsFromReply } from '../../../../canopy-chat/src/v2/replyEmbeds.js';
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
+// D / Surface 2 — the detail ACTION BAR roster, projected from manifest.actions
+// via the shared selector (web≡mobile; NOT a hand-written ⋯-menu list).
+import { circleActionsMobile } from '../../../../canopy-chat/src/v2/actionProjection.js';
+import { canopyChatManifest } from '../../../../canopy-chat/src/index.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
 // B · Slice 1/4 — the capability gate + the affordance matrix (web≡mobile, shared core).
@@ -1726,10 +1730,9 @@ function CircleDetail({
       seedCircleRosterFor({ circleId: circle.id, policy, callSkill: rawCallSkill }).catch(() => {});
     }
   }, [circle?.id, rawCallSkill, policy]);
-  // P6.1 — Functies-axis gating for the overflow menu items.
-  const showRules    = isFeatureEnabled(policy, 'houseRules');
-  const showViewAs   = isFeatureEnabled(policy, 'memberDirectory');
-  const showFiles    = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
+  // P6.1 — Functies-axis gating for the overflow menu items now rides the
+  // projection: the shared `circleActionsMobile` selector evaluates each
+  // action's `requires` gate against `policy` (see the ⋯-menu render below).
 
   // SP-13.2 — kring stream rows scoped to this circle (chat-style).
   // EventLog has no subscribe seam yet; bumping `streamTick` after
@@ -2387,56 +2390,38 @@ function CircleDetail({
 
       {menuOpen ? (
         <View style={styles.moreMenu} testID="circle-detail-more-menu">
-          <Pressable onPress={() => { setMenuOpen(false); onSettings?.(); }} style={styles.moreItem} testID="circle-detail-settings">
-            <Text style={styles.moreItemText}>{t('circle.settings.title')}</Text>
-          </Pressable>
-          <Pressable onPress={() => { setMenuOpen(false); onLists?.(); }} style={styles.moreItem} testID="circle-detail-lists">
-            <Text style={styles.moreItemText}>{t('circle.lists.title')}</Text>
-          </Pressable>
-          {/* objective L — cross-circle share screen (share out + see shared + stop sharing; web≡mobile). */}
-          {typeof onShare === 'function' && (
-            <Pressable onPress={() => { setMenuOpen(false); onShare(); }} style={styles.moreItem} testID="circle-detail-share">
-              <Text style={styles.moreItemText}>{t('circle.share.screen_title')}</Text>
-            </Pressable>
-          )}
-          {/* B · Slice 3 — the filterable list-screen (GUI entry; web≡mobile with the ⋯ menu). */}
+          {/* D / Surface 2 — the ⋯ menu items are PROJECTED from manifest.actions
+              via the shared `circleActionsMobile` selector (platform + feature
+              gated), NOT a hand-written list.  `back` is rendered in the header
+              bar above (a nav affordance), so it's excluded here.  id → the
+              host-wired handler; callbacks/gating unchanged.  web ≡ mobile. */}
+          {circleActionsMobile(canopyChatManifest, { policy })
+            .filter((action) => action.id !== 'back')
+            .map((action) => {
+              const handlers = {
+                override: onMine, settings: onSettings, viewAs: onViewAs,
+                advisor: onAdvisor, skills: onSkills, files: onFiles, rules: onRules,
+                recipes: onRecipes, admin: onAdmin, lists: onLists, share: onShare,
+              };
+              const on = handlers[action.id];
+              const token = { override: 'mine', viewAs: 'viewas' }[action.id] ?? action.id;
+              return (
+                <Pressable
+                  key={action.id}
+                  onPress={() => { setMenuOpen(false); on?.(); }}
+                  style={styles.moreItem}
+                  testID={`circle-detail-${token}`}
+                >
+                  <Text style={styles.moreItemText}>{t(action.labelKey)}</Text>
+                </Pressable>
+              );
+            })}
+          {/* B · Slice 3 — the filterable list-screen.  A DISTINCT screen-panel
+              mechanism (setScreenPanel), not a sibling-screen nav action, so it
+              stays outside the projected action roster. */}
           <Pressable onPress={() => { setMenuOpen(false); setScreenPanel({ screen: 'contacts' }); }} style={styles.moreItem} testID="circle-detail-contacts">
             <Text style={styles.moreItemText}>{t('circle.screen.open.contacts')}</Text>
           </Pressable>
-          <Pressable onPress={() => { setMenuOpen(false); onMine?.(); }} style={styles.moreItem} testID="circle-detail-mine">
-            <Text style={styles.moreItemText}>{t('circle.override.title')}</Text>
-          </Pressable>
-          <Pressable onPress={() => { setMenuOpen(false); onAdvisor?.(); }} style={styles.moreItem} testID="circle-detail-advisor">
-            <Text style={styles.moreItemText}>{t('circle.advisor.title')}</Text>
-          </Pressable>
-          <Pressable onPress={() => { setMenuOpen(false); onSkills?.(); }} style={styles.moreItem} testID="circle-detail-skills">
-            <Text style={styles.moreItemText}>{t('circle.skills.editor_title')}</Text>
-          </Pressable>
-          {showViewAs ? (
-            <Pressable onPress={() => { setMenuOpen(false); onViewAs?.(); }} style={styles.moreItem} testID="circle-detail-viewas">
-              <Text style={styles.moreItemText}>{t('circle.viewAs.title')}</Text>
-            </Pressable>
-          ) : null}
-          {showFiles ? (
-            <Pressable onPress={() => { setMenuOpen(false); onFiles?.(); }} style={styles.moreItem} testID="circle-detail-files">
-              <Text style={styles.moreItemText}>{t('circle.folio.title')}</Text>
-            </Pressable>
-          ) : null}
-          {showRules ? (
-            <Pressable onPress={() => { setMenuOpen(false); onRules?.(); }} style={styles.moreItem} testID="circle-detail-rules">
-              <Text style={styles.moreItemText}>{t('circle.rules.title')}</Text>
-            </Pressable>
-          ) : null}
-          {/* α.1d.3 — recipe editor entry (scherm-mode page composition). */}
-          <Pressable onPress={() => { setMenuOpen(false); onRecipes?.(); }} style={styles.moreItem} testID="circle-detail-recipes">
-            <Text style={styles.moreItemText}>{t('circle.recipe.editor.book_title')}</Text>
-          </Pressable>
-          {/* S3 — group admin (member roster + remove + announcements + moderation). */}
-          {typeof onAdmin === 'function' && (
-            <Pressable onPress={() => { setMenuOpen(false); onAdmin(); }} style={styles.moreItem} testID="circle-detail-admin">
-              <Text style={styles.moreItemText}>{t('circle.admin.title')}</Text>
-            </Pressable>
-          )}
         </View>
       ) : null}
 

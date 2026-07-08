@@ -1,0 +1,68 @@
+/**
+ * D / Surface 2 (MOBILE parity) — the CircleDetail ⋯-menu roster is sourced from
+ * the manifest DETAIL-ACTION-BAR projection (`renderMobile(manifest).actions`)
+ * via the shared `circleActionsMobile` selector, not a hand-written list.
+ *
+ * RN screens can't render under Vitest (see vitest.config.js), so this exercises
+ * the SAME shared pure selector + the real mobile t() the component wires — the
+ * roster flows `manifest.actions → renderMobile → circleActionsMobile → t()`,
+ * mirroring the web drift-guard (canopy-chat/test/v2/circleDetailBarProjection).
+ * Reusing actionProjection.js (mobile sibling) keeps the selection + gating in
+ * ONE shared module, so web ≡ mobile by construction (invariants #1/#2/#3).
+ */
+import { describe, it, expect } from 'vitest';
+
+import {
+  circleActions,
+  circleActionsMobile,
+  circleActionRoster,
+} from '../../canopy-chat/src/v2/actionProjection.js';
+import { canopyChatManifest } from '../../canopy-chat/src/index.js';
+import { DEFAULT_CIRCLE_POLICY } from '../../canopy-chat/src/v2/circlePolicy.js';
+import { t } from '../src/core/localisation.js';
+
+describe('D / Surface 2 — mobile CircleDetail action roster from the manifest projection', () => {
+  it('projects the detail actions (default policy) with recipes/admin/lists/share included', () => {
+    const ids = circleActionsMobile(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY }).map((a) => a.id);
+    // Web's original set + mobile's extras, all from ONE manifest declaration.
+    expect(ids).toEqual([
+      'back', 'override', 'settings', 'viewAs', 'advisor', 'skills',
+      'rules', 'recipes', 'admin', 'lists', 'share',
+    ]);
+    // files hidden (lists+notes off by default); share present (mobile platform).
+    expect(ids).not.toContain('files');
+    expect(ids).toContain('share');
+  });
+
+  it('each action label resolves from the manifest labelKey via t() (invariant #8)', () => {
+    for (const action of circleActionsMobile(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY })) {
+      const label = t(action.labelKey);
+      expect(typeof label).toBe('string');
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toBe(action.labelKey);   // translated, not the raw key
+    }
+  });
+
+  it('web ≡ mobile: the projected NavModel.actions roster is IDENTICAL (divergence gone)', () => {
+    // renderMobile re-exports renderWeb → the unfiltered roster can never fork.
+    expect(circleActionRoster(canopyChatManifest)).toEqual(
+      circleActionRoster(canopyChatManifest, undefined),
+    );
+  });
+
+  it('the only platform-driven difference is the manifest-declared mobile-only `share`', () => {
+    const webIds    = circleActions(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' }).map((a) => a.id);
+    const mobileIds = circleActionsMobile(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY }).map((a) => a.id);
+    expect(mobileIds.filter((id) => id !== 'share')).toEqual(webIds);
+    expect(webIds).not.toContain('share');    // no web CircleShareScreen yet
+  });
+
+  it('is a genuine projection consumer: a different manifest drives a different roster', () => {
+    const synthetic = {
+      app: 'synthetic',
+      operations: [],
+      actions: [{ id: 'only', labelKey: 'circle.back', target: { kind: 'nav', to: 'only' } }],
+    };
+    expect(circleActionsMobile(synthetic).map((a) => a.id)).toEqual(['only']);
+  });
+});
