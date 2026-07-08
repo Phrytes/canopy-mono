@@ -298,6 +298,24 @@ export function validateManifest(manifest, opts = {}) {
     }
   }
 
+  // Nav-chrome (D / Surface 2) — `manifest.actions` declares the ordered
+  // DETAIL ACTION BAR: the per-detail nav buttons to sibling screens (the
+  // circle detail bar's back/settings/viewAs/advisor/skills/files/rules/…).
+  // A SIBLING nav-chrome kind to `tabs`: the SAME NavItem `{ id, labelKey,
+  // icon?, target }` shape + the SAME `validateNavItem` helper, plus the
+  // OPTIONAL gate fields (`requires`, `platforms`) an action's context-gating
+  // needs.  Forward-additive: absent → no action bar.
+  if (manifest.actions !== undefined) {
+    if (!Array.isArray(manifest.actions)) {
+      errors.push({ path: '/actions', message: 'actions must be an array if present' });
+    } else {
+      const actionIds = new Set();
+      manifest.actions.forEach((action, i) => {
+        validateNavItem(action, `/actions/${i}`, manifest, errors, actionIds, strict);
+      });
+    }
+  }
+
   // V0.4 Q16 (strict mode only) — `manifest.externalSkills` is the
   // forward-additive allow-list for skill ids that live outside the
   // manifest's `operations[]` (e.g. household's `listMine` from
@@ -1082,6 +1100,21 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
  *                  (NavTarget union).  Under `strict`, a `kind:'op'` target's
  *                  `opId` must resolve in operations[] / externalSkills[].
  *
+ * Nav-chrome (D / Surface 2) — the OPTIONAL gate fields a `manifest.actions[]`
+ * detail-bar item carries so its context-gating rides through the projection
+ * instead of being re-hardcoded per shell (`tabs` never set these):
+ *   - `requires`  — optional; non-empty array of non-empty strings.  The
+ *                   feature keys (e.g. `['memberDirectory']`, `['lists','notes']`)
+ *                   that gate the action; the consumer shows it when ANY listed
+ *                   feature is enabled (OR semantics — matches the current
+ *                   `isFeatureEnabled(policy, 'lists') || …` gate).  The pure
+ *                   projector only CARRIES this; the app-side selector evaluates it.
+ *   - `platforms` — optional; non-empty array of non-empty strings.  The
+ *                   platform tags the action is available on (e.g. `['mobile']`
+ *                   for a destination whose target screen exists on mobile only).
+ *                   Absent → all platforms.  Lets the manifest DECLARE a
+ *                   platform gap instead of a divergent hardcoded button list.
+ *
  * @param {*} item
  * @param {string} path
  * @param {object} manifest
@@ -1106,6 +1139,18 @@ function validateNavItem(item, path, manifest, errors, idSet, strict = false) {
   }
   if (item.icon !== undefined && (typeof item.icon !== 'string' || item.icon === '')) {
     errors.push({ path: `${path}/icon`, message: 'nav item.icon must be a non-empty string if present' });
+  }
+  // Nav-chrome (D / Surface 2) — optional gate fields (detail-bar actions).
+  // Each, when present, must be a non-empty array of non-empty strings.
+  for (const field of ['requires', 'platforms']) {
+    const v = item[field];
+    if (v === undefined) continue;
+    if (!Array.isArray(v) || v.length === 0 || v.some((x) => typeof x !== 'string' || x === '')) {
+      errors.push({
+        path:    `${path}/${field}`,
+        message: `nav item.${field} must be a non-empty array of non-empty strings if present`,
+      });
+    }
   }
   const target = item.target;
   if (!target || typeof target !== 'object' || Array.isArray(target)) {

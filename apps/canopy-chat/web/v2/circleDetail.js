@@ -12,15 +12,27 @@
  * as `pol`; we just render. Placeholder seam — real attestation in
  * [[5.9d-followup]].
  */
-import { isFeatureEnabled } from '../../src/v2/circlePolicy.js';
+import { circleActions } from '../../src/v2/actionProjection.js';
+import { canopyChatManifest } from '../../src/index.js';
+
+// D / Surface 2 — the detail-bar CSS token per action id.  Purely shell-side
+// styling (the manifest carries no CSS): keeps each button's original class
+// (`circle-detail__back`, `__mine`, `__viewas`, …) so `circle.css`'s
+// `[class^="circle-detail__"]:not(.circle-detail__back)` bar rule still applies,
+// with new destinations (recipes/admin/lists/share) auto-inheriting it.
+const CSS_TOKEN = {
+  back: 'back', override: 'mine', settings: 'settings', viewAs: 'viewas',
+  advisor: 'advisor', skills: 'skills', files: 'files', rules: 'rules',
+  recipes: 'recipes', admin: 'admin', lists: 'lists', share: 'share',
+};
 
 export function renderCircleDetail(container, {
   circle = {},
   items = [],
   pol = null,
-  // P6.1 — when supplied, gate feature-bound action buttons on its
-  // Functies axis (board 4A).  Null/undefined → feature defaults apply
-  // (chat / houseRules / memberDirectory on by default).
+  // P6.1 — gate feature-bound action buttons on the circle's Functies axis
+  // (board 4A).  Null/undefined → feature defaults apply.  Passed to the shared
+  // `circleActions` selector, which evaluates each action's `requires` gate.
   policy = null,
   t,
   onBack,
@@ -31,85 +43,36 @@ export function renderCircleDetail(container, {
   onSkills,
   onFiles,
   onRules,
+  onRecipes,
+  onAdmin,
+  onLists,
+  onShare,
 } = {}) {
-  const showRules  = isFeatureEnabled(policy, 'houseRules');
-  const showViewAs = isFeatureEnabled(policy, 'memberDirectory');
-  // P6.1 #340 — Folio surfaces the kring's shared notes + lists + files.
-  // Show the entry when EITHER feature axis is on; both default off in
-  // DEFAULT_CIRCLE_POLICY, so existing circles without an explicit
-  // policy keep their current behaviour (the field is missing → fall
-  // through to defaults, the Files entry hides until a kring policy
-  // explicitly opts in).  Boards 4A + 10B.
-  const showFiles  = isFeatureEnabled(policy, 'lists') || isFeatureEnabled(policy, 'notes');
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('circle-detail');
 
+  // D / Surface 2 — the action roster is PROJECTED from `manifest.actions` via
+  // the shared `circleActions` selector (platform + feature gated), NOT a
+  // hand-written button list.  id → the host-wired handler; the callback
+  // contract (onBack/onSettings/…) is unchanged, keyed by the projected id.
+  const handlers = {
+    back: onBack, override: onMine, settings: onSettings, viewAs: onViewAs,
+    advisor: onAdvisor, skills: onSkills, files: onFiles, rules: onRules,
+    recipes: onRecipes, admin: onAdmin, lists: onLists, share: onShare,
+  };
+
   const bar = document.createElement('div');
   bar.className = 'circle-detail__bar';
-  const back = document.createElement('button');
-  back.type = 'button';
-  back.className = 'circle-detail__back';
-  back.textContent = tr('circle.back');
-  back.addEventListener('click', () => {
-    if (typeof onBack === 'function') onBack();
-  });
-  bar.appendChild(back);
-  if (typeof onMine === 'function') {
-    const mine = document.createElement('button');
-    mine.type = 'button';
-    mine.className = 'circle-detail__mine';
-    mine.textContent = tr('circle.override.title');
-    mine.addEventListener('click', () => onMine());
-    bar.appendChild(mine);
-  }
-  if (typeof onSettings === 'function') {
-    const gear = document.createElement('button');
-    gear.type = 'button';
-    gear.className = 'circle-detail__settings';
-    gear.textContent = tr('circle.settings.title');
-    gear.addEventListener('click', () => onSettings());
-    bar.appendChild(gear);
-  }
-  if (typeof onViewAs === 'function' && showViewAs) {
-    const va = document.createElement('button');
-    va.type = 'button';
-    va.className = 'circle-detail__viewas';
-    va.textContent = tr('circle.viewAs.title');
-    va.addEventListener('click', () => onViewAs());
-    bar.appendChild(va);
-  }
-  if (typeof onAdvisor === 'function') {
-    const adv = document.createElement('button');
-    adv.type = 'button';
-    adv.className = 'circle-detail__advisor';
-    adv.textContent = tr('circle.advisor.title');
-    adv.addEventListener('click', () => onAdvisor());
-    bar.appendChild(adv);
-  }
-  if (typeof onSkills === 'function') {
-    const sk = document.createElement('button');
-    sk.type = 'button';
-    sk.className = 'circle-detail__skills';
-    sk.textContent = tr('circle.skills.editor_title');
-    sk.addEventListener('click', () => onSkills());
-    bar.appendChild(sk);
-  }
-  if (typeof onFiles === 'function' && showFiles) {
-    const fi = document.createElement('button');
-    fi.type = 'button';
-    fi.className = 'circle-detail__files';
-    fi.textContent = tr('circle.folio.title');
-    fi.addEventListener('click', () => onFiles());
-    bar.appendChild(fi);
-  }
-  if (typeof onRules === 'function' && showRules) {
-    const ru = document.createElement('button');
-    ru.type = 'button';
-    ru.className = 'circle-detail__rules';
-    ru.textContent = tr('circle.rules.title');
-    ru.addEventListener('click', () => onRules());
-    bar.appendChild(ru);
+  for (const action of circleActions(canopyChatManifest, { policy, platform: 'web' })) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `circle-detail__${CSS_TOKEN[action.id] ?? action.id}`;
+    btn.dataset.action = action.id;
+    btn.textContent = tr(action.labelKey);
+    const on = handlers[action.id];
+    btn.addEventListener('click', () => { if (typeof on === 'function') on(); });
+    bar.appendChild(btn);
   }
   container.appendChild(bar);
 
