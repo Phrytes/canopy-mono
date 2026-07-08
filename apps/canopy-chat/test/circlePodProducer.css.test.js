@@ -123,6 +123,51 @@ SUITE('per-circle producer — real-pod routing (CSS)', () => {
     // a non-granted member never gets plaintext
     await expect(prod.controlAgent.sealingStrategy(outsider.privateKey)).rejects.toThrow();
   }, 60_000);
+
+  // Objective L — the LIVE-INFRA persistence path: a circle SURVIVES AN APP RESTART on a real
+  // signed-in pod. A fresh producer + fresh pod client, but the SAME persistent client vault
+  // (controller key + sealing identity live there), must re-hydrate the existing circle from the
+  // pod — open content sealed in the previous session, WITHOUT rotating the group key. This is the
+  // real-pod complement to the standalone IndexedDB reload-survival test (persistentBackend.test.js).
+  it('p3 circle SURVIVES A RESTART on a real pod: a fresh producer reusing the vault re-hydrates + opens previously-sealed content, no rotation', async () => {
+    const { createSealedPodDataSource } = await import('@canopy/pod-client');
+    const circleId = `restart-${generateKeypair().publicKey.replace(/[^a-zA-Z0-9]/g, '').slice(-12)}`;
+    const vault = new MemVault();                      // the PERSISTENT client store — survives the "restart"
+    const rootUri = `${podBase}/${circleId}`;
+    const itemUri = `${rootUri}/items/persist.json`;
+    const keyUri = `${rootUri}/.keys/group.json`;
+    const txt = (r) => (typeof r === 'string' ? r : r?.content);
+
+    // --- session 1: bootstrap the circle + seal an item onto the real pod ---
+    const podA = await makeRealPodClient();
+    const prodA = await createCirclePodProducer({
+      circleId, storagePosture: 'p3', vault, generateKeypair,
+      makePodClient: () => podA, circleRootUri: rootUri,
+    });
+    const selfA = await prodA.sealingIdentity.ensure();
+    const stratA = await prodA.controlAgent.sealingStrategy(selfA.privateKey);
+    const dsA = createSealedPodDataSource({ podSource: adaptPodClientToSource(podA), strategy: stratA });
+    await dsA.write(itemUri, JSON.stringify({ note: 'survive the restart' }));
+    const keyBefore = txt(await podA.read(keyUri, { decode: 'string' }));
+    expect(keyBefore).toBeTruthy();
+
+    // --- the "restart": a brand-new producer + fresh pod client, SAME persistent vault ---
+    const podB = await makeRealPodClient();
+    const prodB = await createCirclePodProducer({
+      circleId, storagePosture: 'p3', vault, generateKeypair,   // SAME vault → controller key + identity re-hydrate
+      makePodClient: () => podB, circleRootUri: rootUri,
+    });
+    const selfB = await prodB.sealingIdentity.ensure();
+    const stratB = await prodB.controlAgent.sealingStrategy(selfB.privateKey);
+    const dsB = createSealedPodDataSource({ podSource: adaptPodClientToSource(podB), strategy: stratB });
+
+    // the previously-sealed item is still on the pod AND opens under the re-hydrated key
+    expect(JSON.parse(await dsB.read(itemUri))).toEqual({ note: 'survive the restart' });
+    // the re-hydrated device keeps the SAME sealing identity (it lives in the persistent vault)
+    expect(selfB.publicKey).toBe(selfA.publicKey);
+    // the group key on the pod is UNCHANGED — a reload re-hydrates, it does not rotate
+    expect(txt(await podB.read(keyUri, { decode: 'string' }))).toBe(keyBefore);
+  }, 60_000);
 });
 
 /** Present a real PodClient under the minimal `SolidPodSource` read/write/delete/list shape. */
