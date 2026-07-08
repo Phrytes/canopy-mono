@@ -22,16 +22,21 @@ import { DEFAULT_CIRCLE_POLICY } from '../../canopy-chat/src/v2/circlePolicy.js'
 import { t } from '../src/core/localisation.js';
 
 describe('D / Surface 2 — mobile CircleDetail action roster from the manifest projection', () => {
-  it('projects the detail actions (default policy) with recipes/admin/lists/share included', () => {
+  it('projects the detail actions (default policy) in live-web-menu order, invite/contacts/share included', () => {
     const ids = circleActionsMobile(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY }).map((a) => a.id);
-    // Web's original set + mobile's extras, all from ONE manifest declaration.
+    // ONE manifest declaration; order mirrors the live web kring menu (back first
+    // for the detail bar — the ⋯ menus filter it out in-shell).
     expect(ids).toEqual([
-      'back', 'override', 'settings', 'viewAs', 'advisor', 'skills',
-      'rules', 'recipes', 'admin', 'lists', 'share',
+      'back', 'invite', 'settings', 'lists', 'contacts', 'override', 'viewAs',
+      'advisor', 'skills', 'rules', 'recipes', 'admin', 'share',
     ]);
     // files hidden (lists+notes off by default); share present (mobile platform).
     expect(ids).not.toContain('files');
     expect(ids).toContain('share');
+    // invite + contacts (the live-web-menu additions) reach mobile too — both
+    // platforms, no platform flag (each shell wires its own mechanism).
+    expect(ids).toContain('invite');
+    expect(ids).toContain('contacts');
   });
 
   it('each action label resolves from the manifest labelKey via t() (invariant #8)', () => {

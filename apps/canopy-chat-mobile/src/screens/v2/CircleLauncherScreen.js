@@ -1326,6 +1326,7 @@ export default function CircleLauncherScreen({
         recipeStore={recipeStore}
         onStoopEvent={bundle?.onStoopEvent}
         onBack={closeCircle}
+        onInvite={() => openCircleInvite(selected.id)}
         onSettings={() => setView('settings')}
         onAdmin={() => setView('admin')}
         onMine={() => setView('override')}
@@ -1693,7 +1694,7 @@ function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
   recipeStore = null, onStoopEvent,
-  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare,
+  onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops canopy-chat's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
@@ -2394,14 +2395,17 @@ function CircleDetail({
               via the shared `circleActionsMobile` selector (platform + feature
               gated), NOT a hand-written list.  `back` is rendered in the header
               bar above (a nav affordance), so it's excluded here.  id → the
-              host-wired handler; callbacks/gating unchanged.  web ≡ mobile. */}
+              host-wired handler; each shell wires its own mechanism for a
+              destination (e.g. `contacts` → setScreenPanel here, openCircleScreenPanel
+              on web — the doorgeefluik model).  web ≡ mobile by construction. */}
           {circleActionsMobile(canopyChatManifest, { policy })
             .filter((action) => action.id !== 'back')
             .map((action) => {
               const handlers = {
-                override: onMine, settings: onSettings, viewAs: onViewAs,
-                advisor: onAdvisor, skills: onSkills, files: onFiles, rules: onRules,
-                recipes: onRecipes, admin: onAdmin, lists: onLists, share: onShare,
+                invite: onInvite, settings: onSettings, lists: onLists,
+                contacts: () => setScreenPanel({ screen: 'contacts' }),   // B · Slice 3 — filterable list-screen
+                override: onMine, viewAs: onViewAs, advisor: onAdvisor, skills: onSkills,
+                files: onFiles, rules: onRules, recipes: onRecipes, admin: onAdmin, share: onShare,
               };
               const on = handlers[action.id];
               const token = { override: 'mine', viewAs: 'viewas' }[action.id] ?? action.id;
@@ -2416,12 +2420,6 @@ function CircleDetail({
                 </Pressable>
               );
             })}
-          {/* B · Slice 3 — the filterable list-screen.  A DISTINCT screen-panel
-              mechanism (setScreenPanel), not a sibling-screen nav action, so it
-              stays outside the projected action roster. */}
-          <Pressable onPress={() => { setMenuOpen(false); setScreenPanel({ screen: 'contacts' }); }} style={styles.moreItem} testID="circle-detail-contacts">
-            <Text style={styles.moreItemText}>{t('circle.screen.open.contacts')}</Text>
-          </Pressable>
         </View>
       ) : null}
 
