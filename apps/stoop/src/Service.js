@@ -37,7 +37,7 @@
 import { dispatchCapability } from '@canopy/app-manifest';
 import { ItemStore } from '@canopy/item-store';
 import { MemorySource } from '@canopy/core';
-import { buildSkills } from './skills/index.js';
+import { buildSkills, buildStoopScope, STOOP_CORES } from './skills/index.js';
 import { stoopManifest } from '../manifest.js';
 
 /** A no-op SkillMatch stub: posts store locally + "broadcast" resolves to no claims (no transport wired). */
@@ -73,7 +73,10 @@ export function createStoopService({
 } = {}) {
   const itemStore = store ?? new ItemStore({ dataSource: new MemorySource(), rootContainer: 'mem://neighborhood/' });
 
-  const skills = buildSkills({
+  // Build the dep bag ONCE (hoisting the skillMatch/muted defaults) so the wire
+  // route (buildSkills) and the local route (the direct-core scope) share the
+  // exact same instances — a call routed either way sees identical state.
+  const deps = {
     store:      itemStore,
     skillMatch: skillMatch ?? noopSkillMatch(),
     notifier:   notifier ?? null,
@@ -87,16 +90,26 @@ export function createStoopService({
     chat:       chat ?? null,
     metrics:    metrics ?? null,
     bundle:     bundle ?? {},
-  });
+  };
+  const skills = buildSkills(deps);
+  const scope  = buildStoopScope(deps);   // the SAME `scope` wireSkill hands each core on the wire route
   const byId = new Map(skills.map((s) => [s.id, s]));
 
   const service = {
     /**
-     * callSkill(opId, args, ctx) — invoke a stoop op by its bespoke id. Wraps `args` in the single
-     * `DataPart` the legacy `defineSkill` handlers read via `dataArgs(parts)`; `ctx.by` becomes `from`
-     * (the acting WebID). No scope key is injected — the store is bound in the skills' closure.
+     * callSkill(opId, args, ctx) — invoke a stoop op by its bespoke id, the LOCAL route (decision #5).
+     *
+     * Workstream B: for an op with a pure `(scope, args, ctx)` core in `STOOP_CORES`, call that core
+     * DIRECTLY over the bound `scope` — no synthetic `DataPart`. Ops WITHOUT a pure core (the ~96
+     * op-less skills + the hand-written ones like postRequest/markReturned/leaveGroup) keep the legacy
+     * handler path: their contract is `({parts, from, envelope})`, so we hand them the single `DataPart`
+     * they read via `dataArgs(parts)`. `ctx.by` is the acting WebID (`from`); the store is in the scope.
      */
     async callSkill(opId, args = {}, ctx = {}) {
+      const core = STOOP_CORES[opId];
+      if (core) {
+        return core(scope, { ...args }, { from: ctx.by, envelope: ctx.envelope ?? {} });
+      }
       const skill = byId.get(opId);
       if (!skill) throw new Error(`stoopService.callSkill: unknown op "${opId}"`);
       return skill.handler({

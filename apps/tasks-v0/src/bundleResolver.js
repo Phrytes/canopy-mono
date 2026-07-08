@@ -56,7 +56,12 @@ export function multiCircleResolver(circles) {
     throw new TypeError('multiCircleResolver: Map<circleId, CircleState> required');
   }
   return (parts, ctx = {}) => {
-    const args = _argsFromParts(parts);
+    // Workstream B — the LOCAL route (`createTasksService().callSkill` calling a
+    // pure core directly) has the decoded args already; it passes them on
+    // `ctx.args` so the resolver doesn't force a synthetic `[DataPart(args)]`
+    // round-trip just to read `circleId`.  The WIRE route never sets `ctx.args`,
+    // so it reads `circleId` from `parts` exactly as before (byte-identical).
+    const args = (ctx && ctx.args && typeof ctx.args === 'object') ? ctx.args : _argsFromParts(parts);
     if (typeof args.circleId === 'string' && args.circleId) {
       return circles.get(args.circleId) ?? null;
     }

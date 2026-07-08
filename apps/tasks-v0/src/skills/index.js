@@ -395,6 +395,33 @@ async function revokeTaskCore(circle, a, ctx) {
 }
 
 /**
+ * B★ B2 (Workstream B) — the single source of truth for the wireable tasks
+ * ops: opId → pure `(circle, args, ctx) → result` core.  BOTH projections read
+ * from here:
+ *   • the WIRE route — `buildSkills`'s `wire(id, …)` wraps `TASK_CORES[id]` with
+ *     `wireSkill(core, op, { storeFor })` and registers it as a `defineSkill`.
+ *   • the LOCAL route — `createTasksService().callSkill` calls `TASK_CORES[id]`
+ *     directly (no synthetic `DataPart` round-trip).
+ * The `local ≡ wire` fitness test (`test/localWireFitness.test.js`) asserts this
+ * set stays in lock-step with the manifest ops + the wire registrations, so a
+ * new op can never exist on one route but not the other (anti-drift invariant #3).
+ */
+export const TASK_CORES = Object.freeze({
+  addTask:         addTaskCore,
+  claimTask:       claimTaskCore,
+  completeTask:    completeTaskCore,
+  removeTask:      removeTaskCore,
+  getTaskSnapshot: getTaskSnapshotCore,
+  listOpen:        listOpenCore,
+  listMine:        listMineCore,
+  listClaimable:   listClaimableCore,
+  submitTask:      submitTaskCore,
+  approveTask:     approveTaskCore,
+  rejectTask:      rejectTaskCore,
+  revokeTask:      revokeTaskCore,
+});
+
+/**
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver
  * @param {() => Iterable<object>} [args.circlesProvider]
@@ -444,67 +471,71 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
     if (!found) throw new Error(`buildSkills: no manifest op "${id}"`);
     return found;
   };
-  const wire = (id, coreFn, opts) => defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
+  const wire = (id, opts) => {
+    const coreFn = TASK_CORES[id];
+    if (!coreFn) throw new Error(`buildSkills: no core in TASK_CORES for "${id}"`);
+    return defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
+  };
 
   return [
     // ── wireSkill-generated task-store CRUD + list + lifecycle family ──────
-    wire('addTask', addTaskCore, {
+    wire('addTask', {
       description: 'Create a task; rejects on dependency cycles. Blocked when circle is paused/archived.',
       visibility:  'authenticated',
     }),
 
-    wire('claimTask', claimTaskCore, {
+    wire('claimTask', {
       description: 'Compare-and-swap claim a task.',
       visibility:  'authenticated',
     }),
 
-    wire('completeTask', completeTaskCore, {
+    wire('completeTask', {
       description: 'Mark a task complete.',
       visibility:  'authenticated',
     }),
 
-    wire('removeTask', removeTaskCore, {
+    wire('removeTask', {
       description: 'Remove a task — admin only via item-store role policy.',
       visibility:  'authenticated',
     }),
 
-    wire('getTaskSnapshot', getTaskSnapshotCore, {
+    wire('getTaskSnapshot', {
       description: 'Snapshot a task for chat-embed (Q29 v0.5).',
       visibility:  'authenticated',
     }),
 
-    wire('listOpen', listOpenCore, {
+    wire('listOpen', {
       description: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.',
       visibility:  'authenticated',
     }),
 
-    wire('listMine', listMineCore, {
+    wire('listMine', {
       description: 'List open tasks assigned to the calling actor.',
       visibility:  'authenticated',
     }),
 
-    wire('listClaimable', listClaimableCore, {
+    wire('listClaimable', {
       description: 'List unassigned tasks; optional `skill` filter.',
       visibility:  'authenticated',
     }),
 
     // ── DoD-lifecycle skills (Tasks V1, Phase 5) ─────────────────────────
-    wire('submitTask', submitTaskCore, {
+    wire('submitTask', {
       description: 'Submit a claimed task for approval.',
       visibility:  'authenticated',
     }),
 
-    wire('approveTask', approveTaskCore, {
+    wire('approveTask', {
       description: 'Approve a submitted task.',
       visibility:  'authenticated',
     }),
 
-    wire('rejectTask', rejectTaskCore, {
+    wire('rejectTask', {
       description: 'Reject a submitted task with a mandatory note.',
       visibility:  'authenticated',
     }),
 
-    wire('revokeTask', revokeTaskCore, {
+    wire('revokeTask', {
       description: 'Revoke an assignment with a mandatory reason (master only).',
       visibility:  'authenticated',
     }),
