@@ -112,6 +112,8 @@ import { formatNearbyLabel } from '../../core/nearbyLabel.js';
 import { t, lang } from '../../core/localisation.js';
 import {
   makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
+  // Objective D — session → podWriter so the availability pref publishes.
+  sessionToPodWriterRN,
   // P6.2 — persisted multi-admin proposals.
   makeProposalStoreRN,
   // α.1e — scherm recipe book persistence.
@@ -432,7 +434,12 @@ export default function CircleLauncherScreen({
   // convention).  Created once; the sub-screens load/save through them.
   const policyStore       = useMemo(() => makeCirclePolicyStoreRN(AsyncStorage), []);
   const overrideStore     = useMemo(() => makeMemberOverrideStoreRN(AsyncStorage), []);
-  const availabilityStore = useMemo(() => makeAvailabilityStoreRN(AsyncStorage), []);
+  // Objective D — mirror the pref to the user's pod so other agents read it.
+  // getPodWriter is a thunk: null while unsigned (→ local-only), a live
+  // writer once the Solid session (sessionRef) is authenticated.
+  const availabilityStore = useMemo(() => makeAvailabilityStoreRN(AsyncStorage, {
+    getPodWriter: () => sessionToPodWriterRN(sessionRef?.current ?? null),
+  }), []);
   // B · Slice 4 — build the folio capability matrix from the selected circle's
   // policy + this member's opt-outs (same inputs the list surface uses). Feeds
   // CircleFolioScreen so its file-OPEN row action greys/hides per the gate.

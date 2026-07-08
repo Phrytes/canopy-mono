@@ -32,7 +32,7 @@ import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
 // session routes a sealed circle to the user's REAL pod; otherwise the in-memory pseudo-pod.
 import * as podAuth from '../../src/web/podAuth.js';
-import { discoverPodRoot } from '../../src/web/podStorage.js';
+import { discoverPodRoot, createPodWriter } from '../../src/web/podStorage.js';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
@@ -501,7 +501,7 @@ import { createAgentRequestStore } from '../../src/v2/agentRequest.js';
 import { buildTilePreviews, bumpSeenAt } from '../../src/v2/circleTilePreviews.js';
 import { makeAfterClaimHook } from '../../src/v2/claimRouter.js';
 import { mergeAvailability } from '../../src/v2/memberAvailability.js';
-import { createAvailabilityStore, localStorageAvailabilityIo } from '../../src/v2/memberAvailability.js';
+import { createAvailabilityStore, localStorageAvailabilityIo, podAvailabilityIo, tieredAvailabilityIo } from '../../src/v2/memberAvailability.js';
 import { renderCircleAvailability } from './circleAvailability.js';
 import {
   createCirclePolicyStore, localStoragePolicyIo,
@@ -634,7 +634,26 @@ const userScreenStore = createUserScreenStore({ io: localStorageScreenIo() });
 const overrideStore = createMemberOverrideStore(localStorageOverrideIo());
 // β.5 — pin store (single keyless map at `cc.circlePinned`).
 const pinStore = createCirclePinStore(localStoragePinIo());
-const availabilityStore = createAvailabilityStore(localStorageAvailabilityIo());
+// Objective D (Surface 3a) — availability is a device-local pref, but its
+// value must be readable by other agents. Mirror it to a per-user pod
+// resource via the same tiered pattern circle-policy uses. The writer is
+// built lazily from the restored Solid session (`window.canopyPodSession`,
+// set once sign-in completes below) and memoised; while unsigned the thunk
+// returns null and the store is local-only (unchanged behaviour).
+let _availabilityPodWriter = null;
+const availabilityPodWriter = () => {
+  if (_availabilityPodWriter) return _availabilityPodWriter;
+  const s = (typeof window !== 'undefined' && window.canopyPodSession) || null;
+  if (!s || typeof s.fetch !== 'function' || typeof s.webid !== 'string') return null;
+  try { _availabilityPodWriter = createPodWriter(s); } catch { return null; }
+  return _availabilityPodWriter;
+};
+const availabilityStore = createAvailabilityStore(
+  tieredAvailabilityIo(
+    localStorageAvailabilityIo(),
+    podAvailabilityIo({ getWriter: availabilityPodWriter }),
+  ),
+);
 // P6.2 — persisted pending proposals (multi-admin consensus).
 const proposalStore = createProposalStore({ io: localStorageProposalIo() });
 // P6.10 #348 — persisted pending agent-add requests (board 4B).  Reuses

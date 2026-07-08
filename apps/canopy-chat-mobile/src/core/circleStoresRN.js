@@ -16,6 +16,8 @@ import {
   createMemberOverrideStore,
   createAvailabilityStore,
   podPolicyIo, tieredPolicyIo,
+  // Objective D — publish the availability pref to the shared substrate.
+  podAvailabilityIo, tieredAvailabilityIo,
   // P6.2 — multi-admin proposal persistence on RN.
   createProposalStore,
   // α.1a — scherm recipe book store.
@@ -87,8 +89,38 @@ export function makeMemberOverrideStoreRN(storage) {
   return createMemberOverrideStore(asyncKeyedIo('cc.circleOverride.', storage));
 }
 
-export function makeAvailabilityStoreRN(storage) {
-  return createAvailabilityStore(asyncFixedIo('cc.availability', storage));
+/**
+ * Objective D (Surface 3a) — the availability pref stays device-local
+ * (AsyncStorage, key `cc.availability`) BUT its value must be readable by
+ * other agents, so it mirrors to a per-user pod resource via the shared
+ * `tieredAvailabilityIo` (same pattern as the circle-policy store). Pass a
+ * `getPodWriter` thunk (returning a `createPodWriter`-shaped writer, or
+ * null) to publish; omit it and behaviour is local-only (unchanged).
+ */
+export function makeAvailabilityStoreRN(storage, { getPodWriter } = {}) {
+  const localIo = asyncFixedIo('cc.availability', storage);
+  const podIo   = podAvailabilityIo({
+    getWriter: typeof getPodWriter === 'function' ? getPodWriter : () => null,
+  });
+  return createAvailabilityStore(tieredAvailabilityIo(localIo, podIo));
+}
+
+/**
+ * Objective D — synchronous OidcSessionRN → podWriter for the availability
+ * pref's `getPodWriter` thunk. Returns null (never throws) when the session
+ * isn't ready/authed; uses `createPodWriter`'s webid-heuristic pod root (no
+ * async discovery), which is enough to address the per-user resource. For a
+ * discovered root, `buildCirclePodWriter` (async) is the fuller path.
+ */
+export function sessionToPodWriterRN(session) {
+  if (!session || typeof session.isAuthenticated !== 'function') return null;
+  if (!session.isAuthenticated() || !session.webid) return null;
+  let fetchFn;
+  try { fetchFn = session.getAuthenticatedFetch(); }
+  catch { return null; }
+  if (typeof fetchFn !== 'function') return null;
+  try { return _createPodWriter({ fetch: fetchFn, webid: session.webid }); }
+  catch { return null; }
 }
 
 /** α.1a — per-kring recipe book store (one book per kring; key:
