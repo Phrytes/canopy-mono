@@ -12,6 +12,7 @@
  * there for durability across reloads.
  */
 import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
+import { createAsBackend } from '@canopy/react-native/pseudo-pod-adapter';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix } from '@canopy/pod-client';
@@ -86,10 +87,15 @@ export function getActiveRealPodRouting() {
   return shaped ? realPodRouting(shaped, { PodClient, SolidOidcAuth }) : null;
 }
 
-/** An in-memory pseudo-pod client for one circle (no OIDC; group key persisted via the vault). */
+/** A pseudo-pod client for one circle (no OIDC; group key persisted via the vault). Objective L: the
+ * backend is AsyncStorage-persistent (scoped per circle) when the RN AsyncStorage was injected at boot
+ * (initCirclePods), so the circle's items survive a restart; falls back to in-memory otherwise (tests). */
 function makeCirclePodClient(circleId) {
   const deviceId = `circle-${circleId}`;
-  const pseudoPod = createPseudoPod({ backend: createMemoryBackend(), mode: 'standalone', deviceId });
+  const backend = asyncStorageRef
+    ? createAsBackend({ AsyncStorage: asyncStorageRef, scope: `cc-circle-${circleId}` })
+    : createMemoryBackend();
+  const pseudoPod = createPseudoPod({ backend, mode: 'standalone', deviceId });
   return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
 }
 

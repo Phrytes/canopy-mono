@@ -27,7 +27,8 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
   recipientStrategy as podRecipientStrategy } from '@canopy/pod-client';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod } from '@canopy/pseudo-pod';
+import { pickWebBackend } from '../../src/web/persistentBackend.js';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
 // session routes a sealed circle to the user's REAL pod; otherwise the in-memory pseudo-pod.
@@ -955,10 +956,12 @@ async function getCircleSealStrategy(circleId, policy) {
   return strat;
 }
 
-/** S4 — an in-memory pseudo-pod client for one circle (real per-circle sealed storage, no OIDC/CSS). */
+/** S4 — a pseudo-pod client for one circle (real per-circle sealed storage, no OIDC/CSS). Objective L:
+ * the backend is browser-persistent (IndexedDB, scoped per circle) so the circle's items survive a
+ * reload; falls back to in-memory under SSR / tests (no `indexedDB`) — see `pickWebBackend`. */
 function makeCirclePodClient(circleId) {
   const deviceId = `circle-${circleId}`;
-  const pseudoPod = createPseudoPod({ backend: createMemoryBackend(), mode: 'standalone', deviceId });
+  const pseudoPod = createPseudoPod({ backend: pickWebBackend(`cc-circle-${circleId}`), mode: 'standalone', deviceId });
   return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
 }
 
@@ -1032,11 +1035,10 @@ const kringInputHistory = createInputHistory();
 // F-retrieve persistence: one app-level StorageBackend for the circle-bot RAG
 // vector index. The retriever scopes it per-circle to
 // private/state/search-index/circle-rag/<circleId>/ (never sharing/ — invariant
-// #7). Same @canopy/pseudo-pod substrate the circle pods run on. In-memory in
-// the current standalone posture — see the vectorStore wiring in buildCircleBot
-// for the honest live-pod dependency; the seam is fully threaded so a persistent
-// backend drops in with no retriever change.
-const circleSearchVectorStore = createMemoryBackend();
+// #7). Same @canopy/pseudo-pod substrate the circle pods run on. Objective L:
+// browser-PERSISTENT (IndexedDB) so embedded vectors survive a reload instead of
+// re-embedding; falls back to in-memory under SSR / tests (no `indexedDB`).
+const circleSearchVectorStore = pickWebBackend('cc-circle-rag');
 
 function buildCircleBot(agent) {
   // Merged catalog (the LLM tool list + dispatch catalog) — mirrors main.js.
@@ -1550,16 +1552,12 @@ function buildCircleBot(agent) {
         // store hydrates the content-hash cache instead of re-embedding
         // (embed-once, restart-safe by construction when the backend persists).
         //
-        // LIVE-POD DEPENDENCY (honest): this backend is IN-MEMORY in the current
-        // standalone posture (makeCirclePodClient → createPseudoPod({ backend:
-        // createMemoryBackend() })), so vectors do NOT survive a hard page reload
-        // yet — and neither do the circle ITEMS they index (same in-memory pod),
-        // so persisting vectors alone would only orphan them. TRUE cross-restart
-        // survival needs the circle to run on a PERSISTENT pod: a real Solid pod
-        // (signed-in routing) = live infra, or a persistent pseudo-pod backend
-        // (a future web IndexedDB StorageBackend). Swapping circleSearchVectorStore
-        // for that persistent backend is a ONE-LINE change — retriever + scope
-        // are unchanged.
+        // Objective L (2026-07-08): the backend now PERSISTS in a real browser —
+        // circleSearchVectorStore is IndexedDB (pickWebBackend), and the circle
+        // ITEMS it indexes are IndexedDB too (makeCirclePodClient → pickWebBackend),
+        // so both survive a hard reload; under SSR / tests (no `indexedDB`) both
+        // fall back to in-memory, unchanged. The remaining persistence path — a
+        // real signed-in Solid pod (live-infra routing) — stays the live-pod tail.
         vectorStore: circleSearchVectorStore,
         scope: 'circle-rag',
       }),

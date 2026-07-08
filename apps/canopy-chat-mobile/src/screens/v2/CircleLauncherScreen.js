@@ -99,6 +99,7 @@ import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js'
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { makeCircleRetriever } from '../../../../canopy-chat/src/v2/circleRetriever.js';
 import { createMemoryBackend } from '@canopy/pseudo-pod';
+import { createAsBackend } from '@canopy/react-native/pseudo-pod-adapter';
 import { buildCircleEmbedProviders } from '../../../../canopy-chat/src/v2/circleEmbedProviders.js';
 import { resolveCircleEmbedder } from '../../../../canopy-chat/src/v2/embedPicker.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -194,12 +195,15 @@ const CIRCLE_LLM_APPS = (process.env.EXPO_PUBLIC_CIRCLE_LLM_APPS || '').split(',
 // circle-bot RAG vector index, scoped per-circle inside the retriever to
 // private/state/search-index/circle-rag/<circleId>/ (never sharing/ — invariant
 // #7). Same @canopy/pseudo-pod substrate the circle pods run on (see
-// src/core/circlePods.js). In-memory in the standalone posture — same honest
-// live-pod dependency as web (circleApp.js buildCircleBot): TRUE cross-restart
-// survival needs the circle on a PERSISTENT pod (real Solid pod = live infra, or
-// a persistent pseudo-pod backend — RN createAsBackend/createFsBackend). The seam
-// is threaded so swapping this for a persistent backend is a one-line change.
-const circleSearchVectorStore = createMemoryBackend();
+// src/core/circlePods.js). Objective L (2026-07-08): AsyncStorage-PERSISTENT on
+// device (createAsBackend over the RN AsyncStorage) so embedded vectors survive a
+// restart instead of re-embedding — mirrors web's IndexedDB wiring; falls back to
+// in-memory when AsyncStorage is unusable (tests use a Map-backed stub, so this
+// path is exercised there). The remaining path — a real signed-in Solid pod —
+// stays the live-pod tail.
+const circleSearchVectorStore = (AsyncStorage && typeof AsyncStorage.getItem === 'function')
+  ? createAsBackend({ AsyncStorage, scope: 'cc-circle-rag' })
+  : createMemoryBackend();
 
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions
 // row.  Module singleton (shared across kring opens), hydrated once from
