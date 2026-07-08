@@ -87,13 +87,14 @@ the freedom matrix (`buildCapabilityMatrix`) and the gate (`effectiveCapabilityK
 
 ## 2026-07-05 — One uniform invocation route (internal transport is a fast-path), over one pure core
 
-**Status:** settled + **largely implemented** (2026-07-08 audit). `wireSkill(coreFn, manifestOp)` shipped in
-`@canopy/sdk`; **household runs the uniform wired path by default — the legacy `HouseholdAgent` is retired** (cores
-registered via `wireSkill` on a dedicated in-process agent in `realAgent.js`); stoop / tasks-v0 / tasks-mobile use
-`wireSkill` for their wire skills too. **Remaining (Workstream B):** extract pure `(store,args,ctx)` cores for
-`tasks-v0` and `stoop` so `callCapability` calls them directly and drops the synthetic single-`DataPart`
-round-trip their `Service.js` still builds; add a `local ≡ wire` equivalence + manifest-op⟷core⟷wire parity
-fitness test (not yet present). Tracked in the roadmap as the B "invocation route" item.
+**Status:** settled + **implemented** (2026-07-08). `wireSkill(coreFn, manifestOp)` in `@canopy/sdk`; **household
+runs the uniform wired path by default — the legacy `HouseholdAgent` is retired** (cores registered via `wireSkill`
+on a dedicated in-process agent in `realAgent.js`). **Workstream B done:** `tasks-v0` and `stoop` now call their
+pure `(store,args,ctx)` cores directly on BOTH routes — the local route (`callSkill`) no longer builds a synthetic
+single-`DataPart` round-trip; wire and local share one `TASK_CORES`/`STOOP_CORES` registry, and the A2A wire route
+is byte-identical. The anti-drift guard the brief demanded ships as `@canopy/sdk/testing`'s `describeLocalWireFitness`
+(`local ≡ wire` equivalence + manifest-op⟷core⟷wire parity), driven for tasks-v0 and stoop. *Follow-up:* add a
+household fitness driver (its cores already run the uniform path).
 
 **Context:** functions were reachable two ways that had drifted apart — a legacy A2A/`defineSkill`/envelope **wire**
 route (tasks, stoop) and a direct in-process **store** route (household). An earlier framing proposed keeping *two

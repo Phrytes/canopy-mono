@@ -1195,10 +1195,10 @@ export const stoopManifest = {
     // ──── D-mig-1a (objective D, step 1a) — project the live LIST-screen
     //      surfaces (contacts + prikbord) FROM this manifest.  These two
     //      views make renderWeb able to project what the canopy-chat
-    //      `LIST_SCREENS` literal (web/v2/circleApp.js) hardcodes today:
-    //      the row LABEL field + the group/filter CATEGORY field.  Purely
-    //      additive groundwork — the live list path still reads LIST_SCREENS
-    //      until a later step swaps it to consume these sections.
+    //      `LIST_SCREENS` literal (web/v2/circleApp.js) used to hardcode:
+    //      the row LABEL field + the group/filter CATEGORY field.  The live
+    //      list path now consumes these sections — `LIST_SCREENS` was retired
+    //      repo-wide (D-mig-1b, 2026-07-07).
     //
     //  contacts → listContacts (appliesTo type:'contact'); the ContactBook
     //      rows carry a `category` field (LIST_SCREENS `categoryField:
