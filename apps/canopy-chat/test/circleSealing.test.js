@@ -98,4 +98,34 @@ describe('createCircleControlAgent', () => {
     expect(cca.members().map((m) => m.webId)).not.toContain('did:alice');
     await expect(cca.sealingStrategy(alice.privateKey)).rejects.toThrow();
   });
+
+  it('p2 cross-version: a still-current member opens content sealed under an OLDER version after a rotation; a drop-out cannot', async () => {
+    const controller = generateKeypair();
+    const alice = generateKeypair();
+    const bob = generateKeypair();
+    const podClient = new MemPodClient();
+    const sharing = mockSharing();
+
+    const cca = createCircleControlAgent({
+      circleId: 'cx', storagePosture: 'p2', podClient, sharing, controllerKey: controller,
+    });
+    await cca.bootstrap();
+    await cca.addMember({ webId: 'did:alice', publicKey: alice.publicKey });
+    await cca.addMember({ webId: 'did:bob', publicKey: bob.publicKey });
+
+    // Alice seals content under the CURRENT (pre-rotation) group-key version.
+    const stratV1 = await cca.sealingStrategy(alice.privateKey);
+    const sealedV1 = stratV1.seal('van voor de rotatie');
+
+    // Bob leaves → the group key ROTATES to a new version (Alice stays a member; v1 is retained in history[]).
+    await cca.removeMember({ webId: 'did:bob' });
+
+    // Alice (still current) gets a FRESH strategy that opens the OLD-version content AND current content.
+    const stratV2 = await cca.sealingStrategy(alice.privateKey);
+    expect(stratV2.open(sealedV1)).toBe('van voor de rotatie');                  // ← cross-version read
+    expect(stratV2.open(stratV2.seal('na de rotatie'))).toBe('na de rotatie');   // current version still round-trips
+
+    // Bob (a drop-out) is denied at the membership gate — NO access, historic or otherwise (forward secrecy).
+    await expect(cca.sealingStrategy(bob.privateKey)).rejects.toThrow();
+  });
 });

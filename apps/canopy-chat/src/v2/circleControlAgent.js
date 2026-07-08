@@ -88,19 +88,18 @@ export function createCircleControlAgent({
      *          Recipients = every current member + the controller, taken from the
      *          control-agent roster so a p3 writer seals to exactly who can read.
      *
-     * ── PLUMBING GAP (Phase 3 cross-version reader) ─────────────────────────────────
-     * This p2 path still resolves ONLY the current group key (via `readGroupKey`), so
-     * a still-entitled member cannot yet open p2 content sealed under an OLDER version
-     * (before a rotation they lived through) — the cross-version reader is NOT wired in
-     * here. The clean seam exists: pass the retained key RESOURCE + this private key to
-     * `resolveCircleStorage({ posture: 'p2', resource, privateKey })` (its resource form
-     * builds `groupKeyStrategy({ resource, privateKey })`, which opens across every
-     * version the reader can unwrap while preserving forward secrecy). Doing so also
-     * CHANGES this method's access contract — a revoked member would then get a
-     * read-only historic strategy (opens pre-revocation content, cannot seal or open
-     * post-revocation content) instead of the current blanket throw, and a never-member
-     * would get `null` instead of a throw. That is an access-policy decision (it flips
-     * several app-level security tests), left for review rather than silently wired.
+     * ── CROSS-VERSION READER (Phase 3, wired 2026-07-08 per Frits' call) ────────────
+     * p2 content sealed under an OLDER key version (before a rotation the member lived
+     * through) now opens too. The `readGroupKey` call above is the membership GATE — a
+     * revoked/never member THROWS there, so DROP-OUTS get NO access, historic or
+     * otherwise ("no historic access for drop-outs"). A CURRENT member then gets the
+     * cross-version strategy over the retained key RESOURCE
+     * (`resolveCircleStorage({ posture: 'p2', resource, privateKey })` →
+     * `groupKeyStrategy({ resource, privateKey })`), which opens every version the member
+     * can unwrap and seals under the current one — forward secrecy preserved (a drop-out
+     * never reaches it). The access contract for revoked/never is UNCHANGED (still the
+     * gate's throw), so gating on current membership adds historic-read WITHOUT flipping
+     * the revoked/never security assertions.
      *
      * @param {string} privateKey  the member's sealing private key.
      * @returns {Promise<{ seal: Function, open: Function } | null>}
@@ -118,7 +117,13 @@ export function createCircleControlAgent({
         ].filter(Boolean))];
         return resolveCircleStorage({ posture: 'p3', recipients, privateKey });
       }
-      return resolveCircleStorage({ posture: storagePosture, groupKey });
+      // p2: the caller passed the readGroupKey membership gate above (a revoked/never member THROWS
+      // there → NO access, historic or otherwise — "no historic access for drop-outs"). A CURRENT
+      // member gets the CROSS-VERSION reader over the retained key resource, so they can open p2
+      // content sealed under an OLDER version they lived through; seal still writes the current version.
+      // A drop-out never reaches this line, so forward secrecy holds and no revoked/never assertion flips.
+      const resource = await keyStore.read();
+      return resolveCircleStorage({ posture: storagePosture, resource, privateKey });
     },
   };
 }
