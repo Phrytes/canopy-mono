@@ -84,8 +84,13 @@ slices to `maxContext` (5), and injects the results as context.
 **Engine.** Tier-2 is backed by a per-circle `@canopy/pod-search` hybrid index (`makePodSearchRetriever`),
 scoped `circle-rag/<circleId>` so circles never bleed into each other. Items are embedded once (content-hash
 cache — unchanged items are never re-embedded) and each turn runs `query({mode:'hybrid'})` — reciprocal rank
-fusion (k=60) over the lexical and cosine rankings. A `vectorStore` seam makes it restart-safe (embed once,
-survive a reload) when a circle-scoped `StorageBackend` is injected.
+fusion (k=60) over the lexical and cosine rankings. A `vectorStore` seam holds the vectors: both shells (web
+`buildCircleBot`, mobile `makeCircleRetriever`) now inject one — a module-const `createMemoryBackend()`, scoped
+`circle-rag/<circleId>` — so retriever rebuilds **within a session hydrate instead of re-embedding**
+(embed-once-per-session-per-circle). That backend is in-memory today, so vectors do **not** survive a hard
+restart (nor do the in-memory circle items they index — persisting vectors alone would orphan them).
+Cross-restart survival needs the circle on a **persistent pod** (a real Solid pod, or a future persistent
+pseudo-pod backend — web IndexedDB / RN fs); because the seam is threaded end-to-end, that swap is one line.
 
 **Policy & privacy** (invariant #7 — placed by trust):
 - Gated by `llmTool: 'off'` ⇒ no LLM and no semantic retrieval.
