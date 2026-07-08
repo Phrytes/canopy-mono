@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { itemCircleId, isInCircle, scopeItems } from '../../src/v2/circleScope.js';
+import { itemCircleId, isInCircle, scopeItems, normalizeAudienceRef } from '../../src/v2/circleScope.js';
 import {
   getActiveCircle, setActiveCircle, subscribeActiveCircle,
 } from '../../src/v2/activeCircle.js';
@@ -19,6 +19,31 @@ describe('circleScope · itemCircleId', () => {
     expect(itemCircleId({})).toBeNull();
     expect(itemCircleId({ audience: 'public' })).toBeNull();
     expect(itemCircleId({ audience: 'role:admin' })).toBeNull();
+  });
+});
+
+describe('circleScope · normalizeAudienceRef', () => {
+  it('canonicalises the circle: short-hand to a structured circle-ref', () => {
+    expect(normalizeAudienceRef('circle:abc')).toEqual({ kind: 'circle-ref', id: 'abc' });
+  });
+  it('is idempotent on an already-structured circle-ref', () => {
+    const ref = { kind: 'circle-ref', id: 'abc' };
+    expect(normalizeAudienceRef(ref)).toBe(ref);   // returned verbatim
+  });
+  it('leaves other short-hands and the set shape untouched', () => {
+    expect(normalizeAudienceRef('household')).toBe('household');
+    expect(normalizeAudienceRef('role:admin')).toBe('role:admin');
+    expect(normalizeAudienceRef('public')).toBe('public');
+    const set = { kind: 'set', members: ['webid:a'] };
+    expect(normalizeAudienceRef(set)).toBe(set);
+  });
+
+  it('recurses into a union: canonicalises each circle: member', () => {
+    const union = { kind: 'union', of: ['household', 'circle:abc'] };
+    expect(normalizeAudienceRef(union)).toEqual({
+      kind: 'union',
+      of: ['household', { kind: 'circle-ref', id: 'abc' }],
+    });
   });
 });
 

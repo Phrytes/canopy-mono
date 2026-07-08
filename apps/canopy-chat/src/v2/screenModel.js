@@ -12,6 +12,7 @@
 
 import { embedButtonsForReply } from './replyEmbeds.js';
 import { audienceFromItem, audienceMatches } from '@canopy/item-store';
+import { normalizeAudienceRef } from './circleScope.js';
 
 /** Distinct category values (in first-seen order) for `categoryField`. */
 function distinctCategories(items, field) {
@@ -66,10 +67,22 @@ export function buildScreenModel({
   // `defaultAudience`; when neither is set the list passes through untouched
   // (fully back-compatible).  Reuses the item-store audience predicate rather
   // than reimplementing it.
+  //
+  // Normalisation (SP-5b): a view declares its audience as the string
+  // short-hand `circle:X`, but items created through a `@canopy/circles` /
+  // saved-view path store the STRUCTURED `{kind:'circle-ref', id:'X'}`.  Those
+  // are the same audience, but item-store's `audienceMatches` is strict-equal
+  // (it can't depend on `@canopy/circles` to canonicalise).  So we canonicalise
+  // the circle-ref spelling on BOTH operands (via the render path's own
+  // self-contained `normalizeAudienceRef`) before matching — otherwise
+  // structured-audience items silently vanish from a `circle:X` view.  Kept
+  // self-contained (no `@canopy/circles` import) so the shared model stays
+  // Metro/RN-portable.
   const effectiveAudience = audience !== undefined ? audience : defaultAudience;
+  const normFilter = effectiveAudience === undefined ? undefined : normalizeAudienceRef(effectiveAudience);
   const list = effectiveAudience === undefined
     ? rawList
-    : rawList.filter((it) => audienceMatches(audienceFromItem(it), effectiveAudience));
+    : rawList.filter((it) => audienceMatches(normalizeAudienceRef(audienceFromItem(it)), normFilter));
   const active = activeCategories == null ? null : new Set(activeCategories);
   const q = String(query || '').trim().toLowerCase();
   const labelOf = (it) => String(it?.[labelField] ?? it?.label ?? it?.id ?? '');

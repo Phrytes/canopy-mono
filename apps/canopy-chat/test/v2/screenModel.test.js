@@ -131,6 +131,39 @@ describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → L
     expect(rows.map((r) => r.item.id)).toEqual(['d']);
   });
 
+  it('normalises circle-ref spelling: a circle:X view matches STRUCTURED {kind:circle-ref} items', () => {
+    // The reachable gap: a view declares `defaultAudience: 'circle:abc'` (string
+    // short-hand) but items created through a @canopy/circles / saved-view path
+    // store the STRUCTURED form.  Pre-fix, item-store's strict-equality match
+    // silently dropped them; buildScreenModel now injects a circle-ref
+    // canonicaliser so both spellings compare equal.
+    const mixed = [
+      { id: 'a', label: 'Alpha', audience: 'circle:abc' },                       // string short-hand
+      { id: 'b', label: 'Bravo', audience: { kind: 'circle-ref', id: 'abc' } },  // structured — same circle
+      { id: 'c', label: 'Charlie', audience: { kind: 'circle-ref', id: 'xyz' } },// structured — other circle
+    ];
+    const { rows } = buildScreenModel({ items: mixed, defaultAudience: 'circle:abc' });
+    expect(rows.map((r) => r.item.id)).toEqual(['a', 'b']);
+  });
+
+  it('normalises the other direction: a structured view audience matches circle:X items', () => {
+    const mixed = [
+      { id: 'a', label: 'Alpha', audience: 'circle:abc' },
+      { id: 'b', label: 'Bravo', audience: 'circle:xyz' },
+    ];
+    const { rows } = buildScreenModel({ items: mixed, defaultAudience: { kind: 'circle-ref', id: 'abc' } });
+    expect(rows.map((r) => r.item.id)).toEqual(['a']);
+  });
+
+  it('normalisation reaches into a union audience on the item', () => {
+    const items = [
+      { id: 'a', label: 'Alpha', audience: { kind: 'union', of: ['household', { kind: 'circle-ref', id: 'abc' }] } },
+      { id: 'b', label: 'Bravo', audience: { kind: 'union', of: ['household', { kind: 'circle-ref', id: 'xyz' }] } },
+    ];
+    const { rows } = buildScreenModel({ items, defaultAudience: 'circle:abc' });
+    expect(rows.map((r) => r.item.id)).toEqual(['a']);
+  });
+
   it('audience filter also constrains category checkboxes + counts', () => {
     const cat = [
       { id: 'a', label: 'Alpha', category: 'x', audience: 'circle:abc' },
