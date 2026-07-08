@@ -33,9 +33,11 @@
  *      `Parts.wrap()` turns a string / object / Part[] / async-generator into
  *      the wire response (so a generator `coreFn` still streams).
  *
- * Pure addition — nothing in the repo imports it yet. The projector story
- * (renderChat / renderGate / …) stays the manifest's job; this helper is only
- * the "manifest op → skill handler" generator.
+ * Now the uniform invocation route: household (via realAgent), tasks-v0, and
+ * stoop register their wire skills through this, and @canopy/app-scaffold
+ * generates code that imports it. The projector story (renderChat / renderGate
+ * / …) stays the manifest's job; this helper is only the "manifest op → skill
+ * handler" generator.
  *
  * @param {(store: any, args: object, ctx: object) => any} coreFn
  *        The scope-bound core function. May be sync or async and may return a
