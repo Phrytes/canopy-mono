@@ -96,24 +96,19 @@ describe('Bundle F P6 — buildMobilePodAuth', () => {
     expect(pa.getCurrentSession()).toBeNull();
   });
 
-  // ⚠️ KNOWN-FAILING — DEFERRED (recorded REMAINING-WORK.md §M test-hygiene, 2026-07-05).
-  // NOT a §1b regression (pod/OIDC sign-in is untouched by that work). The mocked `startSignIn` hook isn't
-  // adopting the token (`adopted` stays undefined, expected 'AT') — a mock/hook-wiring mismatch in the vitest
-  // harness (this differs from an assertion about real product behaviour; real interactive sign-in is verified
-  // separately with creds, #167/#262). Loosely adjacent to the oidc-session/vault de-fuzz in
-  // plans/design/DESIGN-layered-architecture-model.md (runtime-foundation layering), but this failure is
-  // harness-shaped, not the inversion. DEFERRED: revisit with the oidc de-fuzz OR when the paused mobile-pod
-  // work resumes. NB: unlike the other two deferred reds, this one *could* be a real break in buildMobilePodAuth
-  // rather than pure harness — worth a ~10-min confirm (harness-vs-real) before the oidc work.
+  // The hook's signIn() resolves to the FLAT token object that completeSignIn
+  // returns ({accessToken, refreshToken, idToken, expiresAt, webid}) — verified
+  // against packages/oidc-session-rn/hook.js (`return await pureCompleteSignIn(...)`).
+  // The earlier `{type:'success', tokens:{…}}` fake mirrored a nested shape the
+  // real hook never produced, so buildMobilePodAuth (correctly reading
+  // `result.accessToken`) skipped adoption and this test failed. Fixed the fake
+  // to the real shape; the adopt assertions are unchanged.
   it('startSignIn calls the hook and adopts tokens on success', async () => {
     const hook = fakeHook({
       signInResult: {
-        type: 'success',
-        tokens: {
-          accessToken: 'AT',
-          refreshToken: 'RT',
-          webid: 'https://alice.solid.example/profile/card#me',
-        },
+        accessToken: 'AT',
+        refreshToken: 'RT',
+        webid: 'https://alice.solid.example/profile/card#me',
       },
     });
     let adopted = null;

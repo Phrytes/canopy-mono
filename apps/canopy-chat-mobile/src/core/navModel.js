@@ -11,29 +11,22 @@
 // Relative imports — see composeManifests.js for the rationale.
 import { renderMobile } from '@canopy/app-manifest';
 
-import { canopyChatManifest } from '../../../canopy-chat/src/index.js';
-import {
-  mockTasksManifest, mockStoopManifest, mockFolioManifest,
-} from '../../../canopy-chat/src/core/manifests/mockManifests.js';
-// Part G (2026-06-17) — real `apps/household` manifest (item/task vocab),
-// replacing the chore-vocab mock (kept in lockstep with composeManifests.js).
-import { householdManifest as realHouseholdManifest } from '../../../household/manifest.js';
-import { calendarManifest } from '../../../calendar/manifest.js';
+// The per-app manifest list is owned by composeManifests.js (the single
+// source of truth); we consume it here so the nav order can't drift from
+// the dispatch catalog.  This drift is exactly what re-opened once — nav
+// hardcoded household-before-tasks while the catalog (deliberately, #49)
+// orders tasks-before-household — and #222's "same order" smoke test
+// caught it.  Reusing _internalManifestList keeps them 1:1 by construction.
+import { _internalManifestList } from './composeManifests.js';
 
 /**
  * @returns {{appOrigin: string, nav: object}[]}  one entry per app,
  *   in the order they show up in the bottom-tab nav (chat/canopy-chat
- *   first, then content apps).  Mirror the composeManifests order so
- *   the boot-debug list lines up 1:1 with the merged catalog.
+ *   first, then content apps).  Matches the composeManifests order 1:1
+ *   because it reads the SAME manifest list — so the boot-debug nav list
+ *   lines up with the merged catalog.
  */
 export function buildNavModels({ householdManifest } = {}) {
-  const manifests = [
-    canopyChatManifest,
-    householdManifest ?? realHouseholdManifest,
-    mockTasksManifest,
-    mockStoopManifest,
-    mockFolioManifest,
-    calendarManifest,
-  ];
+  const manifests = _internalManifestList({ householdManifest });
   return manifests.map((m) => ({ appOrigin: m.app, nav: renderMobile(m) }));
 }
