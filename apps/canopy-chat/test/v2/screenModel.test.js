@@ -3,6 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { buildScreenModel } from '../../src/v2/screenModel.js';
+import { normalizeAudienceRef } from '../../src/v2/circleScope.js';
 import { mockTasksManifest } from '../../src/core/manifests/mockManifests.js';
 import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
 
@@ -162,6 +163,17 @@ describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → L
     ];
     const { rows } = buildScreenModel({ items, defaultAudience: 'circle:abc' });
     expect(rows.map((r) => r.item.id)).toEqual(['a']);
+  });
+
+  it('SP-5b Option A: audienceScope carries the normalised scope when scoped, null when not', () => {
+    // Unscoped → null (no caption should render).
+    expect(buildScreenModel({ items }).audienceScope).toBeNull();
+    // Scoped by a view default → the normalised audience it filtered by.
+    expect(buildScreenModel({ items, defaultAudience: 'circle:abc' }).audienceScope)
+      .toEqual(normalizeAudienceRef('circle:abc'));
+    // Explicit audience wins over the view default → reflected in the scope.
+    expect(buildScreenModel({ items, defaultAudience: 'circle:abc', audience: 'circle:xyz' }).audienceScope)
+      .toEqual(normalizeAudienceRef('circle:xyz'));
   });
 
   it('audience filter also constrains category checkboxes + counts', () => {
