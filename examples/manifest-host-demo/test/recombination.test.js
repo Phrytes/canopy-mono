@@ -22,6 +22,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
   setupRecombinationDemo,
   runScriptedConversation,
+  demoCrossAppEmbed,
   DEMO_USER_MESSAGES,
 } from '../scenario.js';
 
@@ -121,5 +122,141 @@ describe('SP-4b + SP-11: recombination demo (household + tasks-v0)', () => {
       // tasks item, even though both ran through the same chat session.
       expect(householdShopping.map((i) => i.text)).not.toContain('paint the hallway');
     });
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════════
+ * SP-11b — cross-surface recombination polish.
+ *
+ *   (1) stoop as a 3rd mounted app — three apps composed cleanly.
+ *   (2) a canonical cross-app `embeds:[{type,ref}]` reference resolved
+ *       across two apps' stores.
+ *
+ * (Piece (3) — a saved cross-circle view — depends on SP-8, which is
+ *  NOT built: `@canopy/circles` README explicitly scopes out "cross-
+ *  circle query" + "saved-view resolution" to SP-5b. So piece (3) is
+ *  deliberately absent here rather than fabricated.)
+ * ════════════════════════════════════════════════════════════════════ */
+
+describe('SP-11b: stoop as a 3rd mounted app', () => {
+  let runtime;
+
+  beforeEach(async () => {
+    runtime = await setupRecombinationDemo({ mountStoop: true });
+  });
+
+  afterEach(async () => {
+    await runtime?.teardown();
+  });
+
+  it('mounts all three apps', () => {
+    expect(runtime.host.list().sort()).toEqual(['household', 'stoop', 'tasks']);
+  });
+
+  it('stoop mounts with a real, complete skill registry (zero manifest-op drift)', () => {
+    // The bundle's skill set covers every substrate-backed manifest op
+    // — `buildStoopSkillRegistry` reports nothing missing.
+    expect(runtime.stoop.missing).toEqual([]);
+    expect(Object.keys(runtime.stoop.mountable.skillRegistry).length)
+      .toBeGreaterThan(0);
+  });
+
+  it('composed toolCatalog namespaces all THREE apps with appId.opId', () => {
+    const ids = runtime.composed.toolCatalog.map((t) => t.id);
+
+    // Every id is namespaced to one of the three mounted apps.
+    expect(ids.every((id) => /^(household|tasks|stoop)\./.test(id))).toBe(true);
+
+    // Each app contributes at least one tool (sample per app).
+    expect(ids).toContain('household.addItem');
+    expect(ids).toContain('tasks.addTask');
+    expect(ids.some((id) => id.startsWith('stoop.'))).toBe(true);
+
+    // Namespacing is what keeps a shared bare op-name (e.g. `listOpen`,
+    // which household, tasks AND stoop all define) collision-free in
+    // the tool catalog: three distinct ids, one per app.
+    expect(ids).toContain('household.listOpen');
+    expect(ids).toContain('tasks.listOpen');
+    expect(ids).toContain('stoop.listOpen');
+  });
+
+  it('reports zero command collisions for the three-app combo', () => {
+    // Tool ids are namespaced; the slash-command menus of the three
+    // apps don't overlap → the host detects no collisions.
+    expect(runtime.composed.collisions).toEqual([]);
+  });
+
+  it('exposes a per-app system prompt for each of the three apps (not concatenated)', () => {
+    const prompts = runtime.composed.perAppSystemPrompts;
+    expect(Object.keys(prompts).sort()).toEqual(['household', 'stoop', 'tasks']);
+    // Each is its own entry — a string keyed per app, not one merged blob.
+    for (const app of ['household', 'stoop', 'tasks']) {
+      expect(typeof prompts[app]).toBe('string');
+    }
+  });
+});
+
+describe('SP-11b: cross-app embed reference (canonical embeds:[{type,ref}])', () => {
+  let runtime;
+
+  beforeEach(async () => {
+    // Stoop isn't needed for the embed itself (household ↔ tasks), but
+    // running it under the 3-app host proves the reference works in the
+    // full cross-surface composition.
+    runtime = await setupRecombinationDemo({ mountStoop: true });
+  });
+
+  afterEach(async () => {
+    await runtime?.teardown();
+  });
+
+  it('a household item references a tasks task by canonical urn ref — not an inlined pod URL', async () => {
+    const { task, householdItem, ref } = await demoCrossAppEmbed(runtime);
+
+    // The reference is the canonical `{type, ref}` shape…
+    expect(householdItem.embeds).toEqual([{ type: 'task', ref }]);
+    // …and the ref is a within-store urn pointing at the tasks item,
+    // NOT an inlined pod URL (no http/https scheme).
+    expect(ref).toBe(`urn:dec:item:${task.id}`);
+    expect(ref.startsWith('http')).toBe(false);
+  });
+
+  it('the substrate walker resolves the ref ACROSS apps (household store → tasks store)', async () => {
+    const { task, tree } = await demoCrossAppEmbed(runtime);
+
+    // Root is the local household item; it carries exactly one embed.
+    expect(tree.source).toBe('local');
+    expect(tree.type).toBe('shopping');
+    expect(tree.embeds).toHaveLength(1);
+
+    // The embed resolved to the tasks item — fetched from the OTHER
+    // app's store via the injected cross-pod-ref resolver.
+    const embedded = tree.embeds[0];
+    expect(embedded.source).toBe('external');
+    expect(embedded.type).toBe('task');
+    expect(embedded.item?.text).toBe(task.text);
+    expect(embedded.item?.id).toBe(task.id);
+  });
+
+  it('an unresolvable cross-app ref degrades to a typed placeholder, not a throw', async () => {
+    // Same walk, but with a resolver that knows nothing → the walker
+    // must yield a NOT_FOUND placeholder carrying the type + ref (the
+    // cross-pod-refs.md render-fallback contract), never throw.
+    const { treeOf } = await import('@canopy/item-store');
+    const householdStore = runtime.householdStore.substrate;
+    const [item] = await householdStore.addItems(
+      [{ type: 'shopping', text: 'orphan-ref item',
+         embeds: [{ type: 'task', ref: 'urn:dec:item:DOES-NOT-EXIST' }] }],
+      { actor: 'demo' },
+    );
+    const tree = await treeOf({
+      rootId:             item.id,
+      getItem:            (id) => householdStore.getById(id),
+      resolveExternalRef: async () => null,   // nothing resolves
+    });
+    expect(tree.embeds).toHaveLength(1);
+    expect(tree.embeds[0].source).toBe('placeholder');
+    expect(tree.embeds[0].reason).toBe('NOT_FOUND');
+    expect(tree.embeds[0].type).toBe('task');
   });
 });
