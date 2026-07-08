@@ -563,6 +563,9 @@ import { makeHandleSharedCopy } from '../../src/core/handlers/sharedCopyReceive.
 // open selector. The nav entry lives on the Mij profile (personal, cross-circle inbox).
 import { renderSharedWithMe } from './sharedWithMe.js';
 import { buildSharedWithMe, openSharedCopy } from '../../src/v2/sharedWithMe.js';
+// SILENT out-of-circle delivery — THIS device's network-derived sealing OPENER (shared web≡mobile). Injects the
+// pod-client sealing adapter into the encapsulated identity secret; only the opener closure escapes.
+import { openerForIdentity } from '../../src/v2/sharedCopyOpener.js';
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
@@ -2459,13 +2462,13 @@ async function showMij() {
 // view over the SAME `buildSharedWithMe`/`openSharedCopy` selector — this is just the web
 // adapter (read the store, feed the projector).
 //
-// FLAG (crypto-track follow-up): opening a sealed copy needs THIS device's own
-// network-derived sealing opener (`recipientStrategy({privateKey}).open` over
-// `sealingKeyPairFromNetworkKey(myNetworkSecret)`). That secret is deliberately encapsulated
-// in the agent identity and is not yet exposed to the shell — the receive/crypto track owns
-// that injection. Until it lands, `onOpen` is DENY-SAFE: with no opener a row tap is a no-op
-// (never ciphertext), exactly as the mobile SharedWithMeScreen degrades on a null opener. The
-// list + empty-state + back all work today.
+// OPENING: a sealed copy is opened with THIS device's own network-derived sealing opener —
+// `sealingKeyPairFromNetworkKey(myNetworkSecret)` → `makeOpener(privateKey)`, built via the
+// shared `openerForIdentity` bridge over the chat agent's identity (`agent.sa.agent.identity`,
+// the same one the peer address — hence the recipient network key — is derived from). The
+// network secret stays ENCAPSULATED in the identity (only the opener closure escapes). When no
+// identity is available the opener is null and `onOpen` stays DENY-SAFE (a row tap is a no-op,
+// never ciphertext), exactly as the mobile SharedWithMeScreen degrades.
 async function showSharedWithMe() {
   hideCircleTabBar(tabBarEl);
   let received = [];
@@ -2473,7 +2476,7 @@ async function showSharedWithMe() {
   // Project the raw store entries through the SHARED selector (newest-first, row shape) — the
   // SAME projection the mobile SharedWithMeScreen runs internally (web ≡ mobile).
   const entries = buildSharedWithMe(received);
-  const opener = null;   // crypto-track injection point (see FLAG above)
+  const opener = openerForIdentity(circleCoreAgent?.identity);   // network-derived; null → deny-safe no-op
   renderSharedWithMe(rootEl, {
     entries, t,
     onBack: showMij,

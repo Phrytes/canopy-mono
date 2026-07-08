@@ -383,6 +383,44 @@ export class AgentIdentity {
     return nacl.box.before(peerCurve, this.#boxKP.secretKey);
   }
 
+  // ── Sealed shared-copy opener (SILENT out-of-circle delivery) ────────────────
+
+  /**
+   * Build a per-text OPENER for sealed "shared with me" copies addressed to
+   * this agent's PUBLISHED network key — WITHOUT ever surfacing the network
+   * secret to the caller.
+   *
+   * A silent out-of-circle share seals a COPY to the recipient's X25519
+   * SEALING public key, which the SENDER derives from this agent's published
+   * Ed25519 network key (`@canopy/pod-client` `sealingPublicKeyFromNetworkKey`).
+   * The recipient opens it with the matching SEALING PRIVATE key, derived from
+   * its OWN network secret via the counterpart `sealingKeyPairFromNetworkKey`.
+   *
+   * LAYERING (invariant #5): that X25519 derivation + the envelope `open` live
+   * in the `@canopy/pod-client` ADAPTER, and the kernel must NOT depend UP on an
+   * adapter. So the caller INJECTS the adapter as `deriveOpener` — a pure
+   * `(networkSecretB64) => ((text) => plaintext)` builder the app wires to
+   * `sealingKeyPairFromNetworkKey` + `makeOpener`. This method hands the builder
+   * the raw network secret INTERNALLY and returns ONLY the resulting opener
+   * CLOSURE. The secret / derived private key is NEVER returned or otherwise
+   * exposed to callers — the closure is the sole thing that escapes.
+   *
+   * @param {(networkSecretB64:string)=>((text:string)=>string|Promise<string>)} deriveOpener
+   * @returns {(text:string)=>string|Promise<string>}  a per-text opener closure
+   */
+  sharedCopyOpener(deriveOpener) {
+    if (typeof deriveOpener !== 'function') {
+      throw new Error('sharedCopyOpener: a deriveOpener(networkSecretB64) builder is required');
+    }
+    // The 64-byte Ed25519 secret key IS the network secret `sealingKeyPairFromNetworkKey`
+    // pairs with `sealingPublicKeyFromNetworkKey(pubKey)` (both run the same ed2curve map).
+    const opener = deriveOpener(b64encode(this.#signKP.secretKey));
+    if (typeof opener !== 'function') {
+      throw new Error('sharedCopyOpener: deriveOpener must return an opener function');
+    }
+    return opener;
+  }
+
   // ── Symmetric encryption ───────────────────────────────────────────────────
 
   /**
