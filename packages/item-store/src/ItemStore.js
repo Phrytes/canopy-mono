@@ -28,7 +28,7 @@
 import { Emitter } from '@canopy/core';
 
 import { ulid }                        from './ulid.js';
-import { audienceFromItem, audienceMatches } from './audience.js';
+import { audienceFromItem, audienceMatches, audienceMatchesAny } from './audience.js';
 import {
   ItemNotFoundError,
   PermissionDeniedError,
@@ -807,6 +807,16 @@ export class ItemStore extends Emitter {
     // normalisation lives in `@canopy/circles` (layering).
     if (filter.audience !== undefined) {
       out = out.filter((i) => audienceMatches(audienceFromItem(i), filter.audience));
+    }
+    // SP-8 — cross-circle query: `filter.audiences` is an audience SET.
+    // An item matches when its effective audience satisfies ANY member
+    // of the set (see `audience.js#audienceMatchesAny`).  This is how a
+    // single query spans multiple circles.  `audience` (single) and
+    // `audiences` (set) are independent clauses — both apply (AND) when
+    // both are present; the single-audience path is unchanged.  An
+    // empty `audiences: []` matches nothing.
+    if (filter.audiences !== undefined) {
+      out = out.filter((i) => audienceMatchesAny(audienceFromItem(i), filter.audiences));
     }
     return out;
   }
