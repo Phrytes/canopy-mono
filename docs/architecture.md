@@ -108,9 +108,15 @@ full-screen panel (`openCircleScreenPanel`); conversely a **row action inside a 
 through the same waist** (`dispatchReady`). So a chat command can open a screen, and a screen action can drive a
 chat flow. Three treatments — **inline menu · full-screen panel · chat** — are chosen per user.
 
-*Honest state:* the screen registry is still a **hardcoded `LIST_SCREENS` map**, not yet the manifest-driven
-`surfaces.screen` projection; and the loop is wired in **web** — mobile has the shared pure pieces but its
-panel-openers are still DOM-specific. Closing both is roadmap work.
+*Current state:* the flat **list** surface (contacts/prikbord) is now manifest-projected on both platforms — the
+hardcoded `LIST_SCREENS` map is **retired**; `openCircleScreenPanel` reads its config from the projected
+`NavModel.sections`. **Nav chrome** is dissolving the same way: the **tab bar** now projects from a new nav-chrome
+`NavModel` kind — `manifest.tabs[]` → `NavModel.tabs[]`, a small `NavItem`/`NavTarget` vocabulary both shells
+render from (the duplicated `TABS` literal is gone) — with the detail action-bar (`nav-actions`) next on the same
+vocabulary. A tested generic side-panel (`openPagePanel`) is now the live renderer for simple `surfaces.page` ops
+(web; the RN sibling is chat-nav #128). Still bespoke **by design**: the settings-hub panels (my-data, advisor)
+and the **circleFolio browser** (a separate surface KIND, parked). The compose/trigger loop above is wired in
+**web**; mobile shares the pure pieces but keeps platform-specific renderers.
 
 ## Circles, types, and capabilities — one algebra
 
