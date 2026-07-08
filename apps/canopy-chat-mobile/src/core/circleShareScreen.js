@@ -125,17 +125,19 @@ export async function shareOut({
  * keyed to `circle.share.to_person_done` / `circle.share.to_person_failed`.
  */
 export async function shareToRecipient({
-  itemId, fromCircleId, toCircleId, recipient, recipientNetworkKey, name, by, verify, policyOf,
+  itemId, fromCircleId, toCircleId, recipient, recipientNetworkKey, name, by, verify, includeHistory, policyOf,
   deps = defaultShareDeps,
 } = {}) {
-  const target = String(toCircleId ?? '').trim();
-  if (!itemId || !fromCircleId || !target) return status(false, 'circle.share.to_person_failed', { error: 'missing' });
-  if (target === fromCircleId) return status(false, 'circle.share.to_person_failed', { error: 'same-circle' });
+  // `toCircleId` is now OPTIONAL — a pure person-share needs no target circle. Empty ⇒ undefined (the shared
+  // op grants on the source resource + returns the pointer to relay). The `shareOutOfCircle` policy decides.
+  const target = String(toCircleId ?? '').trim() || undefined;
+  if (!itemId || !fromCircleId) return status(false, 'circle.share.to_person_failed', { error: 'missing' });
+  if (target && target === fromCircleId) return status(false, 'circle.share.to_person_failed', { error: 'same-circle' });
   if (!recipient || !recipientNetworkKey) return status(false, 'circle.share.to_person_failed', { error: 'missing-recipient' });
   let r;
   try {
     r = await deps.shareItemToPublishedKey({
-      itemId, fromCircleId, toCircleId: target, by, recipient, recipientNetworkKey, verify, policyOf,
+      itemId, fromCircleId, toCircleId: target, by, recipient, recipientNetworkKey, verify, includeHistory, policyOf,
     });
   } catch (e) { return status(false, 'circle.share.to_person_failed', { error: e?.message ?? 'error' }); }
   if (r?.ok) return status(true, 'circle.share.to_person_done', { item: itemId, name: name ?? recipient });

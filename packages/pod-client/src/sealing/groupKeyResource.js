@@ -50,14 +50,23 @@ export function unwrapGroupKey(resource, privateKey) {
   return open(resource.sealed, privateKey);
 }
 
-/** The current version's envelope + every retained historic one, as `{version, sealed}`, newest-first. */
+/** The current version's envelope + every retained historic one, as `{version, sealed}`, newest-first.
+ *  A history entry may carry `extra` — SUPPLEMENTARY single-recipient envelopes wrapping the SAME version's
+ *  group key to a recipient granted historic access AFTER the fact (see grantMember `includeHistory`). Each is
+ *  yielded as its own `{version, sealed}`, so a reader holding only an `extra` envelope's key still resolves
+ *  that version. The original `entry.sealed` is left untouched (its recipients are never dropped). */
 function versionEnvelopes(resource) {
   if (!resource || typeof resource.sealed !== 'string') return [];
   const hist = Array.isArray(resource.history) ? resource.history : [];
-  return [
-    { version: resource.version, sealed: resource.sealed },
-    ...[...hist].reverse(),
-  ];
+  const out = [{ version: resource.version, sealed: resource.sealed }];
+  for (const h of [...hist].reverse()) {
+    if (!h || typeof h.sealed !== 'string') continue;
+    out.push({ version: h.version, sealed: h.sealed });
+    for (const ex of (Array.isArray(h.extra) ? h.extra : [])) {
+      if (typeof ex === 'string') out.push({ version: h.version, sealed: ex });
+    }
+  }
+  return out;
 }
 
 /** Unwrap a SPECIFIC version's group key. Gated on membership of THAT version: `open` throws
@@ -68,7 +77,14 @@ export function unwrapGroupKeyVersion(resource, privateKey, version) {
   if (version == null || version === resource.version) return open(resource.sealed, privateKey);
   const entry = (Array.isArray(resource.history) ? resource.history : []).find((h) => h && h.version === version);
   if (!entry || typeof entry.sealed !== 'string') throw new Error(`unwrapGroupKeyVersion: version ${version} is not retained`);
-  return open(entry.sealed, privateKey);   // throws 'not a recipient' if the caller wasn't in this version
+  // The primary envelope first, then any `extra` supplementary envelope (a post-hoc historic grant).
+  try { return open(entry.sealed, privateKey); }
+  catch (e) {
+    for (const ex of (Array.isArray(entry.extra) ? entry.extra : [])) {
+      try { return open(ex, privateKey); } catch { /* not this extra either */ }
+    }
+    throw e;   // not a recipient of the primary OR any extra envelope of this version
+  }
 }
 
 /** Every group-key version the caller CAN unwrap (current + retained history), as `{version, groupKey}`,
@@ -99,14 +115,33 @@ export function openSealedAcrossVersions(sealedText, resource, privateKey) {
 }
 
 /** grant — add a member to the CURRENT version: a current holder unwraps the group key and re-seals the
- *  SAME key to the expanded roster (same version). `currentRecipients` = the roster's public keys. Retained
- *  history is carried forward UNTOUCHED — a new member gets the current version only, never retroactive
- *  access to historic (pre-join) versions (the conservative "normal new member" default). */
-export function grantMember(resource, { newRecipient, granterPrivateKey, currentRecipients }) {
+ *  SAME key to the expanded roster (same version). `currentRecipients` = the roster's public keys.
+ *
+ *  Retained history is, BY DEFAULT, carried forward UNTOUCHED — a new member gets the current version only,
+ *  never retroactive access to historic (pre-join) versions (the conservative "normal new member" default).
+ *
+ *  `includeHistory` OPT-IN (default false) — ALSO grant the new recipient the retained historic versions.
+ *  For every history entry the GRANTER can unwrap, a SUPPLEMENTARY single-recipient envelope wrapping THAT
+ *  version's group key to `newRecipient` is appended to the entry's `extra[]`. The entry's original `sealed`
+ *  is never rewritten, so no existing recipient is dropped and forward secrecy is untouched — this only ADDS
+ *  the explicitly-opted-in recipient to past versions. History entries the granter cannot unwrap are left
+ *  as-is (an honest limitation: the granter can only re-wrap versions it was itself a recipient of; historic
+ *  recipient PUBLIC keys are not retained in the resource, only the group key is recoverable per version). */
+export function grantMember(resource, { newRecipient, granterPrivateKey, currentRecipients, includeHistory = false }) {
   if (!newRecipient) throw new Error('grantMember: newRecipient public key required');
   const groupKey = unwrapGroupKey(resource, granterPrivateKey);
   const recipients = [...(currentRecipients || []), newRecipient];
-  return buildGroupKeyResource({ version: resource.version, groupKey, recipients, history: resource.history });
+  let history = resource.history;
+  if (includeHistory && Array.isArray(history) && history.length) {
+    history = history.map((h) => {
+      if (!h || typeof h.sealed !== 'string') return h;
+      let vgk;
+      try { vgk = open(h.sealed, granterPrivateKey); }   // this version's group key, if the granter held it
+      catch { return h; }                                // granter not a recipient of this version → leave it
+      return { ...h, extra: [...(Array.isArray(h.extra) ? h.extra : []), seal(vgk, [newRecipient])] };
+    });
+  }
+  return buildGroupKeyResource({ version: resource.version, groupKey, recipients, history });
 }
 
 /** revoke / rotate — a NEW group key + version, sealed to the given roster (omit the departed member to

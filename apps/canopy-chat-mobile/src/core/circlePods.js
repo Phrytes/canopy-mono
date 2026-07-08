@@ -15,7 +15,10 @@ import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStora
 import { createAsBackend } from '@canopy/react-native/pseudo-pod-adapter';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth,
-  createSealedPodDataSource, podGroupPrefix } from '@canopy/pod-client';
+  createSealedPodDataSource, podGroupPrefix,
+  recipientStrategy as podRecipientStrategy,
+  sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
+import { sealItem } from '@canopy/item-store';
 import { makeCircleLists } from '@canopy/kring-host/circleLists';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../canopy-chat/src/v2/circlePodProducer.js';
 import { realPodRouting } from '../../../canopy-chat/src/v2/circleRealPod.js';
@@ -301,7 +304,7 @@ export async function shareItemIntoCircle({
  * contact's `pubKey`/`peerAddr` the recipient picker read off the roster row (see `pickableRecipients`).
  */
 export async function shareItemToPublishedKey({
-  itemId, fromCircleId, toCircleId, by, recipient, recipientNetworkKey, verify,
+  itemId, fromCircleId, toCircleId, by, recipient, recipientNetworkKey, verify, includeHistory,
   resolveService, enforcementFor, policyOf,
 } = {}) {
   const r = _shareResolvers(policyOf);
@@ -309,9 +312,22 @@ export async function shareItemToPublishedKey({
     resolveService: resolveService ?? r.resolveService,
     enforcementFor: enforcementFor ?? r.enforcementFor,
     policyOf: r.policyOf,
+    // The `silent` policy path's injected pod-layer crypto (mirror of web circleApp.js — the seal is a shell
+    // adapter, kept out of shared src). `sealingKeyFromNetworkKey` derives the recipient's sealing key.
+    sealCopy: _sealCopyToRecipients,
+    sealingKeyFromNetworkKey: podSealingPublicKeyFromNetworkKey,
+    // FLAGGED payload/recipients — best-effort record that an out-of-circle share happened (see report).
+    notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
     itemId, fromCircleId, toCircleId, by: by ?? getCircleActorWebId() ?? undefined,
-    recipient, recipientNetworkKey, verify,
+    recipient, recipientNetworkKey, verify, includeHistory,
   });
+}
+
+// The injected COPY re-sealer (recipientStrategy + item-store sealItem) — mirror of web's sealCopyToRecipients.
+// A pod-layer adapter (kept out of shared src by design); both shells inject the same 3-line shape.
+function _sealCopyToRecipients(item, keys) {
+  const strat = podRecipientStrategy({ recipients: keys });
+  return sealItem(item, (text) => strat.seal(text));
 }
 
 /** The READ path: everything shared INTO `circleId`, resolved deny-by-default (a non-recipient's ref is dropped). */

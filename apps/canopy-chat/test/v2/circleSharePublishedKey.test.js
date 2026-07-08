@@ -198,17 +198,16 @@ describe('circleShare — shareItemToPublishedKey (grant an OUT-OF-CIRCLE recipi
     expect(sharing.has(uriFor({ sourceCircle: 'A', sourceId: src.id }), 'did:dave')).toBe(false);  // no ACP grant
   });
 
-  it('gates like shareItemAcrossCircles: refuses closed / non-canonical / a missing recipient', async () => {
+  it('governed by shareOutOfCircle: prohibit REFUSES; a missing recipient is refused before any store touch', async () => {
     const svc = makeCircleLists();
     const resolveService = async () => svc;
     const src = await svc.createList('A', 'body', 'alice');
     const base = { resolveService, itemId: src.id, fromCircleId: 'A', toCircleId: 'B', by: 'alice' };
 
-    expect(await shareItemToPublishedKey({ ...base, recipient: 'did:dave', recipientNetworkKey: 'k', policyOf: () => ({ sharePosture: 'closed' }) }))
-      .toEqual({ ok: false, error: 'sharing-closed' });
-    expect(await shareItemToPublishedKey({ ...base, recipient: 'did:dave', recipientNetworkKey: 'k', policyOf: () => ({ sharePosture: 'copy' }) }))
-      .toEqual({ ok: false, error: 'not-canonical' });
-    // A canonical posture but no recipient / no published key ⇒ refused before touching any store.
+    // prohibit ⇒ the admin blocked out-of-circle sharing — refused outright.
+    expect(await shareItemToPublishedKey({ ...base, recipient: 'did:dave', recipientNetworkKey: 'k', policyOf: () => ({ shareOutOfCircle: 'prohibit' }) }))
+      .toEqual({ ok: false, error: 'share-prohibited' });
+    // A permitted policy but no recipient / no published key ⇒ refused before touching any store.
     expect(await shareItemToPublishedKey({ ...base, recipientNetworkKey: 'k', policyOf: canonicalPolicyOf }))
       .toEqual({ ok: false, error: 'missing-recipient' });
     expect(await shareItemToPublishedKey({ ...base, recipient: 'did:dave', policyOf: canonicalPolicyOf }))

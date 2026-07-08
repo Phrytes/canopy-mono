@@ -208,88 +208,186 @@ export async function shareItemAcrossCircles({
 
 /**
  * Share ONE canonical item OUT to an OUT-OF-CIRCLE recipient (objective L · Phase 2) — one who is NOT in the
- * origin roster, identified ONLY by their PUBLISHED Ed25519 network key. Mirrors `shareItemAcrossCircles`'s
- * canonical branch structure: it writes ONLY the `shared-ref` pointer into the target circle (NO copy) and
- * rides the pod-tier `enforcement.onShareToPublishedKey` hook, which derives the recipient's sealing key from
- * their published network key, re-wraps the item's group key to it, and lands the ACP read grant on the
- * CANONICAL resource. The recipient opens the item IN PLACE by deriving their sealing private key from the same
- * network identity. Absent a canonical enforcement (memory path / no pod / not signed in) it degrades to the
- * plain `shared-ref` write — the pre-L in-memory behaviour, byte-for-byte (no grant).
+ * origin roster, identified ONLY by their PUBLISHED Ed25519 network key. This op is now POLICY-GOVERNED by the
+ * SOURCE circle's `shareOutOfCircle` axis (circlePolicy.js), and the target circle is OPTIONAL (a person-share
+ * needs no target circle to land a pointer in).
  *
- * Only the `canonical` posture applies (an out-of-circle party gets a REVOCABLE in-place key grant, never a
- * copy). The SAME source-circle initiator gate as `shareItemAcrossCircles` runs (`closed` refuses,
- * `registered` is admin-only); a non-canonical posture returns `not-canonical`.
+ *   • `prohibit` → REFUSED ({ok:false, error:'share-prohibited'}) — the admin blocked out-of-circle sharing.
+ *   • `notify`   → REVOCABLE CANONICAL in-place grant: rides `enforcement.onShareToPublishedKey` (derive the
+ *       recipient's sealing key from their published network key, re-wrap the item's group key to it + land the
+ *       ACP read grant on the CANONICAL resource — NO copy). A `shared-ref` pointer is written into `toCircleId`
+ *       when one is given (so the recipient surfaces it via `listSharedResolved`); with NO `toCircleId` the
+ *       grant lands on the source resource directly and the (unpersisted) ref is returned for the caller to
+ *       relay. THEN a best-effort `notify(...)` is emitted to tell the circle/admins an item was shared out.
+ *   • `silent`   → COPY: a SEPARATE object sealed to the recipient's network-derived key (privacy — leaves NO
+ *       ACP grant or shared-ref trace on the CANONICAL item), reusing the copy-reseal machinery. See
+ *       `shareSilentCopyToPublishedKey`.
  *
- * REVOKE reuses `revokeItemShare` unchanged — its `enforcement.revokeCanonical` (rotate + ACP-revoke) denies
- * ANY WebID (roster or out-of-circle), so revoking an out-of-circle recipient is
- * `revokeItemShare({ …, recipient, remainingRecipients: <origin roster keys> })`. No published-key revoke op.
+ * `includeHistory` (default FALSE) — a freshly-granted out-of-circle recipient gets the CURRENT content only;
+ * the item's PRE-GRANT history is withheld unless this is explicitly set, in which case the retained historic
+ * group-key versions are re-wrapped to the recipient (grantMember's `extra` path). Copy mode is the current
+ * content only — history N/A.
  *
- * READ: the granted out-of-circle recipient surfaces the item through `listSharedResolved` exactly like a
- * roster canonical recipient — the ACP grant + shared-ref are keyed on their WebID, so the deny-by-default
- * read gate resolves it for them and drops it for a non-recipient. (Their device unwraps the group key with
- * their network-derived sealing key via the circle's own `strategy.open`; that is the reader's concern, not
- * this op's — no new read path.)
+ * Absent a canonical enforcement (memory path / no pod / not signed in) the notify path degrades to the plain
+ * `shared-ref` write (no grant) and the silent path degrades to a plain copy — byte-for-byte the pre-policy
+ * fallbacks. REVOKE reuses `revokeItemShare` unchanged (rotate + ACP-revoke denies any WebID).
  *
  * @param {object} args
  * @param {(circleId:string)=>Promise<{stores:{getStore:Function}}|null>} args.resolveService
  * @param {string} args.itemId
  * @param {string} args.fromCircleId          the SOURCE (origin) circle the canonical item lives in
- * @param {string} args.toCircleId            the target circle the `shared-ref` pointer lands in
- * @param {string} [args.by]                  the initiator (the initiator-gate subject)
+ * @param {string} [args.toCircleId]          OPTIONAL target circle the `shared-ref` pointer lands in (notify)
+ *        / the recipient's delivery circle (silent). Omit for a pure person-share (grant lands on the source).
+ * @param {string} [args.by]                  the initiator (the notify payload actor)
  * @param {string} args.recipient             the out-of-circle recipient's WebID (the ACP grant subject)
  * @param {string} args.recipientNetworkKey   the recipient's PUBLISHED Ed25519 network public key (b64url)
- * @param {(networkKey:string)=>boolean} [args.verify]  optional minimal handshake guard — falsy/throw ⇒ the
- *        grant aborts (nothing written, nothing ACP-granted). A full attestation handshake is a follow-up.
- * @param {(circleId:string)=>Promise<{onShareToPublishedKey?:Function}|null>} [args.enforcementFor]
+ * @param {boolean} [args.includeHistory=false]  opt-in: also grant the retained pre-grant history (notify only)
+ * @param {(networkKey:string)=>boolean} [args.verify]  optional handshake guard — falsy/throw ⇒ grant aborts.
+ * @param {(circleId:string)=>Promise<{onShareToPublishedKey?:Function, onShare?:Function}|null>} [args.enforcementFor]
  * @param {(circleId:string)=>number} [args.postureOf]  target confidentiality (the posture-floor check).
  * @param {(circleId:string)=>(object|Promise<object>)} [args.policyOf]  the SOURCE circle's admin policy.
+ * @param {(item:object, keys:string[])=>(object|Promise<object>)} [args.sealCopy]  the injected recipient
+ *        re-sealer (pod-layer; keeps this module pod-client-free) — REQUIRED for the `silent` copy path.
+ * @param {(networkKey:string)=>string} [args.sealingKeyFromNetworkKey]  derive the recipient's SEALING public
+ *        key from their published network key (pod-client `sealingPublicKeyFromNetworkKey`) — silent path.
+ * @param {(payload:object)=>any} [args.notify]  best-effort emitter called on a successful `notify`-mode share
+ *        (payload/recipients are a product-tunable — see report). Never blocks/fails the share.
  * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, cause?:any}>}
  */
 export async function shareItemToPublishedKey({
   resolveService, itemId, fromCircleId, toCircleId, by,
-  recipient, recipientNetworkKey, verify, enforcementFor, postureOf, policyOf,
+  recipient, recipientNetworkKey, includeHistory = false, verify,
+  enforcementFor, postureOf, policyOf, sealCopy, sealingKeyFromNetworkKey, notify,
 } = {}) {
-  if (typeof resolveService !== 'function' || !itemId || !fromCircleId || !toCircleId) {
+  if (typeof resolveService !== 'function' || !itemId || !fromCircleId) {
     return { ok: false, error: 'missing-args' };
   }
-  if (fromCircleId === toCircleId) return { ok: false, error: 'same-circle' };
+  if (toCircleId && fromCircleId === toCircleId) return { ok: false, error: 'same-circle' };
   if (!recipient || !recipientNetworkKey) return { ok: false, error: 'missing-recipient' };
 
-  // slice 2 — INITIATOR GATE by the SOURCE circle's sharePosture, identical to shareItemAcrossCircles.
+  // GOVERNANCE — the SOURCE circle's `shareOutOfCircle` axis decides whether/how out-of-circle sharing runs.
+  // (This REPLACES the old sharePosture/`not-canonical` gate for person-shares; sharePosture still governs
+  // circle→circle sharing in shareItemAcrossCircles.)
   let srcPolicy;
   try { srcPolicy = typeof policyOf === 'function' ? await policyOf(fromCircleId) : undefined; }
   catch { srcPolicy = undefined; }
-  const policy = normalizeCirclePolicy(srcPolicy);
-  const posture = policy.sharePosture;
-  if (posture === 'closed') return { ok: false, error: 'sharing-closed' };
-  if (posture === 'registered' && !policy.admins.includes(by)) {
-    return { ok: false, error: 'sharing-admin-only' };
-  }
-  // A published-key grant is a CANONICAL in-place share (revocable key grant, NO copy). It applies ONLY to the
-  // `canonical` posture — the copy/closed postures have no in-place revocable grant to give an outside party.
-  if (!isCanonicalPosture(posture)) return { ok: false, error: 'not-canonical' };
+  const outOfCircle = normalizeCirclePolicy(srcPolicy).shareOutOfCircle;
+  if (outOfCircle === 'prohibit') return { ok: false, error: 'share-prohibited' };
 
-  const [fromSvc, toSvc] = await Promise.all([resolveService(fromCircleId), resolveService(toCircleId)]);
-  if (!fromSvc?.stores || !toSvc?.stores) return { ok: false, error: 'no-stores' };
+  const fromSvc = await resolveService(fromCircleId);
+  if (!fromSvc?.stores) return { ok: false, error: 'no-stores' };
+  const toSvc = toCircleId ? await resolveService(toCircleId) : null;
+  if (toCircleId && !toSvc?.stores) return { ok: false, error: 'no-stores' };
 
-  const stores = makeCrossCircleStores(new Map([
-    [fromCircleId, fromSvc.stores.getStore(fromCircleId)],
-    [toCircleId,   toSvc.stores.getStore(toCircleId)],
-  ]));
+  const storeMap = new Map([[fromCircleId, fromSvc.stores.getStore(fromCircleId)]]);
+  if (toCircleId) storeMap.set(toCircleId, toSvc.stores.getStore(toCircleId));
+  const stores = makeCrossCircleStores(storeMap);
 
   const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
-  const grant = enforcement?.onShareToPublishedKey;
 
-  // Write ONLY the `shared-ref` pointer (like the canonical branch) and ride the published-key hook. The
-  // generic `shareIntoAudience` hook carries `recipientKeys` (roster sealing keys); published-key sharing
-  // sources the key from the NETWORK key instead, so we bridge with a tiny adapter closing over
-  // `recipientNetworkKey`/`verify`. Undefined hook (memory path / no pod) ⇒ plain shared-ref write, no grant.
-  return shareIntoAudience(stores, {
-    itemId, fromCircleId, toCircleId, by, recipient, postureOf,
-    onShare: typeof grant === 'function'
-      ? ({ ref }) => grant({ recipient, recipientNetworkKey, verify, ref })
-      : undefined,
-  });
+  // SILENT — a privacy copy sealed to the recipient; no canonical ACP grant / shared-ref trace on the item.
+  if (outOfCircle === 'silent') {
+    return shareSilentCopyToPublishedKey({
+      stores, fromCircleId, toCircleId, itemId, by, recipient, recipientNetworkKey,
+      enforcement, sealCopy, sealingKeyFromNetworkKey, postureOf,
+    });
+  }
+
+  // NOTIFY (default) — the revocable canonical in-place grant, then a best-effort circle/admin notification.
+  const grant = enforcement?.onShareToPublishedKey;
+  const onShare = typeof grant === 'function'
+    ? ({ ref }) => grant({ recipient, recipientNetworkKey, verify, includeHistory, ref })
+    : undefined;
+  const result = await grantToPublishedKey({ stores, fromCircleId, toCircleId, itemId, by, recipient, postureOf, onShare });
+
+  if (result.ok && typeof notify === 'function') {
+    // Best-effort — a notify failure never fails the (already-landed) share. Payload/recipients are FLAGGED.
+    try { await notify({ event: 'item-shared-out-of-circle', itemId, fromCircleId, toCircleId, recipient, by }); }
+    catch { /* best-effort */ }
+  }
+  return result;
+}
+
+/**
+ * The canonical (notify-mode) grant, factored so the `toCircleId`-present and `toCircleId`-absent cases share
+ * one grant hook. WITH a target circle: reuse `shareIntoAudience` (writes the `shared-ref` pointer + grants) —
+ * byte-for-byte the pre-policy behaviour. WITHOUT one: synthesize the ref (NOT persisted anywhere) and call the
+ * grant hook directly, so the ACP + key grant land on the source resource and the caller relays the returned
+ * pointer. Memory path (no hook) with no target circle ⇒ nothing to write, ok with the synthesized ref.
+ */
+async function grantToPublishedKey({ stores, fromCircleId, toCircleId, itemId, by, recipient, postureOf, onShare }) {
+  if (toCircleId) {
+    return shareIntoAudience(stores, { itemId, fromCircleId, toCircleId, by, recipient, postureOf, onShare });
+  }
+  const item = await stores.getStore(fromCircleId).get(itemId);
+  if (!item) return { ok: false, error: 'item-not-found' };
+  const ref = {
+    type: 'shared-ref', sourceCircle: fromCircleId, sourceId: itemId, sourceType: item.type,
+    sharedBy: by ?? 'unknown', posture: Number.isFinite(item.posture) ? item.posture : 0,
+  };
+  if (typeof onShare === 'function') {
+    try { await onShare({ ref, item, recipient, stores }); }
+    catch (cause) { return { ok: false, error: 'share-grant-failed', cause }; }
+  }
+  return { ok: true, ref };
+}
+
+/**
+ * SILENT out-of-circle share — mint a COPY sealed to the recipient's network-derived sealing key (privacy: the
+ * canonical item keeps NO ACP grant / shared-ref trace), reusing the copy-reseal machinery. The recipient's
+ * sealing public key is derived from their published network key via the injected `sealingKeyFromNetworkKey`
+ * (keeps this module pod-client-free). With a delivery `toCircleId` a `shared-ref` to the COPY is written there
+ * (discovery via `listSharedResolved`); with none the copy is ACP-granted directly and the pointer is returned
+ * for out-of-band relay. Missing the injected sealer/derivation/pod hook ⇒ degrade to a plain (unsealed) copy —
+ * the memory fallback, mirroring `shareItemAcrossCircles`' copy branch.
+ */
+async function shareSilentCopyToPublishedKey({
+  stores, fromCircleId, toCircleId, itemId, by, recipient, recipientNetworkKey,
+  enforcement, sealCopy, sealingKeyFromNetworkKey, postureOf,
+}) {
+  const fromStore = stores.getStore(fromCircleId);
+  const srcItem = await fromStore.get(itemId);
+  if (!srcItem) return { ok: false, error: 'item-not-found' };
+
+  let recipientKey = null;
+  if (typeof sealingKeyFromNetworkKey === 'function') {
+    try { recipientKey = sealingKeyFromNetworkKey(recipientNetworkKey); }
+    catch (cause) { return { ok: false, error: 'share-seal-failed', cause }; }
+  }
+
+  // Sealed copy path — needs the injected sealer + a derived recipient key + a pod grant hook.
+  if (typeof sealCopy === 'function' && recipientKey && typeof enforcement?.onShare === 'function') {
+    let copy;
+    try {
+      const sealed = await sealCopy(srcItem, [recipientKey]);
+      const { id: _srcId, ...sealedNoId } = sealed;
+      copy = await fromStore.put({ ...sealedNoId, sharedCopyOf: itemId }, { by });
+    } catch (cause) { return { ok: false, error: 'share-seal-failed', cause }; }
+
+    if (toCircleId) {
+      // Deliver via a shared-ref to the COPY in the delivery circle (grant lands on the copy, source untouched).
+      return shareIntoAudience(stores, {
+        itemId: copy.id, fromCircleId, toCircleId, by, recipient, postureOf, onShare: enforcement.onShare,
+      });
+    }
+    const ref = {
+      type: 'shared-ref', sourceCircle: fromCircleId, sourceId: copy.id, sourceType: srcItem.type,
+      sharedBy: by ?? 'unknown', silent: true,
+    };
+    try { await enforcement.onShare({ ref, recipient, stores }); }
+    catch (cause) { return { ok: false, error: 'share-grant-failed', cause }; }
+    return { ok: true, ref };
+  }
+
+  // Degraded memory path — still produce a SEPARATE object (a plain copy) so the op's shape holds; no grant.
+  const { id: _id, ...srcNoId } = srcItem;
+  const copy = await fromStore.put({ ...srcNoId, sharedCopyOf: itemId }, { by });
+  const ref = {
+    type: 'shared-ref', sourceCircle: fromCircleId, sourceId: copy.id, sourceType: srcItem.type,
+    sharedBy: by ?? 'unknown', silent: true,
+  };
+  if (toCircleId) await stores.getStore(toCircleId).put(ref, { by });
+  return { ok: true, ref };
 }
 
 /**

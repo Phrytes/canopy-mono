@@ -84,9 +84,11 @@ export function buildCircleShareEnforcement({ sharing, strategy, podRoot, contro
   // roster OR out-of-circle — by rotating the group key to the remaining recipients, so it IS the Phase-2
   // revoke. The origin roster is seeded as `currentRecipients` (default; a caller may override per-call).
   if (canonicalShare && typeof canonicalShare.shareToPublishedKey === 'function') {
-    enforcement.onShareToPublishedKey = async ({ recipient, recipientNetworkKey, currentRecipients: roster, verify, ref } = {}) => {
+    enforcement.onShareToPublishedKey = async ({ recipient, recipientNetworkKey, currentRecipients: roster, verify, ref, includeHistory = false } = {}) => {
       const cur = Array.isArray(roster) ? roster.filter(Boolean) : await currentRecipients();
-      return canonicalShare.shareToPublishedKey({ recipient, recipientNetworkKey, currentRecipients: cur, verify, ref });
+      // `includeHistory` (default false) is threaded straight through — the op decides; the substrate re-wraps
+      // the retained historic versions to the recipient only when explicitly opted in (see grantMember).
+      return canonicalShare.shareToPublishedKey({ recipient, recipientNetworkKey, currentRecipients: cur, verify, ref, includeHistory });
     };
   }
 

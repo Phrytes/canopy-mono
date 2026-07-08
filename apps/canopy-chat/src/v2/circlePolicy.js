@@ -33,6 +33,17 @@ export const CIRCLE_POLICY_ENUMS = {
   // un-sharing rotates the key + ACP-revokes. Mirrors item-store's SHARE_POSTURES; routed via
   // `@canopy/pod-client` createCanonicalShare (share=grant, revoke=rotate). See circleShare.js.
   sharePosture:         ['closed', 'copy', 'trusted', 'registered', 'canonical'],
+  // shareOutOfCircle — the axis that GOVERNS sharing an item OUT to an OUT-OF-CIRCLE recipient (a person
+  // known only by their published network key, NOT a roster member); orthogonal to `sharePosture` (which
+  // governs circle→circle sharing). Admin-set, per-circle. See circleShare.js `shareItemToPublishedKey`.
+  //   'prohibit' — out-of-circle sharing is REFUSED (the admin blocked it): {ok:false, error:'share-prohibited'}.
+  //   'notify'   — proceeds as a REVOCABLE CANONICAL in-place grant (the existing shareItemToPublishedKey
+  //                path: key re-wrap + ACP grant on the canonical item, NO copy) AND emits a notification to
+  //                the circle/admins that an item was shared outside — the TRANSPARENT middle.
+  //   'silent'   — proceeds WITHOUT a circle-visible trace, and — for privacy — as a COPY (a separate object
+  //                sealed to the recipient's network-derived key), NOT the canonical in-place grant (which
+  //                would leave an ACP grant + shared-ref trace on the canonical item).
+  shareOutOfCircle:     ['prohibit', 'notify', 'silent'],
   agents:               ['yes', 'admin-approval', 'no'],
   revealPolicy:         ['pairwise', 'open'],
   pod:                  ['none', 'shared', 'personal', 'hybrid'],
@@ -72,6 +83,11 @@ export const DEFAULT_CIRCLE_POLICY = {
   llmTool:          'off',
   storagePosture:   'p0',   // sealing OFF by default; the household app sets 'p2' on its circles
   sharePosture:     'closed', // INTERIM default pending product decision (PLAN-circle-share-policy §8) — 'copy' vs 'closed'
+  // PRODUCT-TUNABLE default (FLAGGED): 'notify' is the transparent middle — out-of-circle person-sharing
+  // works (backward-compatible with the shipped unconditional canonical grant) AND the circle/admins are
+  // told it happened. 'prohibit' would break the shipped op by default; 'silent' would hide out-of-circle
+  // sharing from admins by default (surprising, less transparent). Revisit with product.
+  shareOutOfCircle: 'notify',
   agents:           'admin-approval',
   revealPolicy:     'pairwise',
   pod:              'none',
@@ -165,6 +181,7 @@ export function normalizeCirclePolicy(stored = {}) {
     llmTool:            pickEnum('llmTool'),
     storagePosture:     pickEnum('storagePosture'),
     sharePosture:       pickEnum('sharePosture'),
+    shareOutOfCircle:   pickEnum('shareOutOfCircle'),
     agents:             pickEnum('agents'),
     revealPolicy:       pickEnum('revealPolicy'),
     pod:                pickEnum('pod'),

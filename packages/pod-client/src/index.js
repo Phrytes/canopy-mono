@@ -58,6 +58,7 @@ export {
   recipientId, generateKeypair, generateGroupKey, isSealed,
   seal, open, sealWithGroupKey, openWithGroupKey,
   makeSealer, makeOpener, makeGroupSealer, makeGroupOpener,
+  sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey,   // out-of-circle: derive a sealing key from a published network key
   createSealedPodClient, recipientStrategy, groupKeyStrategy,
   buildGroupKeyResource, unwrapGroupKey, grantMember, rotateGroupKeyResource,
   createSealedIndex, upsertEntry, removeEntry, getEntry, decodePseudonym,
