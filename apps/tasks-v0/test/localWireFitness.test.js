@@ -22,11 +22,8 @@ import { describe, it, expect } from 'vitest';
 import { ItemStore } from '@canopy/item-store';
 import { MemorySource } from '@canopy/core';
 import { createAgent, Parts } from '@canopy/sdk';
-// The `local ≡ wire` harness lives at the SDK layer (`@canopy/sdk/testing` once
-// this branch is installed). Imported here by RELATIVE path to the worktree
-// source because the pre-wired `node_modules/@canopy/sdk` symlink resolves to a
-// sibling checkout that predates the export. Harness is dependency-free.
-import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';
+// The `local ≡ wire` harness lives at the SDK layer (dependency-free).
+import { describeLocalWireFitness } from '@canopy/sdk/testing';
 
 import { createTasksService } from '../src/Service.js';
 import { buildSkills, TASK_CORES } from '../src/skills/index.js';

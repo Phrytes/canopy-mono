@@ -18,10 +18,8 @@
 import { describe, it, expect } from 'vitest';
 
 import { createAgent, Parts } from '@canopy/sdk';
-// Harness lives at the SDK layer; imported by RELATIVE path to the worktree
-// source (the pre-wired `node_modules/@canopy/sdk` symlink resolves to a
-// sibling checkout that predates the `@canopy/sdk/testing` export).
-import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';
+// The `local ≡ wire` harness lives at the SDK layer (dependency-free).
+import { describeLocalWireFitness } from '@canopy/sdk/testing';
 
 import { createStoopService } from '../src/Service.js';
 import { STOOP_CORES } from '../src/skills/index.js';
