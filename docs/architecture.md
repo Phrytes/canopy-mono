@@ -4,7 +4,29 @@ The deep version of how canopy fits together. If you only need the summary, the 
 invariants in [`CLAUDE.md`](../CLAUDE.md) and the [project overview](../README.md) are enough. Read this when
 you need to *understand the whole system* — why it's shaped this way, and how a request actually flows.
 
-## The one idea
+**The model in one sentence.** Every interface — AI, GUI, slash command, deterministic gate — compiles to the
+same `{opId, args}` and hands it to `callSkill`; an app's `manifest.js` is the single contract, and pure
+projectors turn that one declaration into every surface. Interfaces are pass-throughs (*doorgeefluik*); the
+manifest is the contract; the functionality the op names resolves *wherever it lives*.
+
+**How this document is organised.** Five parts, front to back — the model, then how it runs, then the domain
+it models, then the system it runs on, then where it's going:
+
+| Part | Sections | What you get |
+|---|---|---|
+| **1 · The model** | The one idea · The manifest is the contract | the thin waist, and the single declaration every surface reads |
+| **2 · How it runs** | How a request flows · Retrieval (RAG) · Chat and screens compose | a request end to end, how answers are grounded, and how surfaces trigger each other |
+| **3 · The domain** | Circles/types/capabilities · Sharing | the one `(circle, type, verb)` algebra, and how sealed sharing rides on it |
+| **4 · The system** | The layers · Placement by trust+latency · Agents interacting · Reachability | kernel/adapters/substrates, where compute is placed, and the inter-agent axis |
+| **5 · Direction** | Direction · Where to go next | what's being enforced next, and pointers onward |
+
+---
+
+## 1 · The model
+
+*The thin waist, and why the two consequences that fall out of it are the whole architecture.*
+
+### The one idea
 
 Every way a user can ask for something — a chat/LLM turn, a GUI tap, a slash command, a deterministic phrase
 gate — **compiles down to the same intermediate**, `{opId, args}`, and hands it to `callSkill`. That shared
@@ -29,7 +51,7 @@ Two consequences follow from the waist, and they are the whole architecture:
 This is the seam the repo will eventually split on: **interface clients above the waist**,
 **functionality/substrate below it**, the **manifest between**.
 
-## The manifest is the contract
+### The manifest is the contract
 
 An app declares its surface **once, as data**, in a `manifest.js`: its item types, operations, views, and
 per-operation surface hints. It is the single source of truth every surface reads. Five pure **projectors**
@@ -53,7 +75,14 @@ while `renderWeb`/`renderMobile` are thin **platform shells** — and `renderMob
 (`npm run coverage` → `apps/canopy-chat/docs/surface-coverage.md`) records which surfaces each op is wired for,
 so the map can't drift from the manifests.
 
-## How a request flows, end to end
+---
+
+## 2 · How it runs
+
+*The waist in motion: a request end to end, how the circle bot's answers are grounded, and how the two surface
+families compose.*
+
+### How a request flows, end to end
 
 1. **Invocation** — the user types in chat, taps a button, runs `/command`, or hits a gate phrase ("add milk").
 2. **Compile to the waist** — the interface's projector turns that into `{opId, args}`. The gate resolves
@@ -67,7 +96,7 @@ so the map can't drift from the manifests.
 6. **Result** — flows back to the invoking surface. Verify the *result*, not just that dispatch fired: a gate
    can route correctly while the op silently fails.
 
-## Retrieval (RAG) — grounding the circle bot
+### Retrieval (RAG) — grounding the circle bot
 
 Each circle has an assistant (the "circle bot"). Before it answers via the LLM, it retrieves the circle's own
 relevant items and weaves them into the prompt, so answers are grounded in the circle's real data (chores,
@@ -101,7 +130,7 @@ survives an app restart on a signed-in pod, and exercises the ACP grant path aga
 - Retrieval is local; embeddings run only through the configured provider, so nothing leaves the device unless
   that provider's base URL says so. Vectors live under `private/state/search-index/`, never under `sharing/`.
 
-## Chat and screens compose (and trigger each other)
+### Chat and screens compose (and trigger each other)
 
 There are two surface *families* over the waist, not one: **conversational** (chat/gate/slash) and **screen**
 (the web/mobile GUI). They don't merely render the same op in parallel — they **compose and trigger each other**.
@@ -127,7 +156,14 @@ Still bespoke **by design**: the settings-hub panels (my-data, advisor) and the 
 separate surface KIND, parked). The compose/trigger loop (open-screen button ↔ `dispatchReady`) is wired in
 **web**; mobile now shares the projected nav chrome but keeps its own screen renderers.
 
-## Circles, types, and capabilities — one algebra
+---
+
+## 3 · The domain
+
+*What the system actually models: one algebra of circles, types, and capabilities — and how every kind of
+sharing is a move over a single sealed resource.*
+
+### Circles, types, and capabilities — one algebra
 
 A few concepts are deliberately *the same thing*, so that data, permissions, and audience line up instead of
 drifting apart:
@@ -146,7 +182,7 @@ The upshot: the **type axis** (item-types), the **verb axis** (atoms), and the *
 — **storage, permissions, and surfaces are all projections of one `(circle, type, verb)` space.** That is why a
 new noun added to a manifest becomes storable, gate-able, and renderable at once.
 
-## Sharing — in place, across circles, and beyond them
+### Sharing — in place, across circles, and beyond them
 
 Sealed circles (postures p2/p3) encrypt content under a per-circle **group key**, kept in a *versioned*
 **group-key resource** on the pod — each version wrapped to the then-current members' keys. Membership **is**
@@ -178,7 +214,14 @@ is a move over this one resource, so it never copies data it needn't and revocat
   hands the secret to an injected builder internally and returns just the closure), and the pod-client adapter
   supplies the derivation. The secret never leaves the identity.
 
-## The layers — kernel, adapters, substrates, apps
+---
+
+## 4 · The system
+
+*What it all runs on: the layer stack, the rule for where compute is placed, and the inter-agent axis with the
+paths that carry it.*
+
+### The layers — kernel, adapters, substrates, apps
 
 Code depends downward only — a project-wide invariant (full detail:
 [`conventions/architectural-layering.md`](./conventions/architectural-layering.md)):
@@ -222,7 +265,7 @@ trust + latency (below), that sits *outside* the client apps. The `feedback` dep
 runs a live Solid-pod host, HTTP services, and a container stack that no client app has). This is where the
 eventual repo split's server side lives.
 
-## Placement by trust + latency — never default-to-server
+### Placement by trust + latency — never default-to-server
 
 *Where* functionality runs is decided by **trust and latency, not convenience**. Sensitive compute (pod
 access, sealing, the confidential LLM transport) stays client-side or in an **attested enclave** (TEE);
@@ -234,7 +277,7 @@ moving private data onto an untrusted host. Correspondingly:
 - **Pod is truth, local cache is reality.** When a pod is configured it's authoritative but slow; the UI reads
   the local cache and syncs on a cadence with optimistic, queued writes. A pod outage must not break the app.
 
-## Agents interacting (the inter-agent axis)
+### Agents interacting (the inter-agent axis)
 
 The flow above is **intra-agent**: one interface → the waist → dispatch → functionality. Equally fundamental is
 the **inter-agent** axis — agents as **peers exchanging over a transport**, carried by an **envelope**. One wire
@@ -245,7 +288,7 @@ validation travelling **in the envelope**. This is what lets functionality resol
 (consequence #2 above), and it's the substrate the developer-integration on-ramps (a connected bot, a remote
 handler) build on. The paths that carry it are below.
 
-## Reachability
+### Reachability
 
 Two peers exchange messages over whichever path is currently usable; a per-peer picker chooses, no app code
 does. Paths: **direct** (mDNS/TCP, BLE, or relay-signalled WebRTC), **relay** (`@canopy/relay`, rendezvous or
@@ -253,7 +296,13 @@ sealed proxy-fallback), **NKN** (the public messaging network, no operator to ru
 relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
 [project overview → Reachability](../README.md#reachability--transports).
 
-## Direction (where this is going)
+---
+
+## 5 · Direction
+
+*Where this is going, and where to read next.*
+
+### Direction (where this is going)
 
 - **Apps dissolve into canopy-chat** (decided 2026-06-11). The manifest-per-app split is an *engineering*
   boundary, not a product one: the `manifest.js` declarations stay (they're the source of truth every
@@ -266,7 +315,7 @@ relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
   app**, and **third-party apps** that build against the Solid pod + `@canopy/sdk` (pod ACPs are the access
   contract) without touching this repo.
 
-## Where to go next
+### Where to go next
 
 - [`CLAUDE.md`](../CLAUDE.md) — the working conventions + the invariants, for agents editing code here.
 - [`conventions/`](./conventions/) — the detailed project-wide rules.
