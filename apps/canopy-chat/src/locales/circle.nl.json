@@ -2769,5 +2769,10 @@
     "embedModel": "Embedder-model",
     "apiKey": "API-sleutel (optioneel)",
     "attestation": "Ik heb geverifieerd dat deze enclave attested is (staat een niet-loopback vertrouwelijk adres toe)"
+  },
+  "sharedWithMe": {
+    "title": { "text": "Met mij gedeeld", "doc": "Kop van de lijst met verzegelde kopieën die contacten privé naar dit apparaat deelden." },
+    "empty": { "text": "Nog niets met je gedeeld.", "doc": "Lege staat van de met-mij-gedeeld-lijst." },
+    "row": { "text": "{type} van {from}", "doc": "Een met-mij-gedeeld-rij; {type} is het itemtype, {from} de afzender." }
   }
 }

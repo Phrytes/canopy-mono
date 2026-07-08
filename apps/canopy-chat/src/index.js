@@ -96,6 +96,11 @@ export {
 } from './v2/circlePolicyStore.js';
 // β.5 — "pin to top" per-user preference (single keyless map of circleId → true).
 export { createCirclePinStore, localStoragePinIo } from './v2/circlePinStore.js';
+// SILENT out-of-circle delivery — the per-user "shared with me" store + its pure projector/opener, and the
+// inbound `shared-copy` peer handler that lands relayed sealed copies into the store (web ≡ mobile).
+export { createSharedWithMeStore, localStorageSharedWithMeIo } from './v2/sharedWithMeStore.js';
+export { buildSharedWithMe, openSharedCopy } from './v2/sharedWithMe.js';
+export { makeHandleSharedCopy } from './core/handlers/sharedCopyReceive.js';
 // N2 — per-option consequence registry (ⓘ "Gevolgen als je dit kiest…").
 export {
   CONSEQUENCE_OPTIONS, hasConsequence, consequenceKeyFor, attachConsequences,

@@ -2769,5 +2769,10 @@
     "embedModel": "Embedder model",
     "apiKey": "API key (optional)",
     "attestation": "I have verified this enclave is attested (allows a non-loopback confidential address)"
+  },
+  "sharedWithMe": {
+    "title": { "text": "Shared with me", "doc": "Header of the list of sealed copies peers shared privately to this device." },
+    "empty": { "text": "Nothing shared with you yet.", "doc": "Empty state on the shared-with-me list." },
+    "row": { "text": "{type} from {from}", "doc": "A shared-with-me row; {type} is the item type, {from} the sender." }
   }
 }
