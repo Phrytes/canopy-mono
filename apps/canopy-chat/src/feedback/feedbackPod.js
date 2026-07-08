@@ -5,8 +5,8 @@
 // on-device and the participant writes their OWN container — nothing raw leaves, and the
 // write IS the consent.
 
-import { makeCssCentralPod } from '../../../feedback-pipeline/src/pod/css-auth.js';
-import { PodRoundControl } from '../../../feedback-pipeline/src/verify/round-control.js';
+// Single sanctioned import point into feedback (F1 boundary — the package `./public` barrel).
+import { makeCssCentralPod, PodRoundControl } from '../../../feedback-pipeline/src/public/index.js';
 
 /** POST the activation service → the participant's container URI (podRef). */
 export async function activateParticipant({ activationUrl, projectId, code, recoveryHash, webId, fetchImpl = fetch }) {

@@ -4,6 +4,9 @@
   "description": "Local-LLM message clean/anonymize + dedup-summarize pipeline (feedback-infrastructuur step 3+5). Experiment / pre-DD.",
   "type": "module",
   "private": true,
+  "exports": {
+    "./public": "./src/public/index.js"
+  },
   "scripts": {
     "test": "node --test",
     "mockup-smoke": "node scripts/mockup-project-smoke.js",
@@ -33,6 +36,9 @@
     "verify-summary-css": "node scripts/verify-summary-css.js"
   },
   "dependencies": {
+    "@canopy/core": "workspace:*",
+    "@canopy/pod-client": "workspace:*",
+    "@canopy/pseudo-pod": "workspace:*",
     "@canopy/redaction": "workspace:*",
     "@inrupt/solid-client-authn-core": "^4.0.0",
     "@modelcontextprotocol/sdk": "^1.29.0",

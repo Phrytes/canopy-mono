@@ -10,12 +10,13 @@
 // can only reach a safe (local/loopback/attested) model. DOM-free + testable: the host injects
 // `emit(reply)` — the sink that renders a bot reply ({chatId, text, buttons}) into the thread.
 
-import { InternalBus } from '../../../../packages/core/src/transport/InternalTransport.js';
-import { InternalBusBridge, connectFeedbackParticipant } from '../../../feedback-pipeline/src/channel/internal-bus-bridge.js';
-import { CanopyChatBot } from '../../../feedback-pipeline/src/channel/canopy-chat-bot.js';
-import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-pod.js';
-import { validateProjectConfig, exampleProjectConfig } from '../../../feedback-pipeline/src/config/project-config.js';
-import { applyLlmRoute, assertCleanRouteSafe } from '../../../feedback-pipeline/src/ollama.js';
+import { InternalBus } from '@canopy/core';
+// Single sanctioned import point into feedback (F1 boundary — the package `./public` barrel;
+// relative until the F3 physical carve makes it a published-package specifier).
+import {
+  InternalBusBridge, connectFeedbackParticipant, CanopyChatBot, InMemoryCentralPod,
+  validateProjectConfig, exampleProjectConfig, applyLlmRoute, assertCleanRouteSafe,
+} from '../../../feedback-pipeline/src/public/index.js';
 
 /**
  * @param {object} a
