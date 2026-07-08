@@ -4,10 +4,16 @@ Android RN composition shell that unifies tasks-v0 + stoop + folio +
 household + calendar over a shared InternalBus, rendered with React
 Native + `renderMobile(manifest) → NavModel`.
 
-**Status:** V0 skeleton (#222 of the mobile roadmap). The portable
-composition layer is wired + tested; the RN shell is a placeholder
-ChatScreen that proves the bundle boots. Real chat-shell parity
-with web canopy-chat is the multi-slice arc tracked in
+**Status:** well past the V0 skeleton (#222 of the mobile roadmap). The
+portable composition core is wired + tested; the agent bundle boots a
+**real** per-app agent (the V0 `agent-not-booted` stub fell away in V1);
+and the RN shell is now a full multi-screen kring app — a launcher, a
+manifest-projected tab bar and detail action-bar / kring ⋯ menu, and a
+large set of circle screens (settings, folio, share, advisor, lists,
+stream, my-data, …) — all rendering from `renderMobile` NavModels. The
+vitest suite is green. The remaining tail is real on-device verification
+(#249) and the `surfaces.page` RN side-panel sibling (#128). The
+multi-slice parity arc with web canopy-chat is tracked in
 `Project Files/canopy-chat/mobile-roadmap-2026-05-24.md`.
 
 ## Layout
@@ -17,15 +23,17 @@ src/
   core/                # portable — runs in vitest, web, AND React Native
     composeManifests.js  # merges all 5 app manifests via canopy-chat's mergeManifests
     navModel.js          # buildNavModels() → one renderMobile NavModel per app
-    agentBundle.js       # V0 stub dispatcher; V1 wires per-app agents (#225.1)
+    agentBundle.js       # boots a real per-app agent (canopy-chat realAgent); skillStub seam for tests
     localisation.js      # t() with {text, doc} unwrap (en + nl)
   screens/             # RN only — wraps the portable core
-    ChatScreen.js        # V0 placeholder: shows boot state + per-app sections counts
+    ChatScreen.js        # the chat surface (boot state, per-app sections, slash FAB)
+    v2/                  # the kring app — CircleLauncherScreen, CircleTabBar (projected tabs),
+                         #   CircleDetail (projected action-bar), CircleShareScreen, CircleFolioScreen,
+                         #   CircleSettingsScreen, CircleAdvisorScreen, … (30+ circle screens)
 locales/
   en.json, nl.json     # {text, doc} leaves; convention enforced from day 1
 App.js, index.js       # Expo entry; polyfills MUST be the first import
-test/
-  bootSmoke.test.js    # vitest: composeManifests, buildNavModels, bootAgentBundle, t()
+test/                  # vitest — bundle-boot smoke plus the JM-* journey + projection suites
 ```
 
 ## What works today
@@ -35,26 +43,36 @@ test/
 - ✅ `buildNavModels()` produces a `renderMobile` NavModel per app
   (canopy-chat, household, tasks-v0, stoop, folio, calendar) — every
   manifest projects to a JSON-serialisable NavModel.
-- ✅ `bootAgentBundle()` returns a working `callSkill` dispatcher
-  with a test-double seam (`opts.skillStub`) for substrate tests.
+- ✅ `bootAgentBundle()` boots a **real** per-app agent via
+  canopy-chat's `realAgent` chain (the `opts.skillStub` seam is
+  test-only; the V0 `agent-not-booted` stub is gone).
+- ✅ **Nav chrome projects from the manifest.** The tab bar
+  (`CircleTabBar` via `circleTabsMobile`) and the detail action-bar /
+  kring ⋯ menu (`CircleLauncherScreen` via `circleActionsMobile`) read
+  the SAME roster the web shell does — `renderMobile ≡ renderWeb` — so
+  there is no hand-written mobile tab/action list to drift.
+- ✅ Per-screen RN rendering of `renderMobile` NavModels: the launcher
+  plus 30+ circle screens render from the projections.
 - ✅ `t()` resolves localised strings with `{{param}}` interpolation;
   EN + NL bundles in sync.
-- ✅ Vitest bundle-boot smoke test: 5/5 green.
+- ✅ Vitest suite green (bundle-boot smoke + the JM-* journey +
+  projection suites; the 3 baseline reds — nav order, native-push
+  absence, podAuth token shape — were cleared 2026-07-08).
 
-## What's stubbed
+## What's stubbed / unverified
 
-- ❌ `bootAgentBundle()` returns `{ok:false, error:'agent-not-booted'}`
-  for any skill call. Real per-agent boot needs the realAgent.js
-  portable-half lift (**#225.1**).
-- ❌ NKN-on-RN transport (**#223**) — mesh flows can't actually
-  cross devices until this lands. Required for JM-1, JM-2, JM-7,
-  JM-8, JM-9 cross-device demos.
-- ❌ Per-screen RN rendering of `renderMobile` NavModels (**#225.2**
-  splits thread state-machines from web render so RN can consume).
+- ❌ Generic `surfaces.page` RN side-panel (**#128**) — mobile has the
+  per-op page *header* projection, but the web `openPagePanel`
+  side-panel renderer has no RN sibling yet.
+- ⏳ NKN-on-RN mesh transport (**#223**) is **wired** (one NKN identity
+  shared across screens; `NknTransport` + `podPeerAddr` NKN-on-pod
+  wrappers). Cross-device journeys (JM-1/2/7/8/9) pass in the vitest
+  journey spine, but end-to-end mesh over real radios is only confirmed
+  on hardware as part of the #249 on-device run.
 - ⏳ Android `expo run:android` first boot — see the **Running →
   Android** section for the exact command sequence. Pending a real
-  on-device run (#249); structurally complete + Hermes-clean as
-  of #222 V1, but unverified on hardware.
+  on-device run (#249); structurally complete + Hermes-clean, but
+  unverified on hardware.
 
 ## Running
 
