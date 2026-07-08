@@ -5,7 +5,27 @@
  * stoop.subscribeExpoPush; denied/simulator paths short-circuit.
  */
 import { describe, it, expect, vi } from 'vitest';
+import Module from 'module';
 import { enableNativePush, disableNativePush, getNativePushState, presentLocalNotification } from '../src/v2/nativePush.js';
+
+/**
+ * Force the "native module absent" condition. expo-notifications / expo-device
+ * are real installed deps, so in the vitest node env `require(…)` resolves them
+ * and the module-absent fallback can't be reached by simply omitting deps. This
+ * makes the module loader throw MODULE_NOT_FOUND for those specifiers — exactly
+ * what Node's require does on a device/build where the native dep isn't present.
+ * Runs `fn`, always restores the loader.
+ */
+async function withNativeModulesAbsent(fn) {
+  const orig = Module._load;
+  Module._load = function (request, ...rest) {
+    if (request === 'expo-notifications' || request === 'expo-device') {
+      throw Object.assign(new Error(`Cannot find module '${request}'`), { code: 'MODULE_NOT_FOUND' });
+    }
+    return orig.call(this, request, ...rest);
+  };
+  try { return await fn(); } finally { Module._load = orig; }
+}
 
 const TOKEN = 'ExponentPushToken[xyz]';
 const fakeDevice = (isDevice = true) => ({ isDevice });
@@ -59,16 +79,9 @@ describe('getNativePushState', () => {
     const state = await getNativePushState({ notifications: fakeNotifications({ granted: true }), device: fakeDevice() });
     expect(state).toEqual({ supported: true, granted: true });
   });
-  // ⚠️ KNOWN-FAILING — DEFERRED (recorded REMAINING-WORK.md §M test-hygiene, 2026-07-05).
-  // Not a product bug and NOT a §1b regression (this path is untouched by that work): in the vitest env the
-  // `require('expo-notifications')`-style probe RESOLVES (a stub) instead of throwing, so `getNativePushState()`
-  // reports `supported:true` where the test expects `false` for module-absence. This is an RN-vitest harness
-  // artifact (native-module resolution in a non-native env — cf. the resolve.alias quirks the mobile suite
-  // already needs). DEFERRED as test-harness debt — fix opportunistically when the mobile vitest harness is
-  // next touched (mock the native probe to throw); no product-logic change implied.
   it('reports unsupported when the native module is absent', async () => {
-    // No injected deps + no installed module → require throws → unsupported.
-    const state = await getNativePushState();
+    // No injected deps + module loader throws MODULE_NOT_FOUND → require throws → unsupported.
+    const state = await withNativeModulesAbsent(() => getNativePushState());
     expect(state.supported).toBe(false);
   });
 });
