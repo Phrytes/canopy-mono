@@ -491,7 +491,7 @@
  * projection feeds renderMobile (renderMobile re-exports renderWeb), so
  * renderWeb ≡ renderMobile holds by construction.
  *
- * EXTENSION PATH → `nav-actions` (Surface 2, a SEPARATE follow-up).  The
+ * SIBLING KIND → `nav-actions` (Surface 2, now implemented).  The
  * detail action-bar (per-detail buttons) is a SIBLING nav-chrome kind: an
  * ordered list of the SAME `{ id, labelKey, icon?, target }` NavItem shape,
  * projected to `NavModel.actions[]` (or `navActions[]`) from a
@@ -812,7 +812,7 @@ function buildPage(op, page) {
  * NavModel NavItem.  Defensive passthrough of the validated shape
  * (`{ id, labelKey, icon?, target }`).  `target` is the NavTarget union —
  * copied field-by-field so the NavModel stays pure-data.  Shared with the
- * future `nav-actions` kind (Surface 2), which reuses this exact NavItem
+ * `nav-actions` kind (Surface 2), which reuses this exact NavItem
  * shape + `buildNavTarget`.
  */
 function buildTab(tab) {

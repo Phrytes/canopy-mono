@@ -50,7 +50,7 @@
 
 /**
  * Nav-chrome NavItem (D / Surface 1).  A top-level TAB BAR root.  The SAME
- * shape backs the future nav-actions kind (Surface 2 — the detail action-bar),
+ * shape backs the nav-actions kind (Surface 2 — the detail action-bar),
  * so `Tab` is the reusable nav-chrome entry, not a tab-only type.
  *
  * @typedef {object} Tab
