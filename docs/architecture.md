@@ -89,8 +89,9 @@ a **persistent** one — web via `pickWebBackend` (IndexedDB, `@canopy/pseudo-po
 `createAsBackend` (RN AsyncStorage) — scoped `circle-rag/<circleId>`, with an in-memory fallback under SSR / the
 test env. So vectors (and the circle **items** they index, on the same persistent backend) **survive a hard
 restart** instead of re-embedding; within a session, retriever rebuilds hydrate from the store (embed-once).
-This closes cross-restart survival on the standalone (no-pod) posture; a real **signed-in Solid pod** remains
-the other persistence path (live-infra routing).
+This closes cross-restart survival on the standalone (no-pod) posture. The other persistence path — a real
+**signed-in Solid pod** — is now **live-validated** too: an end-to-end live-infra test confirms a circle (with
+its items) survives an app restart on a signed-in pod, and the ACP grant path is exercised against real CSS.
 
 **Policy & privacy** (invariant #7 — placed by trust):
 - Gated by `llmTool: 'off'` ⇒ no LLM and no semantic retrieval.
@@ -108,15 +109,22 @@ full-screen panel (`openCircleScreenPanel`); conversely a **row action inside a 
 through the same waist** (`dispatchReady`). So a chat command can open a screen, and a screen action can drive a
 chat flow. Three treatments — **inline menu · full-screen panel · chat** — are chosen per user.
 
-*Current state:* the flat **list** surface (contacts/prikbord) is now manifest-projected on both platforms — the
+*Current state:* the flat **list** surface (contacts/prikbord) is manifest-projected on both platforms — the
 hardcoded `LIST_SCREENS` map is **retired**; `openCircleScreenPanel` reads its config from the projected
-`NavModel.sections`. **Nav chrome** is dissolving the same way: the **tab bar** now projects from a new nav-chrome
-`NavModel` kind — `manifest.tabs[]` → `NavModel.tabs[]`, a small `NavItem`/`NavTarget` vocabulary both shells
-render from (the duplicated `TABS` literal is gone) — with the detail action-bar (`nav-actions`) next on the same
-vocabulary. A tested generic side-panel (`openPagePanel`) is now the live renderer for simple `surfaces.page` ops
-(web; the RN sibling is chat-nav #128). Still bespoke **by design**: the settings-hub panels (my-data, advisor)
-and the **circleFolio browser** (a separate surface KIND, parked). The compose/trigger loop above is wired in
-**web**; mobile shares the pure pieces but keeps platform-specific renderers.
+`NavModel.sections`. **Nav chrome has dissolved the same way and is now complete:** both the **tab bar** and the
+**detail action-bar** project from one nav-chrome `NavModel` kind — `manifest.tabs[]` → `NavModel.tabs[]` and
+`manifest.actions[]` → `NavModel.actions[]`, a small shared `NavItem`/`NavTarget` vocabulary (`tabProjection.js`
+· `actionProjection.js`) that both shells render from. Every consumer reads the *same* roster: web's tab bar
+(`web/v2/circleTabBar.js`), web's circle detail *and* the **live web kring ⋯ menu** (`circleDetail.js` ·
+`circleKring.js`), and the mobile tab bar + **live mobile kring ⋯ menu** (`CircleTabBar.js` ·
+`CircleLauncherScreen.js` via `circleTabsMobile`/`circleActionsMobile`) — the duplicated `TABS`/action literals
+are gone, and each shell only *filters* the identical roster by an action's `platforms` + `requires` gate.
+A tested generic side-panel (`openPagePanel`) is the live renderer for simple `surfaces.page` ops on **web**
+(e.g. the docked `set-relay` panel); the RN sibling that maps `surfaces.page` to native nav screens is still
+pending (chat-nav #128 — mobile has the per-op page *header* projection but not the generic side-panel yet).
+Still bespoke **by design**: the settings-hub panels (my-data, advisor) and the **circleFolio browser** (a
+separate surface KIND, parked). The compose/trigger loop (open-screen button ↔ `dispatchReady`) is wired in
+**web**; mobile now shares the projected nav chrome but keeps its own screen renderers.
 
 ## Circles, types, and capabilities — one algebra
 
