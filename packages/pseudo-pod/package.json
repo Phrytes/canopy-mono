@@ -5,9 +5,10 @@
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".":        "./index.js",
-    "./node":   "./src/NodeFsBackend.js",
-    "./memory": "./src/MemoryBackend.js"
+    ".":         "./index.js",
+    "./node":    "./src/NodeFsBackend.js",
+    "./browser": "./src/IndexedDbBackend.js",
+    "./memory":  "./src/MemoryBackend.js"
   },
   "scripts": {
     "test": "vitest run",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@canopy/core": "file:../core",
+    "fake-indexeddb": "^6.2.5",
     "vitest": "^2.1.9"
   }
 }

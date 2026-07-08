@@ -22,3 +22,8 @@ export { createSyncEnginePodClient } from './src/syncEngineAdapter.js';
 // here — it imports `node:fs` and would poison browser/RN bundles that
 // only want the portable surface. Import it from the dedicated subpath
 // instead:  import { createNodeFsBackend } from '@canopy/pseudo-pod/node'
+//
+// Likewise the browser IndexedDB backend — platform-specific (it needs
+// `globalThis.indexedDB`) — is exported from its own subpath, keeping
+// the portable main surface free of any platform coupling:
+//   import { createIndexedDbBackend } from '@canopy/pseudo-pod/browser'
