@@ -1009,3 +1009,39 @@ describe('L4 ≡ B — nouns converge with the @canopy/item-types registry', () 
     expect(r.warnings.filter((x) => x.code === 'noncanonical-itemtype')).toHaveLength(1);
   });
 });
+
+describe('B · Layer 1 — domainVerbs allow-list shape (#65)', () => {
+  const M = (domainVerbs) => ({
+    app: 'a',
+    itemTypes: ['task'],
+    operations: [{ id: 'addTask', verb: 'add', params: [] }],
+    domainVerbs,
+  });
+
+  it('accepts a well-formed array of non-atom domain verbs', () => {
+    // `help`/`register` don't reduce to an atom — the legitimate ~20% domain tail.
+    expect(validateManifest(M(['help', 'register'])).ok).toBe(true);
+  });
+
+  it('absent domainVerbs is fine (forward-additive)', () => {
+    const { domainVerbs, ...rest } = M(['help']);   // eslint-disable-line no-unused-vars
+    expect(validateManifest(rest).ok).toBe(true);
+  });
+
+  it('rejects a non-array domainVerbs', () => {
+    const { errors, ok } = validateManifest(M('help'));
+    expect(ok).toBe(false);
+    expect(errors.some((e) => e.path === '/domainVerbs')).toBe(true);
+  });
+
+  it('rejects an empty / non-string entry', () => {
+    expect(validateManifest(M(['ok', ''])).errors.some((e) => e.path === '/domainVerbs/1')).toBe(true);
+    expect(validateManifest(M([42])).errors.some((e) => e.path === '/domainVerbs/0')).toBe(true);
+  });
+
+  it('rejects an SDK atom (or alias) declared as a domain verb — use the atom directly', () => {
+    // Fitness guard: `remove` is a canonical atom; `create` is an alias of `add`.
+    expect(validateManifest(M(['remove'])).errors.some((e) => e.code === 'atom-in-domain-verbs')).toBe(true);
+    expect(validateManifest(M(['create'])).errors.some((e) => e.code === 'atom-in-domain-verbs')).toBe(true);
+  });
+});

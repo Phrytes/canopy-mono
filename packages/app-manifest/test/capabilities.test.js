@@ -148,4 +148,23 @@ describe('nouns shape validation', () => {
     const { errors } = validateManifest(bad);
     expect(errors.some((e) => e.code === 'alias-in-nouns')).toBe(true);
   });
+  it('rejects a nouns value that is not an object', () => {
+    const { ok, errors } = validateManifest({ ...M, nouns: ['shopping'] });
+    expect(ok).toBe(false);
+    expect(errors.some((e) => e.path === '/nouns')).toBe(true);
+  });
+  it('rejects a noun declaration that is not an object', () => {
+    const { errors } = validateManifest({ ...M, nouns: { shopping: ['add'] } });
+    expect(errors.some((e) => e.path === '/nouns/shopping')).toBe(true);
+  });
+  it('rejects a non-array atoms field', () => {
+    const { errors } = validateManifest({ ...M, nouns: { shopping: { atoms: 'add' } } });
+    expect(errors.some((e) => e.path === '/nouns/shopping/atoms')).toBe(true);
+  });
+  it('rejects an empty / non-string atoms entry', () => {
+    expect(validateManifest({ ...M, nouns: { shopping: { atoms: [''] } } })
+      .errors.some((e) => e.path === '/nouns/shopping/atoms/0')).toBe(true);
+    expect(validateManifest({ ...M, nouns: { shopping: { atoms: [7] } } })
+      .errors.some((e) => e.path === '/nouns/shopping/atoms/0')).toBe(true);
+  });
 });
