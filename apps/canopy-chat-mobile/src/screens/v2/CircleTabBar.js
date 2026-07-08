@@ -1,28 +1,27 @@
 /**
  * canopy-chat-mobile v2 — launcher bottom tab bar (board 1/5/6C).
  *
- * Kringen / Stroom / Mij — the three top-level surfaces. Rendered by the
- * launcher beneath the list, stream and Me screens; absent inside a circle.
+ * Screens / Kringen / Contacten / Mij — the four top-level surfaces. Rendered
+ * by the launcher beneath the list, stream and Me screens; absent inside a
+ * circle.
+ *
+ * D / Surface 1 — the tab roster (ids + locale keys) is NO LONGER hardcoded
+ * here: it is projected from `manifest.tabs` via the shared `circleTabsMobile`
+ * selector (invariants #1/#3 — the four ids + `circle.tab.*` keys live ONCE,
+ * in the manifest; web ≡ mobile by construction, both consume the same
+ * projection).
  */
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
+import { circleTabsMobile } from '../../../../canopy-chat/src/v2/tabProjection.js';
+import { canopyChatManifest } from '../../../../canopy-chat/src/index.js';
 import { theme } from './theme.js';
-
-// α.3 — Schermen is the new primary tab (Q6).  Stroom is retired —
-// its behaviour now lives as the seeded "Stream" screen.
-const TABS = [
-  { id: 'screens',   key: 'circle.tab.screens' },
-  { id: 'kringen',   key: 'circle.tab.kringen' },
-  // P5 — Contacten: the bot/peer roster + their 1:1 DM threads.
-  { id: 'contacten', key: 'circle.tab.contacten' },
-  { id: 'mij',       key: 'circle.tab.mij' },
-];
 
 export default function CircleTabBar({ active, onSelect }) {
   return (
     <View style={styles.bar} testID="circle-tabbar">
-      {TABS.map((tab) => {
+      {circleTabsMobile(canopyChatManifest).map((tab) => {
         const on = active === tab.id;
         return (
           <Pressable
@@ -33,7 +32,7 @@ export default function CircleTabBar({ active, onSelect }) {
             accessibilityState={{ selected: on }}
             testID={`circle-tab-${tab.id}`}
           >
-            <Text style={[styles.label, on && styles.labelActive]}>{t(tab.key)}</Text>
+            <Text style={[styles.label, on && styles.labelActive]}>{t(tab.labelKey)}</Text>
           </Pressable>
         );
       })}

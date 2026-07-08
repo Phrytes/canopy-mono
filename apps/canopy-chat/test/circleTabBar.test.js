@@ -1,9 +1,15 @@
 /**
  * circleTabBar — the v2 bottom nav (feedback-extension P5 adds Contacten).
+ *
+ * D / Surface 1 — the tab roster is now PROJECTED from `manifest.tabs` via
+ * the shared `circleTabs` selector, not a per-shell `TABS` literal.  These
+ * tests assert the bar renders the projected ids/labels (invariants #1/#3/#4).
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleTabBar } from '../web/v2/circleTabBar.js';
+import { circleTabs } from '../src/v2/tabProjection.js';
+import { canopyChatManifest } from '../src/index.js';
 
 const t = (k) => k;
 
@@ -23,5 +29,16 @@ describe('renderCircleTabBar', () => {
     expect(tab.getAttribute('aria-current')).toBe('page');
     tab.click();
     expect(onContacts).toHaveBeenCalled();
+  });
+
+  it('is a genuine projection consumer: the DOM tabs match manifest.tabs (ids + labels)', () => {
+    const projected = circleTabs(canopyChatManifest);
+    // The manifest is the single source of the roster (no per-shell literal).
+    expect(projected.map((tab) => tab.id)).toEqual(['screens', 'kringen', 'contacten', 'mij']);
+    const el = renderCircleTabBar(document.createElement('nav'), { active: 'screens', t });
+    const btns = [...el.querySelectorAll('.circle-tabbar__tab')];
+    expect(btns.map((b) => b.dataset.tab)).toEqual(projected.map((tab) => tab.id));
+    // Each button's label is the projected labelKey resolved via t().
+    expect(btns.map((b) => b.textContent)).toEqual(projected.map((tab) => t(tab.labelKey)));
   });
 });

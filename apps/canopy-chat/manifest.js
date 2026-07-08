@@ -777,6 +777,30 @@ export const canopyChatManifest = {
   ],
   views: [],   // chat shell does not surface its own views in nav;
                //   threads are managed via the chat UI, not a section
+
+  /**
+   * Nav-chrome (D / Surface 1) — the top-level TAB BAR.  These four tabs
+   * (screens · kringen · contacten · mij) WERE hardcoded IDENTICALLY in
+   * both shells (web `web/v2/circleTabBar.js` + mobile
+   * `src/screens/v2/CircleTabBar.js`) — invariant #3 violated by
+   * construction (same ids + same locale keys in two files).  Declared
+   * ONCE here, the shells project the bar from `renderWeb(manifest).tabs`
+   * (via `src/v2/tabProjection.js`) so web ≡ mobile by construction.
+   *
+   *   screens · kringen · contacten — app-nav roots that map to NO op
+   *     (the shell owns the surface): `target: {kind:'nav', to}`.
+   *   mij — the existing `me` op (its `surfaces.page` already backs the
+   *     "Mij" profile screen): `target: {kind:'op', opId:'me'}`.
+   *
+   * Ids + locale keys preserved EXACTLY (screens/kringen/contacten/mij ·
+   * circle.tab.*), so behaviour is unchanged.
+   */
+  tabs: [
+    { id: 'screens',   labelKey: 'circle.tab.screens',   target: { kind: 'nav', to: 'screens' } },
+    { id: 'kringen',   labelKey: 'circle.tab.kringen',   target: { kind: 'nav', to: 'kringen' } },
+    { id: 'contacten', labelKey: 'circle.tab.contacten', target: { kind: 'nav', to: 'contacten' } },
+    { id: 'mij',       labelKey: 'circle.tab.mij',       target: { kind: 'op',  opId: 'me' } },
+  ],
 };
 
 export default canopyChatManifest;

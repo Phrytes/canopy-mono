@@ -52,6 +52,30 @@
  *                                         when the manifest declares no page
  *                                         surface, so the NavModel shape is
  *                                         unchanged for page-less manifests.
+ * @property {NavItem[]} [tabs]            NAV-CHROME (D / Surface 1) — the ordered
+ *                                         top-level TAB BAR roots, one per
+ *                                         `manifest.tabs` entry (declaration
+ *                                         order).  Key is OMITTED when the
+ *                                         manifest declares no tabs, so tab-less
+ *                                         manifests keep the {app, sections,
+ *                                         globals} shape.  See "Nav-chrome" below.
+ *
+ * @typedef {object} NavItem
+ * @property {string}   id                 stable nav-item id (the shell keys its
+ *                                         handler/active-state off this).
+ * @property {string}   labelKey           localisation key (invariant #8) — the
+ *                                         shell resolves it via `t()`.
+ * @property {string}   [icon]             optional icon token (consumer-side glyph
+ *                                         lookup); passed through verbatim.
+ * @property {NavTarget} target            what the item SELECTS — a nav root
+ *                                         (no op) or an op dispatch.  See NavTarget.
+ *
+ * @typedef {{kind: 'nav', to: string} | {kind: 'op', opId: string}} NavTarget
+ *   Discriminated union — the SHARED nav-chrome vocabulary:
+ *     `{kind: 'nav', to}`  — selects an app-nav root that maps to NO op (the
+ *                            shell owns the surface, e.g. the circle list).
+ *     `{kind: 'op', opId}`  — selects/dispatches a manifest op (e.g. the `me`
+ *                            profile op backs the "Mij" tab).
  *
  * @typedef {object} Page
  * @property {string}   opId               op that opens this page (dispatch key)
@@ -433,6 +457,33 @@
  * no page surface, so page-less manifests keep the exact
  * `{app, sections, globals}` shape.  renderCoverage's `screen` detector
  * now also counts `surfaces.page` (a page IS a web/mobile surface).
+ *
+ * ──── Nav-chrome — D / Surface 1: the top-level TAB BAR (2026-07)
+ *
+ * Objective D, Surface 1.  The four top-level tabs (screens · kringen ·
+ * contacten · mij) were hardcoded IDENTICALLY in the web + mobile shells
+ * (invariant #3 violated by construction — same ids + same locale keys in
+ * two files).  Nav chrome becomes MANIFEST-DECLARED: a manifest declares a
+ * `tabs[]` block of nav roots, and the shells project the bar from
+ * `NavModel.tabs` instead of a per-shell `TABS` literal.  The four ids +
+ * locale keys now live ONCE, in `manifest.tabs`.
+ *
+ * Each `manifest.tabs[]` entry → a `NavModel.tabs[]` NavItem (declaration
+ * order, deterministic).  Shape: `{ id, labelKey, icon?, target }` where
+ * `target` is the NavTarget union above.  Platform-neutral — the SAME
+ * projection feeds renderMobile (renderMobile re-exports renderWeb), so
+ * renderWeb ≡ renderMobile holds by construction.
+ *
+ * EXTENSION PATH → `nav-actions` (Surface 2, a SEPARATE follow-up).  The
+ * detail action-bar (per-detail buttons) is a SIBLING nav-chrome kind: an
+ * ordered list of the SAME `{ id, labelKey, icon?, target }` NavItem shape,
+ * projected to `NavModel.actions[]` (or `navActions[]`) from a
+ * `manifest.actions` block, validated by the SAME `validateNavItem` helper.
+ * A nav-action's `target` is typically `{kind:'op', opId}` (invoke the op);
+ * `{kind:'nav', to}` stays available for a "back to list" style action.  So
+ * the reusable vocabulary is: (1) the NavItem entry shape, (2) the NavTarget
+ * union, (3) `validateNavItem`.  nav-actions slots in as a second consumer
+ * of all three — no shape churn on tabs.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -495,12 +546,25 @@ export function renderWeb(manifest) {
     pages.push(buildPage(op, page));
   }
 
+  // (d) Nav-chrome tabs — D / Surface 1: the ordered top-level TAB BAR
+  //     roots.  Projected verbatim from `manifest.tabs` (declaration
+  //     order).  Kept OUT of the return object when empty so tab-less
+  //     manifests keep the {app, sections, globals} shape.
+  const tabs = [];
+  if (Array.isArray(manifest.tabs)) {
+    for (const tab of manifest.tabs) {
+      if (!tab || typeof tab !== 'object' || Array.isArray(tab)) continue;
+      tabs.push(buildTab(tab));
+    }
+  }
+
   const nav = {
     app: typeof manifest.app === 'string' ? manifest.app : '',
     sections,
     globals,
   };
   if (pages.length > 0) nav.pages = pages;
+  if (tabs.length > 0) nav.tabs = tabs;
   return nav;
 }
 
@@ -709,6 +773,39 @@ function buildPage(op, page) {
   // to `title`.  Forward-additive (no manifest declares it yet).
   if (typeof page.labelKey === 'string' && page.labelKey !== '') out.labelKey = page.labelKey;
   return out;
+}
+
+/**
+ * Nav-chrome (D / Surface 1) — project one `manifest.tabs[]` entry into a
+ * NavModel NavItem.  Defensive passthrough of the validated shape
+ * (`{ id, labelKey, icon?, target }`).  `target` is the NavTarget union —
+ * copied field-by-field so the NavModel stays pure-data.  Shared with the
+ * future `nav-actions` kind (Surface 2), which reuses this exact NavItem
+ * shape + `buildNavTarget`.
+ */
+function buildTab(tab) {
+  const out = { id: tab.id, labelKey: tab.labelKey };
+  if (typeof tab.icon === 'string' && tab.icon !== '') out.icon = tab.icon;
+  const target = buildNavTarget(tab.target);
+  if (target) out.target = target;
+  return out;
+}
+
+/**
+ * Project a NavTarget (the shared nav-chrome vocabulary).  Returns a fresh
+ * copy of the discriminated union — `{kind:'nav', to}` (an app-nav root, no
+ * op) or `{kind:'op', opId}` (dispatch a manifest op).  Returns `undefined`
+ * for an unrecognised shape (the validator rejects those up front).
+ */
+function buildNavTarget(target) {
+  if (!target || typeof target !== 'object' || Array.isArray(target)) return undefined;
+  if (target.kind === 'nav' && typeof target.to === 'string' && target.to !== '') {
+    return { kind: 'nav', to: target.to };
+  }
+  if (target.kind === 'op' && typeof target.opId === 'string' && target.opId !== '') {
+    return { kind: 'op', opId: target.opId };
+  }
+  return undefined;
 }
 
 function buildAffordance(op, manifest, placement, prefilledParams) {

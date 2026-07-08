@@ -1,29 +1,29 @@
 /**
  * canopy-chat v2 — launcher bottom tab bar (web, board 1/5/6C).
  *
- * Kringen / Stroom / Mij — the three top-level surfaces. Shown on the
- * launcher, stream and Me screens; hidden inside a circle + its sub-screens
- * (the host calls `hideCircleTabBar`). Pure render; the host wires handlers.
+ * Screens / Kringen / Contacten / Mij — the four top-level surfaces. Shown on
+ * the launcher, stream and Me screens; hidden inside a circle + its
+ * sub-screens (the host calls `hideCircleTabBar`). Pure render; the host wires
+ * handlers.
+ *
+ * D / Surface 1 — the tab roster (ids + locale keys) is NO LONGER hardcoded
+ * here: it is projected from `manifest.tabs` via the shared `circleTabs`
+ * selector (invariants #1/#3 — the four ids + `circle.tab.*` keys live ONCE,
+ * in the manifest; web ≡ mobile by construction, both consume the same
+ * projection).
  */
-
-// α.3 — Schermen is the new primary tab (Q6).  Order: Screens first,
-// then Kringen (the data layer), then Mij.  Stroom is gone — its
-// behaviour now lives as the seeded "Stream" screen on the Screens tab.
-const TABS = [
-  { id: 'screens',   key: 'circle.tab.screens' },
-  { id: 'kringen',   key: 'circle.tab.kringen' },
-  // P5 — Contacten: the bot/peer roster + their 1:1 DM threads.
-  { id: 'contacten', key: 'circle.tab.contacten' },
-  { id: 'mij',       key: 'circle.tab.mij' },
-];
+import { circleTabs } from '../../src/v2/tabProjection.js';
+import { canopyChatManifest } from '../../src/index.js';
 
 export function renderCircleTabBar(container, { active, t, onScreens, onKringen, onContacts, onMij } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
+  // id → the host-wired handler.  Keyed by the projected tab id, so the
+  // callback contract (onScreens/onKringen/onContacts/onMij) is unchanged.
   const handlers = { screens: onScreens, kringen: onKringen, contacten: onContacts, mij: onMij };
   container.innerHTML = '';
   container.className = 'circle-tabbar';
-  for (const tab of TABS) {
+  for (const tab of circleTabs(canopyChatManifest)) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'circle-tabbar__tab';
@@ -32,7 +32,7 @@ export function renderCircleTabBar(container, { active, t, onScreens, onKringen,
       btn.classList.add('is-active');
       btn.setAttribute('aria-current', 'page');
     }
-    btn.textContent = tr(tab.key);
+    btn.textContent = tr(tab.labelKey);
     const on = handlers[tab.id];
     btn.addEventListener('click', () => { if (typeof on === 'function') on(); });
     container.appendChild(btn);
