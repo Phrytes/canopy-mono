@@ -145,6 +145,38 @@ The upshot: the **type axis** (item-types), the **verb axis** (atoms), and the *
 — **storage, permissions, and surfaces are all projections of one `(circle, type, verb)` space.** That is why a
 new noun added to a manifest becomes storable, gate-able, and renderable at once.
 
+## Sharing — in place, across circles, and beyond them
+
+Sealed circles (postures p2/p3) encrypt content under a per-circle **group key**, kept in a *versioned*
+**group-key resource** on the pod — each version wrapped to the then-current members' keys. Membership **is**
+the gate: a member proves they belong by unwrapping the current version; a revoked/never member can't, so
+they're denied (`readGroupKey` throws — they never see ciphertext, let alone plaintext). Every kind of sharing
+is a move over this one resource, so it never copies data it needn't and revocation is real.
+
+- **Canonical (in-place) sharing.** To share an item to another *circle* without minting a copy, the origin
+  re-wraps the item's group key to the recipient and grants ACP read on the canonical resource; the recipient
+  reads the single copy in place through a `shared-ref` pointer. **Revoke = rotate**: a fresh group-key version
+  is wrapped to the *remaining* recipients — forward secrecy, since content sealed after revocation is
+  unreadable to the dropped member. One resource, one copy, revocable.
+- **Historic keys, cross-version read.** A rotation *retains* the outgoing version (appended to the resource's
+  `history[]`, still wrapped to its own recipients) instead of discarding it, so an entitled member can open
+  content sealed under an older version they lived through — resolved by *authenticated trial* across the
+  versions their key can unwrap. Forward secrecy is untouched: a revoked member is absent from every later
+  envelope, and the live reader is gated on *current* membership — so a drop-out gets **no** historic access.
+- **Out-of-circle sharing (to a person).** A recipient who is in *no* circle can be granted access, identified
+  by their **published network key**. No new cipher: their X25519 sealing key is derived from their Ed25519
+  network identity via the same `ed2curve` map the agent already uses for `nacl.box`, then the same re-wrap
+  primitive applies. A per-circle **`shareOutOfCircle` policy** governs it — `prohibit` (blocked), `notify` (a
+  revocable canonical grant **plus** a notice to the circle: its admins, or a `permission-log`-tagged pinboard
+  post), or `silent` (a **copy** sealed to the recipient, leaving no ACP/pointer trace in the circle — more
+  private). Pre-grant history is never handed to a new out-of-circle recipient unless explicitly opted in.
+- **The receiver — "shared with me".** A silent copy is pushed over the relay straight to the recipient's peer;
+  their device receives it into a per-user, *tiered* store (local, mirrored to the pod when signed in) surfaced
+  on the **Mij** screen. Opening it needs the device's own sealing key — derived from its network secret, which
+  stays **encapsulated** in the agent identity: the kernel exposes only an opener *closure* (`sharedCopyOpener`
+  hands the secret to an injected builder internally and returns just the closure), and the pod-client adapter
+  supplies the derivation. The secret never leaves the identity.
+
 ## The layers — kernel, adapters, substrates, apps
 
 Code depends downward only — a project-wide invariant (full detail:
