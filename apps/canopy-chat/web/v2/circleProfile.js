@@ -29,6 +29,10 @@ export function renderCircleProfile(container, {
   onClearLocation,
   onAvailability,
   onMyData,
+  // SILENT out-of-circle delivery — open the personal, cross-circle "shared with me"
+  // inbox (sealed copies peers pushed to this device). A Mij sub-screen link, peer of
+  // availability/my-data. Absent ⇒ the link is simply omitted (older callers / tests).
+  onSharedWithMe,
   // D / SP-3b consumer-switch — the projected PAGE surface for the `me` op
   // (renderWeb(manifest).pages[] entry, selected via pageForOp). When present,
   // the header label is derived from `page.labelKey` via t() (Q22), making this
@@ -152,6 +156,10 @@ export function renderCircleProfile(container, {
   if (typeof onMyData === 'function') {
     const myData = button(tr('circle.profile.mydata'), 'cc-profile__mydata', onMyData);
     container.appendChild(myData);
+  }
+  if (typeof onSharedWithMe === 'function') {
+    const shared = button(tr('circle.profile.sharedWithMe'), 'cc-profile__shared-with-me', onSharedWithMe);
+    container.appendChild(shared);
   }
 
   if (busy) {

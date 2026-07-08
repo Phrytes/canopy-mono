@@ -168,6 +168,7 @@ import CircleShareScreen from './CircleShareScreen.js';   // objective L — cro
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
 import CircleMyDataScreen from './CircleMyDataScreen.js';
+import SharedWithMeScreen from './SharedWithMeScreen.js';   // SILENT out-of-circle delivery — personal "shared with me" inbox (web≡mobile)
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
 // + the feedback mobile EXPO_PUBLIC_FEEDBACK_LLM_BASEURL pattern. Unset → no provider → the LLM branch
@@ -1055,7 +1056,24 @@ export default function CircleLauncherScreen({
   if (view === 'profile') {
     return (
       <WithTabBar active="mij" onSelect={onTab}>
-        <CircleProfileScreen callSkill={bundle?.callSkill} onAvailability={() => setView('availability')} onMyData={() => setView('mydata')} />
+        <CircleProfileScreen callSkill={bundle?.callSkill} onAvailability={() => setView('availability')} onMyData={() => setView('mydata')} onSharedWithMe={() => setView('sharedWithMe')} />
+      </WithTabBar>
+    );
+  }
+  // SILENT out-of-circle delivery — the personal, cross-circle "shared with me" inbox
+  // (sealed copies peers pushed to this device). Sub-view of Mij; back returns to profile.
+  // web ≡ mobile: renders the SAME SharedWithMeScreen over the SAME shared selector web uses.
+  // `received` comes from the per-user shared-with-me store when the bundle exposes it, else
+  // the empty state. FLAG (crypto-track follow-up, same as web): the network-derived sealing
+  // `opener` is not yet injected here — a null opener makes a row tap a deny-safe no-op.
+  if (view === 'sharedWithMe') {
+    return (
+      <WithTabBar active="mij" onSelect={onTab}>
+        <SharedWithMeScreen
+          received={bundle?.sharedWithMe ?? []}
+          opener={bundle?.sharedWithMeOpener ?? null}
+          onBack={() => setView('profile')}
+        />
       </WithTabBar>
     );
   }
