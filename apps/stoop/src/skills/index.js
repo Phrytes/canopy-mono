@@ -625,6 +625,50 @@ async function removeContactCore(scope, a, ctx) {
   return { ok: true };
 }
 
+/**
+ * B★ B3 (Workstream B) — the single source of truth for the wireable stoop
+ * ops: opId → pure `(scope, args, ctx) → result` core.  BOTH projections read
+ * from here:
+ *   • the WIRE route — `buildSkills`'s `wire(id, …)` wraps `STOOP_CORES[id]`
+ *     with `wireSkill(core, op, { storeFor })` and registers it as a `defineSkill`.
+ *   • the LOCAL route — `createStoopService().callSkill` calls `STOOP_CORES[id]`
+ *     directly (no synthetic `DataPart` round-trip).
+ * The `local ≡ wire` fitness test (`test/localWireFitness.test.js`) asserts this
+ * set stays in lock-step with the manifest ops + the wire registrations.
+ */
+export const STOOP_CORES = Object.freeze({
+  listMyRequests:   listMyRequestsCore,
+  cancelRequest:    cancelRequestCore,
+  assignLend:       assignLendCore,
+  mutePeer:         mutePeerCore,
+  getHolidayMode:   getHolidayModeCore,
+  getGroupRules:    getGroupRulesCore,
+  listGroupMembers: listGroupMembersCore,
+  respondToItem:    respondToItemCore,
+  signOutOfPod:     signOutOfPodCore,
+  addContact:       addContactCore,
+  removeContact:    removeContactCore,
+});
+
+/**
+ * Assemble the per-bundle `scope` dep bag `wireSkill` hands each core — the ONE
+ * shape both `buildSkills` (wire route) and `createStoopService` (local route)
+ * use, so the direct-core call and the wire call operate on an IDENTICAL scope.
+ * `groupId` is defaulted exactly as the single-bundle path always did
+ * (`explicitGroupId ?? skillMatch?.group ?? null`).
+ */
+export function buildStoopScope(deps = {}) {
+  const {
+    store, skillMatch, notifier, reveals, members, controlAgent,
+    muted, localActor, groupId: explicitGroupId, dataLocationConfig, chat, metrics, bundle,
+  } = deps;
+  const groupId = explicitGroupId ?? skillMatch?.group ?? null;
+  return {
+    store, skillMatch, notifier, reveals, members, controlAgent,
+    muted, localActor, groupId, dataLocationConfig, chat, metrics, bundle,
+  };
+}
+
 export function buildSkills({
   store,
   skillMatch,
@@ -671,17 +715,21 @@ export function buildSkills({
   // `bundleResolver(parts,{envelope,from})`.  `wire(id, coreFn, opts)` looks the
   // op up in `stoopManifest`, generates the `defineSkill`-shaped handler via
   // `wireSkill`, and re-attaches the same description/visibility.
-  const scope = {
+  const scope = buildStoopScope({
     store, skillMatch, notifier, reveals, members, controlAgent,
     muted, localActor, groupId, dataLocationConfig, chat, metrics, bundle,
-  };
+  });
   const storeFor = () => scope;
   const op = (id) => {
     const found = stoopManifest.operations.find((o) => o.id === id);
     if (!found) throw new Error(`buildSkills: no manifest op "${id}"`);
     return found;
   };
-  const wire = (id, coreFn, opts) => defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
+  const wire = (id, opts) => {
+    const coreFn = STOOP_CORES[id];
+    if (!coreFn) throw new Error(`buildSkills: no core in STOOP_CORES for "${id}"`);
+    return defineSkill(id, wireSkill(coreFn, op(id), { storeFor }), opts);
+  };
 
   return [
     /**
@@ -1022,7 +1070,7 @@ export function buildSkills({
     /**
      * cancelRequest({requestId})
      */
-    wire('cancelRequest', cancelRequestCore, {
+    wire('cancelRequest', {
       description: 'Cancel an open request.',
       visibility:  'authenticated',
     }),
@@ -1030,7 +1078,7 @@ export function buildSkills({
     /**
      * listMyRequests({})  — open requests posted by `from`.
      */
-    wire('listMyRequests', listMyRequestsCore, {
+    wire('listMyRequests', {
       description: 'List open requests posted by the calling actor.',
       visibility:  'authenticated',
     }),
@@ -1191,7 +1239,7 @@ export function buildSkills({
      * Composes `item-store.claim`'s CAS — race-safe between two
      * borrowers grabbing the same item.
      */
-    wire('assignLend', assignLendCore, {
+    wire('assignLend', {
       description: 'Assign a lent item to a borrower without closing it.',
       visibility:  'authenticated',
     }),
@@ -1269,7 +1317,7 @@ export function buildSkills({
      * one is known; otherwise stored as `webid:<webid>` so old
      * callers' state survives without losing entries.
      */
-    wire('mutePeer', mutePeerCore, {
+    wire('mutePeer', {
       description: 'Locally mute a peer (does not affect anyone else). Prefer peerStableId; peerWebid back-compat.',
       visibility:  'authenticated',
     }),
@@ -1441,7 +1489,7 @@ export function buildSkills({
     /**
      * getHolidayMode()  — Phase 23.4.  Read the calling actor's flag.
      */
-    wire('getHolidayMode', getHolidayModeCore, {
+    wire('getHolidayMode', {
       description: 'Read the calling actor\'s holiday-mode flag.',
       visibility:  'authenticated',
     }),
@@ -2459,7 +2507,7 @@ export function buildSkills({
      * getGroupRules({groupId})
      *   — return the latest `group-rules` item for `groupId` (or null).
      */
-    wire('getGroupRules', getGroupRulesCore, {
+    wire('getGroupRules', {
       description: 'Return the latest group-rules item for a group.',
       visibility:  'authenticated',
     }),
@@ -2866,7 +2914,7 @@ export function buildSkills({
      *   thread's first chat-message; the post's claim is recorded
      *   (via item-store.claim) so the requester sees a claim too.
      */
-    wire('respondToItem', respondToItemCore, {
+    wire('respondToItem', {
       description: 'Open a chat thread on a post + send the first message; soft-claims the post.',
       visibility:  'authenticated',
     }),
@@ -2911,7 +2959,7 @@ export function buildSkills({
      *   — return the members of a group as MemberMap entries.
      *   `groupId` defaults to the bundle's current group.
      */
-    wire('listGroupMembers', listGroupMembersCore, {
+    wire('listGroupMembers', {
       description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey when known).',
       visibility:  'authenticated',
     }),
@@ -3677,7 +3725,7 @@ export function buildSkills({
      *   — Phase 20.  Clears OIDC tokens + detaches the pod inner.
      *   Local cache state is preserved.
      */
-    wire('signOutOfPod', signOutOfPodCore, {
+    wire('signOutOfPod', {
       description: 'Sign out of the pod; local cache is preserved.',
       visibility:  'authenticated',
     }),
@@ -3895,13 +3943,13 @@ export function buildSkills({
      *   Asymmetric: doesn't notify the contact themselves
      *   (Phase 24.6 wires the contact-add-request envelope).
      */
-    wire('addContact', addContactCore, {
+    wire('addContact', {
       description: 'Add or update a 1:1 contact.',
       visibility:  'authenticated',
     }),
 
     /** removeContact({webid}) — drop a contact (and remove from any lists). */
-    wire('removeContact', removeContactCore, {
+    wire('removeContact', {
       description: 'Remove a 1:1 contact (drops MemberMap entry; removes from lists).',
       visibility:  'authenticated',
     }),

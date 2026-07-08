@@ -20,7 +20,7 @@
  */
 import { DataPart } from '@canopy/core';
 import { dispatchCapability } from '@canopy/app-manifest';
-import { buildSkills } from './skills/index.js';
+import { buildSkills, TASK_CORES } from './skills/index.js';
 import { tasksManifest } from '../manifest.js';
 
 /**
@@ -36,15 +36,42 @@ export function createTasksService({ bundleResolver, circlesProvider, manifest =
   const byId = new Map(buildSkills({ bundleResolver, circlesProvider }).map((s) => [s.id, s.handler]));
 
   const service = {
-    /** Invoke an op by id with structured args (the DataPart wrapper the legacy skills expect). */
+    /**
+     * Invoke an op by id with structured args — the LOCAL route (decision #5).
+     *
+     * Workstream B: for an op that has a pure `(circle, args, ctx)` core in
+     * `TASK_CORES`, we call that core DIRECTLY over the resolved per-circle
+     * store — NOT by faking a wire message. The circle is resolved from the
+     * decoded args via `bundleResolver(null, { …, args })` (the resolver reads
+     * `args.circleId`/`_scope` off `ctx.args`), so no synthetic `[DataPart(args)]`
+     * is built just to have `wireSkill` decode it straight back. The core's
+     * return value is the SAME object the wire route's handler yields, so
+     * `callCapability`/callers see identical shapes.
+     *
+     * Ops WITHOUT a pure core (hand-written `defineSkill`s — editTask,
+     * reassignTask, provisionMyCircle, the pod-sign-in family, …) keep the
+     * legacy handler path: their contract is the `({parts, from, envelope})`
+     * signature, so we hand them the single `DataPart` they read.
+     */
     async callSkill(opId, args = {}, ctx = {}) {
+      const from     = ctx.by ?? ctx.from;
+      const envelope = ctx.envelope ?? null;
+      // circleId ≡ crewId (CIRCLE_ID_IS_CREW_ID_ALIAS); ctx wins, then args.
+      const scopeId  = ctx.circleId ?? args.circleId;
+      const callArgs = scopeId != null ? { ...args, circleId: scopeId } : { ...args };
+
+      const core = TASK_CORES[opId];
+      if (core) {
+        // Direct core call — resolve the store from args (no synthetic DataPart).
+        const circle   = bundleResolver(null, { envelope, from, args: callArgs });
+        const coreCtx  = { from, envelope, agent: ctx.agent, actorDisplayName: ctx.actorDisplayName };
+        return core(circle, callArgs, coreCtx);
+      }
+
+      // Hand-written (non-core) op → the legacy DataPart handler path.
       const handler = byId.get(opId);
       if (!handler) throw new Error(`tasksService.callSkill: unknown op "${opId}"`);
-      // The circle is resolved from the DataPart (multiCircleResolver reads `circleId`/`_scope`); a singleCircleResolver
-      // ignores it. circleId ≡ circleId (CIRCLE_ID_IS_CREW_ID_ALIAS).
-      const scopeId = ctx.circleId ?? ctx.circleId ?? args.circleId;
-      const data = scopeId != null ? { ...args, circleId: scopeId } : { ...args };
-      return handler({ parts: [DataPart(data)], from: ctx.by ?? ctx.from, envelope: ctx.envelope ?? null, agent: ctx.agent });
+      return handler({ parts: [DataPart(callArgs)], from, envelope, agent: ctx.agent });
     },
 
     /** Invoke a capability by (atom × noun); bespoke-op-first, no generic fallback (see file header). */

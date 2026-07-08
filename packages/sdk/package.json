@@ -11,7 +11,8 @@
     "./vault": "./src/vault.js",
     "./pod": "./src/pod.js",
     "./high": "./src/high.js",
-    "./requires": "./src/requires.js"
+    "./requires": "./src/requires.js",
+    "./testing": "./src/testing/localWireFitness.js"
   },
   "scripts": {
     "test": "vitest run",
