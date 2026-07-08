@@ -25,6 +25,8 @@ export {
   // B · Slice 2 (ruling Q1) — settings-declaration allow-lists.
   SETTING_KINDS,
   SETTING_SCOPES,
+  // Nav-chrome (D / Surface 1) — the shared NavTarget `kind` allow-list.
+  NAV_TARGET_KINDS,
 } from './validate.js';
 
 // B · Layer 1 (2026-07-01) — the SDK ATOM CATALOGUE: the authoritative

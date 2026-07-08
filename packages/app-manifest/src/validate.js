@@ -104,6 +104,16 @@ export const RUNTIME_VALUES = Object.freeze(['browser', 'node', 'both']);
  */
 export const COMPOSITE_ON_ERROR = Object.freeze(['stop', 'continue']);
 
+/**
+ * Nav-chrome (D / Surface 1) — frozen allow-list of a NavItem target's
+ * `kind`.  The SHARED nav-chrome vocabulary both `manifest.tabs` (Surface 1)
+ * and the future `manifest.actions` / nav-actions (Surface 2) key off:
+ *   'nav' — selects an app-nav root that maps to NO op (`target.to`).
+ *   'op'  — selects/dispatches a manifest op (`target.opId`).
+ */
+export const NAV_TARGET_KINDS = Object.freeze(['nav', 'op']);
+const NAV_TARGET_KIND_SET = new Set(NAV_TARGET_KINDS);
+
 /** @param {string} verb */
 export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
 
@@ -268,6 +278,22 @@ export function validateManifest(manifest, opts = {}) {
       const ids = new Set();
       manifest.views.forEach((v, i) => {
         validateView(v, `/views/${i}`, manifest, errors, ids, strict);
+      });
+    }
+  }
+
+  // Nav-chrome (D / Surface 1) — `manifest.tabs` declares the ordered
+  // top-level TAB BAR roots (the four screens/kringen/contacten/mij tabs).
+  // Each entry is a NavItem `{ id, labelKey, icon?, target }`.  Validated by
+  // `validateNavItem`, the SHARED nav-chrome helper the future `nav-actions`
+  // kind (Surface 2) also uses.  Forward-additive: absent → no tab bar.
+  if (manifest.tabs !== undefined) {
+    if (!Array.isArray(manifest.tabs)) {
+      errors.push({ path: '/tabs', message: 'tabs must be an array if present' });
+    } else {
+      const tabIds = new Set();
+      manifest.tabs.forEach((tab, i) => {
+        validateNavItem(tab, `/tabs/${i}`, manifest, errors, tabIds, strict);
       });
     }
   }
@@ -1038,6 +1064,78 @@ function validateView(v, path, manifest, errors, idSet, strict = false) {
           }
         }
       });
+    }
+  }
+}
+
+/**
+ * Nav-chrome (D / Surface 1) — validate one NavItem (a `manifest.tabs[]`
+ * entry today; a `manifest.actions[]` entry once nav-actions lands).  The
+ * SHARED validator for every nav-chrome list, so both surfaces enforce the
+ * one `{ id, labelKey, icon?, target }` contract.
+ *
+ *   - `id`       — non-empty string, unique within the list.
+ *   - `labelKey` — non-empty string (invariant #8: every user-facing tab
+ *                  label resolves through `t()` from a locale key).
+ *   - `icon`     — optional; non-empty string when present.
+ *   - `target`   — required object; `{kind:'nav', to}` or `{kind:'op', opId}`
+ *                  (NavTarget union).  Under `strict`, a `kind:'op'` target's
+ *                  `opId` must resolve in operations[] / externalSkills[].
+ *
+ * @param {*} item
+ * @param {string} path
+ * @param {object} manifest
+ * @param {Array} errors
+ * @param {Set<string>} idSet
+ * @param {boolean} [strict=false]
+ */
+function validateNavItem(item, path, manifest, errors, idSet, strict = false) {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) {
+    errors.push({ path, message: 'nav item must be an object' });
+    return;
+  }
+  if (typeof item.id !== 'string' || item.id === '') {
+    errors.push({ path: `${path}/id`, message: 'nav item.id must be a non-empty string' });
+  } else if (idSet.has(item.id)) {
+    errors.push({ path: `${path}/id`, message: `duplicate nav item id "${item.id}"`, code: 'duplicate-nav-id' });
+  } else {
+    idSet.add(item.id);
+  }
+  if (typeof item.labelKey !== 'string' || item.labelKey === '') {
+    errors.push({ path: `${path}/labelKey`, message: 'nav item.labelKey must be a non-empty string' });
+  }
+  if (item.icon !== undefined && (typeof item.icon !== 'string' || item.icon === '')) {
+    errors.push({ path: `${path}/icon`, message: 'nav item.icon must be a non-empty string if present' });
+  }
+  const target = item.target;
+  if (!target || typeof target !== 'object' || Array.isArray(target)) {
+    errors.push({ path: `${path}/target`, message: 'nav item.target must be an object' });
+    return;
+  }
+  if (!NAV_TARGET_KIND_SET.has(target.kind)) {
+    errors.push({
+      path:    `${path}/target/kind`,
+      message: `nav item.target.kind must be one of ${NAV_TARGET_KINDS.map((k) => `'${k}'`).join(' | ')}`,
+    });
+    return;
+  }
+  if (target.kind === 'nav') {
+    if (typeof target.to !== 'string' || target.to === '') {
+      errors.push({ path: `${path}/target/to`, message: "nav item.target.to must be a non-empty string when kind === 'nav'" });
+    }
+  } else if (target.kind === 'op') {
+    if (typeof target.opId !== 'string' || target.opId === '') {
+      errors.push({ path: `${path}/target/opId`, message: "nav item.target.opId must be a non-empty string when kind === 'op'" });
+    } else if (strict) {
+      // Q16-strict — the op the tab dispatches must resolve in the manifest.
+      const known = knownSkillIds(manifest);
+      if (!known.has(target.opId)) {
+        errors.push({
+          path:    `${path}/target/opId`,
+          message: `unknown opId "${target.opId}" (not in operations[] or externalSkills[])`,
+          code:    'unknown-skillId',
+        });
+      }
     }
   }
 }

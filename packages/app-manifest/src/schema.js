@@ -24,6 +24,12 @@
  *                                                 are permitted (F-SP1-a).
  * @property {Operation[]}            operations
  * @property {View[]}                 [views]
+ * @property {Tab[]}                  [tabs]       NAV-CHROME (D / Surface 1) — the ordered
+ *                                                 top-level TAB BAR roots.  `renderWeb`/`renderMobile`
+ *                                                 project these into `NavModel.tabs[]`; the web +
+ *                                                 mobile shells render the bar FROM that projection
+ *                                                 instead of a per-shell hardcoded literal (so the
+ *                                                 tab ids + locale keys live ONCE, here).
  * @property {SlashGrammar}           [slashGrammar]  drives `renderSlash`
  * @property {string}                 [systemPrompt]  verbatim system prompt
  *                                                 (F-SP1-d, locked 2026-05-19).
@@ -40,6 +46,23 @@
  *                                                 so one renderer draws inline forms AND the creation
  *                                                 wizard.  A third-party app declares settings like it
  *                                                 declares op params; `validateManifest` shape-checks them.
+ */
+
+/**
+ * Nav-chrome NavItem (D / Surface 1).  A top-level TAB BAR root.  The SAME
+ * shape backs the future nav-actions kind (Surface 2 — the detail action-bar),
+ * so `Tab` is the reusable nav-chrome entry, not a tab-only type.
+ *
+ * @typedef {object} Tab
+ * @property {string}     id        stable nav-item id; the shell keys its
+ *                                   handler + active-state off this.
+ * @property {string}     labelKey  localisation key (invariant #8) — resolved via `t()`.
+ * @property {string}     [icon]    optional icon token (consumer-side glyph lookup).
+ * @property {NavTarget}  target    what the tab SELECTS — `{kind:'nav', to}` (an
+ *                                   app-nav root that maps to no op) OR
+ *                                   `{kind:'op', opId}` (dispatch a manifest op).
+ *
+ * @typedef {{kind: 'nav', to: string} | {kind: 'op', opId: string}} NavTarget
  */
 
 /**
