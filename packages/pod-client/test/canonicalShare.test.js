@@ -171,6 +171,61 @@ describe('canonicalShare — revoke (rotate + re-grant + ACP revoke) DENIES the 
   });
 });
 
+// ── Phase 3 — historic-key retention: read the canonical item IN PLACE across rotations via canon.open ────
+describe('canonicalShare — open across rotations (Phase 3 historic-key retention)', () => {
+  it('a still-granted recipient opens BOTH pre- and post-rotation content; a revoked one is denied post-rotation', async () => {
+    const controllerKey = generateKeypair();
+    const alice = generateKeypair();   // stays granted across the rotation
+    const bob = generateKeypair();     // granted, then revoked
+    const keyStore = memKeyStore();
+    const canon = createCanonicalShare({ sharing: fakeSharing(), keyStore, controllerKey, resourceUri: RES });
+
+    // v1: alice + bob both granted. Seal an item under the v1 group key.
+    await canon.share({ recipient: 'did:alice', recipientKey: alice.publicKey });
+    const { keyResource: v1 } = await canon.share({ recipient: 'did:bob', recipientKey: bob.publicKey, currentRecipients: [alice.publicKey] });
+    const gk1 = unwrapGroupKey(v1, alice.privateKey);
+    const preRotation = sealWithGroupKey('canonical body — v1', gk1);
+
+    // Revoke bob → rotate to v2 (alice + controller). v1 is retained in history.
+    const { keyResource: v2 } = await canon.revoke({ recipient: 'did:bob', remainingRecipients: [alice.publicKey] });
+    const gk2 = unwrapGroupKey(v2, alice.privateKey);
+    const postRotation = sealWithGroupKey('canonical body — v2', gk2);
+
+    // Alice reads BOTH the historic (v1) and current (v2) content in place, resolving the version automatically.
+    expect(await canon.open(preRotation, alice.privateKey)).toBe('canonical body — v1');
+    expect(await canon.open(postRotation, alice.privateKey)).toBe('canonical body — v2');
+
+    // Bob (revoked) can still open the pre-rotation content he was entitled to (retained v1)...
+    expect(await canon.open(preRotation, bob.privateKey)).toBe('canonical body — v1');
+    // ...but CANNOT open post-rotation content — forward secrecy is intact after retention.
+    await expect(canon.open(postRotation, bob.privateKey)).rejects.toThrow(/no retained group-key version/);
+  });
+
+  it('open across rotations works for an OUT-OF-CIRCLE recipient granted by published network key', async () => {
+    const controllerKey = generateKeypair();
+    const alice = generateKeypair();
+    const dave = fakeNetworkIdentity();   // out-of-circle, granted then revoked
+    const keyStore = memKeyStore();
+    const canon = createCanonicalShare({ sharing: fakeSharing(), keyStore, controllerKey, resourceUri: RES });
+
+    await canon.share({ recipient: 'did:alice', recipientKey: alice.publicKey });
+    const { keyResource: v1 } = await canon.shareToPublishedKey({ recipient: 'did:dave', recipientNetworkKey: dave.publicKey, currentRecipients: [alice.publicKey] });
+    const gk1 = unwrapGroupKey(v1, alice.privateKey);
+    const preRotation = sealWithGroupKey('shared plan — v1', gk1);
+
+    const daveSealing = sealingKeyPairFromNetworkKey(dave.secretKey);
+    // Dave (still granted) opens the v1 content in place via his network-derived private key.
+    expect(await canon.open(preRotation, daveSealing.privateKey)).toBe('shared plan — v1');
+
+    const { keyResource: v2 } = await canon.revoke({ recipient: 'did:dave', remainingRecipients: [alice.publicKey] });
+    const postRotation = sealWithGroupKey('shared plan — v2', unwrapGroupKey(v2, alice.privateKey));
+    // After revoke: Dave keeps pre-rotation access (retained v1) but is denied the post-rotation content.
+    expect(await canon.open(preRotation, daveSealing.privateKey)).toBe('shared plan — v1');
+    await expect(canon.open(postRotation, daveSealing.privateKey)).rejects.toThrow(/no retained group-key version/);
+    expect(await canon.open(postRotation, alice.privateKey)).toBe('shared plan — v2');
+  });
+});
+
 // ── Phase 2 — grant an OUT-OF-CIRCLE recipient via their PUBLISHED NETWORK KEY ───────────────────────────
 // The recipient is NOT in the origin roster: the granter never holds their sealing key, only their published
 // Ed25519 network identity key. These prove the three security guarantees against REAL crypto (the derived
