@@ -207,6 +207,92 @@ export async function shareItemAcrossCircles({
 }
 
 /**
+ * Share ONE canonical item OUT to an OUT-OF-CIRCLE recipient (objective L · Phase 2) — one who is NOT in the
+ * origin roster, identified ONLY by their PUBLISHED Ed25519 network key. Mirrors `shareItemAcrossCircles`'s
+ * canonical branch structure: it writes ONLY the `shared-ref` pointer into the target circle (NO copy) and
+ * rides the pod-tier `enforcement.onShareToPublishedKey` hook, which derives the recipient's sealing key from
+ * their published network key, re-wraps the item's group key to it, and lands the ACP read grant on the
+ * CANONICAL resource. The recipient opens the item IN PLACE by deriving their sealing private key from the same
+ * network identity. Absent a canonical enforcement (memory path / no pod / not signed in) it degrades to the
+ * plain `shared-ref` write — the pre-L in-memory behaviour, byte-for-byte (no grant).
+ *
+ * Only the `canonical` posture applies (an out-of-circle party gets a REVOCABLE in-place key grant, never a
+ * copy). The SAME source-circle initiator gate as `shareItemAcrossCircles` runs (`closed` refuses,
+ * `registered` is admin-only); a non-canonical posture returns `not-canonical`.
+ *
+ * REVOKE reuses `revokeItemShare` unchanged — its `enforcement.revokeCanonical` (rotate + ACP-revoke) denies
+ * ANY WebID (roster or out-of-circle), so revoking an out-of-circle recipient is
+ * `revokeItemShare({ …, recipient, remainingRecipients: <origin roster keys> })`. No published-key revoke op.
+ *
+ * READ: the granted out-of-circle recipient surfaces the item through `listSharedResolved` exactly like a
+ * roster canonical recipient — the ACP grant + shared-ref are keyed on their WebID, so the deny-by-default
+ * read gate resolves it for them and drops it for a non-recipient. (Their device unwraps the group key with
+ * their network-derived sealing key via the circle's own `strategy.open`; that is the reader's concern, not
+ * this op's — no new read path.)
+ *
+ * @param {object} args
+ * @param {(circleId:string)=>Promise<{stores:{getStore:Function}}|null>} args.resolveService
+ * @param {string} args.itemId
+ * @param {string} args.fromCircleId          the SOURCE (origin) circle the canonical item lives in
+ * @param {string} args.toCircleId            the target circle the `shared-ref` pointer lands in
+ * @param {string} [args.by]                  the initiator (the initiator-gate subject)
+ * @param {string} args.recipient             the out-of-circle recipient's WebID (the ACP grant subject)
+ * @param {string} args.recipientNetworkKey   the recipient's PUBLISHED Ed25519 network public key (b64url)
+ * @param {(networkKey:string)=>boolean} [args.verify]  optional minimal handshake guard — falsy/throw ⇒ the
+ *        grant aborts (nothing written, nothing ACP-granted). A full attestation handshake is a follow-up.
+ * @param {(circleId:string)=>Promise<{onShareToPublishedKey?:Function}|null>} [args.enforcementFor]
+ * @param {(circleId:string)=>number} [args.postureOf]  target confidentiality (the posture-floor check).
+ * @param {(circleId:string)=>(object|Promise<object>)} [args.policyOf]  the SOURCE circle's admin policy.
+ * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, cause?:any}>}
+ */
+export async function shareItemToPublishedKey({
+  resolveService, itemId, fromCircleId, toCircleId, by,
+  recipient, recipientNetworkKey, verify, enforcementFor, postureOf, policyOf,
+} = {}) {
+  if (typeof resolveService !== 'function' || !itemId || !fromCircleId || !toCircleId) {
+    return { ok: false, error: 'missing-args' };
+  }
+  if (fromCircleId === toCircleId) return { ok: false, error: 'same-circle' };
+  if (!recipient || !recipientNetworkKey) return { ok: false, error: 'missing-recipient' };
+
+  // slice 2 — INITIATOR GATE by the SOURCE circle's sharePosture, identical to shareItemAcrossCircles.
+  let srcPolicy;
+  try { srcPolicy = typeof policyOf === 'function' ? await policyOf(fromCircleId) : undefined; }
+  catch { srcPolicy = undefined; }
+  const policy = normalizeCirclePolicy(srcPolicy);
+  const posture = policy.sharePosture;
+  if (posture === 'closed') return { ok: false, error: 'sharing-closed' };
+  if (posture === 'registered' && !policy.admins.includes(by)) {
+    return { ok: false, error: 'sharing-admin-only' };
+  }
+  // A published-key grant is a CANONICAL in-place share (revocable key grant, NO copy). It applies ONLY to the
+  // `canonical` posture — the copy/closed postures have no in-place revocable grant to give an outside party.
+  if (!isCanonicalPosture(posture)) return { ok: false, error: 'not-canonical' };
+
+  const [fromSvc, toSvc] = await Promise.all([resolveService(fromCircleId), resolveService(toCircleId)]);
+  if (!fromSvc?.stores || !toSvc?.stores) return { ok: false, error: 'no-stores' };
+
+  const stores = makeCrossCircleStores(new Map([
+    [fromCircleId, fromSvc.stores.getStore(fromCircleId)],
+    [toCircleId,   toSvc.stores.getStore(toCircleId)],
+  ]));
+
+  const enforcement = typeof enforcementFor === 'function' ? await enforcementFor(fromCircleId) : null;
+  const grant = enforcement?.onShareToPublishedKey;
+
+  // Write ONLY the `shared-ref` pointer (like the canonical branch) and ride the published-key hook. The
+  // generic `shareIntoAudience` hook carries `recipientKeys` (roster sealing keys); published-key sharing
+  // sources the key from the NETWORK key instead, so we bridge with a tiny adapter closing over
+  // `recipientNetworkKey`/`verify`. Undefined hook (memory path / no pod) ⇒ plain shared-ref write, no grant.
+  return shareIntoAudience(stores, {
+    itemId, fromCircleId, toCircleId, by, recipient, postureOf,
+    onShare: typeof grant === 'function'
+      ? ({ ref }) => grant({ recipient, recipientNetworkKey, verify, ref })
+      : undefined,
+  });
+}
+
+/**
  * UN-SHARE (objective L) — REVOKE a recipient's canonical access to an item shared out of `fromCircleId`.
  * Only the `canonical` posture has a revocable in-place grant to rotate; the copy postures minted a SEPARATE
  * object (deleting that copy is a different op) and `closed` never shared, so those return `not-canonical`.
