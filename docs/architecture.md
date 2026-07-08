@@ -90,8 +90,9 @@ a **persistent** one — web via `pickWebBackend` (IndexedDB, `@canopy/pseudo-po
 test env. So vectors (and the circle **items** they index, on the same persistent backend) **survive a hard
 restart** instead of re-embedding; within a session, retriever rebuilds hydrate from the store (embed-once).
 This closes cross-restart survival on the standalone (no-pod) posture. The other persistence path — a real
-**signed-in Solid pod** — is now **live-validated** too: an end-to-end live-infra test confirms a circle (with
-its items) survives an app restart on a signed-in pod, and the ACP grant path is exercised against real CSS.
+**signed-in Solid pod** — is **live-validated** too, against a local Community Solid Server: an infra-gated
+`.css.test.js` (runs when a CSS is present, skipped from the default suite) confirms a circle with its items
+survives an app restart on a signed-in pod, and exercises the ACP grant path against real CSS.
 
 **Policy & privacy** (invariant #7 — placed by trust):
 - Gated by `llmTool: 'off'` ⇒ no LLM and no semantic retrieval.
