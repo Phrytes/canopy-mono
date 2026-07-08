@@ -63,4 +63,9 @@ export { treeOf, createCrossPodRefResolver } from './embeds.js';
 // SP-5b — `audienceMatches(itemAudience, filterAudience)` is the
 // predicate behind `ListFilter.audience`: exact structural equality
 // plus membership for `union`/`set` container audiences.
-export { audienceFromItem, audienceMatches } from './audience.js';
+//
+// SP-8 — `audienceMatchesAny(itemAudience, filterAudiences)` is the
+// cross-circle sibling behind `ListFilter.audiences`: an item matches
+// when its audience satisfies ANY audience in the set (one query spans
+// multiple circles).
+export { audienceFromItem, audienceMatches, audienceMatchesAny } from './audience.js';

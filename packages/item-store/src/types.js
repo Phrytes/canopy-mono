@@ -232,6 +232,22 @@
  *   can't depend on it for layering reasons).  A future revision may
  *   lift `normalizeAudience` to item-types OR take a callback.
  *
+ * @property {Audience[]} [audiences]
+ *   SP-8 (2026-07-05).  **Cross-circle query.**  Match items whose
+ *   effective audience satisfies ANY audience in this SET — the query
+ *   spans multiple circles/audiences at once ("visible to circle A OR
+ *   B OR …").  Each element is matched with the full
+ *   `audienceMatches` contract (exact / union-membership /
+ *   set-membership); see `audience.js#audienceMatchesAny`.
+ *
+ *   Independent of `audience` (single): both clauses apply (AND) when
+ *   both are present.  An empty set (`[]`) matches nothing (a query
+ *   across zero circles returns zero items).  A one-element set `[a]`
+ *   is exactly the single-audience `audience: a` path — back-compatible.
+ *
+ *   A saved cross-circle *view* is the persisted form of such a set —
+ *   see `@canopy/circles`' `resolveSavedView` / `savedViewAudiences`.
+ *
  * @property {number} [since]
  *   ms epoch.  Match items with `addedAt >= since`.
  */

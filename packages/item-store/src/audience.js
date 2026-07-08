@@ -122,3 +122,41 @@ export function audienceMatches(itemAudience, filterAudience) {
 
   return false;
 }
+
+/**
+ * SP-8 — cross-circle query predicate.  Does an item's effective
+ * audience satisfy ANY audience in a SET (`ListFilter.audiences`)?
+ *
+ * A cross-circle query spans MULTIPLE audiences/circles at once — "show
+ * me items visible to circle A OR circle B OR …".  This is the
+ * set-valued sibling of {@link audienceMatches}: the item matches when
+ * `audienceMatches(itemAudience, fa)` holds for at least one `fa` in
+ * `filterAudiences`.  Each element is matched with the full
+ * single-audience contract (exact / union-membership / set-membership),
+ * so the per-audience semantics are unchanged.
+ *
+ * ## Edges
+ *  - **Empty set** (`filterAudiences === []`) matches NOTHING — an
+ *    empty union of audiences is visible to no-one, so a query across
+ *    zero circles returns zero items.  (This mirrors `[].some(...) ===
+ *    false` and the `union`-of-nothing intuition.)
+ *  - **Single element** (`[a]`) is exactly `audienceMatches(item, a)` —
+ *    the single-audience path is a strict special case, kept
+ *    back-compatible.
+ *
+ * Item-store keeps `filter.audience` (single) and `filter.audiences`
+ * (set) as independent, composable clauses; nothing about the
+ * single-audience path changes.
+ *
+ * @param {import('./types.js').Audience} itemAudience
+ *   The item's effective audience (from `audienceFromItem`).
+ * @param {import('./types.js').Audience[]} filterAudiences
+ *   The audience SET being queried for.
+ * @returns {boolean}
+ */
+export function audienceMatchesAny(itemAudience, filterAudiences) {
+  if (!Array.isArray(filterAudiences)) {
+    throw new TypeError('audienceMatchesAny: filterAudiences must be an array');
+  }
+  return filterAudiences.some((fa) => audienceMatches(itemAudience, fa));
+}
