@@ -1,9 +1,48 @@
 import { describe, it, expect } from 'vitest';
+import nacl from 'tweetnacl';
 import {
   recipientId, generateKeypair, generateGroupKey, isSealed,
   seal, open, sealWithGroupKey, openWithGroupKey,
   makeSealer, makeOpener, makeGroupSealer, makeGroupOpener,
+  sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey,
 } from '../src/sealing/index.js';
+
+const b64u = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+describe('sealing — derive a sealing key from a PUBLISHED Ed25519 NETWORK key (out-of-circle recipients)', () => {
+  it('the granter (public network key) and the recipient (network secret) derive the SAME sealing public key', () => {
+    const kp = nacl.sign.keyPair();
+    const fromPublic = sealingPublicKeyFromNetworkKey(b64u(kp.publicKey));
+    const fromSecret = sealingKeyPairFromNetworkKey(b64u(kp.secretKey));
+    expect(fromSecret.publicKey).toBe(fromPublic);
+    expect(fromSecret.recipientId).toBe(recipientId(fromPublic));
+  });
+
+  it('round-trips through the REAL envelope: seal to the derived public key, open with the derived private key', () => {
+    const kp = nacl.sign.keyPair();
+    const pub = sealingPublicKeyFromNetworkKey(b64u(kp.publicKey));
+    const { privateKey } = sealingKeyPairFromNetworkKey(b64u(kp.secretKey));
+    const sealed = seal('cross-circle body', [pub]);
+    expect(open(sealed, privateKey)).toBe('cross-circle body');
+  });
+
+  it('a DIFFERENT network identity cannot open it; malformed keys throw', () => {
+    const a = nacl.sign.keyPair(); const b = nacl.sign.keyPair();
+    const sealed = seal('x', [sealingPublicKeyFromNetworkKey(b64u(a.publicKey))]);
+    expect(() => open(sealed, sealingKeyPairFromNetworkKey(b64u(b.secretKey)).privateKey)).toThrow(/not a recipient/);
+    expect(() => sealingPublicKeyFromNetworkKey(b64u(new Uint8Array(10)))).toThrow(/32-byte Ed25519/);
+    expect(() => sealingKeyPairFromNetworkKey(b64u(new Uint8Array(7)))).toThrow(/32-byte seed or 64-byte/);
+  });
+
+  it('accepts either a 32-byte seed or a 64-byte nacl secret key for the recipient derivation', () => {
+    const seed = nacl.randomBytes(32);
+    const kp = nacl.sign.keyPair.fromSeed(seed);
+    const fromSeed = sealingKeyPairFromNetworkKey(b64u(seed));
+    const fromSecret = sealingKeyPairFromNetworkKey(b64u(kp.secretKey));
+    expect(fromSeed.publicKey).toBe(fromSecret.publicKey);
+    expect(fromSeed.publicKey).toBe(sealingPublicKeyFromNetworkKey(b64u(kp.publicKey)));
+  });
+});
 
 describe('sealing — recipient mode', () => {
   it('round-trips a single recipient', () => {
