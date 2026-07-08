@@ -559,6 +559,10 @@ import { createCirclePinStore, localStoragePinIo } from '../../src/v2/circlePinS
 // lands relayed sealed copies into it (peer router subtype `shared-copy`).
 import { createSharedWithMeStore, localStorageSharedWithMeIo, podSharedWithMeIo, tieredSharedWithMeIo } from '../../src/v2/sharedWithMeStore.js';
 import { makeHandleSharedCopy } from '../../src/core/handlers/sharedCopyReceive.js';
+// SILENT out-of-circle delivery — the "shared with me" VIEW (web DOM projector) + the shared
+// open selector. The nav entry lives on the Mij profile (personal, cross-circle inbox).
+import { renderSharedWithMe } from './sharedWithMe.js';
+import { buildSharedWithMe, openSharedCopy } from '../../src/v2/sharedWithMe.js';
 import { renderCircleViewAs } from './circleViewAs.js';
 import { renderCircleLauncher } from './circleLauncher.js';
 import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
@@ -2442,9 +2446,42 @@ async function showMij() {
     },
     onAvailability: showAvailability,
     onMyData: showMyData,
+    // SILENT out-of-circle delivery — the personal, cross-circle "shared with me" inbox.
+    onSharedWithMe: showSharedWithMe,
   });
   rerender();
   load();
+}
+
+// SILENT out-of-circle delivery — the "shared with me" inbox (a Mij sub-screen). Reads the
+// per-user store (sealed copies peers pushed to this device over the relay) and renders the
+// SHARED view projector; back returns to Mij. web ≡ mobile: both platforms surface the SAME
+// view over the SAME `buildSharedWithMe`/`openSharedCopy` selector — this is just the web
+// adapter (read the store, feed the projector).
+//
+// FLAG (crypto-track follow-up): opening a sealed copy needs THIS device's own
+// network-derived sealing opener (`recipientStrategy({privateKey}).open` over
+// `sealingKeyPairFromNetworkKey(myNetworkSecret)`). That secret is deliberately encapsulated
+// in the agent identity and is not yet exposed to the shell — the receive/crypto track owns
+// that injection. Until it lands, `onOpen` is DENY-SAFE: with no opener a row tap is a no-op
+// (never ciphertext), exactly as the mobile SharedWithMeScreen degrades on a null opener. The
+// list + empty-state + back all work today.
+async function showSharedWithMe() {
+  hideCircleTabBar(tabBarEl);
+  let received = [];
+  try { received = await sharedWithMeStore.list(); } catch { received = []; }
+  // Project the raw store entries through the SHARED selector (newest-first, row shape) — the
+  // SAME projection the mobile SharedWithMeScreen runs internally (web ≡ mobile).
+  const entries = buildSharedWithMe(received);
+  const opener = null;   // crypto-track injection point (see FLAG above)
+  renderSharedWithMe(rootEl, {
+    entries, t,
+    onBack: showMij,
+    onOpen: async (entry) => {
+      if (typeof opener !== 'function') return;   // deny-safe: no opener → no-op (no leak)
+      try { await openSharedCopy(entry, opener); } catch { /* wrong key / not a recipient — deny-safe */ }
+    },
+  });
 }
 
 // S5 — "My data": where your data lives (pod/relay) + privacy + usage + key
