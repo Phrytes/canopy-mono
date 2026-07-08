@@ -11,7 +11,7 @@
 // Methods are ASYNC (a real pod is async), unlike the synchronous InMemoryCentralPod.
 // The same callers work: `aggregateForProject(await pod.forAggregation(), cfg, {skipClean:true})`.
 
-import { createPseudoPod, createMemoryBackend } from '../../../../packages/pseudo-pod/index.js';
+import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { validateContribution } from './contribution.js';
 import { canWithdraw } from './central-pod.js';
 

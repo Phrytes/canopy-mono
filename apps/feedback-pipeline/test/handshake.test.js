@@ -17,7 +17,7 @@ import { createActivationServer } from '../src/activation/server.js';
 import { ProjectStore } from '../src/portal/project-store.js';
 import { InMemoryCentralPod } from '../src/pod/central-pod.js';
 import { buildContribution } from '../src/pod/contribution.js';
-import { AgentIdentity } from '../../../packages/core/src/identity/AgentIdentity.js';
+import { AgentIdentity } from '@canopy/core';
 import { randomBytes } from 'node:crypto';
 
 const future = new Date(Date.now() + 7 * 864e5).toISOString();

@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { startMockLlm } from './helpers/mock-llm.js';
-import { InternalBus } from '../../../packages/core/src/transport/InternalTransport.js';
+import { InternalBus } from '@canopy/core';
 import { InternalBusBridge, connectFeedbackParticipant } from '../src/channel/internal-bus-bridge.js';
 import { CanopyChatBot } from '../src/channel/canopy-chat-bot.js';
 import { CssCentralPod } from '../src/pod/css-central-pod.js';

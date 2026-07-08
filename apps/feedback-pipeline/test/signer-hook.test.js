@@ -12,7 +12,7 @@ import { ChannelDispatcher } from '../src/channel/dispatcher.js';
 import { InMemoryCentralPod } from '../src/pod/central-pod.js';
 import { validateProjectConfig } from '../src/config/project-config.js';
 import { contributionMeta, IdentityRoster, makeContributionVerifier, generateParticipantIdentity } from '../src/pod/signing.js';
-import { AgentIdentity } from '../../../packages/core/src/identity/AgentIdentity.js';
+import { AgentIdentity } from '@canopy/core';
 
 const projectId = 'm13';
 const config = () => validateProjectConfig({ projectId, llm: { route: 'local', model: 'mock' }, aggregation: { k: 1 }, privacy: { verify: true } });

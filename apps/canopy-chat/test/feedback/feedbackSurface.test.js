@@ -7,7 +7,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { startMockLlm } from '../../../feedback-pipeline/test/helpers/mock-llm.js';
 import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-pod.js';
-import { InternalBus } from '../../../../packages/core/src/transport/InternalTransport.js';
+import { InternalBus } from '@canopy/core';
 import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from '../../../feedback-pipeline/src/pod/signing.js';
 import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem } from '../../src/feedback/feedbackSurface.js';
 
