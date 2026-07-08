@@ -1007,6 +1007,15 @@ const kringInputHistory = createInputHistory();
 // (kringReplyText is now the shared `src/v2/kringReply.js` — verb-aware Added:/Completed: phrasing.)
 
 // Build the bot + feedback once the agent is up (rawCallSkill bound). Stores into the module vars above.
+// F-retrieve persistence: one app-level StorageBackend for the circle-bot RAG
+// vector index. The retriever scopes it per-circle to
+// private/state/search-index/circle-rag/<circleId>/ (never sharing/ — invariant
+// #7). Same @canopy/pseudo-pod substrate the circle pods run on. In-memory in
+// the current standalone posture — see the vectorStore wiring in buildCircleBot
+// for the honest live-pod dependency; the seam is fully threaded so a persistent
+// backend drops in with no retriever change.
+const circleSearchVectorStore = createMemoryBackend();
+
 function buildCircleBot(agent) {
   // Merged catalog (the LLM tool list + dispatch catalog) — mirrors main.js.
   const baseSources = [
@@ -1511,14 +1520,26 @@ function buildCircleBot(agent) {
         // web ≡ mobile); raise it here to be stricter, pass 0 to disable.
         minScore: DEFAULT_CIRCLE_RAG_MIN_SCORE,
         // Persistence seam (vectorStore): threaded end-to-end into PodSearch
-        // (makeCircleRetriever → makePodSearchRetriever → new PodSearch), so a
-        // real StorageBackend under private/state/search-index/circle-rag/<id>/
-        // makes vectors survive a restart. PENDING: the only store reachable at
-        // this site is the circle's IN-MEMORY pseudo-pod backend
-        // (createMemoryBackend, lost on restart) — wiring that would FAKE
-        // persistence, so it stays absent, exactly as folio's noteVectorStore.
-        // Inject a persistent StorageBackend here once the circle exposes one.
-        vectorStore: undefined,
+        // (makeCircleRetriever → makePodSearchRetriever → new PodSearch), which
+        // persists vectors under private/state/search-index/circle-rag/<id>/
+        // (NEVER sharing/ — invariant #7). We wire the circle's available
+        // StorageBackend — the SAME @canopy/pseudo-pod substrate the circle pod
+        // runs on — so the seam is LIVE end-to-end: a fresh PodSearch over this
+        // store hydrates the content-hash cache instead of re-embedding
+        // (embed-once, restart-safe by construction when the backend persists).
+        //
+        // LIVE-POD DEPENDENCY (honest): this backend is IN-MEMORY in the current
+        // standalone posture (makeCirclePodClient → createPseudoPod({ backend:
+        // createMemoryBackend() })), so vectors do NOT survive a hard page reload
+        // yet — and neither do the circle ITEMS they index (same in-memory pod),
+        // so persisting vectors alone would only orphan them. TRUE cross-restart
+        // survival needs the circle to run on a PERSISTENT pod: a real Solid pod
+        // (signed-in routing) = live infra, or a persistent pseudo-pod backend
+        // (a future web IndexedDB StorageBackend). Swapping circleSearchVectorStore
+        // for that persistent backend is a ONE-LINE change — retriever + scope
+        // are unchanged.
+        vectorStore: circleSearchVectorStore,
+        scope: 'circle-rag',
       }),
     }),
     botName: CIRCLE_BOT_NAME,

@@ -94,6 +94,7 @@ import { feedHouseholdRoster } from '../../../../canopy-chat/src/v2/householdRos
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { makeCircleRetriever } from '../../../../canopy-chat/src/v2/circleRetriever.js';
+import { createMemoryBackend } from '@canopy/pseudo-pod';
 import { buildCircleEmbedProviders } from '../../../../canopy-chat/src/v2/circleEmbedProviders.js';
 import { resolveCircleEmbedder } from '../../../../canopy-chat/src/v2/embedPicker.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -182,6 +183,17 @@ const CIRCLE_LLM_POLICY  = process.env.EXPO_PUBLIC_CIRCLE_LLM_POLICY || 'user';
 // offers ALL circle apps' ops (~105 tools) — a big, slow prompt. Narrowing to the relevant apps cuts the
 // tool count dramatically (household alone ≈ 16), so the per-turn prompt is far smaller + faster.
 const CIRCLE_LLM_APPS = (process.env.EXPO_PUBLIC_CIRCLE_LLM_APPS || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+// F-retrieve persistence (web parity): one app-level StorageBackend for the
+// circle-bot RAG vector index, scoped per-circle inside the retriever to
+// private/state/search-index/circle-rag/<circleId>/ (never sharing/ — invariant
+// #7). Same @canopy/pseudo-pod substrate the circle pods run on (see
+// src/core/circlePods.js). In-memory in the standalone posture — same honest
+// live-pod dependency as web (circleApp.js buildCircleBot): TRUE cross-restart
+// survival needs the circle on a PERSISTENT pod (real Solid pod = live infra, or
+// a persistent pseudo-pod backend — RN createAsBackend/createFsBackend). The seam
+// is threaded so swapping this for a persistent backend is a one-line change.
+const circleSearchVectorStore = createMemoryBackend();
 
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions
 // row.  Module singleton (shared across kring opens), hydrated once from
@@ -2217,6 +2229,13 @@ function CircleDetail({
             }
           : undefined,
         loadItems: (ctx) => loadCircleItems({ callSkill, circleId: ctx?.circleId ?? circle?.id }),
+        // Persistence seam (vectorStore) — web parity. Threaded end-to-end into
+        // PodSearch, which persists vectors under
+        // private/state/search-index/circle-rag/<id>/ (never sharing/). Wires the
+        // circle's available pseudo-pod StorageBackend; in-memory in the standalone
+        // posture (live-pod dependency documented at circleSearchVectorStore).
+        vectorStore: circleSearchVectorStore,
+        scope: 'circle-rag',
       }),
     }),
     // A slash command is parsed to {opId,args}; the LLM already yields {opId,args}. Both then flow
