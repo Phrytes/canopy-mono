@@ -32,6 +32,9 @@ import { buildHouseholdDataSource } from '../../../household/src/index.js';
 // keys). Mirror of web circleApp.js's module-level `policyStore`: the composition-root's `policyOf` reads the
 // LIVE per-circle `sharePosture` from here instead of the deny-by-default `{}`.
 import { makeCirclePolicyStoreRN } from './circleStoresRN.js';
+// P3 pod versioning — the RN twin of web's src/web/circleVersioning.js (expo-crypto hash;
+// crypto.subtle fallback for vitest/web). One store per circle, on the circle pod's own backend.
+import { circleVersioningFor } from './circleVersioning.js';
 
 let circleVault = null;                       // VaultAsyncStorage (durable) — set by initCirclePods
 let podSessionRef = null;                     // App-owned OidcSessionRN ref — set by setCirclePodSession
@@ -98,7 +101,12 @@ function makeCirclePodClient(circleId) {
   const backend = asyncStorageRef
     ? createAsBackend({ AsyncStorage: asyncStorageRef, scope: `cc-circle-${circleId}` })
     : createMemoryBackend();
-  const pseudoPod = createPseudoPod({ backend, mode: 'standalone', deviceId });
+  // P3 versioning: displaced bytes (overwrites · peer-updates · dropped
+  // concurrent forks · deletes) land in `versions/` on the SAME backend —
+  // the substrate under the my-data restore ops. Best-effort by design
+  // (a throwing store never breaks a write).
+  const versioning = circleVersioningFor(circleId, deviceId, backend);
+  const pseudoPod = createPseudoPod({ backend, mode: 'standalone', deviceId, versioning });
   return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
 }
 
