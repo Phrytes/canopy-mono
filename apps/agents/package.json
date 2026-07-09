@@ -1,0 +1,27 @@
+{
+  "name": "@canopy-app/agents",
+  "version": "0.1.0",
+  "private": true,
+  "description": "agents — read-only 'your agents' management surface over @canopy/agent-registry.  First slice: list + view (skills / grants / status / lastSeen), no mutate ops.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/cores.js",
+    "./manifest": "./manifest.js",
+    "./cores": "./src/cores.js",
+    "./wireSkills": "./src/wireSkills.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@canopy/agent-registry": "file:../../packages/agent-registry",
+    "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/pseudo-pod": "file:../../packages/pseudo-pod",
+    "@canopy/sdk": "file:../../packages/sdk"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}
