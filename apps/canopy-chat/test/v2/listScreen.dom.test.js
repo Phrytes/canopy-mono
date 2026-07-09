@@ -114,6 +114,24 @@ describe('renderListBlock (stateful, focus-safe)', () => {
     expect(caption.querySelector('button')).toBeNull();
   });
 
+  it('Q15 drill-down: with onRowOpen the row label is a button firing {item, itemId}; row ACTIONS stay independent', () => {
+    const el = mount();
+    const onRowOpen = vi.fn();
+    renderListBlock(el, { block: { items }, t, onRowOpen });
+    const openBtns = el.querySelectorAll('button.list-screen__row-open');
+    expect(openBtns).toHaveLength(3);
+    expect(openBtns[1].textContent).toBe('Klaas');
+    openBtns[1].click();
+    expect(onRowOpen).toHaveBeenCalledWith({ item: items[1], itemId: 'b' });
+  });
+
+  it('Q15 drill-down: WITHOUT onRowOpen the label stays a plain span (unchanged rows)', () => {
+    const el = mount();
+    renderListBlock(el, { block: { items }, t });
+    expect(el.querySelector('.list-screen__row-open')).toBeNull();
+    expect(el.querySelector('.list-screen__row-label').tagName).toBe('SPAN');
+  });
+
   it('SP-5b Option A: no scope caption when the list is unscoped', () => {
     const el = mount();
     renderListBlock(el, { block: { items }, t });

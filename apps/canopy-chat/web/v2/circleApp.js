@@ -54,6 +54,11 @@ import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
 import { makeCircleLookup } from '../../src/v2/circleLookup.js';
 import { sectionForScreen } from '../../src/v2/pageProjection.js';
+// Q15 drill-down — selection-context detail screens (agents → agent-detail,
+// data-versions → data-version-detail): the shared mapping + fetch seam.
+import {
+  drilldownForSection, selectionContextFor, fetchScreenItems, itemsFromReply, recordFromReply,
+} from '../../src/v2/screenDrilldown.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@canopy/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
@@ -67,6 +72,8 @@ import { buildCapabilityMatrix } from '@canopy/app-manifest';
 import { pageForOp } from '../../src/v2/pageProjection.js';
 // B · Slice 3 — the interactive list-screen surface (search + category checkboxes + capability-gated rows).
 import { renderListBlock } from './listScreen.js';
+// Q17 — record-shaped detail screens (read-only key→value, e.g. agent-detail).
+import { renderRecordScreen } from './recordScreen.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
@@ -2878,8 +2885,13 @@ function openListsPanel(circleId) {
 // S6.B — open a dedicated screen (tasks / agenda) as a dismissable panel, the
 // chat-triggered "overview" projection. Reuses the Schermen block materializer +
 // renderer (one block, scope:'all'), scoped to the active circle.
-async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
+async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
   const circleId = getActiveCircle();
+  // Q15 — the panel's FETCH CONTEXT: the host materializes `$circleId` (the
+  // active circle — the same key the tasks-v0 host supplies its pod-settings
+  // page) plus any SELECTION context a drill-down row-pick passed in
+  // (screenDrilldown: `$uri` / `$agentId` ← the picked row).
+  const screenContext = { circleId, ...(context && typeof context === 'object' ? context : {}) };
   const overlay = document.createElement('div');
   overlay.className = 'cc-screen-panel';
   const card = document.createElement('div');
@@ -2917,8 +2929,21 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
     // consumer defaults to `[labelField]` (label-only search, as before).
     const searchFields = section.searchFields;
     try {
-      const res = await rawCallSkill(appOrigin, section.dataSource.skillId, section.dataSource.args ?? {});
-      const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
+      // Q15 — fetch through the shared seam: static `dataSource.args` merged
+      // with `argsFromContext` `$keys` substituted from the panel's context
+      // (`$circleId` host-materialized; `$uri`/`$agentId` selection-derived).
+      const res = await fetchScreenItems(section, {
+        callSkill: (skillId, args) => rawCallSkill(appOrigin, skillId, args),
+        context: screenContext,
+      });
+      // Q17 — a record-shaped DETAIL (e.g. agent-detail) renders as a
+      // read-only key→value record, not a list.
+      if (section.shape === 'record') {
+        body.innerHTML = '';
+        renderRecordScreen(body, { record: recordFromReply(res), t });
+        return;
+      }
+      const items = itemsFromReply(res);
       let capabilityMatrix = [];
       try {
         const pol = (await policyStore.get(circleId)) ?? {};
@@ -2929,10 +2954,17 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
         });
       } catch { /* best-effort */ }
       body.innerHTML = '';
+      // Q15 drill-down — when a sibling DETAIL view needs a selection-derived
+      // context key (screenDrilldown), picking a row opens it with that key
+      // materialized from the picked row (`$uri` / `$agentId` ← row).
+      const drill = drilldownForSection(circleManifestsByOrigin, screenId, { hostKeys: Object.keys(screenContext) });
       renderListBlock(body, {
         block: { items, categoryField, labelField, searchFields, defaultAudience: section.audience, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
+        onRowOpen: drill
+          ? ({ item }) => { openCircleScreenPanel(drill.screenId, { context: selectionContextFor(drill, item, screenContext) }); }
+          : undefined,
       });
     } catch { body.textContent = t('circle.screen.empty'); }
     return;
