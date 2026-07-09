@@ -83,6 +83,19 @@ const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
  *   — graceful-degradation gate. When supplied, cache-mode writes that find
  *   the pod unreachable stay in the write-through queue until
  *   `drainWriteThroughQueue()` is called on reconnect.
+ *
+ * Versioning seam (PLAN-pod-versioning-history-recovery P2):
+ * @param {{capture: (uri: string, content: *) => Promise<*>}} [opts.versioning]
+ *   — optional version store (duck-typed; `@canopy/versioning`'s
+ *   `createVersionStore`). When supplied, the write path snapshots the
+ *   DISPLACED bytes before they are lost: prior local bytes on `write`,
+ *   `writeFromPeer` peer-update, and `delete`; the DROPPED PEER FORK on a
+ *   `concurrent-write` (today's LWW winner-select silently discards the
+ *   loser — with versioning it lands in history, recoverable). Stale-peer /
+ *   idempotent re-deliveries are NOT captured (noise). Capture is
+ *   best-effort: a throwing store never breaks the write path. The seam
+ *   lives INSIDE the pseudo-pod (not a wrapper) so peer writes can't bypass
+ *   it via a stale inner reference — NotifyEnvelope et al. hold this object.
  */
 export function createPseudoPod({
   backend,
@@ -94,6 +107,7 @@ export function createPseudoPod({
   podFetcher,
   podUploader,
   isPodReachable,
+  versioning,
 } = {}) {
   if (!backend || typeof backend.get !== 'function') {
     throw Object.assign(
@@ -140,6 +154,23 @@ export function createPseudoPod({
         { code: 'INVALID_ARGUMENT' },
       );
     }
+  }
+  if (versioning != null && typeof versioning.capture !== 'function') {
+    throw Object.assign(
+      new Error('createPseudoPod: `versioning` must expose capture(uri, content)'),
+      { code: 'INVALID_ARGUMENT' },
+    );
+  }
+
+  /**
+   * Snapshot displaced/dropped bytes into the version store — best-effort:
+   * versioning must never break the write path. `content` is whatever the
+   * displaced record held (`bytes` is opaque to the pseudo-pod).
+   */
+  async function _captureDisplaced(uri, content) {
+    if (!versioning || content === undefined) return;
+    try { await versioning.capture(uri, content); }
+    catch (_err) { /* swallow — capture is best-effort, the write proceeds */ }
   }
 
   /** @type {Map<string, 'standalone'|'replication-ring'|'cache'>} */
@@ -345,6 +376,12 @@ export function createPseudoPod({
     // Cache writes accept https:// (the pod's own URI scheme).
     if (effectiveMode !== 'cache') _assertLocalWrite(uri);
 
+    // Versioning: snapshot the DISPLACED prior bytes before overwriting.
+    if (versioning) {
+      const prior = await backend.get(key);
+      if (prior) await _captureDisplaced(uri, prior.bytes);
+    }
+
     const { etag: newEtag, _v: newV } = await backend.put(key, bytes, etag);
 
     if (effectiveMode === 'replication-ring') {
@@ -408,6 +445,12 @@ export function createPseudoPod({
   async function deleteResource(uri) {
     const key = _keyForUri(uri);
     if (_modeFor(uri) !== 'cache') _assertLocalWrite(uri);
+    // Versioning: a delete is the most destructive op on this path (hard,
+    // no tombstone) — snapshot the prior bytes so it becomes recoverable.
+    if (versioning) {
+      const prior = await backend.get(key);
+      if (prior) await _captureDisplaced(uri, prior.bytes);
+    }
     await backend.delete(key);
   }
 
@@ -473,6 +516,10 @@ export function createPseudoPod({
     // Legacy peer — no version, fall back to LWW. Lets old senders
     // remain interoperable while we roll out the new wire shape.
     if (typeof _v !== 'number') {
+      if (versioning) {
+        const prior = await backend.get(key);
+        if (prior) await _captureDisplaced(uri, prior.bytes); // LWW displaces local unconditionally
+      }
       await backend.put(key, bytes, etag);
       return { status: 'written-no-version' };
     }
@@ -492,6 +539,9 @@ export function createPseudoPod({
     }
 
     if (_v > local._v) {
+      // Versioning: the peer's newer write DISPLACES our local bytes —
+      // snapshot them first (nothing else retains them).
+      await _captureDisplaced(uri, local.bytes);
       await backend.put(key, bytes, etag, _v);
       _emitEvent('peer-update', {
         uri,
@@ -520,6 +570,10 @@ export function createPseudoPod({
       return { status: 'idempotent' };
     }
 
+    // Versioning: LWW keeps local — the PEER'S FORK would be silently
+    // dropped. Snapshot it so the losing concurrent edit stays recoverable
+    // (softens the no-CRDT gap: the loser lands in history, not /dev/null).
+    await _captureDisplaced(uri, bytes);
     _emitEvent('concurrent-write', {
       uri,
       ...(fromActor != null ? { fromActor } : {}),
