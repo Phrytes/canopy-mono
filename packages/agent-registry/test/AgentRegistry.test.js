@@ -203,6 +203,96 @@ describe('updateCapabilities', () => {
   });
 });
 
+describe('purge — hard delete', () => {
+  let reg;
+  beforeEach(async () => {
+    reg = createAgentRegistry({
+      pseudoPod: mkPod('laptop-anne'),
+      deviceId:  'laptop-anne',
+    });
+    await reg.register(ANNE_LAPTOP);
+    await reg.register(ANNE_PHONE);
+  });
+
+  it('removes the entry entirely (unlike revoke)', async () => {
+    await reg.purge(PUB_A);
+    expect(await reg.lookup(PUB_A)).toBe(null);
+    const all = await reg.list();
+    expect(all.map(a => a.agentId)).toEqual(['phone-anne']);
+  });
+
+  it('is idempotent — purging an absent id is a no-op', async () => {
+    await reg.purge(PUB_A);
+    await expect(reg.purge(PUB_A)).resolves.toBeTruthy();
+    await expect(reg.purge('does-not-exist')).resolves.toBeTruthy();
+    expect(await reg.list()).toHaveLength(1);
+  });
+});
+
+describe('grants — signed-token authority + capability mirror', () => {
+  let reg;
+  beforeEach(async () => {
+    reg = createAgentRegistry({
+      pseudoPod: mkPod('laptop-anne'),
+      deviceId:  'laptop-anne',
+    });
+    await reg.register({ ...ANNE_LAPTOP, capabilities: [], grants: [] });
+  });
+
+  it('applyGrant sets grants[] + mirrors capabilities[] in one write', async () => {
+    await reg.applyGrant(PUB_A, {
+      tokenId:    'tok-1',
+      skill:      'tasks.create',
+      expiresAt:  '2027-01-01T00:00:00Z',
+      subject:    'https://anne.pod/profile#me',
+      capability: 'tasks',
+    });
+    const e = await reg.lookup(PUB_A);
+    expect(e.grants).toHaveLength(1);
+    expect(e.grants[0]).toMatchObject({ tokenId: 'tok-1', skill: 'tasks.create', capability: 'tasks' });
+    expect(e.capabilities).toEqual(['tasks']);
+  });
+
+  it('applyGrant dedupes by tokenId + does not double-mirror the capability', async () => {
+    await reg.applyGrant(PUB_A, { tokenId: 'tok-1', skill: 'tasks.create', capability: 'tasks' });
+    await reg.applyGrant(PUB_A, { tokenId: 'tok-1', skill: 'tasks.delete', capability: 'tasks' });
+    const e = await reg.lookup(PUB_A);
+    expect(e.grants).toHaveLength(1);
+    expect(e.grants[0].skill).toBe('tasks.delete');
+    expect(e.capabilities).toEqual(['tasks']);
+  });
+
+  it('rejects a grant without tokenId', async () => {
+    await expect(reg.applyGrant(PUB_A, { skill: 'tasks.create', capability: 'tasks' }))
+      .rejects.toMatchObject({ code: 'INVALID_ARGUMENT' });
+  });
+
+  it('revokeGrant removes the grant + un-mirrors the orphaned capability', async () => {
+    await reg.applyGrant(PUB_A, { tokenId: 'tok-1', skill: 'tasks.create', capability: 'tasks' });
+    await reg.revokeGrant(PUB_A, 'tok-1');
+    const e = await reg.lookup(PUB_A);
+    expect(e.grants).toHaveLength(0);
+    expect(e.capabilities).toEqual([]);
+  });
+
+  it('revokeGrant keeps a capability that another grant still references', async () => {
+    await reg.applyGrant(PUB_A, { tokenId: 'tok-1', skill: 'tasks.create', capability: 'tasks' });
+    await reg.applyGrant(PUB_A, { tokenId: 'tok-2', skill: 'tasks.delete', capability: 'tasks' });
+    await reg.revokeGrant(PUB_A, 'tok-1');
+    const e = await reg.lookup(PUB_A);
+    expect(e.grants.map(g => g.tokenId)).toEqual(['tok-2']);
+    expect(e.capabilities).toEqual(['tasks']);
+  });
+
+  it('revokeGrant is idempotent', async () => {
+    await reg.applyGrant(PUB_A, { tokenId: 'tok-1', skill: 'tasks.create', capability: 'tasks' });
+    await reg.revokeGrant(PUB_A, 'tok-1');
+    await expect(reg.revokeGrant(PUB_A, 'tok-1')).resolves.toBeTruthy();
+    await expect(reg.revokeGrant(PUB_A, 'never-existed')).resolves.toBeTruthy();
+    expect((await reg.lookup(PUB_A)).grants).toHaveLength(0);
+  });
+});
+
 describe('makeActorResolver', () => {
   it('bridges identifier kinds to a single ActorRecord', async () => {
     const reg = createAgentRegistry({
