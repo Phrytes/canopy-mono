@@ -32,6 +32,12 @@ import { createSecureMeshAgent } from '@canopy/secure-agent';
 import { createBrowserMultiCircleTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
 import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
+// agents — the read-only "your agents" surface (2026-07-09). buildAgentSkills
+// derives the two defineSkill-shaped handlers (listAgents / viewAgent) from
+// the agents manifest via wireSkill; registerAgentBundle both registers THIS
+// device in the registry resource and returns the live registry handle.
+import { buildAgentSkills } from '@canopy-app/agents/wireSkills';
+import { registerAgentBundle, createAgentRegistry } from '@canopy/agent-registry';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -455,6 +461,33 @@ export async function createRealHouseholdAgent(opts = {}) {
     wire('removeItem',   householdApp.removeItem);          // no `by`
     wire('listOpen',     listWrap(householdApp.listOpen), typeOptional(hhOp('listOpen')));
     wire('listTasks',    listWrap(householdApp.listTasks));
+  }
+
+  /* ─────────── agents — the read-only "your agents" surface (2026-07-09) ───────────
+   * The `apps/agents` manifest (listAgents /agents + viewAgent detail) reads the canonical
+   * `@canopy/agent-registry` pod resource.  The registry is anchored on THE USER'S OWN
+   * pseudo-pod: the shared substrate stack already built above for household
+   * (`householdSubstrate.pseudoPod`), whose URI authority is the CHAT identity's pubKey —
+   * i.e. this user's device pod, not a per-circle pod.  Mirrors the sibling bring-up
+   * pattern (stoop-mobile bootstrapBundle / tasks-v0 Circle.js): `registerAgentBundle`
+   * registers THIS device (the chat agent) in the resource — so the roster is non-empty
+   * out of the box — and returns the live registry handle the read skills query.
+   * Best-effort: a register failure falls back to a bare `createAgentRegistry` over the
+   * same pod (empty roster) so the skills always register and boot never breaks.
+   * The wireSkill-derived handlers live on `hostAgent` (same home as the other in-process
+   * host skills); the 'agents' branch of callSkill routes through `chatAgent.invoke`. */
+  {
+    const agentsRegistry =
+      (await registerAgentBundle({
+        pseudoPod:   householdSubstrate.pseudoPod,
+        podDeviceId: chatId.pubKey,
+        agent:       chatAgent,
+        opts: { capabilities: ['canopy-chat'], name: opts.agentsSelfName ?? 'canopy-chat (this device)' },
+      }))
+      ?? createAgentRegistry({ pseudoPod: householdSubstrate.pseudoPod, deviceId: chatId.pubKey });
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry })) {
+      hostAgent.register(id, handler, { visibility });
+    }
   }
 
   // v0.4 — household membership demo.  The real manifest declares
@@ -1395,6 +1428,28 @@ export async function createRealHouseholdAgent(opts = {}) {
       // cross-peer invite/RSVP fan-out (calendarOutbound hook) stays a
       // shell/bundle concern layered ON TOP of this routing.
       return callSkill('household', `calendar_${opId}`, args);
+    }
+    if (appOrigin === 'agents') {
+      // The read-only "your agents" skills live on hostAgent (wireSkill-wrapped
+      // pure cores over the user's own agent-registry — see the registration
+      // block above).  Routing lives HERE in the shared agent (invariant #1) so
+      // web + mobile both reach it through the bare `agent.callSkill`.  The
+      // thin reply adapter below is presentation-only (same licence as the
+      // stoop adapter): the cores return the registry vocabulary
+      // ({agents:[…]} / {agent}), the chat-shell renderer expects
+      // {items:[{id,label,…}]} for shape:'list' and a flat record payload for
+      // shape:'record'.
+      const parts  = await chatAgent.invoke(hostAgent.address, opId, [DataPart(args ?? {})]);
+      const data   = Array.isArray(parts) ? parts[0]?.data : null;
+      if (opId === 'listAgents') {
+        const agents = Array.isArray(data?.agents) ? data.agents : [];
+        return { items: agents.map((a) => ({ ...a, id: a.agentId, label: a.name ?? a.agentId })) };
+      }
+      if (opId === 'viewAgent') {
+        // A miss surfaces as a soft failure (message, not a false record).
+        return data?.agent ?? { ok: false, error: `No agent matches "${String(args?.agentId ?? '')}"` };
+      }
+      return data;
     }
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };

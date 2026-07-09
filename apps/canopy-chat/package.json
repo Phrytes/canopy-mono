@@ -51,10 +51,12 @@
     "coverage": "node scripts/surface-coverage.mjs"
   },
   "dependencies": {
+    "@canopy-app/agents": "workspace:*",
     "@canopy-app/calendar": "workspace:*",
     "@canopy-app/folio": "workspace:*",
     "@canopy-app/stoop": "workspace:*",
     "@canopy-app/tasks-v0": "workspace:*",
+    "@canopy/agent-registry": "workspace:*",
     "@canopy/app-manifest": "workspace:*",
     "@canopy/chat-nav": "workspace:*",
     "@canopy/core": "workspace:*",

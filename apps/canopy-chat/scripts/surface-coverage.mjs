@@ -22,6 +22,7 @@ const SPECS = [
   { name: 'stoop',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockStoopManifest },
   { name: 'folio',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockFolioManifest },
   { name: 'calendar',    path: '../../calendar/manifest.js',              pick: (m) => m.calendarManifest },
+  { name: 'agents',      path: '../../agents/manifest.js',                pick: (m) => m.agentsManifest },
 ];
 
 const sources = [];

@@ -35,7 +35,12 @@ export function circleSourcesFromAgent({ callSkill, circlesStore } = {}) {
 }
 
 /** App origins probed when resolving an op to its owning app (both surfaces). */
-export const DEFAULT_CIRCLE_ORIGINS = ['stoop', 'tasks', 'household', 'calendar', 'folio'];
+// 'agents' LAST (2026-07-09) — the read-only "your agents" surface. Personal
+// (the user's own agent-registry, not per-circle data), but it must be in the
+// composed-app scope for its ops to survive scopeCatalogToApps and reach the
+// slash-suggest / LLM tool list on web. Matches the merge order in
+// circleApp.js baseSources + mobile composeManifests.js (manifest-pipeline.md).
+export const DEFAULT_CIRCLE_ORIGINS = ['stoop', 'tasks', 'household', 'calendar', 'folio', 'agents'];
 
 // Perf #2 (2026-05-30) — does `catalog` declare `opId` on `origin`?
 // The merged catalog stores ops under either the bare `opId` (then

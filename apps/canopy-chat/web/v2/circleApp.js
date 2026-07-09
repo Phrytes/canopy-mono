@@ -39,6 +39,9 @@ import { discoverPodRoot, createPodWriter } from '../../src/web/podStorage.js';
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
 import { calendarManifest } from '@canopy-app/calendar/manifest';
+// agents — the read-only "your agents" surface (2026-07-09). Real manifest,
+// like calendar; the skill handlers are composed in-process by realAgent.js.
+import { agentsManifest } from '@canopy-app/agents/manifest';
 import { buildCircleLlmProviders } from '../../src/v2/circleLlmProviders.js';
 import { createTokenGate } from '../../src/v2/tokenGate.js';
 import { circleGateRules } from '../../src/v2/circleGate.js';
@@ -1126,6 +1129,11 @@ function buildCircleBot(agent) {
     { manifest: mockStoopManifest },
     { manifest: mockFolioManifest },
     { manifest: calendarManifest },
+    // agents LAST (2026-07-09): no op-id collisions expected (listAgents/viewAgent
+    // are unique), and last-in-order means any future collision resolves to the
+    // earlier, established app.  Mirrors composeManifests.js on mobile — the two
+    // lists must stay in the same order (docs/manifest-pipeline.md dual-truth).
+    { manifest: agentsManifest },
   ];
   circleBaseSources = baseSources;   // B · Slice 2/4 — expose to the module-level showSettings/showOverride
   let rawCatalog = mergeManifests(baseSources, { runtime: 'browser' });
