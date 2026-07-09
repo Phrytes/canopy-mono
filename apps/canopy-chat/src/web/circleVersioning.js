@@ -44,7 +44,19 @@ const storesByCircle = new Map();
 export function circleVersioningFor(circleId, deviceId, backend) {
   let store = storesByCircle.get(circleId);
   if (!store) {
-    store = createVersionStore({ backend, hash: webSha256, writerId: deviceId });
+    store = createVersionStore({
+      backend,
+      hash: webSha256,
+      writerId: deviceId,
+      // Live hooks for UNDOABLE restore: the pseudo-pod's backend key IS
+      // the uri (identity mapping), so the live resource is addressable
+      // directly. readLive feeds the pre-restore snapshot; writeLive puts
+      // the restored content back (backend.put bumps _v, so subscribers
+      // see the change; the store itself already snapshotted the current
+      // state, so no double-capture).
+      readLive:  async (uri) => (await backend.get(uri))?.bytes,
+      writeLive: async (uri, content) => { await backend.put(uri, content); },
+    });
     storesByCircle.set(circleId, store);
   }
   return store;

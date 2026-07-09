@@ -29,7 +29,7 @@ import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient
   recipientStrategy as podRecipientStrategy,
   sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
 import { createPseudoPod } from '@canopy/pseudo-pod';
-import { circleVersioningFor } from '../../src/web/circleVersioning.js';
+import { circleVersioningFor, getCircleVersionStore } from '../../src/web/circleVersioning.js';
 import { pickWebBackend } from '../../src/web/persistentBackend.js';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
@@ -4225,6 +4225,9 @@ async function boot() {
     };
     const agent = await createRealHouseholdAgent({
       publishEvent: publishEventToLog,
+      // P3 recovery — resolve a circle's pod version store for the
+      // listDataVersions/restoreDataVersion skills (see circleVersioning.js).
+      versionStoreFor: getCircleVersionStore,
       // PERSISTENT chat identity (the secure-agent peer address). Without a persistent vault the
       // identity is in-memory and ROTATES on every page reload — so this device's address changes,
       // the circle roster's recorded address goes stale, and peers can no longer reach it (no-pod

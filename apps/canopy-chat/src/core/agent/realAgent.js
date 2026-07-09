@@ -522,7 +522,13 @@ export async function createRealHouseholdAgent(opts = {}) {
       agentsTokenRegistry = tokenRegistry;
     } catch { agentsTokens = null; agentsTokenRegistry = null; }
 
-    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens })) {
+    // P3 recovery: the platform's circle-version-store resolver (web:
+    // circleVersioning.getCircleVersionStore; mobile: its RN twin) rides in
+    // via opts — the recovery cores stay platform-blind (doorgeefluik).
+    // Absent → listDataVersions/restoreDataVersion answer the honest
+    // `no-version-store` miss.
+    const versionStoreFor = typeof opts.versionStoreFor === 'function' ? opts.versionStoreFor : null;
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor })) {
       hostAgent.register(id, handler, { visibility });
     }
   }

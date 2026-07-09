@@ -30,13 +30,18 @@
 import { describe, it, expect } from 'vitest';
 
 // Relative @canopy imports so the suite runs without app-local node_modules.
+import { createHash } from 'node:crypto';
 import { createAgent, wireSkill, Parts } from '../../../packages/sdk/src/index.js';
 import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';
 import { createAgentRegistry } from '../../../packages/agent-registry/src/AgentRegistry.js';
+import { createVersionStore } from '../../../packages/versioning/src/versionStore.js';
 
 // App-local, import-free modules.
 import { AGENT_CORES } from '../src/cores.js';
+import { RECOVERY_CORES } from '../src/recoveryCores.js';
 import { agentsManifest } from '../manifest.js';
+
+const ALL_CORES = { ...AGENT_CORES, ...RECOVERY_CORES };
 
 const DEVICE = 'laptop-anne';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -148,25 +153,69 @@ function makeMockTokens() {
   };
 }
 
+/**
+ * Deterministic per-circle version-store fixture (P3 recovery ops): a
+ * REAL `createVersionStore` over a Map backend, frozen clock, seeded
+ * with two captures (ts 1000 'v1-original' → ts 7000 'v2-current';
+ * clock parked at 9000 so restore's pre-snapshot lands at a fixed ts).
+ * Both routes build IDENTICAL fixtures → results compare byte-for-byte.
+ */
+const shaJson = async (c) => createHash('sha256')
+  .update(typeof c === 'string' ? c : JSON.stringify(c) ?? 'undefined', 'utf8')
+  .digest('hex');
+const FIXTURE_URI = 'pseudo-pod://circle-home/items/post-1';
+
+function makeVersionFixture() {
+  const bytes = new Map();
+  const backend = {
+    async get(k)     { return bytes.has(k) ? { bytes: bytes.get(k) } : null; },
+    async put(k, b)  { bytes.set(k, b); return { etag: '"e"', _v: 1 }; },
+    async delete(k)  { bytes.delete(k); },
+    async list(p)    { return [...bytes.keys()].filter((k) => k.startsWith(p)).sort(); },
+  };
+  const live = new Map();
+  let t = 1000;
+  const store = createVersionStore({
+    backend, hash: shaJson, now: () => t, writerId: 'circle-home',
+    readLive:  async (uri) => live.get(uri),
+    writeLive: async (uri, c) => { live.set(uri, c); },
+  });
+  const seed = async () => {
+    live.set(FIXTURE_URI, 'v2-current');
+    t = 1000; await store.capture(FIXTURE_URI, 'v1-original');
+    t = 7000; await store.capture(FIXTURE_URI, 'v2-current');
+    t = 9000; // restore's pre-snapshot ts
+  };
+  // Resolver contract: only circle 'home' has a store (others → null).
+  const versionStoreFor = (circleId) => (circleId === 'home' ? store : null);
+  return { seed, versionStoreFor, live };
+}
+
 /** LOCAL invoker: call the pure core directly over the store. */
-function makeLocalInvokerWith({ withTokens }) {
+function makeLocalInvokerWith({ withTokens, withVersions = false }) {
   return () => {
+    const fixture = withVersions ? makeVersionFixture() : null;
     const store = {
-      registry: buildRegistry(),
-      tokens:   withTokens ? makeMockTokens() : null,
+      registry:        buildRegistry(),
+      tokens:          withTokens ? makeMockTokens() : null,
+      versionStoreFor: fixture ? fixture.versionStoreFor : null,
     };
-    return (op, args = {}, ctx = {}) => AGENT_CORES[op](store, args, ctx);
+    let seeded = null;
+    return async (op, args = {}, ctx = {}) => {
+      if (fixture) await (seeded ??= fixture.seed());
+      return ALL_CORES[op](store, args, ctx);
+    };
   };
 }
 
 /** Wire defs — mirrors src/wireSkills.js's buildAgentSkills (relative wireSkill). */
-function buildWireDefs(registry, tokens = null) {
-  const store = { registry, tokens };
+function buildWireDefs(registry, tokens = null, versionStoreFor = null) {
+  const store = { registry, tokens, versionStoreFor };
   const storeFor = () => store;
   const op = (id) => agentsManifest.operations.find((o) => o.id === id);
   const wire = (id) => ({
     id,
-    handler:    wireSkill(AGENT_CORES[id], op(id), { storeFor }),
+    handler:    wireSkill(ALL_CORES[id], op(id), { storeFor }),
     visibility: 'authenticated',
   });
   return [
@@ -176,16 +225,20 @@ function buildWireDefs(registry, tokens = null) {
     wire('grantAgent'),
     wire('revokeGrant'),
     wire('purgeAgent'),
+    wire('listDataVersions'),
+    wire('restoreDataVersion'),
   ];
 }
 
 /** WIRE invoker: fresh real agent with the wire skills; serialized invoke. */
-function makeWireInvokerWith({ withTokens }) {
+function makeWireInvokerWith({ withTokens, withVersions = false }) {
   return async () => {
     const registry = buildRegistry();
     const tokens   = withTokens ? makeMockTokens() : null;
+    const fixture  = withVersions ? makeVersionFixture() : null;
+    if (fixture) await fixture.seed();
     const agent = await createAgent();
-    for (const s of buildWireDefs(registry, tokens)) {
+    for (const s of buildWireDefs(registry, tokens, fixture ? fixture.versionStoreFor : null)) {
       agent.register(s.id, s.handler, { visibility: s.visibility });
     }
     return {
@@ -200,11 +253,11 @@ function makeWireInvokerWith({ withTokens }) {
 describeLocalWireFitness(
   {
     app:           'agents',
-    coreIds:       Object.keys(AGENT_CORES),
+    coreIds:       Object.keys(ALL_CORES),
     registeredIds: buildWireDefs(buildRegistry(), makeMockTokens()).map((s) => s.id),
     manifestOpIds: agentsManifest.operations.map((o) => o.id),
-    makeLocalInvoker: makeLocalInvokerWith({ withTokens: true }),
-    makeWireInvoker:  makeWireInvokerWith({ withTokens: true }),
+    makeLocalInvoker: makeLocalInvokerWith({ withTokens: true, withVersions: true }),
+    makeWireInvoker:  makeWireInvokerWith({ withTokens: true, withVersions: true }),
     cases: [
       {
         // Proves soft-revoke filtering: 'old-tablet' is absent (2 rows).
@@ -274,6 +327,42 @@ describeLocalWireFitness(
           return { purged, view };
         },
       },
+
+      /* ── P3 recovery (deterministic version fixture, circle 'home') ── */
+      {
+        // Series roster (no uri) + one resource's versions (with uri).
+        name: 'listDataVersions (series roster + per-uri pick-list)',
+        run:  async (invoke) => {
+          const series   = await invoke('listDataVersions', { circleId: 'home' });
+          const versions = await invoke('listDataVersions', { circleId: 'home', uri: FIXTURE_URI });
+          return { series, versions };
+        },
+      },
+      {
+        // Unknown circle → honest structured miss (no throw).
+        name: 'listDataVersions of an unknown circle → no-version-store',
+        run:  (invoke) => invoke('listDataVersions', { circleId: 'nope' }),
+      },
+      {
+        // Roll back to ts 1000 ('v1-original'); the pre-restore snapshot
+        // lands at the frozen ts 9000 — fully deterministic both routes.
+        name: 'restoreDataVersion (undoable rollback to a prior version)',
+        run:  async (invoke) => {
+          const restored = await invoke('restoreDataVersion', {
+            circleId: 'home', uri: FIXTURE_URI, version: '1000',
+          });
+          const after = await invoke('listDataVersions', { circleId: 'home', uri: FIXTURE_URI });
+          return { restored, after };
+        },
+      },
+      {
+        // Boundary miss → structured VERSION_NOT_FOUND, mirroring how
+        // callSkill surfaces skill errors.
+        name: 'restoreDataVersion of a missing version → structured error',
+        run:  (invoke) => invoke('restoreDataVersion', {
+          circleId: 'home', uri: FIXTURE_URI, version: '424242',
+        }),
+      },
     ],
   },
   { describe, it, expect },
@@ -287,7 +376,7 @@ describeLocalWireFitness(
 describeLocalWireFitness(
   {
     app:           'agents (no token collaborator — degraded, honest)',
-    coreIds:       Object.keys(AGENT_CORES),
+    coreIds:       Object.keys(ALL_CORES),
     registeredIds: buildWireDefs(buildRegistry()).map((s) => s.id),
     manifestOpIds: agentsManifest.operations.map((o) => o.id),
     makeLocalInvoker: makeLocalInvokerWith({ withTokens: false }),
@@ -306,6 +395,12 @@ describeLocalWireFitness(
         // Synthetic tokenId + Date.now()-derived expiry differ per route.
         volatile: ['tokenId', 'expiresAt'],
         run:  (invoke) => invoke('grantAgent', { agentId: 'phone-anne', skill: 'tasks.listTasks' }),
+      },
+      {
+        // No versionStoreFor injected at all (this run) → the recovery ops
+        // answer the honest degraded miss on both routes.
+        name: 'listDataVersions without a resolver → no-version-store',
+        run:  (invoke) => invoke('listDataVersions', { circleId: 'home' }),
       },
     ],
   },

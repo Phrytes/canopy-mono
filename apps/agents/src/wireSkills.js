@@ -25,6 +25,7 @@ import { wireSkill } from '@canopy/sdk';
 
 import { agentsManifest } from '../manifest.js';
 import { AGENT_CORES } from './cores.js';
+import { RECOVERY_CORES } from './recoveryCores.js';
 
 /**
  * @param {object} args
@@ -33,18 +34,27 @@ import { AGENT_CORES } from './cores.js';
  *   cores read + mutate.
  * @param {object} [args.tokens]  optional duck-typed token collaborator
  *   (see module doc) backing the P2 grant/revoke ops.
+ * @param {(circleId: string) => object|null} [args.versionStoreFor]
+ *   optional resolver to a circle pod's `@canopy/versioning` store,
+ *   backing the P3 recovery ops (web: `getCircleVersionStore`; mobile:
+ *   its RN twin). Without it the recovery ops answer an honest
+ *   `{ok:false, error:'no-version-store'}` — always wired, never hidden,
+ *   so route parity stays unconditional.
  * @returns {Array<{ id: string, handler: Function, visibility: string }>}
  */
-export function buildAgentSkills({ registry, tokens } = {}) {
+export function buildAgentSkills({ registry, tokens, versionStoreFor } = {}) {
   if (!registry || typeof registry.list !== 'function') {
     throw new TypeError('buildAgentSkills: registry (agent-registry) with list() required');
   }
   if (tokens && (typeof tokens.issue !== 'function' || typeof tokens.revoke !== 'function')) {
     throw new TypeError('buildAgentSkills: tokens must expose issue() and revoke() when supplied');
   }
+  if (versionStoreFor != null && typeof versionStoreFor !== 'function') {
+    throw new TypeError('buildAgentSkills: versionStoreFor must be a function when supplied');
+  }
 
-  // Single-user surface — the store is the injected pair for every ctx.
-  const store = { registry, tokens: tokens ?? null };
+  // Single-user surface — the store is the injected triple for every ctx.
+  const store = { registry, tokens: tokens ?? null, versionStoreFor: versionStoreFor ?? null };
   const storeFor = () => store;
 
   const op = (id) => {
@@ -53,18 +63,21 @@ export function buildAgentSkills({ registry, tokens } = {}) {
     return found;
   };
 
+  const CORES = { ...AGENT_CORES, ...RECOVERY_CORES };
   const wire = (id, visibility) => ({
     id,
-    handler:    wireSkill(AGENT_CORES[id], op(id), { storeFor }),
+    handler:    wireSkill(CORES[id], op(id), { storeFor }),
     visibility,
   });
 
   return [
-    wire('listAgents',  'authenticated'),
-    wire('viewAgent',   'authenticated'),
-    wire('revokeAgent', 'authenticated'),
-    wire('grantAgent',  'authenticated'),
-    wire('revokeGrant', 'authenticated'),
-    wire('purgeAgent',  'authenticated'),
+    wire('listAgents',         'authenticated'),
+    wire('viewAgent',          'authenticated'),
+    wire('revokeAgent',        'authenticated'),
+    wire('grantAgent',         'authenticated'),
+    wire('revokeGrant',        'authenticated'),
+    wire('purgeAgent',         'authenticated'),
+    wire('listDataVersions',   'authenticated'),
+    wire('restoreDataVersion', 'authenticated'),
   ];
 }

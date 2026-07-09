@@ -41,14 +41,18 @@
  */
 export const agentsManifest = {
   app:       'agents',
-  itemTypes: ['agent'],
+  itemTypes: ['agent', 'data-version'],
 
   // Layer-1 capability surface — (verb × noun) atoms this app ships.
   // P2 CONTROL: `revoke` (revokeAgent / revokeGrant), `update`
   // (grantAgent — mutates the entry's capability surface), `remove`
   // (purgeAgent — hard delete).
+  // P3 RECOVERY (`data-version`, app-local like `agent`): `list`
+  // (listDataVersions) + `update` (restoreDataVersion — writes a prior
+  // state back to the live resource).
   nouns: {
-    agent: { atoms: ['list', 'revoke', 'update', 'remove'] },
+    agent:          { atoms: ['list', 'revoke', 'update', 'remove'] },
+    'data-version': { atoms: ['list', 'update'] },
   },
 
   operations: [
@@ -184,6 +188,64 @@ export const agentsManifest = {
             severity: 'danger',
             message:  'Permanently delete this agent entry?  This cannot be undone — the '
                     + 'record is removed entirely (revoke instead to keep it for audit).',
+          },
+        },
+      },
+    },
+
+    /* ── P3 RECOVERY ops (PLAN-pod-versioning-history-recovery) ─────────
+     * "Restore corrupted / lost data" over the per-circle pod version
+     * history. Deliberately on THIS surface: J5/J7's recovery arc is
+     * "revoke the misbehaving agent → restore what it touched".
+     */
+    {
+      id:        'listDataVersions',
+      verb:      'list',
+      appliesTo: { type: 'data-version' },
+      params: [
+        { name: 'circleId', kind: 'string', required: true, schema: { minLength: 1 } },
+        // Without `uri`: every resource with history (uri · latest · count).
+        // With `uri`: that resource's versions, newest-first — the restore pick-list.
+        { name: 'uri',      kind: 'string' },
+      ],
+      surfaces: {
+        chat: {
+          reply: 'record',
+          hint:  'List a circle\'s data-version history: without a uri, every resource in the '
+               + 'circle pod that has retained versions (uri, latest timestamp, count); with a '
+               + 'uri, that resource\'s versions newest-first (ts, id, sha256, size, writing '
+               + 'device) — use an id with restoreDataVersion to roll back. Read-only.',
+        },
+      },
+    },
+    {
+      id:        'restoreDataVersion',
+      verb:      'update',
+      appliesTo: { type: 'data-version' },
+      params: [
+        { name: 'circleId', kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'uri',      kind: 'string', required: true, schema: { minLength: 1 } },
+        // Numeric ts or the full "<ts>-<writer>" version id from listDataVersions.
+        { name: 'version',  kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: {
+        chat: {
+          reply: 'record',
+          hint:  'Restore a circle pod resource to a previous version (by uri + version ts/id '
+               + 'from listDataVersions). Overwrites the CURRENT content — but undoably: the '
+               + 'current state is snapshotted first (snapshotMsBeforeRestore), so a wrong '
+               + 'restore can itself be restored. Use to recover data corrupted or deleted by '
+               + 'a misbehaving agent.',
+        },
+        // Overwrites live content (undoably) — red confirm, same Q27 tier
+        // as revokeAgent.
+        ui: {
+          control: 'button',
+          label:   'Restore version',
+          confirm: {
+            severity: 'danger',
+            message:  'Restore this resource to the selected version?  Its current content is '
+                    + 'snapshotted first, so this restore can itself be undone.',
           },
         },
       },
