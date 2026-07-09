@@ -1,22 +1,39 @@
 /**
- * γ.2 — objectVersionsStorage: concrete versions adapter for kring stores.
- *
- * Layer above the sync-engine substrate (`objectVersions.js`).  Adds the
- * canopy-chat-specific concerns:
- *   - Per-storeName key prefix (`cc.versions.<storeName>.<circleId>`).
- *   - Store/load round-trip through a generic {load, save} IO.
- *   - Multiple keys / multiple circles don't collide.
- *   - Corrupt JSON in storage falls back to an empty history.
- *   - capture/list defensively no-op on bad circleId.
+ * γ.2 — objectVersionsStorage: concrete versions adapter for kring stores,
+ * consolidated onto the `@canopy/versioning` substrate (the retired
+ * sync-engine `objectVersions.js` semantics must survive the swap):
+ *   - Legacy list shape `{ts, sha256, value}` with the value INLINE.
+ *   - Dedup: capturing a value identical to the newest entry is a no-op,
+ *     with NO time window.
+ *   - Per-circle retention cap (default 50, `retention.perKey` override).
+ *   - Newest-first ordering.
+ *   - Multiple stores / multiple circles don't collide.
+ *   - capture/list defensively no-op on bad circleId or a broken backend.
+ * New (consolidation win): `restore(circleId, ts)` returns the snapshot's
+ * value (v1: caller persists it — the adapter never writes the live blob).
  */
 import { describe, it, expect } from 'vitest';
 import {
   createObjectVersionsAdapter,
-  localStorageVersionsIo,
+  localStorageBackend,
   localStorageObjectVersions,
+  fingerprintHex,
+  versionsRootFor,
 } from '../src/objectVersionsStorage.js';
 
-/** Map-backed storage matching globalThis.localStorage shape. */
+/** Map-backed StorageBackend (get/put/delete/list) for adapter-level tests. */
+function memBackend() {
+  const m = new Map();
+  return {
+    map: m,
+    get: async (k) => (m.has(k) ? { bytes: m.get(k) } : null),
+    put: async (k, bytes) => { m.set(k, bytes); },
+    delete: async (k) => { m.delete(k); },
+    list: async (prefix) => [...m.keys()].filter((k) => k.startsWith(prefix)).sort(),
+  };
+}
+
+/** Map-backed storage matching the DOM Storage shape (length/key incl.). */
 function mockLocalStorage() {
   const m = new Map();
   return {
@@ -24,52 +41,62 @@ function mockLocalStorage() {
     getItem: (k) => (m.has(k) ? m.get(k) : null),
     setItem: (k, v) => m.set(k, String(v)),
     removeItem: (k) => m.delete(k),
+    key: (i) => [...m.keys()][i] ?? null,
+    get length() { return m.size; },
   };
 }
 
 describe('createObjectVersionsAdapter', () => {
-  it('captures + lists through the injected IO', async () => {
-    const mem = new Map();
-    const io = {
-      load: async (k) => (mem.has(k) ? mem.get(k) : null),
-      save: async (k, v) => { mem.set(k, v); },
-    };
-    const adapter = createObjectVersionsAdapter({ storeName: 'policy', io });
+  it('captures + lists through the injected backend (legacy {ts, sha256, value} shape)', async () => {
+    const backend = memBackend();
+    const adapter = createObjectVersionsAdapter({ storeName: 'policy', backend });
     await adapter.capture('c1', { v: 1 });
     await adapter.capture('c1', { v: 2 });
     const list = await adapter.list('c1');
     expect(list.map((e) => e.value)).toEqual([{ v: 2 }, { v: 1 }]);
-    // Stored under the namespaced key.
-    expect(mem.has('cc.versions.policy.c1')).toBe(true);
+    for (const e of list) {
+      expect(typeof e.ts).toBe('number');
+      expect(typeof e.sha256).toBe('string');
+      expect(e.sha256).toMatch(/^[0-9a-f]+$/);
+    }
+    // Per-version records under the v2 root.
+    const keys = [...backend.map.keys()];
+    expect(keys).toHaveLength(2);
+    for (const k of keys) expect(k.startsWith('cc.versions2.policy/c1/')).toBe(true);
+  });
+
+  it('dedups an identical value against the newest entry — no time window', async () => {
+    let t = 1_000;
+    const adapter = createObjectVersionsAdapter({
+      storeName: 'policy',
+      backend: memBackend(),
+      now: () => t,
+    });
+    await adapter.capture('c1', { v: 1 });
+    t += 1_000_000_000;                       // far beyond any debounce window
+    await adapter.capture('c1', { v: 1 });    // identical → no-op
+    expect(await adapter.list('c1')).toHaveLength(1);
+    await adapter.capture('c1', { v: 2 });    // different → captured
+    await adapter.capture('c1', { v: 1 });    // same as an OLDER entry → captured
+    expect((await adapter.list('c1')).map((e) => e.value))
+      .toEqual([{ v: 1 }, { v: 2 }, { v: 1 }]);
   });
 
   it('namespaces by storeName + circleId — different stores do not collide', async () => {
-    const mem = new Map();
-    const io = {
-      load: async (k) => (mem.has(k) ? mem.get(k) : null),
-      save: async (k, v) => { mem.set(k, v); },
-    };
-    const policy = createObjectVersionsAdapter({ storeName: 'policy', io });
-    const recipe = createObjectVersionsAdapter({ storeName: 'recipe', io });
+    const backend = memBackend();
+    const policy = createObjectVersionsAdapter({ storeName: 'policy', backend });
+    const recipe = createObjectVersionsAdapter({ storeName: 'recipe', backend });
     await policy.capture('c1', { kind: 'p' });
     await recipe.capture('c1', { kind: 'r' });
-    expect([...mem.keys()].sort()).toEqual([
-      'cc.versions.policy.c1',
-      'cc.versions.recipe.c1',
-    ]);
+    const keys = [...backend.map.keys()].sort();
+    expect(keys.some((k) => k.startsWith('cc.versions2.policy/c1/'))).toBe(true);
+    expect(keys.some((k) => k.startsWith('cc.versions2.recipe/c1/'))).toBe(true);
     expect((await policy.list('c1'))[0].value).toEqual({ kind: 'p' });
     expect((await recipe.list('c1'))[0].value).toEqual({ kind: 'r' });
   });
 
   it('different circleIds within the same store do not collide', async () => {
-    const mem = new Map();
-    const adapter = createObjectVersionsAdapter({
-      storeName: 'policy',
-      io: {
-        load: async (k) => (mem.has(k) ? mem.get(k) : null),
-        save: async (k, v) => { mem.set(k, v); },
-      },
-    });
+    const adapter = createObjectVersionsAdapter({ storeName: 'policy', backend: memBackend() });
     await adapter.capture('c1', { v: 1 });
     await adapter.capture('c2', { v: 2 });
     expect((await adapter.list('c1'))[0].value).toEqual({ v: 1 });
@@ -77,45 +104,39 @@ describe('createObjectVersionsAdapter', () => {
   });
 
   it('capture is a no-op for missing / non-string circleId', async () => {
-    const mem = new Map();
-    const adapter = createObjectVersionsAdapter({
-      storeName: 'policy',
-      io: {
-        load: async (k) => (mem.has(k) ? mem.get(k) : null),
-        save: async (k, v) => { mem.set(k, v); },
-      },
-    });
+    const backend = memBackend();
+    const adapter = createObjectVersionsAdapter({ storeName: 'policy', backend });
     await adapter.capture('', { v: 1 });
     await adapter.capture(null, { v: 1 });
-    expect(mem.size).toBe(0);
+    expect(backend.map.size).toBe(0);
     expect(await adapter.list('')).toEqual([]);
   });
 
-  it('list tolerates a throwing IO and returns []', async () => {
+  it('list tolerates a throwing backend and returns []', async () => {
     const adapter = createObjectVersionsAdapter({
       storeName: 'policy',
-      io: {
-        load: async () => { throw new Error('disk gone'); },
-        save: async () => {},
+      backend: {
+        get: async () => { throw new Error('disk gone'); },
+        put: async () => { throw new Error('disk gone'); },
+        delete: async () => {},
+        list: async () => { throw new Error('disk gone'); },
       },
     });
     expect(await adapter.list('c1')).toEqual([]);
+    await adapter.capture('c1', { v: 1 });        // must not throw either
+    expect(await adapter.restore('c1', 1)).toBeNull();
   });
 
-  it('throws on missing storeName / io', () => {
+  it('throws on missing storeName / backend', () => {
     expect(() => createObjectVersionsAdapter({})).toThrow(/storeName/);
-    expect(() => createObjectVersionsAdapter({ storeName: 'x' })).toThrow(/io/);
-    expect(() => createObjectVersionsAdapter({ storeName: 'x', io: {} })).toThrow(/io/);
+    expect(() => createObjectVersionsAdapter({ storeName: 'x' })).toThrow(/backend/);
+    expect(() => createObjectVersionsAdapter({ storeName: 'x', backend: {} })).toThrow(/backend/);
   });
 
-  it('honours a custom retention.perKey', async () => {
-    const mem = new Map();
+  it('honours a custom retention.perKey (oldest evicted beyond the cap)', async () => {
     const adapter = createObjectVersionsAdapter({
       storeName: 'policy',
-      io: {
-        load: async (k) => (mem.has(k) ? mem.get(k) : null),
-        save: async (k, v) => { mem.set(k, v); },
-      },
+      backend: memBackend(),
       retention: { perKey: 2 },
     });
     await adapter.capture('c1', { v: 1 });
@@ -124,31 +145,66 @@ describe('createObjectVersionsAdapter', () => {
     const list = await adapter.list('c1');
     expect(list.map((e) => e.value)).toEqual([{ v: 3 }, { v: 2 }]);
   });
+
+  it('restore returns the snapshot value at ts (and null for an unknown ts)', async () => {
+    const adapter = createObjectVersionsAdapter({ storeName: 'policy', backend: memBackend() });
+    await adapter.capture('c1', { v: 1 });
+    await adapter.capture('c1', { v: 2 });
+    const list = await adapter.list('c1');            // newest-first
+    const oldest = list[list.length - 1];
+    expect(await adapter.restore('c1', oldest.ts)).toEqual({ v: 1 });
+    expect(await adapter.restore('c1', 424242)).toBeNull();
+    expect(await adapter.restore('', oldest.ts)).toBeNull();
+    // v1 semantics: restore reads history only — it never writes.
+    expect(await adapter.list('c1')).toHaveLength(2);
+  });
 });
 
-describe('localStorageVersionsIo', () => {
-  it('round-trips through a Storage-like backend', async () => {
+describe('fingerprintHex', () => {
+  it('is deterministic, hex, and content-sensitive', () => {
+    const a = fingerprintHex(JSON.stringify({ v: 1 }));
+    expect(a).toMatch(/^[0-9a-f]{8}$/);
+    expect(fingerprintHex(JSON.stringify({ v: 1 }))).toBe(a);
+    expect(fingerprintHex(JSON.stringify({ v: 2 }))).not.toBe(a);
+  });
+});
+
+describe('localStorageBackend', () => {
+  it('round-trips records through a Storage-like backend', async () => {
     const storage = mockLocalStorage();
-    const io = localStorageVersionsIo(storage);
-    await io.save('cc.versions.policy.c1', [{ ts: 1, sha256: 'x', value: 1 }]);
-    expect(await io.load('cc.versions.policy.c1'))
-      .toEqual([{ ts: 1, sha256: 'x', value: 1 }]);
+    const backend = localStorageBackend(storage);
+    await backend.put('cc.versions2.policy/c1/1', { ts: 1, sha256: 'x', size: 1, content: '1' });
+    expect((await backend.get('cc.versions2.policy/c1/1')).bytes)
+      .toEqual({ ts: 1, sha256: 'x', size: 1, content: '1' });
+    expect(await backend.list('cc.versions2.policy/c1/')).toEqual(['cc.versions2.policy/c1/1']);
+    await backend.delete('cc.versions2.policy/c1/1');
+    expect(await backend.get('cc.versions2.policy/c1/1')).toBeNull();
   });
 
-  it('load returns null for corrupt JSON', async () => {
+  it('a corrupt record reads as absent (null)', async () => {
     const storage = mockLocalStorage();
-    storage.map.set('cc.versions.policy.c1', 'not json{');
-    expect(await localStorageVersionsIo(storage).load('cc.versions.policy.c1')).toBeNull();
+    storage.map.set('cc.versions2.policy/c1/1', 'not json{');
+    expect(await localStorageBackend(storage).get('cc.versions2.policy/c1/1')).toBeNull();
   });
 
-  it('save tolerates a throwing storage (quota / disabled)', async () => {
+  it('put tolerates a throwing storage (quota / disabled)', async () => {
     const storage = {
       getItem: () => null,
       setItem: () => { throw new Error('quota'); },
+      removeItem: () => {},
+      key: () => null,
+      length: 0,
     };
     await expect(
-      localStorageVersionsIo(storage).save('k', [1, 2])
+      localStorageBackend(storage).put('k', { ts: 1 })
     ).resolves.toBeUndefined();
+  });
+
+  it('tolerates an absent storage entirely (SSR)', async () => {
+    const backend = localStorageBackend(undefined);
+    expect(await backend.get('k')).toBeNull();
+    expect(await backend.list('')).toEqual([]);
+    await expect(backend.put('k', {})).resolves.toBeUndefined();
   });
 });
 
@@ -165,13 +221,16 @@ describe('localStorageObjectVersions × kring scenario', () => {
     expect(list.map((e) => e.value)).toEqual([{ v: 2 }, { v: 1 }]);
   });
 
-  it('corrupt storage value falls back to an empty history (no throw)', async () => {
+  it('ignores legacy cc.versions.* slot keys and corrupt records (no throw)', async () => {
     const storage = mockLocalStorage();
-    storage.map.set('cc.versions.policy.c1', 'garbage');
+    // Legacy layout residue + a corrupt v2 record.
+    storage.map.set('cc.versions.policy.c1', JSON.stringify([{ ts: 1, sha256: 'aa', value: { old: true } }]));
+    storage.map.set(`${versionsRootFor('policy')}c1/5`, 'garbage');
     const a = localStorageObjectVersions('policy', storage);
     expect(await a.list('c1')).toEqual([]);
-    // A subsequent capture overwrites garbage with a clean array.
     await a.capture('c1', { v: 1 });
-    expect((await a.list('c1'))[0].value).toEqual({ v: 1 });
+    const list = await a.list('c1');
+    expect(list).toHaveLength(1);
+    expect(list[0].value).toEqual({ v: 1 });
   });
 });

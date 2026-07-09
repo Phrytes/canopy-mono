@@ -6,7 +6,9 @@
  * same Recipe (e.g. local user edited blocks; an `incomingRecipe`
  * arrived from a peer broadcast / pod-sync — the source plumbing is
  * deferred to a later γ-slice) we compare them against the last
- * captured version (γ.2's `objectVersions`).  The result is grouped
+ * captured version (γ.2's versions adapter — since the consolidation,
+ * `@canopy/kring-host/objectVersionsStorage` over `@canopy/versioning`).
+ * The result is grouped
  * for the UI:
  *
  *   {

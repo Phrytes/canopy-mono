@@ -10,18 +10,24 @@
  * Wire shape (forward-additive):
  *
  *   {
- *     v: 1,
+ *     v: 2,
  *     agents: [{
  *       agentId, pubKey, webid?, agentUri, role, name?, deviceId?,
- *       capabilities, signedAt, revokedAt
+ *       capabilities, grants, signedAt, revokedAt
  *     }],
  *     updatedAt: ISO
  *   }
  *
+ * `grants[]` (v2+) holds the fine-grained signed-token authorities
+ * `{ tokenId, skill, expiresAt, subject, capability }`. The token is the
+ * enforced authority; `capabilities[]` only mirrors the coarse
+ * `capability` of each grant. v1 resources (no `grants`) migrate
+ * forward with `grants → []`.
+ *
  * Standardisation Phase 52.10 — see plan §52.10.
  */
 
-export const RESOURCE_VERSION = 1;
+export const RESOURCE_VERSION = 2;
 
 /**
  * Default registry-resource path for a given pod / device.
@@ -92,8 +98,25 @@ function _normaliseAgent(a) {
     name:         typeof a.name    === 'string' ? a.name    : null,
     deviceId:     typeof a.deviceId === 'string' ? a.deviceId : null,
     capabilities: Array.isArray(a.capabilities) ? Object.freeze([...a.capabilities]) : Object.freeze([]),
+    grants:       Array.isArray(a.grants) ? Object.freeze(a.grants.map(_normaliseGrant).filter(Boolean)) : Object.freeze([]),
     signedAt:     typeof a.signedAt === 'string' ? a.signedAt : new Date().toISOString(),
     revokedAt:    typeof a.revokedAt === 'string' ? a.revokedAt : null,
+  });
+}
+
+/**
+ * Strict-allowlist normalise for a single grant. Drops entries without
+ * a usable `tokenId`; coerces the rest. Frozen.
+ */
+function _normaliseGrant(g) {
+  if (!g || typeof g !== 'object') return null;
+  if (typeof g.tokenId !== 'string' || g.tokenId.length === 0) return null;
+  return Object.freeze({
+    tokenId:    g.tokenId,
+    skill:      typeof g.skill      === 'string' ? g.skill      : null,
+    expiresAt:  typeof g.expiresAt  === 'string' ? g.expiresAt  : null,
+    subject:    typeof g.subject    === 'string' ? g.subject    : null,
+    capability: typeof g.capability === 'string' ? g.capability : null,
   });
 }
 
@@ -107,6 +130,7 @@ function emptyAgent() {
     name:      null,
     deviceId:  null,
     capabilities: [],
+    grants:    [],
     signedAt:  new Date().toISOString(),
     revokedAt: null,
   };

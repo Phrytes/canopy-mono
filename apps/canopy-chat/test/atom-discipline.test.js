@@ -17,6 +17,7 @@ import { calendarManifest }   from '../../calendar/manifest.js';
 import { tasksManifest }      from '../../tasks-v0/manifest.js';
 import { folioManifest }      from '../../folio/manifest.js';
 import { stoopManifest }      from '../../stoop/manifest.js';
+import { agentsManifest }     from '../../agents/manifest.js';
 import { canopyChatManifest } from '../manifest.js';
 
 const MANIFESTS = [
@@ -25,6 +26,7 @@ const MANIFESTS = [
   ['tasks-v0',    tasksManifest],
   ['folio',       folioManifest],
   ['stoop',       stoopManifest],
+  ['agents',      agentsManifest],
   ['canopy-chat', canopyChatManifest],
 ];
 

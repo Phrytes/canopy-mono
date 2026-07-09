@@ -135,6 +135,39 @@ describe('createCircleRulesStore', () => {
     await store.update('c1', { purpose: 'P' });
     expect(stored.purpose).toBe('P');
   });
+
+  it('restoreVersion persists the restored snapshot via the set path (capture + save)', async () => {
+    const order = [];
+    let stored = { purpose: 'current', agreements: 'current' };
+    const store = createCircleRulesStore({
+      load: async () => stored,
+      save: async (_id, d) => { order.push('save'); stored = d; },
+      versions: {
+        capture: async () => { order.push('capture'); },
+        list: async () => [],
+        restore: async (_id, ts) => (ts === 7 ? { purpose: 'old P' } : null),
+      },
+    });
+    const doc = await store.restoreVersion('c1', 7);
+    expect(order).toEqual(['capture', 'save']);
+    expect(doc.purpose).toBe('old P');
+    expect(doc.agreements).toBe('');          // wholesale replace, normalised — not merged
+    expect(stored.purpose).toBe('old P');
+  });
+
+  it('restoreVersion returns null on a miss or when no adapter/restore is wired', async () => {
+    let saveCalls = 0;
+    const store = createCircleRulesStore({
+      load: async () => null,
+      save: async () => { saveCalls += 1; },
+      versions: { capture: async () => {}, list: async () => [], restore: async () => null },
+    });
+    expect(await store.restoreVersion('c1', 999)).toBeNull();
+    expect(saveCalls).toBe(0);
+
+    const bare = createCircleRulesStore({ load: async () => null, save: async () => {} });
+    expect(await bare.restoreVersion('c1', 1)).toBeNull();
+  });
 });
 
 describe('localStorageRulesIo', () => {

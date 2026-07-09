@@ -121,6 +121,7 @@ export function createAgentRegistry({
             name:         entry.name ?? null,
             deviceId:     entry.deviceId ?? null,
             capabilities: Array.isArray(entry.capabilities) ? [...entry.capabilities] : [],
+            grants:       Array.isArray(entry.grants) ? [...entry.grants] : [],
             signedAt,
             revokedAt:    entry.revokedAt ?? null,
           }],
@@ -200,6 +201,106 @@ export function createAgentRegistry({
     });
   }
 
+  /**
+   * HARD delete — removes the agent entry entirely (contrast `revoke`,
+   * which only sets `revokedAt`). Idempotent: purging an absent id is a
+   * no-op. Etag-CAS retry on conflict.
+   */
+  async function purge(identifier) {
+    return withCAS({
+      readCurrent: _readCurrent,
+      writeNext:   _writeNext,
+      maxRetries:  maxRetries ?? 3,
+      onPersistentConflict,
+      mutate(body /*, etag */) {
+        const ts = now();
+        const next = {
+          v:         RESOURCE_VERSION,
+          agents:    body.agents.filter(a => !_agentMatches(a, identifier)),
+          updatedAt: ts,
+        };
+        return next;
+      },
+    });
+  }
+
+  /**
+   * Upsert a fine-grained signed-token grant onto an agent AND mirror
+   * its coarse `capability` into `capabilities[]` — atomically, in one
+   * write. The token is the enforced authority; `capabilities[]` only
+   * mirrors it. Dedupes grants by `tokenId` and capabilities by value.
+   * Etag-CAS retry on conflict.
+   */
+  async function applyGrant(identifier, grant = {}) {
+    const { tokenId, skill = null, expiresAt = null, subject = null, capability = null } = grant;
+    if (typeof tokenId !== 'string' || tokenId.length === 0) {
+      throw Object.assign(
+        new Error('applyGrant: grant.tokenId is required'),
+        { code: 'INVALID_ARGUMENT' },
+      );
+    }
+    return withCAS({
+      readCurrent: _readCurrent,
+      writeNext:   _writeNext,
+      maxRetries:  maxRetries ?? 3,
+      onPersistentConflict,
+      mutate(body /*, etag */) {
+        const ts = now();
+        const next = {
+          v:         RESOURCE_VERSION,
+          agents:    body.agents.map(a => {
+            if (!_agentMatches(a, identifier)) return a;
+            const grants = [
+              ...a.grants.filter(g => g.tokenId !== tokenId),
+              { tokenId, skill, expiresAt, subject, capability },
+            ];
+            const capabilities = (typeof capability === 'string' && !a.capabilities.includes(capability))
+              ? [...a.capabilities, capability]
+              : [...a.capabilities];
+            return { ...a, grants, capabilities };
+          }),
+          updatedAt: ts,
+        };
+        return next;
+      },
+    });
+  }
+
+  /**
+   * Remove a grant (by `tokenId`) from an agent. When no remaining grant
+   * still references the mirrored `capability`, un-mirror it from
+   * `capabilities[]` too. Idempotent. Etag-CAS retry on conflict.
+   */
+  async function revokeGrant(identifier, tokenId) {
+    return withCAS({
+      readCurrent: _readCurrent,
+      writeNext:   _writeNext,
+      maxRetries:  maxRetries ?? 3,
+      onPersistentConflict,
+      mutate(body /*, etag */) {
+        const ts = now();
+        const next = {
+          v:         RESOURCE_VERSION,
+          agents:    body.agents.map(a => {
+            if (!_agentMatches(a, identifier)) return a;
+            const removed = a.grants.find(g => g.tokenId === tokenId);
+            if (!removed) return a;
+            const grants = a.grants.filter(g => g.tokenId !== tokenId);
+            const cap = removed.capability;
+            const stillReferenced = typeof cap === 'string'
+              && grants.some(g => g.capability === cap);
+            const capabilities = (typeof cap === 'string' && !stillReferenced)
+              ? a.capabilities.filter(c => c !== cap)
+              : [...a.capabilities];
+            return { ...a, grants, capabilities };
+          }),
+          updatedAt: ts,
+        };
+        return next;
+      },
+    });
+  }
+
   async function list() {
     const { body } = await _readCurrent();
     return body.agents;
@@ -213,7 +314,10 @@ export function createAgentRegistry({
     register,
     lookup,
     revoke,
+    purge,
     updateCapabilities,
+    applyGrant,
+    revokeGrant,
     list,
     reload,
 

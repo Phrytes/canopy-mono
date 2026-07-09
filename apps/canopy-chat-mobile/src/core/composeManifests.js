@@ -21,6 +21,11 @@ import {
 // is the household catalog source of truth, replacing the chore-vocab mock.
 import { householdManifest as realHouseholdManifest } from '../../../household/manifest.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
+// agents (2026-07-09) — the read-only "your agents" surface. Relative import for
+// the same pnpm-cycle reason as above; manifest.js is import-free so this pulls
+// in no dependency chain.  Handlers are composed in-process by realAgent.js
+// (the 'agents' branch of callSkill) — same split as tasks/stoop/folio.
+import { agentsManifest } from '../../../agents/manifest.js';
 
 /**
  * Single source of truth for the per-app manifest list — used by
@@ -41,6 +46,11 @@ function manifestList({ householdManifest } = {}) {
     mockStoopManifest,
     mockFolioManifest,
     calendarManifest,
+    // agents LAST (2026-07-09): listAgents/viewAgent are collision-free today;
+    // last-in-order means any future op-id collision resolves to the earlier,
+    // established app.  Mirrors the web list (circleApp.js baseSources) — the
+    // two lists must stay in the same order (docs/manifest-pipeline.md).
+    agentsManifest,
   ];
 }
 

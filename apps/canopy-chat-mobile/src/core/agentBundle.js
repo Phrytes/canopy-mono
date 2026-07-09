@@ -28,6 +28,7 @@
  * boot-failure error or the real factory's reply).
  */
 import { composeManifests, buildManifestsByOrigin } from './composeManifests.js';
+import { getCircleVersionStore } from './circleVersioning.js';
 // Shared extension-mapping loader (feedback-extension P2) — web≡mobile core.
 import { loadVerifyMappings } from '../../../canopy-chat/src/v2/mappingsLoader.js';
 import { getActiveCircle } from '../../../canopy-chat/src/v2/activeCircle.js';
@@ -216,6 +217,10 @@ export async function bootAgentBundle(opts = {}) {
       stoopControlAgent: opts.stoopControlAgent,   // S4 — multi-member sealing router (redeem/leave)
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
+      // P3 recovery — resolve a circle's pod version store for the
+      // listDataVersions/restoreDataVersion skills (RN twin of web's
+      // circleVersioning; see src/core/circleVersioning.js).
+      versionStoreFor:  getCircleVersionStore,
       // Perf — skip the demo seed on warm boot.  Without persistence
       // on the tasks-v0 itemStore, realAgent's listOpen probe always
       // returns empty and re-runs 4 addTask + setMyHandle +

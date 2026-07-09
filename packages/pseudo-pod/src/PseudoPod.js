@@ -83,6 +83,19 @@ const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
  *   — graceful-degradation gate. When supplied, cache-mode writes that find
  *   the pod unreachable stay in the write-through queue until
  *   `drainWriteThroughQueue()` is called on reconnect.
+ *
+ * Versioning seam (PLAN-pod-versioning-history-recovery P2):
+ * @param {{capture: (uri: string, content: *) => Promise<*>}} [opts.versioning]
+ *   — optional version store (duck-typed; `@canopy/versioning`'s
+ *   `createVersionStore`). When supplied, the write path snapshots the
+ *   DISPLACED bytes before they are lost: prior local bytes on `write`,
+ *   `writeFromPeer` peer-update, and `delete`; the DROPPED PEER FORK on a
+ *   `concurrent-write` (today's LWW winner-select silently discards the
+ *   loser — with versioning it lands in history, recoverable). Stale-peer /
+ *   idempotent re-deliveries are NOT captured (noise). Capture is
+ *   best-effort: a throwing store never breaks the write path. The seam
+ *   lives INSIDE the pseudo-pod (not a wrapper) so peer writes can't bypass
+ *   it via a stale inner reference — NotifyEnvelope et al. hold this object.
  */
 export function createPseudoPod({
   backend,
@@ -94,6 +107,7 @@ export function createPseudoPod({
   podFetcher,
   podUploader,
   isPodReachable,
+  versioning,
 } = {}) {
   if (!backend || typeof backend.get !== 'function') {
     throw Object.assign(
@@ -140,6 +154,45 @@ export function createPseudoPod({
         { code: 'INVALID_ARGUMENT' },
       );
     }
+  }
+  if (versioning != null && typeof versioning.capture !== 'function') {
+    throw Object.assign(
+      new Error('createPseudoPod: `versioning` must expose capture(uri, content)'),
+      { code: 'INVALID_ARGUMENT' },
+    );
+  }
+
+  /** 4b HARD INVARIANT (PLAN-pod-versioning-history-recovery P4): when a
+   *  version store is attached, the history layer under its key prefix is
+   *  IMMUTABLE through this pod — `write`/`delete` refuse it in EVERY mode
+   *  (incl. cache, which skips `_assertLocalWrite`), and `writeFromPeer`
+   *  rejects it (a hostile peer must not rewrite history). Only the store
+   *  itself appends new records; its privileged `prune`/`drop` live on the
+   *  store object, which is never skill-reachable. */
+  const historyRoot = versioning
+    ? (typeof versioning.versionsRoot === 'string' && versioning.versionsRoot.length > 0
+        ? versioning.versionsRoot
+        : 'versions/')
+    : null;
+  const _isHistoryKey = (uri) => historyRoot != null && String(uri).startsWith(historyRoot);
+  function _assertNotHistory(uri, op) {
+    if (_isHistoryKey(uri)) {
+      throw Object.assign(
+        new Error(`pseudo-pod.${op}: "${uri}" is under the version-history layer ("${historyRoot}") — history is immutable through the pod (agents append via displacement capture only)`),
+        { code: 'HISTORY_IMMUTABLE' },
+      );
+    }
+  }
+
+  /**
+   * Snapshot displaced/dropped bytes into the version store — best-effort:
+   * versioning must never break the write path. `content` is whatever the
+   * displaced record held (`bytes` is opaque to the pseudo-pod).
+   */
+  async function _captureDisplaced(uri, content) {
+    if (!versioning || content === undefined) return;
+    try { await versioning.capture(uri, content); }
+    catch (_err) { /* swallow — capture is best-effort, the write proceeds */ }
   }
 
   /** @type {Map<string, 'standalone'|'replication-ring'|'cache'>} */
@@ -341,9 +394,18 @@ export function createPseudoPod({
     const key = _keyForUri(uri);
     const effectiveMode = _modeFor(uri);
 
+    // 4b: the history layer is immutable through the pod — every mode
+    // (cache mode skips _assertLocalWrite, so this must come first).
+    _assertNotHistory(uri, 'write');
     // Standalone + replication-ring writes must be device-local.
     // Cache writes accept https:// (the pod's own URI scheme).
     if (effectiveMode !== 'cache') _assertLocalWrite(uri);
+
+    // Versioning: snapshot the DISPLACED prior bytes before overwriting.
+    if (versioning) {
+      const prior = await backend.get(key);
+      if (prior) await _captureDisplaced(uri, prior.bytes);
+    }
 
     const { etag: newEtag, _v: newV } = await backend.put(key, bytes, etag);
 
@@ -407,7 +469,16 @@ export function createPseudoPod({
 
   async function deleteResource(uri) {
     const key = _keyForUri(uri);
+    // 4b: history records can never be deleted through the pod (only the
+    // store's privileged prune/drop, which are not skill-reachable).
+    _assertNotHistory(uri, 'delete');
     if (_modeFor(uri) !== 'cache') _assertLocalWrite(uri);
+    // Versioning: a delete is the most destructive op on this path (hard,
+    // no tombstone) — snapshot the prior bytes so it becomes recoverable.
+    if (versioning) {
+      const prior = await backend.get(key);
+      if (prior) await _captureDisplaced(uri, prior.bytes);
+    }
     await backend.delete(key);
   }
 
@@ -464,15 +535,29 @@ export function createPseudoPod({
    * @param {number} [_v]    Lamport counter from the sender.
    * @param {object} [opts]
    * @param {string} [opts.fromActor]  Sender identity (for events).
-   * @returns {Promise<{status: 'peer-update'|'stale-peer'|'concurrent-write'|'idempotent'|'written-no-version'}>}
+   * @returns {Promise<{status: 'peer-update'|'stale-peer'|'concurrent-write'|'idempotent'|'written-no-version'|'rejected-history-immutable'}>}
+   *   `rejected-history-immutable` (4b): the uri targets the attached
+   *   version store's history layer — peers can never rewrite history.
    */
   async function writeFromPeer(uri, bytes, etag, _v, opts = {}) {
     const key = _keyForUri(uri);
     const fromActor = opts && typeof opts.fromActor === 'string' ? opts.fromActor : undefined;
 
+    // 4b: a peer (hostile or buggy) must never rewrite the history layer.
+    // Receive path → reject with a status, never throw (a bad envelope must
+    // not break the dispatcher). History replication, if ever wanted, is an
+    // explicit separate design — not an implicit peer write.
+    if (_isHistoryKey(uri)) {
+      return { status: 'rejected-history-immutable' };
+    }
+
     // Legacy peer — no version, fall back to LWW. Lets old senders
     // remain interoperable while we roll out the new wire shape.
     if (typeof _v !== 'number') {
+      if (versioning) {
+        const prior = await backend.get(key);
+        if (prior) await _captureDisplaced(uri, prior.bytes); // LWW displaces local unconditionally
+      }
       await backend.put(key, bytes, etag);
       return { status: 'written-no-version' };
     }
@@ -492,6 +577,9 @@ export function createPseudoPod({
     }
 
     if (_v > local._v) {
+      // Versioning: the peer's newer write DISPLACES our local bytes —
+      // snapshot them first (nothing else retains them).
+      await _captureDisplaced(uri, local.bytes);
       await backend.put(key, bytes, etag, _v);
       _emitEvent('peer-update', {
         uri,
@@ -520,6 +608,10 @@ export function createPseudoPod({
       return { status: 'idempotent' };
     }
 
+    // Versioning: LWW keeps local — the PEER'S FORK would be silently
+    // dropped. Snapshot it so the losing concurrent edit stays recoverable
+    // (softens the no-CRDT gap: the loser lands in history, not /dev/null).
+    await _captureDisplaced(uri, bytes);
     _emitEvent('concurrent-write', {
       uri,
       ...(fromActor != null ? { fromActor } : {}),

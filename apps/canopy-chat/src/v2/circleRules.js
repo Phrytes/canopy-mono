@@ -112,6 +112,20 @@ export function createCircleRulesStore({ load, save, versions } = {}) {
       if (!versions || typeof versions.list !== 'function') return [];
       try { return await versions.list(circleId); } catch { return []; }
     },
+    /**
+     * Restore the rules doc snapshotted at `ts` (a `ts` from `listVersions`).
+     * The adapter only READS history; persisting goes through this store's
+     * own `set` path (capture + save), so the restore is itself in history
+     * (undoable). Returns the persisted doc, or `null` when no adapter /
+     * no such snapshot.
+     */
+    async restoreVersion(circleId, ts) {
+      if (!versions || typeof versions.restore !== 'function') return null;
+      let restored = null;
+      try { restored = await versions.restore(circleId, ts); } catch { restored = null; }
+      if (restored == null) return null;
+      return this.set(circleId, restored);
+    },
   };
 }
 

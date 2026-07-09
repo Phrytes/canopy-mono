@@ -1039,6 +1039,10 @@
       "folio": {
         "text": "Bestanden",
         "doc": "S6.C — app label (folio)."
+      },
+      "agents": {
+        "text": "Agents",
+        "doc": "S6.C — app label (agents, 2026-07-09). Key MUST match the DEFAULT_CIRCLE_ORIGINS origin 'agents' (the read-only 'your agents' surface)."
       }
     },
     "storage_err": {

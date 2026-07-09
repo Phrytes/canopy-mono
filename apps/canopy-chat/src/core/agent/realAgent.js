@@ -24,7 +24,7 @@
  */
 
 import {
-  Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
+  Agent, AgentIdentity, InternalBus, InternalTransport, DataPart, TokenRegistry,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
@@ -32,6 +32,12 @@ import { createSecureMeshAgent } from '@canopy/secure-agent';
 import { createBrowserMultiCircleTasksAgent } from '@canopy-app/tasks-v0/browser';
 import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
 import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
+// agents — the read-only "your agents" surface (2026-07-09). buildAgentSkills
+// derives the two defineSkill-shaped handlers (listAgents / viewAgent) from
+// the agents manifest via wireSkill; registerAgentBundle both registers THIS
+// device in the registry resource and returns the live registry handle.
+import { buildAgentSkills } from '@canopy-app/agents/wireSkills';
+import { registerAgentBundle, createAgentRegistry } from '@canopy/agent-registry';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -455,6 +461,76 @@ export async function createRealHouseholdAgent(opts = {}) {
     wire('removeItem',   householdApp.removeItem);          // no `by`
     wire('listOpen',     listWrap(householdApp.listOpen), typeOptional(hhOp('listOpen')));
     wire('listTasks',    listWrap(householdApp.listTasks));
+  }
+
+  /* ─────────── agents — the read-only "your agents" surface (2026-07-09) ───────────
+   * The `apps/agents` manifest (listAgents /agents + viewAgent detail) reads the canonical
+   * `@canopy/agent-registry` pod resource.  The registry is anchored on THE USER'S OWN
+   * pseudo-pod: the shared substrate stack already built above for household
+   * (`householdSubstrate.pseudoPod`), whose URI authority is the CHAT identity's pubKey —
+   * i.e. this user's device pod, not a per-circle pod.  Mirrors the sibling bring-up
+   * pattern (stoop-mobile bootstrapBundle / tasks-v0 Circle.js): `registerAgentBundle`
+   * registers THIS device (the chat agent) in the resource — so the roster is non-empty
+   * out of the box — and returns the live registry handle the read skills query.
+   * Best-effort: a register failure falls back to a bare `createAgentRegistry` over the
+   * same pod (empty roster) so the skills always register and boot never breaks.
+   * The wireSkill-derived handlers live on `hostAgent` (same home as the other in-process
+   * host skills); the 'agents' branch of callSkill routes through `chatAgent.invoke`. */
+  let agentsTokenRegistry = null;   // issuer-side revocation list (exposed on the handle; null = degraded)
+  {
+    const agentsRegistry =
+      (await registerAgentBundle({
+        pseudoPod:   householdSubstrate.pseudoPod,
+        podDeviceId: chatId.pubKey,
+        agent:       chatAgent,
+        opts: { capabilities: ['canopy-chat'], name: opts.agentsSelfName ?? 'canopy-chat (this device)' },
+      }))
+      ?? createAgentRegistry({ pseudoPod: householdSubstrate.pseudoPod, deviceId: chatId.pubKey });
+
+    /* P2 control ops — LIVE token binding (2026-07-09).  hostAgent (the skills' home)
+     * is the ISSUER: `issueCapabilityToken` signs with its identity and needs no other
+     * machinery.  Neither hostAgent nor the default chat secure-agent composes a
+     * TokenRegistry/PolicyEngine in this factory (hostAgent is built bare at the top;
+     * sa.policy is null unless the caller opts in via secureAgentOpts.policyEngine), so
+     * the issuer-side revocation list is built HERE: a real vault-backed `TokenRegistry`
+     * (BotAgentRegistry precedent — issue → store; revoke flips `isRevoked`, the truth
+     * any enforcement gate consults).  When a PolicyEngine IS composed (caller opt-in),
+     * feed its revocation check from this registry, COMPOSING with a caller-supplied
+     * `isRevoked` rather than clobbering it (nothing else in this file calls
+     * setRevocationCheck).  Best-effort: any failure falls back to registry-only
+     * (`tokenBacked: false`, the pre-binding behaviour) — never breaks boot. */
+    let agentsTokens = null;
+    try {
+      const tokenVault = opts.agentsTokenVault ?? makeBrowserVault('cc-agent-tokens:');
+      const tokenRegistry = new TokenRegistry(tokenVault);
+      agentsTokens = {
+        issue: async ({ subject, skill, expiresIn, constraints }) => {
+          const token = await hostAgent.issueCapabilityToken({ subject, skill, expiresIn, constraints });
+          await tokenRegistry.store(token);
+          // Registry mirror expects an ISO string (resource.js nulls non-strings);
+          // token.expiresAt is unix-ms.
+          return { id: token.id, expiresAt: new Date(token.expiresAt).toISOString() };
+        },
+        revoke: (tokenId) => tokenRegistry.revoke(tokenId),
+      };
+      if (typeof sa.policy?.setRevocationCheck === 'function') {
+        const callerIsRevoked = opts.secureAgentOpts?.policyEngine?.isRevoked;
+        sa.policy.setRevocationCheck(async (tokenId) =>
+          (await tokenRegistry.isRevoked(tokenId))
+          || (typeof callerIsRevoked === 'function' ? Boolean(await callerIsRevoked(tokenId)) : false));
+      }
+      agentsTokenRegistry = tokenRegistry;
+    } catch { agentsTokens = null; agentsTokenRegistry = null; }
+
+    // P3 recovery: the platform's circle-version-store resolver (web:
+    // circleVersioning.getCircleVersionStore; mobile: its RN twin) rides in
+    // via opts — the recovery cores stay platform-blind (doorgeefluik).
+    // Absent → listDataVersions/restoreDataVersion answer the honest
+    // `no-version-store` miss.
+    const versionStoreFor = typeof opts.versionStoreFor === 'function' ? opts.versionStoreFor : null;
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor })) {
+      hostAgent.register(id, handler, { visibility });
+    }
   }
 
   // v0.4 — household membership demo.  The real manifest declares
@@ -1396,6 +1472,28 @@ export async function createRealHouseholdAgent(opts = {}) {
       // shell/bundle concern layered ON TOP of this routing.
       return callSkill('household', `calendar_${opId}`, args);
     }
+    if (appOrigin === 'agents') {
+      // The read-only "your agents" skills live on hostAgent (wireSkill-wrapped
+      // pure cores over the user's own agent-registry — see the registration
+      // block above).  Routing lives HERE in the shared agent (invariant #1) so
+      // web + mobile both reach it through the bare `agent.callSkill`.  The
+      // thin reply adapter below is presentation-only (same licence as the
+      // stoop adapter): the cores return the registry vocabulary
+      // ({agents:[…]} / {agent}), the chat-shell renderer expects
+      // {items:[{id,label,…}]} for shape:'list' and a flat record payload for
+      // shape:'record'.
+      const parts  = await chatAgent.invoke(hostAgent.address, opId, [DataPart(args ?? {})]);
+      const data   = Array.isArray(parts) ? parts[0]?.data : null;
+      if (opId === 'listAgents') {
+        const agents = Array.isArray(data?.agents) ? data.agents : [];
+        return { items: agents.map((a) => ({ ...a, id: a.agentId, label: a.name ?? a.agentId })) };
+      }
+      if (opId === 'viewAgent') {
+        // A miss surfaces as a soft failure (message, not a false record).
+        return data?.agent ?? { ok: false, error: `No agent matches "${String(args?.agentId ?? '')}"` };
+      }
+      return data;
+    }
     throw new Error(`realAgent: unknown appOrigin "${appOrigin}"`);
   };
 
@@ -2243,6 +2341,11 @@ export async function createRealHouseholdAgent(opts = {}) {
       chatAddress: chatAgent.address,
       transport:   'internal',
     },
+    // agents P2 — the ISSUER-side TokenRegistry backing grantAgent/revokeAgent/
+    // revokeGrant (issue → store; revoke → isRevoked flips true).  null when the
+    // token wiring fell back to registry-only mode.  Tests + admin surfaces
+    // consult `isRevoked(tokenId)` here.
+    agentsTokenRegistry,
     // v0.7.12 — caller wires the invite-attendee callback after
     // construction (so the simPeers map + threadStore from main.js
     // are visible here).

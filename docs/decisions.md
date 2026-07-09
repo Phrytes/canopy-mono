@@ -140,3 +140,31 @@ client app, obscuring the client/server boundary the eventual repo split runs al
 **Consequences:** a clear-splits-now step (before the repo split): carve **`feedback-core`** (browser-safe, with
 an `exports` surface so canopy-chat stops deep-relative-importing) → **`feedback-server`** → **`feedback-deploy`**.
 Recorded as a distinct layer in the architecture + repository-layout docs.
+
+---
+
+## 2026-07-09 — Agent registry is the single write-truth; per-agent A2A cards are derived projections
+
+**Status:** settled and shipped (`packages/agent-registry` — `projectAgentCard` in `src/agentCard.js`).
+
+**Context:** a user's agents need one authoritative record (ownership · grants · revocation · liveness) *and*
+an externally-interoperable A2A Agent Card per agent. Two writable representations of the same agent would
+drift; and the coarse `capabilities[]` display list could diverge from what an agent is actually authorized
+to do.
+
+**Decision:** the **`@canopy/agent-registry` list resource** (one pod resource holding all of a user's agent
+entries) is the **single write-truth**; every per-agent **A2A Agent Card is a derived read/interop
+projection** of its registry entry (`projectAgentCard(entry)`) — one truth, one view, never written directly.
+And within an entry, the **signed capability token (`grants[]`) is the enforced authority**; `capabilities[]`
+is only its mirrored display — `applyGrant`/`revokeGrant` update grant + mirror atomically in one write.
+
+**Alternatives / why:** over reusing core's `AgentCardBuilder` for the card — it projects a *live in-process
+Agent*, not a stored registry record; same card format, different source, so the registry gets its own
+projector. Over per-agent card files as co-equal writable records — a second writable copy is a drift engine;
+a projection is always re-derivable. Over making `capabilities[]` authoritative — an unsigned display list
+can't be an authority; the signed token can, and the mirror keeps display cheap.
+
+**Consequences:** card fields the registry doesn't store yet (skill descriptions, streaming capability) project
+as absent/static defaults until the entry carries them; revocation is purely registry-side (`revokedAt` →
+`status: "revoked"` on the next projection); serving the projected card at the A2A `.well-known/agent`
+discovery path is follow-on work.

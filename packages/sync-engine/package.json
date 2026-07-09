@@ -10,7 +10,6 @@
     "./adapters":   "./src/adapters/index.js",
     "./adapters/*": "./src/adapters/*.js",
     "./versions":       "./src/versions.js",
-    "./objectVersions": "./src/objectVersions.js",
     "./PathMap":    "./src/PathMap.js",
     "./scanLocal":  "./src/scanLocal.js",
     "./scanPod":    "./src/scanPod.js",

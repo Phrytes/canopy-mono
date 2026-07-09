@@ -40,6 +40,7 @@
   "dependencies": {
     "@canopy/agent-registry": "file:../../packages/agent-registry",
     "@canopy/agent-ui": "file:../../packages/agent-ui",
+    "@canopy/substrate-stack": "file:../../packages/substrate-stack",
     "@canopy/app-manifest": "file:../../packages/app-manifest",
     "@canopy/web-adapter": "file:../../packages/web-adapter",
     "@canopy/manifest-host": "file:../../packages/manifest-host",

@@ -28,7 +28,7 @@
     "@canopy/item-store": "workspace:*",
     "@canopy/item-types": "workspace:*",
     "@canopy/pod-routing": "workspace:*",
-    "@canopy/sync-engine": "workspace:*"
+    "@canopy/versioning": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

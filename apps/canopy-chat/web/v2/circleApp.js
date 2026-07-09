@@ -29,6 +29,7 @@ import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient
   recipientStrategy as podRecipientStrategy,
   sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
 import { createPseudoPod } from '@canopy/pseudo-pod';
+import { circleVersioningFor, getCircleVersionStore } from '../../src/web/circleVersioning.js';
 import { pickWebBackend } from '../../src/web/persistentBackend.js';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
@@ -39,6 +40,9 @@ import { discoverPodRoot, createPodWriter } from '../../src/web/podStorage.js';
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
 import { calendarManifest } from '@canopy-app/calendar/manifest';
+// agents — the read-only "your agents" surface (2026-07-09). Real manifest,
+// like calendar; the skill handlers are composed in-process by realAgent.js.
+import { agentsManifest } from '@canopy-app/agents/manifest';
 import { buildCircleLlmProviders } from '../../src/v2/circleLlmProviders.js';
 import { createTokenGate } from '../../src/v2/tokenGate.js';
 import { circleGateRules } from '../../src/v2/circleGate.js';
@@ -1033,7 +1037,13 @@ async function getCircleSealStrategy(circleId, policy) {
  * reload; falls back to in-memory under SSR / tests (no `indexedDB`) — see `pickWebBackend`. */
 function makeCirclePodClient(circleId) {
   const deviceId = `circle-${circleId}`;
-  const pseudoPod = createPseudoPod({ backend: pickWebBackend(`cc-circle-${circleId}`), mode: 'standalone', deviceId });
+  const backend  = pickWebBackend(`cc-circle-${circleId}`);
+  // P3 versioning: displaced bytes (overwrites · peer-updates · dropped
+  // concurrent forks · deletes) land in `versions/` on the SAME backend —
+  // the substrate under the my-data restore ops. Best-effort by design
+  // (a throwing store never breaks a write).
+  const versioning = circleVersioningFor(circleId, deviceId, backend);
+  const pseudoPod = createPseudoPod({ backend, mode: 'standalone', deviceId, versioning });
   return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
 }
 
@@ -1126,6 +1136,11 @@ function buildCircleBot(agent) {
     { manifest: mockStoopManifest },
     { manifest: mockFolioManifest },
     { manifest: calendarManifest },
+    // agents LAST (2026-07-09): no op-id collisions expected (listAgents/viewAgent
+    // are unique), and last-in-order means any future collision resolves to the
+    // earlier, established app.  Mirrors composeManifests.js on mobile — the two
+    // lists must stay in the same order (docs/manifest-pipeline.md dual-truth).
+    { manifest: agentsManifest },
   ];
   circleBaseSources = baseSources;   // B · Slice 2/4 — expose to the module-level showSettings/showOverride
   let rawCatalog = mergeManifests(baseSources, { runtime: 'browser' });
@@ -4210,6 +4225,9 @@ async function boot() {
     };
     const agent = await createRealHouseholdAgent({
       publishEvent: publishEventToLog,
+      // P3 recovery — resolve a circle's pod version store for the
+      // listDataVersions/restoreDataVersion skills (see circleVersioning.js).
+      versionStoreFor: getCircleVersionStore,
       // PERSISTENT chat identity (the secure-agent peer address). Without a persistent vault the
       // identity is in-memory and ROTATES on every page reload — so this device's address changes,
       // the circle roster's recorded address goes stale, and peers can no longer reach it (no-pod

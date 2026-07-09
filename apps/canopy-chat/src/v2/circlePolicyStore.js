@@ -15,6 +15,7 @@
  *   versions = {
  *     capture(circleId, value) → Promise<void>   // snapshot before save
  *     list(circleId)           → Promise<entries[]>
+ *     restore(circleId, ts)    → Promise<value|null>  // optional (@canopy/versioning consolidation)
  *   }
  */
 import {
@@ -45,6 +46,27 @@ export function createCirclePolicyStore({ load, save, versions } = {}) {
     async listVersions(circleId) {
       if (!versions || typeof versions.list !== 'function') return [];
       try { return await versions.list(circleId); } catch { return []; }
+    },
+    /**
+     * Restore the policy snapshotted at `ts` (a `ts` from `listVersions`).
+     * The adapter only READS history; this store persists the restored
+     * value through its normal capture+save path, so the restore both
+     * lands in live storage and appears in history (undoable — the
+     * pre-restore newest entry stays listed). Returns the persisted
+     * (normalised, wholesale-replaced — not merged) policy, or `null`
+     * when no adapter / no such snapshot.
+     */
+    async restoreVersion(circleId, ts) {
+      if (!versions || typeof versions.restore !== 'function') return null;
+      let restored = null;
+      try { restored = await versions.restore(circleId, ts); } catch { restored = null; }
+      if (restored == null) return null;
+      const next = normalizeCirclePolicy(restored);
+      if (typeof versions.capture === 'function') {
+        try { await versions.capture(circleId, next); } catch { /* capture is best-effort */ }
+      }
+      if (save) await save(circleId, next);
+      return next;
     },
   };
 }
