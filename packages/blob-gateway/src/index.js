@@ -7,6 +7,10 @@
 // poortwachter verifies a Solid token, checks the pod ACL, and issues a short-lived presigned
 // URL to the ciphertext (the client decrypts locally). The host never sees plaintext.
 //
+// The manifest line can optionally carry media metadata (mime, width/height, an inline
+// SEALED thumbnail) so a chat chip renders without fetching the blob — see ref.js /
+// uploadBlob's `media` opts / openThumbnail.
+//
 // INJECTED contracts (cloud-agnostic, testable — no real S3/Solid required here):
 //   bucket      = { put(key, bytes) => Promise, presign(key, {ttl}) => Promise<url>, delete(key) }
 //   verifyToken = token => Promise<{ webId } | null>
@@ -14,8 +18,8 @@
 //   sealer      = text => sealedText   (makeSealer / makeGroupSealer from the sealing module)
 //   opener      = sealedText => text   (makeOpener / makeGroupOpener — the read-side inverse)
 
-export { uploadBlob } from './uploadBlob.js';
-export { openBlob } from './openBlob.js';
+export { uploadBlob, MAX_SEALED_THUMB_CHARS } from './uploadBlob.js';
+export { openBlob, openThumbnail } from './openBlob.js';
 export { createBlobGatekeeper } from './gatekeeper.js';
 export {
   makeManifestLine, isBlobRef, bucketKeyFromRef, BLOB_SCHEME, BLOB_TYPE,
