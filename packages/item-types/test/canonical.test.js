@@ -37,7 +37,7 @@ function baseItem(type, extra = {}) {
 }
 
 describe('Canonical types — registration via default registry', () => {
-  it('the default registry has all 15 canonical types', () => {
+  it('the default registry has all 16 canonical types', () => {
     expect(list().sort()).toEqual([
       'announcement',
       'calendar-event',
@@ -46,6 +46,7 @@ describe('Canonical types — registration via default registry', () => {
       'circle',
       'claim',
       'contact',
+      'media',
       'neighbourhood-job',
       'note',
       'offer',
@@ -68,11 +69,11 @@ describe('Canonical types — registration via default registry', () => {
   it('registerCanonicalTypes works on a fresh registry too', () => {
     const r = createRegistry();
     registerCanonicalTypes(r);
-    expect(r.list()).toHaveLength(15);
+    expect(r.list()).toHaveLength(16);
   });
 
   it('CANONICAL_TYPES exports the schema map', () => {
-    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(15);
+    expect(Object.keys(CANONICAL_TYPES)).toHaveLength(16);
     expect(CANONICAL_TYPES.task).toBeTruthy();
     expect(CANONICAL_TYPES.note).toBeTruthy();
   });
@@ -98,6 +99,8 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     'circle':            { name:        'Gardening circle' },
     // K2 (2026-07-01): cross-circle share reference.
     'shared-ref':        { sourceCircle: 'circle-a', sourceId: 'dec:item/task/abc' },
+    // Media Phase 1 (2026-07-09): pointer-only media item.
+    'media':             { source: { type: 'blob', ref: 'blob://abc123' } },
   };
 
   for (const [name, extra] of Object.entries(MINIMAL)) {
@@ -163,6 +166,85 @@ describe('Canonical types — extra-fields tolerance (forward-compat)', () => {
       futureField:    'tomorrow this might be canonical',
       anotherFuture:  { nested: 'shape' },
     }));
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('media type (Media Phase 1, 2026-07-09)', () => {
+  const SOURCE = { type: 'blob', ref: 'blob://bucket-key-1' };
+
+  it('validates a full image item round-trip (source + hints + caption + embeds)', () => {
+    const item = baseItem('media', {
+      source:  { ...SOURCE, enc: { sealed: true, keyRef: 'circle:gardening', format: 'fp1', bytes: 12345 } },
+      mime:    'image/jpeg',
+      width:   800,
+      height:  600,
+      caption: 'the fence, freshly painted',
+      embeds:  [{ type: 'task', ref: 'urn:dec:item:01HX9ABC' }],
+    });
+    const result = validate(item);
+    if (!result.ok) console.error('unexpected media fail:', result.errors);
+    expect(result.ok).toBe(true);
+    expect(metadata('media')).toEqual({ name: 'media', iri: `${NAMESPACE}Media` });
+    expect(schema('media')).toBeTruthy();
+  });
+
+  it('rejects a media item with no storage pointer at all', () => {
+    const result = validate(baseItem('media', { mime: 'image/png', caption: 'no bytes anywhere' }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects a media item whose source has no ref', () => {
+    const result = validate(baseItem('media', { source: { type: 'blob' } }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects a non-blob source missing the embeds-entry type field', () => {
+    const result = validate(baseItem('media', { source: { ref: 'https://anne.pod/photos/x.jpg' } }));
+    expect(result.ok).toBe(false);
+  });
+
+  it('accepts non-blob refs — the pointer is any embeds-shaped line', () => {
+    const result = validate(baseItem('media', {
+      source: { type: 'photo', ref: 'pseudo-pod://anne-device/photos/x.jpg' },
+    }));
+    expect(result.ok).toBe(true);
+  });
+
+  it('tolerates unknown extra fields, like every sibling type', () => {
+    const result = validate(baseItem('media', {
+      source:      SOURCE,
+      futureField: 'alt-text maybe',
+      blurhash:    'LEHV6nWB2yk8',
+    }));
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects writer-asserted dimensions of the wrong shape', () => {
+    expect(validate(baseItem('media', { source: SOURCE, width: '800' })).ok).toBe(false);
+    expect(validate(baseItem('media', { source: SOURCE, height: 0 })).ok).toBe(false);
+  });
+});
+
+describe('media × blob-gateway composition — the enriched manifest line slots in as source', () => {
+  // Real fitness function: build the line with blob-gateway's own
+  // makeManifestLine (packages/blob-gateway/src/ref.js) so a shape
+  // change there fails HERE, not in a renderer at runtime.
+  const LINE_ARGS = { key: 'bucket-key-9', keyRef: 'circle:gardening', bytes: 54321, mime: 'image/jpeg', width: 800, height: 600 };
+
+  it('an enriched line WITH a thumb validates as media.source', async () => {
+    const { makeManifestLine } = await import('../../blob-gateway/src/ref.js');
+    const line = makeManifestLine({ ...LINE_ARGS, thumb: 'fp1:sealed-thumb-envelope' });
+    expect(line.enc.thumb).toBe('fp1:sealed-thumb-envelope');
+    const result = validate(baseItem('media', { source: line, mime: line.enc.mime, width: line.enc.width, height: line.enc.height }));
+    expect(result.ok).toBe(true);
+  });
+
+  it('an enriched line WITHOUT a thumb (pre-enrichment shape) also validates', async () => {
+    const { makeManifestLine } = await import('../../blob-gateway/src/ref.js');
+    const line = makeManifestLine({ key: 'bucket-key-9', keyRef: 'circle:gardening', bytes: 54321 });
+    expect(line.enc.thumb).toBeUndefined();
+    const result = validate(baseItem('media', { source: line }));
     expect(result.ok).toBe(true);
   });
 });

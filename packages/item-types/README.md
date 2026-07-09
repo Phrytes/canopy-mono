@@ -85,6 +85,7 @@ reg.registerType('my-app/widget', WIDGET_SCHEMA);
 | `announcement`      | `body`                 | One-way buurt-broadcast.                    |
 | `reveal-request`    | `requester`, `target`  | Sender ↔ recipient identity disclosure.     |
 | `neighbourhood-job` | `body`                 | Coordinated buurt-job lifecycle.            |
+| `media`             | `source`               | Pointer-only media item (images first; `mime` distinguishes). `source` is an embeds-shaped `{type, ref, enc?}` storage pointer — blob-gateway's manifest line slots in directly. Optional writer-asserted `mime`/`width`/`height` + `caption`. |
 
 Every type ships under the **`dec:`** namespace
 (`https://canopy.org/ns#<TypeName>`). The substrate intentionally does
@@ -251,6 +252,7 @@ packages/item-types/
 │   ├── registry.js         — createRegistry()
 │   ├── canonical.js        — CANONICAL_TYPES + registerCanonicalTypes()
 │   └── types/              — one JS file per canonical type
+│       └── media.js        — pointer-only media noun (composes with blob-gateway's manifest line)
 └── test/
     ├── registry.test.js
     └── canonical.test.js
