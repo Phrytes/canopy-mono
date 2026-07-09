@@ -35,6 +35,9 @@ import { createAgent, wireSkill, Parts } from '../../../packages/sdk/src/index.j
 import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';
 import { createAgentRegistry } from '../../../packages/agent-registry/src/AgentRegistry.js';
 import { createVersionStore } from '../../../packages/versioning/src/versionStore.js';
+import { renderWeb } from '../../../packages/app-manifest/src/renderWeb.js';
+import { validateManifest } from '../../../packages/app-manifest/src/validate.js';
+import { fetchSectionItems } from '../../../packages/web-adapter/src/fetchSectionItems.js';
 
 // App-local, import-free modules.
 import { AGENT_CORES } from '../src/cores.js';
@@ -592,5 +595,141 @@ describe('agents — P2 control-op semantics (direct core)', () => {
     // Control ops accept it too — degraded (no tokens by definition).
     const res = await AGENT_CORES.revokeAgent(registry, { agentId: 'laptop-anne' });
     expect(res).toMatchObject({ revoked: true, tokenBacked: false });
+  });
+});
+
+/* ── P3 recovery VIEWS — the browsable "restore lost data" surface ──────
+ * The recovery ops must be reachable BY SCREEN, not only via chat/LLM
+ * (manifest = the single contract; renderWeb projects it).  Asserts:
+ *   1. the manifest (with the two new views) still validates STRICT
+ *      (skillId cross-check against operations[]);
+ *   2. both data-version views project with the right dataSource +
+ *      Q15 context args ($circleId; the detail adds $uri);
+ *   3. restoreDataVersion surfaces as a danger-confirm itemAction on
+ *      the data-version sections ONLY (never on the agent sections);
+ *   4. the core's ADDITIVE `items` key carries {id, label} rows the
+ *      list renderer reads — while `series`/`versions` stay intact;
+ *   5. the whole seam end-to-end: fetchSectionItems substitutes the
+ *      section's context args and the reply's items are renderable.
+ */
+describe('agents — P3 recovery views (renderWeb projection)', () => {
+  const nav = renderWeb(agentsManifest);
+  const section = (id) => nav.sections.find((s) => s.id === id);
+
+  it('manifest with the recovery views validates (strict skillId cross-check)', () => {
+    const res = validateManifest(agentsManifest, { strict: true });
+    expect(res.errors).toEqual([]);
+    expect(res.ok).toBe(true);
+  });
+
+  it('data-versions LIST view projects with the series dataSource + $circleId context arg', () => {
+    const s = section('data-versions');
+    expect(s).toBeDefined();
+    expect(s.itemType).toBe('data-version');
+    expect(s.labelField).toBe('uri');
+    expect(s.dataSource).toEqual({
+      skillId:         'listDataVersions',
+      argsFromContext: { circleId: '$circleId' },
+    });
+    // No shape:'record' — the roster is a plain list.
+    expect(s.shape).toBeUndefined();
+  });
+
+  it('data-version-detail view projects the per-uri pick-list ($circleId + $uri)', () => {
+    const s = section('data-version-detail');
+    expect(s).toBeDefined();
+    expect(s.itemType).toBe('data-version');
+    expect(s.dataSource).toEqual({
+      skillId:         'listDataVersions',
+      argsFromContext: { circleId: '$circleId', uri: '$uri' },
+    });
+    // The drilldown is itself a LIST (a version pick-list), not a record.
+    expect(s.shape).toBeUndefined();
+  });
+
+  it('restoreDataVersion is a danger-confirm itemAction on BOTH data-version sections', () => {
+    for (const id of ['data-versions', 'data-version-detail']) {
+      const s = section(id);
+      const restore = s.itemActions.find((a) => a.opId === 'restoreDataVersion');
+      expect(restore, `restore action on ${id}`).toBeDefined();
+      expect(restore.label).toBe('Restore version');
+      expect(restore.appliesTo).toEqual({ type: 'data-version' });
+      expect(restore.confirm.severity).toBe('danger');
+      expect(typeof restore.confirm.message).toBe('string');
+      // listDataVersions is the section's data source, never a button.
+      expect(s.itemActions.map((a) => a.opId)).not.toContain('listDataVersions');
+      // No creative verbs on data-version → no add affordances.
+      expect(s.affordances).toEqual([]);
+    }
+  });
+
+  it('the restore action stays scoped to data-version (agent sections untouched)', () => {
+    for (const id of ['agents', 'agent-detail']) {
+      expect(section(id).itemActions.map((a) => a.opId)).not.toContain('restoreDataVersion');
+    }
+    // And conversely: agent control ops don't leak onto the recovery sections.
+    for (const id of ['data-versions', 'data-version-detail']) {
+      const opIds = section(id).itemActions.map((a) => a.opId);
+      expect(opIds).not.toContain('revokeAgent');
+      expect(opIds).not.toContain('purgeAgent');
+    }
+  });
+
+  it('listDataVersions additively exposes `items` rows (series mode: id/label ← uri)', async () => {
+    const fixture = makeVersionFixture();
+    await fixture.seed();
+    const store = { versionStoreFor: fixture.versionStoreFor };
+
+    const res = await RECOVERY_CORES.listDataVersions(store, { circleId: 'home' });
+    expect(res.ok).toBe(true);
+    // Domain key intact…
+    expect(res.series).toEqual([{ uri: FIXTURE_URI, latestMs: 7000, count: 2 }]);
+    // …and the additive renderer key mirrors the SAME rows with id+label.
+    expect(res.items).toEqual([
+      { uri: FIXTURE_URI, latestMs: 7000, count: 2, id: FIXTURE_URI, label: FIXTURE_URI },
+    ]);
+  });
+
+  it('listDataVersions additively exposes `items` rows (versions mode: label ← ISO(ts) · id)', async () => {
+    const fixture = makeVersionFixture();
+    await fixture.seed();
+    const store = { versionStoreFor: fixture.versionStoreFor };
+
+    const res = await RECOVERY_CORES.listDataVersions(store, { circleId: 'home', uri: FIXTURE_URI });
+    expect(res.ok).toBe(true);
+    expect(res.versions).toHaveLength(2);            // domain key intact, newest-first
+    expect(res.items).toHaveLength(2);
+    expect(res.items.map((i) => i.id)).toEqual(res.versions.map((v) => v.id));
+    // Newest first: ts 7000 then 1000; label is deterministic ISO(ts) · id.
+    expect(res.items[0].label).toBe(`1970-01-01T00:00:07.000Z · ${res.versions[0].id}`);
+    expect(res.items[1].label).toBe(`1970-01-01T00:00:01.000Z · ${res.versions[1].id}`);
+    // Rows keep the pick-list fields the restore needs.
+    expect(res.items[0]).toMatchObject({ ts: 7000, sha256: res.versions[0].sha256 });
+  });
+
+  it('degraded miss keeps its honest shape (no items key invented on ok:false)', async () => {
+    const res = await RECOVERY_CORES.listDataVersions({}, { circleId: 'home' });
+    expect(res).toEqual({ ok: false, error: 'no-version-store', circleId: 'home' });
+  });
+
+  it('end-to-end seam: fetchSectionItems substitutes $circleId/$uri and yields renderable items', async () => {
+    const fixture = makeVersionFixture();
+    await fixture.seed();
+    const store = { versionStoreFor: fixture.versionStoreFor };
+    const callSkill = (skillId, args) => ALL_CORES[skillId](store, args);
+
+    // Series section — host materializer supplies the active circle.
+    const roster = await fetchSectionItems(section('data-versions'), {
+      callSkill, context: { circleId: 'home' },
+    });
+    expect(roster.items.map((i) => i.label)).toEqual([FIXTURE_URI]);
+
+    // Detail section — host ALSO supplies $uri (the picked series row).
+    const picks = await fetchSectionItems(section('data-version-detail'), {
+      callSkill, context: { circleId: 'home', uri: FIXTURE_URI },
+    });
+    expect(picks.uri).toBe(FIXTURE_URI);
+    expect(picks.items).toHaveLength(2);
+    expect(picks.items.every((i) => typeof i.id === 'string' && typeof i.label === 'string')).toBe(true);
   });
 });
