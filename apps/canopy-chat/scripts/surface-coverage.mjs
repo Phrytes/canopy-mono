@@ -11,7 +11,7 @@
 // deterministic NL verbs (surfaces.slash.match) · web/mobile = screen affordance (surfaces.ui or a
 // creative verb; renderWeb ≡ renderMobile, V0-aliased) · inline = button (surfaces.ui.control).
 
-import { renderCoverage, coverageGaps, formatCoverageMarkdown } from '../../../packages/app-manifest/src/index.js';
+import { renderCoverage, coverageGaps, formatCoverageMarkdown } from '@canopy/app-manifest';
 
 // Resilient: a manifest that fails to import is skipped, not fatal.
 // The circle catalog set — exactly what composeManifests composes (the unified chat surface).

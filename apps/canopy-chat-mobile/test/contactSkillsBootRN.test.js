@@ -15,8 +15,8 @@ import { createContactThreadChannel } from '../../canopy-chat/src/v2/contactThre
 import { makePeerRouter } from '../../canopy-chat/src/core/handlers/peerRouter.js';
 import { listContacts, mergeContacts, stoopContactToRow } from '../../canopy-chat/src/v2/contactsSource.js';
 import { addBotToGraph } from '../../canopy-chat/src/v2/addBot.js';
-import { sendA2ATask } from '../../../packages/core/src/a2a/a2aTaskSend.js';
-import { PeerGraph } from '../../../packages/core/src/discovery/PeerGraph.js';
+import { sendA2ATask } from '@canopy/core';
+import { PeerGraph } from '@canopy/core';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
