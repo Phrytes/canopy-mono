@@ -38,6 +38,7 @@
     "@canopy/notifier":     "file:../../packages/notifier",
     "@canopy/pseudo-pod":   "file:../../packages/pseudo-pod",
     "@canopy/pod-routing":  "file:../../packages/pod-routing",
+    "@canopy/substrate-stack": "file:../../packages/substrate-stack",
     "@canopy/notify-envelope": "file:../../packages/notify-envelope",
     "telegraf":             "^4.16.3"
   },
