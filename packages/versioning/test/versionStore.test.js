@@ -190,6 +190,16 @@ describe('read', () => {
     expect(r.size).toBe(4);
     expect(await store.read('img.bin', r.ts)).toEqual(bytes);
   });
+
+  it('list({ withContent }) returns content inline for each version', async () => {
+    const { store, tick } = makeStore({ retention: { debounceMs: 0 } });
+    await store.capture('n.md', 'a'); tick(1);
+    await store.capture('n.md', 'b');
+    const withC = await store.list('n.md', { withContent: true });
+    expect(withC.map((v) => v.content)).toEqual(['b', 'a']); // newest-first
+    const withoutC = await store.list('n.md');
+    expect(withoutC[0].content).toBeUndefined();
+  });
 });
 
 describe('restore — undoable (the crown jewel)', () => {

@@ -12,11 +12,12 @@
  * Why not lift versions.js as-is: its adapter is a *filesystem* (dirs, stat,
  * sidecars, tmp-then-rename) — the wrong shape for a pod, which is a flat KV
  * with prefix-list. We keep the good, tested policy and swap the storage half.
- * A pod points a KV backend at this store. NOTE: Folio's *browsable* `.md`
- * version files are NOT preserved by the existing `NodeFsBackend` (it stores
- * opaque hashed records); a dedicated browsable-FS backend + a cross-series
- * byte-budget are prerequisites before Folio can move onto this store without a
- * regression. See plans/PLAN-pod-versioning-history-recovery.md.
+ * A pod points a KV backend at this store; Folio points `NodeFsBackend`. Folio's
+ * *browsable* `.md` version snapshots are not produced by `NodeFsBackend` (opaque
+ * hashed records) — a browsable-FS backend + a cross-series byte-budget are
+ * OPTIONAL later additions (snapshot-browsing is a nice-to-have; editing working
+ * files is preserved by Folio's own local sync). See
+ * plans/PLAN-pod-versioning-history-recovery.md.
  *
  * Storage layout: one record per version at key
  *   `<versionsRoot><encodeURIComponent(uri)>/<ts>`
@@ -162,16 +163,24 @@ export function createVersionStore({
     return { versionsRemoved, bytesFreed };
   }
 
-  /** All versions of `uri`, newest-first: [{ ts, sha256, size }] (no content). */
-  async function list(uri) {
+  /**
+   * All versions of `uri`, newest-first: [{ ts, sha256, size }]. Pass
+   * `{ withContent: true }` to include each snapshot's `content` inline (for
+   * value-inline consumers like the kring object stores) — heavier, opt-in.
+   */
+  async function list(uri, { withContent = false } = {}) {
     if (!versionable(uri)) return [];
     const entries = await seriesEntries(uri);
     const out = [];
     for (const e of entries) {
       const rec = await readRecord(e.key);
-      out.push(rec
-        ? { ts: rec.ts, sha256: rec.sha256, size: rec.size }
-        : { ts: e.ts, sha256: '', size: 0 });
+      if (rec) {
+        out.push(withContent
+          ? { ts: rec.ts, sha256: rec.sha256, size: rec.size, content: rec.content }
+          : { ts: rec.ts, sha256: rec.sha256, size: rec.size });
+      } else {
+        out.push(withContent ? { ts: e.ts, sha256: '', size: 0, content: null } : { ts: e.ts, sha256: '', size: 0 });
+      }
     }
     return out;
   }
