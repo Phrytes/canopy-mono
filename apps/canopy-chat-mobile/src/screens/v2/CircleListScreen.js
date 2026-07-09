@@ -4,6 +4,12 @@
  * A search box + category chips + the filtered rows, each with capability-gated action buttons
  * (greyed/hidden per Slice 4). Owns query + activeCategories locally; typing re-filters the rows
  * (the TextInput stays mounted → keeps focus). Mirrors the web renderListBlock.
+ *
+ * Q15 drill-down (web parity with renderListRows): when `onRowOpen` is
+ * provided the row LABEL renders as a pressable — picking a row fires
+ * `onRowOpen({item, itemId})` (the host opens the sibling DETAIL screen with
+ * the selection context, see shared src/v2/screenDrilldown.js).  Without
+ * `onRowOpen` the label stays plain text, exactly as before.
  */
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput, StyleSheet } from 'react-native';
@@ -12,8 +18,8 @@ import { buildScreenModel } from '../../../../canopy-chat/src/v2/screenModel.js'
 import { t } from '../../core/localisation.js';
 
 export default function CircleListScreen({
-  items = [], categoryField, searchFields, manifestsByOrigin, appOrigin, capabilityMatrix = [],
-  title, onRowAction, onClose,
+  items = [], categoryField, searchFields, labelField, manifestsByOrigin, appOrigin, capabilityMatrix = [],
+  title, onRowAction, onRowOpen, onClose,
 }) {
   const [query, setQuery] = useState('');
   const [activeCategories, setActiveCategories] = useState(null);   // null = all checked
@@ -22,10 +28,13 @@ export default function CircleListScreen({
   // threaded into the SHARED buildScreenModel so mobile search behaves
   // identically to web (web≡mobile).  Absent → consumer defaults to
   // `[labelField]` (label-only search, unchanged).
-  const shared = { items, categoryField, searchFields, manifestsByOrigin, appOrigin, capabilityMatrix };
+  // Q15 — `labelField` threads through too (the launcher already passed it;
+  // it was silently dropped), so a view like agents (labelField 'name')
+  // labels its rows the same as web.
+  const shared = { items, categoryField, searchFields, labelField, manifestsByOrigin, appOrigin, capabilityMatrix };
   const model = useMemo(() => buildScreenModel({ ...shared, query, activeCategories }),
-    [items, categoryField, appOrigin, capabilityMatrix, query, activeCategories]);
-  const allCats = useMemo(() => buildScreenModel(shared).categories, [items, categoryField, appOrigin, capabilityMatrix]);
+    [items, categoryField, labelField, appOrigin, capabilityMatrix, query, activeCategories]);
+  const allCats = useMemo(() => buildScreenModel(shared).categories, [items, categoryField, labelField, appOrigin, capabilityMatrix]);
 
   const toggleCat = (id, checked) => {
     const base = activeCategories == null ? allCats.map((c) => c.id) : activeCategories;
@@ -74,7 +83,20 @@ export default function CircleListScreen({
           <Text style={styles.muted}>{t('circle.screen.list_empty')}</Text>
         ) : model.rows.map((row) => (
           <View key={row.item?.id ?? row.label} style={styles.row} testID={`list-screen-row-${row.item?.id ?? ''}`}>
-            <Text style={styles.rowLabel}>{row.label}</Text>
+            {typeof onRowOpen === 'function' ? (
+              /* Q15 — a drill target exists: the label is the row-open affordance
+                 (web parity: renderListRows' .list-screen__row-open button). */
+              <Pressable
+                accessibilityRole="button"
+                style={styles.rowOpen}
+                onPress={() => onRowOpen({ item: row.item, itemId: row.item?.id })}
+                testID={`list-screen-row-open-${row.item?.id ?? ''}`}
+              >
+                <Text style={[styles.rowLabel, styles.rowLabelOpen]}>{row.label}</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.rowLabel}>{row.label}</Text>
+            )}
             {(row.actions || []).map((a) => (
               <Pressable key={a.id} disabled={!!a.disabled}
                 onPress={() => { if (!a.disabled && typeof onRowAction === 'function') onRowAction({ opId: a.opId, itemId: a.itemId }); }}
@@ -103,6 +125,10 @@ const styles = StyleSheet.create({
   body:        { paddingVertical: 10, paddingBottom: 24 },
   row:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.color.line },
   rowLabel:    { fontSize: 15, color: theme.color.ink, flexGrow: 1 },
+  // Q15 — row-open affordance: the pressable takes the label's flex slot;
+  // accent tint marks the label as tappable (web's row-open link styling).
+  rowOpen:     { flexGrow: 1 },
+  rowLabelOpen:{ color: theme.color.accent },
   action:      { borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, backgroundColor: theme.color.card },
   actionGreyed:{ opacity: 0.4, borderColor: theme.color.line, backgroundColor: theme.color.paper },
   actionText:  { fontSize: 13, color: theme.color.accent },

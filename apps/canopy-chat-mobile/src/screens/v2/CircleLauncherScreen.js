@@ -143,6 +143,15 @@ import CircleListScreen from './CircleListScreen.js';
 // over the composed manifests, and the section's dataSource/labelField/categoryField/
 // searchFields drive the fetch + render — no per-shell duplication (invariant #1/#3).
 import { sectionForScreen } from '../../../../canopy-chat/src/v2/pageProjection.js';
+// Q15/Q17 — generic screen drill-down (row → detail with selection context),
+// the mobile twin of web's openCircleScreenPanel wiring.  The drill/selection/
+// fetch logic is SHARED (src/v2/screenDrilldown.js) — the portable core module
+// only binds renderMobile + the {circleId, ...selection} host-context shape.
+import {
+  screenPanelContext, drilldownForScreen, selectionContextFor,
+  fetchScreenItems, itemsFromReply, recordFromReply,
+} from '../../core/screenPanelDrilldown.js';
+import CircleRecordScreen from './CircleRecordScreen.js';
 import CircleAvailabilityScreen from './CircleAvailabilityScreen.js';
 import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
@@ -2155,20 +2164,32 @@ function CircleDetail({
     // B · Slice 3 — a declared LIST-SCREEN fetches rows + builds the member matrix, then renders the
     // interactive CircleListScreen (search + category chips + capability-gated rows) instead of a block.
     // D-mig-mobile-1b — resolve the list-screen config from the projected manifest
-    // section (shared selector) instead of the retired hardcoded literal. Fetch
-    // mechanism is UNCHANGED: raw 3-arg callSkill(appOrigin, skillId, args).
+    // section (shared selector) instead of the retired hardcoded literal.
+    // Q15 (web parity with openCircleScreenPanel) — the fetch now rides the SHARED
+    // seam `fetchScreenItems`: static `dataSource.args` merged with `argsFromContext`
+    // `$keys` substituted from the panel's context (`$circleId` host-materialized
+    // from the active circle; `$uri`/`$agentId` selection-derived from a picked row).
+    // The old path passed ONLY the static args — argsFromContext was ignored.
     const found = sectionForScreen(manifestsByOrigin, screenPanel.screen);
     if (found) {
       const { section, appOrigin } = found;
-      const skillId = section.dataSource?.skillId;
-      const args = section.dataSource?.args ?? {};
       const categoryField = section.categoryField;
       const searchFields = section.searchFields;
       const labelField = section.labelField ?? 'label';
+      const screenContext = screenPanelContext(circle?.id, screenPanel.context);
       (async () => {
         try {
-          const res = await rawCallSkill(appOrigin, skillId, args);
-          const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
+          const res = await fetchScreenItems(section, {
+            callSkill: (skillId, args) => rawCallSkill(appOrigin, skillId, args),
+            context: screenContext,
+          });
+          // Q17 — a record-shaped DETAIL (e.g. agent-detail) renders as a
+          // read-only key→value record, not a list (web parity).
+          if (section.shape === 'record') {
+            if (alive) setListScreenData({ shape: 'record', record: recordFromReply(res), appOrigin });
+            return;
+          }
+          const items = itemsFromReply(res);
           let capabilityMatrix = [];
           try {
             const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
@@ -2177,8 +2198,19 @@ function CircleDetail({
               template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
             });
           } catch { /* best-effort */ }
-          if (alive) setListScreenData({ items, categoryField, searchFields, labelField, appOrigin, capabilityMatrix });
-        } catch { if (alive) setListScreenData({ items: [], categoryField, searchFields, labelField, appOrigin, capabilityMatrix: [] }); }
+          // Q15 drill-down — when a sibling DETAIL view needs a selection-derived
+          // context key (shared screenDrilldown over renderMobile), picking a row
+          // opens it with that key materialized from the picked row; no drill
+          // target → the rows stay plain (no row-open affordance), like web.
+          const drill = drilldownForScreen(manifestsByOrigin, screenPanel.screen, screenContext);
+          if (alive) setListScreenData({ items, categoryField, searchFields, labelField, appOrigin, capabilityMatrix, drill, screenContext });
+        } catch {
+          if (alive) {
+            setListScreenData(section.shape === 'record'
+              ? { shape: 'record', record: null, appOrigin }
+              : { items: [], categoryField, searchFields, labelField, appOrigin, capabilityMatrix: [], drill: null, screenContext });
+          }
+        }
       })();
       return () => { alive = false; };
     }
@@ -2552,7 +2584,12 @@ function CircleDetail({
                 <Text style={styles.panelClose}>✕</Text>
               </Pressable>
             </View>
-            {listScreenData ? (
+            {listScreenData?.shape === 'record' ? (
+              /* Q17 — a record-shaped DETAIL screen (read-only key→value, web parity). */
+              <ScrollView>
+                <CircleRecordScreen record={listScreenData.record} />
+              </ScrollView>
+            ) : listScreenData ? (
               /* B · Slice 3 — the interactive list-screen (owns its own scroll + search). */
               <CircleListScreen
                 items={listScreenData.items}
@@ -2563,6 +2600,15 @@ function CircleDetail({
                 appOrigin={listScreenData.appOrigin}
                 capabilityMatrix={listScreenData.capabilityMatrix}
                 onRowAction={({ opId, itemId }) => { setScreenPanel(null); runCircleCommandResolved({ opId, args: { id: itemId } }); }}
+                onRowOpen={listScreenData.drill
+                  /* Q15 — picking a row opens the sibling DETAIL panel with the
+                     selection context materialized from the picked row (shared
+                     selectionContextFor; web parity with openCircleScreenPanel). */
+                  ? ({ item }) => setScreenPanel({
+                      screen: listScreenData.drill.screenId,
+                      context: selectionContextFor(listScreenData.drill, item, listScreenData.screenContext),
+                    })
+                  : undefined}
               />
             ) : (
               <ScrollView ref={panelScrollRef}>
