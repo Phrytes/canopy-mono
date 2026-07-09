@@ -20,11 +20,16 @@
  * plans/PLAN-pod-versioning-history-recovery.md.
  *
  * Storage layout: one record per version at key
- *   `<versionsRoot><encodeURIComponent(uri)>/<ts>`
- * value (the backend's opaque `bytes`) = `{ ts, sha256, size, content }`.
- * A series is enumerated via `backend.list(seriesPrefix)`. `ts` is the version
- * id AND is kept strictly increasing per series (same-millisecond tiebreak),
- * so `list`/`read`/`restore` can address a version by `ts` without collisions.
+ *   `<versionsRoot><encodeURIComponent(uri)>/<ts>`            (single-writer)
+ *   `<versionsRoot><encodeURIComponent(uri)>/<ts>-<writerId>`  (multi-writer)
+ * value (the backend's opaque `bytes`) = `{ ts, sha256, size, content, writer? }`.
+ * A series is enumerated via `backend.list(seriesPrefix)`; entries sort by
+ * `ts` (then writer) newest-first. `ts` is kept strictly increasing per series
+ * for one writer (same-millisecond bump), and the `writerId` suffix (pass the
+ * deviceId) makes CONCURRENT writers on a shared/replicated backend collision-
+ * free — two devices capturing in the same millisecond produce distinct keys
+ * instead of clobbering. `read`/`restore` accept either the numeric `ts`
+ * (newest match wins) or the full version `id` (`"<ts>-<writer>"`, exact).
  *
  * The store is storage-pure: it never reads or writes the *live* resource
  * itself. Restore's undoable pre-snapshot uses the injected `readLive`, and the
@@ -63,6 +68,8 @@ function isEmptyContent(content) {
  * @param {(uri:string, content:*)=>Promise<void>} [cfg.writeLive]  write restored content back to the live resource.
  * @param {{perSeries?:number, debounceMs?:number, shouldVersion?:(uri:string)=>boolean}} [cfg.retention]
  * @param {string} [cfg.versionsRoot]  key prefix for the version store (default 'versions/').
+ * @param {string} [cfg.writerId]  disambiguates concurrent writers on a shared
+ *   backend (pass the deviceId). Omit for single-writer consumers (plain-ts keys).
  */
 export function createVersionStore({
   backend,
@@ -72,6 +79,7 @@ export function createVersionStore({
   writeLive,
   retention = {},
   versionsRoot = DEFAULT_VERSIONS_ROOT,
+  writerId,
 } = {}) {
   if (!backend
     || typeof backend.get !== 'function' || typeof backend.put !== 'function'
@@ -89,9 +97,18 @@ export function createVersionStore({
   const shouldVersion = typeof retention.shouldVersion === 'function' ? retention.shouldVersion : () => true;
   const root = String(versionsRoot);
   const clock = typeof now === 'function' ? now : () => Date.now();
+  const writer = typeof writerId === 'string' && writerId.length > 0 ? encodeUri(writerId) : null;
 
   const seriesPrefix = (uri) => `${root}${encodeUri(uri)}/`;
-  const versionKey = (uri, ts) => `${seriesPrefix(uri)}${ts}`;
+  // Version id = the key suffix: `<ts>` (single-writer) or `<ts>-<writer>`.
+  const versionId = (ts) => (writer ? `${ts}-${writer}` : String(ts));
+  const keyFor = (uri, id) => `${seriesPrefix(uri)}${id}`;
+  const parseId = (id) => {
+    const m = /^(\d+)(?:-(.*))?$/.exec(String(id));
+    if (!m) return null;
+    const ts = Number(m[1]);
+    return Number.isFinite(ts) ? { ts, writer: m[2] ?? null } : null;
+  };
 
   /** Versionable = caller opt-out + never version the version store itself (no versions-of-versions). */
   function versionable(uri) {
@@ -100,17 +117,35 @@ export function createVersionStore({
     return shouldVersion(uri) !== false;
   }
 
-  /** Series entries newest-first: [{ key, ts }]. Cheap — parses ts from the key, no record reads. */
+  /** Series entries newest-first: [{ key, id, ts, writer }]. Cheap — parses the key suffix, no record reads. */
   async function seriesEntries(uri) {
     const prefix = seriesPrefix(uri);
     const keys = await backend.list(prefix);
     const out = [];
     for (const k of keys) {
-      const ts = Number(k.slice(prefix.length));
-      if (Number.isFinite(ts)) out.push({ key: k, ts });
+      const id = k.slice(prefix.length);
+      const parsed = parseId(id);
+      if (parsed) out.push({ key: k, id, ts: parsed.ts, writer: parsed.writer });
     }
-    out.sort((a, b) => b.ts - a.ts);
+    out.sort((a, b) => (b.ts - a.ts) || String(b.writer).localeCompare(String(a.writer)));
     return out;
+  }
+
+  /** Resolve a version by numeric `ts` (newest match wins) or full string id (exact). */
+  async function findEntry(uri, tsOrId) {
+    const asString = String(tsOrId);
+    if (asString.includes('-')) {
+      const key = keyFor(uri, asString);
+      const rec = await readRecord(key);
+      return rec ? { key, rec } : null;
+    }
+    const wanted = Number(tsOrId);
+    if (!Number.isFinite(wanted)) return null;
+    const entries = await seriesEntries(uri);
+    const hit = entries.find((e) => e.ts === wanted);
+    if (!hit) return null;
+    const rec = await readRecord(hit.key);
+    return rec ? { key: hit.key, rec } : null;
   }
 
   /** Unwrap the stored record from the backend's opaque `{ bytes }` envelope. */
@@ -136,13 +171,18 @@ export function createVersionStore({
       return { captured: false, reason: 'DEBOUNCED' };
     }
 
-    // Strictly-increasing ts per series (same-millisecond collision tiebreak).
+    // Strictly-increasing ts per series (same-millisecond bump); the writer
+    // suffix keeps CONCURRENT writers on a shared backend collision-free.
     const ts = entries[0] && requested <= entries[0].ts ? entries[0].ts + 1 : requested;
+    const id = versionId(ts);
     const size = byteLength(content);
-    await backend.put(versionKey(uri, ts), { ts, sha256: sha, size, content });
+    await backend.put(keyFor(uri, id), {
+      ts, sha256: sha, size, content,
+      ...(writer ? { writer } : {}),
+    });
 
     const prune = await pruneSeries(uri);
-    return { captured: true, ts, sha256: sha, size, prune };
+    return { captured: true, ts, id, sha256: sha, size, prune };
   }
 
   /** Enforce the per-series retention cap (oldest-first eviction). */
@@ -174,26 +214,24 @@ export function createVersionStore({
     const out = [];
     for (const e of entries) {
       const rec = await readRecord(e.key);
-      if (rec) {
-        out.push(withContent
-          ? { ts: rec.ts, sha256: rec.sha256, size: rec.size, content: rec.content }
-          : { ts: rec.ts, sha256: rec.sha256, size: rec.size });
-      } else {
-        out.push(withContent ? { ts: e.ts, sha256: '', size: 0, content: null } : { ts: e.ts, sha256: '', size: 0 });
-      }
+      const base = rec
+        ? { ts: rec.ts, id: e.id, sha256: rec.sha256, size: rec.size }
+        : { ts: e.ts, id: e.id, sha256: '', size: 0 };
+      if (e.writer != null) base.writer = e.writer;
+      out.push(withContent ? { ...base, content: rec ? rec.content : null } : base);
     }
     return out;
   }
 
-  /** Raw content of one snapshot. Throws VERSION_NOT_FOUND when absent. */
-  async function read(uri, ts) {
-    const rec = await readRecord(versionKey(uri, Number(ts)));
-    if (!rec) {
-      const e = new Error(`versionStore.read: no snapshot at ts=${ts} for ${uri}`);
+  /** Raw content of one snapshot — by numeric ts or full id. Throws VERSION_NOT_FOUND when absent. */
+  async function read(uri, tsOrId) {
+    const hit = await findEntry(uri, tsOrId);
+    if (!hit) {
+      const e = new Error(`versionStore.read: no snapshot at ${tsOrId} for ${uri}`);
       e.code = 'VERSION_NOT_FOUND';
       throw e;
     }
-    return rec.content;
+    return hit.rec.content;
   }
 
   /**
@@ -201,18 +239,19 @@ export function createVersionStore({
    * live content first (via readLive) so a wrong restore is itself undoable,
    * then writes the target content back (via writeLive).
    */
-  async function restore(uri, ts) {
+  async function restore(uri, tsOrId) {
     if (!versionable(uri)) {
       const e = new Error(`versionStore.restore: not versionable: ${uri}`);
       e.code = 'NOT_VERSIONABLE';
       throw e;
     }
-    const target = await readRecord(versionKey(uri, Number(ts)));
-    if (!target) {
-      const e = new Error(`versionStore.restore: no snapshot at ts=${ts} for ${uri}`);
+    const hit = await findEntry(uri, tsOrId);
+    if (!hit) {
+      const e = new Error(`versionStore.restore: no snapshot at ${tsOrId} for ${uri}`);
       e.code = 'VERSION_NOT_FOUND';
       throw e;
     }
+    const target = hit.rec;
 
     let snapshotMsBeforeRestore = null;
     if (typeof readLive === 'function') {
@@ -252,11 +291,11 @@ export function createVersionStore({
       const slash = rest.indexOf('/'); // encodeURIComponent(uri) contains no literal '/'
       if (slash < 0) continue;
       const uri = decodeURIComponent(rest.slice(0, slash));
-      const ts = Number(rest.slice(slash + 1));
-      if (!Number.isFinite(ts)) continue;
+      const parsed = parseId(rest.slice(slash + 1));
+      if (!parsed) continue;
       const cur = byUri.get(uri) ?? { uri, latestMs: 0, count: 0 };
       cur.count += 1;
-      if (ts > cur.latestMs) cur.latestMs = ts;
+      if (parsed.ts > cur.latestMs) cur.latestMs = parsed.ts;
       byUri.set(uri, cur);
     }
     return [...byUri.values()].sort((a, b) => b.latestMs - a.latestMs);

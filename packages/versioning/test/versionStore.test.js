@@ -262,3 +262,78 @@ describe('drop + listSeries', () => {
     expect(await store.list('ab')).toHaveLength(1);
   });
 });
+
+describe('multi-writer (writerId) — concurrent devices on a shared backend', () => {
+  it('two writers capturing the same uri at the same ms do NOT clobber each other', async () => {
+    const backend = memBackend();
+    const t = 5_000_000; // both clocks frozen at the same ms
+    const mk = (w) => createVersionStore({
+      backend, hash: sha256, now: () => t, writerId: w,
+    });
+    const devA = mk('dev-A');
+    const devB = mk('dev-B');
+
+    // Simulate the race: both read the (same) series state, then both write.
+    const [ra, rb] = await Promise.all([
+      devA.capture('shared.md', 'from A'),
+      devB.capture('shared.md', 'from B'),
+    ]);
+    expect(ra.captured).toBe(true);
+    expect(rb.captured).toBe(true);
+    expect(ra.id).not.toBe(rb.id); // distinct keys — no silent clobber
+
+    const versions = await devA.list('shared.md');
+    expect(versions).toHaveLength(2);
+    expect(new Set(versions.map((v) => v.writer))).toEqual(new Set(['dev-A', 'dev-B']));
+  });
+
+  it('read/restore resolve by full id (exact) and by numeric ts (newest match)', async () => {
+    const backend = memBackend();
+    const live = new Map();
+    let t = 1_000;
+    const mk = (w) => createVersionStore({
+      backend, hash: sha256, now: () => t, writerId: w,
+      readLive: async (uri) => live.get(uri),
+      writeLive: async (uri, c) => { live.set(uri, c); },
+    });
+    const devA = mk('A');
+    const devB = mk('B');
+    // Genuine race: both read the empty series state before either writes →
+    // both land on the same ts, disambiguated only by the writer suffix.
+    // (Sequential captures instead get the monotonic ts bump — separate path.)
+    const [ra, rb] = await Promise.all([
+      devA.capture('n.md', 'a-content'),
+      devB.capture('n.md', 'b-content'),
+    ]);
+    expect(rb.ts).toBe(ra.ts);
+
+    // Full id → exact snapshot.
+    expect(await devA.read('n.md', ra.id)).toBe('a-content');
+    expect(await devA.read('n.md', rb.id)).toBe('b-content');
+    // Numeric ts (ambiguous across writers) → the newest-sorted match, deterministically.
+    expect(await devA.read('n.md', ra.ts)).toBe('b-content'); // writer 'B' sorts before 'A'
+
+    // Restore by id round-trips to the live resource.
+    live.set('n.md', 'current');
+    const res = await devB.restore('n.md', ra.id);
+    expect(res.restoredFromMs).toBe(ra.ts);
+    expect(live.get('n.md')).toBe('a-content');
+  });
+
+  it('listSeries counts writer-suffixed keys', async () => {
+    const backend = memBackend();
+    const t = 9_000;
+    const dev = createVersionStore({ backend, hash: sha256, now: () => t, writerId: 'dev-1' });
+    await dev.capture('x.md', 'v1');
+    const series = await dev.listSeries();
+    expect(series).toEqual([{ uri: 'x.md', latestMs: t, count: 1 }]);
+  });
+
+  it('single-writer stores (no writerId) keep plain-ts ids — backward compatible', async () => {
+    const { store } = makeStore();
+    const r = await store.capture('f.md', 'x');
+    expect(r.id).toBe(String(r.ts));
+    const versions = await store.list('f.md');
+    expect(versions[0].writer).toBeUndefined();
+  });
+});
