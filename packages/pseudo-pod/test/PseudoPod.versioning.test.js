@@ -190,3 +190,65 @@ describe('PseudoPod versioning — writeFromPeer', () => {
     expect(versions[0].content).toBe('local-old');
   });
 });
+
+describe('PseudoPod versioning — 4b: the history layer is IMMUTABLE through the pod', () => {
+  it('write/delete of a history key throw HISTORY_IMMUTABLE (standalone)', async () => {
+    const { pod } = mkVersionedPod();
+    await expect(pod.write('versions/x/1', 'forged')).rejects.toMatchObject({ code: 'HISTORY_IMMUTABLE' });
+    await expect(pod.delete('versions/x/1')).rejects.toMatchObject({ code: 'HISTORY_IMMUTABLE' });
+  });
+
+  it('cache mode is guarded too (it skips _assertLocalWrite — the hole this closes)', async () => {
+    const { backend, store } = (() => {
+      const be = createMemoryBackend();
+      return { backend: be, store: createVersionStore({ backend: be, hash: hashJson, writerId: 'dev-A' }) };
+    })();
+    const pod = createPseudoPod({
+      backend, mode: 'cache', deviceId: 'dev-A', versioning: store,
+      podUploader: async () => ({}), podFetcher: async () => null,
+    });
+    await expect(pod.write('versions/x/1', 'forged')).rejects.toMatchObject({ code: 'HISTORY_IMMUTABLE' });
+    await expect(pod.delete('versions/x/1')).rejects.toMatchObject({ code: 'HISTORY_IMMUTABLE' });
+  });
+
+  it('a peer can NEVER rewrite history: writeFromPeer rejects with a status (no throw, no write)', async () => {
+    const { pod, store, backend } = mkVersionedPod({
+      mode: 'replication-ring',
+      transport: { publishEnvelope: async () => {} },
+      getPeers: () => [],
+    });
+    // Seed real history via displacement, then assault the actual record.
+    await pod.write(URI, 'v1');
+    await pod.write(URI, 'v2');
+    const [snap] = await store.list(URI);
+    const historyKey = `versions/${encodeURIComponent(URI)}/${snap.id}`;
+
+    const r = await pod.writeFromPeer(historyKey, 'forged-history', '"e"', 999);
+    expect(r).toEqual({ status: 'rejected-history-immutable' });
+
+    // History byte-identical after the assault.
+    expect(await store.read(URI, snap.id)).toBe('v1');
+    expect((await backend.get(historyKey)).bytes.content).toBe('v1');
+  });
+
+  it('honours a custom versionsRoot (guards that prefix, not the default)', async () => {
+    const backend = createMemoryBackend();
+    const store = createVersionStore({
+      backend, hash: hashJson, writerId: 'dev-A', versionsRoot: 'history/',
+    });
+    const pod = createPseudoPod({
+      backend, mode: 'replication-ring', deviceId: 'dev-A', versioning: store,
+      transport: { publishEnvelope: async () => {} }, getPeers: () => [],
+    });
+    expect((await pod.writeFromPeer('history/x/1', 'forged', '"e"', 1)).status)
+      .toBe('rejected-history-immutable');
+    // 'versions/…' is NOT this store's history — treated as a normal key.
+    expect((await pod.writeFromPeer('versions/x/1', 'ok', '"e"', 1)).status)
+      .not.toBe('rejected-history-immutable');
+  });
+
+  it('without versioning there is no history layer — legacy behaviour unchanged', async () => {
+    const pod = createPseudoPod({ backend: createMemoryBackend(), mode: 'replication-ring', deviceId: 'dev-A', transport: { publishEnvelope: async () => {} }, getPeers: () => [] });
+    expect((await pod.writeFromPeer('versions/x/1', 'data', '"e"', 1)).status).toBe('peer-update');
+  });
+});

@@ -306,9 +306,16 @@ export function createVersionStore({
     list,
     read,
     restore,
+    // PRIVILEGED ops (PLAN P4, decision B): drop/prune erase history — they
+    // are for the OWNER's composition/retention code only and must never be
+    // wired into a grantable skill/manifest op. The history-immutability
+    // guard asserts no skill surface reaches them.
     drop,
     prune: ({ uri } = {}) => pruneSeries(uri),
     listSeries,
     isVersionable: versionable,
+    /** The history key prefix — lets the pod REFUSE direct writes/deletes
+     *  under it (the 4b substrate-level guard). */
+    get versionsRoot() { return root; },
   };
 }

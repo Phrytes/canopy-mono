@@ -162,6 +162,28 @@ export function createPseudoPod({
     );
   }
 
+  /** 4b HARD INVARIANT (PLAN-pod-versioning-history-recovery P4): when a
+   *  version store is attached, the history layer under its key prefix is
+   *  IMMUTABLE through this pod — `write`/`delete` refuse it in EVERY mode
+   *  (incl. cache, which skips `_assertLocalWrite`), and `writeFromPeer`
+   *  rejects it (a hostile peer must not rewrite history). Only the store
+   *  itself appends new records; its privileged `prune`/`drop` live on the
+   *  store object, which is never skill-reachable. */
+  const historyRoot = versioning
+    ? (typeof versioning.versionsRoot === 'string' && versioning.versionsRoot.length > 0
+        ? versioning.versionsRoot
+        : 'versions/')
+    : null;
+  const _isHistoryKey = (uri) => historyRoot != null && String(uri).startsWith(historyRoot);
+  function _assertNotHistory(uri, op) {
+    if (_isHistoryKey(uri)) {
+      throw Object.assign(
+        new Error(`pseudo-pod.${op}: "${uri}" is under the version-history layer ("${historyRoot}") — history is immutable through the pod (agents append via displacement capture only)`),
+        { code: 'HISTORY_IMMUTABLE' },
+      );
+    }
+  }
+
   /**
    * Snapshot displaced/dropped bytes into the version store — best-effort:
    * versioning must never break the write path. `content` is whatever the
@@ -372,6 +394,9 @@ export function createPseudoPod({
     const key = _keyForUri(uri);
     const effectiveMode = _modeFor(uri);
 
+    // 4b: the history layer is immutable through the pod — every mode
+    // (cache mode skips _assertLocalWrite, so this must come first).
+    _assertNotHistory(uri, 'write');
     // Standalone + replication-ring writes must be device-local.
     // Cache writes accept https:// (the pod's own URI scheme).
     if (effectiveMode !== 'cache') _assertLocalWrite(uri);
@@ -444,6 +469,9 @@ export function createPseudoPod({
 
   async function deleteResource(uri) {
     const key = _keyForUri(uri);
+    // 4b: history records can never be deleted through the pod (only the
+    // store's privileged prune/drop, which are not skill-reachable).
+    _assertNotHistory(uri, 'delete');
     if (_modeFor(uri) !== 'cache') _assertLocalWrite(uri);
     // Versioning: a delete is the most destructive op on this path (hard,
     // no tombstone) — snapshot the prior bytes so it becomes recoverable.
@@ -507,11 +535,21 @@ export function createPseudoPod({
    * @param {number} [_v]    Lamport counter from the sender.
    * @param {object} [opts]
    * @param {string} [opts.fromActor]  Sender identity (for events).
-   * @returns {Promise<{status: 'peer-update'|'stale-peer'|'concurrent-write'|'idempotent'|'written-no-version'}>}
+   * @returns {Promise<{status: 'peer-update'|'stale-peer'|'concurrent-write'|'idempotent'|'written-no-version'|'rejected-history-immutable'}>}
+   *   `rejected-history-immutable` (4b): the uri targets the attached
+   *   version store's history layer — peers can never rewrite history.
    */
   async function writeFromPeer(uri, bytes, etag, _v, opts = {}) {
     const key = _keyForUri(uri);
     const fromActor = opts && typeof opts.fromActor === 'string' ? opts.fromActor : undefined;
+
+    // 4b: a peer (hostile or buggy) must never rewrite the history layer.
+    // Receive path → reject with a status, never throw (a bad envelope must
+    // not break the dispatcher). History replication, if ever wanted, is an
+    // explicit separate design — not an implicit peer write.
+    if (_isHistoryKey(uri)) {
+      return { status: 'rejected-history-immutable' };
+    }
 
     // Legacy peer — no version, fall back to LWW. Lets old senders
     // remain interoperable while we roll out the new wire shape.
