@@ -12,8 +12,11 @@
  * Why not lift versions.js as-is: its adapter is a *filesystem* (dirs, stat,
  * sidecars, tmp-then-rename) — the wrong shape for a pod, which is a flat KV
  * with prefix-list. We keep the good, tested policy and swap the storage half.
- * Folio-specific storage (browsable version files) is preserved by pointing an
- * FS-flavoured backend at this same store; the pod points a KV backend at it.
+ * A pod points a KV backend at this store. NOTE: Folio's *browsable* `.md`
+ * version files are NOT preserved by the existing `NodeFsBackend` (it stores
+ * opaque hashed records); a dedicated browsable-FS backend + a cross-series
+ * byte-budget are prerequisites before Folio can move onto this store without a
+ * regression. See plans/PLAN-pod-versioning-history-recovery.md.
  *
  * Storage layout: one record per version at key
  *   `<versionsRoot><encodeURIComponent(uri)>/<ts>`
