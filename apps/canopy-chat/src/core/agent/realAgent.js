@@ -24,7 +24,7 @@
  */
 
 import {
-  Agent, AgentIdentity, InternalBus, InternalTransport, DataPart,
+  Agent, AgentIdentity, InternalBus, InternalTransport, DataPart, TokenRegistry,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
@@ -476,6 +476,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    * same pod (empty roster) so the skills always register and boot never breaks.
    * The wireSkill-derived handlers live on `hostAgent` (same home as the other in-process
    * host skills); the 'agents' branch of callSkill routes through `chatAgent.invoke`. */
+  let agentsTokenRegistry = null;   // issuer-side revocation list (exposed on the handle; null = degraded)
   {
     const agentsRegistry =
       (await registerAgentBundle({
@@ -485,7 +486,43 @@ export async function createRealHouseholdAgent(opts = {}) {
         opts: { capabilities: ['canopy-chat'], name: opts.agentsSelfName ?? 'canopy-chat (this device)' },
       }))
       ?? createAgentRegistry({ pseudoPod: householdSubstrate.pseudoPod, deviceId: chatId.pubKey });
-    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry })) {
+
+    /* P2 control ops — LIVE token binding (2026-07-09).  hostAgent (the skills' home)
+     * is the ISSUER: `issueCapabilityToken` signs with its identity and needs no other
+     * machinery.  Neither hostAgent nor the default chat secure-agent composes a
+     * TokenRegistry/PolicyEngine in this factory (hostAgent is built bare at the top;
+     * sa.policy is null unless the caller opts in via secureAgentOpts.policyEngine), so
+     * the issuer-side revocation list is built HERE: a real vault-backed `TokenRegistry`
+     * (BotAgentRegistry precedent — issue → store; revoke flips `isRevoked`, the truth
+     * any enforcement gate consults).  When a PolicyEngine IS composed (caller opt-in),
+     * feed its revocation check from this registry, COMPOSING with a caller-supplied
+     * `isRevoked` rather than clobbering it (nothing else in this file calls
+     * setRevocationCheck).  Best-effort: any failure falls back to registry-only
+     * (`tokenBacked: false`, the pre-binding behaviour) — never breaks boot. */
+    let agentsTokens = null;
+    try {
+      const tokenVault = opts.agentsTokenVault ?? makeBrowserVault('cc-agent-tokens:');
+      const tokenRegistry = new TokenRegistry(tokenVault);
+      agentsTokens = {
+        issue: async ({ subject, skill, expiresIn, constraints }) => {
+          const token = await hostAgent.issueCapabilityToken({ subject, skill, expiresIn, constraints });
+          await tokenRegistry.store(token);
+          // Registry mirror expects an ISO string (resource.js nulls non-strings);
+          // token.expiresAt is unix-ms.
+          return { id: token.id, expiresAt: new Date(token.expiresAt).toISOString() };
+        },
+        revoke: (tokenId) => tokenRegistry.revoke(tokenId),
+      };
+      if (typeof sa.policy?.setRevocationCheck === 'function') {
+        const callerIsRevoked = opts.secureAgentOpts?.policyEngine?.isRevoked;
+        sa.policy.setRevocationCheck(async (tokenId) =>
+          (await tokenRegistry.isRevoked(tokenId))
+          || (typeof callerIsRevoked === 'function' ? Boolean(await callerIsRevoked(tokenId)) : false));
+      }
+      agentsTokenRegistry = tokenRegistry;
+    } catch { agentsTokens = null; agentsTokenRegistry = null; }
+
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens })) {
       hostAgent.register(id, handler, { visibility });
     }
   }
@@ -2298,6 +2335,11 @@ export async function createRealHouseholdAgent(opts = {}) {
       chatAddress: chatAgent.address,
       transport:   'internal',
     },
+    // agents P2 — the ISSUER-side TokenRegistry backing grantAgent/revokeAgent/
+    // revokeGrant (issue → store; revoke → isRevoked flips true).  null when the
+    // token wiring fell back to registry-only mode.  Tests + admin surfaces
+    // consult `isRevoked(tokenId)` here.
+    agentsTokenRegistry,
     // v0.7.12 — caller wires the invite-attendee callback after
     // construction (so the simPeers map + threadStore from main.js
     // are visible here).
