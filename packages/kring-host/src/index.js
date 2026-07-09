@@ -21,9 +21,9 @@ export { kringChatMessageEvent, PERMANENT_FANOUT_REASONS, classifyFanOut, broadc
 export { WEB_MAPPINGS_DEVICE, localStorageMappingsStore } from './mappingsStore.js';
 
 // W4 extraction: two v2 leaves untangled from their invariant-violating couplings — objectVersionsStorage
-// (deep-import of sync-engine/src repointed onto the `@canopy/sync-engine/objectVersions` subpath) and
+// (since consolidated onto the `@canopy/versioning` substrate; sync-engine's objectVersions is retired) and
 // mappingsLoader (app-local verify gate now INJECTED; the canopy-chat shim binds it).
-export { createObjectVersionsAdapter, localStorageVersionsIo, localStorageObjectVersions } from './objectVersionsStorage.js';
+export { createObjectVersionsAdapter, localStorageBackend, localStorageObjectVersions, fingerprintHex } from './objectVersionsStorage.js';
 export { loadVerifyMappings } from './mappingsLoader.js';
 
 // W5 extraction: the /find-enrichment cluster (findExtras + its shared building blocks findSkillMatches

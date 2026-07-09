@@ -1,56 +1,43 @@
 /**
  * canopy-chat-mobile v2 — AsyncStorage-backed `versions` adapter for the
- * shared kring stores (γ.2 / Phase 9).
+ * shared kring stores (γ.2 / Phase 9; consolidated onto `@canopy/versioning`
+ * per plans/PLAN-pod-versioning-history-recovery.md "Rewire kring").
  *
- * Mirror of web's `objectVersionsStorage.js`: the substrate factory lives
- * in `apps/canopy-chat` (which we already reach via the shared
- * `@canopy-app/canopy-chat` package); this module wires it onto
- * AsyncStorage using the same `asyncRawIo` shape already used by
- * `circleStoresRN.js`.
+ * Mirror of web's `localStorageObjectVersions`: the shared factory
+ * (`createObjectVersionsAdapter`, kring-host) composes the versioning
+ * substrate; this module only supplies the concrete StorageBackend. We
+ * REUSE `createAsBackend` (the pseudo-pod AsyncStorage backend the circle
+ * pods already use) instead of inventing another AsyncStorage IO — it
+ * already speaks the `{get, put, delete, list(prefix)}` contract
+ * (`getAllKeys`-based list) the version store needs.
  *
- * Key shape: `cc.versions.<storeName>.<circleId>` — verbatim with web.
- * A future pod-sync sees one shape on both surfaces, mirroring the
- * `cc.circlePolicy.<id>` convention.
+ * Key shape — logical (backend-level) keys are VERBATIM with web:
+ *   `cc.versions2.<storeName>/<encodeURIComponent(circleId)>/<ts>`
+ * AsyncStorage physically prefixes them with the backend scope (`ccv:`),
+ * which keeps version records out of the circle pods' `pp:` namespace.
+ * Legacy `cc.versions.<storeName>.<circleId>` slot keys are ignored (no
+ * users; no migration).
  */
 
-// Pull the shared factory in via relative path (same pattern as
-// circleStoresRN.js's relative import of podStorage.js — Metro doesn't
-// honour package.json "exports" subpaths, and the canopy-chat package
-// exports map intentionally doesn't list internal v2 modules).
-import {
-  createObjectVersionsAdapter,
-} from '@canopy/kring-host/objectVersionsStorage';
+import { createObjectVersionsAdapter } from '@canopy/kring-host/objectVersionsStorage';
+import { createAsBackend } from '@canopy/react-native/pseudo-pod-adapter';
 
-/** Generic `{load(key), save(key, value)}` IO over AsyncStorage. */
-export function asyncObjectVersionsIo(storage) {
-  return {
-    load: async (key) => {
-      try {
-        const s = await storage.getItem(key);
-        return s ? JSON.parse(s) : null;
-      } catch {
-        return null;
-      }
-    },
-    save: async (key, value) => {
-      try { await storage.setItem(key, JSON.stringify(value)); }
-      catch { /* ignore */ }
-    },
-  };
-}
+/** AsyncStorage scope for kring version history (disjoint from `pp:`). */
+export const VERSIONS_AS_SCOPE = 'ccv';
 
 /**
- * Compose the substrate factory with an AsyncStorage-backed IO.
+ * Compose the shared adapter factory with an AsyncStorage StorageBackend.
  *
  * @param {string} storeName        e.g. 'policy' / 'recipe' / 'rules'
- * @param {object} storage          AsyncStorage instance
- * @param {object} [retention]      `{perKey?:number}` — defaults to substrate
- * @returns {{capture: Function, list: Function}}
+ * @param {object} storage          AsyncStorage instance (or a test double
+ *                                  with getItem/setItem/removeItem/getAllKeys)
+ * @param {object} [retention]      `{perKey?:number}` — defaults to substrate (50)
+ * @returns {{capture: Function, list: Function, restore: Function}}
  */
 export function asyncStorageObjectVersions(storeName, storage, retention) {
   return createObjectVersionsAdapter({
     storeName,
-    io: asyncObjectVersionsIo(storage),
+    backend: createAsBackend({ AsyncStorage: storage, scope: VERSIONS_AS_SCOPE }),
     retention,
   });
 }

@@ -149,4 +149,42 @@ describe('createCirclePolicyStore × versions (γ.2)', () => {
     const store = createCirclePolicyStore({ versions });
     expect(await store.listVersions('c1')).toEqual([]);
   });
+
+  it('restoreVersion persists the restored snapshot via capture + save (wholesale, normalised)', async () => {
+    const order = [];
+    let saved = null;
+    const versions = {
+      capture: async () => { order.push('capture'); },
+      list: async () => [],
+      restore: async (id, ts) => (id === 'c1' && ts === 7 ? { llmTool: 'local' } : null),
+    };
+    const store = createCirclePolicyStore({
+      load: async () => ({ llmTool: 'shared' }),   // current live value ≠ snapshot
+      save: async (id, p) => { order.push('save'); saved = p; },
+      versions,
+    });
+    const result = await store.restoreVersion('c1', 7);
+    expect(order).toEqual(['capture', 'save']);    // restore re-enters history, then lands live
+    expect(result.llmTool).toBe('local');
+    expect(saved.llmTool).toBe('local');
+  });
+
+  it('restoreVersion returns null for an unknown ts and when no adapter/restore is wired', async () => {
+    let saveCalls = 0;
+    const versions = {
+      capture: async () => {},
+      list: async () => [],
+      restore: async () => null,
+    };
+    const store = createCirclePolicyStore({
+      load: async () => null,
+      save: async () => { saveCalls += 1; },
+      versions,
+    });
+    expect(await store.restoreVersion('c1', 999)).toBeNull();
+    expect(saveCalls).toBe(0);                     // nothing persisted on a miss
+
+    const bare = createCirclePolicyStore({ load: async () => null, save: async () => {} });
+    expect(await bare.restoreVersion('c1', 1)).toBeNull();
+  });
 });

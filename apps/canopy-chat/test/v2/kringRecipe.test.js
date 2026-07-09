@@ -376,4 +376,39 @@ describe('kringRecipe · γ.2 — version capture', () => {
     await store.update('g1', (cur) => addRecipe(cur, 'A'));
     expect(stored.recipes).toHaveLength(1);
   });
+
+  it('restoreVersion persists the restored book via the set path (capture + save)', async () => {
+    const order = [];
+    let stored = null;
+    const snapshot = { recipes: [{ id: 'r1', name: 'Standaard', blocks: [] }], activeId: 'r1' };
+    const store = createKringRecipeStore({
+      io: {
+        load: async () => stored,
+        save: async (_id, b) => { order.push('save'); stored = b; },
+      },
+      versions: {
+        capture: async () => { order.push('capture'); },
+        list: async () => [],
+        restore: async (_id, ts) => (ts === 7 ? snapshot : null),
+      },
+    });
+    const book = await store.restoreVersion('g1', 7);
+    expect(order).toEqual(['capture', 'save']);
+    expect(book.recipes).toHaveLength(1);
+    expect(book.recipes[0].name).toBe('Standaard');
+    expect(stored.recipes).toHaveLength(1);
+  });
+
+  it('restoreVersion returns null on a miss or when no adapter/restore is wired', async () => {
+    let saveCalls = 0;
+    const store = createKringRecipeStore({
+      io: { load: async () => null, save: async () => { saveCalls += 1; } },
+      versions: { capture: async () => {}, list: async () => [], restore: async () => null },
+    });
+    expect(await store.restoreVersion('g1', 999)).toBeNull();
+    expect(saveCalls).toBe(0);
+
+    const bare = createKringRecipeStore({ io: { load: async () => null, save: async () => {} } });
+    expect(await bare.restoreVersion('g1', 1)).toBeNull();
+  });
 });

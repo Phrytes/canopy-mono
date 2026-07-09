@@ -233,8 +233,8 @@ export function updateRecipe(book, recipeId, mutator) {
  *
  * γ.2 (Phase 9) — optional top-level `versions` adapter snapshots each
  * save into a per-circle history slot ABOVE the storage tier.  Adapter
- * shape: `{ capture(id, value), list(id) }`.  Purely additive: callers
- * that omit it keep the pre-γ.2 behaviour.
+ * shape: `{ capture(id, value), list(id), restore?(id, ts) }`.  Purely
+ * additive: callers that omit it keep the pre-γ.2 behaviour.
  */
 export function createKringRecipeStore({ io = {}, versions } = {}) {
   const { load, save } = io;
@@ -267,6 +267,20 @@ export function createKringRecipeStore({ io = {}, versions } = {}) {
     async listVersions(circleId) {
       if (!versions || typeof versions.list !== 'function') return [];
       try { return await versions.list(circleId); } catch { return []; }
+    },
+    /**
+     * Restore the book snapshotted at `ts` (a `ts` from `listVersions`).
+     * The adapter only READS history; persisting goes through this store's
+     * own `set` path (capture + save), so the restore is itself in history
+     * (undoable). Returns the persisted book, or `null` when no adapter /
+     * no such snapshot.
+     */
+    async restoreVersion(circleId, ts) {
+      if (!versions || typeof versions.restore !== 'function') return null;
+      let restored = null;
+      try { restored = await versions.restore(circleId, ts); } catch { restored = null; }
+      if (restored == null) return null;
+      return this.set(circleId, restored);
     },
   };
 }
