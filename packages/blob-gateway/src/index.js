@@ -12,8 +12,10 @@
 //   verifyToken = token => Promise<{ webId } | null>
 //   acl         = { canRead(webId, ref) => Promise<bool> }
 //   sealer      = text => sealedText   (makeSealer / makeGroupSealer from the sealing module)
+//   opener      = sealedText => text   (makeOpener / makeGroupOpener — the read-side inverse)
 
 export { uploadBlob } from './uploadBlob.js';
+export { openBlob } from './openBlob.js';
 export { createBlobGatekeeper } from './gatekeeper.js';
 export {
   makeManifestLine, isBlobRef, bucketKeyFromRef, BLOB_SCHEME, BLOB_TYPE,
