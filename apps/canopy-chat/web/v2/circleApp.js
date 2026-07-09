@@ -29,6 +29,7 @@ import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient
   recipientStrategy as podRecipientStrategy,
   sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
 import { createPseudoPod } from '@canopy/pseudo-pod';
+import { circleVersioningFor } from '../../src/web/circleVersioning.js';
 import { pickWebBackend } from '../../src/web/persistentBackend.js';
 import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
@@ -1036,7 +1037,13 @@ async function getCircleSealStrategy(circleId, policy) {
  * reload; falls back to in-memory under SSR / tests (no `indexedDB`) — see `pickWebBackend`. */
 function makeCirclePodClient(circleId) {
   const deviceId = `circle-${circleId}`;
-  const pseudoPod = createPseudoPod({ backend: pickWebBackend(`cc-circle-${circleId}`), mode: 'standalone', deviceId });
+  const backend  = pickWebBackend(`cc-circle-${circleId}`);
+  // P3 versioning: displaced bytes (overwrites · peer-updates · dropped
+  // concurrent forks · deletes) land in `versions/` on the SAME backend —
+  // the substrate under the my-data restore ops. Best-effort by design
+  // (a throwing store never breaks a write).
+  const versioning = circleVersioningFor(circleId, deviceId, backend);
+  const pseudoPod = createPseudoPod({ backend, mode: 'standalone', deviceId, versioning });
   return new PodClient({ podRoot: `pseudo-pod://${deviceId}/`, auth: { getAuthHeaders: async () => ({}) }, pseudoPod });
 }
 
