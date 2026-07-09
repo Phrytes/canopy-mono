@@ -83,7 +83,11 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
     expect(r.mockOp).toBe('postRequest');
   });
 
-  it('V1: real boot with VaultMemory wires createRealHouseholdAgent', async () => {
+  // Real boot got heavier (2026-07-09: the agents-registry block — a CAS
+  // write + 6 wireSkill registrations — joined the composition): under the
+  // FULL parallel suite's CPU contention the default 5s times out, while the
+  // isolated run takes ~2s. Same assertions, honest budget for a real boot.
+  it('V1: real boot with VaultMemory wires createRealHouseholdAgent', { timeout: 20_000 }, async () => {
     const { VaultMemory } = await import('@canopy/vault');
     const bundle = await bootAgentBundle({
       chatVault: new VaultMemory(),
