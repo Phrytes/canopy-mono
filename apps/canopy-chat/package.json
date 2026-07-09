@@ -58,6 +58,7 @@
     "@canopy-app/tasks-v0": "workspace:*",
     "@canopy/agent-registry": "workspace:*",
     "@canopy/app-manifest": "workspace:*",
+    "@canopy/blob-gateway": "workspace:*",
     "@canopy/chat-nav": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/oidc-session": "workspace:*",

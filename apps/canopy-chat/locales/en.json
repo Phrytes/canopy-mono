@@ -127,6 +127,32 @@
       "doc": "User dismissed the picker."
     }
   },
+  "media": {
+    "no_gateway": {
+      "text": "Sealed media upload is not wired in this build (no blob-gateway seams).",
+      "doc": "Media P1 defensive — createMediaEmbed called without the injected mediaGateway {bucket, sealer}."
+    },
+    "no_picker": {
+      "text": "File picker not available in this build.",
+      "doc": "Media P1 defensive — createMediaEmbed called directly without openFilePicker."
+    },
+    "pick_cancelled": {
+      "text": "File picker cancelled.",
+      "doc": "User dismissed the picker on the sealed media path."
+    },
+    "read_failed": {
+      "text": "Couldn't read the picked file: {{error}}",
+      "doc": "The File had no readable bytes (no dataB64, no arrayBuffer) or reading threw."
+    },
+    "upload_failed": {
+      "text": "Sealed upload failed: {{error}}",
+      "doc": "uploadBlob refused (plaintext sealer, oversized thumbnail) or the bucket errored."
+    },
+    "invalid_item": {
+      "text": "Built an invalid media item: {{error}}",
+      "doc": "Drift guard — the media item failed @canopy/item-types validation. A bug, not a user error."
+    }
+  },
   "embed-time": {
     "no_title": {
       "text": "Please provide a title for the appointment.",
