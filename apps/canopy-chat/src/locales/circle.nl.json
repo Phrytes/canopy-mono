@@ -24,13 +24,34 @@
       "text": "Pas de tekst aan en verstuur",
       "doc": "Stage-1 inline edit — composer placeholder while reworking a curated point (✏)."
     },
-    "original": { "text": "origineel", "doc": "Stage-1 review card — label before the raw original." },
-    "edited": { "text": "(aangepast)", "doc": "Stage-1 review card — tag on a point the user edited." },
-    "send_one": { "text": "Verstuur", "doc": "Stage-1 review card — send this one point." },
-    "send_all": { "text": "Alles versturen", "doc": "Stage-1 review — send all points." },
-    "send_none": { "text": "Niets versturen", "doc": "Stage-1 review — send nothing." },
-    "save_edit": { "text": "Opslaan", "doc": "Stage-1 review card — save an inline edit." },
-    "cancel_edit": { "text": "Annuleer", "doc": "Stage-1 review card — cancel an inline edit." }
+    "original": {
+      "text": "origineel",
+      "doc": "Stage-1 review card — label before the raw original."
+    },
+    "edited": {
+      "text": "(aangepast)",
+      "doc": "Stage-1 review card — tag on a point the user edited."
+    },
+    "send_one": {
+      "text": "Verstuur",
+      "doc": "Stage-1 review card — send this one point."
+    },
+    "send_all": {
+      "text": "Alles versturen",
+      "doc": "Stage-1 review — send all points."
+    },
+    "send_none": {
+      "text": "Niets versturen",
+      "doc": "Stage-1 review — send nothing."
+    },
+    "save_edit": {
+      "text": "Opslaan",
+      "doc": "Stage-1 review card — save an inline edit."
+    },
+    "cancel_edit": {
+      "text": "Annuleer",
+      "doc": "Stage-1 review card — cancel an inline edit."
+    }
   },
   "tab": {
     "screens": {
@@ -63,27 +84,60 @@
     "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted."
   },
   "join": {
-    "button": { "text": "Lid worden van een kring", "doc": "OBJ-2 — launcher entry to join an existing circle from an invite." },
-    "paste":  { "text": "Plak de uitnodigingslink van het andere apparaat:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." },
+    "button": {
+      "text": "Lid worden van een kring",
+      "doc": "OBJ-2 — launcher entry to join an existing circle from an invite."
+    },
+    "paste": {
+      "text": "Plak de uitnodigingslink van het andere apparaat:",
+      "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)."
+    },
     "consent": {
-      "title": { "text": "Waar je aan meedoet", "doc": "B/S4 — join-wizard consent heading over the circle's opt-outable capabilities." },
-      "blurb": { "text": "Dit is optioneel in deze kring. Vink uit waar je liever niet aan meedoet — je kunt dit later aanpassen in je kringinstellingen.", "doc": "B/S4 — explains the opt-outable capability checkboxes at join." }
+      "title": {
+        "text": "Waar je aan meedoet",
+        "doc": "B/S4 — join-wizard consent heading over the circle's opt-outable capabilities."
+      },
+      "blurb": {
+        "text": "Dit is optioneel in deze kring. Vink uit waar je liever niet aan meedoet — je kunt dit later aanpassen in je kringinstellingen.",
+        "doc": "B/S4 — explains the opt-outable capability checkboxes at join."
+      }
     }
   },
   "invite": {
-    "menu":       { "text": "Uitnodigen voor deze kring", "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR." },
-    "title":      { "text": "Uitnodigen voor deze kring", "doc": "OBJ-2 — heading of the invite-QR overlay." },
-    "hint":       { "text": "Scan dit op het andere apparaat om lid te worden van deze kring.", "doc": "OBJ-2 — caption under the invite QR." },
-    "admin_only": { "text": "Alleen een beheerder kan mensen uitnodigen voor deze kring.", "doc": "OBJ-2 — shown when a non-admin opens invite." },
-    "no_code":    { "text": "Er is geen uitnodigingscode voor deze kring.", "doc": "OBJ-2 — shown when the circle has no current membership code." }
+    "menu": {
+      "text": "Uitnodigen voor deze kring",
+      "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR."
+    },
+    "title": {
+      "text": "Uitnodigen voor deze kring",
+      "doc": "OBJ-2 — heading of the invite-QR overlay."
+    },
+    "hint": {
+      "text": "Scan dit op het andere apparaat om lid te worden van deze kring.",
+      "doc": "OBJ-2 — caption under the invite QR."
+    },
+    "admin_only": {
+      "text": "Alleen een beheerder kan mensen uitnodigen voor deze kring.",
+      "doc": "OBJ-2 — shown when a non-admin opens invite."
+    },
+    "no_code": {
+      "text": "Er is geen uitnodigingscode voor deze kring.",
+      "doc": "OBJ-2 — shown when the circle has no current membership code."
+    }
   },
   "members": {
     "text": "{{count}} leden",
     "doc": "Member count on a circle tile; {{count}} interpolated."
   },
   "leden_tab": {
-    "loading": { "text": "Leden laden…",       "doc": "LEDEN tab — while the roster (listGroupMembers) loads." },
-    "empty":   { "text": "Nog geen leden.",     "doc": "LEDEN tab — the circle's roster is empty." }
+    "loading": {
+      "text": "Leden laden…",
+      "doc": "LEDEN tab — while the roster (listGroupMembers) loads."
+    },
+    "empty": {
+      "text": "Nog geen leden.",
+      "doc": "LEDEN tab — the circle's roster is empty."
+    }
   },
   "tile_unread": {
     "text": "{{count}} ongelezen",
@@ -169,9 +223,15 @@
       "doc": "Heading of the cross-circle Stream tab (board 5B)."
     },
     "open": {
-
-      "contacts": { "text": "Contacten", "doc": "B/S3 list-screen open label." },
-      "prikbord": { "text": "Prikbord", "doc": "B/S3 list-screen open label." },      "text": "Stroom",
+      "contacts": {
+        "text": "Contacten",
+        "doc": "B/S3 list-screen open label."
+      },
+      "prikbord": {
+        "text": "Prikbord",
+        "doc": "B/S3 list-screen open label."
+      },
+      "text": "Stroom",
       "doc": "Launcher entry that opens the cross-circle Stream."
     },
     "empty": {
@@ -522,10 +582,18 @@
     }
   },
   "screen": {
-
-    "filter_placeholder": { "text": "Filteren\u2026", "doc": "B/S3 list-screen search box placeholder." },
-    "list_empty": { "text": "Niets hier.", "doc": "B/S3 list-with-filter screen empty state — distinct from screen.empty (the α.1c recipe-book-empty state); they collided under one key until 2026-07-03." },
-    "audience_scope": { "text": "Toont items die met deze kring zijn gedeeld.", "doc": "SP-5b Option A — non-dismissible caption under a list title when the list is audience-scoped (buildScreenModel.audienceScope set). Generic (no circle name): a visibility scope, not a user filter, so no clear/close control." },
+    "filter_placeholder": {
+      "text": "Filteren…",
+      "doc": "B/S3 list-screen search box placeholder."
+    },
+    "list_empty": {
+      "text": "Niets hier.",
+      "doc": "B/S3 list-with-filter screen empty state — distinct from screen.empty (the α.1c recipe-book-empty state); they collided under one key until 2026-07-03."
+    },
+    "audience_scope": {
+      "text": "Toont items die met deze kring zijn gedeeld.",
+      "doc": "SP-5b Option A — non-dismissible caption under a list title when the list is audience-scoped (buildScreenModel.audienceScope set). Generic (no circle name): a visibility scope, not a user filter, so no clear/close control."
+    },
     "open_generic": {
       "text": "Overzicht openen →",
       "doc": "S6.B — generic label for a chat-triggered screen panel."
@@ -864,26 +932,67 @@
     }
   },
   "settings": {
-
-    "appSettings": { "text": "App-instellingen", "doc": "B/S2 Q1 \u2014 manifest-driven per-app settings form heading." },
-    "capabilities": { "text": "Wat leden mogen", "doc": "B/S2 Q3 \u2014 the per-skill freedom matrix heading." },
-    "privacyFloor": { "text": "Altijd optioneel (privacy)", "doc": "B/S2 Q3 \u2014 a privacy-floor capability can never be required." },
+    "appSettings": {
+      "text": "App-instellingen",
+      "doc": "B/S2 Q1 — manifest-driven per-app settings form heading."
+    },
+    "capabilities": {
+      "text": "Wat leden mogen",
+      "doc": "B/S2 Q3 — the per-skill freedom matrix heading."
+    },
+    "privacyFloor": {
+      "text": "Altijd optioneel (privacy)",
+      "doc": "B/S2 Q3 — a privacy-floor capability can never be required."
+    },
     "freedom": {
-      "required": { "text": "Verplicht", "doc": "members must use this capability." },
-      "optional": { "text": "Optioneel", "doc": "members may opt out." }
+      "required": {
+        "text": "Verplicht",
+        "doc": "members must use this capability."
+      },
+      "optional": {
+        "text": "Optioneel",
+        "doc": "members may opt out."
+      }
     },
     "consequence_opt": {
-      "greyed": { "text": "Grijs gemaakt", "doc": "opting out greys the affordance." },
-      "hidden": { "text": "Verborgen", "doc": "opting out hides it." },
-      "limited": { "text": "Beperkte rol", "doc": "opting out limits the role." }
+      "greyed": {
+        "text": "Grijs gemaakt",
+        "doc": "opting out greys the affordance."
+      },
+      "hidden": {
+        "text": "Verborgen",
+        "doc": "opting out hides it."
+      },
+      "limited": {
+        "text": "Beperkte rol",
+        "doc": "opting out limits the role."
+      }
     },
     "verb": {
-      "add": { "text": "Toevoegen", "doc": "" },
-      "list": { "text": "Lijst", "doc": "" },
-      "complete": { "text": "Afronden", "doc": "" },
-      "remove": { "text": "Verwijderen", "doc": "" },
-      "claim": { "text": "Oppakken", "doc": "" },
-      "reassign": { "text": "Toewijzen", "doc": "" }
+      "add": {
+        "text": "Toevoegen",
+        "doc": ""
+      },
+      "list": {
+        "text": "Lijst",
+        "doc": ""
+      },
+      "complete": {
+        "text": "Afronden",
+        "doc": ""
+      },
+      "remove": {
+        "text": "Verwijderen",
+        "doc": ""
+      },
+      "claim": {
+        "text": "Oppakken",
+        "doc": ""
+      },
+      "reassign": {
+        "text": "Toewijzen",
+        "doc": ""
+      }
     },
     "title": {
       "text": "Kring-instellingen",
@@ -1211,8 +1320,11 @@
     }
   },
   "override": {
-
-    "capabilities": { "text": "Waar je aan meedoet", "doc": "B/S4 \u2014 the member capability opt-out section heading." },    "title": {
+    "capabilities": {
+      "text": "Waar je aan meedoet",
+      "doc": "B/S4 — the member capability opt-out section heading."
+    },
+    "title": {
       "text": "Mijn instellingen voor deze kring",
       "doc": "Personal override sheet heading (board 6A)."
     },
@@ -1674,8 +1786,14 @@
     }
   },
   "fileShare": {
-    "received": { "text": "📎 {{name}} met je gedeeld", "doc": "Kring bubble when a peer shares a file." },
-    "download": { "text": "Downloaden", "doc": "Button on a received file-share bubble." }
+    "received": {
+      "text": "📎 {{name}} met je gedeeld",
+      "doc": "Kring bubble when a peer shares a file."
+    },
+    "download": {
+      "text": "Downloaden",
+      "doc": "Button on a received file-share bubble."
+    }
   },
   "nearbyScreen": {
     "title": {
@@ -1993,51 +2111,162 @@
       "doc": "K2 container card — the affordance to add a child item to a container (list/offer)."
     },
     "action": {
-      "markComplete": { "text": "Klaar",     "doc": "K2 container card — complete a list-item." },
-      "removeItem":   { "text": "Verwijder", "doc": "K2 container card — remove a list-item." }
+      "markComplete": {
+        "text": "Klaar",
+        "doc": "K2 container card — complete a list-item."
+      },
+      "removeItem": {
+        "text": "Verwijder",
+        "doc": "K2 container card — remove a list-item."
+      }
     },
     "type": {
-      "list-item": { "text": "Item",  "doc": "K2 type picker / badge — a checklist item." },
-      "list":      { "text": "Lijst", "doc": "K2 type picker / badge — a list (or sub-list)." },
-      "board":     { "text": "Bord",  "doc": "K2 type picker / badge — a heterogeneous board (item OR sub-list)." }
+      "list-item": {
+        "text": "Item",
+        "doc": "K2 type picker / badge — a checklist item."
+      },
+      "list": {
+        "text": "Lijst",
+        "doc": "K2 type picker / badge — a list (or sub-list)."
+      },
+      "board": {
+        "text": "Bord",
+        "doc": "K2 type picker / badge — a heterogeneous board (item OR sub-list)."
+      }
     }
   },
   "lists": {
-    "title":      { "text": "Lijsten",                                  "doc": "K2 lists panel title + more-menu entry." },
-    "new":        { "text": "Naam…",                                    "doc": "K2 lists panel — new-container input placeholder." },
-    "create":     { "text": "Maken",                                    "doc": "K2 lists panel — create button." },
-    "empty":      { "text": "Nog niets — maak er hieronder een.",       "doc": "K2 lists panel — empty state." },
-    "add_prompt": { "text": "Voeg een item toe:",                       "doc": "K2 lists panel — prompt when adding a child to a container." },
-    "pick_type":  { "text": "Toevoegen als:",                           "doc": "K2 lists panel — the ambiguous-type picker prompt." }
+    "title": {
+      "text": "Lijsten",
+      "doc": "K2 lists panel title + more-menu entry."
+    },
+    "new": {
+      "text": "Naam…",
+      "doc": "K2 lists panel — new-container input placeholder."
+    },
+    "create": {
+      "text": "Maken",
+      "doc": "K2 lists panel — create button."
+    },
+    "empty": {
+      "text": "Nog niets — maak er hieronder een.",
+      "doc": "K2 lists panel — empty state."
+    },
+    "add_prompt": {
+      "text": "Voeg een item toe:",
+      "doc": "K2 lists panel — prompt when adding a child to a container."
+    },
+    "pick_type": {
+      "text": "Toevoegen als:",
+      "doc": "K2 lists panel — the ambiguous-type picker prompt."
+    }
   },
   "share": {
-    "done":   { "text": "\"{{item}}\" gedeeld met {{circle}}.",         "doc": "cluster K cross-circle share — success note for /shareitem." },
-    "failed": { "text": "Delen mislukt: {{error}}.",                    "doc": "cluster K cross-circle share — failure note for /shareitem." },
-    "list":   { "text": "Gedeeld met deze kring ({{count}}):",          "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
-    "empty":  { "text": "Nog niets met deze kring gedeeld.",            "doc": "cluster K cross-circle share — empty state for /shared." },
-    "revoked":       { "text": "Toegang van {{recipient}} tot \"{{item}}\" ingetrokken.", "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)." },
-    "revoke_failed": { "text": "Delen intrekken mislukt: {{error}}.",                      "doc": "objective L canonical share — failure note for /unshareitem." },
-    "screen_title":    { "text": "Delen",                                         "doc": "objective L — title/back-label of the mobile cross-circle share screen (CircleShareScreen)." },
-    "share_out_heading": { "text": "Een item delen",                              "doc": "objective L — mobile share screen: heading of the section listing this circle's own items each with a Share affordance." },
-    "share_action":    { "text": "Delen",                                         "doc": "objective L — per-item Share affordance on the mobile share screen (opens the target-circle input)." },
-    "target_placeholder": { "text": "Doel-kring id",                              "doc": "objective L — mobile share screen: placeholder for entering the target circle to share an item into." },
-    "pick_label":      { "text": "Kies een kring",                                 "doc": "objective L — mobile share screen: label above the target-circle PICKER (list of the user's other circles)." },
-    "pick_empty":      { "text": "Geen andere kringen om naar te delen.",          "doc": "objective L — mobile share screen: empty state when the user has no circle other than the source to share into." },
-    "outbound_title":  { "text": "Gedeeld vanuit deze cirkel",                    "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares." },
-    "outbound_empty":  { "text": "Deze cirkel heeft nog niets gedeeld.",          "doc": "objective L — empty state for the outbound-shares section." },
-    "outbound_row":    { "text": "\"{{item}}\" → {{circle}}",                      "doc": "objective L — one outbound-share row (source item → target circle)." },
-    "stop":            { "text": "Delen stoppen",                                 "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)." },
-    "not_revocable":   { "text": "Kopie-/vertrouwd-delen kan niet ter plekke worden ingetrokken.", "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)." },
-    "member_revoked":       { "text": "Verwijderd lid ingetrokken bij {{count}} gedeeld(e) item(s).",       "doc": "objective L — notice after auto-revoking a removed member's canonical grants." },
-    "member_revoke_failed": { "text": "Kon {{count}} gedeeld(e) item(s) niet intrekken voor het verwijderde lid.", "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)." },
-    "to_person_heading": { "text": "Delen met een persoon",                        "doc": "objective L Phase 2 — heading of the out-of-circle recipient picker (shareItemToPublishedKey)." },
-    "no_contacts":       { "text": "Geen contacten met een netwerkadres om mee te delen.", "doc": "objective L Phase 2 — empty state when no contact carries a published network key." },
-    "pick_cancel":       { "text": "Annuleren",                                     "doc": "objective L Phase 2 — cancel/close the recipient picker." },
-    "to_person_done":    { "text": "\"{{item}}\" gedeeld met {{name}}.",            "doc": "objective L Phase 2 — success note after granting an out-of-circle contact via shareItemToPublishedKey." },
-    "to_person_failed":  { "text": "Delen met een persoon mislukt: {{error}}.",     "doc": "objective L Phase 2 — failure note for the out-of-circle person share." },
+    "done": {
+      "text": "\"{{item}}\" gedeeld met {{circle}}.",
+      "doc": "cluster K cross-circle share — success note for /shareitem."
+    },
+    "failed": {
+      "text": "Delen mislukt: {{error}}.",
+      "doc": "cluster K cross-circle share — failure note for /shareitem."
+    },
+    "list": {
+      "text": "Gedeeld met deze kring ({{count}}):",
+      "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)."
+    },
+    "empty": {
+      "text": "Nog niets met deze kring gedeeld.",
+      "doc": "cluster K cross-circle share — empty state for /shared."
+    },
+    "revoked": {
+      "text": "Toegang van {{recipient}} tot \"{{item}}\" ingetrokken.",
+      "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)."
+    },
+    "revoke_failed": {
+      "text": "Delen intrekken mislukt: {{error}}.",
+      "doc": "objective L canonical share — failure note for /unshareitem."
+    },
+    "screen_title": {
+      "text": "Delen",
+      "doc": "objective L — title/back-label of the mobile cross-circle share screen (CircleShareScreen)."
+    },
+    "share_out_heading": {
+      "text": "Een item delen",
+      "doc": "objective L — mobile share screen: heading of the section listing this circle's own items each with a Share affordance."
+    },
+    "share_action": {
+      "text": "Delen",
+      "doc": "objective L — per-item Share affordance on the mobile share screen (opens the target-circle input)."
+    },
+    "target_placeholder": {
+      "text": "Doel-kring id",
+      "doc": "objective L — mobile share screen: placeholder for entering the target circle to share an item into."
+    },
+    "pick_label": {
+      "text": "Kies een kring",
+      "doc": "objective L — mobile share screen: label above the target-circle PICKER (list of the user's other circles)."
+    },
+    "pick_empty": {
+      "text": "Geen andere kringen om naar te delen.",
+      "doc": "objective L — mobile share screen: empty state when the user has no circle other than the source to share into."
+    },
+    "outbound_title": {
+      "text": "Gedeeld vanuit deze cirkel",
+      "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares."
+    },
+    "outbound_empty": {
+      "text": "Deze cirkel heeft nog niets gedeeld.",
+      "doc": "objective L — empty state for the outbound-shares section."
+    },
+    "outbound_row": {
+      "text": "\"{{item}}\" → {{circle}}",
+      "doc": "objective L — one outbound-share row (source item → target circle)."
+    },
+    "stop": {
+      "text": "Delen stoppen",
+      "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)."
+    },
+    "not_revocable": {
+      "text": "Kopie-/vertrouwd-delen kan niet ter plekke worden ingetrokken.",
+      "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)."
+    },
+    "member_revoked": {
+      "text": "Verwijderd lid ingetrokken bij {{count}} gedeeld(e) item(s).",
+      "doc": "objective L — notice after auto-revoking a removed member's canonical grants."
+    },
+    "member_revoke_failed": {
+      "text": "Kon {{count}} gedeeld(e) item(s) niet intrekken voor het verwijderde lid.",
+      "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)."
+    },
+    "to_person_heading": {
+      "text": "Delen met een persoon",
+      "doc": "objective L Phase 2 — heading of the out-of-circle recipient picker (shareItemToPublishedKey)."
+    },
+    "no_contacts": {
+      "text": "Geen contacten met een netwerkadres om mee te delen.",
+      "doc": "objective L Phase 2 — empty state when no contact carries a published network key."
+    },
+    "pick_cancel": {
+      "text": "Annuleren",
+      "doc": "objective L Phase 2 — cancel/close the recipient picker."
+    },
+    "to_person_done": {
+      "text": "\"{{item}}\" gedeeld met {{name}}.",
+      "doc": "objective L Phase 2 — success note after granting an out-of-circle contact via shareItemToPublishedKey."
+    },
+    "to_person_failed": {
+      "text": "Delen met een persoon mislukt: {{error}}.",
+      "doc": "objective L Phase 2 — failure note for the out-of-circle person share."
+    },
     "trust": {
-      "bekend":    { "text": "bekend",    "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'bekend')." },
-      "vertrouwd": { "text": "vertrouwd", "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'vertrouwd')." }
+      "bekend": {
+        "text": "bekend",
+        "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'bekend')."
+      },
+      "vertrouwd": {
+        "text": "vertrouwd",
+        "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'vertrouwd')."
+      }
     }
   },
   "clarify": {
@@ -2565,16 +2794,46 @@
       "text": "Relay",
       "doc": "S5 — relay operator/url."
     },
-    "relay_set": { "text": "Relayserver", "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback." },
-    "relay_open": { "text": "Relayserver instellen…", "doc": "Entry button that opens the relay-URL editor in the docked side-panel (openPagePanel, set-relay surfaces.page)." },
-    "relay_current": { "text": "Relay: {{url}}", "doc": "Current in-app relay setting shown beside the open-panel button." },
-    "relay_save": { "text": "Opslaan & verbinden", "doc": "Persist the relay URL + reconnect the peer transport live." },
-    "relay_saving": { "text": "Verbinden…", "doc": "Relay save in progress." },
-    "relay_saved": { "text": "Verbonden via {{url}}", "doc": "Relay saved + reconnected." },
-    "relay_off": { "text": "geen relay", "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback." },
-    "relay_error": { "text": "Verbinden mislukt: {{msg}}", "doc": "Relay reconnect failed." },
-    "relay_saved_reload": { "text": "Opgeslagen — heropen de app om te verbinden via {{url}}", "doc": "Mobile relay save confirmation (applies on next app open; mobile has no live reconnect yet)." },
-    "relay_hint": { "text": "Wijs dit naar een bereikbare relay om zonder server tussen apparaten te synchroniseren (bijv. ws://192.168.1.20:8787). Laat leeg voor de standaard.", "doc": "Relay setting help text." },
+    "relay_set": {
+      "text": "Relayserver",
+      "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback."
+    },
+    "relay_open": {
+      "text": "Relayserver instellen…",
+      "doc": "Entry button that opens the relay-URL editor in the docked side-panel (openPagePanel, set-relay surfaces.page)."
+    },
+    "relay_current": {
+      "text": "Relay: {{url}}",
+      "doc": "Current in-app relay setting shown beside the open-panel button."
+    },
+    "relay_save": {
+      "text": "Opslaan & verbinden",
+      "doc": "Persist the relay URL + reconnect the peer transport live."
+    },
+    "relay_saving": {
+      "text": "Verbinden…",
+      "doc": "Relay save in progress."
+    },
+    "relay_saved": {
+      "text": "Verbonden via {{url}}",
+      "doc": "Relay saved + reconnected."
+    },
+    "relay_off": {
+      "text": "geen relay",
+      "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback."
+    },
+    "relay_error": {
+      "text": "Verbinden mislukt: {{msg}}",
+      "doc": "Relay reconnect failed."
+    },
+    "relay_saved_reload": {
+      "text": "Opgeslagen — heropen de app om te verbinden via {{url}}",
+      "doc": "Mobile relay save confirmation (applies on next app open; mobile has no live reconnect yet)."
+    },
+    "relay_hint": {
+      "text": "Wijs dit naar een bereikbare relay om zonder server tussen apparaten te synchroniseren (bijv. ws://192.168.1.20:8787). Laat leeg voor de standaard.",
+      "doc": "Relay setting help text."
+    },
     "privacy": {
       "text": "Privacy",
       "doc": "S5 — privacy disclosure section."
@@ -2780,8 +3039,39 @@
     "attestation": "Ik heb geverifieerd dat deze enclave attested is (staat een niet-loopback vertrouwelijk adres toe)"
   },
   "sharedWithMe": {
-    "title": { "text": "Met mij gedeeld", "doc": "Kop van de lijst met verzegelde kopieën die contacten privé naar dit apparaat deelden." },
-    "empty": { "text": "Nog niets met je gedeeld.", "doc": "Lege staat van de met-mij-gedeeld-lijst." },
-    "row": { "text": "{type} van {from}", "doc": "Een met-mij-gedeeld-rij; {type} is het itemtype, {from} de afzender." }
+    "title": {
+      "text": "Met mij gedeeld",
+      "doc": "Kop van de lijst met verzegelde kopieën die contacten privé naar dit apparaat deelden."
+    },
+    "empty": {
+      "text": "Nog niets met je gedeeld.",
+      "doc": "Lege staat van de met-mij-gedeeld-lijst."
+    },
+    "row": {
+      "text": "{type} van {from}",
+      "doc": "Een met-mij-gedeeld-rij; {type} is het itemtype, {from} de afzender."
+    }
+  },
+  "confirm": {
+    "title": {
+      "text": "Weet je het zeker?",
+      "doc": "Q27 confirm-gate dialoog — titel boven de confirm-tekst uit het manifest (web-dialoog + mobiele Alert)."
+    },
+    "accept": {
+      "text": "Bevestigen",
+      "doc": "Q27 confirm-gate dialoog — de expliciete bevestig-knop. Severity 'danger' kleurt hem rood/destructief."
+    },
+    "cancel": {
+      "text": "Annuleren",
+      "doc": "Q27 confirm-gate dialoog — de annuleer-knop; annuleren voert niets uit."
+    },
+    "cancelled": {
+      "text": "Oké — er is niets gewijzigd.",
+      "doc": "Stille bot-melding nadat de gebruiker een Q27 confirm-gate annuleert (de opdracht is NIET uitgevoerd)."
+    },
+    "default_message": {
+      "text": "Deze actie vraagt om je bevestiging.",
+      "doc": "Q27 confirm-gate dialoog — fallback-tekst voor een op waarvan de manifest-confirm geen message heeft."
+    }
   }
 }

@@ -111,6 +111,8 @@ import { getCircleSealStrategy, seedCircleRosterFor, getCirclePodFetch, getCircl
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
 import { buildCircleLlmProviders } from '../../../../canopy-chat/src/v2/circleLlmProviders.js';
 import { createClarifyingDispatch } from '../../../../canopy-chat/src/v2/clarifyingDispatch.js';
+// Q27 — the shared confirm gate at the dispatch waist (mobile presenter: Alert.alert, destructive style).
+import { runConfirmGate, alertConfirmPresenter } from '../../core/confirmDispatch.js';
 import { createUserLlmDefaultStore, asyncStorageUserLlmIo } from '../../../../canopy-chat/src/v2/userLlmDefault.js';
 import { buildUserLlmRuntime, validateUserLlmConfig } from '../../../../canopy-chat/src/v2/userLlmRuntime.js';
 import { formatNearbyLabel } from '../../core/nearbyLabel.js';
@@ -1996,74 +1998,92 @@ function CircleDetail({
       appendKringMessage({ actor: 'bot', text: t('circle.bot.needsInfo') });   // no missing param names
       return;
     }
+    // Q27 confirm gate (web≡mobile parity with circleApp.dispatchReady) — an op declaring
+    // surfaces.ui.confirm (warn/danger) NEVER executes without an explicit accept. Sits at the dispatch
+    // waist, so the row-button path and the chat/slash path are gated uniformly (shared runConfirmGate;
+    // Alert.alert with a destructive accept is only the presenter). Cancel = quiet notice.
+    if (dispatch.kind === 'needsConfirm') {
+      await runConfirmGate({
+        route: dispatch, catalog, t,
+        present: alertConfirmPresenter(Alert.alert),
+        onCancelNotice: () => appendKringMessage({ actor: 'bot', text: t('circle.confirm.cancelled') }),
+        execute: executeResolved,
+      });
+      return;
+    }
     if (dispatch.kind !== 'ready')     { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
-    // B · Slice 1 — DEFAULT-DENY capability gate (web≡mobile parity with circleApp.dispatchReady). Every
-    // user-initiated dispatch (slash/LLM/gate/button/follow-up) converges on runCircleCommandResolved.
-    // Enablement comes from the SAME per-circle source the UI uses (isAppSurfaceEnabled → policy.features,
-    // already consulted for the screen button below); the pure (verb×noun) gate evaluates the capability.
-    if (circle?.id) {
-      const gateEntry = catalog?.opsById?.get(dispatch.opId);
-      const gOrigin = dispatch.appOrigin || gateEntry?.appOrigin;
-      if (gOrigin) {
-        const enabled = isAppSurfaceEnabled(gOrigin, policy, isFeatureEnabled);
-        const eff = effectiveCapabilities(capabilitySources, { apps: enabled ? [gOrigin] : [] });
-        const verdict = checkCapability({ op: gateEntry?.op, appOrigin: gOrigin, args: dispatch.args }, eff);
-        if (!verdict.allow) {
-          appendKringMessage({ actor: 'bot', text: t(verdict.code === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied') });
-          return;
+    await executeResolved(dispatch);
+
+    // The execute tail every accepted route runs (direct 'ready' or confirmed 'needsConfirm' → 'ready').
+    async function executeResolved(dispatch) {
+      // B · Slice 1 — DEFAULT-DENY capability gate (web≡mobile parity with circleApp.dispatchReady). Every
+      // user-initiated dispatch (slash/LLM/gate/button/follow-up) converges on runCircleCommandResolved.
+      // Enablement comes from the SAME per-circle source the UI uses (isAppSurfaceEnabled → policy.features,
+      // already consulted for the screen button below); the pure (verb×noun) gate evaluates the capability.
+      if (circle?.id) {
+        const gateEntry = catalog?.opsById?.get(dispatch.opId);
+        const gOrigin = dispatch.appOrigin || gateEntry?.appOrigin;
+        if (gOrigin) {
+          const enabled = isAppSurfaceEnabled(gOrigin, policy, isFeatureEnabled);
+          const eff = effectiveCapabilities(capabilitySources, { apps: enabled ? [gOrigin] : [] });
+          const verdict = checkCapability({ op: gateEntry?.op, appOrigin: gOrigin, args: dispatch.args }, eff);
+          if (!verdict.allow) {
+            appendKringMessage({ actor: 'bot', text: t(verdict.code === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied') });
+            return;
+          }
         }
       }
+      // scopeReadyDispatch takes the active-circle id STRING (it writes it into the scope arg keys);
+      // an {id} object would land as the literal scope value (device-verify 2026-06-11).
+      const scoped = scopeReadyDispatch(dispatch, circle?.id);
+      if (typeof rawCallSkill !== 'function') { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
+      let reply;
+      // runDispatch calls callSkill(appOrigin, opId, args) — the RAW 3-arg shape, with appOrigin from
+      // resolveDispatch. Pass the raw `rawCallSkill` (bundle.callSkill) DIRECTLY. The 2-arg *resolving*
+      // callSkill (used for the picker lookup) silently arg-shifts here: appOrigin→opId, opId→args, real
+      // args dropped — so the dispatched op was literally 'tasks-v0' and NO circle-bot command ever
+      // executed on mobile (device-verify 2026-06-11: logs showed `[callSkill] tasks-v0 →` not `addTask →`).
+      try { reply = await runDispatch(scoped, rawCallSkill); }
+      catch (e) { appendKringMessage({ actor: 'bot', text: t('circle.bot.failed', { msg: e?.message ?? String(e) }) }); return; }
+      // The op's verb drives Added:/Completed: phrasing (a bare "✓ X" was identical for add + complete).
+      const entry = catalog?.opsById?.get(dispatch.opId);
+      const verb = entry?.op?.verb;
+      // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
+      // B · Slice 4 (4c) — grey/hide affordances per the member's effective capability + consequence (web≡mobile).
+      let capMatrix = [];
+      try {
+        const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
+        capMatrix = buildCapabilityMatrix(capabilitySources, {
+          enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
+          template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
+        });
+      } catch { /* best-effort — no greying on error */ }
+      const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
+      // S6.B/C — a screen surface (surfaces.ui.screen) becomes an "Open …" button,
+      // gated by the circle's policy.features for that app (web parity).
+      const screen = entry?.op?.surfaces?.ui?.screen;
+      const screenButton = (screen && isAppSurfaceEnabled(entry?.appOrigin, policy, isFeatureEnabled))
+        ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
+        : [];
+      // S6.C — the user's preference picks the projection (inline / screen / minimal). web parity.
+      const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: surfacePrefStore.get() });
+      // Scope: a mutating op's reply reaches the whole kring; a read/info/error reply is private (web parity).
+      const scope = scopeForReply({ verb, error: !!reply?.error });
+      // embeds[] — the bot reply references the item it acted on (web parity); title pre-filled.
+      const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
+      appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope, embeds });
+      // Remember the most-recent listing so a bulk "/done all" can fan out over it (web≡mobile).
+      if (Array.isArray(reply?.payload?.items)) lastKringListingRef.current = { appOrigin: entry?.appOrigin, items: reply.payload.items };
+      // Shared find-result enrichment (skill matches + hop prompt), web≡mobile via buildFindExtras. Best-effort.
+      try {
+        const { skillMatches, hopCard } = await buildFindExtras({
+          query: reply?.payload?.query, groups: reply?.payload?.groups,
+          circleId: circle?.id, callSkill: (op, a) => rawCallSkill('stoop', op, a), t,
+        });
+        if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
+        if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
+      } catch { /* enrichment is non-essential */ }
     }
-    // scopeReadyDispatch takes the active-circle id STRING (it writes it into the scope arg keys);
-    // an {id} object would land as the literal scope value (device-verify 2026-06-11).
-    const scoped = scopeReadyDispatch(dispatch, circle?.id);
-    if (typeof rawCallSkill !== 'function') { appendKringMessage({ actor: 'bot', text: t('circle.bot.unknown') }); return; }
-    let reply;
-    // runDispatch calls callSkill(appOrigin, opId, args) — the RAW 3-arg shape, with appOrigin from
-    // resolveDispatch. Pass the raw `rawCallSkill` (bundle.callSkill) DIRECTLY. The 2-arg *resolving*
-    // callSkill (used for the picker lookup) silently arg-shifts here: appOrigin→opId, opId→args, real
-    // args dropped — so the dispatched op was literally 'tasks-v0' and NO circle-bot command ever
-    // executed on mobile (device-verify 2026-06-11: logs showed `[callSkill] tasks-v0 →` not `addTask →`).
-    try { reply = await runDispatch(scoped, rawCallSkill); }
-    catch (e) { appendKringMessage({ actor: 'bot', text: t('circle.bot.failed', { msg: e?.message ?? String(e) }) }); return; }
-    // The op's verb drives Added:/Completed: phrasing (a bare "✓ X" was identical for add + complete).
-    const entry = catalog?.opsById?.get(dispatch.opId);
-    const verb = entry?.op?.verb;
-    // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
-    // B · Slice 4 (4c) — grey/hide affordances per the member's effective capability + consequence (web≡mobile).
-    let capMatrix = [];
-    try {
-      const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
-      capMatrix = buildCapabilityMatrix(capabilitySources, {
-        enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
-        template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
-      });
-    } catch { /* best-effort — no greying on error */ }
-    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
-    // S6.B/C — a screen surface (surfaces.ui.screen) becomes an "Open …" button,
-    // gated by the circle's policy.features for that app (web parity).
-    const screen = entry?.op?.surfaces?.ui?.screen;
-    const screenButton = (screen && isAppSurfaceEnabled(entry?.appOrigin, policy, isFeatureEnabled))
-      ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
-      : [];
-    // S6.C — the user's preference picks the projection (inline / screen / minimal). web parity.
-    const buttons = selectSurfaceButtons({ inlineButtons, screenButton, pref: surfacePrefStore.get() });
-    // Scope: a mutating op's reply reaches the whole kring; a read/info/error reply is private (web parity).
-    const scope = scopeForReply({ verb, error: !!reply?.error });
-    // embeds[] — the bot reply references the item it acted on (web parity); title pre-filled.
-    const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
-    appendKringMessage({ actor: 'bot', text: kringReplyText(reply, { verb, t }), buttons, scope, embeds });
-    // Remember the most-recent listing so a bulk "/done all" can fan out over it (web≡mobile).
-    if (Array.isArray(reply?.payload?.items)) lastKringListingRef.current = { appOrigin: entry?.appOrigin, items: reply.payload.items };
-    // Shared find-result enrichment (skill matches + hop prompt), web≡mobile via buildFindExtras. Best-effort.
-    try {
-      const { skillMatches, hopCard } = await buildFindExtras({
-        query: reply?.payload?.query, groups: reply?.payload?.groups,
-        circleId: circle?.id, callSkill: (op, a) => rawCallSkill('stoop', op, a), t,
-      });
-      if (skillMatches.length) appendKringMessage({ actor: 'bot', text: `${t('circle.skillMatches.title')}\n${skillMatches.map((m) => `• ${m.label} — ${m.skill}`).join('\n')}` });
-      if (hopCard) appendKringMessage({ actor: 'bot', text: `${hopCard.title}\n${hopCard.body}` });
-    } catch { /* enrichment is non-essential */ }
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy, capabilitySources, overrideStore]);
 
   // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared

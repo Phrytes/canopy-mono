@@ -24,13 +24,34 @@
       "text": "Adjust the text and send",
       "doc": "Stage-1 inline edit — composer placeholder while reworking a curated point (✏)."
     },
-    "original": { "text": "original", "doc": "Stage-1 review card — label before the raw original." },
-    "edited": { "text": "(edited)", "doc": "Stage-1 review card — tag on a point the user edited." },
-    "send_one": { "text": "Send", "doc": "Stage-1 review card — send this one point." },
-    "send_all": { "text": "Send all", "doc": "Stage-1 review — send all points." },
-    "send_none": { "text": "Send nothing", "doc": "Stage-1 review — send nothing." },
-    "save_edit": { "text": "Save", "doc": "Stage-1 review card — save an inline edit." },
-    "cancel_edit": { "text": "Cancel", "doc": "Stage-1 review card — cancel an inline edit." }
+    "original": {
+      "text": "original",
+      "doc": "Stage-1 review card — label before the raw original."
+    },
+    "edited": {
+      "text": "(edited)",
+      "doc": "Stage-1 review card — tag on a point the user edited."
+    },
+    "send_one": {
+      "text": "Send",
+      "doc": "Stage-1 review card — send this one point."
+    },
+    "send_all": {
+      "text": "Send all",
+      "doc": "Stage-1 review — send all points."
+    },
+    "send_none": {
+      "text": "Send nothing",
+      "doc": "Stage-1 review — send nothing."
+    },
+    "save_edit": {
+      "text": "Save",
+      "doc": "Stage-1 review card — save an inline edit."
+    },
+    "cancel_edit": {
+      "text": "Cancel",
+      "doc": "Stage-1 review card — cancel an inline edit."
+    }
   },
   "tab": {
     "screens": {
@@ -63,27 +84,60 @@
     "doc": "SP-13.1 — surfaced when createCircle is invoked before the agent bundle has booted."
   },
   "join": {
-    "button": { "text": "Join a circle", "doc": "OBJ-2 — launcher entry to join an existing circle from an invite." },
-    "paste":  { "text": "Paste the invite link from the other device:", "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)." },
+    "button": {
+      "text": "Join a circle",
+      "doc": "OBJ-2 — launcher entry to join an existing circle from an invite."
+    },
+    "paste": {
+      "text": "Paste the invite link from the other device:",
+      "doc": "OBJ-2 — prompt for the stoop-invite:// URL when joining on web (no camera)."
+    },
     "consent": {
-      "title": { "text": "What you take part in", "doc": "B/S4 — join-wizard consent heading over the circle's opt-outable capabilities." },
-      "blurb": { "text": "These are optional in this circle. Uncheck anything you'd rather not take part in — you can change this later in your circle settings.", "doc": "B/S4 — explains the opt-outable capability checkboxes at join." }
+      "title": {
+        "text": "What you take part in",
+        "doc": "B/S4 — join-wizard consent heading over the circle's opt-outable capabilities."
+      },
+      "blurb": {
+        "text": "These are optional in this circle. Uncheck anything you'd rather not take part in — you can change this later in your circle settings.",
+        "doc": "B/S4 — explains the opt-outable capability checkboxes at join."
+      }
     }
   },
   "invite": {
-    "menu":       { "text": "Invite to this circle", "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR." },
-    "title":      { "text": "Invite to this circle", "doc": "OBJ-2 — heading of the invite-QR overlay." },
-    "hint":       { "text": "Scan this on the other device to join this circle.", "doc": "OBJ-2 — caption under the invite QR." },
-    "admin_only": { "text": "Only an admin can invite people to this circle.", "doc": "OBJ-2 — shown when a non-admin opens invite." },
-    "no_code":    { "text": "No invite code is available for this circle.", "doc": "OBJ-2 — shown when the circle has no current membership code." }
+    "menu": {
+      "text": "Invite to this circle",
+      "doc": "OBJ-2 — ⋯ menu entry to show this circle's membership QR."
+    },
+    "title": {
+      "text": "Invite to this circle",
+      "doc": "OBJ-2 — heading of the invite-QR overlay."
+    },
+    "hint": {
+      "text": "Scan this on the other device to join this circle.",
+      "doc": "OBJ-2 — caption under the invite QR."
+    },
+    "admin_only": {
+      "text": "Only an admin can invite people to this circle.",
+      "doc": "OBJ-2 — shown when a non-admin opens invite."
+    },
+    "no_code": {
+      "text": "No invite code is available for this circle.",
+      "doc": "OBJ-2 — shown when the circle has no current membership code."
+    }
   },
   "members": {
     "text": "{{count}} members",
     "doc": "Member count on a circle tile; {{count}} interpolated."
   },
   "leden_tab": {
-    "loading": { "text": "Loading members…", "doc": "LEDEN tab — while the roster (listGroupMembers) loads." },
-    "empty":   { "text": "No members yet.",  "doc": "LEDEN tab — the circle's roster is empty." }
+    "loading": {
+      "text": "Loading members…",
+      "doc": "LEDEN tab — while the roster (listGroupMembers) loads."
+    },
+    "empty": {
+      "text": "No members yet.",
+      "doc": "LEDEN tab — the circle's roster is empty."
+    }
   },
   "tile_unread": {
     "text": "{{count}} unread",
@@ -169,9 +223,15 @@
       "doc": "Heading of the cross-circle Stream tab (board 5B)."
     },
     "open": {
-
-      "contacts": { "text": "Contacts", "doc": "B/S3 list-screen open label." },
-      "prikbord": { "text": "Noticeboard", "doc": "B/S3 list-screen open label." },      "text": "Stream",
+      "contacts": {
+        "text": "Contacts",
+        "doc": "B/S3 list-screen open label."
+      },
+      "prikbord": {
+        "text": "Noticeboard",
+        "doc": "B/S3 list-screen open label."
+      },
+      "text": "Stream",
       "doc": "Launcher entry that opens the cross-circle Stream."
     },
     "empty": {
@@ -522,10 +582,18 @@
     }
   },
   "screen": {
-
-    "filter_placeholder": { "text": "Filter\u2026", "doc": "B/S3 list-screen search box placeholder." },
-    "list_empty": { "text": "Nothing here.", "doc": "B/S3 list-with-filter screen empty state — distinct from screen.empty (the α.1c recipe-book-empty state); they collided under one key until 2026-07-03." },
-    "audience_scope": { "text": "Showing items shared with this circle.", "doc": "SP-5b Option A — non-dismissible caption under a list title when the list is audience-scoped (buildScreenModel.audienceScope set). Generic (no circle name): a visibility scope, not a user filter, so no clear/close control." },
+    "filter_placeholder": {
+      "text": "Filter…",
+      "doc": "B/S3 list-screen search box placeholder."
+    },
+    "list_empty": {
+      "text": "Nothing here.",
+      "doc": "B/S3 list-with-filter screen empty state — distinct from screen.empty (the α.1c recipe-book-empty state); they collided under one key until 2026-07-03."
+    },
+    "audience_scope": {
+      "text": "Showing items shared with this circle.",
+      "doc": "SP-5b Option A — non-dismissible caption under a list title when the list is audience-scoped (buildScreenModel.audienceScope set). Generic (no circle name): a visibility scope, not a user filter, so no clear/close control."
+    },
     "open_generic": {
       "text": "Open overview →",
       "doc": "S6.B — generic label for a chat-triggered screen panel."
@@ -864,26 +932,67 @@
     }
   },
   "settings": {
-
-    "appSettings": { "text": "App settings", "doc": "B/S2 Q1 \u2014 manifest-driven per-app settings form heading." },
-    "capabilities": { "text": "What members can do", "doc": "B/S2 Q3 \u2014 the per-skill freedom matrix heading." },
-    "privacyFloor": { "text": "Always optional (privacy)", "doc": "B/S2 Q3 \u2014 a privacy-floor capability can never be required." },
+    "appSettings": {
+      "text": "App settings",
+      "doc": "B/S2 Q1 — manifest-driven per-app settings form heading."
+    },
+    "capabilities": {
+      "text": "What members can do",
+      "doc": "B/S2 Q3 — the per-skill freedom matrix heading."
+    },
+    "privacyFloor": {
+      "text": "Always optional (privacy)",
+      "doc": "B/S2 Q3 — a privacy-floor capability can never be required."
+    },
     "freedom": {
-      "required": { "text": "Required", "doc": "members must use this capability." },
-      "optional": { "text": "Optional", "doc": "members may opt out." }
+      "required": {
+        "text": "Required",
+        "doc": "members must use this capability."
+      },
+      "optional": {
+        "text": "Optional",
+        "doc": "members may opt out."
+      }
     },
     "consequence_opt": {
-      "greyed": { "text": "Greyed out", "doc": "opting out greys the affordance." },
-      "hidden": { "text": "Hidden", "doc": "opting out hides it." },
-      "limited": { "text": "Limited role", "doc": "opting out limits the role." }
+      "greyed": {
+        "text": "Greyed out",
+        "doc": "opting out greys the affordance."
+      },
+      "hidden": {
+        "text": "Hidden",
+        "doc": "opting out hides it."
+      },
+      "limited": {
+        "text": "Limited role",
+        "doc": "opting out limits the role."
+      }
     },
     "verb": {
-      "add": { "text": "Add", "doc": "" },
-      "list": { "text": "List", "doc": "" },
-      "complete": { "text": "Complete", "doc": "" },
-      "remove": { "text": "Remove", "doc": "" },
-      "claim": { "text": "Claim", "doc": "" },
-      "reassign": { "text": "Assign", "doc": "" }
+      "add": {
+        "text": "Add",
+        "doc": ""
+      },
+      "list": {
+        "text": "List",
+        "doc": ""
+      },
+      "complete": {
+        "text": "Complete",
+        "doc": ""
+      },
+      "remove": {
+        "text": "Remove",
+        "doc": ""
+      },
+      "claim": {
+        "text": "Claim",
+        "doc": ""
+      },
+      "reassign": {
+        "text": "Assign",
+        "doc": ""
+      }
     },
     "title": {
       "text": "Circle settings",
@@ -1211,8 +1320,11 @@
     }
   },
   "override": {
-
-    "capabilities": { "text": "What you take part in", "doc": "B/S4 \u2014 the member capability opt-out section heading." },    "title": {
+    "capabilities": {
+      "text": "What you take part in",
+      "doc": "B/S4 — the member capability opt-out section heading."
+    },
+    "title": {
       "text": "My settings for this circle",
       "doc": "Personal override sheet heading (board 6A)."
     },
@@ -1674,8 +1786,14 @@
     }
   },
   "fileShare": {
-    "received": { "text": "📎 {{name}} shared with you", "doc": "Kring bubble when a peer shares a file." },
-    "download": { "text": "Download", "doc": "Button on a received file-share bubble." }
+    "received": {
+      "text": "📎 {{name}} shared with you",
+      "doc": "Kring bubble when a peer shares a file."
+    },
+    "download": {
+      "text": "Download",
+      "doc": "Button on a received file-share bubble."
+    }
   },
   "nearbyScreen": {
     "title": {
@@ -1993,51 +2111,162 @@
       "doc": "K2 container card — the affordance to add a child item to a container (list/offer)."
     },
     "action": {
-      "markComplete": { "text": "Done",   "doc": "K2 container card — complete a list-item." },
-      "removeItem":   { "text": "Remove", "doc": "K2 container card — remove a list-item." }
+      "markComplete": {
+        "text": "Done",
+        "doc": "K2 container card — complete a list-item."
+      },
+      "removeItem": {
+        "text": "Remove",
+        "doc": "K2 container card — remove a list-item."
+      }
     },
     "type": {
-      "list-item": { "text": "Item",  "doc": "K2 type picker / badge — a checklist item." },
-      "list":      { "text": "List",  "doc": "K2 type picker / badge — a list (or sub-list)." },
-      "board":     { "text": "Board", "doc": "K2 type picker / badge — a heterogeneous board (item OR sub-list)." }
+      "list-item": {
+        "text": "Item",
+        "doc": "K2 type picker / badge — a checklist item."
+      },
+      "list": {
+        "text": "List",
+        "doc": "K2 type picker / badge — a list (or sub-list)."
+      },
+      "board": {
+        "text": "Board",
+        "doc": "K2 type picker / badge — a heterogeneous board (item OR sub-list)."
+      }
     }
   },
   "lists": {
-    "title":      { "text": "Lists",                              "doc": "K2 lists panel title + more-menu entry." },
-    "new":        { "text": "New name…",                          "doc": "K2 lists panel — new-container input placeholder." },
-    "create":     { "text": "Create",                             "doc": "K2 lists panel — create button." },
-    "empty":      { "text": "Nothing yet — create one below.",    "doc": "K2 lists panel — empty state." },
-    "add_prompt": { "text": "Add an item:",                       "doc": "K2 lists panel — prompt when adding a child to a container." },
-    "pick_type":  { "text": "Add as:",                            "doc": "K2 lists panel — the ambiguous-type picker prompt." }
+    "title": {
+      "text": "Lists",
+      "doc": "K2 lists panel title + more-menu entry."
+    },
+    "new": {
+      "text": "New name…",
+      "doc": "K2 lists panel — new-container input placeholder."
+    },
+    "create": {
+      "text": "Create",
+      "doc": "K2 lists panel — create button."
+    },
+    "empty": {
+      "text": "Nothing yet — create one below.",
+      "doc": "K2 lists panel — empty state."
+    },
+    "add_prompt": {
+      "text": "Add an item:",
+      "doc": "K2 lists panel — prompt when adding a child to a container."
+    },
+    "pick_type": {
+      "text": "Add as:",
+      "doc": "K2 lists panel — the ambiguous-type picker prompt."
+    }
   },
   "share": {
-    "done":   { "text": "Shared \"{{item}}\" into {{circle}}.",     "doc": "cluster K cross-circle share — success note for /shareitem." },
-    "failed": { "text": "Share failed: {{error}}.",                 "doc": "cluster K cross-circle share — failure note for /shareitem." },
-    "list":   { "text": "Shared into this circle ({{count}}):",     "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)." },
-    "empty":  { "text": "Nothing shared into this circle yet.",     "doc": "cluster K cross-circle share — empty state for /shared." },
-    "revoked":       { "text": "Revoked {{recipient}}'s access to \"{{item}}\".", "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)." },
-    "revoke_failed": { "text": "Un-share failed: {{error}}.",                     "doc": "objective L canonical share — failure note for /unshareitem." },
-    "screen_title":    { "text": "Sharing",                                        "doc": "objective L — title/back-label of the mobile cross-circle share screen (CircleShareScreen)." },
-    "share_out_heading": { "text": "Share an item out",                            "doc": "objective L — mobile share screen: heading of the section listing this circle's own items each with a Share affordance." },
-    "share_action":    { "text": "Share",                                          "doc": "objective L — per-item Share affordance on the mobile share screen (opens the target-circle input)." },
-    "target_placeholder": { "text": "Target circle id",                            "doc": "objective L — mobile share screen: placeholder for entering the target circle to share an item into." },
-    "pick_label":      { "text": "Choose a circle",                                 "doc": "objective L — mobile share screen: label above the target-circle PICKER (list of the user's other circles)." },
-    "pick_empty":      { "text": "No other circles to share into.",                 "doc": "objective L — mobile share screen: empty state when the user has no circle other than the source to share into." },
-    "outbound_title":  { "text": "Shared out of this circle",                     "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares." },
-    "outbound_empty":  { "text": "This circle hasn't shared any items out.",       "doc": "objective L — empty state for the outbound-shares section." },
-    "outbound_row":    { "text": "\"{{item}}\" → {{circle}}",                       "doc": "objective L — one outbound-share row (source item → target circle)." },
-    "stop":            { "text": "Stop sharing",                                    "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)." },
-    "not_revocable":   { "text": "Copy/trusted shares can't be un-shared in place.", "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)." },
-    "member_revoked":       { "text": "Revoked the removed member from {{count}} shared item(s).",       "doc": "objective L — notice after auto-revoking a removed member's canonical grants." },
-    "member_revoke_failed": { "text": "Couldn't revoke {{count}} shared item(s) for the removed member.", "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)." },
-    "to_person_heading": { "text": "Share with a person",                          "doc": "objective L Phase 2 — heading of the out-of-circle recipient picker (shareItemToPublishedKey)." },
-    "no_contacts":       { "text": "No contacts with a network address to share to.", "doc": "objective L Phase 2 — empty state when no contact carries a published network key." },
-    "pick_cancel":       { "text": "Cancel",                                        "doc": "objective L Phase 2 — cancel/close the recipient picker." },
-    "to_person_done":    { "text": "Shared \"{{item}}\" with {{name}}.",            "doc": "objective L Phase 2 — success note after granting an out-of-circle contact via shareItemToPublishedKey." },
-    "to_person_failed":  { "text": "Share with a person failed: {{error}}.",        "doc": "objective L Phase 2 — failure note for the out-of-circle person share." },
+    "done": {
+      "text": "Shared \"{{item}}\" into {{circle}}.",
+      "doc": "cluster K cross-circle share — success note for /shareitem."
+    },
+    "failed": {
+      "text": "Share failed: {{error}}.",
+      "doc": "cluster K cross-circle share — failure note for /shareitem."
+    },
+    "list": {
+      "text": "Shared into this circle ({{count}}):",
+      "doc": "cluster K cross-circle share — header for /shared (deny-by-default resolved list)."
+    },
+    "empty": {
+      "text": "Nothing shared into this circle yet.",
+      "doc": "cluster K cross-circle share — empty state for /shared."
+    },
+    "revoked": {
+      "text": "Revoked {{recipient}}'s access to \"{{item}}\".",
+      "doc": "objective L canonical share — success note for /unshareitem (rotate key + ACP revoke)."
+    },
+    "revoke_failed": {
+      "text": "Un-share failed: {{error}}.",
+      "doc": "objective L canonical share — failure note for /unshareitem."
+    },
+    "screen_title": {
+      "text": "Sharing",
+      "doc": "objective L — title/back-label of the mobile cross-circle share screen (CircleShareScreen)."
+    },
+    "share_out_heading": {
+      "text": "Share an item out",
+      "doc": "objective L — mobile share screen: heading of the section listing this circle's own items each with a Share affordance."
+    },
+    "share_action": {
+      "text": "Share",
+      "doc": "objective L — per-item Share affordance on the mobile share screen (opens the target-circle input)."
+    },
+    "target_placeholder": {
+      "text": "Target circle id",
+      "doc": "objective L — mobile share screen: placeholder for entering the target circle to share an item into."
+    },
+    "pick_label": {
+      "text": "Choose a circle",
+      "doc": "objective L — mobile share screen: label above the target-circle PICKER (list of the user's other circles)."
+    },
+    "pick_empty": {
+      "text": "No other circles to share into.",
+      "doc": "objective L — mobile share screen: empty state when the user has no circle other than the source to share into."
+    },
+    "outbound_title": {
+      "text": "Shared out of this circle",
+      "doc": "objective L — admin-panel section heading listing this circle's outbound canonical shares."
+    },
+    "outbound_empty": {
+      "text": "This circle hasn't shared any items out.",
+      "doc": "objective L — empty state for the outbound-shares section."
+    },
+    "outbound_row": {
+      "text": "\"{{item}}\" → {{circle}}",
+      "doc": "objective L — one outbound-share row (source item → target circle)."
+    },
+    "stop": {
+      "text": "Stop sharing",
+      "doc": "objective L — per-share button that revokes a canonical share in place (rotate key + ACP revoke)."
+    },
+    "not_revocable": {
+      "text": "Copy/trusted shares can't be un-shared in place.",
+      "doc": "objective L — note shown for non-canonical shares (a copy is a separate object, not a revocable in-place grant)."
+    },
+    "member_revoked": {
+      "text": "Revoked the removed member from {{count}} shared item(s).",
+      "doc": "objective L — notice after auto-revoking a removed member's canonical grants."
+    },
+    "member_revoke_failed": {
+      "text": "Couldn't revoke {{count}} shared item(s) for the removed member.",
+      "doc": "objective L — notice when some auto-revokes failed (removal still succeeded)."
+    },
+    "to_person_heading": {
+      "text": "Share with a person",
+      "doc": "objective L Phase 2 — heading of the out-of-circle recipient picker (shareItemToPublishedKey)."
+    },
+    "no_contacts": {
+      "text": "No contacts with a network address to share to.",
+      "doc": "objective L Phase 2 — empty state when no contact carries a published network key."
+    },
+    "pick_cancel": {
+      "text": "Cancel",
+      "doc": "objective L Phase 2 — cancel/close the recipient picker."
+    },
+    "to_person_done": {
+      "text": "Shared \"{{item}}\" with {{name}}.",
+      "doc": "objective L Phase 2 — success note after granting an out-of-circle contact via shareItemToPublishedKey."
+    },
+    "to_person_failed": {
+      "text": "Share with a person failed: {{error}}.",
+      "doc": "objective L Phase 2 — failure note for the out-of-circle person share."
+    },
     "trust": {
-      "bekend":    { "text": "known",    "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'bekend')." },
-      "vertrouwd": { "text": "trusted",  "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'vertrouwd')." }
+      "bekend": {
+        "text": "known",
+        "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'bekend')."
+      },
+      "vertrouwd": {
+        "text": "trusted",
+        "doc": "objective L Phase 2 — trust badge on a recipient row (contact trustLevel 'vertrouwd')."
+      }
     }
   },
   "clarify": {
@@ -2565,16 +2794,46 @@
       "text": "Relay",
       "doc": "S5 — relay operator/url."
     },
-    "relay_set": { "text": "Relay server", "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback." },
-    "relay_open": { "text": "Set relay server…", "doc": "Entry button that opens the relay-URL editor in the docked side-panel (openPagePanel, set-relay surfaces.page)." },
-    "relay_current": { "text": "Relay: {{url}}", "doc": "Current in-app relay setting shown beside the open-panel button." },
-    "relay_save": { "text": "Save & connect", "doc": "Persist the relay URL + reconnect the peer transport live." },
-    "relay_saving": { "text": "Connecting…", "doc": "Relay save in progress." },
-    "relay_saved": { "text": "Connected via {{url}}", "doc": "Relay saved + reconnected." },
-    "relay_off": { "text": "no relay", "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback." },
-    "relay_error": { "text": "Couldn’t connect: {{msg}}", "doc": "Relay reconnect failed." },
-    "relay_saved_reload": { "text": "Saved — reopen the app to connect via {{url}}", "doc": "Mobile relay save confirmation (applies on next app open; mobile has no live reconnect yet)." },
-    "relay_hint": { "text": "Point this at a reachable relay to sync across devices with no server (e.g. ws://192.168.1.20:8787). Leave blank to use the built-in default.", "doc": "Relay setting help text." },
+    "relay_set": {
+      "text": "Relay server",
+      "doc": "In-app relay URL setting (ws://|wss://); blank ⇒ the build-time env fallback."
+    },
+    "relay_open": {
+      "text": "Set relay server…",
+      "doc": "Entry button that opens the relay-URL editor in the docked side-panel (openPagePanel, set-relay surfaces.page)."
+    },
+    "relay_current": {
+      "text": "Relay: {{url}}",
+      "doc": "Current in-app relay setting shown beside the open-panel button."
+    },
+    "relay_save": {
+      "text": "Save & connect",
+      "doc": "Persist the relay URL + reconnect the peer transport live."
+    },
+    "relay_saving": {
+      "text": "Connecting…",
+      "doc": "Relay save in progress."
+    },
+    "relay_saved": {
+      "text": "Connected via {{url}}",
+      "doc": "Relay saved + reconnected."
+    },
+    "relay_off": {
+      "text": "no relay",
+      "doc": "Shown as {{url}} when the setting is cleared and there's no env fallback."
+    },
+    "relay_error": {
+      "text": "Couldn’t connect: {{msg}}",
+      "doc": "Relay reconnect failed."
+    },
+    "relay_saved_reload": {
+      "text": "Saved — reopen the app to connect via {{url}}",
+      "doc": "Mobile relay save confirmation (applies on next app open; mobile has no live reconnect yet)."
+    },
+    "relay_hint": {
+      "text": "Point this at a reachable relay to sync across devices with no server (e.g. ws://192.168.1.20:8787). Leave blank to use the built-in default.",
+      "doc": "Relay setting help text."
+    },
     "privacy": {
       "text": "Privacy",
       "doc": "S5 — privacy disclosure section."
@@ -2780,8 +3039,39 @@
     "attestation": "I have verified this enclave is attested (allows a non-loopback confidential address)"
   },
   "sharedWithMe": {
-    "title": { "text": "Shared with me", "doc": "Header of the list of sealed copies peers shared privately to this device." },
-    "empty": { "text": "Nothing shared with you yet.", "doc": "Empty state on the shared-with-me list." },
-    "row": { "text": "{type} from {from}", "doc": "A shared-with-me row; {type} is the item type, {from} the sender." }
+    "title": {
+      "text": "Shared with me",
+      "doc": "Header of the list of sealed copies peers shared privately to this device."
+    },
+    "empty": {
+      "text": "Nothing shared with you yet.",
+      "doc": "Empty state on the shared-with-me list."
+    },
+    "row": {
+      "text": "{type} from {from}",
+      "doc": "A shared-with-me row; {type} is the item type, {from} the sender."
+    }
+  },
+  "confirm": {
+    "title": {
+      "text": "Are you sure?",
+      "doc": "Q27 confirm-gate dialog — title above the manifest's confirm message (web dialog + mobile Alert)."
+    },
+    "accept": {
+      "text": "Confirm",
+      "doc": "Q27 confirm-gate dialog — the explicit-accept button. Severity 'danger' styles it red/destructive."
+    },
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Q27 confirm-gate dialog — the cancel button; cancelling dispatches nothing."
+    },
+    "cancelled": {
+      "text": "Okay — nothing was changed.",
+      "doc": "Quiet bot notice after the user cancels a Q27 confirm gate (the op was NOT executed)."
+    },
+    "default_message": {
+      "text": "This action needs your confirmation.",
+      "doc": "Q27 confirm-gate dialog — fallback body for an op whose manifest confirm declaration has no message."
+    }
   }
 }
