@@ -30,7 +30,15 @@
 //                        '*' and 'media.*'-style prefixes; default 'media.read')
 //   5. issuer trust    — when `trustedIssuers` (the circle's known member/owner
 //                        keys) is a non-empty list, `token.issuer` must be in it
-//   6. revocation      — when `isRevoked(tokenId)` is injected (e.g.
+//   6. self-issued     — when `requireSelfIssued` (default for media.read on the
+//                        deployment), `issuer === subject`: the returned actor is
+//                        the key that SIGNED the token, so it is proof-of-
+//                        possession of that key — not an attacker-chosen subject.
+//                        WHY THIS MATTERS: without it, a valid-sig token with
+//                        issuer=Mallory, subject=Alice returns Alice — Mallory
+//                        impersonates Alice at the ACL. Self-issued closes that:
+//                        forging subject=Alice needs Alice's private key.
+//   7. revocation      — when `isRevoked(tokenId)` is injected (e.g.
 //                        TokenRegistry#isRevoked), a revoked id denies
 
 import { CapabilityToken, skillMatches } from '@canopy/core';
@@ -82,6 +90,10 @@ function normalizeIssuers(trustedIssuers) {
  * @param {string}   [opts.requiredSkill='media.read'] — the skill the gate demands
  * @param {string[]} [opts.trustedIssuers] — allow-list of issuer pubKeys (the
  *        circle's known member/owner keys); default: any issuer whose signature checks
+ * @param {boolean} [opts.requireSelfIssued] — require `issuer === subject` so the
+ *        actor is proof-of-possession of the signing key (impersonation-safe).
+ *        Defaults to TRUE for a `media.read`-style (self-attestation) skill,
+ *        FALSE for a wildcard/delegated skill. The media deployment leaves it on.
  * @param {()=>number} [opts.now] — clock (unix-ms) for expiry; default Date.now
  * @returns {(token:string|object)=>Promise<{webId:string}|null>}
  */
@@ -90,8 +102,14 @@ export function createCapabilityVerifier({
   isRevoked,
   requiredSkill = DEFAULT_SKILL,
   trustedIssuers,
+  requireSelfIssued,
   now,
 } = {}) {
+  // Self-attestation skills (media.read and other non-wildcard exact skills)
+  // default to self-issued; an explicit boolean always wins.
+  const selfIssued = typeof requireSelfIssued === 'boolean'
+    ? requireSelfIssued
+    : (requiredSkill !== '*' && !requiredSkill.endsWith('.*'));
   const checkSig = typeof verifySignature === 'function'
     ? verifySignature
     : (raw) => CapabilityToken.verify(raw);
@@ -117,7 +135,10 @@ export function createCapabilityVerifier({
       // 5. issuer trust — when a list is configured, the issuer must be on it.
       if (allow.mode === 'list' && !allow.set.has(raw.issuer)) return null;
 
-      // 6. revocation — when injected, a revoked token id denies.
+      // 6. self-issued — the actor must be the key that signed (impersonation-safe).
+      if (selfIssued && raw.issuer !== raw.subject) return null;
+
+      // 7. revocation — when injected, a revoked token id denies.
       if (typeof isRevoked === 'function' && (await isRevoked(raw.id)) === true) return null;
 
       // The holder — the SUBJECT key — is the actor the gate authorizes.
