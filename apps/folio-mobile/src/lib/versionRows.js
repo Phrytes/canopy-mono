@@ -10,8 +10,11 @@
  * engine.versions() output → display rows, newest first. Tolerates a
  * non-array / missing input (→ []); drops entries without a finite ts.
  *
- * @param {Array<{ts:number,sha256?:string,size?:number,path?:string}>} list
- * @returns {Array<{ts:number,size:number,sha8:string,path:string}>}
+ * Slice 1a: the store returns opaque records `{ts, id, sha256, size}` — the
+ * legacy cosmetic `path` is gone (snapshots are no longer browsable files).
+ *
+ * @param {Array<{ts:number,id?:string,sha256?:string,size?:number}>} list
+ * @returns {Array<{ts:number,size:number,sha8:string}>}
  */
 export function toVersionRows(list) {
   if (!Array.isArray(list)) return [];
@@ -23,6 +26,5 @@ export function toVersionRows(list) {
       ts:   v.ts,
       size: Number.isFinite(v.size) ? v.size : 0,
       sha8: typeof v.sha256 === 'string' ? v.sha256.slice(0, 8) : '',
-      path: typeof v.path === 'string' ? v.path : '',
     }));
 }

@@ -97,12 +97,9 @@ import { diff }               from '../diff.js';
 import { hasConflictMarkers } from '../applyConflict.js';
 
 import { conflictIdFromRelPath, relPathFromConflictId } from './conflictId.js';
-import {
-  listVersions,
-  readVersionContent,
-  isVersionable,
-  listFilesWithVersions,
-} from '../versions.js';
+// Versioning now rides the engine's @canopy/versioning store (Slice 1a) —
+// reached via `engine.versionStore` (list/read/listSeries/isVersionable),
+// not the retired `../versions.js` module.
 import {
   runDiagnostics as defaultRunDiagnostics,
   STEP_TOTAL,
@@ -350,12 +347,12 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
   router.get('/versions/:id', async (req, res) => {
     const id = req.params.id;
     const relPath = relPathFromConflictId(id);
-    if (!relPath || !isVersionable(relPath)) {
+    if (!relPath || !engine.versionStore.isVersionable(relPath)) {
       return sendError(res, 400, 'BAD_VERSION_ID', 'version id is malformed or refers to an unsupported path');
     }
     try {
-      const versions = await listVersions({ localRoot: engine.localRoot, relPath });
-      // Do not leak absolute paths.
+      const versions = await engine.versionStore.list(relPath);
+      // Records carry no on-disk path — expose only ts/sha256/size.
       const out = versions.map(({ ts, sha256, size }) => ({ ts, sha256, size }));
       res.json({ relPath, versions: out });
     } catch (err) {
@@ -367,7 +364,7 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
   router.get('/versions/:id/content/:ms', async (req, res) => {
     const id = req.params.id;
     const relPath = relPathFromConflictId(id);
-    if (!relPath || !isVersionable(relPath)) {
+    if (!relPath || !engine.versionStore.isVersionable(relPath)) {
       return sendError(res, 400, 'BAD_VERSION_ID', 'version id is malformed or refers to an unsupported path');
     }
     const ms = Number(req.params.ms);
@@ -375,8 +372,10 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
       return sendError(res, 400, 'BAD_VERSION_ID', 'ms must be a number');
     }
     try {
-      const buf = await readVersionContent({ localRoot: engine.localRoot, relPath, ts: ms });
-      res.type('text/plain; charset=utf-8').send(buf);
+      const content = await engine.versionStore.read(relPath, ms);
+      // Snapshot content is a string or Uint8Array — normalize to a Buffer
+      // so express ships raw bytes rather than JSON-encoding a typed array.
+      res.type('text/plain; charset=utf-8').send(Buffer.from(content));
     } catch (err) {
       if (err?.code === 'VERSION_NOT_FOUND') {
         return sendError(res, 404, 'VERSION_NOT_FOUND', err.message);
@@ -389,7 +388,7 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
   router.post('/versions/:id/restore', async (req, res) => {
     const id = req.params.id;
     const relPath = relPathFromConflictId(id);
-    if (!relPath || !isVersionable(relPath)) {
+    if (!relPath || !engine.versionStore.isVersionable(relPath)) {
       return sendError(res, 400, 'BAD_VERSION_ID', 'version id is malformed or refers to an unsupported path');
     }
     const body = req.body ?? {};
@@ -423,11 +422,12 @@ export function createRouter({ engine, podClient, vault, identity, hub, errorBuf
   // by the UI's history-pane file picker.
   router.get('/versions', async (_req, res) => {
     try {
-      const files = await listFilesWithVersions(engine.localRoot);
+      // listSeries() → [{ uri, latestMs, count }] newest-first; `uri` IS the relPath.
+      const files = await engine.versionStore.listSeries();
       // Attach an `id` field so the UI doesn't have to re-encode.
       const out = files.map((f) => ({
-        id:       conflictIdFromRelPath(f.relPath),
-        relPath:  f.relPath,
+        id:       conflictIdFromRelPath(f.uri),
+        relPath:  f.uri,
         latestMs: f.latestMs,
         count:    f.count,
       }));

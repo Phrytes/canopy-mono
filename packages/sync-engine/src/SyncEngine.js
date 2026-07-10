@@ -27,14 +27,18 @@ import { scanPod }       from './scanPod.js';
 import { diff }          from './diff.js';
 // applyConflict / ensureShares / listShares are app-shaped concerns —
 // passed in via constructor hooks (defaults below are no-ops).
-import {
-  captureVersion,
-  listVersions,
-  restoreVersion,
-  dropVersions,
-  pruneVersions,
-  isVersionable,
-} from './versions.js';
+
+// Time-machine versioning now rides the shared @canopy/versioning
+// substrate (Slice 1a — the last legacy version store, ./versions.js,
+// retired). One `createVersionStore` per engine instance stores each
+// snapshot as an opaque record in a StorageBackend (Node fs by default)
+// instead of a browsable `.folio/versions/<rel>/<ts>.<ext>` tree.
+import { createVersionStore }  from '@canopy/versioning';
+// Node-only persistent backend (dedicated `/node` subpath so browser/RN
+// bundles that only import the portable surface aren't poisoned — RN's
+// Metro shims `node:fs` to empty, so a NON-Node consumer must inject its
+// own `versionBackend`; see the constructor's `versionBackend` option).
+import { createFsAdapterBackend } from './fsAdapterBackend.js';
 
 // Pluggable adapters (Folio.C1).  Default to Node singletons; RN callers
 // pass their own adapters.
@@ -74,6 +78,23 @@ const DEFAULT_MAX_STABLE_WAIT_MS = 5_000;
 // behaviour (fire runOnce as soon as the sha is stable).
 const DEFAULT_GRACE_MS = 3_000;
 
+/**
+ * Folio's versionable predicate (ported verbatim from the retired
+ * `versions.js`): reject empty, absolute, or any path with a dotted
+ * segment (`.folio/`, `.canopy/`, `.git/`, …), plus `.`/`..`.  Injected
+ * into the version store as `retention.shouldVersion` — the substrate's
+ * own `versionable` only rejects the versions-root prefix, so this is the
+ * HARD INVARIANT that keeps dotfiles + the versions dir out of history.
+ */
+function isVersionableRel(relPath) {
+  if (typeof relPath !== 'string' || relPath.length === 0) return false;
+  const norm = relPath.replace(/\\/g, '/');
+  if (norm.startsWith('/')) return false;
+  const segs = norm.split('/');
+  if (segs.some((s) => s === '' || s === '..' || s === '.' || s.startsWith('.'))) return false;
+  return true;
+}
+
 export class SyncEngine extends Emitter {
   #podClient;
   #pathMap;
@@ -93,6 +114,8 @@ export class SyncEngine extends Emitter {
   #stats = { uploads: 0, downloads: 0, deletes: 0, conflicts: 0, lastSyncAt: null };
 
   #versionsOpts;
+  /** @type {ReturnType<typeof createVersionStore>} */
+  #versionStore;
 
   // Folio.C1 — adapter handles (default to Node singletons).
   #fs;
@@ -156,8 +179,16 @@ export class SyncEngine extends Emitter {
    * @param {number} [opts.pollIntervalMs=60_000]       — pod-side scan interval (until LDN ships)
    * @param {number} [opts.debounceMs=500]              — coalesce window for FS events
    * @param {{perFile?:number, budgetMb?:number}} [opts.versions]
-   *        Folio.B4 retention policy.  Defaults: 50 versions per file,
-   *        100 MB total under <localRoot>/.folio/versions.
+   *        Folio.B4 retention.  `perFile` (default 50) is the per-series cap
+   *        (mapped to `@canopy/versioning`'s `retention.perSeries`).  Slice 1a:
+   *        `budgetMb` is IGNORED — the legacy 100 MB whole-tree byte budget was
+   *        dropped when the store moved to opaque per-series records.
+   * @param {object} [opts.versionBackend]
+   *        A `@canopy/versioning` StorageBackend `{get,put,delete,list}` for the
+   *        version store.  Defaults to a Node fs backend under
+   *        `<localRoot>/.folio/versions`.  Non-Node hosts (RN — Metro shims
+   *        `node:fs` to empty) MUST inject their own backend for versioning to
+   *        work at runtime.
    * @param {{stableMs?:number, maxStableWaitMs?:number, graceMs?:number}} [opts.watcher]
    *        Folio v2.6 sha-stable hardening.  After the standard `debounceMs`
    *        window, each touched path is re-hashed; we only fire `runOnce()`
@@ -255,6 +286,7 @@ export class SyncEngine extends Emitter {
     fs             = null,
     hash           = null,
     watcherFactory = null,
+    versionBackend = null,
     // V0.4 hook surface (Folio app-side concerns):
     parseSharePath    = null,                 // forwarded into the internal PathMap
     applyConflictHook = NOOP_APPLY_CONFLICT,
@@ -280,6 +312,41 @@ export class SyncEngine extends Emitter {
     this.#listSharesHook    = typeof listSharesHook    === 'function' ? listSharesHook    : NOOP_LIST_SHARES;
     this.#stateFilePath  = joinPosix(this.#localRoot, STATE_FILE_RELPATH);
     this.#versionsOpts   = versions ?? {};
+
+    // Slice 1a — one version store per engine instance, over @canopy/versioning.
+    //   backend    : a PORTABLE fs-adapter store over the engine's OWN `#fs`
+    //                adapter (records under <localRoot>/.folio/versions) — the
+    //                same adapter the retired versions.js used, so it runs on
+    //                Node AND RN with one code path (NodeFsBackend hard-wires
+    //                node:fs → a silent no-op on RN). A consumer may still inject
+    //                its own `versionBackend`.
+    //   hash       : the engine's injected hash adapter (RN-safe).
+    //   readLive/  : read + write the LIVE working file so restore snapshots the
+    //   writeLive    current content first (undoable) then writes the target back —
+    //                the existing watcher/sync loop then propagates to the pod.
+    //   shouldVersion: Folio's dotted-segment reject (HARD INVARIANT).
+    //   writerId   : OMITTED — Folio's working-file sync is single-writer.
+    //   retention  : per-series cap = the 50/file (perFile) knob. HONEST DROP —
+    //                the legacy 100 MB whole-tree byte budget goes away (the
+    //                substrate is per-series-cap only); re-add via an index
+    //                record only if wanted (see PLAN-folio-as-file-agent Slice 1a).
+    const backend = versionBackend
+      ?? createFsAdapterBackend({
+        fs:      this.#fs,
+        hashHex: (s) => this.#hash.sha256(s),
+        dir:     joinPosix(this.#localRoot, '.folio', 'versions'),
+      });
+    this.#versionStore = createVersionStore({
+      backend,
+      hash:      (content) => this.#hash.sha256(content),
+      readLive:  (uri) => this.#readLiveForVersion(uri),
+      writeLive: (uri, content) => this.#writeLiveForVersion(uri, content),
+      retention: {
+        perSeries:     this.#versionsOpts.perFile,   // undefined → substrate default (50)
+        shouldVersion: isVersionableRel,
+      },
+      versionsRoot: '.folio/versions/',
+    });
     const w = watcher ?? {};
     this.#stableMs        = Number.isFinite(w.stableMs)        ? Math.max(0, w.stableMs)        : DEFAULT_STABLE_MS;
     this.#maxStableWaitMs = Number.isFinite(w.maxStableWaitMs) ? Math.max(0, w.maxStableWaitMs) : DEFAULT_MAX_STABLE_WAIT_MS;
@@ -309,6 +376,13 @@ export class SyncEngine extends Emitter {
   get localRoot() { return this.#localRoot; }
   get podRoot()   { return this.#podRoot; }
   get identity()  { return this.#identity; }
+  /**
+   * The per-engine @canopy/versioning store (Slice 1a).  Exposed so the
+   * Folio REST routes can serve `list`/`read`/`listSeries`/`isVersionable`
+   * without a second store instance.  PRIVILEGED `drop`/`prune` are on it
+   * too — route handlers must never wire those into a grantable op.
+   */
+  get versionStore() { return this.#versionStore; }
 
   /**
    * Slice G.3 (2026-05-20) — public observability for watch state.
@@ -937,10 +1011,13 @@ export class SyncEngine extends Emitter {
    * List all versions of `relPath`, newest-first.
    *
    * @param {string} relPath POSIX-style path (matches the SyncEngine convention).
-   * @returns {Promise<Array<{ts:number, sha256:string, size:number, path:string}>>}
+   * @returns {Promise<Array<{ts:number, id:string, sha256:string, size:number}>>}
+   *   NOTE: the legacy on-disk `path` field is GONE — snapshots are opaque
+   *   records now (Slice 1a).  Consumers read content via the store's
+   *   `read(relPath, ts)` (routes) rather than a filesystem path.
    */
   async versions(relPath) {
-    return listVersions({ localRoot: this.#localRoot, relPath, fs: this.#fs, hash: this.#hash });
+    return this.#versionStore.list(relPath);
   }
 
   /**
@@ -949,14 +1026,7 @@ export class SyncEngine extends Emitter {
    * `{ relPath, restoredFromMs, snapshotMsBeforeRestore }`.
    */
   async restoreVersion(relPath, ts) {
-    const r = await restoreVersion({
-      localRoot: this.#localRoot,
-      relPath,
-      ts,
-      retention: this.#versionsOpts,
-      fs:        this.#fs,
-      hash:      this.#hash,
-    });
+    const r = await this.#versionStore.restore(relPath, ts);
     // Emit so UIs (history pane) can refresh.  Same shape as the capture
     // event so the WS layer can fan both out cleanly.
     if (r.snapshotMsBeforeRestore != null) {
@@ -965,7 +1035,12 @@ export class SyncEngine extends Emitter {
         ts: r.snapshotMsBeforeRestore,
       });
     }
-    return r;
+    // Preserve the retired module's return shape (`uri` → `relPath`).
+    return {
+      relPath,
+      restoredFromMs:          r.restoredFromMs,
+      snapshotMsBeforeRestore: r.snapshotMsBeforeRestore,
+    };
   }
 
   /**
@@ -973,20 +1048,19 @@ export class SyncEngine extends Emitter {
    * @returns {Promise<number>} count deleted
    */
   async dropVersions(relPath) {
-    return dropVersions({ localRoot: this.#localRoot, relPath, fs: this.#fs });
+    return this.#versionStore.drop(relPath);
   }
 
   /**
-   * Run the retention policy across the whole versions tree.  Called
-   * automatically on every capture; exposed for tests + manual cleanup.
+   * Run the per-series retention cap for `relPath`.  Called automatically
+   * on every capture; exposed for tests + manual cleanup.
+   *
+   * NOTE: the legacy whole-tree walk + 100 MB byte budget are GONE — the
+   * substrate enforces the per-series cap only (Slice 1a honest drop), so
+   * this now prunes a single series (no-op when `relPath` is omitted).
    */
-  async pruneVersions() {
-    return pruneVersions({
-      localRoot: this.#localRoot,
-      retention: this.#versionsOpts,
-      fs:        this.#fs,
-      hash:      this.#hash,
-    });
+  async pruneVersions(relPath) {
+    return this.#versionStore.prune({ uri: relPath });
   }
 
   /**
@@ -1012,18 +1086,13 @@ export class SyncEngine extends Emitter {
    *   - emits `version.new` on a successful capture.
    */
   async #captureVersionSafe(relPath, content) {
-    if (!isVersionable(relPath)) return { captured: false, reason: 'NOT_VERSIONABLE' };
+    if (!this.#versionStore.isVersionable(relPath)) return { captured: false, reason: 'NOT_VERSIONABLE' };
     let r;
     try {
-      r = await captureVersion({
-        localRoot: this.#localRoot,
-        relPath,
-        content,
-        retention: this.#versionsOpts,
-        fs:        this.#fs,
-        hash:      this.#hash,
-      });
+      r = await this.#versionStore.capture(relPath, content);
     } catch (err) {
+      // HARD INVARIANT — capture is BEST-EFFORT: a store throw must NEVER
+      // break the sync loop (swallow, as the retired module did).
       this.emit('error', { phase: 'version', relPath, err });
       return { captured: false, reason: 'CAPTURE_FAILED' };
     }
@@ -1031,6 +1100,36 @@ export class SyncEngine extends Emitter {
       this.emit('version.new', { relPath, ts: r.ts, sha256: r.sha256, size: r.size });
     }
     return r;
+  }
+
+  /**
+   * Read the LIVE working file for a version `uri` (= relPath).  Returns
+   * its bytes; tolerates a missing file (→ '') so restore's undoable
+   * pre-snapshot of a deleted file captures an empty baseline (matches the
+   * retired module's `Buffer.alloc(0)` behaviour).
+   */
+  async #readLiveForVersion(uri) {
+    const abs = joinPosix(this.#localRoot, ...String(uri).split('/'));
+    try {
+      return await this.#fs.readFile(abs);
+    } catch (err) {
+      if (err && err.code === 'ENOENT') return '';
+      throw err;
+    }
+  }
+
+  /**
+   * Write restored content back to the LIVE working file for `uri`.  The
+   * existing watcher/sync loop then propagates it to the pod (as today).
+   */
+  async #writeLiveForVersion(uri, content) {
+    const abs = joinPosix(this.#localRoot, ...String(uri).split('/'));
+    await this.#fs.mkdir(dirnamePosix(abs), { recursive: true });
+    if (typeof content === 'string') {
+      await this.#fs.writeFile(abs, content, { encoding: 'utf8' });
+    } else {
+      await this.#fs.writeFile(abs, content);
+    }
   }
 
   /**

@@ -9,7 +9,6 @@
     "./SyncEngine": "./src/SyncEngine.js",
     "./adapters":   "./src/adapters/index.js",
     "./adapters/*": "./src/adapters/*.js",
-    "./versions":       "./src/versions.js",
     "./PathMap":    "./src/PathMap.js",
     "./scanLocal":  "./src/scanLocal.js",
     "./scanPod":    "./src/scanPod.js",
@@ -22,6 +21,8 @@
   },
   "dependencies": {
     "@canopy/core": "file:../core",
+    "@canopy/pseudo-pod": "file:../pseudo-pod",
+    "@canopy/versioning": "file:../versioning",
     "chokidar":       "^3.6.0"
   },
   "devDependencies": {

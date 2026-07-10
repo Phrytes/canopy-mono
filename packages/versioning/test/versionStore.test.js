@@ -337,3 +337,71 @@ describe('multi-writer (writerId) — concurrent devices on a shared backend', (
     expect(versions[0].writer).toBeUndefined();
   });
 });
+
+// ── Folio port: the dotted-segment `shouldVersion` reject ────────────────────
+//
+// Collapsed here from the two byte-identical `versions.test.js` suites (Folio +
+// sync-engine) when Folio's `versions.js` retired onto this substrate
+// (PLAN-folio-as-file-agent Slice 1a).  The SEMANTIC cases (debounce, retention
+// cap, newest-first ordering, undoable restore, read-content, empty-first-skip)
+// are already covered above and are backend-agnostic; the block below adds the
+// one Folio-specific rule — reject ANY relPath with a dotted segment
+// (`.folio/`, `.canopy/`, `.git/`, …), absolute paths, and `.`/`..` — carried
+// via `retention.shouldVersion` (the substrate's own `versionable` only rejects
+// the versions-root prefix).
+//
+// DROPPED, NOT PORTED (recorded honestly):
+//   - The on-disk FS-LAYOUT assertions (`.folio/versions/<rel>/<ts>.<ext>`
+//     paths + `.sha256` sidecars + sidecar rebuild) — snapshots are opaque
+//     records now, so there are no browsable files/paths to assert on.
+//   - The 100 MB WHOLE-TREE BYTE BUDGET (`pruneVersions` global eviction) — the
+//     substrate enforces the per-series cap ONLY (per-series retention is the
+//     `retention.perSeries` case above); the cross-series byte budget is gone
+//     until/unless re-added via an index record.
+//
+// This is Folio's real `isVersionable` rule, ported verbatim from `versions.js`.
+const isVersionableRel = (relPath) => {
+  if (typeof relPath !== 'string' || relPath.length === 0) return false;
+  const norm = relPath.replace(/\\/g, '/');
+  if (norm.startsWith('/')) return false;
+  const segs = norm.split('/');
+  if (segs.some((s) => s === '' || s === '..' || s === '.' || s.startsWith('.'))) return false;
+  return true;
+};
+
+describe('Folio shouldVersion — dotted-segment reject (isVersionable rule)', () => {
+  const makeFolioStore = () => makeStore({ retention: { shouldVersion: isVersionableRel } });
+
+  it('accepts plain markdown / nested / spaced paths', () => {
+    const { store } = makeFolioStore();
+    expect(store.isVersionable('a.md')).toBe(true);
+    expect(store.isVersionable('sub/dir/note.md')).toBe(true);
+    expect(store.isVersionable('file with spaces.txt')).toBe(true);
+  });
+
+  it('rejects empty / dotted / absolute / .. / . paths', () => {
+    const { store } = makeFolioStore();
+    expect(store.isVersionable('')).toBe(false);
+    expect(store.isVersionable('.folio/versions/a.md')).toBe(false);
+    expect(store.isVersionable('.canopy/state.json')).toBe(false);
+    expect(store.isVersionable('/abs/path')).toBe(false);
+    expect(store.isVersionable('a/../b')).toBe(false);
+    expect(store.isVersionable('a/.hidden/c.md')).toBe(false);
+    expect(store.isVersionable('.dotfile')).toBe(false);
+  });
+
+  it('capture of a dotted path is a NOT_VERSIONABLE no-op (no versions of versions)', async () => {
+    const { store } = makeFolioStore();
+    const r = await store.capture('.folio/foo.md', 'x');
+    expect(r).toEqual({ captured: false, reason: 'NOT_VERSIONABLE' });
+    expect(await store.list('.folio/foo.md')).toEqual([]);
+  });
+
+  it('restore / read of a dotted path reject appropriately', async () => {
+    const { store } = makeFolioStore();
+    await expect(store.restore('.folio/secret', 1)).rejects.toMatchObject({ code: 'NOT_VERSIONABLE' });
+    // read() has no versionable guard, but a dotted series is never captured,
+    // so its history is always empty → VERSION_NOT_FOUND.
+    await expect(store.read('.folio/secret', 1)).rejects.toMatchObject({ code: 'VERSION_NOT_FOUND' });
+  });
+});
