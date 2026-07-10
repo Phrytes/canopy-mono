@@ -125,6 +125,14 @@ export async function mintAdminCap({
  * @returns {Promise<{ webid: string, expiresAt: number } | null>}
  *   The admin's webid + expiry on success; `null` on any failure.
  */
+// TODO(R2b): converge verifyAdminCap onto @canopy/pod-client's PodTokenVerifier
+// (createPodTokenVerifier). That verifier is the general SUPERSET — it adds
+// scope + revocation + an injectable issuer-trust seam on top of these exact
+// checks (issuer===botPubkey maps to `isTrusted: (i) => i === botPubkey`,
+// botPodRoot maps to `expectedPod`). Deferred here because verifyAdminCap has NO
+// per-request `requiredScope` (it validates cap existence, not a specific op) and
+// returns `{webid}` not `{subject}`; converging without a call-site that supplies
+// a requiredScope would be a semantic mismatch / scope-creep. See invariant #3.
 export async function verifyAdminCap({ token, botPodRoot, botPubkey } = {}) {
   if (typeof token      !== 'string') return null;
   if (typeof botPodRoot !== 'string') return null;

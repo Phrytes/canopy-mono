@@ -42,6 +42,13 @@ export { CapabilityAuth } from './Auth/CapabilityAuth.js';
 export { SolidOidcAuth }  from './Auth/SolidOidcAuth.js';
 export { PodClient }      from './PodClient.js';
 
+// R2b.0 — pod-SIDE, scope-aware verifier for `PodCapabilityToken`s (the
+// enforcing half of pod credential delegation) + its owner-side revocation
+// ledger. Deny-by-default; clone of blob-gateway's capabilityVerifier retargeted
+// from skill-scoped to path-scoped. See PLAN-companion-node-remote-hosting §R2b.
+export { createPodTokenVerifier, scopeForRequest } from './Auth/PodTokenVerifier.js';
+export { PodTokenRegistry } from './Auth/PodTokenRegistry.js';
+
 // A7 — Conflict detection + resolution.
 export { ConflictResolver } from './ConflictResolver.js';
 
