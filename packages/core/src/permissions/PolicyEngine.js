@@ -184,76 +184,94 @@ export class PolicyEngine {
       return { tier, allowed: true };
     }
 
-    if (skill.policy === 'requires-token') {
-      if (!token) {
-        throw new PolicyDeniedError(
-          'NO_TOKEN',
-          `Skill "${skillId}" requires a capability token`,
-        );
-      }
+    // `requires-token` DEMANDS a token; every other policy merely verifies one
+    // if offered (below). Token-less callers on a non-requires-token skill pass.
+    if (skill.policy === 'requires-token' && !token) {
+      throw new PolicyDeniedError(
+        'NO_TOKEN',
+        `Skill "${skillId}" requires a capability token`,
+      );
+    }
 
-      let parsed;
-      try {
-        parsed = CapabilityToken.fromJSON(token);
-      } catch {
-        throw new PolicyDeniedError('INVALID_TOKEN', 'Token is malformed');
-      }
-
-      // Verify signature, expiry, and agentId binding.
-      // verify() may throw on malformed data (e.g. missing sig field), so
-      // treat any exception as an invalid token.
-      let tokenOk;
-      try { tokenOk = CapabilityToken.verify(parsed, myPubKey ?? undefined); }
-      catch { tokenOk = false; }
-      if (!tokenOk) {
-        throw new PolicyDeniedError(
-          'INVALID_TOKEN',
-          'Token is expired, has an invalid signature, or targets a different agent',
-        );
-      }
-
-      // Subject must be the caller — prevents token theft / forwarding.
-      if (parsed.subject !== peerPubKey) {
-        throw new PolicyDeniedError(
-          'INVALID_TOKEN',
-          'Token subject does not match the calling peer',
-        );
-      }
-
-      // Skill must match: exact, wildcard '*', or `prefix.*` pattern.
-      // See `CapabilityToken.skillMatches` for the rules.
-      if (!skillMatches(parsed.skill, skillId)) {
-        throw new PolicyDeniedError(
-          'INVALID_TOKEN',
-          `Token grants skill "${parsed.skill}", not "${skillId}"`,
-        );
-      }
-
-      // Issuer must be at least 'trusted' in this agent's TrustRegistry.
-      const issuerTier  = await this.#trustRegistry.getTier(parsed.issuer);
-      const issuerLevel = TIER_LEVEL[issuerTier] ?? 0;
-      if (issuerLevel < TIER_LEVEL['trusted']) {
-        throw new PolicyDeniedError(
-          'INVALID_TOKEN',
-          `Token issuer "${parsed.issuer.slice(0, 12)}…" is not trusted (tier: ${issuerTier})`,
-        );
-      }
-
-      // V1.5 — issuer-side revocation list (optional). Catches "I
-      // revoked this token I issued" before the handler runs, even
-      // when the holder still has it stored locally.
-      if (this.#isRevoked) {
-        let revoked = false;
-        try { revoked = await this.#isRevoked(parsed.id); } catch { revoked = false; }
-        if (revoked) {
-          throw new PolicyDeniedError('INVALID_TOKEN', 'Token has been revoked');
-        }
-      }
-
-      return { tier, allowed: true };
+    // Invoke-time enforcement — the revocation/validity hole-closer. ANY
+    // presented capability token is fully verified (signature · expiry · agent
+    // binding · subject==caller · skill scope · issuer-trust · revocation),
+    // whether or not the skill's policy demanded it. Previously verification ran
+    // ONLY under `requires-token`, so a revoked/expired/forged token presented to
+    // a default `on-request` skill passed on tier alone. An ABSENT token on a
+    // non-requires-token skill still passes — trusted internal callers are
+    // token-less by design. (Enabling this per-agent is a separate wiring/tier
+    // decision; see PLAN-agent-management-surface.md.)
+    if (token) {
+      await this.#verifyPresentedToken(token, { skillId, peerPubKey, myPubKey });
     }
 
     return { tier, allowed: true };
+  }
+
+  /**
+   * Fully verify a PRESENTED capability token, or throw `PolicyDeniedError`.
+   * Shared by `requires-token` skills and the verify-when-present path so
+   * revocation + validity are enforced identically everywhere a token is
+   * offered — a revoked token can never slip through just because a skill's
+   * policy is `on-request`.
+   */
+  async #verifyPresentedToken(token, { skillId, peerPubKey, myPubKey }) {
+    let parsed;
+    try {
+      parsed = CapabilityToken.fromJSON(token);
+    } catch {
+      throw new PolicyDeniedError('INVALID_TOKEN', 'Token is malformed');
+    }
+
+    // Signature, expiry, and agentId binding. verify() may throw on malformed
+    // data (e.g. a missing sig field) — treat any exception as invalid.
+    let tokenOk;
+    try { tokenOk = CapabilityToken.verify(parsed, myPubKey ?? undefined); }
+    catch { tokenOk = false; }
+    if (!tokenOk) {
+      throw new PolicyDeniedError(
+        'INVALID_TOKEN',
+        'Token is expired, has an invalid signature, or targets a different agent',
+      );
+    }
+
+    // Subject must be the caller — prevents token theft / forwarding.
+    if (parsed.subject !== peerPubKey) {
+      throw new PolicyDeniedError(
+        'INVALID_TOKEN',
+        'Token subject does not match the calling peer',
+      );
+    }
+
+    // Skill must match: exact, wildcard '*', or `prefix.*` pattern.
+    if (!skillMatches(parsed.skill, skillId)) {
+      throw new PolicyDeniedError(
+        'INVALID_TOKEN',
+        `Token grants skill "${parsed.skill}", not "${skillId}"`,
+      );
+    }
+
+    // Issuer must be at least 'trusted' in this agent's TrustRegistry.
+    const issuerTier  = await this.#trustRegistry.getTier(parsed.issuer);
+    const issuerLevel = TIER_LEVEL[issuerTier] ?? 0;
+    if (issuerLevel < TIER_LEVEL['trusted']) {
+      throw new PolicyDeniedError(
+        'INVALID_TOKEN',
+        `Token issuer "${parsed.issuer.slice(0, 12)}…" is not trusted (tier: ${issuerTier})`,
+      );
+    }
+
+    // V1.5 — issuer-side revocation list (optional). Catches "I revoked this
+    // token I issued" before the handler runs, even when the holder still has
+    // it stored locally.
+    if (this.#isRevoked) {
+      let revoked = false;
+      try { revoked = await this.#isRevoked(parsed.id); } catch { revoked = false; }
+      if (revoked) {
+        throw new PolicyDeniedError('INVALID_TOKEN', 'Token has been revoked');
+      }
+    }
   }
 
   /**
