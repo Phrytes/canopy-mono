@@ -46,6 +46,37 @@ function podForbidden() {
   return err;
 }
 
+/**
+ * R2b.2 — the FAILING-CLOSED default pod client.
+ *
+ * When the host is configured for delegation (`podOwnerPubKey` set) but no valid
+ * `PodCapabilityToken` has been delivered yet (the `pod.acceptDelegation`
+ * handshake has not run / was rejected), the pod source is wrapped in this
+ * client: EVERY pod I/O op denies with the SAME opaque 403 the scope gate throws.
+ * So an un-delegated host cannot read the pod — pod ops fail closed until a valid
+ * delegation arrives and rewraps the source in a `ScopedPodClient`. The denial is
+ * byte-identical to an out-of-scope / revoked / expired denial (no oracle for the
+ * caller to distinguish "no delegation" from "wrong scope").
+ *
+ * @param {object} [inner]  the held pod client (only its `podRoot` is exposed).
+ * @returns {object} a pod client whose read/list/write/delete all throw 403.
+ */
+export function closedPodClient(inner) {
+  const deny = async () => { throw podForbidden(); };
+  return {
+    list:           deny,
+    read:           deny,
+    write:          deny,
+    delete:         deny,
+    deleteLocal:    deny,
+    clearTombstone: deny,
+    get podRoot() { return inner?.podRoot; },
+    on()   { return inner?.on?.(); },
+    off()  { return inner?.off?.(); },
+    emit() { return inner?.emit?.(); },
+  };
+}
+
 export class ScopedPodClient {
   /** the held (real) pod client — reached ONLY after a scope check passes */
   #inner;
