@@ -29,7 +29,7 @@
  */
 import { describe, it, expect, afterAll } from 'vitest';
 
-import { Agent, AgentIdentity, Parts }    from '@canopy/core';
+import { Agent, AgentIdentity, Parts, TokenRegistry } from '@canopy/core';
 import { VaultMemory }                     from '@canopy/vault';
 import { RelayTransport }                  from '@canopy/transports';
 import { createAgentRegistry }             from '@canopy/agent-registry';
@@ -50,15 +50,25 @@ describe('companion-node R1 — cross-process folio mesh over a real relay', () 
   it('a device discovers the host via the registry and invokes real pod-file skills over the wire', async () => {
     // ── Boot the host (in-process local relay + real RelayTransport + registry) ──
     // identityVault: VaultMemory keeps the test hermetic (no on-disk keypair).
+    // Gate defaults ON (R2), so this is the token-BEARING end-to-end path.
     host = await startCompanionNode({ identityVault: new VaultMemory() });
     expect(host.relayUrl).toMatch(/^ws:\/\//);
+    expect(host.gate).toBe(true);
 
     // ── A SEPARATE device agent — its own identity, SAME relay, real transport ──
-    const devId = await AgentIdentity.generate(new VaultMemory());
+    // R2: the device carries a TokenRegistry so the outbound callSkill path
+    // auto-attaches the host-issued capability tokens (taskExchange.js:87-90).
+    const devId          = await AgentIdentity.generate(new VaultMemory());
+    const deviceTokens   = new TokenRegistry(new VaultMemory());
+    // Host authorizes this device for its whole advertised skill set.
+    const grants = await host.authorizeDevice(devId.pubKey, { skills: [...host.capabilities] });
+    for (const t of grants) await deviceTokens.store(t);
+
     deviceAgent = new Agent({
-      identity:  devId,
-      transport: new RelayTransport({ relayUrl: host.relayUrl, identity: devId }),
-      label:     'device',
+      identity:      devId,
+      transport:     new RelayTransport({ relayUrl: host.relayUrl, identity: devId }),
+      label:         'device',
+      tokenRegistry: deviceTokens,
     });
     await deviceAgent.start();
 
