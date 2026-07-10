@@ -21,7 +21,7 @@
  */
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
-  AppState, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet,
+  AppState, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet,
   Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 
@@ -100,6 +100,9 @@ import LogsPanel                    from '../../../canopy-chat/src/rn/screens/Lo
 import RecordDetailModal            from '../../../canopy-chat/src/rn/screens/RecordDetailModal.js';
 import { recordCanExpand }          from '../core/recordExpand.js';
 import { openFilePicker }           from '../core/filePicker.js';
+// Media P1 mobile twin (2026-07) — RN media input + media-card render model.
+import { openMediaFilePicker }      from '../core/mediaPicker.js';
+import { buildMediaCardModel }      from '../core/mediaCardModel.js';
 import { saveBase64File }           from '../core/fileSave.js';
 import { useCanopyChatAuth }        from '../auth/canopyChatAuthHook.js';
 import { buildMobilePodAuth }       from '../core/podAuth.js';
@@ -198,6 +201,15 @@ export default function ChatScreen({
   // cluster J — lift podAuth up so the v2 launcher (which is the only visible UI; this ChatScreen is
   // mounted-but-hidden) can expose a pod sign-in entry. Pod sign-in otherwise has no v2 surface.
   onPodAuthReady = null,
+  // Media P1 mobile twin (2026-07) — the sealed-media seams `{ gateway, opener }`.
+  // `gateway` ({bucket, sealer, keyRef?}) feeds hostOps → the shared embed-file
+  // builtin's sealed upload path; `opener` unseals the media-card chip's inline
+  // thumbnail.  App.js does NOT wire this yet — the LIVE blob-bucket + verifier
+  // infra is the recorded gap (same as web).  Absent seams degrade honestly:
+  // /embed-file keeps the legacy inline file-card (no sealer in reach ⇒ no
+  // unsealed upload) and any received media-card renders the mime/dims
+  // placeholder chip.
+  media = null,
 }) {
   // M1 (2026-05-29) — the agent bundle is booted ONCE in App.js (shared
   // with the circle launcher).  `bootState` is DERIVED from the props so
@@ -370,6 +382,11 @@ export default function ChatScreen({
       openLogsPanel:  () => setLogsPanelOpen(true),
       openQrScanner:  () => setQrScannerOpen(true),
       openFilePicker,
+      // Media P1 mobile twin (2026-07) — gateway seams + the RN image picker.
+      // Only engages when App.js supplies `media.gateway` (live infra = the
+      // recorded gap); hostOps defaults encodeImage to the identity adapter.
+      mediaGateway:        media?.gateway,
+      openMediaFilePicker,
       podAuth,
       onSignOut: async () => {
         await sessionRef.current?.clear?.();
@@ -379,7 +396,7 @@ export default function ChatScreen({
       // /publish-peer (which need session.getAuthenticatedFetch).
       sessionRef,
     });
-  }, [bootState, podAuth]);
+  }, [bootState, podAuth, media]);
 
   // Extension install (feedback-extension P2) — the consent sheet + its controller. Uses the shared
   // buildConsentModel/installMapping (sandbox gate + store write). Trigger via globalThis.canopyInstallExtension
@@ -1690,6 +1707,7 @@ export default function ChatScreen({
               onQuickReplyTap={(slash) => submitInput(slash)}
               onExpandRecord={(r) => setExpandedRecord(r)}
               manifestsByOrigin={bootState.kind === 'ready' ? bootState.bundle.manifestsByOrigin : undefined}
+              media={media}
               onFormSubmit={(values) => onFormSubmit({
                 pending:   msg.formPending,
                 values,
@@ -1949,7 +1967,7 @@ function formatFileSize(bytes) {
   return `${n.toFixed(n < 10 ? 1 : 0)} ${units[i]}`;
 }
 
-function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFormSubmit, onExpandRecord, manifestsByOrigin }) {
+function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFormSubmit, onExpandRecord, manifestsByOrigin, media }) {
   if (msg.role === 'user') {
     return (
       <View style={[styles.bubble, styles.bubbleUser]} testID={`bubble-user-${msg.id}`}>
@@ -2021,6 +2039,20 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
   // existing `interceptButtonTap` save-file shortcut (#266) fires
   // on [Download].
   if (r.kind === 'embed-card') {
+    // Media P1 mobile twin (2026-07) — the media-card variant mirrors web's
+    // domAdapter dispatch (variant = embed.kind): the sealed-media chip
+    // renders its own bubble; every other variant keeps EmbedCardBubble.
+    if (r.embed?.kind === 'media-card') {
+      return (
+        <MediaCardBubble
+          msg={msg}
+          rendered={r}
+          onButtonTap={onButtonTap}
+          manifestsByOrigin={manifestsByOrigin}
+          mediaOpener={media?.opener}
+        />
+      );
+    }
     return (
       <EmbedCardBubble
         msg={msg}
@@ -2341,29 +2373,88 @@ function EmbedCardBubble({ msg, rendered, onButtonTap, manifestsByOrigin }) {
       {detailLines.length > 0 && (
         <Text style={styles.embedDetails}>{detailLines.join(' · ')}</Text>
       )}
-      {buttons.length > 0 && (
-        <View style={styles.embedButtons}>
-          {buttons.map((btn) => (
-            <TouchableOpacity
-              key={btn.callbackData}
-              onPress={() => onButtonTap?.({
-                opId:    btn.opId,
-                itemId:  btn.itemId,
-                buttonLabel: btn.label,
-                originMessageId: msg.id,
-                embed,
-              })}
-              disabled={!enabled}
-              style={[styles.embedBtn, !enabled && styles.embedBtnDisabled]}
-              accessibilityRole="button"
-              accessibilityLabel={btn.label}
-              testID={`embed-btn-${btn.opId}-${btn.itemId}`}
-            >
-              <Text style={styles.embedBtnText}>{btn.label}</Text>
-            </TouchableOpacity>
-          ))}
+      <EmbedActionButtons
+        msg={msg}
+        embed={embed}
+        buttons={buttons}
+        enabled={enabled}
+        onButtonTap={onButtonTap}
+      />
+    </View>
+  );
+}
+
+/** Manifest-driven embed action buttons — shared by EmbedCardBubble and
+ *  MediaCardBubble (media P1) so the tap contract stays defined once. */
+function EmbedActionButtons({ msg, embed, buttons, enabled, onButtonTap }) {
+  if (!buttons || buttons.length === 0) return null;
+  return (
+    <View style={styles.embedButtons}>
+      {buttons.map((btn) => (
+        <TouchableOpacity
+          key={btn.callbackData}
+          onPress={() => onButtonTap?.({
+            opId:    btn.opId,
+            itemId:  btn.itemId,
+            buttonLabel: btn.label,
+            originMessageId: msg.id,
+            embed,
+          })}
+          disabled={!enabled}
+          style={[styles.embedBtn, !enabled && styles.embedBtnDisabled]}
+          accessibilityRole="button"
+          accessibilityLabel={btn.label}
+          testID={`embed-btn-${btn.opId}-${btn.itemId}`}
+        >
+          <Text style={styles.embedBtnText}>{btn.label}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Media P1 mobile twin (2026-07) — the sealed-media chip, mirroring web's
+ * renderMediaCard: sealed inline thumbnail (openThumbnail — no gate, no
+ * fetch) when the composition supplies the opener; mime/dims placeholder
+ * otherwise; enc hints WIN over the item's top-level hints (decided).
+ * All of that logic lives in the pure model (src/core/mediaCardModel.js) —
+ * this component only projects it.
+ */
+function MediaCardBubble({ msg, rendered, onButtonTap, manifestsByOrigin, mediaOpener }) {
+  const embed = rendered.embed ?? {};
+  const m = buildMediaCardModel(embed, { opener: mediaOpener });
+  const enabled = rendered.lifecycleState !== 'disabled' && typeof onButtonTap === 'function';
+  const buttons = computeEmbedButtons({ manifestsByOrigin, embed });
+  return (
+    <View
+      style={[styles.bubble, styles.bubbleBot, styles.bubbleEmbedCard]}
+      testID={`bubble-bot-media-${msg.id}`}
+    >
+      {m.thumbUri ? (
+        <Image
+          source={{ uri: m.thumbUri }}
+          style={[styles.mediaThumb, m.thumbBox]}
+          resizeMode="cover"
+          accessibilityLabel={m.alt}
+          testID={`media-thumb-${msg.id}`}
+        />
+      ) : (
+        <View style={styles.mediaPlaceholder} testID={`media-placeholder-${msg.id}`}>
+          <Text style={styles.mediaIcon}>🖼</Text>
+          <Text style={styles.embedDetails}>{m.details}</Text>
         </View>
       )}
+      {m.caption != null && (
+        <Text style={styles.mediaCaption}>{m.caption}</Text>
+      )}
+      <EmbedActionButtons
+        msg={msg}
+        embed={embed}
+        buttons={buttons}
+        enabled={enabled}
+        onButtonTap={onButtonTap}
+      />
     </View>
   );
 }
@@ -2500,6 +2591,11 @@ const styles = StyleSheet.create({
   bubbleEmbedCard: { paddingVertical: 8, paddingHorizontal: 10, borderLeftWidth: 3, borderLeftColor: '#1e88e5' },
   embedTitle:      { fontSize: 15, fontWeight: '600', color: '#222' },
   embedDetails:    { fontSize: 12, color: '#666', marginTop: 2 },
+  // Media P1 mobile twin (2026-07) — the media-card chip.
+  mediaThumb:       { borderRadius: 6, backgroundColor: '#eee' },
+  mediaPlaceholder: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+  mediaIcon:        { fontSize: 22, marginRight: 8 },
+  mediaCaption:     { fontSize: 13, color: '#444', marginTop: 4 },
   embedButtons:    { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 6 },
   embedBtn:        { backgroundColor: '#1e88e5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14 },
   embedBtnDisabled:{ backgroundColor: '#ccc' },
