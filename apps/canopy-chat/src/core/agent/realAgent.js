@@ -37,12 +37,19 @@ import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
 // the agents manifest via wireSkill; registerAgentBundle both registers THIS
 // device in the registry resource and returns the live registry handle.
 import { buildAgentSkills } from '@canopy-app/agents/wireSkills';
-// P3 install — the DEFAULT curated-catalog SOURCE is a local stub
-// (createStubCatalog). commons-governance: the real community-curated
-// source drops in behind the same { list, get } contract; realAgent
-// treats it as opaque data and hardcodes no governance decision.
+// P3 install — the curated-catalog SOURCE. commons-governance G1: when a
+// bootstrap endorser root is configured (opts.commonsRoot), the default source
+// is the REAL endorsement-backed catalog (createCatalogSource over signed,
+// cardHash-bound recommendations); otherwise the local stub keeps the surface
+// exercisable. Both satisfy the same { list, get } contract, so wireSkills /
+// installCores are unchanged. Overridable via opts.agentsCatalog.
 import { createStubCatalog } from '@canopy-app/agents/defaultCatalog';
-import { registerAgentBundle, createAgentRegistry } from '@canopy/agent-registry';
+import {
+  registerAgentBundle,
+  createAgentRegistry,
+  createEndorsementResource,
+  createCatalogSource,
+} from '@canopy/agent-registry';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -533,11 +540,33 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Absent → listDataVersions/restoreDataVersion answer the honest
     // `no-version-store` miss.
     const versionStoreFor = typeof opts.versionStoreFor === 'function' ? opts.versionStoreFor : null;
-    // P3 install: the curated-catalog SOURCE. A caller may inject a real
-    // source via opts.agentsCatalog; the default is the local stub so the
-    // install surface is exercisable today. The power-user override
-    // (install from a pasted card) works regardless of the source.
-    const agentsCatalog = opts.agentsCatalog ?? createStubCatalog();
+    // P3 install: the curated-catalog SOURCE. A caller may inject a source via
+    // opts.agentsCatalog (wins). Otherwise, commons-governance G1: when a
+    // bootstrap endorser root pubKey is configured (opts.commonsRoot), the
+    // default source is the REAL endorsement-backed catalog — it reads that
+    // root's shared-readable endorsement resource, verifies each signed
+    // recommend (Ed25519 + cardHash-binding), and returns a flat verified list;
+    // opts.agentsCardResolver resolves an endorsed agent's Agent Card by pubKey.
+    // With no root configured the local stub keeps the install surface
+    // exercisable. The power-user override (install a pasted card) works
+    // regardless of the source. G1 is single-root + flat; the web-of-trust
+    // graph walk is G2.
+    let agentsCatalog;
+    if (opts.agentsCatalog) {
+      agentsCatalog = opts.agentsCatalog;
+    } else if (typeof opts.commonsRoot === 'string' && opts.commonsRoot.length > 0) {
+      const endorsements = createEndorsementResource({
+        pseudoPod: householdSubstrate.pseudoPod,
+        deviceId:  chatId.pubKey,
+      });
+      agentsCatalog = createCatalogSource({
+        endorsementResource: endorsements,
+        roots:               [opts.commonsRoot],
+        resolveCard:         opts.agentsCardResolver ?? null,
+      });
+    } else {
+      agentsCatalog = createStubCatalog();
+    }
     for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog })) {
       hostAgent.register(id, handler, { visibility });
     }

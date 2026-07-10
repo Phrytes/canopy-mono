@@ -16,3 +16,20 @@ export {
 export { withCAS } from './src/concurrency.js';
 export { projectAgentCard } from './src/agentCard.js';
 export { registerAgentBundle } from './src/registerAgentBundle.js';
+
+// commons-governance G1 — signed endorsements of Agent Cards + the
+// endorsement-backed curated catalog read-view (fills P3's catalogSource seam).
+export {
+  issueEndorsement,
+  verifyEndorsement,
+  cardHash,
+  ENDORSEMENT_VERSION,
+} from './src/endorsement.js';
+export {
+  createEndorsementResource,
+  endorsementResourceUri,
+  normaliseEndorsementResource,
+  emptyEndorsementResource,
+  ENDORSEMENT_RESOURCE_VERSION,
+} from './src/endorsementResource.js';
+export { createCatalogSource } from './src/catalogSource.js';
