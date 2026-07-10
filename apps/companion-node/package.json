@@ -1,0 +1,30 @@
+{
+  "name": "@canopy-app/companion-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "companion-node — a user-hostable Node process that remotely hosts Folio's relocatable (runtime:'browser') pod-file agent, reachable by the user's own devices over the mesh. Slice R1 (LAN/trusted, no gate).",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "companion-node": "src/boot.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start": "node src/boot.js"
+  },
+  "dependencies": {
+    "@canopy/agent-registry": "file:../../packages/agent-registry",
+    "@canopy/core": "file:../../packages/core",
+    "@canopy/relay": "file:../../packages/relay",
+    "@canopy/transports": "file:../../packages/transports",
+    "@canopy/vault": "file:../../packages/vault",
+    "@canopy-app/folio": "file:../folio"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

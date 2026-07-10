@@ -92,3 +92,22 @@ that look unrelated to your change (they're the SQLite-backed suites failing to 
 are all in the sqlite-store suites and mention a `.node` binding / `NODE_MODULE_VERSION`; non-sqlite relay
 tests stay green. Not a regression — check this before bisecting a relay failure. (Found 2026-07-10 during
 the blob-gate edge mount.)
+
+## companion-node hand-linked @canopy symlinks + relative-import-into-folio (R1)
+
+`apps/companion-node` (Slice R1) follows the repo's no-hoist convention: its direct bare `@canopy/*`
+imports resolve from **hand-materialized** symlinks in `apps/companion-node/node_modules/@canopy/`
+(`core`, `transports`, `relay`, `vault`, `agent-registry` → `../../../../packages/<pkg>`). If you add a
+new direct `@canopy/*` import to companion-node's own `src/`/`test/`, materialize its symlink too — a
+missing one shows as `Cannot find package '@canopy/<x>'` only when companion-node runs (folio/agents are
+unaffected because they resolve via their OWN node_modules). `vitest` resolves by walking up to the repo
+root's `node_modules`, so it needs no app-local link.
+
+companion-node **reuses folio verbatim by RELATIVE path into `apps/folio/src/`** (`../../folio/src/…` for
+`wireSkills`, `registerFolioAgent`, `agentCores`, `autoShare`, `folioPodList`, `folioSearch`,
+`cli/_podFactory`). Those folio files' transitive `@canopy/*` deps resolve via **folio's** node_modules,
+NOT companion-node's — so companion-node does NOT need e.g. `@canopy/pseudo-pod`/`pod-search` links even
+though the imported folio code uses them. **Tell:** if you see companion-node failing to resolve a package
+that only the imported folio code imports, the fix is a missing symlink in `apps/folio/node_modules`, not
+companion-node's. Do NOT edit `apps/folio/` to "fix" a companion-node import — R1 only consumes folio.
+(Added 2026-07-10, companion-node R1.)
