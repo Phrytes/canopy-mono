@@ -18,3 +18,7 @@ export { SqliteQueueStore }     from './src/queueStores/SqliteQueueStore.js';
 export { PushSender }           from './src/push/PushSender.js';
 export { ExpoPushSender }       from './src/push/ExpoPushSender.js';
 export { PushTokenRegistry }    from './src/push/PushTokenRegistry.js';
+export { mountBlobGate }        from './src/blobGateMount.js';
+export {
+  BlobAclStore, MemoryBlobAclStore, SqliteBlobAclStore,
+}                               from './src/blobAclStore.js';
