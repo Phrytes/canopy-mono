@@ -39,9 +39,45 @@
  * PUT/DELETE and a `pod.write:` token can never reach a path outside its scope —
  * the host cannot lie about method or path, and the deny fires BEFORE any fetch
  * (opaque 403, no existence/scope oracle, nothing written).
+ *
+ * R3.3 — the SIZE-CAP safety floor + the formal degradation contract. The proxied
+ * request/response bodies travel base64'd in a single relay WebSocket frame; the
+ * `ws` maxPayload ceiling (100 MiB on both the relay server and the transport) is
+ * a HARD limit — a bigger frame is dropped and the socket closed. So a large read
+ * or write cannot be shipped whole. R3.3 caps BOTH directions at `maxBodyBytes`
+ * (default 16 MiB, well under the 100 MiB ceiling after base64 + envelope + crypto
+ * inflation) and FAILS LOUD — never a silent truncation:
+ *   - RESPONSE too large (device→host, a big GET): AFTER (d)'s fetch the device
+ *     measures the body; if over cap it returns the DISTINCT oversize reply
+ *     (`oversizeReply`) carrying NO bytes, and the host surfaces a
+ *     `PayloadTooLargeError` (code `payload-too-large`). Not a truncated body.
+ *   - REQUEST too large (host→device, a big PUT): the HOST refuses it before
+ *     invoking (`CapabilityAuth`), so the frame is never sent. The device ALSO
+ *     guards defensively (a rogue host that skips its own cap still gets the
+ *     distinct oversize reply, not a giant fetch).
+ *
+ * The DEGRADATION CONTRACT — three DISTINCT, documented error identities a caller
+ * can branch on (never conflated into one generic failure):
+ *   ┌────────────────────┬──────────────────────────┬──────────────────────────┐
+ *   │ situation          │ device reply             │ host-surfaced error.code  │
+ *   ├────────────────────┼──────────────────────────┼──────────────────────────┤
+ *   │ device offline     │ (no reply / invoke fails)│ 'device-unreachable'      │
+ *   │ denied (scope/etc) │ opaque 403 forbiddenReply│ 'FORBIDDEN'               │
+ *   │ body over cap      │ 413-ish oversizeReply    │ 'payload-too-large'       │
+ *   └────────────────────┴──────────────────────────┴──────────────────────────┘
+ * "your device is offline" vs "that file is too big to proxy" vs "denied" are
+ * each a stable, distinguishable `.code` — R3.3 formalises this so a caller can
+ * degrade EXPLICITLY (§R3 decision #3) on each. R3.3 is the FINAL R3 slice:
+ * after it the whole agent-proxy boundary (read+write, real DPoP, bounded
+ * payloads) is complete.
+ *
+ * R3.3-follow-up: chunked streaming via the ST/SE generator machinery
+ * (`packages/core/src/protocol/taskExchange.js`) for bodies > maxBodyBytes is a
+ * documented follow-up, NOT shipped in R3.3 — see the note on `registerPodProxy`
+ * below. The loud cap is the correct, complete safety floor on its own.
  */
 import { PodCapabilityToken, Parts, b64encode, b64decode } from '@canopy/core';
-import { createPodTokenVerifier, scopeForRequest }         from '@canopy/pod-client';
+import { createPodTokenVerifier, scopeForRequest, DEFAULT_MAX_BODY_BYTES } from '@canopy/pod-client';
 
 /** The control-op id the device registers to receive proxied pod requests. */
 export const POD_PROXY_OP = 'pod.proxyRequest';
@@ -71,6 +107,23 @@ const METHOD_TO_OP = {
  */
 function forbiddenReply() {
   return { status: 403, statusText: 'Forbidden', headers: {}, bodyB64: null };
+}
+
+/**
+ * DISTINCT oversize refusal (§R3.3) — a 413-shaped reply that carries NO body
+ * bytes and an explicit `oversize: true` marker (+ the `size`/`limit` that were
+ * refused). The host's `CapabilityAuth` recognises the marker and raises a
+ * `PayloadTooLargeError` (`code: 'payload-too-large'`), a LOUD, distinct error
+ * — NEVER a truncated body (silent corruption is the footgun this prevents).
+ * Deliberately NOT the opaque 403 shape: an over-cap body is a size failure, not
+ * a scope denial, and the caller must be able to tell them apart.
+ */
+function oversizeReply({ size, limit }) {
+  return {
+    status: 413, statusText: 'Payload Too Large',
+    headers: {}, bodyB64: null,
+    oversize: true, size, limit,
+  };
 }
 
 /** Header collection (Headers or plain object) → plain object for the wire. */
@@ -110,14 +163,36 @@ function relPathFor(url, podRoot) {
  *        `issuer === grantIssuerIdentity.pubKey` (§R3 decision #5).
  * @param {string}   o.expectedHostPubKey
  *        the host this device delegated to; the ONLY caller allowed to proxy.
+ * @param {number}   [o.maxBodyBytes]
+ *        §R3.3 size cap (bytes) for a proxied body in EITHER direction. A fetched
+ *        RESPONSE body over this cap is refused with the distinct `oversizeReply`
+ *        (no bytes returned); an incoming REQUEST body over this cap is likewise
+ *        refused (defence-in-depth — the host caps it first via `CapabilityAuth`,
+ *        but the device is the final authority). Defaults to
+ *        `DEFAULT_MAX_BODY_BYTES` (16 MiB) — grounded in the 100 MiB `ws`
+ *        maxPayload frame ceiling; see `CapabilityAuth.DEFAULT_MAX_BODY_BYTES`.
+ *        Should match the host's `CapabilityAuth({ maxBodyBytes })`.
  * @param {Function} [o.verify]  override the verifier (tests); default derives one
  *        that trusts only this device as issuer.
  * @returns {string} the registered op id
+ *
+ * R3.3-follow-up: bodies over `maxBodyBytes` are refused LOUD today. Streaming
+ * them in chunks via the ST/SE generator machinery
+ * (`packages/core/src/protocol/taskExchange.js` — a skill handler that returns an
+ * async-generator is chunked over the wire) would raise the effective cap, but
+ * it needs real surgery to the proxy contract: the host's proxy transport is a
+ * single-shot `invoke(...) → one reply` (`CapabilityAuth.#makeProxyFetch`
+ * reconstructs one `Response` from one reply), so streaming would mean turning
+ * this handler into a generator AND threading `task.stream()` reassembly through
+ * `CapabilityAuth` — and the REQUEST direction (a big PUT) can't stream through a
+ * single invoke payload at all. Not forced in R3.3; the loud cap is the complete
+ * safety floor.
  */
 export function registerPodProxy(deviceAgent, {
   authFetch,
   grantIssuerIdentity,
   expectedHostPubKey,
+  maxBodyBytes = DEFAULT_MAX_BODY_BYTES,
   verify,
 } = {}) {
   if (!deviceAgent || typeof deviceAgent.register !== 'function') {
@@ -133,6 +208,10 @@ export function registerPodProxy(deviceAgent, {
   if (typeof expectedHostPubKey !== 'string' || expectedHostPubKey.length === 0) {
     throw new Error('registerPodProxy: expectedHostPubKey is required');
   }
+  // §R3.3 — a non-positive/invalid cap falls back to the shared default.
+  const bodyCap = (typeof maxBodyBytes === 'number' && maxBodyBytes > 0)
+    ? maxBodyBytes
+    : DEFAULT_MAX_BODY_BYTES;
 
   // The device honours ONLY grants IT issued: issuer must be this device.
   const verifier = verify ?? createPodTokenVerifier({
@@ -182,11 +261,27 @@ export function registerPodProxy(deviceAgent, {
       //     real pod credential is applied — on-device, bound to the real
       //     method+url the device just authorised.
       const init = { method, headers: req.headers || {} };
-      if (req.bodyB64 != null) init.body = b64decode(req.bodyB64);
+      if (req.bodyB64 != null) {
+        const reqBytes = b64decode(req.bodyB64);
+        // §R3.3 REQUEST-side cap (defence-in-depth). The host already refuses an
+        // over-cap request before sending; the device is the final authority, so
+        // a rogue/misconfigured host that skips its cap still gets a LOUD, distinct
+        // oversize refusal here — the giant write is NEVER fetched. No truncation.
+        if (reqBytes.length > bodyCap) {
+          return oversizeReply({ size: reqBytes.length, limit: bodyCap });
+        }
+        init.body = reqBytes;
+      }
       const res = await authFetch(url, init);
 
       // (e) serialise the response for the wire.
       const bytes = new Uint8Array(await res.arrayBuffer());
+      // §R3.3 RESPONSE-side cap. A body over the cap cannot ride the relay frame;
+      // refuse it LOUD with the distinct oversize reply carrying NO bytes — never
+      // a truncated read (silent corruption). The host raises PayloadTooLargeError.
+      if (bytes.length > bodyCap) {
+        return oversizeReply({ size: bytes.length, limit: bodyCap });
+      }
       return {
         status:     res.status,
         statusText: res.statusText || '',

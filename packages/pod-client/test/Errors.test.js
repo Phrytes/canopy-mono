@@ -7,6 +7,8 @@ import {
   NotFoundError,
   ConflictError,
   NetworkError,
+  DeviceUnreachableError,
+  PayloadTooLargeError,
   PolicyError,
   MalformedResourceError,
   EncryptionError,
@@ -54,6 +56,37 @@ describe('Errors taxonomy', () => {
       expect(err.retryable).toBe(!defaultRetryable);
     });
   }
+
+  it('DeviceUnreachableError (§R3): distinct device-unreachable code, retryable', () => {
+    const err = new DeviceUnreachableError('device offline');
+    expect(err).toBeInstanceOf(PodClientError);
+    expect(err.name).toBe('DeviceUnreachableError');
+    expect(err.code).toBe('device-unreachable');
+    expect(err.retryable).toBe(true);
+  });
+
+  it('PayloadTooLargeError (§R3.3): distinct payload-too-large code, not retryable, carries limit/size', () => {
+    const err = new PayloadTooLargeError('body too big', { limit: 64, size: 500, uri: '/notes/big.md' });
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(PodClientError);
+    expect(err).toBeInstanceOf(PayloadTooLargeError);
+    expect(err.name).toBe('PayloadTooLargeError');
+    expect(err.code).toBe('payload-too-large');
+    expect(err.retryable).toBe(false);
+    expect(err.limit).toBe(64);
+    expect(err.size).toBe(500);
+    expect(err.uri).toBe('/notes/big.md');
+    // Distinct from the other §R3 degradation identities.
+    expect(err.code).not.toBe('device-unreachable');
+    expect(err.code).not.toBe('FORBIDDEN');
+  });
+
+  it('PayloadTooLargeError: limit/size are omitted when not supplied', () => {
+    const err = new PayloadTooLargeError('too big');
+    expect(err.code).toBe('payload-too-large');
+    expect(err.limit).toBeUndefined();
+    expect(err.size).toBeUndefined();
+  });
 
   it('PodClientError: constructable directly with code + retryable defaults', () => {
     const err = new PodClientError('base', { code: 'X' });

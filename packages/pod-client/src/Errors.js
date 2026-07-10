@@ -80,6 +80,28 @@ export class DeviceUnreachableError extends PodClientError {
   }
 }
 
+/**
+ * agent-proxy (§R3.3): a proxied pod body exceeds the negotiated
+ * `maxBodyBytes` cap for the base64-over-WS relay frame, in EITHER direction —
+ * an oversized REQUEST body (host→device, a big PUT: rejected on the host
+ * BEFORE it is ever shipped) or an oversized RESPONSE body (device→host, a big
+ * GET: the device refuses AFTER fetching and returns a distinct 413-shaped
+ * reply carrying NO bytes).  Distinct from `NetworkError`/`device-unreachable`
+ * so a caller can tell "that file is too big to proxy over the relay frame"
+ * apart from "your device is offline" and "denied".  It is a LOUD, explicit
+ * refusal — never a silently-truncated read/write (the repo no-silent-cap
+ * principle).  Code is the stable `'payload-too-large'` identity; `.limit` and
+ * `.size` (when known) say exactly what was refused.  Not retryable: the same
+ * oversized payload will always exceed the same cap.
+ */
+export class PayloadTooLargeError extends PodClientError {
+  constructor(message, { limit, size, ...opts } = {}) {
+    super(message, { code: 'payload-too-large', retryable: false, ...opts });
+    if (typeof limit === 'number') this.limit = limit;
+    if (typeof size  === 'number') this.size  = size;
+  }
+}
+
 /** Server-side policy denied (e.g. quota exceeded, rate-limited). */
 export class PolicyError extends PodClientError {
   constructor(message, opts = {}) {

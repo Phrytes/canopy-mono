@@ -21,6 +21,7 @@ export {
   ConflictError,
   NetworkError,
   DeviceUnreachableError,
+  PayloadTooLargeError,
   PolicyError,
   MalformedResourceError,
   EncryptionError,
@@ -39,7 +40,7 @@ export { PodExporter }    from './PodExporter.js';
 export { PodImporter }    from './PodImporter.js';
 
 export { Auth } from './Auth/Auth.js';
-export { CapabilityAuth } from './Auth/CapabilityAuth.js';
+export { CapabilityAuth, DEFAULT_MAX_BODY_BYTES } from './Auth/CapabilityAuth.js';
 export { SolidOidcAuth }  from './Auth/SolidOidcAuth.js';
 export { PodClient }      from './PodClient.js';
 

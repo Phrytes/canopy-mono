@@ -34,9 +34,30 @@
 import { PodCapabilityToken, b64encode, b64decode } from '@canopy/core';
 
 import { Auth }                          from './Auth.js';
-import { AuthError, DeviceUnreachableError } from '../Errors.js';
+import { AuthError, DeviceUnreachableError, PayloadTooLargeError } from '../Errors.js';
 
 const SUPPORTED_MODES = new Set(['pod-direct', 'agent-proxy']);
+
+/**
+ * Default `maxBodyBytes` cap for an `agent-proxy` proxied body, in EITHER
+ * direction (§R3.3).  16 MiB.
+ *
+ * GROUNDING (a chosen default with margin below a DISCOVERED hard limit — not
+ * itself discovered):  the agent-proxy request/response body travels base64'd
+ * inside a JSON envelope over a single `ws` WebSocket message on the relay.
+ * The `ws` library caps a message at `maxPayload`, whose default is **100 MiB
+ * (104857600 bytes)** on BOTH ends of this hop — the relay `WebSocketServer`
+ * (`packages/relay/src/server.js` constructs it with no override) and the
+ * `RelayTransport` `ws` client (`packages/transports/src/RelayTransport.js`) —
+ * so a frame over 100 MiB is dropped and the socket closed (ws close 1009).
+ * That 100 MiB is the real transport ceiling.  A 16 MiB RAW body becomes
+ * ~22 MiB of base64 (×4/3) which, wrapped in the JSON envelope and even after
+ * SecurityLayer encryption, stays comfortably (~4×) under the 100 MiB frame —
+ * headroom for the token, headers, and encoding overhead.  Configurable via the
+ * `maxBodyBytes` option; raise it only with the 100 MiB ceiling (and the
+ * base64 + envelope inflation) in mind.
+ */
+export const DEFAULT_MAX_BODY_BYTES = 16 * 1024 * 1024;
 
 /** Header names that must NEVER leave the holder toward the device (§R3 #1). */
 const STRIPPED_HEADERS = new Set(['authorization', 'dpop']);
@@ -55,17 +76,22 @@ function sanitizeHeaders(headers) {
   return out;
 }
 
-/** Normalise a fetch body into base64url (over the wire), or null. */
-async function bodyToB64(body) {
+/**
+ * Normalise a fetch body into RAW bytes (a `Uint8Array`), or null.  We measure
+ * the raw length against `maxBodyBytes` BEFORE base64-encoding so the cap is
+ * expressed in real payload bytes (base64 inflates ×4/3), and so an oversized
+ * request is refused WITHOUT ever allocating/encoding the giant frame.
+ */
+async function bodyToBytes(body) {
   if (body == null) return null;
-  if (typeof body === 'string')        return b64encode(new TextEncoder().encode(body));
-  if (body instanceof Uint8Array)      return b64encode(body);
-  if (body instanceof ArrayBuffer)     return b64encode(new Uint8Array(body));
+  if (typeof body === 'string')        return new TextEncoder().encode(body);
+  if (body instanceof Uint8Array)      return body;
+  if (body instanceof ArrayBuffer)     return new Uint8Array(body);
   // Blob / other — best-effort via arrayBuffer().
   if (typeof body.arrayBuffer === 'function') {
-    return b64encode(new Uint8Array(await body.arrayBuffer()));
+    return new Uint8Array(await body.arrayBuffer());
   }
-  return b64encode(new TextEncoder().encode(String(body)));
+  return new TextEncoder().encode(String(body));
 }
 
 export class CapabilityAuth extends Auth {
@@ -79,6 +105,8 @@ export class CapabilityAuth extends Auth {
   #invoke = null;
   /** @type {string|null} — agent-proxy: the delegating device's mesh address */
   #deviceAddr = null;
+  /** @type {number} — agent-proxy: request-body cap (§R3.3 safety floor). */
+  #maxBodyBytes = DEFAULT_MAX_BODY_BYTES;
 
   /**
    * @param {object} opts
@@ -97,8 +125,17 @@ export class CapabilityAuth extends Auth {
    *   this to `Parts.data(await agent.invoke(...))`.
    * @param {string} [opts.deviceAddr]
    *   agent-proxy only — the delegating device's mesh address (proxy origin).
+   * @param {number} [opts.maxBodyBytes]
+   *   agent-proxy only — the max RAW body size (bytes) this holder will ship in
+   *   a single proxied REQUEST (§R3.3).  A request body over this cap is refused
+   *   on THIS side with a `PayloadTooLargeError` (code `payload-too-large`)
+   *   BEFORE any invoke — the giant frame is never sent (the relay would drop
+   *   it, ws close 1009).  Defaults to {@link DEFAULT_MAX_BODY_BYTES} (16 MiB).
+   *   Should match the device's `registerPodProxy({ maxBodyBytes })` so both
+   *   directions share one cap.  A non-positive/invalid value falls back to the
+   *   default.
    */
-  constructor({ token, mode, invoke, deviceAddr } = {}) {
+  constructor({ token, mode, invoke, deviceAddr, maxBodyBytes } = {}) {
     super();
 
     if (!SUPPORTED_MODES.has(mode)) {
@@ -174,6 +211,9 @@ export class CapabilityAuth extends Auth {
       }
       this.#invoke     = invoke;
       this.#deviceAddr = deviceAddr;
+      this.#maxBodyBytes = (typeof maxBodyBytes === 'number' && maxBodyBytes > 0)
+        ? maxBodyBytes
+        : DEFAULT_MAX_BODY_BYTES;
       // Assign as an own property so pod-direct instances never expose it.
       this.getAuthenticatedFetch = () => this.#makeProxyFetch();
     }
@@ -192,8 +232,9 @@ export class CapabilityAuth extends Auth {
    * @returns {(input: RequestInfo, init?: RequestInit) => Promise<Response>}
    */
   #makeProxyFetch() {
-    const invoke     = this.#invoke;
-    const deviceAddr = this.#deviceAddr;
+    const invoke       = this.#invoke;
+    const deviceAddr   = this.#deviceAddr;
+    const maxBodyBytes = this.#maxBodyBytes;
     // Wire form of the signed capability (NOT a pod secret — a scoped grant).
     const wireToken  = this.#token.toJSON();
 
@@ -205,8 +246,22 @@ export class CapabilityAuth extends Auth {
         url,
         headers: sanitizeHeaders(init.headers),   // Authorization/DPoP stripped
       };
-      const bodyB64 = await bodyToB64(init.body);
-      if (bodyB64 != null) req.bodyB64 = bodyB64;
+
+      // ── REQUEST-SIDE cap (§R3.3 safety floor) ────────────────────────────────
+      // Measure the RAW body BEFORE base64-encoding and BEFORE invoking. An
+      // over-cap request is refused HERE, loudly and distinctly, and the giant
+      // frame is NEVER shipped — the relay would drop it (ws close 1009) and the
+      // device would never see it. NO silent truncation: we fail with an
+      // explicit PayloadTooLargeError the caller can branch on by `.code`.
+      const bytes = await bodyToBytes(init.body);
+      if (bytes != null && bytes.length > maxBodyBytes) {
+        throw new PayloadTooLargeError(
+          `agent-proxy: request body ${bytes.length} B exceeds maxBodyBytes ${maxBodyBytes} B; ` +
+          `refused before proxying (not sent) — the relay frame cannot carry it`,
+          { limit: maxBodyBytes, size: bytes.length, uri: url },
+        );
+      }
+      if (bytes != null) req.bodyB64 = b64encode(bytes);
 
       let reply;
       try {
@@ -223,6 +278,27 @@ export class CapabilityAuth extends Auth {
       if (!reply || typeof reply !== 'object' || typeof reply.status !== 'number') {
         throw new DeviceUnreachableError(
           'agent-proxy: device returned no/invalid proxy reply',
+        );
+      }
+
+      // ── RESPONSE-SIDE cap (§R3.3 safety floor) ───────────────────────────────
+      // The DEVICE fetched the resource, saw its body exceed maxBodyBytes, and
+      // returned a DISTINCT 413-shaped oversize marker carrying NO bytes (never
+      // a truncated body). Surface it as the SAME loud, distinct
+      // PayloadTooLargeError as the request-side cap — the caller branches on
+      // `.code === 'payload-too-large'`. We do NOT reconstruct a Response for
+      // this: there are no bytes to hand back, and a silent partial read is the
+      // exact footgun the cap exists to prevent.
+      if (reply.oversize === true) {
+        throw new PayloadTooLargeError(
+          `agent-proxy: response body${typeof reply.size === 'number' ? ` ${reply.size} B` : ''} ` +
+          `exceeds maxBodyBytes${typeof reply.limit === 'number' ? ` ${reply.limit} B` : ''}; ` +
+          `device refused it (no bytes returned) — the relay frame cannot carry it`,
+          {
+            limit: typeof reply.limit === 'number' ? reply.limit : maxBodyBytes,
+            size:  typeof reply.size  === 'number' ? reply.size  : undefined,
+            uri:   url,
+          },
         );
       }
 
