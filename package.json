@@ -17,9 +17,13 @@
     "lint:docs": "node scripts/lint-doc-refs.mjs",
     "lint:deps": "node scripts/lint-dep-boundaries.mjs",
     "lint:deps:update": "node scripts/lint-dep-boundaries.mjs --update",
-    "test:deps": "vitest run scripts/lint-dep-boundaries.test.mjs"
+    "test:deps": "vitest run scripts/lint-dep-boundaries.test.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.10",
     "@playwright/test": "^1.60.0",
     "playwright": "^1.60.0"
   }

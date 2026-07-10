@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "description": "SP-10 v0 — a pure manifest→app scaffolder. Takes an app manifest + a `requires` capability list (SP-9 vocabulary), validates the requires, and returns a runnable app skeleton (package.json + createAgent entry + one wireSkill stub per manifest operation) as path→content strings. PURE codegen — a `writer` may be injected to also write to disk, but the core is string-returning + testable.",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/app-scaffold#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "directory": "packages/app-scaffold"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js"
@@ -12,7 +25,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/sdk": "file:../sdk"
+    "@canopy/sdk": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

@@ -3,6 +3,20 @@
   "version": "0.1.0",
   "description": "Vault — agent identity + token storage (Vault, VaultMemory, VaultLocalStorage, VaultIndexedDB, VaultNodeFs, OAuthVault). Platform-portable: Node, browser via IndexedDB / LocalStorage, RN via the storage adapters in @canopy/react-native. Extracted from @canopy/core/identity 2026-05-11 as part of the standardisation P1 work (Phase 50.1.A) to fix the layering inversion that the Phase 50.1 SolidVault deprecation re-export introduced.",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/vault#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "directory": "packages/vault"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.js",
+    "src"
+  ],
   "main": "index.js",
   "exports": {
     ".": "./index.js"
@@ -12,7 +26,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@canopy/core": "file:../core",
+    "@canopy/core": "workspace:^",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",
     "vitest": "^2.1.9"

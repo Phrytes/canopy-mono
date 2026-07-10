@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/versioning",
   "version": "0.1.0",
   "description": "Backend-agnostic snapshot versioning substrate (option A). One version store over any StorageBackend (get/put/delete/list), consumed by Folio-files, kring-objects, and pod-resources alike. Preserves Folio versions.js policy (versionable/debounce/empty-first-skip/per-series retention/newest-first/undoable restore); storage is pluggable. See plans/PLAN-pod-versioning-history-recovery.md.",

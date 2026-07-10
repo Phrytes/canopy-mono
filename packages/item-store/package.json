@@ -3,6 +3,20 @@
   "version": "0.2.0",
   "description": "Open/closed items in a hybrid pod — attribution, audit, per-field merge contracts, pluggable role policy. Composes core.DataSource (no synthetic Backend).",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/item-store#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "directory": "packages/item-store"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src",
+    "CHANGELOG.md"
+  ],
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js"
@@ -12,7 +26,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "file:../core"
+    "@canopy/core": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

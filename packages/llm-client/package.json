@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/llm-client",
   "version": "0.2.0",
   "description": "Provider-agnostic OpenAI-style tool-calling LLM client (Ollama + cloud providers).",

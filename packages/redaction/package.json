@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "description": "Generic, config-driven redaction atom. redact(text, config) → {text, hits}: ordered regex rules + named-validator registry (bsn-11proef, nl-phone, iban, luhn) + an optional gazetteer name-pass. Locale-agnostic — all locale content is data the caller supplies. Extracted from feedback-pipeline's redact.js + names.js (P0).",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/redaction#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "directory": "packages/redaction"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",

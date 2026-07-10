@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/pod-onboarding",
   "version": "0.1.0",
   "description": "One-tap pod provisioning + mnemonic-restore. Orchestration layer; provider-specific pod-server calls are injected via a podProvisioner. Standardisation Phase 52.5.",

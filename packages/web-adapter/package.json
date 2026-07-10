@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/web-adapter",
   "version": "0.1.0",
   "description": "Slice B.2.0 (PLAN-gui-chat-uplift.md) — shared pure-JS helpers that bridge a NavModel (renderWeb output) and a vanilla-JS browser shell. Pulled out of apps/household/web/main.js + apps/tasks-v0/web/dag.html so every renderWeb-driven page can consume one source-of-truth set of helpers (Option a; see PLAN Slice B.2.0). Substrate-layer, no DOM or framework dependency; browser shells import .js files at runtime; tests run in Node via vitest.",
