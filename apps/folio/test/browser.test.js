@@ -76,9 +76,19 @@ describe('createBrowserFolioAgent — boot + skill dispatch', () => {
     const { agent: peer } = await makePeer(bus);
     await peer.hello(folio.address);
 
-    const r1 = await peer.invoke(folio.address, 'shareFolder', [DataPart({})]);
-    expect(r1?.[0]?.data.ok).toBe(false);
-    expect(r1?.[0]?.data.error).toMatch(/folder/);
+    // Slice 1b: shareFolder is now manifest-derived — `folder` + `with` are
+    // declared `required:true`, so a TRULY-MISSING arg is a wireSkill
+    // validation error (the manifest is the contract; the gate elicits
+    // required args before dispatch in the real flow).
+    await expect(
+      peer.invoke(folio.address, 'shareFolder', [DataPart({})]),
+    ).rejects.toThrow(/folder/);
+
+    // A present-but-empty arg still reaches the core's own soft check
+    // (required only rejects undefined/null), preserving its `{ok:false}` reply.
+    const r2 = await peer.invoke(folio.address, 'shareFolder', [DataPart({ folder: '', with: '' })]);
+    expect(r2?.[0]?.data.ok).toBe(false);
+    expect(r2?.[0]?.data.error).toMatch(/folder/);
   });
 
   it('getFileSnapshot + readNote return chat-shell-shaped replies', async () => {

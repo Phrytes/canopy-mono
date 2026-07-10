@@ -35,12 +35,17 @@
  */
 
 import {
-  Agent, AgentIdentity, InternalTransport, DataPart,
+  Agent, AgentIdentity, InternalTransport,
 } from '@canopy/core';
 
 import { mintShareToken } from './autoShare.js';
 import { listPodFolio } from './folioPodList.js';
 import { buildFolioNoteSearch, indexFolioNotes, searchFolioNotes } from './folioSearch.js';
+
+// Slice 1b — folio's pod-file ops are now MANIFEST-DERIVED wireSkill
+// capabilities (buildFolioSkills), not hand-rolled agent.register handlers.
+import { buildFolioSkills } from './wireSkills.js';
+import { searchFiles as searchFilesCore, folioBriefSummary } from './agentCores.js';
 
 // N5 — Drive tree (folder navigation + rich rows).  Pure JS, node-free,
 // RN-free; safe to pull into the browser bundle (unlike the `.` barrel,
@@ -160,117 +165,18 @@ export async function createBrowserFolioAgent({
   // the in-process index is returned as before.
   let podSource = null;   // { podClient, containerUri } | null
 
-  /* ─── readNote — fetch the contents of a known file by path/name ─── */
-  agent.register('readNote', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = files.find((f) => f.id === a.path || f.name === a.path);
-    if (!target) return [DataPart({ ok: false, error: `No file at "${a.path}".` })];
-    // Pod-backed read is future work (needs podClient + content-type
-    // negotiation); for the browser session today we surface the
-    // metadata + a placeholder body so chat-shell tests keep working.
-    // #194 (B9, 2026-05-23) — also surface frontmatter.embeds when
-    // present so the chat-shell can render "See also" chips per
-    // v1-web-functional-design § 4f.
-    const reply = {
-      message: `[browser] Contents of ${target.name} would be shown here. ${target.bytes} bytes; mime ${target.mime}.`,
-    };
-    if (target.frontmatter?.embeds) {
-      reply.embeds = target.frontmatter.embeds;
-    }
-    return [DataPart(reply)];
-  });
-
-  /* ─── shareFolder — REAL PodCapabilityToken via autoShare ─── */
-  agent.register('shareFolder', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const folder = String(a.folder ?? '').trim();
-    const subjectWebid = String(a.with ?? '').trim();
-    if (!folder)        return [DataPart({ ok: false, error: 'folder required' })];
-    if (!subjectWebid)  return [DataPart({ ok: false, error: 'with (webid) required' })];
-
-    // Derive the share-pod URI.  Real flow: <podRoot><folder>/.  When
-    // no podRoot is wired (pre-sign-in), use a placeholder so the token
-    // is still a valid PodCapabilityToken and the chat-shell can echo
-    // the action — the desktop sync re-mints with the real pod URI on
-    // first runOnce after sign-in.
-    const podRootStr = podRoot || 'https://canopy-chat.invalid/';
-    const sharePodUri = `${podRootStr.replace(/\/$/, '')}/${folder.replace(/^\//, '').replace(/\/$/, '')}/`;
-    try {
-      const record = await mintShareToken(identity, {
-        webid:       subjectWebid,
-        sharePath:   folder,
-        podRoot:     podRootStr,
-        sharePodUri,
-      });
-      return [DataPart({
-        ok:        true,
-        message:   `✓ Shared "${folder}" with ${subjectWebid}.`,
-        share:     {
-          webid:     record.webid,
-          sharePath: record.sharePath,
-          podUri:    record.podUri,
-          mode:      record.mode,
-          issuer:    record.issuer,
-          issuedAt:  record.issuedAt,
-          expiresAt: record.expiresAt,
-          // Full PodCapabilityToken JSON — receivers verify against
-          // their pod's authorization layer.
-          token:     record.token,
-        },
-        _sync:     simulateSync(),
-      })];
-    } catch (err) {
-      return [DataPart({
-        ok: false,
-        error: `shareFolder failed: ${err.message ?? err}`,
-      })];
-    }
-  });
-
-  /* ─── listFiles — in-process index, or the live pod when asked ─── */
-  agent.register('listFiles', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    // N5 — `source:'pod'` reads the user's real pod (when a pod source is
-    // attached).  Falls back to the index — with a `needsPod` flag so the
-    // UI can prompt sign-in — when no pod is connected yet.
-    if (a.source === 'pod') {
-      if (!podSource?.podClient) {
-        return [DataPart({ items: [], source: 'pod', needsPod: true })];
-      }
-      try {
-        const items = await listPodFolio(podSource.podClient, podSource.containerUri);
-        return [DataPart({ items, source: 'pod', _sync: simulateSync() })];
-      } catch (err) {
-        return [DataPart({ items: [], source: 'pod', error: `pod list failed: ${err?.message ?? err}` })];
-      }
-    }
-    return [DataPart({ items: files, source: 'index', _sync: simulateSync() })];
-  });
-
-  /* ─── searchFiles — name/path substring match ─── */
-  agent.register('searchFiles', async ({ parts }) => {
-    const q = String(parts?.[0]?.data?.query ?? '').toLowerCase();
-    if (!q) return [DataPart({ items: [] })];
-    const hits = files.filter((f) =>
-      f.name.toLowerCase().includes(q) || f.id.toLowerCase().includes(q),
-    );
-    return [DataPart({
-      items: hits.map((f) => ({ id: f.id, label: f.name, type: 'file' })),
-    })];
-  });
-
-  /* ─── searchNotes — `/zoek`: pod-search over the note corpus (52.25) ──
+  /* ─── /zoek note-search index — stateful, embedder-swappable ──────────
    *
    * The SEMANTIC sibling of `searchFiles`. Where `searchFiles` is a
-   * name/path substring match, `/zoek` ranks notes by MEANING via
-   * `@canopy/pod-search` — so "car" finds a note about "automobile repair".
-   *
-   * Degrades per Q3 (option a) + the llmTool policy: with no `noteEmbedder`
-   * injected (llmTool:'off' / no Ollama) the index is lexical-only, and a
-   * `mode:'semantic'` request gracefully returns the LEXICAL ranking (the
-   * reply's `degraded:'lexical'` flags it) rather than an empty
-   * E_SEMANTIC_UNAVAILABLE. No embed call is ever made without an embedder.
-   */
+   * name/path substring match, `/zoek` (searchNotes) ranks notes by MEANING
+   * via `@canopy/pod-search` — so "car" finds a note about "automobile
+   * repair". Degrades per Q3 (option a) + the llmTool policy: with no
+   * `noteEmbedder` injected (llmTool:'off' / no Ollama) the index is
+   * lexical-only, and a `mode:'semantic'` request gracefully returns the
+   * LEXICAL ranking rather than an empty E_SEMANTIC_UNAVAILABLE. No embed
+   * call is ever made without an embedder. Kept in the closure (not the
+   * core) because the index is mutable state — `setNoteEmbedder` rebuilds
+   * it and `getNoteSearch` exposes it. */
   let noteSearch = null;
   let builtWithEmbedder;             // embedder identity the current index was built with
   async function ensureNoteSearch() {
@@ -286,118 +192,41 @@ export async function createBrowserFolioAgent({
     return noteSearch;
   }
 
-  agent.register('searchNotes', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const text = String(a.query ?? a.text ?? '').trim();
-    const requested = (a.mode === 'semantic' || a.mode === 'hybrid') ? a.mode : 'lexical';
-    if (!text) return [DataPart({ items: [], mode: requested, semantic: false })];
+  /* ─── the injected folio backend the cores read (agentCores.js) ─────────
+   * Threads the file index + share/pod/search collaborators the old
+   * hand-rolled handlers closed over.  Mutable state (podSource,
+   * noteEmbedder) is reached via accessors so the returned setters keep
+   * working. */
+  const store = {
+    files,
+    identity,
+    podRoot,
+    mintShareToken,
+    simulateSync,
+    listPodFolio,
+    getPodSource:     () => podSource,
+    ensureNoteSearch,
+    searchFolioNotes,
+  };
 
-    const search = await ensureNoteSearch();
-    const ready = search.semanticReady;
-    // Asked for semantic/hybrid but the index has no embedder → lexical.
-    const mode = (requested !== 'lexical' && !ready) ? 'lexical' : requested;
+  /* ─── register the pod-file ops — MANIFEST-DERIVED via buildFolioSkills ──
+   * The folioManifest `runtime:'browser'` ops (readNote / shareFolder /
+   * listFiles / searchNotes / getFileSnapshot / verifyPodState /
+   * deleteFromPod / downloadFile / saveToMyPod / folioStatus) are now
+   * wireSkill-wrapped pure cores, not hand-rolled handlers.  Same ids, same
+   * replies (the cores return the exact payloads `DataPart(...)` wrapped
+   * before). */
+  for (const skill of buildFolioSkills({ store })) {
+    agent.register(skill.id, skill.handler);
+  }
 
-    const res = await searchFolioNotes(search, {
-      text, mode, limit: a.limit ?? 20, minScore: a.minScore, filters: a.filters,
-    });
-    const reply = {
-      items:    res.items.map((n) => ({ id: n.id, label: n.name ?? n.title, type: 'file', path: n.path ?? n.id })),
-      total:    res.total,
-      mode,
-      semantic: ready,
-    };
-    if (mode !== requested) reply.degraded = 'lexical';   // semantic asked, none available
-    if (res.code)           reply.code = res.code;
-    return [DataPart(reply)];
-  });
-
-  /* ─── getFileSnapshot — Q29 cardSnapshotSkill for /embed-file ─── */
-  agent.register('getFileSnapshot', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = files.find((f) => f.id === a.path || f.name === a.path);
-    if (!target) return [DataPart({ ok: false, error: `No file at "${a.path}".` })];
-    return [DataPart({
-      id:    target.id,
-      type:  'file',
-      name:  target.name,
-      mime:  target.mime,
-      bytes: target.bytes,
-      path:  target.id,
-      state: target.state ?? 'synced',
-    })];
-  });
-
-  /* ─── verifyPodState — manifest declares runtime:'browser' ─── */
-  agent.register('verifyPodState', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    // Real implementation would HEAD the pod URI + compare sha/size.
-    // Browser session sans podClient: surface the in-process state.
-    const target = files.find((f) => f.id === a.relPath || f.name === a.relPath);
-    if (!target) {
-      return [DataPart({
-        message: `[browser] ${a.relPath ?? 'file'} not in local index; verification skipped.`,
-      })];
-    }
-    return [DataPart({
-      message: `[browser] ${target.name} matches local index (sha + size assumed; pod verify needs sign-in).`,
-    })];
-  });
-
-  /* ─── deleteFromPod — runtime:'browser' (pod HTTPS DELETE) ─── */
-  agent.register('deleteFromPod', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const idx = files.findIndex((f) => f.id === a.relPath || f.name === a.relPath);
-    if (idx === -1) return [DataPart({ ok: false, error: `No file at "${a.relPath}".` })];
-    const removed = files.splice(idx, 1)[0];
-    return [DataPart({
-      ok: true, message: `✓ Deleted from pod: ${removed.name}`, _sync: simulateSync(),
-    })];
-  });
-
-  /* ─── downloadFile — receiver-side; real bytes via Blob in main.js ─── */
-  agent.register('downloadFile', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    const target = files.find((f) => f.id === a.path || f.name === a.path);
-    return [DataPart({
-      ok:      true,
-      message: target
-        ? `↓ Downloading ${target.name} (${target.bytes} bytes, ${target.mime})…`
-        : `↓ Downloading ${a.path} from sender's pod…`,
-    })];
-  });
-
-  /* ─── saveToMyPod — receiver-side cross-pod copy ─── */
-  agent.register('saveToMyPod', async ({ parts }) => {
-    const a = parts?.[0]?.data ?? {};
-    return [DataPart({
-      ok:      true,
-      message: `📥 Saved "${a.name ?? a.path ?? 'file'}" to your pod's /shared-with-me/ folder.`,
-      _sync:   simulateSync(),
-    })];
-  });
-
-  /* ─── Q30 briefSummary ─── */
-  agent.register('folio_briefSummary', async () => {
-    if (files.length === 0) return [DataPart({ ok: true })];
-    return [DataPart({
-      count: files.length,
-      label: `file${files.length === 1 ? '' : 's'} in folio`,
-    })];
-  });
-
-  /* ─── folioStatus — record reply ─── */
-  agent.register('folioStatus', async () => {
-    const synced     = files.filter((f) => f.state === 'synced').length;
-    const conflicted = files.filter((f) => f.state === 'conflict').length;
-    return [DataPart({
-      title:         'Folio sync status',
-      lastSync:      new Date().toISOString(),
-      fileCount:     files.length,
-      syncedCount:   synced,
-      conflictCount: conflicted,
-      sharedFolders: 0,
-    })];
-  });
+  /* ─── ops with NO manifest op (registered directly) ─────────────────────
+   * `searchFiles` (lexical substring — the semantic sibling searchNotes is
+   * the declared op) and `folio_briefSummary` (canopy-chat's generic
+   * /brief maps to this named skill).  Decode the first DataPart and call
+   * the shared core so their logic still lives once in agentCores.js. */
+  agent.register('searchFiles', async ({ parts }) => searchFilesCore(store, parts?.[0]?.data ?? {}));
+  agent.register('folio_briefSummary', async () => folioBriefSummary(store));
 
   await agent.start();
 

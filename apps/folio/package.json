@@ -7,6 +7,7 @@
   "exports": {
     ".":                  "./src/index.js",
     "./browser":          "./src/browser.js",
+    "./registerFolioAgent": "./src/registerFolioAgent.js",
     "./manifest":         "./manifest.js",
     "./rn/serviceFactory": "./src/rn/serviceFactory.js",
     "./rn/backgroundTasks": "./src/rn/backgroundTasks.js",
@@ -20,6 +21,7 @@
     "test:parity": "FOLIO_PSEUDO_POD=0 vitest run && vitest run"
   },
   "dependencies": {
+    "@canopy/agent-registry":          "file:../../packages/agent-registry",
     "@canopy/app-manifest":            "file:../../packages/app-manifest",
     "@canopy/core":                    "file:../../packages/core",
     "@canopy/vault": "file:../../packages/vault",
