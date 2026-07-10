@@ -417,8 +417,9 @@ describe('SyncEngine.versions — capture sites', () => {
     const list = await e.versions('note.md');
     // The conflict path captured the intermediate marker-laden state.
     expect(list.length).toBeGreaterThanOrEqual(1);
-    // Newest version should contain conflict markers.
-    const newest = await fs.readFile(list[0].path, 'utf8');
+    // Newest version should contain conflict markers.  Snapshots are opaque
+    // records now (Slice 1a) — read content via the store, not an on-disk path.
+    const newest = String(await e.versionStore.read('note.md', list[0].ts));
     expect(newest).toMatch(/<{7}\sYOURS/);
   });
 

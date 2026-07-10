@@ -7,7 +7,12 @@
  * `core.PodStorageConvention`. The substrate now ships only the
  * Folio-lifted `SyncEngine` (formerly `BidirectionalSyncEngine`) +
  * the lifted helpers (`PathMap`, `scanLocal`, `scanPod`, `diff`,
- * `versions`, adapters).
+ * adapters).  The Folio-lifted `versions.js` — the LAST legacy version
+ * store — was RETIRED (2026-07-10, PLAN-folio-as-file-agent Slice 1a)
+ * onto `@canopy/versioning`: `SyncEngine` now owns one `createVersionStore`
+ * per instance (Node fs backend by default) and exposes it as
+ * `engine.versionStore`.  No standalone versions module / `./versions`
+ * subpath remains.
  *
  * For one-shot ingest patterns (e.g. `apps/import-bridge-v0`), apps
  * write directly through any `core.DataSource` (e.g. `MemorySource` for

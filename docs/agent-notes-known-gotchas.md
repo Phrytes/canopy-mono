@@ -25,6 +25,17 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   **Generalizes:** if a future build hits this with another package, find which package's source
   triggered it and add *that* package's `node_modules` — provided it has no RN native modules.
 
+- **New workspace dep needs its `node_modules` symlink materialized.**
+  This repo has NO root hoisting: each package's `file:` deps live as symlinks in *its own*
+  `node_modules`. Adding a `@canopy/*` dep to a package's `package.json` is not enough for a fresh
+  checkout that doesn't re-run install — the symlink must exist. Slice 1a (2026-07-10) wired
+  `@canopy/sync-engine` onto `@canopy/versioning` + `@canopy/pseudo-pod` (the `/node` fs backend for
+  the retired `versions.js`); both are declared deps AND symlinked into
+  `packages/sync-engine/node_modules/@canopy/{versioning,pseudo-pod}`. If sync-engine (or any Folio
+  test that imports `SyncEngine`) suddenly can't resolve `@canopy/versioning` / `@canopy/pseudo-pod`,
+  recreate those two symlinks (`ln -sf ../../../versioning versioning`, `ln -sf ../../../pseudo-pod
+  pseudo-pod`).
+
 - **Recursive / self package references → solved with (workspace) symlinks.**
   A package that references itself or forms a dependency cycle has broken resolution here before;
   workspace symlinking is what fixed it. Same "symlink integrity" family as the EAS trap above —

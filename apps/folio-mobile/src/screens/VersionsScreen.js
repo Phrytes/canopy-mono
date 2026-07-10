@@ -5,9 +5,10 @@
  * History tab + per-file snapshot restore; folio-mobile had none — a
  * data-safety capability that was web-only. This wires the SAME engine
  * API the web routes use (`engine.versions(relPath)` /
- * `engine.restoreVersion(relPath, ts)` — RN-safe; the raw
- * `@canopy/sync-engine/versions` module imports `node:*` at top level
- * so it must be reached via the engine instance, never imported here).
+ * `engine.restoreVersion(relPath, ts)`). Versioning rides the engine's
+ * `@canopy/versioning` store (Slice 1a); it is reached via the engine
+ * instance, never imported here (the store's default Node fs backend
+ * imports `node:*`, and a non-Node host injects its own backend).
  *
  * Per folio-mobile's testing convention the React component is not
  * unit-rendered; the pure view-model mapper `toVersionRows` is
