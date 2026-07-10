@@ -134,7 +134,14 @@ export function signRequest({
  *
  * @returns {string} a URL whose `X-Amz-*` query carries the signature.
  */
-export function presignGetUrl({
+/**
+ * Query-auth pre-signed URL for `method` (GET for reads · PUT for uploads).
+ * A PUT URL lets a client without bucket credentials upload the ciphertext
+ * directly to R2/S3 — the edge issues the URL, the object at rest is still the
+ * sealing envelope (the client seals before PUTting).
+ */
+export function presignUrl({
+  method = 'GET',
   endpoint, bucket, key, region, accessKeyId, secretAccessKey,
   service = 's3', expiresIn = 60, date = new Date(),
 }) {
@@ -159,7 +166,7 @@ export function presignGetUrl({
   const signedHeaders    = 'host';
 
   const canonicalRequest = [
-    'GET', canonicalUri, canonicalQuery, canonicalHeaders, signedHeaders, UNSIGNED,
+    method, canonicalUri, canonicalQuery, canonicalHeaders, signedHeaders, UNSIGNED,
   ].join('\n');
 
   const stringToSign = [
@@ -172,4 +179,14 @@ export function presignGetUrl({
 
   const qs = `${canonicalQuery}&X-Amz-Signature=${signature}`;
   return `${endpoint.replace(/\/$/, '')}${canonicalUri}?${qs}`;
+}
+
+/** Back-compat: a pre-signed GET URL (reads). */
+export function presignGetUrl(args) {
+  return presignUrl({ ...args, method: 'GET' });
+}
+
+/** A pre-signed PUT URL (credential-less client uploads). */
+export function presignPutUrl(args) {
+  return presignUrl({ ...args, method: 'PUT' });
 }

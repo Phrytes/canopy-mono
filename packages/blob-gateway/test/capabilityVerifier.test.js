@@ -12,13 +12,17 @@ import { makeMemoryBucket, makeAcl } from './helpers.js';
 
 const makeIdentity = () => new AgentIdentity({ seed: crypto.randomBytes(32) });
 
-const issuer = makeIdentity(); // the granting side (circle owner/member key)
-const holder = makeIdentity(); // the subject — the peer presenting the token
+const self = makeIdentity(); // a circle member: SELF-ISSUES its own media.read token
 
-/** Issue a real, signed capability token; overrides tweak the grant. */
-async function issueToken({ skill = 'media.read', expiresIn = 3_600_000, identity = issuer } = {}) {
+/**
+ * Issue a real, signed capability token. Default = SELF-ISSUED (issuer ===
+ * subject === the signing key) — the media.read model: a self-attestation of
+ * key possession. Pass `subject` to build a DELEGATED token (issuer ≠ subject)
+ * for the guard tests.
+ */
+async function issueToken({ skill = 'media.read', expiresIn = 3_600_000, identity = self, subject } = {}) {
   const token = await CapabilityToken.issue(identity, {
-    subject:   holder.pubKey,
+    subject:   subject ?? identity.pubKey,   // self-issued unless a subject is forced
     agentId:   'blob-gate',
     skill,
     expiresIn,
@@ -29,12 +33,12 @@ async function issueToken({ skill = 'media.read', expiresIn = 3_600_000, identit
 describe('createCapabilityVerifier — real signature verification by default', () => {
   it('valid token (object form) => { webId: <subject key> }', async () => {
     const verify = createCapabilityVerifier();
-    expect(await verify(await issueToken())).toEqual({ webId: holder.pubKey });
+    expect(await verify(await issueToken())).toEqual({ webId: self.pubKey });
   });
 
   it('valid token (JSON-string wire form) => { webId: <subject key> }', async () => {
     const verify = createCapabilityVerifier();
-    expect(await verify(JSON.stringify(await issueToken()))).toEqual({ webId: holder.pubKey });
+    expect(await verify(JSON.stringify(await issueToken()))).toEqual({ webId: self.pubKey });
   });
 
   it('forged signature => null (tampered subject fails the issuer-key check)', async () => {
@@ -48,7 +52,7 @@ describe('createCapabilityVerifier — real signature verification by default', 
     expect(await verify({ ...raw, sig: raw.sig.slice(0, -4) + 'AAAA' })).toBeNull();
     // ...or signs with her own key but claims the issuer's.
     const selfSigned = await issueToken({ identity: mallory });
-    expect(await verify({ ...selfSigned, issuer: issuer.pubKey })).toBeNull();
+    expect(await verify({ ...selfSigned, issuer: self.pubKey })).toBeNull();
   });
 
   it('expired token => null (injectable `now` clock)', async () => {
@@ -71,13 +75,13 @@ describe('createCapabilityVerifier — real signature verification by default', 
     // 'media' is neither exact nor a prefix pattern — must NOT match 'media.read'.
     expect(await verify(await issueToken({ skill: 'media' }))).toBeNull();
     // Prefix + wildcard grants DO cover the gate's skill.
-    expect(await verify(await issueToken({ skill: 'media.*' }))).toEqual({ webId: holder.pubKey });
-    expect(await verify(await issueToken({ skill: '*' }))).toEqual({ webId: holder.pubKey });
+    expect(await verify(await issueToken({ skill: 'media.*' }))).toEqual({ webId: self.pubKey });
+    expect(await verify(await issueToken({ skill: '*' }))).toEqual({ webId: self.pubKey });
 
     // Prefix correctness the other way: a 'media.*' GATE requirement is a concrete
     // id the token pattern must cover — 'media.rea' prefix-shaped tokens don't.
     const gate = createCapabilityVerifier({ requiredSkill: 'media.thumbnails' });
-    expect(await gate(await issueToken({ skill: 'media.*' }))).toEqual({ webId: holder.pubKey });
+    expect(await gate(await issueToken({ skill: 'media.*' }))).toEqual({ webId: self.pubKey });
     expect(await gate(await issueToken({ skill: 'media.read' }))).toBeNull();
   });
 
@@ -85,12 +89,12 @@ describe('createCapabilityVerifier — real signature verification by default', 
     const stranger = makeIdentity();
     const raw = await issueToken({ identity: stranger }); // genuinely signed, wrong circle
 
-    const verify = createCapabilityVerifier({ trustedIssuers: [issuer.pubKey] });
+    const verify = createCapabilityVerifier({ trustedIssuers: [self.pubKey] });
     expect(await verify(raw)).toBeNull();
-    expect(await verify(await issueToken())).toEqual({ webId: holder.pubKey });
+    expect(await verify(await issueToken())).toEqual({ webId: self.pubKey });
 
-    // No list configured => any issuer whose signature checks is accepted.
-    expect(await createCapabilityVerifier()(raw)).toEqual({ webId: holder.pubKey });
+    // No list configured => any (self-issued) issuer whose signature checks is accepted.
+    expect(await createCapabilityVerifier()(raw)).toEqual({ webId: stranger.pubKey });
   });
 
   it('revoked token => null when isRevoked is injected (TokenRegistry-shaped)', async () => {
@@ -100,7 +104,7 @@ describe('createCapabilityVerifier — real signature verification by default', 
 
     expect(await verify(raw)).toBeNull();
     revoked.clear();
-    expect(await verify(raw)).toEqual({ webId: holder.pubKey });
+    expect(await verify(raw)).toEqual({ webId: self.pubKey });
   });
 
   it('malformed input => null (deny-by-default, never throws)', async () => {
@@ -127,6 +131,47 @@ describe('createCapabilityVerifier — real signature verification by default', 
       isRevoked: async () => { throw new Error('vault down'); },
     });
     expect(await revThrows(raw)).toBeNull();
+  });
+});
+
+/* ── self-issued guard — the impersonation-safe media.read model ─────── */
+
+describe('createCapabilityVerifier — requireSelfIssued (media.read is self-attestation)', () => {
+  it('media.read DELEGATED token (issuer ≠ subject, genuinely signed) => null by default', async () => {
+    // Mallory holds a real key; a member DELEGATES media.read to Mallory's key.
+    // The token is validly signed by the member — but the actor it would grant is
+    // Mallory, chosen by the member, not proven by Mallory. Self-issued default denies.
+    const mallory = makeIdentity();
+    const delegated = await issueToken({ subject: mallory.pubKey }); // issuer=self, subject=mallory
+    expect(await createCapabilityVerifier()(delegated)).toBeNull();
+  });
+
+  it('the exploit it closes: nobody can mint a token that reads AS someone else', async () => {
+    // Without the guard, `{ issuer: attacker, subject: victim, sig: attacker }`
+    // verifies (sig matches issuer) and returns the VICTIM as actor. With it on,
+    // issuer ≠ subject denies — forging subject needs the victim's private key.
+    const victim = makeIdentity();
+    const attacker = makeIdentity();
+    const forged = await issueToken({ identity: attacker, subject: victim.pubKey });
+    expect(await createCapabilityVerifier()(forged)).toBeNull();
+  });
+
+  it('requireSelfIssued: false opts into the delegated model (issuer ≠ subject allowed)', async () => {
+    const grantee = makeIdentity();
+    const delegated = await issueToken({ subject: grantee.pubKey });
+    const verify = createCapabilityVerifier({ requireSelfIssued: false });
+    expect(await verify(delegated)).toEqual({ webId: grantee.pubKey }); // the delegated actor
+  });
+
+  it('a wildcard/prefix requiredSkill defaults requireSelfIssued OFF (delegation is the point there)', async () => {
+    const grantee = makeIdentity();
+    const delegated = await issueToken({ skill: '*', subject: grantee.pubKey });
+    // requiredSkill '*' — a broad capability that is meant to be delegable.
+    const verify = createCapabilityVerifier({ requiredSkill: '*' });
+    expect(await verify(delegated)).toEqual({ webId: grantee.pubKey });
+    // ...but an explicit true still forces self-issued even for a wildcard gate.
+    const strict = createCapabilityVerifier({ requiredSkill: '*', requireSelfIssued: true });
+    expect(await strict(delegated)).toBeNull();
   });
 });
 
@@ -157,7 +202,7 @@ describe('anyVerifier', () => {
     const solidish = async (t) => (t === 'solid-jwt' ? { webId: 'https://anne.pod/profile/card#me' } : null);
     const verify = anyVerifier(capability, solidish);
 
-    expect(await verify(JSON.stringify(await issueToken()))).toEqual({ webId: holder.pubKey });
+    expect(await verify(JSON.stringify(await issueToken()))).toEqual({ webId: self.pubKey });
     expect(await verify('solid-jwt')).toEqual({ webId: 'https://anne.pod/profile/card#me' });
     expect(await verify('neither')).toBeNull();
   });
@@ -176,8 +221,8 @@ describe('capability token through createBlobGatekeeper (memory bucket)', () => 
     });
 
     const gate = createBlobGatekeeper({
-      verifyToken: anyVerifier(createCapabilityVerifier({ trustedIssuers: [issuer.pubKey] })),
-      acl: makeAcl([[holder.pubKey, ref]]),   // the SUBJECT key is the ACL actor
+      verifyToken: anyVerifier(createCapabilityVerifier({ trustedIssuers: [self.pubKey] })),
+      acl: makeAcl([[self.pubKey, ref]]),   // the SUBJECT key is the ACL actor
       bucket,
     });
 

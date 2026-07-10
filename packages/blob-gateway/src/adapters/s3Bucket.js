@@ -13,7 +13,7 @@
 // the sealing envelope from uploadBlob (ciphertext-at-rest is preserved: this
 // adapter never decrypts, it just moves opaque bytes).
 
-import { signRequest, presignGetUrl } from './sigv4.js';
+import { signRequest, presignGetUrl, presignPutUrl } from './sigv4.js';
 
 export function createS3Bucket({
   endpoint, region, bucket, accessKeyId, secretAccessKey,
@@ -48,6 +48,14 @@ export function createS3Bucket({
     async presign(key, { ttl } = {}) {
       const expiresIn = Number.isFinite(ttl) ? ttl : 60;
       return presignGetUrl({ ...cfg, key, expiresIn, date: dateNow() });
+    },
+
+    /** A short-lived SigV4 pre-signed PUT URL — a credential-less client uploads
+     *  the sealed bytes straight to R2/S3 (the edge issues this; it never sees
+     *  the object bytes). The object at rest is the sealing envelope. */
+    async presignPut(key, { ttl } = {}) {
+      const expiresIn = Number.isFinite(ttl) ? ttl : 60;
+      return presignPutUrl({ ...cfg, key, expiresIn, date: dateNow() });
     },
 
     /** DELETE the object. A 404 is treated as already-gone (idempotent). */
