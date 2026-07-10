@@ -28,6 +28,12 @@ const fakeBucket = {
   presign: async (key, { ttl } = {}) => `https://fake-bucket.example/${key}?ttl=${ttl}`,
 };
 
+/** presign + presignPut — a presignPut-capable bucket (like the s3 adapter). */
+const fakePresignPutBucket = {
+  ...fakeBucket,
+  presignPut: async (key, { ttl } = {}) => `https://fake-bucket.example/PUT/${key}?ttl=${ttl}`,
+};
+
 const OPAQUE_403 = { error: 'forbidden' };
 
 const get = (port, path, token) => fetch(`http://127.0.0.1:${port}${path}`, {
@@ -197,6 +203,110 @@ describe('mountBlobGate — grant route (uploaders allow-list, deny-by-default)'
   });
 });
 
+// ── upload-url route (presigned PUT; uploaders allow-list, deny-by-default) ──
+
+describe('mountBlobGate — upload-url route (presigned PUT, deny-by-default)', () => {
+  let relay;
+
+  beforeEach(async () => {
+    relay = await startRelay({
+      port:     0,
+      blobGate: {
+        verifyToken: fakeVerifyToken,
+        bucket:      fakePresignPutBucket,
+        uploaders:   ['uploader'],   // ONLY this actor may request an upload URL
+        ttl:         120,
+      },
+    });
+  });
+
+  afterEach(async () => {
+    await relay.stop();
+  });
+
+  it('an authorised uploader gets a presigned PUT url (bucket.presignPut, mount ttl)', async () => {
+    const res = await post(relay.port, '/blob-gate/upload-url', 'tok-uploader', { key: 'blob://k1' });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/json');
+    expect(await res.json()).toEqual({ url: 'https://fake-bucket.example/PUT/blob://k1?ttl=120' });
+  });
+
+  it('a valid token NOT in the uploaders list → opaque 403 (no url)', async () => {
+    const res = await post(relay.port, '/blob-gate/upload-url', 'tok-alice', { key: 'blob://k1' });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(OPAQUE_403);
+  });
+
+  it('no token / invalid token → opaque 403 (no url, no reason)', async () => {
+    const noTok = await post(relay.port, '/blob-gate/upload-url', null, { key: 'blob://k1' });
+    expect(noTok.status).toBe(403);
+    expect(await noTok.json()).toEqual(OPAQUE_403);
+
+    const badTok = await post(relay.port, '/blob-gate/upload-url', 'garbage', { key: 'blob://k1' });
+    expect(badTok.status).toBe(403);
+    expect(await badTok.json()).toEqual(OPAQUE_403);
+  });
+
+  it('malformed bodies → opaque 403 (missing key / empty key / bad JSON)', async () => {
+    for (const body of [{}, { key: '' }, { key: 42 }]) {
+      const res = await post(relay.port, '/blob-gate/upload-url', 'tok-uploader', body);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual(OPAQUE_403);
+    }
+    const badJson = await fetch(`http://127.0.0.1:${relay.port}/blob-gate/upload-url`, {
+      method:  'POST',
+      headers: { authorization: 'Bearer tok-uploader', 'content-type': 'application/json' },
+      body:    '{not json',
+    });
+    expect(badJson.status).toBe(403);
+    expect(await badJson.json()).toEqual(OPAQUE_403);
+  });
+
+  it('no uploaders option means NOBODY can get an upload url (deny-by-default)', async () => {
+    const bare = await startRelay({
+      port:     0,
+      blobGate: { verifyToken: fakeVerifyToken, bucket: fakePresignPutBucket },
+    });
+    try {
+      const res = await post(bare.port, '/blob-gate/upload-url', 'tok-uploader', { key: 'blob://k1' });
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual(OPAQUE_403);
+    } finally {
+      await bare.stop();
+    }
+  });
+
+  it('a bucket WITHOUT presignPut → opaque 403 (remote uploads need presignPut)', async () => {
+    const relay2 = await startRelay({
+      port:     0,
+      blobGate: { verifyToken: fakeVerifyToken, bucket: fakeBucket, uploaders: ['uploader'] },
+    });
+    try {
+      const res = await post(relay2.port, '/blob-gate/upload-url', 'tok-uploader', { key: 'blob://k1' });
+      expect(res.status).toBe(403);
+      expect(await res.json()).toEqual(OPAQUE_403);
+    } finally {
+      await relay2.stop();
+    }
+  });
+
+  it('the presign (GET) path is unaffected by the upload-url route', async () => {
+    const acl = new MemoryBlobAclStore();
+    const relay3 = await startRelay({
+      port:     0,
+      blobGate: { verifyToken: fakeVerifyToken, bucket: fakePresignPutBucket, acl, uploaders: ['uploader'], ttl: 90 },
+    });
+    try {
+      await acl.grant('blob://k1', 'alice');
+      const gateRes = await get(relay3.port, '/blob-gate?ref=blob%3A%2F%2Fk1', 'tok-alice');
+      expect(gateRes.status).toBe(200);
+      expect((await gateRes.json()).url).toMatch(/^https:\/\/fake-bucket\.example\/k1/);
+    } finally {
+      await relay3.stop();
+    }
+  });
+});
+
 // ── SQLite-backed ACL through the mount ──────────────────────────────────────
 
 describe('mountBlobGate — SQLite ACL round-trip', () => {
@@ -242,7 +352,7 @@ describe('startRelay — without blobGate (byte-identical behaviour)', () => {
 
       // The gate + grant paths are NOT intercepted: the pre-existing handler
       // answers them exactly like any other path (banner, text/plain).
-      for (const path of ['/', '/blob-gate?ref=blob%3A%2F%2Fk1', '/blob-gate/grant']) {
+      for (const path of ['/', '/blob-gate?ref=blob%3A%2F%2Fk1', '/blob-gate/grant', '/blob-gate/upload-url']) {
         const res = await fetch(`http://127.0.0.1:${relay.port}${path}`, {
           headers: { authorization: 'Bearer tok-alice' },
         });

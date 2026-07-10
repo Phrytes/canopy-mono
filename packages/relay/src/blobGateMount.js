@@ -16,6 +16,22 @@
  *     → 200 { ok: true, granted: n }      grants recorded in the ACL store
  *     → 403 { error: 'forbidden' }        on ANY denial
  *
+ *   POST <route>/upload-url               Authorization: Bearer <token>
+ *     body { key: 'blob://<key>' }
+ *     → 200 { url }                       presigned PUT URL to the ciphertext
+ *     → 403 { error: 'forbidden' }        on ANY denial
+ *
+ * CREDENTIAL-LESS CLIENT UPLOAD (presigned PUT — PLAN-media-infra-deployment):
+ * a client that holds an uploader token never sees R2/S3 credentials. The flow is
+ *   1. client → POST <route>/upload-url { key }   → { url }   (a short-lived PUT URL)
+ *   2. client → PUT <url> (the sealed bytes)      → R2 directly (edge never sees them)
+ *   3. client → POST <route>/grant { key, actors }             (record read-ACL)
+ * The `uploaders` allow-list gates BOTH /upload-url and /grant, and is EDGE DEPLOY
+ * CONFIG (env / mount options), never data — same deny-by-default discipline.
+ * REMOTE UPLOADS REQUIRE A `presignPut`-CAPABLE BUCKET: the s3 adapter
+ * (`createS3Bucket`) has `presignPut(key,{ttl})`; a memory/`presign`-only bucket
+ * does not, so /upload-url is an opaque 403 there (no remote PUT surface exists).
+ *
  * NO-LEAK: the presign path reuses `createHttpGate` from `@canopy/blob-gateway`,
  * which already collapses every failure (missing/invalid token, ACL deny, bad
  * ref, thrown error) to the same opaque 403 — no reason, no URL. The grant
@@ -80,18 +96,28 @@ export function mountBlobGate(server, {
     : (webId, ref) => aclStore.check(webId, ref);
 
   const handleGate = createHttpGate({ verifyToken, acl: { canRead }, bucket, ttl });
-  const granters   = new Set(uploaders ?? []);
-  const grantPath  = `${route}/grant`;
+  const granters     = new Set(uploaders ?? []);
+  const grantPath    = `${route}/grant`;
+  const uploadUrlPath = `${route}/upload-url`;
+
+  // Shared uploader auth (deny-by-default): valid token AND its webId in the
+  // `uploaders` allow-list. No/empty `uploaders` ⇒ nobody. Both the grant route
+  // and the upload-url route gate on THIS — do not fork the check. Returns the
+  // authorised webId, or null (the caller collapses null to the opaque 403).
+  const authorizeUploader = async (req) => {
+    const token = bearerFrom(req.headers?.authorization);
+    if (!token) return null;
+    const verified = await verifyToken(token);
+    const webId = verified && verified.webId;
+    if (!webId) return null;
+    if (!granters.has(webId)) return null;
+    return webId;
+  };
 
   // ── grant route (deny-by-default; every failure is the same opaque 403) ────
   const handleGrant = async (req) => {
     try {
-      const token = bearerFrom(req.headers?.authorization);
-      if (!token) return DENY;
-      const verified = await verifyToken(token);
-      const webId = verified && verified.webId;
-      if (!webId) return DENY;
-      if (!granters.has(webId)) return DENY;
+      if (!(await authorizeUploader(req))) return DENY;
       if (typeof aclStore.grantMany !== 'function') return DENY;
 
       const body = await readJsonBody(req);
@@ -102,6 +128,26 @@ export function mountBlobGate(server, {
 
       await aclStore.grantMany(key, actors);
       return { status: 200, body: { ok: true, granted: actors.length } };
+    } catch {
+      return DENY;
+    }
+  };
+
+  // ── upload-url route (same uploader auth; issues a presigned PUT URL) ───────
+  // A `presignPut`-less bucket (e.g. a memory bucket) has no remote-PUT surface,
+  // so it denies opaquely — remote uploads need the s3 adapter's presignPut.
+  const handleUploadUrl = async (req) => {
+    try {
+      if (!(await authorizeUploader(req))) return DENY;
+      if (typeof bucket?.presignPut !== 'function') return DENY;
+
+      const body = await readJsonBody(req);
+      const { key } = body ?? {};
+      if (typeof key !== 'string' || key.length === 0) return DENY;
+
+      const url = await bucket.presignPut(key, { ttl });
+      if (!url) return DENY;
+      return { status: 200, body: { url } };
     } catch {
       return DENY;
     }
@@ -118,6 +164,8 @@ export function mountBlobGate(server, {
         out = await handleGate({ method: req.method, url: req.url, headers: req.headers, body });
       } else if (pathname === grantPath && req.method === 'POST') {
         out = await handleGrant(req);
+      } else if (pathname === uploadUrlPath && req.method === 'POST') {
+        out = await handleUploadUrl(req);
       }
       // Any other path/method under the mount stays the opaque DENY.
     } catch {
