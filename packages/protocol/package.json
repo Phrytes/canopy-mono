@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/protocol",
   "version": "0.1.0",
   "description": "State-machine substrate. Multi-step processes (negotiation, propose-subtask, calendar accept) modelled as state machines over items. Direction-only. Standardisation Phase 52.13.",

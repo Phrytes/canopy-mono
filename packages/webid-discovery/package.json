@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/webid-discovery",
   "version": "0.1.0",
   "description": "WebID-profile pointer discovery: walks the WebID profile for storage-mapping-uri / agent-registry-uri / audit-log-uri predicates, then resolves each via a caller-supplied reader (typically the pseudo-pod). Pure-of-platform. Authored 2026-05-11 as part of the standardisation P1 work (Phase 50.2).",

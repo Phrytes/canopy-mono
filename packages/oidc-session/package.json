@@ -3,6 +3,20 @@
   "version": "0.1.0",
   "description": "Solid OIDC session manager for Node — SolidVault. Peer of @canopy/oidc-session-rn (the React Native variant). Extracted from @canopy/core/storage 2026-05-11 as part of the standardisation P1 work (Phase 50.1).",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/oidc-session#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "directory": "packages/oidc-session"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "index.js",
+    "src"
+  ],
   "main": "index.js",
   "exports": {
     ".": "./index.js"
@@ -15,8 +29,8 @@
     "@inrupt/solid-client-authn-node": "4.0.0"
   },
   "devDependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/vault": "file:../vault",
+    "@canopy/core": "workspace:^",
+    "@canopy/vault": "workspace:^",
     "vitest": "^2.1.9"
   }
 }

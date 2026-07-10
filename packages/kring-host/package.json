@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name":        "@canopy/kring-host",
   "version":     "0.1.0",
   "description": "The platform-neutral kring/circle HOST substrate — composition LOGIC shared by the web + mobile canopy-chat shells (repo-split W2, objective F). Depends DOWN on the kernel substrates (@canopy/item-store, @canopy/item-types); never up on an app. First extraction: the circle LISTS feature (makeCircleLists).",

@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "description": "Portable decentralised agent SDK — transport, security, identity, protocol",
   "type": "module",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/core#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "src"
+  ],
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
@@ -22,8 +35,8 @@
     "tweetnacl-util": "^0.15.1"
   },
   "devDependencies": {
-    "@canopy/vault": "file:../vault",
-    "@canopy/transports": "file:../transports",
+    "@canopy/vault": "workspace:^",
+    "@canopy/transports": "workspace:^",
     "@anthropic-ai/sdk": "^0.36.0",
     "vitest": "^2.1.0",
     "ws": "^8.20.0"

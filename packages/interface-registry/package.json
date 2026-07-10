@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/interface-registry",
   "version": "0.1.0",
   "description": "Per-type renderer registry. Bundles register compact + full renderers for the item-types they handle; apps look up renderers by type. Hub V2 territory; direction-only. Standardisation Phase 52.12.",

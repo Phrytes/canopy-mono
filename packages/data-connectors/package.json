@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@canopy/data-connectors",
   "version": "0.1.0",
   "description": "External data-source connector substrate: connect an agent to DBs / REST APIs / other sources (+ pluggable auth) as source-agnostic, injected adapters — same genre as llm-client / blob-gateway. v0: REST + SQL connectors, injected fetch/driver, mock-tested, no live service in CI.",
