@@ -31,7 +31,14 @@
  *       independent of whether the resource exists: no existence oracle.
  *   (e) serialise — return `{ status, statusText, headers, bodyB64 }`.
  *
- * R3.0 scope: GET only (→ `read`). R3.1 adds the full method set.
+ * R3.0 scope: GET/HEAD only (→ `read`). R3.1 adds the full WRITE/DELETE method
+ * set — PUT/POST/PATCH→`write`, DELETE→`delete` — so a host can WRITE/DELETE the
+ * pod within its grant. The scope-check at (c) stays AUTHORITATIVE and is now
+ * load-bearing for writes too: the required action is re-derived from the ACTUAL
+ * `(method, url)` the device is about to fetch, so a read-only token can never
+ * PUT/DELETE and a `pod.write:` token can never reach a path outside its scope —
+ * the host cannot lie about method or path, and the deny fires BEFORE any fetch
+ * (opaque 403, no existence/scope oracle, nothing written).
  */
 import { PodCapabilityToken, Parts, b64encode, b64decode } from '@canopy/core';
 import { createPodTokenVerifier, scopeForRequest }         from '@canopy/pod-client';
@@ -39,8 +46,22 @@ import { createPodTokenVerifier, scopeForRequest }         from '@canopy/pod-cli
 /** The control-op id the device registers to receive proxied pod requests. */
 export const POD_PROXY_OP = 'pod.proxyRequest';
 
-/** R3.0 method→op map. GET/HEAD are reads; everything else is unsupported here. */
-const METHOD_TO_OP = { GET: 'read', HEAD: 'read' };
+/**
+ * Method→op map (R3.1 full set). The device maps the ACTUAL HTTP method to the
+ * scope ACTION it re-derives independently of any host claim:
+ *   - GET/HEAD          → `read`   (HEAD leaks no body; still gated as a read)
+ *   - PUT/POST/PATCH    → `write`  (create/overwrite/modify — needs `pod.write:`)
+ *   - DELETE            → `delete` (removal — needs `pod.delete:`)
+ * matching `scopeForRequest`'s op→action map. An unmapped method → deny.
+ */
+const METHOD_TO_OP = {
+  GET:    'read',
+  HEAD:   'read',
+  PUT:    'write',
+  POST:   'write',
+  PATCH:  'write',
+  DELETE: 'delete',
+};
 
 /**
  * OPAQUE 403 — a CONSTANT deny shape, byte-identical regardless of WHICH check
@@ -141,7 +162,10 @@ export function registerPodProxy(deviceAgent, {
       if (wire.subject !== caller)                   return forbiddenReply();
 
       // (c) AUTHORITATIVE scope-check — derived from the ACTUAL (method, url),
-      //     never from a host claim. R3.0: GET/HEAD → read.
+      //     never from a host claim. R3.1: GET/HEAD→read, PUT/POST/PATCH→write,
+      //     DELETE→delete. An out-of-scope or wrong-ACTION token (e.g. a
+      //     `pod.read:` token attempting PUT/DELETE) DENIES here, before any
+      //     fetch — the host cannot escalate read→write by lying about method.
       const op = METHOD_TO_OP[method];
       if (!op) return forbiddenReply();
       const rel = relPathFor(url, wire.pod);
