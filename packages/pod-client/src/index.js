@@ -20,6 +20,7 @@ export {
   NotFoundError,
   ConflictError,
   NetworkError,
+  DeviceUnreachableError,
   PolicyError,
   MalformedResourceError,
   EncryptionError,

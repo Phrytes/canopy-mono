@@ -57,7 +57,7 @@ import { Agent, AgentIdentity, Parts, PodCapabilityToken,
 import { RelayTransport }              from '@canopy/transports';
 import { startRelay }                  from '@canopy/relay';
 import { VaultNodeFs }                 from '@canopy/vault';
-import { createPodTokenVerifier }      from '@canopy/pod-client';
+import { createPodTokenVerifier, PodClient, CapabilityAuth } from '@canopy/pod-client';
 
 import { homedir }                     from 'node:os';
 import { join }                        from 'node:path';
@@ -77,6 +77,13 @@ import { makeMemoryRegistryPod }       from './registryPod.js';
 import { buildDevMediaEdge }           from './mediaEdge.js';
 
 const IDENTITY_FILE = 'host-identity.json';
+
+/**
+ * R3.0 — bound the host→device `pod.proxyRequest` invoke so an OFFLINE device
+ * degrades to an EXPLICIT `device-unreachable` instead of hanging on the
+ * default 30 s task timeout (§R3 decision #3).
+ */
+const PROXY_INVOKE_TIMEOUT_MS = 8_000;
 
 /** XDG-style config dir for the host keypair (override with COMPANION_NODE_CONFIG_DIR). */
 export function resolveConfigDir(explicit) {
@@ -131,6 +138,17 @@ export function resolveConfigDir(explicit) {
  *                                         pod gate consults, so revoking the delegation denies live.
  * @param {() => number} [opts.podNow]     R2b.1 — injectable clock (unix-ms) for the pod gate's expiry check
  *                                         (tests force expiry without wall-clock waits). Default: Date.now.
+ * @param {boolean} [opts.podProxy=false]  R3.0 — the AGENT-PROXY pod path. When ON, a valid
+ *                                         `pod.acceptDelegation` swaps the pod source to a real
+ *                                         `PodClient({ auth: CapabilityAuth{ mode:'agent-proxy' } })`
+ *                                         instead of R2b.1's in-process `ScopedPodClient`: every pod
+ *                                         `fetch` is proxied back to the DELEGATING DEVICE (captured
+ *                                         from `ctx.from`), which holds the pod's OIDC session and is
+ *                                         the AUTHORITATIVE scope check — so NO pod secret reaches this
+ *                                         host. `podRoot` = the token's `pod`; the container browsed =
+ *                                         `opts.podContainer` (or `opts.podSource.containerUri`).
+ * @param {string}  [opts.podContainer]   R3.0 — container URI the proxy `PodClient` browses
+ *                                         (default: `opts.podSource.containerUri`).
  * @param {object}  [opts.registryPseudoPod]  inject the registry pod — else in-memory (R1)
  * @param {string}  [opts.label='companion-folio']
  * @returns {Promise<{
@@ -163,6 +181,8 @@ export async function startCompanionNode(opts = {}) {
     podOwnerPubKey,
     podTokenRegistry,
     podNow,
+    podProxy   = false,
+    podContainer,
     registryPseudoPod,
     label      = 'companion-folio',
     gate       = true,
@@ -228,6 +248,34 @@ export async function startCompanionNode(opts = {}) {
     };
   }
 
+  // ── R3.0. AGENT-PROXY pod source — the network-adversary boundary ─────────
+  // Instead of holding a pod client (even a scoped one), the host runs a real
+  // `PodClient` whose ONLY pod credential is a proxying `fetch`: every request
+  // is shipped back to the DELEGATING DEVICE via `pod.proxyRequest`. The device
+  // holds the pod's OIDC session and is the authoritative scope check, so this
+  // host never touches the pod or its secrets — it only carries the signed
+  // capability token (a scoped grant, not a credential). `deviceAddr` is the
+  // device we captured at `pod.acceptDelegation` (`ctx.from`).
+  function buildProxyPodSource(token, deviceAddr) {
+    const container = podContainer ?? resolvedPodSource?.containerUri;
+    if (!container) {
+      throw new Error('companion-node: podProxy requires a container URI (opts.podContainer or opts.podSource.containerUri)');
+    }
+    const podRootForToken = token.pod ?? token.toJSON?.().pod ?? podRoot;
+    const auth = new CapabilityAuth({
+      mode:       'agent-proxy',
+      token,
+      deviceAddr,
+      // The proxying fetch calls this; it must resolve to the device handler's
+      // reply DATA. A bounded timeout turns an offline device into an explicit
+      // `device-unreachable` (thrown inside CapabilityAuth) rather than a hang.
+      invoke: async (addr, skill, payload) =>
+        Parts.data(await agent.invoke(addr, skill, payload, { timeout: PROXY_INVOKE_TIMEOUT_MS })),
+    });
+    const podClient = new PodClient({ podRoot: podRootForToken, auth });
+    return { podClient, containerUri: container };
+  }
+
   // Boot posture for the pod leg:
   //   (a) podToken injected (R2b.1 back-compat) → wrap NOW, gated from boot.
   //   (b) configured for delegation (podOwnerPubKey set) but NO token yet →
@@ -275,8 +323,13 @@ export async function startCompanionNode(opts = {}) {
   // pass. Rejection is OPAQUE (`{ok:false,error:'delegation rejected'}`) — it never
   // leaks WHICH check failed. On reject the pod source is untouched, so an
   // un-delegated (or wrongly-delegated) host keeps failing closed.
-  agent.register(ACCEPT_DELEGATION_OP, async ({ parts }) => {
+  agent.register(ACCEPT_DELEGATION_OP, async (ctx) => {
     try {
+      const { parts } = ctx;
+      // R3.0 — CAPTURE the delegating device's address (the proxy origin). R2b
+      // discarded this; agent-proxy needs it to `invoke` pod requests back to
+      // the exact device that delegated (its OIDC session is the pod secret).
+      const capturedFrom = ctx.originFrom ?? ctx.from;
       const raw = Parts.data(parts)?.token;
       if (!raw || typeof raw !== 'object') return { ok: false, error: 'delegation rejected' };
 
@@ -301,11 +354,23 @@ export async function startCompanionNode(opts = {}) {
         return { ok: false, error: 'delegation rejected' };
       }
 
-      // Install: rewrap the held pod source in a `ScopedPodClient` presenting the
-      // delivered token. Subsequent pod ops now present it and are scope/expiry/
-      // revocation-checked exactly as an injected token would be.
+      // Install. Two paths, opts-gated:
+      //   • R3.0 (podProxy ON): swap to a real `PodClient` whose fetch is
+      //     proxied back to the delegating DEVICE (`capturedFrom`). The device
+      //     is the authoritative scope check; this host holds NO pod secret.
+      //     We deliberately do NOT also wrap in the advisory `ScopedPodClient`
+      //     here so the DEVICE remains provably the sole scope authority in the
+      //     R3.0 fitness proof (a local pre-filter would mask device authority).
+      //     (Decision #4's advisory pre-filter is deferred to a later slice.)
+      //   • R2b (podProxy OFF): rewrap the held pod source in a `ScopedPodClient`
+      //     presenting the delivered token — the in-process delegation path.
       const token = PodCapabilityToken.fromJSON(raw);
-      store.setPodSource(wrapScopedPodSource(token));
+      if (podProxy) {
+        if (!capturedFrom) return { ok: false, error: 'delegation rejected' };
+        store.setPodSource(buildProxyPodSource(token, capturedFrom));
+      } else {
+        store.setPodSource(wrapScopedPodSource(token));
+      }
 
       return { ok: true, subject: token.subject, scopes: token.scopes, expiresAt: token.expiresAt };
     } catch {

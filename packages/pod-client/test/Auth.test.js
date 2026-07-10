@@ -64,13 +64,47 @@ describe('CapabilityAuth', () => {
     expect(parsed.sig).toBe(token.toJSON().sig);
   });
 
-  it('invalid mode "agent-proxy" throws AuthError with AUTH_MODE_NOT_SUPPORTED', async () => {
+  it('unknown mode throws AuthError with AUTH_MODE_NOT_SUPPORTED', async () => {
     const token = await makeValidToken(issuer, subject);
     let caught;
-    try { new CapabilityAuth({ token, mode: 'agent-proxy' }); }
+    try { new CapabilityAuth({ token, mode: 'no-such-mode' }); }
     catch (err) { caught = err; }
     expect(caught).toBeInstanceOf(AuthError);
     expect(caught.code).toBe('AUTH_MODE_NOT_SUPPORTED');
+  });
+
+  it('mode "agent-proxy" is supported and requires invoke + deviceAddr (R3.0)', async () => {
+    const token = await makeValidToken(issuer, subject);
+
+    // Missing invoke → INVALID_ARGUMENT (supported mode, incomplete wiring).
+    let caught;
+    try { new CapabilityAuth({ token, mode: 'agent-proxy', deviceAddr: 'dev' }); }
+    catch (err) { caught = err; }
+    expect(caught).toBeInstanceOf(AuthError);
+    expect(caught.code).toBe('INVALID_ARGUMENT');
+
+    // Missing deviceAddr → INVALID_ARGUMENT.
+    caught = undefined;
+    try { new CapabilityAuth({ token, mode: 'agent-proxy', invoke: async () => ({}) }); }
+    catch (err) { caught = err; }
+    expect(caught).toBeInstanceOf(AuthError);
+    expect(caught.code).toBe('INVALID_ARGUMENT');
+
+    // Fully wired → constructs, exposes a proxying getAuthenticatedFetch, and
+    // presents NO bearer header (getAuthHeaders throws).
+    const auth = new CapabilityAuth({
+      token, mode: 'agent-proxy', deviceAddr: 'dev', invoke: async () => ({}),
+    });
+    expect(auth.mode).toBe('agent-proxy');
+    expect(typeof auth.getAuthenticatedFetch).toBe('function');
+    expect(typeof auth.getAuthenticatedFetch()).toBe('function');
+    await expect(auth.getAuthHeaders('https://x/', 'GET')).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it('mode "pod-direct" exposes NO getAuthenticatedFetch (uses the header path)', async () => {
+    const token = await makeValidToken(issuer, subject);
+    const auth  = new CapabilityAuth({ token, mode: 'pod-direct' });
+    expect(auth.getAuthenticatedFetch).toBeUndefined();
   });
 
   it('missing mode throws AuthError with AUTH_MODE_NOT_SUPPORTED', async () => {

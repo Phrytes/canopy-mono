@@ -66,6 +66,20 @@ export class NetworkError extends PodClientError {
   }
 }
 
+/**
+ * agent-proxy (§R3): the delegating DEVICE that proxies pod requests could not
+ * be reached (offline / transport timeout / relay error).  Distinct from a
+ * generic `NetworkError` so callers can degrade EXPLICITLY — BYO-real-Solid pod
+ * data is only as available as the delegating device (§R3 decision #3), and a
+ * caller must be able to tell "the device is offline" apart from "the pod is
+ * down" or "a hang".  Code is the stable `'device-unreachable'` identity.
+ */
+export class DeviceUnreachableError extends PodClientError {
+  constructor(message, opts = {}) {
+    super(message, { code: 'device-unreachable', retryable: true, ...opts });
+  }
+}
+
 /** Server-side policy denied (e.g. quota exceeded, rate-limited). */
 export class PolicyError extends PodClientError {
   constructor(message, opts = {}) {
