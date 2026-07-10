@@ -31,7 +31,10 @@ export {
 // REAL adapters that satisfy the injected contracts (Objective S, second slice).
 // Kept behind subpath exports so this core entry stays browser-safe (the S3 +
 // Solid-verifier adapters use `node:crypto`):
-//   • bucket      → '@canopy/blob-gateway/adapters/s3'             createS3Bucket
-//   • verifyToken → '@canopy/blob-gateway/adapters/solid-verifier' createSolidVerifier / createJwksVerifier
-//   • acl         → '@canopy/blob-gateway/adapters/pod-acl'        createPodAcl
-//   • HTTP edge   → '@canopy/blob-gateway/http'                    createHttpGate
+//   • bucket      → '@canopy/blob-gateway/adapters/s3'                  createS3Bucket
+//   • verifyToken → '@canopy/blob-gateway/adapters/capability-verifier' createCapabilityVerifier / anyVerifier
+//                   (PRIMARY media-gate auth: canopy capability tokens)
+//   • verifyToken → '@canopy/blob-gateway/adapters/solid-verifier'      createSolidVerifier / createJwksVerifier
+//                   (additional verifier: Solid-OIDC — compose via anyVerifier)
+//   • acl         → '@canopy/blob-gateway/adapters/pod-acl'             createPodAcl
+//   • HTTP edge   → '@canopy/blob-gateway/http'                         createHttpGate

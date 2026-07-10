@@ -8,6 +8,7 @@
     ".": "./src/index.js",
     "./adapters/s3": "./src/adapters/s3Bucket.js",
     "./adapters/solid-verifier": "./src/adapters/solidVerifier.js",
+    "./adapters/capability-verifier": "./src/adapters/capabilityVerifier.js",
     "./adapters/pod-acl": "./src/adapters/podAcl.js",
     "./http": "./src/httpGate.js"
   },
@@ -16,6 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@canopy/core": "file:../core",
     "@canopy/oidc-session": "file:../oidc-session",
     "@canopy/pod-client": "file:../pod-client"
   },
