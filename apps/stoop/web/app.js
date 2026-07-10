@@ -704,18 +704,34 @@ export function renderEmbedTree(tree) {
  * Render the thumbnail strip for an item's source.attachments.
  * Each thumb carries data-{item-id, att-id, thumb} so the click
  * handler in renderItems can open the modal with the right ids.
+ *
+ * Media consolidation (2026-07-10): attachment entries are canonical
+ * `media` items (`@canopy/item-types` — `{type:'media', source:
+ * {type,ref}, mime, width, height}` + stoop's `thumbnail` extra).
+ * The renderer reads the canonical fields — `mime`/`width`/`height`
+ * are writer-asserted layout hints (reserve space, never truth) —
+ * and stays tolerant of legacy records (same keys, no `source`),
+ * so pre-consolidation items and old peers keep rendering.
  */
 export function renderAttachmentThumbs(item) {
   const atts = Array.isArray(item?.source?.attachments) ? item.source.attachments : [];
   if (atts.length === 0) return '';
-  const thumbs = atts.filter(a => a && typeof a.thumbnail === 'string').map(a => `
+  const thumbs = atts.filter(a => a && typeof a.thumbnail === 'string').map(a => {
+    // Canonical hints: reserve layout space when the writer asserted
+    // dimensions (media schema `width`/`height` — same keys legacy
+    // records used, so both shapes hit this path).
+    const dims = (Number.isFinite(a.width) && Number.isFinite(a.height)
+      && a.width > 0 && a.height > 0)
+      ? ` width="${a.width}" height="${a.height}"` : '';
+    return `
     <button type="button" class="attachment-thumb" tabindex="0"
             data-item-id="${escapeHtml(item.id)}"
             data-att-id="${escapeHtml(a.id)}"
             data-thumb="${escapeHtml(a.thumbnail)}"
             aria-label="${escapeHtml(t('post_form.open_picture', 'Open foto'))}">
-      <img src="${escapeHtml(a.thumbnail)}" alt="" loading="lazy">
-    </button>`).join('');
+      <img src="${escapeHtml(a.thumbnail)}" alt=""${dims} loading="lazy">
+    </button>`;
+  }).join('');
   if (!thumbs) return '';
   return `<div class="attachments">${thumbs}</div>`;
 }

@@ -1,5 +1,44 @@
 # Changelog — @canopy-app/stoop
 
+## [Unreleased] — attachments are canonical `media` items (2026-07-10)
+
+Media Phase 1 anti-drift tail: stoop's inline-bytes attachments now
+ride the canonical media noun instead of a bespoke shape.
+
+- `persistInboundAttachment` emits a schema-valid `@canopy/item-types`
+  **`media` item** (`type/id/createdAt/createdBy/source` + the
+  canonical `mime`/`width`/`height` hints). Stoop's extras
+  (`bytes`, unsealed `thumbnail`, LOCAL-ONLY cache `ref`) ride as
+  forward-additive fields — bytes stay at
+  `mem://stoop/items/<itemId>/attachments/<attId>.<ext>`, exactly
+  where they lived.
+- New wire-ref convention: `source = {type:'stoop-att',
+  ref:'stoop-att://<itemId>/<attId>'}` — install-independent (any
+  instance resolves it via the item's attachment list + the existing
+  `requestAttachment` round-trip); no local path / pod URL on the
+  wire. `attachmentWireRef`/`parseAttachmentWireRef` exported.
+- `toWireShape` is media-aware: canonical fields travel; the local
+  `ref` (+ `dataB64`) is still ALWAYS stripped. Legacy records (old
+  stored items; chat-p2p's receiver-built records) pass through in
+  the legacy shape — mixed-version peers keep working because the
+  render keys (`id`/`mime`/`bytes`/`width`/`height`/`thumbnail`)
+  are unchanged in both shapes.
+- **Leak fix:** `listBuurtPostsSince` (joiner catch-up) shipped raw
+  `source.attachments` INCLUDING the local `ref` — now routed
+  through `toBroadcastShape` (Phase 39 privacy invariant).
+- Web renderer reads the canonical media shape (writer-asserted
+  `width`/`height` as layout hints), tolerant of legacy records.
+- Honest scope: **shape consolidation only.** Stoop has no sealer on
+  its post path (no group/circle content key is composed anywhere in
+  the app), so the sealed-blob path (`@canopy/blob-gateway`
+  `uploadBlob` — refuses plaintext by design) is the follow-up once a
+  sealing seam exists; blob-gateway's manifest line then slots into
+  `source` unchanged.
+- Tests: `test/mediaAttachments.test.js` (10) validates against the
+  REAL item-types registry (the drift guard), round-trips the flow,
+  pins wire-shape compat + the leak fix + renderer equivalence.
+  Full suite 733 passed + 1 skipped.
+
 ## [Unreleased] — canopy-chat browser composition (2026-05-23)
 
 New export: `@canopy-app/stoop/browser` →
