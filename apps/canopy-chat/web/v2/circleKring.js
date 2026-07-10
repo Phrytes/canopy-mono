@@ -115,8 +115,10 @@ export function renderCircleKring(container, {
   //   `onAttachMedia(file)`  host runs the picked image through createMediaEmbed (sealed
   //     upload). Only wired when the circle HAS a content seal strategy — a p0/p1 circle
   //     never shows the affordance (sealed-only; no unsealed upload fallback).
-  //   `media`  `{opener}` — the circle's content OPENER, passed to the media-card chip so
-  //     the sealed inline thumbnail renders; absent → the chip's mime/dims placeholder.
+  //   `media`  `{opener, openFull?}` — the circle's content OPENER, passed to the media-card
+  //     chip so the sealed inline thumbnail renders; absent → the chip's mime/dims placeholder.
+  //     Optional `openFull` (the gateway's gated full-size read) adds the chip's "[View]"
+  //     full-image affordance; absent → thumbnail only, no View button.
   onAttachMedia = null,
   media = null,
   // D / Surface 2 — the circle policy the ⋯ overflow menu's feature gate reads.
@@ -479,7 +481,8 @@ function renderBubble(row, {
   onEmbedButton = null,
   // tap a "See also" embed chip → open the referenced item's screen.
   onEmbedOpen = null,
-  // media P1 — `{opener}` for the sealed media-card chip's inline thumbnail.
+  // media P1 — `{opener, openFull?}` for the sealed media-card chip (inline thumbnail +
+  // the optional gated full-image "[View]" affordance).
   media = null,
 } = {}) {
   const el = document.createElement('div');
@@ -530,7 +533,7 @@ function renderBubble(row, {
     try {
       el.appendChild(renderToDom(
         { kind: 'embed-card', embed: mediaEmbed, messageId: row.id, lifecycleState: 'live' },
-        { doc: document, media: media ?? {} },
+        { doc: document, media: media ?? {}, t: tr },
       ));
     } catch { /* placeholder-less failure — the text line stands */ }
   }

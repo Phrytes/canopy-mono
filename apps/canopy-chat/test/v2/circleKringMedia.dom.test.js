@@ -211,6 +211,57 @@ describe('the live path — pick → sealed upload → payload.media → chip �
     })).rejects.toThrow(/denied/);
   });
 
+  it('circleKring threads media.openFull to the chip → the "[View]" affordance appears + opens', async () => {
+    const comp = await createCircleMediaGateway({
+      circleId: CIRCLE.id, getSealStrategy: async () => groupStrategy(), localActor: ACTOR, bucket: makeDevMediaBucket(),
+    });
+    const embed = await createMediaEmbed({}, {
+      file: stubFile(), mediaGateway: comp.mediaGateway,
+      encodeImage: stubEncodeImage(), localActor: ACTOR, t,
+    });
+    const el = mount();
+    let opened = null;
+    renderCircleKring(el, {
+      circle: CIRCLE, rows: [mediaRow(embed)], t, onSend: () => {},
+      // The live wiring: the composition injects {opener, openFull}. openFull is the
+      // gateway's gated full-size read — stubbed here (composition is another workstream).
+      media: {
+        opener: comp.mediaGateway.opener,
+        openFull: (line) => { opened = line; return { bytes: fullBytes(), media: { mime: 'image/jpeg' } }; },
+      },
+    });
+    const chip = el.querySelector('.circle-kring__bubble .cc-media-card');
+    const view = chip.querySelector('.cc-media-view');
+    expect(view).not.toBeNull();
+    // `t: tr` threads through circleKring → the label is localised (identity t → the key).
+    expect(view.textContent).toBe('circle.media.view.label');
+
+    view.click();
+    await Promise.resolve(); await Promise.resolve();
+    expect(opened).toEqual(embed.snapshot.source);
+    expect(document.querySelector('.cc-media-lightbox img.cc-media-lightbox__img')).not.toBeNull();
+    // Clean up the appended overlay for the next test.
+    document.querySelector('.cc-media-lightbox')?.remove();
+  });
+
+  it('no openFull → the chip has NO View control (thumbnail-only degradation)', async () => {
+    const comp = await createCircleMediaGateway({
+      circleId: CIRCLE.id, getSealStrategy: async () => groupStrategy(), localActor: ACTOR, bucket: makeDevMediaBucket(),
+    });
+    const embed = await createMediaEmbed({}, {
+      file: stubFile(), mediaGateway: comp.mediaGateway,
+      encodeImage: stubEncodeImage(), localActor: ACTOR, t,
+    });
+    const el = mount();
+    renderCircleKring(el, {
+      circle: CIRCLE, rows: [mediaRow(embed)], t, onSend: () => {},
+      media: { opener: comp.mediaGateway.opener },   // opener but NO openFull
+    });
+    const chip = el.querySelector('.circle-kring__bubble .cc-media-card');
+    expect(chip.querySelector('img.cc-media-thumb')).not.toBeNull();   // thumbnail still renders
+    expect(chip.querySelector('.cc-media-view')).toBeNull();           // but no View affordance
+  });
+
   it('without an opener in ctx the chip degrades to the mime placeholder (no crash)', async () => {
     const comp = await createCircleMediaGateway({
       circleId: CIRCLE.id, getSealStrategy: async () => groupStrategy(), localActor: ACTOR, bucket: makeDevMediaBucket(),

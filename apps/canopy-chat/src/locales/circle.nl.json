@@ -3082,6 +3082,20 @@
     "outgoing": {
       "text": "📷 {{name}}",
       "doc": "media P1 — tekstregel van een uitgaand media-bericht (de fan-out draagt nu alleen tekst; de lokale bubbel toont ook de verzegelde chip)."
+    },
+    "view": {
+      "label": {
+        "text": "Bekijken",
+        "doc": "media P1 — de volledige-afbeelding-knop op de media-chip; alleen zichtbaar als de render-context een openFull-lezer draagt (de beveiligde volledige lees-actie van de kring)."
+      },
+      "loading": {
+        "text": "Laden…",
+        "doc": "media P1 — volledige-afbeelding-overlay, terwijl de beveiligde lees-actie loopt."
+      },
+      "error": {
+        "text": "Kan deze afbeelding niet openen.",
+        "doc": "media P1 — volledige-afbeelding-overlay, rustige melding wanneer de beveiligde lees-actie geweigerd wordt of mislukt (nooit een gebroken afbeelding)."
+      }
     }
   }
 }
