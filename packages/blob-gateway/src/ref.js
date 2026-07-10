@@ -7,7 +7,7 @@
 //
 //   { type: 'blob',
 //     ref:  'blob://<bucketKey>',
-//     enc:  { sealed: true, keyRef, format, bytes } }
+//     enc:  { sealed: true, keyRef, format, bytes, mime?, width?, height?, thumb? } }
 //
 // `enc` is the sealing metadata needed to decrypt:
 //   • sealed  — always true here; the bucket object is a sealing envelope (isSealed === true).
@@ -17,18 +17,30 @@
 //               keyRef only tells the reader WHICH opener to build. No plaintext key on the pod.
 //   • format  — the sealing envelope family (the `fp1` sentinel from the sealing module).
 //   • bytes   — ciphertext length (bookkeeping only).
+//
+// Media enrichment (OPTIONAL, additive — a chat chip can render without fetching the blob):
+//   • mime           — the blob's media type (e.g. 'image/jpeg').
+//   • width / height — pixel dimensions, so a chip can reserve layout space.
+//   • thumb          — a small INLINE thumbnail as a SEALED envelope string (sealed with the
+//                      same injected sealer as the blob — sealed-only applies to thumbnails
+//                      too; they are content). Opened via `openThumbnail`, no gate/fetch.
+// Absent fields stay ABSENT (never null-filled): a line built without media opts is
+// byte-identical to the pre-enrichment shape, and old lines keep parsing unchanged.
 
 export const BLOB_SCHEME = 'blob://';
 export const BLOB_TYPE = 'blob';
 
-/** Build the `embeds`-style manifest line for a stored, sealed blob. */
-export function makeManifestLine({ key, keyRef, bytes, format = 'fp1' }) {
+/** Build the `embeds`-style manifest line for a stored, sealed blob. Media fields
+ *  (`mime`, `width`, `height`, `thumb`) are optional and only added when present, so
+ *  a media-less line stays byte-identical to the pre-enrichment shape. */
+export function makeManifestLine({ key, keyRef, bytes, format = 'fp1', mime, width, height, thumb }) {
   if (!key) throw new Error('makeManifestLine: bucket key required');
-  return {
-    type: BLOB_TYPE,
-    ref: BLOB_SCHEME + key,
-    enc: { sealed: true, keyRef: keyRef ?? null, format, bytes: bytes ?? null },
-  };
+  const enc = { sealed: true, keyRef: keyRef ?? null, format, bytes: bytes ?? null };
+  if (mime != null) enc.mime = mime;
+  if (width != null) enc.width = width;
+  if (height != null) enc.height = height;
+  if (thumb != null) enc.thumb = thumb;
+  return { type: BLOB_TYPE, ref: BLOB_SCHEME + key, enc };
 }
 
 /** True if a ref string is a blob-gateway ref. */

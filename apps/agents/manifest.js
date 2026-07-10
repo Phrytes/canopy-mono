@@ -278,6 +278,48 @@ export const agentsManifest = {
         argsFromContext: { agentId: '$agentId' },
       },
     },
+
+    /* ── P3 RECOVERY views — "restore corrupted / lost data" by screen ──
+     * Same op (`listDataVersions`) drives BOTH sections; the `uri`
+     * context arg switches the mode (see the op's param comments).
+     * `restoreDataVersion` surfaces on each row via its `surfaces.ui`
+     * button + `appliesTo: {type: 'data-version'}` (danger confirm
+     * already declared on the op — renderWeb projects it as an
+     * itemAction with `confirm.severity: 'danger'`).
+     */
+    // LIST — the circle's version SERIES roster: every resource with
+    // retained history (rows: uri · latestMs · count; the core also
+    // exposes them as `items` with id/label ← uri for the list
+    // renderer).  `$circleId` is the same runtime context arg the
+    // tasks-v0 `pod-settings` view uses (Q15 — host supplies the
+    // active circle).
+    {
+      id:         'data-versions',
+      title:      'Data versions',
+      type:       'data-version',
+      labelField: 'uri',
+      dataSource: {
+        skillId:         'listDataVersions',
+        argsFromContext: { circleId: '$circleId' },
+      },
+    },
+    // DETAIL — ONE resource's versions newest-first (the restore
+    // pick-list; rows: ts · id · sha256 · size · writer, exposed as
+    // `items` with label ← ISO(ts) · id).  `$uri` is a NEW runtime
+    // context arg: the host materializer supplies it from the row the
+    // user picked in `data-versions` (same Q15 mechanism as
+    // `$agentId` on agent-detail).  Stays a LIST (not shape:'record')
+    // — the drilldown is itself a pick-list of versions.
+    {
+      id:         'data-version-detail',
+      title:      'Version history',
+      type:       'data-version',
+      labelField: 'label',
+      dataSource: {
+        skillId:         'listDataVersions',
+        argsFromContext: { circleId: '$circleId', uri: '$uri' },
+      },
+    },
   ],
 };
 

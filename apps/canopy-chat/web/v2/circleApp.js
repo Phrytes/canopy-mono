@@ -52,8 +52,16 @@ import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
+// Q27 — the shared confirm gate at the dispatch waist (web presenter: confirmDialog.js).
+import { runConfirmGate } from '../../src/v2/confirmGate.js';
+import { renderConfirmDialog } from './confirmDialog.js';
 import { makeCircleLookup } from '../../src/v2/circleLookup.js';
 import { sectionForScreen } from '../../src/v2/pageProjection.js';
+// Q15 drill-down — selection-context detail screens (agents → agent-detail,
+// data-versions → data-version-detail): the shared mapping + fetch seam.
+import {
+  drilldownForSection, selectionContextFor, fetchScreenItems, itemsFromReply, recordFromReply,
+} from '../../src/v2/screenDrilldown.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@canopy/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
@@ -67,6 +75,8 @@ import { buildCapabilityMatrix } from '@canopy/app-manifest';
 import { pageForOp } from '../../src/v2/pageProjection.js';
 // B · Slice 3 — the interactive list-screen surface (search + category checkboxes + capability-gated rows).
 import { renderListBlock } from './listScreen.js';
+// Q17 — record-shaped detail screens (read-only key→value, e.g. agent-detail).
+import { renderRecordScreen } from './recordScreen.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
@@ -1359,66 +1369,99 @@ function buildCircleBot(agent) {
       _kringRender?.botBubble(t('circle.bot.needsInfo'));
       return;
     }
-    if (route.kind !== 'ready')     { _kringRender?.botBubble(t('circle.bot.unknown')); return; }
-    // B · Slice 1 — DEFAULT-DENY capability gate. Every user-initiated dispatch (slash/LLM/gate/
-    // button/follow-up) converges here; internal plumbing calls rawCallSkill directly and is untouched.
-    // This closes the leak where the SCREEN button was app-gated (isOpAppEnabledForActiveCircle) but the
-    // dispatch itself was not — an op could still run when invoked directly.
-    const denyCode = await circleCapabilityDeny(route.appOrigin, route.opId, route.args);
-    if (denyCode) {
-      _kringRender?.botBubble(t(denyCode === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied'));
+    // Q27 confirm gate — an op declaring surfaces.ui.confirm (warn/danger) NEVER executes without an
+    // explicit accept. Sits at the dispatch waist, so the row-button path and the chat/slash path are
+    // gated uniformly (shared runConfirmGate; the dialog is only the web presenter). Cancel = quiet notice.
+    if (route.kind === 'needsConfirm') {
+      await runConfirmGate({
+        route, catalog, t,
+        present: openCircleConfirmDialog,
+        onCancelNotice: () => _kringRender?.botBubble(t('circle.confirm.cancelled')),
+        execute: executeResolved,
+      });
       return;
     }
-    let reply;
-    try { reply = await runDispatch(scopeReadyDispatch(route, getActiveCircle()), rawCallSkill); }
-    catch (e) { _kringRender?.botBubble(t('circle.bot.failed', { msg: e?.message ?? String(e) })); return; }
-    // The op's verb drives Added:/Completed: phrasing (a bare "✓ X" was identical for add + complete).
-    const entry = catalog?.opsById?.get(route.opId);
-    const verb = entry?.op?.verb;
-    // S6.A — manifest-driven inline buttons for the item(s) this reply carries
-    // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
-    // B · Slice 4 (4c) — grey/hide inline affordances per the member's effective capability + consequence.
-    let capMatrix = [];
-    try {
-      const cid = getActiveCircle();
-      if (cid) {
-        const pol = (await policyStore.get(cid)) ?? {};
-        const ovr = (await overrideStore.get(cid)) ?? {};
-        capMatrix = buildCapabilityMatrix(baseSources, {
-          enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
-          template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
-        });
+    if (route.kind !== 'ready')     { _kringRender?.botBubble(t('circle.bot.unknown')); return; }
+    await executeResolved(route);
+
+    // The execute tail every accepted route runs (direct 'ready' or confirmed 'needsConfirm' → 'ready').
+    async function executeResolved(route) {
+      // B · Slice 1 — DEFAULT-DENY capability gate. Every user-initiated dispatch (slash/LLM/gate/
+      // button/follow-up) converges here; internal plumbing calls rawCallSkill directly and is untouched.
+      // This closes the leak where the SCREEN button was app-gated (isOpAppEnabledForActiveCircle) but the
+      // dispatch itself was not — an op could still run when invoked directly.
+      const denyCode = await circleCapabilityDeny(route.appOrigin, route.opId, route.args);
+      if (denyCode) {
+        _kringRender?.botBubble(t(denyCode === 'app-disabled' ? 'circle.gate.appDisabled' : 'circle.gate.capabilityDenied'));
+        return;
       }
-    } catch { /* best-effort — no greying on error */ }
-    const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
-    // S6.B — if the dispatched op declares a screen surface (surfaces.ui.screen),
-    // prepend an "Open …" button that opens a panel instead of dispatching.
-    const screen = entry?.op?.surfaces?.ui?.screen;
-    const screenButton = screen
-      ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
-      : [];
-    // S6.C (per-circle) — gate the dedicated SCREEN surface by the circle's
-    // policy.features (the existing tab gate, now also covering the chat "open a
-    // screen" affordance): a circle with tasks/calendar OFF offers no task/agenda
-    // panel. Inline action buttons stay — they're a contextual response to an op
-    // the user explicitly invoked. Core apps (stoop/household) are ungated.
-    const appEnabled = await isOpAppEnabledForActiveCircle(entry?.appOrigin);
-    const gatedScreen = appEnabled ? screenButton : [];
-    // S6.C (per-user) — the user's preference picks the projection (inline / screen / minimal).
-    const buttons = selectSurfaceButtons({ inlineButtons, screenButton: gatedScreen, pref: circleSurfacePref.get() });
-    // Scope: a mutating op's reply reaches the whole kring (the action is shared); a
-    // read/info reply or an error is private to you. (messageScope.js)
-    const scope = scopeForReply({ verb, error: !!reply?.error });
-    // embeds[] — the bot reply REFERENCES the item it just acted on (the created
-    // task / event), so the bubble shows a "See also" chip linking to it. Title
-    // is taken from the reply → no resolution needed.
-    const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
-    _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope, embeds });
-    // Remember the most-recent listing so a bulk "/done all" can fan out over it (classic thread.lastListing).
-    if (Array.isArray(reply?.payload?.items)) _lastKringListing = { appOrigin: entry?.appOrigin, items: reply.payload.items };
-    // Classic parity (P6.6/P6.7): after a /find reply, enrich with in-circle skill matches + an optional hop
-    // prompt. Best-effort — never let it break the dispatch.
-    try { await appendFindExtras(reply); } catch { /* enrichment is non-essential */ }
+      let reply;
+      try { reply = await runDispatch(scopeReadyDispatch(route, getActiveCircle()), rawCallSkill); }
+      catch (e) { _kringRender?.botBubble(t('circle.bot.failed', { msg: e?.message ?? String(e) })); return; }
+      // The op's verb drives Added:/Completed: phrasing (a bare "✓ X" was identical for add + complete).
+      const entry = catalog?.opsById?.get(route.opId);
+      const verb = entry?.op?.verb;
+      // S6.A — manifest-driven inline buttons for the item(s) this reply carries
+      // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
+      // B · Slice 4 (4c) — grey/hide inline affordances per the member's effective capability + consequence.
+      let capMatrix = [];
+      try {
+        const cid = getActiveCircle();
+        if (cid) {
+          const pol = (await policyStore.get(cid)) ?? {};
+          const ovr = (await overrideStore.get(cid)) ?? {};
+          capMatrix = buildCapabilityMatrix(baseSources, {
+            enabledApps: Array.isArray(pol.apps) && pol.apps.length ? pol.apps : null,
+            template: pol.capabilities || {}, optOuts: ovr.capabilityOptOuts || [],
+          });
+        }
+      } catch { /* best-effort — no greying on error */ }
+      const inlineButtons = embedButtonsForReply({ reply, appOrigin: entry?.appOrigin, manifestsByOrigin, capabilityMatrix: capMatrix });
+      // S6.B — if the dispatched op declares a screen surface (surfaces.ui.screen),
+      // prepend an "Open …" button that opens a panel instead of dispatching.
+      const screen = entry?.op?.surfaces?.ui?.screen;
+      const screenButton = screen
+        ? [{ id: `screen:${screen}`, screen, label: t(`circle.screen.open.${screen}`, { defaultValue: t('circle.screen.open_generic') }) }]
+        : [];
+      // S6.C (per-circle) — gate the dedicated SCREEN surface by the circle's
+      // policy.features (the existing tab gate, now also covering the chat "open a
+      // screen" affordance): a circle with tasks/calendar OFF offers no task/agenda
+      // panel. Inline action buttons stay — they're a contextual response to an op
+      // the user explicitly invoked. Core apps (stoop/household) are ungated.
+      const appEnabled = await isOpAppEnabledForActiveCircle(entry?.appOrigin);
+      const gatedScreen = appEnabled ? screenButton : [];
+      // S6.C (per-user) — the user's preference picks the projection (inline / screen / minimal).
+      const buttons = selectSurfaceButtons({ inlineButtons, screenButton: gatedScreen, pref: circleSurfacePref.get() });
+      // Scope: a mutating op's reply reaches the whole kring (the action is shared); a
+      // read/info reply or an error is private to you. (messageScope.js)
+      const scope = scopeForReply({ verb, error: !!reply?.error });
+      // embeds[] — the bot reply REFERENCES the item it just acted on (the created
+      // task / event), so the bubble shows a "See also" chip linking to it. Title
+      // is taken from the reply → no resolution needed.
+      const embeds = embedsFromReply(reply, { appOrigin: entry?.appOrigin });
+      _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope, embeds });
+      // Remember the most-recent listing so a bulk "/done all" can fan out over it (classic thread.lastListing).
+      if (Array.isArray(reply?.payload?.items)) _lastKringListing = { appOrigin: entry?.appOrigin, items: reply.payload.items };
+      // Classic parity (P6.6/P6.7): after a /find reply, enrich with in-circle skill matches + an optional hop
+      // prompt. Best-effort — never let it break the dispatch.
+      try { await appendFindExtras(reply); } catch { /* enrichment is non-essential */ }
+    }
+  }
+
+  // Q27 — promise-wrap the web confirm presenter: mount the dialog, resolve once on
+  // accept(true)/cancel(false), then remove the overlay (catchUpChooserModal pattern).
+  function openCircleConfirmDialog(request) {
+    return new Promise((resolve) => {
+      const container = document.createElement('div');
+      document.body.appendChild(container);
+      renderConfirmDialog(container, {
+        request,
+        onResolve: (accepted) => {
+          try { container.remove(); } catch { /* already gone */ }
+          resolve(accepted);
+        },
+      });
+    });
   }
 
   // After /find returns, append (1) in-circle SKILL MATCHES for the query, and (2) a HOP PROMPT when the
@@ -2878,8 +2921,13 @@ function openListsPanel(circleId) {
 // S6.B — open a dedicated screen (tasks / agenda) as a dismissable panel, the
 // chat-triggered "overview" projection. Reuses the Schermen block materializer +
 // renderer (one block, scope:'all'), scoped to the active circle.
-async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
+async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
   const circleId = getActiveCircle();
+  // Q15 — the panel's FETCH CONTEXT: the host materializes `$circleId` (the
+  // active circle — the same key the tasks-v0 host supplies its pod-settings
+  // page) plus any SELECTION context a drill-down row-pick passed in
+  // (screenDrilldown: `$uri` / `$agentId` ← the picked row).
+  const screenContext = { circleId, ...(context && typeof context === 'object' ? context : {}) };
   const overlay = document.createElement('div');
   overlay.className = 'cc-screen-panel';
   const card = document.createElement('div');
@@ -2917,8 +2965,21 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
     // consumer defaults to `[labelField]` (label-only search, as before).
     const searchFields = section.searchFields;
     try {
-      const res = await rawCallSkill(appOrigin, section.dataSource.skillId, section.dataSource.args ?? {});
-      const items = Array.isArray(res?.items) ? res.items : Array.isArray(res?.payload?.items) ? res.payload.items : Array.isArray(res) ? res : [];
+      // Q15 — fetch through the shared seam: static `dataSource.args` merged
+      // with `argsFromContext` `$keys` substituted from the panel's context
+      // (`$circleId` host-materialized; `$uri`/`$agentId` selection-derived).
+      const res = await fetchScreenItems(section, {
+        callSkill: (skillId, args) => rawCallSkill(appOrigin, skillId, args),
+        context: screenContext,
+      });
+      // Q17 — a record-shaped DETAIL (e.g. agent-detail) renders as a
+      // read-only key→value record, not a list.
+      if (section.shape === 'record') {
+        body.innerHTML = '';
+        renderRecordScreen(body, { record: recordFromReply(res), t });
+        return;
+      }
+      const items = itemsFromReply(res);
       let capabilityMatrix = [];
       try {
         const pol = (await policyStore.get(circleId)) ?? {};
@@ -2929,10 +2990,17 @@ async function openCircleScreenPanel(screenId, { highlightRef } = {}) {
         });
       } catch { /* best-effort */ }
       body.innerHTML = '';
+      // Q15 drill-down — when a sibling DETAIL view needs a selection-derived
+      // context key (screenDrilldown), picking a row opens it with that key
+      // materialized from the picked row (`$uri` / `$agentId` ← row).
+      const drill = drilldownForSection(circleManifestsByOrigin, screenId, { hostKeys: Object.keys(screenContext) });
       renderListBlock(body, {
         block: { items, categoryField, labelField, searchFields, defaultAudience: section.audience, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
+        onRowOpen: drill
+          ? ({ item }) => { openCircleScreenPanel(drill.screenId, { context: selectionContextFor(drill, item, screenContext) }); }
+          : undefined,
       });
     } catch { body.textContent = t('circle.screen.empty'); }
     return;

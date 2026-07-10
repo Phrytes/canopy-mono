@@ -1154,6 +1154,30 @@ header .lang-toggle { margin: 0.4rem 0 0; font-size: 0.8rem; color: var(--fg-mut
   margin-top: 0.15rem;
 }
 
+/* media P1 — sealed media chip (media-card embed variant) */
+.cc-media-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.3rem 0;
+}
+.cc-media-thumb {
+  max-width: 240px;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+}
+.cc-media-placeholder {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.cc-media-icon { font-size: 1.8rem; line-height: 1; }
+.cc-media-details { font-size: 0.8rem; color: var(--fg-mute); }
+.cc-media-caption { font-size: 0.85rem; word-break: break-word; }
+
 /* follow-up buttons (v0.4) */
 .cc-followups {
   margin-top: 0.4rem;

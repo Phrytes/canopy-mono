@@ -33,6 +33,16 @@ function storeForCircle(store, circleId) {
  * that has history (`listSeries`: uri · latestMs · count). With `uri`:
  * that resource's versions, newest-first (ts · id · sha256 · size ·
  * writer) — the pick-list for a restore.
+ *
+ * VIEW-PIPELINE ADDITIVE KEY (P3 UI slice): both list modes ALSO expose
+ * the rows as `items: [{id, label, …row}]` — the shape the chat-shell
+ * list renderer reads for `shape:'list'` sections (see canopy-chat
+ * `realAgent.js` "the chat-shell renderer expects {items:[{id,label,…}]}"
+ * + `screenModel.js` `buildScreenModel({items})`).  The domain keys
+ * (`series` / `versions`) stay authoritative and unchanged — `items` is
+ * a projection of the same rows, never a replacement.
+ *   • series mode:   id ← uri,        label ← uri (row = the resource)
+ *   • versions mode: id ← version id, label ← ISO(ts) · id (the pick-list)
  */
 export async function listDataVersions(store, args = {}) {
   const versions = storeForCircle(store, args?.circleId);
@@ -40,9 +50,25 @@ export async function listDataVersions(store, args = {}) {
     return { ok: false, error: 'no-version-store', circleId: args?.circleId ?? null };
   }
   if (typeof args?.uri === 'string' && args.uri.length > 0) {
-    return { ok: true, circleId: args.circleId, uri: args.uri, versions: await versions.list(args.uri) };
+    const rows = await versions.list(args.uri);
+    return {
+      ok:       true,
+      circleId: args.circleId,
+      uri:      args.uri,
+      versions: rows,
+      items:    rows.map((v) => ({
+        ...v,
+        label: `${new Date(v.ts).toISOString()} · ${v.id}`,
+      })),
+    };
   }
-  return { ok: true, circleId: args.circleId, series: await versions.listSeries() };
+  const series = await versions.listSeries();
+  return {
+    ok:       true,
+    circleId: args.circleId,
+    series,
+    items:    series.map((s) => ({ ...s, id: s.uri, label: s.uri })),
+  };
 }
 
 /**

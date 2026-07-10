@@ -10,8 +10,16 @@
 
 import { buildScreenModel } from '../../src/v2/screenModel.js';
 
-/** Render just the rows list (label + capability-gated action buttons); re-callable for partial updates. */
-export function renderListRows(listEl, { rows = [], t, onRowAction } = {}) {
+/**
+ * Render just the rows list (label + capability-gated action buttons); re-callable for partial updates.
+ *
+ * Q15 drill-down — when `onRowOpen` is provided the row LABEL renders as a
+ * button: picking a row fires `onRowOpen({item, itemId})` (the host opens the
+ * sibling DETAIL screen with the selection context — see shared
+ * src/v2/screenDrilldown.js).  Without `onRowOpen` the label stays a plain
+ * span (unchanged).
+ */
+export function renderListRows(listEl, { rows = [], t, onRowAction, onRowOpen } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   listEl.innerHTML = '';
   if (!rows.length) {
@@ -26,8 +34,16 @@ export function renderListRows(listEl, { rows = [], t, onRowAction } = {}) {
     li.className = 'list-screen__row';
     li.dataset.itemId = row.item?.id ?? '';
 
-    const labelEl = document.createElement('span');
-    labelEl.className = 'list-screen__row-label';
+    let labelEl;
+    if (typeof onRowOpen === 'function') {
+      labelEl = document.createElement('button');
+      labelEl.type = 'button';
+      labelEl.className = 'list-screen__row-label list-screen__row-open';
+      labelEl.addEventListener('click', () => onRowOpen({ item: row.item, itemId: row.item?.id }));
+    } else {
+      labelEl = document.createElement('span');
+      labelEl.className = 'list-screen__row-label';
+    }
     labelEl.textContent = row.label;
     li.appendChild(labelEl);
 
@@ -98,7 +114,7 @@ function categoryBar(container, { categories, onToggle }) {
 
 /** Controlled full render over a prebuilt model (used for tests + one-shot renders). */
 export function renderListScreen(container, {
-  model, t, title, query = '', onQuery, onToggleCategory, onRowAction,
+  model, t, title, query = '', onQuery, onToggleCategory, onRowAction, onRowOpen,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
@@ -114,7 +130,7 @@ export function renderListScreen(container, {
   categoryBar(container, { categories: Array.isArray(model?.categories) ? model.categories : [], onToggle: onToggleCategory });
   const listEl = document.createElement('ul');
   listEl.className = 'list-screen__rows';
-  renderListRows(listEl, { rows: Array.isArray(model?.rows) ? model.rows : [], t: tr, onRowAction });
+  renderListRows(listEl, { rows: Array.isArray(model?.rows) ? model.rows : [], t: tr, onRowAction, onRowOpen });
   container.appendChild(listEl);
   return container;
 }
@@ -125,7 +141,7 @@ export function renderListScreen(container, {
  *
  * @param {object} block  { items, categoryField?, labelField?, searchFields?, manifestsByOrigin?, appOrigin?, title? }
  */
-export function renderListBlock(container, { block = {}, t, onRowAction, capabilityMatrix = [] } = {}) {
+export function renderListBlock(container, { block = {}, t, onRowAction, onRowOpen, capabilityMatrix = [] } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
   container.classList.add('list-screen');
@@ -153,7 +169,7 @@ export function renderListBlock(container, { block = {}, t, onRowAction, capabil
   rowsEl.className = 'list-screen__rows';
   const renderRows = () => {
     const model = buildScreenModel({ ...shared, query, activeCategories });
-    renderListRows(rowsEl, { rows: model.rows, t: tr, onRowAction });
+    renderListRows(rowsEl, { rows: model.rows, t: tr, onRowAction, onRowOpen });
   };
 
   searchBox(container, { tr, query, onQuery: (q) => { query = q; renderRows(); } });

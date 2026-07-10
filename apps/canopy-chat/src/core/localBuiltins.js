@@ -21,6 +21,8 @@ import { describeFilter }    from '../filter.js';
 import { buildEmbed }        from '../embed.js';
 import { openExternalFlow }  from '../externalFlow.js';
 import { compareForCuration } from '../v2/curation.js';   // P3 — `compare` op handler
+// Media Phase 1 (2026-07) — sealed media path for picked images (chat → blob-gateway).
+import { createMediaEmbed, hasMediaGateway, isImageMime } from './handlers/mediaEmbed.js';
 
 // Bundle F P5 (#261) — lazy chrono import for createTimeEmbed's
 // natural-language fallback.  Lazy because the parseDate module
@@ -65,6 +67,9 @@ export function createLocalBuiltins({
   connectPeer,               // v0.7.P3b — () => Promise<{address}>
   lookupPeerAddrByWebid,      // v0.7.P3d — (webid) => Promise<string|null>
   publishPeerAddrToPod,       // v0.7.P3d — () => Promise<{ok, url, status}>
+  mediaGateway,               // media P1 — { bucket, sealer, opener?, keyRef? } (blob-gateway seams; injected by composition)
+  encodeImage,                // media P1 — web canvas encoder (attachmentEncoder.encodeImageFile); optional
+  storeMediaItem,             // media P1 — item-store seam for the `media` item; optional (absent ⇒ item rides on the embed)
 }) {
   return {
     help: async () => formatHelp(catalog, t),
@@ -74,7 +79,10 @@ export function createLocalBuiltins({
     // Same outcome as the [DM] row button (which intercepts in main.js).
     startDm:   async (args) => createDmThread(args, { threadStore, setActive, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
-    'embed-file': async (args) => createFileEmbed(args, { localActor, t, simPeers, threadStore, callSkill, openFilePicker }),
+    'embed-file': async (args) => createFileEmbed(args, {
+      localActor, t, simPeers, threadStore, callSkill, openFilePicker,
+      mediaGateway, encodeImage, storeMediaItem,
+    }),
     'embed-time': async (args) => createTimeEmbed(args, { localActor, t, simPeers, threadStore, callSkill }),
     sendto:    async (args) => sendToPeer(args, {
       catalog, callSkill, t, localActor, simPeers, threadStore,
@@ -909,8 +917,15 @@ async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, t
  *   --name=X [...]     → synthesises (back-compat with v0.7.x)
  *
  * --share=<peer> routes to peer's thread.
+ *
+ * Media P1 (2026-07): in --pick mode a picked IMAGE upgrades to the
+ * sealed blob-gateway path (media-card + `{type:'media', ref}` pointer)
+ * when the composition injects `mediaGateway`; see handlers/mediaEmbed.js.
  */
-async function createFileEmbed(args, { localActor, t, simPeers, threadStore, callSkill, openFilePicker }) {
+async function createFileEmbed(args, {
+  localActor, t, simPeers, threadStore, callSkill, openFilePicker,
+  mediaGateway, encodeImage, storeMediaItem,
+}) {
   const path     = String(args?.path ?? '').trim();
   const name     = String(args?.name ?? '').trim();
   const share    = String(args?.share ?? '').trim();
@@ -924,6 +939,7 @@ async function createFileEmbed(args, { localActor, t, simPeers, threadStore, cal
     : (!path && !name);
 
   let snapshot = null;
+  let mediaEmbed = null;   // media P1 — set when a picked image takes the sealed blob-gateway path
 
   // Mode 1: --path → folio lookup via Q29.
   if (path && !pick) {
@@ -943,26 +959,40 @@ async function createFileEmbed(args, { localActor, t, simPeers, threadStore, cal
     try {
       const file = await openFilePicker();
       if (!file) return { ok: false, error: t('embed-file.pick_cancelled') };
-      // Read file as base64 (inline) so the embed can travel.  For
-      // larger files (> ~1MB) a real implementation would pod-upload
-      // first + embed a pod URI.  Defer the threshold to v0.7.14.
-      const dataB64 = await readFileAsBase64(file);
-      snapshot = {
-        id:    `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        type:  'file',
-        name:  file.name,
-        mime:  file.type || mimeFromExtension(file.name),
-        bytes: file.size,
-        dataB64,
-        local: true,
-      };
+      const mime = file.type || file.mime || mimeFromExtension(file.name);
+      // Media P1 UPGRADE (not a fork): a picked IMAGE takes the sealed
+      // blob-gateway path when the composition injected the gateway seams —
+      // sealed upload + canonical `media` item + `{type:'media', ref}`
+      // pointer (see handlers/mediaEmbed.js). Non-images, or a build
+      // without the seams, keep the legacy inline file-card below.
+      if (isImageMime(mime) && hasMediaGateway(mediaGateway)) {
+        const m = await createMediaEmbed(args, {
+          file, mediaGateway, encodeImage, storeMediaItem, localActor, t,
+        });
+        if (m?.ok === false) return m;
+        mediaEmbed = m;
+      } else {
+        // Read file as base64 (inline) so the embed can travel.  For
+        // larger files (> ~1MB) a real implementation would pod-upload
+        // first + embed a pod URI.  Defer the threshold to v0.7.14.
+        const dataB64 = await readFileAsBase64(file);
+        snapshot = {
+          id:    `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          type:  'file',
+          name:  file.name,
+          mime,
+          bytes: file.size,
+          dataB64,
+          local: true,
+        };
+      }
     } catch (err) {
       return { ok: false, error: err?.message ?? String(err) };
     }
   }
 
   // Mode 3 / fallback: synthesise from --name.
-  if (!snapshot) {
+  if (!snapshot && !mediaEmbed) {
     if (!name && !path) return { ok: false, error: t('embed-file.no_input') };
     const finalName = name || (path.split('/').pop() ?? 'file');
     const mime = String(args?.mime ?? '').trim() || mimeFromExtension(finalName);
@@ -974,7 +1004,7 @@ async function createFileEmbed(args, { localActor, t, simPeers, threadStore, cal
     };
   }
 
-  const embed = {
+  const embed = mediaEmbed ?? {
     kind:      'file-card',
     appOrigin: 'folio',
     itemRef:   { app: 'folio', type: 'file', id: snapshot.id },
@@ -994,7 +1024,8 @@ async function createFileEmbed(args, { localActor, t, simPeers, threadStore, cal
       lifecycleState: 'live',
       embed,
     });
-    return { ok: true, message: t('sendto.sent', { peer: share, item: snapshot.name }) };
+    const itemLabel = mediaEmbed ? (embed.snapshot?.caption || embed.snapshot?.mime || 'media') : snapshot.name;
+    return { ok: true, message: t('sendto.sent', { peer: share, item: itemLabel }) };
   }
   return embed;
 }

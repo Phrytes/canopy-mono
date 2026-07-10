@@ -14,9 +14,17 @@
  * Phase v0.1 sub-slice 1.10 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
+// Media P1 (2026-07) — the media-card chip opens the manifest line's sealed
+// inline thumbnail client-side (no gate, no fetch — the thumb ships in the line).
+import { openThumbnail } from '@canopy/blob-gateway';
+
 /**
  * @typedef {object} DomAdapterContext
  * @property {Document} doc                  the DOM document (browser: document)
+ * @property {{opener?: (sealedText: string) => string}} [media]
+ *   Media P1 — the injected sealing OPENER for media-card thumbnails
+ *   (`makeOpener`/`makeGroupOpener`, or a circle seal strategy's `open`).
+ *   Absent → media-cards render the mime/dims placeholder instead.
  * @property {(opId: string, itemId: string) => void} [onButtonTap]
  *   Called when a list-item action button is tapped.  Receives the
  *   parsed callbackData (`<opId>:<itemId>`).  Optional; absent →
@@ -95,6 +103,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
       const variant = rendered.embed?.kind ?? 'item-card';
       if (variant === 'file-card') return renderFileCard(rendered, state, ctx);
       if (variant === 'time-card') return renderTimeCard(rendered, state, ctx);
+      if (variant === 'media-card') return renderMediaCard(rendered, state, ctx);   // media P1
       return renderEmbedCard(rendered, state, ctx);
     }
     default:           return renderUnknownShape(rendered, ctx);
@@ -898,6 +907,107 @@ function renderFileCard(rendered, state, ctx) {
 }
 
 /**
+ * Media P1 (2026-07) — media-card embed renderer (the sealed-media chip).
+ *
+ * The embed's snapshot is a canonical `media` item; `snapshot.source` is
+ * blob-gateway's manifest line. Chip = `openThumbnail(line, opener)` FIRST
+ * (the sealed inline thumbnail ships in the line — no gate, no fetch);
+ * fallback = a mime/dims placeholder. When the line's `enc` hints and the
+ * item's top-level hints disagree, `enc` WINS (decided: the enc fields were
+ * written at upload time, next to the bytes). Both are writer-asserted
+ * layout hints, not truth. The FULL image (openBlob behind the gate) is a
+ * later affordance — the chip already carries the line it will need.
+ */
+function renderMediaCard(rendered, state, ctx) {
+  const { doc } = ctx;
+  const embed = rendered.embed;
+  const snap  = embed?.snapshot ?? {};
+  const line  = (snap.source && typeof snap.source === 'object') ? snap.source : null;
+  const enc   = line?.enc ?? {};
+  const mime   = enc.mime   ?? snap.mime;
+  const width  = enc.width  ?? snap.width;
+  const height = enc.height ?? snap.height;
+
+  const wrap = doc.createElement('div');
+  wrap.className = `cc-message cc-shell cc-embed-card cc-media-card cc-${state}`;
+  if (rendered.messageId) wrap.dataset.messageId = rendered.messageId;
+
+  appendEmbedHeader(wrap, embed, ctx, doc);
+
+  const body = doc.createElement('div');
+  body.className = 'cc-media-card-body';
+
+  let thumbEl = null;
+  const opener = ctx.media?.opener;
+  if (line && typeof opener === 'function') {
+    try {
+      const bytes = openThumbnail({ ref: line, opener });
+      if (bytes && bytes.length > 0) {
+        thumbEl = mediaImageFromBytes(doc, bytes, { mime, width, height, alt: snap.caption });
+      }
+    } catch { thumbEl = null; /* wrong key / plaintext-refused thumb → placeholder */ }
+  }
+
+  if (thumbEl) {
+    body.appendChild(thumbEl);
+  } else {
+    const ph = doc.createElement('div');
+    ph.className = 'cc-media-placeholder';
+    const icon = doc.createElement('span');
+    icon.className = 'cc-media-icon';
+    icon.textContent = '🖼';
+    ph.appendChild(icon);
+    const details = [];
+    if (typeof mime === 'string') details.push(mime);
+    if (width != null && height != null) details.push(`${width}×${height}`);
+    const txt = doc.createElement('span');
+    txt.className = 'cc-media-details';
+    txt.textContent = details.join(' · ') || 'media';
+    ph.appendChild(txt);
+    body.appendChild(ph);
+  }
+
+  if (typeof snap.caption === 'string' && snap.caption !== '') {
+    const cap = doc.createElement('div');
+    cap.className = 'cc-media-caption';
+    cap.textContent = snap.caption;
+    body.appendChild(cap);
+  }
+
+  wrap.appendChild(body);
+  appendIssuerClaimerMeta(wrap, embed, doc);
+  appendManifestActions(wrap, embed, state, ctx, doc);
+  return wrap;
+}
+
+/** Thumbnail bytes → <img>. Object-URL when the runtime provides
+ *  `URL.createObjectURL`; data-URL fallback otherwise (DOM test envs).
+ *  Hint dims land as width/height ATTRS so layout is reserved pre-decode. */
+function mediaImageFromBytes(doc, bytes, { mime, width, height, alt } = {}) {
+  const img = doc.createElement('img');
+  img.className = 'cc-media-thumb';
+  img.alt = alt || mime || 'media';
+  if (width != null)  img.setAttribute('width', String(width));
+  if (height != null) img.setAttribute('height', String(height));
+  let src = null;
+  try {
+    if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function' && typeof Blob !== 'undefined') {
+      src = URL.createObjectURL(new Blob([bytes], mime ? { type: mime } : undefined));
+    }
+  } catch { src = null; }
+  if (!src) {
+    // btoa in chunks — a big spread would blow the arg limit.
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    src = `data:${mime || 'application/octet-stream'};base64,${btoa(bin)}`;
+  }
+  img.src = src;
+  return img;
+}
+
+/**
  * v0.5.5 — time-card embed renderer.
  */
 function renderTimeCard(rendered, state, ctx) {
@@ -1021,6 +1131,7 @@ function appendManifestActions(wrap, embed, state, ctx, doc) {
 function deriveTypeFromKind(kind) {
   if (kind === 'file-card') return 'file';
   if (kind === 'time-card') return 'calendar-event';
+  if (kind === 'media-card') return 'media';   // media P1 — canonical noun
   return undefined;
 }
 

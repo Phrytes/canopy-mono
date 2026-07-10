@@ -127,6 +127,32 @@
       "doc": "User dismissed the picker."
     }
   },
+  "media": {
+    "no_gateway": {
+      "text": "Versleutelde media-upload is niet aangesloten in deze build (geen blob-gateway-koppelingen).",
+      "doc": "Media P1 defensive — createMediaEmbed called without the injected mediaGateway {bucket, sealer}."
+    },
+    "no_picker": {
+      "text": "Bestandskiezer niet beschikbaar in deze build.",
+      "doc": "Media P1 defensive — createMediaEmbed called directly without openFilePicker."
+    },
+    "pick_cancelled": {
+      "text": "Bestandskiezer geannuleerd.",
+      "doc": "User dismissed the picker on the sealed media path."
+    },
+    "read_failed": {
+      "text": "Kon het gekozen bestand niet lezen: {{error}}",
+      "doc": "The File had no readable bytes (no dataB64, no arrayBuffer) or reading threw."
+    },
+    "upload_failed": {
+      "text": "Versleutelde upload mislukt: {{error}}",
+      "doc": "uploadBlob refused (plaintext sealer, oversized thumbnail) or the bucket errored."
+    },
+    "invalid_item": {
+      "text": "Ongeldig media-item gebouwd: {{error}}",
+      "doc": "Drift guard — the media item failed @canopy/item-types validation. A bug, not a user error."
+    }
+  },
   "embed-time": {
     "no_title": {
       "text": "Geef een titel voor de afspraak op.",

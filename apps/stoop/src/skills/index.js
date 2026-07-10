@@ -825,6 +825,10 @@ export function buildSkills({
       // `source.attachments` for both local rendering and the
       // broadcast payload.  Bytes never travel in the broadcast —
       // recipients see the thumbnail and click-to-fetch.
+      // Media consolidation (2026-07-10): each entry is a canonical
+      // `media` item (@canopy/item-types) whose `source.ref` is the
+      // install-independent `stoop-att://<itemId>/<attId>` name; the
+      // local cache path stays in the LOCAL-ONLY `ref` field.
       const inboundAttachments = Array.isArray(a.attachments) ? a.attachments : [];
       const persistedAttachments = [];
       if (inboundAttachments.length > 0) {
@@ -841,6 +845,7 @@ export function buildSkills({
             dataSource: bundle.cache,
             itemId:     item.id,
             att:        inbound,
+            actor:      from,           // → the media item's createdBy
           });
           persistedAttachments.push(persisted);
         }
@@ -2176,7 +2181,11 @@ export function buildSkills({
           skillTags:      Array.isArray(it.source?.skillTags) ? it.source.skillTags : [],
           requiredSkills: it.requiredSkills ?? [],
           targets,
-          attachments:    Array.isArray(it.source?.attachments) ? it.source.attachments : [],
+          // toBroadcastShape — this payload feeds buurt-post envelopes
+          // to a catching-up joiner; the local-only `ref` (install-local
+          // cache path) must never ride along (Phase 39 privacy
+          // invariant — previously leaked here).
+          attachments:    toBroadcastShape(it.source?.attachments),
           ...(Array.isArray(it.source?.embeds) && it.source.embeds.length > 0
             ? { embeds: it.source.embeds } : {}),
           _addedAt:       ts,

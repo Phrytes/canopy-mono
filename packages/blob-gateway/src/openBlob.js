@@ -1,6 +1,6 @@
 // openBlob.js — the client-side READ path (the exact inverse of uploadBlob).
 //
-//   openBlob({ ref, gate, token, opener, fetch? }) -> { bytes, ref, key, url, ciphertext }
+//   openBlob({ ref, gate, token, opener, fetch? }) -> { bytes, ref, key, url, ciphertext, media }
 //
 // Flow (all client-side; the host never sees plaintext — mirror of uploadBlob):
 //   1. ref -> bucket key                   (blob:// refs only; a manifest line or its `ref` string)
@@ -17,6 +17,12 @@
 // SEALED-ONLY, symmetric with uploadBlob: uploadBlob refuses to upload plaintext, so openBlob
 // refuses to open anything that is not a sealing envelope. (The sealing module's open() would
 // silently pass plaintext through — that pass-through is for pod text, not for bucket blobs.)
+//
+// Media enrichment (manifest-line fields, see ref.js): when the caller passes the manifest
+// LINE (not just the ref string), `media` surfaces the enriched `enc` fields —
+// { mime?, width?, height? } — or null when the line carries none (old, pre-enrichment lines
+// included). The inline SEALED thumbnail is opened separately via `openThumbnail` — it needs
+// NO gate and NO fetch, because the thumb ships inside the line itself.
 
 import { isSealed } from '@canopy/pod-client/sealing';
 import { b64uToBytes } from './bytes.js';
@@ -64,7 +70,53 @@ export async function openBlob({ ref, gate, token, opener, fetch: fetchImpl } = 
   } catch (err) {
     throw new Error(`openBlob: unseal failed — ${err.message}`);
   }
-  return { bytes: b64uToBytes(opened), ref: refStr, key, url: gated.url, ciphertext };
+  return {
+    bytes: b64uToBytes(opened), ref: refStr, key, url: gated.url, ciphertext,
+    media: mediaFromLine(ref),
+  };
+}
+
+/** Open the inline SEALED thumbnail carried in a manifest line. No gate, no fetch — the
+ *  thumb ships inside the line. Returns the thumbnail bytes, or null when the line carries
+ *  no thumbnail (old pre-enrichment lines, or a bare ref string, which cannot carry one).
+ *
+ *    openThumbnail({ ref, opener }) -> Uint8Array | null   (`line` is accepted as an alias
+ *                                                            for `ref` — both take the line)
+ */
+export function openThumbnail({ ref, line, opener } = {}) {
+  const manifestLine = line ?? ref;
+  if (typeof opener !== 'function') {
+    throw new Error('openThumbnail: opener (sealedText => text) required');
+  }
+  const thumb = manifestLine && typeof manifestLine === 'object' && manifestLine.enc
+    ? manifestLine.enc.thumb
+    : null;
+  if (thumb == null) return null;
+
+  // Sealed-only, symmetric with openBlob: a manifest line must never carry a plaintext thumb.
+  if (!isSealed(thumb)) {
+    throw new Error('openThumbnail: thumbnail is not a sealed envelope (refusing to return plaintext)');
+  }
+  let opened;
+  try {
+    opened = opener(thumb);
+  } catch (err) {
+    throw new Error(`openThumbnail: unseal failed — ${err.message}`);
+  }
+  return b64uToBytes(opened);
+}
+
+/** The enriched media fields from a manifest line's `enc`, or null when there are none
+ *  (a bare ref string, or an old pre-enrichment line). The sealed thumb is NOT included —
+ *  it is content, opened explicitly via openThumbnail. */
+function mediaFromLine(ref) {
+  const enc = ref && typeof ref === 'object' ? ref.enc : null;
+  if (!enc) return null;
+  const media = {};
+  if (enc.mime != null) media.mime = enc.mime;
+  if (enc.width != null) media.width = enc.width;
+  if (enc.height != null) media.height = enc.height;
+  return Object.keys(media).length ? media : null;
 }
 
 /** Normalize an injected fetch's result: a plain string (test doubles / adapters) or a

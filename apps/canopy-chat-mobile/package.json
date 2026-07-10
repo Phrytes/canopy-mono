@@ -35,6 +35,7 @@
     "@canopy/secure-agent": "file:../../packages/secure-agent",
     "@canopy/vault": "file:../../packages/vault",
     "@canopy/versioning": "file:../../packages/versioning",
+    "@canopy/web-adapter": "file:../../packages/web-adapter",
     "@expo-google-fonts/source-serif-4": "^0.4.1",
     "@expo/metro-runtime": "~4.0.1",
     "@noble/hashes": "^2.2.0",
