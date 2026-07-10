@@ -94,6 +94,20 @@ describe('createS3Bucket — presign', () => {
       .not.toBe(new URL(a).searchParams.get('X-Amz-Signature'));
   });
 
+  it('presignPut yields a PUT-method URL, differently signed from the GET one', async () => {
+    const bucket = createS3Bucket({ ...CFG, fetch: stubFetch(), now: () => new Date('2026-07-06T12:00:00Z') });
+    const putUrl = await bucket.presignPut('objkey123', { ttl: 120 });
+    const getUrl = await bucket.presign('objkey123', { ttl: 120 });
+
+    const p = new URL(putUrl);
+    expect(p.origin + p.pathname).toBe('https://s3.us-east-1.amazonaws.com/canopy-blobs/objkey123');
+    expect(p.searchParams.get('X-Amz-Expires')).toBe('120');
+    // The HTTP method is part of the SigV4 canonical request → PUT ≠ GET signature.
+    expect(p.searchParams.get('X-Amz-Signature'))
+      .not.toBe(new URL(getUrl).searchParams.get('X-Amz-Signature'));
+    expect(p.searchParams.get('X-Amz-Signature')).toMatch(/^[0-9a-f]{64}$/);
+  });
+
   it('works against an S3-compatible endpoint (e.g. R2/MinIO) via `endpoint`', async () => {
     const bucket = createS3Bucket({
       ...CFG, endpoint: 'https://acct.r2.cloudflarestorage.com', region: 'auto',
