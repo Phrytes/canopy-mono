@@ -178,6 +178,84 @@ describe('capability token gate', () => {
   });
 });
 
+// ── Invoke-time token enforcement (verify-when-present) ───────────────────────
+// The hole-closer: a token is now fully verified WHENEVER it is presented, not
+// only under `requires-token`. So a revoked/forged token offered to a default
+// `on-request` skill can no longer pass on tier alone.
+
+/** Like makePair, but alice HOLDS tokens so her outbound calls attach `_token`. */
+async function makePairAliceHoldsTokens() {
+  const bus = new InternalBus();
+  const idA = await AgentIdentity.generate(new VaultMemory());
+  const idB = await AgentIdentity.generate(new VaultMemory());
+  const tA  = new InternalTransport(bus, idA.pubKey);
+  const tB  = new InternalTransport(bus, idB.pubKey);
+  const tr  = new TrustRegistry(new VaultMemory());
+  const aliceTokens = new TokenRegistry(new VaultMemory());
+
+  const alice = new Agent({ identity: idA, transport: tA, tokenRegistry: aliceTokens });
+  const bob   = new Agent({ identity: idB, transport: tB, trustRegistry: tr });
+  alice.addPeer(bob.address, bob.pubKey);
+  bob.addPeer(alice.address, alice.pubKey);
+  await alice.start(); await bob.start();
+  return { alice, bob, idA, idB, tr, aliceTokens };
+}
+
+describe('invoke-time token enforcement', () => {
+  it('a REVOKED token presented to an on-request skill is DENIED (previously passed on tier alone)', async () => {
+    const { alice, bob, idB, tr, aliceTokens } = await makePairAliceHoldsTokens();
+    bob.register('vip', async () => [TextPart('vip')], { visibility: 'authenticated', policy: 'on-request' });
+    const revoked = new Set();
+    const pe = installPE(bob, tr);
+    pe.setRevocationCheck((id) => revoked.has(id));
+    await tr.setTier(alice.pubKey, 'authenticated');
+    await tr.setTier(idB.pubKey, 'trusted'); // a PRESENTED token's issuer must be trusted
+
+    const token = await CapabilityToken.issue(idB, {
+      subject: alice.pubKey, skill: 'vip', agentId: bob.pubKey, expiresIn: 60_000,
+    });
+    await aliceTokens.store(token); // → alice's outbound call attaches it as `_token`
+
+    // Valid, issuer-trusted token → passes (and IS actually verified now).
+    expect(Parts.text(await alice.invoke(bob.address, 'vip', []))).toBe('vip');
+
+    // Revoke it → the SAME presented token is denied at invoke time. This is the
+    // enforcement that did not exist before (on-request never consulted the token).
+    revoked.add(token.id);
+    await expect(alice.call(bob.address, 'vip', []).done()).rejects.toThrow();
+
+    await alice.stop(); await bob.stop();
+  });
+
+  it('an ABSENT token on an on-request skill still passes — trusted internal routing untouched', async () => {
+    const { alice, bob, tr } = await makePair(); // alice holds no tokens → none attached
+    bob.register('vip', async () => [TextPart('vip')], { visibility: 'authenticated', policy: 'on-request' });
+    const pe = installPE(bob, tr);
+    pe.setRevocationCheck(() => true); // even a revoke-ALL check can't touch a token-less call
+    await tr.setTier(alice.pubKey, 'authenticated');
+
+    expect(Parts.text(await alice.invoke(bob.address, 'vip', []))).toBe('vip');
+    await alice.stop(); await bob.stop();
+  });
+
+  it('a presented token whose issuer is NOT trusted is denied (fail-closed — the enablement caveat)', async () => {
+    const { alice, bob, idB, tr, aliceTokens } = await makePairAliceHoldsTokens();
+    bob.register('vip', async () => [TextPart('vip')], { visibility: 'authenticated', policy: 'on-request' });
+    installPE(bob, tr);
+    await tr.setTier(alice.pubKey, 'authenticated');
+    // NOTE: issuer (idB) left at default 'authenticated' (< trusted) on purpose.
+    const token = await CapabilityToken.issue(idB, {
+      subject: alice.pubKey, skill: 'vip', agentId: bob.pubKey, expiresIn: 60_000,
+    });
+    await aliceTokens.store(token);
+
+    // A self-issued token whose issuer isn't elevated to 'trusted' fails closed —
+    // this is why live enablement must setTier(issuer, 'trusted'). Documented, pinned.
+    await expect(alice.call(bob.address, 'vip', []).done()).rejects.toThrow();
+    await alice.stop(); await bob.stop();
+  });
+});
+
 // ── Unknown skill ─────────────────────────────────────────────────────────────
 
 describe('unknown skill', () => {
