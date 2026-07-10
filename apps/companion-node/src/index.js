@@ -57,6 +57,7 @@ import { Agent, AgentIdentity,
 import { RelayTransport }              from '@canopy/transports';
 import { startRelay }                  from '@canopy/relay';
 import { VaultNodeFs }                 from '@canopy/vault';
+import { createPodTokenVerifier }      from '@canopy/pod-client';
 
 import { homedir }                     from 'node:os';
 import { join }                        from 'node:path';
@@ -70,6 +71,7 @@ import { searchFiles as searchFilesCore, folioBriefSummary } from '../../folio/s
 
 import { buildCompanionStore }         from './store.js';
 import { buildDevPodSource }           from './podSource.js';
+import { ScopedPodClient }             from './scopedPodClient.js';
 import { makeMemoryRegistryPod }       from './registryPod.js';
 import { buildDevMediaEdge }           from './mediaEdge.js';
 
@@ -111,6 +113,20 @@ export function resolveConfigDir(explicit) {
  * @param {Array}   [opts.seedFiles]       override the store's demo seed index
  * @param {string}  [opts.podRoot]         token `pod` field for shareFolder
  * @param {{ podClient, containerUri }} [opts.podSource]  inject a pod source — else folio's dev pseudo-pod
+ * @param {object}  [opts.podToken]        R2b.1 — a `PodCapabilityToken` delegating pod access to THIS host.
+ *                                         When supplied, the held pod client is wrapped in a `ScopedPodClient`
+ *                                         so every pod op is scope/expiry/revocation-checked (deny-by-default)
+ *                                         before it reaches the client. When ABSENT (default), the held client
+ *                                         is ungated — R1/R2/R-media behaviour (pod-file skills gated only by
+ *                                         the R2 skill token, not the pod leg). R2b.2 delivers this token over
+ *                                         the `authorizePod` handshake; for R2b.1 it is INJECTED here.
+ * @param {string}  [opts.podOwnerPubKey]  R2b.1 — the pod owner's pubKey the host trusts as the token ISSUER
+ *                                         (owner-issued model: `isTrusted: (i) => i === podOwnerPubKey`).
+ *                                         Defaults to the token's own issuer when omitted (accept-as-issued).
+ * @param {object}  [opts.podTokenRegistry] R2b.1 — a `PodTokenRegistry` (owner-side) whose `isRevoked` the
+ *                                         pod gate consults, so revoking the delegation denies live.
+ * @param {() => number} [opts.podNow]     R2b.1 — injectable clock (unix-ms) for the pod gate's expiry check
+ *                                         (tests force expiry without wall-clock waits). Default: Date.now.
  * @param {object}  [opts.registryPseudoPod]  inject the registry pod — else in-memory (R1)
  * @param {string}  [opts.label='companion-folio']
  * @returns {Promise<{
@@ -139,6 +155,10 @@ export async function startCompanionNode(opts = {}) {
     seedFiles,
     podRoot,
     podSource,
+    podToken,
+    podOwnerPubKey,
+    podTokenRegistry,
+    podNow,
     registryPseudoPod,
     label      = 'companion-folio',
     gate       = true,
@@ -173,8 +193,35 @@ export async function startCompanionNode(opts = {}) {
 
   // ── 3. Node store satisfying agentCores.js's contract (real skill path) ───
   const resolvedPodSource = podSource ?? await buildDevPodSource();
+
+  // ── R2b.1. Scope-enforce the POD LEG when a delegated token is presented ──
+  // R2b.2: token arrives via the authorizePod handshake (injected here for now).
+  // When a `podToken` is supplied, wrap the held pod client in a `ScopedPodClient`
+  // so EVERY pod op the folio cores reach (today: `.list` via listFiles/pod) is
+  // verified — scope · expiry · issuer-trust · revocation, deny-by-default — before
+  // it touches the client. Owner-issued trust: the host trusts the pod OWNER's key
+  // as the token issuer. Absent a token, the held client is ungated (R1/R2/R-media).
+  const gatedPodSource = (podToken && resolvedPodSource?.podClient)
+    ? {
+        ...resolvedPodSource,
+        podClient: new ScopedPodClient({
+          inner:   resolvedPodSource.podClient,
+          token:   podToken,
+          podRoot: podToken.pod ?? podToken.toJSON?.().pod ?? podRoot,
+          verify:  createPodTokenVerifier({
+            // Owner-issued: trust the pod owner's key as issuer. When no owner key
+            // is pinned, accept the token as issued (still scope/expiry/revocation-
+            // gated) — the R2b.2 handshake pins the real owner key.
+            ...(podOwnerPubKey ? { isTrusted: (i) => i === podOwnerPubKey } : {}),
+            ...(podTokenRegistry ? { isRevoked: (id) => podTokenRegistry.isRevoked(id) } : {}),
+            ...(typeof podNow === 'function' ? { now: podNow } : {}),
+          }),
+        }),
+      }
+    : resolvedPodSource;
+
   const store = buildCompanionStore({
-    identity, seedFiles, podRoot, podSource: resolvedPodSource,
+    identity, seedFiles, podRoot, podSource: gatedPodSource,
   });
 
   // ── 4. Compose folio's relocatable agent (byte-identical to browser.js) ───
