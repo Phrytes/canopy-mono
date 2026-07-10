@@ -3225,10 +3225,11 @@ function showKring(id, circle, policy) {
   // media P1 — the attach path: picked file → createMediaEmbed (encode → SEALED upload →
   // canonical media item → {type:'media', ref} pointer) → the embed rides the outgoing
   // kring message payload EXACTLY as the handler emits it; the bubble renders the
-  // media-card chip via the shared domAdapter branch. Fan-out currently carries the TEXT
-  // line only (the cross-peer envelope — kring-host/stoop — doesn't carry embeds yet;
-  // that's the recorded next step), so peers see the 📷-filename line, while the local
-  // stream shows the real chip.
+  // media-card chip via the shared domAdapter branch. The fan-out carries the pointer +
+  // snapshot too (media P1 fan-out slice): kring-host projects the embed through its
+  // WIRE whitelist (`mediaForKringWire` — sender-local fields like `stored` stripped),
+  // so PEERS render the same chip — the inline thumb is sealed with the circle key the
+  // receiving shell's gateway already composes an opener for.
   async function kringAttachMedia(file) {
     if (!kringMedia) return;
     const embed = await createMediaEmbed({}, {
@@ -3242,11 +3243,13 @@ function showKring(id, circle, policy) {
     const msgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;
     const ts = Date.now();
     const text = t('circle.media.outgoing', { name: file?.name ?? '' });
-    const evt = kringChatMessageEvent({ msgId, ts, circleId: id, actor: LOCAL_ACTOR, text, scope: 'kring' });
-    evt.payload.media = embed;   // the message-side attachment: pointer + snapshot, unchanged
-    eventLog.append(evt);
+    // Local append keeps the FULL embed (incl. `stored`); the fan-out's wire copy is
+    // whitelist-projected inside broadcastKringFanOut.
+    eventLog.append(kringChatMessageEvent({
+      msgId, ts, circleId: id, actor: LOCAL_ACTOR, text, scope: 'kring', media: embed,
+    }));
     rerender();
-    broadcastFanOut({ msgId, text, ts });
+    broadcastFanOut({ msgId, text, ts, media: embed });
   }
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
@@ -3376,9 +3379,10 @@ function showKring(id, circle, policy) {
   // tap-to-retry path from the 'failed' icon.  Re-uses the SAME
   // msgId on retry so receiver-side dedup suppresses any duplicate
   // delivery (the EventLog already idempotents on id).
-  function broadcastFanOut({ msgId, text, ts }) {
+  // `media` (optional) — the media-card embed; kring-host whitelists it onto the wire.
+  function broadcastFanOut({ msgId, text, ts, media }) {
     // Shared fan-out (Phase 2); onChange = web's rerender.
-    broadcastKringFanOut({ rawCallSkill, circleId: id, msgId, text, ts, deliveryStateMap, onChange: rerender });
+    broadcastKringFanOut({ rawCallSkill, circleId: id, msgId, text, ts, media, deliveryStateMap, onChange: rerender });
   }
 
   const rerender = () => {
@@ -3446,14 +3450,15 @@ function showKring(id, circle, policy) {
       localActor: LOCAL_ACTOR,
       // δ.2 — retry on the failed icon tap.  Re-fires the SAME msgId
       // (idempotent receiver-side dedup).  Looks up the original text
-      // from the eventLog so we don't have to remember it elsewhere.
+      // (and any media embed) from the eventLog so we don't have to
+      // remember them elsewhere — a retried photo keeps its chip.
       onRetryDelivery: (msgId) => {
         const evt = eventLog.query({ excludeMuted: true })
           .find((e) => e.id === msgId);
         const text = evt?.payload?.text;
         const ts   = evt?.ts ?? Date.now();
         if (typeof text !== 'string' || !text) return;
-        broadcastFanOut({ msgId, text, ts });
+        broadcastFanOut({ msgId, text, ts, media: evt?.payload?.media });
       },
       onViewMode: (mode) => {
         if (mode !== 'chat' && mode !== 'scherm') return;

@@ -50,6 +50,7 @@ async function seedChats(bundle, chats) {
         text:      c.text,
         ts:        c.ts,
         fromActor: c.fromActor ?? BOB,
+        ...(c.media ? { media: c.media } : {}),
       },
       fromPubKey: c.fromPubKey ?? 'pk-fake',
     });
@@ -178,6 +179,24 @@ describe('Stoop ε.3 — getMessagesSince', () => {
     });
     expect(r.items).toHaveLength(1);
     expect(r.truncated).toBe(false);
+  });
+
+  it('carries a stored media pointer on the envelope — absent stays absent (media P1)', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const media = {
+      kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:mx' },
+      snapshot: { type: 'media', id: 'mx', source: { type: 'blob', ref: 'blob://kx', enc: { sealed: true } } },
+    };
+    await seedChats(bundle, [
+      { circleId: 'g1', msgId: 'plain', text: 'hoi',         ts: 100 },
+      { circleId: 'g1', msgId: 'photo', text: '📷 photo.jpg', ts: 200, media },
+    ]);
+    const r = await callSkill(bundle.agent, 'getMessagesSince', { groupId: 'g1', sinceTs: 0 });
+    const plain = r.items.find((e) => e.msgId === 'plain');
+    const photo = r.items.find((e) => e.msgId === 'photo');
+    expect(plain).not.toHaveProperty('media');   // legacy envelope shape untouched
+    expect(photo.media).toEqual(media);          // chip survives catch-up
   });
 
   it('filters by groupId across multiple circles', async () => {

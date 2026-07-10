@@ -118,6 +118,11 @@ function itemToEnvelope(item) {
     ts,
     text,
     fromActor: src.fromActor ?? src.fromWebid ?? null,
+    // media P1 — stored media pointer+snapshot (broadcast/ingest persisted it
+    // in `source.media`); rides the envelope so the rehydrated bubble keeps
+    // its photo chip. Absent stays absent — legacy items map unchanged.
+    ...(src.media && typeof src.media === 'object' && !Array.isArray(src.media)
+      ? { media: src.media } : {}),
   };
 }
 

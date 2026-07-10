@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { kringChatMessageEvent, broadcastKringFanOut, classifyFanOut } from '../src/kringBroadcast.js';
+import { kringChatMessageEvent, broadcastKringFanOut, classifyFanOut, mediaForKringWire } from '../src/kringBroadcast.js';
 
 const mapOf = () => {
   const m = new Map();
@@ -18,6 +18,76 @@ describe('kringChatMessageEvent', () => {
     expect(withBtns.payload.buttons).toEqual([{ id: 'a', label: 'A' }]);
     expect(kringChatMessageEvent({ msgId: 'm', ts: 1, circleId: 'c', actor: 'bot', text: 't', buttons: [] }).payload).not.toHaveProperty('buttons');
   });
+  it('includes media only when present (media P1 — the local chip payload)', () => {
+    const embed = { kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:x' }, snapshot: { type: 'media', id: 'x' }, stored: false };
+    expect(kringChatMessageEvent({ msgId: 'm', ts: 1, circleId: 'c', actor: 'me', text: 't', media: embed }).payload.media).toBe(embed);
+    expect(kringChatMessageEvent({ msgId: 'm', ts: 1, circleId: 'c', actor: 'me', text: 't' }).payload).not.toHaveProperty('media');
+  });
+});
+
+describe('mediaForKringWire — the wire-boundary whitelist (media P1 fan-out)', () => {
+  const fullEmbed = () => ({
+    kind:      'media-card',
+    appOrigin: 'canopy-chat',
+    itemRef:   { app: 'canopy-chat', type: 'media', id: 'media-1' },
+    pointer:   { type: 'media', ref: 'urn:dec:item:media-1' },
+    snapshot:  {
+      type: 'media', id: 'media-1', createdAt: '2026-07-09T00:00:00.000Z', createdBy: 'me',
+      mime: 'image/jpeg', width: 640, height: 480, caption: 'hoi',
+      source: { type: 'blob', ref: 'blob://k1', enc: { sealed: true, keyRef: 'urn:circle:c:content-key', format: 'fp1', bytes: 99, thumb: 'fp1:sealed-thumb' } },
+    },
+    issuedBy:  'me',
+    stored:    false,
+  });
+
+  it('keeps exactly what the peer chip needs — pointer, itemRef, snapshot (incl. the sealed manifest line), issuedBy', () => {
+    const wire = mediaForKringWire(fullEmbed());
+    expect(wire).toEqual({
+      kind:      'media-card',
+      appOrigin: 'canopy-chat',
+      itemRef:   { app: 'canopy-chat', type: 'media', id: 'media-1' },
+      pointer:   { type: 'media', ref: 'urn:dec:item:media-1' },
+      snapshot:  {
+        type: 'media', id: 'media-1', createdAt: '2026-07-09T00:00:00.000Z', createdBy: 'me',
+        mime: 'image/jpeg', width: 640, height: 480, caption: 'hoi',
+        source: { type: 'blob', ref: 'blob://k1', enc: { sealed: true, keyRef: 'urn:circle:c:content-key', format: 'fp1', bytes: 99, thumb: 'fp1:sealed-thumb' } },
+      },
+      issuedBy:  'me',
+    });
+    // Sender-local bookkeeping never leaves the device.
+    expect(wire).not.toHaveProperty('stored');
+  });
+
+  it('strips local-only fields at EVERY level (the stoop Phase-39 lesson pinned)', () => {
+    const embed = fullEmbed();
+    // Simulated future local-only strap-ons a lazy caller might leave on the embed.
+    embed.localPath          = '/data/user/0/app/cache/photo.jpg';
+    embed.dataUrl            = 'data:image/jpeg;base64,PLAINTEXTBYTES';
+    embed.pointer.localBlobUrl = 'blob:http://localhost/123';
+    embed.itemRef.devicePath = 'file:///tmp/photo.jpg';
+    embed.snapshot.localFile = '/home/me/Pictures/photo.jpg';
+    embed.snapshot.source.bucketCreds = 'AKIA-secret';
+    const wire = mediaForKringWire(embed);
+    const json = JSON.stringify(wire);
+    expect(json).not.toContain('localPath');
+    expect(json).not.toContain('/data/user/0');
+    expect(json).not.toContain('dataUrl');
+    expect(json).not.toContain('PLAINTEXTBYTES');
+    expect(json).not.toContain('localBlobUrl');
+    expect(json).not.toContain('devicePath');
+    expect(json).not.toContain('localFile');
+    expect(json).not.toContain('bucketCreds');
+    expect(json).not.toContain('AKIA-secret');
+  });
+
+  it('absent fields stay absent (never null-filled) and non-media-card input maps to null', () => {
+    const minimal = mediaForKringWire({ kind: 'media-card' });
+    expect(minimal).toEqual({ kind: 'media-card' });
+    expect(mediaForKringWire(null)).toBeNull();
+    expect(mediaForKringWire('📷')).toBeNull();
+    expect(mediaForKringWire([])).toBeNull();
+    expect(mediaForKringWire({ kind: 'file-card', path: '/tmp/x' })).toBeNull();
+  });
 });
 
 describe('broadcastKringFanOut', () => {
@@ -29,9 +99,38 @@ describe('broadcastKringFanOut', () => {
     const rawCallSkill = vi.fn(async (app, op, args) => { calls.push([app, op, args]); return {}; });
     const onChange = vi.fn();
     await broadcastKringFanOut({ ...base, rawCallSkill, deliveryStateMap: map, onChange });
+    // Legacy wire pin: WITHOUT media the args are byte-identical to the pre-media shape
+    // (no `media` key at all — legacy receivers see exactly what they always saw).
     expect(calls[0]).toEqual(['stoop', 'broadcastKringMessage', { groupId: 'c1', text: 'hi', msgId: 'm1', ts: 9 }]);
     expect(map.get('m1')).toBe('sent');
     expect(onChange).toHaveBeenCalledTimes(2);   // pending + sent
+  });
+
+  it('carries the media pointer WHITELISTED onto the skill args (media P1 fan-out)', async () => {
+    const map = mapOf();
+    const calls = [];
+    const rawCallSkill = vi.fn(async (app, op, args) => { calls.push([app, op, args]); return {}; });
+    const media = {
+      kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:m' },
+      snapshot: { type: 'media', id: 'm', source: { type: 'blob', ref: 'blob://k', enc: { sealed: true } } },
+      stored: false, localPath: '/tmp/photo.jpg',
+    };
+    await broadcastKringFanOut({ ...base, media, rawCallSkill, deliveryStateMap: map });
+    const args = calls[0][2];
+    expect(args.media).toEqual({
+      kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:m' },
+      snapshot: { type: 'media', id: 'm', source: { type: 'blob', ref: 'blob://k', enc: { sealed: true } } },
+    });
+    expect(JSON.stringify(args)).not.toContain('localPath');
+    expect(args.media).not.toHaveProperty('stored');
+    expect(map.get('m1')).toBe('sent');
+  });
+
+  it('a non-media-card `media` arg is dropped, not sent (legacy args shape)', async () => {
+    const map = mapOf();
+    const calls = [];
+    await broadcastKringFanOut({ ...base, media: '📷 not-an-embed', rawCallSkill: async (...c) => { calls.push(c); return {}; }, deliveryStateMap: map });
+    expect(calls[0][2]).toEqual({ groupId: 'c1', text: 'hi', msgId: 'm1', ts: 9 });
   });
 
   it('pending → undeliverable when every error is permanent (recipient-pubkey-unknown)', async () => {
