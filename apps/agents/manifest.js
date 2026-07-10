@@ -41,7 +41,7 @@
  */
 export const agentsManifest = {
   app:       'agents',
-  itemTypes: ['agent', 'data-version'],
+  itemTypes: ['agent', 'data-version', 'catalog-entry'],
 
   // Layer-1 capability surface — (verb × noun) atoms this app ships.
   // P2 CONTROL: `revoke` (revokeAgent / revokeGrant), `update`
@@ -51,8 +51,12 @@ export const agentsManifest = {
   // (listDataVersions) + `update` (restoreDataVersion — writes a prior
   // state back to the live resource).
   nouns: {
-    agent:          { atoms: ['list', 'revoke', 'update', 'remove'] },
+    // P3 INSTALL adds `add` (installAgent — adds a catalog/override card
+    // to your agents, default-deny).
+    agent:          { atoms: ['list', 'revoke', 'update', 'remove', 'add'] },
     'data-version': { atoms: ['list', 'update'] },
+    // P3 INSTALL: the pluggable curated-catalog source, browsed read-only.
+    'catalog-entry': { atoms: ['list'] },
   },
 
   operations: [
@@ -193,6 +197,73 @@ export const agentsManifest = {
       },
     },
 
+    /* ── P3 INSTALL ops (PLAN-agent-management-surface §P3) ─────────────
+     * Install an agent into "your agents" with CAPABILITY-SECURITY: the
+     * entry is registered default-deny (no ambient authority); only the
+     * user-picked, card-DECLARED skills are granted, each through the P2
+     * token-first grant path.  Two sources: a curated catalog (pluggable
+     * `store.catalog`) and the power-user override (a pasted/fetched card
+     * that bypasses the catalog).  commons-governance: the catalog's
+     * trust/curation is designed separately — here it is a data source.
+     */
+    {
+      id:        'listCatalog',
+      verb:      'list',
+      appliesTo: { type: 'catalog-entry' },
+      params:    [],
+      surfaces: {
+        slash: { command: '/agent-catalog' },
+        chat: {
+          reply: 'list',
+          hint:  'List the curated agent catalog: installable agents (id, name, description, '
+               + 'the skills each declares). Read-only. Until the community catalog ships this '
+               + 'may be empty/placeholder — use installAgent with a pasted card to install '
+               + 'from any source.',
+        },
+      },
+    },
+    {
+      id:        'installAgent',
+      verb:      'add',
+      appliesTo: { type: 'agent' },
+      params: [
+        // CURATED path — the id of a catalog entry (from listCatalog).
+        { name: 'catalogId', kind: 'string' },
+        // OVERRIDE path (power-user) — an A2A Agent Card, passed as a
+        // pasted/fetched JSON string (or an object, programmatically);
+        // bypasses the catalog. Supply this OR catalogId.
+        { name: 'card',      kind: 'string' },
+        // The user-picked grant set (default-deny: omitted ⇒ inert
+        // install). A JSON array of skill strings OR
+        // {skill, capability?, expiresInDays?, subject?}. A requested skill
+        // the card does not DECLARE is rejected, never granted.
+        { name: 'grants',    kind: 'string' },
+        // Optional local display-name override.
+        { name: 'name',      kind: 'string' },
+      ],
+      surfaces: {
+        chat: {
+          reply: 'record',
+          hint:  'Install an agent into your agents. Provide catalogId (a curated catalog entry) '
+               + 'OR card (an A2A agent card object/JSON — the power-user override, any source). '
+               + 'The agent is registered with NO capabilities by default; pass grants (skill '
+               + 'names, or {skill,capability,expiresInDays,subject}) to grant ONLY those — and '
+               + 'only skills the card declares. Returns what was granted, declined, and rejected.',
+        },
+        // Install adds authority — a Tier-C consent gate (same red confirm
+        // as the other capability-changing control ops).
+        ui: {
+          control: 'button',
+          label:   'Install agent',
+          confirm: {
+            severity: 'warn',
+            message:  'Install this agent? It is added with only the capabilities you grant — '
+                    + 'nothing else. Review the granted skills before confirming.',
+          },
+        },
+      },
+    },
+
     /* ── P3 RECOVERY ops (PLAN-pod-versioning-history-recovery) ─────────
      * "Restore corrupted / lost data" over the per-circle pod version
      * history. Deliberately on THIS surface: J5/J7's recovery arc is
@@ -277,6 +348,23 @@ export const agentsManifest = {
         skillId:         'viewAgent',
         argsFromContext: { agentId: '$agentId' },
       },
+    },
+
+    /* ── P3 INSTALL view — the curated catalog (pluggable source) ───────
+     * Browse installable agents (rows: id · name · description · declared
+     * skills, exposed as `items` with id/label by listCatalog). The
+     * install act is the `add`-verb `installAgent` op, which auto-surfaces
+     * as the "Install agent" affordance on the `agents` roster section
+     * (verb === 'add' → section affordance). commons-governance: what the
+     * catalog contains / who curates it is the commons thread's call — this
+     * view just renders whatever the source returns.
+     */
+    {
+      id:         'catalog',
+      title:      'Agent catalog',
+      type:       'catalog-entry',
+      labelField: 'name',
+      dataSource: { skillId: 'listCatalog' },
     },
 
     /* ── P3 RECOVERY views — "restore corrupted / lost data" by screen ──

@@ -42,9 +42,31 @@ import { fetchSectionItems } from '../../../packages/web-adapter/src/fetchSectio
 // App-local, import-free modules.
 import { AGENT_CORES } from '../src/cores.js';
 import { RECOVERY_CORES } from '../src/recoveryCores.js';
+import { INSTALL_CORES } from '../src/installCores.js';
+import { createStubCatalog } from '../src/defaultCatalog.js';
 import { agentsManifest } from '../manifest.js';
 
-const ALL_CORES = { ...AGENT_CORES, ...RECOVERY_CORES };
+const ALL_CORES = { ...AGENT_CORES, ...RECOVERY_CORES, ...INSTALL_CORES };
+
+/**
+ * Deterministic catalog fixture (P3 install ops): a fixed stub source so
+ * the two routes compare byte-for-byte. One card declares two skills; the
+ * install cases grant a subset (capability-security) or install via the
+ * power-user override with a pasted card.
+ */
+const CATALOG_CARD = Object.freeze({
+  name: 'Summariser', description: 'Summarises threads.',
+  url:  'https://example.invalid/agents/summariser', version: '1.0',
+  skills: [{ id: 'summarise.thread' }, { id: 'summarise.document' }],
+  authentication: { schemes: ['Bearer'] },
+  'x-canopy': { id: 'catalog:summariser', pubKey: 'pub-cat-summariser', role: 'service' },
+});
+const OVERRIDE_CARD = Object.freeze({
+  name: 'Sideloaded', url: 'https://third-party.invalid/agent', version: '1.0',
+  skills: [{ id: 'sideload.run' }],
+  'x-canopy': { id: 'override:sideloaded', pubKey: 'pub-override-sideloaded', role: 'service' },
+});
+const makeCatalog = () => createStubCatalog([CATALOG_CARD]);
 
 const DEVICE = 'laptop-anne';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -195,13 +217,14 @@ function makeVersionFixture() {
 }
 
 /** LOCAL invoker: call the pure core directly over the store. */
-function makeLocalInvokerWith({ withTokens, withVersions = false }) {
+function makeLocalInvokerWith({ withTokens, withVersions = false, withCatalog = false }) {
   return () => {
     const fixture = withVersions ? makeVersionFixture() : null;
     const store = {
       registry:        buildRegistry(),
       tokens:          withTokens ? makeMockTokens() : null,
       versionStoreFor: fixture ? fixture.versionStoreFor : null,
+      catalog:         withCatalog ? makeCatalog() : null,
     };
     let seeded = null;
     return async (op, args = {}, ctx = {}) => {
@@ -212,8 +235,8 @@ function makeLocalInvokerWith({ withTokens, withVersions = false }) {
 }
 
 /** Wire defs — mirrors src/wireSkills.js's buildAgentSkills (relative wireSkill). */
-function buildWireDefs(registry, tokens = null, versionStoreFor = null) {
-  const store = { registry, tokens, versionStoreFor };
+function buildWireDefs(registry, tokens = null, versionStoreFor = null, catalog = null) {
+  const store = { registry, tokens, versionStoreFor, catalog };
   const storeFor = () => store;
   const op = (id) => agentsManifest.operations.find((o) => o.id === id);
   const wire = (id) => ({
@@ -230,18 +253,21 @@ function buildWireDefs(registry, tokens = null, versionStoreFor = null) {
     wire('purgeAgent'),
     wire('listDataVersions'),
     wire('restoreDataVersion'),
+    wire('listCatalog'),
+    wire('installAgent'),
   ];
 }
 
 /** WIRE invoker: fresh real agent with the wire skills; serialized invoke. */
-function makeWireInvokerWith({ withTokens, withVersions = false }) {
+function makeWireInvokerWith({ withTokens, withVersions = false, withCatalog = false }) {
   return async () => {
     const registry = buildRegistry();
     const tokens   = withTokens ? makeMockTokens() : null;
     const fixture  = withVersions ? makeVersionFixture() : null;
+    const catalog  = withCatalog ? makeCatalog() : null;
     if (fixture) await fixture.seed();
     const agent = await createAgent();
-    for (const s of buildWireDefs(registry, tokens, fixture ? fixture.versionStoreFor : null)) {
+    for (const s of buildWireDefs(registry, tokens, fixture ? fixture.versionStoreFor : null, catalog)) {
       agent.register(s.id, s.handler, { visibility: s.visibility });
     }
     return {
@@ -259,8 +285,8 @@ describeLocalWireFitness(
     coreIds:       Object.keys(ALL_CORES),
     registeredIds: buildWireDefs(buildRegistry(), makeMockTokens()).map((s) => s.id),
     manifestOpIds: agentsManifest.operations.map((o) => o.id),
-    makeLocalInvoker: makeLocalInvokerWith({ withTokens: true, withVersions: true }),
-    makeWireInvoker:  makeWireInvokerWith({ withTokens: true, withVersions: true }),
+    makeLocalInvoker: makeLocalInvokerWith({ withTokens: true, withVersions: true, withCatalog: true }),
+    makeWireInvoker:  makeWireInvokerWith({ withTokens: true, withVersions: true, withCatalog: true }),
     cases: [
       {
         // Proves soft-revoke filtering: 'old-tablet' is absent (2 rows).
@@ -366,6 +392,58 @@ describeLocalWireFitness(
           circleId: 'home', uri: FIXTURE_URI, version: '424242',
         }),
       },
+
+      /* ── P3 install (deterministic stub catalog) ─────────────────────── */
+      {
+        // The curated catalog roster (one stub card, two declared skills).
+        name: 'listCatalog (curated source roster)',
+        run:  (invoke) => invoke('listCatalog', {}),
+      },
+      {
+        // CAPABILITY-SECURITY: install a catalog card granting ONLY one of
+        // its two declared skills → the installed agent holds exactly that
+        // grant (the other declared skill is declined, never granted).
+        name: 'installAgent (curated, capability-security: grant a subset)',
+        // A freshly registered agent's signedAt→lastSeen is wall-clock.
+        volatile: ['lastSeen'],
+        run:  async (invoke) => {
+          const installed = await invoke('installAgent', {
+            catalogId: 'catalog:summariser',
+            grants:    JSON.stringify(['summarise.thread']),
+          });
+          const view = await invoke('viewAgent', { agentId: 'catalog:summariser' });
+          return { installed, view };
+        },
+      },
+      {
+        // Power-user OVERRIDE: install a non-catalog card (bypasses the
+        // catalog), granting its declared skill.
+        name: 'installAgent (power-user override, pasted card)',
+        volatile: ['lastSeen'],
+        run:  async (invoke) => {
+          const installed = await invoke('installAgent', {
+            card:   JSON.stringify(OVERRIDE_CARD),
+            grants: JSON.stringify(['sideload.run']),
+          });
+          const roster = await invoke('listAgents', {});
+          return { installed, roster };
+        },
+      },
+      {
+        // DEFAULT-DENY + reject-undeclared: install with NO grants leaves
+        // the agent inert; a grant for a skill the card never declared is
+        // rejected (no token issued), not silently granted.
+        name: 'installAgent (default-deny + rejects an undeclared skill)',
+        volatile: ['lastSeen'],
+        run:  async (invoke) => {
+          const inert = await invoke('installAgent', { catalogId: 'catalog:summariser' });
+          const rejected = await invoke('installAgent', {
+            catalogId: 'catalog:summariser',
+            grants:    JSON.stringify(['summarise.thread', 'evil.exfiltrate']),
+          });
+          return { inert, rejected };
+        },
+      },
     ],
   },
   { describe, it, expect },
@@ -404,6 +482,22 @@ describeLocalWireFitness(
         // answer the honest degraded miss on both routes.
         name: 'listDataVersions without a resolver → no-version-store',
         run:  (invoke) => invoke('listDataVersions', { circleId: 'home' }),
+      },
+      {
+        // No catalog source injected → the honest "coming with the
+        // community catalog" state on both routes.
+        name: 'listCatalog without a source → no-catalog',
+        run:  (invoke) => invoke('listCatalog', {}),
+      },
+      {
+        // Override install still works WITHOUT a catalog (bypasses it);
+        // degraded tokens → tokenBacked false, mirror still written.
+        name: 'installAgent override without tokens → tokenBacked false, mirror written',
+        volatile: ['tokenId', 'expiresAt', 'lastSeen'],
+        run:  (invoke) => invoke('installAgent', {
+          card:   JSON.stringify(OVERRIDE_CARD),
+          grants: JSON.stringify(['sideload.run']),
+        }),
       },
     ],
   },
