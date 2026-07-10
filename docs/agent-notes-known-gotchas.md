@@ -71,3 +71,13 @@ Some mobile modules import packages RELATIVELY (`../../../../packages/<pkg>/src/
 mobile's package.json — e.g. `src/core/mediaCardModel.js` → blob-gateway (2026-07-10), same pattern as the earlier
 `rendezvousRtcLib` import. Works in vitest/Node; on-device Metro needs the path inside `nodeModulesPaths`/watchFolders
 (check metro.config.js) or the dep declared + linked. **Tell:** green tests but a device-only "module not found".
+
+## better-sqlite3 native binding not built → relay suite 5 failures (cold clone)
+
+`packages/relay` uses **better-sqlite3** (Sqlite queue store + the blob-gate ACL store). It's a NATIVE
+addon — a cold clone / fresh environment where it was never compiled shows **~5 relay test failures**
+that look unrelated to your change (they're the SQLite-backed suites failing to load the binding).
+**Fix:** `npm rebuild better-sqlite3` (from repo root) → true baseline restored. **Tell:** the failures
+are all in the sqlite-store suites and mention a `.node` binding / `NODE_MODULE_VERSION`; non-sqlite relay
+tests stay green. Not a regression — check this before bisecting a relay failure. (Found 2026-07-10 during
+the blob-gate edge mount.)
