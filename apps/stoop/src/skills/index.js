@@ -534,13 +534,24 @@ async function listGroupMembersCore(scope, a, ctx) {
   // webid → the sealing PUBLIC key the joiner published on redeem — lets a sealed circle's
   // producer seed its group-key roster with members who joined before it was live.
   const sealKeys = new Map();
+  // webid → the SIGNING pubKey captured on redeem — lets the roster carry the
+  // fan-out routing key for code-redeemers even after a reload where the member
+  // list is reduced from the redemption audit trail (mirror of sealKeys).
+  const signKeys = new Map();
   for (const r of forGroup) {
-    const { redeemedBy, sealingPublicKey } = r?.source ?? {};
+    const { redeemedBy, sealingPublicKey, signingPublicKey } = r?.source ?? {};
     if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
+    if (redeemedBy && signingPublicKey && !signKeys.has(redeemedBy)) signKeys.set(redeemedBy, signingPublicKey);
   }
   const scoped = list
     .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
-    .map((m) => (sealKeys.has(m.webid) ? { ...m, sealingPublicKey: sealKeys.get(m.webid) } : m));
+    .map((m) => {
+      let out = m;
+      if (sealKeys.has(m.webid)) out = { ...out, sealingPublicKey: sealKeys.get(m.webid) };
+      // Only backfill pubKey when the member row doesn't already carry one.
+      if (!out.pubKey && signKeys.has(m.webid)) out = { ...out, pubKey: signKeys.get(m.webid) };
+      return out;
+    });
   return { groupId: _groupId, members: scoped };
 }
 
@@ -1966,6 +1977,20 @@ export function buildSkills({
       );
       if (!valid) return { error: 'invalid-or-expired-code' };
 
+      // ── Signing pubKey capture (kring fan-out fix) ────────────────────────
+      // Bind the joiner's SIGNING pubKey to the AUTHENTICATED sender of the
+      // redeem — `from` is the skill-invocation actor (= `envelope._from`,
+      // stamped by the transport AFTER signature-verify), NOT a body field the
+      // joiner could spoof.  In this architecture a member's webid IS their
+      // secure-mesh signing address (canopy-chat binds `localActor` +
+      // `members[].webid` to `chatId.pubKey`; the peer-bridge sets
+      // `requesterWebid` from the authenticated NKN `fromAddr`), so the
+      // authenticated identity for the joiner is `from` itself.  We DO NOT read
+      // any body-supplied pubKey for the binding — a self-asserted key would let
+      // a joiner claim another member's routing address.  Recording it lets
+      // kring fan-out (`wireChat.send` → `MemberMap.resolveByWebid(webid).pubKey`)
+      // route to a code-redeemer instead of returning `recipient-pubkey-unknown`.
+      const signingPubKey = (typeof from === 'string' && from) ? from : null;
       const [item] = await store.addItems([{
         type:       'membership-redemption',
         text:       `${from} redeemed membership code for ${a.groupId}`,
@@ -1979,10 +2004,21 @@ export function buildSkills({
           // Sealing public key the joiner publishes so the household control-agent can wrap the
           // group key to them (distinct from their transport identity).
           ...(a.sealingPublicKey ? { sealingPublicKey: a.sealingPublicKey } : {}),
+          // Signing pubKey (the joiner's transport/chat-agent identity) — mirror
+          // of sealingPublicKey but for the OTHER key family: fan-out routing.
+          ...(signingPubKey ? { signingPublicKey: signingPubKey } : {}),
         },
         visibility: 'household',
       }], { actor: from });
       metrics?.record?.('group-code-redeemed');
+      // Populate the MemberMap with the joiner's signing pubKey so fan-out can
+      // resolve them.  Best-effort + additive — never throws (back-compat: an
+      // older/no-auth redeem with no `from`, or a bundle with no MemberMap,
+      // simply skips this and the redemption item is still written).
+      if (members && signingPubKey) {
+        try { await members.addMember({ webid: from, pubKey: signingPubKey }); }
+        catch { /* roster upsert is best-effort — never block the redeem */ }
+      }
       await grantPodAccess(controlAgent, { webId: from, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
       return {
         redemptionId: item.id,
@@ -2032,6 +2068,15 @@ export function buildSkills({
       );
       if (!valid) return { error: 'invalid-or-expired-code' };
 
+      // Signing pubKey for the peer path — the joiner's authenticated identity
+      // is `requesterWebid`, which the admin-side canopy-chat handler
+      // (`makeHandleGroupRedeemRequest`) sets from the AUTHENTICATED NKN
+      // `fromAddr` of the group-redeem-request envelope, NOT from a
+      // joiner-supplied claim.  A malicious joiner controls the request body
+      // (code/shareCard/…) but not `fromAddr`, so they cannot bind another
+      // member's key.  In this architecture webid == the secure-mesh signing
+      // address, so the joiner's signing pubKey IS `requesterWebid`.
+      const peerSigningPubKey = a.requesterWebid;
       const [item] = await store.addItems([{
         type:       'membership-redemption',
         text:       `${a.requesterWebid} redeemed (via peer) membership code for ${a.groupId}`,
@@ -2044,6 +2089,8 @@ export function buildSkills({
           expiresAt:      valid.source.expiresAt,
           confirmedBy:    from,
           channel:        'peer',
+          // Signing pubKey (fan-out routing) — see note above; mirrors sealingPublicKey.
+          ...(peerSigningPubKey ? { signingPublicKey: peerSigningPubKey } : {}),
           // Slice 4 (2026-05-24) — joiner's mesh-consent token.
           // When true, admin propagates this peer's address to
           // other members (+ propagates other consenting members'
@@ -2058,6 +2105,12 @@ export function buildSkills({
         visibility: 'household',
       }], { actor: from });
       metrics?.record?.('group-code-redeemed-peer');
+      // Populate the admin's MemberMap so the admin (and, via mesh-intro
+      // propagation, other members) can fan out to the new joiner.  Best-effort.
+      if (members && peerSigningPubKey) {
+        try { await members.addMember({ webid: a.requesterWebid, pubKey: peerSigningPubKey }); }
+        catch { /* roster upsert is best-effort — never block the redeem */ }
+      }
       await grantPodAccess(controlAgent, { webId: a.requesterWebid, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
       return {
         redemptionId: item.id,
