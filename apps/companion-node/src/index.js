@@ -52,7 +52,7 @@
  *            CapabilityAuth pod-direct token) and the registry *storage* (an
  *            in-memory Map, not a pod-backed resource).  Both are R1.5/R2.
  */
-import { Agent, AgentIdentity,
+import { Agent, AgentIdentity, Parts, PodCapabilityToken,
          PolicyEngine, TrustRegistry, TokenRegistry, CapabilityToken } from '@canopy/core';
 import { RelayTransport }              from '@canopy/transports';
 import { startRelay }                  from '@canopy/relay';
@@ -71,7 +71,8 @@ import { searchFiles as searchFilesCore, folioBriefSummary } from '../../folio/s
 
 import { buildCompanionStore }         from './store.js';
 import { buildDevPodSource }           from './podSource.js';
-import { ScopedPodClient }             from './scopedPodClient.js';
+import { ScopedPodClient, closedPodClient } from './scopedPodClient.js';
+import { ACCEPT_DELEGATION_OP }        from './authorizePod.js';
 import { makeMemoryRegistryPod }       from './registryPod.js';
 import { buildDevMediaEdge }           from './mediaEdge.js';
 
@@ -113,16 +114,19 @@ export function resolveConfigDir(explicit) {
  * @param {Array}   [opts.seedFiles]       override the store's demo seed index
  * @param {string}  [opts.podRoot]         token `pod` field for shareFolder
  * @param {{ podClient, containerUri }} [opts.podSource]  inject a pod source — else folio's dev pseudo-pod
- * @param {object}  [opts.podToken]        R2b.1 — a `PodCapabilityToken` delegating pod access to THIS host.
- *                                         When supplied, the held pod client is wrapped in a `ScopedPodClient`
- *                                         so every pod op is scope/expiry/revocation-checked (deny-by-default)
- *                                         before it reaches the client. When ABSENT (default), the held client
- *                                         is ungated — R1/R2/R-media behaviour (pod-file skills gated only by
- *                                         the R2 skill token, not the pod leg). R2b.2 delivers this token over
- *                                         the `authorizePod` handshake; for R2b.1 it is INJECTED here.
- * @param {string}  [opts.podOwnerPubKey]  R2b.1 — the pod owner's pubKey the host trusts as the token ISSUER
- *                                         (owner-issued model: `isTrusted: (i) => i === podOwnerPubKey`).
- *                                         Defaults to the token's own issuer when omitted (accept-as-issued).
+ * @param {object}  [opts.podToken]        R2b.1 — boot-time injection of a `PodCapabilityToken` delegating pod
+ *                                         access to THIS host (back-compat). When supplied, the held pod client
+ *                                         is wrapped in a `ScopedPodClient` at boot so every pod op is
+ *                                         scope/expiry/revocation-checked (deny-by-default). The REAL R2b.2 path
+ *                                         is the `pod.acceptDelegation` handshake: the device (owner) delivers
+ *                                         the token over the wire and the host installs it after verifying
+ *                                         signature + `subject == host` + `issuer == podOwnerPubKey`.
+ * @param {string}  [opts.podOwnerPubKey]  R2b.2 — the pod owner's pubKey, the host's DELEGATION TRUST ROOT.
+ *                                         (1) It is the token-ISSUER the `ScopedPodClient` verifier trusts
+ *                                         (`isTrusted: (i) => i === podOwnerPubKey`); (2) `pod.acceptDelegation`
+ *                                         REJECTS any delivered token whose `issuer !== podOwnerPubKey`; and
+ *                                         (3) when it is set but NO `podToken` is pre-injected, the host boots
+ *                                         FAILING CLOSED — every pod op denies until a valid delegation arrives.
  * @param {object}  [opts.podTokenRegistry] R2b.1 — a `PodTokenRegistry` (owner-side) whose `isRevoked` the
  *                                         pod gate consults, so revoking the delegation denies live.
  * @param {() => number} [opts.podNow]     R2b.1 — injectable clock (unix-ms) for the pod gate's expiry check
@@ -194,34 +198,50 @@ export async function startCompanionNode(opts = {}) {
   // ── 3. Node store satisfying agentCores.js's contract (real skill path) ───
   const resolvedPodSource = podSource ?? await buildDevPodSource();
 
-  // ── R2b.1. Scope-enforce the POD LEG when a delegated token is presented ──
-  // R2b.2: token arrives via the authorizePod handshake (injected here for now).
-  // When a `podToken` is supplied, wrap the held pod client in a `ScopedPodClient`
+  // ── R2b. Scope-enforce the POD LEG behind a delegated PodCapabilityToken ──
+  // R2b.2: the token now arrives over the `pod.acceptDelegation` handshake (see
+  // below) — `opts.podToken` is kept as R2b.1's boot-time injection (back-compat).
+  //
+  // `wrapScopedPodSource(token)` wraps the held pod client in a `ScopedPodClient`
   // so EVERY pod op the folio cores reach (today: `.list` via listFiles/pod) is
   // verified — scope · expiry · issuer-trust · revocation, deny-by-default — before
   // it touches the client. Owner-issued trust: the host trusts the pod OWNER's key
-  // as the token issuer. Absent a token, the held client is ungated (R1/R2/R-media).
-  const gatedPodSource = (podToken && resolvedPodSource?.podClient)
-    ? {
-        ...resolvedPodSource,
-        podClient: new ScopedPodClient({
-          inner:   resolvedPodSource.podClient,
-          token:   podToken,
-          podRoot: podToken.pod ?? podToken.toJSON?.().pod ?? podRoot,
-          verify:  createPodTokenVerifier({
-            // Owner-issued: trust the pod owner's key as issuer. When no owner key
-            // is pinned, accept the token as issued (still scope/expiry/revocation-
-            // gated) — the R2b.2 handshake pins the real owner key.
-            ...(podOwnerPubKey ? { isTrusted: (i) => i === podOwnerPubKey } : {}),
-            ...(podTokenRegistry ? { isRevoked: (id) => podTokenRegistry.isRevoked(id) } : {}),
-            ...(typeof podNow === 'function' ? { now: podNow } : {}),
-          }),
+  // as the token issuer. The SAME verifier config is reused whether the token was
+  // injected at boot or delivered over the wire, so the handshake path enforces
+  // exactly what R2b.1 did (revocation/expiry/scope all hold post-delivery).
+  function wrapScopedPodSource(token) {
+    return {
+      ...resolvedPodSource,
+      podClient: new ScopedPodClient({
+        inner:   resolvedPodSource.podClient,
+        token,
+        podRoot: token.pod ?? token.toJSON?.().pod ?? podRoot,
+        verify:  createPodTokenVerifier({
+          // Owner-issued: trust the pod owner's key as issuer. When no owner key
+          // is pinned, accept the token as issued (still scope/expiry/revocation-
+          // gated). The R2b.2 handshake pins the real owner key (podOwnerPubKey).
+          ...(podOwnerPubKey ? { isTrusted: (i) => i === podOwnerPubKey } : {}),
+          ...(podTokenRegistry ? { isRevoked: (id) => podTokenRegistry.isRevoked(id) } : {}),
+          ...(typeof podNow === 'function' ? { now: podNow } : {}),
         }),
-      }
-    : resolvedPodSource;
+      }),
+    };
+  }
+
+  // Boot posture for the pod leg:
+  //   (a) podToken injected (R2b.1 back-compat) → wrap NOW, gated from boot.
+  //   (b) configured for delegation (podOwnerPubKey set) but NO token yet →
+  //       FAIL CLOSED: every pod op denies until a valid `pod.acceptDelegation`
+  //       arrives and rewraps the source. An un-delegated host CANNOT read the pod.
+  //   (c) neither (R1/R2/R-media) → the held client is ungated.
+  const initialPodSource = (podToken && resolvedPodSource?.podClient)
+    ? wrapScopedPodSource(podToken)
+    : (podOwnerPubKey && resolvedPodSource?.podClient)
+      ? { ...resolvedPodSource, podClient: closedPodClient(resolvedPodSource.podClient) }
+      : resolvedPodSource;
 
   const store = buildCompanionStore({
-    identity, seedFiles, podRoot, podSource: gatedPodSource,
+    identity, seedFiles, podRoot, podSource: initialPodSource,
   });
 
   // ── 4. Compose folio's relocatable agent (byte-identical to browser.js) ───
@@ -241,6 +261,58 @@ export async function startCompanionNode(opts = {}) {
   // The two ops browser.js registers directly (no manifest op; pure + node-free).
   agent.register('searchFiles',        async ({ parts }) => searchFilesCore(store, parts?.[0]?.data ?? {}), skillOpts);
   agent.register('folio_briefSummary', async () => folioBriefSummary(store), skillOpts);
+
+  // ── R2b.2. `pod.acceptDelegation` — the device→host delegation RECEIVE op ──
+  // Registered UNGATED (default `on-request`, NOT `requires-token`) and this is
+  // SAFE: the op is SELF-AUTHORIZING — the delivered `PodCapabilityToken` IS the
+  // authorization, and the host cryptographically verifies it (Ed25519 signature +
+  // `subject == this host` + `issuer == the configured owner`) BEFORE installing.
+  // A prior R2 skill token would add nothing (the owner's signature over a token
+  // bound to THIS host's subject is the trust root), and requiring one would create
+  // a chicken-and-egg (the device would need a host-issued skill token just to
+  // deliver the owner's pod grant). No prior authorization ⇒ no chicken-and-egg;
+  // a bogus/mis-delegated token can never install because all three checks must
+  // pass. Rejection is OPAQUE (`{ok:false,error:'delegation rejected'}`) — it never
+  // leaks WHICH check failed. On reject the pod source is untouched, so an
+  // un-delegated (or wrongly-delegated) host keeps failing closed.
+  agent.register(ACCEPT_DELEGATION_OP, async ({ parts }) => {
+    try {
+      const raw = Parts.data(parts)?.token;
+      if (!raw || typeof raw !== 'object') return { ok: false, error: 'delegation rejected' };
+
+      // The host must be pre-configured with its owner's key; only that owner may
+      // delegate this host's pod access. No configured owner ⇒ nothing to trust.
+      if (!podOwnerPubKey) return { ok: false, error: 'delegation rejected' };
+
+      // Verification order (all deny-by-default; any miss ⇒ opaque reject, no install):
+      //   1. signature + expiry (+ pod binding when the host pins podRoot)
+      const expectedPod = podRoot ?? undefined;
+      if (PodCapabilityToken.verify(raw, expectedPod) !== true) {
+        return { ok: false, error: 'delegation rejected' };
+      }
+      //   2. subject == THIS host — the grant was delegated to us, not replayed
+      //      against us (the binding R2b.1 deferred to the wire-delivery point).
+      if (raw.subject !== agent.pubKey) {
+        return { ok: false, error: 'delegation rejected' };
+      }
+      //   3. issuer == the configured owner — only the legitimate owner may
+      //      delegate; a random device cannot install a bogus delegation.
+      if (raw.issuer !== podOwnerPubKey) {
+        return { ok: false, error: 'delegation rejected' };
+      }
+
+      // Install: rewrap the held pod source in a `ScopedPodClient` presenting the
+      // delivered token. Subsequent pod ops now present it and are scope/expiry/
+      // revocation-checked exactly as an injected token would be.
+      const token = PodCapabilityToken.fromJSON(raw);
+      store.setPodSource(wrapScopedPodSource(token));
+
+      return { ok: true, subject: token.subject, scopes: token.scopes, expiresAt: token.expiresAt };
+    } catch {
+      // Deny-by-default: any parse/verify throw ⇒ opaque reject, no install.
+      return { ok: false, error: 'delegation rejected' };
+    }
+  });
 
   // ── R2. Inbound capability-token gate — first activation of the parked engine ─
   // Host-as-authority model (see header). Only built when the gate is ON.
