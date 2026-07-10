@@ -71,6 +71,7 @@ import { searchFiles as searchFilesCore, folioBriefSummary } from '../../folio/s
 import { buildCompanionStore }         from './store.js';
 import { buildDevPodSource }           from './podSource.js';
 import { makeMemoryRegistryPod }       from './registryPod.js';
+import { buildDevMediaEdge }           from './mediaEdge.js';
 
 const IDENTITY_FILE = 'host-identity.json';
 
@@ -90,7 +91,13 @@ export function resolveConfigDir(explicit) {
  *                                         when absent, a local relay is booted in-process.
  * @param {number}  [opts.port=0]          local-relay port (0 ⇒ OS-assigned; ignored when relayUrl is set)
  * @param {string}  [opts.host='127.0.0.1'] local-relay bind host
- * @param {object}  [opts.blobGate=null]   PASS-THROUGH to startRelay (media edge; unused in R1)
+ * @param {object}  [opts.blobGate=null]   explicit blobGate config (real-infra injection); wins over `media`.
+ * @param {boolean} [opts.media=false]     R-media: mount the media blob edge as the 2nd tenant on the
+ *                                         local relay (dev bucket + capability verifier, sealed-only,
+ *                                         deny-by-default). OFF by default so R1/R2 tests are unaffected.
+ * @param {object}  [opts.mediaEdge]       media-edge config forwarded to `buildDevMediaEdge`
+ *                                         ({ uploaders, ttl, requiredSkill, route, bucket, verifyToken });
+ *                                         passing it also enables the edge. `uploaders` defaults to [] = NOBODY.
  * @param {string}  [opts.configDir]       config dir for the persisted host keypair
  * @param {object}  [opts.identityVault]   inject a Vault (tests) — else VaultNodeFs on disk
  * @param {boolean} [opts.gate=true]       R2 inbound capability-token gate. Default ON:
@@ -125,6 +132,8 @@ export async function startCompanionNode(opts = {}) {
     port       = 0,
     host       = '127.0.0.1',
     blobGate   = null,
+    media      = false,
+    mediaEdge,
     configDir,
     identityVault,
     seedFiles,
@@ -146,10 +155,19 @@ export async function startCompanionNode(opts = {}) {
   // ── 2. Relay — connect to a shared one (decision #5), else boot local ─────
   let relay    = null;
   let relayUrl = existingRelayUrl ?? null;
+  let mediaEdgeCfg = null;
   if (!relayUrl) {
-    // blobGate stays pass-through: the media edge composes into this same
-    // process later (server.js mounts it additively) without R1 precluding it.
-    relay    = await startRelay({ port, host, blobGate });
+    // R-media: the media blob edge is the companion's SECOND tenant. The blobGate
+    // seam (server.js:254) mounts it additively on THIS relay's HTTP server — one
+    // process, one port, folio-over-WS + blob-edge-over-HTTP. When media is
+    // requested we supply a real dev blobGate config (dev bucket + capability
+    // verifier, sealed-only / deny-by-default) instead of R1's pass-through null.
+    // An explicit `blobGate` opt still wins (real-infra injection).
+    // real bucket/verifier swap = Frits' infra action (one documented seam — mediaEdge.js).
+    mediaEdgeCfg = blobGate ?? ((media || mediaEdge)
+      ? buildDevMediaEdge((mediaEdge && typeof mediaEdge === 'object') ? mediaEdge : {})
+      : null);
+    relay    = await startRelay({ port, host, blobGate: mediaEdgeCfg });
     relayUrl = `ws://${host}:${relay.port}`;
   }
 
@@ -284,6 +302,10 @@ export async function startCompanionNode(opts = {}) {
     deviceId,
     registry,
     store,
+    // R-media (2nd tenant): the assembled blob-edge config ({ verifyToken, bucket,
+    // uploaders, ttl, route }) when media is ON, else null. The LIVE ACL store is
+    // on `relay.blobGate.acl` (mount default). Both null when media is OFF.
+    mediaEdge: mediaEdgeCfg,
     capabilities: [...FOLIO_CAPABILITIES],
     // R2 — the inbound gate + its authority surface (all null when gate is OFF).
     gate,

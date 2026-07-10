@@ -93,6 +93,16 @@ are all in the sqlite-store suites and mention a `.node` binding / `NODE_MODULE_
 tests stay green. Not a regression — check this before bisecting a relay failure. (Found 2026-07-10 during
 the blob-gate edge mount.)
 
+**R-media (2nd tenant, 2026-07-10):** composing the media blob edge into companion-node added TWO new
+hand-materialized `@canopy/*` symlinks in `apps/companion-node/node_modules/@canopy/`:
+`blob-gateway → ../../../../packages/blob-gateway` (used by `src/mediaEdge.js` for the capability-verifier
+adapter) and `pod-client → ../../../../packages/pod-client` (used by `test/companionMedia.test.js` for the
+sealing `makeSealer`/`makeOpener`). Re-create with `ln -sfn ../../../../packages/<pkg> <pkg>` from that dir
+if a fresh checkout drops them. **Tell:** `Cannot find package '@canopy/blob-gateway'` (or `pod-client`)
+only when companion-node's media suite runs. NOTE: the SQLite native-binding trap above ALSO applies here —
+the blob-gate ACL store defaults to a MemoryBlobAclStore (no sqlite), so companion-node's media suite itself
+needs no rebuild, but a cold clone still needs `npm rebuild better-sqlite3` for the broader relay suite.
+
 ## companion-node hand-linked @canopy symlinks + relative-import-into-folio (R1)
 
 `apps/companion-node` (Slice R1) follows the repo's no-hoist convention: its direct bare `@canopy/*`
