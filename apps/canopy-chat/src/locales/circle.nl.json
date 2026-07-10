@@ -579,6 +579,10 @@
     "scherm_coming": {
       "text": "Scherm-weergave (admin-recept) komt in een vervolg-slice.",
       "doc": "SP-13.4 — placeholder."
+    },
+    "attach": {
+      "text": "Foto toevoegen",
+      "doc": "media P1 — bijlage-knop in de kring-composer (verzegeld media-pad); alleen zichtbaar als de kring een content-verzegelstrategie heeft."
     }
   },
   "screen": {
@@ -3072,6 +3076,12 @@
     "default_message": {
       "text": "Deze actie vraagt om je bevestiging.",
       "doc": "Q27 confirm-gate dialoog — fallback-tekst voor een op waarvan de manifest-confirm geen message heeft."
+    }
+  },
+  "media": {
+    "outgoing": {
+      "text": "📷 {{name}}",
+      "doc": "media P1 — tekstregel van een uitgaand media-bericht (de fan-out draagt nu alleen tekst; de lokale bubbel toont ook de verzegelde chip)."
     }
   }
 }

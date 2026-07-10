@@ -125,6 +125,15 @@ export function createChatMessageInbox({
       ? resolveActorFn(envelope, fromPeerAddr)
       : envelope.fromActor) ?? fromPeerAddr ?? null;
 
+    // media P1 — optional media-card embed riding the envelope (forward-
+    // additive; the sender's wire whitelist already stripped local-only
+    // fields). Shape-guarded: anything that isn't a media-card object is
+    // dropped, the MESSAGE still lands (text renders as before). Absent →
+    // the appended event is byte-identical to the pre-media shape.
+    const media = (envelope.media && typeof envelope.media === 'object'
+      && !Array.isArray(envelope.media) && envelope.media.kind === 'media-card')
+      ? envelope.media : null;
+
     eventLog.append({
       id:    envelope.msgId,
       ts:    envelope.ts,
@@ -136,6 +145,7 @@ export function createChatMessageInbox({
         text:     envelope.text,
         kind:     'chat-message',
         senderDisplay: actor,
+        ...(media ? { media } : {}),
       },
     });
     logger.info?.('[kring-chat] received', envelope.msgId, 'circle=' + envelope.circleId, 'source=' + source);

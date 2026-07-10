@@ -37,7 +37,10 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   (the offline store is often incomplete here), materialize the link by hand, mirroring an existing one (e.g.
   `@canopy/redaction`). **Tell:** an import that resolves in one package but throws `ERR_MODULE_NOT_FOUND` in
   another. *Concrete (2026-07-08):* feedback-split F1 added `@canopy/{core,pod-client,pseudo-pod}` to
-  `apps/feedback-pipeline`; links were materialized by hand pending the next install.
+  `apps/feedback-pipeline`; links were materialized by hand pending the next install. *Concrete (2026-07-09):* the
+  versioning/agents work hand-materialized `@canopy/versioning` into `apps/canopy-chat`, `apps/canopy-chat-mobile`,
+  and `packages/substrate-stack`; `@canopy/substrate-stack` into `apps/{stoop,tasks-v0,household}`; and
+  `@canopy-app/agents` + `@canopy/agent-registry` into `apps/canopy-chat` — all pending the next real install.
   **Same family — a fresh `git worktree` has NO `node_modules`:** before running a worktree's tests, wire them by
   symlinking the main tree's root `node_modules` + each `apps/*/node_modules` & `packages/*/node_modules`. And note
   the Agent-tool `isolation: worktree` branches from stale `origin/master` here (local master is unpushed) — pin
@@ -61,3 +64,10 @@ error renders readable on-screen text instead of a blank crash you can't screens
   `exp+<app>://<laptop-ip>:<port>` or scan the QR.
 - **adb logcat**, just the platform-tools zip:
   `adb logcat --pid=$(adb shell pidof <app.package>) | grep -E "Error|Fatal|FATAL|Exception"`.
+
+## Cross-package RELATIVE imports in canopy-chat-mobile (Metro)
+
+Some mobile modules import packages RELATIVELY (`../../../../packages/<pkg>/src/…`) when the package is not in
+mobile's package.json — e.g. `src/core/mediaCardModel.js` → blob-gateway (2026-07-10), same pattern as the earlier
+`rendezvousRtcLib` import. Works in vitest/Node; on-device Metro needs the path inside `nodeModulesPaths`/watchFolders
+(check metro.config.js) or the dep declared + linked. **Tell:** green tests but a device-only "module not found".

@@ -579,6 +579,10 @@
     "scherm_coming": {
       "text": "Screen view (admin's recept'd page) lands in a follow-up slice.",
       "doc": "SP-13.4 — placeholder until the recept renderer is built."
+    },
+    "attach": {
+      "text": "Attach a photo",
+      "doc": "media P1 — kring composer attach button (sealed media path); only shown when the circle has a content seal strategy."
     }
   },
   "screen": {
@@ -3072,6 +3076,12 @@
     "default_message": {
       "text": "This action needs your confirmation.",
       "doc": "Q27 confirm-gate dialog — fallback body for an op whose manifest confirm declaration has no message."
+    }
+  },
+  "media": {
+    "outgoing": {
+      "text": "📷 {{name}}",
+      "doc": "media P1 — the text line of an outgoing media message (the fan-out envelope carries text only for now; the local bubble also renders the sealed chip)."
     }
   }
 }

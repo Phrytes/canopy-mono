@@ -107,6 +107,13 @@ import { openPagePanel } from '../../src/web/pagePanel.js';
 // S5 — client-side image-attachment encoder (Canvas resize + thumbnail → the
 // inbound shape stoop.postRequest expects).
 import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
+// media P1 — the LIVE sealed-media composition for the active circle: the circle's own
+// seal strategy + a (dev-grade, in-memory) bucket + the deny-by-default gate feed
+// createMediaEmbed's injected seams. Sealed-only: a p0/p1 circle composes to null and
+// the kring composer shows NO attach affordance. Swap point for real infra (S3/R2 +
+// Solid verifier) is recorded in circleMediaGateway.js.
+import { createCircleMediaGateway, makeDevMediaBucket } from '../../src/v2/circleMediaGateway.js';
+import { createMediaEmbed } from '../../src/core/handlers/mediaEmbed.js';
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected "inline menu").
 import { embedButtonsForReply, embedsFromReply } from '../../src/v2/replyEmbeds.js';
 // S6.C — per-user preference selecting which projection (inline / screen / minimal) renders.
@@ -1040,6 +1047,25 @@ async function getCircleSealStrategy(circleId, policy) {
   } catch { strat = null; }
   circleSealStrategies.set(circleId, strat);
   return strat;
+}
+
+// media P1 — one DEV bucket per app session (in-memory: uploads don't survive a reload
+// and never leave this device — honest v1; the real S3/R2 bucket is the recorded swap
+// point in circleMediaGateway.js). Compositions are cached per circle so the session
+// ACL's grants (which refs the local actor may re-read through the gate) persist across
+// circle re-opens.
+const devMediaBucket = makeDevMediaBucket();
+const circleMediaCompositions = new Map();   // circleId → Promise<composition|null>
+function getCircleMediaComposition(circleId, policy) {
+  if (!circleMediaCompositions.has(circleId)) {
+    circleMediaCompositions.set(circleId, createCircleMediaGateway({
+      circleId,
+      getSealStrategy: () => getCircleSealStrategy(circleId, policy),
+      localActor: LOCAL_ACTOR,
+      bucket: devMediaBucket,
+    }).catch(() => null));
+  }
+  return circleMediaCompositions.get(circleId);
 }
 
 /** S4 — a pseudo-pod client for one circle (real per-circle sealed storage, no OIDC/CSS). Objective L:
@@ -3186,6 +3212,45 @@ function showKring(id, circle, policy) {
   ensureCirclePod(id, policy)
     .then((prod) => { if (prod?.controlAgent) return seedCircleRoster({ callSkill: rawCallSkill, circleId: id, router: circleControlAgentRouter }); })
     .catch(() => { /* best-effort; plain shared path on failure */ });
+  // media P1 — resolve this circle's sealed-media composition (async: the seal strategy
+  // rides the pod producer). Until it resolves — and for a p0/p1 circle FOREVER (null) —
+  // the composer shows no attach affordance: sealed-only, no unsealed upload fallback.
+  let kringMedia = null;
+  getCircleMediaComposition(id, policy).then((m) => {
+    if (!m) return;   // no seal strategy → affordance stays hidden
+    kringMedia = m;
+    if (getActiveCircle() === id) rerender();
+  });
+
+  // media P1 — the attach path: picked file → createMediaEmbed (encode → SEALED upload →
+  // canonical media item → {type:'media', ref} pointer) → the embed rides the outgoing
+  // kring message payload EXACTLY as the handler emits it; the bubble renders the
+  // media-card chip via the shared domAdapter branch. The fan-out carries the pointer +
+  // snapshot too (media P1 fan-out slice): kring-host projects the embed through its
+  // WIRE whitelist (`mediaForKringWire` — sender-local fields like `stored` stripped),
+  // so PEERS render the same chip — the inline thumb is sealed with the circle key the
+  // receiving shell's gateway already composes an opener for.
+  async function kringAttachMedia(file) {
+    if (!kringMedia) return;
+    const embed = await createMediaEmbed({}, {
+      file, mediaGateway: kringMedia.mediaGateway, encodeImage: encodeImageFile,
+      localActor: LOCAL_ACTOR, t,
+    });
+    if (!embed || embed.ok === false) {
+      _kringRender?.botBubble(embed?.error ?? t('media.upload_failed', { error: '' }));
+      return;
+    }
+    const msgId = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}`;
+    const ts = Date.now();
+    const text = t('circle.media.outgoing', { name: file?.name ?? '' });
+    // Local append keeps the FULL embed (incl. `stored`); the fan-out's wire copy is
+    // whitelist-projected inside broadcastKringFanOut.
+    eventLog.append(kringChatMessageEvent({
+      msgId, ts, circleId: id, actor: LOCAL_ACTOR, text, scope: 'kring', media: embed,
+    }));
+    rerender();
+    broadcastFanOut({ msgId, text, ts, media: embed });
+  }
   let noticeboardPosts = [];
   let noticeboardIntent = 'ask';
   let noticeboardBusy = false;
@@ -3314,9 +3379,10 @@ function showKring(id, circle, policy) {
   // tap-to-retry path from the 'failed' icon.  Re-uses the SAME
   // msgId on retry so receiver-side dedup suppresses any duplicate
   // delivery (the EventLog already idempotents on id).
-  function broadcastFanOut({ msgId, text, ts }) {
+  // `media` (optional) — the media-card embed; kring-host whitelists it onto the wire.
+  function broadcastFanOut({ msgId, text, ts, media }) {
     // Shared fan-out (Phase 2); onChange = web's rerender.
-    broadcastKringFanOut({ rawCallSkill, circleId: id, msgId, text, ts, deliveryStateMap, onChange: rerender });
+    broadcastKringFanOut({ rawCallSkill, circleId: id, msgId, text, ts, media, deliveryStateMap, onChange: rerender });
   }
 
   const rerender = () => {
@@ -3341,6 +3407,10 @@ function showKring(id, circle, policy) {
       history: kringInputHistory,
       // Permission gate — chat disabled for this circle ⇒ read-only composer (classic `allowCommands` analog).
       canPost: isFeatureEnabled(policy, 'chat'),
+      // media P1 — the sealed attach affordance + the chip's opener. Both null until the
+      // circle's media composition resolves (and forever for p0/p1 — sealed-only).
+      onAttachMedia: kringMedia ? kringAttachMedia : null,
+      media: kringMedia ? { opener: kringMedia.mediaGateway.opener } : null,
       // S1 #1 — noticeboard surface for the prikbord tab (the view only uses it when active).
       noticeboard: {
         posts:    noticeboardPosts,
@@ -3380,14 +3450,15 @@ function showKring(id, circle, policy) {
       localActor: LOCAL_ACTOR,
       // δ.2 — retry on the failed icon tap.  Re-fires the SAME msgId
       // (idempotent receiver-side dedup).  Looks up the original text
-      // from the eventLog so we don't have to remember it elsewhere.
+      // (and any media embed) from the eventLog so we don't have to
+      // remember them elsewhere — a retried photo keeps its chip.
       onRetryDelivery: (msgId) => {
         const evt = eventLog.query({ excludeMuted: true })
           .find((e) => e.id === msgId);
         const text = evt?.payload?.text;
         const ts   = evt?.ts ?? Date.now();
         if (typeof text !== 'string' || !text) return;
-        broadcastFanOut({ msgId, text, ts });
+        broadcastFanOut({ msgId, text, ts, media: evt?.payload?.media });
       },
       onViewMode: (mode) => {
         if (mode !== 'chat' && mode !== 'scherm') return;

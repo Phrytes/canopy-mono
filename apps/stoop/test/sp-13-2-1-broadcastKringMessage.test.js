@@ -154,6 +154,51 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
     expect(item.source.from).toBe(ANNE);
   });
 
+  /* ── media P1 fan-out — the optional media pointer rides the envelope
+   *    (forward-additive; absent → wire byte-identical to today). ── */
+
+  it('carries an optional media pointer on extras AND persists it on the local mirror', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const calls = [];
+    bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
+    const media = {
+      kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:m9' },
+      snapshot: { type: 'media', id: 'm9', source: { type: 'blob', ref: 'blob://k9', enc: { sealed: true, keyRef: 'urn:circle:oosterpoort:content-key', thumb: 'fp1:sealed' } } },
+    };
+    const r = await callSkill(bundle.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort', text: '📷 photo.jpg', msgId: 'm-media-1', ts: 1, media,
+    });
+    expect(r.sent).toBe(2);
+    for (const c of calls) expect(c.extras.media).toEqual(media);
+    const item = await bundle.itemStore.getById(r.itemId);
+    expect(item.source.media).toEqual(media);
+  });
+
+  it('WITHOUT media the envelope + mirror stay byte-identical to the legacy shape (no media key)', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const calls = [];
+    bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
+    const r = await callSkill(bundle.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort', text: 'Hoi', msgId: 'm-plain-1', ts: 1,
+    });
+    for (const c of calls) expect(c.extras).not.toHaveProperty('media');
+    const item = await bundle.itemStore.getById(r.itemId);
+    expect(item.source).not.toHaveProperty('media');
+  });
+
+  it('a non-object media arg is ignored (shape guard at the skill boundary)', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const calls = [];
+    bundle.chat.send = vi.fn(async (args) => { calls.push(args); return { ok: true }; });
+    await callSkill(bundle.agent, 'broadcastKringMessage', {
+      groupId: 'oosterpoort', text: 'Hoi', msgId: 'm-guard-1', ts: 1, media: ['not', 'an', 'embed'],
+    });
+    for (const c of calls) expect(c.extras).not.toHaveProperty('media');
+  });
+
   it('deduplicates the local mirror by msgId across resends', async () => {
     const bundle = await buildBundle();
     await bundle.skillMatch.start();
@@ -193,6 +238,46 @@ describe('Stoop SP-13.2.1 — ingestKringMessage', () => {
     expect(item.source.fromActor).toBe(BOB);
     expect(item.source.fromPubKey).toBe('pk-bob-stableid');
     expect(item.source.fromPeerAddr).toBe('nkn-addr-bob');
+  });
+
+  it('persists an envelope media pointer to source.media — a LEGACY envelope (no media) still ingests unchanged', async () => {
+    const bundle = await buildBundle();
+    await bundle.skillMatch.start();
+    const media = {
+      kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:mm' },
+      snapshot: { type: 'media', id: 'mm', source: { type: 'blob', ref: 'blob://kk', enc: { sealed: true } } },
+    };
+    const withMedia = await callSkill(bundle.agent, 'ingestKringMessage', {
+      payload: {
+        subtype: 'kring-chat-message', circleId: 'oosterpoort', msgId: 'rm-media-1',
+        text: '📷 photo.jpg', ts: 2, fromActor: BOB, media,
+      },
+      fromPubKey: 'pk-bob',
+    });
+    expect(withMedia.ok).toBe(true);
+    expect((await bundle.itemStore.getById(withMedia.itemId)).source.media).toEqual(media);
+
+    // Legacy-shaped envelope: still ingests, and stores NO media key at all.
+    const legacy = await callSkill(bundle.agent, 'ingestKringMessage', {
+      payload: {
+        subtype: 'kring-chat-message', circleId: 'oosterpoort', msgId: 'rm-legacy-1',
+        text: 'Hoi', ts: 3, fromActor: BOB,
+      },
+      fromPubKey: 'pk-bob',
+    });
+    expect(legacy.ok).toBe(true);
+    expect((await bundle.itemStore.getById(legacy.itemId)).source).not.toHaveProperty('media');
+
+    // Malformed media (array) → dropped, message still lands.
+    const malformed = await callSkill(bundle.agent, 'ingestKringMessage', {
+      payload: {
+        subtype: 'kring-chat-message', circleId: 'oosterpoort', msgId: 'rm-malformed-1',
+        text: 'Hoi', ts: 4, fromActor: BOB, media: ['x'],
+      },
+      fromPubKey: 'pk-bob',
+    });
+    expect(malformed.ok).toBe(true);
+    expect((await bundle.itemStore.getById(malformed.itemId)).source).not.toHaveProperty('media');
   });
 
   it('dedupes by msgId on resend (idempotent ingest)', async () => {

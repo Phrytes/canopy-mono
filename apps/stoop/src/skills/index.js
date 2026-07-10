@@ -2974,13 +2974,22 @@ export function buildSkills({
     }),
 
     /**
-     * broadcastKringMessage({groupId, text, msgId, ts?, fromActor?})
+     * broadcastKringMessage({groupId, text, msgId, ts?, fromActor?, media?})
      *   — SP-13.2.1 — plain-text chat fan-out to every member of a
      *   kring.  Reuses the existing `chat.send` substrate (WebID→pubKey
      *   resolution, signing, transport routing) with subtype
      *   `'kring-chat-message'` so receivers can wire a dedicated
      *   peer-router handler that appends to the canopy-chat EventLog
      *   (NOT to itemStore — kring chats aren't stoop posts).
+     *
+     *   `media` (optional, forward-additive — media P1 fan-out) — the
+     *   sealed media-card pointer+snapshot the sender's chip renders
+     *   from; rides the envelope so PEERS render the chip too (the
+     *   inline thumb is SEALED with the circle key they hold).  The
+     *   caller (kring-host `broadcastKringFanOut`) already projected
+     *   it through the wire whitelist; here we only guard the shape.
+     *   Absent → envelope byte-identical to the pre-media wire (legacy
+     *   receivers ignore the unknown field either way).
      *
      *   Best-effort + fire-and-forget: per-peer failures land in the
      *   returned `errors[]` array but never throw; the UI's local
@@ -2993,8 +3002,10 @@ export function buildSkills({
       if (typeof a.text !== 'string' || !a.text.trim()) return { error: 'text-required' };
       if (typeof a.msgId !== 'string' || !a.msgId)      return { error: 'msgId-required' };
 
-      const text = a.text.trim();
-      const ts   = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
+      const text  = a.text.trim();
+      const ts    = typeof a.ts === 'number' && Number.isFinite(a.ts) ? a.ts : Date.now();
+      const media = (a.media && typeof a.media === 'object' && !Array.isArray(a.media))
+        ? a.media : null;
 
       // Local mirror — store the outgoing chat as an item so it
       // survives reloads AND the kring view can read its full history
@@ -3018,6 +3029,9 @@ export function buildSkills({
               ts,
               from,
               fromActor: a.fromActor ?? from ?? null,
+              // media P1 — persist the pointer+snapshot so rehydrate/catch-up
+              // (listKringChats / getMessagesSince) serve the chip too.
+              ...(media ? { media } : {}),
             },
           }], { actor: from });
           localItemId = item?.id ?? null;
@@ -3034,7 +3048,10 @@ export function buildSkills({
       const { sent, attempted, errors } = await _fanOutToMembers({
         members, chat, selfWebid: from,
         subtype: 'kring-chat-message', threadId: _groupId, body: text,
-        extras: { circleId: _groupId, msgId: a.msgId, ts, fromActor: a.fromActor ?? from ?? null },
+        extras: {
+          circleId: _groupId, msgId: a.msgId, ts, fromActor: a.fromActor ?? from ?? null,
+          ...(media ? { media } : {}),
+        },
       });
       metrics?.record?.('kring-chat-fanout');
       return { sent, attempted, errors, itemId: localItemId };
@@ -3207,7 +3224,7 @@ export function buildSkills({
      *   but reshaped to return the broadcast envelope shape so callers
      *   can feed results straight through the ε.1 chatMessageInbox:
      *
-     *     { subtype: 'kring-chat-message', circleId, msgId, ts, text, fromActor }
+     *     { subtype: 'kring-chat-message', circleId, msgId, ts, text, fromActor, media? }
      *
      *   Used by ε.3 catch-up's `podRangeQuery` handler for `pod: 'shared'`
      *   kringen — the receiver IS the pod that holds authoritative
@@ -3260,6 +3277,10 @@ export function buildSkills({
         ts:        it?.source?.ts,
         text:      it.text ?? '',
         fromActor: it?.source?.fromActor ?? it?.source?.fromWebid ?? null,
+        // media P1 — carry the stored media pointer+snapshot so a catch-up
+        // receiver renders the chip too (absent stays absent — legacy shape).
+        ...(it?.source?.media && typeof it.source.media === 'object'
+          ? { media: it.source.media } : {}),
       }));
       return { items, truncated };
     }, {
@@ -3307,6 +3328,12 @@ export function buildSkills({
       const open = await store.listOpen({ type: 'kring-chat-message' });
       if (open.some((i) => i?.source?.msgId === msgId)) return { deduped: true };
 
+      // media P1 — optional media-card pointer+snapshot riding the envelope
+      // (forward-additive; shape-guarded, anything else is dropped). Persisted
+      // so this peer's rehydrate + catch-up serves keep the chip.
+      const media = (payload.media && typeof payload.media === 'object' && !Array.isArray(payload.media))
+        ? payload.media : null;
+
       const [item] = await store.addItems([{
         type:       'kring-chat-message',
         text,
@@ -3319,6 +3346,7 @@ export function buildSkills({
           fromWebid: payload.fromWebid ?? null,
           fromPubKey,
           ...(fromPeerAddr ? { fromPeerAddr } : {}),
+          ...(media ? { media } : {}),
         },
       }], {
         actor: payload.fromActor ?? payload.fromWebid ?? (fromPubKey ? `pubkey:${fromPubKey.slice(0, 12)}` : 'remote'),

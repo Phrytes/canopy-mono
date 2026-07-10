@@ -36,6 +36,9 @@
  */
 
 import { actionsForStreamRow } from '../../src/v2/streamActions.js';
+// media P1 — the sealed media-card chip renders via the existing shared
+// domAdapter branch (renderToDom → renderMediaCard), NOT a re-implementation.
+import { renderToDom } from '../../src/web/domAdapter.js';
 import { renderCircleScreen } from './circleScreen.js';
 import { renderCircleNoticeboard } from './circleNoticeboard.js';
 import { suggestCommands } from '../../src/v2/commandSuggest.js';
@@ -107,6 +110,15 @@ export function renderCircleKring(container, {
   // its own). `null` = host hasn't loaded it → falls back to the placeholder.
   //   `{ posts, intent, busy, onPost, onAction, onIntent }`
   noticeboard = null,
+  // media P1 — the sealed media path (live wiring). Both optional; without them the
+  // composer + bubbles render exactly as before.
+  //   `onAttachMedia(file)`  host runs the picked image through createMediaEmbed (sealed
+  //     upload). Only wired when the circle HAS a content seal strategy — a p0/p1 circle
+  //     never shows the affordance (sealed-only; no unsealed upload fallback).
+  //   `media`  `{opener}` — the circle's content OPENER, passed to the media-card chip so
+  //     the sealed inline thumbnail renders; absent → the chip's mime/dims placeholder.
+  onAttachMedia = null,
+  media = null,
   // D / Surface 2 — the circle policy the ⋯ overflow menu's feature gate reads.
   // The roster + its `requires` gates are projected from manifest.actions; this
   // is the ONLY feature-gate input (the host no longer pre-filters `more`).
@@ -266,6 +278,7 @@ export function renderCircleKring(container, {
         tr, onAction,
         deliveryStateFor, localActor, onRetryDelivery,
         onEmbedButton, onEmbedOpen,
+        media,
       }));
     }
   }
@@ -304,6 +317,32 @@ export function renderCircleKring(container, {
     suggestEl.setAttribute('role', 'listbox');
     suggestEl.hidden = true;
     form.appendChild(suggestEl);
+
+    // media P1 — attach affordance (the board's `[+]` slot; 📎 matches the prikbord's
+    // existing attach). Only when the host wired `onAttachMedia` — i.e. the circle has a
+    // content seal strategy. A p0/p1 circle shows NO button (sealed-only; never an
+    // unsealed upload). Same hidden-file-input pattern as circleNoticeboard.js.
+    if (typeof onAttachMedia === 'function') {
+      const attachBtn = document.createElement('button');
+      attachBtn.type = 'button';
+      attachBtn.className = 'circle-kring__attach';
+      attachBtn.title = tr('circle.kring.attach');
+      attachBtn.setAttribute('aria-label', tr('circle.kring.attach'));
+      attachBtn.textContent = '📎';
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = 'image/png,image/jpeg,image/webp';
+      fileInput.className = 'circle-kring__file';
+      fileInput.style.display = 'none';
+      fileInput.addEventListener('change', () => {
+        const f = fileInput.files && fileInput.files[0];
+        if (f) onAttachMedia(f);
+        fileInput.value = '';
+      });
+      attachBtn.addEventListener('click', () => fileInput.click());
+      form.appendChild(attachBtn);
+      form.appendChild(fileInput);
+    }
 
     const input = document.createElement('input');
     input.type = 'text';
@@ -440,6 +479,8 @@ function renderBubble(row, {
   onEmbedButton = null,
   // tap a "See also" embed chip → open the referenced item's screen.
   onEmbedOpen = null,
+  // media P1 — `{opener}` for the sealed media-card chip's inline thumbnail.
+  media = null,
 } = {}) {
   const el = document.createElement('div');
   el.className = 'circle-kring__bubble';
@@ -479,6 +520,20 @@ function renderBubble(row, {
   text.className = 'circle-kring__bubble-text';
   text.textContent = pickRowText(row) ?? tr(`circle.streamAction.${row.type ?? 'unknown'}`) ?? '';
   el.appendChild(text);
+
+  // media P1 — a message carrying a sealed media-card embed (payload.media, set by the
+  // host's attach path) renders the chip via the EXISTING shared domAdapter branch.
+  // `media.opener` opens the line's sealed inline thumbnail; no opener (or a wrong key)
+  // → the chip's mime/dims placeholder. Best-effort: a chip failure never eats the bubble.
+  const mediaEmbed = row.event?.payload?.media;
+  if (mediaEmbed && mediaEmbed.kind === 'media-card') {
+    try {
+      el.appendChild(renderToDom(
+        { kind: 'embed-card', embed: mediaEmbed, messageId: row.id, lifecycleState: 'live' },
+        { doc: document, media: media ?? {} },
+      ));
+    } catch { /* placeholder-less failure — the text line stands */ }
+  }
 
   // Per-row action chips (Ik help / Negeer / Ik doe ze …).  Substrate
   // already picks the right set per row kind.

@@ -36,6 +36,11 @@ import { createLocalBuiltins }   from '../../../canopy-chat/src/core/localBuilti
 import AsyncStorage              from '@react-native-async-storage/async-storage';
 import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
 
+// Media P1 mobile twin (2026-07) — the sealed-media upgrade gate (shared
+// handler decides; we only compose) + the RN identity-shaped encoder.
+import { hasMediaGateway }       from '../../../canopy-chat/src/core/handlers/mediaEmbed.js';
+import { encodePickedImage }     from './mediaPicker.js';
+
 import {
   createThread, setActiveThread, updateMessages,
 } from './threadState.js';
@@ -132,6 +137,18 @@ export function buildMobileLocalBuiltins({
   agent, catalog, callSkill, t,
   eventLog, openLogsPanel, openQrScanner,
   openFilePicker,
+  // Media P1 mobile twin (2026-07) — the sealed-media seams.  All optional:
+  // absent gateway ⇒ the shared embed-file builtin keeps its legacy inline
+  // file-card path (honest degradation, identical to web — no sealer in
+  // reach means NO unsealed upload; sealed-only stands).
+  //   mediaGateway        { bucket, sealer, opener?, keyRef? } — blob-gateway's
+  //                       injected contracts (tests: memory bucket + real
+  //                       sealer pair; LIVE bucket infra is the recorded gap)
+  //   openMediaFilePicker the RN image picker (mediaPicker.js — pickAndResize;
+  //                       pre-resized + thumbnailed on the picker's side)
+  //   encodeImage         override for the identity-shaped default below
+  //   storeMediaItem      item-store seam (absent ⇒ item rides on the embed)
+  mediaGateway, openMediaFilePicker, encodeImage, storeMediaItem,
   podAuth, onSignOut,
   // Bundle G3 (#265) — raw OidcSessionRN ref for podPeerAddr wrappers.
   // podAuth intentionally hides session.fetch (only exposes {webid}),
@@ -164,7 +181,7 @@ export function buildMobileLocalBuiltins({
     ?? agent?.identity?.chat?.pubKey
     ?? 'mobile-actor';
 
-  return createLocalBuiltins({
+  const builtinDeps = {
     catalog,
     t,
     threadStore,
@@ -176,6 +193,14 @@ export function buildMobileLocalBuiltins({
     openLogsPanel,
     openQrScanner,
     openFilePicker,
+    // Media P1 mobile twin (2026-07) — the sealed-media deps ride the same
+    // injection route every other seam takes.  encodeImage defaults to the
+    // identity-shaped adapter: the RN picker already resized + thumbnailed,
+    // so "encoding" is just carrying {mime, dataB64, width, height,
+    // thumbnail} through to mediaEmbed unchanged (no canvas on RN).
+    mediaGateway,
+    encodeImage: encodeImage ?? encodePickedImage,
+    storeMediaItem,
     podAuth,
     onSignOut,
     // Bundle G1 (#263) — /brief, /find, /apps now wired same as web.
@@ -225,5 +250,23 @@ export function buildMobileLocalBuiltins({
       publishPeerAddrToPod:  buildPublishPeerAddrToPod({ sessionRef, agent }),
     } : {}),
     //   - externalFlow, simPeers                    → not applicable on mobile
-  });
+  };
+
+  const table = createLocalBuiltins(builtinDeps);
+
+  // Media P1 mobile twin (2026-07) — "pickAndResize as the file input"
+  // (plans/NOTE-media-and-streaming.md).  When the composition wires BOTH
+  // the sealed-media gateway and the RN image picker, /embed-file's pick
+  // becomes the media input: a SECOND instance of the SAME shared handler,
+  // differing only in the injected picker — composition routes, the shared
+  // code stays the single source of logic.  /send-file (and every other
+  // picker consumer, and gateway-less builds) keeps the document picker.
+  if (hasMediaGateway(mediaGateway) && typeof openMediaFilePicker === 'function') {
+    table['embed-file'] = createLocalBuiltins({
+      ...builtinDeps,
+      openFilePicker: openMediaFilePicker,
+    })['embed-file'];
+  }
+
+  return table;
 }

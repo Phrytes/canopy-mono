@@ -50,6 +50,45 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
     });
   });
 
+  /* ── media P1 fan-out — optional media field, forward-additive ── */
+
+  it('lands an envelope media-card on payload.media (the receiver chip path)', async () => {
+    const eventLog = fakeEventLog();
+    const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
+    const media = {
+      kind: 'media-card', pointer: { type: 'media', ref: 'urn:dec:item:m9' },
+      snapshot: { type: 'media', id: 'm9', source: { type: 'blob', ref: 'blob://k', enc: { sealed: true, thumb: 'fp1:sealed' } } },
+    };
+    const r = await inbox.ingestChatMessage(envelope({ media }), { source: 'receiver', fromPeerAddr: 'nkn-anne' });
+    expect(r).toEqual({ result: 'inserted' });
+    expect(eventLog.events[0].payload.media).toEqual(media);
+    // The rest of the payload is unchanged by the media ride-along.
+    expect(eventLog.events[0].payload.text).toBe('Hoi buurt!');
+    expect(eventLog.events[0].payload.kind).toBe('chat-message');
+  });
+
+  it('an envelope WITHOUT media appends a payload with NO media key (legacy render pin)', async () => {
+    const eventLog = fakeEventLog();
+    const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
+    await inbox.ingestChatMessage(envelope(), { source: 'receiver' });
+    expect(eventLog.events[0].payload).not.toHaveProperty('media');
+  });
+
+  it('drops a malformed media field but keeps the MESSAGE (text still lands)', async () => {
+    const eventLog = fakeEventLog();
+    const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
+    const cases = ['📷 string', ['array'], { kind: 'file-card' }, 42];
+    let n = 0;
+    for (const media of cases) {
+      const r = await inbox.ingestChatMessage(envelope({ msgId: `mm-${n += 1}`, media }), { source: 'receiver' });
+      expect(r.result).toBe('inserted');
+    }
+    for (const ev of eventLog.events) {
+      expect(ev.payload).not.toHaveProperty('media');
+      expect(ev.payload.text).toBe('Hoi buurt!');
+    }
+  });
+
   it('rejects (does not append) on malformed envelopes', async () => {
     const eventLog = fakeEventLog();
     const inbox = createChatMessageInbox({ eventLog, logger: silentLogger });
