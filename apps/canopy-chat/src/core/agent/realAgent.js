@@ -37,6 +37,11 @@ import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
 // the agents manifest via wireSkill; registerAgentBundle both registers THIS
 // device in the registry resource and returns the live registry handle.
 import { buildAgentSkills } from '@canopy-app/agents/wireSkills';
+// P3 install — the DEFAULT curated-catalog SOURCE is a local stub
+// (createStubCatalog). commons-governance: the real community-curated
+// source drops in behind the same { list, get } contract; realAgent
+// treats it as opaque data and hardcodes no governance decision.
+import { createStubCatalog } from '@canopy-app/agents/defaultCatalog';
 import { registerAgentBundle, createAgentRegistry } from '@canopy/agent-registry';
 
 /**
@@ -528,7 +533,12 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Absent → listDataVersions/restoreDataVersion answer the honest
     // `no-version-store` miss.
     const versionStoreFor = typeof opts.versionStoreFor === 'function' ? opts.versionStoreFor : null;
-    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor })) {
+    // P3 install: the curated-catalog SOURCE. A caller may inject a real
+    // source via opts.agentsCatalog; the default is the local stub so the
+    // install surface is exercisable today. The power-user override
+    // (install from a pasted card) works regardless of the source.
+    const agentsCatalog = opts.agentsCatalog ?? createStubCatalog();
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog })) {
       hostAgent.register(id, handler, { visibility });
     }
   }

@@ -26,6 +26,7 @@ import { wireSkill } from '@canopy/sdk';
 import { agentsManifest } from '../manifest.js';
 import { AGENT_CORES } from './cores.js';
 import { RECOVERY_CORES } from './recoveryCores.js';
+import { INSTALL_CORES } from './installCores.js';
 
 /**
  * @param {object} args
@@ -40,9 +41,16 @@ import { RECOVERY_CORES } from './recoveryCores.js';
  *   its RN twin). Without it the recovery ops answer an honest
  *   `{ok:false, error:'no-version-store'}` — always wired, never hidden,
  *   so route parity stays unconditional.
+ * @param {object} [args.catalog]  optional pluggable curated-catalog
+ *   SOURCE ({ list, get }) backing the P3 install ops (default: the local
+ *   `createStubCatalog`). Without it `listCatalog` answers the honest
+ *   `no-catalog` "coming with the community catalog" state and only the
+ *   power-user override (install from a pasted card) works.
+ *   commons-governance: the source's trust/curation is designed
+ *   separately — buildAgentSkills treats it as opaque data.
  * @returns {Array<{ id: string, handler: Function, visibility: string }>}
  */
-export function buildAgentSkills({ registry, tokens, versionStoreFor } = {}) {
+export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog } = {}) {
   if (!registry || typeof registry.list !== 'function') {
     throw new TypeError('buildAgentSkills: registry (agent-registry) with list() required');
   }
@@ -52,9 +60,17 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor } = {}) {
   if (versionStoreFor != null && typeof versionStoreFor !== 'function') {
     throw new TypeError('buildAgentSkills: versionStoreFor must be a function when supplied');
   }
+  if (catalog != null && typeof catalog.list !== 'function') {
+    throw new TypeError('buildAgentSkills: catalog must expose list() when supplied');
+  }
 
-  // Single-user surface — the store is the injected triple for every ctx.
-  const store = { registry, tokens: tokens ?? null, versionStoreFor: versionStoreFor ?? null };
+  // Single-user surface — the store is the injected bundle for every ctx.
+  const store = {
+    registry,
+    tokens:          tokens ?? null,
+    versionStoreFor: versionStoreFor ?? null,
+    catalog:         catalog ?? null,
+  };
   const storeFor = () => store;
 
   const op = (id) => {
@@ -63,7 +79,7 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor } = {}) {
     return found;
   };
 
-  const CORES = { ...AGENT_CORES, ...RECOVERY_CORES };
+  const CORES = { ...AGENT_CORES, ...RECOVERY_CORES, ...INSTALL_CORES };
   const wire = (id, visibility) => ({
     id,
     handler:    wireSkill(CORES[id], op(id), { storeFor }),
@@ -79,5 +95,7 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor } = {}) {
     wire('purgeAgent',         'authenticated'),
     wire('listDataVersions',   'authenticated'),
     wire('restoreDataVersion', 'authenticated'),
+    wire('listCatalog',        'authenticated'),
+    wire('installAgent',       'authenticated'),
   ];
 }

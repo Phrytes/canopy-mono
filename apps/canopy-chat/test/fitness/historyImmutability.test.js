@@ -24,6 +24,7 @@ import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { agentsManifest } from '../../../agents/manifest.js';
 import { RECOVERY_CORES } from '../../../agents/src/recoveryCores.js';
 import { AGENT_CORES } from '../../../agents/src/cores.js';
+import { INSTALL_CORES } from '../../../agents/src/installCores.js';
 import { createRealHouseholdAgent } from '../../src/core/agent/realAgent.js';
 import {
   circleVersioningFor,
@@ -42,7 +43,11 @@ describe('FITNESS: 4b — the skill surface cannot name history-erasing ops', ()
   });
 
   it('the wired agents cores are EXACTLY the manifest ops (nothing extra is skill-reachable)', () => {
-    const coreIds = [...Object.keys(AGENT_CORES), ...Object.keys(RECOVERY_CORES)].sort();
+    const coreIds = [
+      ...Object.keys(AGENT_CORES),
+      ...Object.keys(RECOVERY_CORES),
+      ...Object.keys(INSTALL_CORES),
+    ].sort();
     const opIds = agentsManifest.operations.map((o) => o.id).sort();
     expect(coreIds).toEqual(opIds);
     // The recovery surface is list + restore ONLY — the store's privileged
