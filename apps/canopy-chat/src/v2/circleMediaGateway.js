@@ -35,6 +35,7 @@
  */
 
 import { createBlobGatekeeper, openBlob } from '@canopy/blob-gateway';
+import { CapabilityToken } from '@canopy/core';
 
 /**
  * DEV-GRADE in-memory bucket (same injected contract blob-gateway's own test
@@ -66,6 +67,101 @@ export function makeDevMediaBucket() {
   };
 }
 
+/* ── REMOTE (deployed edge) mode ──────────────────────────────────────────────
+ * The DEPLOYED counterpart of the dev bucket: full-size photos land in a real
+ * object bucket behind the blob-gate HTTP edge (@canopy/relay `blobGateMount`),
+ * not in the per-session in-memory store. The wire (mirrored from blobGateMount,
+ * not imported — the client only talks to it over HTTP):
+ *
+ *   POST <gateUrl>/upload-url  { key }              Bearer <token> → { url }   presigned PUT
+ *   PUT  <url>                 <sealed bytes>                        (client → bucket)
+ *   POST <gateUrl>/grant       { key:'blob://<k>', actors:[…] }   Bearer <token> → { ok }
+ *   POST <gateUrl>             { ref:'blob://<k>' }                Bearer <token> → { url }   presigned GET
+ *   GET  <url>                                                       → sealed ciphertext
+ *
+ * Auth is the member's SELF-SIGNED `media.read` capability token (issuer ===
+ * subject === the member's own key; minted once, reused for the composition).
+ * Reads flow through the edge (its verifier + ACL decide, deny-by-default);
+ * the client never presigns locally.
+ */
+
+/** Strip a trailing slash so `${gateUrl}/upload-url` never doubles up. */
+function normalizeGateUrl(gateUrl) {
+  return typeof gateUrl === 'string' ? gateUrl.replace(/\/+$/, '') : gateUrl;
+}
+
+/** POST a small JSON body to the edge with the member's Bearer token, returning
+ *  the parsed JSON (or throwing on a non-2xx — callers decide whether to surface). */
+async function edgePostJson(fetchImpl, url, token, body) {
+  const res = await fetchImpl(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  if (res && res.ok === false) {
+    const err = new Error(`media edge ${url} failed (${res.status ?? 'error'})`);
+    err.status = res.status;
+    throw err;
+  }
+  if (res && typeof res.json === 'function') return res.json();
+  return res; // a test double may resolve the parsed object directly
+}
+
+/**
+ * A blob bucket whose `put` drives the deployed edge: presign a PUT, upload the
+ * sealed bytes, then grant the circle roster. `put` is the ONLY method uploadBlob
+ * needs; reads never touch the bucket (they go through the edge gate below).
+ *
+ * GRANT-ON-UPLOAD is not best-effort: a failed `/grant` THROWS out of `put`, so
+ * uploadBlob (and createMediaEmbed) surface it — an uploaded-but-ungranted blob
+ * (nobody, not even peers, could read it) must never be reported as success.
+ *
+ * @param {object} a
+ * @param {string}   a.gateUrl       the edge mount URL (e.g. `https://relay/blob-gate`)
+ * @param {string}   a.token         the member's self-signed media.read token (wire form)
+ * @param {string[]} a.memberActors  the roster to grant read (the actor ids the edge ACL keys on)
+ * @param {Function} a.fetch         injected fetch(url, init) (defaults to globalThis.fetch)
+ */
+export function createRemoteMediaBucket({ gateUrl, token, memberActors, fetch: fetchImpl } = {}) {
+  const base = normalizeGateUrl(gateUrl);
+  const doFetch = fetchImpl || globalThis.fetch;
+  const actors = Array.isArray(memberActors) ? memberActors : [];
+  return {
+    async put(key, bytes) {
+      // 1. presigned PUT url from the edge (auth: the member's token).
+      const up = await edgePostJson(doFetch, `${base}/upload-url`, token, { key });
+      const putUrl = up && up.url;
+      if (!putUrl) throw new Error('media edge: /upload-url returned no url');
+      // 2. PUT the sealed ciphertext straight to the bucket.
+      const put = await doFetch(putUrl, { method: 'PUT', body: bytes });
+      if (put && put.ok === false) throw new Error(`media edge: PUT failed (${put.status ?? 'error'})`);
+      // 3. grant the roster. A denial here MUST surface (no silent drop).
+      await edgePostJson(doFetch, `${base}/grant`, token, {
+        key: `blob://${key}`, actors,
+      });
+    },
+  };
+}
+
+/**
+ * The edge READ gate: a `gate(token, ref)` closure that asks the edge to presign
+ * a GET (its verifier + ACL decide), returning `{ url }` or `{ denied }` — the
+ * same deny-by-default contract the local gatekeeper honours, so `openBlob`
+ * is byte-identical whether the gate is local (dev) or remote.
+ */
+function createRemoteGate({ gateUrl, fetch: fetchImpl }) {
+  const base = normalizeGateUrl(gateUrl);
+  const doFetch = fetchImpl || globalThis.fetch;
+  return async function gate(token, ref) {
+    try {
+      const out = await edgePostJson(doFetch, base, token, { ref });
+      return out && out.url ? { url: out.url } : { denied: true };
+    } catch {
+      return { denied: true }; // any failure denies — never leak a bucket url
+    }
+  };
+}
+
 /**
  * Compose the sealed-media gateway for ONE circle, or `null` when the circle
  * has no content seal strategy (p0/p1 / unresolved) — sealed-only, no
@@ -82,8 +178,16 @@ export function makeDevMediaBucket() {
  * @param {() => Promise<{seal:Function, open:Function}|null>} a.getSealStrategy
  *   the circle's content strategy resolver (web: `() => getCircleSealStrategy(id, policy)`)
  * @param {string}   a.localActor   the local user's actor id (ACL subject + item issuer)
- * @param {object}   a.bucket       injected bucket (dev default: `makeDevMediaBucket()`)
+ * @param {object}   [a.bucket]     injected bucket (DEV mode; default `makeDevMediaBucket()`)
  * @param {number}   [a.ttl]        presign TTL seconds for the gate
+ * @param {object}   [a.remote]     REMOTE (deployed edge) mode. When present the full-size
+ *   photos go to a deployed bucket behind the blob-gate edge instead of the dev bucket.
+ * @param {string}     a.remote.gateUrl       the edge mount URL (e.g. `https://relay/blob-gate`)
+ * @param {object}     a.remote.identity      an AgentIdentity-shaped signer ({pubKey, sign})
+ *   — the member self-signs its own `media.read` token from this.
+ * @param {string[]}   a.remote.memberActors  the roster granted read on every upload.
+ * @param {Function}   [a.remote.fetch]       injected fetch (tests); default globalThis.fetch.
+ * @param {number}     [a.remote.tokenTtlMs]  media.read token lifetime (default 1h).
  * @returns {Promise<null | {
  *   circleId: string,
  *   mediaGateway: {bucket:object, sealer:Function, opener:Function, keyRef:string, gate:Function, token:string},
@@ -91,13 +195,46 @@ export function makeDevMediaBucket() {
  * }>}
  */
 export async function createCircleMediaGateway({
-  circleId, getSealStrategy, localActor, bucket, ttl = 60,
+  circleId, getSealStrategy, localActor, bucket, ttl = 60, remote,
 } = {}) {
-  if (!circleId || !bucket || typeof getSealStrategy !== 'function') return null;
+  // DEV needs a bucket; REMOTE brings its own edge — either satisfies the infra requirement.
+  if (!circleId || typeof getSealStrategy !== 'function') return null;
+  if (!remote && !bucket) return null;
   let strategy = null;
   try { strategy = await getSealStrategy(); } catch { strategy = null; }
   if (!strategy || typeof strategy.seal !== 'function' || typeof strategy.open !== 'function') {
     return null;   // p0/p1 (or unresolved) → NO sealed path; the affordance stays hidden
+  }
+
+  // ── REMOTE mode: the deployed edge/bucket, self-signed media.read auth ──────
+  if (remote && remote.gateUrl && remote.identity) {
+    const capToken = await CapabilityToken.issue(remote.identity, {
+      subject:   remote.identity.pubKey,   // SELF-signed: issuer === subject === the member's key
+      agentId:   'blob-gate',
+      skill:     'media.read',
+      expiresIn: remote.tokenTtlMs ?? 3_600_000,
+    });
+    const token = capToken.toString();     // JSON wire form (Bearer <token>)
+    const remoteBucket = createRemoteMediaBucket({
+      gateUrl: remote.gateUrl, token, memberActors: remote.memberActors, fetch: remote.fetch,
+    });
+    const gate = createRemoteGate({ gateUrl: remote.gateUrl, fetch: remote.fetch });
+    const readFetch = remote.fetch || globalThis.fetch;
+    return {
+      circleId,
+      mediaGateway: {
+        bucket: remoteBucket,
+        sealer: strategy.seal,
+        opener: strategy.open,
+        keyRef: `urn:circle:${circleId}:content-key`,
+        gate,
+        token,
+      },
+      /** Full-size read: the edge gate presigns a GET, `readFetch` pulls the ciphertext. */
+      openFullImage: (line) => openBlob({
+        ref: line, gate, token, opener: strategy.open, fetch: readFetch,
+      }),
+    };
   }
 
   // Session-local identity + ACL for the deny-by-default gate (dev slice of
