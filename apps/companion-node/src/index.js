@@ -149,6 +149,12 @@ export function resolveConfigDir(explicit) {
  *                                         `opts.podContainer` (or `opts.podSource.containerUri`).
  * @param {string}  [opts.podContainer]   R3.0 — container URI the proxy `PodClient` browses
  *                                         (default: `opts.podSource.containerUri`).
+ * @param {number}  [opts.podMaxBodyBytes] R3.3 — max RAW proxied REQUEST body (bytes) the host
+ *                                         will ship in one relay frame; over-cap → a distinct
+ *                                         `PayloadTooLargeError` (code `payload-too-large`) BEFORE
+ *                                         invoke. Default 16 MiB (`DEFAULT_MAX_BODY_BYTES`), grounded
+ *                                         in the 100 MiB `ws` frame ceiling. Match the device's
+ *                                         `registerPodProxy({ maxBodyBytes })`.
  * @param {object}  [opts.registryPseudoPod]  inject the registry pod — else in-memory (R1)
  * @param {string}  [opts.label='companion-folio']
  * @returns {Promise<{
@@ -182,6 +188,7 @@ export async function startCompanionNode(opts = {}) {
     podTokenRegistry,
     podNow,
     podProxy   = false,
+    podMaxBodyBytes,             // R3.3 — agent-proxy body cap (bytes); default 16 MiB
     podContainer,
     registryPseudoPod,
     label      = 'companion-folio',
@@ -266,6 +273,9 @@ export async function startCompanionNode(opts = {}) {
       mode:       'agent-proxy',
       token,
       deviceAddr,
+      // R3.3 — the request-side body cap; defaults inside CapabilityAuth to
+      // DEFAULT_MAX_BODY_BYTES (16 MiB) when not supplied.
+      maxBodyBytes: podMaxBodyBytes,
       // The proxying fetch calls this; it must resolve to the device handler's
       // reply DATA. A bounded timeout turns an offline device into an explicit
       // `device-unreachable` (thrown inside CapabilityAuth) rather than a hang.

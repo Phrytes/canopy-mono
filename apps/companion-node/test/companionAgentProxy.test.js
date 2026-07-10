@@ -178,8 +178,9 @@ function makeDevicePod({ files, secret }) {
 
 /* ── boot helpers ───────────────────────────────────────────────────────────── */
 
-/** Boot an agent-proxy host: fail-closed for delegation, pod source proxied. */
-async function bootProxyHost({ owner, container }) {
+/** Boot an agent-proxy host: fail-closed for delegation, pod source proxied.
+ *  `maxBodyBytes` (R3.3) sets the host's request-side proxy body cap. */
+async function bootProxyHost({ owner, container, maxBodyBytes }) {
   // The held pod source is IRRELEVANT under agent-proxy (we replace it with a
   // proxy PodClient on delegation) — we only reuse its containerUri.
   const podSource = await buildDevPodSource({ podRoot: POD_ROOT, container, files: [] });
@@ -187,6 +188,7 @@ async function bootProxyHost({ owner, container }) {
     identityVault:  new VaultMemory(),
     gate:           false,                 // isolate the pod leg from the R2 skill gate
     podProxy:       true,                  // R3.0 — agent-proxy swap on delegation
+    podMaxBodyBytes: maxBodyBytes,         // R3.3 — request-side body cap (undefined ⇒ 16 MiB default)
     podSource,                             // supplies containerUri
     podOwnerPubKey: owner.pubKey,          // trust root ⇒ fail-closed boot
   });
@@ -194,8 +196,9 @@ async function bootProxyHost({ owner, container }) {
   return host;
 }
 
-/** A real device agent (== the pod owner) that also serves pod.proxyRequest. */
-async function makeOwnerDevice(host, owner, devicePod) {
+/** A real device agent (== the pod owner) that also serves pod.proxyRequest.
+ *  `maxBodyBytes` (R3.3) sets the device's response-side proxy body cap. */
+async function makeOwnerDevice(host, owner, devicePod, { maxBodyBytes } = {}) {
   const agent = new Agent({
     identity:  owner,
     transport: new RelayTransport({ relayUrl: host.relayUrl, identity: owner }),
@@ -207,6 +210,7 @@ async function makeOwnerDevice(host, owner, devicePod) {
     authFetch:           devicePod.authFetch,
     grantIssuerIdentity: owner,                 // we honour only grants WE issued
     expectedHostPubKey:  host.agent.address,    // only that host may proxy through us
+    maxBodyBytes,                               // R3.3 — response-side cap (undefined ⇒ 16 MiB default)
   });
   cleanups.push(() => agent.stop?.());
   return agent;
@@ -552,6 +556,159 @@ describe('companion-node R3.1 — agent-proxy WRITE/DELETE: the full method set 
   }, 20_000);
 });
 
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+describe('companion-node R3.3 — agent-proxy SIZE CAP: the base64-over-WS safety floor (both directions, no silent truncation)', () => {
+  const CAP = 64;                                  // tiny cap so tests need no MBs
+  const OVERSIZE_MARKER = 'OVERSIZE-BODY-CONTENT-DO-NOT-LEAK';
+  // A body comfortably over CAP that carries a marker we can scan for leaks.
+  const OVERSIZE_BODY = `${OVERSIZE_MARKER}-${'x'.repeat(400)}`;
+
+  it('RESPONSE OVER CAP: a GET whose body exceeds maxBodyBytes → distinct payload-too-large, NO truncated/partial bytes, no crash', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({
+      secret: 'oidc-access-SECRET-respcap',
+      files: [{ path: '/notes/big.md', body: OVERSIZE_BODY, contentType: 'text/markdown' }],
+    });
+    const host   = await bootProxyHost({ owner, container: 'notes/', maxBodyBytes: CAP });
+    const device = await makeOwnerDevice(host, owner, devicePod, { maxBodyBytes: CAP });
+
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+
+    const podClient = host.store.getPodSource().podClient;
+    const target    = `${POD_ROOT}notes/big.md`;
+
+    let caught;
+    try { await podClient.read(target, { decode: 'string' }); }
+    catch (err) { caught = err; }
+
+    // Distinct oversized identity — NOT a generic failure, NOT device-unreachable.
+    expect(caught).toBeDefined();
+    expect(hasCauseCode(caught, 'payload-too-large')).toBe(true);
+    expect(hasCauseCode(caught, 'device-unreachable')).toBe(false);
+    // The device DID fetch (a real GET) then REFUSED — it saw the body over cap.
+    expect(devicePod.calls.some((c) => c.method === 'GET' && c.url.endsWith('/notes/big.md'))).toBe(true);
+    // NO partial/corrupt bytes surfaced: the oversized content never reaches the host.
+    expect(JSON.stringify(caught, Object.getOwnPropertyNames(caught))).not.toContain(OVERSIZE_MARKER);
+    expect(String(caught?.message ?? '')).not.toContain(OVERSIZE_MARKER);
+    // The refused size/limit are reported so the caller knows exactly what was refused.
+    const tooBig = causeWithCode(caught, 'payload-too-large');
+    expect(tooBig.limit).toBe(CAP);
+    expect(tooBig.size).toBeGreaterThan(CAP);
+  }, 20_000);
+
+  it('REQUEST OVER CAP: a PUT whose body exceeds maxBodyBytes → refused on the HOST before invoke; the device never received the write', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({ secret: 'oidc-access-SECRET-reqcap', files: [] });
+    const host   = await bootProxyHost({ owner, container: 'notes/', maxBodyBytes: CAP });
+    const device = await makeOwnerDevice(host, owner, devicePod, { maxBodyBytes: CAP });
+
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/', 'pod.write:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+
+    const podClient = host.store.getPodSource().podClient;
+    const target    = `${POD_ROOT}notes/toobig.md`;
+
+    let caught;
+    const spy = spyHostGlobalPodFetch();
+    try { await podClient.write(target, OVERSIZE_BODY, { contentType: 'text/markdown' }); }
+    catch (err) { caught = err; }
+    finally { spy.restore(); }
+
+    // Distinct oversized identity, refused on THIS side.
+    expect(caught).toBeDefined();
+    expect(hasCauseCode(caught, 'payload-too-large')).toBe(true);
+    // The device NEVER received the write — no PUT/POST/PATCH for that path fired
+    // (the giant frame was never shipped), and nothing landed in the pod.
+    expect(devicePod.calls.some((c) => ['PUT', 'POST', 'PATCH'].includes(c.method) && c.url.endsWith('/notes/toobig.md'))).toBe(false);
+    expect(devicePod.store.has('/notes/toobig.md')).toBe(false);
+    // The host's own global fetch never touched the pod either.
+    expect(spy.calls).toEqual([]);
+  }, 20_000);
+
+  it('WITHIN CAP still round-trips: a small write→read under the cap is unchanged (R3.0/R3.1 regression with the cap in place)', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({ secret: 'oidc-access-SECRET-undercap', files: [] });
+    const host   = await bootProxyHost({ owner, container: 'notes/', maxBodyBytes: CAP });
+    const device = await makeOwnerDevice(host, owner, devicePod, { maxBodyBytes: CAP });
+
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/', 'pod.write:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+
+    const podClient = host.store.getPodSource().podClient;
+    const target    = `${POD_ROOT}notes/tiny.md`;
+    const TINY      = 'under the cap';               // < CAP bytes
+
+    await podClient.write(target, TINY, { contentType: 'text/markdown' });
+    const back = await podClient.read(target, { decode: 'string' });
+
+    // Bytes round-trip intact — the cap does not touch under-cap payloads.
+    expect(back.content).toBe(TINY);
+    expect(decodeBytes(devicePod.store.get('/notes/tiny.md').body)).toBe(TINY);
+    expect(devicePod.calls.some((c) => c.method === 'PUT' && c.url.endsWith('/notes/tiny.md'))).toBe(true);
+  }, 20_000);
+
+  it('ERROR DISTINCTNESS: device-unreachable vs payload-too-large vs FORBIDDEN are each a distinct, branchable code', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({
+      secret: 'oidc-access-SECRET-distinct',
+      files: [
+        { path: '/notes/big.md',    body: OVERSIZE_BODY,  contentType: 'text/markdown' },
+        { path: '/notes/small.md',  body: 'ok',           contentType: 'text/markdown' },
+        { path: '/photos/secret.jpg', body: 'PRIVATE',    contentType: 'image/jpeg' },
+      ],
+    });
+    const host   = await bootProxyHost({ owner, container: 'notes/', maxBodyBytes: CAP });
+    const device = await makeOwnerDevice(host, owner, devicePod, { maxBodyBytes: CAP });
+
+    // Read-only /notes/ grant: /photos/ is out of scope → FORBIDDEN.
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+    const podClient = host.store.getPodSource().podClient;
+
+    // (1) FORBIDDEN — out-of-scope read, device-authoritative opaque 403.
+    let fErr;
+    try { await podClient.read(`${POD_ROOT}photos/secret.jpg`, { decode: 'string' }); }
+    catch (e) { fErr = e; }
+    // (2) payload-too-large — in-scope but over the cap.
+    let oErr;
+    try { await podClient.read(`${POD_ROOT}notes/big.md`, { decode: 'string' }); }
+    catch (e) { oErr = e; }
+
+    // (3) device-unreachable — device offline.
+    await device.stop();
+    let uErr;
+    try { await podClient.read(`${POD_ROOT}notes/small.md`, { decode: 'string' }); }
+    catch (e) { uErr = e; }
+
+    expect(fErr).toBeDefined();
+    expect(oErr).toBeDefined();
+    expect(uErr).toBeDefined();
+
+    // Each carries ITS code and NEITHER of the other two — no conflation.
+    expect(hasCauseCode(fErr, 'FORBIDDEN')).toBe(true);
+    expect(hasCauseCode(fErr, 'payload-too-large')).toBe(false);
+    expect(hasCauseCode(fErr, 'device-unreachable')).toBe(false);
+
+    expect(hasCauseCode(oErr, 'payload-too-large')).toBe(true);
+    expect(hasCauseCode(oErr, 'FORBIDDEN')).toBe(false);
+    expect(hasCauseCode(oErr, 'device-unreachable')).toBe(false);
+
+    expect(hasCauseCode(uErr, 'device-unreachable')).toBe(true);
+    expect(hasCauseCode(uErr, 'payload-too-large')).toBe(false);
+    expect(hasCauseCode(uErr, 'FORBIDDEN')).toBe(false);
+  }, 25_000);
+});
+
 /** Walk an error's `.cause` chain looking for a specific `.code`. */
 function hasCauseCode(err, code) {
   let e = err;
@@ -562,4 +719,16 @@ function hasCauseCode(err, code) {
     e = e.cause;
   }
   return false;
+}
+
+/** Walk an error's `.cause` chain and return the first error with `.code === code`. */
+function causeWithCode(err, code) {
+  let e = err;
+  const seen = new Set();
+  while (e && !seen.has(e)) {
+    seen.add(e);
+    if (e.code === code) return e;
+    e = e.cause;
+  }
+  return undefined;
 }
