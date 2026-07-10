@@ -91,6 +91,7 @@ import { WebSocketServer }                   from 'ws';
 import { MultiRecipientQueue }               from './MultiRecipientQueue.js';
 import { GroupAuthVerifier }                 from './GroupAuthVerifier.js';
 import { PushTokenRegistry }                 from './push/PushTokenRegistry.js';
+import { mountBlobGate }                     from './blobGateMount.js';
 import { logHop }                            from './verbose.js';
 
 const DEFAULT_PORT             = 8787;
@@ -141,6 +142,13 @@ const MIME = {
  *   Optional role-rank override for `requiredRole` checks (e.g. when an
  *   app registers custom roles via `Roles.registerCustomRole`).  Merged
  *   on top of the standard 5-role rank table.
+ * @param {object} [opts.blobGate]
+ *   P2 (media-infra): mount the blob-gateway HTTP edge on this relay —
+ *   `{ verifyToken, bucket, acl?, ttl?, route?, uploaders? }`, forwarded to
+ *   `mountBlobGate` (see `./blobGateMount.js` for the full contract + R2
+ *   env wiring).  When absent, NOTHING changes: no routes are added and
+ *   the HTTP handler behaves byte-identically to a relay without this
+ *   feature.
  * @returns {Promise<{
  *   httpServer: import('node:http').Server | import('node:https').Server,
  *   wss: WebSocketServer,
@@ -171,6 +179,10 @@ export async function startRelay(opts = {}) {
     pushSender                = null,
     pushTokenRegistry         = undefined,
     pushThrottleMs            = DEFAULT_PUSH_THROTTLE_MS,
+    // P2 (media-infra): optional blob-gate edge.  When `blobGate` is
+    // null/undefined, the relay adds no routes and behaves byte-identically —
+    // fully backward compatible with existing tests and deployments.
+    blobGate                  = null,
   } = opts;
 
   const effectiveQueueCapTotal = queueCapTotal ?? (queueCap * DEFAULT_QUEUE_CAP_RATIO);
@@ -235,6 +247,11 @@ export async function startRelay(opts = {}) {
   const httpServer = hasTls
     ? createHttpsServer({ cert: tlsCert, key: tlsKey }, handler)
     : createHttpServer(handler);
+
+  // P2 (media-infra): mount the blob-gate edge ONLY when configured.  The
+  // mount wraps the request listeners additively — non-mount paths fall
+  // through to `handler` untouched; without `blobGate` no wrap happens at all.
+  const blobGateMount = blobGate ? mountBlobGate(httpServer, blobGate) : null;
 
   // ── WebSocket relay ────────────────────────────────────────────────────────
   const wss = new WebSocketServer({ server: httpServer });
@@ -681,7 +698,12 @@ export async function startRelay(opts = {}) {
     try { await mrQueue.close(); } catch {}
   }
 
-  return { httpServer, wss, port: boundPort, tls: hasTls, stop, multiRecipientQueue: mrQueue };
+  return {
+    httpServer, wss, port: boundPort, tls: hasTls, stop, multiRecipientQueue: mrQueue,
+    // Only present when `blobGate` was configured — the no-blobGate return
+    // shape stays exactly as before.
+    ...(blobGateMount ? { blobGate: blobGateMount } : {}),
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
