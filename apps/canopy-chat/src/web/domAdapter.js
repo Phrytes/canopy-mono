@@ -21,10 +21,16 @@ import { openThumbnail } from '@canopy/blob-gateway';
 /**
  * @typedef {object} DomAdapterContext
  * @property {Document} doc                  the DOM document (browser: document)
- * @property {{opener?: (sealedText: string) => string}} [media]
+ * @property {{opener?: (sealedText: string) => string,
+ *             openFull?: (line: object|string) => Promise<{bytes: Uint8Array, media?: object}>}} [media]
  *   Media P1 — the injected sealing OPENER for media-card thumbnails
  *   (`makeOpener`/`makeGroupOpener`, or a circle seal strategy's `open`).
  *   Absent → media-cards render the mime/dims placeholder instead.
+ *   `openFull` (optional) is the circle media gateway's gated full-size read
+ *   (`createCircleMediaGateway(...).openFullImage`); present → the chip gets a
+ *   "View" affordance that opens the full image in a lightbox. Absent → no
+ *   View button (thumbnail-only / no gateway). Injected by the composition —
+ *   same seam as `opener` (the one live-wiring line owed; see circleApp).
  * @property {(opId: string, itemId: string) => void} [onButtonTap]
  *   Called when a list-item action button is tapped.  Receives the
  *   parsed callbackData (`<opId>:<itemId>`).  Optional; absent →
@@ -974,10 +980,123 @@ function renderMediaCard(rendered, state, ctx) {
     body.appendChild(cap);
   }
 
+  // Full-image "[View]" affordance. Only wired when the render ctx carries an
+  // `openFull` reader (the circle's gated full-size read) AND we have a line to
+  // read — absent → NO button, the chip stays byte-identical (degradation).
+  const openFull = ctx.media?.openFull;
+  if (line && typeof openFull === 'function') {
+    const tt = (k, fb) => (ctx.t ? ctx.t(k) : fb);
+    const viewBtn = doc.createElement('button');
+    viewBtn.type = 'button';
+    viewBtn.className = 'cc-media-view';
+    viewBtn.textContent = tt('circle.media.view.label', 'View');
+    const alt = (typeof snap.caption === 'string' && snap.caption) || mime || 'media';
+    viewBtn.addEventListener('click', () => {
+      openMediaLightbox(doc, { openFull, line, mime, alt, t: ctx.t });
+    });
+    body.appendChild(viewBtn);
+    // The thumbnail itself opens the full image too (the chip carries the line).
+    if (thumbEl) {
+      thumbEl.classList.add('cc-media-thumb--clickable');
+      thumbEl.addEventListener('click', () => {
+        openMediaLightbox(doc, { openFull, line, mime, alt, t: ctx.t });
+      });
+    }
+  }
+
   wrap.appendChild(body);
   appendIssuerClaimerMeta(wrap, embed, doc);
   appendManifestActions(wrap, embed, state, ctx, doc);
   return wrap;
+}
+
+/**
+ * Media P1 — full-image lightbox. Self-contained overlay (mirrors the v2
+ * confirmDialog / catchUpChooser pattern: inline styles, backdrop + ESC =
+ * close, no shared "Modal" abstraction). The gated full-size read
+ * (`openFull(line) => {bytes, media}`) runs on open; loading + error states
+ * are quiet (a denied/failed read shows a notice, never a broken image). The
+ * object-URL for the full bytes is revoked on close.
+ *
+ * NO dispatch/resolution logic lives here (invariant #1) — `openFull` is the
+ * injected reader; this only presents its bytes.
+ *
+ * @param {Document} doc
+ * @param {object} a
+ * @param {(line: object|string) => Promise<{bytes: Uint8Array, media?: object}>} a.openFull
+ * @param {object|string} a.line   the blob-gateway manifest line (the chip carries it)
+ * @param {string} [a.mime]        writer-asserted mime (layout hint / Blob type)
+ * @param {string} [a.alt]         alt text for the full <img>
+ * @param {(k: string) => string} [a.t]  translate fn (chrome strings)
+ * @returns {{ close: () => void }}
+ */
+function openMediaLightbox(doc, { openFull, line, mime, alt, t } = {}) {
+  const tt = (k, fb) => (t ? t(k) : fb);
+  const container = doc.createElement('div');
+  container.className = 'cc-media-lightbox';
+  Object.assign(container.style, {
+    position: 'fixed', inset: '0', zIndex: '260',
+    background: 'rgba(0,0,0,0.72)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '24px',
+  });
+
+  let closed = false;
+  let objectUrl = null;
+  function close() {
+    if (closed) return;
+    closed = true;
+    try { doc.removeEventListener('keydown', onKeydown); } catch { /* defensive */ }
+    if (objectUrl) { try { URL.revokeObjectURL(objectUrl); } catch { /* defensive */ } }
+    try { container.remove(); } catch { /* defensive */ }
+  }
+  function onKeydown(e) { if (e?.key === 'Escape') { e.preventDefault(); close(); } }
+  doc.addEventListener('keydown', onKeydown);
+  // Backdrop click = close; sheet clicks don't dismiss.
+  container.addEventListener('click', (e) => { if (e.target === container) close(); });
+
+  const sheet = doc.createElement('div');
+  sheet.className = 'cc-media-lightbox__sheet';
+  sheet.addEventListener('click', (e) => e.stopPropagation());
+
+  const closeBtn = doc.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'cc-media-lightbox__close';
+  closeBtn.textContent = '×';
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.addEventListener('click', () => close());
+  sheet.appendChild(closeBtn);
+
+  const status = doc.createElement('div');
+  status.className = 'cc-media-lightbox__status';
+  status.textContent = tt('circle.media.view.loading', 'Loading…');
+  sheet.appendChild(status);
+
+  container.appendChild(sheet);
+  try { doc.body.appendChild(container); } catch { /* non-DOM env */ }
+
+  // The gated read runs on open. A denial / failure / empty read → the quiet
+  // error notice (never a broken image). openFull is called via Promise.resolve
+  // so a synchronous throw lands in the same catch.
+  Promise.resolve()
+    .then(() => openFull(line))
+    .then((res) => {
+      if (closed) return;
+      const bytes = res?.bytes;
+      if (!bytes || bytes.length === 0) throw new Error('empty full-image read');
+      const img = mediaImageFromBytes(doc, bytes, { mime: res?.media?.mime ?? mime, alt });
+      img.classList.add('cc-media-lightbox__img');
+      objectUrl = img._ccObjectUrl ?? null;   // captured so close() can revoke it
+      status.remove();
+      sheet.appendChild(img);
+    })
+    .catch(() => {
+      if (closed) return;
+      status.className = 'cc-media-lightbox__status cc-media-lightbox__status--error';
+      status.textContent = tt('circle.media.view.error', "Couldn't open this image.");
+    });
+
+  return { close };
 }
 
 /** Thumbnail bytes → <img>. Object-URL when the runtime provides
@@ -993,6 +1112,10 @@ function mediaImageFromBytes(doc, bytes, { mime, width, height, alt } = {}) {
   try {
     if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function' && typeof Blob !== 'undefined') {
       src = URL.createObjectURL(new Blob([bytes], mime ? { type: mime } : undefined));
+      // Stash the object-URL so a caller that owns the element's lifetime (the
+      // full-image lightbox) can revoke it on close; the chip thumbnail lives
+      // for the element's life so it never revokes.
+      img._ccObjectUrl = src;
     }
   } catch { src = null; }
   if (!src) {

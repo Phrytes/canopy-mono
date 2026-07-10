@@ -3082,6 +3082,20 @@
     "outgoing": {
       "text": "📷 {{name}}",
       "doc": "media P1 — the text line of an outgoing media message (the fan-out envelope carries text only for now; the local bubble also renders the sealed chip)."
+    },
+    "view": {
+      "label": {
+        "text": "View",
+        "doc": "media P1 — the media-card chip's full-image affordance; only shown when the render ctx carries an openFull reader (the circle's gated full-size read)."
+      },
+      "loading": {
+        "text": "Loading…",
+        "doc": "media P1 — full-image lightbox, while the gated full-size read is in flight."
+      },
+      "error": {
+        "text": "Couldn't open this image.",
+        "doc": "media P1 — full-image lightbox, quiet notice when the gated full-size read is denied or fails (never a broken image)."
+      }
     }
   }
 }
