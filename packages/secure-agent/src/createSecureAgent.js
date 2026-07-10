@@ -462,6 +462,11 @@ export async function createSecureAgent(opts = {}) {
       isRevoked:     peOpts.isRevoked     ?? null,
       actorResolver: peOpts.actorResolver ?? null,
     });
+    // ATTACH it to the agent — without this the engine is built + exposed as
+    // `sa.policy` but `agent.policyEngine` stays null, so `runGatedSkill` never
+    // consults it: a silent no-op that looks like enforcement. (The PE needs
+    // `agent.skills`, hence attach-after-build.)
+    agent.policyEngine = policyEngine;
   }
 
   // ─── S7 — A2ATLSLayer (A+.4) ──────────────────────────────────────

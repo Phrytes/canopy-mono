@@ -134,6 +134,18 @@ export class Agent extends Emitter {
   get skills()        { return this.#skills; }
   get stateManager()  { return this.#stateManager; }
   get policyEngine()  { return this.#policyEngine; }
+  /**
+   * Attach a PolicyEngine AFTER construction — the PolicyEngine needs
+   * `agent.skills`, so factories build the agent first, then the engine, then
+   * attach it here. Set-once (throws on a conflicting re-attach) so enforcement
+   * can never be silently swapped or cleared out from under `runGatedSkill`.
+   */
+  set policyEngine(pe) {
+    if (this.#policyEngine && this.#policyEngine !== pe) {
+      throw new Error('Agent.policyEngine: already attached — cannot replace');
+    }
+    this.#policyEngine = pe ?? this.#policyEngine;
+  }
   get trustRegistry() { return this.#trustRegistry; }
   get tokenRegistry() { return this.#tokenRegistry; }
   get transport()     { return this.#transport; }
