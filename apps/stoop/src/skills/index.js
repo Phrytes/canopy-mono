@@ -80,11 +80,8 @@ import {
   validateInboundAttachment,
   persistInboundAttachment,
   readAttachmentBytesB64,
-  attachmentPath,
   toBroadcastShape,
   MAX_ATTACHMENTS_PER_POST,
-  MAX_PRIKBORD_BYTES_PER_ATT,
-  MAX_CHAT_BYTES_PER_ATT,
 } from '../lib/Attachments.js';
 import { update as updateInterest, score as scoreInterest, combinedRelevance } from '../lib/InterestProfile.js';
 import { matchesProfile } from '../lib/skillsMatch.js';
@@ -829,17 +826,17 @@ export function buildSkills({
         }
       } catch { /* validator outage must not break writes */ }
 
-      // Phase 39 — attachments.  When the client supplies one or
-      // more inline-base64 image attachments, validate + persist
-      // the bytes at `mem://stoop/items/<itemId>/attachments/...`,
-      // and embed metadata (without the bytes) in the item's
-      // `source.attachments` for both local rendering and the
-      // broadcast payload.  Bytes never travel in the broadcast —
-      // recipients see the thumbnail and click-to-fetch.
-      // Media consolidation (2026-07-10): each entry is a canonical
-      // `media` item (@canopy/item-types) whose `source.ref` is the
-      // install-independent `stoop-att://<itemId>/<attId>` name; the
-      // local cache path stays in the LOCAL-ONLY `ref` field.
+      // Sealed attachments (2026-07-11).  Each inbound entry is an OPAQUE,
+      // already-SEALED canonical `media` item (`{type:'media', source:{type:
+      // 'blob', ref:'blob://…', enc:{sealed:true,…,thumb}}, mime, width,
+      // height}`) — the per-circle stoop wrapper (canopy-chat's
+      // `scopeStoopCallSkill`) sealed the bytes + thumbnail through the circle
+      // media gateway before the call reached here.  Stoop is key-agnostic: it
+      // validates the sealed shape (REFUSING any inline-`dataB64` plaintext),
+      // then stores the pointer on `source.attachments`.  NO bytes are decoded
+      // and nothing is written to a local cache — the ciphertext lives in the
+      // gateway bucket, and recipients open it through their own circle
+      // gateway (`openThumbnail`/`openBlob`).
       const inboundAttachments = Array.isArray(a.attachments) ? a.attachments : [];
       const persistedAttachments = [];
       if (inboundAttachments.length > 0) {
@@ -850,20 +847,17 @@ export function buildSkills({
           return { error: 'attachments-need-cache' };
         }
         for (const inbound of inboundAttachments) {
-          const err = validateInboundAttachment(inbound, { maxBytes: MAX_PRIKBORD_BYTES_PER_ATT });
+          const err = validateInboundAttachment(inbound);
           if (err) return { error: err };
           const persisted = await persistInboundAttachment({
-            dataSource: bundle.cache,
-            itemId:     item.id,
-            att:        inbound,
-            actor:      from,           // → the media item's createdBy
+            att:   inbound,
+            actor: from,                // → the media item's createdBy
           });
           persistedAttachments.push(persisted);
         }
-        // Patch the just-stored item record with the attachment
-        // metadata.  ItemStore writes via `bundle.cache` under the
-        // `mem://neighborhood/items/<id>.json` path; rewrite the
-        // same key with the augmented source.
+        // Patch the just-stored item record with the (opaque, sealed) attachment
+        // pointers.  ItemStore writes via `bundle.cache` under the
+        // `mem://neighborhood/items/<id>.json` path; rewrite the same key.
         item.source = { ...(item.source ?? {}), attachments: persistedAttachments };
         await bundle.cache.write(`mem://neighborhood/items/${item.id}.json`, JSON.stringify(item));
       }
@@ -2892,9 +2886,11 @@ export function buildSkills({
       const hasAttachment = a.attachment && typeof a.attachment === 'object';
       if (!hasBody && !hasAttachment) return { error: 'body-or-attachment-required' };
 
-      // Validate attachment shape + size cap if provided.
+      // Validate attachment shape if provided — SEALED-only (the inline
+      // plaintext `dataB64` path is refused; the caller seals via the circle
+      // media gateway and passes an opaque `media` pointer).
       if (hasAttachment) {
-        const err = validateInboundAttachment(a.attachment, { maxBytes: MAX_CHAT_BYTES_PER_ATT });
+        const err = validateInboundAttachment(a.attachment);
         if (err) return { error: err };
       }
 

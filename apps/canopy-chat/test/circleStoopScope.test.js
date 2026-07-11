@@ -114,3 +114,80 @@ describe('scopeStoopCallSkill', () => {
     expect(cs.mock.calls[0][2].text).toBe('hoi');
   });
 });
+
+// ── sealed IMAGE attachments (2026-07-11): the wrapper seals a picked image through the
+//    per-circle media gateway — the SAME uploadBlob/{type:'media'} path canopy-chat's own
+//    circle chat images use — and replaces the inline {dataB64,thumbnail} with an opaque
+//    sealed pointer BEFORE it reaches stoop. ────────────────────────────────────────────
+describe('scopeStoopCallSkill — sealed image attachments', () => {
+  const TINY_PNG_B64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4XmNgYGD4DwABBAEAfbLI3wAAAABJRU5ErkJggg==';
+  const fakeStrategy = {
+    seal: (t) => `SEALED(${t})`,
+    open: (t) => (typeof t === 'string' && t.startsWith('SEALED(') ? t.slice(7, -1) : t),
+  };
+
+  async function makeCircleMedia() {
+    const { generateKeypair, makeSealer, makeOpener } = await import('@canopy/pod-client/sealing');
+    const kp = generateKeypair();
+    const store = new Map();
+    const bucket = { async put(k, v) { store.set(k, v); }, async presign() { return null; }, async delete(k) { store.delete(k); } };
+    return {
+      mediaGateway: { bucket, sealer: makeSealer([kp.publicKey]), opener: makeOpener(kp.privateKey), keyRef: 'urn:circle:a:content-key' },
+      opener: makeOpener(kp.privateKey), localActor: 'me', t: (k) => k, store,
+    };
+  }
+
+  const inlineImage = () => ({
+    mime: 'image/png', width: 1, height: 1,
+    dataB64: TINY_PNG_B64, thumbnail: `data:image/png;base64,${TINY_PNG_B64}`,
+  });
+
+  it('seals attachments → opaque {type:media, source:blob} pointer; no plaintext reaches stoop', async () => {
+    const media = await makeCircleMedia();
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a', async () => fakeStrategy, async () => media);
+
+    await scoped('stoop', 'postRequest', { intent: 'ask', text: 'foto', attachments: [inlineImage()] });
+
+    const sentArgs = cs.mock.calls[0][2];
+    const att = sentArgs.attachments[0];
+    expect(att.type).toBe('media');
+    expect(att.source.type).toBe('blob');
+    expect(att.source.enc.sealed).toBe(true);
+    // No plaintext anywhere in what stoop receives.
+    const serialized = JSON.stringify(sentArgs);
+    expect(serialized).not.toContain('data:image');
+    expect(serialized).not.toContain(TINY_PNG_B64);
+    // The sealed inline thumbnail opens with the circle opener (reuse of openThumbnail).
+    const { openThumbnail } = await import('@canopy/blob-gateway');
+    expect(openThumbnail({ line: att.source, opener: media.opener }).length).toBeGreaterThan(0);
+  });
+
+  it('opens sealed attachment thumbnails on the read path for render', async () => {
+    const media = await makeCircleMedia();
+    // First seal one through a post to get a real sealed pointer.
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a', async () => fakeStrategy, async () => media);
+    await scoped('stoop', 'postRequest', { text: 'x', attachments: [inlineImage()] });
+    const sealedAtt = cs.mock.calls[0][2].attachments[0];
+
+    // Now a list read carrying that pointer opens the thumbnail into a render data URL.
+    const csList = vi.fn().mockResolvedValue({ items: [
+      { id: '1', text: 'SEALED(hoi)', groupId: 'circle-a', source: { groupId: 'circle-a', attachments: [sealedAtt] } },
+    ] });
+    const scopedList = scopeStoopCallSkill(csList, 'circle-a', async () => fakeStrategy, async () => media);
+    const res = await scopedList('stoop', 'listOpen', {});
+    const openedAtt = res.items[0].source.attachments[0];
+    expect(openedAtt.thumbnail).toMatch(/^data:image\/jpeg;base64,/);   // opened for render
+    expect(openedAtt.source.type).toBe('blob');                          // sealed pointer preserved
+  });
+
+  it('refuses attachments when the circle has no media gateway (sealed-only)', async () => {
+    const cs = vi.fn().mockResolvedValue({ ok: true });
+    const scoped = scopeStoopCallSkill(cs, 'circle-a', async () => fakeStrategy, async () => null);
+    await expect(scoped('stoop', 'postRequest', { text: 'x', attachments: [inlineImage()] }))
+      .rejects.toThrow(/media-gateway-unavailable/);
+    expect(cs).not.toHaveBeenCalled();
+  });
+});

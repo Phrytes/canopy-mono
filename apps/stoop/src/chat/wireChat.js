@@ -14,20 +14,20 @@
  *     `acceptedEnvelopeTypes` so a mixed-version network stays
  *     interoperable.
  *
- *   - `attachmentSupport: { attachmentPath, readAttachmentBytesB64,
- *     maxBytesPerAttachment }` — Phase 39 picture-attachment helpers.
- *     The substrate is generic; Stoop wires its own
- *     `lib/Attachments.js` impls in.
+ *   - **No `attachmentSupport` (2026-07-11 — sealed-media).** Image
+ *     attachments are now SEALED end to end: the per-circle stoop wrapper
+ *     (canopy-chat's `scopeStoopCallSkill`) seals bytes + thumbnail through the
+ *     circle media gateway and stoop carries only the opaque manifest-line
+ *     pointer; recipients open it through their own gateway.  Stoop therefore
+ *     no longer injects the Phase-39 plaintext helpers, which makes the
+ *     chat-p2p `attachment-request`/`-response` + inline-`dataB64` handlers
+ *     STRUCTURALLY INERT (their `if (!dataSource || !readAttachmentBytesB64)
+ *     return;` guards short-circuit) — no plaintext bytes are ever served.
  *
  *   - All other Stoop-specific knobs (`itemStore`, `members`,
  *     `muted`, `evictionRoster`, `dataSource`) pass through verbatim.
  */
 
-import {
-  attachmentPath,
-  readAttachmentBytesB64,
-  MAX_CHAT_BYTES_PER_ATT,
-} from '../lib/Attachments.js';
 import { wireChat as substrateWireChat } from '@canopy/chat-p2p';
 
 export function wireChat(args) {
@@ -35,10 +35,7 @@ export function wireChat(args) {
     ...args,
     emitEnvelopeType:      'stoop-chat',
     acceptedEnvelopeTypes: ['p2p-chat', 'stoop-chat'],
-    attachmentSupport: {
-      attachmentPath,
-      readAttachmentBytesB64,
-      maxBytesPerAttachment: MAX_CHAT_BYTES_PER_ATT,
-    },
+    // attachmentSupport intentionally OMITTED — see the module doc: sealed media
+    // makes the chat-p2p plaintext attachment path inert.
   });
 }
