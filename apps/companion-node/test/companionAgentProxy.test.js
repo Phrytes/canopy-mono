@@ -179,8 +179,14 @@ function makeDevicePod({ files, secret }) {
 /* ── boot helpers ───────────────────────────────────────────────────────────── */
 
 /** Boot an agent-proxy host: fail-closed for delegation, pod source proxied.
- *  `maxBodyBytes` (R3.3) sets the host's request-side proxy body cap. */
-async function bootProxyHost({ owner, container, maxBodyBytes }) {
+ *  `maxBodyBytes` (R3.3) sets the host's request-side proxy body cap.
+ *  `preFilter` (R3-advisory) toggles the host-side local scope pre-filter:
+ *    - default `true`  — production default: the advisory ScopedPodClient sits
+ *      in FRONT of the agent-proxy client (a local out-of-scope deny is fast).
+ *    - `false`         — BYPASS the pre-filter (raw proxy client, exact R3.0
+ *      behaviour) so a test can prove the DEVICE denies authoritatively with the
+ *      advisory gate removed — the pre-filter is NEVER the sole gate in a proof. */
+async function bootProxyHost({ owner, container, maxBodyBytes, preFilter = true }) {
   // The held pod source is IRRELEVANT under agent-proxy (we replace it with a
   // proxy PodClient on delegation) — we only reuse its containerUri.
   const podSource = await buildDevPodSource({ podRoot: POD_ROOT, container, files: [] });
@@ -188,12 +194,32 @@ async function bootProxyHost({ owner, container, maxBodyBytes }) {
     identityVault:  new VaultMemory(),
     gate:           false,                 // isolate the pod leg from the R2 skill gate
     podProxy:       true,                  // R3.0 — agent-proxy swap on delegation
+    podPreFilter:   preFilter,             // R3-advisory — host-side local scope pre-filter
     podMaxBodyBytes: maxBodyBytes,         // R3.3 — request-side body cap (undefined ⇒ 16 MiB default)
     podSource,                             // supplies containerUri
     podOwnerPubKey: owner.pubKey,          // trust root ⇒ fail-closed boot
   });
   cleanups.push(() => host.stop());
   return host;
+}
+
+/**
+ * R3-advisory — spy on the HOST's proxy round-trips. Monkeypatches
+ * `host.agent.invoke` to count `pod.proxyRequest` invocations. The agent-proxy
+ * fetch (`CapabilityAuth.#makeProxyFetch`) calls `host.agent.invoke(deviceAddr,
+ * 'pod.proxyRequest', …)` via the closure in `buildProxyPodSource`; the closure
+ * reads `agent.invoke` at call time, so patching the same object is observed.
+ * A FAST LOCAL DENY records ZERO such invokes (no relay round-trip); a device
+ * round-trip records ≥1. This is the direct, observable proof of "which gate fired".
+ */
+function spyProxyInvokes(host) {
+  const real = host.agent.invoke.bind(host.agent);
+  const calls = [];
+  host.agent.invoke = (addr, skill, payload, opts) => {
+    if (skill === 'pod.proxyRequest') calls.push({ addr, skill });
+    return real(addr, skill, payload, opts);
+  };
+  return { calls, restore: () => { host.agent.invoke = real; } };
 }
 
 /** A real device agent (== the pod owner) that also serves pod.proxyRequest.
@@ -291,7 +317,7 @@ describe('companion-node R3.0 — agent-proxy: the network-adversary boundary (h
     expect(hostGlobalPodCalls).toEqual([]);
   }, 20_000);
 
-  it('DEVICE-AUTHORITATIVE DENY: /photos/ read is denied BY THE DEVICE — opaque, no bytes, no device fetch', async () => {
+  it('DEVICE-AUTHORITATIVE DENY: /photos/ read is denied BY THE DEVICE — opaque, no bytes, no device fetch (pre-filter BYPASSED)', async () => {
     const owner = await AgentIdentity.generate(new VaultMemory());
     const devicePod = makeDevicePod({
       secret: 'oidc-access-SECRET-photos',
@@ -300,7 +326,12 @@ describe('companion-node R3.0 — agent-proxy: the network-adversary boundary (h
       ],
     });
     // The host is configured to browse /photos/, but the grant only covers /notes/.
-    const host   = await bootProxyHost({ owner, container: 'photos/' });
+    // R3-advisory: BYPASS the host pre-filter (`preFilter: false`) so this proof
+    // stays DEVICE-AUTHORITATIVE — the out-of-scope request must actually REACH the
+    // device and be denied THERE, exactly as R3.0 proved. With the advisory pre-filter
+    // ON, the HOST would deny this locally first (see the FAST LOCAL DENY test); this
+    // test deliberately removes that gate so the DEVICE's authority is proven ALONE.
+    const host   = await bootProxyHost({ owner, container: 'photos/', preFilter: false });
     const device = await makeOwnerDevice(host, owner, devicePod);
 
     const token = await authorizePod(owner, host.agent.address, {
@@ -309,15 +340,21 @@ describe('companion-node R3.0 — agent-proxy: the network-adversary boundary (h
     const ack = await deliverPodDelegation(device, host.agent.address, token);
     expect(ack.ok).toBe(true);                        // delegation is valid + installed
 
-    const res = await listPodOverWire(device, host);
+    // The host DID ship the request to the device (no local pre-filter to stop it).
+    const spy = spyProxyInvokes(host);
+    let res;
+    try { res = await listPodOverWire(device, host); }
+    finally { spy.restore(); }
 
     // Denied — no bytes, no leak of the private path/content.
     expect(res.items).toEqual([]);
     expect(res.error).toMatch(/pod list failed/i);
     expect(JSON.stringify(res)).not.toMatch(/secret\.jpg|PRIVATE-PHOTO-BYTES/);
 
-    // Denied BY THE DEVICE: its scope-check fired BEFORE any fetch — the mock
-    // authenticated fetch was NEVER called for the out-of-scope path.
+    // The request REACHED the device (a real relay round-trip happened) …
+    expect(spy.calls.length).toBeGreaterThan(0);
+    // … and was denied BY THE DEVICE: its scope-check fired BEFORE any fetch — the
+    // mock authenticated fetch was NEVER called for the out-of-scope path.
     expect(devicePod.calls.some((c) => c.url.includes('/photos/'))).toBe(false);
   }, 20_000);
 
@@ -489,7 +526,7 @@ describe('companion-node R3.1 — agent-proxy WRITE/DELETE: the full method set 
       secret: 'oidc-access-SECRET-rodeny',
       files: [{ path: '/notes/existing.md', body: 'ORIGINAL-CONTENT', contentType: 'text/markdown' }],
     });
-    const host   = await bootProxyHost({ owner, container: 'notes/' });
+    const host   = await bootProxyHost({ owner, container: 'notes/', preFilter: false });
     const device = await makeOwnerDevice(host, owner, devicePod);
 
     // READ-ONLY grant — no pod.write:, no pod.delete:.
@@ -500,6 +537,10 @@ describe('companion-node R3.1 — agent-proxy WRITE/DELETE: the full method set 
 
     const podClient = host.store.getPodSource().podClient;
 
+    // R3-advisory: this test is named "DENIED BY THE DEVICE" — it boots with the
+    // pre-filter BYPASSED (`preFilter: false` above) so the wrong-ACTION request
+    // genuinely reaches the DEVICE and the DEVICE denies (code FORBIDDEN), not the
+    // host's advisory local gate (which would deny with the distinct POD_FORBIDDEN).
     // PUT attempt → denied at the device (wrong ACTION: read token, write method).
     let wErr;
     try { await podClient.write(`${POD_ROOT}notes/evil.md`, 'EVIL', { contentType: 'text/markdown' }); }
@@ -530,7 +571,9 @@ describe('companion-node R3.1 — agent-proxy WRITE/DELETE: the full method set 
         { path: '/photos/keep.jpg', body: 'PHOTO', contentType: 'image/jpeg' },
       ],
     });
-    const host   = await bootProxyHost({ owner, container: 'notes/' });
+    // R3-advisory: pre-filter BYPASSED so the out-of-scope /photos/ DELETE is
+    // proven DENIED BY THE DEVICE (code FORBIDDEN), not by the host's local gate.
+    const host   = await bootProxyHost({ owner, container: 'notes/', preFilter: false });
     const device = await makeOwnerDevice(host, owner, devicePod);
 
     const token = await authorizePod(owner, host.agent.address, {
@@ -665,7 +708,11 @@ describe('companion-node R3.3 — agent-proxy SIZE CAP: the base64-over-WS safet
         { path: '/photos/secret.jpg', body: 'PRIVATE',    contentType: 'image/jpeg' },
       ],
     });
-    const host   = await bootProxyHost({ owner, container: 'notes/', maxBodyBytes: CAP });
+    // R3-advisory: pre-filter BYPASSED so the FORBIDDEN branch is proven
+    // DEVICE-authoritative (the /photos/ read reaches the device and it denies) —
+    // the payload-too-large and device-unreachable branches are in-scope and
+    // reach the device regardless of the pre-filter.
+    const host   = await bootProxyHost({ owner, container: 'notes/', maxBodyBytes: CAP, preFilter: false });
     const device = await makeOwnerDevice(host, owner, devicePod, { maxBodyBytes: CAP });
 
     // Read-only /notes/ grant: /photos/ is out of scope → FORBIDDEN.
@@ -707,6 +754,132 @@ describe('companion-node R3.3 — agent-proxy SIZE CAP: the base64-over-WS safet
     expect(hasCauseCode(uErr, 'payload-too-large')).toBe(false);
     expect(hasCauseCode(uErr, 'FORBIDDEN')).toBe(false);
   }, 25_000);
+});
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+describe('companion-node R3-advisory — host-side local scope pre-filter (advisory; device stays authoritative)', () => {
+  // The advisory pre-filter re-adds R2b.1's `ScopedPodClient` in FRONT of the
+  // agent-proxy `PodClient` (§R3 decision #4's deferred follow-up). It is a
+  // latency optimization + defense-in-depth: an obviously out-of-scope request
+  // is denied LOCALLY, without a relay round-trip. The DEVICE remains the sole
+  // load-bearing authority (proven by the BYPASSED-pre-filter tests above and by
+  // DEVICE STILL AUTHORITATIVE below). The two gates carry DISTINCT deny codes —
+  // the local gate `POD_FORBIDDEN`, the device gate `FORBIDDEN` — so a local
+  // deny can never be mistaken for a device-authoritative one.
+
+  it('FAST LOCAL DENY: an out-of-scope read is denied BY THE HOST PRE-FILTER, with NO relay round-trip (device never invoked)', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({
+      secret: 'oidc-access-SECRET-fastdeny',
+      files: [{ path: '/photos/secret.jpg', body: 'PRIVATE-PHOTO-BYTES', contentType: 'image/jpeg' }],
+    });
+    // Host browses /photos/, grant only covers /notes/ — obviously out of scope.
+    // Pre-filter DEFAULT ON (production default).
+    const host   = await bootProxyHost({ owner, container: 'photos/' });
+    const device = await makeOwnerDevice(host, owner, devicePod);
+
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+
+    const podClient = host.store.getPodSource().podClient;
+
+    const spy = spyProxyInvokes(host);
+    let err;
+    try { await podClient.read(`${POD_ROOT}photos/secret.jpg`, { decode: 'string' }); }
+    catch (e) { err = e; }
+    finally { spy.restore(); }
+
+    // RESULT: denied at the LOCAL advisory gate — distinct POD_FORBIDDEN code
+    // (NOT the device's FORBIDDEN), so we KNOW which gate fired.
+    expect(err).toBeDefined();
+    expect(err.code).toBe('POD_FORBIDDEN');
+    expect(err.status).toBe(403);
+    // THE OPTIMIZATION: no relay round-trip happened — the host never shipped a
+    // `pod.proxyRequest` to the device (contrast DEVICE-AUTHORITATIVE DENY, where
+    // the request DID reach the device). This is the latency win.
+    expect(spy.calls.length).toBe(0);
+    // The device was not touched AT ALL — its authenticated fetch never ran.
+    expect(devicePod.calls.length).toBe(0);
+    // Opaque: no content/path of the private resource leaks in the deny.
+    expect(JSON.stringify(err, Object.getOwnPropertyNames(err))).not.toMatch(/PRIVATE-PHOTO-BYTES/);
+  }, 20_000);
+
+  it('DEVICE STILL AUTHORITATIVE: with the pre-filter BYPASSED, the SAME out-of-scope read round-trips and is denied BY THE DEVICE', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({
+      secret: 'oidc-access-SECRET-defense',
+      files: [{ path: '/photos/secret.jpg', body: 'PRIVATE-PHOTO-BYTES', contentType: 'image/jpeg' }],
+    });
+    // IDENTICAL scenario to FAST LOCAL DENY, but the advisory pre-filter is
+    // BYPASSED — so the DEVICE is the ONLY gate. This proves the device remains
+    // load-bearing: the pre-filter is defense-in-depth, never the sole authority.
+    const host   = await bootProxyHost({ owner, container: 'photos/', preFilter: false });
+    const device = await makeOwnerDevice(host, owner, devicePod);
+
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+
+    const podClient = host.store.getPodSource().podClient;
+
+    const spy = spyProxyInvokes(host);
+    let err;
+    try { await podClient.read(`${POD_ROOT}photos/secret.jpg`, { decode: 'string' }); }
+    catch (e) { err = e; }
+    finally { spy.restore(); }
+
+    // RESULT: denied by the DEVICE — the device gate's FORBIDDEN (CapabilityError),
+    // NOT the local POD_FORBIDDEN. The device is load-bearing.
+    expect(err).toBeDefined();
+    expect(hasCauseCode(err, 'FORBIDDEN')).toBe(true);
+    expect(hasCauseCode(err, 'POD_FORBIDDEN')).toBe(false);
+    // The request DID reach the device (a real relay round-trip) — contrast the
+    // FAST LOCAL DENY above (zero invokes).
+    expect(spy.calls.length).toBeGreaterThan(0);
+    // …and the DEVICE denied BEFORE any fetch — its scope-check is authoritative.
+    expect(devicePod.calls.some((c) => c.url.includes('/photos/'))).toBe(false);
+    // Opaque still: nothing leaks.
+    expect(JSON.stringify(err, Object.getOwnPropertyNames(err))).not.toMatch(/PRIVATE-PHOTO-BYTES/);
+  }, 20_000);
+
+  it('IN-SCOPE UNCHANGED: a normal write→read still round-trips through BOTH gates (pre-filter is advisory, not restrictive)', async () => {
+    const owner = await AgentIdentity.generate(new VaultMemory());
+    const devicePod = makeDevicePod({ secret: 'oidc-access-SECRET-inscope', files: [] });
+    // Pre-filter DEFAULT ON.
+    const host   = await bootProxyHost({ owner, container: 'notes/' });
+    const device = await makeOwnerDevice(host, owner, devicePod);
+
+    const token = await authorizePod(owner, host.agent.address, {
+      scopes: ['pod.read:/notes/', 'pod.write:/notes/'], pod: POD_ROOT,
+    });
+    expect((await deliverPodDelegation(device, host.agent.address, token)).ok).toBe(true);
+
+    const podClient = host.store.getPodSource().podClient;
+    const target    = `${POD_ROOT}notes/hello.md`;
+    const CONTENT   = '# Hello\n\nIn-scope through the advisory pre-filter AND the device.\n';
+
+    const spy = spyProxyInvokes(host);
+    let back;
+    try {
+      await podClient.write(target, CONTENT, { contentType: 'text/markdown' });
+      back = await podClient.read(target, { decode: 'string' });
+    } finally {
+      spy.restore();
+    }
+
+    // RESULT: the pre-filter PASSED (in scope) and delegated — bytes round-trip.
+    expect(back.content).toBe(CONTENT);
+    // The request round-tripped through the DEVICE (advisory ALLOW does not
+    // short-circuit): a real PUT + GET transited the device's authenticated fetch.
+    expect(spy.calls.length).toBeGreaterThan(0);
+    expect(devicePod.calls.some((c) => c.method === 'PUT' && c.url.endsWith('/notes/hello.md'))).toBe(true);
+    expect(devicePod.calls.some((c) => c.method === 'GET' && c.url.endsWith('/notes/hello.md'))).toBe(true);
+    expect(decodeBytes(devicePod.store.get('/notes/hello.md').body)).toBe(CONTENT);
+  }, 20_000);
 });
 
 /** Walk an error's `.cause` chain looking for a specific `.code`. */
