@@ -3110,6 +3110,13 @@ function openGuidedSetupPanel({ onDone } = {}) {
 }
 
 // S5 — full-size image viewer for a prikbord attachment, in a dismissable overlay.
+/** Uint8Array → standard base64 for a `data:` URL (web `btoa`, node `Buffer` fallback). */
+function bytesToStdB64(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
+  return (typeof btoa === 'function') ? btoa(bin) : Buffer.from(bytes).toString('base64');
+}
+
 function showImageModal(src, { pending = false } = {}) {
   const overlay = document.createElement('div');
   overlay.className = 'cc-image-modal';
@@ -3242,7 +3249,19 @@ function showKring(id, circle, policy) {
   // circle (S4 per-circle restructure — one shared agent, per-circle scope key).
   // S4 — scope stoop ops to this circle AND, for a sealed (p2/p3) circle, transparently
   // seal post bodies at rest / open them on read via the per-circle content strategy.
-  const stoopCall = scopeStoopCallSkill(rawCallSkill, id, () => getCircleSealStrategy(id, policy));
+  // Sealed media (2026-07-11): thread THIS circle's media gateway into the wrapper so a
+  // prikbord image attachment seals + rides the SAME `{type:'media'}` blob pointer as
+  // canopy-chat's own circle chat images (createCircleMediaComposition → the dev bucket for
+  // now). One circle's gateway per wrapper ⇒ per-circle by construction (no cross-seal).
+  const getStoopMedia = async () => {
+    const comp = await getCircleMediaComposition(id, policy);
+    return (comp && comp.mediaGateway)
+      ? { mediaGateway: comp.mediaGateway, localActor: LOCAL_ACTOR, t }
+      : null;
+  };
+  const stoopCall = scopeStoopCallSkill(
+    rawCallSkill, id, () => getCircleSealStrategy(id, policy), getStoopMedia,
+  );
   // Stand up this circle's pod producer (sealing identity + control agent for a sealed
   // posture), then seed its group-key roster with members who joined before it was live.
   // Best-effort + fire-and-forget; never blocks the kring.
@@ -3374,17 +3393,22 @@ function showKring(id, circle, policy) {
     await loadNoticeboard();
   }
 
-  // S5 — open an attachment full-size. The author has the bytes locally
-  // (getAttachmentDataUrl); a recipient triggers a fetch (requestAttachment) and
-  // the 'stoop:attachment-fetched' listener re-renders when the bytes arrive.
-  async function noticeboardViewAttachment({ post, att }) {
-    let res = null;
-    try { res = await rawCallSkill('stoop', 'getAttachmentDataUrl', { itemId: post.id, attId: att.id }); }
-    catch { res = null; }
-    if (res?.dataUrl) { showImageModal(res.dataUrl); return; }
-    // No local bytes yet — ask the author for them, show the thumbnail meanwhile.
-    try { await rawCallSkill('stoop', 'requestAttachment', { itemId: post.id, attId: att.id }); } catch { /* */ }
-    showImageModal(att.thumbnail, { pending: true });
+  // Sealed media (2026-07-11): open the full-size image by unsealing the blob through THIS
+  // circle's media gateway (`openFullImage` → `openBlob`, gated + decrypted client-side) —
+  // the SAME read path canopy-chat's own circle images use. No stoop byte round-trip: stoop
+  // holds only the opaque pointer. The sealed thumbnail (already opened for the chip) stands
+  // in while the full image resolves, and on a wrong key / denial we keep it.
+  async function noticeboardViewAttachment({ att }) {
+    const line = att && att.source;
+    if (kringMedia && line && typeof line === 'object' && line.enc) {
+      try {
+        const { bytes, media } = await kringMedia.openFullImage(line);
+        const mime = (media && media.mime) || att.mime || 'image/jpeg';
+        showImageModal(`data:${mime};base64,${bytesToStdB64(bytes)}`);
+        return;
+      } catch { /* denied / wrong key → fall back to the sealed thumbnail below */ }
+    }
+    if (att && att.thumbnail) showImageModal(att.thumbnail, { pending: true });
   }
 
   async function noticeboardAction({ action, post }) {

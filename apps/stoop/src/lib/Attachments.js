@@ -52,17 +52,23 @@
  *   author over a 1:1 chat channel.  Bytes for chat messages DO
  *   travel inline (1:1, smaller, expected behaviour).
  *
- * **Sealing status (honest):** stoop has NO sealer on its post path
- * today (no group/circle content key is composed anywhere in the
- * app; the optional pod control-agent only drives pod ACLs).  This
- * module therefore consolidates the SHAPE onto the canonical `media`
- * noun now; the sealed-blob path (`@canopy/blob-gateway`
- * `uploadBlob({bytes, media})` with a real sealer, as wired in
- * canopy-chat's media slice) is the follow-up once stoop grows a
- * sealing seam.  The media item's `source` line is exactly where
- * blob-gateway's manifest line will slot in (`{type:'blob',
- * ref:'blob://<key>', enc}`) — readers already key off `source.ref`,
- * so that swap changes the pointer, not the contract.
+ * **Sealing status (2026-07-11 — sealed-media):** DONE.  Stoop image
+ * attachments are now SEALED end to end, via the SAME per-circle path
+ * canopy-chat's own circle images use.  Stoop stays key-agnostic: the
+ * per-circle stoop wrapper (`apps/canopy-chat/src/v2/circleStoopScope.js`,
+ * `scopeStoopCallSkill`) seals each picked image's bytes + thumbnail through
+ * the circle media gateway (`@canopy/blob-gateway` `uploadBlob`, mirroring
+ * `core/handlers/mediaEmbed.js`) BEFORE it reaches stoop, and hands stoop an
+ * opaque canonical `media` item whose `source` IS the blob manifest line
+ * (`{type:'blob', ref:'blob://<key>', enc:{sealed:true,…,thumb}}`).  Stoop
+ * only carries/stores that pointer — it never decodes, persists, or serves
+ * plaintext bytes, and the old inline-`dataB64` path is REMOVED
+ * (`validateInboundAttachment` refuses it).  Recipients open the sealed inline
+ * thumbnail (`openThumbnail`) + the full image (`openBlob`, gated) through
+ * their own circle media gateway — the sealing key stays out of stoop.  The
+ * `@canopy/chat-p2p` plaintext `attachment-request`/`-response` handlers are
+ * now structurally inert (stoop no longer injects `attachmentSupport`, and no
+ * plaintext bytes exist to serve).
  */
 
 import nacl from 'tweetnacl';
@@ -77,15 +83,7 @@ function _b64encode(bytes) {
     ? btoa(bin)
     : Buffer.from(bytes).toString('base64');
 }
-function _b64decode(s) {
-  if (typeof atob === 'function') {
-    const bin = atob(s);
-    const out = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
-    return out;
-  }
-  return new Uint8Array(Buffer.from(s, 'base64'));
-}
+// (_b64decode removed with the plaintext path — stoop no longer decodes attachment bytes.)
 
 /** Max prikbord attachments per item (web picker enforces too). */
 export const MAX_ATTACHMENTS_PER_POST = 4;
@@ -162,60 +160,67 @@ export function parseAttachmentWireRef(ref) {
 }
 
 /**
- * Validate a single inbound-from-the-client attachment record.
+ * Validate a single inbound attachment — SEALED-ONLY (2026-07-11 sealed-media).
+ *
+ * Stoop is now key-agnostic: the caller (canopy-chat's per-circle stoop wrapper,
+ * `scopeStoopCallSkill`) seals the bytes + thumbnail through the circle media
+ * gateway and hands stoop an OPAQUE canonical `media` item whose `source` is a
+ * blob-gateway manifest line (`{type:'blob', ref:'blob://…', enc:{sealed:true,…,
+ * thumb}}`).  Stoop only carries/stores that pointer; it never sees plaintext.
+ *
+ * So this validator REFUSES the old inline-plaintext shape (`dataB64` +
+ * `data:image` thumbnail) outright and requires the sealed blob pointer.  This
+ * is the structural guard that the removed inline path can't come back.
+ *
  * Returns null on success, an error string on failure.
  */
-export function validateInboundAttachment(att, { maxBytes }) {
+export function validateInboundAttachment(att) {
   if (!att || typeof att !== 'object') return 'attachment-not-object';
-  if (!ALLOWED_MIMES.has(att.mime))    return `attachment-mime-not-allowed:${att.mime}`;
-  if (typeof att.dataB64 !== 'string' || att.dataB64.length === 0) return 'attachment-data-missing';
-  if (typeof att.width  !== 'number' || att.width  <= 0) return 'attachment-width-invalid';
-  if (typeof att.height !== 'number' || att.height <= 0) return 'attachment-height-invalid';
-  // Decoded byte length is 3/4 of base64 length minus padding.
-  const approxBytes = Math.floor(att.dataB64.length * 0.75);
-  if (typeof maxBytes === 'number' && approxBytes > maxBytes) {
-    return `attachment-too-large:${approxBytes}>${maxBytes}`;
+  // Sealed-only: plaintext bytes / data: thumbnails are refused (the inline path is gone).
+  if (att.dataB64 != null) return 'attachment-plaintext-refused';
+  if (typeof att.thumbnail === 'string' && att.thumbnail.startsWith('data:')) {
+    return 'attachment-plaintext-thumbnail-refused';
   }
-  if (typeof att.thumbnail !== 'string' || !att.thumbnail.startsWith('data:image/')) {
-    return 'attachment-thumbnail-missing';
+  if (att.type !== 'media') return 'attachment-not-media';
+  const src = att.source;
+  if (!src || typeof src !== 'object') return 'attachment-source-missing';
+  if (src.type !== 'blob' || typeof src.ref !== 'string' || !src.ref.startsWith('blob://')) {
+    return 'attachment-not-sealed-blob';
   }
+  if (!src.enc || src.enc.sealed !== true) return 'attachment-not-sealed';
+  if (!ALLOWED_MIMES.has(att.mime)) return `attachment-mime-not-allowed:${att.mime}`;
   return null;
 }
 
 /**
- * Persist an inbound attachment to the data source (local-first
- * via CachingDataSource).  Returns a canonical **`media` item**
- * (`@canopy/item-types` MEDIA_SCHEMA — validated by the drift-guard
- * tests) carrying stoop's extras, with the LOCAL-ONLY `ref`
- * populated, ready to embed in the item's `source.attachments`.
+ * Normalize an inbound SEALED attachment for storage on the item's
+ * `source.attachments`.  NO bytes are decoded and NOTHING is written to a
+ * local cache — the ciphertext already lives in the circle media gateway's
+ * bucket; stoop keeps only the opaque manifest-line pointer.
  *
- * `actor` becomes the media item's `createdBy` (the post author's
- * webid — already public on the broadcast, so no new exposure).
+ * `actor` becomes the media item's `createdBy` (the post author's webid —
+ * already public on the broadcast, so no new exposure).  Any stray local-only
+ * or plaintext field (`dataB64` / local cache `ref` / a `data:` `thumbnail`)
+ * is defensively stripped so it can never reach the item record or the wire.
  *
- * The dataB64 field is dropped — it never lives on the item.
+ * (Kept async + name-compatible with the pre-seal call site; `dataSource`/
+ * `itemId` args are accepted-and-ignored so callers don't churn.)
  */
-export async function persistInboundAttachment({
-  dataSource, itemId, att, actor,
-}) {
-  const id   = freshAttachmentId();
-  const ref  = attachmentPath(itemId, id, att.mime);
-  const bytes = _b64decode(att.dataB64);
-
-  await dataSource.write(ref, bytes);
+export async function persistInboundAttachment({ att, actor } = {}) {
+  const {
+    dataB64: _dataB64, ref: _localRef, thumbnail: _thumb, ...rest
+  } = att ?? {};
   return {
+    ...rest,
     // ── canonical media item (BASE_REQUIRED + source) ──
     type:      'media',
-    id,
-    createdAt: new Date().toISOString(),
-    createdBy: typeof actor === 'string' && actor ? actor : 'stoop:unknown',
-    source:    { type: STOOP_ATT_REF_TYPE, ref: attachmentWireRef(itemId, id) },
-    mime:      att.mime,
-    width:     att.width,
-    height:    att.height,
-    // ── stoop extras (forward-additive; schema tolerates them) ──
-    bytes:     bytes.byteLength,
-    thumbnail: att.thumbnail,
-    ref,                              // LOCAL-ONLY — stripped by toWireShape
+    id:        att?.id || freshAttachmentId(),
+    createdAt: att?.createdAt || new Date().toISOString(),
+    createdBy: typeof actor === 'string' && actor ? actor : (att?.createdBy || 'stoop:unknown'),
+    source:    att?.source,          // {type:'blob', ref:'blob://…', enc:{sealed:true,…,thumb}}
+    mime:      att?.mime,
+    ...(att?.width  != null ? { width:  att.width }  : {}),
+    ...(att?.height != null ? { height: att.height } : {}),
   };
 }
 
@@ -233,20 +238,36 @@ export async function readAttachmentBytesB64({ dataSource, ref }) {
 }
 
 /**
- * Strip local-only fields before emitting an attachment metadata
- * record on the wire (broadcasts + chat envelopes).  ALWAYS drops
- * the local `ref` (install-local cache path) and `dataB64`.
+ * Project an attachment onto its WIRE shape (broadcasts + chat envelopes).
  *
- * Media-aware: canonical media items keep their canonical fields
- * (`type`/`createdAt`/`createdBy`/`source` — `source.ref` is the
- * install-independent `stoop-att://` name, safe on the wire).
- * Legacy records (pre-consolidation items; the chat-p2p substrate's
- * receiver-built records) pass through in the legacy shape.  Both
- * shapes carry `id`/`mime`/`bytes`/`width`/`height`/`thumbnail` at
- * the same keys, so mixed-version peers render either.
+ * SEALED media pointer (the only shape stoop now produces): carry the opaque
+ * canonical `media` item — including the full manifest line `source.enc`, which
+ * holds the SEALED inline thumbnail (`enc.thumb`) + the blob ref the recipient
+ * opens through its own circle media gateway.  There is NO plaintext to strip:
+ * a sealed item never carries `dataB64` or a `data:image` `thumbnail`, and there
+ * is no local cache `ref` (the bytes live in the gateway bucket, not in stoop).
+ * A defensive strip below drops any of those anyway — belt and braces.
+ *
+ * Legacy records (a pre-seal peer's `stoop-att://` item, or the chat-p2p
+ * substrate's receiver-built record) pass through in the legacy shape so a
+ * mixed-version network still renders; stoop no longer MINTS that shape.
  */
 export function toWireShape(attachment) {
   if (!attachment || typeof attachment !== 'object') return null;
+  // Sealed media pointer — carry the opaque line, never plaintext / local ref.
+  if (attachment.type === 'media' && attachment.source && attachment.source.type === 'blob') {
+    return {
+      type:      'media',
+      id:        attachment.id,
+      createdAt: attachment.createdAt,
+      createdBy: attachment.createdBy,
+      source:    attachment.source,          // {type:'blob', ref, enc:{sealed:true,…,thumb}}
+      mime:      attachment.mime,
+      ...(attachment.width  != null ? { width:  attachment.width }  : {}),
+      ...(attachment.height != null ? { height: attachment.height } : {}),
+    };
+  }
+  // Legacy interop (never freshly minted by stoop): strip the local `ref`/`dataB64`.
   const wire = {
     id:        attachment.id,
     mime:      attachment.mime,

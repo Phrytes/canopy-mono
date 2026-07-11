@@ -21,7 +21,9 @@
  * per-circle scope key threaded through ops — NOT N agents for N circles
  * (CLAUDE.md invariant #6). Pure + transport-free, so mobile reuses it verbatim.
  */
+import { openThumbnail } from '@canopy/blob-gateway';
 import { itemCircleId } from './circleScope.js';
+import { createMediaEmbed } from '../core/handlers/mediaEmbed.js';
 
 /** stoop ops whose created/mutated item belongs to / routes to the active circle. */
 export const SCOPED_WRITE_OPS = new Set([
@@ -81,6 +83,71 @@ function openItemText(it, strategy) {
   } catch { return it; }
 }
 
+/** Uint8Array → standard base64 (data-URL payload). Web `btoa`, node `Buffer` fallback. */
+function bytesToStdB64(bytes) {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 1) bin += String.fromCharCode(bytes[i]);
+  return (typeof btoa === 'function') ? btoa(bin) : Buffer.from(bytes).toString('base64');
+}
+
+/**
+ * Seal a picked image attachment through the per-circle media gateway, exactly as
+ * `core/handlers/mediaEmbed.js` seals a circle chat image — REUSE, not a second path.
+ * The attachment arrives already encoded (`{mime, dataB64, width, height, thumbnail}` from
+ * `attachmentEncoder`); a pass-through `encodeImage` hands those bytes + thumbnail to
+ * `createMediaEmbed`, which `uploadBlob`s the SEALED bytes + SEALED thumbnail into the
+ * circle bucket and returns a canonical `media` item (`snapshot`) whose `source` IS the
+ * blob manifest line. That opaque, sealed pointer is what stoop stores + carries — no
+ * plaintext bytes and no `data:image` thumbnail ever reach the pod / wire.
+ */
+async function sealPostAttachment(att, media) {
+  const { mediaGateway, localActor, t } = media;
+  const embed = await createMediaEmbed({}, {
+    file: { dataB64: att.dataB64, type: att.mime, name: att.name },
+    mediaGateway,
+    // The image is already resized/encoded upstream — pass those values straight through
+    // so createMediaEmbed seals the exact bytes + thumbnail (its `dataUrlToB64` handles the
+    // `data:` thumbnail URL) rather than re-encoding.
+    encodeImage: async () => ({
+      mime: att.mime, dataB64: att.dataB64,
+      width: att.width, height: att.height, thumbnail: att.thumbnail,
+    }),
+    localActor, t,
+  });
+  if (!embed || embed.ok === false || !embed.snapshot) {
+    throw new Error(embed?.error || 'media-seal-failed');
+  }
+  return embed.snapshot;   // canonical media item; source = sealed blob manifest line
+}
+
+/**
+ * Read-side render helper: open the SEALED inline thumbnail carried on each of an item's
+ * sealed attachment pointers (`source.enc.thumb`) into a render-only `data:` URL, using the
+ * per-circle content opener — the SAME `openThumbnail` path canopy-chat's own circle image
+ * chips use. No gate + no fetch (the thumb ships inside the manifest line). The sealed
+ * `source` is preserved (full-image open on tap still routes through the gateway). A wrong
+ * key (cross-circle) throws in `openThumbnail` → caught → the chip falls back to a
+ * placeholder, which is the per-circle no-cross-seal guard made visible.
+ */
+function openItemAttachmentThumbs(it, opener) {
+  const atts = it?.source?.attachments;
+  if (!Array.isArray(atts) || !atts.length || typeof opener !== 'function') return it;
+  let changed = false;
+  const opened = atts.map((att) => {
+    const line = att && att.source;
+    if (!line || typeof line !== 'object' || !line.enc || att.thumbnail) return att;
+    try {
+      const bytes = openThumbnail({ line, opener });
+      if (!bytes) return att;
+      changed = true;
+      // Thumbnails are always JPEG (attachmentEncoder). The plaintext data URL lives only
+      // in this client-side render copy — never re-serialized to the store/wire.
+      return { ...att, thumbnail: `data:image/jpeg;base64,${bytesToStdB64(bytes)}` };
+    } catch { return att; }   // wrong key / no thumb → placeholder
+  });
+  return changed ? { ...it, source: { ...it.source, attachments: opened } } : it;
+}
+
 /**
  * Wrap a 3-arg host `callSkill(appOrigin, opId, args)` so stoop ops are scoped to
  * `circleId`. Non-stoop ops and a null circleId pass through untouched.
@@ -92,12 +159,24 @@ function openItemText(it, strategy) {
  * this wrapper (prikbord + scherm noticeboard block) is transparently E2E-sealed. A p0/p1
  * circle resolves no strategy → plaintext, unchanged.
  *
+ * Image attachments seal the SAME way, through the SAME circle path canopy-chat's own
+ * circle images use: pass `getMedia` — an async getter resolving `{mediaGateway, localActor,
+ * t}` (the per-circle `getCircleMediaComposition` gateway). A `postRequest` carrying
+ * `attachments` then routes each picked image through `createMediaEmbed`/`uploadBlob` (seal
+ * bytes + thumbnail into the circle bucket) and replaces the inline `{dataB64,thumbnail}`
+ * with an opaque `{type:'media', source:<blob line>}` pointer BEFORE it reaches the pod; on
+ * read, each sealed inline thumbnail is opened for render via the circle opener. Because
+ * this wrapper holds exactly ONE circle's gateway, the seal is per-circle by construction —
+ * a wrong-circle opener can't open it (no cross-circle leak). A circle with no media gateway
+ * (p0/p1 / unresolved) REFUSES attachments — sealed-only, never a plaintext fallback.
+ *
  * @param {(appOrigin:string, opId:string, args?:object)=>Promise<any>} callSkill
  * @param {string|null} circleId
  * @param {(() => Promise<{seal:Function, open:Function}|null>)} [getSealStrategy]
+ * @param {(() => Promise<{mediaGateway:object, localActor:string, t?:Function}|null>)} [getMedia]
  * @returns {(appOrigin:string, opId:string, args?:object)=>Promise<any>}
  */
-export function scopeStoopCallSkill(callSkill, circleId, getSealStrategy) {
+export function scopeStoopCallSkill(callSkill, circleId, getSealStrategy, getMedia) {
   if (typeof callSkill !== 'function' || !circleId) return callSkill;
   return async (appOrigin, opId, args = {}) => {
     if (appOrigin !== 'stoop') return callSkill(appOrigin, opId, args);
@@ -110,12 +189,25 @@ export function scopeStoopCallSkill(callSkill, circleId, getSealStrategy) {
       if (strategy && opId === 'postRequest' && typeof scoped.text === 'string' && scoped.text) {
         scoped.text = strategy.seal(scoped.text);             // seal the body at rest
       }
+      if (opId === 'postRequest' && Array.isArray(scoped.attachments) && scoped.attachments.length) {
+        // Sealed-only: an image attachment must ride the sealed circle-media pointer.
+        const media = (typeof getMedia === 'function') ? await getMedia().catch(() => null) : null;
+        if (!media || !media.mediaGateway) throw new Error('media-gateway-unavailable');
+        const sealed = [];
+        for (const att of scoped.attachments) {
+          if (att && typeof att === 'object') sealed.push(await sealPostAttachment(att, media));
+        }
+        scoped.attachments = sealed;
+      }
       return callSkill(appOrigin, opId, scoped);
     }
     const res = await callSkill(appOrigin, opId, args);
     if (SCOPED_LIST_OPS.has(opId) && res && Array.isArray(res.items)) {
       let items = res.items.filter((it) => keepForCircle(it, circleId));
       if (strategy) items = items.map((it) => openItemText(it, strategy));
+      const media = (typeof getMedia === 'function') ? await getMedia().catch(() => null) : null;
+      const opener = media && media.mediaGateway && media.mediaGateway.opener;
+      if (opener) items = items.map((it) => openItemAttachmentThumbs(it, opener));
       return { ...res, items };
     }
     return res;

@@ -1,20 +1,27 @@
 /**
- * Stoop V2.5 Phase 39 — Picture attachments end-to-end.
+ * Stoop Phase 39 — Picture attachments end-to-end, now SEALED (2026-07-11).
+ *
+ * The original Phase 39 stored PLAINTEXT bytes in stoop and served them over a
+ * chat round-trip. That inline path is REMOVED: canopy-chat's per-circle stoop
+ * wrapper seals bytes + thumbnail through the circle media gateway and hands
+ * stoop an OPAQUE `media` pointer; recipients open it through their own gateway.
+ * These tests keep the original INTENT (attach → store → wire → open works; no
+ * plaintext leaks; caps/limits enforced) but assert the SEALED shape.
  *
  * Verifies:
- *   - 39.2: postRequest with attachments stores bytes at the
- *           per-item path; item.source.attachments has metadata
- *           but no `dataB64`; broadcast payload carries metadata
- *           + thumbnail without `ref`.
- *   - 39.3: groupMirror.mirror() copies attachment metadata into
- *           mirrored items.
- *   - 39.4: requestAttachment skill round-trips bytes via
- *           attachment-request / attachment-response chat subtypes.
- *   - 39.5: sendChatMessage with inline attachment ships bytes;
- *           recipient stores ref locally.
- *   - Privacy invariant: no `ref` field crosses the wire.
- *   - Phase 35 interaction: an evicted author's attachment-bearing
- *           post is silently dropped on the receiver side.
+ *   - Attachments lib: `validateInboundAttachment` accepts the sealed pointer +
+ *     REFUSES inline plaintext; `toBroadcastShape` carries the sealed line, no
+ *     local `ref` / `dataB64`; helpers (attachmentPath / freshAttachmentId / caps).
+ *   - 39.2: postRequest stores the sealed pointer on `source.attachments`; the
+ *           record + broadcast carry NO plaintext bytes / `data:image` thumbnail.
+ *   - 39.3: the substrate mirror copies the sealed pointer into mirrored items
+ *           (no local `ref`).
+ *   - 39.4: the removed plaintext byte-serving path — postRequest REFUSES inline
+ *           plaintext; requestAttachment still rejects an unknown item.
+ *   - 39.5: sendChatMessage requires body-or-attachment, and REFUSES an inline
+ *           plaintext attachment (accepts a sealed pointer).
+ *   - Privacy invariant: no plaintext bytes / `data:image` thumbnail crosses the wire.
+ *   - Phase 35 interaction: an evicted author's attachment-bearing post is dropped.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -32,24 +39,17 @@ import {
 } from '../src/lib/Attachments.js';
 import { attachSubstrateMirror } from '../src/substrateMirror.js';
 import { EVICTION_GRACE_MS } from '../src/lib/EvictionRoster.js';
+import { makeSealCircle, makeSealedImageAttachment, TINY_PNG_B64 } from './helpers/sealedAttachment.js';
 
 const ANNE = 'https://id.example/anne';
 const BOB  = 'https://id.example/bob';
-
-/** A 1×1 transparent PNG, base64-encoded.  Tiny but valid bytes. */
-const TINY_PNG_B64 =
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4XmNgYGD4DwABBAEAfbLI3wAAAABJRU5ErkJggg==';
-/** Same shape; the "thumbnail" data: URL. */
 const TINY_PNG_DATA_URL = `data:image/png;base64,${TINY_PNG_B64}`;
 
-function makeAttachment(extra = {}) {
+/** The removed inline-plaintext shape — must be REFUSED now. */
+function makePlaintextAttachment(extra = {}) {
   return {
-    mime:      'image/png',
-    width:     1,
-    height:    1,
-    thumbnail: TINY_PNG_DATA_URL,
-    dataB64:   TINY_PNG_B64,
-    ...extra,
+    mime: 'image/png', width: 1, height: 1,
+    thumbnail: TINY_PNG_DATA_URL, dataB64: TINY_PNG_B64, ...extra,
   };
 }
 
@@ -77,35 +77,28 @@ async function callSkill(agent, skillId, args, asWebid = ANNE) {
   });
 }
 
-describe('Phase 39 — Attachments lib', () => {
-  it('validateInboundAttachment accepts a well-formed record', () => {
-    expect(validateInboundAttachment(makeAttachment(), { maxBytes: 1000 })).toBeNull();
+describe('Phase 39 — Attachments lib (sealed)', () => {
+  it('validateInboundAttachment accepts a sealed pointer', async () => {
+    const { att } = await makeSealedImageAttachment(makeSealCircle());
+    expect(validateInboundAttachment(att)).toBeNull();
   });
 
-  it('rejects unsupported mime', () => {
-    expect(validateInboundAttachment(makeAttachment({ mime: 'image/gif' }), { maxBytes: 1000 }))
-      .toMatch(/mime-not-allowed/);
+  it('REFUSES the removed inline-plaintext shape', () => {
+    expect(validateInboundAttachment(makePlaintextAttachment())).toBe('attachment-plaintext-refused');
   });
 
-  it('rejects oversize bytes', () => {
-    const big = 'A'.repeat(2000);
-    expect(validateInboundAttachment(makeAttachment({ dataB64: big }), { maxBytes: 100 }))
-      .toMatch(/too-large/);
+  it('rejects unsupported mime', async () => {
+    const { att } = await makeSealedImageAttachment(makeSealCircle(), { mime: 'image/gif' });
+    expect(validateInboundAttachment(att)).toMatch(/mime-not-allowed/);
   });
 
-  it('rejects missing thumbnail', () => {
-    expect(validateInboundAttachment(makeAttachment({ thumbnail: 'not-a-data-url' }), { maxBytes: 1000 }))
-      .toMatch(/thumbnail-missing/);
-  });
-
-  it('toBroadcastShape strips `ref` and `dataB64`', () => {
-    const out = toBroadcastShape([
-      { id: 'att-1', mime: 'image/jpeg', bytes: 100, width: 10, height: 10,
-        thumbnail: 'data:image/jpeg;base64,X', ref: 'mem://leaky/path', dataB64: 'OOPS' },
-    ]);
+  it('toBroadcastShape carries the sealed source, strips `ref` and `dataB64`', async () => {
+    const { att } = await makeSealedImageAttachment(makeSealCircle());
+    const out = toBroadcastShape([{ ...att, ref: 'mem://leaky/path', dataB64: 'OOPS' }]);
     expect(out[0]).not.toHaveProperty('ref');
     expect(out[0]).not.toHaveProperty('dataB64');
-    expect(out[0].thumbnail).toBe('data:image/jpeg;base64,X');
+    expect(out[0]).not.toHaveProperty('thumbnail');
+    expect(out[0].source.type).toBe('blob');
   });
 
   it('attachmentPath includes the right extension per mime', () => {
@@ -126,13 +119,12 @@ describe('Phase 39 — Attachments lib', () => {
   });
 });
 
-describe('Phase 39.2 — postRequest with attachments', () => {
-  it('stores bytes at the item-scoped path; item.source.attachments has metadata only', async () => {
+describe('Phase 39.2 — postRequest with sealed attachments', () => {
+  it('stores the sealed pointer on source.attachments; no plaintext bytes / thumbnail leak', async () => {
+    const { att } = await makeSealedImageAttachment(makeSealCircle());
     const bundle = await buildBundle();
     const r = await callSkill(bundle.agent, 'postRequest', {
-      text: 'Wie kent een goede fietsenmaker?',
-      kind: 'ask',
-      attachments: [makeAttachment()],
+      text: 'Wie kent een goede fietsenmaker?', kind: 'ask', attachments: [att],
     });
     expect(r.requestId).toBeTruthy();
 
@@ -140,41 +132,39 @@ describe('Phase 39.2 — postRequest with attachments', () => {
     const attachments = item?.source?.attachments;
     expect(Array.isArray(attachments)).toBe(true);
     expect(attachments.length).toBe(1);
-    expect(attachments[0].id).toMatch(/^att-/);
-    expect(attachments[0].mime).toBe('image/png');
-    expect(attachments[0].thumbnail).toBe(TINY_PNG_DATA_URL);
-    expect(attachments[0].ref).toMatch(/^mem:\/\/stoop\/items\/.+\/attachments\/att-.+\.png$/);
-    // Bytes never leak onto the item record.
+    expect(attachments[0].source.type).toBe('blob');
+    expect(attachments[0].source.enc.sealed).toBe(true);
+    // Bytes / plaintext thumbnail never leak onto the item record.
     expect(attachments[0]).not.toHaveProperty('dataB64');
+    const serialized = JSON.stringify(item);
+    expect(serialized).not.toContain('data:image');
+    expect(serialized).not.toContain(TINY_PNG_B64);
+  });
 
-    // Bytes ARE in the cache at the ref path.
-    const stored = await bundle.cache.read(attachments[0].ref);
-    expect(stored).toBeTruthy();
-    expect(stored.byteLength ?? stored.length).toBeGreaterThan(0);
+  it('REFUSES an inline-plaintext attachment', async () => {
+    const bundle = await buildBundle();
+    const r = await callSkill(bundle.agent, 'postRequest', {
+      text: 'plaintext', kind: 'ask', attachments: [makePlaintextAttachment()],
+    });
+    expect(r.error).toBe('attachment-plaintext-refused');
   });
 
   it('rejects too many attachments', async () => {
+    const circle = makeSealCircle();
+    const tooMany = await Promise.all(
+      Array.from({ length: MAX_ATTACHMENTS_PER_POST + 1 }, () => makeSealedImageAttachment(circle).then((x) => x.att)),
+    );
     const bundle = await buildBundle();
-    const tooMany = Array.from({ length: MAX_ATTACHMENTS_PER_POST + 1 }, () => makeAttachment());
     const r = await callSkill(bundle.agent, 'postRequest', {
       text: 'too many', kind: 'ask', attachments: tooMany,
     });
     expect(r.error).toMatch(/attachments-too-many/);
   });
-
-  it('rejects oversized attachments', async () => {
-    const bundle = await buildBundle();
-    const big = 'A'.repeat(MAX_PRIKBORD_BYTES_PER_ATT * 2);
-    const r = await callSkill(bundle.agent, 'postRequest', {
-      text: 'big', kind: 'ask',
-      attachments: [makeAttachment({ dataB64: big })],
-    });
-    expect(r.error).toMatch(/too-large/);
-  });
 });
 
-describe('Phase 39.3 — groupMirror copies attachment metadata', () => {
-  it('mirror() carries attachments[] (no `ref` until fetched)', async () => {
+describe('Phase 39.3 — substrate mirror copies the sealed pointer', () => {
+  it('mirror() carries the sealed attachment (no local `ref`)', async () => {
+    const { att } = await makeSealedImageAttachment(makeSealCircle(), { createdBy: BOB });
     const bundle = await buildBundle();
     const mirror = await attachSubstrateMirror(bundle, {
       group:          'oosterpoort',
@@ -188,76 +178,57 @@ describe('Phase 39.3 — groupMirror copies attachment metadata', () => {
       type:         'request',
       text:         'Bob has a thing',
       requiredSkills: [],
-      source: {
-        skillTags: [], categoryId: null,
-        attachments: [{
-          id: 'att-stub', mime: 'image/jpeg', bytes: 100,
-          width: 10, height: 10, thumbnail: TINY_PNG_DATA_URL,
-        }],
-      },
+      source: { skillTags: [], categoryId: null, attachments: [att] },
     }]);
 
-    // backfillFrom uses originals (no `source.broadcast`), so the
-    // mirrored item is the recipient-side mirror.
     const open = await bundle.itemStore.listOpen();
     const mirrored = open.find(i => i?.source?.requestId === 'broadcast-from-bob-1');
     expect(mirrored).toBeTruthy();
     const atts = mirrored.source?.attachments ?? [];
     expect(atts.length).toBe(1);
-    expect(atts[0].thumbnail).toBe(TINY_PNG_DATA_URL);
-    // The recipient has no `ref` until they request the bytes.
-    expect(atts[0].ref).toBeUndefined();
+    expect(atts[0].source.type).toBe('blob');
+    expect(atts[0].ref).toBeUndefined();   // no local cache path on a mirror
 
     await mirror.stop();
   });
 });
 
-describe('Phase 39.4 — requestAttachment skill', () => {
-  it('returns ref immediately when bytes are already local (we authored)', async () => {
+describe('Phase 39.4 — plaintext byte-serving path removed', () => {
+  it('postRequest refuses inline plaintext (no bytes are persisted to serve)', async () => {
     const bundle = await buildBundle();
     const r = await callSkill(bundle.agent, 'postRequest', {
-      text: 'self-attachment', kind: 'ask',
-      attachments: [makeAttachment()],
+      text: 'self-attachment', kind: 'ask', attachments: [makePlaintextAttachment()],
     });
-    const item = await bundle.itemStore.getById(r.requestId);
-    const attId = item.source.attachments[0].id;
-
-    const got = await callSkill(bundle.agent, 'requestAttachment', {
-      itemId: r.requestId, attId,
-    });
-    expect(got.ok).toBe(true);
-    expect(got.ref).toMatch(/\.png$/);
+    expect(r.error).toBe('attachment-plaintext-refused');
   });
 
-  it('rejects unknown item / attachment', async () => {
+  it('requestAttachment still rejects an unknown item', async () => {
     const bundle = await buildBundle();
     expect(await callSkill(bundle.agent, 'requestAttachment', { itemId: 'nope', attId: 'x' }))
       .toEqual({ error: 'item-not-found' });
   });
 });
 
-describe('Phase 39.5 — sendChatMessage with inline attachment', () => {
+describe('Phase 39.5 — sendChatMessage with a sealed attachment', () => {
   it('rejects empty body + no attachment', async () => {
     const bundle = await buildBundle();
     const r = await callSkill(bundle.agent, 'sendChatMessage', { threadId: 't1', toWebid: BOB });
     expect(r.error).toBe('body-or-attachment-required');
   });
 
-  it('rejects oversize chat attachment', async () => {
+  it('REFUSES an inline-plaintext chat attachment', async () => {
     const bundle = await buildBundle();
-    const big = 'A'.repeat(MAX_CHAT_BYTES_PER_ATT * 2);
     const r = await callSkill(bundle.agent, 'sendChatMessage', {
-      threadId: 't1', toWebid: BOB,
-      attachment: makeAttachment({ dataB64: big }),
+      threadId: 't1', toWebid: BOB, attachment: makePlaintextAttachment(),
     });
-    expect(r.error).toMatch(/too-large/);
+    expect(r.error).toBe('attachment-plaintext-refused');
   });
 });
 
 describe('Phase 35 + 39 interaction — evicted authors still drop attachments', () => {
   it('evicted member with attachment: nothing lands locally', async () => {
+    const { att } = await makeSealedImageAttachment(makeSealCircle(), { createdBy: BOB });
     const bundle = await buildBundle();
-    // Evict Bob.
     const past = Date.now() - EVICTION_GRACE_MS - 60_000;
     bundle.evictionRoster.applyRedemption({
       type: 'membership-redemption',
@@ -276,12 +247,7 @@ describe('Phase 35 + 39 interaction — evicted authors still drop attachments',
       type:         'request',
       text:         'evicted post',
       requiredSkills: [],
-      source: {
-        attachments: [{
-          id: 'att-x', mime: 'image/jpeg', bytes: 100,
-          width: 10, height: 10, thumbnail: TINY_PNG_DATA_URL,
-        }],
-      },
+      source: { attachments: [att] },
     }]);
 
     const open = await bundle.itemStore.listOpen();
