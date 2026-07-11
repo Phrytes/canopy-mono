@@ -33,6 +33,7 @@
 
 import { SharingUnsupportedError, PodClientError } from '../Errors.js';
 import { probeCapabilities } from './capabilities.js';
+import { writeAcpAcr } from './acpWriter.js';
 
 /* ── Lazy load of @inrupt/solid-client ──────────────────────────── */
 
@@ -158,14 +159,20 @@ function _originOf(uri) {
  * @param {object} opts
  * @param {typeof fetch} opts.fetch      — authenticated fetch from the parent PodClient
  * @param {string}       opts.podRoot    — pod root URI (for context / error messages)
+ * @param {string}       [opts.webid]    — the authenticated owner's WebID. Threaded
+ *   from `PodClient` (via `auth.identity()`); required for the direct ACP `.acr`
+ *   writer to include an owner-control policy (lock-out guard). Absent for
+ *   auth adapters that don't expose a WebID — the ACP writer then refuses to
+ *   write and surfaces an honest error (WAC path is unaffected).
  */
-export function createClientSharing({ fetch: authFetch, podRoot } = {}) {
+export function createClientSharing({ fetch: authFetch, podRoot, webid } = {}) {
   if (typeof authFetch !== 'function') {
     throw new PodClientError(
       'createClientSharing: fetch is required',
       { code: 'INVALID_ARGUMENT' },
     );
   }
+  const ownerWebId = typeof webid === 'string' && webid.length > 0 ? webid : null;
   const capsCache = makeCapabilitiesCache();
 
   /* ── Sub-helpers ─────────────────────────────────────────────── */
@@ -425,11 +432,37 @@ export function createClientSharing({ fetch: authFetch, podRoot } = {}) {
     return out;
   }
 
+  /**
+   * Apply an ACP posture directly by writing the resource's `.acr`
+   * (bypassing `@inrupt/solid-client`'s no-op ACP path). This is the
+   * ACP half of `setResourceAccess`'s router — it is only invoked for
+   * resources the capability probe classifies as ACP. WAC resources
+   * keep going through `grant` (`universalAccess`), untouched.
+   *
+   * Best-effort: never throws — returns `{ acrUrl, applied, errors }`
+   * in the same subject shape `setResourceAccess` reports.
+   *
+   * @param {object} opts
+   * @param {string} opts.resourceUri
+   * @param {{read?,append?,write?,control?}} [opts.public]
+   * @param {Record<string,{read?,append?,write?,control?}>} [opts.agents]
+   */
+  async function applyAcp({ resourceUri, public: pub, agents } = {}) {
+    return writeAcpAcr({
+      fetch: authFetch,
+      resourceUri,
+      ownerWebId,
+      public: pub,
+      agents,
+    });
+  }
+
   return {
     capabilities,
     grant,
     revoke,
     list,
+    applyAcp,
 
     // Test seams
     _capsCache: capsCache,
