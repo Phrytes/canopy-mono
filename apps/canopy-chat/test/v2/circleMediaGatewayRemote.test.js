@@ -24,7 +24,10 @@ import {
 } from '@canopy/pod-client/sealing';
 import { createCapabilityVerifier } from '@canopy/blob-gateway/adapters/capability-verifier';
 
-import { createCircleMediaGateway, createRemoteMediaBucket } from '../../src/v2/circleMediaGateway.js';
+import {
+  createCircleMediaGateway, createRemoteMediaBucket, createCircleMediaComposition,
+  makeDevMediaBucket,
+} from '../../src/v2/circleMediaGateway.js';
 import { createMediaEmbed } from '../../src/core/handlers/mediaEmbed.js';
 
 const t = (key) => key;
@@ -256,6 +259,111 @@ describe('circleMediaGateway REMOTE mode — the deployed edge/bucket slice', ()
       file: stubFile(), mediaGateway: comp.mediaGateway, encodeImage: stubEncodeImage(), localActor: 'me', t,
     });
     expect(embed.ok).toBe(false);
+  });
+});
+
+describe('createCircleMediaComposition — roster → SIGNING-key grant wiring (live-peer reads)', () => {
+  /** A MemberMap-shaped resolver: webid → { pubKey (signing), sealingPublicKey } | null. */
+  const membersOf = (rows) => ({
+    resolveByWebid: async (w) => rows.find((r) => r.webid === w) ?? null,
+  });
+
+  it('grants EXACTLY the resolved SIGNING keys (not sealing keys); a keyed peer OPENS the sealed blob', async () => {
+    const me   = makeIdentity();
+    const anne = makeIdentity();
+    const bob  = makeIdentity();
+    // Roster rows carry a SIGNING pubKey AND a DISTINCT sealing key — the grant must
+    // pick the signing key (the ACL/verifier subject), never the sealing key.
+    const rows = [
+      { webid: 'w:anne', pubKey: anne.pubKey, sealingPublicKey: 'SEAL-anne' },
+      { webid: 'w:bob',  pubKey: bob.pubKey,  sealingPublicKey: 'SEAL-bob'  },
+    ];
+    const edge = makeStubEdge({ uploaders: [me.pubKey, anne.pubKey, bob.pubKey] });
+
+    const comp = await createCircleMediaComposition({
+      circleId: CIRCLE.id, getSealStrategy: async () => groupStrategy(), localActor: 'me',
+      remote: {
+        gateUrl: GATE_URL, identity: me, members: membersOf(rows), roster: rows, fetch: edge.fetch,
+      },
+    });
+    expect(comp).not.toBeNull();
+    expect(comp.unresolvedMembers).toBe(0);
+
+    // Upload → the grant carries the two members' SIGNING keys + the uploader's own key.
+    const embed = await createMediaEmbed({}, {
+      file: stubFile(), mediaGateway: comp.mediaGateway, encodeImage: stubEncodeImage(), localActor: 'me', t,
+    });
+    expect(embed.ok).not.toBe(false);
+    const line = embed.snapshot.source;
+
+    expect(edge.log.grants).toHaveLength(1);
+    const grantedActors = edge.log.grants[0].actors;
+    expect(new Set(grantedActors)).toEqual(new Set([me.pubKey, anne.pubKey, bob.pubKey]));
+    // The SEALING keys must NOT appear in the grant — signing-key ACL only.
+    expect(grantedActors).not.toContain('SEAL-anne');
+    expect(grantedActors).not.toContain('SEAL-bob');
+
+    // A keyed peer (anne) self-signs her OWN media.read token → the edge ADMITS her
+    // (her signing key is in the read-ACL) → presigned GET.
+    const anneTok = (await CapabilityToken.issue(anne, {
+      subject: anne.pubKey, agentId: 'blob-gate', skill: 'media.read',
+    })).toString();
+    expect(await comp.mediaGateway.gate(anneTok, line.ref)).toMatchObject({ url: expect.any(String) });
+  });
+
+  it('a member WITHOUT a captured signing key is REPORTED unresolved — not authorized, not a silent drop', async () => {
+    const me   = makeIdentity();
+    const anne = makeIdentity();
+    const carol = makeIdentity();   // carol redeemed by code but her signing key was never captured
+    const rows = [
+      { webid: 'w:anne',  pubKey: anne.pubKey },
+      { webid: 'w:carol', pubKey: null },       // no signing key yet
+    ];
+    const edge = makeStubEdge({ uploaders: [me.pubKey, anne.pubKey] });
+
+    const comp = await createCircleMediaComposition({
+      circleId: CIRCLE.id, getSealStrategy: async () => groupStrategy(), localActor: 'me',
+      remote: {
+        gateUrl: GATE_URL, identity: me, members: membersOf(rows), roster: rows, fetch: edge.fetch,
+      },
+    });
+    // Carol is surfaced as unresolved — not silently swallowed.
+    expect(comp.unresolvedMembers).toBe(1);
+
+    const embed = await createMediaEmbed({}, {
+      file: stubFile(), mediaGateway: comp.mediaGateway, encodeImage: stubEncodeImage(), localActor: 'me', t,
+    });
+    const line = embed.snapshot.source;
+
+    // The grant authorizes me + anne only — carol is NOT in the actors (never fabricated).
+    const grantedActors = edge.log.grants[0].actors;
+    expect(new Set(grantedActors)).toEqual(new Set([me.pubKey, anne.pubKey]));
+
+    // Carol, self-signing her real key, is DENIED (she was never granted) — no silent authorize.
+    const carolTok = (await CapabilityToken.issue(carol, {
+      subject: carol.pubKey, agentId: 'blob-gate', skill: 'media.read',
+    })).toString();
+    expect(await comp.mediaGateway.gate(carolTok, line.ref)).toEqual({ denied: true });
+  });
+
+  it('sealed-only stands: no seal strategy → null even with a roster + edge configured', async () => {
+    const me = makeIdentity();
+    const rows = [{ webid: 'w:anne', pubKey: makeIdentity().pubKey }];
+    const edge = makeStubEdge({ uploaders: [me.pubKey] });
+    expect(await createCircleMediaComposition({
+      circleId: CIRCLE.id, getSealStrategy: async () => null, localActor: 'me',
+      remote: { gateUrl: GATE_URL, identity: me, members: membersOf(rows), roster: rows, fetch: edge.fetch },
+    })).toBeNull();
+  });
+
+  it('falls back to the DEV bucket path (unchanged) when no remote edge is configured', async () => {
+    const bucket = makeDevMediaBucket();
+    const comp = await createCircleMediaComposition({
+      circleId: CIRCLE.id, getSealStrategy: async () => groupStrategy(), localActor: 'me', bucket,
+    });
+    expect(comp).not.toBeNull();
+    expect(comp.unresolvedMembers).toBeUndefined();   // no roster resolution in dev mode
+    expect(comp.mediaGateway.token).toMatch(/^dev-media-/);   // the session-local dev token, not a cap token
   });
 });
 
