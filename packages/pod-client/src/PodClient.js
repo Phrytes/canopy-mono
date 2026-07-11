@@ -138,9 +138,16 @@ export class PodClient extends Emitter {
    */
   get sharing() {
     if (!this.#sharing) {
+      // Thread the authenticated owner's WebID (best-effort) so the direct
+      // ACP `.acr` writer can include an owner-control policy. `identity()`
+      // throws for auth adapters that don't expose a WebID (e.g. some
+      // CapabilityAuth setups) — the writer degrades to an honest error there.
+      let webid;
+      try { webid = this.#auth?.identity?.(); } catch { /* no WebID available */ }
       this.#sharing = createClientSharing({
         fetch:   this.#fetch,
         podRoot: this.#podRoot,
+        webid,
       });
     }
     return this.#sharing;

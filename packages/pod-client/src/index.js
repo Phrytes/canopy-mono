@@ -60,7 +60,11 @@ export { ConflictResolver } from './ConflictResolver.js';
 // substrate consumers that want to wire sharing without a full
 // PodClient.
 export { createClientSharing, _setInruptModuleForTests } from './sharing/index.js';
-export { probeCapabilities, parseSharingLinkHeader }     from './sharing/capabilities.js';
+export { probeCapabilities, parseSharingLinkHeader, parseAcrUrl, discoverAcrUrl } from './sharing/capabilities.js';
+// Direct ACP `.acr` writer — ENFORCING ACP sharing on ACP pods (Inrupt ESS /
+// CSS-ACP), where `universalAccess` no-ops. `setResourceAccess` routes ACP
+// resources here automatically; exposed for advanced/substrate use.
+export { writeAcpAcr }                                   from './sharing/acpWriter.js';
 // Declarative, best-effort access policy for a single resource (public-read /
 // owner-write / admin-write), composed over `client.sharing.*`. Used to give
 // the commons + registry pod resources their real-pod access posture.

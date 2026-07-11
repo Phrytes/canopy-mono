@@ -81,6 +81,62 @@ export async function probeCapabilities(resourceUri, fetchFn) {
   return parseSharingLinkHeader(res.headers);
 }
 
+/**
+ * Extract the ACR (Access Control Resource) document URL a server
+ * advertises for a resource, from its `Link` headers. This is the SAME
+ * detection `parseSharingLinkHeader` uses to classify a pod as ACP — we
+ * expose the *target URI* so the direct ACR writer (`acpWriter.js`) can
+ * PUT to it, rather than reimplementing Link parsing.
+ *
+ * CSS (≥7, ACP mode) advertises the ACR via `rel="acl"` pointing at a
+ * `<resource>.acr`. Inrupt ESS advertises it via the
+ * `…acp#accessControl(Resource)` rel. Both are handled; the returned URL
+ * is resolved to absolute against `baseUri`.
+ *
+ * @param {Headers | Map<string,string> | object} headers
+ * @param {string} baseUri  — the resource URI (to resolve a relative target)
+ * @returns {string | null}  absolute ACR URL, or `null` if none advertised.
+ */
+export function parseAcrUrl(headers, baseUri) {
+  const linkVal = _readHeader(headers, 'link') ?? _readHeader(headers, 'Link');
+  if (typeof linkVal !== 'string' || linkVal.length === 0) return null;
+  for (const entry of _splitLinkEntries(linkVal)) {
+    const rel = _extractRel(entry);
+    if (!rel) continue;
+    const target = _extractTarget(entry);
+    if (!target) continue;
+    for (const r of rel.split(/\s+/)) {
+      // CSS-ACP: rel="acl" whose target is a `.acr` (not a WAC `.acl`).
+      if (r === 'acl' && _looksLikeAcr(target)) return _absolute(target, baseUri);
+      // Inrupt ESS ACP rel-types point straight at the ACR document.
+      if (r === 'http://www.w3.org/ns/solid/acp#accessControl') return _absolute(target, baseUri);
+      if (r === 'http://www.w3.org/ns/solid/acp#accessControlResource') return _absolute(target, baseUri);
+    }
+  }
+  return null;
+}
+
+/**
+ * HEAD a resource and return the absolute ACR URL it advertises (or
+ * `null`). Reuses `parseAcrUrl` — the ACR-discovery half of the
+ * capability probe. Throws on transport error (caller decides fallback).
+ *
+ * @param {string} resourceUri
+ * @param {typeof fetch} fetchFn   — caller-supplied authenticated fetch
+ * @returns {Promise<string | null>}
+ */
+export async function discoverAcrUrl(resourceUri, fetchFn) {
+  if (typeof resourceUri !== 'string' || resourceUri.length === 0) {
+    throw new Error('discoverAcrUrl: resourceUri is required');
+  }
+  if (typeof fetchFn !== 'function') {
+    throw new Error('discoverAcrUrl: fetch function is required');
+  }
+  const res = await fetchFn(resourceUri, { method: 'HEAD' });
+  if (!res || !res.ok) return null;
+  return parseAcrUrl(res.headers, resourceUri);
+}
+
 /* ── internals ──────────────────────────────────────────────────── */
 
 function _readHeader(headers, name) {
@@ -125,6 +181,11 @@ function _extractRel(entry) {
 function _extractTarget(entry) {
   const m = entry.match(/<([^>]*)>/);
   return m ? m[1] : null;
+}
+
+/** Resolve a (possibly relative) Link target against a base URI. */
+function _absolute(target, baseUri) {
+  try { return new URL(target, baseUri).href; } catch { return target; }
 }
 
 /**

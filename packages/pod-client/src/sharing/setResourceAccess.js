@@ -87,6 +87,36 @@ export async function setResourceAccess({ sharing, resourceUri, public: pub, age
   const applied = [];
   const errors  = [];
 
+  // ── Route by access-control model (ADDITIVE — WAC path unchanged) ──
+  // On an ACP resource, `@inrupt/solid-client`'s `universalAccess` (the
+  // WAC path below) is a silent no-op — it detects ACP but can't write
+  // the CSS `.acr`. So for ACP we use the direct `.acr` writer
+  // (`sharing.applyAcp`), which is proven to ENFORCE (unauth read 200,
+  // stranger write 403, owner write 205). WAC resources keep going
+  // through `sharing.grant` (`universalAccess`) exactly as before, and
+  // `SHARING_GRANT_NOOP` stays the safety net there.
+  //
+  // Detection reuses `sharing.capabilities` (→ `capabilities.js`). If the
+  // sharing surface predates ACP routing (no `capabilities`/`applyAcp`),
+  // or the probe fails, we fall through to the WAC grant path unchanged.
+  let caps = null;
+  if (typeof sharing.capabilities === 'function') {
+    try { caps = await sharing.capabilities({ resourceUri }); } catch { caps = null; }
+  }
+  if (caps?.acp === true && typeof sharing.applyAcp === 'function') {
+    const r = await sharing.applyAcp({ resourceUri, public: pub, agents });
+    for (const a of (r?.applied ?? [])) applied.push(a);
+    for (const e of (r?.errors ?? [])) {
+      errors.push(e);
+      if (typeof onError === 'function') {
+        const err = Object.assign(new Error(e.message ?? 'ACP write failed'), { code: e.code });
+        try { onError(err, { resourceUri, subject: e.subject, ...(e.agent ? { agent: e.agent } : {}) }); }
+        catch { /* onError must not break us */ }
+      }
+    }
+    return { resourceUri, applied, errors };
+  }
+
   async function _grant(spec, ctx) {
     try {
       const g = await sharing.grant(spec);
