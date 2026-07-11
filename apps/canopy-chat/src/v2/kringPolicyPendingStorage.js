@@ -1,38 +1,25 @@
 /**
  * canopy-chat v2 — localStorage IO for the pending-policy cache (γ-next.policy).
  *
- * Wires `createKringPolicyPendingStore` to `window.localStorage` (or an
- * injected `storage` matching that interface for tests).  Key prefix
- * `cc.kringPolicyPending.<circleId>` matches the convention of every
- * other circle store (`cc.circlePolicy.<id>`, `cc.kringRulesPending.<id>`,
- * `cc.kringRecipePending.<id>`).
+ * Thin instantiation of the shared kring-kind pending storage
+ * (`kringKindFactory.js`).  Wires `createKringPolicyPendingStore` to
+ * `window.localStorage` (or an injected `storage` for tests).  Key prefix
+ * `cc.kringPolicyPending.<circleId>` is the ONLY per-kind difference and
+ * matches the convention of every other circle store — DO NOT change it
+ * (would orphan already-cached broadcasts on disk).
  */
 
-import { createKringPolicyPendingStore } from './kringPolicyPending.js';
+import {
+  createKringKindPendingStore,
+  makeKringKindPendingLocalIo,
+} from './kringKindFactory.js';
 
 const KEY_PREFIX = 'cc.kringPolicyPending.';
 
 export function localStorageKringPolicyPendingIo(storage = globalThis.localStorage) {
-  return {
-    load: async (circleId) => {
-      try {
-        const raw = storage?.getItem?.(KEY_PREFIX + circleId);
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
-    },
-    save: async (circleId, policy) => {
-      try {
-        storage?.setItem?.(KEY_PREFIX + circleId, JSON.stringify(policy));
-      } catch { /* quota / disabled */ }
-    },
-    remove: async (circleId) => {
-      try {
-        storage?.removeItem?.(KEY_PREFIX + circleId);
-      } catch { /* ignore */ }
-    },
-  };
+  return makeKringKindPendingLocalIo(KEY_PREFIX, storage);
 }
 
 export function createKringPolicyPendingStoreLocal(storage = globalThis.localStorage) {
-  return createKringPolicyPendingStore(localStorageKringPolicyPendingIo(storage));
+  return createKringKindPendingStore(localStorageKringPolicyPendingIo(storage));
 }

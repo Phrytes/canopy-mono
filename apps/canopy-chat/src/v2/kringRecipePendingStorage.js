@@ -1,37 +1,25 @@
 /**
  * canopy-chat v2 — localStorage IO for the pending-recipe cache (γ-next.recipe).
  *
- * Wires `createKringRecipePendingStore` to `window.localStorage` (or an
- * injected `storage` matching that interface for tests).  Key prefix
- * `cc.kringRecipePending.<circleId>` matches the convention of every
- * other circle store (`cc.circleRecipe.<id>`, `cc.circleRules.<id>`).
+ * Thin instantiation of the shared kring-kind pending storage
+ * (`kringKindFactory.js`).  Wires `createKringRecipePendingStore` to
+ * `window.localStorage` (or an injected `storage` for tests).  Key prefix
+ * `cc.kringRecipePending.<circleId>` is the ONLY per-kind difference and
+ * matches the convention of every other circle store — DO NOT change it
+ * (would orphan already-cached broadcasts on disk).
  */
 
-import { createKringRecipePendingStore } from './kringRecipePending.js';
+import {
+  createKringKindPendingStore,
+  makeKringKindPendingLocalIo,
+} from './kringKindFactory.js';
 
 const KEY_PREFIX = 'cc.kringRecipePending.';
 
 export function localStorageKringRecipePendingIo(storage = globalThis.localStorage) {
-  return {
-    load: async (circleId) => {
-      try {
-        const raw = storage?.getItem?.(KEY_PREFIX + circleId);
-        return raw ? JSON.parse(raw) : null;
-      } catch { return null; }
-    },
-    save: async (circleId, recipe) => {
-      try {
-        storage?.setItem?.(KEY_PREFIX + circleId, JSON.stringify(recipe));
-      } catch { /* quota / disabled */ }
-    },
-    remove: async (circleId) => {
-      try {
-        storage?.removeItem?.(KEY_PREFIX + circleId);
-      } catch { /* ignore */ }
-    },
-  };
+  return makeKringKindPendingLocalIo(KEY_PREFIX, storage);
 }
 
 export function createKringRecipePendingStoreLocal(storage = globalThis.localStorage) {
-  return createKringRecipePendingStore(localStorageKringRecipePendingIo(storage));
+  return createKringKindPendingStore(localStorageKringRecipePendingIo(storage));
 }
