@@ -112,7 +112,7 @@ import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
 // createMediaEmbed's injected seams. Sealed-only: a p0/p1 circle composes to null and
 // the kring composer shows NO attach affordance. Swap point for real infra (S3/R2 +
 // Solid verifier) is recorded in circleMediaGateway.js.
-import { createCircleMediaGateway, makeDevMediaBucket } from '../../src/v2/circleMediaGateway.js';
+import { createCircleMediaComposition, makeDevMediaBucket } from '../../src/v2/circleMediaGateway.js';
 import { createMediaEmbed } from '../../src/core/handlers/mediaEmbed.js';
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected "inline menu").
 import { embedButtonsForReply, embedsFromReply } from '../../src/v2/replyEmbeds.js';
@@ -963,6 +963,12 @@ const relayPrefStore       = createRelayPrefStore(localStorageRelayIo());
 let   CIRCLE_RELAY_URL      = resolveRelayUrl(localStorageRelayIo().load(), CIRCLE_RELAY_ENV);
 let   _peerAgent           = null;   // captured at boot so a relay-setting change can reconnect live
 let   _peerRouter          = null;
+// media P-live — the DEPLOYED blob-gate edge URL (e.g. `https://relay.example/blob-gate`).
+// EXPLICIT opt-in: only when this is configured do full-size photos go to a real bucket
+// behind the edge with roster read-grants (live-peer reads). Unset ⇒ the in-memory dev
+// bucket (single-device), so the working sealed-attach path is unchanged until the R2
+// bucket + relay blob-gate mount are stood up (infra: Frits' action).
+const CIRCLE_MEDIA_EDGE_URL = import.meta.env?.VITE_CIRCLE_MEDIA_EDGE_URL ?? null;
 const CIRCLE_BOT_NAME      = import.meta.env?.VITE_CIRCLE_BOT_NAME ?? 'assistant';
 const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
 // Theme B — the settings-chatbot template. HQ can host an updated (open-source)
@@ -1058,14 +1064,45 @@ const devMediaBucket = makeDevMediaBucket();
 const circleMediaCompositions = new Map();   // circleId → Promise<composition|null>
 function getCircleMediaComposition(circleId, policy) {
   if (!circleMediaCompositions.has(circleId)) {
-    circleMediaCompositions.set(circleId, createCircleMediaGateway({
-      circleId,
-      getSealStrategy: () => getCircleSealStrategy(circleId, policy),
-      localActor: LOCAL_ACTOR,
-      bucket: devMediaBucket,
-    }).catch(() => null));
+    circleMediaCompositions.set(circleId, resolveCircleMediaComposition(circleId, policy).catch(() => null));
   }
   return circleMediaCompositions.get(circleId);
+}
+
+// media P-live — compose the circle's sealed-media gateway. When a blob-gate edge is
+// CONFIGURED (VITE_CIRCLE_MEDIA_EDGE_URL) and this device has a signing identity, go
+// REMOTE: resolve the circle roster to each member's SIGNING pubKey (the RAW
+// listGroupMembers rows carry `pubKey`, captured on redeem — normalizeCircleMembers
+// STRIPS it, so we read the raw rows here) and grant exactly those on the blob-gate
+// /grant, so a real peer whose key was captured can fetch the full-size sealed blob.
+// Otherwise the in-memory dev bucket (single-device, unchanged). Members with no
+// captured signing key are surfaced (`unresolvedMembers`), never silently authorized.
+async function resolveCircleMediaComposition(circleId, policy) {
+  const getSealStrategy = () => getCircleSealStrategy(circleId, policy);
+  const identity = circleCoreAgent?.identity ?? null;
+  if (CIRCLE_MEDIA_EDGE_URL && identity?.pubKey && typeof identity.sign === 'function'
+      && typeof rawCallSkill === 'function') {
+    let rawMembers = [];
+    try {
+      const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: circleId });
+      rawMembers = Array.isArray(res?.members) ? res.members : [];
+    } catch { rawMembers = []; }
+    // The roster IS the MemberMap projection (rows carry webid → signing pubKey); a
+    // trivial resolver over it feeds circleMemberActors without a second source.
+    const members = { resolveByWebid: async (w) => rawMembers.find((m) => m?.webid === w) ?? null };
+    const comp = await createCircleMediaComposition({
+      circleId, getSealStrategy, localActor: LOCAL_ACTOR,
+      remote: { gateUrl: CIRCLE_MEDIA_EDGE_URL, identity, members, roster: rawMembers, fetch: globalThis.fetch },
+    });
+    if (comp && comp.unresolvedMembers > 0 && typeof console !== 'undefined') {
+      console.info(`[circleApp] media grant: ${comp.unresolvedMembers} member(s) not yet media-reachable `
+        + '(no captured signing key) — same root cause as kring fan-out');
+    }
+    return comp;
+  }
+  return createCircleMediaComposition({
+    circleId, getSealStrategy, localActor: LOCAL_ACTOR, bucket: devMediaBucket,
+  });
 }
 
 /** S4 — a pseudo-pod client for one circle (real per-circle sealed storage, no OIDC/CSS). Objective L:

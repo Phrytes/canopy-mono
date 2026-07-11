@@ -36,6 +36,7 @@
 
 import { createBlobGatekeeper, openBlob } from '@canopy/blob-gateway';
 import { CapabilityToken } from '@canopy/core';
+import { circleMemberActors } from './circleMemberActors.js';
 
 /**
  * DEV-GRADE in-memory bucket (same injected contract blob-gateway's own test
@@ -237,6 +238,8 @@ export async function createCircleMediaGateway({
     };
   }
 
+  // (fall through: no remote → the DEV path below.)
+
   // Session-local identity + ACL for the deny-by-default gate (dev slice of
   // the Solid-verifier + pod-ACL pair; see module doc for the swap point).
   const token = `dev-media-${Math.random().toString(36).slice(2, 10)}`;
@@ -269,4 +272,64 @@ export async function createCircleMediaGateway({
       fetch: typeof bucket.fetchPresigned === 'function' ? bucket.fetchPresigned : undefined,
     }),
   };
+}
+
+/**
+ * media P-live — compose the circle media gateway FROM A ROSTER: the live-peer seam.
+ *
+ * This is the wiring that makes full-size photo fetch real for real peers. It resolves
+ * each circle member to their **signing** pubKey (`circleMemberActors` →
+ * `members.resolveByWebid(webid).pubKey`) and hands EXACTLY those keys to the blob-gate
+ * `/grant` as the read-ACL. The media ACL keys on the capability-token SUBJECT — a
+ * member's signing key (see `capabilityVerifier` → `{ webId: subject }`); a member whose
+ * signing key was captured on redeem (stoop `redeemMembershipCode`) can therefore open
+ * the sealed blob, and a member whose key is NOT yet captured is reported (never granted).
+ *
+ * Two mutually-exclusive modes, same gateway shape out (delegates to
+ * `createCircleMediaGateway`, so SEALED-ONLY still stands: no seal strategy → null):
+ *   • remote {gateUrl, identity, members, roster} → DEPLOYED edge. Grants the roster's
+ *       resolved signing keys, UNIONed with the uploader's own signing key (so the
+ *       uploader can always re-read its OWN uploads — a self-signed subject, never a
+ *       non-member). Roster members with no captured signing key are DROPPED + counted
+ *       and surfaced on the result as `unresolvedMembers` — the honest gap, never a
+ *       fabricated actor, never a silent authorize.
+ *   • bucket (dev, default)                        → the in-memory dev path (unchanged).
+ *
+ * @param {object} a
+ * @param {string}   a.circleId
+ * @param {() => Promise<{seal:Function, open:Function}|null>} a.getSealStrategy
+ * @param {string}   a.localActor
+ * @param {object}   [a.bucket]   DEV bucket (used when no remote edge is configured).
+ * @param {number}   [a.ttl]
+ * @param {object}   [a.remote]   REMOTE (deployed edge) config.
+ * @param {string}     a.remote.gateUrl
+ * @param {{pubKey:string, sign:Function}} a.remote.identity  the local member's signer.
+ * @param {{resolveByWebid:Function}}      a.remote.members   the circle MemberMap (webid → signing pubKey).
+ * @param {Array}      a.remote.roster                        the circle roster (member webids).
+ * @param {Function}   [a.remote.fetch]
+ * @param {number}     [a.remote.tokenTtlMs]
+ * @returns {Promise<null | (object & { unresolvedMembers?: number })>}
+ */
+export async function createCircleMediaComposition({
+  circleId, getSealStrategy, localActor, bucket, ttl = 60, remote,
+} = {}) {
+  if (remote && remote.gateUrl && remote.identity) {
+    const { actors, unresolved } = await circleMemberActors(remote.members, remote.roster);
+    // The uploader must always be able to re-read its OWN uploads: union its own
+    // signing key into the read-ACL. It is the self-signed token's subject === issuer,
+    // so this only ever adds the uploader's own key — never a non-member.
+    const memberActors = [...new Set([...actors, remote.identity.pubKey].filter(Boolean))];
+    const composition = await createCircleMediaGateway({
+      circleId, getSealStrategy, localActor,
+      remote: {
+        gateUrl: remote.gateUrl, identity: remote.identity, memberActors,
+        fetch: remote.fetch, tokenTtlMs: remote.tokenTtlMs,
+      },
+    });
+    // Surface the honest gap: roster members with no captured signing key are NOT
+    // media-reachable yet (same root cause as kring fan-out). Never silently dropped.
+    if (composition) composition.unresolvedMembers = unresolved;
+    return composition;
+  }
+  return createCircleMediaGateway({ circleId, getSealStrategy, localActor, bucket, ttl });
 }
