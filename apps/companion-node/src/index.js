@@ -149,6 +149,20 @@ export function resolveConfigDir(explicit) {
  *                                         `opts.podContainer` (or `opts.podSource.containerUri`).
  * @param {string}  [opts.podContainer]   R3.0 — container URI the proxy `PodClient` browses
  *                                         (default: `opts.podSource.containerUri`).
+ * @param {boolean} [opts.podPreFilter=true] R3-advisory — compose the R2b.1 `ScopedPodClient`
+ *                                         as a LOCAL pre-filter IN FRONT of the agent-proxy
+ *                                         `PodClient` (§R3 decision #4's deferred follow-up).
+ *                                         An obviously out-of-scope request is denied LOCALLY
+ *                                         (opaque `POD_FORBIDDEN`) WITHOUT a relay round-trip —
+ *                                         a latency optimization + defense-in-depth 2nd layer.
+ *                                         The pre-filter is ADVISORY only: on a local PASS it
+ *                                         delegates to the proxy `PodClient`, which ships the
+ *                                         request to the DEVICE, which re-checks AUTHORITATIVELY.
+ *                                         The DEVICE remains the sole load-bearing authority;
+ *                                         set `false` to BYPASS the pre-filter so a test can
+ *                                         prove the device denies independently (the R3.0
+ *                                         device-authoritative proof). Only meaningful when
+ *                                         `podProxy` is ON.
  * @param {number}  [opts.podMaxBodyBytes] R3.3 — max RAW proxied REQUEST body (bytes) the host
  *                                         will ship in one relay frame; over-cap → a distinct
  *                                         `PayloadTooLargeError` (code `payload-too-large`) BEFORE
@@ -188,6 +202,7 @@ export async function startCompanionNode(opts = {}) {
     podTokenRegistry,
     podNow,
     podProxy   = false,
+    podPreFilter = true,        // R3-advisory — host-side local scope pre-filter (default on)
     podMaxBodyBytes,             // R3.3 — agent-proxy body cap (bytes); default 16 MiB
     podContainer,
     registryPseudoPod,
@@ -236,22 +251,34 @@ export async function startCompanionNode(opts = {}) {
   // as the token issuer. The SAME verifier config is reused whether the token was
   // injected at boot or delivered over the wire, so the handshake path enforces
   // exactly what R2b.1 did (revocation/expiry/scope all hold post-delivery).
+  // The SHARED scope-enforcing wrap: a `ScopedPodClient` presenting `token`,
+  // guarding EVERY pod op against the R2b.0 verifier (scope · expiry · issuer-
+  // trust · revocation, deny-by-default) before it reaches `inner`. Reused in
+  // TWO places so the R2b in-process path and the R3-advisory pre-filter enforce
+  // BYTE-IDENTICAL rules (same verifier config, same opaque `POD_FORBIDDEN` deny):
+  //   (1) `wrapScopedPodSource` — wraps the HELD dev pod client (R2b delegation).
+  //   (2) `buildProxyPodSource` — wraps the AGENT-PROXY `PodClient` as the local
+  //       advisory pre-filter (R3-advisory), in FRONT of the device round-trip.
+  function buildScopedClient(inner, token) {
+    return new ScopedPodClient({
+      inner,
+      token,
+      podRoot: token.pod ?? token.toJSON?.().pod ?? podRoot,
+      verify:  createPodTokenVerifier({
+        // Owner-issued: trust the pod owner's key as issuer. When no owner key
+        // is pinned, accept the token as issued (still scope/expiry/revocation-
+        // gated). The R2b.2 handshake pins the real owner key (podOwnerPubKey).
+        ...(podOwnerPubKey ? { isTrusted: (i) => i === podOwnerPubKey } : {}),
+        ...(podTokenRegistry ? { isRevoked: (id) => podTokenRegistry.isRevoked(id) } : {}),
+        ...(typeof podNow === 'function' ? { now: podNow } : {}),
+      }),
+    });
+  }
+
   function wrapScopedPodSource(token) {
     return {
       ...resolvedPodSource,
-      podClient: new ScopedPodClient({
-        inner:   resolvedPodSource.podClient,
-        token,
-        podRoot: token.pod ?? token.toJSON?.().pod ?? podRoot,
-        verify:  createPodTokenVerifier({
-          // Owner-issued: trust the pod owner's key as issuer. When no owner key
-          // is pinned, accept the token as issued (still scope/expiry/revocation-
-          // gated). The R2b.2 handshake pins the real owner key (podOwnerPubKey).
-          ...(podOwnerPubKey ? { isTrusted: (i) => i === podOwnerPubKey } : {}),
-          ...(podTokenRegistry ? { isRevoked: (id) => podTokenRegistry.isRevoked(id) } : {}),
-          ...(typeof podNow === 'function' ? { now: podNow } : {}),
-        }),
-      }),
+      podClient: buildScopedClient(resolvedPodSource.podClient, token),
     };
   }
 
@@ -282,7 +309,25 @@ export async function startCompanionNode(opts = {}) {
       invoke: async (addr, skill, payload) =>
         Parts.data(await agent.invoke(addr, skill, payload, { timeout: PROXY_INVOKE_TIMEOUT_MS })),
     });
-    const podClient = new PodClient({ podRoot: podRootForToken, auth });
+    const proxyClient = new PodClient({ podRoot: podRootForToken, auth });
+
+    // ── R3-advisory. Compose the ScopedPodClient LOCAL PRE-FILTER in FRONT ────
+    // (§R3 decision #4's deferred follow-up.) The host derives scope from
+    // (op, uri) with its held token + the R2b.0 verifier; an obviously
+    // out-of-scope request is denied LOCALLY (opaque `POD_FORBIDDEN`) WITHOUT
+    // proxying — no relay round-trip (a latency optimization + a defense-in-depth
+    // 2nd layer). On a local PASS the ScopedPodClient delegates to `proxyClient`,
+    // which ships the request to the DEVICE, which re-checks AUTHORITATIVELY —
+    // TWO independent gates, the DEVICE load-bearing. The pre-filter is purely
+    // ADVISORY: it can only DENY things the host could already compute are out of
+    // its OWN grant's scope (no pod contact, no existence oracle), and it NEVER
+    // allows anything the device wouldn't. Its opaque `POD_FORBIDDEN` is
+    // DELIBERATELY distinct from the device's `FORBIDDEN` (CapabilityError): a
+    // deny at the local gate cannot be mistaken for a device-authoritative deny,
+    // so no test can silently substitute host-deny for the device's proof.
+    // `podPreFilter: false` bypasses it, leaving the raw proxy client (exact
+    // R3.0 behaviour) so the device-authority proof can be exercised directly.
+    const podClient = podPreFilter ? buildScopedClient(proxyClient, token) : proxyClient;
     return { podClient, containerUri: container };
   }
 
@@ -367,11 +412,15 @@ export async function startCompanionNode(opts = {}) {
       // Install. Two paths, opts-gated:
       //   • R3.0 (podProxy ON): swap to a real `PodClient` whose fetch is
       //     proxied back to the delegating DEVICE (`capturedFrom`). The device
-      //     is the authoritative scope check; this host holds NO pod secret.
-      //     We deliberately do NOT also wrap in the advisory `ScopedPodClient`
-      //     here so the DEVICE remains provably the sole scope authority in the
-      //     R3.0 fitness proof (a local pre-filter would mask device authority).
-      //     (Decision #4's advisory pre-filter is deferred to a later slice.)
+      //     is the AUTHORITATIVE scope check; this host holds NO pod secret.
+      //     R3-advisory (decision #4): `buildProxyPodSource` now composes the
+      //     advisory `ScopedPodClient` as a LOCAL pre-filter in FRONT of that
+      //     proxy client (default on; `podPreFilter: false` bypasses it). The
+      //     pre-filter is a latency optimization + defense-in-depth — it can only
+      //     DENY out-of-its-own-grant requests locally and never ALLOWS anything
+      //     the device wouldn't; the DEVICE stays provably the sole authority
+      //     (its deny carries the distinct `FORBIDDEN` code, the pre-filter's
+      //     the distinct `POD_FORBIDDEN`, so the two gates never conflate).
       //   • R2b (podProxy OFF): rewrap the held pod source in a `ScopedPodClient`
       //     presenting the delivered token — the in-process delegation path.
       const token = PodCapabilityToken.fromJSON(raw);
