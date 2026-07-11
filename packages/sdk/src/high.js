@@ -15,3 +15,4 @@
 export { createAgent }  from './createAgent.js';
 export { connectSkill } from './connectSkill.js';
 export { wireSkill }    from './wireSkill.js';
+export { buildSkillsFromManifest } from './buildSkillsFromManifest.js';

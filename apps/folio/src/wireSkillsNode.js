@@ -31,7 +31,7 @@
  * import `connectSkill.js` are a zero-dependency, node-free 2-file closure, and
  * folio's isolated `node_modules` has no `@canopy/sdk`.
  */
-import { wireSkill } from '../../../packages/sdk/src/wireSkill.js';
+import { buildSkillsFromManifest } from '../../../packages/sdk/src/buildSkillsFromManifest.js';
 
 import { folioManifest } from '../manifest.js';
 import { FOLIO_NODE_CORES } from './nodeAgentCores.js';
@@ -61,21 +61,14 @@ export function buildFolioNodeSkills({ store } = {}) {
   if (!store || typeof store !== 'object' || !('engine' in store)) {
     throw new TypeError('buildFolioNodeSkills: store with an `engine` (SyncEngine) required');
   }
-  const storeFor = () => store;
-
-  return folioManifest.operations
-    .filter((op) => op.runtime === 'node')
-    .map((op) => {
-      const core = FOLIO_NODE_CORES[op.id];
-      if (!core) {
-        throw new Error(`buildFolioNodeSkills: no core for node manifest op "${op.id}"`);
-      }
-      return {
-        id:         op.id,
-        handler:    wireSkill(core, op, { storeFor }),
-        // folio ops declare no manifest `visibility`; keep it undefined so
-        // registration matches the browser side (agent.register(id, handler)).
-        visibility: op.visibility,
-      };
-    });
+  // Mirrors the browser side (src/wireSkills.js): folio ops declare no manifest
+  // `visibility`, so the shared helper's `op.visibility` default keeps it
+  // undefined (agent.register(id, handler)). `requireCore` (default) preserves
+  // the node-side anti-drift throw: a node op without a core fails CI.
+  return buildSkillsFromManifest({
+    operations: folioManifest.operations.filter((op) => op.runtime === 'node'),
+    cores:      FOLIO_NODE_CORES,
+    storeFor:   () => store,
+    label:      'buildFolioNodeSkills',
+  });
 }

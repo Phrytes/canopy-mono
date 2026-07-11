@@ -23,7 +23,7 @@
  * 2-file closure.  (2) folio's isolated `node_modules` has no
  * `@canopy/sdk`.  Same rationale as `apps/agents/test/*`'s relative import.
  */
-import { wireSkill } from '../../../packages/sdk/src/wireSkill.js';
+import { buildSkillsFromManifest } from '../../../packages/sdk/src/buildSkillsFromManifest.js';
 
 import { folioManifest } from '../manifest.js';
 import { FOLIO_CORES } from './agentCores.js';
@@ -40,21 +40,13 @@ export function buildFolioSkills({ store } = {}) {
   if (!store || !Array.isArray(store.files)) {
     throw new TypeError('buildFolioSkills: store with a `files` index required');
   }
-  const storeFor = () => store;
-
-  return folioManifest.operations
-    .filter((op) => op.runtime === 'browser')
-    .map((op) => {
-      const core = FOLIO_CORES[op.id];
-      if (!core) {
-        throw new Error(`buildFolioSkills: no core for browser manifest op "${op.id}"`);
-      }
-      return {
-        id:         op.id,
-        handler:    wireSkill(core, op, { storeFor }),
-        // folio ops declare no manifest `visibility`; keep it undefined so
-        // registration matches the pre-1b hand-rolled `agent.register(id, h)`.
-        visibility: op.visibility,
-      };
-    });
+  // folio ops declare no manifest `visibility`; the shared helper defaults to
+  // `op.visibility` (undefined here) so registration matches the pre-1b
+  // hand-rolled `agent.register(id, h)`.
+  return buildSkillsFromManifest({
+    operations: folioManifest.operations.filter((op) => op.runtime === 'browser'),
+    cores:      FOLIO_CORES,
+    storeFor:   () => store,
+    label:      'buildFolioSkills',
+  });
 }

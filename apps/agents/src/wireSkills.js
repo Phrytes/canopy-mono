@@ -21,7 +21,7 @@
  * NB: the eventual canopy-chat integration (composeManifests / realAgent)
  * is a later step and is NOT wired here.
  */
-import { wireSkill } from '@canopy/sdk';
+import { buildSkillsFromManifest } from '@canopy/sdk';
 
 import { agentsManifest } from '../manifest.js';
 import { AGENT_CORES } from './cores.js';
@@ -71,31 +71,40 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog } 
     versionStoreFor: versionStoreFor ?? null,
     catalog:         catalog ?? null,
   };
-  const storeFor = () => store;
 
-  const op = (id) => {
+  // The wired op ids, in registration order. Unlike folio (which filters by
+  // `op.runtime`), agents wires an explicit curated subset drawn from three
+  // core maps. Resolve each id to its manifest op up front so a stray id fails
+  // fast with the same message the old `op(id)` helper produced.
+  const WIRED_IDS = [
+    'listAgents',
+    'viewAgent',
+    'revokeAgent',
+    'grantAgent',
+    'revokeGrant',
+    'purgeAgent',
+    'listDataVersions',
+    'restoreDataVersion',
+    'listCatalog',
+    'installAgent',
+  ];
+  const operations = WIRED_IDS.map((id) => {
     const found = agentsManifest.operations.find((o) => o.id === id);
     if (!found) throw new Error(`buildAgentSkills: no manifest op "${id}"`);
     return found;
-  };
-
-  const CORES = { ...AGENT_CORES, ...RECOVERY_CORES, ...INSTALL_CORES };
-  const wire = (id, visibility) => ({
-    id,
-    handler:    wireSkill(CORES[id], op(id), { storeFor }),
-    visibility,
   });
 
-  return [
-    wire('listAgents',         'authenticated'),
-    wire('viewAgent',          'authenticated'),
-    wire('revokeAgent',        'authenticated'),
-    wire('grantAgent',         'authenticated'),
-    wire('revokeGrant',        'authenticated'),
-    wire('purgeAgent',         'authenticated'),
-    wire('listDataVersions',   'authenticated'),
-    wire('restoreDataVersion', 'authenticated'),
-    wire('listCatalog',        'authenticated'),
-    wire('installAgent',       'authenticated'),
-  ];
+  const CORES = { ...AGENT_CORES, ...RECOVERY_CORES, ...INSTALL_CORES };
+
+  // agents' manifest ops declare no `visibility`; every wired op registers as
+  // `'authenticated'` (unchanged from the per-op `wire(id, 'authenticated')`),
+  // so pass a constant `visibilityFor` rather than the helper's `op.visibility`
+  // default.
+  return buildSkillsFromManifest({
+    operations,
+    cores:         CORES,
+    storeFor:      () => store,
+    visibilityFor: () => 'authenticated',
+    label:         'buildAgentSkills',
+  });
 }
