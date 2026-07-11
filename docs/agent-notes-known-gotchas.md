@@ -121,3 +121,17 @@ though the imported folio code uses them. **Tell:** if you see companion-node fa
 that only the imported folio code imports, the fix is a missing symlink in `apps/folio/node_modules`, not
 companion-node's. Do NOT edit `apps/folio/` to "fix" a companion-node import — R1 only consumes folio.
 (Added 2026-07-10, companion-node R1.)
+
+## canopy-chat-mobile now depends on @canopy/blob-gateway (hygiene pass)
+
+`apps/canopy-chat-mobile/src/core/mediaCardModel.js` used to reach into
+`../../../../packages/blob-gateway/src/openBlob.js` (a deep `/src/` reach-in on an **undeclared**
+package — invariant #5). It now imports the bare barrel `@canopy/blob-gateway` (its `main`/`.` export
+= `src/index.js`, which re-exports `openThumbnail`), matching how the app's other core files consume
+`@canopy/*`. This added `@canopy/blob-gateway` to `apps/canopy-chat-mobile/package.json` deps, so the
+no-hoist symlink must exist: `ln -sfn ../../../../packages/blob-gateway blob-gateway` from
+`apps/canopy-chat-mobile/node_modules/@canopy/`. **Tell:** `Cannot find package '@canopy/blob-gateway'`
+when the mobile app boots or its Vitest suite runs. RN-bundle-safe: the barrel pulls only
+`uploadBlob`/`gatekeeper`/`ref`/`bytes`/`openBlob`, and `bytes.js`'s guarded `require('node:crypto')`
+(behind `globalThis.crypto ||`) + `@canopy/pod-client/sealing` were already in the RN graph via the old
+`openBlob.js` import — no NEW node-only dep enters the bundle. (Added 2026-07-11, code-quality hygiene pass.)

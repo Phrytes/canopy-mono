@@ -18,7 +18,7 @@
  * behind the deny-by-default gate) is a later affordance — the model
  * already carries the line it will need (`embed.snapshot.source`).
  */
-import { openThumbnail } from '../../../../packages/blob-gateway/src/openBlob.js';
+import { openThumbnail } from '@canopy/blob-gateway';
 
 /** Display box the thumb scales into (longest edge, RN dp). */
 const THUMB_MAX_EDGE = 220;

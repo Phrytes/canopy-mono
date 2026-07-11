@@ -25,6 +25,7 @@
     "@canopy-app/stoop": "file:../stoop",
     "@canopy-app/tasks-v0": "file:../tasks-v0",
     "@canopy/app-manifest": "file:../../packages/app-manifest",
+    "@canopy/blob-gateway": "file:../../packages/blob-gateway",
     "@canopy/core": "file:../../packages/core",
     "@canopy/kring-host": "file:../../packages/kring-host",
     "@canopy/local-store": "file:../../packages/local-store",
