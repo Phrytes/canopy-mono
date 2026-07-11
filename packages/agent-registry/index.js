@@ -40,3 +40,11 @@ export { createCatalogSource } from './src/catalogSource.js';
 // seam (injected fetch; the hermetic default is an injected map).
 export { walkTrustGraph, CURATOR_ROLES, DEFAULT_MAX_DEPTH } from './src/trustGraph.js';
 export { createWellKnownCardResolver } from './src/wellKnownCardResolver.js';
+
+// commons-governance G3 — federation + moderation: circle-scoped, admin-gated
+// COMMUNITY catalogs (a community = a circle; writes gated to its admins via
+// the circle's own policy), SUBSCRIBE/unsubscribe (a community's admins become
+// the user's curator roots), fork/exit, and revoke. `expiresAt` lapse is
+// already enforced by verifyEndorsement (G1) — the walk drops lapsed edges.
+export { createCommunityCatalog, communityCatalogUri } from './src/communityCatalog.js';
+export { createCommunitySubscriptions } from './src/subscriptions.js';

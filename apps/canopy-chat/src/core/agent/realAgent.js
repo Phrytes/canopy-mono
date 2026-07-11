@@ -49,6 +49,7 @@ import {
   createAgentRegistry,
   createEndorsementResource,
   createCatalogSource,
+  createCommunitySubscriptions,
 } from '@canopy/agent-registry';
 
 /**
@@ -557,9 +558,40 @@ export async function createRealHouseholdAgent(opts = {}) {
     const commonsRoots = Array.isArray(opts.commonsRoots)
       ? opts.commonsRoots.filter((r) => typeof r === 'string' && r.length > 0)
       : (typeof opts.commonsRoot === 'string' && opts.commonsRoot.length > 0 ? [opts.commonsRoot] : []);
+    // commons-governance G3 — FEDERATION: the user's subscribed COMMUNITIES
+    // (circles) contribute their admins as extra curator roots. `opts.communities`
+    // maps a subscribed circleId → { admins, list } (the circle's admin pubKeys +
+    // its admin-gated community catalog's endorsement list); joining a community =
+    // trusting its curation. Subscriptions union with the pinned `commonsRoots`
+    // above; the walk (G2) still applies within each community's admin roots. The
+    // community catalog resource itself is an ordinary pod resource that CAN be
+    // hosted on the community's companion node (R1-R3) — a deployment choice, not
+    // wired here. With no communities configured this is inert (commonsRoots-only).
+    const communitySubs = (opts.communities && typeof opts.communities === 'object')
+      ? createCommunitySubscriptions({
+          resolveCommunity: (id) => opts.communities[id] ?? null,
+          resolveEndorsements: opts.communityCuratorEndorsements,   // optional transitive-WoT fallback
+          initial: Array.isArray(opts.subscribedCommunities) ? opts.subscribedCommunities : Object.keys(opts.communities),
+        })
+      : null;
     let agentsCatalog;
     if (opts.agentsCatalog) {
       agentsCatalog = opts.agentsCatalog;
+    } else if (communitySubs) {
+      // Subscribed-community roots (live thunk) unioned with any pinned
+      // commonsRoots; per-endorser records come from the subscriptions (their
+      // community catalogs) plus the same shared endorsement resource pool.
+      const endorsements = createEndorsementResource({ pseudoPod: householdSubstrate.pseudoPod, deviceId: chatId.pubKey });
+      agentsCatalog = createCatalogSource({
+        roots: async () => [...new Set([...commonsRoots, ...(await communitySubs.roots())])],
+        resolveEndorsements: async (pk) => {
+          const fromCommunities = await communitySubs.resolveEndorsements(pk);
+          const pool = await endorsements.list();
+          return [...fromCommunities, ...pool.filter((e) => e && e.endorser === pk)];
+        },
+        resolveCard: opts.agentsCardResolver ?? null,
+        maxDepth:    opts.commonsMaxDepth,
+      });
     } else if (commonsRoots.length > 0) {
       // Back-compat single-pool seam: each root's endorsements are read from the
       // shared-readable endorsement resource. (The general per-curator seam is

@@ -54,7 +54,10 @@ import { walkTrustGraph, DEFAULT_MAX_DEPTH } from './trustGraph.js';
  * @param {{ list: () => Promise<object[]> }} [opts.endorsementResource]
  *   — G1 back-compat: one shared endorsement pool. Ignored if
  *     `resolveEndorsements` is given.
- * @param {string[]|string} opts.roots  — curator root pubKey(s) (depth 0).
+ * @param {string[]|string|(() => (string[]|Promise<string[]>))} opts.roots
+ *   — curator root pubKey(s) (depth 0). A THUNK is resolved on every derive, so
+ *     a live subscription set (subscribe/unsubscribe) takes effect immediately
+ *     (commons-governance G3 — subscribed-community admins are the roots).
  * @param {(subject: string, endorsement: object) => (object|null|Promise<object|null>)} opts.resolveCard
  *   — resolves an endorsed agent's Agent Card by its subject pubKey.
  * @param {number} [opts.maxDepth=DEFAULT_MAX_DEPTH]  — bounded walk depth.
@@ -80,7 +83,15 @@ export function createCatalogSource({
       { code: 'INVALID_ARGUMENT' },
     );
   }
-  const rootList = (Array.isArray(roots) ? roots : [roots]).filter((r) => typeof r === 'string' && r.length > 0);
+  // roots may be a static array/string OR a thunk (live subscription set). A
+  // thunk is resolved on every derive (see _resolveRoots), so subscribe/
+  // unsubscribe is reflected without rebuilding the source (G3).
+  const rootsThunk = typeof roots === 'function' ? roots : null;
+  const staticRoots = rootsThunk ? [] : (Array.isArray(roots) ? roots : [roots]).filter((r) => typeof r === 'string' && r.length > 0);
+  async function _resolveRoots() {
+    const raw = rootsThunk ? await rootsThunk() : staticRoots;
+    return (Array.isArray(raw) ? raw : [raw]).filter((r) => typeof r === 'string' && r.length > 0);
+  }
   const resolve  = typeof resolveCard === 'function' ? resolveCard : () => null;
   const cacheOk  = cache && typeof cache.read === 'function' && typeof cache.write === 'function';
 
@@ -111,6 +122,7 @@ export function createCatalogSource({
    */
   async function _derive() {
     const endorsementsOf = await _endorsementsOf();
+    const rootList = await _resolveRoots();
     const ranked = await walkTrustGraph({ roots: rootList, endorsementsOf, resolveCard: resolve, maxDepth, now });
 
     const projected = [];
