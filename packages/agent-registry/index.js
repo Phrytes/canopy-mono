@@ -33,3 +33,10 @@ export {
   ENDORSEMENT_RESOURCE_VERSION,
 } from './src/endorsementResource.js';
 export { createCatalogSource } from './src/catalogSource.js';
+
+// commons-governance G2 — the web-of-trust graph walk (multiple roots,
+// transitive bounded-depth endorsement walk, trust-path-proximity ranking)
+// that createCatalogSource consumes, plus a real A2A well-known card resolver
+// seam (injected fetch; the hermetic default is an injected map).
+export { walkTrustGraph, CURATOR_ROLES, DEFAULT_MAX_DEPTH } from './src/trustGraph.js';
+export { createWellKnownCardResolver } from './src/wellKnownCardResolver.js';
