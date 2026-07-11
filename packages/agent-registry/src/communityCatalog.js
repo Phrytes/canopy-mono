@@ -92,7 +92,14 @@ export function communityCatalogUri({ circleId, anchorPodUri, deviceId, preferPo
  * @param {number}   [opts.maxRetries]
  * @param {(err: Error) => void} [opts.onPersistentConflict]
  * @param {() => string} [opts.now]
- * @returns {{ endorse, revoke, fork, list, get, circleId: string, resourceUri: string }}
+ * @param {(uri: string) => (any|Promise<any>)} [opts.ensureAccess]
+ *   — best-effort real-pod access-control hook, forwarded to the underlying
+ *   endorsement resource. For a community catalog the app wires it to
+ *   `setResourceAccess` with **public-read + owner-write + admin-write** (the
+ *   circle's admins' WebIDs — resolve admin pubKeys→WebIDs via the identity
+ *   resolver / `AgentRegistryMemberMap`; in canopy-chat webid===pubKey today).
+ *   Hermetic no-op on the pseudo-pod. // G3-seam: admin WebIDs via MemberMap.
+ * @returns {{ endorse, revoke, fork, list, get, ensureAccess, circleId: string, resourceUri: string }}
  */
 export function createCommunityCatalog({
   circleId,
@@ -104,6 +111,7 @@ export function createCommunityCatalog({
   resourceUri,
   maxRetries,
   onPersistentConflict,
+  ensureAccess,
   now,
 } = {}) {
   if (typeof circleId !== 'string' || circleId.length === 0) {
@@ -120,6 +128,7 @@ export function createCommunityCatalog({
   const uri = resourceUri ?? communityCatalogUri({ circleId, anchorPodUri, deviceId, preferPodUri });
   const resource = createEndorsementResource({
     pseudoPod, resourceUri: uri, maxRetries, onPersistentConflict,
+    ...(typeof ensureAccess === 'function' ? { ensureAccess } : {}),
     ...(typeof now === 'function' ? { now } : {}),
   });
 
@@ -208,6 +217,7 @@ export function createCommunityCatalog({
     fork,
     list: () => resource.list(),
     get:  (id) => resource.get(id),
+    ensureAccess: () => resource.ensureAccess(),
     circleId,
     get resourceUri() { return uri; },
   };

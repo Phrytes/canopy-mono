@@ -34,9 +34,16 @@ export const ENDORSEMENT_RESOURCE_VERSION = 1;
  * same as the registry.
  *
  * // real-pod: public-read ACP — on a real Solid pod this resource carries a
- * // public-READ / owner-WRITE ACP so any client can resolve+verify it while
- * // only the endorser can publish. The ACP wiring is later work (like R2b's
- * // in-process caveat); G1 proves the read+verify path over the pseudo-pod.
+ * // public-READ / owner-WRITE access posture so any client can resolve+verify
+ * // it while only the endorser can publish. That posture is now SET, not just
+ * // marked: an injected best-effort `ensureAccess(uri)` hook (wired by the app
+ * // to `@canopy/pod-client`'s `setResourceAccess` → public-read + owner-write)
+ * // fires once after the first write to a real (https) pod URI, and is exposed
+ * // as `ensureAccess()` for explicit/idempotent re-application. On the
+ * // pseudo-pod (hermetic) the hook never fires — this stays a pure no-op and
+ * // the read+verify path is unchanged. Proven live vs a WAC pod in
+ * // `@canopy/pod-client`'s `setResourceAccess.css.test.js`; ACP-on-CSS is the
+ * // pre-existing Inrupt-SDK interop gap (surfaced, not silently swallowed).
  */
 export function endorsementResourceUri({ anchorPodUri, deviceId, preferPodUri = false } = {}) {
   if (preferPodUri && typeof anchorPodUri === 'string' && anchorPodUri.length > 0) {
@@ -93,7 +100,14 @@ export function normaliseEndorsementResource(raw) {
  * @param {number}  [opts.maxRetries=3]
  * @param {(err: Error) => void} [opts.onPersistentConflict]
  * @param {() => string} [opts.now]
- * @returns {{ append, revoke, list, get, resourceUri: string }}
+ * @param {(uri: string) => (any|Promise<any>)} [opts.ensureAccess]
+ *   — best-effort real-pod access-control hook. Wired by the app to
+ *   `@canopy/pod-client`'s `setResourceAccess` (public-read + owner-write for
+ *   G1; + admin-write for a G3 community catalog). Fires once, best-effort,
+ *   after the first successful write to a real (https) pod URI; NEVER on a
+ *   `pseudo-pod://` URI (hermetic no-op). A throwing hook must NOT break the
+ *   write. Also exposed as `ensureAccess()` for explicit/idempotent use.
+ * @returns {{ append, revoke, list, get, ensureAccess, resourceUri: string }}
  */
 export function createEndorsementResource({
   pseudoPod,
@@ -103,12 +117,41 @@ export function createEndorsementResource({
   resourceUri,
   maxRetries,
   onPersistentConflict,
+  ensureAccess: ensureAccessHook,
   now = () => new Date().toISOString(),
 } = {}) {
   if (!pseudoPod || typeof pseudoPod.read !== 'function') {
     throw Object.assign(new Error('createEndorsementResource: pseudoPod is required'), { code: 'INVALID_ARGUMENT' });
   }
   const uri = resourceUri ?? endorsementResourceUri({ anchorPodUri, deviceId, preferPodUri });
+  // Only real (https) pod URIs carry Solid access control; pseudo-pod:// is the
+  // hermetic store and the hook is a pure no-op there.
+  const isRealPod = /^https?:\/\//i.test(uri);
+  let _accessEnsured = false;
+
+  /**
+   * Apply the resource's real-pod access posture, best-effort + idempotent.
+   * A no-op on the pseudo-pod or when no hook is injected. Never throws — a
+   * failing/incompatible ACL set must not corrupt or block the resource.
+   */
+  async function ensureAccess() {
+    if (!isRealPod || typeof ensureAccessHook !== 'function') return { skipped: true };
+    try {
+      const r = await ensureAccessHook(uri);
+      _accessEnsured = true;
+      return r ?? { ok: true };
+    } catch (err) {
+      // Surface via return (caller may inspect); never throw out of the write path.
+      return { error: err?.message ?? String(err), code: err?.code };
+    }
+  }
+
+  /** Fire ensureAccess once, best-effort, after the first real-pod write. */
+  async function _maybeEnsureAccessOnce() {
+    if (_accessEnsured || !isRealPod || typeof ensureAccessHook !== 'function') return;
+    _accessEnsured = true;               // set before await → fire-once even if concurrent
+    try { await ensureAccessHook(uri); } catch { /* best-effort; write already landed */ }
+  }
 
   async function _readCurrent() {
     const rec = await pseudoPod.read(uri);
@@ -119,6 +162,8 @@ export function createEndorsementResource({
   async function _writeNext(body, etag) {
     try {
       const result = await pseudoPod.write(uri, body, etag);
+      // Best-effort real-pod access posture, once, after the resource exists.
+      await _maybeEnsureAccessOnce();
       return { etag: result?.etag };
     } catch (err) {
       if (err?.code === 'CONFLICT' || err?.code === 'PRECONDITION_FAILED') {
@@ -182,6 +227,7 @@ export function createEndorsementResource({
     revoke,
     list,
     get,
+    ensureAccess,
     get resourceUri() { return uri; },
   };
 }
