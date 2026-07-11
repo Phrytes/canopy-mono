@@ -1,130 +1,182 @@
 /**
- * catalogSource — the endorsement-backed curated catalog (commons-governance G1).
+ * catalogSource — the endorsement-backed curated catalog (commons-governance).
  *
  * Fills the `{ list, get }` seam that P3's `createStubCatalog` stubbed. It is a
  * CQRS read-view: it never stores a canonical list — it DERIVES the catalog by
- * reading a trust root's published endorsements, resolving each endorsed
- * agent's Agent Card, and keeping only the ones whose signed `recommend`
- * endorsement verifies (`verifyEndorsement` — Ed25519 sig + expiry +
+ * WALKING the web-of-trust of signed endorsements from a set of curator roots,
+ * resolving each endorsed agent's Agent Card, and keeping only the ones whose
+ * signed `recommend` verifies (`verifyEndorsement` — Ed25519 sig + expiry +
  * cardHash-binding). A `flag` (or an invalid/expired/mismatched endorsement)
  * excludes the card.
  *
- * ── G1 scope: single-root + FLAT ──────────────────────────────────────────
- * Authority is one bootstrap root (a configured endorser pubKey, injectable).
- * An endorsement counts ONLY if its `endorser` is in `roots`. No transitive
- * walk, no trust-path ranking — that is G2 (web-of-trust). Rank here is the
- * trivial endorsement count. This proves the READ-PATH end-to-end into P3's
- * capability-secured install before any graph logic.
+ * ── G2 scope: MULTIPLE roots + TRANSITIVE walk + proximity ranking ──────────
+ * G1 was single-root + flat (an endorsement counted only if its endorser was a
+ * root). G2 generalises: `roots` is an array; the catalog is the union of what
+ * is reachable from ANY root along a bounded transitive endorsement walk
+ * (`walkTrustGraph` — see trustGraph.js for the walk, the curator-vs-agent
+ * rule, flag precedence, and cycle safety). Ranking is by trust-path proximity
+ * (closer to a root = higher), breadth (more distinct reachable endorsers) as a
+ * tiebreak, then id for determinism.
+ *
+ * ── Reading the graph: two seams ────────────────────────────────────────────
+ * The walk needs each curator's OWN published endorsements. Provide either:
+ *   • `resolveEndorsements(endorserPubKey) → endorsement[]` — the general seam:
+ *     each curator publishes their endorsement list at their own pod resource,
+ *     resolved by pubKey. This is the real multi-pod web-of-trust.
+ *   • `endorsementResource` (G1 back-compat) — a single shared `{ list() }` pool
+ *     of endorsements from many endorsers; the walk derives each endorser's
+ *     records by filtering the pool. `roots = [one]` over this pool reproduces
+ *     G1's single-root semantics exactly (a valid special case).
+ *
+ * ── Offline cache (optional) ────────────────────────────────────────────────
+ * Pass `cache: { read(): entries|null, write(entries): void }` and the derived,
+ * ranked catalog is written on every successful build and READ BACK when a
+ * build throws (endorsement resources / network unreachable) — the surface
+ * survives offline. Same `{ list, get }` shape; entries are the ranked cards.
  *
  * The returned entries are plain Agent Cards (the SAME shape createStubCatalog
  * returned) with additive `x-canopy.endorsement` ranking metadata — so P3's
  * installCores (`cardId`/`declaredSkills`/`cardToEntry`) consumes them
  * unchanged and the install still runs through the capability-security grant
- * path. Transparent swap.
+ * path. cardHash is re-verified inside the walk on every `get`, so a card
+ * swapped between list and install fails re-verify → `get` returns null →
+ * install can't proceed (endorse-then-escalate defeated end-to-end).
  */
 
-import { verifyEndorsement } from './endorsement.js';
+import { walkTrustGraph, DEFAULT_MAX_DEPTH } from './trustGraph.js';
 
 /**
- * createCatalogSource — a `{ list, get }` source over verified endorsements.
+ * createCatalogSource — a `{ list, get }` source over the endorsement graph.
  *
  * @param {object} opts
- * @param {{ list: () => Promise<object[]> }} opts.endorsementResource
- *   — the root's published endorsement list (createEndorsementResource, or any
- *     `{ list() }`). Read cross-pod; authority is the signature, not this
- *     object.
- * @param {string[]|string} opts.roots
- *   — trusted endorser pubKey(s). G1: single root (pass one). An endorsement
- *     from an endorser NOT in this set is ignored.
+ * @param {(endorser: string) => (object[]|Promise<object[]>)} [opts.resolveEndorsements]
+ *   — per-curator endorsement lists (the general web-of-trust seam).
+ * @param {{ list: () => Promise<object[]> }} [opts.endorsementResource]
+ *   — G1 back-compat: one shared endorsement pool. Ignored if
+ *     `resolveEndorsements` is given.
+ * @param {string[]|string} opts.roots  — curator root pubKey(s) (depth 0).
  * @param {(subject: string, endorsement: object) => (object|null|Promise<object|null>)} opts.resolveCard
- *   — resolves an endorsed agent's Agent Card by its subject pubKey. The card
- *     is then cardHash-verified against the endorsement, so a resolver that
- *     returns a mutated card is rejected (endorse-then-escalate defence).
- * @param {() => number} [opts.now]  — injectable clock (tests)
+ *   — resolves an endorsed agent's Agent Card by its subject pubKey.
+ * @param {number} [opts.maxDepth=DEFAULT_MAX_DEPTH]  — bounded walk depth.
+ * @param {{ read: () => (object[]|null), write: (entries: object[]) => void }} [opts.cache]
+ *   — optional offline read-through cache.
+ * @param {() => number} [opts.now]  — injectable clock (expiry; tests)
  * @returns {{ list: () => Promise<object[]>, get: (id: string) => Promise<object|null> }}
  */
-export function createCatalogSource({ endorsementResource, roots, resolveCard, now } = {}) {
-  if (!endorsementResource || typeof endorsementResource.list !== 'function') {
-    throw Object.assign(new Error('createCatalogSource: endorsementResource with list() required'), { code: 'INVALID_ARGUMENT' });
+export function createCatalogSource({
+  resolveEndorsements,
+  endorsementResource,
+  roots,
+  resolveCard,
+  maxDepth = DEFAULT_MAX_DEPTH,
+  cache,
+  now,
+} = {}) {
+  const hasResolver = typeof resolveEndorsements === 'function';
+  const hasResource = endorsementResource && typeof endorsementResource.list === 'function';
+  if (!hasResolver && !hasResource) {
+    throw Object.assign(
+      new Error('createCatalogSource: resolveEndorsements(pubKey) or endorsementResource with list() required'),
+      { code: 'INVALID_ARGUMENT' },
+    );
   }
-  const rootSet = new Set(
-    (Array.isArray(roots) ? roots : [roots]).filter((r) => typeof r === 'string' && r.length > 0),
-  );
-  const resolve = typeof resolveCard === 'function' ? resolveCard : () => null;
+  const rootList = (Array.isArray(roots) ? roots : [roots]).filter((r) => typeof r === 'string' && r.length > 0);
+  const resolve  = typeof resolveCard === 'function' ? resolveCard : () => null;
+  const cacheOk  = cache && typeof cache.read === 'function' && typeof cache.write === 'function';
 
   const idOf = (card) => card?.['x-canopy']?.id ?? card?.agentId ?? card?.['x-canopy']?.pubKey ?? card?.pubKey ?? null;
 
   /**
-   * Derive the verified, flat catalog. Returns a Map keyed by card id so `list`
-   * and `get` share one build (and one card can't appear twice).
+   * Build the per-endorser lookup the walk consumes. With `resolveEndorsements`
+   * it delegates directly; with the back-compat pool it reads the pool ONCE per
+   * derive and groups by endorser (so each node's records are one filter away).
+   */
+  async function _endorsementsOf() {
+    if (hasResolver) return resolveEndorsements;
+    const records = await endorsementResource.list();
+    const byEndorser = new Map();
+    for (const rec of Array.isArray(records) ? records : []) {
+      if (!rec || typeof rec.endorser !== 'string') continue;
+      let arr = byEndorser.get(rec.endorser);
+      if (!arr) { arr = []; byEndorser.set(rec.endorser, arr); }
+      arr.push(rec);
+    }
+    return (endorser) => byEndorser.get(endorser) ?? [];
+  }
+
+  /**
+   * Derive the verified, ranked catalog as a Map keyed by card id (so `list`
+   * and `get` share one build and one card can't appear twice). Ordered by the
+   * deterministic ranking: proximity (depth asc), breadth (count desc), id asc.
    */
   async function _derive() {
-    const records = await endorsementResource.list();
-    const list    = Array.isArray(records) ? records : [];
+    const endorsementsOf = await _endorsementsOf();
+    const ranked = await walkTrustGraph({ roots: rootList, endorsementsOf, resolveCard: resolve, maxDepth, now });
 
-    // Pass 1: bucket verified endorsements by subject (recommend vs flag).
-    const recommended = new Map();   // subject → { card, endorsers:Set, tags:Set }
-    const flagged     = new Set();   // subject pubKeys with a valid flag
-
-    for (const rec of list) {
-      if (!rec || !rootSet.has(rec.endorser)) continue;            // single-root authority
-      const card = await resolve(rec.subject, rec);
-      const actor = verifyEndorsement(rec, card, now ? { now } : undefined);
-      if (!actor) continue;                                        // invalid / expired / cardHash-mismatch → dropped
-      if (actor.claim === 'flag') { flagged.add(actor.subject); continue; }
-      // claim === 'recommend'
-      let bucket = recommended.get(actor.subject);
-      if (!bucket) { bucket = { card, endorsers: new Set(), tags: new Set() }; recommended.set(actor.subject, bucket); }
-      bucket.endorsers.add(actor.endorser);
-      for (const t of actor.tags) bucket.tags.add(t);
-    }
-
-    // Pass 2: flagged subjects are excluded even if also recommended.
-    const byId = new Map();
-    for (const [subject, bucket] of recommended) {
-      if (flagged.has(subject)) continue;
-      const id = idOf(bucket.card);
+    const projected = [];
+    for (const cand of ranked) {
+      const id = idOf(cand.card);
       if (typeof id !== 'string' || id.length === 0) continue;
-      const ranked = _rank(bucket.card, {
-        endorsementCount: bucket.endorsers.size,
-        endorsers:        [...bucket.endorsers],
-        tags:             [...bucket.tags],
-      });
-      byId.set(id, ranked);
+      projected.push({ id, entry: _rank(cand.card, cand) });
     }
+    // Authoritative deterministic order (id is the observable, stable tiebreak).
+    projected.sort((a, b) => {
+      const ea = a.entry['x-canopy'].endorsement;
+      const eb = b.entry['x-canopy'].endorsement;
+      if (ea.depth !== eb.depth) return ea.depth - eb.depth;          // proximity
+      if (eb.count !== ea.count) return eb.count - ea.count;          // breadth
+      return String(a.id).localeCompare(String(b.id));               // stable
+    });
+
+    const byId = new Map();
+    for (const { id, entry } of projected) if (!byId.has(id)) byId.set(id, entry);
     return byId;
+  }
+
+  /** Derive; on failure fall back to the offline cache. On success, refresh it. */
+  async function _entries() {
+    try {
+      const byId    = await _derive();
+      const entries = [...byId.values()];
+      if (cacheOk) { try { cache.write(entries); } catch { /* cache is best-effort */ } }
+      return entries;
+    } catch (err) {
+      if (cacheOk) {
+        const cached = cache.read();
+        if (Array.isArray(cached)) return cached;
+      }
+      throw err;
+    }
   }
 
   return {
     async list() {
-      const byId = await _derive();
-      // G1 flat rank: order by endorsement count (desc), then id for stability.
-      return [...byId.values()].sort((a, b) => {
-        const ca = a['x-canopy']?.endorsement?.count ?? 0;
-        const cb = b['x-canopy']?.endorsement?.count ?? 0;
-        if (cb !== ca) return cb - ca;
-        return String(idOf(a)).localeCompare(String(idOf(b)));
-      });
+      return _entries();
     },
     async get(id) {
-      const byId = await _derive();
-      return byId.get(id) ?? null;
+      const entries = await _entries();
+      return entries.find((c) => idOf(c) === id) ?? null;
     },
   };
 }
 
 /**
  * Attach additive endorsement/ranking metadata under `x-canopy.endorsement`
- * without disturbing any A2A/x-canopy field P3 reads. The card stays a valid
- * installable card.
+ * without disturbing any A2A/x-canopy field P3 reads. `count` = distinct
+ * reachable endorsers (G1-compatible); `depth` = shortest trust-path proximity.
  */
-function _rank(card, { endorsementCount, endorsers, tags }) {
+function _rank(card, { depth, endorsers, tags }) {
   const xc = card?.['x-canopy'] ?? {};
   return {
     ...card,
     'x-canopy': {
       ...xc,
-      endorsement: { count: endorsementCount, endorsers, tags },
+      endorsement: {
+        count:     endorsers.length,
+        endorsers: [...endorsers],
+        tags:      [...tags],
+        depth,
+      },
     },
   };
 }

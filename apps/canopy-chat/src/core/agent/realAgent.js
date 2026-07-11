@@ -541,28 +541,39 @@ export async function createRealHouseholdAgent(opts = {}) {
     // `no-version-store` miss.
     const versionStoreFor = typeof opts.versionStoreFor === 'function' ? opts.versionStoreFor : null;
     // P3 install: the curated-catalog SOURCE. A caller may inject a source via
-    // opts.agentsCatalog (wins). Otherwise, commons-governance G1: when a
-    // bootstrap endorser root pubKey is configured (opts.commonsRoot), the
-    // default source is the REAL endorsement-backed catalog — it reads that
-    // root's shared-readable endorsement resource, verifies each signed
-    // recommend (Ed25519 + cardHash-binding), and returns a flat verified list;
-    // opts.agentsCardResolver resolves an endorsed agent's Agent Card by pubKey.
-    // With no root configured the local stub keeps the install surface
-    // exercisable. The power-user override (install a pasted card) works
-    // regardless of the source. G1 is single-root + flat; the web-of-trust
-    // graph walk is G2.
+    // opts.agentsCatalog (wins). Otherwise, commons-governance: when curator
+    // root pubKey(s) are configured, the default source is the REAL
+    // endorsement-backed catalog. G2 makes it a WEB OF TRUST — opts.commonsRoots
+    // is an ARRAY of curator roots; the source WALKS the endorsement graph
+    // (transitive, bounded depth) from all of them, verifies each signed
+    // recommend (Ed25519 + cardHash-binding), and returns a list ranked by
+    // trust-path proximity. opts.commonsRoot (single pubKey) stays a valid alias
+    // → the G1 single-root special case. opts.agentsCardResolver resolves an
+    // endorsed agent's Agent Card by pubKey (default injected/hermetic; the real
+    // A2A well-known fetch is createWellKnownCardResolver, wired once its
+    // subject→URL discovery is pinned). With no roots configured the local stub
+    // keeps the install surface exercisable; the power-user override (install a
+    // pasted card) works regardless of the source.
+    const commonsRoots = Array.isArray(opts.commonsRoots)
+      ? opts.commonsRoots.filter((r) => typeof r === 'string' && r.length > 0)
+      : (typeof opts.commonsRoot === 'string' && opts.commonsRoot.length > 0 ? [opts.commonsRoot] : []);
     let agentsCatalog;
     if (opts.agentsCatalog) {
       agentsCatalog = opts.agentsCatalog;
-    } else if (typeof opts.commonsRoot === 'string' && opts.commonsRoot.length > 0) {
+    } else if (commonsRoots.length > 0) {
+      // Back-compat single-pool seam: each root's endorsements are read from the
+      // shared-readable endorsement resource. (The general per-curator seam is
+      // resolveEndorsements(pubKey); wired here as the pool the walk groups by
+      // endorser so G1's single resource keeps working.)
       const endorsements = createEndorsementResource({
         pseudoPod: householdSubstrate.pseudoPod,
         deviceId:  chatId.pubKey,
       });
       agentsCatalog = createCatalogSource({
         endorsementResource: endorsements,
-        roots:               [opts.commonsRoot],
+        roots:               commonsRoots,
         resolveCard:         opts.agentsCardResolver ?? null,
+        maxDepth:            opts.commonsMaxDepth,
       });
     } else {
       agentsCatalog = createStubCatalog();
