@@ -18,10 +18,16 @@ import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '.
 import { enrichEmbedsWithTitles } from '../../../../canopy-chat/src/v2/embedResolve.js';
 import { isNoticeboardPost } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
 import { getCirclePodFetch } from '../../core/circlePods.js';
+// Sealed media (2026-07-11): Uint8Array → base64 data-URL for the full-image viewer (reuse the
+// RN media-card helper — no second encoder).
+import { bytesToStdB64 } from '../../core/mediaCardModel.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
-export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen }) {
+// `media` — THIS circle's sealed-media composition (or null for a p0/p1 circle). Threaded from
+// CircleLauncherScreen (web parity `kringMedia`): gates the 📎 attach affordance (sealed-only —
+// hidden when null) and opens sealed full images through the per-circle gateway on tap.
+export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen, media = null }) {
   const [posts, setPosts] = useState([]);
   const [intent, setIntent] = useState('ask');
   const [text, setText] = useState('');
@@ -110,15 +116,23 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
     reload();
   }, [text, intent, dueText, attachment, callSkill, reload]);
 
-  // S5 — open an attachment full-size: author has the bytes (getAttachmentDataUrl);
-  // a recipient triggers requestAttachment + sees the thumbnail meanwhile.
+  // Sealed media (2026-07-11): open the full-size image by unsealing the blob through THIS circle's
+  // media gateway (`openFullImage` → openBlob, gated + decrypted client-side) — the SAME read path
+  // canopy-chat's own circle images use, and web's `noticeboardViewAttachment`. Stoop holds only the
+  // opaque sealed pointer (no plaintext byte round-trip). The sealed thumbnail (already opened for the
+  // chip by the wrapper) stands in on a wrong key / denial.
   const viewAttachment = useCallback(async (post, att) => {
-    let res = null;
-    try { res = await callSkill('stoop', 'getAttachmentDataUrl', { itemId: post.id, attId: att.id }); } catch { res = null; }
-    if (res?.dataUrl) { setViewing({ uri: res.dataUrl, pending: false }); return; }
-    try { await callSkill('stoop', 'requestAttachment', { itemId: post.id, attId: att.id }); } catch { /* */ }
-    setViewing({ uri: att.thumbnail, pending: true });
-  }, [callSkill]);
+    const line = att && att.source;
+    if (media && line && typeof line === 'object' && line.enc) {
+      try {
+        const { bytes, media: meta } = await media.openFullImage(line);
+        const mime = (meta && meta.mime) || att.mime || 'image/jpeg';
+        setViewing({ uri: `data:${mime};base64,${bytesToStdB64(bytes)}`, pending: false });
+        return;
+      } catch { /* denied / wrong key → fall back to the sealed thumbnail below */ }
+    }
+    if (att && att.thumbnail) setViewing({ uri: att.thumbnail, pending: true });
+  }, [media]);
 
   const runAction = useCallback(async (action, post) => {
     try {
@@ -163,7 +177,13 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
           placeholder={t(`circle.noticeboard.placeholder.${intent}`)} placeholderTextColor={theme.color.inkSoft}
           onSubmitEditing={submitPost} testID="nb-input"
         />
-        <Pressable style={styles.attach} onPress={attachImage} testID="nb-attach"><Text style={styles.attachText}>📎</Text></Pressable>
+        {/* Sealed-only: the 📎 shows ONLY when this circle has a media gateway (p2/p3). A p0/p1
+            circle resolves no composition → `media` null → NO attach button (web parity
+            `kringMedia ? ... : null`), so a user never picks an image only to hit the wrapper's
+            sealed-only refusal. Text posting stays unconditional below. */}
+        {media ? (
+          <Pressable style={styles.attach} onPress={attachImage} testID="nb-attach"><Text style={styles.attachText}>📎</Text></Pressable>
+        ) : null}
         <Pressable style={styles.post} onPress={submitPost} testID="nb-post"><Text style={styles.postText}>{t('circle.noticeboard.post')}</Text></Pressable>
       </View>
       {attachment && (

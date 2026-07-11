@@ -105,6 +105,10 @@ import { resolveCircleEmbedder } from '../../../../canopy-chat/src/v2/embedPicke
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
 import { interpretToCommand } from '../../../../canopy-chat/src/v2/interpretCommand.js';
 import { scopeStoopCallSkill } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
+// Sealed media (2026-07-11): the per-circle media composition is SHARED src/ (platform-neutral,
+// no DOM). Mobile reuses it verbatim — same seal path as web's stoop noticeboard — so a prikbord
+// image seals per-circle instead of being refused. Do NOT reimplement sealing in the shell.
+import { createCircleMediaComposition, makeDevMediaBucket } from '../../../../canopy-chat/src/v2/circleMediaGateway.js';
 import { getCircleSealStrategy, seedCircleRosterFor, getCirclePodFetch, getCircleActorWebId } from '../../core/circlePods.js';
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
@@ -218,6 +222,27 @@ const CIRCLE_LLM_APPS = (process.env.EXPO_PUBLIC_CIRCLE_LLM_APPS || '').split(',
 const circleSearchVectorStore = (AsyncStorage && typeof AsyncStorage.getItem === 'function')
   ? createAsBackend({ AsyncStorage, scope: 'cc-circle-rag' })
   : createMemoryBackend();
+
+// Sealed media (2026-07-11) — mirror web circleApp.js: ONE DEV bucket per app session
+// (in-memory; the real S3/R2 swap point is recorded in circleMediaGateway.js), and the
+// per-circle sealed-media composition cached so the session ACL's grants persist across
+// re-opens. A p0/p1 circle (no seal strategy) composes to `null` → sealed-only: the wrapper
+// refuses attachments and the 📎 affordance stays hidden (NO unsealed fallback). This is the
+// SHARED composition both platforms use — reused, not reimplemented in the shell.
+const circleMediaBucket = makeDevMediaBucket();
+const circleMediaCompositions = new Map();   // circleId → Promise<composition|null>
+function getCircleMediaComposition(circleId, policy) {
+  if (!circleId) return Promise.resolve(null);
+  if (!circleMediaCompositions.has(circleId)) {
+    circleMediaCompositions.set(circleId, createCircleMediaComposition({
+      circleId,
+      getSealStrategy: () => getCircleSealStrategy(circleId, policy),
+      localActor: getCircleActorWebId() || 'me',
+      bucket: circleMediaBucket,
+    }).catch(() => null));
+  }
+  return circleMediaCompositions.get(circleId);
+}
 
 // D1 (§5A) — per-circle action-frequency counter behind the quickActions
 // row.  Module singleton (shared across kring opens), hydrated once from
@@ -1785,10 +1810,34 @@ function CircleDetail({
   // circle. One shared agent, per-circle scope key (NOT N agents). NB: the 3-arg raw
   // dispatch is the `rawCallSkill` PROP (the parent's `bundle.callSkill`) — `bundle`
   // is not in scope in this component.
+  // Sealed media (2026-07-11): thread THIS circle's media gateway into the wrapper (4th arg,
+  // web parity with circleApp.js `getStoopMedia`) so a prikbord image attachment seals + rides
+  // the SAME `{type:'media'}` blob pointer canopy-chat's own circle chat images use — one
+  // circle's gateway per wrapper ⇒ per-circle by construction (no cross-seal). A p0/p1 circle
+  // resolves no composition → the wrapper refuses attachments (sealed-only) and the 📎 hides.
+  const getStoopMedia = useCallback(async () => {
+    const comp = await getCircleMediaComposition(circle?.id, policy);
+    return (comp && comp.mediaGateway)
+      ? { mediaGateway: comp.mediaGateway, localActor: getCircleActorWebId() || 'me', t }
+      : null;
+  }, [circle?.id, policy]);
   const stoopCall = useMemo(
-    () => scopeStoopCallSkill(rawCallSkill, circle?.id, () => getCircleSealStrategy(circle?.id, policy)),
-    [rawCallSkill, circle?.id, policy],
+    () => scopeStoopCallSkill(
+      rawCallSkill, circle?.id, () => getCircleSealStrategy(circle?.id, policy), getStoopMedia,
+    ),
+    [rawCallSkill, circle?.id, policy, getStoopMedia],
   );
+  // Resolve this circle's sealed-media composition for the noticeboard: gate the 📎 affordance
+  // (null for p0/p1 → hidden, web parity `kringMedia ? ... : null`) + open sealed full images on
+  // tap. Async: the seal strategy rides the pod producer; null until it resolves and FOREVER for
+  // p0/p1 (sealed-only, no unsealed upload fallback).
+  const [circleMedia, setCircleMedia] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    setCircleMedia(null);
+    getCircleMediaComposition(circle?.id, policy).then((m) => { if (alive) setCircleMedia(m || null); });
+    return () => { alive = false; };
+  }, [circle?.id, policy]);
   // S4 — seed a sealed circle's group-key roster with members who joined before the producer
   // was live (web parity with showKring). Best-effort; no-op for unsealed circles.
   useEffect(() => {
@@ -2558,7 +2607,7 @@ function CircleDetail({
         ) : activeTab === 'prikbord' ? (
           // S1 #1 — the buurt noticeboard (its own composer + post list), scoped to
           // the open circle (S4 per-circle restructure — see stoopCall above).
-          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={onStoopEvent}
+          <CircleNoticeboard callSkill={stoopCall} onStoopEvent={onStoopEvent} media={circleMedia}
             onEmbedOpen={({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); }} />
         ) : activeTab === 'leden' ? (
           // LEDEN — the circle's member roster (listGroupMembers → normalizeCircleMembers). web≡mobile.
