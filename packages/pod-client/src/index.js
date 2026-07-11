@@ -61,6 +61,10 @@ export { ConflictResolver } from './ConflictResolver.js';
 // PodClient.
 export { createClientSharing, _setInruptModuleForTests } from './sharing/index.js';
 export { probeCapabilities, parseSharingLinkHeader }     from './sharing/capabilities.js';
+// Declarative, best-effort access policy for a single resource (public-read /
+// owner-write / admin-write), composed over `client.sharing.*`. Used to give
+// the commons + registry pod resources their real-pod access posture.
+export { setResourceAccess }                             from './sharing/setResourceAccess.js';
 
 // Opt-in at-rest envelope encryption (recipient-wrap + group-key modes). Node-side (node:crypto).
 export {
