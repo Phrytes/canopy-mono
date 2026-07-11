@@ -3480,9 +3480,15 @@ function showKring(id, circle, policy) {
         onPost:   noticeboardPost,
         onAction: noticeboardAction,
         onIntent: (it) => { noticeboardIntent = it; rerender(); },
-        // S5 — inline image attachments.
+        // S5 — inline image attachments. The attach affordance is gated on the SAME
+        // resolved media composition (`kringMedia` = getCircleMediaComposition(id, policy))
+        // the kring composer's own attach uses (see `onAttachMedia` above): a p0/p1 circle
+        // has no seal strategy → no media gateway → `kringMedia` stays null → NO 📎 button.
+        // This matches the sealed-only refusal in scopeStoopCallSkill (getStoopMedia resolves
+        // the same composition) so a user never attaches an image only to hit the refusal.
+        // Text posting stays unconditional. Same hide the circle's own media already does.
         attachment:       noticeboardPendingAttachment,
-        onAttach:         noticeboardAttach,
+        onAttach:         kringMedia ? noticeboardAttach : null,
         onClearAttach:    () => { noticeboardPendingAttachment = null; rerender(); },
         onViewAttachment: noticeboardViewAttachment,
       },
