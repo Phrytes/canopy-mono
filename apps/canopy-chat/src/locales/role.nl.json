@@ -1,0 +1,40 @@
+{
+  "extraRolesLabel": {
+    "text": "Extra rollen (optioneel)",
+    "doc": "N3 — role template string."
+  },
+  "extraRolesHint": {
+    "text": "Een kring begint met alleen admins + leden. Voeg alleen een starterrol toe als je die nodig hebt — je kunt dit later wijzigen.",
+    "doc": "N3 — role template string."
+  },
+  "guest": {
+    "label": {
+      "text": "Gast",
+      "doc": "N3 — role template string."
+    },
+    "desc": {
+      "text": "Kort op bezoek — ziet de kring maar plaatst of doet niets. Handig voor een eenmalig kijkje.",
+      "doc": "N3 — role template string."
+    }
+  },
+  "observer": {
+    "label": {
+      "text": "Observer",
+      "doc": "N3 — role template string."
+    },
+    "desc": {
+      "text": "Volgt mee zonder mee te doen. Bijv. een nieuw lid dat de kat uit de boom kijkt, of een onderzoeker.",
+      "doc": "N3 — role template string."
+    }
+  },
+  "external": {
+    "label": {
+      "text": "Externe vrijwilliger",
+      "doc": "N3 — role template string."
+    },
+    "desc": {
+      "text": "Helpt van buitenaf met specifieke, tijdelijke taken. Beperkte toegang; geen volwaardig lid.",
+      "doc": "N3 — role template string."
+    }
+  }
+}

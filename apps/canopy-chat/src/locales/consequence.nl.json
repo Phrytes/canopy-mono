@@ -1,0 +1,142 @@
+{
+  "accessPolicy": {
+    "invite-only": {
+      "text": "Alleen mensen die een admin uitnodigt kunnen erbij. Strakste controle; niemand glipt binnen via een gedeelde link.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "request": {
+      "text": "Iedereen kan zich aanmelden, maar een admin moet elk verzoek goedkeuren. Een tussenweg.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "open": {
+      "text": "Iedereen die de buurt-id kent doet direct mee — geen drempel. Makkelijkst te laten groeien, lastigst privé te houden.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    }
+  },
+  "leavePolicy": {
+    "anyone": {
+      "text": "Leden kunnen weg wanneer ze willen, stilletjes. Minste wrijving; je merkt vertrek misschien niet.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "notify-first": {
+      "text": "Vertrekkers plaatsen eerst een bericht, zodat de buurt ziet wie weg is en waarom.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    }
+  },
+  "conflictPolicy": {
+    "admin-decides": {
+      "text": "Geschillen gaan naar een admin die beslist. Snel, maar concentreert macht.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "mediation": {
+      "text": "Twee willekeurige leden bemiddelen. Neutraler, maar trager en vraagt bereidwillige vrijwilligers.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "vote": {
+      "text": "De hele buurt stemt. Meest democratisch, maar zwaar voor kleine geschillen.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    }
+  },
+  "storagePolicy": {
+    "no-pod": {
+      "text": "Alles staat alleen in lokale app-status. Simpelste start; niets synct tussen je apparaten en er is geen back-up.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "decentralised": {
+      "text": "Elk lid houdt een eigen pod en die synchroniseren. Robuust + privé, maar elk lid heeft een pod nodig.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "centralised": {
+      "text": "Eén gedeelde groeps-pod bewaart alles (jij geeft de URI). Makkelijk te back-uppen, maar één partij host de data.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    }
+  },
+  "kind": {
+    "household": {
+      "text": "Een huis: iedereen ziet elkaar, één gedeelde pod, lichte governance. Chat standaard aan.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "buurt": {
+      "text": "Een buurt: paarsgewijs onthullen, pods per lid, consensus tussen mede-admins. Prikbord-eerst — open chat standaard uit.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "vriendenkring": {
+      "text": "Een vriendengroep: ontspannen, open onthullen, geen huisregels of ledenlijst. Chat standaard aan.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "team": {
+      "text": "Een werkruimte: cloud-LLM + agents aan, gedeelde pod, geen prikbord. Chat standaard aan.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    }
+  },
+  "size": {
+    "small": {
+      "text": "Een paar huishoudens. Open chat kan werken — de wizard laat de keuze aan jou (standaard uit).",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    },
+    "large": {
+      "text": "Een hele buurt. We raden aan open chat uit te laten — een iedereen-met-iedereen-chat overweldigt; reacties starten alsnog gerichte gesprekken.",
+      "doc": "N2 — consequence note for a radio option (Gevolgen als je dit kiest)."
+    }
+  },
+  "openness": {
+    "private": {
+      "text": "Alleen jij ziet deze vaardigheid. Niets wordt aangeboden — handig terwijl je beslist.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "circle": {
+      "text": "Leden van deze kring zien + kunnen vragen. Blijft binnen de kring.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "contacts": {
+      "text": "Je directe contacten zien het ook, over kringen heen. Groter bereik, nog steeds bekenden.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "public": {
+      "text": "Iedereen die je profiel vindt ziet het. Maximaal bereik, minste controle.",
+      "doc": "N2.b — consequence note for a radio option."
+    }
+  },
+  "posture": {
+    "always": {
+      "text": "Je zegt het vooraf toe — vragers kunnen erop rekenen zonder onderhandelen.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "negotiable": {
+      "text": "Elk verzoek is een gesprek; je zegt per geval ja/nee. Flexibeler, meer heen-en-weer.",
+      "doc": "N2.b — consequence note for a radio option."
+    }
+  },
+  "status": {
+    "active": {
+      "text": "Nu live en matchbaar — verschijnt in zoekopdrachten + skill-matches.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "paused": {
+      "text": "Voorlopig verborgen voor matches, maar bewaard. Zet ’m altijd weer aan.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "archived": {
+      "text": "Met pensioen. Buiten alle matches; bewaard als archief zonder te verwijderen.",
+      "doc": "N2.b — consequence note for a radio option."
+    }
+  },
+  "radius": {
+    "home": {
+      "text": "Blijft binnen je huishouden. Het kleinste bereik.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "street": {
+      "text": "Bereikt je straat / directe buren.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "neighbourhood": {
+      "text": "Bereikt de hele buurt.",
+      "doc": "N2.b — consequence note for a radio option."
+    },
+    "city": {
+      "text": "Bereikt de bredere stad. Grootste bereik, minst lokaal.",
+      "doc": "N2.b — consequence note for a radio option."
+    }
+  }
+}

@@ -73,6 +73,10 @@ describe('FITNESS: no duplicate keys in any locale bundle', () => {
   const bundles = [
     '../../src/locales/circle.en.json',
     '../../src/locales/circle.nl.json',
+    '../../src/locales/consequence.en.json',
+    '../../src/locales/consequence.nl.json',
+    '../../src/locales/role.en.json',
+    '../../src/locales/role.nl.json',
     '../../../canopy-chat-mobile/locales/en.json',
     '../../../canopy-chat-mobile/locales/nl.json',
   ];

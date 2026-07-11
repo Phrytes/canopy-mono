@@ -10,8 +10,12 @@ import { describe, it, expect } from 'vitest';
 import {
   CONSEQUENCE_OPTIONS, hasConsequence, consequenceKeyFor, attachConsequences,
 } from '../src/v2/optionConsequences.js';
-import en from '../locales/en.json' assert { type: 'json' };
-import nl from '../locales/nl.json' assert { type: 'json' };
+import enRaw from '../locales/en.json' assert { type: 'json' };
+import nlRaw from '../locales/nl.json' assert { type: 'json' };
+import { sharedConsequenceLocale } from '../src/locales/index.js';
+// `consequence.*` now lives in the shared source (like `circle.*`); merge it back to check the effective bundle.
+const en = { ...enRaw, consequence: sharedConsequenceLocale.en };
+const nl = { ...nlRaw, consequence: sharedConsequenceLocale.nl };
 
 describe('hasConsequence', () => {
   it('is true for registered (group, option) pairs', () => {

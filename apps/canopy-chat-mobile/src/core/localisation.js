@@ -11,9 +11,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import en from '../../locales/en.json';
 import nl from '../../locales/nl.json';
-// The shared `circle` block lives in ONE place in the canopy-chat package (src/locales/) so web + mobile
-// can't drift; merge it over the mobile-only keys below.
-import { sharedCircleLocale } from '@canopy-app/canopy-chat';
+// The shared `circle`/`consequence`/`role` blocks live in ONE place in the canopy-chat package
+// (src/locales/) so web + mobile can't drift; merge them over the mobile-only keys below.
+import { sharedCircleLocale, sharedConsequenceLocale, sharedRoleLocale } from '@canopy-app/canopy-chat';
 
 function unwrapLeaves(node) {
   if (node === null || typeof node !== 'object') return node;
@@ -28,8 +28,8 @@ function unwrapLeaves(node) {
 }
 
 const BUNDLES = {
-  en: unwrapLeaves({ ...en, circle: sharedCircleLocale.en }),
-  nl: unwrapLeaves({ ...nl, circle: sharedCircleLocale.nl }),
+  en: unwrapLeaves({ ...en, circle: sharedCircleLocale.en, consequence: sharedConsequenceLocale.en, role: sharedRoleLocale.en }),
+  nl: unwrapLeaves({ ...nl, circle: sharedCircleLocale.nl, consequence: sharedConsequenceLocale.nl, role: sharedRoleLocale.nl }),
 };
 
 let currentLang = 'en';

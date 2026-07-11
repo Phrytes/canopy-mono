@@ -13,8 +13,12 @@ import {
 import {
   initialState, toggleRole, buildRulesObjectFromState,
 } from '../src/core/wizards/createGroupState.js';
-import en from '../locales/en.json' assert { type: 'json' };
-import nl from '../locales/nl.json' assert { type: 'json' };
+import enRaw from '../locales/en.json' assert { type: 'json' };
+import nlRaw from '../locales/nl.json' assert { type: 'json' };
+import { sharedRoleLocale } from '../src/locales/index.js';
+// `role.*` now lives in the shared source (like `circle.*`); merge it back to check the effective bundle.
+const en = { ...enRaw, role: sharedRoleLocale.en };
+const nl = { ...nlRaw, role: sharedRoleLocale.nl };
 
 describe('ROLE_TEMPLATES registry', () => {
   it('ships the gast / observer / externe-vrijwilliger starter set', () => {

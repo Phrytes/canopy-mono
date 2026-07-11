@@ -5,9 +5,26 @@
 // Each shell merges these over its own platform-only keys: `{ ...appLocale, circle: sharedCircleLocale.<lng> }`.
 // Leaves are the `{ text, doc }` shape (each shell's loader unwraps them). Add more shared blocks here
 // (chat/common/reply/…) the same way as they get consolidated.
+//
+// A top-level block belongs here ONLY when it is byte-identical across both shells (union, 0 value
+// conflicts) — the merge replaces the whole block, so a block with any platform-specific or differing
+// leaf must stay per-shell. `consequence.*` + `role.*` joined `circle.*` (invariant #3 — finishing the
+// consolidation `circle.*` started). Blocks that only partly overlap (e.g. a lone identical leaf inside
+// an otherwise-divergent `chat`/`common`/`reply`) are deliberately NOT here — sharing them would need a
+// nested merge or a key-path change, neither of which this shallow top-level-replacement mechanism does.
 
 import circleEn from './circle.en.json';
 import circleNl from './circle.nl.json';
+import consequenceEn from './consequence.en.json';
+import consequenceNl from './consequence.nl.json';
+import roleEn from './role.en.json';
+import roleNl from './role.nl.json';
 
 /** The canonical `circle` block per language (union of the former web + mobile copies; 0 value conflicts). */
 export const sharedCircleLocale = { en: circleEn, nl: circleNl };
+
+/** The canonical `consequence` block per language (identical across both shells; 0 value conflicts). */
+export const sharedConsequenceLocale = { en: consequenceEn, nl: consequenceNl };
+
+/** The canonical `role` block per language (identical across both shells; 0 value conflicts). */
+export const sharedRoleLocale = { en: roleEn, nl: roleNl };
