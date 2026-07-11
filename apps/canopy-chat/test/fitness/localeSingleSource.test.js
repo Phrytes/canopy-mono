@@ -20,6 +20,16 @@ const read = (p) => JSON.parse(readFileSync(here(p), 'utf8'));
 const circleEn = read('../../src/locales/circle.en.json');
 const circleNl = read('../../src/locales/circle.nl.json');
 
+// Blocks that were consolidated into the shared source the same way `circle.*` was (invariant #3 —
+// finishing the consolidation `circle.*` started). Each must live ONCE (src/locales/) and be merged
+// into both shells, never re-declared per-shell.
+const sharedBlocks = ['circle', 'consequence', 'role'];
+const sharedByBlock = {
+  circle: [circleEn, circleNl],
+  consequence: [read('../../src/locales/consequence.en.json'), read('../../src/locales/consequence.nl.json')],
+  role: [read('../../src/locales/role.en.json'), read('../../src/locales/role.nl.json')],
+};
+
 /** Collect every leaf path that carries a `text` string. */
 function leafPaths(obj, prefix = '', out = new Set()) {
   if (!obj || typeof obj !== 'object') return out;
@@ -28,33 +38,41 @@ function leafPaths(obj, prefix = '', out = new Set()) {
   return out;
 }
 
-describe('FITNESS: circle locale is a single shared source', () => {
-  it('the mobile bundle does NOT carry its own circle.* block (it merges the shared source)', () => {
-    const mobileEn = read('../../../canopy-chat-mobile/locales/en.json');
-    const mobileNl = read('../../../canopy-chat-mobile/locales/nl.json');
-    expect('circle' in mobileEn, 'mobile en.json must not re-declare circle.* — use sharedCircleLocale').toBe(false);
-    expect('circle' in mobileNl, 'mobile nl.json must not re-declare circle.* — use sharedCircleLocale').toBe(false);
-  });
+describe('FITNESS: shared locale blocks are a single shared source', () => {
+  const mobileEn = read('../../../canopy-chat-mobile/locales/en.json');
+  const mobileNl = read('../../../canopy-chat-mobile/locales/nl.json');
+  const webEn = read('../../locales/en.json');
+  const webNl = read('../../locales/nl.json');
+  for (const block of sharedBlocks) {
+    it(`neither shell re-declares its own ${block}.* block (both merge the shared source)`, () => {
+      for (const [name, bundle] of [['web en', webEn], ['web nl', webNl], ['mobile en', mobileEn], ['mobile nl', mobileNl]]) {
+        expect(block in bundle, `${name}.json must not re-declare ${block}.* — use the shared source`).toBe(false);
+      }
+    });
+  }
 });
 
-describe('FITNESS: circle locale en ≡ nl by construction', () => {
-  it('every English leaf key exists in Dutch and vice versa', () => {
-    const en = leafPaths(circleEn);
-    const nl = leafPaths(circleNl);
-    const missingInNl = [...en].filter((k) => !nl.has(k));
-    const missingInEn = [...nl].filter((k) => !en.has(k));
-    expect(missingInNl, `keys present in EN but missing in NL: ${missingInNl.join(', ')}`).toEqual([]);
-    expect(missingInEn, `keys present in NL but missing in EN: ${missingInEn.join(', ')}`).toEqual([]);
-  });
+describe('FITNESS: shared locale blocks en ≡ nl by construction', () => {
+  for (const block of sharedBlocks) {
+    const [blockEn, blockNl] = sharedByBlock[block];
+    it(`${block}: every English leaf key exists in Dutch and vice versa`, () => {
+      const en = leafPaths(blockEn);
+      const nl = leafPaths(blockNl);
+      const missingInNl = [...en].filter((k) => !nl.has(k));
+      const missingInEn = [...nl].filter((k) => !en.has(k));
+      expect(missingInNl, `${block}: keys present in EN but missing in NL: ${missingInNl.join(', ')}`).toEqual([]);
+      expect(missingInEn, `${block}: keys present in NL but missing in EN: ${missingInEn.join(', ')}`).toEqual([]);
+    });
 
-  it('no leaf has an empty string in either language', () => {
-    const empties = [];
-    const walk = (obj, lang, prefix = '') => {
-      if (!obj || typeof obj !== 'object') return;
-      if (typeof obj.text === 'string') { if (!obj.text.trim()) empties.push(`${lang}:${prefix}`); return; }
-      for (const [k, v] of Object.entries(obj)) walk(v, lang, prefix ? `${prefix}.${k}` : k);
-    };
-    walk(circleEn, 'en'); walk(circleNl, 'nl');
-    expect(empties, `empty locale strings: ${empties.join(', ')}`).toEqual([]);
-  });
+    it(`${block}: no leaf has an empty string in either language`, () => {
+      const empties = [];
+      const walk = (obj, lang, prefix = '') => {
+        if (!obj || typeof obj !== 'object') return;
+        if (typeof obj.text === 'string') { if (!obj.text.trim()) empties.push(`${lang}:${prefix}`); return; }
+        for (const [k, v] of Object.entries(obj)) walk(v, lang, prefix ? `${prefix}.${k}` : k);
+      };
+      walk(blockEn, 'en'); walk(blockNl, 'nl');
+      expect(empties, `${block}: empty locale strings: ${empties.join(', ')}`).toEqual([]);
+    });
+  }
 });
