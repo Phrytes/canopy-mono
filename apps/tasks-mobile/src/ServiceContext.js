@@ -54,6 +54,7 @@ import {
   setBgRunOnce, clearBgRunOnce,
   registerBackgroundFetch, unregisterBackgroundFetch,
 } from '@canopy/online-cadence';
+import { ExpoSecureStore } from '@canopy/react-native/ports';
 
 import {
   buildMeshAgent,
@@ -220,7 +221,7 @@ export function ServiceProvider({ children, boot = {} }) {
     const { SolidPodSource } = await import('@canopy/pod-client');
 
     const session = podSessionRef.current
-      ?? new OidcSessionRN({ store: SecureStore, appId: 'tasks' });
+      ?? new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'tasks' });
     await session.adoptTokens(tokens);
 
     const fetchFn = session.getAuthenticatedFetch();
@@ -411,7 +412,7 @@ export function ServiceProvider({ children, boot = {} }) {
               // (same lazy pattern attachPod uses).
               const { OidcSessionRN } = require('@canopy/oidc-session-rn');
               const SecureStore = require('expo-secure-store');
-              const s = new OidcSessionRN({ store: SecureStore, appId: 'tasks' });
+              const s = new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'tasks' });
               podSessionRef.current = s;
               return s;
             },

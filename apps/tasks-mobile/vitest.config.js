@@ -89,6 +89,7 @@ export default defineConfig({
       '@canopy/react-native/mnemonic/view':   path.resolve(repoRoot, 'packages/react-native/src/mnemonic/MnemonicView.jsx'),
       '@canopy/react-native/mnemonic':        path.resolve(repoRoot, 'packages/react-native/src/mnemonic/index.js'),
       '@canopy/react-native/push':            path.resolve(repoRoot, 'packages/react-native/src/push/index.js'),
+      '@canopy/react-native/ports':           path.resolve(repoRoot, 'packages/react-native/src/ports/index.js'),
       '@canopy/react-native/localisation':            path.resolve(repoRoot, 'packages/react-native/src/localisation/index.js'),
       '@canopy/react-native':                 path.resolve(repoRoot, 'packages/react-native/index.js'),
 
