@@ -1,0 +1,48 @@
+# Build context for all deploy/* Dockerfiles is the repo ROOT (the pnpm workspace).
+# This file keeps that context small: drop installed deps, native/build artifacts,
+# the private docs, and the heavy mobile/demo apps that no deployable service needs.
+# pnpm's `--filter "<pkg>..."` selects the real dependency subtree at build time, so
+# excluding unrelated apps here only shrinks the upload — it never removes a dep a
+# server-side service actually pulls in (apps → packages, never the reverse).
+
+**/node_modules
+**/.git
+.git
+
+# native / mobile build outputs (hundreds of MB each)
+**/android
+**/ios
+**/.gradle
+**/.expo
+**/build
+**/dist
+**/*.apk
+**/*.aab
+**/*.keystore
+
+# private / local-only docs + scratch (never ship)
+plans
+_archive
+outreach
+.obsidian
+session-notes
+test-results
+test-results/**
+playwright-report
+.vercel
+**/*.log
+
+# real secrets — only .env.example templates ship
+**/.env
+**/.env.*
+!**/.env.example
+
+# heavy mobile + demo + web apps (not part of any deployable backend service)
+apps/canopy-chat-mobile
+apps/folio-mobile
+apps/stoop-mobile
+apps/tasks-mobile
+apps/sdk-smoke
+apps/mesh-demo
+apps/website
+apps/website-publiek
