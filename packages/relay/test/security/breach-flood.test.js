@@ -13,13 +13,11 @@
  *   • When the relay runs in GROUP mode (`acceptedGroups` + quotas), a member
  *     is rate-limited: over `maxConnections` → OVER_QUOTA_CONNECTIONS;
  *     over `msgsPerDay` → OVER_QUOTA_MSGS_PER_DAY.
- *
- * GAP (documented, see SECURITY-FINDINGS): in OPEN mode (the default — no
- * `acceptedGroups`), there is NO per-connection / per-message rate limit. A
- * peer can open unlimited connections and flood a LIVE (online) peer with
- * unlimited messages — the queue caps only bound buffering to OFFLINE peers.
- * The probe below documents the open-mode gap explicitly (it asserts the
- * absence of a limit, which is the finding, and is labelled as such).
+ *   • In OPEN mode (the default — no `acceptedGroups`), a DEFAULT per-connection
+ *     message rate limit (token bucket over `send` + `group-publish`) caps a
+ *     peer flooding a LIVE peer: over-burst frames are rejected with OVER_RATE
+ *     (socket stays open). Closes the former open-mode flood gap. Configurable
+ *     via `startRelay({ messageRateLimit: { perSec, burst } })`; `false` disables.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
@@ -106,10 +104,13 @@ describe('§7.10 — group-mode rate limiting (opt-in defense)', () => {
   });
 });
 
-describe('§7.10 — GAP: open-mode relay has NO message rate limit (documented)', () => {
-  it('a single peer can flood a LIVE peer with unlimited messages in open mode (no throttle)', async () => {
-    // DEFAULT open mode: no acceptedGroups → no per-message quota.
-    relay = await startRelay({ port: 0 });
+describe('§7.10 — DEFENDED: open-mode per-connection message rate limit', () => {
+  it('throttles a single peer flooding a LIVE peer past the burst (OVER_RATE)', async () => {
+    // DEFAULT open mode (no acceptedGroups). A small bucket makes the flood
+    // deterministic: burst=10 → at most ~10 delivered instantly, the rest
+    // rejected with OVER_RATE. (perSec kept low so refill during the blast
+    // is negligible.)
+    relay = await startRelay({ port: 0, messageRateLimit: { perSec: 5, burst: 10 } });
     const attacker = await openClient(`ws://127.0.0.1:${relay.port}`);
     const victim   = await openClient(`ws://127.0.0.1:${relay.port}`);
     send(attacker, { type: 'register', address: 'attacker' });
@@ -117,18 +118,55 @@ describe('§7.10 — GAP: open-mode relay has NO message rate limit (documented)
     await waitFor(() => attacker.messages.some(m => m.type === 'registered')
                      && victim.messages.some(m => m.type === 'registered'));
 
-    // Blast 200 live messages. If a rate limit existed, some would be
-    // rejected (an 'error' frame back to the attacker). None are.
+    const BLAST = 200;
+    for (let n = 0; n < BLAST; n++) send(attacker, { type: 'send', to: 'victim', envelope: { _p: 'OW', payload: { n } } });
+    // Wait until the attacker has been told OVER_RATE (proves throttling).
+    await waitFor(() => attacker.messages.some(m => m.type === 'error' && m.message === 'OVER_RATE'), 3_000);
+
+    const delivered      = victim.messages.filter(m => m.type === 'message').length;
+    const overRate       = attacker.messages.filter(m => m.type === 'error' && m.message === 'OVER_RATE');
+    // The flood is capped near the burst, NOT the 200 sent, and the attacker
+    // is explicitly signalled (not silently dropped).
+    expect(delivered).toBeLessThan(BLAST);
+    expect(delivered).toBeLessThanOrEqual(20);       // burst(10) + tiny refill headroom
+    expect(overRate.length).toBeGreaterThan(0);
+    attacker.close(); victim.close();
+  });
+
+  it('does NOT affect normal traffic — a few messages pass with zero OVER_RATE', async () => {
+    // Default rate limit (perSec 30 / burst 60). Normal interactive volume.
+    relay = await startRelay({ port: 0 });
+    const sender   = await openClient(`ws://127.0.0.1:${relay.port}`);
+    const receiver = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(sender,   { type: 'register', address: 'sender' });
+    send(receiver, { type: 'register', address: 'receiver' });
+    await waitFor(() => sender.messages.some(m => m.type === 'registered')
+                     && receiver.messages.some(m => m.type === 'registered'));
+
+    const NORMAL = 5;
+    for (let n = 0; n < NORMAL; n++) send(sender, { type: 'send', to: 'receiver', envelope: { _p: 'OW', payload: { n } } });
+    await waitFor(() => receiver.messages.filter(m => m.type === 'message').length >= NORMAL, 1_500);
+
+    expect(receiver.messages.filter(m => m.type === 'message')).toHaveLength(NORMAL);
+    expect(sender.messages.filter(m => m.type === 'error')).toHaveLength(0);
+    sender.close(); receiver.close();
+  });
+
+  it('messageRateLimit:false restores the unthrottled legacy behavior', async () => {
+    relay = await startRelay({ port: 0, messageRateLimit: false });
+    const attacker = await openClient(`ws://127.0.0.1:${relay.port}`);
+    const victim   = await openClient(`ws://127.0.0.1:${relay.port}`);
+    send(attacker, { type: 'register', address: 'attacker' });
+    send(victim,   { type: 'register', address: 'victim' });
+    await waitFor(() => attacker.messages.some(m => m.type === 'registered')
+                     && victim.messages.some(m => m.type === 'registered'));
+
     const BLAST = 200;
     for (let n = 0; n < BLAST; n++) send(attacker, { type: 'send', to: 'victim', envelope: { _p: 'OW', payload: { n } } });
     await waitFor(() => victim.messages.filter(m => m.type === 'message').length >= BLAST, 3_000);
 
-    const delivered = victim.messages.filter(m => m.type === 'message').length;
-    const throttleErrors = attacker.messages.filter(m => m.type === 'error');
-    // THE FINDING: every message got through and the attacker was never
-    // throttled. This documents the open-mode flood gap (not a defense).
-    expect(delivered).toBe(BLAST);
-    expect(throttleErrors).toHaveLength(0);
+    expect(victim.messages.filter(m => m.type === 'message')).toHaveLength(BLAST);
+    expect(attacker.messages.filter(m => m.type === 'error')).toHaveLength(0);
     attacker.close(); victim.close();
   });
 });

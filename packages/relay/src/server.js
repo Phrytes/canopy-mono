@@ -105,6 +105,39 @@ const DEFAULT_QUEUE_CAP        = 50;
 const DEFAULT_QUEUE_CAP_RATIO  = 4;
 const DEFAULT_PUSH_THROTTLE_MS = 30_000;     // do not push more than once / 30s / address
 
+// Default per-connection message rate limit (J-security flood defense).
+// A token-bucket over the data-plane frames (`send`, `group-publish`) so a
+// single connection cannot flood a LIVE peer with unbounded messages in OPEN
+// mode (the group-quota path only throttles grouped deployments; the offline
+// queue caps only bound buffering to OFFLINE peers). Chosen to sit far above
+// normal interactive chat/kring traffic (a human sends a handful of messages
+// per second; a kring fan-out is ONE `group-publish` frame) while capping a
+// flood: `burst` messages may go through instantly, then `perSec` sustained.
+// A 200-message instantaneous blast delivers ~`burst` then gets `OVER_RATE`.
+const DEFAULT_MSG_RATE_PER_SEC = 30;
+const DEFAULT_MSG_RATE_BURST   = 60;
+
+/**
+ * Minimal O(1) token bucket. `take()` returns true and consumes one token
+ * when available, else false (no token consumed on reject). Refills
+ * continuously at `perSec`, capped at `burst`. Per-connection: one bucket
+ * per socket, so bursts are naturally absorbed and only a sustained flood
+ * from a single connection is throttled.
+ */
+function createTokenBucket({ perSec, burst }) {
+  let tokens   = burst;
+  let lastFill = Date.now();
+  return {
+    take() {
+      const now    = Date.now();
+      const refill = ((now - lastFill) / 1000) * perSec;
+      if (refill > 0) { tokens = Math.min(burst, tokens + refill); lastFill = now; }
+      if (tokens >= 1) { tokens -= 1; return true; }
+      return false;
+    },
+  };
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js':   'application/javascript; charset=utf-8',
@@ -142,6 +175,15 @@ const MIME = {
  *   Optional role-rank override for `requiredRole` checks (e.g. when an
  *   app registers custom roles via `Roles.registerCustomRole`).  Merged
  *   on top of the standard 5-role rank table.
+ * @param {{ perSec?: number, burst?: number } | false} [opts.messageRateLimit]
+ *   Default per-connection message rate limit (J-security flood defense),
+ *   applied to `send` + `group-publish` frames in EVERY mode (open + grouped;
+ *   it complements the per-group day quotas, it does not replace them). A
+ *   token-bucket per connection: up to `burst` messages instantly, then
+ *   `perSec` sustained. Over-rate frames are rejected with an `OVER_RATE`
+ *   error frame (the socket stays open — a transient burst is absorbed by the
+ *   bucket, not by tearing down the connection). Defaults to
+ *   `{ perSec: 30, burst: 60 }`. Pass `false` to disable entirely.
  * @param {object} [opts.blobGate]
  *   P2 (media-infra): mount the blob-gateway HTTP edge on this relay —
  *   `{ verifyToken, bucket, acl?, ttl?, route?, uploaders? }`, forwarded to
@@ -179,6 +221,8 @@ export async function startRelay(opts = {}) {
     pushSender                = null,
     pushTokenRegistry         = undefined,
     pushThrottleMs            = DEFAULT_PUSH_THROTTLE_MS,
+    // J-security: default per-connection message rate limit. `false` disables.
+    messageRateLimit          = undefined,
     // P2 (media-infra): optional blob-gate edge.  When `blobGate` is
     // null/undefined, the relay adds no routes and behaves byte-identically —
     // fully backward compatible with existing tests and deployments.
@@ -186,6 +230,15 @@ export async function startRelay(opts = {}) {
   } = opts;
 
   const effectiveQueueCapTotal = queueCapTotal ?? (queueCap * DEFAULT_QUEUE_CAP_RATIO);
+
+  // J-security: per-connection message rate limit config. `false` disables;
+  // otherwise merge partial overrides on top of the defaults.
+  const rateLimitCfg = messageRateLimit === false
+    ? null
+    : {
+        perSec: messageRateLimit?.perSec ?? DEFAULT_MSG_RATE_PER_SEC,
+        burst:  messageRateLimit?.burst  ?? DEFAULT_MSG_RATE_BURST,
+      };
 
   // Multi-recipient (E2b) — additive.  Defaults to a fresh in-memory queue.
   const mrQueue = multiRecipientQueue
@@ -346,6 +399,10 @@ export async function startRelay(opts = {}) {
 
   wss.on('connection', (socket) => {
     let registeredAddress = null;
+    // J-security: per-connection message rate limit (flood defense). One
+    // bucket per socket — absorbs bursts, throttles a sustained flood. Null
+    // when disabled via `messageRateLimit: false`.
+    const msgBucket = rateLimitCfg ? createTokenBucket(rateLimitCfg) : null;
 
     socket.on('message', (raw) => {
       let msg;
@@ -432,6 +489,16 @@ export async function startRelay(opts = {}) {
         const { to, envelope, topic } = msg;
         if (!to || !envelope) return;
 
+        // J-security — per-connection rate limit. Checked BEFORE the group
+        // day-quota so a flood is stopped cheaply (O(1)) without burning the
+        // sender's daily allowance. Socket stays open (transient burst is
+        // absorbed by the bucket); only over-rate frames get OVER_RATE.
+        if (msgBucket && !msgBucket.take()) {
+          socket.send(JSON.stringify({ type: 'error', message: 'OVER_RATE' }));
+          logLine(`[relay] rate-limited ${shortId(registeredAddress)} send`);
+          return;
+        }
+
         // Phase 2A — enforce per-group msgsPerDay quota when the sender
         // is registered to a group with a quota.  Open-mode senders and
         // group-less registrations are unaffected.
@@ -479,6 +546,16 @@ export async function startRelay(opts = {}) {
           socket.send(JSON.stringify({ type: 'error', message: 'group-publish: groupId + envelope required' }));
           return;
         }
+
+        // J-security — per-connection rate limit (one group-publish frame is
+        // one token, regardless of fan-out). Same bucket as `send` so a peer
+        // can't sidestep the limit by switching frame types.
+        if (msgBucket && !msgBucket.take()) {
+          socket.send(JSON.stringify({ type: 'error', message: 'OVER_RATE' }));
+          logLine(`[relay] rate-limited ${shortId(registeredAddress)} group-publish`);
+          return;
+        }
+
         const memberSet = clientsByGroup.get(groupId);
         if (!memberSet || !memberSet.has(registeredAddress)) {
           socket.send(JSON.stringify({ type: 'error', message: 'group-publish: not a member of this group' }));
