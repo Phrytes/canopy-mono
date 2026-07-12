@@ -375,6 +375,36 @@ export const tasksManifest = {
       },
     },
     /*
+     * task-claim-partition Slice 3 (2026-07-12) — double-claim conflict
+     * surface. A partition→merge that double-claimed a task records a
+     * claim-conflict on the substrate mirror instead of silently
+     * last-writer-wins the assignee; these two ops read + resolve it.
+     * Chat-only (no `ui` button — the open-task inline keyboard stays
+     * exactly [claimTask], pinned by sp3-manifest.test.js). Verbs reuse
+     * the already-declared task atoms (`list` / `reassign`).
+     */
+    {
+      id:        'listClaimConflicts',
+      verb:      'list',
+      appliesTo: { type: 'task' },
+      params:    [],
+      surfaces: {
+        chat: { hint: 'List unresolved double-claim conflicts for this circle.' },
+      },
+    },
+    {
+      id:        'resolveClaim',
+      verb:      'reassign',
+      appliesTo: { type: 'task' },
+      params: [
+        { name: 'taskId',   kind: 'string', required: true, ...ID_NONEMPTY },
+        { name: 'decision', kind: 'enum', of: ['yours', 'theirs', 'both'], required: true },
+      ],
+      surfaces: {
+        chat: { hint: 'Resolve a double-claim conflict (yours/theirs/both) — admin/coordinator only.' },
+      },
+    },
+    /*
      * Slice B.2.2 (2026-05-20) — surfaces the reviewer queue on
      * `apps/tasks-v0/web/review.html`.  Same pattern as
      * `listClaimable` / `listMyMasteredTasks`: read-only list op,

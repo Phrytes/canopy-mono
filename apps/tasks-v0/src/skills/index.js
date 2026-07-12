@@ -566,6 +566,97 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
     }),
 
     /**
+     * listClaimConflicts()  — Slice 3 (task-claim-partition).
+     *   Read the unresolved double-claim conflicts recorded on this
+     *   circle's substrate mirror (a partition→merge that double-claimed
+     *   a task surfaces here instead of silently last-writer-wins).
+     *
+     * NOT wired: reads the per-circle `tasksMirror` (a resolver other than
+     * the item-store), so it has no `(circle,args,ctx)`-over-item-store core.
+     */
+    defineSkill('listClaimConflicts', async ({ parts, from, envelope }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const conflicts = circle.tasksMirror?.listClaimConflicts?.() ?? [];
+      return {
+        conflicts: conflicts.map((c) => ({
+          taskId:           c.taskId,
+          text:             c.text ?? null,
+          localAssignee:    c.localAssignee ?? null,
+          incomingAssignee: c.incomingAssignee ?? null,
+          at:               c.at ?? null,
+        })),
+      };
+    }, {
+      description: 'List unresolved double-claim conflicts for this circle.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * resolveClaim({taskId, decision:'yours'|'theirs'|'both'})  — Slice 3.
+     *   Resolve a recorded claim-conflict. `yours` keeps the local
+     *   claimant, `theirs` takes the incoming claimant, `both` keeps the
+     *   local claimant AND mints a fresh task (distinct id) for the other
+     *   claimant's product — mirrors `recipeConflict.applyResolution`'s
+     *   'both' (keep local + add incoming under a fresh id). The
+     *   resolution writes a causally-later claim (a reassign), which
+     *   clears the conflict.
+     *
+     *   Gated by the existing reassign/revoke role policy
+     *   (admin/coordinator). NOT wired: return-shaped error contract +
+     *   `tasksMirror` resolver (same reason as editTask).
+     */
+    defineSkill('resolveClaim', async ({ parts, from, envelope, actorDisplayName }) => {
+      const circle = bundleResolver(parts, { envelope, from });
+      if (!circle) return { error: 'circleId required' };
+      const a = argsFromParts(parts);
+      const taskId = a.taskId;
+      const decision = a.decision;
+      if (typeof taskId !== 'string' || !taskId) return { error: 'taskId required' };
+      if (decision !== 'yours' && decision !== 'theirs' && decision !== 'both') {
+        return { error: 'invalid-decision' };
+      }
+      const mirror = circle.tasksMirror;
+      const conflict = mirror?.getClaimConflict?.(taskId);
+      if (!conflict) return { error: 'no-conflict' };
+
+      // Reuse the reassign/revoke gate: admin / coordinator resolve.
+      const role = circle.liveCircle?.members?.find?.((m) => m.webid === from)?.role
+        ?? circle?.roles?.[from] ?? null;
+      if (role !== 'admin' && role !== 'coordinator') return { error: 'permission-denied' };
+
+      const keepLocal = decision !== 'theirs';
+      const winner = keepLocal ? conflict.localAssignee : conflict.incomingAssignee;
+
+      // Causally-later claim (reassign) supersedes both concurrent claims and
+      // clears the conflict state.
+      const resolved = await circle.itemStore.reassign(taskId, winner, { actor: from, actorDisplayName });
+      circle?.tasksMirror?.publishTask?.(resolved).catch(() => {});
+
+      let alsoKept = null;
+      if (decision === 'both') {
+        const otherAssignee = conflict.incomingAssignee;
+        const src = conflict.incoming ?? {};
+        const draft = {
+          type: 'task',
+          text: conflict.text ?? src.text ?? '(resolved claim)',
+          ...(src.notes ? { notes: src.notes } : {}),
+          source: { claimConflictOrigin: taskId, resolvedFrom: 'both' },
+        };
+        const [minted] = await circle.itemStore.addItems([draft], { actor: from, actorDisplayName });
+        const mintedClaimed = await circle.itemStore.reassign(minted.id, otherAssignee, { actor: from, actorDisplayName });
+        circle?.tasksMirror?.publishTask?.(mintedClaimed).catch(() => {});
+        alsoKept = { id: mintedClaimed.id, assignee: otherAssignee };
+      }
+
+      mirror.clearClaimConflict(taskId);
+      return { resolved: { id: taskId, assignee: winner }, decision, ...(alsoKept ? { alsoKept } : {}) };
+    }, {
+      description: 'Resolve a claim-conflict (yours/theirs/both) — admin/coordinator only.',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * editTask({id, text?, notes?, dueAt?, requiredSkills?,
      *           dependencies?, scheduledAt?, estimateMinutes?,
      *           definitionOfDone?, visibility?})
