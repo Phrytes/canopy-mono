@@ -96,7 +96,7 @@ describe('sealed-pod membership — leave', () => {
     await callSkill(bundle.agent, 'createGroupV2', { groupId: GROUP, name: 'X', rules: RULES });
     const r = await callSkill(bundle.agent, 'leaveGroup', { groupId: GROUP }, BOB);
     expect(r.leaveMarkerId).toBeTruthy();
-    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false, groupId: GROUP });
+    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false, policy: 'graceful', groupId: GROUP });
   });
 
   it('leaveGroup with no control-agent still works', async () => {

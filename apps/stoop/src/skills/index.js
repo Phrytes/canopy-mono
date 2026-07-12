@@ -359,10 +359,23 @@ async function grantPodAccess(controlAgent, { webId, sealingPublicKey, role = 'm
   try { await controlAgent.addMember({ webId, publicKey: sealingPublicKey, role, groupId }); }
   catch { metrics?.record?.('control-agent-grant-failed'); }
 }
-async function revokePodAccess(controlAgent, { webId, force = false, groupId, metrics }) {
-  if (!controlAgent || !webId) return;
-  try { await controlAgent.removeMember({ webId, force, groupId }); }
-  catch { metrics?.record?.('control-agent-revoke-failed'); }
+async function revokePodAccess(controlAgent, { webId, force = false, policy = 'graceful', groupId, members, metrics }) {
+  if (!webId) return null;
+  let result = null;
+  if (controlAgent) {
+    // Rotate the content key (forward secrecy) + re-seal history per policy (graceful keeps the
+    // departed's prior access; ban strips it). See packages/pod-client controlAgent.removeMember.
+    try { result = await controlAgent.removeMember({ webId, force, policy, groupId }); }
+    catch { metrics?.record?.('control-agent-revoke-failed'); }
+  }
+  // COUPLING (the security fix): the app-level "mesh membership" is the MemberMap (there is no
+  // GroupManager proof in this flow). Drop the departed so fan-out/routing stops targeting them —
+  // otherwise removal only rotates the content key and peers keep sending to a removed member.
+  if (members && typeof members.removeMember === 'function') {
+    try { await members.removeMember(webId); }
+    catch { metrics?.record?.('member-map-remove-failed'); }
+  }
+  return result;
 }
 
 /**
@@ -2799,8 +2812,10 @@ export function buildSkills({
         { actor: from },
       );
 
-      // Sealed household pod: revoke the leaver's ACL + rotate the group key (forward secrecy). Gated.
-      await revokePodAccess(controlAgent, { webId: from, groupId: a.groupId, metrics });
+      // Sealed household pod: revoke the leaver's ACL + rotate the group key (forward secrecy) + drop
+      // them from the MemberMap so fan-out stops. A self-leave is 'graceful' — the leaver keeps access
+      // to content they already had on their device.
+      await revokePodAccess(controlAgent, { webId: from, policy: 'graceful', groupId: a.groupId, members, metrics });
 
       let deleted = 0;
       if (a.deletePosts) {
@@ -3493,9 +3508,17 @@ export function buildSkills({
         const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
         if (!isAdmin) return { error: 'admin-only' };
       }
+      // Resolve the target's webid (webid === signing key). Prefer an explicit webid; fall back to a
+      // stableId resolver if the MemberMap offers one.
+      let memberWebid = a.memberWebid ?? null;
+      if (!memberWebid && a.memberStableId && members && typeof members.resolveByStableId === 'function') {
+        memberWebid = (await members.resolveByStableId(a.memberStableId))?.webid ?? null;
+      }
+      const policy = a.policy === 'ban' ? 'ban' : 'graceful';
+
       const [item] = await store.addItems([{
         type:       'group-removal',
-        text:       `${a.memberWebid ?? a.memberStableId} removed from ${_groupId}`,
+        text:       `${a.memberWebid ?? a.memberStableId} removed from ${_groupId} (${policy})`,
         visibility: 'household',
         source: {
           groupId:        _groupId,
@@ -3503,12 +3526,22 @@ export function buildSkills({
           memberWebid:    a.memberWebid    ?? null,
           removedBy:      from,
           removedAt:      Date.now(),
+          policy,
           reason:         a.reason ?? null,
         },
       }], { actor: from });
-      return { removalId: item.id };
+
+      // ACTUALLY revoke (not just record intent): rotate the group key + re-seal history per policy +
+      // drop the member from the MemberMap (fan-out stops). `force` — an admin removal overrides the
+      // ≥1-admin guard for a non-self target; the op's own admin-gate above is the authority.
+      let revoked = false;
+      if (memberWebid) {
+        await revokePodAccess(controlAgent, { webId: memberWebid, force: true, policy, groupId: _groupId, members, metrics });
+        revoked = true;
+      }
+      return { removalId: item.id, revoked, policy };
     }, {
-      description: 'Admin-only: record a member removal (intent; relay-side revocation is operator-driven).',
+      description: 'Admin-only: remove a member — record it + rotate the group key + drop them from the mesh (policy: graceful|ban).',
       visibility:  'authenticated',
     }),
 

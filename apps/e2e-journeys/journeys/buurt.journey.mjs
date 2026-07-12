@@ -76,6 +76,14 @@ export async function run({ relayUrl }) {
     if (reply?.threadId) { try { thread = await call(host, 'getChatThread', { threadId: reply.threadId }, HOST); } catch { /* */ } }
     check('host receives the reply privately (1:1 over relay)',
       (thread.messages ?? []).some((x) => (x.body ?? x.text ?? '').includes('kom maar langs')));
+
+    // ── removal (the coupling fix, live): the admin bans the stranger → dropped from the mesh ──
+    const inBefore = !!(await host.members?.resolveByWebid?.(STRANGER));
+    const removal = await call(host, 'removeMember', { groupId: GROUP, memberWebid: STRANGER, policy: 'ban' }, HOST);
+    check('admin removes the stranger (ban) → recorded + revoked',
+      !!removal?.removalId && removal?.revoked === true && removal?.policy === 'ban');
+    const inAfter = !!(await host.members?.resolveByWebid?.(STRANGER));
+    check('the removed member is dropped from the MemberMap (fan-out stops targeting them)', inBefore && !inAfter);
   } finally {
     for (const b of [host, stranger]) await b.agent.transport.disconnect().catch(() => {});
   }

@@ -161,9 +161,9 @@ export function createCircleControlAgentRouter(getProducer) {
       if (!webId || !publicKey) return;
       await route(groupId, (ca) => ca.addMember({ webId, publicKey, role }));
     },
-    async removeMember({ webId, force, groupId }) {
+    async removeMember({ webId, force, policy, groupId }) {
       if (!webId) return;
-      await route(groupId, (ca) => ca.removeMember({ webId, force }));
+      await route(groupId, (ca) => ca.removeMember({ webId, force, policy }));
     },
   };
 }

@@ -60,7 +60,7 @@ describe('createBrowserStoopAgent — control-agent seam (canopy-chat circle mem
     await callSkill(bundle.agent, 'createGroupV2', { groupId: GROUP, name: 'X', rules: RULES });
     await callSkill(bundle.agent, 'leaveGroup', { groupId: GROUP }, BOB);
 
-    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false, groupId: GROUP });
+    expect(ca.removeMember).toHaveBeenCalledWith({ webId: BOB, force: false, policy: 'graceful', groupId: GROUP });
   });
 
   it('gated: redeem WITHOUT a sealing key does not call the control-agent', async () => {
