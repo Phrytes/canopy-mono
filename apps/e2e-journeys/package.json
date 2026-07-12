@@ -1,0 +1,24 @@
+{
+  "name": "@canopy-app/e2e-journeys",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "End-to-end user-journey harness — runs the flagship journeys against a live (deployed) or local relay, in one process, with real SDK + app code.",
+  "bin": {
+    "canopy-e2e": "./run.mjs"
+  },
+  "scripts": {
+    "e2e": "node run.mjs",
+    "e2e:live": "node run.mjs"
+  },
+  "dependencies": {
+    "@canopy/core": "workspace:*",
+    "@canopy/transports": "workspace:*",
+    "@canopy/vault": "workspace:*",
+    "@canopy/pod-client": "workspace:*",
+    "@canopy/relay": "workspace:*",
+    "@canopy/identity-resolver": "workspace:*",
+    "@canopy-app/stoop": "workspace:*",
+    "@canopy-app/companion-node": "workspace:*"
+  }
+}

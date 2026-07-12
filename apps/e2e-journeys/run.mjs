@@ -1,0 +1,74 @@
+#!/usr/bin/env node
+/**
+ * canopy e2e journey harness — runs the flagship user journeys against a relay,
+ * in one process, with the REAL SDK + app code (not stubs).
+ *
+ *   node run.mjs                       # self-contained: starts a local relay, runs all
+ *   node run.mjs wss://your-relay      # against a deployed relay (or set RELAY_URL)
+ *   node run.mjs wss://url two-party offline   # only the named journeys
+ *
+ * Exit 0 = every journey fully green, 1 = something failed, 2 = usage.
+ *
+ * Each journey module exports { name, run({ relayUrl }) -> [{name, ok, detail}] }.
+ * Journeys run sequentially against the same relay (fresh identities each, so no
+ * collision) — the shared relay is the point: this exercises one endpoint end-to-end.
+ */
+import { startRelay } from '@canopy/relay';
+import * as twoParty    from './journeys/twoParty.journey.mjs';
+import * as offline     from './journeys/offline.journey.mjs';
+import * as circle      from './journeys/circle.journey.mjs';
+import * as sealedInbox from './journeys/sealedInbox.journey.mjs';
+import * as buurt       from './journeys/buurt.journey.mjs';
+
+const ALL = [twoParty, offline, circle, sealedInbox, buurt];
+const KEY = (n) => n.split(' ')[0].toLowerCase().replace(/[^a-z-]/g, ''); // "two-party messaging" -> "two-party"
+
+const args = process.argv.slice(2);
+const urlArg = args.find((a) => a.includes('://'));
+const filters = args.filter((a) => !a.includes('://')).map((s) => s.toLowerCase());
+const relayUrlGiven = urlArg || process.env.RELAY_URL;
+
+let selected = ALL;
+if (filters.length) {
+  selected = ALL.filter((j) => filters.some((f) => KEY(j.name).includes(f) || j.name.toLowerCase().includes(f)));
+  if (!selected.length) {
+    console.error(`no journeys matched ${JSON.stringify(filters)}. available: ${ALL.map((j) => KEY(j.name)).join(', ')}`);
+    process.exit(2);
+  }
+}
+
+let localRelay = null;
+let relayUrl = relayUrlGiven;
+if (!relayUrl) {
+  localRelay = await startRelay({ port: 0 });
+  relayUrl = `ws://127.0.0.1:${localRelay.port}`;
+  console.log(`(no relay URL given → started a local relay at ${relayUrl})`);
+}
+
+console.log(`\n╔══ canopy e2e journeys → ${relayUrl}`);
+console.log(`╚══ ${selected.length} ${selected.length === 1 ? 'journey' : 'journeys'}\n`);
+
+const summary = [];
+for (const j of selected) {
+  console.log(`── ${j.name} ──`);
+  let res;
+  try {
+    res = await j.run({ relayUrl });
+  } catch (e) {
+    res = [{ name: 'journey crashed', ok: false, detail: e?.message ?? String(e) }];
+  }
+  for (const r of res) console.log(`   ${r.ok ? '✅' : '❌'} ${r.name}${r.detail ? '  — ' + r.detail : ''}`);
+  const passed = res.filter((r) => r.ok).length;
+  console.log(`   → ${passed}/${res.length}\n`);
+  summary.push({ name: j.name, passed, total: res.length, ok: passed === res.length && res.length > 0 });
+}
+
+if (localRelay) await localRelay.stop().catch(() => {});
+
+console.log('══ summary ══');
+for (const s of summary) console.log(`  ${s.ok ? '✅' : '❌'} ${s.name}: ${s.passed}/${s.total}`);
+const totPass = summary.reduce((a, s) => a + s.passed, 0);
+const totAll  = summary.reduce((a, s) => a + s.total, 0);
+const allOk   = summary.every((s) => s.ok);
+console.log(`\n  ${allOk ? '✅ ALL GREEN' : '❌ FAILURES'} — ${totPass}/${totAll} checks across ${summary.length} journeys\n`);
+process.exit(allOk ? 0 : 1);
