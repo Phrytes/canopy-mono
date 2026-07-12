@@ -68,6 +68,39 @@ export async function wireItemMirror({
   const prefix  = typeof uriPrefix === 'function' ? uriPrefix(scopeId) : uriPrefix;
   if (typeof prefix !== 'string' || !prefix) throw new Error('wireItemMirror: uriPrefix required');
 
+  // ── Slice 2 (task-claim-partition) — claim-conflict surface ───────────────
+  // A partition→merge that double-claims the same task must NOT silently
+  // last-writer-wins the `assignee`. Concurrent claim-vs-claim collisions are
+  // captured here as first-class, human-resolvable records instead of being
+  // overwritten. Everything else (normal claim-onto-open, complete, causal
+  // reassign, body updates, revoke) keeps its exact prior behaviour.
+  //
+  // Keyed by the LOCAL item id. Each record carries both claimants' full task
+  // snapshots (`local` + `incoming`) so NO work is lost — the loser's product
+  // is retrievable from the record (and, when versioning is attached, from the
+  // pseudo-pod version history too).
+  /** @type {Map<string, object>} */
+  const claimConflicts = new Map();
+
+  function recordClaimConflict(local, incoming) {
+    if (!local || typeof local.id !== 'string') return;
+    const taskId = local.id;
+    const prev = claimConflicts.get(taskId);
+    claimConflicts.set(taskId, {
+      taskId,
+      syncedFromId:     local?.source?.syncedFromId ?? incoming?.id ?? null,
+      text:             local.text ?? incoming?.text ?? null,
+      // Preserve the FIRST-seen local snapshot (our own work product) across
+      // repeated collision signals; always take the latest incoming.
+      local:            prev?.local ?? local,
+      incoming,
+      base:             prev?.base ?? null,
+      localAssignee:    local.assignee ?? null,
+      incomingAssignee: incoming?.assignee ?? null,
+      at:               Date.now(),
+    });
+  }
+
   const recipients = new Set();
   function addPeerSync(pubKey) {
     if (!pubKey || typeof pubKey !== 'string') return;
@@ -87,6 +120,16 @@ export async function wireItemMirror({
     const existing = open.find(matches) ?? closed.find(matches);
 
     if (existing) {
+      // Slice 2 — SURGICAL claim-vs-claim guard. When an inbound sync would
+      // overwrite a locally-claimed task's `assignee` with a DIFFERENT,
+      // concurrently-minted claimant, DO NOT overwrite: record a
+      // claim-conflict (keeping both sides) and return. This is the ONLY
+      // branch that diverges from the prior behaviour; every other sync falls
+      // straight through to `applySync` exactly as before.
+      if (isConcurrentClaimCollision(existing, payload)) {
+        recordClaimConflict(existing, payload);
+        return;
+      }
       const action = inferAction(existing, payload);
       try {
         await itemStore.applySync({
@@ -157,16 +200,44 @@ export async function wireItemMirror({
   }
   const unsubscribeStale = pseudoPod.on?.('stale-peer', _onStalePeer) ?? null;
 
+  // Slice 2 — consume `concurrent-write` (fires when a peer write lands at
+  // the SAME logical `_v` as ours with different bytes — the shared-URI
+  // topology signal of a genuine concurrent edit). For a claim-vs-claim
+  // collision this records the same conflict the receive-path guard does
+  // (idempotent — keyed by task id), so central-pod / same-URI setups surface
+  // the double-claim too. Non-claim concurrent writes are left untouched
+  // (the pseudo-pod already snapshots the loser to history).
+  function _onConcurrentWrite(event) {
+    const uri = event?.uri;
+    if (typeof uri !== 'string' || !uri.includes(prefix)) return;
+    const localItem = _asItem(event.localBytes);
+    const peerItem  = _asItem(event.peerBytes);
+    if (isConcurrentClaimCollision(localItem, peerItem)) {
+      recordClaimConflict(localItem, peerItem);
+    }
+  }
+  const unsubscribeConcurrent = pseudoPod.on?.('concurrent-write', _onConcurrentWrite) ?? null;
+
   async function addPeer(pubKey) { addPeerSync(pubKey); }
   function removePeer(pubKey)   { if (typeof pubKey === 'string') recipients.delete(pubKey); }
   async function stop() {
     try { unsubscribe(); } catch { /* swallow */ }
     try { unsubscribeRemoved(); } catch { /* swallow */ }
     if (typeof unsubscribeStale === 'function') { try { unsubscribeStale(); } catch { /* swallow */ } }
+    if (typeof unsubscribeConcurrent === 'function') { try { unsubscribeConcurrent(); } catch { /* swallow */ } }
     recipients.clear();
   }
   function listPeers() { return [...recipients]; }
   function getPeers()  { return [...recipients]; }
+
+  // ── Slice 2/3 — claim-conflict read + clear surface ───────────────────────
+  /** Every open claim-conflict record (newest snapshot per task). */
+  function listClaimConflicts() { return [...claimConflicts.values()]; }
+  /** One record by local task id, or `null`. */
+  function getClaimConflict(taskId) { return claimConflicts.get(taskId) ?? null; }
+  /** Clear a resolved conflict (called by `resolveClaim` after it writes the
+   *  causally-later claim). Returns `true` when a record was removed. */
+  function clearClaimConflict(taskId) { return claimConflicts.delete(taskId); }
 
   async function publish(item, opts = {}) {
     if (!item?.id || recipients.size === 0) return;
@@ -202,7 +273,46 @@ export async function wireItemMirror({
     } catch (_err) { /* best-effort */ }
   }
 
-  return { addPeer, removePeer, stop, listPeers, getPeers, urlFor, publish, publishRemoved };
+  return {
+    addPeer, removePeer, stop, listPeers, getPeers, urlFor, publish, publishRemoved,
+    listClaimConflicts, getClaimConflict, clearClaimConflict,
+  };
+}
+
+/**
+ * Slice 2 (task-claim-partition) — is this inbound sync a CONCURRENT
+ * claim-vs-claim collision (as opposed to a normal claim, a causal reassign,
+ * a completion, a body update, or a revoke)?
+ *
+ * True iff BOTH sides carry a live (uncompleted) claim, the claimants DIFFER,
+ * and the incoming claim did NOT causally branch from our current assignee
+ * (`incoming.claimBase !== local.assignee`). A fresh `claim` carries no
+ * `claimBase` (it branched from the unassigned task) → a genuine double-claim
+ * trips this; a causal `reassign` stamps `claimBase = the superseded assignee`
+ * → it does NOT trip this and flows through to `applySync` unchanged.
+ *
+ * Deliberately narrow: any missing/empty assignee, equal assignees, a
+ * completed side, or a matching causal base all return `false`, preserving
+ * the exact prior behaviour for every non-collision sync.
+ */
+export function isConcurrentClaimCollision(local, incoming) {
+  if (!local || !incoming) return false;
+  if (local.completedAt || incoming.completedAt) return false;
+  const a = local.assignee;
+  const b = incoming.assignee;
+  if (!a || !b) return false;
+  if (a === b) return false;
+  const incomingBase = incoming.claimBase ?? null;
+  if (incomingBase === a) return false;   // causal supersede — let it through
+  return true;
+}
+
+/** Coerce pseudo-pod displaced bytes (object or JSON string) to an item. */
+function _asItem(bytes) {
+  if (bytes == null) return null;
+  if (typeof bytes === 'object') return bytes;
+  if (typeof bytes === 'string') { try { return JSON.parse(bytes); } catch { return null; } }
+  return null;
 }
 
 /**

@@ -364,13 +364,58 @@ export class ItemStore extends Emitter {
       claimedAt: at,
       _etag: ulid(),
     };
-    await this.#writeItem(updated);
+    // Slice 1 (task-claim-partition) — central-pod one-winner. When the
+    // DataSource advertises conditional writes (`readEtag` ⇒ pod-backed
+    // etag-CAS), claim as a compare-and-swap against the base etag: a
+    // racing second writer gets a `CONFLICT` (HTTP 409/412) which maps to
+    // the existing `{error:'already-claimed', current}` contract (re-read
+    // to surface the winner). Non-CAS DataSources (MemorySource, …) keep
+    // the read-check-write path byte-for-byte unchanged.
+    const conflict = await this.#casWriteOrConflict(id, updated, current);
+    if (conflict) return conflict;
     await this.#appendAudit({
       id: ulid(), itemId: id, action: 'claim',
       actor, actorDisplayName: ctx.actorDisplayName, at,
     });
     this.emit('item-claimed', updated);
     return updated;
+  }
+
+  /**
+   * Slice 1 (task-claim-partition) — conditional-write helper for `claim`.
+   *
+   * When the DataSource is CAS-capable (duck-typed via `readEtag`), write
+   * `updated` with an `If-Match` precondition against the current base
+   * etag. A precondition failure (`code:'CONFLICT'` / HTTP 409 / 412) means
+   * another writer claimed first → returns `{error:'already-claimed',
+   * current}` after re-reading the winner. Any other error propagates.
+   *
+   * When the DataSource is NOT CAS-capable, this is exactly the previous
+   * `await this.#writeItem(updated)` — no behaviour change.
+   *
+   * @returns {Promise<null | {error:'already-claimed', current: object}>}
+   *   `null` on success (caller proceeds to audit + emit).
+   */
+  async #casWriteOrConflict(id, updated, current) {
+    const src = this.#source;
+    if (typeof src.readEtag !== 'function') {
+      await this.#writeItem(updated);
+      return null;
+    }
+    let baseEtag = null;
+    try { baseEtag = await src.readEtag(this.#itemUri(id)); }
+    catch { baseEtag = null; }
+    try {
+      await this.#writeItem(updated, baseEtag != null ? { ifMatch: baseEtag } : undefined);
+      return null;
+    } catch (err) {
+      const conflict = err && (err.code === 'CONFLICT' || err.status === 409 || err.status === 412);
+      if (conflict) {
+        const fresh = await this.#readItem(id);
+        return { error: 'already-claimed', current: fresh ?? current };
+      }
+      throw err;
+    }
   }
 
   /**
@@ -397,6 +442,14 @@ export class ItemStore extends Emitter {
       ...current,
       assignee: newAssignee ?? undefined,
       claimedAt: newAssignee ? at : undefined,
+      // Slice 2 (task-claim-partition) — causal-base marker. A reassign
+      // KNOWS the assignment it supersedes, so it records the prior
+      // assignee. The substrate mirror uses this to tell a *causal*
+      // reassign (`claimBase === the peer's current assignee`) from a
+      // *concurrent* double-claim (differing claimants, no shared base) —
+      // only the latter is routed to a claim-conflict. A fresh `claim`
+      // carries no `claimBase` (it branches from the unassigned task).
+      claimBase: current.assignee ?? null,
       _etag: ulid(),
     };
     if (!newAssignee) delete updated.assignee;
@@ -730,8 +783,11 @@ export class ItemStore extends Emitter {
   #itemUri(id)  { return `${this.#root}${ITEMS_DIR}/${id}.json`; }
   #auditUri(id) { return `${this.#root}${AUDIT_DIR}/${id}.json`; }
 
-  async #writeItem(item) {
-    await this.#source.write(this.#itemUri(item.id), JSON.stringify(item));
+  async #writeItem(item, opts) {
+    // `opts` (Slice 1) carries an optional `{ifMatch}` precondition for
+    // CAS-capable DataSources. MemorySource & friends ignore the extra
+    // arg, so the default (non-CAS) write path is unchanged.
+    await this.#source.write(this.#itemUri(item.id), JSON.stringify(item), opts);
   }
 
   async #readItem(id) {
@@ -932,7 +988,7 @@ export class ItemStore extends Emitter {
     const forbidden = [
       'id', 'addedBy', 'addedByDisplayName', 'addedAt',
       'completedAt', 'completedBy', 'completedByDisplayName',
-      'assignee', 'claimedAt',
+      'assignee', 'claimedAt', 'claimBase',
       // DoD-lifecycle fields with their own dedicated transitions:
       'reviewLog',      // append-only via submit/approve/reject/revoke
       'deliverable',    // set via submit
