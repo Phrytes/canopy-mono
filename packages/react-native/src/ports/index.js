@@ -26,6 +26,13 @@ export { SecureStore }       from './SecureStore.js';
 export { ExpoBackgroundAdapter } from './backgroundAdapters/ExpoBackgroundAdapter.js';
 export { ExpoSecureStore }       from './secureStores/ExpoSecureStore.js';
 
+// iOS reliable-wake SLOTs (⚠️ SCAFFOLD — native side needs on-device
+// verification; the JS surface satisfies the port contracts today).  These are
+// dependency-injected (no static `expo-*`/native import), so they're safe to
+// export + construct device-free.  See docs/ios-reliable-wake-runbook.md.
+export { IosPushAdapter }        from './pushAdapters/IosPushAdapter.js';
+export { IosBackgroundAdapter }  from './backgroundAdapters/IosBackgroundAdapter.js';
+
 // Mocks (device-free testing)
 export { MockPushAdapter }       from './mocks/MockPushAdapter.js';
 export { MockBackgroundAdapter } from './mocks/MockBackgroundAdapter.js';

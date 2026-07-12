@@ -8,6 +8,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { MockBackgroundAdapter } from '../../../src/ports/mocks/MockBackgroundAdapter.js';
 import { ExpoBackgroundAdapter } from '../../../src/ports/backgroundAdapters/ExpoBackgroundAdapter.js';
+import { IosBackgroundAdapter }  from '../../../src/ports/backgroundAdapters/IosBackgroundAdapter.js';
 
 function runBackgroundAdapterContract(name, make) {
   describe(`BackgroundAdapter contract — ${name}`, () => {
@@ -49,6 +50,11 @@ function runBackgroundAdapterContract(name, make) {
 
 // Mock
 runBackgroundAdapterContract('MockBackgroundAdapter', () => new MockBackgroundAdapter());
+
+// The iOS reliable-wake SLOT (⚠️ scaffold): its JS surface must satisfy the port
+// contract today; the BGTaskScheduler/NSE native side is the documented
+// follow-up (docs/ios-reliable-wake-runbook.md), NOT tested here.
+runBackgroundAdapterContract('IosBackgroundAdapter (scaffold)', () => new IosBackgroundAdapter());
 
 // Expo concrete — inject fake today's-helpers so it's device-free.
 function makeExpo() {

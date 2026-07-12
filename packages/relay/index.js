@@ -16,8 +16,12 @@ export { QueueStore }           from './src/queueStores/QueueStore.js';
 export { MemoryQueueStore }     from './src/queueStores/MemoryQueueStore.js';
 export { SqliteQueueStore }     from './src/queueStores/SqliteQueueStore.js';
 export { PushSender }           from './src/push/PushSender.js';
-export { ExpoPushSender }       from './src/push/ExpoPushSender.js';
+export { ExpoPushSender, ReliableExpoPushSender } from './src/push/ExpoPushSender.js';
 export { PushTokenRegistry }    from './src/push/PushTokenRegistry.js';
+export {
+  CONTENTLESS_WAKE, RELIABLE_WAKE_ALERT, WAKE_MODES,
+  buildExpoWakeBody, assertContentlessWake,
+}                               from './src/push/wakePayload.js';
 export { mountBlobGate }        from './src/blobGateMount.js';
 export {
   BlobAclStore, MemoryBlobAclStore, SqliteBlobAclStore,

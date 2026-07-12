@@ -70,6 +70,8 @@ import { registerFolioAgent, FOLIO_CAPABILITIES } from '../../folio/src/register
 import { searchFiles as searchFilesCore, folioBriefSummary } from '../../folio/src/agentCores.js';
 
 import { buildCompanionStore }         from './store.js';
+import { createSealedInbox, FileSealedInboxStore } from './sealedInbox.js';
+import { CONTENTLESS_WAKE }            from '@canopy/relay';
 import { buildDevPodSource }           from './podSource.js';
 import { ScopedPodClient, closedPodClient } from './scopedPodClient.js';
 import { ACCEPT_DELEGATION_OP }        from './authorizePod.js';
@@ -209,6 +211,14 @@ export async function startCompanionNode(opts = {}) {
     label      = 'companion-folio',
     gate       = true,
     permissionsVault,
+    // ── M2 — the durable SEALED INBOX (rung-c holder) ────────────────────────
+    inbox            = false,   // enable the sealed inbox (OFF by default ⇒ R1/R2 tests unaffected)
+    inboxOwnerPubKey,           // the owner device the node holds for + the ONLY key allowed to drain
+    inboxStore,                 // inject a store (tests); default file-backed under configDir
+    inboxWakeSender,            // a PushSender (reliable) fired on deposit-for-away-owner; optional
+    inboxWakeToken,             // the owner device's push token (wake target)
+    inboxWakePlatform = 'ios',  // informational platform for the wake
+    inboxThrottleMs,            // min gap between wakes per owner (M1 batching); default 30s
   } = opts;
 
   // ── 1. Host identity — persisted so the pubKey is stable across restarts ──
@@ -438,6 +448,62 @@ export async function startCompanionNode(opts = {}) {
     }
   });
 
+  // ── M2. The durable SEALED INBOX (rung-c holder) — sealed-only, owner-gated ──
+  // Wired ONLY when `inbox` is enabled (OFF by default so R1/R2/R3 tests are
+  // untouched). The node HOLDS sealed messages for its owner while their device
+  // is away and DRAINS them on reconnect — the durable upgrade over the relay's
+  // 5-min in-memory queue. It NEVER decrypts (sealed-only ⇒ any-host trust tier,
+  // invariant #7): `deposit` refuses anything not sealed; the node holds no key.
+  let sealedInbox = null;
+  if (inbox) {
+    if (!inboxOwnerPubKey) {
+      throw new Error('companion-node: inbox requires opts.inboxOwnerPubKey (the owner the node holds for)');
+    }
+    const store = inboxStore
+      ?? new FileSealedInboxStore(join(resolveConfigDir(configDir), 'sealed-inbox.json'));
+
+    // The reliable wake: on a deposit for the away owner, fire a CONTENTLESS
+    // alert-push + mutable-content wake (behind the PushSender port). Throttled
+    // per owner ⇒ a burst of deposits yields ONE wake, not N (M1 batching).
+    const notify = (inboxWakeSender && inboxWakeToken)
+      ? async () => {
+          await inboxWakeSender.send(inboxWakeToken, { ...CONTENTLESS_WAKE }, { platform: inboxWakePlatform });
+        }
+      : null;
+
+    sealedInbox = createSealedInbox({
+      store,
+      notify,
+      ...(typeof inboxThrottleMs === 'number' ? { throttleMs: inboxThrottleMs } : {}),
+    });
+
+    // `inbox.deposit` — UNGATED + SELF-GUARDING (like `pod.acceptDelegation`):
+    // any peer may drop a message into the owner's mailbox, but ONLY a sealed
+    // envelope is accepted (deny-by-default). The node can't read it, so an open
+    // slot leaks nothing — it's a blind sealed drop-box.
+    agent.register('inbox.deposit', async (ctx) => {
+      const data = Parts.data(ctx?.parts) ?? {};
+      return sealedInbox.deposit(inboxOwnerPubKey, data.sealed, { topic: data.topic });
+    });
+
+    // `inbox.drain` — OWNER-GATED (reuse of the R2b delegation posture): only the
+    // configured owner device may drain (deny-by-default, opaque reject). Returns
+    // the opaque sealed items + a contentless digest; only the device can `open`.
+    agent.register('inbox.drain', async (ctx) => {
+      const caller = ctx?.originFrom ?? ctx?.from;
+      if (caller !== inboxOwnerPubKey) return { ok: false, error: 'forbidden' };
+      const { items, digest } = await sealedInbox.drain(inboxOwnerPubKey);
+      return { ok: true, items, digest };
+    });
+
+    // `inbox.count` — OWNER-GATED presence/status probe (contentless count).
+    agent.register('inbox.count', async (ctx) => {
+      const caller = ctx?.originFrom ?? ctx?.from;
+      if (caller !== inboxOwnerPubKey) return { ok: false, error: 'forbidden' };
+      return { ok: true, count: await sealedInbox.count(inboxOwnerPubKey) };
+    });
+  }
+
   // ── R2. Inbound capability-token gate — first activation of the parked engine ─
   // Host-as-authority model (see header). Only built when the gate is ON.
   let trustRegistry = null;
@@ -550,6 +616,10 @@ export async function startCompanionNode(opts = {}) {
     // on `relay.blobGate.acl` (mount default). Both null when media is OFF.
     mediaEdge: mediaEdgeCfg,
     capabilities: [...FOLIO_CAPABILITIES],
+    // M2 — the durable sealed inbox (null when `inbox` is OFF). Sealed-only,
+    // owner-gated; drains to the owner device on reconnect via `inbox.drain`.
+    inbox: sealedInbox,
+    inboxOwnerPubKey: inbox ? inboxOwnerPubKey : null,
     // R2 — the inbound gate + its authority surface (all null when gate is OFF).
     gate,
     policyEngine,
