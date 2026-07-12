@@ -31,6 +31,7 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `j-manage` | companion-node management (6d), BOTH surfaces: ① owner invokes owner-gated node ops over the relay (the canopy-chat path); ② the node-served `/manage` web + owner-pairing flow (browser gets a session token only after the owner approves its code from their phone); non-owners denied throughout |
 | `j-bot` | **[hermetic registry]** a bot added to a shared circle with a CUSTOM NAME (`registerAgentBundle`); two users discover the SAME bot from one shared registry and each invoke it over the relay (6b) |
 | `j-keyexchange` | cross-app scoped data/key access (6c), both models: (a) a scoped per-resource key GRANT the app opens offline (wrong-scope / stolen / revoked → no key); (b) PROXY — the app never holds a key, the custodian opens over the relay and returns plaintext only |
+| `j-telegram` | **[hermetic; needs the feedback app]** Telegram on-ramp PARITY (6a): the TG + app channels feed the SAME shared dispatcher → identical validated, pseudonymous contributions in the central pod, differing only by pseudonym — "build once, two adapters" |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up
