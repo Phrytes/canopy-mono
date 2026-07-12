@@ -9,6 +9,7 @@ export { createSealedPodClient, recipientStrategy, groupKeyStrategy } from './Se
 export {
   buildGroupKeyResource, unwrapGroupKey, grantMember, rotateGroupKeyResource,
   unwrapGroupKeyVersion, readableGroupKeys, openSealedAcrossVersions,   // Phase 3 — historic-key retention
+  banFromHistory,   // removal policy — hard-ban re-wrap of retained history (excludes the departed)
 } from './groupKeyResource.js';
 export {
   createSealedIndex, upsertEntry, removeEntry, getEntry, decodePseudonym,

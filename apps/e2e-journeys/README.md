@@ -33,6 +33,7 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `j-keyexchange` | cross-app scoped data/key access (6c), both models: (a) a scoped per-resource key GRANT the app opens offline (wrong-scope / stolen / revoked → no key); (b) PROXY — the app never holds a key, the custodian opens over the relay and returns plaintext only |
 | `j-telegram` | **[hermetic; needs the feedback app]** Telegram on-ramp PARITY (6a): the TG + app channels feed the SAME shared dispatcher → identical validated, pseudonymous contributions in the central pod, differing only by pseudonym — "build once, two adapters" |
 | `j-media` | **[needs a real S3/MinIO]** full-size media over the blob-gate edge against a REAL S3: circleMemberActors resolves the roster → signing pubkeys; a whitelisted uploader stores ciphertext, grants it to members, a granted member reads+opens it, a non-member is denied (opaque 403) |
+| `j-removal` | **[hermetic]** policy-based member removal: removal now revokes the mesh proof too (coupling fix); graceful keeps the departed's access to content they already had; ban re-seals history to exclude them; forward secrecy holds for both |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up

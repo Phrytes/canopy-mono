@@ -11,7 +11,7 @@
 // Pure orchestration: pod I/O is injected — `sharing.grant/revoke`, and a `keyStore` {read,write} that
 // persists the key resource to the pod (e.g. /.keys/group-vN.json via a SealedPodClient or PodClient).
 
-import { grantMember, rotateGroupKeyResource, buildGroupKeyResource } from './groupKeyResource.js';
+import { grantMember, rotateGroupKeyResource, buildGroupKeyResource, banFromHistory } from './groupKeyResource.js';
 import { generateGroupKey } from './envelope.js';
 
 function normalizeMember(m) {
@@ -28,7 +28,7 @@ function normalizeMember(m) {
  * @param {string[]} [a.modes]                                    ACL modes granted to members (default read+write)
  * @param {Array<{webId,publicKey,role}>} [a.roster]             initial member roster
  */
-export function createControlAgent({ sharing, containerUri, keyStore, controllerKey, modes = ['read', 'write'], roster = [] }) {
+export function createControlAgent({ sharing, containerUri, keyStore, controllerKey, modes = ['read', 'write'], roster = [], revokeMeshProof = null }) {
   if (!sharing || typeof sharing.grant !== 'function' || typeof sharing.revoke !== 'function') {
     throw new Error('createControlAgent: sharing with grant/revoke required');
   }
@@ -76,8 +76,18 @@ export function createControlAgent({ sharing, containerUri, keyStore, controller
       return { keyResource: next, members: members.slice() };
     },
 
-    /** Leave: enforce ≥1 admin, revoke ACL + rotate the group key (forward secrecy). */
-    async removeMember({ webId, force = false }) {
+    /**
+     * Leave / remove — enforce ≥1 admin, revoke ACL + rotate the group key (forward secrecy) + revoke the
+     * departed's MESH PROOF (the coupling fix: removal is complete, not just content-key rotation).
+     *
+     * `policy`:
+     *   • `'graceful'` (default) — a normal leave/removal. Forward secrecy (no new content/mesh), but retained
+     *     `history[]` is left intact, so the departed keeps access to content they ALREADY had (on their device).
+     *   • `'ban'` — maximal revocation (intruder/hostile). Additionally re-seals `history[]` to EXCLUDE the
+     *     departed, so no server-fetchable old key remains for them. (Content they already downloaded can't be
+     *     clawed back — no system can — but everything the pod holds is denied.)
+     */
+    async removeMember({ webId, force = false, policy = 'graceful' }) {
       const target = members.find((x) => x.webId === String(webId));
       if (!target) return { keyResource: await keyStore.read(), members: members.slice(), removed: false };
       const adminCount = members.filter((x) => x.role === 'admin').length;
@@ -87,13 +97,23 @@ export function createControlAgent({ sharing, containerUri, keyStore, controller
       await sharing.revoke({ containerUri, agent: target.webId, modes });
       const remaining = members.filter((x) => x.webId !== target.webId);
       const cur = await keyStore.read();
-      const next = rotateGroupKeyResource({
+      let next = rotateGroupKeyResource({
         previous: cur,
         recipients: recipientsWithController(remaining.map((x) => x.publicKey)),
       });
+      if (policy === 'ban') {
+        next = banFromHistory(next, { excludePubKey: target.publicKey, controllerPrivateKey: controllerKey.privateKey });
+      }
       await keyStore.write(next);
       members = remaining;
-      return { keyResource: next, members: members.slice(), removed: true };
+      // ── Coupling: revoke the departed's mesh membership proof too (both policies). Best-effort:
+      //    a failure is surfaced in the return, never silently swallowed and never left partial-then-thrown.
+      let proofRevoked = false;
+      if (typeof revokeMeshProof === 'function') {
+        try { await revokeMeshProof(target); proofRevoked = true; }
+        catch { proofRevoked = false; }
+      }
+      return { keyResource: next, members: members.slice(), removed: true, policy, banned: policy === 'ban', proofRevoked };
     },
   };
 }

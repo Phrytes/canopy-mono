@@ -38,7 +38,9 @@ export function buildGroupKeyResource({ version = 1, groupKey, recipients, histo
   const pubs = [...new Set((Array.isArray(recipients) ? recipients : [recipients]).filter(Boolean))];
   if (pubs.length === 0) throw new Error('buildGroupKeyResource: at least one recipient public key required');
   if (!groupKey) throw new Error('buildGroupKeyResource: groupKey required');
-  const res = { v: 1, version, members: pubs.length, sealed: seal(groupKey, pubs) };
+  // `recipients` (the public keys, additive) is retained so a later BAN can re-seal history to a precise
+  // subset (recipients − departed). Pubkeys are public — storing them is not a secrecy leak.
+  const res = { v: 1, version, members: pubs.length, recipients: pubs, sealed: seal(groupKey, pubs) };
   if (Array.isArray(history) && history.length) res.history = history;
   return res;
 }
@@ -154,7 +156,33 @@ export function rotateGroupKeyResource({ previous = null, recipients, groupKey }
   let history;
   if (previous && typeof previous.sealed === 'string') {
     const prior = Array.isArray(previous.history) ? previous.history : [];
-    history = [...prior, { version: previous.version, members: previous.members, sealed: previous.sealed }];
+    // Carry the outgoing version's `recipients` forward so a later BAN can re-seal it precisely.
+    history = [...prior, { version: previous.version, members: previous.members, recipients: previous.recipients ?? null, sealed: previous.sealed }];
   }
   return buildGroupKeyResource({ version: prev + 1, groupKey: groupKey || generateGroupKey(), recipients, history });
+}
+
+/**
+ * BAN re-wrap — re-seal every retained history version to EXCLUDE `excludePubKey`, so a banned member can no
+ * longer obtain ANY server-side old-version key (the maximal / "ban" revocation, vs the default "graceful"
+ * removal that leaves history intact so the departed keeps what they already had). Remaining recipients keep
+ * their access. The controller is always a recipient of every version, so it can unwrap + re-seal each. A
+ * history entry with no retained `recipients` (legacy resources) is left untouched — an honest limitation.
+ * `extra[]` supplementary envelopes are dropped (one could otherwise re-admit the departed).
+ */
+export function banFromHistory(resource, { excludePubKey, controllerPrivateKey } = {}) {
+  if (!resource || !Array.isArray(resource.history) || resource.history.length === 0) return resource;
+  if (!excludePubKey || !controllerPrivateKey) return resource;
+  const history = resource.history.map((h) => {
+    if (!h || typeof h.sealed !== 'string' || !Array.isArray(h.recipients)) return h; // legacy → can't re-seal precisely
+    const remaining = h.recipients.filter((r) => r !== excludePubKey);
+    if (remaining.length === h.recipients.length) return h;   // departed wasn't in this version
+    if (remaining.length === 0) return null;                  // no one left → drop the version
+    let vgk;
+    try { vgk = open(h.sealed, controllerPrivateKey); } catch { return h; }   // controller can't unwrap → leave as-is
+    return { version: h.version, members: remaining.length, recipients: remaining, sealed: seal(vgk, remaining) };
+  }).filter(Boolean);
+  const out = { ...resource };
+  if (history.length) out.history = history; else delete out.history;
+  return out;
 }
