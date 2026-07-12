@@ -1,11 +1,15 @@
 # DEPLOY-RUNBOOK — get the relay (+ CSS pod + companion) online
 
 Turnkey guide to putting the canopy backend on a **free** host the moment you
-provision one. Two paths, both accurate against the configs already in `deploy/`:
+provision one. Three paths, all accurate against the configs already in `deploy/`:
 
-- **Path A — Koyeb**: fastest, auto-TLS, no credit card, real WebSockets. Great
-  for active testing. Scales to zero after ~1h idle (cold start on next hit), so
-  it is not a 24/7 hold.
+- **Path C — Local stack + tunnel** *(no account, no card — start here for testing)*:
+  run the stack on your own machine, expose it with `cloudflared`/`ngrok` for a
+  real public `wss://`. Host = your machine (up while you test). **Recommended for
+  right-now testing.**
+- **Path A — Koyeb**: fastest *hosted* option, auto-TLS, real WebSockets — but
+  signup now asks for payment info. Scales to zero after ~1h idle, so not a 24/7
+  hold.
 - **Path B — Oracle Cloud Always-Free VM**: a real always-on host, the whole
   stack (relay + CSS pod + companion) via `docker compose`, TLS via Caddy +
   Let's Encrypt. Free forever, but needs a credit card for identity verification
@@ -27,7 +31,8 @@ code changes. Env var names below are quoted verbatim from the per-service
 
 | | You provide (only you can) | Automated by this runbook |
 |---|---|---|
-| **Path A** | Koyeb account; (optional) R2 creds, Expo token | repo/image deploy, env, TLS, the `wss://` URL |
+| **Path C** | nothing — `cloudflared`/`ngrok` installed + your machine up; (optional) free CF account for a stable pod URL | local `up -d`, the tunnel command, client wiring |
+| **Path A** | Koyeb account (asks for payment info); (optional) R2 creds, Expo token | repo/image deploy, env, TLS, the `wss://` URL |
 | **Path B** | Oracle account + CC; a domain + DNS A-records; (optional) R2 creds, Expo token; the WAC-vs-ACP pod choice | Docker + compose install, `up -d`, Caddy TLS, service wiring |
 
 Everything after the account/provisioning/domain/secrets is the copy-paste
@@ -257,6 +262,66 @@ Volumes (`pod-data`, `companion-data`, `caddy-data`) persist across this.
 
 ---
 
+## Path C — Local stack + tunnel (ZERO account, ZERO card — best for testing)
+
+Both Koyeb and Oracle now want payment info at signup. For *testing* you don't
+need a rented host at all: run the stack you already have (`docker-compose.yml`)
+on your own machine and expose it through a **tunnel** that terminates real TLS
+and gives you a public `https://` / `wss://` URL. This is the fastest way to a
+browser-reachable + iOS-reachable endpoint, with **no account and no card**.
+
+Trade-off: the "host" is your machine, so *always-on = while your machine is up*.
+Perfect for a test session (browser client, multi-pod, iOS wake, companion);
+swap to Path B when you later want a genuinely always-on companion node.
+
+### C1. Bring the stack up locally (no TLS overlay — the tunnel provides TLS)
+
+```bash
+# from canopy-mono/deploy, with .env filled (RELAY_* / POD_* / optional R2_*/push):
+docker compose up -d          # relay :8787, CSS pod :3000, companion (internal)
+```
+
+The companion reaches the relay over the internal docker network
+(`COMPANION_RELAY_URL=ws://relay:8787`) — it needs **no** tunnel of its own.
+Only the two *client-facing* ports get tunnelled: relay `:8787` and pod `:3000`.
+
+### C2. Tunnel with `cloudflared` (recommended — unlimited, no signup for a quick tunnel)
+
+```bash
+# install once (Linux): see https://developers.cloudflare.com/cloudflare-tunnel/
+# then, one tunnel per client-facing port (two terminals, or run detached):
+cloudflared tunnel --url http://localhost:8787   # → https://<rand-A>.trycloudflare.com  (relay)
+cloudflared tunnel --url http://localhost:3000   # → https://<rand-B>.trycloudflare.com  (pod)
+```
+
+Each prints a `https://<random>.trycloudflare.com` URL that proxies WebSocket
+fine → real `wss://`. **ngrok** is an equivalent fallback (`ngrok http 8787`),
+simpler UX but the free tier caps connections and rotates the URL.
+
+### C3. Point clients at the tunnel URLs
+
+- Relay transport: `RelayTransport({ relayUrl: 'wss://<rand-A>.trycloudflare.com' })`
+- Media (Vite web): `VITE_CIRCLE_MEDIA_EDGE_URL=https://<rand-A>.trycloudflare.com/blob-gate`
+- Pod base: `CSS_BASE_URL=https://<rand-B>.trycloudflare.com/`
+
+> **Pod gotcha — stable URL for the pod.** CSS bakes its public base URL into the
+> WebIDs / OIDC issuer it mints, so a quick-tunnel URL that **rotates on every
+> restart breaks existing WebIDs**. The relay is fine with a rotating URL (it
+> holds no durable identity); the **pod is not**. For pod testing across restarts
+> use a **named tunnel** instead of a quick one: a *free* Cloudflare account (still
+> **no card**) + any domain you've added to Cloudflare's free plan gives you a
+> stable `pod.<yourdomain>` → set `CSS_BASE_URL` to that once and it sticks. If
+> you only need a single session, the quick tunnel is fine as-is.
+
+### C4. iOS / device note
+
+A `trycloudflare.com` (or named-tunnel) URL is a *real* public TLS endpoint, so
+it satisfies iOS ATS + the browser `wss://` requirement — the same reliable-wake
+and mobile-client testing you'd do against Path B works here, as long as your
+machine + the tunnels stay up for the test run.
+
+---
+
 ## The confidential LLM proxy — not deployable here
 
 There is no server to host for the confidential LLM path: `deploy/llm-proxy/` is
@@ -276,6 +341,12 @@ endpoint (e.g. Privatemode). Full detail: `deploy/llm-proxy/README.md`.
   **domain** with A-records for `RELAY_DOMAIN`/`POD_DOMAIN`, and the WAC-vs-ACP
   pod decision. Optional: R2 creds, Expo token. The provision→deploy→TLS→wiring
   commands are all above.
+- **Path C (local + tunnel):** *nothing* — no account, no card. Just `cloudflared`
+  (or `ngrok`) installed and your machine up for the test run. Optional free
+  Cloudflare account (still no card) if you want a stable pod URL across restarts.
+
+**For testing right now, Path C is the recommendation** — it's the only path with
+no signup wall, and it gives the same real `wss://` endpoint the clients need.
 
 ## Validation status of these configs
 
