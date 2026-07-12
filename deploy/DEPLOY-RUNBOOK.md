@@ -244,12 +244,35 @@ The overlay wires everything on the Docker network; you don't hand-edit these:
 | Pod public URL | `CSS_BASE_URL=https://<POD_DOMAIN>/` | overlay (must equal the public pod domain — CSS bakes it into every WebID) |
 | Caddy → relay | `reverse_proxy relay:8787` | `caddy/Caddyfile` (wss:// + /blob-gate) |
 | Caddy → pod | `reverse_proxy pod:3000` | `caddy/Caddyfile` |
+| Caddy → companion `/manage` | `handle /manage* { reverse_proxy companion:8790 }` | `caddy/Caddyfile` (only live when management is ON — see B8a) |
 
 Client-side (your apps, not on the VM):
 
 - `RelayTransport({ relayUrl: 'wss://<RELAY_DOMAIN>' })`
 - `VITE_CIRCLE_MEDIA_EDGE_URL=https://<RELAY_DOMAIN>/blob-gate`
 - pod onboarding → `https://<POD_DOMAIN>/`
+
+### B8a. Optional — the online `/manage` interface (6d)
+
+The companion node can serve an owner-only web dashboard (node status · tenants ·
+revoke a grant) at **`https://<RELAY_DOMAIN>/manage`**, fronted by Caddy on the same
+domain. It is **opt-in** and **off by default**.
+
+To turn it on, set ONE variable in `deploy/.env`:
+
+```bash
+# your DEVICE's pubKey — the ONLY key allowed to manage this node.
+# (canopy-chat → your identity; or read the companion's own host key from its logs.)
+COMPANION_MANAGE_OWNER_PUBKEY=<your-device-pubkey>
+```
+
+Then `docker compose … up -d` (B7). The overlay already wires the companion to serve
+on `companion:8790` (internal only — never published to the host) and Caddy to route
+`/manage` there. Auth is a **pairing flow, never a password**: open
+`https://<RELAY_DOMAIN>/manage`, it shows a code, you **approve that code from your
+phone** (canopy-chat → your companion node → approve), and the browser gets a scoped,
+revocable session token. Leave `COMPANION_MANAGE_OWNER_PUBKEY` empty and management
+stays off (the `/manage` route simply has no upstream).
 
 ### B9. Update / restart
 

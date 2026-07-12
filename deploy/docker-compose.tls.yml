@@ -53,6 +53,18 @@ services:
     environment:
       CSS_BASE_URL: "https://${POD_DOMAIN}/"
 
+  # 6d — the online /manage interface (surface ②). OPT-IN: set
+  # COMPANION_MANAGE_OWNER_PUBKEY in deploy/.env to your device's pubKey (the ONLY
+  # key allowed to manage). Empty ⇒ management stays OFF and Caddy's /manage route
+  # simply has no upstream. The port/host below let Caddy reach it INTERNALLY
+  # (companion:8790, same compose network) — it is NOT published to the host.
+  companion:
+    environment:
+      COMPANION_RELAY_URL: "ws://relay:8787"
+      COMPANION_MANAGE_OWNER_PUBKEY: "${COMPANION_MANAGE_OWNER_PUBKEY:-}"
+      COMPANION_MANAGE_HTTP_PORT: "8790"
+      COMPANION_MANAGE_HTTP_HOST: "0.0.0.0"
+
 volumes:
   caddy-data:
   caddy-config:

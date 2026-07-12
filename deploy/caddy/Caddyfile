@@ -24,14 +24,27 @@
 	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
 }
 
-# ── Relay: WebSocket (wss://) + media blob-gate (https://.../blob-gate) ──────────
+# ── Relay: WebSocket (wss://) + media blob-gate + the /manage web ───────────────
 # `reverse_proxy` transparently upgrades WebSocket connections, so both the
 # wss:// messaging socket and the https://$RELAY_DOMAIN/blob-gate media edge flow
 # to the same plain-HTTP relay. The relay answers HTTP 200 on `/`
 # ("@canopy/relay — WebSocket endpoint only"), which doubles as Caddy's upstream
 # health signal.
+#
+# The companion node's online /manage interface (6d surface ②) is served on the
+# SAME public domain under `/manage` — a separate `handle` so it routes to the
+# companion (its manage HTTP port, internal 8790) while everything else falls
+# through to the relay. `handle` blocks are mutually exclusive + matched in order.
+# Requires the companion booted with COMPANION_MANAGE_OWNER_PUBKEY +
+# COMPANION_MANAGE_HTTP_PORT=8790 + COMPANION_MANAGE_HTTP_HOST=0.0.0.0 (the
+# docker-compose.tls.yml overlay wires that when you set the owner pubkey).
 {$RELAY_DOMAIN} {
-	reverse_proxy relay:8787
+	handle /manage* {
+		reverse_proxy companion:8790
+	}
+	handle {
+		reverse_proxy relay:8787
+	}
 }
 
 # ── Solid pod (Community Solid Server) ──────────────────────────────────────────
