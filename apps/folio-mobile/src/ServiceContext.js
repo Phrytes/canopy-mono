@@ -27,6 +27,7 @@ import * as SecureStore    from 'expo-secure-store';
 import * as Crypto         from 'expo-crypto';
 import * as BackgroundFetch from 'expo-background-fetch';
 
+import { ExpoSecureStore } from '@canopy/react-native/ports';
 import { OidcSessionRN } from './auth/OidcSessionRN.js';
 import {
   loadStoredPodRoot, savePodRoot, DEFAULT_LOCAL_FOLDER,
@@ -98,7 +99,7 @@ export function ServiceProvider({ children, deps = {} }) {
     let cancelled = false;
     (async () => {
       try {
-        const session = new OidcSessionRN({ store: SS });
+        const session = new OidcSessionRN({ store: new ExpoSecureStore({ store: SS }).asOidcStore() });
         await session.restoreFromVault({ onWarning: console.warn });
         if (cancelled) return;
         setOidc(session);
@@ -143,7 +144,7 @@ export function ServiceProvider({ children, deps = {} }) {
     setStatus('starting');
     setError(null);
     try {
-      const session = oidc ?? new OidcSessionRN({ store: SS });
+      const session = oidc ?? new OidcSessionRN({ store: new ExpoSecureStore({ store: SS }).asOidcStore() });
       await session.adoptTokens(tokens);
       setOidc(session);
 

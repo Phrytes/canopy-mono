@@ -35,7 +35,9 @@ import {
 } from '@canopy-app/canopy-chat';
 
 import { createFeedbackMount } from '../../../canopy-chat/src/feedback/feedbackMount.js';
-import { presentLocalNotification } from '../v2/nativePush.js';
+// presentLocalNotification is the shared local-notify helper (folded out of the
+// app's old v2/nativePush.js dup → @canopy/react-native/push · PushAdapter.presentLocal).
+import { presentLocalNotification } from '@canopy/react-native/push';
 import { feedbackContactItem } from '../../../canopy-chat/src/feedback/feedbackSurface.js';
 import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
 import { buildNavModels }  from '../core/navModel.js';
@@ -108,6 +110,7 @@ import { useCanopyChatAuth }        from '../auth/canopyChatAuthHook.js';
 import { buildMobilePodAuth }       from '../core/podAuth.js';
 import { OidcSessionRN }            from '@canopy/oidc-session-rn';
 import * as SecureStore             from 'expo-secure-store';
+import { ExpoSecureStore }          from '@canopy/react-native/ports';
 import AsyncStorage                 from '@react-native-async-storage/async-storage';
 import SlashFAB            from '../rn/SlashFAB.js';
 import ThreadDrawer        from '../rn/ThreadDrawer.js';
@@ -306,7 +309,7 @@ export default function ChatScreen({
   // harnesses) fall back to a screen-local ref.
   const localSessionRef = useRef(null);
   if (!sessionRefProp && !localSessionRef.current) {
-    localSessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'canopychat' });
+    localSessionRef.current = new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'canopychat' });
   }
   const sessionRef = sessionRefProp ?? localSessionRef;
   useEffect(() => {

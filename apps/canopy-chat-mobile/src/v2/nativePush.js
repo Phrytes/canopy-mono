@@ -70,18 +70,7 @@ export async function disableNativePush({ callSkill, token } = {}) {
   return { ok: true };
 }
 
-/**
- * Show a LOCAL notification immediately (no server push) — the mobile counterpart to web's
- * showLocalNotification, used by the verify-summary nudge (self-poll/self-notify). Schedules with a
- * null trigger so it presents now. Resolves false when notifications aren't granted/available.
- */
-export async function presentLocalNotification({ title, body, data, notifications } = {}) {
-  let Notifications;
-  try { ({ Notifications } = loadDeps({ notifications })); } catch { return false; }
-  try {
-    const perm = await Notifications.getPermissionsAsync();
-    if (perm?.granted !== true) return false;
-    await Notifications.scheduleNotificationAsync({ content: { title: title || 'Feedback', body: body || '', data }, trigger: null });
-    return true;
-  } catch { return false; }
-}
+// `presentLocalNotification` (the verify-summary nudge's local notification) was
+// folded into the shared `@canopy/react-native/push` module + `PushAdapter.presentLocal()`
+// (RN ports-and-adapters, invariant #3 — logic lives once). Import it from
+// `@canopy/react-native/push`, not from here.

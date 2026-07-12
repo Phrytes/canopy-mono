@@ -53,6 +53,7 @@ import {
 } from './lib/bgRunOnce.js';
 import * as BackgroundFetch                      from 'expo-background-fetch';
 import * as SecureStore                           from 'expo-secure-store';
+import { ExpoSecureStore }                        from '@canopy/react-native/ports';
 import { OidcSessionRN }                          from '@canopy/oidc-session-rn';
 import { SolidPodSource }                         from '@canopy/pod-client';
 
@@ -585,7 +586,7 @@ export function ServiceProvider({ children, deps = {} }) {
       throw new Error('attachPod: bundle missing cache.attachInner — was cache: false?');
     }
 
-    const session = podSession ?? new OidcSessionRN({ store: SecureStore, appId: 'stoop' });
+    const session = podSession ?? new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'stoop' });
     await session.adoptTokens(tokens);
 
     const fetchFn = session.getAuthenticatedFetch();

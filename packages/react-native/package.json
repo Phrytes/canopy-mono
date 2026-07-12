@@ -18,6 +18,8 @@
     "./platform/shims/util":          "./src/platform/shims/util.js",
     "./platform/shims/ws":            "./src/platform/shims/ws.js",
 
+    "./ports":                        "./src/ports/index.js",
+
     "./identity":                     "./src/identity/index.js",
     "./identity/bootstrap":           "./src/identity/bootstrapIdentity.js",
     "./identity/VaultAsyncStorage":   "./src/identity/VaultAsyncStorage.js",
