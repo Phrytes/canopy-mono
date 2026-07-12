@@ -1,0 +1,58 @@
+# Local full-stack: relay + Solid pod (CSS) + companion node, all in containers.
+# Useful for the automated e2e harness (PLAN §2) — a deployable stack you can run
+# on one machine before pushing to a PaaS.
+#
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+#   relay      ws://localhost:8787          (messaging; add R2_* env for media)
+#   pod (CSS)  http://localhost:3000/       (WAC; swap CSS_CONFIG for ACP)
+#   companion  connects out to relay        (hosts folio agent over the mesh)
+#
+# Build context for relay + companion is the repo ROOT (the pnpm workspace); the
+# root .dockerignore keeps that context small.
+services:
+  relay:
+    build:
+      context: ..
+      dockerfile: deploy/relay/Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      PORT: "8787"
+      HOST: "0.0.0.0"
+      # Enable the media edge locally by uncommenting + filling these:
+      # R2_ENDPOINT: "https://<account-id>.r2.cloudflarestorage.com"
+      # R2_BUCKET: "canopy-media"
+      # R2_ACCESS_KEY_ID: ""
+      # R2_SECRET_ACCESS_KEY: ""
+      # BLOB_GATE_UPLOADERS: ""
+
+  pod:
+    build:
+      context: ./css-pod
+    ports:
+      - "3000:3000"
+    environment:
+      # WAC (default) — swap to @css:config/file-acp.json for ACP.
+      CSS_CONFIG: "@css:config/file.json"
+      CSS_BASE_URL: "http://localhost:3000/"
+      CSS_ROOT_FILE_PATH: "/data/pod"
+      CSS_PORT: "3000"
+    volumes:
+      - pod-data:/data/pod
+
+  companion:
+    build:
+      context: ..
+      dockerfile: deploy/companion-node/Dockerfile
+    depends_on:
+      - relay
+    environment:
+      COMPANION_RELAY_URL: "ws://relay:8787"
+      COMPANION_NODE_CONFIG_DIR: "/data/companion"
+    volumes:
+      - companion-data:/data/companion
+
+volumes:
+  pod-data:
+  companion-data:
