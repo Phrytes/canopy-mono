@@ -38,9 +38,11 @@ export async function run() {
   const legit = await present(idSubject.pubKey, (await mk(idV)).toJSON());
   check('CONTROL: a legitimate capability token is accepted', legit.allowed === true);
 
-  // FORGE — a tampered signature is rejected.
+  // FORGE — a tampered signature is rejected. (Flip the FIRST base64url char — it
+  // always carries significant bits; the LAST char of a 64-byte sig has 4 padding
+  // bits, so mutating it can decode to the identical signature.)
   const tampered = (await mk(idV)).toJSON();
-  tampered.sig = tampered.sig.slice(0, -2) + (tampered.sig.endsWith('A') ? 'BB' : 'AA');
+  tampered.sig = (tampered.sig[0] === 'A' ? 'B' : 'A') + tampered.sig.slice(1);
   check('forged token (tampered signature) REJECTED', (await denial(present(idSubject.pubKey, tampered))) === 'INVALID_TOKEN');
 
   // FORGE — privileges escalated AFTER signing (skill widened to '*') is rejected.

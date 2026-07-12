@@ -28,7 +28,7 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `j-security` | **[hermetic]** adversarial: forge / privilege-escalate / impersonate / steal a capability token, and read another's sealed mail — each DEFENDED by the real PolicyEngine verifier + nacl.box sealing |
 | `j-notifications` | reliable-wake nudge: a message for an away device fires ONE contentless wake (mutable-content, no sender/content) → device pulls the sealed content itself |
 | `j-feedback` | **[needs a real pod + the feedback app]** multi-user central-pod route: several users' feedback lands in one central pod as PSEUDONYMOUS contributions (no identity in the body), aggregatable, duplicate-id rejected — the §6a server-side / Telegram on-ramp shape |
-| `j-manage` | companion-node management (6d): the OWNER invokes owner-gated node ops (`node.status`/`node.listTenants`/`grant.revoke`) over the relay (the canopy-chat path); a non-owner is denied |
+| `j-manage` | companion-node management (6d), BOTH surfaces: ① owner invokes owner-gated node ops over the relay (the canopy-chat path); ② the node-served `/manage` web + owner-pairing flow (browser gets a session token only after the owner approves its code from their phone); non-owners denied throughout |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up

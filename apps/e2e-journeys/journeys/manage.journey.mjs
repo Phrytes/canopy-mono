@@ -26,6 +26,7 @@ export async function run({ relayUrl }) {
     relayUrl, configDir: cfg, gate: false,
     inbox: true, inboxOwnerPubKey: owner.address,           // a real tenant to report
     management: true, managementOwnerPubKey: owner.address, // owner-gated management
+    manageHttp: true,                                       // surface ② — the online /manage web
   });
   const C = node.agent.address;
   owner.addPeer(C, C);    node.agent.addPeer(owner.address, owner.address);
@@ -55,6 +56,38 @@ export async function run({ relayUrl }) {
     // The owner CAN reach grant.revoke (validates input; gate is off here so no ledger).
     const ownerRevoke = await invoke(owner, 'grant.revoke', {});
     check('owner reaches grant.revoke (reachable + validates)', ownerRevoke?.ok === false && ownerRevoke?.error === 'tokenId required');
+
+    // ── SURFACE ② — the online /manage web + owner-pairing flow ────────────────
+    const base = (node.manageUrl ?? '').replace(/\/manage$/, '');
+    check('node serves the /manage web', typeof node.manageUrl === 'string' && node.manageUrl.includes('/manage'));
+
+    const page = await fetch(node.manageUrl);
+    const html = await page.text();
+    check('GET /manage serves the interface (HTML)', page.status === 200 && /Companion node/i.test(html));
+
+    // Unauthenticated API call is refused.
+    const noAuth = await fetch(`${base}/manage/api/node.status`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    check('unauthenticated /manage API call is 401', noAuth.status === 401);
+
+    // Pairing: browser starts → owner approves from the phone (over the relay) → token.
+    const { code } = await (await fetch(`${base}/manage/pair/start`, { method: 'POST' })).json();
+    check('browser starts pairing → gets a code', typeof code === 'string' && code.length > 0);
+
+    const approve = await invoke(owner, 'manage.approvePairing', { code });
+    check('owner approves the browser from the phone (over the relay)', approve?.ok === true);
+
+    const nonOwnerApprove = await invoke(attacker, 'manage.approvePairing', { code });
+    check('a NON-owner cannot approve a browser (owner-gated)', nonOwnerApprove?.ok === false && nonOwnerApprove?.error === 'forbidden');
+
+    const pairStatus = await (await fetch(`${base}/manage/pair/status?code=${encodeURIComponent(code)}`)).json();
+    check('browser polls → receives a scoped session token', pairStatus?.approved === true && typeof pairStatus.token === 'string');
+
+    // Authenticated API call now works — the web projects the SAME owner-gated op.
+    const authed = await fetch(`${base}/manage/api/node.status`, {
+      method: 'POST', headers: { authorization: `Bearer ${pairStatus.token}`, 'content-type': 'application/json' }, body: '{}',
+    });
+    const authedBody = await authed.json();
+    check('paired browser reads node.status via the web API', authed.status === 200 && authedBody?.ok === true && authedBody.connected === true);
   } finally {
     await owner.transport.disconnect().catch(() => {});
     await attacker.transport.disconnect().catch(() => {});

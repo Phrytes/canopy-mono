@@ -222,6 +222,8 @@ export async function startCompanionNode(opts = {}) {
     // ── 6d — MANAGEMENT surface (owner-gated node ops) ───────────────────────
     management         = false, // enable node.status / node.listTenants / grant.revoke (OFF by default)
     managementOwnerPubKey,      // the ONLY key allowed to manage; default podOwnerPubKey ?? inboxOwnerPubKey
+    manageHttp         = false, // surface ② — serve the /manage web (true → random port, or a port number)
+    manageHttpHost     = '127.0.0.1',
   } = opts;
   const bootAt = Date.now();
 
@@ -547,7 +549,9 @@ export async function startCompanionNode(opts = {}) {
   const deviceId  = agent.address;
   const registry  = await registerFolioAgent({ pseudoPod, deviceId, agent });
 
+  let manageServer = null;   // 6d surface ② — the /manage HTTP tenant (assigned below when manageHttp is ON)
   async function stop() {
+    if (manageServer) { try { await manageServer.stop(); } catch { /* best-effort */ } }
     try { await agent.stop?.(); } catch { /* best-effort */ }
     if (relay) { try { await relay.stop(); } catch { /* best-effort */ } }
   }
@@ -653,6 +657,27 @@ export async function startCompanionNode(opts = {}) {
       await revokeToken(tokenId);
       return { ok: true, revoked: tokenId };
     });
+
+    // ── surface ② — the ONLINE /manage interface (node-served HTTP tenant) ──────
+    // Projects the SAME ops as a web page, behind an owner-PAIRING flow. The
+    // browser gets a session token only after the owner approves its code from
+    // their phone via `manage.approvePairing` (owner-gated, over the relay).
+    if (manageHttp) {
+      const { startManageServer } = await import('./manageServer.js');
+      manageServer = await startManageServer({
+        agent,
+        ownerPubKey: mgmtOwner,
+        allowedOps:  ['node.status', 'node.listTenants', 'grant.revoke'],
+        port: typeof manageHttp === 'number' ? manageHttp : 0,
+        host: manageHttpHost,
+      });
+      agent.register('manage.approvePairing', async (ctx) => {
+        if (!ownerOnly(ctx)) return { ok: false, error: 'forbidden' };
+        const { code } = Parts.data(ctx?.parts) ?? {};
+        if (!code) return { ok: false, error: 'code required' };
+        return manageServer.approvePairing(code);
+      });
+    }
   }
 
   return {
@@ -683,6 +708,9 @@ export async function startCompanionNode(opts = {}) {
     // 6d — management surface (owner-gated node ops); null owner when OFF.
     management,
     managementOwnerPubKey: management ? mgmtOwner : null,
+    // 6d surface ② — the online /manage interface (null when OFF).
+    manageUrl: manageServer?.url ?? null,
+    managePort: manageServer?.port ?? null,
     stop,
   };
 }
