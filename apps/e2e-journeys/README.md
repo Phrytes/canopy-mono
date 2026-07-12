@@ -27,6 +27,7 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `task-claim` | **[hermetic]** the hard distributed case: mesh splits → both halves claim the same task → reconverge → the double-claim is surfaced as a conflict (never a silent overwrite), no work lost |
 | `j-security` | **[hermetic]** adversarial: forge / privilege-escalate / impersonate / steal a capability token, and read another's sealed mail — each DEFENDED by the real PolicyEngine verifier + nacl.box sealing |
 | `j-notifications` | reliable-wake nudge: a message for an away device fires ONE contentless wake (mutable-content, no sender/content) → device pulls the sealed content itself |
+| `j-feedback` | **[needs a real pod + the feedback app]** multi-user central-pod route: several users' feedback lands in one central pod as PSEUDONYMOUS contributions (no identity in the body), aggregatable, duplicate-id rejected — the §6a server-side / Telegram on-ramp shape |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up
