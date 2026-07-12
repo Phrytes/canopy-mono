@@ -25,6 +25,7 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `j-buurt`   | the stoop neighbourhood flow: invite → admin-verified join → prikbord post → private 1:1 chat |
 | `j-companion` | **[needs a real pod]** device delegates scoped pod access → companion acts on a REAL CSS via proxy (holds no secret) → out-of-scope denied → revoke denies |
 | `task-claim` | **[hermetic]** the hard distributed case: mesh splits → both halves claim the same task → reconverge → the double-claim is surfaced as a conflict (never a silent overwrite), no work lost |
+| `j-security` | **[hermetic]** adversarial: forge / privilege-escalate / impersonate / steal a capability token, and read another's sealed mail — each DEFENDED by the real PolicyEngine verifier + nacl.box sealing |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up
