@@ -1,0 +1,58 @@
+# deploy/docker-compose.tls.yml — TLS overlay for the ALWAYS-ON (VM) path.
+#
+# Adds a Caddy reverse proxy that terminates TLS (Let's Encrypt, auto) in front
+# of the relay + CSS pod, and rewires the pod's public base URL to its HTTPS
+# domain. Layer it OVER the base compose file — the base file still works on its
+# own for local, no-TLS dev:
+#
+#   1. cp caddy/.env.example .env        # then edit RELAY_DOMAIN / POD_DOMAIN / ACME_EMAIL
+#   2. point DNS A-records for both domains at this host's public IP
+#   3. open ONLY ports 80 + 443 in the firewall (Oracle: security-list AND OS fw)
+#   4. docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
+#
+# Then: clients → wss://$RELAY_DOMAIN, media → https://$RELAY_DOMAIN/blob-gate,
+# pod → https://$POD_DOMAIN/.
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - relay
+      - pod
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3 (QUIC)
+    environment:
+      RELAY_DOMAIN: "${RELAY_DOMAIN:?set RELAY_DOMAIN in deploy/.env}"
+      POD_DOMAIN: "${POD_DOMAIN:?set POD_DOMAIN in deploy/.env}"
+      ACME_EMAIL: "${ACME_EMAIL:?set ACME_EMAIL in deploy/.env}"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data # certs + ACME account key — MUST persist across restarts
+      - caddy-config:/config
+
+  # Pass optional media-edge / push env from deploy/.env through to the relay.
+  # Empty values are falsy → the relay stays messaging-only until you fill them.
+  relay:
+    environment:
+      PORT: "8787"
+      HOST: "0.0.0.0"
+      R2_ENDPOINT: "${R2_ENDPOINT:-}"
+      R2_BUCKET: "${R2_BUCKET:-}"
+      R2_ACCESS_KEY_ID: "${R2_ACCESS_KEY_ID:-}"
+      R2_SECRET_ACCESS_KEY: "${R2_SECRET_ACCESS_KEY:-}"
+      R2_REGION: "${R2_REGION:-auto}"
+      BLOB_GATE_UPLOADERS: "${BLOB_GATE_UPLOADERS:-}"
+      PUSH_PROVIDER: "${PUSH_PROVIDER:-}"
+      EXPO_ACCESS_TOKEN: "${EXPO_ACCESS_TOKEN:-}"
+
+  # CSS bakes the base URL into every WebID → it MUST be the PUBLIC https domain.
+  # (Other CSS_* keys — config, storage path, port — are inherited from the base file.)
+  pod:
+    environment:
+      CSS_BASE_URL: "https://${POD_DOMAIN}/"
+
+volumes:
+  caddy-data:
+  caddy-config:

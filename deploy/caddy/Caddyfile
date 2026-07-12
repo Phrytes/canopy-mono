@@ -1,0 +1,42 @@
+# deploy/caddy/Caddyfile — TLS front for the ALWAYS-ON (VM) deploy path.
+#
+# Caddy auto-provisions Let's Encrypt certificates for the domains below, then
+# terminates TLS and reverse-proxies PLAIN HTTP to the relay + CSS pod on the
+# Docker Compose network. This is what turns the relay's internal `ws://` into a
+# browser-usable public `wss://` — browsers refuse WebSockets without valid TLS.
+#
+# Requirements for the auto-cert to succeed:
+#   • Public DNS A-records for each domain below point at THIS host's public IP.
+#   • Ports 80 AND 443 are reachable from the internet (ACME HTTP/TLS challenge).
+#     On Oracle Cloud that means BOTH the security-list ingress rule AND the OS
+#     firewall — see DEPLOY-RUNBOOK.md "Firewall double-gotcha".
+#
+# Parameterized via env (set in deploy/.env, injected by docker compose → Caddy):
+#   RELAY_DOMAIN   e.g. relay.example.com
+#                  clients:   wss://$RELAY_DOMAIN
+#                  media edge: https://$RELAY_DOMAIN/blob-gate
+#   POD_DOMAIN     e.g. pod.example.com   (the CSS pod; MUST equal CSS_BASE_URL)
+#   ACME_EMAIL     you@example.com        (Let's Encrypt account + expiry notices)
+{
+	email {$ACME_EMAIL}
+	# For dry runs against Let's Encrypt's STAGING CA (avoids rate limits while
+	# testing), uncomment the next line, then remove it for real certs:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+# ── Relay: WebSocket (wss://) + media blob-gate (https://.../blob-gate) ──────────
+# `reverse_proxy` transparently upgrades WebSocket connections, so both the
+# wss:// messaging socket and the https://$RELAY_DOMAIN/blob-gate media edge flow
+# to the same plain-HTTP relay. The relay answers HTTP 200 on `/`
+# ("@canopy/relay — WebSocket endpoint only"), which doubles as Caddy's upstream
+# health signal.
+{$RELAY_DOMAIN} {
+	reverse_proxy relay:8787
+}
+
+# ── Solid pod (Community Solid Server) ──────────────────────────────────────────
+# CSS bakes the base URL into every WebID, so CSS_BASE_URL MUST equal
+# https://$POD_DOMAIN/ (the docker-compose.tls.yml overlay wires that for you).
+{$POD_DOMAIN} {
+	reverse_proxy pod:3000
+}
