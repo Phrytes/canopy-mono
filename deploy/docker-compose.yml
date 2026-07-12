@@ -15,6 +15,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/relay/Dockerfile
+    restart: unless-stopped   # survive a docker-daemon or machine restart
     ports:
       - "8787:8787"
     environment:
@@ -30,6 +31,7 @@ services:
   pod:
     build:
       context: ./css-pod
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
@@ -45,6 +47,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/companion-node/Dockerfile
+    restart: unless-stopped
     depends_on:
       - relay
     environment:
