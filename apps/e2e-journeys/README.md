@@ -23,11 +23,21 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `multi-party` | a 4-person circle, one member offline during a broadcast, no loss / no self-delivery |
 | `sealed`    | M2 durable sealed inbox on a companion node — sealed-only, owner-gated drain, ciphertext at rest |
 | `j-buurt`   | the stoop neighbourhood flow: invite → admin-verified join → prikbord post → private 1:1 chat |
+| `j-companion` | **[needs a real pod]** device delegates scoped pod access → companion acts on a REAL CSS via proxy (holds no secret) → out-of-scope denied → revoke denies |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up
 a real `@canopy-app/companion-node` with the inbox enabled. `j-buurt` drives two
 real `@canopy-app/stoop` `createNeighborhoodAgent` instances with the substrate mirror.
+
+**`j-companion` is gated on a real pod** and **skips cleanly** when none is reachable
+(so the rest of the matrix stays green with no CSS). It provisions a fresh account +
+client-credentials, runs a real on-device Solid-OIDC (DPoP) session, and proxies every
+pod fetch back to the device. Boot a CSS and point the harness at it:
+```bash
+npx -y @solid/community-server@^7 -c @css:config/file.json -p 3001 -b http://localhost:3001/ -f /tmp/pod &
+CSS_URL=http://localhost:3001/ node run.mjs      # now j-companion runs instead of skipping
+```
 
 ## Two modes
 

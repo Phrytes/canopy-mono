@@ -19,8 +19,9 @@ import * as offline     from './journeys/offline.journey.mjs';
 import * as circle      from './journeys/circle.journey.mjs';
 import * as sealedInbox from './journeys/sealedInbox.journey.mjs';
 import * as buurt       from './journeys/buurt.journey.mjs';
+import * as companion   from './journeys/companion.journey.mjs';
 
-const ALL = [twoParty, offline, circle, sealedInbox, buurt];
+const ALL = [twoParty, offline, circle, sealedInbox, buurt, companion];
 const KEY = (n) => n.split(' ')[0].toLowerCase().replace(/[^a-z-]/g, ''); // "two-party messaging" -> "two-party"
 
 const args = process.argv.slice(2);
@@ -57,6 +58,11 @@ for (const j of selected) {
   } catch (e) {
     res = [{ name: 'journey crashed', ok: false, detail: e?.message ?? String(e) }];
   }
+  if (res && !Array.isArray(res) && res.skipped) {
+    console.log(`   ⏭️  skipped — ${res.reason}\n`);
+    summary.push({ name: j.name, skipped: true });
+    continue;
+  }
   for (const r of res) console.log(`   ${r.ok ? '✅' : '❌'} ${r.name}${r.detail ? '  — ' + r.detail : ''}`);
   const passed = res.filter((r) => r.ok).length;
   console.log(`   → ${passed}/${res.length}\n`);
@@ -66,9 +72,15 @@ for (const j of selected) {
 if (localRelay) await localRelay.stop().catch(() => {});
 
 console.log('══ summary ══');
-for (const s of summary) console.log(`  ${s.ok ? '✅' : '❌'} ${s.name}: ${s.passed}/${s.total}`);
-const totPass = summary.reduce((a, s) => a + s.passed, 0);
-const totAll  = summary.reduce((a, s) => a + s.total, 0);
-const allOk   = summary.every((s) => s.ok);
-console.log(`\n  ${allOk ? '✅ ALL GREEN' : '❌ FAILURES'} — ${totPass}/${totAll} checks across ${summary.length} journeys\n`);
+for (const s of summary) {
+  if (s.skipped) { console.log(`  ⏭️  ${s.name}: skipped`); continue; }
+  console.log(`  ${s.ok ? '✅' : '❌'} ${s.name}: ${s.passed}/${s.total}`);
+}
+const ran     = summary.filter((s) => !s.skipped);
+const skipped = summary.filter((s) => s.skipped).length;
+const totPass = ran.reduce((a, s) => a + s.passed, 0);
+const totAll  = ran.reduce((a, s) => a + s.total, 0);
+const allOk   = ran.every((s) => s.ok);
+const skipNote = skipped ? ` (${skipped} skipped)` : '';
+console.log(`\n  ${allOk ? '✅ ALL GREEN' : '❌ FAILURES'} — ${totPass}/${totAll} checks across ${ran.length} journeys${skipNote}\n`);
 process.exit(allOk ? 0 : 1);
