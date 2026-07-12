@@ -25,8 +25,9 @@ import * as security    from './journeys/security.journey.mjs';
 import * as notifications from './journeys/notifications.journey.mjs';
 import * as feedback     from './journeys/feedback.journey.mjs';
 import * as manage       from './journeys/manage.journey.mjs';
+import * as bot          from './journeys/bot.journey.mjs';
 
-const ALL = [twoParty, offline, circle, sealedInbox, buurt, companion, taskClaim, security, notifications, feedback, manage];
+const ALL = [twoParty, offline, circle, sealedInbox, buurt, companion, taskClaim, security, notifications, feedback, manage, bot];
 const KEY = (n) => n.split(' ')[0].toLowerCase().replace(/[^a-z-]/g, ''); // "two-party messaging" -> "two-party"
 
 const args = process.argv.slice(2);
