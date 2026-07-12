@@ -219,7 +219,11 @@ export async function startCompanionNode(opts = {}) {
     inboxWakeToken,             // the owner device's push token (wake target)
     inboxWakePlatform = 'ios',  // informational platform for the wake
     inboxThrottleMs,            // min gap between wakes per owner (M1 batching); default 30s
+    // ── 6d — MANAGEMENT surface (owner-gated node ops) ───────────────────────
+    management         = false, // enable node.status / node.listTenants / grant.revoke (OFF by default)
+    managementOwnerPubKey,      // the ONLY key allowed to manage; default podOwnerPubKey ?? inboxOwnerPubKey
   } = opts;
+  const bootAt = Date.now();
 
   // ── 1. Host identity — persisted so the pubKey is stable across restarts ──
   const vault = identityVault
@@ -602,6 +606,55 @@ export async function startCompanionNode(opts = {}) {
     await tokenRegistry.revoke(tokenId);
   }
 
+  // ── 6d — MANAGEMENT surface: owner-gated node ops (the manifest half of the
+  //     "one contract, two projectors" design — plans/NOTE-companion-node-management.md).
+  //     Same deny-by-default / opaque-`forbidden` posture as `inbox.drain`. BOTH the
+  //     in-app (canopy-chat over the relay) and the online interface project THESE.
+  const mgmtOwner = managementOwnerPubKey ?? podOwnerPubKey ?? inboxOwnerPubKey ?? null;
+  if (management) {
+    if (!mgmtOwner) {
+      throw new Error('companion-node: management requires managementOwnerPubKey (or podOwnerPubKey / inboxOwnerPubKey)');
+    }
+    const ownerOnly = (ctx) => (ctx?.originFrom ?? ctx?.from) === mgmtOwner;
+    const tenants = () => [
+      { id: 'folio-agent',  on: true },
+      { id: 'media-edge',   on: !!mediaEdgeCfg },
+      { id: 'sealed-inbox', on: !!sealedInbox },
+      { id: 'invoke-gate',  on: !!gate },
+      { id: 'agent-proxy',  on: !!podProxy },
+    ];
+
+    // `node.status` — OWNER-GATED health/status probe.
+    agent.register('node.status', async (ctx) => {
+      if (!ownerOnly(ctx)) return { ok: false, error: 'forbidden' };
+      return {
+        ok:         true,
+        connected:  agent.transport?.connected ?? false,
+        relayUrl:   relayUrl ?? null,
+        uptimeMs:   Date.now() - bootAt,
+        tenants:    tenants(),
+        inboxCount: sealedInbox ? await sealedInbox.count(inboxOwnerPubKey) : 0,
+      };
+    });
+
+    // `node.listTenants` — OWNER-GATED: what the node hosts + on/off.
+    agent.register('node.listTenants', async (ctx) => {
+      if (!ownerOnly(ctx)) return { ok: false, error: 'forbidden' };
+      return { ok: true, tenants: tenants() };
+    });
+
+    // `grant.revoke` — OWNER-GATED live per-token revocation (the R2 seam J-companion
+    // proved). The management UI's "revoke" button drives this.
+    agent.register('grant.revoke', async (ctx) => {
+      if (!ownerOnly(ctx)) return { ok: false, error: 'forbidden' };
+      const { tokenId } = Parts.data(ctx?.parts) ?? {};
+      if (!tokenId)       return { ok: false, error: 'tokenId required' };
+      if (!tokenRegistry) return { ok: false, error: 'gate-off' };
+      await revokeToken(tokenId);
+      return { ok: true, revoked: tokenId };
+    });
+  }
+
   return {
     agent,
     identity,
@@ -627,6 +680,9 @@ export async function startCompanionNode(opts = {}) {
     tokenRegistry,
     authorizeDevice,
     revokeToken,
+    // 6d — management surface (owner-gated node ops); null owner when OFF.
+    management,
+    managementOwnerPubKey: management ? mgmtOwner : null,
     stop,
   };
 }
