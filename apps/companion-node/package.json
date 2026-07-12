@@ -19,6 +19,7 @@
   "dependencies": {
     "@canopy/agent-registry": "file:../../packages/agent-registry",
     "@canopy/core": "file:../../packages/core",
+    "@canopy/pod-client": "file:../../packages/pod-client",
     "@canopy/relay": "file:../../packages/relay",
     "@canopy/transports": "file:../../packages/transports",
     "@canopy/vault": "file:../../packages/vault",

@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { MockPushAdapter } from '../../../src/ports/mocks/MockPushAdapter.js';
+import { IosPushAdapter }  from '../../../src/ports/pushAdapters/IosPushAdapter.js';
 
 /** @param {() => import('../../../src/ports/PushAdapter.js').PushAdapter} make */
 function runPushAdapterContract(name, make, makeDenied) {
@@ -59,4 +60,13 @@ runPushAdapterContract(
   'MockPushAdapter',
   () => new MockPushAdapter(),
   () => new MockPushAdapter({ denyPermission: true }),
+);
+
+// The iOS reliable-wake SLOT (⚠️ scaffold): its JS surface must satisfy the port
+// contract today so shared code binds to it — the NSE/BGTask native side is the
+// documented follow-up (see docs/ios-reliable-wake-runbook.md), NOT tested here.
+runPushAdapterContract(
+  'IosPushAdapter (scaffold)',
+  () => new IosPushAdapter(),
+  () => new IosPushAdapter({ denyPermission: true }),
 );
