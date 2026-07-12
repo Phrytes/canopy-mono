@@ -24,11 +24,15 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 | `sealed`    | M2 durable sealed inbox on a companion node — sealed-only, owner-gated drain, ciphertext at rest |
 | `j-buurt`   | the stoop neighbourhood flow: invite → admin-verified join → prikbord post → private 1:1 chat |
 | `j-companion` | **[needs a real pod]** device delegates scoped pod access → companion acts on a REAL CSS via proxy (holds no secret) → out-of-scope denied → revoke denies |
+| `task-claim` | **[hermetic]** the hard distributed case: mesh splits → both halves claim the same task → reconverge → the double-claim is surfaced as a conflict (never a silent overwrite), no work lost |
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up
 a real `@canopy-app/companion-node` with the inbox enabled. `j-buurt` drives two
 real `@canopy-app/stoop` `createNeighborhoodAgent` instances with the substrate mirror.
+`task-claim` is **hermetic** — it uses the in-process partitionable transport (you
+cannot tell a real relay to partition on command), so it ignores the relay URL and
+reuses the real tasks-v0 claim + substrate-mirror conflict machinery.
 
 **`j-companion` is gated on a real pod** and **skips cleanly** when none is reachable
 (so the rest of the matrix stays green with no CSS). It provisions a fresh account +

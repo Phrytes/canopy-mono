@@ -20,8 +20,9 @@ import * as circle      from './journeys/circle.journey.mjs';
 import * as sealedInbox from './journeys/sealedInbox.journey.mjs';
 import * as buurt       from './journeys/buurt.journey.mjs';
 import * as companion   from './journeys/companion.journey.mjs';
+import * as taskClaim   from './journeys/taskClaim.journey.mjs';
 
-const ALL = [twoParty, offline, circle, sealedInbox, buurt, companion];
+const ALL = [twoParty, offline, circle, sealedInbox, buurt, companion, taskClaim];
 const KEY = (n) => n.split(' ')[0].toLowerCase().replace(/[^a-z-]/g, ''); // "two-party messaging" -> "two-party"
 
 const args = process.argv.slice(2);
