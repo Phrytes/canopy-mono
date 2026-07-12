@@ -14,3 +14,4 @@
 
 export { setupPush, requestPushPermission } from './setupPush.js';
 export { usePushOptIn }                     from './usePushOptIn.js';
+export { presentLocalNotification, presentLocalWith } from './presentLocal.js';

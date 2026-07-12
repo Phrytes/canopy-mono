@@ -30,7 +30,8 @@
 import * as Notifications from 'expo-notifications';
 import { Platform }       from 'react-native';
 
-import { PushAdapter } from './PushAdapter.js';
+import { PushAdapter }      from './PushAdapter.js';
+import { presentLocalWith } from '../../push/presentLocal.js';
 
 export class ExpoNotificationsAdapter extends PushAdapter {
   #subscriptions = [];
@@ -85,5 +86,16 @@ export class ExpoNotificationsAdapter extends PushAdapter {
   async unregister() {
     for (const sub of this.#subscriptions) sub.remove?.();
     this.#subscriptions.length = 0;
+  }
+
+  /**
+   * Present a LOCAL notification immediately.  Delegates to the shared
+   * `presentLocalWith` logic (which also backs `presentLocalNotification`),
+   * so the local-notify behaviour lives in exactly one place.
+   * @param {{ title?: string, body?: string, data?: object }} [notification]
+   * @returns {Promise<boolean>}
+   */
+  async presentLocal(notification) {
+    return presentLocalWith(Notifications, notification);
   }
 }
