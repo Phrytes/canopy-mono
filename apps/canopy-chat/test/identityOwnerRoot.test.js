@@ -45,3 +45,35 @@ describe('identity step-1 — owner root → default-profile chat identity', () 
     expect(a2.sa.agent.identity.pubKey).toBe(a1.sa.agent.identity.pubKey);
   });
 });
+
+describe('identity step-1b — owner-root reveal/restore host skills', () => {
+  it('revealOwnerPhrase returns the persisted owner-root phrase', async () => {
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const res = await a.callSkill('household', 'revealOwnerPhrase', {});
+    expect(res.mnemonic).toBe(await ownerRootVault.get('owner-phrase'));
+  });
+
+  it('restoreOwnerPhrase installs a new phrase + re-derives the default profile into the chat vault', async () => {
+    const ownerRootVault = new VaultMemory();
+    const chatVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault });
+
+    const { mnemonic } = Bootstrap.create();                       // a DIFFERENT phrase to restore
+    const res = await a.callSkill('household', 'restoreOwnerPhrase', { mnemonic });
+    expect(res).toMatchObject({ ok: true, reloadRequired: true });
+
+    // owner root now holds the restored phrase; the chat vault holds the derived seed
+    expect(await ownerRootVault.get('owner-phrase')).toBe(mnemonic);
+    const expected = (await AgentIdentity.fromSeed(
+      Bootstrap.fromMnemonic(mnemonic).deriveAgentSeed('default'), new VaultMemory())).pubKey;
+    const rebooted = await createRealHouseholdAgent({ ownerRootVault, chatVault });   // reboot picks it up
+    expect(rebooted.sa.agent.identity.pubKey).toBe(expected);
+  });
+
+  it('restoreOwnerPhrase rejects an invalid phrase', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    const res = await a.callSkill('household', 'restoreOwnerPhrase', { mnemonic: 'not a real phrase' });
+    expect(res).toMatchObject({ ok: false, error: 'invalid-phrase' });
+  });
+});

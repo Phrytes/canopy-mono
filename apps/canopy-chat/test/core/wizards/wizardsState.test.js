@@ -53,8 +53,12 @@ describe('restoreFromMnemonicState', () => {
     state.mnemonic = '  one two three four five six seven eight nine ten eleven twelve  ';
     const callSkill = vi.fn().mockResolvedValue({ newPubKey: 'PK123' });
     await RFM.submitRestore({ state, callSkill });
+    // Step 1b — installs the owner root (default profile / feedback pseudonym) first,
+    const trimmed = 'one two three four five six seven eight nine ten eleven twelve';
+    expect(callSkill).toHaveBeenCalledWith('household', 'restoreOwnerPhrase', { mnemonic: trimmed });
+    // then runs the legacy stoop restore for pod reattachment.
     expect(callSkill).toHaveBeenCalledWith('stoop', 'restoreFromMnemonic', {
-      mnemonic: 'one two three four five six seven eight nine ten eleven twelve',
+      mnemonic: trimmed,
       confirm:  true,
     });
     expect(state.successResult).toEqual({ newPubKey: 'PK123' });

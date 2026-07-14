@@ -3027,11 +3027,13 @@ async function showCircleInvite(circleId) {
   card.appendChild(code);
 }
 
-// S5 — reveal the recovery phrase once (stoop `getMnemonicOnce`). Shown in the
-// same modal overlay with a destructive warning; the words are never re-fetched.
+// S5 — reveal the OWNER-ROOT recovery phrase (host `revealOwnerPhrase`, step 1b) —
+// the one phrase that re-derives every profile incl. the feedback pseudonym. Shown in
+// the same modal overlay with a destructive warning. (Was the stoop `getMnemonicOnce`,
+// which revealed the unrelated stoop sub-agent seed — not the recovery phrase.)
 async function showMnemonicReveal() {
   let res = null;
-  try { res = await rawCallSkill('stoop', 'getMnemonicOnce', {}); } catch { res = null; }
+  try { res = await rawCallSkill('household', 'revealOwnerPhrase', {}); } catch { res = null; }
   const words = (res && !res.error && (res.mnemonic ?? res.phrase ?? res.words)) || '';
   const overlay = document.createElement('div');
   overlay.className = 'cc-mydata-modal';

@@ -67,9 +67,11 @@ export default function CircleMyDataScreen({ callSkill, podAuth, onBack, chatAi,
   }, [push.granted, callSkill]);
 
   const revealMnemonic = useCallback(async () => {
+    // The OWNER-ROOT phrase (host `revealOwnerPhrase`, step 1b) — re-derives every
+    // profile incl. the feedback pseudonym. Was stoop `getMnemonicOnce` (wrong seed).
     let words = '';
     try {
-      const res = await callSkill('stoop', 'getMnemonicOnce', {});
+      const res = await callSkill('household', 'revealOwnerPhrase', {});
       if (res && !res.error) words = res.mnemonic ?? res.phrase ?? res.words ?? '';
     } catch { words = ''; }
     setMnemonic({ words: Array.isArray(words) ? words.join(' ') : String(words || '') });

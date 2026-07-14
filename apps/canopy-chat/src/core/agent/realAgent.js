@@ -716,6 +716,34 @@ export async function createRealHouseholdAgent(opts = {}) {
     return [DataPart({ ok: false, error: `No contact matches "${query}"` })];
   });
 
+  /* ─── Identity: owner-root reveal + restore (step 1b) ────────────────────────
+   * The ONE recovery phrase that re-derives every profile — including the feedback
+   * no-login pseudonym (the default-profile chat identity). Host skills so they can
+   * close over the owner root (created above); reached via callSkill('household', …).
+   * Deliberately NOT the stoop `getMnemonicOnce` (that reveals the unrelated stoop
+   * sub-agent seed) and NOT the shared `restoreFromMnemonic` (legacy direct-seed).
+   */
+  hostAgent.register('revealOwnerPhrase', async () => {
+    // Re-revealable: backing up the phrase again is legitimate; the phrase is stable.
+    try { return [DataPart({ shown: false, mnemonic: ownerRoot.toMnemonic() })]; }
+    catch (e) { return [DataPart({ ok: false, error: e?.message ?? 'reveal-failed' })]; }
+  }, { visibility: 'authenticated' });
+
+  hostAgent.register('restoreOwnerPhrase', async ({ parts }) => {
+    const mnemonic = String(parts?.[0]?.data?.mnemonic ?? '').trim();
+    let root;
+    try { root = Bootstrap.fromMnemonic(mnemonic); }
+    catch { return [DataPart({ ok: false, error: 'invalid-phrase' })]; }
+    try {
+      // Persist the owner root + re-derive the default profile into the chat vault.
+      // The live chatAgent keeps its current identity until an app RELOAD re-boots
+      // realAgent, which then restores this seed + owner root.
+      await ownerRootVault.set('owner-phrase', root.toMnemonic());
+      await AgentIdentity.fromSeed(root.deriveAgentSeed('default'), chatVault);
+      return [DataPart({ ok: true, reloadRequired: true })];
+    } catch (e) { return [DataPart({ ok: false, error: e?.message ?? 'restore-failed' })]; }
+  }, { visibility: 'authenticated' });
+
 
   /* folio's web-only handlers used to live here (~125 lines of mock-
    * real handlers registered on hostAgent).  Slice 4 of the

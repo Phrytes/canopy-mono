@@ -54,8 +54,15 @@ export async function submitRestore({ state, callSkill }) {
   state.submitting  = true;
   state.submitError = null;
   try {
+    const mnemonic = state.mnemonic.trim();
+    // Step 1b — install the OWNER ROOT first: persist the phrase + re-derive the
+    // default profile (= the feedback pseudonym). Then run the legacy stoop restore
+    // for pod reattachment. Different identity vaults (cc-owner-root/cc-chat-id vs
+    // cc-stoop-id) → no conflict; both take effect on the caller's reload.
+    const owner = await callSkill('household', 'restoreOwnerPhrase', { mnemonic });
+    if (owner?.error) throw new Error(owner.error);
     const result = await callSkill('stoop', 'restoreFromMnemonic', {
-      mnemonic: state.mnemonic.trim(),
+      mnemonic,
       confirm:  true,
     });
     if (result?.error) throw new Error(result.error);
