@@ -165,6 +165,10 @@ export class TelegramBridge {
     // before start() so that even a synchronous test fake's `emit`
     // helper finds them registered.
     this.#bot.on('text',           (ctx) => this.#handleText(ctx));
+    // A participant editing a message in the TG client sends an edited_message update
+    // (payload on ctx.editedMessage, not ctx.message). Previously unhandled → silently
+    // dropped; now delivered like a normal message but flagged edited.
+    this.#bot.on('edited_message', (ctx) => this.#handleText(ctx));
     this.#bot.on('callback_query', (ctx) => this.#handleCallbackQuery(ctx));
   }
 
@@ -323,23 +327,28 @@ export class TelegramBridge {
    */
   async #handleText(ctx) {
     if (!this.#handler) return;
-    if (!ctx?.message || typeof ctx.message.text !== 'string') return;
+    // A fresh message rides on ctx.message; an edit rides on ctx.editedMessage (Telegraf) /
+    // ctx.update.edited_message. Resolve either and mark edits so the contribution can flag them.
+    const message = ctx?.message ?? ctx?.editedMessage ?? ctx?.update?.edited_message ?? null;
+    const edited  = !ctx?.message && !!message;
+    if (!message || typeof message.text !== 'string') return;
 
     const addressed = this.#isAddressed(ctx);
     if (!addressed) return;
 
-    const text = this.#stripMention(ctx.message.text);
+    const text = this.#stripMention(message.text);
     /** @type {import('../types.js').IncomingMessage} */
     const msg = {
       bridgeId:    'telegram',
       chatId:      String(ctx.chat.id),
-      messageId:   String(ctx.message.message_id),
+      messageId:   String(message.message_id),
       text,
-      replyTo:     ctx.message.reply_to_message
-        ? String(ctx.message.reply_to_message.message_id)
+      replyTo:     message.reply_to_message
+        ? String(message.reply_to_message.message_id)
         : null,
       sender:      this.#mapSender(ctx),
       isAddressed: true,
+      ...(edited ? { edited: true } : {}),
     };
     const reply = await this.#handler(msg);
     await this.#postReply(msg.chatId, msg.messageId, reply);
