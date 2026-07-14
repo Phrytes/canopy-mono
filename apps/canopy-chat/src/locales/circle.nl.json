@@ -44,6 +44,22 @@
       "text": "Niets versturen",
       "doc": "Stage-1 review — send nothing."
     },
+    "show_more": {
+      "text": "Meer tonen",
+      "doc": "Long bubble (e.g. verify-summary) — expand the preview to the full text."
+    },
+    "show_less": {
+      "text": "Minder tonen",
+      "doc": "Long bubble — collapse back to the preview."
+    },
+    "lang_name": {
+      "text": "Nederlands",
+      "doc": "The endonym of THIS locale's language — read in a target language to label its switch button (never translate; it's the language's own name)."
+    },
+    "switch_prompt": {
+      "text": "Verder in het Nederlands? Tik hieronder.",
+      "doc": "Kring feedback language-switch offer, shown IN this locale's language (read in the target language) so a speaker of it recognises the invite."
+    },
     "save_edit": {
       "text": "Opslaan",
       "doc": "Stage-1 review card — save an inline edit."

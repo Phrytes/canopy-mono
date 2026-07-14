@@ -49,16 +49,22 @@ export const KNOWN_ISSUERS = Object.freeze([
   { id: 'solidweb',        name: 'SolidWeb.org',             url: 'https://solidweb.org'       },
 ]);
 
-export const DEFAULT_ISSUER_ID = 'inrupt';
+// Default issuer is env-overridable so a deployment (or local test against a
+// self-hosted CSS) can point sign-in at its OWN pod instead of Inrupt PodSpaces.
+// `resolveIssuer` accepts a full URL, so VITE_POD_DEFAULT_ISSUER can be e.g.
+// `http://localhost:3002/`.
+export const DEFAULT_ISSUER_ID =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_POD_DEFAULT_ISSUER)
+  || 'inrupt';
 
-/** Resolve an issuer by short id, URL, or undefined → default. */
+/** Resolve an issuer by short id, URL, or undefined → default (which may itself be an id OR a full URL). */
 export function resolveIssuer(idOrUrl) {
-  if (!idOrUrl) return KNOWN_ISSUERS.find((i) => i.id === DEFAULT_ISSUER_ID);
-  const known = KNOWN_ISSUERS.find((i) => i.id === idOrUrl || i.url === idOrUrl);
+  const target = idOrUrl || DEFAULT_ISSUER_ID;   // fall back to the (possibly-URL) default
+  const known = KNOWN_ISSUERS.find((i) => i.id === target || i.url === target);
   if (known) return known;
-  // Custom URL — treat as a one-off.
+  // Custom URL (e.g. a self-hosted CSS) — treat as a one-off.
   try {
-    const url = new URL(idOrUrl);
+    const url = new URL(target);
     return { id: 'custom', name: url.host, url: url.origin };
   } catch {
     return null;

@@ -10,7 +10,7 @@ import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-p
 import { randomBytes } from 'node:crypto';
 import { InternalBus, AgentIdentity } from '@canopy/core';
 import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from '../../../feedback-pipeline/src/pod/signing.js';
-import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
+import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem, signerForIdentity, chunkBubble } from '../../src/feedback/feedbackSurface.js';
 
 let mock;
 beforeAll(async () => { mock = await startMockLlm(); });
@@ -53,7 +53,10 @@ test('full journey over the shared bus: message -> klaar -> verstuur alles -> po
 test('consent is SIGNED with the participant identity (accepted by a verify pod)', async () => {
   const id = generateParticipantIdentity();
   const roster = new IdentityRoster();
-  roster.bind('cc:s', id.publicKey, id.encPublicKey);
+  // The participant IS the on-device identity's public key (the surface's participantFor derives it from
+  // the signer), so the roster binds that pubkey — distinct per identity, which is what keeps multiple
+  // participants on the same invite/circle from collapsing to one pseudonym.
+  roster.bind(id.publicKey, id.publicKey, id.encPublicKey);
   const pod = new InMemoryCentralPod({ verify: makeContributionVerifier({ roster, projectId: 'canopy-chat' }) });
   const replies = [];
   const surface = createFeedbackSurface({ config: cfg({ privacy: { verify: true } }), pod, identity: id, emit: (r) => replies.push(r) });
@@ -72,7 +75,7 @@ test('seam 4 — a signer CLOSURE (from the host AgentIdentity) signs consent, a
   const signer = signerForIdentity(agent);
   expect(signer).toEqual({ publicKey: agent.pubKey, sign: expect.any(Function) });   // closure shape, no privateKey
   const roster = new IdentityRoster();
-  roster.bind('cc:z', signer.publicKey);
+  roster.bind(signer.publicKey, signer.publicKey);   // participant = the identity's pubkey (see above)
   const pod = new InMemoryCentralPod({ verify: makeContributionVerifier({ roster, projectId: 'canopy-chat' }) });
   const replies = [];
   const surface = createFeedbackSurface({ config: cfg({ privacy: { verify: true } }), pod, identityFor: () => signer, emit: (r) => replies.push(r) });
@@ -98,6 +101,36 @@ test('seam 4 — the signer is INERT for a non-verify project (no signing attemp
   expect(signCalls).toBe(0);           // no signer wired for a non-verify project
 });
 
+test('/report is intercepted as a surface affordance — emits a PII-safe log panel, never reaches the bot', async () => {
+  const { surface, pod, replies } = setup();
+  await surface.start('r');
+  // A free-text turn the bot WOULD normally process — so we can prove /report doesn't get routed to it.
+  await surface.handle('De GGZ-wachtlijst is veel te lang', 'r');
+  const podBefore = pod.list().length;
+  replies.length = 0;
+
+  expect(await surface.handle('/report', 'r')).toBe(true);   // handled (returns true) …
+  const panel = replies.at(-1);
+  expect(panel.kind).toBe('report');                          // … as a report panel, not a bot reply
+  expect(panel.report).toBe(true);
+  expect(panel.text).toMatch(/probleem|problem/i);            // localised header + intro
+  expect(typeof panel.logText).toBe('string');
+  expect(pod.list().length).toBe(podBefore);                  // it did NOT write / drive the journey
+
+  // The panel is PII-safe by construction: the typed feedback text must never appear in the log.
+  expect(panel.logText).not.toMatch(/wachtlijst/);
+  // The `fp:report` button (web bubble-trigger) routes to the same interception.
+  replies.length = 0;
+  expect(await surface.handle('fp:report', 'r')).toBe(true);
+  expect(replies.at(-1).kind).toBe('report');
+});
+
+test('reportButton — start() offers the web bubble-trigger with an fp:report button', async () => {
+  const { surface, replies } = setup({ surface: { reportButton: true } });
+  await surface.start('rb');
+  expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(true);
+});
+
 test('parseFeedbackInvite reads a project-invite link', () => {
   expect(parseFeedbackInvite('https://app.example/?projectId=gemeente-x&code=abc123')).toEqual({ projectId: 'gemeente-x', code: 'abc123' });
   expect(parseFeedbackInvite('projectId=p&code=c')).toEqual({ projectId: 'p', code: 'c' });
@@ -114,6 +147,26 @@ test('feedback threads stay isolated', async () => {
     await surface.handle('verstuur alles', tid);
   }
   expect(new Set(pod.list().map((c) => c.participant))).toEqual(new Set(['cc:x', 'cc:y']));
+});
+
+test('chunkBubble — short text is not chunked; long text splits at a boundary and round-trips', () => {
+  expect(chunkBubble('kort bericht')).toEqual({ head: 'kort bericht', rest: '' });
+
+  const long = `${'Dit is een lange samenvatting. '.repeat(20)}Einde.`;
+  const { head, rest } = chunkBubble(long, 120);
+  expect(head.length).toBeLessThanOrEqual(120);
+  expect(rest).not.toBe('');
+  // no content lost (modulo the trimmed boundary whitespace)
+  expect((head + ' ' + rest).replace(/\s+/g, ' ').trim()).toBe(long.replace(/\s+/g, ' ').trim());
+  // preferred a sentence boundary (head ends on a period, not mid-word)
+  expect(head.endsWith('.')).toBe(true);
+});
+
+test('chunkBubble — a hard cut when there is no boundary in-window', () => {
+  const noSpaces = 'x'.repeat(500);
+  const { head, rest } = chunkBubble(noSpaces, 200);
+  expect(head.length).toBe(200);
+  expect(rest.length).toBe(300);
 });
 
 test('feedbackContactItem — distinct agent contact (id matches bot address, openFeedback action)', () => {

@@ -150,8 +150,9 @@ export function renderContactThread(container, {
 }
 
 /** Stage-1 review block: a card per point (curated text + the original as a labelled chip + per-card send),
- *  with a footer. Tapping the text or ✏ fires onButtonTap(fp:edit:<id>) — the host pre-fills the composer. */
-function renderReviewCards(m, tr, onButtonTap) {
+ *  with a footer. Tapping the text or ✏ fires onButtonTap(fp:edit:<id>) — the host pre-fills the composer.
+ *  Exported so the kring (invite-circle feedback) renders the SAME cards instead of a flattened text bubble. */
+export function renderReviewCards(m, tr, onButtonTap) {
   const tap = (id) => { if (typeof onButtonTap === 'function') onButtonTap({ id }, m); };
   // prefer the labels the BOT shipped (in its own language); fall back to the app locale.
   const L = (k) => (m.labels && m.labels[k]) || tr(`circle.feedback.${k}`);

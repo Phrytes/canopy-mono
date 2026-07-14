@@ -16,6 +16,15 @@
  * are covered by tests).
  */
 
+// Buffer polyfill (with base64url) — the feedback signing path runs on-device in this browser bundle;
+// installed for side effects, must precede any code that signs a contribution. See the shim's header.
+import '../../src/web/shims/bufferPolyfill.js';
+
+// Dev: mirror the privacy-first structured log (@canopy/logger) to the browser console. Prod fills the
+// buffer only; `canopyDumpLogs()` (set by the feedback surface) reads it for a bug report. PII-safe.
+import { configureLog, consoleSink } from '@canopy/logger';
+if (import.meta.env?.DEV) configureLog({ sink: consoleSink });
+
 import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting, seedCircleRoster,
@@ -149,6 +158,7 @@ import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
+import { makeNoLoginFeedbackPods } from '../../src/feedback/noLoginPods.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
 import { feedbackBotFromInput, createFeedbackBotStore } from '../../src/v2/feedbackBots.js';
@@ -920,6 +930,10 @@ let tabBarEl = null;
 let circlesCache = [];
 let sources = {};
 let resolveCallSkill = null; // (opId, args) => Promise<object|null>
+// Capture the boot URL params ONCE at module load — the Solid-OIDC redirect handler
+// (`podAuth.handleRedirect`) strips `?code=…&state=…` on load (it treats `code` as an OIDC auth
+// code), which would wipe a feedback invite's `?projectId&code` before we read it. Snapshot first.
+const _bootSearch = (typeof window !== 'undefined' && window.location) ? window.location.search : '';
 let rawCallSkill = null;     // (appOrigin, opId, args) — for createGroupV2
 // The pod-session's AUTHED fetch (set on sign-in) — lets embed-ref resolution
 // read the user's OWN private-pod items; null when signed out → resolution falls
@@ -936,7 +950,14 @@ let noticeboardRefreshHook = null;
 // Built once post-agent-boot (buildCircleBot). The bot renders INTO the kring stream via `_kringRender`,
 // a small per-circle bridge that showKring sets each time it opens. (Feedback is NOT in the kring
 // composer — since F2 it attaches via the fp-bot contact thread; see showFeedbackThread.)
-const CIRCLE_LLM_BASEURL   = import.meta.env?.VITE_CIRCLE_LLM_BASEURL ?? null;
+// A root-relative LLM base (e.g. `/llm`, the vite dev-proxy convention in vite.config.js) is same-origin
+// and works with `fetch`, but the feedback config schema validates `llm.baseURL` as an ABSOLUTE url() and
+// rejects a bare `/llm`. Resolve a leading-slash base against location.origin so the proxy convention passes
+// validation while still hitting the same-origin proxy. Absolute URLs and null pass through untouched.
+const absLocalBase = (v) => (typeof v === 'string' && v.startsWith('/') && typeof window !== 'undefined' && window.location)
+  ? window.location.origin + v
+  : v;
+const CIRCLE_LLM_BASEURL   = absLocalBase(import.meta.env?.VITE_CIRCLE_LLM_BASEURL ?? null);
 const CIRCLE_LLM_MODEL     = import.meta.env?.VITE_CIRCLE_LLM_MODEL ?? undefined;
 // Per-call LLM timeout. The provider's 12s default is fine for a fast cloud/enclave model
 // but aborts a local model's cold-start (qwen2.5:7b warms up in 30–60s) → the bot silently
@@ -976,10 +997,30 @@ const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
 const SETTINGS_TEMPLATE_URL = import.meta.env?.VITE_SETTINGS_TEMPLATE_URL ?? null;
 let settingsTemplate = DEFAULT_SETTINGS_TEMPLATE;
 loadSettingsTemplate({ url: SETTINGS_TEMPLATE_URL }).then((tpl) => { settingsTemplate = tpl; }).catch(() => { /* keep bundled */ });
-const FEEDBACK_LLM_BASEURL = import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined;
+const FEEDBACK_LLM_BASEURL = absLocalBase(import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined);
 const FEEDBACK_LLM_MODEL = import.meta.env?.VITE_FEEDBACK_LLM_MODEL ?? undefined;   // the model the route serves (default qwen2.5 404s on Privatemode)
 // cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
 const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
+// Slice 2 — the companion-node collector that writes consented, signed summaries into the project's
+// central pod under the participant's pseudonym (no participant pod login). When set, the feedback
+// surface signs contributions (verify) and routes consent writes here instead of the in-memory pod.
+const FEEDBACK_COLLECTOR_URL = import.meta.env?.VITE_FEEDBACK_COLLECTOR_URL ?? null;
+// Bot languages the project lead OFFERS (canopy-side project setting until a PM config UI exists; the
+// feedback config schema is read-only + only nl/en are fully translated today). The greeting invites a
+// participant to switch into any offered language they read, in THAT language — so a non-primary speaker
+// can find it. First entry is the default/primary.
+const FEEDBACK_OFFERED_LANGS = String(import.meta.env?.VITE_FEEDBACK_LANGS || 'nl,en')
+  .split(',').map((s) => s.trim()).filter(Boolean);
+// Per-language native name + the "switch to me" invite phrased IN that language (feedback strings/ only
+// ships nl + en; add an entry here + a strings file to offer more).
+const LANG_INFO = {
+  nl: { name: 'Nederlands', prompt: 'Verder in het Nederlands? Tik hieronder.' },
+  en: { name: 'English',    prompt: 'Continue in English? Tap below.' },
+  de: { name: 'Deutsch',    prompt: 'Auf Deutsch fortfahren? Unten tippen.' },
+  fr: { name: 'Français',   prompt: 'Continuer en français ? Appuyez ci-dessous.' },
+  ar: { name: 'العربية',     prompt: 'المتابعة بالعربية؟ اضغط أدناه.' },
+  tr: { name: 'Türkçe',     prompt: 'Türkçe devam et? Aşağıya dokun.' },
+};
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
 // cluster J — ADDED feedback bots (no pre-seeding): the portal invite link/QR adds a co-hosted fp-bot
 // contact; tapping it opens its dedicated thread + activates the verify pods.
@@ -1350,12 +1391,13 @@ function buildCircleBot(agent) {
     window.canopyPeers = circlePeerGraph;   // debug / e2e seam (roster + journey-A tests seed/inspect peers)
     window.canopyAddBot = addBotFromInput;  // manual / programmatic add
     try {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(_bootSearch);
       const addbot = params.get('addbot');
       if (addbot) addBotFromInput(addbot);  // ?addbot=<https url | peer address>
-      // cluster J — a feedback invite link (?projectId=…&code=…) IS the add-a-bot action: it adds the
-      // feedback bot, then Contacten shows it (tap → its dedicated thread + activation). No pre-seeding.
-      if (params.get('projectId') && params.get('code')) addBotFromInput(window.location.search);
+      // Slice 1 — a feedback invite link (?projectId=…&code=…) creates a CIRCLE the user admins with the
+      // feedback bot as a member (no Solid login). Slice 1b — trigger on `projectId` alone so a reload (the
+      // OIDC handler strips `code`) still re-attaches the feedback circle (code is pulled from localStorage).
+      if (params.get('projectId')) openFeedbackInviteFromBoot(_bootSearch);
     } catch { /* no addbot / invite param */ }
   }
 
@@ -1597,6 +1639,17 @@ function buildCircleBot(agent) {
     // source. (Feedback's fp:* buttons render in the fp-bot thread, handled there by onButtonTap →
     // surface.tapButton — no longer in the kring composer since F2 retired the in-kring mount.)
     if (action) {
+      // Feedback language switch (fp-lang:<code>) — a canopy-side action (not a bot control): rebuild the
+      // surface in the chosen language. Must be handled before the fp:* surface routing below.
+      if (action.startsWith('fp-lang:')) { switchFeedbackLang(_kringRender?.circleId, action.slice('fp-lang:'.length)); return; }
+      // Feedback bot buttons (fp:consent:*, fp:review, fp:mine, …) render in the kring for an invite-created
+      // feedback circle — route the tap to that circle's co-hosted surface as a control turn (the surface's
+      // parseControl handles the fp:* id). This is the button-tap peer of the composer's text routing.
+      const fbId = _kringRender?.circleId;
+      if (fbId && feedbackCircleSurfaces.has(fbId)) {
+        feedbackCircleSurfaces.get(fbId).handle(action, fbId).catch((e) => _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`));
+        return;
+      }
       // Objective D — an ambiguous-slash choice: re-issue the chosen app-qualified command (with the
       // original body preserved) through the normal bot dispatch, which now parses to a unique app.
       if (action.startsWith('slash:')) { circleBot?.handle?.(action.slice('slash:'.length), {}); return; }
@@ -1835,6 +1888,171 @@ async function openRecipientPicker({ itemId, fromCircleId, toCircleId, onResult 
 // else a raw peer address → manual upsert), then re-render the roster.  Reuses
 // the shared `addBotToGraph` (web≡mobile).  Best-effort: a bad URL/address shows
 // a localised alert, never throws into the UI.
+// ── Slice 1 — a feedback INVITE link (?projectId&code) creates a CIRCLE the user ADMINS, with the
+// feedback bot as a co-hosted member — using this device's agent identity + the in-memory pseudo-pod,
+// with NO Solid pod login. (Central-pod submission runs on an in-memory pod here; the real own/central
+// pod binding + consented pod is a later slice.) The circle is renameable (the creator is admin).
+const feedbackCircleSurfaces = new Map();   // groupId → the co-hosted feedback surface for that circle
+const feedbackProjectToCircle = new Map();  // projectId → groupId (this session), for reuse without a duplicate
+
+// Slice 1b — the no-pod feedback circle is IN-MEMORY (it does NOT survive a reload), and the OIDC handler
+// strips the invite `code` from the URL after the first load. So on reload only `?projectId` survives and
+// the feedback bot would be gone. We remember each project's invite in localStorage and, keyed off the
+// surviving projectId, RE-CREATE + re-attach the circle on load — so following the link (or refreshing)
+// always restores the same feedback thread (the consented summaries themselves persist in the central pod).
+const FEEDBACK_PROJECTS_KEY = 'cc.feedbackProjects';
+function readFeedbackProjects() {
+  try { return JSON.parse(localStorage.getItem(FEEDBACK_PROJECTS_KEY) || '{}') || {}; } catch { return {}; }
+}
+function registerFeedbackProject(projectId, code) {
+  try {
+    const all = readFeedbackProjects();
+    all[projectId] = { code: code ?? all[projectId]?.code ?? null, ts: Date.now() };
+    localStorage.setItem(FEEDBACK_PROJECTS_KEY, JSON.stringify(all));
+  } catch { /* private mode / storage disabled — session-only, still works this load */ }
+}
+
+// localStorage storage adapter for the persistent own-pod (guarded — private mode / disabled storage degrades
+// to a session-only pod rather than throwing). Shape matches AsyncStorage's `{getItem,setItem}` (see persistentPod.js).
+const webLocalStorage = {
+  getItem: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  setItem: (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode / quota — session-only */ } },
+};
+
+// Per-open feedback state (groupId → cached pods + current bot language) so a language switch can REBUILD
+// the surface reusing the same pods (the participant's local Stage-1 survives the switch).
+const feedbackFlowState = new Map();
+
+// The kring bubble renderer for a feedback reply (review → clean per-point layout; else text + buttons).
+function feedbackEmit(groupId) {
+  return ({ text, buttons, kind, points, labels, logText }) => {
+    if (_kringRender?.circleId !== groupId) return;   // render only while this circle's kring is open
+    if (kind === 'report') {
+      // "Report a problem" — the PII-safe on-device log, shown for review. Web text bubbles are selectable, so
+      // the intro + the (monospace-ish) log render as one copyable bubble. Never fanned out — private to you.
+      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self' });
+      return;
+    }
+    if (kind === 'review' && Array.isArray(points) && points.length) {
+      // Converged with the contact-thread flow — render editable per-point CARDS (curated text + the
+      // original as a labelled chip + per-card send/✏), not a flattened text bubble.
+      const intro = String(text || '').split('\n\n')[0].split('\n')[0];
+      _kringRender.botBubble?.(intro, { review: { intro, points, labels } });
+      return;
+    }
+    _kringRender.botBubble?.(text, { buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
+  };
+}
+
+// Build the feedback surface for a project in a given language, reusing the supplied (cached) pods.
+function buildFeedbackSurface({ projectId, groupId, lang, ownPod, centralPod, controlStore }) {
+  return createFeedbackSurface({
+    projectId, lang,
+    llmBaseURL: FEEDBACK_LLM_BASEURL, llmModel: FEEDBACK_LLM_MODEL,
+    identityFor: () => signerForIdentity(circleCoreAgent?.identity),
+    // Verify-summary model: raw stays in the participant's OWN pod; only a round-approved SUMMARY is
+    // released to the central pod (the collector) via the shared control store.
+    pod: ownPod,
+    ...(centralPod ? { centralPod, controlStore, verify: true } : {}),
+    reportButton: true,   // web idiom: offer "Report a problem" as a bubble-button (mobile uses a header button)
+    emit: feedbackEmit(groupId),
+  });
+}
+
+// Greeting supplement — invite the participant, IN each OTHER offered language, to switch the bot to it, so
+// a non-primary speaker sees a line they can read + a one-tap button.
+function emitFeedbackLangOptions(groupId, currentLang) {
+  const others = FEEDBACK_OFFERED_LANGS.filter((l) => l !== currentLang && LANG_INFO[l]);
+  if (!others.length || _kringRender?.circleId !== groupId) return;
+  _kringRender.botBubble?.(
+    `🌐 ${others.map((l) => LANG_INFO[l].prompt).join('  ·  ')}`,
+    { buttons: others.map((l) => ({ id: `fp-lang:${l}`, action: `fp-lang:${l}`, label: LANG_INFO[l].name })) },
+  );
+}
+
+// Switch the bot's language for an open feedback circle: rebuild the surface in the new language reusing the
+// SAME pods (Stage-1 stays), re-greet (fresh /help in the new language), then re-offer the other languages.
+async function switchFeedbackLang(groupId, newLang) {
+  const st = feedbackFlowState.get(groupId);
+  if (!st || !LANG_INFO[newLang] || st.lang === newLang) return;
+  try { feedbackCircleSurfaces.get(groupId)?.stop?.(groupId); } catch { /* best-effort */ }
+  st.lang = newLang;
+  const surface = buildFeedbackSurface({ ...st, groupId, lang: newLang });
+  surface._feedbackInvite = { projectId: st.projectId, code: st.code ?? null };
+  feedbackCircleSurfaces.set(groupId, surface);
+  try { await surface.start(groupId); } catch (e) { _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`); }
+  emitFeedbackLangOptions(groupId, newLang);
+}
+
+// Attach (create-or-reuse) the feedback circle for a project + co-host its bot. Idempotent within a
+// session (a second call for the same projectId reuses the existing circle); re-creates a fresh circle
+// after a reload (the old in-memory one is gone). `code` is optional invite metadata (not needed to build
+// the circle). Returns the groupId (or undefined on failure).
+async function attachFeedbackProject({ projectId, code = null, open = true } = {}) {
+  if (!projectId) return;
+  if (!rawCallSkill) return;   // agent not booted yet — re-checked after buildCircleBot binds it
+
+  // Reuse within this session — never make a duplicate circle for the same project.
+  const known = feedbackProjectToCircle.get(projectId);
+  if (known && feedbackCircleSurfaces.has(known)) {
+    if (open) await showDetail(known);
+    return known;
+  }
+
+  let groupId;
+  try {
+    // Create the circle — the caller becomes role:'admin' (stoop createGroupV2), storagePolicy 'no-pod'.
+    // groupId is a deterministic slug of the name, so a reload's re-create lands on the same id.
+    const name = t('circle.feedback.circle_name', { project: projectId, defaultValue: `Feedback · ${projectId}` });
+    const res = await quickCreateCircle({ callSkill: rawCallSkill, name });
+    groupId = res?.groupId;
+    if (!groupId) throw new Error('createGroupV2 returned no groupId');
+    circlesCache = await loadCircles(sources);
+  } catch (err) {
+    console.warn('[circleApp] feedback circle attach failed:', err?.message ?? err);
+    return;
+  }
+
+  // Co-host the feedback bot as THIS circle's participant — agent-identity signer, no Solid login.
+  // Cache the pods once so a language switch can rebuild the surface without losing local Stage-1 data.
+  // Verify-summary model: raw stays in the OWN pod; only a round-approved summary reaches central (collector).
+  const { ownPod, centralPod, controlStore } = makeNoLoginFeedbackPods({
+    collectorUrl: FEEDBACK_COLLECTOR_URL, participantKey: circleCoreAgent?.identity?.pubKey,
+    // Persist the OWN pod (localStorage) so consented Stage-1 survives a reload — consent + the verify-round
+    // approval no longer need to happen in one session. Mirrors mobile's AsyncStorage-backed own pod.
+    storage: webLocalStorage, podKey: `fp.ownpod.${projectId}`,
+  });
+  const dev = detectDeviceLang();
+  const lang = FEEDBACK_OFFERED_LANGS.includes(dev) ? dev : (FEEDBACK_OFFERED_LANGS[0] || 'nl');
+  feedbackFlowState.set(groupId, { projectId, code, lang, ownPod, centralPod, controlStore });
+
+  const surface = buildFeedbackSurface({ projectId, groupId, lang, ownPod, centralPod, controlStore });
+  surface._feedbackInvite = { projectId, code };   // carries the invite for the later central-write slice
+  feedbackCircleSurfaces.set(groupId, surface);
+  feedbackProjectToCircle.set(projectId, groupId);
+  registerFeedbackProject(projectId, code);
+
+  // A feedback circle is a CONVERSATION with the bot — land on chat (not the scherm/noticeboard default) so
+  // the greeting + composer are immediately visible on first open AND after a reload.
+  writeViewMode(groupId, 'chat');
+  // Open it (sets _kringRender.circleId = groupId), then start the bot so its greeting lands in the kring.
+  if (open) await showDetail(groupId);
+  try { await surface.start(groupId); }
+  catch (e) { _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`); }
+  emitFeedbackLangOptions(groupId, lang);   // offer the other languages the lead configured
+  return groupId;
+}
+
+// Boot/reload entry: an invite link carries `?projectId&code` (first visit); after the OIDC handler strips
+// `code`, a reload keeps `?projectId` only — either way we (re-)attach the project, pulling the remembered
+// code from localStorage when the URL no longer has it.
+function openFeedbackInviteFromBoot(search) {
+  let projectId = null, code = null;
+  try { const p = new URLSearchParams(search); projectId = p.get('projectId'); code = p.get('code'); } catch { return; }
+  if (!projectId) return;
+  attachFeedbackProject({ projectId, code: code || readFeedbackProjects()[projectId]?.code || null, open: true });
+}
+
 async function addBotFromInput(input) {
   // cluster J — a feedback INVITE link/QR adds the co-hosted feedback bot (NOT a PeerGraph peer).
   const fb = feedbackBotFromInput(input, { activationUrl: FEEDBACK_ACTIVATION_URL || undefined });
@@ -3463,6 +3681,21 @@ function showKring(id, circle, policy) {
       onEmbedButton: (b) => circleEmbedButtonTap?.(b),
       // tap a "See also" embed chip → open the screen where the item lives (S6.B panel).
       onEmbedOpen: ({ screen, ref }) => { if (screen) openCircleScreenPanel(screen, { highlightRef: ref }); },
+      // Convergence — a feedback review CARD button: ✏ pre-fills the composer for an in-place edit; a
+      // send/cancel routes to the co-hosted surface as a control turn.
+      onReview: (b, row) => {
+        const _fb = feedbackCircleSurfaces.get(id);
+        if (!_fb || !b?.id) return;
+        const em = /^fp:edit:(p\d+)$/.exec(b.id);
+        const rev = row?.event?.payload?.review;
+        if (em && rev) {
+          const p = (rev.points || []).find((x) => x.id === em[1]);
+          if (p) { const st = feedbackFlowState.get(id); if (st) st.editing = { pointId: p.id, text: p.text || '' }; rerender(); return; }
+        }
+        _fb.handle(b.id, id).catch((e) => _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`));
+      },
+      // ✏ edit pre-fill: the composer opens with the point's current curated text, ready to adjust.
+      composerPrefill: feedbackFlowState.get(id)?.editing?.text ?? null,
       // Composer affordances (classic-shell parity): slash-suggest off the merged catalog + bash history.
       catalog: circleCatalog,
       history: kringInputHistory,
@@ -3661,12 +3894,36 @@ function showKring(id, circle, policy) {
         // intercepts as a command posts its OWN scoped reply; the user's words still went out.)
         eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: id, actor: LOCAL_ACTOR, text: line, scope: 'kring' }));
         rerender();
-        if (circleBot) { noteCircleBotTurn(await circleBot.handle(line, { id, msgId, ts }), line); }
+        const _fbSurface = feedbackCircleSurfaces.get(id);
+        if (_fbSurface) {
+          // ✏ edit in progress (composer was pre-filled from a review card) → this line is the new wording;
+          // send it as fp:edit:<pid>:<text> and clear the edit so the composer returns to normal.
+          const _fbSt = feedbackFlowState.get(id);
+          if (_fbSt?.editing) {
+            const { pointId } = _fbSt.editing; _fbSt.editing = null;
+            try { await _fbSurface.handle(`fp:edit:${pointId}:${line}`, id); } catch (e) { _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`); }
+            rerender();
+            return;
+          }
+          // Language switch as a typed command: /taal en · /lang nl · /language en (canopy-side, not a bot control).
+          const _langCmd = line.match(/^\/(?:taal|lang|language)\s+([a-z]{2})\s*$/i);
+          if (_langCmd && LANG_INFO[_langCmd[1].toLowerCase()]) { await switchFeedbackLang(id, _langCmd[1].toLowerCase()); return; }
+          // Slice 1 — a feedback circle routes ALL free text to its co-hosted feedback bot (the user's
+          // line was already appended above; the bot's replies render via emit → _kringRender.botBubble).
+          try { await _fbSurface.handle(line, id); } catch (e) { _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`); }
+        } else if (circleBot) { noteCircleBotTurn(await circleBot.handle(line, { id, msgId, ts }), line); }
         else { broadcastFanOut({ msgId, text: line, ts }); }   // fallback before the bot is built
       },
       onAction: (action /*, row */) => {
-        // V0: per-row actions just log.  Wiring each (Ik help / Ik doe ze /
-        // Negeer) to its dispatch lands in SP-13.2.1.
+        // Feedback bot buttons (Send all / Send 1 / ✏ / Send nothing → fp:consent:* / fp:edit:* / fp:cancel)
+        // route to this circle's co-hosted feedback surface as a control turn — the button-tap peer of the
+        // composer's text routing. (Other per-row actions remain V0 no-ops until SP-13.2.1.)
+        const _fb = feedbackCircleSurfaces.get(id);
+        if (_fb && typeof action?.action === 'string') {
+          if (action.action.startsWith('fp-lang:')) { switchFeedbackLang(id, action.action.slice('fp-lang:'.length)); return; }
+          _fb.handle(action.action, id).catch((e) => _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`));
+          return;
+        }
         console.info('[kring] action', action.action, 'on row', action.payload?.rowId);
       },
       more,
@@ -3680,7 +3937,7 @@ function showKring(id, circle, policy) {
       const mid = `kring-${id}-${Date.now()}-${(seq += 1).toString(36)}-bot`;
       // S6.A — opts.buttons ride payload.buttons. scope ('self'|'kring') — a bot reply is
       // private unless it represents a shared action; absent → renderer defaults to 'self'.
-      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope, embeds: opts?.embeds }));
+      eventLog.append(kringChatMessageEvent({ msgId: mid, ts: Date.now(), circleId: id, actor: 'bot', text, buttons: opts?.buttons, scope: opts?.scope ?? (opts?.review ? 'self' : undefined), embeds: opts?.embeds, review: opts?.review }));
       rerender();
     },
     // Local echo of the user's own line (used by the feedback mount, which consumes the message before the
@@ -4397,7 +4654,15 @@ async function boot() {
   // S5 — register the web-push service worker (root-scoped /sw.js). Best-effort:
   // it makes `serviceWorker.ready` resolve so the My-data push toggle can read
   // live subscription state; actual subscription happens on user opt-in.
-  try { navigator.serviceWorker?.register('/sw.js').catch(() => {}); } catch { /* unsupported */ }
+  // DEV: skip on localhost — a cached SW serves a stale bundle across code changes
+  // (the recurring "hard-refresh doesn't help" trap); also proactively unregister any
+  // already-registered SW so a dev machine self-heals.
+  const _isDevHost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+  if (_isDevHost) {
+    try { navigator.serviceWorker?.getRegistrations?.().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {}); } catch { /* unsupported */ }
+  } else {
+    try { navigator.serviceWorker?.register('/sw.js').catch(() => {}); } catch { /* unsupported */ }
+  }
 
   // S6.C — load the per-user surface preference (how the bot shows actions).
   circleSurfacePref.hydrate().catch(() => {});

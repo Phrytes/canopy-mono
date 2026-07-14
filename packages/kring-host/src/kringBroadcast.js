@@ -10,7 +10,7 @@
  *
  * @param {{msgId:string, ts:number, circleId:string, actor:string, text:string, buttons?:Array, scope?:string, embeds?:Array, media?:object}} a
  */
-export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope, embeds, media }) {
+export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, buttons, scope, embeds, media, review }) {
   return {
     id: msgId, ts, app: 'kring', type: 'chat-message', actor,
     // `scope` ('self' | 'kring') — is this message private to you or shared with the
@@ -25,6 +25,10 @@ export function kringChatMessageEvent({ msgId, ts, circleId, actor, text, button
       ...(scope ? { scope } : {}),
       ...(embeds?.length ? { embeds } : {}),
       ...(media ? { media } : {}),
+      // `review` — a structured Stage-1 feedback review ({intro, points, labels}); the kring renders it as
+      // editable per-point CARDS (renderReviewCards) instead of flattened text. Private by construction
+      // (scope 'self'), so it never fans out to peers.
+      ...(review ? { review } : {}),
     },
   };
 }

@@ -16,7 +16,7 @@ export const feedbackBotId = (projectId) => `fp-bot:${projectId}`;
  * descriptor, or null when it isn't a feedback invite.
  * @returns {{id, kind, label, projectId, code, activationUrl?}|null}
  */
-export function feedbackBotFromInput(input, { activationUrl, label } = {}) {
+export function feedbackBotFromInput(input, { activationUrl, collectorUrl, label } = {}) {
   const invite = parseFeedbackInvite(input);
   if (!invite) return null;
   return {
@@ -27,7 +27,11 @@ export function feedbackBotFromInput(input, { activationUrl, label } = {}) {
     label: label || `Feedback · ${invite.projectId}`,
     projectId: invite.projectId,
     code: invite.code,
+    // A bot with an `activationUrl` uses the login/activation flow; one with a `collectorUrl` (and no
+    // activation) uses the NO-LOGIN collector flow — raw stays local, the signed summary goes to the
+    // collector. Mutually exclusive in practice; FeedbackThreadScreen branches on which is present.
     ...(activationUrl ? { activationUrl } : {}),
+    ...(collectorUrl ? { collectorUrl } : {}),
   };
 }
 
