@@ -10,6 +10,9 @@ author code — several are load-bearing invariants, not style preferences.
 - **[manifest-standard.md](./manifest-standard.md)** — what a *conformant* app manifest must satisfy
   (structural validity, atom discipline, noun-declaration discipline, projector totality) so the manifest stays
   the single source of truth for surfaces (invariant #4); enforced by a cross-app fitness function.
+- **[property-vocabulary.md](./property-vocabulary.md)** — how an agent expresses queryable **properties**
+  (JSON-LD terms: schema.org/FOAF/vCard/OIDC for people, W3C WoT for devices; a thin `cdi:` policy namespace).
+  Standard the properties facet will follow (not yet built).
 - **[localisation.md](./localisation.md)** — every user-facing surface ships translatable from commit one;
   substrates emit error codes, not strings.
 - **[cross-app-settings.md](./cross-app-settings.md)** — pod-side settings split into portable `shared.json` +

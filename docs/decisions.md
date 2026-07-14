@@ -168,3 +168,79 @@ can't be an authority; the signed token can, and the mirror keeps display cheap.
 as absent/static defaults until the entry carries them; revocation is purely registry-side (`revokedAt` →
 `status: "revoked"` on the next projection); serving the projected card at the A2A `.well-known/agent`
 discovery path is follow-on work.
+
+---
+
+## 2026-07-14 — Agent property vocabulary: open JSON-LD (schema.org / FOAF / vCard / OIDC claims + W3C WoT), thin canopy policy namespace
+
+**Status:** adopted direction (design agreed; the properties system is not yet built). See
+[`conventions/property-vocabulary.md`](./conventions/property-vocabulary.md) for the how-to rule.
+
+**Context:** alongside requestable *skills* (things you can do) and *data* (things you hold), an agent will
+expose queryable **properties** — attributes about the user or their possessions/devices (age, place,
+availability; a tool to lend; a robot's battery), legible to both humans and bots/drones. The stack is already
+JSON-LD/RDF (Solid pods + the A2A agent card), and the A2A `AgentCardBuilder` already advertises tier-filtered
+*skills* — properties are the missing sibling facet on the same card.
+
+**Decision:** properties are **JSON-LD typed terms**, and the vocabulary is **OPEN, not a closed enum** — a
+property key is a namespaced URI, so it is self-describing and a bot can resolve it with no prior agreement.
+Standard terms are the **common baseline** (so the frequent properties are mutually understood), and any JSON-LD
+term may extend it:
+- **Human/personal:** schema.org (incl. `Offer`/`Product` for shareable possessions), FOAF + vCard (Solid-native
+  people/contact), OIDC standard-claim *names* (`birthdate`, `address`, …).
+- **Device/robot:** W3C **Web of Things Thing Description** (a thing's queryable properties/actions/events —
+  "battery left", status).
+- **Canopy's own thin namespace** (`cdi:` — canopy disclosure) carries only the *policy* layer no standard
+  specifies: the disclosure **ladder** (coarsening rungs), **persona**, **disclosure level**.
+
+Anything **not pre-declared** is reachable only through a consent-gated query path (deferred; the highest-risk
+surface).
+
+**Alternatives / why:** over a **bespoke canopy vocabulary** — kills interop (another app/bot/agent can't
+understand our terms). Over **W3C Verifiable Credentials + DIDs as the base** — heavy, and verification /
+attestation is deliberately out of scope (properties are self-asserted; VC selective-disclosure is a clean
+*later* add-on at the predicate rung if a real verification need appears). Standard self-describing terms for the
+*what*; a thin canopy namespace for the *policy*.
+
+**Consequences:** properties attach as a facet to the A2A agent card, filtered by the caller's trust tier but at
+a **rung** (coarsened value) rather than binary show/hide; persona / disclosure-level / ladder live under `cdi:`;
+open/semantic queries over non-declared attributes are a separate, deferred, consent-gated path.
+
+---
+
+## 2026-07-14 — Identity: one owner root; profiles unify agent/persona via own-vs-inherit; per-circle addresses
+
+**Status:** adopted direction (designed with the owner; not yet built). Minimal-first slice defined.
+
+**Context:** every in-process sub-agent (`cc-chat-id:` / `cc-stoop-id:` / …) currently has its own independent
+random 32-byte seed — no shared root — so "one phrase = whole agent" does not exist, and the existing web mnemonic
+reveal/restore is bound to a *different* sub-agent than the one a given feature (e.g. the feedback pseudonym) signs
+with. A phrase-based backup would restore the wrong identity. Three needs share this substrate: cross-device recovery
+of a no-login pseudonym, "log in to my agent from anywhere," and exporting a profile to a non-pod store.
+
+**Decision:** a single **owner root** (a `Bootstrap` phrase) is the recovery unit. From it, per-**profile** keys are
+HKDF-derived, and per-**circle** addresses are HKDF-derived from the profile key
+(`root → profile → per-circle address`). A **profile is one concept that unifies "agent" and "persona"**: it carries
+an open property graph (the JSON-LD [property vocabulary](./conventions/property-vocabulary.md)) where each property
+(settings, relay, storage, contacts, circle memberships) is either **`own`** or **`inherit`(from a parent/default
+profile)**. A persona-face inherits everything but its label/key/disclosure; a separate device-agent owns its
+substrate; flipping `inherit ↔ own` re-scopes later with no migration. The set of profiles is a **registry**
+(canonical on the pod as `agents/<id>.json`; exportable as one sealed file/DB). **Infrastructure attaches to a
+profile-in-the-registry, never to a loaded instance** — so declining to reload a profile onto a device can never
+orphan your relays/settings. Isolation for low-trust devices is a **revocable scoped delegation of one profile —
+never the root key**. Every `(profile, circle)` gets a distinct derived address → **unlinkable-by-default,
+linkable-by-choice**; the presented identity is a per-join **disclosure lens**, not baked into the profile.
+
+**This reverses `Bootstrap`'s original "Track B" intent** — its docstring keeps the root deliberately independent of
+the per-device agent signing identity; here the owner root becomes the **parent** of those identities. Intentional.
+
+**Alternatives / why:** over *N independent per-app-role random seeds* (today) — no single recovery, wrong-identity
+backups. Over *a rigid account→sub-agent hierarchy the user manages* — too complex; the own/inherit graph + an
+invisible default profile collapse it to "just me" for the common case. Over *one profile blob shipped to every
+device* — leaks high-trust keys onto low-trust gadgets (a light switch would hold your admin key). Over *one stable
+address per profile* — cross-circle correlation by any software.
+
+**Consequences:** unblocks feedback cross-device recovery as a consumer of the owner root; full unlinkability also
+requires a per-circle **transport/rendezvous** address (a phased follow-on at the relay layer — the key layer alone
+is necessary but not sufficient); migration is a pre-launch clean reset (no dual-mode). Builds on existing
+primitives (`Bootstrap`, `AgentIdentity`, HKDF, `restoreFromMnemonic`) — no new cryptography.
