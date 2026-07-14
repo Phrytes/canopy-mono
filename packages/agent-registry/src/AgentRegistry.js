@@ -38,6 +38,10 @@ export function createAgentRegistry({
   resourceUri,
   maxRetries,
   onPersistentConflict,
+  // identity step 2.5 — optional @canopy/versioning store. When supplied, every registry write
+  // snapshots the resource, so the profile set gets history / undoable recovery (the registry
+  // lives on the pseudo-pod, which is NOT a versioned circle pod, so it gets none for free).
+  versionStore = null,
   now = () => new Date().toISOString(),
 } = {}) {
   if (!pseudoPod || typeof pseudoPod.read !== 'function') {
@@ -60,6 +64,11 @@ export function createAgentRegistry({
   async function _writeNext(body, etag) {
     try {
       const result = await pseudoPod.write(uri, body, etag);
+      // Snapshot the just-written resource (recovery). Best-effort: a versioning failure must
+      // NEVER break the registry write.
+      if (typeof versionStore?.capture === 'function') {
+        try { await versionStore.capture(uri, JSON.stringify(body)); } catch { /* non-fatal */ }
+      }
       return { etag: result?.etag };
     } catch (err) {
       // Pseudo-pod V0 / V1 doesn't yet enforce CAS — surface a CONFLICT
