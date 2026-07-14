@@ -110,6 +110,9 @@ const _cfg = withCanopyPreset({
     '@canopy-app/stoop':       path.resolve(repoRoot, 'apps/stoop'),
     '@canopy-app/folio':       path.resolve(repoRoot, 'apps/folio'),
     '@canopy-app/calendar':    path.resolve(repoRoot, 'apps/calendar'),
+    // realAgent.js's skill wiring (added 2026-07-09). Bare import → the `.` export (src/cores.js); the
+    // /wireSkills + /defaultCatalog subpaths go through extraSubpathResolvers (package-exports disabled).
+    '@canopy-app/agents':      path.resolve(repoRoot, 'apps/agents'),
 
     // Transitive @canopy/* not declared in package.json deps.
     // @canopy/vault is reached via secure-agent + realAgent.js's
@@ -126,6 +129,8 @@ const _cfg = withCanopyPreset({
     // @canopy/llm-client — bare import resolves via its package.json main (src/index.js); the
     // /providers/ollama subpath goes through extraSubpathResolvers (package-exports is disabled).
     '@canopy/llm-client':        path.resolve(repoRoot, 'packages/llm-client'),
+    // Privacy-first logging facade (web ≡ mobile). Bare `.` export = src/index.js.
+    '@canopy/logger':            path.resolve(repoRoot, 'packages/logger'),
   },
 
   // Subpath resolvers — Trap 2 escape hatch.
@@ -176,6 +181,17 @@ const _cfg = withCanopyPreset({
           filePath: path.resolve(repoRoot, 'apps/feedback-pipeline/node_modules/eld/src/entries', `static.${eldMatch[1]}.js`),
           type:     'sourceFile',
         };
+      }
+
+      // 4b. @canopy-app/agents subpaths (realAgent.js skill wiring). exports map: ./wireSkills →
+      //     src/wireSkills.js, ./defaultCatalog → src/defaultCatalog.js, ./cores → src/cores.js,
+      //     ./manifest → manifest.js. Package-exports disabled, so map directly.
+      const agentsMatch = moduleName.match(/^@canopy-app\/agents\/(wireSkills|defaultCatalog|cores)$/);
+      if (agentsMatch) {
+        return { filePath: path.resolve(repoRoot, 'apps/agents/src', `${agentsMatch[1]}.js`), type: 'sourceFile' };
+      }
+      if (moduleName === '@canopy-app/agents/manifest') {
+        return { filePath: path.resolve(repoRoot, 'apps/agents/manifest.js'), type: 'sourceFile' };
       }
 
       // 5. @canopy/llm-client provider subpaths (circle bot). Package-exports disabled → map directly.

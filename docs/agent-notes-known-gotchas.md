@@ -52,6 +52,19 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   versioning/agents work hand-materialized `@canopy/versioning` into `apps/canopy-chat`, `apps/canopy-chat-mobile`,
   and `packages/substrate-stack`; `@canopy/substrate-stack` into `apps/{stoop,tasks-v0,household}`; and
   `@canopy-app/agents` + `@canopy/agent-registry` into `apps/canopy-chat` — all pending the next real install.
+  *Concrete (2026-07-13):* the logging model added `@canopy/logger`; links hand-materialized into
+  `apps/canopy-chat`, `apps/canopy-chat-mobile`, and the repo-root `node_modules`, plus a `metro.config.js`
+  `extraNodeModules` alias (Metro has package-exports disabled, so `@canopy/*` MUST be aliased there).
+  **Metro caches `metro.config.js` at STARTUP — a running Metro will NOT see a newly-added `extraNodeModules`
+  alias (or a symlink created after it booted).** Tell: `Unable to resolve module @canopy/<pkg>` from a bundle
+  even though the alias is on disk and the symlink exists. Fix: restart Metro (`--clear`). This is the resolution
+  peer of the "restart Metro after editing shared `src/`" stale-bundle lesson.
+  **Corollary (2026-07-13, hit repeatedly): Metro's file watcher reliably picks up edits to files INSIDE the
+  app dir (`apps/canopy-chat-mobile/**`) but MISSES edits to `watchFolders` packages** (`apps/canopy-chat/src/**`,
+  `packages/**`) — a re-request returns a byte-identical bundle without the change. Tell: you edit a shared
+  `src/` or a `packages/*` file, request the bundle, and your new code isn't in it (grep the bundle for a
+  marker string → 0 hits). Fix: restart Metro with `--clear` (a plain reload isn't enough). Confirm the fix
+  landed by `grep -c <marker> <bundle>` before reloading the device — saves a wasted reload cycle.
   **Same family — a fresh `git worktree` has NO `node_modules`:** before running a worktree's tests, wire them by
   symlinking the main tree's root `node_modules` + each `apps/*/node_modules` & `packages/*/node_modules`. And note
   the Agent-tool `isolation: worktree` branches from stale `origin/master` here (local master is unpushed) — pin
@@ -135,3 +148,15 @@ when the mobile app boots or its Vitest suite runs. RN-bundle-safe: the barrel p
 `uploadBlob`/`gatekeeper`/`ref`/`bytes`/`openBlob`, and `bytes.js`'s guarded `require('node:crypto')`
 (behind `globalThis.crypto ||`) + `@canopy/pod-client/sealing` were already in the RN graph via the old
 `openBlob.js` import — no NEW node-only dep enters the bundle. (Added 2026-07-11, code-quality hygiene pass.)
+
+## Metro couldn't resolve `@canopy-app/agents/wireSkills` (mobile bundle broke since 2026-07-09)
+
+`apps/canopy-chat/src/core/agent/realAgent.js` imports `@canopy-app/agents/{wireSkills,defaultCatalog}`
+(added 2026-07-09). The web/vite build honors the `apps/agents` package `exports` map; **Metro has
+`unstable_enablePackageExports` disabled**, so it couldn't resolve those subpaths — the whole mobile bundle
+failed (`Unable to resolve "@canopy-app/agents/wireSkills"`). The mobile app had been un-bundleable via Metro
+since then. **Fix (2026-07-13):** added `@canopy-app/agents` to `metro.config.js` `extraNodeModules` +
+`extraSubpathResolvers` cases mapping `/wireSkills`→`apps/agents/src/wireSkills.js`, `/defaultCatalog`,
+`/cores`, and `/manifest`→`apps/agents/manifest.js` (mirrors the existing stoop/llm-client subpath resolvers).
+**Tell:** a bare `@canopy-app/<app>/<subpath>` import that resolves in vite/web but throws in Metro → it needs
+an `extraSubpathResolvers` case (package-exports stays disabled). (Added 2026-07-13, mobile feedback parity.)

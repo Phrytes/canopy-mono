@@ -42,6 +42,25 @@ import 'react-native-get-random-values';
 import { Buffer } from 'buffer';
 if (typeof globalThis.Buffer === 'undefined') globalThis.Buffer = Buffer;
 
+// base64url support — the bundled `buffer@6.0.3` does NOT handle the `'base64url'` encoding correctly on
+// Hermes, so `Buffer.from(sig).toString('base64url')` throws. The feedback SIGNING path relies on it
+// (feedback-pipeline pod/signing.js `b64u` / `canonicalContribution`) and now runs ON-DEVICE (the no-login
+// signed central-pod route): without this, consent silently fails — the signing throw is swallowed by the
+// bus bridge, so nothing is written and no reply is emitted. Patch `from`/`toString` to translate
+// base64url ⇄ base64 ourselves. Mirrors the web shim (apps/canopy-chat/src/web/shims/bufferPolyfill.js).
+const _toB64Url = (b64) => b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const _fromB64Url = (s) => s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4);
+const _origToString = Buffer.prototype.toString;
+Buffer.prototype.toString = function toString(encoding, ...rest) {
+  if (encoding === 'base64url') return _toB64Url(_origToString.call(this, 'base64'));
+  return _origToString.call(this, encoding, ...rest);
+};
+const _origFrom = Buffer.from.bind(Buffer);
+Buffer.from = function from(value, encoding, ...rest) {
+  if (encoding === 'base64url' && typeof value === 'string') return _origFrom(_fromB64Url(value), 'base64');
+  return _origFrom(value, encoding, ...rest);
+};
+
 // ─── 3. Blob.prototype.arrayBuffer / .text ────────────────────────
 //
 // RN's Blob doesn't ship these.  @inrupt/solid-client reads pod-file
