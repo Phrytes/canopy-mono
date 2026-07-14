@@ -94,6 +94,35 @@ export const agentsManifest = {
       },
     },
 
+    /* ── identity step 4 — create a PROFILE ─────────────────────────────
+     * A profile is a labelled identity whose key derives from the owner root
+     * (recoverable from the phrase). The DERIVATION is the injected `profiles`
+     * collaborator (owner-root-backed); this op names it. verb `add` (a new
+     * `agent`-type entry).
+     */
+    {
+      id:        'createProfile',
+      verb:      'add',
+      appliesTo: { type: 'agent' },
+      params: [
+        // Stable profile id — also the registry agentId + the HKDF label. Never rename.
+        { name: 'id',         kind: 'string', required: true, schema: { minLength: 1 } },
+        // Optional display name.
+        { name: 'name',       kind: 'string' },
+        // Optional own/inherit property map — a JSON string (same convention as installAgent.grants).
+        { name: 'properties', kind: 'string' },
+      ],
+      surfaces: {
+        chat: {
+          reply: 'record',
+          hint:  'Create a new PROFILE — a labelled identity whose key derives from your owner root '
+               + '(recoverable from your recovery phrase). Give it an id (a stable label) and an '
+               + 'optional name/properties (JSON own/inherit map). It joins your agents; you can then '
+               + 'load it on a device.',
+        },
+      },
+    },
+
     /* ── P2 CONTROL ops ─────────────────────────────────────────────────
      * All resolve the target by agentId OR pubKey ONLY (never webid —
      * ambiguous for multi-device users), same as viewAgent.  Token-first

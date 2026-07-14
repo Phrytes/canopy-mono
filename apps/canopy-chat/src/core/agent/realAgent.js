@@ -51,6 +51,7 @@ import {
   createEndorsementResource,
   createCatalogSource,
   createCommunitySubscriptions,
+  createProfile as registryCreateProfile,
 } from '@canopy/agent-registry';
 
 /**
@@ -649,8 +650,14 @@ export async function createRealHouseholdAgent(opts = {}) {
     // 2.4b — owner-only CONTROL ops require 'trusted' (only the seeded in-process chat identity
     // clears it); reads (list/view) stay 'authenticated'. Chat-scoped: the shared wireSkills.js
     // `visibilityFor` + the standalone agents app are untouched.
-    const TRUSTED_AGENT_OPS = new Set(['grantAgent', 'revokeAgent', 'revokeGrant', 'purgeAgent', 'installAgent', 'restoreDataVersion']);
-    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog })) {
+    const TRUSTED_AGENT_OPS = new Set(['createProfile', 'grantAgent', 'revokeAgent', 'revokeGrant', 'purgeAgent', 'installAgent', 'restoreDataVersion']);
+    // identity step 4 — the createProfile collaborator: derive a new profile from THIS user's owner
+    // root + register it. Owner-root-backed (kept out of the dependency-free cores).
+    const agentsProfiles = {
+      create: ({ profileId, name, properties }) =>
+        registryCreateProfile({ registry: agentsRegistry, ownerRoot, profileId, name, properties }),
+    };
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog, profiles: agentsProfiles })) {
       hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });
     }
   }

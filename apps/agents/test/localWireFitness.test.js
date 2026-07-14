@@ -247,6 +247,7 @@ function buildWireDefs(registry, tokens = null, versionStoreFor = null, catalog 
   return [
     wire('listAgents'),
     wire('viewAgent'),
+    wire('createProfile'),
     wire('revokeAgent'),
     wire('grantAgent'),
     wire('revokeGrant'),

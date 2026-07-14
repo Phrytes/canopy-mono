@@ -85,3 +85,18 @@ describe('identity step-2.4a — host enforcement gate attached', () => {
     expect(typeof a.hostPolicyEngine.checkInbound).toBe('function');     // and it's a real PolicyEngine
   });
 });
+
+describe('identity step-4 (app) — createProfile op', () => {
+  it('mints a ROOT-DERIVED profile via callSkill (owner-root collaborator, through the trusted gate)', async () => {
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const res = await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });
+    expect(res.created).toBe(true);
+    expect(res.agent.role).toBe('profile');
+    // the new profile's key is derived from THIS user's owner root (recoverable from the phrase)
+    const phrase = await ownerRootVault.get('owner-phrase');
+    const expected = (await AgentIdentity.fromSeed(
+      Bootstrap.fromMnemonic(phrase).deriveAgentSeed('work'), new VaultMemory())).pubKey;
+    expect(res.pubKey).toBe(expected);
+  });
+});

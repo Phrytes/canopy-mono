@@ -50,13 +50,13 @@ const DEFAULT_EXPIRES_IN_DAYS = 30;   // BotAgentRegistry precedent.
  */
 function asStore(store) {
   if (store && typeof store.list === 'function') {
-    return { registry: store, tokens: null };
+    return { registry: store, tokens: null, profiles: null };
   }
   const registry = store?.registry;
   if (!registry || typeof registry.list !== 'function') {
     throw new TypeError('agents cores: store must be a registry or { registry, tokens? }');
   }
-  return { registry, tokens: store.tokens ?? null };
+  return { registry, tokens: store.tokens ?? null, profiles: store.profiles ?? null };
 }
 
 /**
@@ -379,9 +379,32 @@ export async function purgeAgent(store, args = {}) {
  * module wraps each of these with `wireSkill`, and the fitness test
  * checks route parity against `manifest.operations`.
  */
+/**
+ * createProfile — mint a NEW root-derived profile (identity step 4). The key DERIVATION lives in
+ * the injected `profiles` collaborator (keeps the cores dependency-free, like `tokens`): the wire
+ * layer closes it over the owner root + registry (`@canopy/agent-registry`'s createProfile). Without
+ * a `profiles` collaborator the op reports `created:false` (degraded — the substrate isn't wired).
+ */
+export async function createProfile(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.create !== 'function' || !id) {
+    return { created: false, reason: !id ? 'id-required' : 'profiles-unavailable', agent: null };
+  }
+  // properties may arrive as an object (programmatic) or a JSON string (surface). Best-effort parse.
+  let properties = {};
+  if (args?.properties && typeof args.properties === 'object') properties = args.properties;
+  else if (typeof args?.properties === 'string' && args.properties.trim()) {
+    try { properties = JSON.parse(args.properties); } catch { properties = {}; }
+  }
+  const result = await s.profiles.create({ profileId: id, name: typeof args?.name === 'string' ? args.name : null, properties });
+  return { created: true, id, pubKey: result?.pubKey ?? null, agent: await readBack(s.registry, id) };
+}
+
 export const AGENT_CORES = Object.freeze({
   listAgents,
   viewAgent,
+  createProfile,
   revokeAgent,
   grantAgent,
   revokeGrant,
