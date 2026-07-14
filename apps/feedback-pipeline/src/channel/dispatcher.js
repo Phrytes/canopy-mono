@@ -80,19 +80,26 @@ export class ChannelDispatcher {
    *  so the user can verify raw→curated, edit the curated text, and pick what to submit. Summarisation is
    *  the verify-summary stage's job (Stage 2), not contribute. `raw` rides along for the before/after view. */
   async review() {
-    const msgs = this.#session.messages.filter((m) => !escalates(m.fm.signal, this.#gate()));
-    const t1 = await runTask1(this.#opts.model, msgs.map((m) => m.raw), this.#opts);
-    const points = t1.perMessage
-      .filter((m) => !m.escalated)
-      .map((m, i) => ({
-        id: `p${i + 1}`, text: lineFor(m), raw: m.raw,
-        ...(lineFor(m) !== m.raw ? { curated: true } : {}),
-        // carry a channel-side edit flag back from the source message (matched by raw)
-        ...(msgs.find((src) => src.raw === m.raw)?.edited ? { edited: true } : {}),
-      }));
-    this.#session.points = points;
-    await this.#adapter.send({ type: 'review', points });
-    return points;
+    // Curate ONLY messages not yet turned into points, then APPEND. Re-running /bekijk (or
+    // /bekijk after an edit) must NOT re-clean from the raws and discard the user's edits —
+    // existing (possibly edited) points are kept; only genuinely new messages get curated.
+    const pending = this.#session.messages.filter((m) => !m.pointed && !escalates(m.fm.signal, this.#gate()));
+    if (pending.length) {
+      const t1 = await runTask1(this.#opts.model, pending.map((m) => m.raw), this.#opts);
+      const base = this.#session.points.length;
+      const fresh = t1.perMessage
+        .filter((m) => !m.escalated)
+        .map((m, i) => ({
+          id: `p${base + i + 1}`, text: lineFor(m), raw: m.raw,
+          ...(lineFor(m) !== m.raw ? { curated: true } : {}),
+          // carry a channel-side edit flag back from the source message (matched by raw)
+          ...(pending.find((src) => src.raw === m.raw)?.edited ? { edited: true } : {}),
+        }));
+      this.#session.points.push(...fresh);
+      for (const m of pending) m.pointed = true;   // never re-curate these (protects edits)
+    }
+    await this.#adapter.send({ type: 'review', points: this.#session.points });
+    return this.#session.points;
   }
 
   /** Edit a reviewed point's curated text in place (the user's correction before consent). */

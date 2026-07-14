@@ -185,3 +185,23 @@ test('privacy fixes + Option C: HMAC pseudonym, no raw to central, edited flag, 
   assert.equal(own[0].participant, c.participant, 'own record is under the same pseudonym');
   await mock.close();
 });
+
+test('/bekijk after an edit preserves the edit (re-review no longer re-curates from raw)', async () => {
+  const mock = await startMockLlm();
+  process.env.FP_LLM_BASEURL = mock.url;
+  const central = new InMemoryCentralPod();
+  const bridge = new FakeBridge();
+  const bot = new TelegramFeedbackBot({ bridge, pod: central, config: config(), pseudonymSecret: 's' });
+  await bot.start();
+
+  await bridge.emit({ chatId: '9', messageId: '1', text: 'Hii' });
+  await bridge.emit({ chatId: '9', messageId: '2', text: '/bekijk' });                              // review → p1
+  await bridge.emit({ chatId: '9', messageId: '3', text: 'fp:edit:p1:De speeltuin is stuk' });      // inline edit of p1
+  await bridge.emit({ chatId: '9', messageId: '4', text: '/bekijk' });                              // re-review — must NOT revert
+  await bridge.emit({ chatId: '9', messageId: '5', text: 'fp:consent:all' });
+
+  const [c] = central.list();
+  assert.equal(c.contribution.text, 'De speeltuin is stuk', 'the edit survived the re-review');
+  assert.equal(c.contribution.edited, true, 'edited flag set');
+  await mock.close();
+});
