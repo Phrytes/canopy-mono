@@ -120,6 +120,12 @@ export const agentsManifest = {
                + 'optional name/properties (JSON own/inherit map). It joins your agents; you can then '
                + 'load it on a device.',
         },
+        // Front-end (step 4/5 app) — a plain button on the agents surface. Creating your OWN profile
+        // isn't destructive, so no consent gate (unlike installAgent, which adds a third party).
+        ui: {
+          control: 'button',
+          label:   'New profile',
+        },
       },
     },
 
