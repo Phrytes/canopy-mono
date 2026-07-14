@@ -43,6 +43,14 @@ const HKDF_LEN     = 32;
 const SALT_LEN     = 16;
 
 /**
+ * FIXED HKDF salt for per-profile agent-seed derivation (`deriveAgentSeed`).
+ * **Permanent — never change.** Unlike `deriveResourceKey`'s per-resource random
+ * salt (stored in the envelope), an agent seed must be reproducible from the phrase
+ * ALONE — so the salt is a constant. Changing it would re-key every derived profile.
+ */
+const _AGENT_SEED_SALT = new TextEncoder().encode('canopy-agent-seed-v1');
+
+/**
  * Root identity secret + key derivation.
  *
  * Construct via `Bootstrap.create()`, `Bootstrap.fromSeed(bytes)`, or
@@ -166,6 +174,29 @@ export class Bootstrap {
     // `@noble/hashes/hkdf` returns a fresh Uint8Array — no aliasing,
     // so callers cannot reach back into the source buffer.
     return hkdf(sha256, this.#secret, salt, info, HKDF_LEN);
+  }
+
+  /**
+   * Derive a deterministic 32-byte Ed25519 **agent seed** for a labelled profile
+   * (`'default'`, `'chat'`, a profileId, …). Feed the result into
+   * `AgentIdentity.fromSeed(seed, vault)`.
+   *
+   *   seed = HKDF-SHA256(ikm=root_secret, salt=_AGENT_SEED_SALT (fixed),
+   *                      info="canopy-identity-v1:agent-seed:" + label, len=32)
+   *
+   * The salt is FIXED (not per-resource-random like `deriveResourceKey`) precisely
+   * so the same phrase + label re-derive the SAME seed on any device — the property
+   * that makes one owner-root phrase recover every profile.
+   *
+   * @param   {string} label  stable per-profile label (never rename an existing one).
+   * @returns {Uint8Array} 32-byte seed.
+   */
+  deriveAgentSeed(label) {
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('deriveAgentSeed: label must be a non-empty string');
+    }
+    const info = new TextEncoder().encode(`${HKDF_INFO_NS}agent-seed:${label}`);
+    return hkdf(sha256, this.#secret, _AGENT_SEED_SALT, info, HKDF_LEN);
   }
 
   /**

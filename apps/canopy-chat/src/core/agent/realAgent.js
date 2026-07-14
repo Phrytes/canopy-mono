@@ -24,7 +24,7 @@
  */
 
 import {
-  Agent, AgentIdentity, InternalBus, InternalTransport, DataPart, TokenRegistry,
+  Agent, AgentIdentity, Bootstrap, InternalBus, InternalTransport, DataPart, TokenRegistry,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
@@ -77,6 +77,25 @@ async function restoreOrGenerate(vault) {
     }
   } catch { /* fall through to generate */ }
   return AgentIdentity.generate(vault);
+}
+
+/**
+ * Owner root (step 1 of the identity-profiles substrate — see
+ * plans/NOTE-identity-profiles-and-portability.md). ONE Bootstrap secret per
+ * install/account, persisted as its 24-word phrase; the default profile derives
+ * from it via HKDF so one phrase recovers the (feedback) pseudonym on any device.
+ * Read-or-create — never overwrites an existing phrase.
+ */
+async function ensureOwnerRoot(vault) {
+  try {
+    const phrase = await vault.get('owner-phrase');
+    if (phrase && typeof phrase === 'string' && phrase.trim().length > 0) {
+      return Bootstrap.fromMnemonic(phrase);
+    }
+  } catch { /* fall through to create */ }
+  const { bootstrap, mnemonic } = Bootstrap.create();
+  await vault.set('owner-phrase', mnemonic);
+  return bootstrap;
 }
 
 import {
@@ -201,6 +220,13 @@ export async function createRealHouseholdAgent(opts = {}) {
   // can't be passed in opts).  Default to a no-op.
   const claimRouterRef = { hook: typeof opts.afterClaimHook === 'function' ? opts.afterClaimHook : null };
 
+  // Owner root — the one recovery secret for this account (step 1; other
+  // sub-agents still generate independent random seeds until step 2 migrates
+  // them onto the root). The default profile (= the chat identity below, which
+  // the feedback no-login pseudonym uses) derives from it.
+  const ownerRootVault = opts.ownerRootVault ?? makeBrowserVault('cc-owner-root:');
+  const ownerRoot      = await ensureOwnerRoot(ownerRootVault);
+
   // Host agent — in-process app skills (household, tasks-v0, stoop,
   // folio, calendar).  No cross-peer; vault picks the standard browser
   // localStorage path.  Built manually because it's a pure backend.
@@ -228,10 +254,19 @@ export async function createRealHouseholdAgent(opts = {}) {
   // SECURITY: any opt below this comment that is RESET / DISABLED needs
   // a `// SECURITY: opted out — <reason>` comment per
   // Project Files/conventions/architectural-layering.md.
+  // Default-profile chat identity: derive from the owner root. Build the vault
+  // ourselves (respecting an injected opts.chatVault) so we can pre-seed it, then
+  // hand it to the factory — whose restoreOrGenerate then RESTORES this seed.
+  // Only seed a FRESH vault: an existing install keeps its current identity on this
+  // boot (a clean cutover re-keys via a wipe + re-onboard, never silently here).
+  const chatVault = opts.chatVault ?? makeBrowserVault('cc-chat-id:');
+  if (!(await chatVault.has('agent-privkey'))) {
+    await AgentIdentity.fromSeed(ownerRoot.deriveAgentSeed('default'), chatVault);
+  }
   const sa = await createSecureMeshAgent({
     bus,
-    vault:               opts.chatVault,
-    identityVaultPrefix: 'cc-chat-id:',
+    vault:               chatVault,
+    identityVaultPrefix: 'cc-chat-id:',   // no effect when `vault` is supplied; documents the prefix
     muteListVaultKey:    'cc-mute',
     auditLog:            { vaultKey: 'cc-audit' },
     // T5.3b — the unified secure-mesh factory is now the single entry for the

@@ -205,6 +205,26 @@ export class AgentIdentity {
   }
 
   /**
+   * Build an identity from a supplied 32-byte seed, persisting it to the vault —
+   * same shape as `fromMnemonic`, minus the mnemonic→seed step.  This is the seam
+   * for owner-root derivation: a profile's seed = `Bootstrap.deriveAgentSeed(label)`,
+   * so the resulting pubKey + (HKDF-derived) stableId are a deterministic function
+   * of the owner root's phrase and re-derive identically on any device.
+   *
+   * @param {Uint8Array} seedBytes  exactly 32 bytes (Ed25519 seed).
+   * @param {import('./Vault.js').Vault} vault
+   */
+  static async fromSeed(seedBytes, vault) {
+    if (!(seedBytes instanceof Uint8Array) || seedBytes.length !== 32) {
+      throw new Error('AgentIdentity.fromSeed: seedBytes must be a 32-byte Uint8Array');
+    }
+    await vault.set('agent-privkey', _writeEntry(seedBytes, null));
+    const stableId = await _loadOrInitStableId(vault, seedBytes);
+    const deviceId = await _loadOrInitDeviceId(vault);
+    return new AgentIdentity({ seed: seedBytes, vault, stableId, deviceId });
+  }
+
+  /**
    * Group FF — rotate the agent's Ed25519 keypair.
    * Generates a fresh seed, persists a `{ current, previous: { seed,
    * pubkey, graceUntil } }` blob to the vault, and returns both
