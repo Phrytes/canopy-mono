@@ -1,5 +1,45 @@
 import { describe, it, expect } from 'vitest';
-import { layoutButtons } from '../src/bridges/TelegramBridge.js';
+import { layoutButtons, TelegramBridge } from '../src/bridges/TelegramBridge.js';
+
+// A minimal Telegraf-like fake (the `telegrafFactory` test seam): captures `on` handlers
+// so a test can `emit` an update synchronously.
+function makeFakeBot() {
+  const handlers = {};
+  return {
+    on: (event, h) => { handlers[event] = h; },
+    launch: async () => {}, stop: () => {},
+    botInfo: { username: 'testbot' },
+    telegram: { getMe: async () => ({ username: 'testbot', id: 1 }), sendMessage: async () => ({ message_id: 1 }), setWebhook: async () => {} },
+    emit: (event, ctx) => handlers[event]?.(ctx),
+  };
+}
+
+describe('TelegramBridge — edited_message handling', () => {
+  const mk = () => {
+    const bot = makeFakeBot();
+    const bridge = new TelegramBridge({ botToken: 'x', mode: 'long-polling', botUsername: 'testbot', telegrafFactory: () => bot });
+    let got;
+    bridge.onMessage((m) => { got = m; return null; });
+    return { bot, get: () => got };
+  };
+
+  it('delivers a TG-client message edit (previously silently dropped) and flags it edited', async () => {
+    const { bot, get } = mk();
+    // an edit rides on ctx.editedMessage, not ctx.message
+    await bot.emit('edited_message', { chat: { id: 42, type: 'private' }, editedMessage: { message_id: 7, text: 'corrected text' }, from: { id: 5, first_name: 'U' } });
+    expect(get()).toBeTruthy();
+    expect(get().edited).toBe(true);
+    expect(get().text).toBe('corrected text');
+    expect(get().chatId).toBe('42');
+  });
+
+  it('a fresh message carries no edited flag', async () => {
+    const { bot, get } = mk();
+    await bot.emit('text', { chat: { id: 42, type: 'private' }, message: { message_id: 8, text: 'fresh' }, from: { id: 5, first_name: 'U' } });
+    expect(get().text).toBe('fresh');
+    expect(get().edited).toBeUndefined();
+  });
+});
 
 describe('layoutButtons', () => {
   it('default: each button on its own row (so long lists stay readable)', () => {
