@@ -255,6 +255,14 @@ export class MemberMap extends Emitter {
       // L1e (skill-match) which subscribes to peer pubsub by pubkey.
       // Optional — apps that don't use pubsub can omit.
       pubKey:      m.pubKey ?? null,
+      // circleAddress: the per-circle ADDRESS this member presents in THIS
+      // circle (identity substrate step 5B/C — deriveCircleAddress). Unlike
+      // pubKey (the member's cross-circle transport identity), this is a
+      // circle-scoped, unlinkable public key: other members/software cannot
+      // correlate it to the member's addresses in other circles. Recorded on
+      // redeem/create and surfaced by listGroupMembers. Optional — a member
+      // who joined before the substrate shipped simply has none.
+      circleAddress: m.circleAddress ?? null,
       // nknAddr: this member's NKN peer address (2026-05-27).  Used
       // by the chat-shell to route DMs over NKN after a /share-my-
       // contact QR exchange — addContactFromQr reads it from the

@@ -548,10 +548,15 @@ async function listGroupMembersCore(scope, a, ctx) {
   // fan-out routing key for code-redeemers even after a reload where the member
   // list is reduced from the redemption audit trail (mirror of sealKeys).
   const signKeys = new Map();
+  // webid → the per-circle ADDRESS captured on redeem (identity step 5B/C) —
+  // the unlinkable address the member presents in THIS circle. Recovered from
+  // the redemption trail like signKeys, so it survives a roster rebuild.
+  const addrKeys = new Map();
   for (const r of forGroup) {
-    const { redeemedBy, sealingPublicKey, signingPublicKey } = r?.source ?? {};
+    const { redeemedBy, sealingPublicKey, signingPublicKey, circleAddress } = r?.source ?? {};
     if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
     if (redeemedBy && signingPublicKey && !signKeys.has(redeemedBy)) signKeys.set(redeemedBy, signingPublicKey);
+    if (redeemedBy && circleAddress && !addrKeys.has(redeemedBy)) addrKeys.set(redeemedBy, circleAddress);
   }
   const scoped = list
     .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
@@ -560,6 +565,9 @@ async function listGroupMembersCore(scope, a, ctx) {
       if (sealKeys.has(m.webid)) out = { ...out, sealingPublicKey: sealKeys.get(m.webid) };
       // Only backfill pubKey when the member row doesn't already carry one.
       if (!out.pubKey && signKeys.has(m.webid)) out = { ...out, pubKey: signKeys.get(m.webid) };
+      // Prefer the row's circleAddress (createGroupV2 admin path), else backfill
+      // from the redemption trail (joiner path).
+      if (!out.circleAddress && addrKeys.has(m.webid)) out = { ...out, circleAddress: addrKeys.get(m.webid) };
       return out;
     });
   return { groupId: _groupId, members: scoped };
@@ -1767,10 +1775,17 @@ export function buildSkills({
         { actor: from },
       );
 
-      // Promote caller to admin in MemberMap (idempotent).
+      // Promote caller to admin in MemberMap (idempotent).  Also record the
+      // creator's own per-circle ADDRESS for this circle (identity step 5B/C)
+      // when supplied — the admin is a member too, so the roster carries the
+      // unlinkable address they present here just like a joiner's.
       if (members) {
         const me = (await members.resolveByWebid(from)) ?? { webid: from };
-        await members.addMember({ ...me, role: 'admin' });
+        await members.addMember({
+          ...me,
+          role: 'admin',
+          ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+        });
       }
 
       // A3 — push the storage policy into pod-routing so substrate-mirror
@@ -2014,6 +2029,11 @@ export function buildSkills({
           // Signing pubKey (the joiner's transport/chat-agent identity) — mirror
           // of sealingPublicKey but for the OTHER key family: fan-out routing.
           ...(signingPubKey ? { signingPublicKey: signingPubKey } : {}),
+          // Per-circle ADDRESS the joiner presents in THIS circle (identity
+          // step 5B/C — deriveCircleAddress). Self-asserted like sealingPublicKey
+          // (it's the joiner declaring the unlinkable address they present here,
+          // NOT a claim about another member), so we record it verbatim.
+          ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -2023,7 +2043,13 @@ export function buildSkills({
       // older/no-auth redeem with no `from`, or a bundle with no MemberMap,
       // simply skips this and the redemption item is still written).
       if (members && signingPubKey) {
-        try { await members.addMember({ webid: from, pubKey: signingPubKey }); }
+        try {
+          await members.addMember({
+            webid: from,
+            pubKey: signingPubKey,
+            ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          });
+        }
         catch { /* roster upsert is best-effort — never block the redeem */ }
       }
       await grantPodAccess(controlAgent, { webId: from, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
@@ -2108,6 +2134,9 @@ export function buildSkills({
           // The joiner's sealing public key (forwarded by the peer bridge) → the control-agent wraps
           // the group key to them. Admin-side: this is where the sealed household pod grants access.
           ...(a.sealingPublicKey ? { sealingPublicKey: a.sealingPublicKey } : {}),
+          // Per-circle ADDRESS the joiner presents in THIS circle (identity
+          // step 5B/C) — forwarded by the peer bridge, recorded like sealingPublicKey.
+          ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -2115,7 +2144,13 @@ export function buildSkills({
       // Populate the admin's MemberMap so the admin (and, via mesh-intro
       // propagation, other members) can fan out to the new joiner.  Best-effort.
       if (members && peerSigningPubKey) {
-        try { await members.addMember({ webid: a.requesterWebid, pubKey: peerSigningPubKey }); }
+        try {
+          await members.addMember({
+            webid: a.requesterWebid,
+            pubKey: peerSigningPubKey,
+            ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          });
+        }
         catch { /* roster upsert is best-effort — never block the redeem */ }
       }
       await grantPodAccess(controlAgent, { webId: a.requesterWebid, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
@@ -3033,7 +3068,7 @@ export function buildSkills({
      *   `groupId` defaults to the bundle's current group.
      */
     wire('listGroupMembers', {
-      description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey when known).',
+      description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey + circleAddress when known).',
       visibility:  'authenticated',
     }),
 
