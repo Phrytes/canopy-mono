@@ -87,7 +87,7 @@ describe('Bundle F P2 — restoreFromMnemonic state machine', () => {
     )).toBe(false);
   });
 
-  it('submitRestore calls stoop.restoreFromMnemonic', async () => {
+  it('submitRestore installs the owner root then calls stoop.restoreFromMnemonic', async () => {
     const calls = [];
     const callSkill = async (o, op, args) => {
       calls.push({ o, op, args });
@@ -96,9 +96,11 @@ describe('Bundle F P2 — restoreFromMnemonic state machine', () => {
     const s = restoreFromMnemonicState.initialState();
     s.mnemonic = Array(12).fill('a').join(' ');
     const after = await restoreFromMnemonicState.submitRestore({ state: { ...s }, callSkill });
-    expect(calls).toHaveLength(1);
-    expect(calls[0].op).toBe('restoreFromMnemonic');
-    expect(calls[0].args.confirm).toBe(true);
+    // step 1b — the owner root (household.restoreOwnerPhrase) is installed FIRST, then the legacy stoop restore
+    expect(calls).toHaveLength(2);
+    expect(calls[0].op).toBe('restoreOwnerPhrase');
+    expect(calls[1].op).toBe('restoreFromMnemonic');
+    expect(calls[1].args.confirm).toBe(true);
     expect(after.successResult).toBeTruthy();
   });
 });
