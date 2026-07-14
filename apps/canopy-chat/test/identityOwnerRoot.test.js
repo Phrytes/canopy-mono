@@ -100,3 +100,14 @@ describe('identity step-4 (app) — createProfile op', () => {
     expect(res.pubKey).toBe(expected);
   });
 });
+
+describe('identity step-5B/C — circleAddressFor bridge', () => {
+  it('exposes the per-circle address for a circle (unlinkable across circles)', async () => {
+    const { deriveCircleAddress } = await import('@canopy/core');
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const seed = Bootstrap.fromMnemonic(await ownerRootVault.get('owner-phrase')).deriveAgentSeed('default');
+    expect(a.circleAddressFor('buurt-42')).toBe(deriveCircleAddress(seed, 'buurt-42'));
+    expect(a.circleAddressFor('buurt-42')).not.toBe(a.circleAddressFor('werk-7'));   // unlinkable per circle
+  });
+});

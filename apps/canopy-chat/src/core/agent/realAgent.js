@@ -25,7 +25,7 @@
 
 import {
   Agent, AgentIdentity, Bootstrap, InternalBus, InternalTransport, DataPart, TokenRegistry,
-  PolicyEngine, TrustRegistry,
+  PolicyEngine, TrustRegistry, deriveCircleAddress,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
@@ -262,8 +262,11 @@ export async function createRealHouseholdAgent(opts = {}) {
   // Only seed a FRESH vault: an existing install keeps its current identity on this
   // boot (a clean cutover re-keys via a wipe + re-onboard, never silently here).
   const chatVault = opts.chatVault ?? makeBrowserVault('cc-chat-id:');
+  // The default profile's seed — the source for both the chat identity AND per-circle addresses
+  // (step 5B/C). Kept so the returned agent can expose circleAddressFor(circleId).
+  const defaultProfileSeed = ownerRoot.deriveAgentSeed('default');
   if (!(await chatVault.has('agent-privkey'))) {
-    await AgentIdentity.fromSeed(ownerRoot.deriveAgentSeed('default'), chatVault);
+    await AgentIdentity.fromSeed(defaultProfileSeed, chatVault);
   }
   const sa = await createSecureMeshAgent({
     bus,
@@ -2762,5 +2765,8 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Diagnostic (step 2.4a) — the enforcement gate on the host skills' agent. Non-null proves
     // the PolicyEngine attached (vs the try/catch having silently swallowed it).
     hostPolicyEngine: hostAgent.policyEngine ?? null,
+    // Step 5B/C — the per-circle ADDRESS this device presents in a circle (unlinkable-by-default),
+    // derived from the default profile seed. The substrate the roster-recording wire consumes.
+    circleAddressFor: (circleId) => deriveCircleAddress(defaultProfileSeed, circleId),
   };
 }
