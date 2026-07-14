@@ -40,6 +40,7 @@ const bridge = new TelegramBridge({ botToken: token, mode: 'long-polling', dropP
 // project-pod OWNER — it provisions each participant's ACP container on first contact
 // (onActivate) and writes to it (post-receipt). Otherwise in-memory (a pure smoke).
 let pod = new InMemoryCentralPod();
+let ownPod = new InMemoryCentralPod();   // Option C — the bot's OWN pod for each participant's raw record
 let onActivate;
 if (process.env.CSS_URL && process.env.FP_OWNER_CLIENT_ID && process.env.FP_PROJECT_POD) {
   try {
@@ -50,12 +51,18 @@ if (process.env.CSS_URL && process.env.FP_OWNER_CLIENT_ID && process.env.FP_PROJ
     const ownerWebId = process.env.FP_OWNER_WEBID;
     const ownerFetch = await clientCredentialsFetch({ cssUrl: process.env.CSS_URL, clientId: process.env.FP_OWNER_CLIENT_ID, clientSecret: process.env.FP_OWNER_CLIENT_SECRET });
     pod = new CssCentralPod({ authedFetch: ownerFetch, podBase: `${projectPodBase.replace(/\/$/, '')}/central/`, ...cryptoForProject({ config }) });
+    // Option C — the bot's own pod at .../own/ (owner-only; the raw stays bot-held, off central).
+    // No ACP provisioning needed: the owner writes it and CSS auto-creates the containers on PUT.
+    ownPod = new CssCentralPod({ authedFetch: ownerFetch, podBase: `${projectPodBase.replace(/\/$/, '')}/own/`, ...cryptoForProject({ config }) });
     // provision central/<participant>/ once per chat; owner is the writer (participantWebId = owner).
     onActivate = (participant) => provisionCssPod({ ownerFetch, projectPodBase, participant, participantWebId: ownerWebId, ownerWebId });
-    console.log('using CssCentralPod + per-participant provisioning at', projectPodBase);
+    console.log('using CssCentralPod (central + own) + per-participant provisioning at', projectPodBase);
   } catch (e) { console.log('CSS pod unavailable, using in-memory:', e.message); }
 }
-const bot = new TelegramFeedbackBot({ bridge, pod, config, onActivate });
+// HMAC pseudonym secret (held off the pod). Prefer FP_PSEUDONYM_SECRET; else reuse the bot
+// token — stable + secret, so the same chatId → the same pseudonym without a reversible id on the pod.
+const pseudonymSecret = process.env.FP_PSEUDONYM_SECRET || token;
+const bot = new TelegramFeedbackBot({ bridge, pod, config, onActivate, pseudonymSecret, ownPod });
 
 await bot.start();
 console.log('feedback bot running (long-polling). DM it, then /klaar, then tap a consent button. Ctrl-C to stop.');

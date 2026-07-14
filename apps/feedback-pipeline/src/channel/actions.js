@@ -106,6 +106,6 @@ export async function runAction(action, { session, say, strings: s }) {
     default:
       if (session.awaitingEdit) { session.awaitingEdit = false; return void await session.dispatcher.editVerificationSummary(action.text); }
       if (session.awaitingEditPoint) { const id = session.awaitingEditPoint; session.awaitingEditPoint = null; session.dispatcher.editPoint(id, action.text); return void await session.dispatcher.showReview(); }
-      return void await session.dispatcher.handleMessage(action.text);
+      return void await session.dispatcher.handleMessage(action.text, { edited: action.edited });
   }
 }

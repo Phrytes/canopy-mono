@@ -14,6 +14,9 @@ export const ContributionSchema = z.object({
   // The participant's ORIGINAL message, kept on their OWN pod for their records (Stage-1 review choice).
   // Own-pod-only: aggregation/summary uses `text` (cleaned+verified), never `raw`, so it can't reach central.
   raw: z.string().optional(),
+  // TRUE when the participant changed the text themselves (in-app [Bewerk] or a channel-side
+  // message edit) — so a reader knows this isn't the verbatim first utterance. Coarse, non-identifying.
+  edited: z.boolean().optional(),
   themeTags: z.array(z.string()).default([]),
   // COARSE time window only (e.g. "2026" or "2026-Q2") — never a precise timestamp,
   // which would be a fingerprint. Optional.
@@ -30,5 +33,5 @@ export function validateContribution(raw) {
  *  from the curated text (no point storing a copy when the AI/edit changed nothing). */
 export function buildContribution(point, { timeWindow, lang, themeTags = [] } = {}) {
   const keepRaw = point.raw && point.raw !== point.text;
-  return validateContribution({ id: point.id, text: point.text, ...(keepRaw ? { raw: point.raw } : {}), themeTags, timeWindow, lang });
+  return validateContribution({ id: point.id, text: point.text, ...(keepRaw ? { raw: point.raw } : {}), ...(point.edited ? { edited: true } : {}), themeTags, timeWindow, lang });
 }

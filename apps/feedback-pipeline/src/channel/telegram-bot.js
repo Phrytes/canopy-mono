@@ -13,9 +13,10 @@ import { ChannelDispatcher } from './dispatcher.js';
 import { TelegramChannelAdapter } from './telegram-adapter.js';
 import { getStrings } from '../strings/index.js';
 import { parseControl, runAction } from './actions.js';
+import { hmacPseudonym } from './pseudonym.js';
 
 export class TelegramFeedbackBot {
-  #bridge; #pod; #config; #participantFor; #onActivate; #strings; #sessions = new Map();
+  #bridge; #pod; #config; #participantFor; #onActivate; #strings; #ownPod; #sessions = new Map();
 
   /**
    * @param {{ bridge, pod, config, participantFor?:(chatId:string)=>string,
@@ -23,7 +24,7 @@ export class TelegramFeedbackBot {
    *   onActivate runs ONCE per chat (first message) — for a CSS pod, provision the
    *   participant's ACP container (with the bot service as writer) before any write.
    */
-  constructor({ bridge, pod, config, participantFor, onActivate }) {
+  constructor({ bridge, pod, config, participantFor, pseudonymSecret, onActivate, ownPod }) {
     if (!bridge || typeof bridge.onMessage !== 'function' || typeof bridge.sendReply !== 'function') {
       throw new Error('TelegramFeedbackBot: bridge with onMessage()/sendReply() required');
     }
@@ -31,8 +32,17 @@ export class TelegramFeedbackBot {
     this.#pod = pod;
     this.#config = config;
     this.#strings = getStrings(config?.language?.preferred);   // locale follows the project
-    this.#participantFor = participantFor || ((chatId) => `tg:${chatId}`);
+    // Pseudonym: an explicit participantFor wins; else a KEYED HMAC of the chatId (secret held
+    // off the pod) so the pod never stores a reversible id. With neither, fall back to the raw
+    // tg:<chatId> but WARN — that pod would hold a reversible identifier.
+    if (participantFor) this.#participantFor = participantFor;
+    else if (pseudonymSecret) this.#participantFor = (chatId) => hmacPseudonym(pseudonymSecret, chatId);
+    else {
+      console.warn('[tg] no pseudonymSecret/participantFor — the pod will hold a REVERSIBLE tg:<chatId>; set FP_PSEUDONYM_SECRET');
+      this.#participantFor = (chatId) => `tg:${chatId}`;
+    }
     this.#onActivate = onActivate;
+    this.#ownPod = ownPod ?? null;   // Option C — bot-held pod for each participant's raw record
   }
 
   // async: provisions the participant's pod container once, on the chat's first message.
@@ -41,7 +51,7 @@ export class TelegramFeedbackBot {
     if (!s) {
       const participant = this.#participantFor(chatId);
       const adapter = new TelegramChannelAdapter({ bridge: this.#bridge, chatId, strings: this.#strings });
-      const dispatcher = new ChannelDispatcher({ adapter, pod: this.#pod, config: this.#config, participant });
+      const dispatcher = new ChannelDispatcher({ adapter, pod: this.#pod, config: this.#config, participant, ownPod: this.#ownPod });
       s = { adapter, dispatcher, points: [], participant };
       this.#sessions.set(chatId, s);   // set before awaiting so a 2nd message won't double-provision
       if (this.#onActivate) {
@@ -69,7 +79,9 @@ export class TelegramFeedbackBot {
     session.adapter.setReplyTo(m.messageId);
 
     // Telegram's grammar is explicit slashes + button callbacks; anything else is feedback.
-    const action = parseControl(text) || { kind: 'message', text };
+    // `m.edited` (a message the participant edited in the TG client) rides along so the stored
+    // contribution can be flagged edited.
+    const action = parseControl(text) || { kind: 'message', text, edited: Boolean(m.edited) };
     const say = (txt, buttons) => this.#say(chatId, txt, buttons);
     return runAction(action, { session, say, strings: this.#strings });
   }

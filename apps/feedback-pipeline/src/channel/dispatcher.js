@@ -24,7 +24,7 @@ function contributionTextHash(text) {
 }
 
 export class ChannelDispatcher {
-  #adapter; #pod; #participant; #opts; #projectId; #identity; #centralPod;
+  #adapter; #pod; #participant; #opts; #projectId; #identity; #centralPod; #ownPod;
   #session = { messages: [], points: [], verifyDraft: null };
 
   /**
@@ -38,7 +38,7 @@ export class ChannelDispatcher {
    */
   #requiresSignature;
 
-  constructor({ adapter, pod, config, participant, identity, centralPod }) {
+  constructor({ adapter, pod, config, participant, identity, centralPod, ownPod }) {
     this.#adapter = assertAdapter(adapter);
     this.#pod = pod;                        // Stage 1 target + the verify-round source. Own pod when verify-summary is wired.
     this.#participant = participant;
@@ -49,18 +49,22 @@ export class ChannelDispatcher {
     // Verify-summary loop (docs/DESIGN-verify-summary-loop.md): the CENTRAL pod receives ONLY the
     // user-verified summary. Optional — absent ⇒ the verify-turn is inert (legacy single-pod flows).
     this.#centralPod = centralPod ?? null;
+    // Option C (host-run channel bots): a bot-held OWN pod that keeps the participant's RAW record
+    // (bot-owned, TEE-protected), while `#pod` (central here) receives ONLY the raw-free contribution.
+    // Optional — absent ⇒ raw is simply dropped (still never reaches central).
+    this.#ownPod = ownPod ?? null;
   }
 
   #gate() { return { layer1OnDevice: this.#opts.layer1OnDevice, escalationCategories: this.#opts.escalationCategories }; }
 
   /** An inbound message. Floors via the adapter (placement), routes, responds. */
-  async handleMessage(raw) {
+  async handleMessage(raw, { edited = false } = {}) {
     const fm = await this.#adapter.floor(raw, { userDefault: this.#opts.userDefault });
     if (fm.reject) {
       await this.#adapter.send({ type: 'rejected', reason: fm.reject });
       return { stored: false, reason: fm.reject };
     }
-    this.#session.messages.push({ raw, fm });
+    this.#session.messages.push({ raw, fm, edited });
 
     // Layer-1 in-the-moment response (only when enabled + the category is on for this project)
     if (escalates(fm.signal, this.#gate())) {
@@ -80,7 +84,12 @@ export class ChannelDispatcher {
     const t1 = await runTask1(this.#opts.model, msgs.map((m) => m.raw), this.#opts);
     const points = t1.perMessage
       .filter((m) => !m.escalated)
-      .map((m, i) => ({ id: `p${i + 1}`, text: lineFor(m), raw: m.raw, ...(lineFor(m) !== m.raw ? { curated: true } : {}) }));
+      .map((m, i) => ({
+        id: `p${i + 1}`, text: lineFor(m), raw: m.raw,
+        ...(lineFor(m) !== m.raw ? { curated: true } : {}),
+        // carry a channel-side edit flag back from the source message (matched by raw)
+        ...(msgs.find((src) => src.raw === m.raw)?.edited ? { edited: true } : {}),
+      }));
     this.#session.points = points;
     await this.#adapter.send({ type: 'review', points });
     return points;
@@ -122,12 +131,27 @@ export class ChannelDispatcher {
       // an already-stored p1 ('duplicate contribution id'). Suffix a content hash so the stored id is unique
       // per distinct text across rounds — while an exact-duplicate text still dedups (correct idempotency).
       const cid = `${this.#participant}:${p.id}-${contributionTextHash(p.text)}`;
-      const contribution = buildContribution({ id: cid, text: p.text, raw: p.raw }, { timeWindow, lang: this.#opts.lang });
+      // raw is OWN-pod-only. `#pod` is the participant's own pod ONLY when a separate
+      // `#centralPod` is wired (verify mode); when `#centralPod` is null, `#pod` IS the
+      // central target (e.g. the host-run TG bot) → drop raw so it never reaches central.
+      const keepRaw = Boolean(this.#centralPod);
+      const contribution = buildContribution(
+        { id: cid, text: p.text, raw: keepRaw ? p.raw : undefined, edited: p.edited },
+        { timeWindow, lang: this.#opts.lang },
+      );
       const meta = contributionMeta(this.#identity, { projectId: this.#projectId, participant: this.#participant, contribution });
       try {
         await this.#pod.write(this.#participant, contribution, meta);
         written.push(cid);
       } catch (e) { failure = e; console.error('[feedback] consent write failed:', e?.message); break; }   // a refused write means the batch is not trustworthy
+      // Option C — keep the participant's OWN record (incl. raw) in the bot-held own pod. NON-FATAL:
+      // the central contribution already succeeded; a failed own-pod record must not roll it back.
+      if (this.#ownPod) {
+        try {
+          const ownRecord = buildContribution({ id: cid, text: p.text, raw: p.raw, edited: p.edited }, { timeWindow, lang: this.#opts.lang });
+          await this.#ownPod.write(this.#participant, ownRecord);
+        } catch (e) { console.error('[feedback] own-pod record failed (non-fatal):', e?.message); }
+      }
     }
     if (failure) {
       // all-or-nothing: undo any partial writes so consent is not silently half-applied
