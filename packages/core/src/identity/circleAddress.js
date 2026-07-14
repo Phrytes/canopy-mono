@@ -45,3 +45,18 @@ export function deriveCircleSeed(profileSeed, circleId) {
 export function deriveCircleAddress(profileSeed, circleId) {
   return AgentIdentity.pubKeyFromSeed(deriveCircleSeed(profileSeed, circleId));
 }
+
+/**
+ * The per-circle SIGNING identity — the AgentIdentity a profile uses INSIDE a circle (step 5B/C).
+ * Its `pubKey` is the per-circle address (what the roster records + what peers route to); sign
+ * circle messages with it so members/observers see an unrelated identity per circle. Deterministic
+ * and re-derivable from the profile seed, so `vault` may be ephemeral (a `VaultMemory`).
+ *
+ * @param {Uint8Array} profileSeed
+ * @param {string} circleId
+ * @param {import('./Vault.js').Vault} vault
+ * @returns {Promise<AgentIdentity>}
+ */
+export function circleIdentity(profileSeed, circleId, vault) {
+  return AgentIdentity.fromSeed(deriveCircleSeed(profileSeed, circleId), vault);
+}

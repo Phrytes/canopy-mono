@@ -4,7 +4,7 @@
 // From the owner root (`deriveAgentSeed(profileId)`) OR a DELEGATED profile seed (a gadget holds
 // only its one profile's seed, never the root), materialise the profile's AgentIdentity in the
 // device vault so the device can act as it, and expose its per-circle addresses.
-import { AgentIdentity, deriveCircleAddress, deriveCircleSeed } from '@canopy/core';
+import { AgentIdentity, deriveCircleAddress, deriveCircleSeed, circleIdentity } from '@canopy/core';
 
 /**
  * @param {object} a
@@ -35,8 +35,10 @@ export async function loadProfile({ ownerRoot, profileSeed, profileId, vault, re
     profileId:     profileId ?? null,
     identity,
     pubKey:        identity.pubKey,
-    // The address this profile presents in a circle (unlinkable-by-default), + the seed to sign with.
-    circleAddress: (circleId) => deriveCircleAddress(seed, circleId),
-    circleSeed:    (circleId) => deriveCircleSeed(seed, circleId),
+    // The address this profile presents in a circle (unlinkable-by-default), the seed to sign with,
+    // and the per-circle SIGNING identity (its pubKey IS the circle address) for the roster/join.
+    circleAddress:  (circleId) => deriveCircleAddress(seed, circleId),
+    circleSeed:     (circleId) => deriveCircleSeed(seed, circleId),
+    circleIdentity: (circleId, circleVault) => circleIdentity(seed, circleId, circleVault),
   };
 }

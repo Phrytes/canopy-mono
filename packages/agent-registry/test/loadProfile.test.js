@@ -56,4 +56,10 @@ describe('loadProfile — materialize a profile on a device (step 4)', () => {
     await expect(loadProfile({ vault: new VaultMemory() })).rejects.toThrow(/profileSeed/);
     await expect(loadProfile({ ownerRoot: Bootstrap.create().bootstrap, profileId: 'x' })).rejects.toThrow(/vault/);
   });
+
+  it('circleIdentity(circleId): the per-circle signing identity has the circle address as its pubKey', async () => {
+    const loaded = await loadProfile({ ownerRoot: Bootstrap.create().bootstrap, profileId: 'default', vault: new VaultMemory() });
+    const cid = await loaded.circleIdentity('buurt-42', new VaultMemory());
+    expect(cid.pubKey).toBe(loaded.circleAddress('buurt-42'));
+  });
 });
