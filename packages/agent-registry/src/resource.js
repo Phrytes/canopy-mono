@@ -124,6 +124,9 @@ function _normaliseGrant(g) {
     expiresAt:  typeof g.expiresAt  === 'string' ? g.expiresAt  : null,
     subject:    typeof g.subject    === 'string' ? g.subject    : null,
     capability: typeof g.capability === 'string' ? g.capability : null,
+    // identity step 2.3 — a grant may NAME a profile the grantee (a device) may run,
+    // so "delegate profile X to device D, revocably" rides the same token-first path.
+    profile:    typeof g.profile    === 'string' ? g.profile    : null,
   });
 }
 

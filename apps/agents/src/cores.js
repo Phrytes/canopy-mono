@@ -239,14 +239,16 @@ export async function revokeAgent(store, args = {}) {
 export async function grantAgent(store, args = {}) {
   const { registry, tokens } = asStore(store);
   const entry = await resolveEntry(registry, args?.agentId);
-  const skill = args?.skill;
-  if (!entry || typeof skill !== 'string' || skill.length === 0) {
+  const skill   = (typeof args?.skill   === 'string' && args.skill.length   > 0) ? args.skill   : null;
+  const profile = (typeof args?.profile === 'string' && args.profile.length > 0) ? args.profile : null;
+  // A grant delegates a SKILL and/or names a PROFILE the grantee (a device) may run — at least one.
+  if (!entry || (!skill && !profile)) {
     return { granted: false, tokenBacked: !!tokens, tokenId: null, expiresAt: null, agent: null };
   }
 
   const capability    = (typeof args?.capability === 'string' && args.capability.length > 0)
     ? args.capability
-    : skill;                                       // default: the skill itself
+    : skill;                                       // default: the skill (null for a profile-only grant)
   const expiresInDays = (typeof args?.expiresInDays === 'number' && args.expiresInDays > 0)
     ? args.expiresInDays
     : DEFAULT_EXPIRES_IN_DAYS;
@@ -254,12 +256,14 @@ export async function grantAgent(store, args = {}) {
     ? args.subject
     : entry.pubKey;                                // default: the grantee key
   const expiresIn     = expiresInDays * MS_PER_DAY;
+  const tokenSkill    = skill ?? '*';                        // profile-only grant → any skill, gated by the profile scope
+  const constraints   = profile ? { profile } : undefined;  // the token carries the profile scope (the PolicyEngine gate enforces it)
 
   // 1. The TOKEN op first — the enforced authority. Failure propagates.
   let tokenId;
   let expiresAt;
   if (tokens) {
-    const issued = await tokens.issue({ subject, skill, expiresIn });
+    const issued = await tokens.issue({ subject, skill: tokenSkill, expiresIn, constraints });
     tokenId   = issued.id;
     expiresAt = issued.expiresAt ?? new Date(Date.now() + expiresIn).toISOString();
   } else {
@@ -270,7 +274,7 @@ export async function grantAgent(store, args = {}) {
   }
 
   // 2. Then the registry MIRROR (atomic grants[] + capabilities[] upsert).
-  await registry.applyGrant(entry.agentId, { tokenId, skill, expiresAt, subject, capability });
+  await registry.applyGrant(entry.agentId, { tokenId, skill, expiresAt, subject, capability, profile });
 
   return {
     granted:     true,

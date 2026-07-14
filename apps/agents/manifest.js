@@ -133,8 +133,11 @@ export const agentsManifest = {
       params: [
         { name: 'agentId',       kind: 'string', required: true, schema: { minLength: 1 } },
         // The fine-grained skill scope the token authorises (e.g.
-        // 'tasks.addTask' or a prefix like 'bot.*').
-        { name: 'skill',         kind: 'string', required: true, schema: { minLength: 1 } },
+        // 'tasks.addTask' or a prefix like 'bot.*'). Optional when `profile` is given.
+        { name: 'skill',         kind: 'string', schema: { minLength: 1 } },
+        // identity step 2.3 — name a PROFILE the grantee (a device) may run; the token carries
+        // it as a constraint the PolicyEngine gate enforces. At least one of skill/profile.
+        { name: 'profile',       kind: 'string', schema: { minLength: 1 } },
         // Coarse capability label mirrored into `capabilities[]`;
         // defaults to `skill` when omitted.
         { name: 'capability',    kind: 'string' },

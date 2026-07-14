@@ -235,7 +235,7 @@ export function createAgentRegistry({
    * Etag-CAS retry on conflict.
    */
   async function applyGrant(identifier, grant = {}) {
-    const { tokenId, skill = null, expiresAt = null, subject = null, capability = null } = grant;
+    const { tokenId, skill = null, expiresAt = null, subject = null, capability = null, profile = null } = grant;
     if (typeof tokenId !== 'string' || tokenId.length === 0) {
       throw Object.assign(
         new Error('applyGrant: grant.tokenId is required'),
@@ -255,7 +255,7 @@ export function createAgentRegistry({
             if (!_agentMatches(a, identifier)) return a;
             const grants = [
               ...a.grants.filter(g => g.tokenId !== tokenId),
-              { tokenId, skill, expiresAt, subject, capability },
+              { tokenId, skill, expiresAt, subject, capability, profile },
             ];
             const capabilities = (typeof capability === 'string' && !a.capabilities.includes(capability))
               ? [...a.capabilities, capability]
