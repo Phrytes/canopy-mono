@@ -77,3 +77,11 @@ describe('identity step-1b — owner-root reveal/restore host skills', () => {
     expect(res).toMatchObject({ ok: false, error: 'invalid-phrase' });
   });
 });
+
+describe('identity step-2.4a — host enforcement gate attached', () => {
+  it('createRealHouseholdAgent attaches a real PolicyEngine to the host agent (not silently swallowed)', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    expect(a.hostPolicyEngine).toBeTruthy();                              // the gate is live
+    expect(typeof a.hostPolicyEngine.checkInbound).toBe('function');     // and it's a real PolicyEngine
+  });
+});

@@ -25,6 +25,7 @@
 
 import {
   Agent, AgentIdentity, Bootstrap, InternalBus, InternalTransport, DataPart, TokenRegistry,
+  PolicyEngine, TrustRegistry,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
@@ -756,6 +757,24 @@ export async function createRealHouseholdAgent(opts = {}) {
    * placeholder reply shapes (real bytes/pod-IO is deferred to slice
    * 5 + the mobile pivot).
    */
+
+  /* Identity step 2.4a — attach a PolicyEngine to hostAgent so delegated/scoped access CAN be
+   * enforced (the gate was structurally absent: hostAgent.policyEngine was null, so taskExchange/
+   * A2ATransport skipped it for host traffic). This is a PERMISSIVE attach — an empty TrustRegistry
+   * makes every peer 'authenticated', and no host skill declares restrictive metadata, so nothing
+   * currently rejects (in-process invoke presents no token either). The enforcement-TIGHTENING
+   * (raising per-skill visibility to trusted/requires-token) is a separate, audited pass (2.4b).
+   * Revocation is fed from the issuer-side agentsTokenRegistry (built above). Best-effort: a failure
+   * leaves the gate absent (the prior behaviour) — never breaks boot. */
+  try {
+    // TrustRegistry is vault-backed (empty → every peer 'authenticated' = default-allow).
+    hostAgent.policyEngine = new PolicyEngine({
+      trustRegistry: new TrustRegistry(opts.hostTrustVault ?? makeBrowserVault('cc-host-trust:')),
+      skillRegistry: hostAgent.skills,
+      agentPubKey:   hostId.pubKey,
+      isRevoked:     async (tokenId) => Boolean(await agentsTokenRegistry?.isRevoked(tokenId)),
+    });
+  } catch (e) { console.warn('[realAgent] hostAgent PolicyEngine attach skipped:', e?.message ?? e); }
 
   await Promise.all([
     hostAgent.start(),
@@ -2726,5 +2745,8 @@ export async function createRealHouseholdAgent(opts = {}) {
      * primitive the factory wires without re-exposing each one.
      */
     sa,
+    // Diagnostic (step 2.4a) — the enforcement gate on the host skills' agent. Non-null proves
+    // the PolicyEngine attached (vs the try/catch having silently swallowed it).
+    hostPolicyEngine: hostAgent.policyEngine ?? null,
   };
 }
