@@ -124,6 +124,9 @@ export function createAgentRegistry({
             grants:       Array.isArray(entry.grants) ? [...entry.grants] : [],
             signedAt,
             revokedAt:    entry.revokedAt ?? null,
+            // identity step 2 — persist the profile fields (normalised on read via _normaliseAgent)
+            properties:       entry.properties ?? {},
+            ownerFingerprint: entry.ownerFingerprint ?? null,
           }],
           updatedAt: now(),
         };

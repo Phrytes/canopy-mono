@@ -27,7 +27,11 @@
  * Standardisation Phase 52.10 — see plan §52.10.
  */
 
-export const RESOURCE_VERSION = 2;
+import { normaliseProperties } from './profileProperties.js';
+
+// v3 (identity step 2) — added per-profile `properties` (own/inherit graph) + `ownerFingerprint`
+// (the owner-root binding). Additive + forward-compatible: v2 entries simply lack them (→ {} / null).
+export const RESOURCE_VERSION = 3;
 
 /**
  * Default registry-resource path for a given pod / device.
@@ -101,6 +105,9 @@ function _normaliseAgent(a) {
     grants:       Array.isArray(a.grants) ? Object.freeze(a.grants.map(_normaliseGrant).filter(Boolean)) : Object.freeze([]),
     signedAt:     typeof a.signedAt === 'string' ? a.signedAt : new Date().toISOString(),
     revokedAt:    typeof a.revokedAt === 'string' ? a.revokedAt : null,
+    // identity step 2 — profile fields (additive; absent on v2 entries → {} / null)
+    properties:       normaliseProperties(a.properties),
+    ownerFingerprint: typeof a.ownerFingerprint === 'string' ? a.ownerFingerprint : null,
   });
 }
 
@@ -133,5 +140,7 @@ function emptyAgent() {
     grants:    [],
     signedAt:  new Date().toISOString(),
     revokedAt: null,
+    properties: {},
+    ownerFingerprint: null,
   };
 }
