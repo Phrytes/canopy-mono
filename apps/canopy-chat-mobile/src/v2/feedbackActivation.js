@@ -23,6 +23,29 @@ export async function getOrCreateRecoveryHashRN(storage = AsyncStorage) {
   return toHex(sha256(new TextEncoder().encode(secret)));
 }
 
+/**
+ * A fetch that re-authenticates ON 401 and retries ONCE. `getAuthenticatedFetch()` is captured once at
+ * activation, so a pod write minutes/hours later can hit an aged-out access token → 401. Re-capturing the
+ * authed fetch lets the session mint a fresh token (transparent refresh) and the write succeeds instead of
+ * silently failing ("Nothing was kept"). If the refresh itself is dead (fully-expired session), the second
+ * 401 propagates unchanged — the participant genuinely needs to log in again. Only retries re-sendable bodies
+ * (string / absent) so a one-shot stream body is never double-consumed.
+ */
+function reauthingFetch(session, initial) {
+  let fetchFn = initial;
+  return async (url, init) => {
+    const res = await fetchFn(url, init);
+    if (res.status !== 401) return res;
+    const body = init?.body;
+    if (body != null && typeof body !== 'string') return res;   // can't safely re-send a stream body
+    let fresh;
+    try { fresh = session.getAuthenticatedFetch(); } catch { return res; }
+    if (typeof fresh !== 'function') return res;
+    fetchFn = fresh;                                             // keep the refreshed fetch for later calls
+    return fresh(url, init);
+  };
+}
+
 /** A {fetch, webid} shim from an OidcSessionRN, or null when not logged in (mirrors circleStoresRN). */
 export function sessionShim(session) {
   // Rely on getAuthenticatedFetch (transparent refresh on expiry/401) + the presence of a webid — NOT a hard
@@ -32,7 +55,8 @@ export function sessionShim(session) {
   let fetchFn;
   try { fetchFn = session.getAuthenticatedFetch(); } catch { return null; }
   if (typeof fetchFn !== 'function') return null;
-  return { fetch: fetchFn, webid: session.webid };
+  // Wrap so a 401 (aged-out access token) re-captures the authed fetch (fresh token) and retries once.
+  return { fetch: reauthingFetch(session, fetchFn), webid: session.webid };
 }
 
 /**

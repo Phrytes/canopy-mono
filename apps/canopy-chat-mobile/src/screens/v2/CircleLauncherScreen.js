@@ -113,6 +113,11 @@ import { getCircleSealStrategy, seedCircleRosterFor, getCirclePodFetch, getCircl
 // M6 — the feedback bot rides the SHARED mount (web uses the same one). tryHandle routes /feedback +
 // /feedback-stop + free text while active, before the circle bot; bubbles render via appendKringMessage.
 import { createFeedbackMount } from '../../../../canopy-chat/src/feedback/feedbackMount.js';
+// Rich kring feedback (parity with web's invite-circle): the co-hosted bot's review renders as editable
+// CARDS + its long bubbles chunk, instead of flattened text. Shared surface + shared RN card component.
+import { createFeedbackSurface, signerForIdentity, chunkBubble } from '../../../../canopy-chat/src/feedback/feedbackSurface.js';
+import { makeNoLoginFeedbackPods } from '../../../../canopy-chat/src/feedback/noLoginPods.js';
+import { FeedbackReviewCards } from '../../rn/FeedbackBubbles.js';
 import { buildCircleLlmProviders } from '../../../../canopy-chat/src/v2/circleLlmProviders.js';
 import { createClarifyingDispatch } from '../../../../canopy-chat/src/v2/clarifyingDispatch.js';
 // Q27 — the shared confirm gate at the dispatch waist (mobile presenter: Alert.alert, destructive style).
@@ -202,6 +207,12 @@ const CIRCLE_EMBED_MODEL   = process.env.EXPO_PUBLIC_CIRCLE_EMBED_MODEL || undef
 const CIRCLE_BOT_NAME    = process.env.EXPO_PUBLIC_CIRCLE_BOT_NAME || 'assistant';
 // M6 — feedback bot's LLM route (cleans/anonymizes participant input). Unset → in-memory demo mode.
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
+// The companion collector for the no-login kring feedback session (raw stays local; the round-approved,
+// device-signed summary is released here). Unset → own-pod-only (no central route / verify rounds).
+const FEEDBACK_COLLECTOR_URL = process.env.EXPO_PUBLIC_FEEDBACK_COLLECTOR_URL || undefined;
+// Languages the kring feedback bot offers (only those with a full locale + pipeline string file). Labels/prompts
+// come from the locale files read IN each target language (see emitFeedbackLangOptions) — no hardcoded strings.
+const FEEDBACK_LANGS = String(process.env.EXPO_PUBLIC_FEEDBACK_LANGS || 'nl,en').split(',').map((s) => s.trim()).filter(Boolean);
 // Default circle posture (off|local|cloud|user); 'user' = each member's personal default decides.
 const CIRCLE_LLM_POLICY  = process.env.EXPO_PUBLIC_CIRCLE_LLM_POLICY || 'user';
 // Scope the LLM's tool list to these app origins (comma-list, e.g. "household,tasks"). Unset → the bot
@@ -1159,6 +1170,7 @@ export default function CircleLauncherScreen({
               bot={contactThread.bot}
               store={feedbackStore}
               onBack={() => setContactThread(null)}
+              identity={bundle?.coreAgent?.identity ?? null}
             />
           </WithTabBar>
         );
@@ -1868,6 +1880,11 @@ function CircleDetail({
   // when state flips.  The map itself isn't deps-tracked.
   const deliveryStateMapRef = useRef(null);
   const feedbackMountRef = useRef(null);   // M6 — lazy feedback mount (created on first kring send)
+  const feedbackEditRef = useRef(null);    // the review-point id whose text is prefilled in the composer (✏)
+  const [expandedBubbles, setExpandedBubbles] = useState(() => new Set());   // bot bubbles whose long text is fully shown
+  const toggleBubble = useCallback((id) => setExpandedBubbles((prev) => {
+    const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n;
+  }), []);
   const lastKringListingRef = useRef(null); // { appOrigin, items } from the last list reply, for bulk "/done all"
   if (deliveryStateMapRef.current == null) deliveryStateMapRef.current = createDeliveryStateMap();
   const [deliveryTick, setDeliveryTick] = useState(0);
@@ -2017,14 +2034,64 @@ function CircleDetail({
 
   // SP-13.2.1 — append a kring chat bubble to the local eventLog (optimistic). Returns {msgId, ts}
   // so the caller can fan out the same id (receiver-side dedup suppresses any mirrored echo).
-  const appendKringMessage = useCallback(({ actor, text, buttons, scope, embeds }) => {
+  const appendKringMessage = useCallback(({ actor, text, buttons, scope, embeds, review }) => {
     if (!eventLog?.append || !circle?.id) return null;
     const msgId = `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const ts    = Date.now();
-    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope, embeds }));
+    // `review` (Stage-1 feedback cards) is private by construction → scope 'self' (never fanned out).
+    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope: review ? 'self' : scope, embeds, review }));
     setStreamTick((n) => n + 1);
     return { msgId, ts };
   }, [eventLog, circle?.id]);
+
+  // Build the co-hosted feedback surface + mount for a circle in a given language, over the given (cached) pods.
+  // Factored out so a language switch can REBUILD reusing the same pods (local Stage-1 survives). Rich emit sink:
+  // kind:'review' → editable cards · kind:'report' → a chunked text bubble · else text + buttons.
+  const buildFeedbackMount = useCallback((circ, pods, lg) => {
+    const surface = createFeedbackSurface({
+      projectId: circ.id,
+      lang: lg,
+      llmBaseURL: FEEDBACK_LLM_BASEURL,
+      pod: pods.ownPod,
+      ...(pods.centralPod ? { centralPod: pods.centralPod, controlStore: pods.controlStore, verify: true } : {}),
+      identityFor: () => signerForIdentity(bundle?.coreAgent?.identity),
+      emit: ({ kind, text: btext, buttons, points, labels, logText }) => {
+        if (kind === 'review' && Array.isArray(points)) appendKringMessage({ actor: 'bot', review: { intro: btext, points, labels } });
+        else if (kind === 'report') appendKringMessage({ actor: 'bot', text: `${btext}\n\n${logText || ''}`.trimEnd() });
+        else appendKringMessage({ actor: 'bot', text: btext, buttons });
+      },
+    });
+    return createFeedbackMount({
+      surface,
+      appendUserBubble: (_tid, txt) => appendKringMessage({ actor: 'me', text: txt }),
+      appendBotBubble:  () => {},   // unused: the pre-built surface owns its emit above
+    });
+  }, [appendKringMessage, bundle]);
+
+  // Offer the OTHER languages as tappable bubble-buttons (web-kring parity). Prompt + label are read from the
+  // locale files IN each TARGET language (t(key, {}, l)) — a speaker of that language recognises the invite; NO
+  // hardcoded strings (unlike the web's LANG_INFO constant).
+  const emitFeedbackLangOptions = useCallback((currentLang) => {
+    const others = FEEDBACK_LANGS.filter((l) => l !== currentLang);
+    if (!others.length) return;
+    appendKringMessage({
+      actor: 'bot',
+      text: `🌐 ${others.map((l) => t('circle.feedback.switch_prompt', {}, l)).join('  ·  ')}`,
+      buttons: others.map((l) => ({ id: `fp-lang:${l}`, label: t('circle.feedback.lang_name', {}, l) })),
+    });
+  }, [appendKringMessage]);
+
+  // Switch the kring feedback bot's language: rebuild the surface in newLang REUSING the cached pods (Stage-1
+  // survives), re-greet, and re-offer the other langs. Routed here from an `fp-lang:<code>` bubble-button tap.
+  const switchKringFeedbackLang = useCallback(async (circleId, newLang) => {
+    const ref = feedbackMountRef.current;
+    if (!ref || ref.circleId !== circleId || ref.lang === newLang || !FEEDBACK_LANGS.includes(newLang)) return;
+    try { ref.mount.surface.stop(circleId); } catch { /* best-effort */ }
+    const mount = buildFeedbackMount({ id: circleId }, ref.pods, newLang);
+    feedbackMountRef.current = { circleId, mount, pods: ref.pods, lang: newLang };
+    try { await mount.open(circleId); } catch { /* a greeting error surfaces via emit */ }
+    emitFeedbackLangOptions(newLang);
+  }, [buildFeedbackMount, emitFeedbackLangOptions]);
 
   // B (circle bot) — run a FULLY-RESOLVED command ({opId, args}) against the circle's catalog, scoped
   // to THIS circle, and post a one-line bot reply. Local-only (the command's substrate effect reaches
@@ -2295,6 +2362,16 @@ function CircleDetail({
   // S6.A inline manifest button (has opId) → dispatch its op against the item;
   // otherwise (B clarification candidate) → bind the id + re-run.
   const onBubbleButton = useCallback((button) => {
+    // Feedback language switch (fp-lang:<code>) → rebuild the surface in that language (reusing the pods).
+    if (typeof button?.id === 'string' && button.id.startsWith('fp-lang:')) {
+      switchKringFeedbackLang(circle?.id, button.id.slice('fp-lang:'.length));
+      return;
+    }
+    // Feedback control ids (review-card sends, verify buttons, etc.) route to the co-hosted feedback surface.
+    if (typeof button?.id === 'string' && /^fp:/.test(button.id)) {
+      feedbackMountRef.current?.mount?.surface?.handle(button.id, circle?.id).catch(() => {});
+      return;
+    }
     if (button?.screen) { setScreenPanel({ screen: button.screen }); return; }
     if (button?.opId) {
       const op = catalog?.opsById?.get(button.opId)?.op;
@@ -2305,7 +2382,7 @@ function CircleDetail({
       return;
     }
     if (button?.id) clarify.pick(button.id, { id: circle?.id });
-  }, [clarify, circle?.id, catalog, runCircleCommandResolved]);
+  }, [clarify, circle?.id, catalog, runCircleCommandResolved, switchKringFeedbackLang]);
 
   // B (two-level LLM policy) — the member's PERSONAL default, consulted when the circle policy is
   // 'user'. Persisted via AsyncStorage; seeded from the configured route until a settings UI lands
@@ -2436,6 +2513,15 @@ function CircleDetail({
     const scr = text.match(/^\/(contacts|prikbord)\b/i);
     if (scr && sectionForScreen(manifestsByOrigin, scr[1].toLowerCase())) { setComposerText(''); setScreenPanel({ screen: scr[1].toLowerCase() }); return; }
     setComposerText('');
+    // Feedback review-card edit: the ✏ prefilled the composer with a point's text; this send is the EDIT.
+    // Route it as an `fp:edit:<id>:<text>` control to the feedback surface (its dispatcher re-curates + shows
+    // the updated card), echoing the edited line locally. Mirrors web's composer-prefill edit.
+    if (feedbackEditRef.current && feedbackMountRef.current?.mount?.surface) {
+      const pid = feedbackEditRef.current; feedbackEditRef.current = null;
+      appendKringMessage({ actor: 'me', text });
+      feedbackMountRef.current.mount.surface.handle(`fp:edit:${pid}:${text}`, circle.id).catch(() => {});
+      return;
+    }
     // Conversational follow-up: the bot asked for a missing field (needsForm); THIS message is the answer.
     // Append it, complete the pending dispatch, and run it — don't route to feedback or re-interpret.
     if (pendingFollowUp) {
@@ -2465,21 +2551,40 @@ function CircleDetail({
     }
     // M6 — lazy shared feedback mount; its appendUserBubble/appendBotBubble render into the kring. Text
     // bubbles (incl. the bot's button labels); interactive M12 chips on mobile are a follow-up.
-    if (!feedbackMountRef.current) {
-      feedbackMountRef.current = createFeedbackMount({
-        llmBaseURL: FEEDBACK_LLM_BASEURL,
-        appendUserBubble: (_tid, t) => appendKringMessage({ actor: 'me', text: t }),
-        appendBotBubble:  (_tid, t) => appendKringMessage({ actor: 'bot', text: t }),
-      });
+    // The co-hosted feedback bot runs a REAL no-login session bound to THIS circle: the circle IS the feedback
+    // project (projectId = circle.id, so a PM/admin opens verify rounds for it). Raw stays in the device's OWN
+    // pod (persisted in AsyncStorage → survives reload); the round-approved summary is SIGNED with the device
+    // agent identity and released to the companion collector. Rich emit sink: kind:'review' → editable CARDS,
+    // kind:'report' → a chunked text bubble (web parity), else text + buttons. Rebuilt when the active circle
+    // changes so pods/projectId/identity can't leak across circles.
+    // NON-FATAL to the kring: a feedback build/route failure must NEVER break normal circle chat — on any
+    // error we log and fall through to the regular fan-out path below.
+    try {
+      if (feedbackMountRef.current?.circleId !== circle.id) {
+        const pods = makeNoLoginFeedbackPods({
+          collectorUrl: FEEDBACK_COLLECTOR_URL,
+          participantKey: bundle?.coreAgent?.identity?.pubKey,
+          storage: AsyncStorage,
+          podKey: `fp.ownpod.${circle.id}`,
+        });
+        const lg = lang();   // device language as the starting bot language; switchable via the fp-lang buttons
+        feedbackMountRef.current = { circleId: circle.id, mount: buildFeedbackMount(circle, pods, lg), pods, lang: lg };
+      }
+      const startedFeedback = /^\/feedback(\s|$)/i.test(text);
+      if (await feedbackMountRef.current.mount.tryHandle(text, circle.id)) {
+        if (startedFeedback) emitFeedbackLangOptions(feedbackMountRef.current.lang);   // offer the other langs
+        return;   // feedback owned the turn
+      }
+    } catch (e) {
+      console.warn('[kring] feedback mount unavailable (chat continues):', e?.message ?? e);
     }
-    if (await feedbackMountRef.current.tryHandle(text, circle.id)) return;   // feedback owned the turn
     // A plain typed line fans out to the whole kring → scope 'kring' (web parity).
     const appended = appendKringMessage({ actor: 'me', text, scope: 'kring' });
     // Fire-and-forget: the bot posts its own reply bubble; swallow rejections so a failed turn can't
     // surface as an unhandled promise rejection. noteBotTurn arms the conversational follow-up if the
     // bot replied with a question.
     Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).then((r) => noteBotTurn(r, text)).catch(() => {});
-  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin]);
+  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions]);
 
   // δ.2 — tap-to-retry on the failed icon.  Looks up the original
   // text from the eventLog so we don't have to remember it elsewhere.
@@ -2635,6 +2740,12 @@ function CircleDetail({
             localActor: 'me',
             onRetryDelivery,
             onBubbleButton,
+            // Feedback review-card ✏ → prefill the composer with the point's text (web parity); the next send
+            // becomes an `fp:edit:<id>:<text>` turn (see sendKringChat). feedbackLang labels the card buttons.
+            onFeedbackEdit: (p) => { feedbackEditRef.current = p.id; setComposerText(p.text || ''); },
+            // Long BOT bubbles (e.g. a verify-summary) chunk to a preview + Show more/less instead of the 4-line cap.
+            isBubbleExpanded: (id) => expandedBubbles.has(id),
+            onToggleBubble: toggleBubble,
             // tap a "See also" embed chip → open the item's screen panel (S6.B).
             onEmbedOpen: ({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); },
           })
@@ -2810,6 +2921,25 @@ function renderBubblesWithDayDividers(rows, t, deliveryOpts = null) {
 
 function renderBubble(row, t, deliveryOpts = null) {
   const payload = row.event?.payload ?? {};
+  // Rich feedback: a Stage-1 review renders as editable CARDS (shared component), NOT a flattened text bubble
+  // — parity with the web invite-circle kring. Card actions route through the same `onBubbleButton` as other
+  // bot chips (send/send-all/cancel → fp:consent:*/fp:cancel); ✏ prefills the composer via onFeedbackEdit.
+  const review = payload.review;
+  if (review && Array.isArray(review.points)) {
+    const onBtn = typeof deliveryOpts?.onBubbleButton === 'function' ? deliveryOpts.onBubbleButton : null;
+    return (
+      <View key={row.id} style={styles.bubble} testID={`kring-bubble-${row.id}`}>
+        <FeedbackReviewCards
+          intro={review.intro} points={review.points} labels={review.labels} botLang={deliveryOpts?.feedbackLang}
+          editing={null}
+          onEditPoint={(p) => deliveryOpts?.onFeedbackEdit?.(p)}
+          onSend={(pid) => onBtn?.({ id: `fp:consent:${pid}` })}
+          onSendAll={() => onBtn?.({ id: 'fp:consent:all' })}
+          onSendNone={() => onBtn?.({ id: 'fp:cancel' })}
+        />
+      </View>
+    );
+  }
   const text = payload.text || payload.title || payload.body || String(row.id ?? '');
   const sender = payload.senderDisplay || payload.authorName || row.actor || null;
   const kindRaw = payload.kind;
@@ -2843,10 +2973,28 @@ function renderBubble(row, t, deliveryOpts = null) {
           {payload.scope === 'kring' ? `👥 ${t('circle.scope.kring')}` : `👤 ${t('circle.scope.self')}`}
         </Text>
       ) : null}
-      <Text style={styles.bubbleText} numberOfLines={4}>
-        {kind ? (<Text style={styles.bubbleKind}>{kind}  </Text>) : null}
-        {text}
-      </Text>
+      {(() => {
+        // Long BOT bubbles (verify-summary et al.) chunk to a preview + a Show more/less toggle so a long
+        // summary isn't hard-truncated at 4 lines; short bot bubbles + non-bot bubbles keep the 4-line cap.
+        const isBot = row.event?.actor === 'bot' || row.actor === 'bot';
+        const { head, rest } = isBot ? chunkBubble(text) : { head: text, rest: '' };
+        const chunked = rest !== '';
+        const shown = !chunked || deliveryOpts?.isBubbleExpanded?.(row.id) ? text : `${head}…`;
+        const expanded = chunked && deliveryOpts?.isBubbleExpanded?.(row.id);
+        return (
+          <>
+            <Text style={styles.bubbleText} numberOfLines={chunked ? undefined : 4}>
+              {kind ? (<Text style={styles.bubbleKind}>{kind}  </Text>) : null}
+              {shown}
+            </Text>
+            {chunked ? (
+              <Pressable onPress={() => deliveryOpts?.onToggleBubble?.(row.id)} hitSlop={6} testID={`kring-more-${row.id}`}>
+                <Text style={styles.bubbleMore}>{expanded ? t('circle.feedback.show_less') : t('circle.feedback.show_more')}</Text>
+              </Pressable>
+            ) : null}
+          </>
+        );
+      })()}
       {embedChipsOf(payload).length > 0 ? (
         <View style={styles.bubbleEmbeds}>
           {embedChipsOf(payload).map((e) => {
@@ -3113,6 +3261,7 @@ const styles = StyleSheet.create({
   bubbleScopeKring: { backgroundColor: '#e8eef6', color: '#3b6ea5' },
   bubbleText:       { fontSize: 14, color: theme.color.ink },
   bubbleKind:       { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: theme.color.accent },
+  bubbleMore:       { marginTop: 4, fontSize: 12, fontWeight: '700', color: theme.color.accent },
   // embeds[] — cross-object "See also" chips on a kring message.
   bubbleEmbeds:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
   bubbleEmbed:      { borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.card, borderRadius: 999, paddingVertical: 2, paddingHorizontal: 9 },

@@ -22,10 +22,31 @@ describe('feedbackActivation (mobile)', () => {
 
   it('sessionShim: null when not logged in, a {fetch,webid} shim when authenticated', () => {
     expect(sessionShim(null)).toBe(null);
-    expect(sessionShim({ isAuthenticated: () => false, webid: 'x' })).toBe(null);
-    const fetchFn = async () => {};
-    const shim = sessionShim({ isAuthenticated: () => true, webid: 'http://h/alice/profile/card#me', getAuthenticatedFetch: () => fetchFn });
-    expect(shim).toEqual({ fetch: fetchFn, webid: 'http://h/alice/profile/card#me' });
+    expect(sessionShim({ isAuthenticated: () => false, webid: 'x' })).toBe(null);          // no getAuthenticatedFetch
+    const shim = sessionShim({ webid: 'http://h/alice/profile/card#me', getAuthenticatedFetch: () => (async () => ({ ok: true })) });
+    expect(typeof shim.fetch).toBe('function');   // now a re-auth-wrapping fetch (not the raw captured fn)
+    expect(shim.webid).toBe('http://h/alice/profile/card#me');
+  });
+
+  it('sessionShim fetch RE-AUTHENTICATES on 401 and retries once (fresh token then succeeds)', async () => {
+    let captures = 0;
+    const session = {
+      webid: 'http://h/alice/profile/card#me',
+      // 1st captured fetch → 401 (aged-out token); 2nd capture (refreshed) → 200
+      getAuthenticatedFetch: () => { const n = ++captures; return async () => ({ status: n === 1 ? 401 : 200, ok: n !== 1 }); },
+    };
+    const shim = sessionShim(session);
+    const res = await shim.fetch('http://h/pod/x.json', { method: 'PUT', body: '{}' });
+    expect(res.status).toBe(200);     // the retry with a fresh token succeeded
+    expect(captures).toBe(2);         // initial capture + one re-capture on the 401
+  });
+
+  it('sessionShim fetch surfaces a persistent 401 (dead session) after one retry — no infinite loop', async () => {
+    let captures = 0;
+    const session = { webid: 'http://h/alice#me', getAuthenticatedFetch: () => { captures += 1; return async () => ({ status: 401 }); } };
+    const res = await sessionShim(session).fetch('http://h/pod/x.json', { method: 'PUT', body: '{}' });
+    expect(res.status).toBe(401);     // fully-expired → the 2nd 401 propagates (participant must re-login)
+    expect(captures).toBe(2);         // exactly one retry, not a loop
   });
 
   it('activateMobileFeedback throws not-logged-in without a pod session', async () => {

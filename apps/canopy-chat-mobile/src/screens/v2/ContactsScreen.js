@@ -16,6 +16,9 @@ import { addBotToGraph } from '../../../../canopy-chat/src/v2/addBot.js';
 import { feedbackBotFromInput } from '../../../../canopy-chat/src/v2/feedbackBots.js';
 
 const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
+// When a collector is configured, an invite uses the NO-LOGIN collector flow (raw stays local, the signed
+// summary reaches the collector) — parity with web's default. Otherwise the login/activation flow.
+const FEEDBACK_COLLECTOR_URL = process.env.EXPO_PUBLIC_FEEDBACK_COLLECTOR_URL || null;
 
 // cluster J — an added feedback bot rendered as a roster row (a co-hosted agent, not a PeerGraph peer).
 function feedbackBotToRow(bot) {
@@ -60,7 +63,10 @@ export default function ContactsScreen({ bundle, onOpen, feedbackStore = null })
     try {
       // cluster J — a feedback invite link/QR adds the co-hosted feedback bot to its own registry; anything
       // else is a PeerGraph peer/bot. Same precedence as web's addBotFromInput.
-      const fb = feedbackStore ? feedbackBotFromInput(input, { activationUrl: FEEDBACK_ACTIVATION_URL }) : null;
+      // Prefer the no-login collector flow when a collector is configured (web parity); else activation.
+      const fb = feedbackStore
+        ? feedbackBotFromInput(input, FEEDBACK_COLLECTOR_URL ? { collectorUrl: FEEDBACK_COLLECTOR_URL } : { activationUrl: FEEDBACK_ACTIVATION_URL })
+        : null;
       if (fb) { await feedbackStore.add(fb); }
       else { await addBotToGraph({ input, peerGraph, coreAgent: bundle?.coreAgent, discover: bundle?.discoverA2A }); }
       setAddText(''); setAddOpen(false);
