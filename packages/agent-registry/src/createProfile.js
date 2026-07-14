@@ -4,7 +4,7 @@
 // so the same owner root + profileId reproduce the SAME pubKey on any device — the recovery
 // property. We record only the pubKey (via AgentIdentity.pubKeyFromSeed — no vault); the full
 // identity is re-derived on the device that actually runs the profile.
-import { AgentIdentity } from '@canopy/core';
+import { AgentIdentity, deriveCircleAddress } from '@canopy/core';
 
 /**
  * @param {object} a
@@ -42,4 +42,12 @@ export async function createProfile({ registry, ownerRoot, profileId, role = 'pr
 /** The deterministic pubKey a profile WOULD have (recovery / verification), without registering. */
 export function profilePubKey(ownerRoot, profileId) {
   return AgentIdentity.pubKeyFromSeed(ownerRoot.deriveAgentSeed(profileId));
+}
+
+/**
+ * The per-circle ADDRESS a profile presents in a circle (step 3 — unlinkable-by-default). Full chain
+ * from the owner root: root → profile seed → per-circle address. A distinct key per (profile, circle).
+ */
+export function profileCircleAddress(ownerRoot, profileId, circleId) {
+  return deriveCircleAddress(ownerRoot.deriveAgentSeed(profileId), circleId);
 }

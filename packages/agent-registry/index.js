@@ -19,7 +19,7 @@ export { projectAgentCard } from './src/agentCard.js';
 export {
   own, inherit, normaliseProperties, resolveProperty, effectiveProperties, setOwn, setInherit,
 } from './src/profileProperties.js';
-export { createProfile, profilePubKey } from './src/createProfile.js';
+export { createProfile, profilePubKey, profileCircleAddress } from './src/createProfile.js';
 export { registerAgentBundle } from './src/registerAgentBundle.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the

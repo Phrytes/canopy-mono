@@ -3,7 +3,7 @@ import { describe, it, expect } from 'vitest';
 import { Bootstrap } from '@canopy/core';
 import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
-import { createProfile, profilePubKey, own } from '../index.js';
+import { createProfile, profilePubKey, profileCircleAddress, own } from '../index.js';
 
 const mkReg = () => createAgentRegistry({
   pseudoPod: createPseudoPod({ backend: createMemoryBackend(), mode: 'standalone', deviceId: 'd1' }),
@@ -53,5 +53,13 @@ describe('createProfile — root-derived profile entries', () => {
   it('validates inputs', async () => {
     await expect(createProfile({ registry: mkReg() })).rejects.toThrow(/ownerRoot/);
     await expect(createProfile({ ownerRoot: Bootstrap.create().bootstrap })).rejects.toThrow(/registry/);
+  });
+
+  it('profileCircleAddress (step 3): reproducible, distinct per circle, != the profile pubKey', () => {
+    const root = Bootstrap.create().bootstrap;
+    const a = profileCircleAddress(root, 'default', 'buurt-42');
+    expect(a).toBe(profileCircleAddress(root, 'default', 'buurt-42'));           // reproducible (recovery)
+    expect(a).not.toBe(profileCircleAddress(root, 'default', 'werk-7'));         // unlinkable per circle
+    expect(a).not.toBe(profilePubKey(root, 'default'));                          // circle address != profile key
   });
 });
