@@ -1491,6 +1491,22 @@ export async function createRealHouseholdAgent(opts = {}) {
           groupId: opts.stoopGroup ?? 'cc-default-buurt',
         };
       }
+      // Identity 5B/C — present THIS device's per-circle ADDRESS
+      // (deriveCircleAddress) on the direct redeem/create path so the substrate
+      // records it into the roster (the roster-recording wire). ONE seam for
+      // BOTH platforms (invariant #1): the join/create wizards dispatch through
+      // here, so neither web nor mobile threads it. Derived from the resolved
+      // groupId off the default profile seed; additive — an explicit caller value
+      // wins, an op without a groupId is untouched. NOT verifyMembershipCodeForPeer:
+      // there the JOINER's address is forwarded by the peer bridge, not the admin's.
+      const PRESENTS_CIRCLE_ADDRESS = new Set(['redeemMembershipCode', 'createGroupV2']);
+      if (PRESENTS_CIRCLE_ADDRESS.has(realOpId)
+          && typeof realArgs.groupId === 'string' && realArgs.groupId
+          && !realArgs.circleAddress) {
+        try {
+          realArgs = { ...realArgs, circleAddress: deriveCircleAddress(defaultProfileSeed, realArgs.groupId) };
+        } catch { /* address derivation is additive — never block the redeem/create */ }
+      }
       if (realOpId === 'leaveGroup' && realArgs.confirm !== true) {
         // Q27-style two-step confirm.  Short-circuit before invoke.
         return {
@@ -2410,6 +2426,9 @@ export async function createRealHouseholdAgent(opts = {}) {
           label:       m.displayName ?? m.handle ?? m.webid,
           handle:      m.handle ?? null,
           role:        m.role ?? 'member',
+          // Identity 5B/C — carry the recorded per-circle address through the
+          // chat-shell projection (additive; absent for pre-substrate members).
+          ...(m.circleAddress ? { circleAddress: m.circleAddress } : {}),
         })),
         _sync: simulateSync(),
       };

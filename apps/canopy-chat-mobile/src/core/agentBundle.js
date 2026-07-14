@@ -481,6 +481,8 @@ export async function bootAgentBundle(opts = {}) {
     sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
     isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
     pendingMap:      pendingPeerRedeems,
+    // Identity 5B/C — present this device's per-circle address on the peer redeem path (parity with web).
+    circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
   });
 
   // In-app relay setting live-reconnect: re-invoke connectPeerTransport with the FRESH relay URL + the

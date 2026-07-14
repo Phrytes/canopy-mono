@@ -4738,6 +4738,8 @@ async function boot() {
       sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
       isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
       pendingMap:      circlePendingRedeems,
+      // Identity 5B/C — present this device's per-circle address on the peer redeem path.
+      circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
     });
     // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
     // folio/calendar; reuses stoop's already-built pod-routing write-through). Best-effort.

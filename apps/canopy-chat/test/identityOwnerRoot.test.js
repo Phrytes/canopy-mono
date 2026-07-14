@@ -110,4 +110,22 @@ describe('identity step-5B/C — circleAddressFor bridge', () => {
     expect(a.circleAddressFor('buurt-42')).toBe(deriveCircleAddress(seed, 'buurt-42'));
     expect(a.circleAddressFor('buurt-42')).not.toBe(a.circleAddressFor('werk-7'));   // unlinkable per circle
   });
+
+  it('roster-recording wire: createGroupV2 through the agent records the admin per-circle address into the roster', async () => {
+    // End-to-end: the callSkill seam injects circleAddress on the create/redeem
+    // path → stoop records it on the MemberMap row → listGroupMembers surfaces it
+    // → the chat-shell projection carries it. The recorded value is exactly the
+    // deriveCircleAddress(defaultProfileSeed, groupId) this device presents.
+    const { deriveCircleAddress } = await import('@canopy/core');
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const created = await a.callSkill('stoop', 'createGroupV2', {
+      groupId: 'buurt-xy', name: 'X', rules: { purpose: 'buurt', houseRules: ['wees aardig'] },
+    });
+    expect(created.groupId).toBe('buurt-xy');
+    const members = await a.callSkill('stoop', 'listGroupMembers', { groupId: 'buurt-xy' });
+    const admin = (members.items ?? members.members ?? []).find((m) => m.role === 'admin');
+    const seed = Bootstrap.fromMnemonic(await ownerRootVault.get('owner-phrase')).deriveAgentSeed('default');
+    expect(admin.circleAddress).toBe(deriveCircleAddress(seed, 'buurt-xy'));
+  });
 });
