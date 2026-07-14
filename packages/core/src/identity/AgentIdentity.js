@@ -225,6 +225,22 @@ export class AgentIdentity {
   }
 
   /**
+   * The pubKey a 32-byte seed WOULD yield — same encoding as `.pubKey`, WITHOUT a vault or
+   * persistence. Lets a caller record a derived profile's pubKey in a registry (seed =
+   * `Bootstrap.deriveAgentSeed(profileId)`) without materialising a full identity; the actual
+   * identity is re-derived on the device that runs the profile.
+   *
+   * @param {Uint8Array} seedBytes  exactly 32 bytes (Ed25519 seed).
+   * @returns {string} the base64 pubKey.
+   */
+  static pubKeyFromSeed(seedBytes) {
+    if (!(seedBytes instanceof Uint8Array) || seedBytes.length !== 32) {
+      throw new Error('AgentIdentity.pubKeyFromSeed: seedBytes must be a 32-byte Uint8Array');
+    }
+    return b64encode(nacl.sign.keyPair.fromSeed(seedBytes).publicKey);
+  }
+
+  /**
    * Group FF — rotate the agent's Ed25519 keypair.
    * Generates a fresh seed, persists a `{ current, previous: { seed,
    * pubkey, graceUntil } }` blob to the vault, and returns both

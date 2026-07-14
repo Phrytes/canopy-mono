@@ -15,10 +15,11 @@ export {
 } from './src/resource.js';
 export { withCAS } from './src/concurrency.js';
 export { projectAgentCard } from './src/agentCard.js';
-// identity step 2 — profile own/inherit property graph
+// identity step 2 — profile own/inherit property graph + root-derived profile creation
 export {
   own, inherit, normaliseProperties, resolveProperty, effectiveProperties, setOwn, setInherit,
 } from './src/profileProperties.js';
+export { createProfile, profilePubKey } from './src/createProfile.js';
 export { registerAgentBundle } from './src/registerAgentBundle.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
