@@ -21,6 +21,8 @@ export {
 } from './src/profileProperties.js';
 export { createProfile, profilePubKey, profileCircleAddress } from './src/createProfile.js';
 export { loadProfile } from './src/loadProfile.js';
+// identity step 5A — encrypted-file/DB export of the profile set
+export { exportProfileRegistry, importProfileRegistry, restoreProfilesInto } from './src/exportRegistry.js';
 export { registerAgentBundle } from './src/registerAgentBundle.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
