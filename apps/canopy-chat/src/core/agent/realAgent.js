@@ -646,8 +646,12 @@ export async function createRealHouseholdAgent(opts = {}) {
     } else {
       agentsCatalog = createStubCatalog();
     }
+    // 2.4b — owner-only CONTROL ops require 'trusted' (only the seeded in-process chat identity
+    // clears it); reads (list/view) stay 'authenticated'. Chat-scoped: the shared wireSkills.js
+    // `visibilityFor` + the standalone agents app are untouched.
+    const TRUSTED_AGENT_OPS = new Set(['grantAgent', 'revokeAgent', 'revokeGrant', 'purgeAgent', 'installAgent', 'restoreDataVersion']);
     for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog })) {
-      hostAgent.register(id, handler, { visibility });
+      hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });
     }
   }
 
@@ -728,7 +732,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Re-revealable: backing up the phrase again is legitimate; the phrase is stable.
     try { return [DataPart({ shown: false, mnemonic: ownerRoot.toMnemonic() })]; }
     catch (e) { return [DataPart({ ok: false, error: e?.message ?? 'reveal-failed' })]; }
-  }, { visibility: 'authenticated' });
+  }, { visibility: 'trusted' });   // 2.4b — the master recovery phrase: owner-only
 
   hostAgent.register('restoreOwnerPhrase', async ({ parts }) => {
     const mnemonic = String(parts?.[0]?.data?.mnemonic ?? '').trim();
@@ -743,7 +747,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       await AgentIdentity.fromSeed(root.deriveAgentSeed('default'), chatVault);
       return [DataPart({ ok: true, reloadRequired: true })];
     } catch (e) { return [DataPart({ ok: false, error: e?.message ?? 'restore-failed' })]; }
-  }, { visibility: 'authenticated' });
+  }, { visibility: 'trusted' });   // 2.4b — overwrites the owner root: owner-only
 
 
   /* folio's web-only handlers used to live here (~125 lines of mock-
@@ -758,22 +762,25 @@ export async function createRealHouseholdAgent(opts = {}) {
    * 5 + the mobile pivot).
    */
 
-  /* Identity step 2.4a — attach a PolicyEngine to hostAgent so delegated/scoped access CAN be
-   * enforced (the gate was structurally absent: hostAgent.policyEngine was null, so taskExchange/
-   * A2ATransport skipped it for host traffic). This is a PERMISSIVE attach — an empty TrustRegistry
-   * makes every peer 'authenticated', and no host skill declares restrictive metadata, so nothing
-   * currently rejects (in-process invoke presents no token either). The enforcement-TIGHTENING
-   * (raising per-skill visibility to trusted/requires-token) is a separate, audited pass (2.4b).
-   * Revocation is fed from the issuer-side agentsTokenRegistry (built above). Best-effort: a failure
-   * leaves the gate absent (the prior behaviour) — never breaks boot. */
+  /* Identity step 2.4a/2.4b — attach a PolicyEngine to hostAgent so scoped access is ENFORCED
+   * (the gate was structurally absent: hostAgent.policyEngine was null, so taskExchange/A2ATransport
+   * skipped it for host traffic). 2.4b raised the owner-only CONTROL + secret-material skills
+   * (grant/revoke/purge/install/restoreDataVersion/reveal/restoreOwnerPhrase) to 'trusted'. hostAgent
+   * is IN-PROCESS ONLY (InternalTransport; no external peer can reach it), so the sole caller is the
+   * chat agent — SEED its pubKey as 'trusted' below so those raised skills stay reachable in-process.
+   * Reads stay 'authenticated'. Revocation feeds from the issuer-side agentsTokenRegistry. Best-effort:
+   * a failure leaves the gate absent (prior behaviour) — never breaks boot. */
   try {
-    // TrustRegistry is vault-backed (empty → every peer 'authenticated' = default-allow).
+    // Vault-backed TrustRegistry: unknown peers → 'authenticated'; the seeded chat identity → 'trusted'.
+    const hostTrustRegistry = new TrustRegistry(opts.hostTrustVault ?? makeBrowserVault('cc-host-trust:'));
     hostAgent.policyEngine = new PolicyEngine({
-      trustRegistry: new TrustRegistry(opts.hostTrustVault ?? makeBrowserVault('cc-host-trust:')),
+      trustRegistry: hostTrustRegistry,
       skillRegistry: hostAgent.skills,
       agentPubKey:   hostId.pubKey,
       isRevoked:     async (tokenId) => Boolean(await agentsTokenRegistry?.isRevoked(tokenId)),
     });
+    // The in-process chat caller is the owner's device — trust it so it clears the 'trusted' host ops.
+    await hostTrustRegistry.setTier(chatId.pubKey, 'trusted');
   } catch (e) { console.warn('[realAgent] hostAgent PolicyEngine attach skipped:', e?.message ?? e); }
 
   await Promise.all([
