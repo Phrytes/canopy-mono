@@ -26,6 +26,11 @@ export { exportProfileRegistry, importProfileRegistry, restoreProfilesInto } fro
 export { registerAgentBundle } from './src/registerAgentBundle.js';
 // property layer (design Phase 0) — the typed vocabulary + the shared disclosure mechanism.
 export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './src/propertyVocabulary.js';
+// personal drivers (#3) — the `driver` property type: an open { kind, text, tags[] } value, governed
+// by the same disclosure policy as any property. The matcher (#4) builds on this shape.
+export { DRIVER_KINDS, isDriverKind, normalizeTag, normalizeTags, createDriver, isDriverValue, driverDescriptor } from './src/drivers.js';
+// personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
+export { deriveSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic } from './src/driverMatch.js';
 export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from './src/disclosure.js';
 // property layer (design Phase 1) — the canonical Request record + the governed-request check.
 export { createRequest, requestHash, requestKeys } from './src/request.js';
