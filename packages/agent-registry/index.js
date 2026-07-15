@@ -31,6 +31,8 @@ export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './
 export { DRIVER_KINDS, isDriverKind, normalizeTag, normalizeTags, createDriver, isDriverValue, driverDescriptor, driversFromProperties } from './src/drivers.js';
 // personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
 export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
+// anonymous-talk reveal ladder (#5b) — self-controlled, unilateral, ephemeral-default identity reveal.
+export { REVEAL_LEVELS, isRevealLevel, revealRank, nextRevealLevel, ephemeralHandle, createParticipant, revealSelf, revealNext, presentSelf } from './src/revealLadder.js';
 export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from './src/disclosure.js';
 // property layer (design Phase 1) — the canonical Request record + the governed-request check.
 export { createRequest, requestHash, requestKeys } from './src/request.js';
