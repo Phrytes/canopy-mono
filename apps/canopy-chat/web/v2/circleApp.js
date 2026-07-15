@@ -192,6 +192,9 @@ import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 // OBJ-2 membership — the peer-redeem handshake (joiner ⇄ admin) is shared core; v2 just wires the
 // same three factories the classic shells use (groupRedeem.js) into its peer router + join glue.
 import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGroupRedeemRequest } from '../../src/core/handlers/groupRedeem.js';
+// personas#2 — post-join "share to this circle": the same request/ack + orchestrator trio, wired
+// into the peer router alongside group-redeem (member ⇄ admin roster-property push).
+import { makeHandlePersonaPropsUpdate, makeHandlePersonaPropsAck, makeSendPersonaPropsUpdate, shareDisclosureToCircle } from '../../src/core/handlers/personaPropsUpdate.js';
 import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
 import { feedHouseholdRoster } from '../../src/v2/householdRosterPairing.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
@@ -1078,6 +1081,9 @@ let circleContactChannel = null; // P5 — contact-thread peer channel (conversa
 // OBJ-2 membership — peer-redeem correlation (joiner side) + the sender, set when the agent boots.
 const circlePendingRedeems = new Map();  // requestId → {resolve,reject,timer}
 let circleSendPeerRedeem = null;         // makeSendGroupRedeemRequest(...) bound to this agent
+// personas#2 — post-join persona-property push correlation (member side) + its sender.
+const circlePendingPersonaProps = new Map();  // requestId → {resolve,reject,timer}
+let circleSendPersonaUpdate = null;           // makeSendPersonaPropsUpdate(...) bound to this agent
 // OBJ-2 S1c-shell — feed the household no-pod sync roster with a circle's MEMBERS
 // (people, from the stoop group roster — never bots). Assigned in the boot fn
 // (which owns `agent`); module-level so `showDetail` (open-circle) can call it.
@@ -3432,6 +3438,13 @@ async function openAboutMePanel(personaId) {
         try { await rawCallSkill('agents', 'setProfileDisclosure', { id, contextId, key, enabled }); } catch { /* */ }
         await draw();
       },
+      // personas#2 — push THIS persona's current disclosure for `contextId` up to the circle roster.
+      onShareToCircle: (contextId) => shareDisclosureToCircle({
+        callSkill:         rawCallSkill,
+        sendPersonaUpdate: circleSendPersonaUpdate,
+        circleId:          contextId,
+        personaId:         id,
+      }),
     });
   };
   await draw();
@@ -4880,6 +4893,13 @@ async function boot() {
       // Identity 5B/C — present this device's per-circle address on the peer redeem path.
       circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
     });
+    // personas#2 — the post-join "share to this circle" sender (same shape as the redeem sender).
+    circleSendPersonaUpdate = makeSendPersonaPropsUpdate({
+      sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
+      isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
+      pendingMap:      circlePendingPersonaProps,
+      circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
+    });
     // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
     // folio/calendar; reuses stoop's already-built pod-routing write-through). Best-effort.
     if (podSession?.isLoggedIn && circleRealPodRouting?.podRoot && typeof agent.attachStoopPod === 'function') {
@@ -5097,6 +5117,10 @@ async function boot() {
           // admin verifies an incoming redeem + replies; joiner resolves the pending request on response.
           'group-redeem-request':    makeHandleGroupRedeemRequest({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
           'group-redeem-response':   makeHandleGroupRedeemResponse({ pendingMap: circlePendingRedeems }),
+          // personas#2 — post-join persona-property push: admin records the member's disclosure onto
+          // the roster + acks; the member resolves the pending push on the ack.
+          'persona-props-update':    makeHandlePersonaPropsUpdate({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
+          'persona-props-ack':       makeHandlePersonaPropsAck({ pendingMap: circlePendingPersonaProps }),
           // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
           // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message

@@ -31,6 +31,7 @@ export function renderAboutMe(container, {
   t,
   onSetProperty,
   onToggleDisclosure,
+  onShareToCircle,
   onBack,
 } = {}) {
   if (!container) return container;
@@ -185,6 +186,30 @@ export function renderAboutMe(container, {
       toggleRow.append(box, span);
       card.appendChild(toggleRow);
     }
+
+    // "Share to this circle" — push the current disclosure to the circle's roster (post-join). The
+    // toggles above only change LOCAL intent; this is what makes the circle actually see the change.
+    if (c.rows.length && typeof onShareToCircle === 'function') {
+      const shareBtn = document.createElement('button');
+      shareBtn.type = 'button';
+      shareBtn.className = 'cc-aboutme__share-btn';
+      shareBtn.textContent = tr('circle.aboutme.share_to_circle');
+      const status = document.createElement('span');
+      status.className = 'cc-aboutme__share-status';
+      shareBtn.addEventListener('click', async () => {
+        shareBtn.disabled = true;
+        status.textContent = tr('circle.aboutme.sharing_now');
+        let res;
+        try { res = await onShareToCircle(c.circleId); }
+        catch (err) { res = { ok: false, reason: err?.message ?? String(err) }; }
+        status.textContent = res?.ok
+          ? tr('circle.aboutme.shared_ok')
+          : tr('circle.aboutme.share_failed', { reason: res?.reason ?? '' });
+        shareBtn.disabled = false;
+      });
+      card.append(shareBtn, status);
+    }
+
     shareSec.appendChild(card);
   }
   container.appendChild(shareSec);

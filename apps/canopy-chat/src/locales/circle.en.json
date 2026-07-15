@@ -3179,6 +3179,22 @@
       "text": "Share {{key}} ({{value}})",
       "doc": "personas#1 — a per-property disclosure toggle label."
     },
+    "share_to_circle": {
+      "text": "Share to this circle",
+      "doc": "personas#2 — button: push the current disclosure to the circle's roster (post-join)."
+    },
+    "sharing_now": {
+      "text": "Sharing…",
+      "doc": "personas#2 — transient status while the share-to-circle push is in flight."
+    },
+    "shared_ok": {
+      "text": "Shared ✓",
+      "doc": "personas#2 — the disclosure reached the circle roster."
+    },
+    "share_failed": {
+      "text": "Couldn't share: {{reason}}",
+      "doc": "personas#2 — the share-to-circle push failed (e.g. admin offline)."
+    },
     "key": {
       "place": {
         "text": "Place",

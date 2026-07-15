@@ -3179,6 +3179,22 @@
       "text": "{{key}} delen ({{value}})",
       "doc": "personas#1 — label van een per-eigenschap deelschakelaar."
     },
+    "share_to_circle": {
+      "text": "Deel met deze kring",
+      "doc": "personas#2 — knop: zet de huidige openbaarmaking op de ledenlijst van de kring (na deelname)."
+    },
+    "sharing_now": {
+      "text": "Bezig met delen…",
+      "doc": "personas#2 — tijdelijke status terwijl de deel-actie loopt."
+    },
+    "shared_ok": {
+      "text": "Gedeeld ✓",
+      "doc": "personas#2 — de openbaarmaking is bij de kring-ledenlijst aangekomen."
+    },
+    "share_failed": {
+      "text": "Delen mislukt: {{reason}}",
+      "doc": "personas#2 — de deel-actie is mislukt (bijv. beheerder offline)."
+    },
     "key": {
       "place": {
         "text": "Plaats",
