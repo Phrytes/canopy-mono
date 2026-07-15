@@ -172,3 +172,21 @@ describe('property layer — persisted per-persona disclosure (personas #1/#2 su
     expect((await a.callSkill('agents', 'getProfileProperties', { id: 'work' })).properties.place).toEqual({ mode: 'own', value: 'Groningen' });
   });
 });
+
+describe('property layer — persona view + release (About me / join-with-persona bridge)', () => {
+  it('a persona inherits default values + shares per its OWN disclosure; getPersonaView/Release compose it', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    await a.callSkill('agents', 'setProfileProperty', { id: 'default', key: 'place', value: 'Groningen' });   // curated once on default
+    await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });                                 // work persona (inherits)
+    await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt', key: 'place', enabled: true });
+
+    const view = await a.callSkill('agents', 'getPersonaView', { id: 'work' });
+    expect(view.ok).toBe(true);
+    expect(view.disclosure.perContext.buurt.place.enabled).toBe(true);
+
+    // release for 'buurt': place is INHERITED from default AND disclosed by work → shared
+    expect((await a.callSkill('agents', 'getPersonaRelease', { id: 'work', contextId: 'buurt', keys: 'place' })).released).toEqual({ place: 'Groningen' });
+    // a context the persona didn't enable → nothing shared (default-withhold)
+    expect((await a.callSkill('agents', 'getPersonaRelease', { id: 'work', contextId: 'other', keys: 'place' })).released).toEqual({});
+  });
+});

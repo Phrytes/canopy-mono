@@ -54,6 +54,7 @@ import {
   createProfile as registryCreateProfile,
   setOwn,
   setDisclosure as setDisclosurePolicy,
+  releasedValues as releaseFromPolicy,
 } from '@canopy/agent-registry';
 
 /**
@@ -679,6 +680,15 @@ export async function createRealHouseholdAgent(opts = {}) {
         return { ok: true };
       },
       getDisclosure: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.disclosure ?? { perContext: {} },
+      // Personas — what a persona actually RELEASES in a context: its disclosure policy over its effective
+      // (own + inherited-from-default) properties. Pre-loads self + default so releasedValues' SYNC getProfile
+      // works; returns the coarse {key:value} that would be shared when joining/acting as this persona there.
+      releaseFor: async ({ profileId, contextId, keys = [], defaultProfileId = 'default' }) => {
+        const [self, dflt] = await Promise.all([agentsRegistry.lookup(profileId), agentsRegistry.lookup(defaultProfileId)]);
+        const byId = { [profileId]: self, [defaultProfileId]: dflt };
+        const request = { items: (Array.isArray(keys) ? keys : []).map((k) => ({ key: k })) };
+        return releaseFromPolicy({ getProfile: (id) => byId[id] ?? null, profileId, defaultProfileId }, request, self?.disclosure ?? { perContext: {} }, contextId);
+      },
     };
     for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog, profiles: agentsProfiles })) {
       hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });

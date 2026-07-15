@@ -458,6 +458,39 @@ export async function getProfileDisclosure(store, args = {}) {
   return { ok: true, id, disclosure: (await s.profiles.getDisclosure({ profileId: id })) ?? { perContext: {} } };
 }
 
+/**
+ * getPersonaView — the "About me" read model: a persona's properties + its per-context disclosure in ONE call
+ * (so a shell renders "what I am + what I share where" without two round-trips). Composes the collaborator.
+ */
+export async function getPersonaView(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getProperties !== 'function' || typeof s.profiles?.getDisclosure !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', properties: {}, disclosure: { perContext: {} } };
+  }
+  const [properties, disclosure] = await Promise.all([
+    s.profiles.getProperties({ profileId: id }),
+    s.profiles.getDisclosure({ profileId: id }),
+  ]);
+  return { ok: true, id, properties: properties ?? {}, disclosure: disclosure ?? { perContext: {} } };
+}
+
+/**
+ * getPersonaRelease — what this persona would SHARE in a context (circle): its disclosure over its effective
+ * (own + inherited) properties → the coarse {key:value}. The join-with-persona flow releases exactly this.
+ */
+export async function getPersonaRelease(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const contextId = typeof args?.contextId === 'string' ? args.contextId.trim() : '';
+  if (typeof s.profiles?.releaseFor !== 'function' || !id || !contextId) {
+    return { ok: false, reason: !id ? 'id-required' : (!contextId ? 'contextId-required' : 'profiles-unavailable'), released: {} };
+  }
+  const keys = Array.isArray(args?.keys) ? args.keys
+    : (typeof args?.keys === 'string' && args.keys.trim() ? args.keys.split(',').map((k) => k.trim()).filter(Boolean) : []);
+  return { ok: true, id, contextId, released: (await s.profiles.releaseFor({ profileId: id, contextId, keys })) ?? {} };
+}
+
 export const AGENT_CORES = Object.freeze({
   listAgents,
   viewAgent,
@@ -466,6 +499,8 @@ export const AGENT_CORES = Object.freeze({
   getProfileProperties,
   setProfileDisclosure,
   getProfileDisclosure,
+  getPersonaView,
+  getPersonaRelease,
   revokeAgent,
   grantAgent,
   revokeGrant,

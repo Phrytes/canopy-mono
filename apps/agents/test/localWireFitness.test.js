@@ -252,6 +252,8 @@ function buildWireDefs(registry, tokens = null, versionStoreFor = null, catalog 
     wire('getProfileProperties'),
     wire('setProfileDisclosure'),
     wire('getProfileDisclosure'),
+    wire('getPersonaView'),
+    wire('getPersonaRelease'),
     wire('revokeAgent'),
     wire('grantAgent'),
     wire('revokeGrant'),

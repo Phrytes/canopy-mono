@@ -176,6 +176,26 @@ export const agentsManifest = {
       ],
       surfaces: { chat: { reply: 'record', hint: 'Read a persona\'s per-context disclosure policy.' } },
     },
+    {
+      id:        'getPersonaView',
+      verb:      'view',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'The "About me" view — a persona\'s properties + per-context sharing in one call.' } },
+    },
+    {
+      id:        'getPersonaRelease',
+      verb:      'view',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',        kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'contextId', kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'keys',      kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'What a persona would share in a circle (its release for that context).' } },
+    },
 
     /* ── P2 CONTROL ops ─────────────────────────────────────────────────
      * All resolve the target by agentId OR pubKey ONLY (never webid —
