@@ -83,6 +83,11 @@ import {
   makeHandleGroupRedeemResponse,
   makeSendGroupRedeemRequest,
 } from '../../../canopy-chat/src/core/handlers/groupRedeem.js';
+// personas#2 — post-join "share to this circle" peer handlers (admin records + acks; member resolves).
+import {
+  makeHandlePersonaPropsUpdate,
+  makeHandlePersonaPropsAck,
+} from '../../../canopy-chat/src/core/handlers/personaPropsUpdate.js';
 import { makeHandleHelpWithAccepted, makeHandleHelpWithResponse }
                                from '../../../canopy-chat/src/core/handlers/helpWith.js';
 import { makeHandleCalendarInvite }
@@ -422,7 +427,7 @@ export default function ChatScreen({
   // Bundle H (#268) — inbound peer-router (port of web/main.js:346) +
   // catch-up trigger (port of main.js:1338), built over the live agent
   // + callSkill.
-  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel, pendingPeerRedeems, sharedWithMeStore }) => {
+  const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel, pendingPeerRedeems, pendingPersonaProps, sharedWithMeStore }) => {
     const sendPeer = (addr, payload) => agent.sendPeerMessage(addr, payload);
     const getMyPubKey = () =>
       agent?.identity?.chat?.pubKey ?? agent?.identity?.host?.webid ?? null;
@@ -563,6 +568,10 @@ export default function ChatScreen({
         // OBJ-2 — the BUNDLE's shared map (so a v2-launcher join correlates here too); ref is the fallback.
         pendingMap: pendingPeerRedeems ?? pendingPeerRedeemsRef.current,
       }),
+      // personas#2 — post-join persona-property push: admin records onto the roster + acks; the member
+      // resolves its pending push on the ack (bundle's shared map, parity with the redeem pair).
+      'persona-props-update':  makeHandlePersonaPropsUpdate({ callSkill, sendPeer, publishEvent }),
+      'persona-props-ack':     makeHandlePersonaPropsAck({ pendingMap: pendingPersonaProps }),
       'help-with-accepted':    makeHandleHelpWithAccepted({
         ensureDmThread:    handleDmThreadOpen,
         appendBubble,
@@ -715,7 +724,7 @@ export default function ChatScreen({
       appOrigins: [...bootState.bundle.catalog.appOrigins],
       opCount:    bootState.bundle.catalog.opsById?.size ?? 0,
     });
-    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel, pendingPeerRedeems: bootState.bundle.pendingPeerRedeems, sharedWithMeStore: bootState.bundle.sharedWithMeStore }));
+    bootState.bundle.attachPeerWiring?.(buildPeerWiring({ agent, callSkill, contactChannel: bootState.bundle.contactChannel, pendingPeerRedeems: bootState.bundle.pendingPeerRedeems, pendingPersonaProps: bootState.bundle.pendingPersonaProps, sharedWithMeStore: bootState.bundle.sharedWithMeStore }));
   }, [bootState, buildPeerWiring]);
 
   // Auto-scroll on every new message in the active thread.

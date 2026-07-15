@@ -16,12 +16,14 @@ import { View, Text, Pressable, ScrollView, StyleSheet, TextInput, Switch } from
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { buildPersonaViewModel } from '../../../../canopy-chat/src/v2/personaView.js';
+import { shareDisclosureToCircle } from '../../../../canopy-chat/src/core/handlers/personaPropsUpdate.js';
 
 const keyLabel = (key) => t(`circle.aboutme.key.${key}`, { defaultValue: key });
 
-export default function CircleAboutMeScreen({ callSkill, personaId, circles = [], onBack }) {
+export default function CircleAboutMeScreen({ callSkill, sendPersonaUpdate, personaId, circles = [], onBack }) {
   const [model, setModel] = useState(null);
   const [placeDrafts, setPlaceDrafts] = useState({});   // free-text edits before save, keyed by property key
+  const [shareState, setShareState] = useState({});     // circleId → 'sharing' | 'ok' | reason string
 
   const load = useCallback(async () => {
     let view;
@@ -41,6 +43,15 @@ export default function CircleAboutMeScreen({ callSkill, personaId, circles = []
     try { await callSkill('agents', 'setProfileDisclosure', { id: personaId, contextId, key, enabled }); } catch { /* */ }
     await load();
   }, [callSkill, personaId, load]);
+
+  // personas#2 — push THIS persona's current disclosure for the circle up to its roster (post-join).
+  const shareToCircle = useCallback(async (circleId) => {
+    setShareState((s) => ({ ...s, [circleId]: 'sharing' }));
+    let res;
+    try { res = await shareDisclosureToCircle({ callSkill, sendPersonaUpdate, circleId, personaId }); }
+    catch (err) { res = { ok: false, reason: err?.message ?? String(err) }; }
+    setShareState((s) => ({ ...s, [circleId]: res?.ok ? 'ok' : (res?.reason ?? 'failed') }));
+  }, [callSkill, sendPersonaUpdate, personaId]);
 
   return (
     <View style={styles.root}>
@@ -127,6 +138,25 @@ export default function CircleAboutMeScreen({ callSkill, personaId, circles = []
                     <Text style={styles.toggleLabel}>{t('circle.aboutme.share_key', { key: keyLabel(r.key), value: r.value })}</Text>
                   </View>
                 ))}
+                {c.rows.length ? (
+                  <View style={styles.shareRow}>
+                    <Pressable
+                      style={styles.shareBtn}
+                      accessibilityRole="button"
+                      disabled={shareState[c.circleId] === 'sharing'}
+                      onPress={() => shareToCircle(c.circleId)}
+                    >
+                      <Text style={styles.shareBtnText}>{t('circle.aboutme.share_to_circle')}</Text>
+                    </Pressable>
+                    {shareState[c.circleId] ? (
+                      <Text style={styles.shareStatus}>
+                        {shareState[c.circleId] === 'sharing' ? t('circle.aboutme.sharing_now')
+                          : shareState[c.circleId] === 'ok' ? t('circle.aboutme.shared_ok')
+                          : t('circle.aboutme.share_failed', { reason: shareState[c.circleId] })}
+                      </Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             ))}
           </View>
@@ -164,4 +194,8 @@ const styles = StyleSheet.create({
   circleHint: { fontSize: 12, color: c.inkSoft, fontStyle: 'italic' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toggleLabel: { fontSize: 13, color: c.ink, flex: 1 },
+  shareRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
+  shareBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: theme.radius?.sm ?? 6, borderWidth: 1, borderColor: c.accent },
+  shareBtnText: { fontSize: 12, fontWeight: '600', color: c.accentInk },
+  shareStatus: { fontSize: 12, color: c.inkSoft, flexShrink: 1 },
 });

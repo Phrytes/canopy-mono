@@ -1432,6 +1432,7 @@ export default function CircleLauncherScreen({
         circles={circles}
         recipeStore={recipeStore}
         onStoopEvent={bundle?.onStoopEvent}
+        sendPersonaUpdate={bundle?.sendPersonaUpdate}
         onBack={closeCircle}
         onInvite={() => openCircleInvite(selected.id)}
         onSettings={() => setView('settings')}
@@ -1800,7 +1801,7 @@ function LauncherTile({ circle: c, preview, pending, isPinned = false, isMuted =
 function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
-  recipeStore = null, onStoopEvent,
+  recipeStore = null, onStoopEvent, sendPersonaUpdate,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops canopy-chat's infra ops (/me etc.)
@@ -2827,7 +2828,7 @@ function CircleDetail({
               </Pressable>
             </View>
             {aboutMePersona ? (
-              <CircleAboutMeScreen callSkill={rawCallSkill} personaId={aboutMePersona} circles={circles} onBack={() => setAboutMePersona(null)} />
+              <CircleAboutMeScreen callSkill={rawCallSkill} sendPersonaUpdate={sendPersonaUpdate} personaId={aboutMePersona} circles={circles} onBack={() => setAboutMePersona(null)} />
             ) : null}
           </View>
         </View>
