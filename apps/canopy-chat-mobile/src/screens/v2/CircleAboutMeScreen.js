@@ -17,13 +17,16 @@ import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { buildPersonaViewModel } from '../../../../canopy-chat/src/v2/personaView.js';
 import { shareDisclosureToCircle } from '../../../../canopy-chat/src/core/handlers/personaPropsUpdate.js';
+import { DRIVER_KINDS } from '@canopy/agent-registry';
 
 const keyLabel = (key) => t(`circle.aboutme.key.${key}`, { defaultValue: key });
+const kindLabel = (k) => t(`circle.aboutme.driverkind.${k}`, { defaultValue: k });
 
 export default function CircleAboutMeScreen({ callSkill, sendPersonaUpdate, personaId, circles = [], onBack }) {
   const [model, setModel] = useState(null);
   const [placeDrafts, setPlaceDrafts] = useState({});   // free-text edits before save, keyed by property key
   const [shareState, setShareState] = useState({});     // circleId → 'sharing' | 'ok' | reason string
+  const [driverDraft, setDriverDraft] = useState({ label: '', kind: 'driver', text: '', tags: '' });
 
   const load = useCallback(async () => {
     let view;
@@ -43,6 +46,16 @@ export default function CircleAboutMeScreen({ callSkill, sendPersonaUpdate, pers
     try { await callSkill('agents', 'setProfileDisclosure', { id: personaId, contextId, key, enabled }); } catch { /* */ }
     await load();
   }, [callSkill, personaId, load]);
+
+  // personal drivers (#5) — author an open { kind, text, tags } driver on this persona.
+  const addDriver = useCallback(async () => {
+    const label = driverDraft.label.trim();
+    const text = driverDraft.text.trim();
+    if (!label || (!text && !driverDraft.tags.trim())) return;   // needs a label + something to match on
+    try { await callSkill('agents', 'setProfileDriver', { id: personaId, key: label, kind: driverDraft.kind, text, tags: driverDraft.tags }); } catch { /* */ }
+    setDriverDraft({ label: '', kind: 'driver', text: '', tags: '' });
+    await load();
+  }, [callSkill, personaId, driverDraft, load]);
 
   // personas#2 — push THIS persona's current disclosure for the circle up to its roster (post-join).
   const shareToCircle = useCallback(async (circleId) => {
@@ -112,6 +125,59 @@ export default function CircleAboutMeScreen({ callSkill, sendPersonaUpdate, pers
                 )}
               </View>
             ))}
+          </View>
+
+          {/* ── personal drivers (#5) ──────────────────────────────────── */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('circle.aboutme.drivers')}</Text>
+            <Text style={styles.intro}>{t('circle.aboutme.drivers_intro')}</Text>
+            {(model.drivers || []).map((d) => (
+              <View key={d.key} style={styles.driver}>
+                <Text style={styles.driverHead}>{`${kindLabel(d.kind)}: ${d.text || d.tags.join(', ')}`}</Text>
+                {d.tags.length ? (
+                  <View style={styles.driverTags}>
+                    {d.tags.map((tg) => (<Text key={tg} style={styles.driverTag}>{tg}</Text>))}
+                  </View>
+                ) : null}
+              </View>
+            ))}
+            <TextInput
+              style={styles.input}
+              value={driverDraft.label}
+              onChangeText={(v) => setDriverDraft((s) => ({ ...s, label: v }))}
+              placeholder={t('circle.aboutme.driver_label_ph')}
+            />
+            <View style={styles.editorRow}>
+              {DRIVER_KINDS.map((k) => {
+                const active = k === driverDraft.kind;
+                return (
+                  <Pressable
+                    key={k}
+                    style={[styles.bucket, active && styles.bucketActive]}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    onPress={() => setDriverDraft((s) => ({ ...s, kind: k }))}
+                  >
+                    <Text style={[styles.bucketText, active && styles.bucketTextActive]}>{kindLabel(k)}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextInput
+              style={styles.input}
+              value={driverDraft.text}
+              onChangeText={(v) => setDriverDraft((s) => ({ ...s, text: v }))}
+              placeholder={t('circle.aboutme.driver_text_ph')}
+            />
+            <TextInput
+              style={styles.input}
+              value={driverDraft.tags}
+              onChangeText={(v) => setDriverDraft((s) => ({ ...s, tags: v }))}
+              placeholder={t('circle.aboutme.driver_tags_ph')}
+            />
+            <Pressable style={styles.saveBtn} accessibilityRole="button" onPress={addDriver}>
+              <Text style={styles.saveBtnText}>{t('circle.aboutme.driver_add')}</Text>
+            </Pressable>
           </View>
 
           {/* ── per-circle sharing ─────────────────────────────────────── */}
@@ -194,6 +260,10 @@ const styles = StyleSheet.create({
   circleHint: { fontSize: 12, color: c.inkSoft, fontStyle: 'italic' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   toggleLabel: { fontSize: 13, color: c.ink, flex: 1 },
+  driver: { gap: 4, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: c.line },
+  driverHead: { fontSize: 13, color: c.ink },
+  driverTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  driverTag: { fontSize: 11, color: c.inkSoft, paddingVertical: 2, paddingHorizontal: 8, borderRadius: theme.radius?.sm ?? 6, borderWidth: 1, borderColor: c.line },
   shareRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 },
   shareBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: theme.radius?.sm ?? 6, borderWidth: 1, borderColor: c.accent },
   shareBtnText: { fontSize: 12, fontWeight: '600', color: c.accentInk },
