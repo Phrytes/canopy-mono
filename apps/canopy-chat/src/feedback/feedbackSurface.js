@@ -20,6 +20,8 @@ import {
 // Privacy-first logging (web ≡ mobile). PII-safe by construction — we log event CODES + scalar counts here,
 // never message text, points, or identities. A dump handle is exposed so a bug report / debug can read it.
 import { log, dumpLogs, formatLogs } from '@canopy/logger';
+// The anonymous bug-report packager (shared, pure). Carries NO identity — see bugReport.js.
+import { buildReportEnvelope } from './bugReport.js';
 
 // One place both shells load, so the dump is retrievable on either without extra wiring. (A user-facing
 // "Report a problem" screen that shows + sends this is the next logging slice.)
@@ -40,6 +42,10 @@ const REPORT_STRINGS = {
     empty:  '(nog niets vastgelegd)',
     hint:   'Werkt er iets niet?',
     button: '🛠 Probleem melden',
+    send:      '📨 Anoniem versturen',
+    sent_ok:   '✅ Bedankt — je anonieme melding is verstuurd.',
+    sent_fail: '⚠ Versturen is niet gelukt. Je kunt de notities kopiëren en handmatig melden.',
+    no_sink:   'ℹ Versturen is hier niet ingesteld. Kopieer de notities om ze te melden.',
   },
   en: {
     header: '🛠 Report a problem',
@@ -47,6 +53,10 @@ const REPORT_STRINGS = {
     empty:  '(nothing recorded yet)',
     hint:   'Something not working?',
     button: '🛠 Report a problem',
+    send:      '📨 Send anonymously',
+    sent_ok:   '✅ Thanks — your anonymous report was sent.',
+    sent_fail: '⚠ Sending failed. You can copy the notes and report them manually.',
+    no_sink:   'ℹ Sending isn’t set up here. Copy the notes to report them.',
   },
 };
 
@@ -69,9 +79,19 @@ export { InMemoryCentralPod };
  *                                when the project requires signatures — see the `privacy.verify` gate below.)
  * @param {(chatId:string)=>object} [a.identityFor]  per-thread signer (defaults to `identity`)
  * @param {(reply:{chatId:string,text:string,buttons?:Array})=>void} a.emit  render sink
+ * @param {(envelope:object)=>Promise<{ok:boolean, reason?:string}>} [a.sendReport]  ANONYMOUS bug-report sink.
+ *                                Receives the identity-free envelope (buildReportEnvelope). Defaults to a safe
+ *                                async no-op returning `{ok:false, reason:'no-sink'}` (the real target — a
+ *                                bot+relay+dev pod — is deliberately out of scope; only the interface is here).
+ * @param {string} [a.app]        non-identifying app name for the report envelope (e.g. 'canopy-chat')
+ * @param {string} [a.version]    non-identifying app/build version for the report envelope
  */
-export function createFeedbackSurface({ config, projectId, lang, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit, verify, reportButton } = {}) {
+export function createFeedbackSurface({ config, projectId, lang, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit, verify, reportButton, sendReport, app, version } = {}) {
   if (typeof emit !== 'function') throw new Error('createFeedbackSurface: emit(reply) is required');
+  // Injected ANONYMOUS bug-report sink. Default is a safe async no-op: the real target (a bot+relay+dev
+  // pod) is wired by the host when available; without it the send affordance degrades to "copy the notes".
+  // It only ever receives the identity-free envelope from buildReportEnvelope (see bugReport.js).
+  const sink = (typeof sendReport === 'function') ? sendReport : async () => ({ ok: false, reason: 'no-sink' });
   const cfg = validateProjectConfig(config || exampleProjectConfig);
   // the dispatcher's projectId drives the verify-round match; without an explicit config it defaults to
   // exampleProjectConfig.projectId, which won't equal the ACTIVATION projectId (the bot/cohort) — so the
@@ -108,7 +128,26 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     const S = REPORT_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
     const body = formatLogs();
     log.info('feedback', 'report.open', { n: dumpLogs().length });   // PII-safe: only the record COUNT
-    emit({ chatId: String(threadId), kind: 'report', report: true, text: `${S.header}\n\n${S.intro}`, logText: body || S.empty, copyText: body });
+    // The panel keeps the COPY affordance (logText/copyText) AND now offers an anonymous SEND button. The
+    // button id (`fp:report:send`) routes back through `handle()` → `emitReportSend` in BOTH shells (web ≡
+    // mobile): no platform-specific dispatch, only the trigger placement differs.
+    emit({ chatId: String(threadId), kind: 'report', report: true, text: `${S.header}\n\n${S.intro}`, logText: body || S.empty, copyText: body, buttons: [{ id: 'fp:report:send', label: S.send }] });
+  };
+  // Anonymous SEND: package the PII-safe dump into an identity-free envelope (buildReportEnvelope) and hand
+  // it to the injected sink, then emit a localised result bubble. `at` is injected at the call site so the
+  // envelope is testable. Never touches the bot / verify guard — it's a surface affordance, same as emitReport.
+  const emitReportSend = async (threadId) => {
+    const S = REPORT_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
+    const envelope = buildReportEnvelope({ records: dumpLogs(), app, version, at: Date.now() });
+    log.info('feedback', 'report.send', { n: envelope.n });   // PII-safe: only the record COUNT
+    let res;
+    try { res = await sink(envelope); }
+    catch (e) { log.error('feedback', 'report.send.fail', { err: String(e?.name || 'Error') }); res = { ok: false, reason: 'error' }; }
+    const ok = !!res?.ok;
+    const text = ok ? S.sent_ok : (res?.reason === 'no-sink' ? S.no_sink : S.sent_fail);
+    log.info('feedback', 'report.sent', { ok, reason: String(res?.reason || '') });   // PII-safe: outcome only
+    emit({ chatId: String(threadId), kind: 'report-result', text });
+    return res;
   };
 
   // Consent-outcome probe (PII-safe): the own pod is the Stage-1 write target for the no-login flow, so its
@@ -198,6 +237,9 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
       if (!active.has(String(threadId))) return false;
       // "Report a problem" is a SURFACE affordance, not a bot turn — intercept it here (typed `/report`/`/logs`/
       // `/problem`, or the `fp:report` button) so it never reaches the bot and never clears the verify guard.
+      // The anonymous SEND trigger (`fp:report:send`, from the panel's Send button) — checked BEFORE the
+      // open trigger below so `fp:report` doesn't shadow it. Routes to the injected sink, never the bot.
+      if (/^\s*fp:report:send\s*$/i.test(String(text || ''))) { await emitReportSend(threadId); return true; }
       if (/^\s*(\/report|\/logs|\/problem|fp:report)\s*$/i.test(String(text || ''))) { emitReport(threadId); return true; }
       awaitingVerify = false;   // a user turn (incl. tapping a verify button) releases the re-poll guard
       // PII-safe: log whether the turn was a COMMAND (/… or fp:…) vs free text — never the text itself.
@@ -213,6 +255,9 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     /** Show the "Report a problem" panel (PII-safe on-device log) — a shell can call this from a chrome button
      *  (mobile) instead of the typed `/report` / the `fp:report` bubble-button (web). */
     report(threadId) { if (active.has(String(threadId))) emitReport(threadId); },
+    /** Anonymously SEND the PII-safe on-device log via the injected sink — a shell can call this from a chrome
+     *  button, mirroring `report()`. Returns the sink result (`{ok, reason?}`) so the shell can react if it wants. */
+    reportSend(threadId) { if (active.has(String(threadId))) return emitReportSend(threadId); return undefined; },
     /** A button tap (M2): send the control id (fp:*) as a turn — the bot's parseControl handles it. */
     async tapButton(buttonId, threadId) {
       if (!active.has(String(threadId))) return false;

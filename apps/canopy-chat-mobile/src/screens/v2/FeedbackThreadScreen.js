@@ -139,7 +139,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
               setEditing(null);
               setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'review', intro: String(text ?? ''), points, labels }]);
             } else if (kind === 'report') {
-              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'report', intro: String(text ?? ''), logText: String(logText ?? '') }]);
+              // Keep the panel's Send button (fp:report:send) — tapping it routes back to the shared surface
+              // (tapControl → surface.handle), which sends the ANONYMOUS envelope. 'report-result' bubbles
+              // (the send outcome) carry no special kind → fall through to pushBot as a normal bubble.
+              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'report', intro: String(text ?? ''), logText: String(logText ?? ''), buttons: Array.isArray(buttons) ? buttons : null }]);
             } else { pushBot(text, buttons); }
           },
         });
@@ -225,7 +228,18 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
       >
         {messages.map((m) => {
           if (m.kind === 'report') {
-            return <View key={m.id}><FeedbackReportPanel intro={m.intro} logText={m.logText} /></View>;
+            // The panel's Send button routes through the SAME shared path as web (surface.handle('fp:report:send')).
+            const sendBtn = (m.buttons || []).find((b) => /report:send/.test(b?.id ?? b?.action ?? ''));
+            return (
+              <View key={m.id}>
+                <FeedbackReportPanel
+                  intro={m.intro}
+                  logText={m.logText}
+                  sendLabel={sendBtn?.label}
+                  onSend={sendBtn ? () => tapControl(sendBtn.id ?? sendBtn.action) : undefined}
+                />
+              </View>
+            );
           }
           if (m.kind === 'review') {
             // contact-thread uses INLINE card edit (editing state scoped by message id).

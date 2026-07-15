@@ -1930,7 +1930,9 @@ function feedbackEmit(groupId) {
     if (kind === 'report') {
       // "Report a problem" — the PII-safe on-device log, shown for review. Web text bubbles are selectable, so
       // the intro + the (monospace-ish) log render as one copyable bubble. Never fanned out — private to you.
-      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self' });
+      // The Send button (fp:report:send) routes back to this circle's surface (circleEmbedButtonTap → handle),
+      // which packages an ANONYMOUS envelope and hands it to the injected sink. Copy stays available too.
+      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       return;
     }
     if (kind === 'review' && Array.isArray(points) && points.length) {
