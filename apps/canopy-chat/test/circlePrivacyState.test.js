@@ -36,8 +36,16 @@ describe('circlePrivacyState', () => {
     expect(s.reason).toBe('combo-identifiable');
   });
 
+  it('graduated: minimal mode warns only on NEAR-certain uniqueness (stricter than normal)', () => {
+    const c = share([['ageBand', '35-54'], ['role', 'resident']]);   // 4×4 = 16 combos
+    expect(circlePrivacyState({ charter, consent: c, n: 8, warningsMode: 'normal' }).level).toBe('risk');     // 16 > 8
+    expect(circlePrivacyState({ charter, consent: c, n: 8, warningsMode: 'minimal' }).level).toBe('sharing'); // 16 < 8×4 → not near-certain
+    // in a tiny cohort even minimal warns
+    expect(circlePrivacyState({ charter, consent: c, n: 3, warningsMode: 'minimal' }).level).toBe('risk');    // 16 > 3×4=12
+  });
+
   it('⚠ risk (structural) when warnings are OFF while still sharing — the "regret later" case', () => {
-    const s = circlePrivacyState({ charter, consent: share([['place', 'Groningen']]), warningsOn: false });
+    const s = circlePrivacyState({ charter, consent: share([['place', 'Groningen']]), warningsMode: 'off' });
     expect(s.level).toBe('risk');
     expect(s.reason).toBe('warnings-off');
   });

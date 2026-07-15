@@ -3,7 +3,7 @@
 // is gated (blocked when governed-forbidden, else only the coarse released payload travels + a receipt), while
 // non-external ops pass through untouched.
 import { describe, it, expect, vi } from 'vitest';
-import { wrapCallSkillWithEgressGate } from '../src/core/agent/egressGate.js';
+import { wrapCallSkillWithEgressGate, isExternalEgressOp } from '../src/core/agent/egressGate.js';
 import { createRequest, createVocabulary, descriptor } from '@canopy/agent-registry';
 
 const vocab = createVocabulary([
@@ -58,5 +58,28 @@ describe('egress gate at the dispatch waist', () => {
     expect(res).toMatchObject({ ok: false, error: 'egress-blocked' });
     expect(res.receipt.governed.allowed).toBe(false);
     expect(inner).not.toHaveBeenCalled();   // the coerced ask never reaches the external service
+  });
+});
+
+describe('router-detection for external egress (§10a)', () => {
+  it('every local app-origin is NOT external → gate inert today', () => {
+    for (const o of ['household', 'tasks', 'stoop', 'folio', 'calendar', 'agents']) expect(isExternalEgressOp(o)).toBe(false);
+  });
+  it('an UNKNOWN origin is treated as external (fail-safe: an unrecognised target is gated, not trusted)', () => {
+    expect(isExternalEgressOp('some-mcp-tool')).toBe(true);
+    expect(isExternalEgressOp('')).toBe(false);   // no origin → nothing to gate
+  });
+  it('composes with the gate: a local op passes through; an unknown-origin governed-forbidden ask is blocked', async () => {
+    const inner = vi.fn(async () => ({ ok: true }));
+    const request = createRequest({ requesterId: 'x', purpose: 'p', vocabulary: vocab, items: [{ key: 'health', why: 'w' }] });
+    const gated = wrapCallSkillWithEgressGate(inner, {
+      isExternalEgress: isExternalEgressOp,
+      gateInputs: () => ({ request, released: {}, contextType: 'employment' }),
+      vocabulary: vocab,
+    });
+    await gated('stoop', 'postRequest', { text: 'hi' });          // local → passthrough, untouched
+    expect(inner).toHaveBeenCalledWith('stoop', 'postRequest', { text: 'hi' });
+    const res = await gated('some-external-service', 'send', {}); // external + forbidden → blocked
+    expect(res).toMatchObject({ ok: false, error: 'egress-blocked' });
   });
 });

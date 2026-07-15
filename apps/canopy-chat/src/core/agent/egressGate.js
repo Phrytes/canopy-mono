@@ -12,6 +12,20 @@
 // dispatch-boundary composition — no transport, no UI (the shell renders `onReceipt`).
 import { gateEgress } from '@canopy/agent-registry';
 
+// Router-detection (§10a): "external-egress = the op resolves to a NON-LOCAL target". The PLATFORM decides this
+// (not the app's self-declaration, not the user) — because a bot can't be trusted to declare its own egress.
+// Today EVERY app-origin routes to a local handler / the user's own pod / an in-process agent, so none egress
+// to a third party. `isExternalEgressOp` therefore returns false for all known-local origins (the gate stays
+// inert) and — fail-SAFE — treats an UNKNOWN origin as external (an unrecognised target is gated, not trusted).
+// When a real external route lands (an MCP tool, a remote A2A agent), its origin is simply not in this set and
+// the gate activates for it. NOTE: per §10a the live callSkill is NOT wrapped until such an op exists — this
+// classifier + wrapCallSkillWithEgressGate compose the ready-to-install seam.
+export const LOCAL_APP_ORIGINS = Object.freeze(new Set(['household', 'tasks', 'stoop', 'folio', 'calendar', 'agents']));
+
+export function isExternalEgressOp(appOrigin /*, opId */) {
+  return typeof appOrigin === 'string' && appOrigin.length > 0 && !LOCAL_APP_ORIGINS.has(appOrigin);
+}
+
 /**
  * @param {(appOrigin:string, opId:string, args:object)=>Promise<any>} callSkill  the underlying dispatch
  * @param {object} o
@@ -27,10 +41,10 @@ import { gateEgress } from '@canopy/agent-registry';
 export function wrapCallSkillWithEgressGate(callSkill, { isExternalEgress, gateInputs, onReceipt, policyTable, vocabulary } = {}) {
   const isExternal = typeof isExternalEgress === 'function'
     ? isExternalEgress
-    : (op) => (isExternalEgress instanceof Set ? isExternalEgress.has(op) : false);
+    : (_appOrigin, opId) => (isExternalEgress instanceof Set ? isExternalEgress.has(opId) : false);
 
   return async function gatedCallSkill(appOrigin, opId, args) {
-    if (!isExternal(opId) || typeof gateInputs !== 'function') return callSkill(appOrigin, opId, args);
+    if (!isExternal(appOrigin, opId) || typeof gateInputs !== 'function') return callSkill(appOrigin, opId, args);
 
     const inputs = gateInputs(appOrigin, opId, args);
     if (!inputs || !inputs.request) return callSkill(appOrigin, opId, args);   // nothing declared → pass through

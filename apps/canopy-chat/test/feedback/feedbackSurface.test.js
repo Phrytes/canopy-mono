@@ -195,7 +195,7 @@ test('privacy warnings toggle — turning off while sharing flips to structural 
   expect(info.buttons.some((b) => b.id === 'fp:privacy:warnings:off')).toBe(true);   // toggle offered
 
   await surface.handle('fp:privacy:warnings:off', 'w');
-  expect(surface.warningsOn).toBe(false);
+  expect(surface.warningsMode).toBe('off');
   expect(replies.some((r) => /warnings are now off|waarschuwingen staan nu uit/i.test(r.text || ''))).toBe(true);   // acknowledged
   expect(surface.privacyState('w')).toMatchObject({ level: 'risk', reason: 'warnings-off' });   // structural ⚠
 });

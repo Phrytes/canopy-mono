@@ -26,13 +26,14 @@ export function privacyBadge(level, lang) {
   return { level, icon: level === 'risk' ? '⚠️' : '🛡', label: L[level] || L.quiet };
 }
 
-export function circlePrivacyState({ consent, charter, warningsOn = true, n } = {}) {
+export function circlePrivacyState({ consent, charter, warningsMode = 'normal', n } = {}) {
   if (!charter) return { applicable: false, level: 'quiet', shared: [], warn: false, reason: null };
   const shared = consent ? enabledConsentKeys(consent, charter) : [];
-  // Identifiability risk (needs n) — only when warnings are ON; a good warning is rare (§10b).
-  const heuristic = warningsOn && consent ? consentWarning(consent, charter, n) : { warn: false };
-  // Structural risk: the user turned warnings OFF while still sharing → the "angry, regret later" case (§10c).
-  const structuralRisk = !warningsOn && shared.length > 0;
+  const on = warningsMode !== 'off';   // §10b graduated setting: 'normal' | 'minimal' | 'off'
+  // Identifiability risk (needs n) — only when warnings aren't off; graduated by mode ('minimal' = stricter bar).
+  const heuristic = on && consent ? consentWarning(consent, charter, n, warningsMode) : { warn: false };
+  // Structural risk: warnings OFF while still sharing → the "angry, regret later" case (§10c).
+  const structuralRisk = !on && shared.length > 0;
   const risk = heuristic.warn || structuralRisk;
   return {
     applicable: true,   // a charter applies → the indicator is meaningful for this circle

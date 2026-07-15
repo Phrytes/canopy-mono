@@ -131,6 +131,15 @@ describe('identity step-5B/C — circleAddressFor bridge', () => {
 });
 
 describe('property layer — cross-app reuse (setProfileProperty / getProfileProperties)', () => {
+  it('the DEFAULT profile is registered at boot, so a coarse value set at consent lands on it', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    const before = await a.callSkill('agents', 'getProfileProperties', { id: 'default' });
+    expect(before.ok).toBe(true);   // 'default' exists (registered at boot) → setProfileProperty can land
+    const set = await a.callSkill('agents', 'setProfileProperty', { id: 'default', key: 'place', value: 'Groningen' });
+    expect(set.ok).toBe(true);
+    expect((await a.callSkill('agents', 'getProfileProperties', { id: 'default' })).properties.place).toEqual({ mode: 'own', value: 'Groningen' });
+  });
+
   it('curates a coarse value ONCE on a profile and reads it back (any app can then reuse it)', async () => {
     const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
     await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });

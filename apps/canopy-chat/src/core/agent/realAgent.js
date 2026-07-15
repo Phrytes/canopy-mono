@@ -673,6 +673,12 @@ export async function createRealHouseholdAgent(opts = {}) {
     for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog, profiles: agentsProfiles })) {
       hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });
     }
+    // Property layer — REGISTER the default profile (the pseudonym) ONCE so a coarse property curated at consent
+    // (setProfileProperty) has a profile to land on → cross-app reuse works for the no-login participant too.
+    // Guarded on lookup so a later boot never re-registers (which would wipe accumulated properties). Best-effort.
+    try {
+      if (!(await agentsRegistry.lookup('default'))) await agentsProfiles.create({ profileId: 'default', name: 'default' });
+    } catch { /* degraded (no owner root / registry) — the on-consent persist simply stays best-effort */ }
   }
 
   // v0.4 — household membership demo.  The real manifest declares

@@ -85,6 +85,6 @@ export function enabledConsentKeys(consent, charter) {
  * The on-device low-leak warning: is the participant's enabled combo likely rare in a cohort of ~n?
  * `n` (approximate cohort size) may be absent → the warning is inert (warn:false).
  */
-export function consentWarning(consent, charter, n) {
-  return disclosureWarning({ enabledKeys: enabledConsentKeys(consent, charter), n });
+export function consentWarning(consent, charter, n, mode = 'normal') {
+  return disclosureWarning({ enabledKeys: enabledConsentKeys(consent, charter), n, mode });
 }

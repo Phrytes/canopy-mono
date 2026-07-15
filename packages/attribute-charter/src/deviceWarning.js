@@ -14,18 +14,25 @@
  */
 import { bucketCount } from './vocabulary.js';
 
+// The graduated warning modes (property-layer §10b). 'minimal' warns only on NEAR-CERTAIN uniqueness (a
+// stricter bar than 'normal'); 'off' never warns.
+export const MINIMAL_FACTOR = 4;
+
 /**
- * @param {{enabledKeys: string[], n: number}} args
+ * @param {{enabledKeys: string[], n: number, mode?: 'normal'|'minimal'|'off'}} args
  *   enabledKeys — the attribute keys the participant is about to share
  *   n           — approximate cohort size for this round/charter
+ *   mode        — 'normal' (combo-space > n) · 'minimal' (near-certain: combo-space > n×MINIMAL_FACTOR) · 'off'
  * @returns {{warn: boolean, comboSpace: number, enabledCount: number, n: number}}
  */
-export function disclosureWarning({ enabledKeys = [], n } = {}) {
+export function disclosureWarning({ enabledKeys = [], n, mode = 'normal' } = {}) {
   const keys = Array.isArray(enabledKeys) ? enabledKeys : [];
   const enabledCount = keys.length;
   // Possible-combo space = product of each enabled attribute's bucket count.
   const comboSpace = keys.reduce((acc, key) => acc * Math.max(1, bucketCount(key)), 1);
   const knownN = Number.isFinite(n) && n > 0 ? n : null;
-  const warn = enabledCount >= 2 && knownN !== null && comboSpace > knownN;
+  // 'minimal' raises the bar (only warn when the combo is near-certainly unique); 'off' silences.
+  const threshold = mode === 'minimal' ? (knownN ?? 0) * MINIMAL_FACTOR : knownN;
+  const warn = mode !== 'off' && enabledCount >= 2 && knownN !== null && comboSpace > threshold;
   return { warn, comboSpace, enabledCount, n: knownN };
 }
