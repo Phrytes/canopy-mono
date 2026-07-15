@@ -2662,6 +2662,10 @@
       "text": "Your reply to this post:",
       "doc": "S1 — prompt when responding to a post (respondToItem)."
     },
+    "resonates": {
+      "text": "resonates — {{reason}}",
+      "doc": "drivers#5b — badge on a post matching my private drivers; respond = anonymous reach-out."
+    },
     "attach": {
       "text": "Attach image",
       "doc": "S5 — composer attach-image button."

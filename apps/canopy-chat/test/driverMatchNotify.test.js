@@ -3,7 +3,7 @@
 // matchProfileDrivers + injected getDrivers/notify; never throws on bad input; outreach is not automatic.
 import { describe, it, expect, vi } from 'vitest';
 import { createDriver } from '@canopy/agent-registry';
-import { evaluateItemForDrivers, notifyIfResonant, matchReasonText } from '../src/core/handlers/driverMatchNotify.js';
+import { evaluateItemForDrivers, notifyIfResonant, matchReasonText, annotateResonantPosts } from '../src/core/handlers/driverMatchNotify.js';
 
 const DRIVERS = { sailing: createDriver({ kind: 'goal', text: 'learn to sail', tags: ['sailing', 'learning'] }) };
 const getDrivers = async () => DRIVERS;
@@ -62,5 +62,31 @@ describe('driver match→notify seam (#5)', () => {
     const res = await notifyIfResonant({ item, getDrivers, notify, judge });
     expect(res.notified).toBe(true);
     expect(notify.mock.calls[0][0].topReason).toBe('boating is sailing');
+  });
+});
+
+describe('annotateResonantPosts (#5b)', () => {
+  const drivers = { sailing: createDriver({ kind: 'goal', text: 'learn to sail', tags: ['sailing'] }) };
+  const getDrivers = async () => drivers;
+
+  it('flags matching posts with a resonance reason, leaves others untouched', async () => {
+    const posts = [
+      { id: 'p1', text: 'sailing lessons?', skillTags: ['sailing'] },
+      { id: 'p2', text: 'cooking club', skillTags: ['cooking'] },
+    ];
+    const out = await annotateResonantPosts({ posts, getDrivers });
+    expect(out[0].resonance).toEqual({ reason: 'you both care about: sailing', matches: expect.any(Array) });
+    expect(out[1].resonance).toBeUndefined();
+  });
+
+  it('no drivers ⇒ posts pass through unchanged', async () => {
+    const posts = [{ id: 'p1', text: 'sailing', skillTags: ['sailing'] }];
+    expect(await annotateResonantPosts({ posts, getDrivers: async () => ({}) })).toBe(posts);
+  });
+
+  it('matches on an explicit driverSignature nested under source (stored-item shape)', async () => {
+    const posts = [{ id: 'p1', text: 'weekend', source: { driverSignature: { tags: ['sailing'] } } }];
+    const out = await annotateResonantPosts({ posts, getDrivers });
+    expect(out[0].resonance?.reason).toBe('you both care about: sailing');
   });
 });

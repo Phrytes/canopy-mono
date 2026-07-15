@@ -2662,6 +2662,10 @@
       "text": "Je reactie op dit bericht:",
       "doc": "S1 — prompt when responding to a post (respondToItem)."
     },
+    "resonates": {
+      "text": "sluit aan — {{reason}}",
+      "doc": "drivers#5b — badge op een bericht dat matcht met mijn eigen drijfveren; reageren = anoniem contact."
+    },
     "attach": {
       "text": "Afbeelding toevoegen",
       "doc": "S5 — composer attach-image button."

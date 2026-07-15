@@ -195,6 +195,8 @@ import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGr
 // personas#2 — post-join "share to this circle": the same request/ack + orchestrator trio, wired
 // into the peer router alongside group-redeem (member ⇄ admin roster-property push).
 import { makeHandlePersonaPropsUpdate, makeHandlePersonaPropsAck, makeSendPersonaPropsUpdate, shareDisclosureToCircle } from '../../src/core/handlers/personaPropsUpdate.js';
+// drivers #5 (b) — flag noticeboard posts that resonate with my private drivers (on-device match).
+import { annotateResonantPosts } from '../../src/core/handlers/driverMatchNotify.js';
 import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
 import { feedHouseholdRoster } from '../../src/v2/householdRosterPairing.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
@@ -3722,7 +3724,20 @@ function showKring(id, circle, policy) {
         // event / other post). Top-level OR stoop-legacy source.embeds.
         embeds:       Array.isArray(it.embeds) ? it.embeds
                       : (Array.isArray(it.source?.embeds) ? it.source.embeds : []),
+        // Drivers #5 — carry the matching signal (explicit signature or the author's tags) so the
+        // render-time driver match can flag posts that resonate with MY private drivers.
+        driverSignature: it.driverSignature ?? it.source?.driverSignature ?? null,
+        skillTags:       Array.isArray(it.source?.skillTags) ? it.source.skillTags : (Array.isArray(it.skillTags) ? it.skillTags : []),
+        requiredSkills:  Array.isArray(it.requiredSkills) ? it.requiredSkills : [],
       }));
+      // Drivers #5 (b) — flag posts that resonate with my drivers (on-device). The existing "respond"
+      // action on a flagged post IS the anonymous reach-out (respondToItem → @handle DM). Best-effort.
+      try {
+        noticeboardPosts = await annotateResonantPosts({
+          posts:      noticeboardPosts,
+          getDrivers: async () => (await rawCallSkill('agents', 'getProfileDrivers', { id: 'default' }))?.drivers ?? {},
+        });
+      } catch { /* resonance is a nicety; never block the board */ }
     } catch { noticeboardPosts = []; }
     rerender();
     // embeds[] — progressively resolve each embed ref to its live title, then

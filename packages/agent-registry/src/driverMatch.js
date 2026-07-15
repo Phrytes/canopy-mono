@@ -30,14 +30,18 @@ export function deriveSignature({ text = '', tags = [] } = {}) {
  * @param {{driverSignature?:object, text?:string, title?:string, tags?:string[]}} item
  */
 export function itemSignature(item) {
-  const sig = item?.driverSignature;
-  if (sig && typeof sig === 'object') return deriveSignature(sig);
+  // Broadcast payloads carry these at the top level; a STORED item nests them under `source`. Accept both.
+  const src = (item?.source && typeof item.source === 'object') ? item.source : {};
+  const sig = item?.driverSignature ?? src.driverSignature;
+  if (sig && typeof sig === 'object' && !Array.isArray(sig)) return deriveSignature(sig);
   // Fall back to the author's EXISTING tags — `tags`, or a post's `skillTags` / `requiredSkills`
   // (which already ride the broadcast) — so a normally-tagged post is matchable with no new field.
   const tags = [
     ...(Array.isArray(item?.tags) ? item.tags : []),
     ...(Array.isArray(item?.skillTags) ? item.skillTags : []),
     ...(Array.isArray(item?.requiredSkills) ? item.requiredSkills : []),
+    ...(Array.isArray(src.skillTags) ? src.skillTags : []),
+    ...(Array.isArray(src.requiredSkills) ? src.requiredSkills : []),
   ];
   return deriveSignature({ text: item?.text ?? item?.title ?? '', tags });
 }

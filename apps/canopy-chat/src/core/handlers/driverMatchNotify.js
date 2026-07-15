@@ -18,6 +18,32 @@
 
 import { matchProfileDrivers } from '@canopy/agent-registry';
 
+/**
+ * Annotate noticeboard posts with driver RESONANCE for render (#5, item b). Each post that matches the
+ * user's drivers gets `resonance: { reason, matches }`; the rest pass through unchanged. Reuses the same
+ * on-device matcher; the private drivers never leave the device. The reach-out itself is the EXISTING
+ * "respond" action on a resonant post (respondToItem → anonymous @handle DM) — not a new affordance.
+ *
+ * @param {object} a
+ * @param {Array<object>} a.posts
+ * @param {() => Promise<Record<string,object>>} a.getDrivers
+ * @param {Function} [a.judge]
+ * @param {number} [a.minShared=1]
+ * @returns {Promise<Array<object>>}  posts, each optionally carrying `resonance`
+ */
+export async function annotateResonantPosts({ posts, getDrivers, judge, minShared = 1 } = {}) {
+  const list = Array.isArray(posts) ? posts : [];
+  let drivers = {};
+  try { drivers = (await getDrivers?.()) ?? {}; } catch { drivers = {}; }
+  if (!drivers || Object.keys(drivers).length === 0) return list;
+  return Promise.all(list.map(async (p) => {
+    let matches = [];
+    try { matches = await matchProfileDrivers({ properties: drivers, item: p, judge, minShared }); }
+    catch { matches = []; }
+    return matches.length ? { ...p, resonance: { reason: matchReasonText(matches[0]), matches } } : p;
+  }));
+}
+
 /** Human reason for a single match — reused for the notification body. Deterministic, explainable. */
 export function matchReasonText(match) {
   if (match?.reason?.kind === 'tags') return `you both care about: ${match.reason.tags.join(', ')}`;
