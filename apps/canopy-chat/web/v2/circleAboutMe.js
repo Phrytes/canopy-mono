@@ -16,6 +16,8 @@
  *   onToggleDisclosure(circleId, key, on)    → setProfileDisclosure
  */
 
+import { DRIVER_KINDS } from '@canopy/agent-registry';
+
 function section(titleText) {
   const el = document.createElement('section');
   el.className = 'cc-aboutme__section';
@@ -30,6 +32,7 @@ export function renderAboutMe(container, {
   model,
   t,
   onSetProperty,
+  onSetDriver,
   onToggleDisclosure,
   onShareToCircle,
   onBack,
@@ -126,6 +129,78 @@ export function renderAboutMe(container, {
     propSec.appendChild(row);
   }
   container.appendChild(propSec);
+
+  // ── personal drivers (#5) ────────────────────────────────────────────────
+  // Open { kind, text, tags } values (goals/hobbies/…), edited with a free-text
+  // widget (not the coarse bucket pickers above). Authored here; the on-device
+  // matcher reads them to surface items that resonate.
+  if (typeof onSetDriver === 'function') {
+    const drvSec = section(tr('circle.aboutme.drivers'));
+    const drvIntro = document.createElement('p');
+    drvIntro.className = 'cc-aboutme__intro';
+    drvIntro.textContent = tr('circle.aboutme.drivers_intro');
+    drvSec.appendChild(drvIntro);
+
+    for (const d of (model.drivers || [])) {
+      const drow = document.createElement('div');
+      drow.className = 'cc-aboutme__driver';
+      const head = document.createElement('div');
+      head.className = 'cc-aboutme__driver-head';
+      head.textContent = `${tr(`circle.aboutme.driverkind.${d.kind}`, { defaultValue: d.kind })}: ${d.text || d.tags.join(', ')}`;
+      drow.appendChild(head);
+      if (d.tags.length) {
+        const tagWrap = document.createElement('div');
+        tagWrap.className = 'cc-aboutme__driver-tags';
+        for (const tg of d.tags) {
+          const chip = document.createElement('span');
+          chip.className = 'cc-aboutme__driver-tag';
+          chip.textContent = tg;
+          tagWrap.appendChild(chip);
+        }
+        drow.appendChild(tagWrap);
+      }
+      drvSec.appendChild(drow);
+    }
+
+    // Add / overwrite a driver (keyed by the label; re-using a label edits it).
+    const form = document.createElement('div');
+    form.className = 'cc-aboutme__driver-form';
+    const labelInput = document.createElement('input');
+    labelInput.type = 'text';
+    labelInput.className = 'cc-aboutme__driver-input';
+    labelInput.placeholder = tr('circle.aboutme.driver_label_ph');
+    const kindSel = document.createElement('select');
+    kindSel.className = 'cc-aboutme__driver-kind';
+    for (const k of DRIVER_KINDS) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = tr(`circle.aboutme.driverkind.${k}`, { defaultValue: k });
+      kindSel.appendChild(opt);
+    }
+    const textInput = document.createElement('input');
+    textInput.type = 'text';
+    textInput.className = 'cc-aboutme__driver-input';
+    textInput.placeholder = tr('circle.aboutme.driver_text_ph');
+    const tagsInput = document.createElement('input');
+    tagsInput.type = 'text';
+    tagsInput.className = 'cc-aboutme__driver-input';
+    tagsInput.placeholder = tr('circle.aboutme.driver_tags_ph');
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'cc-aboutme__driver-add';
+    addBtn.textContent = tr('circle.aboutme.driver_add');
+    addBtn.addEventListener('click', () => {
+      const label = labelInput.value.trim();
+      const text = textInput.value.trim();
+      const tags = tagsInput.value.trim();
+      if (!label || (!text && !tags)) return;   // needs a label + something to match on
+      onSetDriver({ key: label, kind: kindSel.value, text, tags });
+      labelInput.value = ''; textInput.value = ''; tagsInput.value = '';
+    });
+    form.append(labelInput, kindSel, textInput, tagsInput, addBtn);
+    drvSec.appendChild(form);
+    container.appendChild(drvSec);
+  }
 
   // ── per-circle sharing ──────────────────────────────────────────────────
   const shareSec = section(tr('circle.aboutme.sharing'));

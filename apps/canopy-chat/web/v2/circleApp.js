@@ -3434,6 +3434,11 @@ async function openAboutMePanel(personaId) {
         try { await rawCallSkill('agents', 'setProfileProperty', { id, key, value }); } catch { /* */ }
         await draw();
       },
+      // personal drivers (#5) — author an open { kind, text, tags } driver on this persona.
+      onSetDriver: async ({ key, kind, text, tags }) => {
+        try { await rawCallSkill('agents', 'setProfileDriver', { id, key, kind, text, tags }); } catch { /* */ }
+        await draw();
+      },
       onToggleDisclosure: async (contextId, key, enabled) => {
         try { await rawCallSkill('agents', 'setProfileDisclosure', { id, contextId, key, enabled }); } catch { /* */ }
         await draw();

@@ -119,3 +119,28 @@ describe('renderAboutMe', () => {
     expect(el.querySelector('.cc-aboutme__empty')).toBeTruthy();
   });
 });
+
+describe('buildPersonaViewModel — drivers (#5)', () => {
+  it('surfaces driver-typed properties separately from coarse attributes', async () => {
+    const { buildPersonaViewModel } = await import('../src/v2/personaView.js');
+    const { createDriver } = await import('@canopy/agent-registry');
+    const view = {
+      ok: true, id: 'default',
+      properties: {
+        place: 'Groningen',                                                  // coarse-enum
+        sailing: createDriver({ kind: 'goal', text: 'learn to sail', tags: ['sailing'] }),
+      },
+      disclosure: { perContext: {} },
+    };
+    const model = buildPersonaViewModel({ view, circles: [] });
+    expect(model.drivers).toEqual([{ key: 'sailing', kind: 'goal', text: 'learn to sail', tags: ['sailing'] }]);
+    // the coarse attribute is NOT in drivers, and the driver is NOT in the coarse property picker
+    expect(model.properties.find((p) => p.key === 'sailing')).toBeUndefined();
+  });
+
+  it('no drivers → empty array', async () => {
+    const { buildPersonaViewModel } = await import('../src/v2/personaView.js');
+    const model = buildPersonaViewModel({ view: { ok: true, id: 'x', properties: { place: 'Groningen' }, disclosure: { perContext: {} } }, circles: [] });
+    expect(model.drivers).toEqual([]);
+  });
+});

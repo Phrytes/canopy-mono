@@ -25,6 +25,7 @@
  */
 
 import { attributeKeys, bucketsFor } from '@canopy/attribute-charter';
+import { isDriverValue } from '@canopy/agent-registry';
 
 /**
  * @param {object} args
@@ -67,6 +68,12 @@ export function buildPersonaViewModel({ view, circles } = {}) {
   // a value (you can't meaningfully share an unset property), so the toggle
   // rows are the keys the persona actually holds. Default WITHHOLD: `enabled`
   // is true only when the persisted policy says so.
+  // Personal DRIVERS (#5) — the open `driver`-typed properties, kept separate from the coarse charter
+  // attributes above (different value shape: { kind, text, tags[] }, edited with a different widget).
+  const drivers = Object.entries(props)
+    .filter(([, v]) => isDriverValue(v))
+    .map(([key, v]) => ({ key, kind: v.kind, text: v.text, tags: [...v.tags] }));
+
   const valuedKeys = properties.filter((p) => p.set);
   const circleModels = circleList
     .filter((c) => c && typeof c.id === 'string' && c.id)
@@ -95,6 +102,7 @@ export function buildPersonaViewModel({ view, circles } = {}) {
     id,
     reason: (typeof view?.reason === 'string' && view.reason) ? view.reason : null,
     properties,
+    drivers,
     circles: circleModels,
   };
 }

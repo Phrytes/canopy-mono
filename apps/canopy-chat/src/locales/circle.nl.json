@@ -3183,6 +3183,37 @@
       "text": "Deel met deze kring",
       "doc": "personas#2 — knop: zet de huidige openbaarmaking op de ledenlijst van de kring (na deelname)."
     },
+    "drivers": {
+      "text": "Jouw drijfveren",
+      "doc": "drivers#5 — sectie: persoonlijke drijfveren (doelen/hobby's/…) voor on-device matching."
+    },
+    "drivers_intro": {
+      "text": "Waar je mee bezig bent of naar streeft. Blijft privé op dit apparaat; alleen gebruikt om items op te merken die aansluiten.",
+      "doc": "drivers#5 — eerlijke framing: drijfveren blijven on-device, sturen matching."
+    },
+    "driverkind": {
+      "hobby": { "text": "Hobby", "doc": "drivers#5 — soort drijfveer." },
+      "goal": { "text": "Doel", "doc": "drivers#5 — soort drijfveer." },
+      "desire": { "text": "Wens", "doc": "drivers#5 — soort drijfveer." },
+      "motivation": { "text": "Motivatie", "doc": "drivers#5 — soort drijfveer." },
+      "driver": { "text": "Drijfveer", "doc": "drivers#5 — algemene soort drijfveer." }
+    },
+    "driver_label_ph": {
+      "text": "label (bijv. zeilen)",
+      "doc": "drivers#5 — placeholder: het label van de drijfveer."
+    },
+    "driver_text_ph": {
+      "text": "wat, in een zin",
+      "doc": "drivers#5 — placeholder: de vrije tekst van de drijfveer."
+    },
+    "driver_tags_ph": {
+      "text": "tags, komma-gescheiden",
+      "doc": "drivers#5 — placeholder: komma-gescheiden tags."
+    },
+    "driver_add": {
+      "text": "Drijfveer toevoegen",
+      "doc": "drivers#5 — knop: drijfveer toevoegen/overschrijven."
+    },
     "sharing_now": {
       "text": "Bezig met delen…",
       "doc": "personas#2 — tijdelijke status terwijl de deel-actie loopt."
