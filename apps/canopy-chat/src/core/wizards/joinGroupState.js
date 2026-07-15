@@ -223,6 +223,40 @@ export function setConsentDecline(state, key, declined) {
   return state;
 }
 
+/* ─── Persona selection (property layer · join-with-persona) ── */
+
+/**
+ * Load the user's personas for the join picker — the registry profiles
+ * (`role: 'profile'`, incl. the always-present `default`). Pure read; on any
+ * failure returns `[]` so the picker simply offers nothing (join minimally).
+ * The shape is `[{ id, name }]`, freshest curation surfaced by the agents skill.
+ *
+ * @param {{callSkill:Function}} a
+ * @returns {Promise<Array<{id:string,name:string}>>}
+ */
+export async function loadPersonas({ callSkill } = {}) {
+  try {
+    const reply = await callSkill('agents', 'listAgents', {});
+    const rows = Array.isArray(reply?.agents) ? reply.agents : [];
+    return rows
+      .filter((a) => a && a.role === 'profile')
+      .map((a) => ({ id: a.agentId, name: a.name || a.agentId }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Record the joiner's persona choice. `null` (the protective default) means
+ * "join minimally — disclose no background"; a profile id means "join AS this
+ * persona, sharing what it discloses in THIS circle" (finalSubmit computes the
+ * release). Only the identity part; the disclosure itself stays default-withhold.
+ */
+export function setPersona(state, personaId) {
+  state.persona = (typeof personaId === 'string' && personaId.length) ? personaId : null;
+  return state;
+}
+
 /* ─── Initial state + final-submit chain ───────────────────── */
 
 export function initialState() {
@@ -240,6 +274,12 @@ export function initialState() {
     consentModel:     { items: [], keys: [] },
     capabilityOptOuts: [],
     handle:           '',
+    // Property layer — join-with-persona. `null` = join minimally (disclose no
+    // background); a profile id = join AS that persona (its per-circle disclosure
+    // applies). `personas` is the picker's option list, lazily loaded. Protective
+    // default: null (first join discloses nothing regardless — this is the label).
+    persona:          null,
+    personas:         [],
     submitting:       false,
     submitError:      null,
   };
