@@ -20,6 +20,11 @@ import {
 // Privacy-first logging (web ≡ mobile). PII-safe by construction — we log event CODES + scalar counts here,
 // never message text, points, or identities. A dump handle is exposed so a bug report / debug can read it.
 import { log, dumpLogs, formatLogs } from '@canopy/logger';
+// Property-layer charter consent (shared, pure): given the project's declared charter, collect the
+// participant's opt-in coarse attributes + package what rides the contribution. See charterConsent.js.
+import {
+  charterFromConfig, consentItems, emptyConsent, setConsentValue, toggleConsent, consentRelease, consentWarning,
+} from './charterConsent.js';
 // The anonymous bug-report packager (shared, pure). Carries NO identity — see bugReport.js.
 import { buildReportEnvelope } from './bugReport.js';
 // REUSE the restore wizard's mnemonic validation (word-count / 12-or-24) rather than reimplementing it — the
@@ -204,6 +209,112 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   const A = () => ACCESS_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
 
   // Offer the two access affordances as bubble-buttons (web idiom; the taps route back through handle()).
+  // ── Property-layer charter consent (participant side) ──────────────────────────────────────────
+  // When the project declared a charter (config.charter — the PM's request for a FEW coarse background
+  // attributes), offer an OPT-IN consent step: pick share/withhold per attribute (coarse buckets only),
+  // see an on-device "may make you recognisable" warning, and the released values + charterHash ride the
+  // contribution (handed to the bot as a structured data turn). Default = WITHHOLD. Reuses charterConsent.js.
+  const CHARTER_STRINGS = {
+    nl: {
+      intro: 'Dit project vraagt (optioneel) een paar grove achtergrondkenmerken, om antwoorden te kunnen groeperen. Je kiest zelf wat je deelt.',
+      share_btn: '➕ Achtergrond delen', skip_btn: 'Overslaan',
+      ask: (p) => `${p}\nKies wat je wilt delen (of sla over):`,
+      place_prompt: (p) => `${p}\nTyp je gemeente (of typ /overslaan):`,
+      place_invalid: 'Dat lijkt geen gemeente — typ een plaatsnaam, of /overslaan.',
+      skip_attr: 'Sla over',
+      confirm_none: 'Je deelt geen achtergrondkenmerken.',
+      confirm_head: (l) => `Je deelt: ${l}.`,
+      warn: (n) => `⚠ In een kleine groep (±${n}) kan deze combinatie je herkenbaar maken.`,
+      send_btn: '✓ Zo delen', none_btn: 'Toch niets delen',
+      sent: '✓ Bedankt — je achtergrondkeuze is opgeslagen.',
+      skipped: 'Oké — je deelt geen achtergrondkenmerken.',
+    },
+    en: {
+      intro: 'This project optionally asks for a few coarse background details, to group answers. You choose what to share.',
+      share_btn: '➕ Share background', skip_btn: 'Skip',
+      ask: (p) => `${p}\nPick what to share (or skip):`,
+      place_prompt: (p) => `${p}\nType your municipality (or type /skip):`,
+      place_invalid: "That doesn't look like a place — type a municipality, or /skip.",
+      skip_attr: 'Skip',
+      confirm_none: "You'll share no background details.",
+      confirm_head: (l) => `You'll share: ${l}.`,
+      warn: (n) => `⚠ In a small group (~${n}) this combination may make you recognisable.`,
+      send_btn: '✓ Share these', none_btn: "Don't share any",
+      sent: '✓ Thanks — your background choice is saved.',
+      skipped: "Okay — you'll share no background details.",
+    },
+  };
+  const C = () => CHARTER_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
+  let projectCharter = null;
+  try { projectCharter = charterFromConfig(cfg.projectId, cfg.charter); } catch { projectCharter = null; }
+  const charterState = new Map();          // threadId -> { profile, idx }
+  const awaitingCharterText = new Set();   // threadIds awaiting a typed place value
+
+  const emitCharterIntro = (threadId) => {
+    emit({ chatId: String(threadId), kind: 'charter', charter: true, text: C().intro, buttons: [
+      { id: 'fp:charter:start', label: C().share_btn }, { id: 'fp:charter:skip', label: C().skip_btn },
+    ] });
+  };
+  function emitCharterStep(threadId) {
+    const st = charterState.get(String(threadId)); if (!st) return;
+    const items = consentItems(projectCharter);
+    if (st.idx >= items.length) { emitCharterConfirm(threadId); return; }
+    const it = items[st.idx];
+    if (Array.isArray(it.buckets) && it.buckets.length) {
+      emit({ chatId: String(threadId), kind: 'charter', charter: true, text: C().ask(it.purpose), buttons: [
+        ...it.buckets.map((b) => ({ id: `fp:charter:pick:${it.key}:${b}`, label: b })),
+        { id: `fp:charter:none:${it.key}`, label: C().skip_attr },
+      ] });
+    } else {
+      awaitingCharterText.add(String(threadId));
+      emit({ chatId: String(threadId), kind: 'charter', charter: true, text: C().place_prompt(it.purpose) });
+    }
+  }
+  const beginCharter = (threadId) => { charterState.set(String(threadId), { profile: emptyConsent(cfg.projectId), idx: 0 }); emitCharterStep(threadId); };
+  const charterPick = (threadId, key, bucket) => {
+    const st = charterState.get(String(threadId)); if (!st) return;
+    try { st.profile = toggleConsent(setConsentValue(st.profile, key, bucket), key, true); } catch { /* invalid bucket → withhold */ }
+    st.idx += 1; emitCharterStep(threadId);
+  };
+  const charterNone = (threadId) => { const st = charterState.get(String(threadId)); if (st) { st.idx += 1; emitCharterStep(threadId); } };
+  const charterText = (threadId, value) => {
+    const st = charterState.get(String(threadId)); if (!st) return;
+    awaitingCharterText.delete(String(threadId));
+    const it = consentItems(projectCharter)[st.idx];
+    if (value != null) {
+      try { st.profile = toggleConsent(setConsentValue(st.profile, it.key, value), it.key, true); }
+      catch { awaitingCharterText.add(String(threadId)); emit({ chatId: String(threadId), kind: 'charter', charter: true, text: C().place_invalid }); return; }
+    }
+    st.idx += 1; emitCharterStep(threadId);
+  };
+  function emitCharterConfirm(threadId) {
+    const st = charterState.get(String(threadId)); if (!st) return;
+    const rel = consentRelease(st.profile, projectCharter);
+    const shared = Object.keys(rel.attributes);
+    const warn = consentWarning(st.profile, projectCharter);   // n unknown here → inert unless a cohort size is wired
+    const head = shared.length ? C().confirm_head(shared.join(', ')) : C().confirm_none;
+    emit({ chatId: String(threadId), kind: 'charter', charter: true,
+      text: warn.warn ? `${head}\n${C().warn(warn.n)}` : head,
+      buttons: [
+        ...(shared.length ? [{ id: 'fp:charter:send', label: C().send_btn }] : []),
+        { id: 'fp:charter:none-all', label: C().none_btn },
+      ] });
+  }
+  const sendCharter = async (threadId) => {
+    const st = charterState.get(String(threadId)); if (!st) return;
+    const rel = consentRelease(st.profile, projectCharter);
+    charterState.delete(String(threadId)); awaitingCharterText.delete(String(threadId));
+    log.info('feedback', 'charter.send', { shared: Object.keys(rel.attributes).length });   // PII-safe: count only
+    // Hand the release to the bot as a STRUCTURED data turn (not text): it sets the dispatcher's disclosure so
+    // the ensuing consent's contributions carry it. The coarse values never touch the log.
+    await (await clientFor(threadId)).send('', { data: { charter: rel } });
+    emit({ chatId: String(threadId), kind: 'charter-result', charter: true, text: C().sent });
+  };
+  const skipCharter = (threadId) => {
+    charterState.delete(String(threadId)); awaitingCharterText.delete(String(threadId));
+    emit({ chatId: String(threadId), kind: 'charter-result', charter: true, text: C().skipped });
+  };
+
   const emitAccessOptions = (threadId) => {
     emit({ chatId: String(threadId), kind: 'access', access: true, text: A().hint, buttons: [
       { id: 'fp:access:backup',  label: A().backup_button },
@@ -324,6 +435,8 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
         // so a no-login participant can secure their pseudonymous identity + recover it on a new device. Web idiom
         // (bubble-buttons, mirrors reportButton); requires a wired callSkill (the host reveal/restore skills).
         if (accessButton && typeof callSkill === 'function') emitAccessOptions(threadId);
+        // Charter consent — when the project declared a requested-attributes charter, offer the opt-in step.
+        if (projectCharter) emitCharterIntro(threadId);
       }
       // poll the lead's /control/ round → on-device summary for verify. No open round is the normal case
       // (stay silent); surface only a genuine error so the user isn't left wondering.
@@ -362,6 +475,22 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
           awaitingRestore.delete(String(threadId));
         }
       }
+      // Charter consent — SURFACE affordance (collect the participant's opt-in coarse attributes). Intercept the
+      // fp:charter:* controls + the typed place value here; the RELEASE is handed to the bot as a data turn, not
+      // routed as text (so the coarse values never appear as a chat message / a bot turn).
+      if (projectCharter) {
+        const s = String(text || '');
+        if (/^\s*fp:charter:start\s*$/i.test(s)) { beginCharter(threadId); return true; }
+        if (/^\s*fp:charter:(skip|none-all)\s*$/i.test(s)) { skipCharter(threadId); return true; }
+        if (/^\s*fp:charter:send\s*$/i.test(s)) { await sendCharter(threadId); return true; }
+        let m;
+        if ((m = s.match(/^\s*fp:charter:pick:([^:]+):(.+?)\s*$/i))) { charterPick(threadId, m[1], m[2]); return true; }
+        if ((m = s.match(/^\s*fp:charter:none:([^:]+)\s*$/i))) { charterNone(threadId); return true; }
+        if (awaitingCharterText.has(String(threadId))) {
+          if (/^\s*\/(overslaan|skip|stop)\s*$/i.test(s)) { charterText(threadId, null); return true; }   // skip this attr
+          if (!/^\s*(\/|fp:)/.test(s)) { charterText(threadId, s.trim()); return true; }
+        }
+      }
       // "Report a problem" is a SURFACE affordance, not a bot turn — intercept it here (typed `/report`/`/logs`/
       // `/problem`, or the `fp:report` button) so it never reaches the bot and never clears the verify guard.
       // The anonymous SEND trigger (`fp:report:send`, from the panel's Send button) — checked BEFORE the
@@ -390,6 +519,11 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     backup(threadId) { if (active.has(String(threadId)) && typeof callSkill === 'function') return emitBackup(threadId); return undefined; },
     /** "Secure your access" — begin the restore-from-phrase flow (the next pasted text turn is the phrase). */
     restore(threadId) { if (active.has(String(threadId)) && typeof callSkill === 'function') beginRestore(threadId); },
+    /** Charter consent — offer the requested-attributes opt-in step. A shell can call this from chrome; no-op
+     *  when the project declared no charter. */
+    charter(threadId) { if (active.has(String(threadId)) && projectCharter) emitCharterIntro(threadId); },
+    /** True when the project declared a requested-attributes charter (a shell may show a chrome affordance). */
+    hasCharter: !!projectCharter,
     /** A button tap (M2): send the control id (fp:*) as a turn — the bot's parseControl handles it. */
     async tapButton(buttonId, threadId) {
       if (!active.has(String(threadId))) return false;
@@ -398,6 +532,16 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
       if (typeof callSkill === 'function') {
         if (/^\s*fp:access:backup\s*$/i.test(String(buttonId)))  { await emitBackup(threadId); return true; }
         if (/^\s*fp:access:restore\s*$/i.test(String(buttonId))) { beginRestore(threadId); return true; }
+      }
+      // Charter consent bubble-buttons — intercept before routing to the bot (parity with handle()).
+      if (projectCharter) {
+        const b = String(buttonId);
+        if (/^\s*fp:charter:start\s*$/i.test(b)) { beginCharter(threadId); return true; }
+        if (/^\s*fp:charter:(skip|none-all)\s*$/i.test(b)) { skipCharter(threadId); return true; }
+        if (/^\s*fp:charter:send\s*$/i.test(b)) { await sendCharter(threadId); return true; }
+        let m;
+        if ((m = b.match(/^\s*fp:charter:pick:([^:]+):(.+?)\s*$/i))) { charterPick(threadId, m[1], m[2]); return true; }
+        if ((m = b.match(/^\s*fp:charter:none:([^:]+)\s*$/i))) { charterNone(threadId); return true; }
       }
       awaitingVerify = false;
       await (await clientFor(threadId)).send(buttonId);

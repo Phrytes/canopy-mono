@@ -131,6 +131,42 @@ test('reportButton — start() offers the web bubble-trigger with an fp:report b
   expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(true);
 });
 
+test('charter consent — the opt-in walk releases a coarse attribute that rides the consented contribution', async () => {
+  const pod = new InMemoryCentralPod();
+  const replies = [];
+  const surface = createFeedbackSurface({
+    config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age spread' }] } }),
+    pod, emit: (r) => replies.push(r),
+  });
+  await surface.start('c');
+  expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:charter:start'))).toBe(true);  // charter offered
+
+  await surface.handle('fp:charter:start', 'c');
+  expect(replies.at(-1).buttons.some((b) => b.id === 'fp:charter:pick:ageBand:35-54')).toBe(true);      // bucket buttons
+  await surface.handle('fp:charter:pick:ageBand:35-54', 'c');
+  expect(replies.at(-1).buttons.some((b) => b.id === 'fp:charter:send')).toBe(true);                    // confirm → send
+  await surface.handle('fp:charter:send', 'c');
+
+  // now the ordinary feedback journey — the disclosed attribute rides the contribution
+  await surface.handle('De GGZ-wachtlijst is veel te lang', 'c');
+  await surface.handle('ik ben klaar', 'c');
+  await surface.handle('verstuur alles', 'c');
+  const agg = pod.forAggregation();
+  expect(agg.length).toBe(1);
+  expect(agg[0].attributes).toEqual({ ageBand: '35-54' });
+});
+
+test('charter consent — skipping shares nothing (default withhold)', async () => {
+  const pod = new InMemoryCentralPod();
+  const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod, emit: () => {} });
+  await surface.start('s');
+  await surface.handle('fp:charter:skip', 's');
+  await surface.handle('De GGZ-wachtlijst is veel te lang', 's');
+  await surface.handle('ik ben klaar', 's');
+  await surface.handle('verstuur alles', 's');
+  expect(pod.forAggregation()[0].attributes).toBeUndefined();
+});
+
 test('start({ greet:false }) suppresses the onboarding greeting + affordances (restore-on-reload path)', async () => {
   const { surface, replies } = setup({ surface: { reportButton: true } });
   await surface.start('rb2', { greet: false });
