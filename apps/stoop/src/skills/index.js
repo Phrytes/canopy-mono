@@ -2538,6 +2538,71 @@ export function buildSkills({
     }),
 
     /**
+     * recordMemberPersonaProperties({ groupId, memberWebid?, personaProperties, circleAddress? })
+     *   — property layer, "share to this circle" (POST-join disclosure push). The admin-side
+     *   write that lands an already-joined member's freshly-disclosed persona properties onto the
+     *   roster. The general/post-join counterpart of the join-time `verifyMembershipCodeForPeer`
+     *   roster-write (index.js ~2162): same `members.addMember` merge + the SAME durable backing
+     *   (patch the member's `membership-redemption` item source) so the update survives a roster
+     *   rebuild, exactly like `personaProperties` recovered in `listGroupMembers`.
+     *
+     *   `memberWebid` defaults to the caller (`from`) for a LOCAL self-update (the admin adjusting
+     *   their own row); the peer handler passes `memberWebid: fromAddr` — the authenticated peer
+     *   address (webid == the mesh signing address here, so a member can only speak for their own
+     *   row, never overwrite another's). Only updates an EXISTING member (never mints a phantom).
+     *   An empty `personaProperties` ({}) is a valid "I now share nothing here" and clears the slot.
+     *
+     *   Returns: { ok:true, groupId, memberWebid, keys } | { ok:false, reason }.
+     */
+    defineSkill('recordMemberPersonaProperties', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId) return { ok: false, reason: 'groupId-required' };
+      const webid = (typeof a.memberWebid === 'string' && a.memberWebid) ? a.memberWebid : from;
+      if (!webid) return { ok: false, reason: 'member-unresolved' };
+      const props = (a.personaProperties && typeof a.personaProperties === 'object' && !Array.isArray(a.personaProperties))
+        ? a.personaProperties : null;
+      if (props === null) return { ok: false, reason: 'personaProperties-required' };
+      if (!members) return { ok: false, reason: 'roster-unavailable' };
+
+      // An empty disclosure ({}) is "I now share nothing here" — normalise to the SAME `null`
+      // absent-state a never-disclosed member carries, so the roster never holds an empty object
+      // downstream code has to special-case (back-compat with the join-time capture).
+      const stored = Object.keys(props).length ? props : null;
+
+      // 1. Live row — merge onto the EXISTING member (read-modify-write, like setMySkills). A
+      //    non-member gets no phantom row: only someone the admin already recorded can be updated.
+      const me = await members.resolveByWebid(webid);
+      if (!me) return { ok: false, reason: 'not-a-member' };
+      await members.addMember({
+        ...me,
+        personaProperties: stored,
+        ...(typeof a.circleAddress === 'string' && a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+      });
+
+      // 2. Durable backing — patch the member's redemption item source so `listGroupMembers`
+      //    recovers the fresh value after a rebuild (the admin's OWN row has no redemption item —
+      //    the patch simply finds nothing and the live row stands, matching createGroupV2).
+      try {
+        const all = await store.listOpen({ type: 'membership-redemption' });
+        const item = all.find((i) => i?.source?.redeemedBy === webid && i?.source?.groupId === a.groupId);
+        if (item) {
+          await store.update(item.id, {
+            source: {
+              ...item.source,
+              personaProperties: stored,
+              ...(typeof a.circleAddress === 'string' && a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+            },
+          }, { actor: from });
+        }
+      } catch { /* durable patch is best-effort — the live row already reflects the change */ }
+
+      return { ok: true, groupId: a.groupId, memberWebid: webid, keys: Object.keys(props), _sync: simulateSync() };
+    }, {
+      description: 'Record an already-joined member\'s disclosed persona properties onto the roster (post-join "share to this circle").',
+      visibility:  'authenticated',
+    }),
+
+    /**
      * ingestRemotePost({payload, fromPubKey})
      *   — 2026-05-24 cross-instance fan-out (chat-layer bridge).
      *
