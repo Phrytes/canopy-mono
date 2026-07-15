@@ -32,7 +32,14 @@ export function deriveSignature({ text = '', tags = [] } = {}) {
 export function itemSignature(item) {
   const sig = item?.driverSignature;
   if (sig && typeof sig === 'object') return deriveSignature(sig);
-  return deriveSignature({ text: item?.text ?? item?.title ?? '', tags: item?.tags ?? [] });
+  // Fall back to the author's EXISTING tags — `tags`, or a post's `skillTags` / `requiredSkills`
+  // (which already ride the broadcast) — so a normally-tagged post is matchable with no new field.
+  const tags = [
+    ...(Array.isArray(item?.tags) ? item.tags : []),
+    ...(Array.isArray(item?.skillTags) ? item.skillTags : []),
+    ...(Array.isArray(item?.requiredSkills) ? item.requiredSkills : []),
+  ];
+  return deriveSignature({ text: item?.text ?? item?.title ?? '', tags });
 }
 
 /**

@@ -111,6 +111,15 @@ describe('driver matcher (#5) — profile + item bridge', () => {
     expect(itemSignature({ title: 'Weekend sail', tags: ['Sailing'] })).toEqual({ text: 'Weekend sail', tags: ['sailing'] });
   });
 
+  it('itemSignature also reads a post\'s skillTags / requiredSkills (existing author tags)', async () => {
+    const { itemSignature } = await import('../index.js');
+    expect(itemSignature({ text: 'anyone?', skillTags: ['Sailing'], requiredSkills: ['Rigging'] }))
+      .toEqual({ text: 'anyone?', tags: ['sailing', 'rigging'] });
+    // explicit driverSignature still wins over skillTags
+    expect(itemSignature({ driverSignature: { tags: ['boating'] }, skillTags: ['sailing'] }))
+      .toEqual({ text: '', tags: ['boating'] });
+  });
+
   it('matchProfileDrivers: matches an item against the profile\'s stored drivers', async () => {
     const { matchProfileDrivers, createDriver } = await import('../index.js');
     const properties = {

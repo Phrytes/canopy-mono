@@ -835,6 +835,11 @@ export function buildSkills({
           targets,
           maxDistanceKm,
           ...(embeds.length > 0 ? { embeds } : {}),
+          // Drivers #5 — an OPTIONAL explicit driver signature { text?, tags[] } the author attaches so
+          // this post matches peers' private drivers on-device. Absent → the matcher falls back to the
+          // post's text + skillTags/requiredSkills (itemSignature), so tagging already works without this.
+          ...(a.driverSignature && typeof a.driverSignature === 'object' && !Array.isArray(a.driverSignature)
+            ? { driverSignature: a.driverSignature } : {}),
         },
       };
       if (typeof a.dueAt === 'number') itemDraft.dueAt = a.dueAt;
@@ -2298,6 +2303,10 @@ export function buildSkills({
           attachments:    toBroadcastShape(it.source?.attachments),
           ...(Array.isArray(it.source?.embeds) && it.source.embeds.length > 0
             ? { embeds: it.source.embeds } : {}),
+          // Drivers #5 — carry the author's explicit driver signature to catch-up receivers (skillTags
+          // already ride above, so the matcher works even without this; this is the explicit intent).
+          ...(it.source?.driverSignature && typeof it.source.driverSignature === 'object'
+            ? { driverSignature: it.source.driverSignature } : {}),
           _addedAt:       ts,
         });
       }
