@@ -42,7 +42,7 @@ const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address l
 const BUG_REPORT_TARGET = process.env.EXPO_PUBLIC_BUGREPORT_ADDR || BUG_REPORT_DEV_ADDR;
 const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || undefined;   // non-identifying build tag for the report envelope
 
-export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null, sendPeer = null }) {
+export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null, sendPeer = null, callSkill = null }) {
   const insets = useSafeAreaInsets();   // clear the status bar so the header (back + language toggle) is tappable
   const threadId = bot?.id;
   const name = bot?.name ?? bot?.label ?? threadId ?? 'Feedback';
@@ -60,6 +60,8 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
   const noLoginRef = useRef(false);                // true when this thread uses the no-login collector flow (signs)
   const sendPeerRef = useRef(sendPeer);            // latest peer/relay send — read LAZILY at report-send time
   sendPeerRef.current = sendPeer;                  // (agent may still be booting when the surface is built)
+  const callSkillRef = useRef(callSkill);          // latest household callSkill — read LAZILY for reveal/restore
+  callSkillRef.current = callSkill;                // (same lazy-boot reason as sendPeer)
   const identityRef = useRef(identity);            // latest agent identity — read LAZILY at sign time (web parity:
   identityRef.current = identity;                  // circleCoreAgent is read at call time, not captured, so a
                                                    // still-booting identity at surface-build time isn't frozen in.
@@ -150,6 +152,11 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
           // null target → the sink no-ops and the panel stays copy-only.
           app: 'canopy-chat', version: APP_VERSION,
           sendReport: createBugReportSink({ send: (a, p) => sendPeerRef.current?.(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
+          // "Secure your access" (web parity, circleApp.js): BACK UP + RESTORE the owner-root recovery phrase in
+          // the no-login onboarding, via the household reveal/restore skills through callSkill (read lazily). The
+          // access kinds fall through to pushBot as bubbles + buttons; the phrase never leaves the device.
+          accessButton: true,
+          callSkill: (o, op, a) => callSkillRef.current?.(o, op, a),
           // a review renders as editable per-point CARDS (kind:'review'+points); a report renders as a
           // selectable PII-safe log panel (kind:'report'); everything else as a bubble.
           emit: ({ text, buttons, kind, points, labels, logText }) => {
