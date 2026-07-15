@@ -1,21 +1,19 @@
-// Charter consent (participant side) — the pure logic behind the feedback requested-attributes
-// consent step (property-layer Phase 3; plans/NOTE-property-layer-design.md §7 row 3).
+// Charter consent (participant side) — the pure logic behind the feedback requested-attributes consent step
+// (property-layer Phase 3 + the shared-profile LIFT; plans/NOTE-property-layer-design.md §7 + §9 remainder 1).
 //
-// Given a project's declared charter (config.charter = { version?, attributes:[{key,purpose}] } —
-// the PM's request), this produces: the consent items to render, an immutable LOCAL disclosure
-// (coarse values + per-attribute share toggles, default-WITHHOLD), and exactly what rides the
-// contribution — the released coarse attributes + the charterHash — plus an on-device rare-combo
-// WARNING. It REUSES @canopy/attribute-charter (the built substrate) — no reimplementation and
-// no UI/transport here; the shell renders from these + hands the released values to the send path.
+// Given a project's declared charter (config.charter = { version?, attributes:[{key,purpose}] } — the PM's
+// request), this produces: the consent items to render, an immutable choice model, exactly what rides the
+// contribution (released coarse attributes + charterHash), and an on-device rare-combo WARNING.
 //
-// (The values are held in a feedback-local disclosure profile today. Lifting them onto the shared
-// agent-registry profile graph — so place/age are curated ONCE and reused across apps — is the
-// tracked next integration, design §7 "the load-bearing decision".)
-import {
-  createCharter, charterHash,
-  createDisclosureProfile, setValue, setEnabled, releasedValues, enabledSharedKeys,
-  disclosureWarning, bucketsFor,
-} from '@canopy/attribute-charter';
+// ★ LIFTED onto the SHARED disclosure layer: a "consent" is now a mini **profile** (an own/inherit property
+// graph — `setOwn`) + a shared **disclosure policy** (`@canopy/agent-registry`), keyed by the project as the
+// context. So a value the participant picks is stored as a profile PROPERTY and a per-context disclosure — the
+// same shapes any app/bot uses. Today the graph is held locally per project; when the participant's REAL
+// profile graph is available, only `getProfile` changes (point it at the registry) and place/age are curated
+// ONCE and reused across apps. The vocabulary (buckets, place-validation, charterHash, the warning) stays with
+// @canopy/attribute-charter; the disclosure MECHANISM is now the shared one.
+import { createCharter, charterHash, charterKeys, disclosureWarning, bucketsFor, isValidValue } from '@canopy/attribute-charter';
+import { setOwn, createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from '@canopy/agent-registry';
 
 /** Validate + build the charter a project declared (null when the project has none). */
 export function charterFromConfig(projectId, cfgCharter) {
@@ -28,34 +26,55 @@ export function consentItems(charter) {
   return (charter?.attributes ?? []).map((a) => ({ key: a.key, purpose: a.purpose, buckets: bucketsFor(a.key) ?? null }));
 }
 
-/** A fresh, share-nothing local disclosure for a project (default-withhold). */
+/**
+ * A fresh consent = a mini PROFILE (property graph) + a shared disclosure POLICY, with the project as the
+ * disclosure context. Default-WITHHOLD (empty policy). Serialisable; all functions below are pure transforms.
+ */
 export function emptyConsent(projectId) {
-  return createDisclosureProfile({ projectId });
+  return { projectId, properties: {}, policy: createDisclosurePolicy() };
 }
 
-/** Set a coarse value for an attribute (immutable). Does NOT enable sharing — that's a separate opt-in. */
-export function setConsentValue(profile, key, value) {
-  return setValue(profile, key, value);
+/** Set a coarse value for an attribute → an OWN profile property (immutable). Does NOT enable sharing. */
+export function setConsentValue(consent, key, value) {
+  if (!isValidValue(key, value)) throw new RangeError(`setConsentValue: ${JSON.stringify(value)} is not a coarse allowed value for ${key}`);
+  return { ...consent, properties: setOwn(consent.properties, key, value) };
 }
 
-/** Enable/disable sharing an attribute (immutable; default withheld). */
-export function toggleConsent(profile, key, on) {
-  return setEnabled(profile, key, on === true);
+/** Enable/disable sharing an attribute for THIS project context (immutable; default withheld). */
+export function toggleConsent(consent, key, on) {
+  return { ...consent, policy: setDisclosure(consent.policy, consent.projectId, key, { enabled: on === true }) };
+}
+
+/** getProfile for the local consent graph — swap this for the registry lookup to reuse a real profile. */
+function localProfileCtx(consent) {
+  return {
+    getProfile: (id) => (id === consent.projectId ? { properties: consent.properties } : null),
+    profileId: consent.projectId,
+    defaultProfileId: consent.projectId,
+  };
 }
 
 /**
- * What this consent will actually attach to a contribution: the released coarse attributes (only
- * charter-requested + enabled + valid) and the charterHash. Withheld attributes are ABSENT.
+ * What this consent will attach to a contribution: the released coarse attributes (only charter-requested +
+ * enabled + valued) via the SHARED disclosure layer, plus the charterHash. Withheld attributes are ABSENT.
  * @returns {{ attributes: object, charterHash: string }}
  */
-export function consentRelease(profile, charter) {
-  return { attributes: releasedValues(profile, charter), charterHash: charterHash(charter) };
+export function consentRelease(consent, charter) {
+  const request = { items: charterKeys(charter).map((key) => ({ key })) };
+  const attributes = releasedValues(localProfileCtx(consent), request, consent.policy, consent.projectId);
+  return { attributes, charterHash: charterHash(charter) };
+}
+
+/** The keys this consent currently shares for the charter (enabled AND has a value). */
+export function enabledConsentKeys(consent, charter) {
+  return charterKeys(charter).filter((key) =>
+    getDisclosure(consent.policy, consent.projectId, key).enabled && consent.properties[key]);
 }
 
 /**
  * The on-device low-leak warning: is the participant's enabled combo likely rare in a cohort of ~n?
  * `n` (approximate cohort size) may be absent → the warning is inert (warn:false).
  */
-export function consentWarning(profile, charter, n) {
-  return disclosureWarning({ enabledKeys: enabledSharedKeys(profile, charter), n });
+export function consentWarning(consent, charter, n) {
+  return disclosureWarning({ enabledKeys: enabledConsentKeys(consent, charter), n });
 }

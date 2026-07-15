@@ -43,6 +43,15 @@ describe('charter consent (participant side)', () => {
     expect(consentRelease(p, charter).attributes).toEqual({ place: 'Groningen' });
   });
 
+  it('LIFT: a picked value is stored as a shared own profile property + a shared disclosure policy (reusable shape)', () => {
+    let p = emptyConsent('proj');
+    p = toggleConsent(setConsentValue(p, 'ageBand', '35-54'), 'ageBand', true);
+    // the value lives in the agent-registry own/inherit property graph…
+    expect(p.properties.ageBand).toEqual({ mode: 'own', value: '35-54' });
+    // …and the share choice lives in the shared per-context disclosure policy (not a feedback-local flag).
+    expect(p.policy.perContext.proj.ageBand).toEqual({ enabled: true, rung: null });
+  });
+
   it('warns on-device when the enabled combo is likely rare in a small cohort', () => {
     const charter = charterFromConfig('buurt-42', cfgCharter);
     let p = emptyConsent('buurt-42');
