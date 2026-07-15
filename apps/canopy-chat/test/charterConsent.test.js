@@ -52,6 +52,19 @@ describe('charter consent (participant side)', () => {
     expect(p.policy.perContext.proj.ageBand).toEqual({ enabled: true, rung: null });
   });
 
+  it('SWAP: consentRelease can read from an EXTERNAL profile (the cross-app reuse point)', () => {
+    const charter = charterFromConfig('buurt-42', cfgCharter);
+    // the user enabled sharing place for this project, but the VALUE lives on their real profile registry
+    let p = emptyConsent('buurt-42');
+    p = toggleConsent(p, 'place', true);   // enabled, but NO local value set
+    // a stand-in "real profile" holding the curated value (own/inherit shape)
+    const realProfile = { properties: { place: { mode: 'own', value: 'Groningen' } } };
+    const profileCtx = { getProfile: (id) => (id === 'me' ? realProfile : null), profileId: 'me', defaultProfileId: 'me' };
+    expect(consentRelease(p, charter, profileCtx).attributes).toEqual({ place: 'Groningen' });  // reused from the real profile
+    // …and WITHOUT the external profile the local (empty) graph releases nothing — same policy, different source.
+    expect(consentRelease(p, charter).attributes).toEqual({});
+  });
+
   it('warns on-device when the enabled combo is likely rare in a small cohort', () => {
     const charter = charterFromConfig('buurt-42', cfgCharter);
     let p = emptyConsent('buurt-42');

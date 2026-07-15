@@ -57,11 +57,21 @@ function localProfileCtx(consent) {
 /**
  * What this consent will attach to a contribution: the released coarse attributes (only charter-requested +
  * enabled + valued) via the SHARED disclosure layer, plus the charterHash. Withheld attributes are ABSENT.
+ *
+ * `profileCtx` is the SWAP POINT for cross-app reuse (§9 remainder / §7 load-bearing decision): pass a
+ * `{ getProfile, profileId, defaultProfileId }` pointing at the user's REAL agent-registry profile and the
+ * values come from there (curated once, reused across apps) — no other change. Omit it and the release reads
+ * the local consent graph (today's feedback path). The disclosure POLICY still governs what's enabled.
+ *
+ * @param {object} consent
+ * @param {object} charter
+ * @param {{getProfile:Function, profileId:string, defaultProfileId?:string}} [profileCtx]  external profile (real registry)
  * @returns {{ attributes: object, charterHash: string }}
  */
-export function consentRelease(consent, charter) {
+export function consentRelease(consent, charter, profileCtx = null) {
   const request = { items: charterKeys(charter).map((key) => ({ key })) };
-  const attributes = releasedValues(localProfileCtx(consent), request, consent.policy, consent.projectId);
+  const ctx = profileCtx && typeof profileCtx.getProfile === 'function' ? profileCtx : localProfileCtx(consent);
+  const attributes = releasedValues(ctx, request, consent.policy, consent.projectId);
   return { attributes, charterHash: charterHash(charter) };
 }
 
