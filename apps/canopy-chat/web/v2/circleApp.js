@@ -158,6 +158,7 @@ import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
+import { privacyBadge } from '../../src/feedback/circlePrivacyState.js';   // shared per-circle privacy badge (§10c)
 import { createBugReportSink } from '../../src/feedback/bugReportSink.js';
 import { makeNoLoginFeedbackPods } from '../../src/feedback/noLoginPods.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
@@ -2189,14 +2190,9 @@ async function showContactThread(contactId) {
 // deliberately lives OUTSIDE the circle t() system (the bot owns its i18n via config.language), so we mirror
 // that with a minimal nl/en map here (web ≡ mobile by construction; the mobile shell carries the same map). The
 // ⚠ is EARNED (level==='risk'); the calm states are neutral, never "green = safe".
-const FB_PRIVACY_STRINGS = {
-  nl: { quiet: 'Privacy: rustig', sharing: 'Privacy: je deelt', risk: 'Privacy: ⚠ risico' },
-  en: { quiet: 'Privacy: quiet',  sharing: 'Privacy: sharing',  risk: 'Privacy: ⚠ risk' },
-};
 function _fbPrivacyBadge(state, lang) {
   if (!state || !state.applicable) return null;   // no charter applies → hide (no noise)
-  const L = FB_PRIVACY_STRINGS[lang === 'nl' ? 'nl' : 'en'];
-  return { level: state.level, icon: state.level === 'risk' ? '⚠️' : '🛡', label: L[state.level] || L.quiet };
+  return privacyBadge(state.level, lang);          // shared icon+label (one source, invariant #3); colours below are web styling
 }
 
 function _renderFbThread(botId) {

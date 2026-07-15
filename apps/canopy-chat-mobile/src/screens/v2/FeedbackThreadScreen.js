@@ -25,6 +25,7 @@ import { createBugReportSink } from '../../../../canopy-chat/src/feedback/bugRep
 import { FeedbackReviewCards, FeedbackReportPanel } from '../../rn/FeedbackBubbles.js';
 import { makeNoLoginFeedbackPods } from '../../../../canopy-chat/src/feedback/noLoginPods.js';
 import { createFeedbackHistoryStore } from '../../../../canopy-chat/src/feedback/feedbackHistory.js';
+import { privacyBadge } from '../../../../canopy-chat/src/feedback/circlePrivacyState.js';   // shared privacy badge (§10c, invariant #3)
 import { activateMobileFeedback } from '../../v2/feedbackActivation.js';
 
 // Device-local transcript store — restore the feedback thread on reload (shared web ≡ mobile store; see
@@ -52,10 +53,6 @@ const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || undefined;   // non-i
 // OUTSIDE the circle t() system (the bot owns its i18n via config.language), so we mirror the web shell's
 // minimal nl/en map here (web ≡ mobile by construction — see circleApp.js FB_PRIVACY_STRINGS). The ⚠ is
 // EARNED (level==='risk'); the calm states are neutral, never "green = safe".
-const FB_PRIVACY_STRINGS = {
-  nl: { quiet: 'Privacy: rustig', sharing: 'Privacy: je deelt', risk: 'Privacy: ⚠ risico' },
-  en: { quiet: 'Privacy: quiet',  sharing: 'Privacy: sharing',  risk: 'Privacy: ⚠ risk' },
-};
 // Colour AMPLIFIES the shape (never colour-alone): quiet → neutral slate outline (NOT green), sharing →
 // soft-blue fill, risk → amber→red. Maps to the shared Onderling status tokens (theme.color.*).
 function privacyChip(level) {
@@ -338,17 +335,17 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
           affordance. The ⚠ is EARNED (risk only); a subtle one-time emphasis when the state flips into risk. */}
       {privacy && (() => {
         const c = privacyChip(privacy.level);
-        const label = FB_PRIVACY_STRINGS[botLang === 'nl' ? 'nl' : 'en'][privacy.level] || privacy.level;
+        const badge = privacyBadge(privacy.level, botLang);   // shared icon+label (one source)
         return (
           <Pressable
             onPress={() => { try { surfaceRef.current?.showPrivacy?.(threadId); } catch { /* best-effort */ } }}
             accessibilityRole="button"
-            accessibilityLabel={label}
+            accessibilityLabel={badge.label}
             testID="feedback-privacy"
             style={[styles.privacy, { backgroundColor: c.bg, borderColor: c.border }, pvPulse && styles.privacyPulse]}
           >
             <Text style={[styles.privacyText, { color: c.fg }]} testID={`feedback-privacy-${privacy.level}`}>
-              {`${privacy.level === 'risk' ? '⚠️' : '🛡'} ${label}`}
+              {`${badge.icon} ${badge.label}`}
             </Text>
           </Pressable>
         );

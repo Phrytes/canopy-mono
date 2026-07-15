@@ -15,6 +15,17 @@ import { consentWarning, enabledConsentKeys } from './charterConsent.js';
  * @param {number} [a.n]            approximate cohort size (§10b) — enables the identifiability trigger
  * @returns {{applicable:boolean, level:'quiet'|'sharing'|'risk', shared:string[], warn:boolean, reason:?string}}
  */
+// Shared badge presentation for the per-circle indicator (§10c) — ONE source for BOTH shells (invariant #3).
+// Icon carries the meaning (accessible); label localised nl/en. Colours are platform styling → stay per-shell.
+const PRIVACY_BADGE = {
+  nl: { quiet: 'Privacy: rustig', sharing: 'Privacy: je deelt', risk: 'Privacy: ⚠ risico' },
+  en: { quiet: 'Privacy: quiet',  sharing: 'Privacy: sharing',  risk: 'Privacy: ⚠ risk' },
+};
+export function privacyBadge(level, lang) {
+  const L = PRIVACY_BADGE[lang === 'nl' ? 'nl' : 'en'];
+  return { level, icon: level === 'risk' ? '⚠️' : '🛡', label: L[level] || L.quiet };
+}
+
 export function circlePrivacyState({ consent, charter, warningsOn = true, n } = {}) {
   if (!charter) return { applicable: false, level: 'quiet', shared: [], warn: false, reason: null };
   const shared = consent ? enabledConsentKeys(consent, charter) : [];
