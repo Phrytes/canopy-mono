@@ -30,6 +30,9 @@ export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } 
 // property layer (design Phase 1) — the canonical Request record + the governed-request check.
 export { createRequest, requestHash, requestKeys } from './src/request.js';
 export { checkRequestAllowed, DEFAULT_GOVERNED_POLICY } from './src/governedRequest.js';
+// property layer (design Phase 4) — the neutral request form-spec + the pure egress gate/receipt.
+export { requestForm } from './src/requestForm.js';
+export { egressReceipt, gateEgress } from './src/requestGate.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
 // endorsement-backed curated catalog read-view (fills P3's catalogSource seam).
