@@ -24,6 +24,9 @@ export { loadProfile } from './src/loadProfile.js';
 // identity step 5A — encrypted-file/DB export of the profile set
 export { exportProfileRegistry, importProfileRegistry, restoreProfilesInto } from './src/exportRegistry.js';
 export { registerAgentBundle } from './src/registerAgentBundle.js';
+// property layer (design Phase 0) — the typed vocabulary + the shared disclosure mechanism.
+export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './src/propertyVocabulary.js';
+export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from './src/disclosure.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
 // endorsement-backed curated catalog read-view (fills P3's catalogSource seam).
