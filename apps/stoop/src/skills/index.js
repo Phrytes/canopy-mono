@@ -552,11 +552,15 @@ async function listGroupMembersCore(scope, a, ctx) {
   // the unlinkable address the member presents in THIS circle. Recovered from
   // the redemption trail like signKeys, so it survives a roster rebuild.
   const addrKeys = new Map();
+  // webid → the coarse persona properties the member disclosed on redeem (property layer). Recovered from the
+  // redemption trail like the others, so it survives a roster rebuild.
+  const personaMaps = new Map();
   for (const r of forGroup) {
-    const { redeemedBy, sealingPublicKey, signingPublicKey, circleAddress } = r?.source ?? {};
+    const { redeemedBy, sealingPublicKey, signingPublicKey, circleAddress, personaProperties } = r?.source ?? {};
     if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
     if (redeemedBy && signingPublicKey && !signKeys.has(redeemedBy)) signKeys.set(redeemedBy, signingPublicKey);
     if (redeemedBy && circleAddress && !addrKeys.has(redeemedBy)) addrKeys.set(redeemedBy, circleAddress);
+    if (redeemedBy && personaProperties && Object.keys(personaProperties).length && !personaMaps.has(redeemedBy)) personaMaps.set(redeemedBy, personaProperties);
   }
   const scoped = list
     .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
@@ -568,6 +572,8 @@ async function listGroupMembersCore(scope, a, ctx) {
       // Prefer the row's circleAddress (createGroupV2 admin path), else backfill
       // from the redemption trail (joiner path).
       if (!out.circleAddress && addrKeys.has(m.webid)) out = { ...out, circleAddress: addrKeys.get(m.webid) };
+      // Persona properties: prefer the row's (createGroupV2 admin path), else the redemption trail (joiner path).
+      if (!out.personaProperties && personaMaps.has(m.webid)) out = { ...out, personaProperties: personaMaps.get(m.webid) };
       return out;
     });
   return { groupId: _groupId, members: scoped };
@@ -1785,6 +1791,7 @@ export function buildSkills({
           ...me,
           role: 'admin',
           ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
         });
       }
 
@@ -2034,6 +2041,10 @@ export function buildSkills({
           // (it's the joiner declaring the unlinkable address they present here,
           // NOT a claim about another member), so we record it verbatim.
           ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          // Property layer — the coarse background values the joiner CHOSE to disclose in THIS circle when
+          // joining AS a persona (getPersonaRelease). Self-asserted like circleAddress; opt-in (absent = shared
+          // nothing). A map {key: coarseValue}.
+          ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -2048,6 +2059,7 @@ export function buildSkills({
             webid: from,
             pubKey: signingPubKey,
             ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+            ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
           });
         }
         catch { /* roster upsert is best-effort — never block the redeem */ }
@@ -2137,6 +2149,8 @@ export function buildSkills({
           // Per-circle ADDRESS the joiner presents in THIS circle (identity
           // step 5B/C) — forwarded by the peer bridge, recorded like sealingPublicKey.
           ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          // Property layer — the joiner's disclosed persona properties (forwarded by the peer bridge).
+          ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -2149,6 +2163,7 @@ export function buildSkills({
             webid: a.requesterWebid,
             pubKey: peerSigningPubKey,
             ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+            ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
           });
         }
         catch { /* roster upsert is best-effort — never block the redeem */ }

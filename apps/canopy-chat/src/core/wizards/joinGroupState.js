@@ -285,8 +285,16 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
     if (handle?.ok === false || handle?.error) {
       throw new Error(handle.error ?? "Couldn't set handle.");
     }
+    // Property layer — join AS a chosen persona: release what that persona discloses in THIS circle
+    // (getPersonaRelease) and carry it so the roster records it. No persona / nothing disclosed → absent (withhold).
+    let personaProperties;
+    if (state.persona) {
+      try { personaProperties = (await callSkill('agents', 'getPersonaRelease', { id: state.persona, contextId: inv.groupId }))?.released; }
+      catch { personaProperties = undefined; }
+    }
+    const personaArg = (personaProperties && Object.keys(personaProperties).length) ? { personaProperties } : {};
     const redeem = await callSkill('stoop', 'redeemMembershipCode', {
-      groupId: inv.groupId, code: inv.code,
+      groupId: inv.groupId, code: inv.code, ...personaArg,
     });
     // Cross-instance fallback.
     if (redeem?.error === 'invalid-or-expired-code' && inv.adminPeerAddr && typeof sendPeerRedeem === 'function') {
@@ -296,6 +304,7 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
         code:        inv.code,
         shareCard:   !!state.shareAddress,
         peerDisplay: state.handle,
+        ...personaArg,
       });
       if (!peerReply || peerReply.error) {
         throw new Error(peerReply?.error

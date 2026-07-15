@@ -32,7 +32,7 @@ export function makeHandleGroupRedeemRequest({
   if (typeof sendPeer  !== 'function') throw new Error('makeHandleGroupRedeemRequest: sendPeer required');
 
   return async function handleGroupRedeemRequest(fromAddr, payload) {
-    const { requestId, groupId, code, shareCard, peerDisplay, circleAddress } = payload ?? {};
+    const { requestId, groupId, code, shareCard, peerDisplay, circleAddress, personaProperties } = payload ?? {};
     if (!requestId || !groupId || !code) {
       logger.warn?.('[peer] group-redeem-request missing fields', payload);
       return;
@@ -48,6 +48,8 @@ export function makeHandleGroupRedeemRequest({
         // request envelope so the admin records it into the roster. Self-asserted
         // (the joiner speaks only for the address THEY present here).
         ...(circleAddress ? { circleAddress } : {}),
+        // Property layer — the joiner's disclosed persona properties, forwarded to the admin's roster.
+        ...(personaProperties && Object.keys(personaProperties).length ? { personaProperties } : {}),
       });
       if (result?.error) {
         reply = { error: result.error };
@@ -121,7 +123,7 @@ export function makeSendGroupRedeemRequest({
     typeof isPeerConnected !== 'function' ? true : !!isPeerConnected();
 
   return async function sendGroupRedeemRequest({
-    adminPeerAddr, groupId, code, shareCard, peerDisplay,
+    adminPeerAddr, groupId, code, shareCard, peerDisplay, personaProperties,
   }) {
     if (!peerUp()) {
       throw new Error('Peer transport not connected. Try /peer-connect first.');
@@ -153,6 +155,8 @@ export function makeSendGroupRedeemRequest({
         ...(shareCard   ? { shareCard: true } : {}),
         ...(peerDisplay ? { peerDisplay }     : {}),
         ...(circleAddress ? { circleAddress } : {}),
+        // Property layer — the joiner's disclosed persona properties (from finalSubmit), forwarded to the admin.
+        ...(personaProperties && Object.keys(personaProperties).length ? { personaProperties } : {}),
         sentAt: Date.now(),
       });
     } catch (err) {

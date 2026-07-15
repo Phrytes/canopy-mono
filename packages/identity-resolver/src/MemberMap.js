@@ -263,6 +263,10 @@ export class MemberMap extends Emitter {
       // redeem/create and surfaced by listGroupMembers. Optional — a member
       // who joined before the substrate shipped simply has none.
       circleAddress: m.circleAddress ?? null,
+      // personaProperties: the coarse background values this member CHOSE to disclose in THIS circle when
+      // they joined AS a persona (property layer — getPersonaRelease). A map {key: coarseValue}; opt-in
+      // (default-withhold → absent). Recorded on redeem/create + surfaced by listGroupMembers, like circleAddress.
+      personaProperties: (m.personaProperties && typeof m.personaProperties === 'object') ? m.personaProperties : null,
       // nknAddr: this member's NKN peer address (2026-05-27).  Used
       // by the chat-shell to route DMs over NKN after a /share-my-
       // contact QR exchange — addContactFromQr reads it from the
