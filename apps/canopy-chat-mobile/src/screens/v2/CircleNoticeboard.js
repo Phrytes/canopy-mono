@@ -17,6 +17,7 @@ import { pickAndEncodeImage } from '../../v2/attachmentPicker.js';
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { enrichEmbedsWithTitles } from '../../../../canopy-chat/src/v2/embedResolve.js';
 import { isNoticeboardPost } from '../../../../canopy-chat/src/v2/circleStoopScope.js';
+import { annotateResonantPosts } from '../../../../canopy-chat/src/core/handlers/driverMatchNotify.js';
 import { getCirclePodFetch } from '../../core/circlePods.js';
 // Sealed media (2026-07-11): Uint8Array → base64 data-URL for the full-image viewer (reuse the
 // RN media-card helper — no second encoder).
@@ -73,11 +74,25 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
         // embeds[] — cross-object references (a post → a task / event / post).
         embeds: Array.isArray(it.embeds) ? it.embeds
           : (Array.isArray(it.source?.embeds) ? it.source.embeds : []),
+        // Drivers #5 — carry the matching signal for the render-time driver match.
+        driverSignature: it.driverSignature ?? it.source?.driverSignature ?? null,
+        skillTags: Array.isArray(it.source?.skillTags) ? it.source.skillTags : (Array.isArray(it.skillTags) ? it.skillTags : []),
+        requiredSkills: Array.isArray(it.requiredSkills) ? it.requiredSkills : [],
       }));
-      setPosts(mapped);
+      // Drivers #5 (b) — flag posts that resonate with my private drivers (on-device); the existing
+      // "respond" chip on a flagged post IS the anonymous reach-out. Best-effort.
+      let annotated = mapped;
+      try {
+        annotated = await annotateResonantPosts({
+          posts: mapped,
+          getDrivers: async () => (await callSkill('agents', 'getProfileDrivers', { id: 'default' }))?.drivers ?? {},
+        });
+      } catch { /* resonance is a nicety; never block the board */ }
+      setPosts(annotated);
       // embeds[] — progressively resolve each ref to a live title, then re-set
-      // to upgrade the "See also" chips (ref → real title). Best-effort.
-      enrichEmbeds(mapped);
+      // to upgrade the "See also" chips (ref → real title). Best-effort. Pass the
+      // ANNOTATED posts so the resonance flag survives the embed re-set.
+      enrichEmbeds(annotated);
     } catch { setPosts([]); }
   }, [callSkill, myWebid, enrichEmbeds]);
 
@@ -243,6 +258,9 @@ export default function CircleNoticeboard({ callSkill, onStoopEvent, onEmbedOpen
               ))}
             </View>
           )}
+          {p.resonance?.reason ? (
+            <Text style={styles.resonance}>{`✨ ${t('circle.noticeboard.resonates', { reason: p.resonance.reason })}`}</Text>
+          ) : null}
           <View style={styles.actions}>
             {!p.mine && <Chip label={t('circle.noticeboard.action.respond')} onPress={() => runAction('respond', p)} />}
             {p.type === 'lend' && p.mine && <Chip label={t('circle.noticeboard.action.assign')} onPress={() => runAction('assign', p)} />}
@@ -322,6 +340,7 @@ const styles = StyleSheet.create({
   viewerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', padding: 16, gap: 10 },
   viewerImage: { width: '100%', height: '85%' },
   viewerNote: { color: theme.color.white, fontSize: 13, opacity: 0.85 },
+  resonance: { fontSize: 12, color: theme.color.accent, marginTop: 4, fontWeight: '600' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   chip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: theme.color.accent },
   chipMuted: { borderColor: theme.color.line },
