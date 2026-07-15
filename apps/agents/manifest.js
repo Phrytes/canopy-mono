@@ -152,6 +152,31 @@ export const agentsManifest = {
       surfaces: { chat: { reply: 'record', hint: 'Read a profile\'s properties (own/inherit).' } },
     },
 
+    /* Personas — persist what a persona SHARES per context (circle/project). The general per-persona version
+     * of the feedback charter consent; the "About me" surface + join wizard write through these. */
+    {
+      id:        'setProfileDisclosure',
+      verb:      'set',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',        kind: 'string',  required: true, schema: { minLength: 1 } },
+        { name: 'contextId', kind: 'string',  required: true, schema: { minLength: 1 } },
+        { name: 'key',       kind: 'string',  required: true, schema: { minLength: 1 } },
+        { name: 'enabled',   kind: 'boolean' },
+        { name: 'rung',      kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Choose whether a persona shares a property in a given circle/context.' } },
+    },
+    {
+      id:        'getProfileDisclosure',
+      verb:      'view',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Read a persona\'s per-context disclosure policy.' } },
+    },
+
     /* ── P2 CONTROL ops ─────────────────────────────────────────────────
      * All resolve the target by agentId OR pubKey ONLY (never webid —
      * ambiguous for multi-device users), same as viewAgent.  Token-first

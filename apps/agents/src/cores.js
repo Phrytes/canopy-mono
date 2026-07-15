@@ -427,12 +427,45 @@ export async function getProfileProperties(store, args = {}) {
   return { ok: true, id, properties: (await s.profiles.getProperties({ profileId: id })) ?? {} };
 }
 
+/**
+ * setProfileDisclosure — record what a persona shares in a CONTEXT (circle/project): enable/disable a property
+ * key + optional coarseness rung, persisted on the profile. The general (per-persona) version of the feedback
+ * charter consent. Through the `profiles` collaborator (dependency-free cores). Degrades (ok:false) if unwired.
+ */
+export async function setProfileDisclosure(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const contextId = typeof args?.contextId === 'string' ? args.contextId.trim() : '';
+  const key = typeof args?.key === 'string' ? args.key.trim() : '';
+  if (typeof s.profiles?.setDisclosure !== 'function' || !id || !contextId || !key) {
+    return { ok: false, reason: !id ? 'id-required' : (!contextId ? 'contextId-required' : (!key ? 'key-required' : 'profiles-unavailable')) };
+  }
+  await s.profiles.setDisclosure({
+    profileId: id, contextId, key,
+    enabled: args?.enabled === true || args?.enabled === 'true',   // wire args arrive as strings; object args as bool
+    rung: typeof args?.rung === 'string' && args.rung ? args.rung : null,
+  });
+  return { ok: true, id, contextId, key };
+}
+
+/** getProfileDisclosure — the persona's persisted per-context disclosure policy. */
+export async function getProfileDisclosure(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getDisclosure !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', disclosure: { perContext: {} } };
+  }
+  return { ok: true, id, disclosure: (await s.profiles.getDisclosure({ profileId: id })) ?? { perContext: {} } };
+}
+
 export const AGENT_CORES = Object.freeze({
   listAgents,
   viewAgent,
   createProfile,
   setProfileProperty,
   getProfileProperties,
+  setProfileDisclosure,
+  getProfileDisclosure,
   revokeAgent,
   grantAgent,
   revokeGrant,

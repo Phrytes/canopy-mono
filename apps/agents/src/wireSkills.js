@@ -83,6 +83,8 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog, p
     'createProfile',
     'setProfileProperty',
     'getProfileProperties',
+    'setProfileDisclosure',
+    'getProfileDisclosure',
     'revokeAgent',
     'grantAgent',
     'revokeGrant',

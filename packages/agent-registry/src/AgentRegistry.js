@@ -136,6 +136,8 @@ export function createAgentRegistry({
             // identity step 2 — persist the profile fields (normalised on read via _normaliseAgent)
             properties:       entry.properties ?? {},
             ownerFingerprint: entry.ownerFingerprint ?? null,
+            // property layer (personas) — persisted per-context disclosure policy
+            disclosure:       entry.disclosure ?? { perContext: {} },
           }],
           updatedAt: now(),
         };

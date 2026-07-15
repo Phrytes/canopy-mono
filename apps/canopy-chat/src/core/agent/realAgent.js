@@ -53,6 +53,7 @@ import {
   createCommunitySubscriptions,
   createProfile as registryCreateProfile,
   setOwn,
+  setDisclosure as setDisclosurePolicy,
 } from '@canopy/agent-registry';
 
 /**
@@ -669,6 +670,15 @@ export async function createRealHouseholdAgent(opts = {}) {
         return { ok: true };
       },
       getProperties: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.properties ?? {},
+      // Personas — the PERSISTED per-context disclosure policy ("what this persona shares in circle X").
+      // Merge via the pure disclosure setter, then re-register the FULL entry (preserves properties/key/grants).
+      setDisclosure: async ({ profileId, contextId, key, enabled, rung }) => {
+        const cur = await agentsRegistry.lookup(profileId);
+        if (!cur) throw new Error(`setDisclosure: no such profile ${profileId}`);
+        await agentsRegistry.register({ ...cur, disclosure: setDisclosurePolicy(cur.disclosure ?? { perContext: {} }, contextId, key, { enabled, rung }) });
+        return { ok: true };
+      },
+      getDisclosure: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.disclosure ?? { perContext: {} },
     };
     for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog, profiles: agentsProfiles })) {
       hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });

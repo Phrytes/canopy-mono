@@ -154,3 +154,21 @@ describe('property layer — cross-app reuse (setProfileProperty / getProfilePro
     expect(Object.keys(both.properties).sort()).toEqual(['ageBand', 'place']);
   });
 });
+
+describe('property layer — persisted per-persona disclosure (personas #1/#2 substrate)', () => {
+  it('setProfileDisclosure persists what a persona shares per context; getProfileDisclosure reads it back', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });
+    // in circle 'buurt-42', the Work persona shares place but not ageBand
+    expect((await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt-42', key: 'place', enabled: true })).ok).toBe(true);
+    await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt-42', key: 'ageBand', enabled: false });
+    const got = await a.callSkill('agents', 'getProfileDisclosure', { id: 'work' });
+    expect(got.ok).toBe(true);
+    expect(got.disclosure.perContext['buurt-42'].place).toEqual({ enabled: true, rung: null });
+    expect(got.disclosure.perContext['buurt-42'].ageBand).toEqual({ enabled: false, rung: null });
+    // disclosure and properties coexist (setting one doesn't wipe the other)
+    await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'place', value: 'Groningen' });
+    expect((await a.callSkill('agents', 'getProfileDisclosure', { id: 'work' })).disclosure.perContext['buurt-42'].place.enabled).toBe(true);
+    expect((await a.callSkill('agents', 'getProfileProperties', { id: 'work' })).properties.place).toEqual({ mode: 'own', value: 'Groningen' });
+  });
+});
