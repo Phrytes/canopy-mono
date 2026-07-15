@@ -82,6 +82,34 @@ describe('renderContactThread', () => {
     expect(el.querySelector('.cc-cthread__lang')).toBe(null);
   });
 
+  it('renders the per-circle privacy badge (icon + label) + routes a tap to onPrivacyTap', () => {
+    const onPrivacyTap = vi.fn();
+    const el = renderContactThread(document.createElement('div'), {
+      name: 'Bot', t, privacy: { level: 'sharing', icon: '🛡', label: 'Privacy: sharing' }, onPrivacyTap,
+    });
+    const badge = el.querySelector('.cc-cthread__privacy');
+    expect(badge).not.toBe(null);
+    expect(badge.dataset.level).toBe('sharing');
+    expect(badge.textContent).toContain('Privacy: sharing');
+    badge.click();
+    expect(onPrivacyTap).toHaveBeenCalled();
+  });
+
+  it('uses the ⚠️ icon + risk modifier + pulse class for the earned risk state', () => {
+    const el = renderContactThread(document.createElement('div'), {
+      name: 'Bot', t, privacy: { level: 'risk', icon: '⚠️', label: 'Privacy: ⚠ risk', pulse: true },
+    });
+    const badge = el.querySelector('.cc-cthread__privacy--risk');
+    expect(badge).not.toBe(null);
+    expect(badge.textContent).toContain('⚠️');
+    expect(badge.classList.contains('is-pulse')).toBe(true);
+  });
+
+  it('omits the privacy badge when privacy is not applicable (null)', () => {
+    const el = renderContactThread(document.createElement('div'), { name: 'Bot', t, privacy: null });
+    expect(el.querySelector('.cc-cthread__privacy')).toBe(null);
+  });
+
   it('shows the busy + error states', () => {
     const el = renderContactThread(document.createElement('div'), { name: 'Bot', t, busy: true, error: true });
     expect(el.querySelector('.cc-cthread__sending').textContent).toBe('circle.contacts.sending');

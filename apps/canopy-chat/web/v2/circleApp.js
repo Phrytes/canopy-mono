@@ -2185,14 +2185,36 @@ async function showContactThread(contactId) {
 // renders text + buttons (consent · the verify bubble). On first open we build the verify pods
 // (own/central/control) via buildFeedbackVerifyPods, and surface.start polls the lead's /control/ round →
 // the verify bubble. Reuses renderContactThread (buttons + onButtonTap) like a peer DM, but co-hosted.
+// Per-circle privacy INDICATOR (§10c) — localise the discrete state for the header badge. The feedback surface
+// deliberately lives OUTSIDE the circle t() system (the bot owns its i18n via config.language), so we mirror
+// that with a minimal nl/en map here (web ≡ mobile by construction; the mobile shell carries the same map). The
+// ⚠ is EARNED (level==='risk'); the calm states are neutral, never "green = safe".
+const FB_PRIVACY_STRINGS = {
+  nl: { quiet: 'Privacy: rustig', sharing: 'Privacy: je deelt', risk: 'Privacy: ⚠ risico' },
+  en: { quiet: 'Privacy: quiet',  sharing: 'Privacy: sharing',  risk: 'Privacy: ⚠ risk' },
+};
+function _fbPrivacyBadge(state, lang) {
+  if (!state || !state.applicable) return null;   // no charter applies → hide (no noise)
+  const L = FB_PRIVACY_STRINGS[lang === 'nl' ? 'nl' : 'en'];
+  return { level: state.level, icon: state.level === 'risk' ? '⚠️' : '🛡', label: L[state.level] || L.quiet };
+}
+
 function _renderFbThread(botId) {
   const ft = _fbThreads.get(botId);
   if (!ft || _activeFbThread?.botId !== botId) return;
+  // Read the per-circle privacy state fresh each render (after every turn/consent the state can change);
+  // hidden entirely unless a charter applies. Flip-to-risk earns a ONE-TIME pulse (tracked via ft._pvLevel).
+  let pvState = null; try { pvState = ft.surface?.privacyState?.(botId) ?? null; } catch { pvState = null; }
+  const badge = _fbPrivacyBadge(pvState, ft.botLang);
+  const pulse = !!badge && badge.level === 'risk' && ft._pvLevel !== 'risk';
+  ft._pvLevel = badge ? badge.level : null;
   renderContactThread(rootEl, {
     name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false,
     t: (k, p) => t(k, p, ft.botLang),                  // chrome renders in the BOT's chosen language
     langValue: ft.botLang,
     onLangChange: (lg) => _changeFbLang(botId, lg),
+    privacy: badge ? { ...badge, pulse } : null,
+    onPrivacyTap: () => { try { ft.surface?.showPrivacy?.(botId); } catch { /* best-effort */ } },
     inputValue: ft.pendingEditText || '',
     inputHint: ft.editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }, ft.botLang) : '',
     onBack: () => { ft.editingId = null; _activeFbThread = null; showContacts(); },

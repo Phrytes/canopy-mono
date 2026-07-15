@@ -48,6 +48,24 @@ const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address l
 const BUG_REPORT_TARGET = process.env.EXPO_PUBLIC_BUGREPORT_ADDR || BUG_REPORT_DEV_ADDR;
 const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || undefined;   // non-identifying build tag for the report envelope
 
+// Per-circle privacy INDICATOR (§10c) — the discrete state's label, localised. The feedback surface lives
+// OUTSIDE the circle t() system (the bot owns its i18n via config.language), so we mirror the web shell's
+// minimal nl/en map here (web ≡ mobile by construction — see circleApp.js FB_PRIVACY_STRINGS). The ⚠ is
+// EARNED (level==='risk'); the calm states are neutral, never "green = safe".
+const FB_PRIVACY_STRINGS = {
+  nl: { quiet: 'Privacy: rustig', sharing: 'Privacy: je deelt', risk: 'Privacy: ⚠ risico' },
+  en: { quiet: 'Privacy: quiet',  sharing: 'Privacy: sharing',  risk: 'Privacy: ⚠ risk' },
+};
+// Colour AMPLIFIES the shape (never colour-alone): quiet → neutral slate outline (NOT green), sharing →
+// soft-blue fill, risk → amber→red. Maps to the shared Onderling status tokens (theme.color.*).
+function privacyChip(level) {
+  switch (level) {
+    case 'risk':    return { bg: theme.color.amberBg, border: theme.color.danger, fg: theme.color.danger };
+    case 'sharing': return { bg: theme.color.blueBg,  border: theme.color.blue,   fg: theme.color.blue };
+    default:        return { bg: 'transparent',       border: theme.color.line,   fg: theme.color.inkSoft };
+  }
+}
+
 export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null, sendPeer = null, callSkill = null }) {
   const insets = useSafeAreaInsets();   // clear the status bar so the header (back + language toggle) is tappable
   const threadId = bot?.id;
@@ -77,8 +95,30 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
   const hadHistoryRef = useRef(undefined);   // captured once: was there a stored transcript at first build? (reload)
   const greetedRef = useRef(false);          // greet (help + affordances) happens at most once per mount
 
+  // Per-circle privacy INDICATOR (§10c) — the discrete state read from the surface, plus a one-time flip-to-risk
+  // emphasis. `privacy` is null until a charter applies (then the badge shows); refreshed after every turn/consent.
+  const [privacy, setPrivacy] = useState(null);
+  const [pvPulse, setPvPulse] = useState(false);
+  const pvLevelRef = useRef(null);   // last level seen — so the pulse fires only on the flip INTO risk
+
   // chrome (header/composer) renders in the BOT's chosen language, not the device locale.
   const tBot = useCallback((key, params) => t(key, params, botLang || undefined), [botLang]);
+
+  // Re-read the per-circle privacy state (from the shared surface). Called after the surface builds and on every
+  // message change (a turn/consent can flip the state). Hidden unless a charter applies (state.applicable).
+  const refreshPrivacy = useCallback(() => {
+    const s = surfaceRef.current;
+    let st = null;
+    try { st = s?.privacyState ? s.privacyState(threadId) : null; } catch { st = null; }
+    const applicable = !!(st && st.applicable);
+    setPrivacy(applicable ? st : null);
+    const lvl = applicable ? st.level : null;
+    if (lvl === 'risk' && pvLevelRef.current !== 'risk') {   // flipped INTO risk → a subtle one-time pulse, then settle
+      setPvPulse(true);
+      setTimeout(() => setPvPulse(false), 1200);
+    }
+    pvLevelRef.current = lvl;
+  }, [threadId]);
 
   // Load the per-bot language choice (persisted); default to the device locale.
   useEffect(() => {
@@ -107,6 +147,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
     const h = setTimeout(() => { feedbackHistoryStore.save(threadId, messages); }, 250);
     return () => clearTimeout(h);
   }, [messages, threadId]);
+
+  // Refresh the privacy badge whenever the transcript changes (a turn/consent may have flipped the state) or the
+  // surface is (re)built (podsReady/botLang). A plain re-read on each such change is enough — the state is cheap.
+  useEffect(() => { refreshPrivacy(); }, [messages, podsReady, botLang, refreshPrivacy]);
 
   const changeLang = useCallback((lg) => {
     if (lg === botLang || (lg !== 'nl' && lg !== 'en')) return;
@@ -289,6 +333,27 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
         </Pressable>
       </View>
 
+      {/* Per-circle privacy INDICATOR (§10c) — a persistent, icon-first chip under the header. Only shown when a
+          charter applies; icon-first + colour AMPLIFIES (never colour-alone); tap → the surface's why/change
+          affordance. The ⚠ is EARNED (risk only); a subtle one-time emphasis when the state flips into risk. */}
+      {privacy && (() => {
+        const c = privacyChip(privacy.level);
+        const label = FB_PRIVACY_STRINGS[botLang === 'nl' ? 'nl' : 'en'][privacy.level] || privacy.level;
+        return (
+          <Pressable
+            onPress={() => { try { surfaceRef.current?.showPrivacy?.(threadId); } catch { /* best-effort */ } }}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+            testID="feedback-privacy"
+            style={[styles.privacy, { backgroundColor: c.bg, borderColor: c.border }, pvPulse && styles.privacyPulse]}
+          >
+            <Text style={[styles.privacyText, { color: c.fg }]} testID={`feedback-privacy-${privacy.level}`}>
+              {`${privacy.level === 'risk' ? '⚠️' : '🛡'} ${label}`}
+            </Text>
+          </Pressable>
+        );
+      })()}
+
       <ScrollView
         ref={scrollRef}
         style={styles.log}
@@ -403,6 +468,10 @@ const styles = StyleSheet.create({
   langBtnTextActive: { color: theme.color.white },
   reportBtn: { paddingVertical: 4, paddingHorizontal: 6, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10 },
   reportBtnText: { fontSize: 14 },
+  // Per-circle privacy badge (§10c): a slim pill chip; per-level colours are applied inline (privacyChip).
+  privacy: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', paddingVertical: 3, paddingHorizontal: 10, borderWidth: 1, borderRadius: 999, marginBottom: 6 },
+  privacyPulse: { borderWidth: 2 },   // the one-time flip-to-risk emphasis (a heavier edge, then settle)
+  privacyText: { fontSize: 12, fontWeight: '600' },
   log: { flex: 1 },
   msg: { maxWidth: '88%' },
   msgUser: { alignSelf: 'flex-end' },
