@@ -10,6 +10,7 @@
 
 import crypto from 'node:crypto';
 import { InMemoryCohortRegistry } from '../activation/cohort.js';
+import { charterHash } from '@canopy/attribute-charter';
 import { validateProjectConfig } from '../config/project-config.js';
 import { IdentityRoster, makeContributionVerifier } from '../pod/signing.js';
 import { InMemoryRoundControl, openVerificationRound } from '../verify/round-control.js';
@@ -108,6 +109,11 @@ export class ProjectStore {
         verify: config.privacy.verify,               // require a participant signature per contribution
         route: config.llm.route,
         model: config.llm.model,
+        // requested-attributes charter — read-only, immutable per version. Absent → null
+        // (the project asks for no background attributes; unchanged from before).
+        charter: config.charter
+          ? { version: config.charter.version, attributes: config.charter.attributes, charterHash: charterHash(config.charter) }
+          : null,
       },
     };
   }

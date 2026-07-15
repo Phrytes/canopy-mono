@@ -87,6 +87,53 @@ test('settings uses validated defaults + rides the list API and persistence', as
   assert.equal(reloaded.status('def').settings.review, 'notification');
 });
 
+test('charter: a valid charter surfaces on status().settings with its hash (immutable per version)', async () => {
+  const store = new ProjectStore();
+  const charter = { attributes: [{ key: 'place', purpose: 'segmenteren per wijk' }, { key: 'ageBand', purpose: 'leeftijdsbalans checken' }] };
+  const res = await post(store, '/api/projects', { config: { ...baseConfig('ch'), charter }, cohort: { expiresAt: future, ceiling: 5 } });
+  assert.equal(res.status, 201);
+  const s = store.status('ch').settings;
+  assert.ok(s.charter, 'charter surfaces on status');
+  assert.equal(s.charter.version, 1);                          // default version
+  assert.equal(s.charter.attributes.length, 2);
+  assert.ok(s.charter.attributes.some((a) => a.key === 'place' && a.purpose === 'segmenteren per wijk'));
+  assert.match(s.charter.charterHash, /^[0-9a-f]{64}$/);       // reference hash for the participant contribution
+  // the persisted config carries the canonical (validated) charter
+  assert.equal(store.getConfig('ch').charter.attributes.length, 2);
+});
+
+test('charter: >3 attributes OR an off-vocabulary key is rejected at create (400) with a clear reason', async () => {
+  const store = new ProjectStore();
+  const tooMany = await post(store, '/api/projects', {
+    config: { ...baseConfig('ch-max'), charter: { attributes: [
+      { key: 'place', purpose: 'a' }, { key: 'ageBand', purpose: 'b' }, { key: 'role', purpose: 'c' }, { key: 'tenure', purpose: 'd' }] } },
+    cohort: { expiresAt: future, ceiling: 5 },
+  });
+  assert.equal(tooMany.status, 400);
+  assert.match(tooMany.json.reason, /charter/i);
+  assert.match(tooMany.json.reason, /at most 3|3 attribute/i);
+
+  const offVocab = await post(store, '/api/projects', {
+    config: { ...baseConfig('ch-vocab'), charter: { attributes: [{ key: 'income', purpose: 'x' }] } },
+    cohort: { expiresAt: future, ceiling: 5 },
+  });
+  assert.equal(offVocab.status, 400);
+  assert.match(offVocab.json.reason, /income|vocabulary|unknown attribute/i);
+
+  const noPurpose = await post(store, '/api/projects', {
+    config: { ...baseConfig('ch-purpose'), charter: { attributes: [{ key: 'role', purpose: '' }] } },
+    cohort: { expiresAt: future, ceiling: 5 },
+  });
+  assert.equal(noPurpose.status, 400);                          // per-attribute purpose is required
+});
+
+test('charter: a project WITHOUT a charter is unchanged (back-compat)', async () => {
+  const store = new ProjectStore();
+  await post(store, '/api/projects', { config: baseConfig('ch-none'), cohort: { expiresAt: future, ceiling: 5 } });
+  assert.equal(store.status('ch-none').settings.charter, null);   // absent → null, no invented config
+  assert.equal(store.getConfig('ch-none').charter, undefined);
+});
+
 test('API: menukaart validation errors surface as 400 (seal without a key, non-host keygen)', async () => {
   const store = new ProjectStore();
   const bad = await post(store, '/api/projects', {

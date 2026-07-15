@@ -2,7 +2,20 @@
 // server. A project lead fills the menukaart, sees the project dashboard, and mints invite
 // links. All logic is the small JSON API in server.js; this is just the surface.
 
+import { attributeKeys, bucketsFor } from '@canopy/attribute-charter';
+
 export function portalHtml({ inviteBase } = {}) {
+  // The charter picker rows — one per curated coarse vocabulary attribute. The lead may
+  // tick UP TO 3 and give each a short "waarom we dit vragen" purpose. The server re-validates
+  // through createCharter (cap/vocabulary/purpose) as the real gate.
+  const charterRows = attributeKeys().map((key) => {
+    const buckets = bucketsFor(key);
+    const hint = buckets ? buckets.join(' · ') : 'gemeente (open, grofmazig)';
+    return `<div class="charter-attr">
+        <label style="margin:0"><input type="checkbox" class="charter-key" value="${esc(key)}" style="width:auto"> <b>${esc(key)}</b> <span class="muted">${esc(hint)}</span></label>
+        <input class="charter-purpose" data-key="${esc(key)}" placeholder="Waarom vragen we dit? (verplicht bij aanvinken)">
+      </div>`;
+  }).join('');
   const inviteHint = inviteBase
     ? `Standaard uitnodigings-URL: <code>${esc(inviteBase)}</code> — per project te overschrijven.`
     : `Geen standaard ingesteld — geef een uitnodigings-URL per project, of zet <code>FP_INVITE_BASE</code> als algemene standaard.`;
@@ -37,6 +50,11 @@ export function portalHtml({ inviteBase } = {}) {
   pre { background:#f6f6f4; border:1px solid var(--line); border-radius:6px; padding:8px; font-size:12px; overflow:auto; max-height:180px; }
   .err { color:#b42318; font-size:13px; margin-top:8px; } .ok { color:var(--accent); font-size:13px; margin-top:8px; } .hide { display:none; }
   code { background:#f1f1ef; padding:1px 4px; border-radius:4px; }
+  .charter-box { border:1px solid var(--line); border-radius:8px; padding:12px; margin-top:6px; background:#fbfbf9; }
+  .charter-attr { border-top:1px solid #f0f0ee; padding:8px 0; }
+  .charter-attr:first-of-type { border-top:0; }
+  .charter-attr .charter-purpose { margin-top:5px; }
+  .charter-view { border-top:1px solid #f0f0ee; margin-top:8px; padding-top:6px; }
 </style></head>
 <body>
 <header><h1>Feedback-infrastructuur — projectportaal</h1>
@@ -75,6 +93,12 @@ export function portalHtml({ inviteBase } = {}) {
           <div><label>Project-publieke sleutel <span class="muted">(b64url X25519)</span></label><input name="projectPublicKey" placeholder="vereist tenzij keygen=host"></div>
         </div>
         <div class="muted">Bij <code>host</code> maakt de server het sleutelpaar en toont de privésleutel <b>één keer</b> — bewaren! Bij <code>client/external</code> plak je hier alleen de publieke sleutel.</div>
+      </div>
+
+      <label style="margin-top:14px"><b>Gevraagde kenmerken (charter)</b> <span class="muted">— optioneel; max 3 grofmazige kenmerken</span></label>
+      <div class="charter-box">
+        <div class="muted">Vastgelegd bij aanmaken en daarna <b>onveranderlijk</b> voor deze projectversie. Elke deelnemer ziet dit charter en kiest zélf per kenmerk of ze het (grofmazig) delen. Meer vragen kan alleen met een nieuwe versie.</div>
+        ${charterRows}
       </div>
 
       <div class="row">
@@ -141,8 +165,14 @@ function card(p) {
     ? '<span class="pill">seal: '+esc(p.keygen)+' · '+esc(s.sealLocation||'host')+(p.hasProjectKey?'':' · ⚠ geen sleutel')+'</span>'
     : '<span class="pill off">geen seal</span>';
   const verify = s.verify ? '<span class="pill">handtekening vereist</span>' : '';
+  const charter = s.charter;
+  const charterPill = charter ? '<span class="pill">charter · '+charter.attributes.length+' kenmerk'+(charter.attributes.length===1?'':'en')+'</span>' : '';
+  const charterView = charter
+    ? '<div class="charter-view"><div class="muted">Gevraagde kenmerken (charter v'+esc(charter.version)+' · onveranderlijk):</div>'+
+        '<div class="kvs">'+charter.attributes.map(a => row(a.key, a.purpose)).join('')+'</div></div>'
+    : '';
   const expired = p.expiresAt && new Date(p.expiresAt) < new Date();
-  return '<div class="card"><div><b>'+esc(p.projectName||p.projectId)+'</b> '+seal+' '+verify+'</div>'+
+  return '<div class="card"><div><b>'+esc(p.projectName||p.projectId)+'</b> '+seal+' '+verify+' '+charterPill+'</div>'+
     '<div class="muted">'+esc(p.projectId)+'</div>'+
     '<div class="kvs">'+
       row('Activaties', p.activations+' / '+p.ceiling)+
@@ -151,7 +181,7 @@ function card(p) {
       row('k-anonimiteit', 'k='+(s.k??'?')+' · onder drempel: '+(s.belowThreshold||'?'))+
       row('Taal · review', (s.language||'?')+' · '+(s.review||'?'))+
       row('LLM-route', (s.route||'?')+' · '+(s.model||'?'))+
-    '</div></div>';
+    '</div>'+charterView+'</div>';
 }
 function esc(s){ return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
@@ -211,6 +241,13 @@ document.getElementById('f').addEventListener('submit', async (e) => {
   if (seal && g('keygen') !== 'host' && !g('projectPublicKey')) {
     err.textContent = 'Bij seal met keygen ' + g('keygen') + ' is een project-publieke sleutel vereist.'; return;
   }
+  // charter — the ticked coarse attributes + their purpose (server re-validates via createCharter)
+  const charterAttrs = [...document.querySelectorAll('.charter-key:checked')].map(cb => ({
+    key: cb.value,
+    purpose: (document.querySelector('.charter-purpose[data-key="'+cb.value+'"]').value || '').trim(),
+  }));
+  if (charterAttrs.length > 3) { err.textContent = 'Een charter mag hoogstens 3 kenmerken bevatten.'; return; }
+  if (charterAttrs.some(a => !a.purpose)) { err.textContent = 'Geef bij elk aangevinkt kenmerk een korte reden ("waarom we dit vragen").'; return; }
   const config = {
     projectId: g('projectId'), projectName: g('projectName') || undefined,
     llm: { route: g('route'), model: g('model') },
@@ -219,6 +256,7 @@ document.getElementById('f').addEventListener('submit', async (e) => {
     signal: { destinations },
     privacy: seal ? { seal:true, keygen:g('keygen'), projectPublicKey: g('projectPublicKey') || undefined } : { seal:false },
   };
+  if (charterAttrs.length) config.charter = { attributes: charterAttrs };
   const cohort = { expiresAt: exp.toISOString(), ceiling };
   const inviteBase = g('inviteBase') || undefined;
   let res;
