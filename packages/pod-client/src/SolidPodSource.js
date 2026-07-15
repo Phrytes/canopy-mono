@@ -42,6 +42,7 @@ import {
 } from '@inrupt/solid-client';
 
 import { DataSource } from '@canopy/core';
+import { log } from '@canopy/logger';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -81,8 +82,8 @@ function podError(message, { code, status, uri, cause } = {}) {
  * `ClientHttpError` instances that expose `.response.status`; older
  * shapes (and our own `fetch` paths) expose `.statusCode` or `.status`.
  */
-function rethrow(err, uri) {
-  // Already one of ours — propagate unchanged.
+function rethrow(err, uri, op = 'pod') {
+  // Already one of ours — propagate unchanged (it was already logged at origin).
   if (err && typeof err.code === 'string' && err.code !== undefined && err.message) {
     if (['NOT_FOUND', 'UNAUTHORIZED', 'FORBIDDEN', 'CONFLICT', 'RATE_LIMITED',
          'SERVER_ERROR', 'NETWORK_ERROR', 'INVALID_ARGUMENT', 'HTTP_ERROR'].includes(err.code)) {
@@ -98,6 +99,9 @@ function rethrow(err, uri) {
     null;
 
   if (typeof status === 'number') {
+    // PII-SAFE: coarse op label + our error code + numeric status + error NAME.
+    // NEVER the URI (which carries the resource path / user identity) or content.
+    log.error('pod', 'pod.error', { op, code: codeForStatus(status), status, err: err?.name ?? 'Error' });
     throw podError(err.message || `Pod request failed (${status})`, {
       code: codeForStatus(status),
       status,
@@ -107,6 +111,7 @@ function rethrow(err, uri) {
   }
 
   // Fetch-level failure — DNS, connection refused, abort, etc.
+  log.error('pod', 'pod.error', { op, code: 'NETWORK_ERROR', err: err?.name ?? 'Error' });
   throw podError(err?.message || 'Pod network error', {
     code: 'NETWORK_ERROR',
     uri,
@@ -212,17 +217,20 @@ export class SolidPodSource extends DataSource {
    */
   async read(uri, _opts = {}) {   // eslint-disable-line no-unused-vars
     const fullUri = this.#resolve(uri);
+    const t0 = Date.now();
     let blob;
     try {
       blob = await getFile(fullUri, { fetch: this.#fetch });
     } catch (err) {
-      rethrow(err, fullUri);
+      rethrow(err, fullUri, 'read');
     }
 
     const { contentType, size: blobSize } = infoFromInruptFile(blob);
     const buf  = await blob.arrayBuffer();
     const content = new Uint8Array(buf);
     const size = content.byteLength || blobSize;
+    // PII-SAFE: byte COUNT + duration only — never the resource path or content.
+    log.info('pod', 'pod.read', { bytes: size, ms: Date.now() - t0 });
 
     // The Inrupt API hides response headers from us; re-fetch with HEAD to
     // get etag/lastModified for conflict detection.  Best-effort — failure
@@ -262,6 +270,7 @@ export class SolidPodSource extends DataSource {
     const fullUri     = this.#resolve(uri);
     const contentType = opts.contentType || DEFAULT_CONTENT_TYPE;
     const blob        = toBlob(content, contentType);
+    const t0          = Date.now();
 
     // If the caller wants conflict detection, do a manual PUT so we can
     // attach `If-Match`.  `overwriteFile` does not surface request-init.
@@ -277,15 +286,19 @@ export class SolidPodSource extends DataSource {
           body: blob,
         });
       } catch (err) {
-        rethrow(err, fullUri);
+        rethrow(err, fullUri, 'write');
       }
       if (!res.ok) {
+        // PII-SAFE: op label + code + numeric status only.
+        log.error('pod', 'pod.error', { op: 'write', code: codeForStatus(res.status), status: res.status });
         throw podError(`PUT ${fullUri} failed: ${res.status} ${res.statusText}`, {
           code:   codeForStatus(res.status),
           status: res.status,
           uri:    fullUri,
         });
       }
+      // PII-SAFE: byte COUNT + duration + a boolean; never the path or content.
+      log.info('pod', 'pod.write', { bytes: blob.size, ms: Date.now() - t0, conditional: true });
       return {
         uri:          fullUri,
         contentType,
@@ -303,7 +316,7 @@ export class SolidPodSource extends DataSource {
         fetch: this.#fetch,
       });
     } catch (err) {
-      rethrow(err, fullUri);
+      rethrow(err, fullUri, 'write');
     }
 
     // Best-effort HEAD for fresh etag/lastModified.
@@ -321,6 +334,8 @@ export class SolidPodSource extends DataSource {
       (saved && getSourceUrl?.(saved)) ||
       fullUri;
 
+    // PII-SAFE: byte COUNT + duration + a boolean; never the path or content.
+    log.info('pod', 'pod.write', { bytes: blob.size, ms: Date.now() - t0, conditional: false });
     return {
       uri:          savedUrl,
       contentType,
@@ -348,7 +363,7 @@ export class SolidPodSource extends DataSource {
           headers: { 'If-Match': opts.ifMatch },
         });
       } catch (err) {
-        rethrow(err, fullUri);
+        rethrow(err, fullUri, 'delete');
       }
       if (!res.ok && res.status !== 404) {
         throw podError(`DELETE ${fullUri} failed: ${res.status} ${res.statusText}`, {
@@ -366,7 +381,7 @@ export class SolidPodSource extends DataSource {
       // 404 on delete is a no-op per DataSource semantics.
       const status = err?.response?.status ?? err?.statusCode ?? err?.status ?? null;
       if (status === 404) return;
-      rethrow(err, fullUri);
+      rethrow(err, fullUri, 'delete');
     }
   }
 
@@ -427,7 +442,7 @@ export class SolidPodSource extends DataSource {
     try {
       dataset = await getSolidDataset(resolved, { fetch: this.#fetch });
     } catch (err) {
-      rethrow(err, resolved);
+      rethrow(err, resolved, 'list');
     }
     const urls = getContainedResourceUrlAll(dataset);
     return urls.map((uri) => ({
@@ -448,7 +463,7 @@ export class SolidPodSource extends DataSource {
     try {
       res = await this.#headFetch(fullUri);
     } catch (err) {
-      rethrow(err, fullUri);
+      rethrow(err, fullUri, 'exists');
     }
     if (res.ok)              return true;
     if (res.status === 404)  return false;
@@ -476,7 +491,7 @@ export class SolidPodSource extends DataSource {
     try {
       await createContainerAt(fullUri, { fetch: this.#fetch });
     } catch (err) {
-      rethrow(err, fullUri);
+      rethrow(err, fullUri, 'create');
     }
     return { uri: fullUri };
   }

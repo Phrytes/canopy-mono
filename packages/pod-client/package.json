@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@canopy/core": "workspace:^",
+    "@canopy/logger": "workspace:^",
     "@canopy/oidc-session": "workspace:^",
     "@canopy/vault": "workspace:^",
     "@inrupt/solid-client": "3.0.0",
