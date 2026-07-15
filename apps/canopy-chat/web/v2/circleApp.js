@@ -1946,6 +1946,13 @@ function feedbackEmit(groupId) {
       _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       return;
     }
+    if (kind === 'access' || kind === 'access-reveal' || kind === 'access-result') {
+      // "Secure your access" (reveal/restore the owner-root recovery phrase). PRIVATE to this device — the
+      // recovery phrase never leaves it — so render self-scoped, mirroring the report panel. The backup/restore
+      // buttons route back via circleEmbedButtonTap → surface.handle(); the revealed phrase is selectable to copy.
+      _kringRender.botBubble?.(text, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
+      return;
+    }
     if (kind === 'review' && Array.isArray(points) && points.length) {
       // Converged with the contact-thread flow — render editable per-point CARDS (curated text + the
       // original as a labelled chip + per-card send/✏), not a flattened text bubble.
@@ -1968,6 +1975,11 @@ function buildFeedbackSurface({ projectId, groupId, lang, ownPod, centralPod, co
     pod: ownPod,
     ...(centralPod ? { centralPod, controlStore, verify: true } : {}),
     reportButton: true,   // web idiom: offer "Report a problem" as a bubble-button (mobile uses a header button)
+    // "Secure your access": surface BACK UP + RESTORE of the owner-root recovery phrase in the no-login
+    // onboarding. The participant's pseudonym derives from this phrase, so this is how they secure + recover
+    // their identity on a new device. Reaches the host reveal/restore skills via callSkill (household agent).
+    accessButton: true,
+    callSkill: (origin, opId, args) => rawCallSkill(origin, opId, args),
     // Anonymous bug-report SEND sink: forward the identity-free envelope over the peer/relay transport to the
     // config-driven dev bot. `_peerAgent` is the boot-captured realAgent; null target → sink no-ops (copy-only).
     app: 'canopy-chat', version: APP_VERSION,

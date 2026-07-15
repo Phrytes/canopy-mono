@@ -22,6 +22,10 @@ import {
 import { log, dumpLogs, formatLogs } from '@canopy/logger';
 // The anonymous bug-report packager (shared, pure). Carries NO identity — see bugReport.js.
 import { buildReportEnvelope } from './bugReport.js';
+// REUSE the restore wizard's mnemonic validation (word-count / 12-or-24) rather than reimplementing it — the
+// same helpers the web/RN restore wizards use. No mnemonic/crypto logic lives here: the reveal/restore is done
+// by the host skills (revealOwnerPhrase / restoreOwnerPhrase) reached through the injected `callSkill`.
+import { isMnemonicValid, mnemonicWordCount } from '../core/wizards/restoreFromMnemonicState.js';
 
 // One place both shells load, so the dump is retrievable on either without extra wiring. (A user-facing
 // "Report a problem" screen that shows + sends this is the next logging slice.)
@@ -60,6 +64,39 @@ const REPORT_STRINGS = {
   },
 };
 
+// "Secure your access" copy — the no-login participant's identity IS their owner-root recovery phrase (the
+// feedback pseudonym derives from it), so backing it up + restoring it belongs IN the feedback onboarding.
+// Same 2-language dict pattern as REPORT_STRINGS (web ≡ mobile: the strings live ONCE, in shared code). The
+// warning states the hard truth the crypto enforces — the phrase IS the access and we cannot recover it.
+const ACCESS_STRINGS = {
+  nl: {
+    hint:            '🔐 Beveilig je toegang',
+    backup_button:   '🔑 Toegang veiligstellen',
+    restore_button:  '♻ Herstellen met een zin',
+    backup_header:   '🔑 Je herstelzin',
+    backup_intro:    'Dit is je toegang. Bewaar deze woorden op een veilige plek — wie ze heeft, is jou. We kunnen ze niet voor je herstellen. Selecteer en kopieer de zin.',
+    backup_fail:     '⚠ Je herstelzin kon niet worden opgehaald. Probeer het later opnieuw.',
+    restore_prompt:  'Plak je herstelzin (12 of 24 woorden) en verstuur. Zo herstel je je toegang op dit apparaat. Typ /stop om te annuleren.',
+    restore_invalid: '⚠ Dat lijkt geen geldige herstelzin — verwacht 12 of 24 woorden. Plak de zin opnieuw of typ /stop om te annuleren.',
+    restore_ok:      '✅ Toegang hersteld. Herlaad de app om verder te gaan met je herstelde identiteit.',
+    restore_fail:    '⚠ Herstellen is niet gelukt: {msg}',
+    restore_cancel:  'Herstellen geannuleerd.',
+  },
+  en: {
+    hint:            '🔐 Secure your access',
+    backup_button:   '🔑 Back up your access',
+    restore_button:  '♻ Restore from a phrase',
+    backup_header:   '🔑 Your recovery phrase',
+    backup_intro:    'This is your access. Save these words somewhere safe — whoever has them is you. We can’t recover them for you. Select and copy the phrase.',
+    backup_fail:     '⚠ Couldn’t retrieve your recovery phrase. Please try again later.',
+    restore_prompt:  'Paste your recovery phrase (12 or 24 words) and send. This restores your access on this device. Type /stop to cancel.',
+    restore_invalid: '⚠ That doesn’t look like a valid recovery phrase — expected 12 or 24 words. Paste it again, or type /stop to cancel.',
+    restore_ok:      '✅ Access restored. Reload the app to continue with your restored identity.',
+    restore_fail:    '⚠ Restore failed: {msg}',
+    restore_cancel:  'Restore cancelled.',
+  },
+};
+
 // Re-export so the app can create + CACHE the participant's own pod outside the surface — a language
 // switch rebuilds the surface (fresh /help in the new language) while REUSING the same pods, so the
 // participant's local Stage-1 contributions survive the switch (mirrors mobile FeedbackThreadScreen).
@@ -85,8 +122,15 @@ export { InMemoryCentralPod };
  *                                bot+relay+dev pod — is deliberately out of scope; only the interface is here).
  * @param {string} [a.app]        non-identifying app name for the report envelope (e.g. 'canopy-chat')
  * @param {string} [a.version]    non-identifying app/build version for the report envelope
+ * @param {(origin:string, opId:string, args:object)=>Promise<any>} [a.callSkill]  the host callSkill seam,
+ *                                used ONLY for the "Secure your access" affordances — reveal the owner-root
+ *                                recovery phrase (`revealOwnerPhrase`) + restore one (`restoreOwnerPhrase`),
+ *                                both on the `household` agent. No mnemonic/crypto logic lives here.
+ * @param {boolean} [a.accessButton]  web idiom — offer "Back up your access" + "Restore from a phrase" as
+ *                                bubble-buttons in the onboarding greeting (mirrors `reportButton`). Mobile can
+ *                                surface the same via chrome using the exposed `backup()`/`restore()` methods.
  */
-export function createFeedbackSurface({ config, projectId, lang, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit, verify, reportButton, sendReport, app, version } = {}) {
+export function createFeedbackSurface({ config, projectId, lang, pod, centralPod, controlStore, bus, identity, identityFor, llmBaseURL, llmModel, emit, verify, reportButton, sendReport, app, version, callSkill, accessButton } = {}) {
   if (typeof emit !== 'function') throw new Error('createFeedbackSurface: emit(reply) is required');
   // Injected ANONYMOUS bug-report sink. Default is a safe async no-op: the real target (a bot+relay+dev
   // pod) is wired by the host when available; without it the send affordance degrades to "copy the notes".
@@ -148,6 +192,64 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     log.info('feedback', 'report.sent', { ok, reason: String(res?.reason || '') });   // PII-safe: outcome only
     emit({ chatId: String(threadId), kind: 'report-result', text });
     return res;
+  };
+
+  // "Secure your access" — the no-login participant's identity IS their owner-root recovery phrase (the
+  // feedback pseudonym derives from it). These affordances REVEAL it (back up) + RESTORE it on a new device,
+  // via the host skills `revealOwnerPhrase` / `restoreOwnerPhrase` (household agent) through the injected
+  // `callSkill`. No mnemonic/crypto logic here (it lives in those skills); validation reuses the restore
+  // wizard's helpers. Emitted DIRECTLY (surface affordances, not bot turns) so they never touch the verify
+  // re-poll guard. Localised to the bot's language. Same code both shells (web ≡ mobile by construction).
+  const awaitingRestore = new Set();   // threadIds awaiting a pasted recovery phrase
+  const A = () => ACCESS_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
+
+  // Offer the two access affordances as bubble-buttons (web idiom; the taps route back through handle()).
+  const emitAccessOptions = (threadId) => {
+    emit({ chatId: String(threadId), kind: 'access', access: true, text: A().hint, buttons: [
+      { id: 'fp:access:backup',  label: A().backup_button },
+      { id: 'fp:access:restore', label: A().restore_button },
+    ] });
+  };
+  // BACK UP: reveal the owner-root phrase via the host skill, then surface it in a selectable/copyable bubble.
+  // The phrase never leaves the device and is NEVER logged (PII-safe: we log only whether a phrase came back).
+  const emitBackup = async (threadId) => {
+    if (typeof callSkill !== 'function') { emit({ chatId: String(threadId), kind: 'access-result', access: true, text: A().backup_fail }); return { ok: false, reason: 'no-callSkill' }; }
+    let res = null;
+    try { res = await callSkill('household', 'revealOwnerPhrase', {}); }
+    catch (e) { log.error('feedback', 'access.backup.fail', { err: String(e?.name || 'Error') }); }
+    const raw = res && !res.error && (res.mnemonic ?? res.phrase ?? res.words);
+    const phrase = Array.isArray(raw) ? raw.join(' ') : (raw ? String(raw) : '');
+    log.info('feedback', 'access.backup', { ok: !!phrase });   // PII-safe: never the phrase itself
+    if (!phrase) { emit({ chatId: String(threadId), kind: 'access-result', access: true, text: A().backup_fail }); return { ok: false }; }
+    emit({ chatId: String(threadId), kind: 'access-reveal', access: true, reveal: true, text: `${A().backup_header}\n\n${A().backup_intro}\n\n${phrase}`, copyText: phrase });
+    return { ok: true };
+  };
+  // RESTORE: prompt for a phrase; the next pasted text (see handle) is validated + installed via the host skill.
+  const beginRestore = (threadId) => {
+    awaitingRestore.add(String(threadId));
+    emit({ chatId: String(threadId), kind: 'access', access: true, text: A().restore_prompt });
+  };
+  const submitRestorePhrase = async (threadId, phrase) => {
+    const mnemonic = String(phrase || '').trim();
+    if (!isMnemonicValid(mnemonic)) {
+      log.info('feedback', 'access.restore.invalid', { words: mnemonicWordCount(mnemonic) });   // PII-safe: count only
+      emit({ chatId: String(threadId), kind: 'access-result', access: true, text: A().restore_invalid });
+      return { ok: false, reason: 'invalid' };   // stay awaiting — let them paste again (or /stop)
+    }
+    awaitingRestore.delete(String(threadId));
+    let res = null;
+    try { res = await callSkill('household', 'restoreOwnerPhrase', { mnemonic }); }
+    catch (e) { log.error('feedback', 'access.restore.fail', { err: String(e?.name || 'Error') }); res = { ok: false, error: e?.message }; }
+    const ok = !!res && !res.error && res.ok !== false;
+    log.info('feedback', 'access.restore', { ok });   // PII-safe: outcome only, never the phrase
+    emit({ chatId: String(threadId), kind: 'access-result', access: true, text: ok ? A().restore_ok : A().restore_fail.replace('{msg}', String(res?.error || 'restore-failed')) });
+    return ok ? { ok: true, reloadRequired: !!res?.reloadRequired } : { ok: false, reason: res?.error };
+  };
+  const cancelRestore = (threadId) => {
+    if (!awaitingRestore.has(String(threadId))) return false;
+    awaitingRestore.delete(String(threadId));
+    emit({ chatId: String(threadId), kind: 'access', access: true, text: A().restore_cancel });
+    return true;
   };
 
   // Consent-outcome probe (PII-safe): the own pod is the Stage-1 write target for the no-login flow, so its
@@ -212,6 +314,10 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
         const S = REPORT_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
         emit({ chatId: String(threadId), text: S.hint, buttons: [{ id: 'fp:report', label: S.button }] });
       }
+      // "Secure your access" — offer BACK UP + RESTORE of the owner-root recovery phrase right in onboarding,
+      // so a no-login participant can secure their pseudonymous identity + recover it on a new device. Web idiom
+      // (bubble-buttons, mirrors reportButton); requires a wired callSkill (the host reveal/restore skills).
+      if (accessButton && typeof callSkill === 'function') emitAccessOptions(threadId);
       // poll the lead's /control/ round → on-device summary for verify. No open round is the normal case
       // (stay silent); surface only a genuine error so the user isn't left wondering.
       try { await (await bot()).pollVerification(String(threadId)); }
@@ -235,6 +341,20 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     /** Route a free-text turn to the bot IF the thread is in feedback mode. */
     async handle(text, threadId) {
       if (!active.has(String(threadId))) return false;
+      // "Secure your access" — SURFACE affordances (reveal/restore the owner-root recovery phrase), intercepted
+      // here so they never reach the bot or clear the verify guard. Gated on a wired callSkill.
+      if (typeof callSkill === 'function') {
+        const s = String(text || '');
+        if (/^\s*fp:access:backup\s*$/i.test(s))  { await emitBackup(threadId); return true; }
+        if (/^\s*fp:access:restore\s*$/i.test(s)) { beginRestore(threadId); return true; }
+        if (awaitingRestore.has(String(threadId))) {
+          // Awaiting a pasted phrase: a /stop|/cancel cancels; any other command falls through (cancels the
+          // wait first); anything else is treated as the phrase attempt (validated in submitRestorePhrase).
+          if (/^\s*\/(stop|cancel|annuleer)\s*$/i.test(s)) { cancelRestore(threadId); return true; }
+          if (!/^\s*(\/|fp:)/.test(s)) { await submitRestorePhrase(threadId, s); return true; }
+          awaitingRestore.delete(String(threadId));
+        }
+      }
       // "Report a problem" is a SURFACE affordance, not a bot turn — intercept it here (typed `/report`/`/logs`/
       // `/problem`, or the `fp:report` button) so it never reaches the bot and never clears the verify guard.
       // The anonymous SEND trigger (`fp:report:send`, from the panel's Send button) — checked BEFORE the
@@ -258,9 +378,20 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     /** Anonymously SEND the PII-safe on-device log via the injected sink — a shell can call this from a chrome
      *  button, mirroring `report()`. Returns the sink result (`{ok, reason?}`) so the shell can react if it wants. */
     reportSend(threadId) { if (active.has(String(threadId))) return emitReportSend(threadId); return undefined; },
+    /** "Secure your access" — reveal the owner-root recovery phrase (back up). A shell can call this from a
+     *  chrome button (mobile) instead of the `fp:access:backup` bubble-button (web). No-op without a callSkill. */
+    backup(threadId) { if (active.has(String(threadId)) && typeof callSkill === 'function') return emitBackup(threadId); return undefined; },
+    /** "Secure your access" — begin the restore-from-phrase flow (the next pasted text turn is the phrase). */
+    restore(threadId) { if (active.has(String(threadId)) && typeof callSkill === 'function') beginRestore(threadId); },
     /** A button tap (M2): send the control id (fp:*) as a turn — the bot's parseControl handles it. */
     async tapButton(buttonId, threadId) {
       if (!active.has(String(threadId))) return false;
+      // "Secure your access" bubble-buttons are SURFACE affordances — intercept before routing to the bot
+      // (parity with handle(), so the fp-bot contact-thread / mobile chrome path works too).
+      if (typeof callSkill === 'function') {
+        if (/^\s*fp:access:backup\s*$/i.test(String(buttonId)))  { await emitBackup(threadId); return true; }
+        if (/^\s*fp:access:restore\s*$/i.test(String(buttonId))) { beginRestore(threadId); return true; }
+      }
       awaitingVerify = false;
       await (await clientFor(threadId)).send(buttonId);
       return true;
