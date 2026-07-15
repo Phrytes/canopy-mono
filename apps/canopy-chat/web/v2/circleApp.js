@@ -86,6 +86,9 @@ import { pageForOp } from '../../src/v2/pageProjection.js';
 import { renderListBlock } from './listScreen.js';
 // Q17 — record-shaped detail screens (read-only key→value, e.g. agent-detail).
 import { renderRecordScreen } from './recordScreen.js';
+// personas#1 — the "About me" persona surface (properties + per-circle sharing) + its shared read-model.
+import { renderAboutMe } from './circleAboutMe.js';
+import { buildPersonaViewModel } from '../../src/v2/personaView.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
@@ -3351,13 +3354,21 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
       // context key (screenDrilldown), picking a row opens it with that key
       // materialized from the picked row (`$uri` / `$agentId` ← row).
       const drill = drilldownForSection(circleManifestsByOrigin, screenId, { hostKeys: Object.keys(screenContext) });
+      // personas#1 — on the agents surface, a PROFILE row (role 'profile') opens
+      // the "About me" persona view (properties + per-circle sharing) instead of
+      // the generic agent-detail drill-down. Other rows keep the drill-down.
+      const isAgents = screenId === 'agents';
+      const onRowOpen = (isAgents || drill)
+        ? ({ item }) => {
+            if (isAgents && item?.role === 'profile') { openAboutMePanel(item?.agentId ?? item?.id); return; }
+            if (drill) openCircleScreenPanel(drill.screenId, { context: selectionContextFor(drill, item, screenContext) });
+          }
+        : undefined;
       renderListBlock(body, {
         block: { items, categoryField, labelField, searchFields, defaultAudience: section.audience, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
-        onRowOpen: drill
-          ? ({ item }) => { openCircleScreenPanel(drill.screenId, { context: selectionContextFor(drill, item, screenContext) }); }
-          : undefined,
+        onRowOpen,
       });
     } catch { body.textContent = t('circle.screen.empty'); }
     return;
@@ -3370,6 +3381,60 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
     // to + flash the referenced item once its block has materialized.
     renderCircleScreen(body, { blocks: [mat], t, highlightRef });
   } catch { renderCircleScreen(body, { blocks: [], t }); }
+}
+
+// personas#1 — the "About me" persona surface. Opens as a dismissable overlay
+// (same chrome as openCircleScreenPanel) for ONE persona: its coarse properties
+// (place/ageBand/…) and, per circle, what it SHARES there. Reads the substrate
+// in ONE call (getPersonaView); edits go through setProfileProperty /
+// setProfileDisclosure and re-render from a fresh read (verify the RESULT, not
+// just the dispatch). The view-model + framing live in shared code
+// (src/v2/personaView.js — web ≡ mobile); this is a thin shell.
+async function openAboutMePanel(personaId) {
+  const id = typeof personaId === 'string' ? personaId : String(personaId ?? '');
+  if (!id) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-screen-panel';
+  const card = document.createElement('div');
+  card.className = 'cc-screen-panel__card';
+  const head = document.createElement('div');
+  head.className = 'cc-screen-panel__head';
+  const title = document.createElement('h3');
+  title.textContent = t('circle.aboutme.title');
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'cc-screen-panel__close';
+  close.setAttribute('aria-label', t('circle.mydata.close'));
+  close.textContent = '✕';
+  close.addEventListener('click', () => { try { overlay.remove(); } catch { /* */ } });
+  head.appendChild(title); head.appendChild(close);
+  card.appendChild(head);
+  const body = document.createElement('div');
+  card.appendChild(body);
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Load → build model → render; re-run after each edit so the surface always
+  // reflects the persisted state (not the optimistic tap).
+  const draw = async () => {
+    let view;
+    try { view = await rawCallSkill('agents', 'getPersonaView', { id }); }
+    catch { view = { ok: false }; }
+    const model = buildPersonaViewModel({ view, circles: circlesCache });
+    renderAboutMe(body, {
+      model, t,
+      onSetProperty: async (key, value) => {
+        try { await rawCallSkill('agents', 'setProfileProperty', { id, key, value }); } catch { /* */ }
+        await draw();
+      },
+      onToggleDisclosure: async (contextId, key, enabled) => {
+        try { await rawCallSkill('agents', 'setProfileDisclosure', { id, contextId, key, enabled }); } catch { /* */ }
+        await draw();
+      },
+    });
+  };
+  await draw();
 }
 
 // Theme B — run the guided-setup chatbot in a modal: render one step, feed the

@@ -901,6 +901,32 @@
 .cc-mydata__pref.is-active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }
 .cc-mydata__chat-ai { font-size: 12px; color: var(--ink-soft); margin: 4px 0 0; line-height: 1.4; }
 
+/* personas#1 — the "About me" persona surface (properties + per-circle sharing). */
+.cc-aboutme { padding: 2px 2px 20px; display: flex; flex-direction: column; gap: 16px; }
+.cc-aboutme__header { display: flex; align-items: baseline; gap: 12px; }
+.cc-aboutme__back { cursor: pointer; font: inherit; font-size: 12px; color: var(--ink-soft); background: transparent; border: none; padding: 4px 0; }
+.cc-aboutme__title { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0; }
+.cc-aboutme__section { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.cc-aboutme__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
+.cc-aboutme__intro { font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.4; }
+.cc-aboutme__empty { font-size: 13px; color: var(--ink-soft); font-style: italic; margin: 0; }
+.cc-aboutme__prop { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.cc-aboutme__prop:last-child { border-bottom: none; padding-bottom: 0; }
+.cc-aboutme__prop-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.cc-aboutme__prop-value { font-size: 13px; color: var(--ink); }
+.cc-aboutme__prop-value--unset { color: var(--ink-soft); font-style: italic; }
+.cc-aboutme__prop-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cc-aboutme__bucket { cursor: pointer; font: inherit; font-size: 12px; padding: 5px 10px; border-radius: var(--radius); background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.cc-aboutme__bucket--active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }
+.cc-aboutme__prop-input { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); flex: 1 1 auto; min-width: 120px; }
+.cc-aboutme__prop-save { cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-aboutme__circle { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.cc-aboutme__circle-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.cc-aboutme__circle-summary { font-size: 12px; color: var(--ink-soft); }
+.cc-aboutme__circle-hint { font-size: 12px; color: var(--ink-soft); font-style: italic; margin: 0; }
+.cc-aboutme__toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.cc-aboutme__toggle-box { cursor: pointer; }
+
 /* cluster K · K2 — lists panel + nested container card */
 .cc-lists-panel { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
 .cc-lists-panel__empty { color: var(--ink-soft); font-style: italic; padding: 8px 0; }

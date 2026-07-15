@@ -3113,5 +3113,93 @@
         "doc": "media P1 — full-image lightbox, quiet notice when the gated full-size read is denied or fails (never a broken image)."
       }
     }
+  },
+  "aboutme": {
+    "back": {
+      "text": "← Profiles",
+      "doc": "personas#1 — back to the profiles/agents list."
+    },
+    "title": {
+      "text": "About me",
+      "doc": "personas#1 — heading of the About-me persona surface."
+    },
+    "title_named": {
+      "text": "About me — {{name}}",
+      "doc": "personas#1 — heading with the persona id."
+    },
+    "unavailable": {
+      "text": "This persona's details aren't available.",
+      "doc": "personas#1 — getPersonaView returned not-ok."
+    },
+    "properties": {
+      "text": "Your properties",
+      "doc": "personas#1 — properties section title."
+    },
+    "properties_intro": {
+      "text": "Coarse facts you can reuse across circles. Fill in only what you want to.",
+      "doc": "personas#1 — properties section intro (honest, opt-in framing)."
+    },
+    "not_set": {
+      "text": "Not set",
+      "doc": "personas#1 — a property with no value yet."
+    },
+    "place_placeholder": {
+      "text": "e.g. Amsterdam",
+      "doc": "personas#1 — free-text place field placeholder (municipality only)."
+    },
+    "save": {
+      "text": "Save",
+      "doc": "personas#1 — save a free-text property value."
+    },
+    "sharing": {
+      "text": "What you share, per circle",
+      "doc": "personas#1 — per-circle disclosure section title."
+    },
+    "sharing_intro": {
+      "text": "Sharing is off by default. Turn on only what a circle may see.",
+      "doc": "personas#1 — disclosure section intro (default-withhold framing)."
+    },
+    "no_circles": {
+      "text": "You're not in any circles yet.",
+      "doc": "personas#1 — no circles to configure sharing for."
+    },
+    "you_share": {
+      "text": "This circle sees: {{keys}}",
+      "doc": "personas#1 — honest summary of what a circle actually sees."
+    },
+    "you_share_nothing": {
+      "text": "This circle sees nothing.",
+      "doc": "personas#1 — nothing shared with this circle."
+    },
+    "set_a_property_first": {
+      "text": "Set a property above first — you can only share what you've filled in.",
+      "doc": "personas#1 — no valued properties to share yet."
+    },
+    "share_key": {
+      "text": "Share {{key}} ({{value}})",
+      "doc": "personas#1 — a per-property disclosure toggle label."
+    },
+    "key": {
+      "place": {
+        "text": "Place",
+        "doc": "personas#1 — charter attribute label: place (municipality)."
+      },
+      "ageBand": {
+        "text": "Age band",
+        "doc": "personas#1 — charter attribute label: ageBand."
+      },
+      "role": {
+        "text": "Role",
+        "doc": "personas#1 — charter attribute label: role."
+      },
+      "tenure": {
+        "text": "Tenure",
+        "doc": "personas#1 — charter attribute label: tenure (how long here)."
+      },
+      "household": {
+        "text": "Household",
+        "doc": "personas#1 — charter attribute label: household."
+      }
+    }
   }
 }

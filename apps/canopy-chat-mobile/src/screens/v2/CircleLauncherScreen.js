@@ -188,6 +188,7 @@ import CircleShareScreen from './CircleShareScreen.js';   // objective L — cro
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
 import CircleMyDataScreen from './CircleMyDataScreen.js';
+import CircleAboutMeScreen from './CircleAboutMeScreen.js';   // personas#1 — the "About me" persona surface (properties + per-circle sharing)
 import SharedWithMeScreen from './SharedWithMeScreen.js';   // SILENT out-of-circle delivery — personal "shared with me" inbox (web≡mobile)
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
@@ -2272,6 +2273,7 @@ function CircleDetail({
   const [screenPanel, setScreenPanel] = useState(null);
   const [panelBlocks, setPanelBlocks] = useState(null);
   const [listScreenData, setListScreenData] = useState(null);   // B · Slice 3 — { items, categoryField, appOrigin, capabilityMatrix }
+  const [aboutMePersona, setAboutMePersona] = useState(null);   // personas#1 — the persona id whose "About me" view is open
   // S6.B precise scroll-to — the panel ScrollView, its content wrapper, and the
   // single highlighted row.  measureLayout(row → content) gives the row's y in
   // content space, which scrollTo consumes directly.
@@ -2784,14 +2786,21 @@ function CircleDetail({
                 appOrigin={listScreenData.appOrigin}
                 capabilityMatrix={listScreenData.capabilityMatrix}
                 onRowAction={({ opId, itemId }) => { setScreenPanel(null); runCircleCommandResolved({ opId, args: { id: itemId } }); }}
-                onRowOpen={listScreenData.drill
-                  /* Q15 — picking a row opens the sibling DETAIL panel with the
-                     selection context materialized from the picked row (shared
-                     selectionContextFor; web parity with openCircleScreenPanel). */
-                  ? ({ item }) => setScreenPanel({
-                      screen: listScreenData.drill.screenId,
-                      context: selectionContextFor(listScreenData.drill, item, listScreenData.screenContext),
-                    })
+                onRowOpen={(screenPanel?.screen === 'agents' || listScreenData.drill)
+                  /* personas#1 — on the agents surface a PROFILE row opens the
+                     "About me" persona view; other rows keep the Q15 drill-down
+                     (web parity with openCircleScreenPanel's onRowOpen). */
+                  ? ({ item }) => {
+                      if (screenPanel?.screen === 'agents' && item?.role === 'profile') {
+                        setScreenPanel(null);
+                        setAboutMePersona(item?.agentId ?? item?.id);
+                        return;
+                      }
+                      if (listScreenData.drill) setScreenPanel({
+                        screen: listScreenData.drill.screenId,
+                        context: selectionContextFor(listScreenData.drill, item, listScreenData.screenContext),
+                      });
+                    }
                   : undefined}
               />
             ) : (
@@ -2803,6 +2812,23 @@ function CircleDetail({
                 </View>
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* personas#1 — the "About me" persona surface (web parity with openAboutMePanel). */}
+      <Modal visible={!!aboutMePersona} animationType="slide" transparent onRequestClose={() => setAboutMePersona(null)}>
+        <View style={styles.panelBackdrop}>
+          <View style={styles.panelCard} testID="circle-aboutme-panel">
+            <View style={styles.panelHead}>
+              <Text style={styles.panelTitle}>{t('circle.aboutme.title')}</Text>
+              <Pressable onPress={() => setAboutMePersona(null)} testID="circle-aboutme-panel-close">
+                <Text style={styles.panelClose}>✕</Text>
+              </Pressable>
+            </View>
+            {aboutMePersona ? (
+              <CircleAboutMeScreen callSkill={rawCallSkill} personaId={aboutMePersona} circles={circles} onBack={() => setAboutMePersona(null)} />
+            ) : null}
           </View>
         </View>
       </Modal>

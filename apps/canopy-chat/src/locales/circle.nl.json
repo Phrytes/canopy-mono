@@ -3113,5 +3113,93 @@
         "doc": "media P1 — volledige-afbeelding-overlay, rustige melding wanneer de beveiligde lees-actie geweigerd wordt of mislukt (nooit een gebroken afbeelding)."
       }
     }
+  },
+  "aboutme": {
+    "back": {
+      "text": "← Profielen",
+      "doc": "personas#1 — terug naar de profielen-/agents-lijst."
+    },
+    "title": {
+      "text": "Over mij",
+      "doc": "personas#1 — kop van het Over-mij-scherm."
+    },
+    "title_named": {
+      "text": "Over mij — {{name}}",
+      "doc": "personas#1 — kop met de persona-id."
+    },
+    "unavailable": {
+      "text": "De gegevens van deze persona zijn niet beschikbaar.",
+      "doc": "personas#1 — getPersonaView gaf niet-ok terug."
+    },
+    "properties": {
+      "text": "Jouw eigenschappen",
+      "doc": "personas#1 — titel van de eigenschappen-sectie."
+    },
+    "properties_intro": {
+      "text": "Grove gegevens die je hergebruikt over kringen heen. Vul alleen in wat je wilt.",
+      "doc": "personas#1 — intro eigenschappen-sectie (opt-in framing)."
+    },
+    "not_set": {
+      "text": "Niet ingevuld",
+      "doc": "personas#1 — eigenschap zonder waarde."
+    },
+    "place_placeholder": {
+      "text": "bijv. Amsterdam",
+      "doc": "personas#1 — placeholder voor het vrije plaatsveld (alleen gemeente)."
+    },
+    "save": {
+      "text": "Opslaan",
+      "doc": "personas#1 — vrije eigenschapswaarde opslaan."
+    },
+    "sharing": {
+      "text": "Wat je deelt, per kring",
+      "doc": "personas#1 — titel van de per-kring-deelsectie."
+    },
+    "sharing_intro": {
+      "text": "Delen staat standaard uit. Zet alleen aan wat een kring mag zien.",
+      "doc": "personas#1 — intro deelsectie (standaard-niet-delen framing)."
+    },
+    "no_circles": {
+      "text": "Je zit nog in geen enkele kring.",
+      "doc": "personas#1 — geen kringen om delen voor in te stellen."
+    },
+    "you_share": {
+      "text": "Deze kring ziet: {{keys}}",
+      "doc": "personas#1 — eerlijke samenvatting van wat een kring echt ziet."
+    },
+    "you_share_nothing": {
+      "text": "Deze kring ziet niets.",
+      "doc": "personas#1 — niets gedeeld met deze kring."
+    },
+    "set_a_property_first": {
+      "text": "Vul hierboven eerst een eigenschap in — je kunt alleen delen wat je hebt ingevuld.",
+      "doc": "personas#1 — nog geen ingevulde eigenschappen om te delen."
+    },
+    "share_key": {
+      "text": "{{key}} delen ({{value}})",
+      "doc": "personas#1 — label van een per-eigenschap deelschakelaar."
+    },
+    "key": {
+      "place": {
+        "text": "Plaats",
+        "doc": "personas#1 — charter-attribuut label: place (gemeente)."
+      },
+      "ageBand": {
+        "text": "Leeftijdsgroep",
+        "doc": "personas#1 — charter-attribuut label: ageBand."
+      },
+      "role": {
+        "text": "Rol",
+        "doc": "personas#1 — charter-attribuut label: role."
+      },
+      "tenure": {
+        "text": "Woonduur",
+        "doc": "personas#1 — charter-attribuut label: tenure."
+      },
+      "household": {
+        "text": "Huishouden",
+        "doc": "personas#1 — charter-attribuut label: household."
+      }
+    }
   }
 }
