@@ -27,6 +27,9 @@ export { registerAgentBundle } from './src/registerAgentBundle.js';
 // property layer (design Phase 0) — the typed vocabulary + the shared disclosure mechanism.
 export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './src/propertyVocabulary.js';
 export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from './src/disclosure.js';
+// property layer (design Phase 1) — the canonical Request record + the governed-request check.
+export { createRequest, requestHash, requestKeys } from './src/request.js';
+export { checkRequestAllowed, DEFAULT_GOVERNED_POLICY } from './src/governedRequest.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
 // endorsement-backed curated catalog read-view (fills P3's catalogSource seam).
