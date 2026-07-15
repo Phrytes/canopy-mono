@@ -1,3 +1,5 @@
+import { notifyIfResonant } from './driverMatchNotify.js';
+
 /**
  * Inbound buurt-post handler.  Bundle H Phase 2 (#269) — lifted from
  * `apps/canopy-chat/web/main.js:807` (Slice 1, 2026-05-24).
@@ -13,13 +15,19 @@
  * @param {object} args
  * @param {(appOrigin: string, opId: string, args: object) => Promise<*>} args.callSkill
  * @param {(event: object) => void}                                        [args.publishEvent]
+ * @param {() => Promise<Record<string,object>>} [args.getDrivers]  loads the user's drivers (for match→notify); defaults to getProfileDrivers on the default persona
+ * @param {string} [args.personaId='default']  the persona whose drivers match the feed
  * @param {{info?, warn?, error?}}                                         [args.logger]
  * @returns {(fromAddr: string, envelope: object) => Promise<void>}
  */
 export function makeHandleBuurtPost({
-  callSkill, publishEvent, logger = console,
+  callSkill, publishEvent, getDrivers, personaId = 'default', logger = console,
 } = {}) {
   if (typeof callSkill !== 'function') throw new Error('makeHandleBuurtPost: callSkill required');
+  // Drivers #5 — load MY private drivers on-device to match incoming posts (default: the default persona).
+  const loadDrivers = typeof getDrivers === 'function'
+    ? getDrivers
+    : async () => (await callSkill('agents', 'getProfileDrivers', { id: personaId }))?.drivers ?? {};
 
   return async function handleBuurtPost(fromAddr, envelope) {
     const { groupId, fromPubKey, payload } = envelope ?? {};
@@ -63,5 +71,26 @@ export function makeHandleBuurtPost({
         ...(groupId           ? { groupId }                   : {}),
       },
     });
+
+    // Drivers #5 — does this post resonate with MY private drivers? Match on-device (the drivers never
+    // leave this device) and, on an explainable match, fire a SEPARATE resonance nudge. Best-effort:
+    // the signature is the post's driverSignature if it carries one, else its text/tags (fallback), so
+    // this already works on the existing feed. The user reaching out is their follow-up (existing channel).
+    try {
+      await notifyIfResonant({
+        item: { ...payload, id: result?.itemId ?? payload.requestId, title: payload.text },
+        getDrivers: loadDrivers,
+        notify: (p) => publishEvent?.({
+          app: 'stoop', type: 'notification', actor: payload.from ?? fromAddr,
+          payload: {
+            message: p.message,
+            driverMatch: true,
+            topReason: p.topReason,
+            ...(payload.requestId ? { postId: payload.requestId } : {}),
+            ...(groupId           ? { groupId }                   : {}),
+          },
+        }),
+      });
+    } catch (err) { logger.warn?.('[peer] driver match→notify skipped', err); }
   };
 }
