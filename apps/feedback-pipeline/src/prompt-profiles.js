@@ -76,6 +76,36 @@ Do only this, in the same language, preserving meaning:
 Return ONLY the cleaned text. No quotes, no notes.`,
 };
 
+// ── CANDIDATE clean prompts (geo/profanity tuning, 2026-07-16) ────────────────
+// DRAFT variants for A/B validation against the privatemode route — NOT wired into
+// the pipeline (the tested MINIMAL_CLEAN above stays the default). The harness
+// `scripts/prompt-tuning-geo-profanity.js` runs baseline vs candidate via the new
+// `opts.cleanSystem` override so Frits can compare on real output before adopting.
+// Two changes vs MINIMAL_CLEAN:
+//   • GEO: coarsen fine-grained locations that pinpoint a person/home (street+number,
+//     house number, postcode, exact coords → neighbourhood), while KEEPING
+//     municipality/district/organisation/public-place names. (Aligns with the
+//     requested-attributes `place` coarsening — a small address is a re-id vector.)
+//   • PROFANITY: remove insults aimed at a PERSON but always keep the substantive
+//     point, and explicitly DON'T sanitise strong non-insulting words about a
+//     SITUATION ("belachelijk"/"schandalig"/"ridiculous") — reduce over-removal.
+export const MINIMAL_CLEAN_CANDIDATE = {
+  nl: `Je schoont één feedbackbericht licht op. Persoonsgegevens zijn al verwijderd en staan als markeringen tussen haken — laat die EXACT staan, verander of verwijder ze niet en voeg geen nieuwe toe.
+Doe alleen dit, in dezelfde taal en met behoud van de betekenis:
+1. Vervang een eventuele resterende PERSOONSnaam door "iemand" (of een rol, bv. "de manager").
+2. PLAATSEN: laat namen van gemeenten, wijken, buurten, organisaties en bedrijven staan. Maak fijnmazige locaties die naar één persoon of woning wijzen ALGEMENER: vervang een straat + huisnummer of exact adres door de buurt (bv. "Kerkstraat 12" → "in die buurt"), en verwijder huisnummers, postcodes en exacte coördinaten. Een openbare plek of instelling (bv. "het gemeentehuis", "het station") blijft staan.
+3. Haal scheldwoorden/beledigingen die op een PERSOON gericht zijn weg, maar behoud ALTIJD het inhoudelijke punt (wat er mis is en waarom). Levert weghalen een onvolledige zin op (bv. "de wethouder is een sukkel" → "de wethouder is een"), herschrijf dan minimaal tot een korte, neutrale weergave (bv. → "kritiek op hoe de wethouder zijn werk doet"). Laat sterke maar niet-beledigende woorden over een SITUATIE staan (bv. "belachelijk", "schandalig").
+4. Neem overdreven toon weg, maar verzwak NIET hoe ernstig iets is.
+Geef ALLEEN de opgeschoonde tekst terug. Geen aanhalingstekens, geen uitleg.`,
+  en: `You lightly clean ONE feedback message. Personal data is already removed and shown as bracketed markers — leave those EXACTLY as they are, do not change or remove them and do not add new ones.
+Do only this, in the same language, preserving meaning:
+1. Replace any remaining PERSON's name with "someone" (or a role, e.g. "the manager").
+2. PLACES: keep municipality, district, neighbourhood, organisation and company names. GENERALISE fine-grained locations that point to a specific person or home: replace a street + house number or exact address with the neighbourhood (e.g. "12 Church Street" → "in that neighbourhood"), and remove house numbers, postcodes and exact coordinates. A public place or institution (e.g. "the town hall", "the station") stays.
+3. Remove profanity/insults aimed at a PERSON, but ALWAYS keep the substantive point (what is wrong and why). If removal leaves an incomplete sentence (e.g. "the alderman is an idiot" → "the alderman is an"), rephrase minimally into a short, neutral statement (e.g. → "criticism of how the alderman does the job"). Keep strong but non-insulting words about a SITUATION (e.g. "ridiculous", "outrageous").
+4. Remove over-the-top tone, but do NOT downplay how serious something is.
+Return ONLY the cleaned text. No quotes, no notes.`,
+};
+
 // Label: one object per message; the parser also falls back to array order, so a
 // missing "i" no longer collapses everything to "general".
 export const MINIMAL_LABEL = `You triage a numbered list of feedback messages (Dutch and English). Return ONLY a JSON array, one object per message, in order:
