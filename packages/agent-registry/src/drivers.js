@@ -90,3 +90,19 @@ export function isDriverValue(v) {
 export function driverDescriptor(key) {
   return descriptor({ key, type: 'driver', ladder: null, coarsen: null, sensitivity: 'sensitive' });
 }
+
+/**
+ * Extract the DRIVER properties out of a full profile property map — a profile's `properties` holds
+ * every kind (coarse-enum place/ageBand alongside drivers), so the matcher needs just the drivers.
+ * Returns a `{ key → driverValue }` map, keeping only well-formed driver values (isDriverValue).
+ *
+ * @param {Record<string, any>} properties
+ * @returns {Record<string, {kind:string,text:string,tags:string[]}>}
+ */
+export function driversFromProperties(properties) {
+  const out = {};
+  for (const [key, value] of Object.entries(properties ?? {})) {
+    if (isDriverValue(value)) out[key] = value;
+  }
+  return out;
+}

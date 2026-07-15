@@ -93,3 +93,34 @@ describe('driver matcher (#4)', () => {
     expect(matches[0].reason.kind).toBe('tags');
   });
 });
+
+describe('driver matcher (#5) — profile + item bridge', () => {
+  it('driversFromProperties keeps only driver values (drops coarse-enum etc.)', async () => {
+    const { driversFromProperties, createDriver } = await import('../index.js');
+    const props = {
+      place: 'Groningen',                                     // coarse-enum string — not a driver
+      ageBand: '35-54',
+      goals: createDriver({ text: 'learn to sail', tags: ['sailing'] }),
+    };
+    expect(Object.keys(driversFromProperties(props))).toEqual(['goals']);
+  });
+
+  it('itemSignature prefers an explicit driverSignature, else falls back to text/tags', async () => {
+    const { itemSignature } = await import('../index.js');
+    expect(itemSignature({ driverSignature: { tags: ['Sailing'] }, text: 'ignored' })).toEqual({ text: '', tags: ['sailing'] });
+    expect(itemSignature({ title: 'Weekend sail', tags: ['Sailing'] })).toEqual({ text: 'Weekend sail', tags: ['sailing'] });
+  });
+
+  it('matchProfileDrivers: matches an item against the profile\'s stored drivers', async () => {
+    const { matchProfileDrivers, createDriver } = await import('../index.js');
+    const properties = {
+      place: 'Groningen',
+      goals: createDriver({ kind: 'goal', text: 'learn to sail', tags: ['sailing', 'learning'] }),
+    };
+    const item = { title: 'anyone up for sailing lessons?', driverSignature: { tags: ['sailing'] } };
+    const matches = await matchProfileDrivers({ properties, item });
+    expect(matches).toHaveLength(1);
+    expect(matches[0].key).toBe('goals');
+    expect(matches[0].reason).toEqual({ kind: 'tags', tags: ['sailing'] });
+  });
+});

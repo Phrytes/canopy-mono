@@ -11,7 +11,7 @@
 //
 // Pure deterministic core + an optional async judge-aware wrapper. web ≡ mobile.
 
-import { normalizeTags } from './drivers.js';
+import { normalizeTags, driversFromProperties } from './drivers.js';
 
 /**
  * A "driver signature" is what an item carries for matching: `{ text, tags[] }` (#5 puts it on
@@ -20,6 +20,41 @@ import { normalizeTags } from './drivers.js';
  */
 export function deriveSignature({ text = '', tags = [] } = {}) {
   return { text: String(text ?? '').trim(), tags: normalizeTags(tags) };
+}
+
+/**
+ * Derive a driver signature FROM an item. An item that carries an explicit `driverSignature`
+ * (#5 — questions/tasks author it) uses that; otherwise fall back to the item's own `{text, tags}`
+ * (so a plain tagged post still matches). Returns a normalised `{text, tags}`.
+ *
+ * @param {{driverSignature?:object, text?:string, title?:string, tags?:string[]}} item
+ */
+export function itemSignature(item) {
+  const sig = item?.driverSignature;
+  if (sig && typeof sig === 'object') return deriveSignature(sig);
+  return deriveSignature({ text: item?.text ?? item?.title ?? '', tags: item?.tags ?? [] });
+}
+
+/**
+ * Convenience bridge: match an item against the DRIVER properties held on a profile's property map
+ * (pulls the drivers out with `driversFromProperties`, derives the item signature, then matches).
+ * Deterministic when no `judge`; semantic when one is wired. This is the seam the app calls per
+ * incoming feed item — the private drivers stay in the profile, on-device.
+ *
+ * @param {object} a
+ * @param {Record<string, any>} a.properties   the profile's full property map
+ * @param {object} a.item                       the incoming item (carries a driverSignature or text/tags)
+ * @param {Function} [a.judge]                   optional injected LLM judge
+ * @param {number} [a.minShared=1]
+ * @returns {Promise<Array<object>>}
+ */
+export function matchProfileDrivers({ properties, item, judge, minShared = 1 } = {}) {
+  return matchDriversSemantic({
+    drivers: driversFromProperties(properties),
+    signature: itemSignature(item),
+    judge,
+    minShared,
+  });
 }
 
 /** The tags two tag-lists share (normalised inputs assumed), first-seen order of `a`. */
