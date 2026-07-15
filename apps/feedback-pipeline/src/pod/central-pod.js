@@ -103,6 +103,10 @@ export class InMemoryCentralPod {
   forAggregation() {
     return this.list().map(({ participant, contribution }) => ({
       user: participant, id: contribution.id, text: contribution.text, lang: contribution.lang,
+      // Property layer — carry the disclosed coarse attributes + charterHash ALONGSIDE the text so the
+      // aggregation can attributeK-suppress rare segments. Absent when the contribution disclosed nothing.
+      ...(contribution.attributes ? { attributes: contribution.attributes } : {}),
+      ...(contribution.charterHash ? { charterHash: contribution.charterHash } : {}),
     }));
   }
 }

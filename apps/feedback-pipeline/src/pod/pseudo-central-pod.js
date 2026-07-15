@@ -70,6 +70,6 @@ export class PseudoPodCentralPod {
   async list() { return (await this.#all()).map((e) => ({ participant: e.participant, contribution: e.contribution })); }
 
   async forAggregation() {
-    return (await this.#all()).map((e) => ({ user: e.participant, id: e.contribution.id, text: e.contribution.text, lang: e.contribution.lang }));
+    return (await this.#all()).map((e) => ({ user: e.participant, id: e.contribution.id, text: e.contribution.text, lang: e.contribution.lang, ...(e.contribution.attributes ? { attributes: e.contribution.attributes } : {}), ...(e.contribution.charterHash ? { charterHash: e.contribution.charterHash } : {}) }));
   }
 }

@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   generateParticipantIdentity, signContribution, verifyContribution,
-  IdentityRoster, makeContributionVerifier,
+  IdentityRoster, makeContributionVerifier, canonicalContribution,
 } from '../src/pod/signing.js';
 import { InMemoryCentralPod } from '../src/pod/central-pod.js';
 import { CssCentralPod } from '../src/pod/css-central-pod.js';
@@ -16,6 +16,25 @@ import { buildContribution } from '../src/pod/contribution.js';
 
 const projectId = 'proj-1';
 const contribution = buildContribution({ id: 'p1:1', text: 'wachtlijst te lang' }, { lang: 'nl' });
+
+test('property-layer: charter fields bind into the signature but stay BACK-COMPAT when absent', () => {
+  // A pre-charter contribution (no attributes, no charterHash) must canonicalise to the ORIGINAL
+  // 8-field shape so existing persisted signatures still verify.
+  const plain = JSON.parse(canonicalContribution({ projectId, participant: 'p1', contribution }).toString());
+  assert.equal(plain.length, 8, 'no attributes/charterHash → original 8-field canonical form');
+
+  // With disclosed attributes + charterHash they append (bound into the signed bytes).
+  const withCharter = buildContribution({ id: 'p1:2', text: 'x' }, { lang: 'nl', attributes: { place: 'Groningen' }, charterHash: 'ch1' });
+  const bound = JSON.parse(canonicalContribution({ projectId, participant: 'p1', contribution: withCharter }).toString());
+  assert.equal(bound.length, 10, 'attributes/charterHash present → appended into the canonical form');
+
+  // A host STRIPPING the disclosed attributes after signing breaks verification (can't rewrite segmentation).
+  const id = generateParticipantIdentity();
+  const sig = signContribution({ projectId, participant: 'p1', contribution: withCharter }, id.privateKey);
+  assert.equal(verifyContribution({ projectId, participant: 'p1', contribution: withCharter }, sig, id.publicKey), true);
+  const stripped = buildContribution({ id: 'p1:2', text: 'x' }, { lang: 'nl' });   // attributes removed
+  assert.equal(verifyContribution({ projectId, participant: 'p1', contribution: stripped }, sig, id.publicKey), false);
+});
 
 test('sign/verify round-trips; tamper + wrong-key + cross-project are rejected', () => {
   const id = generateParticipantIdentity();

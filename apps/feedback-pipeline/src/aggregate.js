@@ -18,6 +18,7 @@ import { labelMessages, canonicalDomain } from './triage.js';
 import { isSensitiveDomain, detectReident, detectSensitiveContent, detectContactRequest, sensitivityFlags } from './signals.js';
 import { sensitiveCategory, rejectReason, ESCALATION_CATEGORIES } from './categories.js';
 import { PREFERRED_LANGUAGE } from './config.js';
+import { suppressRareAttributes, attributeKDefault } from '@canopy/attribute-charter';
 
 /** Layer-2 (server-side) signal routing gate. An LLM-labelled escalation routes to
  *  the signal track only if the project enables that category; a floor-confirmed
@@ -50,9 +51,52 @@ export function partitionByThreshold(groups, k) {
 }
 
 /**
+ * Property-layer segmentation (RESEARCH-context only). Attributes belong to the PARTICIPANT — every
+ * contribution a participant releases carries the SAME disclosed coarse values — so we count DISTINCT
+ * participants per exact attribute-combo and suppress (via @canopy/attribute-charter) the attributes of
+ * anyone whose combo is held by fewer than `attributeK` participants BEFORE any segment is exposed. The
+ * feedback TEXT still aggregates in full; only the segmentation is hidden for rare combos. `charterHash`
+ * is NOT identifying (identical for everyone on the charter), so it rides through even when suppressed.
+ *
+ * @param {Array<{user:string, attributes?:object, charterHash?:string}>} items
+ * @param {number} attributeK
+ * @returns {null|{ attributeK:number, attributesByUser:object, charterHashByUser:object,
+ *                  segments:Array<{combo:object, userCount:number, users:string[]}> }}
+ *          `null` when NO participant disclosed any attributes → the aggregate is byte-for-byte as before.
+ */
+export function segmentByAttributes(items, attributeK) {
+  const seen = new Set();
+  const participants = [];   // distinct participants, first-seen order, with THEIR disclosure
+  for (const it of items || []) {
+    if (!it || seen.has(it.user)) continue;
+    seen.add(it.user);
+    participants.push({ user: it.user, attributes: it.attributes, charterHash: it.charterHash });
+  }
+  const anyDisclosed = participants.some((p) => p.attributes && Object.keys(p.attributes).length);
+  if (!anyDisclosed) return null;
+
+  const suppressed = suppressRareAttributes(participants, { attributeK });   // rare combos → attributes: {}
+  const attributesByUser = {};
+  const charterHashByUser = {};
+  const segMap = new Map();
+  for (const p of suppressed) {
+    attributesByUser[p.user] = p.attributes;
+    if (p.charterHash) charterHashByUser[p.user] = p.charterHash;   // rides through even when suppressed
+    const keys = Object.keys(p.attributes || {});
+    if (!keys.length) continue;                                     // suppressed → not in any exposed segment
+    const key = JSON.stringify(keys.sort().map((k) => [k, p.attributes[k]]));
+    const seg = segMap.get(key) || { combo: { ...p.attributes }, userCount: 0, users: [] };
+    seg.userCount += 1; seg.users.push(p.user);
+    segMap.set(key, seg);
+  }
+  const segments = [...segMap.values()].sort((a, b) => b.userCount - a.userCount);
+  return { attributeK, attributesByUser, charterHashByUser, segments };
+}
+
+/**
  * @param {string} model
- * @param {Array<{user:string, text:string, lang?:string}>} items
- * @param {{ kThreshold?:number, lang?:string }} [opts]
+ * @param {Array<{user:string, text:string, lang?:string, attributes?:object, charterHash?:string}>} items
+ * @param {{ kThreshold?:number, attributeK?:number, lang?:string }} [opts]
  */
 export async function aggregateWithThreshold(model, items, opts = {}) {
   const k = opts.kThreshold ?? 3;
@@ -158,11 +202,18 @@ export async function aggregateWithThreshold(model, items, opts = {}) {
     statistical.push({ ...m, summary, contributionIds: g.msgs.map((msg) => msg.id).filter(Boolean) });
   }
 
+  // Property layer — attributeK-suppress rare disclosed-attribute combos, then expose only the k-safe
+  // segmentation. A no-op (adds nothing) when no contribution carried attributes → back-compat preserved.
+  const attributeK = opts.attributeK ?? attributeKDefault(k);
+  const segmentation = segmentByAttributes(items, attributeK);
+
   return {
     statistical, signals, review, contact, rejected, dropped,
     kThreshold: k, lang,
     totalUsers: new Set(items.map((i) => i.user)).size,
     totalMessages: items.length,
+    ...(segmentation ? { attributeK: segmentation.attributeK, segments: segmentation.segments,
+      attributesByUser: segmentation.attributesByUser, charterHashByUser: segmentation.charterHashByUser } : {}),
     ...(trace ? { trace } : {}),
   };
 }

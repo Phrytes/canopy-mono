@@ -38,10 +38,20 @@ export function generateParticipantIdentity() {
  *  signature cannot be replayed under another pseudonym or into another project. */
 export function canonicalContribution({ projectId, participant, contribution }) {
   const c = contribution;
-  return Buffer.from(JSON.stringify([
+  // Property layer: the disclosed `attributes` + `charterHash` are bound into the signed bytes so a
+  // malicious host cannot strip, inject, or swap a participant's segmentation after release. They are
+  // appended ONLY when present, so a pre-charter contribution (no attributes AND no charterHash) signs
+  // BYTE-IDENTICALLY to before this change — existing persisted signatures still verify. Sign + verify use
+  // this same function, so a charter-carrying contribution round-trips too.
+  const attrs = c.attributes && Object.keys(c.attributes).length
+    ? Object.fromEntries(Object.entries(c.attributes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+    : null;
+  const fields = [
     'fp-contribution/1', projectId, participant,
     c.id, c.text, c.themeTags ?? [], c.timeWindow ?? null, c.lang ?? null,
-  ]), 'utf8');
+  ];
+  if (attrs !== null || c.charterHash) fields.push(attrs, c.charterHash ?? null);   // back-compat: absent → original shape
+  return Buffer.from(JSON.stringify(fields), 'utf8');
 }
 
 /** Sign a contribution with a participant private key (`pub.seed`). Returns a b64url signature. */

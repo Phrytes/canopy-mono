@@ -19,6 +19,15 @@ export const ContributionSchema = z.object({
   // which would be a fingerprint. Optional.
   timeWindow: z.string().regex(/^\d{4}(-Q[1-4])?$/).optional(),
   lang: z.enum(['nl', 'en']).optional(),
+  // Property layer (charter). OPTIONAL disclosed COARSE background attributes — a map of
+  // vocabulary key → coarse value (e.g. {place:'Utrecht', ageBand:'35-54'}), chosen by the
+  // participant from the charter's requested set. Values are already coarse (from the
+  // @canopy/attribute-charter VOCABULARY); NO name / free-text ever rides here. Absent =
+  // withheld (no marker). The aggregation attributeK-suppresses rare combos at READ.
+  attributes: z.record(z.string(), z.string()).optional(),
+  // The hash of the charter the participant agreed to (binds this disclosure to a specific,
+  // capped request). Rides alongside; not identifying (identical for everyone on the charter).
+  charterHash: z.string().optional(),
 }).strict();
 
 /** Validate a contribution (used by BOTH layers). Throws a zod error if invalid. */
@@ -27,8 +36,13 @@ export function validateContribution(raw) {
 }
 
 /** Build a contribution from an approved Task-1 point ({id, text, raw?}). Keeps `raw` only when it differs
- *  from the curated text (no point storing a copy when the AI/edit changed nothing). */
-export function buildContribution(point, { timeWindow, lang, themeTags = [] } = {}) {
+ *  from the curated text (no point storing a copy when the AI/edit changed nothing). `attributes` +
+ *  `charterHash` (property layer) are ADDITIVE — omitting them yields exactly the pre-charter shape. */
+export function buildContribution(point, { timeWindow, lang, themeTags = [], attributes, charterHash } = {}) {
   const keepRaw = point.raw && point.raw !== point.text;
-  return validateContribution({ id: point.id, text: point.text, ...(keepRaw ? { raw: point.raw } : {}), themeTags, timeWindow, lang });
+  return validateContribution({
+    id: point.id, text: point.text, ...(keepRaw ? { raw: point.raw } : {}), themeTags, timeWindow, lang,
+    ...(attributes && Object.keys(attributes).length ? { attributes } : {}),
+    ...(charterHash ? { charterHash } : {}),
+  });
 }
