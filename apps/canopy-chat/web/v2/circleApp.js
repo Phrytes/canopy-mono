@@ -158,6 +158,7 @@ import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
+import { createBugReportSink } from '../../src/feedback/bugReportSink.js';
 import { makeNoLoginFeedbackPods } from '../../src/feedback/noLoginPods.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
@@ -1022,6 +1023,16 @@ const LANG_INFO = {
   tr: { name: 'Türkçe',     prompt: 'Türkçe devam et? Aşağıya dokun.' },
 };
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
+// Logging slice 3 — the anonymous bug-report SEND TARGET: the dev-pod "bug-report bot" address the panel's
+// Send button routes the (already-anonymous) envelope to, over the SAME relay/peer transport as everything
+// else (`_peerAgent.sendPeerMessage`). The real dev address does NOT exist yet: this is a PLACEHOLDER, so it
+// drops into open-source config later (via VITE_BUGREPORT_ADDR, or by giving BUG_REPORT_DEV_ADDR the real
+// value). Until then it is null → the sink returns `no-target` and the panel stays COPY-ONLY. A real value
+// would look like `'fp-bugreport-dev@<relay-or-pubkey>'` (placeholder shape). Follow-up: the bot RECEIVER +
+// real dev-pod address; sharing a circle may later imply sharing this relay (a per-circle relay, not built).
+const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address lands here (open-source config)
+const BUG_REPORT_TARGET = import.meta.env?.VITE_BUGREPORT_ADDR ?? BUG_REPORT_DEV_ADDR;
+const APP_VERSION = import.meta.env?.VITE_APP_VERSION ?? undefined;   // non-identifying build tag for the report envelope
 // cluster J — ADDED feedback bots (no pre-seeding): the portal invite link/QR adds a co-hosted fp-bot
 // contact; tapping it opens its dedicated thread + activates the verify pods.
 const feedbackBotStore = createFeedbackBotStore(typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} });
@@ -1957,6 +1968,10 @@ function buildFeedbackSurface({ projectId, groupId, lang, ownPod, centralPod, co
     pod: ownPod,
     ...(centralPod ? { centralPod, controlStore, verify: true } : {}),
     reportButton: true,   // web idiom: offer "Report a problem" as a bubble-button (mobile uses a header button)
+    // Anonymous bug-report SEND sink: forward the identity-free envelope over the peer/relay transport to the
+    // config-driven dev bot. `_peerAgent` is the boot-captured realAgent; null target → sink no-ops (copy-only).
+    app: 'canopy-chat', version: APP_VERSION,
+    sendReport: createBugReportSink({ send: (a, p) => _peerAgent?.sendPeerMessage(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
     emit: feedbackEmit(groupId),
   });
 }
@@ -2196,6 +2211,9 @@ function _buildFbSurface(botId, pods) {
     // when verify is on, consent contributions are signed and a verify pod accepts them. null → unsigned.
     identityFor: () => signerForIdentity(circleCoreAgent?.identity),
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
+    // Anonymous bug-report SEND sink (parity with buildFeedbackSurface) — same peer/relay transport + target.
+    app: 'canopy-chat', version: APP_VERSION,
+    sendReport: createBugReportSink({ send: (a, p) => _peerAgent?.sendPeerMessage(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
     emit: ({ text, buttons, kind, points, labels }) => {
       if (kind === 'review' && Array.isArray(points)) {
         ft.reviewPoints = points;   // for the ✏ composer pre-fill

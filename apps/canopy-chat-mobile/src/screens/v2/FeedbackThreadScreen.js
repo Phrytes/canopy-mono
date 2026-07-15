@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t, lang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { createFeedbackSurface, signerForIdentity, chunkBubble } from '../../../../canopy-chat/src/feedback/feedbackSurface.js';
+import { createBugReportSink } from '../../../../canopy-chat/src/feedback/bugReportSink.js';
 import { FeedbackReviewCards, FeedbackReportPanel } from '../../rn/FeedbackBubbles.js';
 import { makeNoLoginFeedbackPods } from '../../../../canopy-chat/src/feedback/noLoginPods.js';
 import { activateMobileFeedback } from '../../v2/feedbackActivation.js';
@@ -30,8 +31,18 @@ const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || und
 const FEEDBACK_LLM_MODEL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_MODEL || undefined;
 const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
 const FEEDBACK_COLLECTOR_URL = process.env.EXPO_PUBLIC_FEEDBACK_COLLECTOR_URL || null;
+// Logging slice 3 — the anonymous bug-report SEND TARGET (web parity, circleApp.js). The dev-pod "bug-report
+// bot" address the panel's Send button routes the (already-anonymous) envelope to, over the SAME peer/relay
+// transport (`agent.sendPeerMessage`, injected as `sendPeer`). The real dev address does NOT exist yet: this
+// is a PLACEHOLDER that drops into open-source config later (EXPO_PUBLIC_BUGREPORT_ADDR, or by giving
+// BUG_REPORT_DEV_ADDR the real value). Until then null → the sink returns `no-target` and the panel stays
+// COPY-ONLY. A real value would look like `'fp-bugreport-dev@<relay-or-pubkey>'`. Follow-up: the bot RECEIVER
+// + real dev-pod address; sharing a circle may later imply sharing this relay (a per-circle relay, not built).
+const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address lands here (open-source config)
+const BUG_REPORT_TARGET = process.env.EXPO_PUBLIC_BUGREPORT_ADDR || BUG_REPORT_DEV_ADDR;
+const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || undefined;   // non-identifying build tag for the report envelope
 
-export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null }) {
+export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null, sendPeer = null }) {
   const insets = useSafeAreaInsets();   // clear the status bar so the header (back + language toggle) is tappable
   const threadId = bot?.id;
   const name = bot?.name ?? bot?.label ?? threadId ?? 'Feedback';
@@ -47,6 +58,8 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
   const activatedLangRef = useRef(null);           // the lang the surface was last (re)built for
   const podsRef = useRef(null);                    // activated pods, cached so a language switch needn't re-activate
   const noLoginRef = useRef(false);                // true when this thread uses the no-login collector flow (signs)
+  const sendPeerRef = useRef(sendPeer);            // latest peer/relay send — read LAZILY at report-send time
+  sendPeerRef.current = sendPeer;                  // (agent may still be booting when the surface is built)
   const identityRef = useRef(identity);            // latest agent identity — read LAZILY at sign time (web parity:
   identityRef.current = identity;                  // circleCoreAgent is read at call time, not captured, so a
                                                    // still-booting identity at surface-build time isn't frozen in.
@@ -132,6 +145,11 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
           // No-login flow: sign consent/summaries with THIS device's agent identity (the collector +
           // aggregation only accept signed records). The activation flow signs via its session-authed pods.
           ...(noLoginRef.current ? { identityFor: () => signerForIdentity(identityRef.current), verify: true } : {}),
+          // Anonymous bug-report SEND sink (web parity, circleApp.js) — forward the identity-free envelope over
+          // the peer/relay transport to the config-driven dev bot. `sendPeer` read lazily (agent may boot late);
+          // null target → the sink no-ops and the panel stays copy-only.
+          app: 'canopy-chat', version: APP_VERSION,
+          sendReport: createBugReportSink({ send: (a, p) => sendPeerRef.current?.(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
           // a review renders as editable per-point CARDS (kind:'review'+points); a report renders as a
           // selectable PII-safe log panel (kind:'report'); everything else as a bubble.
           emit: ({ text, buttons, kind, points, labels, logText }) => {
