@@ -163,6 +163,7 @@ import { makeNoLoginFeedbackPods } from '../../src/feedback/noLoginPods.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
 import { feedbackBotFromInput, createFeedbackBotStore } from '../../src/v2/feedbackBots.js';
+import { createFeedbackHistoryStore } from '../../src/feedback/feedbackHistory.js';
 // (localStoragePolicyIo is already imported below with createCirclePolicyStore)
 import { createUserLlmDefaultStore, localStorageUserLlmIo } from '../../src/v2/userLlmDefault.js';
 import { applyUserLlmRuntime, validateUserLlmConfig } from '../../src/v2/userLlmRuntime.js';
@@ -1036,6 +1037,11 @@ const APP_VERSION = import.meta.env?.VITE_APP_VERSION ?? undefined;   // non-ide
 // cluster J — ADDED feedback bots (no pre-seeding): the portal invite link/QR adds a co-hosted fp-bot
 // contact; tapping it opens its dedicated thread + activates the verify pods.
 const feedbackBotStore = createFeedbackBotStore(typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} });
+// Device-local transcript store — restore the feedback thread on reload (see feedbackHistory.js). Same
+// local-only trust boundary as feedbackBotStore / fp.ownpod: the participant's own content, never sent.
+const feedbackHistoryStore = createFeedbackHistoryStore({ storage: typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} } });
+// Persist the current transcript for a thread (best-effort, fire-and-forget). Called after every append.
+function _saveFbHistory(botId) { const ft = _fbThreads.get(botId); if (ft) feedbackHistoryStore.save(botId, ft.messages); }
 const _fbThreads = new Map();   // botId → { name, messages:[], surface, mount, activated }
 let _activeFbThread = null;     // { botId }
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
@@ -2233,13 +2239,14 @@ function _buildFbSurface(botId, pods) {
       } else {
         ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       }
+      _saveFbHistory(botId);   // persist the transcript so it restores on reload (device-local)
       _renderFbThread(botId);
     },
   });
   ft.mount = createFeedbackMount({
     surface: ft.surface,
-    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _renderFbThread(botId); },
-    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _renderFbThread(botId); },
+    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _saveFbHistory(botId); _renderFbThread(botId); },
+    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _saveFbHistory(botId); _renderFbThread(botId); },
   });
 }
 // The participant switches the bot's language: rebuild the bot in that language (reusing the activated pods —
@@ -2249,10 +2256,17 @@ async function _changeFbLang(botId, lg) {
   if (!ft || (lg !== 'nl' && lg !== 'en') || lg === ft.botLang) return;
   ft.botLang = lg;
   try { localStorage.setItem(`fp.lang.${botId}`, lg); } catch { /* best-effort */ }
-  ft.messages = []; ft.reviewPoints = null; ft.editingId = null;
+  // KEEP the transcript across a language switch (same participant/thread — don't discard their own
+  // feedback because they toggled language). We rebuild the surface + re-/help in the new language, whose
+  // fresh greeting appends BELOW the existing (kept) history rather than replacing it. Only the transient UI
+  // pointers (review-card pre-fill / inline edit) reset. (Restore-on-reload is the primary goal; a genuine
+  // new-thread reset would clear both `ft.messages` and the stored key.)
+  ft.reviewPoints = null; ft.editingId = null;
   _buildFbSurface(botId, ft.pods || null);
   ft.busy = true; _renderFbThread(botId);
-  try { await ft.surface.start(botId); }
+  // KEEP the transcript across a language switch → don't re-greet (that would stack a greeting each toggle); the
+  // chrome (composer/buttons) already re-renders in the new language. Only the verify poll runs inside start().
+  try { await ft.surface.start(botId, { greet: false }); }
   catch (e) { ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
   finally { ft.busy = false; _renderFbThread(botId); }
 }
@@ -2262,7 +2276,14 @@ async function showFeedbackThread(bot) {
   if (!_fbThreads.has(botId)) {
     let stored = null; try { stored = localStorage.getItem(`fp.lang.${botId}`); } catch { /* no storage */ }
     const botLang = (stored === 'nl' || stored === 'en') ? stored : detectDeviceLang();
-    _fbThreads.set(botId, { name: bot.name, messages: [], surface: null, mount: null, activated: false, botLang, pods: null });
+    // Restore the persisted transcript so a reload/reopen re-shows the conversation (device-local). `_fbThreads`
+    // is per-session (module state, cleared on reload), so on the FIRST open of a session we hydrate from
+    // storage; a fresh bot with no stored history hydrates to []. A fresh /help greeting from surface.start()
+    // still appends below the restored transcript (unchanged per-open behaviour).
+    let history = []; try { history = await feedbackHistoryStore.load(botId); } catch { history = []; }
+    // hadHistory = a restored (reload) thread → suppress the onboarding greeting so it doesn't re-stack in the
+    // stored transcript; the affordance buttons come back WITH the restored history (still functional).
+    _fbThreads.set(botId, { name: bot.name, messages: history, surface: null, mount: null, activated: false, botLang, pods: null, hadHistory: history.length > 0 });
   }
   const ft = _fbThreads.get(botId);
   _activeFbThread = { botId };
@@ -2293,7 +2314,10 @@ async function showFeedbackThread(bot) {
   // start() polls the lead's /control/ round + summarises on-device (an AI call, a few seconds) — show a
   // busy state so the open doesn't look frozen, and surface any error in the chat (not just the console).
   ft.busy = true; _renderFbThread(botId);
-  try { await ft.surface.start(botId); }
+  // Greet only on a genuinely fresh thread (no restored transcript); a reload restores the greeting with the
+  // history, so re-greeting would stack it. Flip the flag so a later reopen this session doesn't re-greet either.
+  const greet = !ft.hadHistory; ft.hadHistory = true;
+  try { await ft.surface.start(botId, { greet }); }
   catch (e) { console.error('[circleApp] feedback poll/start failed:', e); ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
   finally { ft.busy = false; _renderFbThread(botId); }
 }

@@ -131,6 +131,15 @@ test('reportButton — start() offers the web bubble-trigger with an fp:report b
   expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(true);
 });
 
+test('start({ greet:false }) suppresses the onboarding greeting + affordances (restore-on-reload path)', async () => {
+  const { surface, replies } = setup({ surface: { reportButton: true } });
+  await surface.start('rb2', { greet: false });
+  // no /help greeting and no affordance bubble — on reload these come back WITH the restored transcript instead,
+  // so re-emitting would stack them in the stored history.
+  expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(false);
+  expect(replies.length).toBe(0);
+});
+
 test('access affordance — start() offers backup + restore; backup reveals the phrase via revealOwnerPhrase', async () => {
   const calls = [];
   const callSkill = async (origin, opId, args) => {

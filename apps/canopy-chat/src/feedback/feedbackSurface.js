@@ -303,21 +303,28 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   return {
     /** Enter feedback mode for a thread and show the bot's guidance, then check for a lead-triggered
      *  verification round (the verify-summary loop polls on contact-open; no-op when not wired). */
-    async start(threadId) {
+    async start(threadId, { greet = true } = {}) {
       active.add(String(threadId));
-      log.info('feedback', 'surface.start', { verify: !!controlStore, collector: !!centralPod });
-      await (await clientFor(threadId)).send('/help');
-      // Web offers the "Report a problem" trigger as a bubble-button (its idiom for feedback affordances, cf.
-      // emitFeedbackLangOptions); mobile uses a header button and passes no `reportButton`. Either way the
-      // tap/typed `/report` routes to `emitReport` below — the LOGIC is shared, only the trigger placement differs.
-      if (reportButton) {
-        const S = REPORT_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
-        emit({ chatId: String(threadId), text: S.hint, buttons: [{ id: 'fp:report', label: S.button }] });
+      log.info('feedback', 'surface.start', { verify: !!controlStore, collector: !!centralPod, greet: !!greet });
+      // The greeting (help text + the report/access affordance bubbles) is ONBOARDING chrome. It is emitted +
+      // persisted on the FIRST open; on a restore-from-reload the shell passes greet:false so it is NOT re-emitted
+      // (the affordance buttons come back WITH the restored transcript, still functional — handle() matches on id),
+      // otherwise greetings would stack in the stored transcript on every reload. The verify-round poll below is
+      // NOT part of the greeting — it always runs.
+      if (greet) {
+        await (await clientFor(threadId)).send('/help');
+        // Web offers the "Report a problem" trigger as a bubble-button (its idiom for feedback affordances, cf.
+        // emitFeedbackLangOptions); mobile uses a header button and passes no `reportButton`. Either way the
+        // tap/typed `/report` routes to `emitReport` below — the LOGIC is shared, only the trigger placement differs.
+        if (reportButton) {
+          const S = REPORT_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
+          emit({ chatId: String(threadId), text: S.hint, buttons: [{ id: 'fp:report', label: S.button }] });
+        }
+        // "Secure your access" — offer BACK UP + RESTORE of the owner-root recovery phrase right in onboarding,
+        // so a no-login participant can secure their pseudonymous identity + recover it on a new device. Web idiom
+        // (bubble-buttons, mirrors reportButton); requires a wired callSkill (the host reveal/restore skills).
+        if (accessButton && typeof callSkill === 'function') emitAccessOptions(threadId);
       }
-      // "Secure your access" — offer BACK UP + RESTORE of the owner-root recovery phrase right in onboarding,
-      // so a no-login participant can secure their pseudonymous identity + recover it on a new device. Web idiom
-      // (bubble-buttons, mirrors reportButton); requires a wired callSkill (the host reveal/restore skills).
-      if (accessButton && typeof callSkill === 'function') emitAccessOptions(threadId);
       // poll the lead's /control/ round → on-device summary for verify. No open round is the normal case
       // (stay silent); surface only a genuine error so the user isn't left wondering.
       try { await (await bot()).pollVerification(String(threadId)); }

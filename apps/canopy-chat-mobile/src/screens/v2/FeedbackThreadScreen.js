@@ -24,7 +24,13 @@ import { createFeedbackSurface, signerForIdentity, chunkBubble } from '../../../
 import { createBugReportSink } from '../../../../canopy-chat/src/feedback/bugReportSink.js';
 import { FeedbackReviewCards, FeedbackReportPanel } from '../../rn/FeedbackBubbles.js';
 import { makeNoLoginFeedbackPods } from '../../../../canopy-chat/src/feedback/noLoginPods.js';
+import { createFeedbackHistoryStore } from '../../../../canopy-chat/src/feedback/feedbackHistory.js';
 import { activateMobileFeedback } from '../../v2/feedbackActivation.js';
+
+// Device-local transcript store — restore the feedback thread on reload (shared web ≡ mobile store; see
+// feedbackHistory.js). Same local-only trust boundary as the persisted own-pod Stage-1 data / `fp.lang`:
+// the participant's own content, never sent anywhere.
+const feedbackHistoryStore = createFeedbackHistoryStore({ storage: AsyncStorage });
 
 // Same EXPO_PUBLIC_* vars ChatScreen reads (model override included — the default qwen2.5 404s on Privatemode).
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
@@ -66,6 +72,10 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
   identityRef.current = identity;                  // circleCoreAgent is read at call time, not captured, so a
                                                    // still-booting identity at surface-build time isn't frozen in.
   const scrollRef = useRef(null);
+  const hydratedRef = useRef(false);   // true once the persisted transcript has been loaded (gates saving so
+                                       // the initial empty state can't clobber stored history before hydration).
+  const hadHistoryRef = useRef(undefined);   // captured once: was there a stored transcript at first build? (reload)
+  const greetedRef = useRef(false);          // greet (help + affordances) happens at most once per mount
 
   // chrome (header/composer) renders in the BOT's chosen language, not the device locale.
   const tBot = useCallback((key, params) => t(key, params, botLang || undefined), [botLang]);
@@ -76,6 +86,27 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
     AsyncStorage.getItem(`fp.lang.${threadId}`).then((v) => { if (live) setBotLang(v === 'nl' || v === 'en' ? v : lang()); }).catch(() => { if (live) setBotLang(lang()); });
     return () => { live = false; };
   }, [threadId]);
+
+  // Restore the persisted transcript on mount (device-local) so a reload/reopen re-shows the conversation.
+  // Prepend so it sits ABOVE any greeting the surface build may already have appended (order-safe vs the
+  // async pod activation). Absent/malformed → []. Runs once per thread.
+  useEffect(() => {
+    let live = true;
+    feedbackHistoryStore.load(threadId).then((restored) => {
+      if (!live) return;
+      if (Array.isArray(restored) && restored.length) setMessages((prev) => [...restored, ...prev]);
+      hydratedRef.current = true;
+    }).catch(() => { if (live) hydratedRef.current = true; });
+    return () => { live = false; };
+  }, [threadId]);
+
+  // Persist on every message change (debounced) — device-local only. Gated on hydration so the initial empty
+  // render can't overwrite stored history before `load` resolves.
+  useEffect(() => {
+    if (!hydratedRef.current) return undefined;
+    const h = setTimeout(() => { feedbackHistoryStore.save(threadId, messages); }, 250);
+    return () => clearTimeout(h);
+  }, [messages, threadId]);
 
   const changeLang = useCallback((lg) => {
     if (lg === botLang || (lg !== 'nl' && lg !== 'en')) return;
@@ -132,7 +163,11 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
     activatedLangRef.current = botLang;
     const pods = podsRef.current;
     let cancelled = false;
-    setMessages([]); setEditing(null);
+    // KEEP the transcript across a (re)build — the restored history (hydration effect) and any prior turns
+    // survive; the fresh /help greeting from surface.start() appends BELOW. A language switch is the same
+    // participant/thread, so we don't discard their own feedback on toggle (web parity: circleApp
+    // `_changeFbLang` also keeps history). Only the transient inline-edit state resets.
+    setEditing(null);
     (async () => {
       setBusy(true);
       try {
@@ -172,7 +207,16 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
           },
         });
         surfaceRef.current = surface;
-        await surface.start(threadId);   // /help + the /control/ verify-round poll
+        // Greet (help + affordance buttons) ONLY on a genuinely fresh thread. On a restore-from-reload the greeting
+        // comes back WITH the transcript, so re-greeting would stack it in storage. Decide once from the stored
+        // history (race-free vs the async hydrate + debounced save + botLang rebuilds); the verify poll always runs.
+        if (hadHistoryRef.current === undefined) {
+          const restored = await feedbackHistoryStore.load(threadId).catch(() => []);
+          hadHistoryRef.current = Array.isArray(restored) && restored.length > 0;
+        }
+        const greet = !hadHistoryRef.current && !greetedRef.current;
+        if (greet) greetedRef.current = true;
+        await surface.start(threadId, { greet });   // greet chrome once; the /control/ verify-round poll always runs
       } catch (e) {
         if (!cancelled) pushBot(`⚠ ${e?.message ?? e}`);
       } finally {
