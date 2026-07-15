@@ -156,6 +156,9 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `getIcsFeed` | list | ✅ | ✅ | · | · | · |  |
 | **agents** | `listAgents` | list | ✅ | ✅ | · | · | · |  |
 |  | `viewAgent` | list | ✅ | · | · | · | · |  |
+|  | `createProfile` | add | ✅ | · | · | ✅ | ✅ |  |
+|  | `setProfileProperty` | set | ✅ | · | · | · | · |  |
+|  | `getProfileProperties` | view | ✅ | · | · | · | · |  |
 |  | `revokeAgent` | revoke | ✅ | · | · | ✅ | ✅ |  |
 |  | `grantAgent` | update | ✅ | · | · | · | · |  |
 |  | `revokeGrant` | revoke | ✅ | · | · | · | · |  |
@@ -165,10 +168,10 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 |  | `listDataVersions` | list | ✅ | · | · | · | · |  |
 |  | `restoreDataVersion` | update | ✅ | · | · | ✅ | ✅ |  |
 |---|---|---|---|---|---|---|---|---|
-| **totals** | 160 ops | | 157 | 124 | 33 | 82 | 46 | |
+| **totals** | 163 ops | | 160 | 124 | 33 | 83 | 47 | |
 
 ## Gaps for the gate/LLM + inline-menu work
 
-- **missing gate** (127/160): canopy-chat:help, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:reassign, tasks:getTaskSnapshot, tasks:removeTask, tasks:reassignTask …
-- **missing inline** (114/160): canopy-chat:help, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:addItem, household:listOpen, household:help, household:addTask …
-- **missing chat** (3/160): folio:deleteFromPod, folio:deleteLocally, folio:forceRepush
+- **missing gate** (130/163): canopy-chat:help, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:reassign, tasks:getTaskSnapshot, tasks:removeTask, tasks:reassignTask …
+- **missing inline** (116/163): canopy-chat:help, canopy-chat:newthread, canopy-chat:help-with, canopy-chat:threads, canopy-chat:startDm, canopy-chat:embed, canopy-chat:embed-file, canopy-chat:embed-time, canopy-chat:logs, canopy-chat:scanQr, canopy-chat:find, canopy-chat:brief, canopy-chat:compare, canopy-chat:signin, canopy-chat:reset-thread, canopy-chat:whoami, canopy-chat:me, canopy-chat:send-file, canopy-chat:lookup-peer, canopy-chat:publish-peer, canopy-chat:rotate-identity, canopy-chat:security-status, canopy-chat:set-relay, canopy-chat:transport-mode, canopy-chat:transports, canopy-chat:settings, canopy-chat:mute, canopy-chat:unmute, canopy-chat:muted, canopy-chat:debug-dump, canopy-chat:audit-tail, canopy-chat:peer-connect, canopy-chat:test-peer, canopy-chat:signout, canopy-chat:apps, canopy-chat:sendto, household:addItem, household:listOpen, household:help, household:addTask …
+- **missing chat** (3/163): folio:deleteFromPod, folio:deleteLocally, folio:forceRepush

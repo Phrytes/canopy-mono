@@ -52,6 +52,7 @@ import {
   createCatalogSource,
   createCommunitySubscriptions,
   createProfile as registryCreateProfile,
+  setOwn,
 } from '@canopy/agent-registry';
 
 /**
@@ -659,6 +660,15 @@ export async function createRealHouseholdAgent(opts = {}) {
     const agentsProfiles = {
       create: ({ profileId, name, properties }) =>
         registryCreateProfile({ registry: agentsRegistry, ownerRoot, profileId, name, properties }),
+      // Property layer — set/read a coarse property on a profile (curate once, reuse across apps). setProperty
+      // merges (setOwn) then re-registers the FULL existing entry (register replaces), preserving key/role/grants.
+      setProperty: async ({ profileId, key, value }) => {
+        const cur = await agentsRegistry.lookup(profileId);
+        if (!cur) throw new Error(`setProperty: no such profile ${profileId}`);
+        await agentsRegistry.register({ ...cur, properties: setOwn(cur.properties ?? {}, key, value) });
+        return { ok: true };
+      },
+      getProperties: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.properties ?? {},
     };
     for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog, profiles: agentsProfiles })) {
       hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });

@@ -311,6 +311,14 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     // Hand the release to the bot as a STRUCTURED data turn (not text): it sets the dispatcher's disclosure so
     // the ensuing consent's contributions carry it. The coarse values never touch the log.
     await (await clientFor(threadId)).send('', { data: { charter: rel } });
+    // Property layer (cross-app reuse) — curate the disclosed COARSE values ONCE on the participant's profile,
+    // readable by any app via getProfileProperties. Best-effort: no profile registry wired (e.g. no-login
+    // without an agent) → the callSkill degrades (ok:false), never blocks the contribution.
+    if (typeof callSkill === 'function') {
+      for (const [k, v] of Object.entries(rel.attributes)) {
+        try { await callSkill('agents', 'setProfileProperty', { id: 'default', key: k, value: v }); } catch { /* best-effort */ }
+      }
+    }
     emit({ chatId: String(threadId), kind: 'charter-result', charter: true, text: C().sent });
     emitPrivacyStatus(threadId);
   };
@@ -326,22 +334,37 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   // warning heuristic. Emitted as a `privacy` status the shell renders (icon + a ⓘ to see/change); the ⚠ is
   // EARNED (only a real risk), neutral-not-green, tap → why + change. Indicator ≠ protection (it only reports).
   const doneConsent = new Map();   // threadId -> the final consent profile (for the indicator after consent)
+  // §10b — the user's warnings toggle. Default ON (protective); turning it OFF is a DELIBERATE, ACKNOWLEDGED
+  // choice (a confirmation), never a silent switch. In-memory here; a shell may persist via setWarnings().
+  let warningsOn = true;
   const PRIVACY_ICON = { quiet: '🛡', sharing: '🛡', risk: '⚠️' };
   const PRIVACY_STRINGS = {
     nl: { quiet: 'Privacy: je deelt geen achtergrondkenmerken.', sharing: (l) => `Privacy: je deelt ${l}.`,
       risk_combo: (l) => `⚠️ Privacy: je deelt ${l} — deze combinatie kan je herkenbaar maken.`,
       risk_off: '⚠️ Privacy: waarschuwingen staan uit terwijl je gegevens deelt.',
-      info_btn: 'ⓘ Bekijk/wijzig', change_btn: 'Wijzig wat je deelt' },
+      info_btn: 'ⓘ Bekijk/wijzig', change_btn: 'Wijzig wat je deelt',
+      warn_off_btn: 'Waarschuwingen uit', warn_on_btn: 'Waarschuwingen aan',
+      warn_off_ack: '⚠️ Waarschuwingen staan nu UIT — je krijgt geen melding meer als een combinatie je herkenbaar maakt. Zet ze weer aan wanneer je wilt.',
+      warn_on_ack: '✓ Privacy-waarschuwingen staan weer aan.' },
     en: { quiet: 'Privacy: you share no background details.', sharing: (l) => `Privacy: you share ${l}.`,
       risk_combo: (l) => `⚠️ Privacy: you share ${l} — this combination may make you recognisable.`,
       risk_off: '⚠️ Privacy: warnings are off while you are sharing details.',
-      info_btn: 'ⓘ View / change', change_btn: 'Change what you share' },
+      info_btn: 'ⓘ View / change', change_btn: 'Change what you share',
+      warn_off_btn: 'Turn warnings off', warn_on_btn: 'Turn warnings on',
+      warn_off_ack: "⚠️ Warnings are now OFF — you won't be told when a combination could make you recognisable. Turn them back on any time.",
+      warn_on_ack: '✓ Privacy warnings are back on.' },
   };
   const P = () => PRIVACY_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
   const privacyStateFor = (threadId) => circlePrivacyState({
     consent: doneConsent.get(String(threadId)) ?? charterState.get(String(threadId))?.profile,
-    charter: projectCharter, warningsOn: true, n: cfg.cohortHint,   // warningsOn toggle is a future setting (§10b)
+    charter: projectCharter, warningsOn, n: cfg.cohortHint,
   });
+  const setWarningsOn = (threadId, on) => {
+    warningsOn = on === true;
+    if (threadId == null) return;   // boot-time restore (no thread) → set the flag silently
+    emit({ chatId: String(threadId), kind: 'privacy', privacy: true, text: warningsOn ? P().warn_on_ack : P().warn_off_ack });
+    emitPrivacyStatus(threadId);   // reflect the new state (turning off while sharing → structural ⚠)
+  };
   const privacyText = (st) => {
     const l = st.shared.join(', ');
     if (st.level === 'risk') return st.reason === 'warnings-off' ? P().risk_off : P().risk_combo(l);
@@ -356,7 +379,10 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   const emitPrivacyInfo = (threadId) => {
     const st = privacyStateFor(threadId);
     emit({ chatId: String(threadId), kind: 'privacy', privacy: true, level: st.level, text: privacyText(st),
-      buttons: [{ id: 'fp:charter:start', label: P().change_btn }] });   // change → re-run the charter consent
+      buttons: [
+        { id: 'fp:charter:start', label: P().change_btn },   // change → re-run the charter consent
+        { id: warningsOn ? 'fp:privacy:warnings:off' : 'fp:privacy:warnings:on', label: warningsOn ? P().warn_off_btn : P().warn_on_btn },
+      ] });
   };
 
   const emitAccessOptions = (threadId) => {
@@ -528,6 +554,8 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
         if (/^\s*fp:charter:(skip|none-all)\s*$/i.test(s)) { skipCharter(threadId); return true; }
         if (/^\s*fp:charter:send\s*$/i.test(s)) { await sendCharter(threadId); return true; }
         if (/^\s*fp:privacy:info\s*$/i.test(s)) { emitPrivacyInfo(threadId); return true; }   // per-circle indicator tap
+        if (/^\s*fp:privacy:warnings:off\s*$/i.test(s)) { setWarningsOn(threadId, false); return true; }
+        if (/^\s*fp:privacy:warnings:on\s*$/i.test(s)) { setWarningsOn(threadId, true); return true; }
         let m;
         if ((m = s.match(/^\s*fp:charter:pick:([^:]+):(.+?)\s*$/i))) { charterPick(threadId, m[1], m[2]); return true; }
         if ((m = s.match(/^\s*fp:charter:none:([^:]+)\s*$/i))) { charterNone(threadId); return true; }
@@ -574,6 +602,9 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     privacyState(threadId) { return privacyStateFor(threadId); },
     /** Show the per-circle privacy status affordance (a shell can call this from chrome). */
     showPrivacy(threadId) { if (active.has(String(threadId)) && projectCharter) emitPrivacyStatus(threadId); },
+    /** §10b — the user's privacy-warnings toggle (default ON). A shell may persist this + call setWarnings on boot. */
+    setWarnings(on, threadId) { setWarningsOn(threadId, on); },
+    get warningsOn() { return warningsOn; },
     /** A button tap (M2): send the control id (fp:*) as a turn — the bot's parseControl handles it. */
     async tapButton(buttonId, threadId) {
       if (!active.has(String(threadId))) return false;
@@ -590,6 +621,8 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
         if (/^\s*fp:charter:(skip|none-all)\s*$/i.test(b)) { skipCharter(threadId); return true; }
         if (/^\s*fp:charter:send\s*$/i.test(b)) { await sendCharter(threadId); return true; }
         if (/^\s*fp:privacy:info\s*$/i.test(b)) { emitPrivacyInfo(threadId); return true; }
+        if (/^\s*fp:privacy:warnings:off\s*$/i.test(b)) { setWarningsOn(threadId, false); return true; }
+        if (/^\s*fp:privacy:warnings:on\s*$/i.test(b)) { setWarningsOn(threadId, true); return true; }
         let m;
         if ((m = b.match(/^\s*fp:charter:pick:([^:]+):(.+?)\s*$/i))) { charterPick(threadId, m[1], m[2]); return true; }
         if ((m = b.match(/^\s*fp:charter:none:([^:]+)\s*$/i))) { charterNone(threadId); return true; }

@@ -129,3 +129,19 @@ describe('identity step-5B/C — circleAddressFor bridge', () => {
     expect(admin.circleAddress).toBe(deriveCircleAddress(seed, 'buurt-xy'));
   });
 });
+
+describe('property layer — cross-app reuse (setProfileProperty / getProfileProperties)', () => {
+  it('curates a coarse value ONCE on a profile and reads it back (any app can then reuse it)', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });
+    const set = await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'place', value: 'Groningen' });
+    expect(set.ok).toBe(true);
+    const got = await a.callSkill('agents', 'getProfileProperties', { id: 'work' });
+    expect(got.ok).toBe(true);
+    expect(got.properties.place).toEqual({ mode: 'own', value: 'Groningen' });   // own/inherit shape → reusable
+    // a second property merges (doesn't clobber the first)
+    await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'ageBand', value: '35-54' });
+    const both = await a.callSkill('agents', 'getProfileProperties', { id: 'work' });
+    expect(Object.keys(both.properties).sort()).toEqual(['ageBand', 'place']);
+  });
+});

@@ -129,6 +129,29 @@ export const agentsManifest = {
       },
     },
 
+    /* Property layer — curate a coarse property ONCE on a profile (place/ageBand/…), readable by any app
+     * (cross-app reuse). setProfileProperty writes an OWN value; getProfileProperties reads the map. */
+    {
+      id:        'setProfileProperty',
+      verb:      'set',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',    kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'key',   kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'value', kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Set a coarse property (e.g. place) on a profile — curated once, reusable across apps.' } },
+    },
+    {
+      id:        'getProfileProperties',
+      verb:      'view',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Read a profile\'s properties (own/inherit).' } },
+    },
+
     /* ── P2 CONTROL ops ─────────────────────────────────────────────────
      * All resolve the target by agentId OR pubKey ONLY (never webid —
      * ambiguous for multi-device users), same as viewAgent.  Token-first

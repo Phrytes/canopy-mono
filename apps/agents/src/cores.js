@@ -401,10 +401,38 @@ export async function createProfile(store, args = {}) {
   return { created: true, id, pubKey: result?.pubKey ?? null, agent: await readBack(s.registry, id) };
 }
 
+/**
+ * setProfileProperty — set an OWN coarse property on an existing profile (property layer / cross-app reuse).
+ * The value is curated ONCE on the profile and readable by any app via getProfileProperties. Mutation goes
+ * through the injected `profiles` collaborator (cores stay dependency-free). Degrades (ok:false) if unwired.
+ */
+export async function setProfileProperty(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const key = typeof args?.key === 'string' ? args.key.trim() : '';
+  if (typeof s.profiles?.setProperty !== 'function' || !id || !key) {
+    return { ok: false, reason: !id ? 'id-required' : (!key ? 'key-required' : 'profiles-unavailable') };
+  }
+  await s.profiles.setProperty({ profileId: id, key, value: args?.value });
+  return { ok: true, id, key };
+}
+
+/** getProfileProperties — the (own/inherit) properties of a profile, for cross-app reuse. */
+export async function getProfileProperties(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getProperties !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', properties: {} };
+  }
+  return { ok: true, id, properties: (await s.profiles.getProperties({ profileId: id })) ?? {} };
+}
+
 export const AGENT_CORES = Object.freeze({
   listAgents,
   viewAgent,
   createProfile,
+  setProfileProperty,
+  getProfileProperties,
   revokeAgent,
   grantAgent,
   revokeGrant,

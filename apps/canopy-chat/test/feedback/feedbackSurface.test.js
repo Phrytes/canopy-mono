@@ -181,6 +181,25 @@ test('privacy indicator — a per-circle status is shown after consent, with a �
   expect(st.shared.sort()).toEqual(['ageBand', 'role']);
 });
 
+test('privacy warnings toggle — turning off while sharing flips to structural ⚠, acknowledged', async () => {
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod: new InMemoryCentralPod(), emit: (r) => replies.push(r) });
+  await surface.start('w');
+  await surface.handle('fp:charter:start', 'w');
+  await surface.handle('fp:charter:pick:ageBand:35-54', 'w');
+  await surface.handle('fp:charter:send', 'w');
+  expect(surface.privacyState('w').level).toBe('sharing');   // warnings on, sharing, no combo risk
+
+  await surface.handle('fp:privacy:info', 'w');
+  const info = replies.filter((r) => r.kind === 'privacy').at(-1);
+  expect(info.buttons.some((b) => b.id === 'fp:privacy:warnings:off')).toBe(true);   // toggle offered
+
+  await surface.handle('fp:privacy:warnings:off', 'w');
+  expect(surface.warningsOn).toBe(false);
+  expect(replies.some((r) => /warnings are now off|waarschuwingen staan nu uit/i.test(r.text || ''))).toBe(true);   // acknowledged
+  expect(surface.privacyState('w')).toMatchObject({ level: 'risk', reason: 'warnings-off' });   // structural ⚠
+});
+
 test('privacy indicator — quiet when nothing is shared', async () => {
   const replies = [];
   const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod: new InMemoryCentralPod(), emit: (r) => replies.push(r) });
