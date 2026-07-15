@@ -1,0 +1,14 @@
+{
+  "name": "@canopy/attribute-charter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Requested-attributes charter — a coarse, capped, k-anon-guarded privacy mini-spec for optional background attributes on pseudonymous feedback. The first concrete instance of the personal-properties/disclosure model. Pure functions, web ≡ mobile.",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.4.0"
+  }
+}
