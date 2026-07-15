@@ -55,6 +55,8 @@ import {
   setOwn,
   setDisclosure as setDisclosurePolicy,
   releasedValues as releaseFromPolicy,
+  createDriver,
+  driversFromProperties,
 } from '@canopy/agent-registry';
 
 /**
@@ -671,6 +673,17 @@ export async function createRealHouseholdAgent(opts = {}) {
         return { ok: true };
       },
       getProperties: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.properties ?? {},
+      // Drivers (#3) — set an OWN personal driver property: build+validate the { kind, text, tags[] } value
+      // (createDriver throws on an empty driver → the core reports invalid-driver), then store it like any
+      // property (setOwn merge + re-register the full entry). getDrivers filters the map to driver values.
+      setDriver: async ({ profileId, key, kind, text, tags }) => {
+        const cur = await agentsRegistry.lookup(profileId);
+        if (!cur) throw new Error(`setDriver: no such profile ${profileId}`);
+        const driver = createDriver({ kind, text, tags });
+        await agentsRegistry.register({ ...cur, properties: setOwn(cur.properties ?? {}, key, driver) });
+        return { ok: true };
+      },
+      getDrivers: async ({ profileId }) => driversFromProperties((await agentsRegistry.lookup(profileId))?.properties ?? {}),
       // Personas — the PERSISTED per-context disclosure policy ("what this persona shares in circle X").
       // Merge via the pure disclosure setter, then re-register the FULL entry (preserves properties/key/grants).
       setDisclosure: async ({ profileId, contextId, key, enabled, rung }) => {

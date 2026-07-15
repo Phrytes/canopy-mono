@@ -152,6 +152,32 @@ export const agentsManifest = {
       surfaces: { chat: { reply: 'record', hint: 'Read a profile\'s properties (own/inherit).' } },
     },
 
+    /* Drivers (#3) — an OPEN personal-driver property { kind, text, tags[] } (goals/hobbies/…), not a coarse
+     * string, so it has its own set/get. Curated once, governed by the same per-persona disclosure; the
+     * on-device matcher reads them via getProfileDrivers. */
+    {
+      id:        'setProfileDriver',
+      verb:      'update',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',   kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'key',  kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'kind', kind: 'string' },
+        { name: 'text', kind: 'string' },
+        { name: 'tags', kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Set a personal driver (goal/hobby/…) on a profile: a phrase + comma-separated tags.' } },
+    },
+    {
+      id:        'getProfileDrivers',
+      verb:      'get',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Read a profile\'s personal drivers.' } },
+    },
+
     /* Personas — persist what a persona SHARES per context (circle/project). The general per-persona version
      * of the feedback charter consent; the "About me" surface + join wizard write through these. */
     {

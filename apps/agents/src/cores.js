@@ -417,6 +417,40 @@ export async function setProfileProperty(store, args = {}) {
   return { ok: true, id, key };
 }
 
+/**
+ * setProfileDriver — set an OWN personal DRIVER property (drivers #3): an open { kind, text, tags[] } value,
+ * not a coarse string, so it needs its own op (setProfileProperty's value is a plain string). Building +
+ * validating the driver lives in the `profiles` collaborator (dependency-free cores). `tags` accepts an array
+ * (GUI) OR a comma-separated string (wire/slash). Degrades (ok:false) if unwired; ok:false on an empty driver.
+ */
+export async function setProfileDriver(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const key = typeof args?.key === 'string' ? args.key.trim() : '';
+  if (typeof s.profiles?.setDriver !== 'function' || !id || !key) {
+    return { ok: false, reason: !id ? 'id-required' : (!key ? 'key-required' : 'profiles-unavailable') };
+  }
+  const tags = Array.isArray(args?.tags)
+    ? args.tags
+    : (typeof args?.tags === 'string' ? args.tags.split(',') : []);
+  try {
+    await s.profiles.setDriver({ profileId: id, key, kind: args?.kind, text: args?.text, tags });
+    return { ok: true, id, key };
+  } catch (err) {
+    return { ok: false, reason: 'invalid-driver', detail: err?.message ?? String(err) };
+  }
+}
+
+/** getProfileDrivers — just the DRIVER-typed properties of a profile (for the About-me editor + the matcher). */
+export async function getProfileDrivers(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getDrivers !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', drivers: {} };
+  }
+  return { ok: true, id, drivers: (await s.profiles.getDrivers({ profileId: id })) ?? {} };
+}
+
 /** getProfileProperties — the (own/inherit) properties of a profile, for cross-app reuse. */
 export async function getProfileProperties(store, args = {}) {
   const s = asStore(store);
@@ -497,6 +531,8 @@ export const AGENT_CORES = Object.freeze({
   createProfile,
   setProfileProperty,
   getProfileProperties,
+  setProfileDriver,
+  getProfileDrivers,
   setProfileDisclosure,
   getProfileDisclosure,
   getPersonaView,
