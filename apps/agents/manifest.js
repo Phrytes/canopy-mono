@@ -133,7 +133,7 @@ export const agentsManifest = {
      * (cross-app reuse). setProfileProperty writes an OWN value; getProfileProperties reads the map. */
     {
       id:        'setProfileProperty',
-      verb:      'set',
+      verb:      'update',
       appliesTo: { type: 'agent' },
       params: [
         { name: 'id',    kind: 'string', required: true, schema: { minLength: 1 } },
@@ -144,7 +144,7 @@ export const agentsManifest = {
     },
     {
       id:        'getProfileProperties',
-      verb:      'view',
+      verb:      'get',
       appliesTo: { type: 'agent' },
       params: [
         { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
@@ -156,7 +156,7 @@ export const agentsManifest = {
      * of the feedback charter consent; the "About me" surface + join wizard write through these. */
     {
       id:        'setProfileDisclosure',
-      verb:      'set',
+      verb:      'update',
       appliesTo: { type: 'agent' },
       params: [
         { name: 'id',        kind: 'string',  required: true, schema: { minLength: 1 } },
@@ -169,7 +169,7 @@ export const agentsManifest = {
     },
     {
       id:        'getProfileDisclosure',
-      verb:      'view',
+      verb:      'get',
       appliesTo: { type: 'agent' },
       params: [
         { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
@@ -178,7 +178,7 @@ export const agentsManifest = {
     },
     {
       id:        'getPersonaView',
-      verb:      'view',
+      verb:      'get',
       appliesTo: { type: 'agent' },
       params: [
         { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
@@ -187,7 +187,7 @@ export const agentsManifest = {
     },
     {
       id:        'getPersonaRelease',
-      verb:      'view',
+      verb:      'get',
       appliesTo: { type: 'agent' },
       params: [
         { name: 'id',        kind: 'string', required: true, schema: { minLength: 1 } },

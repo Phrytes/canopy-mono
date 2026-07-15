@@ -157,12 +157,12 @@ _chat = LLM tool · slash = /command · gate = deterministic NL verbs · web/mob
 | **agents** | `listAgents` | list | ✅ | ✅ | · | · | · |  |
 |  | `viewAgent` | list | ✅ | · | · | · | · |  |
 |  | `createProfile` | add | ✅ | · | · | ✅ | ✅ |  |
-|  | `setProfileProperty` | set | ✅ | · | · | · | · |  |
-|  | `getProfileProperties` | view | ✅ | · | · | · | · |  |
-|  | `setProfileDisclosure` | set | ✅ | · | · | · | · |  |
-|  | `getProfileDisclosure` | view | ✅ | · | · | · | · |  |
-|  | `getPersonaView` | view | ✅ | · | · | · | · |  |
-|  | `getPersonaRelease` | view | ✅ | · | · | · | · |  |
+|  | `setProfileProperty` | update | ✅ | · | · | · | · |  |
+|  | `getProfileProperties` | get | ✅ | · | · | · | · |  |
+|  | `setProfileDisclosure` | update | ✅ | · | · | · | · |  |
+|  | `getProfileDisclosure` | get | ✅ | · | · | · | · |  |
+|  | `getPersonaView` | get | ✅ | · | · | · | · |  |
+|  | `getPersonaRelease` | get | ✅ | · | · | · | · |  |
 |  | `revokeAgent` | revoke | ✅ | · | · | ✅ | ✅ |  |
 |  | `grantAgent` | update | ✅ | · | · | · | · |  |
 |  | `revokeGrant` | revoke | ✅ | · | · | · | · |  |
