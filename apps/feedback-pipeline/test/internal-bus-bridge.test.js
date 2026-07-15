@@ -68,6 +68,51 @@ test('full journey over a real InternalBus → SIGNED consent write, replies ove
   me.close();
 });
 
+test('property-layer: a charter consent data-turn rides the consented contribution', async (t) => {
+  await withMockLlm(t);
+  const pod = new InMemoryCentralPod();                       // no verify → forAggregation returns all
+  const cfg = validateProjectConfig({ projectId, llm: { route: 'local', model: 'mock' }, aggregation: { k: 1 } });
+  const bus = new InternalBus();
+  const bot = new CanopyChatBot({ bridge: new InternalBusBridge({ bus, address: 'fp-bot' }), pod, config: cfg, participantFor: (c) => c });
+  await bot.start();
+  const me = connectFeedbackParticipant(bus, { botAddress: 'fp-bot', chatId: 'anils' });
+
+  await me.send('De wachtlijst bij de GGZ is al maanden veel te lang.');
+  const repliesBefore = me.replies.length;
+  // hand off the participant's charter consent as a STRUCTURED data turn (no text) — silent, no reply bubble
+  await me.send('', { data: { charter: { attributes: { place: 'Groningen' }, charterHash: 'ch-abc' } } });
+  assert.equal(me.replies.length, repliesBefore, 'the disclosure hand-off emits no bubble');
+
+  await me.send('oké volgens mij ben ik wel klaar zo');       // review
+  await me.send('ja stuur ze allemaal maar door');            // consent → write
+
+  const agg = pod.forAggregation();
+  assert.equal(agg.length, 1);
+  assert.deepEqual(agg[0].attributes, { place: 'Groningen' });   // the disclosed coarse attr rode the contribution
+  assert.equal(agg[0].charterHash, 'ch-abc');
+  me.close();
+});
+
+test('property-layer: back-compat — no charter turn → the contribution carries no attributes', async (t) => {
+  await withMockLlm(t);
+  const pod = new InMemoryCentralPod();
+  const cfg = validateProjectConfig({ projectId, llm: { route: 'local', model: 'mock' }, aggregation: { k: 1 } });
+  const bus = new InternalBus();
+  const bot = new CanopyChatBot({ bridge: new InternalBusBridge({ bus, address: 'fp-bot' }), pod, config: cfg, participantFor: (c) => c });
+  await bot.start();
+  const me = connectFeedbackParticipant(bus, { botAddress: 'fp-bot', chatId: 'anils' });
+
+  await me.send('De wachtlijst bij de GGZ is al maanden veel te lang.');
+  await me.send('oké volgens mij ben ik wel klaar zo');
+  await me.send('ja stuur ze allemaal maar door');
+
+  const agg = pod.forAggregation();
+  assert.equal(agg.length, 1);
+  assert.equal(agg[0].attributes, undefined);
+  assert.equal(agg[0].charterHash, undefined);
+  me.close();
+});
+
 test('two participants on one bus stay isolated', async (t) => {
   await withMockLlm(t);
   const pod = new InMemoryCentralPod();

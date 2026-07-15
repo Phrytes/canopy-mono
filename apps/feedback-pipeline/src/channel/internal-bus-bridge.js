@@ -56,6 +56,9 @@ export class InternalBusBridge {
       sender: { bridgeUid: env.from, displayName: env.sender?.displayName ?? 'participant', webid: env.sender?.webid },
       text: env.text ?? '',
       replyTo: env.replyTo,
+      // Optional STRUCTURED payload alongside the text turn (property layer: the participant's charter
+      // consent rides here — `data.charter = { attributes, charterHash }`). Absent for a plain text turn.
+      data: env.data ?? null,
       isAddressed: true,
     };
     try { await this.#handler(msg); }
@@ -79,11 +82,11 @@ export function connectFeedbackParticipant(bus, { botAddress = 'fp-bot', chatId,
   let n = 0;
   return {
     replies,
-    send(text) {
+    send(text, { data } = {}) {
       const corrId = `${chatId}:${++n}`;
       return new Promise((resolve) => {
         bus.once(DONE(corrId), () => resolve());
-        bus.emit(SEND(botAddress), { from: chatId, chatId, messageId: corrId, corrId, text, sender: { displayName: 'participant' } });
+        bus.emit(SEND(botAddress), { from: chatId, chatId, messageId: corrId, corrId, text, ...(data ? { data } : {}), sender: { displayName: 'participant' } });
       });
     },
     close() { bus.off(REPLY(chatId), onReplyEvt); },
