@@ -25,6 +25,8 @@ import { log, dumpLogs, formatLogs } from '@canopy/logger';
 import {
   charterFromConfig, consentItems, emptyConsent, setConsentValue, toggleConsent, consentRelease, consentWarning,
 } from './charterConsent.js';
+// Per-circle privacy state — the discrete indicator model (§10c). Pure; the shell renders from it.
+import { circlePrivacyState } from './circlePrivacyState.js';
 // The anonymous bug-report packager (shared, pure). Carries NO identity — see bugReport.js.
 import { buildReportEnvelope } from './bugReport.js';
 // REUSE the restore wizard's mnemonic validation (word-count / 12-or-24) rather than reimplementing it — the
@@ -291,7 +293,7 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     const st = charterState.get(String(threadId)); if (!st) return;
     const rel = consentRelease(st.profile, projectCharter);
     const shared = Object.keys(rel.attributes);
-    const warn = consentWarning(st.profile, projectCharter);   // n unknown here → inert unless a cohort size is wired
+    const warn = consentWarning(st.profile, projectCharter, cfg.cohortHint);   // cohortHint (§10b) enables the identifiability warning
     const head = shared.length ? C().confirm_head(shared.join(', ')) : C().confirm_none;
     emit({ chatId: String(threadId), kind: 'charter', charter: true,
       text: warn.warn ? `${head}\n${C().warn(warn.n)}` : head,
@@ -303,16 +305,58 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   const sendCharter = async (threadId) => {
     const st = charterState.get(String(threadId)); if (!st) return;
     const rel = consentRelease(st.profile, projectCharter);
+    doneConsent.set(String(threadId), st.profile);   // keep the final consent for the privacy indicator (§10c)
     charterState.delete(String(threadId)); awaitingCharterText.delete(String(threadId));
     log.info('feedback', 'charter.send', { shared: Object.keys(rel.attributes).length });   // PII-safe: count only
     // Hand the release to the bot as a STRUCTURED data turn (not text): it sets the dispatcher's disclosure so
     // the ensuing consent's contributions carry it. The coarse values never touch the log.
     await (await clientFor(threadId)).send('', { data: { charter: rel } });
     emit({ chatId: String(threadId), kind: 'charter-result', charter: true, text: C().sent });
+    emitPrivacyStatus(threadId);
   };
   const skipCharter = (threadId) => {
+    doneConsent.set(String(threadId), emptyConsent(cfg.projectId));   // shared nothing
     charterState.delete(String(threadId)); awaitingCharterText.delete(String(threadId));
     emit({ chatId: String(threadId), kind: 'charter-result', charter: true, text: C().skipped });
+    emitPrivacyStatus(threadId);
+  };
+
+  // ── Per-circle privacy INDICATOR (§10c) ──────────────────────────────────────────────────────────
+  // A DISCRETE, honest state (quiet · sharing · ⚠ risk) computed from the participant's disclosure + the
+  // warning heuristic. Emitted as a `privacy` status the shell renders (icon + a ⓘ to see/change); the ⚠ is
+  // EARNED (only a real risk), neutral-not-green, tap → why + change. Indicator ≠ protection (it only reports).
+  const doneConsent = new Map();   // threadId -> the final consent profile (for the indicator after consent)
+  const PRIVACY_ICON = { quiet: '🛡', sharing: '🛡', risk: '⚠️' };
+  const PRIVACY_STRINGS = {
+    nl: { quiet: 'Privacy: je deelt geen achtergrondkenmerken.', sharing: (l) => `Privacy: je deelt ${l}.`,
+      risk_combo: (l) => `⚠️ Privacy: je deelt ${l} — deze combinatie kan je herkenbaar maken.`,
+      risk_off: '⚠️ Privacy: waarschuwingen staan uit terwijl je gegevens deelt.',
+      info_btn: 'ⓘ Bekijk/wijzig', change_btn: 'Wijzig wat je deelt' },
+    en: { quiet: 'Privacy: you share no background details.', sharing: (l) => `Privacy: you share ${l}.`,
+      risk_combo: (l) => `⚠️ Privacy: you share ${l} — this combination may make you recognisable.`,
+      risk_off: '⚠️ Privacy: warnings are off while you are sharing details.',
+      info_btn: 'ⓘ View / change', change_btn: 'Change what you share' },
+  };
+  const P = () => PRIVACY_STRINGS[cfg.language?.preferred === 'nl' ? 'nl' : 'en'];
+  const privacyStateFor = (threadId) => circlePrivacyState({
+    consent: doneConsent.get(String(threadId)) ?? charterState.get(String(threadId))?.profile,
+    charter: projectCharter, warningsOn: true, n: cfg.cohortHint,   // warningsOn toggle is a future setting (§10b)
+  });
+  const privacyText = (st) => {
+    const l = st.shared.join(', ');
+    if (st.level === 'risk') return st.reason === 'warnings-off' ? P().risk_off : P().risk_combo(l);
+    return st.level === 'sharing' ? P().sharing(l) : P().quiet;
+  };
+  const emitPrivacyStatus = (threadId) => {
+    const st = privacyStateFor(threadId);
+    if (!st.applicable) return;   // no charter → nothing to show
+    emit({ chatId: String(threadId), kind: 'privacy', privacy: true, level: st.level, icon: PRIVACY_ICON[st.level],
+      text: `${PRIVACY_ICON[st.level]} ${privacyText(st)}`, buttons: [{ id: 'fp:privacy:info', label: P().info_btn }] });
+  };
+  const emitPrivacyInfo = (threadId) => {
+    const st = privacyStateFor(threadId);
+    emit({ chatId: String(threadId), kind: 'privacy', privacy: true, level: st.level, text: privacyText(st),
+      buttons: [{ id: 'fp:charter:start', label: P().change_btn }] });   // change → re-run the charter consent
   };
 
   const emitAccessOptions = (threadId) => {
@@ -483,6 +527,7 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
         if (/^\s*fp:charter:start\s*$/i.test(s)) { beginCharter(threadId); return true; }
         if (/^\s*fp:charter:(skip|none-all)\s*$/i.test(s)) { skipCharter(threadId); return true; }
         if (/^\s*fp:charter:send\s*$/i.test(s)) { await sendCharter(threadId); return true; }
+        if (/^\s*fp:privacy:info\s*$/i.test(s)) { emitPrivacyInfo(threadId); return true; }   // per-circle indicator tap
         let m;
         if ((m = s.match(/^\s*fp:charter:pick:([^:]+):(.+?)\s*$/i))) { charterPick(threadId, m[1], m[2]); return true; }
         if ((m = s.match(/^\s*fp:charter:none:([^:]+)\s*$/i))) { charterNone(threadId); return true; }
@@ -524,6 +569,11 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     charter(threadId) { if (active.has(String(threadId)) && projectCharter) emitCharterIntro(threadId); },
     /** True when the project declared a requested-attributes charter (a shell may show a chrome affordance). */
     hasCharter: !!projectCharter,
+    /** The per-circle privacy indicator state (§10c) for a shell to render a badge — {applicable, level, shared,
+     *  warn, reason}. `level` ∈ quiet|sharing|risk. Reflects the participant's current disclosure in this thread. */
+    privacyState(threadId) { return privacyStateFor(threadId); },
+    /** Show the per-circle privacy status affordance (a shell can call this from chrome). */
+    showPrivacy(threadId) { if (active.has(String(threadId)) && projectCharter) emitPrivacyStatus(threadId); },
     /** A button tap (M2): send the control id (fp:*) as a turn — the bot's parseControl handles it. */
     async tapButton(buttonId, threadId) {
       if (!active.has(String(threadId))) return false;
@@ -539,6 +589,7 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
         if (/^\s*fp:charter:start\s*$/i.test(b)) { beginCharter(threadId); return true; }
         if (/^\s*fp:charter:(skip|none-all)\s*$/i.test(b)) { skipCharter(threadId); return true; }
         if (/^\s*fp:charter:send\s*$/i.test(b)) { await sendCharter(threadId); return true; }
+        if (/^\s*fp:privacy:info\s*$/i.test(b)) { emitPrivacyInfo(threadId); return true; }
         let m;
         if ((m = b.match(/^\s*fp:charter:pick:([^:]+):(.+?)\s*$/i))) { charterPick(threadId, m[1], m[2]); return true; }
         if ((m = b.match(/^\s*fp:charter:none:([^:]+)\s*$/i))) { charterNone(threadId); return true; }

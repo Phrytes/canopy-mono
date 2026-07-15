@@ -156,6 +156,40 @@ test('charter consent — the opt-in walk releases a coarse attribute that rides
   expect(agg[0].attributes).toEqual({ ageBand: '35-54' });
 });
 
+test('privacy indicator — a per-circle status is shown after consent, with a ⚠ when the combo is identifying', async () => {
+  const pod = new InMemoryCentralPod();
+  const replies = [];
+  // cohortHint = 8 (small) so the identifiability warning can fire; charter asks for 2 attributes.
+  const surface = createFeedbackSurface({
+    config: cfg({ cohortHint: 8, charter: { attributes: [{ key: 'ageBand', purpose: 'age' }, { key: 'role', purpose: 'role' }] } }),
+    pod, emit: (r) => replies.push(r),
+  });
+  await surface.start('p');
+  // share BOTH attributes → an identifying combo in a group of ~8
+  await surface.handle('fp:charter:start', 'p');
+  await surface.handle('fp:charter:pick:ageBand:35-54', 'p');
+  await surface.handle('fp:charter:pick:role:resident', 'p');
+  await surface.handle('fp:charter:send', 'p');
+
+  const status = replies.filter((r) => r.kind === 'privacy').at(-1);
+  expect(status).toBeTruthy();
+  expect(status.level).toBe('risk');                 // ⚠ earned — the combo is likely identifying in ~8
+  expect(status.text).toMatch(/⚠️/);
+  // the queryable state a shell renders a badge from
+  const st = surface.privacyState('p');
+  expect(st).toMatchObject({ applicable: true, level: 'risk', reason: 'combo-identifiable' });
+  expect(st.shared.sort()).toEqual(['ageBand', 'role']);
+});
+
+test('privacy indicator — quiet when nothing is shared', async () => {
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod: new InMemoryCentralPod(), emit: (r) => replies.push(r) });
+  await surface.start('q');
+  await surface.handle('fp:charter:skip', 'q');
+  expect(replies.filter((r) => r.kind === 'privacy').at(-1).level).toBe('quiet');
+  expect(surface.privacyState('q').level).toBe('quiet');
+});
+
 test('charter consent — skipping shares nothing (default withhold)', async () => {
   const pod = new InMemoryCentralPod();
   const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod, emit: () => {} });

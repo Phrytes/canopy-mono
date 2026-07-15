@@ -142,6 +142,10 @@ export const ProjectConfigSchema = z.object({
       purpose: z.string().min(1),
     })).min(1),
   }).optional(),
+  // Property layer §10b — an APPROXIMATE cohort size (a low-sensitivity count the PM sets) so the participant's
+  // device can run the identifiability warning ("in a group of ~n, this combo may make you recognisable").
+  // Optional; absent ⇒ the identifiability trigger stays inert (structural warnings still work).
+  cohortHint: z.number().int().positive().optional(),
 }).superRefine((cfg, ctx) => {
   // The always-on writer can only seal if it has a public key to seal to.
   if (cfg.privacy?.seal && !cfg.privacy.projectPublicKey) {
