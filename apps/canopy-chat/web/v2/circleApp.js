@@ -158,10 +158,12 @@ import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
+import { createBugReportSink } from '../../src/feedback/bugReportSink.js';
 import { makeNoLoginFeedbackPods } from '../../src/feedback/noLoginPods.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
 import { feedbackBotFromInput, createFeedbackBotStore } from '../../src/v2/feedbackBots.js';
+import { createFeedbackHistoryStore } from '../../src/feedback/feedbackHistory.js';
 // (localStoragePolicyIo is already imported below with createCirclePolicyStore)
 import { createUserLlmDefaultStore, localStorageUserLlmIo } from '../../src/v2/userLlmDefault.js';
 import { applyUserLlmRuntime, validateUserLlmConfig } from '../../src/v2/userLlmRuntime.js';
@@ -1022,9 +1024,24 @@ const LANG_INFO = {
   tr: { name: 'Türkçe',     prompt: 'Türkçe devam et? Aşağıya dokun.' },
 };
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
+// Logging slice 3 — the anonymous bug-report SEND TARGET: the dev-pod "bug-report bot" address the panel's
+// Send button routes the (already-anonymous) envelope to, over the SAME relay/peer transport as everything
+// else (`_peerAgent.sendPeerMessage`). The real dev address does NOT exist yet: this is a PLACEHOLDER, so it
+// drops into open-source config later (via VITE_BUGREPORT_ADDR, or by giving BUG_REPORT_DEV_ADDR the real
+// value). Until then it is null → the sink returns `no-target` and the panel stays COPY-ONLY. A real value
+// would look like `'fp-bugreport-dev@<relay-or-pubkey>'` (placeholder shape). Follow-up: the bot RECEIVER +
+// real dev-pod address; sharing a circle may later imply sharing this relay (a per-circle relay, not built).
+const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address lands here (open-source config)
+const BUG_REPORT_TARGET = import.meta.env?.VITE_BUGREPORT_ADDR ?? BUG_REPORT_DEV_ADDR;
+const APP_VERSION = import.meta.env?.VITE_APP_VERSION ?? undefined;   // non-identifying build tag for the report envelope
 // cluster J — ADDED feedback bots (no pre-seeding): the portal invite link/QR adds a co-hosted fp-bot
 // contact; tapping it opens its dedicated thread + activates the verify pods.
 const feedbackBotStore = createFeedbackBotStore(typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} });
+// Device-local transcript store — restore the feedback thread on reload (see feedbackHistory.js). Same
+// local-only trust boundary as feedbackBotStore / fp.ownpod: the participant's own content, never sent.
+const feedbackHistoryStore = createFeedbackHistoryStore({ storage: typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} } });
+// Persist the current transcript for a thread (best-effort, fire-and-forget). Called after every append.
+function _saveFbHistory(botId) { const ft = _fbThreads.get(botId); if (ft) feedbackHistoryStore.save(botId, ft.messages); }
 const _fbThreads = new Map();   // botId → { name, messages:[], surface, mount, activated }
 let _activeFbThread = null;     // { botId }
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
@@ -1930,7 +1947,16 @@ function feedbackEmit(groupId) {
     if (kind === 'report') {
       // "Report a problem" — the PII-safe on-device log, shown for review. Web text bubbles are selectable, so
       // the intro + the (monospace-ish) log render as one copyable bubble. Never fanned out — private to you.
-      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self' });
+      // The Send button (fp:report:send) routes back to this circle's surface (circleEmbedButtonTap → handle),
+      // which packages an ANONYMOUS envelope and hands it to the injected sink. Copy stays available too.
+      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
+      return;
+    }
+    if (kind === 'access' || kind === 'access-reveal' || kind === 'access-result') {
+      // "Secure your access" (reveal/restore the owner-root recovery phrase). PRIVATE to this device — the
+      // recovery phrase never leaves it — so render self-scoped, mirroring the report panel. The backup/restore
+      // buttons route back via circleEmbedButtonTap → surface.handle(); the revealed phrase is selectable to copy.
+      _kringRender.botBubble?.(text, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       return;
     }
     if (kind === 'review' && Array.isArray(points) && points.length) {
@@ -1955,6 +1981,15 @@ function buildFeedbackSurface({ projectId, groupId, lang, ownPod, centralPod, co
     pod: ownPod,
     ...(centralPod ? { centralPod, controlStore, verify: true } : {}),
     reportButton: true,   // web idiom: offer "Report a problem" as a bubble-button (mobile uses a header button)
+    // "Secure your access": surface BACK UP + RESTORE of the owner-root recovery phrase in the no-login
+    // onboarding. The participant's pseudonym derives from this phrase, so this is how they secure + recover
+    // their identity on a new device. Reaches the host reveal/restore skills via callSkill (household agent).
+    accessButton: true,
+    callSkill: (origin, opId, args) => rawCallSkill(origin, opId, args),
+    // Anonymous bug-report SEND sink: forward the identity-free envelope over the peer/relay transport to the
+    // config-driven dev bot. `_peerAgent` is the boot-captured realAgent; null target → sink no-ops (copy-only).
+    app: 'canopy-chat', version: APP_VERSION,
+    sendReport: createBugReportSink({ send: (a, p) => _peerAgent?.sendPeerMessage(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
     emit: feedbackEmit(groupId),
   });
 }
@@ -2194,6 +2229,9 @@ function _buildFbSurface(botId, pods) {
     // when verify is on, consent contributions are signed and a verify pod accepts them. null → unsigned.
     identityFor: () => signerForIdentity(circleCoreAgent?.identity),
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
+    // Anonymous bug-report SEND sink (parity with buildFeedbackSurface) — same peer/relay transport + target.
+    app: 'canopy-chat', version: APP_VERSION,
+    sendReport: createBugReportSink({ send: (a, p) => _peerAgent?.sendPeerMessage(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
     emit: ({ text, buttons, kind, points, labels }) => {
       if (kind === 'review' && Array.isArray(points)) {
         ft.reviewPoints = points;   // for the ✏ composer pre-fill
@@ -2201,13 +2239,14 @@ function _buildFbSurface(botId, pods) {
       } else {
         ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       }
+      _saveFbHistory(botId);   // persist the transcript so it restores on reload (device-local)
       _renderFbThread(botId);
     },
   });
   ft.mount = createFeedbackMount({
     surface: ft.surface,
-    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _renderFbThread(botId); },
-    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _renderFbThread(botId); },
+    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _saveFbHistory(botId); _renderFbThread(botId); },
+    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _saveFbHistory(botId); _renderFbThread(botId); },
   });
 }
 // The participant switches the bot's language: rebuild the bot in that language (reusing the activated pods —
@@ -2217,10 +2256,17 @@ async function _changeFbLang(botId, lg) {
   if (!ft || (lg !== 'nl' && lg !== 'en') || lg === ft.botLang) return;
   ft.botLang = lg;
   try { localStorage.setItem(`fp.lang.${botId}`, lg); } catch { /* best-effort */ }
-  ft.messages = []; ft.reviewPoints = null; ft.editingId = null;
+  // KEEP the transcript across a language switch (same participant/thread — don't discard their own
+  // feedback because they toggled language). We rebuild the surface + re-/help in the new language, whose
+  // fresh greeting appends BELOW the existing (kept) history rather than replacing it. Only the transient UI
+  // pointers (review-card pre-fill / inline edit) reset. (Restore-on-reload is the primary goal; a genuine
+  // new-thread reset would clear both `ft.messages` and the stored key.)
+  ft.reviewPoints = null; ft.editingId = null;
   _buildFbSurface(botId, ft.pods || null);
   ft.busy = true; _renderFbThread(botId);
-  try { await ft.surface.start(botId); }
+  // KEEP the transcript across a language switch → don't re-greet (that would stack a greeting each toggle); the
+  // chrome (composer/buttons) already re-renders in the new language. Only the verify poll runs inside start().
+  try { await ft.surface.start(botId, { greet: false }); }
   catch (e) { ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
   finally { ft.busy = false; _renderFbThread(botId); }
 }
@@ -2230,7 +2276,14 @@ async function showFeedbackThread(bot) {
   if (!_fbThreads.has(botId)) {
     let stored = null; try { stored = localStorage.getItem(`fp.lang.${botId}`); } catch { /* no storage */ }
     const botLang = (stored === 'nl' || stored === 'en') ? stored : detectDeviceLang();
-    _fbThreads.set(botId, { name: bot.name, messages: [], surface: null, mount: null, activated: false, botLang, pods: null });
+    // Restore the persisted transcript so a reload/reopen re-shows the conversation (device-local). `_fbThreads`
+    // is per-session (module state, cleared on reload), so on the FIRST open of a session we hydrate from
+    // storage; a fresh bot with no stored history hydrates to []. A fresh /help greeting from surface.start()
+    // still appends below the restored transcript (unchanged per-open behaviour).
+    let history = []; try { history = await feedbackHistoryStore.load(botId); } catch { history = []; }
+    // hadHistory = a restored (reload) thread → suppress the onboarding greeting so it doesn't re-stack in the
+    // stored transcript; the affordance buttons come back WITH the restored history (still functional).
+    _fbThreads.set(botId, { name: bot.name, messages: history, surface: null, mount: null, activated: false, botLang, pods: null, hadHistory: history.length > 0 });
   }
   const ft = _fbThreads.get(botId);
   _activeFbThread = { botId };
@@ -2261,7 +2314,10 @@ async function showFeedbackThread(bot) {
   // start() polls the lead's /control/ round + summarises on-device (an AI call, a few seconds) — show a
   // busy state so the open doesn't look frozen, and surface any error in the chat (not just the console).
   ft.busy = true; _renderFbThread(botId);
-  try { await ft.surface.start(botId); }
+  // Greet only on a genuinely fresh thread (no restored transcript); a reload restores the greeting with the
+  // history, so re-greeting would stack it. Flip the flag so a later reopen this session doesn't re-greet either.
+  const greet = !ft.hadHistory; ft.hadHistory = true;
+  try { await ft.surface.start(botId, { greet }); }
   catch (e) { console.error('[circleApp] feedback poll/start failed:', e); ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
   finally { ft.busy = false; _renderFbThread(botId); }
 }

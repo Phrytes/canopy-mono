@@ -87,7 +87,9 @@ export class ProjectStore {
 
   getConfig(projectId) { return this.#req(projectId).config; }
 
-  /** Public status for the GUI dashboard — counts + the privacy posture, never secrets. */
+  /** Public status for the GUI dashboard — counts + the privacy posture, never secrets.
+   *  `settings` is a read-only projection of the (already validated) menukaart config the
+   *  lead needs to see at a glance; it invents no new config, only surfaces existing fields. */
   status(projectId) {
     const { config, createdAt, inviteBase } = this.#req(projectId);
     const spec = this.#cohort.getSpec(projectId);
@@ -97,6 +99,16 @@ export class ProjectStore {
       seal: config.privacy.seal, keygen: config.privacy.keygen,
       hasProjectKey: Boolean(config.privacy.projectPublicKey),
       inviteBase: inviteBase || null,
+      settings: {
+        k: config.aggregation.k,
+        belowThreshold: config.aggregation.belowThreshold,
+        sealLocation: config.aggregation.location,   // where the project key may open contributions
+        language: config.language.preferred,
+        review: config.review.mode,
+        verify: config.privacy.verify,               // require a participant signature per contribution
+        route: config.llm.route,
+        model: config.llm.model,
+      },
     };
   }
 

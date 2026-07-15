@@ -131,6 +131,69 @@ test('reportButton — start() offers the web bubble-trigger with an fp:report b
   expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(true);
 });
 
+test('start({ greet:false }) suppresses the onboarding greeting + affordances (restore-on-reload path)', async () => {
+  const { surface, replies } = setup({ surface: { reportButton: true } });
+  await surface.start('rb2', { greet: false });
+  // no /help greeting and no affordance bubble — on reload these come back WITH the restored transcript instead,
+  // so re-emitting would stack them in the stored history.
+  expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(false);
+  expect(replies.length).toBe(0);
+});
+
+test('access affordance — start() offers backup + restore; backup reveals the phrase via revealOwnerPhrase', async () => {
+  const calls = [];
+  const callSkill = async (origin, opId, args) => {
+    calls.push({ origin, opId, args });
+    if (opId === 'revealOwnerPhrase') return { shown: false, mnemonic: 'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima' };
+    return {};
+  };
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg(), pod: new InMemoryCentralPod(), callSkill, accessButton: true, emit: (r) => replies.push(r) });
+  await surface.start('acc');
+  // onboarding offers the two access affordances as bubble-buttons
+  const opts = replies.find((r) => r.kind === 'access' && Array.isArray(r.buttons));
+  expect(opts.buttons.map((b) => b.id)).toEqual(['fp:access:backup', 'fp:access:restore']);
+  // BACK UP → calls the host reveal skill on the household agent + surfaces the phrase
+  replies.length = 0;
+  expect(await surface.handle('fp:access:backup', 'acc')).toBe(true);
+  expect(calls.some((c) => c.origin === 'household' && c.opId === 'revealOwnerPhrase')).toBe(true);
+  expect(replies.at(-1).kind).toBe('access-reveal');
+  expect(replies.at(-1).text).toContain('alpha bravo charlie');   // the phrase is surfaced
+  expect(replies.at(-1).copyText).toMatch(/^alpha bravo/);         // copy affordance carries the phrase
+});
+
+test('access affordance — restore prompts, then a pasted phrase installs it via restoreOwnerPhrase', async () => {
+  const calls = [];
+  const callSkill = async (origin, opId, args) => { calls.push({ origin, opId, args }); return opId === 'restoreOwnerPhrase' ? { ok: true, reloadRequired: true } : {}; };
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg(), pod: new InMemoryCentralPod(), callSkill, accessButton: true, emit: (r) => replies.push(r) });
+  await surface.start('rst'); replies.length = 0;
+  // RESTORE → prompts for a phrase (no skill call yet)
+  expect(await surface.handle('fp:access:restore', 'rst')).toBe(true);
+  expect(replies.at(-1).kind).toBe('access');
+  expect(calls.some((c) => c.opId === 'restoreOwnerPhrase')).toBe(false);
+  // a 12-word phrase is treated as the pasted mnemonic → restoreOwnerPhrase on the household agent
+  const phrase = 'one two three four five six seven eight nine ten eleven twelve';
+  expect(await surface.handle(phrase, 'rst')).toBe(true);
+  const call = calls.find((c) => c.opId === 'restoreOwnerPhrase');
+  expect(call.origin).toBe('household');
+  expect(call.args.mnemonic).toBe(phrase);
+  expect(replies.at(-1).kind).toBe('access-result');
+  expect(replies.at(-1).text).toMatch(/hersteld|restored/i);      // success surfaced
+});
+
+test('access affordance — an invalid restore phrase is rejected without calling the host skill', async () => {
+  const calls = [];
+  const callSkill = async (origin, opId) => { calls.push(opId); return { ok: true }; };
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg(), pod: new InMemoryCentralPod(), callSkill, accessButton: true, emit: (r) => replies.push(r) });
+  await surface.start('inv'); replies.length = 0;
+  await surface.handle('fp:access:restore', 'inv');
+  expect(await surface.handle('too few words here', 'inv')).toBe(true);   // 4 words → invalid
+  expect(calls.includes('restoreOwnerPhrase')).toBe(false);
+  expect(replies.at(-1).text).toMatch(/12 of 24|12 or 24/);
+});
+
 test('parseFeedbackInvite reads a project-invite link', () => {
   expect(parseFeedbackInvite('https://app.example/?projectId=gemeente-x&code=abc123')).toEqual({ projectId: 'gemeente-x', code: 'abc123' });
   expect(parseFeedbackInvite('projectId=p&code=c')).toEqual({ projectId: 'p', code: 'c' });

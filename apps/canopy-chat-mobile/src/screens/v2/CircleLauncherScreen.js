@@ -1171,6 +1171,10 @@ export default function CircleLauncherScreen({
               store={feedbackStore}
               onBack={() => setContactThread(null)}
               identity={bundle?.coreAgent?.identity ?? null}
+              // Anonymous bug-report send: the SAME peer/relay transport the bundle uses everywhere else.
+              sendPeer={(a, p) => bundle?.agent?.sendPeerMessage?.(a, p)}
+              // "Secure your access" reveal/restore reaches the household recovery-phrase skills via callSkill.
+              callSkill={(o, op, a) => bundle?.callSkill?.(o, op, a)}
             />
           </WithTabBar>
         );

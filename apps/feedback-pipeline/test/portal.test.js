@@ -48,6 +48,45 @@ test('API: create → list → status → codes (+ invite links)', async () => {
   assert.match(codes.json.links[0], /^https:\/\/activate\.example\/\?projectId=alpha&code=/);
 });
 
+test('status().settings surfaces the read-only menukaart the lead needs (no secrets)', async () => {
+  const store = new ProjectStore();
+  store.createProject({
+    config: {
+      projectId: 'dash', projectName: 'Dashboard', llm: { route: 'privatemode', model: 'gpt-oss' },
+      language: { preferred: 'en' }, review: { mode: 'required-approval' },
+      aggregation: { k: 5, belowThreshold: 'drop', location: 'controller' },
+      privacy: { seal: false, verify: true },
+    },
+    cohort: { expiresAt: future, ceiling: 12 },
+  });
+  const s = store.status('dash').settings;
+  assert.equal(s.k, 5);
+  assert.equal(s.belowThreshold, 'drop');
+  assert.equal(s.sealLocation, 'controller');
+  assert.equal(s.language, 'en');
+  assert.equal(s.review, 'required-approval');
+  assert.equal(s.verify, true);
+  assert.equal(s.route, 'privatemode');
+  assert.equal(s.model, 'gpt-oss');
+});
+
+test('settings uses validated defaults + rides the list API and persistence', async () => {
+  const store = new ProjectStore();
+  await post(store, '/api/projects', { config: baseConfig('def'), cohort: { expiresAt: future, ceiling: 5 } });
+  // defaults filled by the config schema (no invented config)
+  const s = store.status('def').settings;
+  assert.equal(s.language, 'nl');
+  assert.equal(s.review, 'notification');
+  assert.equal(s.sealLocation, 'host');
+  assert.equal(s.verify, false);
+  // the dashboard list carries settings for every project
+  const list = await get(store, '/api/projects');
+  assert.equal(list.json.projects[0].settings.k, 3);
+  // survives a persistence round-trip
+  const reloaded = ProjectStore.fromJSON(JSON.parse(JSON.stringify(store.toJSON())));
+  assert.equal(reloaded.status('def').settings.review, 'notification');
+});
+
 test('API: menukaart validation errors surface as 400 (seal without a key, non-host keygen)', async () => {
   const store = new ProjectStore();
   const bad = await post(store, '/api/projects', {

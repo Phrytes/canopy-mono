@@ -21,17 +21,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t, lang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { createFeedbackSurface, signerForIdentity, chunkBubble } from '../../../../canopy-chat/src/feedback/feedbackSurface.js';
+import { createBugReportSink } from '../../../../canopy-chat/src/feedback/bugReportSink.js';
 import { FeedbackReviewCards, FeedbackReportPanel } from '../../rn/FeedbackBubbles.js';
 import { makeNoLoginFeedbackPods } from '../../../../canopy-chat/src/feedback/noLoginPods.js';
+import { createFeedbackHistoryStore } from '../../../../canopy-chat/src/feedback/feedbackHistory.js';
 import { activateMobileFeedback } from '../../v2/feedbackActivation.js';
+
+// Device-local transcript store — restore the feedback thread on reload (shared web ≡ mobile store; see
+// feedbackHistory.js). Same local-only trust boundary as the persisted own-pod Stage-1 data / `fp.lang`:
+// the participant's own content, never sent anywhere.
+const feedbackHistoryStore = createFeedbackHistoryStore({ storage: AsyncStorage });
 
 // Same EXPO_PUBLIC_* vars ChatScreen reads (model override included — the default qwen2.5 404s on Privatemode).
 const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || undefined;
 const FEEDBACK_LLM_MODEL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_MODEL || undefined;
 const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
 const FEEDBACK_COLLECTOR_URL = process.env.EXPO_PUBLIC_FEEDBACK_COLLECTOR_URL || null;
+// Logging slice 3 — the anonymous bug-report SEND TARGET (web parity, circleApp.js). The dev-pod "bug-report
+// bot" address the panel's Send button routes the (already-anonymous) envelope to, over the SAME peer/relay
+// transport (`agent.sendPeerMessage`, injected as `sendPeer`). The real dev address does NOT exist yet: this
+// is a PLACEHOLDER that drops into open-source config later (EXPO_PUBLIC_BUGREPORT_ADDR, or by giving
+// BUG_REPORT_DEV_ADDR the real value). Until then null → the sink returns `no-target` and the panel stays
+// COPY-ONLY. A real value would look like `'fp-bugreport-dev@<relay-or-pubkey>'`. Follow-up: the bot RECEIVER
+// + real dev-pod address; sharing a circle may later imply sharing this relay (a per-circle relay, not built).
+const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address lands here (open-source config)
+const BUG_REPORT_TARGET = process.env.EXPO_PUBLIC_BUGREPORT_ADDR || BUG_REPORT_DEV_ADDR;
+const APP_VERSION = process.env.EXPO_PUBLIC_APP_VERSION || undefined;   // non-identifying build tag for the report envelope
 
-export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null }) {
+export default function FeedbackThreadScreen({ session, bot, store, onBack, identity = null, sendPeer = null, callSkill = null }) {
   const insets = useSafeAreaInsets();   // clear the status bar so the header (back + language toggle) is tappable
   const threadId = bot?.id;
   const name = bot?.name ?? bot?.label ?? threadId ?? 'Feedback';
@@ -47,10 +64,18 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
   const activatedLangRef = useRef(null);           // the lang the surface was last (re)built for
   const podsRef = useRef(null);                    // activated pods, cached so a language switch needn't re-activate
   const noLoginRef = useRef(false);                // true when this thread uses the no-login collector flow (signs)
+  const sendPeerRef = useRef(sendPeer);            // latest peer/relay send — read LAZILY at report-send time
+  sendPeerRef.current = sendPeer;                  // (agent may still be booting when the surface is built)
+  const callSkillRef = useRef(callSkill);          // latest household callSkill — read LAZILY for reveal/restore
+  callSkillRef.current = callSkill;                // (same lazy-boot reason as sendPeer)
   const identityRef = useRef(identity);            // latest agent identity — read LAZILY at sign time (web parity:
   identityRef.current = identity;                  // circleCoreAgent is read at call time, not captured, so a
                                                    // still-booting identity at surface-build time isn't frozen in.
   const scrollRef = useRef(null);
+  const hydratedRef = useRef(false);   // true once the persisted transcript has been loaded (gates saving so
+                                       // the initial empty state can't clobber stored history before hydration).
+  const hadHistoryRef = useRef(undefined);   // captured once: was there a stored transcript at first build? (reload)
+  const greetedRef = useRef(false);          // greet (help + affordances) happens at most once per mount
 
   // chrome (header/composer) renders in the BOT's chosen language, not the device locale.
   const tBot = useCallback((key, params) => t(key, params, botLang || undefined), [botLang]);
@@ -61,6 +86,27 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
     AsyncStorage.getItem(`fp.lang.${threadId}`).then((v) => { if (live) setBotLang(v === 'nl' || v === 'en' ? v : lang()); }).catch(() => { if (live) setBotLang(lang()); });
     return () => { live = false; };
   }, [threadId]);
+
+  // Restore the persisted transcript on mount (device-local) so a reload/reopen re-shows the conversation.
+  // Prepend so it sits ABOVE any greeting the surface build may already have appended (order-safe vs the
+  // async pod activation). Absent/malformed → []. Runs once per thread.
+  useEffect(() => {
+    let live = true;
+    feedbackHistoryStore.load(threadId).then((restored) => {
+      if (!live) return;
+      if (Array.isArray(restored) && restored.length) setMessages((prev) => [...restored, ...prev]);
+      hydratedRef.current = true;
+    }).catch(() => { if (live) hydratedRef.current = true; });
+    return () => { live = false; };
+  }, [threadId]);
+
+  // Persist on every message change (debounced) — device-local only. Gated on hydration so the initial empty
+  // render can't overwrite stored history before `load` resolves.
+  useEffect(() => {
+    if (!hydratedRef.current) return undefined;
+    const h = setTimeout(() => { feedbackHistoryStore.save(threadId, messages); }, 250);
+    return () => clearTimeout(h);
+  }, [messages, threadId]);
 
   const changeLang = useCallback((lg) => {
     if (lg === botLang || (lg !== 'nl' && lg !== 'en')) return;
@@ -117,7 +163,11 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
     activatedLangRef.current = botLang;
     const pods = podsRef.current;
     let cancelled = false;
-    setMessages([]); setEditing(null);
+    // KEEP the transcript across a (re)build — the restored history (hydration effect) and any prior turns
+    // survive; the fresh /help greeting from surface.start() appends BELOW. A language switch is the same
+    // participant/thread, so we don't discard their own feedback on toggle (web parity: circleApp
+    // `_changeFbLang` also keeps history). Only the transient inline-edit state resets.
+    setEditing(null);
     (async () => {
       setBusy(true);
       try {
@@ -132,6 +182,16 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
           // No-login flow: sign consent/summaries with THIS device's agent identity (the collector +
           // aggregation only accept signed records). The activation flow signs via its session-authed pods.
           ...(noLoginRef.current ? { identityFor: () => signerForIdentity(identityRef.current), verify: true } : {}),
+          // Anonymous bug-report SEND sink (web parity, circleApp.js) — forward the identity-free envelope over
+          // the peer/relay transport to the config-driven dev bot. `sendPeer` read lazily (agent may boot late);
+          // null target → the sink no-ops and the panel stays copy-only.
+          app: 'canopy-chat', version: APP_VERSION,
+          sendReport: createBugReportSink({ send: (a, p) => sendPeerRef.current?.(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
+          // "Secure your access" (web parity, circleApp.js): BACK UP + RESTORE the owner-root recovery phrase in
+          // the no-login onboarding, via the household reveal/restore skills through callSkill (read lazily). The
+          // access kinds fall through to pushBot as bubbles + buttons; the phrase never leaves the device.
+          accessButton: true,
+          callSkill: (o, op, a) => callSkillRef.current?.(o, op, a),
           // a review renders as editable per-point CARDS (kind:'review'+points); a report renders as a
           // selectable PII-safe log panel (kind:'report'); everything else as a bubble.
           emit: ({ text, buttons, kind, points, labels, logText }) => {
@@ -139,12 +199,24 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
               setEditing(null);
               setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'review', intro: String(text ?? ''), points, labels }]);
             } else if (kind === 'report') {
-              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'report', intro: String(text ?? ''), logText: String(logText ?? '') }]);
+              // Keep the panel's Send button (fp:report:send) — tapping it routes back to the shared surface
+              // (tapControl → surface.handle), which sends the ANONYMOUS envelope. 'report-result' bubbles
+              // (the send outcome) carry no special kind → fall through to pushBot as a normal bubble.
+              setMessages((prev) => [...prev, { id: mkId(), origin: 'bot', kind: 'report', intro: String(text ?? ''), logText: String(logText ?? ''), buttons: Array.isArray(buttons) ? buttons : null }]);
             } else { pushBot(text, buttons); }
           },
         });
         surfaceRef.current = surface;
-        await surface.start(threadId);   // /help + the /control/ verify-round poll
+        // Greet (help + affordance buttons) ONLY on a genuinely fresh thread. On a restore-from-reload the greeting
+        // comes back WITH the transcript, so re-greeting would stack it in storage. Decide once from the stored
+        // history (race-free vs the async hydrate + debounced save + botLang rebuilds); the verify poll always runs.
+        if (hadHistoryRef.current === undefined) {
+          const restored = await feedbackHistoryStore.load(threadId).catch(() => []);
+          hadHistoryRef.current = Array.isArray(restored) && restored.length > 0;
+        }
+        const greet = !hadHistoryRef.current && !greetedRef.current;
+        if (greet) greetedRef.current = true;
+        await surface.start(threadId, { greet });   // greet chrome once; the /control/ verify-round poll always runs
       } catch (e) {
         if (!cancelled) pushBot(`⚠ ${e?.message ?? e}`);
       } finally {
@@ -225,7 +297,18 @@ export default function FeedbackThreadScreen({ session, bot, store, onBack, iden
       >
         {messages.map((m) => {
           if (m.kind === 'report') {
-            return <View key={m.id}><FeedbackReportPanel intro={m.intro} logText={m.logText} /></View>;
+            // The panel's Send button routes through the SAME shared path as web (surface.handle('fp:report:send')).
+            const sendBtn = (m.buttons || []).find((b) => /report:send/.test(b?.id ?? b?.action ?? ''));
+            return (
+              <View key={m.id}>
+                <FeedbackReportPanel
+                  intro={m.intro}
+                  logText={m.logText}
+                  sendLabel={sendBtn?.label}
+                  onSend={sendBtn ? () => tapControl(sendBtn.id ?? sendBtn.action) : undefined}
+                />
+              </View>
+            );
           }
           if (m.kind === 'review') {
             // contact-thread uses INLINE card edit (editing state scoped by message id).
