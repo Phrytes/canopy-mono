@@ -3,9 +3,8 @@
 > **Layer:** SDK foundation (RN-specific).
 > **Cross-platform sibling:** desktop OIDC lives in
 > [`@onderling/oidc-session`](../oidc-session/) via `createSolidAuthNode()`.
-> **Convention:** RN-specific substrates live in their own packages
-> (locked 2026-05-08, see
-> [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
+> **Convention:** RN-specific substrates live in their own packages — see
+> [`docs/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08).
 
 Solid OIDC sign-in for React Native:
 
@@ -21,7 +20,7 @@ Solid OIDC sign-in for React Native:
   `buildRegistrationBody`, `clearStoredClient`) for the RFC 7591
   bootstrap that Solid OIDC requires.
 
-**Phase 52.15 additions (2026-05-14):**
+**Multi-issuer support:**
 
 - `KNOWN_ISSUERS`, `DEFAULT_ISSUER_ID`, `resolveIssuer()` — curated
   multi-issuer list mirrored from `@onderling/oidc-session`. Lets RN
@@ -35,28 +34,12 @@ Solid OIDC sign-in for React Native:
 
 ## Origins
 
-Lifted from `apps/folio-mobile/src/auth/{OidcSessionRN, folioAuth, dcr}.js`
-**2026-05-08** (Stoop V3 Phase 40.3, rule-of-two consumer).
-Folio-mobile pre-dated the substrate and was the pattern source;
-folio-mobile has been migrated to consume this package via re-export
-shims under `apps/folio-mobile/src/auth/`.
-
-## Solid-auth consolidation status
-
-**Phase 52.15 (scoped + landing 2026-05-14)** consolidates the
-Solid sign-in UX across all apps. Substrate-side: the auth surface
-in this package + `@onderling/oidc-session` (Node sibling) gains
-multi-issuer support and a shared picker component. App-side: the
-three RN apps (folio-mobile / stoop-mobile / tasks-mobile) and the
-two web apps (folio / stoop) all consume the shared exports.
-
-**Phase 52.16 — Sharing v2 (ACP/WAC)** is scoped but not yet
-implemented. It adds `client.sharing.{grant, revoke, list,
-capabilities}` to `@onderling/pod-client`; this substrate is
-unaffected.
-
-Full design + plan:
-`Project Files/Inrupt-migration/`.
+Extracted from `apps/folio-mobile`'s auth code once a second app
+needed the same sign-in flow; folio-mobile now consumes this package
+via re-export shims under `apps/folio-mobile/src/auth/`. The
+multi-issuer exports and picker are shared with the Node sibling
+`@onderling/oidc-session`, so the Solid sign-in UX is the same
+across the RN and web apps.
 
 ## Installation
 

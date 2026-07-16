@@ -1,9 +1,6 @@
 # @onderling/vault
 
-> **Layer: substrate.** Agent identity + token storage. Extracted
-> from `@onderling/core/identity` 2026-05-11 as part of the
-> standardisation P1 work (Phase 50.1.A — see
-> `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`).
+> **Layer: substrate.** Agent identity + token storage.
 >
 > Vault is a foundational data-store primitive that several substrates
 > need (`oidc-session`, `agent-registry`, `pseudo-pod`). Living as
@@ -105,8 +102,6 @@ npm test
 - [`@onderling/oidc-session-rn`](../oidc-session-rn/) — RN peer.
 - [`@onderling/agent-registry`](../agent-registry/) (forthcoming) —
   registers user agents; consumes the agent registry pod resource.
-- `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
-  §5b — design context.
 
 ## Status
 

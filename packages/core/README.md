@@ -1,6 +1,6 @@
 # @onderling/core
 
-> **Layer: SDK foundation.** This is part of the agent SDK that substrates build on. Substrates and apps compose primitives from here — they MUST NOT reinvent transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, or ULID; apps MUST justify any direct dependency in their README's `## Direct SDK use` section. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: SDK foundation.** This is the part of the agent SDK that substrates build on. Substrates and apps compose primitives from here rather than reinventing them (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID) — a parallel implementation drifts away from the security and compatibility fixes this package carries. Apps that depend on it directly explain why in their README's `## Direct SDK use` section. See [`docs/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Pure-JS core of the @onderling SDK.  Runs in browser, Node, and React
 Native (no native deps in this package).  Provides:
@@ -42,7 +42,7 @@ SecurityLayer   ←  encrypt + sign every envelope
 Transport       ←  sendOneWay / sendAck / request / respond
 ```
 
-Every `_put()` is wrapped by `SecurityLayer` from Phase 1 — there is
+Every `_put()` is wrapped by `SecurityLayer` — there is
 no "bypass" path.  Routing picks a transport per-peer via
 `transportFor()`; replies pin to the channel the request arrived on
 (`envelope._transport`).

@@ -8,9 +8,6 @@ validator.
 This package is a **substrate** — it has no runtime dependency on
 `@onderling/core`. Apps and other substrates depend on it directly.
 
-> Standardisation Phase **52.1**. See
-> `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`.
-
 ---
 
 ```

@@ -2,7 +2,7 @@
 
 Build a working agent in ~20 lines.  This page is for evaluating the
 shape of the API; once you're past the smoke test, see
-`ARCHITECTURE.md` for the bigger picture.
+[`docs/architecture.md`](docs/architecture.md) for the bigger picture.
 
 ---
 
@@ -18,7 +18,7 @@ import {
   Agent, AgentIdentity, VaultMemory,
   InternalBus, InternalTransport,
   TextPart, Parts,
-} from '@onderling/core';
+} from '@onderling/sdk';
 
 const bus = new InternalBus();
 
@@ -49,7 +49,7 @@ console.log(Parts.text(reply));    // → "Hello, world! (you are …)"
 ```
 
 Run with `node quickstart-pair.js` after `npm install
-@onderling/core` (or via the file-link in this monorepo).
+@onderling/sdk` (or via the file-link in this monorepo).
 
 What just happened:
 - Each agent generated an Ed25519 keypair (stored in memory).
@@ -77,7 +77,7 @@ import {
   Agent, AgentIdentity, VaultNodeFs,
   RelayTransport,
   TextPart, Parts,
-} from '@onderling/core';
+} from '@onderling/sdk';
 
 const vault    = new VaultNodeFs({ path: './my-agent.vault' });
 let identity;
@@ -111,8 +111,10 @@ vault file → distinct identities).  Print each pubkey, then
 
 ## 3. Phone app — `createMeshAgent`
 
-The SDK isn't on npm yet (`packages/*` are local-only).  Two ways to
-get the JS code wired up so Metro can find it.
+The core `@onderling/*` packages are on npm, but
+`@onderling/react-native` isn't published yet — a phone app works
+against a clone of this repo.  Two ways to get the JS code wired up
+so Metro can find it.
 
 ### 3a. File layout — easy path (inside this monorepo)
 
@@ -122,8 +124,8 @@ and put your new app next to it.
 ```
 canopy-mono/
   packages/
-    core/                          ← SDK (don't touch)
-    react-native/                  ← SDK (don't touch)
+    core/                          ← SDK (consumed as-is)
+    react-native/                  ← SDK (consumed as-is)
     relay/                         ← SDK (run the server from here)
   apps/
     mesh-demo/                     ← reference app (works out of the box)
@@ -232,7 +234,7 @@ export async function makeAgent({ relayUrl }) {
   agent.enableAutoHello({ pullPeers: true });
   agent.startDiscovery({ gossipIntervalMs: 60_000 });
 
-  // Start the agent ONLY after registering everything you want
+  // Start the agent only after registering everything you want
   // advertised in the first hello payload (capabilities snapshot).
   await agent.start();
   return agent;
@@ -262,11 +264,11 @@ streaming).  The implementation lives at `packages/core/src/a2a/`.
 ```js
 // my-agent.js  — extend the section-2 example
 import {
-  Agent, AgentIdentity, VaultNodeFs,
+  Agent, AgentIdentity, VaultMemory,
   RelayTransport,
   A2ATransport, A2ATLSLayer,
   TextPart, Parts,
-} from '@onderling/core';
+} from '@onderling/sdk';
 
 const identity  = await AgentIdentity.generate(new VaultMemory());
 const agent     = new Agent({
@@ -330,7 +332,8 @@ A2A endpoints exposed:
 | `GET /tasks/:id` | Task status |
 | `POST /tasks/:id/cancel` | Cancel a running task |
 
-For a deeper dive see `Design-v3/03-A2ATransport.md`.
+For a deeper dive see the `A2ATransport` sections of
+[`docs/api/core.md`](docs/api/core.md).
 
 **TLS in production:** front the A2A endpoint with Caddy / nginx /
 Cloudflare for HTTPS termination + rate limiting + CORS rules.
@@ -377,7 +380,8 @@ to ask the caller for more input.
 - **Identity rotation works** (`agent.rotateIdentity({
   gracePeriodSeconds })`) but mid-grace peers that were offline at
   broadcast time auto-migrate via inline proof on the first
-  post-rotation envelope.  See `Design-v3/` for the full story.
+  post-rotation envelope.  See [`docs/api/core.md`](docs/api/core.md)
+  for the full story.
 
 ---
 
@@ -387,5 +391,6 @@ to ask the caller for more input.
   Build it, run it on two phones, run the relay on your laptop, and
   watch them gossip.
 - **Browser demo** — `examples/mesh-demo/` for a no-RN single-page version.
-- **Architecture map** — `ARCHITECTURE.md` for
-  the full feature list and where things live.
+- **Architecture map** — [`docs/architecture.md`](docs/architecture.md) for
+  the full model, [`docs/repository-layout.md`](docs/repository-layout.md)
+  for where things live.

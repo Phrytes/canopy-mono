@@ -17,7 +17,7 @@ npm install @onderling/app-manifest
 An app declares its surface once, as data, in a `Manifest`:
 
 - `itemTypes` — strings from `@onderling/item-types` canonical registry,
-  or app-local (the validator permits both — PLAN flag #12 / F-SP1-a).
+  or app-local (the validator permits both).
 - `operations` — `{id, verb, appliesTo?, params?, role?, surfaces?}`;
   `verb` must be one of the item-store verbs (frozen allow-list,
   exported as `VERBS`).

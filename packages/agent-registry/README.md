@@ -5,10 +5,6 @@ core's `ActorResolver` interface so `PolicyEngine` +
 `CapabilityToken.verify` can bridge between identifier shapes
 (pubKey / webid / agentUri / agentId / deviceId).
 
-> Standardisation Phase **52.10**. See
-> `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
-> §52.10.
-
 ---
 
 ```
@@ -114,8 +110,8 @@ typical UX: prompt the user to reload.
 
 Note: pseudo-pod V0/V1 doesn't yet enforce CAS itself. The
 substrate-level retry helper is wired so that when a pseudo-pod
-backend gains etag-aware writes (Phase 52.8.x conflict-resolution
-work), the agent-registry substrate gets concurrency for free.
+backend gains etag-aware writes, the agent-registry substrate gets
+concurrency for free.
 
 ---
 
@@ -123,8 +119,7 @@ work), the agent-registry substrate gets concurrency for free.
 
 - **Cross-user resolution.** This registry holds ONE user's agents.
   Apps that need to bridge across users use the existing
-  `@onderling/identity-resolver` MemberMap on top — the
-  agent-registry-backed adapter ships in Phase 52.11.
+  `@onderling/identity-resolver` MemberMap on top.
 - **Signature verification.** The `signedAt` field exists for
   audit-trail consumers; the substrate does not verify the
   signature on read. Real-pod ACPs gate write access.
@@ -132,7 +127,7 @@ work), the agent-registry substrate gets concurrency for free.
   individual calls; each enjoys the per-entry CAS retry.
 - **WebID profile patching.** Pointer predicates on the user's WebID
   profile (`dec:agent-registry-uri`) are wired by
-  `@onderling/pod-onboarding` (Phase 52.5).
+  `@onderling/pod-onboarding`.
 
 ## Status
 

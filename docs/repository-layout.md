@@ -35,7 +35,7 @@ the kernel directly **only with an explicit justification in the app's README**.
 ## `apps/` — the products
 
 Each shared app has a web build and a React Native / Expo mobile counterpart; web and mobile are **peers**,
-neither is the primitive one. The direction (decided 2026-06-11) is that the separate apps **dissolve into
+neither is the primitive one. The direction is that the separate apps **dissolve into
 `basis`** — their `manifest.js` stays the source of truth, the app *name* becomes a navigation label.
 
 | App | What it does |
