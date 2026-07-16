@@ -58,11 +58,15 @@ map).
 ```js
 import { redactGazetteer } from '@onderling/redaction';
 
-const { text, hits } = redactGazetteer('Jan spoke to Fatima.', ['Jan', 'Fatima']);
+const { text, hits } = redactGazetteer('Jan spoke to Fatima.', {
+  names:       ['Jan', 'Fatima'],
+  placeholder: '[name]',
+});
 // text → '[name] spoke to [name].'   hits → [{ type: 'name', value: 'Jan' }, …]
 ```
 
-`redactGazetteer(text, gazetteer)` replaces exact name-list matches — supply
+`redactGazetteer(text, gazetteer)` replaces name-list matches; the `gazetteer`
+config is `{ names, placeholder, particles?, titlePatterns? }` — supply
 your own list (e.g. participant names known to the application). Also
 exported: `redactText(text, config)`, the same rule pass when you only need
 the redacted string.

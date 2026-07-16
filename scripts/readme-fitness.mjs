@@ -76,6 +76,8 @@ const DOCS = [
   resolve(ROOT, 'docs', 'packages.md'),
   ...readdirSync(resolve(ROOT, 'docs', 'tutorials')).filter((n) => n.endsWith('.md'))
     .map((n) => resolve(ROOT, 'docs', 'tutorials', n)),
+  ...readdirSync(resolve(ROOT, 'docs', 'how-to')).filter((n) => n.endsWith('.md'))
+    .map((n) => resolve(ROOT, 'docs', 'how-to', n)),
 ];
 for (const docPath of DOCS) {
   const md = readFileSync(docPath, 'utf8');

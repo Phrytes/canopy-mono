@@ -16,6 +16,8 @@ identity, transports, and peer-to-peer reachability underneath.
   which executable journey verifies it.
 - **[Tutorials](docs/tutorials/)** — your first agent · one manifest, every surface · a compatible
   tasks app.
+- **[How-to guides](docs/how-to/)** — connect over a relay · persist to a pod · redact before send ·
+  log safely and collect a bug report.
 - **[Building compatible agents](docs/building-compatible-agents.md)** — the wire-level route.
 - **[Architecture](docs/architecture.md)** — how the pieces fit.
 
