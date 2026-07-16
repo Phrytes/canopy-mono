@@ -60,7 +60,7 @@ const SETTING_KIND_SET = new Set(SETTING_KINDS);
 /** B · Slice 2 — a setting's resolution scope: `circle` = admin template, `user` = member pref. */
 export const SETTING_SCOPES = Object.freeze(['circle', 'user']);
 const SETTING_SCOPE_SET = new Set(SETTING_SCOPES);
-// v0.3.2 (canopy-chat) extended the form generator with 'date' +
+// v0.3.2 (basis) extended the form generator with 'date' +
 // 'webid' input kinds; Q23 reserved 'file' + 'image' for the
 // upload path.  All four pass through the validator forward-additively
 // (older manifests using just string/number/boolean/enum still work).
@@ -70,7 +70,7 @@ const PARAM_KINDS = new Set([
 ]);
 
 /**
- * Q28 (canopy-chat v0.1, 2026-05-21) — frozen allow-list of chat
+ * Q28 (basis v0.1, 2026-05-21) — frozen allow-list of chat
  * reply shapes.  The chat shell picks a renderer per shape; absent
  * `surfaces.chat.reply` falls back to a default derived from the op's
  * `verb` + the section's `view.shape`.
@@ -89,7 +89,7 @@ export const CHAT_REPLY_SHAPES = Object.freeze([
 ]);
 
 /**
- * Q32 (canopy-chat v0.4, 2026-05-22) — frozen allow-list of op.runtime
+ * Q32 (basis v0.4, 2026-05-22) — frozen allow-list of op.runtime
  * values.  'both' (the default when absent) means the op works in any
  * environment.  Browser builds filter out 'node' ops; sidecars re-
  * include them.  Per OQ-1.A user resolution.
@@ -418,7 +418,7 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     }
   }
 
-  // #180 (canopy-chat, 2026-05-24) — optional `surfaces.page` slot
+  // #180 (basis, 2026-05-24) — optional `surfaces.page` slot
   // for ops that open a persistent rich-UI surface instead of (or
   // alongside) returning a chat reply.  Used by Cluster C wizards
   // (create-group, redeem-invite gate, restore-from-mnemonic, conflict
@@ -504,13 +504,13 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     }
   }
 
-  // Q28 (canopy-chat v0.1, 2026-05-21) — optional `surfaces.chat.reply`
+  // Q28 (basis v0.1, 2026-05-21) — optional `surfaces.chat.reply`
   // declares the shape of the reply the op produces, so the chat shell
   // picks the right renderer (text bubble, list with inline keyboard,
   // record/mini-page, file attachment, embed-card, notification card,
   // multi-section brief).  Forward-additive: absent → chat shell
   // computes a default from `verb` + `view.shape`.  See
-  // `Project Files/canopy-chat/coding-plan.md` § Phase v0.1.
+  // `Project Files/basis/coding-plan.md` § Phase v0.1.
   const chatReply = op?.surfaces?.chat?.reply;
   if (chatReply !== undefined
       && !CHAT_REPLY_SHAPES.includes(chatReply)) {
@@ -520,12 +520,12 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     });
   }
 
-  // Q31 (canopy-chat v0.4, 2026-05-22) — optional `surfaces.chat.followUps`
+  // Q31 (basis v0.4, 2026-05-22) — optional `surfaces.chat.followUps`
   // lets an op declare suggested next actions the chat shell surfaces
   // as inline buttons after a successful dispatch.  Each entry has an
   // opId (the suggested next op) and optional prefilledArgs.  Cross-
   // app chains (e.g. after household.addMember → folio.share) live in
-  // canopy-chat's static registry, NOT here.
+  // basis's static registry, NOT here.
   const chatFollowUps = op?.surfaces?.chat?.followUps;
   if (chatFollowUps !== undefined) {
     if (!Array.isArray(chatFollowUps)) {
@@ -554,10 +554,10 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     }
   }
 
-  // Q32 (canopy-chat v0.4, 2026-05-22) — optional `op.runtime` tag
+  // Q32 (basis v0.4, 2026-05-22) — optional `op.runtime` tag
   // declares which runtimes the op's skill implementation supports.
   // Values: 'browser' | 'node' | 'both' (default 'both' when absent).
-  // canopy-chat's browser-side merge filters out `runtime: 'node'`
+  // basis's browser-side merge filters out `runtime: 'node'`
   // ops (folio's sync/watch family); a future sidecar deployment
   // re-includes them.  Per OQ-1.A resolution.
   if (op.runtime !== undefined && !RUNTIME_VALUES.includes(op.runtime)) {
@@ -567,7 +567,7 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     });
   }
 
-  // Q30 (canopy-chat v0.7, 2026-05-23) — optional `surfaces.chat.brief`
+  // Q30 (basis v0.7, 2026-05-23) — optional `surfaces.chat.brief`
   // declares the skill the chat-shell `/brief` aggregator calls to
   // get this app's morning-brief summary.  Optional `order` controls
   // section ordering across apps; `label` overrides the default
@@ -601,7 +601,7 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     }
   }
 
-  // Q33 (canopy-chat v0.7.5, 2026-05-23) — optional `surfaces.chat.search`
+  // Q33 (basis v0.7.5, 2026-05-23) — optional `surfaces.chat.search`
   // declares the skill the chat-shell `/find` aggregator calls to
   // search this app's cached items.  Per user resolution: cache-first
   // (instant + works offline); an [Extensive search] button on the
@@ -623,12 +623,12 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
     }
   }
 
-  // Q29 (canopy-chat v0.5, 2026-05-22) — optional `surfaces.chat.embed`
+  // Q29 (basis v0.5, 2026-05-22) — optional `surfaces.chat.embed`
   // declares the skill that produces a snapshot for the J7 embed
   // primitive (cards inserted into P2P chat messages).  When set, the
   // chat shell knows it can call this op as an inline-card factory;
   // dispatch produces an ItemSnapshot for the embed envelope.  See
-  // `DESIGN-canopy-chat.md` § Embed primitive (J7).
+  // `DESIGN-basis.md` § Embed primitive (J7).
   const chatEmbed = op?.surfaces?.chat?.embed;
   if (chatEmbed !== undefined) {
     if (!chatEmbed || typeof chatEmbed !== 'object' || Array.isArray(chatEmbed)) {
@@ -842,7 +842,7 @@ function validateParam(p, path, errors, manifest) {
     }
   }
 
-  // Q34 (canopy-chat v0.7, 2026-05-23) — optional `pickerSource` for
+  // Q34 (basis v0.7, 2026-05-23) — optional `pickerSource` for
   // form-elicitation of ID-style params.  When a required param has
   // a `pickerSource: {listOp, filter?}` declaration AND the param
   // is missing on a slash invocation, the chat-shell renders a

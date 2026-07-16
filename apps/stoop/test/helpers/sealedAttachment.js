@@ -1,5 +1,5 @@
 /**
- * Test helper — build a SEALED image attachment pointer the way canopy-chat's
+ * Test helper — build a SEALED image attachment pointer the way basis's
  * per-circle stoop wrapper (`scopeStoopCallSkill` → `createMediaEmbed` →
  * `uploadBlob`) hands one to stoop.  Stoop is key-agnostic, so its tests
  * construct the sealed pointer here (a dev sealer + an in-memory bucket) and

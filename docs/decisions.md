@@ -64,7 +64,7 @@ layout) — a single running file is lower-ceremony and reads as a history top-t
 **Context:** B's gate authorises `(verb × noun)` capabilities. `capabilitiesOf(manifest)` can get a manifest's
 capability set two ways: DECLARED (`manifest.nouns[noun].atoms`) and DERIVED (read off each op's verb + the noun
 it names via `appliesTo.type` or a `type`-enum param). Deriving from ops is convenient but noisy — a broad
-`appliesTo` mints phantom capabilities (canopy-chat `submit·nkn` / `List·en` from value-enum params; stoop
+`appliesTo` mints phantom capabilities (basis `submit·nkn` / `List·en` from value-enum params; stoop
 `cancelRequest {type:'*'}` blasting `remove` onto internal itemTypes) that cluttered the freedom matrix.
 
 **Decision:** when a manifest DECLARES `nouns`, that declaration IS its member-facing capability surface — the
@@ -114,7 +114,7 @@ both cheap and singular, so there is one code path to keep correct.
 
 **Consequences:** the inter-agent **wire is permanent** — it carries remote skill-acquisition, circle-sync, and
 the bot / remote-handler integration tiers (identity + permission live in the envelope); "apps dissolve into
-canopy-chat" is a **UI** consolidation, not removal of the serialization substrate. Follow-on: household regains a
+basis" is a **UI** consolidation, not removal of the serialization substrate. Follow-on: household regains a
 first-class wire route via the uniform route (retire the legacy household agent); tasks/stoop extract pure cores
 over their stores (dropping the synthetic-envelope round-trip).
 
@@ -126,7 +126,7 @@ over their stores (dropping the synthetic-envelope round-trip).
 
 **Context:** the apps roster listed `feedback-pipeline` alongside client apps like household. But feedback hosts a
 **live Solid-pod server**, runs HTTP services (portal / activation / MCP), has a TEE aggregation boundary, and
-ships a full Docker deploy stack — none of which client apps have; canopy-chat only *consumes* it. The flat "apps"
+ships a full Docker deploy stack — none of which client apps have; basis only *consumes* it. The flat "apps"
 picture hid this.
 
 **Decision:** treat feedback as a **deployment / hosting layer** — server-side services + pod-hosting + rollout —
@@ -138,7 +138,7 @@ repo**.
 client app, obscuring the client/server boundary the eventual repo split runs along.
 
 **Consequences:** a clear-splits-now step (before the repo split): carve **`feedback-core`** (browser-safe, with
-an `exports` surface so canopy-chat stops deep-relative-importing) → **`feedback-server`** → **`feedback-deploy`**.
+an `exports` surface so basis stops deep-relative-importing) → **`feedback-server`** → **`feedback-deploy`**.
 Recorded as a distinct layer in the architecture + repository-layout docs.
 
 ---
@@ -244,3 +244,26 @@ address per profile* — cross-circle correlation by any software.
 requires a per-circle **transport/rendezvous** address (a phased follow-on at the relay layer — the key layer alone
 is necessary but not sufficient); migration is a pre-launch clean reset (no dual-mode). Builds on existing
 primitives (`Bootstrap`, `AgentIdentity`, HKDF, `restoreFromMnemonic`) — no new cryptography.
+
+---
+
+## 2026-07-16 — Publish from the monorepo; the clients-vs-substrate repo split is superseded
+
+**Decision.** The platform ships as versioned `@onderling/*` npm packages published *from this
+monorepo*. The earlier plan (2026-06-13) to physically split the repo into thin **clients** vs a
+**substrate/functionality** repo is **not pursued**; publishing achieves the same seam without it.
+
+**Why.** A repo boundary is an *organizational* boundary (Conway's law). The feedback split was
+justified by a real one — its own product identity and first external tenant — and it happened
+(github.com/Onderling/feedback). No such boundary exists between "platform" and "clients": the same
+person edits `@onderling/core` and the basis app in one change; a repo split would turn every such
+change into a publish-bump-consume loop. The substrate seam is now *more* real than the split
+imagined — a stranger can `npm install @onderling/sdk` — enforced by the manifest contract, the
+package boundary, and pod ACPs, with the feedback repo as the permanent external canary.
+
+**Reversible by.** Organizational pressure, not architecture: external platform contributors who
+should not wade through app code, a second serious tenant needing platform stability at a different
+cadence, or governance placing the platform under different rules. The `filter-repo` mechanics are
+proven (twice), so a later split stays a cheap afternoon. Standing policy: every package publishes
+eventually, in waves, when its API settles. Supersedes the "clients/substrate" carve in the former
+`REMAINING-WORK.md` "Architectural spine"; the gated `kring-host` carve follows the same logic.

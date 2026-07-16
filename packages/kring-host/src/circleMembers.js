@@ -1,5 +1,5 @@
 /**
- * canopy-chat v2 — circle member directory (shared web + mobile, F-5.1).
+ * basis v2 — circle member directory (shared web + mobile, F-5.1).
  *
  * Normalises the result of the `listGroupMembers` op into the member shape
  * `circleViewAs` (board 4C) consumes. The op is reached two ways depending

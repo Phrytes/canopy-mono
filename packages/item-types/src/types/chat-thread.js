@@ -3,12 +3,12 @@
  * `chat-message` items (a `chat-message` carries the `threadId` of
  * the thread it belongs to).
  *
- * Canonical companion to `chat-message` (#81): canopy-chat's shell
+ * Canonical companion to `chat-message` (#81): basis's shell
  * declares both `chat-thread` + `chat-message` on its manifest
  * surface, so both must resolve in the shared `@onderling/item-types`
  * registry for the manifest to validate clean under `{strictNouns}`.
  *
- * Shape mirrors canopy-chat's ThreadStore thread object
+ * Shape mirrors basis's ThreadStore thread object
  * (`src/core/threads/threadFormState.js`): a required `name`, an
  * optional `filter` (which apps / event-types / actors the thread
  * subscribes to), and optional `permissions`.  `additionalProperties`

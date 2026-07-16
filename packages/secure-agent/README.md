@@ -344,7 +344,7 @@ by design:
 | **Resolver integration** | `sa.resolver` currently fans out aliases for the mute set only.  Other consumers (audit log entries, caps subject IDs, etc.) could optionally store resolved webids alongside pubkeys. |
 | **Audit log pod-sync** | `sa.audit.serialize()` exists; an opt-in periodic pod-sync job (`auditLog: { podSyncEveryMs }`) was discussed in the roadmap but not implemented — apps wire their own write-through today. |
 
-See `Project Files/canopy-chat/security-roadmap-2026-05-23.md`
+See `Project Files/basis/security-roadmap-2026-05-23.md`
 for the full plan + per-slice scope + tests + threat-addressed.
 
 ## Convention
@@ -364,7 +364,7 @@ will be amended:
 `@onderling/secure-agent` builds ONE agent + ONE optional cross-peer
 transport — clean, single-purpose.
 
-Apps that need multi-agent in-process topology (e.g. canopy-chat's
+Apps that need multi-agent in-process topology (e.g. basis's
 `hostAgent` + `chatAgent` on the same `InternalBus`) build that
 topology themselves AND compose `secure-agent` for the cross-peer
 agent.  No conflict — the factory's agent is a SEPARATE agent on
@@ -378,16 +378,16 @@ pnpm --filter @onderling/secure-agent test
 
 113/114 passing (1 skipped pending integration test infrastructure
 for sig-validated envelopes; the bilateral HI auto-handshake's
-wiring is in place + verified in canopy-chat's two-tab demo).
+wiring is in place + verified in basis's two-tab demo).
 
 ## Where this came from
 
 Lifted patterns from:
-- `apps/canopy-chat/src/web/realAgent.js` (v0.7.P3a — identity
+- `apps/basis/src/web/realAgent.js` (v0.7.P3a — identity
   persistence + restoreOrGenerate) — promoted to `vault.js`
-- `apps/canopy-chat/src/web/realAgent.js` (v0.7.P3d — SecurityLayer
+- `apps/basis/src/web/realAgent.js` (v0.7.P3d — SecurityLayer
   wiring + auto-HI + rotation) — promoted to `createSecureAgent.js`
-- `apps/canopy-chat/manifest.js` (v0.7.P3d — `/rotate-identity` and
+- `apps/basis/manifest.js` (v0.7.P3d — `/rotate-identity` and
   `/security-status` commands) — corresponding factory methods
   `sa.rotateIdentity()` and `sa.securityStatus()`
 

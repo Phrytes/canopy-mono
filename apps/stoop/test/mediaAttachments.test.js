@@ -4,7 +4,7 @@
  *
  * (Was: "media consolidation" shape guards over a PLAINTEXT `dataB64` +
  * `data:image` thumbnail path. That inline path is REMOVED — stoop is now
- * key-agnostic: canopy-chat's per-circle stoop wrapper seals bytes + thumbnail
+ * key-agnostic: basis's per-circle stoop wrapper seals bytes + thumbnail
  * through the circle media gateway and hands stoop only the manifest-line
  * pointer. These tests keep the ORIGINAL intent — attach → store → wire → open
  * works, and no plaintext leaks — but assert the SEALED shape.)

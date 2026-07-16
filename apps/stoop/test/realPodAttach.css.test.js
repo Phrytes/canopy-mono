@@ -5,7 +5,7 @@
  * webid, fetch})` — actually routes stoop's items to a real pod via the (already-built)
  * pod-routing write-through (CachingDataSource.flush → SolidPodSource → HTTP PUT). The
  * authed fetch is a CSS client-credentials BEARER fetch (the non-interactive stand-in for
- * the signed-in session canopy-chat passes).
+ * the signed-in session basis passes).
  *
  * Gated on CSS_URL + client-credentials (skips clean otherwise).
  */

@@ -5,7 +5,7 @@
 // behind an owner-PAIRING flow — NEVER a password:
 //
 //   1. the browser opens /manage → no session → POST /manage/pair/start → a CODE.
-//   2. the OWNER approves that code from their phone (canopy-chat invokes
+//   2. the OWNER approves that code from their phone (basis invokes
 //      `manage.approvePairing({code})` over the relay — owner-gated).
 //   3. the browser polls /manage/pair/status?code=… → on approval gets a scoped
 //      SESSION TOKEN, which it presents as `Authorization: Bearer …` to
@@ -48,7 +48,7 @@ function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>
 async function pair(){
  const app=document.getElementById('app');
  const {code}=await (await fetch('/manage/pair/start',{method:'POST'})).json();
- app.innerHTML='<div class="card"><p>To pair this browser, approve this code from your phone (canopy-chat → your companion node → <em>Approve browser</em>):</p><div class="code">'+esc(code)+'</div><p class="muted">Waiting for approval…</p></div>';
+ app.innerHTML='<div class="card"><p>To pair this browser, approve this code from your phone (basis → your companion node → <em>Approve browser</em>):</p><div class="code">'+esc(code)+'</div><p class="muted">Waiting for approval…</p></div>';
  for(;;){
   await new Promise(r=>setTimeout(r,1500));
   const s=await (await fetch('/manage/pair/status?code='+encodeURIComponent(code))).json();

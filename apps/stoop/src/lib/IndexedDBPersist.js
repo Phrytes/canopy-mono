@@ -6,8 +6,8 @@
  * Why we need this
  *   Stoop's V1 single-file `FilePersist` keeps the in-memory Map on
  *   disk so restarting the Node process doesn't wipe state.  When
- *   the Stoop agent boots in a BROWSER (canopy-chat web composition
- *   per `Project Files/canopy-chat/integration-plan-2026-05-23.md`),
+ *   the Stoop agent boots in a BROWSER (basis web composition
+ *   per `Project Files/basis/integration-plan-2026-05-23.md`),
  *   there is no `node:fs`.  This adapter uses IndexedDB instead.
  *
  *   The two adapters are interchangeable from `Agent.js`'s POV:

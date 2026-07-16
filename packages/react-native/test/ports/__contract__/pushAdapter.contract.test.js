@@ -8,7 +8,7 @@
  * `expo-notifications`, which is a peer dep NOT installed in this package, so
  * it can't be constructed here.  It is contract-covered where that dep exists:
  * `transport/MobilePushBridge.test.js` (register/notify/unregister) and the
- * canopy-chat-mobile app suite (`presentLocal` via the shared helper).
+ * basis-mobile app suite (`presentLocal` via the shared helper).
  */
 import { describe, it, expect, vi } from 'vitest';
 import { MockPushAdapter } from '../../../src/ports/mocks/MockPushAdapter.js';

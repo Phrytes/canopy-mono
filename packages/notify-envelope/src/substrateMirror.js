@@ -14,7 +14,7 @@
  *   - `scopeField`           — optional metadata field stamped on published envelopes
  *
  * It is transport-agnostic: it doesn't know whether the notify-envelope's
- * transport is the in-process bus or canopy-chat's secure-mesh wire.
+ * transport is the in-process bus or basis's secure-mesh wire.
  *
  * `itemStore` is the RAW ItemStore (substrate API: addItems / applySync /
  * removeSync / listOpen / listClosed), NOT a legacy adapter.

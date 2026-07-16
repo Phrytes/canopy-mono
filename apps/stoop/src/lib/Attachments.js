@@ -54,8 +54,8 @@
  *
  * **Sealing status (2026-07-11 — sealed-media):** DONE.  Stoop image
  * attachments are now SEALED end to end, via the SAME per-circle path
- * canopy-chat's own circle images use.  Stoop stays key-agnostic: the
- * per-circle stoop wrapper (`apps/canopy-chat/src/v2/circleStoopScope.js`,
+ * basis's own circle images use.  Stoop stays key-agnostic: the
+ * per-circle stoop wrapper (`apps/basis/src/v2/circleStoopScope.js`,
  * `scopeStoopCallSkill`) seals each picked image's bytes + thumbnail through
  * the circle media gateway (`@onderling/blob-gateway` `uploadBlob`, mirroring
  * `core/handlers/mediaEmbed.js`) BEFORE it reaches stoop, and hands stoop an
@@ -162,7 +162,7 @@ export function parseAttachmentWireRef(ref) {
 /**
  * Validate a single inbound attachment — SEALED-ONLY (2026-07-11 sealed-media).
  *
- * Stoop is now key-agnostic: the caller (canopy-chat's per-circle stoop wrapper,
+ * Stoop is now key-agnostic: the caller (basis's per-circle stoop wrapper,
  * `scopeStoopCallSkill`) seals the bytes + thumbnail through the circle media
  * gateway and hands stoop an OPAQUE canonical `media` item whose `source` is a
  * blob-gateway manifest line (`{type:'blob', ref:'blob://…', enc:{sealed:true,…,

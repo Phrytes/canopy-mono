@@ -235,9 +235,9 @@ describe('Phase 4 e2e — Scheduler suppression hook (5.7c)', () => {
     }
   });
 
-  it('integrates with isPushSuppressed(availability, now) from canopy-chat memberAvailability substrate', async () => {
+  it('integrates with isPushSuppressed(availability, now) from basis memberAvailability substrate', async () => {
     // Sanity-shape check — household doesn't directly import the
-    // canopy-chat substrate, but the contract is documented as
+    // basis substrate, but the contract is documented as
     // "wraps `isPushSuppressed(getAvailability(recipient), now)`".
     // Locally simulate the contract: quiet-hours 22:00 → 07:30.
     const availability = {

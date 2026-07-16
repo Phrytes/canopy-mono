@@ -49,7 +49,7 @@
 import nacl from 'tweetnacl';
 import { createHash } from 'node:crypto';
 
-// `node:crypto` is eager (previously lazy-loaded for the canopy-chat
+// `node:crypto` is eager (previously lazy-loaded for the basis
 // vite bundle).  Canopy-chat's vite.config aliases `node:crypto` to a
 // browser-safe stub that throws if `createHash` is called — but
 // `digest()` (the only caller below) is itself only invoked from Node

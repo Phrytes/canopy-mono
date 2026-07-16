@@ -18,13 +18,13 @@ describe('renderFloatingButton', () => {
   it('appends a floating button with the default label', () => {
     const btn = renderFloatingButton(document.body, { returnTo: 'main' });
     expect(btn.textContent).toBe('← back to chat');
-    expect(btn.classList.contains('canopy-chat-nav-back-button')).toBe(true);
-    expect(document.querySelector('.canopy-chat-nav-back-button')).toBe(btn);
+    expect(btn.classList.contains('basis-nav-back-button')).toBe(true);
+    expect(document.querySelector('.basis-nav-back-button')).toBe(btn);
   });
 
   it('appends to document.body by default when host omitted', () => {
     renderFloatingButton(undefined, { returnTo: 'main' });
-    expect(document.body.querySelector('.canopy-chat-nav-back-button')).not.toBeNull();
+    expect(document.body.querySelector('.basis-nav-back-button')).not.toBeNull();
   });
 
   it("custom label + chatPath flow through", () => {
@@ -54,9 +54,9 @@ describe('renderFloatingButton', () => {
   it('is idempotent — second call replaces the first', () => {
     const a = renderFloatingButton(document.body, { returnTo: 'one' });
     const b = renderFloatingButton(document.body, { returnTo: 'two' });
-    expect(document.querySelectorAll('.canopy-chat-nav-back-button').length).toBe(1);
+    expect(document.querySelectorAll('.basis-nav-back-button').length).toBe(1);
     expect(b).not.toBe(a);
-    expect(document.querySelector('.canopy-chat-nav-back-button').dataset.href)
+    expect(document.querySelector('.basis-nav-back-button').dataset.href)
       .toBe('/?focus=two');
   });
 
@@ -75,7 +75,7 @@ describe('renderFloatingButton', () => {
     document.body.appendChild(aside);
     const btn = renderFloatingButton(aside, { returnTo: 'main' });
     expect(aside.contains(btn)).toBe(true);
-    expect(document.body.querySelectorAll('.canopy-chat-nav-back-button').length)
+    expect(document.body.querySelectorAll('.basis-nav-back-button').length)
       .toBe(1);
   });
 });
@@ -83,9 +83,9 @@ describe('renderFloatingButton', () => {
 describe('removeFloatingButton', () => {
   it('removes a previously-rendered button', () => {
     renderFloatingButton(document.body, { returnTo: 'main' });
-    expect(document.querySelector('.canopy-chat-nav-back-button')).not.toBeNull();
+    expect(document.querySelector('.basis-nav-back-button')).not.toBeNull();
     removeFloatingButton(document.body);
-    expect(document.querySelector('.canopy-chat-nav-back-button')).toBeNull();
+    expect(document.querySelector('.basis-nav-back-button')).toBeNull();
   });
 
   it("is a no-op when no button exists", () => {
@@ -98,7 +98,7 @@ describe('removeFloatingButton', () => {
     renderFloatingButton(a, { returnTo: '1' });
     renderFloatingButton(b, { returnTo: '2' });
     removeFloatingButton(a);
-    expect(a.querySelector('.canopy-chat-nav-back-button')).toBeNull();
-    expect(b.querySelector('.canopy-chat-nav-back-button')).not.toBeNull();
+    expect(a.querySelector('.basis-nav-back-button')).toBeNull();
+    expect(b.querySelector('.basis-nav-back-button')).not.toBeNull();
   });
 });

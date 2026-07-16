@@ -38,7 +38,7 @@ playwright-report
 !**/.env.example
 
 # heavy mobile + demo + web apps (not part of any deployable backend service)
-apps/canopy-chat-mobile
+apps/basis-mobile
 apps/folio-mobile
 apps/stoop-mobile
 apps/tasks-mobile

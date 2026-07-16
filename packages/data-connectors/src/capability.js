@@ -5,7 +5,7 @@
 //
 // This lets an app-function DECLARE a noun backed by an external source and have "query it" become
 // a gated `(atom × noun)` capability — WITHOUT this package depending on app-manifest/item-store or
-// on canopy-chat. It is a projection only: the actual wiring into canopy-chat's dispatch is a LATER
+// on basis. It is a projection only: the actual wiring into basis's dispatch is a LATER
 // slice (reported as a seam), not done here.
 //
 // The produced `handler(noun, args, ctx)` reads `{ op, params }` off `args`, calls the connector,

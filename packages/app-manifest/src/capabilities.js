@@ -50,7 +50,7 @@ function opImplements(op, atom, noun, itemTypes) {
 /**
  * Stable key for one (app × atom × noun) capability. The single spelling both the gate and the
  * freedom template use (the space separators can't occur in app/atom/noun tokens). Lives here so
- * capabilityGate (canopy-chat) and freedom.js agree by construction.
+ * capabilityGate (basis) and freedom.js agree by construction.
  */
 export function capabilityKey(app, atom, noun) {
   return `${app} ${atom} ${noun}`;

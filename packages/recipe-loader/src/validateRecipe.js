@@ -2,7 +2,7 @@
  * validateRecipe — validate + normalise an AUTHORED REMOTE recipe (B #64).
  *
  * A recipe is a portable circle-configuration bundle with four sections. Each
- * maps onto a shape the `@onderling/app-manifest` / canopy-chat layers already
+ * maps onto a shape the `@onderling/app-manifest` / basis layers already
  * validate — we REUSE those primitives rather than re-deciding what a valid
  * atom/noun/freedom is:
  *
@@ -29,7 +29,7 @@
  *   surfaces      the surface layout — `{ features?: { <feature>: bool }, view? }`
  *                 (the `DEFAULT_CIRCLE_POLICY.features` / `view` shape).
  *                 STRUCTURAL validation only: the authoritative feature list +
- *                 view enum live in canopy-chat (`circlePolicy.js`
+ *                 view enum live in basis (`circlePolicy.js`
  *                 CIRCLE_FEATURES / CIRCLE_POLICY_ENUMS), which this package
  *                 must not depend up on — enum-matching is part of the DEFERRED
  *                 apply seam.
@@ -180,7 +180,7 @@ export function validateRecipe(recipe) {
     }
   }
 
-  // ── surfaces: { features?: { <feature>: bool }, view? } — structural only (enums live in canopy-chat) ─
+  // ── surfaces: { features?: { <feature>: bool }, view? } — structural only (enums live in basis) ─
   if (recipe.surfaces !== undefined) {
     if (!isPlainObject(recipe.surfaces)) {
       push(issues, '/surfaces', I.BAD_SECTION, 'surfaces must be an object if present');

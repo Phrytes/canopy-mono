@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "basis",
+    "slug": "basis-mobile",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "canopychat",
+    "android": {
+      "package": "ag.canopy.canopychatmobile",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.WAKE_LOCK",
+        "android.permission.CAMERA"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "ag.canopy.canopychatmobile",
+      "supportsTablet": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-dev-client",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "basis wants to use the camera to scan QR codes (contact cards, group invites)."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

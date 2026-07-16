@@ -3,7 +3,7 @@
  *
  * In-process boot: builds an `@onderling/core` Agent with the calendar
  * skills registered against a CalendarStore (default: in-memory).
- * canopy-chat composes this for the v0.7.10 demo.
+ * basis composes this for the v0.7.10 demo.
  *
  * The same factory works for a real deployment in v0.7.11 — caller
  * passes their own pre-wired CalendarStore (backed by a real pod

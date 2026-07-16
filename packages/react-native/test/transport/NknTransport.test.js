@@ -4,7 +4,7 @@
  *
  * The integration test at the bottom (real mainnet round-trip) is
  * gated behind `RUN_NKN_TESTS=1`, mirroring
- * `apps/canopy-chat/test-browser/mesh-and-dm.spec.js`'s flake-management.
+ * `apps/basis/test-browser/mesh-and-dm.spec.js`'s flake-management.
  *
  * To run the live-network test locally:
  *     RUN_NKN_TESTS=1 pnpm exec vitest run test/transport/NknTransport.test.js

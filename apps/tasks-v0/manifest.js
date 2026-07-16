@@ -18,7 +18,7 @@
  * etc.).  Tiny additive extension of `renderChat.matchesAppliesTo`.
  *
  * **Part G dissolve (2026-06-17):** this is now the ONE tasks manifest.
- * canopy-chat's former `mockTasksManifest` (the chat-shell slash/gate
+ * basis's former `mockTasksManifest` (the chat-shell slash/gate
  * surface for the REAL tasks-v0 skills) was folded in here and re-
  * exported as `mockTasksManifest` (Option 2 — clean, no back-compat
  * vocab bridges).  So the app's web/mobile screens AND the chat shell
@@ -144,7 +144,7 @@ export const tasksManifest = {
           } },
         chat: {
           hint:  'Compare-and-swap claim a task.',
-          // Q29 (canopy-chat v0.5, 2026-05-22) — declare a snapshot
+          // Q29 (basis v0.5, 2026-05-22) — declare a snapshot
           // factory so this op surfaces as embeddable in chat.  The
           // `getTaskSnapshot` skill below is the source.
           embed: { cardSnapshotSkill: 'getTaskSnapshot' },
@@ -188,9 +188,9 @@ export const tasksManifest = {
       },
     },
     /**
-     * `getTaskSnapshot(id)` → ItemSnapshot — Q29 factory (canopy-chat
+     * `getTaskSnapshot(id)` → ItemSnapshot — Q29 factory (basis
      * v0.5).  Declaration-only in tasks-v0's manifest; the real skill
-     * lives wherever tasks-v0's agent runs.  When canopy-chat
+     * lives wherever tasks-v0's agent runs.  When basis
      * consumes tasks-v0's full manifest (currently it uses mocks),
      * /embed against tasks ops surfaces a real task-card.
      */
@@ -684,7 +684,7 @@ export const tasksManifest = {
     },
 
     /* ── Chat-shell ops (Part G dissolve, 2026-06-17) ───────────────────
-     * Folded in from canopy-chat's former `mockTasksManifest`.  These are
+     * Folded in from basis's former `mockTasksManifest`.  These are
      * the circle/chat-shell surface for the REAL tasks-v0 circle skills
      * (handlers via createBrowserMultiCircleTasksAgent / realAgent).  Each
      * declares `surfaces.slash` (+ a Part-C gate `match` where the op has a

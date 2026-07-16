@@ -1,5 +1,5 @@
 // resolveCircleStorage.js — map a circle's storage POSTURE (the menukaart per-circle config, mirrors
-// canopy-chat's `circlePolicy.storagePosture` enum) to a SealedPodClient strategy (HOW its content is
+// basis's `circlePolicy.storagePosture` enum) to a SealedPodClient strategy (HOW its content is
 // sealed at rest), or null for plaintext. The companion to `resolveCircleLlm` for the storage axis.
 //
 //   p0 — trusted host / plaintext          → null (no client-side seal; use a plain PodClient)

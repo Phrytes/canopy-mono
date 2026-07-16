@@ -99,7 +99,7 @@ shell / per-circle config); the host itself is policy-free.
    the rare case predictably with no per-command config burden.  Add
    `prefix-all-on-collision` as a per-host override when a specific
    collision warrants it; reserve `LLM-disambiguate` for cases where
-   user testing shows confusion.  See `Project Files/canopy-chat/
+   user testing shows confusion.  See `Project Files/basis/
    slash-coverage-audit-2026-05-24.md` for the underlying data.
 
 2. **`perAppSystemPrompts` composition.**  `compose()` returns the

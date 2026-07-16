@@ -4,7 +4,7 @@
  * Slice F.1 (V0.8, 2026-05-21) — folio's first NavModel manifest.
  *
  * **Part G dissolve (2026-06-11):** this is now the ONE folio manifest.
- * canopy-chat's former `mockFolioManifest` (the chat-shell slash/gate
+ * basis's former `mockFolioManifest` (the chat-shell slash/gate
  * surface for the REAL folio skills) was folded in here and re-exported
  * as `mockFolioManifest` for back-compat.  So the app's web/mobile
  * screens AND the chat shell (circle LLM + deterministic gate) now read
@@ -15,7 +15,7 @@
  * structurally-distinct destructive ops (deleteFromPod / deleteLocally /
  * forceRepush) DELIBERATELY carry NO `surfaces.chat` — the circle LLM
  * must never propose deleting a shared file (Part G curation decision).
- * See `Project Files/canopy-chat/slash-coverage-audit-2026-05-24.md`.
+ * See `Project Files/basis/slash-coverage-audit-2026-05-24.md`.
  *
  * Folio is structurally different from the item-store apps (tasks-v0,
  * stoop, household): it doesn't have an ItemStore + circle-scoped items.
@@ -89,8 +89,8 @@ export const folioManifest = {
     {
       id:        'deleteFromPod',
       verb:      'remove',
-      // Q32 (canopy-chat v0.4, 2026-05-22) — pod-side delete is HTTPS;
-      // works in browser.  Per OQ-1.A: canopy-chat exposes this in
+      // Q32 (basis v0.4, 2026-05-22) — pod-side delete is HTTPS;
+      // works in browser.  Per OQ-1.A: basis exposes this in
       // its browser bundle.
       runtime:   'browser',
       appliesTo: { type: 'file' },
@@ -117,7 +117,7 @@ export const folioManifest = {
     {
       id:        'deleteLocally',
       verb:      'remove',
-      // Q32 — local-fs delete needs Node; canopy-chat in browser
+      // Q32 — local-fs delete needs Node; basis in browser
       // filters this out per OQ-1.A.
       runtime:   'node',
       appliesTo: { type: 'file' },
@@ -143,7 +143,7 @@ export const folioManifest = {
                        // (a normal bi-directional sync) — forceRepush
                        // overwrites pod versions wholesale.
       // Q32 — sync touches local fs (reads files to overwrite pod);
-      // node-only.  Sidecar-mode canopy-chat re-includes.
+      // node-only.  Sidecar-mode basis re-includes.
       runtime: 'node',
       params: [],
       // V0.2 Q8 wildcard — folder-wide op, not file-specific.  The
@@ -246,7 +246,7 @@ export const folioManifest = {
     },
 
     /* ── Chat-shell ops (Part G dissolve, 2026-06-11) ───────────────────
-     * Folded in from canopy-chat's former `mockFolioManifest`.  These are
+     * Folded in from basis's former `mockFolioManifest`.  These are
      * the circle/chat-shell surface for the REAL folio skills
      * (handlers via createBrowserFolioAgent / realAgent).  Each declares
      * `surfaces.chat` (and most a Part-C gate `match`), so the circle

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderGate, renderSlash } from '../src/index.js';
 
-// A canopy-chat-tasks-shaped fixture: addTask has a plain `text` param (text-only + drop the
+// A basis-tasks-shaped fixture: addTask has a plain `text` param (text-only + drop the
 // trailing "to the list" clause); completeTask/claimTask take `id` (match + a CUSTOM arg name).
 const tasks = {
   appId: 'tasks',

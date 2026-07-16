@@ -441,8 +441,8 @@ export async function buildGroupState({
  *     dep is SOFT: nkn-sdk is NOT listed in stoop-mobile's package.json,
  *     so devs without it installed simply skip this branch.  To
  *     actually use NKN cross-device, install `nkn-sdk` and pass the
- *     module as `opts.nknLib` (mirrors canopy-chat-mobile's pattern in
- *     apps/canopy-chat-mobile/src/core/agentBundle.js).
+ *     module as `opts.nknLib` (mirrors basis-mobile's pattern in
+ *     apps/basis-mobile/src/core/agentBundle.js).
  *
  * BLE is deliberately omitted for now — adds permission complexity
  * for the simple PoC.  Plumbed-in extension point is obvious if we
@@ -569,7 +569,7 @@ export async function buildMeshAgent({
 
   // NKN (Path C, #248 2026-05-27): when a runtime nkn-sdk module is
   // injected, plumb an `NknTransport` for global mainnet routing.
-  // The lifted reconnect-catch-up handlers in canopy-chat live on top
+  // The lifted reconnect-catch-up handlers in basis live on top
   // of NKN's subtype-routed envelopes (`p2p-chat` / `catch-up-request`
   // / `buurt-post`), so wiring NKN here lets stoop-mobile reuse them
   // without re-implementing the catch-up flow.
@@ -586,12 +586,12 @@ export async function buildMeshAgent({
   //     falls through to InternalTransport for pre-connect sends —
   //     which is harmless since no peers are addressable yet anyway.
   //   - connect runs fire-and-forget; the actual mainnet handshake
-  //     can take 5–90s.  Mirror canopy-chat-mobile's boot pattern in
-  //     apps/canopy-chat-mobile/src/core/agentBundle.js so buildMeshAgent
+  //     can take 5–90s.  Mirror basis-mobile's boot pattern in
+  //     apps/basis-mobile/src/core/agentBundle.js so buildMeshAgent
   //     returns quickly.
   //   - The bridge `agent.nkn` is the shim wireCatchUp() / lifted
   //     handlers reach to send/listen.  It mirrors the `sa.peer`
-  //     surface canopy-chat-mobile uses (sendTo + on('peer-message')).
+  //     surface basis-mobile uses (sendTo + on('peer-message')).
   if (nknLib) {
     try {
       const nkn = new NknTransport({
@@ -625,7 +625,7 @@ export async function buildMeshAgent({
       });
 
       // Adapter exposed on the agent so bundle.nkn reaches it.  Surface
-      // mirrors canopy-chat-mobile's `sa.peer` so the lifted handlers
+      // mirrors basis-mobile's `sa.peer` so the lifted handlers
       // (which take `{sendPeer, ...}`) drop in unchanged.
       agent.nkn = {
         get address() { return nkn.address; },
@@ -651,8 +651,8 @@ export async function buildMeshAgent({
         _transport: nkn,
       };
 
-      // Fire-and-forget connect.  Same pattern as canopy-chat-mobile
-      // (apps/canopy-chat-mobile/src/core/agentBundle.js:170).  Boot
+      // Fire-and-forget connect.  Same pattern as basis-mobile
+      // (apps/basis-mobile/src/core/agentBundle.js:170).  Boot
       // stays fast (mainnet handshake can take 5–90s) and the catch-up
       // trigger fires on the 'connect' event downstream.
       nkn.connect().catch((err) => {

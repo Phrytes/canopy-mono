@@ -4,7 +4,7 @@
  * ── What this is (and what it is NOT) ────────────────────────────────────────────────────────────────
  * The FUNCTIONALITY-side adapter that lets a caller invoke a calendar capability by its canonical
  * `(atom × noun)` pair instead of its bespoke op-id — the same seam the household pilot
- * (`apps/canopy-chat/src/v2/householdApp.js`) opened, and that tasks-v0 (`apps/tasks-v0/src/Service.js`) +
+ * (`apps/basis/src/v2/householdApp.js`) opened, and that tasks-v0 (`apps/tasks-v0/src/Service.js`) +
  * stoop (`apps/stoop/src/Service.js`) already carry. It is ADDITIVE: it registers the EXISTING
  * `registerCalendarSkills(...)` skill set unchanged and routes `(atom, noun)` → opId → the real handler.
  * No skill, store, or manifest is modified; the legacy dispatch path (`createCalendarAgent` registering the
@@ -30,7 +30,7 @@
  * ── SECURITY / gate guardrail (docs/architecture.md) ─────────────────────────────────────────────────
  * `callSkill` is the default-deny security boundary. This adapter is therefore NOT to be wired as a live
  * `(atom, noun)` entry that BYPASSES the gate: the live interpreter path resolves `(atom, noun)` → opId at
- * the GATED canopy-chat waist (the capability gate authorises the pair BEFORE dispatch), then dispatches
+ * the GATED basis waist (the capability gate authorises the pair BEFORE dispatch), then dispatches
  * through the gated `callSkill`. This service exists for tests + that future gated wiring — it hands the
  * resolved opId to the real handler; it does not decide authorisation. The fallback never bypasses the gate.
  */

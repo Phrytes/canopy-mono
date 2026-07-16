@@ -174,7 +174,7 @@ export const householdManifest = {
           match:   { verbs: ['help', 'hulp'], body: 'none' },
           // Slash dedup (2026-06-19): `/help` stays for STANDALONE household (the
           // bot + the SP-1 byte-equivalence grammar + the bare-command fallback
-          // target). But in a merged circle the canopy-chat SHELL owns the global
+          // target). But in a merged circle the basis SHELL owns the global
           // `/help` (it introspects every app, including household), so this one
           // is NOT contributed to the unified catalog — `standaloneOnly` makes
           // mergeManifests skip it (no /help collision). See manifestMerge.js.
@@ -229,7 +229,7 @@ export const householdManifest = {
       surfaces: {
         chat:  { hint: 'Grab an open task to do it.  match = id, id-prefix, or keyword.' },
         slash: {
-          // `/grab` (not `/claim`): in canopy-chat's unified catalog, `/claim`
+          // `/grab` (not `/claim`): in basis's unified catalog, `/claim`
           // + the "claim/pak/neem" gate verbs are owned by tasks-v0 (the
           // dedicated circle-task system).  Household's task-claim uses a distinct
           // command + verbs so the two never collide (Part G de-ambiguation

@@ -1,5 +1,5 @@
 /**
- * Stoop ε.3 (canopy-chat v2 Phase 9) — getMessagesSince skill.
+ * Stoop ε.3 (basis v2 Phase 9) — getMessagesSince skill.
  *
  * Pod range-query entry point for catch-up.  Reads kring-chat-message
  * items from itemStore (same store the rehydrator + ingestKringMessage

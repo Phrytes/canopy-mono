@@ -117,7 +117,7 @@ export async function createNeighborhoodAgent({
    * When `{dbName, storeName?}` is supplied + `indexedDB` is
    * available, an `IndexedDBPersist` adapter is wired into
    * `bundle.cache`.  Mutually exclusive with `persistPath` (pass
-   * exactly one).  Used by canopy-chat's browser composition
+   * exactly one).  Used by basis's browser composition
    * (integration plan 2026-05-23, slice 3).
    */
   persistDb,

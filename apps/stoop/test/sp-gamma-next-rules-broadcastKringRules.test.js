@@ -7,7 +7,7 @@
  * per-recipient envelope shape without the full NKN transport plumbing.
  *
  * Also includes the cross-agent journey: Anne broadcasts a rules doc;
- * the captured envelope feeds canopy-chat's `makeKringRulesPeerHandler`,
+ * the captured envelope feeds basis's `makeKringRulesPeerHandler`,
  * and the pending-rules store ends up with the broadcast doc.
  */
 
@@ -15,11 +15,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
 import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
-// Receiver side substrate lives in canopy-chat; we import directly via
+// Receiver side substrate lives in basis; we import directly via
 // relative path (the package wire is identical to how kringRecipeReceiver
 // is referenced from this same test file's sibling).
-import { makeKringRulesPeerHandler } from '../../canopy-chat/src/v2/kringRulesReceiver.js';
-import { createKringRulesPendingStore } from '../../canopy-chat/src/v2/kringRulesPending.js';
+import { makeKringRulesPeerHandler } from '../../basis/src/v2/kringRulesReceiver.js';
+import { createKringRulesPendingStore } from '../../basis/src/v2/kringRulesPending.js';
 
 const ANNE  = 'https://id.example/anne';
 const BOB   = 'https://id.example/bob';

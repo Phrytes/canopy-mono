@@ -1,326 +1,151 @@
 # basis
 
-A platform for **decentralized agent apps** — web and mobile apps whose
-users exchange messages, data, and tasks **without a required central
-server**.  Each app declares its surface once, as data; a unified chat
-shell composes them all, and a portable platform gives every app
-identity, transports, and peer-to-peer reachability underneath.
+**Basis** is a decentralized app for communities — households, neighborhoods, clubs — where
+people exchange messages, tasks, questions, and files **without a required central server**.
+Everything runs on the user's own devices, encrypted end to end; a [Solid](https://solidproject.org)
+pod is an optional portability layer, never a dependency.
 
-> **Naming:** this repo was `canopy-mono` until 2026-07. The platform packages now live under the
-> **`@onderling/*`** scope; the flagship app is **Basis**; the organization is
-> [Onderling](https://github.com/Onderling).
+This repository is the engineering home of Basis **and** the platform it stands on: the
+**`@onderling/*` packages**, published on npm, that any application can build with.
+
+```bash
+npm install @onderling/sdk
+```
+
+Maintained by [Onderling](https://github.com/Onderling). License: Apache-2.0.
 
 ## Documentation
 
 - **[Package index](docs/packages.md)** — every published `@onderling/*` package, what it is, and
   which executable journey verifies it.
-- **[API reference](docs/api/README.md)** — per-function appendix for all 15 packages, generated
-  from the source JSDoc (`npm run api-fitness` keeps it drift-free).
 - **[Tutorials](docs/tutorials/)** — your first agent · one manifest, every surface · a compatible
   tasks app.
-- **[How-to guides](docs/how-to/)** — connect over a relay · persist to a pod · redact before send ·
-  log safely and collect a bug report.
-- **[Building compatible agents](docs/building-compatible-agents.md)** — the wire-level route.
-- **[Architecture](docs/architecture.md)** — how the pieces fit.
+- **[How-to guides](docs/how-to/)** — connect over a relay · persist to a pod · redact before
+  sending · log safely and collect a bug report.
+- **[API reference](docs/api/)** — per-function documentation, generated from source.
+- **[Building compatible agents](docs/building-compatible-agents.md)** — the wire-level route (any
+  language, no SDK required).
+- **[Architecture](docs/architecture.md)** — how the pieces fit. Settled choices:
+  [`docs/decisions.md`](docs/decisions.md).
 
-Docs are verified against the code: `npm run readme-fitness` (symbol drift) and
-`apps/sdk-journeys` (executable flows).
-
-
-> **Working name in public material:** *Onderling*.  This monorepo is the
-> engineering home; the platform ships under the `@onderling/*` scope and the
-> apps under `@onderling-app/*`.
-
----
-
-## Documentation
-
-Full docs live in **[`docs/`](./docs/)** — start with the [documentation index](./docs/README.md):
-the [architecture deep-dive](./docs/architecture.md), [repository layout](./docs/repository-layout.md),
-[glossary](./docs/glossary.md), the [conventions](./docs/conventions/), and
-[known build/native gotchas](./docs/agent-notes-known-gotchas.md).
-Working plans and designs are kept private (local-only) by design.
-
----
-
-## The apps
-
-| App | What it does |
-|---|---|
-| **canopy-chat** | The front door — one chat UI. Slash commands (and a future LLM layer) dispatch to whichever app owns the operation. Ships as a static web bundle; the mesh agent runs **browser-side**. |
-| **household** | Shared household state (chores, lists) on a Solid pod; chat- or Telegram-driven, optionally LLM-mediated. |
-| **stoop** | Neighbourhood (*buurt*) sharing — borrow / lend / give, prikbord posts, skill-matching, closed groups with their own governance. |
-| **tasks-v0** | Tasks and circles — claim, complete, review, schedule, availability, circle invites. |
-| **folio** | Share files and folders to and from Solid pods. |
-| **calendar** | Appointments and events with cross-peer invite + RSVP over the mesh. |
-
-Each app has a React Native / Expo **mobile counterpart**
-(`canopy-chat-mobile`, `stoop-mobile`, `tasks-mobile`, `folio-mobile`)
-that composes the same portable core as its web build — web and mobile
-are peers, neither is the "primitive" one.
-
----
+Documentation is verified against the code: `npm run readme-fitness` asserts every documented
+symbol exists, and `apps/sdk-journeys` executes the documented flows. Contributions welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md); vulnerabilities go to [SECURITY.md](SECURITY.md).
 
 ## One manifest, every surface
 
-This is the connective tissue that lets canopy-chat drive every app
-without hard-coding any of them.  An app declares its surface **once**, as
-data, in a `manifest.js` — its item types, operations, views, and
-per-operation surface hints.  Four pure projectors turn that single
-declaration into four surfaces:
+An app declares its operations **once**, as data, in a `manifest.js`. Pure projectors turn that
+single declaration into every interface:
 
 ```
                     manifest.js   (one per app)
                          │
       ┌──────────────────┼──────────────────┬──────────────────┐
   renderChat         renderSlash         renderWeb         renderMobile
-  LLM tools +        /commands +         DOM pages         RN NavModel
-  system prompt      grammar             + forms           (screens/nav)
+  LLM tools +        /commands +         DOM pages         RN screens
+  system prompt      grammar             + forms           + navigation
 ```
 
-- **`@onderling/app-manifest`** ships the schema, the validator, and the
-  projectors (`renderChat` / `renderSlash` / `renderWeb` / `renderMobile`,
-  plus **`renderGate`** — the deterministic *pre-LLM* half: it projects each
-  op's `surfaces.slash.match` verbs into token-gate rules so common phrases
-  ("add X", "done X") route without the model. `renderChat` is the LLM half;
-  `renderGate`/`renderSlash` are the deterministic half — same manifest, both
-  used by household's TG-bot and canopy-chat's circle bot).
-- **`@onderling/manifest-host`** composes *N* apps' manifests at runtime —
-  collision detection across command namespaces + reply-shape lookup.
-- **`renderCoverage`** — a scan of which surfaces each op is wired for
-  (op × chat/slash/gate/web·mobile/inline). Run `npm run coverage` in
-  `apps/canopy-chat`; the snapshot lives at
-  `apps/canopy-chat/docs/surface-coverage.md`. **⚠️ Keep it updated:**
-  whenever you change a `manifest.js` (add/remove an op or a
-  `surfaces.*` declaration), regenerate the snapshot (`npm run coverage`)
-  and commit it, so the surface map never drifts from the manifests.
-
-So canopy-chat's command bar is not a switch statement over apps; it is a
-projection of the merged manifest.  Adding an operation to an app's
-`manifest.js` makes it reachable from chat, slash, web, and mobile at
-once.  Design intent:
-`DESIGN-navmodel-sketch.md`,
-`DESIGN-canopy-chat.md`.  Page-rendering policy
-(when a surface is substrate-rendered vs. hand-coded):
-`DESIGN-tier-policy.md`.
-
-### The thin waist — `{opId, args}`
-
-The projectors are the *output* side; the input side mirrors them. Every interface compiles **down to the
-same intermediate** and hands it to `callSkill`:
+Every interface compiles down to the same narrow waist and hands it to the dispatcher:
 
 ```
 AI (LLM)  ─┐
-GUI tap   ─┤→   { opId, args }   →  resolveDispatch → runDispatch → callSkill  →  functionality
-slash     ─┤         ▲ the manifest is the contract            (local handler · agent · model · pod · MCP · job)
-gate verb ─┘
+GUI tap   ─┤→   { opId, args }   →   callSkill   →   functionality
+slash     ─┤        the manifest is the contract      (local handler · peer agent ·
+gate verb ─┘                                           model · pod · scheduled job)
 ```
 
-AI and GUI are **peer compilers** to this waist — neither is privileged; both are pass-throughs
-(*doorgeefluik*) to functionality. *Where* the op resolves is a separate axis: some functionality is baked
-into the app (internal handlers/screens), some routes elsewhere (an external agent, a model, an MCP service,
-the pod). This is the seam the repo will eventually split on — thin **interface** clients above the waist,
-**functionality/substrate** below it, the manifest between.
+AI and GUI are peer compilers to this waist — neither is privileged. Adding an operation to a
+manifest makes it reachable from chat, slash commands, web, and mobile at once. Interfaces are
+pass-throughs; functionality lives behind the waist and is placed by **trust and latency** —
+sensitive compute stays on-device or in an attested enclave, never default-to-server.
 
-### Direction — apps dissolve into canopy-chat (decided 2026-06-11)
+## The platform — `@onderling/*` on npm
 
-The manifest-per-app split is an **engineering** boundary, not a product one.
-The chosen direction is to **dissolve the separate apps (stoop, tasks-v0,
-feedback, …) into canopy-chat**: their `manifest.js` declarations stay (they
-are the source of truth every projector reads), but the app *names* become
-**navigation / reference labels** for groups of shared functionality inside
-one unified chat surface — not separate apps, builds, or shells. Everything
-already routes through the merged manifest, so this is a consolidation of
-shells and packaging, not a rewrite. Treat new work as **adding manifests +
-projectors to canopy-chat**, not standing up new app silos. This is why the
-gate/slash/web/mobile/LLM surfaces are all manifest projections: one
-declaration, every surface, one front door.
+The kernel, adapters, and substrates ship as versioned packages
+([index](docs/packages.md), 15 published, more as their APIs settle):
 
-### Direction — enforce the model, then split (2026-06-13)
+- **`@onderling/sdk`** — the developer facade: `createAgent()` + `connectSkill()` and re-exports of
+  every layer below.
+- **`@onderling/core`** — the kernel: identity, the `Agent`, skills, protocols, security, and the
+  **ports** (`Transport` / `DataSource` / `ActorResolver`) that define compatibility.
+- **`@onderling/transports`** — relay, NKN, MQTT, and WebRTC-rendezvous transports over the
+  `Transport` port. Two peers use whichever path is currently reachable — LAN, Bluetooth, direct
+  WebRTC, a self-hostable relay, or the public NKN network.
+- **`@onderling/pod-client` · `@onderling/pseudo-pod` · `@onderling/vault`** — storage: Solid pods
+  with client-side sealing, an in-memory pod for development, key vaults.
+- **`@onderling/item-types` · `@onderling/item-store`** — the canonical item vocabulary and the
+  shared lifecycle substrate (claims, completion, audit) that makes independent apps
+  *data-compatible*.
+- **`@onderling/app-manifest` · `@onderling/app-scaffold`** — the manifest schema + projectors, and
+  a manifest-to-app scaffolder.
+- **`@onderling/agent-registry` · `@onderling/attribute-charter`** — agents, personas, properties,
+  and per-context disclosure: users decide per circle what they share, coarsely, with k-anonymity
+  guards.
+- **`@onderling/redaction` · `@onderling/logger` · `@onderling/oidc-session`** — supporting
+  substrates.
 
-The manifest model is settled; the active work is **enforcing** it so the code stops drifting from it —
-duplicated locales, mobile reimplementing web, and cross-app copy-paste are *un-enforced invariants*, not
-model problems. The plan, in order: **(0)** architectural *fitness functions* — turn each invariant into a CI
-check so drift can't merge; **(1)** consolidate the remaining duplication; **(2)** split the repos along the
-now-enforced seams — thin **clients** (web + mobile) · **substrate/functionality** (the packages + the
-already-server-side pod-hosting / proxy / private-LLM) · the **feedback app** in its own repo (project-start,
-KLAI compat) · **third-party apps** that build against the Solid pod + `@onderling/sdk` (pod **ACPs** are the access
-contract) without touching this repo. Sensitive compute stays client-side or in an **attested enclave** —
-functionality is placed by *trust + latency*, never default-to-server. The contract at every seam is the
-manifest (for surfaces) and `@onderling/sdk` + pod ACPs (for external apps). See `REMAINING-WORK.md` →
-"★ Architectural spine" and `CLAUDE.md`. *(This README gets a full rewrite once the repos are split.)*
+Layering is a project invariant: apps compose substrates, substrates compose the kernel + adapters
+([`architectural-layering.md`](docs/conventions/architectural-layering.md)).
 
----
+## The apps
 
-## How it works — the platform + `@onderling/sdk`
+| App | What it does |
+|---|---|
+| **basis** (`apps/basis`, `apps/basis-mobile`) | The unified front door — one chat + GUI shell composing every module below through the merged manifest. Web is static-deployable; mobile is Expo/React Native. Web and mobile are peers — one shared core, two thin shells. |
+| **household · stoop · tasks-v0 · folio · calendar** | Functionality modules — shared household state, neighborhood sharing and skill-matching, tasks and circles, pod file sharing, events with cross-peer RSVP. Their manifests are the source of truth; Basis composes them as one product. |
+| **feedback** | Privacy-first community feedback — split to its own repository: [Onderling/feedback](https://github.com/Onderling/feedback). It consumes the published platform like any third party. |
 
-Pure-JS-first, running in browser, Node, and React Native. The **developer SDK is `@onderling/sdk`** — one import
-that fronts the whole platform (`createAgent()` + `connectSkill()`, plus re-exports of every piece below so you
-can wire your own). The platform underneath:
+## Engineering principles
 
-- **`@onderling/core`** — the **kernel**: identity, security (SecurityLayer, hello handshake, capability tokens,
-  group manager), routing, the `Agent` class, the skill registry + `defineSkill`, protocols (pubSub /
-  taskExchange / messaging / …), `InternalTransport`, and the **ports** (`Transport` / `DataSource` /
-  `ActorResolver` — the compatibility contract, see [`docs/conventions/ports.md`](./docs/conventions/ports.md)).
-- **`@onderling/transports`** — the concrete network transports (Nkn / Mqtt / Relay / Rendezvous), adapters over
-  the kernel's `Transport` port.
-- **`@onderling/pod-client`** — high-level Solid pod client (read / write / list / conflict resolution / tombstones)
-  plus the on-pod storage + identity adapters (`SolidPodSource`, `IdentityPodStore`).
-- **`@onderling/vault`** — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
-- **`@onderling/relay`** — Node WebSocket relay: rendezvous signalling + proxy fallback + fan-out + group auth + push wake.
-- **`@onderling/react-native`** — RN platform layer: BLE, mDNS, KeychainVault, MobilePushBridge, `createMeshAgent`, Metro preset.
+- **Local-only is the floor; the pod is portability.** Every app works fully without a pod; with
+  one, the pod is authoritative and the local cache is reality.
+- **Placed by trust + latency.** Pods, sealing, and the confidential-LLM transport stay client-side
+  or in an attested enclave (Privatemode/TEE) — "server-side" means extracting what is already
+  server-side, never moving private data to an untrusted host.
+- **Identity rotation by default**; the pod WebID stays stable while network keys rotate.
+- **No central authority is a structural property** — apps ship governance affordances (group
+  creation as a governance step), not a support desk.
+- **Fitness functions over review discipline**: every architectural invariant that matters has a
+  test that fails when it drifts — including the documentation.
 
-Substrates (`packages/{item-store, identity-resolver, skill-match, notifier, secure-agent, llm-client, …}`)
-compose the kernel + adapters into reusable building blocks; apps compose substrates.
-Minimal hands-on agent: [`QUICKSTART.md`](./QUICKSTART.md).
+## Platform support
 
-### Single-agent rule
-
-Every app builds **one** `core.Agent` per service-context.  Transports are
-routes plugged into that agent, not parallel agent instances; multi-scope
-semantics (groups, circles, accounts) live in per-scope `ItemStore` /
-`MemberMap` state **outside** the agent and dispatch at the skill level.
-Spinning up N agents to model N scopes is an anti-pattern.  Full rationale:
-[`Project Files/conventions/single-agent.md`](./docs/conventions/single-agent.md).
-
----
-
-## Reachability — transports
-
-Two peers exchange messages over whichever path is currently usable.  No
-app code chooses the path; a per-peer picker (`RoutingStrategy`) does,
-based on which transports have a live link to the peer.
-
-1. **Direct** — mDNS/TCP on the same LAN, BLE in Bluetooth range, or a
-   WebRTC DataChannel across networks (relay-signalled, then the relay
-   drops out of the data path). In-process transports cover tests + tabs.
-2. **Relay** — `@onderling/relay` over WebSocket, in rendezvous mode (carries
-   only SDP/ICE) or proxy-fallback mode (forwards `nacl.box`-sealed
-   envelopes it cannot read).
-3. **NKN** — `NknTransport` rides the public [NKN](https://nkn.org)
-   messaging network; no operator to run, address is deterministic from the
-   agent's Ed25519 seed.  Connects via **MultiClient** (several sub-client
-   routes, better inbound reliability) with single-`Client` fallback.
-4. **Hop / peer-as-relay** — a third agent relays for two peers who cannot
-   reach each other, either as a plaintext bridge or a *sealed forward*
-   (`nacl.box` blob the bridge can't open).  Hop-count + policy gating
-   prevent abuse as an open relay.
-
----
-
-## Architecture invariant — three layers
-
-> **Apps depend on substrates, substrates depend on the kernel. This is
-> a project-wide invariant — keep it top-of-mind.**
-
-```
-apps/                       ←  thin compositions; per-app glue + UI
-  ↓
-packages/{item-store, identity-resolver, skill-match, notifier,
-  secure-agent, app-manifest, manifest-host, llm-client, …}
-  ↓                            ←  substrates; reusable building blocks
-packages/core                  ←  the KERNEL: ports + kernel logic
-                               (adapters live outside — @onderling/transports,
-                                @onderling/pod-client, @onderling/vault; the dev
-                                entry is @onderling/sdk, the facade over the platform)
-```
-
-Substrates compose the kernel + adapters and MUST NOT reinvent the kernel.  Apps
-compose substrates and MAY use the kernel directly **only with an explicit
-justification** in the app's README.  Required reading before authoring
-code here:
-
-- [`architectural-layering.md`](./docs/conventions/architectural-layering.md) — what each layer owns, what's not acceptable.
-- [`app-readme-scheme.md`](./docs/conventions/app-readme-scheme.md) — every app under `apps/` follows this README scheme from its first commit.
-- [`localisation.md`](./docs/conventions/localisation.md) — every user-facing surface ships translatable from commit one; substrates emit error codes, not strings.
-- [`cross-app-settings.md`](./docs/conventions/cross-app-settings.md) — pod-side settings split into portable `shared.json` + per-install `devices/<id>.json`.
-- [`pod-independence.md`](./docs/conventions/pod-independence.md) — local-only mode is the floor; the pod is the portability layer, not a runtime dependency.
-- `Substrates/policies.md` — rule-of-two extraction policy (wait for the second independent need before generalising).
-
-### Engineering principles
-
-- **Local-only mode is the floor; pod is portability.** Every app works
-  fully without an authenticated pod.  Shared-state apps without a pod fall
-  back to kernel `MergeContracts` + relay `group-publish` for P2P replication.
-- **Pod is truth, local cache is reality.** When a pod *is* configured it is
-  authoritative but slow; UI reads from the local cache and syncs on a
-  cadence with optimistic, queued writes.  A pod outage must not break the app.
-- **Network identity rotation by default.** `Agent.rotateIdentity()` rotates
-  the network keypair with grace-period broadcasts; the pod WebID stays
-  stable.  Reduces long-term relay-traffic correlation.
-- **Decentralised disclaimer.** There is no central support desk, abuse team,
-  or trust authority — a structural property, not a bug.  Every app ships an
-  onboarding disclaimer and treats *create-group* as a governance step.
-- **Feedback loops on UX-load-bearing parameters.** Notification cadence,
-  reminder rate, re-key TTL, etc. can't be pre-tuned from a spec — ship
-  sensible defaults, expose dials, instrument from day one, adjust from data.
-
----
-
-## Platform support — Android + Web (iOS out of scope, locked 2026-05-08)
-
-V1 targets **Android + Web**.  iOS is acknowledged out-of-scope: Apple's
-restrictions on background tasks, Web Push, peer-to-peer networking (no
-mDNS, restricted BLE), and App Store review compound to make iOS V1
-economics not worthwhile for a research preview.  Apps that happen to run
-on iOS via Expo are welcome to; the project adds no iOS-specific code
-paths, does not test on iOS, and does not block on iOS bugs.
-
-### Pinned versions — do NOT bump without explicit approval
-
-**Expo 52 is the ceiling** (React Native 0.76.9, React 18.3.1).  `npm audit
-fix --force` will try to bump Expo past 52 — **do not run it**; the RN
-bring-up traps are calibrated against this matrix.  Full matrix:
-[`packages/react-native/docs/VERSION-MATRIX.md`](./packages/react-native/docs/VERSION-MATRIX.md);
-trap log:
-[`packages/react-native/docs/BRING-UP-NOTES.md`](./packages/react-native/docs/BRING-UP-NOTES.md).
-
----
+V1 targets **Android + Web**; iOS is explicitly out of scope (background/push/P2P restrictions —
+locked 2026-05-08). **Expo 52 is the ceiling** (React Native 0.76.9, React 18.3.1) — do not bump
+without approval; the native bring-up traps are calibrated against this matrix
+([`VERSION-MATRIX.md`](packages/react-native/docs/VERSION-MATRIX.md)).
 
 ## Running things
 
 ```bash
-# Monorepo root — install + run the package test suites
-npm install
-npm test                              # core + react-native + relay + pod-client + integration-tests
-npm run test:core                     # individual suites: :rn :relay :pod-client :scenarios
+npm install && npm test          # root: kernel + relay + pod-client + integration suites
 
-# Start the relay (listens on :8787 by default)
-npm run relay:start
+pnpm --filter @onderling-app/basis dev     # the web app → http://localhost:5173
+pnpm --filter @onderling-app/basis build   # static bundle → dist/
+
+cd apps/basis-mobile                       # Expo / Android
+npm install --legacy-peer-deps && ./node_modules/.bin/expo run:android
 ```
 
-Apps are pnpm-filtered workspaces:
-
-```bash
-# canopy-chat (web) — static-deployable
-pnpm --filter @onderling-app/canopy-chat dev        # http://localhost:5173
-pnpm --filter @onderling-app/canopy-chat build      # → dist/
-```
-
-```bash
-# canopy-chat-mobile (Expo / Android)
-cd apps/canopy-chat-mobile
-npm install --legacy-peer-deps                    # one-time
-./node_modules/.bin/expo run:android              # first boot (2–10 min, builds native)
-npm start                                         # subsequent JS-only changes
-```
-
----
+Each app and package carries its own test suite (`npx vitest run` in its directory); the
+executable SDK journeys run with `cd apps/sdk-journeys && npm test`.
 
 ## Status
 
-**Research preview / PoC.**  The platform's package boundaries are stable
-and core is in active development.  As of the current milestone:
+**Research preview.** Current state (2026-07):
 
-- **canopy-chat web + `canopy-chat-mobile` shells are live**, both composing
-  the same manifest-driven core.
-- **Cross-device peer flows work over NKN** — contact QR exchange,
-  direct messages, and group join/redeem verified on two physical Android
-  phones (MultiClient transport + persisted identity).
-- **Pods are opt-in**: every app runs fully local; OIDC sign-in + pod sync
-  are an opt-in portability layer.
-- **Operational hardening** (relay auth, public relay deployment, the
-  per-device Agent Hub) remains on the roadmap.
+- The platform is **published**: 15 `@onderling/*` packages on npm (tag `wave-1`), consumed by the
+  split-out feedback app as the first external tenant.
+- Basis web + mobile shells are live and compose the same manifest-driven core; cross-device peer
+  flows verified on physical Android hardware.
+- Per-persona **disclosure** (what you share, per circle) and on-device **matching** (drivers —
+  interests matched locally, never uploaded) shipped recently.
+- Operational hardening (public relay deployment, deployment automation) is in progress.
 
-Per-app phase tables and honest "demoable vs. primitive-complete" notes live
-in each app's own `README.md` (e.g. `apps/canopy-chat/README.md`).
+Honest per-app phase notes live in each app's own README.
+
+## Name history
+
+The platform was developed as *canopy* (`canopy-mono`); in July 2026 it became **basis**, under the
+**Onderling** organization, with packages scoped `@onderling/*`. Old links redirect.

@@ -1,13 +1,13 @@
 /**
- * stoop — browser entry for canopy-chat composition.
+ * stoop — browser entry for basis composition.
  *
- * Lets canopy-chat boot a real Stoop NeighborhoodAgent inside its
- * own browser bundle, sharing an `InternalBus` so canopy-chat's
+ * Lets basis boot a real Stoop NeighborhoodAgent inside its
+ * own browser bundle, sharing an `InternalBus` so basis's
  * chatAgent can `.invoke(stoopAgent.address, skillId, parts)` to
  * reach every real stoop skill (postRequest, listFeed,
  * respondToItem, sendChatMessage, setMyHandle, ...).
  *
- * Slice 2b of `Project Files/canopy-chat/integration-plan-2026-05-23.md`.
+ * Slice 2b of `Project Files/basis/integration-plan-2026-05-23.md`.
  * Prerequisite: slice 2a (IndexedDBPersist) already shipped, so we
  * can compose Stoop in a browser without a `node:fs/promises` import
  * crashing the bundle.
@@ -26,13 +26,13 @@ import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.
  * Build a Stoop NeighborhoodAgent on the shared bus.
  *
  * @param {object} args
- * @param {InternalBus}    args.bus              shared bus (canopy-chat owns it)
+ * @param {InternalBus}    args.bus              shared bus (basis owns it)
  * @param {object}         args.identityVault    Vault for the stoop agent's
  *                                               identity (browser convention:
  *                                               VaultLocalStorage prefixed
  *                                               separately from chat identity)
  * @param {string}         args.localActor       webid-shaped identifier for
- *                                               the local user (canopy-chat
+ *                                               the local user (basis
  *                                               passes its synthetic
  *                                               'webid:local-demo-user' or
  *                                               the real WebID after sign-in)
@@ -51,7 +51,7 @@ import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.
  *                                               to the joiner's sealing public key) and `leaveGroup` →
  *                                               `removeMember` (revoke + rotate). Absent on instances
  *                                               that don't run a sealed pod — the calls are simply
- *                                               skipped (non-breaking). canopy-chat uses Stoop as its
+ *                                               skipped (non-breaking). basis uses Stoop as its
  *                                               circle-membership substrate, so this is the seam through
  *                                               which a circle's sealed-pod control-agent reaches the
  *                                               redeem/leave hooks the underlying agent already exposes.
@@ -104,7 +104,7 @@ export async function createBrowserStoopAgent({
     close:   () => bundle.close?.(),
     /**
      * Route this stoop agent's items to a REAL Solid pod, using a host-supplied
-     * authenticated `fetch` (e.g. canopy-chat's signed-in session) + the discovered
+     * authenticated `fetch` (e.g. basis's signed-in session) + the discovered
      * `podRoot`. Builds a `SolidPodSource` + activates the (already-built) pod-routing
      * write-through. Idempotent-ish; best-effort provisioning. Pass `podRoot: null` (or
      * call `detachPod`) to revert to local-only. No-op on a bundle without a cache.

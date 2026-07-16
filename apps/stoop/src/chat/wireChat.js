@@ -16,7 +16,7 @@
  *
  *   - **No `attachmentSupport` (2026-07-11 — sealed-media).** Image
  *     attachments are now SEALED end to end: the per-circle stoop wrapper
- *     (canopy-chat's `scopeStoopCallSkill`) seals bytes + thumbnail through the
+ *     (basis's `scopeStoopCallSkill`) seals bytes + thumbnail through the
  *     circle media gateway and stoop carries only the opaque manifest-line
  *     pointer; recipients open it through their own gateway.  Stoop therefore
  *     no longer injects the Phase-39 plaintext helpers, which makes the

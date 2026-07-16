@@ -20,7 +20,7 @@
  * out of scope and plugs in behind this same `verify` contract.
  *
  * DEFERRED (reported, not built): turning a loaded recipe into an ACTIVE circle
- * policy — the apply-wiring — lives in canopy-chat (it needs CIRCLE_FEATURES /
+ * policy — the apply-wiring — lives in basis (it needs CIRCLE_FEATURES /
  * CIRCLE_POLICY_ENUMS + the installed manifests to schema-check settings and
  * merge onto DEFAULT_CIRCLE_POLICY). This package stops at a validated,
  * normalised, trust-tagged bundle ready to hand to that applier.

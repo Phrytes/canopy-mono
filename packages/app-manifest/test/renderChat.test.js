@@ -270,7 +270,7 @@ describe('renderChat — inlineKeyboardFor', () => {
   });
 });
 
-describe('renderChat — Q28 replyShapeFor (canopy-chat v0.1)', () => {
+describe('renderChat — Q28 replyShapeFor (basis v0.1)', () => {
   it('returns the declared reply shape when present', () => {
     const m = {
       app: 'demo', itemTypes: ['task'],
@@ -309,7 +309,7 @@ describe('renderChat — Q28 replyShapeFor (canopy-chat v0.1)', () => {
   });
 });
 
-describe('renderChat — Q31 followUpsFor (canopy-chat v0.4)', () => {
+describe('renderChat — Q31 followUpsFor (basis v0.4)', () => {
   it('returns the declared follow-ups array', () => {
     const m = {
       app: 'demo', itemTypes: ['task'],
@@ -340,7 +340,7 @@ describe('renderChat — Q31 followUpsFor (canopy-chat v0.4)', () => {
   });
 });
 
-describe('renderChat — Q29 embedSnapshotFor (canopy-chat v0.5)', () => {
+describe('renderChat — Q29 embedSnapshotFor (basis v0.5)', () => {
   it('returns the declared cardSnapshotSkill', () => {
     const m = {
       app: 'household', itemTypes: ['chore'],
@@ -367,7 +367,7 @@ describe('renderChat — Q29 embedSnapshotFor (canopy-chat v0.5)', () => {
   });
 });
 
-describe('renderChat — Q32 runtimeFor (canopy-chat v0.4)', () => {
+describe('renderChat — Q32 runtimeFor (basis v0.4)', () => {
   it("returns 'both' when op.runtime absent", () => {
     const out = renderChat(baseManifest, { skillRegistry, toSkillCtx });
     expect(out.runtimeFor('addTask')).toBe('both');

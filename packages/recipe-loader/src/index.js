@@ -12,10 +12,10 @@
  * `verify` (deny-by-default), and returns a normalised bundle.
  *
  * NOT this package:
- *   - canopy-chat's IN-CIRCLE `kringRecipe*` member-to-member broadcast — a
+ *   - basis's IN-CIRCLE `kringRecipe*` member-to-member broadcast — a
  *     different mechanism (live members, not an external authored file).
  *   - the APPLY-WIRING (loaded recipe → active circle policy) — DEFERRED to
- *     canopy-chat, which owns the feature/view enums + installed manifests.
+ *     basis, which owns the feature/view enums + installed manifests.
  *   - real signature crypto — the `verify` seam is the plug-in point.
  *
  * Depends on `@onderling/app-manifest` for validation primitives. Does not depend

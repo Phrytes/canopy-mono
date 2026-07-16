@@ -8,7 +8,7 @@
  * `@onderling/local-store` (rule-of-two now satisfied — see
  * `Project Files/Substrates/substrate-candidates.md`).
  *
- * Default `dbName` for tasks-v0 callers is `'tasks-cache'`; canopy-chat
+ * Default `dbName` for tasks-v0 callers is `'tasks-cache'`; basis
  * web composition passes `{dbName:'cc-tasks-cache', storeName:'items'}`
  * to keep the IDB database isolated from stoop's `'cc-stoop-cache'`.
  *

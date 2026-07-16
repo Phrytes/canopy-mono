@@ -9,7 +9,7 @@
  *
  * ── nkn-multiclient / nkn-sdk on React Native ─────────────────────────
  * The NPM ecosystem ships NKN client functionality under `nkn-sdk` (the
- * package that the canopy-chat web layer loads from CDN; it exposes
+ * package that the basis web layer loads from CDN; it exposes
  * `nkn.Client` and `nkn.MultiClient`).  There is also a thin community
  * package called `nkn-multiclient` that re-exports `nkn-sdk`'s
  * MultiClient with a Promise wrapper; this transport treats either as
@@ -73,7 +73,7 @@
  *
  *     RUN_NKN_TESTS=1 pnpm exec vitest run test/transport/NknTransport.test.js
  *
- * Same convention as `apps/canopy-chat/test-browser/mesh-and-dm.spec.js`.
+ * Same convention as `apps/basis/test-browser/mesh-and-dm.spec.js`.
  *
  * ── Background suspend (future: #224B Detox) ──────────────────────────
  * iOS / Android background the JS runtime aggressively.  When the app

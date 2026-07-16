@@ -9,7 +9,7 @@
  * existing button rather than stacking.
  */
 
-const CLASS_NAME = 'canopy-chat-nav-back-button';
+const CLASS_NAME = 'basis-nav-back-button';
 
 /**
  * @typedef {object} FloatingButtonOpts
@@ -83,7 +83,7 @@ export function removeFloatingButton(host) {
 function styleButton(btn) {
   // Inline styles so consumers don't need to ship CSS to get a
   // usable button.  Apps with their own design system may override
-  // via the .canopy-chat-nav-back-button class.
+  // via the .basis-nav-back-button class.
   Object.assign(btn.style, {
     position:   'fixed',
     bottom:     '1rem',

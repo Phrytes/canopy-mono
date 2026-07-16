@@ -126,7 +126,7 @@ export function renderChat(manifest, args, opts = {}) {
   // 'match' rule.  The first positional argument worked because
   // it bound to the op's first required param via _match-binding,
   // but bare `--key` flags landed in `_match` instead of being
-  // parsed into args.  canopy-chat's parser reads entry.body to
+  // parsed into args.  basis's parser reads entry.body to
   // pick parseFlags vs parseMatch; the field must round-trip.
   const commandMenu = ops
     .filter((op) => op?.surfaces?.slash?.command)
@@ -154,7 +154,7 @@ export function renderChat(manifest, args, opts = {}) {
     return out;
   };
 
-  // (e) Q28 reply-shape lookup (canopy-chat v0.1, 2026-05-21).  The
+  // (e) Q28 reply-shape lookup (basis v0.1, 2026-05-21).  The
   // chat shell calls `replyShapeFor(opId)` to pick a renderer (text,
   // list, record, mini-page, file, embed-card, notification, brief).
   // When the op declares `surfaces.chat.reply`, that wins; otherwise
@@ -168,9 +168,9 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const replyShapeFor = (opId) => replyShapeByOp.get(opId);
 
-  // (f) Q31 follow-up hints (canopy-chat v0.4, 2026-05-22).  After a
+  // (f) Q31 follow-up hints (basis v0.4, 2026-05-22).  After a
   // successful dispatch the chat shell looks up suggested next-actions
-  // here; cross-app chains live in canopy-chat's static registry.
+  // here; cross-app chains live in basis's static registry.
   const followUpsByOp = new Map();
   for (const op of ops) {
     const declared = op?.surfaces?.chat?.followUps;
@@ -180,9 +180,9 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const followUpsFor = (opId) => followUpsByOp.get(opId);
 
-  // (g) Q32 runtime lookup (canopy-chat v0.4, 2026-05-22).  Absent
+  // (g) Q32 runtime lookup (basis v0.4, 2026-05-22).  Absent
   // value → 'both' (works anywhere); explicit value passes through.
-  // Consumers (manifest-host wrappers, canopy-chat's merge) filter
+  // Consumers (manifest-host wrappers, basis's merge) filter
   // ops by runtime as appropriate.
   const runtimeByOp = new Map();
   for (const op of ops) {
@@ -190,7 +190,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const runtimeFor = (opId) => runtimeByOp.get(opId) ?? 'both';
 
-  // (h) Q29 embed snapshot skill (canopy-chat v0.5, 2026-05-22).
+  // (h) Q29 embed snapshot skill (basis v0.5, 2026-05-22).
   // When an op declares `surfaces.chat.embed.cardSnapshotSkill`, the
   // chat shell knows it can use this op as an inline-card factory
   // for J7 embed messages.  Returns the snapshot-skill-id string OR
@@ -204,7 +204,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const embedSnapshotFor = (opId) => embedSnapshotByOp.get(opId);
 
-  // (i) Q30 brief-summary skill (canopy-chat v0.7, 2026-05-23).
+  // (i) Q30 brief-summary skill (basis v0.7, 2026-05-23).
   // When an op declares `surfaces.chat.brief.summarySkill`, /brief
   // calls it to populate this app's section of the aggregated brief.
   const briefByOp = new Map();
@@ -220,7 +220,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const briefFor = (opId) => briefByOp.get(opId);
 
-  // (j) Q33 search-skill (canopy-chat v0.7.5, 2026-05-23).  When an
+  // (j) Q33 search-skill (basis v0.7.5, 2026-05-23).  When an
   // op declares `surfaces.chat.search.searchSkill`, /find calls it
   // to query this app's cached items by text.
   const searchByOp = new Map();

@@ -8,7 +8,7 @@
  * composes the shared `createVersionStore` substrate (`@onderling/versioning`)
  * with a concrete StorageBackend (localStorage on web via
  * `localStorageBackend` below; AsyncStorage on mobile via the pseudo-pod
- * `createAsBackend` — see `apps/canopy-chat-mobile/src/core/
+ * `createAsBackend` — see `apps/basis-mobile/src/core/
  * objectVersionsStorageRN.js`).  The former substrate,
  * `@onderling/sync-engine`'s `objectVersions.js`, is retired — one version
  * store now serves Folio-files, kring-objects, and pod-resources alike.

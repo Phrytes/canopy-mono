@@ -10,13 +10,13 @@
  * staying byte-compatible with lexical when no embedder is available.
  *
  * Boundary: pure + node-free + RN-free (it only touches `@onderling/pod-search`
- * and the injected embedder/store), so it rides into the canopy-chat browser
+ * and the injected embedder/store), so it rides into the basis browser
  * bundle alongside the rest of `browser.js`.
  *
  * Degradation (Q3 + the llmTool policy):
  *   - NO `embedder` injected  → PodSearch is lexical-only (`semanticReady`
  *     false); `/zoek semantic` gracefully returns the lexical ranking. This
- *     is the `llmTool:'off'` path (canopy-chat injects no embedder) AND the
+ *     is the `llmTool:'off'` path (basis injects no embedder) AND the
  *     no-Ollama path (an absent provider ⇒ no embedder ⇒ lexical).
  *   - embedder present but provider unreachable at query time → PodSearch's
  *     own `#semanticRank` catches the throw and falls back to lexical + audit.
@@ -24,7 +24,7 @@
  * Privacy: the optional `vectorStore` is a StorageBackend-shaped store;
  * PodSearch persists vector records under `private/state/search-index/<scope>/`
  * BY CONSTRUCTION (never under `sharing/`). No embed call is made unless an
- * embedder is injected — and canopy-chat only injects one when the circle's
+ * embedder is injected — and basis only injects one when the circle's
  * `llmTool`/`embedTool` policy permits (same trust boundary as chat LLM).
  */
 
@@ -97,7 +97,7 @@ export function buildFolioNoteSearch({ embedder, hash = defaultHash, vectorStore
  * Normalise an injected embedder to the shape PodSearch reads
  * (`{ id, dim?, embed }`). The mock provider (`mockEmbeddingsProvider`) already
  * carries `.id`; an `@onderling/llm-client` `EmbeddingClient` exposes `.model` /
- * `.providerId` instead, so canopy-chat can hand its resolved embed client in
+ * `.providerId` instead, so basis can hand its resolved embed client in
  * RAW — no adapter at the call site (keeps the glue thin). Anything without an
  * `embed()` fn ⇒ `undefined` (lexical-only).
  *

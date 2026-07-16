@@ -3,7 +3,7 @@
  *
  * Hermes / RN equivalent of `VaultLocalStorage` from @onderling/vault.
  * Use this when you want plain-text persistence keyed by a prefix
- * (e.g. canopy-chat-mobile's chat-side identity / mute-list / audit
+ * (e.g. basis-mobile's chat-side identity / mute-list / audit
  * log).  For higher security wrap with an encryption layer or pick
  * KeychainVault (iOS Secure Enclave / Android Keystore) for the
  * identity seed specifically.
@@ -27,8 +27,8 @@
  * "exists" primitive); VaultLocalStorage's `getItem !== null` check
  * is the same pattern.
  *
- * Task #222.5 (2026-05-24) — part of canopy-chat-mobile's Hermes
- * storage path.  See Project Files/canopy-chat/mobile-roadmap-2026-05-24.md.
+ * Task #222.5 (2026-05-24) — part of basis-mobile's Hermes
+ * storage path.  See Project Files/basis/mobile-roadmap-2026-05-24.md.
  */
 import { Vault } from '@onderling/vault';
 

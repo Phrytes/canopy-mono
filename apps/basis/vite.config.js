@@ -1,0 +1,228 @@
+/**
+ * basis — Vite config for the v0.1.4 static web demo.
+ *
+ * Build pipeline (sub-slice 1.12): outputs to `dist/` for deploy to
+ * any static host (or the user's pod once that flow exists in v0.6).
+ *
+ * Dev server: `pnpm --filter @onderling-app/basis dev` boots Vite
+ * on port 5173 with hot reload.
+ */
+
+import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+
+const empty       = fileURLToPath(new URL('./src/web/shims/empty.js',       import.meta.url));
+const oidcSession = fileURLToPath(new URL('./src/web/shims/oidcSession.js', import.meta.url));
+// `node:*` shims with the NAMED exports the static-import call sites
+// reference (sync-engine fsNode/hashNode/PathMap/versions, pseudo-pod
+// NodeFsBackend, core PodExporter + A2ATransport + reference-manifest,
+// pod-client FileTombstones, stoop + tasks-v0 FilePersist).  Rollup
+// fails the production build without proper named exports (the previous
+// empty-default shim for `node:crypto` was a known leak that the per-
+// file lazy-load workarounds papered over).  Methods throw at runtime
+// so a browser caller hitting the unreachable path surfaces the wiring
+// bug instead of silently no-oping.  See `node/*.js` for module docs.
+const nodeFs      = fileURLToPath(new URL('./src/web/shims/node/fs.js',     import.meta.url));
+const nodePath    = fileURLToPath(new URL('./src/web/shims/node/path.js',   import.meta.url));
+const nodeCrypto  = fileURLToPath(new URL('./src/web/shims/node/crypto.js', import.meta.url));
+const nodeOs      = fileURLToPath(new URL('./src/web/shims/node/os.js',     import.meta.url));
+const nodeHttp    = fileURLToPath(new URL('./src/web/shims/node/http.js',   import.meta.url));
+const wsShim      = fileURLToPath(new URL('./src/web/shims/wsShim.js',      import.meta.url));
+const relayShim   = fileURLToPath(new URL('./src/web/shims/relayShim.js',   import.meta.url));
+const telegramShim = fileURLToPath(new URL('./src/web/shims/telegramBridge.js', import.meta.url));
+// Pin @onderling/core to the real workspace package. Under pnpm hoisting there are
+// stray copies in other apps' node_modules (e.g. apps/folio/node_modules/@onderling/
+// core); without this, Vite can resolve @onderling/core — and thus its tweetnacl/
+// ed2curve crypto deps — to the WRONG copy, yielding 500s + a blank screen.
+const canopyCore  = fileURLToPath(new URL('../../packages/core',            import.meta.url));
+// Resolve the npm `events` polyfill once, by absolute path.  Transitive
+// importers (packages/webid-discovery, etc.) lose the bare-specifier
+// resolution chain when they're served as source under pnpm hoisting;
+// pinning to one absolute file keeps every `node:events` import on the
+// same module instance.
+const eventsShim  = fileURLToPath(new URL(
+  './node_modules/events/events.js', import.meta.url,
+));
+
+export default defineConfig({
+  root: 'web',
+  // Allow imports from outside `web/`.  '../..' reaches the monorepo
+  // root so `packages/*` and other apps' node_modules trees (pnpm
+  // hoists per-app copies under `apps/<x>/node_modules/.pnpm/...`)
+  // can be served as source.  Required when `optimizeDeps.exclude`
+  // bypasses the per-package .vite/deps bundle.
+  server: {
+    fs: { allow: ['..', '../..'] },
+    // Dev-only same-origin proxy for a LOCAL OpenAI-compatible LLM (a Privatemode proxy or Ollama), so
+    // the BROWSER circle bot / feedback bot avoid cross-origin CORS (a local model server usually doesn't
+    // send Access-Control-Allow-Origin). Point `VITE_CIRCLE_LLM_BASEURL=/llm` (and/or
+    // `VITE_FEEDBACK_LLM_BASEURL=/llm`) and run the model server on `LLM_PROXY_TARGET`
+    // (default the Privatemode proxy at :8080; set `LLM_PROXY_TARGET=http://localhost:11434` for Ollama).
+    // The provider appends `/v1/chat/completions`, so `/llm/v1/chat/completions` → `<target>/v1/chat/completions`.
+    proxy: {
+      '/llm': {
+        target: process.env.LLM_PROXY_TARGET || 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/llm/, ''),
+      },
+    },
+  },
+  // Skip esbuild pre-bundling for `@onderling/core`: its index.js uses
+  // the renamed re-export form `export { encode as b64encode } from
+  // './crypto/b64.js'`, which esbuild's pre-bundler drops when
+  // applied to pnpm workspace deps (file:../packages/core).  Symptom:
+  // `Uncaught SyntaxError: doesn't provide an export named: b64encode`
+  // at runtime even though the source file does export b64encode.
+  // Serving core's source directly bypasses the bad bundle.  Other
+  // workspace deps don't use the same export form + pre-bundle fine.
+  // See slice-4 smoke fix (2026-05-23).
+  optimizeDeps: {
+    // `@onderling/app-manifest` + `@onderling/skill-match` are EXCLUDED (served as
+    // source) because they carry the reply-shape/op VALIDATOR, and this repo's
+    // broken install means @onderling/* resolve as COPIES that we hand-sync after a
+    // shared-source edit (see memory `feedback-no-pnpm-install-here`). A pre-
+    // bundle of the validator freezes the OLD allow-list, so a freshly-added
+    // reply shape (P3 `curation`) is rejected at mount time until the .vite cache
+    // is rebuilt — the dev server throws `surfaces.chat.reply must be one of …`
+    // and the circle bot fails to build. Serving them as source makes a source/
+    // copy edit always live (no stale prebundle). Both are pure ESM, so there's
+    // no esbuild-only export form to lose by skipping the prebundle.
+    exclude: ['@onderling/core', '@onderling/app-manifest', '@onderling/skill-match'],
+    // `@onderling/core` is served as SOURCE (excluded above), so Vite resolves its
+    // transitive CJS crypto deps (tweetnacl/ed2curve, imported by AgentIdentity)
+    // at request time. When they resolve to a workspace copy OUTSIDE the app root
+    // (served raw via `@fs/`), a `default` import fails — "doesn't provide an
+    // export named default". The `parent > child` form force-bundles a nested
+    // dep of the EXCLUDED parent, so @onderling/core's own source import resolves to
+    // the optimized copy (with a default) instead of the raw @fs/ file.
+    include: ['@onderling/core > tweetnacl', '@onderling/core > ed2curve'],
+  },
+  // OQ-1.C resolution: @onderling/core transports use runtime detection
+  // (`typeof WebSocket !== 'undefined'` etc.) and fall back to Node-
+  // only packages via `await import('ws' | 'mqtt' | …)`.  In the
+  // browser those fallback branches NEVER execute, but Rollup still
+  // walks the dynamic-import targets at bundle time and fails if it
+  // can't resolve them.  Aliasing to an empty module makes the build
+  // clean without changing runtime behaviour.  The transports we
+  // actually USE in the browser (RelayTransport via globalThis.WebSocket,
+  // InternalTransport, NknTransport via its browser SDK if loaded) all
+  // take a different branch and don't hit these shims.
+  resolve: {
+    alias: {
+      // Pin @onderling/core to the real workspace package so its transitive crypto
+      // deps (tweetnacl/ed2curve) resolve from packages/core/node_modules — ONE
+      // consistent copy — instead of a stray app copy (apps/folio/node_modules/
+      // @onderling/core), which caused folio-path raw serving + 500s + a blank
+      // screen. (NB: do NOT add tweetnacl/ed2curve to resolve.dedupe — that forces
+      // resolution from the basis root, which has no tweetnacl, breaking it.)
+      '@onderling/core': canopyCore,
+      // `ws` is Node-only; the relay's WsServerTransport statically
+      // imports `WebSocketServer` from it.  Shim carries the named
+      // export so Rollup is happy; classes throw at construction if
+      // a browser caller hits the code path (today none do).
+      'ws':              wsShim,
+      'mqtt':            empty,
+      // v0.7.P3b 2026-05-23 — 'nkn-sdk' kept shimmed.  The real lib
+      // arrives via the CDN <script> tag in index.html (window.nkn).
+      // Vite's dynamic-import resolution still needs SOMETHING to
+      // resolve the bare 'nkn-sdk' specifier; the empty shim does
+      // exactly that (the dynamic-import path in NknTransport never
+      // executes when window.nkn is supplied as opts.nknLib).
+      'nkn-sdk':         empty,
+      // The Telegram bridge is a Node-only server transport (reads process.env at
+      // module load → `process is not defined` in the browser, blanking the app).
+      // household/src re-exports it, so it lands in the web import graph; stub it.
+      '@onderling/chat-agent/bridges/telegram': telegramShim,
+      'js-yaml':         empty,
+      'node-datachannel': empty,
+      // N5 — @onderling/pod-client's barrel statically re-exports every
+      // TombstoneStore adapter, incl. the RN-only AsyncStorageTombstones
+      // (imports @react-native-async-storage/async-storage).  The web
+      // bundle never uses it — PodClient defaults to MemoryTombstones —
+      // so the bare specifier just needs to resolve.
+      '@react-native-async-storage/async-storage': empty,
+      // Node-builtin shims — one stub per module, all carrying the
+      // NAMED exports the static-import call sites reference.  This
+      // replaces the previous mix of:
+      //   - empty-default shim for `node:crypto` (silently broken if
+      //     Rollup ever walked into a `createHash` static import)
+      //   - per-file `await import('node:X')` lazy-loads in core
+      //     A2ATransport + PodExporter (which worked but pessimised
+      //     the bundle with one async boundary per call site)
+      //
+      // Call sites that hit these in the browser are wiring bugs —
+      // each stub throws with a clear message naming the missing
+      // adapter.  Browser-native equivalents are delegated where they
+      // exist (crypto.randomUUID / crypto.subtle via globalThis.crypto;
+      // path.* as a real POSIX implementation since it's pure-string).
+      //
+      // `node:fs` + `node:fs/promises` share one shim with both shapes
+      // of named exports (the `promises.readFile` form AND the bare
+      // `readFile` named form).
+      'node:fs/promises': nodeFs,
+      'node:fs':          nodeFs,
+      'node:path':        nodePath,
+      'node:crypto':      nodeCrypto,
+      'node:os':          nodeOs,
+      'node:http':        nodeHttp,
+      'http':             nodeHttp,
+      // 'node:events' has a real browser polyfill (`events`); some
+      // substrates (SolidVault, WebIdCache) statically import it.
+      // We don't EXECUTE those code paths in v0.1, but they're in the
+      // import graph so they need to resolve.
+      'node:events': eventsShim,
+      'events':      eventsShim,   // some packages import the bare specifier
+      // OIDC chain — @onderling/core re-exports SolidVault from
+      // @onderling/oidc-session, which pulls in Inrupt's Node-only auth
+      // package + openid-client (which uses node:crypto, node:http,
+      // node:util, ...).  basis v0.1 ships PRE-SIGNED-IN per
+      // OQ-1.A; OIDC handoff lands in v0.6 via J6.  Until then we stub
+      // the whole OIDC tree.  A future cleanup should split
+      // @onderling/oidc-session into browser-compat + Node-only entry
+      // points (existing @onderling/oidc-session-rn shows the pattern).
+      //
+      // The OIDC shim provides NAMED exports matching the real
+      // package's index.js (SolidVault, KNOWN_ISSUERS, …) because
+      // esbuild (Vite's dep pre-bundler in dev mode) is stricter
+      // than rollup about named-export resolution.  The other
+      // entries point at the bare empty module because their
+      // imports happen via dynamic-import (never executed).
+      '@onderling/oidc-session':                 oidcSession,
+      '@inrupt/solid-client-authn-node':      empty,
+      // v0.7.P1 — DON'T shim '@inrupt/solid-client-authn-core'.  We
+      // now compose '@inrupt/solid-client-authn-browser' for real
+      // OIDC; the browser package depends on the core package's
+      // type/util exports (e.g. determineSigningAlg).  Stubbing it
+      // breaks the build with 'X is not exported by empty.js'.  The
+      // Node auth package stays shimmed (separate name).
+      'openid-client':                        empty,
+      // `@onderling/relay` is a Node-only HTTP server package; stoop's
+      // Agent.js dynamic-imports WebPushSender which pulls in
+      // `PushSender` from relay.  Browser code never instantiates
+      // WebPushSender (no VAPID keys are passed in the browser
+      // bundle), so aliasing the whole relay package to empty cuts
+      // the import graph at the boundary.  Without this, Rollup
+      // walks transitively into `relay/src/server.js` which static-
+      // imports node:http, node:https, ws, better-sqlite3, … none
+      // of which belong in a browser bundle (#303).
+      '@onderling/relay':                        relayShim,
+      // VaultNodeFs is Node-only by design — VaultMemory is what we
+      // use in v0.1.  Stubbing keeps the @onderling/vault index re-export
+      // happy.
+      // (No alias needed — VaultNodeFs guards its `fs` import at use-
+      // time, but the static `node:fs` import would still trip Rollup.
+      // Vite's externalized-for-browser warning above is fine because
+      // VaultNodeFs's code path is never invoked in browsers.)
+    },
+  },
+  build:  {
+    outDir:      '../dist',
+    emptyOutDir: true,
+    target:      'es2022',
+    rollupOptions: {
+      // The v2 circle app is the only build target (the classic shell was removed 2026-06-29 once the
+      // browser suite migrated to v2; its DM/feedback/calendar/etc. flows all have v2 equivalents).
+      input: { main: 'web/index.html' },
+    },
+  },
+});

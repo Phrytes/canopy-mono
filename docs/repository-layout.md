@@ -36,11 +36,11 @@ the kernel directly **only with an explicit justification in the app's README**.
 
 Each shared app has a web build and a React Native / Expo mobile counterpart; web and mobile are **peers**,
 neither is the primitive one. The direction (decided 2026-06-11) is that the separate apps **dissolve into
-`canopy-chat`** — their `manifest.js` stays the source of truth, the app *name* becomes a navigation label.
+`basis`** — their `manifest.js` stays the source of truth, the app *name* becomes a navigation label.
 
 | App | What it does |
 |---|---|
-| **canopy-chat** (+ `-mobile`) | The front door — one chat/command UI that composes every app's manifest. Static web bundle; the mesh agent runs browser-side. |
+| **basis** (+ `-mobile`) | The front door — one chat/command UI that composes every app's manifest. Static web bundle; the mesh agent runs browser-side. |
 | **household** | Shared household state (chores, lists) on a Solid pod; chat- or Telegram-driven. |
 | **stoop** (+ `-mobile`) | Neighbourhood (*buurt*) sharing — borrow/lend/give, prikbord, skill-matching, closed groups with their own governance. |
 | **tasks-v0** (+ `tasks-mobile`) | Task ledger with DAG dependencies, skill-based dispatch, role-aware governance. |

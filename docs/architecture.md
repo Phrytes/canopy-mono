@@ -72,7 +72,7 @@ while `renderWeb`/`renderMobile` are thin **platform shells** — and `renderMob
 `renderWeb`'s NavModel, differing only in the platform adapter. `@onderling/manifest-host` composes *N* apps' manifests at runtime
 (namespaced `appId.opId`, collision detection). Because every surface is a projection, **adding an op to a
 `manifest.js` makes it reachable from chat, slash, gate, web, and mobile at once** — and the coverage snapshot
-(`npm run coverage` → `apps/canopy-chat/docs/surface-coverage.md`) records which surfaces each op is wired for,
+(`npm run coverage` → `apps/basis/docs/surface-coverage.md`) records which surfaces each op is wired for,
 so the map can't drift from the manifests.
 
 ---
@@ -304,10 +304,10 @@ relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
 
 ### Direction (where this is going)
 
-- **Apps dissolve into canopy-chat** (decided 2026-06-11). The manifest-per-app split is an *engineering*
+- **Apps dissolve into basis** (decided 2026-06-11). The manifest-per-app split is an *engineering*
   boundary, not a product one: the `manifest.js` declarations stay (they're the source of truth every
   projector reads), but the app *names* become navigation/reference labels inside one unified chat surface.
-  Treat new work as **adding manifests + projectors to canopy-chat**, not standing up new app silos.
+  Treat new work as **adding manifests + projectors to basis**, not standing up new app silos.
 - **Enforce the model, then split** (2026-06-13). The model is settled; the active work is making it
   *self-enforcing* so the code stops drifting — turn each invariant into a CI fitness function, consolidate
   the remaining duplication, then split the repo along the now-enforced seams: thin **clients** (web + mobile),

@@ -585,7 +585,7 @@ export const stoopManifest = {
 
     /* ═══════════════════════════════════════════════════════════════
      * Part G dissolve (2026-06-17) — chat-shell ops folded in from the
-     * former `mockStoopManifest` (apps/canopy-chat/src/core/manifests/
+     * former `mockStoopManifest` (apps/basis/src/core/manifests/
      * mockManifests.js), which is now a re-export of THIS manifest.
      * These were the chat-shell's slash/gate surface for the SAME real
      * stoop skills; co-locating them here makes the one manifest the
@@ -630,7 +630,7 @@ export const stoopManifest = {
       },
     },
 
-    // ── DM (button-only alias of canopy-chat's startDm) ──────────────
+    // ── DM (button-only alias of basis's startDm) ──────────────
     /**
      * Slice 6d — per-row [DM] button on contact + member rows.  No
      * substrate dispatch — onButtonTap intercepts + routes to
@@ -1194,7 +1194,7 @@ export const stoopManifest = {
 
     // ──── D-mig-1a (objective D, step 1a) — project the live LIST-screen
     //      surfaces (contacts + prikbord) FROM this manifest.  These two
-    //      views make renderWeb able to project what the canopy-chat
+    //      views make renderWeb able to project what the basis
     //      `LIST_SCREENS` literal (web/v2/circleApp.js) used to hardcode:
     //      the row LABEL field + the group/filter CATEGORY field.  The live
     //      list path now consumes these sections — `LIST_SCREENS` was retired

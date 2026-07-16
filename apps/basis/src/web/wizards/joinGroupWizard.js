@@ -1,0 +1,443 @@
+/**
+ * **Platform: web** (DOM-dependent).  RN parallel pending #128 +
+ * #131 (chat-nav RN + RN renderer port).
+ *
+ * basis — C2 join-group wizard (#196, 2026-05-24).
+ *
+ * 3-step rules-gate wizard that lands new buurt members.  First
+ * customRenderer hook on the #180 `openPagePanel` infrastructure;
+ * the pattern here is the template other Cluster C wizards reuse.
+ *
+ * Flow:
+ *   /join-group <invite-url>  → opens panel
+ *   Step 1: parse invite → fetch group rules → show rules text →
+ *           [Accept rules] required to advance
+ *   Step 2: show privacy notice → [I accept] required to advance
+ *   Step 3: pick a handle (text input + 3 suggestions) → submit
+ *           chains redeemInviteWithGate + setMyHandle + redeemInvite
+ *           in sequence; on success closes the panel + emits success.
+ *
+ * Substrate skills exercised:
+ *   stoop.getGroupRules      → step 1's rules text
+ *   stoop.redeemInviteWithGate → step 3's gated redeem (writes
+ *                                rules-accept audit item)
+ *   stoop.setMyHandle        → step 3's handle binding
+ *   stoop.redeemInvite       → step 3's actual GroupManager redeem
+ *
+ * Args expected: `{ invite: <string|object> }`.  String form is the
+ * `stoop-invite://<base64url-encoded-invite-object>` URL surfaced by
+ * the QR rendering in /invite (A9, slice 187).  Object form: the
+ * already-decoded invite per stoop's GroupManager.issueInvite shape.
+ */
+
+// State-machine pieces (decodeInvite, summariseEmbeddedRules,
+// fetchGroupRules, isValidHandle, handleSuggestions, finalSubmit,
+// PRIVACY_NOTICE) moved to ../../core/wizards/joinGroupState.js
+// (#231.2c) so basis-mobile's RN wizard can reuse them.
+import {
+  PRIVACY_NOTICE,
+  handleSuggestions as HANDLE_SUGGESTIONS,
+  decodeInvite,
+  isValidHandle,
+  initialState,
+  fetchGroupRules,
+  finalSubmit,
+  buildJoinConsent,
+  setConsentDecline,
+  loadPersonas,
+  setPersona,
+} from '../../core/wizards/joinGroupState.js';
+import { RULES_FIELDS } from '../../v2/circleRules.js';
+import { t } from '../../localisation.js';
+
+const PRIVACY_NOTICE_NL = PRIVACY_NOTICE.nl;
+const PRIVACY_NOTICE_EN = PRIVACY_NOTICE.en;
+
+/**
+ * Wizard renderer for /join-group.  Wired via openPagePanel's
+ * `customRenderer` hook in main.js (see joinGroupOpenWizard).
+ *
+ * @param {object}   opts
+ * @param {HTMLElement} opts.container   the panel body
+ * @param {Document}    opts.doc
+ * @param {object}      opts.args        `{ invite: string|object }`
+ * @param {Function}    opts.callSkill   (appOrigin, opId, args) → Promise<payload>
+ * @param {Function}    opts.onClose     close the panel
+ * @param {Function}    [opts.onDispatched]  fired after final success with the redeemInvite reply
+ */
+export function renderJoinGroupWizard(opts) {
+  const { container, doc, args, callSkill, onClose, onDispatched, sendPeerRedeem, sources } = opts;
+
+  // Wizard state — kept in-scope, re-renders rebuild the DOM from it.
+  const state = initialState();
+
+  // Decode the invite arg (URL form or pre-decoded object).
+  decodeInvite(args?.invite, state);
+
+  // B · Slice 4 — build the join-time capability consent model from the invite's embedded freedom
+  // template + the host-injected manifest sources. No template / no sources ⇒ empty model (no-op step).
+  buildJoinConsent({ state, sources });
+
+  // Kick off the rules fetch when state.step === 1.
+  if (state.invite && !state.inviteParseError) {
+    fetchGroupRules({ state, callSkill }).then(rerender).catch((err) => {
+      state.rulesError = err?.message ?? String(err);
+      rerender();
+    });
+    // Property layer — load the join-with-persona options in the background so
+    // the step-3 picker is populated by the time the joiner reaches it. Failure
+    // is silent (empty list → picker offers only "join minimally").
+    loadPersonas({ callSkill }).then((personas) => { state.personas = personas; rerender(); }).catch(() => {});
+  }
+
+  rerender();
+
+  function rerender() {
+    container.innerHTML = '';
+    renderStepHeader(container, doc, state);
+    if (state.inviteParseError) {
+      renderError(container, doc, state.inviteParseError, onClose);
+      return;
+    }
+    if (state.step === 1) renderRulesStep(container, doc, state, () => { state.step = 2; rerender(); }, onClose, rerender);
+    if (state.step === 2) renderPrivacyStep(container, doc, state, () => { state.step = 3; rerender(); }, () => { state.step = 1; rerender(); }, onClose, rerender);
+    if (state.step === 3) renderHandleStep(container, doc, state, async () => {
+      rerender(); // show submitting state
+      const { result } = await finalSubmit({ state, callSkill, sendPeerRedeem });
+      if (result) {
+        if (typeof onDispatched === 'function') {
+          try { onDispatched(result); } catch { /* swallow */ }
+        }
+        onClose();
+        return;
+      }
+      rerender(); // failure path: show submitError
+    }, () => { state.step = 2; rerender(); }, onClose, rerender);
+  }
+}
+
+/* ─── step renderers ───────────────────────────────────────── */
+
+function renderStepHeader(container, doc, state) {
+  const header = doc.createElement('div');
+  header.className = 'cc-wizard-steps';
+  for (let n = 1; n <= 3; n++) {
+    const dot = doc.createElement('span');
+    dot.className = `cc-wizard-step ${n === state.step ? 'cc-wizard-step-active' : ''} ${n < state.step ? 'cc-wizard-step-done' : ''}`;
+    dot.textContent = ['Rules', 'Privacy', 'Handle'][n - 1];
+    header.appendChild(dot);
+  }
+  container.appendChild(header);
+}
+
+function renderRulesStep(container, doc, state, onNext, onCancel, rerender) {
+  const wrap = doc.createElement('div');
+  wrap.className = 'cc-wizard-body';
+
+  const heading = doc.createElement('h3');
+  heading.textContent = `Circle: ${state.invite?.groupId ?? '(unknown)'}`;
+  wrap.appendChild(heading);
+
+  const blurb = doc.createElement('p');
+  blurb.className = 'cc-wizard-blurb';
+  blurb.textContent = 'Read the group\'s rules below. Accepting them is required to join.';
+  wrap.appendChild(blurb);
+
+  // 5.5b — when the invite carries a v2 structured rules doc, render
+  // each non-blank field as its own section (question + answer).  This
+  // matches the create-wizard's authoring shape, so a joiner sees the
+  // doc back in the exact format the admin filled it in.  Older invites
+  // (rulesText only) and the loading / error states fall back to the
+  // legacy <pre> blob.
+  if (state.rulesDoc) {
+    const docEl = doc.createElement('div');
+    docEl.className = 'cc-wizard-rules-doc';
+    for (const key of RULES_FIELDS) {
+      const v = state.rulesDoc[key];
+      if (!v || !v.trim()) continue;
+      const sec = doc.createElement('section');
+      sec.className = 'cc-wizard-rules-doc-field';
+      sec.dataset.field = key;
+      const h = doc.createElement('h4');
+      h.className = 'cc-wizard-rules-doc-q';
+      h.textContent = t(`circle.rules.q.${key}.text`);
+      const p = doc.createElement('p');
+      p.className = 'cc-wizard-rules-doc-a';
+      p.textContent = v;
+      sec.append(h, p);
+      docEl.appendChild(sec);
+    }
+    wrap.appendChild(docEl);
+  } else {
+    const rulesBox = doc.createElement('pre');
+    rulesBox.className = 'cc-wizard-rules';
+    rulesBox.textContent = state.rulesError
+      ? `(could not load rules: ${state.rulesError})`
+      : state.rulesText ?? '(loading rules…)';
+    wrap.appendChild(rulesBox);
+  }
+
+  const checkRow = doc.createElement('label');
+  checkRow.className = 'cc-wizard-check';
+  const check = doc.createElement('input');
+  check.type = 'checkbox';
+  check.checked = state.rulesAccepted;
+  check.addEventListener('change', () => {
+    state.rulesAccepted = check.checked;
+    rerender();
+  });
+  checkRow.appendChild(check);
+  checkRow.appendChild(doc.createTextNode(' I have read and accept the rules.'));
+  wrap.appendChild(checkRow);
+
+  // B · Slice 4 — consent-at-join: the circle's OPT-OUTABLE capabilities. Rendered as part of the
+  // Agree/Decline screen; unchecking a cap records an opt-out into state.capabilityOptOuts, which the
+  // host writes to the member's prefs so the gate's effective set (admin ∩ user) drops it from join.
+  renderConsentCaps(wrap, doc, state, rerender);
+
+  container.appendChild(wrap);
+  renderActions(container, doc, [
+    { label: 'Decline', onClick: onCancel, kind: 'secondary' },
+    { label: 'Next →', onClick: onNext, disabled: !state.rulesAccepted, kind: 'primary' },
+  ]);
+}
+
+/**
+ * B · Slice 4 — the join-time capability consent section. Lists the circle's opt-outable caps (from
+ * `state.consentModel`, built off the invite's freedom template). A checked box = "I take part";
+ * unchecking opts out. Renders nothing when the model is empty (no template / all-mandatory).
+ */
+function renderConsentCaps(wrap, doc, state, rerender) {
+  const items = Array.isArray(state.consentModel?.items) ? state.consentModel.items : [];
+  if (items.length === 0) return;
+
+  const sec = doc.createElement('section');
+  sec.className = 'cc-wizard-consent';
+
+  const h = doc.createElement('h4');
+  h.className = 'cc-wizard-consent-title';
+  h.textContent = t('circle.join.consent.title');
+  sec.appendChild(h);
+
+  const blurb = doc.createElement('p');
+  blurb.className = 'cc-wizard-consent-blurb';
+  blurb.textContent = t('circle.join.consent.blurb');
+  sec.appendChild(blurb);
+
+  const declined = new Set(Array.isArray(state.capabilityOptOuts) ? state.capabilityOptOuts : []);
+  for (const cap of items) {
+    const row = doc.createElement('label');
+    row.className = 'cc-wizard-consent-cap';
+    row.dataset.cap = cap.key;
+    const box = doc.createElement('input');
+    box.type = 'checkbox';
+    box.dataset.cap = cap.key;
+    box.checked = !declined.has(cap.key);   // checked = take part; unchecked = opt out
+    box.addEventListener('change', () => {
+      setConsentDecline(state, cap.key, !box.checked);
+      rerender();
+    });
+    const floorTag = cap.privacyFloor
+      ? ` (${t('circle.settings.privacyFloor')})`
+      : '';
+    const label = `${t(`circle.settings.verb.${cap.atom}`, { defaultValue: cap.atom })} · ${cap.noun}${floorTag}`;
+    row.append(box, doc.createTextNode(` ${label}`));
+    sec.appendChild(row);
+  }
+  wrap.appendChild(sec);
+}
+
+function renderPrivacyStep(container, doc, state, onNext, onBack, onCancel, rerender) {
+  const wrap = doc.createElement('div');
+  wrap.className = 'cc-wizard-body';
+
+  const heading = doc.createElement('h3');
+  heading.textContent = 'Privacy notice';
+  wrap.appendChild(heading);
+
+  const notice = doc.createElement('p');
+  notice.className = 'cc-wizard-privacy';
+  notice.textContent = PRIVACY_NOTICE_EN;
+  wrap.appendChild(notice);
+
+  const checkRow = doc.createElement('label');
+  checkRow.className = 'cc-wizard-check';
+  const check = doc.createElement('input');
+  check.type = 'checkbox';
+  check.checked = state.privacyAccepted;
+  check.addEventListener('change', () => {
+    state.privacyAccepted = check.checked;
+    rerender();
+  });
+  checkRow.appendChild(check);
+  checkRow.appendChild(doc.createTextNode(' I understand and accept.'));
+  wrap.appendChild(checkRow);
+
+  // Slice 4 (2026-05-24) — mesh address-sharing consent.  When on,
+  // admin propagates this joiner's peer address to other consenting
+  // members + propagates other consenting members' addresses to
+  // this joiner.  When off, the joiner only talks to admin (star
+  // routing); other members can't DM directly.
+  const meshRow = doc.createElement('label');
+  meshRow.className = 'cc-wizard-check';
+  const meshBox = doc.createElement('input');
+  meshBox.type = 'checkbox';
+  meshBox.checked = state.shareAddress;
+  meshBox.addEventListener('change', () => {
+    state.shareAddress = meshBox.checked;
+  });
+  meshRow.appendChild(meshBox);
+  meshRow.appendChild(doc.createTextNode(' Let other circle members contact me directly (DM).'));
+  wrap.appendChild(meshRow);
+  const meshHint = doc.createElement('div');
+  meshHint.className = 'cc-wizard-field-hint';
+  meshHint.textContent = 'Off = admin relays everything; you stay reachable only via them.';
+  wrap.appendChild(meshHint);
+
+  container.appendChild(wrap);
+  renderActions(container, doc, [
+    { label: '← Back',  onClick: onBack,   kind: 'secondary' },
+    { label: 'Cancel',  onClick: onCancel, kind: 'secondary' },
+    { label: 'Next →',  onClick: onNext, disabled: !state.privacyAccepted, kind: 'primary' },
+  ]);
+}
+
+function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rerender) {
+  const wrap = doc.createElement('div');
+  wrap.className = 'cc-wizard-body';
+
+  const heading = doc.createElement('h3');
+  heading.textContent = 'Pick a handle';
+  wrap.appendChild(heading);
+
+  const blurb = doc.createElement('p');
+  blurb.className = 'cc-wizard-blurb';
+  blurb.textContent = 'How you appear to other circle members. Lowercase letters, digits, and hyphens.';
+  wrap.appendChild(blurb);
+
+  const input = doc.createElement('input');
+  input.type = 'text';
+  input.className = 'cc-wizard-handle-input';
+  input.value = state.handle;
+  input.placeholder = 'handle';
+  input.addEventListener('input', () => {
+    state.handle = input.value.trim();
+    // Don't re-render on every keystroke to preserve focus + caret;
+    // only refresh the submit button's disabled state.
+    const submitBtn = container.querySelector('.cc-wizard-submit');
+    if (submitBtn) submitBtn.disabled = !isValidHandle(state.handle) || state.submitting;
+  });
+  wrap.appendChild(input);
+
+  const suggestions = doc.createElement('div');
+  suggestions.className = 'cc-wizard-suggestions';
+  for (const s of HANDLE_SUGGESTIONS()) {
+    const chip = doc.createElement('button');
+    chip.type = 'button';
+    chip.className = 'cc-wizard-suggestion';
+    chip.textContent = s;
+    chip.addEventListener('click', () => {
+      state.handle = s;
+      rerender();
+    });
+    suggestions.appendChild(chip);
+  }
+  wrap.appendChild(suggestions);
+
+  // Property layer — join-with-persona. Choose a persona whose per-circle
+  // disclosure applies here, or "join minimally" (the protective default: share
+  // no background). On a FIRST join a persona still discloses nothing until you
+  // set its sharing in "About me"; this is the identity you enter the circle as.
+  if (Array.isArray(state.personas) && state.personas.length) {
+    const pWrap = doc.createElement('div');
+    pWrap.className = 'cc-wizard-persona';
+
+    const pLabel = doc.createElement('div');
+    pLabel.className = 'cc-wizard-field-label';
+    pLabel.textContent = 'Join as';
+    pWrap.appendChild(pLabel);
+
+    const select = doc.createElement('select');
+    select.className = 'cc-wizard-persona-select';
+    const none = doc.createElement('option');
+    none.value = '';
+    none.textContent = 'Join minimally (share no background)';
+    select.appendChild(none);
+    for (const p of state.personas) {
+      const opt = doc.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.id === 'default' ? `${p.name} (default persona)` : p.name;
+      select.appendChild(opt);
+    }
+    select.value = state.persona ?? '';
+    select.addEventListener('change', () => { setPersona(state, select.value); });
+    pWrap.appendChild(select);
+
+    const pHint = doc.createElement('div');
+    pHint.className = 'cc-wizard-field-hint';
+    pHint.textContent = 'Only what this persona discloses in this circle is shared — nothing on first join. Adjust later in “About me”.';
+    pWrap.appendChild(pHint);
+    wrap.appendChild(pWrap);
+  }
+
+  if (state.submitError) {
+    const err = doc.createElement('div');
+    err.className = 'cc-wizard-error';
+    err.textContent = state.submitError;
+    wrap.appendChild(err);
+  }
+
+  if (state.submitting) {
+    const status = doc.createElement('div');
+    status.className = 'cc-wizard-submitting';
+    status.textContent = 'Joining circle…';
+    wrap.appendChild(status);
+  }
+
+  container.appendChild(wrap);
+  renderActions(container, doc, [
+    { label: '← Back',          onClick: onBack,                                kind: 'secondary', disabled: state.submitting },
+    { label: 'Cancel',          onClick: onCancel,                              kind: 'secondary', disabled: state.submitting },
+    { label: 'Join circle',      onClick: onSubmit,
+      disabled: !isValidHandle(state.handle) || state.submitting,
+      kind: 'primary', className: 'cc-wizard-submit' },
+  ]);
+}
+
+function renderError(container, doc, message, onClose) {
+  const wrap = doc.createElement('div');
+  wrap.className = 'cc-wizard-body';
+  const err = doc.createElement('div');
+  err.className = 'cc-wizard-error';
+  err.textContent = message;
+  wrap.appendChild(err);
+  container.appendChild(wrap);
+  renderActions(container, doc, [
+    { label: 'Close', onClick: onClose, kind: 'secondary' },
+  ]);
+}
+
+/* ─── helpers ──────────────────────────────────────────────── */
+
+function renderActions(container, doc, buttons) {
+  const row = doc.createElement('div');
+  row.className = 'cc-wizard-actions';
+  for (const b of buttons) {
+    const btn = doc.createElement('button');
+    btn.type = 'button';
+    btn.className = `cc-wizard-btn cc-wizard-btn-${b.kind ?? 'secondary'} ${b.className ?? ''}`.trim();
+    btn.textContent = b.label;
+    btn.disabled = !!b.disabled;
+    btn.addEventListener('click', b.onClick);
+    row.appendChild(btn);
+  }
+  container.appendChild(row);
+}
+
+// decodeInvite, fetchGroupRules, summariseEmbeddedRules,
+// isValidHandle moved to ../../core/wizards/joinGroupState.js
+// (#231.2c).
+
+// finalSubmit moved to ../../core/wizards/joinGroupState.js (#231.2c).
+// The lifted version wraps the chain in a {result, state} envelope +
+// mutates state.submitting/submitError; see the call site in rerender().

@@ -1,7 +1,7 @@
 /**
- * tasks_briefSummary — Q30 contributor for canopy-chat's /brief
+ * tasks_briefSummary — Q30 contributor for basis's /brief
  * aggregator.  Post-V0 follow-up (2026-05-27) closing DESIGN gap #1
- * (`apps/canopy-chat/README.md` line 146).
+ * (`apps/basis/README.md` line 146).
  *
  * Manifest declaration: `apps/tasks-v0/manifest.js:listOpen` ->
  * `surfaces.chat.brief = { summarySkill: 'tasks_briefSummary',

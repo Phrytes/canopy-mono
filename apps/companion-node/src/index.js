@@ -613,7 +613,7 @@ export async function startCompanionNode(opts = {}) {
   // ── 6d — MANAGEMENT surface: owner-gated node ops (the manifest half of the
   //     "one contract, two projectors" design — plans/NOTE-companion-node-management.md).
   //     Same deny-by-default / opaque-`forbidden` posture as `inbox.drain`. BOTH the
-  //     in-app (canopy-chat over the relay) and the online interface project THESE.
+  //     in-app (basis over the relay) and the online interface project THESE.
   const mgmtOwner = managementOwnerPubKey ?? podOwnerPubKey ?? inboxOwnerPubKey ?? null;
   if (management) {
     if (!mgmtOwner) {

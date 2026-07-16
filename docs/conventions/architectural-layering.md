@@ -508,11 +508,11 @@ manual wiring so the decision is auditable:
 const sa = await createSecureAgent({ rateLimit: false });
 ```
 
-Apps may still build in-process topology (e.g. canopy-chat's
+Apps may still build in-process topology (e.g. basis's
 `hostAgent` + `chatAgent`) manually; the factory is for the
 cross-peer surface.  Pass `opts.bus` to share an InternalBus across
 factory-built + manually-built agents (see
-`apps/canopy-chat/src/web/realAgent.js` for the canonical pattern).
+`apps/basis/src/web/realAgent.js` for the canonical pattern).
 
 ### Per-app safety checklist
 
@@ -547,7 +547,7 @@ Two checks the reviewer runs:
    should have a reason in the same line.
 
 Optionally: every cross-peer app SHOULD ship a `journeys-security.test.js`
-in the style of `apps/canopy-chat/test/journeys-security.test.js` —
+in the style of `apps/basis/test/journeys-security.test.js` —
 ≥6 tests exercising the SEAMS between primitives (mute persistence,
 audit autoLog, rotation-mid-conversation, etc.).
 
@@ -605,22 +605,22 @@ existing app, or wiring a new one:
 4. **Surface the new ops in the manifest + slash commands.**  Add
    `/mute`, `/unmute`, `/muted`, `/audit-tail` (+ extend
    `/security-status` to report the new wired primitives).  See
-   `apps/canopy-chat/manifest.js` and
-   `apps/canopy-chat/src/web/localBuiltins.js` for the reference
+   `apps/basis/manifest.js` and
+   `apps/basis/src/web/localBuiltins.js` for the reference
    implementation.
 
 5. **Copy the journey template + adapt.**  Take
-   `apps/canopy-chat/test/journeys-security.test.js` as a starting
+   `apps/basis/test/journeys-security.test.js` as a starting
    point — at minimum verify mute persistence, audit autoLog,
    identity rotation, and `/security-status` reports every wired
    primitive.  Add app-specific seams (e.g. file-transfer apps
    should test that rate-limit doesn't choke legitimate bursts).
 
-Done in a single PR per app — the canopy-chat reference adoption
+Done in a single PR per app — the basis reference adoption
 (`779190c` + `a1ccb14` + `600e751`) is ~−60 LOC in `realAgent.js`,
 +11 new tests, and unlocks every safety primitive behind a
 checkbox.
 
-See `Project Files/canopy-chat/security-roadmap-2026-05-23.md` for
+See `Project Files/basis/security-roadmap-2026-05-23.md` for
 the full per-slice rationale and `packages/secure-agent/README.md`
 for the per-opt API.

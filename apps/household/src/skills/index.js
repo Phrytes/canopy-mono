@@ -23,7 +23,7 @@ export { claim }            from './claim.js';
 export { reassign }         from './reassign.js';
 export { registerName }     from './registerName.js';
 
-// Q30 — brief-summary contributor for canopy-chat's /brief aggregator.
+// Q30 — brief-summary contributor for basis's /brief aggregator.
 export { briefSummary }     from './briefSummary.js';
 
 // Scheduler-invoked (not user-facing dispatch)

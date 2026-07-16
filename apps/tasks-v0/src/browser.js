@@ -1,15 +1,15 @@
 /**
- * tasks-v0 — browser entry for canopy-chat composition.
+ * tasks-v0 — browser entry for basis composition.
  *
- * Lets canopy-chat boot a real tasks-v0 Circle agent inside its own
- * browser bundle, sharing an `InternalBus` so canopy-chat's
+ * Lets basis boot a real tasks-v0 Circle agent inside its own
+ * browser bundle, sharing an `InternalBus` so basis's
  * chatAgent can `.invoke(circleAgent.address, skillId, parts)` to
  * reach every real task skill (addTask / claimTask / submitTask /
  * approveTask / listMyInbox / ...).
  *
  * Why this file
  *   The bin/<app>-ui.js launchers boot tasks-v0 as a node process
- *   for the multi-member testbed UX.  canopy-chat doesn't need
+ *   for the multi-member testbed UX.  basis doesn't need
  *   that scaffolding — it already owns the bus, the identity vault,
  *   and the chat-shell surface.  It just needs the real tasks
  *   substrate composed in-process.  This factory does that.
@@ -18,7 +18,7 @@
  * tasks-v0 — no node:fs / node:crypto / no bin scripts / no agent-ui
  * mount.  Per the architectural-layering convention.
  *
- * See `Project Files/canopy-chat/integration-plan-2026-05-23.md`
+ * See `Project Files/basis/integration-plan-2026-05-23.md`
  * for the full per-app integration plan; this is slice 1.
  */
 
@@ -37,7 +37,7 @@ import { buildMultiCircleOnboardingSkills }   from './skills/multiCircleOnboardi
  * Build a tasks-v0 Circle agent on the shared bus.
  *
  * @param {object} args
- * @param {InternalBus}    args.bus           shared bus (canopy-chat owns it)
+ * @param {InternalBus}    args.bus           shared bus (basis owns it)
  * @param {object}         args.identityVault Vault for the circle agent's identity;
  *                                            separate from the chat vault so
  *                                            circles don't pollute chat identity
@@ -87,7 +87,7 @@ export async function createBrowserTasksAgent({
   const circle = await createCircleAgent({
     circleConfig,
     localStoreBundle,
-    // 2026-05-24 — flipped to true so canopy-chat's /invite + /redeem-invite
+    // 2026-05-24 — flipped to true so basis's /invite + /redeem-invite
     // slashes (A9 #187) and /join-group wizard (C2 #196) actually reach
     // registered issueInvite / redeemInvite skills.  Earlier comment
     // "no invite issuance from chat-shell V0" predates A9 / C2.
@@ -105,7 +105,7 @@ export async function createBrowserTasksAgent({
 }
 
 /**
- * Build a MULTI-circle tasks-v0 runtime on canopy-chat's shared bus.
+ * Build a MULTI-circle tasks-v0 runtime on basis's shared bus.
  *
  * Mirrors `buildMultiCircleRuntime` (the CLI / test fixture) but composes
  * onto a caller-owned `bus` + identity vault instead of generating its
@@ -115,7 +115,7 @@ export async function createBrowserTasksAgent({
  * (`mem://tasks/circles/<circleId>/`), so storage is split per circle — and
  * since `circleId ≡ circleId` (CIRCLE_ID_IS_CREW_ID_ALIAS), per circle.
  *
- * canopy-chat addition over the CLI runtime:
+ * basis addition over the CLI runtime:
  *   - `ensureCircle(circleId)` lazily spawns a circle the first time a circle
  *     is touched (no pre-saved config needed — it inherits the primary
  *     circle's members so the local actor stays recognised).
@@ -124,7 +124,7 @@ export async function createBrowserTasksAgent({
  *     chat-shell flow + test relies on.
  *
  * @param {object} args
- * @param {InternalBus} args.bus               shared bus (canopy-chat owns it)
+ * @param {InternalBus} args.bus               shared bus (basis owns it)
  * @param {object}      args.identityVault      Vault for the mesh agent identity
  * @param {object}      args.primaryCircleConfig  {circleId, name, kind, members}
  * @param {object}      [args.persistDb]        Pass-through to `buildBundle`'s

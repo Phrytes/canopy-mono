@@ -100,7 +100,7 @@ describe('folioSearch — semantic vs lexical', () => {
 
   it('llmTool:off proof — the embedder is never invoked when not injected', async () => {
     const embedder = mockEmbedder();
-    // Simulate the policy gate: off ⇒ canopy-chat injects no embedder.
+    // Simulate the policy gate: off ⇒ basis injects no embedder.
     const s = buildFolioNoteSearch({ /* embedder withheld by policy */ });
     await indexFolioNotes(s, NOTES);
     await searchFolioNotes(s, { text: 'car', mode: 'hybrid' });

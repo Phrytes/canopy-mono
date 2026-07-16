@@ -6,7 +6,7 @@
  *
  *   • `createMeshAgent` (SDK factory) — builds them, then registers on a bare
  *     core Agent's router (its historical, all-in-one path).
- *   • The secure-mesh INJECTION path (canopy-chat-mobile via `realAgent`) — builds
+ *   • The secure-mesh INJECTION path (basis-mobile via `realAgent`) — builds
  *     them here, then hands each to `sa.addSecureTransport(name, tx)` so they are
  *     security-wrapped + registered on the unified router.
  *

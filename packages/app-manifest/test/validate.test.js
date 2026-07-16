@@ -605,7 +605,7 @@ describe('validateManifest', () => {
     });
   });
 
-  describe('canopy-chat v0.1 Q28 surfaces.chat.reply', () => {
+  describe('basis v0.1 Q28 surfaces.chat.reply', () => {
     const baseManifest = (op) => ({
       app:        'c',
       itemTypes:  ['t'],
@@ -650,7 +650,7 @@ describe('validateManifest', () => {
     });
   });
 
-  describe('canopy-chat v0.4 Q31 surfaces.chat.followUps', () => {
+  describe('basis v0.4 Q31 surfaces.chat.followUps', () => {
     const baseManifest = (op) => ({
       app:        'c',
       itemTypes:  ['t'],
@@ -715,7 +715,7 @@ describe('validateManifest', () => {
     });
   });
 
-  describe('canopy-chat v0.5 Q29 surfaces.chat.embed', () => {
+  describe('basis v0.5 Q29 surfaces.chat.embed', () => {
     const baseManifest = (op) => ({
       app:        'c',
       itemTypes:  ['t'],
@@ -761,7 +761,7 @@ describe('validateManifest', () => {
     });
   });
 
-  describe('canopy-chat v0.4 Q32 op.runtime', () => {
+  describe('basis v0.4 Q32 op.runtime', () => {
     const baseManifest = (op) => ({
       app:        'c',
       itemTypes:  ['t'],

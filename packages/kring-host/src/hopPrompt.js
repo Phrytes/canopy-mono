@@ -1,5 +1,5 @@
 /**
- * canopy-chat v2 — auto-hop-prompt (board 7A, slice P6.6).
+ * basis v2 — auto-hop-prompt (board 7A, slice P6.6).
  *
  * When a skill-search inside the user's circles returns ZERO matches AND
  * the user has at least one hop-eligible contact, the chat-shell should

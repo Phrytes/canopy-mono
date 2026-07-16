@@ -121,9 +121,9 @@ function adaptSdkSkill(skillDef, agent) {
  */
 /**
  * Part G dissolve (2026-06-17) — the manifest now also carries the
- * chat-shell ops folded in from canopy-chat's former mockStoopManifest.
+ * chat-shell ops folded in from basis's former mockStoopManifest.
  * Two of them are SEMANTIC ALIASES of a real stoop skill (mirrors
- * canopy-chat's `STOOP_OP_ALIAS`): resolve them here so the standalone
+ * basis's `STOOP_OP_ALIAS`): resolve them here so the standalone
  * stoop LLM chat binds them to the right skill.
  */
 const STOOP_OP_ALIAS = {
@@ -132,16 +132,16 @@ const STOOP_OP_ALIAS = {
 };
 
 /**
- * Ops that are canopy-chat-SHELL-ONLY surfaces (customRenderer wizards,
+ * Ops that are basis-SHELL-ONLY surfaces (customRenderer wizards,
  * the [DM] button alias, and the realAgent-synthesized /groups op).
  * They have NO backing skill in the standalone stoop substrate — the
- * functionality lives in the canopy-chat client (side-panel wizards) or
- * is synthesized by the canopy-chat realAgent adapter.  They are NOT a
+ * functionality lives in the basis client (side-panel wizards) or
+ * is synthesized by the basis realAgent adapter.  They are NOT a
  * manifest-drift signal for the standalone bundle, so the registry
  * builder skips them rather than reporting them `missing`.
  */
 const SHELL_ONLY_OPS = new Set([
-  'startDm',                    // canopy-chat [DM] button → ensureDmThread
+  'startDm',                    // basis [DM] button → ensureDmThread
   'getCurrentGroup',            // synthesized in realAgent (single-buurt /groups)
   'restoreFromMnemonicWizard',  // #198 customRenderer
   'conflictDisputeWizard',      // #200 customRenderer

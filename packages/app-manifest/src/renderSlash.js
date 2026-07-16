@@ -59,7 +59,7 @@ export function renderSlash(manifest, opts = {}) {
       body:       m.body ?? 'none',
       splitItems: !!m.splitItems,
       onEmpty:    m.onEmpty ?? null,
-      // F-SP2 (2026-06-11): two additive options so canopy-chat's task ops project cleanly —
+      // F-SP2 (2026-06-11): two additive options so basis's task ops project cleanly —
       //   arg          — target the body at a custom arg name (e.g. 'id' for completeTask/claimTask
       //                  whose param is `id`, not the default 'match'/'text').
       //   dropTrailing — strip a trailing connector clause ("add milk TO THE LIST" → "milk").

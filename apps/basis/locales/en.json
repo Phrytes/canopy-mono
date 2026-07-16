@@ -1,0 +1,864 @@
+{
+  "common": {
+    "ok": {
+      "text": "✓",
+      "doc": "Generic success indicator rendered when a skill returns { ok: true } with no message."
+    },
+    "failed": {
+      "text": "Failed",
+      "doc": "Generic failure fallback when a skill returns { ok: false } with no error text."
+    },
+    "error": {
+      "text": "Error",
+      "doc": "Generic error label when an error envelope has no message or code."
+    },
+    "consequences": {
+      "text": "Consequences of this choice",
+      "doc": "N2 — ⓘ tooltip/aria label on a radio option that reveals its consequence."
+    }
+  },
+  "reply": {
+    "unknown_command": {
+      "text": "Didn't understand “{{input}}”. Try /help for the commands available here.",
+      "doc": "Shown when parser falls through to kind:'unknown' — user input matched no slash command."
+    },
+    "bulk_no_list": {
+      "text": "No recent list to apply “all” to — run a list command first.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
+    }
+  },
+  "thread": {
+    "stale_list": {
+      "text": "This list is stale. Run the command again to refresh.",
+      "doc": "Shown when the user taps a disabled action menu (per A2 hybrid lifecycle)."
+    },
+    "welcome": {
+      "text": "Welcome to basis (v0.2). Try /help. Create more threads via the sidebar.",
+      "doc": "First-boot greeting in the Main thread."
+    },
+    "permission_no_commands": {
+      "text": "This thread does not accept commands.",
+      "doc": "Shown when allowCommands=false on the active thread."
+    }
+  },
+  "dm": {
+    "no_peer": {
+      "text": "DM thread has no paired peer address.",
+      "doc": "Shown when a DM-scoped thread is missing its actor address (config bug)."
+    },
+    "peer_offline": {
+      "text": "Peer transport not connected. Try /peer-connect first.",
+      "doc": "Shown when the user sends in a DM but NKN isn't connected."
+    },
+    "respond_neither_ok": {
+      "text": "Neither local audit nor NKN delivery succeeded.",
+      "doc": "[Help with] flow — both substrate and NKN paths failed."
+    },
+    "counter_prompt": {
+      "text": "Type your counter-offer below.",
+      "doc": "Hint after [Counter] click on a responder card."
+    }
+  },
+  "help": {
+    "heading": {
+      "text": "Available commands:",
+      "doc": "First line of /help output; precedes the per-app command sections."
+    },
+    "section_chat": {
+      "text": "Chat",
+      "doc": "Section heading for chat-shell built-in commands (/help, /brief, /threads)."
+    },
+    "section_app": {
+      "text": "{{app}}",
+      "doc": "Section heading for an app's commands. {{app}} = app id (household, tasks-v0, …)."
+    },
+    "empty": {
+      "text": "No commands available yet.",
+      "doc": "Shown when /help fires before any app manifests have loaded."
+    }
+  },
+  "form": {
+    "heading": {
+      "text": "Fill in {{opId}}:",
+      "doc": "Form heading; opId is the manifest op."
+    },
+    "submit": {
+      "text": "Submit",
+      "doc": "Form submit button label."
+    },
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Form cancel button label."
+    },
+    "cancelled": {
+      "text": "Form cancelled.",
+      "doc": "Shown after the user clicks [Cancel] on a form."
+    }
+  },
+  "embed": {
+    "no_id": {
+      "text": "Please provide an item id: /embed <itemId>",
+      "doc": "When /embed fires with no itemId."
+    },
+    "no_callskill": {
+      "text": "Embed dispatch not available in this build.",
+      "doc": "Defensive."
+    },
+    "no_factory": {
+      "text": "No app declares a Q29 cardSnapshotSkill yet.",
+      "doc": "When the merged catalog has no embed-producing op."
+    }
+  },
+  "embed-file": {
+    "no_input": {
+      "text": "Please provide either --path / --pick / --name.",
+      "doc": "When /embed-file fires with no recognisable input."
+    },
+    "no_name": {
+      "text": "Please provide a file name.",
+      "doc": "Back-compat with v0.7.x."
+    },
+    "pick_unavailable": {
+      "text": "File picker not available in this build.",
+      "doc": "Defensive — openFilePicker not wired."
+    },
+    "pick_cancelled": {
+      "text": "File picker cancelled.",
+      "doc": "User dismissed the picker."
+    }
+  },
+  "media": {
+    "no_gateway": {
+      "text": "Sealed media upload is not wired in this build (no blob-gateway seams).",
+      "doc": "Media P1 defensive — createMediaEmbed called without the injected mediaGateway {bucket, sealer}."
+    },
+    "no_picker": {
+      "text": "File picker not available in this build.",
+      "doc": "Media P1 defensive — createMediaEmbed called directly without openFilePicker."
+    },
+    "pick_cancelled": {
+      "text": "File picker cancelled.",
+      "doc": "User dismissed the picker on the sealed media path."
+    },
+    "read_failed": {
+      "text": "Couldn't read the picked file: {{error}}",
+      "doc": "The File had no readable bytes (no dataB64, no arrayBuffer) or reading threw."
+    },
+    "upload_failed": {
+      "text": "Sealed upload failed: {{error}}",
+      "doc": "uploadBlob refused (plaintext sealer, oversized thumbnail) or the bucket errored."
+    },
+    "invalid_item": {
+      "text": "Built an invalid media item: {{error}}",
+      "doc": "Drift guard — the media item failed @onderling/item-types validation. A bug, not a user error."
+    }
+  },
+  "embed-time": {
+    "no_title": {
+      "text": "Please provide a title for the appointment.",
+      "doc": "When /embed-time fires with no title."
+    },
+    "no_when": {
+      "text": "Please provide a when date for the appointment.",
+      "doc": "When /embed-time fires with no when."
+    },
+    "bad_when": {
+      "text": "Couldn't parse \"{{when}}\" as a date. Try YYYY-MM-DD or 'tomorrow 3pm'.",
+      "doc": "When /embed-time's when can't be parsed."
+    }
+  },
+  "demo": {
+    "stub": {
+      "text": "[demo] {{op}} clicked on {{item}} — backing app not built yet (tracked).",
+      "doc": "Receiver-action stub on file/time cards before real backing apps exist."
+    }
+  },
+  "brief": {
+    "no_runner": {
+      "text": "Brief aggregator not available in this build.",
+      "doc": "Defensive."
+    }
+  },
+  "find": {
+    "no_query": {
+      "text": "Please provide a query: /find <text>",
+      "doc": "When /find fires with no query."
+    },
+    "no_runner": {
+      "text": "Search not available in this build.",
+      "doc": "Defensive."
+    }
+  },
+  "logs": {
+    "no_log": {
+      "text": "Event log not available in this build.",
+      "doc": "Defensive."
+    },
+    "heading": {
+      "text": "Last {{count}} events:",
+      "doc": "First line of /logs output."
+    },
+    "empty": {
+      "text": "No events matched (try /logs --app=household).",
+      "doc": "Empty state."
+    },
+    "muted": {
+      "text": "✓ Muted events: {{app}}:{{type}}. /logs --mute=... toggles.",
+      "doc": "Mute confirmation."
+    },
+    "panel_opened": {
+      "text": "Logs panel opened. Click [×] to close.",
+      "doc": "Confirmation when bare /logs opens the side-panel UI."
+    }
+  },
+  "scan_qr": {
+    "not_available": {
+      "text": "QR scanner not available on this platform (mobile only today).",
+      "doc": "Web doesn't ship a webcam scanner yet; /scan-qr returns this hint."
+    },
+    "opening": {
+      "text": "Opening QR scanner…",
+      "doc": "Mobile localBuiltins triggered openQrScanner()."
+    },
+    "scanned_contact": {
+      "text": "✓ Added contact: {{name}}",
+      "doc": "Bot bubble after scanning a stoop-contact:// QR and addContactFromQr succeeds."
+    },
+    "scanned_invite": {
+      "text": "Opening join-buurt wizard with scanned invite…",
+      "doc": "Bot bubble after scanning a stoop-invite://; the wizard takes over."
+    },
+    "scan_failed": {
+      "text": "Scan failed: {{error}}",
+      "doc": "Substrate returned error or classifier saw an unknown payload."
+    },
+    "scan_unknown": {
+      "text": "Unrecognised QR code. Expected a stoop-contact:// or stoop-invite:// URL.",
+      "doc": "classifyQrPayload returned kind:'unknown'."
+    }
+  },
+  "signin": {
+    "no_flow": {
+      "text": "Sign-in flow not available in this build.",
+      "doc": "Defensive — neither podAuth nor externalFlow wired."
+    },
+    "opening": {
+      "text": "Opening sign-in (issuer: {{issuer}}) … come back when the redirect lands.",
+      "doc": "v0.7.P1."
+    },
+    "unknown_issuer": {
+      "text": "Unknown issuer \"{{issuer}}\". Try 'inrupt', 'solidcommunity', 'solidweb' or a full URL.",
+      "doc": "When resolveIssuer returns null."
+    },
+    "completed": {
+      "text": "✓ Signed in as {{webid}}.",
+      "doc": "Shown when the external callback resumes the chat."
+    },
+    "welcome": {
+      "text": "✓ Signed in as {{webid}}.",
+      "doc": "v0.7.P1 — OIDC round-trip completed on boot."
+    },
+    "failed": {
+      "text": "Sign-in failed: {{reason}}.",
+      "doc": "Callback delivered an error."
+    }
+  },
+  "whoami": {
+    "unavailable": {
+      "text": "Identity check is not available in this build.",
+      "doc": "Defensive: podAuth not wired."
+    },
+    "not_signed_in": {
+      "text": "Not signed in. Try /signin.",
+      "doc": "User asked /whoami while signed out."
+    },
+    "signed_in": {
+      "text": "Signed in as {{webid}}.",
+      "doc": "/whoami result when signed in."
+    }
+  },
+  "me": {
+    "unavailable": {
+      "text": "Agent identity not available.",
+      "doc": "Defensive: agent boot missing identity."
+    }
+  },
+  "rotate": {
+    "unavailable": {
+      "text": "Identity rotation not available in this build.",
+      "doc": "Defensive."
+    },
+    "done": {
+      "text": "✓ Identity rotated.\n  old pubKey: {{oldPub}}\n  new pubKey: {{newPub}}\n  grace period: {{grace}} days\n\nYour NKN address has CHANGED.  Run /me to see it.\nKnown peers were notified via KeyRotation.broadcast.",
+      "doc": "v0.7.P3d."
+    },
+    "failed": {
+      "text": "Rotation failed: {{error}}",
+      "doc": "Defensive."
+    }
+  },
+  "security": {
+    "unavailable": {
+      "text": "Crypto status not available in this build.",
+      "doc": "Defensive."
+    }
+  },
+  "mute": {
+    "no_peer": {
+      "text": "Please name a peer: /block <nkn-addr-or-webid-or-pubkey>",
+      "doc": "/block missing arg."
+    },
+    "unavailable": {
+      "text": "Block not available in this build.",
+      "doc": "Defensive — sa.mute missing."
+    },
+    "added": {
+      "text": "🚫 Blocked {{peer}}.\nTheir messages will be dropped + you can't send to them.",
+      "doc": "/block success."
+    },
+    "already": {
+      "text": "{{peer}} is already blocked.",
+      "doc": "Idempotent."
+    },
+    "removed": {
+      "text": "🔊 Unblocked {{peer}}.",
+      "doc": "/unblock success."
+    },
+    "not_muted": {
+      "text": "{{peer}} wasn't blocked.",
+      "doc": "Idempotent."
+    },
+    "empty": {
+      "text": "Block set is empty.",
+      "doc": "/blocked on empty set."
+    }
+  },
+  "audit": {
+    "unavailable": {
+      "text": "Audit log not available in this build.",
+      "doc": "Defensive — sa.audit missing."
+    }
+  },
+  "debug": {
+    "unavailable": {
+      "text": "Debug dump not available — secure-agent factory not wired.",
+      "doc": "Defensive."
+    }
+  },
+  "helpWith": {
+    "no_post": {
+      "text": "Please name a post: /help-with <post-id>",
+      "doc": "/help-with missing arg."
+    },
+    "no_store": {
+      "text": "Thread store not available in this build.",
+      "doc": "Defensive."
+    },
+    "opened": {
+      "text": "🤝 Opened help thread for {{postId}} (id={{threadId}}).",
+      "doc": "/help-with success."
+    }
+  },
+  "fileShare": {
+    "downloaded": {
+      "text": "↓ Downloaded {{name}} to your browser's default download location.",
+      "doc": "/Download click on a received file-card."
+    }
+  },
+  "sendFile": {
+    "no_peer": {
+      "text": "Please name a peer: /send-file <nkn-addr-or-webid>",
+      "doc": "/send-file missing peer."
+    },
+    "no_picker": {
+      "text": "File picker not available in this build.",
+      "doc": "Defensive."
+    },
+    "not_connected": {
+      "text": "NKN not connected.  /peer-connect first.",
+      "doc": "Defensive."
+    },
+    "no_lookup": {
+      "text": "Peer-resolution unavailable; sign in to your pod.",
+      "doc": "Defensive."
+    },
+    "lookup_failed": {
+      "text": "Couldn't resolve {{peer}} to an NKN address.",
+      "doc": "Lookup failure."
+    },
+    "cancelled": {
+      "text": "File picker cancelled.",
+      "doc": "User dismissed."
+    },
+    "pick_failed": {
+      "text": "File pick failed: {{error}}",
+      "doc": "Defensive."
+    },
+    "too_large": {
+      "text": "File too large ({{size}} bytes; max {{max}} bytes inline).  NKN drops messages over ~64KB silently, so we cap at 32KB to guarantee delivery.  Larger files need pod-URL hand-off (next slice).",
+      "doc": "Cap."
+    },
+    "read_failed": {
+      "text": "File read failed: {{error}}",
+      "doc": "FileReader error."
+    },
+    "sent": {
+      "text": "📤 sent {{name}} ({{size}} bytes) → {{peer}}",
+      "doc": "Confirmation."
+    },
+    "send_failed": {
+      "text": "Send failed: {{error}}",
+      "doc": "NKN send error."
+    }
+  },
+  "lookup": {
+    "no_webid": {
+      "text": "Please provide a webid: /lookup-peer <webid>",
+      "doc": "/lookup-peer missing arg."
+    },
+    "unavailable": {
+      "text": "Peer lookup unavailable (sign in to your pod first).",
+      "doc": "Defensive."
+    },
+    "not_found": {
+      "text": "No NKN address found for {{webid}}.  They may not have signed in to basis from a pod yet.",
+      "doc": "Lookup miss."
+    },
+    "found": {
+      "text": "✓ {{webid}}\n  → {{address}}\n\nUse: /test-peer {{address}} hello\n     /addappt --attendees-nkn={{address}}",
+      "doc": "Lookup hit."
+    },
+    "failed": {
+      "text": "Lookup failed: {{error}}",
+      "doc": "Lookup error."
+    }
+  },
+  "publishPeerAddrCmd": {
+    "unavailable": {
+      "text": "Pod publish unavailable (sign in first).",
+      "doc": "Defensive."
+    },
+    "done": {
+      "text": "✓ Published NKN address to {{url}}",
+      "doc": "Confirmation."
+    },
+    "failed": {
+      "text": "Pod publish failed: {{error}}{{status}}",
+      "doc": "Defensive."
+    }
+  },
+  "peer": {
+    "unavailable": {
+      "text": "Peer transport not available in this build.",
+      "doc": "Defensive: window.nkn missing."
+    },
+    "no_address": {
+      "text": "Please provide a peer NKN address: /test-peer <addr> [text]",
+      "doc": "/test-peer arg missing."
+    },
+    "not_connected": {
+      "text": "Not connected to NKN yet.  Try /peer-connect (and wait 5-90s).",
+      "doc": "Defensive: NKN not connected when sending."
+    },
+    "connect_failed": {
+      "text": "Couldn't connect to NKN: {{error}}",
+      "doc": "/peer-connect failure."
+    },
+    "connected": {
+      "text": "🔗 Connected to NKN. Your address:\n  {{address}}\nShare it; peers can /test-peer <this address> text.",
+      "doc": "/peer-connect success."
+    },
+    "sent": {
+      "text": "✓ Sent to {{address}}: {{text}}",
+      "doc": "/test-peer confirmation."
+    },
+    "send_failed": {
+      "text": "Failed to send: {{error}}",
+      "doc": "/test-peer send failure."
+    }
+  },
+  "signout": {
+    "unavailable": {
+      "text": "Sign-out is not available in this build.",
+      "doc": "Defensive: podAuth not wired."
+    },
+    "done": {
+      "text": "✓ Signed out.",
+      "doc": "Confirmation of /signout."
+    }
+  },
+  "reset": {
+    "no_store": {
+      "text": "Thread store not available in this build.",
+      "doc": "Defensive: threadStore dependency not wired."
+    },
+    "no_thread": {
+      "text": "No active thread to reset.",
+      "doc": "Defensive: no active thread selected."
+    },
+    "done": {
+      "text": "✓ Thread cleared (messages + list cache wiped).",
+      "doc": "/reset-thread confirmation."
+    }
+  },
+  "apps": {
+    "heading": {
+      "text": "Apps:",
+      "doc": "First line of /apps list."
+    },
+    "empty": {
+      "text": "(none)",
+      "doc": "When no apps in the catalog."
+    },
+    "no_registry": {
+      "text": "App registry not available in this build.",
+      "doc": "Defensive."
+    },
+    "no_name": {
+      "text": "Please name an app: /apps {{action}} <name>",
+      "doc": "When toggle action has no app name."
+    },
+    "unknown_action": {
+      "text": "Unknown action \"{{action}}\". Use: on, off",
+      "doc": "Bad toggle action."
+    },
+    "enabled": {
+      "text": "✓ App \"{{app}}\" enabled.",
+      "doc": "Confirmation when /apps on succeeds."
+    },
+    "disabled": {
+      "text": "✓ App \"{{app}}\" disabled.",
+      "doc": "Confirmation when /apps off succeeds."
+    }
+  },
+  "sendto": {
+    "no_peer": {
+      "text": "Please name a peer: /send-to <peer> <itemId>",
+      "doc": "When /send-to fires with no peer."
+    },
+    "no_id": {
+      "text": "Please provide an item id: /send-to <peer> <itemId>",
+      "doc": "When /send-to fires with no itemId."
+    },
+    "unknown_peer": {
+      "text": "Unknown peer \"{{peer}}\". Try: anne",
+      "doc": "When the peer name isn't in simPeers."
+    },
+    "no_thread": {
+      "text": "Peer's thread (id={{threadId}}) does not exist in this workspace.",
+      "doc": "Defensive — sim peer thread missing."
+    },
+    "sent": {
+      "text": "✓ Sent \"{{item}}\" to {{peer}}'s thread.",
+      "doc": "Confirmation in the sender's thread after /send-to."
+    }
+  },
+  "sync": {
+    "synced_to": {
+      "text": "synced to {{ok}}/{{total}} peers",
+      "doc": "Decentralized sync hint suffix; ok=confirmed, total=peers."
+    },
+    "pending": {
+      "text": "{{count}} pending",
+      "doc": "Decentralized sync hint suffix; count of peers awaiting confirmation."
+    },
+    "unreachable": {
+      "text": "{{count}} unreachable: {{list}}",
+      "doc": "Decentralized sync hint suffix; list of unreachable peer webids."
+    },
+    "podless": {
+      "text": "polled {{count}} peers · oldest {{ago}} ago",
+      "doc": "Pod-less sync hint suffix; shows the oldest last-seen time."
+    },
+    "podless_empty": {
+      "text": "no peers polled",
+      "doc": "Pod-less sync hint when no peers known."
+    },
+    "row_ago": {
+      "text": "stale {{ago}} ago",
+      "doc": "Per-row _lastSync badge on list items."
+    },
+    "saved_locally": {
+      "text": "Saved locally; awaiting peer sync",
+      "doc": "Decentralized empty-state suffix (per OQ-6.A): all peers offline / no peers known yet."
+    }
+  },
+  "newthread": {
+    "created": {
+      "text": "✓ Created thread \"{{name}}\". Switched to it.",
+      "doc": "Confirmation when /newthread succeeds."
+    },
+    "no_name": {
+      "text": "Please provide a name: /newthread <name>",
+      "doc": "When /newthread fires with no name arg."
+    },
+    "no_store": {
+      "text": "Thread workspace not available in this build.",
+      "doc": "Defensive — should never trigger in the standard web build."
+    }
+  },
+  "threads": {
+    "heading": {
+      "text": "Threads:",
+      "doc": "First line of /threads output."
+    },
+    "empty": {
+      "text": "No threads yet.",
+      "doc": "Shown when no threads exist."
+    },
+    "no_store": {
+      "text": "Thread workspace not available in this build.",
+      "doc": "Defensive."
+    }
+  },
+  "sidebar": {
+    "heading": {
+      "text": "Threads",
+      "doc": "Sidebar heading above the thread list."
+    },
+    "new_thread": {
+      "text": "+ New thread",
+      "doc": "Button that toggles the new-thread form."
+    },
+    "delete": {
+      "text": "Delete",
+      "doc": "Per-thread delete button tooltip."
+    },
+    "edit": {
+      "text": "Edit",
+      "doc": "Per-thread edit button tooltip — opens the new-thread form pre-filled."
+    },
+    "form_create_heading": {
+      "text": "New thread",
+      "doc": "Title shown above the form in create mode."
+    },
+    "form_edit_heading": {
+      "text": "Edit thread",
+      "doc": "Title shown above the form in edit mode."
+    },
+    "form_name": {
+      "text": "Name",
+      "doc": "New-thread form: name field label."
+    },
+    "form_apps": {
+      "text": "Apps",
+      "doc": "New-thread form: apps filter chip-group label."
+    },
+    "form_apps_hint": {
+      "text": "Pick which apps' events appear here. Empty = all apps.",
+      "doc": "Help text under the apps chip group."
+    },
+    "form_add_custom_app": {
+      "text": "+ custom app origin (e.g. household)",
+      "doc": "Placeholder for the custom-app input below the chip group."
+    },
+    "form_event_types": {
+      "text": "Event types",
+      "doc": "New-thread form: eventTypes chip-group label."
+    },
+    "form_event_types_hint": {
+      "text": "Pick which kinds of events trigger this thread. Empty = all kinds.",
+      "doc": "Help text under the event-types chip group."
+    },
+    "form_add_custom_type": {
+      "text": "+ custom event type",
+      "doc": "Placeholder for the custom-event-type input below the chip group."
+    },
+    "form_peers": {
+      "text": "Peers (optional, CSV)",
+      "doc": "Field label for the peers CSV input."
+    },
+    "form_peers_placeholder": {
+      "text": "e.g. webid:anne,webid:karl",
+      "doc": "Placeholder for the peers field."
+    },
+    "form_peers_hint": {
+      "text": "Restrict this thread to events from named peers. Empty = anyone.",
+      "doc": "Help text under the peers field."
+    },
+    "form_allow_commands": {
+      "text": "Allow commands",
+      "doc": "New-thread form: allowCommands checkbox label."
+    },
+    "form_create": {
+      "text": "Create",
+      "doc": "New-thread form: submit button (create mode)."
+    },
+    "form_save": {
+      "text": "Save",
+      "doc": "New-thread form: submit button (edit mode)."
+    },
+    "form_cancel": {
+      "text": "Cancel",
+      "doc": "New-thread form: cancel button."
+    },
+    "dm_prefix": {
+      "text": "DM",
+      "doc": "Prefix for DM-scoped thread names (Slice 6a)."
+    },
+    "dm_unknown": {
+      "text": "Unknown peer",
+      "doc": "Placeholder DM peer label shown before identity is exchanged (Slice 6a)."
+    }
+  },
+  "contacts": {
+    "trust": {
+      "known": {
+        "text": "known",
+        "doc": "Trust level for an acknowledged contact. Stoop persists this as Dutch 'bekend'; chat-shell translates EN at the boundary."
+      },
+      "trusted": {
+        "text": "trusted",
+        "doc": "Trust level for a fully-trusted contact. Stoop persists this as Dutch 'vertrouwd'; chat-shell translates EN at the boundary."
+      },
+      "none": {
+        "text": "none",
+        "doc": "No trust set (cleared)."
+      }
+    }
+  },
+  "relay": {
+    "no_substrate": {
+      "text": "Relay support not wired in this build.",
+      "doc": "/set-relay called but agent.relay isn't exposed (test workspace or old build)."
+    },
+    "url_required": {
+      "text": "Relay URL required. Try /set-relay ws://your-host:port or /set-relay --clear",
+      "doc": "/set-relay called without --url or --clear."
+    },
+    "bad_url": {
+      "text": "Bad relay URL. Must start with ws:// or wss://",
+      "doc": "/set-relay called with a URL that doesn't have a websocket scheme."
+    },
+    "cleared": {
+      "text": "✓ Relay cleared. NKN remains active.",
+      "doc": "/set-relay --clear succeeded."
+    },
+    "connected": {
+      "text": "✓ Relay connected: {{url}} (address: {{address}})",
+      "doc": "/set-relay succeeded."
+    },
+    "connect_failed": {
+      "text": "Relay connect failed: {{reason}}",
+      "doc": "/set-relay caught an exception from sa.relay.connect()."
+    }
+  },
+  "page": {
+    "submit": {
+      "text": "Submit",
+      "doc": "Page-panel form submit button (#180)."
+    },
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Page-panel form cancel button (#180)."
+    },
+    "settings_title": {
+      "text": "Settings",
+      "doc": "Title for the /settings page panel."
+    },
+    "settings_hint": {
+      "text": "Adjust your preferences. Changes apply immediately.",
+      "doc": "Settings panel intro line."
+    }
+  },
+  "transport": {
+    "no_substrate": {
+      "text": "Transport-mode control not wired in this build.",
+      "doc": "/transport-mode or /transports called but agent.setTransportMode isn't exposed."
+    },
+    "bad_mode": {
+      "text": "Bad mode \"{{mode}}\". Pick nkn, relay, or both.",
+      "doc": "/transport-mode called with an invalid arg."
+    },
+    "mode_set": {
+      "text": "✓ Transport mode set: {{mode}}. Outbound peer sends now route this way.",
+      "doc": "/transport-mode succeeded."
+    },
+    "status_title": {
+      "text": "Transports",
+      "doc": "Title for /transports record reply."
+    }
+  },
+  "chat": {
+    "followup_prompt": {
+      "text": "What's your {{param}}? (for /{{opId}})",
+      "doc": "Generic prompt when a kring command trips needsForm with a single missing field — the bot asks, the user's next message answers (shared src/v2/followUp.js)."
+    },
+    "followup_prompt_respond_to_item_body": {
+      "text": "What help are you offering?",
+      "doc": "Friendlier prompt for respondToItem.body (picked via pickPromptKey)."
+    },
+    "form_title": {
+      "text": "Complete /{{opId}}",
+      "doc": "Title at the top of the multi-field kring form bubble (2+ missing fields → beginFormFollowUp). Mirrors basis-mobile so web≡mobile."
+    },
+    "form_submit": {
+      "text": "Submit",
+      "doc": "Submit button on the multi-field kring form bubble."
+    },
+    "form_label_body": {
+      "text": "Body",
+      "doc": "Label for the 'body' field — used by respondToItem etc."
+    },
+    "form_label_title": {
+      "text": "Title",
+      "doc": "Label for the 'title' field."
+    },
+    "form_label_name": {
+      "text": "Name",
+      "doc": "Label for the 'name' field."
+    },
+    "form_label_text": {
+      "text": "Text",
+      "doc": "Label for the 'text' field."
+    },
+    "form_label_when": {
+      "text": "When",
+      "doc": "Label for the 'when' field — calendar/availability ops."
+    },
+    "form_label_audience": {
+      "text": "Audience",
+      "doc": "Label for the 'audience' field."
+    },
+    "file": {
+      "open": {
+        "text": "Open",
+        "doc": "E1 — file-reply card: open the file URL in a new tab."
+      },
+      "unnamed": {
+        "text": "Untitled file",
+        "doc": "E1 — file-reply card fallback name when none is given."
+      }
+    },
+    "nav": {
+      "backToChat": {
+        "text": "← back to chat",
+        "doc": "E4 — chat-nav floating button: return to the thread a side-panel was opened from."
+      },
+      "openInFull": {
+        "text": "Open in full",
+        "doc": "E5 — record/mini-page panel: expand the card into the wide side panel."
+      }
+    }
+  },
+  "settings": {
+    "userLlm": {
+      "title": {
+        "text": "My assistant (when a circle lets me choose)",
+        "doc": "Heading of the member personal-default-LLM control (applies when a circle delegates with policy=user)."
+      },
+      "off": {
+        "text": "Off",
+        "doc": "User LLM default: no assistant."
+      },
+      "local": {
+        "text": "On — local",
+        "doc": "User LLM default: local route."
+      },
+      "cloud": {
+        "text": "On — cloud/proxy",
+        "doc": "User LLM default: cloud/proxy route."
+      }
+    }
+  }
+}

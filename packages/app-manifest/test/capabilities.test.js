@@ -104,7 +104,7 @@ describe('capabilitiesOf', () => {
   });
 
   // Regression (device-verify 2026-07-02): a VALUE-enum param (mode/action/lang/…) lists option
-  // values, not item types — it must NOT become a noun. Before the fix, canopy-chat's mode:[nkn,both]
+  // values, not item types — it must NOT become a noun. Before the fix, basis's mode:[nkn,both]
   // / lang:[en,nl] / action:[on,off] params produced junk freedom-matrix rows (submit·nkn, List·en).
   it('ignores non-`type` enum params (value-enums are not nouns)', () => {
     const withValueEnums = {

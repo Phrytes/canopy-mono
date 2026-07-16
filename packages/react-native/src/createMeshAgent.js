@@ -90,7 +90,7 @@ export async function createMeshAgent(opts = {}) {
   // ── Transports (shared builder — T5.2d/T5.3c) ──────────────────────────────
   // buildMeshTransports owns permissions + construct + time-boxed mDNS
   // pre-connect, so this logic lives ONCE: the secure-mesh injection path in
-  // canopy-chat-mobile reuses the SAME builder (then injects via
+  // basis-mobile reuses the SAME builder (then injects via
   // sa.addSecureTransport instead of registering on a bare agent). It returns
   // the live ones; each is `null` when its native module is absent or the
   // mDNS pre-connect timed out.

@@ -2,7 +2,7 @@
   "private": true,
   "name": "@onderling/recipe-loader",
   "version": "0.1.0",
-  "description": "B #64 — loader + validator for AUTHORED REMOTE recipes: a portable {capabilities, settings, surfaces, freedoms} circle-configuration bundle hosted off-app and run locally. Fetch + trust (verify) are INJECTED so it's testable offline and deny-by-default. Pure loader/validator — apply-to-live-circle wiring (canopy-chat) is a deferred seam. Distinct from canopy-chat's in-circle kringRecipe broadcast.",
+  "description": "B #64 — loader + validator for AUTHORED REMOTE recipes: a portable {capabilities, settings, surfaces, freedoms} circle-configuration bundle hosted off-app and run locally. Fetch + trust (verify) are INJECTED so it's testable offline and deny-by-default. Pure loader/validator — apply-to-live-circle wiring (basis) is a deferred seam. Distinct from basis's in-circle kringRecipe broadcast.",
   "type": "module",
   "main": "src/index.js",
   "exports": {

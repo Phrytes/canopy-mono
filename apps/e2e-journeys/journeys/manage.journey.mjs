@@ -1,6 +1,6 @@
 // J-manage: the companion-node management surface (6d), surface ① — the OWNER
 // manages the node by invoking owner-gated ops OVER THE RELAY (exactly how
-// canopy-chat would); a non-owner is denied. This is the manifest half of the
+// basis would); a non-owner is denied. This is the manifest half of the
 // "one contract, two projectors" design (plans/NOTE-companion-node-management.md).
 import { Agent, AgentIdentity, Parts, DataPart } from '@onderling/core';
 import { VaultMemory }        from '@onderling/vault';
@@ -38,7 +38,7 @@ export async function run({ relayUrl }) {
     check('owner + non-owner + node on the relay',
       owner.transport.connected && attacker.transport.connected && node.agent.transport.connected);
 
-    // Owner manages over the relay (the canopy-chat path).
+    // Owner manages over the relay (the basis path).
     const status = await invoke(owner, 'node.status', {});
     check('owner reads node.status over the relay', status?.ok === true && status.connected === true && typeof status.uptimeMs === 'number');
 

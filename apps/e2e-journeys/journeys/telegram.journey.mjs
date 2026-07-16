@@ -1,5 +1,5 @@
 // J-telegram: the Telegram on-ramp WITH PARITY (6a). The feedback app is built
-// "once, two adapters": both canopy-chat and Telegram feed the SAME shared
+// "once, two adapters": both basis and Telegram feed the SAME shared
 // ChannelDispatcher → the SAME buildContribution → the SAME central-pod write. This
 // journey drives BOTH channels with identical feedback and proves the contributions
 // they land are EQUIVALENT — same validated shape, same cleaned text, pseudonymous —
@@ -51,7 +51,7 @@ export async function run() {
   const tgPoints = await runChannel(tgAdapter, TG_PARTICIPANT);
   check('the Telegram on-ramp accepts feedback and produces a point', tgPoints.length >= 1);
 
-  // ── the app on-ramp (canopy-chat-style adapter) ──────────────────────────────
+  // ── the app on-ramp (basis-style adapter) ──────────────────────────────
   const appPoints = await runChannel(new MemoryChannelAdapter(), APP_PARTICIPANT);
   check('the app on-ramp accepts the same feedback and produces a point', appPoints.length >= 1);
 

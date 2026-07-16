@@ -1,6 +1,6 @@
 /**
  * createStoopService — §1b op→atom adapter (PLAN-capability-arc §1b), the stoop counterpart of the
- * household pilot's `callCapability` suite (`apps/canopy-chat/test/householdApp.test.js`).
+ * household pilot's `callCapability` suite (`apps/basis/test/householdApp.test.js`).
  *
  * Stoop is NOT dissolved onto a CircleItemStore — it keeps its legacy `defineSkill` handlers whose args ride
  * in a single `DataPart` (`dataArgs(parts)` in `src/skills/index.js`). So the service wraps `args` in that
@@ -12,7 +12,7 @@
  *     `reassign·lend` → assignLend, `claim·post` → respondToItem, `remove·group-leave` → leaveGroup,
  *     `list·member` → listGroupMembers — all REAL `buildSkills` ops (covered below).
  *   - `add·post` / `list·post` / `add·{contact,member}` resolve to conflictDisputeWizard / listFeed / startDm,
- *     which are canopy-chat-SIDE aliases/wizards, NOT real stoop `buildSkills` skills — so those pairs are
+ *     which are basis-SIDE aliases/wizards, NOT real stoop `buildSkills` skills — so those pairs are
  *     deliberately NOT exercised through this functionality-side service (they'd route to an opId this
  *     service doesn't own). See the orchestrator report for the full resolution table.
  */

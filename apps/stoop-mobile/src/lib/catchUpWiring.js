@@ -7,12 +7,12 @@
  *     can ask "give me posts since <ms>" tightly.
  *   - `wireCatchUp()` — wires the item-arrive listener + returns a
  *     `scheduleCatchUp()` that fires the lifted
- *     `requestCatchUpFromKnownPeers` from canopy-chat-handlers, plus an
+ *     `requestCatchUpFromKnownPeers` from basis-handlers, plus an
  *     inbound `catch-up-request` handler that replies via buurt-post.
  *
  * #248 (2026-05-27, Option A): "Add NknTransport to stoop-mobile."
  *   The lifted handler factories live in
- *   `apps/canopy-chat/src/core/handlers/catchUp.js` and operate on
+ *   `apps/basis/src/core/handlers/catchUp.js` and operate on
  *   `{callSkill, sendPeer}`.  Stoop-mobile's bundle now exposes
  *   `bundle.nkn` (the NknTransport adapter, see agentBundle.js) and
  *   `bundle.agent.invoke` is bridged to a `callSkill(appOrigin, opId,
@@ -20,13 +20,13 @@
  *   registered once at boot, dispatch is on opId + args.groupId/_scope).
  *
  *   The catch-up trigger fires 1.5s after `bundle.nkn` emits 'connect'
- *   (matches canopy-chat-mobile's pattern in
- *    apps/canopy-chat-mobile/src/core/agentBundle.js).  If `bundle.nkn`
+ *   (matches basis-mobile's pattern in
+ *    apps/basis-mobile/src/core/agentBundle.js).  If `bundle.nkn`
  *   is missing (no nknLib at boot — soft dep), `scheduleCatchUp` logs
  *   "no NKN transport" and resolves; everything else stays intact.
  *
- * Architectural constraint (canopy-chat-unifier-principle):
- *   the handlers live in apps/canopy-chat/src/core/handlers/; we
+ * Architectural constraint (basis-unifier-principle):
+ *   the handlers live in apps/basis/src/core/handlers/; we
  *   import them via relative path (Metro doesn't honor exports
  *   subpaths).  Don't move them.
  */
@@ -34,9 +34,9 @@
 import {
   makeRequestCatchUpFromKnownPeers,
   makeHandleCatchUpRequest,
-} from '../../../canopy-chat/src/core/handlers/catchUp.js';
-import { makeHandleBuurtPost } from '../../../canopy-chat/src/core/handlers/buurtPost.js';
-import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peerRouter.js';
+} from '../../../basis/src/core/handlers/catchUp.js';
+import { makeHandleBuurtPost } from '../../../basis/src/core/handlers/buurtPost.js';
+import { makePeerRouter }      from '../../../basis/src/core/handlers/peerRouter.js';
 import { toParts, unwrapParts } from '@onderling/sync-engine-rn/react';
 
 const ASYNC_STORAGE_KEY = 'stoop:catch-up:lastSeenFrom';
@@ -161,7 +161,7 @@ export class LastSeenFromStore {
  *   - register the inbound `catch-up-request` handler (replies with
  *     buurt-post envelopes the receiver ingests via stoop.ingestRemotePost).
  *   - register the inbound `buurt-post` handler so catch-up REPLIES land
- *     cleanly via the same path canopy-chat-mobile uses.
+ *     cleanly via the same path basis-mobile uses.
  *   - fire `scheduleCatchUp` 1.5s after the NKN transport emits 'connect'.
  *
  * When `bundle.nkn` is missing (soft-dep skipped — no nknLib at boot),
@@ -240,8 +240,8 @@ export function wireCatchUp({
     peerRouterCb = makePeerRouter({ handlers, logger });
     nkn.on?.('peer-message', peerRouterCb);
 
-    // 1.5s settle window after 'connect' (matches canopy-chat-mobile —
-    // apps/canopy-chat-mobile/src/core/agentBundle.js).  Mirrors the
+    // 1.5s settle window after 'connect' (matches basis-mobile —
+    // apps/basis-mobile/src/core/agentBundle.js).  Mirrors the
     // HI-handshake settle window the web peer uses.
     onConnect = () => {
       setTimeout(() => {
