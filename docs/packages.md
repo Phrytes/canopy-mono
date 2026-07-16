@@ -32,6 +32,7 @@ documented flows actually run.
 - [Tutorial 1 — your first agent](tutorials/01-first-agent.md) (from journey J1)
 - [Tutorial 2 — one manifest, every surface](tutorials/02-slash-commands.md) (from journey J2)
 - [Tutorial 3 — a compatible tasks app](tutorials/03-compatible-tasks-app.md) (from journey J3)
+- [How-to guides](how-to/) — task-focused, after the tutorials: relay connections, pod persistence, redaction, safe logging
 - [Building compatible agents](building-compatible-agents.md) — the wire-level route (no SDK required)
 - [Architecture](architecture.md) — how the pieces fit
 
