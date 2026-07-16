@@ -20,7 +20,8 @@
     "test:deps": "vitest run scripts/lint-dep-boundaries.test.mjs",
     "changeset": "npx @changesets/cli",
     "version-packages": "npx @changesets/cli version",
-    "release": "pnpm -r publish --access public"
+    "release": "pnpm -r publish --access public",
+    "readme-fitness": "node scripts/readme-fitness.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "^2.27.10",

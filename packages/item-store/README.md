@@ -29,9 +29,9 @@ Within the monorepo:
 ### H2-shape (household items — single role, no skills)
 
 ```js
-import { ItemStore, InMemoryBackend } from '@onderling/item-store';
+import { ItemStore, memoryDataSource } from '@onderling/item-store';
 
-const store = new ItemStore({ backend: new InMemoryBackend() });
+const store = new ItemStore({ dataSource: memoryDataSource(), rootContainer: 'mem://app/items/' });
 
 // Add (bulk supported)
 const items = await store.addItems(
@@ -61,7 +61,7 @@ const log = await store.auditLog({ itemId: items[0].id });
 ### H4-shape (tasks — DAG deps, skills, claim flow, role policy)
 
 ```js
-import { ItemStore, InMemoryBackend, PermissionDeniedError } from '@onderling/item-store';
+import { ItemStore, memoryDataSource, PermissionDeniedError } from '@onderling/item-store';
 
 // Standard 5-role permission table (simplified)
 const policy = {
@@ -78,8 +78,9 @@ const policy = {
 };
 
 const store = new ItemStore({
-  backend:    new InMemoryBackend(),
-  rolePolicy: policy,
+  dataSource:    memoryDataSource(),
+  rootContainer: 'mem://app/items/',
+  rolePolicy:    policy,
 });
 
 // Task with H4-extension fields

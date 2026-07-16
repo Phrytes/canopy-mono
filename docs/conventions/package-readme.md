@@ -40,3 +40,15 @@ lazy-imported native libs, coarse-only vocabularies), not just the happy path.
 
 **R12 — No repo-internal jargon** without a one-line gloss (manifest, skill, circle are fine
 when introduced; internal codenames/objective letters are not).
+
+## How this is enforced
+
+Two verification layers, both runnable locally:
+
+1. `npm run readme-fitness` — extracts every fenced `js` block from the wave-1 package READMEs,
+   `docs/packages.md`, and `docs/tutorials/*`, and asserts every `import { X } from '@onderling/…'`
+   symbol actually exists on the real exported surface (resolved through each package's own
+   `exports` map — the same resolution a consumer gets). Drift fails the script.
+2. `apps/sdk-journeys/` (`npm test` there) — executable consumer journeys; the documented flows
+   must actually run. Tutorial and README examples are drawn from journey code, so the examples
+   are tested by construction.
