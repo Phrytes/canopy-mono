@@ -14,7 +14,7 @@ import { InternalBus } from '@onderling/core';
 // Single sanctioned import point into feedback (F1 boundary — the package `./public` barrel;
 // relative until the F3 physical carve makes it a published-package specifier).
 import {
-  InternalBusBridge, connectFeedbackParticipant, CanopyChatBot, InMemoryCentralPod,
+  InternalBusBridge, connectFeedbackParticipant, BasisBot, InMemoryCentralPod,
   validateProjectConfig, exampleProjectConfig, applyLlmRoute, assertCleanRouteSafe,
 } from 'onderling-feedback/public';
 // Privacy-first logging (web ≡ mobile). PII-safe by construction — we log event CODES + scalar counts here,
@@ -473,7 +473,7 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
     // central pod files + verifies under the same value (never a webid / device id). Falls back to the
     // default cc:<chatId> when no signer is wired (unsigned/legacy example flow).
     const participantFor = idFor ? (chatId) => idFor(chatId)?.publicKey || `cc:${chatId}` : undefined;
-    const b = new CanopyChatBot({ bridge, pod: resolved, centralPod: resolvedCentral ?? null, controlStore: controlStore ?? null, config: cfg, identityFor: idFor, participantFor });
+    const b = new BasisBot({ bridge, pod: resolved, centralPod: resolvedCentral ?? null, controlStore: controlStore ?? null, config: cfg, identityFor: idFor, participantFor });
     await b.start();
     return b;
   })());
