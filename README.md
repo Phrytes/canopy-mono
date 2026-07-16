@@ -111,10 +111,13 @@ Layering is a project invariant: apps compose substrates, substrates compose the
 
 ## Platform support
 
-V1 targets **Android + Web**; iOS is explicitly out of scope (background/push/P2P restrictions —
-locked 2026-05-08). **Expo 52 is the ceiling** (React Native 0.76.9, React 18.3.1) — do not bump
-without approval; the native bring-up traps are calibrated against this matrix
-([`VERSION-MATRIX.md`](packages/react-native/docs/VERSION-MATRIX.md)).
+Basis runs on **Android and the web** today. **iOS is on the roadmap**: Apple restricts background
+networking, so a good iOS experience needs an always-on message holder and a reliable notification
+path — infrastructure the companion-node work provides, and the same model apps like Signal use.
+
+The mobile toolchain is pinned to **Expo 52** (React Native 0.76.9, React 18.3.1); newer versions
+break the calibrated native setup, so check
+[`VERSION-MATRIX.md`](packages/react-native/docs/VERSION-MATRIX.md) before changing it.
 
 ## Running things
 

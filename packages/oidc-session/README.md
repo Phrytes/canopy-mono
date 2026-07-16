@@ -159,7 +159,7 @@ capture the inventory, the substrate design, and the phase plan.
   React Native `<IssuerPicker>` (`@onderling/oidc-session-rn/picker`)
   + adoption in all 5 apps.
 - **52.15.6 / 52.15.7 / 52.15.8 shipped 2026-05-14** — terminology
-  contract locked in
+  contract documented in
   [`localisation.md`](../../docs/conventions/localisation.md);
   audit script at `scripts/audit-locales.mjs`.
 
