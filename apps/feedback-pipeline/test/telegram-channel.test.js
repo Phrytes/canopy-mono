@@ -155,3 +155,53 @@ test('two chats stay isolated (separate pseudonyms + sessions)', async () => {
   assert.deepEqual([...participants].sort(), ['tg:100', 'tg:200']);
   await mock.close();
 });
+
+test('privacy fixes + Option C: HMAC pseudonym, no raw to central, edited flag, raw kept in the bot own pod', async () => {
+  const mock = await startMockLlm();
+  process.env.FP_LLM_BASEURL = mock.url;
+  const central = new InMemoryCentralPod();
+  const ownPod  = new InMemoryCentralPod();   // Option C — the bot's own pod for participants' raw records
+  const bridge = new FakeBridge();
+  // pseudonymSecret ⇒ the bot HMACs the chatId instead of storing tg:<id>
+  const bot = new TelegramFeedbackBot({ bridge, pod: central, ownPod, config: config(), pseudonymSecret: 'test-secret' });
+  await bot.start();
+
+  // an EDITED feedback message (as if the participant edited it in the TG client)
+  await bridge.emit({ chatId: '42', messageId: '1', text: 'De speeltuin in het park is stuk.', edited: true });
+  await bridge.emit({ chatId: '42', messageId: '2', text: '/klaar' });
+  await bridge.emit({ chatId: '42', messageId: '3', text: 'fp:consent:all' });
+
+  const [c] = central.list();
+  // Fix 1 — a keyed HMAC pseudonym, never the reversible tg:<chatId>
+  assert.match(c.participant, /^p-[0-9a-f]{16}$/, 'participant is an HMAC pseudonym');
+  assert.ok(!c.participant.includes('42'), 'raw chatId is not in the pseudonym');
+  // Fix 2 — raw never reaches the CENTRAL pod
+  assert.equal(c.contribution.raw, undefined, 'raw is not stored on the central pod');
+  // Fix 3 — the participant's edit is flagged on the contribution
+  assert.equal(c.contribution.edited, true, 'edited input is flagged');
+  // Option C — the bot's OWN pod holds the participant's record (same pseudonym)
+  const own = ownPod.list();
+  assert.equal(own.length, 1, 'own pod holds the participant record');
+  assert.equal(own[0].participant, c.participant, 'own record is under the same pseudonym');
+  await mock.close();
+});
+
+test('/bekijk after an edit preserves the edit (re-review no longer re-curates from raw)', async () => {
+  const mock = await startMockLlm();
+  process.env.FP_LLM_BASEURL = mock.url;
+  const central = new InMemoryCentralPod();
+  const bridge = new FakeBridge();
+  const bot = new TelegramFeedbackBot({ bridge, pod: central, config: config(), pseudonymSecret: 's' });
+  await bot.start();
+
+  await bridge.emit({ chatId: '9', messageId: '1', text: 'Hii' });
+  await bridge.emit({ chatId: '9', messageId: '2', text: '/bekijk' });                              // review → p1
+  await bridge.emit({ chatId: '9', messageId: '3', text: 'fp:edit:p1:De speeltuin is stuk' });      // inline edit of p1
+  await bridge.emit({ chatId: '9', messageId: '4', text: '/bekijk' });                              // re-review — must NOT revert
+  await bridge.emit({ chatId: '9', messageId: '5', text: 'fp:consent:all' });
+
+  const [c] = central.list();
+  assert.equal(c.contribution.text, 'De speeltuin is stuk', 'the edit survived the re-review');
+  assert.equal(c.contribution.edited, true, 'edited flag set');
+  await mock.close();
+});
