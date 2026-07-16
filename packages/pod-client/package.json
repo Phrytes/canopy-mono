@@ -4,10 +4,10 @@
   "description": "High-level Solid pod-client for @onderling — read/write/list/patch with capability + OIDC auth",
   "type": "module",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/pod-client#readme",
+  "homepage": "https://github.com/Onderling/basis/tree/master/packages/pod-client#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "url": "git+https://github.com/Onderling/basis.git",
     "directory": "packages/pod-client"
   },
   "publishConfig": {

@@ -4,10 +4,10 @@
   "description": "Per-app declarative manifest + pure projectors (validateManifest, paramsToJsonSchema, renderChat, renderSlash). The bundle-declaration format feeding the §0 destination substrates (@onderling/interface-registry, @onderling/protocol) and shipping the chat/slash surface those substrates don't cover. Phase: SP-0 (greenfield).",
   "type": "module",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/app-manifest#readme",
+  "homepage": "https://github.com/Onderling/basis/tree/master/packages/app-manifest#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "url": "git+https://github.com/Onderling/basis.git",
     "directory": "packages/app-manifest"
   },
   "publishConfig": {

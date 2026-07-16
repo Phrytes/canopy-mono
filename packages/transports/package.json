@@ -4,10 +4,10 @@
   "description": "Concrete network transports (NknTransport, MqttTransport, RelayTransport, RendezvousTransport) extracted out of @onderling/core. Each extends the core Transport base and lazy-imports its native lib (nkn-sdk / mqtt / ws / WebRTC), so the kernel stays free of concrete-adapter dependencies (de-fats packages/core; guarded by core/test/layering.enforcement.test.js).",
   "type": "module",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/transports#readme",
+  "homepage": "https://github.com/Onderling/basis/tree/master/packages/transports#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "url": "git+https://github.com/Onderling/basis.git",
     "directory": "packages/transports"
   },
   "publishConfig": {

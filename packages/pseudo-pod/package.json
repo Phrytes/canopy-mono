@@ -4,10 +4,10 @@
   "description": "Solid-shaped local store with three operating modes (standalone, replication-ring, cache — V0 ships the first two). Substrate-layer companion to @onderling/core's fetch-resource skill. Standardisation Phase 52.2.",
   "type": "module",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/pseudo-pod#readme",
+  "homepage": "https://github.com/Onderling/basis/tree/master/packages/pseudo-pod#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Phrytes/canopy-mono.git",
+    "url": "git+https://github.com/Onderling/basis.git",
     "directory": "packages/pseudo-pod"
   },
   "publishConfig": {
