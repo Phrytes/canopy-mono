@@ -15,7 +15,7 @@
  *   - In direct-handler tests it's whatever the test passes (typically
  *     a WebID for parity).
  *
- * `resolveMember` lives in `@canopy/identity-resolver`'s
+ * `resolveMember` lives in `@onderling/identity-resolver`'s
  * `buildIdentitySkills` and is registered alongside these by Agent.js.
  *
  * Stoop V1 Phase 3 (2026-05-06) additions:
@@ -37,7 +37,7 @@
  *
  * B★ B3 (2026-07-05) — the op-having skills that fit the pure-core shape are
  * now expressed as module-level `coreFn(scope, args, ctx)` functions wrapped by
- * `wireSkill(coreFn, op, { storeFor })` from `@canopy/sdk` (mirrors tasks-v0's
+ * `wireSkill(coreFn, op, { storeFor })` from `@onderling/sdk` (mirrors tasks-v0's
  * B2).  `wireSkill` decodes `ctx.parts` → `args` (the same DataPart-unwrap the
  * hand-written `dataArgs(parts)` did), validates `args` against the manifest
  * op's declared params, resolves the per-bundle `scope` via `storeFor(ctx)`,
@@ -57,13 +57,13 @@
  * (nothing for `wireSkill` to derive from).
  */
 
-import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@canopy/core';
-import { wireSkill } from '@canopy/sdk';
+import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@onderling/core';
+import { wireSkill } from '@onderling/sdk';
 import { stoopManifest } from '../../manifest.js';
 import nacl from 'tweetnacl';
-import { resolve as resolveMember } from '@canopy/identity-resolver';
-import { validateCanonical } from '@canopy/item-types';
-import { treeOf, createCrossPodRefResolver } from '@canopy/item-store';
+import { resolve as resolveMember } from '@onderling/identity-resolver';
+import { validateCanonical } from '@onderling/item-types';
+import { treeOf, createCrossPodRefResolver } from '@onderling/item-store';
 import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapter.js';
 
 import { validateHandle } from '../lib/handle.js';
@@ -267,7 +267,7 @@ async function _findLatestActiveCode(store, groupId) {
  * Phase 11 (2026-05-06): stableId wins; webid is back-compat.
  *
  * @param {{peerStableId?: string, peerWebid?: string}} args
- * @param {import('@canopy/identity-resolver').MemberMap} [members]
+ * @param {import('@onderling/identity-resolver').MemberMap} [members]
  * @returns {Promise<string | null>}
  */
 async function _resolveMuteKey(args, members) {
@@ -295,7 +295,7 @@ async function _resolveMuteKey(args, members) {
  * **Substrate candidate (rule of two — first consumer):** when a
  * second app renders item-store items with handle/displayName-on-reveal
  * UX, promote `hydrateItem` / `hydrateItems` into
- * `@canopy/identity-resolver` itself (additive — likely a new
+ * `@onderling/identity-resolver` itself (additive — likely a new
  * `hydrate(items, { memberMap, reveals, groupId })` helper).
  * Tracked in `Project Files/Substrates/substrate-candidates.md`.
  */
@@ -339,8 +339,8 @@ async function hydrateItems(items, ctx) {
 
 /**
  * @param {object} args
- * @param {import('@canopy/item-store').ItemStore} args.store
- * @param {import('@canopy/skill-match').SkillMatch} args.skillMatch
+ * @param {import('@onderling/item-store').ItemStore} args.store
+ * @param {import('@onderling/skill-match').SkillMatch} args.skillMatch
  * @param {object} [args.notifier]                            optional Notifier (lend reminders)
  * @param {object} [args.reveals]                             optional Reveals (author hydration)
  * @param {object} [args.members]                             optional MemberMap (author hydration)
@@ -776,7 +776,7 @@ export function buildSkills({
      * Phase 52.7.2 cut-over (2026-05-14): API input `intent` carries
      * the Stoop UI vocab ('ask' | 'offer' | 'lend' | 'request' |
      * 'report' | ...). Items are stored with the canonical
-     * `@canopy/item-types` shape — `type` + `kind` — via the
+     * `@onderling/item-types` shape — `type` + `kind` — via the
      * translator in `lib/canonicalAdapter.js`. The optional `kind`
      * arg lets a future UI sub-choice ("Lenen / Iets klein om te
      * delen / Iets gratis krijgen") pin the canonical kind directly.
@@ -1266,7 +1266,7 @@ export function buildSkills({
     // `setMemberRole`, `requestProofRefresh`) is generic to any
     // closed-group SDK app.  When the second app (likely `apps/household`,
     // `apps/archive`, or `apps/tasks-v0`) needs these, extract into
-    // `@canopy/group-mod`.  Tracked in
+    // `@onderling/group-mod`.  Tracked in
     // `Project Files/Substrates/substrate-candidates.md`.
 
     /**

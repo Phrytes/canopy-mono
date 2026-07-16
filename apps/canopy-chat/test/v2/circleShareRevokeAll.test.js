@@ -10,10 +10,10 @@
  * nothing. That behaviour is asserted here, not hidden.
  */
 import { describe, it, expect } from 'vitest';
-import { makeCircleShareEnforcement } from '@canopy/item-store';
-import { createCanonicalShare, generateKeypair, unwrapGroupKey } from '@canopy/pod-client';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+import { makeCircleShareEnforcement } from '@onderling/item-store';
+import { createCanonicalShare, generateKeypair, unwrapGroupKey } from '@onderling/pod-client';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import {
   shareItemAcrossCircles, listSharedResolved, listOutboundShares, revokeAllForMember,
 } from '../../src/v2/circleShare.js';

@@ -16,7 +16,7 @@
  * component renders `media ? <📎/> : null`, so composition===null ⇒ affordance hidden.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { generateGroupKey, makeGroupSealer, makeGroupOpener } from '@canopy/pod-client/sealing';
+import { generateGroupKey, makeGroupSealer, makeGroupOpener } from '@onderling/pod-client/sealing';
 import { openThumbnail } from '../../../packages/blob-gateway/src/index.js';
 import { createCircleMediaComposition, makeDevMediaBucket } from '../../canopy-chat/src/v2/circleMediaGateway.js';
 import { scopeStoopCallSkill } from '../../canopy-chat/src/v2/circleStoopScope.js';

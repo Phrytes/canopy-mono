@@ -15,8 +15,8 @@ Sources: two parallel Explore passes + a transport deep-dive. File:line evidence
 | household (standalone app) | NONE | latent (`HouseholdPod`/`HybridPodStore`, not wired into the host) | InMemoryStore or HybridPodStore | NONE |
 | **tasks-v0** | **YES** — `substrateMirror.js` (add + updates + remove) | YES (storage policy → SolidPodSource) | `ItemStore` over `CachingDataSource` (write-through) | `notify-envelope` + `pseudo-pod`; stale-peer auto-heal |
 | **stoop** | **YES** — `substrateMirror.js` (**add only**) | YES (storage policy + sealed circle pod) | `ItemStore` over `CachingDataSource` | `notify-envelope` + `pseudo-pod`; `ingestRemotePost`/`ingestKringMessage`/`backfillFrom` |
-| **folio** | N/A (file↔pod model, not item-mirror) | YES (pod-native by design; `@canopy/sync-engine`) | local files ↔ pod | SyncEngine diff/push-pull (not envelope fan-out) |
-| **calendar** | **NONE** for events | partial (only the `.ics` FEED write-throughs; events don't) | `@canopy/pseudo-pod` directly (in-memory default) | none for events; RSVP/invite via injected `inviteAttendee`/`publishEvent` |
+| **folio** | N/A (file↔pod model, not item-mirror) | YES (pod-native by design; `@onderling/sync-engine`) | local files ↔ pod | SyncEngine diff/push-pull (not envelope fan-out) |
+| **calendar** | **NONE** for events | partial (only the `.ics` FEED write-throughs; events don't) | `@onderling/pseudo-pod` directly (in-memory default) | none for events; RSVP/invite via injected `inviteAttendee`/`publishEvent` |
 
 **Key gaps:**
 - **household is the outlier with ZERO replication** — no `substrateMirror`, no `notify-envelope`, no `pseudo-pod`,

@@ -21,7 +21,7 @@ import {
   ExpoPushSender,
   PushTokenRegistry,
   getLanIp,
-} from '@canopy/relay';
+} from '@onderling/relay';
 
 const port = Number(process.argv[2]) || 8787;
 const accessToken = process.env.EXPO_ACCESS_TOKEN || undefined;

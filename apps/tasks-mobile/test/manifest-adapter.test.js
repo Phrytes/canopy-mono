@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 
-import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
+import { tasksManifest } from '@onderling-app/tasks-v0/manifest';
 
 import { createNavModelAdapter } from '../src/manifest-adapter.js';
 

@@ -1,6 +1,6 @@
 // Capability exposure (Objective S, v0) — a THIN projection of a DataConnector's `query` (and,
 // optionally, `mutate`) into the `{ op, noun, handler }` shape the capability model consumes
-// (the generic-handler / `dispatchCapability` seam in `@canopy/app-manifest` + `@canopy/item-store`,
+// (the generic-handler / `dispatchCapability` seam in `@onderling/app-manifest` + `@onderling/item-store`,
 // where a handler is `(noun, args, ctx) => result`).
 //
 // This lets an app-function DECLARE a noun backed by an external source and have "query it" become

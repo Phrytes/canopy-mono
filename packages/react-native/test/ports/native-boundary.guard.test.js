@@ -110,7 +110,7 @@ describe('native-boundary fitness guard (packages/react-native/src)', () => {
       violations,
       violations.length
         ? `Native code leaked into shared RN modules. Move it behind a port ` +
-          `(@canopy/react-native/ports) or, if this is a legitimate new ` +
+          `(@onderling/react-native/ports) or, if this is a legitimate new ` +
           `capability wrapper, add it to the ALLOW list in this test:\n  ` +
           violations.join('\n  ')
         : undefined,

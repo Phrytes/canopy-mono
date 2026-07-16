@@ -20,12 +20,12 @@
  */
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { loadLocale } from '@canopy/react-native/localisation';
+import { loadLocale } from '@onderling/react-native/localisation';
 
-import enShared  from '@canopy-app/tasks-v0/locales/shared/en';
-import nlShared  from '@canopy-app/tasks-v0/locales/shared/nl';
-import enDesktop from '@canopy-app/tasks-v0/locales/en';
-import nlDesktop from '@canopy-app/tasks-v0/locales/nl';
+import enShared  from '@onderling-app/tasks-v0/locales/shared/en';
+import nlShared  from '@onderling-app/tasks-v0/locales/shared/nl';
+import enDesktop from '@onderling-app/tasks-v0/locales/en';
+import nlDesktop from '@onderling-app/tasks-v0/locales/nl';
 import enMobile  from '../locales/en.json';
 import nlMobile  from '../locales/nl.json';
 

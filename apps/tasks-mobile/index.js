@@ -2,7 +2,7 @@
 // Blob.arrayBuffer / .text, Blob constructor for ArrayBuffer parts) live in
 // the substrate package — same as stoop-mobile + folio-mobile. This MUST be
 // the first import here (Hermes resolves crypto at module-load time).
-import '@canopy/react-native/platform/polyfills';
+import '@onderling/react-native/platform/polyfills';
 
 import 'expo-dev-client';
 import { registerRootComponent } from 'expo';
@@ -10,7 +10,7 @@ import { registerRootComponent } from 'expo';
 import * as TaskManager from 'expo-task-manager';
 import {
   defineBackgroundTask, bgRunOnce,
-} from '@canopy/sync-engine-rn';
+} from '@onderling/sync-engine-rn';
 
 import App from './App.js';
 

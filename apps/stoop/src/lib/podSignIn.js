@@ -23,12 +23,12 @@
  * created on first sign-in attempt; reused across attempts).
  *
  * Phase 52.15.3 (2026-05-14) — `OidcSession.js` retired in favour
- * of `@canopy/oidc-session.createSolidAuthNode`. The `attachInner`
+ * of `@onderling/oidc-session.createSolidAuthNode`. The `attachInner`
  * orchestration stays app-local — it composes existing primitives.
  */
 
-import { SolidPodSource } from '@canopy/pod-client';
-import { createSolidAuthNode } from '@canopy/oidc-session';
+import { SolidPodSource } from '@onderling/pod-client';
+import { createSolidAuthNode } from '@onderling/oidc-session';
 import { attachPodToBundle, detachPodFromBundle } from './attachPodToBundle.js';
 
 /** Lazily build a vault for OIDC token storage.  In V1.5 we can

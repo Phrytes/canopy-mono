@@ -1,4 +1,4 @@
-# @canopy/webid-discovery
+# @onderling/webid-discovery
 
 > **Layer: substrate.** WebID-profile pointer-walk + resolution.
 > Authored 2026-05-11 as part of the standardisation P1 work (Phase
@@ -27,8 +27,8 @@ This substrate provides:
 - **`WebIdCache`** — in-memory cache of pointers + resolved
   resources, with optional heartbeat refresh + event emission.
 
-The substrate has **no runtime dependency on `@canopy/core`** or
-on `@canopy/pod-client`. Callers wire in their own `fetch`
+The substrate has **no runtime dependency on `@onderling/core`** or
+on `@onderling/pod-client`. Callers wire in their own `fetch`
 (authenticated or anonymous) and `read` (pseudo-pod, pod-client,
 or a test shim).
 
@@ -40,7 +40,7 @@ import {
   resolvePointers,
   WebIdCache,
   WEBID_PREDICATES,
-} from '@canopy/webid-discovery';
+} from '@onderling/webid-discovery';
 ```
 
 ### `discoverPointers(webidUri, { fetch })`
@@ -105,7 +105,7 @@ on their own.
 ## Where this substrate sits
 
 ```
-                          @canopy/core
+                          @onderling/core
                                 │
                                 ▼
                   ┌─────────────────────────────┐
@@ -114,7 +114,7 @@ on their own.
                                 │                │
                                 ▼                ▼
                   ┌───────────────────────┐  ┌────────────────┐
-                  │ @canopy/webid-      │  │ @canopy/     │
+                  │ @onderling/webid-      │  │ @onderling/     │
                   │   discovery (this)    │  │   pseudo-pod   │
                   │ - discoverPointers    │  │ (P1 substrate, │
                   │ - resolvePointers     │  │  forthcoming)  │
@@ -159,9 +159,9 @@ npm test
 
 ## See also
 
-- [`@canopy/oidc-session`](../oidc-session/) — typically supplies
+- [`@onderling/oidc-session`](../oidc-session/) — typically supplies
   `fetch` for authenticated profile reads.
-- [`@canopy/pseudo-pod`](../pseudo-pod/) (forthcoming, P1) —
+- [`@onderling/pseudo-pod`](../pseudo-pod/) (forthcoming, P1) —
   typically supplies `read` for resolving pointers.
 - `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   §4b — design context.

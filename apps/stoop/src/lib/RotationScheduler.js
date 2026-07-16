@@ -19,7 +19,7 @@
  * residual correlation risk as ⚠ partially mitigated).
  */
 
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_INTERVAL_MS  = 30 * ONE_DAY_MS;

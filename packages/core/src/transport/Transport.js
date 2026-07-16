@@ -1,11 +1,11 @@
 /**
  * ┌─ PORT ──────────────────────────────────────────────────────────────────────┐
  * │ `Transport` is the interface a third-party adapter implements to stay        │
- * │ compatible with the @canopy SDK. "Compatible" = *satisfies this port*:        │
+ * │ compatible with the @onderling SDK. "Compatible" = *satisfies this port*:        │
  * │ extend this base class, implement `_put(to, envelope)`, and the inherited     │
  * │ primitives (send/request/ack/hello + reply-correlation + auto-ACK) work       │
- * │ unchanged. Reference adapters: `InternalTransport` (in @canopy/core) and       │
- * │ Nkn/Mqtt/Relay/Rendezvous (in @canopy/transports). Prove conformance with     │
+ * │ unchanged. Reference adapters: `InternalTransport` (in @onderling/core) and       │
+ * │ Nkn/Mqtt/Relay/Rendezvous (in @onderling/transports). Prove conformance with     │
  * │ `assertTransportConformance()` (test/conformance/transportConformance.js).    │
  * └──────────────────────────────────────────────────────────────────────────────┘
  *
@@ -213,7 +213,7 @@ export class Transport extends Emitter {
    * Each recipient receives the envelope as a OW message tagged with
    * topic `envelope:<kind>` (so receivers can subscribe by kind).
    * The transport doesn't know what `kind` means; that's the
-   * substrate's domain (typically `@canopy/notify-envelope`).
+   * substrate's domain (typically `@onderling/notify-envelope`).
    *
    * @param {object} opts
    * @param {string} opts.kind        — the envelope kind (item-types name).

@@ -1,12 +1,12 @@
 /**
  * groupRegistry — Stoop's binding of the lifted bundle-registry helper.
  *
- * Lifted to `@canopy/react-native/storage` 2026-05-09 (Phase 41.0.b
+ * Lifted to `@onderling/react-native/storage` 2026-05-09 (Phase 41.0.b
  * A5). Tasks-mobile uses the same factory with
  * `{keyNamespace: 'tasks:circles', idField: 'circleId'}` in Phase 41.7.
  */
 
-import { createBundleRegistry } from '@canopy/react-native/storage';
+import { createBundleRegistry } from '@onderling/react-native/storage';
 
 function _registry(storage) {
   return createBundleRegistry({

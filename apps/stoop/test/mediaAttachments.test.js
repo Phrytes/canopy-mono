@@ -9,7 +9,7 @@
  * pointer. These tests keep the ORIGINAL intent — attach → store → wire → open
  * works, and no plaintext leaks — but assert the SEALED shape.)
  *
- * Guards (against the REAL `@canopy/item-types` schema + `@canopy/blob-gateway`):
+ * Guards (against the REAL `@onderling/item-types` schema + `@onderling/blob-gateway`):
  *   - `validateInboundAttachment` ACCEPTS the sealed pointer and REFUSES the old
  *     inline `dataB64` / `data:image` thumbnail (the removed plaintext path).
  *   - `persistInboundAttachment` returns a schema-valid `media` item that carries
@@ -22,11 +22,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { validate } from '@canopy/item-types';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { openBlob, openThumbnail } from '@canopy/blob-gateway';
-import { isSealed } from '@canopy/pod-client/sealing';
+import { validate } from '@onderling/item-types';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { openBlob, openThumbnail } from '@onderling/blob-gateway';
+import { isSealed } from '@onderling/pod-client/sealing';
 import { createNeighborhoodAgent } from '../src/index.js';
 import {
   persistInboundAttachment,

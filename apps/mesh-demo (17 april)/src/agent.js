@@ -16,18 +16,18 @@
  * kept here rather than inside Agent._dispatch, so the app controls which peer
  * records get written and with what extra fields (e.g. knownTransports).
  */
-import { Agent, AgentConfig, AgentIdentity, PeerGraph } from '@canopy/core';
+import { Agent, AgentConfig, AgentIdentity, PeerGraph } from '@onderling/core';
 import {
   KeychainVault,
   MdnsTransport,
   BleTransport,
   AsyncStorageAdapter,
-} from '@canopy/react-native';
+} from '@onderling/react-native';
 
 /**
  * Build and start the agent.  Call once at app startup.
  *
- * @returns {Promise<import('@canopy/core').Agent>}
+ * @returns {Promise<import('@onderling/core').Agent>}
  */
 export async function createAgent() {
   // ── Identity (persisted in OS keychain across app restarts) ────────────────

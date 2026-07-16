@@ -1,4 +1,4 @@
-# @canopy-app/folio-mobile
+# @onderling-app/folio-mobile
 
 > **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** `pod-client.PodClient` + `core.Bootstrap` — the canonical "no substrate fits yet" example called out in the layering doc.
 >
@@ -11,7 +11,7 @@
 > deleteLocally) via an RN-side equivalent of `createOpBinding`.
 
 Folio.C2 — React Native mobile client for [Folio](../folio/), the
-Solid-pod-backed markdown notes app built on the @canopy platform.
+Solid-pod-backed markdown notes app built on the @onderling platform.
 
 This is a separate workspace from `apps/mesh-demo` (per Q-C1.3); the two
 apps share `packages/*` but maintain independent Expo configurations.
@@ -23,18 +23,18 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync (RN side: `expo-file-system` + RN watcher adapter). Pulled in via the `@canopy-app/folio` app library. | Folio shipped this substrate; mobile reuses the engine + RN adapters via Folio's app-side service factory. |
+| `@onderling/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync (RN side: `expo-file-system` + RN watcher adapter). Pulled in via the `@onderling-app/folio` app library. | Folio shipped this substrate; mobile reuses the engine + RN adapters via Folio's app-side service factory. |
 
-The `@canopy-app/folio` workspace is **not** a substrate — it's a sibling app that exports its `SyncEngine` subclass + RN service factory for Folio Mobile to consume. This is the Folio C1 pluggable-engine pattern.
+The `@onderling-app/folio` workspace is **not** a substrate — it's a sibling app that exports its `SyncEngine` subclass + RN service factory for Folio Mobile to consume. This is the Folio C1 pluggable-engine pattern.
 
 ## Direct kernel use
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/pod-client` | `PodClient`, `SolidOidcAuth` | Solid pod read/write/list + OIDC auth flow (mobile-side, `expo-auth-session`). | Folio is one of the canonical PodClient consumers; no substrate currently wraps "construct an authenticated PodClient from an OIDC flow on RN." Layering doc lists this as the canonical "no substrate fits yet" example. |
-| `@canopy/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is kernel-foundational; substrates compose it, they don't wrap it. |
-| `@canopy/react-native` | `platform/polyfills` (entry-point side-effect import) | RN bring-up: `react-native-get-random-values` + `nacl-util` polyfills before any crypto runs. | Platform layer — RN-specific bring-up lives in `@canopy/react-native` by design; no substrate wraps it. |
-| `@canopy/react-native` | `pseudo-pod-adapter` (optional, feature-flagged) | Dynamic import in `ServiceContext.js:284`, gated on `FOLIO_PSEUDO_POD` / `EXPO_PUBLIC_FOLIO_PSEUDO_POD` env. Phase 3 OQ-6 optional caching layer: write-through queue + read cache backed by RN persistent store. | RN-specific concrete for the pseudo-pod abstraction; feature-flagged because Phase 3 is still validating the cache-mode default. Side-loaded so the bundle doesn't pull the cache layer when the flag is off. |
+| `@onderling/pod-client` | `PodClient`, `SolidOidcAuth` | Solid pod read/write/list + OIDC auth flow (mobile-side, `expo-auth-session`). | Folio is one of the canonical PodClient consumers; no substrate currently wraps "construct an authenticated PodClient from an OIDC flow on RN." Layering doc lists this as the canonical "no substrate fits yet" example. |
+| `@onderling/core` | `PodCapabilityToken` | Share screen — accept incoming capability tokens from another agent. | Capability-token primitive is kernel-foundational; substrates compose it, they don't wrap it. |
+| `@onderling/react-native` | `platform/polyfills` (entry-point side-effect import) | RN bring-up: `react-native-get-random-values` + `nacl-util` polyfills before any crypto runs. | Platform layer — RN-specific bring-up lives in `@onderling/react-native` by design; no substrate wraps it. |
+| `@onderling/react-native` | `pseudo-pod-adapter` (optional, feature-flagged) | Dynamic import in `ServiceContext.js:284`, gated on `FOLIO_PSEUDO_POD` / `EXPO_PUBLIC_FOLIO_PSEUDO_POD` env. Phase 3 OQ-6 optional caching layer: write-through queue + read cache backed by RN persistent store. | RN-specific concrete for the pseudo-pod abstraction; feature-flagged because Phase 3 is still validating the cache-mode default. Side-loaded so the bundle doesn't pull the cache layer when the flag is off. |
 
 ## Architecture: ONE `core.Agent` (when mesh transports are wired)
 
@@ -56,7 +56,7 @@ Folio-mobile's substrate adoption tracks alongside Folio desktop:
 
 | Phase | Surface | Adopted via |
 |---|---|---|
-| 52.15 | Multi-issuer auth substrate (RN flavour) | `src/auth/folioAuthHook.js` → `useOidcSignIn` from `@canopy/oidc-session-rn/hook` |
+| 52.15 | Multi-issuer auth substrate (RN flavour) | `src/auth/folioAuthHook.js` → `useOidcSignIn` from `@onderling/oidc-session-rn/hook` |
 | 52.15.5 | `<IssuerPicker>` on SignInScreen | `src/screens/SignInScreen.js` |
 | 52.16 | ACP/WAC sharing v2 (`client.sharing.*`) | `src/screens/ShareScreen.js` uses `podClient.sharing.grant({...})` with cap-token fallback |
 
@@ -152,12 +152,12 @@ Refresh tokens go to `expo-secure-store` (iOS Keychain / Android
 Keystore).  See `src/auth/OidcSessionRN.js` for the storage keys.
 
 > **2026-05-15 — lift shipped.** The OIDC + Solid auth plumbing now
-> lives in `@canopy/oidc-session-rn`. Folio-mobile consumes it via
+> lives in `@onderling/oidc-session-rn`. Folio-mobile consumes it via
 > `src/auth/folioAuthHook.js` (which pre-binds `scheme: 'folio'` and
 > `clientName: 'Folio (mobile)'`) and `<IssuerPicker>` from
-> `@canopy/oidc-session-rn/picker`. The desktop counterpart is the
+> `@onderling/oidc-session-rn/picker`. The desktop counterpart is the
 > Phase 52.15 `createSolidAuthNode({vault, clientName})` factory in
-> `@canopy/oidc-session`; both shells route through the same
+> `@onderling/oidc-session`; both shells route through the same
 > substrate-side DCR cache + multi-issuer state machine. The local
 > `src/auth/{OidcSessionRN, folioAuth, dcr}.js` files remain as thin
 > Folio-flavour wrappers / test seams; the substance has moved.
@@ -283,7 +283,7 @@ Per CLAUDE.md "Decisions already made":
 - Expo 52 / React Native 0.76.9 / React 18.3.1 — match
   `apps/mesh-demo/package.json` exactly
 - `react-native-webrtc 124.0.7` — needed transitively by
-  `@canopy/react-native`'s WebRTC transport even when the mobile UI
+  `@onderling/react-native`'s WebRTC transport even when the mobile UI
   doesn't use it directly
 
 ## Hand-off pointers

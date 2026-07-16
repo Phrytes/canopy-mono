@@ -17,7 +17,7 @@ import { runCompositeDispatch } from '../src/dispatch.js';
 import { mergeManifests } from '../src/manifestMerge.js';
 import { resolveDispatch } from '../src/router.js';
 import { parseInput } from '../src/parser.js';
-import { validateManifest } from '@canopy/app-manifest';
+import { validateManifest } from '@onderling/app-manifest';
 
 // ── helpers ──────────────────────────────────────────────────────────
 

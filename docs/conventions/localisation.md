@@ -150,7 +150,7 @@ Substrates (`packages/<name>` that compose the kernel + adapters) must:
 - Optionally include a `defaultMessage` field in English for developer-debug logs only — never displayed to end-users without translation.
 - Document each error code in the substrate's README so app authors know what keys to provide translations for.
 
-The kernel + adapter packages (`@canopy/{core, transports, pod-client, vault, relay, react-native}`)
+The kernel + adapter packages (`@onderling/{core, transports, pod-client, vault, relay, react-native}`)
 follow the same rule: error codes, no user-facing strings.
 
 ## What's required in each app's README

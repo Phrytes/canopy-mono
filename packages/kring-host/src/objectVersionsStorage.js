@@ -1,16 +1,16 @@
 /**
  * kring-host — concrete `versions` adapters for the kring stores
- * (γ.2 / Phase 9; consolidated onto `@canopy/versioning` per
+ * (γ.2 / Phase 9; consolidated onto `@onderling/versioning` per
  * plans/PLAN-pod-versioning-history-recovery.md "Rewire kring").
  *
  * Each kring store accepts an optional `versions = { capture, list, restore }`
  * adapter that snapshots every save into per-circle history.  This module
- * composes the shared `createVersionStore` substrate (`@canopy/versioning`)
+ * composes the shared `createVersionStore` substrate (`@onderling/versioning`)
  * with a concrete StorageBackend (localStorage on web via
  * `localStorageBackend` below; AsyncStorage on mobile via the pseudo-pod
  * `createAsBackend` — see `apps/canopy-chat-mobile/src/core/
  * objectVersionsStorageRN.js`).  The former substrate,
- * `@canopy/sync-engine`'s `objectVersions.js`, is retired — one version
+ * `@onderling/sync-engine`'s `objectVersions.js`, is retired — one version
  * store now serves Folio-files, kring-objects, and pod-resources alike.
  *
  * Storage layout (v2 — one record per version, versionStore's native shape):
@@ -44,14 +44,14 @@
  *     appears in history (undoable).
  */
 
-import { createVersionStore } from '@canopy/versioning';
+import { createVersionStore } from '@onderling/versioning';
 
 /**
  * Pure-JS FNV-1a 32-bit hash → hex.  Content fingerprint for dedup ONLY
  * (not cryptographic).  Inlined to stay browser/RN-friendly — no
  * `node:crypto`, no async subtle-crypto requirement.  Collision risk is
  * fine for per-circle dedup of consecutive saves.
- * (Moved here from `@canopy/sync-engine/objectVersions` on its retirement.)
+ * (Moved here from `@onderling/sync-engine/objectVersions` on its retirement.)
  */
 export function fingerprintHex(s) {
   let h = 0x811c9dc5;
@@ -195,7 +195,7 @@ export function localStorageBackend(storage = globalThis.localStorage) {
  * Convenience composite — build a localStorage-backed versions adapter for
  * a single named store.  Web's `circleApp.js` calls this once per kring
  * store (policy / recipe / rules).  Signature unchanged across the
- * @canopy/versioning consolidation.
+ * @onderling/versioning consolidation.
  */
 export function localStorageObjectVersions(storeName, storage = globalThis.localStorage, retention) {
   return createObjectVersionsAdapter({

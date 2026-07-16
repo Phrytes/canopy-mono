@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "@canopy/chat-p2p",
+  "name": "@onderling/chat-p2p",
   "version": "0.1.0",
-  "description": "Peer-to-peer chat over agent.transport.sendOneWay. Lifted from apps/stoop/src/chat/wireChat.js 2026-05-08 (Tasks V1 = rule-of-two consumer). Distinct from @canopy/chat-agent (LLM-mediated chat).",
+  "description": "Peer-to-peer chat over agent.transport.sendOneWay. Lifted from apps/stoop/src/chat/wireChat.js 2026-05-08 (Tasks V1 = rule-of-two consumer). Distinct from @onderling/chat-agent (LLM-mediated chat).",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -13,20 +13,20 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@canopy/core": "^0.1.0",
-    "@canopy/identity-resolver": "^0.1.0",
-    "@canopy/item-store": "workspace:*"
+    "@onderling/core": "^0.1.0",
+    "@onderling/identity-resolver": "^0.1.0",
+    "@onderling/item-store": "workspace:*"
   },
   "peerDependenciesMeta": {
-    "@canopy/identity-resolver": { "optional": true },
-    "@canopy/item-store":        { "optional": true }
+    "@onderling/identity-resolver": { "optional": true },
+    "@onderling/item-store":        { "optional": true }
   },
   "dependencies": {
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/identity-resolver": "file:../identity-resolver",
+    "@onderling/core": "file:../core",
+    "@onderling/identity-resolver": "file:../identity-resolver",
     "vitest": "^2.1.9"
   }
 }

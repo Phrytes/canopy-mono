@@ -3,7 +3,7 @@
  *
  * Covers DESIGN §2.2 (P4 acceptance): "a bot contact's commands appear only in
  * that thread; invoking routes to the bot; removing the contact removes them."
- * Drives the real `@canopy/core` PeerGraph (its events are what the registry
+ * Drives the real `@onderling/core` PeerGraph (its events are what the registry
  * subscribes to) so the test exercises the actual discover→synth→route→remove
  * loop, not a fake graph.
  *
@@ -14,7 +14,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-import { PeerGraph } from '@canopy/core';
+import { PeerGraph } from '@onderling/core';
 
 import {
   createContactSkillRegistry,

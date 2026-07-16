@@ -16,7 +16,7 @@
  * back to last-received-wins so pre-metadata peers still ingest. See `causalMerge.js` for guarantees/limits.
  *
  * @param {object} args
- * @param {{subscribe:(opts:{kind:string,callback:Function})=>(()=>void)}} args.notifyEnvelope  @canopy/notify-envelope (injected)
+ * @param {{subscribe:(opts:{kind:string,callback:Function})=>(()=>void)}} args.notifyEnvelope  @onderling/notify-envelope (injected)
  * @param {{put:Function, delete:Function}} args.store  the CircleItemStore for this circle
  * @param {string} [args.kind='household-item']         add/update envelope kind
  * @param {string} [args.removed='household-item-removed']  removal envelope kind

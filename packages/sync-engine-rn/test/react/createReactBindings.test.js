@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { createReactBindings } from '../../src/react/createReactBindings.js';
 
-describe('@canopy/sync-engine-rn/react createReactBindings', () => {
+describe('@onderling/sync-engine-rn/react createReactBindings', () => {
   it('throws when useService is not a function', () => {
     expect(() => createReactBindings({})).toThrow(/useService hook required/);
     expect(() => createReactBindings({ useService: null })).toThrow(/useService hook required/);

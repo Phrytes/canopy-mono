@@ -34,7 +34,7 @@ const WEBDIR = join(HERE, '..', 'web');
 const REPO   = join(HERE, '..', '..', '..');
 
 // All files where stoop's runtime skills are declared via defineSkill.
-// Stoop composes its own skills + 3 from @canopy/identity-resolver
+// Stoop composes its own skills + 3 from @onderling/identity-resolver
 // (resolveMember, issueInvite, redeemInvite — via buildIdentitySkills
 // + buildOnboardingSkills).  Keep this list in sync when stoop
 // composes a new skill substrate.

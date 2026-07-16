@@ -8,7 +8,7 @@
  * ALWAYS contact-thread-scoped: its handler is a particular contact's bot,
  * reached over the transport, not a local atom. This module is the PURE,
  * testable core that turns a contact's *discovered* SkillCards (from
- * `@canopy/core` skillDiscovery / a2aDiscover — shape `{ id, description, tags }`)
+ * `@onderling/core` skillDiscovery / a2aDiscover — shape `{ id, description, tags }`)
  * into:
  *
  *   1. a `mergeManifests`-ready manifest (`skillCardsToManifest`), one op per
@@ -26,7 +26,7 @@
  * a LATER slice. This file only synthesises + routes.
  */
 
-import { validateManifest } from '@canopy/app-manifest';
+import { validateManifest } from '@onderling/app-manifest';
 
 /** The binding tag a remote (bot-exposed) skill op carries. */
 export const REMOTE_SKILL_BINDING = 'remote-skill@contact';
@@ -78,7 +78,7 @@ export function skillCardToOp(contactId, card) {
 
 /**
  * Turn a contact's discovered SkillCards into a single manifest that
- * `mergeManifests` can consume (it passes `@canopy/app-manifest`
+ * `mergeManifests` can consume (it passes `@onderling/app-manifest`
  * `validateManifest`). `itemTypes` is `[]` — remote skills declare no item
  * types of their own; the validator requires the field to be an array.
  *
@@ -131,7 +131,7 @@ export function contactSkillSources(contactId, skillCards) {
  *   - `resolvePeerUrl(contactId) -> string` maps the contact to its A2A base URL
  *     (the live wiring resolves this from the PeerGraph / contact record).
  *   - `sendA2ATask(peerUrl, skillId, args) -> Task|Promise` invokes the skill
- *     (the live wiring binds `@canopy/core` `sendA2ATask` with its `agent`
+ *     (the live wiring binds `@onderling/core` `sendA2ATask` with its `agent`
  *     already applied — `(agent, peerUrl, skillId, parts, opts)` → this 3-arg
  *     shape).
  *

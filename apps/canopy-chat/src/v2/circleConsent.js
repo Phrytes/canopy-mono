@@ -8,7 +8,7 @@
  * the effective set reflects them from the very first dispatch.
  *
  * This is the pure model behind that surface — a thin, testable projection of the shared
- * `buildCapabilityMatrix` (in `@canopy/app-manifest`), kept OUT of the wizard's DOM so web and mobile
+ * `buildCapabilityMatrix` (in `@onderling/app-manifest`), kept OUT of the wizard's DOM so web and mobile
  * render the SAME model by construction (invariants #1–2). No new dep edge: it composes the same
  * matrix builder the override sheet + the gate already use, so the three agree by construction.
  *
@@ -20,7 +20,7 @@
  *     can never be recorded as an opt-out, so the gate can't drop a cap the admin made mandatory).
  *   - `hasConsentChoices(model)` → whether the join consent step has anything to show (else a no-op).
  */
-import { buildCapabilityMatrix } from '@canopy/app-manifest';
+import { buildCapabilityMatrix } from '@onderling/app-manifest';
 
 /** An empty consent model — no opt-outable caps → the join consent step renders nothing. */
 export const EMPTY_CONSENT_MODEL = Object.freeze({ items: [], keys: [] });

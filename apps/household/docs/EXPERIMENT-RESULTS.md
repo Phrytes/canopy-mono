@@ -68,11 +68,11 @@ suggests partial CPU fallback.  3B sits comfortably in GPU.
 
 Wired via `HOUSEHOLD_LLM_TEMPERATURE` and `HOUSEHOLD_LLM_STOP` env
 vars; pinned as `defaultOptions` on the `ollamaProvider` per
-`@canopy/llm-client` v0.2.0.
+`@onderling/llm-client` v0.2.0.
 
 ---
 
-## Substrate parser improvements (`@canopy/llm-client` v0.2.0)
+## Substrate parser improvements (`@onderling/llm-client` v0.2.0)
 
 | Feature | What it catches |
 |---|---|
@@ -288,7 +288,7 @@ pivot per `Project Files/Substrates/apps/H2-household.md`.
 
 - New class `apps/household/src/HouseholdAgentFreeform.js`
   exported from the package index.
-- Wraps `@canopy/chat-agent`'s `ChatAgent` with the directive
+- Wraps `@onderling/chat-agent`'s `ChatAgent` with the directive
   system prompt + free-form 3-tool catalogue + slash-command
   pre-processor + (optional) file-persisted list store.
 - 18 new tests in `test/HouseholdAgentFreeform.test.js`:
@@ -312,7 +312,7 @@ The current production household app has:
 | `skills/classifyAndExtract.js` | LLM router that picks from 5 fixed-type tools | retire — directive prompt + 3 generic tools |
 | `skills/{addItem,listOpen,markComplete,removeItem,help}.js` | type-bound (shopping/errand/repair/schedule) | retire or rewrite as free-form-list handlers |
 | `storage/Store.js` interface | items have `type: ItemType` enum | items have `listName: string` (free-form) |
-| `@canopy/item-store` substrate consumption | one big bucket of items with type field | one bucket per list name |
+| `@onderling/item-store` substrate consumption | one big bucket of items with type field | one bucket per list name |
 | `scheduler/DailyDigest.js` | groups by type for daily summary | groups by list name |
 | `bridges/TelegramBridge.js` | shipped | unchanged |
 | Tests | 398 tests, ~30 files | ~150 require updates / rewrites |
@@ -353,12 +353,12 @@ Steps, in dependency order:
    --mode=freeform` (replaces "not implemented" scaffold).
 3. **Wire scheduler into freeform agent**: `addToList` /
    `removeFromList` emit state-update events that the
-   `@canopy/notifier` scheduler consumes for digests + nudges.
+   `@onderling/notifier` scheduler consumes for digests + nudges.
    Currently the freeform agent has a `scheduler` getter but no
    wiring.
 4. **Wire pod persistence as an option**: `createPersistedListStore`
    currently writes to a local JSON file.  Add a pod-backed variant
-   that uses the existing `@canopy/pod-client` (multi-device
+   that uses the existing `@onderling/pod-client` (multi-device
    safety).
 5. **Migrate user-facing language to localisation** (per the multilingual
    extension plan in `PROMPT-EXPERIMENTATION.md`).

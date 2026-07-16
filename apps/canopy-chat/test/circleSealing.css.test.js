@@ -1,6 +1,6 @@
 /**
  * Per-circle sealing — the REAL-POD slice of the S4 pod foundation
- * (circleControlAgent + the @canopy/pod-client sealing substrate), run against a
+ * (circleControlAgent + the @onderling/pod-client sealing substrate), run against a
  * **running Community Solid Server** instead of the in-memory pod that
  * `circleSealing.test.js` uses. This closes the "real-pod verify" item of
  * REMAINING-WORK §4 E2: it proves the sealing substrate behaves identically over
@@ -48,9 +48,9 @@ let createCircleControlAgent, SolidVault, VaultMemory;
 
 beforeAll(async () => {
   if (!CSS_URL || !HAVE_OIDC) return;
-  ({ PodClient, SolidOidcAuth, createSealedPodClient, generateKeypair } = await import('@canopy/pod-client'));
-  ({ VaultMemory } = await import('@canopy/vault'));
-  ({ SolidVault } = await import('@canopy/oidc-session'));
+  ({ PodClient, SolidOidcAuth, createSealedPodClient, generateKeypair } = await import('@onderling/pod-client'));
+  ({ VaultMemory } = await import('@onderling/vault'));
+  ({ SolidVault } = await import('@onderling/oidc-session'));
   ({ createCircleControlAgent } = await import('../src/v2/circleControlAgent.js'));
 });
 

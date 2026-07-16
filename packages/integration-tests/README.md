@@ -1,6 +1,6 @@
-# @canopy/integration-tests
+# @onderling/integration-tests
 
-Cross-component scenario tests for the @canopy SDK.
+Cross-component scenario tests for the @onderling SDK.
 
 This workspace hosts the **scenario-based integration tier** of the SDK
 test strategy.  Unit tests live alongside their packages
@@ -32,7 +32,7 @@ Each scenario boots a `Lab`, drives a flow, asserts on the outcome.
 
 ```js
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { Lab } from '@canopy/integration-tests';
+import { Lab } from '@onderling/integration-tests';
 
 describe('routing/fall-through', () => {
   let lab;

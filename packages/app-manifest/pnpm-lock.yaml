@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@canopy/item-types':
+      '@onderling/item-types':
         specifier: file:../item-types
         version: file:../item-types
     devDependencies:
@@ -18,7 +18,7 @@ importers:
 
 packages:
 
-  '@canopy/item-types@file:../item-types':
+  '@onderling/item-types@file:../item-types':
     resolution: {directory: ../item-types, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -540,7 +540,7 @@ packages:
 
 snapshots:
 
-  '@canopy/item-types@file:../item-types':
+  '@onderling/item-types@file:../item-types':
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)

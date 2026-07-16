@@ -90,7 +90,7 @@ describe('canopyChatManifest now carries /help', () => {
   });
 
   it("manifest still validates", async () => {
-    const { validateManifest } = await import('@canopy/app-manifest');
+    const { validateManifest } = await import('@onderling/app-manifest');
     const result = validateManifest(canopyChatManifest);
     expect(result.ok).toBe(true);
   });

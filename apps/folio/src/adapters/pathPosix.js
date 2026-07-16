@@ -1,7 +1,7 @@
-// Lifted to @canopy/sync-engine.  Re-export shim for back-compat.
+// Lifted to @onderling/sync-engine.  Re-export shim for back-compat.
 export {
   joinPosix,
   dirnamePosix,
   basenamePosix,
   extnamePosix,
-} from '@canopy/sync-engine/adapters/pathPosix';
+} from '@onderling/sync-engine/adapters/pathPosix';

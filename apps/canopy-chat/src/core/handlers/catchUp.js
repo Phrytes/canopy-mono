@@ -15,7 +15,7 @@
  *
  * ε.3 (2026-06-01) — the per-group inner loop body is exposed as
  * `makeRequestCatchUpForGroup` so the strategy router
- * (`@canopy-chat/v2/catchUpStrategy.scheduleCatchUp`) can use it as
+ * (`canopy-chat src/v2/catchUpStrategy.scheduleCatchUp`) can use it as
  * the `peerCatchUp` handler for one kring at a time.  The pod side
  * is the new ε.3 `podRangeQuery` handler — calls stoop's
  * `getMessagesSince` and routes results through the ε.1

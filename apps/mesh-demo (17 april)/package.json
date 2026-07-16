@@ -9,8 +9,8 @@
     "lint":    "eslint ."
   },
   "dependencies": {
-    "@canopy/core":         "file:../../packages/core",
-    "@canopy/react-native": "file:../../packages/react-native",
+    "@onderling/core":         "file:../../packages/core",
+    "@onderling/react-native": "file:../../packages/react-native",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "react":                  "18.3.1",
     "react-native":           "0.76.5",

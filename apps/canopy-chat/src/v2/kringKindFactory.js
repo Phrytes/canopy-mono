@@ -26,7 +26,7 @@
  * module.  Correctness > maximal dedup.
  */
 
-import { objectDiff } from '@canopy/sync-engine/objectDiff';
+import { objectDiff } from '@onderling/sync-engine/objectDiff';
 
 const DEFAULT_DEDUP_CAP = 256;
 

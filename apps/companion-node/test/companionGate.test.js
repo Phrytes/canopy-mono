@@ -20,9 +20,9 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-import { Agent, AgentIdentity, Parts, TokenRegistry } from '@canopy/core';
-import { VaultMemory }                     from '@canopy/vault';
-import { RelayTransport }                  from '@canopy/transports';
+import { Agent, AgentIdentity, Parts, TokenRegistry } from '@onderling/core';
+import { VaultMemory }                     from '@onderling/vault';
+import { RelayTransport }                  from '@onderling/transports';
 
 import { startCompanionNode }              from '../src/index.js';
 

@@ -127,7 +127,7 @@ describe('manifestConformance: the guard bites (negative cases)', () => {
   });
 
   it('surfaces registry-noncanonical nouns as NON-blocking warnings (F-SP1-a)', () => {
-    // `thing` is not in the @canopy/item-types registry, but app-local nouns are
+    // `thing` is not in the @onderling/item-types registry, but app-local nouns are
     // permitted — a warning, never a conformance failure.
     const r = manifestConformance(baseline());
     expect(r.ok).toBe(true);

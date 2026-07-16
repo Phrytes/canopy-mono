@@ -4,7 +4,7 @@
 // posture menukaart: a household circle on P2 typically uses 'local-ollama' or 'confidential-proxy'.
 
 import { buildCircleLlmProviders } from './circleLlmProviders.js';
-import { assertConfidentialRouteSafe } from '@canopy/llm-client/routeSafety';
+import { assertConfidentialRouteSafe } from '@onderling/llm-client/routeSafety';
 
 /** @typedef {{ label:string, mode:'off'|'local'|'cloud', baseUrl:string|null, model?:string, needsEndpoint?:boolean }} RoutePreset */
 

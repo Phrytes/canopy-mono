@@ -13,7 +13,7 @@
  * Journeys run sequentially against the same relay (fresh identities each, so no
  * collision) — the shared relay is the point: this exercises one endpoint end-to-end.
  */
-import { startRelay } from '@canopy/relay';
+import { startRelay } from '@onderling/relay';
 import * as twoParty    from './journeys/twoParty.journey.mjs';
 import * as offline     from './journeys/offline.journey.mjs';
 import * as circle      from './journeys/circle.journey.mjs';

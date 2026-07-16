@@ -39,13 +39,13 @@
  *               object URLs; the sealed bytes live in-process and vanish on stop.
  *   SWAP SEAM — one documented infra action (Frits): replace `bucket` with the
  *               S3/R2 adapter. Nothing else changes shape:
- *                 import { createS3Bucket } from '@canopy/blob-gateway/adapters/s3';
+ *                 import { createS3Bucket } from '@onderling/blob-gateway/adapters/s3';
  *                 buildDevMediaEdge({ bucket: createS3Bucket({ endpoint: R2_ENDPOINT,
  *                   region: 'auto', bucket: R2_BUCKET, accessKeyId, secretAccessKey }),
  *                   uploaders: [...] })
  *               // real bucket/verifier swap = Frits' infra action (one documented seam)
  */
-import { createCapabilityVerifier } from '@canopy/blob-gateway/adapters/capability-verifier';
+import { createCapabilityVerifier } from '@onderling/blob-gateway/adapters/capability-verifier';
 
 const DEFAULT_TTL   = 60;              // seconds — short-lived presigned URLs
 const DEFAULT_SKILL = 'media.read';

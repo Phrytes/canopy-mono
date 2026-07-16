@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/hub-binding — promise-based wrapper around the
+ * @onderling/react-native/hub-binding — promise-based wrapper around the
  * Hub AIDL binder.
  *
  * V0 ships (Phase 51.7–51.9):

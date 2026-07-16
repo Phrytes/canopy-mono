@@ -1,5 +1,5 @@
 /**
- * @canopy/local-store — local-first storage substrate.
+ * @onderling/local-store — local-first storage substrate.
  *
  * **Layer:** substrate. Cross-platform.
  *

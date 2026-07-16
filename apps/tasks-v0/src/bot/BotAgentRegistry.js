@@ -30,8 +30,8 @@
  * (the V1.5 baseline behaviour).
  */
 
-import { Agent, AgentIdentity, InternalTransport, TrustRegistry, PolicyEngine, TokenRegistry, CapabilityToken } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalTransport, TrustRegistry, PolicyEngine, TokenRegistry, CapabilityToken } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 const DEFAULT_TTL_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -48,7 +48,7 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
  * @typedef {object} BotEntry
- * @property {import('@canopy/core').Agent} agent
+ * @property {import('@onderling/core').Agent} agent
  * @property {object} identity
  * @property {object} vault
  * @property {object} tokenRegistry
@@ -67,8 +67,8 @@ export class BotAgentRegistry {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/core').InternalBus} args.bus
-   * @param {import('@canopy/core').Agent}        args.tasksAgent
+   * @param {import('@onderling/core').InternalBus} args.bus
+   * @param {import('@onderling/core').Agent}        args.tasksAgent
    * @param {object} [args.dataSource]
    *   V1.5 follow-up B — when supplied, bindings persist under
    *   `mem://tasks/circles/<circleId>/botAgents/<chatId>.json` so

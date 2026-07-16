@@ -8,9 +8,9 @@
  */
 // Relative imports into the sibling canopy-chat workspace.  Using
 // the workspace package name would be cleaner but pnpm self-resolve
-// for `@canopy-app/canopy-chat` from a NEW workspace pkg needs a
+// for `@onderling-app/canopy-chat` from a NEW workspace pkg needs a
 // `pnpm install` cycle to land — and a previous attempt 404'd on a
-// pre-existing `@canopy/webid-discovery` dep.  Relative imports
+// pre-existing `@onderling/webid-discovery` dep.  Relative imports
 // sidestep that, work today, and keep #221.5's lifted core layer
 // as the single source of truth.
 import { mergeManifests, canopyChatManifest } from '../../../canopy-chat/src/index.js';

@@ -37,7 +37,7 @@
  * ─────────────────────────────────────────────────────────────────
  *
  * SP-0 Phase boundary (PLAN guardrail #9): this package DECLARES.
- * `@canopy/interface-registry` runs per-type item rendering — once
+ * `@onderling/interface-registry` runs per-type item rendering — once
  * mature, NavModel will reference `renderCompact` / `renderFull` for
  * per-item cells instead of returning `{text, buttons}`.  V0 stays
  * with the minimal {text, buttons} contract; adapters render the row.
@@ -638,7 +638,7 @@ function buildSection(view, ops, manifest) {
   // concern (forward-additive — V0.3 may tighten via JSDoc).
   // Q15 (V0.3, 2026-05-21) — `dataSource.argsFromContext` passes
   // through verbatim.  Substitution happens in
-  // `@canopy/web-adapter/fetchSectionItems` at call time.
+  // `@onderling/web-adapter/fetchSectionItems` at call time.
   if (view.dataSource !== undefined) section.dataSource = view.dataSource;
   // Q9 (2026-05-21) — read-only marker.  Adapter skips Add forms /
   // creative affordances; itemActions still render (state-gated

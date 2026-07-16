@@ -1,4 +1,4 @@
-# `@canopy-app/tasks-mobile`
+# `@onderling-app/tasks-mobile`
 
 > **Layer: app.** Composes substrates from
 > `packages/{core, react-native, sync-engine-rn, oidc-session-rn,
@@ -10,7 +10,7 @@
 > [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
 > See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
-> **Known direct cross-app dep:** `@canopy-app/tasks-v0` for the
+> **Known direct cross-app dep:** `@onderling-app/tasks-v0` for the
 > V2.8 single-agent factories (`buildMeshAgent`, `wireSkills`,
 > `bundleResolver`, `createCircleAgent`), the role-policy table, and
 > the Tasks-vocabulary attachment helpers. Same **platform-shell
@@ -52,7 +52,7 @@ sub-sections + 5 cross-cutting library helpers. 106/106 tests green.
 
 Tasks-mobile inherits the substrate-side restructure (Phase 52.x)
 through the **platform-shell exception** — `buildMeshAgent` from
-`@canopy-app/tasks-v0` wires the substrate primitives once for both
+`@onderling-app/tasks-v0` wires the substrate primitives once for both
 shells, so mobile picks them up without app-side glue:
 
 | Phase | Surface | Adopted via |
@@ -61,7 +61,7 @@ shells, so mobile picks them up without app-side glue:
 | 52.9.3 | Tasks substrate-mirror (cross-device task fan-out) | desktop `Circle.js` → `wireTasksSubstrateMirror` |
 | 52.10 | agent-registry per-bundle | desktop `MeshAgent` (`buildMeshAgent`) |
 | 52.14 | Q-D Lamport `_v` stale-peer auto-heal | desktop `Circle.js` |
-| 52.15 | Multi-issuer auth substrate (RN flavour) | `src/auth/useTasksAuth.js` → `useOidcSignIn` from `@canopy/oidc-session-rn/hook` |
+| 52.15 | Multi-issuer auth substrate (RN flavour) | `src/auth/useTasksAuth.js` → `useOidcSignIn` from `@onderling/oidc-session-rn/hook` |
 | 52.15.5 | `<IssuerPicker>` in PodSignInScreen | `src/screens/PodSignInScreen.jsx` |
 | 52.16 | ACP/WAC sharing v2 (`client.sharing.*`) | desktop barrel (no mobile-only sharing flows in V1) |
 
@@ -77,29 +77,29 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating. | Pod write paths, role-policy gates, and `enforceDependencies` are reused unchanged from the desktop app. |
-| `@canopy/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile. | Same as desktop; substrate amortises across H4/H5/H7. |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability. | Same primitive as the desktop. |
-| `@canopy/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours). | The whole notifier surface is shared with stoop and the desktop tasks app. |
-| `@canopy/chat-p2p` | Appeal flow chat threads (V1 master-revoke recourse). | Shared with stoop V1. |
-| `@canopy/local-store` | `CachingDataSource` + `Settings` split (per-device + shared). | Local-only mode is a hard rule in V1; substrate guarantees offline-first. |
-| `@canopy/online-cadence` | Foreground ticker + AppState bridge + bg-fetch helpers. | Lifted in Phase 41.0 (rule of two with stoop-mobile). |
-| `@canopy/sync-engine-rn` (`./react`) | `useSkill` / `useAgentEvent` / `useSkillResult` hooks bound to ServiceContext. | Hook factory lifted in Phase 41.0 L1. |
-| `@canopy/sync-engine-rn` | `createMobileBootstrap`, `bgRunOnce`, `registerBackgroundTask`. | RN-only bootstrap surface. |
-| `@canopy/oidc-session-rn` | Pod sign-in (Phase 41.15). | RN-only OIDC flow. |
-| `@canopy/react-native` | `KeychainVault`, `AsyncStorageAdapter`, `FileSystemAdapter`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`, `requestMeshPermissions`, `createMeshAgent`, `metro-preset`. | The whole RN platform layer. |
-| `@canopy/react-native/picker` | `pickAndResize({mode, preset})` for deliverable photos + avatars. | Phase 41.0 L3 lift. |
-| `@canopy/react-native/qr` | `classifyQrPayload(text, classifiers)` + `<QrCodeView>`. | Phase 41.0 L4 lift. Tasks registers its own classifier list (`tasks://invite`, `tasks://bot-token`, BIP-39, contact-share). |
-| `@canopy/react-native/mnemonic` | Pure helpers + `useMnemonicReveal` hook + `<MnemonicView>` (recovery phrase). | Phase 41.0 L5 lift. |
-| `@canopy/react-native/push` | `setupPush` + `requestPushPermission` + `usePushOptIn` hook. | Phase 41.0 L6 lift. |
-| `@canopy/react-native/localisation` | `loadLocale({bundles, defaultLang})` resolver. | Phase 41.0 L7 lift; locales come from `apps/tasks-v0/locales/{en,nl}.json` (and a tasks-mobile-only `locales/{en,nl}.json` for mobile-screen strings). |
+| `@onderling/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating. | Pod write paths, role-policy gates, and `enforceDependencies` are reused unchanged from the desktop app. |
+| `@onderling/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile. | Same as desktop; substrate amortises across H4/H5/H7. |
+| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability. | Same primitive as the desktop. |
+| `@onderling/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours). | The whole notifier surface is shared with stoop and the desktop tasks app. |
+| `@onderling/chat-p2p` | Appeal flow chat threads (V1 master-revoke recourse). | Shared with stoop V1. |
+| `@onderling/local-store` | `CachingDataSource` + `Settings` split (per-device + shared). | Local-only mode is a hard rule in V1; substrate guarantees offline-first. |
+| `@onderling/online-cadence` | Foreground ticker + AppState bridge + bg-fetch helpers. | Lifted in Phase 41.0 (rule of two with stoop-mobile). |
+| `@onderling/sync-engine-rn` (`./react`) | `useSkill` / `useAgentEvent` / `useSkillResult` hooks bound to ServiceContext. | Hook factory lifted in Phase 41.0 L1. |
+| `@onderling/sync-engine-rn` | `createMobileBootstrap`, `bgRunOnce`, `registerBackgroundTask`. | RN-only bootstrap surface. |
+| `@onderling/oidc-session-rn` | Pod sign-in (Phase 41.15). | RN-only OIDC flow. |
+| `@onderling/react-native` | `KeychainVault`, `AsyncStorageAdapter`, `FileSystemAdapter`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`, `requestMeshPermissions`, `createMeshAgent`, `metro-preset`. | The whole RN platform layer. |
+| `@onderling/react-native/picker` | `pickAndResize({mode, preset})` for deliverable photos + avatars. | Phase 41.0 L3 lift. |
+| `@onderling/react-native/qr` | `classifyQrPayload(text, classifiers)` + `<QrCodeView>`. | Phase 41.0 L4 lift. Tasks registers its own classifier list (`tasks://invite`, `tasks://bot-token`, BIP-39, contact-share). |
+| `@onderling/react-native/mnemonic` | Pure helpers + `useMnemonicReveal` hook + `<MnemonicView>` (recovery phrase). | Phase 41.0 L5 lift. |
+| `@onderling/react-native/push` | `setupPush` + `requestPushPermission` + `usePushOptIn` hook. | Phase 41.0 L6 lift. |
+| `@onderling/react-native/localisation` | `loadLocale({bundles, defaultLang})` resolver. | Phase 41.0 L7 lift; locales come from `apps/tasks-v0/locales/{en,nl}.json` (and a tasks-mobile-only `locales/{en,nl}.json` for mobile-screen strings). |
 
 ## Direct kernel use
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `defineSkill`, `MemorySource`, `DataPart` | App constructs the meshAgent + per-circle CircleStates via the V2.8 factories from `@canopy-app/tasks-v0`. Direct core imports come along because the platform-shell exception applies. | The V2.8 single-agent topology is a layering primitive; constructing it goes through the desktop barrel by design. |
-| `@canopy-app/tasks-v0` | `buildMeshAgent`, `wireSkills`, `bundleResolver`, `createCircleAgent`, `buildStandardRolePolicy` | Skill registration + per-circle state + role-policy. | **Platform-shell exception** (locked 2026-05-08, same as folio + stoop) — the desktop barrel owns the skill-builder factory; mobile imports it instead of forking. |
+| `@onderling/core` | `Agent`, `defineSkill`, `MemorySource`, `DataPart` | App constructs the meshAgent + per-circle CircleStates via the V2.8 factories from `@onderling-app/tasks-v0`. Direct core imports come along because the platform-shell exception applies. | The V2.8 single-agent topology is a layering primitive; constructing it goes through the desktop barrel by design. |
+| `@onderling-app/tasks-v0` | `buildMeshAgent`, `wireSkills`, `bundleResolver`, `createCircleAgent`, `buildStandardRolePolicy` | Skill registration + per-circle state + role-policy. | **Platform-shell exception** (locked 2026-05-08, same as folio + stoop) — the desktop barrel owns the skill-builder factory; mobile imports it instead of forking. |
 
 ## Agent Hub compatibility
 
@@ -115,7 +115,7 @@ serves N CircleStates. Multiple circles share the agent's transports +
 identity vault; per-circle state (ItemStore, MemberMap, chat
 controller, calendar emission, invoicing, bot agents) lives in
 `Map<circleId, CircleState>`. Same factory exposed by the desktop tasks
-app (`@canopy-app/tasks-v0/MeshAgent`).
+app (`@onderling-app/tasks-v0/MeshAgent`).
 
 **Capability scope:** subscribe to each joined circle's group;
 broadcast skill requests + collect claims within those groups; pod
@@ -127,7 +127,7 @@ meshAgent's bus.
 
 UI-glue helpers (`taskStatus`, `composeArgs`, `inboxClassify`,
 `effectiveActor`, `localisationMerge`) come from
-`@canopy-app/tasks-v0/ui/*` — the desktop shell's `src/ui/`
+`@onderling-app/tasks-v0/ui/*` — the desktop shell's `src/ui/`
 directory. Both shells consume the same code so the V2.7 deps
 gate, the addTask payload shape, the inbox event classifier, and
 the pubKey↔webid resolver stay in step. See the desktop shell's
@@ -139,7 +139,7 @@ for the policy.
 The genuinely-shared locale strings (status pills, role labels,
 circle-kind chips, approval modes) live in
 `apps/tasks-v0/locales/shared/{en,nl}.json` and merge under both
-`@canopy-app/tasks-v0/locales/<lang>` and `apps/tasks-mobile/locales/<lang>`
+`@onderling-app/tasks-v0/locales/<lang>` and `apps/tasks-mobile/locales/<lang>`
 in `LocalisationProvider.js` — shell-local keys win on collision.
 
 ## Bring it up
@@ -157,7 +157,7 @@ expo start --dev-client            # builds the JS bundle
 expo run:android --device          # sideloads on a real phone
 ```
 
-The dev client must be built once with the full @canopy/react-native
+The dev client must be built once with the full @onderling/react-native
 autolinking (mDNS + BLE + push). Reuse stoop-mobile's dev client when
 you can — same Expo 52 / RN 0.76.9 pin.
 
@@ -234,7 +234,7 @@ sources:
 
 Both bundles get merged at boot and fed to
 `loadLocale({bundles, defaultLang})` from
-`@canopy/react-native/localisation`. To add a locale: drop a new
+`@onderling/react-native/localisation`. To add a locale: drop a new
 `locales/<lang>.json` matching the en shape, add it to the merge
 call in `src/LocalisationProvider.js`, declare the `<lang>` key on
 `loadLocale({bundles})`.
@@ -247,7 +247,7 @@ apps/tasks-mobile/
 ├── package.json
 ├── app.json                 ← Expo config (slug "tasks", scheme "tasks://")
 ├── babel.config.js
-├── metro.config.js          ← @canopy/react-native/metro-preset + Tasks-specific watch folders
+├── metro.config.js          ← @onderling/react-native/metro-preset + Tasks-specific watch folders
 ├── vitest.config.js
 ├── index.js                 ← polyfills + Expo registerRootComponent
 ├── App.js                   ← placeholder NavigationContainer (Phase 41.1)

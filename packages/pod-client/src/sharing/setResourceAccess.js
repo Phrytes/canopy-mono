@@ -7,7 +7,7 @@
  * (ACP/WAC) under the hood.
  *
  * ── Why a primitive (and not raw `sharing.grant` at each call site) ──
- * The commons + registry resources (`@canopy/agent-registry`) each carry
+ * The commons + registry resources (`@onderling/agent-registry`) each carry
  * a fixed access posture:
  *   - endorsement / community catalogs → **public-read + owner-write**
  *     (+ admin-write for a community's circle admins);

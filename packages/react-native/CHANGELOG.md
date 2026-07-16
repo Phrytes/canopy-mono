@@ -1,4 +1,4 @@
-# Changelog — @canopy/react-native
+# Changelog — @onderling/react-native
 
 All notable changes to the package.  Versioning per
 `Project Files/Substrates/policies.md`: minor for additive changes,
@@ -34,14 +34,14 @@ major for breaking changes.
   - 34 tests pass.
 
 - **pseudo-pod-adapter** sub-path (Phases 51.1 – 51.4). RN-side
-  `StorageBackend` implementations for `@canopy/pseudo-pod`:
+  `StorageBackend` implementations for `@onderling/pseudo-pod`:
   - `createAsBackend({AsyncStorage, scope})` — AsyncStorage-backed.
   - `createFsBackend({FileSystem, rootDir, scope})` —
     expo-file-system-backed; atomic writes via `.tmp` + moveAsync.
   - `createBackend({...})` — composite that picks AS for small
     payloads, FS for large (default threshold 4 KB); supports
     cross-backend migration on update.
-  Importable as `@canopy/react-native/pseudo-pod-adapter`.
+  Importable as `@onderling/react-native/pseudo-pod-adapter`.
 - **Persistent dirty-set** (Phase 51.5) on all three adapters.
   `_markDirty(key)` / `_markClean(key)` / `listDirty()` now write
   through to backend storage, so pseudo-pod V1's write-through queue
@@ -58,7 +58,7 @@ major for breaking changes.
 
 - **Platform layer** (cross-cutting RN plumbing).  This package
   expands beyond its original "RN-specific SDK adapters" scope to
-  also serve as the RN platform layer that every `@canopy` app
+  also serve as the RN platform layer that every `@onderling` app
   on phone consumes.  See
   `Project Files/Substrates/L0-react-native.md` for the layer
   sketch.
@@ -76,13 +76,13 @@ major for breaking changes.
 - **`metro-preset.cjs`** — exported reusable Metro preset.  Apps
   consume via:
   ```js
-  const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+  const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
   module.exports = withCanopyPreset({ projectRoot: __dirname, repoRoot: '...' });
   ```
   Encapsulates: NODE_BUILTINS shim list, `node:` prefix stripping,
   `util` / `path` / `ws` shim routing, monorepo subpath handling,
   `unstable_enablePackageExports: false`.  App-specific bits
-  (Folio's `@canopy-app/folio/rn/*` subpath, app-specific
+  (Folio's `@onderling-app/folio/rn/*` subpath, app-specific
   `extraNodeModules`) come in via options.
 
 - **Subpath exports** under `./platform/...`:
@@ -95,7 +95,7 @@ major for breaking changes.
 
 ### Unchanged
 
-- The existing `@canopy/react-native` barrel
+- The existing `@onderling/react-native` barrel
   (`KeychainVault`, `BleTransport`, `MdnsTransport`,
   `MobilePushBridge`, `createMeshAgent`, `requestMeshPermissions`,
   `attachIdentityToAgent`, `AsyncStorageAdapter`, `PushAdapter`)
@@ -110,7 +110,7 @@ major for breaking changes.
   for the migration plan.
 - New apps starting on RN should consume the preset directly:
   - `apps/<my-app>/metro.config.js` → `withCanopyPreset(...)`
-  - `apps/<my-app>/index.js` → `import '@canopy/react-native/platform/polyfills';` first.
+  - `apps/<my-app>/index.js` → `import '@onderling/react-native/platform/polyfills';` first.
 - BRING-UP-NOTES.md is the canonical reference for new mobile
   bring-ups; append new traps here, don't duplicate in app docs.
 

@@ -25,7 +25,7 @@
  *   - `requires`  — the feature-flag gate (OR semantics), evaluated against the
  *     circle policy with the SAME `isFeatureEnabled` both shells used before.
  */
-import { renderWeb, renderMobile } from '@canopy/app-manifest';
+import { renderWeb, renderMobile } from '@onderling/app-manifest';
 import { isFeatureEnabled } from './circlePolicy.js';
 
 /**

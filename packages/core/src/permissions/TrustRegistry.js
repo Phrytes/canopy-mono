@@ -22,7 +22,7 @@ export const TIER_LEVEL = Object.freeze({
 export class TrustRegistry {
   #vault;
 
-  /** @param {import('@canopy/vault').Vault} vault */
+  /** @param {import('@onderling/vault').Vault} vault */
   constructor(vault) {
     if (!vault) throw new Error('TrustRegistry requires a vault');
     this.#vault = vault;

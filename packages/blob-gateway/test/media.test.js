@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   generateKeypair, makeSealer, makeOpener, generateGroupKey, makeGroupSealer, makeGroupOpener,
   isSealed,
-} from '@canopy/pod-client/sealing';
+} from '@onderling/pod-client/sealing';
 import {
   uploadBlob, openBlob, openThumbnail, createBlobGatekeeper,
   makeManifestLine, bytesToB64u, MAX_SEALED_THUMB_CHARS,

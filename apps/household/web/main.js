@@ -19,7 +19,7 @@
  *     auto-refresh of section items — the user can switch tabs to see
  *     anything the LLM mutated.
  *
- * Slice B.2.0 (2026-05-20) — shared @canopy/web-adapter helpers:
+ * Slice B.2.0 (2026-05-20) — shared @onderling/web-adapter helpers:
  *   - callSkill / itemMatchesAppliesTo / deriveItemState /
  *     applyPrefilledParams are now ONE source-of-truth in
  *     `packages/web-adapter/`. Imported here via the overlay served

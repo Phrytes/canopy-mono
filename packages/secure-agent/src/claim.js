@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — signed WebID↔pubKey claims.
+ * @onderling/secure-agent — signed WebID↔pubKey claims.
  *
  * Wires A.2 from the v0.7 security roadmap.  A claim is a small,
  * Ed25519-signed JSON object that binds:
@@ -34,7 +34,7 @@ import {
   canonicalize,
   b64encode,
   b64decode,
-} from '@canopy/core';
+} from '@onderling/core';
 
 export const CLAIM_VERSION   = 1;
 export const DEFAULT_TTL_MS  = 7 * 24 * 60 * 60 * 1000;   // 7 days

@@ -8,7 +8,7 @@
  * we don't need for the mobile V1).
  *
  * Future graduation path: when DM-spawning (#253 step 7) lands, we
- * can swap this for the canonical `@canopy-app/canopy-chat`
+ * can swap this for the canonical `@onderling-app/canopy-chat`
  * ThreadStore — both share the Map<id, entry> + activeId shape, so
  * ChatScreen consumers stay the same.
  *

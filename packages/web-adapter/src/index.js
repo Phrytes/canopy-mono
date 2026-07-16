@@ -1,5 +1,5 @@
 /**
- * @canopy/web-adapter — Slice B.2.0 (PLAN-gui-chat-uplift.md).
+ * @onderling/web-adapter — Slice B.2.0 (PLAN-gui-chat-uplift.md).
  *
  * Shared pure-JS helpers used by every renderWeb-driven web page in
  * the monorepo. Pulled out of `apps/household/web/main.js` +

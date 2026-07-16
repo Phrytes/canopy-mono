@@ -17,7 +17,7 @@
  *
  * ── PRODUCTION-SAFE LLM (optional) ── add LIVE_LLM=1 (+ OLLAMA_BASEURL/MODEL, LLM_APIKEY) to ALSO drive
  *   A's add through the live Privatemode LLM. The laptop hosts its own LOOPBACK proxy, so the confidential
- *   route guard (`@canopy/llm-client/routeSafety`) is satisfied — no plaintext leaves the device. (The
+ *   route guard (`@onderling/llm-client/routeSafety`) is satisfied — no plaintext leaves the device. (The
  *   phone-side confidential LLM is the unbuilt Option B; here only the laptop runs the model.)
  *
  * @vitest-environment node
@@ -25,7 +25,7 @@
 import { describe, it, expect, afterAll, beforeAll } from 'vitest';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 
@@ -41,7 +41,7 @@ const LIVE_LLM   = process.env.LIVE_LLM === '1';
 // it with a vite-ignored dynamic import so vite doesn't re-stub it.
 async function installNodeWebSocket() {
   if (typeof globalThis.WebSocket === 'function') return;
-  const wsEntry = createRequire(createRequire(import.meta.url).resolve('@canopy/core')).resolve('ws');
+  const wsEntry = createRequire(createRequire(import.meta.url).resolve('@onderling/core')).resolve('ws');
   const mod = await import(/* @vite-ignore */ pathToFileURL(wsEntry).href);
   globalThis.WebSocket = mod.default ?? mod.WebSocket ?? mod;
 }
@@ -110,8 +110,8 @@ describe.runIf(LIVE_RELAY)(`LIVE Layer-3 — household no-pod sync over relay @ 
 
   it.runIf(LIVE_LLM)('A adds via the live Privatemode LLM → also syncs to B (full pipeline)', async () => {
     // Lazy imports — only when the LLM leg runs.
-    const { LlmClient }             = await import('@canopy/llm-client');
-    const { ollamaProvider }        = await import('@canopy/llm-client/providers/ollama');
+    const { LlmClient }             = await import('@onderling/llm-client');
+    const { ollamaProvider }        = await import('@onderling/llm-client/providers/ollama');
     const { mergeManifests }        = await import('../../src/manifestMerge.js');
     const { createCircleDispatch }  = await import('../../src/v2/circleDispatch.js');
     const { interpretToCommand }    = await import('../../src/v2/interpretCommand.js');

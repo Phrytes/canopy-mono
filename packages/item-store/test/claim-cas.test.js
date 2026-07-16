@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { ItemStore } from '../src/ItemStore.js';
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 
 const ROOT = 'pod://circle/tasks/';
 

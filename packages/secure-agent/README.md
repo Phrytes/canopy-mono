@@ -1,4 +1,4 @@
-# `@canopy/secure-agent`
+# `@onderling/secure-agent`
 
 > **Layer: substrate.** Safety-by-default agent factory.
 
@@ -22,7 +22,7 @@ This factory makes those wirings the default.
 ## Quick start
 
 ```js
-import { createSecureAgent } from '@canopy/secure-agent';
+import { createSecureAgent } from '@onderling/secure-agent';
 
 const sa = await createSecureAgent({
   identityVaultPrefix: 'myapp-id:',
@@ -78,7 +78,7 @@ const sa = await createSecureAgent({
 });
 
 // Passkey → derived secret → use as passphrase
-import { unlockWithPasskey, registerPasskey } from '@canopy/secure-agent';
+import { unlockWithPasskey, registerPasskey } from '@onderling/secure-agent';
 
 // First-time: register the credential
 const { credentialId } = await registerPasskey({
@@ -201,7 +201,7 @@ const token = await sa.caps.issue({
 sa.caps.verify(token);                                       // → true
 
 // Roles — constants + rank helpers
-import { roleRank } from '@canopy/secure-agent';
+import { roleRank } from '@onderling/secure-agent';
 roleRank(sa.ROLES.ADMIN) > roleRank(sa.ROLES.MEMBER);        // → true
 
 // PolicyEngine — composed automatically when both are wired
@@ -211,7 +211,7 @@ sa.policy;   // PolicyEngine instance — use for skill-call gating
 ### S4 — identity-resolver + alias-aware mute
 
 ```js
-import { MemberMap } from '@canopy/identity-resolver';
+import { MemberMap } from '@onderling/identity-resolver';
 
 const memberMap = new MemberMap({
   initial: [
@@ -361,7 +361,7 @@ will be amended:
 
 ## Composition pattern (vs apps' in-process topologies)
 
-`@canopy/secure-agent` builds ONE agent + ONE optional cross-peer
+`@onderling/secure-agent` builds ONE agent + ONE optional cross-peer
 transport — clean, single-purpose.
 
 Apps that need multi-agent in-process topology (e.g. canopy-chat's
@@ -373,7 +373,7 @@ its own InternalBus.
 ## Testing
 
 ```bash
-pnpm --filter @canopy/secure-agent test
+pnpm --filter @onderling/secure-agent test
 ```
 
 113/114 passing (1 skipped pending integration test infrastructure

@@ -8,7 +8,7 @@
  */
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { QrCodeView } from '@canopy/react-native/qr/view';
+import { QrCodeView } from '@onderling/react-native/qr/view';
 import { theme } from './theme.js';
 import QrScannerModal from '../../rn/QrScannerModal.js';
 import { makePairUri, parsePairUri } from '../../../../canopy-chat/src/core/qrSchemes.js';

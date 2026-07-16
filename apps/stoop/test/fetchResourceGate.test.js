@@ -7,8 +7,8 @@
  * (`mirror.getPeers()`). Verified through the skill's handler.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 import { attachSubstrateMirror }   from '../src/substrateMirror.js';
 

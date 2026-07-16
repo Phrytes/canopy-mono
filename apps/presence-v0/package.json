@@ -1,15 +1,15 @@
 {
-  "name": "@canopy-app/presence-v0",
+  "name": "@onderling-app/presence-v0",
   "version": "0.1.0",
   "private": true,
-  "description": "H8 presence-v0 — WiFi + on-LAN-agent attestation.  Phone-side probes + home-agent-side issuance.  Phase C V0; thin composition over @canopy/item-store.",
+  "description": "H8 presence-v0 — WiFi + on-LAN-agent attestation.  Phone-side probes + home-agent-side issuance.  Phase C V0; thin composition over @onderling/item-store.",
   "type": "module",
   "main": "src/index.js",
   "exports": { ".": "./src/index.js" },
   "scripts": { "test": "vitest run", "test:watch": "vitest" },
   "dependencies": {
-    "@canopy/core": "file:../../packages/core",
-    "@canopy/item-store": "file:../../packages/item-store"
+    "@onderling/core": "file:../../packages/core",
+    "@onderling/item-store": "file:../../packages/item-store"
   },
   "devDependencies": { "vitest": "^2.1.0" }
 }

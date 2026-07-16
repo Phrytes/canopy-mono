@@ -38,7 +38,7 @@
  * + `tokenFor(webid)` are all supplied, every immediate notification
  * (completed/submitted/rejected/revoked) is also offered to the push
  * policy for the recipient's device token. Push is conservative: see
- * `@canopy/notifier`'s PushPolicy for the gating (humanInTheLoop +
+ * `@onderling/notifier`'s PushPolicy for the gating (humanInTheLoop +
  * per-day cap + quiet hours). If any link is missing (no token for
  * this webid, no policy) the inbox fires alone.
  *
@@ -49,7 +49,7 @@ import { InAppInboxBridge } from '../bridges/InAppInboxBridge.js';
 
 /**
  * @param {object} args
- * @param {import('@canopy/notifier').Notifier} args.notifier
+ * @param {import('@onderling/notifier').Notifier} args.notifier
  * @param {Record<string, object>} args.channels
  *   The same `channels` object that was passed into the Notifier
  *   constructor. wireIssuerNotifications mutates this map at

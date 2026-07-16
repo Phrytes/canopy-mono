@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/local-store",
+  "name": "@onderling/local-store",
   "version": "0.1.0",
   "description": "Local-first DataSource (Map-cached, queue-based pod write-through, bulk-sync on attach) + foreground-only sync cadence + per-app Settings factory. Lifted from apps/stoop 2026-05-08 (Tasks V1 = rule-of-two consumer).",
   "type": "module",
@@ -13,10 +13,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@canopy/core": "^0.1.0"
+    "@onderling/core": "^0.1.0"
   },
   "devDependencies": {
-    "@canopy/core": "file:../core",
+    "@onderling/core": "file:../core",
     "vitest": "^2.1.9"
   }
 }

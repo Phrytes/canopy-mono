@@ -3,7 +3,7 @@
  *
  * Persists the post-OIDC-dance tokens to a `SecureStore`-shaped store
  * (`expo-secure-store` is the canonical impl) and exposes the same
- * interface that `@canopy/pod-client`'s `SolidOidcAuth` consumes:
+ * interface that `@onderling/pod-client`'s `SolidOidcAuth` consumes:
  *
  *   - `isAuthenticated() → boolean`
  *   - `getAuthenticatedFetch() → fetch` (bearer-token wrapper, with

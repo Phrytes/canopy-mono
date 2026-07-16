@@ -1,9 +1,9 @@
-// @canopy/data-connectors — external data-source connector substrate (Objective S, v0).
+// @onderling/data-connectors — external data-source connector substrate (Objective S, v0).
 //
 // Connect an agent to external DBs / REST APIs / other sources (+ pluggable auth), beyond Solid
 // pods, so an app-function can expose or query them as source-agnostic capabilities. A pluggable,
-// injected, source-agnostic adapter substrate — same genre as `@canopy/llm-client` (provider
-// injection) and `@canopy/blob-gateway` (duck-typed injected contracts, mock-tested).
+// injected, source-agnostic adapter substrate — same genre as `@onderling/llm-client` (provider
+// injection) and `@onderling/blob-gateway` (duck-typed injected contracts, mock-tested).
 //
 // Everything is INJECTED (no live DB/API, no real driver, no OAuth flow in v0):
 //   • REST → inject `fetch` + a pluggable auth strategy.

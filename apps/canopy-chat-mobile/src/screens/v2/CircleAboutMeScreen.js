@@ -17,7 +17,7 @@ import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
 import { buildPersonaViewModel } from '../../../../canopy-chat/src/v2/personaView.js';
 import { shareDisclosureToCircle } from '../../../../canopy-chat/src/core/handlers/personaPropsUpdate.js';
-import { DRIVER_KINDS } from '@canopy/agent-registry';
+import { DRIVER_KINDS } from '@onderling/agent-registry';
 
 const keyLabel = (key) => t(`circle.aboutme.key.${key}`, { defaultValue: key });
 const kindLabel = (k) => t(`circle.aboutme.driverkind.${k}`, { defaultValue: k });

@@ -1,8 +1,8 @@
 // A 4-person circle: one member is offline during a broadcast (gets it on
 // reconnect), a reply reaches everyone, and senders never receive their own.
-import { Agent, AgentIdentity, Parts } from '@canopy/core';
-import { VaultMemory }    from '@canopy/vault';
-import { RelayTransport } from '@canopy/transports';
+import { Agent, AgentIdentity, Parts } from '@onderling/core';
+import { VaultMemory }    from '@onderling/vault';
+import { RelayTransport } from '@onderling/transports';
 import { wait, checker }  from './_util.mjs';
 
 export const name = 'multi-party circle';

@@ -229,8 +229,8 @@ In order:
 
 4. **If it's a ProGuard issue:** check
    `apps/canopy-chat-mobile/android/app/proguard-rules.pro` for any
-   missing keep-rules around `@canopy/secure-agent`,
-   `@canopy/manifest-host`, or the `nkn-sdk` types.  Add keep rules
+   missing keep-rules around `@onderling/secure-agent`,
+   `@onderling/manifest-host`, or the `nkn-sdk` types.  Add keep rules
    if classes are being stripped.
 
 5. **Once the app renders in release mode:** the three D-1 tests

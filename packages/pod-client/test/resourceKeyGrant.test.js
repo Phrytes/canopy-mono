@@ -13,8 +13,8 @@ import {
   createResourceKeyGrant, openGrantedResource, resourceScope,
   generateKeypair, isSealed,
 } from '../src/sealing/index.js';
-import { AgentIdentity, CapabilityToken, TokenRegistry } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, CapabilityToken, TokenRegistry } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 async function setup() {
   const custodian = await AgentIdentity.generate(new VaultMemory());

@@ -22,7 +22,7 @@
  */
 import {
   runDispatch, renderReply, resolveDispatch,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 
 import { dlog } from './devLog.js';
 

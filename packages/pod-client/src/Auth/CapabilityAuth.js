@@ -31,7 +31,7 @@
  * (code `device-unreachable`) so callers can degrade explicitly rather than
  * hang (§R3 decision #3).
  */
-import { PodCapabilityToken, b64encode, b64decode } from '@canopy/core';
+import { PodCapabilityToken, b64encode, b64decode } from '@onderling/core';
 
 import { Auth }                          from './Auth.js';
 import { AuthError, DeviceUnreachableError, PayloadTooLargeError } from '../Errors.js';

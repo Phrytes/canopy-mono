@@ -13,11 +13,11 @@
 //   • the sealing CEK-wrap  (`sealWithGroupKey`/`openWithGroupKey` for the body; `seal`/`open` to wrap the
 //     per-resource CEK to a requester's sealing pubkey — the same recipient-mode envelope groupKeyResource
 //     uses to distribute a group key, but for ONE resource and gated by a token), and
-//   • the ocap primitives from `@canopy/core` (`CapabilityToken.issue`/`.verify`/`skillMatches`,
+//   • the ocap primitives from `@onderling/core` (`CapabilityToken.issue`/`.verify`/`skillMatches`,
 //     `TokenRegistry.revoke`/`.isRevoked`).
 //
 // Placement (layering): pod-client is the substrate that already owns `sealing/` AND already depends on
-// `@canopy/core` — so the composition of "sealing CEK-wrap × core ocap" belongs here, additively, beside
+// `@onderling/core` — so the composition of "sealing CEK-wrap × core ocap" belongs here, additively, beside
 // groupKeyResource. The kernel is untouched; existing group/recipient sealing paths are unchanged.
 //
 // The broker holds the SECRET (a per-resource CEK keyring). The sealed body is host-blind ciphertext that
@@ -27,7 +27,7 @@
 // pubkey. Deny-by-default: any failure returns `{ denied }` and never a key.
 
 import { seal, open, sealWithGroupKey, openWithGroupKey, generateGroupKey } from './envelope.js';
-import { CapabilityToken, skillMatches } from '@canopy/core';
+import { CapabilityToken, skillMatches } from '@onderling/core';
 
 // A per-resource read capability is named in the token's `skill` slot as `res.read:<resourceId>`. Reusing
 // the `skill` slot means the token model's OWN matcher (`skillMatches`) enforces per-resource isolation:
@@ -45,10 +45,10 @@ export function resourceScope(resourceId) {
  * Create a per-resource key-grant broker (the key custodian).
  *
  * @param {object} opts
- * @param {import('@canopy/core').AgentIdentity} opts.identity
+ * @param {import('@onderling/core').AgentIdentity} opts.identity
  *   The custodian's AgentIdentity — signs (issues) grants and is the `agentId` every grant is bound to.
  *   `CapabilityToken.verify(token, identity.pubKey)` therefore only accepts grants THIS broker issued.
- * @param {import('@canopy/core').TokenRegistry} [opts.tokenRegistry]
+ * @param {import('@onderling/core').TokenRegistry} [opts.tokenRegistry]
  *   Revocation source. `releaseKey` denies when `tokenRegistry.isRevoked(token.id)` is truthy; `revoke`
  *   delegates to it. If omitted, an in-memory revocation set is used (revocation still works within the
  *   process; supply a vault-backed TokenRegistry for persistence).

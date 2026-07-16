@@ -6,7 +6,7 @@
  * (`{text, buttons?, meta?}`). Apps that want their scheduled
  * jobs to surface ref-with-payload notifications can build
  * envelope-shaped payloads; the bridge helper routes them
- * through `@canopy/notify-envelope` instead of a channel.
+ * through `@onderling/notify-envelope` instead of a channel.
  *
  * Pure function; no I/O. Doesn't throw.
  */

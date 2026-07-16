@@ -3,7 +3,7 @@
  *
  * **Layering** (per `PLAN-gui-chat-uplift.md` Slice D.2):
  *   - Stoop's existing chat is bilateral peer-to-peer via
- *     `@canopy/chat-p2p` (`apps/stoop/src/chat/wireChat.js`), driven by
+ *     `@onderling/chat-p2p` (`apps/stoop/src/chat/wireChat.js`), driven by
  *     the `respondToItem` / `sendChatMessage` skill pair.  That stays
  *     unchanged.
  *   - D.1 declared the 13-op `stoopManifest` (`apps/stoop/manifest.js`)
@@ -11,7 +11,7 @@
  *     this file adds the chat (free-text) side.
  *   - D.2 (this file) lays an LLM tool-calling layer over the existing
  *     chat surface using `renderChat(stoopManifest, …)` →
- *     `@canopy/chat-agent` `ChatAgent`.  Free-text → LLM → manifest op
+ *     `@onderling/chat-agent` `ChatAgent`.  Free-text → LLM → manifest op
  *     dispatch; the LLM picks one of the 13 tools and invokes the
  *     underlying SDK skill via this adapter.
  *
@@ -25,14 +25,14 @@
  * dispatches them directly via `bundle.agent.skills.get(opId).handler`
  * — that's unchanged).  Free text falls through to `onFreeText`.
  *
- * **No package.json change in Slice D.2:** `@canopy/llm-client` is NOT
+ * **No package.json change in Slice D.2:** `@onderling/llm-client` is NOT
  * imported here — callers pass in any `llm` exposing `invoke(req)`
  * (real or mock).  See `apps/stoop/test/chat-llm.test.js`.
  */
 
-import { ChatAgent }   from '@canopy/chat-agent';
-import { renderChat }  from '@canopy/app-manifest';
-import { DataPart }    from '@canopy/core';
+import { ChatAgent }   from '@onderling/chat-agent';
+import { renderChat }  from '@onderling/app-manifest';
+import { DataPart }    from '@onderling/core';
 
 import { stoopManifest } from '../../manifest.js';
 

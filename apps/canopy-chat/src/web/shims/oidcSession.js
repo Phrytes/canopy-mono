@@ -1,16 +1,16 @@
 /**
- * Browser shim for `@canopy/oidc-session`.
+ * Browser shim for `@onderling/oidc-session`.
  *
  * The real package pulls in `@inrupt/solid-client-authn-node` + the
  * Node-only `openid-client`.  canopy-chat v0.1 ships pre-signed-in
  * (per OQ-1.A) and never touches the OIDC code path; a future
- * cleanup should split @canopy/oidc-session into a browser-compat
+ * cleanup should split @onderling/oidc-session into a browser-compat
  * + Node-only entry point.
  *
  * Until then this shim provides stub named exports matching
- * @canopy/oidc-session's `index.js` so esbuild (Vite's dep
+ * @onderling/oidc-session's `index.js` so esbuild (Vite's dep
  * pre-bundler in dev mode) can resolve the `import { SolidVault }`
- * in @canopy/core's `src/index.js`.  Stubs throw at use-time so a
+ * in @onderling/core's `src/index.js`.  Stubs throw at use-time so a
  * mistaken call surfaces visibly rather than failing silently.
  */
 
@@ -33,7 +33,7 @@ export const resolveIssuer      = notImplemented('resolveIssuer');
 
 // Phase 52.15.2 substrate (createSolidAuthNode + helpers).  Added to
 // the shim 2026-05-23 because stoop's `src/lib/podSignIn.js`
-// statically imports these via the new `@canopy-app/stoop/browser`
+// statically imports these via the new `@onderling-app/stoop/browser`
 // composition path (slice-2b integration).  Stoop only INVOKES them
 // when signing into a pod (deferred until #167 pod creds land); for
 // the smoke they just need to resolve at module-load time.

@@ -9,7 +9,7 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { RULES_FIELDS, normalizeRulesDoc, isRulesEmpty } from '@canopy-app/canopy-chat';
+import { RULES_FIELDS, normalizeRulesDoc, isRulesEmpty } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function CircleRulesConsentScreen({ doc, onAgree, onDecline, onBack }) {

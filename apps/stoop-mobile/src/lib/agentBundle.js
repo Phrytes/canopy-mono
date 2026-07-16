@@ -25,19 +25,19 @@ import {
   wireSubstrateMirror,
   buildSubstrateStack,
   registerAgentInRegistry,
-} from '@canopy-app/stoop';
+} from '@onderling-app/stoop';
 import {
   Agent, AgentConfig, FallbackTable, InternalBus, InternalTransport,
   PeerGraph, RoutingStrategy,
-} from '@canopy/core';
-import { RelayTransport } from '@canopy/transports';
-import { SkillMatch }                      from '@canopy/skill-match';
-// Subpath imports — pulling from `@canopy/react-native`'s barrel
+} from '@onderling/core';
+import { RelayTransport } from '@onderling/transports';
+import { SkillMatch }                      from '@onderling/skill-match';
+// Subpath imports — pulling from `@onderling/react-native`'s barrel
 // would re-evaluate KeychainVault, whose `react-native-keychain` TS
 // import vitest can't parse.  Subpath bypass.
-import { MdnsTransport }       from '@canopy/react-native/src/transport/MdnsTransport.js';
-import { NknTransport }        from '@canopy/react-native/src/transport/NknTransport.js';
-import { AsyncStorageAdapter } from '@canopy/react-native/src/storage/AsyncStorageAdapter.js';
+import { MdnsTransport }       from '@onderling/react-native/src/transport/MdnsTransport.js';
+import { NknTransport }        from '@onderling/react-native/src/transport/NknTransport.js';
+import { AsyncStorageAdapter } from '@onderling/react-native/src/storage/AsyncStorageAdapter.js';
 
 /**
  * @param {object} args
@@ -257,7 +257,7 @@ export async function buildBundleForGroup({
  * `buildSkills({ getBundle })`.
  *
  * @param {object} args
- * @param {import('@canopy/core').Agent} args.meshAgent  — shared
+ * @param {import('@onderling/core').Agent} args.meshAgent  — shared
  * @param {object} args.identity
  * @param {string} args.groupId
  * @param {string} args.localActor
@@ -495,7 +495,7 @@ export async function buildMeshAgent({
     if (!mdnsAvailable) {
       console.warn('[agentBundle] MdnsTransport native module unavailable — running internal-only. ' +
         'If you expected cross-device discovery: run `npx expo run:android` to rebuild the dev client ' +
-        'with @canopy/react-native\'s autolinked MdnsPackage.');
+        'with @onderling/react-native\'s autolinked MdnsPackage.');
     }
     if (mdnsAvailable) {
       const mdns = new MdnsTransport({
@@ -543,7 +543,7 @@ export async function buildMeshAgent({
   // the LAN (different Wi-Fi, cellular, mDNS-blocked router) can
   // still reach each other through a shared broker.  Pure WebSocket,
   // no native module — works in Expo Go.  Run a local relay with
-  // `npx @canopy/relay` (port 8787 by default).
+  // `npx @onderling/relay` (port 8787 by default).
   if (typeof relayUrl === 'string' && relayUrl.length > 0) {
     try {
       const relay = new RelayTransport({ relayUrl, identity });
@@ -669,7 +669,7 @@ export async function buildMeshAgent({
   // sends with UNKNOWN_RECIPIENT.
   try { agent.enableAutoHello?.({ pullPeers: true }); } catch { /* non-fatal */ }
   // Gossip cadence has to stay UNDER MdnsTransport.FRESHNESS_MS
-  // (currently 30s in @canopy/react-native): canReach() returns
+  // (currently 30s in @onderling/react-native): canReach() returns
   // false if there's been no envelope activity within that window,
   // and RoutingStrategy then falls through to the primary slot
   // (which is InternalTransport, self-loop only) — so a broadcast

@@ -8,9 +8,9 @@
  * calls for it).
  */
 
-import { CONFIG_VERSION }      from '@canopy/pod-routing';
-import { buildDefaultPolicy }  from '@canopy/pod-routing';
-import { WEBID_PREDICATES }    from '@canopy/webid-discovery';
+import { CONFIG_VERSION }      from '@onderling/pod-routing';
+import { buildDefaultPolicy }  from '@onderling/pod-routing';
+import { WEBID_PREDICATES }    from '@onderling/webid-discovery';
 
 /**
  * Build the initial storage-mapping config that lives at
@@ -75,7 +75,7 @@ export function buildInitialAgentRegistry({ agentInfo, podUri }) {
       );
     }
   }
-  // Shape matches @canopy/agent-registry's expected agent record so
+  // Shape matches @onderling/agent-registry's expected agent record so
   // a subsequent registry.register({agentId}) read-modify-write
   // matches + updates this seed entry rather than appending a duplicate
   // (Phase 52.10 composition fix surfaced by the V2 smoke scenario).

@@ -26,14 +26,14 @@
  *   touching the schedule (the pending timer keeps its arming).
  *
  * As of Plan B sub-task B.3 (2026-05-02), the TZ-aware "next fire"
- * math is consumed from @canopy/notifier (L1f).  The substrate
+ * math is consumed from @onderling/notifier (L1f).  The substrate
  * gained TZ-aware cadence specifically because household demanded
  * it — first rule-of-two pull on L1f.  This file's `nextFireMsFn`
  * test seam still works (tests can inject deterministic times); the
  * production default uses the substrate helper.
  */
 
-import { nextDailyFireInTz } from '@canopy/notifier';
+import { nextDailyFireInTz } from '@onderling/notifier';
 
 const DEFAULT_TZ        = 'UTC';
 const DEFAULT_AT_LOCAL  = '20:00';
@@ -135,7 +135,7 @@ export class DailyDigest {
 /**
  * Compute the next instant whose local time in `tz` is `atLocal`.
  *
- * Wraps @canopy/notifier's `nextDailyFireInTz` (substrate-level
+ * Wraps @onderling/notifier's `nextDailyFireInTz` (substrate-level
  * helper, ported from this file's earlier Intl-based implementation).
  * Substrate gained TZ-aware cadence for L1f V0.1 specifically because
  * household demanded it — first rule-of-two pull on L1f.

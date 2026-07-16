@@ -9,9 +9,9 @@ A single offline script that walks the pod-search V2 embeddings path end to end:
 provision → index (embed) → PERSIST → reload (backfill, NO re-embed) → query
 ```
 
-It runs against a **pseudo-pod** (an in-memory `@canopy/pseudo-pod`
+It runs against a **pseudo-pod** (an in-memory `@onderling/pseudo-pod`
 `MemoryBackend` as the vector store) with the **mock embed provider** from
-`@canopy/llm-client` — so there is no live Ollama / enclave / real pod
+`@onderling/llm-client` — so there is no live Ollama / enclave / real pod
 (`conventions/pod-independence.md`).
 
 ## Run

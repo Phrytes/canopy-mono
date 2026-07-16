@@ -10,7 +10,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { buildSharedWithMe, openSharedCopy } from '@canopy-app/canopy-chat';
+import { buildSharedWithMe, openSharedCopy } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function SharedWithMeScreen({

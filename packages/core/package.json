@@ -1,5 +1,5 @@
 {
-  "name": "@canopy/core",
+  "name": "@onderling/core",
   "version": "0.1.0",
   "description": "Portable decentralised agent SDK — transport, security, identity, protocol",
   "type": "module",
@@ -35,8 +35,8 @@
     "tweetnacl-util": "^0.15.1"
   },
   "devDependencies": {
-    "@canopy/vault": "workspace:^",
-    "@canopy/transports": "workspace:^",
+    "@onderling/vault": "workspace:^",
+    "@onderling/transports": "workspace:^",
     "@anthropic-ai/sdk": "^0.36.0",
     "vitest": "^2.1.0",
     "ws": "^8.20.0"

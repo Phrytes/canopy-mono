@@ -11,8 +11,8 @@ import { promises as fs }  from 'node:fs';
 import { tmpdir }          from 'node:os';
 import { join }            from 'node:path';
 
-import { AgentIdentity, PodCapabilityToken } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, PodCapabilityToken } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import {
   parsePath,

@@ -10,7 +10,7 @@
  * adds an attach-once setter on Agent and calls it in the factory.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { createSecureAgent } from '../src/createSecureAgent.js';
 
 describe('PolicyEngine attach (createSecureAgent)', () => {

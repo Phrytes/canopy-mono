@@ -1,5 +1,5 @@
 /**
- * registerFolioAgent — self-register folio into `@canopy/agent-registry`
+ * registerFolioAgent — self-register folio into `@onderling/agent-registry`
  * (Slice 1b, PLAN-folio-as-file-agent.md).  The folio sibling of the
  * agents-app bring-up in canopy-chat's `realAgent.js` (`registerAgentBundle`).
  *
@@ -15,13 +15,13 @@
  * call once it has a pseudoPod + deviceId — canopy-chat wires it alongside
  * the folio agent boot, or folio's own Node server/CLI composition does
  * (a later slice).  It is deliberately NOT imported by `browser.js`, so the
- * browser bundle never pulls `@canopy/agent-registry`.
+ * browser bundle never pulls `@onderling/agent-registry`.
  *
  * Soft-fail: `registerAgentBundle` returns `null` (never throws) on a
  * transient pseudo-pod miss, so bring-up stays robust; re-registration is
  * idempotent (CAS upsert keyed on `agentId`).
  */
-import { registerAgentBundle } from '@canopy/agent-registry';
+import { registerAgentBundle } from '@onderling/agent-registry';
 
 import { folioManifest } from '../manifest.js';
 

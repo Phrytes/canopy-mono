@@ -18,9 +18,9 @@ import nacl from 'tweetnacl';
 import {
   generateKeypair, generateGroupKey, recipientStrategy, groupKeyStrategy, isSealed,
   sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey,
-} from '@canopy/pod-client/sealing';
-import { sealItem } from '@canopy/item-store';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+} from '@onderling/pod-client/sealing';
+import { sealItem } from '@onderling/item-store';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { shareItemToPublishedKey } from '../../src/v2/circleShare.js';
 import { createSharedWithMeStore } from '../../src/v2/sharedWithMeStore.js';

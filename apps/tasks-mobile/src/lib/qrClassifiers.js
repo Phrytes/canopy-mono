@@ -16,8 +16,8 @@
  *   5. (future) tasks://circle-config             → multi-circle bootstrap
  */
 
-import { parseTokenParam } from '@canopy/react-native/deepLinks';
-import { looksLikeMnemonic, mnemonicWords } from '@canopy/react-native/mnemonic';
+import { parseTokenParam } from '@onderling/react-native/deepLinks';
+import { looksLikeMnemonic, mnemonicWords } from '@onderling/react-native/mnemonic';
 
 const SCHEME      = 'tasks:';
 const CONTACT_URI = 'tasks-contact://';

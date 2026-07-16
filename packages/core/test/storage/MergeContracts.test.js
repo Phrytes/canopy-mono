@@ -1,4 +1,4 @@
-// @canopy/core — MergeContracts unit tests
+// @onderling/core — MergeContracts unit tests
 import { describe, it, expect } from 'vitest';
 import {
   setUnionWithDedupe,

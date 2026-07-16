@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { MemberMap } from '../src/MemberMap.js';
 import { buildIdentitySkills } from '../src/skills.js';
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 const ALICE = 'https://id.example/alice';
 const BOB   = 'https://id.example/bob';

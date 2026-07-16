@@ -1,4 +1,4 @@
-# Changelog — @canopy-app/presence-v0
+# Changelog — @onderling-app/presence-v0
 
 ## [0.1.0] — 2026-05-02
 
@@ -21,7 +21,7 @@ issuer for "WiFi + on-LAN-agent" presence attestation.
 
 ### Substrate dependencies
 
-- `@canopy/item-store` (L1b) — audit log for issued attestations
+- `@onderling/item-store` (L1b) — audit log for issued attestations
 
 Most logic at the SDK transport layer (already shipped per topology
 audit); H8 V0 is mostly the agent shape + UX flow.

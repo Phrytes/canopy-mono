@@ -1,9 +1,9 @@
 /**
  * resourceUri — map a circle-scoped item (circleId + itemId) to its canonical pod-resource URI.
  *
- * This is the concrete storage-layout resolver the K read/write seam needs. `@canopy/pod-onboarding`
+ * This is the concrete storage-layout resolver the K read/write seam needs. `@onderling/pod-onboarding`
  * OWNS the pod storage layout (CLAUDE.md · conventions/storage-layout.md), so the `circle → pod URI`
- * derivation lives HERE, not in `@canopy/item-store` (which must stay pod-agnostic) and not baked into
+ * derivation lives HERE, not in `@onderling/item-store` (which must stay pod-agnostic) and not baked into
  * `makeSharedRefPolicy` (which only takes an injected `resourceUriFor`).
  *
  * Canonical layout (storage-layout.md · "Canonical sub-container layout"): circle/circle-scoped data lives
@@ -18,7 +18,7 @@
  *
  * This resolver is deliberately PURE + synchronous (no pod round-trip): the ACP grant target is a URI, and
  * the layout is convention, not a per-pod lookup. User-customised storage-mapping overrides (the
- * `private/storage-mapping` config) ride on top via `@canopy/pod-routing` — a resolver that must honour a
+ * `private/storage-mapping` config) ride on top via `@onderling/pod-routing` — a resolver that must honour a
  * user override composes `PodRouting.resolve('group/<circleId>/<container>')` instead; see the note below.
  */
 

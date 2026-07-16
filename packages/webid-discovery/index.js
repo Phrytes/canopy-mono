@@ -1,5 +1,5 @@
 /**
- * @canopy/webid-discovery — WebID-profile pointer-walk + resolution.
+ * @onderling/webid-discovery — WebID-profile pointer-walk + resolution.
  *
  * Public exports:
  *   - `discoverPointers(webidUri, { fetch })`    — fetch WebID profile + parse pointer predicates.

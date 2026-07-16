@@ -1,8 +1,8 @@
 /**
  * Curated list of Solid OIDC issuers + a small resolver.
  *
- * Ships from `@canopy/oidc-session`; mirrored in
- * `@canopy/oidc-session-rn` (the two packages must stay in sync —
+ * Ships from `@onderling/oidc-session`; mirrored in
+ * `@onderling/oidc-session-rn` (the two packages must stay in sync —
  * either lift to a shared package or duplicate carefully here).
  *
  * Phase 52.15.1 (2026-05-14) — Solid-auth consolidation. See

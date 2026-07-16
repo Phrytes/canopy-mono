@@ -7,17 +7,17 @@
  * still runs THROUGH the gate (authorized runs; unknown → MCP error).
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 import {
   Agent, AgentIdentity,
   InternalBus, InternalTransport,
   TrustRegistry, PolicyEngine, TokenRegistry,
   TextPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   RemoteHandlerRegistry,
   grantRemoteCapability,
-} from '@canopy/secure-agent';
+} from '@onderling/secure-agent';
 import { createMcpServer, createLoopbackPair } from '../src/index.js';
 
 const MANIFEST = {

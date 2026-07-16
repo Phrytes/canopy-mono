@@ -10,7 +10,7 @@
  * their collaborators on the Node side rather than reimplement any of them.
  *
  * The collaborators are imported VERBATIM from folio by relative path (folio's
- * isolated `node_modules` resolves their own bare `@canopy/*` deps; we never
+ * isolated `node_modules` resolves their own bare `@onderling/*` deps; we never
  * copy folio logic — see the coupling note in the app README).  Only two
  * things are host-local: the seed file index and the `simulateSync` envelope
  * stub — both are byte-identical to `browser.js`, kept here so the store is
@@ -25,7 +25,7 @@
  *                        'pod'})` walks it via `listPodFolio` — a genuine pod
  *                        leg, not the seed index.
  *   - `mintShareToken`   REAL `PodCapabilityToken` issuance (folio's autoShare).
- *   - note search        REAL lexical `@canopy/pod-search` index (no embedder
+ *   - note search        REAL lexical `@onderling/pod-search` index (no embedder
  *                        injected ⇒ lexical-only, exactly like browser default).
  *
  * NOT wired in R1 (deferred): the `CapabilityAuth` `pod-direct` delegation that
@@ -34,7 +34,7 @@
  */
 
 // Folio collaborators, reused verbatim (relative import into apps/folio/src —
-// folio's node_modules resolves their transitive @canopy/* deps).
+// folio's node_modules resolves their transitive @onderling/* deps).
 import { mintShareToken }        from '../../folio/src/autoShare.js';
 import { listPodFolio }          from '../../folio/src/folioPodList.js';
 import {
@@ -79,7 +79,7 @@ function simulateSync() {
  * Build the Node `store` the relocated folio cores read.
  *
  * @param {object} args
- * @param {import('@canopy/core').AgentIdentity} args.identity  host identity (shareFolder signer)
+ * @param {import('@onderling/core').AgentIdentity} args.identity  host identity (shareFolder signer)
  * @param {Array}  [args.seedFiles]     override the demo seeds ([] for a clean index)
  * @param {string} [args.podRoot]       token's `pod` field (shareFolder)
  * @param {{ podClient: object, containerUri: string }|null} [args.podSource]

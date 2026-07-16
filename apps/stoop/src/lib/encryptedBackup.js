@@ -28,7 +28,7 @@
  *
  * **Substrate candidate (rule of two):** when a second app needs
  * passphrase-protected snapshot export, lift this into a new
- * `@canopy/encrypted-backup` substrate (folio's "take my data"
+ * `@onderling/encrypted-backup` substrate (folio's "take my data"
  * pattern would consume the same shape).  Tracked in
  * `Project Files/Substrates/substrate-candidates.md`.
  */

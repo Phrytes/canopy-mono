@@ -1,7 +1,7 @@
-# `@canopy/chat-p2p`
+# `@onderling/chat-p2p`
 
 > **Layer:** substrate. Cross-platform.
-> **Distinct from `@canopy/chat-agent`** (LLM-mediated chat).
+> **Distinct from `@onderling/chat-agent`** (LLM-mediated chat).
 > Lifted from `apps/stoop/src/chat/wireChat.js` 2026-05-08 (Tasks
 > V1 = rule-of-two consumer per
 > `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`).
@@ -24,7 +24,7 @@ Peer-to-peer chat over `agent.transport.sendOneWay`.
 
 ## What's NOT in scope
 
-- LLM mediation (that's `@canopy/chat-agent`).
+- LLM mediation (that's `@onderling/chat-agent`).
 - The skill set (`sendChatMessage`, `getChatThread`,
   `listChatThreads`, etc.) — those are app-level for now. Tasks V1
   may lift them in a follow-up.
@@ -50,7 +50,7 @@ Peer-to-peer chat over `agent.transport.sendOneWay`.
 ## Envelope-type config (mixed-version interop)
 
 ```js
-import { wireChat } from '@canopy/chat-p2p';
+import { wireChat } from '@onderling/chat-p2p';
 
 // Stoop's back-compat configuration:
 const chat = wireChat({
@@ -79,7 +79,7 @@ running the new substrate, and vice versa.
 Apps that ship in-message attachments wire helpers in:
 
 ```js
-import { wireChat } from '@canopy/chat-p2p';
+import { wireChat } from '@onderling/chat-p2p';
 import { attachmentPath, readAttachmentBytesB64, MAX_CHAT_BYTES_PER_ATT }
        from './lib/Attachments.js';
 

@@ -13,7 +13,7 @@
  * Portable (zero RN / zero DOM) so the launcher's panel wiring is
  * unit-testable in vitest (which excludes src/screens entirely).
  */
-import { renderMobile } from '@canopy/app-manifest';
+import { renderMobile } from '@onderling/app-manifest';
 import {
   drilldownForSection, selectionContextFor, fetchScreenItems, itemsFromReply, recordFromReply,
 } from '../../../canopy-chat/src/v2/screenDrilldown.js';

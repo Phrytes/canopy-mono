@@ -3,7 +3,7 @@
  *
  * The whole point of the slice: a recipient whose sealing key is DIFFERENT from the source group's key can
  * decrypt a shared sealed item, and a non-recipient (a third, distinct keypair) CANNOT — even if granted the
- * ACP read (no ciphertext/plaintext leak). We use REAL, DISTINCT keypairs from `@canopy/pod-client` sealing —
+ * ACP read (no ciphertext/plaintext leak). We use REAL, DISTINCT keypairs from `@onderling/pod-client` sealing —
  * NOT matching mocks — so the test actually exercises the crypto that fixes the bug.
  *
  *   • source group key  (groupKeyStrategy)      — the source circle's at-rest posture (bob is NOT in it)
@@ -18,14 +18,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateKeypair, generateGroupKey, recipientStrategy, groupKeyStrategy, isSealed,
-} from '@canopy/pod-client';
-import { makeCircleShareEnforcement, sealItem } from '@canopy/item-store';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+} from '@onderling/pod-client';
+import { makeCircleShareEnforcement, sealItem } from '@onderling/item-store';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import {
   shareItemAcrossCircles, listSharedResolved, composeReaderOpen,
 } from '../../src/v2/circleShare.js';
-import { recipientSealKeyFromMembers } from '@canopy/kring-host/circleMembers';
+import { recipientSealKeyFromMembers } from '@onderling/kring-host/circleMembers';
 
 const resourceUriFor = sharedRefResourceUri(makeResourceUriResolver({ podUri: 'https://pod.example/' }));
 

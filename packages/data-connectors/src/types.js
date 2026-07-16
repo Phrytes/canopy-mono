@@ -1,10 +1,10 @@
-// @canopy/data-connectors — the source-agnostic connector contract (Objective S, v0).
+// @onderling/data-connectors — the source-agnostic connector contract (Objective S, v0).
 //
 // A DataConnector abstracts ONE external data source (a REST API, a SQL/DB, a queue, a
 // spreadsheet, …) behind a tiny, uniform, JSON-in/JSON-out surface, so an app-function can
 // expose or query it as a gated capability WITHOUT knowing what the source actually is. Same
-// injected-adapter genre as `@canopy/llm-client` (provider injection) and
-// `@canopy/blob-gateway` (duck-typed injected contracts, mock-tested — no live service in CI).
+// injected-adapter genre as `@onderling/llm-client` (provider injection) and
+// `@onderling/blob-gateway` (duck-typed injected contracts, mock-tested — no live service in CI).
 //
 // The whole substrate is INJECTED end-to-end:
 //   • the REST connector takes an injected `fetch` (+ pluggable injected auth strategy),

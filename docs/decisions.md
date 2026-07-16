@@ -59,7 +59,7 @@ layout) — a single running file is lower-ceremony and reads as a history top-t
 
 ## 2026-07-02 — Capability surface is DECLARED-AUTHORITATIVE (a manifest's `nouns` curates it)
 
-**Status:** settled and shipped (`@canopy/app-manifest` `capabilitiesOf`, commit `f8d659dc`).
+**Status:** settled and shipped (`@onderling/app-manifest` `capabilitiesOf`, commit `f8d659dc`).
 
 **Context:** B's gate authorises `(verb × noun)` capabilities. `capabilitiesOf(manifest)` can get a manifest's
 capability set two ways: DECLARED (`manifest.nouns[noun].atoms`) and DERIVED (read off each op's verb + the noun
@@ -87,12 +87,12 @@ the freedom matrix (`buildCapabilityMatrix`) and the gate (`effectiveCapabilityK
 
 ## 2026-07-05 — One uniform invocation route (internal transport is a fast-path), over one pure core
 
-**Status:** settled + **implemented** (2026-07-08). `wireSkill(coreFn, manifestOp)` in `@canopy/sdk`; **household
+**Status:** settled + **implemented** (2026-07-08). `wireSkill(coreFn, manifestOp)` in `@onderling/sdk`; **household
 runs the uniform wired path by default — the legacy `HouseholdAgent` is retired** (cores registered via `wireSkill`
 on a dedicated in-process agent in `realAgent.js`). **Workstream B done:** `tasks-v0` and `stoop` now call their
 pure `(store,args,ctx)` cores directly on BOTH routes — the local route (`callSkill`) no longer builds a synthetic
 single-`DataPart` round-trip; wire and local share one `TASK_CORES`/`STOOP_CORES` registry, and the A2A wire route
-is byte-identical. The anti-drift guard the brief demanded ships as `@canopy/sdk/testing`'s `describeLocalWireFitness`
+is byte-identical. The anti-drift guard the brief demanded ships as `@onderling/sdk/testing`'s `describeLocalWireFitness`
 (`local ≡ wire` equivalence + manifest-op⟷core⟷wire parity), driven for tasks-v0 and stoop. *Follow-up:* add a
 household fitness driver (its cores already run the uniform path).
 
@@ -152,7 +152,7 @@ an externally-interoperable A2A Agent Card per agent. Two writable representatio
 drift; and the coarse `capabilities[]` display list could diverge from what an agent is actually authorized
 to do.
 
-**Decision:** the **`@canopy/agent-registry` list resource** (one pod resource holding all of a user's agent
+**Decision:** the **`@onderling/agent-registry` list resource** (one pod resource holding all of a user's agent
 entries) is the **single write-truth**; every per-agent **A2A Agent Card is a derived read/interop
 projection** of its registry entry (`projectAgentCard(entry)`) — one truth, one view, never written directly.
 And within an entry, the **signed capability token (`grants[]`) is the enforced authority**; `capabilities[]`

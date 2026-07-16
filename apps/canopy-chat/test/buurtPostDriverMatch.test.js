@@ -2,7 +2,7 @@
 // MY drivers on-device (getProfileDrivers) and fires a SEPARATE resonance notification on an explainable
 // match — working off the post's text/tags even without an explicit driverSignature.
 import { describe, it, expect, vi } from 'vitest';
-import { createDriver } from '@canopy/agent-registry';
+import { createDriver } from '@onderling/agent-registry';
 import { makeHandleBuurtPost } from '../src/core/handlers/buurtPost.js';
 
 function harness({ drivers }) {

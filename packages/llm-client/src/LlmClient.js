@@ -10,8 +10,8 @@
  *
  * Usage:
  *
- *   import { LlmClient } from '@canopy/llm-client';
- *   import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
+ *   import { LlmClient } from '@onderling/llm-client';
+ *   import { ollamaProvider } from '@onderling/llm-client/providers/ollama';
  *
  *   const llm = new LlmClient({
  *     provider: ollamaProvider({ baseUrl, model: 'qwen2.5:7b-instruct' }),
@@ -30,7 +30,7 @@
  * When no `meter` is supplied the client behaves byte-identically to before.
  */
 import { usageForCompletion } from './metering.js';
-import { log } from '@canopy/logger';
+import { log } from '@onderling/logger';
 
 export class LlmClient {
   /** @type {import('./types.js').LlmProvider} */ #provider;

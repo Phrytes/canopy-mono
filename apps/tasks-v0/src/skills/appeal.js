@@ -7,7 +7,7 @@
  * reason so the conversation starts with shared context.
  *
  * Substrate composition:
- *   - `@canopy/chat-p2p`'s `wireChat({...})` factory provides the
+ *   - `@onderling/chat-p2p`'s `wireChat({...})` factory provides the
  *     `send(...)` controller. Tasks's Circle agent wires it once at
  *     boot; the appeal skill grabs the resulting controller and
  *     calls `send(...)` to deliver the opening message.
@@ -28,7 +28,7 @@
  *     mechanism, not a role-gated operation.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 
@@ -96,7 +96,7 @@ export function buildAppealSkill({ bundleResolver } = {}) {
         return {
           error:  'chat-not-wired',
           taskId: a.taskId,
-          info:   'circle has no @canopy/chat-p2p controller; appeal needs a peer chat substrate',
+          info:   'circle has no @onderling/chat-p2p controller; appeal needs a peer chat substrate',
         };
       }
 

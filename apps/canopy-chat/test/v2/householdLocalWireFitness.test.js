@@ -17,7 +17,7 @@
  *     CircleItemStore (`createHouseholdService().stores.getStore(circleId)`),
  *     no synthetic envelope.
  *   • WIRE route  — the SAME adapted core wrapped by `wireSkill(core, op,
- *     { storeFor })` + registered on a real `@canopy/sdk` agent, invoked over
+ *     { storeFor })` + registered on a real `@onderling/sdk` agent, invoked over
  *     the serialized `{parts:[DataPart], from, envelope}` path.
  *
  * The per-route caller identity differs by construction (LOCAL uses a fixed
@@ -33,14 +33,14 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { createAgent, Parts, wireSkill } from '@canopy/sdk';
+import { createAgent, Parts, wireSkill } from '@onderling/sdk';
 // The `local ≡ wire` harness lives at the SDK layer (dependency-free).
-import { describeLocalWireFitness } from '@canopy/sdk/testing';
+import { describeLocalWireFitness } from '@onderling/sdk/testing';
 
 // Household's pure cores (the dissolved app) — canopy-chat's own src.
 import * as householdApp from '../../src/v2/householdApp.js';
 // The household manifest is the single contract; relative-imported exactly as
-// realAgent.js does (canopy-chat carries no @canopy-app/household workspace dep).
+// realAgent.js does (canopy-chat carries no @onderling-app/household workspace dep).
 import { householdManifest } from '../../../household/manifest.js';
 
 const CIRCLE = 'fit';

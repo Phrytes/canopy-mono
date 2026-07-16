@@ -4,8 +4,8 @@
  * Returns an array of `defineSkill(...)` objects ready to register on a
  * `core.Agent`:
  *
- *   import { Agent } from '@canopy/core';
- *   import { MemberMap, buildIdentitySkills } from '@canopy/identity-resolver';
+ *   import { Agent } from '@onderling/core';
+ *   import { MemberMap, buildIdentitySkills } from '@onderling/identity-resolver';
  *
  *   const agent = await Agent.createNew({ transport, label: 'X' });
  *   for (const def of buildIdentitySkills({ members })) agent.register(def);
@@ -21,7 +21,7 @@
  * of L1d Phase 3.1 (substrate-vs-SDK refactor).
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 /**
  * Read a single DataPart's `data` from a Parts[] input. Defaults to `{}`.

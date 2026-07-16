@@ -2,7 +2,7 @@
  * Bundle F P6 — mobile podAuth adapter contract (#262).
  *
  * Pins the shape that buildMobilePodAuth exposes — same surface
- * web's @canopy/oidc-session has, so localBuiltins' signin /
+ * web's @onderling/oidc-session has, so localBuiltins' signin /
  * signout / whoami handlers work without per-surface branching.
  */
 import { describe, it, expect } from 'vitest';

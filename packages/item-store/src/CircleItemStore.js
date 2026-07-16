@@ -4,7 +4,7 @@
  * The data half of the dissolve: storage is keyed by **circle (scope) + data-type**, NOT by app-origin.
  * One store per circle (the `rootContainer` is the circle's routed pod path — `PodRouting` already keys the
  * pod by `circleId ≡ circleId`). Items are typed (`{id, type, …}`) and validated against the injected registry
- * (`@canopy/item-types`) on write. So ANY function over the registry's types can read/write here, and
+ * (`@onderling/item-types`) on write. So ANY function over the registry's types can read/write here, and
  * `app-origin` is demoted to a capability/provenance TAG, not the storage key.
  *
  * Deliberately MINIMAL + generic: pure typed CRUD + a `type` index. Type-specific lifecycle (a task's
@@ -27,16 +27,16 @@ import { causalWinner } from './causalMerge.js';
 const ITEMS_DIR = 'items';
 
 export class CircleItemStore {
-  /** @type {import('@canopy/core').DataSource} */ #source;
+  /** @type {import('@onderling/core').DataSource} */ #source;
   /** @type {string} */                            #root;
   /** @type {((item:object)=>{ok:boolean,errors?:Array})|null} */ #validate;
   /** @type {{publishItem?:(item:object)=>any, publishItemRemoved?:(id:string)=>any}|null} */ #syncHook = null;
 
   /**
    * @param {object} args
-   * @param {import('@canopy/core').DataSource} args.dataSource  read/write/delete/list (routed to the circle's pod)
+   * @param {import('@onderling/core').DataSource} args.dataSource  read/write/delete/list (routed to the circle's pod)
    * @param {string} args.rootContainer  the circle's store root (e.g. a PodRouting-resolved `…/<circleId>/`)
-   * @param {{ validate?: (item:object)=>{ok:boolean,errors?:Array} }} [args.registry]  @canopy/item-types registry;
+   * @param {{ validate?: (item:object)=>{ok:boolean,errors?:Array} }} [args.registry]  @onderling/item-types registry;
    *        when present, `put` rejects items that fail `validate`. Injected (no hard dep) — pass a fresh
    *        `createRegistry()` (with any third-party `registerType`d schemas) or the default canonical one.
    */

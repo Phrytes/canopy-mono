@@ -1,5 +1,5 @@
 /**
- * @canopy-app/calendar — skill registrations.
+ * @onderling-app/calendar — skill registrations.
  *
  * `registerCalendarSkills(agent, store, opts)` registers every
  * manifest-declared op as an agent skill backed by `CalendarStore`.
@@ -7,15 +7,15 @@
  * the same skills onto its in-process hostAgent for the v0.7.10
  * demo).
  *
- * Skill signature follows @canopy/core convention: handler receives
+ * Skill signature follows @onderling/core convention: handler receives
  * `{ parts }` with the first DataPart's `data` carrying the args
  * (the chat-shell's callSkill wraps args in a DataPart).
  */
 
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 /**
- * @param {import('@canopy/core').Agent}     agent
+ * @param {import('@onderling/core').Agent}     agent
  * @param {import('../CalendarStore.js').CalendarStore} store
  * @param {object}  [opts]
  * @param {() => object} [opts.simulateSync]   v0.6 sync hint shape

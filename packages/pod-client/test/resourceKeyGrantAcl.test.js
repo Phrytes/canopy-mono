@@ -14,8 +14,8 @@ import {
   createResourceKeyGrant, openGrantedResource,
   generateKeypair, isSealed,
 } from '../src/sealing/index.js';
-import { AgentIdentity, CapabilityToken, TokenRegistry } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, CapabilityToken, TokenRegistry } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 // Fake ACP surface — mirrors canonicalShare.test's fake. grant/revoke mutate an in-memory table; a
 // `noopRevoke` flag makes revoke THROW a SHARING_REVOKE_NOOP-coded error exactly as the real client.sharing

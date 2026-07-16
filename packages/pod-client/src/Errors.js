@@ -1,19 +1,19 @@
 /**
- * @canopy/pod-client — Errors taxonomy.
+ * @onderling/pod-client — Errors taxonomy.
  *
  * Every error thrown by `PodClient` (and its convention helpers) extends
  * `PodClientError`, which itself extends `Error`.  The taxonomy below is
  * the public contract — see `Design-v3/pod-client-api.md` §Error model.
  *
  * `mapSourceCode(code, { uri, cause })` translates raw `.code` strings
- * thrown by `@canopy/core`'s storage layer (`SolidPodSource`,
+ * thrown by `@onderling/core`'s storage layer (`SolidPodSource`,
  * `PodStorageConvention`, `reference-manifest`, external stores) into the
  * appropriate typed subclass.  Unknown codes fall back to the base
  * `PodClientError` with the raw code preserved.
  */
 
 /**
- * Base class for every error thrown by `@canopy/pod-client`.
+ * Base class for every error thrown by `@onderling/pod-client`.
  *
  * @property {string}  code        — short machine-readable code (e.g. `'NOT_FOUND'`)
  * @property {string=} uri         — pod URI the error pertains to (when known)
@@ -149,7 +149,7 @@ export class SharingUnsupportedError extends PodClientError {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Map a raw `.code` string (as thrown by `@canopy/core`'s storage layer)
+ * Map a raw `.code` string (as thrown by `@onderling/core`'s storage layer)
  * to the appropriate `PodClientError` subclass.
  *
  * Returns a fully-constructed error instance — callers can `throw` it

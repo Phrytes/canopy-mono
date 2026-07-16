@@ -20,9 +20,9 @@ vi.mock('react-native-keychain', () => ({
   }),
 }));
 
-// Also mock @canopy/core's Vault base so we can extend it cleanly.
-vi.mock('@canopy/core', async () => {
-  const actual = await vi.importActual('@canopy/core');
+// Also mock @onderling/core's Vault base so we can extend it cleanly.
+vi.mock('@onderling/core', async () => {
+  const actual = await vi.importActual('@onderling/core');
   return actual;
 });
 

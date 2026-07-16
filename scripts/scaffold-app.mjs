@@ -2,7 +2,7 @@
 /**
  * scaffold-app.mjs — Phase 52.x P5 scaffolder CLI.
  *
- * Generates a minimal hello-world `@canopy` app skeleton under
+ * Generates a minimal hello-world `@onderling` app skeleton under
  * `apps/<name>/` (or `<dir>/<name>/`). The generated app boots a
  * `core.Agent` with an in-process transport + ephemeral identity,
  * registers one `hello` skill, and ships a passing vitest suite.
@@ -36,14 +36,14 @@ const REPO_ROOT  = resolve(__dirname, '..');
 
 const args = process.argv.slice(2);
 if (args.length === 0 || args.includes('--help') || args.includes('-h')) {
-  process.stdout.write(`scaffold-app — generate a minimal @canopy app skeleton
+  process.stdout.write(`scaffold-app — generate a minimal @onderling app skeleton
 
 Usage:
   node scripts/scaffold-app.mjs <name>
   node scripts/scaffold-app.mjs <name> --dir <path>
 
 Arguments:
-  <name>            App name (becomes the directory + the @canopy-app/<name> package name).
+  <name>            App name (becomes the directory + the @onderling-app/<name> package name).
                     Must be a kebab-case word: [a-z][a-z0-9-]*
 
 Options:
@@ -94,10 +94,10 @@ mkdirSync(join(appDir, 'locales'), { recursive: true });
 
 // 1. package.json — minimal deps + vitest.
 const packageJson = {
-  name:        `@canopy-app/${name}`,
+  name:        `@onderling-app/${name}`,
   version:     '0.0.1',
   private:     true,
-  description: `Minimal @canopy hello-world app scaffolded ${new Date().toISOString().slice(0, 10)} via scripts/scaffold-app.mjs.`,
+  description: `Minimal @onderling hello-world app scaffolded ${new Date().toISOString().slice(0, 10)} via scripts/scaffold-app.mjs.`,
   type:        'module',
   main:        'src/index.js',
   exports:     { '.': './src/index.js' },
@@ -108,7 +108,7 @@ const packageJson = {
     start:      `node bin/${name}.js`,
   },
   dependencies: {
-    '@canopy/core': 'file:../../packages/core',
+    '@onderling/core': 'file:../../packages/core',
   },
   devDependencies: {
     vitest: '^2.1.0',
@@ -121,7 +121,7 @@ writeFileSync(
 
 // 2. src/index.js — exports createApp() returning { agent, identity, stop }.
 writeFileSync(join(appDir, 'src', 'index.js'), `/**
- * ${name} — minimal hello-world @canopy app.
+ * ${name} — minimal hello-world @onderling app.
  *
  * Scaffolded by scripts/scaffold-app.mjs (Phase 52.x P5).
  *
@@ -143,7 +143,7 @@ import {
   Agent,
   defineSkill,
   DataPart,
-} from '@canopy/core';
+} from '@onderling/core';
 
 /**
  * Build a fresh agent with one \`hello\` skill registered.
@@ -185,7 +185,7 @@ writeFileSync(join(appDir, 'bin', `${name}.js`), `${binShebang}
  */
 
 import { createApp } from '../src/index.js';
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 const who = process.argv[2] ?? 'world';
 
@@ -209,7 +209,7 @@ writeFileSync(join(appDir, 'test', 'hello.test.js'), `/**
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 import { createApp } from '../src/index.js';
 
 let app;
@@ -262,9 +262,9 @@ export default defineConfig({
 `);
 
 // 7. README.md.
-writeFileSync(join(appDir, 'README.md'), `# @canopy-app/${name}
+writeFileSync(join(appDir, 'README.md'), `# @onderling-app/${name}
 
-Minimal hello-world \`@canopy\` app scaffolded via \`scripts/scaffold-app.mjs\`.
+Minimal hello-world \`@onderling\` app scaffolded via \`scripts/scaffold-app.mjs\`.
 
 ## Run
 
@@ -298,9 +298,9 @@ The scaffolded app uses the **minimum viable** substrate stack:
 |---|---|---|
 | Identity vault | \`VaultMemory\` (ephemeral) | \`VaultNodeFs\` (Node) or \`KeychainVault\` (RN) |
 | Transport | \`InternalTransport\` (in-process) | \`RelayTransport\` (NKN/relay) + optional \`BleTransport\` / \`MdnsTransport\` |
-| Storage | (none) | \`@canopy/pseudo-pod\` for local, \`@canopy/pod-client\` for real Solid pods |
-| Fan-out | (none) | \`@canopy/notify-envelope\` for circle-replicated writes |
-| Item shape | (free-form) | \`@canopy/item-types\` canonical taxonomy |
+| Storage | (none) | \`@onderling/pseudo-pod\` for local, \`@onderling/pod-client\` for real Solid pods |
+| Fan-out | (none) | \`@onderling/notify-envelope\` for circle-replicated writes |
+| Item shape | (free-form) | \`@onderling/item-types\` canonical taxonomy |
 
 See \`Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md\`
 for the substrate inventory.

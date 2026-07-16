@@ -1,13 +1,13 @@
 /**
- * @canopy/app-manifest — per-app declarative manifest + pure projectors.
+ * @onderling/app-manifest — per-app declarative manifest + pure projectors.
  *
  * Layer: substrate.  The bundle-declaration format that feeds the §0
- * destination substrates (`@canopy/interface-registry`, `@canopy/protocol`)
+ * destination substrates (`@onderling/interface-registry`, `@onderling/protocol`)
  * and ships the chat/slash surface those substrates don't cover.
  *
  * Architectural boundary (PLAN guardrail #9, locked 2026-05-19):
- *   This package DECLARES.  `@canopy/interface-registry` runs per-type
- *   item rendering.  `@canopy/protocol` runs multi-step state machines.
+ *   This package DECLARES.  `@onderling/interface-registry` runs per-type
+ *   item rendering.  `@onderling/protocol` runs multi-step state machines.
  *   Designed forward-compatible with their public APIs — see README §Boundary.
  *
  * Phase: SP-0 (greenfield; no consumers until SP-1).

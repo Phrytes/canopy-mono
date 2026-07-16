@@ -1,11 +1,11 @@
-# Changelog — @canopy-app/stoop
+# Changelog — @onderling-app/stoop
 
 ## [Unreleased] — attachments are canonical `media` items (2026-07-10)
 
 Media Phase 1 anti-drift tail: stoop's inline-bytes attachments now
 ride the canonical media noun instead of a bespoke shape.
 
-- `persistInboundAttachment` emits a schema-valid `@canopy/item-types`
+- `persistInboundAttachment` emits a schema-valid `@onderling/item-types`
   **`media` item** (`type/id/createdAt/createdBy/source` + the
   canonical `mime`/`width`/`height` hints). Stoop's extras
   (`bytes`, unsealed `thumbnail`, LOCAL-ONLY cache `ref`) ride as
@@ -30,7 +30,7 @@ ride the canonical media noun instead of a bespoke shape.
   `width`/`height` as layout hints), tolerant of legacy records.
 - Honest scope: **shape consolidation only.** Stoop has no sealer on
   its post path (no group/circle content key is composed anywhere in
-  the app), so the sealed-blob path (`@canopy/blob-gateway`
+  the app), so the sealed-blob path (`@onderling/blob-gateway`
   `uploadBlob` — refuses plaintext by design) is the follow-up once a
   sealing seam exists; blob-gateway's manifest line then slots into
   `source` unchanged.
@@ -41,7 +41,7 @@ ride the canonical media noun instead of a bespoke shape.
 
 ## [Unreleased] — canopy-chat browser composition (2026-05-23)
 
-New export: `@canopy-app/stoop/browser` →
+New export: `@onderling-app/stoop/browser` →
 `createBrowserStoopAgent({bus, identityVault, localActor, group?, members?, persistDb?, label?})`.
 
 Lets canopy-chat boot a real Stoop NeighborhoodAgent on its shared
@@ -183,7 +183,7 @@ Phase 52.9.2 `groupMirror` retirement.
 - `apps/stoop/src/groupMirror.js` deleted. The pubsub-tap mirror
   ("subscribe to every peer's `<group>/requests` topic; copy
   payloads to local itemStore") is replaced by the substrate path:
-  `@canopy/notify-envelope` + `@canopy/pseudo-pod` with the
+  `@onderling/notify-envelope` + `@onderling/pseudo-pod` with the
   Q-D Lamport version compare on receive. Clean break (no dual-run)
   because Stoop V1 has no production users.
 - New `apps/stoop/src/substrateMirror.js` — `wireSubstrateMirror`
@@ -224,7 +224,7 @@ Phase 52.9.2 `groupMirror` retirement.
 - **A7 — agent-registry registration on bundle bring-up**
   (Phase 52.10). `attachSubstrateMirror` calls the
   `registerAgentBundle` helper (lifted into
-  `@canopy/agent-registry`); idempotent CAS upsert; soft-fail.
+  `@onderling/agent-registry`); idempotent CAS upsert; soft-fail.
 
 ### C-track — mobile mirror
 
@@ -261,7 +261,7 @@ Phase 52.9.2 `groupMirror` retirement.
 ## [0.2.0] — 2026-05-06
 
 V2 of what was H5 / neighborhood-v0. Renamed in place; the package
-is now `@canopy-app/stoop`.
+is now `@onderling-app/stoop`.
 
 Substrate extensions (Phase 1 — landed in `packages/`):
 

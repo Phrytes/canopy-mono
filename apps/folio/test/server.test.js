@@ -32,7 +32,7 @@ import {
   AgentIdentity,
   Bootstrap,
   PodCapabilityToken,
-} from '@canopy/core';
+} from '@onderling/core';
 
 import { SyncEngine }       from '../src/SyncEngine.js';
 import { createServer }     from '../src/server/index.js';

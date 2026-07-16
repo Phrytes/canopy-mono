@@ -8,19 +8,19 @@
  *   3. Substrate default `'household'`.
  *
  * Consumers (renderer affordances, audience-aware queries,
- * `@canopy/circles`' `resolveAudience`) should call this helper
+ * `@onderling/circles`' `resolveAudience`) should call this helper
  * rather than reading either field directly.  That way the legacy
  * vs. new field choice stays contained.
  *
  * Item-store stores the field; it does NOT resolve audience to a
  * member set.  Resolution (string short-hands → webids, circle-ref
- * walks, union flattening) lives in `@canopy/circles`'s
+ * walks, union flattening) lives in `@onderling/circles`'s
  * `resolveAudience(audience, ctx)`.
  *
  * Forward-additive: a future SP-5b V0b may add normalisation here
  * (e.g. canonicalising `'role:admin'` to a structured form), but
  * the V0a contract is "return the value as-stored".  Don't pre-
- * normalise — leave that to `@canopy/circles`.
+ * normalise — leave that to `@onderling/circles`.
  *
  * @param {import('./types.js').Item} item
  * @returns {import('./types.js').Audience}
@@ -85,7 +85,7 @@ function jsonStable(v) {
  *    would silently broaden every audience query).
  *  - **Not normalised.**  The string short-hand `'circle:X'` and the
  *    structured `{kind:'circle-ref', id:'X'}` are still NOT equivalent
- *    — normalisation lives in `@canopy/circles`, which item-store can't
+ *    — normalisation lives in `@onderling/circles`, which item-store can't
  *    depend on (layering).  A store may inject a `normalizeAudience`
  *    callback in a later revision to close that gap.
  *

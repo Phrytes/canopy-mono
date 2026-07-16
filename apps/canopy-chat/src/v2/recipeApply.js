@@ -2,7 +2,7 @@
  * recipeApply — B #64 APPLY-WIRING: turn a loaded+validated recipe into a
  * circle's ACTIVE POLICY (shared, web ≡ mobile by construction).
  *
- * The LOADER (`@canopy/recipe-loader` `loadRecipe`) shipped separately: it
+ * The LOADER (`@onderling/recipe-loader` `loadRecipe`) shipped separately: it
  * fetches, parses, validates the `{capabilities, settings, surfaces, freedoms}`
  * bundle against the app-manifest primitives (`isRegistryType`/`isAtom`/
  * `FREEDOM_LEVELS`) and trust-gates it. It DEFERRED the last mile — mapping a
@@ -39,8 +39,8 @@
  * parallel "recipe policy" state, no bypass of the capability gate.
  */
 
-import { capabilitiesOf, capabilityKey, settingsOf } from '@canopy/app-manifest';
-import { loadRecipe } from '@canopy/recipe-loader';
+import { capabilitiesOf, capabilityKey, settingsOf } from '@onderling/app-manifest';
+import { loadRecipe } from '@onderling/recipe-loader';
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from './circlePolicy.js';
 
 /** Machine error codes (never user-facing strings — the shell maps them via t()). */

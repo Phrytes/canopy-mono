@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/chat-agent",
+  "name": "@onderling/chat-agent",
   "version": "0.3.3",
   "description": "Conversational LLM-mediated chat surface — MessagingBridge interface, per-chat session manager, narrow tool dispatcher.",
   "type": "module",
@@ -21,10 +21,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "file:../core"
+    "@onderling/core": "file:../core"
   },
   "devDependencies": {
-    "@canopy/llm-client": "file:../llm-client",
+    "@onderling/llm-client": "file:../llm-client",
     "telegraf":             "^4.16.3",
     "vitest":               "^2.1.0"
   }

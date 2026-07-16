@@ -1,8 +1,8 @@
 /**
- * OidcSessionRN — re-export shim around `@canopy/oidc-session-rn`.
+ * OidcSessionRN — re-export shim around `@onderling/oidc-session-rn`.
  *
  * **2026-05-08:** the implementation moved to the new
- * `@canopy/oidc-session-rn` substrate (Stoop V3 Phase 40.3 — rule
+ * `@onderling/oidc-session-rn` substrate (Stoop V3 Phase 40.3 — rule
  * of two consumer). This file is now a thin shim so existing
  * `import { OidcSessionRN, SECURE_STORE_KEYS }` paths in
  * folio-mobile keep working without source changes elsewhere in the
@@ -16,7 +16,7 @@
 import {
   OidcSessionRN as BaseOidcSessionRN,
   buildSecureStoreKeys,
-} from '@canopy/oidc-session-rn';
+} from '@onderling/oidc-session-rn';
 
 /**
  * Folio-flavoured `OidcSessionRN` — pre-binds `appId: 'folio'` so

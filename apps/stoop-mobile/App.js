@@ -46,7 +46,7 @@ import { parseDeepLink, actionToNavigation } from './src/lib/deepLinks.js';
 import { ROUTES, SHELL_TAB_ROUTES, STACK_ONLY_ROUTES } from './src/navigation.js';
 import { t, initLocalisation }                from './src/lib/localisation.js';
 import { COLORS, SPACING, RADII, FONT_SIZES } from './src/lib/theme.js';
-import { ThemeProvider }              from '@canopy/react-native/theme';
+import { ThemeProvider }              from '@onderling/react-native/theme';
 
 const STOOP_TOKENS = { COLORS, SPACING, RADII, FONT_SIZES };
 import { ServiceProvider }            from './src/ServiceContext.js';

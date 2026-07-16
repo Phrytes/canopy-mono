@@ -4,4 +4,4 @@
  */
 export {
   wireCalendarEmission, defaultEmissionPath,
-} from '@canopy/calendar-emission';
+} from '@onderling/calendar-emission';

@@ -4,7 +4,7 @@
  * The store-agnostic version of what the household `InMemoryStore.setSyncHook` did: on every write the store
  * hands the item to `mirror.publishItem` (fan-out to the peer roster), on every delete the id to
  * `mirror.publishItemRemoved`. `mirror` is any `{ publishItem, publishItemRemoved }` — e.g. a
- * `@canopy/notify-envelope` substrate mirror over the secure-mesh transport. This lets the no-pod cross-device
+ * `@onderling/notify-envelope` substrate mirror over the secure-mesh transport. This lets the no-pod cross-device
  * sync ride the per-circle `CircleItemStore` WITHOUT the household agent owning the store (the decoupling that
  * unblocks retiring the legacy household agent). Inbound (peer → store) is the mirror's own ingest, adapted to
  * `store.put` — a separate seam (the next step).

@@ -10,8 +10,8 @@
  *   await relay.start();
  *   console.log(`Relay listening on ws://localhost:${relay.port}`);
  */
-import { Agent, AgentIdentity, InternalBus, InternalTransport, DataPart, Parts } from '@canopy/core';
-import { VaultMemory, VaultNodeFs } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, DataPart, Parts } from '@onderling/core';
+import { VaultMemory, VaultNodeFs } from '@onderling/vault';
 import { WsServerTransport } from './WsServerTransport.js';
 
 export class RelayAgent extends Agent {
@@ -21,7 +21,7 @@ export class RelayAgent extends Agent {
    * Low-level constructor — prefer RelayAgent.create() for async identity generation.
    *
    * @param {object} opts
-   * @param {import('@canopy/core').AgentIdentity} opts.identity
+   * @param {import('@onderling/core').AgentIdentity} opts.identity
    * @param {WsServerTransport} opts.wsTransport
    * @param {string} [opts.label]
    * @param {object} [opts.policy]
@@ -47,8 +47,8 @@ export class RelayAgent extends Agent {
    * @param {number} [opts.port=0]                — WebSocket server port (0 = OS-assigned)
    * @param {string} [opts.label='relay']
    * @param {object} [opts.policy]                — { mode: 'accept_all'|'group_only'|'whitelist' }
-   * @param {import('@canopy/core').AgentIdentity} [opts.identity]
-   * @param {import('@canopy/core').Vault}          [opts.vault]
+   * @param {import('@onderling/core').AgentIdentity} [opts.identity]
+   * @param {import('@onderling/core').Vault}          [opts.vault]
    * @param {number} [opts.offlineQueueTtl]
    * @returns {Promise<RelayAgent>}
    */

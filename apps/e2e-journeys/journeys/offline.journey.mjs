@@ -1,8 +1,8 @@
 // Store-and-forward: Bob goes offline, Ann keeps sending, the relay holds the
 // messages and flushes them in order when Bob reconnects.
-import { Agent, AgentIdentity, Parts } from '@canopy/core';
-import { VaultMemory }    from '@canopy/vault';
-import { RelayTransport } from '@canopy/transports';
+import { Agent, AgentIdentity, Parts } from '@onderling/core';
+import { VaultMemory }    from '@onderling/vault';
+import { RelayTransport } from '@onderling/transports';
 import { wait, checker }  from './_util.mjs';
 
 export const name = 'offline store-and-forward';

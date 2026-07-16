@@ -5,7 +5,7 @@
  * This is the only test in T.1.  Real scenarios land in T.2–T.5.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { TextPart, Parts } from '@canopy/core';
+import { TextPart, Parts } from '@onderling/core';
 import { Lab } from '../src/_harness/index.js';
 
 describe('Lab smoke', () => {

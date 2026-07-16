@@ -10,7 +10,7 @@
  *     agents → agent-detail (`$agentId`); detail screens don't drill further.
  *  2. The FULL web chain over the real DOM renderer: render a
  *     data-versions-shaped list, click a row → the detail section is fetched
- *     through `fetchScreenItems` (the @canopy/web-adapter Q15 seam) with
+ *     through `fetchScreenItems` (the @onderling/web-adapter Q15 seam) with
  *     `context.uri` = the picked row's id and `$circleId` still host-supplied.
  *  3. Same mechanism for agents → agent-detail: `context.agentId` = the
  *     picked roster row (live listAgents rows carry `agentId`, not `id`),

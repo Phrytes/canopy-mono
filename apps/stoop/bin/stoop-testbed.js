@@ -30,9 +30,9 @@
 import { parseArgs } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { AgentIdentity, InternalBus, InternalTransport, GroupManager } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
+import { AgentIdentity, InternalBus, InternalTransport, GroupManager } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mountLocalUi, LocalUiAuth } from '@onderling/agent-ui';
 
 import { createNeighborhoodAgent }   from '../src/Agent.js';
 import { buildOnboardingSkills }     from '../src/onboarding.js';

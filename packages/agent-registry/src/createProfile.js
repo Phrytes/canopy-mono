@@ -4,7 +4,7 @@
 // so the same owner root + profileId reproduce the SAME pubKey on any device — the recovery
 // property. We record only the pubKey (via AgentIdentity.pubKeyFromSeed — no vault); the full
 // identity is re-derived on the device that actually runs the profile.
-import { AgentIdentity, deriveCircleAddress } from '@canopy/core';
+import { AgentIdentity, deriveCircleAddress } from '@onderling/core';
 
 /**
  * @param {object} a

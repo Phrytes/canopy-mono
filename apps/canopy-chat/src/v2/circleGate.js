@@ -6,9 +6,9 @@
 // tool surface (`renderChat`) all read one source of truth instead of a parallel hand-written copy.
 //
 // Part A (manifest-gate-surfaces): the gate is now composed at the HOST level — `createGate` from
-// `@canopy/manifest-host` projects the circle apps' manifests into gate rules via app-manifest's
+// `@onderling/manifest-host` projects the circle apps' manifests into gate rules via app-manifest's
 // `renderGate` under the hood (same rules, same first-match-wins order). canopy-chat no longer reaches
-// past the host into `@canopy/app-manifest/src/renderGate.js`; it consumes the substrate's public API,
+// past the host into `@onderling/app-manifest/src/renderGate.js`; it consumes the substrate's public API,
 // exactly as `manifestMerge.js` already consumes `createManifestHost`.
 //
 // Part C (2026-06-11): projects the circle apps' manifests so the gate covers tasks/stoop/folio/
@@ -21,7 +21,7 @@
 // mis-target a chore. Household ops still reach the LLM path; household's own gate verbs serve the
 // household TG-bot surface (its real manifest), not the circle.
 
-import { createGate } from '@canopy/manifest-host';
+import { createGate } from '@onderling/manifest-host';
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../core/manifests/mockManifests.js';
 import { calendarManifest } from '../../../calendar/manifest.js';
 import { CIRCLE_GATE_TRAIL, DEFAULT_GATE_LOCALE } from './circleGateLexicon.js';

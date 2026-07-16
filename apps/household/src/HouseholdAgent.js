@@ -22,8 +22,8 @@
  * each via `sendReply`.
  */
 
-import { ChatAgent }               from '@canopy/chat-agent';
-import { renderChat, renderSlash } from '@canopy/app-manifest';
+import { ChatAgent }               from '@onderling/chat-agent';
+import { renderChat, renderSlash } from '@onderling/app-manifest';
 
 import { householdManifest }  from '../manifest.js';
 import {
@@ -101,7 +101,7 @@ export class HouseholdAgent {
     this.#scheduler = scheduler;
 
     // When an LLM is configured, the slow path delegates to a
-    // headless `@canopy/chat-agent` ChatAgent: substrate handles
+    // headless `@onderling/chat-agent` ChatAgent: substrate handles
     // session state + tool dispatch; HouseholdAgent owns the
     // bridge/regex layers above it.  `renderChat` projects the manifest
     // (`../manifest.js`) onto the ChatAgent ctor input — byte-equal to
@@ -244,7 +244,7 @@ export class HouseholdAgent {
     const parsed = slash.parse(msg.text);
 
     if (parsed === null) {
-      // ── Slow path: LLM via @canopy/chat-agent (B.4) ────────
+      // ── Slow path: LLM via @onderling/chat-agent (B.4) ────────
       if (this.#chatAgent) {
         return this.#runChatAgent(msg);
       }
@@ -268,7 +268,7 @@ export class HouseholdAgent {
   }
 
   /**
-   * Delegate the LLM slow path to the embedded @canopy/chat-agent
+   * Delegate the LLM slow path to the embedded @onderling/chat-agent
    * ChatAgent.  ChatAgent handles session state + tool dispatch; tool
    * handlers (built in ./llm/chatAgentBridge.js) wrap the existing
    * skills and forward stateUpdates to the scheduler.  We collect the

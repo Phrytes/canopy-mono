@@ -5,7 +5,7 @@
  * Identical surface + semantics to `apps/stoop/src/lib/FilePersist.js`.
  * Copied (not imported) to avoid an app→app dependency.  Substrate-
  * extraction candidate — lift the three adapters + persistPicker into
- * `@canopy/local-store` once we have a third consumer.
+ * `@onderling/local-store` once we have a third consumer.
  */
 
 import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';

@@ -59,12 +59,12 @@ describe('scaffold-app — generated app shape', () => {
   it('package.json parses + has the expected name + deps', () => {
     const appDir = scaffold('my-app');
     const pkg = JSON.parse(readFileSync(join(appDir, 'package.json'), 'utf8'));
-    expect(pkg.name).toBe('@canopy-app/my-app');
+    expect(pkg.name).toBe('@onderling-app/my-app');
     expect(pkg.private).toBe(true);
     expect(pkg.type).toBe('module');
     expect(pkg.main).toBe('src/index.js');
     expect(pkg.bin).toEqual({ 'my-app': 'bin/my-app.js' });
-    expect(pkg.dependencies['@canopy/core']).toMatch(/packages\/core$/);
+    expect(pkg.dependencies['@onderling/core']).toMatch(/packages\/core$/);
     expect(pkg.devDependencies.vitest).toBeDefined();
   });
 

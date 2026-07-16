@@ -1,8 +1,8 @@
-// metro-preset — reusable Metro configuration for `@canopy` apps
+// metro-preset — reusable Metro configuration for `@onderling` apps
 // running on React Native.
 //
 // This preset captures the cross-cutting Metro setup that every
-// `@canopy` RN app needs: NODE_BUILTINS shimming, `node:`-prefix
+// `@onderling` RN app needs: NODE_BUILTINS shimming, `node:`-prefix
 // stripping, util/path/ws shim routing, monorepo subpath handling,
 // `unstable_enablePackageExports: false`.  See ./docs/BRING-UP-NOTES.md
 // for the trap catalogue this is mitigating.
@@ -11,7 +11,7 @@
 //
 //   const path = require('path');
 //   const { withCanopyPreset } =
-//     require('@canopy/react-native/metro-preset');
+//     require('@onderling/react-native/metro-preset');
 //
 //   module.exports = withCanopyPreset({
 //     projectRoot: __dirname,
@@ -38,7 +38,7 @@ const fs = require('fs');
 // `expo/metro-config` is a peer-dep of the consuming app — resolve it
 // from the app's `projectRoot`, not from this preset's own location.
 // Symlinked-package installs (file: deps in monorepos) place this
-// preset inside `apps/<x>/node_modules/@canopy/react-native/` as a
+// preset inside `apps/<x>/node_modules/@onderling/react-native/` as a
 // symlink to `packages/react-native/`; Node's CJS resolver walks up
 // from the symlink target by default and won't find expo at the repo
 // root.  Resolving with `paths: [projectRoot]` walks from the app's
@@ -74,10 +74,10 @@ const PLATFORM_RN_VARIANTS = new Set(['polyfills']);
 //
 // `unstable_enablePackageExports: false` (set below) makes Metro
 // ignore every workspace package's `exports` map, so each declared
-// subpath import (`@canopy/<pkg>/<sub>`) must be hand-resolved in
+// subpath import (`@onderling/<pkg>/<sub>`) must be hand-resolved in
 // resolveRequest.  Rather than maintain per-package hardcoded lists
 // that silently drift from package.json (the class of omission that
-// broke `@canopy/react-native/theme`, then `@canopy/sync-engine-rn/
+// broke `@onderling/react-native/theme`, then `@onderling/sync-engine-rn/
 // react`, for stoop-mobile 2026-05-16 — one rebuild surfaced the next
 // each time), resolve through each package's own `exports` map: the
 // single source of truth.
@@ -151,7 +151,7 @@ const NODE_BUILTINS = new Set([
 ]);
 
 /**
- * Build the Metro config for a `@canopy` RN app.
+ * Build the Metro config for a `@onderling` RN app.
  *
  * @param {object} options
  * @param {string} options.projectRoot                      Absolute path of the app's root.
@@ -194,10 +194,10 @@ function withCanopyPreset(options) {
   const pinToApp = (names) =>
     Object.fromEntries(names.map((n) => [n, path.resolve(APP_MODULES, n)]));
 
-  // ── Auto-discover `@canopy/*` workspace packages. ─────────────────
+  // ── Auto-discover `@onderling/*` workspace packages. ─────────────────
   //
   // The repo has ~30 `file:` workspace packages and the standardisation
-  // work keeps extracting more out of `@canopy/core` (theme, vault,
+  // work keeps extracting more out of `@onderling/core` (theme, vault,
   // online-cadence, …).  A hand-maintained alias list silently drifts
   // and breaks the RN bundle one package at a time (every device-pass
   // rebuild surfaced the next missing one: 2026-05-16).  Derive the
@@ -205,10 +205,10 @@ function withCanopyPreset(options) {
   // truth — so newly-extracted packages just work.
   //
   // Each package needs BOTH an `extraNodeModules` alias (so Metro can
-  // resolve the bare `@canopy/<x>` import under
+  // resolve the bare `@onderling/<x>` import under
   // `unstable_enablePackageExports: false`) AND a `watchFolders` entry
   // (Metro rejects files outside projectRoot/watchFolders even when
-  // resolved).  Node-only canopy packages (e.g. `@canopy/relay`) stay
+  // resolved).  Node-only canopy packages (e.g. `@onderling/relay`) stay
   // shimmed: their explicit `SHIM_PATHS.nodeBuiltins` entries appear
   // LATER in the `extraNodeModules` object literal below and therefore
   // override the directory alias produced here.
@@ -226,7 +226,7 @@ function withCanopyPreset(options) {
       continue; // no/invalid package.json — not a workspace package
     }
     const name = pkgJson.name;
-    if (typeof name !== 'string' || !name.startsWith('@canopy/')) continue;
+    if (typeof name !== 'string' || !name.startsWith('@onderling/')) continue;
     canopyWorkspaceAliases[name] = pkgDir;
     canopyWorkspaceDirs.push(pkgDir);
     canopyPkgMeta[name] = { dir: pkgDir, exports: pkgJson.exports };
@@ -246,12 +246,12 @@ function withCanopyPreset(options) {
   // ── Block list — surgical per-subtree block inside each watched
   //    workspace package's `node_modules`.
   //
-  //    `watchFolders` now spans all auto-discovered `@canopy/*`
+  //    `watchFolders` now spans all auto-discovered `@onderling/*`
   //    packages and Metro crawls the node_modules tree of every
   //    watched folder on startup.  This repo has NO root hoisting, so
   //    each substrate package keeps its real npm deps in its OWN
   //    `node_modules` — those MUST stay resolvable (e.g. `ajv-formats`
-  //    for `@canopy/item-types`, `@inrupt/solid-client` for core).
+  //    for `@onderling/item-types`, `@inrupt/solid-client` for core).
   //    So we do NOT block whole package node_modules (an earlier
   //    blanket block broke exactly those deps, 2026-05-16); instead we
   //    block only the two concrete crash classes:
@@ -273,7 +273,7 @@ function withCanopyPreset(options) {
   //        `expo-*`, `@expo/*`, `@react-native*`).  These carry the
   //        native side that is autolinked into the app binary from the
   //        APP's pinned copy and MUST be a single version shared by JS
-  //        and native.  Several `@canopy/*` packages declare them as
+  //        and native.  Several `@onderling/*` packages declare them as
   //        loose (`"*"` / `^`) peer/deps, so with no root hoisting npm
   //        installed a whole LATEST Expo-SDK-55 / RN-0.85 tree into
   //        `packages/oidc-session-rn` (+ `packages/react-native`)
@@ -323,9 +323,9 @@ function withCanopyPreset(options) {
     extraNodeModules: {
       ...(config.resolver?.extraNodeModules ?? {}),
 
-      // Local `@canopy/*` SDK packages — auto-discovered from
+      // Local `@onderling/*` SDK packages — auto-discovered from
       // `packages/*` above (drift-proof; Node-only ones like
-      // `@canopy/relay` are re-shimmed by the explicit entries below,
+      // `@onderling/relay` are re-shimmed by the explicit entries below,
       // which win as later keys in this object literal).
       ...canopyWorkspaceAliases,
 
@@ -339,15 +339,15 @@ function withCanopyPreset(options) {
       'chokidar':                         SHIM_PATHS.nodeBuiltins,
       'express':                          SHIM_PATHS.nodeBuiltins,
       'systray2':                         SHIM_PATHS.nodeBuiltins,
-      // `@canopy/relay` is the Node-side relay server (Web Push
+      // `@onderling/relay` is the Node-side relay server (Web Push
       // sender, mDNS discovery, the local-UI HTTP shim).  Stoop's
       // `apps/stoop/src/lib/WebPushSender.js` does a dynamic import
-      // of `@canopy/relay` when VAPID keys are configured — Metro
+      // of `@onderling/relay` when VAPID keys are configured — Metro
       // statically follows the dynamic `import()` and would fail
       // without this shim.  Mobile uses native Expo push instead;
       // the dynamic-import branch never fires at runtime.
       // Stoop V3 mobile Phase 40.23 trap (2026-05-08).
-      '@canopy/relay':                  SHIM_PATHS.nodeBuiltins,
+      '@onderling/relay':                  SHIM_PATHS.nodeBuiltins,
       // Same trap class: `web-push` is the Node Web-Push library
       // pulled by `WebPushSender`.  Mobile never reaches it.
       'web-push':                         SHIM_PATHS.nodeBuiltins,
@@ -394,14 +394,14 @@ function withCanopyPreset(options) {
         return { filePath: SHIM_PATHS.ws, type: 'sourceFile' };
       }
 
-      // 5. `@canopy/react-native/platform/*` — substrate's platform
+      // 5. `@onderling/react-native/platform/*` — substrate's platform
       //    helpers.  With `unstable_enablePackageExports: false` (set
       //    above), the package.json `exports` field is ignored and
       //    subpath imports must be resolved here.  Metro's `*.rn.js`
       //    auto-selection also doesn't apply when we hand-resolve, so
       //    we pick the variant manually based on platform.
-      if (moduleName.startsWith('@canopy/react-native/platform/')) {
-        const sub = moduleName.slice('@canopy/react-native/platform/'.length);
+      if (moduleName.startsWith('@onderling/react-native/platform/')) {
+        const sub = moduleName.slice('@onderling/react-native/platform/'.length);
         const useRn = platform !== 'web' && PLATFORM_RN_VARIANTS.has(sub);
         return {
           filePath: path.resolve(PLATFORM_DIR, sub + (useRn ? '.rn.js' : '.js')),
@@ -409,23 +409,23 @@ function withCanopyPreset(options) {
         };
       }
 
-      // 5b. Generalized `@canopy/<workspace-pkg>/<subpath>` resolution
+      // 5b. Generalized `@onderling/<workspace-pkg>/<subpath>` resolution
       //     via the target package's own `exports` map (drift-proof;
       //     subsumes the former hand-rolled per-package sync-engine +
       //     react-native subpath special-cases — every workspace
       //     package's declared subpaths now resolve from the single
       //     source of truth, so a newly-extracted package just works).
-      //     `@canopy/react-native/platform/*` keeps its dedicated
+      //     `@onderling/react-native/platform/*` keeps its dedicated
       //     rule 5 above (authoritative for the platform `.rn.js`
       //     selection) and is intercepted before it reaches here.
       //     Node-only deps reached through these subpaths (e.g.
       //     `chokidar` via sync-engine's adapters/watcherNode) stay
       //     aliased to the empty shim in `extraNodeModules` above.
-      if (moduleName.startsWith('@canopy/')) {
-        const rest = moduleName.slice('@canopy/'.length);
+      if (moduleName.startsWith('@onderling/')) {
+        const rest = moduleName.slice('@onderling/'.length);
         const slash = rest.indexOf('/');
         if (slash !== -1) {
-          const pkg = '@canopy/' + rest.slice(0, slash);
+          const pkg = '@onderling/' + rest.slice(0, slash);
           const meta = canopyPkgMeta[pkg];
           if (meta) {
             const resolved = resolveExportsSubpath(

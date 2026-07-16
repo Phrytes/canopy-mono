@@ -2,7 +2,7 @@
  * canopy-chat-mobile v2 — skill editor (RN screen, board 8).
  *
  * RN counterpart of web's circleSkillEditor over the SAME shared model
- * (`@canopy-app/canopy-chat`): the four skill axes (openness · posture ·
+ * (`@onderling-app/canopy-chat`): the four skill axes (openness · posture ·
  * status · radius) as single-choice radio rows. Holds a working copy via
  * `mergeSkill`; Save returns it to the host, Back discards. Local discovery
  * is out of scope for this slice.
@@ -10,7 +10,7 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill, consequenceKeyFor } from '@canopy-app/canopy-chat';
+import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill, consequenceKeyFor } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 const AXES = ['openness', 'posture', 'status', 'radius'];

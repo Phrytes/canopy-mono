@@ -4,14 +4,14 @@
  * The `llmTool` axis on a circle's policy is a three-state knob — off
  * / local / cloud (`circlePolicy.CIRCLE_POLICY_ENUMS.llmTool`).  This
  * tiny pure selector maps the policy value onto the right host-supplied
- * `@canopy/llm-client` instance, or `null` when the circle has opted
+ * `@onderling/llm-client` instance, or `null` when the circle has opted
  * out / the requested provider isn't configured.
  *
  * The composition seam is host-supplied:
  *
  *   ```js
- *   import { LlmClient } from '@canopy/llm-client';
- *   import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
+ *   import { LlmClient } from '@onderling/llm-client';
+ *   import { ollamaProvider } from '@onderling/llm-client/providers/ollama';
  *
  *   const llmProviders = {
  *     local: new LlmClient({ provider: ollamaProvider({...}) }),

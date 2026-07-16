@@ -88,7 +88,7 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
   // FULL parallel suite's CPU contention the default 5s times out, while the
   // isolated run takes ~2s. Same assertions, honest budget for a real boot.
   it('V1: real boot with VaultMemory wires createRealHouseholdAgent', { timeout: 20_000 }, async () => {
-    const { VaultMemory } = await import('@canopy/vault');
+    const { VaultMemory } = await import('@onderling/vault');
     const bundle = await bootAgentBundle({
       chatVault: new VaultMemory(),
       hostVault: new VaultMemory(),
@@ -116,7 +116,7 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
   });
 
   it('V1: real boot with mocked nknLib registers NKN transport', async () => {
-    const { VaultMemory } = await import('@canopy/vault');
+    const { VaultMemory } = await import('@onderling/vault');
     // Minimal nknLib mock — just enough surface to let
     // sa.peer.connect() resolve without going to the real network.
     // The connect path may still fail (we don't fake the full client
@@ -162,7 +162,7 @@ describe('#222 canopy-chat-mobile portable-core boot', () => {
   });
 
   it('M1: bundle exposes attachPeerWiring for post-boot router attach', async () => {
-    const { VaultMemory } = await import('@canopy/vault');
+    const { VaultMemory } = await import('@onderling/vault');
     const fakeNknLib = { MultiClient: class { constructor() {} on() {} } };
     const bundle = await bootAgentBundle({
       chatVault: new VaultMemory(),

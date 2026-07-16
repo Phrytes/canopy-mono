@@ -25,7 +25,7 @@
  * swap pattern).
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 import { privacyNoticeFor } from '../lib/privacyNotice.js';

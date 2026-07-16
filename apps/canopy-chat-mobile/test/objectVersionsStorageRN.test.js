@@ -1,4 +1,4 @@
-// γ.2 (2026-06-01; consolidated onto @canopy/versioning 2026-07-09) —
+// γ.2 (2026-06-01; consolidated onto @onderling/versioning 2026-07-09) —
 // AsyncStorage-backed versions adapter round-trip.
 //
 // Mirrors `packages/kring-host/test/objectVersionsStorage.test.js`:
@@ -25,7 +25,7 @@ function mockAsyncStorage() {
 
 const scoped = (k) => `${VERSIONS_AS_SCOPE}:${k}`;
 
-describe('γ.2 — objectVersionsStorageRN (@canopy/versioning substrate)', () => {
+describe('γ.2 — objectVersionsStorageRN (@onderling/versioning substrate)', () => {
   let storage;
   beforeEach(() => { storage = mockAsyncStorage(); });
 

@@ -15,7 +15,7 @@
  *   versions = {
  *     capture(circleId, value) → Promise<void>   // snapshot before save
  *     list(circleId)           → Promise<entries[]>
- *     restore(circleId, ts)    → Promise<value|null>  // optional (@canopy/versioning consolidation)
+ *     restore(circleId, ts)    → Promise<value|null>  // optional (@onderling/versioning consolidation)
  *   }
  */
 import {

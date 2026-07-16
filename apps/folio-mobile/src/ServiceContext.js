@@ -27,7 +27,7 @@ import * as SecureStore    from 'expo-secure-store';
 import * as Crypto         from 'expo-crypto';
 import * as BackgroundFetch from 'expo-background-fetch';
 
-import { ExpoSecureStore } from '@canopy/react-native/ports';
+import { ExpoSecureStore } from '@onderling/react-native/ports';
 import { OidcSessionRN } from './auth/OidcSessionRN.js';
 import {
   loadStoredPodRoot, savePodRoot, DEFAULT_LOCAL_FOLDER,
@@ -41,7 +41,7 @@ import {
   registerBackgroundFetch,
   unregisterBackgroundFetch,
   DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
-} from '@canopy/sync-engine-rn';
+} from '@onderling/sync-engine-rn';
 
 /** @type {React.Context<ServiceContextValue|null>} */
 const Ctx = createContext(null);
@@ -281,8 +281,8 @@ async function buildAndAttachEngine({
       || process.env.EXPO_PUBLIC_FOLIO_PSEUDO_POD === '1') {
     const [{ wrapWithPseudoPod }, { createBackend }, AsyncStorageMod] =
       await Promise.all([
-        import('@canopy-app/folio'),
-        import('@canopy/react-native/pseudo-pod-adapter'),
+        import('@onderling-app/folio'),
+        import('@onderling/react-native/pseudo-pod-adapter'),
         import('@react-native-async-storage/async-storage'),
       ]);
     const backend = createBackend({
@@ -296,7 +296,7 @@ async function buildAndAttachEngine({
 
   // Phase 40.2 (2026-05-08): use the local `buildEngineForRN` shim
   // which now goes through `apps/folio/src/rn/serviceFactory.js` (a
-  // shim itself, around `@canopy/sync-engine-rn` with Folio's
+  // shim itself, around `@onderling/sync-engine-rn` with Folio's
   // SyncEngine subclass pre-bound).  No more dynamic cross-app import.
   const engine = await buildEngineForRN({
     podClient: effectivePodClient,

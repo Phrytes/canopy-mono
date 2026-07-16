@@ -27,22 +27,22 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync — `SyncEngine` (Folio is the pattern source for this substrate, post-Phase 5.1), `PathMap`, `scanLocal` / `scanPod` / `diff`, version helpers, fs/hash/watcher adapters (Node + RN). | The substrate exists *because* of Folio — Folio's V0.3 BidirectionalSyncEngine was lifted into the substrate in Phase 5.1. App-side `src/SyncEngine.js` is a thin subclass adding markdown-specific glue. |
-| `@canopy/pseudo-pod` (Phase D cache-mode, 2026-05-16) | Write-through offline queue + read cache for the desktop CLI daemon — `createPseudoPod`, `createSyncEnginePodClient`, plus backend factories (`createMemoryBackend`, `createNodeFsBackend`). Wired in `podCache.js` + `_podFactory.js`; cache-mode is the default since Phase D. | Platform-neutral abstraction over PodClient; backend injected by caller (Node fs on desktop, RN adapter on mobile, memory for tests). Provides offline resilience as a substrate concern, not Folio app code. |
-| `@canopy/pod-search` (V2 first consumer, Phase 52.25) | The `/zoek` **semantic note search** — `src/folioSearch.js` builds a `PodSearch` over the note corpus (title + body are `embed:true`), and the browser agent's `searchNotes` op runs `query({ mode })`. Uses pod-search's `hash` adapter for the content-hash cache key; an optional `vectorStore` persists vectors under `private/state/search-index/`. | The FTS5/vector index, the chunking + content-hash embed cache, RRF hybrid fusion, and the restart-safe persistence all live in the substrate; Folio is a thin consumer that maps note rows onto items and injects a policy-resolved embedder. The embedder is **injected, duck-typed** (llmTool:'off' / no Ollama ⇒ no embedder ⇒ lexical), so folio never imports `@canopy/llm-client`. |
-| `@canopy/sync-engine-rn` (L1a, RN platform) | React Native sync engine bring-up + background task scheduling (background fetch, periodic sync) — `createSyncEngine`, `registerBackgroundTask`, `defineBackgroundTask`. Consumed by folio-mobile via Folio's `src/rn/serviceFactory.js` + `backgroundTasks.js`. | RN-specific adapters (scheduler, storage, background-fetch broker) live here; Folio pre-binds the app's `SyncEngine` subclass and re-exports for folio-mobile to consume. Same substrate, RN platform. |
+| `@onderling/sync-engine` (L1a) | Bidirectional pod ↔ local-folder sync — `SyncEngine` (Folio is the pattern source for this substrate, post-Phase 5.1), `PathMap`, `scanLocal` / `scanPod` / `diff`, version helpers, fs/hash/watcher adapters (Node + RN). | The substrate exists *because* of Folio — Folio's V0.3 BidirectionalSyncEngine was lifted into the substrate in Phase 5.1. App-side `src/SyncEngine.js` is a thin subclass adding markdown-specific glue. |
+| `@onderling/pseudo-pod` (Phase D cache-mode, 2026-05-16) | Write-through offline queue + read cache for the desktop CLI daemon — `createPseudoPod`, `createSyncEnginePodClient`, plus backend factories (`createMemoryBackend`, `createNodeFsBackend`). Wired in `podCache.js` + `_podFactory.js`; cache-mode is the default since Phase D. | Platform-neutral abstraction over PodClient; backend injected by caller (Node fs on desktop, RN adapter on mobile, memory for tests). Provides offline resilience as a substrate concern, not Folio app code. |
+| `@onderling/pod-search` (V2 first consumer, Phase 52.25) | The `/zoek` **semantic note search** — `src/folioSearch.js` builds a `PodSearch` over the note corpus (title + body are `embed:true`), and the browser agent's `searchNotes` op runs `query({ mode })`. Uses pod-search's `hash` adapter for the content-hash cache key; an optional `vectorStore` persists vectors under `private/state/search-index/`. | The FTS5/vector index, the chunking + content-hash embed cache, RRF hybrid fusion, and the restart-safe persistence all live in the substrate; Folio is a thin consumer that maps note rows onto items and injects a policy-resolved embedder. The embedder is **injected, duck-typed** (llmTool:'off' / no Ollama ⇒ no embedder ⇒ lexical), so folio never imports `@onderling/llm-client`. |
+| `@onderling/sync-engine-rn` (L1a, RN platform) | React Native sync engine bring-up + background task scheduling (background fetch, periodic sync) — `createSyncEngine`, `registerBackgroundTask`, `defineBackgroundTask`. Consumed by folio-mobile via Folio's `src/rn/serviceFactory.js` + `backgroundTasks.js`. | RN-specific adapters (scheduler, storage, background-fetch broker) live here; Folio pre-binds the app's `SyncEngine` subclass and re-exports for folio-mobile to consume. Same substrate, RN platform. |
 
 ## Direct kernel use
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/pod-client` | `PodClient` (dynamic import in `_podFactory.js:125`) | Solid pod read/write/list with `If-Match`/conflict detection — the production target the SyncEngine writes into. Imported via `await import(...)` to avoid forcing a hard dep in RN builds. | Folio is one of the canonical PodClient consumers; no substrate wraps "construct a PodClient" because the credential plumbing is per-app (mnemonic → `Bootstrap` → token). |
-| `@canopy/core` | `Bootstrap` | Mnemonic-driven identity bring-up + Solid pod credential issuance for the CLI. | Foundation primitive; substrate-of-substrates over `Bootstrap` would be over-abstraction at this stage. |
-| `@canopy/core` | `VaultNodeFs` | Node-side encrypted vault for the CLI's keypair. | Platform-specific vault concrete; the CLI is Node-only, so the matching kernel concrete is the right level. |
-| `@canopy/core` | `PodCapabilityToken` | Folio's `share` flow — issue capability tokens to other agents. | Capability-token semantics are kernel-foundational; substrates compose them, they don't wrap them. |
-| `@canopy/core` | `AgentIdentity` | Server-side `/share` endpoint (`routes.js`) — construct identity from vault on-demand to sign capability tokens. | Identity construction from keypair; per-app vault binding; same kernel-foundational tier as `Bootstrap`. No substrate wrapper exists or would be appropriate. |
-| `@canopy/core` | `validateMnemonic` | CLI `init` — sanity-check user-typed mnemonics. | One-line helper; pulling a substrate around it would be silly. |
-| `@canopy/oidc-session` (Phase 52.15.2, 2026-05-14) | `createSolidAuthNode` | Desktop OIDC session bring-up + multi-issuer sign-in for `folio serve` (`serveCmd.js`, `diagnostics.js`). Replaces the lifted-out `src/auth/OidcSession.js` app-side wrapper. | Platform-specific Node auth factory; per-app credential plumbing (client-registration state, vault-backed session). Kernel-direct because the issuer / vault binding is per-app, not substrate-uniform. |
+| `@onderling/pod-client` | `PodClient` (dynamic import in `_podFactory.js:125`) | Solid pod read/write/list with `If-Match`/conflict detection — the production target the SyncEngine writes into. Imported via `await import(...)` to avoid forcing a hard dep in RN builds. | Folio is one of the canonical PodClient consumers; no substrate wraps "construct a PodClient" because the credential plumbing is per-app (mnemonic → `Bootstrap` → token). |
+| `@onderling/core` | `Bootstrap` | Mnemonic-driven identity bring-up + Solid pod credential issuance for the CLI. | Foundation primitive; substrate-of-substrates over `Bootstrap` would be over-abstraction at this stage. |
+| `@onderling/core` | `VaultNodeFs` | Node-side encrypted vault for the CLI's keypair. | Platform-specific vault concrete; the CLI is Node-only, so the matching kernel concrete is the right level. |
+| `@onderling/core` | `PodCapabilityToken` | Folio's `share` flow — issue capability tokens to other agents. | Capability-token semantics are kernel-foundational; substrates compose them, they don't wrap them. |
+| `@onderling/core` | `AgentIdentity` | Server-side `/share` endpoint (`routes.js`) — construct identity from vault on-demand to sign capability tokens. | Identity construction from keypair; per-app vault binding; same kernel-foundational tier as `Bootstrap`. No substrate wrapper exists or would be appropriate. |
+| `@onderling/core` | `validateMnemonic` | CLI `init` — sanity-check user-typed mnemonics. | One-line helper; pulling a substrate around it would be silly. |
+| `@onderling/oidc-session` (Phase 52.15.2, 2026-05-14) | `createSolidAuthNode` | Desktop OIDC session bring-up + multi-issuer sign-in for `folio serve` (`serveCmd.js`, `diagnostics.js`). Replaces the lifted-out `src/auth/OidcSession.js` app-side wrapper. | Platform-specific Node auth factory; per-app credential plumbing (client-registration state, vault-backed session). Kernel-direct because the issuer / vault binding is per-app, not substrate-uniform. |
 
 ## Bring it up
 
@@ -71,10 +71,10 @@ Detailed sign-in / service / troubleshooting runbooks live in their own sections
 ```
 apps/folio/
 ├── README.md                  ← this file
-├── package.json               ← @canopy-app/folio
+├── package.json               ← @onderling-app/folio
 ├── bin/folio                  ← CLI entry
 ├── src/
-│   ├── SyncEngine.js          ← thin subclass of @canopy/sync-engine's engine
+│   ├── SyncEngine.js          ← thin subclass of @onderling/sync-engine's engine
 │   ├── PathMap.js             ← re-exports substrate's PathMap with ACL helpers
 │   ├── scanLocal.js / scanPod.js / diff.js / versions.js
 │   ├── adapters/              ← fs/hash/watcher (Node + RN re-exports from substrate)
@@ -95,7 +95,7 @@ Phase A (CLI) and Phase B.1.server (Express + WebSocket) are shipped:
 - Local web server (Folio.B1.server) — Express + WebSocket on
   `http://127.0.0.1:8888`; consumed by the upcoming web UI (B1.ui).
 - **`/zoek` semantic note search (Phase 52.25)** — `src/folioSearch.js`
-  wires the note corpus onto `@canopy/pod-search` V2; the browser agent's
+  wires the note corpus onto `@onderling/pod-search` V2; the browser agent's
   `searchNotes` op (`manifest.js`, slash `/zoek`, Part-C verbs
   `zoek/search/find`) offers lexical **and** semantic/hybrid ranking. The
   embedder is injected by the host (canopy-chat resolves it from the active
@@ -106,8 +106,8 @@ Phase A (CLI) and Phase B.1.server (Express + WebSocket) are shipped:
   body read (the in-process index is title/name-only until then).
 
 ```js
-import { SyncEngine } from '@canopy-app/folio';
-import { PodClient }  from '@canopy/pod-client';
+import { SyncEngine } from '@onderling-app/folio';
+import { PodClient }  from '@onderling/pod-client';
 
 const podClient = new PodClient({ podRoot, auth });
 const engine    = new SyncEngine({
@@ -128,14 +128,14 @@ await engine.stop();
 Folio's authentication surface is touched by two ongoing tracks:
 
 1. **Mobile (`apps/folio-mobile`)** uses
-   [`@canopy/oidc-session-rn`](../../packages/oidc-session-rn/) —
+   [`@onderling/oidc-session-rn`](../../packages/oidc-session-rn/) —
    newly extracted 2026-05-08 from folio-mobile's own `src/auth/`
    directory as the rule-of-two consumer with Stoop V3 Phase 40.3.
    Folio-mobile is unchanged behaviourally; its `src/auth/{OidcSessionRN,
    folioAuth, dcr}.js` are now thin re-export shims around the
    substrate.
 2. **Desktop (`apps/folio`, this app)** uses
-   [`@canopy/oidc-session`](../../packages/oidc-session/)'s
+   [`@onderling/oidc-session`](../../packages/oidc-session/)'s
    `createSolidAuthNode({vault, clientName})` factory (Phase 52.15.2
    substrate promotion, 2026-05-14 — replaced the lifted-out
    `src/auth/OidcSession.js` wrapper). Multi-issuer support
@@ -143,7 +143,7 @@ Folio's authentication surface is touched by two ongoing tracks:
    via the `KNOWN_ISSUERS` / `getIssuerPickerHtml()` exports + the
    updated sign-in modal. **Sharing v2 (Phase 52.16, ACP/WAC) is
    implemented** via `createClientSharing` from
-   `@canopy/pod-client/sharing` in `src/autoShare.js`; ACP grant
+   `@onderling/pod-client/sharing` in `src/autoShare.js`; ACP grant
    is attempted first with cap-token fallback on non-ACP pods
    (regression tests at `test/autoShare.acp.test.js`).
 
@@ -383,7 +383,7 @@ flags two cross-app patterns relevant to Folio:
   profile** (it already owns "your stuff on your pod" UX) — when
   Folio's UI gets a "skills" tab, it edits this file directly,
   and other apps prefill from it. Substrate-candidate for
-  `@canopy/identity-resolver` once a 2nd consumer lands.
+  `@onderling/identity-resolver` once a 2nd consumer lands.
 
 Both items are forward-compat heads-up; no immediate code
 changes required.

@@ -7,7 +7,7 @@
  *
  * ── Peer dependency ─────────────────────────────────────────────────────────
  * `expo-notifications` is intentionally NOT a dependency of
- * `@canopy/react-native`.  Apps that use this adapter must install it
+ * `@onderling/react-native`.  Apps that use this adapter must install it
  * themselves (Expo apps usually already have it):
  *
  *   npx expo install expo-notifications

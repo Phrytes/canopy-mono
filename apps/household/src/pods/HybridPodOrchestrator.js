@@ -19,7 +19,7 @@
  * routingTable.js — nowhere else.
  *
  * The orchestrator is platform-pure: it depends on HouseholdPod /
- * MemberPod's interfaces, not on @canopy/pod-client directly.
+ * MemberPod's interfaces, not on @onderling/pod-client directly.
  * Tests use mock pods that implement those interfaces.
  */
 

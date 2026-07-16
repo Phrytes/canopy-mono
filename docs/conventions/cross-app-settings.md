@@ -125,7 +125,7 @@ Apps with a pre-existing flat `<pod>/<app>/settings.json` SHOULD migrate lazily 
 ## Tracking
 
 - Stoop V2.5 Phase 33 introduced the layout: see `Project Files/Stoop/coding-plan-v2-2026-05-07.md` § Phase 33 + `Project Files/Stoop/pod-layout-2026-05-06.md`.
-- Cross-app shared-defaults rule (Rule 3 above) was added 2026-05-07; first consumer is whichever sibling-app ships next; rule-of-two extraction into a substrate (`@canopy/cross-app-bootstrap` or similar) is tracked in `Project Files/Substrates/substrate-candidates.md`.
+- Cross-app shared-defaults rule (Rule 3 above) was added 2026-05-07; first consumer is whichever sibling-app ships next; rule-of-two extraction into a substrate (`@onderling/cross-app-bootstrap` or similar) is tracked in `Project Files/Substrates/substrate-candidates.md`.
 - Open questions:
   - Should the field-mapping table between siblings live in a shared registry, or stay per-app? Likely per-app for now (loose coupling); revisit if 4+ apps each maintain similar mappings.
   - Should sibling-app-name lookups be authenticated by app manifest (Phase 38)? Probably yes once Phase 38 lands.

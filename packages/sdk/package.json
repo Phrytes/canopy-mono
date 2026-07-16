@@ -1,7 +1,7 @@
 {
-  "name": "@canopy/sdk",
+  "name": "@onderling/sdk",
   "version": "0.1.0",
-  "description": "Batteries-included, LAYERED developer facade for @canopy. ONE import for the whole SDK. LOW layer: named re-exports of the kernel (@canopy/core) plus the default adapters (VaultMemory + Vault family from @canopy/vault, the transports from @canopy/transports, the pod pieces from @canopy/pod-client) — a dev wires adapters explicitly for maximal clarity + compatibility. HIGH layer: thin opinionated helpers built ON the low layer — createAgent({...}) (run-as-agent, Tier 3, injects the defaults) + connectSkill(agent, name, appFn) (Tier 1: map any plain app function to a skill). Purely additive; the kernel stays de-fatted (defaults live HERE, not in core).",
+  "description": "Batteries-included, LAYERED developer facade for @onderling. ONE import for the whole SDK. LOW layer: named re-exports of the kernel (@onderling/core) plus the default adapters (VaultMemory + Vault family from @onderling/vault, the transports from @onderling/transports, the pod pieces from @onderling/pod-client) — a dev wires adapters explicitly for maximal clarity + compatibility. HIGH layer: thin opinionated helpers built ON the low layer — createAgent({...}) (run-as-agent, Tier 3, injects the defaults) + connectSkill(agent, name, appFn) (Tier 1: map any plain app function to a skill). Purely additive; the kernel stays de-fatted (defaults live HERE, not in core).",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/sdk#readme",
@@ -32,10 +32,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "workspace:^",
-    "@canopy/transports": "workspace:^",
-    "@canopy/pod-client": "workspace:^",
-    "@canopy/vault": "workspace:^"
+    "@onderling/core": "workspace:^",
+    "@onderling/transports": "workspace:^",
+    "@onderling/pod-client": "workspace:^",
+    "@onderling/vault": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

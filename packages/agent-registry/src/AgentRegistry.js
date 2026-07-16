@@ -38,7 +38,7 @@ export function createAgentRegistry({
   resourceUri,
   maxRetries,
   onPersistentConflict,
-  // identity step 2.5 — optional @canopy/versioning store. When supplied, every registry write
+  // identity step 2.5 — optional @onderling/versioning store. When supplied, every registry write
   // snapshots the resource, so the profile set gets history / undoable recovery (the registry
   // lives on the pseudo-pod, which is NOT a versioned circle pod, so it gets none for free).
   versionStore = null,

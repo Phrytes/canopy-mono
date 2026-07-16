@@ -6,7 +6,7 @@
  * from a small starter set of templates rather than hand-rolling a
  * capability set.  This module is the pure registry of those templates.
  *
- * Each template targets a base role from `@canopy/core` permissions
+ * Each template targets a base role from `@onderling/core` permissions
  * (admin 100 · coordinator 80 · member 60 · observer 40 · external 20),
  * carrying a friendly id, a locale-key pair for label + description, and
  * the rank so a circle can persist a self-describing role def (the rank
@@ -23,10 +23,10 @@
 /**
  * @typedef {object} RoleTemplate
  * @property {string} id        — role id persisted on members + rules
- * @property {number} rank      — privilege rank (mirrors @canopy/core)
+ * @property {number} rank      — privilege rank (mirrors @onderling/core)
  * @property {string} labelKey  — locale key for the role name
  * @property {string} descKey   — locale key for "what this role can do"
- * @property {string} baseRole  — the @canopy/core role it derives from
+ * @property {string} baseRole  — the @onderling/core role it derives from
  */
 
 /** @type {Record<string, RoleTemplate>} */

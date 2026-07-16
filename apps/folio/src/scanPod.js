@@ -1,2 +1,2 @@
-// Lifted to @canopy/sync-engine.  Re-export shim for back-compat.
-export { scanPod } from '@canopy/sync-engine/scanPod';
+// Lifted to @onderling/sync-engine.  Re-export shim for back-compat.
+export { scanPod } from '@onderling/sync-engine/scanPod';

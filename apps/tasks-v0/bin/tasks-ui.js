@@ -73,11 +73,11 @@ import { parseArgs } from 'node:util';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve as resolvePath } from 'node:path';
-import { AgentIdentity, InternalBus, InternalTransport, FileSystemSource } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
-import { CachingDataSource } from '@canopy/local-store';
-import { renderWeb }         from '@canopy/app-manifest';
+import { AgentIdentity, InternalBus, InternalTransport, FileSystemSource } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mountLocalUi, LocalUiAuth } from '@onderling/agent-ui';
+import { CachingDataSource } from '@onderling/local-store';
+import { renderWeb }         from '@onderling/app-manifest';
 
 import { tasksManifest } from '../manifest.js';
 
@@ -91,12 +91,12 @@ const { values } = parseArgs({
     port:            { type: 'string' },
     'storage-root':  { type: 'string' },
     // V1.5 — chat bot. `--telegram-token <token>` activates the
-    // bot bridge (TelegramBridge from @canopy/chat-agent). The
+    // bot bridge (TelegramBridge from @onderling/chat-agent). The
     // circle config's `bot.chatBindings` map decides which chatId
     // dispatches as which webid.
     'telegram-token': { type: 'string' },
     // V1.5 — Expo push side-channel. Without `--push`, push wiring
-    // stays dormant. With it, the CLI imports `@canopy/relay`'s
+    // stays dormant. With it, the CLI imports `@onderling/relay`'s
     // `ExpoPushSender` lazily and Circle dispatches notifications to
     // the per-webid tokens declared in `circleConfig.pushTokens`.
     push: { type: 'boolean' },
@@ -140,9 +140,9 @@ if (values['circle-list']) {
     process.exit(2);
   }
 
-  const { ItemStore } = await import('@canopy/item-store');
-  const { MemberMap } = await import('@canopy/identity-resolver');
-  const { DataPart }  = await import('@canopy/core');
+  const { ItemStore } = await import('@onderling/item-store');
+  const { MemberMap } = await import('@onderling/identity-resolver');
+  const { DataPart }  = await import('@onderling/core');
   const { buildMeshAgent }  = await import('../src/MeshAgent.js');
   const { wireSkills }      = await import('../src/wireSkills.js');
   const { multiCircleResolver } = await import('../src/bundleResolver.js');
@@ -172,7 +172,7 @@ if (values['circle-list']) {
     const roles = Object.fromEntries(
       (cfg.members ?? []).map((m) => [m.webid, m.role ?? 'member']),
     );
-    const dataSource = new (await import('@canopy/core')).MemorySource();
+    const dataSource = new (await import('@onderling/core')).MemorySource();
     const itemStore = new ItemStore({
       dataSource,
       rootContainer: `mem://tasks/circles/${cfg.circleId}/`,
@@ -312,11 +312,11 @@ if (values.circle) {
   let pushSender;
   if (values.push) {
     try {
-      const { ExpoPushSender } = await import('@canopy/relay');
+      const { ExpoPushSender } = await import('@onderling/relay');
       pushSender = new ExpoPushSender();
       console.log('  push:   Expo push sender wired');
     } catch (err) {
-      console.error(`  ⚠ --push: failed to load @canopy/relay (${err?.message ?? err})`);
+      console.error(`  ⚠ --push: failed to load @onderling/relay (${err?.message ?? err})`);
     }
   }
 
@@ -535,7 +535,7 @@ const nlLocaleJson = await readFile(
   'utf8',
 );
 
-// Slice B.2.0 (2026-05-20) — overlay the shared @canopy/web-adapter
+// Slice B.2.0 (2026-05-20) — overlay the shared @onderling/web-adapter
 // helpers at `/lib/web-adapter/<basename>.js`. Same mechanism as
 // `/lib/dagFlatten.js`. Source-of-truth: `packages/web-adapter/src/`.
 const webAdapterFiles = await loadWebAdapterFiles();
@@ -628,7 +628,7 @@ if (values['telegram-token']) {
       }
       console.log(`  bot:    Telegram token OK (@${me.result.username})`);
 
-      const { TelegramBridge } = await import('@canopy/chat-agent/bridges/telegram');
+      const { TelegramBridge } = await import('@onderling/chat-agent/bridges/telegram');
       const { wireBotChannel } = await import('../src/bot/wireBotChannel.js');
       // Pass a live provider so bindings added via the V1.5
       // setBotChatBinding skill propagate without restart.

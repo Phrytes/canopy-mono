@@ -24,7 +24,7 @@
  *
  * F-SP1-a — every stoop itemType is app-local (`ask`/`offer`/`lend`/
  *           `report`/`group-rules`/`rules-accept`/`group-leave`/
- *           `request`) — none are canonical in `@canopy/item-types`.
+ *           `request`) — none are canonical in `@onderling/item-types`.
  *           Permitted by `validateManifest`.
  * F-SP1-e — non-canonical verbs used here: `report`, `mute`, `set`,
  *           `tree`.  Each is annotated inline.
@@ -70,7 +70,7 @@ const STR_NONEMPTY = { schema: { minLength: 1 } };
 const ID_NONEMPTY  = { schema: { minLength: 1 } };
 
 // Stoop's full item-type vocabulary (from `src/lib/itemTypes.js`).
-// All app-local — none are canonical in `@canopy/item-types` (F-SP1-a).
+// All app-local — none are canonical in `@onderling/item-types` (F-SP1-a).
 const ITEM_TYPES = [
   'ask',
   'offer',
@@ -102,7 +102,7 @@ const ITEM_TYPES = [
 // the enum for `postRequest({intent})` and `listOpen({intent})`.
 const PRIKBORD_INTENTS = ['ask', 'offer', 'lend'];
 
-/** @type {import('@canopy/app-manifest').__types__} */
+/** @type {import('@onderling/app-manifest').__types__} */
 export const stoopManifest = {
   app:       'stoop',
   itemTypes: ITEM_TYPES,

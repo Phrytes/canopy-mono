@@ -62,7 +62,7 @@ export function AgentProvider({ children }) {
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
 /**
- * @returns {{ agent: import('@canopy/core').Agent|null, status: string, error: Error|null }}
+ * @returns {{ agent: import('@onderling/core').Agent|null, status: string, error: Error|null }}
  */
 export function useAgent() {
   const ctx = useContext(AgentContext);

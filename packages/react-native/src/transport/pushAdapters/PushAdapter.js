@@ -7,6 +7,6 @@
  * (`transport/pushAdapters/PushAdapter.js` — MobilePushBridge,
  * ExpoNotificationsAdapter, tests) keep working unchanged.
  *
- * New code should import from `@canopy/react-native/ports`.
+ * New code should import from `@onderling/react-native/ports`.
  */
 export { PushAdapter } from '../../ports/PushAdapter.js';

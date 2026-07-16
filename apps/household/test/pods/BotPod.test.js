@@ -2,7 +2,7 @@
  * BotPod.test.js — Phase 2 Stream 2c.
  *
  * Drives BotPod against an inline MockPodClient that mimics the
- * subset of the @canopy/pod-client `PodClient` API BotPod uses:
+ * subset of the @onderling/pod-client `PodClient` API BotPod uses:
  * `read`, `write`, `append`, with a NOT_FOUND-coded error for
  * missing paths.  Inline (not shared) per the launch prompt: keeps
  * Stream 2b's MemberPod tests independent and avoids merge churn.
@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { BotPod }     from '../../src/pods/BotPod.js';
-import { OAuthVault } from '@canopy/vault';
+import { OAuthVault } from '@onderling/vault';
 
 // ── Inline MockPodClient ────────────────────────────────────────────────
 

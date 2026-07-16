@@ -1,5 +1,5 @@
 /**
- * @canopy-app/archive — public-barrel.
+ * @onderling-app/archive — public-barrel.
  *
  * Library entry points so other apps (or future web UIs) can drive the
  * indexer + search programmatically without going through the CLI.

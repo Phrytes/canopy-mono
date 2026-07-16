@@ -2,7 +2,7 @@
 // mode }` the circle bot consumes — falling back to the deployment's build-time env config when the
 // member hasn't set their own. Shared web + mobile so both build the runtime identically.
 //
-// The confidential-route guard (@canopy/llm-client/routeSafety) runs on BOTH the LLM and the embedder
+// The confidential-route guard (@onderling/llm-client/routeSafety) runs on BOTH the LLM and the embedder
 // URL: embeddings send raw circle text too, so a "confidential" preset (Privatemode) pointed at a
 // non-loopback host with no attestation is refused. A plain 'openai-compatible' route is the member's
 // explicit non-confidential opt-in and is not gated. Pre-flight a config with `validateUserLlmConfig`
@@ -11,7 +11,7 @@
 import { buildCircleLlmProviders } from './circleLlmProviders.js';
 import { buildCircleEmbedProviders } from './circleEmbedProviders.js';
 import { CIRCLE_LLM_ROUTE_PRESETS } from './circleLlmRoutes.js';
-import { assertConfidentialRouteSafe } from '@canopy/llm-client/routeSafety';
+import { assertConfidentialRouteSafe } from '@onderling/llm-client/routeSafety';
 
 /** The provider-map key (`local`|`cloud`) a posture mode resolves to. resolveCircleLlm reads these. */
 function keyForMode(mode) { return mode === 'local' ? 'local' : 'cloud'; }

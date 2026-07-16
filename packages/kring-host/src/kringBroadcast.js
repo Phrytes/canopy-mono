@@ -61,7 +61,7 @@ export function mediaForKringWire(embed) {
     out.pointer = pickFields(embed.pointer, ['type', 'ref']);
   }
   if (embed.snapshot && typeof embed.snapshot === 'object') {
-    // The canonical `media` item fields (@canopy/item-types) + the manifest line.
+    // The canonical `media` item fields (@onderling/item-types) + the manifest line.
     const snap = pickFields(embed.snapshot, [
       'type', 'id', 'createdAt', 'createdBy', 'mime', 'width', 'height', 'caption',
     ]);

@@ -2,9 +2,9 @@
  * Browser-safe shim for `node:crypto`.
  *
  * Aliased via vite.config.js → resolve.alias.  Static `import { createHash }
- * from 'node:crypto'` statements in @canopy/core (PodExporter, identity
- * serializers, reference-manifest), @canopy/sync-engine (hashNode, versions),
- * and @canopy/pseudo-pod (NodeFsBackend) all resolve here at build time.
+ * from 'node:crypto'` statements in @onderling/core (PodExporter, identity
+ * serializers, reference-manifest), @onderling/sync-engine (hashNode, versions),
+ * and @onderling/pseudo-pod (NodeFsBackend) all resolve here at build time.
  *
  * Those code paths are guarded — the browser bundle never actually calls
  * `createHash` because:

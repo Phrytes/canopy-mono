@@ -1,6 +1,6 @@
-# @canopy/llm-client
+# @onderling/llm-client
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Forward contract:** L1j cloud providers MUST compose `core.OAuthVault` + `makeAuthorizedFetch` rather than a parallel HTTP fetch; per `Project Files/Substrates/refactor/L1j-llm-client-refactor.md`.
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Forward contract:** L1j cloud providers MUST compose `core.OAuthVault` + `makeAuthorizedFetch` rather than a parallel HTTP fetch; per `Project Files/Substrates/refactor/L1j-llm-client-refactor.md`.
 
 Provider-agnostic OpenAI-style tool-calling LLM client.  Local-first
 (Ollama) by default; cloud providers (OpenAI / Anthropic) opt-in
@@ -16,8 +16,8 @@ L1c (chat-agent) and extracted because multiple consumers need it
 ## Quick start
 
 ```js
-import { LlmClient } from '@canopy/llm-client';
-import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
+import { LlmClient } from '@onderling/llm-client';
+import { ollamaProvider } from '@onderling/llm-client/providers/ollama';
 
 const llm = new LlmClient({
   provider: ollamaProvider({

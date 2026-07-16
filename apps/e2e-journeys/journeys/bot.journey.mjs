@@ -1,11 +1,11 @@
 // J-bot: a bot/agent added to a shared circle with a CUSTOM NAME, discovered by
 // MULTIPLE USERS from one shared registry, and invoked by each over the relay.
-// Exercises @canopy/agent-registry (registerAgentBundle's `name` + list/lookup)
+// Exercises @onderling/agent-registry (registerAgentBundle's `name` + list/lookup)
 // + the multi-user "everyone sees the same bot" property. (6b. The parked SP-5b
 // circle-NAME resolver is deliberately NOT built here — this is the BOT's name.)
-import { Agent, AgentIdentity, TextPart, Parts } from '@canopy/core';
-import { VaultMemory }        from '@canopy/vault';
-import { RelayTransport }     from '@canopy/transports';
+import { Agent, AgentIdentity, TextPart, Parts } from '@onderling/core';
+import { VaultMemory }        from '@onderling/vault';
+import { RelayTransport }     from '@onderling/transports';
 import { registerAgentBundle, createAgentRegistry } from '../../../packages/agent-registry/index.js';
 import { wait, checker }      from './_util.mjs';
 

@@ -1,7 +1,7 @@
 {
-  "name":        "@canopy/integration-tests",
+  "name":        "@onderling/integration-tests",
   "version":     "0.1.0",
-  "description": "Cross-component scenario tests for the @canopy SDK",
+  "description": "Cross-component scenario tests for the @onderling SDK",
   "type":        "module",
   "private":     true,
   "main":        "src/_harness/index.js",
@@ -10,20 +10,20 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core":              "file:../core",
-    "@canopy/pod-client":        "file:../pod-client",
-    "@canopy/relay":             "file:../relay",
+    "@onderling/core":              "file:../core",
+    "@onderling/pod-client":        "file:../pod-client",
+    "@onderling/relay":             "file:../relay",
 
-    "@canopy/agent-provisioning": "file:../agent-provisioning",
-    "@canopy/agent-registry":     "file:../agent-registry",
-    "@canopy/identity-resolver":  "file:../identity-resolver",
-    "@canopy/item-store":         "file:../item-store",
-    "@canopy/item-types":         "file:../item-types",
-    "@canopy/notify-envelope":    "file:../notify-envelope",
-    "@canopy/pod-onboarding":     "file:../pod-onboarding",
-    "@canopy/pod-routing":        "file:../pod-routing",
-    "@canopy/pseudo-pod":         "file:../pseudo-pod",
-    "@canopy/vault":              "file:../vault"
+    "@onderling/agent-provisioning": "file:../agent-provisioning",
+    "@onderling/agent-registry":     "file:../agent-registry",
+    "@onderling/identity-resolver":  "file:../identity-resolver",
+    "@onderling/item-store":         "file:../item-store",
+    "@onderling/item-types":         "file:../item-types",
+    "@onderling/notify-envelope":    "file:../notify-envelope",
+    "@onderling/pod-onboarding":     "file:../pod-onboarding",
+    "@onderling/pod-routing":        "file:../pod-routing",
+    "@onderling/pseudo-pod":         "file:../pseudo-pod",
+    "@onderling/vault":              "file:../vault"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

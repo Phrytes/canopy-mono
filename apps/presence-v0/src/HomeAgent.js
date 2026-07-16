@@ -16,9 +16,9 @@
  * V0 code unit-testable without spinning up real BLE/mDNS.
  */
 
-import { ItemStore } from '@canopy/item-store';
-import { MemorySource } from '@canopy/core';
-import { ulid } from '@canopy/item-store';
+import { ItemStore } from '@onderling/item-store';
+import { MemorySource } from '@onderling/core';
+import { ulid } from '@onderling/item-store';
 
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 

@@ -1,7 +1,7 @@
 /**
  * canopy-chat — real Agent integration test.  v0.1.5 / OQ-1.C.
  *
- * Exercises the actual @canopy/core Agent class (NOT the mock) via
+ * Exercises the actual @onderling/core Agent class (NOT the mock) via
  * the InternalTransport bus.  Proves:
  *   - AgentIdentity.generate works
  *   - VaultMemory works
@@ -21,7 +21,7 @@
  * in the browser bundle (verified by `vite build` + the dev-server smoke).
  */
 import { describe, it, expect, vi } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 

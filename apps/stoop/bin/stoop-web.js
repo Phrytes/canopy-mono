@@ -3,8 +3,8 @@
  * stoop-web — Slice E.1 bootstrap (PLAN-gui-chat-uplift.md).
  *
  * Boots a localhost-only stoop web UI driven by the manifest's NavModel
- * (rendered via `@canopy/app-manifest`'s `renderWeb`).  Mirrors
- * `apps/household/bin/household-web.js`: same `@canopy/agent-ui`'s
+ * (rendered via `@onderling/app-manifest`'s `renderWeb`).  Mirrors
+ * `apps/household/bin/household-web.js`: same `@onderling/agent-ui`'s
  * `mountLocalUi` substrate, same `extraStaticFiles` carrying
  * `/navmodel.json` + `/stoop-config.json`.
  *
@@ -81,10 +81,10 @@ import { parseArgs }                              from 'node:util';
 import { readFile }                               from 'node:fs/promises';
 import { fileURLToPath }                          from 'node:url';
 import { dirname, join }                          from 'node:path';
-import { AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mountLocalUi, LocalUiAuth }              from '@canopy/agent-ui';
-import { renderWeb }                              from '@canopy/app-manifest';
+import { AgentIdentity, InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mountLocalUi, LocalUiAuth }              from '@onderling/agent-ui';
+import { renderWeb }                              from '@onderling/app-manifest';
 
 import { stoopManifest }                           from '../manifest.js';
 import { createNeighborhoodAgent }                 from '../src/index.js';
@@ -136,7 +136,7 @@ export async function startStoopWeb(opts = {}) {
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
-  // V0.2-adopt (2026-05-21) — overlay the shared `@canopy/web-adapter`
+  // V0.2-adopt (2026-05-21) — overlay the shared `@onderling/web-adapter`
   // helpers at `/lib/web-adapter/<basename>.js`.  Same mechanism that
   // tasks-v0's `bin/tasks-ui.js` uses (Slice B.2.0).  Source-of-truth
   // lives in `packages/web-adapter/src/`; this overlay re-routes the

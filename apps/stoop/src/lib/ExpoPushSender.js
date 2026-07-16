@@ -9,10 +9,10 @@
  * (never throws — push is fire-and-forget).
  *
  * The WebPushSender doc anticipated this sender; both will lift into
- * `@canopy/relay/push/` when a second app needs push (rule of two).
+ * `@onderling/relay/push/` when a second app needs push (rule of two).
  */
 
-import { PushSender } from '@canopy/relay';
+import { PushSender } from '@onderling/relay';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 

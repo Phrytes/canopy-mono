@@ -43,7 +43,7 @@ export function chainThrows() {
 }
 
 /**
- * A spy LLM client (@canopy/llm-client LlmClient duck type) that records every invoke.
+ * A spy LLM client (@onderling/llm-client LlmClient duck type) that records every invoke.
  * `calls` MUST stay empty on any refused attestation — that is the headline assertion.
  */
 export function makeSpyLlm(result = { replyText: 'ok', toolCall: null, raw: {} }) {

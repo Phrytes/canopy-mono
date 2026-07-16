@@ -19,7 +19,7 @@ import {
   describeTaskStatus,
   shouldOfferForceComplete,
 } from '../src/ui/taskStatus.js';
-// Slice B.2.0 (2026-05-20) — callSkill moved to @canopy/web-adapter
+// Slice B.2.0 (2026-05-20) — callSkill moved to @onderling/web-adapter
 // (shared with apps/household/web/main.js). The previous inline copy
 // was duplicated verbatim here AND in apps/household/web/main.js.
 // Overlay served by `bin/tasks-ui.js` at `/lib/web-adapter/callSkill.js`.

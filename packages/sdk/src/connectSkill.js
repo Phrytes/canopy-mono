@@ -34,7 +34,7 @@
  * streaming, policy, …).
  */
 
-/** @typedef {import('@canopy/core').Agent} Agent */
+/** @typedef {import('@onderling/core').Agent} Agent */
 
 /**
  * Decode a core skill context's `parts` into friendly `args` for a plain fn.

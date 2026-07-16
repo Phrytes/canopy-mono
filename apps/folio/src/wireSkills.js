@@ -15,13 +15,13 @@
  * visibility today, so callers may drop it).
  *
  * RESOLUTION / BROWSER-BOUNDARY: `wireSkill` is imported by RELATIVE PATH
- * from `@canopy/sdk`'s source rather than the bare `@canopy/sdk` barrel.
+ * from `@onderling/sdk`'s source rather than the bare `@onderling/sdk` barrel.
  * Two reasons: (1) `browser.js` (which imports this module) is composed
  * into canopy-chat's BROWSER bundle and must stay node-free — the barrel
- * re-exports `@canopy/transports` etc. which carry node deps; `wireSkill.js`
+ * re-exports `@onderling/transports` etc. which carry node deps; `wireSkill.js`
  * + its only import `connectSkill.js` are a zero-dependency, node-free
  * 2-file closure.  (2) folio's isolated `node_modules` has no
- * `@canopy/sdk`.  Same rationale as `apps/agents/test/*`'s relative import.
+ * `@onderling/sdk`.  Same rationale as `apps/agents/test/*`'s relative import.
  */
 import { buildSkillsFromManifest } from '../../../packages/sdk/src/buildSkillsFromManifest.js';
 

@@ -1,5 +1,5 @@
 /**
- * @canopy/core — public API
+ * @onderling/core — public API
  *
  * Exports every stable surface that downstream packages and applications
  * should import. Internal helpers (b64, canonicalize, etc.) are intentionally
@@ -7,8 +7,8 @@
  */
 
 // ── Emitter (base class) ──────────────────────────────────────────────────────
-// Exported FIRST, deliberately: downstream packages (@canopy/item-store ItemStore,
-// @canopy/identity-resolver MemberMap, …) do `class X extends Emitter` importing it
+// Exported FIRST, deliberately: downstream packages (@onderling/item-store ItemStore,
+// @onderling/identity-resolver MemberMap, …) do `class X extends Emitter` importing it
 // from this barrel. On Hermes' circular-import init order, a late re-export leaves
 // Emitter `undefined` at class-definition time → "Super expression must be null or a
 // function" → the whole agent boot fails. Emitter.js has no deps, so exporting it
@@ -29,7 +29,7 @@ export {
 
 // ── Identity ────────────────────────────────────────────────────────────────
 // NOTE: the Vault family (Vault, VaultMemory, VaultLocalStorage, VaultIndexedDB,
-// VaultNodeFs, OAuthVault, makeAuthorizedFetch) lives in `@canopy/vault` — import
+// VaultNodeFs, OAuthVault, makeAuthorizedFetch) lives in `@onderling/vault` — import
 // it directly. `core` no longer re-exports it (kills the core→vault re-export
 // inversion; guarded by test/layering.enforcement.test.js).
 export { AgentIdentity }      from './identity/AgentIdentity.js';
@@ -38,8 +38,8 @@ export { Bootstrap }          from './identity/Bootstrap.js';
 // identity step 3 — per-circle addresses (unlinkability layer)
 export { deriveCircleSeed, deriveCircleAddress, circleIdentity } from './identity/circleAddress.js';
 // NOTE: IdentityPodStore, IdentitySync and migrateVaultToPod were extracted OUT
-// of core into `@canopy/pod-client` — they store/migrate/sync identity ON a pod
-// (SDK pod layer), not kernel identity. Import them from '@canopy/pod-client'.
+// of core into `@onderling/pod-client` — they store/migrate/sync identity ON a pod
+// (SDK pod layer), not kernel identity. Import them from '@onderling/pod-client'.
 // `core` no longer re-exports them (guarded by test/layering.enforcement.test.js).
 // AgentIdentity / KeyRotation / Bootstrap (kernel identity) stay here.
 export { CloudBackup }                 from './identity/CloudBackup.js';
@@ -80,7 +80,7 @@ export {
 // ── Transport ────────────────────────────────────────────────────────────────
 // NOTE: the concrete network transports (RelayTransport, MqttTransport,
 // NknTransport, RendezvousTransport) were extracted OUT of core into
-// `@canopy/transports` — import them from there. `core` no longer re-exports
+// `@onderling/transports` — import them from there. `core` no longer re-exports
 // them (kills the kernel→concrete-adapter coupling; guarded by
 // test/layering.enforcement.test.js). Transport (base), InternalBus/
 // InternalTransport, LocalTransport, OfflineTransport and HubDelegateTransport
@@ -100,7 +100,7 @@ export { makeFetchResourceSkill } from './skills/fetchResource.js';
 
 // Phase 50.9 — `ActorResolver` is a PORT: a STRUCTURAL (duck-typed) contract,
 // not a class — there is no runtime symbol to export, only the `@typedef` in
-// permissions/ActorResolver.js (the substrate `@canopy/agent-registry`
+// permissions/ActorResolver.js (the substrate `@onderling/agent-registry`
 // implements it). The in-memory helper below is the reference adapter, for
 // tests + minimal apps. See docs/conventions/ports.md and
 // test/conformance/actorResolverConformance.js.
@@ -206,12 +206,12 @@ export { DataSource }        from './storage/DataSource.js';
 export { MemorySource }      from './storage/MemorySource.js';
 export { IndexedDBSource }   from './storage/IndexedDBSource.js';
 export { FileSystemSource }  from './storage/FileSystemSource.js';
-// NOTE: `SolidPodSource` lives in `@canopy/pod-client` — import it directly.
+// NOTE: `SolidPodSource` lives in `@onderling/pod-client` — import it directly.
 // The concrete Solid pod DataSource + its portable archive pair (`PodExporter`
 // / `PodImporter`) were extracted OUT of `core`; it no longer re-exports them
 // (guarded by test/layering.enforcement.test.js).
-// NOTE: `SolidVault` lives in `@canopy/oidc-session` — import it directly.
-// `core` no longer re-exports it, and no longer depends on `@canopy/oidc-session`
+// NOTE: `SolidVault` lives in `@onderling/oidc-session` — import it directly.
+// `core` no longer re-exports it, and no longer depends on `@onderling/oidc-session`
 // at all (kills that inversion; guarded by test/layering.enforcement.test.js).
 export { StorageManager }    from './storage/StorageManager.js';
 export {

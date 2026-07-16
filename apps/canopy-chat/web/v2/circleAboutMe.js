@@ -16,7 +16,7 @@
  *   onToggleDisclosure(circleId, key, on)    → setProfileDisclosure
  */
 
-import { DRIVER_KINDS } from '@canopy/agent-registry';
+import { DRIVER_KINDS } from '@onderling/agent-registry';
 
 function section(titleText) {
   const el = document.createElement('section');

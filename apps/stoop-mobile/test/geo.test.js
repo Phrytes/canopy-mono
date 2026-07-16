@@ -1,7 +1,7 @@
 /**
  * geo (mobile) tests — `getCoarseLocationFromGps` permission +
  * coordinate handling, plus `cellFor` re-export parity with
- * `@canopy-app/stoop/lib/geo`.
+ * `@onderling-app/stoop/lib/geo`.
  */
 
 import { describe, it, expect, vi } from 'vitest';

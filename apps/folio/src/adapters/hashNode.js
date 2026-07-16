@@ -1,2 +1,2 @@
-// Lifted to @canopy/sync-engine.  Re-export shim for back-compat.
-export { hashNode, createHashNode } from '@canopy/sync-engine/adapters/hashNode';
+// Lifted to @onderling/sync-engine.  Re-export shim for back-compat.
+export { hashNode, createHashNode } from '@onderling/sync-engine/adapters/hashNode';

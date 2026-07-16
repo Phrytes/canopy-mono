@@ -4,7 +4,7 @@
  */
 
 /**
- * @param {import('@canopy/app-manifest').Manifest} manifest
+ * @param {import('@onderling/app-manifest').Manifest} manifest
  * @param {string} opId
  * @returns {boolean}
  */

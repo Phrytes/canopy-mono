@@ -22,8 +22,8 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { createInMemoryActorResolver, PolicyEngine, CapabilityToken, SkillRegistry, TrustRegistry, defineSkill, AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { createInMemoryActorResolver, PolicyEngine, CapabilityToken, SkillRegistry, TrustRegistry, defineSkill, AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 /* ────────────────────────────────────────────────────────────────────────── */
 

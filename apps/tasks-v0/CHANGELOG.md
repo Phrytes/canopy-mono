@@ -1,8 +1,8 @@
-# Changelog — @canopy-app/tasks-v0
+# Changelog — @onderling-app/tasks-v0
 
 ## [Unreleased] — canopy-chat browser integration (2026-05-23, `ab6f32f`)
 
-New export: `@canopy-app/tasks-v0/browser` →
+New export: `@onderling-app/tasks-v0/browser` →
 `createBrowserTasksAgent({bus, identityVault, circleConfig, label})`.
 
 Lets canopy-chat compose a real Circle agent in-process (no bin/
@@ -21,7 +21,7 @@ the minimal opts canopy-chat needs.
 ## [Unreleased] — Slice B.1 (2026-05-20) — dag.html via renderWeb (view-only)
 
 First tasks-v0 web page migrated to the NavModel projector
-(`renderWeb` from `@canopy/app-manifest`) per
+(`renderWeb` from `@onderling/app-manifest`) per
 `PLAN-gui-chat-uplift.md` § Slice B.1.  Read-only proof; no
 state-changing surfaces — `dag.html` reads `getDagTree` via the
 manifest's `dag` view and flattens through the existing shared
@@ -80,7 +80,7 @@ reassign/remove).
   to `/welcome.html`.
 - **Slice 3** (`203607c`): agent-registry on `createCircleAgent`.
   Helper `registerAgentBundle` lifted from Stoop's app code into
-  `@canopy/agent-registry`. Tasks builds a standalone-mode
+  `@onderling/agent-registry`. Tasks builds a standalone-mode
   pseudoPod per circle + registers with capabilities `['tasks',
   'tasks-v0', \`circle:<circleId>\`]`. `bundle.pseudoPod` +
   `bundle.agentRegistry` exposed.
@@ -94,7 +94,7 @@ reassign/remove).
 - (`bab079b`) `apps/tasks-v0/src/lib/podSignIn.js` mirrors
   Stoop's Phase 52.15.3. Four new skills: `startPodSignIn`,
   `completePodSignIn`, `signOutOfPod`, `podSignInStatus`. Uses
-  `createSolidAuthNode` from `@canopy/oidc-session`.
+  `createSolidAuthNode` from `@onderling/oidc-session`.
   `/pod-settings.html`'s sign-in card unlocked: issuer input
   + redirect flow + callback handler + sign-out. New
   `listSavedCircleConfigs` skill + `/circles.html`'s "Saved circle
@@ -153,23 +153,23 @@ reassign/remove).
 
 ### Substrate touches (cross-app)
 
-- `@canopy/item-store`:
+- `@onderling/item-store`:
   - `#materialise` now propagates the optional `embeds` field
     forward.
   - New `applySync` + `removeSync` methods (substrate-internal,
     gate-bypass).
   - New private `#findBySyncedFromId(id)` helper.
-- `@canopy/agent-registry`:
+- `@onderling/agent-registry`:
   - New `registerAgentBundle` helper lifted from Stoop. Used by
     Stoop + Tasks without a cross-app dep.
 
 ### New deps on `apps/tasks-v0/package.json`
 
-- `@canopy/agent-registry`
-- `@canopy/pseudo-pod`
-- `@canopy/pod-routing`
-- `@canopy/notify-envelope`
-- `@canopy/oidc-session`
+- `@onderling/agent-registry`
+- `@onderling/pseudo-pod`
+- `@onderling/pod-routing`
+- `@onderling/notify-envelope`
+- `@onderling/oidc-session`
 
 ### Tests
 
@@ -191,7 +191,7 @@ Capability **U** from the V2 functional design. Closes the door on "I marked the
 
 ### Substrate touch (additive, opt-in)
 
-- `@canopy/item-store`:
+- `@onderling/item-store`:
   - `ItemStore` constructor accepts `enforceDependencies?: boolean` (default `false` — back-compat). When `true`, `markComplete` and `approve` walk `current.dependencies`, look each up, filter out missing-or-removed (treat as satisfied), reject when any open dep remains.
   - New typed error `DependenciesOpenError extends Error` with `code: 'DEPENDENCIES_OPEN'` + `openDeps[]`. Re-exported from the package barrel.
   - `markComplete` / `approve` / `addItems` honor a new `ctx.actionOverride` string (replaces the audit entry's `action` field; used for `force-complete` and `force-spawn`) plus `ctx.reason` (lands in `details.reason`).
@@ -279,9 +279,9 @@ Shipped in two passes within the day:
 
 ### What this enables
 
-- Tasks-mobile Phase 41.2's `ServiceContext` can `import { buildMeshAgent, wireSkills, multiCircleResolver } from '@canopy-app/tasks-v0'` and have the V2.8 shape from day one — no per-circle agent multiplication.
+- Tasks-mobile Phase 41.2's `ServiceContext` can `import { buildMeshAgent, wireSkills, multiCircleResolver } from '@onderling-app/tasks-v0'` and have the V2.8 shape from day one — no per-circle agent multiplication.
 - Multi-circle CLI launches stop spinning N agents (the V2.5 dashboard path).
-- Future `@canopy/scoped-skill-bus` lift (if Stoop or another app trips the rule of two on this factory shape) lands without a Tasks rewrite.
+- Future `@onderling/scoped-skill-bus` lift (if Stoop or another app trips the rule of two on this factory shape) lands without a Tasks rewrite.
 
 ### Deferred
 
@@ -398,7 +398,7 @@ Capability **P** from the V2 functional design. Circles with `compensation.enabl
 
 ### Substrate touch (additive)
 
-- ✅ `@canopy/item-store`: `#materialise` now passes `scheduledAt` + `estimateMinutes` through (both optional). Pure-additive, no breaking change. V2.2 uses `estimateMinutes` for hour rollups; V2.4 will use `scheduledAt` for the planner.
+- ✅ `@onderling/item-store`: `#materialise` now passes `scheduledAt` + `estimateMinutes` through (both optional). Pure-additive, no breaking change. V2.2 uses `estimateMinutes` for hour rollups; V2.4 will use `scheduledAt` for the planner.
 
 ### App-side
 
@@ -552,7 +552,7 @@ Tests now: **219 across 17 files** (Tasks).
 
 ### V1.5 — bot CLI plumbing
 
-- ✅ `bin/tasks-ui.js` now accepts `--telegram-token <token>`. With a real token it lazy-imports `TelegramBridge` from `@canopy/chat-agent/bridges/telegram` (peer dep `telegraf` is hoisted automatically) and constructs `wireBotChannel` against `circleConfig.bot.chatBindings`. Without the flag the bot stays dormant. Failures during launch are caught and surfaced as a single warning line so the UI still serves.
+- ✅ `bin/tasks-ui.js` now accepts `--telegram-token <token>`. With a real token it lazy-imports `TelegramBridge` from `@onderling/chat-agent/bridges/telegram` (peer dep `telegraf` is hoisted automatically) and constructs `wireBotChannel` against `circleConfig.bot.chatBindings`. Without the flag the bot stays dormant. Failures during launch are caught and surfaced as a single warning line so the UI still serves.
 - ✅ Long-polling default; mode override is via the bridge constructor, not the CLI (Telegram needs the URL up-front for webhook mode anyway).
 - ✅ Cleanup wired into `SIGINT`/`SIGTERM`: bot detaches before the UI stops.
 
@@ -564,14 +564,14 @@ Tests now: **219 across 17 files** (Tasks).
 
 ### V1.5 — push notifications
 
-Substrate lift (rule-of-two): `PushPolicy` was sitting at `apps/stoop/src/lib/PushPolicy.js` — Tasks V1.5 trips the second-consumer rule, so the class moved to `@canopy/notifier` (`packages/notifier/src/PushPolicy.js`) and Stoop's lib copy is now a thin re-export. Eight focused unit tests added at the substrate level (`packages/notifier/test/PushPolicy.test.js`).
+Substrate lift (rule-of-two): `PushPolicy` was sitting at `apps/stoop/src/lib/PushPolicy.js` — Tasks V1.5 trips the second-consumer rule, so the class moved to `@onderling/notifier` (`packages/notifier/src/PushPolicy.js`) and Stoop's lib copy is now a thin re-export. Eight focused unit tests added at the substrate level (`packages/notifier/test/PushPolicy.test.js`).
 
 App-side:
 
 - ✅ `Circle.js` accepts an optional `pushSender` (any `relay.PushSender`-shaped object). When supplied AND `circleConfig.pushTokens` maps any webid → device token, Circle constructs a `PushChannel` + `PushPolicy` and registers them under `notifierChannels.push`.
 - ✅ `wireIssuerNotifications` extended with optional `{pushChannel, pushPolicy, tokenFor}`. Every immediate notification (completed / submitted / rejected / revoked) is offered to the policy on top of the inbox dispatch; `humanInTheLoop: true` is set so the policy gates correctly. Unbound recipients silently skip push.
 - ✅ CircleConfig schema gained `pushTokens: {[webid]: token}` and `pushPolicy: {maxPerDay?, quietHours?}`. `_normaliseConfig` now preserves both.
-- ✅ CLI `--push` flag lazy-imports `@canopy/relay`'s `ExpoPushSender` and forwards it to `createCircleAgent`. `@canopy/relay` added as a tasks-v0 dependency.
+- ✅ CLI `--push` flag lazy-imports `@onderling/relay`'s `ExpoPushSender` and forwards it to `createCircleAgent`. `@onderling/relay` added as a tasks-v0 dependency.
 - ✅ Tests: 4 added in `test/v1_5-push.test.js` — push fires for the master with a bound token; skipped when the recipient has no token; dormant without `pushSender`; honours `pushPolicy.maxPerDay` from the circle config.
 
 Tests now: **212 across 16 files** (Tasks) + **53 across 5 files** (notifier) + Stoop's full 429-test suite still green after the substrate lift.
@@ -593,7 +593,7 @@ Tests now: **212 across 16 files** (Tasks) + **53 across 5 files** (notifier) + 
 
 Substrate already shipped: `chat-agent.TelegramBridge` + `InMemoryBridge`. App-level work:
 
-- ✅ Added `@canopy/chat-agent` dep to `apps/tasks-v0`.
+- ✅ Added `@onderling/chat-agent` dep to `apps/tasks-v0`.
 - ✅ New `src/bot/dispatch.js` — pure parser; mirrors `apps/household/src/parsers/regexCommands.js` but for Tasks. 14 commands: `open`/`list`, `mine`, `master`, `review`, `inbox`, `blocks <id>`/`tree <id>`, `claim <id>`, `done <id>`/`complete <id>`, `submit <id> note: ...`, `approve <id>`, `reject <id> reason: ...`, `revoke <id> reason: ...`, `appeal <id>`, `help`/`?`. Dispatches return `{kind: 'skill'|'reply'|'unknown'}` so the wiring layer formats consistently.
 - ✅ New `src/bot/skills.js` — `bot.*` skill set (12 skills) wrapping the V1 surface. Each skill returns chat-shaped `{text}` (or `{text, buttons}`) instead of raw JSON; resolves short id prefixes (≥6 chars) to a unique full ULID; renders sub-task trees as code-block-fenced ASCII; surfaces `permission denied` errors from the role-policy gate as friendly chat replies.
 - ✅ New `src/bot/wireBotChannel.js` — `wireBotChannel({agent, bridges, chatBindings})`. Generic over `MessagingBridge` instances (TelegramBridge for production, InMemoryBridge for tests). Caller supplies `{<chatId>: <webid>}` map (typically from `circle.bot.chatBindings`); unbound chatIds get a friendly hint reply. Returns `{detach}` for clean shutdown.
@@ -607,7 +607,7 @@ Tests now: **208 across 15 files** (+21 from 187).
 
 Substrate already shipped (`core.Roles.registerCustomRole` exists since Track D); only UI + skill-wrapping + boot-time persistence work.
 
-- ✅ Added `Roles` exports to `@canopy/core`'s public barrel: `ROLES`, `isStandardRole`, `roleRank`, `isKnownRole`, `registerCustomRole`, `unregisterCustomRole`, `canPromote`, `listKnownRoles` (one-line additive change).
+- ✅ Added `Roles` exports to `@onderling/core`'s public barrel: `ROLES`, `isStandardRole`, `roleRank`, `isKnownRole`, `registerCustomRole`, `unregisterCustomRole`, `canPromote`, `listKnownRoles` (one-line additive change).
 - ✅ New `apps/tasks-v0/src/skills/customRoles.js`:
   - `applyCustomRoles(customRoles)` — boot-time helper that re-registers a CircleConfig's custom roles into the process-global registry. Idempotent (skips already-registered ids).
   - `registerCircleCustomRole({roleId, rank})` skill — admin-only. Validates against `core.Roles.registerCustomRole` (rank uniqueness, no standard-role collisions); persists into `liveCircle.customRoles`.
@@ -666,9 +666,9 @@ substrates were lifted by parallel work).
 - ✅ V1 stub added to this CHANGELOG.
 - ✅ `apps/tasks-v0/README.md` carries pointer to coding plan (V0/V1+ section already updated 2026-05-07).
 
-### Phase 1 — Wire `@canopy/local-store` (2026-05-08)
+### Phase 1 — Wire `@onderling/local-store` (2026-05-08)
 
-- ✅ Added `@canopy/local-store` dependency to `package.json`.
+- ✅ Added `@onderling/local-store` dependency to `package.json`.
 - ✅ New `src/storage/buildBundle.js` — composes `CachingDataSource` + optional `SyncCadence`; supports `attachInner` / `detachInner` for pod sign-in/out.
 - ✅ New `src/storage/settings.js` — Tasks-bound `createSettingsModule({appId: 'tasks', ...})` with shared (`pushPreferences`, `cadenceOverrides`, `defaultCalendarShared`) + device (`pollIntervalMs`, `localModeRoot`) field schemas + `pollIntervalMs >= 100` validator.
 - ✅ `createTasksAgent({localStoreBundle, ...})` parameter added; bundle's `.cache` becomes the `ItemStore` DataSource. V0 zero-config path (no bundle, no itemBackend → MemorySource) preserved.
@@ -694,7 +694,7 @@ substrates were lifted by parallel work).
 - ✅ New `src/skills/profile.js` — canonical-profile, circle-vocabulary, per-circle-member-skills, and per-circle-posture readers + writers, all over a `core.DataSource` (composes the local-store bundle).
 - ✅ Canonical user-skills profile path: **`mem://user/profile/skills.json`** — intentionally NOT app-namespaced, so Stoop / Tasks / Folio / future apps read the same blob.
 - ✅ Circle skill vocabulary at `<circle-pod>/circles/<circleId>/skills.json`; per-circle member projection at `<circle-pod>/circles/<circleId>/skills/<webid-encoded>.json`; per-circle posture at `<user-pod>/posture/<circleId>.json`.
-- ✅ Tag normalisation: leans on the shipped `@canopy/identity-resolver/normaliseTag` so NL "schilderen" / EN "painting" / "schilderwerk" all canonicalise to one tag — cross-language matching works out of the box. Off-taxonomy `categoryId` values get nulled; duplicates dedupe by canonical tag.
+- ✅ Tag normalisation: leans on the shipped `@onderling/identity-resolver/normaliseTag` so NL "schilderen" / EN "painting" / "schilderwerk" all canonicalise to one tag — cross-language matching works out of the box. Off-taxonomy `categoryId` values get nulled; duplicates dedupe by canonical tag.
 - ✅ `prefilledFormShape({canonicalProfile, circleVocabulary, taxonomy?})` — pure function, returns `{prefilled, vocabSuggestions, taxonomyHints}` for the UI's three lists. `prefilled` annotated with `inCircleVocabulary`. Handles null inputs.
 - ✅ Two new skills auto-registered on `createCircleAgent` when a `localStoreBundle` is supplied:
   - `getMySkillsFormShape({circleId})` — returns the prefilled shape.
@@ -731,7 +731,7 @@ substrates were lifted by parallel work).
 
 ### Phase 9 — observability stats + cadence config (2026-05-08)
 
-- ✅ New `src/observability/metrics.js` — `MetricsTracker` composes `@canopy/notifier`'s `UsageMetrics` for counters + adds bounded latency reservoirs (default 200 samples per name; FIFO eviction). Tracks per-name p50/p90/max via `_percentile`.
+- ✅ New `src/observability/metrics.js` — `MetricsTracker` composes `@onderling/notifier`'s `UsageMetrics` for counters + adds bounded latency reservoirs (default 200 samples per name; FIFO eviction). Tracks per-name p50/p90/max via `_percentile`.
 - ✅ `buildMetrics({itemStore})` auto-subscribes to `item-added`/`item-claimed`/`item-submitted`/`item-rejected`/`item-revoked`/`item-completed`/`item-removed`. Counters: `task.added` / `task.claimed` / `task.submitted` / `task.rejected` / `task.revoked` / `task.approved` / `task.completed` / `subtask.request` / `subtask.approved` / `subtask.declined`. Latencies: `latency.time-to-claim` (added → claimed), `latency.submit-to-approval` (submit → completed when approval mode is non-self-mark).
 - ✅ New `src/observability/cadence.js` — `resolveCadence({eventType, baseline?, circle?, user?})` layered config (user > circle > baseline). `sanitiseCadenceMap(map)` drops invalid entries. `BASELINE_CADENCES` covers all 6 V1 event types.
 - ✅ New `src/skills/observability.js`:
@@ -782,21 +782,21 @@ Tests: 11 added in `test/phase8-ui.test.js`; V0 baseline test text-assertions up
 
 ### Phase 6 — in-app inbox + appeal flow + issuer notifications (2026-05-08)
 
-- ✅ Added `@canopy/chat-p2p` dependency.
-- ✅ New `src/bridges/InAppInboxBridge.js` — implements the `MessagingBridge` shape (`start`/`stop`/`onMessage`/`sendReply`); writes `kind: 'notification'` items to a per-recipient inbox container (default `mem://user/inbox/`). Cross-recipient delivery rejected (one bridge per webid; broadcasting is somebody else's problem). Substrate-candidate flagged for `@canopy/chat-agent` once a 2nd consumer wants the same shape.
+- ✅ Added `@onderling/chat-p2p` dependency.
+- ✅ New `src/bridges/InAppInboxBridge.js` — implements the `MessagingBridge` shape (`start`/`stop`/`onMessage`/`sendReply`); writes `kind: 'notification'` items to a per-recipient inbox container (default `mem://user/inbox/`). Cross-recipient delivery rejected (one bridge per webid; broadcasting is somebody else's problem). Substrate-candidate flagged for `@onderling/chat-agent` once a 2nd consumer wants the same shape.
 - ✅ New `src/notifications/wireIssuerNotifications.js` — subscribes to `item-added` (with `dueAt`), `item-completed`, `item-submitted`, `item-rejected`, `item-revoked`, `item-removed` and routes them to the right recipient's inbox via per-webid `InAppInboxBridge` instances. Mutates the shared `channels` map so the notifier picks up runtime additions lazily. Returns `{detach}` for shutdown.
 - ✅ New `src/skills/appeal.js` — `appealTask({taskId, body?})` skill. Authz: caller must equal `previousAssignee` (read from the revoke audit-log entry) AND the revoke must be ≤ 7 days old (`APPEAL_WINDOW_MS`). On success, calls `chat-p2p.wireChat`'s `send(...)` with `threadId: appeal:<taskId>` and either the user's body or a polite pre-fill quoting the revoke reason. Graceful `chat-not-wired` error when `wireChat` isn't composed.
 - ✅ `createCircleAgent` (when `localStoreBundle` is supplied) now wires:
-  - `wireChat` from `@canopy/chat-p2p` against the bundle's ItemStore + MemberMap (gives the agent peer-to-peer chat capability).
+  - `wireChat` from `@onderling/chat-p2p` against the bundle's ItemStore + MemberMap (gives the agent peer-to-peer chat capability).
   - `appealTask` skill (depends on `chatController`).
-  - `Notifier` from `@canopy/notifier` with `InMemoryScheduleStore`; exposed as `bundle.notifier.scheduleStore` so tests + UI can introspect pending jobs (the notifier's own `#store` is private).
+  - `Notifier` from `@onderling/notifier` with `InMemoryScheduleStore`; exposed as `bundle.notifier.scheduleStore` so tests + UI can introspect pending jobs (the notifier's own `#store` is private).
   - `wireIssuerNotifications` for missed-deadline / completed / submitted / rejected / revoked routing.
   - `bundle.close()` aggregator that detaches every listener + stops the notifier on shutdown.
 - ✅ Tests: 14 added in `test/phase6-inbox.test.js`. Total now **116/116 passing**.
 
 ### Phase 5 — DoD lifecycle on item-store (2026-05-08)
 
-Substrate side (`@canopy/item-store`):
+Substrate side (`@onderling/item-store`):
 
 - ✅ Schema additions on `Item`: `definitionOfDone?`, `approval?` (`'self-mark' | 'creator' | 'webid:<who>'`), `deliverable?`, `reviewLog?`, `master?`, `parentTaskId?`. All optional; V0 callers see no shape change.
 - ✅ `master` defaults to `addedBy` on add (or to an explicit `partial.master` for spawned sub-tasks).
@@ -843,22 +843,22 @@ App side (`apps/tasks-v0`):
 - **Circle envelope** (multi-tenant container around tasks; replaces V0's implicit-household).
 - **DoD lifecycle** on item-store: `submitted` + `rejected` states + approval modes.
 - **Sub-tasks by the accepter** + admin-approval threshold beyond depth N.
-- **Master + revoke (with reason) + appeal flow** via new `@canopy/chat-p2p` substrate.
+- **Master + revoke (with reason) + appeal flow** via new `@onderling/chat-p2p` substrate.
 - **Local calendar conflict view** (no network freebusy; reads `*.ics` from pod or local mode).
-- **In-app inbox** as a `MessagingBridge`, backed by new `@canopy/local-store` substrate.
+- **In-app inbox** as a `MessagingBridge`, backed by new `@onderling/local-store` substrate.
 - **Skill import from canonical user-pod profile** with prefilled-edit-before-submit form.
 - **Per-circle skill vocabulary** + cadence config + observability stats.
 - **Local-only mode** is a hard rule — app boots without a Solid pod.
 
 ### Substrate movements during V1 (lifted from Stoop, rule of two satisfied)
 
-- New `@canopy/local-store` package (`CachingDataSource` + `SyncCadence` + `Settings` split).
-- New `@canopy/chat-p2p` package (peer-to-peer chat threads).
-- `@canopy/identity-resolver` extension: `MemberMapCache` + new `skills/` submodule (taxonomy + normalisation + matcher).
-- `@canopy/notifier` extension: `UsageMetrics` (in-memory per-event counter).
+- New `@onderling/local-store` package (`CachingDataSource` + `SyncCadence` + `Settings` split).
+- New `@onderling/chat-p2p` package (peer-to-peer chat threads).
+- `@onderling/identity-resolver` extension: `MemberMapCache` + new `skills/` submodule (taxonomy + normalisation + matcher).
+- `@onderling/notifier` extension: `UsageMetrics` (in-memory per-event counter).
 - `core.GroupManager` extension: canonical `issueInviteSkill` / `redeemInviteSkill` helpers.
 
-Stoop's `apps/stoop/src/lib/` files affected become re-export shims; per-PR migration plan at `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`. **No Stoop V3 substrates touched** (e.g. `@canopy/oidc-session-rn` stays out of scope).
+Stoop's `apps/stoop/src/lib/` files affected become re-export shims; per-PR migration plan at `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`. **No Stoop V3 substrates touched** (e.g. `@onderling/oidc-session-rn` stays out of scope).
 
 ---
 
@@ -876,11 +876,11 @@ H4 V0 — initial release.  Phase C of the substrate-first plan; first L2 app sh
 
 ### Substrate dependencies
 
-- `@canopy/item-store` (L1b) — primary
-- `@canopy/identity-resolver` (L1h)
-- `@canopy/skill-match` (L1e)
-- `@canopy/notifier` (L1f)
-- `@canopy/agent-ui` (L1d)
+- `@onderling/item-store` (L1b) — primary
+- `@onderling/identity-resolver` (L1h)
+- `@onderling/skill-match` (L1e)
+- `@onderling/notifier` (L1f)
+- `@onderling/agent-ui` (L1d)
 
 ### Out of V0 (per plan)
 

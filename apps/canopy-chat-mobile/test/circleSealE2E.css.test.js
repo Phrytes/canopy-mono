@@ -23,8 +23,8 @@ let setCirclePodSession, getActiveRealPodRouting;
 
 beforeAll(async () => {
   if (!HAVE) return;
-  ({ OidcSessionRN } = await import('@canopy/oidc-session-rn'));
-  ({ generateKeypair } = await import('@canopy/pod-client'));
+  ({ OidcSessionRN } = await import('@onderling/oidc-session-rn'));
+  ({ generateKeypair } = await import('@onderling/pod-client'));
   ({ createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } =
     await import('../../canopy-chat/src/v2/circlePodProducer.js'));
   ({ setCirclePodSession, getActiveRealPodRouting } = await import('../src/core/circlePods.js'));

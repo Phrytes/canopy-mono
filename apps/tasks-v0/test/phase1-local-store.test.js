@@ -1,5 +1,5 @@
 /**
- * Phase 1 smoke tests — wiring `@canopy/local-store` into Tasks V1.
+ * Phase 1 smoke tests — wiring `@onderling/local-store` into Tasks V1.
  *
  * Three things to prove:
  *   1. `buildBundle()` returns a working CachingDataSource that the

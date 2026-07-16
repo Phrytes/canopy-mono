@@ -1,5 +1,5 @@
 /**
- * Browser-safe shim for `@canopy/chat-agent/bridges/telegram`.
+ * Browser-safe shim for `@onderling/chat-agent/bridges/telegram`.
  *
  * The Telegram bridge is a SERVER-side chat transport (long-polls the Telegram
  * Bot API, reads `process.env`, etc.). household/src re-exports it for Node

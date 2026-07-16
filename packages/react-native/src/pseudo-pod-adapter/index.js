@@ -1,6 +1,6 @@
 /**
- * @canopy/react-native/pseudo-pod-adapter — RN-platform
- * `StorageBackend` for `@canopy/pseudo-pod`.
+ * @onderling/react-native/pseudo-pod-adapter — RN-platform
+ * `StorageBackend` for `@onderling/pseudo-pod`.
  *
  * V0 (Phases 51.1 – 51.4):
  *   - `createAsBackend({AsyncStorage, scope?})` — small payloads + metadata

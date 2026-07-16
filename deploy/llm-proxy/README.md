@@ -40,7 +40,7 @@ defeat the attestation guarantee the client enforces.
    container, so it lives outside `deploy/` on purpose.
 3. **Non-confidential fallback for early testing** — for the automated test
    harness you don't need attestation: the app already routes ordinary LLM calls
-   through `@canopy/llm-client` to a normal provider (Ollama locally, or a hosted
+   through `@onderling/llm-client` to a normal provider (Ollama locally, or a hosted
    model). Use that for the buurt/task scenarios and defer the enclave to Fb M7/M8.
 
 **Recommendation:** don't block the deploy slice on this. Ship relay + pod +

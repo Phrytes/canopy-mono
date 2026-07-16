@@ -2,7 +2,7 @@
  * MemberMap.fromPodConfig — pod-backed roster loader (Phase 4 of the
  * substrate-vs-SDK refactor; H5-V2-resume.md step 2).
  *
- * Composes `@canopy/pod-client.PodClient` via runtime injection
+ * Composes `@onderling/pod-client.PodClient` via runtime injection
  * (duck-typed `podClient.read({decode:'json'})`).  These tests use a
  * minimal fake PodClient that mirrors `pod-client`'s read contract.
  */

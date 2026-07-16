@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/pod-routing",
+  "name": "@onderling/pod-routing",
   "version": "0.1.0",
   "description": "Storage-function → URI mapping. Reads canonical config from a pod or pseudo-pod resource; resolves per user policy with default fall-back. Plus a per-write reachability cache for graceful degradation. Standardisation Phase 52.3.",
   "type": "module",
@@ -14,11 +14,11 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@canopy/pseudo-pod": "*"
+    "@onderling/pseudo-pod": "*"
   },
   "devDependencies": {
-    "@canopy/core":       "file:../core",
-    "@canopy/pseudo-pod": "file:../pseudo-pod",
+    "@onderling/core":       "file:../core",
+    "@onderling/pseudo-pod": "file:../pseudo-pod",
     "vitest": "^2.1.9"
   }
 }

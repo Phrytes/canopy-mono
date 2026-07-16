@@ -2,7 +2,7 @@
  * canopy-chat v2 — circle settings (web DOM renderer, board 4A).
  *
  * Controlled render of the five policy axes over a `policy`
- * (`@canopy/circlePolicy`). Feature toggles + radio groups fire
+ * (`@onderling/circlePolicy`). Feature toggles + radio groups fire
  * `onChange(patch)`; the host merges + re-renders + persists via the
  * policy store. Pure render → unit-testable under happy-dom. Each enum
  * option carries a ⓘ button that toggles a "consequences" panel (board
@@ -21,7 +21,7 @@
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';   // S6.C — composable apps
 // B · Slice 2 — the manifest-driven settings form + the per-skill freedom matrix (rulings Q1/Q3).
-import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@canopy/app-manifest';
+import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@onderling/app-manifest';
 import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
 import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 import { renderPairedDevices } from './pairedDevices.js';

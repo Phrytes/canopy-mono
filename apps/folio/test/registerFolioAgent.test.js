@@ -1,7 +1,7 @@
 /**
  * folio — registerFolioAgent self-registration (Slice 1b,
  * PLAN-folio-as-file-agent.md).  Folio advertises its pod-file
- * capabilities into `@canopy/agent-registry` so it appears as a
+ * capabilities into `@onderling/agent-registry` so it appears as a
  * connectable file agent in the "your agents" roster.
  */
 import { describe, it, expect } from 'vitest';
@@ -19,7 +19,7 @@ function makePseudoPodStub() {
   };
 }
 
-describe('registerFolioAgent — self-registration into @canopy/agent-registry', () => {
+describe('registerFolioAgent — self-registration into @onderling/agent-registry', () => {
   it('advertised capabilities = the manifest browser (pod-file) op ids', () => {
     const browserIds = folioManifest.operations
       .filter((o) => o.runtime === 'browser')

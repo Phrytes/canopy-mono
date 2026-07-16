@@ -3,7 +3,7 @@
  * pure-JS POSIX helpers.  RN's filesystem (expo-file-system) is always
  * `/`-separated, so no platform branches needed.
  *
- * Covers what the @canopy/core + apps/folio chain destructures from
+ * Covers what the @onderling/core + apps/folio chain destructures from
  * `path` (and `path.posix`):
  *   - sep, join, dirname, basename, extname
  *   - posix.<above>     — `path.posix` namespace; identical surface

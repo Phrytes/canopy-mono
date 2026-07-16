@@ -1,7 +1,7 @@
 /**
  * Phase 1 smoke tests — Tasks-bound Settings module.
  *
- * Proves the `@canopy/local-store` `createSettingsModule` factory,
+ * Proves the `@onderling/local-store` `createSettingsModule` factory,
  * bound to Tasks V1's field schema, behaves correctly:
  *   - returns defaults when no settings file exists yet
  *   - round-trips a write
@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { CachingDataSource } from '@canopy/local-store';
+import { CachingDataSource } from '@onderling/local-store';
 import {
   loadSettings,
   saveSettings,

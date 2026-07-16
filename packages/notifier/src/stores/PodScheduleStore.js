@@ -33,7 +33,7 @@ export class PodScheduleStore {
   /**
    * @param {object} args
    * @param {object} args.podClient
-   *   `@canopy/pod-client` PodClient (or compatible mock with
+   *   `@onderling/pod-client` PodClient (or compatible mock with
    *   `read(uri, {decode})` + `write(uri, content, {contentType})`).
    * @param {string} args.uri
    *   Full pod URI of the JSON blob (e.g.

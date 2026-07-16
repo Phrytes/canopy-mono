@@ -1,4 +1,4 @@
-# Changelog — @canopy-app/tasks-mobile
+# Changelog — @onderling-app/tasks-mobile
 
 ## [mobile-0.1.0] — 2026-05-09
 
@@ -54,17 +54,17 @@ of the Tasks-mobile coding plan.
 
 | Package | Used for |
 |---|---|
-| `@canopy/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating |
-| `@canopy/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile; display + skills helpers |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability |
-| `@canopy/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours) |
-| `@canopy/chat-p2p` | Appeal flow chat threads |
-| `@canopy/local-store` | `CachingDataSource` + `Settings` split |
-| `@canopy/online-cadence` | Foreground ticker + AppState bridge + bg-fetch helpers |
-| `@canopy/sync-engine-rn` (`./react`) | Skill hooks (useSkill, useAgentEvent, useSkillResult, useSettings, useMemberProfile) |
-| `@canopy/oidc-session-rn` (`./hook`) | Pod sign-in (PKCE + DCR + token storage) |
-| `@canopy/react-native` | Platform layer + 5 lifted submodules (picker, qr, mnemonic, push, localisation) + theme + components + storage + deepLinks + identity helpers |
-| `@canopy-app/tasks-v0` | V2.8 single-agent factories + role policy (platform-shell exception, locked 2026-05-08) |
+| `@onderling/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating |
+| `@onderling/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile; display + skills helpers |
+| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability |
+| `@onderling/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours) |
+| `@onderling/chat-p2p` | Appeal flow chat threads |
+| `@onderling/local-store` | `CachingDataSource` + `Settings` split |
+| `@onderling/online-cadence` | Foreground ticker + AppState bridge + bg-fetch helpers |
+| `@onderling/sync-engine-rn` (`./react`) | Skill hooks (useSkill, useAgentEvent, useSkillResult, useSettings, useMemberProfile) |
+| `@onderling/oidc-session-rn` (`./hook`) | Pod sign-in (PKCE + DCR + token storage) |
+| `@onderling/react-native` | Platform layer + 5 lifted submodules (picker, qr, mnemonic, push, localisation) + theme + components + storage + deepLinks + identity helpers |
+| `@onderling-app/tasks-v0` | V2.8 single-agent factories + role policy (platform-shell exception, locked 2026-05-08) |
 
 ### Deferred items (carried into V1.x)
 

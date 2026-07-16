@@ -7,7 +7,7 @@
  * the SHARED apps/tasks-v0 podSignIn.js via the injection seam.
  *
  * Device-independent: fully stubbed session + dataSource; no
- * OidcSessionRN / expo-secure-store / @canopy/pod-client / network.
+ * OidcSessionRN / expo-secure-store / @onderling/pod-client / network.
  *
  * NOTE: written, not run here — the orchestrator verifies in the
  * main tree (worktree node_modules is the known-incomplete install).

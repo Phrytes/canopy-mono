@@ -14,7 +14,7 @@
  * shells can show an honest "in this circle you share: …" line with no
  * dark-pattern gap between the toggle and the effect.
  *
- * The editable value vocabulary is the coarse `@canopy/attribute-charter`
+ * The editable value vocabulary is the coarse `@onderling/attribute-charter`
  * (buckets → a button picker; `place` is open-coarse → a free-text field).  The
  * charter is the ONLY source of keys, so a shell can never offer to set a finer
  * value than the charter permits.
@@ -24,8 +24,8 @@
  * owns the shape.
  */
 
-import { attributeKeys, bucketsFor } from '@canopy/attribute-charter';
-import { isDriverValue } from '@canopy/agent-registry';
+import { attributeKeys, bucketsFor } from '@onderling/attribute-charter';
+import { isDriverValue } from '@onderling/agent-registry';
 
 /**
  * @param {object} args

@@ -13,7 +13,7 @@
  * at boot:
  *
  *   // apps/<app>-mobile/src/lib/useSkill.js
- *   import { createReactBindings } from '@canopy/sync-engine-rn/react';
+ *   import { createReactBindings } from '@onderling/sync-engine-rn/react';
  *   import { useService } from '../ServiceContext.js';
  *   export const { useSkill, useAgentEvent, useSkillResult } =
  *     createReactBindings({ useService });

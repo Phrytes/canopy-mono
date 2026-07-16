@@ -1,6 +1,6 @@
 /**
  * createArchiveWebServer — start an archive `core.Agent` and expose it
- * over A2A on `127.0.0.1` via `mountLocalUi` from `@canopy/agent-ui`.
+ * over A2A on `127.0.0.1` via `mountLocalUi` from `@onderling/agent-ui`.
  *
  * Migrated 2026-05-04 from the legacy `SkillRouter + EventBroadcaster +
  * bespoke Express endpoints (POST /api/skills/:id)` shape (deleted in
@@ -26,7 +26,7 @@
  *   await stop();
  */
 
-import { mountLocalUi } from '@canopy/agent-ui';
+import { mountLocalUi } from '@onderling/agent-ui';
 
 import { createArchiveAgent } from './agent.js';
 import { PodSearchAdapter }   from '../PodSearchAdapter.js';
@@ -50,7 +50,7 @@ const ARCHIVE_SCHEMA = {
  * @param {string} [args.host='127.0.0.1']          bind interface (localhost-only by default)
  * @param {boolean} [args.usePodSearchAdapter=true] route archive.search via L1i's PodSearch API
  * @returns {Promise<{
- *   agent:    import('@canopy/core').Agent,
+ *   agent:    import('@onderling/core').Agent,
  *   url:      string,
  *   port:     number,
  *   schema:   object,

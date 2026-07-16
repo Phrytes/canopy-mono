@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-nav — returnTo query-param helpers.
+ * @onderling/chat-nav — returnTo query-param helpers.
  *
  * Per B.1 nav protocol: chat-link URLs carry `?returnTo=<threadId>`.
  * Side-panel pages read this on mount.

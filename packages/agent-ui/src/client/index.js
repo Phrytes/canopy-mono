@@ -1,5 +1,5 @@
 /**
- * @canopy/agent-ui/client — A2A-wire-shape client for talking to a
+ * @onderling/agent-ui/client — A2A-wire-shape client for talking to a
  * `mountLocalUi`-served agent (or any A2A endpoint).
  *
  * Legacy `AgentUiClient` (bespoke `POST /api/skills/:id` shape) was

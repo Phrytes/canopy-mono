@@ -89,7 +89,7 @@ additive — `createCircleAgent` wires the V1+ surface; the legacy
 - **`src/lib/privacyNotice.js`** — closed-beta notice content; 6 items in nl + en; surfaced via `getPrivacyNotice` skill + `/privacy.html`.
 
 ### Web UI (`web/`)
-Seven screens served by `mountLocalUi({staticDir})` from `@canopy/agent-ui` on `127.0.0.1`:
+Seven screens served by `mountLocalUi({staticDir})` from `@onderling/agent-ui` on `127.0.0.1`:
 - `index.html` — workspace home + V1 add-task composer (DoD + approval-mode picker)
 - `mine.html` — Assigned / I'm master of / Ready to claim + per-user cadence overrides
 - `review.html` — approver inbox
@@ -105,8 +105,8 @@ Plus shared `app.js` (skill client + `lifecycleStatus` + `mountInboxBadge` + `re
 ## Usage
 
 ```js
-import { createTasksAgent } from '@canopy-app/tasks-v0';
-import { mountLocalUi }     from '@canopy/agent-ui';
+import { createTasksAgent } from '@onderling-app/tasks-v0';
+import { mountLocalUi }     from '@onderling/agent-ui';
 
 const bundle = await createTasksAgent({
   roles: {
@@ -122,7 +122,7 @@ const bundle = await createTasksAgent({
 
 // Expose skills over A2A's standard wire shape on 127.0.0.1.
 // `mountLocalUi` wraps `core.A2ATransport`; clients use
-// `LocalAgentClient` (also from @canopy/agent-ui) to call skills
+// `LocalAgentClient` (also from @onderling/agent-ui) to call skills
 // + subscribe to events via SSE.
 const ui = await mountLocalUi(bundle.agent, { port: 8080 });
 
@@ -141,13 +141,13 @@ This app composes the following substrate packages
 
 | Package | Used for | Notes |
 |---|---|---|
-| `@canopy/item-store` (L1b) | Open/closed tasks with attribution + audit + per-field merge contracts + DoD lifecycle (`submitted`/`rejected` states); plugs `buildStandardRolePolicy(roles)` into the substrate's role-policy gate. | Phase 5 extended the substrate with the DoD lifecycle (used by Tasks V1; Stoop's lend-flow is the second consumer). |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills claim flow when a skill-tagged task is added; composes a real `core.Agent` + `core.protocol.pubSub`. | Optional in V1 (skillMatch parameter to `createTasksAgent`). |
-| `@canopy/identity-resolver` (L1h) | `MemberMap` + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `TAXONOMY` / `normaliseTag` / `matchesProfile` (skill canonicalisation). | Lifted from Stoop 2026-05-08 (rule of two). |
-| `@canopy/notifier` (L1f) | `Notifier` for scheduled jobs (missed-deadline) + `InMemoryScheduleStore` + `NoopChannel`/`PushChannel` + `UsageMetrics` (Phase 9 counters). | Per-recipient `InAppInboxBridge` channels added at runtime via the shared `channels` map. |
-| `@canopy/agent-ui` (L1d) | `mountLocalUi(bundle.agent)` exposes skills over A2A's standard wire shape on `127.0.0.1`. | Web UI pages are static files in `web/`. |
-| `@canopy/local-store` (NEW) | `CachingDataSource` + `SyncCadence` (offline-first) + `createSettingsModule` (shared/per-device split). | Lifted from Stoop 2026-05-08; `LocalFileSource` is `core.FileSystemSource` reused. |
-| `@canopy/chat-p2p` (NEW) | `wireChat({...})` for the Phase 6 appeal flow (peer-to-peer chat thread between assignee and master). | Lifted from Stoop's `wireChat.js` 2026-05-08. |
+| `@onderling/item-store` (L1b) | Open/closed tasks with attribution + audit + per-field merge contracts + DoD lifecycle (`submitted`/`rejected` states); plugs `buildStandardRolePolicy(roles)` into the substrate's role-policy gate. | Phase 5 extended the substrate with the DoD lifecycle (used by Tasks V1; Stoop's lend-flow is the second consumer). |
+| `@onderling/skill-match` (L1e) | Pubsub-of-skills claim flow when a skill-tagged task is added; composes a real `core.Agent` + `core.protocol.pubSub`. | Optional in V1 (skillMatch parameter to `createTasksAgent`). |
+| `@onderling/identity-resolver` (L1h) | `MemberMap` + `MemberMapCache` (auto-persist roster) + `buildOnboardingSkills` (issueInvite/redeemInvite) + `TAXONOMY` / `normaliseTag` / `matchesProfile` (skill canonicalisation). | Lifted from Stoop 2026-05-08 (rule of two). |
+| `@onderling/notifier` (L1f) | `Notifier` for scheduled jobs (missed-deadline) + `InMemoryScheduleStore` + `NoopChannel`/`PushChannel` + `UsageMetrics` (Phase 9 counters). | Per-recipient `InAppInboxBridge` channels added at runtime via the shared `channels` map. |
+| `@onderling/agent-ui` (L1d) | `mountLocalUi(bundle.agent)` exposes skills over A2A's standard wire shape on `127.0.0.1`. | Web UI pages are static files in `web/`. |
+| `@onderling/local-store` (NEW) | `CachingDataSource` + `SyncCadence` (offline-first) + `createSettingsModule` (shared/per-device split). | Lifted from Stoop 2026-05-08; `LocalFileSource` is `core.FileSystemSource` reused. |
+| `@onderling/chat-p2p` (NEW) | `wireChat({...})` for the Phase 6 appeal flow (peer-to-peer chat thread between assignee and master). | Lifted from Stoop's `wireChat.js` 2026-05-08. |
 
 App-level glue is `~1100 LOC` of skills + bridges + observability +
 circle envelope, none of which duplicate substrate functionality.
@@ -179,7 +179,7 @@ Full propagation plan (file-level deltas Tasks will need):
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-household agent that the substrates compose; `MemorySource` is the default DataSource for `ItemStore`. | No substrate wraps "construct an agent"; `MemorySource` is the in-memory `core.DataSource` concrete (apps swap in a `pod-client.PodClient` adapter for production). |
+| `@onderling/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-household agent that the substrates compose; `MemorySource` is the default DataSource for `ItemStore`. | No substrate wraps "construct an agent"; `MemorySource` is the in-memory `core.DataSource` concrete (apps swap in a `pod-client.PodClient` adapter for production). |
 
 ## Shared UI helpers
 
@@ -274,7 +274,7 @@ npm run ui -- \
 adds cross-device sync; it is never required. The boot path,
 all skills, the inbox, calendar conflict view, and the workspace
 UI all work against local storage. `core.MemorySource` covers
-in-process; `LocalFileSource` (V1, in `@canopy/local-store`)
+in-process; `LocalFileSource` (V1, in `@onderling/local-store`)
 persists across restarts. Pod-mode wraps the same `core.DataSource`
 interface — no code path differences from the app's perspective.
 

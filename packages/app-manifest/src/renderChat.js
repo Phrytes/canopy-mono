@@ -1,7 +1,7 @@
 /**
  * Render the chat-surface projection of a manifest.
  *
- * Output is exactly what `@canopy/chat-agent`'s `ChatAgent` ctor expects
+ * Output is exactly what `@onderling/chat-agent`'s `ChatAgent` ctor expects
  * (`toolCatalog` + `toolHandlers` + `systemPrompt`), plus the structured
  * chat affordances (`commandMenu` for Telegram `setMyCommands`,
  * `inlineKeyboardFor(item)` for per-item inline buttons) that the manifest

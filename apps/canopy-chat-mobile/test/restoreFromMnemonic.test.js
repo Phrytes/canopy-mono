@@ -10,7 +10,7 @@ import {
   restoreFromMnemonic, normalizeMnemonic, countMnemonicWords,
   MNEMONIC_WORD_COUNT, CHAT_VAULT_KEY_PREFIX,
 } from '../src/core/restoreFromMnemonic.js';
-import { generateMnemonic } from '@canopy/core';
+import { generateMnemonic } from '@onderling/core';
 
 function makeStorage() {
   const map = new Map();

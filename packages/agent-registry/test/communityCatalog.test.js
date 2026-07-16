@@ -6,7 +6,7 @@
  * their derived catalog) over REAL primitives:
  *   • Ed25519 `AgentIdentity` (no crypto mock),
  *   • the real `createCommunityCatalog` over an in-memory pseudo-pod,
- *   • the REAL circle-policy gate — `@canopy/circles` `inAudience('role:admin')`
+ *   • the REAL circle-policy gate — `@onderling/circles` `inAudience('role:admin')`
  *     over the circle's roster (we do NOT invent a parallel admin check),
  *   • the real `createCatalogSource` / `walkTrustGraph` web-of-trust walk.
  *
@@ -14,8 +14,8 @@
  *   a community) · EXPIRES/LAPSE · REVOKE · FORK/exit.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity } from '@canopy/core';
-import { inAudience }    from '@canopy/circles';
+import { AgentIdentity } from '@onderling/core';
+import { inAudience }    from '@onderling/circles';
 import { VaultMemory }   from '../../vault/src/VaultMemory.js';
 
 import {

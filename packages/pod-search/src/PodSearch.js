@@ -15,7 +15,7 @@
  * injected and one or more fields carry `embed: true`, PodSearch also
  * maintains an in-memory cosine index and exposes semantic + hybrid
  * query modes, `similar()`, and `semanticReady`.  The embedder is
- * **injected, duck-typed** — pod-search never imports `@canopy/llm-client`
+ * **injected, duck-typed** — pod-search never imports `@onderling/llm-client`
  * (substrates don't import each other; §1 layering).  Absent embedder ⇒
  * lexical-only, byte-compatible with the pre-52.22 surface.
  *

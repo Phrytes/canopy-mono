@@ -1,6 +1,6 @@
 // confidentialLlm.js — the phone-side confidential-LLM gateway client (Objective F).
 //
-// This is the "Option B" real client-side quote check that @canopy/llm-client's
+// This is the "Option B" real client-side quote check that @onderling/llm-client's
 // routeSafety.js documents as unbuilt: instead of a config FLAG asserting the enclave
 // was verified out-of-band, this VERIFIES the enclave attestation on the device before
 // any prompt leaves it, then routes the LLM call through the attested channel host-blind.
@@ -12,7 +12,7 @@
 //   1. On first invoke (or per policy) obtain the enclave's attestation report and
 //      verifyAttestation(...) — measurement, freshness, signature chain (verifyChain INJECTED).
 //   2. verifyChannelBinding(report, endpoint.tlsPublicKey) — the attested enclave IS the TLS peer.
-//   3. ONLY if both pass: route `req` through the injected `llm` (an @canopy/llm-client
+//   3. ONLY if both pass: route `req` through the injected `llm` (an @onderling/llm-client
 //      LlmClient / provider) to the attested endpoint, and return its result.
 //
 // REFUSE-ON-FAILURE / NO SILENT DOWNGRADE (the headline guarantee):
@@ -25,7 +25,7 @@
 //   endpoint    = { baseUrl, model?, tlsPublicKey }  the attested endpoint + its TLS pubkey
 //   attestation = AttestationReport | () => AttestationReport|Promise<...>   the enclave's quote
 //   verifyChain = (report, roots) => bool             signature-chain check (no real AMD certs in v0)
-//   llm         = { invoke(req, ctx?) => Promise<result> }   an @canopy/llm-client LlmClient
+//   llm         = { invoke(req, ctx?) => Promise<result> }   an @onderling/llm-client LlmClient
 //   expectedMeasurement = string                      the enclave image hash we pin
 
 import { verifyAttestation, verifyChannelBinding } from './attestation.js';
@@ -45,7 +45,7 @@ import { verifyAttestation, verifyChannelBinding } from './attestation.js';
  *   The enclave's attestation report, or a (possibly async) producer of it. A producer lets
  *   the caller fetch a FRESH quote (e.g. bound to a per-session nonce) at attest time.
  * @param {(report:any, roots:*) => boolean|Promise<boolean>} args.verifyChain  INJECTED chain check.
- * @param {{invoke:(req:any, ctx?:any) => Promise<any>}} args.llm  an @canopy/llm-client LlmClient.
+ * @param {{invoke:(req:any, ctx?:any) => Promise<any>}} args.llm  an @onderling/llm-client LlmClient.
  * @param {string} args.expectedMeasurement  pinned enclave image hash.
  * @param {*} [args.roots]                    trusted root(s), passed to verifyChain.
  * @param {number} [args.maxAgeMs]            freshness window.
@@ -71,7 +71,7 @@ export function createConfidentialLlm({
     throw new TypeError('createConfidentialLlm: endpoint with tlsPublicKey required (RA-TLS binding)');
   }
   if (!llm || typeof llm.invoke !== 'function') {
-    throw new TypeError('createConfidentialLlm: llm with invoke() required (an @canopy/llm-client LlmClient)');
+    throw new TypeError('createConfidentialLlm: llm with invoke() required (an @onderling/llm-client LlmClient)');
   }
   if (typeof verifyChain !== 'function') {
     throw new TypeError('createConfidentialLlm: verifyChain(report, roots) required (injected chain check)');

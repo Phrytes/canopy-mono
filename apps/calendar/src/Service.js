@@ -34,8 +34,8 @@
  * through the gated `callSkill`. This service exists for tests + that future gated wiring — it hands the
  * resolved opId to the real handler; it does not decide authorisation. The fallback never bypasses the gate.
  */
-import { DataPart } from '@canopy/core';
-import { dispatchCapability } from '@canopy/app-manifest';
+import { DataPart } from '@onderling/core';
+import { dispatchCapability } from '@onderling/app-manifest';
 
 import { CalendarStore } from './CalendarStore.js';
 import { registerCalendarSkills } from './skills/index.js';

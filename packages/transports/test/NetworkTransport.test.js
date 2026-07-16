@@ -6,10 +6,10 @@
  * no real socket — the injected `send` channel is a plain in-memory function.
  *
  * (The end-to-end #63 remote-handler flow across the boundary — with the
- * capability gate — is proven in @canopy/secure-agent/test/remoteHandlersNetwork.test.js.)
+ * capability gate — is proven in @onderling/secure-agent/test/remoteHandlersNetwork.test.js.)
  */
 import { describe, it, expect, vi } from 'vitest';
-import { Transport } from '@canopy/core';
+import { Transport } from '@onderling/core';
 import {
   NetworkTransport,
   createNetworkTransport,
@@ -19,7 +19,7 @@ import {
 } from '../src/index.js';
 
 describe('NetworkTransport — construction + port shape', () => {
-  it('is the SAME Transport base from @canopy/core (no parallel port)', () => {
+  it('is the SAME Transport base from @onderling/core (no parallel port)', () => {
     expect(Object.getPrototypeOf(NetworkTransport.prototype)).toBe(Transport.prototype);
   });
 
@@ -110,7 +110,7 @@ describe('multi-frame streaming exchange over a bidirectional loopback', () => {
    * A streaming skill produces, for ONE request id, N `stream-chunk` OW frames
    * (fresh `_id`, no `_re`) followed by the terminal `task-result` RS (`_re` =
    * the RQ `_id`) — the SAME frames the in-process `callSkill` streaming path
-   * carries (see @canopy/core taskExchange `_runStreamingHandler`). This proves
+   * carries (see @onderling/core taskExchange `_runStreamingHandler`). This proves
    * the frame-agnostic NetworkTransport carries that exchange unchanged over the
    * push channel: chunks route to the caller's receiveHandler, the terminal RS
    * resolves the pending request. (The pure request→response `handleNetworkRequest`

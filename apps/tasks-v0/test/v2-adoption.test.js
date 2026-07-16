@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 import { createCircleAgent } from '../src/Circle.js';
 import { buildBundle } from '../src/storage/buildBundle.js';
 

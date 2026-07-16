@@ -8,7 +8,7 @@
  *   op.surfaces.chat.hint     → tool.description   (falls back to verb+noun)
  *   op.params                 → tool.inputSchema   (JSON Schema)
  *
- * The inputSchema is derived structurally by reusing `@canopy/app-manifest`'s
+ * The inputSchema is derived structurally by reusing `@onderling/app-manifest`'s
  * `paramsToJsonSchema` — the SAME projector that already feeds the LLM tool
  * catalogue — so the MCP surface and the chat/LLM surface stay one source of
  * truth (CLAUDE.md invariant #4: the manifest is the contract for surfaces).
@@ -22,14 +22,14 @@
  * canopy-chat's form layer; MCP clients get a structural contract only.
  */
 
-import { paramsToJsonSchema } from '@canopy/app-manifest';
+import { paramsToJsonSchema } from '@onderling/app-manifest';
 
 const PERMISSIVE_SCHEMA = { type: 'object', additionalProperties: true };
 
 /**
  * Project a manifest into an MCP `tools/list` result.
  *
- * @param {import('@canopy/app-manifest').Manifest} manifest
+ * @param {import('@onderling/app-manifest').Manifest} manifest
  * @returns {{ tools: Array<{ name: string, description: string, inputSchema: object }> }}
  */
 export function manifestToMcpTools(manifest) {

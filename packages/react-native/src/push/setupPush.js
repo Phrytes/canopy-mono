@@ -3,7 +3,7 @@
  *
  * Lifted from apps/stoop-mobile/src/lib/push.js 2026-05-09 (Phase
  * 41.0 L6; Tasks-mobile is the second consumer). Thin wrapper over
- * `MobilePushBridge` from `@canopy/react-native/transport`.
+ * `MobilePushBridge` from `@onderling/react-native/transport`.
  *
  * Owns:
  *   - Permission gate — `requestPushPermission()` asks the OS once,

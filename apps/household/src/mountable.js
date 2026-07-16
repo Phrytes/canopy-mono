@@ -1,5 +1,5 @@
 /**
- * `apps/household/src/mountable.js` — household as a `@canopy/manifest-
+ * `apps/household/src/mountable.js` — household as a `@onderling/manifest-
  * host` mountable.
  *
  * SP-4b+SP-11 (2026-05-20): extracted from `HouseholdAgent.js`'s

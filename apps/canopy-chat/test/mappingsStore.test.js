@@ -1,11 +1,11 @@
 /**
  * localStorageMappingsStore — the V0 web storage adapter (P2c). Verified in
  * isolation against the pseudo-pod subset contract (list/read/write/delete,
- * keys == URIs) so `@canopy/pod-routing` loadMappings can drive it unchanged.
+ * keys == URIs) so `@onderling/pod-routing` loadMappings can drive it unchanged.
  */
 
 import { describe, it, expect } from 'vitest';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@onderling/kring-host/mappingsStore';
 
 /** Minimal localStorage fake (getItem/setItem/removeItem/key/length). */
 function fakeStorage() {

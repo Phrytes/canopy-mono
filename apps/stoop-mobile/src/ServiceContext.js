@@ -42,9 +42,9 @@ import {
 } from './lib/agentBundle.js';
 import { buildBootstrapBundle }              from './lib/bootstrapBundle.js';
 import { getRelayUrl }                       from './lib/relayUrl.js';
-import { buildSkills }                       from '@canopy-app/stoop';
-import { attachPodToBundle, detachPodFromBundle } from '@canopy-app/stoop/lib/attachPodToBundle';
-import { buildIdentitySkills }               from '@canopy/identity-resolver';
+import { buildSkills }                       from '@onderling-app/stoop';
+import { attachPodToBundle, detachPodFromBundle } from '@onderling-app/stoop/lib/attachPodToBundle';
+import { buildIdentitySkills }               from '@onderling/identity-resolver';
 import { migrateOrphanedPeers }              from './lib/migrateOrphanedPeers.js';
 import { attachAppStateBridge }                  from './lib/appStateBridge.js';
 import {
@@ -53,9 +53,9 @@ import {
 } from './lib/bgRunOnce.js';
 import * as BackgroundFetch                      from 'expo-background-fetch';
 import * as SecureStore                           from 'expo-secure-store';
-import { ExpoSecureStore }                        from '@canopy/react-native/ports';
-import { OidcSessionRN }                          from '@canopy/oidc-session-rn';
-import { SolidPodSource }                         from '@canopy/pod-client';
+import { ExpoSecureStore }                        from '@onderling/react-native/ports';
+import { OidcSessionRN }                          from '@onderling/oidc-session-rn';
+import { SolidPodSource }                         from '@onderling/pod-client';
 
 const Ctx = createContext(null);
 

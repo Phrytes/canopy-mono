@@ -16,7 +16,7 @@
  *      and peer-disconnected, then re-reads `connectionCount` — so any
  *      future shape-shift on MdnsTransport must keep this surface.
  *
- * The full MdnsTransport class lives in `@canopy/react-native` and is
+ * The full MdnsTransport class lives in `@onderling/react-native` and is
  * covered by that package's own tests; this slice cares about the
  * launcher's contract, not the transport's correctness.
  */

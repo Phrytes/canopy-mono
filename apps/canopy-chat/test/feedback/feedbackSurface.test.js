@@ -8,7 +8,7 @@ import { test, expect, beforeAll, afterAll } from 'vitest';
 import { startMockLlm } from 'onderling-feedback/testing';
 import { InMemoryCentralPod } from 'onderling-feedback/public';
 import { randomBytes } from 'node:crypto';
-import { InternalBus, AgentIdentity } from '@canopy/core';
+import { InternalBus, AgentIdentity } from '@onderling/core';
 import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from 'onderling-feedback/public';
 import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem, signerForIdentity, chunkBubble } from '../../src/feedback/feedbackSurface.js';
 

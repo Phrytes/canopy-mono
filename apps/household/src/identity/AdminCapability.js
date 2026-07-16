@@ -12,7 +12,7 @@
  * the bot's pod").
  *
  * Reuse-first: this is a thin wrapper over
- * `@canopy/core`'s `PodCapabilityToken`.  We don't fork the
+ * `@onderling/core`'s `PodCapabilityToken`.  We don't fork the
  * primitive — the token is signed by the bot's `AgentIdentity`,
  * the subject is the admin's webid string, and the scope is full
  * pod-root admin (`pod.*:/`).
@@ -45,7 +45,7 @@
  *        forces all admins to be re-issued.  A pod re-keying is
  *        the heavy hammer for "admin removed".
  */
-import { PodCapabilityToken } from '@canopy/core';
+import { PodCapabilityToken } from '@onderling/core';
 
 /** Default TTL for an admin cap if the caller doesn't specify one. */
 const DEFAULT_EXPIRES_IN_MS = 30 * 24 * 60 * 60 * 1000; // 30 days.
@@ -64,7 +64,7 @@ const ADMIN_SCOPES = ['pod.*:/'];
  * @param {object} args
  * @param {string} args.adminWebid       — webid of the admin being granted access
  * @param {string} args.botPodRoot       — the bot's pod root URI (e.g. `https://…/bot/`)
- * @param {import('@canopy/core').AgentIdentity} args.botIdentity
+ * @param {import('@onderling/core').AgentIdentity} args.botIdentity
  *   — the bot's AgentIdentity (signs the token).  Pass
  *     `botIdentity.agentIdentity` when working with the
  *     {@link BotIdentity} wrapper.
@@ -125,7 +125,7 @@ export async function mintAdminCap({
  * @returns {Promise<{ webid: string, expiresAt: number } | null>}
  *   The admin's webid + expiry on success; `null` on any failure.
  */
-// TODO(R2b): converge verifyAdminCap onto @canopy/pod-client's PodTokenVerifier
+// TODO(R2b): converge verifyAdminCap onto @onderling/pod-client's PodTokenVerifier
 // (createPodTokenVerifier). That verifier is the general SUPERSET — it adds
 // scope + revocation + an injectable issuer-trust seam on top of these exact
 // checks (issuer===botPubkey maps to `isTrusted: (i) => i === botPubkey`,

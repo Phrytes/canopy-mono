@@ -5,7 +5,7 @@
 // Flow (all client-side; the host never sees plaintext):
 //   1. bytes -> base64url string          (binary carried through the string-sealing envelope)
 //   2. sealer(b64uString) -> ciphertext   (injected sealing: makeSealer / makeGroupSealer from
-//                                           @canopy/pod-client/sealing — the same CEK-envelope
+//                                           @onderling/pod-client/sealing — the same CEK-envelope
 //                                           used elsewhere; blob-gateway adds NO new crypto)
 //   3. bucket.put(key, ciphertext)        (the untrusted bucket stores ONLY the sealed envelope)
 //   4. return an `embeds`-style manifest line pointing at the bucket key + sealing metadata
@@ -20,7 +20,7 @@
 // (sealed-only applies to thumbnails too — they are content), and the SEALED size is capped
 // at MAX_SEALED_THUMB_CHARS: an inline thumbnail that big defeats its purpose.
 
-import { isSealed } from '@canopy/pod-client/sealing';
+import { isSealed } from '@onderling/pod-client/sealing';
 import { bytesToB64u, b64uToBytes, randomKey } from './bytes.js';
 import { makeManifestLine } from './ref.js';
 

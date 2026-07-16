@@ -9,8 +9,8 @@
  * grant/revoke is simply skipped. Mirrors `sealedPodMembership.test.js`, but via the browser seam.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { InternalBus, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { InternalBus, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createBrowserStoopAgent } from '../src/browser.js';
 
 const ADMIN = 'https://id.example/admin';

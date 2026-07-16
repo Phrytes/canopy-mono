@@ -34,9 +34,9 @@ they fit together.
   `ActorResolver`. A third-party adapter is compatible iff it *implements the port + passes its conformance harness*
   (see [`conventions/ports.md`](./conventions/ports.md)).
 - **Adapter** — a concrete implementation of a port, living **outside** the kernel: network transports in
-  `@canopy/transports`, Solid-pod storage + on-pod identity in `@canopy/pod-client`, the Vault family in `@canopy/vault`.
+  `@onderling/transports`, Solid-pod storage + on-pod identity in `@onderling/pod-client`, the Vault family in `@onderling/vault`.
 - **Platform** — the whole reusable foundation: kernel + adapters + substrates. The thing a dev builds on.
-- **SDK** (`@canopy/sdk`) — **the** dev-facing front door to the platform: a *layered facade*. Low layer
+- **SDK** (`@onderling/sdk`) — **the** dev-facing front door to the platform: a *layered facade*. Low layer
   re-exports the kernel + default adapters (pass your own explicitly); high layer adds `createAgent()`
   (batteries-included run-as-agent) + `connectSkill()` (map any app function to a skill). "Import one thing, done."
 - **Substrate** — a reusable building block in `packages/` that composes the kernel + adapters (e.g. `item-store`,
@@ -86,7 +86,7 @@ they fit together.
 
 ## Reachability (transports)
 
-- **Relay** — a `@canopy/relay` WebSocket server: rendezvous signalling (SDP/ICE only) or proxy-fallback
+- **Relay** — a `@onderling/relay` WebSocket server: rendezvous signalling (SDP/ICE only) or proxy-fallback
   (forwards sealed envelopes it can't read).
 - **NKN** — the public [NKN](https://nkn.org) messaging network; no operator to run, address derived from the
   agent's Ed25519 seed.
@@ -97,5 +97,5 @@ they fit together.
 
 ## Names
 
-- **canopy / Onderling** — *canopy* is the engineering name (the platform ships as `@canopy/*`, apps as `@canopy-app/*`);
+- **canopy / Onderling** — *canopy* is the engineering name (the platform ships as `@onderling/*`, apps as `@onderling-app/*`);
   ***Onderling*** is the working name in public/product material.

@@ -18,7 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Parts }           from '@canopy/core';
+import { Parts }           from '@onderling/core';
 import { useAgent }        from '../context/AgentContext';
 import { messageStore }    from '../store/messages.js';
 // Hop-aware invoke lives on Agent now (see CODING-PLAN.md Group N).

@@ -1,7 +1,7 @@
 /**
- * canopy-chat — manifest merge (thin shim over @canopy/manifest-host).
+ * canopy-chat — manifest merge (thin shim over @onderling/manifest-host).
  *
- * The merge logic lives in `@canopy/manifest-host` (SP-4 substrate).
+ * The merge logic lives in `@onderling/manifest-host` (SP-4 substrate).
  * This file is a canopy-chat-shaped projection over that substrate:
  *
  *   - `host.compose()` produces a generic composed view with
@@ -24,8 +24,8 @@
  * refactor 2026-05-22.
  */
 
-import { validateManifest }   from '@canopy/app-manifest';
-import { createManifestHost, resolveSlash } from '@canopy/manifest-host';
+import { validateManifest }   from '@onderling/app-manifest';
+import { createManifestHost, resolveSlash } from '@onderling/manifest-host';
 import { synthesizeGenericOps } from './genericOpSynth.js';
 
 /**
@@ -59,7 +59,7 @@ import { synthesizeGenericOps } from './genericOpSynth.js';
 
 /**
  * Merge an array of `{manifest, callSkill?}` pairs into a canopy-chat
- * catalog.  Composes `@canopy/manifest-host` underneath.
+ * catalog.  Composes `@onderling/manifest-host` underneath.
  *
  * Op-prefix-on-collision policy:
  *   - When op-ids are unique across all manifests, the catalog uses
@@ -77,7 +77,7 @@ import { synthesizeGenericOps } from './genericOpSynth.js';
  *     keep the bare form unchanged — in practice apps coordinate slash names,
  *     so this whole pass is inert (no collisions → no qualified forms added).
  *     The resolution is exposed as `catalog.slashPolicy` (from
- *     `@canopy/manifest-host`'s `resolveSlash`).
+ *     `@onderling/manifest-host`'s `resolveSlash`).
  *
  * @param {Array<{ manifest: object, callSkill?: Function }>} sources
  * @param {MergeOptions} [opts]

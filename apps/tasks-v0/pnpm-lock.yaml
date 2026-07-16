@@ -8,64 +8,64 @@ importers:
 
   .:
     dependencies:
-      '@canopy/agent-registry':
+      '@onderling/agent-registry':
         specifier: file:../../packages/agent-registry
-        version: file:../../packages/agent-registry(@canopy/core@file:../../packages/core)(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))
-      '@canopy/agent-ui':
+        version: file:../../packages/agent-registry(@onderling/core@file:../../packages/core)(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))
+      '@onderling/agent-ui':
         specifier: file:../../packages/agent-ui
         version: file:../../packages/agent-ui
-      '@canopy/app-manifest':
+      '@onderling/app-manifest':
         specifier: file:../../packages/app-manifest
         version: file:../../packages/app-manifest
-      '@canopy/calendar-emission':
+      '@onderling/calendar-emission':
         specifier: workspace:*
         version: link:../../packages/calendar-emission
-      '@canopy/chat-agent':
+      '@onderling/chat-agent':
         specifier: file:../../packages/chat-agent
         version: file:../../packages/chat-agent
-      '@canopy/chat-p2p':
+      '@onderling/chat-p2p':
         specifier: file:../../packages/chat-p2p
-        version: file:../../packages/chat-p2p(@canopy/core@file:../../packages/core)(@canopy/identity-resolver@file:../../packages/identity-resolver)(@canopy/item-store@file:../../packages/item-store)
-      '@canopy/core':
+        version: file:../../packages/chat-p2p(@onderling/core@file:../../packages/core)(@onderling/identity-resolver@file:../../packages/identity-resolver)(@onderling/item-store@file:../../packages/item-store)
+      '@onderling/core':
         specifier: file:../../packages/core
         version: file:../../packages/core
-      '@canopy/identity-resolver':
+      '@onderling/identity-resolver':
         specifier: file:../../packages/identity-resolver
         version: file:../../packages/identity-resolver
-      '@canopy/item-store':
+      '@onderling/item-store':
         specifier: file:../../packages/item-store
         version: file:../../packages/item-store
-      '@canopy/item-types':
+      '@onderling/item-types':
         specifier: file:../../packages/item-types
         version: file:../../packages/item-types
-      '@canopy/local-store':
+      '@onderling/local-store':
         specifier: file:../../packages/local-store
-        version: file:../../packages/local-store(@canopy/core@file:../../packages/core)
-      '@canopy/manifest-host':
+        version: file:../../packages/local-store(@onderling/core@file:../../packages/core)
+      '@onderling/manifest-host':
         specifier: file:../../packages/manifest-host
         version: file:../../packages/manifest-host
-      '@canopy/notifier':
+      '@onderling/notifier':
         specifier: file:../../packages/notifier
         version: file:../../packages/notifier
-      '@canopy/notify-envelope':
+      '@onderling/notify-envelope':
         specifier: file:../../packages/notify-envelope
-        version: file:../../packages/notify-envelope(@canopy/core@file:../../packages/core)(@canopy/pod-routing@file:../../packages/pod-routing(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)))(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))
-      '@canopy/oidc-session':
+        version: file:../../packages/notify-envelope(@onderling/core@file:../../packages/core)(@onderling/pod-routing@file:../../packages/pod-routing(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)))(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))
+      '@onderling/oidc-session':
         specifier: file:../../packages/oidc-session
         version: file:../../packages/oidc-session
-      '@canopy/pod-routing':
+      '@onderling/pod-routing':
         specifier: file:../../packages/pod-routing
-        version: file:../../packages/pod-routing(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))
-      '@canopy/pseudo-pod':
+        version: file:../../packages/pod-routing(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))
+      '@onderling/pseudo-pod':
         specifier: file:../../packages/pseudo-pod
-        version: file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)
-      '@canopy/relay':
+        version: file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)
+      '@onderling/relay':
         specifier: file:../../packages/relay
-        version: file:../../packages/relay(@canopy/core@file:../../packages/core)
-      '@canopy/skill-match':
+        version: file:../../packages/relay(@onderling/core@file:../../packages/core)
+      '@onderling/skill-match':
         specifier: file:../../packages/skill-match
         version: file:../../packages/skill-match
-      '@canopy/web-adapter':
+      '@onderling/web-adapter':
         specifier: file:../../packages/web-adapter
         version: file:../../packages/web-adapter
       i18next:
@@ -85,19 +85,19 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/agent-registry@file:../../packages/agent-registry':
+  '@onderling/agent-registry@file:../../packages/agent-registry':
     resolution: {directory: ../../packages/agent-registry, type: directory}
     peerDependencies:
-      '@canopy/core': '*'
-      '@canopy/pseudo-pod': '*'
+      '@onderling/core': '*'
+      '@onderling/pseudo-pod': '*'
 
-  '@canopy/agent-ui@file:../../packages/agent-ui':
+  '@onderling/agent-ui@file:../../packages/agent-ui':
     resolution: {directory: ../../packages/agent-ui, type: directory}
 
-  '@canopy/app-manifest@file:../../packages/app-manifest':
+  '@onderling/app-manifest@file:../../packages/app-manifest':
     resolution: {directory: ../../packages/app-manifest, type: directory}
 
-  '@canopy/chat-agent@file:../../packages/chat-agent':
+  '@onderling/chat-agent@file:../../packages/chat-agent':
     resolution: {directory: ../../packages/chat-agent, type: directory}
     peerDependencies:
       telegraf: ^4.16.0
@@ -105,74 +105,74 @@ packages:
       telegraf:
         optional: true
 
-  '@canopy/chat-p2p@file:../../packages/chat-p2p':
+  '@onderling/chat-p2p@file:../../packages/chat-p2p':
     resolution: {directory: ../../packages/chat-p2p, type: directory}
     peerDependencies:
-      '@canopy/core': ^0.1.0
-      '@canopy/identity-resolver': ^0.1.0
-      '@canopy/item-store': workspace:*
+      '@onderling/core': ^0.1.0
+      '@onderling/identity-resolver': ^0.1.0
+      '@onderling/item-store': workspace:*
     peerDependenciesMeta:
-      '@canopy/identity-resolver':
+      '@onderling/identity-resolver':
         optional: true
-      '@canopy/item-store':
+      '@onderling/item-store':
         optional: true
 
-  '@canopy/core@file:../../packages/core':
+  '@onderling/core@file:../../packages/core':
     resolution: {directory: ../../packages/core, type: directory}
 
-  '@canopy/identity-resolver@file:../../packages/identity-resolver':
+  '@onderling/identity-resolver@file:../../packages/identity-resolver':
     resolution: {directory: ../../packages/identity-resolver, type: directory}
 
-  '@canopy/item-store@file:../../packages/item-store':
+  '@onderling/item-store@file:../../packages/item-store':
     resolution: {directory: ../../packages/item-store, type: directory}
 
-  '@canopy/item-types@file:../../packages/item-types':
+  '@onderling/item-types@file:../../packages/item-types':
     resolution: {directory: ../../packages/item-types, type: directory}
 
-  '@canopy/local-store@file:../../packages/local-store':
+  '@onderling/local-store@file:../../packages/local-store':
     resolution: {directory: ../../packages/local-store, type: directory}
     peerDependencies:
-      '@canopy/core': ^0.1.0
+      '@onderling/core': ^0.1.0
 
-  '@canopy/manifest-host@file:../../packages/manifest-host':
+  '@onderling/manifest-host@file:../../packages/manifest-host':
     resolution: {directory: ../../packages/manifest-host, type: directory}
 
-  '@canopy/notifier@file:../../packages/notifier':
+  '@onderling/notifier@file:../../packages/notifier':
     resolution: {directory: ../../packages/notifier, type: directory}
 
-  '@canopy/notify-envelope@file:../../packages/notify-envelope':
+  '@onderling/notify-envelope@file:../../packages/notify-envelope':
     resolution: {directory: ../../packages/notify-envelope, type: directory}
     peerDependencies:
-      '@canopy/core': '*'
-      '@canopy/pod-routing': '*'
-      '@canopy/pseudo-pod': '*'
+      '@onderling/core': '*'
+      '@onderling/pod-routing': '*'
+      '@onderling/pseudo-pod': '*'
 
-  '@canopy/oidc-session@file:../../packages/oidc-session':
+  '@onderling/oidc-session@file:../../packages/oidc-session':
     resolution: {directory: ../../packages/oidc-session, type: directory}
 
-  '@canopy/pod-routing@file:../../packages/pod-routing':
+  '@onderling/pod-routing@file:../../packages/pod-routing':
     resolution: {directory: ../../packages/pod-routing, type: directory}
     peerDependencies:
-      '@canopy/pseudo-pod': '*'
+      '@onderling/pseudo-pod': '*'
 
-  '@canopy/pseudo-pod@file:../../packages/pseudo-pod':
+  '@onderling/pseudo-pod@file:../../packages/pseudo-pod':
     resolution: {directory: ../../packages/pseudo-pod, type: directory}
     peerDependencies:
-      '@canopy/core': '*'
+      '@onderling/core': '*'
 
-  '@canopy/relay@file:../../packages/relay':
+  '@onderling/relay@file:../../packages/relay':
     resolution: {directory: ../../packages/relay, type: directory}
     hasBin: true
     peerDependencies:
-      '@canopy/core': ^0.1.0
+      '@onderling/core': ^0.1.0
 
-  '@canopy/skill-match@file:../../packages/skill-match':
+  '@onderling/skill-match@file:../../packages/skill-match':
     resolution: {directory: ../../packages/skill-match, type: directory}
 
-  '@canopy/vault@file:../../packages/vault':
+  '@onderling/vault@file:../../packages/vault':
     resolution: {directory: ../../packages/vault, type: directory}
 
-  '@canopy/web-adapter@file:../../packages/web-adapter':
+  '@onderling/web-adapter@file:../../packages/web-adapter':
     resolution: {directory: ../../packages/web-adapter, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -997,35 +997,35 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/agent-registry@file:../../packages/agent-registry(@canopy/core@file:../../packages/core)(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))':
+  '@onderling/agent-registry@file:../../packages/agent-registry(@onderling/core@file:../../packages/core)(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))':
     dependencies:
-      '@canopy/core': file:../../packages/core
-      '@canopy/pseudo-pod': file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)
+      '@onderling/core': file:../../packages/core
+      '@onderling/pseudo-pod': file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)
 
-  '@canopy/agent-ui@file:../../packages/agent-ui':
+  '@onderling/agent-ui@file:../../packages/agent-ui':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/app-manifest@file:../../packages/app-manifest':
+  '@onderling/app-manifest@file:../../packages/app-manifest':
     dependencies:
-      '@canopy/item-types': file:../../packages/item-types
+      '@onderling/item-types': file:../../packages/item-types
 
-  '@canopy/chat-agent@file:../../packages/chat-agent':
+  '@onderling/chat-agent@file:../../packages/chat-agent':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/chat-p2p@file:../../packages/chat-p2p(@canopy/core@file:../../packages/core)(@canopy/identity-resolver@file:../../packages/identity-resolver)(@canopy/item-store@file:../../packages/item-store)':
+  '@onderling/chat-p2p@file:../../packages/chat-p2p(@onderling/core@file:../../packages/core)(@onderling/identity-resolver@file:../../packages/identity-resolver)(@onderling/item-store@file:../../packages/item-store)':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
       tweetnacl: 1.0.3
     optionalDependencies:
-      '@canopy/identity-resolver': file:../../packages/identity-resolver
-      '@canopy/item-store': file:../../packages/item-store
+      '@onderling/identity-resolver': file:../../packages/identity-resolver
+      '@onderling/item-store': file:../../packages/item-store
 
-  '@canopy/core@file:../../packages/core':
+  '@onderling/core@file:../../packages/core':
     dependencies:
-      '@canopy/oidc-session': file:../../packages/oidc-session
-      '@canopy/vault': file:../../packages/vault
+      '@onderling/oidc-session': file:../../packages/oidc-session
+      '@onderling/vault': file:../../packages/vault
       '@inrupt/solid-client': 3.0.0
       '@inrupt/solid-client-authn-node': 4.0.0
       '@noble/hashes': 2.2.0
@@ -1036,65 +1036,65 @@ snapshots:
     optionalDependencies:
       node-datachannel: 0.32.3
 
-  '@canopy/identity-resolver@file:../../packages/identity-resolver':
+  '@onderling/identity-resolver@file:../../packages/identity-resolver':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/item-store@file:../../packages/item-store':
+  '@onderling/item-store@file:../../packages/item-store':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/item-types@file:../../packages/item-types':
+  '@onderling/item-types@file:../../packages/item-types':
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
 
-  '@canopy/local-store@file:../../packages/local-store(@canopy/core@file:../../packages/core)':
+  '@onderling/local-store@file:../../packages/local-store(@onderling/core@file:../../packages/core)':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/manifest-host@file:../../packages/manifest-host':
+  '@onderling/manifest-host@file:../../packages/manifest-host':
     dependencies:
-      '@canopy/app-manifest': file:../../packages/app-manifest
+      '@onderling/app-manifest': file:../../packages/app-manifest
 
-  '@canopy/notifier@file:../../packages/notifier':
+  '@onderling/notifier@file:../../packages/notifier':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/notify-envelope@file:../../packages/notify-envelope(@canopy/core@file:../../packages/core)(@canopy/pod-routing@file:../../packages/pod-routing(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)))(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))':
+  '@onderling/notify-envelope@file:../../packages/notify-envelope(@onderling/core@file:../../packages/core)(@onderling/pod-routing@file:../../packages/pod-routing(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)))(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))':
     dependencies:
-      '@canopy/core': file:../../packages/core
-      '@canopy/pod-routing': file:../../packages/pod-routing(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))
-      '@canopy/pseudo-pod': file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)
+      '@onderling/core': file:../../packages/core
+      '@onderling/pod-routing': file:../../packages/pod-routing(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))
+      '@onderling/pseudo-pod': file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)
 
-  '@canopy/oidc-session@file:../../packages/oidc-session':
+  '@onderling/oidc-session@file:../../packages/oidc-session':
     dependencies:
       '@inrupt/solid-client-authn-node': 4.0.0
 
-  '@canopy/pod-routing@file:../../packages/pod-routing(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))':
+  '@onderling/pod-routing@file:../../packages/pod-routing(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))':
     dependencies:
-      '@canopy/pseudo-pod': file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)
+      '@onderling/pseudo-pod': file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)
 
-  '@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)':
+  '@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/relay@file:../../packages/relay(@canopy/core@file:../../packages/core)':
+  '@onderling/relay@file:../../packages/relay(@onderling/core@file:../../packages/core)':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
       better-sqlite3: 11.10.0
       ws: 8.20.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@canopy/skill-match@file:../../packages/skill-match':
+  '@onderling/skill-match@file:../../packages/skill-match':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/vault@file:../../packages/vault': {}
+  '@onderling/vault@file:../../packages/vault': {}
 
-  '@canopy/web-adapter@file:../../packages/web-adapter': {}
+  '@onderling/web-adapter@file:../../packages/web-adapter': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

@@ -10,13 +10,13 @@
  * agent.invoke === callSkill, PolicyEngine, CapabilityToken, TokenRegistry.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 import {
   Agent, AgentIdentity,
   InternalBus, InternalTransport,
   TrustRegistry, PolicyEngine, CapabilityToken, TokenRegistry,
   TextPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   RemoteHandlerRegistry,
   dispatchRemoteOp,

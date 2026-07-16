@@ -22,7 +22,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-import { LlmClient, mockProvider } from '@canopy/llm-client';
+import { LlmClient, mockProvider } from '@onderling/llm-client';
 
 import { startHouseholdWeb } from '../bin/household-web.js';
 

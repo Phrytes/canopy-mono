@@ -29,7 +29,7 @@ import {
   defineSkill,
   registerCustomRole, unregisterCustomRole, listKnownRoles,
   isKnownRole, isStandardRole,
-} from '@canopy/core';
+} from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 

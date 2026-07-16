@@ -1,5 +1,5 @@
 /**
- * @canopy-app/calendar — public entry point.
+ * @onderling-app/calendar — public entry point.
  */
 
 export { calendarManifest }      from '../manifest.js';

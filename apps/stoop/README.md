@@ -1,4 +1,4 @@
-# @canopy-app/stoop
+# @onderling-app/stoop
 
 > **Direction (decided 2026-06-11):** this app will **dissolve into canopy-chat**. Its `manifest.js`
 > stays (the source of truth all projectors read), but the `stoop` name becomes a **navigation label**
@@ -20,7 +20,7 @@
 
 Buurt-skill-app: vragen, aanbod, en lenen tussen buurtgenoten —
 prikbord-not-feed, mens en machine-agents naast elkaar, decentraal
-via het @canopy platform.
+via het @onderling platform.
 
 **Mobile companion:** Stoop V3 native React-Native client lives at
 [`apps/stoop-mobile/`](../stoop-mobile/) — same platform, same skills,
@@ -114,12 +114,12 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/item-store` (L1b) | Records every Vraag / Aanbod / Te leen as a structured pod-backed item with attribution + audit. Stoop-vocabulary `type: 'ask' \| 'offer' \| 'lend' \| 'report'` slots into existing `Item.type`; lend lifecycle uses the existing `dueAt` field. | Pod write paths + per-field merge are shared with H4/H7; Stoop adds no new substrate fields. |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast over the closed buurt group + posture flag (`always` / `negotiable` / `humanInTheLoop`) + claim collection. | Pubsub-of-skills + posture is the H4/H7 shared primitive. |
-| `@canopy/identity-resolver` (L1h) | Member-WebID map + per-group display config + handle / displayName-on-reveal via the new `Reveals` + `resolve()` primitives (Phase 1B). | Cross-app identity reconciliation; Telegram-style reveal pattern reused by any future social app. |
-| `@canopy/agent-ui` (L1d) | Hosts the prikbord UI via `mountLocalUi` — same-origin REST + SSE so the page POSTs to skill endpoints without CORS. | UI host pattern shared with future agent-fronted web UIs. |
-| `@canopy/notifier` (L1f) | Push wake when a human needs to decide; lend return-reminders via `scheduleBefore({ dueAt, leadMs, ... })` (Phase 1C). | Scheduling + push channel shared with H4/H7. |
-| `@canopy/chat-agent` (L1c) | Pre-connection chat between requester and responder; flips the `identity-resolver` reveal state on bilateral handshake. | MessagingBridge interface; chat is a substrate concern, not an app one. |
+| `@onderling/item-store` (L1b) | Records every Vraag / Aanbod / Te leen as a structured pod-backed item with attribution + audit. Stoop-vocabulary `type: 'ask' \| 'offer' \| 'lend' \| 'report'` slots into existing `Item.type`; lend lifecycle uses the existing `dueAt` field. | Pod write paths + per-field merge are shared with H4/H7; Stoop adds no new substrate fields. |
+| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast over the closed buurt group + posture flag (`always` / `negotiable` / `humanInTheLoop`) + claim collection. | Pubsub-of-skills + posture is the H4/H7 shared primitive. |
+| `@onderling/identity-resolver` (L1h) | Member-WebID map + per-group display config + handle / displayName-on-reveal via the new `Reveals` + `resolve()` primitives (Phase 1B). | Cross-app identity reconciliation; Telegram-style reveal pattern reused by any future social app. |
+| `@onderling/agent-ui` (L1d) | Hosts the prikbord UI via `mountLocalUi` — same-origin REST + SSE so the page POSTs to skill endpoints without CORS. | UI host pattern shared with future agent-fronted web UIs. |
+| `@onderling/notifier` (L1f) | Push wake when a human needs to decide; lend return-reminders via `scheduleBefore({ dueAt, leadMs, ... })` (Phase 1C). | Scheduling + push channel shared with H4/H7. |
+| `@onderling/chat-agent` (L1c) | Pre-connection chat between requester and responder; flips the `identity-resolver` reveal state on bilateral handshake. | MessagingBridge interface; chat is a substrate concern, not an app one. |
 
 Stoop **does not depend on any sibling app**. Per the convention
 finalised 2026-05-06, apps must not import from other apps; if two
@@ -129,14 +129,14 @@ apps need to share code, extract a substrate.
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-member agent that the skill-match substrate composes. | No substrate wraps "construct an agent" — that's foundational kernel behaviour. The factory creates `core.Agent` directly so `SkillMatch` has a real agent + transport to subscribe over. |
-| `@canopy/core` | `GroupManager`, `Agent.rotateIdentity()` | Issuing / verifying group proofs, scheduled identity rotation (Phase 9 of the coding plan). | Group cryptography + identity rotation are foundational; substrate-of-substrates would be over-abstraction. |
-| `@canopy/core` | `Agent.enableSealedForwardFor`, `Agent.enableRelayForward` | Hop / sealed-forward routing (Phase 13.3 + Phase 28). | Routing primitives are kernel-foundational and already substrate-shaped (mesh-demo proves them at scale). Stoop just wraps a UI toggle. |
-| `@canopy/core` | `SolidVault`, `SolidPodSource` (lazy-loaded) | Solid OIDC session + pod-backed `DataSource` (Phase 20 sign-in). | Cross-app concern; will likely lift into `@canopy/oidc-session` once a 3rd consumer materialises. Stoop + Folio are the existing 2. |
-| `@canopy/core` | `Bootstrap`, `validateMnemonic`, `mnemonicToSeed` | Mnemonic validation + seed derivation for the Phase 30 device-restore flow. | Identity-bootstrap primitives; foundational. |
-| `@canopy/relay` | `RelayTransport`, group-publish, `GroupAuthVerifier` config (server-side), Phase-2 quotas + revocation list + bound verification, `PushSender` (extended by `WebPushSender` in Phase 21) | Network transport to the Stoop community relay; group registration; relay-side enforcement of Phase 2 additions; Web-Push delivery shape. | Transport wiring is per-app; the server-side relay extensions live in `@canopy/relay`, not in a substrate. `WebPushSender` is a candidate to lift back into relay alongside `ExpoPushSender` once a 2nd web-push consumer appears. |
-| `@inrupt/solid-client-authn-node` (transitive via `@canopy/oidc-session`) | `Session` | Inside `createSolidAuthNode`, called via the `_setSolidAuthNodeSessionFactory` test seam. | Substrate-promoted 2026-05-14 (Phase 52.15.2). Multi-issuer support (Inrupt + solidcommunity.net + solidweb.org) ships via `KNOWN_ISSUERS`. |
-| `web-push` (optional dep) | VAPID-signed Web Push delivery | Inside `WebPushSender`, called when VAPID keys are configured. | Currently the only Web-Push consumer; will lift into `@canopy/relay/push/` when a 2nd consumer materialises. |
+| `@onderling/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport`, `MemorySource` | Constructing the per-member agent that the skill-match substrate composes. | No substrate wraps "construct an agent" — that's foundational kernel behaviour. The factory creates `core.Agent` directly so `SkillMatch` has a real agent + transport to subscribe over. |
+| `@onderling/core` | `GroupManager`, `Agent.rotateIdentity()` | Issuing / verifying group proofs, scheduled identity rotation (Phase 9 of the coding plan). | Group cryptography + identity rotation are foundational; substrate-of-substrates would be over-abstraction. |
+| `@onderling/core` | `Agent.enableSealedForwardFor`, `Agent.enableRelayForward` | Hop / sealed-forward routing (Phase 13.3 + Phase 28). | Routing primitives are kernel-foundational and already substrate-shaped (mesh-demo proves them at scale). Stoop just wraps a UI toggle. |
+| `@onderling/core` | `SolidVault`, `SolidPodSource` (lazy-loaded) | Solid OIDC session + pod-backed `DataSource` (Phase 20 sign-in). | Cross-app concern; will likely lift into `@onderling/oidc-session` once a 3rd consumer materialises. Stoop + Folio are the existing 2. |
+| `@onderling/core` | `Bootstrap`, `validateMnemonic`, `mnemonicToSeed` | Mnemonic validation + seed derivation for the Phase 30 device-restore flow. | Identity-bootstrap primitives; foundational. |
+| `@onderling/relay` | `RelayTransport`, group-publish, `GroupAuthVerifier` config (server-side), Phase-2 quotas + revocation list + bound verification, `PushSender` (extended by `WebPushSender` in Phase 21) | Network transport to the Stoop community relay; group registration; relay-side enforcement of Phase 2 additions; Web-Push delivery shape. | Transport wiring is per-app; the server-side relay extensions live in `@onderling/relay`, not in a substrate. `WebPushSender` is a candidate to lift back into relay alongside `ExpoPushSender` once a 2nd web-push consumer appears. |
+| `@inrupt/solid-client-authn-node` (transitive via `@onderling/oidc-session`) | `Session` | Inside `createSolidAuthNode`, called via the `_setSolidAuthNodeSessionFactory` test seam. | Substrate-promoted 2026-05-14 (Phase 52.15.2). Multi-issuer support (Inrupt + solidcommunity.net + solidweb.org) ships via `KNOWN_ISSUERS`. |
+| `web-push` (optional dep) | VAPID-signed Web Push delivery | Inside `WebPushSender`, called when VAPID keys are configured. | Currently the only Web-Push consumer; will lift into `@onderling/relay/push/` when a 2nd consumer materialises. |
 
 ## Agent Hub compatibility
 
@@ -312,7 +312,7 @@ cache + offline behaviour.
 apps/stoop/
 ├── README.md                ← this file
 ├── CHANGELOG.md
-├── package.json             ← @canopy-app/stoop
+├── package.json             ← @onderling-app/stoop
 ├── vitest.config.js
 ├── src/
 │   ├── Agent.js             ← createNeighborhoodAgent factory wiring substrates
@@ -345,9 +345,9 @@ Per the project-wide flagging rule
 the following Stoop-local code is flagged as substrate candidates —
 extracted when a second app needs the shape:
 
-- `src/lib/CachingDataSource.js` + `src/lib/SyncCadence.js` → likely `@canopy/local-store` (or extend `@canopy/sync-engine`).
-- `src/skills/index.js` `hydrateItem` / `hydrateItems` → likely promoted into `@canopy/identity-resolver`.
-- `src/skills/index.js` moderation skill block → likely `@canopy/group-mod`.
+- `src/lib/CachingDataSource.js` + `src/lib/SyncCadence.js` → likely `@onderling/local-store` (or extend `@onderling/sync-engine`).
+- `src/skills/index.js` `hydrateItem` / `hydrateItems` → likely promoted into `@onderling/identity-resolver`.
+- `src/skills/index.js` moderation skill block → likely `@onderling/group-mod`.
 
 Inventory + promotion rule:
 `Project Files/Substrates/substrate-candidates.md`.

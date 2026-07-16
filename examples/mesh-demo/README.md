@@ -1,7 +1,7 @@
 # mesh-demo
 
 A runnable, three-agent mesh scenario that demonstrates the core
-routing story of `@canopy/core` end-to-end. No phones, no relay
+routing story of `@onderling/core` end-to-end. No phones, no relay
 server, no BLE — everything runs in a single Node process using the
 in-process `InternalTransport`.
 

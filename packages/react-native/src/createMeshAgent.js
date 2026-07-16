@@ -32,8 +32,8 @@ import {
   PeerGraph,
   RoutingStrategy,
   FallbackTable,
-} from '@canopy/core';
-import { RendezvousTransport } from '@canopy/transports';
+} from '@onderling/core';
+import { RendezvousTransport } from '@onderling/transports';
 
 import { KeychainVault }         from './identity/KeychainVault.js';
 import { attachIdentityToAgent } from './identity/IdentityWiring.js';
@@ -62,7 +62,7 @@ import { loadRendezvousRtcLib }  from './transport/rendezvousRtcLib.js';
  *                                              Shape: `{ webid, mnemonic, podClient, podRoot,
  *                                              intervalMs?, bootstrap? }`.  See
  *                                              `attachIdentityToAgent` for full opt docs.
- * @returns {Promise<import('@canopy/core').Agent>}
+ * @returns {Promise<import('@onderling/core').Agent>}
  */
 export async function createMeshAgent(opts = {}) {
   const {

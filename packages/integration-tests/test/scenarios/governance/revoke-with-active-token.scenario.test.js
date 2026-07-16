@@ -39,11 +39,11 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { AgentIdentity, PodCapabilityToken, Bootstrap } from '@canopy/core';
-import { IdentityPodStore } from '@canopy/pod-client';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, PodCapabilityToken, Bootstrap } from '@onderling/core';
+import { IdentityPodStore } from '@onderling/pod-client';
+import { VaultMemory } from '@onderling/vault';
 
-import { PodClient, CapabilityError } from '@canopy/pod-client';
+import { PodClient, CapabilityError } from '@onderling/pod-client';
 import { MockPod }                    from '../../../src/_harness/index.js';
 
 const POD_ROOT = 'https://alice.example/';

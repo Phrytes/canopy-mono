@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { loadLocale } from '@canopy/react-native/localisation';
+import { loadLocale } from '@onderling/react-native/localisation';
 
-import enDesktop from '@canopy-app/tasks-v0/locales/en';
-import nlDesktop from '@canopy-app/tasks-v0/locales/nl';
+import enDesktop from '@onderling-app/tasks-v0/locales/en';
+import nlDesktop from '@onderling-app/tasks-v0/locales/nl';
 import enMobile  from '../locales/en.json';
 import nlMobile  from '../locales/nl.json';
 

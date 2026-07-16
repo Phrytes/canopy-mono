@@ -1,6 +1,6 @@
 /**
  * PodSearchAdapter — exposes Archive's FTS5-backed Db + Search through
- * @canopy/pod-search's L1i public API.
+ * @onderling/pod-search's L1i public API.
  *
  * Purpose: rule-of-two validation for L1i.  L1i shipped with a pure-JS
  * in-memory backend; this adapter shows whether L1i's API surface

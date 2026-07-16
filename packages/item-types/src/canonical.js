@@ -1,5 +1,5 @@
 /**
- * The canonical type set that ships with `@canopy/item-types`.
+ * The canonical type set that ships with `@onderling/item-types`.
  *
  * Apps that want to add bespoke types call `registerType(...)`
  * on the same registry (or a fresh one via `createRegistry()`).

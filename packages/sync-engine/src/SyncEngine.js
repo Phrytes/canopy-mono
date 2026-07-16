@@ -12,14 +12,14 @@
  *     so subsequent runs skip that URI.
  *
  * Design notes:
- *   - SyncEngine extends @canopy/core's `Emitter` so consumers (CLI, web
+ *   - SyncEngine extends @onderling/core's `Emitter` so consumers (CLI, web
  *     UI, tray bar) can subscribe to `synced` / `conflict` / `error`.
  *   - FS events are coalesced with a 500ms debounce — a burst of edits in
  *     an editor's "atomic save" pattern triggers a single runOnce.
  *   - State is written atomically via tmp-then-rename.
  */
 
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 import { PathMap }       from './PathMap.js';
 import { scanLocal }     from './scanLocal.js';
@@ -28,12 +28,12 @@ import { diff }          from './diff.js';
 // applyConflict / ensureShares / listShares are app-shaped concerns —
 // passed in via constructor hooks (defaults below are no-ops).
 
-// Time-machine versioning now rides the shared @canopy/versioning
+// Time-machine versioning now rides the shared @onderling/versioning
 // substrate (Slice 1a — the last legacy version store, ./versions.js,
 // retired). One `createVersionStore` per engine instance stores each
 // snapshot as an opaque record in a StorageBackend (Node fs by default)
 // instead of a browsable `.folio/versions/<rel>/<ts>.<ext>` tree.
-import { createVersionStore }  from '@canopy/versioning';
+import { createVersionStore }  from '@onderling/versioning';
 // Node-only persistent backend (dedicated `/node` subpath so browser/RN
 // bundles that only import the portable surface aren't poisoned — RN's
 // Metro shims `node:fs` to empty, so a NON-Node consumer must inject its
@@ -172,7 +172,7 @@ export class SyncEngine extends Emitter {
 
   /**
    * @param {object} opts
-   * @param {object} opts.podClient                     — @canopy/pod-client PodClient (or any compatible mock)
+   * @param {object} opts.podClient                     — @onderling/pod-client PodClient (or any compatible mock)
    * @param {string} opts.localRoot                     — absolute path to local folder
    * @param {string} opts.podRoot                       — pod URI root, e.g. 'https://alice.example/notes/'
    * @param {object} [opts.identity]                    — AgentIdentity (enables Q-Folio.3 auto-share)
@@ -180,11 +180,11 @@ export class SyncEngine extends Emitter {
    * @param {number} [opts.debounceMs=500]              — coalesce window for FS events
    * @param {{perFile?:number, budgetMb?:number}} [opts.versions]
    *        Folio.B4 retention.  `perFile` (default 50) is the per-series cap
-   *        (mapped to `@canopy/versioning`'s `retention.perSeries`).  Slice 1a:
+   *        (mapped to `@onderling/versioning`'s `retention.perSeries`).  Slice 1a:
    *        `budgetMb` is IGNORED — the legacy 100 MB whole-tree byte budget was
    *        dropped when the store moved to opaque per-series records.
    * @param {object} [opts.versionBackend]
-   *        A `@canopy/versioning` StorageBackend `{get,put,delete,list}` for the
+   *        A `@onderling/versioning` StorageBackend `{get,put,delete,list}` for the
    *        version store.  Defaults to a Node fs backend under
    *        `<localRoot>/.folio/versions`.  Non-Node hosts (RN — Metro shims
    *        `node:fs` to empty) MUST inject their own backend for versioning to
@@ -313,7 +313,7 @@ export class SyncEngine extends Emitter {
     this.#stateFilePath  = joinPosix(this.#localRoot, STATE_FILE_RELPATH);
     this.#versionsOpts   = versions ?? {};
 
-    // Slice 1a — one version store per engine instance, over @canopy/versioning.
+    // Slice 1a — one version store per engine instance, over @onderling/versioning.
     //   backend    : a PORTABLE fs-adapter store over the engine's OWN `#fs`
     //                adapter (records under <localRoot>/.folio/versions) — the
     //                same adapter the retired versions.js used, so it runs on
@@ -377,7 +377,7 @@ export class SyncEngine extends Emitter {
   get podRoot()   { return this.#podRoot; }
   get identity()  { return this.#identity; }
   /**
-   * The per-engine @canopy/versioning store (Slice 1a).  Exposed so the
+   * The per-engine @onderling/versioning store (Slice 1a).  Exposed so the
    * Folio REST routes can serve `list`/`read`/`listSeries`/`isVersionable`
    * without a second store instance.  PRIVILEGED `drop`/`prune` are on it
    * too — route handlers must never wire those into a grantable op.

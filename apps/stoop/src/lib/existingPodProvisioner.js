@@ -4,7 +4,7 @@
  *
  * Stoop users sign in to an Inrupt pod they ALREADY own (the OIDC
  * flow derives `podRoot` from the WebID's `pim:storage`).
- * `@canopy/pod-onboarding`'s `provisionDefault` is built around
+ * `@onderling/pod-onboarding`'s `provisionDefault` is built around
  * *creating* a pod via an injected `podProvisioner.createPod()`; here
  * `createPod()` simply returns the already-authed existing pod, so we
  * reuse provisionDefault's steps 3-7 (containers + initial resources
@@ -29,7 +29,7 @@
  *   them (`typeof podProvisioner.X === 'function'`).
  */
 
-import { provisionDefault } from '@canopy/pod-onboarding';
+import { provisionDefault } from '@onderling/pod-onboarding';
 
 function _stripSlash(s) {
   return s.replace(/\/+$/, '');

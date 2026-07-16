@@ -3,7 +3,7 @@
  *
  * Wires up the RN adapters (`fsRN` over `expo-file-system`, `hashRN`
  * over `expo-crypto`, `watcherRN` interval-poll — all from the
- * cross-platform `@canopy/sync-engine` substrate) and constructs
+ * cross-platform `@onderling/sync-engine` substrate) and constructs
  * a SyncEngine.  The class itself is parameterised so apps can pass
  * their own subclass (e.g. Folio's `SyncEngine` that pre-injects
  * conflict-marker + auto-share hooks).  When no subclass is supplied,
@@ -21,10 +21,10 @@
  * non-RN consumers under unit-test runners).
  */
 
-import { SyncEngine as SubstrateSyncEngine } from '@canopy/sync-engine/SyncEngine';
-import { createFsRN }              from '@canopy/sync-engine/adapters/fsRN';
-import { createHashRN }            from '@canopy/sync-engine/adapters/hashRN';
-import { createWatcherRN, DEFAULT_POLL_INTERVAL_MS } from '@canopy/sync-engine/adapters/watcherRN';
+import { SyncEngine as SubstrateSyncEngine } from '@onderling/sync-engine/SyncEngine';
+import { createFsRN }              from '@onderling/sync-engine/adapters/fsRN';
+import { createHashRN }            from '@onderling/sync-engine/adapters/hashRN';
+import { createWatcherRN, DEFAULT_POLL_INTERVAL_MS } from '@onderling/sync-engine/adapters/watcherRN';
 
 /**
  * Build a SyncEngine wired for React Native.

@@ -1,12 +1,12 @@
 /**
- * Port conformance harness — the executable form of the `@canopy/core`
+ * Port conformance harness — the executable form of the `@onderling/core`
  * compatibility contract (see docs/conventions/ports.md).
  *
- * A third party (or another `@canopy/*` package) writing an adapter proves it
+ * A third party (or another `@onderling/*` package) writing an adapter proves it
  * satisfies a port by wiring the matching `assert…Conformance` helper into its
  * own test suite:
  *
- *   import { assertTransportConformance } from '@canopy/core/conformance';
+ *   import { assertTransportConformance } from '@onderling/core/conformance';
  *
  * Peer requirement: these helpers assert via `vitest`'s `expect`, so they are
  * consumed from a `vitest` test (vitest is a peer of this subpath). They are

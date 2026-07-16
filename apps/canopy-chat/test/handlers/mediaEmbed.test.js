@@ -17,9 +17,9 @@ import { describe, it, expect, beforeAll } from 'vitest';
 
 import {
   generateGroupKey, makeGroupSealer, makeGroupOpener, isSealed,
-} from '@canopy/pod-client/sealing';
-import { openBlob, createBlobGatekeeper, isBlobRef } from '@canopy/blob-gateway';
-import { validate } from '@canopy/item-types';
+} from '@onderling/pod-client/sealing';
+import { openBlob, createBlobGatekeeper, isBlobRef } from '@onderling/blob-gateway';
+import { validate } from '@onderling/item-types';
 // blob-gateway's own test doubles (memory bucket + fake verifier/ACL) — the
 // injected-contract rig; imported relatively, same as the package's tests use it.
 import {

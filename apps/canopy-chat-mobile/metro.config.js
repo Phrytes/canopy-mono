@@ -1,19 +1,19 @@
 // canopy-chat-mobile metro.config.js — mirrors stoop-mobile + folio-mobile.
 //
-// The @canopy/react-native metro-preset handles:
+// The @onderling/react-native metro-preset handles:
 //   - NODE_BUILTINS shimming + `node:` prefix stripping
 //   - util / path / ws shim routing
-//   - `@canopy/react-native/platform/*` subpath resolution (Metro 52
+//   - `@onderling/react-native/platform/*` subpath resolution (Metro 52
 //     disables unstable_enablePackageExports, so the package's
 //     `exports` map for ./platform/polyfills etc. must be hand-resolved)
-//   - generic @canopy/<pkg>/<subpath> resolver from each package's exports map
+//   - generic @onderling/<pkg>/<subpath> resolver from each package's exports map
 //
 // canopy-chat-mobile's app-specific bits are:
 //   - 5 sibling apps in watchFolders (canopy-chat + the 4 composed apps)
 //   - extraNodeModules aliases for the workspace packages that are NOT
-//     declared in package.json deps (e.g. @canopy/vault, pulled in
+//     declared in package.json deps (e.g. @onderling/vault, pulled in
 //     transitively by realAgent.js → secure-agent)
-//   - extraSubpathResolvers for `@canopy-app/{tasks-v0,stoop,folio}/browser`
+//   - extraSubpathResolvers for `@onderling-app/{tasks-v0,stoop,folio}/browser`
 //     (Trap 2 — overlapping `extraNodeModules` prefixes; shorter prefix
 //     wins, so Metro would otherwise try apps/<app>/browser instead of
 //     apps/<app>/src/browser.js)
@@ -22,7 +22,7 @@
 //     subpaths.
 
 const path = require('path');
-const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
 
 const projectRoot = __dirname;
 const repoRoot    = path.resolve(__dirname, '../..');
@@ -55,7 +55,7 @@ const _cfg = withCanopyPreset({
     path.resolve(repoRoot, 'packages/skill-match'),
     path.resolve(repoRoot, 'packages/manifest-host'),
     path.resolve(repoRoot, 'packages/app-manifest'),
-    // @canopy/llm-client — the circle bot's NL→slash LLM client (ollama provider).
+    // @onderling/llm-client — the circle bot's NL→slash LLM client (ollama provider).
     path.resolve(repoRoot, 'packages/llm-client'),
   ],
 
@@ -64,7 +64,7 @@ const _cfg = withCanopyPreset({
   //
   // Plus a NARROW block on RN / Expo entries in any packages/*/.pnpm
   // store — needed because canopy-chat-mobile's `file:` dep on
-  // @canopy/react-native triggers an npm install pass inside that
+  // @onderling/react-native triggers an npm install pass inside that
   // package, which in turn lets pnpm hoist RN 0.85.3 into
   // packages/react-native/node_modules/.pnpm/.  Metro then follows
   // symlinks into that store and tries to compile RN 0.85.3 with our
@@ -99,44 +99,44 @@ const _cfg = withCanopyPreset({
     'expo-crypto',
   ],
 
-  // App-specific module aliases (the preset already maps the @canopy/*
+  // App-specific module aliases (the preset already maps the @onderling/*
   // SDK packages declared in this app's package.json).  These are the
   // packages pulled in TRANSITIVELY by the composed apps that aren't
   // direct deps of canopy-chat-mobile.
   extraNodeModules: {
     // Direct: the 5 composed apps.  realAgent.js uses subpath imports
     // (/browser) — those go through extraSubpathResolvers below.
-    '@canopy-app/canopy-chat': path.resolve(repoRoot, 'apps/canopy-chat'),
-    '@canopy-app/tasks-v0':    path.resolve(repoRoot, 'apps/tasks-v0'),
-    '@canopy-app/stoop':       path.resolve(repoRoot, 'apps/stoop'),
-    '@canopy-app/folio':       path.resolve(repoRoot, 'apps/folio'),
-    '@canopy-app/calendar':    path.resolve(repoRoot, 'apps/calendar'),
+    '@onderling-app/canopy-chat': path.resolve(repoRoot, 'apps/canopy-chat'),
+    '@onderling-app/tasks-v0':    path.resolve(repoRoot, 'apps/tasks-v0'),
+    '@onderling-app/stoop':       path.resolve(repoRoot, 'apps/stoop'),
+    '@onderling-app/folio':       path.resolve(repoRoot, 'apps/folio'),
+    '@onderling-app/calendar':    path.resolve(repoRoot, 'apps/calendar'),
     // realAgent.js's skill wiring (added 2026-07-09). Bare import → the `.` export (src/cores.js); the
     // /wireSkills + /defaultCatalog subpaths go through extraSubpathResolvers (package-exports disabled).
-    '@canopy-app/agents':      path.resolve(repoRoot, 'apps/agents'),
+    '@onderling-app/agents':      path.resolve(repoRoot, 'apps/agents'),
 
-    // Transitive @canopy/* not declared in package.json deps.
-    // @canopy/vault is reached via secure-agent + realAgent.js's
+    // Transitive @onderling/* not declared in package.json deps.
+    // @onderling/vault is reached via secure-agent + realAgent.js's
     // VaultMemory / VaultLocalStorage imports (VaultAsyncStorage
     // replaces VaultLocalStorage at boot — but the import resolves
     // unconditionally, so the module must still exist on disk).
-    '@canopy/vault':             path.resolve(repoRoot, 'packages/vault'),
-    '@canopy/chat-p2p':          path.resolve(repoRoot, 'packages/chat-p2p'),
-    '@canopy/identity-resolver': path.resolve(repoRoot, 'packages/identity-resolver'),
-    '@canopy/item-store':        path.resolve(repoRoot, 'packages/item-store'),
-    '@canopy/notifier':          path.resolve(repoRoot, 'packages/notifier'),
-    '@canopy/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
-    '@canopy/manifest-host':     path.resolve(repoRoot, 'packages/manifest-host'),
-    // @canopy/llm-client — bare import resolves via its package.json main (src/index.js); the
+    '@onderling/vault':             path.resolve(repoRoot, 'packages/vault'),
+    '@onderling/chat-p2p':          path.resolve(repoRoot, 'packages/chat-p2p'),
+    '@onderling/identity-resolver': path.resolve(repoRoot, 'packages/identity-resolver'),
+    '@onderling/item-store':        path.resolve(repoRoot, 'packages/item-store'),
+    '@onderling/notifier':          path.resolve(repoRoot, 'packages/notifier'),
+    '@onderling/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
+    '@onderling/manifest-host':     path.resolve(repoRoot, 'packages/manifest-host'),
+    // @onderling/llm-client — bare import resolves via its package.json main (src/index.js); the
     // /providers/ollama subpath goes through extraSubpathResolvers (package-exports is disabled).
-    '@canopy/llm-client':        path.resolve(repoRoot, 'packages/llm-client'),
+    '@onderling/llm-client':        path.resolve(repoRoot, 'packages/llm-client'),
     // Privacy-first logging facade (web ≡ mobile). Bare `.` export = src/index.js.
-    '@canopy/logger':            path.resolve(repoRoot, 'packages/logger'),
+    '@onderling/logger':            path.resolve(repoRoot, 'packages/logger'),
   },
 
   // Subpath resolvers — Trap 2 escape hatch.
   //
-  // `@canopy-app/{tasks-v0,stoop,folio}/browser` resolve to
+  // `@onderling-app/{tasks-v0,stoop,folio}/browser` resolve to
   // `apps/<app>/src/browser.js` per each app's package.json `exports`
   // map; Metro can't see those because the preset disables
   // unstable_enablePackageExports.
@@ -147,7 +147,7 @@ const _cfg = withCanopyPreset({
     (moduleName /*, repoRootArg */) => {
       // 1. /browser subpath for the three composed app bundles.
       const browserMatch = moduleName.match(
-        /^@canopy-app\/(tasks-v0|stoop|folio)\/browser$/,
+        /^@onderling-app\/(tasks-v0|stoop|folio)\/browser$/,
       );
       if (browserMatch) {
         return {
@@ -156,9 +156,9 @@ const _cfg = withCanopyPreset({
         };
       }
 
-      // 2. Stoop's @canopy-app/stoop/lib/* — real files live in src/lib/.
-      if (moduleName.startsWith('@canopy-app/stoop/lib/')) {
-        const sub = moduleName.slice('@canopy-app/stoop/lib/'.length);
+      // 2. Stoop's @onderling-app/stoop/lib/* — real files live in src/lib/.
+      if (moduleName.startsWith('@onderling-app/stoop/lib/')) {
+        const sub = moduleName.slice('@onderling-app/stoop/lib/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/stoop/src/lib', sub + '.js'),
           type:     'sourceFile',
@@ -166,8 +166,8 @@ const _cfg = withCanopyPreset({
       }
 
       // 3. Stoop's locales — exports map points to apps/stoop/locales/{en,nl}.json.
-      if (moduleName.startsWith('@canopy-app/stoop/locales/')) {
-        const sub = moduleName.slice('@canopy-app/stoop/locales/'.length);
+      if (moduleName.startsWith('@onderling-app/stoop/locales/')) {
+        const sub = moduleName.slice('@onderling-app/stoop/locales/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/stoop/locales', sub + '.json'),
           type:     'sourceFile',
@@ -184,19 +184,19 @@ const _cfg = withCanopyPreset({
         };
       }
 
-      // 4b. @canopy-app/agents subpaths (realAgent.js skill wiring). exports map: ./wireSkills →
+      // 4b. @onderling-app/agents subpaths (realAgent.js skill wiring). exports map: ./wireSkills →
       //     src/wireSkills.js, ./defaultCatalog → src/defaultCatalog.js, ./cores → src/cores.js,
       //     ./manifest → manifest.js. Package-exports disabled, so map directly.
-      const agentsMatch = moduleName.match(/^@canopy-app\/agents\/(wireSkills|defaultCatalog|cores)$/);
+      const agentsMatch = moduleName.match(/^@onderling-app\/agents\/(wireSkills|defaultCatalog|cores)$/);
       if (agentsMatch) {
         return { filePath: path.resolve(repoRoot, 'apps/agents/src', `${agentsMatch[1]}.js`), type: 'sourceFile' };
       }
-      if (moduleName === '@canopy-app/agents/manifest') {
+      if (moduleName === '@onderling-app/agents/manifest') {
         return { filePath: path.resolve(repoRoot, 'apps/agents/manifest.js'), type: 'sourceFile' };
       }
 
-      // 5. @canopy/llm-client provider subpaths (circle bot). Package-exports disabled → map directly.
-      const llmMatch = moduleName.match(/^@canopy\/llm-client\/providers\/(ollama|mock)$/);
+      // 5. @onderling/llm-client provider subpaths (circle bot). Package-exports disabled → map directly.
+      const llmMatch = moduleName.match(/^@onderling\/llm-client\/providers\/(ollama|mock)$/);
       if (llmMatch) {
         return {
           filePath: path.resolve(repoRoot, 'packages/llm-client/src/providers', `${llmMatch[1]}.js`),
@@ -210,8 +210,8 @@ const _cfg = withCanopyPreset({
       //    whole agent boot fails. household/src re-exports it, so it lands in the RN bundle
       //    even though mobile never runs a Telegram bot. Resolve it to a no-op stub. (Mirror
       //    of the web vite alias.) Must be a subpath resolver, not extraShims — the preset's
-      //    generic `@canopy/<pkg>/<subpath>` handler would otherwise resolve the real file first.
-      if (moduleName === '@canopy/chat-agent/bridges/telegram') {
+      //    generic `@onderling/<pkg>/<subpath>` handler would otherwise resolve the real file first.
+      if (moduleName === '@onderling/chat-agent/bridges/telegram') {
         return { filePath: path.resolve(__dirname, 'src/shims/telegramBridge.js'), type: 'sourceFile' };
       }
 
@@ -220,16 +220,16 @@ const _cfg = withCanopyPreset({
   ],
 });
 
-// Wrap the preset's resolveRequest to intercept BEFORE its generic `@canopy/<pkg>/<subpath>`
+// Wrap the preset's resolveRequest to intercept BEFORE its generic `@onderling/<pkg>/<subpath>`
 // handler. The Telegram bridge is Node-only (`import { Telegraf } from 'telegraf'` →
 // `class … extends Telegraf`); on Hermes telegraf doesn't load → the base is undefined →
 // "Super expression must be null or a function" → agent boot fails. household/src re-exports
-// it, so it lands in the RN bundle. extraSubpathResolvers run AFTER the generic @canopy
+// it, so it lands in the RN bundle. extraSubpathResolvers run AFTER the generic @onderling
 // handler (which resolves the REAL file first), so the shim must intercept here. Mirror of
 // the web vite alias.
 const _presetResolve = _cfg.resolver.resolveRequest;
 _cfg.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === '@canopy/chat-agent/bridges/telegram') {
+  if (moduleName === '@onderling/chat-agent/bridges/telegram') {
     return { filePath: path.resolve(__dirname, 'src/shims/telegramBridge.js'), type: 'sourceFile' };
   }
   // react-native-webrtc: optional rendezvous (direct WebRTC) — native module not in this dev

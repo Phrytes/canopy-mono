@@ -1,8 +1,8 @@
-# @canopy/app-manifest
+# @onderling/app-manifest
 
 > **Layer: substrate.** Per-app declarative manifest + pure projectors.
 > The bundle-declaration format that feeds the project's §0 destination
-> substrates (`@canopy/interface-registry`, `@canopy/protocol`) and ships
+> substrates (`@onderling/interface-registry`, `@onderling/protocol`) and ships
 > the chat/slash surface those substrates don't cover. Phase: **SP-0**
 > (see `PLAN-uniforme-representatie.md` in the repo root).
 
@@ -12,7 +12,7 @@
 
 An app declares its surface once, as data, in a `Manifest`:
 
-- `itemTypes` — strings from `@canopy/item-types` canonical registry,
+- `itemTypes` — strings from `@onderling/item-types` canonical registry,
   or app-local (the validator permits both — PLAN flag #12 / F-SP1-a).
 - `operations` — `{id, verb, appliesTo?, params?, role?, surfaces?}`;
   `verb` must be one of the item-store verbs (frozen allow-list,
@@ -42,7 +42,7 @@ renderSlash(manifest)                    → { parse(text) → null | Call | Cal
 All four are **deterministic** — same input ⇒ byte-identical output;
 declaration order preserved throughout.
 
-`renderChat`'s output plugs straight into `@canopy/chat-agent`'s
+`renderChat`'s output plugs straight into `@onderling/chat-agent`'s
 `ChatAgent` constructor (`toolCatalog` + `toolHandlers` + `systemPrompt`).
 `renderSlash().parse` has the same return shape as household's
 `regexParse` (drop-in for SP-1's byte-equivalence gate).
@@ -55,14 +55,14 @@ Per `PLAN-uniforme-representatie.md` guardrail **#9**: this package is
 the project's bundle-declaration format. It **declares**; two peer
 destination substrates **run**:
 
-- **`@canopy/interface-registry`** — per-TYPE renderer registry
+- **`@onderling/interface-registry`** — per-TYPE renderer registry
   (compact + full + conflict resolution, user-overridable).
   `renderWeb` / `renderMobile` (later SPs) compose its `renderCompact`
   / `renderFull` for per-item cells; this package **never** does
   per-type renderer dispatch. `operations.params` + `surfaces.ui`
   shapes are designed forward-compatible with
   `register({ type, renderer, actions })`.
-- **`@canopy/protocol`** — state-machine substrate for multi-step
+- **`@onderling/protocol`** — state-machine substrate for multi-step
   processes. Multi-step operations declared in this manifest are
   expressible as `defineProtocol` data; the orchestrator runs them.
 
@@ -72,7 +72,7 @@ composition materialises at the destination's pace.
 
 ### When mounted alongside other manifests
 
-The runtime composition layer is `@canopy/manifest-host` (SP-4 V0).
+The runtime composition layer is `@onderling/manifest-host` (SP-4 V0).
 A manifest authored in isolation can collide with siblings once mounted
 into a multi-app host:
 
@@ -99,7 +99,7 @@ leaves to the consumer" for the full picture.
 ```js
 import {
   renderChat, renderSlash, validateManifest,
-} from '@canopy/app-manifest';
+} from '@onderling/app-manifest';
 
 const manifest = {
   app:        'todo',
@@ -145,7 +145,7 @@ validateManifest(manifest) → { ok, errors: [{path, message}, …] }
 VERBS                       — frozen item-store verb allow-list
 isCanonicalVerb(verb)       — set-lookup
 classifyItemTypes(manifest) — { canonical, appLocal } against
-                              @canopy/item-types list() (informational
+                              @onderling/item-types list() (informational
                               only; app-local types are accepted by
                               validateManifest — F-SP1-a)
 

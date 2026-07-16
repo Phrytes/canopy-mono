@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-nav — chat ⇄ side-panel navigation protocol (B.1).
+ * @onderling/chat-nav — chat ⇄ side-panel navigation protocol (B.1).
  *
  * Design choice B.1 (per `DESIGN-canopy-chat-journeys.md`): every
  * side-panel page (settings, logs, file-dirs) that the chat shell
@@ -22,7 +22,7 @@
  *
  * Other apps' side-panel pages consume the helpers like this:
  *
- *   import { getReturnTo, renderFloatingButton } from '@canopy/chat-nav';
+ *   import { getReturnTo, renderFloatingButton } from '@onderling/chat-nav';
  *
  *   const ret = getReturnTo();
  *   if (ret) renderFloatingButton(document.body, { returnTo: ret });

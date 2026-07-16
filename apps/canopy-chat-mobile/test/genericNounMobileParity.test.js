@@ -8,7 +8,7 @@
  * `CircleLauncherScreen` makes + the shared reply render — all without the RN agent (device verify covers live).
  */
 import { describe, it, expect } from 'vitest';
-import { encodeGenericOpId } from '@canopy/app-manifest';
+import { encodeGenericOpId } from '@onderling/app-manifest';
 
 import { composeManifests, buildManifestsByOrigin } from '../src/core/composeManifests.js';
 import { parseInput, resolveDispatch } from '../../canopy-chat/src/index.js';

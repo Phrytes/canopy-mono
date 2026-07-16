@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/blob-gateway",
+  "name": "@onderling/blob-gateway",
   "version": "0.1.0",
   "description": "Media substrate: client-side-encrypt a blob → untrusted bucket + a cross-pod-ref manifest line in the pod; a deny-by-default poortwachter (verifyToken → ACL → presigned URL). Bucket/token/acl are injected (cloud-agnostic).",
   "type": "module",
@@ -18,9 +18,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/oidc-session": "file:../oidc-session",
-    "@canopy/pod-client": "file:../pod-client"
+    "@onderling/core": "file:../core",
+    "@onderling/oidc-session": "file:../oidc-session",
+    "@onderling/pod-client": "file:../pod-client"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

@@ -1,8 +1,8 @@
-# Convention: storage layout for `@canopy` pods
+# Convention: storage layout for `@onderling` pods
 
 > **Status:** P1 deliverable (per transition doc §V.5). Documents the
-> canonical pod-resource layout that `@canopy/pod-onboarding`
-> provisions and that `@canopy/pod-routing` consumes. Discovery
+> canonical pod-resource layout that `@onderling/pod-onboarding`
+> provisions and that `@onderling/pod-routing` consumes. Discovery
 > happens via the WebID profile; the layout below is what
 > third-party Solid-aware tools will find at the documented paths.
 >
@@ -18,7 +18,7 @@
 
 A user's WebID profile (e.g.
 `https://alice.solidcommunity.net/profile/card#me`) carries pointer
-predicates that resolve to the user's `@canopy` pod-resource
+predicates that resolve to the user's `@onderling` pod-resource
 URIs. After `pod-onboarding.provisionDefault()` ships, the profile
 contains (at least):
 
@@ -43,7 +43,7 @@ URIs and the JSON-LD shape live in
 
 ## Canonical sub-container layout
 
-Each `@canopy` pod is provisioned with the following top-level
+Each `@onderling` pod is provisioned with the following top-level
 containers. Apps MUST use these names; third-party tools can
 expect them.
 
@@ -113,11 +113,11 @@ are keyed by canonical item-type (not by app), **any app can
 enumerate every object of a given type regardless of which app
 created it.** A `task` written by app X is listable/renderable by
 app Y (e.g. tasks-v0) as long as both speak the canonical
-`@canopy/item-types` schema for that type. Concretely:
+`@onderling/item-types` schema for that type. Concretely:
 
 - One container per canonical type (`sharing/<type>/`, or
   `group/<circleId>/<type>/` for circle-scoped data); the type name is
-  the `@canopy/item-types` taxonomy name.
+  the `@onderling/item-types` taxonomy name.
 - Cross-app **reuse** rides the shared `item-types` schema; cross-app
   **references** ride the `embeds: [{type, ref}]` field
   (`conventions/cross-pod-refs.md`). No per-app vocabulary
@@ -141,8 +141,8 @@ Future-rewrite design: see
 
 Resource at `<pod>/private/agent-registry`. JSON-LD list of the
 user's agents (one entry per device / app installation). Used by
-`@canopy/agent-registry` (Phase 52.10) for cross-device identity
-lookups + by `@canopy/identity-resolver` (Phase 52.11) for
+`@onderling/agent-registry` (Phase 52.10) for cross-device identity
+lookups + by `@onderling/identity-resolver` (Phase 52.11) for
 WebID↔pubKey resolution.
 
 The list is owner-only by ACP; agents auto-register on first run
@@ -182,7 +182,7 @@ substrate handles it.
   job is not to make path layouts negotiable per-installation.
 - **Cross-app reads go through canonical item-types, not vocabulary
   translation.** An app reading another app's objects of a type
-  relies on the shared `@canopy/item-types` schema for that type
+  relies on the shared `@onderling/item-types` schema for that type
   (see `packages/item-types/README.md`); there is no per-app format
   translation layer. This is the mechanism that makes the
   type-indexable standard above work.

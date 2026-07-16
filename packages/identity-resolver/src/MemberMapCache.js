@@ -1,7 +1,7 @@
 /**
  * MemberMapCache — auto-persist a `MemberMap` through any
  * `core.DataSource` (typically a `CachingDataSource` from
- * `@canopy/local-store`).
+ * `@onderling/local-store`).
  *
  * **2026-05-08:** lifted from `apps/stoop/src/lib/MemberMapCache.js`
  * (Tasks V1 = rule-of-two consumer per
@@ -49,7 +49,7 @@ function pathFor(webid) {
  * empty (cold boot).
  *
  * @param {object} args
- * @param {import('@canopy/core').DataSource} args.dataSource
+ * @param {import('@onderling/core').DataSource} args.dataSource
  * @param {string} [args.rootContainer='']    prefix; trailing '/' optional
  */
 async function load({ dataSource, rootContainer = '' } = {}) {
@@ -77,7 +77,7 @@ async function load({ dataSource, rootContainer = '' } = {}) {
  *
  * @param {object} args
  * @param {MemberMap} args.map
- * @param {import('@canopy/core').DataSource} args.dataSource
+ * @param {import('@onderling/core').DataSource} args.dataSource
  * @param {string} [args.rootContainer='']
  */
 function attach({ map, dataSource, rootContainer = '' } = {}) {

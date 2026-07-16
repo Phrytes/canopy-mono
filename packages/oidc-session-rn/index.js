@@ -1,5 +1,5 @@
 /**
- * @canopy/oidc-session-rn — Solid OIDC sign-in for React Native.
+ * @onderling/oidc-session-rn — Solid OIDC sign-in for React Native.
  *
  * **Layer: SDK foundation (RN-specific).** The cross-platform
  * Solid OIDC story lives in `apps/folio/src/auth/OidcSession.js`
@@ -16,7 +16,7 @@
  *     parse time.
  *
  *   - The hook (`useOidcSignIn`) lives at the `/hook` subpath
- *     (`@canopy/oidc-session-rn/hook`). It pulls
+ *     (`@onderling/oidc-session-rn/hook`). It pulls
  *     `expo-auth-session`, `expo-web-browser`, `expo-secure-store`,
  *     and `react` at module load. Apps that need the hook import
  *     from the subpath; substrates / pure tests use the default.
@@ -49,7 +49,7 @@ export {
 } from './src/dcr.js';
 
 // Phase 52.15.1 (2026-05-14) — multi-issuer support. Mirrored from
-// `@canopy/oidc-session/src/issuers.js`; keep both copies in sync.
+// `@onderling/oidc-session/src/issuers.js`; keep both copies in sync.
 export {
   KNOWN_ISSUERS,
   DEFAULT_ISSUER_ID,

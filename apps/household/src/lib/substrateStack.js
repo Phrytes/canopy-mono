@@ -1,12 +1,12 @@
 /**
  * Substrate-stack builder for Household circle bundles — THIN SHIM.
  *
- * The stack logic lives ONCE in `@canopy/substrate-stack` (it used to be the
+ * The stack logic lives ONCE in `@onderling/substrate-stack` (it used to be the
  * "Household twin of Tasks-v0's" copy — invariant-#3 drift; consolidated
  * 2026-07-09). This shim preserves Household's DELIBERATE layering: the
  * notify-envelope **transport adapter is INJECTED**, never built from a core
  * `Agent` — keeping `apps/household` free of any canopy-chat dependency and
- * of `@canopy/core`'s `Agent`. The host (canopy-chat) owns the secure-mesh
+ * of `@onderling/core`'s `Agent`. The host (canopy-chat) owns the secure-mesh
  * wire and passes it in; with no agent here, `deviceId` is a hard
  * requirement (no `agent.address` fallback). Refs: OBJ-2 / S1a.
  *
@@ -18,7 +18,7 @@
  * @property {(cb: (payload: object, raw?: object) => void) => (() => void)} subscribeEnvelopes
  */
 
-import { buildSubstrateStack as buildSharedSubstrateStack } from '@canopy/substrate-stack';
+import { buildSubstrateStack as buildSharedSubstrateStack } from '@onderling/substrate-stack';
 
 /**
  * @param {object} args

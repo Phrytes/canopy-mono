@@ -9,7 +9,7 @@ import { bootAgentBundle } from '../src/core/agentBundle.js';
 import { asyncStorageMappingsStore, MAPPINGS_DEVICE } from '../src/core/mappingsStoreRN.js';
 
 // Write a mapping straight to the store (its own contract) — avoids a direct
-// '@canopy/pod-routing/mappings' import (resolves from mobile's stale copy);
+// '@onderling/pod-routing/mappings' import (resolves from mobile's stale copy);
 // production reaches the loader via canopy-chat's symlink.
 const put = (store, mapping) =>
   store.write(`pseudo-pod://${MAPPINGS_DEVICE}/private/mappings/${mapping.id}`, mapping);

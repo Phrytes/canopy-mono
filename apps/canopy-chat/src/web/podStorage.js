@@ -26,7 +26,7 @@
  *     ldp:Container link header.
  *
  * Future v0.7.P3:
- *   - Bidirectional via @canopy/pseudo-pod cache-mode + per-URI
+ *   - Bidirectional via @onderling/pseudo-pod cache-mode + per-URI
  *     mode override.
  */
 

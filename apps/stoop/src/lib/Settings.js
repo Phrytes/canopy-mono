@@ -2,7 +2,7 @@
  * Settings — Stoop's settings module.
  *
  * **2026-05-08:** the implementation lifted into the
- * `@canopy/local-store` substrate (Tasks V1 = rule-of-two
+ * `@onderling/local-store` substrate (Tasks V1 = rule-of-two
  * consumer per
  * `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`).
  * This file is now a thin wrapper: it calls the substrate's
@@ -18,7 +18,7 @@
  *   device:   pollIntervalMs, onlineWindow, allowHopThrough
  */
 
-import { createSettingsModule } from '@canopy/local-store';
+import { createSettingsModule } from '@onderling/local-store';
 
 /** Default settings.  Conservative — opt-in for everything privacy/battery-relevant. */
 const DEFAULT_SETTINGS_RAW = {

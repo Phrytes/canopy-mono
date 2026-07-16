@@ -82,8 +82,8 @@ This pattern is currently implemented per-app:
   multi-circle.
 
 When the second consumer (Tasks) implements it, lift the common
-helpers to a substrate — likely `@canopy/scoped-skill-bus` or
-folded into `@canopy/skill-match`. The shape worth lifting:
+helpers to a substrate — likely `@onderling/scoped-skill-bus` or
+folded into `@onderling/skill-match`. The shape worth lifting:
 
 ```js
 buildScopedSkillBus({

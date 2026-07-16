@@ -1,17 +1,17 @@
 /**
  * LocalTransport tests — uses an in-process WsServerTransport as the server.
- * Requires the @canopy/relay package to be installed.
+ * Requires the @onderling/relay package to be installed.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { LocalTransport } from '../src/transport/LocalTransport.js';
 import { Agent }          from '../src/Agent.js';
 import { AgentIdentity }  from '../src/identity/AgentIdentity.js';
-import { VaultMemory }    from '@canopy/vault';
+import { VaultMemory }    from '@onderling/vault';
 import { TextPart, Parts } from '../src/Parts.js';
 
 // ── Inline relay server fixture ───────────────────────────────────────────────
 // We replicate the minimal relay protocol from RelayTransport.test.js
-// rather than depending on @canopy/relay (separate package).
+// rather than depending on @onderling/relay (separate package).
 
 import { WebSocketServer } from 'ws';
 

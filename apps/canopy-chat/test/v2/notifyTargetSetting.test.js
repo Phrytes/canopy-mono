@@ -15,7 +15,7 @@
  * routing needs. The prohibit/silent branches (owned elsewhere) are only checked NOT to fire a notify notice.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { shareItemToPublishedKey } from '../../src/v2/circleShare.js';
 import { normalizeCirclePolicy, DEFAULT_CIRCLE_POLICY } from '../../src/v2/circlePolicy.js';
 

@@ -54,11 +54,11 @@ const LIB        = join(HERE, '..', 'src', 'lib');
 // Substrate / cross-app skills tasks-mobile may invoke that aren't in
 // tasks-v0's builder set.  Each entry must cite the source.
 const ALLOWLIST = new Set([
-  // @canopy/identity-resolver — buildIdentitySkills + buildOnboardingSkills
+  // @onderling/identity-resolver — buildIdentitySkills + buildOnboardingSkills
   'issueInvite',
   'redeemInvite',
   'resolveMember',
-  // @canopy/sync-engine-rn — pod-attach diagnostics
+  // @onderling/sync-engine-rn — pod-attach diagnostics
   'whoAmI',
   // pod sign-in skills wired into the agent at runtime via
   // tasks-mobile/src/lib/podSignInSkillsMobile.js (composed on top

@@ -48,12 +48,12 @@ function makeFakeNknLib() {
 
 /**
  * Build a minimal Ed25519 identity (matches AgentIdentity shape from
- * @canopy/core; same construction the loadOrGenerateIdentity path uses).
+ * @onderling/core; same construction the loadOrGenerateIdentity path uses).
  */
 function makeIdentity() {
   const kp = nacl.sign.keyPair();
   // pubKey as hex string (NknTransport.#deriveSeed expects pubKeyBytes
-  // and the rest of @canopy/core expects hex pubKey).
+  // and the rest of @onderling/core expects hex pubKey).
   const pubKeyBytes = kp.publicKey;
   const pubKey      = Array.from(pubKeyBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
   return {

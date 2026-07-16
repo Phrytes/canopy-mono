@@ -9,7 +9,7 @@
  *     portable; stoop-mobile's ProfileMineScreen also consumes
  *     `podSignInStatus` / `signOutOfPod`).
  *   - stoop-mobile's proven RN pattern: PKCE via the
- *     `@canopy/oidc-session-rn` hook (already wired through
+ *     `@onderling/oidc-session-rn` hook (already wired through
  *     `useTasksAuth` + `ServiceContext.attachPod`), then
  *     `OidcSessionRN.adoptTokens(tokens)`.
  *
@@ -41,13 +41,13 @@
  * truth on mobile).
  */
 
-import { defineSkill, DataPart } from '@canopy/core';
+import { defineSkill, DataPart } from '@onderling/core';
 import {
   startPodSignIn,
   completePodSignIn,
   signOutOfPod,
   podSignInStatus,
-} from '@canopy-app/tasks-v0/lib/podSignIn';
+} from '@onderling-app/tasks-v0/lib/podSignIn';
 
 function _args(parts) {
   if (!Array.isArray(parts)) return {};
@@ -74,7 +74,7 @@ function _args(parts) {
  *   shared podSignIn.js via its additive seam.
  * @param {(opts: {podUrl: string, fetch: Function}) => object} args.dataSourceFactory
  *   Builds the pod-backed DataSource (a `SolidPodSource`). Injected
- *   so the RN build does not pull `@canopy/pod-client` at parse time
+ *   so the RN build does not pull `@onderling/pod-client` at parse time
  *   under vitest.
  * @returns {Array<object>}
  */
@@ -169,5 +169,5 @@ export function buildPodSignInSkillsMobile({
 }
 
 // Re-export DataPart so callers building skill-call args from RN
-// don't need a second @canopy/core import path.
+// don't need a second @onderling/core import path.
 export { DataPart };

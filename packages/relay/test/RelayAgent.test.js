@@ -4,9 +4,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import WebSocket from 'ws';
 import { RelayAgent } from '../src/RelayAgent.js';
-import { AgentIdentity, Agent, TextPart, DataPart, Parts } from '@canopy/core';
-import { RelayTransport } from '@canopy/transports';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, Agent, TextPart, DataPart, Parts } from '@onderling/core';
+import { RelayTransport } from '@onderling/transports';
+import { VaultMemory } from '@onderling/vault';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -1,7 +1,7 @@
 {
-  "name": "@canopy/app-manifest",
+  "name": "@onderling/app-manifest",
   "version": "0.1.0",
-  "description": "Per-app declarative manifest + pure projectors (validateManifest, paramsToJsonSchema, renderChat, renderSlash). The bundle-declaration format feeding the §0 destination substrates (@canopy/interface-registry, @canopy/protocol) and shipping the chat/slash surface those substrates don't cover. Phase: SP-0 (greenfield).",
+  "description": "Per-app declarative manifest + pure projectors (validateManifest, paramsToJsonSchema, renderChat, renderSlash). The bundle-declaration format feeding the §0 destination substrates (@onderling/interface-registry, @onderling/protocol) and shipping the chat/slash surface those substrates don't cover. Phase: SP-0 (greenfield).",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/app-manifest#readme",
@@ -25,7 +25,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/item-types": "workspace:^"
+    "@onderling/item-types": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^2.1.9"

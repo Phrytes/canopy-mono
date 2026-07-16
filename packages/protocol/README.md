@@ -1,4 +1,4 @@
-# @canopy/protocol
+# @onderling/protocol
 
 State-machine substrate. Multi-step processes (negotiation,
 propose-subtask, calendar accept) modelled as state machines over
@@ -13,11 +13,11 @@ items, with state persisted on the pseudo-pod.
 ## Quick start
 
 ```js
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import {
   createProtocolOrchestrator,
   PROPOSE_SUBTASK,
-} from '@canopy/protocol';
+} from '@onderling/protocol';
 
 const pseudoPod = createPseudoPod({
   backend:  createMemoryBackend(),
@@ -55,7 +55,7 @@ protocol.subscribe(instance.instanceId, (event) => {
 ## Defining a protocol
 
 ```js
-import { defineProtocol } from '@canopy/protocol';
+import { defineProtocol } from '@onderling/protocol';
 
 const NEGOTIATE = defineProtocol({
   id:      'negotiate',

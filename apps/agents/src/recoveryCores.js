@@ -5,7 +5,7 @@
  * `versionStoreFor(circleId)` resolver — the host composition supplies the
  * platform's resolver (web: `circleVersioning.getCircleVersionStore`;
  * mobile: its RN twin), so the cores stay platform-blind and web ≡ mobile
- * by construction. Each circle pod's `@canopy/versioning` store holds the
+ * by construction. Each circle pod's `@onderling/versioning` store holds the
  * DISPLACED bytes (overwrites · peer-updates · dropped concurrent forks ·
  * deletes) its pseudo-pod captured.
  *

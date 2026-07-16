@@ -12,7 +12,7 @@
  * has a role.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { aggregateCircles } from '../dashboard/aggregator.js';
 

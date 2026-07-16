@@ -7,7 +7,7 @@
 // PRIMARY media-gate auth; Solid-OIDC (solidVerifier.js) stays as an additional
 // verifier — compose the two with `anyVerifier` below.
 //
-// The token is a signed `CapabilityToken` (`@canopy/core`) as it travels on the
+// The token is a signed `CapabilityToken` (`@onderling/core`) as it travels on the
 // wire — a JSON string or an already-parsed object; both are accepted. The
 // returned actor id is the token's SUBJECT key (the holder — the peer the
 // capability was granted to); the gatekeeper's ACL then decides what that
@@ -41,7 +41,7 @@
 //   7. revocation      — when `isRevoked(tokenId)` is injected (e.g.
 //                        TokenRegistry#isRevoked), a revoked id denies
 
-import { CapabilityToken, skillMatches } from '@canopy/core';
+import { CapabilityToken, skillMatches } from '@onderling/core';
 
 const DEFAULT_SKILL = 'media.read';
 

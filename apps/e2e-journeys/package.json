@@ -1,5 +1,5 @@
 {
-  "name": "@canopy-app/e2e-journeys",
+  "name": "@onderling-app/e2e-journeys",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,13 +12,13 @@
     "e2e:live": "node run.mjs"
   },
   "dependencies": {
-    "@canopy/core": "workspace:*",
-    "@canopy/transports": "workspace:*",
-    "@canopy/vault": "workspace:*",
-    "@canopy/pod-client": "workspace:*",
-    "@canopy/relay": "workspace:*",
-    "@canopy/identity-resolver": "workspace:*",
-    "@canopy-app/stoop": "workspace:*",
-    "@canopy-app/companion-node": "workspace:*"
+    "@onderling/core": "workspace:*",
+    "@onderling/transports": "workspace:*",
+    "@onderling/vault": "workspace:*",
+    "@onderling/pod-client": "workspace:*",
+    "@onderling/relay": "workspace:*",
+    "@onderling/identity-resolver": "workspace:*",
+    "@onderling-app/stoop": "workspace:*",
+    "@onderling-app/companion-node": "workspace:*"
   }
 }

@@ -2,7 +2,7 @@
  * circleVersioning — per-circle pod version history (mobile).
  *
  * P3 of PLAN-pod-versioning-history-recovery: gives each circle's
- * pseudo-pod a `@canopy/versioning` store so DISPLACED bytes (overwrites ·
+ * pseudo-pod a `@onderling/versioning` store so DISPLACED bytes (overwrites ·
  * peer-updates · dropped concurrent forks · deletes) land in history
  * instead of vanishing — the substrate under the my-data
  * "restore corrupted / lost data" ops.
@@ -14,7 +14,7 @@
  *
  * RN-scoped: Hermes has no reliable `crypto.subtle`, so `rnSha256` hashes
  * via `expo-crypto` — the repo's established RN sha256 (the
- * `@canopy/sync-engine/adapters/hashRN.js` pattern; expo-crypto is already
+ * `@onderling/sync-engine/adapters/hashRN.js` pattern; expo-crypto is already
  * an app dep + pinned in metro.config.js). Like that adapter, expo-crypto
  * is never imported at module load (the native module would crash Node);
  * it's loaded lazily on first hash. Fallback order:
@@ -30,7 +30,7 @@
  * import this module from web code.
  */
 
-import { createVersionStore } from '@canopy/versioning';
+import { createVersionStore } from '@onderling/versioning';
 
 /** Lazy expo-crypto namespace: resolves null where the native module can't load (Node/web). */
 let _expoCryptoPromise = null;

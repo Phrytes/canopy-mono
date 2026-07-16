@@ -15,7 +15,7 @@ import nacl from 'tweetnacl';
 
 import { PodExporter } from '../src/PodExporter.js';
 import { PodImporter } from '../src/PodImporter.js';
-import { Bootstrap }   from '@canopy/core';
+import { Bootstrap }   from '@onderling/core';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -8,7 +8,7 @@ importers:
 
   .:
     dependencies:
-      '@canopy/app-manifest':
+      '@onderling/app-manifest':
         specifier: file:../app-manifest
         version: file:../app-manifest
     devDependencies:
@@ -18,10 +18,10 @@ importers:
 
 packages:
 
-  '@canopy/app-manifest@file:../app-manifest':
+  '@onderling/app-manifest@file:../app-manifest':
     resolution: {directory: ../app-manifest, type: directory}
 
-  '@canopy/item-types@file:../item-types':
+  '@onderling/item-types@file:../item-types':
     resolution: {directory: ../item-types, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -543,11 +543,11 @@ packages:
 
 snapshots:
 
-  '@canopy/app-manifest@file:../app-manifest':
+  '@onderling/app-manifest@file:../app-manifest':
     dependencies:
-      '@canopy/item-types': file:../item-types
+      '@onderling/item-types': file:../item-types
 
-  '@canopy/item-types@file:../item-types':
+  '@onderling/item-types@file:../item-types':
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)

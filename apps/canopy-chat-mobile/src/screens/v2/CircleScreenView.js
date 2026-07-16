@@ -24,7 +24,7 @@
  */
 import React from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
-import { featureActionLabelKey } from '@canopy-app/canopy-chat';
+import { featureActionLabelKey } from '@onderling-app/canopy-chat';
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../../../canopy-chat/src/v2/embedChips.js';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';

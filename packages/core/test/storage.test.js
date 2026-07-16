@@ -151,7 +151,7 @@ describe('FileSystemSource', () => {
 
 // ── SolidPodSource ───────────────────────────────────────────────────────────
 //
-// SolidPodSource moved OUT of core into `@canopy/pod-client`. Its unit tests
+// SolidPodSource moved OUT of core into `@onderling/pod-client`. Its unit tests
 // (mocked fetch), CSS integration tests, and the constructor/shape smoke test
 // now live in `packages/pod-client/test/SolidPodSource.unit.test.js` and
 // `SolidPodSource.css.test.js`.

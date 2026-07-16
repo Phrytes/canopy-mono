@@ -14,17 +14,17 @@
  *     device being away vs reconnected (the same away/heal seam the claim-under-
  *     partition journey uses).
  *   • the REAL companion sealed inbox (`apps/companion-node/src/sealedInbox.js`).
- *   • the REAL sealing crypto (`@canopy/pod-client/sealing`) — Ann seals, only
+ *   • the REAL sealing crypto (`@onderling/pod-client/sealing`) — Ann seals, only
  *     Bob (key-holder) opens; the inbox never decrypts.
- *   • the REAL reliable-wake sender (`@canopy/relay` `ReliableExpoPushSender`) —
+ *   • the REAL reliable-wake sender (`@onderling/relay` `ReliableExpoPushSender`) —
  *     we assert the on-the-wire wake body is alert + mutable-content + contentless.
  */
 import { describe, it, expect } from 'vitest';
 
 import { PartitionController } from './harness/partitionSim.js';
 import { createSealedInbox, MemorySealedInboxStore } from '../../companion-node/src/sealedInbox.js';
-import { seal, open, generateKeypair } from '@canopy/pod-client/sealing';
-import { ReliableExpoPushSender } from '@canopy/relay';
+import { seal, open, generateKeypair } from '@onderling/pod-client/sealing';
+import { ReliableExpoPushSender } from '@onderling/relay';
 
 const ANN = 'https://id.example/ann';
 const BOB = 'https://id.example/bob';

@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — createSecureAgent factory.
+ * @onderling/secure-agent — createSecureAgent factory.
  *
  * Safety-by-default composition.  This file ships the FOUNDATION
  * (S0 in the security roadmap); future slices (S1-S8) add opts
@@ -52,12 +52,12 @@ import {
   InternalBus,
   InternalTransport,
   RoutingStrategy,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   NknTransport,
   RelayTransport,
   RendezvousTransport,
-} from '@canopy/transports';
+} from '@onderling/transports';
 
 import {
   tokenGate,
@@ -67,8 +67,8 @@ import {
   ROLES,
   GroupManager,
   A2ATLSLayer,
-} from '@canopy/core';
-import { migrateVaultToPod as migrateVaultToPodFn } from '@canopy/pod-client';
+} from '@onderling/core';
+import { migrateVaultToPod as migrateVaultToPodFn } from '@onderling/pod-client';
 import { createRateLimiter } from './rateLimit.js';
 import { loadPFSChain }      from './pfs.js';
 

@@ -32,12 +32,12 @@
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
 
-import { createSecureAgent } from '@canopy/secure-agent';
+import { createSecureAgent } from '@onderling/secure-agent';
 import {
   signClaim, verifyClaim,
-} from '@canopy/secure-agent';
-import { VaultMemory }      from '@canopy/vault';
-import { AgentIdentity }    from '@canopy/core';
+} from '@onderling/secure-agent';
+import { VaultMemory }      from '@onderling/vault';
+import { AgentIdentity }    from '@onderling/core';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
   parseInput, resolveDispatch, runDispatch,

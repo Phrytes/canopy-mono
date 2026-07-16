@@ -11,7 +11,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock the SDK factory so we don't need the native stack here.
-vi.mock('@canopy/react-native', () => {
+vi.mock('@onderling/react-native', () => {
   class FakeAgent {
     constructor() {
       this._enableRelayForwardOpts     = null;
@@ -70,8 +70,8 @@ vi.mock('@canopy/react-native', () => {
 });
 
 import { createAgent }                    from '../src/agent.js';
-import { createMeshAgent }                from '@canopy/react-native';
-import { TextPart, Parts }                 from '@canopy/core';
+import { createMeshAgent }                from '@onderling/react-native';
+import { TextPart, Parts }                 from '@onderling/core';
 
 describe('mesh-demo createAgent factory', () => {
 

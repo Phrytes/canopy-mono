@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/llm-client",
+  "name": "@onderling/llm-client",
   "version": "0.2.0",
   "description": "Provider-agnostic OpenAI-style tool-calling LLM client (Ollama + cloud providers).",
   "type": "module",
@@ -21,7 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/logger": "workspace:^"
+    "@onderling/logger": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

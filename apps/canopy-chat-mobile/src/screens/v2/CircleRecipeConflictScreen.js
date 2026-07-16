@@ -22,7 +22,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, Modal, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
-import { BLOCK_REGISTRY } from '@canopy-app/canopy-chat';
+import { BLOCK_REGISTRY } from '@onderling-app/canopy-chat';
 
 /**
  * @param {object} props

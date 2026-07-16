@@ -3,7 +3,7 @@
 > **Status:** P1 deliverable (per transition doc §V.5). Documents the
 > `embeds` field shape on canonical item types + the permission-
 > failure rendering policy. Substrate primitives live in
-> `@canopy/item-types` (schema) + `@canopy/item-store/embeds`
+> `@onderling/item-types` (schema) + `@onderling/item-store/embeds`
 > (traversal).
 >
 > **Locked 2026-05-14.**
@@ -11,7 +11,7 @@
 ## `embeds` field shape
 
 Every canonical item type carries an optional `embeds` field via
-the BASE_PROPERTIES spread in `@canopy/item-types/src/baseSchema.js`:
+the BASE_PROPERTIES spread in `@onderling/item-types/src/baseSchema.js`:
 
 ```js
 embeds: [
@@ -24,7 +24,7 @@ embeds: [
 Each `embeds` entry has two required fields:
 
 - **`type`** — the canonical item-type name of the referenced
-  thing (from `@canopy/item-types`). Consumers use this to pick
+  thing (from `@onderling/item-types`). Consumers use this to pick
   the right renderer (compact chip, full embed, …) without having
   to fetch the resource first.
 - **`ref`** — the resource URI. Three accepted shapes:
@@ -37,7 +37,7 @@ Each `embeds` entry has two required fields:
 The schema lives at
 `packages/item-types/src/embedsSchema.js`. Apps that emit canonical
 items get the `embeds` field for free via the BASE_PROPERTIES
-spread; apps that read it use `@canopy/item-store/src/embeds.js`'s
+spread; apps that read it use `@onderling/item-store/src/embeds.js`'s
 walker.
 
 ## What `embeds` is for

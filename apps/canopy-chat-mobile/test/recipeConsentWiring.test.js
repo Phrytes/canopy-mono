@@ -17,7 +17,7 @@ import {
 import * as sharedConsent from '../../canopy-chat/src/v2/recipeConsent.js';
 import { createCirclePolicyStore } from '../../canopy-chat/src/v2/circlePolicyStore.js';
 import { effectiveCapabilities } from '../../canopy-chat/src/v2/capabilityGate.js';
-import { capabilityKey } from '@canopy/app-manifest';
+import { capabilityKey } from '@onderling/app-manifest';
 
 // ── The installed manifest the mapper + consent model + gate share ──
 const tasks = {

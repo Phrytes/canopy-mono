@@ -4,7 +4,7 @@
  * Uses a mock AsyncStorage so vitest can verify the Vault contract
  * without an actual RN runtime.  Mirrors the round-trip + isolation
  * coverage that VaultMemory + VaultLocalStorage rely on in
- * @canopy/vault.
+ * @onderling/vault.
  *
  * Task #222.5 (2026-05-24).
  */

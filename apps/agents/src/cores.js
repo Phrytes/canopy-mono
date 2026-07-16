@@ -3,7 +3,7 @@
  *
  * Uniform-route shape (decision #5): each core is a pure
  * `(store, args, ctx) → result` where `store` is `{ registry, tokens? }`:
- *   • `registry` — an `@canopy/agent-registry` instance
+ *   • `registry` — an `@onderling/agent-registry` instance
  *     (`createAgentRegistry(...)`), the mirror/write-truth.
  *   • `tokens`   — OPTIONAL duck-typed token collaborator:
  *       { issue({ subject, skill, expiresIn, constraints? })
@@ -382,7 +382,7 @@ export async function purgeAgent(store, args = {}) {
 /**
  * createProfile — mint a NEW root-derived profile (identity step 4). The key DERIVATION lives in
  * the injected `profiles` collaborator (keeps the cores dependency-free, like `tokens`): the wire
- * layer closes it over the owner root + registry (`@canopy/agent-registry`'s createProfile). Without
+ * layer closes it over the owner root + registry (`@onderling/agent-registry`'s createProfile). Without
  * a `profiles` collaborator the op reports `created:false` (degraded — the substrate isn't wired).
  */
 export async function createProfile(store, args = {}) {

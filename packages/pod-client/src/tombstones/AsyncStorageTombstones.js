@@ -3,7 +3,7 @@
  * `@react-native-async-storage/async-storage`.
  *
  * Peer dependency: `@react-native-async-storage/async-storage` is NOT
- * declared by `@canopy/pod-client`.  RN apps install it themselves and
+ * declared by `@onderling/pod-client`.  RN apps install it themselves and
  * pass the imported module in via `{ asyncStorage }`, OR rely on the
  * dynamic import which resolves through the host app's `node_modules`.
  *
@@ -12,7 +12,7 @@
  * need to read the whole index for `has` / `add` / `remove`.
  *
  * Mirrors the prefix pattern used by `AsyncStorageAdapter` in
- * `@canopy/react-native`.
+ * `@onderling/react-native`.
  */
 import { TombstoneStore } from '../TombstoneStore.js';
 

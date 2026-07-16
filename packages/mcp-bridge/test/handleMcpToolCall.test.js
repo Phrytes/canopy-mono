@@ -11,18 +11,18 @@
  * MCP isError with the skill NOT executed.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 import {
   Agent, AgentIdentity,
   InternalBus, InternalTransport,
   TrustRegistry, PolicyEngine, TokenRegistry,
   TextPart, DataPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   RemoteHandlerRegistry,
   grantRemoteCapability,
   enableIssuerRevocation,
-} from '@canopy/secure-agent';
+} from '@onderling/secure-agent';
 import { handleMcpToolCall } from '../src/index.js';
 
 /**

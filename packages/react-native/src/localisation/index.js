@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/localisation — locale resolver substrate.
+ * @onderling/react-native/localisation — locale resolver substrate.
  *
  * Apps build a per-app resolver via `loadLocale({bundles, defaultLang})`
  * and consume `t()` / `format()` from the returned instance. See

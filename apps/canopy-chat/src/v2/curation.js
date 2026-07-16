@@ -3,7 +3,7 @@
  *
  * The "before/after curation" view central to feedback (original message →
  * cleaned/curated version) reuses the SAME compute as folio's file-merge:
- * `@canopy/sync-engine` `objectDiff` (a pure, self-contained 3-way diff). One
+ * `@onderling/sync-engine` `objectDiff` (a pure, self-contained 3-way diff). One
  * compute, two LOOKS — folio renders the diff as a file-merge UI;
  * `renderCuration` renders it as a before/after curation view.
  *
@@ -11,7 +11,7 @@
  * imports of its own — no cross-package dependency plumbing needed.
  */
 
-import { objectDiff, deepEqual } from '@canopy/sync-engine/objectDiff';
+import { objectDiff, deepEqual } from '@onderling/sync-engine/objectDiff';
 
 const isObj = (v) => v != null && typeof v === 'object';
 

@@ -2,7 +2,7 @@
 
 **Status:** ✅ BUILT 2026-06-11, then **MADE MANIFEST-DRIVEN** the same day (`feat/circle-bot-token-gate`).
 The hand-written `circleGateRules.js` was retired in favour of the SHARED substrate projection: the
-task ops declare `surfaces.slash.match` (mockManifests.js) and `@canopy/app-manifest`'s new
+task ops declare `surfaces.slash.match` (mockManifests.js) and `@onderling/app-manifest`'s new
 `renderGate` projects them into the token-gate rules (`src/v2/circleGate.js`). This is the SAME
 `renderSlash` matcher household's TG-bot uses — so the deterministic gate, the slash surface, and the
 LLM tool surface (`renderChat`) all read one source of truth, no parallel hand-written copy. Two

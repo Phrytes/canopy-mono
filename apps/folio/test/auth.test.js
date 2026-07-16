@@ -31,7 +31,7 @@ import { createServer }   from '../src/server/index.js';
 import {
   createSolidAuthNode,
   _setSolidAuthNodeSessionFactory,
-} from '@canopy/oidc-session';
+} from '@onderling/oidc-session';
 import {
   buildPodClient,
   buildRealPodClient,

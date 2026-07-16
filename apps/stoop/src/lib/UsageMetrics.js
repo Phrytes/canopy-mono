@@ -1,5 +1,5 @@
 /**
- * UsageMetrics — re-export shim around `@canopy/notifier`.
+ * UsageMetrics — re-export shim around `@onderling/notifier`.
  *
  * **2026-05-08:** the implementation lifted into the notifier
  * substrate (Tasks V1 = rule-of-two consumer per
@@ -8,4 +8,4 @@
  * sites in Stoop keep working.
  */
 
-export { UsageMetrics } from '@canopy/notifier';
+export { UsageMetrics } from '@onderling/notifier';

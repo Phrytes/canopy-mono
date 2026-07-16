@@ -1,13 +1,13 @@
-# `@canopy/sync-engine-rn`
+# `@onderling/sync-engine-rn`
 
-> **Layer:** SDK foundation (RN sibling of `@canopy/sync-engine`).
-> **Cross-platform sibling:** [`@canopy/sync-engine`](../sync-engine/).
+> **Layer:** SDK foundation (RN sibling of `@onderling/sync-engine`).
+> **Cross-platform sibling:** [`@onderling/sync-engine`](../sync-engine/).
 > **Convention:** RN-specific substrates live in their own packages
 > (locked 2026-05-08, see
 > [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
 
 React Native bootstrap helpers for the canopy agent SDK on mobile.
-Cross-platform sync logic stays in `@canopy/sync-engine`; this
+Cross-platform sync logic stays in `@onderling/sync-engine`; this
 package is the RN-only wiring:
 
 - `bgRunOnce` — module-level bridge between an
@@ -30,7 +30,7 @@ The hooks are produced by a factory so the consumer's app-specific
 ServiceContext shape stays app-local:
 
 ```js
-import { createReactBindings } from '@canopy/sync-engine-rn/react';
+import { createReactBindings } from '@onderling/sync-engine-rn/react';
 import { useService } from './ServiceContext.js';
 export const { useSkill, useAgentEvent, useSkillResult } =
   createReactBindings({ useService });
@@ -53,9 +53,9 @@ this package.
 // apps/<your-rn-app>/package.json
 {
   "dependencies": {
-    "@canopy/sync-engine-rn": "file:../../packages/sync-engine-rn",
-    "@canopy/oidc-session-rn": "file:../../packages/oidc-session-rn",
-    "@canopy/pod-client":       "file:../../packages/pod-client"
+    "@onderling/sync-engine-rn": "file:../../packages/sync-engine-rn",
+    "@onderling/oidc-session-rn": "file:../../packages/oidc-session-rn",
+    "@onderling/pod-client":       "file:../../packages/pod-client"
   }
 }
 ```
@@ -75,7 +75,7 @@ free of `expo-task-manager` import-time coupling).
 import {
   setBgRunOnce, clearBgRunOnce, bgRunOnce,
   registerBackgroundTask,
-} from '@canopy/sync-engine-rn';
+} from '@onderling/sync-engine-rn';
 ```
 
 - `setBgRunOnce(fn)` — register the live engine's runOnce-shaped
@@ -93,7 +93,7 @@ import {
 ### `podFactory` module
 
 ```js
-import { defaultPodFactory } from '@canopy/sync-engine-rn';
+import { defaultPodFactory } from '@onderling/sync-engine-rn';
 
 const podClient = await defaultPodFactory(
   { podRoot: 'https://storage.inrupt.com/<id>/' },
@@ -107,7 +107,7 @@ The `oidcSession` parameter is structurally typed: any object with
 ### `createMobileBootstrap`
 
 ```js
-import { createMobileBootstrap } from '@canopy/sync-engine-rn';
+import { createMobileBootstrap } from '@onderling/sync-engine-rn';
 
 const { authenticated, engine, podClient, detach } =
   await createMobileBootstrap({
@@ -130,16 +130,16 @@ calls `buildEngine({ podClient: null, oidc })` — supports
 local-only mode (Stoop V3's default until pod sign-in lands at
 Phase 40.3).
 
-## Boundary with `@canopy/sync-engine` (the cross-platform substrate)
+## Boundary with `@onderling/sync-engine` (the cross-platform substrate)
 
 | Concern | Lives in |
 |---|---|
-| `SyncEngine`, `PathMap`, `scanLocal`, `scanPod`, `diff`, version helpers | `@canopy/sync-engine` |
+| `SyncEngine`, `PathMap`, `scanLocal`, `scanPod`, `diff`, version helpers | `@onderling/sync-engine` |
 | RN bootstrap (`createMobileBootstrap`) | this package |
 | Background-task plumbing (`bgRunOnce`, `registerBackgroundTask`) | this package |
 | RN-side pod-client factory | this package |
 | Filesystem adapters (Node fs, RN fs) | per-platform — Node in
-`@canopy/sync-engine`, RN in `@canopy/react-native` |
+`@onderling/sync-engine`, RN in `@onderling/react-native` |
 
 The shared core is consumable in both places; this package just adds
 the wiring that makes "engine + pod + auth + background" feel
@@ -148,7 +148,7 @@ turnkey on mobile.
 ## Future work (Inrupt-cleanup convergence)
 
 The `defaultPodFactory` here calls
-`@canopy/pod-client`'s `SolidOidcAuth`. When a future Inrupt-cleanup
+`@onderling/pod-client`'s `SolidOidcAuth`. When a future Inrupt-cleanup
 extracts the shared "sign in / share via Inrupt" component, this
 substrate's pod-factory entry point will be one of the surfaces
 that migrates. The factory's API stays — implementation may change.
@@ -161,6 +161,6 @@ npm test
 ```
 
 Tests use `vitest` with no RN runtime (the helpers are pure JS).
-The `defaultPodFactory` test stubs `@canopy/pod-client` via
+The `defaultPodFactory` test stubs `@onderling/pod-client` via
 `vi.mock`. The `createMobileBootstrap` test uses an in-memory OIDC
 stub.

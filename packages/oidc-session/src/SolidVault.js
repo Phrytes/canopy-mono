@@ -2,7 +2,7 @@
  * SolidVault — Solid OIDC session manager.
  *
  * Despite the name, **SolidVault is not itself a `Vault`** in the
- * `@canopy/core` Vault sense.  It's the Solid-OIDC session manager
+ * `@onderling/core` Vault sense.  It's the Solid-OIDC session manager
  * that *uses* a Vault-shaped store (`get` / `set` / `delete` / `list`)
  * to persist its tokens.  The name is inherited from the design docs
  * (where "vault" refers loosely to "the thing that holds your Solid
@@ -10,7 +10,7 @@
  *
  * Originally lived at `packages/core/src/storage/SolidVault.js`;
  * extracted to its own package 2026-05-11 (standardisation Phase 50.1)
- * as a peer to `@canopy/oidc-session-rn`.  No code changes other
+ * as a peer to `@onderling/oidc-session-rn`.  No code changes other
  * than inlining a minimal default in-memory token store (was
  * `core.VaultMemory`) to break the package cycle.
  *
@@ -32,7 +32,7 @@
  *
  * The Solid OIDC interaction is delegated to `@inrupt/solid-client-authn-node`'s
  * `Session` (Node-only).  Browser/RN redirect-based flows are handled by
- * `@canopy/oidc-session-rn` (uses `expo-auth-session` for the dance).
+ * `@onderling/oidc-session-rn` (uses `expo-auth-session` for the dance).
  *
  * Token storage: under namespace `solid-oidc:<webid>` in the supplied vault.
  *   solid-oidc:<webid>:access_token
@@ -62,7 +62,7 @@ const REFRESH_LEEWAY_MS = 60_000;
 /**
  * Minimal in-memory Vault-shaped store used as the default when no vault is
  * supplied.  Exposes the same `get` / `set` / `delete` / `list` surface
- * `@canopy/core`'s `VaultMemory` provides for our purposes here.  Callers
+ * `@onderling/core`'s `VaultMemory` provides for our purposes here.  Callers
  * who want richer vault behaviour (persistence, encryption) supply their own.
  */
 class InMemoryTokenStore {

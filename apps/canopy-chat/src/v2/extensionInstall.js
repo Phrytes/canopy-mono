@@ -9,12 +9,12 @@
  * boot merge picks it up; on Remove we `removeMapping`.
  *
  * `buildConsentModel` is pure (testable, dep-free of the store). The install/
- * uninstall helpers wrap `@canopy/pod-routing` write/remove over whatever store
+ * uninstall helpers wrap `@onderling/pod-routing` write/remove over whatever store
  * is injected (localStorage V0 today; a real pseudo-pod once the web pod layer
  * — P3 3.3c — lands).
  */
 
-import { writeMapping, removeMapping } from '@canopy/pod-routing/mappings';
+import { writeMapping, removeMapping } from '@onderling/pod-routing/mappings';
 import { verifyMapping } from '../mappings.js';
 
 const WHAT_IF_DENY = 'Nothing is added or changed — you can open the link again later.';
@@ -24,7 +24,7 @@ const WHAT_IF_DENY = 'Nothing is added or changed — you can open the link agai
  * If the mapping references opIds not in the catalog it is refused (`ok:false`
  * + the missing refs); otherwise the card enumerates exactly what it can do.
  *
- * @param {import('@canopy/pod-routing').Mapping} mapping
+ * @param {import('@onderling/pod-routing').Mapping} mapping
  * @param {{ opsById: Map<string, object> }} catalog
  * @returns {{ ok: boolean, missing: string[], card: object|null }}
  */

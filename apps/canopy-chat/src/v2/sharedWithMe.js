@@ -14,7 +14,7 @@
  * non-recipient never gets plaintext.
  */
 
-import { unsealItem } from '@canopy/item-store';
+import { unsealItem } from '@onderling/item-store';
 
 /**
  * Project the received copies to the rows a "shared with me" surface renders (newest-first).

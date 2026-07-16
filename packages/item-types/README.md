@@ -1,4 +1,4 @@
-# @canopy/item-types
+# @onderling/item-types
 
 Cross-app **item-type taxonomy** + JSON-Schema validation for the
 Decentralised-Web-Agent (DWA) stack. Apps stay aligned by sharing one
@@ -6,7 +6,7 @@ vocabulary of canonical types (`task`, `note`, `chat-message`, …) and one
 validator.
 
 This package is a **substrate** — it has no runtime dependency on
-`@canopy/core`. Apps and other substrates depend on it directly.
+`@onderling/core`. Apps and other substrates depend on it directly.
 
 > Standardisation Phase **52.1**. See
 > `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`.
@@ -35,7 +35,7 @@ agree on:
 ## Quick start
 
 ```js
-import { validate, list, metadata } from '@canopy/item-types';
+import { validate, list, metadata } from '@onderling/item-types';
 
 const result = validate({
   type:      'task',
@@ -58,7 +58,7 @@ required.
 ### Fresh registry (advanced)
 
 ```js
-import { createRegistry, registerCanonicalTypes } from '@canopy/item-types';
+import { createRegistry, registerCanonicalTypes } from '@onderling/item-types';
 
 const reg = createRegistry();
 registerCanonicalTypes(reg);

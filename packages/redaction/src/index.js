@@ -1,4 +1,4 @@
-// @canopy/redaction — generic, config-driven redaction atom.
+// @onderling/redaction — generic, config-driven redaction atom.
 //
 // `redact(text, config) -> { text, hits }` applies ordered regex rules (with an
 // optional named-validator) plus an optional gazetteer name-pass. The engine is

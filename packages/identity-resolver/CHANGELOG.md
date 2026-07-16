@@ -1,4 +1,4 @@
-# Changelog — @canopy/identity-resolver
+# Changelog — @onderling/identity-resolver
 
 ## [0.1.0] — 2026-05-02
 

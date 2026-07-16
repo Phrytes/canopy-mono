@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — vault helpers.
+ * @onderling/secure-agent — vault helpers.
  *
  * Lifted from canopy-chat's `apps/canopy-chat/src/web/realAgent.js`
  * (v0.7.P3a).  Promoted to substrate so the factory + any other
@@ -13,8 +13,8 @@ import {
   VaultMemory,
   VaultLocalStorage,
   VaultIndexedDB,
-} from '@canopy/vault';
-import { AgentIdentity } from '@canopy/core';
+} from '@onderling/vault';
+import { AgentIdentity } from '@onderling/core';
 
 /**
  * Pick the right vault for the runtime + options:
@@ -37,7 +37,7 @@ export function makeBrowserVault(arg = 'sa-id:') {
   const passphrase = opts.passphrase ?? null;
 
   // S3 — passphrase-wrapped vault.  IndexedDB is the only browser
-  // backend the @canopy/vault family supports encryption for.
+  // backend the @onderling/vault family supports encryption for.
   if (passphrase) {
     if (typeof globalThis.indexedDB !== 'undefined') {
       try {

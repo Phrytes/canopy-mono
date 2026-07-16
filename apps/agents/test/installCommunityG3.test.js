@@ -5,7 +5,7 @@
  * admin-gated community catalog — reached because the user SUBSCRIBED to that
  * community — installs through P3's capability-security UNCHANGED (only
  * granted+declared caps land). The community write is gated by the REAL circle
- * policy (`@canopy/circles` `inAudience('role:admin')`); the subscriber's roots
+ * policy (`@onderling/circles` `inAudience('role:admin')`); the subscriber's roots
  * are the community's admins.
  *
  * Real primitives end-to-end: Ed25519 AgentIdentity · the real

@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — WebAuthn (passkey) helpers.
+ * @onderling/secure-agent — WebAuthn (passkey) helpers.
  *
  * Wires A+.5 from the v0.7 security roadmap.  Two operations:
  *
@@ -33,7 +33,7 @@
  * Layer: substrate.  Browser-only (uses `navigator.credentials`).
  */
 
-import { b64encode, b64decode } from '@canopy/core';
+import { b64encode, b64decode } from '@onderling/core';
 
 /**
  * Error codes (stable strings — apps can switch on these).

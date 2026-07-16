@@ -17,8 +17,8 @@ import { NativeModules } from 'react-native';
 import {
   bind,
   negotiateVersion,
-} from '@canopy/react-native/hub-binding';
-import { createHubDiscovery } from '@canopy/react-native/hub-discovery';
+} from '@onderling/react-native/hub-binding';
+import { createHubDiscovery } from '@onderling/react-native/hub-discovery';
 
 const hd = createHubDiscovery({ nativeModule: NativeModules.HubDiscovery });
 const { hubInstalled } = await hd.check();

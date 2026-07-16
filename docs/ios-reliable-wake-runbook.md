@@ -49,7 +49,7 @@ used by Signal and Element/Matrix, is an **alert push carrying
       via the `SecureStore` port into the shared container);
    2. **fetch** the sealed blob from the owner's companion inbox — call
       `inbox.drain` over the relay (capability-gated); the node holds it durably;
-   3. **decrypt on device** with the recipient key (`@canopy/pod-client/sealing`
+   3. **decrypt on device** with the recipient key (`@onderling/pod-client/sealing`
       `open`) — decryption never happens on the node;
    4. **rewrite** `bestAttemptContent.title/body` with the real message (or
       suppress it) before `contentHandler(...)` fires.

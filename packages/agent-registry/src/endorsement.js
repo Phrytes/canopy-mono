@@ -5,20 +5,20 @@
  * self-verifying Ed25519 statement — `recommend` or `flag` — whose authority
  * comes from WHO signed it, not WHERE it is stored (contrast the agent
  * registry, whose authority = the `/private/` storage location). It is
- * structurally a twin of `@canopy/core`'s `CapabilityToken`: an
+ * structurally a twin of `@onderling/core`'s `CapabilityToken`: an
  * issuer·subject·sig envelope verified with `AgentIdentity.verify`. The one
  * semantic difference — and the reason it is a NEW record, not a second
  * CapabilityToken — is that it carries a CLAIM (`claim`/`cardHash`) about an
  * Agent Card, not a GRANT of authority. We reuse the crypto
  * (`AgentIdentity.sign/verify`, `b64`), not the token type.
  *
- * ── Why it lives in @canopy/agent-registry (invariant #5) ──────────────────
+ * ── Why it lives in @onderling/agent-registry (invariant #5) ──────────────────
  * The endorsement is bound to an Agent Card (`SPEC-agents-registry` — the
  * `{name,url,skills[],x-canopy.pubKey}` unit this package already projects via
  * `projectAgentCard`). Agent Cards + the catalog read-view are a SUBSTRATE
- * concern, not kernel: putting card-governance into `@canopy/core` would make
+ * concern, not kernel: putting card-governance into `@onderling/core` would make
  * the kernel know about catalog curation. So the primitive lives here in the
- * substrate, reusing the kernel crypto (`@canopy/core`) — the substrate → core
+ * substrate, reusing the kernel crypto (`@onderling/core`) — the substrate → core
  * dependency direction invariant #5 mandates. App wiring stays in the app.
  *
  * Record shape (JSON-serialisable):
@@ -41,7 +41,7 @@
  * longer hashes to `cardHash` → `verifyEndorsement` drops the endorsement.
  */
 
-import { AgentIdentity, b64encode } from '@canopy/core';
+import { AgentIdentity, b64encode } from '@onderling/core';
 import { sha256 }                   from '@noble/hashes/sha2.js';
 
 export const ENDORSEMENT_VERSION = 1;
@@ -104,7 +104,7 @@ function genId() {
 /**
  * issueEndorsement — sign a `recommend`/`flag` claim over an Agent Card.
  *
- * @param {import('@canopy/core').AgentIdentity} endorserIdentity  — signs the claim
+ * @param {import('@onderling/core').AgentIdentity} endorserIdentity  — signs the claim
  * @param {object} opts
  * @param {object}  opts.card                 — the Agent Card being endorsed (REQUIRED — cardHash binds to it)
  * @param {string}  [opts.subject]            — endorsed agent pubKey (defaults to the card's pubKey)

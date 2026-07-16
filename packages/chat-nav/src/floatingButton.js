@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-nav — floating back-to-chat button.
+ * @onderling/chat-nav — floating back-to-chat button.
  *
  * Renders a fixed-position button bottom-right of the host element
  * (defaults to `document.body`).  Clicking the button navigates to

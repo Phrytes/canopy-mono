@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   generateGroupKey, makeGroupSealer, makeGroupOpener,
-} from '@canopy/pod-client/sealing';
+} from '@onderling/pod-client/sealing';
 // blob-gateway internals imported relatively, same as mobile tests do for
 // cross-package fixtures (Metro/package-exports gotcha; see hostOps.js note).
 import { bytesToB64u } from '../../../packages/blob-gateway/src/bytes.js';

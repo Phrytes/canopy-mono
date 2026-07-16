@@ -3,7 +3,7 @@
  *
  * Implementation engine for Track A1 of the pod substrate.  Wraps
  * `@inrupt/solid-client` for read/write/list/delete and a raw HEAD via
- * `fetch` for `exists`.  The higher-level `@canopy/pod-client` API
+ * `fetch` for `exists`.  The higher-level `@onderling/pod-client` API
  * (Track A5) is layered on top of this class and maps the raw `code`-bearing
  * errors thrown here onto its own `PodClientError` taxonomy.
  *
@@ -27,7 +27,7 @@
  *   - `INVALID_ARGUMENT`    — bad input (no podUrl, etc.)
  *   - `HTTP_ERROR`          — anything else
  *
- * `@canopy/pod-client` is responsible for translating these to typed
+ * `@onderling/pod-client` is responsible for translating these to typed
  * `PodClientError` subclasses.
  */
 import {
@@ -41,8 +41,8 @@ import {
   createContainerAt,
 } from '@inrupt/solid-client';
 
-import { DataSource } from '@canopy/core';
-import { log } from '@canopy/logger';
+import { DataSource } from '@onderling/core';
+import { log } from '@onderling/logger';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
@@ -524,7 +524,7 @@ export class SolidPodSource extends DataSource {
     // …) is a LOGICAL key, not a pod path.  Concatenating it onto the
     // pod root silently produced `…/mem://…` → 404 (the Stoop
     // pod-write bug, 2026-05-16).  Callers MUST map logical keys to
-    // pod paths (via `@canopy/pod-routing`) before they reach a pod
+    // pod paths (via `@onderling/pod-routing`) before they reach a pod
     // client.
     const scheme = /^([a-z][a-z0-9+.-]*):\/\//i.exec(input);
     if (scheme) {

@@ -3,7 +3,7 @@
  *
  * `resolveSharedRef` gains an injected, DENY-BY-DEFAULT enforcement policy. These tests exercise the seam
  * against the memory substrate with FAKE `sharing` + `open` surfaces (mimicking `client.sharing.list` and
- * sealing/`open`) — no live pod, no dependency on @canopy/pod-client:
+ * sealing/`open`) — no live pod, no dependency on @onderling/pod-client:
  *   • grant present  → resolves to the source item
  *   • grant absent   → null (denied)
  *   • sealed content → unsealed on the way out; a non-recipient reader → null (never leaks ciphertext)
@@ -23,7 +23,7 @@ function mkStores() {
   return createCircleStores({ dataSource: memoryDataSource(), registry });
 }
 
-/* ── Fakes standing in for the pod layer (no @canopy/pod-client import) ──────────────────────────── */
+/* ── Fakes standing in for the pod layer (no @onderling/pod-client import) ──────────────────────────── */
 
 // Fake `client.sharing`: an in-memory ACP table keyed by resourceUri → [{subject, agent, modes}].
 // Mirrors the real `sharing.list({ resourceUri, agentsToQuery })` return shape.

@@ -21,7 +21,7 @@
  * SYNCHRONOUS `{ getStore }` facade over the pre-resolved per-circle stores — exactly the shape
  * shareIntoAudience / resolveSharedRef expect (they call getStore(circleId) synchronously).
  */
-import { shareIntoAudience, resolveSharedRef, listShared, unsealItem, isCanonicalPosture } from '@canopy/item-store';
+import { shareIntoAudience, resolveSharedRef, listShared, unsealItem, isCanonicalPosture } from '@onderling/item-store';
 import { normalizeCirclePolicy } from './circlePolicy.js';
 
 /**
@@ -104,7 +104,7 @@ export function makeCrossCircleStores(storeByCircle) {
  *        Threaded to the write-side re-seal so a cross-circle recipient (NOT in the source's group key) can
  *        decrypt. Absent ⇒ no re-seal (group-key posture / plaintext source).
  * @param {(item:object, keys:string[])=>(object|Promise<object>)} [args.sealCopy]  share-policy slice 3b —
- *        an injected recipient re-sealer (built from `@canopy/pod-client` `recipientStrategy` + item-store's
+ *        an injected recipient re-sealer (built from `@onderling/pod-client` `recipientStrategy` + item-store's
  *        `sealItem`; pod-layer, so this module stays pod-client-free). Used by the copy-reseal postures
  *        (`copy`/`trusted`/`registered` — see usesCopyReseal) to produce a SEPARATE object sealed to the
  *        recipient(s), leaving the source untouched.
@@ -255,7 +255,7 @@ export async function shareItemAcrossCircles({
  *        key from their published network key (pod-client `sealingPublicKeyFromNetworkKey`) — silent path.
  * @param {(payload:object)=>any} [args.notify]  best-effort ADMINS emitter — called on a successful
  *        `notify`-mode share when `notifyOutOfCircle === 'admins'` (the default). The composition root wires it
- *        to `@canopy/notify-envelope` (the admin peers). Never blocks/fails the share.
+ *        to `@onderling/notify-envelope` (the admin peers). Never blocks/fails the share.
  * @param {(post:object)=>any} [args.post]  best-effort NOTICEBOARD-post emitter — called instead of `notify`
  *        when `notifyOutOfCircle === 'post'`. Receives a category-tagged post (`category:'permission-log'` +
  *        `logKind`) the composition root writes to the circle's board. Never blocks/fails the share.

@@ -21,7 +21,7 @@
  * deadline.
  *
  * The planner is deliberately simple. A second app needing the same
- * shape would lift this into `@canopy/scheduler`; until then,
+ * shape would lift this into `@onderling/scheduler`; until then,
  * app-local.
  */
 

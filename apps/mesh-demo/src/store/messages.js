@@ -4,7 +4,7 @@
  * Simple EventEmitter store; no persistence (messages are ephemeral per session).
  * Screens subscribe via store.on('message', handler) and unsubscribe on unmount.
  */
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 export class MessageStore extends Emitter {
   #log = new Map(); // peerPubKey → Message[]

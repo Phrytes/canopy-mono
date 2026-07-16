@@ -18,7 +18,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createRealHouseholdAgent } from '../src/core/agent/realAgent.js';
 import {
   circleVersioningFor,

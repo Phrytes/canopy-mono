@@ -1,4 +1,4 @@
-# `@canopy/react-native`
+# `@onderling/react-native`
 
 > **Layer:** Platform layer (the RN side of the SDK).
 > **Convention:** Platform-glue substrates aggregate here; standalone

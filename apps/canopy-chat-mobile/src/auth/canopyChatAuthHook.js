@@ -1,6 +1,6 @@
 /**
  * canopyChatAuthHook — canopy-chat-mobile flavour of
- * `@canopy/oidc-session-rn/hook` (Bundle F P6, #262, 2026-05-26).
+ * `@onderling/oidc-session-rn/hook` (Bundle F P6, #262, 2026-05-26).
  *
  * Pre-binds `scheme: 'canopychat'` + `clientName: 'canopy-chat
  * (mobile)'` so the redirect URI + DCR cache key are namespaced
@@ -11,7 +11,7 @@
  * deep link `canopychat://auth/callback` is what `expo-auth-session`
  * uses for the OAuth round-trip.
  */
-import { useOidcSignIn } from '@canopy/oidc-session-rn/hook';
+import { useOidcSignIn } from '@onderling/oidc-session-rn/hook';
 
 export function useCanopyChatAuth(args = {}) {
   return useOidcSignIn({

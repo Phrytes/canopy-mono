@@ -1,5 +1,5 @@
 /**
- * @canopy/attribute-charter — the requested-attributes charter.
+ * @onderling/attribute-charter — the requested-attributes charter.
  *
  * A coarse, capped, k-anon-guarded privacy mini-spec: a project lead may request
  * a FEW coarse background attributes (place, age band, role, …) that a

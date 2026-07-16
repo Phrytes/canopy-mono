@@ -9,15 +9,15 @@
 // beyond a sanity-check log when run in dev mode.
 //
 // Consumers should import this as a side-effect from their app's
-// entry point BEFORE importing any other @canopy substrate:
+// entry point BEFORE importing any other @onderling substrate:
 //
-//   import '@canopy/react-native/platform/polyfills';
+//   import '@onderling/react-native/platform/polyfills';
 //
 // On Node this is a no-op.  On RN it wires up the polyfills.
 
 if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
   console.warn(
-    '[@canopy/react-native/platform/polyfills] crypto.getRandomValues unavailable on this runtime. ' +
+    '[@onderling/react-native/platform/polyfills] crypto.getRandomValues unavailable on this runtime. ' +
     'Substrates that sign or generate keys will fail.',
   );
 }

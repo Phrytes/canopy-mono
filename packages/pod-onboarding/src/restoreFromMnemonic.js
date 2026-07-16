@@ -6,7 +6,7 @@
  *   1. Reconstitute the AgentIdentity from the 24-word BIP-39
  *      phrase (deterministic; same pubkey as the original).
  *   2. Discover the user's pod pointers via WebID lookup. Callers
- *      pass a `webidCache` (a `@canopy/webid-discovery.WebIdCache`
+ *      pass a `webidCache` (a `@onderling/webid-discovery.WebIdCache`
  *      instance) — the cache handles fetching + parsing the
  *      profile. The substrate just consults its discovered pointers.
  *   3. Fetch storage-mapping + agent-registry from the pod (or the
@@ -18,8 +18,8 @@
  * Standardisation Phase 52.5 — see plan §52.5.4.
  */
 
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory }   from '@canopy/vault';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory }   from '@onderling/vault';
 
 /**
  * @param {object} opts

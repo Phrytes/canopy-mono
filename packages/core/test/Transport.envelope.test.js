@@ -2,7 +2,7 @@
  * Transport — publishEnvelope + subscribeEnvelopes (Phase 50.7).
  *
  * Standardisation Phase 50.7 — verifies the notification-envelope
- * surface that core ships for the `@canopy/notify-envelope`
+ * surface that core ships for the `@onderling/notify-envelope`
  * substrate to call.
  *
  * Covers:

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleHop } from '../../web/v2/circleHop.js';
-import { buildHopChain } from '@canopy/kring-host/circleHop';
+import { buildHopChain } from '@onderling/kring-host/circleHop';
 
 const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }

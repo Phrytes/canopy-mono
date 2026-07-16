@@ -22,9 +22,9 @@
  * Reuses `startCompanionNode` + `authorizePod` / `deliverPodDelegation`.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { Agent, AgentIdentity, PodCapabilityToken } from '@canopy/core';
-import { VaultMemory }  from '@canopy/vault';
-import { RelayTransport } from '@canopy/transports';
+import { Agent, AgentIdentity, PodCapabilityToken } from '@onderling/core';
+import { VaultMemory }  from '@onderling/vault';
+import { RelayTransport } from '@onderling/transports';
 import { startCompanionNode } from '../../src/index.js';
 import { authorizePod, deliverPodDelegation } from '../../src/authorizePod.js';
 

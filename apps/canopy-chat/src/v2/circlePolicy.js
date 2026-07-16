@@ -22,7 +22,7 @@ export const CIRCLE_POLICY_ENUMS = {
   // storagePosture — at-rest posture for the circle's shared content (the menukaart, per-circle).
   // 'p0' trusted host / plaintext (default — sealing OFF unless chosen); 'p1' TEE enclave (host-blind);
   // 'p2' client-side E2E group-key seal (household default); 'p3' sealed-at-rest, opened for processing.
-  // Resolved by `@canopy/pod-client` `resolveCircleStorage` → a SealedPodClient strategy (or none for p0).
+  // Resolved by `@onderling/pod-client` `resolveCircleStorage` → a SealedPodClient strategy (or none for p0).
   storagePosture:       ['p0', 'p1', 'p2', 'p3'],
   // sharePosture — how an item is EXPOSED to an outsider when shared out of the circle
   // (admin-set, per-circle; see PLAN-circle-share-policy §3). 'closed' = external sharing off;
@@ -31,7 +31,7 @@ export const CIRCLE_POLICY_ENUMS = {
   // 'canonical' (objective L) = REVOCABLE canonical share: NO copy — the item stays canonical in its origin
   // circle and the recipient gets a revocable KEY GRANT (group-key wrap + ACP grant) to open it IN PLACE;
   // un-sharing rotates the key + ACP-revokes. Mirrors item-store's SHARE_POSTURES; routed via
-  // `@canopy/pod-client` createCanonicalShare (share=grant, revoke=rotate). See circleShare.js.
+  // `@onderling/pod-client` createCanonicalShare (share=grant, revoke=rotate). See circleShare.js.
   sharePosture:         ['closed', 'copy', 'trusted', 'registered', 'canonical'],
   // shareOutOfCircle — the axis that GOVERNS sharing an item OUT to an OUT-OF-CIRCLE recipient (a person
   // known only by their published network key, NOT a roster member); orthogonal to `sharePosture` (which
@@ -47,7 +47,7 @@ export const CIRCLE_POLICY_ENUMS = {
   // notifyOutOfCircle — the TARGET of the `notify` mode's notification (only consulted when
   // shareOutOfCircle === 'notify'; ignored for 'prohibit'/'silent'). Admin-set, per-circle.
   // See circleShare.js `shareItemToPublishedKey` (the notify branch).
-  //   'admins' — (default, the quieter option) ping the circle's ADMINS via @canopy/notify-envelope
+  //   'admins' — (default, the quieter option) ping the circle's ADMINS via @onderling/notify-envelope
   //              with { event:'item-shared-out-of-circle', itemId, fromCircleId, recipient, by }.
   //   'post'   — write a NOTICEBOARD post to the circle instead, tagged `category:'permission-log'`
   //              (+ `logKind`) so a FUTURE dedicated "logging" section can filter these permission

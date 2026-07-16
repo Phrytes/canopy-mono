@@ -23,7 +23,7 @@ import { bootAgentBundle } from '../src/core/agentBundle.js';
 const BOOT_TIMEOUT = 15000;
 
 async function bootMobileBundle() {
-  const { VaultMemory } = await import('@canopy/vault');
+  const { VaultMemory } = await import('@onderling/vault');
   return bootAgentBundle({
     chatVault: new VaultMemory(),
     hostVault: new VaultMemory(),

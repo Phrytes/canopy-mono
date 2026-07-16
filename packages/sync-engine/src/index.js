@@ -1,5 +1,5 @@
 /**
- * @canopy/sync-engine — pod ↔ external-source sync engine.
+ * @onderling/sync-engine — pod ↔ external-source sync engine.
  *
  * Post-Phase 5.1 (2026-05-04): the V0 `SyncEngine` + `IngestQueueSource` +
  * `LocalFolderSource` + `InMemoryBackend` + `storageConvention` were
@@ -9,7 +9,7 @@
  * the lifted helpers (`PathMap`, `scanLocal`, `scanPod`, `diff`,
  * adapters).  The Folio-lifted `versions.js` — the LAST legacy version
  * store — was RETIRED (2026-07-10, PLAN-folio-as-file-agent Slice 1a)
- * onto `@canopy/versioning`: `SyncEngine` now owns one `createVersionStore`
+ * onto `@onderling/versioning`: `SyncEngine` now owns one `createVersionStore`
  * per instance (Node fs backend by default) and exposes it as
  * `engine.versionStore`.  No standalone versions module / `./versions`
  * subpath remains.
@@ -34,5 +34,5 @@ export { objectDiff } from './objectDiff.js';
 
 // γ.2's keyed-object version capture (`objectVersions.js`) was RETIRED
 // (2026-07-09, PLAN-pod-versioning-history-recovery "Rewire kring"): the
-// kring stores now version through the `@canopy/versioning` substrate via
-// `@canopy/kring-host/objectVersionsStorage`.
+// kring stores now version through the `@onderling/versioning` substrate via
+// `@onderling/kring-host/objectVersionsStorage`.

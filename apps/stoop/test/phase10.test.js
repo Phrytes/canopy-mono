@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { createNeighborhoodAgent } from '../src/index.js';
 import { ITEM_TYPES, PRIKBORD_KINDS } from '../src/lib/itemTypes.js';

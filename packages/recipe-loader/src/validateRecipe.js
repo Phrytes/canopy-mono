@@ -2,13 +2,13 @@
  * validateRecipe — validate + normalise an AUTHORED REMOTE recipe (B #64).
  *
  * A recipe is a portable circle-configuration bundle with four sections. Each
- * maps onto a shape the `@canopy/app-manifest` / canopy-chat layers already
+ * maps onto a shape the `@onderling/app-manifest` / canopy-chat layers already
  * validate — we REUSE those primitives rather than re-deciding what a valid
  * atom/noun/freedom is:
  *
  *   capabilities  which (verb × noun) capabilities the circle turns on, as a
  *                 `nouns`-style map `{ <noun>: { atoms: [<atom>, …] } }`.
- *                 Nouns are checked against the `@canopy/item-types` REGISTRY
+ *                 Nouns are checked against the `@onderling/item-types` REGISTRY
  *                 (`isRegistryType`, the same source-of-truth `validateManifest`
  *                 uses for `manifest.itemTypes`); atoms against the SDK ATOM
  *                 catalogue (`isAtom`; alias → canonicalised with a warning,
@@ -16,7 +16,7 @@
  *
  *   freedoms      the admin FREEDOM TEMPLATE keyed `"<app> <atom> <noun>"` →
  *                 `{ enabled?, freedom?, consequence?, privacyFloor? }` — the
- *                 exact shape `@canopy/app-manifest` `freedom.js` resolves. We
+ *                 exact shape `@onderling/app-manifest` `freedom.js` resolves. We
  *                 validate the key's atom+noun (as above) and the entry against
  *                 the exported `FREEDOM_LEVELS` / `OPT_OUT_CONSEQUENCES` enums.
  *
@@ -40,7 +40,7 @@
  * issues. `ok` reflects `issues` only — warnings never flip it.
  */
 
-import { isRegistryType, isAtom, canonicalAtom, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@canopy/app-manifest';
+import { isRegistryType, isAtom, canonicalAtom, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@onderling/app-manifest';
 import { ISSUE_CODES as I, WARNING_CODES as W } from './errors.js';
 
 const KNOWN_TOP_LEVEL = new Set(['name', 'version', 'capabilities', 'settings', 'surfaces', 'freedoms']);
@@ -87,7 +87,7 @@ export function validateRecipe(recipe) {
       for (const [noun, decl] of Object.entries(recipe.capabilities)) {
         const np = `/capabilities/${noun}`;
         if (!isRegistryType(noun)) {
-          push(issues, np, I.BAD_NOUN, `noun "${noun}" is not declared in the @canopy/item-types registry`);
+          push(issues, np, I.BAD_NOUN, `noun "${noun}" is not declared in the @onderling/item-types registry`);
         }
         if (!isPlainObject(decl)) {
           push(issues, np, I.BAD_CAP_ENTRY, 'capability entry must be an object with an `atoms` array');
@@ -101,7 +101,7 @@ export function validateRecipe(recipe) {
         decl.atoms.forEach((a, i) => {
           const ap = `${np}/atoms/${i}`;
           if (typeof a !== 'string' || a === '' || !isAtom(a)) {
-            push(issues, ap, I.BAD_ATOM, `atom ${JSON.stringify(a)} is not an SDK atom (see @canopy/app-manifest atoms.js)`);
+            push(issues, ap, I.BAD_ATOM, `atom ${JSON.stringify(a)} is not an SDK atom (see @onderling/app-manifest atoms.js)`);
             return;
           }
           const canon = canonicalAtom(a);

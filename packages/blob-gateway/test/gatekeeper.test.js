@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateKeypair, makeSealer } from '@canopy/pod-client/sealing';
+import { generateKeypair, makeSealer } from '@onderling/pod-client/sealing';
 import { uploadBlob, createBlobGatekeeper } from '../src/index.js';
 import { makeMemoryBucket, makeVerifier, makeAcl } from './helpers.js';
 

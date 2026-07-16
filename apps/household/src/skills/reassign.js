@@ -8,7 +8,7 @@
  * SP-2 V0: LLM-only (no slash match in the manifest — two-arg slash
  * forms aren't in the v0 grammar).  `args.assignee` must be a webid;
  * no fuzzy lookup against contact display names yet (forward-compat
- * opportunity once `@canopy/identity-resolver` lands).
+ * opportunity once `@onderling/identity-resolver` lands).
  */
 
 const ID_PREFIX_LEN  = 8;

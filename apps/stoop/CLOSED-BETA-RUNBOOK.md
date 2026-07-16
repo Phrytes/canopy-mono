@@ -146,7 +146,7 @@ Useful counters for facilitator review:
 - No anonymity — this is V1; cryptographic anonymity (Q-H5) is
   V2.
 - No mobile push notifications without a wired channel
-  (`@canopy/notifier`'s scheduling is in-process by default).
+  (`@onderling/notifier`'s scheduling is in-process by default).
 
 ## Where to file feedback
 

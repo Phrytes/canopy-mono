@@ -4,7 +4,7 @@
  * Turns an authenticated pod SESSION (`{ webid, isLoggedIn, fetch }` from the existing
  * browser Solid-OIDC wrapper `src/web/podAuth.js`) into the `makePodClient` + `circleRootUri`
  * a sealed circle's producer needs to store to a REAL Solid pod instead of the in-memory
- * pseudo-pod. Reuses `@canopy/pod-client`'s `SolidOidcAuth` (the folio `_podFactory` pattern):
+ * pseudo-pod. Reuses `@onderling/pod-client`'s `SolidOidcAuth` (the folio `_podFactory` pattern):
  * the session's DPoP `fetch` is wrapped in an auth-vault.
  *
  * Deps are injectable for tests (no hard pod-client import needed to unit-test the routing

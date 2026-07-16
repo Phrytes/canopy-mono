@@ -2,7 +2,7 @@
  * Cluster K · pod-tier wiring — the WRITE-side grant(+seal) hook and the one-call composition seam.
  *
  * Exercised against the memory substrate with FAKE `sharing` (mimicking `client.sharing.grant`/`list`) and a
- * FAKE seal/open — no live pod, no `@canopy/pod-client` import. Covers:
+ * FAKE seal/open — no live pod, no `@onderling/pod-client` import. Covers:
  *   • a pod-backed share creates a read-grant for the recipient on the RIGHT resource URI (resourceUriFor)
  *   • the write-side re-seal writes sealed content back to the source store (sealed on write)
  *   • deny-safe: a failing grant fails the share (never a grant-less share reported ok)
@@ -23,7 +23,7 @@ function mkStores() {
   return createCircleStores({ dataSource: memoryDataSource(), registry });
 }
 
-/* ── Fakes standing in for the pod layer (no @canopy/pod-client import) ──────────────────────────── */
+/* ── Fakes standing in for the pod layer (no @onderling/pod-client import) ──────────────────────────── */
 
 // Fake `client.sharing`: an in-memory ACP table keyed by resourceUri → [{subject, agent, modes}]. `grant`
 // records; `list` filters by the queried agents / public. Mirrors the real surface shapes.

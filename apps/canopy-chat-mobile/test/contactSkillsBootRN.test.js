@@ -4,7 +4,7 @@
  * `bootAgentBundle` constructs the SHARED `createContactSkillRegistry` from
  * `agent.peers` in its real-boot path (and exposes it as `bundle.contactSkills`).
  * Real boot needs vaults + a live agent, so here we exercise the SAME shared
- * registry + a real `@canopy/core` PeerGraph through the same import paths the
+ * registry + a real `@onderling/core` PeerGraph through the same import paths the
  * bundle uses — proving the web≡mobile core resolves + runs under mobile's
  * module graph and that discover→synth→route→remove behaves identically.
  */
@@ -15,8 +15,8 @@ import { createContactThreadChannel } from '../../canopy-chat/src/v2/contactThre
 import { makePeerRouter } from '../../canopy-chat/src/core/handlers/peerRouter.js';
 import { listContacts, mergeContacts, stoopContactToRow } from '../../canopy-chat/src/v2/contactsSource.js';
 import { addBotToGraph } from '../../canopy-chat/src/v2/addBot.js';
-import { sendA2ATask } from '@canopy/core';
-import { PeerGraph } from '@canopy/core';
+import { sendA2ATask } from '@onderling/core';
+import { PeerGraph } from '@onderling/core';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 

@@ -37,7 +37,7 @@ mobile both call. The bugs fixed this session (dispatch arity, `listOpen`→stoo
 fan-out arg-shift) all lived in places where **mobile reimplemented** web's logic instead of sharing it.
 
 ## State (what the audit found)
-- **Most substrates ARE shared** — ~78 modules re-exported via the `@canopy-app/canopy-chat` barrel and
+- **Most substrates ARE shared** — ~78 modules re-exported via the `@onderling-app/canopy-chat` barrel and
   imported by both shells (router/dispatch/parser/renderer/thread, manifest projectors, gate, interpret,
   clarifyingDispatch/clarifyTargets, catch-up, kring receivers, deliveryState, feedbackSurface, the
   circle* model/content/stream/preview helpers, …). The divergence is **narrower than it looks**.

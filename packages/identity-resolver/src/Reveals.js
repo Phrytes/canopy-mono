@@ -25,7 +25,7 @@
  * design").
  */
 
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 export class Reveals extends Emitter {
   /** @type {Map<string, {showDisplayName: boolean}>} */

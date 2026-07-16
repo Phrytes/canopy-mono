@@ -1,10 +1,10 @@
 /**
  * syncEngineAdapter — present a cache-mode PseudoPod as the `podClient`
- * surface `@canopy/sync-engine`'s `SyncEngine` already consumes.
+ * surface `@onderling/sync-engine`'s `SyncEngine` already consumes.
  *
  * P3 (sync-engine → pseudo-pod V1 absorption). SyncEngine is left
  * completely ignorant of pseudo-pod: instead of handing it a raw
- * `@canopy/pod-client` PodClient, callers hand it the object this
+ * `@onderling/pod-client` PodClient, callers hand it the object this
  * factory returns. SyncEngine's scan/diff/watch/versioning logic is
  * unchanged; its reads/writes now flow through pseudo-pod's
  * write-through queue + read cache (offline durability, drain-on-

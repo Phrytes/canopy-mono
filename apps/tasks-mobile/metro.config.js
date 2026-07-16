@@ -1,6 +1,6 @@
 // Tasks-mobile metro.config.js — mirrors apps/stoop-mobile's setup.
 //
-// The @canopy/react-native metro-preset handles the cross-cutting
+// The @onderling/react-native metro-preset handles the cross-cutting
 // bring-up plumbing (NODE_BUILTINS shimming, node: prefix, util/path/ws
 // shim routing, packages/core / pod-client / react-native subpath maps,
 // Inrupt-Node-auth + chokidar + express + systray2 shimming,
@@ -9,7 +9,7 @@
 // Tasks-mobile's app-specific bits come in via options below.
 
 const path = require('path');
-const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
 
 const projectRoot = __dirname;
 const repoRoot    = path.resolve(__dirname, '../..');
@@ -18,7 +18,7 @@ module.exports = withCanopyPreset({
   projectRoot,
   repoRoot,
 
-  // Tasks-mobile imports the @canopy-app/tasks-v0 barrel for the
+  // Tasks-mobile imports the @onderling-app/tasks-v0 barrel for the
   // V2.8 single-agent factories (buildMeshAgent, wireSkills,
   // bundleResolver, createCircleAgent) — same platform-shell pattern
   // as stoop-mobile + folio-mobile, documented in
@@ -109,21 +109,21 @@ module.exports = withCanopyPreset({
     'react-native-svg',
   ],
 
-  // Tasks-specific module aliases (the preset already maps the @canopy/*
+  // Tasks-specific module aliases (the preset already maps the @onderling/*
   // SDK packages). Same `extraNodeModules` Trap-2 caveat as stoop-mobile:
   // overlapping prefixes go via `extraSubpathResolvers` below.
   extraNodeModules: {
-    '@canopy-app/tasks-v0':      path.resolve(repoRoot, 'apps/tasks-v0'),
+    '@onderling-app/tasks-v0':      path.resolve(repoRoot, 'apps/tasks-v0'),
 
-    '@canopy/chat-p2p':          path.resolve(repoRoot, 'packages/chat-p2p'),
-    '@canopy/local-store':       path.resolve(repoRoot, 'packages/local-store'),
-    '@canopy/identity-resolver': path.resolve(repoRoot, 'packages/identity-resolver'),
-    '@canopy/item-store':        path.resolve(repoRoot, 'packages/item-store'),
-    '@canopy/notifier':          path.resolve(repoRoot, 'packages/notifier'),
-    '@canopy/online-cadence':    path.resolve(repoRoot, 'packages/online-cadence'),
-    '@canopy/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
-    '@canopy/sync-engine-rn':    path.resolve(repoRoot, 'packages/sync-engine-rn'),
-    '@canopy/oidc-session-rn':   path.resolve(repoRoot, 'packages/oidc-session-rn'),
+    '@onderling/chat-p2p':          path.resolve(repoRoot, 'packages/chat-p2p'),
+    '@onderling/local-store':       path.resolve(repoRoot, 'packages/local-store'),
+    '@onderling/identity-resolver': path.resolve(repoRoot, 'packages/identity-resolver'),
+    '@onderling/item-store':        path.resolve(repoRoot, 'packages/item-store'),
+    '@onderling/notifier':          path.resolve(repoRoot, 'packages/notifier'),
+    '@onderling/online-cadence':    path.resolve(repoRoot, 'packages/online-cadence'),
+    '@onderling/skill-match':       path.resolve(repoRoot, 'packages/skill-match'),
+    '@onderling/sync-engine-rn':    path.resolve(repoRoot, 'packages/sync-engine-rn'),
+    '@onderling/oidc-session-rn':   path.resolve(repoRoot, 'packages/oidc-session-rn'),
 
     '@scure/bip39/wordlists/english': path.resolve(
       projectRoot, 'node_modules/@scure/bip39/wordlists/english.js',
@@ -133,48 +133,48 @@ module.exports = withCanopyPreset({
     '@noble/hashes/crypto.js': path.resolve(repoRoot, 'packages/core/node_modules/@noble/hashes/crypto.js'),
   },
 
-  // Subpath resolvers for `@canopy-app/tasks-v0/<sub>` imports —
+  // Subpath resolvers for `@onderling-app/tasks-v0/<sub>` imports —
   // metro's enablePackageExports stays off (per the preset), so the
   // app's `package.json#exports` field is ignored. Same pattern as
-  // stoop-mobile's `@canopy-app/stoop/{lib,locales}/*` resolvers.
+  // stoop-mobile's `@onderling-app/stoop/{lib,locales}/*` resolvers.
   extraSubpathResolvers: [
     (moduleName, repoRoot) => {
-      if (moduleName.startsWith('@canopy-app/tasks-v0/locales/shared/')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/locales/shared/')) {
         // Shared locale bundle (Phase 41.18 follow-up — see
         // Project Files/conventions/architectural-layering.md §
         // "Shared UI-glue helpers between platform shells").
-        const sub = moduleName.slice('@canopy-app/tasks-v0/locales/shared/'.length);
+        const sub = moduleName.slice('@onderling-app/tasks-v0/locales/shared/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/locales/shared', sub + '.json'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/locales/')) {
-        const sub = moduleName.slice('@canopy-app/tasks-v0/locales/'.length);
+      if (moduleName.startsWith('@onderling-app/tasks-v0/locales/')) {
+        const sub = moduleName.slice('@onderling-app/tasks-v0/locales/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/locales', sub + '.json'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/MeshAgent')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/MeshAgent')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/MeshAgent.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/wireSkills')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/wireSkills')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/bundleResolver')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/bundleResolver')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/Circle')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/Circle')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/Circle.js'),
           type:     'sourceFile',
@@ -184,26 +184,26 @@ module.exports = withCanopyPreset({
       // shared device-independent paths (platform parity, NOT mobile
       // forks). The deeper `/lib/substrateStack` MUST precede `/lib`
       // so the longest prefix wins (same trap as the vitest aliases).
-      if (moduleName.startsWith('@canopy-app/tasks-v0/lib/substrateStack')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/lib/substrateStack')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/substrateMirror')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/substrateMirror')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/multiCircleOnboarding')) {
+      if (moduleName.startsWith('@onderling-app/tasks-v0/multiCircleOnboarding')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCircleOnboarding.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@canopy-app/tasks-v0/lib/')) {
-        const sub = moduleName.slice('@canopy-app/tasks-v0/lib/'.length);
+      if (moduleName.startsWith('@onderling-app/tasks-v0/lib/')) {
+        const sub = moduleName.slice('@onderling-app/tasks-v0/lib/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/lib', sub + '.js'),
           type:     'sourceFile',
@@ -214,8 +214,8 @@ module.exports = withCanopyPreset({
       // per `Project Files/conventions/architectural-layering.md` §
       // "Shared UI-glue helpers between platform shells". Both the
       // desktop's web/app.js AND the mobile screens import from here.
-      if (moduleName.startsWith('@canopy-app/tasks-v0/ui/')) {
-        const sub = moduleName.slice('@canopy-app/tasks-v0/ui/'.length);
+      if (moduleName.startsWith('@onderling-app/tasks-v0/ui/')) {
+        const sub = moduleName.slice('@onderling-app/tasks-v0/ui/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/ui', sub + '.js'),
           type:     'sourceFile',
@@ -223,44 +223,44 @@ module.exports = withCanopyPreset({
       }
 
       // ── Phase 41.0 + 41.0.b substrate subpaths ────────────────────
-      // The preset only auto-handles `@canopy/react-native/platform/*`
-      // and `@canopy/sync-engine/*`. Everything we lifted in Phase 41.0
+      // The preset only auto-handles `@onderling/react-native/platform/*`
+      // and `@onderling/sync-engine/*`. Everything we lifted in Phase 41.0
       // (picker, qr, mnemonic, push, localisation) + 41.0.b (identity, storage,
       // deepLinks, theme, components) needs explicit resolvers because
       // unstable_enablePackageExports stays off.
 
-      // @canopy/react-native/qr/view — JSX file, separate from the
+      // @onderling/react-native/qr/view — JSX file, separate from the
       // package's pure-JS index (so test envs that don't load
       // react-native-qrcode-svg still parse the index).
-      if (moduleName === '@canopy/react-native/qr/view') {
+      if (moduleName === '@onderling/react-native/qr/view') {
         return {
           filePath: path.resolve(repoRoot, 'packages/react-native/src/qr/QrCodeView.jsx'),
           type:     'sourceFile',
         };
       }
-      // @canopy/react-native/mnemonic/view — same JSX-split pattern.
-      if (moduleName === '@canopy/react-native/mnemonic/view') {
+      // @onderling/react-native/mnemonic/view — same JSX-split pattern.
+      if (moduleName === '@onderling/react-native/mnemonic/view') {
         return {
           filePath: path.resolve(repoRoot, 'packages/react-native/src/mnemonic/MnemonicView.jsx'),
           type:     'sourceFile',
         };
       }
-      // @canopy/react-native/identity/bootstrap — deep subpath for
+      // @onderling/react-native/identity/bootstrap — deep subpath for
       // the bootstrap helper (avoids loading KeychainVault.js eagerly).
-      if (moduleName === '@canopy/react-native/identity/bootstrap') {
+      if (moduleName === '@onderling/react-native/identity/bootstrap') {
         return {
           filePath: path.resolve(repoRoot, 'packages/react-native/src/identity/bootstrapIdentity.js'),
           type:     'sourceFile',
         };
       }
-      // @canopy/react-native/<sub> → packages/react-native/src/<sub>/index.js
+      // @onderling/react-native/<sub> → packages/react-native/src/<sub>/index.js
       // for every remaining substrate submodule.
       const RN_SUBS = new Set([
         'identity', 'storage', 'picker', 'qr', 'mnemonic',
         'push', 'localisation', 'deepLinks', 'theme', 'components',
       ]);
-      if (moduleName.startsWith('@canopy/react-native/')) {
-        const sub = moduleName.slice('@canopy/react-native/'.length);
+      if (moduleName.startsWith('@onderling/react-native/')) {
+        const sub = moduleName.slice('@onderling/react-native/'.length);
         if (RN_SUBS.has(sub)) {
           return {
             filePath: path.resolve(repoRoot, `packages/react-native/src/${sub}/index.js`),
@@ -269,23 +269,23 @@ module.exports = withCanopyPreset({
         }
       }
 
-      // @canopy/sync-engine-rn/react — the Phase 41.0 L1 lift target.
-      // Distinct from `@canopy/sync-engine/...` (preset handles that).
-      if (moduleName === '@canopy/sync-engine-rn/react') {
+      // @onderling/sync-engine-rn/react — the Phase 41.0 L1 lift target.
+      // Distinct from `@onderling/sync-engine/...` (preset handles that).
+      if (moduleName === '@onderling/sync-engine-rn/react') {
         return {
           filePath: path.resolve(repoRoot, 'packages/sync-engine-rn/src/react/index.js'),
           type:     'sourceFile',
         };
       }
 
-      // @canopy/identity-resolver/{display,skills} — Phase 41.0.b A1+A2 lifts.
-      if (moduleName === '@canopy/identity-resolver/display') {
+      // @onderling/identity-resolver/{display,skills} — Phase 41.0.b A1+A2 lifts.
+      if (moduleName === '@onderling/identity-resolver/display') {
         return {
           filePath: path.resolve(repoRoot, 'packages/identity-resolver/src/display.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName === '@canopy/identity-resolver/skills') {
+      if (moduleName === '@onderling/identity-resolver/skills') {
         return {
           filePath: path.resolve(repoRoot, 'packages/identity-resolver/src/skills.js'),
           type:     'sourceFile',

@@ -3,7 +3,7 @@
  * 2026-05-14, Tasks V2 ninth slice).
  *
  * OBJ-2 S2: now a THIN wrapper over the shared generic `wireItemMirror`
- * (`@canopy/notify-envelope`), which household also uses. Tasks-specific bits:
+ * (`@onderling/notify-envelope`), which household also uses. Tasks-specific bits:
  * the envelope `kind` ('task'), the per-circle URI namespace, the full task draft
  * (dependencies / requiredSkills / approval / parentTaskId / scheduling / …),
  * and an action inference that also reads the review-log (submit/approve/reject).
@@ -18,7 +18,7 @@
  * `'stale-peer'` events drive the auto-heal republish.
  *
  * @param {object} args
- * @param {import('@canopy/item-store').ItemStore} args.itemStore
+ * @param {import('@onderling/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope   — shared per-bundle instance.
  * @param {object} args.pseudoPod        — shared per-bundle instance.
  * @param {string} args.circleId           — circle identifier (URI namespace).
@@ -32,7 +32,7 @@
  *   publishTaskRemoved:(originalId:string, opts?:object)=>Promise<void>,
  * }>}
  */
-import { wireItemMirror } from '@canopy/notify-envelope';
+import { wireItemMirror } from '@onderling/notify-envelope';
 
 /** Reconstruct an `addItems` draft from a synced task payload (full task shape). */
 function taskDraft(payload, fromPubKey) {

@@ -317,7 +317,7 @@ export const canopyChatManifest = {
      *
      * Opens a mock external page that simulates an OIDC sign-in
      * round-trip; the callback wakes this thread with a fake
-     * webid.  Real Inrupt OIDC binding lands when @canopy/oidc-session
+     * webid.  Real Inrupt OIDC binding lands when @onderling/oidc-session
      * is composed into the chat-shell (v0.7+).
      */
     {

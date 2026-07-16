@@ -1,8 +1,8 @@
 // Identity step 4 — materialize a profile on a device (from the owner root or a delegated seed).
 import { describe, it, expect } from 'vitest';
 import { VaultMemory } from '../../vault/src/VaultMemory.js';
-import { Bootstrap, AgentIdentity } from '@canopy/core';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { Bootstrap, AgentIdentity } from '@onderling/core';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
 import { loadProfile, createProfile, profilePubKey, profileCircleAddress } from '../index.js';
 

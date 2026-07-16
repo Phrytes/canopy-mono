@@ -1,8 +1,8 @@
 /**
- * dcr — re-export shim around `@canopy/oidc-session-rn`'s DCR helpers.
+ * dcr — re-export shim around `@onderling/oidc-session-rn`'s DCR helpers.
  *
  * **2026-05-08:** the implementation moved to
- * `@canopy/oidc-session-rn` (Stoop V3 Phase 40.3 — rule-of-two
+ * `@onderling/oidc-session-rn` (Stoop V3 Phase 40.3 — rule-of-two
  * consumer). This file is a thin shim that pre-binds
  * `keyPrefix: 'folio'` so the legacy DCR cache keys
  * (`folio-dcr-client-id-<host>`) are unchanged.
@@ -14,7 +14,7 @@ import {
   buildRegistrationBody as substrateBuildRegistrationBody,
   clearStoredClient as substrateClearStoredClient,
   _dcrInternal,
-} from '@canopy/oidc-session-rn';
+} from '@onderling/oidc-session-rn';
 
 /**
  * Pre-binds `keyPrefix: 'folio'` so existing folio-mobile calls keep

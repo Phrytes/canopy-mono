@@ -14,8 +14,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import nacl from 'tweetnacl';
 
-import { Bootstrap }        from '@canopy/core';
-import { AgentIdentity }    from '@canopy/core';
+import { Bootstrap }        from '@onderling/core';
+import { AgentIdentity }    from '@onderling/core';
 import { IdentityPodStore } from '../src/identity/IdentityPodStore.js';
 import {
   IdentitySync,
@@ -24,7 +24,7 @@ import {
   VAULT_CACHE_PREFIX,
   DEFAULT_RESOURCES,
 }                           from '../src/identity/IdentitySync.js';
-import { VaultMemory }      from '@canopy/vault';
+import { VaultMemory }      from '@onderling/vault';
 
 // ── MockPodClient ──────────────────────────────────────────────────────────
 

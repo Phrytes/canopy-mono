@@ -4,7 +4,7 @@
  *
  * Implementations:
  *   - `MemoryBackend`       — in-process Map (this package, V0 default + tests).
- *   - RN AsyncStorage / SQLite backend — `@canopy/react-native` Phase 51.1.
+ *   - RN AsyncStorage / SQLite backend — `@onderling/react-native` Phase 51.1.
  *   - Pod-attached backend  — Phase 52.8 (V1 cache mode).
  *
  * The interface is intentionally narrow. A backend stores opaque

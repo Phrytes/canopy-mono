@@ -15,9 +15,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   AgentIdentity, InternalBus, InternalTransport, Agent, DataPart,
-} from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { createMemoryBackend } from '@canopy/pseudo-pod/memory';
+} from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { createMemoryBackend } from '@onderling/pseudo-pod/memory';
 
 import {
   buildFolioNoteSearch, indexFolioNotes, searchFolioNotes, noteItemFromRow,

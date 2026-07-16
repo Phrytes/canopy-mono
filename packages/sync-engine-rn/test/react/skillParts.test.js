@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { toParts, unwrapParts } from '../../src/react/skillParts.js';
 
-describe('@canopy/sync-engine-rn/react skillParts.unwrapParts', () => {
+describe('@onderling/sync-engine-rn/react skillParts.unwrapParts', () => {
   it('returns the first DataPart\'s data', () => {
     expect(unwrapParts([
       { type: 'TextPart', text: 'hi' },
@@ -28,7 +28,7 @@ describe('@canopy/sync-engine-rn/react skillParts.unwrapParts', () => {
   });
 });
 
-describe('@canopy/sync-engine-rn/react skillParts.toParts', () => {
+describe('@onderling/sync-engine-rn/react skillParts.toParts', () => {
   it('wraps an object in a single DataPart', () => {
     expect(toParts({ kind: 'vraag' })).toEqual([
       { type: 'DataPart', data: { kind: 'vraag' } },

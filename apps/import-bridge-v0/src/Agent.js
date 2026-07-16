@@ -2,7 +2,7 @@
  * ImportAgent — composition of substrates for H6 V0.
  *
  * Migrated 2026-05-04 (Phase 5.1 of substrate refactor): the previous
- * shape composed `@canopy/sync-engine`'s V0 `SyncEngine` +
+ * shape composed `@onderling/sync-engine`'s V0 `SyncEngine` +
  * `IngestQueueSource` + `InMemoryBackend`, all of which reinvented
  * `core.DataSource`. Per the L1a audit, V0 sync-engine was deleted and
  * import-bridge now writes directly through the SDK's `DataSource`
@@ -12,7 +12,7 @@
  * Wires:
  *   - `core.OAuthVault` — per-source credentials.
  *   - **`target` adapter** (any `core.DataSource`) — the pod-side write path.
- *   - `@canopy/identity-resolver`'s `PersonGraph` — cross-source identity records.
+ *   - `@onderling/identity-resolver`'s `PersonGraph` — cross-source identity records.
  *
  * V0 semantics are unchanged: one-shot import. Connectors yield items
  * via async-iterator; the agent writes each item to `target.write(uri, value)`.
@@ -20,9 +20,9 @@
  * `core.protocol.LiveSyncSkill` directly.
  */
 
-import { Emitter } from '@canopy/core';
-import { OAuthVault, VaultMemory } from '@canopy/vault';
-import { PersonGraph } from '@canopy/identity-resolver/person-graph';
+import { Emitter } from '@onderling/core';
+import { OAuthVault, VaultMemory } from '@onderling/vault';
+import { PersonGraph } from '@onderling/identity-resolver/person-graph';
 
 /**
  * @param {object} args

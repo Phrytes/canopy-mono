@@ -49,9 +49,9 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-import { AgentIdentity, Agent, Parts } from '@canopy/core';
-import { VaultMemory }                 from '@canopy/vault';
-import { RelayTransport }              from '@canopy/transports';
+import { AgentIdentity, Agent, Parts } from '@onderling/core';
+import { VaultMemory }                 from '@onderling/vault';
+import { RelayTransport }              from '@onderling/transports';
 
 import { startCompanionNode }          from '../src/index.js';
 import { buildDevPodSource }           from '../src/podSource.js';
@@ -69,10 +69,10 @@ const CSS_POD_ROOT    = process.env.CSS_POD_ROOT;
 const CSS_SCRATCH     = process.env.CSS_SCRATCH ?? '';
 
 /* Lazily imported (only when the gate is ON) — mirrors sharing.css.test.js :45-50.
- * SolidVault comes from @canopy/oidc-session via a RELATIVE path (the established
+ * SolidVault comes from @onderling/oidc-session via a RELATIVE path (the established
  * repo pattern — index.js reaches into apps/folio the same way — because
- * @canopy/oidc-session is not a declared dep of apps/companion-node, whereas
- * @canopy/pod-client is). */
+ * @onderling/oidc-session is not a declared dep of apps/companion-node, whereas
+ * @onderling/pod-client is). */
 let SolidVault, SolidOidcAuth, SolidPodSource, PodClient;
 
 /* ── helpers ────────────────────────────────────────────────────────────────── */
@@ -137,7 +137,7 @@ SUITE('companion-node R3.2 — agent-proxy over a REAL CSS with a REAL on-device
   beforeAll(async () => {
     if (!CSS_URL || !HAVE_OIDC) return;                       // gate OFF — nothing to boot
     ({ SolidVault }   = await import('../../../packages/oidc-session/index.js'));
-    ({ SolidOidcAuth, SolidPodSource, PodClient } = await import('@canopy/pod-client'));
+    ({ SolidOidcAuth, SolidPodSource, PodClient } = await import('@onderling/pod-client'));
 
     // ── 1. the DEVICE's real Solid-OIDC session (client-credentials vs the CSS) ──
     //     Same pattern as sharing.css.test.js :57-68 / SolidVault.css.test.js :45-56.

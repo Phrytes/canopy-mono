@@ -1,4 +1,4 @@
-# Contributing to @canopy
+# Contributing to @onderling
 
 ## CI / PR gating
 

@@ -19,8 +19,8 @@
  *
  * Output: the serialized token JSON, one line, ready to paste/share.
  */
-import { AgentIdentity, Bootstrap, PodCapabilityToken } from '@canopy/core';
-import { VaultNodeFs } from '@canopy/vault';
+import { AgentIdentity, Bootstrap, PodCapabilityToken } from '@onderling/core';
+import { VaultNodeFs } from '@onderling/vault';
 
 import { requireConfig } from './_config.js';
 

@@ -4,7 +4,7 @@
  * Lifted 2026-05-10 to `apps/tasks-v0/src/ui/composeArgs.js`. This
  * module remains as a thin re-export so existing screen imports
  * keep working; new code should import from
- * `@canopy-app/tasks-v0/ui/composeArgs` directly.
+ * `@onderling-app/tasks-v0/ui/composeArgs` directly.
  *
  * `export *` (not an explicit named list) so additions to the shared
  * module flow through automatically. This shim should never need a
@@ -13,4 +13,4 @@
  * as a runtime "is not a function" on the device.
  */
 
-export * from '@canopy-app/tasks-v0/ui/composeArgs';
+export * from '@onderling-app/tasks-v0/ui/composeArgs';

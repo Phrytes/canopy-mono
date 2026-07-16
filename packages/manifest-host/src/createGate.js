@@ -3,7 +3,7 @@
  *
  * Part A of PLAN-manifest-gate-surfaces: lift the gate runtime to a substrate so
  * consumers get a COMPOSED, host-level gate instead of reaching into
- * `@canopy/app-manifest`'s projector directly (the layering that circleGate.js
+ * `@onderling/app-manifest`'s projector directly (the layering that circleGate.js
  * used to violate via a deep relative import of `renderGate.js`).
  *
  * This is a LIFT + COMPOSE, not a rewrite of the gate rules: the gate rules are
@@ -12,7 +12,7 @@
  * adds is composition — take the host's mounted manifests (or an explicit list)
  * and project them into one flattened, ordered rule set.
  *
- *   createGate(host)                       // a mounted @canopy/manifest-host
+ *   createGate(host)                       // a mounted @onderling/manifest-host
  *   createGate([manifestA, manifestB], opts)
  *   createGate(manifest, opts)
  *     → { rules: Array<{ name, test, command }> }
@@ -29,7 +29,7 @@
  *   forwarded verbatim to `renderGate` (per-locale TRAILING-verb pass); inert when omitted.
  * @returns {{ rules: Array<{ name:string, test:()=>boolean, command:(text:string)=>({opId:string,args:object,appOrigin?:string}|null) }> }}
  */
-import { renderGate } from '@canopy/app-manifest';
+import { renderGate } from '@onderling/app-manifest';
 
 export function createGate(source, opts = {}) {
   const manifests = manifestsFrom(source);

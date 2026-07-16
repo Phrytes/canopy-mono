@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-p2p — peer-to-peer chat substrate.
+ * @onderling/chat-p2p — peer-to-peer chat substrate.
  *
  * **Layer:** substrate. Cross-platform (no DOM, no Expo, no RN).
  *
@@ -7,7 +7,7 @@
  * = rule-of-two consumer per
  * `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`).
  *
- * Distinct from `@canopy/chat-agent` (LLM-mediated chat — that's
+ * Distinct from `@onderling/chat-agent` (LLM-mediated chat — that's
  * for human ↔ AI assistant). This package is human ↔ human chat
  * over `agent.transport.sendOneWay`.
  *

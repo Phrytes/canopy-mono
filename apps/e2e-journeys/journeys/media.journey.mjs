@@ -10,13 +10,13 @@
 //
 // GATED: skips cleanly unless a MinIO (or any S3) is reachable (MINIO_URL, default
 // :9000). Starts its own relay with the blob-gate mounted (relayUrl unused).
-import { AgentIdentity, CapabilityToken } from '@canopy/core';
-import { VaultMemory }                    from '@canopy/vault';
-import { startRelay, MemoryBlobAclStore } from '@canopy/relay';
+import { AgentIdentity, CapabilityToken } from '@onderling/core';
+import { VaultMemory }                    from '@onderling/vault';
+import { startRelay, MemoryBlobAclStore } from '@onderling/relay';
 import { createS3Bucket }                 from '../../../packages/blob-gateway/src/adapters/s3Bucket.js';
 import { createCapabilityVerifier }       from '../../../packages/blob-gateway/src/adapters/capabilityVerifier.js';
 import { circleMemberActors }             from '../../canopy-chat/src/v2/circleMemberActors.js';
-import { generateGroupKey, sealWithGroupKey, openWithGroupKey } from '@canopy/pod-client/sealing';
+import { generateGroupKey, sealWithGroupKey, openWithGroupKey } from '@onderling/pod-client/sealing';
 import { checker } from './_util.mjs';
 
 export const name = 'J-media (blob edge → real S3, grant/read/deny)';

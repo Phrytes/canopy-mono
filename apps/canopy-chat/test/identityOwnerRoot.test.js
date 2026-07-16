@@ -3,8 +3,8 @@
 // the feedback no-login pseudonym uses. Proves the phrase alone re-derives the
 // pseudonym on a fresh device. See plans/NOTE-identity-profiles-and-portability.md.
 import { describe, it, expect } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
-import { Bootstrap, AgentIdentity } from '@canopy/core';
+import { VaultMemory } from '@onderling/vault';
+import { Bootstrap, AgentIdentity } from '@onderling/core';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 
 const derivedDefaultPubKey = async (phrase) =>
@@ -103,7 +103,7 @@ describe('identity step-4 (app) — createProfile op', () => {
 
 describe('identity step-5B/C — circleAddressFor bridge', () => {
   it('exposes the per-circle address for a circle (unlinkable across circles)', async () => {
-    const { deriveCircleAddress } = await import('@canopy/core');
+    const { deriveCircleAddress } = await import('@onderling/core');
     const ownerRootVault = new VaultMemory();
     const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
     const seed = Bootstrap.fromMnemonic(await ownerRootVault.get('owner-phrase')).deriveAgentSeed('default');
@@ -116,7 +116,7 @@ describe('identity step-5B/C — circleAddressFor bridge', () => {
     // path → stoop records it on the MemberMap row → listGroupMembers surfaces it
     // → the chat-shell projection carries it. The recorded value is exactly the
     // deriveCircleAddress(defaultProfileSeed, groupId) this device presents.
-    const { deriveCircleAddress } = await import('@canopy/core');
+    const { deriveCircleAddress } = await import('@onderling/core');
     const ownerRootVault = new VaultMemory();
     const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
     const created = await a.callSkill('stoop', 'createGroupV2', {

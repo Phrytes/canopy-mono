@@ -3,7 +3,7 @@
  * (non-anonymous; Q-H5 anonymity model is parked).
  *
  * Wires:
- *   - `core.Agent` from `@canopy/core` — the real SkillRegistry +
+ *   - `core.Agent` from `@onderling/core` — the real SkillRegistry +
  *     dispatch path. Skills register via `agent.skills.register(defineSkill(...))`.
  *   - L1b ItemStore (open requests, attribution, audit)
  *   - L1h MemberMap (closed-group identity resolution; pubKey-aware after
@@ -16,11 +16,11 @@
  *     apps wire the channels)
  */
 
-import { Agent, AgentIdentity, InternalBus, InternalTransport, MemorySource } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { ItemStore } from '@canopy/item-store';
-import { MemberMap, Reveals, buildIdentitySkills }    from '@canopy/identity-resolver';
-import { SkillMatch }                                 from '@canopy/skill-match';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, MemorySource } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { ItemStore } from '@onderling/item-store';
+import { MemberMap, Reveals, buildIdentitySkills }    from '@onderling/identity-resolver';
+import { SkillMatch }                                 from '@onderling/skill-match';
 
 import { buildSkills } from './skills/index.js';
 import { CachingDataSource } from './lib/CachingDataSource.js';
@@ -69,12 +69,12 @@ import { EvictionRoster }    from './lib/EvictionRoster.js';
  *   directly without the CachingDataSource wrapper.  Existing tests
  *   that drive a `MemorySource` directly stay happy.
  * @param {object} [args.notifier]
- *   Optional `@canopy/notifier.Notifier` instance.  When supplied,
+ *   Optional `@onderling/notifier.Notifier` instance.  When supplied,
  *   `postRequest({kind: 'lend', dueAt, ...})` schedules a return
  *   reminder via `notifier.scheduleBefore` and `markReturned` cancels
  *   it.  Without a notifier, lend posts still work — they just don't
  *   produce a reminder.  See Stoop V1 Phase 3.
- * @param {import('@canopy/identity-resolver').Reveals} [args.reveals]
+ * @param {import('@onderling/identity-resolver').Reveals} [args.reveals]
  *   Optional reveal store (per-group + per-peer "show real name"
  *   flags).  When supplied, list-shaped skills hydrate each item's
  *   author into a `{handle, displayName?, isRevealed, render}` block
@@ -98,7 +98,7 @@ export async function createNeighborhoodAgent({
   members:       initialMembers,
   pod:           podCfg,
   itemBackend,
-  // Optional household sealed-pod control-agent (@canopy/pod-client `createControlAgent`). When
+  // Optional household sealed-pod control-agent (@onderling/pod-client `createControlAgent`). When
   // supplied, membership skills drive pod ACL + group-key grant/revoke on join/leave. Omitted by
   // instances without a sealed household pod — the hooks no-op.
   controlAgent,
@@ -152,7 +152,7 @@ export async function createNeighborhoodAgent({
    * factory uses it directly instead of constructing a new Agent
    * from `identity` + `transport` + `label`.  The caller is expected
    * to have wired any routing strategy / secondary transports it
-   * needs (e.g. mDNS / BLE / relay via `@canopy/react-native`'s
+   * needs (e.g. mDNS / BLE / relay via `@onderling/react-native`'s
    * `createMeshAgent` pattern); the factory will still call
    * `agent.start()`, which is idempotent if the caller already
    * started it.  `identity` is read from `agent.identity` when omitted.
@@ -389,7 +389,7 @@ export async function createNeighborhoodAgent({
 
   // S6.6 — Expo push sender (mobile-native). Lazy + server-side only: built
   // when `expoPush` is supplied so the in-browser/in-RN stoop (which never
-  // delivers) doesn't pull @canopy/relay. ExpoPushSender needs no keys.
+  // delivers) doesn't pull @onderling/relay. ExpoPushSender needs no keys.
   let expoPushSender = providedExpoPushSender ?? null;
   if (!expoPushSender && expoPush) {
     const { ExpoPushSender } = await import('./lib/ExpoPushSender.js');

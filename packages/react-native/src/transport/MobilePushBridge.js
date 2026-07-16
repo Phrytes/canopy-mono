@@ -23,11 +23,11 @@
  * push library as a peer dep that the consuming app installs.  This module
  * itself has no native dep — it only orchestrates the adapter and the agent.
  *
- *   import { Agent }                  from '@canopy/core';
+ *   import { Agent }                  from '@onderling/core';
  *   import {
  *     MobilePushBridge,
  *     ExpoNotificationsAdapter,
- *   } from '@canopy/react-native';
+ *   } from '@onderling/react-native';
  *
  *   const bridge = new MobilePushBridge({
  *     agent,
@@ -47,7 +47,7 @@ export class MobilePushBridge {
 
   /**
    * @param {object} opts
-   * @param {import('@canopy/core').Agent} opts.agent
+   * @param {import('@onderling/core').Agent} opts.agent
    * @param {PushAdapter} opts.adapter
    */
   constructor({ agent, adapter } = {}) {

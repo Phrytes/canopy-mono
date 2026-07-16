@@ -1,7 +1,7 @@
 /**
  * deepLinks — Stoop's binding of the lifted deep-link dispatcher.
  *
- * Lifted to `@canopy/react-native/deepLinks` 2026-05-09 (Phase
+ * Lifted to `@onderling/react-native/deepLinks` 2026-05-09 (Phase
  * 41.0.b A6). The substrate ships the generic `parseDeepLink({scheme,
  * parsers, defaultPath})` + `parseQuery` + `parseTokenParam` helpers;
  * Stoop's per-path parsers + `actionToNavigation` (the route-table
@@ -22,7 +22,7 @@
 import {
   parseDeepLink as _parseDeepLink,
   parseTokenParam,
-} from '@canopy/react-native/deepLinks';
+} from '@onderling/react-native/deepLinks';
 import { ROUTES } from '../navigation.js';
 
 const SCHEME = 'stoop:';

@@ -13,7 +13,7 @@
  * THE SEALED-ONLY INVARIANT (invariant #7 — sealed-only ⇒ any-host trust tier)
  *   The inbox NEVER sees plaintext and NEVER decrypts:
  *     • `deposit` REFUSES anything that isn't a sealed envelope (`isSealed`,
- *       reusing `@canopy/pod-client/sealing`'s sentinel — we do NOT reimplement
+ *       reusing `@onderling/pod-client/sealing`'s sentinel — we do NOT reimplement
  *       crypto). A non-sealed deposit is rejected `{ok:false, error:'not-sealed'}`.
  *     • It stores only the opaque ciphertext string; it holds NO recipient
  *       private key, so it cannot open what it holds even in principle.
@@ -36,7 +36,7 @@
  *   count is not content.
  */
 
-import { isSealed as defaultIsSealed } from '@canopy/pod-client/sealing';
+import { isSealed as defaultIsSealed } from '@onderling/pod-client/sealing';
 import { readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { dirname } from 'node:path';
 

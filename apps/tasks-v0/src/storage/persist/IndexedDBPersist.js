@@ -5,7 +5,7 @@
  * Identical surface + semantics to `apps/stoop/src/lib/IndexedDBPersist.js`.
  * Copied (not imported) to avoid an app→app dependency; the substrate
  * candidate is to lift the three adapters + `persistPicker` into
- * `@canopy/local-store` (rule-of-two now satisfied — see
+ * `@onderling/local-store` (rule-of-two now satisfied — see
  * `Project Files/Substrates/substrate-candidates.md`).
  *
  * Default `dbName` for tasks-v0 callers is `'tasks-cache'`; canopy-chat

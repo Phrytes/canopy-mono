@@ -6,7 +6,7 @@
  * plus a human `message`. Field-level validation failures aggregate into a
  * single `RECIPE_CODES.INVALID` error carrying an `issues[]` array — one entry
  * per problem, each with its own `code` + JSON-pointer-ish `path` — mirroring
- * `@canopy/app-manifest` `validateManifest`'s `{ ok, errors }` shape.
+ * `@onderling/app-manifest` `validateManifest`'s `{ ok, errors }` shape.
  */
 
 /** Top-level (whole-load) failure codes returned as `error.code`. */
@@ -30,7 +30,7 @@ export const RECIPE_CODES = Object.freeze({
 /** Per-issue codes used inside `error.issues[]` (field-level validation). */
 export const ISSUE_CODES = Object.freeze({
   NOT_OBJECT:       'not-an-object',
-  BAD_NOUN:         'bad-noun',           // noun not in the @canopy/item-types registry
+  BAD_NOUN:         'bad-noun',           // noun not in the @onderling/item-types registry
   BAD_ATOM:         'bad-atom',           // verb not an SDK atom (see atoms.js)
   BAD_ATOMS_SHAPE:  'bad-atoms-shape',    // capabilities[noun].atoms is not an array
   BAD_CAP_ENTRY:    'bad-capability',     // capabilities[noun] is not an { atoms } object

@@ -16,17 +16,17 @@ This app composes the following substrate packages (see
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/relay` | Boots a local relay in-process (R1 hermetic proof) or connects to a shared one as a client. | The broker + offline-queue + optional blob-gate edge are the relay substrate's concern; the host is only a composition of it. |
-| `@canopy/transports` (`RelayTransport`) | Connects the host agent to the relay by identity/pubKey. | Concrete network transports live outside the kernel by the three-layer invariant. |
-| `@canopy/agent-registry` (`registerFolioAgent` → `registerAgentBundle` → `createAgentRegistry`) | Self-registers the host so a device discovers its pubKey + advertised capabilities. | The registry resource shape + CAS mutate + capability mirroring is the substrate's; the host just registers into it. |
-| `@canopy/vault` (`VaultNodeFs`) | Persists the host keypair so its pubKey is stable across restarts (a device must be able to re-find the host). | The encrypted-file vault is the vault substrate's concern. |
-| `@canopy-app/folio` (relative import into `src/`) | `buildFolioSkills`, `registerFolioAgent`, `FOLIO_CAPABILITIES`, the pure cores, and the `store` collaborators (`autoShare`, `folioPodList`, `folioSearch`) — **reused verbatim, not reimplemented**. | R1 consumes folio's relocatable agent; folio's cores are the functionality. |
+| `@onderling/relay` | Boots a local relay in-process (R1 hermetic proof) or connects to a shared one as a client. | The broker + offline-queue + optional blob-gate edge are the relay substrate's concern; the host is only a composition of it. |
+| `@onderling/transports` (`RelayTransport`) | Connects the host agent to the relay by identity/pubKey. | Concrete network transports live outside the kernel by the three-layer invariant. |
+| `@onderling/agent-registry` (`registerFolioAgent` → `registerAgentBundle` → `createAgentRegistry`) | Self-registers the host so a device discovers its pubKey + advertised capabilities. | The registry resource shape + CAS mutate + capability mirroring is the substrate's; the host just registers into it. |
+| `@onderling/vault` (`VaultNodeFs`) | Persists the host keypair so its pubKey is stable across restarts (a device must be able to re-find the host). | The encrypted-file vault is the vault substrate's concern. |
+| `@onderling-app/folio` (relative import into `src/`) | `buildFolioSkills`, `registerFolioAgent`, `FOLIO_CAPABILITIES`, the pure cores, and the `store` collaborators (`autoShare`, `folioPodList`, `folioSearch`) — **reused verbatim, not reimplemented**. | R1 consumes folio's relocatable agent; folio's cores are the functionality. |
 
 **Cross-app coupling note:** folio's browser-boundary modules are imported by
 **relative path into `apps/folio/src/`** (e.g. `../../folio/src/wireSkills.js`),
-not via the `@canopy-app/folio` package barrel. Same rationale as folio's own
+not via the `@onderling-app/folio` package barrel. Same rationale as folio's own
 relative `wireSkill` import: folio's isolated `node_modules` resolves the folio
-files' transitive `@canopy/*` deps, and the barrel/exports map doesn't surface
+files' transitive `@onderling/*` deps, and the barrel/exports map doesn't surface
 `agentCores`/`autoShare`/`cli/_podFactory`. The alternative — copying folio's
 cores — would violate the no-duplication invariant. The coupling is deliberate
 and load-bearing: **do not edit anything under `apps/folio/`; R1 only consumes it.**
@@ -35,8 +35,8 @@ and load-bearing: **do not edit anything under `apps/folio/`; R1 only consumes i
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity` | Constructs the host agent + its persisted identity, and (in the fitness test) the device agent. | No substrate wraps "construct an agent"; that's foundational — mirrors `browser.js`'s own `new Agent(...)`. |
-| `@canopy/core` | `Parts` | Decodes wire replies in the fitness test. | The typed-payload layer is kernel; there's no substrate to route it through for a test assertion. |
+| `@onderling/core` | `Agent`, `AgentIdentity` | Constructs the host agent + its persisted identity, and (in the fitness test) the device agent. | No substrate wraps "construct an agent"; that's foundational — mirrors `browser.js`'s own `new Agent(...)`. |
+| `@onderling/core` | `Parts` | Decodes wire replies in the fitness test. | The typed-payload layer is kernel; there's no substrate to route it through for a test assertion. |
 
 ## Shared UI helpers
 

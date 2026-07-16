@@ -1,9 +1,9 @@
 /**
- * @canopy/integration-tests — harness barrel.
+ * @onderling/integration-tests — harness barrel.
  *
  * Scenario files import from here:
  *
- *   import { Lab, MockPod, MockClock, fixtures } from '@canopy/integration-tests';
+ *   import { Lab, MockPod, MockClock, fixtures } from '@onderling/integration-tests';
  *
  * (or, equivalently, from `'../_harness/index.js'` when authored
  * directly inside this workspace.)

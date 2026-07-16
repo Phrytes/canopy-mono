@@ -6,7 +6,7 @@
 // differing ONLY in the per-channel pseudonym. (The real central-pod CSS route is
 // proven separately by J-feedback; this proves the CHANNEL parity.)
 //
-// SOFT-COUPLED: skips cleanly if @canopy-app/feedback-pipeline is absent (it is
+// SOFT-COUPLED: skips cleanly if @onderling-app/feedback-pipeline is absent (it is
 // splitting to its own repo). Hermetic — no relay/pod (relayUrl unused).
 import { checker } from './_util.mjs';
 

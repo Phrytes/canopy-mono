@@ -8,27 +8,27 @@ importers:
 
   .:
     dependencies:
-      '@canopy/app-manifest':
+      '@onderling/app-manifest':
         specifier: file:../../packages/app-manifest
         version: file:../../packages/app-manifest
-      '@canopy/core':
+      '@onderling/core':
         specifier: file:../../packages/core
         version: file:../../packages/core
-      '@canopy/oidc-session':
+      '@onderling/oidc-session':
         specifier: file:../../packages/oidc-session
         version: file:../../packages/oidc-session
-      '@canopy/pod-client':
+      '@onderling/pod-client':
         specifier: file:../../packages/pod-client
-        version: file:../../packages/pod-client(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))
-      '@canopy/pseudo-pod':
+        version: file:../../packages/pod-client(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))
+      '@onderling/pseudo-pod':
         specifier: file:../../packages/pseudo-pod
-        version: file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)
-      '@canopy/sync-engine':
+        version: file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)
+      '@onderling/sync-engine':
         specifier: file:../../packages/sync-engine
         version: file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6)))
-      '@canopy/sync-engine-rn':
+      '@onderling/sync-engine-rn':
         specifier: file:../../packages/sync-engine-rn
-        version: file:../../packages/sync-engine-rn(@canopy/core@file:../../packages/core)(@canopy/pod-client@file:../../packages/pod-client(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)))(@canopy/sync-engine@file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6))))(react@19.2.6)
+        version: file:../../packages/sync-engine-rn(@onderling/core@file:../../packages/core)(@onderling/pod-client@file:../../packages/pod-client(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)))(@onderling/sync-engine@file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6))))(react@19.2.6)
       '@inrupt/solid-client-authn-node':
         specifier: ^4.0.0
         version: 4.0.0
@@ -491,47 +491,47 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/app-manifest@file:../../packages/app-manifest':
+  '@onderling/app-manifest@file:../../packages/app-manifest':
     resolution: {directory: ../../packages/app-manifest, type: directory}
 
-  '@canopy/core@file:../../packages/core':
+  '@onderling/core@file:../../packages/core':
     resolution: {directory: ../../packages/core, type: directory}
 
-  '@canopy/item-types@file:../../packages/item-types':
+  '@onderling/item-types@file:../../packages/item-types':
     resolution: {directory: ../../packages/item-types, type: directory}
 
-  '@canopy/oidc-session@file:../../packages/oidc-session':
+  '@onderling/oidc-session@file:../../packages/oidc-session':
     resolution: {directory: ../../packages/oidc-session, type: directory}
 
-  '@canopy/pod-client@file:../../packages/pod-client':
+  '@onderling/pod-client@file:../../packages/pod-client':
     resolution: {directory: ../../packages/pod-client, type: directory}
     peerDependencies:
-      '@canopy/pseudo-pod': '*'
+      '@onderling/pseudo-pod': '*'
     peerDependenciesMeta:
-      '@canopy/pseudo-pod':
+      '@onderling/pseudo-pod':
         optional: true
 
-  '@canopy/pseudo-pod@file:../../packages/pseudo-pod':
+  '@onderling/pseudo-pod@file:../../packages/pseudo-pod':
     resolution: {directory: ../../packages/pseudo-pod, type: directory}
     peerDependencies:
-      '@canopy/core': '*'
+      '@onderling/core': '*'
 
-  '@canopy/sync-engine-rn@file:../../packages/sync-engine-rn':
+  '@onderling/sync-engine-rn@file:../../packages/sync-engine-rn':
     resolution: {directory: ../../packages/sync-engine-rn, type: directory}
     peerDependencies:
-      '@canopy/core': ^0.1.0
-      '@canopy/pod-client': ^0.1.0
-      '@canopy/sync-engine': workspace:*
+      '@onderling/core': ^0.1.0
+      '@onderling/pod-client': ^0.1.0
+      '@onderling/sync-engine': workspace:*
       react: '>=18'
     peerDependenciesMeta:
-      '@canopy/pod-client':
+      '@onderling/pod-client':
         optional: true
-      '@canopy/sync-engine':
+      '@onderling/sync-engine':
         optional: true
       react:
         optional: true
 
-  '@canopy/sync-engine@file:../../packages/sync-engine':
+  '@onderling/sync-engine@file:../../packages/sync-engine':
     resolution: {directory: ../../packages/sync-engine, type: directory}
     peerDependencies:
       expo-crypto: '*'
@@ -542,7 +542,7 @@ packages:
       expo-file-system:
         optional: true
 
-  '@canopy/vault@file:../../packages/vault':
+  '@onderling/vault@file:../../packages/vault':
     resolution: {directory: ../../packages/vault, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -3756,14 +3756,14 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/app-manifest@file:../../packages/app-manifest':
+  '@onderling/app-manifest@file:../../packages/app-manifest':
     dependencies:
-      '@canopy/item-types': file:../../packages/item-types
+      '@onderling/item-types': file:../../packages/item-types
 
-  '@canopy/core@file:../../packages/core':
+  '@onderling/core@file:../../packages/core':
     dependencies:
-      '@canopy/oidc-session': file:../../packages/oidc-session
-      '@canopy/vault': file:../../packages/vault
+      '@onderling/oidc-session': file:../../packages/oidc-session
+      '@onderling/vault': file:../../packages/vault
       '@inrupt/solid-client': 3.0.0
       '@inrupt/solid-client-authn-node': 4.0.0
       '@noble/hashes': 2.2.0
@@ -3774,42 +3774,42 @@ snapshots:
     optionalDependencies:
       node-datachannel: 0.32.3
 
-  '@canopy/item-types@file:../../packages/item-types':
+  '@onderling/item-types@file:../../packages/item-types':
     dependencies:
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
 
-  '@canopy/oidc-session@file:../../packages/oidc-session':
+  '@onderling/oidc-session@file:../../packages/oidc-session':
     dependencies:
       '@inrupt/solid-client-authn-node': 4.0.0
 
-  '@canopy/pod-client@file:../../packages/pod-client(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))':
+  '@onderling/pod-client@file:../../packages/pod-client(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
     optionalDependencies:
-      '@canopy/pseudo-pod': file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)
+      '@onderling/pseudo-pod': file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)
 
-  '@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)':
+  '@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
 
-  '@canopy/sync-engine-rn@file:../../packages/sync-engine-rn(@canopy/core@file:../../packages/core)(@canopy/pod-client@file:../../packages/pod-client(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core)))(@canopy/sync-engine@file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6))))(react@19.2.6)':
+  '@onderling/sync-engine-rn@file:../../packages/sync-engine-rn(@onderling/core@file:../../packages/core)(@onderling/pod-client@file:../../packages/pod-client(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core)))(@onderling/sync-engine@file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6))))(react@19.2.6)':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
     optionalDependencies:
-      '@canopy/pod-client': file:../../packages/pod-client(@canopy/pseudo-pod@file:../../packages/pseudo-pod(@canopy/core@file:../../packages/core))
-      '@canopy/sync-engine': file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6)))
+      '@onderling/pod-client': file:../../packages/pod-client(@onderling/pseudo-pod@file:../../packages/pseudo-pod(@onderling/core@file:../../packages/core))
+      '@onderling/sync-engine': file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6)))
       react: 19.2.6
 
-  '@canopy/sync-engine@file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6)))':
+  '@onderling/sync-engine@file:../../packages/sync-engine(expo-crypto@55.0.15(expo@55.0.25))(expo-file-system@55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6)))':
     dependencies:
-      '@canopy/core': file:../../packages/core
+      '@onderling/core': file:../../packages/core
       chokidar: 3.6.0
     optionalDependencies:
       expo-crypto: 55.0.15(expo@55.0.25)
       expo-file-system: 55.0.21(expo@55.0.25)(react-native@0.85.3(@babel/core@7.29.0)(react@19.2.6))
 
-  '@canopy/vault@file:../../packages/vault': {}
+  '@onderling/vault@file:../../packages/vault': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

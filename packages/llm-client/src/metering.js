@@ -1,5 +1,5 @@
 /**
- * Per-customer usage metering for @canopy/llm-client.
+ * Per-customer usage metering for @onderling/llm-client.
  *
  * A plain, injectable seam — NO global state, NO persistence, NO DB.  A
  * consumer passes a `meter` callback (the "sink") when constructing an

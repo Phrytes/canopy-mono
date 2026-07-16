@@ -12,9 +12,9 @@
  *     browser can redirect.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentIdentity, GroupManager, defineSkill, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { MemberMap } from '@canopy/identity-resolver';
+import { AgentIdentity, GroupManager, defineSkill, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { MemberMap } from '@onderling/identity-resolver';
 
 import { buildOnboardingSkills } from '../src/onboarding.js';
 

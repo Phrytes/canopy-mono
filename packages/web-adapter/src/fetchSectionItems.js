@@ -43,7 +43,7 @@
  * @param {object} section          NavModel section (sees: itemType, filter?, dataSource?)
  * @param {object} args
  * @param {(skillId: string, args?: object) => Promise<*>} args.callSkill
- *   Adapter-supplied skill caller.  Same shape as @canopy/web-adapter's
+ *   Adapter-supplied skill caller.  Same shape as @onderling/web-adapter's
  *   `callSkill(baseUrl, ...)` already-curried with baseUrl.
  * @param {object} [args.context]
  *   V0.3 (Q15) — context object whose keys back the `argsFromContext`

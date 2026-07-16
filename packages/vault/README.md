@@ -1,7 +1,7 @@
-# @canopy/vault
+# @onderling/vault
 
 > **Layer: substrate.** Agent identity + token storage. Extracted
-> from `@canopy/core/identity` 2026-05-11 as part of the
+> from `@onderling/core/identity` 2026-05-11 as part of the
 > standardisation P1 work (Phase 50.1.A — see
 > `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`).
 >
@@ -42,7 +42,7 @@ import {
   VaultNodeFs,
   OAuthVault,
   makeAuthorizedFetch,
-} from '@canopy/vault';
+} from '@onderling/vault';
 ```
 
 Each `Vault` subclass implements the same contract:
@@ -64,20 +64,20 @@ interface Vault {
 - **Browser:** prefer `VaultIndexedDB` for anything beyond trivial
   size; `VaultLocalStorage` is fine for small token caches.
 - **React Native:** use `KeychainVault` from
-  `@canopy/react-native` (RN-platform-specific; not in this
+  `@onderling/react-native` (RN-platform-specific; not in this
   substrate). The `Vault` interface in this package is compatible
   if you want to wrap your own implementation.
 
-## Relationship with `@canopy/core`
+## Relationship with `@onderling/core`
 
-`@canopy/core` consumes Vault via injection (an Agent's
+`@onderling/core` consumes Vault via injection (an Agent's
 `identity` is constructed against a vault the caller provides).
 Core's `Bootstrap` accepts a vault as an arg; it doesn't
 construct one itself. This keeps core substrate-free.
 
-The 2026-07-05 de-fat **removed** `@canopy/core`'s deprecation re-export of the
-Vault family — `@canopy/core` no longer exports these symbols. Import them from
-`@canopy/vault` directly: `import { VaultMemory } from '@canopy/vault'`.
+The 2026-07-05 de-fat **removed** `@onderling/core`'s deprecation re-export of the
+Vault family — `@onderling/core` no longer exports these symbols. Import them from
+`@onderling/vault` directly: `import { VaultMemory } from '@onderling/vault'`.
 
 ## Bring it up
 
@@ -96,10 +96,10 @@ npm test
 
 ## See also
 
-- [`@canopy/oidc-session`](../oidc-session/) — Solid OIDC session
+- [`@onderling/oidc-session`](../oidc-session/) — Solid OIDC session
   manager; uses a Vault for token persistence.
-- [`@canopy/oidc-session-rn`](../oidc-session-rn/) — RN peer.
-- [`@canopy/agent-registry`](../agent-registry/) (forthcoming) —
+- [`@onderling/oidc-session-rn`](../oidc-session-rn/) — RN peer.
+- [`@onderling/agent-registry`](../agent-registry/) (forthcoming) —
   registers user agents; consumes the agent registry pod resource.
 - `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   §5b — design context.

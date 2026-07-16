@@ -19,7 +19,7 @@
  * the configured actor, which is almost never what you want.
  *
  * @example
- *   import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
+ *   import { mountLocalUi, LocalUiAuth } from '@onderling/agent-ui';
  *   const ui = await mountLocalUi(bundle.agent, {
  *     port:        8080,
  *     a2aTLSLayer: new LocalUiAuth({ localActor: 'https://id.example/anne' }),

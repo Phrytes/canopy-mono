@@ -12,7 +12,7 @@
  *
  * Substrate-extraction candidate — the three adapters + this picker
  * are now duplicated across stoop and tasks-v0.  Rule-of-two satisfied;
- * a later slice should lift them into `@canopy/local-store`.
+ * a later slice should lift them into `@onderling/local-store`.
  */
 
 /**

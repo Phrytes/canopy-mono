@@ -22,7 +22,7 @@
  *     RPC node bootstrap (small JSON POSTs), so the RN fetch is fine.
  *   - crypto.getRandomValues
  *                 — REQUIRED.  Apps MUST import
- *                   `@canopy/react-native/platform/polyfills` (which
+ *                   `@onderling/react-native/platform/polyfills` (which
  *                   imports `react-native-get-random-values`) BEFORE
  *                   constructing any agent or transport.  Without it,
  *                   nkn-sdk's seed/key derivation silently produces
@@ -82,7 +82,7 @@
  * retry.  TODO(#224B): hook into AppState.addEventListener('change')
  * + auto-reconnect on foreground.  Stub left in `_onAppStateChange()`.
  */
-import { Transport } from '@canopy/core';
+import { Transport } from '@onderling/core';
 
 // Canonical NKN server-side error strings.  When `_put` fails with any
 // of these, the receiver hasn't seen our HI yet — re-issue HI then
@@ -112,7 +112,7 @@ export class NknTransport extends Transport {
 
   /**
    * @param {object} opts
-   * @param {import('@canopy/core').AgentIdentity} opts.identity
+   * @param {import('@onderling/core').AgentIdentity} opts.identity
    * @param {string}  [opts.identifier]      — NKN address identifier prefix
    * @param {object}  [opts.nknLib]          — nkn-sdk or nkn-multiclient module
    * @param {boolean} [opts.multiClient=true]— prefer MultiClient over Client

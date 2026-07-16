@@ -1,7 +1,7 @@
-# VERSION-MATRIX — pinned versions for the `@canopy` RN platform layer
+# VERSION-MATRIX — pinned versions for the `@onderling` RN platform layer
 
 The matrix below is what Folio's mobile bring-up landed on
-2026-04-30.  Apps consuming `@canopy/react-native` should pin to
+2026-04-30.  Apps consuming `@onderling/react-native` should pin to
 the same versions until the matrix is intentionally bumped.
 
 The full rationale per version (and the saga of why these specific
@@ -97,7 +97,7 @@ Bump triggers (in priority order):
    forced bump if a target OS version drops support.
 3. **Expo SDK end-of-life** — Expo SDKs are supported for ~1 year;
    plan a bump cycle ~6 months before EOL.
-4. **A new `@canopy` substrate needs an API only available in a
+4. **A new `@onderling` substrate needs an API only available in a
    newer RN version** — coordinate the bump with the substrate's
    release.
 

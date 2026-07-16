@@ -9,7 +9,7 @@
  *     the `{ registry, tokens }` store.
  *   • WIRE route  — the SAME core, wrapped by `wireSkill` + registered
  *     as a `defineSkill`, invoked over the serialized parts path on a
- *     real `@canopy/sdk` agent.
+ *     real `@onderling/sdk` agent.
  *
  * The harness runs TWICE: once with a deterministic mock token
  * collaborator (the token-backed path) and once without one (the
@@ -19,17 +19,17 @@
  * semantics that equivalence comparison alone can't prove.
  *
  * RESOLUTION NOTE: `apps/agents` has no `node_modules` yet, so bare
- * `@canopy/*` imports don't resolve when this suite runs standalone.
- * The @canopy modules are therefore imported here via RELATIVE paths so
+ * `@onderling/*` imports don't resolve when this suite runs standalone.
+ * The @onderling modules are therefore imported here via RELATIVE paths so
  * the test is self-contained.  `manifest.js` + `src/cores.js` are
- * import-free (no bare `@canopy/*`) and imported normally; the wire
+ * import-free (no bare `@onderling/*`) and imported normally; the wire
  * defs are built inline below with the relative `wireSkill` — mirroring
  * `src/wireSkills.js`'s `buildAgentSkills` exactly (that module keeps
- * its bare `@canopy/sdk` import for eventual integration).
+ * its bare `@onderling/sdk` import for eventual integration).
  */
 import { describe, it, expect } from 'vitest';
 
-// Relative @canopy imports so the suite runs without app-local node_modules.
+// Relative @onderling imports so the suite runs without app-local node_modules.
 import { createHash } from 'node:crypto';
 import { createAgent, wireSkill, Parts } from '../../../packages/sdk/src/index.js';
 import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';

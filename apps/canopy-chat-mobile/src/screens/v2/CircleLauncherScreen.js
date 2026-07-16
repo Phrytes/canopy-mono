@@ -2,7 +2,7 @@
  * canopy-chat-mobile v2 — circle launcher + detail screen (boards 1B / F1).
  *
  * Mobile counterpart of web's circleLauncher + circleDetail + circleApp,
- * over the same shared model ('@canopy-app/canopy-chat'). The launcher is
+ * over the same shared model ('@onderling-app/canopy-chat'). The launcher is
  * the app's default screen; the classic ChatScreen stays reachable via
  * "← chat". Opening a circle sets the active circle (F1) and shows an
  * inline scoped detail; "+ new circle" creates one via the existing
@@ -62,7 +62,7 @@ import {
   kringReplyText, scopeCatalogToApps,
   // B (circle bot) — dispatch primitives to run an interpreted command in the kring.
   parseInput, resolveDispatch, runDispatch, scopeReadyDispatch, executeBulkDispatch,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 // B (circle bot) — v2 free-text→LLM→command surface (shared with web). Deep-imported like the other
 // v2 modules (kringChatReceiver etc.) since they're not on the canopy-chat barrel.
 // S6.A — manifest-driven inline buttons on bot replies (the resurrected inline menu), shared with web.
@@ -77,12 +77,12 @@ import { canopyChatManifest } from '../../../../canopy-chat/src/index.js';
 import { isAppSurfaceEnabled } from '../../../../canopy-chat/src/v2/appFeature.js';
 // B · Slice 1/4 — the capability gate + the affordance matrix (web≡mobile, shared core).
 import { effectiveCapabilities, checkCapability } from '../../../../canopy-chat/src/v2/capabilityGate.js';
-import { buildCapabilityMatrix } from '@canopy/app-manifest';
+import { buildCapabilityMatrix } from '@onderling/app-manifest';
 // S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
 import { selectSurfaceButtons } from '../../../../canopy-chat/src/v2/surfacePref.js';
 // "only you" vs "whole kring" — message scope (data property; the badge renders it).
 import { scopeForReply } from '../../../../canopy-chat/src/v2/messageScope.js';
-import { buildFindExtras } from '@canopy/kring-host/findExtras';
+import { buildFindExtras } from '@onderling/kring-host/findExtras';
 // S6.D — is the conversational "chat" projection LLM-enriched here? (user LLM + circle permits)
 import { resolveChatAi } from '../../../../canopy-chat/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
@@ -91,15 +91,15 @@ import { createCircleDispatch, addressesBot } from '../../../../canopy-chat/src/
 // OBJ-2 membership — reuse the classic RN join wizard + the camera scanner + the shared invite glue.
 import JoinGroupWizardModal from '../../../../canopy-chat/src/rn/wizards/joinGroupWizardModal.js';
 import QrScannerModal from '../../rn/QrScannerModal.js';
-import { QrCodeView } from '@canopy/react-native/qr/view';
+import { QrCodeView } from '@onderling/react-native/qr/view';
 import { buildCircleInviteUri } from '../../../../canopy-chat/src/v2/circleInvite.js';
 import { feedHouseholdRoster } from '../../../../canopy-chat/src/v2/householdRosterPairing.js';
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../../../canopy-chat/src/v2/kringMemory.js';
 import { createTokenGate } from '../../../../canopy-chat/src/v2/tokenGate.js';
 import { makeCircleRetriever } from '../../../../canopy-chat/src/v2/circleRetriever.js';
-import { createMemoryBackend } from '@canopy/pseudo-pod';
-import { createAsBackend } from '@canopy/react-native/pseudo-pod-adapter';
+import { createMemoryBackend } from '@onderling/pseudo-pod';
+import { createAsBackend } from '@onderling/react-native/pseudo-pod-adapter';
 import { buildCircleEmbedProviders } from '../../../../canopy-chat/src/v2/circleEmbedProviders.js';
 import { resolveCircleEmbedder } from '../../../../canopy-chat/src/v2/embedPicker.js';
 import { circleGateRules } from '../../../../canopy-chat/src/v2/circleGate.js';
@@ -224,7 +224,7 @@ const CIRCLE_LLM_APPS = (process.env.EXPO_PUBLIC_CIRCLE_LLM_APPS || '').split(',
 // F-retrieve persistence (web parity): one app-level StorageBackend for the
 // circle-bot RAG vector index, scoped per-circle inside the retriever to
 // private/state/search-index/circle-rag/<circleId>/ (never sharing/ — invariant
-// #7). Same @canopy/pseudo-pod substrate the circle pods run on (see
+// #7). Same @onderling/pseudo-pod substrate the circle pods run on (see
 // src/core/circlePods.js). Objective L (2026-07-08): AsyncStorage-PERSISTENT on
 // device (createAsBackend over the RN AsyncStorage) so embedded vectors survive a
 // restart instead of re-embedding — mirrors web's IndexedDB wiring; falls back to

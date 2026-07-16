@@ -24,7 +24,7 @@
  *   - folioStatus         — record reply: count / synced / shared
  *
  * Mobile-extended (DEFERRED): canopy-chat mobile composes the same
- * browser-shape factory PLUS @canopy/sync-engine-rn for real file-
+ * browser-shape factory PLUS @onderling/sync-engine-rn for real file-
  * system mirroring; the in-memory file store collapses to a thin
  * proxy over the RN sync engine.  Tracked by #127-#131.
  *
@@ -36,7 +36,7 @@
 
 import {
   Agent, AgentIdentity, InternalTransport,
-} from '@canopy/core';
+} from '@onderling/core';
 
 import { mintShareToken } from './autoShare.js';
 import { listPodFolio } from './folioPodList.js';
@@ -113,7 +113,7 @@ function simulateSync() {
  * @param {Array}          [args.seedFiles]      override demo seeds; pass [] for clean
  * @param {object}         [args.noteEmbedder]   duck-typed embedder for `/zoek` semantic
  *                                               mode (a mock provider or an
- *                                               `@canopy/llm-client` EmbeddingClient).
+ *                                               `@onderling/llm-client` EmbeddingClient).
  *                                               Absent ⇒ lexical-only (llmTool:'off' /
  *                                               no-Ollama path). Wired by canopy-chat
  *                                               from the circle's embed policy; may also
@@ -169,7 +169,7 @@ export async function createBrowserFolioAgent({
    *
    * The SEMANTIC sibling of `searchFiles`. Where `searchFiles` is a
    * name/path substring match, `/zoek` (searchNotes) ranks notes by MEANING
-   * via `@canopy/pod-search` — so "car" finds a note about "automobile
+   * via `@onderling/pod-search` — so "car" finds a note about "automobile
    * repair". Degrades per Q3 (option a) + the llmTool policy: with no
    * `noteEmbedder` injected (llmTool:'off' / no Ollama) the index is
    * lexical-only, and a `mode:'semantic'` request gracefully returns the

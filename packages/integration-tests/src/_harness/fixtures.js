@@ -4,11 +4,11 @@
  * NOTE: `mnemonic(name)` returns a deterministic 24-word BIP-39 phrase
  * derived from the name.  It is NOT a real mnemonic generator — for real
  * cryptographic mnemonics use `Bootstrap.create()` / `generateMnemonic()`
- * from `@canopy/core`.  These fixtures exist only so scenarios can
+ * from `@onderling/core`.  These fixtures exist only so scenarios can
  * spawn predictable identities for tests like
  * `identity/bip39-recovery`.
  */
-import { generateMnemonic, mnemonicToSeed } from '@canopy/core';
+import { generateMnemonic, mnemonicToSeed } from '@onderling/core';
 
 // A known set of BIP-39 words that round-trip through the SDK.  We pick
 // from `generateMnemonic()` once at module-load and stash a lookup table

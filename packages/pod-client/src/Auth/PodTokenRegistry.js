@@ -6,7 +6,7 @@
  * `PodTokenVerifier`'s revocation seam) on every request, so a revoked
  * delegation stops authorizing before its `expiresAt`.
  *
- * Mirrors `@canopy/core`'s `TokenRegistry` shape/conventions, but is trimmed to
+ * Mirrors `@onderling/core`'s `TokenRegistry` shape/conventions, but is trimmed to
  * the revocation half — the companion's owner only needs "revoke + is-it-
  * revoked", not a held-token cache. Uses a distinct key prefix so it can share a
  * vault with a `TokenRegistry` without colliding.
@@ -17,7 +17,7 @@
 export class PodTokenRegistry {
   #vault;
 
-  /** @param {import('@canopy/vault').Vault} vault */
+  /** @param {import('@onderling/vault').Vault} vault */
   constructor(vault) {
     if (!vault) throw new Error('PodTokenRegistry requires a vault');
     this.#vault = vault;

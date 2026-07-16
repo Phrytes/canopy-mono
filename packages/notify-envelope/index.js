@@ -1,5 +1,5 @@
 /**
- * @canopy/notify-envelope — mediates persistent-content writes.
+ * @onderling/notify-envelope — mediates persistent-content writes.
  *
  * Per-write mode picker (envelope-only vs full-payload + queue)
  * backed by pseudo-pod + pod-routing. Owns the pending-pod-upload

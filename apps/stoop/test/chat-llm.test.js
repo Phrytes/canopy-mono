@@ -19,9 +19,9 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mockProvider, LlmClient } from '@canopy/llm-client';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mockProvider, LlmClient } from '@onderling/llm-client';
 
 import { createNeighborhoodAgent } from '../src/index.js';
 import { stoopManifest }           from '../manifest.js';

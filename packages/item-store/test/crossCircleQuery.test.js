@@ -1,7 +1,7 @@
 /**
  * SP-8 — cross-circle query (`ListFilter.audiences` + `audienceMatchesAny`).
  *
- * The @canopy/circles V0 deferral: `ListFilter` could not carry an
+ * The @onderling/circles V0 deferral: `ListFilter` could not carry an
  * audience SET.  SP-8 adds `filter.audiences: Audience[]` — an item
  * matches when its effective audience satisfies ANY audience in the
  * set, so one query spans MULTIPLE circles (union).
@@ -19,7 +19,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { ItemStore, audienceMatchesAny, audienceMatches } from '../src/index.js';
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 
 const ACTOR = 'webid:alice';
 

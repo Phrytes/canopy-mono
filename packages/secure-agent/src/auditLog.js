@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — signed activity / audit log.
+ * @onderling/secure-agent — signed activity / audit log.
  *
  * Wires A.6 from the v0.7 security roadmap.  Append-only,
  * Ed25519-signed, hash-chained log of security-relevant events.
@@ -37,7 +37,7 @@
  * Layer: substrate.  Platform-neutral.
  */
 
-import { AgentIdentity, canonicalize, b64encode, b64decode, genId } from '@canopy/core';
+import { AgentIdentity, canonicalize, b64encode, b64decode, genId } from '@onderling/core';
 import { sha256 } from '@noble/hashes/sha2.js';
 
 export const AUDIT_VERSION = 1;

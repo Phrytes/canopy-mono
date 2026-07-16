@@ -8,11 +8,11 @@ importers:
 
   .:
     dependencies:
-      '@canopy/core':
+      '@onderling/core':
         specifier: file:../core
         version: file:../core
     devDependencies:
-      '@canopy/chat-agent':
+      '@onderling/chat-agent':
         specifier: file:../chat-agent
         version: file:../chat-agent
       vitest:
@@ -25,7 +25,7 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/chat-agent@file:../chat-agent':
+  '@onderling/chat-agent@file:../chat-agent':
     resolution: {directory: ../chat-agent, type: directory}
     peerDependencies:
       telegraf: ^4.16.0
@@ -33,13 +33,13 @@ packages:
       telegraf:
         optional: true
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     resolution: {directory: ../core, type: directory}
 
-  '@canopy/oidc-session@file:../oidc-session':
+  '@onderling/oidc-session@file:../oidc-session':
     resolution: {directory: ../oidc-session, type: directory}
 
-  '@canopy/vault@file:../vault':
+  '@onderling/vault@file:../vault':
     resolution: {directory: ../vault, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -808,14 +808,14 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/chat-agent@file:../chat-agent':
+  '@onderling/chat-agent@file:../chat-agent':
     dependencies:
-      '@canopy/core': file:../core
+      '@onderling/core': file:../core
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     dependencies:
-      '@canopy/oidc-session': file:../oidc-session
-      '@canopy/vault': file:../vault
+      '@onderling/oidc-session': file:../oidc-session
+      '@onderling/vault': file:../vault
       '@inrupt/solid-client': 3.0.0
       '@inrupt/solid-client-authn-node': 4.0.0
       '@noble/hashes': 2.2.0
@@ -826,11 +826,11 @@ snapshots:
     optionalDependencies:
       node-datachannel: 0.32.3
 
-  '@canopy/oidc-session@file:../oidc-session':
+  '@onderling/oidc-session@file:../oidc-session':
     dependencies:
       '@inrupt/solid-client-authn-node': 4.0.0
 
-  '@canopy/vault@file:../vault': {}
+  '@onderling/vault@file:../vault': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

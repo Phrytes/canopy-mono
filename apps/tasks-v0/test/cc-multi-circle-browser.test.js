@@ -8,8 +8,8 @@
  * back to the primary circle (the legacy single-circle behaviour).
  */
 import { describe, it, expect } from 'vitest';
-import { DataPart, AgentIdentity, InternalBus } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { DataPart, AgentIdentity, InternalBus } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { createBrowserMultiCircleTasksAgent } from '../src/browser.js';
 

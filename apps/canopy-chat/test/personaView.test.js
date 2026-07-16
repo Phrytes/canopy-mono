@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { buildPersonaViewModel } from '../src/v2/personaView.js';
 import { renderAboutMe } from '../web/v2/circleAboutMe.js';
-import { attributeKeys } from '@canopy/attribute-charter';
+import { attributeKeys } from '@onderling/attribute-charter';
 
 // Minimal t(): return the key with any {{placeholder}} substituted (mirrors the
 // app's i18n enough for structural assertions; exact copy isn't under test).
@@ -123,7 +123,7 @@ describe('renderAboutMe', () => {
 describe('buildPersonaViewModel — drivers (#5)', () => {
   it('surfaces driver-typed properties separately from coarse attributes', async () => {
     const { buildPersonaViewModel } = await import('../src/v2/personaView.js');
-    const { createDriver } = await import('@canopy/agent-registry');
+    const { createDriver } = await import('@onderling/agent-registry');
     const view = {
       ok: true, id: 'default',
       properties: {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Agent }                      from '../src/Agent.js';
 import { AgentIdentity }              from '../src/identity/AgentIdentity.js';
-import { VaultMemory }                from '@canopy/vault';
+import { VaultMemory }                from '@onderling/vault';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 import { TextPart, DataPart, Parts }  from '../src/Parts.js';
 

@@ -19,7 +19,7 @@
  * **Substrate candidate (rule of two — first consumer):** when a
  * second app's `CachingDataSource` needs persistence, lift this
  * alongside the existing `CachingDataSource` candidate into
- * `@canopy/local-store`.  Tracked in
+ * `@onderling/local-store`.  Tracked in
  * `Project Files/Substrates/substrate-candidates.md`.
  */
 

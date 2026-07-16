@@ -8,7 +8,7 @@
  * singleton pattern, just with a stoop-specific task name.
  *
  * The underlying `setBgRunOnce` / `clearBgRunOnce` / `bgRunOnce`
- * helpers live in `@canopy/sync-engine-rn` (lifted 2026-05-08).
+ * helpers live in `@onderling/sync-engine-rn` (lifted 2026-05-08).
  */
 
 export {
@@ -19,7 +19,7 @@ export {
   registerBackgroundFetch,
   unregisterBackgroundFetch,
   DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
-} from '@canopy/sync-engine-rn';
+} from '@onderling/sync-engine-rn';
 
 /**
  * Stable task name used by both `defineBackgroundTask` (at index.js

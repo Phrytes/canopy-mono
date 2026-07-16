@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import en from '@canopy-app/stoop/locales/en';
-import nl from '@canopy-app/stoop/locales/nl';
+import en from '@onderling-app/stoop/locales/en';
+import nl from '@onderling-app/stoop/locales/nl';
 
 const REQUIRED_KEYS = [
   // mobile.*

@@ -17,7 +17,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-import { resolveDispatch } from '@canopy-app/canopy-chat';
+import { resolveDispatch } from '@onderling-app/canopy-chat';
 import { composeManifests } from '../src/core/composeManifests.js';
 import { runConfirmGate, confirmRequestFromRoute, alertConfirmPresenter } from '../src/core/confirmDispatch.js';
 import { agentsManifest } from '../../agents/manifest.js';

@@ -1,5 +1,5 @@
 /**
- * @canopy/interface-registry — per-type renderer registry.
+ * @onderling/interface-registry — per-type renderer registry.
  *
  * Direction-only — Phase 52.12. The Agent slot for this substrate
  * exists in core (Phase 50.13). Hub V2 territory.

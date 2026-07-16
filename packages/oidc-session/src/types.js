@@ -1,7 +1,7 @@
 /**
  * Shared types for Solid OIDC auth substrates.
  *
- * Mirrored in `@canopy/oidc-session-rn` (keep both copies in sync).
+ * Mirrored in `@onderling/oidc-session-rn` (keep both copies in sync).
  *
  * Phase 52.15.1 (2026-05-14). See
  * `Project Files/Inrupt-migration/substrate-design-2026-05-14.md`.
@@ -18,8 +18,8 @@
  *
  * @typedef {object} SolidAuth
  *   The conceptual interface both auth substrates implement.
- *   `@canopy/oidc-session.createSolidAuthNode` returns this shape
- *   for Node; `@canopy/oidc-session-rn.OidcSessionRN` returns the
+ *   `@onderling/oidc-session.createSolidAuthNode` returns this shape
+ *   for Node; `@onderling/oidc-session-rn.OidcSessionRN` returns the
  *   same shape (Phase 52.15.2 work).
  *
  * @property {(opts: SignInOpts) => Promise<{redirectUrl: string}>} start

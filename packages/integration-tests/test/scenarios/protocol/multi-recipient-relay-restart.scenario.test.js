@@ -32,17 +32,17 @@ import { mkdtemp, rm }     from 'node:fs/promises';
 import { tmpdir }          from 'node:os';
 import { join, dirname }   from 'node:path';
 import { fileURLToPath }   from 'node:url';
-import { startRelay }            from '@canopy/relay';
+import { startRelay }            from '@onderling/relay';
 
 // The relay package does not currently re-export its queue stores at the
 // top level (its `exports` map only exposes `.`).  Resolve their files via
 // node_modules to keep this test independent of an SDK-side surface change
 // — adding the exports is tracked as a follow-up TODO (§T.4 §Notes).
 //
-// `ws` is only present under @canopy/relay/node_modules/ws (transitive
+// `ws` is only present under @onderling/relay/node_modules/ws (transitive
 // dep), so we resolve it through the relay's nested install too.
 const __dirname  = dirname(fileURLToPath(import.meta.url));
-const RELAY_NM   = join(__dirname, '../../../node_modules/@canopy/relay');
+const RELAY_NM   = join(__dirname, '../../../node_modules/@onderling/relay');
 const RELAY_SRC  = join(RELAY_NM, 'src');
 const { SqliteQueueStore }    = await import(`${RELAY_SRC}/queueStores/SqliteQueueStore.js`);
 const { MultiRecipientQueue } = await import(`${RELAY_SRC}/MultiRecipientQueue.js`);

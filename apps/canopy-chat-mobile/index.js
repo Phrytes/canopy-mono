@@ -4,7 +4,7 @@
 // ArrayBuffer parts will crash silently if this lands second).  Same
 // substrate as stoop-mobile + folio-mobile + tasks-mobile (see
 // apps/stoop-mobile/index.js for the canonical comment).
-import '@canopy/react-native/platform/polyfills';
+import '@onderling/react-native/platform/polyfills';
 
 // @expo/metro-runtime adds the fast-refresh + web-only runtime hooks
 // required by metro-web (#224 Phase A).  Native bundles ignore it.

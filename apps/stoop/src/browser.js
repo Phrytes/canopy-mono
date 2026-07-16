@@ -16,8 +16,8 @@
  * scripts, no node-only adapters, no testbed launcher.
  */
 
-import { AgentIdentity, InternalTransport } from '@canopy/core';
-import { SolidPodSource } from '@canopy/pod-client';
+import { AgentIdentity, InternalTransport } from '@onderling/core';
+import { SolidPodSource } from '@onderling/pod-client';
 
 import { createNeighborhoodAgent } from './Agent.js';
 import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.js';
@@ -45,7 +45,7 @@ import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.
  *                                               omit for in-memory only
  * @param {string}         [args.label='StoopAgent']
  * @param {object}         [args.controlAgent]   optional sealed-pod control-agent
- *                                               (`@canopy/pod-client` `createControlAgent`). When
+ *                                               (`@onderling/pod-client` `createControlAgent`). When
  *                                               present, membership events drive the group-key flow:
  *                                               `redeemMembershipCode` → `addMember` (seal the group key
  *                                               to the joiner's sealing public key) and `leaveGroup` →

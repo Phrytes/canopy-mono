@@ -1,5 +1,5 @@
 /**
- * @canopy/vault — agent identity + token storage.
+ * @onderling/vault — agent identity + token storage.
  *
  * Vault family:
  *   - Vault              — abstract base class (subclass to provide a
@@ -17,10 +17,10 @@
  *   - makeAuthorizedFetch — fetch wrapper that pulls tokens from an
  *                          OAuthVault.
  *
- * Extracted from `@canopy/core/identity` 2026-05-11 (standardisation
+ * Extracted from `@onderling/core/identity` 2026-05-11 (standardisation
  * Phase 50.1.A — see Project Files/SDK/core-v2-coding-plan-2026-05-11.md).
- * `@canopy/core` keeps a deprecation re-export through one minor
- * release; new code should import from `@canopy/vault` directly.
+ * `@onderling/core` keeps a deprecation re-export through one minor
+ * release; new code should import from `@onderling/vault` directly.
  */
 
 export { Vault }                from './src/Vault.js';

@@ -5,7 +5,7 @@
  * the v2 Contacten roster needed).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PeerGraph } from '@canopy/core';
+import { PeerGraph } from '@onderling/core';
 import { createLocalStoragePeerBackend } from '../../src/web/localStoragePeerBackend.js';
 
 /** Minimal Map-backed Storage shim with the surface the backend uses. */

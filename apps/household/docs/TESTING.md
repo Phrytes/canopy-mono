@@ -278,7 +278,7 @@ mock pod is too forgiving.
    - **CommunitySolidServer** locally (`npx @solid/community-server`).
 
 2. Authenticate.  V0 of household runs server-side and uses
-   `@canopy/pod-client`'s `SolidOidcAuth` (same primitive Folio
+   `@onderling/pod-client`'s `SolidOidcAuth` (same primitive Folio
    uses).  Configure in the agent's `init` step (Phase 5).
 
 3. Set env to opt in:

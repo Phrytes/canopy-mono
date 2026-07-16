@@ -44,7 +44,7 @@ import {
  * `localBuiltins.lookupPeer` catches and reports via t('lookup.failed').
  *
  * @param {object}  deps
- * @param {{ current: import('@canopy/oidc-session-rn').OidcSessionRN }} deps.sessionRef
+ * @param {{ current: import('@onderling/oidc-session-rn').OidcSessionRN }} deps.sessionRef
  * @returns {(webid: string) => Promise<string|null>}
  */
 export function buildLookupPeerAddrByWebid({ sessionRef }) {
@@ -70,7 +70,7 @@ export function buildLookupPeerAddrByWebid({ sessionRef }) {
  * that `localBuiltins.publishPeerAddrCmd` formats for the user.
  *
  * @param {object}  deps
- * @param {{ current: import('@canopy/oidc-session-rn').OidcSessionRN }} deps.sessionRef
+ * @param {{ current: import('@onderling/oidc-session-rn').OidcSessionRN }} deps.sessionRef
  * @param {{ peer?: { address?: string } }} deps.agent
  * @returns {() => Promise<{ ok: boolean, url?: string, status?: number }>}
  */

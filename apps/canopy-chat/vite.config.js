@@ -4,7 +4,7 @@
  * Build pipeline (sub-slice 1.12): outputs to `dist/` for deploy to
  * any static host (or the user's pod once that flow exists in v0.6).
  *
- * Dev server: `pnpm --filter @canopy-app/canopy-chat dev` boots Vite
+ * Dev server: `pnpm --filter @onderling-app/canopy-chat dev` boots Vite
  * on port 5173 with hot reload.
  */
 
@@ -30,9 +30,9 @@ const nodeHttp    = fileURLToPath(new URL('./src/web/shims/node/http.js',   impo
 const wsShim      = fileURLToPath(new URL('./src/web/shims/wsShim.js',      import.meta.url));
 const relayShim   = fileURLToPath(new URL('./src/web/shims/relayShim.js',   import.meta.url));
 const telegramShim = fileURLToPath(new URL('./src/web/shims/telegramBridge.js', import.meta.url));
-// Pin @canopy/core to the real workspace package. Under pnpm hoisting there are
-// stray copies in other apps' node_modules (e.g. apps/folio/node_modules/@canopy/
-// core); without this, Vite can resolve @canopy/core — and thus its tweetnacl/
+// Pin @onderling/core to the real workspace package. Under pnpm hoisting there are
+// stray copies in other apps' node_modules (e.g. apps/folio/node_modules/@onderling/
+// core); without this, Vite can resolve @onderling/core — and thus its tweetnacl/
 // ed2curve crypto deps — to the WRONG copy, yielding 500s + a blank screen.
 const canopyCore  = fileURLToPath(new URL('../../packages/core',            import.meta.url));
 // Resolve the npm `events` polyfill once, by absolute path.  Transitive
@@ -67,7 +67,7 @@ export default defineConfig({
       },
     },
   },
-  // Skip esbuild pre-bundling for `@canopy/core`: its index.js uses
+  // Skip esbuild pre-bundling for `@onderling/core`: its index.js uses
   // the renamed re-export form `export { encode as b64encode } from
   // './crypto/b64.js'`, which esbuild's pre-bundler drops when
   // applied to pnpm workspace deps (file:../packages/core).  Symptom:
@@ -77,9 +77,9 @@ export default defineConfig({
   // workspace deps don't use the same export form + pre-bundle fine.
   // See slice-4 smoke fix (2026-05-23).
   optimizeDeps: {
-    // `@canopy/app-manifest` + `@canopy/skill-match` are EXCLUDED (served as
+    // `@onderling/app-manifest` + `@onderling/skill-match` are EXCLUDED (served as
     // source) because they carry the reply-shape/op VALIDATOR, and this repo's
-    // broken install means @canopy/* resolve as COPIES that we hand-sync after a
+    // broken install means @onderling/* resolve as COPIES that we hand-sync after a
     // shared-source edit (see memory `feedback-no-pnpm-install-here`). A pre-
     // bundle of the validator freezes the OLD allow-list, so a freshly-added
     // reply shape (P3 `curation`) is rejected at mount time until the .vite cache
@@ -87,17 +87,17 @@ export default defineConfig({
     // and the circle bot fails to build. Serving them as source makes a source/
     // copy edit always live (no stale prebundle). Both are pure ESM, so there's
     // no esbuild-only export form to lose by skipping the prebundle.
-    exclude: ['@canopy/core', '@canopy/app-manifest', '@canopy/skill-match'],
-    // `@canopy/core` is served as SOURCE (excluded above), so Vite resolves its
+    exclude: ['@onderling/core', '@onderling/app-manifest', '@onderling/skill-match'],
+    // `@onderling/core` is served as SOURCE (excluded above), so Vite resolves its
     // transitive CJS crypto deps (tweetnacl/ed2curve, imported by AgentIdentity)
     // at request time. When they resolve to a workspace copy OUTSIDE the app root
     // (served raw via `@fs/`), a `default` import fails — "doesn't provide an
     // export named default". The `parent > child` form force-bundles a nested
-    // dep of the EXCLUDED parent, so @canopy/core's own source import resolves to
+    // dep of the EXCLUDED parent, so @onderling/core's own source import resolves to
     // the optimized copy (with a default) instead of the raw @fs/ file.
-    include: ['@canopy/core > tweetnacl', '@canopy/core > ed2curve'],
+    include: ['@onderling/core > tweetnacl', '@onderling/core > ed2curve'],
   },
-  // OQ-1.C resolution: @canopy/core transports use runtime detection
+  // OQ-1.C resolution: @onderling/core transports use runtime detection
   // (`typeof WebSocket !== 'undefined'` etc.) and fall back to Node-
   // only packages via `await import('ws' | 'mqtt' | …)`.  In the
   // browser those fallback branches NEVER execute, but Rollup still
@@ -109,13 +109,13 @@ export default defineConfig({
   // take a different branch and don't hit these shims.
   resolve: {
     alias: {
-      // Pin @canopy/core to the real workspace package so its transitive crypto
+      // Pin @onderling/core to the real workspace package so its transitive crypto
       // deps (tweetnacl/ed2curve) resolve from packages/core/node_modules — ONE
       // consistent copy — instead of a stray app copy (apps/folio/node_modules/
-      // @canopy/core), which caused folio-path raw serving + 500s + a blank
+      // @onderling/core), which caused folio-path raw serving + 500s + a blank
       // screen. (NB: do NOT add tweetnacl/ed2curve to resolve.dedupe — that forces
       // resolution from the canopy-chat root, which has no tweetnacl, breaking it.)
-      '@canopy/core': canopyCore,
+      '@onderling/core': canopyCore,
       // `ws` is Node-only; the relay's WsServerTransport statically
       // imports `WebSocketServer` from it.  Shim carries the named
       // export so Rollup is happy; classes throw at construction if
@@ -132,10 +132,10 @@ export default defineConfig({
       // The Telegram bridge is a Node-only server transport (reads process.env at
       // module load → `process is not defined` in the browser, blanking the app).
       // household/src re-exports it, so it lands in the web import graph; stub it.
-      '@canopy/chat-agent/bridges/telegram': telegramShim,
+      '@onderling/chat-agent/bridges/telegram': telegramShim,
       'js-yaml':         empty,
       'node-datachannel': empty,
-      // N5 — @canopy/pod-client's barrel statically re-exports every
+      // N5 — @onderling/pod-client's barrel statically re-exports every
       // TombstoneStore adapter, incl. the RN-only AsyncStorageTombstones
       // (imports @react-native-async-storage/async-storage).  The web
       // bundle never uses it — PodClient defaults to MemoryTombstones —
@@ -172,14 +172,14 @@ export default defineConfig({
       // import graph so they need to resolve.
       'node:events': eventsShim,
       'events':      eventsShim,   // some packages import the bare specifier
-      // OIDC chain — @canopy/core re-exports SolidVault from
-      // @canopy/oidc-session, which pulls in Inrupt's Node-only auth
+      // OIDC chain — @onderling/core re-exports SolidVault from
+      // @onderling/oidc-session, which pulls in Inrupt's Node-only auth
       // package + openid-client (which uses node:crypto, node:http,
       // node:util, ...).  canopy-chat v0.1 ships PRE-SIGNED-IN per
       // OQ-1.A; OIDC handoff lands in v0.6 via J6.  Until then we stub
       // the whole OIDC tree.  A future cleanup should split
-      // @canopy/oidc-session into browser-compat + Node-only entry
-      // points (existing @canopy/oidc-session-rn shows the pattern).
+      // @onderling/oidc-session into browser-compat + Node-only entry
+      // points (existing @onderling/oidc-session-rn shows the pattern).
       //
       // The OIDC shim provides NAMED exports matching the real
       // package's index.js (SolidVault, KNOWN_ISSUERS, …) because
@@ -187,7 +187,7 @@ export default defineConfig({
       // than rollup about named-export resolution.  The other
       // entries point at the bare empty module because their
       // imports happen via dynamic-import (never executed).
-      '@canopy/oidc-session':                 oidcSession,
+      '@onderling/oidc-session':                 oidcSession,
       '@inrupt/solid-client-authn-node':      empty,
       // v0.7.P1 — DON'T shim '@inrupt/solid-client-authn-core'.  We
       // now compose '@inrupt/solid-client-authn-browser' for real
@@ -196,7 +196,7 @@ export default defineConfig({
       // breaks the build with 'X is not exported by empty.js'.  The
       // Node auth package stays shimmed (separate name).
       'openid-client':                        empty,
-      // `@canopy/relay` is a Node-only HTTP server package; stoop's
+      // `@onderling/relay` is a Node-only HTTP server package; stoop's
       // Agent.js dynamic-imports WebPushSender which pulls in
       // `PushSender` from relay.  Browser code never instantiates
       // WebPushSender (no VAPID keys are passed in the browser
@@ -205,9 +205,9 @@ export default defineConfig({
       // walks transitively into `relay/src/server.js` which static-
       // imports node:http, node:https, ws, better-sqlite3, … none
       // of which belong in a browser bundle (#303).
-      '@canopy/relay':                        relayShim,
+      '@onderling/relay':                        relayShim,
       // VaultNodeFs is Node-only by design — VaultMemory is what we
-      // use in v0.1.  Stubbing keeps the @canopy/vault index re-export
+      // use in v0.1.  Stubbing keeps the @onderling/vault index re-export
       // happy.
       // (No alias needed — VaultNodeFs guards its `fs` import at use-
       // time, but the static `node:fs` import would still trip Rollup.

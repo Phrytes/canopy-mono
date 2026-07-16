@@ -6,7 +6,7 @@
  *
  * Usage:
  *
- *   import { createServer } from '@canopy-app/folio/server';
+ *   import { createServer } from '@onderling-app/folio/server';
  *
  *   const { server, hub, listen, close } = createServer({ engine, vault });
  *   await listen(8888, '127.0.0.1');
@@ -171,5 +171,5 @@ export { WsHub } from './wsHub.js';
 export { createRouter } from './routes.js';
 export { createAuthRouter } from '../auth/authRoutes.js';
 // Phase 52.15.3 (2026-05-14) — OidcSession class retired; consumers
-// import `createSolidAuthNode` from `@canopy/oidc-session` directly.
+// import `createSolidAuthNode` from `@onderling/oidc-session` directly.
 export { SyncErrorBuffer, attachErrorBuffer } from './errorBuffer.js';

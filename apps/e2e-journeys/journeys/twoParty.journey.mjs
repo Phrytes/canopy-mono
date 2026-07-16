@@ -1,8 +1,8 @@
 // Two independent SDK agents exchange messages over the relay (one-way both
 // directions + a request/response round-trip).
-import { Agent, AgentIdentity, TextPart, Parts } from '@canopy/core';
-import { VaultMemory }    from '@canopy/vault';
-import { RelayTransport } from '@canopy/transports';
+import { Agent, AgentIdentity, TextPart, Parts } from '@onderling/core';
+import { VaultMemory }    from '@onderling/vault';
+import { RelayTransport } from '@onderling/transports';
 import { wait, checker }  from './_util.mjs';
 
 export const name = 'two-party messaging';

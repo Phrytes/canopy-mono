@@ -78,13 +78,13 @@ function setSignature(byContact) {
  * Build the live contact-skill registry.
  *
  * @param {object} deps
- * @param {import('@canopy/core').PeerGraph} deps.peerGraph
+ * @param {import('@onderling/core').PeerGraph} deps.peerGraph
  *   the agent's PeerGraph (`agent.peers`). When absent, the registry is inert
  *   (no contacts, `callSkill` always falls through) so a shell without a peer
  *   graph still boots.
  * @param {(peerUrl: string, skillId: string, args: object) => any} deps.sendTask
  *   sends a task to the contact's bot and resolves to the reply. The shell binds
- *   `@canopy/core` `sendA2ATask` with its `agent` + `task.done()` applied.
+ *   `@onderling/core` `sendA2ATask` with its `agent` + `task.done()` applied.
  * @param {() => void} [deps.onChange]
  *   called (after the internal state is updated) whenever the contact-skill set
  *   changes — the host's "refresh the contact-thread command pool" hook.

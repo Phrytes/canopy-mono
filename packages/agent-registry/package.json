@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/agent-registry",
+  "name": "@onderling/agent-registry",
   "version": "0.1.0",
   "description": "Canonical agent registry — the user's agents listed in one pod resource. Implements core's ActorResolver. Etag-based optimistic concurrency. Standardisation Phase 52.10.",
   "type": "module",
@@ -16,13 +16,13 @@
     "@noble/hashes": "^2.2.0"
   },
   "peerDependencies": {
-    "@canopy/core":       "*",
-    "@canopy/pseudo-pod": "*"
+    "@onderling/core":       "*",
+    "@onderling/pseudo-pod": "*"
   },
   "devDependencies": {
-    "@canopy/circles":    "file:../circles",
-    "@canopy/core":       "file:../core",
-    "@canopy/pseudo-pod": "file:../pseudo-pod",
+    "@onderling/circles":    "file:../circles",
+    "@onderling/core":       "file:../core",
+    "@onderling/pseudo-pod": "file:../pseudo-pod",
     "vitest": "^2.1.9"
   }
 }

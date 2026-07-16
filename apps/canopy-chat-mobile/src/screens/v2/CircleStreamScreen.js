@@ -10,7 +10,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { buildCircleStream } from '@canopy-app/canopy-chat';
+import { buildCircleStream } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function CircleStreamScreen({ eventLog, circles = [], onBack, onOpenCircle }) {

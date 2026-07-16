@@ -3,7 +3,7 @@
  *
  * Proves the keystone contract: typed CRUD + a `type` index + registry validation on write, over an
  * injected DataSource (so a sealed/pod-backed source plugs in unchanged). The registry is a stub here —
- * the real `@canopy/item-types` `createRegistry()` injects the same `validate(item)→{ok,errors}` shape,
+ * the real `@onderling/item-types` `createRegistry()` injects the same `validate(item)→{ok,errors}` shape,
  * and third-party types extend it via `registerType` (the extensibility corner).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -21,7 +21,7 @@ function memSource() {
   };
 }
 
-/** A registry stub: knows `task` + `note`; rejects everything else (mirrors @canopy/item-types `validate`). */
+/** A registry stub: knows `task` + `note`; rejects everything else (mirrors @onderling/item-types `validate`). */
 const KNOWN = new Set(['task', 'note', 'list', 'offer']);
 const registry = {
   validate: (item) => KNOWN.has(item.type)

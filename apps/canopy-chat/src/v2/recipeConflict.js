@@ -7,7 +7,7 @@
  * arrived from a peer broadcast / pod-sync — the source plumbing is
  * deferred to a later γ-slice) we compare them against the last
  * captured version (γ.2's versions adapter — since the consolidation,
- * `@canopy/kring-host/objectVersionsStorage` over `@canopy/versioning`).
+ * `@onderling/kring-host/objectVersionsStorage` over `@onderling/versioning`).
  * The result is grouped
  * for the UI:
  *
@@ -43,7 +43,7 @@
  * (matches `kringRecipe.freshBlockId`).
  */
 
-import { objectDiff } from '@canopy/sync-engine/objectDiff';
+import { objectDiff } from '@onderling/sync-engine/objectDiff';
 
 /**
  * @typedef {object} BlockConflict

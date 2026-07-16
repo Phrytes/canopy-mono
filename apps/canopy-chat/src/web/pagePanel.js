@@ -29,7 +29,7 @@
 
 import { buildFormSpec, validateAndCoerce } from '../forms/buildFormSpec.js';
 import { renderForm }                       from './domForm.js';
-import { renderFloatingButton }             from '@canopy/chat-nav';
+import { renderFloatingButton }             from '@onderling/chat-nav';
 
 /**
  * @typedef {object} PagePanelOptions

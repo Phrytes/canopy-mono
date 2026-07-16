@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi } from 'vitest';
 import { renderSkillEditor } from '../../web/v2/circleSkillEditor.js';
-import { DEFAULT_SKILL } from '@canopy/kring-host/circleSkills';
+import { DEFAULT_SKILL } from '@onderling/kring-host/circleSkills';
 
 const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }

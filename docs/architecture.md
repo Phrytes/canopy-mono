@@ -55,7 +55,7 @@ This is the seam the repo will eventually split on: **interface clients above th
 
 An app declares its surface **once, as data**, in a `manifest.js`: its item types, operations, views, and
 per-operation surface hints. It is the single source of truth every surface reads. Five pure **projectors**
-(`@canopy/app-manifest`) turn that one declaration into every surface:
+(`@onderling/app-manifest`) turn that one declaration into every surface:
 
 | Projector | Produces | Half |
 |---|---|---|
@@ -69,7 +69,7 @@ per-operation surface hints. It is the single source of truth every surface read
 deterministic path, from the same manifest. Read the five as **two groups, not a flat list**: those three are
 **platform-agnostic input modalities** (identical on web and mobile — this *is* the `web ≡ mobile` invariant),
 while `renderWeb`/`renderMobile` are thin **platform shells** — and `renderMobile` is literally a re-export of
-`renderWeb`'s NavModel, differing only in the platform adapter. `@canopy/manifest-host` composes *N* apps' manifests at runtime
+`renderWeb`'s NavModel, differing only in the platform adapter. `@onderling/manifest-host` composes *N* apps' manifests at runtime
 (namespaced `appId.opId`, collision detection). Because every surface is a projection, **adding an op to a
 `manifest.js` makes it reachable from chat, slash, gate, web, and mobile at once** — and the coverage snapshot
 (`npm run coverage` → `apps/canopy-chat/docs/surface-coverage.md`) records which surfaces each op is wired for,
@@ -110,11 +110,11 @@ slices to `maxContext` (5), and injects the results as context.
 - **Tier-1 lexical** — keyword match, always available, no model needed.
 - **Tier-2 semantic** — ranks by meaning (a query for "car" finds "automobile"). Needs an embedder.
 
-**Engine.** Tier-2 is backed by a per-circle `@canopy/pod-search` hybrid index (`makePodSearchRetriever`),
+**Engine.** Tier-2 is backed by a per-circle `@onderling/pod-search` hybrid index (`makePodSearchRetriever`),
 scoped `circle-rag/<circleId>` so circles never bleed into each other. Items are embedded once (content-hash
 cache — unchanged items are never re-embedded) and each turn runs `query({mode:'hybrid'})` — reciprocal rank
 fusion (k=60) over the lexical and cosine rankings. A `vectorStore` seam holds the vectors: both shells inject
-a **persistent** one — web via `pickWebBackend` (IndexedDB, `@canopy/pseudo-pod/browser`), mobile via
+a **persistent** one — web via `pickWebBackend` (IndexedDB, `@onderling/pseudo-pod/browser`), mobile via
 `createAsBackend` (RN AsyncStorage) — scoped `circle-rag/<circleId>`, with an in-memory fallback under SSR / the
 test env. So vectors (and the circle **items** they index, on the same persistent backend) **survive a hard
 restart** instead of re-embedding; within a session, retriever rebuilds hydrate from the store (embed-once).
@@ -239,10 +239,10 @@ packages/core                the KERNEL — a lean set of PORTS + kernel logic
   `callSkill` security gate, `InternalTransport`, and the **ports** — `Transport` · `DataSource` · `ActorResolver`.
   The ports are the **named compatibility contract**: *implement the port + pass its conformance harness =
   compatible with the kernel* ([`conventions/ports.md`](./conventions/ports.md)). The concrete **adapters** live
-  OUTSIDE the kernel — network transports in **`@canopy/transports`**, Solid-pod storage + on-pod identity in
-  **`@canopy/pod-client`**, the vault family in **`@canopy/vault`** — and nothing in the kernel depends *up* on an
+  OUTSIDE the kernel — network transports in **`@onderling/transports`**, Solid-pod storage + on-pod identity in
+  **`@onderling/pod-client`**, the vault family in **`@onderling/vault`** — and nothing in the kernel depends *up* on an
   adapter (guarded by `test/layering.enforcement.test.js`).
-- **The developer SDK is `@canopy/sdk`** — the fat, batteries-included facade, **layered**: a *low* layer
+- **The developer SDK is `@onderling/sdk`** — the fat, batteries-included facade, **layered**: a *low* layer
   re-exports the kernel + default adapters (pass your own explicitly → maximal clarity/compatibility), and a
   *high* layer adds `createAgent()` (run-as-agent, defaults injected) + `connectSkill(agent, name, appFn)` (map any
   app function to a skill). "Import one thing, done"; drop a layer for full control. Defaults (e.g. `VaultMemory`)
@@ -251,7 +251,7 @@ packages/core                the KERNEL — a lean set of PORTS + kernel logic
   form a **gradient**: *runtime-foundation* (vault, oidc-session, pod-client — near-required for a networked
   agent) → *feature* (skill-match, notifier, pod-search — optional) → *facade* (secure-agent, agent-provisioning —
   compose others). Extracted under a **rule of two** — generalise on the second independent need, not the first.
-- **Apps** compose substrates (or `@canopy/sdk`), using the kernel directly only with a justification in the app
+- **Apps** compose substrates (or `@onderling/sdk`), using the kernel directly only with a justification in the app
   README.
 
 See [`repository-layout.md`](./repository-layout.md) for the full apps + packages map. *(History: `core` was a
@@ -291,7 +291,7 @@ handler) build on. The paths that carry it are below.
 ### Reachability
 
 Two peers exchange messages over whichever path is currently usable; a per-peer picker chooses, no app code
-does. Paths: **direct** (mDNS/TCP, BLE, or relay-signalled WebRTC), **relay** (`@canopy/relay`, rendezvous or
+does. Paths: **direct** (mDNS/TCP, BLE, or relay-signalled WebRTC), **relay** (`@onderling/relay`, rendezvous or
 sealed proxy-fallback), **NKN** (the public messaging network, no operator to run), and **hop** (a third agent
 relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
 [project overview → Reachability](../README.md#reachability--transports).
@@ -312,7 +312,7 @@ relays, plaintext or sealed-forward, with hop-count + policy gating). Details:
   *self-enforcing* so the code stops drifting — turn each invariant into a CI fitness function, consolidate
   the remaining duplication, then split the repo along the now-enforced seams: thin **clients** (web + mobile),
   **substrate/functionality** (packages + already-server-side pod-hosting/proxy/private-LLM), the **feedback
-  app**, and **third-party apps** that build against the Solid pod + `@canopy/sdk` (pod ACPs are the access
+  app**, and **third-party apps** that build against the Solid pod + `@onderling/sdk` (pod ACPs are the access
   contract) without touching this repo.
 
 ### Where to go next

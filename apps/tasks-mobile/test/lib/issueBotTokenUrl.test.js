@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { encodeIssueBotTokenUrl } from '../../src/lib/issueBotTokenUrl.js';
-import { classifyQrPayload } from '@canopy/react-native/qr';
+import { classifyQrPayload } from '@onderling/react-native/qr';
 import { TASKS_CLASSIFIERS } from '../../src/lib/qrClassifiers.js';
 
 describe('encodeIssueBotTokenUrl', () => {

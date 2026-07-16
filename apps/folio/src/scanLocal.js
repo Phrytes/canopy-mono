@@ -1,2 +1,2 @@
-// Lifted to @canopy/sync-engine.  Re-export shim for back-compat.
-export { scanLocal, _pathSep } from '@canopy/sync-engine/scanLocal';
+// Lifted to @onderling/sync-engine.  Re-export shim for back-compat.
+export { scanLocal, _pathSep } from '@onderling/sync-engine/scanLocal';

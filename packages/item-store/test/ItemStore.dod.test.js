@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 import {
   ItemStore,
   computeStatus,

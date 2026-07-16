@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * deploy/relay — PaaS entrypoint for @canopy/relay.
+ * deploy/relay — PaaS entrypoint for @onderling/relay.
  *
  * This is a DEPLOY artifact, not service logic: it reads config from env and
  * composes the relay's already-exported seams (`startRelay`, `ExpoPushSender`,
@@ -34,9 +34,9 @@
  *   PUSH_PROVIDER            'expo' to enable Expo push wake (else no push)
  *   EXPO_ACCESS_TOKEN        optional Expo enhanced-security access token
  */
-// Imported by real workspace path, not the '@canopy/relay' bare specifier: the
+// Imported by real workspace path, not the '@onderling/relay' bare specifier: the
 // monorepo installs per-package (shared-workspace-lockfile=false), so there is no
-// root node_modules linking @canopy/relay. The package's OWN @canopy/* deps still
+// root node_modules linking @onderling/relay. The package's OWN @onderling/* deps still
 // resolve from packages/relay/node_modules — only this outer hop must be relative.
 import { startRelay, getLanIp, ExpoPushSender } from '../../packages/relay/index.js';
 
@@ -99,7 +99,7 @@ const { port: boundPort, tls } = await startRelay({
 
 const wsScheme = tls ? 'wss' : 'ws';
 console.log('');
-console.log('  @canopy/relay  (PaaS entrypoint)');
+console.log('  @onderling/relay  (PaaS entrypoint)');
 console.log('  ─────────────────────────────────────');
 console.log(`  Listening:  http://${host}:${boundPort}  (proxy terminates TLS → ${wsScheme}://)`);
 console.log(`  Media edge: ${blobGate ? `ON  route=${blobGate.route}  uploaders=${blobGate.uploaders.length}` : 'off (set R2_* to enable)'}`);

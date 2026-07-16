@@ -1,7 +1,7 @@
 /**
  * Objective L — the `canonical` (revocable) share posture at the item-store seam.
  *
- * Hermetic, no @canopy/pod-client import — the pod-layer surfaces are FAKED exactly like sharedRefPolicy's
+ * Hermetic, no @onderling/pod-client import — the pod-layer surfaces are FAKED exactly like sharedRefPolicy's
  * existing tests (a group-key opener modelling versioned rotation). Proves the substrate contract:
  *   • `canonical` is a recognized posture (SHARE_POSTURES / isCanonicalPosture) alongside the shipped four.
  *   • share-as-grant writes NO copy into the recipient circle — only the pointer `shared-ref`; the item

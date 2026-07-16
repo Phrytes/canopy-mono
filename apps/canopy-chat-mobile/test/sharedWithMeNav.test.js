@@ -13,7 +13,7 @@ import {
   sharedCircleLocale,
   buildSharedWithMe as barrelBuild,
   openSharedCopy as barrelOpen,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 import { buildSharedWithMe as sharedBuild, openSharedCopy as sharedOpen } from '../../canopy-chat/src/v2/sharedWithMe.js';
 
 describe('mobile shared-with-me nav entry (Mij sub-screen)', () => {

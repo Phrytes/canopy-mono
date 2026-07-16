@@ -20,9 +20,9 @@
 // installed for side effects, must precede any code that signs a contribution. See the shim's header.
 import '../../src/web/shims/bufferPolyfill.js';
 
-// Dev: mirror the privacy-first structured log (@canopy/logger) to the browser console. Prod fills the
+// Dev: mirror the privacy-first structured log (@onderling/logger) to the browser console. Prod fills the
 // buffer only; `canopyDumpLogs()` (set by the feedback surface) reads it for a bug report. PII-safe.
-import { configureLog, consoleSink } from '@canopy/logger';
+import { configureLog, consoleSink } from '@onderling/logger';
 if (import.meta.env?.DEV) configureLog({ sink: consoleSink });
 
 import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
@@ -36,11 +36,11 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
 import { PodClient, generateKeypair as podGenerateKeypair, createSealedPodClient, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
   recipientStrategy as podRecipientStrategy,
-  sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
-import { createPseudoPod } from '@canopy/pseudo-pod';
+  sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@onderling/pod-client';
+import { createPseudoPod } from '@onderling/pseudo-pod';
 import { circleVersioningFor, getCircleVersionStore } from '../../src/web/circleVersioning.js';
 import { pickWebBackend } from '../../src/web/persistentBackend.js';
-import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@canopy/vault';
+import { VaultIndexedDB, VaultMemory, VaultLocalStorage } from '@onderling/vault';
 // S4 circle OIDC — reuse the existing browser Solid-OIDC wrapper (no rebuild). A signed-in
 // session routes a sealed circle to the user's REAL pod; otherwise the in-memory pseudo-pod.
 import * as podAuth from '../../src/web/podAuth.js';
@@ -48,10 +48,10 @@ import { discoverPodRoot, createPodWriter } from '../../src/web/podStorage.js';
 // Phase 5 — bot + feedback in the kring composer (mirrors mobile CircleLauncherScreen, on the shared
 // engine). The circle bot stack:
 import { mockTasksManifest, mockStoopManifest, mockFolioManifest } from '../../src/core/manifests/mockManifests.js';
-import { calendarManifest } from '@canopy-app/calendar/manifest';
+import { calendarManifest } from '@onderling-app/calendar/manifest';
 // agents — the read-only "your agents" surface (2026-07-09). Real manifest,
 // like calendar; the skill handlers are composed in-process by realAgent.js.
-import { agentsManifest } from '@canopy-app/agents/manifest';
+import { agentsManifest } from '@onderling-app/agents/manifest';
 import { buildCircleLlmProviders } from '../../src/v2/circleLlmProviders.js';
 import { createTokenGate } from '../../src/v2/tokenGate.js';
 import { circleGateRules } from '../../src/v2/circleGate.js';
@@ -72,13 +72,13 @@ import {
   drilldownForSection, selectionContextFor, fetchScreenItems, itemsFromReply, recordFromReply,
 } from '../../src/v2/screenDrilldown.js';
 import { createInputHistory } from '../../src/v2/commandSuggest.js';
-import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@canopy/kring-host/followUp';
+import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@onderling/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 // B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
 // B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
-import { buildCapabilityMatrix } from '@canopy/app-manifest';
+import { buildCapabilityMatrix } from '@onderling/app-manifest';
 // D / SP-3b consumer-switch — select the projected PAGE surface (renderWeb) for
 // the settings op so the live settings header is manifest-driven (invariant #4).
 import { pageForOp } from '../../src/v2/pageProjection.js';
@@ -90,8 +90,8 @@ import { renderRecordScreen } from './recordScreen.js';
 import { renderAboutMe } from './circleAboutMe.js';
 import { buildPersonaViewModel } from '../../src/v2/personaView.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
-import { loadMappings } from '@canopy/pod-routing/mappings';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
+import { loadMappings } from '@onderling/pod-routing/mappings';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@onderling/kring-host/mappingsStore';
 import { verifyMappings, mappingsToSources } from '../../src/mappings.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';
 import { buildConsentModel, installMapping } from '../../src/v2/extensionInstall.js';
@@ -158,7 +158,7 @@ import { loadRecipeForReview, applyReviewedRecipe } from '../../src/v2/recipeCon
 // S6.C (per-circle) — gate an app's surfaces by the circle's policy.features.
 import { isAppSurfaceEnabled } from '../../src/v2/appFeature.js';
 import { renderContactThread } from './contactThread.js';
-import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
+import { sendA2ATask, PeerGraph, discoverA2A } from '@onderling/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
 import { privacyBadge } from '../../src/feedback/circlePrivacyState.js';   // shared per-circle privacy badge (§10c)
@@ -176,9 +176,9 @@ import { EventLog } from '../../src/eventLog.js';
 // δ.2 — per-message delivery state for optimistic kring chat sends.
 // Sibling of the EventLog (which stays append-only); read at render
 // time by circleKring to surface pending/failed icons.
-import { createDeliveryStateMap } from '@canopy/kring-host/deliveryState';
+import { createDeliveryStateMap } from '@onderling/kring-host/deliveryState';
 // Phase 2 — shared kring chat send primitives (optimistic event + best-effort fan-out), web + mobile.
-import { kringChatMessageEvent, broadcastKringFanOut } from '@canopy/kring-host/kringBroadcast';
+import { kringChatMessageEvent, broadcastKringFanOut } from '@onderling/kring-host/kringBroadcast';
 // "only you" vs "whole kring" — message scope (a data property; the badge renders it).
 import { scopeForReply } from '../../src/v2/messageScope.js';
 import {
@@ -233,10 +233,10 @@ import {
 } from '../../src/v2/userScreens.js';
 import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';  // cluster K · K2 — composable lists (shared web≡mobile)
+import { makeCircleLists } from '@onderling/kring-host/circleLists';  // cluster K · K2 — composable lists (shared web≡mobile)
 // cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
-import { sealItem, isCanonicalPosture } from '@canopy/item-store';
+import { sealItem, isCanonicalPosture } from '@onderling/item-store';
 import {
   shareItemAcrossCircles, shareItemToPublishedKey, listSharedResolved, revokeItemShare, listOutboundShares, revokeAllForMember,
 } from '../../src/v2/circleShare.js';
@@ -426,7 +426,7 @@ async function shareItemToContact({ itemId, fromCircleId, toCircleId, by, recipi
     sealingKeyFromNetworkKey: podSealingPublicKeyFromNetworkKey,
     // NOTICE emitters (routed by the circle's `notifyOutOfCircle` setting): `admins` pings the circle admins,
     // `post` lands a category-tagged noticeboard post. Both best-effort — a notice never fails the share.
-    // `notify` (admins) → @canopy/notify-envelope wiring is a follow-up; today it records the event.
+    // `notify` (admins) → @onderling/notify-envelope wiring is a follow-up; today it records the event.
     notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
     // `post` → write the tagged post to the source circle's noticeboard item store (reuses the existing
     // `type:'post'` machinery). The `category:'permission-log'` tag lets a future logging section filter it out.
@@ -542,8 +542,8 @@ import { renderRecipeEditor } from './circleRecipeEditor.js';
 import { renderCatchUpChooser } from './catchUpChooserModal.js';
 import { renderScreensPicker } from './circleScreensPicker.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
-import { normalizeHopMode } from '@canopy/kring-host/circleHop';
-import { mergeSkill, normalizeSkill } from '@canopy/kring-host/circleSkills';
+import { normalizeHopMode } from '@onderling/kring-host/circleHop';
+import { mergeSkill, normalizeSkill } from '@onderling/kring-host/circleSkills';
 import { buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
 import { myThingsFromListFiles } from '../../src/v2/folioMyThings.js';
 import {
@@ -569,7 +569,7 @@ import { renderRulesEditor } from './circleRulesEditor.js';
 // per kring store at construction time; snapshots every save into
 // `cc.versions.<storeName>.<circleId>`.  Invisible to the UI in γ.2;
 // γ.3 will surface the history.
-import { localStorageObjectVersions } from '@canopy/kring-host/objectVersionsStorage';
+import { localStorageObjectVersions } from '@onderling/kring-host/objectVersionsStorage';
 import { loadCircles } from '../../src/v2/circleModel.js';
 import { circleSourcesFromAgent, makeResolvingCallSkill } from '../../src/v2/circleSources.js';
 import { loadCircleItems } from '../../src/v2/circleContent.js';
@@ -578,8 +578,8 @@ import { buildCircleEmbedProviders } from '../../src/v2/circleEmbedProviders.js'
 import { resolveCircleEmbedder } from '../../src/v2/embedPicker.js';
 import { quickCreateCircle } from '../../src/v2/circleCreate.js';
 import { setActiveCircle, getActiveCircle } from '../../src/v2/activeCircle.js';
-import { normalizeCircleMembers, recipientSealKeyFromMembers } from '@canopy/kring-host/circleMembers';
-import { buildFindExtras } from '@canopy/kring-host/findExtras';
+import { normalizeCircleMembers, recipientSealKeyFromMembers } from '@onderling/kring-host/circleMembers';
+import { buildFindExtras } from '@onderling/kring-host/findExtras';
 import { executeBulkDispatch } from '../../src/bulkOps.js';
 import { mergeCirclePolicy, mergeMemberOverride, normalizeCirclePolicy } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
@@ -1260,7 +1260,7 @@ const kringInputHistory = createInputHistory();
 // F-retrieve persistence: one app-level StorageBackend for the circle-bot RAG
 // vector index. The retriever scopes it per-circle to
 // private/state/search-index/circle-rag/<circleId>/ (never sharing/ — invariant
-// #7). Same @canopy/pseudo-pod substrate the circle pods run on. Objective L:
+// #7). Same @onderling/pseudo-pod substrate the circle pods run on. Objective L:
 // browser-PERSISTENT (IndexedDB) so embedded vectors survive a reload instead of
 // re-embedding; falls back to in-memory under SSR / tests (no `indexedDB`).
 const circleSearchVectorStore = pickWebBackend('cc-circle-rag');
@@ -1781,7 +1781,7 @@ function buildCircleBot(agent) {
     onLlmUnavailable: () => { _kringRender?.botBubble(t('circle.bot.basic_mode')); },
     // F-retrieve: on the via:'llm' path the gate pulls the circle's relevant items
     // into the LLM prompt (grounding + fewer tokens). `makeCircleRetriever` is now
-    // backed by a PERSISTENT `@canopy/pod-search` hybrid index — the circle's items
+    // backed by a PERSISTENT `@onderling/pod-search` hybrid index — the circle's items
     // are indexed once (embed-once via the content-hash cache; restart-safe when a
     // vectorStore is wired) and each turn runs a HYBRID (lexical+semantic RRF)
     // query. `embedder` rides the circle's embed policy (`resolveCircleRagEmbedder`,
@@ -1805,7 +1805,7 @@ function buildCircleBot(agent) {
         // (makeCircleRetriever → makePodSearchRetriever → new PodSearch), which
         // persists vectors under private/state/search-index/circle-rag/<id>/
         // (NEVER sharing/ — invariant #7). We wire the circle's available
-        // StorageBackend — the SAME @canopy/pseudo-pod substrate the circle pod
+        // StorageBackend — the SAME @onderling/pseudo-pod substrate the circle pod
         // runs on — so the seam is LIVE end-to-end: a fresh PodSearch over this
         // store hydrates the content-hash cache instead of re-embedding
         // (embed-once, restart-safe by construction when the backend persists).

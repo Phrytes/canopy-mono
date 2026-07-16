@@ -37,8 +37,8 @@ import {
   Bootstrap,
   TextPart,
   Parts,
-} from '@canopy/core';
-import { IdentityPodStore } from '@canopy/pod-client';
+} from '@onderling/core';
+import { IdentityPodStore } from '@onderling/pod-client';
 
 import { Lab, MockPod } from '../../../src/_harness/index.js';
 

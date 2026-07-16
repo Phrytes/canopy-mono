@@ -20,8 +20,8 @@
  * Provisioner contract — see top-level README.
  */
 
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory }   from '@canopy/vault';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory }   from '@onderling/vault';
 
 import { defaultAcpTemplates }      from './acpTemplates.js';
 import {

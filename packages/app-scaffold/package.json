@@ -1,5 +1,5 @@
 {
-  "name": "@canopy/app-scaffold",
+  "name": "@onderling/app-scaffold",
   "version": "0.1.0",
   "description": "SP-10 v0 — a pure manifest→app scaffolder. Takes an app manifest + a `requires` capability list (SP-9 vocabulary), validates the requires, and returns a runnable app skeleton (package.json + createAgent entry + one wireSkill stub per manifest operation) as path→content strings. PURE codegen — a `writer` may be injected to also write to disk, but the core is string-returning + testable.",
   "type": "module",
@@ -25,7 +25,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/sdk": "workspace:^"
+    "@onderling/sdk": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^3.0.0"

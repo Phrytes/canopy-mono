@@ -47,7 +47,7 @@ stage). All instructions below assume an Android device.
    ```
 
    Picks up the new `expo-notifications`, `expo-constants`, and
-   `@canopy/relay` (devDep, used only by these scripts).
+   `@onderling/relay` (devDep, used only by these scripts).
 
 2. **Provision an EAS project ID.** Expo can't mint push tokens without one.
    - In Expo dev: `npx eas init` (creates a project, writes the ID to
@@ -164,14 +164,14 @@ trigger-s11: ✓ s11-wake completed in 4123ms
 
 ### How this exercises each piece
 
-- **`MobilePushBridge`** (device-side, `@canopy/react-native`) —
+- **`MobilePushBridge`** (device-side, `@onderling/react-native`) —
   receives push, dispatches `'push'` event.
 - **`ExpoNotificationsAdapter`** (peer-dep) — Expo notification listener.
-- **`RelayTransport.registerPushToken`** (`@canopy/core`, added 2026-05-04) —
+- **`RelayTransport.registerPushToken`** (`@onderling/core`, added 2026-05-04) —
   ships token to relay over the existing socket.
-- **`PushTokenRegistry`** (`@canopy/relay`) — relay's address→token map.
-- **`ExpoPushSender`** (`@canopy/relay`) — relay calls Expo's HTTP push API.
-- **`server.js` `tryWakePush`** (`@canopy/relay`) — fires push when an
+- **`PushTokenRegistry`** (`@onderling/relay`) — relay's address→token map.
+- **`ExpoPushSender`** (`@onderling/relay`) — relay calls Expo's HTTP push API.
+- **`server.js` `tryWakePush`** (`@onderling/relay`) — fires push when an
   envelope queues for an offline peer.
 - **`server.js` offline queue + drain on reconnect** — delivers the
   queued envelope when phone reconnects.

@@ -1,11 +1,11 @@
 // J-buurt: the real stoop neighbourhood flow over the relay — host creates a
 // circle + invite code, a stranger joins (admin-verified), host posts to the
 // prikbord, the stranger sees it, replies, and that spins a private 1:1 chat.
-import { AgentIdentity, DataPart } from '@canopy/core';
-import { VaultMemory }             from '@canopy/vault';
-import { Reveals }                 from '@canopy/identity-resolver';
-import { RelayTransport }          from '@canopy/transports';
-import { createNeighborhoodAgent, attachSubstrateMirror } from '@canopy-app/stoop';
+import { AgentIdentity, DataPart } from '@onderling/core';
+import { VaultMemory }             from '@onderling/vault';
+import { Reveals }                 from '@onderling/identity-resolver';
+import { RelayTransport }          from '@onderling/transports';
+import { createNeighborhoodAgent, attachSubstrateMirror } from '@onderling-app/stoop';
 import { wait, checker }           from './_util.mjs';
 
 export const name = 'J-buurt (join → prikbord → private chat)';

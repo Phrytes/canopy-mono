@@ -1,5 +1,5 @@
 /**
- * SP-4b proof — tasks-v0 multi-circle mounts cleanly into `@canopy/
+ * SP-4b proof — tasks-v0 multi-circle mounts cleanly into `@onderling/
  * manifest-host` with multi-circle dispatch preserved end-to-end.
  *
  * Mounts the real `buildMultiCircleRuntime` output (the same machinery
@@ -13,9 +13,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
-import { createManifestHost } from '@canopy/manifest-host';
+import { createManifestHost } from '@onderling/manifest-host';
 
 import { buildMultiCircleRuntime } from '../src/buildMultiCircleRuntime.js';
 import { createTasksMountable }  from '../src/mountable.js';

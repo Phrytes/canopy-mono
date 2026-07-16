@@ -2,13 +2,13 @@
  * fetch-resource — generic peer-fetch skill factory.
  *
  * Core ships the **skill shape**; the substrate (typically
- * `@canopy/pseudo-pod`) supplies the **storage backing** via the
+ * `@onderling/pseudo-pod`) supplies the **storage backing** via the
  * injected `read` callback. This way core never imports the
  * pseudo-pod substrate (strict layering: apps → substrates → core).
  *
  * Typical use:
  *
- *   import { makeFetchResourceSkill } from '@canopy/core';
+ *   import { makeFetchResourceSkill } from '@onderling/core';
  *   const skill = makeFetchResourceSkill({
  *     read: (uri) => pseudoPod.read(uri),     // pseudo-pod consumer
  *   });

@@ -7,25 +7,25 @@
  * extracted pure cores (`FOLIO_CORES`) + the folioManifest:
  *   • LOCAL route — the pure core called directly over the injected store.
  *   • WIRE route  — the SAME core, wireSkill-wrapped + registered on a REAL
- *     `@canopy/core` agent, invoked over the serialized parts path.
+ *     `@onderling/core` agent, invoked over the serialized parts path.
  *
  * The parity check is the ANTI-DRIFT guarantee: every `runtime:'browser'`
  * folioManifest op must have a core AND a wire registration, and every core
  * must map to such an op — a manifest op with no core (or vice-versa) fails
  * CI.
  *
- * RESOLUTION: the @canopy skill helpers are imported by RELATIVE path from
- * `packages/sdk/src` (folio's isolated node_modules has no `@canopy/sdk`) —
+ * RESOLUTION: the @onderling skill helpers are imported by RELATIVE path from
+ * `packages/sdk/src` (folio's isolated node_modules has no `@onderling/sdk`) —
  * the same self-contained pattern the agents suite uses.  The wire agent is
- * built from `@canopy/core` primitives (which folio DOES resolve), so the
+ * built from `@onderling/core` primitives (which folio DOES resolve), so the
  * suite needs no sdk barrel at all.
  */
 import { describe, it, expect } from 'vitest';
 
 import {
   Agent, AgentIdentity, InternalBus, InternalTransport, Parts,
-} from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+} from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 // Relative sdk-source import — mirrors src/wireSkills.js's rationale.
 import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';
@@ -91,7 +91,7 @@ function makeLocalInvoker() {
   return async (op, args = {}, ctx = {}) => FOLIO_CORES[op](store, args, ctx);
 }
 
-/** WIRE invoker: a real @canopy/core agent with the wire skills; serialized invoke. */
+/** WIRE invoker: a real @onderling/core agent with the wire skills; serialized invoke. */
 async function makeWireInvoker() {
   const store = makeStore();
   const bus = new InternalBus();

@@ -1,12 +1,12 @@
 /**
- * @canopy/online-cadence — foreground/background cadence helpers
+ * @onderling/online-cadence — foreground/background cadence helpers
  * for React Native agents.
  *
  * Three modules:
  *   - `./src/cadence.js`         — pure ticker (createActiveCadence)
  *   - `./src/appStateBridge.js`  — RN AppState → bundle.cache.setOnline + ticker
  *   - `./src/bgTask.js`          — re-exports the bg-fetch helpers from
- *                                   `@canopy/sync-engine-rn` for ergonomic
+ *                                   `@onderling/sync-engine-rn` for ergonomic
  *                                   colocation
  *
  * Lifted from `apps/stoop-mobile/src/lib/{activeCadence,appStateBridge,bgRunOnce}.js`

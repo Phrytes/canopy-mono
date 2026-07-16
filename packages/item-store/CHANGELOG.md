@@ -1,4 +1,4 @@
-# Changelog — @canopy/item-store
+# Changelog — @onderling/item-store
 
 Versioning per `Project Files/Substrates/policies.md`.
 
@@ -40,7 +40,7 @@ skills/addItem.js, skills/markComplete.js, skills/removeItem.js}`.
 
 ### Known gaps (V1+)
 
-- **PodBackend** — pod-backed via `@canopy/pod-client`.  Deferred
+- **PodBackend** — pod-backed via `@onderling/pod-client`.  Deferred
   until Track A's PodClient is mature enough to validate CAS
   semantics over Solid.
 - **Multi-claim / co-assignment** — substrate currently treats

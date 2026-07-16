@@ -1,5 +1,5 @@
 /**
- * @canopy/agent-registry — canonical agent registry substrate.
+ * @onderling/agent-registry — canonical agent registry substrate.
  *
  * Standardisation Phase 52.10. See
  * `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`.

@@ -10,8 +10,8 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { Agent, AgentIdentity, InternalBus, InternalTransport, TextPart, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, TextPart, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { mountLocalUi }     from '../src/server/mountLocalUi.js';
 import { LocalAgentClient } from '../src/client/LocalAgentClient.js';

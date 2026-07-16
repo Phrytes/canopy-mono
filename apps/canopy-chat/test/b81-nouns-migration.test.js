@@ -2,7 +2,7 @@
  * B · #81 — nouns migration for canopy-chat.
  *
  * Proof that canopy-chat's DECLARED item-type surface converges with the
- * shared `@canopy/item-types` registry (the L4≡B source of truth):
+ * shared `@onderling/item-types` registry (the L4≡B source of truth):
  *
  *   1. Every noun canopy-chat declares (`chat-thread`, `chat-message`) is a
  *      registry type — `isRegistryType` resolves it.
@@ -22,11 +22,11 @@
  * "add a nouns block".
  */
 import { describe, it, expect } from 'vitest';
-import { validateManifest, isRegistryType } from '@canopy/app-manifest';
+import { validateManifest, isRegistryType } from '@onderling/app-manifest';
 import { canopyChatManifest } from '../manifest.js';
 
 describe('B #81 — canopy-chat nouns migration', () => {
-  it('every declared itemType resolves in the @canopy/item-types registry', () => {
+  it('every declared itemType resolves in the @onderling/item-types registry', () => {
     for (const t of canopyChatManifest.itemTypes) {
       expect(isRegistryType(t), `itemType "${t}" is not a registry type`).toBe(true);
     }

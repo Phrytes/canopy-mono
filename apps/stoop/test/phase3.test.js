@@ -8,11 +8,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { Reveals } from '@canopy/identity-resolver';
-import { Notifier, InMemoryScheduleStore } from '@canopy/notifier';
-import { InMemoryBridge } from '@canopy/chat-agent';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { Reveals } from '@onderling/identity-resolver';
+import { Notifier, InMemoryScheduleStore } from '@onderling/notifier';
+import { InMemoryBridge } from '@onderling/chat-agent';
 
 import { createNeighborhoodAgent } from '../src/index.js';
 

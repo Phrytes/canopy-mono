@@ -2,7 +2,7 @@
  * V0 web storage for extension mappings (feedback-extension P2c).
  *
  * A localStorage adapter that satisfies the SUBSET of the pseudo-pod contract
- * that `@canopy/pod-routing` `loadMappings`/`writeMapping`/`removeMapping` use:
+ * that `@onderling/pod-routing` `loadMappings`/`writeMapping`/`removeMapping` use:
  * `list(containerUri)` · `read(uri)` · `write(uri, body)` · `delete(uri)`, with
  * keys == URIs (matching pseudo-pod's `_keyForUri` identity). This lets the web
  * app load+install extensions today, mirroring how circle policy + the LLM

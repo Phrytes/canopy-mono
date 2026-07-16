@@ -11,7 +11,7 @@
  *     envelope}` path on a REAL agent.
  *
  * This module is framework-agnostic (it takes `{ describe, it, expect }` so
- * `@canopy/sdk` needn't depend on a test runner) and **parameterized by app**,
+ * `@onderling/sdk` needn't depend on a test runner) and **parameterized by app**,
  * so household / stoop / tasks-v0 each drive it with a tiny config. It asserts:
  *
  *   1. EQUIVALENCE — for each representative case, running it via the LOCAL

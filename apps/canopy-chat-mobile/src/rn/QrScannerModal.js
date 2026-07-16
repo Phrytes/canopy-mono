@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
-import { classifyQrPayload } from '@canopy/react-native/qr';
+import { classifyQrPayload } from '@onderling/react-native/qr';
 import { getCanopyChatClassifiers } from '../core/qrClassifiers.js';
 
 export default function QrScannerModal({ visible, onClose, onResult, t }) {

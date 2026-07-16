@@ -10,12 +10,12 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { renderWeb, validateManifest } from '@canopy/app-manifest';
+import { renderWeb, validateManifest } from '@onderling/app-manifest';
 
 import { folioManifest } from '../manifest.js';
 
 describe('Slice F.1 — folio manifest validation', () => {
-  it('validates via @canopy/app-manifest validateManifest (non-strict)', () => {
+  it('validates via @onderling/app-manifest validateManifest (non-strict)', () => {
     const { ok, errors } = validateManifest(folioManifest);
     expect(ok, JSON.stringify(errors, null, 2)).toBe(true);
   });

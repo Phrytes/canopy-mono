@@ -1,6 +1,6 @@
 # sdk-smoke — two-device SDK smoke harness
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** by design — sdk-smoke's purpose is validating kernel + adapter primitives (`@canopy/core`, `@canopy/relay`, `@canopy/react-native`) on real hardware, so it consumes the kernel + adapters directly.
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** by design — sdk-smoke's purpose is validating kernel + adapter primitives (`@onderling/core`, `@onderling/relay`, `@onderling/react-native`) on real hardware, so it consumes the kernel + adapters directly.
 
 A stripped-down Expo app that exposes each kernel/adapter area as a press-button
 test, used to validate that Tracks A–G survive on real hardware.
@@ -20,10 +20,10 @@ for the full plan, the 10 scenarios (S1–S10), and the bring-up runbook.
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `Bootstrap`, `RelayTransport`, `RendezvousTransport`, `OfflineTransport`, `defineSkill`, capability tokens, A2A bridge | Each scenario (S1–S10) exercises a different kernel/adapter area: bootstrap, vault migration, pod sync, capability share, identity rotation, governance, skills-pubsub, A2A-sealed, battery-sleep, etc. | This is the harness whose entire purpose is exercising the kernel + adapters directly — the architectural-layering doc lists `sdk-smoke` as the canonical exemption. Substrate composition would defeat the point. |
-| `@canopy/relay` | `RelayTransport` (client side), token register | Real-relay validation: scenarios that need a remote peer use the relay for connection. | Same as above — the relay is the transport adapter whose hardware behavior is under test. |
-| `@canopy/react-native` | `KeychainVault`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`, `ExpoNotificationsAdapter`, `createMeshAgent`, `requestMeshPermissions`, `platform/polyfills` | RN platform layer — every scenario runs on a real device, so RN-specific bring-up is exercised end-to-end. | Same as above. |
-| `@canopy/pod-client` | `PodClient` | Pod-sync scenarios (S3, S4) write/read against a real Solid pod. | Same as above. |
+| `@onderling/core` | `Agent`, `AgentIdentity`, `Bootstrap`, `RelayTransport`, `RendezvousTransport`, `OfflineTransport`, `defineSkill`, capability tokens, A2A bridge | Each scenario (S1–S10) exercises a different kernel/adapter area: bootstrap, vault migration, pod sync, capability share, identity rotation, governance, skills-pubsub, A2A-sealed, battery-sleep, etc. | This is the harness whose entire purpose is exercising the kernel + adapters directly — the architectural-layering doc lists `sdk-smoke` as the canonical exemption. Substrate composition would defeat the point. |
+| `@onderling/relay` | `RelayTransport` (client side), token register | Real-relay validation: scenarios that need a remote peer use the relay for connection. | Same as above — the relay is the transport adapter whose hardware behavior is under test. |
+| `@onderling/react-native` | `KeychainVault`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`, `ExpoNotificationsAdapter`, `createMeshAgent`, `requestMeshPermissions`, `platform/polyfills` | RN platform layer — every scenario runs on a real device, so RN-specific bring-up is exercised end-to-end. | Same as above. |
+| `@onderling/pod-client` | `PodClient` | Pod-sync scenarios (S3, S4) write/read against a real Solid pod. | Same as above. |
 
 ## What's in here
 
@@ -34,7 +34,7 @@ apps/sdk-smoke/
 ├── babel.config.js
 ├── metro.config.js              # mirrors mesh-demo's pinned RN/Expo wiring
 ├── index.js                     # registerRootComponent
-├── package.json                 # @canopy-app/sdk-smoke; same Expo / RN versions as mesh-demo
+├── package.json                 # @onderling-app/sdk-smoke; same Expo / RN versions as mesh-demo
 ├── shims/
 │   ├── node-builtins.js         # empty shim for server-only Node modules
 │   └── ws.js                    # forwards to globalThis.WebSocket

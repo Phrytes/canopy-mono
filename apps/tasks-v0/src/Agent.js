@@ -2,7 +2,7 @@
  * TasksAgent — composition of substrates for H4 V0.
  *
  * Wires:
- *   - `core.Agent` from `@canopy/core` — real SkillRegistry + dispatch.
+ *   - `core.Agent` from `@onderling/core` — real SkillRegistry + dispatch.
  *     V2.8: built once via `buildMeshAgent` (process-level shared agent).
  *   - L1b ItemStore (open/closed tasks, audit, role-policy gate at the
  *     item level via `buildStandardRolePolicy(roles)`)
@@ -16,15 +16,15 @@
  * bot, metrics) is left null and surfaced by `createCircleAgent`.
  *
  * Apps that want HTTP exposure call `mountLocalUi(bundle.agent)` from
- * `@canopy/agent-ui`; that wraps `core.A2ATransport` on 127.0.0.1.
+ * `@onderling/agent-ui`; that wraps `core.A2ATransport` on 127.0.0.1.
  */
 
 import {
   MemorySource,
-} from '@canopy/core';
-import { ItemStore } from '@canopy/item-store';
-import { MemberMap } from '@canopy/identity-resolver';
-import { SkillMatch } from '@canopy/skill-match';
+} from '@onderling/core';
+import { ItemStore } from '@onderling/item-store';
+import { MemberMap } from '@onderling/identity-resolver';
+import { SkillMatch } from '@onderling/skill-match';
 
 import { buildStandardRolePolicy } from './rolePolicy.js';
 import { buildMeshAgent } from './MeshAgent.js';

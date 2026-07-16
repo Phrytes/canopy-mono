@@ -53,7 +53,7 @@ export function validateTarget(t) {
  *
  * @param {Target[]} targets
  * @param {object} ctx
- * @param {import('@canopy/identity-resolver').MemberMap} ctx.members
+ * @param {import('@onderling/identity-resolver').MemberMap} ctx.members
  * @param {object} [ctx.contacts]   ContactBook (optional — required when
  *                                  any target is contacts/tag/list)
  * @param {string} [ctx.selfWebid]  exclude self from the recipient set

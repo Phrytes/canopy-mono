@@ -2,8 +2,8 @@
  * Agent.interfaceRegistry + Agent.protocol — opaque-slot unit tests
  * (Phase 50.13 + 50.14, P6 direction).
  *
- * Direction-only: the substrates `@canopy/interface-registry` and
- * `@canopy/protocol` don't exist yet. Core ships the slots so the
+ * Direction-only: the substrates `@onderling/interface-registry` and
+ * `@onderling/protocol` don't exist yet. Core ships the slots so the
  * substrate APIs have a stable plug-in point when they materialise
  * (Hub V2 / P6 of the standardisation plan).
  *
@@ -18,7 +18,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 import { Agent }         from '../src/Agent.js';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 

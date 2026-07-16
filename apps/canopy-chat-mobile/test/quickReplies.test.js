@@ -13,14 +13,14 @@
  * contract that wiring depends on.
  *
  * Import is via the in-repo relative path (canopy-chat src) — the
- * portable helper has no @canopy/* transitive deps so it survives
+ * portable helper has no @onderling/* transitive deps so it survives
  * the worktree's un-installed workspace state.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { normalizeQuickReplies } from '../../canopy-chat/src/core/quickReplies.js';
 import enRaw from '../locales/en.json' with { type: 'json' };
 import nlRaw from '../locales/nl.json' with { type: 'json' };
-import { sharedCircleLocale } from '@canopy-app/canopy-chat';
+import { sharedCircleLocale } from '@onderling-app/canopy-chat';
 // `circle.*` now lives in the shared canopy-chat source; merge it back to check the effective bundle.
 const en = { ...enRaw, circle: sharedCircleLocale.en };
 const nl = { ...nlRaw, circle: sharedCircleLocale.nl };

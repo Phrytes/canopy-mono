@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createHttpGate } from '../src/httpGate.js';
 import { uploadBlob } from '../src/index.js';
-import { generateKeypair, makeSealer } from '@canopy/pod-client/sealing';
+import { generateKeypair, makeSealer } from '@onderling/pod-client/sealing';
 import { makeMemoryBucket, makeVerifier, makeAcl } from './helpers.js';
 
 const WEBID = 'https://anne.pod/profile/card#me';

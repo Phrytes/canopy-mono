@@ -71,6 +71,6 @@ export async function disableNativePush({ callSkill, token } = {}) {
 }
 
 // `presentLocalNotification` (the verify-summary nudge's local notification) was
-// folded into the shared `@canopy/react-native/push` module + `PushAdapter.presentLocal()`
+// folded into the shared `@onderling/react-native/push` module + `PushAdapter.presentLocal()`
 // (RN ports-and-adapters, invariant #3 — logic lives once). Import it from
-// `@canopy/react-native/push`, not from here.
+// `@onderling/react-native/push`, not from here.

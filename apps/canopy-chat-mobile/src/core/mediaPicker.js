@@ -8,7 +8,7 @@
  * handlers/mediaEmbed.js):
  *
  *   openMediaFilePicker()   — `openFilePicker`-shaped: opens the RN
- *     image picker (`@canopy/react-native/picker` pickAndResize) and
+ *     image picker (`@onderling/react-native/picker` pickAndResize) and
  *     returns a File-like the shared handler already understands.
  *     pickAndResize resizes + thumbnails ON ITS OWN SIDE (JPEG,
  *     preset-bounded), so RN needs NO real encodeImage seam — the
@@ -32,7 +32,7 @@
  * The picker substrate stays generic; this module is the chat-shell
  * contract translation (same placement argument as filePicker.js).
  */
-import { pickAndResize, DELIVERABLE_PRESET } from '@canopy/react-native/picker';
+import { pickAndResize, DELIVERABLE_PRESET } from '@onderling/react-native/picker';
 
 /** Preset for chat media: 1280px JPEG + ~120px thumbnail. */
 export const MEDIA_PRESET = DELIVERABLE_PRESET;

@@ -1,21 +1,21 @@
 /**
- * @canopy/app-scaffold — SP-10 v0.
+ * @onderling/app-scaffold — SP-10 v0.
  *
  * A PURE manifest→app scaffolder. Given an app `manifest` (the `{ operations:
  * [{ id, verb, params, appliesTo, surfaces, … }] }` contract) and a `requires`
  * list drawn from SP-9's capability vocabulary, it:
  *
- *   1. VALIDATES the `requires` via `@canopy/sdk/requires` `validateRequires`.
+ *   1. VALIDATES the `requires` via `@onderling/sdk/requires` `validateRequires`.
  *      An unknown capability → a coded throw (`ERR_APP_SCAFFOLD_INVALID_REQUIRES`)
  *      and NOTHING is scaffolded. This is why SP-10 was gated on SP-9.
  *   2. GENERATES a runnable app skeleton as a `{ <path>: <content> }` map:
- *        - `package.json` — name `@canopy-app/<appId>`, `type: module`, a test
- *          script, `@canopy/sdk` as the dependency, and a `canopy` block that
+ *        - `package.json` — name `@onderling-app/<appId>`, `type: module`, a test
+ *          script, `@onderling/sdk` as the dependency, and a `canopy` block that
  *          records the requires + the per-capability SDK sub-path import
  *          specifiers (SP-9: core→/core, transports→/transports, vault→/vault,
- *          pod→/pod, high→the barrel `@canopy/sdk`).
+ *          pod→/pod, high→the barrel `@onderling/sdk`).
  *        - `src/index.js` — the entry: imports `createAgent` from
- *          `@canopy/sdk/high` + `wireSkill` from `@canopy/sdk`, and for EACH
+ *          `@onderling/sdk/high` + `wireSkill` from `@onderling/sdk`, and for EACH
  *          `manifest.operations[]` op wires a `wireSkill(<op>Core, opById('<id>'),
  *          { storeFor })` stub (a TODO-bodied core fn per op) registered on the
  *          agent. A runnable skeleton a dev fills in.
@@ -34,7 +34,7 @@
  * scaffolding.
  */
 
-import { validateRequires, CAPABILITIES } from '@canopy/sdk/requires';
+import { validateRequires, CAPABILITIES } from '@onderling/sdk/requires';
 
 /** Stable error code for a `requires` that fails validation. */
 export const APP_SCAFFOLD_CODES = Object.freeze({
@@ -43,24 +43,24 @@ export const APP_SCAFFOLD_CODES = Object.freeze({
 
 /**
  * SP-9 capability → the SDK import specifier the scaffolded app should use.
- * Every specifier resolves to the single `@canopy/sdk` package (sub-path
- * exports), so the npm dependency is always just `@canopy/sdk`; this map is
+ * Every specifier resolves to the single `@onderling/sdk` package (sub-path
+ * exports), so the npm dependency is always just `@onderling/sdk`; this map is
  * what the generated code IMPORTS and what `package.json.canopy.sdkImports`
  * records per requested capability.
  *
- *   - core       → @canopy/sdk/core
- *   - transports → @canopy/sdk/transports
- *   - vault      → @canopy/sdk/vault
- *   - pod        → @canopy/sdk/pod
- *   - high       → @canopy/sdk   (the barrel re-exports the /high slice, so the
+ *   - core       → @onderling/sdk/core
+ *   - transports → @onderling/sdk/transports
+ *   - vault      → @onderling/sdk/vault
+ *   - pod        → @onderling/sdk/pod
+ *   - high       → @onderling/sdk   (the barrel re-exports the /high slice, so the
  *                                 opinionated helpers import from the barrel)
  */
 export const CAPABILITY_SDK_IMPORT = Object.freeze({
-  core:       '@canopy/sdk/core',
-  transports: '@canopy/sdk/transports',
-  vault:      '@canopy/sdk/vault',
-  pod:        '@canopy/sdk/pod',
-  high:       '@canopy/sdk',
+  core:       '@onderling/sdk/core',
+  transports: '@onderling/sdk/transports',
+  vault:      '@onderling/sdk/vault',
+  pod:        '@onderling/sdk/pod',
+  high:       '@onderling/sdk',
 });
 
 /**
@@ -70,7 +70,7 @@ export const CAPABILITY_SDK_IMPORT = Object.freeze({
  * @param {object}   [args.manifest]  the app manifest (`{ operations: [...] }`);
  *                                     when omitted a minimal starter is emitted.
  * @param {string[]} args.requires    SP-9 capability list (validated).
- * @param {string}   args.appId       app id → package name `@canopy-app/<appId>`.
+ * @param {string}   args.appId       app id → package name `@onderling-app/<appId>`.
  * @param {(file: {path: string, content: string}) => void} [args.writer]
  *                                     optional side-effect sink (also written).
  * @returns {{ files: Record<string,string>, warnings: string[] }}
@@ -141,13 +141,13 @@ export default scaffoldApp;
 
 // ── codegen helpers ─────────────────────────────────────────────────────────
 
-/** `@canopy-app/<appId>` package.json with requires-derived SDK metadata. */
+/** `@onderling-app/<appId>` package.json with requires-derived SDK metadata. */
 function genPackageJson({ appId, caps }) {
   const sdkImports = {};
   for (const cap of caps) sdkImports[cap] = CAPABILITY_SDK_IMPORT[cap];
 
   const pkg = {
-    name:    `@canopy-app/${appId}`,
+    name:    `@onderling-app/${appId}`,
     version: '0.1.0',
     type:    'module',
     main:    'src/index.js',
@@ -155,17 +155,17 @@ function genPackageJson({ appId, caps }) {
       test: 'vitest run',
     },
     dependencies: {
-      // Every requested capability resolves to the single @canopy/sdk package
-      // via its sub-path exports, so the dependency is @canopy/sdk regardless
+      // Every requested capability resolves to the single @onderling/sdk package
+      // via its sub-path exports, so the dependency is @onderling/sdk regardless
       // of which slices are requested. The per-capability import specifiers
       // live under `canopy.sdkImports`.
-      '@canopy/sdk': '^0.1.0',
+      '@onderling/sdk': '^0.1.0',
     },
     devDependencies: {
       vitest: '^3.0.0',
     },
     canopy: {
-      scaffold:   '@canopy/app-scaffold@0.1.0',
+      scaffold:   '@onderling/app-scaffold@0.1.0',
       requires:   caps,
       sdkImports,
     },
@@ -213,7 +213,7 @@ function coreFnName(id) {
 }
 
 /**
- * The entry module: createAgent (from @canopy/sdk/high) + one wireSkill stub
+ * The entry module: createAgent (from @onderling/sdk/high) + one wireSkill stub
  * per manifest operation, registered on the agent.
  */
 function genIndex({ operations, appId }) {
@@ -240,13 +240,13 @@ function genIndex({ operations, appId }) {
 
   return (
     `/**\n`
-    + ` * ${appId} — scaffolded entry (generated by @canopy/app-scaffold v0).\n`
+    + ` * ${appId} — scaffolded entry (generated by @onderling/app-scaffold v0).\n`
     + ` *\n`
     + ` * Every manifest operation is wired as a wireSkill(coreFn, op, { storeFor })\n`
     + ` * stub registered on a createAgent()-built agent. Fill in each *Core below.\n`
     + ` */\n`
-    + `import { createAgent } from '@canopy/sdk/high';\n`
-    + `import { wireSkill }   from '@canopy/sdk';\n`
+    + `import { createAgent } from '@onderling/sdk/high';\n`
+    + `import { wireSkill }   from '@onderling/sdk';\n`
     + `import manifest        from '../manifest.js';\n`
     + `\n`
     + `/**\n`
@@ -266,7 +266,7 @@ function genIndex({ operations, appId }) {
     + `/**\n`
     + ` * start — build + start the app agent with every manifest op wired.\n`
     + ` * @param {object} [opts] forwarded to createAgent (identity/vault/transport/…).\n`
-    + ` * @returns {Promise<import('@canopy/sdk/core').Agent>}\n`
+    + ` * @returns {Promise<import('@onderling/sdk/core').Agent>}\n`
     + ` */\n`
     + `export async function start(opts = {}) {\n`
     + `  return createAgent({\n`
@@ -285,13 +285,13 @@ function genIndex({ operations, appId }) {
 /** A minimal README stub per the app-readme scheme (fleshing out deferred). */
 function genReadme({ appId, caps, operations }) {
   return (
-    `# @canopy-app/${appId}\n`
+    `# @onderling-app/${appId}\n`
     + `\n`
-    + `> Scaffolded by \`@canopy/app-scaffold\` (SP-10 v0). This is a runnable skeleton — fill in the per-op cores in \`src/index.js\`.\n`
+    + `> Scaffolded by \`@onderling/app-scaffold\` (SP-10 v0). This is a runnable skeleton — fill in the per-op cores in \`src/index.js\`.\n`
     + `\n`
     + `## Built on\n`
     + `\n`
-    + `- \`@canopy/sdk\` — requires: ${caps.map((c) => `\`${c}\``).join(', ')}.\n`
+    + `- \`@onderling/sdk\` — requires: ${caps.map((c) => `\`${c}\``).join(', ')}.\n`
     + `\n`
     + `## Operations (${operations.length})\n`
     + `\n`

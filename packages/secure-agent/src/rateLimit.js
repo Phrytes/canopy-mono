@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — per-peer rate limiter (token bucket).
+ * @onderling/secure-agent — per-peer rate limiter (token bucket).
  *
  * Wires A+.8 from the v0.7 security roadmap.  Drops inbound envelopes
  * from peers that exceed their per-peer quota.

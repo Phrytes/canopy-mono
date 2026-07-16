@@ -153,8 +153,8 @@ adapter to set `from = localActor` (a webid) in the envelope.
 `apps/tasks-mobile/locales/` (mobile-local)
 
 `tasks-v0` owns the shared namespace; each shell owns its own screen
-strings.  Mobile loads via `@canopy/react-native/localisation`; web loads
-via `@canopy/local-store`'s localisation or raw fetch.
+strings.  Mobile loads via `@onderling/react-native/localisation`; web loads
+via `@onderling/local-store`'s localisation or raw fetch.
 
 **For projector:** keep shared keys under `shared.*` in the merged
 bundle; house web-specific keys at the top level.
@@ -172,7 +172,7 @@ prevents Stoop and Tasks clobbering each other's tokens.
 > "Phase 41.18.4 — added so the mobile appeal-thread screen has a
 > concrete read/send surface."
 
-Substrate (`@canopy/chat-p2p` via `wireChat`) wired identically on
+Substrate (`@onderling/chat-p2p` via `wireChat`) wired identically on
 both shells.  Skills (`sendChatMessage`, `getChatThread`,
 `listChatThreads`) are generic; rendering/UX differs.
 

@@ -33,7 +33,7 @@ describe('ROLE_TEMPLATES registry', () => {
       expect(tpl.descKey).toMatch(/^role\./);
     }
   });
-  it('externe-vrijwilliger derives from the @canopy/core external role', () => {
+  it('externe-vrijwilliger derives from the @onderling/core external role', () => {
     expect(ROLE_TEMPLATES.externalVolunteer.id).toBe('external');
     expect(ROLE_TEMPLATES.externalVolunteer.baseRole).toBe('external');
   });

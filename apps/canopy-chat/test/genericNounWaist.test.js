@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { mergeManifests, parseInput, resolveDispatch, scopeReadyDispatch, runDispatch } from '../src/index.js';
 import { effectiveCapabilities, checkCapability } from '../src/v2/capabilityGate.js';
-import { encodeGenericOpId } from '@canopy/app-manifest';
+import { encodeGenericOpId } from '@onderling/app-manifest';
 
 import { householdManifest } from '../../household/manifest.js';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';

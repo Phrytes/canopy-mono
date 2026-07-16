@@ -6,8 +6,8 @@
  * RESULT — the verified subject vs `null`.  No mocked crypto.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, PodCapabilityToken } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, PodCapabilityToken } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import {
   createPodTokenVerifier,

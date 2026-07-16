@@ -265,7 +265,7 @@ export async function startRelay(opts = {}) {
   const handler = async (req, res) => {
     if (!serveStaticDir) {
       res.writeHead(200, { 'Content-Type': 'text/plain' });
-      res.end('@canopy/relay — WebSocket endpoint only');
+      res.end('@onderling/relay — WebSocket endpoint only');
       return;
     }
 

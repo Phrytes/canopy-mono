@@ -54,8 +54,8 @@
  *   - `mem://stoop/settings/.migrated-from-v2` (one-shot marker)
  */
 
-import { Emitter } from '@canopy/core';
-import { DataSource } from '@canopy/core';
+import { Emitter } from '@onderling/core';
+import { DataSource } from '@onderling/core';
 
 /** @typedef {{ op: 'write'|'delete', path: string, data?: any }} QueueEntry */
 

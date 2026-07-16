@@ -11,7 +11,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { computeAdvice, makeTooBusyEvent } from '@canopy-app/canopy-chat';
+import { computeAdvice, makeTooBusyEvent } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 const seenKey = (id) => `cc.advisorShown.${id}`;

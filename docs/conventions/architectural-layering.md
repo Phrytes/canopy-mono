@@ -18,13 +18,13 @@
 
 The codebase has **three layers**, and dependencies flow strictly
 downward: **apps** depend on **substrates**, **substrates** depend on
-the **kernel** (`@canopy/core`) + its **adapters** (`@canopy/transports`,
-`@canopy/pod-client`, `@canopy/vault`). Apps **may** consume the kernel
+the **kernel** (`@onderling/core`) + its **adapters** (`@onderling/transports`,
+`@onderling/pod-client`, `@onderling/vault`). Apps **may** consume the kernel
 directly when no substrate fits, but every such direct dependency must be
 **justified explicitly** in the app's README. Substrates **must not**
 reinvent primitives the kernel already provides — if the substrate's API
 is reshaping something the kernel has, the substrate is wrong, not the
-kernel. (The dev-facing **SDK is `@canopy/sdk`** — the layered facade over
+kernel. (The dev-facing **SDK is `@onderling/sdk`** — the layered facade over
 the whole platform; see [`../architecture.md`](../architecture.md).)
 
 ```
@@ -49,8 +49,8 @@ the whole platform; see [`../architecture.md`](../architecture.md).)
 │  packages/core — the KERNEL: Agent, envelope, skill registry,     │
 │  callSkill gate, identity, InternalTransport, + the PORTS          │
 │  (Transport / DataSource / ActorResolver). Concrete ADAPTERS live  │
-│  OUTSIDE: @canopy/transports, @canopy/pod-client, @canopy/vault.   │
-│  Dev entry = @canopy/sdk (the facade over the whole platform).     │
+│  OUTSIDE: @onderling/transports, @onderling/pod-client, @onderling/vault.   │
+│  Dev entry = @onderling/sdk (the facade over the whole platform).     │
 └───────────────────────────────────────────────────────────────────┘
 ```
 
@@ -58,23 +58,23 @@ the whole platform; see [`../architecture.md`](../architecture.md).)
 
 ## What each layer owns
 
-### The kernel + adapters — `packages/core` + `@canopy/transports` · `@canopy/pod-client` · `@canopy/vault`
+### The kernel + adapters — `packages/core` + `@onderling/transports` · `@onderling/pod-client` · `@onderling/vault`
 
 The foundation. **Stable** — substrate + app authors read it as a reference, not modify it casually.
 
-- `@canopy/core` — the **KERNEL**: identity, security, routing, the `Agent` class, skill registry +
+- `@onderling/core` — the **KERNEL**: identity, security, routing, the `Agent` class, skill registry +
   `defineSkill`, protocols (pubSub, SkillsPubSub, taskExchange, messaging, …), permissions (PolicyEngine,
   CapabilityToken, GroupManager), `InternalTransport`, and the **ports** (`Transport`/`DataSource`/`ActorResolver`,
   see [`ports.md`](./ports.md)). It holds **no concrete adapters** and depends *up* on nothing (guarded by
   `packages/core/test/layering.enforcement.test.js`).
-- `@canopy/transports` — the concrete network transports (`Nkn`/`Mqtt`/`Relay`/`Rendezvous`), extracted OUT of the
+- `@onderling/transports` — the concrete network transports (`Nkn`/`Mqtt`/`Relay`/`Rendezvous`), extracted OUT of the
   kernel; each an adapter over the `Transport` port.
-- `@canopy/pod-client` — high-level Solid pod read/write/list/conflict **plus** the on-pod storage adapters
+- `@onderling/pod-client` — high-level Solid pod read/write/list/conflict **plus** the on-pod storage adapters
   (`SolidPodSource`/`PodExporter`) and on-pod identity (`IdentityPodStore`/`IdentitySync`) — all moved out of core.
-- `@canopy/vault` — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
-- `@canopy/relay` — relay broker + offline queue + multi-recipient fan-out + group auth + push wake.
-- `@canopy/react-native` — RN platform layer (polyfills, Metro preset, BLE/mDNS/Keychain adapters, MobilePushBridge).
-- `@canopy/sdk` — **the developer SDK**: the layered facade over the whole platform (low layer re-exports the
+- `@onderling/vault` — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
+- `@onderling/relay` — relay broker + offline queue + multi-recipient fan-out + group auth + push wake.
+- `@onderling/react-native` — RN platform layer (polyfills, Metro preset, BLE/mDNS/Keychain adapters, MobilePushBridge).
+- `@onderling/sdk` — **the developer SDK**: the layered facade over the whole platform (low layer re-exports the
   above; high layer = `createAgent` / `connectSkill`).
 
 ### Substrates — `packages/{item-store, agent-ui, ...}` (L1a–L1j)
@@ -88,7 +88,7 @@ see `policies.md`).
   something that "looks like" a `Vault` / `Transport` / `MergeContract` /
   `OAuthVault` / event emitter — stop. The kernel + adapters have it.
 - Declare every kernel/adapter package they use in `package.json` `dependencies`
-  (or `peerDependencies` for RN). Zero `@canopy/*` deps is a code
+  (or `peerDependencies` for RN). Zero `@onderling/*` deps is a code
   smell for a substrate; the audit flagged that as the structural
   signature of SDK-bypass.
 - Use `core.Emitter` (not `node:events`) so RN consumers don't break.
@@ -115,8 +115,8 @@ Thin compositions. App-specific glue + UI on top of substrates.
   (see [`app-readme-scheme.md`](./app-readme-scheme.md) for the
   required sections).
 - **Justify every direct kernel use.** Direct dependencies on
-  `@canopy/core` / `@canopy/relay` / `@canopy/pod-client` /
-  `@canopy/react-native` are allowed but must be listed in the
+  `@onderling/core` / `@onderling/relay` / `@onderling/pod-client` /
+  `@onderling/react-native` are allowed but must be listed in the
   README with a one-line reason — typically "no substrate yet for X".
   An unjustified direct kernel dep is treated as a bug; either the app is
   reaching past a substrate that should have served it, or a substrate
@@ -206,13 +206,13 @@ cross-app coupling. Three constraints apply:
    imports from desktop; desktop never imports from mobile.
 3. **All genuinely-platform-agnostic code is still substrate-shaped.**
    The mobile shell's package.json should show ONE
-   `@canopy-app/<sibling>` dep + N `@canopy/...` substrates, not
+   `@onderling-app/<sibling>` dep + N `@onderling/...` substrates, not
    a sprawl of cross-app subpath imports.
 
 When `apps/folio-mobile` was scoped before 2026-05-08 it had THREE
 cross-app subpath imports (`/rn/serviceFactory`, `/rn/backgroundTasks`,
 implicit barrel). Phases 40.2-40.3 + the 2026-05-08 follow-up
-collapsed them to ONE: `import { SyncEngine } from '@canopy-app/folio'`
+collapsed them to ONE: `import { SyncEngine } from '@onderling-app/folio'`
 for the SyncEngine subclass. The remaining import is the legitimate
 single-product dependency this exception covers.
 
@@ -220,14 +220,14 @@ single-product dependency this exception covers.
 requires rule-of-two and substrate extraction (see Stoop V3 Phases
 40.2-40.3 for the canonical lift).
 
-**Verification:** `grep -r "@canopy-app/" apps/*/src apps/*/package.json`
+**Verification:** `grep -r "@onderling-app/" apps/*/src apps/*/package.json`
 should return zero matches **other than**:
 - self-references in comments / package.json `name` fields,
 - platform-shell deps from `<app>-mobile` to `<app>` (above).
 
 As of 2026-05-08:
 - `apps/folio-mobile` matches the platform-shell exception once
-  (`SyncEngine` from `@canopy-app/folio`).
+  (`SyncEngine` from `@onderling-app/folio`).
 - No other cross-app imports exist.
 
 ---
@@ -280,7 +280,7 @@ other, leading to silent UX divergence.
 **Re-export shims:** when the mobile shell keeps a local module as
 a stable import path (`apps/<product>-mobile/src/lib/<name>.js`)
 that re-exports the shared helper, use `export * from
-'@canopy-app/<product>/ui/<name>'` rather than an explicit named
+'@onderling-app/<product>/ui/<name>'` rather than an explicit named
 list. Explicit lists silently drop new exports (we hit this with
 `buildAddSubtaskArgs` on 2026-05-10 — added in the shared module,
 missed on the shim, surfaced as a runtime "is not a function" on
@@ -294,7 +294,7 @@ both shells. Each shell keeps its own
 `{mobile,desktop}.<keys>.json` for platform-specific copy
 (camera-permission rationale, "Tap + to add a task", …).
 
-**Verification:** `grep -r "@canopy-app/<product>/ui/" apps/<product>-mobile`
+**Verification:** `grep -r "@onderling-app/<product>/ui/" apps/<product>-mobile`
 should return ≥ 1 match per shared helper. A new helper that lives
 in only one shell is a smell — extract before merging.
 
@@ -320,9 +320,9 @@ The canonical pattern:
 
 | Cross-platform substrate | RN-specific sibling |
 |---|---|
-| `@canopy/sync-engine` | `@canopy/sync-engine-rn` (planned, lifts folio-mobile's `serviceFactory`) |
-| `@canopy/pod-client` | `@canopy/oidc-session-rn` (planned, lifts folio-mobile's `OidcSessionRN`) |
-| `@canopy/core` | `@canopy/react-native` (already shipped — KeychainVault, AsyncStorageAdapter, BLE/mDNS transports, MobilePushBridge) |
+| `@onderling/sync-engine` | `@onderling/sync-engine-rn` (planned, lifts folio-mobile's `serviceFactory`) |
+| `@onderling/pod-client` | `@onderling/oidc-session-rn` (planned, lifts folio-mobile's `OidcSessionRN`) |
+| `@onderling/core` | `@onderling/react-native` (already shipped — KeychainVault, AsyncStorageAdapter, BLE/mDNS transports, MobilePushBridge) |
 
 Reasons:
 
@@ -341,11 +341,11 @@ Reasons:
    `*-rn` package without touching the cross-platform layer.
 
 **Naming:** `*-rn` suffix is preferred. The existing
-`@canopy/react-native` predates this rule and stays as the
+`@onderling/react-native` predates this rule and stays as the
 RN platform layer (polyfills + Metro preset + canonical
 KeychainVault / AsyncStorageAdapter / transport bridges); new
 RN-specific substrates follow the suffix pattern instead of
-piling onto `@canopy/react-native`.
+piling onto `@onderling/react-native`.
 
 **When a substrate gets an RN sibling**: add the `*-rn` package
 under `packages/`, mark the cross-platform substrate as the
@@ -360,9 +360,9 @@ violation. Lint rule TBD.
 ## Strict layering: core MUST NOT import substrates (locked 2026-05-11)
 
 > **Project-wide invariant.** The dependency direction is one-way:
-> **apps → substrates → core**. `@canopy/core` (and the
-> substrate-adjacent foundation packages `@canopy/relay`,
-> `@canopy/pod-client`, `@canopy/react-native`) never imports
+> **apps → substrates → core**. `@onderling/core` (and the
+> substrate-adjacent foundation packages `@onderling/relay`,
+> `@onderling/pod-client`, `@onderling/react-native`) never imports
 > from a substrate package. Anything that requires substrate-side
 > knowledge belongs in the substrate's plan, not core's.
 
@@ -395,7 +395,7 @@ substrate:
 | Mechanism | Used for | Examples |
 |---|---|---|
 | **Opaque slot on `Agent`** | Substrate hands core an object; core stores + exposes via a getter; the substrate decides the shape. | `agent.webid` (Phase 50.2), `agent.pseudoPod` (50.3), `agent.agentRegistry` (50.8) |
-| **Interface / contract** (JSDoc-defined type) | Substrate implements; core consumes via injection. Core ships the interface definition + an in-memory test helper. | `ActorResolver` (Phase 50.9) — implemented by `@canopy/agent-registry`; injected into `PolicyEngine` + `CapabilityToken.verify` |
+| **Interface / contract** (JSDoc-defined type) | Substrate implements; core consumes via injection. Core ships the interface definition + an in-memory test helper. | `ActorResolver` (Phase 50.9) — implemented by `@onderling/agent-registry`; injected into `PolicyEngine` + `CapabilityToken.verify` |
 | **Skill-shape factory** | Core ships the wire contract (input shape, error codes, output shape) as a `defineSkill`-returning factory; substrate supplies the storage backing via a callback. | `makeFetchResourceSkill({read})` (Phase 50.3) — the pseudo-pod substrate registers the skill on the agent with its own `read` |
 | **Duck-typed binding method** | Core invokes a well-known method (`setHost('hub', binder)`) on each opaque slot that implements it. Slots without the method are silently skipped. | `agent.bindToHub(binder)` (Phase 50.12) — fan-out to pseudo-pod / agent-registry / webid slots |
 
@@ -405,11 +405,11 @@ to core while letting apps + facades wire things up cleanly.
 ### Transitional compat shims — REMOVED (2026-07-05)
 
 The Phase 50.1/50.1.A migrations left time-limited deprecation
-re-exports in core (`SolidVault` from `@canopy/oidc-session`;
-`Vault*` from `@canopy/vault`) — deliberate layering violations
+re-exports in core (`SolidVault` from `@onderling/oidc-session`;
+`Vault*` from `@onderling/vault`) — deliberate layering violations
 awaiting removal. The **2026-07-05 de-fat deleted all of them**
-(and moved the concrete transports → `@canopy/transports`,
-pod-storage + on-pod identity → `@canopy/pod-client`). Core now
+(and moved the concrete transports → `@onderling/transports`,
+pod-storage + on-pod identity → `@onderling/pod-client`). Core now
 imports/re-exports **nothing** from an adapter, and
 `packages/core/test/layering.enforcement.test.js` fails CI if any
 returns. **New compat shims are not allowed** — depend on the
@@ -435,31 +435,31 @@ factory / binder.
 **Phases lifted out of core's coding plan 2026-05-11** as a
 result of this rule:
 
-- Phase 50.4 (VaultMemory pod write-through) → `@canopy/vault`
+- Phase 50.4 (VaultMemory pod write-through) → `@onderling/vault`
   substrate plan.
 - Phase 50.6 (pseudo-pod V1 write-through queue) →
-  `@canopy/pseudo-pod` substrate plan (forthcoming).
+  `@onderling/pseudo-pod` substrate plan (forthcoming).
 - Phase 50.13 (consume interface-registry) →
-  `@canopy/interface-registry` substrate plan (forthcoming);
+  `@onderling/interface-registry` substrate plan (forthcoming);
   core may add a slot + duck-typed binding fan-out if useful.
-- Phase 50.14 (consume protocol) → `@canopy/protocol`
+- Phase 50.14 (consume protocol) → `@onderling/protocol`
   substrate plan (forthcoming).
 - Phase 50.15 (AIDL surface V2 plumbing) →
-  `@canopy/react-native` Phase 51.11.
+  `@onderling/react-native` Phase 51.11.
 
 ### Verification
 
 - Grep `packages/core/src/**/*.js` for imports from any
-  `@canopy/<adapter-or-substrate>` package. As of the 2026-07-05
+  `@onderling/<adapter-or-substrate>` package. As of the 2026-07-05
   de-fat there are **no acceptable matches** — the deprecation
   re-exports are gone. `packages/core/test/layering.enforcement.test.js`
   guards this (kernel imports/re-exports nothing from vault /
   oidc-session / transports / pod-*).
 - Grep `packages/core/package.json` `dependencies` for any
-  `@canopy/*` — there should be **none** at runtime (`@canopy/vault`
+  `@onderling/*` — there should be **none** at runtime (`@onderling/vault`
   is a devDependency for the kernel's tests only).
 - Grep substrate package.json files for circular references
-  to `@canopy/core` in `dependencies` (devDeps for tests are
+  to `@onderling/core` in `dependencies` (devDeps for tests are
   fine).
 
 ---
@@ -477,8 +477,8 @@ Two ongoing checks for the layering invariant:
 
 2. **App↔SDK bypass audit.** Tracked under HIGH PRIORITY in
    `../TODO-GENERAL.md`. Runs after substrate
-   refactors land. Flags any app that imports from `@canopy/core` /
-   `@canopy/relay` / `@canopy/pod-client` / `@canopy/react-native`
+   refactors land. Flags any app that imports from `@onderling/core` /
+   `@onderling/relay` / `@onderling/pod-client` / `@onderling/react-native`
    without a corresponding justification in the app README.
 
 Both are honest checkpoints, not gates — the invariant is what matters
@@ -493,7 +493,7 @@ After the v0.7.S0–S8 security pass landed, every safety primitive
 WebID claim, passphrase vault, WebAuthn, identity-resolver, capability
 tokens, TrustRegistry, PolicyEngine, signed audit log, GroupManager,
 A2A-TLS, rate-limit, migrateVaultToPod, PFS) lives behind a single
-checkbox-style opt on the `@canopy/secure-agent` factory.
+checkbox-style opt on the `@onderling/secure-agent` factory.
 
 ### Rule
 
@@ -561,12 +561,12 @@ wirings the default and surfaces opt-outs in code review.
 
 ### Migration recipe (for the next cross-peer app)
 
-The concrete steps when adopting `@canopy/secure-agent` in an
+The concrete steps when adopting `@onderling/secure-agent` in an
 existing app, or wiring a new one:
 
 1. **Add the dep.**  In `apps/<app>/package.json`:
    ```json
-   "@canopy/secure-agent": "workspace:*"
+   "@onderling/secure-agent": "workspace:*"
    ```
    Then `pnpm --filter <app> install`.
 
@@ -574,7 +574,7 @@ existing app, or wiring a new one:
    file currently constructs the Agent + transport (typically
    `src/web/realAgent.js` or equivalent boot file):
    ```js
-   import { createSecureAgent } from '@canopy/secure-agent';
+   import { createSecureAgent } from '@onderling/secure-agent';
 
    const sa = await createSecureAgent({
      bus,                                      // share with in-process agents

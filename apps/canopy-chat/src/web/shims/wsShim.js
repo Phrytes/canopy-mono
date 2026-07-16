@@ -3,7 +3,7 @@
  *
  * `ws` is a Node-only WebSocket library; relay code paths import it
  * statically (`import { WebSocketServer } from 'ws'`).  In the browser
- * `globalThis.WebSocket` is used instead via @canopy/core's transport
+ * `globalThis.WebSocket` is used instead via @onderling/core's transport
  * detection, so the `ws` code path is unreachable.  The shim just needs
  * the named exports Rollup sees at build time.
  *

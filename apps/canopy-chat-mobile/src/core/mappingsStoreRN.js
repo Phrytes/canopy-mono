@@ -3,7 +3,7 @@
  *
  * The React-Native twin of web's `localStorageMappingsStore`: an AsyncStorage
  * adapter satisfying the SUBSET of the pseudo-pod contract that
- * `@canopy/pod-routing` `loadMappings`/`writeMapping`/`removeMapping` use —
+ * `@onderling/pod-routing` `loadMappings`/`writeMapping`/`removeMapping` use —
  * `list(containerUri)` · `read(uri)` · `write(uri, body)` · `delete(uri)`, with
  * keys == URIs. So `loadMappings` drives it unchanged on mobile too.
  *

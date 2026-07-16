@@ -2,17 +2,17 @@
  * Household substrate-mirror — cross-device household-item fan-out.
  *
  * OBJ-2 S2: now a THIN wrapper over the shared generic `wireItemMirror`
- * (`@canopy/notify-envelope`), which tasks-v0 also uses. Household-specific bits:
+ * (`@onderling/notify-envelope`), which tasks-v0 also uses. Household-specific bits:
  * the envelope `kind` ('household-item'), the per-circle URI namespace, and the
  * draft reconstruction (generic item fields only — no tasks-specific
  * dependencies/requiredSkills/approval/reviewLog). Action inference uses the
  * shared default (no reviewLog branch — household has none).
  *
- * `itemStore` is the RAW `@canopy/item-store` ItemStore (reach it via
+ * `itemStore` is the RAW `@onderling/item-store` ItemStore (reach it via
  * `InMemoryStore.substrate`).
  *
  * @param {object} args
- * @param {import('@canopy/item-store').ItemStore} args.itemStore
+ * @param {import('@onderling/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope
  * @param {object} args.pseudoPod
  * @param {string} args.circleId
@@ -26,7 +26,7 @@
  *   publishItemRemoved:(originalId:string, opts?:object)=>Promise<void>,
  * }>}
  */
-import { wireItemMirror } from '@canopy/notify-envelope';
+import { wireItemMirror } from '@onderling/notify-envelope';
 
 /** Reconstruct an `addItems` draft from a synced household-item payload. */
 function householdDraft(payload, fromPubKey) {

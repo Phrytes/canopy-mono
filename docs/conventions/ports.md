@@ -1,14 +1,14 @@
 # Ports — the compatibility contract
 
-A **port** is an interface that `@canopy/core` (the SDK kernel) defines and depends on, but does **not**
-implement. The concrete implementations — the **adapters** — live outside the kernel: in `@canopy/transports`,
-`@canopy/pod-client`, `@canopy/agent-registry`, or a third party's own package. The kernel talks to adapters
+A **port** is an interface that `@onderling/core` (the SDK kernel) defines and depends on, but does **not**
+implement. The concrete implementations — the **adapters** — live outside the kernel: in `@onderling/transports`,
+`@onderling/pod-client`, `@onderling/agent-registry`, or a third party's own package. The kernel talks to adapters
 only through the port.
 
-This is what lets the kernel stay small and lets anyone reimplement an adapter: **"compatible with the @canopy
+This is what lets the kernel stay small and lets anyone reimplement an adapter: **"compatible with the @onderling
 SDK" means exactly "satisfies the port."** Two things make that concrete and checkable:
 
-1. The port is a documented interface, exported from `@canopy/core`.
+1. The port is a documented interface, exported from `@onderling/core`.
 2. A **conformance harness** turns "satisfies the port" into a test you can run against any implementation.
 
 > Implement the port **and** pass its conformance harness = your adapter is compatible.
@@ -18,7 +18,7 @@ There are three ports today.
 ## `Transport` — the network adapter port
 
 **Shape:** a base class, `packages/core/src/transport/Transport.js`, exported as `Transport` from
-`@canopy/core`. An adapter `extends Transport`.
+`@onderling/core`. An adapter `extends Transport`.
 
 **What an adapter must do:**
 
@@ -41,8 +41,8 @@ primitives (`sendOneWay`, `sendAck`, `request`, `respond`, plus `sendHello`, `pu
 3. **Dispatch** — every other inbound envelope goes to the registered `receiveHandler` (or the `'envelope'`
    event when none is set).
 
-**Reference adapters:** `InternalTransport` (in `@canopy/core`, in-process bus) and
-`NknTransport` / `MqttTransport` / `RelayTransport` / `RendezvousTransport` (in `@canopy/transports`).
+**Reference adapters:** `InternalTransport` (in `@onderling/core`, in-process bus) and
+`NknTransport` / `MqttTransport` / `RelayTransport` / `RendezvousTransport` (in `@onderling/transports`).
 
 ## `DataSource` — the storage adapter port
 
@@ -58,8 +58,8 @@ primitives (`sendOneWay`, `sendAck`, `request`, `respond`, plus `sendHello`, `pu
 - `query(filter={})` → **optional** structured query. Adapters that can't support it leave the base method
   throwing; callers must treat `query` as best-effort.
 
-**Reference adapters:** `MemorySource` / `IndexedDBSource` / `FileSystemSource` (in `@canopy/core`) and
-`SolidPodSource` (in `@canopy/pod-client`).
+**Reference adapters:** `MemorySource` / `IndexedDBSource` / `FileSystemSource` (in `@onderling/core`) and
+`SolidPodSource` (in `@onderling/pod-client`).
 
 ## `ActorResolver` — the actor-registry adapter port
 
@@ -78,13 +78,13 @@ agent's identifiers: `pubKey` (Ed25519, base64url), `webid` (URI), and `agentUri
 Core defines the interface but never imports the substrate; apps inject a resolver into core consumers
 (`PolicyEngine`, `CapabilityToken.verify`) by dependency injection.
 
-**Reference adapter:** `createInMemoryActorResolver()` (in `@canopy/core`, for tests + minimal apps); the
-substrate implementation lives in `@canopy/agent-registry`.
+**Reference adapter:** `createInMemoryActorResolver()` (in `@onderling/core`, for tests + minimal apps); the
+substrate implementation lives in `@onderling/agent-registry`.
 
 ## Conformance harness
 
 The harness is the executable form of the contract. Each port ships an `assert…Conformance(makeImpl, {label})`
-helper, exported from the **`@canopy/core/conformance`** subpath (source: `packages/core/src/conformance/`).
+helper, exported from the **`@onderling/core/conformance`** subpath (source: `packages/core/src/conformance/`).
 Point it at any implementation and it asserts the required methods exist **and** the port's behaviours
 actually hold:
 
@@ -100,10 +100,10 @@ own `_put`. (The `RendezvousTransport` run is gated on the `node-datachannel` We
 and skips cleanly where it isn't — same as the existing rendezvous suite.)
 
 A third party writing a new adapter wires the matching helper into their own test suite by importing the
-first-class `@canopy/core/conformance` subpath — no relative paths, no copying:
+first-class `@onderling/core/conformance` subpath — no relative paths, no copying:
 
 ```js
-import { assertTransportConformance } from '@canopy/core/conformance';
+import { assertTransportConformance } from '@onderling/core/conformance';
 
 it('MyTransport satisfies the Transport port', async () => {
   await assertTransportConformance(makeMyConnectedPair, { label: 'MyTransport' });

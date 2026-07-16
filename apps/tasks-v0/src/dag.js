@@ -17,4 +17,4 @@ export {
   effectiveStatus,
   unmetDeps,
   detectCycle,
-} from '@canopy/item-store';
+} from '@onderling/item-store';

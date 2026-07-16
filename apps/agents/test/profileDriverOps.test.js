@@ -4,7 +4,7 @@
 // collaborator backed by the REAL createDriver/driversFromProperties, so arg-handling + degrade +
 // invalid-driver are all exercised.
 import { describe, it, expect } from 'vitest';
-import { createDriver, driversFromProperties } from '@canopy/agent-registry';
+import { createDriver, driversFromProperties } from '@onderling/agent-registry';
 import { setProfileDriver, getProfileDrivers } from '../src/cores.js';
 
 // A minimal profiles collaborator mirroring realAgent's setDriver/getDrivers over an in-memory map.

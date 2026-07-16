@@ -19,7 +19,7 @@
  */
 
 import { recipeToCirclePolicyPatch, applyRecipeToCircle } from './recipeApply.js';
-import { loadRecipe } from '@canopy/recipe-loader';
+import { loadRecipe } from '@onderling/recipe-loader';
 import { buildJoinConsentModel, optOutsFromDeclined, hasConsentChoices } from './circleConsent.js';
 import { mergeCirclePolicy } from './circlePolicy.js';
 

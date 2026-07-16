@@ -22,7 +22,7 @@
  *        a. reads the App-Group-shared session/keys (see {@link SecureStore});
  *        b. FETCHES the sealed blob from the owner's companion inbox
  *           (`inbox.drain`, capability-gated) — the node holds it durably;
- *        c. OPENS it locally with the recipient key (`@canopy/pod-client/sealing`
+ *        c. OPENS it locally with the recipient key (`@onderling/pod-client/sealing`
  *           `open`) — decryption happens ON DEVICE, never on the node;
  *        d. REWRITES `content.title/body` with the real (now-decrypted) message,
  *           or suppresses it, before the system shows the alert.

@@ -14,7 +14,7 @@ import {
   statusFor,
 } from '../../src/mnemonic/helpers.js';
 
-describe('@canopy/react-native/mnemonic helpers', () => {
+describe('@onderling/react-native/mnemonic helpers', () => {
   it('BIP39_WORD_COUNTS is the standard ladder', () => {
     expect([...BIP39_WORD_COUNTS].sort((a, b) => a - b)).toEqual([12, 15, 18, 21, 24]);
   });

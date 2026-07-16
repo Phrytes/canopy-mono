@@ -1,7 +1,7 @@
 /**
  * fsAdapterBackend — a portable `StorageBackend` over an INJECTED fs adapter.
  *
- * `@canopy/pseudo-pod`'s `NodeFsBackend` is the same idea but hard-wired to
+ * `@onderling/pseudo-pod`'s `NodeFsBackend` is the same idea but hard-wired to
  * `node:fs`/`node:crypto`, so it is a silent no-op on React Native (Metro shims
  * `node:fs` to empty). SyncEngine runs on BOTH Node and RN via an injected `fs`
  * adapter (`fsNode` / expo-file-system-backed `createFsRN`) — the very adapter
@@ -9,7 +9,7 @@
  * backend must ride that same adapter, not `node:fs`: one code path, no
  * platform fork, no regression.
  *
- * Surface: exactly the `{ get, put, delete, list }` that `@canopy/versioning`'s
+ * Surface: exactly the `{ get, put, delete, list }` that `@onderling/versioning`'s
  * `createVersionStore` consumes (the subscribe/dirty surface of a full
  * StorageBackend is not needed by the version store).
  *

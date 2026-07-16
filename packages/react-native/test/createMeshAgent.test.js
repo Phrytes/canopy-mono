@@ -135,7 +135,7 @@ vi.mock('../src/transport/rendezvousRtcLib.js', () => ({
 
 // Import AFTER all mocks are in place.
 import { createMeshAgent } from '../src/createMeshAgent.js';
-import { generateMnemonic, Bootstrap } from '@canopy/core';
+import { generateMnemonic, Bootstrap } from '@onderling/core';
 
 beforeEach(() => {
   // Reset per-test mock state so each test starts clean.

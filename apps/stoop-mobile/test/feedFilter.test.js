@@ -33,7 +33,7 @@ describe('matchesFilter', () => {
   });
 
   // Phase 52.7.2 clean break: the board whitelist is the canonical
-  // @canopy/item-types set. Pre-migration types (ask/lend/vraag/aanbod)
+  // @onderling/item-types set. Pre-migration types (ask/lend/vraag/aanbod)
   // are deliberately no longer board-visible — see feedFilter.js header.
   it('keeps the canonical post types — offer / request / claim / announcement / report', () => {
     for (const t of ['offer', 'request', 'claim', 'announcement', 'report']) {

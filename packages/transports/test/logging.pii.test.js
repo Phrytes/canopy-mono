@@ -1,5 +1,5 @@
 /**
- * NknTransport — @canopy/logger coverage + PII-safety (logging slice 3, TRANSPORT path).
+ * NknTransport — @onderling/logger coverage + PII-safety (logging slice 3, TRANSPORT path).
  *
  * Drives connect / send / send-failure / disconnect against an injected fake nkn lib and asserts:
  *   1. transport.connect / transport.send / transport.send.fail / transport.disconnect land in `dumpLogs()`;
@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { NknTransport } from '../src/index.js';
-import { dumpLogs, clearLogs } from '@canopy/logger';
+import { dumpLogs, clearLogs } from '@onderling/logger';
 
 const PEER_ADDR = 'super-secret-peer.abcdef0123456789';   // must never be logged
 const SECRET_ENVELOPE = { to: PEER_ADDR, body: 'private-message-CONTENT-do-not-log' };

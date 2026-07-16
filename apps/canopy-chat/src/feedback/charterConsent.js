@@ -6,14 +6,14 @@
 // contribution (released coarse attributes + charterHash), and an on-device rare-combo WARNING.
 //
 // ★ LIFTED onto the SHARED disclosure layer: a "consent" is now a mini **profile** (an own/inherit property
-// graph — `setOwn`) + a shared **disclosure policy** (`@canopy/agent-registry`), keyed by the project as the
+// graph — `setOwn`) + a shared **disclosure policy** (`@onderling/agent-registry`), keyed by the project as the
 // context. So a value the participant picks is stored as a profile PROPERTY and a per-context disclosure — the
 // same shapes any app/bot uses. Today the graph is held locally per project; when the participant's REAL
 // profile graph is available, only `getProfile` changes (point it at the registry) and place/age are curated
 // ONCE and reused across apps. The vocabulary (buckets, place-validation, charterHash, the warning) stays with
-// @canopy/attribute-charter; the disclosure MECHANISM is now the shared one.
-import { createCharter, charterHash, charterKeys, disclosureWarning, bucketsFor, isValidValue } from '@canopy/attribute-charter';
-import { setOwn, createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from '@canopy/agent-registry';
+// @onderling/attribute-charter; the disclosure MECHANISM is now the shared one.
+import { createCharter, charterHash, charterKeys, disclosureWarning, bucketsFor, isValidValue } from '@onderling/attribute-charter';
+import { setOwn, createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from '@onderling/agent-registry';
 
 /** Validate + build the charter a project declared (null when the project has none). */
 export function charterFromConfig(projectId, cfgCharter) {

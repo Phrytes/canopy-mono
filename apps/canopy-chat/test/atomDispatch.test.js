@@ -9,8 +9,8 @@
  * e.g. a noun/atom is declared (via #81's `nouns`) with no implementing op, or resolveAtom drifts.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { capabilitiesOf, dispatchAtom, dispatchCapability } from '@canopy/app-manifest';
-import { CircleItemStore, memoryDataSource, createGenericAtomHandlers } from '@canopy/item-store';
+import { capabilitiesOf, dispatchAtom, dispatchCapability } from '@onderling/app-manifest';
+import { CircleItemStore, memoryDataSource, createGenericAtomHandlers } from '@onderling/item-store';
 
 import { householdManifest }  from '../../household/manifest.js';
 import { calendarManifest }   from '../../calendar/manifest.js';

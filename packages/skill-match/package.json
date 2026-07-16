@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/skill-match",
+  "name": "@onderling/skill-match",
   "version": "0.2.0",
   "description": "Pubsub-of-skills + posture flag + closed-group governance for matchmaking + claim flows. Composes core.Agent + pubSub.js — no synthetic transport.",
   "type": "module",
@@ -10,8 +10,8 @@
   },
   "scripts": { "test": "vitest run", "test:watch": "vitest" },
   "dependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/vault": "file:../vault"
+    "@onderling/core": "file:../core",
+    "@onderling/vault": "file:../vault"
   },
   "devDependencies": { "vitest": "^2.1.0" }
 }

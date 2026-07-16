@@ -80,7 +80,7 @@ describe('validateStoopItem — warn-only validation pipeline', () => {
     const v = validateStoopItem({
       ...COMMON,
       type: 'offer',
-      // text → body adapter in @canopy/item-types fills body for us.
+      // text → body adapter in @onderling/item-types fills body for us.
     });
     expect(v.ok).toBe(true);
   });

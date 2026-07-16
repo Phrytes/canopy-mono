@@ -2,8 +2,8 @@
  * InAppInboxBridge — Tasks V1 in-app inbox channel for the notifier.
  *
  * Implements the `MessagingBridge` shape (`start, stop, onMessage,
- * sendReply`) that `@canopy/chat-agent` defines and that
- * `@canopy/notifier` consumes for chat-shaped channels. The
+ * sendReply`) that `@onderling/chat-agent` defines and that
+ * `@onderling/notifier` consumes for chat-shaped channels. The
  * notifier is agnostic about whether the bridge sends to Telegram,
  * to an LLM, or — as here — writes a notification item into a
  * per-user inbox `ItemStore`.
@@ -45,12 +45,12 @@
  *
  * **Substrate-candidate flag**: when a 2nd consumer (Stoop V2,
  * Household, future) wants the same shape, lift this into
- * `@canopy/chat-agent` as `InAppInboxBridge` alongside
+ * `@onderling/chat-agent` as `InAppInboxBridge` alongside
  * `TelegramBridge` + `InMemoryBridge`. Tracked per the
  * `Project Files/Substrates/substrate-candidates.md` flagging rule.
  */
 
-import { ulid } from '@canopy/item-store';
+import { ulid } from '@onderling/item-store';
 
 const DEFAULT_INBOX_CONTAINER = 'mem://user/inbox/';
 

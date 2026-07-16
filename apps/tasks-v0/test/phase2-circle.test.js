@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 import {
   IMPLICIT_HOUSEHOLD_CONFIG as _IMPLICIT,

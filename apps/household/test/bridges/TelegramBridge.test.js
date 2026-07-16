@@ -412,7 +412,7 @@ describe('TelegramBridge — sendReply', () => {
   });
 
   it('builds an inline_keyboard from buttons[] (one button per row — substrate default)', async () => {
-    // @canopy/chat-agent's layoutButtons() deliberately defaults to
+    // @onderling/chat-agent's layoutButtons() deliberately defaults to
     // one-button-per-row for readability (long lists / label truncation).
     // Callers opt into multi-button rows via a 2D array or `row` field.
     await bridge.sendReply({

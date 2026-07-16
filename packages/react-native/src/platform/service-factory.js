@@ -5,7 +5,7 @@
 //
 // Usage:
 //
-//   import { selectPlatform } from '@canopy/react-native/platform/service-factory';
+//   import { selectPlatform } from '@onderling/react-native/platform/service-factory';
 //
 //   const Service = selectPlatform({
 //     rn:      () => require('./MyModule.rn.js'),

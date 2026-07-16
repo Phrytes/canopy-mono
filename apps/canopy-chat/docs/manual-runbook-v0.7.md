@@ -34,8 +34,8 @@ Before starting the runbook proper:
 ```bash
 # Confirm the suites are green
 pnpm --filter canopy-chat        test
-pnpm --filter @canopy/secure-agent test
-pnpm --filter @canopy/core        test
+pnpm --filter @onderling/secure-agent test
+pnpm --filter @onderling/core        test
 
 # Start the dev server (one tab) — keep it running
 pnpm --filter canopy-chat dev

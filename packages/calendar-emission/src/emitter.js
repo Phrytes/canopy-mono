@@ -66,8 +66,8 @@ export function buildIcsFor({ circleId, circleName, member, tasks, now = Date.no
 /**
  * v0.7.11 — `buildIcsForEvents` — same lib (ical.js) + same wire
  * shape, but takes `calendar-event`-shape items (per
- * @canopy/item-types/CALENDAR_EVENT_SCHEMA) directly rather than
- * tasks.  Used by @canopy-app/calendar.
+ * @onderling/item-types/CALENDAR_EVENT_SCHEMA) directly rather than
+ * tasks.  Used by @onderling-app/calendar.
  *
  * @param {object} args
  * @param {Array<object>} args.events

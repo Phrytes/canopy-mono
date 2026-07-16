@@ -1,4 +1,4 @@
-# @canopy/pseudo-pod
+# @onderling/pseudo-pod
 
 A **Solid-shaped local store** that backs every app in the
 Decentralised-Web-Agent (DWA) stack — runs the same `read / write /
@@ -35,7 +35,7 @@ with the pending-pod-upload queue + per-write reachability gating).
 ### Standalone
 
 ```js
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 
 const pod = createPseudoPod({
   backend:  createMemoryBackend(),
@@ -216,7 +216,7 @@ transport.publishEnvelope({
 ```
 
 V0 owns the `pseudo-pod.write` kind directly. Phase 52.4
-(`@canopy/notify-envelope`) will wrap this in a richer envelope
+(`@onderling/notify-envelope`) will wrap this in a richer envelope
 type with kind-aware routing.
 
 Fan-out is **best-effort**: a transport error or empty peer set
@@ -231,7 +231,7 @@ dirty-queue + retry).
 `PseudoPod` delegates all persistence to a `StorageBackend`. V0
 ships `MemoryBackend` (in-process Map). The RN-side adapter
 (AsyncStorage / SQLite) is parallel work in
-`@canopy/react-native` Phase 51.1.
+`@onderling/react-native` Phase 51.1.
 
 ```text
 get(key)                       → { bytes, etag?, _v? } | null

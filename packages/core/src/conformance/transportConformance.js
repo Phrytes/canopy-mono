@@ -8,7 +8,7 @@
  * adapter's `_put` — one-way delivery, request/response reply-correlation, and
  * AS auto-ACK.
  *
- * "Implement the port + pass this harness = compatible with the @canopy SDK."
+ * "Implement the port + pass this harness = compatible with the @onderling SDK."
  *
  * Usage (from a vitest test):
  *

@@ -9,8 +9,8 @@
  * JSON args, returning a JSON object that SkillRegistry auto-wraps".
  */
 
-import { Agent, AgentIdentity, InternalBus, InternalTransport, defineSkill } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, defineSkill } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { search, findByPodUri } from '../Search.js';
 
@@ -24,7 +24,7 @@ function dataArgs(parts) {
 /**
  * @param {object} args
  * @param {import('../Db.js').Db} args.db
- * @param {import('@canopy/pod-search').PodSearch} [args.podSearch]
+ * @param {import('@onderling/pod-search').PodSearch} [args.podSearch]
  *   Optional — when supplied, archive.search delegates through L1i's
  *   API surface (uses the PodSearchAdapter shape).  When omitted,
  *   `archive.search` calls Search.js directly (legacy path).

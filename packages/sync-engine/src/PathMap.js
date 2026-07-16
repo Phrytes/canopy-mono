@@ -2,7 +2,7 @@
  * PathMap — bidirectional mapping between local FS paths and pod URIs,
  * with ACL hints derived from folder-name conventions.
  *
- * Lifted from Folio (apps/folio/src/PathMap.js) into @canopy/sync-engine.
+ * Lifted from Folio (apps/folio/src/PathMap.js) into @onderling/sync-engine.
  *
  * Decoupling note (substrate-side change vs Folio's original):
  *   The original PathMap imported `parsePath` from autoShare.js (a

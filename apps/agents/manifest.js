@@ -3,7 +3,7 @@
  *
  * The "your agents" management surface: a member's registered agents
  * (their devices + delegated agents) listed from the canonical
- * `@canopy/agent-registry` pod resource.
+ * `@onderling/agent-registry` pod resource.
  *
  * READ ops (P1, canonical `list` atom):
  *   • listAgents — the non-revoked roster (soft-revoke: entries with a
@@ -28,7 +28,7 @@
  *     a revoked agent).  Confirm-gated, permanent.
  *
  * itemType `'agent'` is app-local (F-SP1-a — not canonical in
- * `@canopy/item-types`); permitted by validateManifest.  The DETAIL
+ * `@onderling/item-types`); permitted by validateManifest.  The DETAIL
  * view mirrors the stoop `settings` / tasks-v0 `pod-settings` record-
  * view precedent (`shape: 'record'` + a runtime-derived dataSource arg
  * via `argsFromContext`), still read-only (no `fields[]` patch surface —
@@ -37,7 +37,7 @@
  * Hints are written for the LLM tool-calling layer (surfaces.chat.hint);
  * listAgents also carries a `/agents` slash command.
  *
- * @type {import('@canopy/app-manifest').__types__}
+ * @type {import('@onderling/app-manifest').__types__}
  */
 export const agentsManifest = {
   app:       'agents',

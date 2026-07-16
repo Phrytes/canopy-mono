@@ -9,7 +9,7 @@ import { Emitter }          from '../src/Emitter.js';
 import { DataPart }         from '../src/Parts.js';
 import { signReachabilityClaim } from '../src/security/reachabilityClaim.js';
 import { AgentIdentity }    from '../src/identity/AgentIdentity.js';
-import { VaultMemory }      from '@canopy/vault';
+import { VaultMemory }      from '@onderling/vault';
 
 /**
  * Build a minimal agent-like shape (extends Emitter so

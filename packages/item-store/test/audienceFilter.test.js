@@ -14,7 +14,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { ItemStore } from '../src/index.js';
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 
 const ACTOR = 'webid:alice';
 

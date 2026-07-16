@@ -53,7 +53,7 @@ export function configResourceUri({ deviceId, anchorPodUri }) {
  * the resource doesn't exist. Throws on shape errors.
  *
  * @param {object} args
- * @param {import('@canopy/pseudo-pod').PseudoPod | object} args.pseudoPod
+ * @param {import('@onderling/pseudo-pod').PseudoPod | object} args.pseudoPod
  * @param {string} args.uri
  * @returns {Promise<StorageMappingConfig|null>}
  */

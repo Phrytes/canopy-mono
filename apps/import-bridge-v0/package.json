@@ -1,5 +1,5 @@
 {
-  "name": "@canopy-app/import-bridge-v0",
+  "name": "@onderling-app/import-bridge-v0",
   "version": "0.1.0",
   "private": true,
   "description": "H6 import-bridge V0 — fetches documents from external services (Google Docs / Notion / etc.) and writes them to a Solid pod.  Phase C V0; thin composition of L1a + L1g + L1h substrates.",
@@ -8,10 +8,10 @@
   "exports": { ".": "./src/index.js" },
   "scripts": { "test": "vitest run", "test:watch": "vitest" },
   "dependencies": {
-    "@canopy/core":             "file:../../packages/core",
-    "@canopy/vault": "file:../../packages/vault",
-    "@canopy/sync-engine":      "file:../../packages/sync-engine",
-    "@canopy/identity-resolver":"file:../../packages/identity-resolver"
+    "@onderling/core":             "file:../../packages/core",
+    "@onderling/vault": "file:../../packages/vault",
+    "@onderling/sync-engine":      "file:../../packages/sync-engine",
+    "@onderling/identity-resolver":"file:../../packages/identity-resolver"
   },
   "devDependencies": { "vitest": "^2.1.0" }
 }

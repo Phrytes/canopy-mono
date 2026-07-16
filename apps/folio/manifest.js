@@ -20,7 +20,7 @@
  * Folio is structurally different from the item-store apps (tasks-v0,
  * stoop, household): it doesn't have an ItemStore + circle-scoped items.
  * Its "items" are markdown files mirrored to a Solid pod via
- * `@canopy/sync-engine`.  Its "skills" are HTTP route handlers
+ * `@onderling/sync-engine`.  Its "skills" are HTTP route handlers
  * (`apps/folio/src/server/routes.js`) + CLI commands
  * (`apps/folio/src/cli/*.js`) + RN actions
  * (`apps/folio-mobile/src/screens/*.js`) — NOT the
@@ -60,7 +60,7 @@
  * hints + label resolution.
  */
 
-/** @type {import('@canopy/app-manifest').__types__} */
+/** @type {import('@onderling/app-manifest').__types__} */
 export const folioManifest = {
   app:       'folio',
   itemTypes: [
@@ -363,7 +363,7 @@ export const folioManifest = {
     /**
      * `/zoek` — SEMANTIC note search (pod-search V2 first consumer, 52.25).
      * The meaning-aware sibling of `searchFiles`: ranks notes via
-     * `@canopy/pod-search`, so a query finds a note by synonym/paraphrase,
+     * `@onderling/pod-search`, so a query finds a note by synonym/paraphrase,
      * not just a filename substring. Degrades to lexical when the circle's
      * embed policy is off / no embedder is available (llmTool:'off'), so the
      * op is always answerable. `mode` is optional (defaults to semantic when

@@ -40,7 +40,7 @@ anyway. Together with the kernel bump, ENOSPC should not return.
    stoop-mobile and tasks-mobile in the same session:
    `expo start --clear`. The metro-preset's alias map has
    per-app subpath resolvers (Trap 2 in BRING-UP-NOTES); a stale
-   cache hands tasks-mobile stoop's `@canopy-app/stoop` resolution.
+   cache hands tasks-mobile stoop's `@onderling-app/stoop` resolution.
 
 ## First-run checklist
 

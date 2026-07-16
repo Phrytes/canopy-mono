@@ -8,7 +8,7 @@
  *   policies accepted; V0 tier is the initial behaviour target.
  * M1-S3 (2026-05-18): substrate wiring (best-effort) when a
  *   `meshAgent` is supplied. Registers capabilities via
- *   `@canopy/agent-registry` and wires the tasks substrate-mirror.
+ *   `@onderling/agent-registry` and wires the tasks substrate-mirror.
  *   Forward-courtesy: `_podCtx: null` seam for M4.
  *
  * Mobile-local helper for now. The shape mirrors what
@@ -30,18 +30,18 @@
  *   - onCompensationChange   (Phase 41.x — invoicing)
  */
 
-import { ItemStore } from '@canopy/item-store';
-import { GroupManager } from '@canopy/core';
-import { MemberMap } from '@canopy/identity-resolver';
-import { buildStandardRolePolicy } from '@canopy-app/tasks-v0';
+import { ItemStore } from '@onderling/item-store';
+import { GroupManager } from '@onderling/core';
+import { MemberMap } from '@onderling/identity-resolver';
+import { buildStandardRolePolicy } from '@onderling-app/tasks-v0';
 import {
   buildActorAliases,
   buildActorResolverFromMembers,
-} from '@canopy-app/tasks-v0/ui/effectiveActor';
-import { buildTasksSubstrateStack }   from '@canopy-app/tasks-v0/lib/substrateStack';
-import { wireTasksSubstrateMirror }   from '@canopy-app/tasks-v0/substrateMirror';
-import { registerAgentBundle }        from '@canopy/agent-registry';
-import { classify, reverseResolve }   from '@canopy-app/tasks-v0/lib/podPathMap';
+} from '@onderling-app/tasks-v0/ui/effectiveActor';
+import { buildTasksSubstrateStack }   from '@onderling-app/tasks-v0/lib/substrateStack';
+import { wireTasksSubstrateMirror }   from '@onderling-app/tasks-v0/substrateMirror';
+import { registerAgentBundle }        from '@onderling/agent-registry';
+import { classify, reverseResolve }   from '@onderling-app/tasks-v0/lib/podPathMap';
 
 /** All four §II.2 storage policies — V0 tier used here. */
 export const CIRCLE_STORAGE_POLICIES = Object.freeze(
@@ -135,7 +135,7 @@ export async function buildCircleState({ circleConfig, localStoreBundle, meshAge
   //
   // Phase 52.11 migration — switched from the static `aliases` map
   // to an `actorResolver` (sync). Same data source (circle.members)
-  // for V0; when `@canopy/agent-registry` is wired into mobile,
+  // for V0; when `@onderling/agent-registry` is wired into mobile,
   // swap the resolver's data source for a sync cache over the
   // registry without touching `buildStandardRolePolicy`.
   //
@@ -348,6 +348,6 @@ function _normaliseStorage(raw) {
 }
 
 async function _memorySource() {
-  const { MemorySource } = await import('@canopy/core');
+  const { MemorySource } = await import('@onderling/core');
   return new MemorySource();
 }

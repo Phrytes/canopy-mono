@@ -26,10 +26,10 @@
  * graph, keeping the browser bundle engine-free by construction.
  *
  * RESOLUTION / BROWSER-BOUNDARY: `wireSkill` is imported by RELATIVE PATH from
- * `@canopy/sdk`'s source (not the bare barrel, which re-exports node transports)
+ * `@onderling/sdk`'s source (not the bare barrel, which re-exports node transports)
  * — the SAME rationale + path as `src/wireSkills.js`.  `wireSkill.js` + its only
  * import `connectSkill.js` are a zero-dependency, node-free 2-file closure, and
- * folio's isolated `node_modules` has no `@canopy/sdk`.
+ * folio's isolated `node_modules` has no `@onderling/sdk`.
  */
 import { buildSkillsFromManifest } from '../../../packages/sdk/src/buildSkillsFromManifest.js';
 
@@ -52,7 +52,7 @@ export const FOLIO_NODE_CAPABILITIES = Object.freeze(
 /**
  * @param {object} args
  * @param {object} args.store  the injected node folio backend — `{ engine }`,
- *   where `engine` is the live `@canopy/sync-engine` SyncEngine (the SAME
+ *   where `engine` is the live `@onderling/sync-engine` SyncEngine (the SAME
  *   instance the HTTP routes drive).  Resolved for every ctx (folio's node
  *   surface is single-user / single-engine).
  * @returns {Array<{ id: string, handler: Function, visibility?: string }>}

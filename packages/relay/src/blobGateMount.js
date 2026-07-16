@@ -32,7 +32,7 @@
  * (`createS3Bucket`) has `presignPut(key,{ttl})`; a memory/`presign`-only bucket
  * does not, so /upload-url is an opaque 403 there (no remote PUT surface exists).
  *
- * NO-LEAK: the presign path reuses `createHttpGate` from `@canopy/blob-gateway`,
+ * NO-LEAK: the presign path reuses `createHttpGate` from `@onderling/blob-gateway`,
  * which already collapses every failure (missing/invalid token, ACL deny, bad
  * ref, thrown error) to the same opaque 403 — no reason, no URL. The grant
  * route and any unknown path under the mount follow the same rule: one opaque
@@ -48,7 +48,7 @@
  *
  * R2 WIRING (S3-compatible — creds are CONFIG via env, never in the repo):
  *
- *   import { createS3Bucket } from '@canopy/blob-gateway/adapters/s3';
+ *   import { createS3Bucket } from '@onderling/blob-gateway/adapters/s3';
  *   const bucket = createS3Bucket({
  *     endpoint:        process.env.R2_ENDPOINT,      // https://<account-id>.r2.cloudflarestorage.com
  *     region:          'auto',                       // R2 ignores region; 'auto' is conventional
@@ -71,7 +71,7 @@
  * @param {string[]} [opts.uploaders]       Allow-list of actor ids (webIds) permitted to grant.
  * @returns {{ route: string, acl: object }}  The mount's route + the live ACL store.
  */
-import { createHttpGate } from '@canopy/blob-gateway/http';
+import { createHttpGate } from '@onderling/blob-gateway/http';
 import { MemoryBlobAclStore } from './blobAclStore.js';
 
 const DENY = Object.freeze({ status: 403, body: Object.freeze({ error: 'forbidden' }) });

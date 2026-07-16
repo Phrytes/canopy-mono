@@ -19,13 +19,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { MemorySource, DataPart } from '@canopy/core';
+import { MemorySource, DataPart } from '@onderling/core';
 
-import { bootstrapIdentity } from '@canopy/react-native/identity/bootstrap';
-import { buildMeshAgent }    from '@canopy-app/tasks-v0/MeshAgent';
-import { wireSkills }        from '@canopy-app/tasks-v0/wireSkills';
-import { multiCircleResolver } from '@canopy-app/tasks-v0/bundleResolver';
-import { MemberMap }         from '@canopy/identity-resolver';
+import { bootstrapIdentity } from '@onderling/react-native/identity/bootstrap';
+import { buildMeshAgent }    from '@onderling-app/tasks-v0/MeshAgent';
+import { wireSkills }        from '@onderling-app/tasks-v0/wireSkills';
+import { multiCircleResolver } from '@onderling-app/tasks-v0/bundleResolver';
+import { MemberMap }         from '@onderling/identity-resolver';
 
 import { buildLocalStoreBundle } from '../src/lib/buildLocalStoreBundle.js';
 import { buildCircleState }        from '../src/lib/buildCircleState.js';

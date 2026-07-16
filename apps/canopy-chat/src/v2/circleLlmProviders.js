@@ -7,8 +7,8 @@
 // Local route = an Ollama-compatible endpoint (`/v1/chat/completions`, the proxy + privatemode speak
 // the same protocol, so the cloud/proxy route slots in here later via the same client).
 
-import { LlmClient } from '@canopy/llm-client';
-import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
+import { LlmClient } from '@onderling/llm-client';
+import { ollamaProvider } from '@onderling/llm-client/providers/ollama';
 
 /**
  * @param {object} [cfg]

@@ -1,5 +1,5 @@
 /**
- * @canopy/pod-routing — storage-function → URI mapping + per-write
+ * @onderling/pod-routing — storage-function → URI mapping + per-write
  * reachability cache for the graceful-degradation gate.
  *
  * See `Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md`

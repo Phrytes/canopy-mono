@@ -1,5 +1,5 @@
 /**
- * `@canopy/circles` — audience model + saved-audience (circles)
+ * `@onderling/circles` — audience model + saved-audience (circles)
  * substrate.  See README.md for the canonical alias note
  * (`circle.id ≡ task.circleId`).
  */

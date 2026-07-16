@@ -20,7 +20,7 @@
  * renderWeb, so both yield identical tabs today; keeping the seam here means
  * a future mobile-only NavModel field never forks the selection logic.
  */
-import { renderWeb, renderMobile } from '@canopy/app-manifest';
+import { renderWeb, renderMobile } from '@onderling/app-manifest';
 
 /**
  * The ordered top-level TAB BAR roots a manifest projects, in declaration

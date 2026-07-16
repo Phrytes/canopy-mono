@@ -16,7 +16,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 
-import { validateManifest } from '@canopy/app-manifest';
+import { validateManifest } from '@onderling/app-manifest';
 
 import {
   skillCardsToManifest,

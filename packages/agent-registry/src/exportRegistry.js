@@ -1,12 +1,12 @@
 // Identity step 5A — export the profile set to an encrypted, storage-agnostic artifact.
 // The "export my profiles to an encrypted file / purpose-built DB" layer (Frits' vision).
 //
-// Reuses @canopy/core CloudBackup (argon2id + xsalsa20poly1305) — the same passphrase-sealed
+// Reuses @onderling/core CloudBackup (argon2id + xsalsa20poly1305) — the same passphrase-sealed
 // envelope it uses for cloud identity backup — with a passthrough adapter so we get the sealed
 // BYTES instead of an upload. The artifact is "everything, guard it": the OWNER ROOT (re-derives
 // every profile key) + the REGISTRY SNAPSHOT (the profiles' properties/structure, which aren't
 // derivable), sealed to a user passphrase. The pod-less recovery path.
-import { CloudBackup } from '@canopy/core';
+import { CloudBackup } from '@onderling/core';
 
 /** One-shot in-memory CloudAdapter — captures the sealed envelope bytes (no cloud). */
 function bytesAdapter(initial = null) {
@@ -17,7 +17,7 @@ function bytesAdapter(initial = null) {
 /**
  * @param {object} a
  * @param {object} a.ownerRoot    a core Bootstrap — re-derives every profile key on import.
- * @param {object} a.registry     an @canopy/agent-registry handle (snapshotted via list()).
+ * @param {object} a.registry     an @onderling/agent-registry handle (snapshotted via list()).
  * @param {string} a.passphrase   the export password ("this file is everything, guard it").
  * @param {object[]} [a.hints]    optional recovery hints.
  * @param {object} [a.argonOpts]  KDF cost override (tests pass a light one).

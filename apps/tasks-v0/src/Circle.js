@@ -29,13 +29,13 @@
  * time, so post-construction enrichment Just Works.
  */
 
-import { GroupManager, AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { MemberMap, MemberMapCache, buildOnboardingSkills } from '@canopy/identity-resolver';
-import { Notifier, InMemoryScheduleStore, NoopChannel, PushChannel, PushPolicy } from '@canopy/notifier';
-import { wireChat } from '@canopy/chat-p2p';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { registerAgentBundle } from '@canopy/agent-registry';
+import { GroupManager, AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { MemberMap, MemberMapCache, buildOnboardingSkills } from '@onderling/identity-resolver';
+import { Notifier, InMemoryScheduleStore, NoopChannel, PushChannel, PushPolicy } from '@onderling/notifier';
+import { wireChat } from '@onderling/chat-p2p';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { registerAgentBundle } from '@onderling/agent-registry';
 
 import { buildTasksSubstrateStack } from './lib/substrateStack.js';
 import { wireTasksSubstrateMirror } from './substrateMirror.js';

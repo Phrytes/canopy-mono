@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/qr — QR substrate.
+ * @onderling/react-native/qr — QR substrate.
  *
  * Two pieces:
  *   - `classifyQrPayload(text, classifiers)` — pure-fn classifier
@@ -17,4 +17,4 @@ export { classifyQrPayload } from './classifyQrPayload.js';
 // `QrCodeView` is a separate subpath import so the pure-JS classifier
 // is parseable in test environments that don't load
 // `react-native-qrcode-svg` (a TS module). Apps that need the renderer
-// import via `@canopy/react-native/qr/view`.
+// import via `@onderling/react-native/qr/view`.

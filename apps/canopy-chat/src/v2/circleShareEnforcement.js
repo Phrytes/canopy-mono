@@ -6,7 +6,7 @@
  * `makeCircleShareEnforcement` (+ best-effort `createCanonicalShare`) from them. Living once here is invariant
  * #1 (logic in shared src) / #2 (web≡mobile by construction): neither shell forks the assembly.
  *
- * It imports the substrate (`@canopy/item-store`, `@canopy/pod-client`, `@canopy/pod-onboarding`) but nothing
+ * It imports the substrate (`@onderling/item-store`, `@onderling/pod-client`, `@onderling/pod-onboarding`) but nothing
  * platform-specific (no DOM, no RN, no session objects) — those stay in the shells, which pass only plain deps.
  *
  * Returns the enforcement `{ onShare, onShareCanonical, revokeCanonical, onShareToPublishedKey, policy }` when the pod path is ACTIVE
@@ -14,9 +14,9 @@
  * null so the caller degrades to the in-memory `shared-ref` behaviour (no grant/seal/read-gate) — the additive
  * fallback both platforms share.
  */
-import { makeCircleShareEnforcement } from '@canopy/item-store';
-import { createCanonicalShare } from '@canopy/pod-client';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
+import { makeCircleShareEnforcement } from '@onderling/item-store';
+import { createCanonicalShare } from '@onderling/pod-client';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
 
 /**
  * @param {object} deps

@@ -10,7 +10,7 @@
  * ── Shape decision (SP-8) ──────────────────────────────────────────
  *
  * We reuse the canonical **`view` item type**
- * (`@canopy/item-types/src/types/view.js`) whose `audience` field is
+ * (`@onderling/item-types/src/types/view.js`) whose `audience` field is
  * defined precisely to hold "who sees this view" and accepts any
  * `Audience` — including a `{kind:'union', of:[…]}`.  A cross-circle
  * view is a `view` item whose `audience` is a union of circle-refs.
@@ -32,7 +32,7 @@
  * would duplicate the model.
  *
  * These helpers are **pure** (no I/O of their own beyond the injected,
- * duck-typed `itemStore`).  They live in `@canopy/circles` because
+ * duck-typed `itemStore`).  They live in `@onderling/circles` because
  * normalisation (`circle:X` → `{kind:'circle-ref', id:'X'}`; `crew:` is
  * gone — only `circle:` is a recognised ref short-hand) is a
  * circles-layer concern that item-store deliberately can't depend on.
@@ -69,7 +69,7 @@ export function savedViewAudiences(view) {
  *
  * The `audiences` set is stored as the canonical `union` audience
  * (single-element sets collapse to that one audience).  Sets `text:
- * title` for `@canopy/item-store` substrate compatibility (mirrors the
+ * title` for `@onderling/item-store` substrate compatibility (mirrors the
  * `circle` store's workaround; substrate fix deferred).
  *
  * @param {object}   spec
@@ -111,7 +111,7 @@ export function makeSavedView({ title, itemType, audiences = [], filter } = {}) 
  *
  * The `itemStore` is duck-typed: it needs `listOpen(filter)` (and
  * `listClosed(filter)` when `opts.closed` is set) — the same
- * `@canopy/item-store` surface the circles store already relies on.
+ * `@onderling/item-store` surface the circles store already relies on.
  *
  * @param {{ audience?: import('./audience.js').Audience, itemType?: string, filter?: object }} view
  * @param {{ listOpen: Function, listClosed?: Function }} itemStore

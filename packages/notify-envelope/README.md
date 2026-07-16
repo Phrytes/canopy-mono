@@ -1,4 +1,4 @@
-# @canopy/notify-envelope
+# @onderling/notify-envelope
 
 Mediates **persistent-content writes** for the Decentralised-Web-Agent
 (DWA) stack. Apps call `notifyEnvelope.publish({type, ref, payload, …})`
@@ -20,9 +20,9 @@ reconnect.
 ## What it does
 
 ```js
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createPodRouting }                     from '@canopy/pod-routing';
-import { createNotifyEnvelope }                 from '@canopy/notify-envelope';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createPodRouting }                     from '@onderling/pod-routing';
+import { createNotifyEnvelope }                 from '@onderling/notify-envelope';
 
 const pseudoPod  = createPseudoPod({ /* … */ });
 const podRouting = createPodRouting({ pseudoPod, deviceId: 'laptop-anne', anchorPodUri: 'https://anne.pod' });
@@ -117,7 +117,7 @@ When the substrate is `start()`ed, it subscribes to
    By the time the callback runs, `pseudoPod.read(env.ref)`
    returns the resource (assuming the inbound write wasn't
    rejected as stale by the 3-way version compare — see
-   `@canopy/pseudo-pod` README §"Conflict resolution").
+   `@onderling/pseudo-pod` README §"Conflict resolution").
 2. **Envelope-only envelopes** — no local-store side-effect;
    subscribers handle the ref themselves (typically lazy-fetch via
    `pod-client`).
@@ -194,7 +194,7 @@ ship for advanced use cases and integration tests.
 - **Per-actor sequence counters.** Today's relay is best-effort;
   reorder is possible. Open question per functional design §4.4.6.
 - **Validate against item-types.** Type validation is the caller's
-  job (or wire `@canopy/item-types` at the app layer). Substrate
+  job (or wire `@onderling/item-types` at the app layer). Substrate
   doesn't gatekeep.
 - **Upload-on-behalf.** V2 work, deferred. Other members uploading
   the writer's content to the writer's own pod is a separate design

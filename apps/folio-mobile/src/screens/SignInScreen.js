@@ -16,7 +16,7 @@ import {
 
 import { useFolioAuth }            from '../auth/folioAuthHook.js';
 import { DEFAULT_INRUPT_ISSUER }   from '../auth/folioAuth.js';
-import { IssuerPicker }            from '@canopy/oidc-session-rn/picker';
+import { IssuerPicker }            from '@onderling/oidc-session-rn/picker';
 import { useService } from '../ServiceContext.js';
 import { suggestPodRoot, normalizePodRoot, discoverPodRoot } from '../lib/podRootHelpers.js';
 

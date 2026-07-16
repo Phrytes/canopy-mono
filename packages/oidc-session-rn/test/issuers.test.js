@@ -1,6 +1,6 @@
 /**
  * issuers.js (RN mirror) — same behaviour as
- * `@canopy/oidc-session/test/issuers.test.js`. Tested here too to
+ * `@onderling/oidc-session/test/issuers.test.js`. Tested here too to
  * catch drift between the two copies.
  *
  * Phase 52.15.1 (2026-05-14).

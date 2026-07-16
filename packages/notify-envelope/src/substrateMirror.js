@@ -4,8 +4,8 @@
  * The single shared core behind tasks-v0's `wireTasksSubstrateMirror` and
  * household's `wireHouseholdSubstrateMirror`, which were ~identical copies. It
  * wires a per-scope "publish on write, mirror on receive" flow over a
- * `@canopy/notify-envelope` + `@canopy/pseudo-pod` pair so an item written on
- * device A shows up in device B's `@canopy/item-store` ItemStore. The
+ * `@onderling/notify-envelope` + `@onderling/pseudo-pod` pair so an item written on
+ * device A shows up in device B's `@onderling/item-store` ItemStore. The
  * app-specific bits are injected, so behaviour is unchanged per app:
  *   - `kind` / `removedKind` — the envelope kinds ('task', 'household-item', …)
  *   - `uriPrefix`            — the per-scope URI namespace (string or fn(scopeId))
@@ -23,7 +23,7 @@
  * kind 'request', a backfill model, evictionRoster + agentRegistry, add-only.)
  *
  * @param {object} args
- * @param {import('@canopy/item-store').ItemStore} args.itemStore
+ * @param {import('@onderling/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope
  * @param {object} args.pseudoPod
  * @param {string} args.scopeId                 circle/circle id (URI namespace)

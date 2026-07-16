@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { VaultNodeFs }  from '../src/VaultNodeFs.js';
-import { AgentIdentity } from '@canopy/core';
+import { AgentIdentity } from '@onderling/core';
 import { tmpdir }        from 'node:os';
 import { join }          from 'node:path';
 import { rmSync, existsSync } from 'node:fs';

@@ -1,6 +1,6 @@
-# @canopy/agent-ui
+# @onderling/agent-ui
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Localhost-only A2A glue for apps that run a UI process beside their own
 agent. Ships two thin primitives:
@@ -30,9 +30,9 @@ localhost-only (`Project Files/Substrates/L1d-agent-ui.md`).
 
 ```js
 import { Agent, defineSkill, AgentIdentity,
-         InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mountLocalUi } from '@canopy/agent-ui';
+         InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mountLocalUi } from '@onderling/agent-ui';
 
 // Build a real core.Agent.  Apps usually do this inside their own
 // factory (createTasksAgent / createArchiveWebServer / ...).
@@ -63,8 +63,8 @@ is the right primitive for that case.
 ## Client side
 
 ```js
-import { LocalAgentClient } from '@canopy/agent-ui';
-import { DataPart }         from '@canopy/core';
+import { LocalAgentClient } from '@onderling/agent-ui';
+import { DataPart }         from '@onderling/core';
 
 const client = new LocalAgentClient({
   baseUrl: 'http://127.0.0.1:8888',

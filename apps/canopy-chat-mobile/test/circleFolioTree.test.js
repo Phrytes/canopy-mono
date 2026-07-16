@@ -1,19 +1,19 @@
 /**
  * N5 (mobile) — CircleFolioScreen's folder tree is pure substrate:
  * the screen feeds its circle-scoped rows through `folioLevel` (re-
- * exported from @canopy-app/canopy-chat) and labels folders/breadcrumbs
+ * exported from @onderling-app/canopy-chat) and labels folders/breadcrumbs
  * from the mobile locale bundle.  No RN render infra here — we cover the
  * substrate the screen leans on + the locale keys it resolves, matching
  * the project's portable-vitest testing cadence.
  */
 import { describe, it, expect } from 'vitest';
 
-import { folioLevel, glyphForFile, formatFileSize, folioFileOpenTreatment } from '@canopy-app/canopy-chat';
-import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
+import { folioLevel, glyphForFile, formatFileSize, folioFileOpenTreatment } from '@onderling-app/canopy-chat';
+import { buildCapabilityMatrix, capabilityKey } from '@onderling/app-manifest';
 import { folioManifest } from '../../folio/manifest.js';
 import enRaw from '../locales/en.json';
 import nlRaw from '../locales/nl.json';
-import { sharedCircleLocale } from '@canopy-app/canopy-chat';
+import { sharedCircleLocale } from '@onderling-app/canopy-chat';
 // `circle.*` now lives in the shared canopy-chat source; merge it back to check the effective bundle.
 const en = { ...enRaw, circle: sharedCircleLocale.en };
 const nl = { ...nlRaw, circle: sharedCircleLocale.nl };

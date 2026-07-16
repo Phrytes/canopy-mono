@@ -10,8 +10,8 @@
  * …, thumb}}`) — byte-identical to what the wrapper produces.  `opener`/`gate`/
  * `fetchImpl` let a test prove the sealed round-trip (openThumbnail / openBlob).
  */
-import { generateKeypair, makeSealer, makeOpener } from '@canopy/pod-client/sealing';
-import { uploadBlob } from '@canopy/blob-gateway';
+import { generateKeypair, makeSealer, makeOpener } from '@onderling/pod-client/sealing';
+import { uploadBlob } from '@onderling/blob-gateway';
 
 /** A 1×1 transparent PNG, base64-encoded. Tiny but valid bytes. */
 export const TINY_PNG_B64 =

@@ -11,7 +11,7 @@
  */
 
 import { embedButtonsForReply } from './replyEmbeds.js';
-import { audienceFromItem, audienceMatches } from '@canopy/item-store';
+import { audienceFromItem, audienceMatches } from '@onderling/item-store';
 import { normalizeAudienceRef } from './circleScope.js';
 
 /** Distinct category values (in first-seen order) for `categoryField`. */
@@ -69,14 +69,14 @@ export function buildScreenModel({
   // than reimplementing it.
   //
   // Normalisation (SP-5b): a view declares its audience as the string
-  // short-hand `circle:X`, but items created through a `@canopy/circles` /
+  // short-hand `circle:X`, but items created through a `@onderling/circles` /
   // saved-view path store the STRUCTURED `{kind:'circle-ref', id:'X'}`.  Those
   // are the same audience, but item-store's `audienceMatches` is strict-equal
-  // (it can't depend on `@canopy/circles` to canonicalise).  So we canonicalise
+  // (it can't depend on `@onderling/circles` to canonicalise).  So we canonicalise
   // the circle-ref spelling on BOTH operands (via the render path's own
   // self-contained `normalizeAudienceRef`) before matching — otherwise
   // structured-audience items silently vanish from a `circle:X` view.  Kept
-  // self-contained (no `@canopy/circles` import) so the shared model stays
+  // self-contained (no `@onderling/circles` import) so the shared model stays
   // Metro/RN-portable.
   const effectiveAudience = audience !== undefined ? audience : defaultAudience;
   const normFilter = effectiveAudience === undefined ? undefined : normalizeAudienceRef(effectiveAudience);

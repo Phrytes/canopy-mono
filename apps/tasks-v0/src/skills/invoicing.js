@@ -22,7 +22,7 @@
  * The blob shape is intentionally minimal so any spreadsheet can pull it.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 

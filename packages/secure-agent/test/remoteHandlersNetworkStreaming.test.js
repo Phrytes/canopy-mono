@@ -24,13 +24,13 @@
  *     DENIED over the wire and NO chunk frames leak past the gate.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import {
   Agent, AgentIdentity,
   TrustRegistry, PolicyEngine, TokenRegistry,
   TextPart, Parts,
-} from '@canopy/core';
-import { createNetworkTransport } from '@canopy/transports';
+} from '@onderling/core';
+import { createNetworkTransport } from '@onderling/transports';
 import {
   grantRemoteCapability,
   enableIssuerRevocation,

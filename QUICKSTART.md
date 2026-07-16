@@ -18,7 +18,7 @@ import {
   Agent, AgentIdentity, VaultMemory,
   InternalBus, InternalTransport,
   TextPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 
 const bus = new InternalBus();
 
@@ -49,7 +49,7 @@ console.log(Parts.text(reply));    // → "Hello, world! (you are …)"
 ```
 
 Run with `node quickstart-pair.js` after `npm install
-@canopy/core` (or via the file-link in this monorepo).
+@onderling/core` (or via the file-link in this monorepo).
 
 What just happened:
 - Each agent generated an Ed25519 keypair (stored in memory).
@@ -77,7 +77,7 @@ import {
   Agent, AgentIdentity, VaultNodeFs,
   RelayTransport,
   TextPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 
 const vault    = new VaultNodeFs({ path: './my-agent.vault' });
 let identity;
@@ -142,8 +142,8 @@ Your `package.json` references the SDK via `file:` links:
 
 ```json
 "dependencies": {
-  "@canopy/core":         "file:../../packages/core",
-  "@canopy/react-native": "file:../../packages/react-native",
+  "@onderling/core":         "file:../../packages/core",
+  "@onderling/react-native": "file:../../packages/react-native",
   …
 }
 ```
@@ -162,8 +162,8 @@ you cloned the SDK at `~/sdk/canopy-mono/`, you need three things:
 
    ```json
    "dependencies": {
-     "@canopy/core":         "file:../../sdk/canopy-mono/packages/core",
-     "@canopy/react-native": "file:../../sdk/canopy-mono/packages/react-native"
+     "@onderling/core":         "file:../../sdk/canopy-mono/packages/core",
+     "@onderling/react-native": "file:../../sdk/canopy-mono/packages/react-native"
    }
    ```
 
@@ -190,8 +190,8 @@ you cloned the SDK at `~/sdk/canopy-mono/`, you need three things:
      unstable_enablePackageExports: false,
      extraNodeModules: {
        ...(config.resolver?.extraNodeModules ?? {}),
-       '@canopy/core':         path.resolve(sdkRoot, 'packages/core'),
-       '@canopy/react-native': path.resolve(sdkRoot, 'packages/react-native'),
+       '@onderling/core':         path.resolve(sdkRoot, 'packages/core'),
+       '@onderling/react-native': path.resolve(sdkRoot, 'packages/react-native'),
      },
    };
 
@@ -214,8 +214,8 @@ you cloned the SDK at `~/sdk/canopy-mono/`, you need three things:
 import {
   createMeshAgent,
   KeychainVault,
-} from '@canopy/react-native';
-import { TextPart, Parts } from '@canopy/core';
+} from '@onderling/react-native';
+import { TextPart, Parts } from '@onderling/core';
 
 export async function makeAgent({ relayUrl }) {
   const agent = await createMeshAgent({
@@ -253,7 +253,7 @@ rendezvous (WebRTC upgrade).
 
 ## 4. Expose your agent over HTTP — A2A
 
-If you want non-`@canopy` clients (curl, browser fetch, IoT
+If you want non-`@onderling` clients (curl, browser fetch, IoT
 devices, other agent frameworks) to call your agent's skills,
 attach an `A2ATransport`.  A2A is an industry-standard agent-to-
 agent protocol (JSON-RPC over HTTPS with JWT bearer auth, SSE for
@@ -266,7 +266,7 @@ import {
   RelayTransport,
   A2ATransport, A2ATLSLayer,
   TextPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 
 const identity  = await AgentIdentity.generate(new VaultMemory());
 const agent     = new Agent({

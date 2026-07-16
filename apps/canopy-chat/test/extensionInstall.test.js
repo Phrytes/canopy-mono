@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { loadMappings } from '@canopy/pod-routing/mappings';
+import { loadMappings } from '@onderling/pod-routing/mappings';
 import { buildConsentModel, installMapping, uninstallMapping } from '../src/v2/extensionInstall.js';
-import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
+import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@onderling/kring-host/mappingsStore';
 
 const catalog = {
   opsById: new Map([

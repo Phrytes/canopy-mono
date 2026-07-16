@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AgentIdentity, GroupManager } from '../src/index.js';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 
 describe('GroupManager — invite tokens', () => {
   let admin, member, gm;

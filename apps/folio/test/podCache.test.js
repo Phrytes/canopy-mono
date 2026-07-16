@@ -6,11 +6,11 @@
  * podFetcher / adapter wiring, offline queue + drain, pod-truth list
  * delegation) is verified independently of which platform backend a
  * caller injects. The Node FS backend's restart-durability is covered
- * separately in `@canopy/pseudo-pod`'s NodeFsBackend test; the RN
- * backend's in `@canopy/react-native`'s pseudo-pod-adapter tests.
+ * separately in `@onderling/pseudo-pod`'s NodeFsBackend test; the RN
+ * backend's in `@onderling/react-native`'s pseudo-pod-adapter tests.
  */
 import { describe, it, expect } from 'vitest';
-import { createMemoryBackend } from '@canopy/pseudo-pod';
+import { createMemoryBackend } from '@onderling/pseudo-pod';
 import { wrapWithPseudoPod, guessContentType } from '../src/podCache.js';
 
 const ROOT = 'https://pod.example/notes/';

@@ -14,7 +14,7 @@
  * the cancel propagation latency we're trying to measure.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { TextPart, Parts } from '@canopy/core';
+import { TextPart, Parts } from '@onderling/core';
 import { Lab }             from '../../../src/_harness/index.js';
 
 describe('protocol — streaming + cancel propagation', () => {

@@ -22,7 +22,7 @@
  * the standard bundleResolver pattern.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 const MAX_ITEMS = 5;
 

@@ -1,7 +1,7 @@
 /**
  * canopy-chat — safety integration journeys.
  *
- * These tests exercise the SEAMS between @canopy/secure-agent
+ * These tests exercise the SEAMS between @onderling/secure-agent
  * primitives, through canopy-chat's real boot + dispatch path.
  * Unit tests in packages/secure-agent verify each primitive in
  * isolation; this file verifies they COMPOSE as intended:
@@ -32,8 +32,8 @@ import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import { canopyChatManifest }         from '../manifest.js';
 import { mergeManifests }              from '../src/manifestMerge.js';
 import { createLocalBuiltins }         from '../src/core/localBuiltins.js';
-import { VaultMemory }                 from '@canopy/vault';
-import { createSecureAgent }           from '@canopy/secure-agent';
+import { VaultMemory }                 from '@onderling/vault';
+import { createSecureAgent }           from '@onderling/secure-agent';
 
 /**
  * Minimal boot: just enough wiring to fire local builtins through

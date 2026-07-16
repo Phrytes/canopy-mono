@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMobileBootstrap } from '../index.js';
 import { clearBgRunOnce, bgRunOnce } from '../src/bgRunOnce.js';
 
-vi.mock('@canopy/pod-client', () => {
+vi.mock('@onderling/pod-client', () => {
   class FakePodClient { constructor(args) { this.args = args; } }
   class FakeSolidOidcAuth { constructor(args) { this.args = args; } }
   return { PodClient: FakePodClient, SolidOidcAuth: FakeSolidOidcAuth };

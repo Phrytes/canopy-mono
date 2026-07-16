@@ -6,7 +6,7 @@
  * carries `circleId` / `circleId` (alias, CIRCLE_ID_IS_CREW_ID_ALIAS) /
  * `groupId`, or an `audience` shorthand like `circle:ID` / `circle:ID`
  * (or the structured `{kind:'circle-ref', id}`). Self-contained — no
- * `@canopy/circles` import — so it stays portable for Metro/RN.
+ * `@onderling/circles` import — so it stays portable for Metro/RN.
  *
  * A null/empty `circleId` means "no active circle" → unscoped (keep all).
  */
@@ -52,17 +52,17 @@ function circleRefFromShorthand(str) {
  *
  * The gap it closes on the render path: a view declares its audience as the
  * string short-hand `defaultAudience: 'circle:X'` while an item created
- * through a `@canopy/circles` / saved-view path stores the STRUCTURED
+ * through a `@onderling/circles` / saved-view path stores the STRUCTURED
  * `{ kind:'circle-ref', id:'X' }` (or vice versa).  Those are the same
  * audience, but item-store's `audienceMatches` is strict-equal by default
- * (it can't depend on `@canopy/circles` to canonicalise), so without this
+ * (it can't depend on `@onderling/circles` to canonicalise), so without this
  * the structured-audience items silently drop out of a `circle:X` view.
  * `buildScreenModel` runs BOTH the item audience and the view audience
  * through this before matching, so both spellings meet in one canonical form.
  *
  * Recurses into `union.of` so a `circle:X` member nested in a union is
  * canonicalised too (item-store's union-membership rule then matches it).
- * Kept self-contained (no `@canopy/circles` import) for the same Metro/RN-
+ * Kept self-contained (no `@onderling/circles` import) for the same Metro/RN-
  * portability reason as the rest of this module, and reusing the one
  * `circle:`-shorthand parser so the spelling lives once.
  *

@@ -1,5 +1,5 @@
 /**
- * Core types for @canopy-app/import-bridge-v0.  jsdoc only.
+ * Core types for @onderling-app/import-bridge-v0.  jsdoc only.
  */
 
 /**
@@ -26,8 +26,8 @@
 
 /**
  * @typedef {object} ImportArgs
- * @property {object} oauthVault          `core.OAuthVault` from `@canopy/core`
- * @property {object} [personGraph]       @canopy/identity-resolver PersonGraph
+ * @property {object} oauthVault          `core.OAuthVault` from `@onderling/core`
+ * @property {object} [personGraph]       @onderling/identity-resolver PersonGraph
  * @property {object} [filters]           connector-specific filters (date range, folder, ...)
  */
 

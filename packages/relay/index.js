@@ -1,5 +1,5 @@
 /**
- * @canopy/relay — relay broker (WS), offline queue, multi-recipient fan-out,
+ * @onderling/relay — relay broker (WS), offline queue, multi-recipient fan-out,
  * group auth, push wake (E2c).
  *
  * **Layer: SDK foundation.** Substrates and apps compose primitives from this

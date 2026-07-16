@@ -11,7 +11,7 @@
  * A real A2A external-interop scenario lives in T.6 (Q-Test.5 dep).
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { Task, TextPart, Parts } from '@canopy/core';
+import { Task, TextPart, Parts } from '@onderling/core';
 import { Lab }                   from '../../../src/_harness/index.js';
 
 describe('protocol — input-required multi-turn', () => {

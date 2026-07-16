@@ -2,7 +2,7 @@
 //   npm run test:deps   (root)  →  vitest run scripts/lint-dep-boundaries.test.mjs
 //
 // Covers: synthetic-violation detection, the two "must-NOT-flag" cases (within-package
-// relative + @canopy/* bare), the real repo ⊆ baseline invariant, and the CEILING semantics
+// relative + @onderling/* bare), the real repo ⊆ baseline invariant, and the CEILING semantics
 // (strict subset PASSES; a not-in-baseline violation FAILS).
 
 import { describe, it, expect } from 'vitest';
@@ -25,7 +25,7 @@ describe('classifyImport — cross-package raw-src reach-ins', () => {
       ROOT,
     );
     expect(v).not.toBeNull();
-    expect(v.reachesInto).toBe('@canopy/bar');
+    expect(v.reachesInto).toBe('@onderling/bar');
     expect(v.file).toBe('apps/foo/src/thing.js');
     expect(v.category).toBe('runtime');
   });
@@ -36,7 +36,7 @@ describe('classifyImport — cross-package raw-src reach-ins', () => {
       '../../beta/src/b.js',
       ROOT,
     );
-    expect(v?.reachesInto).toBe('@canopy/beta');
+    expect(v?.reachesInto).toBe('@onderling/beta');
   });
 
   it('does NOT flag a within-package relative import (own src/)', () => {
@@ -46,9 +46,9 @@ describe('classifyImport — cross-package raw-src reach-ins', () => {
     expect(classifyImport('/repo/packages/alpha/src/a.js', '../manifest.js', ROOT)).toBeNull();
   });
 
-  it('does NOT flag a bare @canopy/* import (the public boundary)', () => {
-    expect(classifyImport('/repo/apps/foo/src/thing.js', '@canopy/bar', ROOT)).toBeNull();
-    expect(classifyImport('/repo/apps/foo/src/thing.js', '@canopy/bar/baz', ROOT)).toBeNull();
+  it('does NOT flag a bare @onderling/* import (the public boundary)', () => {
+    expect(classifyImport('/repo/apps/foo/src/thing.js', '@onderling/bar', ROOT)).toBeNull();
+    expect(classifyImport('/repo/apps/foo/src/thing.js', '@onderling/bar/baz', ROOT)).toBeNull();
     expect(classifyImport('/repo/apps/foo/src/thing.js', 'node:fs', ROOT)).toBeNull();
   });
 

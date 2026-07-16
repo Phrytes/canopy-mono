@@ -2,14 +2,14 @@
  * tasks-v0 — `local ≡ wire` equivalence + route-parity fitness test
  * (Workstream B, decision #5).
  *
- * Drives the shared, app-parameterized harness (`@canopy/sdk/testing`) with
+ * Drives the shared, app-parameterized harness (`@onderling/sdk/testing`) with
  * tasks-v0's cores + manifest + Service:
  *   • LOCAL route  — `createTasksService().callSkill(op, args, ctx)` calls the
  *                    pure `(circle, args, ctx)` core in `TASK_CORES` DIRECTLY.
  *   • WIRE route   — the SAME core, wrapped by `wireSkill` + registered as a
  *                    `defineSkill` (via `buildSkills`), invoked over the
  *                    serialized `{parts:[DataPart], from, envelope}` path on a
- *                    real `@canopy/sdk` agent.
+ *                    real `@onderling/sdk` agent.
  *
  * The circles are built WITHOUT a restrictive rolePolicy so the per-route
  * caller identity (LOCAL uses a fixed webid; WIRE uses the agent's own key on a
@@ -19,11 +19,11 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { ItemStore } from '@canopy/item-store';
-import { MemorySource } from '@canopy/core';
-import { createAgent, Parts } from '@canopy/sdk';
+import { ItemStore } from '@onderling/item-store';
+import { MemorySource } from '@onderling/core';
+import { createAgent, Parts } from '@onderling/sdk';
 // The `local ≡ wire` harness lives at the SDK layer (dependency-free).
-import { describeLocalWireFitness } from '@canopy/sdk/testing';
+import { describeLocalWireFitness } from '@onderling/sdk/testing';
 
 import { createTasksService } from '../src/Service.js';
 import { buildSkills, TASK_CORES } from '../src/skills/index.js';

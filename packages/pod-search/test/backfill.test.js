@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createHash } from 'node:crypto';
-import { createMemoryBackend } from '@canopy/pseudo-pod/memory';
-import { createPseudoPod } from '@canopy/pseudo-pod';
+import { createMemoryBackend } from '@onderling/pseudo-pod/memory';
+import { createPseudoPod } from '@onderling/pseudo-pod';
 import { PodSearch, createBackfill } from '../src/index.js';
 
 /**
@@ -222,7 +222,7 @@ describe('backfill: pod-independence — pseudo-pod vs mocked PodClient', () => 
     expect(doneEvt).toEqual({ done: 8, total: 8 });
   });
 
-  it('drives a real @canopy/pseudo-pod source ({list, read}) with no embed store wire', async () => {
+  it('drives a real @onderling/pseudo-pod source ({list, read}) with no embed store wire', async () => {
     // The pseudo-pod is BOTH the corpus (source) and, via its backend, the
     // vector store — proving one local store satisfies the whole flow.
     const backend = createMemoryBackend();

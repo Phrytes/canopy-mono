@@ -5,7 +5,7 @@
  * identity (Q-H2.13 lock).  Audit trails distinguish "the author added
  * bread" (signed by the author's webid) from "bot marked complete"
  * (signed by the bot's keypair).  This class wraps
- * `@canopy/core`'s `AgentIdentity` for that lifecycle:
+ * `@onderling/core`'s `AgentIdentity` for that lifecycle:
  *
  *   - load-or-generate-and-persist on `load()`
  *   - sign autonomous payloads via `sign()`
@@ -23,7 +23,7 @@
  * `'household-bot-identity-privkey'`.  All other keys pass
  * through unchanged.
  */
-import { AgentIdentity } from '@canopy/core';
+import { AgentIdentity } from '@onderling/core';
 
 /** Vault key under which the bot's seed is stored (after namespacing). */
 const BOT_IDENTITY_VAULT_KEY = 'household-bot-identity-privkey';
@@ -32,9 +32,9 @@ const BOT_IDENTITY_VAULT_KEY = 'household-bot-identity-privkey';
 const AGENT_IDENTITY_INTERNAL_KEY = 'agent-privkey';
 
 export class BotIdentity {
-  /** @type {import('@canopy/core').Vault} */
+  /** @type {import('@onderling/core').Vault} */
   #vault;
-  /** @type {import('@canopy/core').Vault} */
+  /** @type {import('@onderling/core').Vault} */
   #namespacedVault;
   /** @type {string|null} */
   #botPodRoot;
@@ -43,8 +43,8 @@ export class BotIdentity {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/core').Vault} args.vault
-   *   A Vault instance from @canopy/core (e.g. VaultMemory in
+   * @param {import('@onderling/core').Vault} args.vault
+   *   A Vault instance from @onderling/core (e.g. VaultMemory in
    *   tests, VaultNodeFs in prod).  The bot persists its keypair
    *   under a namespaced key in this vault — safe to share.
    * @param {string} [args.botPodRoot]

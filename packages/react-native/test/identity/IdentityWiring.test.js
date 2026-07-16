@@ -12,13 +12,13 @@
  *
  * IdentitySync (shipped by B3 in parallel) is injected via the test-only
  * `_identitySyncCtor` knob so this test does not depend on B3 being merged.
- * When B3 lands its IdentitySync export in `@canopy/core`, the production
+ * When B3 lands its IdentitySync export in `@onderling/core`, the production
  * code path (no `_identitySyncCtor`) takes over automatically.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentIdentity, Bootstrap } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { generateMnemonic } from '@canopy/core';
+import { AgentIdentity, Bootstrap } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { generateMnemonic } from '@onderling/core';
 import { attachIdentityToAgent } from '../../src/identity/IdentityWiring.js';
 
 // ── Stub PodClient (in-memory; mirrors the surface IdentityPodStore.init

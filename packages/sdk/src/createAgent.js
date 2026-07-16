@@ -6,21 +6,21 @@
  * STARTED `core.Agent`, injecting sensible defaults so a dev can "import one
  * thing, done".
  *
- * It is modelled on the wiring in `@canopy/secure-agent`'s createSecureAgent
- * and `@canopy/react-native`'s createMeshAgent, but kept deliberately
+ * It is modelled on the wiring in `@onderling/secure-agent`'s createSecureAgent
+ * and `@onderling/react-native`'s createMeshAgent, but kept deliberately
  * PLATFORM-AGNOSTIC (Node + browser; no react-native-only imports) and THIN:
  * the defaults live HERE, on top of the low layer, never back in the kernel.
  *
  * Defaults (all overridable):
  *   - vault      → `new VaultMemory()`            (RAM-only; swap for a
  *                                                  persistent Vault family
- *                                                  member from @canopy/vault)
+ *                                                  member from @onderling/vault)
  *   - identity   → `AgentIdentity.generate(vault)` (or restore-or-generate
  *                                                  when the vault already
  *                                                  holds an identity)
  *   - transport  → in-process `InternalTransport` on a fresh `InternalBus`
  *                  (offline / same-process). If `opts.relayUrl` is set, a
- *                  `RelayTransport` from @canopy/transports is used instead.
+ *                  `RelayTransport` from @onderling/transports is used instead.
  *
  * DEFAULT-TRANSPORT POLICY (v1 fork — see report): with neither `transport`
  * nor `relayUrl` given, we default to the in-process InternalTransport rather
@@ -39,16 +39,16 @@ import {
   AgentIdentity,
   InternalBus,
   InternalTransport,
-} from '@canopy/core';
-import { RelayTransport } from '@canopy/transports';
-import { VaultMemory }    from '@canopy/vault';
+} from '@onderling/core';
+import { RelayTransport } from '@onderling/transports';
+import { VaultMemory }    from '@onderling/vault';
 
 import { connectSkill } from './connectSkill.js';
 
 /**
  * @typedef {object} CreateAgentOpts
  * @property {object}  [identity]   Pre-built AgentIdentity. Default: restore-or-generate against `vault`.
- * @property {object}  [vault]      Any @canopy/vault Vault. Default: `new VaultMemory()`.
+ * @property {object}  [vault]      Any @onderling/vault Vault. Default: `new VaultMemory()`.
  * @property {object}  [transport]  Pre-built Transport. Overrides the relayUrl / in-process defaults entirely.
  * @property {string}  [relayUrl]   ws:// or wss:// relay URL → builds a RelayTransport (ignored if `transport` given).
  * @property {object}  [bus]        Share an InternalBus so multiple in-process agents can reach each other (ignored if `transport`/`relayUrl` given).
@@ -63,7 +63,7 @@ import { connectSkill } from './connectSkill.js';
  * Build and (by default) start a batteries-included agent.
  *
  * @param {CreateAgentOpts} [opts]
- * @returns {Promise<import('@canopy/core').Agent>} the started core.Agent
+ * @returns {Promise<import('@onderling/core').Agent>} the started core.Agent
  */
 export async function createAgent(opts = {}) {
   const {

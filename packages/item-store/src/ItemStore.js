@@ -25,7 +25,7 @@
  *  - audit log — append-only (one file per entry; never edited).
  */
 
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 import { ulid }                        from './ulid.js';
 import { audienceFromItem, audienceMatches, audienceMatchesAny } from './audience.js';
@@ -46,7 +46,7 @@ const ITEMS_DIR = 'items';
 const AUDIT_DIR = 'audit';
 
 export class ItemStore extends Emitter {
-  /** @type {import('@canopy/core').DataSource} */
+  /** @type {import('@onderling/core').DataSource} */
   #source;
 
   /** @type {string} root URI prefix (always ends in '/') */
@@ -60,7 +60,7 @@ export class ItemStore extends Emitter {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/core').DataSource} args.dataSource
+   * @param {import('@onderling/core').DataSource} args.dataSource
    *   Any `core.DataSource` subclass. `MemorySource` for tests; an
    *   adapter over `pod-client.PodClient` for Solid-pod production.
    * @param {string} args.rootContainer
@@ -860,7 +860,7 @@ export class ItemStore extends Emitter {
     //
     // Still NOT normalised: `'circle:X'` (short-hand) and
     // `{kind:'circle-ref', id:'X'}` (structured) are not equivalent —
-    // normalisation lives in `@canopy/circles` (layering).
+    // normalisation lives in `@onderling/circles` (layering).
     if (filter.audience !== undefined) {
       out = out.filter((i) => audienceMatches(audienceFromItem(i), filter.audience));
     }
@@ -890,7 +890,7 @@ export class ItemStore extends Emitter {
       id,
       type:                 partial.type,
       // Phase 52.7.2 (2026-05-14): preserve `kind` if supplied —
-      // canonical @canopy/item-types schemas (offer / request /
+      // canonical @onderling/item-types schemas (offer / request /
       // claim, etc.) carry the verb direction (`lend` / `borrow` /
       // `share` / `give` / `receive` / `sell` / `buy` / `help` /
       // `other`) on this field. Apps adopting the canonical shape
@@ -920,7 +920,7 @@ export class ItemStore extends Emitter {
       ...(partial.scheduledAt     !== undefined ? { scheduledAt:     partial.scheduledAt }     : {}),
       ...(partial.estimateMinutes !== undefined ? { estimateMinutes: partial.estimateMinutes } : {}),
       // Standardisation adoption (2026-05-14, V2 §4b) — cross-pod
-      // refs. Propagated through verbatim; canonical @canopy/item-
+      // refs. Propagated through verbatim; canonical @onderling/item-
       // types schemas already declare the field on every type via
       // BASE_PROPERTIES → EMBEDS_SCHEMA.
       ...(Array.isArray(partial.embeds) && partial.embeds.length > 0

@@ -34,7 +34,7 @@ export { createContactSkillRegistry, chainContactCallSkill } from './v2/contactS
 export { createContactThreadChannel, DEFAULT_CONTACT_SUBTYPES } from './v2/contactThreadChannel.js';
 export { listContacts, peerToContactRow, stoopContactToRow, mergeContacts } from './v2/contactsSource.js';
 // S4 (stoop dissolution — pod foundation, SAFE offline slice): per-circle sealing
-// identity + control-agent composition over the @canopy/pod-client sealing substrate.
+// identity + control-agent composition over the @onderling/pod-client sealing substrate.
 export { createCircleSealingIdentity } from './v2/circleSealingIdentity.js';
 export { createCircleControlAgent } from './v2/circleControlAgent.js';
 export { addBotToGraph } from './v2/addBot.js';
@@ -68,7 +68,7 @@ export { QR_URI_PREFIXES, isQrUri }   from './core/qrSchemes.js';
 // α.5a (audit #3) — inline-keuze quick-reply pill row helper.
 export { normalizeQuickReplies }      from './core/quickReplies.js';
 // v2 circle model — re-exported here so canopy-chat-mobile can import via
-// '@canopy-app/canopy-chat' (Metro can't resolve src/v2 subpaths directly).
+// '@onderling-app/canopy-chat' (Metro can't resolve src/v2 subpaths directly).
 export { normalizeCircle, mergeCircles, loadCircles } from './v2/circleModel.js';
 export { circleSourcesFromAgent, makeResolvingCallSkill, DEFAULT_CIRCLE_ORIGINS } from './v2/circleSources.js';
 export { loadCircleItems, normalizeContentItem }      from './v2/circleContent.js';
@@ -126,16 +126,16 @@ export { buildKringTabs, DEFAULT_KRING_TAB, featureActionLabelKey, featureTabId,
 // optimistic kring chat send.  Sibling of the in-memory EventLog;
 // read at bubble render time so users can see fan-out status + retry
 // failed sends.
-export { createDeliveryStateMap } from '@canopy/kring-host/deliveryState';
+export { createDeliveryStateMap } from '@onderling/kring-host/deliveryState';
 // Phase 2 — shared kring chat send primitives (optimistic event + best-effort fan-out) for web + mobile.
-export { kringChatMessageEvent, broadcastKringFanOut } from '@canopy/kring-host/kringBroadcast';
+export { kringChatMessageEvent, broadcastKringFanOut } from '@onderling/kring-host/kringBroadcast';
 // Phase 3 — the shared circle label→candidate lookup (live fetch + base), web + mobile.
 export { makeCircleLookup } from './v2/circleLookup.js';
 // Shared composer affordances — slash-suggest pool/filter + bash-style input history (web + mobile).
 export { buildCommandPool, suggestCommands, createInputHistory } from './v2/commandSuggest.js';
 // Conversational follow-up for `needsForm` dispatches — shared so the kring composers elicit a missing
 // field the same chat-native way (web + mobile); the mobile core/followUp.js re-exports these.
-export { beginFollowUp, beginFormFollowUp, completeFollowUp, completeMultiFieldFollowUp, pickPromptKey } from '@canopy/kring-host/followUp';
+export { beginFollowUp, beginFormFollowUp, completeFollowUp, completeMultiFieldFollowUp, pickPromptKey } from '@onderling/kring-host/followUp';
 // Shared one-line kring bot reply text (web + mobile) — verb-aware Added:/Completed: phrasing.
 export { kringReplyText } from './v2/kringReply.js';
 // Part D — scope a circle's catalog to its apps (drops canopy-chat infra ops like /me); web + mobile.
@@ -210,10 +210,10 @@ export {
 export {
   shouldAutoSuggestHop, buildHopPromptCard,
   rememberDismissed, hasDismissed,
-} from '@canopy/kring-host/hopPrompt';
+} from '@onderling/kring-host/hopPrompt';
 // P6.7 — skill-match source: rank circle members / agents / hop candidates
 // against a free-text question (board 8B).  Renderer is `buildSkillMatches`.
-export { findSkillMatches, tokenize as tokenizeSkillQuery } from '@canopy/kring-host/findSkillMatches';
+export { findSkillMatches, tokenize as tokenizeSkillQuery } from '@onderling/kring-host/findSkillMatches';
 // P6.8 — Nearby screen model (board 8C): intersect local-network peers with my skills.
 export {
   buildNearbyModel,
@@ -254,7 +254,7 @@ export {
   buildSharedFiles, sharedFilesFromListFiles,
 } from './v2/folioSharedFilters.js';
 export { VIEWER_KINDS, viewAsDirectory } from './v2/circleViewAs.js';
-export { normalizeCircleMembers, circleMemberCount } from '@canopy/kring-host/circleMembers';
+export { normalizeCircleMembers, circleMemberCount } from '@onderling/kring-host/circleMembers';
 // 5.9d — Proof-of-Location placeholder seam (real attestation deferred).
 export { getCirclePolStatus, formatPolStatus, formatAttestedAt } from './v2/circlePol.js';
 export {
@@ -262,11 +262,11 @@ export {
 } from './v2/circleAdvisor.js';
 export {
   MAX_HOPS, normalizeHopMode, buildHopChain, makeHopRelayRequest,
-} from '@canopy/kring-host/circleHop';
+} from '@onderling/kring-host/circleHop';
 export {
   SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
   MATCH_SOURCES, buildSkillMatches,
-} from '@canopy/kring-host/circleSkills';
+} from '@onderling/kring-host/circleSkills';
 export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles, folioFileOpenTreatment } from './v2/circleFolio.js';
 // N5 — Drive tree (folder nav + rich rows).  Re-exported from folio's
 // browser-safe barrel so web + mobile share one import path (folio/browser
@@ -274,7 +274,7 @@ export { normalizeFolioFile, buildCircleFiles, circleFilesFromListFiles, folioFi
 export {
   folioLevel, breadcrumbs, parentPath, rowPath, rowName,
   formatFileSize, fileKind, glyphForFile, FILE_KIND_GLYPH,
-} from '@canopy-app/folio/browser';
+} from '@onderling-app/folio/browser';
 export {
   RULES_FIELDS, RULES_QUESTIONS, DEFAULT_RULES_DOC,
   normalizeRulesDoc, buildRulesDoc, isRulesComplete, isRulesEmpty,

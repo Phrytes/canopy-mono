@@ -14,8 +14,8 @@
  *     nor re-embedded — the cursor and the cache are belt-and-braces.
  *
  * ── Pod-independence (invariant #7) ───────────────────────────────────────
- * `source` is **duck-typed** `{ list, read }`.  A `@canopy/pod-client`, a
- * `@canopy/pseudo-pod`, or any in-memory adapter all satisfy it — local-only
+ * `source` is **duck-typed** `{ list, read }`.  A `@onderling/pod-client`, a
+ * `@onderling/pseudo-pod`, or any in-memory adapter all satisfy it — local-only
  * is the floor, a real pod is never required.  The orchestrator never imports
  * either; the caller injects whichever source it has.
  *

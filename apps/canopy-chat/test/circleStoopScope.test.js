@@ -128,7 +128,7 @@ describe('scopeStoopCallSkill — sealed image attachments', () => {
   };
 
   async function makeCircleMedia() {
-    const { generateKeypair, makeSealer, makeOpener } = await import('@canopy/pod-client/sealing');
+    const { generateKeypair, makeSealer, makeOpener } = await import('@onderling/pod-client/sealing');
     const kp = generateKeypair();
     const store = new Map();
     const bucket = { async put(k, v) { store.set(k, v); }, async presign() { return null; }, async delete(k) { store.delete(k); } };
@@ -160,7 +160,7 @@ describe('scopeStoopCallSkill — sealed image attachments', () => {
     expect(serialized).not.toContain('data:image');
     expect(serialized).not.toContain(TINY_PNG_B64);
     // The sealed inline thumbnail opens with the circle opener (reuse of openThumbnail).
-    const { openThumbnail } = await import('@canopy/blob-gateway');
+    const { openThumbnail } = await import('@onderling/blob-gateway');
     expect(openThumbnail({ line: att.source, opener: media.opener }).length).toBeGreaterThan(0);
   });
 

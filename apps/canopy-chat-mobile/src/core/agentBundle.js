@@ -42,9 +42,9 @@ import { withCalendarOutbound } from '../../../canopy-chat/src/core/handlers/cal
 import { makeSendGroupRedeemRequest } from '../../../canopy-chat/src/core/handlers/groupRedeem.js';
 // personas#2 — post-join "share to this circle" sender (member → admin roster-property push).
 import { makeSendPersonaPropsUpdate } from '../../../canopy-chat/src/core/handlers/personaPropsUpdate.js';
-import { sendA2ATask } from '@canopy/core';
-import { PeerGraph } from '@canopy/core';
-import { AsyncStorageAdapter } from '@canopy/react-native/storage/AsyncStorageAdapter';
+import { sendA2ATask } from '@onderling/core';
+import { PeerGraph } from '@onderling/core';
+import { AsyncStorageAdapter } from '@onderling/react-native/storage/AsyncStorageAdapter';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { resolveRelayUrl, asyncStorageRelayIo } from '../../../canopy-chat/src/v2/relayPref.js';
 // SILENT out-of-circle delivery — the per-user "shared with me" store (TIERED: AsyncStorage canonical + pod
@@ -61,21 +61,21 @@ export async function resolveMobileRelayUrl() {
   try { return resolveRelayUrl(await asyncStorageRelayIo(AsyncStorage).load(), process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL); }
   catch { return process.env.EXPO_PUBLIC_CIRCLE_RELAY_URL || null; }
 }
-import { discoverA2A } from '@canopy/core';
+import { discoverA2A } from '@onderling/core';
 
 // `createRealHouseholdAgent` is loaded LAZILY (dynamic import below)
 // so importing agentBundle.js doesn't transitively pull in
-// `@canopy/oidc-session` and the rest of the realAgent chain.  This
+// `@onderling/oidc-session` and the rest of the realAgent chain.  This
 // lets vitest exercise the stub-mode test seam (opts.skillStub) plus
 // composeManifests / buildNavModels even when the real-boot chain
 // isn't installed (e.g. canopy-chat-mobile's `npm install` doesn't
-// declare @canopy/oidc-session yet, but the symlinked-vitest mode
+// declare @onderling/oidc-session yet, but the symlinked-vitest mode
 // would).  Metro on Android still eagerly resolves the chain because
 // Hermes loads the module top-to-bottom.
 //
-// VaultAsyncStorage from @canopy/react-native is pure JS, accepts an
+// VaultAsyncStorage from @onderling/react-native is pure JS, accepts an
 // injected asyncStorage instance so vitest works without an RN runtime.
-import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
+import { VaultAsyncStorage } from '@onderling/react-native/identity/VaultAsyncStorage';
 
 async function loadCreateRealHouseholdAgent() {
   const mod = await import('../../../canopy-chat/src/core/agent/realAgent.js');
@@ -387,7 +387,7 @@ export async function bootAgentBundle(opts = {}) {
         // T5.2d — best-effort WebRTC rendezvous. Needs a dev build with
         // react-native-webrtc; in Expo Go / a plain build the loader returns
         // null and rendezvous stays signalling-only (nkn/relay keep routing).
-        // Loaded from the specific module (not the @canopy/react-native barrel)
+        // Loaded from the specific module (not the @onderling/react-native barrel)
         // so no unrelated native dep is pulled at boot.
         let rtcLib = null;
         try {

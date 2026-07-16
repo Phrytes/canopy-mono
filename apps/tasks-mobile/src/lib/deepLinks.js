@@ -18,7 +18,7 @@
 import {
   parseDeepLink as _parseDeepLink,
   parseTokenParam,
-} from '@canopy/react-native/deepLinks';
+} from '@onderling/react-native/deepLinks';
 import { ROUTES } from '../navigation.js';
 
 const SCHEME = 'tasks:';

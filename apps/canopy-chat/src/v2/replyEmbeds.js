@@ -17,7 +17,7 @@
 
 import { computeEmbedButtons } from '../core/embedButtons.js';
 // B · Slice 4 (4c) — apply the per-capability consequence (grey/hide/limit) to inline affordances.
-import { affordanceTreatment, canonicalAtom } from '@canopy/app-manifest';
+import { affordanceTreatment, canonicalAtom } from '@onderling/app-manifest';
 
 // Default item `type` per appOrigin so `computeEmbedButtons`' appliesTo.type
 // matches when a reply item doesn't carry an explicit `type` (a task list often

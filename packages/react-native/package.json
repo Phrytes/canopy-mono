@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/react-native",
+  "name": "@onderling/react-native",
   "version": "0.2.0",
   "description": "React Native platform layer + adapters for the canopy agent SDK",
   "type": "module",
@@ -47,10 +47,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@canopy/core": "^0.1.0",
-    "@canopy/pod-client": "^0.1.0",
-    "@canopy/transports": "^0.1.0",
-    "@canopy/vault": "^0.1.0",
+    "@onderling/core": "^0.1.0",
+    "@onderling/pod-client": "^0.1.0",
+    "@onderling/transports": "^0.1.0",
+    "@onderling/vault": "^0.1.0",
     "@react-native-async-storage/async-storage": "*",
     "react-native-ble-plx": "*",
     "react-native-keychain": "*",
@@ -69,8 +69,8 @@
     "nkn-sdk": { "optional": true }
   },
   "devDependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/pod-client": "file:../pod-client",
+    "@onderling/core": "file:../core",
+    "@onderling/pod-client": "file:../pod-client",
     "react": "^19.0.0",
     "vitest": "^2.1.0"
   }

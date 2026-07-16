@@ -17,7 +17,7 @@
  * Mon-Fri 09:00-17:00.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { suggestSchedule as suggestPure } from '../planner/greedy.js';
 import { readMyCalendar } from '../calendar/iCalReader.js';

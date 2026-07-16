@@ -1,8 +1,8 @@
 /**
- * Browser-safe shim for `@canopy/relay`.
+ * Browser-safe shim for `@onderling/relay`.
  *
- * `@canopy/relay` is a Node-only HTTP server package; only stoop's
- * WebPushSender uses it (`import { PushSender } from '@canopy/relay'`).
+ * `@onderling/relay` is a Node-only HTTP server package; only stoop's
+ * WebPushSender uses it (`import { PushSender } from '@onderling/relay'`).
  * In the browser bundle that code path is unreachable (no VAPID keys
  * are configured), but Rollup walks the static import graph anyway.
  *
@@ -14,7 +14,7 @@
 
 class BrowserOnlyClass {
   constructor() {
-    throw new Error('@canopy/relay is a Node-only server package and is not available in the browser');
+    throw new Error('@onderling/relay is a Node-only server package and is not available in the browser');
   }
 }
 

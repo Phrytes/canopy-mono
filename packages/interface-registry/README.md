@@ -1,4 +1,4 @@
-# @canopy/interface-registry
+# @onderling/interface-registry
 
 Per-type renderer registry. Bundles register **compact + full**
 renderers for the item-types they handle; apps look up renderers
@@ -12,7 +12,7 @@ by type when projecting an item to UI.
 ## Quick start
 
 ```js
-import { createInterfaceRegistry } from '@canopy/interface-registry';
+import { createInterfaceRegistry } from '@onderling/interface-registry';
 
 const reg = createInterfaceRegistry();
 

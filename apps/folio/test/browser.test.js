@@ -1,7 +1,7 @@
 /**
  * folio/browser — slice-4 composition smoke test.
  *
- * Verifies the web-only browser entry boots a real `@canopy/core`
+ * Verifies the web-only browser entry boots a real `@onderling/core`
  * Agent on a shared InternalBus, registers the chat-web subset of
  * folio skills, and that shareFolder issues a REAL
  * PodCapabilityToken (the bit that distinguishes slice 4 from the
@@ -9,8 +9,8 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { AgentIdentity, InternalBus, InternalTransport, Agent, DataPart, PodCapabilityToken } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, Agent, DataPart, PodCapabilityToken } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { createBrowserFolioAgent } from '../src/browser.js';
 

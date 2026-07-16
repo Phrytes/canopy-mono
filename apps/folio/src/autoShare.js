@@ -47,7 +47,7 @@
  * injected `FsAdapter` (default Node).
  */
 
-import { PodCapabilityToken }  from '@canopy/core';
+import { PodCapabilityToken }  from '@onderling/core';
 
 import { fsNode }              from './adapters/fsNode.js';
 import { joinPosix, dirnamePosix } from './adapters/pathPosix.js';

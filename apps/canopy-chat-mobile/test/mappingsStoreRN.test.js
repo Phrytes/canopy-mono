@@ -1,7 +1,7 @@
 /**
  * asyncStorageMappingsStore — the V0 mobile (AsyncStorage) mappings store. Verified
  * against the pseudo-pod subset contract (list/read/write/delete, keys == URIs) with
- * an injected fake AsyncStorage, so `@canopy/pod-routing` loadMappings drives it.
+ * an injected fake AsyncStorage, so `@onderling/pod-routing` loadMappings drives it.
  */
 
 import { describe, it, expect } from 'vitest';

@@ -41,7 +41,7 @@ import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../src/core/manifests/mockManifests.js';
-import { calendarManifest } from '@canopy-app/calendar/manifest';
+import { calendarManifest } from '@onderling-app/calendar/manifest';
 import { createLocalBuiltins } from '../src/core/localBuiltins.js';
 
 const LOCAL_ACTOR = 'webid:local-demo-user';

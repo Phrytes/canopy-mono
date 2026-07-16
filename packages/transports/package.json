@@ -1,7 +1,7 @@
 {
-  "name": "@canopy/transports",
+  "name": "@onderling/transports",
   "version": "0.1.0",
-  "description": "Concrete network transports (NknTransport, MqttTransport, RelayTransport, RendezvousTransport) extracted out of @canopy/core. Each extends the core Transport base and lazy-imports its native lib (nkn-sdk / mqtt / ws / WebRTC), so the kernel stays free of concrete-adapter dependencies (de-fats packages/core; guarded by core/test/layering.enforcement.test.js).",
+  "description": "Concrete network transports (NknTransport, MqttTransport, RelayTransport, RendezvousTransport) extracted out of @onderling/core. Each extends the core Transport base and lazy-imports its native lib (nkn-sdk / mqtt / ws / WebRTC), so the kernel stays free of concrete-adapter dependencies (de-fats packages/core; guarded by core/test/layering.enforcement.test.js).",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/transports#readme",
@@ -25,8 +25,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "workspace:^",
-    "@canopy/logger": "workspace:^",
+    "@onderling/core": "workspace:^",
+    "@onderling/logger": "workspace:^",
     "ws": "^8.20.0"
   },
   "optionalDependencies": {

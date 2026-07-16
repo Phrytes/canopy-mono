@@ -4,8 +4,8 @@
 // FAILS CI when a file reaches ACROSS a package boundary into another package's RAW
 // `packages/<pkg>/src/**` by a RELATIVE path (e.g.
 //   import { X } from '../../../packages/sync-engine/src/objectVersions.js')
-// instead of going through that package's PUBLIC surface (`@canopy/<pkg>` barrel or a
-// `@canopy/<pkg>/<subpath>` export). This is the recurring drift the kring-host extraction
+// instead of going through that package's PUBLIC surface (`@onderling/<pkg>` barrel or a
+// `@onderling/<pkg>/<subpath>` export). This is the recurring drift the kring-host extraction
 // arc (W2–W5) keeps hand-fixing; per CLAUDE.md "How to work", we leave a check behind so the
 // same drift FAILS next time.
 //
@@ -20,7 +20,7 @@
 //   • it resolves (lexically) into `packages/<B>/src/**` where <B> is a DIFFERENT package than
 //     the importing file's own package (apps/<X> or packages/<A>).
 //   • Imports that stay within the importer's own package (its own `src/`) are FINE.
-//   • Bare `@canopy/<pkg>` specifiers are FINE — that IS the public boundary.
+//   • Bare `@onderling/<pkg>` specifiers are FINE — that IS the public boundary.
 //
 // Usage:
 //   node scripts/lint-dep-boundaries.mjs            # check against baseline (exit 1 on new)
@@ -101,7 +101,7 @@ const toPosix = (p) => p.split(sep).join('/');
  * Returns a violation object, or null if fine.
  */
 export function classifyImport(fileAbs, specifier, repoRoot = REPO_ROOT) {
-  if (!specifier.startsWith('.')) return null; // bare specifier (`@canopy/*`, node builtin) = OK
+  if (!specifier.startsWith('.')) return null; // bare specifier (`@onderling/*`, node builtin) = OK
   const fileRel = toPosix(relative(repoRoot, fileAbs));
   const importerPkg = owningPackage(fileRel);
   if (!importerPkg) return null; // importer not inside apps/ or packages/
@@ -117,7 +117,7 @@ export function classifyImport(fileAbs, specifier, repoRoot = REPO_ROOT) {
   return {
     file: fileRel,
     specifier,
-    reachesInto: `@canopy/${m[1]}`,
+    reachesInto: `@onderling/${m[1]}`,
     targetPkgDir: targetPkg,
     category: categoryOf(fileRel),
   };
@@ -231,7 +231,7 @@ function main() {
       console.error(`       fix: import from \`${v.reachesInto}\` (barrel) or add a \`${v.reachesInto}/<subpath>\` export`);
     }
     console.error(`\nInvariant #5: apps → packages/{substrates} → packages/core, always through the ` +
-      `\`@canopy/<pkg>\` public surface — never another package's raw src/.\n`);
+      `\`@onderling/<pkg>\` public surface — never another package's raw src/.\n`);
     process.exit(1);
   }
   console.log(`\n✓ lint:deps: no new boundary violations (${current.length} current ≤ ${(baseline.violations ?? []).length} baselined).`);

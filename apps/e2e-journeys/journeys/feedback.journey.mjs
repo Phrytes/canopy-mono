@@ -5,9 +5,9 @@
 // writer deposits on behalf of each participant).
 //
 // GATED on a real pod (CSS_URL, default :3001) AND soft-coupled to the feedback app
-// (skips cleanly if @canopy-app/feedback-pipeline is absent — it is splitting to its
+// (skips cleanly if @onderling-app/feedback-pipeline is absent — it is splitting to its
 // own repo), so the rest of the matrix is unaffected either way.
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { checker }     from './_util.mjs';
 
 export const name = 'J-feedback (multi-user central-pod route)';
@@ -50,7 +50,7 @@ export async function run() {
 
   const { results, check } = checker();
   const { SolidVault } = await import('../../../packages/oidc-session/index.js');
-  const { SolidOidcAuth } = await import('@canopy/pod-client');
+  const { SolidOidcAuth } = await import('@onderling/pod-client');
 
   // The central pod owner = the collector / on-ramp writer (a Telegram bot, say).
   const acct = await provision(CSS_URL, `feedback${Date.now().toString(36)}`);

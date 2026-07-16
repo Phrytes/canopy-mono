@@ -2,7 +2,7 @@
 //
 //   { canRead(webId, ref) => Promise<bool> }
 //
-// backed by a Solid pod's ACP/WAC access controls via `@canopy/pod-client`'s
+// backed by a Solid pod's ACP/WAC access controls via `@onderling/pod-client`'s
 // `client.sharing.list` — the SAME surface the cross-circle sharing work uses.
 //
 //   createPodAcl({ sharing, resolveResourceUri?, mode? })
@@ -20,7 +20,7 @@
 
 export function createPodAcl({ sharing, resolveResourceUri, mode = 'read' } = {}) {
   if (!sharing || typeof sharing.list !== 'function') {
-    throw new Error('createPodAcl: a `sharing` surface with list() is required (client.sharing from @canopy/pod-client)');
+    throw new Error('createPodAcl: a `sharing` surface with list() is required (client.sharing from @onderling/pod-client)');
   }
   const resolve = typeof resolveResourceUri === 'function' ? resolveResourceUri : defaultResolve;
 

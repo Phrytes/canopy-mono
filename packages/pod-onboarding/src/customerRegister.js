@@ -2,9 +2,9 @@
  * createCustomerRegister — operator-side register of provisioned pod
  * *instances*.
  *
- * ## Why it lives in `@canopy/pod-onboarding` (not `@canopy/agent-registry`)
+ * ## Why it lives in `@onderling/pod-onboarding` (not `@onderling/agent-registry`)
  *
- * `@canopy/agent-registry` is a *per-user, per-pod* substrate: it tracks
+ * `@onderling/agent-registry` is a *per-user, per-pod* substrate: it tracks
  * one user's agents/devices inside a single pod resource and implements
  * core's `ActorResolver` ("which of MY agents is this?"). The customer
  * register answers a different question in a different trust domain:

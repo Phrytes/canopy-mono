@@ -9,7 +9,7 @@
  *   const { content } = await client.read('/notes/today.md', { decode: 'string' });
  *   await client.write('/notes/today.md', updated, { contentType: 'text/markdown' });
  *
- * Auth choices (from `@canopy/pod-client/Auth`):
+ * Auth choices (from `@onderling/pod-client/Auth`):
  *   - `CapabilityAuth` — apps holding a `PodCapabilityToken` from the user's agent.
  *   - `SolidOidcAuth`  — the user's agent itself, wrapping a `SolidVault` session.
  *
@@ -37,8 +37,8 @@
  *   - RN:   `AsyncStorageTombstones`
  *   - Node: `FileTombstones`
  */
-import { Emitter } from '@canopy/core';
-// SolidPodSource was extracted OUT of @canopy/core into this package (Phase 1/3
+import { Emitter } from '@onderling/core';
+// SolidPodSource was extracted OUT of @onderling/core into this package (Phase 1/3
 // pod-storage extraction); import it from its local module here rather than
 // from the kernel, which no longer exports it. (Completes a dangling import
 // left by that extraction; `./SolidPodSource.js` is the same module this
@@ -52,7 +52,7 @@ import { createClientSharing }          from './sharing/index.js';
 
 // Inrupt's RDF API is loaded lazily inside `patch()` — pod-client itself does
 // not declare `@inrupt/solid-client` as a direct dep; we resolve it via the
-// transitive install in `@canopy/core/node_modules/`.  This keeps pod-client
+// transitive install in `@onderling/core/node_modules/`.  This keeps pod-client
 // lean for callers that never patch.
 let _inrupt = null;
 async function loadInrupt() {
@@ -103,7 +103,7 @@ export class PodClient extends Emitter {
    * @param {Function} [opts.podSourceFactory] — escape hatch for tests; receives
    *   `({ podUrl, fetch })` and returns a SolidPodSource-shaped object.
    * @param {object} [opts.pseudoPod]
-   *   Optional `@canopy/pseudo-pod`-shaped object. When supplied, any URI
+   *   Optional `@onderling/pseudo-pod`-shaped object. When supplied, any URI
    *   passed to `read`/`write`/`list`/`delete` starting with `pseudo-pod://`
    *   is routed to this object instead of the real-pod backend. Standardisation
    *   Phase 52.6.3.

@@ -1,4 +1,4 @@
-# @canopy/pod-routing
+# @onderling/pod-routing
 
 Storage-function → URI mapping for the Decentralised-Web-Agent
 (DWA) stack. Apps ask "where does `sharing/tasks/abc` live?" and
@@ -18,8 +18,8 @@ out via the replication-ring or queue for later pod upload.
 ## What it does
 
 ```js
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createPodRouting } from '@canopy/pod-routing';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createPodRouting } from '@onderling/pod-routing';
 
 const pseudoPod = createPseudoPod({
   backend:  createMemoryBackend(),
@@ -211,7 +211,7 @@ routing.defaults                         // computed default policy
   from the pseudo-pod. Pod-side reading lands with Phase 52.6.
 - **WebID pointer-walk.** Functional design §4.3.6 describes
   reading `storage-mapping-uri` from the user's WebID profile via
-  `@canopy/webid-discovery`. Deferred — no-pod users don't have
+  `@onderling/webid-discovery`. Deferred — no-pod users don't have
   a WebID; pod-having users get this with 52.6.
 - **Migration logic.** Moving from one-pod to two-pod, or adding
   a second pod, requires ref-rewriting in already-written

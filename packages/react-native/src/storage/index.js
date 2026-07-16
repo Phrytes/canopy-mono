@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/storage — RN storage adapters + helpers.
+ * @onderling/react-native/storage — RN storage adapters + helpers.
  *
  *   - `AsyncStorageAdapter`  — `core.DataSource` over AsyncStorage.
  *   - `FileSystemAdapter`    — `core.DataSource` over `expo-file-system`.

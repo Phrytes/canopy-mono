@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateKeypair, makeSealer, makeOpener, generateGroupKey, makeGroupSealer, makeGroupOpener,
-} from '@canopy/pod-client/sealing';
+} from '@onderling/pod-client/sealing';
 import { uploadBlob, openBlob, createBlobGatekeeper, bytesToB64u } from '../src/index.js';
 import { makeMemoryBucket, makeVerifier, makeAcl } from './helpers.js';
 

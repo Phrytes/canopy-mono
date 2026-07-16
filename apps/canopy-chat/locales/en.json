@@ -150,7 +150,7 @@
     },
     "invalid_item": {
       "text": "Built an invalid media item: {{error}}",
-      "doc": "Drift guard — the media item failed @canopy/item-types validation. A bug, not a user error."
+      "doc": "Drift guard — the media item failed @onderling/item-types validation. A bug, not a user error."
     }
   },
   "embed-time": {

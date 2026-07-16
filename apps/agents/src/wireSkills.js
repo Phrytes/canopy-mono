@@ -7,7 +7,7 @@
  * tasks-v0 / stoop use).  `storeFor` resolves the scope store from the
  * skill context; for this single-user surface the store is the injected
  * `{ registry, tokens? }` pair regardless of ctx:
- *   • `registry` — the `@canopy/agent-registry` instance (mirror truth).
+ *   • `registry` — the `@onderling/agent-registry` instance (mirror truth).
  *   • `tokens`   — OPTIONAL token collaborator
  *     `{ issue({subject, skill, expiresIn}) → Promise<{id, expiresAt?}>,
  *        revoke(tokenId) → Promise<void> }`
@@ -21,7 +21,7 @@
  * NB: the eventual canopy-chat integration (composeManifests / realAgent)
  * is a later step and is NOT wired here.
  */
-import { buildSkillsFromManifest } from '@canopy/sdk';
+import { buildSkillsFromManifest } from '@onderling/sdk';
 
 import { agentsManifest } from '../manifest.js';
 import { AGENT_CORES } from './cores.js';
@@ -30,13 +30,13 @@ import { INSTALL_CORES } from './installCores.js';
 
 /**
  * @param {object} args
- * @param {object} args.registry  an `@canopy/agent-registry` instance
+ * @param {object} args.registry  an `@onderling/agent-registry` instance
  *   (`createAgentRegistry({ pseudoPod, deviceId })`) — the store the
  *   cores read + mutate.
  * @param {object} [args.tokens]  optional duck-typed token collaborator
  *   (see module doc) backing the P2 grant/revoke ops.
  * @param {(circleId: string) => object|null} [args.versionStoreFor]
- *   optional resolver to a circle pod's `@canopy/versioning` store,
+ *   optional resolver to a circle pod's `@onderling/versioning` store,
  *   backing the P3 recovery ops (web: `getCircleVersionStore`; mobile:
  *   its RN twin). Without it the recovery ops answer an honest
  *   `{ok:false, error:'no-version-store'}` — always wired, never hidden,

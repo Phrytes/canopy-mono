@@ -1,5 +1,5 @@
 // Folio mobile metro.config.js — refactored 2026-05-02 to consume
-// the @canopy/react-native metro-preset.
+// the @onderling/react-native metro-preset.
 //
 // The preset handles all the cross-cutting bring-up plumbing:
 // NODE_BUILTINS shimming, `node:` prefix stripping, util/path/ws shim
@@ -7,7 +7,7 @@
 // subpath maps, Inrupt-Node-auth + chokidar + express + systray2
 // shimming, `unstable_enablePackageExports: false`.
 //
-// Folio's app-specific bits (`@canopy-app/folio` + its rn/*
+// Folio's app-specific bits (`@onderling-app/folio` + its rn/*
 // subpaths, @scure/bip39 + @noble/hashes pinning, app-side react/RN
 // pin set) come in via options below.
 //
@@ -16,7 +16,7 @@
 //   packages/react-native/docs/    (folded into the substrate)
 
 const path = require('path');
-const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
 
 const projectRoot = __dirname;
 const repoRoot    = path.resolve(__dirname, '../..');
@@ -51,16 +51,16 @@ module.exports = withCanopyPreset({
     'react-native-safe-area-context',
   ],
 
-  // Folio-specific module aliases (the preset already maps the @canopy/*
+  // Folio-specific module aliases (the preset already maps the @onderling/*
   // SDK packages).
   extraNodeModules: {
     // Folio app package — folio-mobile's only remaining cross-app
     // dep (the `SyncEngine` subclass, used in src/lib/serviceBuilder.js).
-    // The /rn/* subpath imports moved to @canopy/sync-engine-rn
+    // The /rn/* subpath imports moved to @onderling/sync-engine-rn
     // 2026-05-08 (Phase 40.2 follow-up); see Phase 40.2's substrate
     // and the platform-shell exception in
     // Project Files/conventions/architectural-layering.md.
-    '@canopy-app/folio': path.resolve(repoRoot, 'apps/folio'),
+    '@onderling-app/folio': path.resolve(repoRoot, 'apps/folio'),
 
     // @scure/bip39 wordlist (subpath; same exports-OFF reason).
     '@scure/bip39/wordlists/english': path.resolve(

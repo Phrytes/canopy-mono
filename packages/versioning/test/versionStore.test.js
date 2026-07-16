@@ -5,7 +5,7 @@ import { createVersionStore, DEFAULT_VERSIONS_PER_SERIES } from '../src/versionS
 
 /**
  * Minimal StorageBackend for tests — the get/put/delete/list subset the store
- * needs, matching @canopy/pseudo-pod's MemoryBackend contract (get→{bytes},
+ * needs, matching @onderling/pseudo-pod's MemoryBackend contract (get→{bytes},
  * put(key,bytes), delete, list(prefix)→sorted keys). Kept inline so the
  * substrate package stays dependency-free.
  */

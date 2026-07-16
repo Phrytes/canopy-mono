@@ -5,7 +5,7 @@
  * the en↔nl key sets match overall.
  *
  * The repo-wide `test/localisation.test.js` already enforces general
- * en↔nl parity for the web app, but its setup pulls in `@canopy/app-manifest`
+ * en↔nl parity for the web app, but its setup pulls in `@onderling/app-manifest`
  * via `src/renderer.js`, which doesn't resolve under the worktree
  * `node_modules` layout used by sub-agents.  This file is intentionally
  * self-contained so the launcher slice always has a runnable parity

@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "@canopy/substrate-stack",
+  "name": "@onderling/substrate-stack",
   "version": "0.1.0",
-  "description": "Shared substrate-stack factory: composes @canopy/pseudo-pod + @canopy/pod-routing + @canopy/notify-envelope (+ optional @canopy/versioning) into one per-bundle stack. Consolidates the stoop/tasks-v0/household substrateStack.js triplets (invariant #3) and is the single composition seam where pod versioning gets injected (PLAN-pod-versioning-history-recovery P2).",
+  "description": "Shared substrate-stack factory: composes @onderling/pseudo-pod + @onderling/pod-routing + @onderling/notify-envelope (+ optional @onderling/versioning) into one per-bundle stack. Consolidates the stoop/tasks-v0/household substrateStack.js triplets (invariant #3) and is the single composition seam where pod versioning gets injected (PLAN-pod-versioning-history-recovery P2).",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -13,10 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/pseudo-pod": "file:../pseudo-pod",
-    "@canopy/pod-routing": "file:../pod-routing",
-    "@canopy/notify-envelope": "file:../notify-envelope",
-    "@canopy/versioning": "file:../versioning"
+    "@onderling/pseudo-pod": "file:../pseudo-pod",
+    "@onderling/pod-routing": "file:../pod-routing",
+    "@onderling/notify-envelope": "file:../notify-envelope",
+    "@onderling/versioning": "file:../versioning"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

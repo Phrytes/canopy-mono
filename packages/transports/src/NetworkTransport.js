@@ -1,7 +1,7 @@
 /**
  * NetworkTransport — inject-a-channel A2A transport across a network boundary.
  *
- * The #63 remote-handler tier (`@canopy/secure-agent/remoteHandlers`) proved
+ * The #63 remote-handler tier (`@onderling/secure-agent/remoteHandlers`) proved
  * `agent.invoke(remoteAddress, skillId, parts)` routing to a truly-remote
  * agent's gated `callSkill` — but only over the in-process `InternalTransport`
  * (same-process A2A). This is the network tail: the SAME `agent.invoke` carried
@@ -20,8 +20,8 @@
  * … }` it builds for every other transport; we just carry the bytes.
  *
  * ── The injected channel (hermetic; real sockets DEFERRED) ──────────────────
- * Following the established substrate convention (`@canopy/blob-gateway`,
- * `@canopy/confidential-llm`, `@canopy/data-connectors` — injected adapter,
+ * Following the established substrate convention (`@onderling/blob-gateway`,
+ * `@onderling/confidential-llm`, `@onderling/data-connectors` — injected adapter,
  * mock-tested, real drivers deferred), the wire itself is INJECTED:
  *
  *   createNetworkTransport({ identity, send })
@@ -52,7 +52,7 @@
  * token past the gate, and an ungranted / wrong-scope / revoked capability is
  * denied across the network exactly as in-process.
  */
-import { Transport } from '@canopy/core';
+import { Transport } from '@onderling/core';
 
 /** Wire-frame version + kind — lets a real multiplexed channel demux. */
 const FRAME_V    = 1;

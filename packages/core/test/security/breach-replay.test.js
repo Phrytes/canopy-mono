@@ -25,7 +25,7 @@
 import { describe, it, expect } from 'vitest';
 import { SecurityLayer, SEC } from '../../src/security/SecurityLayer.js';
 import { AgentIdentity }      from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }        from '@canopy/vault';
+import { VaultMemory }        from '@onderling/vault';
 import { mkEnvelope, P }      from '../../src/Envelope.js';
 
 const mkId = () => AgentIdentity.generate(new VaultMemory());

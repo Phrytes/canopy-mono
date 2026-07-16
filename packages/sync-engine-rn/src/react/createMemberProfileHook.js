@@ -12,7 +12,7 @@
  *
  * Resolves by pubKey → stableId → webid (the order MemberMap supports).
  * The bundle exposes `members` with `resolveByPubKey` / `resolveByStableId`
- * / `resolveByWebid` methods (the standard `@canopy/identity-resolver`
+ * / `resolveByWebid` methods (the standard `@onderling/identity-resolver`
  * MemberMap surface).
  */
 

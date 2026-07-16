@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import { buildScreenModel } from '../../src/v2/screenModel.js';
 import { normalizeAudienceRef } from '../../src/v2/circleScope.js';
 import { mockTasksManifest } from '../../src/core/manifests/mockManifests.js';
-import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
+import { buildCapabilityMatrix, capabilityKey } from '@onderling/app-manifest';
 
 const contacts = [
   { id: 'a', label: 'Karin',  category: 'family' },
@@ -134,7 +134,7 @@ describe('buildScreenModel — SP-5b audience filter (view.defaultAudience → L
 
   it('normalises circle-ref spelling: a circle:X view matches STRUCTURED {kind:circle-ref} items', () => {
     // The reachable gap: a view declares `defaultAudience: 'circle:abc'` (string
-    // short-hand) but items created through a @canopy/circles / saved-view path
+    // short-hand) but items created through a @onderling/circles / saved-view path
     // store the STRUCTURED form.  Pre-fix, item-store's strict-equality match
     // silently dropped them; buildScreenModel now injects a circle-ref
     // canonicaliser so both spellings compare equal.

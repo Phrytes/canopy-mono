@@ -2,15 +2,15 @@
  * Wire-shape adapter for app integration (Phase 52.7).
  *
  * Apps in the stack carry slightly different field names for the
- * base "who/when" attribution — `@canopy/item-store` uses
- * `addedAt`/`addedBy`; the canonical `@canopy/item-types` schema
+ * base "who/when" attribution — `@onderling/item-store` uses
+ * `addedAt`/`addedBy`; the canonical `@onderling/item-types` schema
  * requires `createdAt`/`createdBy`. The adapter is a tiny mapper
  * that adapts the item-store shape to the canonical shape for
  * validation purposes (without mutating the caller's object).
  *
  * Usage in each app's write entry point:
  *
- *   import { validateCanonical } from '@canopy/item-types';
+ *   import { validateCanonical } from '@onderling/item-types';
  *
  *   const result = validateCanonical(item);
  *   if (!result.ok) console.warn('item-types:', result.errors);

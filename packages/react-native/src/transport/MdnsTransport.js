@@ -34,7 +34,7 @@
  * react-native-zeroconf and react-native-tcp-socket are no longer needed.
  */
 import { NativeModules, NativeEventEmitter } from 'react-native';
-import { Transport }                         from '@canopy/core';
+import { Transport }                         from '@onderling/core';
 import { b64Encode, b64Decode }              from '../utils/base64.js';
 
 const MdnsNative = NativeModules.MdnsModule ?? null;
@@ -71,7 +71,7 @@ export class MdnsTransport extends Transport {
 
   /**
    * @param {object} opts
-   * @param {import('@canopy/core').AgentIdentity} opts.identity
+   * @param {import('@onderling/core').AgentIdentity} opts.identity
    * @param {string} [opts.hostname]  — mDNS service name (defaults to pubKey slice)
    */
   constructor({ identity, hostname = null }) {

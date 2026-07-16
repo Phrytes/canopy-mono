@@ -10,9 +10,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { mergeMemberOverride } from '@canopy-app/canopy-chat';
+import { mergeMemberOverride } from '@onderling-app/canopy-chat';
 // B · Slice 4 — the member capability opt-out section (web≡mobile via the shared projector).
-import { buildCapabilityMatrix } from '@canopy/app-manifest';
+import { buildCapabilityMatrix } from '@onderling/app-manifest';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { t } from '../../core/localisation.js';
 

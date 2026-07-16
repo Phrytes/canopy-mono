@@ -1,8 +1,8 @@
 /**
- * @canopy/substrate-stack — the shared per-bundle substrate composition.
+ * @onderling/substrate-stack — the shared per-bundle substrate composition.
  *
- * Wires `@canopy/pseudo-pod` + `@canopy/pod-routing` + `@canopy/notify-envelope`
- * (+ optional `@canopy/versioning`) into one stack. Consolidates the three
+ * Wires `@onderling/pseudo-pod` + `@onderling/pod-routing` + `@onderling/notify-envelope`
+ * (+ optional `@onderling/versioning`) into one stack. Consolidates the three
  * near-identical app-local builders (stoop / tasks-v0 / household
  * `substrateStack.js` — self-described mirrors, the exact cross-app
  * duplication invariant #3 forbids); the app files stay as THIN SHIMS over
@@ -15,7 +15,7 @@
  *     named transport).
  *   - **transport-injected** (household): pass `transport`
  *     (`{publishEnvelope, subscribeEnvelopes}`) + `deviceId`. This keeps the
- *     app free of `@canopy/core`'s `Agent` — the host owns the wire and
+ *     app free of `@onderling/core`'s `Agent` — the host owns the wire and
  *     injects it (household's deliberate layering; see its shim header).
  *     `transport` wins when both are given.
  *
@@ -33,10 +33,10 @@
  * injection-time seam; a pre-built pod can't gain it) — that combination throws.
  */
 
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createPodRouting }                     from '@canopy/pod-routing';
-import { createNotifyEnvelope }                 from '@canopy/notify-envelope';
-import { createVersionStore }                   from '@canopy/versioning';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createPodRouting }                     from '@onderling/pod-routing';
+import { createNotifyEnvelope }                 from '@onderling/notify-envelope';
+import { createVersionStore }                   from '@onderling/versioning';
 
 /**
  * @param {object} args

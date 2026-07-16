@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — Perfect Forward Secrecy (partial Double-Ratchet).
+ * @onderling/secure-agent — Perfect Forward Secrecy (partial Double-Ratchet).
  *
  * Wires A.8 from the v0.7 security roadmap.
  *
@@ -51,7 +51,7 @@
  * (nacl.secretbox via AgentIdentity.secretbox) + HKDF-SHA256.
  */
 
-import { AgentIdentity, b64encode, b64decode } from '@canopy/core';
+import { AgentIdentity, b64encode, b64decode } from '@onderling/core';
 import { hkdf }   from '@noble/hashes/hkdf.js';
 import { sha256 } from '@noble/hashes/sha2.js';
 

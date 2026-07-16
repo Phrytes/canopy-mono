@@ -10,7 +10,7 @@
 //                                            `fetch` is INJECTED — defaults to globalThis.fetch —
 //                                            so tests/adapters can resolve the URL themselves)
 //   4. opener(ciphertext) -> b64u string   (injected opening: makeOpener / makeGroupOpener from
-//                                            @canopy/pod-client/sealing — blob-gateway adds NO
+//                                            @onderling/pod-client/sealing — blob-gateway adds NO
 //                                            new crypto, same seam as uploadBlob's `sealer`)
 //   5. b64u -> bytes                       (the original binary, byte-for-byte)
 //
@@ -24,7 +24,7 @@
 // included). The inline SEALED thumbnail is opened separately via `openThumbnail` — it needs
 // NO gate and NO fetch, because the thumb ships inside the line itself.
 
-import { isSealed } from '@canopy/pod-client/sealing';
+import { isSealed } from '@onderling/pod-client/sealing';
 import { b64uToBytes } from './bytes.js';
 import { bucketKeyFromRef } from './ref.js';
 

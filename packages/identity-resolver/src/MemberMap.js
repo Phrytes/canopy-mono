@@ -20,7 +20,7 @@
  * `GroupManager` truth, GroupManager wins.
  */
 
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 export class MemberMap extends Emitter {
   /** @type {Map<string, object>} */
@@ -42,7 +42,7 @@ export class MemberMap extends Emitter {
   /**
    * Read a group config file from a Solid pod and populate a MemberMap.
    *
-   * Composes `@canopy/pod-client.PodClient` via runtime injection — the
+   * Composes `@onderling/pod-client.PodClient` via runtime injection — the
    * substrate does NOT static-import pod-client. Apps that only use the
    * in-memory path don't need pod-client installed.  Apps that DO want
    * pod-config-backed rosters pass their own constructed `PodClient`
@@ -57,7 +57,7 @@ export class MemberMap extends Emitter {
    *       ]
    *     }
    *
-   * The `pubKey` slot is required by L1e (`@canopy/skill-match`) for
+   * The `pubKey` slot is required by L1e (`@onderling/skill-match`) for
    * `pubSub.subscribe(agent, peerAddress, ...)` against group members.
    * Apps that don't use skill-match over pubSub can omit it.
    *
@@ -116,7 +116,7 @@ export class MemberMap extends Emitter {
    *   Optional avatar image URL.
    * @param {string} [m.stableId]
    *   Stoop V1 Phase 11 (2026-05-06): the SDK-level stable user
-   *   identifier (`@canopy/core/identity/AgentIdentity.stableId`).
+   *   identifier (`@onderling/core/identity/AgentIdentity.stableId`).
    *   Survives handle changes, network-pubkey rotations, pod-less
    *   users, and pod migrations.  Apps key mute / ban / report on
    *   this rather than on `webid`.  Optional — legacy consumers

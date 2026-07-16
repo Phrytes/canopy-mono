@@ -14,7 +14,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderCircleFolioBrowser } from '../../web/v2/circleFolio.js';
 import { folioFileOpenTreatment } from '../../src/v2/circleFolio.js';
 import { folioManifest } from '../../../folio/manifest.js';
-import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
+import { buildCapabilityMatrix, capabilityKey } from '@onderling/app-manifest';
 
 const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }

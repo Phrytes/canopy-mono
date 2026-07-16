@@ -25,10 +25,10 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { Agent, AgentIdentity, Parts, PodCapabilityToken } from '@canopy/core';
-import { VaultMemory }                     from '@canopy/vault';
-import { RelayTransport }                  from '@canopy/transports';
-import { PodTokenRegistry }                from '@canopy/pod-client';
+import { Agent, AgentIdentity, Parts, PodCapabilityToken } from '@onderling/core';
+import { VaultMemory }                     from '@onderling/vault';
+import { RelayTransport }                  from '@onderling/transports';
+import { PodTokenRegistry }                from '@onderling/pod-client';
 
 import { startCompanionNode }              from '../src/index.js';
 import { buildDevPodSource }               from '../src/podSource.js';

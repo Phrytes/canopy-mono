@@ -13,7 +13,7 @@ install / uninstall events.
 
 ```js
 import { NativeModules } from 'react-native';
-import { createHubDiscovery } from '@canopy/react-native/hub-discovery';
+import { createHubDiscovery } from '@onderling/react-native/hub-discovery';
 
 const hd = createHubDiscovery({ nativeModule: NativeModules.HubDiscovery });
 

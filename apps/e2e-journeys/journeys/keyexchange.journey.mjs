@@ -5,12 +5,12 @@
 //       wrong-resource / stolen / revoked token gets a key of NOTHING.
 //   (b) PROXY — the app never holds a key: it proxies the open to the custodian
 //       (companion role) over the relay and gets back PLAINTEXT only.
-// The primitives are real (@canopy/pod-client/sealing resourceKeyGrant + core
+// The primitives are real (@onderling/pod-client/sealing resourceKeyGrant + core
 // CapabilityToken) — no new crypto. Design: plans/NOTE-folio-key-exchange.md.
-import { Agent, AgentIdentity, Parts, DataPart } from '@canopy/core';
-import { VaultMemory }        from '@canopy/vault';
-import { RelayTransport }     from '@canopy/transports';
-import { createResourceKeyGrant, openGrantedResource, generateKeypair } from '@canopy/pod-client/sealing';
+import { Agent, AgentIdentity, Parts, DataPart } from '@onderling/core';
+import { VaultMemory }        from '@onderling/vault';
+import { RelayTransport }     from '@onderling/transports';
+import { createResourceKeyGrant, openGrantedResource, generateKeypair } from '@onderling/pod-client/sealing';
 import { wait, checker }      from './_util.mjs';
 
 export const name = 'J-keyexchange (scoped cross-app key access + proxy)';

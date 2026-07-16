@@ -2,14 +2,14 @@
  * Test helpers — Node.js-compatible agent factory.
  *
  * Mirrors what createAgent() does in src/agent.js but uses only
- * @canopy/core classes so tests run without React Native native modules.
+ * @onderling/core classes so tests run without React Native native modules.
  *
  * The relay / routing logic under test (relaySkill, invokeWithHop, setup)
  * only depends on the Agent API, not on which transports it runs, so this
  * substitution is valid.
  */
-import { Agent, AgentConfig, AgentIdentity, InternalBus, InternalTransport, PeerGraph, TrustRegistry } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentConfig, AgentIdentity, InternalBus, InternalTransport, PeerGraph, TrustRegistry } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 /**
  * Create a test agent pair sharing an InternalBus.

@@ -13,7 +13,7 @@
  */
 import nacl from 'tweetnacl';
 
-import { Bootstrap } from '@canopy/core';
+import { Bootstrap } from '@onderling/core';
 import { __archive } from './PodExporter.js';
 
 const { ENC_INFO, decodeEntries, unframe, base64ToBytes } = __archive;

@@ -1,5 +1,5 @@
 /**
- * @canopy-app/household — public exports.
+ * @onderling-app/household — public exports.
  *
  * Phase 0 scaffold; Phase 1 foundation only at first commit.  Each
  * Phase 1 stream adds its own exports.
@@ -32,7 +32,7 @@ export { HouseholdAgent } from './HouseholdAgent.js';
 // alongside the legacy agent; Phase 2 retires the legacy.
 export { HouseholdAgentFreeform } from './HouseholdAgentFreeform.js';
 
-// SP-4b/SP-11 (2026-05-20) — household as a `@canopy/manifest-host`
+// SP-4b/SP-11 (2026-05-20) — household as a `@onderling/manifest-host`
 // mountable (consumed by `examples/manifest-host-demo/` + any future
 // multi-app host).  Also re-export the manifest so consumers don't
 // have to dig into the package layout.

@@ -82,7 +82,7 @@ describe('validateManifest', () => {
   });
 
   it('F-SP1-a: app-local (non-canonical) item types are PERMITTED', () => {
-    // household's fixed enum is not in @canopy/item-types canonical set;
+    // household's fixed enum is not in @onderling/item-types canonical set;
     // validateManifest must still pass.
     expect(ok({
       app:        'household',
@@ -932,7 +932,7 @@ describe('VERBS / isCanonicalVerb', () => {
 });
 
 describe('classifyItemTypes', () => {
-  it("splits canonical (from @canopy/item-types list()) vs app-local", () => {
+  it("splits canonical (from @onderling/item-types list()) vs app-local", () => {
     const { canonical, appLocal } = classifyItemTypes({
       itemTypes: ['task', 'note', 'shopping', 'errand'],
     });
@@ -943,7 +943,7 @@ describe('classifyItemTypes', () => {
   });
 });
 
-describe('L4 ≡ B — nouns converge with the @canopy/item-types registry', () => {
+describe('L4 ≡ B — nouns converge with the @onderling/item-types registry', () => {
   const M = (itemTypes, extra = {}) => ({
     app: 'a',
     itemTypes,

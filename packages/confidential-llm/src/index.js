@@ -1,4 +1,4 @@
-// @canopy/confidential-llm — phone-side confidential LLM (Objective F, invariant #7:
+// @onderling/confidential-llm — phone-side confidential LLM (Objective F, invariant #7:
 // "trust by attestation, not by host").
 //
 // Sensitive LLM compute must run client-side or in an ATTESTED enclave, never on an
@@ -7,7 +7,7 @@
 // SEV-SNP-style attestation (the enclave proves what code it runs + that the TLS channel
 // is bound to that enclave), and REFUSES to send anything if attestation fails. Only once
 // attestation passes does it route the LLM call — host-blind — through the attested channel
-// via an injected @canopy/llm-client LlmClient.
+// via an injected @onderling/llm-client LlmClient.
 //
 // Three pieces:
 //   • verifyAttestation      — measurement + freshness + signature-chain (verifyChain INJECTED)

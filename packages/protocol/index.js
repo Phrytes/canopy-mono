@@ -1,5 +1,5 @@
 /**
- * @canopy/protocol — state-machine substrate.
+ * @onderling/protocol — state-machine substrate.
  *
  * Direction-only — Phase 52.13. The Tasks `propose-subtask` flow is
  * the canonical first consumer. V0 ships ONE consumer so the API

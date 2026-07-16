@@ -14,7 +14,7 @@
  *      can't be stretched), and B is unreachable with no token at all.
  *      Revoke (reuse P2 revokeAgent) makes even A go inert.
  *
- * Relative @canopy imports (self-contained, no reliance on app-local
+ * Relative @onderling imports (self-contained, no reliance on app-local
  * node_modules), matching localWireFitness.test.js.
  */
 import { describe, it, expect } from 'vitest';

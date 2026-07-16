@@ -15,7 +15,7 @@ import {
   ItemStore,
   DependenciesOpenError,
 } from '../src/index.js';
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 
 const ANNE  = 'https://id.example/anne';
 

@@ -4,7 +4,7 @@
  * the same opener by construction (invariants #2/#3): both shells call `openerForIdentity(identity)`.
  *
  * LAYERING (invariant #5): the X25519 sealing-key DERIVATION + the envelope `open` live in the
- * `@canopy/pod-client` ADAPTER, which the kernel (`@canopy/core` / `AgentIdentity`) must not depend UP on. So
+ * `@onderling/pod-client` ADAPTER, which the kernel (`@onderling/core` / `AgentIdentity`) must not depend UP on. So
  * the kernel exposes `AgentIdentity.sharedCopyOpener(deriveOpener)` — a hole the app fills with the adapter.
  * `deviceSharedCopyOpener` IS that injected builder: it derives the sealing keypair from the network secret and
  * returns `makeOpener(privateKey)`. The network secret is consumed HERE and never leaves — only the opener
@@ -14,7 +14,7 @@
  * matching private key from `sealingKeyPairFromNetworkKey(myNetworkSecret)`, so `open` (recipient mode) decrypts
  * it. A copy sealed to SOMEONE ELSE's key is a foreign envelope → `open` throws (deny-safe, never ciphertext).
  */
-import { sealingKeyPairFromNetworkKey, makeOpener } from '@canopy/pod-client';
+import { sealingKeyPairFromNetworkKey, makeOpener } from '@onderling/pod-client';
 
 /**
  * The injected `deriveOpener` for `AgentIdentity.sharedCopyOpener`: `(networkSecretB64) => (text) => plaintext`.
