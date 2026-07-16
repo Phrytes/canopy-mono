@@ -10,6 +10,10 @@
 import { unwrapGroupKey } from './groupKeyResource.js';
 
 /**
+ * Back the control-agent's `keyStore` with a pod resource holding the current group-key resource.
+ * Stored as plain JSON — the group key inside is already a recipient-wrapped envelope, so a plain
+ * `PodClient` suffices. `read()` returns null while the circle is not bootstrapped yet (404).
+ *
  * @param {{ read: Function, write: Function }} podClient   a PodClient-shaped client
  * @param {string} uri                                      the key-resource URI (e.g. <pod>/.keys/group.json)
  * @returns {{ read: () => Promise<object|null>, write: (resource:object) => Promise<void> }}

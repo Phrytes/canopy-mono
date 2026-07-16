@@ -13,6 +13,10 @@ import { Parts } from '../Parts.js';
 import { genId } from '../Envelope.js';
 
 /**
+ * Send a task to a remote A2A agent via HTTP POST /tasks/send.
+ * Returns a Task immediately and settles it when the HTTP exchange resolves;
+ * an 'input-required' response pauses the request loop until the caller resumes
+ * with task.send(parts).
  * @param {import('../Agent.js').Agent} agent
  * @param {string} peerUrl            — base URL of the remote A2A agent
  * @param {string} skillId

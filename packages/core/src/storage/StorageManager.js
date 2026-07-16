@@ -12,6 +12,12 @@
  */
 import { DataSourcePolicy } from '../permissions/DataSourcePolicy.js';
 
+/**
+ * Policy-gated facade over a set of named DataSources. Each operation resolves
+ * the labelled source and consults the optional DataSourcePolicy (which throws
+ * DataSourceAccessDeniedError on refusal) before delegating read, write, delete,
+ * list, or query to it.
+ */
 export class StorageManager {
   #sources;   // Map<label, DataSource>
   #policy;    // DataSourcePolicy | null

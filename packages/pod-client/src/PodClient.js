@@ -71,6 +71,14 @@ const DEFAULT_CONFLICT_LISTENER_TIMEOUT_MS = 30_000;
 const REMOTE_CONTENT_FETCH_LIMIT     = 1_000_000;
 const TEXT_CONTENT_TYPE_RE           = /^(text\/|application\/json\b|application\/.*\+json\b)/i;
 
+/**
+ * High-level pod client: read/write/list/append/patch/delete on top of `SolidPodSource` plus an
+ * `Auth` implementation (`CapabilityAuth` or `SolidOidcAuth`). On-demand by design — no background
+ * sync or pod crawling. Tracks per-resource etags and, on an HTTP 412 write conflict, emits a
+ * `'conflict'` event (a `ConflictResolver`) before falling back to the configured `conflictPolicy`.
+ * `deleteLocal(uri)` records a per-device tombstone that hides the URI from `list()` without
+ * touching the pod; URIs starting with `pseudo-pod://` are routed to the optional `pseudoPod`.
+ */
 export class PodClient extends Emitter {
   #podSource;
   #auth;
@@ -695,20 +703,6 @@ export class PodClient extends Emitter {
   }
 
   /**
-   * Delete a resource from the pod.  Removes the resource for everyone (it
-   * is gone from the pod once the call succeeds).  Also clears any local
-   * tombstone — the local marker is no longer relevant once the resource
-   * is gone everywhere.
-   *
-   * Equivalent to `deleteCompletely(uri, opts)`; both names exist for
-   * spec-compliance with `pod-client-api.md` §Delete scope.
-   *
-   * @param {string} uri
-   * @param {object} [opts]
-   * @param {string}  [opts.ifMatch]
-   * @param {boolean} [opts.force=false]
-   */
-  /**
    * Idempotently create an LDP container at `uri`.  Required by some pod
    * servers (e.g. Inrupt's storage.inrupt.com) which don't auto-create
    * parent containers on PUT — without an explicit container, the first
@@ -734,6 +728,20 @@ export class PodClient extends Emitter {
     }
   }
 
+  /**
+   * Delete a resource from the pod.  Removes the resource for everyone (it
+   * is gone from the pod once the call succeeds).  Also clears any local
+   * tombstone — the local marker is no longer relevant once the resource
+   * is gone everywhere.
+   *
+   * Equivalent to `deleteCompletely(uri, opts)`; both names exist for
+   * spec-compliance with `pod-client-api.md` §Delete scope.
+   *
+   * @param {string} uri
+   * @param {object} [opts]
+   * @param {string}  [opts.ifMatch]
+   * @param {boolean} [opts.force=false]
+   */
   async delete(uri, opts = {}) {
     this.#ensureOpen();
     const pp = this.#pseudoPodFor(uri);

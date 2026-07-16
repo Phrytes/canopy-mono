@@ -39,8 +39,16 @@ import {
 
 export const DEFAULT_TTL_MS      = 5 * 60_000;     // Q-G.2 default
 export const DEFAULT_INTERVAL_MS = 60_000;         // Q-G.1 safety-net heartbeat
+/** Pubsub topic on which signed reachability-oracle claims are broadcast and received. */
 export const ORACLE_TOPIC        = 'reachability:oracle';
 
+/**
+ * Push-side gossip channel for signed reachability claims, plus a lookup surface.
+ * Signs and publishes this agent's direct-peer set on ORACLE_TOPIC (on start(), on
+ * transport add/remove, and on a heartbeat interval), verifies inbound claims with
+ * a per-issuer sequence replay guard, caches them with TTL eviction, and answers
+ * bridgeFor(peerId) with a deterministically chosen bridge issuer or null.
+ */
 export class ReachabilityOracle extends Emitter {
   #agent;
   #identity;

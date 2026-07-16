@@ -26,6 +26,10 @@
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 import { canonicalize }                              from '../Envelope.js';
 
+/**
+ * Version tag (`v`) embedded in the sealed-forward plaintext. `packSealed` writes it;
+ * `openSealed` rejects any other version.
+ */
 export const SEALED_VERSION = 1;
 
 /**

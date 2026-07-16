@@ -16,6 +16,9 @@ import { Parts } from '../Parts.js';
 import { genId } from '../Envelope.js';
 
 /**
+ * Send a streaming task to a remote A2A agent via POST /tasks/sendSubscribe (SSE).
+ * Returns a Task immediately; each SSE chunk is pushed to task.stream() and the
+ * final 'done'/'error' event transitions the task to completed or failed.
  * @param {import('../Agent.js').Agent} agent
  * @param {string} peerUrl
  * @param {string} skillId

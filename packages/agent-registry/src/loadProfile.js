@@ -7,6 +7,11 @@
 import { AgentIdentity, deriveCircleAddress, deriveCircleSeed, circleIdentity } from '@onderling/core';
 
 /**
+ * Load (materialize) a profile on this device (identity step 4). The seed comes from the owner
+ * root + `profileId` OR a delegated 32-byte `profileSeed` (gadget case); the profile's
+ * AgentIdentity is persisted into the device `vault`, optionally checked against the registry
+ * entry (throws on a pubKey mismatch), and returned with per-circle address/seed/identity helpers.
+ *
  * @param {object} a
  * @param {object} [a.ownerRoot]    a core Bootstrap (with a.profileId) — derives the profile seed.
  * @param {Uint8Array} [a.profileSeed]  a delegated 32-byte profile seed (gadget case; no owner root).

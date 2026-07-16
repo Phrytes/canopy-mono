@@ -23,6 +23,11 @@ const IV_LEN   = 12;
 const TAG_LEN  = 16;
 const ALG      = 'aes-256-gcm';
 
+/**
+ * Node.js `Vault` persisting to a single JSON file. With a passphrase, values are encrypted with
+ * AES-256-GCM under a scrypt-derived key; without one the file is plaintext (dev/CI only). Node
+ * built-ins load lazily on first use, so the module itself is safe to load in a browser.
+ */
 export class VaultNodeFs extends Vault {
   #filePath;
   #passphrase;

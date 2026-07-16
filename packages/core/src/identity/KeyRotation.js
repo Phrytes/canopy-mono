@@ -20,6 +20,13 @@
 import { AgentIdentity } from './AgentIdentity.js';
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 
+/**
+ * Static helpers for Ed25519 key-rotation proofs: `buildProof()` signs an
+ * "old key → new key" assertion with the old identity, `verify()` and
+ * `isWithinGracePeriod()` validate it, `broadcast()` sends it one-way to all reachable
+ * peers, and `applyToRegistry()` copies the old key's tier/groups/token grants to the
+ * new key in a TrustRegistry.
+ */
 export class KeyRotation {
   /**
    * Build and sign a key-rotation proof using the old identity.

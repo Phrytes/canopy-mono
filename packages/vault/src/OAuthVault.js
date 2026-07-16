@@ -38,6 +38,13 @@ const REFRESH_BUFFER_MS = 60_000;   // 60s
  * @typedef {(refreshToken: string, scopes?: string[]) => Promise<TokenBundle>} RefreshFn
  */
 
+/**
+ * Typed OAuth-token storage on top of any Vault adapter, keyed `oauth:<service>:<accountId>` with
+ * a `'default'` accountId fallback for single-account use. `getTokens` proactively refreshes when
+ * the access token is within 60s of expiry (via the per-service `RefreshFn` registered with
+ * `registerRefreshFn`); concurrent refreshes for the same (service, accountId) share one
+ * in-flight promise. `refreshTokens` forces a refresh for the reactive 401-fallback path.
+ */
 export class OAuthVault {
   /** @type {import('./Vault.js').Vault} */
   #vault;

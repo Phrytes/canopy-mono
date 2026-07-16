@@ -10,6 +10,11 @@
  */
 import { CapabilityToken, skillMatches } from './CapabilityToken.js';
 
+/**
+ * Vault-backed store for CapabilityTokens received from peers ("held" tokens). `get()`
+ * returns the latest-expiring valid token matching an agent+skill; `revoke()` marks a
+ * token locally revoked; `cleanup()` deletes expired tokens from the vault.
+ */
 export class TokenRegistry {
   #vault;
 

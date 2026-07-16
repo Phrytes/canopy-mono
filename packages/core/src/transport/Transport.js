@@ -71,6 +71,14 @@ import { mkEnvelope, P, REPLY_CODES } from '../Envelope.js';
 const ACK_TIMEOUT = 10_000;  // ms
 const REQ_TIMEOUT = 30_000;  // ms
 
+/**
+ * Abstract transport base class — the port a wire adapter implements. Subclasses
+ * override `_put(to, envelope)` (plus connect/disconnect/canReach where relevant) and
+ * call `_receive(rawEnvelope)` for inbound traffic; the base then provides the
+ * interaction primitives (sendOneWay/sendAck/request/respond/sendHello), reply
+ * correlation, auto-ACK of AS envelopes, SecurityLayer wiring, and receive-handler
+ * dispatch. See the file header for the full port contract.
+ */
 export class Transport extends Emitter {
   #address;
   #identity;

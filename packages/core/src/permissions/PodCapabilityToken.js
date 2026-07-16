@@ -49,6 +49,13 @@ import { genId }                                    from '../Envelope.js';
 
 const ACTIONS = ['read', 'write', 'delete'];
 
+/**
+ * Immutable wrapper around a signed pod-access grant: `issuer` gives `subject`
+ * permission to perform the listed scopes (`pod.read|write|delete|*:<path>`) against
+ * pod root `pod` until `expiresAt`. Issue via the static `issue()`; check with
+ * `verify()` / `verifyChain()`; `matchesScope()` implements the prefix-strict scope
+ * coverage rules; `fromJSON()` re-hydrates a stored or wire token.
+ */
 export class PodCapabilityToken {
   #raw;
 

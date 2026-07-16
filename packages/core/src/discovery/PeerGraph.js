@@ -37,6 +37,12 @@
  */
 import { Emitter } from '../Emitter.js';
 
+/**
+ * Registry of known peers with merge-on-upsert semantics, filtered queries, and
+ * change events ('added', 'removed', 'cleared', 'reachable', 'unreachable').
+ * Records are keyed by pubKey (or url for A2A-only peers) and persisted through a
+ * pluggable key-value backend; without one, an in-memory Map is used.
+ */
 export class PeerGraph extends Emitter {
   #backend;
 

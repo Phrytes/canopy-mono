@@ -18,6 +18,12 @@
 const VISIBILITY_TIER = { public: 0, authenticated: 1, trusted: 2, private: 3 };
 const CARD_VERSION    = '1.0';
 
+/**
+ * Builds the A2A-compatible agent-card JSON for an agent, filtered by caller trust
+ * tier: `build(requestTier)` lists only skills whose visibility tier is at or below
+ * the request tier. Name/description/url/relay/groups come from the optional config;
+ * the pubKey and skill list come from the agent itself.
+ */
 export class AgentCardBuilder {
   #agent;
   #config;    // optional AgentConfig

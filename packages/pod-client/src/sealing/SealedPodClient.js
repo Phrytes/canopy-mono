@@ -16,6 +16,11 @@ import {
 import { unwrapGroupKey, openSealedAcrossVersions } from './groupKeyResource.js';
 
 /**
+ * Wrap a PodClient-shaped client with transparent seal-on-write / open-on-read of resource BODIES
+ * only; structure ops and event plumbing are forwarded unchanged. The `{ seal, open }` strategy is
+ * injected (recipient-wrap or group-key) and exposed on the returned client for out-of-band use;
+ * `open` passes plaintext through, so mixed sealed/legacy data still reads.
+ *
  * @param {object} inner   a PodClient (or compatible: read/write/append/list/...)
  * @param {{ seal: (text:string)=>string, open: (text:string)=>string }} strategy
  */

@@ -24,6 +24,7 @@
 
 import { withCAS } from './concurrency.js';
 
+/** Wire-format version stamped on endorsement-list resources (and defaulted in on read). */
 export const ENDORSEMENT_RESOURCE_VERSION = 1;
 
 /**
@@ -63,6 +64,7 @@ export function endorsementResourceUri({ anchorPodUri, deviceId, preferPodUri = 
   );
 }
 
+/** A frozen, empty endorsement-list body: current version, no endorsements, `updatedAt` = now. */
 export function emptyEndorsementResource() {
   return Object.freeze({
     v:            ENDORSEMENT_RESOURCE_VERSION,

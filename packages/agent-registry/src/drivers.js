@@ -17,6 +17,7 @@ import { descriptor } from './propertyVocabulary.js';
 /** The kinds of personal driver. `driver` is the generic catch-all; the rest are finer intents. */
 export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver']);
 
+/** True iff `k` is one of the DRIVER_KINDS strings. */
 export function isDriverKind(k) { return typeof k === 'string' && DRIVER_KINDS.includes(k); }
 
 /**

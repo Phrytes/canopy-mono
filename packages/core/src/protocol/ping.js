@@ -6,6 +6,9 @@
  */
 
 /**
+ * Measure round-trip latency to a peer with an acked ping envelope, routed
+ * through the per-peer transport. Resolves to the elapsed milliseconds, or
+ * null on timeout or failure.
  * @param {import('../Agent.js').Agent} agent
  * @param {string} peerId
  * @param {number} [timeout=5000]

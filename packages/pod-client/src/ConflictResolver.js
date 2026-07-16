@@ -24,6 +24,12 @@ const RESOLVE = Symbol('resolveWith');
 const CANCEL  = Symbol('cancelWrite');
 const TIMEOUT = Symbol('timeout');
 
+/**
+ * Payload for the `'conflict'` event that `PodClient.write` emits on HTTP 412. A listener settles
+ * it by calling `resolveWith(content)` (re-issue the write with `force: true`) or `cancelWrite()`
+ * (abort with `ConflictError`); if nothing settles it, `PodClient`'s wait times out and the
+ * configured `conflictPolicy` applies. First settlement wins; later calls are no-ops.
+ */
 export class ConflictResolver {
   #deferred;
   #settled = false;

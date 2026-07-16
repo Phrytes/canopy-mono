@@ -21,6 +21,11 @@ export class DataSourceAccessDeniedError extends Error {
   }
 }
 
+/**
+ * Allow-list policy controlling which skills and agents may access which named
+ * data sources. checkAccess() throws DataSourceAccessDeniedError for a disallowed
+ * skill or agent; source labels absent from the config are open access.
+ */
 export class DataSourcePolicy {
   #rules;   // Map<label, { allowedSkills?: Set, allowedAgents?: Set }>
 

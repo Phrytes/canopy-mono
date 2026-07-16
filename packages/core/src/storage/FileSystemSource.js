@@ -26,6 +26,12 @@ async function _mods() {
   return { path: _path, fs: _fs };
 }
 
+/**
+ * Node.js filesystem DataSource rooted at a directory. All paths resolve under
+ * `root` (escaping it throws a path-traversal error), parent directories are
+ * created on write, and read() returns null for missing files. Node-only — the
+ * fs/path modules are imported lazily so browsers can still load the module.
+ */
 export class FileSystemSource extends DataSource {
   #rootRaw;   // raw input — resolved lazily on first use
   #root;

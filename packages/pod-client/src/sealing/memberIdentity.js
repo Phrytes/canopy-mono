@@ -15,6 +15,10 @@ import { generateKeypair } from './envelope.js';
 const DEFAULT_KEY = 'cc.sealing-identity';
 
 /**
+ * Create a member's stable sealing identity: an X25519 keypair generated once and persisted in the
+ * injected vault-shaped store (distinct from the member's transport identity). Returns helpers to
+ * ensure the keypair, publish the sealing public key, and build the roster entry.
+ *
  * @param {{ get: (k:string)=>Promise<any>, set: (k:string, v:any)=>Promise<any> }} store  e.g. a @onderling/vault
  * @param {string} [key]   vault key under which the keypair is stored
  */

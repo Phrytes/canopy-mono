@@ -36,6 +36,11 @@ import { verifyOrigin }        from '../security/originSignature.js';
 const isAsyncGen = (x) => x && typeof x[Symbol.asyncIterator] === 'function';
 
 /**
+ * Register the 'tunnel-receive-sealed' skill on an agent (no-op when already
+ * registered). The handler unseals a sealed tunnel-open blob, verifies the
+ * end-to-end origin signature, stores the tunnel session key, ACKs the bridge
+ * immediately, and runs the inner skill asynchronously, streaming sealed one-way
+ * updates back through the bridge.
  * @param {import('../Agent.js').Agent} agent
  * @param {object} [opts]
  * @param {'public'|'authenticated'|'trusted'|'private'} [opts.visibility='authenticated']

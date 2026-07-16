@@ -54,6 +54,10 @@ async function loadInrupt() {
 // Test-only seam — let tests inject a fake Inrupt module without
 // stubbing `import.meta`. Match the pattern of other `_set...Factory`
 // helpers in the substrate.
+/**
+ * Test seam — inject a fake `@inrupt/solid-client` module for the sharing namespace. Pass a falsy
+ * value to restore the lazy dynamic import.
+ */
 export function _setInruptModuleForTests(mod) {
   _inrupt = mod;
 }

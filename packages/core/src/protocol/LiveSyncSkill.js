@@ -55,6 +55,13 @@
 const STATE_KEY_PREFIX = 'livesync:';
 const APPLIED_IDS_CAP  = 10_000;
 
+/**
+ * One-way sync engine applying change events from a source adapter to a target
+ * adapter. Idempotent per event id (applied ids are persisted, capped at 10k),
+ * resolves write conflicts through the optional onConflict callback, stores
+ * cursor state in an injected Vault, and polls on an interval between explicit
+ * runOnce() cycles.
+ */
 export class LiveSyncSkill {
   #name;
   #source;

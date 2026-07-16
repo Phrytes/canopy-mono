@@ -11,11 +11,16 @@
 import { expect } from 'vitest';
 import { DataSource } from '../storage/DataSource.js';
 
+/** The five method names every DataSource adapter must expose; checked by the harness. */
 export const REQUIRED_DATASOURCE_METHODS = Object.freeze([
   'read', 'write', 'delete', 'list', 'query',
 ]);
 
 /**
+ * Conformance harness asserting a DataSource adapter satisfies the port: the
+ * CRUD-over-paths contract (read null on miss, overwrite, prefix list, no-op
+ * delete of a missing path) and, when supportsQuery is set, structured query().
+ * Uses vitest's expect, so it must run inside a vitest test.
  * @param {() => (DataSource | Promise<DataSource>)} makeSource — yields a fresh, empty source.
  * @param {object} [opts]
  * @param {string} [opts.label='DataSource']

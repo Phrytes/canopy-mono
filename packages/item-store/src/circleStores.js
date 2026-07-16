@@ -21,6 +21,14 @@
  */
 import { CircleItemStore } from './CircleItemStore.js';
 
+/**
+ * Lazy per-circle registry of `CircleItemStore`s over ONE shared `dataSource`: `getStore(circleId)`
+ * creates a store namespaced under `<rootPrefix><circleId>/` on first ask (invoking `onStore` once,
+ * best-effort) and caches it; `has(circleId)` and `rootFor(circleId)` are plain lookups. The module
+ * doc above details each parameter.
+ * @returns {{getStore: (circleId: string) => object, has: (circleId: string) => boolean,
+ *   rootFor: (circleId: string) => string}}
+ */
 export function createCircleStores({ dataSource, registry, rootPrefix = 'mem://circles/', onStore } = {}) {
   if (!dataSource || typeof dataSource.read !== 'function') {
     throw new Error('createCircleStores: a shared core.DataSource (read/write/delete/list) is required');

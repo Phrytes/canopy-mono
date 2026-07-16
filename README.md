@@ -14,6 +14,8 @@ identity, transports, and peer-to-peer reachability underneath.
 
 - **[Package index](docs/packages.md)** — every published `@onderling/*` package, what it is, and
   which executable journey verifies it.
+- **[API reference](docs/api/README.md)** — per-function appendix for all 15 packages, generated
+  from the source JSDoc (`npm run api-fitness` keeps it drift-free).
 - **[Tutorials](docs/tutorials/)** — your first agent · one manifest, every surface · a compatible
   tasks app.
 - **[How-to guides](docs/how-to/)** — connect over a relay · persist to a pod · redact before send ·

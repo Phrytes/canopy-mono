@@ -60,6 +60,13 @@ const CHANNEL_LABEL  = 'canopy';
 const OPEN_TIMEOUT   = 30_000;   // ms
 const ICE_SERVERS    = [{ urls: 'stun:stun.l.google.com:19302' }];
 
+/**
+ * WebRTC DataChannel `Transport`: exchanges SDP offers/answers and ICE candidates over a
+ * signaling transport (e.g. `RelayTransport`), then moves all further traffic to a direct
+ * RTCDataChannel — the relay leaves the data path once the channel opens. Browser-first; Node and
+ * React Native need an injected `rtcLib` polyfill. Use `RendezvousTransport.isSupported()` to
+ * guard instantiation where WebRTC globals may be missing.
+ */
 export class RendezvousTransport extends Transport {
   #sig;           // signaling transport
   #rtc;           // { RTCPeerConnection, RTCSessionDescription, RTCIceCandidate }

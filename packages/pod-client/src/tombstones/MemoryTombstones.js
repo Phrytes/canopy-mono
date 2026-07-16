@@ -11,6 +11,11 @@
  */
 import { TombstoneStore } from '../TombstoneStore.js';
 
+/**
+ * In-memory Map-backed `TombstoneStore` — the non-persistent default of `PodClient`, for tests and
+ * fallback use. `close()` is a no-op that keeps entries, so a re-constructed client sharing the
+ * same instance still sees them.
+ */
 export class MemoryTombstones extends TombstoneStore {
   #map = new Map();
 

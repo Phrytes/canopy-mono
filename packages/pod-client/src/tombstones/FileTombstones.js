@@ -16,6 +16,11 @@ import { TombstoneStore } from '../TombstoneStore.js';
 
 const DEFAULT_FILENAME = 'canopy-tombstones.json';
 
+/**
+ * Node-side `TombstoneStore` backed by a single JSON file, persistent across `PodClient` restarts.
+ * Writes are atomic (written to `<path>.tmp`, then renamed onto `<path>`). Defaults to
+ * `os.tmpdir() + '/canopy-tombstones.json'`; pass an explicit `{ path }` for production use.
+ */
 export class FileTombstones extends TombstoneStore {
   #path;
   #map = null;

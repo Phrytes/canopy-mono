@@ -115,6 +115,13 @@ async function _loadOrInitDeviceId(vault) {
   return fresh;
 }
 
+/**
+ * An agent's cryptographic identity: an Ed25519 signing keypair plus the Curve25519
+ * keypair derived from it for nacl.box encryption, both from one 32-byte seed. Also
+ * carries `stableId` (rotation-surviving user id) and `deviceId` (per-install id),
+ * persisted in the vault. Construct via the static factories (`generate`, `restore`,
+ * `fromMnemonic`, `fromSeed`, `rotate`, …) so seed persistence and id init happen.
+ */
 export class AgentIdentity {
   /** @type {{ publicKey: Uint8Array, secretKey: Uint8Array }} */
   #signKP;

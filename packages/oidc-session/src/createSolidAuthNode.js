@@ -39,6 +39,10 @@ const VAULT_KEY_ISSUER        = 'oidc-issuer';
 const VAULT_KEY_CLIENT_ID     = 'oidc-client-id';
 const VAULT_KEY_CLIENT_SECRET = 'oidc-client-secret';
 
+/**
+ * Frozen map of the vault key names under which the Node Solid-OIDC auth persists its state:
+ * refresh token, issuer, client id, and client secret.
+ */
 export const OIDC_VAULT_KEYS = Object.freeze({
   REFRESH_TOKEN: VAULT_KEY_REFRESH_TOKEN,
   ISSUER:        VAULT_KEY_ISSUER,

@@ -12,6 +12,12 @@ export function encode(bytes) {
     .replace(/=/g,  '');
 }
 
+/**
+ * Decode a base64url (URL-safe, unpadded) string to bytes. Re-exported from the
+ * package barrel as `b64decode`.
+ * @param {string} str — base64url-encoded input
+ * @returns {Uint8Array} decoded bytes
+ */
 export function decode(str) {
   str = str.replace(/-/g, '+').replace(/_/g, '/');
   while (str.length % 4) str += '=';

@@ -15,6 +15,11 @@ function bytesAdapter(initial = null) {
 }
 
 /**
+ * Export the profile set to a passphrase-sealed, storage-agnostic artifact (identity step 5A):
+ * the owner root plus a registry snapshot (`registry.list()`), sealed with core `CloudBackup`
+ * (argon2id + xsalsa20poly1305). Returns the sealed envelope bytes; open them again with
+ * `importProfileRegistry`.
+ *
  * @param {object} a
  * @param {object} a.ownerRoot    a core Bootstrap — re-derives every profile key on import.
  * @param {object} a.registry     an @onderling/agent-registry handle (snapshotted via list()).

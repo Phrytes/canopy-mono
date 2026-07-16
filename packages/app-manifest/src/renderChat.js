@@ -26,13 +26,26 @@ import { paramsToJsonSchema } from './paramsToJsonSchema.js';
 import { buildPrompt }         from './internal/prompt.js';
 
 /**
+ * Render the chat-surface projection of a manifest: `toolCatalog` + `toolHandlers` + `systemPrompt`
+ * (the `ChatAgent` ctor shape) plus the structured chat affordance lookups (`commandMenu`,
+ * `inlineKeyboardFor`, `replyShapeFor`, `followUpsFor`, `runtimeFor`, `embedSnapshotFor`, `briefFor`,
+ * `searchFor`). Ops without a matching skill in `skillRegistry` are omitted from `toolHandlers`;
+ * outputs follow manifest declaration order. Throws when `manifest`, `skillRegistry`, or
+ * `toSkillCtx` is missing.
+ *
  * @param {import('./schema.js').Manifest} manifest
  * @param {object} args
- * @param {Record<string, function>} args.skillRegistry
- * @param {(toolCtx: object) => object} args.toSkillCtx
- * @param {(stateUpdates: Array<object>) => void} [args.onStateUpdates]
+ * @param {Record<string, function>} args.skillRegistry — `{ opId: skill }` app-side skills.
+ * @param {(toolCtx: object) => object} args.toSkillCtx — maps a ChatAgent tool ctx to a skill ctx.
+ * @param {(stateUpdates: Array<object>) => void} [args.onStateUpdates] — sink for a skill's
+ *   stateUpdates (an error thrown here is logged, never allowed to kill the reply).
  * @param {object} [opts]
- * @param {{preamble?: string, perToolLine?: function, postamble?: string}} [opts.prompt]
+ * @param {{preamble?: string, perToolLine?: function, postamble?: string}} [opts.prompt] — prompt
+ *   builder overrides (ignored when the manifest carries a verbatim `systemPrompt` string).
+ * @returns {{toolCatalog: Array<object>, toolHandlers: Record<string, function>,
+ *   systemPrompt: string, commandMenu: Array<object>, inlineKeyboardFor: function,
+ *   replyShapeFor: function, followUpsFor: function, runtimeFor: function,
+ *   embedSnapshotFor: function, briefFor: function, searchFor: function}}
  */
 export function renderChat(manifest, args, opts = {}) {
   if (!manifest || typeof manifest !== 'object') {

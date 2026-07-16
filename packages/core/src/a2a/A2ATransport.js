@@ -45,6 +45,13 @@ const STATIC_MIME = Object.freeze({
   '.png':  'image/png',
 });
 
+/**
+ * HTTP transport for the A2A protocol. When a `port` is given it runs a Node HTTP
+ * server for inbound tasks (agent card, /tasks/send, SSE subscribe, cancel, status,
+ * optional static-file serving); as a client it maps outbound RQ/OW/CX envelopes to
+ * the peer's A2A endpoints. Pair with A2ATLSLayer so envelope crypto is a pass-through
+ * (authentication lives in the HTTP layer).
+ */
 export class A2ATransport extends Transport {
   #agent;
   #port;

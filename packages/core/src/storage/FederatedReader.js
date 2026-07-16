@@ -70,6 +70,13 @@ function parseTimestamp (lastModified) {
   return Date.now();
 }
 
+/**
+ * Reads the same path from N pod clients in parallel and merges the successful
+ * results through an injected merge contract. Failure handling follows the
+ * failurePolicy: 'partial-success-with-flag' (default) and 'best-effort' resolve
+ * to { merged, failures }, while 'fail-on-any' throws FederatedReadError when
+ * any pod read fails.
+ */
 export class FederatedReader {
   /**
    * @param {object}   config

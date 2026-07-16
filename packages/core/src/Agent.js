@@ -44,6 +44,14 @@ import { registerReachablePeersSkill }               from './skills/reachablePee
 import { PeerDiscovery }                             from './discovery/PeerDiscovery.js';
 import { pullPeerList }                              from './discovery/pullPeerList.js';
 
+/**
+ * The developer-facing agent class. Owns the identity, one or more named transports,
+ * the SecurityLayer, skill registry and state manager, plus optional policy/trust/token
+ * registries, peer graph, storage, config, and routing strategy. Register skills with
+ * `register()`, then `start()` connects all transports and begins dispatching inbound
+ * envelopes; talk to peers via `hello()` and `invoke()`. Emits lifecycle and protocol
+ * events (extends Emitter).
+ */
 export class Agent extends Emitter {
   #identity;
   #transport;              // primary / default transport (backward compat)

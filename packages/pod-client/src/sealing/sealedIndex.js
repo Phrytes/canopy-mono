@@ -34,6 +34,7 @@ export function removeEntry(index, id) {
   return { ...index, entries: next };
 }
 
+/** Look up an entry by `id`. Returns the entry object, or null when absent. */
 export function getEntry(index, id) { return index.entries[id] ?? null; }
 
 /** Decode an opaque resource id → its human meaning (or null if unknown / not decoded). */

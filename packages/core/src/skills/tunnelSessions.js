@@ -29,6 +29,12 @@ import { Emitter } from '../Emitter.js';
 export const DEFAULT_TTL_MS = 10 * 60_000;   // 10 minutes
 export const SWEEP_INTERVAL = 60_000;        // scan once a minute
 
+/**
+ * In-memory table of open hop-tunnel sessions on the bridge side, keyed by tunnelId.
+ * Each row binds the originator's outer taskId to the target's inner taskId; a
+ * periodic sweeper drops rows whose TTL has elapsed. Emits 'opened', 'closing',
+ * and 'closed'.
+ */
 export class TunnelSessions extends Emitter {
   /** @type {Map<string, object>} */
   #rows = new Map();

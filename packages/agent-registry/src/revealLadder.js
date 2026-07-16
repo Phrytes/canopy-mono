@@ -25,6 +25,7 @@
 /** Identity levels, LEAST → MOST revealing. `identity` = hand off to the existing pairwise-reveal / contact machinery. */
 export const REVEAL_LEVELS = Object.freeze(['ephemeral', 'persona', 'identity']);
 
+/** True iff `l` is one of the REVEAL_LEVELS (`ephemeral` | `persona` | `identity`). */
 export function isRevealLevel(l) { return REVEAL_LEVELS.includes(l); }
 
 /** Rank a level (0=ephemeral … 2=identity), or -1 for an unknown level. */

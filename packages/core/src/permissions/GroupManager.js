@@ -27,6 +27,13 @@ import { AgentIdentity }                            from '../identity/AgentIdent
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 import { ROLES, isKnownRole, canPromote }           from './Roles.js';
 
+/**
+ * Issues, verifies, revokes and persists Ed25519-signed group-membership proofs with
+ * roles. Admin side: `issueProof` / `setRole` / `revokeProof` / invites, persisted
+ * under 'group-admin:<groupId>'. Member side: own proofs stored under
+ * 'group-proof:<groupId>'. Proofs without a `role` field (pre-D3) verify fine and are
+ * treated as role 'member'.
+ */
 export class GroupManager {
   #identity;
   #vault;

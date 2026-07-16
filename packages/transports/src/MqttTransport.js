@@ -24,6 +24,12 @@ import { Transport } from '@onderling/core';
 
 const PREFIX = 'canopy';
 
+/**
+ * MQTT-broker `Transport`: the agent subscribes to its own inbox topic `canopy/<address>/in` and
+ * publishes outbound envelopes to `canopy/<to>/in`. The address is 24 lowercase hex chars derived
+ * from the first 12 bytes of the identity's Ed25519 pubKey. Requires the `mqtt` package (peer
+ * dependency), dynamic-imported on `connect()`.
+ */
 export class MqttTransport extends Transport {
   #client  = null;
   #opts;

@@ -25,6 +25,13 @@ import { Transport } from '@onderling/core';
 const MAX_BACKOFF_MS = 30_000;
 const PUSH_ACK_TIMEOUT_MS = 5_000;
 
+/**
+ * WebSocket relay-server `Transport`: registers this agent's address with the relay, which
+ * forwards envelopes between connected clients. Reconnects automatically with exponential
+ * backoff (capped at 30s) until `disconnect()`. Also supports the relay's opt-in push wake-up
+ * protocol (`registerPushToken`/`unregisterPushToken`). Uses `ws` in Node.js and falls back to
+ * `globalThis.WebSocket` in browsers.
+ */
 export class RelayTransport extends Transport {
   #ws        = null;
   #relayUrl;

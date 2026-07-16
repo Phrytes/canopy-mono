@@ -18,6 +18,12 @@ import {
 import { withCAS } from './concurrency.js';
 
 /**
+ * Build the live agent-registry handle over an injected pseudo-pod: etag-CAS reads/writes of the
+ * registry resource with retry, plus optional per-write snapshots via a `versionStore`. Returns
+ * `{register, lookup, revoke, purge, updateCapabilities, applyGrant, revokeGrant, list, reload,
+ * resourceUri}`. The resource URI resolves from the `resourceUri` override, else `deviceId`
+ * (pseudo-pod path), else `anchorPodUri`; throws INVALID_ARGUMENT without a usable `pseudoPod`.
+ *
  * @param {object} opts
  * @param {object}  opts.pseudoPod
  * @param {string}  [opts.anchorPodUri]   — pod URI (metadata; pod-side mirroring
@@ -28,6 +34,8 @@ import { withCAS } from './concurrency.js';
  * @param {string}  [opts.resourceUri]    — explicit override (wins over all defaults).
  * @param {number}  [opts.maxRetries=3]
  * @param {(err: Error) => void} [opts.onPersistentConflict]
+ * @param {object}  [opts.versionStore]   — optional @onderling/versioning store; when supplied,
+ *                                          every write snapshots the resource (best-effort).
  * @param {() => string} [opts.now]
  */
 export function createAgentRegistry({

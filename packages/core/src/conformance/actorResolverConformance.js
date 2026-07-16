@@ -12,6 +12,10 @@
 import { expect } from 'vitest';
 
 /**
+ * Conformance harness asserting an ActorResolver implementation satisfies the
+ * structural port: resolve() returns null on a miss and the canonical record for
+ * any of its identifiers; register() and revoke() are exercised when present.
+ * Uses vitest's expect, so it must run inside a vitest test.
  * @param {() => (object | Promise<object>)} makeResolver — yields a fresh resolver.
  * @param {object} [opts]
  * @param {string} [opts.label='ActorResolver']

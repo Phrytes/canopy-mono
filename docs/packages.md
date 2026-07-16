@@ -27,6 +27,9 @@ documented flows actually run.
 | [`@onderling/oidc-session`](../packages/oidc-session/README.md) | Solid-OIDC login sessions (browser and mobile) | — |
 | [`@onderling/logger`](../packages/logger/README.md) | PII-safe structured logging with an on-device ring buffer | — |
 
+Per-function API reference for all 15 packages: [docs/api/](api/README.md) — generated from the
+source JSDoc, held to zero drift by `npm run api-fitness`.
+
 ## Start here
 
 - [Tutorial 1 — your first agent](tutorials/01-first-agent.md) (from journey J1)

@@ -11,6 +11,12 @@
 // ⚠ The policy TABLE's authority/source (who decides context→forbidden) is an OPEN decision
 // (design §8). The table below is a CONSERVATIVE, ILLUSTRATIVE starter — not a legal ruling.
 
+/**
+ * Conservative default policy table for governed asks, keyed by context TYPE (`employment`,
+ * `tenancy`, `commerce`). Each rule lists property types/keys that must not be requested
+ * (`forbidTypes`/`forbidKeys`) and keys that only draw a warning (`warnKeys`). An illustrative
+ * starter, not a legal ruling — the table's authoritative source is still an open design decision.
+ */
 export const DEFAULT_GOVERNED_POLICY = Object.freeze({
   // Hiring / tenancy: special-category data must not gate a job or a home (anti-discrimination).
   employment: { forbidTypes: ['coded'], forbidKeys: ['health', 'ageBand', 'pregnancy', 'ethnicity', 'religion'], warnKeys: [] },

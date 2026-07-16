@@ -18,6 +18,12 @@ import { TombstoneStore } from '../TombstoneStore.js';
 
 const DEFAULT_PREFIX = 'canopy:tombstones:';
 
+/**
+ * React Native `TombstoneStore` backed by `@react-native-async-storage/async-storage`.
+ * Each tombstone is stored as its own key — `<prefix><uri>` → JSON `{ at }` — so `add`/`has`/`remove`
+ * never read a whole index. The AsyncStorage module can be passed in via `{ asyncStorage }` or is
+ * dynamic-imported from the host app's `node_modules` on first use.
+ */
 export class AsyncStorageTombstones extends TombstoneStore {
   #prefix;
   #storage;

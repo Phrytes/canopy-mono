@@ -276,4 +276,9 @@
 
 // Empty export so this is a real ES module.  Imports of
 // `@onderling/app-manifest/schema` (and `import './schema.js'`) resolve cleanly.
+/**
+ * Deliberate typedef-carrier marker — the module's only runtime export, always `true`. `schema.js`
+ * exists for its JSDoc `@typedef`s (doc/IDE artefacts, no runtime validation); this constant makes
+ * the file a real ES module so imports of the schema subpath resolve cleanly.
+ */
 export const __types__ = true;

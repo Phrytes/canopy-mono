@@ -23,6 +23,19 @@
 import { resolveAtom, resolveCapability } from './capabilities.js';
 import { canonicalAtom } from './atoms.js';
 
+/**
+ * Invoke a manifest capability by its ATOM + NOUN instead of its bespoke op-id. `resolveAtom` maps
+ * the (atom × noun) pair to an op-id against the manifest's capability surface (alias atoms are
+ * canonicalised first); the caller-supplied `dispatch(opId, args)` then runs the existing handler.
+ * Pure and transport/reply-shape-agnostic — it routes to per-op handlers, it does not replace them.
+ *
+ * @param {object} manifest — the app manifest whose capability surface is consulted.
+ * @param {{atom:string, noun:string, args?:object}} cap — the capability call.
+ * @param {(opId:string, args:object) => any|Promise<any>} dispatch — runs the resolved op.
+ * @returns {Promise<{ok:true, opId:string, result:any} |
+ *   {ok:false, code:'unimplemented'|'no-dispatch', atom?:string, noun?:string, opId?:string}>}
+ *   `unimplemented` = no op implements the (atom × noun); `no-dispatch` = `dispatch` was missing.
+ */
 export async function dispatchAtom(manifest, { atom, noun, args = {} } = {}, dispatch) {
   const opId = resolveAtom(manifest, atom, noun);
   if (!opId) return { ok: false, code: 'unimplemented', atom: canonicalAtom(atom), noun };

@@ -44,6 +44,16 @@ const TIERS    = ['public', 'authenticated', 'trusted', 'private'];
 const POSTURES = ['always', 'negotiable'];
 const HITL     = ['never', 'either', 'required'];
 
+/**
+ * Validate a skill definition and normalise it into a complete SkillDefinition.
+ * Fills defaults for every optional field (visibility 'authenticated', policy
+ * 'on-request', posture 'always', humanInTheLoop 'never', enabled true) and throws
+ * on an invalid id, handler, visibility, posture, or humanInTheLoop value.
+ * @param {string} id — non-empty skill identifier
+ * @param {Function} handler — async ({ parts, from, envelope }) => Part[] | any
+ * @param {object} [opts] — optional SkillDefinition fields (see typedef above)
+ * @returns {SkillDefinition}
+ */
 export function defineSkill(id, handler, opts = {}) {
   if (!id || typeof id !== 'string') throw new Error('defineSkill: id must be a non-empty string');
   if (typeof handler !== 'function') throw new Error(`defineSkill "${id}": handler must be a function`);

@@ -123,6 +123,14 @@ export function _setSessionFactory(factory) {
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * Solid OIDC session manager for Node — despite the name, not itself a `Vault`; it persists its
+ * tokens into a Vault-shaped store under `solid-oidc:<webid>:*` (refresh token in the vault,
+ * access token in memory only). Delegates the OIDC flow to `@inrupt/solid-client-authn-node`'s
+ * `Session`; `getAuthenticatedFetch()` transparently refreshes when the access token is within
+ * 60s of expiry, coalescing concurrent refreshes onto one in-flight promise. Emits `'auth-state'`
+ * with `'authenticated'` | `'unauthenticated'` | `'refreshed'` | `'expired'`.
+ */
 export class SolidVault extends EventEmitter {
   #webid;
   #oidcIssuer;

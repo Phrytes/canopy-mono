@@ -94,6 +94,13 @@ async function bodyToBytes(body) {
   return new TextEncoder().encode(String(body));
 }
 
+/**
+ * `Auth` for apps holding a signed `PodCapabilityToken` issued by the user's agent. Two modes:
+ * `'pod-direct'` presents the serialized token as a Bearer header; `'agent-proxy'` ships every
+ * request back to the issuing device via the injected `invoke` callback — auth-bearing headers
+ * are stripped and a request body over `maxBodyBytes` is refused before anything is sent.
+ * An unknown mode throws an `AuthError` (`AUTH_MODE_NOT_SUPPORTED`).
+ */
 export class CapabilityAuth extends Auth {
   /** @type {PodCapabilityToken|null} */
   #token = null;

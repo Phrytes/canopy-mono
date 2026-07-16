@@ -14,6 +14,11 @@
 import { Auth }      from './Auth.js';
 import { AuthError } from '../Errors.js';
 
+/**
+ * OIDC-session `Auth` for the user's own agent: wraps a `SolidVault` (or anything exposing
+ * `getAuthenticatedFetch()`) and hands its session-bound fetch to `PodClient`. `getAuthHeaders()`
+ * always throws — Solid OIDC needs per-request DPoP-style proofs, not static headers.
+ */
 export class SolidOidcAuth extends Auth {
   /** @type {object} — wrapped SolidVault instance */
   #vault;

@@ -26,6 +26,10 @@ import { AgentIdentity }        from '../identity/AgentIdentity.js';
 import { canonicalize }          from '../Envelope.js';
 import { encode as b64encode }   from '../crypto/b64.js';
 
+/**
+ * Version (`v` field) of the signed reachability-claim body. Signing writes it;
+ * `verifyReachabilityClaim` rejects any other version.
+ */
 export const CLAIM_VERSION = 1;
 
 /** Sane consumer-side defaults. Callers can pass their own limits. */

@@ -21,6 +21,13 @@ import { childIdsOf } from './containment.js';
 
 const defaultRender = (item) => ({ label: item?.text ?? item?.title ?? item?.id });
 
+/**
+ * Recursively project a container item and its contained children (via the item's `embeds` child
+ * refs) into a nested render tree: `{ ...item, ...renderFor(item), children: [...] }`. Pure data
+ * projection — cycles are broken with a seen-set, refs to missing/deleted items are skipped, and
+ * recursion is bounded by `opts.maxDepth` (default 6). `renderFor` defaults to
+ * `{ label: text ?? title ?? id }`. Resolves to `null` when the container itself is absent.
+ */
 export async function projectContainer(store, containerId, opts = {}) {
   const renderFor = typeof opts.renderFor === 'function' ? opts.renderFor : defaultRender;
   const maxDepth  = Number.isInteger(opts.maxDepth) ? opts.maxDepth : 6;

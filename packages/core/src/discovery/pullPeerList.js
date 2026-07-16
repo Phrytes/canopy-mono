@@ -16,6 +16,16 @@
  */
 import { Parts } from '../Parts.js';
 
+/**
+ * Ask a direct peer for its 'peer-list' and merge the returned cards into the
+ * PeerGraph as indirect records (hops:1, via the direct peer). Skips our own key,
+ * the direct peer itself, and any record that is already direct (hops:0).
+ * @param {import('../Agent.js').Agent} agent
+ * @param {string} directPeerPubKey
+ * @param {object} [opts]
+ * @param {number} [opts.timeout=5000]
+ * @returns {Promise<number>} number of records upserted; 0 when the peer is unreachable
+ */
 export async function pullPeerList(agent, directPeerPubKey, opts = {}) {
   if (!agent?.peers || !directPeerPubKey) return 0;
 

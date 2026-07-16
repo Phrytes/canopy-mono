@@ -117,6 +117,12 @@ function _deletePath(obj, path) {
 
 // ── AgentConfig ───────────────────────────────────────────────────────────────
 
+/**
+ * Layered runtime configuration store. Deep-merges defaults → blueprint → file →
+ * developer overrides into a static baseline at construction; `set()` adds runtime
+ * overrides on top (highest priority) and emits 'changed', `reset()` reverts a path
+ * back to the baseline. Values are read by dot-path via `get()`.
+ */
 export class AgentConfig extends Emitter {
   #static;    // merged defaults + blueprint + file + overrides (immutable baseline)
   #runtime;   // runtime set() overrides (plain object, sparse)

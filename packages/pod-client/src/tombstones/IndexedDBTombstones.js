@@ -12,6 +12,10 @@ import { TombstoneStore } from '../TombstoneStore.js';
 const DEFAULT_DB_NAME    = 'canopy-pod-client';
 const DEFAULT_STORE_NAME = 'tombstones';
 
+/**
+ * Browser-side `TombstoneStore` backed by IndexedDB: a single object store keyed by `uri`, value
+ * `{ at: number }`. Throws on first operation (`add`/`has`/...) when `indexedDB` is unavailable.
+ */
 export class IndexedDBTombstones extends TombstoneStore {
   #dbName;
   #storeName;

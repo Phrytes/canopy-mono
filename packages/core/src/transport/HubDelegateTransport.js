@@ -39,6 +39,12 @@ import { Transport } from './Transport.js';
  *   Optional teardown; called on `disconnect()`.
  */
 
+/**
+ * Transport that delegates all wire I/O to a duck-typed Hub binder — any object with
+ * `send(to, envelope)` and `onIncoming(callback)` (plus optional `close()`). Outbound
+ * envelopes go to `binder.send`; inbound envelopes from the binder are fed into
+ * `_receive`. Core stays ignorant of what the Hub actually is (AIDL on RN, fake in tests).
+ */
 export class HubDelegateTransport extends Transport {
   /** @type {HubBinder} */
   #binder;
