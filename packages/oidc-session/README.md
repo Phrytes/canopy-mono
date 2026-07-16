@@ -6,6 +6,10 @@
 > the standardisation P1 work (Phase 50.1 — see
 > `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`).
 
+```
+npm install @onderling/oidc-session
+```
+
 ## What's in here
 
 - **`SolidVault`** — Node-side Solid OIDC session manager. Delegates the
@@ -171,3 +175,9 @@ but not yet implemented.
   — design context.
 - `Project Files/Inrupt-migration/`
   — Solid-auth consolidation (Phase 52.15 + 52.16).
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/oidc-session`).

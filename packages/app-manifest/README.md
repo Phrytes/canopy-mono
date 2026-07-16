@@ -8,6 +8,10 @@
 
 ---
 
+```
+npm install @onderling/app-manifest
+```
+
 ## What this is
 
 An app declares its surface once, as data, in a `Manifest`:
@@ -183,3 +187,9 @@ renderSlash(manifest) → { parse(text) → null | Call | Call[] }
 - **SP-1** — household cutover (byte/behaviour-equivalence gate).
 - See `CODING-uniforme-representatie.md` + `PLAN-uniforme-representatie.md`
   in the repo root for the full plan and the frozen contract.
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/app-manifest`).

@@ -11,6 +11,10 @@ core's `ActorResolver` interface so `PolicyEngine` +
 
 ---
 
+```
+npm install @onderling/agent-registry
+```
+
 ## Quick start
 
 ```js
@@ -129,3 +133,9 @@ work), the agent-registry substrate gets concurrency for free.
 - **WebID profile patching.** Pointer predicates on the user's WebID
   profile (`dec:agent-registry-uri`) are wired by
   `@onderling/pod-onboarding` (Phase 52.5).
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/agent-registry`).

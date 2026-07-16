@@ -15,6 +15,10 @@ the **pseudo-pod is the universal baseline**: a real pod is a
 
 ---
 
+```
+npm install @onderling/pseudo-pod
+```
+
 ## Status: V0
 
 V0 (this release):
@@ -289,3 +293,9 @@ packages/pseudo-pod/
     ├── PseudoPod.standalone.test.js
     └── PseudoPod.replicationRing.test.js
 ```
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/pseudo-pod`).

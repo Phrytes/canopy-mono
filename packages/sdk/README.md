@@ -11,6 +11,10 @@ the facade, never back in `@onderling/core`.
 Every sub-path below is a real entry in `package.json` `exports`. Nothing
 here is aspirational; if a symbol isn't in the code it isn't documented.
 
+```
+npm install @onderling/sdk
+```
+
 ## The three import levels
 
 ### Level 2 — batteries included (`@onderling/sdk/high`)
@@ -163,3 +167,9 @@ that whole stack — the low levels
 re-export the kernel and adapters; the high level adds the opinionated
 helpers. Full detail:
 [`docs/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/sdk`).

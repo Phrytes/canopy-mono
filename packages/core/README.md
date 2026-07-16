@@ -24,6 +24,10 @@ and `ARCHITECTURE.md`.
 
 ---
 
+```
+npm install @onderling/core
+```
+
 ## Layers
 
 The codebase is layered top-down:
@@ -108,3 +112,9 @@ Test files live under `test/` and end in `.test.js`.  Vitest.
 - `ARCHITECTURE.md` — code map across all
   three packages.
 - `coding-plans/` — current work tracks.
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/core`).

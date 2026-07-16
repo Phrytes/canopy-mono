@@ -10,6 +10,10 @@
 > its own substrate keeps the dependency direction clean:
 > `apps → substrates → core` — core never imports a substrate.
 
+```
+npm install @onderling/vault
+```
+
 ## What's in here
 
 The Vault family of identity / token storage:
@@ -103,3 +107,9 @@ npm test
   registers user agents; consumes the agent registry pod resource.
 - `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   §5b — design context.
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/vault`).

@@ -12,6 +12,10 @@ rule-of-two policy.
 
 ---
 
+```
+npm install @onderling/item-store
+```
+
 ## Install
 
 Within the monorepo:
@@ -245,3 +249,9 @@ the existing storage layer retires.
 - `Project Files/Substrates/policies.md` — rule-of-two + versioning.
 - `Project Files/Substrates/apps/H2-household.md` — primary consumer.
 - `Project Files/Substrates/apps/H4-tasks.md` — secondary consumer.
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/item-store`).

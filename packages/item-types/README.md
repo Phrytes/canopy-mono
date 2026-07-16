@@ -13,6 +13,10 @@ This package is a **substrate** — it has no runtime dependency on
 
 ---
 
+```
+npm install @onderling/item-types
+```
+
 ## Why a shared taxonomy
 
 Three apps (Tasks, Stoop, Folio) all want to refer to the same kinds of
@@ -257,3 +261,9 @@ packages/item-types/
     ├── registry.test.js
     └── canonical.test.js
 ```
+
+## Status
+
+`0.x` — pre-1.0; the API may move between minor versions. Versioned with
+changesets. Source: [github.com/Onderling/basis](https://github.com/Onderling/basis)
+(`packages/item-types`).
