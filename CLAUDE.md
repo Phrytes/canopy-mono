@@ -1,4 +1,4 @@
-# CLAUDE.md — canopy monorepo
+# CLAUDE.md — the basis monorepo (org: Onderling)
 
 Architecture-enforcement instructions for agents working here. **The model is settled; your job is to keep
 the _code_ matching the _model_.** The recurring failure in this repo is drift — duplicated locales, mobile
@@ -30,18 +30,18 @@ file only helps if it's written to.
 ## Invariants — a violation is a bug, not a style nit
 1. **Logic lives once, in shared code.** Web/mobile shells are **thin adapters/projectors**: platform UI +
    the transport/bundle adapter, *nothing else*. A shell must NOT carry dispatch / resolution / routing
-   logic — that lives in shared `src/` (canopy-chat) or a substrate package. Writing logic in a shell that
+   logic — that lives in shared `src/` (the basis app) or a substrate package. Writing logic in a shell that
    already exists in shared code → STOP and call the shared one. (This is exactly what the four "duplicated
-   pairs" violated; see `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.)
+   pairs" violated; see `apps/basis/docs/web-mobile-consolidation-plan.md`.)
 2. **web ≡ mobile.** Neither platform is the "primitive" one. A shared string/op/behaviour must exist in
    BOTH — ideally **by construction** (one shared source both merge), not copied. New shared work lands in
    `src/`; each shell injects only its adapter.
 3. **No duplication.** A string/op/function is defined ONCE. Editing the same thing in two files (e.g. a
    locale key in the web *and* mobile bundle) is the signal to consolidate — then add a guard so it can't
-   recur. (`circle.*` locale is now one shared source `apps/canopy-chat/src/locales/`; do the same for the rest.)
+   recur. (`circle.*` locale is now one shared source `apps/basis/src/locales/`; do the same for the rest.)
 4. **The manifest is the source of truth for surfaces.** Add an op/surface to `manifest.js`, never a
    per-shell switch statement. After any manifest change, regenerate + commit the coverage snapshot
-   (`npm run coverage` in `apps/canopy-chat` → `docs/surface-coverage.md`).
+   (`npm run coverage` in `apps/basis` → `docs/surface-coverage.md`).
 5. **Three-layer dependency invariant:** `apps/` → `packages/{substrates}` → `packages/core` (the **kernel** —
    a lean set of ports + kernel logic). Concrete adapters live *outside* the kernel (`@onderling/transports`,
    `@onderling/pod-client`, `@onderling/vault`); nothing in the kernel depends *up* on an adapter. The dev-facing
@@ -71,7 +71,7 @@ Project-wide rules beyond the invariants — concise here, full detail in [`docs
 - **Prefer a fitness function to a manual check.** When you fix drift, add the test/lint that makes the same
   drift FAIL CI next time. This is the roadmap's step 0 — see `REMAINING-WORK.md` "★ Architectural spine".
 - **New functionality = add a manifest + projectors**, not a new app silo. Apps are dissolving into
-  canopy-chat: their `manifest.js` stays the source of truth, the app *name* becomes a nav/reference label.
+  the basis app: their `manifest.js` stays the source of truth, the app *name* becomes a nav/reference label.
 - **Ship web first, then mobile** as separate steps/commits; don't bundle both platforms in one commit.
 - **Verify the RESULT, not just the dispatch** — check the skill's return value, not only that a command
   fired (the device-run lesson; a gate can route while the op silently fails).
@@ -87,7 +87,6 @@ Project-wide rules beyond the invariants — concise here, full detail in [`docs
 - **Per-app truth:** `apps/<app>/manifest.js` + app-local CHANGELOGs + `apps/*/docs/`.
 - **The architecture, in depth:** [`docs/architecture.md`](docs/architecture.md); overview in `README.md`
   ("One manifest, every surface" + "three layers"); web/mobile detail in
-  `apps/canopy-chat/docs/web-mobile-consolidation-plan.md`.
+  `apps/basis/docs/web-mobile-consolidation-plan.md`.
 
-*(This file will be re-scoped when the repo splits — clients vs substrate/functionality vs feedback-app vs
-third-party-via-SDK; see the spine. The per-repo CLAUDE.md will narrow to that repo's slice of the waist.)*
+*The feedback app is split out (github.com/Onderling/feedback); the platform now ships as published `@onderling/*` npm packages consumed like any third party — the substrate seam is a package boundary, not a repo split (see `docs/decisions.md`). **Private paths** (`plans/`, `_archive/`, `PLAN-*`) are local-only by design; public contributors work from `docs/` — see `CONTRIBUTING.md`.)*

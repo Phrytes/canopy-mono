@@ -244,3 +244,26 @@ address per profile* — cross-circle correlation by any software.
 requires a per-circle **transport/rendezvous** address (a phased follow-on at the relay layer — the key layer alone
 is necessary but not sufficient); migration is a pre-launch clean reset (no dual-mode). Builds on existing
 primitives (`Bootstrap`, `AgentIdentity`, HKDF, `restoreFromMnemonic`) — no new cryptography.
+
+---
+
+## 2026-07-16 — Publish from the monorepo; the clients-vs-substrate repo split is superseded
+
+**Decision.** The platform ships as versioned `@onderling/*` npm packages published *from this
+monorepo*. The earlier plan (2026-06-13) to physically split the repo into thin **clients** vs a
+**substrate/functionality** repo is **not pursued**; publishing achieves the same seam without it.
+
+**Why.** A repo boundary is an *organizational* boundary (Conway's law). The feedback split was
+justified by a real one — its own product identity and first external tenant — and it happened
+(github.com/Onderling/feedback). No such boundary exists between "platform" and "clients": the same
+person edits `@onderling/core` and the basis app in one change; a repo split would turn every such
+change into a publish-bump-consume loop. The substrate seam is now *more* real than the split
+imagined — a stranger can `npm install @onderling/sdk` — enforced by the manifest contract, the
+package boundary, and pod ACPs, with the feedback repo as the permanent external canary.
+
+**Reversible by.** Organizational pressure, not architecture: external platform contributors who
+should not wade through app code, a second serious tenant needing platform stability at a different
+cadence, or governance placing the platform under different rules. The `filter-repo` mechanics are
+proven (twice), so a later split stays a cheap afternoon. Standing policy: every package publishes
+eventually, in waves, when its API settles. Supersedes the "clients/substrate" carve in the former
+`REMAINING-WORK.md` "Architectural spine"; the gated `kring-host` carve follows the same logic.
