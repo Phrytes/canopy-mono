@@ -11,7 +11,7 @@ hands it to `callSkill`; an app's **`manifest.js` is the single contract**, and 
 (`renderChat` · `renderSlash` · `renderGate` · `renderWeb` · `renderMobile`) turn that one declaration into
 every surface. AI and GUI are **peer compilers to the waist** — neither is privileged. The functionality the
 op names resolves *wherever it lives*: a local handler · an external agent · a model · the Solid pod · an MCP
-service · a scheduled job. Interfaces are pass-throughs (`doorgeefluik`); the manifest is the contract; the
+service · a scheduled job. Interfaces are pass-throughs; the manifest is the contract; the
 substrate is the functionality.
 
 > The model is right. **Make the architecture self-enforcing** so it stays right.

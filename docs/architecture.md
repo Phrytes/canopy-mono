@@ -6,7 +6,7 @@ you need to *understand the whole system* — why it's shaped this way, and how 
 
 **The model in one sentence.** Every interface — AI, GUI, slash command, deterministic gate — compiles to the
 same `{opId, args}` and hands it to `callSkill`; an app's `manifest.js` is the single contract, and pure
-projectors turn that one declaration into every surface. Interfaces are pass-throughs (*doorgeefluik*); the
+projectors turn that one declaration into every surface. Interfaces are pass-throughs (*pass-through*); the
 manifest is the contract; the functionality the op names resolves *wherever it lives*.
 
 **How this document is organised.** Five parts, front to back — the model, then how it runs, then the domain
@@ -42,7 +42,7 @@ intermediate is the **thin waist**.
 Two consequences follow from the waist, and they are the whole architecture:
 
 1. **Interfaces are peer compilers, not privileged front-ends.** AI and GUI both *compile to* `{opId, args}`;
-   neither owns the logic. They are pass-throughs — *doorgeefluik*. Adding a surface never means adding a
+   neither owns the logic. They are pass-throughs — *pass-through*. Adding a surface never means adding a
    `switch` over apps; it means projecting the manifest onto that surface.
 2. **Where an op resolves is a separate axis from how it was invoked.** `callSkill` runs the op; the
    functionality it names can live *anywhere* — a local handler, an external agent, a model, the user's Solid
