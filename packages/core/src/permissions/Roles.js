@@ -40,6 +40,7 @@ const STANDARD_ROLE_SET = new Set(Object.values(ROLES));
 const customRanks = new Map();
 
 /**
+ * Whether the given role id is one of the five standard roles.
  * @param {string} role
  * @returns {boolean} true if role is one of the five standard roles.
  */
@@ -48,6 +49,8 @@ export function isStandardRole(role) {
 }
 
 /**
+ * Numeric rank of a standard or registered custom role (higher = more
+ * privileged); undefined for unknown roles.
  * @param {string} role
  * @returns {number|undefined} numeric rank, or undefined for unknown roles.
  */
@@ -60,6 +63,7 @@ export function roleRank(role) {
 }
 
 /**
+ * Whether the role id is recognised — a standard role or a registered custom role.
  * @param {string} role
  * @returns {boolean} true if role is recognised (standard or registered custom).
  */
@@ -144,6 +148,7 @@ export function canPromote(actorRole, targetRole) {
 }
 
 /**
+ * All known role ids (standard + registered custom), sorted by rank descending.
  * @returns {string[]} all known role ids (standard + custom), sorted by
  * rank descending.
  */

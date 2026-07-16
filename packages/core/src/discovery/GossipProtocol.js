@@ -13,6 +13,13 @@
 import { Parts }                      from '../Parts.js';
 import { verifyReachabilityClaim }     from '../security/reachabilityClaim.js';
 
+/**
+ * Periodic peer-list exchange with one randomly chosen reachable peer per round
+ * (tier 'authenticated' or higher; unknown tier is included optimistically).
+ * Each round invokes the peer's 'peer-list' skill, feeds returned discoverable
+ * cards to PeerDiscovery.discoverByIntroduction, and pulls the peer's signed
+ * reachability claim into the PeerGraph oracle fields.
+ */
 export class GossipProtocol {
   #agent;
   #peerGraph;

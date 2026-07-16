@@ -18,6 +18,7 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 import { isVocabKey } from './vocabulary.js';
 
 // Proposed cap (adjustable per real cohort sizes — see the spec's open details).
+/** Maximum number of (coarse) attributes one charter may request — keeps the joint value space small. */
 export const CHARTER_MAX_ATTRIBUTES = 3;
 
 /**

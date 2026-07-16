@@ -52,6 +52,23 @@
  */
 import { wireSkill } from './wireSkill.js';
 
+/**
+ * The shared manifest-op → core → `wireSkill` loop: for each op in `operations`, look its core up
+ * in `cores`, wrap it with `wireSkill(core, op, { storeFor })`, and emit `{ id, handler,
+ * visibility }` for the caller to `agent.register`. Zero-node module; op selection and ordering are
+ * the caller's job — pass `operations` already narrowed to exactly the ops to wire.
+ *
+ * @param {object} args
+ * @param {Array<object>} args.operations — the manifest ops to wire, already filtered/ordered.
+ * @param {Record<string, Function>} args.cores — `{ opId: coreFn }` pure cores.
+ * @param {(ctx: object) => any} args.storeFor — resolves the scope store (passed to `wireSkill`).
+ * @param {boolean} [args.requireCore=true] — throw when an op has no core (the anti-drift guard);
+ *   when false, coreless ops are skipped.
+ * @param {(op: object) => (string|undefined)} [args.visibilityFor] — per-op visibility resolver;
+ *   defaults to the op's own `op.visibility`.
+ * @param {string} [args.label='buildSkillsFromManifest'] — error-message prefix naming the builder.
+ * @returns {Array<{ id: string, handler: Function, visibility?: string }>}
+ */
 export function buildSkillsFromManifest({
   operations,
   cores,

@@ -20,6 +20,10 @@ function normalizeMember(m) {
 }
 
 /**
+ * Create the household control-agent: applies pod ACL grant/revoke AND group-key rotation together
+ * on membership events, so join/leave is a single operation. Enforces that at least one admin
+ * remains (`force` bypasses); pure orchestration — pod I/O is injected via `sharing` + `keyStore`.
+ *
  * @param {object} a
  * @param {{ grant: Function, revoke: Function }} a.sharing       ACL grant/revoke (createClientSharing)
  * @param {string} a.containerUri                                 the circle's shared container

@@ -83,9 +83,14 @@ const fileFor = (dir, key) =>
   join(dir, createHash('sha256').update(key).digest('hex') + '.json');
 
 /**
+ * Create a persistent `StorageBackend` backed by the Node filesystem: one JSON record per key
+ * (`sha256(key).json` under `dir`, atomic write-to-tmp-then-rename) with `MemoryBackend`-identical
+ * get/put/delete/list + subscribe semantics. Values round-trip binary (Uint8Array/ArrayBuffer are
+ * tagged for JSON) and the `_v` counter survives restart; subscriptions and the dirty-set are
+ * in-process only. Node-only — the single `node:`-coupled file in this package.
+ *
  * @param {object} opts
- * @param {string} opts.dir — directory the records live in (created on
- *   first write).
+ * @param {string} opts.dir — directory the records live in (created on first write).
  * @returns {import('./StorageBackend.js').StorageBackend & { _size: () => Promise<number> }}
  */
 export function createNodeFsBackend({ dir } = {}) {

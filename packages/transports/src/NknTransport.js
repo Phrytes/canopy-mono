@@ -15,6 +15,12 @@
 import { Transport, b64encode } from '@onderling/core';
 import { log } from '@onderling/logger';
 
+/**
+ * NKN network `Transport` wrapping `nkn-sdk`'s Client. The NKN address is derived from the
+ * identity's Ed25519 seed, so it is deterministic per keypair. Pass the library as `nknLib`
+ * (browser/CDN) or let `connect()` dynamic-import it (Node). Includes robustness handling for
+ * slow connects: transient send retries, a soft warning, and a hard timeout with seedless retry.
+ */
 export class NknTransport extends Transport {
   #client    = null;
   #nknLib    = null;

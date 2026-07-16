@@ -16,6 +16,11 @@ const DEFAULT_MAX_RETRIES = 3;
 const DEFAULT_BACKOFF_MS  = [10, 50, 200];
 
 /**
+ * Run one read → mutate → write cycle under etag compare-and-swap, retrying on `CONFLICT` with a
+ * short backoff (10/50/200 ms) up to `maxRetries` (default 3). Mutation errors propagate verbatim;
+ * after retries are exhausted, `onPersistentConflict` fires and a `PERSISTENT_CONFLICT` error is
+ * thrown.
+ *
  * @param {object} args
  * @param {() => Promise<{body: object, etag?: string | null}>} args.readCurrent
  * @param {(current: object, etag: string | null) => Promise<object> | object} args.mutate
@@ -23,6 +28,8 @@ const DEFAULT_BACKOFF_MS  = [10, 50, 200];
  * @param {(body: object, etag: string | null) => Promise<{etag?: string}>} args.writeNext
  *   — returns the new etag. Throws `{code: 'CONFLICT'}` on 412.
  * @param {number}    [args.maxRetries=3]
+ * @param {number[]}  [args.backoffMs=[10, 50, 200]]  — per-attempt retry delays; the last entry
+ *   repeats when attempts outnumber entries.
  * @param {(error: Error) => void} [args.onPersistentConflict]
  * @param {(ms: number) => Promise<void>} [args.sleep]
  *

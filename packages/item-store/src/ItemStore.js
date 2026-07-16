@@ -45,6 +45,15 @@ const MIN_PREFIX_LEN = 6;
 const ITEMS_DIR = 'items';
 const AUDIT_DIR = 'audit';
 
+/**
+ * Item/task store over an injected `core.DataSource`, persisting item state under
+ * `<rootContainer>/items/` and an append-only audit log under `<rootContainer>/audit/`. Offers
+ * CRUD (`addItems` / `update` / `removeItems` / `getById` / `listOpen` / `listClosed`), lifecycle
+ * verbs (`claim` / `reassign` / `markComplete` / `submit` / `approve` / `reject` / `revoke`) gated
+ * by the injected role policy, and cross-store sync ingestion (`applySync` / `removeSync`).
+ * Extends core `Emitter` and emits per-action item events. See the module doc for the per-field
+ * merge contracts.
+ */
 export class ItemStore extends Emitter {
   /** @type {import('@onderling/core').DataSource} */
   #source;

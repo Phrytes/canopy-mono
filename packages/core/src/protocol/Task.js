@@ -26,6 +26,13 @@
  */
 import { Emitter } from '../Emitter.js';
 
+/**
+ * A2A-compatible state machine for a single skill invocation.
+ * Tracks submitted → working → terminal transitions (completed / failed /
+ * cancelled / expired, with input-required round-trips), buffers streaming chunks
+ * for stream(), and gives callers done(), cancel(), and send(). Emits 'done',
+ * 'failed', 'cancelled', 'expired', 'input-required', and 'stream-chunk'.
+ */
 export class Task extends Emitter {
   // ── State ────────────────────────────────────────────────────────────────
   #taskId;

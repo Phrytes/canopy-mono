@@ -10,6 +10,11 @@
  */
 import { Vault } from './Vault.js';
 
+/**
+ * Browser `Vault` over `localStorage`, namespacing keys under `prefix` (default `'dwag:'`).
+ * Values are stored as plaintext strings; a custom `Storage` (e.g. sessionStorage or a mock) can
+ * be injected. Throws at construction when no storage is available (browser only).
+ */
 export class VaultLocalStorage extends Vault {
   #prefix;
   #storage;

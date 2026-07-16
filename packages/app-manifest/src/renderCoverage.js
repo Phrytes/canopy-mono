@@ -25,10 +25,15 @@ const SURFACES = [
 ];
 
 /**
+ * Scan a manifest (or several) into the surface-coverage matrix: one row per op with a boolean per
+ * surface (chat / slash / gate / web-mobile screen / inline), read from the same `surfaces.*`
+ * declarations the projectors consume — plus per-surface totals. Pure and declaration-ordered.
+ *
  * @param {import('./schema.js').Manifest | import('./schema.js').Manifest[]} manifestOrList
  * @returns {{ surfaces: Array<{key:string,label:string}>,
- *            rows: Array<{app:string,op:string,verb:string,chat:boolean,slash:boolean,gate:boolean,screen:boolean,inline:boolean,gateVerbs:string[]}>,
- *            totals: Record<string,number> }}
+ *   rows: Array<{app:string, op:string, verb:string, chat:boolean, slash:boolean, gate:boolean,
+ *     screen:boolean, inline:boolean, gateVerbs:string[]}>,
+ *   totals: Record<string,number> }}
  */
 export function renderCoverage(manifestOrList) {
   const manifests = Array.isArray(manifestOrList) ? manifestOrList : [manifestOrList];

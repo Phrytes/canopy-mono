@@ -7,6 +7,11 @@
  */
 import { defineSkill, normaliseVisibility } from './defineSkill.js';
 
+/**
+ * Indexed store of SkillDefinitions, keyed by id. Registration is last-write-wins
+ * (replace() instead asserts the id already exists); forTier() and forCaller()
+ * answer visibility-aware queries and getByPosture() filters on posture metadata.
+ */
 export class SkillRegistry {
   /** @type {Map<string, import('./defineSkill.js').SkillDefinition>} */
   #skills = new Map();

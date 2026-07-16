@@ -524,6 +524,12 @@ import { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export const CREATIVE_VERBS = new Set(['add', 'register']);
 
 /**
+ * Render the web/mobile-surface projection of a manifest: a platform-neutral `NavModel`
+ * (`{ app, sections, globals }`, plus `pages` / `tabs` / `actions` keys only when the manifest
+ * declares them). Deterministic — sections follow `manifest.views` order, affordances follow
+ * `manifest.operations` order. `renderMobile` re-exports this function, so renderWeb ≡ renderMobile
+ * holds by construction. Throws when `manifest` is missing.
+ *
  * @param {object} manifest
  * @returns {NavModel}
  */

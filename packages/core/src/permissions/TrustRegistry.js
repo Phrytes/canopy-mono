@@ -19,6 +19,11 @@ export const TIER_LEVEL = Object.freeze({
   private:       3,
 });
 
+/**
+ * Vault-backed store of per-peer trust records ('trust:<pubKey>' → { tier, groups,
+ * tokenIds }). Unknown peers default to tier 'authenticated'. Used by PolicyEngine to
+ * resolve a caller's trust tier.
+ */
 export class TrustRegistry {
   #vault;
 

@@ -25,6 +25,13 @@ import { KNOWN_ISSUERS, DEFAULT_ISSUER_ID } from './issuers.js';
 
 const DEFAULT_PLACEHOLDER = 'https://my-pod.example/';
 
+/**
+ * Render the Solid OIDC issuer picker as a server-side HTML fragment: a `<fieldset>` of radio
+ * options for the known issuers plus an optional custom-URL row. Semantic markup only — no inline
+ * styles, no scripts; form names are scoped via `namePrefix` so multiple pickers can coexist.
+ * All options are documented in the file-header JSDoc above.
+ * @returns {string} the HTML fragment
+ */
 export function getIssuerPickerHtml({
   selectedId = DEFAULT_ISSUER_ID,
   customAllowed = true,

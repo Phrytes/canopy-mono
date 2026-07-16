@@ -64,6 +64,12 @@ import { DataPart }    from '../Parts.js';
  */
 
 /**
+ * Build a 'fetch-resource' skill definition backed by an injected read(uri)
+ * callback. Optional groupCheck/capCheck gates authorise each request (passing
+ * either allows it); with neither supplied the skill trusts the transport-level
+ * identity gate. The handler resolves to [DataPart({ uri, bytes, etag? })] and
+ * throws coded errors (INVALID_ARGUMENT, FORBIDDEN, NOT_READABLE, NOT_FOUND).
+ *
  * @param {object} opts
  * @param {(uri: string) => Promise<*|null>} opts.read
  *   Storage-backed reader. Returns the resource value (any shape) on hit,

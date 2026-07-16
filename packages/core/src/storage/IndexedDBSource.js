@@ -8,6 +8,12 @@
  */
 import { DataSource } from './DataSource.js';
 
+/**
+ * Browser DataSource persisting values in a single IndexedDB object store.
+ * The database is opened lazily on first operation; write() serialises
+ * Uint8Array/Buffer values to base64 strings. Browser-only — fails where
+ * IndexedDB is unavailable.
+ */
 export class IndexedDBSource extends DataSource {
   #dbName;
   #storeName;

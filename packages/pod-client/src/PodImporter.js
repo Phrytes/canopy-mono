@@ -18,6 +18,12 @@ import { __archive } from './PodExporter.js';
 
 const { ENC_INFO, decodeEntries, unframe, base64ToBytes } = __archive;
 
+/**
+ * Restores a portable archive produced by `PodExporter` into a (possibly different) Solid pod.
+ * Decrypts the archive via the supplied `Bootstrap` when it is encrypted, writes each entry under
+ * `podRoot`, and collects per-entry errors into the returned summary. ACL re-establishment is out
+ * of scope in v1 — only resource bytes are written.
+ */
 export class PodImporter {
   /** @type {object} */ #podClient;
   /** @type {string} */ #podRoot;

@@ -19,6 +19,11 @@ import { recipientStrategy, groupKeyStrategy, createSealedPodClient } from './Se
 import { readableGroupKeys } from './groupKeyResource.js';
 
 /**
+ * Map a circle's storage posture to a `SealedPodClient` strategy: p2 → group-key (cross-version
+ * reader when the key resource + a private key are given), p3 → recipient-wrap, p0/p1 → null
+ * (plaintext / enclave-side sealing). Fail-safe: returns null when required key material is
+ * missing or unwraps nothing, so callers fall back to a plain client instead of a broken seal.
+ *
  * @param {object} a
  * @param {'p0'|'p1'|'p2'|'p3'} a.posture
  * @param {object} [a.resource]                   for p2 — the retained group-key resource (current + history)

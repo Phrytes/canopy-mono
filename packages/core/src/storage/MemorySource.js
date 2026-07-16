@@ -4,6 +4,10 @@
  */
 import { DataSource } from './DataSource.js';
 
+/**
+ * In-memory DataSource backed by a plain Map. Non-persistent; query() JSON-parses
+ * string values and matches objects by exact field equality.
+ */
 export class MemorySource extends DataSource {
   #store = new Map();
 

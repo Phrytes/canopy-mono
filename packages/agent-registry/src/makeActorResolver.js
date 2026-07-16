@@ -15,6 +15,10 @@
  */
 
 /**
+ * Adapt an agent-registry handle into a core `ActorResolver`-shaped object whose async
+ * `resolve` / `register` / `revoke` delegate to the registry. Throws INVALID_ARGUMENT when the
+ * registry handle has no `lookup`.
+ *
  * @param {ReturnType<import('./AgentRegistry.js').createAgentRegistry>} registry
  * @returns {ActorResolver}
  */

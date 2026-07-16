@@ -12,6 +12,9 @@
 import { callWithHop } from './callWithHop.js';
 
 /**
+ * Invoke a skill on a peer through hop routing and await the terminal result.
+ * Thin facade over callWithHop: resolves to the result Part[] on success and
+ * throws when the task fails, is cancelled, or expires.
  * @param {import('../Agent.js').Agent} agent
  * @param {string}  targetPubKey
  * @param {string}  skillId

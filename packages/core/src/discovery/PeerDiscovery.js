@@ -14,6 +14,12 @@ import { DataPart } from '../Parts.js';
 import { PingScheduler }  from './PingScheduler.js';
 import { GossipProtocol } from './GossipProtocol.js';
 
+/**
+ * Coordinates peer acquisition across entry points: QR payloads, HTTPS agent-card
+ * URLs (stub), direct introductions, and group bootstrap lists. Constructs and
+ * starts/stops a PingScheduler and GossipProtocol, and registers the 'peer-list'
+ * responder skill on start().
+ */
 export class PeerDiscovery {
   #agent;
   #peerGraph;

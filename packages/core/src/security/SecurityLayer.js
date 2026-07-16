@@ -27,6 +27,10 @@ const DEDUP_TTL_MS     = 10 * 60 * 1_000;  // match replay window
 
 // ── Error ──────────────────────────────────────────────────────────────────
 
+/**
+ * Frozen map of SecurityError codes — one per inbound envelope validation failure
+ * (missing/bad signature, replay window, duplicate, unknown peer, decrypt failure).
+ */
 export const SEC = Object.freeze({
   MISSING_SIG:       'MISSING_SIG',
   REPLAY_WINDOW:     'REPLAY_WINDOW',
@@ -37,6 +41,10 @@ export const SEC = Object.freeze({
   DECRYPT_FAILED:    'DECRYPT_FAILED',
 });
 
+/**
+ * Error thrown when an envelope fails a security check. Carries a machine-readable
+ * `code` (one of the SEC constants) alongside the human-readable message.
+ */
 export class SecurityError extends Error {
   constructor(code, message) {
     super(message);
@@ -47,6 +55,13 @@ export class SecurityError extends Error {
 
 // ── SecurityLayer ──────────────────────────────────────────────────────────
 
+/**
+ * Per-agent envelope crypto: `encrypt()` boxes + signs outbound envelopes and
+ * `decryptAndVerify()` validates inbound ones (replay window, dedup, signature, decrypt).
+ * Peer pubkeys are auto-registered from HI envelopes; HI itself is signed but plaintext.
+ * Also tracks key-rotation grace state so envelopes to/from a recently rotated key
+ * still validate, and can attach an inline rotation proof to outbound envelopes.
+ */
 export class SecurityLayer {
   /** @type {import('../identity/AgentIdentity.js').AgentIdentity} */
   #identity;

@@ -31,6 +31,7 @@ import { normaliseProperties } from './profileProperties.js';
 
 // v3 (identity step 2) — added per-profile `properties` (own/inherit graph) + `ownerFingerprint`
 // (the owner-root binding). Additive + forward-compatible: v2 entries simply lack them (→ {} / null).
+/** Current agent-registry wire-format version (v3 = v2 + per-profile `properties` + `ownerFingerprint`). */
 export const RESOURCE_VERSION = 3;
 
 /**

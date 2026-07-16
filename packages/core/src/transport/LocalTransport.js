@@ -13,6 +13,12 @@
  */
 import { Transport } from './Transport.js';
 
+/**
+ * WebSocket transport to a localhost relay-style server, addressed by port, Unix
+ * socket path, or full ws:// URL. Registers its address on open and feeds inbound
+ * 'message' frames to `_receive`. No auto-reconnect: when the connection drops it
+ * emits 'disconnect' and must be reconnected manually.
+ */
 export class LocalTransport extends Transport {
   #ws          = null;
   #url;

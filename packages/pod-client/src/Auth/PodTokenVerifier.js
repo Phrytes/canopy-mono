@@ -95,6 +95,10 @@ function scopeCovered(scopes, requiredScope) {
 }
 
 /**
+ * Build a deny-by-default verifier for `PodCapabilityToken`s: checks shape, signature/expiry/pod
+ * binding, issuer trust, scope coverage, and revocation in order, resolving to the verified actor
+ * `{ subject, scopes, expiresAt, issuer, id }` — or null on ANY failure (errors never propagate).
+ *
  * @param {object} [opts]
  * @param {(issuer:string)=>Promise<boolean>|boolean} [opts.isTrusted]
  *        — issuer-trust predicate; the owner-issued model passes
@@ -183,6 +187,14 @@ export function createPodTokenVerifier({
  */
 const OP_TO_ACTION = { read: 'read', list: 'read', write: 'write', delete: 'delete' };
 
+/**
+ * Map a pod request `(op, path)` to the required scope string checked by the verifier:
+ * `read`/`list` → `pod.read:<path>`, `write` → `pod.write:<path>`, `delete` → `pod.delete:<path>`.
+ * The path is passed through verbatim; throws on an unknown op or a non-string/empty path.
+ * @param {'read'|'list'|'write'|'delete'} op
+ * @param {string} path — pod-relative resource path (e.g. `/notes/recipes.md`)
+ * @returns {string} the required scope string
+ */
 export function scopeForRequest(op, path) {
   const action = OP_TO_ACTION[op];
   if (!action) throw new Error(`scopeForRequest: unknown op '${String(op)}'`);

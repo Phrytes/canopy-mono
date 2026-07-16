@@ -34,10 +34,17 @@
 const QUEUE_PREFIX = '__write-through__/';
 
 /**
+ * Create the cache-mode write-through queue. Entries persist directly on the `backend` under the
+ * `__write-through__/` prefix (so they survive restart when the backend does, and never fan out to
+ * peers) and are ordered by `(queuedAt, seq)`. `drain({ uploadFn, onSuccess? })` uploads entries in
+ * order, deleting each on success, and stops on the first failure so the next drain retries there.
+ *
  * @param {object} opts
- * @param {object} opts.backend
- * @param {() => string} [opts.now]
- * @param {() => string} [opts.makeId]
+ * @param {object} opts.backend — the StorageBackend the queue records live on (required).
+ * @param {() => string} [opts.now] — injectable ISO-timestamp clock (tests).
+ * @param {() => string} [opts.makeId] — injectable entry-id factory (tests).
+ * @returns {{ enqueue: Function, list: Function, remove: Function, drain: Function,
+ *   size: Function, clear: Function, QUEUE_PREFIX: string }}
  */
 export function createWriteThroughQueue({
   backend,

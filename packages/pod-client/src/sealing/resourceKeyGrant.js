@@ -34,6 +34,13 @@ import { CapabilityToken, skillMatches } from '@onderling/core';
 // `res.read:A` matches `res.read:A` (exact) and nothing else — a B-token can never unwrap A. A full `'*'`
 // token still matches (an intentional super-grant); everything else is denied.
 const SCOPE_PREFIX = 'res.read:';
+/**
+ * Build the capability `skill` string naming per-resource read access: `res.read:<resourceId>`.
+ * `skillMatches` enforces exact-match isolation — a token for resource B never covers resource A
+ * (only a full `'*'` token also matches, as an intentional super-grant).
+ * @param {string} resourceId — non-empty resource id
+ * @returns {string} the scope string
+ */
 export function resourceScope(resourceId) {
   if (typeof resourceId !== 'string' || resourceId.length === 0) {
     throw new Error('resourceScope: resourceId (non-empty string) required');

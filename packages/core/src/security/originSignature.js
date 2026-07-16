@@ -23,7 +23,12 @@ import { AgentIdentity }       from '../identity/AgentIdentity.js';
 import { canonicalize }         from '../Envelope.js';
 import { encode as b64encode }  from '../crypto/b64.js';
 
+/**
+ * Version (`v` field) of the signed origin-signature body. `signOrigin` writes it;
+ * `verifyOrigin` rejects any other version.
+ */
 export const ORIGIN_SIG_VERSION      = 1;
+/** Default clock-skew window for verifyOrigin's timestamp check: ±10 minutes. */
 export const DEFAULT_ORIGIN_WINDOW_MS = 10 * 60_000;  // ±10 min, matches SecurityLayer
 
 /**

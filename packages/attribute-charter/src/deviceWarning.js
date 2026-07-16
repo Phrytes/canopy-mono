@@ -19,11 +19,18 @@ import { bucketCount } from './vocabulary.js';
 export const MINIMAL_FACTOR = 4;
 
 /**
+ * On-device disclosure warning: warns when the participant's enabled attribute combo is likely
+ * rare in a cohort of size `n` — i.e. ≥2 keys enabled AND their possible-combo space (product of
+ * bucket counts) exceeds the threshold (`n` in 'normal' mode, `n × MINIMAL_FACTOR` in 'minimal';
+ * 'off' never warns). Pure; returns a structured verdict, no user-facing strings. An unknown or
+ * non-positive `n` yields `n: null` and no warning.
+ *
  * @param {{enabledKeys: string[], n: number, mode?: 'normal'|'minimal'|'off'}} args
  *   enabledKeys — the attribute keys the participant is about to share
  *   n           — approximate cohort size for this round/charter
  *   mode        — 'normal' (combo-space > n) · 'minimal' (near-certain: combo-space > n×MINIMAL_FACTOR) · 'off'
- * @returns {{warn: boolean, comboSpace: number, enabledCount: number, n: number}}
+ * @returns {{warn: boolean, comboSpace: number, enabledCount: number, n: number|null}}
+ *   `n` is echoed back, or `null` when the given cohort size was missing/non-finite/non-positive.
  */
 export function disclosureWarning({ enabledKeys = [], n, mode = 'normal' } = {}) {
   const keys = Array.isArray(enabledKeys) ? enabledKeys : [];

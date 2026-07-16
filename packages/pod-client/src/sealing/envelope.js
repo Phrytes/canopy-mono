@@ -229,6 +229,9 @@ function openV1Group(env, groupKeyB64) {
 /** Closures a writer/reader injects. The sealer holds only public keys (or the group key); the opener
  *  holds a private key (or the group key). */
 export function makeSealer(recipients) { return (text) => seal(text, recipients); }
+/** Bind a recipient PRIVATE key into an `open(text)` closure for recipient-mode envelopes. */
 export function makeOpener(privateKeyB64) { return (text) => open(text, privateKeyB64); }
+/** Bind a shared group key into a `seal(text)` closure (group-key-mode envelopes). */
 export function makeGroupSealer(groupKeyB64) { return (text) => sealWithGroupKey(text, groupKeyB64); }
+/** Bind a shared group key into an `open(text)` closure; unsealed text passes through unchanged. */
 export function makeGroupOpener(groupKeyB64) { return (text) => openWithGroupKey(text, groupKeyB64); }

@@ -12,6 +12,12 @@ import { Task } from '../protocol/Task.js';
 const TASK_TTL_MS   = 30 * 60 * 1_000;   // 30 min
 const STREAM_TTL_MS = 10 * 60 * 1_000;   // 10 min
 
+/**
+ * Runtime registries for in-flight tasks, streams, and sessions, shared by the
+ * protocol handlers on an Agent. Entries carry TTLs (30 min for tasks, 10 min for
+ * streams and sessions); task creation sweeps all three registries, and task and
+ * stream lookups also expire lazily.
+ */
 export class StateManager {
   /** @type {Map<string, { task: Task, expiresAt: number }>} */
   #tasks   = new Map();

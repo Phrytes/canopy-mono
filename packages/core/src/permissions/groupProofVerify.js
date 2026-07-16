@@ -30,6 +30,14 @@
 import { AgentIdentity }                            from '../identity/AgentIdentity.js';
 import { decode as b64decode }                      from '../crypto/b64.js';
 
+/**
+ * Verify a GroupManager-issued membership proof against a known admin pubkey, without
+ * needing vault state. Checks shape, admin-key match, expiry, and the Ed25519
+ * signature over the canonical body (sorted keys, `sig` excluded).
+ * @param {object} proof — GroupProof wire object (see file header for the shape)
+ * @param {string} expectedAdminPubKey — base64url Ed25519 key the proof must be signed by
+ * @returns {boolean} true only if admin key, expiry and signature all check out
+ */
 export function verifyGroupProof(proof, expectedAdminPubKey) {
   if (!proof || typeof proof !== 'object')           return false;
   if (typeof proof.sig !== 'string')                 return false;

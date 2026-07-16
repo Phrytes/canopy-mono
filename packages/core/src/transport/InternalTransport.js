@@ -16,6 +16,11 @@ import { Emitter }   from '../Emitter.js';
  *  should be able to reach each other. */
 export class InternalBus extends Emitter {}
 
+/**
+ * In-process transport: all instances sharing one InternalBus can reach each other.
+ * Delivery is deferred by a microtask, so it is asynchronous but near-instant. Used in
+ * unit tests and for running multiple agents inside the same JS process or browser tab.
+ */
 export class InternalTransport extends Transport {
   #bus;
   #listener;

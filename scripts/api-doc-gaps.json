@@ -1,0 +1,4 @@
+{
+  "//": "Recorded JSDoc gaps — public exports allowed to lack a JSDoc block, per package. api-fitness fails on any undocumented public export NOT listed here; shrink this list, never grow it casually.",
+  "gaps": {}
+}

@@ -83,4 +83,5 @@ export function bucketCount(key) {
 
 // A place is far more identifying than a 3-5 bucket enum; weight it heavily so
 // the device warning fires when place is combined with other attributes.
+/** Effective bucket count `bucketCount` assigns the open-coarse `place` attribute (no fixed buckets). */
 export const PLACE_COMBO_WEIGHT = 1000;

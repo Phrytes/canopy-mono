@@ -53,6 +53,18 @@
 // Reuse connectSkill's decoder so both helpers decode parts identically.
 import { decodeArgs } from './connectSkill.js';
 
+/**
+ * Generate a `defineSkill`-shaped handler from a manifest op declaration. The handler decodes
+ * `ctx.parts` into named args (connectSkill's `decodeArgs`; a lone TextPart binds to the op's first
+ * param), validates them against `op.params` (required-ness + per-kind string/number/boolean/enum
+ * checks; unknown kinds pass through), resolves the scope store via `storeFor(ctx)`, and returns
+ * `coreFn(store, args, ctx)` unchanged. Validation failures throw.
+ *
+ * @param {(store: any, args: object, ctx: object) => any} coreFn — the scope-bound core function.
+ * @param {object} op — a manifest Operation declaration `{ id, verb?, params?, visibility?, … }`.
+ * @param {{ storeFor: (ctx: object) => any }} deps — `storeFor` resolves the store per invocation.
+ * @returns {(ctx: object) => any} the handler to register under `op.id`.
+ */
 export function wireSkill(coreFn, op, { storeFor } = {}) {
   if (typeof coreFn !== 'function') {
     throw new Error('wireSkill: coreFn must be a function');

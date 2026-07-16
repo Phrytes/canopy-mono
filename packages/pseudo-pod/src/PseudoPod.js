@@ -97,6 +97,21 @@ const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
  *   lives INSIDE the pseudo-pod (not a wrapper) so peer writes can't bypass
  *   it via a stale inner reference — NotifyEnvelope et al. hold this object.
  */
+/**
+ * Create a PseudoPod — the Solid-shaped local store. `mode` sets the global behaviour: `standalone`
+ * (local only), `replication-ring` (writes fan out to peers via `transport.publishEnvelope`;
+ * requires `transport` + `getPeers`), or `cache` (local-immediate writes queued for write-through
+ * via `podUploader`, reads falling through to `podFetcher` on a local miss; both required).
+ * `setMode(uri, mode)` overrides the mode per URI. An optional `versioning` store snapshots
+ * displaced bytes on the write path (best-effort). Throws `INVALID_ARGUMENT` when a required
+ * option for the chosen mode is missing or invalid. Per-option detail: the `@param` block above.
+ *
+ * @param {object} opts — `{ backend, mode, deviceId }` plus the per-mode deps documented above.
+ * @returns {object} the pseudo-pod instance: `read` / `write` / `delete` / `list` / `subscribe` /
+ *   `writeFromPeer` / `flush` / `mode` / `setMode` / `fetchResourceSkill` / `on` / `off` /
+ *   `drainWriteThroughQueue` / `listWriteThroughPending` / `writeThroughPendingCount`, plus
+ *   introspection getters (`deviceId`, `backend`, `currentMode`, …).
+ */
 export function createPseudoPod({
   backend,
   mode,

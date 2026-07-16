@@ -11,9 +11,20 @@
 export const TextPart = (text) =>
   ({ type: 'TextPart', text });
 
+/**
+ * Build a DataPart — a structured JSON payload part.
+ * @param {object} data — arbitrary JSON-serialisable object
+ * @returns {{ type: 'DataPart', data: object }}
+ */
 export const DataPart = (data) =>
   ({ type: 'DataPart', data });
 
+/**
+ * Build a FilePart — a file payload carried inline (base64 `data`) or by reference (`url`).
+ * Optional fields (name, data, url) are omitted from the part when undefined.
+ * @param {{ mimeType: string, name?: string, data?: string, url?: string }} opts
+ * @returns {object} `{ type: 'FilePart', mimeType, name?, data?, url? }`
+ */
 export const FilePart = ({ mimeType, name, data, url }) => ({
   type: 'FilePart',
   mimeType,
@@ -22,11 +33,21 @@ export const FilePart = ({ mimeType, name, data, url }) => ({
   ...(url  !== undefined ? { url  } : {}),
 });
 
+/**
+ * Build an ImagePart — an inline image payload.
+ * @param {{ mimeType: string, data: string }} opts — image MIME type + base64 image bytes
+ * @returns {{ type: 'ImagePart', mimeType: string, data: string }}
+ */
 export const ImagePart = ({ mimeType, data }) =>
   ({ type: 'ImagePart', mimeType, data });
 
 // ── Utility class ─────────────────────────────────────────────────────────────
 
+/**
+ * Static helpers over Part[] payloads: extract the first text (`text`), merged data
+ * (`data`), files/images, auto-wrap plain values into parts (`wrap`), build task
+ * artifacts (`artifact`), and validate a Part[] (`isValid`).
+ */
 export class Parts {
   /** First TextPart.text, or null. */
   static text(parts) {

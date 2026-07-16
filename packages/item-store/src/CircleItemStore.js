@@ -26,6 +26,13 @@ import { causalWinner } from './causalMerge.js';
 
 const ITEMS_DIR = 'items';
 
+/**
+ * Generic, per-circle, type-indexed item store over an injected `core.DataSource`: typed
+ * `put` / `get` / `delete` / `list` / `listByType`, optional schema validation via an injected
+ * item-types registry, causal inbound merge (`put` with `origin: true`), and an optional
+ * publish-on-write sync hook (`setSyncHook`). Type-specific lifecycle lives in functions over this
+ * store, not in the class. See the module doc for the design rationale.
+ */
 export class CircleItemStore {
   /** @type {import('@onderling/core').DataSource} */ #source;
   /** @type {string} */                            #root;

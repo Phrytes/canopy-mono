@@ -25,6 +25,12 @@ import { AgentIdentity }                            from '../identity/AgentIdent
 import { encode as b64encode, decode as b64decode } from '../crypto/b64.js';
 import { genId }                                    from '../Envelope.js';
 
+/**
+ * Immutable wrapper around a signed capability grant: `issuer` gives `subject`
+ * permission to call `skill` (exact id, '<prefix>.*', or '*') on `agentId` until
+ * `expiresAt`. Issue via the static `issue()`; check with `verify()` / `verifyAsync()`
+ * / `verifyChain()`; `fromJSON()` re-hydrates a stored or wire token.
+ */
 export class CapabilityToken {
   #raw;
 

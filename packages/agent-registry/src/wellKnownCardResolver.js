@@ -31,6 +31,12 @@ const WELL_KNOWN_PATHS = ['/.well-known/agent', '/.well-known/agent.json'];
 function trimSlash(u) { return typeof u === 'string' && u.endsWith('/') ? u.slice(0, -1) : u; }
 
 /**
+ * Build a `resolveCard(subject, endorsement)` function over an injected `fetch` that GETs an
+ * endorsed agent's A2A Agent Card from `<base>/.well-known/agent` (then `agent.json`). The base
+ * URL is the endorsement's `url`/`agentUri` hint, else `baseFor(subject)`; fetch failures or
+ * non-JSON bodies resolve to `null`. The card is returned as-is — cardHash verification stays with
+ * the caller.
+ *
  * @param {object} opts
  * @param {typeof fetch} opts.fetch  — injected fetch (required; keeps tests hermetic)
  * @param {(subject: string) => (string|null)} [opts.baseFor]  — pubKey → base URL fallback

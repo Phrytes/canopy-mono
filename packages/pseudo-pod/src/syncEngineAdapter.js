@@ -56,12 +56,19 @@ function toStringContent(value) {
 }
 
 /**
+ * Present a cache-mode PseudoPod as the `podClient` surface `@onderling/sync-engine` consumes.
+ * `read`/`write` ride the pseudo-pod (read cache + write-through queue); `read` maps a pseudo-pod
+ * miss to a NOT_FOUND throw. `list` delegates to the real `podClient` when present (pod truth for
+ * scanPod), else enumerates the local cache. Pod-structural ops (`createContainer`, the tombstone
+ * deletes) delegate to the optional real `podClient`; the deletes also evict the local cache.
+ *
  * @param {object}  opts
- * @param {object}  opts.pseudoPod   — a `createPseudoPod(...)` instance in `cache` mode.
+ * @param {object}  opts.pseudoPod   — a `createPseudoPod(...)` instance in `cache` mode (required).
  * @param {object}  [opts.podClient] — the underlying real PodClient, for pod-structural
  *   ops pseudo-pod doesn't model (createContainer + the tombstone deletes). Optional:
  *   Phase A substrate tests pass none; Phase B wires the real one.
- * @returns {object} a `podClient`-shaped object for `SyncEngine`.
+ * @returns {object} a `podClient`-shaped object for `SyncEngine`: read / write / list /
+ *   createContainer / deleteLocal / deleteCompletely / delete, plus `_pseudoPod` / `_podClient`.
  */
 export function createSyncEnginePodClient({ pseudoPod, podClient } = {}) {
   if (!pseudoPod || typeof pseudoPod.read !== 'function' || typeof pseudoPod.write !== 'function') {

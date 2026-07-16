@@ -171,6 +171,12 @@ function infoFromInruptFile(file) {
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 
+/**
+ * `DataSource` over a Solid pod via `@inrupt/solid-client`: read/write/list/delete/exists plus
+ * container creation, using an injected authenticated `fetch` (falls back to `globalThis.fetch`).
+ * Relative URIs are resolved against `podUrl`; reads return bytes plus `etag`/`lastModified`
+ * metadata for conflict detection upstream.
+ */
 export class SolidPodSource extends DataSource {
   #podUrl;
   #fetch;

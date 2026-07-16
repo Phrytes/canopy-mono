@@ -9,6 +9,11 @@
  */
 import { Vault } from './Vault.js';
 
+/**
+ * Browser `Vault` backed by IndexedDB (string values in a single object store). Optional AES-GCM
+ * encryption at rest: pass `encryptionKey` as a CryptoKey, or as a passphrase string from which a
+ * key is derived. Throws at construction when IndexedDB is unavailable.
+ */
 export class VaultIndexedDB extends Vault {
   #dbName;
   #storeName;

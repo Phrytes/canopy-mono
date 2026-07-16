@@ -24,6 +24,14 @@
  */
 import { createAgentRegistry } from './AgentRegistry.js';
 
+/**
+ * Bring up an agent registry against a bundle's pseudo-pod and register the bundle's agent in it
+ * (the module doc above details each field). Soft-fail: a thrown error returns `null` after the
+ * optional `onError` hook, and a missing pubKey / `pseudoPod` / `podDeviceId` also returns `null`.
+ * Re-registration is idempotent (CAS upsert keyed on `agentId`).
+ * @param {object} args — `{ pseudoPod, podDeviceId, agent, opts?, onError? }`
+ * @returns {Promise<object|null>} the live registry handle, or `null` on failure
+ */
 export async function registerAgentBundle({
   pseudoPod,
   podDeviceId,

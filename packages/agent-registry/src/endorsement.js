@@ -44,6 +44,7 @@
 import { AgentIdentity, b64encode } from '@onderling/core';
 import { sha256 }                   from '@noble/hashes/sha2.js';
 
+/** Wire-format version stamped (as `v`) on newly created endorsement records. */
 export const ENDORSEMENT_VERSION = 1;
 
 const VALID_CLAIMS = new Set(['recommend', 'flag']);

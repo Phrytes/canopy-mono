@@ -11,6 +11,12 @@
  */
 import { Transport } from './Transport.js';
 
+/**
+ * No-op fallback transport for agents that start without a network interface.
+ * `connect()` succeeds immediately, `canReach()` is always false (so routing never
+ * selects it as a candidate), and `_put()` throws so any send fails fast. Real
+ * transports added at runtime take over via the routing strategy.
+ */
 export class OfflineTransport extends Transport {
   /**
    * @param {object|import('../identity/AgentIdentity.js').AgentIdentity} opts

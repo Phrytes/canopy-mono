@@ -24,6 +24,13 @@ export class PolicyDeniedError extends Error {
   }
 }
 
+/**
+ * Central inbound permission gate. `checkInbound()` resolves the caller's trust tier
+ * via the TrustRegistry, then checks it against the skill's visibility and policy,
+ * honouring capability tokens, group roles (when a GroupManager is wired), and an
+ * optional issuer-side revocation callback. Throws PolicyDeniedError on any denial;
+ * returns { tier, allowed: true } otherwise.
+ */
 export class PolicyEngine {
   #trustRegistry;
   #skillRegistry;

@@ -90,6 +90,14 @@ export function decodeFrame(frame) {
 
 const DEFAULT_SERVE_TIMEOUT = 30_000;  // ms — fetch/HTTP server-side wait for the RS
 
+/**
+ * Channel-agnostic A2A `Transport` over an injected `send(frame)` function — WebSocket, TCP,
+ * HTTP, anything that can carry a JSON string. Overrides only `_put`, encoding envelopes with
+ * `encodeFrame`; inbound frames are driven into the inherited `_receive` via `receiveFrame`. In
+ * fetch/HTTP mode, a response envelope whose `_re` matches a request currently served by
+ * `handleNetworkRequest` resolves that capture instead of being pushed outbound. Envelopes arrive
+ * SecurityLayer-encrypted, so the receiving agent's capability gate is unchanged.
+ */
 export class NetworkTransport extends Transport {
   /** @type {(frame: string) => void|Promise<void>} */
   #send;

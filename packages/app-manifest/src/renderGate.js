@@ -20,6 +20,18 @@ import { renderSlash } from './renderSlash.js';
 
 // opts ({ locale, trailLexicon }) is forwarded to renderSlash to enable the per-locale TRAILING-verb
 // pass ("X done" / "afwas klaar"); inert when omitted, so existing callers are unchanged.
+/**
+ * Render a manifest (or several) into deterministic token-gate rules — one `{ name, test, command }`
+ * rule per manifest, wrapping `renderSlash`'s matcher. `command(text)` returns
+ * `{ opId, args, appOrigin } | null` (null → the engine falls through to the next rule / the LLM);
+ * declaration order and first-match-wins are preserved, and a multi-item parse dispatches only the
+ * FIRST command.
+ *
+ * @param {import('./schema.js').Manifest | import('./schema.js').Manifest[]} manifestOrList
+ * @param {object} [opts] — forwarded to `renderSlash` (e.g. `{ locale, trailLexicon }`).
+ * @returns {Array<{ name:string, test:()=>boolean,
+ *   command:(text:string)=>({opId:string,args:object,appOrigin?:string}|null) }>}
+ */
 export function renderGate(manifestOrList, opts = {}) {
   const manifests = Array.isArray(manifestOrList) ? manifestOrList : [manifestOrList];
   return manifests.filter(Boolean).map((manifest, i) => {

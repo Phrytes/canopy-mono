@@ -78,6 +78,7 @@ function isCuratorCard(card) {
   return CURATOR_ROLES.has(roleOf(card));
 }
 
+/** Default maximum candidate depth for `walkTrustGraph`'s bounded BFS over the endorsement graph. */
 export const DEFAULT_MAX_DEPTH = 4;
 
 /**

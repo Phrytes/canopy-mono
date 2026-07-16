@@ -23,6 +23,12 @@ export const TRANSPORT_PRIORITY = [
   'internal', 'local', 'mdns', 'rendezvous', 'relay', 'nkn', 'mqtt', 'ble', 'a2a',
 ];
 
+/**
+ * Per-peer transport selector for outbound traffic. Combines PeerGraph type hints,
+ * per-peer pinned preferences, FallbackTable latency/degradation data, and a fixed
+ * priority order to pick the best transport; tierFor() additionally classifies the
+ * selection into 'direct' | 'mesh' | 'hop' reachability tiers.
+ */
 export class RoutingStrategy {
   #transports;    // Map<name, Transport>
   #peerGraph;     // PeerGraph | null

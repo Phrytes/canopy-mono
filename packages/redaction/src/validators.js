@@ -78,6 +78,11 @@ export function iban(s) {
 }
 
 // The registry. A rule's `validate` field names one of these keys.
+/**
+ * The named-validator registry: maps a rule's `validate` name ('bsn-11proef', 'nl-phone', 'iban',
+ * 'luhn') to its pure predicate. The redaction engine only redacts a candidate match when the rule's
+ * named validator returns true.
+ */
 export const VALIDATORS = {
   'bsn-11proef': bsn11proef,
   'nl-phone': nlPhone,

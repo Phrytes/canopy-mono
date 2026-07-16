@@ -67,6 +67,7 @@ export function formatLogs(records = state.buf) {
     .join('\n');
 }
 
+/** Empty the log ring buffer in place. */
 export function clearLogs() { state.buf.length = 0; }
 
 /**
@@ -88,4 +89,5 @@ export const consoleSink = (rec) => {
   else console.log(line);
 };
 
+/** The level-name → numeric-severity map (debug 10 · info 20 · warn 30 · error 40), frozen. */
 export const LOG_LEVELS = LEVELS;
