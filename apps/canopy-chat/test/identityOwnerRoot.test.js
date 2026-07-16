@@ -77,3 +77,116 @@ describe('identity step-1b — owner-root reveal/restore host skills', () => {
     expect(res).toMatchObject({ ok: false, error: 'invalid-phrase' });
   });
 });
+
+describe('identity step-2.4a — host enforcement gate attached', () => {
+  it('createRealHouseholdAgent attaches a real PolicyEngine to the host agent (not silently swallowed)', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    expect(a.hostPolicyEngine).toBeTruthy();                              // the gate is live
+    expect(typeof a.hostPolicyEngine.checkInbound).toBe('function');     // and it's a real PolicyEngine
+  });
+});
+
+describe('identity step-4 (app) — createProfile op', () => {
+  it('mints a ROOT-DERIVED profile via callSkill (owner-root collaborator, through the trusted gate)', async () => {
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const res = await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });
+    expect(res.created).toBe(true);
+    expect(res.agent.role).toBe('profile');
+    // the new profile's key is derived from THIS user's owner root (recoverable from the phrase)
+    const phrase = await ownerRootVault.get('owner-phrase');
+    const expected = (await AgentIdentity.fromSeed(
+      Bootstrap.fromMnemonic(phrase).deriveAgentSeed('work'), new VaultMemory())).pubKey;
+    expect(res.pubKey).toBe(expected);
+  });
+});
+
+describe('identity step-5B/C — circleAddressFor bridge', () => {
+  it('exposes the per-circle address for a circle (unlinkable across circles)', async () => {
+    const { deriveCircleAddress } = await import('@canopy/core');
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const seed = Bootstrap.fromMnemonic(await ownerRootVault.get('owner-phrase')).deriveAgentSeed('default');
+    expect(a.circleAddressFor('buurt-42')).toBe(deriveCircleAddress(seed, 'buurt-42'));
+    expect(a.circleAddressFor('buurt-42')).not.toBe(a.circleAddressFor('werk-7'));   // unlinkable per circle
+  });
+
+  it('roster-recording wire: createGroupV2 through the agent records the admin per-circle address into the roster', async () => {
+    // End-to-end: the callSkill seam injects circleAddress on the create/redeem
+    // path → stoop records it on the MemberMap row → listGroupMembers surfaces it
+    // → the chat-shell projection carries it. The recorded value is exactly the
+    // deriveCircleAddress(defaultProfileSeed, groupId) this device presents.
+    const { deriveCircleAddress } = await import('@canopy/core');
+    const ownerRootVault = new VaultMemory();
+    const a = await createRealHouseholdAgent({ ownerRootVault, chatVault: new VaultMemory() });
+    const created = await a.callSkill('stoop', 'createGroupV2', {
+      groupId: 'buurt-xy', name: 'X', rules: { purpose: 'buurt', houseRules: ['wees aardig'] },
+    });
+    expect(created.groupId).toBe('buurt-xy');
+    const members = await a.callSkill('stoop', 'listGroupMembers', { groupId: 'buurt-xy' });
+    const admin = (members.items ?? members.members ?? []).find((m) => m.role === 'admin');
+    const seed = Bootstrap.fromMnemonic(await ownerRootVault.get('owner-phrase')).deriveAgentSeed('default');
+    expect(admin.circleAddress).toBe(deriveCircleAddress(seed, 'buurt-xy'));
+  });
+});
+
+describe('property layer — cross-app reuse (setProfileProperty / getProfileProperties)', () => {
+  it('the DEFAULT profile is registered at boot, so a coarse value set at consent lands on it', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    const before = await a.callSkill('agents', 'getProfileProperties', { id: 'default' });
+    expect(before.ok).toBe(true);   // 'default' exists (registered at boot) → setProfileProperty can land
+    const set = await a.callSkill('agents', 'setProfileProperty', { id: 'default', key: 'place', value: 'Groningen' });
+    expect(set.ok).toBe(true);
+    expect((await a.callSkill('agents', 'getProfileProperties', { id: 'default' })).properties.place).toEqual({ mode: 'own', value: 'Groningen' });
+  });
+
+  it('curates a coarse value ONCE on a profile and reads it back (any app can then reuse it)', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });
+    const set = await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'place', value: 'Groningen' });
+    expect(set.ok).toBe(true);
+    const got = await a.callSkill('agents', 'getProfileProperties', { id: 'work' });
+    expect(got.ok).toBe(true);
+    expect(got.properties.place).toEqual({ mode: 'own', value: 'Groningen' });   // own/inherit shape → reusable
+    // a second property merges (doesn't clobber the first)
+    await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'ageBand', value: '35-54' });
+    const both = await a.callSkill('agents', 'getProfileProperties', { id: 'work' });
+    expect(Object.keys(both.properties).sort()).toEqual(['ageBand', 'place']);
+  });
+});
+
+describe('property layer — persisted per-persona disclosure (personas #1/#2 substrate)', () => {
+  it('setProfileDisclosure persists what a persona shares per context; getProfileDisclosure reads it back', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });
+    // in circle 'buurt-42', the Work persona shares place but not ageBand
+    expect((await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt-42', key: 'place', enabled: true })).ok).toBe(true);
+    await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt-42', key: 'ageBand', enabled: false });
+    const got = await a.callSkill('agents', 'getProfileDisclosure', { id: 'work' });
+    expect(got.ok).toBe(true);
+    expect(got.disclosure.perContext['buurt-42'].place).toEqual({ enabled: true, rung: null });
+    expect(got.disclosure.perContext['buurt-42'].ageBand).toEqual({ enabled: false, rung: null });
+    // disclosure and properties coexist (setting one doesn't wipe the other)
+    await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'place', value: 'Groningen' });
+    expect((await a.callSkill('agents', 'getProfileDisclosure', { id: 'work' })).disclosure.perContext['buurt-42'].place.enabled).toBe(true);
+    expect((await a.callSkill('agents', 'getProfileProperties', { id: 'work' })).properties.place).toEqual({ mode: 'own', value: 'Groningen' });
+  });
+});
+
+describe('property layer — persona view + release (About me / join-with-persona bridge)', () => {
+  it('a persona inherits default values + shares per its OWN disclosure; getPersonaView/Release compose it', async () => {
+    const a = await createRealHouseholdAgent({ ownerRootVault: new VaultMemory(), chatVault: new VaultMemory() });
+    await a.callSkill('agents', 'setProfileProperty', { id: 'default', key: 'place', value: 'Groningen' });   // curated once on default
+    await a.callSkill('agents', 'createProfile', { id: 'work', name: 'Work' });                                 // work persona (inherits)
+    await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt', key: 'place', enabled: true });
+
+    const view = await a.callSkill('agents', 'getPersonaView', { id: 'work' });
+    expect(view.ok).toBe(true);
+    expect(view.disclosure.perContext.buurt.place.enabled).toBe(true);
+
+    // release for 'buurt': place is INHERITED from default AND disclosed by work → shared
+    expect((await a.callSkill('agents', 'getPersonaRelease', { id: 'work', contextId: 'buurt', keys: 'place' })).released).toEqual({ place: 'Groningen' });
+    // a context the persona didn't enable → nothing shared (default-withhold)
+    expect((await a.callSkill('agents', 'getPersonaRelease', { id: 'work', contextId: 'other', keys: 'place' })).released).toEqual({});
+  });
+});

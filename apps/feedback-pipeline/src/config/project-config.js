@@ -8,6 +8,7 @@
 // on the project"); a few are configurable-with-default (review mode, language).
 
 import { z } from 'zod';
+import { createCharter } from '@canopy/attribute-charter';
 
 /** D3 — escalation categories that can trigger the signal-track offer. Mirrors
  *  ESCALATION_CATEGORIES in categories.js; tracked in the ethics doc §8. */
@@ -125,6 +126,26 @@ export const ProjectConfigSchema = z.object({
     owner: z.enum(['us', 'independent', 'raad']).default('us'),
     publish: z.array(z.string()).default([]),
   }).default({ owner: 'us', publish: [] }),
+
+  // PROPERTY LAYER (design NOTE-property-layer §7 row 5) — the REQUESTED-ATTRIBUTES
+  // CHARTER: a project lead may declare ONCE, at creation, a FEW coarse background
+  // attributes participants can CHOOSE to attach to their pseudonymous feedback. It is
+  // OPTIONAL — a project without a charter behaves exactly as before (back-compat).
+  // The block here is only the wire shape; the real gate is @canopy/attribute-charter's
+  // createCharter (cap ≤3, coarse-vocabulary-only, no dups, per-attribute purpose),
+  // applied in validateProjectConfig below so an invalid charter is REJECTED at create.
+  // Immutable per version: to request more, bump the version (a new charterHash).
+  charter: z.object({
+    version: z.number().int().min(1).optional(),
+    attributes: z.array(z.object({
+      key: z.string().min(1),
+      purpose: z.string().min(1),
+    })).min(1),
+  }).optional(),
+  // Property layer §10b — an APPROXIMATE cohort size (a low-sensitivity count the PM sets) so the participant's
+  // device can run the identifiability warning ("in a group of ~n, this combo may make you recognisable").
+  // Optional; absent ⇒ the identifiability trigger stays inert (structural warnings still work).
+  cohortHint: z.number().int().positive().optional(),
 }).superRefine((cfg, ctx) => {
   // The always-on writer can only seal if it has a public key to seal to.
   if (cfg.privacy?.seal && !cfg.privacy.projectPublicKey) {
@@ -133,9 +154,26 @@ export const ProjectConfigSchema = z.object({
   }
 });
 
-/** Validate + fill defaults. Throws a zod error on an invalid config. */
+/** Validate + fill defaults. Throws a zod error on an invalid config. When a charter
+ *  is present it is additionally validated + normalised through @canopy/attribute-charter
+ *  (the single source of the charter rules: cap ≤3, coarse vocabulary only, per-attr
+ *  purpose). An invalid charter throws a clear Error the portal surfaces as a 400. */
 export function validateProjectConfig(raw) {
-  return ProjectConfigSchema.parse(raw);
+  const cfg = ProjectConfigSchema.parse(raw);
+  if (cfg.charter) {
+    try {
+      // createCharter validates (cap/vocabulary/dups/purpose) AND canonicalises
+      // (sorted attributes) — store the canonical charter so its hash is stable.
+      cfg.charter = createCharter({
+        projectId: cfg.projectId,
+        version: cfg.charter.version ?? 1,
+        attributes: cfg.charter.attributes,
+      });
+    } catch (e) {
+      throw new Error(`charter: ${e.message}`);
+    }
+  }
+  return cfg;
 }
 
 /** Map a (validated) ProjectConfig to the runtime opts that runTask1 / aggregate
@@ -175,7 +213,7 @@ export const CONFIG_TIERS = {
   advanced: ['aggregation.belowThreshold', 'aggregation.location', 'signal.layer1OnDevice',
     'retention.ownPod', 'eval.owner', 'eval.publish',
     'llm.promptProfile', 'llm.reasoning', 'llm.rateLimit',
-    'privacy.projectPublicKey', 'privacy.teamRecipients', 'privacy.escrow'],
+    'privacy.projectPublicKey', 'privacy.teamRecipients', 'privacy.escrow', 'charter'],
 };
 
 /** A worked example: a civic participation project on the local route (dev). */

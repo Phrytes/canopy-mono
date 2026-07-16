@@ -32,7 +32,7 @@ export function makeHandleGroupRedeemRequest({
   if (typeof sendPeer  !== 'function') throw new Error('makeHandleGroupRedeemRequest: sendPeer required');
 
   return async function handleGroupRedeemRequest(fromAddr, payload) {
-    const { requestId, groupId, code, shareCard, peerDisplay } = payload ?? {};
+    const { requestId, groupId, code, shareCard, peerDisplay, circleAddress, personaProperties } = payload ?? {};
     if (!requestId || !groupId || !code) {
       logger.warn?.('[peer] group-redeem-request missing fields', payload);
       return;
@@ -44,6 +44,12 @@ export function makeHandleGroupRedeemRequest({
         requesterWebid: fromAddr,
         ...(shareCard   ? { shareCard: true } : {}),
         ...(peerDisplay ? { peerDisplay }     : {}),
+        // Identity 5B/C — the JOINER's per-circle address, forwarded from their
+        // request envelope so the admin records it into the roster. Self-asserted
+        // (the joiner speaks only for the address THEY present here).
+        ...(circleAddress ? { circleAddress } : {}),
+        // Property layer — the joiner's disclosed persona properties, forwarded to the admin's roster.
+        ...(personaProperties && Object.keys(personaProperties).length ? { personaProperties } : {}),
       });
       if (result?.error) {
         reply = { error: result.error };
@@ -99,12 +105,13 @@ export function makeHandleGroupRedeemRequest({
  * @param {(addr: string, payload: object) => Promise<*>} args.sendPeer
  * @param {() => boolean}                                  [args.isPeerConnected]
  * @param {Map<string, {resolve: Function, reject: Function, timer?: any}>} args.pendingMap
+ * @param {(groupId: string) => (string|null)}             [args.circleAddressFor]  identity 5B/C — per-circle address presenter
  * @param {number}                                         [args.timeoutMs=30000]
  * @param {{info?, warn?, error?}}                         [args.logger]
  * @returns {(args: {adminPeerAddr: string, groupId: string, code: string, shareCard?: boolean, peerDisplay?: string}) => Promise<{ok?: boolean, codeId?: string, validUntil?: number, error?: string}>}
  */
 export function makeSendGroupRedeemRequest({
-  sendPeer, isPeerConnected, pendingMap, timeoutMs = 30_000, logger = console,
+  sendPeer, isPeerConnected, pendingMap, circleAddressFor, timeoutMs = 30_000, logger = console,
 } = {}) {
   if (typeof sendPeer !== 'function') {
     throw new Error('makeSendGroupRedeemRequest: sendPeer required');
@@ -116,10 +123,19 @@ export function makeSendGroupRedeemRequest({
     typeof isPeerConnected !== 'function' ? true : !!isPeerConnected();
 
   return async function sendGroupRedeemRequest({
-    adminPeerAddr, groupId, code, shareCard, peerDisplay,
+    adminPeerAddr, groupId, code, shareCard, peerDisplay, personaProperties,
   }) {
     if (!peerUp()) {
       throw new Error('Peer transport not connected. Try /peer-connect first.');
+    }
+    // Identity 5B/C — present THIS device's per-circle address for `groupId` on
+    // the cross-instance (peer) redeem path, mirroring the direct path's
+    // callSkill-seam injection. Computed here from the resolved groupId so the
+    // joiner-side logic lives once (both platforms bind the same fn at boot).
+    let circleAddress = null;
+    if (typeof circleAddressFor === 'function') {
+      try { circleAddress = circleAddressFor(groupId) ?? null; }
+      catch { circleAddress = null; /* additive — never block the peer redeem */ }
     }
     const requestId = `gr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
     const promise = new Promise((resolve, reject) => {
@@ -138,6 +154,9 @@ export function makeSendGroupRedeemRequest({
         code,
         ...(shareCard   ? { shareCard: true } : {}),
         ...(peerDisplay ? { peerDisplay }     : {}),
+        ...(circleAddress ? { circleAddress } : {}),
+        // Property layer — the joiner's disclosed persona properties (from finalSubmit), forwarded to the admin.
+        ...(personaProperties && Object.keys(personaProperties).length ? { personaProperties } : {}),
         sentAt: Date.now(),
       });
     } catch (err) {

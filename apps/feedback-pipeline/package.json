@@ -36,6 +36,7 @@
     "verify-summary-css": "node scripts/verify-summary-css.js"
   },
   "dependencies": {
+    "@canopy/attribute-charter": "workspace:*",
     "@canopy/core": "workspace:*",
     "@canopy/pod-client": "workspace:*",
     "@canopy/pseudo-pod": "workspace:*",

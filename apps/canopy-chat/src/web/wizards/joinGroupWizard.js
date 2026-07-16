@@ -44,6 +44,8 @@ import {
   finalSubmit,
   buildJoinConsent,
   setConsentDecline,
+  loadPersonas,
+  setPersona,
 } from '../../core/wizards/joinGroupState.js';
 import { RULES_FIELDS } from '../../v2/circleRules.js';
 import { t } from '../../localisation.js';
@@ -82,6 +84,10 @@ export function renderJoinGroupWizard(opts) {
       state.rulesError = err?.message ?? String(err);
       rerender();
     });
+    // Property layer — load the join-with-persona options in the background so
+    // the step-3 picker is populated by the time the joiner reaches it. Failure
+    // is silent (empty list → picker offers only "join minimally").
+    loadPersonas({ callSkill }).then((personas) => { state.personas = personas; rerender(); }).catch(() => {});
   }
 
   rerender();
@@ -337,6 +343,42 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
     suggestions.appendChild(chip);
   }
   wrap.appendChild(suggestions);
+
+  // Property layer — join-with-persona. Choose a persona whose per-circle
+  // disclosure applies here, or "join minimally" (the protective default: share
+  // no background). On a FIRST join a persona still discloses nothing until you
+  // set its sharing in "About me"; this is the identity you enter the circle as.
+  if (Array.isArray(state.personas) && state.personas.length) {
+    const pWrap = doc.createElement('div');
+    pWrap.className = 'cc-wizard-persona';
+
+    const pLabel = doc.createElement('div');
+    pLabel.className = 'cc-wizard-field-label';
+    pLabel.textContent = 'Join as';
+    pWrap.appendChild(pLabel);
+
+    const select = doc.createElement('select');
+    select.className = 'cc-wizard-persona-select';
+    const none = doc.createElement('option');
+    none.value = '';
+    none.textContent = 'Join minimally (share no background)';
+    select.appendChild(none);
+    for (const p of state.personas) {
+      const opt = doc.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.id === 'default' ? `${p.name} (default persona)` : p.name;
+      select.appendChild(opt);
+    }
+    select.value = state.persona ?? '';
+    select.addEventListener('change', () => { setPersona(state, select.value); });
+    pWrap.appendChild(select);
+
+    const pHint = doc.createElement('div');
+    pHint.className = 'cc-wizard-field-hint';
+    pHint.textContent = 'Only what this persona discloses in this circle is shared — nothing on first join. Adjust later in “About me”.';
+    pWrap.appendChild(pHint);
+    wrap.appendChild(pWrap);
+  }
 
   if (state.submitError) {
     const err = doc.createElement('div');

@@ -10,6 +10,24 @@
  * components.
  */
 
+// Privacy-badge palette (§10c) — the discrete states map to Onderling status tokens (mirrors
+// apps/canopy-chat/src/v2/theme.js). Colour AMPLIFIES the shape; quiet is a NEUTRAL slate outline (never green).
+const PRIVACY_BADGE_STYLE = {
+  quiet:   { fg: '#5a5240', bg: 'transparent', border: '#d8d1bc' }, // inkSoft / line — neutral outline
+  sharing: { fg: '#3f4f76', bg: '#dde2ee',     border: '#b8c2da' }, // blue / blueBg — soft-blue fill
+  risk:    { fg: '#b04a30', bg: '#ede0c4',     border: '#b04a30' }, // danger / amberBg — amber→red
+};
+
+// One-time <style> for the flip-to-risk pulse (a subtle emphasis, then settle — never a flashing nag).
+let _privacyPulseInjected = false;
+function _ensurePrivacyPulseKeyframes() {
+  if (_privacyPulseInjected || typeof document === 'undefined' || !document.head) return;
+  _privacyPulseInjected = true;
+  const style = document.createElement('style');
+  style.textContent = '@keyframes cc-privacy-pulse{0%{transform:scale(1)}30%{transform:scale(1.12)}60%{transform:scale(.97)}100%{transform:scale(1)}}.cc-cthread__privacy.is-pulse{animation:cc-privacy-pulse .9s ease-in-out 2}';
+  document.head.appendChild(style);
+}
+
 export function renderContactThread(container, {
   name = '',
   messages = [],
@@ -25,6 +43,8 @@ export function renderContactThread(container, {
   inputHint = '',    // optional placeholder override (e.g. "Editing point N")
   langValue = null,        // when set (+ onLangChange), render an NL/EN picker in the header (feedback thread)
   onLangChange = null,
+  privacy = null,          // per-circle privacy indicator (§10c): { level:'quiet'|'sharing'|'risk', icon, label, pulse? }
+  onPrivacyTap = null,     // tap the badge → the surface's why/change affordance (surface.showPrivacy)
 } = {}) {
   if (!container) return container;
   const tr = typeof t === 'function' ? t : (k) => k;
@@ -44,6 +64,29 @@ export function renderContactThread(container, {
   title.className = 'cc-cthread__title';
   title.textContent = tr('circle.contacts.thread_title', { name });
   header.appendChild(title);
+  // Per-circle privacy INDICATOR (§10c) — a persistent, icon-first badge. Only rendered when the host passes
+  // `privacy` (i.e. privacyState().applicable). SHAPE carries meaning, colour AMPLIFIES (never colour-alone):
+  // quiet → 🛡 neutral outline (grey, NOT green), sharing → 🛡 filled soft-blue, risk → ⚠️ amber→red. The ⚠ is
+  // EARNED (level==='risk'); tap → the why/change affordance. A one-time subtle pulse when the state flips to risk.
+  if (privacy && (privacy.level === 'quiet' || privacy.level === 'sharing' || privacy.level === 'risk')) {
+    const badge = document.createElement('button');
+    badge.type = 'button';
+    badge.className = `cc-cthread__privacy cc-cthread__privacy--${privacy.level}${privacy.pulse ? ' is-pulse' : ''}`;
+    badge.dataset.level = privacy.level;
+    const st = PRIVACY_BADGE_STYLE[privacy.level] || PRIVACY_BADGE_STYLE.quiet;
+    Object.assign(badge.style, {
+      color: st.fg, background: st.bg, border: `1px solid ${st.border}`, borderRadius: '999px',
+      padding: '2px 10px', marginLeft: '8px', fontSize: '12px', fontWeight: '600', lineHeight: '1.4',
+      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap',
+    });
+    const label = privacy.label || privacy.level;
+    badge.textContent = `${privacy.icon || (privacy.level === 'risk' ? '⚠️' : '🛡')} ${label}`;
+    badge.setAttribute('aria-label', label);
+    badge.title = label;
+    badge.addEventListener('click', () => { if (typeof onPrivacyTap === 'function') onPrivacyTap(); });
+    header.appendChild(badge);
+    if (privacy.pulse) _ensurePrivacyPulseKeyframes();
+  }
   // language picker (feedback thread): the participant chooses the BOT's language; the whole thread re-renders.
   if ((langValue === 'nl' || langValue === 'en') && typeof onLangChange === 'function') {
     const toggle = document.createElement('div');

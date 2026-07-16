@@ -50,13 +50,13 @@ const DEFAULT_EXPIRES_IN_DAYS = 30;   // BotAgentRegistry precedent.
  */
 function asStore(store) {
   if (store && typeof store.list === 'function') {
-    return { registry: store, tokens: null };
+    return { registry: store, tokens: null, profiles: null };
   }
   const registry = store?.registry;
   if (!registry || typeof registry.list !== 'function') {
     throw new TypeError('agents cores: store must be a registry or { registry, tokens? }');
   }
-  return { registry, tokens: store.tokens ?? null };
+  return { registry, tokens: store.tokens ?? null, profiles: store.profiles ?? null };
 }
 
 /**
@@ -239,14 +239,16 @@ export async function revokeAgent(store, args = {}) {
 export async function grantAgent(store, args = {}) {
   const { registry, tokens } = asStore(store);
   const entry = await resolveEntry(registry, args?.agentId);
-  const skill = args?.skill;
-  if (!entry || typeof skill !== 'string' || skill.length === 0) {
+  const skill   = (typeof args?.skill   === 'string' && args.skill.length   > 0) ? args.skill   : null;
+  const profile = (typeof args?.profile === 'string' && args.profile.length > 0) ? args.profile : null;
+  // A grant delegates a SKILL and/or names a PROFILE the grantee (a device) may run — at least one.
+  if (!entry || (!skill && !profile)) {
     return { granted: false, tokenBacked: !!tokens, tokenId: null, expiresAt: null, agent: null };
   }
 
   const capability    = (typeof args?.capability === 'string' && args.capability.length > 0)
     ? args.capability
-    : skill;                                       // default: the skill itself
+    : skill;                                       // default: the skill (null for a profile-only grant)
   const expiresInDays = (typeof args?.expiresInDays === 'number' && args.expiresInDays > 0)
     ? args.expiresInDays
     : DEFAULT_EXPIRES_IN_DAYS;
@@ -254,12 +256,14 @@ export async function grantAgent(store, args = {}) {
     ? args.subject
     : entry.pubKey;                                // default: the grantee key
   const expiresIn     = expiresInDays * MS_PER_DAY;
+  const tokenSkill    = skill ?? '*';                        // profile-only grant → any skill, gated by the profile scope
+  const constraints   = profile ? { profile } : undefined;  // the token carries the profile scope (the PolicyEngine gate enforces it)
 
   // 1. The TOKEN op first — the enforced authority. Failure propagates.
   let tokenId;
   let expiresAt;
   if (tokens) {
-    const issued = await tokens.issue({ subject, skill, expiresIn });
+    const issued = await tokens.issue({ subject, skill: tokenSkill, expiresIn, constraints });
     tokenId   = issued.id;
     expiresAt = issued.expiresAt ?? new Date(Date.now() + expiresIn).toISOString();
   } else {
@@ -270,7 +274,7 @@ export async function grantAgent(store, args = {}) {
   }
 
   // 2. Then the registry MIRROR (atomic grants[] + capabilities[] upsert).
-  await registry.applyGrant(entry.agentId, { tokenId, skill, expiresAt, subject, capability });
+  await registry.applyGrant(entry.agentId, { tokenId, skill, expiresAt, subject, capability, profile });
 
   return {
     granted:     true,
@@ -375,9 +379,164 @@ export async function purgeAgent(store, args = {}) {
  * module wraps each of these with `wireSkill`, and the fitness test
  * checks route parity against `manifest.operations`.
  */
+/**
+ * createProfile — mint a NEW root-derived profile (identity step 4). The key DERIVATION lives in
+ * the injected `profiles` collaborator (keeps the cores dependency-free, like `tokens`): the wire
+ * layer closes it over the owner root + registry (`@canopy/agent-registry`'s createProfile). Without
+ * a `profiles` collaborator the op reports `created:false` (degraded — the substrate isn't wired).
+ */
+export async function createProfile(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.create !== 'function' || !id) {
+    return { created: false, reason: !id ? 'id-required' : 'profiles-unavailable', agent: null };
+  }
+  // properties may arrive as an object (programmatic) or a JSON string (surface). Best-effort parse.
+  let properties = {};
+  if (args?.properties && typeof args.properties === 'object') properties = args.properties;
+  else if (typeof args?.properties === 'string' && args.properties.trim()) {
+    try { properties = JSON.parse(args.properties); } catch { properties = {}; }
+  }
+  const result = await s.profiles.create({ profileId: id, name: typeof args?.name === 'string' ? args.name : null, properties });
+  return { created: true, id, pubKey: result?.pubKey ?? null, agent: await readBack(s.registry, id) };
+}
+
+/**
+ * setProfileProperty — set an OWN coarse property on an existing profile (property layer / cross-app reuse).
+ * The value is curated ONCE on the profile and readable by any app via getProfileProperties. Mutation goes
+ * through the injected `profiles` collaborator (cores stay dependency-free). Degrades (ok:false) if unwired.
+ */
+export async function setProfileProperty(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const key = typeof args?.key === 'string' ? args.key.trim() : '';
+  if (typeof s.profiles?.setProperty !== 'function' || !id || !key) {
+    return { ok: false, reason: !id ? 'id-required' : (!key ? 'key-required' : 'profiles-unavailable') };
+  }
+  await s.profiles.setProperty({ profileId: id, key, value: args?.value });
+  return { ok: true, id, key };
+}
+
+/**
+ * setProfileDriver — set an OWN personal DRIVER property (drivers #3): an open { kind, text, tags[] } value,
+ * not a coarse string, so it needs its own op (setProfileProperty's value is a plain string). Building +
+ * validating the driver lives in the `profiles` collaborator (dependency-free cores). `tags` accepts an array
+ * (GUI) OR a comma-separated string (wire/slash). Degrades (ok:false) if unwired; ok:false on an empty driver.
+ */
+export async function setProfileDriver(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const key = typeof args?.key === 'string' ? args.key.trim() : '';
+  if (typeof s.profiles?.setDriver !== 'function' || !id || !key) {
+    return { ok: false, reason: !id ? 'id-required' : (!key ? 'key-required' : 'profiles-unavailable') };
+  }
+  const tags = Array.isArray(args?.tags)
+    ? args.tags
+    : (typeof args?.tags === 'string' ? args.tags.split(',') : []);
+  try {
+    await s.profiles.setDriver({ profileId: id, key, kind: args?.kind, text: args?.text, tags });
+    return { ok: true, id, key };
+  } catch (err) {
+    return { ok: false, reason: 'invalid-driver', detail: err?.message ?? String(err) };
+  }
+}
+
+/** getProfileDrivers — just the DRIVER-typed properties of a profile (for the About-me editor + the matcher). */
+export async function getProfileDrivers(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getDrivers !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', drivers: {} };
+  }
+  return { ok: true, id, drivers: (await s.profiles.getDrivers({ profileId: id })) ?? {} };
+}
+
+/** getProfileProperties — the (own/inherit) properties of a profile, for cross-app reuse. */
+export async function getProfileProperties(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getProperties !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', properties: {} };
+  }
+  return { ok: true, id, properties: (await s.profiles.getProperties({ profileId: id })) ?? {} };
+}
+
+/**
+ * setProfileDisclosure — record what a persona shares in a CONTEXT (circle/project): enable/disable a property
+ * key + optional coarseness rung, persisted on the profile. The general (per-persona) version of the feedback
+ * charter consent. Through the `profiles` collaborator (dependency-free cores). Degrades (ok:false) if unwired.
+ */
+export async function setProfileDisclosure(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const contextId = typeof args?.contextId === 'string' ? args.contextId.trim() : '';
+  const key = typeof args?.key === 'string' ? args.key.trim() : '';
+  if (typeof s.profiles?.setDisclosure !== 'function' || !id || !contextId || !key) {
+    return { ok: false, reason: !id ? 'id-required' : (!contextId ? 'contextId-required' : (!key ? 'key-required' : 'profiles-unavailable')) };
+  }
+  await s.profiles.setDisclosure({
+    profileId: id, contextId, key,
+    enabled: args?.enabled === true || args?.enabled === 'true',   // wire args arrive as strings; object args as bool
+    rung: typeof args?.rung === 'string' && args.rung ? args.rung : null,
+  });
+  return { ok: true, id, contextId, key };
+}
+
+/** getProfileDisclosure — the persona's persisted per-context disclosure policy. */
+export async function getProfileDisclosure(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getDisclosure !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', disclosure: { perContext: {} } };
+  }
+  return { ok: true, id, disclosure: (await s.profiles.getDisclosure({ profileId: id })) ?? { perContext: {} } };
+}
+
+/**
+ * getPersonaView — the "About me" read model: a persona's properties + its per-context disclosure in ONE call
+ * (so a shell renders "what I am + what I share where" without two round-trips). Composes the collaborator.
+ */
+export async function getPersonaView(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  if (typeof s.profiles?.getProperties !== 'function' || typeof s.profiles?.getDisclosure !== 'function' || !id) {
+    return { ok: false, reason: !id ? 'id-required' : 'profiles-unavailable', properties: {}, disclosure: { perContext: {} } };
+  }
+  const [properties, disclosure] = await Promise.all([
+    s.profiles.getProperties({ profileId: id }),
+    s.profiles.getDisclosure({ profileId: id }),
+  ]);
+  return { ok: true, id, properties: properties ?? {}, disclosure: disclosure ?? { perContext: {} } };
+}
+
+/**
+ * getPersonaRelease — what this persona would SHARE in a context (circle): its disclosure over its effective
+ * (own + inherited) properties → the coarse {key:value}. The join-with-persona flow releases exactly this.
+ */
+export async function getPersonaRelease(store, args = {}) {
+  const s = asStore(store);
+  const id = typeof args?.id === 'string' ? args.id.trim() : '';
+  const contextId = typeof args?.contextId === 'string' ? args.contextId.trim() : '';
+  if (typeof s.profiles?.releaseFor !== 'function' || !id || !contextId) {
+    return { ok: false, reason: !id ? 'id-required' : (!contextId ? 'contextId-required' : 'profiles-unavailable'), released: {} };
+  }
+  const keys = Array.isArray(args?.keys) ? args.keys
+    : (typeof args?.keys === 'string' && args.keys.trim() ? args.keys.split(',').map((k) => k.trim()).filter(Boolean) : []);
+  return { ok: true, id, contextId, released: (await s.profiles.releaseFor({ profileId: id, contextId, keys })) ?? {} };
+}
+
 export const AGENT_CORES = Object.freeze({
   listAgents,
   viewAgent,
+  createProfile,
+  setProfileProperty,
+  getProfileProperties,
+  setProfileDriver,
+  getProfileDrivers,
+  setProfileDisclosure,
+  getProfileDisclosure,
+  getPersonaView,
+  getPersonaRelease,
   revokeAgent,
   grantAgent,
   revokeGrant,

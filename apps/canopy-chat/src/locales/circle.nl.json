@@ -2662,6 +2662,10 @@
       "text": "Je reactie op dit bericht:",
       "doc": "S1 — prompt when responding to a post (respondToItem)."
     },
+    "resonates": {
+      "text": "sluit aan — {{reason}}",
+      "doc": "drivers#5b — badge op een bericht dat matcht met mijn eigen drijfveren; reageren = anoniem contact."
+    },
     "attach": {
       "text": "Afbeelding toevoegen",
       "doc": "S5 — composer attach-image button."
@@ -3111,6 +3115,141 @@
       "error": {
         "text": "Kan deze afbeelding niet openen.",
         "doc": "media P1 — volledige-afbeelding-overlay, rustige melding wanneer de beveiligde lees-actie geweigerd wordt of mislukt (nooit een gebroken afbeelding)."
+      }
+    }
+  },
+  "aboutme": {
+    "back": {
+      "text": "← Profielen",
+      "doc": "personas#1 — terug naar de profielen-/agents-lijst."
+    },
+    "title": {
+      "text": "Over mij",
+      "doc": "personas#1 — kop van het Over-mij-scherm."
+    },
+    "title_named": {
+      "text": "Over mij — {{name}}",
+      "doc": "personas#1 — kop met de persona-id."
+    },
+    "unavailable": {
+      "text": "De gegevens van deze persona zijn niet beschikbaar.",
+      "doc": "personas#1 — getPersonaView gaf niet-ok terug."
+    },
+    "properties": {
+      "text": "Jouw eigenschappen",
+      "doc": "personas#1 — titel van de eigenschappen-sectie."
+    },
+    "properties_intro": {
+      "text": "Grove gegevens die je hergebruikt over kringen heen. Vul alleen in wat je wilt.",
+      "doc": "personas#1 — intro eigenschappen-sectie (opt-in framing)."
+    },
+    "not_set": {
+      "text": "Niet ingevuld",
+      "doc": "personas#1 — eigenschap zonder waarde."
+    },
+    "place_placeholder": {
+      "text": "bijv. Amsterdam",
+      "doc": "personas#1 — placeholder voor het vrije plaatsveld (alleen gemeente)."
+    },
+    "save": {
+      "text": "Opslaan",
+      "doc": "personas#1 — vrije eigenschapswaarde opslaan."
+    },
+    "sharing": {
+      "text": "Wat je deelt, per kring",
+      "doc": "personas#1 — titel van de per-kring-deelsectie."
+    },
+    "sharing_intro": {
+      "text": "Delen staat standaard uit. Zet alleen aan wat een kring mag zien.",
+      "doc": "personas#1 — intro deelsectie (standaard-niet-delen framing)."
+    },
+    "no_circles": {
+      "text": "Je zit nog in geen enkele kring.",
+      "doc": "personas#1 — geen kringen om delen voor in te stellen."
+    },
+    "you_share": {
+      "text": "Deze kring ziet: {{keys}}",
+      "doc": "personas#1 — eerlijke samenvatting van wat een kring echt ziet."
+    },
+    "you_share_nothing": {
+      "text": "Deze kring ziet niets.",
+      "doc": "personas#1 — niets gedeeld met deze kring."
+    },
+    "set_a_property_first": {
+      "text": "Vul hierboven eerst een eigenschap in — je kunt alleen delen wat je hebt ingevuld.",
+      "doc": "personas#1 — nog geen ingevulde eigenschappen om te delen."
+    },
+    "share_key": {
+      "text": "{{key}} delen ({{value}})",
+      "doc": "personas#1 — label van een per-eigenschap deelschakelaar."
+    },
+    "share_to_circle": {
+      "text": "Deel met deze kring",
+      "doc": "personas#2 — knop: zet de huidige openbaarmaking op de ledenlijst van de kring (na deelname)."
+    },
+    "drivers": {
+      "text": "Jouw drijfveren",
+      "doc": "drivers#5 — sectie: persoonlijke drijfveren (doelen/hobby's/…) voor on-device matching."
+    },
+    "drivers_intro": {
+      "text": "Waar je mee bezig bent of naar streeft. Blijft privé op dit apparaat; alleen gebruikt om items op te merken die aansluiten.",
+      "doc": "drivers#5 — eerlijke framing: drijfveren blijven on-device, sturen matching."
+    },
+    "driverkind": {
+      "hobby": { "text": "Hobby", "doc": "drivers#5 — soort drijfveer." },
+      "goal": { "text": "Doel", "doc": "drivers#5 — soort drijfveer." },
+      "desire": { "text": "Wens", "doc": "drivers#5 — soort drijfveer." },
+      "motivation": { "text": "Motivatie", "doc": "drivers#5 — soort drijfveer." },
+      "driver": { "text": "Drijfveer", "doc": "drivers#5 — algemene soort drijfveer." }
+    },
+    "driver_label_ph": {
+      "text": "label (bijv. zeilen)",
+      "doc": "drivers#5 — placeholder: het label van de drijfveer."
+    },
+    "driver_text_ph": {
+      "text": "wat, in een zin",
+      "doc": "drivers#5 — placeholder: de vrije tekst van de drijfveer."
+    },
+    "driver_tags_ph": {
+      "text": "tags, komma-gescheiden",
+      "doc": "drivers#5 — placeholder: komma-gescheiden tags."
+    },
+    "driver_add": {
+      "text": "Drijfveer toevoegen",
+      "doc": "drivers#5 — knop: drijfveer toevoegen/overschrijven."
+    },
+    "sharing_now": {
+      "text": "Bezig met delen…",
+      "doc": "personas#2 — tijdelijke status terwijl de deel-actie loopt."
+    },
+    "shared_ok": {
+      "text": "Gedeeld ✓",
+      "doc": "personas#2 — de openbaarmaking is bij de kring-ledenlijst aangekomen."
+    },
+    "share_failed": {
+      "text": "Delen mislukt: {{reason}}",
+      "doc": "personas#2 — de deel-actie is mislukt (bijv. beheerder offline)."
+    },
+    "key": {
+      "place": {
+        "text": "Plaats",
+        "doc": "personas#1 — charter-attribuut label: place (gemeente)."
+      },
+      "ageBand": {
+        "text": "Leeftijdsgroep",
+        "doc": "personas#1 — charter-attribuut label: ageBand."
+      },
+      "role": {
+        "text": "Rol",
+        "doc": "personas#1 — charter-attribuut label: role."
+      },
+      "tenure": {
+        "text": "Woonduur",
+        "doc": "personas#1 — charter-attribuut label: tenure."
+      },
+      "household": {
+        "text": "Huishouden",
+        "doc": "personas#1 — charter-attribuut label: household."
       }
     }
   }

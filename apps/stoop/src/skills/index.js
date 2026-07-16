@@ -548,10 +548,19 @@ async function listGroupMembersCore(scope, a, ctx) {
   // fan-out routing key for code-redeemers even after a reload where the member
   // list is reduced from the redemption audit trail (mirror of sealKeys).
   const signKeys = new Map();
+  // webid → the per-circle ADDRESS captured on redeem (identity step 5B/C) —
+  // the unlinkable address the member presents in THIS circle. Recovered from
+  // the redemption trail like signKeys, so it survives a roster rebuild.
+  const addrKeys = new Map();
+  // webid → the coarse persona properties the member disclosed on redeem (property layer). Recovered from the
+  // redemption trail like the others, so it survives a roster rebuild.
+  const personaMaps = new Map();
   for (const r of forGroup) {
-    const { redeemedBy, sealingPublicKey, signingPublicKey } = r?.source ?? {};
+    const { redeemedBy, sealingPublicKey, signingPublicKey, circleAddress, personaProperties } = r?.source ?? {};
     if (redeemedBy && sealingPublicKey && !sealKeys.has(redeemedBy)) sealKeys.set(redeemedBy, sealingPublicKey);
     if (redeemedBy && signingPublicKey && !signKeys.has(redeemedBy)) signKeys.set(redeemedBy, signingPublicKey);
+    if (redeemedBy && circleAddress && !addrKeys.has(redeemedBy)) addrKeys.set(redeemedBy, circleAddress);
+    if (redeemedBy && personaProperties && Object.keys(personaProperties).length && !personaMaps.has(redeemedBy)) personaMaps.set(redeemedBy, personaProperties);
   }
   const scoped = list
     .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
@@ -560,6 +569,11 @@ async function listGroupMembersCore(scope, a, ctx) {
       if (sealKeys.has(m.webid)) out = { ...out, sealingPublicKey: sealKeys.get(m.webid) };
       // Only backfill pubKey when the member row doesn't already carry one.
       if (!out.pubKey && signKeys.has(m.webid)) out = { ...out, pubKey: signKeys.get(m.webid) };
+      // Prefer the row's circleAddress (createGroupV2 admin path), else backfill
+      // from the redemption trail (joiner path).
+      if (!out.circleAddress && addrKeys.has(m.webid)) out = { ...out, circleAddress: addrKeys.get(m.webid) };
+      // Persona properties: prefer the row's (createGroupV2 admin path), else the redemption trail (joiner path).
+      if (!out.personaProperties && personaMaps.has(m.webid)) out = { ...out, personaProperties: personaMaps.get(m.webid) };
       return out;
     });
   return { groupId: _groupId, members: scoped };
@@ -821,6 +835,11 @@ export function buildSkills({
           targets,
           maxDistanceKm,
           ...(embeds.length > 0 ? { embeds } : {}),
+          // Drivers #5 — an OPTIONAL explicit driver signature { text?, tags[] } the author attaches so
+          // this post matches peers' private drivers on-device. Absent → the matcher falls back to the
+          // post's text + skillTags/requiredSkills (itemSignature), so tagging already works without this.
+          ...(a.driverSignature && typeof a.driverSignature === 'object' && !Array.isArray(a.driverSignature)
+            ? { driverSignature: a.driverSignature } : {}),
         },
       };
       if (typeof a.dueAt === 'number') itemDraft.dueAt = a.dueAt;
@@ -1767,10 +1786,18 @@ export function buildSkills({
         { actor: from },
       );
 
-      // Promote caller to admin in MemberMap (idempotent).
+      // Promote caller to admin in MemberMap (idempotent).  Also record the
+      // creator's own per-circle ADDRESS for this circle (identity step 5B/C)
+      // when supplied — the admin is a member too, so the roster carries the
+      // unlinkable address they present here just like a joiner's.
       if (members) {
         const me = (await members.resolveByWebid(from)) ?? { webid: from };
-        await members.addMember({ ...me, role: 'admin' });
+        await members.addMember({
+          ...me,
+          role: 'admin',
+          ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
+        });
       }
 
       // A3 — push the storage policy into pod-routing so substrate-mirror
@@ -2014,6 +2041,15 @@ export function buildSkills({
           // Signing pubKey (the joiner's transport/chat-agent identity) — mirror
           // of sealingPublicKey but for the OTHER key family: fan-out routing.
           ...(signingPubKey ? { signingPublicKey: signingPubKey } : {}),
+          // Per-circle ADDRESS the joiner presents in THIS circle (identity
+          // step 5B/C — deriveCircleAddress). Self-asserted like sealingPublicKey
+          // (it's the joiner declaring the unlinkable address they present here,
+          // NOT a claim about another member), so we record it verbatim.
+          ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          // Property layer — the coarse background values the joiner CHOSE to disclose in THIS circle when
+          // joining AS a persona (getPersonaRelease). Self-asserted like circleAddress; opt-in (absent = shared
+          // nothing). A map {key: coarseValue}.
+          ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -2023,7 +2059,14 @@ export function buildSkills({
       // older/no-auth redeem with no `from`, or a bundle with no MemberMap,
       // simply skips this and the redemption item is still written).
       if (members && signingPubKey) {
-        try { await members.addMember({ webid: from, pubKey: signingPubKey }); }
+        try {
+          await members.addMember({
+            webid: from,
+            pubKey: signingPubKey,
+            ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+            ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
+          });
+        }
         catch { /* roster upsert is best-effort — never block the redeem */ }
       }
       await grantPodAccess(controlAgent, { webId: from, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
@@ -2108,6 +2151,11 @@ export function buildSkills({
           // The joiner's sealing public key (forwarded by the peer bridge) → the control-agent wraps
           // the group key to them. Admin-side: this is where the sealed household pod grants access.
           ...(a.sealingPublicKey ? { sealingPublicKey: a.sealingPublicKey } : {}),
+          // Per-circle ADDRESS the joiner presents in THIS circle (identity
+          // step 5B/C) — forwarded by the peer bridge, recorded like sealingPublicKey.
+          ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+          // Property layer — the joiner's disclosed persona properties (forwarded by the peer bridge).
+          ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
         },
         visibility: 'household',
       }], { actor: from });
@@ -2115,7 +2163,14 @@ export function buildSkills({
       // Populate the admin's MemberMap so the admin (and, via mesh-intro
       // propagation, other members) can fan out to the new joiner.  Best-effort.
       if (members && peerSigningPubKey) {
-        try { await members.addMember({ webid: a.requesterWebid, pubKey: peerSigningPubKey }); }
+        try {
+          await members.addMember({
+            webid: a.requesterWebid,
+            pubKey: peerSigningPubKey,
+            ...(a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+            ...(a.personaProperties && Object.keys(a.personaProperties).length ? { personaProperties: a.personaProperties } : {}),
+          });
+        }
         catch { /* roster upsert is best-effort — never block the redeem */ }
       }
       await grantPodAccess(controlAgent, { webId: a.requesterWebid, sealingPublicKey: a.sealingPublicKey, groupId: a.groupId, metrics });
@@ -2248,6 +2303,10 @@ export function buildSkills({
           attachments:    toBroadcastShape(it.source?.attachments),
           ...(Array.isArray(it.source?.embeds) && it.source.embeds.length > 0
             ? { embeds: it.source.embeds } : {}),
+          // Drivers #5 — carry the author's explicit driver signature to catch-up receivers (skillTags
+          // already ride above, so the matcher works even without this; this is the explicit intent).
+          ...(it.source?.driverSignature && typeof it.source.driverSignature === 'object'
+            ? { driverSignature: it.source.driverSignature } : {}),
           _addedAt:       ts,
         });
       }
@@ -2484,6 +2543,71 @@ export function buildSkills({
       };
     }, {
       description: 'List addresses for the calling actor\'s buurt peers (fan-out roster).',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * recordMemberPersonaProperties({ groupId, memberWebid?, personaProperties, circleAddress? })
+     *   — property layer, "share to this circle" (POST-join disclosure push). The admin-side
+     *   write that lands an already-joined member's freshly-disclosed persona properties onto the
+     *   roster. The general/post-join counterpart of the join-time `verifyMembershipCodeForPeer`
+     *   roster-write (index.js ~2162): same `members.addMember` merge + the SAME durable backing
+     *   (patch the member's `membership-redemption` item source) so the update survives a roster
+     *   rebuild, exactly like `personaProperties` recovered in `listGroupMembers`.
+     *
+     *   `memberWebid` defaults to the caller (`from`) for a LOCAL self-update (the admin adjusting
+     *   their own row); the peer handler passes `memberWebid: fromAddr` — the authenticated peer
+     *   address (webid == the mesh signing address here, so a member can only speak for their own
+     *   row, never overwrite another's). Only updates an EXISTING member (never mints a phantom).
+     *   An empty `personaProperties` ({}) is a valid "I now share nothing here" and clears the slot.
+     *
+     *   Returns: { ok:true, groupId, memberWebid, keys } | { ok:false, reason }.
+     */
+    defineSkill('recordMemberPersonaProperties', async ({ parts, from }) => {
+      const a = dataArgs(parts);
+      if (typeof a.groupId !== 'string' || !a.groupId) return { ok: false, reason: 'groupId-required' };
+      const webid = (typeof a.memberWebid === 'string' && a.memberWebid) ? a.memberWebid : from;
+      if (!webid) return { ok: false, reason: 'member-unresolved' };
+      const props = (a.personaProperties && typeof a.personaProperties === 'object' && !Array.isArray(a.personaProperties))
+        ? a.personaProperties : null;
+      if (props === null) return { ok: false, reason: 'personaProperties-required' };
+      if (!members) return { ok: false, reason: 'roster-unavailable' };
+
+      // An empty disclosure ({}) is "I now share nothing here" — normalise to the SAME `null`
+      // absent-state a never-disclosed member carries, so the roster never holds an empty object
+      // downstream code has to special-case (back-compat with the join-time capture).
+      const stored = Object.keys(props).length ? props : null;
+
+      // 1. Live row — merge onto the EXISTING member (read-modify-write, like setMySkills). A
+      //    non-member gets no phantom row: only someone the admin already recorded can be updated.
+      const me = await members.resolveByWebid(webid);
+      if (!me) return { ok: false, reason: 'not-a-member' };
+      await members.addMember({
+        ...me,
+        personaProperties: stored,
+        ...(typeof a.circleAddress === 'string' && a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+      });
+
+      // 2. Durable backing — patch the member's redemption item source so `listGroupMembers`
+      //    recovers the fresh value after a rebuild (the admin's OWN row has no redemption item —
+      //    the patch simply finds nothing and the live row stands, matching createGroupV2).
+      try {
+        const all = await store.listOpen({ type: 'membership-redemption' });
+        const item = all.find((i) => i?.source?.redeemedBy === webid && i?.source?.groupId === a.groupId);
+        if (item) {
+          await store.update(item.id, {
+            source: {
+              ...item.source,
+              personaProperties: stored,
+              ...(typeof a.circleAddress === 'string' && a.circleAddress ? { circleAddress: a.circleAddress } : {}),
+            },
+          }, { actor: from });
+        }
+      } catch { /* durable patch is best-effort — the live row already reflects the change */ }
+
+      return { ok: true, groupId: a.groupId, memberWebid: webid, keys: Object.keys(props), _sync: simulateSync() };
+    }, {
+      description: 'Record an already-joined member\'s disclosed persona properties onto the roster (post-join "share to this circle").',
       visibility:  'authenticated',
     }),
 
@@ -3033,7 +3157,7 @@ export function buildSkills({
      *   `groupId` defaults to the bundle's current group.
      */
     wire('listGroupMembers', {
-      description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey when known).',
+      description: 'List the members of a group (handles, displayName per Reveals, role; sealingPublicKey + circleAddress when known).',
       visibility:  'authenticated',
     }),
 

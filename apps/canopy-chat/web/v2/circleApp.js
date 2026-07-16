@@ -86,6 +86,9 @@ import { pageForOp } from '../../src/v2/pageProjection.js';
 import { renderListBlock } from './listScreen.js';
 // Q17 — record-shaped detail screens (read-only key→value, e.g. agent-detail).
 import { renderRecordScreen } from './recordScreen.js';
+// personas#1 — the "About me" persona surface (properties + per-circle sharing) + its shared read-model.
+import { renderAboutMe } from './circleAboutMe.js';
+import { buildPersonaViewModel } from '../../src/v2/personaView.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@canopy/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@canopy/kring-host/mappingsStore';
@@ -158,10 +161,13 @@ import { renderContactThread } from './contactThread.js';
 import { sendA2ATask, PeerGraph, discoverA2A } from '@canopy/core';
 import { showConsentCard } from '../../src/web/extensionConsentCard.js';
 import { createFeedbackSurface, signerForIdentity } from '../../src/feedback/feedbackSurface.js';
+import { privacyBadge } from '../../src/feedback/circlePrivacyState.js';   // shared per-circle privacy badge (§10c)
+import { createBugReportSink } from '../../src/feedback/bugReportSink.js';
 import { makeNoLoginFeedbackPods } from '../../src/feedback/noLoginPods.js';
 import { createFeedbackMount } from '../../src/feedback/feedbackMount.js';
 import { buildFeedbackVerifyPods, getOrCreateRecoveryHash } from '../../src/feedback/feedbackPod.js';
 import { feedbackBotFromInput, createFeedbackBotStore } from '../../src/v2/feedbackBots.js';
+import { createFeedbackHistoryStore } from '../../src/feedback/feedbackHistory.js';
 // (localStoragePolicyIo is already imported below with createCirclePolicyStore)
 import { createUserLlmDefaultStore, localStorageUserLlmIo } from '../../src/v2/userLlmDefault.js';
 import { applyUserLlmRuntime, validateUserLlmConfig } from '../../src/v2/userLlmRuntime.js';
@@ -186,6 +192,11 @@ import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';
 // OBJ-2 membership — the peer-redeem handshake (joiner ⇄ admin) is shared core; v2 just wires the
 // same three factories the classic shells use (groupRedeem.js) into its peer router + join glue.
 import { makeHandleGroupRedeemRequest, makeHandleGroupRedeemResponse, makeSendGroupRedeemRequest } from '../../src/core/handlers/groupRedeem.js';
+// personas#2 — post-join "share to this circle": the same request/ack + orchestrator trio, wired
+// into the peer router alongside group-redeem (member ⇄ admin roster-property push).
+import { makeHandlePersonaPropsUpdate, makeHandlePersonaPropsAck, makeSendPersonaPropsUpdate, shareDisclosureToCircle } from '../../src/core/handlers/personaPropsUpdate.js';
+// drivers #5 (b) — flag noticeboard posts that resonate with my private drivers (on-device match).
+import { annotateResonantPosts } from '../../src/core/handlers/driverMatchNotify.js';
 import { buildCircleInviteUri, joinCircleFromInvite } from '../../src/v2/circleInvite.js';
 import { feedHouseholdRoster } from '../../src/v2/householdRosterPairing.js';
 import { makeKringChatPeerHandler } from '../../src/v2/kringChatReceiver.js';
@@ -1022,9 +1033,24 @@ const LANG_INFO = {
   tr: { name: 'Türkçe',     prompt: 'Türkçe devam et? Aşağıya dokun.' },
 };
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'canopy-chat';
+// Logging slice 3 — the anonymous bug-report SEND TARGET: the dev-pod "bug-report bot" address the panel's
+// Send button routes the (already-anonymous) envelope to, over the SAME relay/peer transport as everything
+// else (`_peerAgent.sendPeerMessage`). The real dev address does NOT exist yet: this is a PLACEHOLDER, so it
+// drops into open-source config later (via VITE_BUGREPORT_ADDR, or by giving BUG_REPORT_DEV_ADDR the real
+// value). Until then it is null → the sink returns `no-target` and the panel stays COPY-ONLY. A real value
+// would look like `'fp-bugreport-dev@<relay-or-pubkey>'` (placeholder shape). Follow-up: the bot RECEIVER +
+// real dev-pod address; sharing a circle may later imply sharing this relay (a per-circle relay, not built).
+const BUG_REPORT_DEV_ADDR = null;   // ← real dev-pod bug-report bot address lands here (open-source config)
+const BUG_REPORT_TARGET = import.meta.env?.VITE_BUGREPORT_ADDR ?? BUG_REPORT_DEV_ADDR;
+const APP_VERSION = import.meta.env?.VITE_APP_VERSION ?? undefined;   // non-identifying build tag for the report envelope
 // cluster J — ADDED feedback bots (no pre-seeding): the portal invite link/QR adds a co-hosted fp-bot
 // contact; tapping it opens its dedicated thread + activates the verify pods.
 const feedbackBotStore = createFeedbackBotStore(typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} });
+// Device-local transcript store — restore the feedback thread on reload (see feedbackHistory.js). Same
+// local-only trust boundary as feedbackBotStore / fp.ownpod: the participant's own content, never sent.
+const feedbackHistoryStore = createFeedbackHistoryStore({ storage: typeof localStorage !== 'undefined' ? localStorage : { getItem: () => null, setItem: () => {} } });
+// Persist the current transcript for a thread (best-effort, fire-and-forget). Called after every append.
+function _saveFbHistory(botId) { const ft = _fbThreads.get(botId); if (ft) feedbackHistoryStore.save(botId, ft.messages); }
 const _fbThreads = new Map();   // botId → { name, messages:[], surface, mount, activated }
 let _activeFbThread = null;     // { botId }
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
@@ -1057,6 +1083,9 @@ let circleContactChannel = null; // P5 — contact-thread peer channel (conversa
 // OBJ-2 membership — peer-redeem correlation (joiner side) + the sender, set when the agent boots.
 const circlePendingRedeems = new Map();  // requestId → {resolve,reject,timer}
 let circleSendPeerRedeem = null;         // makeSendGroupRedeemRequest(...) bound to this agent
+// personas#2 — post-join persona-property push correlation (member side) + its sender.
+const circlePendingPersonaProps = new Map();  // requestId → {resolve,reject,timer}
+let circleSendPersonaUpdate = null;           // makeSendPersonaPropsUpdate(...) bound to this agent
 // OBJ-2 S1c-shell — feed the household no-pod sync roster with a circle's MEMBERS
 // (people, from the stoop group roster — never bots). Assigned in the boot fn
 // (which owns `agent`); module-level so `showDetail` (open-circle) can call it.
@@ -1930,7 +1959,16 @@ function feedbackEmit(groupId) {
     if (kind === 'report') {
       // "Report a problem" — the PII-safe on-device log, shown for review. Web text bubbles are selectable, so
       // the intro + the (monospace-ish) log render as one copyable bubble. Never fanned out — private to you.
-      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self' });
+      // The Send button (fp:report:send) routes back to this circle's surface (circleEmbedButtonTap → handle),
+      // which packages an ANONYMOUS envelope and hands it to the injected sink. Copy stays available too.
+      _kringRender.botBubble?.(`${text}\n\n${logText || ''}`, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
+      return;
+    }
+    if (kind === 'access' || kind === 'access-reveal' || kind === 'access-result') {
+      // "Secure your access" (reveal/restore the owner-root recovery phrase). PRIVATE to this device — the
+      // recovery phrase never leaves it — so render self-scoped, mirroring the report panel. The backup/restore
+      // buttons route back via circleEmbedButtonTap → surface.handle(); the revealed phrase is selectable to copy.
+      _kringRender.botBubble?.(text, { scope: 'self', buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       return;
     }
     if (kind === 'review' && Array.isArray(points) && points.length) {
@@ -1955,6 +1993,15 @@ function buildFeedbackSurface({ projectId, groupId, lang, ownPod, centralPod, co
     pod: ownPod,
     ...(centralPod ? { centralPod, controlStore, verify: true } : {}),
     reportButton: true,   // web idiom: offer "Report a problem" as a bubble-button (mobile uses a header button)
+    // "Secure your access": surface BACK UP + RESTORE of the owner-root recovery phrase in the no-login
+    // onboarding. The participant's pseudonym derives from this phrase, so this is how they secure + recover
+    // their identity on a new device. Reaches the host reveal/restore skills via callSkill (household agent).
+    accessButton: true,
+    callSkill: (origin, opId, args) => rawCallSkill(origin, opId, args),
+    // Anonymous bug-report SEND sink: forward the identity-free envelope over the peer/relay transport to the
+    // config-driven dev bot. `_peerAgent` is the boot-captured realAgent; null target → sink no-ops (copy-only).
+    app: 'canopy-chat', version: APP_VERSION,
+    sendReport: createBugReportSink({ send: (a, p) => _peerAgent?.sendPeerMessage(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
     emit: feedbackEmit(groupId),
   });
 }
@@ -2150,14 +2197,31 @@ async function showContactThread(contactId) {
 // renders text + buttons (consent · the verify bubble). On first open we build the verify pods
 // (own/central/control) via buildFeedbackVerifyPods, and surface.start polls the lead's /control/ round →
 // the verify bubble. Reuses renderContactThread (buttons + onButtonTap) like a peer DM, but co-hosted.
+// Per-circle privacy INDICATOR (§10c) — localise the discrete state for the header badge. The feedback surface
+// deliberately lives OUTSIDE the circle t() system (the bot owns its i18n via config.language), so we mirror
+// that with a minimal nl/en map here (web ≡ mobile by construction; the mobile shell carries the same map). The
+// ⚠ is EARNED (level==='risk'); the calm states are neutral, never "green = safe".
+function _fbPrivacyBadge(state, lang) {
+  if (!state || !state.applicable) return null;   // no charter applies → hide (no noise)
+  return privacyBadge(state.level, lang);          // shared icon+label (one source, invariant #3); colours below are web styling
+}
+
 function _renderFbThread(botId) {
   const ft = _fbThreads.get(botId);
   if (!ft || _activeFbThread?.botId !== botId) return;
+  // Read the per-circle privacy state fresh each render (after every turn/consent the state can change);
+  // hidden entirely unless a charter applies. Flip-to-risk earns a ONE-TIME pulse (tracked via ft._pvLevel).
+  let pvState = null; try { pvState = ft.surface?.privacyState?.(botId) ?? null; } catch { pvState = null; }
+  const badge = _fbPrivacyBadge(pvState, ft.botLang);
+  const pulse = !!badge && badge.level === 'risk' && ft._pvLevel !== 'risk';
+  ft._pvLevel = badge ? badge.level : null;
   renderContactThread(rootEl, {
     name: ft.name, messages: ft.messages, skills: [], busy: !!ft.busy, error: false,
     t: (k, p) => t(k, p, ft.botLang),                  // chrome renders in the BOT's chosen language
     langValue: ft.botLang,
     onLangChange: (lg) => _changeFbLang(botId, lg),
+    privacy: badge ? { ...badge, pulse } : null,
+    onPrivacyTap: () => { try { ft.surface?.showPrivacy?.(botId); } catch { /* best-effort */ } },
     inputValue: ft.pendingEditText || '',
     inputHint: ft.editingId ? t('circle.feedback.edit_hint', { defaultValue: 'Pas de tekst aan en verstuur' }, ft.botLang) : '',
     onBack: () => { ft.editingId = null; _activeFbThread = null; showContacts(); },
@@ -2194,6 +2258,9 @@ function _buildFbSurface(botId, pods) {
     // when verify is on, consent contributions are signed and a verify pod accepts them. null → unsigned.
     identityFor: () => signerForIdentity(circleCoreAgent?.identity),
     pod: pods?.ownPod, centralPod: pods?.centralPod, controlStore: pods?.controlStore,
+    // Anonymous bug-report SEND sink (parity with buildFeedbackSurface) — same peer/relay transport + target.
+    app: 'canopy-chat', version: APP_VERSION,
+    sendReport: createBugReportSink({ send: (a, p) => _peerAgent?.sendPeerMessage(a, p), target: BUG_REPORT_TARGET, app: 'canopy-chat', version: APP_VERSION }),
     emit: ({ text, buttons, kind, points, labels }) => {
       if (kind === 'review' && Array.isArray(points)) {
         ft.reviewPoints = points;   // for the ✏ composer pre-fill
@@ -2201,13 +2268,14 @@ function _buildFbSurface(botId, pods) {
       } else {
         ft.messages.push({ origin: 'bot', text, buttons: (buttons || []).map((b) => ({ id: b.id, action: b.id, label: b.label })) });
       }
+      _saveFbHistory(botId);   // persist the transcript so it restores on reload (device-local)
       _renderFbThread(botId);
     },
   });
   ft.mount = createFeedbackMount({
     surface: ft.surface,
-    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _renderFbThread(botId); },
-    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _renderFbThread(botId); },
+    appendUserBubble: (_t, x) => { ft.messages.push({ origin: 'user', text: x }); _saveFbHistory(botId); _renderFbThread(botId); },
+    appendBotBubble:  (_t, x) => { ft.messages.push({ origin: 'bot', text: x }); _saveFbHistory(botId); _renderFbThread(botId); },
   });
 }
 // The participant switches the bot's language: rebuild the bot in that language (reusing the activated pods —
@@ -2217,10 +2285,17 @@ async function _changeFbLang(botId, lg) {
   if (!ft || (lg !== 'nl' && lg !== 'en') || lg === ft.botLang) return;
   ft.botLang = lg;
   try { localStorage.setItem(`fp.lang.${botId}`, lg); } catch { /* best-effort */ }
-  ft.messages = []; ft.reviewPoints = null; ft.editingId = null;
+  // KEEP the transcript across a language switch (same participant/thread — don't discard their own
+  // feedback because they toggled language). We rebuild the surface + re-/help in the new language, whose
+  // fresh greeting appends BELOW the existing (kept) history rather than replacing it. Only the transient UI
+  // pointers (review-card pre-fill / inline edit) reset. (Restore-on-reload is the primary goal; a genuine
+  // new-thread reset would clear both `ft.messages` and the stored key.)
+  ft.reviewPoints = null; ft.editingId = null;
   _buildFbSurface(botId, ft.pods || null);
   ft.busy = true; _renderFbThread(botId);
-  try { await ft.surface.start(botId); }
+  // KEEP the transcript across a language switch → don't re-greet (that would stack a greeting each toggle); the
+  // chrome (composer/buttons) already re-renders in the new language. Only the verify poll runs inside start().
+  try { await ft.surface.start(botId, { greet: false }); }
   catch (e) { ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
   finally { ft.busy = false; _renderFbThread(botId); }
 }
@@ -2230,7 +2305,14 @@ async function showFeedbackThread(bot) {
   if (!_fbThreads.has(botId)) {
     let stored = null; try { stored = localStorage.getItem(`fp.lang.${botId}`); } catch { /* no storage */ }
     const botLang = (stored === 'nl' || stored === 'en') ? stored : detectDeviceLang();
-    _fbThreads.set(botId, { name: bot.name, messages: [], surface: null, mount: null, activated: false, botLang, pods: null });
+    // Restore the persisted transcript so a reload/reopen re-shows the conversation (device-local). `_fbThreads`
+    // is per-session (module state, cleared on reload), so on the FIRST open of a session we hydrate from
+    // storage; a fresh bot with no stored history hydrates to []. A fresh /help greeting from surface.start()
+    // still appends below the restored transcript (unchanged per-open behaviour).
+    let history = []; try { history = await feedbackHistoryStore.load(botId); } catch { history = []; }
+    // hadHistory = a restored (reload) thread → suppress the onboarding greeting so it doesn't re-stack in the
+    // stored transcript; the affordance buttons come back WITH the restored history (still functional).
+    _fbThreads.set(botId, { name: bot.name, messages: history, surface: null, mount: null, activated: false, botLang, pods: null, hadHistory: history.length > 0 });
   }
   const ft = _fbThreads.get(botId);
   _activeFbThread = { botId };
@@ -2261,7 +2343,10 @@ async function showFeedbackThread(bot) {
   // start() polls the lead's /control/ round + summarises on-device (an AI call, a few seconds) — show a
   // busy state so the open doesn't look frozen, and surface any error in the chat (not just the console).
   ft.busy = true; _renderFbThread(botId);
-  try { await ft.surface.start(botId); }
+  // Greet only on a genuinely fresh thread (no restored transcript); a reload restores the greeting with the
+  // history, so re-greeting would stack it. Flip the flag so a later reopen this session doesn't re-greet either.
+  const greet = !ft.hadHistory; ft.hadHistory = true;
+  try { await ft.surface.start(botId, { greet }); }
   catch (e) { console.error('[circleApp] feedback poll/start failed:', e); ft.messages.push({ origin: 'bot', text: `⚠ ${e?.message ?? e}` }); }
   finally { ft.busy = false; _renderFbThread(botId); }
 }
@@ -3277,13 +3362,21 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
       // context key (screenDrilldown), picking a row opens it with that key
       // materialized from the picked row (`$uri` / `$agentId` ← row).
       const drill = drilldownForSection(circleManifestsByOrigin, screenId, { hostKeys: Object.keys(screenContext) });
+      // personas#1 — on the agents surface, a PROFILE row (role 'profile') opens
+      // the "About me" persona view (properties + per-circle sharing) instead of
+      // the generic agent-detail drill-down. Other rows keep the drill-down.
+      const isAgents = screenId === 'agents';
+      const onRowOpen = (isAgents || drill)
+        ? ({ item }) => {
+            if (isAgents && item?.role === 'profile') { openAboutMePanel(item?.agentId ?? item?.id); return; }
+            if (drill) openCircleScreenPanel(drill.screenId, { context: selectionContextFor(drill, item, screenContext) });
+          }
+        : undefined;
       renderListBlock(body, {
         block: { items, categoryField, labelField, searchFields, defaultAudience: section.audience, manifestsByOrigin: circleManifestsByOrigin, appOrigin, title: title.textContent },
         t, capabilityMatrix,
         onRowAction: ({ opId, itemId }) => { try { overlay.remove(); } catch { /* */ } circleDispatchReady?.({ opId, args: { id: itemId } }); },
-        onRowOpen: drill
-          ? ({ item }) => { openCircleScreenPanel(drill.screenId, { context: selectionContextFor(drill, item, screenContext) }); }
-          : undefined,
+        onRowOpen,
       });
     } catch { body.textContent = t('circle.screen.empty'); }
     return;
@@ -3296,6 +3389,72 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
     // to + flash the referenced item once its block has materialized.
     renderCircleScreen(body, { blocks: [mat], t, highlightRef });
   } catch { renderCircleScreen(body, { blocks: [], t }); }
+}
+
+// personas#1 — the "About me" persona surface. Opens as a dismissable overlay
+// (same chrome as openCircleScreenPanel) for ONE persona: its coarse properties
+// (place/ageBand/…) and, per circle, what it SHARES there. Reads the substrate
+// in ONE call (getPersonaView); edits go through setProfileProperty /
+// setProfileDisclosure and re-render from a fresh read (verify the RESULT, not
+// just the dispatch). The view-model + framing live in shared code
+// (src/v2/personaView.js — web ≡ mobile); this is a thin shell.
+async function openAboutMePanel(personaId) {
+  const id = typeof personaId === 'string' ? personaId : String(personaId ?? '');
+  if (!id) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'cc-screen-panel';
+  const card = document.createElement('div');
+  card.className = 'cc-screen-panel__card';
+  const head = document.createElement('div');
+  head.className = 'cc-screen-panel__head';
+  const title = document.createElement('h3');
+  title.textContent = t('circle.aboutme.title');
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'cc-screen-panel__close';
+  close.setAttribute('aria-label', t('circle.mydata.close'));
+  close.textContent = '✕';
+  close.addEventListener('click', () => { try { overlay.remove(); } catch { /* */ } });
+  head.appendChild(title); head.appendChild(close);
+  card.appendChild(head);
+  const body = document.createElement('div');
+  card.appendChild(body);
+  overlay.appendChild(card);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Load → build model → render; re-run after each edit so the surface always
+  // reflects the persisted state (not the optimistic tap).
+  const draw = async () => {
+    let view;
+    try { view = await rawCallSkill('agents', 'getPersonaView', { id }); }
+    catch { view = { ok: false }; }
+    const model = buildPersonaViewModel({ view, circles: circlesCache });
+    renderAboutMe(body, {
+      model, t,
+      onSetProperty: async (key, value) => {
+        try { await rawCallSkill('agents', 'setProfileProperty', { id, key, value }); } catch { /* */ }
+        await draw();
+      },
+      // personal drivers (#5) — author an open { kind, text, tags } driver on this persona.
+      onSetDriver: async ({ key, kind, text, tags }) => {
+        try { await rawCallSkill('agents', 'setProfileDriver', { id, key, kind, text, tags }); } catch { /* */ }
+        await draw();
+      },
+      onToggleDisclosure: async (contextId, key, enabled) => {
+        try { await rawCallSkill('agents', 'setProfileDisclosure', { id, contextId, key, enabled }); } catch { /* */ }
+        await draw();
+      },
+      // personas#2 — push THIS persona's current disclosure for `contextId` up to the circle roster.
+      onShareToCircle: (contextId) => shareDisclosureToCircle({
+        callSkill:         rawCallSkill,
+        sendPersonaUpdate: circleSendPersonaUpdate,
+        circleId:          contextId,
+        personaId:         id,
+      }),
+    });
+  };
+  await draw();
 }
 
 // Theme B — run the guided-setup chatbot in a modal: render one step, feed the
@@ -3565,7 +3724,20 @@ function showKring(id, circle, policy) {
         // event / other post). Top-level OR stoop-legacy source.embeds.
         embeds:       Array.isArray(it.embeds) ? it.embeds
                       : (Array.isArray(it.source?.embeds) ? it.source.embeds : []),
+        // Drivers #5 — carry the matching signal (explicit signature or the author's tags) so the
+        // render-time driver match can flag posts that resonate with MY private drivers.
+        driverSignature: it.driverSignature ?? it.source?.driverSignature ?? null,
+        skillTags:       Array.isArray(it.source?.skillTags) ? it.source.skillTags : (Array.isArray(it.skillTags) ? it.skillTags : []),
+        requiredSkills:  Array.isArray(it.requiredSkills) ? it.requiredSkills : [],
       }));
+      // Drivers #5 (b) — flag posts that resonate with my drivers (on-device). The existing "respond"
+      // action on a flagged post IS the anonymous reach-out (respondToItem → @handle DM). Best-effort.
+      try {
+        noticeboardPosts = await annotateResonantPosts({
+          posts:      noticeboardPosts,
+          getDrivers: async () => (await rawCallSkill('agents', 'getProfileDrivers', { id: 'default' }))?.drivers ?? {},
+        });
+      } catch { /* resonance is a nicety; never block the board */ }
     } catch { noticeboardPosts = []; }
     rerender();
     // embeds[] — progressively resolve each embed ref to its live title, then
@@ -4738,6 +4910,15 @@ async function boot() {
       sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
       isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
       pendingMap:      circlePendingRedeems,
+      // Identity 5B/C — present this device's per-circle address on the peer redeem path.
+      circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
+    });
+    // personas#2 — the post-join "share to this circle" sender (same shape as the redeem sender).
+    circleSendPersonaUpdate = makeSendPersonaPropsUpdate({
+      sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
+      isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
+      pendingMap:      circlePendingPersonaProps,
+      circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
     });
     // S4 — when signed in, route stoop's items to the user's REAL pod (parity with
     // folio/calendar; reuses stoop's already-built pod-routing write-through). Best-effort.
@@ -4956,6 +5137,10 @@ async function boot() {
           // admin verifies an incoming redeem + replies; joiner resolves the pending request on response.
           'group-redeem-request':    makeHandleGroupRedeemRequest({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
           'group-redeem-response':   makeHandleGroupRedeemResponse({ pendingMap: circlePendingRedeems }),
+          // personas#2 — post-join persona-property push: admin records the member's disclosure onto
+          // the roster + acks; the member resolves the pending push on the ack.
+          'persona-props-update':    makeHandlePersonaPropsUpdate({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
+          'persona-props-ack':       makeHandlePersonaPropsAck({ pendingMap: circlePendingPersonaProps }),
           // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
           // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message

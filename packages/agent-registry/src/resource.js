@@ -27,7 +27,11 @@
  * Standardisation Phase 52.10 — see plan §52.10.
  */
 
-export const RESOURCE_VERSION = 2;
+import { normaliseProperties } from './profileProperties.js';
+
+// v3 (identity step 2) — added per-profile `properties` (own/inherit graph) + `ownerFingerprint`
+// (the owner-root binding). Additive + forward-compatible: v2 entries simply lack them (→ {} / null).
+export const RESOURCE_VERSION = 3;
 
 /**
  * Default registry-resource path for a given pod / device.
@@ -101,7 +105,30 @@ function _normaliseAgent(a) {
     grants:       Array.isArray(a.grants) ? Object.freeze(a.grants.map(_normaliseGrant).filter(Boolean)) : Object.freeze([]),
     signedAt:     typeof a.signedAt === 'string' ? a.signedAt : new Date().toISOString(),
     revokedAt:    typeof a.revokedAt === 'string' ? a.revokedAt : null,
+    // identity step 2 — profile fields (additive; absent on v2 entries → {} / null)
+    properties:       normaliseProperties(a.properties),
+    ownerFingerprint: typeof a.ownerFingerprint === 'string' ? a.ownerFingerprint : null,
+    // property layer (personas) — the PERSISTED per-context disclosure policy for this profile
+    // (what this persona shares, per circle/context). Additive; absent → empty. Shape mirrors
+    // @canopy/agent-registry disclosure.js ({ perContext: { ctx: { key: {enabled, rung} } } }).
+    disclosure:       _normaliseDisclosure(a.disclosure),
   });
+}
+
+/** Strict-allowlist normalise for a persisted disclosure policy. Frozen. Absent/malformed → empty. */
+function _normaliseDisclosure(d) {
+  const per = d && typeof d === 'object' && d.perContext && typeof d.perContext === 'object' ? d.perContext : {};
+  const out = {};
+  for (const [ctx, entries] of Object.entries(per)) {
+    if (!entries || typeof entries !== 'object') continue;
+    const c = {};
+    for (const [key, choice] of Object.entries(entries)) {
+      if (!choice || typeof choice !== 'object') continue;
+      c[key] = Object.freeze({ enabled: choice.enabled === true, rung: typeof choice.rung === 'string' ? choice.rung : null });
+    }
+    out[ctx] = Object.freeze(c);
+  }
+  return Object.freeze({ perContext: Object.freeze(out) });
 }
 
 /**
@@ -117,6 +144,9 @@ function _normaliseGrant(g) {
     expiresAt:  typeof g.expiresAt  === 'string' ? g.expiresAt  : null,
     subject:    typeof g.subject    === 'string' ? g.subject    : null,
     capability: typeof g.capability === 'string' ? g.capability : null,
+    // identity step 2.3 — a grant may NAME a profile the grantee (a device) may run,
+    // so "delegate profile X to device D, revocably" rides the same token-first path.
+    profile:    typeof g.profile    === 'string' ? g.profile    : null,
   });
 }
 
@@ -133,5 +163,8 @@ function emptyAgent() {
     grants:    [],
     signedAt:  new Date().toISOString(),
     revokedAt: null,
+    properties: {},
+    ownerFingerprint: null,
+    disclosure: { perContext: {} },
   };
 }

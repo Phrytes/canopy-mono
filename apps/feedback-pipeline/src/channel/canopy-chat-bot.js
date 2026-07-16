@@ -72,6 +72,13 @@ export class CanopyChatBot {
     const session = this.#session(chatId);
     session.adapter.setReplyTo(m.messageId);
 
+    // Property layer: a turn may carry the participant's charter consent as structured data (not text) —
+    // record it on the dispatcher BEFORE routing so the ensuing consent's contributions carry it. Additive.
+    if (m.data?.charter) session.dispatcher.setCharterDisclosure(m.data.charter);
+    // A pure data turn (no text) is just the disclosure hand-off — return silently (the bridge acks via the
+    // corrId DONE); no reply bubble, no action.
+    if (!text && m.data) return { stored: false, charter: !!m.data.charter };
+
     const action = parseControl(text) || await classifyIntent(text, { model: this.#model });
     const say = (txt, buttons) => this.#say(chatId, txt, buttons);
     return runAction(action, { session, say, strings: this.#strings });

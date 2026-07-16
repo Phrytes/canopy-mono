@@ -44,7 +44,9 @@ export async function softenClean(model, redacted, lang, opts = {}) {
   if (opts.skipClean) return { cleaned: redacted, error: null, ms: 0 };
   if (profileFor(model, opts) === 'minimal') {
     const { shielded, map } = shield(redacted);
-    const system = MINIMAL_CLEAN[lang] || MINIMAL_CLEAN.nl;
+    // opts.cleanSystem lets the geo/profanity tuning harness A/B a candidate prompt
+    // against the default without touching the wired path (additive, unused in prod).
+    const system = opts.cleanSystem || MINIMAL_CLEAN[lang] || MINIMAL_CLEAN.nl;
     const r = await chat(model, system, shielded, { ...opts, thinking: thinkingFor('clean', { ...opts, model }) });
     return { cleaned: r.ok ? unshield(r.text.trim(), map) : null, error: r.ok ? null : r.error, ms: r.ms };
   }

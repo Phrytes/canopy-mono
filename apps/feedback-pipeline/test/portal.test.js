@@ -48,6 +48,92 @@ test('API: create → list → status → codes (+ invite links)', async () => {
   assert.match(codes.json.links[0], /^https:\/\/activate\.example\/\?projectId=alpha&code=/);
 });
 
+test('status().settings surfaces the read-only menukaart the lead needs (no secrets)', async () => {
+  const store = new ProjectStore();
+  store.createProject({
+    config: {
+      projectId: 'dash', projectName: 'Dashboard', llm: { route: 'privatemode', model: 'gpt-oss' },
+      language: { preferred: 'en' }, review: { mode: 'required-approval' },
+      aggregation: { k: 5, belowThreshold: 'drop', location: 'controller' },
+      privacy: { seal: false, verify: true },
+    },
+    cohort: { expiresAt: future, ceiling: 12 },
+  });
+  const s = store.status('dash').settings;
+  assert.equal(s.k, 5);
+  assert.equal(s.belowThreshold, 'drop');
+  assert.equal(s.sealLocation, 'controller');
+  assert.equal(s.language, 'en');
+  assert.equal(s.review, 'required-approval');
+  assert.equal(s.verify, true);
+  assert.equal(s.route, 'privatemode');
+  assert.equal(s.model, 'gpt-oss');
+});
+
+test('settings uses validated defaults + rides the list API and persistence', async () => {
+  const store = new ProjectStore();
+  await post(store, '/api/projects', { config: baseConfig('def'), cohort: { expiresAt: future, ceiling: 5 } });
+  // defaults filled by the config schema (no invented config)
+  const s = store.status('def').settings;
+  assert.equal(s.language, 'nl');
+  assert.equal(s.review, 'notification');
+  assert.equal(s.sealLocation, 'host');
+  assert.equal(s.verify, false);
+  // the dashboard list carries settings for every project
+  const list = await get(store, '/api/projects');
+  assert.equal(list.json.projects[0].settings.k, 3);
+  // survives a persistence round-trip
+  const reloaded = ProjectStore.fromJSON(JSON.parse(JSON.stringify(store.toJSON())));
+  assert.equal(reloaded.status('def').settings.review, 'notification');
+});
+
+test('charter: a valid charter surfaces on status().settings with its hash (immutable per version)', async () => {
+  const store = new ProjectStore();
+  const charter = { attributes: [{ key: 'place', purpose: 'segmenteren per wijk' }, { key: 'ageBand', purpose: 'leeftijdsbalans checken' }] };
+  const res = await post(store, '/api/projects', { config: { ...baseConfig('ch'), charter }, cohort: { expiresAt: future, ceiling: 5 } });
+  assert.equal(res.status, 201);
+  const s = store.status('ch').settings;
+  assert.ok(s.charter, 'charter surfaces on status');
+  assert.equal(s.charter.version, 1);                          // default version
+  assert.equal(s.charter.attributes.length, 2);
+  assert.ok(s.charter.attributes.some((a) => a.key === 'place' && a.purpose === 'segmenteren per wijk'));
+  assert.match(s.charter.charterHash, /^[0-9a-f]{64}$/);       // reference hash for the participant contribution
+  // the persisted config carries the canonical (validated) charter
+  assert.equal(store.getConfig('ch').charter.attributes.length, 2);
+});
+
+test('charter: >3 attributes OR an off-vocabulary key is rejected at create (400) with a clear reason', async () => {
+  const store = new ProjectStore();
+  const tooMany = await post(store, '/api/projects', {
+    config: { ...baseConfig('ch-max'), charter: { attributes: [
+      { key: 'place', purpose: 'a' }, { key: 'ageBand', purpose: 'b' }, { key: 'role', purpose: 'c' }, { key: 'tenure', purpose: 'd' }] } },
+    cohort: { expiresAt: future, ceiling: 5 },
+  });
+  assert.equal(tooMany.status, 400);
+  assert.match(tooMany.json.reason, /charter/i);
+  assert.match(tooMany.json.reason, /at most 3|3 attribute/i);
+
+  const offVocab = await post(store, '/api/projects', {
+    config: { ...baseConfig('ch-vocab'), charter: { attributes: [{ key: 'income', purpose: 'x' }] } },
+    cohort: { expiresAt: future, ceiling: 5 },
+  });
+  assert.equal(offVocab.status, 400);
+  assert.match(offVocab.json.reason, /income|vocabulary|unknown attribute/i);
+
+  const noPurpose = await post(store, '/api/projects', {
+    config: { ...baseConfig('ch-purpose'), charter: { attributes: [{ key: 'role', purpose: '' }] } },
+    cohort: { expiresAt: future, ceiling: 5 },
+  });
+  assert.equal(noPurpose.status, 400);                          // per-attribute purpose is required
+});
+
+test('charter: a project WITHOUT a charter is unchanged (back-compat)', async () => {
+  const store = new ProjectStore();
+  await post(store, '/api/projects', { config: baseConfig('ch-none'), cohort: { expiresAt: future, ceiling: 5 } });
+  assert.equal(store.status('ch-none').settings.charter, null);   // absent → null, no invented config
+  assert.equal(store.getConfig('ch-none').charter, undefined);
+});
+
 test('API: menukaart validation errors surface as 400 (seal without a key, non-host keygen)', async () => {
   const store = new ProjectStore();
   const bad = await post(store, '/api/projects', {

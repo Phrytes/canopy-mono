@@ -131,6 +131,158 @@ test('reportButton — start() offers the web bubble-trigger with an fp:report b
   expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(true);
 });
 
+test('charter consent — the opt-in walk releases a coarse attribute that rides the consented contribution', async () => {
+  const pod = new InMemoryCentralPod();
+  const replies = [];
+  const surface = createFeedbackSurface({
+    config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age spread' }] } }),
+    pod, emit: (r) => replies.push(r),
+  });
+  await surface.start('c');
+  expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:charter:start'))).toBe(true);  // charter offered
+
+  await surface.handle('fp:charter:start', 'c');
+  expect(replies.at(-1).buttons.some((b) => b.id === 'fp:charter:pick:ageBand:35-54')).toBe(true);      // bucket buttons
+  await surface.handle('fp:charter:pick:ageBand:35-54', 'c');
+  expect(replies.at(-1).buttons.some((b) => b.id === 'fp:charter:send')).toBe(true);                    // confirm → send
+  await surface.handle('fp:charter:send', 'c');
+
+  // now the ordinary feedback journey — the disclosed attribute rides the contribution
+  await surface.handle('De GGZ-wachtlijst is veel te lang', 'c');
+  await surface.handle('ik ben klaar', 'c');
+  await surface.handle('verstuur alles', 'c');
+  const agg = pod.forAggregation();
+  expect(agg.length).toBe(1);
+  expect(agg[0].attributes).toEqual({ ageBand: '35-54' });
+});
+
+test('privacy indicator — a per-circle status is shown after consent, with a ⚠ when the combo is identifying', async () => {
+  const pod = new InMemoryCentralPod();
+  const replies = [];
+  // cohortHint = 8 (small) so the identifiability warning can fire; charter asks for 2 attributes.
+  const surface = createFeedbackSurface({
+    config: cfg({ cohortHint: 8, charter: { attributes: [{ key: 'ageBand', purpose: 'age' }, { key: 'role', purpose: 'role' }] } }),
+    pod, emit: (r) => replies.push(r),
+  });
+  await surface.start('p');
+  // share BOTH attributes → an identifying combo in a group of ~8
+  await surface.handle('fp:charter:start', 'p');
+  await surface.handle('fp:charter:pick:ageBand:35-54', 'p');
+  await surface.handle('fp:charter:pick:role:resident', 'p');
+  await surface.handle('fp:charter:send', 'p');
+
+  const status = replies.filter((r) => r.kind === 'privacy').at(-1);
+  expect(status).toBeTruthy();
+  expect(status.level).toBe('risk');                 // ⚠ earned — the combo is likely identifying in ~8
+  expect(status.text).toMatch(/⚠️/);
+  // the queryable state a shell renders a badge from
+  const st = surface.privacyState('p');
+  expect(st).toMatchObject({ applicable: true, level: 'risk', reason: 'combo-identifiable' });
+  expect(st.shared.sort()).toEqual(['ageBand', 'role']);
+});
+
+test('privacy warnings toggle — turning off while sharing flips to structural ⚠, acknowledged', async () => {
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod: new InMemoryCentralPod(), emit: (r) => replies.push(r) });
+  await surface.start('w');
+  await surface.handle('fp:charter:start', 'w');
+  await surface.handle('fp:charter:pick:ageBand:35-54', 'w');
+  await surface.handle('fp:charter:send', 'w');
+  expect(surface.privacyState('w').level).toBe('sharing');   // warnings on, sharing, no combo risk
+
+  await surface.handle('fp:privacy:info', 'w');
+  const info = replies.filter((r) => r.kind === 'privacy').at(-1);
+  expect(info.buttons.some((b) => b.id === 'fp:privacy:warnings:off')).toBe(true);   // toggle offered
+
+  await surface.handle('fp:privacy:warnings:off', 'w');
+  expect(surface.warningsMode).toBe('off');
+  expect(replies.some((r) => /warnings are now off|waarschuwingen staan nu uit/i.test(r.text || ''))).toBe(true);   // acknowledged
+  expect(surface.privacyState('w')).toMatchObject({ level: 'risk', reason: 'warnings-off' });   // structural ⚠
+});
+
+test('privacy indicator — quiet when nothing is shared', async () => {
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod: new InMemoryCentralPod(), emit: (r) => replies.push(r) });
+  await surface.start('q');
+  await surface.handle('fp:charter:skip', 'q');
+  expect(replies.filter((r) => r.kind === 'privacy').at(-1).level).toBe('quiet');
+  expect(surface.privacyState('q').level).toBe('quiet');
+});
+
+test('charter consent — skipping shares nothing (default withhold)', async () => {
+  const pod = new InMemoryCentralPod();
+  const surface = createFeedbackSurface({ config: cfg({ charter: { attributes: [{ key: 'ageBand', purpose: 'age' }] } }), pod, emit: () => {} });
+  await surface.start('s');
+  await surface.handle('fp:charter:skip', 's');
+  await surface.handle('De GGZ-wachtlijst is veel te lang', 's');
+  await surface.handle('ik ben klaar', 's');
+  await surface.handle('verstuur alles', 's');
+  expect(pod.forAggregation()[0].attributes).toBeUndefined();
+});
+
+test('start({ greet:false }) suppresses the onboarding greeting + affordances (restore-on-reload path)', async () => {
+  const { surface, replies } = setup({ surface: { reportButton: true } });
+  await surface.start('rb2', { greet: false });
+  // no /help greeting and no affordance bubble — on reload these come back WITH the restored transcript instead,
+  // so re-emitting would stack them in the stored history.
+  expect(replies.some((r) => (r.buttons || []).some((b) => b.id === 'fp:report'))).toBe(false);
+  expect(replies.length).toBe(0);
+});
+
+test('access affordance — start() offers backup + restore; backup reveals the phrase via revealOwnerPhrase', async () => {
+  const calls = [];
+  const callSkill = async (origin, opId, args) => {
+    calls.push({ origin, opId, args });
+    if (opId === 'revealOwnerPhrase') return { shown: false, mnemonic: 'alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima' };
+    return {};
+  };
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg(), pod: new InMemoryCentralPod(), callSkill, accessButton: true, emit: (r) => replies.push(r) });
+  await surface.start('acc');
+  // onboarding offers the two access affordances as bubble-buttons
+  const opts = replies.find((r) => r.kind === 'access' && Array.isArray(r.buttons));
+  expect(opts.buttons.map((b) => b.id)).toEqual(['fp:access:backup', 'fp:access:restore']);
+  // BACK UP → calls the host reveal skill on the household agent + surfaces the phrase
+  replies.length = 0;
+  expect(await surface.handle('fp:access:backup', 'acc')).toBe(true);
+  expect(calls.some((c) => c.origin === 'household' && c.opId === 'revealOwnerPhrase')).toBe(true);
+  expect(replies.at(-1).kind).toBe('access-reveal');
+  expect(replies.at(-1).text).toContain('alpha bravo charlie');   // the phrase is surfaced
+  expect(replies.at(-1).copyText).toMatch(/^alpha bravo/);         // copy affordance carries the phrase
+});
+
+test('access affordance — restore prompts, then a pasted phrase installs it via restoreOwnerPhrase', async () => {
+  const calls = [];
+  const callSkill = async (origin, opId, args) => { calls.push({ origin, opId, args }); return opId === 'restoreOwnerPhrase' ? { ok: true, reloadRequired: true } : {}; };
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg(), pod: new InMemoryCentralPod(), callSkill, accessButton: true, emit: (r) => replies.push(r) });
+  await surface.start('rst'); replies.length = 0;
+  // RESTORE → prompts for a phrase (no skill call yet)
+  expect(await surface.handle('fp:access:restore', 'rst')).toBe(true);
+  expect(replies.at(-1).kind).toBe('access');
+  expect(calls.some((c) => c.opId === 'restoreOwnerPhrase')).toBe(false);
+  // a 12-word phrase is treated as the pasted mnemonic → restoreOwnerPhrase on the household agent
+  const phrase = 'one two three four five six seven eight nine ten eleven twelve';
+  expect(await surface.handle(phrase, 'rst')).toBe(true);
+  const call = calls.find((c) => c.opId === 'restoreOwnerPhrase');
+  expect(call.origin).toBe('household');
+  expect(call.args.mnemonic).toBe(phrase);
+  expect(replies.at(-1).kind).toBe('access-result');
+  expect(replies.at(-1).text).toMatch(/hersteld|restored/i);      // success surfaced
+});
+
+test('access affordance — an invalid restore phrase is rejected without calling the host skill', async () => {
+  const calls = [];
+  const callSkill = async (origin, opId) => { calls.push(opId); return { ok: true }; };
+  const replies = [];
+  const surface = createFeedbackSurface({ config: cfg(), pod: new InMemoryCentralPod(), callSkill, accessButton: true, emit: (r) => replies.push(r) });
+  await surface.start('inv'); replies.length = 0;
+  await surface.handle('fp:access:restore', 'inv');
+  expect(await surface.handle('too few words here', 'inv')).toBe(true);   // 4 words → invalid
+  expect(calls.includes('restoreOwnerPhrase')).toBe(false);
+  expect(replies.at(-1).text).toMatch(/12 of 24|12 or 24/);
+});
+
 test('parseFeedbackInvite reads a project-invite link', () => {
   expect(parseFeedbackInvite('https://app.example/?projectId=gemeente-x&code=abc123')).toEqual({ projectId: 'gemeente-x', code: 'abc123' });
   expect(parseFeedbackInvite('projectId=p&code=c')).toEqual({ projectId: 'p', code: 'c' });

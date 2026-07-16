@@ -218,6 +218,15 @@ export function renderCircleNoticeboard(container, {
       if (gallery.childNodes.length) li.appendChild(gallery);
     }
 
+    // Drivers #5 (b) — a resonance badge when this post matches MY private drivers (matched on-device).
+    // The existing "respond" chip below IS the anonymous reach-out (respondToItem → @handle DM).
+    if (p.resonance?.reason) {
+      const badge = document.createElement('div');
+      badge.className = 'cc-prikbord__resonance';
+      badge.textContent = `✨ ${tr('circle.noticeboard.resonates', { reason: p.resonance.reason })}`;
+      li.appendChild(badge);
+    }
+
     const meta = document.createElement('div');
     meta.className = 'cc-prikbord__meta';
     meta.textContent = [p.addedByLabel || p.addedBy, p.when].filter(Boolean).join(' · ');

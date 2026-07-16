@@ -80,7 +80,8 @@
     "@inrupt/solid-client-authn-browser": "^2.4.0",
     "chrono-node": "^2.7.0",
     "i18next": "^23.15.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "@canopy/attribute-charter": "workspace:*"
   },
   "devDependencies": {
     "@canopy/pseudo-pod": "workspace:*",

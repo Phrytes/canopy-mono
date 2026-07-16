@@ -54,12 +54,14 @@ export async function summariseOwnContributions({ ownPod, participant, model, pr
  * @param {string} [a.lang]
  * @returns {Promise<string>} the verified-summary contribution id
  */
-export async function releaseVerifiedSummary({ centralPod, draft, identity, participant, timeWindow, lang }) {
+export async function releaseVerifiedSummary({ centralPod, draft, identity, participant, timeWindow, lang, attributes, charterHash }) {
   if (!draft || !draft.summary) throw new Error('releaseVerifiedSummary: an empty summary cannot be released');
   const cid = `${participant}:summary:${draft.round}`;
   const contribution = buildContribution(
     { id: cid, text: draft.summary },
-    { timeWindow, lang, themeTags: ['verified-summary'] },
+    // Property layer: coarse disclosed attributes + charterHash ride the verified summary (aggregation reads
+    // central); omitted when absent → the pre-charter summary contribution is unchanged.
+    { timeWindow, lang, themeTags: ['verified-summary'], attributes, charterHash },
   );
   const meta = contributionMeta(identity, { projectId: draft.projectId, participant, contribution });
   await centralPod.write(participant, contribution, meta);

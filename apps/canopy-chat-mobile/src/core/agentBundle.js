@@ -40,6 +40,8 @@ import { createContactThreadChannel } from '../../../canopy-chat/src/v2/contactT
 import { withCalendarOutbound } from '../../../canopy-chat/src/core/handlers/calendarOutbound.js';
 // OBJ-2 membership — shared joiner-side peer-redeem sender (correlated by the bundle's pending-map).
 import { makeSendGroupRedeemRequest } from '../../../canopy-chat/src/core/handlers/groupRedeem.js';
+// personas#2 — post-join "share to this circle" sender (member → admin roster-property push).
+import { makeSendPersonaPropsUpdate } from '../../../canopy-chat/src/core/handlers/personaPropsUpdate.js';
 import { sendA2ATask } from '@canopy/core';
 import { PeerGraph } from '@canopy/core';
 import { AsyncStorageAdapter } from '@canopy/react-native/storage/AsyncStorageAdapter';
@@ -481,6 +483,19 @@ export async function bootAgentBundle(opts = {}) {
     sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
     isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
     pendingMap:      pendingPeerRedeems,
+    // Identity 5B/C — present this device's per-circle address on the peer redeem path (parity with web).
+    circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
+  });
+
+  // personas#2 — post-join persona-property push: ONE shared pending-map + sender (parity with the
+  // redeem pair). ChatScreen wires the update+ack handlers against this map; the About-me screen uses
+  // this sender via shareDisclosureToCircle.
+  const pendingPersonaProps = new Map();
+  const sendPersonaUpdate = makeSendPersonaPropsUpdate({
+    sendPeer:        (addr, payload) => agent.sendPeerMessage(addr, payload),
+    isPeerConnected: () => agent.isPeerReachable?.() ?? (agent.peer?.status === 'connected'),
+    pendingMap:      pendingPersonaProps,
+    circleAddressFor: (gid) => agent.circleAddressFor?.(gid) ?? null,
   });
 
   // In-app relay setting live-reconnect: re-invoke connectPeerTransport with the FRESH relay URL + the
@@ -513,6 +528,8 @@ export async function bootAgentBundle(opts = {}) {
     transport,
     pendingPeerRedeems,
     sendPeerRedeem,
+    pendingPersonaProps,
+    sendPersonaUpdate,
     contactSkills,
     peerGraph,
     contactChannel,

@@ -13,6 +13,7 @@
  *   - Hard timeout at 90 s → seedless retry (different node pool)
  */
 import { Transport, b64encode } from '@canopy/core';
+import { log } from '@canopy/logger';
 
 export class NknTransport extends Transport {
   #client    = null;
@@ -70,6 +71,8 @@ export class NknTransport extends Transport {
     try { this.#client?.close(); } catch { /**/ }
     this.#client = null;
     this._setAddress(null);
+    // PII-SAFE: no address/payload — a bare lifecycle marker.
+    log.info('transport', 'transport.disconnect');
     this.emit('disconnect');
   }
 
@@ -85,6 +88,9 @@ export class NknTransport extends Transport {
     while (true) {
       try {
         await this.#client.send(to, payload, { noReply: true });
+        // PII-SAFE: byte COUNT of the wire payload only — never `to` (the peer
+        // address) nor the payload/envelope contents.
+        log.info('transport', 'transport.send', { bytes: payload.length });
         return;
       } catch (err) {
         const msg        = String(err?.message ?? '').toLowerCase();
@@ -94,8 +100,13 @@ export class NknTransport extends Transport {
           msg.includes('no longer')       ||
           (typeof DOMException !== 'undefined' &&
            err instanceof DOMException && err.name === 'InvalidStateError');
-        if (!isTransient) throw err;
+        if (!isTransient) {
+          // PII-SAFE: error NAME + a boolean; no address, no payload.
+          log.error('transport', 'transport.send.fail', { err: err?.name ?? 'Error', transient: false });
+          throw err;
+        }
         if (Date.now() >= deadline) {
+          log.error('transport', 'transport.send.fail', { reason: 'timeout', transient: true });
           throw new Error('NKN send timed out — channel may be reconnecting');
         }
         await new Promise(r => setTimeout(r, POLL_MS));
@@ -153,6 +164,8 @@ export class NknTransport extends Transport {
         clearTimeout(warnTimer);
         try { this.#client?.close(); } catch { /**/ }
         this.#client = null;
+        // PII-SAFE: route-shape booleans only; a coarse connect-timeout marker.
+        log.warn('transport', 'transport.connect.timeout', { multi: !!multi, seeded: !!seed });
         // Fallback chain: MultiClient+seed → Client+seed →
         // Client+seedless → reject.
         if (multi) {
@@ -170,6 +183,11 @@ export class NknTransport extends Transport {
         clearTimeout(warnTimer);
         clearTimeout(hardTimer);
         this._setAddress(this.#client.addr);
+        // PII-SAFE: route-shape booleans only — NOT the NKN address.
+        log.info('transport', 'transport.connect', {
+          multi: Ctor === this.#nknLib.MultiClient,
+          seeded: !!seed,
+        });
         this.emit('connect', { address: this.address });
         resolve();
       });
@@ -181,6 +199,8 @@ export class NknTransport extends Transport {
       });
 
       this.#client.on('error', (err) => {
+        // PII-SAFE: error NAME only — no address, no message content.
+        log.error('transport', 'transport.error', { err: err?.name ?? 'Error' });
         this.emit('error', err instanceof Error ? err : new Error(String(err)));
       });
     });

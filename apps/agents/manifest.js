@@ -94,6 +94,135 @@ export const agentsManifest = {
       },
     },
 
+    /* ── identity step 4 — create a PROFILE ─────────────────────────────
+     * A profile is a labelled identity whose key derives from the owner root
+     * (recoverable from the phrase). The DERIVATION is the injected `profiles`
+     * collaborator (owner-root-backed); this op names it. verb `add` (a new
+     * `agent`-type entry).
+     */
+    {
+      id:        'createProfile',
+      verb:      'add',
+      appliesTo: { type: 'agent' },
+      params: [
+        // Stable profile id — also the registry agentId + the HKDF label. Never rename.
+        { name: 'id',         kind: 'string', required: true, schema: { minLength: 1 } },
+        // Optional display name.
+        { name: 'name',       kind: 'string' },
+        // Optional own/inherit property map — a JSON string (same convention as installAgent.grants).
+        { name: 'properties', kind: 'string' },
+      ],
+      surfaces: {
+        chat: {
+          reply: 'record',
+          hint:  'Create a new PROFILE — a labelled identity whose key derives from your owner root '
+               + '(recoverable from your recovery phrase). Give it an id (a stable label) and an '
+               + 'optional name/properties (JSON own/inherit map). It joins your agents; you can then '
+               + 'load it on a device.',
+        },
+        // Front-end (step 4/5 app) — a plain button on the agents surface. Creating your OWN profile
+        // isn't destructive, so no consent gate (unlike installAgent, which adds a third party).
+        ui: {
+          control: 'button',
+          label:   'New profile',
+        },
+      },
+    },
+
+    /* Property layer — curate a coarse property ONCE on a profile (place/ageBand/…), readable by any app
+     * (cross-app reuse). setProfileProperty writes an OWN value; getProfileProperties reads the map. */
+    {
+      id:        'setProfileProperty',
+      verb:      'update',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',    kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'key',   kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'value', kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Set a coarse property (e.g. place) on a profile — curated once, reusable across apps.' } },
+    },
+    {
+      id:        'getProfileProperties',
+      verb:      'get',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Read a profile\'s properties (own/inherit).' } },
+    },
+
+    /* Drivers (#3) — an OPEN personal-driver property { kind, text, tags[] } (goals/hobbies/…), not a coarse
+     * string, so it has its own set/get. Curated once, governed by the same per-persona disclosure; the
+     * on-device matcher reads them via getProfileDrivers. */
+    {
+      id:        'setProfileDriver',
+      verb:      'update',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',   kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'key',  kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'kind', kind: 'string' },
+        { name: 'text', kind: 'string' },
+        { name: 'tags', kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Set a personal driver (goal/hobby/…) on a profile: a phrase + comma-separated tags.' } },
+    },
+    {
+      id:        'getProfileDrivers',
+      verb:      'get',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Read a profile\'s personal drivers.' } },
+    },
+
+    /* Personas — persist what a persona SHARES per context (circle/project). The general per-persona version
+     * of the feedback charter consent; the "About me" surface + join wizard write through these. */
+    {
+      id:        'setProfileDisclosure',
+      verb:      'update',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',        kind: 'string',  required: true, schema: { minLength: 1 } },
+        { name: 'contextId', kind: 'string',  required: true, schema: { minLength: 1 } },
+        { name: 'key',       kind: 'string',  required: true, schema: { minLength: 1 } },
+        { name: 'enabled',   kind: 'boolean' },
+        { name: 'rung',      kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Choose whether a persona shares a property in a given circle/context.' } },
+    },
+    {
+      id:        'getProfileDisclosure',
+      verb:      'get',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'Read a persona\'s per-context disclosure policy.' } },
+    },
+    {
+      id:        'getPersonaView',
+      verb:      'get',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id', kind: 'string', required: true, schema: { minLength: 1 } },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'The "About me" view — a persona\'s properties + per-context sharing in one call.' } },
+    },
+    {
+      id:        'getPersonaRelease',
+      verb:      'get',
+      appliesTo: { type: 'agent' },
+      params: [
+        { name: 'id',        kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'contextId', kind: 'string', required: true, schema: { minLength: 1 } },
+        { name: 'keys',      kind: 'string' },
+      ],
+      surfaces: { chat: { reply: 'record', hint: 'What a persona would share in a circle (its release for that context).' } },
+    },
+
     /* ── P2 CONTROL ops ─────────────────────────────────────────────────
      * All resolve the target by agentId OR pubKey ONLY (never webid —
      * ambiguous for multi-device users), same as viewAgent.  Token-first
@@ -133,8 +262,11 @@ export const agentsManifest = {
       params: [
         { name: 'agentId',       kind: 'string', required: true, schema: { minLength: 1 } },
         // The fine-grained skill scope the token authorises (e.g.
-        // 'tasks.addTask' or a prefix like 'bot.*').
-        { name: 'skill',         kind: 'string', required: true, schema: { minLength: 1 } },
+        // 'tasks.addTask' or a prefix like 'bot.*'). Optional when `profile` is given.
+        { name: 'skill',         kind: 'string', schema: { minLength: 1 } },
+        // identity step 2.3 — name a PROFILE the grantee (a device) may run; the token carries
+        // it as a constraint the PolicyEngine gate enforces. At least one of skill/profile.
+        { name: 'profile',       kind: 'string', schema: { minLength: 1 } },
         // Coarse capability label mirrored into `capabilities[]`;
         // defaults to `skill` when omitted.
         { name: 'capability',    kind: 'string' },

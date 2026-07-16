@@ -99,14 +99,25 @@ export function FeedbackReviewCards({
   );
 }
 
-/** The PII-safe on-device log panel. `selectable` → long-press to Copy (zero clipboard dep). */
-export function FeedbackReportPanel({ intro, logText }) {
+/**
+ * The PII-safe on-device log panel. `selectable` → long-press to Copy (zero clipboard dep). The optional
+ * `sendLabel` + `onSend` add an ANONYMOUS "send" button (web parity — the web bubble offers the same). The
+ * send LOGIC is the shared surface (`fp:report:send`); this is only the button.
+ */
+export function FeedbackReportPanel({ intro, logText, sendLabel, onSend }) {
   return (
     <View style={s.reportBlock} testID="feedback-report-panel">
       {intro ? <Text style={s.reportIntro}>{intro}</Text> : null}
       <ScrollView style={s.reportLogWrap} nestedScrollEnabled>
         <Text style={s.reportLog} selectable testID="feedback-report-log">{logText || '—'}</Text>
       </ScrollView>
+      {onSend && sendLabel ? (
+        <View style={s.reportFooter}>
+          <Pressable style={s.cardBtn} onPress={onSend} accessibilityRole="button" testID="feedback-report-send">
+            <Text style={s.cardBtnText}>{sendLabel}</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -130,4 +141,5 @@ const s = StyleSheet.create({
   reportIntro: { fontSize: 13, color: theme.color.inkSoft, lineHeight: 18 },
   reportLogWrap: { maxHeight: 220, backgroundColor: theme.color.paper, borderRadius: theme.radius.sm ?? 6, padding: 8 },
   reportLog: { fontSize: 11, color: theme.color.ink, fontFamily: 'monospace', lineHeight: 15 },
+  reportFooter: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 2 },
 });

@@ -30,6 +30,7 @@
  * When no `meter` is supplied the client behaves byte-identically to before.
  */
 import { usageForCompletion } from './metering.js';
+import { log } from '@canopy/logger';
 
 export class LlmClient {
   /** @type {import('./types.js').LlmProvider} */ #provider;
@@ -68,10 +69,25 @@ export class LlmClient {
    */
   async invoke(req, ctx = {}) {
     const ts = Date.now();
+    // PII-SAFE: model/endpoint/provider are stable route labels (not content);
+    // msgs/tools are COUNTS. No prompt text is ever logged.
+    log.info('llm', 'llm.request', {
+      provider: this.#provider.id,
+      ...(this.#model ? { model: this.#model } : {}),
+      ...(this.#endpoint ? { endpoint: this.#endpoint } : {}),
+      msgs:  Array.isArray(req?.messages) ? req.messages.length : 0,
+      tools: Array.isArray(req?.tools) ? req.tools.length : 0,
+    });
     let result;
     try {
       result = await this.#provider.invoke(req);
     } catch (err) {
+      // PII-SAFE: error NAME + provider label + duration only — never the prompt.
+      log.error('llm', 'llm.error', {
+        provider: this.#provider.id,
+        err: err?.name ?? 'Error',
+        ms: Date.now() - ts,
+      });
       try {
         await this.#audit({
           ts, kind: 'llm.invoke.error', providerId: this.#provider.id,
@@ -88,6 +104,19 @@ export class LlmClient {
         output: result,
       });
     } catch { /* same */ }
+    // PII-SAFE: duration + COUNTS only (token counts, reply char count, #tool
+    // calls). replyChars is a length, never the reply text itself.
+    let tok = null;
+    try { tok = usageForCompletion(req, result); } catch { /* logging must never crash */ }
+    log.info('llm', 'llm.response', {
+      provider: this.#provider.id,
+      ms: Date.now() - ts,
+      replyChars: typeof result?.replyText === 'string' ? result.replyText.length : 0,
+      toolCalls: Array.isArray(result?.toolCalls)
+        ? result.toolCalls.length
+        : (result?.toolCall ? 1 : 0),
+      ...(tok ? { promptTokens: tok.promptTokens, completionTokens: tok.completionTokens, estimated: tok.estimated } : {}),
+    });
     if (this.#meter) {
       try {
         const usage = usageForCompletion(req, result);

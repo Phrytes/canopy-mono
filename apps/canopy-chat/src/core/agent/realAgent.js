@@ -25,6 +25,7 @@
 
 import {
   Agent, AgentIdentity, Bootstrap, InternalBus, InternalTransport, DataPart, TokenRegistry,
+  PolicyEngine, TrustRegistry, deriveCircleAddress,
 } from '@canopy/core';
 import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
 import { wireSkill } from '@canopy/sdk';
@@ -50,6 +51,12 @@ import {
   createEndorsementResource,
   createCatalogSource,
   createCommunitySubscriptions,
+  createProfile as registryCreateProfile,
+  setOwn,
+  setDisclosure as setDisclosurePolicy,
+  releasedValues as releaseFromPolicy,
+  createDriver,
+  driversFromProperties,
 } from '@canopy/agent-registry';
 
 /**
@@ -260,8 +267,11 @@ export async function createRealHouseholdAgent(opts = {}) {
   // Only seed a FRESH vault: an existing install keeps its current identity on this
   // boot (a clean cutover re-keys via a wipe + re-onboard, never silently here).
   const chatVault = opts.chatVault ?? makeBrowserVault('cc-chat-id:');
+  // The default profile's seed — the source for both the chat identity AND per-circle addresses
+  // (step 5B/C). Kept so the returned agent can expose circleAddressFor(circleId).
+  const defaultProfileSeed = ownerRoot.deriveAgentSeed('default');
   if (!(await chatVault.has('agent-privkey'))) {
-    await AgentIdentity.fromSeed(ownerRoot.deriveAgentSeed('default'), chatVault);
+    await AgentIdentity.fromSeed(defaultProfileSeed, chatVault);
   }
   const sa = await createSecureMeshAgent({
     bus,
@@ -645,9 +655,63 @@ export async function createRealHouseholdAgent(opts = {}) {
     } else {
       agentsCatalog = createStubCatalog();
     }
-    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog })) {
-      hostAgent.register(id, handler, { visibility });
+    // 2.4b — owner-only CONTROL ops require 'trusted' (only the seeded in-process chat identity
+    // clears it); reads (list/view) stay 'authenticated'. Chat-scoped: the shared wireSkills.js
+    // `visibilityFor` + the standalone agents app are untouched.
+    const TRUSTED_AGENT_OPS = new Set(['createProfile', 'grantAgent', 'revokeAgent', 'revokeGrant', 'purgeAgent', 'installAgent', 'restoreDataVersion']);
+    // identity step 4 — the createProfile collaborator: derive a new profile from THIS user's owner
+    // root + register it. Owner-root-backed (kept out of the dependency-free cores).
+    const agentsProfiles = {
+      create: ({ profileId, name, properties }) =>
+        registryCreateProfile({ registry: agentsRegistry, ownerRoot, profileId, name, properties }),
+      // Property layer — set/read a coarse property on a profile (curate once, reuse across apps). setProperty
+      // merges (setOwn) then re-registers the FULL existing entry (register replaces), preserving key/role/grants.
+      setProperty: async ({ profileId, key, value }) => {
+        const cur = await agentsRegistry.lookup(profileId);
+        if (!cur) throw new Error(`setProperty: no such profile ${profileId}`);
+        await agentsRegistry.register({ ...cur, properties: setOwn(cur.properties ?? {}, key, value) });
+        return { ok: true };
+      },
+      getProperties: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.properties ?? {},
+      // Drivers (#3) — set an OWN personal driver property: build+validate the { kind, text, tags[] } value
+      // (createDriver throws on an empty driver → the core reports invalid-driver), then store it like any
+      // property (setOwn merge + re-register the full entry). getDrivers filters the map to driver values.
+      setDriver: async ({ profileId, key, kind, text, tags }) => {
+        const cur = await agentsRegistry.lookup(profileId);
+        if (!cur) throw new Error(`setDriver: no such profile ${profileId}`);
+        const driver = createDriver({ kind, text, tags });
+        await agentsRegistry.register({ ...cur, properties: setOwn(cur.properties ?? {}, key, driver) });
+        return { ok: true };
+      },
+      getDrivers: async ({ profileId }) => driversFromProperties((await agentsRegistry.lookup(profileId))?.properties ?? {}),
+      // Personas — the PERSISTED per-context disclosure policy ("what this persona shares in circle X").
+      // Merge via the pure disclosure setter, then re-register the FULL entry (preserves properties/key/grants).
+      setDisclosure: async ({ profileId, contextId, key, enabled, rung }) => {
+        const cur = await agentsRegistry.lookup(profileId);
+        if (!cur) throw new Error(`setDisclosure: no such profile ${profileId}`);
+        await agentsRegistry.register({ ...cur, disclosure: setDisclosurePolicy(cur.disclosure ?? { perContext: {} }, contextId, key, { enabled, rung }) });
+        return { ok: true };
+      },
+      getDisclosure: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.disclosure ?? { perContext: {} },
+      // Personas — what a persona actually RELEASES in a context: its disclosure policy over its effective
+      // (own + inherited-from-default) properties. Pre-loads self + default so releasedValues' SYNC getProfile
+      // works; returns the coarse {key:value} that would be shared when joining/acting as this persona there.
+      releaseFor: async ({ profileId, contextId, keys = [], defaultProfileId = 'default' }) => {
+        const [self, dflt] = await Promise.all([agentsRegistry.lookup(profileId), agentsRegistry.lookup(defaultProfileId)]);
+        const byId = { [profileId]: self, [defaultProfileId]: dflt };
+        const request = { items: (Array.isArray(keys) ? keys : []).map((k) => ({ key: k })) };
+        return releaseFromPolicy({ getProfile: (id) => byId[id] ?? null, profileId, defaultProfileId }, request, self?.disclosure ?? { perContext: {} }, contextId);
+      },
+    };
+    for (const { id, handler, visibility } of buildAgentSkills({ registry: agentsRegistry, tokens: agentsTokens, versionStoreFor, catalog: agentsCatalog, profiles: agentsProfiles })) {
+      hostAgent.register(id, handler, { visibility: TRUSTED_AGENT_OPS.has(id) ? 'trusted' : visibility });
     }
+    // Property layer — REGISTER the default profile (the pseudonym) ONCE so a coarse property curated at consent
+    // (setProfileProperty) has a profile to land on → cross-app reuse works for the no-login participant too.
+    // Guarded on lookup so a later boot never re-registers (which would wipe accumulated properties). Best-effort.
+    try {
+      if (!(await agentsRegistry.lookup('default'))) await agentsProfiles.create({ profileId: 'default', name: 'default' });
+    } catch { /* degraded (no owner root / registry) — the on-consent persist simply stays best-effort */ }
   }
 
   // v0.4 — household membership demo.  The real manifest declares
@@ -727,7 +791,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Re-revealable: backing up the phrase again is legitimate; the phrase is stable.
     try { return [DataPart({ shown: false, mnemonic: ownerRoot.toMnemonic() })]; }
     catch (e) { return [DataPart({ ok: false, error: e?.message ?? 'reveal-failed' })]; }
-  }, { visibility: 'authenticated' });
+  }, { visibility: 'trusted' });   // 2.4b — the master recovery phrase: owner-only
 
   hostAgent.register('restoreOwnerPhrase', async ({ parts }) => {
     const mnemonic = String(parts?.[0]?.data?.mnemonic ?? '').trim();
@@ -742,7 +806,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       await AgentIdentity.fromSeed(root.deriveAgentSeed('default'), chatVault);
       return [DataPart({ ok: true, reloadRequired: true })];
     } catch (e) { return [DataPart({ ok: false, error: e?.message ?? 'restore-failed' })]; }
-  }, { visibility: 'authenticated' });
+  }, { visibility: 'trusted' });   // 2.4b — overwrites the owner root: owner-only
 
 
   /* folio's web-only handlers used to live here (~125 lines of mock-
@@ -756,6 +820,27 @@ export async function createRealHouseholdAgent(opts = {}) {
    * placeholder reply shapes (real bytes/pod-IO is deferred to slice
    * 5 + the mobile pivot).
    */
+
+  /* Identity step 2.4a/2.4b — attach a PolicyEngine to hostAgent so scoped access is ENFORCED
+   * (the gate was structurally absent: hostAgent.policyEngine was null, so taskExchange/A2ATransport
+   * skipped it for host traffic). 2.4b raised the owner-only CONTROL + secret-material skills
+   * (grant/revoke/purge/install/restoreDataVersion/reveal/restoreOwnerPhrase) to 'trusted'. hostAgent
+   * is IN-PROCESS ONLY (InternalTransport; no external peer can reach it), so the sole caller is the
+   * chat agent — SEED its pubKey as 'trusted' below so those raised skills stay reachable in-process.
+   * Reads stay 'authenticated'. Revocation feeds from the issuer-side agentsTokenRegistry. Best-effort:
+   * a failure leaves the gate absent (prior behaviour) — never breaks boot. */
+  try {
+    // Vault-backed TrustRegistry: unknown peers → 'authenticated'; the seeded chat identity → 'trusted'.
+    const hostTrustRegistry = new TrustRegistry(opts.hostTrustVault ?? makeBrowserVault('cc-host-trust:'));
+    hostAgent.policyEngine = new PolicyEngine({
+      trustRegistry: hostTrustRegistry,
+      skillRegistry: hostAgent.skills,
+      agentPubKey:   hostId.pubKey,
+      isRevoked:     async (tokenId) => Boolean(await agentsTokenRegistry?.isRevoked(tokenId)),
+    });
+    // The in-process chat caller is the owner's device — trust it so it clears the 'trusted' host ops.
+    await hostTrustRegistry.setTier(chatId.pubKey, 'trusted');
+  } catch (e) { console.warn('[realAgent] hostAgent PolicyEngine attach skipped:', e?.message ?? e); }
 
   await Promise.all([
     hostAgent.start(),
@@ -1454,6 +1539,22 @@ export async function createRealHouseholdAgent(opts = {}) {
           ...realArgs,
           groupId: opts.stoopGroup ?? 'cc-default-buurt',
         };
+      }
+      // Identity 5B/C — present THIS device's per-circle ADDRESS
+      // (deriveCircleAddress) on the direct redeem/create path so the substrate
+      // records it into the roster (the roster-recording wire). ONE seam for
+      // BOTH platforms (invariant #1): the join/create wizards dispatch through
+      // here, so neither web nor mobile threads it. Derived from the resolved
+      // groupId off the default profile seed; additive — an explicit caller value
+      // wins, an op without a groupId is untouched. NOT verifyMembershipCodeForPeer:
+      // there the JOINER's address is forwarded by the peer bridge, not the admin's.
+      const PRESENTS_CIRCLE_ADDRESS = new Set(['redeemMembershipCode', 'createGroupV2']);
+      if (PRESENTS_CIRCLE_ADDRESS.has(realOpId)
+          && typeof realArgs.groupId === 'string' && realArgs.groupId
+          && !realArgs.circleAddress) {
+        try {
+          realArgs = { ...realArgs, circleAddress: deriveCircleAddress(defaultProfileSeed, realArgs.groupId) };
+        } catch { /* address derivation is additive — never block the redeem/create */ }
       }
       if (realOpId === 'leaveGroup' && realArgs.confirm !== true) {
         // Q27-style two-step confirm.  Short-circuit before invoke.
@@ -2374,6 +2475,9 @@ export async function createRealHouseholdAgent(opts = {}) {
           label:       m.displayName ?? m.handle ?? m.webid,
           handle:      m.handle ?? null,
           role:        m.role ?? 'member',
+          // Identity 5B/C — carry the recorded per-circle address through the
+          // chat-shell projection (additive; absent for pre-substrate members).
+          ...(m.circleAddress ? { circleAddress: m.circleAddress } : {}),
         })),
         _sync: simulateSync(),
       };
@@ -2726,5 +2830,11 @@ export async function createRealHouseholdAgent(opts = {}) {
      * primitive the factory wires without re-exposing each one.
      */
     sa,
+    // Diagnostic (step 2.4a) — the enforcement gate on the host skills' agent. Non-null proves
+    // the PolicyEngine attached (vs the try/catch having silently swallowed it).
+    hostPolicyEngine: hostAgent.policyEngine ?? null,
+    // Step 5B/C — the per-circle ADDRESS this device presents in a circle (unlinkable-by-default),
+    // derived from the default profile seed. The substrate the roster-recording wire consumes.
+    circleAddressFor: (circleId) => deriveCircleAddress(defaultProfileSeed, circleId),
   };
 }

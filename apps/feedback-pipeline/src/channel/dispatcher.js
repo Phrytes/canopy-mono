@@ -26,6 +26,10 @@ function contributionTextHash(text) {
 export class ChannelDispatcher {
   #adapter; #pod; #participant; #opts; #projectId; #identity; #centralPod;
   #session = { messages: [], points: [], verifyDraft: null };
+  // Property layer (charter consent): the participant's disclosed COARSE attributes + the charterHash they
+  // agreed to. Set by the surface BEFORE consent (setCharterDisclosure); every consented contribution then
+  // carries them (bound into the signature — see canonicalContribution). null = nothing disclosed (back-compat).
+  #charterDisclosure = null;
 
   /**
    * @param {{ adapter, pod, config, participant:string, identity?:{publicKey:string,privateKey:string} }} args
@@ -52,6 +56,15 @@ export class ChannelDispatcher {
   }
 
   #gate() { return { layer1OnDevice: this.#opts.layer1OnDevice, escalationCategories: this.#opts.escalationCategories }; }
+
+  /** Property layer: record the participant's charter consent (disclosed coarse attributes + charterHash) so
+   *  the next consented contributions carry it. Coarse values only (the surface releases them from the charter
+   *  vocabulary); `{}`/absent attributes ⇒ nothing extra rides. Idempotent — the latest choice wins. */
+  setCharterDisclosure({ attributes, charterHash } = {}) {
+    const attrs = attributes && typeof attributes === 'object' && Object.keys(attributes).length ? attributes : null;
+    this.#charterDisclosure = (attrs || charterHash) ? { attributes: attrs || undefined, charterHash: charterHash || undefined } : null;
+    return this.#charterDisclosure;
+  }
 
   /** An inbound message. Floors via the adapter (placement), routes, responds. */
   async handleMessage(raw) {
@@ -122,7 +135,7 @@ export class ChannelDispatcher {
       // an already-stored p1 ('duplicate contribution id'). Suffix a content hash so the stored id is unique
       // per distinct text across rounds — while an exact-duplicate text still dedups (correct idempotency).
       const cid = `${this.#participant}:${p.id}-${contributionTextHash(p.text)}`;
-      const contribution = buildContribution({ id: cid, text: p.text, raw: p.raw }, { timeWindow, lang: this.#opts.lang });
+      const contribution = buildContribution({ id: cid, text: p.text, raw: p.raw }, { timeWindow, lang: this.#opts.lang, ...(this.#charterDisclosure ?? {}) });
       const meta = contributionMeta(this.#identity, { projectId: this.#projectId, participant: this.#participant, contribution });
       try {
         await this.#pod.write(this.#participant, contribution, meta);
@@ -169,6 +182,9 @@ export class ChannelDispatcher {
     const cid = await releaseVerifiedSummary({
       centralPod: this.#centralPod, draft, identity: this.#identity,
       participant: this.#participant, lang: this.#opts.lang,
+      // Property layer: the verified summary is what reaches CENTRAL (what aggregation segments), so carry the
+      // participant's disclosed coarse attributes + charterHash here too.
+      ...(this.#charterDisclosure ?? {}),
     });
     this.#session.verifyDraft = null;
     await this.#adapter.send({ type: 'verified', round: draft.round, id: cid });

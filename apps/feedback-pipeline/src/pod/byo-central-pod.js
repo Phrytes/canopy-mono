@@ -72,7 +72,7 @@ export class ByoCentralPod {
 
   async forAggregation() {
     return (await this.#records())
-      .map((r) => { const c = this.#revealVerified(r); return c && { user: r.participant, id: c.id, text: c.text, lang: c.lang }; })
+      .map((r) => { const c = this.#revealVerified(r); return c && { user: r.participant, id: c.id, text: c.text, lang: c.lang, ...(c.attributes ? { attributes: c.attributes } : {}), ...(c.charterHash ? { charterHash: c.charterHash } : {}) }; })
       .filter(Boolean);
   }
 

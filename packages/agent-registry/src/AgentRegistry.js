@@ -38,6 +38,10 @@ export function createAgentRegistry({
   resourceUri,
   maxRetries,
   onPersistentConflict,
+  // identity step 2.5 — optional @canopy/versioning store. When supplied, every registry write
+  // snapshots the resource, so the profile set gets history / undoable recovery (the registry
+  // lives on the pseudo-pod, which is NOT a versioned circle pod, so it gets none for free).
+  versionStore = null,
   now = () => new Date().toISOString(),
 } = {}) {
   if (!pseudoPod || typeof pseudoPod.read !== 'function') {
@@ -60,6 +64,11 @@ export function createAgentRegistry({
   async function _writeNext(body, etag) {
     try {
       const result = await pseudoPod.write(uri, body, etag);
+      // Snapshot the just-written resource (recovery). Best-effort: a versioning failure must
+      // NEVER break the registry write.
+      if (typeof versionStore?.capture === 'function') {
+        try { await versionStore.capture(uri, JSON.stringify(body)); } catch { /* non-fatal */ }
+      }
       return { etag: result?.etag };
     } catch (err) {
       // Pseudo-pod V0 / V1 doesn't yet enforce CAS — surface a CONFLICT
@@ -124,6 +133,11 @@ export function createAgentRegistry({
             grants:       Array.isArray(entry.grants) ? [...entry.grants] : [],
             signedAt,
             revokedAt:    entry.revokedAt ?? null,
+            // identity step 2 — persist the profile fields (normalised on read via _normaliseAgent)
+            properties:       entry.properties ?? {},
+            ownerFingerprint: entry.ownerFingerprint ?? null,
+            // property layer (personas) — persisted per-context disclosure policy
+            disclosure:       entry.disclosure ?? { perContext: {} },
           }],
           updatedAt: now(),
         };
@@ -232,7 +246,7 @@ export function createAgentRegistry({
    * Etag-CAS retry on conflict.
    */
   async function applyGrant(identifier, grant = {}) {
-    const { tokenId, skill = null, expiresAt = null, subject = null, capability = null } = grant;
+    const { tokenId, skill = null, expiresAt = null, subject = null, capability = null, profile = null } = grant;
     if (typeof tokenId !== 'string' || tokenId.length === 0) {
       throw Object.assign(
         new Error('applyGrant: grant.tokenId is required'),
@@ -252,7 +266,7 @@ export function createAgentRegistry({
             if (!_agentMatches(a, identifier)) return a;
             const grants = [
               ...a.grants.filter(g => g.tokenId !== tokenId),
-              { tokenId, skill, expiresAt, subject, capability },
+              { tokenId, skill, expiresAt, subject, capability, profile },
             ];
             const capabilities = (typeof capability === 'string' && !a.capabilities.includes(capability))
               ? [...a.capabilities, capability]

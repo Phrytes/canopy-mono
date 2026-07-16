@@ -68,6 +68,13 @@ describe('AgentIdentity.fromSeed', () => {
     await expect(AgentIdentity.fromSeed(new Uint8Array(16), new VaultMemory())).rejects.toThrow('32-byte');
   });
 
+  it('pubKeyFromSeed (vault-free) matches fromSeed().pubKey', async () => {
+    const seed = Bootstrap.create().bootstrap.deriveAgentSeed('default');
+    const viaVault = (await AgentIdentity.fromSeed(seed, new VaultMemory())).pubKey;
+    expect(AgentIdentity.pubKeyFromSeed(seed)).toBe(viaVault);
+    expect(() => AgentIdentity.pubKeyFromSeed(new Uint8Array(16))).toThrow('32-byte');
+  });
+
   it('end-to-end: one phrase → default profile pubKey, reproducible (feedback pseudonym recovery)', async () => {
     const { mnemonic } = Bootstrap.create();
     const pub = async () =>

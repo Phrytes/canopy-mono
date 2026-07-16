@@ -15,12 +15,12 @@ import { Modal, View, ScrollView, StyleSheet, Pressable, Text } from 'react-nati
 import {
   initialState, decodeInvite, fetchGroupRules,
   handleSuggestions, isValidHandle, privacyNoticeFor,
-  finalSubmit,
+  finalSubmit, loadPersonas, setPersona,
 } from '../../core/wizards/joinGroupState.js';
 import { RULES_FIELDS } from '../../v2/circleRules.js';
 
 import {
-  Steps, Body, Field, Checkbox, Chips, Actions, ErrorBanner, Submitting,
+  Steps, Body, Field, Checkbox, Chips, RadioGroup, Actions, ErrorBanner, Submitting,
 } from './_kit.js';
 
 export default function JoinGroupWizardModal({
@@ -38,6 +38,9 @@ export default function JoinGroupWizardModal({
     (async () => {
       const next = { ...state };
       await fetchGroupRules({ state: next, callSkill });
+      // Property layer — populate the join-with-persona options for the step-3
+      // picker. Failure is silent (empty → picker offers only "join minimally").
+      next.personas = await loadPersonas({ callSkill });
       if (active) setState(next);
     })();
     return () => { active = false; };
@@ -156,6 +159,25 @@ export default function JoinGroupWizardModal({
                   items={suggestions}
                   onPress={(v) => setState((s) => ({ ...s, handle: v }))}
                 />
+                {/* Property layer — join-with-persona. Pick a persona whose
+                    per-circle disclosure applies here, or join minimally (the
+                    protective default: share no background). Nothing is shared
+                    on a first join regardless — this is the identity you enter
+                    the circle as; adjust its sharing later in "About me". */}
+                {Array.isArray(state.personas) && state.personas.length ? (
+                  <RadioGroup
+                    label="Join as"
+                    value={state.persona ?? ''}
+                    onChange={(id) => setState((s) => setPersona({ ...s }, id))}
+                    options={[
+                      { id: '', label: 'Join minimally (share no background)' },
+                      ...state.personas.map((p) => ({
+                        id: p.id,
+                        label: p.id === 'default' ? `${p.name} (default persona)` : p.name,
+                      })),
+                    ]}
+                  />
+                ) : null}
                 <ErrorBanner message={state.submitError} />
                 <Submitting visible={state.submitting} label="Joining…" />
               </Body>

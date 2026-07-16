@@ -15,7 +15,31 @@ export {
 } from './src/resource.js';
 export { withCAS } from './src/concurrency.js';
 export { projectAgentCard } from './src/agentCard.js';
+// identity step 2 — profile own/inherit property graph + root-derived profile creation
+export {
+  own, inherit, normaliseProperties, resolveProperty, effectiveProperties, setOwn, setInherit,
+} from './src/profileProperties.js';
+export { createProfile, profilePubKey, profileCircleAddress } from './src/createProfile.js';
+export { loadProfile } from './src/loadProfile.js';
+// identity step 5A — encrypted-file/DB export of the profile set
+export { exportProfileRegistry, importProfileRegistry, restoreProfilesInto } from './src/exportRegistry.js';
 export { registerAgentBundle } from './src/registerAgentBundle.js';
+// property layer (design Phase 0) — the typed vocabulary + the shared disclosure mechanism.
+export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './src/propertyVocabulary.js';
+// personal drivers (#3) — the `driver` property type: an open { kind, text, tags[] } value, governed
+// by the same disclosure policy as any property. The matcher (#4) builds on this shape.
+export { DRIVER_KINDS, isDriverKind, normalizeTag, normalizeTags, createDriver, isDriverValue, driverDescriptor, driversFromProperties } from './src/drivers.js';
+// personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
+export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
+// anonymous-talk reveal ladder (#5b) — self-controlled, unilateral, ephemeral-default identity reveal.
+export { REVEAL_LEVELS, isRevealLevel, revealRank, nextRevealLevel, ephemeralHandle, createParticipant, revealSelf, revealNext, presentSelf } from './src/revealLadder.js';
+export { createDisclosurePolicy, setDisclosure, getDisclosure, releasedValues } from './src/disclosure.js';
+// property layer (design Phase 1) — the canonical Request record + the governed-request check.
+export { createRequest, requestHash, requestKeys } from './src/request.js';
+export { checkRequestAllowed, DEFAULT_GOVERNED_POLICY } from './src/governedRequest.js';
+// property layer (design Phase 4) — the neutral request form-spec + the pure egress gate/receipt.
+export { requestForm } from './src/requestForm.js';
+export { egressReceipt, gateEgress } from './src/requestGate.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
 // endorsement-backed curated catalog read-view (fills P3's catalogSource seam).

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@canopy/core": "workspace:^",
+    "@canopy/logger": "workspace:^",
     "ws": "^8.20.0"
   },
   "optionalDependencies": {

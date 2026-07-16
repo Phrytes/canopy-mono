@@ -160,3 +160,10 @@ since then. **Fix (2026-07-13):** added `@canopy-app/agents` to `metro.config.js
 `/cores`, and `/manifest`→`apps/agents/manifest.js` (mirrors the existing stoop/llm-client subpath resolvers).
 **Tell:** a bare `@canopy-app/<app>/<subpath>` import that resolves in vite/web but throws in Metro → it needs
 an `extraSubpathResolvers` case (package-exports stays disabled). (Added 2026-07-13, mobile feedback parity.)
+
+### New workspace dep into canopy-chat: `@canopy/attribute-charter` (2026-07-16, property-layer Phase 3)
+`apps/canopy-chat/src/feedback/charterConsent.js` imports `@canopy/attribute-charter`. It's a pure-JS package
+(`@noble/hashes` only), so it bundles fine — BUT the workspace edge wasn't in the lockfile, so materialize the
+link: `apps/canopy-chat/node_modules/@canopy/attribute-charter -> ../../../../packages/attribute-charter`.
+**Tell:** `Cannot find module '@canopy/attribute-charter'` from a canopy-chat test/build → the symlink is missing
+(a fresh `pnpm install` after the lockfile picks it up also fixes it). Same pattern as the feedback-pipeline edge.
