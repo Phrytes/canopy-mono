@@ -8,7 +8,7 @@
  * stoopAuthHook.js and apps/folio-mobile/src/auth/folioAuthHook.js.
  *
  * The `'basis'` scheme matches app.json's `expo.scheme`, so the
- * deep link `canopychat://auth/callback` is what `expo-auth-session`
+ * deep link `basis://auth/callback` is what `expo-auth-session`
  * uses for the OAuth round-trip.
  */
 import { useOidcSignIn } from '@onderling/oidc-session-rn/hook';
