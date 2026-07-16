@@ -90,7 +90,7 @@ families compose.*
 3. **Dispatch** — `resolveDispatch` maps `{opId, args}` to a handler via the merged manifest; `runDispatch`
    invokes it.
 4. **`callSkill`** — the single entry point that runs the op. This is also the **security boundary**: an op
-   only runs if it's in the caller's effective capability set (see the capability model work).
+   only runs if it's in the caller's effective capability set (see *Circles, types, and capabilities* below).
 5. **Functionality resolves** — wherever it lives: a local skill handler, a peer agent over a transport, an
    LLM, a read/write against the Solid pod, an MCP tool, or a scheduled job.
 6. **Result** — flows back to the invoking surface. Verify the *result*, not just that dispatch fired: a gate
@@ -123,7 +123,7 @@ This closes cross-restart survival on the standalone (no-pod) posture. The other
 `.css.test.js` (runs when a CSS is present, skipped from the default suite) confirms a circle with its items
 survives an app restart on a signed-in pod, and exercises the ACP grant path against real CSS.
 
-**Policy & privacy** (invariant #7 — placed by trust):
+**Policy & privacy** (an instance of placement by trust — see Part 4):
 - Gated by `llmTool: 'off'` ⇒ no LLM and no semantic retrieval.
 - The embedder is policy-resolved (local Ollama / attested enclave); no embedder ⇒ tier-1 lexical only, zero
   embed calls — a graceful degrade, never an error.
@@ -151,7 +151,7 @@ hardcoded `LIST_SCREENS` map is **retired**; `openCircleScreenPanel` reads its c
 are gone, and each shell only *filters* the identical roster by an action's `platforms` + `requires` gate.
 A tested generic side-panel (`openPagePanel`) is the live renderer for simple `surfaces.page` ops on **web**
 (e.g. the docked `set-relay` panel); the RN sibling that maps `surfaces.page` to native nav screens is still
-pending (chat-nav #128 — mobile has the per-op page *header* projection but not the generic side-panel yet).
+pending (mobile has the per-op page *header* projection but not the generic side-panel yet).
 Still bespoke **by design**: the settings-hub panels (my-data, advisor) and the **circleFolio browser** (a
 separate surface KIND, parked). The compose/trigger loop (open-screen button ↔ `dispatchReady`) is wired in
 **web**; mobile now shares the projected nav chrome but keeps its own screen renderers.
@@ -247,17 +247,15 @@ packages/core                the KERNEL — a lean set of PORTS + kernel logic
   *high* layer adds `createAgent()` (run-as-agent, defaults injected) + `connectSkill(agent, name, appFn)` (map any
   app function to a skill). "Import one thing, done"; drop a layer for full control. Defaults (e.g. `VaultMemory`)
   live in the facade, never the kernel.
-- **Substrates** compose the kernel + adapters into reusable pieces and **must not reinvent the kernel**. They
-  form a **gradient**: *runtime-foundation* (vault, oidc-session, pod-client — near-required for a networked
+- **Substrates** compose the kernel + adapters into reusable pieces, building on kernel primitives rather
+  than reinventing them — a parallel transport or vault implementation would drift away from the security and
+  compatibility guarantees the kernel carries. They form a **gradient**: *runtime-foundation* (vault, oidc-session, pod-client — near-required for a networked
   agent) → *feature* (skill-match, notifier, pod-search — optional) → *facade* (secure-agent, agent-provisioning —
   compose others). Extracted under a **rule of two** — generalise on the second independent need, not the first.
 - **Apps** compose substrates (or `@onderling/sdk`), using the kernel directly only with a justification in the app
   README.
 
-See [`repository-layout.md`](./repository-layout.md) for the full apps + packages map. *(History: `core` was a
-**fat** package that also carried the concrete transports, pod-storage, and pod-identity and even depended up on
-`vault`/`oidc-session`; the 2026-07-05 de-fat extracted all of that out and made the kernel a lean set of ports —
-the diagram and the dependency graph now match.)*
+See [`repository-layout.md`](./repository-layout.md) for the full apps + packages map.
 
 **A fourth region the diagram omits: the deployment / hosting layer.** Client apps host nothing. Server-side
 services — **pod-HOSTING**, relay/proxy, the private-LLM enclave, rollout — form a separate layer, placed by
@@ -265,9 +263,10 @@ trust + latency (below), that sits *outside* the client apps. The `feedback` dep
 runs a live Solid-pod host, HTTP services, and a container stack that no client app has). This is where the
 eventual repo split's server side lives.
 
-### Placement by trust + latency — never default-to-server
+### Placement by trust + latency
 
-*Where* functionality runs is decided by **trust and latency, not convenience**. Sensitive compute (pod
+*Where* functionality runs is decided by **trust and latency, not convenience** — the default is never
+"put it on a server". Sensitive compute (pod
 access, sealing, the confidential LLM transport) stays client-side or in an **attested enclave** (TEE);
 "server-side" means *extracting* code that is already server-side (pod-hosting, relay/proxy, private LLM), not
 moving private data onto an untrusted host. Correspondingly:
@@ -275,7 +274,7 @@ moving private data onto an untrusted host. Correspondingly:
 - **Local-only mode is the floor; the pod is portability.** Every app works fully without an authenticated
   pod. Shared-state apps without a pod replicate P2P via kernel `MergeContracts` + relay group-publish.
 - **Pod is truth, local cache is reality.** When a pod is configured it's authoritative but slow; the UI reads
-  the local cache and syncs on a cadence with optimistic, queued writes. A pod outage must not break the app.
+  the local cache and syncs on a cadence with optimistic, queued writes, so a pod outage never breaks the app.
 
 ### Agents interacting (the inter-agent axis)
 

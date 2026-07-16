@@ -11,10 +11,6 @@ degradation gate: a pod-having writer that's offline still emits to
 the circle via replication-ring, and queues the resource for upload on
 reconnect.
 
-> Standardisation Phase **52.4** — see
-> `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
-> and the functional design §4.4.
-
 ---
 
 ## What it does
@@ -100,7 +96,7 @@ pod attached for this resource" and skips the reachability check.
 }
 ```
 
-`_v` (Phase 52.14) is the sender's Lamport-style per-key version
+`_v` is the sender's Lamport-style per-key version
 counter. Forward-additive: legacy receivers that don't know about
 `_v` simply ignore it and fall back to last-write-wins.
 
@@ -117,7 +113,7 @@ When the substrate is `start()`ed, it subscribes to
    By the time the callback runs, `pseudoPod.read(env.ref)`
    returns the resource (assuming the inbound write wasn't
    rejected as stale by the 3-way version compare — see
-   `@onderling/pseudo-pod` README §"Conflict resolution").
+   "Conflict resolution" in the `@onderling/pseudo-pod` README).
 2. **Envelope-only envelopes** — no local-store side-effect;
    subscribers handle the ref themselves (typically lazy-fetch via
    `pod-client`).
@@ -128,13 +124,12 @@ When the substrate is `start()`ed, it subscribes to
 
 ## Pending-pod-upload queue
 
-Locked 2026-05-11. The queue solves the "writer momentarily offline"
+The queue solves the "writer momentarily offline"
 case for pod-having circles. Per-write flow when reachability says
 *unreachable*:
 
 1. `pseudoPod.write(...)` stores locally (the V0 substrate doesn't
-   wire write-through cache yet — that's Phase 52.8). The caller
-   does that step.
+   wire a write-through cache yet). The caller does that step.
 2. `publish` fires the full-payload envelope so peers stay current.
 3. The resource also lands in the queue at
    `__pending-pod-uploads__/<id>` on `pseudoPod.backend`.
@@ -162,7 +157,7 @@ createNotifyEnvelope({ transport, pseudoPod, podRouting, uploadFn?, queueBackend
 
 ne.publish({ type, ref, payload?, etag?, _v?, recipients, fromActor?, circleId? })
   → { mode: 'envelope-only' | 'full-payload', queued: boolean, decision }
-  // _v (Phase 52.14): Lamport version forwarded on full-payload envelopes.
+  // _v: Lamport version forwarded on full-payload envelopes.
 
 ne.subscribe({ kind, callback })
   → unsubscribe fn        // kind: item-types name, or '*' for all
@@ -184,22 +179,22 @@ ship for advanced use cases and integration tests.
 ## What V0 deliberately does not do
 
 - **Run the pod upload itself.** `uploadFn` is caller-supplied —
-  apps wire `pod-client` here once Phase 52.6 lands.
+  apps typically wire `pod-client` here.
 - **Auto-detect reachability.** The substrate trusts whatever
   `podRouting.isPodReachable` returns. Connectivity-event wiring is
   the host application's responsibility (transport-level hooks,
   network change observers, etc.).
 - **Handle ephemeral content.** Chat messages, presence, audio/video,
-  skill-match races stay on `notifier` directly — see §4.4.5.
+  skill-match races stay on `notifier` directly.
 - **Per-actor sequence counters.** Today's relay is best-effort;
-  reorder is possible. Open question per functional design §4.4.6.
+  reorder is possible.
 - **Validate against item-types.** Type validation is the caller's
   job (or wire `@onderling/item-types` at the app layer). Substrate
   doesn't gatekeep.
-- **Upload-on-behalf.** V2 work, deferred. Other members uploading
-  the writer's content to the writer's own pod is a separate design
-  with four open questions (authority, conflict, ACP, product fit).
-  See plan §II.2 and functional design §4.4.6.
+- **Upload-on-behalf.** Deferred: other members uploading the
+  writer's content to the writer's own pod is a separate design
+  with open questions (authority, conflict, access control,
+  product fit).
 
 ---
 

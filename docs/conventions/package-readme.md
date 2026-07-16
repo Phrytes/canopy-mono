@@ -41,6 +41,11 @@ lazy-imported native libs, coarse-only vocabularies), not just the happy path.
 **R12 — No repo-internal jargon** without a one-line gloss (manifest, skill, circle are fine
 when introduced; internal codenames/objective letters are not).
 
+**R13 — Tone: professional and friendly; explain, don't decree.** Describe what the package
+does and, briefly, where it's heading — not the decision process (no phase numbers, plan
+references, or "locked/decided <date>" framing in public docs). Reserve warnings for real
+footguns a consumer could actually hit, and always give the reason.
+
 ## How this is enforced
 
 Two verification layers, both runnable locally:

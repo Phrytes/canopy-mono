@@ -1,14 +1,12 @@
 # @onderling/item-store
 
-> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: substrate.** Composes the `@onderling/core` SDK, building on its primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID) rather than reinventing them; when the SDK *almost* fits, it is extended additively rather than forked. See [`docs/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Open/closed items in a hybrid pod — attribution, audit, per-field
 merge contracts, pluggable role policy.
 
-This is **L1b** in the substrate-first plan
-(`Project Files/Substrates/L1b-item-store.md`).  Designed by reading
-H2 (household V2) and H4 (tasks V0) specs side-by-side per the
-rule-of-two policy.
+Designed against its first two consuming apps (household and tasks)
+side-by-side, so the surface generalises beyond a single app's needs.
 
 ---
 
@@ -238,17 +236,10 @@ Generalised from
 skills/addItem.js, skills/markComplete.js, skills/removeItem.js,
 skills/listOpen.js}`.
 
-When `apps/household` migrates to consume this substrate (Phase C),
-the existing storage layer retires.
+When `apps/household` migrates to consume this substrate, the
+existing storage layer retires.
 
 ---
-
-## See also
-
-- `Project Files/Substrates/L1b-item-store.md` — substrate sketch.
-- `Project Files/Substrates/policies.md` — rule-of-two + versioning.
-- `Project Files/Substrates/apps/H2-household.md` — primary consumer.
-- `Project Files/Substrates/apps/H4-tasks.md` — secondary consumer.
 
 ## Status
 

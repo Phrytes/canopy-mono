@@ -1,9 +1,8 @@
 # `@onderling/online-cadence`
 
 > **Layer:** SDK foundation (RN-flavored cadence helpers).
-> **Convention:** RN-specific substrates live in their own packages
-> (locked 2026-05-08, see
-> [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08)).
+> **Convention:** RN-specific substrates live in their own packages — see
+> [`docs/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md#mobile-substrates-live-in-their-own-packages-locked-2026-05-08).
 
 Foreground/background cadence helpers for React Native agents:
 
@@ -25,12 +24,11 @@ Foreground/background cadence helpers for React Native agents:
 
 ## Origins
 
-Lifted from `apps/stoop-mobile/src/lib/{activeCadence, appStateBridge,
-bgRunOnce}.js` on **2026-05-09** as part of Tasks-mobile Phase 41.0
-L2 — Tasks-mobile is the second consumer (rule of two). Stoop V3's
-copies are now thin re-exports through the substrate. `bgRunOnce` had
-already been promoted to `@onderling/sync-engine-rn` in 2026-05-08;
-this package re-exports it for ergonomic colocation.
+Extracted from `apps/stoop-mobile`'s cadence helpers once a second
+app needed them; stoop-mobile's copies are now thin re-exports
+through this substrate. The bg-fetch helpers live in
+`@onderling/sync-engine-rn`; this package re-exports them for
+ergonomic colocation.
 
 ## Example
 

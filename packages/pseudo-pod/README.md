@@ -5,13 +5,10 @@ Decentralised-Web-Agent (DWA) stack — runs the same `read / write /
 list / subscribe` surface regardless of whether a real Solid pod is
 attached.
 
-Per the standardisation plan's §II.2 graceful-degradation lock,
-the **pseudo-pod is the universal baseline**: a real pod is a
-*promotable ring member* layered on top, not a replacement.
-
-> Standardisation Phase **52.2** — see
-> `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`
-> and the functional design §4.1.
+The **pseudo-pod is the universal baseline**: a real pod is a
+*promotable ring member* layered on top, not a replacement — so
+every app works fully before (or without) a real pod ever being
+attached.
 
 ---
 
@@ -29,8 +26,8 @@ V0 (this release):
   peers via `transport.publishEnvelope`. Local store is canonical;
   peers reconcile via `writeFromPeer`.
 
-V1 (Phase 52.8) adds **cache** mode (write-through to a real pod
-with the pending-pod-upload queue + per-write reachability gating).
+V1 adds **cache** mode (write-through to a real pod with the
+pending-pod-upload queue + per-write reachability gating).
 
 ---
 
@@ -70,8 +67,7 @@ const pod = createPseudoPod({
 // Writes fan out to peers automatically.
 await pod.write('pseudo-pod://laptop-anne/tasks/abc', taskBytes);
 
-// On the receive path (called by the notify-envelope substrate,
-// Phase 52.4):
+// On the receive path (called by the notify-envelope substrate):
 await peerPod.writeFromPeer(uri, bytes, etag);
 ```
 
@@ -117,12 +113,12 @@ pseudoPod.flush(uri)                 — no-op in V0 (V1: cache flush)
 pseudoPod.mode(uri)                  → 'standalone' | 'replication-ring' | 'cache'
 pseudoPod.on(event, cb)              → unsubscribe fn
 pseudoPod.off(event, cb)             → void
-                                       // events (Phase 52.14): 'peer-update',
-                                       //                       'stale-peer',
-                                       //                       'concurrent-write'
+                                       // events: 'peer-update',
+                                       //         'stale-peer',
+                                       //         'concurrent-write'
 pseudoPod.fetchResourceSkill({groupCheck?, capCheck?}?)
                                      → skill definition (core)
-                                     // Phase 52.2.x peer-fetch gates:
+                                     // peer-fetch gates:
                                      //   groupCheck(uri, {from, envelope, agent, parts, capToken}) → bool
                                      //   capCheck(uri, {... + capToken from parts})              → bool
                                      // When BOTH supplied → allow if EITHER returns truthy.
@@ -136,7 +132,7 @@ pseudoPod.currentMode
 ### URI scheme
 
 - `pseudo-pod://<deviceId>/<path>` — the only scheme V0 handles.
-- `https://...` URIs route via `pod-client` once Phase 52.6 lands.
+- `https://...` URIs route via `pod-client` once V1 cache mode lands.
 
 A pseudo-pod can **read** any `pseudo-pod://*` URI (including peers'
 URIs once replicated locally) but only **write** to its own
@@ -152,7 +148,7 @@ URIs once replicated locally) but only **write** to its own
 - V0 does **not** enforce CAS (compare-and-swap) on writes. That
   ships with V1 cache mode and the pending-upload queue.
 
-### Conflict resolution — Lamport `_v` (Phase 52.14)
+### Conflict resolution — Lamport `_v`
 
 Every record carries a per-key Lamport-style version counter `_v`.
 Local writes auto-increment it; replication-ring receivers run a
@@ -184,7 +180,7 @@ pod.on('stale-peer', async ({ uri, fromActor, localBytes, localEtag, localV }) =
 });
 ```
 
-### Cache-vs-pod freshness (Phase 52.14)
+### Cache-vs-pod freshness
 
 In cache mode, `read(uri, {freshness: 'fresh'})` runs a
 conditional-GET against the real pod via your `podFetcher`. The
@@ -212,16 +208,16 @@ transport.publishEnvelope({
   kind:       'pseudo-pod.write',
   ref:        uri,
   etag,
-  _v,                                 // Phase 52.14 — Lamport counter at top level
+  _v,                                 // Lamport counter at top level
   fromActor:  '<agent-uri>',
   recipients: getPeers(),
   payload:    { uri, bytes, etag, _v },
 });
 ```
 
-V0 owns the `pseudo-pod.write` kind directly. Phase 52.4
-(`@onderling/notify-envelope`) will wrap this in a richer envelope
-type with kind-aware routing.
+V0 owns the `pseudo-pod.write` kind directly.
+`@onderling/notify-envelope` wraps this in a richer envelope type
+with kind-aware routing.
 
 Fan-out is **best-effort**: a transport error or empty peer set
 doesn't fail the write. The local store always reflects the write
@@ -234,8 +230,7 @@ dirty-queue + retry).
 
 `PseudoPod` delegates all persistence to a `StorageBackend`. V0
 ships `MemoryBackend` (in-process Map). The RN-side adapter
-(AsyncStorage / SQLite) is parallel work in
-`@onderling/react-native` Phase 51.1.
+(AsyncStorage / SQLite) lives in `@onderling/react-native`.
 
 ```text
 get(key)                       → { bytes, etag?, _v? } | null
@@ -260,22 +255,14 @@ shape. `MemoryBackend` exposes `_markDirty / _markClean` for tests
 
 ## What V0 deliberately does not do
 
-- ~~**CAS / conflict resolution.** `groupMirror`'s last-write-wins
-  semantics carry through V0 untouched. Pinning happens in P3.~~
-  **Resolved 2026-05-14 via Phase 52.14** — see "Conflict
-  resolution — Lamport `_v`" above.
 - **Cache mode + pod attachment.** Real pods enter the picture in
-  V1 (Phase 52.8) along with the reachability gate +
-  pending-upload queue.
+  V1 along with the reachability gate + pending-upload queue.
 - **Authentication on peer fetch.** Currently relies on the
-  transport's security layer; cap-token shape for third-party
-  fetches is open (functional design §4.1.6, P1 pin).
+  transport's security layer; the cap-token shape for third-party
+  fetches is still an open design question.
 - **Backend persistence.** `MemoryBackend` is process-local. The
   RN adapter ships persistence; a Node SQLite adapter can layer
   later if needed.
-
-See `Project Files/Substrates/substrates-v2-functional-design-2026-05-11.md`
-§4.1.6 for the full open-question list.
 
 ---
 
