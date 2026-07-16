@@ -1,7 +1,7 @@
 /**
  * Mobile podAuth adapter for Bundle F P6 (#262).
  *
- * Bridges the basis-mobile `useCanopyChatAuth` hook + an
+ * Bridges the basis-mobile `useBasisAuth` hook + an
  * `OidcSessionRN` SecureStore-backed token holder into the
  * `podAuth`-shaped interface that
  * `apps/basis/src/core/localBuiltins.js` expects (the same
@@ -17,7 +17,7 @@
  * `signIn()` for the OAuth flow and to `OidcSessionRN` for
  * persisted-session lookups.
  *
- * Wiring: ChatScreen calls `useCanopyChatAuth()` at render-time and
+ * Wiring: ChatScreen calls `useBasisAuth()` at render-time and
  * constructs `buildMobilePodAuth({hook, session})` once.  The shape
  * is stable across re-renders so localBuiltins sees a consistent
  * podAuth.
@@ -34,7 +34,7 @@ import { resolveIssuer as _resolveIssuer, DEFAULT_ISSUER } from '@onderling/oidc
 
 /**
  * @param {object} args
- * @param {object} args.hook      result of useCanopyChatAuth (has .signIn(), .ready, .lastError)
+ * @param {object} args.hook      result of useBasisAuth (has .signIn(), .ready, .lastError)
  * @param {object} args.session   OidcSessionRN instance (already restored from SecureStore)
  * @returns {object} podAuth-shaped object
  */

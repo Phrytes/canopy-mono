@@ -13,7 +13,7 @@
  * [[5.9d-followup]].
  */
 import { circleActions } from '../../src/v2/actionProjection.js';
-import { canopyChatManifest } from '../../src/index.js';
+import { basisManifest } from '../../src/index.js';
 
 // D / Surface 2 — the detail-bar CSS token per action id.  Purely shell-side
 // styling (the manifest carries no CSS): keeps each button's original class
@@ -64,7 +64,7 @@ export function renderCircleDetail(container, {
 
   const bar = document.createElement('div');
   bar.className = 'circle-detail__bar';
-  for (const action of circleActions(canopyChatManifest, { policy, platform: 'web' })) {
+  for (const action of circleActions(basisManifest, { policy, platform: 'web' })) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = `circle-detail__${CSS_TOKEN[action.id] ?? action.id}`;

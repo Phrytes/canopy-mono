@@ -72,7 +72,7 @@ import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 // D / Surface 2 — the detail ACTION BAR roster, projected from manifest.actions
 // via the shared selector (web≡mobile; NOT a hand-written ⋯-menu list).
 import { circleActionsMobile } from '../../../../basis/src/v2/actionProjection.js';
-import { canopyChatManifest } from '../../../../basis/src/index.js';
+import { basisManifest } from '../../../../basis/src/index.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../basis/src/v2/appFeature.js';
 // B · Slice 1/4 — the capability gate + the affordance matrix (web≡mobile, shared core).
@@ -2665,7 +2665,7 @@ function CircleDetail({
               host-wired handler; each shell wires its own mechanism for a
               destination (e.g. `contacts` → setScreenPanel here, openCircleScreenPanel
               on web — the doorgeefluik model).  web ≡ mobile by construction. */}
-          {circleActionsMobile(canopyChatManifest, { policy })
+          {circleActionsMobile(basisManifest, { policy })
             .filter((action) => action.id !== 'back')
             .map((action) => {
               const handlers = {

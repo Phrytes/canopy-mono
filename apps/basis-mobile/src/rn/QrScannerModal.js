@@ -23,7 +23,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { classifyQrPayload } from '@onderling/react-native/qr';
-import { getCanopyChatClassifiers } from '../core/qrClassifiers.js';
+import { getBasisClassifiers } from '../core/qrClassifiers.js';
 
 export default function QrScannerModal({ visible, onClose, onResult, t }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -31,7 +31,7 @@ export default function QrScannerModal({ visible, onClose, onResult, t }) {
   const [hint, setHint]           = useState(null);
   const [pasted, setPasted]       = useState('');
   const [showPaste, setShowPaste] = useState(false);
-  const CLASSIFIERS = getCanopyChatClassifiers();
+  const CLASSIFIERS = getBasisClassifiers();
 
   const dispatch = useCallback((res) => {
     if (res.kind === 'unknown') {

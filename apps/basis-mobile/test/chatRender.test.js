@@ -23,7 +23,7 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
-  renderReply, canopyChatManifest,
+  renderReply, basisManifest,
 } from '@onderling-app/basis';
 
 import { composeManifests } from '../src/core/composeManifests.js';
@@ -46,7 +46,7 @@ beforeAll(async () => {
 /** Build the manifestsByOrigin map the same way web's main.js does. */
 function makeManifestsByOrigin() {
   return {
-    'basis': canopyChatManifest,
+    'basis': basisManifest,
     'household':   mockHouseholdManifest,
     'tasks':    mockTasksManifest,
     'stoop':       mockStoopManifest,

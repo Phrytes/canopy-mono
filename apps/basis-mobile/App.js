@@ -184,7 +184,7 @@ export default function App() {
   // 5.4c (2026-05-30) — single OidcSessionRN, lifted from ChatScreen so
   // BOTH the chat shell AND the circle launcher see the same restored
   // session.  ChatScreen still drives sign-in / sign-out through the
-  // `useCanopyChatAuth` hook (and now reads this ref via props); the
+  // `useBasisAuth` hook (and now reads this ref via props); the
   // launcher reads it through a `getPodWriter` thunk that returns a
   // ready `podWriter` once the session restores.  Until then the
   // thunk returns null and circle policy IO stays local-only — see

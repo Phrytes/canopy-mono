@@ -1,5 +1,5 @@
 /**
- * canopyChatAuthHook — basis-mobile flavour of
+ * basisAuthHook — basis-mobile flavour of
  * `@onderling/oidc-session-rn/hook` (Bundle F P6, #262, 2026-05-26).
  *
  * Pre-binds `scheme: 'canopychat'` + `clientName: 'basis
@@ -13,7 +13,7 @@
  */
 import { useOidcSignIn } from '@onderling/oidc-session-rn/hook';
 
-export function useCanopyChatAuth(args = {}) {
+export function useBasisAuth(args = {}) {
   return useOidcSignIn({
     scheme:     'canopychat',
     clientName: 'basis (mobile)',

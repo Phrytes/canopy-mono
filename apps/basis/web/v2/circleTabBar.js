@@ -13,7 +13,7 @@
  * projection).
  */
 import { circleTabs } from '../../src/v2/tabProjection.js';
-import { canopyChatManifest } from '../../src/index.js';
+import { basisManifest } from '../../src/index.js';
 
 export function renderCircleTabBar(container, { active, t, onScreens, onKringen, onContacts, onMij } = {}) {
   if (!container) return container;
@@ -23,7 +23,7 @@ export function renderCircleTabBar(container, { active, t, onScreens, onKringen,
   const handlers = { screens: onScreens, kringen: onKringen, contacten: onContacts, mij: onMij };
   container.innerHTML = '';
   container.className = 'circle-tabbar';
-  for (const tab of circleTabs(canopyChatManifest)) {
+  for (const tab of circleTabs(basisManifest)) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'circle-tabbar__tab';

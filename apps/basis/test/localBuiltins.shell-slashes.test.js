@@ -15,7 +15,7 @@
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 
-import { canopyChatManifest }              from '../manifest.js';
+import { basisManifest }              from '../manifest.js';
 import { mergeManifests }                  from '../src/manifestMerge.js';
 import { createLocalBuiltins }             from '../src/core/localBuiltins.js';
 import { initLocalisation, t }             from '../src/localisation.js';
@@ -26,7 +26,7 @@ beforeAll(async () => {
   await initLocalisation({ lng: 'en' });
 });
 
-const emptyCatalog = () => mergeManifests([{ manifest: canopyChatManifest }]);
+const emptyCatalog = () => mergeManifests([{ manifest: basisManifest }]);
 
 /** Hand-rolled catalog stub matching the shape /send-to + /embed read:
  *   - opsById is iterable ([opId, entry] pairs)

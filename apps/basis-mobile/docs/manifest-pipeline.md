@@ -55,7 +55,7 @@ box on 2026-05-26.
 Static declarations.  Each lives next to (or inside) the app it
 describes:
 
-- `canopyChatManifest` — re-exported from `apps/basis/src/index.js`.
+- `basisManifest` — re-exported from `apps/basis/src/index.js`.
   Owns chat-shell-host ops (`/help`, `/threads`, `/settings`,
   `/holiday-mode`, `/commands`, `/logs`, `/debug-dump`, …).
 - `mockHouseholdManifest` — `apps/basis/src/core/agent/mockAgent.js`.
@@ -95,7 +95,7 @@ What you get back:
 The catalog is what the **dispatch pipeline** consumes
 (`parseInput` looks up commands here, `resolveDispatch` finds the
 op + its appOrigin).  The default-included set is:
-1. `canopyChatManifest`
+1. `basisManifest`
 2. `mockHouseholdManifest`  (or override via `opts.householdManifest`)
 3. `mockTasksManifest`
 4. `mockStoopManifest`
@@ -257,7 +257,7 @@ to update **both** functions when adding a manifest.
   submitInput pipeline implementation
 - `apps/basis/src/index.js` — exports
   `mergeManifests` / `parseInput` / `resolveDispatch` /
-  `runDispatch` / `renderReply` / `canopyChatManifest`
+  `runDispatch` / `renderReply` / `basisManifest`
 - `apps/basis/web/main.js` — the canonical web pipeline
   this mobile shell mirrors
 - `apps/basis/src/core/localBuiltins.js` — the

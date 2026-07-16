@@ -42,7 +42,7 @@
       "text": "{{count}} item(s):",
       "doc": "Lijst-kop tot stap 2 inline-keyboards landt"
     },
-    "canopy_chat_op_pending": {
+    "basis_op_pending": {
       "text": "/{{opId}} is een chat-shell-commando — nog niet bedraad op mobiel.",
       "doc": "Toont wanneer een basis-host op (/help, /threads, /settings, …) gebruikt wordt; de RN-port is een latere #253-substap"
     },

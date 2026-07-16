@@ -43,7 +43,7 @@ import {
   parseInput, resolveDispatch, runDispatch,
   createDefaultThreadStore,
 } from '../src/index.js';
-import { canopyChatManifest }   from '../manifest.js';
+import { basisManifest }   from '../manifest.js';
 import { mergeManifests }       from '../src/manifestMerge.js';
 import { createLocalBuiltins }  from '../src/core/localBuiltins.js';
 
@@ -393,7 +393,7 @@ describe('US-7 — Alice keeps the same pubKey + stableId after a page reload', 
 
 async function bootSafetyHelpers(agent) {
   const catalog = mergeManifests(
-    [{ manifest: canopyChatManifest }, { manifest: agent.manifest }],
+    [{ manifest: basisManifest }, { manifest: agent.manifest }],
     { runtime: 'browser' },
   );
   const threadStore = createDefaultThreadStore();

@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { renderCircleSettings } from '../../web/v2/circleSettings.js';
 import { DEFAULT_CIRCLE_POLICY, mergeCirclePolicy } from '../../src/v2/circlePolicy.js';
 import { pageForOp } from '../../src/v2/pageProjection.js';
-import { canopyChatManifest } from '../../manifest.js';
+import { basisManifest } from '../../manifest.js';
 
 const t = (k) => k;
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }
@@ -326,7 +326,7 @@ describe('renderCircleSettings — header sourced from the manifest page project
     // End-to-end with the actual manifest: renderWeb projects the settings op's
     // surfaces.page (labelKey: circle.settings.title); the header resolves it.
     const el = mount();
-    const settingsPage = pageForOp(canopyChatManifest, 'settings');
+    const settingsPage = pageForOp(basisManifest, 'settings');
     expect(settingsPage?.labelKey).toBe('circle.settings.title');
     const tagT = (k) => `T:${k}`;
     renderCircleSettings(el, { policy: DEFAULT_CIRCLE_POLICY, t: tagT, settingsPage });

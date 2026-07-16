@@ -9,7 +9,7 @@
  * Per `Project Files/basis/coding-plan.md` § Phase v0.1.
  */
 
-export const canopyChatManifest = {
+export const basisManifest = {
   app:        'basis',
   itemTypes:  ['chat-thread', 'chat-message'],
 
@@ -840,4 +840,4 @@ export const canopyChatManifest = {
   ],
 };
 
-export default canopyChatManifest;
+export default basisManifest;

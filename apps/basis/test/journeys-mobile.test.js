@@ -29,7 +29,7 @@ import {
   createDefaultThreadStore, createEventRouter,
   EventLog, AppRegistry, filterCatalog,
   runBrief, createBriefCache, runFind,
-  canopyChatManifest,
+  basisManifest,
 } from '../src/index.js';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
@@ -53,7 +53,7 @@ async function bootWorkspace({ chatVault } = {}) {
     publishEvent: (event) => { if (routerRef) routerRef.deliver(event); },
   });
   const rawCatalog = mergeManifests([
-    { manifest: canopyChatManifest },
+    { manifest: basisManifest },
     { manifest: agent.manifest },
     { manifest: mockTasksManifest },
     { manifest: mockStoopManifest },

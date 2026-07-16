@@ -29,7 +29,7 @@ import 'fake-indexeddb/auto';
 import {
   parseInput, mergeManifests, resolveDispatch, runDispatch,
   renderReply, ThreadStore, createDefaultThreadStore, createEventRouter,
-  canopyChatManifest,
+  basisManifest,
   AppRegistry, filterCatalog,
   runBrief, createBriefCache,
   runFind,
@@ -53,7 +53,7 @@ const LOCAL_ACTOR = 'webid:local-demo-user';
 async function bootTestWorkspace() {
   const agent = await createRealHouseholdAgent();
   const rawCatalog = mergeManifests([
-    { manifest: canopyChatManifest },
+    { manifest: basisManifest },
     { manifest: agent.manifest },
     { manifest: mockTasksManifest },
     { manifest: mockStoopManifest },

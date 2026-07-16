@@ -13,7 +13,7 @@
 // pre-existing `@onderling/webid-discovery` dep.  Relative imports
 // sidestep that, work today, and keep #221.5's lifted core layer
 // as the single source of truth.
-import { mergeManifests, canopyChatManifest } from '../../../basis/src/index.js';
+import { mergeManifests, basisManifest } from '../../../basis/src/index.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../../../basis/src/core/manifests/mockManifests.js';
@@ -36,7 +36,7 @@ import { agentsManifest } from '../../../agents/manifest.js';
  */
 function manifestList({ householdManifest } = {}) {
   return [
-    canopyChatManifest,
+    basisManifest,
     // tasks-v0 BEFORE household: colliding bare op-ids (notably `addTask`, declared by both) must resolve
     // to tasks-v0, not household chores — matching the circle GATE which excludes household ("household
     // shadowed by tasks"). Without this, "@assistant add X" landed in the household circle while the

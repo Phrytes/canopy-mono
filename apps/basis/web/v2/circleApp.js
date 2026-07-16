@@ -29,7 +29,7 @@ import { initLocalisation, t, setLang, detectDeviceLang, currentLang,
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
   scopeStoopCallSkill, createCirclePodProducer, createCircleControlAgentRouter, realPodRouting, seedCircleRoster,
   isNoticeboardPost,
-  canopyChatManifest, AppRegistry, filterCatalog } from '../../src/index.js';
+  basisManifest, AppRegistry, filterCatalog } from '../../src/index.js';
 // S4 pod foundation — per-circle sealed storage producer. The pod-client + in-memory
 // pseudo-pod machinery is web-layer (kept out of the shared src so it stays portable);
 // the producer just consumes the injected makePodClient/generateKeypair.
@@ -1268,7 +1268,7 @@ const circleSearchVectorStore = pickWebBackend('cc-circle-rag');
 function buildCircleBot(agent) {
   // Merged catalog (the LLM tool list + dispatch catalog) — mirrors main.js.
   const baseSources = [
-    { manifest: canopyChatManifest },
+    { manifest: basisManifest },
     // tasks-v0 BEFORE the household agent: a circle's items are TASKS, so colliding bare op-ids
     // (notably `addTask`, declared by both) must resolve to tasks-v0, not household chores — matching
     // the circle GATE which already excludes household ("household shadowed by tasks", circleGate.js).
@@ -2819,11 +2819,11 @@ async function showMij() {
   }
 
   // D / SP-3b consumer-switch (second live surface) — the "Mij" profile header
-  // is sourced from the manifest PAGE projection.  renderWeb(canopyChatManifest)
+  // is sourced from the manifest PAGE projection.  renderWeb(basisManifest)
   // projects the `me` op's `surfaces.page` into pages[]; pageForOp selects it and
   // its labelKey → t() drives the header label (invariant #4 — the manifest is
   // the source of truth for surfaces; no more hardcoded tr('circle.profile.title')).
-  const profilePage = pageForOp(canopyChatManifest, 'me');
+  const profilePage = pageForOp(basisManifest, 'me');
 
   const rerender = () => renderCircleProfile(rootEl, {
     profile, categories, geocodeResult, busy, t,
@@ -2972,7 +2972,7 @@ async function showMyData() {
   // has no 'basis' builtin route in this shell, so the op binds to its real
   // handler right here, at the waist.) The panel builds + validates the form, shows
   // errors on {ok:false}, closes on success, and offers "← back to chat".
-  const setRelayOp = canopyChatManifest.operations.find((o) => o.id === 'set-relay');
+  const setRelayOp = basisManifest.operations.find((o) => o.id === 'set-relay');
   const openRelayPanel = () => {
     if (!setRelayOp) return;
     let panel = document.getElementById('page-panel');
@@ -4663,11 +4663,11 @@ async function showSettings(id) {
   let _reviewedRecipe = null;
 
   // D / SP-3b consumer-switch — the settings header is now sourced from the
-  // manifest PAGE projection.  renderWeb(canopyChatManifest) projects the
+  // manifest PAGE projection.  renderWeb(basisManifest) projects the
   // `settings` op's `surfaces.page` into pages[]; pageForOp selects it and its
   // labelKey → t() drives the header label (invariant #4 — the manifest is the
   // source of truth for surfaces; no more hardcoded tr('circle.settings.title')).
-  const settingsPage = pageForOp(canopyChatManifest, 'settings');
+  const settingsPage = pageForOp(basisManifest, 'settings');
 
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,

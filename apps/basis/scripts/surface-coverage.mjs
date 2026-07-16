@@ -16,7 +16,7 @@ import { renderCoverage, coverageGaps, formatCoverageMarkdown } from '@onderling
 // Resilient: a manifest that fails to import is skipped, not fatal.
 // The circle catalog set — exactly what composeManifests composes (the unified chat surface).
 const SPECS = [
-  { name: 'basis', path: '../manifest.js',                          pick: (m) => m.canopyChatManifest },
+  { name: 'basis', path: '../manifest.js',                          pick: (m) => m.basisManifest },
   { name: 'household',   path: '../../household/manifest.js',             pick: (m) => m.householdManifest },
   { name: 'tasks',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockTasksManifest },
   { name: 'stoop',       path: '../src/core/manifests/mockManifests.js',  pick: (m) => m.mockStoopManifest },

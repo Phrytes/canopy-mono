@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { classifyQrPayload } from '@onderling/react-native/qr';
-import { getCanopyChatClassifiers } from '../src/core/qrClassifiers.js';
+import { getBasisClassifiers } from '../src/core/qrClassifiers.js';
 
-const CL = getCanopyChatClassifiers();
+const CL = getBasisClassifiers();
 
 describe('basis-mobile QR classifiers', () => {
   it('classifies a stoop-contact:// URL as kind:contact', () => {

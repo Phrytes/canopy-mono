@@ -15,13 +15,13 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { t } from '../../core/localisation.js';
 import { circleTabsMobile } from '../../../../basis/src/v2/tabProjection.js';
-import { canopyChatManifest } from '../../../../basis/src/index.js';
+import { basisManifest } from '../../../../basis/src/index.js';
 import { theme } from './theme.js';
 
 export default function CircleTabBar({ active, onSelect }) {
   return (
     <View style={styles.bar} testID="circle-tabbar">
-      {circleTabsMobile(canopyChatManifest).map((tab) => {
+      {circleTabsMobile(basisManifest).map((tab) => {
         const on = active === tab.id;
         return (
           <Pressable

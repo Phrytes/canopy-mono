@@ -52,7 +52,7 @@ import { chunkBubble } from '../../src/feedback/feedbackSurface.js';
 // D / Surface 2 — the ⋯ overflow roster is PROJECTED from manifest.actions via
 // the shared selector (platform + feature gated), NOT a hardcoded MORE_ITEMS list.
 import { circleActions } from '../../src/v2/actionProjection.js';
-import { canopyChatManifest } from '../../src/index.js';
+import { basisManifest } from '../../src/index.js';
 
 export function renderCircleKring(container, {
   circle = {},
@@ -833,7 +833,7 @@ function pickSender(row) {
 function collectMoreActions(more, tr, policy) {
   if (!more || typeof more !== 'object') return [];
   const out = [];
-  for (const action of circleActions(canopyChatManifest, { policy, platform: 'web' })) {
+  for (const action of circleActions(basisManifest, { policy, platform: 'web' })) {
     const fn = more[action.id];
     if (typeof fn === 'function') {
       out.push({ id: action.id, label: tr(action.labelKey), run: fn });

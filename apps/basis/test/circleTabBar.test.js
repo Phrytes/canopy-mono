@@ -9,7 +9,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleTabBar } from '../web/v2/circleTabBar.js';
 import { circleTabs } from '../src/v2/tabProjection.js';
-import { canopyChatManifest } from '../src/index.js';
+import { basisManifest } from '../src/index.js';
 
 const t = (k) => k;
 
@@ -32,7 +32,7 @@ describe('renderCircleTabBar', () => {
   });
 
   it('is a genuine projection consumer: the DOM tabs match manifest.tabs (ids + labels)', () => {
-    const projected = circleTabs(canopyChatManifest);
+    const projected = circleTabs(basisManifest);
     // The manifest is the single source of the roster (no per-shell literal).
     expect(projected.map((tab) => tab.id)).toEqual(['screens', 'kringen', 'contacten', 'mij']);
     const el = renderCircleTabBar(document.createElement('nav'), { active: 'screens', t });

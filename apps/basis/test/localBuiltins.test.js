@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 
-import { canopyChatManifest }              from '../manifest.js';
+import { basisManifest }              from '../manifest.js';
 import { mergeManifests }                  from '../src/manifestMerge.js';
 import { createLocalBuiltins }             from '../src/core/localBuiltins.js';
 import { initLocalisation, t, setLang }    from '../src/localisation.js';
@@ -29,7 +29,7 @@ beforeAll(async () => {
 describe('/help', () => {
   it('lists every command from the merged catalog, grouped by app', async () => {
     const catalog  = mergeManifests([
-      { manifest: canopyChatManifest },
+      { manifest: basisManifest },
       { manifest: householdLite },
     ]);
     const builtins = createLocalBuiltins({ catalog, t });
@@ -48,7 +48,7 @@ describe('/help', () => {
   it("puts basis (built-ins) section first", async () => {
     const catalog = mergeManifests([
       { manifest: householdLite },
-      { manifest: canopyChatManifest },
+      { manifest: basisManifest },
     ]);
     const r = await createLocalBuiltins({ catalog, t }).help();
     const chatIdx = r.message.indexOf('Chat');
@@ -59,7 +59,7 @@ describe('/help', () => {
   });
 
   it("respects locale (Dutch heading)", async () => {
-    const catalog = mergeManifests([{ manifest: canopyChatManifest }]);
+    const catalog = mergeManifests([{ manifest: basisManifest }]);
     await setLang('nl');
     const r = await createLocalBuiltins({ catalog, t }).help();
     expect(r.message).toMatch(/Beschikbare commando's/);
@@ -81,9 +81,9 @@ describe('/help', () => {
   });
 });
 
-describe('canopyChatManifest now carries /help', () => {
+describe('basisManifest now carries /help', () => {
   it("declares help op with /help slash + 'text' reply", () => {
-    const help = canopyChatManifest.operations.find((o) => o.id === 'help');
+    const help = basisManifest.operations.find((o) => o.id === 'help');
     expect(help).toBeTruthy();
     expect(help.surfaces.slash.command).toBe('/help');
     expect(help.surfaces.chat.reply).toBe('text');
@@ -91,12 +91,12 @@ describe('canopyChatManifest now carries /help', () => {
 
   it("manifest still validates", async () => {
     const { validateManifest } = await import('@onderling/app-manifest');
-    const result = validateManifest(canopyChatManifest);
+    const result = validateManifest(basisManifest);
     expect(result.ok).toBe(true);
   });
 
   it("/help appears in the merged catalog's commandMenu", () => {
-    const catalog = mergeManifests([{ manifest: canopyChatManifest }]);
+    const catalog = mergeManifests([{ manifest: basisManifest }]);
     const helpEntry = catalog.commandMenu.find((e) => e.command === '/help');
     expect(helpEntry).toBeTruthy();
     expect(helpEntry.appOrigin).toBe('basis');
@@ -114,7 +114,7 @@ describe('/newthread', () => {
   });
 
   it("creates a new thread + switches active", async () => {
-    const catalog  = mergeManifests([{ manifest: canopyChatManifest }]);
+    const catalog  = mergeManifests([{ manifest: basisManifest }]);
     const builtins = createLocalBuiltins({
       catalog, t, threadStore: store,
       setActive: (id) => setActiveCalls.push(id),
@@ -130,7 +130,7 @@ describe('/newthread', () => {
 
   it("rejects empty name", async () => {
     const builtins = createLocalBuiltins({
-      catalog: mergeManifests([{ manifest: canopyChatManifest }]),
+      catalog: mergeManifests([{ manifest: basisManifest }]),
       t, threadStore: store, setActive: () => {},
     });
     const r1 = await builtins.newthread({});
@@ -143,7 +143,7 @@ describe('/newthread', () => {
 
   it("fails gracefully when no threadStore wired", async () => {
     const builtins = createLocalBuiltins({
-      catalog: mergeManifests([{ manifest: canopyChatManifest }]),
+      catalog: mergeManifests([{ manifest: basisManifest }]),
       t,
     });
     const r = await builtins.newthread({ name: 'X' });
@@ -163,7 +163,7 @@ describe('/threads', () => {
 
   it('lists every thread with active marker', async () => {
     const builtins = createLocalBuiltins({
-      catalog:     mergeManifests([{ manifest: canopyChatManifest }]),
+      catalog:     mergeManifests([{ manifest: basisManifest }]),
       t,
       threadStore: store,
     });
@@ -177,7 +177,7 @@ describe('/threads', () => {
   it('shows "no threads" when store empty', async () => {
     const empty = new ThreadStore();
     const builtins = createLocalBuiltins({
-      catalog: mergeManifests([{ manifest: canopyChatManifest }]),
+      catalog: mergeManifests([{ manifest: basisManifest }]),
       t, threadStore: empty,
     });
     const r = await builtins.threads();
@@ -185,21 +185,21 @@ describe('/threads', () => {
   });
 });
 
-describe('canopyChatManifest now also carries /newthread + /threads', () => {
+describe('basisManifest now also carries /newthread + /threads', () => {
   it('declares both ops', () => {
-    const ids = canopyChatManifest.operations.map((o) => o.id);
+    const ids = basisManifest.operations.map((o) => o.id);
     expect(ids).toContain('newthread');
     expect(ids).toContain('threads');
   });
 
   it('newthread has a required name param', () => {
-    const op = canopyChatManifest.operations.find((o) => o.id === 'newthread');
+    const op = basisManifest.operations.find((o) => o.id === 'newthread');
     expect(op.params).toEqual([{ name: 'name', kind: 'string', required: true }]);
     expect(op.surfaces.slash.command).toBe('/newthread');
   });
 
   it('threads has no params + /threads slash', () => {
-    const op = canopyChatManifest.operations.find((o) => o.id === 'threads');
+    const op = basisManifest.operations.find((o) => o.id === 'threads');
     expect(op.params).toEqual([]);
     expect(op.surfaces.slash.command).toBe('/threads');
   });

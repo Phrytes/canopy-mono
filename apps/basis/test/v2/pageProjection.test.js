@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { manifestPages, pageForOp, pageLabel, sectionForScreen } from '../../src/v2/pageProjection.js';
-import { canopyChatManifest } from '../../manifest.js';
+import { basisManifest } from '../../manifest.js';
 import { stoopManifest } from '../../../stoop/manifest.js';
 
 /**
@@ -56,7 +56,7 @@ describe('pageProjection — selectors over renderWeb(manifest).pages', () => {
   it('the REAL basis manifest projects a `settings` page carrying labelKey', () => {
     // This is the live wiring: the settings op declares surfaces.page +
     // labelKey, so the projection the running shell consumes is non-empty.
-    const page = pageForOp(canopyChatManifest, 'settings');
+    const page = pageForOp(basisManifest, 'settings');
     expect(page).not.toBeNull();
     expect(page.kind).toBe('side-panel');
     expect(page.labelKey).toBe('circle.settings.title');

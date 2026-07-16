@@ -29,7 +29,7 @@ import {
   createDefaultThreadStore, createEventRouter,
   EventLog, AppRegistry, filterCatalog,
   runBrief, createBriefCache, runFind,
-  canopyChatManifest, itemCircleId,
+  basisManifest, itemCircleId,
   loadCircleItems, makeResolvingCallSkill,
 } from '../src/index.js';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
@@ -59,7 +59,7 @@ async function bootWorkspace({ chatVault, secureAgentOpts } = {}) {
     },
   });
   const rawCatalog = mergeManifests([
-    { manifest: canopyChatManifest },
+    { manifest: basisManifest },
     { manifest: agent.manifest },
     { manifest: mockTasksManifest },
     { manifest: mockStoopManifest },

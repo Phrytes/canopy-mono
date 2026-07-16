@@ -18,7 +18,7 @@ import { tasksManifest }      from '../../tasks-v0/manifest.js';
 import { folioManifest }      from '../../folio/manifest.js';
 import { stoopManifest }      from '../../stoop/manifest.js';
 import { agentsManifest }     from '../../agents/manifest.js';
-import { canopyChatManifest } from '../manifest.js';
+import { basisManifest } from '../manifest.js';
 
 const MANIFESTS = [
   ['household',   householdManifest],
@@ -27,7 +27,7 @@ const MANIFESTS = [
   ['folio',       folioManifest],
   ['stoop',       stoopManifest],
   ['agents',      agentsManifest],
-  ['basis', canopyChatManifest],
+  ['basis', basisManifest],
 ];
 
 describe('atom-dispatch consistency (B · Layer 1 §1b)', () => {

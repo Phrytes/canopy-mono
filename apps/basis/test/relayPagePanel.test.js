@@ -13,10 +13,10 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { openPagePanel }      from '../src/web/pagePanel.js';
 import { renderCircleMyData } from '../web/v2/circleMyData.js';
-import { canopyChatManifest } from '../manifest.js';
+import { basisManifest } from '../manifest.js';
 
 const NAV_BTN = '.basis-nav-back-button';
-const setRelayOp = canopyChatManifest.operations.find((o) => o.id === 'set-relay');
+const setRelayOp = basisManifest.operations.find((o) => o.id === 'set-relay');
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe('set-relay — surfaces.page contract (#180)', () => {

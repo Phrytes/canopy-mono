@@ -6,7 +6,7 @@
  *
  *   1. Every noun basis declares (`chat-thread`, `chat-message`) is a
  *      registry type — `isRegistryType` resolves it.
- *   2. `validateManifest(canopyChatManifest)` produces ZERO
+ *   2. `validateManifest(basisManifest)` produces ZERO
  *      `noncanonical-itemtype` warnings (default posture).
  *   3. It passes under `{ strictNouns: true }` (the default-deny posture) —
  *      the registry-unknown-noun error path is empty. This is the migration's
@@ -23,11 +23,11 @@
  */
 import { describe, it, expect } from 'vitest';
 import { validateManifest, isRegistryType } from '@onderling/app-manifest';
-import { canopyChatManifest } from '../manifest.js';
+import { basisManifest } from '../manifest.js';
 
 describe('B #81 — basis nouns migration', () => {
   it('every declared itemType resolves in the @onderling/item-types registry', () => {
-    for (const t of canopyChatManifest.itemTypes) {
+    for (const t of basisManifest.itemTypes) {
       expect(isRegistryType(t), `itemType "${t}" is not a registry type`).toBe(true);
     }
   });
@@ -38,13 +38,13 @@ describe('B #81 — basis nouns migration', () => {
   });
 
   it('validates with ZERO noncanonical-itemtype warnings (default posture)', () => {
-    const { warnings } = validateManifest(canopyChatManifest);
+    const { warnings } = validateManifest(basisManifest);
     const noncanonical = warnings.filter((w) => w.code === 'noncanonical-itemtype');
     expect(noncanonical, JSON.stringify(noncanonical, null, 2)).toEqual([]);
   });
 
   it('passes under { strictNouns: true } — no registry-unknown-noun errors', () => {
-    const { ok, errors } = validateManifest(canopyChatManifest, { strictNouns: true });
+    const { ok, errors } = validateManifest(basisManifest, { strictNouns: true });
     const noncanonical = errors.filter((e) => e.code === 'noncanonical-itemtype');
     expect(noncanonical, JSON.stringify(noncanonical, null, 2)).toEqual([]);
     expect(ok).toBe(true);

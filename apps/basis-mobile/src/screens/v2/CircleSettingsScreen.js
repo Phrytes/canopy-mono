@@ -44,7 +44,7 @@ import { pushCircleStoragePolicy } from '../../../../basis/src/v2/circleStorageP
 // flows `page.labelKey → t()` via the SAME shared selectors web uses (invariant
 // #1/#2: ONE pure module, no per-shell logic). Mirrors web circleSettings.js.
 import { pageForOpMobile, pageLabel } from '../../../../basis/src/v2/pageProjection.js';
-import { canopyChatManifest } from '../../../../basis/src/index.js';
+import { basisManifest } from '../../../../basis/src/index.js';
 
 // Theme B — the guided-setup chatbot template can be HQ-updated remotely; unset
 // → the bundled DEFAULT_SETTINGS_TEMPLATE fallback (web's SETTINGS_TEMPLATE_URL).
@@ -57,11 +57,11 @@ const SETTINGS_TEMPLATE_URL = process.env.EXPO_PUBLIC_SETTINGS_TEMPLATE_URL || u
 const ENUM_AXES = ['view', 'llmTool', 'agents', 'revealPolicy', 'pod'];
 
 // D / SP-3b consumer-switch (MOBILE) — the projected PAGE surface for the
-// `settings` op, selected once from the static canopyChatManifest via the shared
+// `settings` op, selected once from the static basisManifest via the shared
 // mobile selector (renderMobile → pages[]). The header label resolves from its
 // `labelKey` through t() (see the header render below); a null page/absent
 // labelKey falls back to the pre-existing t('circle.settings.title') bit-for-bit.
-const SETTINGS_PAGE = pageForOpMobile(canopyChatManifest, 'settings');
+const SETTINGS_PAGE = pageForOpMobile(basisManifest, 'settings');
 
 export default function CircleSettingsScreen({
   store, proposalStore, circleId, onBack,

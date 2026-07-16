@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderCircleProfile } from '../../web/v2/circleProfile.js';
 import { pageForOp } from '../../src/v2/pageProjection.js';
-import { canopyChatManifest } from '../../manifest.js';
+import { basisManifest } from '../../manifest.js';
 
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }
 
@@ -31,7 +31,7 @@ describe('renderCircleProfile — header sourced from the manifest page projecti
     // End-to-end with the actual manifest: renderWeb projects the me op's
     // surfaces.page (labelKey: circle.profile.title); the header resolves it.
     const el = mount();
-    const profilePage = pageForOp(canopyChatManifest, 'me');
+    const profilePage = pageForOp(basisManifest, 'me');
     expect(profilePage?.opId).toBe('me');
     expect(profilePage?.kind).toBe('screen');
     expect(profilePage?.labelKey).toBe('circle.profile.title');

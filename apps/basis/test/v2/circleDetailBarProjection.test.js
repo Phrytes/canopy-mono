@@ -9,7 +9,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderCircleDetail } from '../../web/v2/circleDetail.js';
 import { circleActions, circleActionsMobile, circleActionRoster } from '../../src/v2/actionProjection.js';
-import { canopyChatManifest } from '../../src/index.js';
+import { basisManifest } from '../../src/index.js';
 import { DEFAULT_CIRCLE_POLICY, mergeCirclePolicy } from '../../src/v2/circlePolicy.js';
 
 const t = (k) => k;
@@ -26,7 +26,7 @@ describe('circle detail bar — projected from manifest.actions', () => {
   it('renders exactly the web projected+gated action set, in order (no hand-written list)', () => {
     const el = mount();
     renderCircleDetail(el, { circle: { id: 'g1', name: 'Selwerd' }, items: [], t, policy: DEFAULT_CIRCLE_POLICY });
-    const projected = circleActions(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' });
+    const projected = circleActions(basisManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' });
     expect(barActions(el)).toEqual(projected.map((a) => a.id));
     // Default policy: memberDirectory + houseRules on → viewAs + rules shown;
     // lists + notes off → files hidden; share is mobile-only → absent on web.
@@ -62,11 +62,11 @@ describe('circle detail bar — projected from manifest.actions', () => {
   it('web ≡ mobile: the projected action roster is IDENTICAL (divergence killed)', () => {
     // The full projected NavModel.actions is the same object shape from either
     // projector — renderMobile re-exports renderWeb, so the roster can never fork.
-    expect(circleActionRoster(canopyChatManifest)).toEqual(
-      circleActionRoster(canopyChatManifest, undefined),
+    expect(circleActionRoster(basisManifest)).toEqual(
+      circleActionRoster(basisManifest, undefined),
     );
-    const webRoster    = circleActions(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' });
-    const mobileRoster = circleActionsMobile(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY });
+    const webRoster    = circleActions(basisManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' });
+    const mobileRoster = circleActionsMobile(basisManifest, { policy: DEFAULT_CIRCLE_POLICY });
     // Same source, same gates → the two platform sets differ ONLY by the
     // manifest-declared `share` (mobile-only; no web CircleShareScreen yet).
     const webIds    = webRoster.map((a) => a.id);

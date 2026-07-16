@@ -111,7 +111,7 @@ import { openFilePicker }           from '../core/filePicker.js';
 import { openMediaFilePicker }      from '../core/mediaPicker.js';
 import { buildMediaCardModel }      from '../core/mediaCardModel.js';
 import { saveBase64File }           from '../core/fileSave.js';
-import { useCanopyChatAuth }        from '../auth/canopyChatAuthHook.js';
+import { useBasisAuth }        from '../auth/basisAuthHook.js';
 import { buildMobilePodAuth }       from '../core/podAuth.js';
 import { OidcSessionRN }            from '@onderling/oidc-session-rn';
 import * as SecureStore             from 'expo-secure-store';
@@ -308,7 +308,7 @@ export default function ChatScreen({
   // OidcSessionRN holds tokens in SecureStore (restored on mount).
   // `buildMobilePodAuth` adapts both into the podAuth shape that
   // localBuiltins (signin / signout / whoami) consumes.
-  const authHook = useCanopyChatAuth();
+  const authHook = useBasisAuth();
   // 5.4c — prefer the App-owned sessionRef so the v2 circle launcher
   // shares this OidcSessionRN.  Standalone mounts (older tests, future
   // harnesses) fall back to a screen-local ref.
@@ -842,7 +842,7 @@ export default function ChatScreen({
               messageId: botMsgId,
               threadId: null,
               lifecycleState: 'closed',
-              text: t('chat.canopy_chat_op_pending', { opId: dispatch.opId }),
+              text: t('chat.basis_op_pending', { opId: dispatch.opId }),
             };
           } else {
             // Route through runDispatch so renderReply gets the

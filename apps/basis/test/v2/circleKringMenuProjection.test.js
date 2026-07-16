@@ -10,7 +10,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderCircleKring } from '../../web/v2/circleKring.js';
 import { circleActions, circleActionsMobile } from '../../src/v2/actionProjection.js';
-import { canopyChatManifest } from '../../src/index.js';
+import { basisManifest } from '../../src/index.js';
 import { DEFAULT_CIRCLE_POLICY, mergeCirclePolicy } from '../../src/v2/circlePolicy.js';
 
 const t = (k, params) => (params && params.count != null ? `${k}:${params.count}` : k);
@@ -42,7 +42,7 @@ describe('circle kring ⋯ menu — projected from manifest.actions (MORE_ITEMS 
     renderCircleKring(el, { circle, rows: [], t, policy: DEFAULT_CIRCLE_POLICY, more: fullMore() });
     // Expected = the web projection, filtered to ids the host wired a callback for.
     const more = fullMore();
-    const expected = circleActions(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' })
+    const expected = circleActions(basisManifest, { policy: DEFAULT_CIRCLE_POLICY, platform: 'web' })
       .map((a) => a.id)
       .filter((id) => typeof more[id] === 'function');
     expect(menuActions(el)).toEqual(expected);
@@ -86,7 +86,7 @@ describe('circle kring ⋯ menu — projected from manifest.actions (MORE_ITEMS 
     renderCircleKring(el, { circle, rows: [], t, policy: DEFAULT_CIRCLE_POLICY, more: fullMore() });
     const webMenu = menuActions(el);
     // The mobile menu projects the same roster minus `back` (a header affordance).
-    const mobileMenu = circleActionsMobile(canopyChatManifest, { policy: DEFAULT_CIRCLE_POLICY })
+    const mobileMenu = circleActionsMobile(basisManifest, { policy: DEFAULT_CIRCLE_POLICY })
       .map((a) => a.id)
       .filter((id) => id !== 'back');
     // They differ ONLY by the mobile-only `share` (no web CircleShareScreen yet).

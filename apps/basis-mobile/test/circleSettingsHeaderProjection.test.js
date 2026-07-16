@@ -3,7 +3,7 @@
  * label is sourced from the manifest PAGE projection, not a hardcoded string.
  *
  * The screen renders its header as
- *   pageLabel(pageForOpMobile(canopyChatManifest, 'settings'), t, t('circle.settings.title'))
+ *   pageLabel(pageForOpMobile(basisManifest, 'settings'), t, t('circle.settings.title'))
  * (see src/screens/v2/CircleSettingsScreen.js). RN screens can't be rendered
  * under Vitest (see vitest.config.js), so this exercises the SAME shared pure
  * selectors + the real mobile t() the screen wires — the header label flows
@@ -14,12 +14,12 @@
 import { describe, it, expect } from 'vitest';
 
 import { pageForOpMobile, pageLabel } from '../../basis/src/v2/pageProjection.js';
-import { canopyChatManifest } from '../../basis/src/index.js';
+import { basisManifest } from '../../basis/src/index.js';
 import { t } from '../src/core/localisation.js';
 
 describe('D / SP-3b — mobile CircleSettingsScreen header from the manifest projection', () => {
   it('renderMobile projects the settings op into a page carrying its labelKey', () => {
-    const page = pageForOpMobile(canopyChatManifest, 'settings');
+    const page = pageForOpMobile(basisManifest, 'settings');
     expect(page).not.toBeNull();
     expect(page.opId).toBe('settings');
     // The manifest is the source of truth for the header label (invariant #4/#8).
@@ -27,7 +27,7 @@ describe('D / SP-3b — mobile CircleSettingsScreen header from the manifest pro
   });
 
   it('the header label resolves from the manifest page labelKey via t()', () => {
-    const page = pageForOpMobile(canopyChatManifest, 'settings');
+    const page = pageForOpMobile(basisManifest, 'settings');
     // Exactly the expression the screen header computes.
     const header = pageLabel(page, t, t('circle.settings.title'));
     // Flows from the manifest key through t() — equals (and is sourced as) the

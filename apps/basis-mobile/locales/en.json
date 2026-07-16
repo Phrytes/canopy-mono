@@ -42,7 +42,7 @@
       "text": "{{count}} item(s):",
       "doc": "Header for list replies (until step 2 ships per-item inline keyboards)"
     },
-    "canopy_chat_op_pending": {
+    "basis_op_pending": {
       "text": "/{{opId}} is a chat-shell command — not wired on mobile yet.",
       "doc": "Shown when the user invokes a basis-host op (/help, /threads, /settings, …) that webMain routes via localBuiltins; the RN port is a later #253 sub-step"
     },

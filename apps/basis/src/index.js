@@ -7,7 +7,7 @@
  * `/Project Files/basis/coding-plan.md`.
  */
 
-export { canopyChatManifest } from '../manifest.js';
+export { basisManifest } from '../manifest.js';
 export { parseInput, parseSlash }    from './parser.js';
 export { mergeManifests }            from './manifestMerge.js';
 export { resolveDispatch, scopeReadyDispatch, bindMatchArg } from './router.js';

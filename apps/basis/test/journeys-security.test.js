@@ -29,7 +29,7 @@ import {
   ThreadStore, createDefaultThreadStore,
 } from '../src/index.js';
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
-import { canopyChatManifest }         from '../manifest.js';
+import { basisManifest }         from '../manifest.js';
 import { mergeManifests }              from '../src/manifestMerge.js';
 import { createLocalBuiltins }         from '../src/core/localBuiltins.js';
 import { VaultMemory }                 from '@onderling/vault';
@@ -45,7 +45,7 @@ import { createSecureAgent }           from '@onderling/secure-agent';
 async function bootSafetyWorkspace({ chatVault, secureAgentOpts } = {}) {
   const agent = await createRealHouseholdAgent({ chatVault, secureAgentOpts });
   const catalog = mergeManifests(
-    [{ manifest: canopyChatManifest }, { manifest: agent.manifest }],
+    [{ manifest: basisManifest }, { manifest: agent.manifest }],
     { runtime: 'browser' },
   );
   const threadStore = createDefaultThreadStore();

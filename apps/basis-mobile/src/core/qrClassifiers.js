@@ -23,7 +23,7 @@ const PAIR_SCHEME          = 'canopy-pair://';
 /**
  * @returns {Array<{kind: string, classify: (text: string) => unknown|null}>}
  */
-export function getCanopyChatClassifiers() {
+export function getBasisClassifiers() {
   return [
     { kind: 'contact', classify: _classifyContact },
     { kind: 'invite',  classify: _classifyInvite  },

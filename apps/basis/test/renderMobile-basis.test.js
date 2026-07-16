@@ -23,7 +23,7 @@ import { renderMobile } from '@onderling/app-manifest';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../src/core/manifests/mockManifests.js';
-import { canopyChatManifest } from '../src/index.js';
+import { basisManifest } from '../src/index.js';
 import { calendarManifest } from '@onderling-app/calendar/manifest';
 
 /**
@@ -48,9 +48,9 @@ function assertValidNavModel(nav, manifest) {
 }
 
 describe('#221 — renderMobile against basis manifests', () => {
-  it('canopyChatManifest projects cleanly', () => {
-    const nav = renderMobile(canopyChatManifest);
-    assertValidNavModel(nav, canopyChatManifest);
+  it('basisManifest projects cleanly', () => {
+    const nav = renderMobile(basisManifest);
+    assertValidNavModel(nav, basisManifest);
   });
 
   it('mockTasksManifest (incl. #219 editTask + 7 sub-task ops) projects cleanly', () => {

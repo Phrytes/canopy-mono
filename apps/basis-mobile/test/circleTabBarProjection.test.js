@@ -4,7 +4,7 @@
  * `TABS` literal.
  *
  * The RN component renders each tab as
- *   circleTabsMobile(canopyChatManifest).map((tab) => <Text>{t(tab.labelKey)}</Text>)
+ *   circleTabsMobile(basisManifest).map((tab) => <Text>{t(tab.labelKey)}</Text>)
  * (see src/screens/v2/CircleTabBar.js).  RN screens can't render under Vitest
  * (see vitest.config.js), so this exercises the SAME shared pure selector + the
  * real mobile t() the component wires — the roster flows
@@ -16,12 +16,12 @@
 import { describe, it, expect } from 'vitest';
 
 import { circleTabsMobile } from '../../basis/src/v2/tabProjection.js';
-import { canopyChatManifest } from '../../basis/src/index.js';
+import { basisManifest } from '../../basis/src/index.js';
 import { t } from '../src/core/localisation.js';
 
 describe('D / Surface 1 — mobile CircleTabBar roster from the manifest projection', () => {
   it('renderMobile projects the four tabs in order with their locale keys', () => {
-    const tabs = circleTabsMobile(canopyChatManifest);
+    const tabs = circleTabsMobile(basisManifest);
     expect(tabs.map((tab) => tab.id)).toEqual(['screens', 'kringen', 'contacten', 'mij']);
     expect(tabs.map((tab) => tab.labelKey)).toEqual([
       'circle.tab.screens', 'circle.tab.kringen', 'circle.tab.contacten', 'circle.tab.mij',
@@ -29,7 +29,7 @@ describe('D / Surface 1 — mobile CircleTabBar roster from the manifest project
   });
 
   it('each tab label resolves from the manifest labelKey via t() (invariant #8)', () => {
-    for (const tab of circleTabsMobile(canopyChatManifest)) {
+    for (const tab of circleTabsMobile(basisManifest)) {
       const label = t(tab.labelKey);
       expect(typeof label).toBe('string');
       expect(label.length).toBeGreaterThan(0);
@@ -39,7 +39,7 @@ describe('D / Surface 1 — mobile CircleTabBar roster from the manifest project
   });
 
   it('the "mij" tab targets the me op; the others are app-nav roots', () => {
-    const tabs = circleTabsMobile(canopyChatManifest);
+    const tabs = circleTabsMobile(basisManifest);
     const mij = tabs.find((tab) => tab.id === 'mij');
     expect(mij.target).toEqual({ kind: 'op', opId: 'me' });
     for (const id of ['screens', 'kringen', 'contacten']) {
