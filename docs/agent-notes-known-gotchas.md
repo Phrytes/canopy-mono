@@ -35,6 +35,10 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   test that imports `SyncEngine`) suddenly can't resolve `@onderling/versioning` / `@onderling/pseudo-pod`,
   recreate those two symlinks (`ln -sf ../../../versioning versioning`, `ln -sf ../../../pseudo-pod
   pseudo-pod`).
+  Same applies to `apps/sdk-journeys` (feat/sdk-journeys, 2026-07-16): its `@onderling/*` deps resolve via
+  hand-materialized symlinks `apps/sdk-journeys/node_modules/@onderling/<p> → ../../../../packages/<p>`
+  (sdk, core, vault, transports, pod-client, app-manifest, item-store, item-types, pseudo-pod,
+  app-scaffold). node_modules is gitignored — recreate the links on a fresh checkout before `npm test`.
 
 - **Recursive / self package references → solved with (workspace) symlinks.**
   A package that references itself or forms a dependency cycle has broken resolution here before;

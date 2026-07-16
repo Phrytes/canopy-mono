@@ -1,0 +1,23 @@
+{
+  "name": "@onderling-app/sdk-journeys",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Executable SDK developer journeys — external-consumer scripts that double as documentation verification for the @onderling/* package READMEs.",
+  "scripts": {
+    "test": "node run-all.mjs"
+  },
+  "dependencies": {
+    "@onderling/app-manifest": "workspace:*",
+    "@onderling/app-scaffold": "workspace:*",
+    "@onderling/core": "workspace:*",
+    "@onderling/item-store": "workspace:*",
+    "@onderling/item-types": "workspace:*",
+    "@onderling/pseudo-pod": "workspace:*",
+    "@onderling/sdk": "workspace:*",
+    "@onderling/vault": "workspace:*"
+  },
+  "engines": {
+    "node": ">=20.19.4"
+  }
+}
