@@ -1,10 +1,27 @@
-# canopy
+# basis
 
 A platform for **decentralized agent apps** — web and mobile apps whose
 users exchange messages, data, and tasks **without a required central
 server**.  Each app declares its surface once, as data; a unified chat
 shell composes them all, and a portable platform gives every app
 identity, transports, and peer-to-peer reachability underneath.
+
+> **Naming:** this repo was `canopy-mono` until 2026-07. The platform packages now live under the
+> **`@onderling/*`** scope; the flagship app is **Basis**; the organization is
+> [Onderling](https://github.com/Onderling).
+
+## Documentation
+
+- **[Package index](docs/packages.md)** — every published `@onderling/*` package, what it is, and
+  which executable journey verifies it.
+- **[Tutorials](docs/tutorials/)** — your first agent · one manifest, every surface · a compatible
+  tasks app.
+- **[Building compatible agents](docs/building-compatible-agents.md)** — the wire-level route.
+- **[Architecture](docs/architecture.md)** — how the pieces fit.
+
+Docs are verified against the code: `npm run readme-fitness` (symbol drift) and
+`apps/sdk-journeys` (executable flows).
+
 
 > **Working name in public material:** *Onderling*.  This monorepo is the
 > engineering home; the platform ships under the `@onderling/*` scope and the
