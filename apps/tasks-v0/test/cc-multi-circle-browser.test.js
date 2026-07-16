@@ -1,7 +1,7 @@
 /**
  * createBrowserMultiCircleTasksAgent — per-circle task isolation.
  *
- * The canopy-chat circle work treats `circleId ≡ circleId`, so a task
+ * The basis circle work treats `circleId ≡ circleId`, so a task
  * created while a circle is open must land in that circle's circle and
  * stay isolated from other circles.  This proves the browser multi-circle
  * factory routes + isolates storage, and that unscoped calls still fall

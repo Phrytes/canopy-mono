@@ -1,0 +1,282 @@
+/**
+ * basis v2 — "My data" screen (web DOM renderer, S5 — privacy + diagnostics).
+ *
+ * A read-only surface that retires stoop's privacy + metrics + data-location
+ * pages: WHERE your data lives (pod root / relay, `getDataLocation` +
+ * `podSignInStatus`), the privacy disclosure (`getPrivacyNotice`), and a usage
+ * snapshot (`getMetrics`). Pure render — the host (`circleApp.js` showMyData)
+ * loads the stoop ops and passes the results. The key-management actions
+ * (S5 — back up · view recovery phrase · restore) are rendered when the host
+ * injects the matching callbacks; each launches an existing wizard/skill.
+ */
+
+import { renderUserLlmSettings } from './userLlmSettings.js';
+
+export function renderCircleMyData(container, {
+  dataLocation = {},
+  podStatus = {},
+  privacy = [],
+  metrics = {},
+  t,
+  onBack,
+  onSignIn,
+  onBackup,
+  onViewMnemonic,
+  onRestore,
+  notifications,
+  onToggleNotifications,
+  surfacePref,            // S6.C — current 'inline' | 'screen' | 'chat'
+  chatAi,                 // S6.D — { enriched, reason } for the active circle (shown under "chat")
+  onSetSurfacePref,       // (value) => void
+  appLang,                // current app language 'nl' | 'en' (global UI language)
+  onSetAppLang,           // (lng) => void
+  userLlm,                // the member's saved assistant endpoint config (userLlmDefault value)
+  onSaveUserLlm,          // (cfg) => Promise<string|null>  — persist + apply; returns an error message or null
+  validateUserLlm,        // (cfg) => string|null           — confidential-route guard for inline display
+  relayUrl,               // in-app relay setting: the saved URL ('' / null = unset ⇒ env fallback)
+  relayEnvUrl,            // the build-time env relay URL, shown as the placeholder fallback
+  onSaveRelay,            // (url) => Promise<{ok, effective, error?}> — persist + live-reconnect the transport
+  onOpenRelayPanel,       // Objective D / Surface 4 (#180): () => void — open the set-relay op in the docked
+                          // side-panel (openPagePanel). When provided, the relay row is an entry button that
+                          // routes through the generic panel instead of the bespoke inline form below.
+} = {}) {
+  if (!container) return container;
+  const tr = typeof t === 'function' ? t : (k) => k;
+  container.innerHTML = '';
+  container.className = 'cc-mydata';
+
+  const header = document.createElement('div');
+  header.className = 'cc-mydata__header';
+  if (typeof onBack === 'function') {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'cc-mydata__back';
+    back.textContent = tr('circle.mydata.back');
+    back.addEventListener('click', () => onBack());
+    header.appendChild(back);
+  }
+  const title = document.createElement('h2');
+  title.className = 'cc-mydata__title';
+  title.textContent = tr('circle.mydata.title');
+  header.appendChild(title);
+  container.appendChild(header);
+
+  // ── where your data lives ─────────────────────────────────────────────────
+  const storage = section(tr('circle.mydata.storage'));
+  const status = podStatus.signedIn
+    ? tr('circle.mydata.pod_signed_in', { webid: podStatus.webid ?? '' })
+    : tr('circle.mydata.pod_local');
+  storage.appendChild(kv(tr('circle.mydata.pod'), status));
+  // Sign in to a real Solid pod (reuses src/web/podAuth.js) — sealed circles then store there.
+  if (!podStatus.signedIn && typeof onSignIn === 'function') {
+    const signIn = document.createElement('button');
+    signIn.type = 'button';
+    signIn.className = 'cc-mydata__signin';
+    signIn.textContent = tr('circle.mydata.pod_sign_in');
+    signIn.addEventListener('click', () => onSignIn());
+    storage.appendChild(signIn);
+  }
+  if (dataLocation.podRoot) storage.appendChild(kv(tr('circle.mydata.pod_root'), dataLocation.podRoot));
+  if (dataLocation.relayOperator || dataLocation.relayUrl) {
+    storage.appendChild(kv(tr('circle.mydata.relay'), [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ')));
+  }
+  // In-app relay setting — point the no-server cross-device relay at a reachable server WITHOUT a rebuild.
+  // Objective D / Surface 4 (#180): when the host wires `onOpenRelayPanel`, the edit is routed through the
+  // generic docked side-panel (openPagePanel's simple-form for the `set-relay` op) instead of the bespoke
+  // inline field. The button is the entry point; the panel builds the form from set-relay's params + dispatches.
+  if (typeof onOpenRelayPanel === 'function') {
+    const row = document.createElement('div');
+    row.className = 'cc-mydata__relay-edit';
+    const current = document.createElement('span');
+    current.className = 'cc-mydata__relay-note';
+    current.textContent = tr('circle.mydata.relay_current', { url: relayUrl || relayEnvUrl || tr('circle.mydata.relay_off') });
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'cc-mydata__relay-open';
+    open.textContent = tr('circle.mydata.relay_open');
+    open.addEventListener('click', () => onOpenRelayPanel());
+    const hint = document.createElement('p');
+    hint.className = 'cc-mydata__relay-hint';
+    hint.textContent = tr('circle.mydata.relay_hint');
+    row.appendChild(current);
+    row.appendChild(open);
+    storage.appendChild(row);
+    storage.appendChild(hint);
+  } else if (typeof onSaveRelay === 'function') {
+    const row = document.createElement('div');
+    row.className = 'cc-mydata__relay-edit';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'cc-mydata__relay-input';
+    input.value = relayUrl || '';
+    input.placeholder = relayEnvUrl || 'ws://…:8787';
+    input.setAttribute('aria-label', tr('circle.mydata.relay_set'));
+    const save = document.createElement('button');
+    save.type = 'button';
+    save.className = 'cc-mydata__relay-save';
+    save.textContent = tr('circle.mydata.relay_save');
+    const note = document.createElement('span');
+    note.className = 'cc-mydata__relay-note';
+    save.addEventListener('click', async () => {
+      save.disabled = true; note.textContent = tr('circle.mydata.relay_saving');
+      try {
+        const r = await onSaveRelay(input.value);
+        note.textContent = r && r.ok
+          ? tr('circle.mydata.relay_saved', { url: r.effective || tr('circle.mydata.relay_off') })
+          : tr('circle.mydata.relay_error', { msg: (r && r.error) || '' });
+      } catch (e) { note.textContent = tr('circle.mydata.relay_error', { msg: e?.message ?? '' }); }
+      save.disabled = false;
+    });
+    const hint = document.createElement('p');
+    hint.className = 'cc-mydata__relay-hint';
+    hint.textContent = tr('circle.mydata.relay_hint');
+    row.appendChild(input); row.appendChild(save); row.appendChild(note);
+    storage.appendChild(row);
+    storage.appendChild(hint);
+  }
+  container.appendChild(storage);
+
+  // ── key management (S5) ─────────────────────────────────────────────────────
+  // Back up / reveal recovery phrase / restore. Each is gated on its callback so
+  // the section only appears where the host wired the (existing) wizard/skill.
+  const acts = [
+    ['cc-mydata__backup',   'circle.mydata.backup',         onBackup],
+    ['cc-mydata__mnemonic', 'circle.mydata.view_mnemonic',  onViewMnemonic],
+    ['cc-mydata__restore',  'circle.mydata.restore',        onRestore],
+  ].filter(([, , fn]) => typeof fn === 'function');
+  if (acts.length) {
+    const keys = section(tr('circle.mydata.keys'));
+    for (const [cls, key, fn] of acts) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mydata__action ${cls}`;
+      b.textContent = tr(key);
+      b.addEventListener('click', () => fn());
+      keys.appendChild(b);
+    }
+    container.appendChild(keys);
+  }
+
+  // ── notifications (S5 web-push) ─────────────────────────────────────────────
+  if (typeof onToggleNotifications === 'function') {
+    const n = notifications || {};
+    const notif = section(tr('circle.mydata.notifications'));
+    const sub = document.createElement('p');
+    sub.className = 'cc-mydata__notif-status';
+    sub.textContent = !n.supported
+      ? tr('circle.mydata.notif_unsupported')
+      : n.subscribed ? tr('circle.mydata.notif_on') : tr('circle.mydata.notif_off');
+    notif.appendChild(sub);
+    if (n.supported) {
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'cc-mydata__action cc-mydata__notif-toggle';
+      toggle.textContent = n.subscribed ? tr('circle.mydata.notif_disable') : tr('circle.mydata.notif_enable');
+      toggle.addEventListener('click', () => onToggleNotifications());
+      notif.appendChild(toggle);
+    }
+    container.appendChild(notif);
+  }
+
+  // ── how the bot shows actions (S6.C surface preference) ─────────────────────
+  if (typeof onSetSurfacePref === 'function') {
+    const sec = section(tr('circle.mydata.surface_pref'));
+    const current = surfacePref || 'inline';
+    for (const opt of ['inline', 'screen', 'chat']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mydata__pref${opt === current ? ' is-active' : ''}`;
+      b.dataset.pref = opt;
+      b.textContent = tr(`circle.mydata.surface_pref_${opt}`);
+      b.addEventListener('click', () => onSetSurfacePref(opt));
+      sec.appendChild(b);
+    }
+    // S6.D — when "chat" is chosen, show whether AI is enriching it here (chat works
+    // without AI; this just tells you if your LLM is helping, or why not).
+    if (current === 'chat' && chatAi && chatAi.reason) {
+      const note = document.createElement('p');
+      note.className = 'cc-mydata__chat-ai';
+      const keyByReason = { on: 'chat_ai_on', 'circle-off': 'chat_ai_circle_off', 'no-llm': 'chat_ai_no_llm', 'no-provider': 'chat_ai_no_provider' };
+      note.textContent = `${chatAi.enriched ? '✨ ' : ''}${tr(`circle.mydata.${keyByReason[chatAi.reason] ?? 'chat_ai_no_provider'}`)}`;
+      sec.appendChild(note);
+    }
+    container.appendChild(sec);
+  }
+
+  // ── app language (global NL/EN — a user preference, applies app-wide) ───────
+  if (typeof onSetAppLang === 'function') {
+    const sec = section(tr('circle.mydata.language'));
+    for (const lg of ['nl', 'en']) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `cc-mydata__pref${lg === appLang ? ' is-active' : ''}`;
+      b.dataset.lang = lg;
+      b.textContent = lg.toUpperCase();
+      b.addEventListener('click', () => onSetAppLang(lg));
+      sec.appendChild(b);
+    }
+    container.appendChild(sec);
+  }
+
+  // ── assistant endpoint (the member's own LLM + embedder) ────────────────────
+  if (typeof onSaveUserLlm === 'function') {
+    const holder = document.createElement('div');
+    holder.className = 'cc-mydata__section';
+    renderUserLlmSettings(holder, { current: userLlm || {}, onSave: onSaveUserLlm, validate: validateUserLlm, t: tr });
+    container.appendChild(holder);
+  }
+
+  // ── privacy ────────────────────────────────────────────────────────────────
+  if (Array.isArray(privacy) && privacy.length) {
+    const priv = section(tr('circle.mydata.privacy'));
+    for (const s of privacy) {
+      const item = document.createElement('div');
+      item.className = 'cc-mydata__privacy';
+      const h = document.createElement('div');
+      h.className = 'cc-mydata__privacy-title';
+      h.textContent = s.title ?? '';
+      const b = document.createElement('p');
+      b.className = 'cc-mydata__privacy-body';
+      b.textContent = s.body ?? '';
+      item.appendChild(h);
+      item.appendChild(b);
+      priv.appendChild(item);
+    }
+    container.appendChild(priv);
+  }
+
+  // ── usage ──────────────────────────────────────────────────────────────────
+  const entries = Object.entries(metrics || {});
+  if (entries.length) {
+    const usage = section(tr('circle.mydata.usage'));
+    for (const [k, v] of entries) {
+      usage.appendChild(kv(k, typeof v === 'object' ? JSON.stringify(v) : String(v)));
+    }
+    container.appendChild(usage);
+  }
+  return container;
+
+  // ── helpers ──
+  function section(titleText) {
+    const s = document.createElement('section');
+    s.className = 'cc-mydata__section';
+    const h = document.createElement('h3');
+    h.className = 'cc-mydata__section-title';
+    h.textContent = titleText;
+    s.appendChild(h);
+    return s;
+  }
+  function kv(key, value) {
+    const row = document.createElement('div');
+    row.className = 'cc-mydata__kv';
+    const k = document.createElement('span');
+    k.className = 'cc-mydata__k';
+    k.textContent = key;
+    const v = document.createElement('span');
+    v.className = 'cc-mydata__v';
+    v.textContent = value;
+    row.appendChild(k);
+    row.appendChild(v);
+    return row;
+  }
+}

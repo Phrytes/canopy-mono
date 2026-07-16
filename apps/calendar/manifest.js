@@ -12,7 +12,7 @@
  * / tentative).  Cancelling an event uses ItemStore.markComplete
  * with state 'cancelled' (mapped onto removal in v0.7.11 RDF).
  *
- * Phase v0.7 sub-slice 7.10 per `/Project Files/canopy-chat/coding-plan.md`.
+ * Phase v0.7 sub-slice 7.10 per `/Project Files/basis/coding-plan.md`.
  */
 
 export const calendarManifest = {
@@ -52,7 +52,7 @@ export const calendarManifest = {
         { name: 'attendees',     kind: 'string', required: false },
         // v0.7.P3c — comma-separated NKN addresses to invite via
         // chat-p2p envelopes.  Each gets a 'calendar-invite'
-        // envelope; their canopy-chat surfaces a time-card embed
+        // envelope; their basis surfaces a time-card embed
         // with [Accept]/[Decline]/[Tentative] that RSVPs back.
         { name: 'attendees-addr', kind: 'string', required: false },
       ],

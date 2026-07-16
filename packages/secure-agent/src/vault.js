@@ -1,7 +1,7 @@
 /**
  * @onderling/secure-agent — vault helpers.
  *
- * Lifted from canopy-chat's `apps/canopy-chat/src/web/realAgent.js`
+ * Lifted from basis's `apps/basis/src/web/realAgent.js`
  * (v0.7.P3a).  Promoted to substrate so the factory + any other
  * app can reuse the same persistence pattern.
  *

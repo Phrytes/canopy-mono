@@ -13,7 +13,7 @@
  * against `apps/<app>/manifest.js`, failing CI on drift.
  *
  * DESIGN: only rules that are TRUE of every already-conformant app manifest
- * (tasks-v0 · stoop · household · calendar · folio · canopy-chat) are encoded
+ * (tasks-v0 · stoop · household · calendar · folio · basis) are encoded
  * here — so the check is GREEN on master and RED on a real regression. Rules
  * the codebase does NOT hold to universally (registry-canonical `itemTypes`
  * under `strictNouns`, the Q16 `strict` skillId cross-check) are deliberately
@@ -46,7 +46,7 @@
  *
  *   4. nouns-vacuous      — §1a, the inverse. A manifest with NO noun-bearing
  *                           atom op must NOT declare a `nouns` block. This is the
- *                           #81 canopy-chat exemption made into a rule: the
+ *                           #81 basis exemption made into a rule: the
  *                           shell/unifier manifest names no item noun, so an
  *                           empty `nouns:{}` would be worse than nothing — it
  *                           flips the manifest to declared-authoritative and a
@@ -95,7 +95,7 @@ const PROJECTORS = [
 
 /**
  * Does this op name an item-type noun AND carry an atom verb? Mirrors the §1a
- * `nounBearingAtomOps` predicate (canopy-chat `test/atom-discipline.test.js`),
+ * `nounBearingAtomOps` predicate (basis `test/atom-discipline.test.js`),
  * lifted here so the standard lives in the package, not a single app's test.
  *
  * @param {object} op
@@ -164,7 +164,7 @@ export function manifestConformance(manifest) {
       code: 'nouns-vacuous',
       path: '/nouns',
       message:
-        'manifest declares a `nouns` block but has no noun-bearing atom ops — a shell/unifier manifest must NOT declare a vacuous `nouns` (it would flip it to declared-authoritative and silently drop future noun capabilities; the #81 canopy-chat exemption)',
+        'manifest declares a `nouns` block but has no noun-bearing atom ops — a shell/unifier manifest must NOT declare a vacuous `nouns` (it would flip it to declared-authoritative and silently drop future noun capabilities; the #81 basis exemption)',
     });
   }
 

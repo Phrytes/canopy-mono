@@ -57,7 +57,7 @@ export async function shareFolder(store, args = {}) {
   if (!folder)       return { ok: false, error: 'folder required' };
   if (!subjectWebid) return { ok: false, error: 'with (webid) required' };
 
-  const podRootStr  = store.podRoot || 'https://canopy-chat.invalid/';
+  const podRootStr  = store.podRoot || 'https://basis.invalid/';
   const sharePodUri = `${podRootStr.replace(/\/$/, '')}/${folder.replace(/^\//, '').replace(/\/$/, '')}/`;
   try {
     const record = await store.mintShareToken(store.identity, {
@@ -235,7 +235,7 @@ export function searchFiles(store, args = {}) {
 }
 
 /**
- * folio_briefSummary — Q30 briefSummary.  No manifest op (canopy-chat's
+ * folio_briefSummary — Q30 briefSummary.  No manifest op (basis's
  * generic `/brief` maps to this named skill); kept as a direct registration.
  */
 export function folioBriefSummary(store /*, args, ctx */) {

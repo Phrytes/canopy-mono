@@ -36,7 +36,7 @@ export const CANONICAL_TYPES = Object.freeze({
   'note':               NOTE_SCHEMA,
   'chat-message':       CHAT_MESSAGE_SCHEMA,
   // #81 (2026-07-05): canonical companion to chat-message — the
-  // conversation container canopy-chat's shell declares alongside it.
+  // conversation container basis's shell declares alongside it.
   'chat-thread':        CHAT_THREAD_SCHEMA,
   'offer':              OFFER_SCHEMA,
   'request':            REQUEST_SCHEMA,

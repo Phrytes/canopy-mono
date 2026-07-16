@@ -47,7 +47,7 @@ function paramToProperty(p, manifest) {
         : { type: 'string', enum: values };
     }
     // v0.3.2 + v0.4 — date / webid surface in JSON Schema as strings
-    // with format hints.  Real validation happens in canopy-chat's
+    // with format hints.  Real validation happens in basis's
     // buildFormSpec.validateAndCoerce (per-kind parser).
     case 'date':    return extra ? { type: 'string', format: 'date',  ...extra } : { type: 'string', format: 'date'  };
     case 'webid':   return extra ? { type: 'string', format: 'uri',   ...extra } : { type: 'string', format: 'uri'   };

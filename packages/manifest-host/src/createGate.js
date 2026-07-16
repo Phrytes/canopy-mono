@@ -18,7 +18,7 @@
  *     → { rules: Array<{ name, test, command }> }
  *
  * `rules` is exactly `renderGate(manifests, opts)` — a caller feeds it straight
- * into a token-gate engine (e.g. canopy-chat's `createTokenGate({ rules })`).
+ * into a token-gate engine (e.g. basis's `createTokenGate({ rules })`).
  * Returning an object (not a bare array) leaves room for the wider Part-A engine
  * (`.evaluate` / multi-command / retrieve) to attach here later without breaking
  * this call site.

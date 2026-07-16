@@ -354,7 +354,7 @@ async function hydrateItems(items, ctx) {
 async function grantPodAccess(controlAgent, { webId, sealingPublicKey, role = 'member', groupId, metrics }) {
   if (!controlAgent || !sealingPublicKey || !webId) return;
   // Forward groupId so a per-circle control-agent ROUTER can route the grant to the right
-  // circle's producer (canopy-chat runs one stoop agent + N per-circle control agents). A
+  // circle's producer (basis runs one stoop agent + N per-circle control agents). A
   // single (non-routing) control agent simply ignores the extra field.
   try { await controlAgent.addMember({ webId, publicKey: sealingPublicKey, role, groupId }); }
   catch { metrics?.record?.('control-agent-grant-failed'); }
@@ -861,7 +861,7 @@ export function buildSkills({
       // Sealed attachments (2026-07-11).  Each inbound entry is an OPAQUE,
       // already-SEALED canonical `media` item (`{type:'media', source:{type:
       // 'blob', ref:'blob://…', enc:{sealed:true,…,thumb}}, mime, width,
-      // height}`) — the per-circle stoop wrapper (canopy-chat's
+      // height}`) — the per-circle stoop wrapper (basis's
       // `scopeStoopCallSkill`) sealed the bytes + thumbnail through the circle
       // media gateway before the call reached here.  Stoop is key-agnostic: it
       // validates the sealed shape (REFUSING any inline-`dataB64` plaintext),
@@ -1174,7 +1174,7 @@ export function buildSkills({
     }),
 
     /**
-     * stoop_briefSummary()  — Q30 contributor for canopy-chat's /brief
+     * stoop_briefSummary()  — Q30 contributor for basis's /brief
      * aggregator.  Declared by `listOpen.surfaces.chat.brief` in the
      * stoop manifest.  Mirrors folio's `folio_briefSummary` shape:
      * returns `{ok: true}` when no open posts exist (brief.js skips
@@ -2016,7 +2016,7 @@ export function buildSkills({
       // redeem — `from` is the skill-invocation actor (= `envelope._from`,
       // stamped by the transport AFTER signature-verify), NOT a body field the
       // joiner could spoof.  In this architecture a member's webid IS their
-      // secure-mesh signing address (canopy-chat binds `localActor` +
+      // secure-mesh signing address (basis binds `localActor` +
       // `members[].webid` to `chatId.pubKey`; the peer-bridge sets
       // `requesterWebid` from the authenticated NKN `fromAddr`), so the
       // authenticated identity for the joiner is `from` itself.  We DO NOT read
@@ -2119,7 +2119,7 @@ export function buildSkills({
       if (!valid) return { error: 'invalid-or-expired-code' };
 
       // Signing pubKey for the peer path — the joiner's authenticated identity
-      // is `requesterWebid`, which the admin-side canopy-chat handler
+      // is `requesterWebid`, which the admin-side basis handler
       // (`makeHandleGroupRedeemRequest`) sets from the AUTHENTICATED NKN
       // `fromAddr` of the group-redeem-request envelope, NOT from a
       // joiner-supplied claim.  A malicious joiner controls the request body
@@ -2224,7 +2224,7 @@ export function buildSkills({
         visibility: 'household',
       }], { actor: from });
       // 2026-05-24 — also persist the rules locally so /group-rules
-      // works on the joiner side after join.  Caller (canopy-chat's
+      // works on the joiner side after join.  Caller (basis's
       // join-group wizard) reads `rules` from the invite URL payload
       // and forwards it here.  Idempotent: skip if a group-rules
       // item for this groupId already exists.
@@ -2475,7 +2475,7 @@ export function buildSkills({
      *      side — admins don't have a redemption for buurts they
      *      created themselves; they ARE the implicit owner).
      *
-     *   Used by the canopy-chat fan-out layer to address every
+     *   Used by the basis fan-out layer to address every
      *   relevant buurt when /post doesn't pin one explicitly.
      */
     defineSkill('listMyBuurts', async ({ from }) => {
@@ -2615,7 +2615,7 @@ export function buildSkills({
      * ingestRemotePost({payload, fromPubKey})
      *   — 2026-05-24 cross-instance fan-out (chat-layer bridge).
      *
-     *   Called by canopy-chat when an NKN envelope of `subtype:
+     *   Called by basis when an NKN envelope of `subtype:
      *   'buurt-post'` arrives.  Mirrors substrateMirror.mirror()'s
      *   logic — dedupe by `payload.requestId`, eviction-filter by
      *   `payload.from`, draft + addItems with the same shape stoop's
@@ -3167,7 +3167,7 @@ export function buildSkills({
      *   kring.  Reuses the existing `chat.send` substrate (WebID→pubKey
      *   resolution, signing, transport routing) with subtype
      *   `'kring-chat-message'` so receivers can wire a dedicated
-     *   peer-router handler that appends to the canopy-chat EventLog
+     *   peer-router handler that appends to the basis EventLog
      *   (NOT to itemStore — kring chats aren't stoop posts).
      *
      *   `media` (optional, forward-additive — media P1 fan-out) — the
@@ -3255,7 +3255,7 @@ export function buildSkills({
      *   plumbing (chat.send, WebID→pubKey resolution, signing,
      *   transport routing), different subtype + payload.
      *
-     *   Receivers route the envelope to canopy-chat's
+     *   Receivers route the envelope to basis's
      *   `makeKringRecipePeerHandler`, which stashes the recipe in a
      *   per-kring "pending" cache.  The recipe editor reads the cache
      *   on next open and passes it via γ.3's `incomingRecipe` opt; the
@@ -3295,7 +3295,7 @@ export function buildSkills({
      *   plumbing (chat.send, WebID→pubKey resolution, signing,
      *   transport routing), different subtype + payload.
      *
-     *   Receivers route the envelope to canopy-chat's
+     *   Receivers route the envelope to basis's
      *   `makeKringRulesPeerHandler`, which stashes the rules doc in a
      *   per-kring "pending" cache.  The rules editor reads the cache
      *   on next open and passes it via γ.4's `incomingRules` opt; the
@@ -3335,7 +3335,7 @@ export function buildSkills({
      *   plumbing (chat.send, WebID→pubKey resolution, signing,
      *   transport routing), different subtype + payload.
      *
-     *   Receivers route the envelope to canopy-chat's
+     *   Receivers route the envelope to basis's
      *   `makeKringPolicyPeerHandler`, which stashes the policy doc in a
      *   per-kring "pending" cache.  The settings editor reads the cache
      *   on next open and passes it via γ.4's `incomingPolicy` opt; the
@@ -3372,7 +3372,7 @@ export function buildSkills({
      * listKringChats({groupId?, sinceTs?, limit?})
      *   — SP-13.2.2 — list stored kring chat-message items, ordered
      *   oldest → newest (chat reading order).  Defaults: all circles,
-     *   no time bound, capped at 200 most recent.  Hosts (canopy-chat
+     *   no time bound, capped at 200 most recent.  Hosts (basis
      *   web + mobile) call this at boot to rehydrate eventLog so the
      *   GESPREK tab shows historical chats after a reload.
      */
@@ -3481,7 +3481,7 @@ export function buildSkills({
      *   — SP-13.2.1 — receive-side mirror for an inbound kring chat
      *   envelope.  Sibling of `ingestRemotePost` for the buurt-post
      *   path: dedupe + eviction + mute filtering + addItems.  Hosts
-     *   (canopy-chat web + mobile) call this from their kring-chat
+     *   (basis web + mobile) call this from their kring-chat
      *   peer-router handler instead of writing to eventLog directly.
      *
      *   Returns: { ok: true, itemId } | { deduped: true } |
@@ -3737,7 +3737,7 @@ export function buildSkills({
         // 2026-05-27 — embed the caller's NKN peer address so the
         // scanner can DM the contact straight after add, without
         // needing a Solid pod lookup (lookupPeerAddrByWebid).  Caller
-        // (canopy-chat's realAgent) passes args.peerAddr; the stoop
+        // (basis's realAgent) passes args.peerAddr; the stoop
         // substrate doesn't have its own NKN identity.
         ...(typeof a.peerAddr === 'string' && a.peerAddr ? { peerAddr: a.peerAddr } : {}),
       };

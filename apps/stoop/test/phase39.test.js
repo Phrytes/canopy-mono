@@ -2,7 +2,7 @@
  * Stoop Phase 39 — Picture attachments end-to-end, now SEALED (2026-07-11).
  *
  * The original Phase 39 stored PLAINTEXT bytes in stoop and served them over a
- * chat round-trip. That inline path is REMOVED: canopy-chat's per-circle stoop
+ * chat round-trip. That inline path is REMOVED: basis's per-circle stoop
  * wrapper seals bytes + thumbnail through the circle media gateway and hands
  * stoop an OPAQUE `media` pointer; recipients open it through their own gateway.
  * These tests keep the original INTENT (attach → store → wire → open works; no

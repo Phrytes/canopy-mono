@@ -10,7 +10,7 @@
  *
  * Default prefix is `'tasks-cache:'` so a single AsyncStorage instance
  * hosting both stoop ('stoop-cache:') and tasks-v0 caches keeps them
- * isolated.  canopy-chat-mobile's agentBundle passes
+ * isolated.  basis-mobile's agentBundle passes
  * `{dbName:'cc-tasks-cache', asyncStorage}` (no explicit prefix).
  */
 

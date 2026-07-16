@@ -1,5 +1,5 @@
 /**
- * skills/briefSummary — Q30 contributor for the canopy-chat /brief
+ * skills/briefSummary — Q30 contributor for the basis /brief
  * aggregator.
  *
  * Returns a count of open household items + the topmost row so the

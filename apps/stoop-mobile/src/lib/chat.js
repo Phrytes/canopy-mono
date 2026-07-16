@@ -70,7 +70,7 @@ export function validateChatDraft(draft) {
  * Map (revealedByMe, loading) → render state for the bilateral
  * reveal-toggle in ChatThreadScreen's header.
  *
- * Task #228 (2026-05-24): aligns mobile to web canopy-chat's
+ * Task #228 (2026-05-24): aligns mobile to web basis's
  * `revealPeer`→`setPeerReveal` bilateral-toggle semantics. The user
  * controls only THEIR OWN side of the reveal here ("I have agreed
  * to see this peer's real name"); the peer flips their own side

@@ -7,7 +7,7 @@
  * per-recipient envelope shape without the full NKN transport plumbing.
  *
  * Also includes the cross-agent journey: Anne broadcasts a recipe; the
- * captured envelope feeds canopy-chat's `makeKringRecipePeerHandler`,
+ * captured envelope feeds basis's `makeKringRecipePeerHandler`,
  * and the pending-recipe store ends up with the broadcast recipe.
  * This is the end-to-end check the slice spec asks for.
  */
@@ -16,11 +16,11 @@ import { describe, it, expect, vi } from 'vitest';
 import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
 import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
-// Receiver side substrate lives in canopy-chat; we import directly via
+// Receiver side substrate lives in basis; we import directly via
 // relative path (the package wire is identical to how kringChatReceiver
-// is referenced from canopy-chat-mobile).
-import { makeKringRecipePeerHandler } from '../../canopy-chat/src/v2/kringRecipeReceiver.js';
-import { createKringRecipePendingStore } from '../../canopy-chat/src/v2/kringRecipePending.js';
+// is referenced from basis-mobile).
+import { makeKringRecipePeerHandler } from '../../basis/src/v2/kringRecipeReceiver.js';
+import { createKringRecipePendingStore } from '../../basis/src/v2/kringRecipePending.js';
 
 const ANNE  = 'https://id.example/anne';
 const BOB   = 'https://id.example/bob';
@@ -159,7 +159,7 @@ describe('Stoop γ-next.recipe — cross-agent: Anne → Bob.pendingStore', () =
 
     // Build Bob's pending store from a simple in-memory IO + the
     // recipe peer handler.  Reconstruct the wire payload the way
-    // canopy-chat's peer-router would feed it.
+    // basis's peer-router would feed it.
     const mem = new Map();
     const pending = createKringRecipePendingStore({
       load:   async (id) => mem.get(id) ?? null,

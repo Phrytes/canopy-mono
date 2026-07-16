@@ -1,5 +1,5 @@
 /**
- * Browser-factory control-agent seam — `createBrowserStoopAgent` is the entry canopy-chat uses to boot a
+ * Browser-factory control-agent seam — `createBrowserStoopAgent` is the entry basis uses to boot a
  * real Stoop NeighborhoodAgent as its circle-membership substrate. The underlying agent already threads a
  * `controlAgent` to the sealed-pod membership hooks (redeem → addMember, leaveGroup → removeMember); this
  * test proves the BROWSER factory now forwards it too (it previously dropped the param silently), so a
@@ -42,7 +42,7 @@ async function callSkill(agent, skillId, args, from = ADMIN) {
   return def.handler({ parts: args === undefined ? [] : [DataPart(args)], from, agent, envelope: null });
 }
 
-describe('createBrowserStoopAgent — control-agent seam (canopy-chat circle membership)', () => {
+describe('createBrowserStoopAgent — control-agent seam (basis circle membership)', () => {
   it('forwards the control-agent: redeem → addMember(sealing key)', async () => {
     const ca = mockControlAgent();
     const bundle = await buildBrowserBundle({ controlAgent: ca });

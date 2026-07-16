@@ -15,7 +15,7 @@
  * # Why a picker (not just "use what's available")
  *
  * Node tests + the existing CLI deliberately use FilePersist; the
- * browser canopy-chat integration deliberately uses IndexedDB.  We
+ * browser basis integration deliberately uses IndexedDB.  We
  * don't want auto-detect picking the "wrong" one based on
  * environment alone — that hides intent.  Caller declares; picker
  * just validates + lazy-loads.

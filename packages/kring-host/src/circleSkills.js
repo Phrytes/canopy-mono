@@ -1,5 +1,5 @@
 /**
- * canopy-chat v2 — skill 4-axis model + match list (shared, board 8).
+ * basis v2 — skill 4-axis model + match list (shared, board 8).
  *
  * A skill is a structured object across four axes (board 8): how openly it
  * is shared (`openness`), whether the offer is fixed or up for negotiation

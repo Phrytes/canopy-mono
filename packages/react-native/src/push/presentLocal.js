@@ -7,7 +7,7 @@
  *   - `PushAdapter.presentLocal()` (via ExpoNotificationsAdapter) — the port
  *     surface, so a future iOS/Android adapter satisfies the same contract.
  *   - `presentLocalNotification()` — the imperative helper apps call directly
- *     (canopy-chat-mobile's verify-summary nudge).  Folded here from the app's
+ *     (basis-mobile's verify-summary nudge).  Folded here from the app's
  *     old `src/v2/nativePush.js` dup (invariant #3) — behaviour is identical:
  *     schedule with a `null` trigger so it presents now; no-op (`false`) when
  *     permission isn't granted or notifications aren't available.

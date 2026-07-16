@@ -98,7 +98,7 @@ Phase A (CLI) and Phase B.1.server (Express + WebSocket) are shipped:
   wires the note corpus onto `@onderling/pod-search` V2; the browser agent's
   `searchNotes` op (`manifest.js`, slash `/zoek`, Part-C verbs
   `zoek/search/find`) offers lexical **and** semantic/hybrid ranking. The
-  embedder is injected by the host (canopy-chat resolves it from the active
+  embedder is injected by the host (basis resolves it from the active
   circle's `embedTool ?? llmTool` policy); with the policy `off` or no
   provider available, `/zoek` degrades to **lexical-only** and makes no
   embed call. **Follow-up:** RN wiring of pod-search's `hash` adapter via

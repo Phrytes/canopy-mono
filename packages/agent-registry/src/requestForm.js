@@ -3,7 +3,7 @@
 //
 // This turns the typed wire Request into a renderer-INDEPENDENT description of the consent
 // form: one field per requested item. It is NOT tied to any UI toolkit — a UI layer maps
-// each field to its own widget. In canopy-chat the manifest param-form machinery consumes
+// each field to its own widget. In basis the manifest param-form machinery consumes
 // this to build the consent card; that wiring is a LATER, separate step and MUST NOT be
 // imported here (agent-registry stays independent of any app).
 //

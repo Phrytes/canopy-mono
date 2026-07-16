@@ -68,7 +68,7 @@ describe('Stoop Slice D.2 — LLM tool-calling on chat via renderChat', () => {
     const { skillRegistry, missing } = buildStoopSkillRegistry(bundle);
     // Zero ops missing — every manifest entry either has a backing skill
     // (directly or via the listFeed→listOpen / getStoopProfile→
-    // getMyProfile alias) or is a documented canopy-chat-shell-only op.
+    // getMyProfile alias) or is a documented basis-shell-only op.
     expect(missing).toEqual([]);
     for (const op of stoopManifest.operations) {
       // Part G dissolve (2026-06-17) — shell-only ops (wizards / [DM]

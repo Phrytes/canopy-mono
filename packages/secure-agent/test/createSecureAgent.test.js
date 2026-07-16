@@ -116,7 +116,7 @@ describe('createSecureAgent — S0 foundation', () => {
     // security-error stage before the 'envelope' event fires).
     // The wiring IS in place (see createSecureAgent.js's tx.on
     // ('envelope', ...) handler that calls tx.sendHello on first
-    // contact); integration-verified in canopy-chat's two-tab
+    // contact); integration-verified in basis's two-tab
     // demo (Tab A's first OW after HI gets reciprocal HI back).
   });
 
@@ -1036,7 +1036,7 @@ describe('createSecureAgent — 5.7c circle override enforcement', () => {
     // Verifying the surface honors mute-set membership before the
     // circle gate would require exposing peerTransport, which we
     // deliberately don't — the order is documented at the receive site
-    // and exercised by the integration suite (canopy-chat 1117 / 1130).
+    // and exercised by the integration suite (basis 1117 / 1130).
     const mm = makeFakeMemberMap([
       { webid: 'https://peer.example/#me', pubKey: 'pk-peer', stableId: 'sid-peer' },
     ]);

@@ -1,4 +1,4 @@
-// canopy-chat v2 — kring chat SEND primitives, shared by web (circleApp.js) and mobile
+// basis v2 — kring chat SEND primitives, shared by web (circleApp.js) and mobile
 // (CircleLauncherScreen.js). The optimistic-append EVENT shape and the best-effort fan-out (with δ.2
 // delivery-state transitions) were duplicated near-identically on both platforms; this is the one copy
 // (web↔mobile consolidation Phase 2). Platform-neutral: the caller injects the RAW 3-arg callSkill, the

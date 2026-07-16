@@ -1,5 +1,5 @@
 /**
- * canopy-chat v2 — skill-match source (board 8B, slice P6.7).
+ * basis v2 — skill-match source (board 8B, slice P6.7).
  *
  * When a user posts a skill-question in a circle, the app should surface
  * inline candidate matches: members of the circle whose declared skills

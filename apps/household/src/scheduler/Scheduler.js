@@ -24,7 +24,7 @@
  * 5.7c — `isSuppressed: (recipient, kind, now) => boolean|Promise<boolean>`
  * is an optional cross-circle availability hook (typically backed by
  * `isPushSuppressed(availability, now)` from
- * canopy-chat's `src/v2/memberAvailability.js`).  When it returns truthy
+ * basis's `src/v2/memberAvailability.js`).  When it returns truthy
  * the scheduled digest / nudge is skipped instead of posted.  The
  * predicate is consulted JUST BEFORE the postToChat dispatch so that
  * builders + state updates still run normally; only the user-visible
@@ -71,7 +71,7 @@ export class Scheduler {
    *   5.7c — optional availability/quiet-hours predicate.  Truthy = skip
    *   the post (the schedule re-arms regardless).  Typically wraps
    *   `isPushSuppressed(getAvailability(recipient), now)` from
-   *   canopy-chat's memberAvailability substrate.
+   *   basis's memberAvailability substrate.
    * @param {() => number} [args.now]      test seam
    */
   constructor({
@@ -162,7 +162,7 @@ export class Scheduler {
   /**
    * 5.7c — register / replace the suppression predicate after
    * construction.  Useful when the cross-circle availability store
-   * loads asynchronously at boot (canopy-chat pattern).  Pass `null`
+   * loads asynchronously at boot (basis pattern).  Pass `null`
    * to disable.
    *
    * @param {((recipient: string, kind: 'digest'|'nudge', now: number) => boolean|Promise<boolean>) | null} fn

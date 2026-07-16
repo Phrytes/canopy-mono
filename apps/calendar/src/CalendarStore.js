@@ -74,7 +74,7 @@ export class CalendarStore {
   #podWriter;
   /** v0.7.P2.1 — last write outcome + recorded errors, for diagnostics. */
   #podStatus = { lastResult: null, errorCount: 0, lastError: null, attempts: 0 };
-  /** v0.7.P2.1 — optional sink for pod-write events (canopy-chat router). */
+  /** v0.7.P2.1 — optional sink for pod-write events (basis router). */
   #podEventSink;
 
   /**

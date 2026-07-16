@@ -47,7 +47,7 @@ if (typeof globalThis.Buffer === 'undefined') globalThis.Buffer = Buffer;
 // (feedback-pipeline pod/signing.js `b64u` / `canonicalContribution`) and now runs ON-DEVICE (the no-login
 // signed central-pod route): without this, consent silently fails — the signing throw is swallowed by the
 // bus bridge, so nothing is written and no reply is emitted. Patch `from`/`toString` to translate
-// base64url ⇄ base64 ourselves. Mirrors the web shim (apps/canopy-chat/src/web/shims/bufferPolyfill.js).
+// base64url ⇄ base64 ourselves. Mirrors the web shim (apps/basis/src/web/shims/bufferPolyfill.js).
 const _toB64Url = (b64) => b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const _fromB64Url = (s) => s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4);
 const _origToString = Buffer.prototype.toString;

@@ -1,8 +1,8 @@
 /**
- * folio — browser entry for canopy-chat composition (slice 4 of the
- * canopy-chat integration plan, 2026-05-23).
+ * folio — browser entry for basis composition (slice 4 of the
+ * basis integration plan, 2026-05-23).
  *
- * Composes folio's web-only surface into canopy-chat's browser
+ * Composes folio's web-only surface into basis's browser
  * bundle.  Out of scope: the SyncEngine, the chokidar watcher, the
  * desktop tray, the CLI, the HTTP server — those stay app-side and
  * never enter the browser bundle (they all carry node-only deps).
@@ -23,7 +23,7 @@
  *   - folio_briefSummary  — Q30 briefSummary
  *   - folioStatus         — record reply: count / synced / shared
  *
- * Mobile-extended (DEFERRED): canopy-chat mobile composes the same
+ * Mobile-extended (DEFERRED): basis mobile composes the same
  * browser-shape factory PLUS @onderling/sync-engine-rn for real file-
  * system mirroring; the in-memory file store collapses to a thin
  * proxy over the RN sync engine.  Tracked by #127-#131.
@@ -49,7 +49,7 @@ import { searchFiles as searchFilesCore, folioBriefSummary } from './agentCores.
 
 // N5 — Drive tree (folder navigation + rich rows).  Pure JS, node-free,
 // RN-free; safe to pull into the browser bundle (unlike the `.` barrel,
-// which drags in scanLocal's `fs`/chokidar).  canopy-chat web/mobile
+// which drags in scanLocal's `fs`/chokidar).  basis web/mobile
 // import the Drive view from here.
 export {
   folioLevel, breadcrumbs, parentPath, rowPath, rowName,
@@ -84,7 +84,7 @@ const SEED_FILES = [
 
 /**
  * Sync-envelope shape consumed by the chat-shell renderer (mirrors
- * canopy-chat's `simulateSync` so the chat-shell's _sync UI keeps
+ * basis's `simulateSync` so the chat-shell's _sync UI keeps
  * working without a real pod-write round-trip).
  */
 function simulateSync() {
@@ -102,7 +102,7 @@ function simulateSync() {
  * Build a folio web-surface agent on the shared bus.
  *
  * @param {object} args
- * @param {InternalBus}    args.bus              shared bus (canopy-chat owns it)
+ * @param {InternalBus}    args.bus              shared bus (basis owns it)
  * @param {object}         args.identityVault    Vault for the folio agent's identity
  *                                               (browser convention: VaultLocalStorage
  *                                               prefixed `cc-folio-id:`)
@@ -115,7 +115,7 @@ function simulateSync() {
  *                                               mode (a mock provider or an
  *                                               `@onderling/llm-client` EmbeddingClient).
  *                                               Absent ⇒ lexical-only (llmTool:'off' /
- *                                               no-Ollama path). Wired by canopy-chat
+ *                                               no-Ollama path). Wired by basis
  *                                               from the circle's embed policy; may also
  *                                               be attached post-boot via `setNoteEmbedder`.
  * @param {object}         [args.noteVectorStore] optional StorageBackend-shaped store ⇒
@@ -222,7 +222,7 @@ export async function createBrowserFolioAgent({
 
   /* ─── ops with NO manifest op (registered directly) ─────────────────────
    * `searchFiles` (lexical substring — the semantic sibling searchNotes is
-   * the declared op) and `folio_briefSummary` (canopy-chat's generic
+   * the declared op) and `folio_briefSummary` (basis's generic
    * /brief maps to this named skill).  Decode the first DataPart and call
    * the shared core so their logic still lives once in agentCores.js. */
   agent.register('searchFiles', async ({ parts }) => searchFilesCore(store, parts?.[0]?.data ?? {}));
@@ -247,7 +247,7 @@ export async function createBrowserFolioAgent({
     getPodSource: () => podSource,
     // 52.25 — attach / swap the `/zoek` semantic embedder after boot. The
     // folio agent is global while the embed policy is per-circle, so
-    // canopy-chat resolves the embedder from the active circle's
+    // basis resolves the embedder from the active circle's
     // llmTool/embedTool policy and wires it here (null ⇒ back to lexical).
     // A changed embedder identity rebuilds the index on the next `/zoek`.
     setNoteEmbedder: (e) => { noteEmbedder = e ?? undefined; return noteEmbedder ?? null; },

@@ -1,7 +1,7 @@
 /**
  * Service — §1b op→atom dispatch adapter for tasks-v0 (PLAN-capability-arc §1b · #65b "collapse the rest").
  *
- * The household pilot (`apps/canopy-chat/src/v2/householdApp.js`) exposed `callCapability(atom, noun, args)` over
+ * The household pilot (`apps/basis/src/v2/householdApp.js`) exposed `callCapability(atom, noun, args)` over
  * a dissolved `CircleItemStore`. tasks-v0 is NOT dissolved — its ops are legacy `@onderling/core` `defineSkill`
  * handlers (`({parts, from, envelope}) => …`) whose structured args ride in a single `DataPart` and whose circle is
  * resolved from `parts` by a `bundleResolver`. So this adapter is a thin DataPart WRAPPER over the existing
@@ -15,7 +15,7 @@
  * ── ARCHITECTURE GUARDRAIL (docs/architecture.md L60/L79) ──
  * `callSkill` is the DEFAULT-DENY security boundary. This service is the FUNCTIONALITY-side adapter (it runs the
  * app's ops); it is NOT to be wired as a live `(atom,noun)` entry that bypasses the capability gate. The live
- * interpreter path resolves `(atom,noun)`→opId at the GATED canopy-chat waist, then dispatches through the gated
+ * interpreter path resolves `(atom,noun)`→opId at the GATED basis waist, then dispatches through the gated
  * `callSkill`. This adapter exists for tests + that future gated wiring — additive; the legacy dispatch is untouched.
  */
 import { DataPart } from '@onderling/core';

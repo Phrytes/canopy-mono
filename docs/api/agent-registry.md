@@ -126,7 +126,7 @@ shared-readable, authority = the signature). Built ON TOP of the G1
 - `[opts.maxRetries]` `number`
 - `[opts.onPersistentConflict]` `(err: Error) => void`
 - `[opts.now]` `() => string`
-- `[opts.ensureAccess]` `(uri: string) => (any|Promise<any>)` — best-effort real-pod access-control hook, forwarded to the underlying endorsement resource. For a community catalog the app wires it to `setResourceAccess` with **public-read + owner-write + admin-write** (the circle's admins' WebIDs — resolve admin pubKeys→WebIDs via the identity resolver / `AgentRegistryMemberMap`; in canopy-chat webid===pubKey today). Hermetic no-op on the pseudo-pod. // G3-seam: admin WebIDs via MemberMap.
+- `[opts.ensureAccess]` `(uri: string) => (any|Promise<any>)` — best-effort real-pod access-control hook, forwarded to the underlying endorsement resource. For a community catalog the app wires it to `setResourceAccess` with **public-read + owner-write + admin-write** (the circle's admins' WebIDs — resolve admin pubKeys→WebIDs via the identity resolver / `AgentRegistryMemberMap`; in basis webid===pubKey today). Hermetic no-op on the pseudo-pod. // G3-seam: admin WebIDs via MemberMap.
 
 **Returns:** `{ endorse, revoke, fork, list, get, ensureAccess, circleId: string, resourceUri: string }`
 

@@ -36,7 +36,7 @@ function storeForCircle(store, circleId) {
  *
  * VIEW-PIPELINE ADDITIVE KEY (P3 UI slice): both list modes ALSO expose
  * the rows as `items: [{id, label, …row}]` — the shape the chat-shell
- * list renderer reads for `shape:'list'` sections (see canopy-chat
+ * list renderer reads for `shape:'list'` sections (see basis
  * `realAgent.js` "the chat-shell renderer expects {items:[{id,label,…}]}"
  * + `screenModel.js` `buildScreenModel({items})`).  The domain keys
  * (`series` / `versions`) stay authoritative and unchanged — `items` is

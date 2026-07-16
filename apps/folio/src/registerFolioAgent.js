@@ -1,7 +1,7 @@
 /**
  * registerFolioAgent — self-register folio into `@onderling/agent-registry`
  * (Slice 1b, PLAN-folio-as-file-agent.md).  The folio sibling of the
- * agents-app bring-up in canopy-chat's `realAgent.js` (`registerAgentBundle`).
+ * agents-app bring-up in basis's `realAgent.js` (`registerAgentBundle`).
  *
  * Folio becomes a CONNECTABLE file agent: once registered it appears in the
  * user's "your agents" roster with folio's pod-file capabilities, so the
@@ -12,7 +12,7 @@
  * SyncEngine all stay app-side and never enter the browser bundle).  So,
  * exactly like the agents app (registered from `realAgent.js`, NOT from its
  * own factory), this helper is EXPOSED for the CONSUMING composition to
- * call once it has a pseudoPod + deviceId — canopy-chat wires it alongside
+ * call once it has a pseudoPod + deviceId — basis wires it alongside
  * the folio agent boot, or folio's own Node server/CLI composition does
  * (a later slice).  It is deliberately NOT imported by `browser.js`, so the
  * browser bundle never pulls `@onderling/agent-registry`.

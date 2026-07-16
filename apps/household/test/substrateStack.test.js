@@ -3,7 +3,7 @@ import { buildHouseholdSubstrateStack } from '../src/lib/substrateStack.js';
 
 /**
  * A fake notify-envelope transport adapter: the {publishEnvelope,
- * subscribeEnvelopes} shape the host (canopy-chat) would inject.
+ * subscribeEnvelopes} shape the host (basis) would inject.
  * `captured` records the subscriber callback so we can confirm
  * notifyEnvelope.start() hooked the transport.
  */

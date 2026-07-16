@@ -6,7 +6,7 @@
  * (a `view.type` must be ∈ `itemTypes`, so these singletons/markers are declared) — NOT
  * content a member creates + manages. A `remove` capability on them is nonsense and clutters
  * the circle freedom matrix. It crept in via `cancelRequest`'s `appliesTo: {type: '*'}`
- * wildcard, which `opNouns` expands to EVERY itemType (same failure mode as canopy-chat #79).
+ * wildcard, which `opNouns` expands to EVERY itemType (same failure mode as basis #79).
  * Narrowing that appliesTo to the real content nouns removed the phantom rows; this test
  * bites if a future `'*'` (or an over-broad appliesTo) re-mints them.
  */

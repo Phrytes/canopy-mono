@@ -11,12 +11,12 @@
  * path lives ONCE.
  *
  * The verify/convert gate (`verifyMappings`, `mappingsToSources`) is INJECTED
- * rather than imported: those functions live in the canopy-chat app module
+ * rather than imported: those functions live in the basis app module
  * `src/mappings.js`, whose own dependency on the app-local `composite.js`
  * (`verifyComposite`, destined for `@onderling/manifest-host` — NOT this package)
  * keeps `mappings.js` from moving into this substrate honestly. Injection lets
  * this loader live neutrally in `@onderling/kring-host` while the app wires its
- * verify gate in — the compat shim at `apps/canopy-chat/src/v2/mappingsLoader.js`
+ * verify gate in — the compat shim at `apps/basis/src/v2/mappingsLoader.js`
  * binds the app's `verifyMappings`/`mappingsToSources` so existing callers stay
  * unchanged. Mirrors the repo's injected-dependency convention (blob-gateway /
  * confidential-llm / data-connectors inject their adapters).
@@ -30,9 +30,9 @@ import { loadMappings } from '@onderling/pod-routing/mappings';
  * @param {string} args.deviceId
  * @param {{ opsById: Map }} args.catalog               the base catalog to verify against
  * @param {(mappings:Array, catalog:object)=>{accepted:object[], rejected:Array<{id,missing:string[]}>}} args.verifyMappings
- *        catalog verify gate — injected (canopy-chat `src/mappings.js`)
+ *        catalog verify gate — injected (basis `src/mappings.js`)
  * @param {(accepted:object[])=>{sources:Array<{manifest:object}>, dropped:Array<{id,errors:object[]}>}} args.mappingsToSources
- *        manifest-shape gate — injected (canopy-chat `src/mappings.js`)
+ *        manifest-shape gate — injected (basis `src/mappings.js`)
  * @returns {Promise<{ sources: Array<{manifest:object}>, accepted: object[],
  *                     rejected: Array<{id,missing}>, dropped: Array<{id,errors}>,
  *                     mappingOrigins: string[] }>}

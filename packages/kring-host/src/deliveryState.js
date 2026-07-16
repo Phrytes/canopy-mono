@@ -1,5 +1,5 @@
 /**
- * canopy-chat v2 — per-message delivery state (δ.2).
+ * basis v2 — per-message delivery state (δ.2).
  *
  * The kring chat send is optimistic: the local user's message is
  * appended to the in-memory EventLog the moment the composer fires,

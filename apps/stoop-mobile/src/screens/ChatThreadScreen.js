@@ -2,7 +2,7 @@
  * ChatThreadScreen — single 1:1 chat thread.
  *
  * Stoop V3 mobile.  Phase 40.17 (2026-05-08): wired to the live
- * agent.  Task #228 (2026-05-24): aligned to web canopy-chat's
+ * agent.  Task #228 (2026-05-24): aligned to web basis's
  * bilateral-toggle semantics — the header now exposes a Reveal
  * SWITCH backed by the `setPeerReveal` skill (local-only viewer
  * choice; "if I reveal AND you reveal, we both see"). Replaces
@@ -145,7 +145,7 @@ export function ChatThreadScreen() {
   // Bilateral toggle — flips MY local Reveals record only ("I have
   // agreed to see this peer's real name"). The peer flips their own
   // side independently; displayName renders only when both sides
-  // agree (see `revealed` derivation above). Matches web canopy-chat's
+  // agree (see `revealed` derivation above). Matches web basis's
   // `revealPeer` → `setPeerReveal` semantics.
   const togglePeerReveal = useCallback(async () => {
     if (!peerKey) return;

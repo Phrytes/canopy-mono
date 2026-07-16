@@ -14,7 +14,7 @@
  * ── The gate is the CIRCLE's, not a new authz model (invariant: reuse) ──────
  * This module does NOT invent an admin/policy check. It consumes an INJECTED
  * `isAdmin(endorserPubKey) → boolean` predicate that the caller derives from
- * the circle's OWN roster policy. In canopy-chat that predicate is the circles
+ * the circle's OWN roster policy. In basis that predicate is the circles
  * substrate's audience resolver over the circle's admin role, e.g.
  *
  *     import { inAudience } from '@onderling/circles';
@@ -29,7 +29,7 @@
  *
  * ── webid ↔ pubKey seam ─────────────────────────────────────────────────────
  * An endorsement's `endorser` is a pubKey; a circle roster stores WebIDs. In
- * canopy-chat the local member's WebID IS its pubKey (realAgent registers
+ * basis the local member's WebID IS its pubKey (realAgent registers
  * `{ webid: chatId.pubKey, role: 'admin' }`), so the predicate compares pubKeys
  * directly. On a real multi-member pod a `MemberMap` (identity-resolver) maps
  * WebID↔pubKey; the injected predicate absorbs that mapping without this module
@@ -97,7 +97,7 @@ export function communityCatalogUri({ circleId, anchorPodUri, deviceId, preferPo
  *   endorsement resource. For a community catalog the app wires it to
  *   `setResourceAccess` with **public-read + owner-write + admin-write** (the
  *   circle's admins' WebIDs — resolve admin pubKeys→WebIDs via the identity
- *   resolver / `AgentRegistryMemberMap`; in canopy-chat webid===pubKey today).
+ *   resolver / `AgentRegistryMemberMap`; in basis webid===pubKey today).
  *   Hermetic no-op on the pseudo-pod. // G3-seam: admin WebIDs via MemberMap.
  * @returns {{ endorse, revoke, fork, list, get, ensureAccess, circleId: string, resourceUri: string }}
  */

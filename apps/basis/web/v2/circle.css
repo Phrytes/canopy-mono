@@ -1,0 +1,993 @@
+/* basis v2 — Onderling re-skin (web).
+ *
+ * Composes the tokens in theme.css over the circle-* renderers. Matches the
+ * v3 print mockups: framed cards, serif headlines, small-caps section labels,
+ * pill toggles, radio-as-box with inline consequence callouts, terracotta
+ * buttons, avatar tiles, kind-coloured tag chips.
+ *
+ * Scoped under .circle-page (the body wrapper in index.html) so generic
+ * input/heading selectors don't leak. */
+
+/* ───────────────────────── layout ───────────────────────── */
+.circle-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 18px 16px 84px; /* bottom clears the fixed tab bar */
+}
+
+/* ───────────────── launcher bottom tab bar (board 1/5/6C) ───────────────── */
+.circle-tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; justify-content: center; gap: 4px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+.circle-tabbar--hidden { display: none; }
+.circle-tabbar__tab {
+  flex: 1 1 0; max-width: 200px; cursor: pointer; font: inherit;
+  padding: 9px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid transparent;
+  color: var(--ink-soft); font-weight: 600; font-size: 14px;
+}
+.circle-tabbar__tab:hover { color: var(--accent-ink); }
+.circle-tabbar__tab.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.circle-page__bar { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+.circle-page__back {
+  font-size: 12px; color: var(--ink-soft); text-decoration: none;
+  letter-spacing: .02em;
+}
+.circle-page__back:hover { color: var(--accent-ink); text-decoration: underline; }
+
+/* ─────────────────────── primitives ─────────────────────── */
+
+/* serif headlines (every screen __title) */
+.circle-page h2[class$="__title"],
+.circle-page .circle-launcher__title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 4px 0 14px;
+  color: var(--ink);
+}
+
+/* small-caps section labels */
+.circle-page [class$="__section-title"],
+.circle-page [class$="__axis-title"],
+.circle-page .circle-skill-matches__label,
+.circle-page .circle-folio__filters {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+/* back links (rendered as <button>) */
+.circle-page [class$="__back"] {
+  display: inline-block;
+  background: none; border: none; padding: 4px 0; margin: 0 0 6px;
+  font: inherit; font-size: 13px; color: var(--ink-soft);
+  cursor: pointer; letter-spacing: .02em;
+}
+.circle-page [class$="__back"]:hover { color: var(--accent-ink); }
+
+/* primary buttons (save / agree / ask / open) */
+.circle-page [class$="__save"],
+.circle-page .circle-rules-consent__agree,
+.circle-page .circle-hop__ask {
+  display: inline-block;
+  background: var(--accent); color: #fff; border: 1px solid var(--accent);
+  border-radius: var(--radius); padding: 11px 18px;
+  font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.circle-page [class$="__save"]:hover,
+.circle-page .circle-rules-consent__agree:hover,
+.circle-page .circle-hop__ask:hover { background: var(--accent-ink); border-color: var(--accent-ink); }
+.circle-page [class$="__save"] { margin-top: 14px; }
+
+/* secondary buttons (decline / hop nav) */
+.circle-page .circle-rules-consent__decline,
+.circle-page .circle-availability__hop {
+  display: block; margin-top: 10px;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 11px 18px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+}
+.circle-page .circle-rules-consent__decline:hover,
+.circle-page .circle-availability__hop:hover { border-color: var(--accent); }
+
+/* notes / empties / loading */
+.circle-page [class$="__note"],
+.circle-page [class$="__empty"],
+.circle-page [class$="__loading"] {
+  color: var(--ink-soft); font-style: italic; font-size: 13px; padding: 8px 0;
+}
+
+/* framed-card sections */
+.circle-page [class$="__section"],
+.circle-page .circle-settings__axis,
+.circle-page .circle-settings__consensus,
+.circle-page .circle-advisor__card,
+.circle-page .circle-rules-consent__doc {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+
+/* pill toggle — every native checkbox in the circle UI */
+.circle-page input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none;
+  position: relative; flex: 0 0 auto;
+  width: 40px; height: 24px; border-radius: 999px;
+  background: var(--track-off); border: none; cursor: pointer;
+  transition: background .15s ease; margin: 0;
+}
+.circle-page input[type="checkbox"]::after {
+  content: ""; position: absolute; top: 3px; left: 3px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25);
+  transition: transform .15s ease;
+}
+.circle-page input[type="checkbox"]:checked { background: var(--accent); }
+.circle-page input[type="checkbox"]:checked::after { transform: translateX(16px); }
+
+/* toggle rows (label wrapping a checkbox + text) */
+.circle-page .circle-settings__feature,
+.circle-page .circle-settings__app,
+.circle-page .circle-settings__consensus-toggle,
+.circle-page .circle-override__toggle,
+.circle-page .circle-override__flow-toggle,
+.circle-page .circle-availability__toggle,
+.circle-page .circle-hop__global {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 0; cursor: pointer; font-size: 14px;
+}
+
+/* radio-as-box — selected option boxed + terracotta ring (board 4/8) */
+.circle-page .circle-settings__opt-row {
+  display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 10px 12px; margin: 0 0 8px; background: var(--paper);
+}
+.circle-page .circle-settings__opt-row:has(input:checked) {
+  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+  background: var(--card);
+}
+.circle-page .circle-settings__opt {
+  flex: 1 1 auto; min-width: 0;
+  display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px;
+}
+.circle-page .circle-settings__opt input[type="radio"] {
+  appearance: none; -webkit-appearance: none;
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--line); cursor: pointer; flex: 0 0 auto; margin: 0;
+  display: grid; place-content: center;
+}
+.circle-page .circle-settings__opt input[type="radio"]:checked { border-color: var(--accent); }
+.circle-page .circle-settings__opt input[type="radio"]:checked::after {
+  content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+}
+
+/* ⓘ info button + consequence callout */
+.circle-page .circle-settings__info {
+  flex: 0 0 auto; margin-left: auto; align-self: flex-start;
+  background: var(--accent); color: #fff; border: none; cursor: pointer;
+  width: 18px; height: 18px; border-radius: 50%; font-size: 11px; line-height: 18px;
+  padding: 0;
+}
+.circle-page .circle-settings__consequence {
+  flex-basis: 100%; margin-top: 10px; padding: 10px 12px;
+  background: var(--paper-2); border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 13px; color: var(--ink-soft);
+}
+
+/* multi-column settings on wide screens (board 4A) */
+.circle-page .circle-settings__section,
+.circle-page .circle-settings__axis,
+.circle-page .circle-settings__consensus { break-inside: avoid; }
+@media (min-width: 620px) {
+  .circle-settings { column-count: 2; column-gap: 16px; }
+  .circle-settings__back,
+  .circle-settings__title,
+  .circle-settings__save,
+  .circle-settings__note { column-span: all; }
+}
+
+/* ───────────────────── launcher (board 1) ───────────────────── */
+/* β.3 — per-kind sections; header style inherits from the global
+   `[class$="__section-title"]` rule above (small-caps muted). */
+.circle-launcher__section { margin-top: 14px; }
+.circle-launcher__section:first-of-type { margin-top: 6px; }
+.circle-launcher__list { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 4px; }
+.circle-tile {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left; cursor: pointer; font: inherit;
+  padding: 12px 14px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  transition: border-color .12s ease;
+}
+.circle-tile:hover { border-color: var(--accent); }
+.circle-tile__avatar {
+  flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-content: center;
+  font-family: var(--font-serif); font-weight: 600; font-size: 17px;
+  color: var(--ink); background: var(--paper-2);
+}
+.circle-tile { position: relative; }
+.circle-tile__body { min-width: 0; flex: 1; }
+.circle-tile__name { font-family: var(--font-serif); font-size: 16px; font-weight: 600; color: var(--ink); }
+.circle-tile__meta { font-size: 12px; color: var(--ink-soft); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* P6.3 — unread badge (board 5A): small red circle with the count. */
+.circle-tile__unread {
+  flex: 0 0 auto; min-width: 22px; height: 22px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 11px; background: var(--accent); color: var(--paper);
+  font-family: var(--font-serif); font-size: 12px; font-weight: 600;
+  line-height: 1;
+}
+.circle-launcher__new {
+  margin-top: 10px; width: 100%; cursor: pointer; font: inherit; font-size: 14px;
+  padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
+  background: transparent; color: var(--ink-soft);
+}
+.circle-launcher__new:hover { color: var(--accent-ink); border-color: var(--accent); }
+
+/* β.5 — per-tile context menu (right-click on a kring tile).
+   Positioned absolutely by the renderer at the tile's right edge. */
+.circle-launcher__tile-menu {
+  position: absolute; z-index: 100;
+  min-width: 180px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .10);
+  font: inherit;
+}
+.circle-launcher__tile-menu-item {
+  display: block; width: 100%;
+  padding: 8px 12px;
+  background: none; border: 0;
+  text-align: left; cursor: pointer; font: inherit; font-size: 13px;
+  color: var(--ink);
+  border-radius: 6px;
+}
+.circle-launcher__tile-menu-item:hover,
+.circle-launcher__tile-menu-item:focus-visible {
+  background: var(--paper-2, var(--paper));
+  color: var(--accent-ink);
+  outline: none;
+}
+/* β.5 — pin indicator (📌 glyph in the top-right of pinned tiles). */
+.circle-tile__pin-indicator {
+  position: absolute; top: 6px; right: 8px;
+  font-size: 11px; line-height: 1;
+  opacity: 0.7;
+  pointer-events: none;
+}
+.circle-tile.is-pinned { border-color: var(--accent); }
+
+/* ───────────────────── circle detail ───────────────────── */
+.circle-detail__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.circle-detail__bar [class^="circle-detail__"]:not(.circle-detail__back) {
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 6px 11px; font: inherit; font-size: 12px; color: var(--ink); cursor: pointer;
+}
+.circle-detail__bar [class^="circle-detail__"]:not(.circle-detail__back):hover { border-color: var(--accent); }
+.circle-detail__meta { font-size: 12px; color: var(--ink-soft); margin: -8px 0 14px; }
+.circle-detail__items { display: flex; flex-direction: column; gap: 6px; }
+.circle-detail__item {
+  padding: 11px 13px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
+}
+
+/* ───────────────────── stream (board 5) ───────────────────── */
+.circle-stream__list { display: flex; flex-direction: column; gap: 6px; }
+.circle-stream__row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.circle-stream__tag, .circle-tag {
+  flex: 0 0 auto; font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; padding: 3px 8px; border-radius: 999px;
+  background: var(--blue-bg); color: var(--blue);
+}
+.circle-stream__body { flex: 1 1 auto; font-size: 14px; }
+.circle-stream__when { flex: 0 0 auto; font-size: 12px; color: var(--ink-soft); }
+
+/* ───────────────────── view-as (board 4C) ───────────────────── */
+.circle-viewas__picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+.circle-viewas__viewer {
+  padding: 7px 13px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 13px;
+  background: var(--card); border: 1px solid var(--line); color: var(--ink);
+}
+.circle-viewas__viewer[aria-pressed="true"], .circle-viewas__viewer.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.circle-viewas__list { display: flex; flex-direction: column; gap: 6px; }
+.circle-viewas__row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
+}
+.circle-viewas__name { font-weight: 600; }
+.circle-viewas__badge, .circle-skill-matches__badge, .circle-rules-consent__field {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+  padding: 3px 8px; border-radius: 999px; background: var(--paper-2); color: var(--ink-soft);
+}
+
+/* ───────────────────── advisor (board 3D) ───────────────────── */
+.circle-advisor__card { border-left: 3px solid var(--accent); }
+.circle-advisor__advice { font-size: 14px; }
+.circle-advisor__toobusy { color: var(--accent-ink); font-weight: 600; }
+.circle-advisor__dismiss {
+  margin-top: 8px; background: none; border: none; color: var(--accent-ink);
+  cursor: pointer; font: inherit; font-size: 13px; padding: 0;
+}
+
+/* ───────────────────── hop (board 7) ───────────────────── */
+.circle-hop__chain { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.circle-hop__step {
+  display: grid; place-content: center; width: 40px; height: 40px; border-radius: 50%;
+  background: var(--paper-2); font-family: var(--font-serif); font-weight: 600;
+}
+.circle-hop__step.is-hop, .circle-hop__step[data-hop="true"] { background: var(--accent); color: #fff; }
+.circle-hop__arrow { color: var(--ink-soft); }
+.circle-hop__explain { font-size: 13px; color: var(--ink-soft); }
+.circle-hop__overlimit { color: var(--accent-ink); font-weight: 600; font-size: 13px; }
+
+/* ───────────────────── skills (board 8) ───────────────────── */
+.circle-skill__axis { margin-bottom: 14px; }
+.circle-skill__opt {
+  display: inline-flex; align-items: center; gap: 7px; margin: 0 8px 6px 0;
+  padding: 6px 11px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.circle-skill__opt:has(input:checked) { border-color: var(--accent); background: var(--card); }
+.circle-skill-matches__list { display: flex; flex-direction: column; gap: 8px; }
+.circle-skill-matches__row {
+  padding: 12px 14px; background: var(--card);
+  border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px;
+}
+
+/* ───────────────────── folio (board 10) ───────────────────── */
+.circle-folio__filters { display: flex; gap: 8px; margin-bottom: 10px; }
+.circle-folio__filter {
+  padding: 5px 11px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.circle-folio__filter[aria-pressed="true"], .circle-folio__filter.is-active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+}
+.circle-folio__list { display: flex; flex-direction: column; }
+.circle-folio__row {
+  display: flex; align-items: center; gap: 10px; padding: 11px 4px;
+  border-bottom: 1px solid var(--line); font-size: 14px;
+}
+.circle-folio__row:last-child { border-bottom: none; }
+.circle-folio__row { width: 100%; text-align: left; background: none; border-left: none; border-right: none; border-top: none; cursor: pointer; font: inherit; }
+.circle-folio__name { font-weight: 600; }
+
+/* N5 — folder tree (breadcrumbs + folder rows + rich file rows) */
+.circle-folio__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 13px; }
+.circle-folio__crumb {
+  padding: 2px 6px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 13px;
+  background: none; border: none; color: var(--accent);
+}
+.circle-folio__crumb:hover { text-decoration: underline; }
+.circle-folio__crumb.is-current { color: var(--ink); font-weight: 600; cursor: default; }
+.circle-folio__crumb-sep { color: var(--muted); }
+.circle-folio__glyph { flex: none; font-size: 16px; line-height: 1; }
+.circle-folio__row--folder .circle-folio__name { font-weight: 700; }
+/* B · Slice 4 — a file row whose OPEN (get × file) is denied for this member. */
+.circle-folio__row--denied { opacity: 0.45; cursor: not-allowed; }
+.circle-folio__count, .circle-folio__size { margin-left: auto; color: var(--muted); font-size: 12px; }
+
+/* N5 — file-source toggle (In-app / My pod) + connect-pod prompt */
+.circle-folio__source-toggle { display: flex; gap: 8px; margin-bottom: 10px; }
+.circle-folio__source {
+  padding: 5px 11px; border-radius: 999px; cursor: pointer; font: inherit; font-size: 12px;
+  background: var(--card); border: 1px solid var(--line);
+}
+.circle-folio__source.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.circle-folio__connect-pod { color: var(--ink-soft); font-style: italic; font-size: 13px; padding: 14px 0; }
+
+/* ───────────────────── rules (board 3B/3C) ───────────────────── */
+.circle-rules__field, .circle-rules-consent__field { margin-bottom: 14px; }
+.circle-rules__q, .circle-rules-consent__q { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.circle-rules__input {
+  width: 100%; padding: 10px 12px; font: inherit; font-size: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: #fff;
+}
+.circle-rules__input:focus { outline: none; border-color: var(--accent); }
+.circle-rules-consent__actions { display: flex; gap: 10px; margin-top: 16px; }
+.circle-rules-consent__a { font-size: 14px; margin-bottom: 6px; }
+
+/* ───────────────────── availability (board 6C) ───────────────────── */
+.circle-availability__time-row, .circle-availability__until-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.circle-availability__time, .circle-availability__until {
+  padding: 9px 11px; font: inherit; font-size: 14px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: #fff;
+}
+
+/* ───────────────────── kring view (SP-13.2 · v2 §1+§5) ───────────────────── */
+.circle-kring { display: flex; flex-direction: column; min-height: 100%; padding: 0 14px 12px; }
+.circle-kring__header { display: flex; align-items: center; gap: 12px; padding: 10px 0 4px; }
+.circle-kring__back { background: none; border: none; color: var(--ink-soft); font: inherit; font-size: 13px; cursor: pointer; padding: 4px 6px; }
+.circle-kring__title { flex: 1; margin: 0; font-family: var(--serif); font-size: 22px; font-weight: 600; color: var(--ink); }
+.circle-kring__more { background: none; border: none; color: var(--ink-soft); font-size: 20px; cursor: pointer; padding: 4px 10px; }
+.circle-kring__meta { font-size: 12px; color: var(--ink-soft); margin: -2px 0 8px; }
+.circle-kring__more-menu { display: none; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); margin-bottom: 8px; }
+.circle-kring__more-menu.is-open { display: block; }
+.circle-kring__more-item { display: block; width: 100%; text-align: left; background: none; border: none; padding: 9px 12px; font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; }
+.circle-kring__more-item:hover { background: var(--paper); }
+.circle-kring__list { flex: 1; overflow-y: auto; padding: 4px 0 8px; display: flex; flex-direction: column; gap: 6px; }
+.circle-kring__empty { color: var(--ink-soft); font-style: italic; padding: 16px 4px; text-align: center; }
+.circle-kring__day { align-self: center; font-size: 11px; color: var(--ink-soft); text-transform: lowercase; padding: 8px 12px; font-style: italic; }
+.circle-kring__bubble { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); max-width: 80%; align-self: flex-start; }
+.circle-kring__bubble-sender { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+/* "only you" vs "whole kring" scope badge (one presentation of the message's scope data). */
+.circle-kring__scope { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; padding: 1px 7px; border-radius: 9px; margin-bottom: 3px; }
+.circle-kring__scope--self  { background: var(--paper); color: var(--ink-soft); }
+.circle-kring__scope--kring { background: #e8eef6; color: #3b6ea5; }
+.circle-kring__bubble-kind { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 4px; background: var(--paper); color: var(--accent-ink); margin-right: 6px; vertical-align: middle; }
+.circle-kring__bubble-text { font-size: 14px; color: var(--ink); display: inline; }
+.circle-kring__bubble-actions { display: flex; gap: 6px; margin-top: 8px; }
+.circle-kring__bubble-action { padding: 4px 10px; font: inherit; font-size: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); cursor: pointer; }
+.circle-kring__bubble-action:hover { border-color: var(--accent); }
+/* S6.A — manifest-driven inline buttons on a bot reply (the resurrected inline menu). */
+.circle-kring__embed-buttons { flex-wrap: wrap; }
+.circle-kring__embed-button { border-color: var(--accent); color: var(--accent-ink, var(--accent)); font-weight: 600; }
+/* embeds[] — cross-object "See also" chips on a kring message. */
+.circle-kring__embeds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.circle-kring__embeds-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; }
+.circle-kring__embed { font-size: 12px; color: var(--ink); background: var(--paper2, #f4efe7); border: 1px solid var(--line, #e2d9cb); border-radius: 999px; padding: 2px 9px; }
+/* S6.B — a screen button (opens a panel) reads as a filled affordance vs the outline op buttons. */
+.circle-kring__screen-button { background: var(--accent); color: #fff; border-color: var(--accent); }
+.cc-screen-panel { position: fixed; inset: 0; z-index: 65; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.45); }
+.cc-screen-panel__card { width: min(560px, 100%); max-height: 88vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.cc-screen-panel__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cc-screen-panel__head h3 { margin: 0; font-size: 17px; }
+.cc-screen-panel__close { cursor: pointer; font-size: 14px; line-height: 1; border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; background: var(--paper); color: var(--ink); }
+/* Theme B — settings chatbot (guided setup). */
+.circle-settings__guided { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; margin: 6px 0 12px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+.cc-guided__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.cc-guided__title { margin: 0; font-size: 17px; }
+.cc-guided__close { cursor: pointer; font-size: 14px; line-height: 1; border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; background: var(--paper); color: var(--ink); }
+.cc-guided__say { font-size: 15px; line-height: 1.5; color: var(--ink); margin: 4px 0 12px; }
+.cc-guided__multi { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.cc-guided__opt { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.cc-guided__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cc-guided__btn { cursor: pointer; font: inherit; font-size: 14px; padding: 8px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
+.cc-guided__btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.cc-guided__btn--option:hover { border-color: var(--accent); }
+.cc-guided__done { font-size: 14px; color: var(--ink-soft); }
+/* δ.2 — per-message delivery state.  Pending = clock, Failed = warning (tap-to-retry).
+   Sent renders nothing (happy-path stays clean). */
+.circle-kring__bubble-delivery { display: inline-block; margin-top: 4px; font-size: 12px; line-height: 1; padding: 2px 6px; border-radius: 10px; }
+.circle-kring__bubble-delivery--pending { color: var(--ink-soft); background: transparent; }
+.circle-kring__bubble-delivery--failed  { color: #b8290f; background: #fbe9e3; border: 1px solid #f2c8b8; cursor: pointer; font: inherit; font-size: 12px; }
+.circle-kring__bubble-delivery--failed:hover { background: #f7d8cb; }
+.circle-kring__composer { position: relative; display: flex; gap: 8px; align-items: center; padding: 10px 0 4px; border-top: 1px solid var(--line); margin-top: 4px; }
+.circle-kring__composer-input { flex: 1; padding: 10px 14px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 22px; background: #fff; color: var(--ink); }
+.circle-kring__composer-input:focus { outline: none; border-color: var(--accent); }
+.circle-kring__composer-send { width: 36px; height: 36px; border: none; border-radius: 18px; background: var(--accent); color: #fff; font-size: 18px; cursor: pointer; padding: 0; }
+.circle-kring__composer-send:hover { opacity: 0.92; }
+
+/* media P1 — sealed-media attach button (only rendered when the circle has a seal strategy). */
+.circle-kring__attach {
+  cursor: pointer; font-size: 16px; line-height: 1; width: 36px; height: 36px; padding: 0; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: 18px; background: var(--paper, #fff); color: var(--ink-soft);
+}
+.circle-kring__attach:hover { border-color: var(--accent); }
+
+/* media P1 — the sealed media-card chip inside a kring bubble (shared domAdapter renderMediaCard;
+   class names match the classic shell's web/style.css chip). */
+.circle-kring__bubble .cc-media-card { margin-top: 6px; }
+.circle-kring__bubble .cc-media-card-body { display: flex; flex-direction: column; gap: 5px; padding: 4px 0; }
+.circle-kring__bubble .cc-media-thumb {
+  max-width: 240px; max-height: 240px; width: auto; height: auto;
+  border-radius: var(--radius, 10px); border: 1px solid var(--line); display: block;
+}
+.circle-kring__bubble .cc-media-placeholder { display: flex; gap: 8px; align-items: center; }
+.circle-kring__bubble .cc-media-icon { font-size: 24px; line-height: 1; }
+.circle-kring__bubble .cc-media-details { font-size: 12px; color: var(--ink-soft); }
+.circle-kring__bubble .cc-media-caption { font-size: 13px; word-break: break-word; }
+/* media P1 — full-image "[View]" affordance on the chip (only rendered when the ctx carries openFull). */
+.circle-kring__bubble .cc-media-thumb--clickable { cursor: zoom-in; }
+.circle-kring__bubble .cc-media-view {
+  align-self: flex-start; padding: 3px 10px; font: inherit; font-size: 12px; cursor: pointer;
+  color: var(--ink-soft); background: transparent; border: 1px solid var(--line); border-radius: 999px;
+}
+.circle-kring__bubble .cc-media-view:hover { border-color: var(--accent); color: var(--ink); }
+
+/* media P1 — full-image lightbox overlay (self-contained; mirrors confirmDialog / catchUpChooser). */
+.cc-media-lightbox { }
+.cc-media-lightbox__sheet {
+  position: relative; display: flex; align-items: center; justify-content: center;
+  max-width: 92vw; max-height: 92vh;
+}
+.cc-media-lightbox__img {
+  max-width: 92vw; max-height: 88vh; width: auto; height: auto; display: block;
+  border-radius: var(--radius, 10px); box-shadow: 0 8px 34px rgba(0,0,0,.45);
+}
+.cc-media-lightbox__close {
+  position: absolute; top: -14px; right: -14px; width: 32px; height: 32px; line-height: 1;
+  font-size: 20px; cursor: pointer; color: var(--ink, #111); background: var(--paper, #fff);
+  border: 1px solid var(--line, #ddd); border-radius: 999px; box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.cc-media-lightbox__status { color: #fff; font-size: 14px; padding: 24px; text-align: center; }
+.cc-media-lightbox__status--error { opacity: 0.85; }
+
+/* Slash-command auto-suggest dropdown — floats above the composer input (classic-shell parity). */
+.circle-kring__suggest { position: absolute; left: 0; right: 44px; bottom: calc(100% - 2px); margin: 0 0 6px 0; padding: 4px 0; list-style: none; background: var(--paper, #fff); border: 1px solid var(--line); border-radius: 12px; max-height: 280px; overflow-y: auto; box-shadow: 0 -2px 10px rgba(0,0,0,0.10); z-index: 20; }
+.circle-kring__suggest[hidden] { display: none; }
+.circle-kring__suggest-item { display: flex; align-items: baseline; gap: 10px; padding: 6px 12px; cursor: pointer; }
+.circle-kring__suggest-item:hover, .circle-kring__suggest-item.is-active { background: var(--accent-soft, rgba(0,0,0,0.05)); }
+.circle-kring__suggest-cmd { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); font-weight: 600; font-size: 13px; }
+.circle-kring__suggest-hint { color: var(--ink-soft); font-size: 12px; }
+
+/* Permission gate — chat disabled for the circle: read-only note in place of the composer. */
+.circle-kring__composer-disabled { padding: 12px 0 6px; margin-top: 4px; border-top: 1px solid var(--line); color: var(--ink-soft); font-size: 13px; font-style: italic; text-align: center; }
+
+/* Multi-field inline form (mobile MultiFieldFormBubble parity) — sits between the stream and composer when
+   a kring dispatch trips needsForm with 2+ missing fields. */
+.circle-kring__form { display: flex; flex-direction: column; gap: 10px; padding: 14px; margin-top: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--accent-soft, rgba(0,0,0,0.03)); }
+.circle-kring__form-title { font-weight: 600; font-size: 14px; color: var(--ink); }
+.circle-kring__form-field { display: flex; flex-direction: column; gap: 4px; }
+.circle-kring__form-label { font-size: 12px; color: var(--ink-soft); }
+.circle-kring__form-input { padding: 9px 12px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+.circle-kring__form-input:focus { outline: none; border-color: var(--accent); }
+.circle-kring__form-submit { align-self: flex-start; padding: 8px 18px; border: none; border-radius: 18px; background: var(--accent); color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
+.circle-kring__form-submit:hover { opacity: 0.92; }
+.circle-kring__form-submit:disabled { background: var(--line); color: var(--ink-soft); cursor: not-allowed; }
+
+/* SP-13.3 — per-kring bottom tab bar + tab-coming placeholder. */
+.circle-kring__tabs { display: flex; justify-content: space-around; align-items: stretch; border-top: 1px solid var(--line); margin-top: 4px; }
+.circle-kring__tab { flex: 1; padding: 12px 6px; background: none; border: none; font: inherit; font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; border-top: 2px solid transparent; margin-top: -1px; }
+.circle-kring__tab.is-active { color: var(--accent-ink); border-top-color: var(--accent); }
+.circle-kring__placeholder { padding: 24px 12px; color: var(--ink-soft); font-style: italic; text-align: center; }
+
+/* SP-13.4 — Chat ↔ Scherm header pill (v2 §4 "De Schakelaar"). */
+.circle-kring__view-toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--paper); }
+.circle-kring__view-toggle-btn { background: none; border: none; padding: 5px 12px; font: inherit; font-size: 12px; letter-spacing: 0.4px; color: var(--ink-soft); cursor: pointer; }
+.circle-kring__view-toggle-btn.is-active { background: var(--accent); color: #fff; }
+
+/* ─────────────── α.5c — compact rows on list-shaped blocks ─────────────── *
+ * Opt-in via block.config.compact on the four list-shaped block types
+ * (announcement, noticeboard, agenda, tasks).  Tightens padding + font
+ * so a screen showing many short items doesn't waste vertical space. */
+.circle-screen__block--compact .circle-screen__noticeboard-row,
+.circle-screen__block--compact .circle-screen__agenda-row,
+.circle-screen__block--compact .circle-screen__tasks-row {
+  padding-top: 3px; padding-bottom: 3px;
+  font-size: 12px; line-height: 1.25;
+}
+/* embeds[] — "See also" chips on a task card. */
+.circle-screen__embeds { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-left: 8px; vertical-align: middle; }
+.circle-screen__embed { font-size: 11px; color: var(--ink); background: var(--paper2, #f4efe7); border: 1px solid var(--line, #e2d9cb); border-radius: 999px; padding: 1px 8px; }
+
+/* S6.B — when a "See also" chip opens a screen panel, the referenced row is
+ * scrolled into view and briefly flashed with an accent tint that fades back
+ * to transparent over ~1.5s.  Subtle, no layout shift. */
+@keyframes circle-screen-row-flash {
+  0%   { background: var(--accent-soft, rgba(176, 92, 56, 0.22)); }
+  100% { background: transparent; }
+}
+.circle-screen__tasks-row--highlight,
+.circle-screen__agenda-row--highlight {
+  animation: circle-screen-row-flash 1.5s ease-out;
+  border-radius: 6px;
+}
+.circle-screen__block--compact .circle-screen__noticeboard-text,
+.circle-screen__block--compact .circle-screen__agenda-label,
+.circle-screen__block--compact .circle-screen__tasks-text {
+  font-size: 12px; line-height: 1.25;
+}
+.circle-screen__block--compact .circle-screen__announcement-text {
+  padding: 4px 8px; font-size: 13px; line-height: 1.3;
+}
+
+/* ─────────────── δ.1 — refresh pip (cache-first render) ─────────────── *
+ * Shown when the Schermen view renders cached blocks while a fresh
+ * materialize is in flight.  Static glyph keeps the layout calm; hover
+ * tooltip carries the full word.  Float top-right of the screen body. */
+.circle-screen__refreshing {
+  position: absolute; top: 4px; right: 8px;
+  opacity: 0.5; font-size: 11px; color: var(--ink-soft);
+  pointer-events: none;
+}
+.circle-screen { position: relative; }
+
+/* D1 (§5A) — "Veel-gebruikt" quick-actions pill row. */
+.circle-screen__quick-actions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.circle-screen__quick-action {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper2);
+  color: var(--ink);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.circle-screen__quick-action:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.circle-screen__quick-action:disabled { opacity: 0.5; cursor: default; }
+
+/* ── P5 — Contacten roster + 1:1 DM thread ──────────────────────────────── */
+.cc-contacts { padding: 4px 2px 80px; }
+.cc-contacts__head { display: flex; align-items: center; justify-content: space-between; margin: 6px 2px 12px; gap: 12px; }
+.cc-contacts__title { font-size: 18px; font-weight: 700; margin: 0; color: var(--ink); }
+.cc-contacts__add {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+  padding: 7px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-contacts__add:hover { background: var(--accent); color: #fff; }
+.cc-contacts__empty { color: var(--ink-soft); font-size: 14px; padding: 12px 4px; }
+
+/* OBJ-2 — paired devices (no-pod sync) panel inside circle settings. */
+.cc-paired { display: flex; flex-direction: column; gap: 10px; }
+.cc-paired__intro { color: var(--ink-soft); font-size: 13px; margin: 0; }
+.cc-paired__label { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.cc-paired__row { display: flex; align-items: center; gap: 8px; }
+.cc-paired__addr, .cc-paired__input {
+  flex: 1 1 auto; min-width: 0; font: inherit; font-size: 13px;
+  padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+}
+.cc-paired__addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-soft); }
+.cc-paired__copy, .cc-paired__addbtn, .cc-paired__remove {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
+  padding: 7px 12px; border-radius: var(--radius);
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-paired__copy:hover, .cc-paired__addbtn:hover { background: var(--accent); color: #fff; }
+.cc-paired__remove { border-color: var(--line); color: var(--ink-soft); font-weight: 500; }
+.cc-paired__remove:hover { border-color: var(--danger, #c0392b); color: var(--danger, #c0392b); }
+.cc-paired__err { color: var(--danger, #c0392b); font-size: 13px; margin: 0; }
+.cc-paired__empty { color: var(--ink-soft); font-size: 13px; margin: 2px 0; }
+.cc-paired__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cc-paired__peer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 8px; border-radius: var(--radius); background: var(--surface); }
+.cc-paired__peeraddr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.cc-contacts__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cc-contacts__row {
+  display: flex; align-items: center; gap: 12px; cursor: pointer;
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--paper);
+}
+.cc-contacts__row:hover { border-color: var(--accent); }
+.cc-contacts__row.is-offline { opacity: 0.6; }
+.cc-contacts__icon { font-size: 22px; line-height: 1; }
+.cc-contacts__body { flex: 1 1 auto; min-width: 0; }
+.cc-contacts__name { font-weight: 600; color: var(--ink); }
+.cc-contacts__meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.cc-contacts__open {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 6px 12px; border-radius: var(--radius);
+  background: var(--accent); border: 1px solid var(--accent); color: #fff;
+}
+
+.cc-cthread { display: flex; flex-direction: column; height: 100%; padding-bottom: 12px; }
+.cc-cthread__header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.cc-cthread__lang { margin-left: auto; display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex: 0 0 auto; }
+.cc-cthread__lang-btn { cursor: pointer; font: inherit; font-size: 11px; font-weight: 700; padding: 3px 9px; background: transparent; border: none; color: var(--ink-soft); }
+.cc-cthread__lang-btn.is-active { background: var(--accent); color: #fff; }
+.cc-cthread__back {
+  cursor: pointer; font: inherit; font-size: 12px; color: var(--ink-soft);
+  background: transparent; border: none; padding: 4px 0; letter-spacing: .02em;
+}
+.cc-cthread__title { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0; }
+.cc-cthread__log { flex: 1 1 auto; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; padding: 4px 2px; }
+.cc-cthread__msg { display: flex; flex-direction: column; max-width: 80%; }
+.cc-cthread__msg--user { align-self: flex-end; align-items: flex-end; }
+.cc-cthread__msg--bot { align-self: flex-start; align-items: flex-start; }
+.cc-cthread__msg.is-pending { opacity: 0.6; }
+.cc-cthread__bubble {
+  padding: 8px 12px; border-radius: 14px; font-size: 14px; line-height: 1.4;
+  white-space: pre-wrap; word-break: break-word;
+}
+.cc-cthread__msg--user .cc-cthread__bubble { background: var(--accent); color: #fff; }
+.cc-cthread__msg--bot  .cc-cthread__bubble { background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.cc-cthread__buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cc-cthread__btn {
+  cursor: pointer; font: inherit; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 12px;
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-cthread__sending { font-size: 12px; color: var(--ink-soft); font-style: italic; padding: 2px 4px; }
+/* Stage-1 review cards (curated text + original chip + per-card send) */
+.cc-cthread__review { display: flex; flex-direction: column; gap: 8px; align-self: stretch; width: 100%; }
+.cc-cthread__review-intro { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+.cc-cthread__card { background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.cc-cthread__card-text { font-size: 15px; line-height: 1.45; color: var(--ink); cursor: text; white-space: pre-wrap; word-break: break-word; }
+.cc-cthread__card-text:hover { text-decoration: underline dotted var(--ink-soft); }
+.cc-cthread__card-orig { display: flex; gap: 8px; align-items: baseline; border-top: 1px solid var(--line); padding-top: 8px; }
+.cc-cthread__card-orig-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink-soft); flex: 0 0 auto; }
+.cc-cthread__card-orig-text { font-size: 13px; font-style: italic; color: var(--ink-soft); line-height: 1.4; }
+.cc-cthread__card-btns, .cc-cthread__review-footer { display: flex; justify-content: flex-end; gap: 8px; }
+.cc-cthread__card-btn { cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; border-radius: 12px; background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+.cc-cthread__card-btn--muted { background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.cc-cthread__skills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.cc-cthread__skill {
+  cursor: pointer; font: inherit; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 12px;
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-cthread__skill:hover { background: var(--accent); color: #fff; }
+.cc-cthread__error { font-size: 13px; color: #b3261e; padding: 6px 4px; }
+.cc-cthread__composer { display: flex; gap: 8px; margin-top: 10px; }
+.cc-cthread__input {
+  flex: 1 1 auto; font: inherit; font-size: 14px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink);
+}
+.cc-cthread__send {
+  cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 16px; border-radius: var(--radius);
+  background: var(--accent); border: 1px solid var(--accent); color: #fff;
+}
+
+/* ── S1 #1 — circle noticeboard (prikbord) ──────────────────────────────── */
+.cc-prikbord { display: flex; flex-direction: column; gap: 12px; padding: 4px 2px 12px; }
+.cc-prikbord__composer { display: flex; flex-direction: column; gap: 8px; }
+.cc-prikbord__intents { display: flex; gap: 6px; }
+.cc-prikbord__intent {
+  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+  padding: 5px 12px; border-radius: 14px;
+  background: transparent; border: 1px solid var(--line); color: var(--ink-soft);
+}
+.cc-prikbord__intent.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.cc-prikbord__composer-row { display: flex; gap: 8px; }
+.cc-prikbord__input {
+  flex: 1 1 auto; font: inherit; font-size: 14px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink);
+}
+.cc-prikbord__post {
+  cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
+  padding: 10px 16px; border-radius: var(--radius);
+  background: var(--accent); border: 1px solid var(--accent); color: #fff;
+}
+.cc-prikbord__attach {
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink-soft);
+}
+.cc-prikbord__attach-preview { position: relative; display: inline-flex; margin-top: 8px; }
+.cc-prikbord__attach-thumb { max-width: 96px; max-height: 96px; border-radius: var(--radius); border: 1px solid var(--line); display: block; }
+.cc-prikbord__attach-remove {
+  position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; cursor: pointer;
+  border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-size: 12px; line-height: 1;
+}
+.cc-prikbord__attachments { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+.cc-prikbord__att { max-width: 160px; max-height: 160px; border-radius: var(--radius); border: 1px solid var(--line); object-fit: cover; }
+.cc-image-modal { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; background: rgba(0,0,0,.8); cursor: zoom-out; }
+.cc-image-modal__img { max-width: 100%; max-height: 90vh; border-radius: var(--radius); box-shadow: 0 12px 40px rgba(0,0,0,.5); }
+.cc-image-modal__note { color: #fff; font-size: 13px; opacity: .85; }
+.cc-prikbord__busy { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+.cc-prikbord__empty { color: var(--ink-soft); font-size: 14px; padding: 12px 4px; }
+.cc-prikbord__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cc-prikbord__post-row {
+  padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.cc-prikbord__badge {
+  align-self: flex-start; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  padding: 2px 8px; border-radius: 10px;
+}
+.cc-prikbord__badge--ask   { background: #fdeede; color: #a86322; }
+.cc-prikbord__badge--offer { background: #e6f0e9; color: #3f8f5b; }
+.cc-prikbord__badge--lend  { background: #e8eef6; color: #3b6ea5; }
+.cc-prikbord__text { font-size: 14px; color: var(--ink); line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+.cc-prikbord__meta { font-size: 12px; color: var(--ink-soft); }
+/* embeds[] — cross-object reference chips ("See also"). */
+.cc-prikbord__embeds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 2px; }
+.cc-prikbord__embeds-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; }
+.cc-prikbord__embed { font-size: 12px; color: var(--ink); background: var(--paper2, #f4efe7); border: 1px solid var(--line, #e2d9cb); border-radius: 999px; padding: 2px 9px; }
+/* tappable embed chips (a button styled as a chip) — open the referenced item. */
+.cc-prikbord__embed--tappable, .circle-screen__embed--tappable, .circle-kring__embed--tappable {
+  cursor: pointer; font-family: inherit; line-height: inherit;
+}
+.cc-prikbord__embed--tappable:hover, .circle-screen__embed--tappable:hover, .circle-kring__embed--tappable:hover {
+  border-color: var(--accent); color: var(--accent-ink, var(--accent));
+}
+.cc-prikbord__actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.cc-prikbord__chip {
+  cursor: pointer; font: inherit; font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 12px;
+  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
+}
+.cc-prikbord__chip:hover { background: var(--accent); color: #fff; }
+.cc-prikbord__chip--muted { border-color: var(--line); color: var(--ink-soft); }
+
+/* ── S2 — profile (Mij) editor ──────────────────────────────────────────── */
+.cc-profile { padding: 4px 2px 80px; display: flex; flex-direction: column; gap: 16px; }
+.cc-profile__title { font-size: 20px; font-weight: 700; color: var(--ink); margin: 6px 2px 0; }
+.cc-profile__section { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.cc-profile__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
+.cc-profile__field { display: flex; flex-direction: column; gap: 4px; }
+.cc-profile__field-label { font-size: 13px; color: var(--ink-soft); }
+.cc-profile__field input, .cc-profile__geo-input, .cc-profile__skill-select {
+  font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--paper); color: var(--ink);
+}
+.cc-profile__save, .cc-profile__skill-add-btn, .cc-profile__geo-search, .cc-profile__geo-use {
+  align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600;
+  padding: 9px 16px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: #fff;
+}
+.cc-profile__none { color: var(--ink-soft); font-size: 14px; margin: 0; }
+.cc-profile__skill-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-profile__skill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border: 1px solid var(--line); border-radius: 14px; font-size: 13px; color: var(--ink); }
+.cc-profile__skill-remove { cursor: pointer; font: inherit; font-size: 14px; line-height: 1; background: transparent; border: none; color: var(--ink-soft); padding: 0 4px; }
+.cc-profile__skill-remove:hover { color: #b3261e; }
+.cc-profile__skill-add { display: flex; gap: 8px; align-items: center; }
+.cc-profile__skill-select { flex: 1 1 auto; }
+.cc-profile__geo { display: flex; gap: 8px; }
+.cc-profile__geo-input { flex: 1 1 auto; }
+.cc-profile__geo-result { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; color: var(--ink); }
+.cc-profile__loc-current { font-size: 14px; color: var(--ink); margin: 0; }
+.cc-profile__loc-clear { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; padding: 6px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.cc-profile__availability { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-profile__busy { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+
+/* ── S3 — circle admin panel ────────────────────────────────────────────── */
+.cc-admin { padding: 4px 2px 80px; display: flex; flex-direction: column; gap: 16px; }
+.cc-admin__header { display: flex; align-items: baseline; gap: 12px; }
+.cc-admin__back { cursor: pointer; font: inherit; font-size: 12px; color: var(--ink-soft); background: transparent; border: none; padding: 4px 0; }
+.cc-admin__title { font-size: 20px; font-weight: 700; color: var(--ink); margin: 0; }
+.cc-admin__notice { font-size: 13px; color: var(--accent-ink); background: var(--paper-2, #ebe6d5); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 0 var(--radius) var(--radius) 0; }
+.cc-admin__section { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.cc-admin__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
+.cc-admin__empty { color: var(--ink-soft); font-size: 14px; margin: 0; }
+.cc-admin__member-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cc-admin__member { display: flex; align-items: center; gap: 10px; }
+.cc-admin__member-name { flex: 1 1 auto; font-size: 14px; color: var(--ink); }
+.cc-admin__member-role { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--accent-ink); }
+.cc-admin__member-remove { cursor: pointer; font: inherit; font-size: 13px; padding: 5px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.cc-admin__member-remove:hover { border-color: #b3261e; color: #b3261e; }
+.cc-admin__announce { display: flex; flex-direction: column; gap: 8px; }
+.cc-admin__announce-input { font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); resize: vertical; }
+.cc-admin__announce-post { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: #fff; }
+.cc-admin__busy { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+
+/* ── S3 — admin moderation (reports + muted) + lend due-date ─────────────── */
+.cc-admin__report-list, .cc-admin__muted-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cc-admin__report { font-size: 13px; color: var(--ink); }
+.cc-admin__muted { display: flex; align-items: center; gap: 10px; }
+.cc-admin__muted-key { flex: 1 1 auto; font-size: 13px; color: var(--ink); word-break: break-all; }
+.cc-admin__unmute { cursor: pointer; font: inherit; font-size: 13px; padding: 5px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+/* ── objective L — admin outbound-share list (per-share "Stop sharing") ───── */
+.cc-admin__share-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.cc-admin__share { display: flex; align-items: center; gap: 10px; }
+.cc-admin__share-row { flex: 1 1 auto; font-size: 13px; color: var(--ink); word-break: break-all; }
+.cc-admin__share-note { font-size: 12px; color: var(--ink-soft); font-style: italic; }
+.cc-admin__share-stop { cursor: pointer; font: inherit; font-size: 13px; padding: 5px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--line); color: var(--ink-soft); }
+.cc-admin__share-stop:hover { border-color: #b3261e; color: #b3261e; }
+.cc-prikbord__due { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.cc-prikbord__due-input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); }
+
+/* ── S5 — "My data" screen ──────────────────────────────────────────────── */
+.cc-mydata { padding: 4px 2px 80px; display: flex; flex-direction: column; gap: 16px; }
+.cc-mydata__header { display: flex; align-items: baseline; gap: 12px; }
+.cc-mydata__back { cursor: pointer; font: inherit; font-size: 12px; color: var(--ink-soft); background: transparent; border: none; padding: 4px 0; }
+.cc-mydata__title { font-size: 20px; font-weight: 700; color: var(--ink); margin: 0; }
+.cc-mydata__section { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 8px; }
+.cc-mydata__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
+.cc-mydata__kv { display: flex; gap: 10px; font-size: 13px; }
+.cc-mydata__k { flex: 0 0 30%; color: var(--ink-soft); }
+.cc-mydata__v { flex: 1 1 auto; color: var(--ink); word-break: break-all; }
+.cc-mydata__privacy-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.cc-mydata__privacy-body { font-size: 13px; color: var(--ink-soft); margin: 2px 0 0; line-height: 1.4; }
+.cc-profile__mydata { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-mydata__signin, .cc-mydata__action { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-mydata__action.cc-mydata__restore { border-color: var(--line); color: var(--ink-soft); }
+/* S5 — modal overlay hosting the backup/restore wizards + the recovery-phrase reveal. */
+.cc-mydata-modal { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.45); }
+.cc-mydata-modal__card { width: min(440px, 100%); max-height: 90vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+.cc-mydata-mnemonic h3 { margin: 0 0 8px; }
+.cc-mydata-mnemonic__warn { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+.cc-mydata-mnemonic__words { margin: 10px 0 14px; padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius); background: var(--paper-soft, transparent); font-size: 15px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; user-select: all; }
+.cc-mydata__notif-status { font-size: 13px; color: var(--ink-soft); margin: 0; line-height: 1.4; }
+/* S6.C — surface-preference selector (inline / screen / minimal). */
+.cc-mydata__pref { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; padding: 7px 12px; border-radius: var(--radius); background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.cc-mydata__pref.is-active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }
+.cc-mydata__chat-ai { font-size: 12px; color: var(--ink-soft); margin: 4px 0 0; line-height: 1.4; }
+
+/* personas#1 — the "About me" persona surface (properties + per-circle sharing). */
+.cc-aboutme { padding: 2px 2px 20px; display: flex; flex-direction: column; gap: 16px; }
+.cc-aboutme__header { display: flex; align-items: baseline; gap: 12px; }
+.cc-aboutme__back { cursor: pointer; font: inherit; font-size: 12px; color: var(--ink-soft); background: transparent; border: none; padding: 4px 0; }
+.cc-aboutme__title { font-size: 18px; font-weight: 700; color: var(--ink); margin: 0; }
+.cc-aboutme__section { border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; background: var(--paper); display: flex; flex-direction: column; gap: 10px; }
+.cc-aboutme__section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 0; }
+.cc-aboutme__intro { font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.4; }
+.cc-aboutme__empty { font-size: 13px; color: var(--ink-soft); font-style: italic; margin: 0; }
+.cc-aboutme__prop { display: flex; flex-direction: column; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.cc-aboutme__prop:last-child { border-bottom: none; padding-bottom: 0; }
+.cc-aboutme__prop-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.cc-aboutme__prop-value { font-size: 13px; color: var(--ink); }
+.cc-aboutme__prop-value--unset { color: var(--ink-soft); font-style: italic; }
+.cc-aboutme__prop-editor { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cc-aboutme__bucket { cursor: pointer; font: inherit; font-size: 12px; padding: 5px 10px; border-radius: var(--radius); background: var(--paper); border: 1px solid var(--line); color: var(--ink); }
+.cc-aboutme__bucket--active { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 600; }
+.cc-aboutme__prop-input { font: inherit; font-size: 13px; padding: 6px 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); flex: 1 1 auto; min-width: 120px; }
+.cc-aboutme__prop-save { cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
+.cc-aboutme__circle { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.cc-aboutme__circle-name { font-size: 13px; font-weight: 700; color: var(--ink); }
+.cc-aboutme__circle-summary { font-size: 12px; color: var(--ink-soft); }
+.cc-aboutme__circle-hint { font-size: 12px; color: var(--ink-soft); font-style: italic; margin: 0; }
+.cc-aboutme__toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer; }
+.cc-aboutme__toggle-box { cursor: pointer; }
+
+/* cluster K · K2 — lists panel + nested container card */
+.cc-lists-panel { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.cc-lists-panel__empty { color: var(--ink-soft); font-style: italic; padding: 8px 0; }
+.cc-lists-panel__list { display: flex; align-items: center; text-align: left; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); cursor: pointer; font: inherit; }
+.cc-lists-panel__badge { flex: none; font-size: 10px; text-transform: uppercase; letter-spacing: .4px; color: var(--accent); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; margin-right: 8px; }
+.cc-lists-panel__back { align-self: flex-start; background: none; border: none; color: var(--accent); cursor: pointer; padding: 4px 0; font: inherit; }
+.cc-lists-panel__new, .cc-lists-panel__add-form { display: flex; gap: 8px; margin-top: 8px; }
+.cc-lists-panel__new-input, .cc-lists-panel__add-input { flex: 1; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); font: inherit; }
+.cc-lists-panel__create { padding: 8px 14px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); cursor: pointer; font: inherit; font-weight: 600; }
+.cc-lists-panel__create--alt { background: var(--paper); color: var(--accent); border: 1px solid var(--accent); }
+.cc-lists-panel__pick { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cc-lists-panel__pick-label { font-size: 13px; color: var(--ink-soft); }
+.cc-lists-panel__pick-btn { padding: 6px 14px; border: 1px solid var(--accent); border-radius: var(--radius); background: var(--paper); color: var(--accent); cursor: pointer; font: inherit; font-weight: 600; }
+.circle-container-card { display: flex; flex-direction: column; gap: 2px; }
+.circle-container-card__row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.circle-container-card__label { flex: 1; color: var(--ink); }
+.circle-container-card__action, .circle-container-card__add { padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); cursor: pointer; font: inherit; font-size: 12px; }
+.circle-container-card__add { color: var(--accent); font-weight: 600; }
+
+/* Objective D / Surface 4 (#180) — generic docked side-panel for manifest ops
+   that declare `surfaces.page` (openPagePanel, src/web/pagePanel.js).  In the v2
+   shell the <aside id="page-panel"> is a fixed right-hand dock overlaying the
+   circle view; the module toggles `hidden` + cc-page-open/closed. */
+.cc-page-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 380px;
+  max-width: 90vw;
+  z-index: 50;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.12);
+}
+.cc-page-panel[hidden] { display: none; }
+.cc-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.cc-page-title { font-weight: 600; color: var(--ink); }
+.cc-page-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+.cc-page-body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 16px;
+}
+.cc-page-hint { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; }
+.cc-page-form { margin-bottom: 10px; }
+.cc-page-status { font-size: 13px; color: var(--ink-soft); margin-top: 8px; }
+.cc-page-status-error { color: var(--danger, #c33); }

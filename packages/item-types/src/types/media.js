@@ -1,7 +1,7 @@
 /**
  * `media` type — a media item (images first; `mime` distinguishes
  * photo/video/audio later). Media Phase 1 (2026-07-09): the canonical
- * noun for "a picture in chat / on a card" that stoop, canopy-chat and
+ * noun for "a picture in chat / on a card" that stoop, basis and
  * folio can all point at.
  *
  * A media item does NOT carry bytes. Its `source` field is the storage

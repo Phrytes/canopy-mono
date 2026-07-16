@@ -246,7 +246,7 @@ async function removeTaskCore(circle, a, ctx) {
 }
 
 /**
- * `getTaskSnapshot(id)` → ItemSnapshot — Q29 (canopy-chat v0.5)
+ * `getTaskSnapshot(id)` → ItemSnapshot — Q29 (basis v0.5)
  * snapshot factory.  Returns a thin display projection of the
  * task suitable for embedding in a chat message.  Read-only;
  * idempotent.

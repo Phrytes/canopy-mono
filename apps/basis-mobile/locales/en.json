@@ -1,0 +1,614 @@
+{
+  "app": {
+    "name": {
+      "text": "basis",
+      "doc": "App display name in headers + about screen"
+    },
+    "tagline": {
+      "text": "Your neighbourhood, your tasks, your files — one chat.",
+      "doc": "First-run splash + about screen"
+    }
+  },
+  "chat": {
+    "placeholder": {
+      "text": "Type a slash command or message…",
+      "doc": "Input field placeholder"
+    },
+    "send": {
+      "text": "Send",
+      "doc": "Send-button label"
+    },
+    "active_thread": {
+      "text": "Active thread",
+      "doc": "a11y label on the active-thread title"
+    },
+    "no_messages_yet": {
+      "text": "No messages yet.",
+      "doc": "Empty-state for a fresh thread"
+    },
+    "thinking": {
+      "text": "…",
+      "doc": "Placeholder shown while a dispatched skill is in flight"
+    },
+    "unknown_input": {
+      "text": "I didn't recognise that input.",
+      "doc": "Bot reply when parseInput returns kind:'unknown' (non-slash or unmatched slash)"
+    },
+    "dispatch_error": {
+      "text": "Couldn't run that command.",
+      "doc": "Generic fallback when resolveDispatch returns an error shape"
+    },
+    "list_summary": {
+      "text": "{{count}} item(s):",
+      "doc": "Header for list replies (until step 2 ships per-item inline keyboards)"
+    },
+    "canopy_chat_op_pending": {
+      "text": "/{{opId}} is a chat-shell command — not wired on mobile yet.",
+      "doc": "Shown when the user invokes a basis-host op (/help, /threads, /settings, …) that webMain routes via localBuiltins; the RN port is a later #253 sub-step"
+    },
+    "list_empty": {
+      "text": "(no items)",
+      "doc": "Shown inside a list-kind bubble when items is empty"
+    },
+    "button_tap": {
+      "text": "{{label}} → {{item}}",
+      "doc": "Synthetic user-bubble shown when a row button is tapped (#253 step 2 — label is the button label, item the targeted item id)"
+    },
+    "followup_prompt": {
+      "text": "What's your {{param}}? (for /{{opId}})",
+      "doc": "Generic fallback prompt when a row-tap dispatch returns needsForm and the op doesn't have an op-specific entry in pickPromptKey (#253 step 4)"
+    },
+    "followup_prompt_respond_to_item_body": {
+      "text": "What help are you offering?",
+      "doc": "Friendlier prompt for [Help with] on a stoop post (respondToItem.body) — picked via pickPromptKey in src/core/followUp.js"
+    },
+    "form_title": {
+      "text": "Complete /{{opId}}",
+      "doc": "Title at the top of the multi-field form bubble (#253 step 6)"
+    },
+    "form_submit": {
+      "text": "Submit",
+      "doc": "Submit button on the multi-field form bubble"
+    },
+    "form_label_body": {
+      "text": "Body",
+      "doc": "Label for the 'body' field — used by respondToItem etc."
+    },
+    "form_label_title": {
+      "text": "Title",
+      "doc": "Label for the 'title' field"
+    },
+    "form_label_name": {
+      "text": "Name",
+      "doc": "Label for the 'name' field"
+    },
+    "form_label_text": {
+      "text": "Text",
+      "doc": "Label for the 'text' field"
+    },
+    "form_label_when": {
+      "text": "When",
+      "doc": "Label for the 'when' field — calendar/availability ops"
+    },
+    "form_label_audience": {
+      "text": "Audience",
+      "doc": "Label for the 'audience' field"
+    },
+    "download_not_wired": {
+      "text": "This file has no inline bytes to save — file id: {{fileId}}",
+      "doc": "[Download] tapped but the rendered row carries no embed.snapshot (#266)"
+    },
+    "embed_unnamed_file": {
+      "text": "(unnamed file)",
+      "doc": "Fallback title for a file-card embed with no name (#270)"
+    },
+    "embed_untitled_event": {
+      "text": "(untitled event)",
+      "doc": "Fallback title for a time-card embed with no title (#270)"
+    },
+    "download_saving": {
+      "text": "Saving {{name}}…",
+      "doc": "[Download] in flight — expo-file-system writeAsStringAsync is running (#266)"
+    },
+    "download_saved": {
+      "text": "✓ Saved {{name}} to the app's Documents folder.",
+      "doc": "[Download] succeeded.  Was previously showing the file:// uri which read as garbage to users (A9 real-device follow-up 2026-05-27)"
+    },
+    "brief_empty": {
+      "text": "Nothing to brief today.",
+      "doc": "Fallback when /brief has no sections to show (A3 real-device follow-up 2026-05-27)"
+    },
+    "record_empty": {
+      "text": "(no fields)",
+      "doc": "Fallback when a record-shape reply has no fields (C2 follow-up 2026-05-27)"
+    },
+    "buurt_created": {
+      "text": "✓ Buurt \"{{name}}\" created.",
+      "doc": "/create-group success message (C1 follow-up 2026-05-27)"
+    },
+    "dm_send_failed": {
+      "text": "Couldn't send DM: {{error}}",
+      "doc": "Free-text in a DM thread failed to send via NKN"
+    },
+    "scan_heading": {
+      "text": "Scan a QR code",
+      "doc": "QrScannerModal title"
+    },
+    "scan_subheading": {
+      "text": "Point the camera at a stoop-contact:// or stoop-invite:// QR. You can also paste it.",
+      "doc": "QrScannerModal under-camera hint"
+    },
+    "scan_perm_rationale": {
+      "text": "basis needs camera access to scan QR codes.",
+      "doc": "Permission rationale on QR scanner"
+    },
+    "scan_grant_perm": {
+      "text": "Grant camera access",
+      "doc": "Grant-permission button label on QR scanner"
+    },
+    "scan_paste_link": {
+      "text": "Paste instead",
+      "doc": "Toggle for paste fallback on QR scanner"
+    },
+    "scan_paste_placeholder": {
+      "text": "Paste a stoop-contact:// or stoop-invite:// URL",
+      "doc": "Placeholder in paste input"
+    },
+    "scan_paste_submit": {
+      "text": "Continue",
+      "doc": "Submit button on paste input"
+    },
+    "scan_unknown": {
+      "text": "Unrecognised QR. Expected stoop-contact:// or stoop-invite://.",
+      "doc": "Hint when classifier returns kind:unknown"
+    },
+    "scan_contact_added": {
+      "text": "✓ Contact added.",
+      "doc": "Bot bubble after stoop-contact:// scan + addContactFromQr succeeds"
+    },
+    "scan_invite_open": {
+      "text": "Opening join-buurt wizard with scanned invite…",
+      "doc": "Bot bubble before opening joinGroup wizard with pre-filled invite"
+    },
+    "scan_failed": {
+      "text": "Scan failed: {{error}}",
+      "doc": "Substrate error after scan"
+    },
+    "download_save_failed": {
+      "text": "Save failed: {{error}}",
+      "doc": "[Download] hit a filesystem error (#266)"
+    },
+    "file": {
+      "open": {
+        "text": "Open",
+        "doc": "E1 — file-reply card: open the file URL in a new tab."
+      },
+      "unnamed": {
+        "text": "Untitled file",
+        "doc": "E1 — file-reply card fallback name when none is given."
+      }
+    },
+    "nav": {
+      "openInFull": {
+        "text": "Open in full",
+        "doc": "E5 — record/mini-page bubble: open the card in a full-height detail modal."
+      }
+    }
+  },
+  "responder": {
+    "header_offer_of_help": {
+      "text": "📩 Offer of help on your post",
+      "doc": "Header of the responder-card bubble (inbound help-with-response, #271)"
+    },
+    "btn_accept": {
+      "text": "Accept",
+      "doc": "[Accept] button on responder card"
+    },
+    "btn_decline": {
+      "text": "Decline",
+      "doc": "[Decline] button on responder card"
+    },
+    "btn_counter": {
+      "text": "Counter",
+      "doc": "[Counter] button on responder card — opens an inline counter-offer prompt"
+    },
+    "accepting": {
+      "text": "Accepting…",
+      "doc": "Pending bubble while acceptResponder is in flight"
+    },
+    "accepted": {
+      "text": "✓ Accepted — both sides notified",
+      "doc": "Bot bubble after Accept succeeds + help-with-accepted envelope sent"
+    },
+    "accept_failed": {
+      "text": "Accept failed: {{error}}",
+      "doc": "Bot bubble when acceptResponder substrate call rejects"
+    },
+    "declined": {
+      "text": "✗ Declined",
+      "doc": "Bot bubble after Decline (no substrate call; fires help-with-declined envelope)"
+    }
+  },
+  "dm": {
+    "counter_prompt": {
+      "text": "Reply with a counter-offer in this DM.",
+      "doc": "Inline prompt bubble shown after [Counter] tap on responder-card (#271)"
+    }
+  },
+  "nav": {
+    "chat": {
+      "text": "Chat",
+      "doc": "Bottom-tab label for the main chat view"
+    },
+    "threads": {
+      "text": "Threads",
+      "doc": "Bottom-tab label for the thread sidebar"
+    },
+    "settings": {
+      "text": "Settings",
+      "doc": "Bottom-tab label for the settings screen"
+    }
+  },
+  "threads": {
+    "drawer_title": {
+      "text": "Threads",
+      "doc": "Title at the top of the thread-drawer modal (#253 step 5)"
+    },
+    "drawer_open_a11y": {
+      "text": "Open thread drawer",
+      "doc": "a11y label for the hamburger button that opens the drawer"
+    },
+    "new_placeholder": {
+      "text": "New thread name…",
+      "doc": "Placeholder in the create-thread TextInput inside the drawer"
+    },
+    "message_count": {
+      "text": "{{count}} messages",
+      "doc": "Per-thread message count shown under the name in the drawer list"
+    },
+    "help_with_thread_name": {
+      "text": "Help: {{itemId}}",
+      "doc": "Default name for the spawned thread when [Help with] is tapped (#253 step 7)"
+    },
+    "dm_thread_name": {
+      "text": "DM: {{peerId}}",
+      "doc": "Default name for the spawned thread when [Start DM] is tapped (#253 step 7)"
+    }
+  },
+  "boot": {
+    "loading": {
+      "text": "Booting agents…",
+      "doc": "Shown while the in-process bundle composes"
+    },
+    "agents_ready": {
+      "text": "Agents ready",
+      "doc": "a11y announcement when boot finishes"
+    },
+    "boot_failed": {
+      "text": "Boot failed: {{message}}",
+      "doc": "Error banner when agentBundle throws; {{message}} interpolated"
+    },
+    "transport_ready": {
+      "text": "Mesh transport ready",
+      "doc": "Shown when NknTransport completes its initial connect"
+    },
+    "agent_wiring_failed": {
+      "text": "Could not wire agent: {{message}}",
+      "doc": "Shown when createRealHouseholdAgent throws on V1 boot"
+    }
+  },
+  "rn": {
+    "shell_stub_intro": {
+      "text": "RN composition shell — V0 skeleton.",
+      "doc": "Placeholder body until ChatScreen renders real content"
+    }
+  },
+  "slash": {
+    "fab_a11y": {
+      "text": "Open slash commands",
+      "doc": "Accessibility label for the bottom-right slash FAB (#241)"
+    },
+    "modal_placeholder": {
+      "text": "Type a slash command…",
+      "doc": "Placeholder shown inside the slash-FAB's TextInput when empty"
+    }
+  },
+  "scan_qr": {
+    "not_available": {
+      "text": "QR scanner not available on this device.",
+      "doc": "Defensive — localBuiltins fired but openQrScanner wasn't wired"
+    },
+    "opening": {
+      "text": "Opening QR scanner…",
+      "doc": "Returned to chat when /scan-qr fires; the modal then takes over"
+    }
+  },
+  "logs": {
+    "panel_title": {
+      "text": "Logs",
+      "doc": "Title of the LogsPanel modal (#259)"
+    },
+    "panel_subtitle": {
+      "text": "{{count}} recent event(s)",
+      "doc": "Subtitle under the title showing event count"
+    },
+    "panel_empty": {
+      "text": "No events logged yet.",
+      "doc": "Empty-state when EventLog has no entries"
+    },
+    "no_log": {
+      "text": "Logs are not available on this device yet.",
+      "doc": "Returned by localBuiltins.logs when eventLog dep is missing"
+    },
+    "empty": {
+      "text": "No events match those filters.",
+      "doc": "Returned by localBuiltins.logs when query returns 0 events"
+    },
+    "heading": {
+      "text": "{{count}} event(s):",
+      "doc": "Heading shown above an inline /logs list result"
+    },
+    "muted": {
+      "text": "Muted {{app}}/{{type}}.",
+      "doc": "Confirmation after /logs --mute=app:type"
+    },
+    "panel_opened": {
+      "text": "Logs panel opened.",
+      "doc": "Echoed back when a bare /logs opens the side-panel"
+    }
+  },
+  "sync": {
+    "row_ago": {
+      "text": "{{ago}} ago",
+      "doc": "Per-row staleness badge on list items (renderer.js → formatLastSync; {{ago}} comes pre-formatted as '2h' / '30m' / etc. via relativeAgo)"
+    },
+    "saved_locally": {
+      "text": "saved locally — awaiting peer sync",
+      "doc": "Decentralized sync hint when 0 peers are reachable yet"
+    },
+    "synced_to": {
+      "text": "synced to {{ok}} of {{total}}",
+      "doc": "Decentralized sync hint — N of M peers confirmed"
+    },
+    "pending": {
+      "text": "{{count}} pending",
+      "doc": "Decentralized sync hint — count of peers not yet confirmed"
+    },
+    "unreachable": {
+      "text": "{{count}} unreachable ({{list}})",
+      "doc": "Decentralized sync hint — count + comma-separated WebIDs"
+    },
+    "podless_empty": {
+      "text": "no peers polled yet",
+      "doc": "Pod-less sync hint — empty lastSeen map"
+    },
+    "podless": {
+      "text": "{{count}} peers · last seen {{ago}} ago",
+      "doc": "Pod-less sync hint — count + relative-ago of oldest peer"
+    }
+  },
+  "common": {
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Generic cancel-button label (slash FAB modal)"
+    },
+    "send": {
+      "text": "Send",
+      "doc": "Generic send-button label (slash FAB modal)"
+    },
+    "next": {
+      "text": "Next →",
+      "doc": "Advance-step button in wizards"
+    },
+    "back": {
+      "text": "← Back",
+      "doc": "Previous-step button in wizards"
+    },
+    "done": {
+      "text": "Done",
+      "doc": "Final dismiss after wizard success"
+    },
+    "consequences": {
+      "text": "Consequences of this choice",
+      "doc": "N2 — ⓘ tooltip/aria label on a radio option that reveals its consequence."
+    }
+  },
+  "wizards": {
+    "dispute": {
+      "step_raise": {
+        "text": "Raise",
+        "doc": "Step-1 label in dispute wizard stepper (#258)"
+      },
+      "step_propose": {
+        "text": "Propose",
+        "doc": "Step-2 label"
+      },
+      "step_file": {
+        "text": "File",
+        "doc": "Step-3 label"
+      },
+      "raise_title": {
+        "text": "Raise a dispute",
+        "doc": "Step-1 title"
+      },
+      "raise_intro": {
+        "text": "Describe what happened. This goes to the buurt; admins and (if your conflict policy is mediation) two random members see it.",
+        "doc": "Step-1 intro"
+      },
+      "about_post_label": {
+        "text": "Disputing this post:",
+        "doc": "Header for the context card showing the disputed post"
+      },
+      "about_post_loading": {
+        "text": "(loading post text…)",
+        "doc": "Placeholder shown until loadAboutPostText resolves"
+      },
+      "about_post_optional": {
+        "text": "Related post id (optional)",
+        "doc": "Field label when no postId pre-filled"
+      },
+      "about_post_placeholder": {
+        "text": "leave blank for general dispute",
+        "doc": "Field placeholder"
+      },
+      "summary_label": {
+        "text": "What happened?",
+        "doc": "Step-1 textarea label"
+      },
+      "summary_placeholder": {
+        "text": "Be specific. Avoid naming third parties unless necessary.",
+        "doc": "Step-1 textarea placeholder"
+      },
+      "escalation_label": {
+        "text": "Preferred escalation",
+        "doc": "Radio group label"
+      },
+      "propose_title": {
+        "text": "Propose a resolution",
+        "doc": "Step-2 title"
+      },
+      "propose_intro": {
+        "text": "What would resolve this for you? Even if you're not sure, write what would feel \"good enough\" so the mediator has a starting point.",
+        "doc": "Step-2 intro"
+      },
+      "proposal_label": {
+        "text": "Proposed resolution",
+        "doc": "Step-2 textarea label"
+      },
+      "proposal_placeholder": {
+        "text": "e.g. \"an apology + agreement not to use my tools without asking\"",
+        "doc": "Step-2 textarea placeholder"
+      },
+      "file_title": {
+        "text": "File the dispute",
+        "doc": "Step-3 title"
+      },
+      "file_intro": {
+        "text": "Review + confirm. Filed disputes are visible to admins (and mediators if you picked mediation). You can withdraw via /leave-group → re-join, or via a follow-up post.",
+        "doc": "Step-3 intro"
+      },
+      "review_summary": {
+        "text": "Summary",
+        "doc": "Review row label"
+      },
+      "review_about_post": {
+        "text": "About post",
+        "doc": "Review row label"
+      },
+      "review_escalation": {
+        "text": "Escalation",
+        "doc": "Review row label"
+      },
+      "review_proposal": {
+        "text": "Proposed resolution",
+        "doc": "Review row label"
+      },
+      "substrate_warn": {
+        "text": "⚠️ V0 substrate gap: this files as a stoop post with kind:dispute. Full mediation flow (raiseDispute → proposeResolution → acceptResolution) lands when stoop ships those skills.",
+        "doc": "Warning banner about the substrate gap"
+      },
+      "filing": {
+        "text": "Filing dispute…",
+        "doc": "Activity indicator label on Step-3 while submit is in flight"
+      },
+      "file_button": {
+        "text": "File",
+        "doc": "Final submit button"
+      },
+      "filed_message": {
+        "text": "✓ Dispute filed.",
+        "doc": "Bot bubble shown when the dispatch returns from onDispatched"
+      },
+      "success_title": {
+        "text": "✓ Dispute filed",
+        "doc": "Success step title"
+      },
+      "success_intro": {
+        "text": "Admins (and mediators if you picked mediation) will see it in the buurt feed.",
+        "doc": "Success step intro"
+      }
+    }
+  },
+  "mnemonic": {
+    "entry": {
+      "title": {
+        "text": "Restore your recovery phrase",
+        "doc": "Header on the 5.9b-followup BIP39 restore screen."
+      },
+      "lede": {
+        "text": "Type the 24 words you wrote down when you first set up the app. They'll bring back your identity and circles.",
+        "doc": "Helper text under the title."
+      },
+      "placeholder": {
+        "text": "linen field garden …",
+        "doc": "Sample text in the multi-line input."
+      },
+      "wordCount": {
+        "text": "{{count}} / {{total}} words",
+        "doc": "Live word-count nudge under the input."
+      },
+      "submit": {
+        "text": "Restore",
+        "doc": "Primary CTA on the entry screen."
+      },
+      "cancel": {
+        "text": "Back",
+        "doc": "Secondary CTA → returns to the welcome screen."
+      },
+      "error": {
+        "empty": {
+          "text": "Type your 24-word recovery phrase to continue.",
+          "doc": "Shown when input is empty/whitespace."
+        },
+        "wrong-length": {
+          "text": "A recovery phrase is 24 words. Check spaces and try again.",
+          "doc": "Word count != 24."
+        },
+        "invalid": {
+          "text": "That doesn't look like a valid recovery phrase. Check the spelling of each word.",
+          "doc": "BIP39 wordlist / checksum failed."
+        },
+        "storage": {
+          "text": "Couldn't save your identity. Try again, or restart the app and reopen this screen.",
+          "doc": "AsyncStorage write threw."
+        }
+      }
+    },
+    "create": {
+      "kicker": {
+        "text": "Save your key",
+        "doc": "Small uppercase kicker above the title (board 3A · P6.9)."
+      },
+      "title": {
+        "text": "Write these words down.",
+        "doc": "Header on the first-run mnemonic display."
+      },
+      "lede": {
+        "text": "Without these words you can't get back to your things if your phone is lost. We don't have them.",
+        "doc": "Helper text — explains why this matters."
+      },
+      "unavailable": {
+        "text": "Recovery phrase not yet available.",
+        "doc": "Shown when the host hasn't been able to read the vault."
+      },
+      "written": {
+        "text": "Written down",
+        "doc": "Primary CTA — persists the ack."
+      },
+      "photo": {
+        "text": "Photo taken",
+        "doc": "Secondary CTA — persists the ack."
+      },
+      "later": {
+        "text": "Later",
+        "doc": "Tertiary CTA — leaves the ack off so a future banner can re-nudge."
+      }
+    }
+  },
+  "reply": {
+    "bulk_no_list": {
+      "text": "No recent list to apply “all” to — run a list command first.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
+    }
+  }
+}

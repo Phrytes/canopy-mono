@@ -1,22 +1,22 @@
 # Changelog — @onderling-app/tasks-v0
 
-## [Unreleased] — canopy-chat browser integration (2026-05-23, `ab6f32f`)
+## [Unreleased] — basis browser integration (2026-05-23, `ab6f32f`)
 
 New export: `@onderling-app/tasks-v0/browser` →
 `createBrowserTasksAgent({bus, identityVault, circleConfig, label})`.
 
-Lets canopy-chat compose a real Circle agent in-process (no bin/
+Lets basis compose a real Circle agent in-process (no bin/
 launcher needed; tasks-v0/src has zero node imports).  Replaces
-canopy-chat's ~210 lines of mock task handlers with the actual
+basis's ~210 lines of mock task handlers with the actual
 110-skill circle agent on a shared InternalBus.
 
 Plan + per-app integration details:
-`Project Files/canopy-chat/integration-plan-2026-05-23.md` §
-"Slice 1: tasks-v0 → canopy-chat browser".
+`Project Files/basis/integration-plan-2026-05-23.md` §
+"Slice 1: tasks-v0 → basis browser".
 
 122/122 tasks-v0 tests still green; no app-side changes — just a
 new browser entry that wraps the existing `createCircleAgent` with
-the minimal opts canopy-chat needs.
+the minimal opts basis needs.
 
 ## [Unreleased] — Slice B.1 (2026-05-20) — dag.html via renderWeb (view-only)
 

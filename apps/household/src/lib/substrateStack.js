@@ -5,8 +5,8 @@
  * "Household twin of Tasks-v0's" copy — invariant-#3 drift; consolidated
  * 2026-07-09). This shim preserves Household's DELIBERATE layering: the
  * notify-envelope **transport adapter is INJECTED**, never built from a core
- * `Agent` — keeping `apps/household` free of any canopy-chat dependency and
- * of `@onderling/core`'s `Agent`. The host (canopy-chat) owns the secure-mesh
+ * `Agent` — keeping `apps/household` free of any basis dependency and
+ * of `@onderling/core`'s `Agent`. The host (basis) owns the secure-mesh
  * wire and passes it in; with no agent here, `deviceId` is a hard
  * requirement (no `agent.address` fallback). Refs: OBJ-2 / S1a.
  *

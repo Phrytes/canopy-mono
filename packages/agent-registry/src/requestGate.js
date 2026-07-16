@@ -4,7 +4,7 @@
 // This is the PURE gate logic ONLY. It computes, from a Request + the user's disclosure
 // decision + the governed-request check, exactly what would leave the device and a truthful
 // receipt of it. The actual interception of an external `{opId,args}` dispatch and the
-// on-screen receipt/banner live in the canopy-chat shell — a LATER, separate step. Nothing
+// on-screen receipt/banner live in the basis shell — a LATER, separate step. Nothing
 // here dispatches, transports, or renders; no app import.
 //
 // The gate combines two orthogonal decisions:

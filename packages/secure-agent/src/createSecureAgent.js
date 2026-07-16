@@ -7,7 +7,7 @@
  * identity-resolver / capability-tokens / audit-log / groups /
  * PFS — each as a checkbox flag, not manual wiring.
  *
- * See Project Files/canopy-chat/security-roadmap-2026-05-23.md.
+ * See Project Files/basis/security-roadmap-2026-05-23.md.
  *
  * # What lands in S0 (this file)
  *
@@ -94,7 +94,7 @@ import { loadAuditLog }       from './auditLog.js';
  *
  * @property {object}  [vault]                  Pre-built Vault (e.g. VaultMemory for tests)
  * @property {string}  [identityVaultPrefix]    Default 'sa-id:'
- * @property {object}  [bus]                    Pre-built InternalBus — share when this agent needs to talk to others in-process (e.g. canopy-chat's host+chat topology).  Default: factory builds its own siloed bus.
+ * @property {object}  [bus]                    Pre-built InternalBus — share when this agent needs to talk to others in-process (e.g. basis's host+chat topology).  Default: factory builds its own siloed bus.
  * @property {string}  [passphrase]             S3 — wraps vault with AES-GCM via PBKDF2 (browser/IndexedDB)
  * @property {boolean|object} [webAuthnUnlock]  S3 — true | { rpId, prfSalt, userName, ... }
  *
@@ -214,7 +214,7 @@ export async function createSecureAgent(opts = {}) {
   // ─── Agent on an InternalBus ─────────────────────────────────────
   // Default: factory builds its own siloed bus (single-agent topology).
   // Override: pass opts.bus when this agent must talk to other in-process
-  // agents (e.g. canopy-chat's host+chat topology — chatAgent comes from
+  // agents (e.g. basis's host+chat topology — chatAgent comes from
   // the factory; hostAgent is built manually; both share the bus).
   const bus = opts.bus ?? new InternalBus();
   const transport = new InternalTransport(bus, identity.pubKey);
@@ -288,7 +288,7 @@ export async function createSecureAgent(opts = {}) {
   });
 
   // ─── 5.7c — circle override enforcement (chat-off + agent-block) ──
-  // Host-injected accessors let the substrate (canopy-chat v2) consult
+  // Host-injected accessors let the substrate (basis v2) consult
   // its GroupsIndex + per-circle override store + per-circle policy
   // store without secure-agent knowing about them.  Only the addr→
   // webid resolution + the decision boundary live here.
@@ -588,7 +588,7 @@ export async function createSecureAgent(opts = {}) {
   };
 
   // Late-binding hook for onPeerMessage: factory opts may not have it
-  // (canopy-chat-style flow: construct first, wire UI later).  Caller
+  // (basis-style flow: construct first, wire UI later).  Caller
   // can pass onPeerMessage to connect() OR set it via setPeerMessageHandler().
   let onPeerMessageFn = (typeof opts.onPeerMessage === 'function')
     ? opts.onPeerMessage : null;
@@ -958,7 +958,7 @@ export async function createSecureAgent(opts = {}) {
    * Override via `opts.retryDelays: number[]` per-call (e.g. `[]`
    * to disable retry).  Non-handshake errors throw immediately.
    *
-   * Triggered by 2026-05-24 canopy-chat user reports of:
+   * Triggered by 2026-05-24 basis user reports of:
    *   - "No pubKey registered for recipient … — send HI first"
    *   - "did not respond with HI within 5000ms"
    * Both surface because HI is asynchronous + the very first send
@@ -1438,9 +1438,9 @@ function pickCircleEnforcement(opt) {
 
 /**
  * 5.7c — inlined predicate logic.  Duplicates `isInboundChatOff` from
- * apps/canopy-chat/src/v2/circleEnforcement.js so secure-agent doesn't
- * have to depend on canopy-chat (layering: substrates may not import
- * apps).  Keep the two in sync; canopy-chat's substrate version is the
+ * apps/basis/src/v2/circleEnforcement.js so secure-agent doesn't
+ * have to depend on basis (layering: substrates may not import
+ * apps).  Keep the two in sync; basis's substrate version is the
  * source of truth + has the full test matrix.
  */
 async function isInboundChatOffLocal({ peerWebid, groupsIndex, getOverride } = {}) {
@@ -1461,7 +1461,7 @@ async function isInboundChatOffLocal({ peerWebid, groupsIndex, getOverride } = {
 
 /**
  * 5.7c — inlined predicate logic mirroring `isInboundAgentBlocked`
- * from apps/canopy-chat/src/v2/circleEnforcement.js.
+ * from apps/basis/src/v2/circleEnforcement.js.
  */
 async function isInboundAgentBlockedLocal({
   peerWebid, circleId, memberMap, getCirclePolicy, getOverride,

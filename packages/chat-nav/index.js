@@ -1,7 +1,7 @@
 /**
  * @onderling/chat-nav — chat ⇄ side-panel navigation protocol (B.1).
  *
- * Design choice B.1 (per `DESIGN-canopy-chat-journeys.md`): every
+ * Design choice B.1 (per `DESIGN-basis-journeys.md`): every
  * side-panel page (settings, logs, file-dirs) that the chat shell
  * links to should:
  *
@@ -29,7 +29,7 @@
  *
  * The chat shell, on the other side, ALWAYS appends
  * `?returnTo=<activeThread.id>` when generating links to side-panel
- * pages — wiring in canopy-chat's web/main.js when those links land.
+ * pages — wiring in basis's web/main.js when those links land.
  */
 
 export { getReturnTo, useReturnToChat, buildChatUrl } from './src/returnTo.js';

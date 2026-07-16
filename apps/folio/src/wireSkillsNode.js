@@ -15,7 +15,7 @@
  * folio has NO long-lived node-side `core.Agent` process today — the HTTP
  * server (`src/server/routes.js`) + the CLI own these ops directly.  So, exactly
  * like the browser side EXPOSES `buildFolioSkills` + `registerFolioAgent` for
- * the consuming composition (canopy-chat's browser agent boot) rather than
+ * the consuming composition (basis's browser agent boot) rather than
  * spinning up its own agent, this module EXPOSES `buildFolioNodeSkills` for the
  * eventual node composition (a `folio serve` agent, or a host chat agent that
  * embeds folio) to register on its agent once it has a live SyncEngine.  A new

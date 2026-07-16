@@ -5,7 +5,7 @@
  * These are the `runtime:'node'` manifest ops — folio's local-SyncEngine
  * control surface (`syncOnce`, `watchStart`, `watchStop`, `forceRepush`,
  * `deleteLocally`).  Unlike the browser cores (relocatable pod-file ops that
- * canopy-chat exposes in its browser bundle), these drive the real
+ * basis exposes in its browser bundle), these drive the real
  * `@onderling/sync-engine` `SyncEngine` — chokidar watcher, save-detection,
  * fs ↔ pod reconciliation — which needs Node + the local filesystem in reach.
  * They therefore live in a SEPARATE file from the browser cores so nothing on

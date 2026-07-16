@@ -85,7 +85,7 @@ The relay builds from the **repo root** with `deploy/relay/Dockerfile`
 
 - Relay transport: `RelayTransport({ relayUrl: 'wss://<app>.koyeb.app' })`
 - Media (Vite web client): `VITE_CIRCLE_MEDIA_EDGE_URL=https://<app>.koyeb.app/blob-gate`
-  (confirmed consumed at `apps/canopy-chat/web/v2/circleApp.js`).
+  (confirmed consumed at `apps/basis/web/v2/circleApp.js`).
 
 **Caveats to keep in mind:** cold start after idle; no persistent disk (relay
 offline-queue/push-registry reset on the scale-to-zero restart — matches the
@@ -262,7 +262,7 @@ To turn it on, set ONE variable in `deploy/.env`:
 
 ```bash
 # your DEVICE's pubKey — the ONLY key allowed to manage this node.
-# (canopy-chat → your identity; or read the companion's own host key from its logs.)
+# (basis → your identity; or read the companion's own host key from its logs.)
 COMPANION_MANAGE_OWNER_PUBKEY=<your-device-pubkey>
 ```
 
@@ -270,7 +270,7 @@ Then `docker compose … up -d` (B7). The overlay already wires the companion to
 on `companion:8790` (internal only — never published to the host) and Caddy to route
 `/manage` there. Auth is a **pairing flow, never a password**: open
 `https://<RELAY_DOMAIN>/manage`, it shows a code, you **approve that code from your
-phone** (canopy-chat → your companion node → approve), and the browser gets a scoped,
+phone** (basis → your companion node → approve), and the browser gets a scoped,
 revocable session token. Leave `COMPANION_MANAGE_OWNER_PUBKEY` empty and management
 stays off (the `/manage` route simply has no upstream).
 

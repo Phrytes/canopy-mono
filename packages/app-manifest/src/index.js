@@ -84,7 +84,7 @@ export { paramsToJsonSchema } from './paramsToJsonSchema.js';
 export { renderChat }          from './renderChat.js';
 export { renderSlash }         from './renderSlash.js';
 // renderGate — manifest → deterministic token-gate rules (the pre-LLM half; shared by the
-// household TG-bot + the canopy-chat circle bot). Wraps renderSlash into the gate rule shape.
+// household TG-bot + the basis circle bot). Wraps renderSlash into the gate rule shape.
 export { renderGate }          from './renderGate.js';
 // renderCoverage — manifest → surface-coverage matrix (op × chat/slash/gate/web-mobile/inline):
 // scan what's wired where, find gaps, plan inline menus.

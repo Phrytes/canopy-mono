@@ -1,6 +1,6 @@
 # H4 — tasks-v0
 
-> **Direction (decided 2026-06-11):** this app will **dissolve into canopy-chat**. Its `manifest.js`
+> **Direction (decided 2026-06-11):** this app will **dissolve into basis**. Its `manifest.js`
 > stays (the source of truth all projectors read), but the `tasks` name becomes a **navigation label**
 > for this functionality inside the unified chat surface — not a separate app/build/shell. See the root
 > README's *Direction* note.

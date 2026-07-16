@@ -64,7 +64,7 @@ layout) — a single running file is lower-ceremony and reads as a history top-t
 **Context:** B's gate authorises `(verb × noun)` capabilities. `capabilitiesOf(manifest)` can get a manifest's
 capability set two ways: DECLARED (`manifest.nouns[noun].atoms`) and DERIVED (read off each op's verb + the noun
 it names via `appliesTo.type` or a `type`-enum param). Deriving from ops is convenient but noisy — a broad
-`appliesTo` mints phantom capabilities (canopy-chat `submit·nkn` / `List·en` from value-enum params; stoop
+`appliesTo` mints phantom capabilities (basis `submit·nkn` / `List·en` from value-enum params; stoop
 `cancelRequest {type:'*'}` blasting `remove` onto internal itemTypes) that cluttered the freedom matrix.
 
 **Decision:** when a manifest DECLARES `nouns`, that declaration IS its member-facing capability surface — the
@@ -114,7 +114,7 @@ both cheap and singular, so there is one code path to keep correct.
 
 **Consequences:** the inter-agent **wire is permanent** — it carries remote skill-acquisition, circle-sync, and
 the bot / remote-handler integration tiers (identity + permission live in the envelope); "apps dissolve into
-canopy-chat" is a **UI** consolidation, not removal of the serialization substrate. Follow-on: household regains a
+basis" is a **UI** consolidation, not removal of the serialization substrate. Follow-on: household regains a
 first-class wire route via the uniform route (retire the legacy household agent); tasks/stoop extract pure cores
 over their stores (dropping the synthetic-envelope round-trip).
 
@@ -126,7 +126,7 @@ over their stores (dropping the synthetic-envelope round-trip).
 
 **Context:** the apps roster listed `feedback-pipeline` alongside client apps like household. But feedback hosts a
 **live Solid-pod server**, runs HTTP services (portal / activation / MCP), has a TEE aggregation boundary, and
-ships a full Docker deploy stack — none of which client apps have; canopy-chat only *consumes* it. The flat "apps"
+ships a full Docker deploy stack — none of which client apps have; basis only *consumes* it. The flat "apps"
 picture hid this.
 
 **Decision:** treat feedback as a **deployment / hosting layer** — server-side services + pod-hosting + rollout —
@@ -138,7 +138,7 @@ repo**.
 client app, obscuring the client/server boundary the eventual repo split runs along.
 
 **Consequences:** a clear-splits-now step (before the repo split): carve **`feedback-core`** (browser-safe, with
-an `exports` surface so canopy-chat stops deep-relative-importing) → **`feedback-server`** → **`feedback-deploy`**.
+an `exports` surface so basis stops deep-relative-importing) → **`feedback-server`** → **`feedback-deploy`**.
 Recorded as a distinct layer in the architecture + repository-layout docs.
 
 ---

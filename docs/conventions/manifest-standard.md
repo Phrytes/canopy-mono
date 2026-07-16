@@ -14,7 +14,7 @@ fails CI on drift. Issues carry a **code** (not a free string) so tooling and te
 > A manifest is conformant when `manifestConformance(m).ok === true`.
 
 The standard encodes only rules that are already TRUE of every app manifest (tasks-v0, stoop, household,
-calendar, folio, canopy-chat). It is green on `master` and goes red on a real regression. Rules the codebase
+calendar, folio, basis). It is green on `master` and goes red on a real regression. Rules the codebase
 does not universally hold to are deliberately **not** conformance failures — see "What is not a failure" below.
 
 ## The rules
@@ -43,7 +43,7 @@ rather than an implicit set the gate derives — the drift that let a broad `app
 capabilities on internal item types.
 
 The inverse also holds: a manifest with **no** noun-bearing atom op must **not** declare a `nouns` block
-(`nouns-vacuous` otherwise). This is the canopy-chat exemption made into a rule. canopy-chat is the
+(`nouns-vacuous` otherwise). This is the basis exemption made into a rule. basis is the
 shell/unifier manifest — every op is an app-level command (`help` / `settings` / `newthread` / …) that names no
 item noun, so there is nothing to curate. An empty `nouns:{}` would be worse than nothing: it flips the manifest
 to declared-authoritative, and a future `chat-thread` / `chat-message` op's capability would be silently
@@ -71,7 +71,7 @@ manifest.
 
 **Coverage gaps are not conformance failures either.** An op that declares a chat surface but no slash command
 is a legitimate coverage gap, tracked by the surface-coverage snapshot (`docs/surface-coverage.md` in
-canopy-chat), not a conformance violation. Conformance asks "does every declared surface project?"; coverage
+basis), not a conformance violation. Conformance asks "does every declared surface project?"; coverage
 asks "which surfaces are declared?". They are separate checks.
 
 ## Using it

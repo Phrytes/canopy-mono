@@ -18,7 +18,7 @@
  * Returns `[{ id, handler, visibility }]` — register each on a
  * `core.Agent` via `agent.register(id, handler, { visibility })`.
  *
- * NB: the eventual canopy-chat integration (composeManifests / realAgent)
+ * NB: the eventual basis integration (composeManifests / realAgent)
  * is a later step and is NOT wired here.
  */
 import { buildSkillsFromManifest } from '@onderling/sdk';

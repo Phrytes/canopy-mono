@@ -1,0 +1,597 @@
+{
+  "app": {
+    "name": {
+      "text": "basis",
+      "doc": "App-display in headers + over-scherm"
+    },
+    "tagline": {
+      "text": "Jouw buurt, jouw taken, jouw bestanden — één chat.",
+      "doc": "Splash + over-scherm"
+    }
+  },
+  "chat": {
+    "placeholder": {
+      "text": "Typ een slash-commando of bericht…",
+      "doc": "Input-placeholder"
+    },
+    "send": {
+      "text": "Verzend",
+      "doc": "Verzendknop-label"
+    },
+    "active_thread": {
+      "text": "Actieve thread",
+      "doc": "a11y label op actieve thread-titel"
+    },
+    "no_messages_yet": {
+      "text": "Nog geen berichten.",
+      "doc": "Lege thread"
+    },
+    "thinking": {
+      "text": "…",
+      "doc": "Placeholder terwijl een dispatch loopt"
+    },
+    "unknown_input": {
+      "text": "Ik herkende die invoer niet.",
+      "doc": "Bot-antwoord bij parseInput kind:'unknown'"
+    },
+    "dispatch_error": {
+      "text": "Kon dat commando niet uitvoeren.",
+      "doc": "Fallback bij resolveDispatch-fout"
+    },
+    "list_summary": {
+      "text": "{{count}} item(s):",
+      "doc": "Lijst-kop tot stap 2 inline-keyboards landt"
+    },
+    "canopy_chat_op_pending": {
+      "text": "/{{opId}} is een chat-shell-commando — nog niet bedraad op mobiel.",
+      "doc": "Toont wanneer een basis-host op (/help, /threads, /settings, …) gebruikt wordt; de RN-port is een latere #253-substap"
+    },
+    "list_empty": {
+      "text": "(geen items)",
+      "doc": "Toont in een list-bubble wanneer items leeg is"
+    },
+    "button_tap": {
+      "text": "{{label}} → {{item}}",
+      "doc": "Synthetische gebruiker-bubble bij een rij-knop tap (#253 stap 2)"
+    },
+    "followup_prompt": {
+      "text": "Wat is je {{param}}? (voor /{{opId}})",
+      "doc": "Generieke prompt bij needsForm zonder op-specifieke entry (#253 stap 4)"
+    },
+    "followup_prompt_respond_to_item_body": {
+      "text": "Welke hulp bied je aan?",
+      "doc": "Vriendelijkere prompt voor [Help met] op een stoop-post (respondToItem.body)"
+    },
+    "form_title": {
+      "text": "Voltooi /{{opId}}",
+      "doc": "Titel boven het multi-field formulier (#253 stap 6)"
+    },
+    "form_submit": {
+      "text": "Verstuur",
+      "doc": "Submit-knop in multi-field form bubble"
+    },
+    "form_label_body": {
+      "text": "Bericht",
+      "doc": "Label voor 'body' veld"
+    },
+    "form_label_title": {
+      "text": "Titel",
+      "doc": "Label voor 'title' veld"
+    },
+    "form_label_name": {
+      "text": "Naam",
+      "doc": "Label voor 'name' veld"
+    },
+    "form_label_text": {
+      "text": "Tekst",
+      "doc": "Label voor 'text' veld"
+    },
+    "form_label_when": {
+      "text": "Wanneer",
+      "doc": "Label voor 'when' veld — kalender/beschikbaarheid"
+    },
+    "form_label_audience": {
+      "text": "Publiek",
+      "doc": "Label voor 'audience' veld"
+    },
+    "download_not_wired": {
+      "text": "Dit bestand heeft geen inline data om op te slaan — bestand: {{fileId}}",
+      "doc": "[Download] aangetikt maar zonder embed.snapshot in de rij (#266)"
+    },
+    "embed_unnamed_file": {
+      "text": "(naamloos bestand)",
+      "doc": "Fallback-titel voor file-card embed zonder naam (#270)"
+    },
+    "embed_untitled_event": {
+      "text": "(naamloos evenement)",
+      "doc": "Fallback-titel voor time-card embed zonder titel (#270)"
+    },
+    "download_saving": {
+      "text": "Bezig met opslaan van {{name}}…",
+      "doc": "[Download] in uitvoering — expo-file-system writeAsStringAsync (#266)"
+    },
+    "download_saved": {
+      "text": "✓ {{name}} opgeslagen in de Documents-map van de app.",
+      "doc": "[Download] gelukt; voorheen de file:// uri getoond (A9 real-device follow-up 2026-05-27)"
+    },
+    "brief_empty": {
+      "text": "Geen samenvatting voor vandaag.",
+      "doc": "Fallback wanneer /brief geen secties heeft (A3 real-device follow-up 2026-05-27)"
+    },
+    "record_empty": {
+      "text": "(geen velden)",
+      "doc": "Fallback wanneer een record-shape geen velden heeft (C2 follow-up 2026-05-27)"
+    },
+    "buurt_created": {
+      "text": "✓ Buurt \"{{name}}\" aangemaakt.",
+      "doc": "/create-group success-bericht (C1 follow-up 2026-05-27)"
+    },
+    "dm_send_failed": {
+      "text": "DM verzenden mislukt: {{error}}",
+      "doc": "Free-text in een DM-thread kon niet via NKN worden verzonden"
+    },
+    "scan_heading": {
+      "text": "Scan een QR-code",
+      "doc": "QrScannerModal titel"
+    },
+    "scan_subheading": {
+      "text": "Richt de camera op een stoop-contact:// of stoop-invite:// QR. Je kunt ook plakken.",
+      "doc": "QrScannerModal hint onder camera"
+    },
+    "scan_perm_rationale": {
+      "text": "basis heeft camera-toegang nodig om QR-codes te scannen.",
+      "doc": "Permission rationale"
+    },
+    "scan_grant_perm": {
+      "text": "Geef toegang",
+      "doc": "Grant-permission knop"
+    },
+    "scan_paste_link": {
+      "text": "Plak in plaats daarvan",
+      "doc": "Toggle naar plak-fallback"
+    },
+    "scan_paste_placeholder": {
+      "text": "Plak een stoop-contact:// of stoop-invite:// URL",
+      "doc": "Placeholder in plak-input"
+    },
+    "scan_paste_submit": {
+      "text": "Doorgaan",
+      "doc": "Submit-knop op plak-input"
+    },
+    "scan_unknown": {
+      "text": "QR-code niet herkend. Verwacht: stoop-contact:// of stoop-invite://.",
+      "doc": "Hint bij kind:unknown"
+    },
+    "scan_contact_added": {
+      "text": "✓ Contact toegevoegd.",
+      "doc": "Bot-bericht na stoop-contact:// scan + addContactFromQr"
+    },
+    "scan_invite_open": {
+      "text": "Bezig met openen van de join-buurt-wizard…",
+      "doc": "Bot-bericht voordat joinGroup-wizard opent"
+    },
+    "scan_failed": {
+      "text": "Scan mislukt: {{error}}",
+      "doc": "Substrate-fout na scan"
+    },
+    "download_save_failed": {
+      "text": "Opslaan mislukt: {{error}}",
+      "doc": "[Download] kreeg een filesystem-fout (#266)"
+    },
+    "file": {
+      "open": {
+        "text": "Openen",
+        "doc": "E1 — file-reply card: open the file URL in a new tab."
+      },
+      "unnamed": {
+        "text": "Naamloos bestand",
+        "doc": "E1 — file-reply card fallback name when none is given."
+      }
+    },
+    "nav": {
+      "openInFull": {
+        "text": "Volledig openen",
+        "doc": "E5 — record/mini-page bubble: open the card in a full-height detail modal."
+      }
+    }
+  },
+  "responder": {
+    "header_offer_of_help": {
+      "text": "📩 Iemand biedt hulp aan op je bericht",
+      "doc": "Header van responder-card bubble (inbound help-with-response, #271)"
+    },
+    "btn_accept": {
+      "text": "Accepteer",
+      "doc": "[Accept] knop op responder card"
+    },
+    "btn_decline": {
+      "text": "Wijs af",
+      "doc": "[Decline] knop op responder card"
+    },
+    "btn_counter": {
+      "text": "Tegenvoorstel",
+      "doc": "[Counter] knop op responder card"
+    },
+    "accepting": {
+      "text": "Bezig met accepteren…",
+      "doc": "Pending bubble tijdens acceptResponder"
+    },
+    "accepted": {
+      "text": "✓ Geaccepteerd — beide kanten genotificeerd",
+      "doc": "Bot bubble na succesvolle accept"
+    },
+    "accept_failed": {
+      "text": "Accepteren mislukt: {{error}}",
+      "doc": "Bot bubble bij accept-fout"
+    },
+    "declined": {
+      "text": "✗ Afgewezen",
+      "doc": "Bot bubble na afwijzen"
+    }
+  },
+  "dm": {
+    "counter_prompt": {
+      "text": "Stuur je tegenvoorstel in deze DM.",
+      "doc": "Inline prompt na [Counter] op responder-card (#271)"
+    }
+  },
+  "nav": {
+    "chat": {
+      "text": "Chat",
+      "doc": "Onderste tab voor hoofdchat"
+    },
+    "threads": {
+      "text": "Threads",
+      "doc": "Onderste tab voor thread-overzicht"
+    },
+    "settings": {
+      "text": "Instellingen",
+      "doc": "Onderste tab voor instellingen"
+    }
+  },
+  "threads": {
+    "drawer_title": {
+      "text": "Threads",
+      "doc": "Titel boven aan de thread-drawer (#253 stap 5)"
+    },
+    "drawer_open_a11y": {
+      "text": "Open thread-overzicht",
+      "doc": "a11y label voor de hamburger-knop"
+    },
+    "new_placeholder": {
+      "text": "Naam van nieuwe thread…",
+      "doc": "Placeholder in de create-thread TextInput"
+    },
+    "message_count": {
+      "text": "{{count}} berichten",
+      "doc": "Aantal berichten per thread in de drawer"
+    },
+    "help_with_thread_name": {
+      "text": "Hulp: {{itemId}}",
+      "doc": "Standaardnaam voor gesplitste thread bij [Help met] (#253 stap 7)"
+    },
+    "dm_thread_name": {
+      "text": "DM: {{peerId}}",
+      "doc": "Standaardnaam voor gesplitste thread bij [Start DM] (#253 stap 7)"
+    }
+  },
+  "boot": {
+    "loading": {
+      "text": "Agents opstarten…",
+      "doc": "Tijdens in-process bundel-compositie"
+    },
+    "agents_ready": {
+      "text": "Agents klaar",
+      "doc": "a11y bij voltooide boot"
+    },
+    "boot_failed": {
+      "text": "Opstarten mislukt: {{message}}",
+      "doc": "Foutbanner bij agentBundle-throw; {{message}} ingevuld"
+    },
+    "transport_ready": {
+      "text": "Mesh-transport gereed",
+      "doc": "Na voltooide initiële NknTransport-connect"
+    },
+    "agent_wiring_failed": {
+      "text": "Kon agent niet bedraden: {{message}}",
+      "doc": "Bij createRealHouseholdAgent-fout tijdens V1 boot"
+    }
+  },
+  "rn": {
+    "shell_stub_intro": {
+      "text": "RN compositiel-shell — V0 skelet.",
+      "doc": "Placeholder tot ChatScreen echt rendert"
+    }
+  },
+  "slash": {
+    "fab_a11y": {
+      "text": "Slash-commando's openen",
+      "doc": "Toegankelijkheids-label voor de rechterhoek-FAB (#241)"
+    },
+    "modal_placeholder": {
+      "text": "Typ een slash-commando…",
+      "doc": "Placeholder in de slash-FAB-TextInput wanneer leeg"
+    }
+  },
+  "scan_qr": {
+    "not_available": {
+      "text": "QR-scanner niet beschikbaar op dit toestel.",
+      "doc": "Defensief — localBuiltins maar openQrScanner ontbreekt"
+    },
+    "opening": {
+      "text": "QR-scanner wordt geopend…",
+      "doc": "Retour na /scan-qr; modal neemt over"
+    }
+  },
+  "logs": {
+    "panel_title": {
+      "text": "Logboek",
+      "doc": "Titel van LogsPanel modal (#259)"
+    },
+    "panel_subtitle": {
+      "text": "{{count}} recente events",
+      "doc": "Sub-titel met aantal events"
+    },
+    "panel_empty": {
+      "text": "Nog geen events gelogd.",
+      "doc": "Lege-staat voor EventLog"
+    },
+    "no_log": {
+      "text": "Logboek nog niet beschikbaar op dit apparaat.",
+      "doc": "Bij ontbrekende eventLog dep"
+    },
+    "empty": {
+      "text": "Geen events met die filters.",
+      "doc": "Bij query met 0 results"
+    },
+    "heading": {
+      "text": "{{count}} event(s):",
+      "doc": "Inline /logs lijst-kop"
+    },
+    "muted": {
+      "text": "{{app}}/{{type}} gedempt.",
+      "doc": "Bevestiging na /logs --mute"
+    },
+    "panel_opened": {
+      "text": "Logboek geopend.",
+      "doc": "Bij bare /logs"
+    }
+  },
+  "sync": {
+    "row_ago": {
+      "text": "{{ago}} geleden",
+      "doc": "Rij-staleness-badge (renderer.js → formatLastSync)"
+    },
+    "saved_locally": {
+      "text": "lokaal opgeslagen — wacht op sync",
+      "doc": "Decentrale sync-hint zonder bereikbare peers"
+    },
+    "synced_to": {
+      "text": "gesynced naar {{ok}} van {{total}}",
+      "doc": "Decentrale sync-hint"
+    },
+    "pending": {
+      "text": "{{count}} in afwachting",
+      "doc": "Decentrale sync-hint"
+    },
+    "unreachable": {
+      "text": "{{count}} onbereikbaar ({{list}})",
+      "doc": "Decentrale sync-hint"
+    },
+    "podless_empty": {
+      "text": "nog geen peers gepolld",
+      "doc": "Pod-loze sync-hint — lege lastSeen-map"
+    },
+    "podless": {
+      "text": "{{count}} peers · laatst gezien {{ago}} geleden",
+      "doc": "Pod-loze sync-hint"
+    }
+  },
+  "common": {
+    "cancel": {
+      "text": "Annuleren",
+      "doc": "Generieke annuleren-knop (slash-FAB modal)"
+    },
+    "send": {
+      "text": "Verzend",
+      "doc": "Generieke verzendknop (slash-FAB modal)"
+    },
+    "next": {
+      "text": "Volgende →",
+      "doc": "Volgende-stap-knop in wizards"
+    },
+    "back": {
+      "text": "← Terug",
+      "doc": "Vorige-stap-knop in wizards"
+    },
+    "done": {
+      "text": "Klaar",
+      "doc": "Definitieve sluit-knop na wizard-succes"
+    },
+    "consequences": {
+      "text": "Gevolgen als je dit kiest",
+      "doc": "N2 — ⓘ tooltip/aria label on a radio option that reveals its consequence."
+    }
+  },
+  "wizards": {
+    "dispute": {
+      "step_raise": {
+        "text": "Melden",
+        "doc": "Stap-1 in dispute wizard (#258)"
+      },
+      "step_propose": {
+        "text": "Voorstel",
+        "doc": "Stap-2"
+      },
+      "step_file": {
+        "text": "Indienen",
+        "doc": "Stap-3"
+      },
+      "raise_title": {
+        "text": "Een conflict melden",
+        "doc": "Stap-1 titel"
+      },
+      "raise_intro": {
+        "text": "Beschrijf wat er gebeurde. Dit gaat naar de buurt; admins en (als jouw conflictbeleid bemiddeling is) twee willekeurige leden zien het.",
+        "doc": "Stap-1 intro"
+      },
+      "about_post_label": {
+        "text": "Conflict gaat over:",
+        "doc": "Header van de context-card"
+      },
+      "about_post_loading": {
+        "text": "(post-tekst laden…)",
+        "doc": "Placeholder tot loadAboutPostText resolved"
+      },
+      "about_post_optional": {
+        "text": "Gerelateerd post-id (optioneel)",
+        "doc": "Veldlabel zonder pre-fill"
+      },
+      "about_post_placeholder": {
+        "text": "leeg laten voor algemeen conflict",
+        "doc": "Veld-placeholder"
+      },
+      "summary_label": {
+        "text": "Wat is er gebeurd?",
+        "doc": "Stap-1 textarea-label"
+      },
+      "summary_placeholder": {
+        "text": "Wees specifiek. Noem derden alleen als nodig.",
+        "doc": "Stap-1 textarea-placeholder"
+      },
+      "escalation_label": {
+        "text": "Gewenste escalatie",
+        "doc": "Radio-groep-label"
+      },
+      "propose_title": {
+        "text": "Stel een oplossing voor",
+        "doc": "Stap-2 titel"
+      },
+      "propose_intro": {
+        "text": "Wat zou dit voor jou oplossen? Ook al weet je het niet zeker, schrijf wat \"goed genoeg\" zou voelen zodat de bemiddelaar een startpunt heeft.",
+        "doc": "Stap-2 intro"
+      },
+      "proposal_label": {
+        "text": "Voorgestelde oplossing",
+        "doc": "Stap-2 textarea-label"
+      },
+      "proposal_placeholder": {
+        "text": "bijv. \"een excuus + afspraak dat ze m'n gereedschap niet zonder vragen gebruiken\"",
+        "doc": "Stap-2 placeholder"
+      },
+      "file_title": {
+        "text": "Conflict indienen",
+        "doc": "Stap-3 titel"
+      },
+      "file_intro": {
+        "text": "Controleer + bevestig. Ingediende conflicten zijn zichtbaar voor admins (en bemiddelaars als je bemiddeling koos). Je kunt intrekken via /leave-group → opnieuw lid worden, of via een follow-up post.",
+        "doc": "Stap-3 intro"
+      },
+      "review_summary": {
+        "text": "Samenvatting",
+        "doc": "Review-rij-label"
+      },
+      "review_about_post": {
+        "text": "Over post",
+        "doc": "Review-rij-label"
+      },
+      "review_escalation": {
+        "text": "Escalatie",
+        "doc": "Review-rij-label"
+      },
+      "review_proposal": {
+        "text": "Voorgestelde oplossing",
+        "doc": "Review-rij-label"
+      },
+      "substrate_warn": {
+        "text": "⚠️ V0 substraat-gat: dit wordt ingediend als een stoop-post met kind:dispute. Volledige bemiddeling (raiseDispute → proposeResolution → acceptResolution) komt wanneer stoop die skills uitlevert.",
+        "doc": "Waarschuwingsbanner over substraat-gat"
+      },
+      "filing": {
+        "text": "Conflict indienen…",
+        "doc": "Activity indicator-label"
+      },
+      "file_button": {
+        "text": "Indienen",
+        "doc": "Eindknop"
+      },
+      "filed_message": {
+        "text": "✓ Conflict ingediend.",
+        "doc": "Bot-bubble na onDispatched"
+      },
+      "success_title": {
+        "text": "✓ Conflict ingediend",
+        "doc": "Success-stap titel"
+      },
+      "success_intro": {
+        "text": "Admins (en bemiddelaars als je bemiddeling koos) zien het in de buurt-feed.",
+        "doc": "Success-stap intro"
+      }
+    }
+  },
+  "mnemonic": {
+    "entry": {
+      "title": {
+        "text": "Herstel je herstelzin"
+      },
+      "lede": {
+        "text": "Typ de 24 woorden die je hebt opgeschreven toen je de app voor het eerst gebruikte. Ze halen je identiteit en kringen weer terug."
+      },
+      "placeholder": {
+        "text": "linnen veld tuin …"
+      },
+      "wordCount": {
+        "text": "{{count}} / {{total}} woorden"
+      },
+      "submit": {
+        "text": "Herstellen"
+      },
+      "cancel": {
+        "text": "Terug"
+      },
+      "error": {
+        "empty": {
+          "text": "Typ je herstelzin van 24 woorden om verder te gaan."
+        },
+        "wrong-length": {
+          "text": "Een herstelzin telt 24 woorden. Controleer de spaties en probeer opnieuw."
+        },
+        "invalid": {
+          "text": "Dit lijkt geen geldige herstelzin. Controleer de spelling van elk woord."
+        },
+        "storage": {
+          "text": "Opslaan lukte niet. Probeer het nogmaals of herstart de app."
+        }
+      }
+    },
+    "create": {
+      "kicker": {
+        "text": "Sleutel bewaren"
+      },
+      "title": {
+        "text": "Schrijf deze woorden op."
+      },
+      "lede": {
+        "text": "Zonder deze woorden kun je niet terug bij je dingen als je telefoon kwijt raakt. Wij hebben ze niet."
+      },
+      "unavailable": {
+        "text": "Herstelzin nog niet beschikbaar."
+      },
+      "written": {
+        "text": "Opgeschreven"
+      },
+      "photo": {
+        "text": "Foto gemaakt"
+      },
+      "later": {
+        "text": "Later"
+      }
+    }
+  },
+  "reply": {
+    "bulk_no_list": {
+      "text": "Geen recente lijst om “alle” op toe te passen — voer eerst een lijst-commando uit.",
+      "doc": "E2 — shown when `/<op> all` has no recent listing to fan out over."
+    }
+  }
+}

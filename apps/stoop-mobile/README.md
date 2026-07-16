@@ -1,17 +1,17 @@
 # `@onderling-app/stoop-mobile`
 
 > **Direction (decided 2026-06-11; agent path confirmed 2026-06-18):** like `@onderling-app/stoop`, this
-> shell **dissolves into canopy-chat** — `stoop` becomes a navigation label inside the unified chat
+> shell **dissolves into basis** — `stoop` becomes a navigation label inside the unified chat
 > surface, not a separate app/build/shell. **Agent/transport consequence (T5.3b-ii):** the cross-peer
-> agent for stoop on mobile is **canopy-chat-mobile's secure-mesh agent** (the unified
+> agent for stoop on mobile is **basis-mobile's secure-mesh agent** (the unified
 > `createSecureMeshAgent`, via `createRealHouseholdAgent` → `realAgent`), inside which Stoop runs as a
-> real in-process `NeighborhoodAgent` on the shared bus. That path is verified (32/32 canopy-chat stoop
+> real in-process `NeighborhoodAgent` on the shared bus. That path is verified (32/32 basis stoop
 > integration tests green through the migrated agent). The hand-rolled mesh in
 > [`src/lib/agentBundle.js`](./src/lib/agentBundle.js) — its own `new Agent` + `RoutingStrategy` +
 > `PeerGraph` — is therefore the **legacy standalone path; it retires with this shell and is NOT
 > migrated in place.** (Both already seal with the *same* core `SecurityLayer`/envelope — there is no
 > seal-vs-plaintext break between this bundle and the secure-mesh agent; the only deltas are the
-> superset layers + hello/discovery posture, which the canopy-chat path already carries.)
+> superset layers + hello/discovery posture, which the basis path already carries.)
 
 > **Layer: app.** Composes substrates from
 > `packages/{core, react-native, sync-engine-rn, oidc-session-rn,

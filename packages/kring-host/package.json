@@ -2,7 +2,7 @@
   "private": true,
   "name":        "@onderling/kring-host",
   "version":     "0.1.0",
-  "description": "The platform-neutral kring/circle HOST substrate — composition LOGIC shared by the web + mobile canopy-chat shells (repo-split W2, objective F). Depends DOWN on the kernel substrates (@onderling/item-store, @onderling/item-types); never up on an app. First extraction: the circle LISTS feature (makeCircleLists).",
+  "description": "The platform-neutral kring/circle HOST substrate — composition LOGIC shared by the web + mobile basis shells (repo-split W2, objective F). Depends DOWN on the kernel substrates (@onderling/item-store, @onderling/item-types); never up on an app. First extraction: the circle LISTS feature (makeCircleLists).",
   "type":        "module",
   "main":        "src/index.js",
   "exports": {

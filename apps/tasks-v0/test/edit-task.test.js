@@ -4,7 +4,7 @@
  * Tasks-v0 had primitives for every state transition (claim / submit /
  * approve / reject / complete) but no way to patch a task's body
  * fields after it was added.  Real users edit titles all the time
- * (typos, scope clarifications, re-prioritising), so canopy-chat
+ * (typos, scope clarifications, re-prioritising), so basis
  * needed a substrate skill to wire to its [Edit] row button.
  *
  * Covers:

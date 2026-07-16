@@ -15,7 +15,7 @@ import { VaultMemory }                    from '@onderling/vault';
 import { startRelay, MemoryBlobAclStore } from '@onderling/relay';
 import { createS3Bucket }                 from '../../../packages/blob-gateway/src/adapters/s3Bucket.js';
 import { createCapabilityVerifier }       from '../../../packages/blob-gateway/src/adapters/capabilityVerifier.js';
-import { circleMemberActors }             from '../../canopy-chat/src/v2/circleMemberActors.js';
+import { circleMemberActors }             from '../../basis/src/v2/circleMemberActors.js';
 import { generateGroupKey, sealWithGroupKey, openWithGroupKey } from '@onderling/pod-client/sealing';
 import { checker } from './_util.mjs';
 

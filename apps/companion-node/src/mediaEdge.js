@@ -23,7 +23,7 @@
  *                   presignPut (upload-url) + a `fetchPresigned` dev resolver
  *                   standing in for "the presigned URL grants HTTP access to the
  *                   ciphertext". Mirrors the established dev-bucket contract
- *                   (blob-gateway test helpers / canopy-chat circleMediaGateway).
+ *                   (blob-gateway test helpers / basis circleMediaGateway).
  *   • uploaders   — the allow-list of actor ids (webIds = token subjects) permitted
  *                   to /grant and /upload-url. DEFAULT: [] ⇒ NOBODY (deny-by-default;
  *                   we never silently open this — a real deploy configures it).
@@ -54,7 +54,7 @@ const DEFAULT_ROUTE = '/blob-gate';
 /**
  * DEV-GRADE in-memory blob bucket — the honest analog of the real R2/S3 bucket.
  * Ciphertext-only (uploadBlob refuses to hand it plaintext). Same injected
- * contract the blob-gateway test rig + canopy-chat dev mode model:
+ * contract the blob-gateway test rig + basis dev mode model:
  *   put / presign(GET) / presignPut(upload-url) / delete + a `fetchPresigned`
  *   resolver standing in for HTTP-fetching a real presigned bucket URL.
  * NOT an S3 client — no sigv4, no network; it just moves opaque bytes in-process.

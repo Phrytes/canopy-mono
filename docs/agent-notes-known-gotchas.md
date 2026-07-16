@@ -53,18 +53,18 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   `@onderling/redaction`). **Tell:** an import that resolves in one package but throws `ERR_MODULE_NOT_FOUND` in
   another. *Concrete (2026-07-08):* feedback-split F1 added `@onderling/{core,pod-client,pseudo-pod}` to
   `apps/feedback-pipeline`; links were materialized by hand pending the next install. *Concrete (2026-07-09):* the
-  versioning/agents work hand-materialized `@onderling/versioning` into `apps/canopy-chat`, `apps/canopy-chat-mobile`,
+  versioning/agents work hand-materialized `@onderling/versioning` into `apps/basis`, `apps/basis-mobile`,
   and `packages/substrate-stack`; `@onderling/substrate-stack` into `apps/{stoop,tasks-v0,household}`; and
-  `@onderling-app/agents` + `@onderling/agent-registry` into `apps/canopy-chat` — all pending the next real install.
+  `@onderling-app/agents` + `@onderling/agent-registry` into `apps/basis` — all pending the next real install.
   *Concrete (2026-07-13):* the logging model added `@onderling/logger`; links hand-materialized into
-  `apps/canopy-chat`, `apps/canopy-chat-mobile`, and the repo-root `node_modules`, plus a `metro.config.js`
+  `apps/basis`, `apps/basis-mobile`, and the repo-root `node_modules`, plus a `metro.config.js`
   `extraNodeModules` alias (Metro has package-exports disabled, so `@onderling/*` MUST be aliased there).
   **Metro caches `metro.config.js` at STARTUP — a running Metro will NOT see a newly-added `extraNodeModules`
   alias (or a symlink created after it booted).** Tell: `Unable to resolve module @onderling/<pkg>` from a bundle
   even though the alias is on disk and the symlink exists. Fix: restart Metro (`--clear`). This is the resolution
   peer of the "restart Metro after editing shared `src/`" stale-bundle lesson.
   **Corollary (2026-07-13, hit repeatedly): Metro's file watcher reliably picks up edits to files INSIDE the
-  app dir (`apps/canopy-chat-mobile/**`) but MISSES edits to `watchFolders` packages** (`apps/canopy-chat/src/**`,
+  app dir (`apps/basis-mobile/**`) but MISSES edits to `watchFolders` packages** (`apps/basis/src/**`,
   `packages/**`) — a re-request returns a byte-identical bundle without the change. Tell: you edit a shared
   `src/` or a `packages/*` file, request the bundle, and your new code isn't in it (grep the bundle for a
   marker string → 0 hits). Fix: restart Metro with `--clear` (a plain reload isn't enough). Confirm the fix
@@ -93,7 +93,7 @@ error renders readable on-screen text instead of a blank crash you can't screens
 - **adb logcat**, just the platform-tools zip:
   `adb logcat --pid=$(adb shell pidof <app.package>) | grep -E "Error|Fatal|FATAL|Exception"`.
 
-## Cross-package RELATIVE imports in canopy-chat-mobile (Metro)
+## Cross-package RELATIVE imports in basis-mobile (Metro)
 
 Some mobile modules import packages RELATIVELY (`../../../../packages/<pkg>/src/…`) when the package is not in
 mobile's package.json — e.g. `src/core/mediaCardModel.js` → blob-gateway (2026-07-10), same pattern as the earlier
@@ -139,15 +139,15 @@ that only the imported folio code imports, the fix is a missing symlink in `apps
 companion-node's. Do NOT edit `apps/folio/` to "fix" a companion-node import — R1 only consumes folio.
 (Added 2026-07-10, companion-node R1.)
 
-## canopy-chat-mobile now depends on @onderling/blob-gateway (hygiene pass)
+## basis-mobile now depends on @onderling/blob-gateway (hygiene pass)
 
-`apps/canopy-chat-mobile/src/core/mediaCardModel.js` used to reach into
+`apps/basis-mobile/src/core/mediaCardModel.js` used to reach into
 `../../../../packages/blob-gateway/src/openBlob.js` (a deep `/src/` reach-in on an **undeclared**
 package — invariant #5). It now imports the bare barrel `@onderling/blob-gateway` (its `main`/`.` export
 = `src/index.js`, which re-exports `openThumbnail`), matching how the app's other core files consume
-`@onderling/*`. This added `@onderling/blob-gateway` to `apps/canopy-chat-mobile/package.json` deps, so the
+`@onderling/*`. This added `@onderling/blob-gateway` to `apps/basis-mobile/package.json` deps, so the
 no-hoist symlink must exist: `ln -sfn ../../../../packages/blob-gateway blob-gateway` from
-`apps/canopy-chat-mobile/node_modules/@onderling/`. **Tell:** `Cannot find package '@onderling/blob-gateway'`
+`apps/basis-mobile/node_modules/@onderling/`. **Tell:** `Cannot find package '@onderling/blob-gateway'`
 when the mobile app boots or its Vitest suite runs. RN-bundle-safe: the barrel pulls only
 `uploadBlob`/`gatekeeper`/`ref`/`bytes`/`openBlob`, and `bytes.js`'s guarded `require('node:crypto')`
 (behind `globalThis.crypto ||`) + `@onderling/pod-client/sealing` were already in the RN graph via the old
@@ -155,7 +155,7 @@ when the mobile app boots or its Vitest suite runs. RN-bundle-safe: the barrel p
 
 ## Metro couldn't resolve `@onderling-app/agents/wireSkills` (mobile bundle broke since 2026-07-09)
 
-`apps/canopy-chat/src/core/agent/realAgent.js` imports `@onderling-app/agents/{wireSkills,defaultCatalog}`
+`apps/basis/src/core/agent/realAgent.js` imports `@onderling-app/agents/{wireSkills,defaultCatalog}`
 (added 2026-07-09). The web/vite build honors the `apps/agents` package `exports` map; **Metro has
 `unstable_enablePackageExports` disabled**, so it couldn't resolve those subpaths — the whole mobile bundle
 failed (`Unable to resolve "@onderling-app/agents/wireSkills"`). The mobile app had been un-bundleable via Metro
@@ -165,14 +165,14 @@ since then. **Fix (2026-07-13):** added `@onderling-app/agents` to `metro.config
 **Tell:** a bare `@onderling-app/<app>/<subpath>` import that resolves in vite/web but throws in Metro → it needs
 an `extraSubpathResolvers` case (package-exports stays disabled). (Added 2026-07-13, mobile feedback parity.)
 
-### New workspace dep into canopy-chat: `@onderling/attribute-charter` (2026-07-16, property-layer Phase 3)
-`apps/canopy-chat/src/feedback/charterConsent.js` imports `@onderling/attribute-charter`. It's a pure-JS package
+### New workspace dep into basis: `@onderling/attribute-charter` (2026-07-16, property-layer Phase 3)
+`apps/basis/src/feedback/charterConsent.js` imports `@onderling/attribute-charter`. It's a pure-JS package
 (`@noble/hashes` only), so it bundles fine — BUT the workspace edge wasn't in the lockfile, so materialize the
-link: `apps/canopy-chat/node_modules/@onderling/attribute-charter -> ../../../../packages/attribute-charter`.
-**Tell:** `Cannot find module '@onderling/attribute-charter'` from a canopy-chat test/build → the symlink is missing
+link: `apps/basis/node_modules/@onderling/attribute-charter -> ../../../../packages/attribute-charter`.
+**Tell:** `Cannot find module '@onderling/attribute-charter'` from a basis test/build → the symlink is missing
 (a fresh `pnpm install` after the lockfile picks it up also fixes it). Same pattern as the feedback-pipeline edge.
 
-- **Cross-repo `link:` dep `onderling-feedback` (post-split, 2026-07-16).** canopy-chat + canopy-chat-mobile consume
+- **Cross-repo `link:` dep `onderling-feedback` (post-split, 2026-07-16).** basis + basis-mobile consume
   the SPLIT feedback repo via `"onderling-feedback": "link:../../../feedback"` (a sibling checkout at
   `~/expotest/feedback`) — imports are `'onderling-feedback/public'` / `'onderling-feedback/testing'`. The
   `node_modules/onderling-feedback` symlinks were **hand-materialized**; a fresh `pnpm install` should recreate them

@@ -10,7 +10,7 @@
  *     that don't need a custom shape.
  *   - `pickDocument` / `pickOneDocument` (any file) — expo-document-
  *     picker + expo-file-system, returns {name, mime, bytes, dataB64}.
- *     Used by canopy-chat-mobile's `/embed-file --pick` and friends
+ *     Used by basis-mobile's `/embed-file --pick` and friends
  *     (#267).
  */
 

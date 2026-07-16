@@ -3,7 +3,7 @@
  *
  * `registerCalendarSkills(agent, store, opts)` registers every
  * manifest-declared op as an agent skill backed by `CalendarStore`.
- * Used by `createCalendarAgent` AND by canopy-chat (which composes
+ * Used by `createCalendarAgent` AND by basis (which composes
  * the same skills onto its in-process hostAgent for the v0.7.10
  * demo).
  *
@@ -30,11 +30,11 @@ export function registerCalendarSkills(agent, store, opts = {}) {
   // v0.7.10 — optional prefix to disambiguate when multiple apps
   // share a hostAgent (e.g. briefSummary, searchEvents).  Caller
   // passes 'calendar_' to register as 'calendar_briefSummary' etc;
-  // remaps live in canopy-chat's main.js callSkill.
+  // remaps live in basis's main.js callSkill.
   const prefix = typeof opts.skillPrefix === 'string' ? opts.skillPrefix : '';
   const reg = (name, fn) => agent.register(`${prefix}${name}`, fn);
 
-  // v0.7.12 — multi-pod RSVP coordination.  Caller (canopy-chat
+  // v0.7.12 — multi-pod RSVP coordination.  Caller (basis
   // main.js) wires an inviteAttendee callback that posts an invite
   // embed to each attendee's thread (sim-peer in the demo; real
   // cross-pod chat-p2p in production).  Signature:

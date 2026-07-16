@@ -19,7 +19,7 @@
  *   • If `paramsToJsonSchema` cannot model a param kind, the tool falls back
  *     to the permissive schema rather than failing the whole projection.
  * Rich validation (coercion, formats) stays where it already lives in
- * canopy-chat's form layer; MCP clients get a structural contract only.
+ * basis's form layer; MCP clients get a structural contract only.
  */
 
 import { paramsToJsonSchema } from '@onderling/app-manifest';

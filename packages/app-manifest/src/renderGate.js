@@ -1,6 +1,6 @@
 /**
  * Render a manifest (or several) into deterministic token-gate RULES — the pre-LLM half of a chat
- * surface's routing. This is the shared projection behind both household's TG-bot and canopy-chat's
+ * surface's routing. This is the shared projection behind both household's TG-bot and basis's
  * circle bot: instead of hand-written verb rules, the gate comes from each app's manifest, the same
  * source `renderSlash` / `renderChat` already project.
  *

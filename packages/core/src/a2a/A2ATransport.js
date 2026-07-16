@@ -25,7 +25,7 @@ import { Parts }            from '../Parts.js';
 import { genId, P }         from '../Envelope.js';
 
 // `node:http` / `node:fs/promises` / `node:path` are eager imports —
-// canopy-chat's vite.config aliases each to a browser-safe stub that
+// basis's vite.config aliases each to a browser-safe stub that
 // throws if called, so importing them at module load is browser-safe
 // (the previous `await import(...)` lazy-loads were a workaround for an
 // older empty-shim setup; see #303 cleanup).

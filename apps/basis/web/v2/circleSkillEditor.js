@@ -1,0 +1,70 @@
+/**
+ * basis v2 — skill editor (web DOM renderer, board 8).
+ *
+ * Controlled render of a skill's four axes (`@onderling/circleSkills`):
+ * openness · posture · status · radius. Each axis is a single-choice radio
+ * group (mirrors circleSettings' enum axes); selecting an option fires
+ * `onChange({ [axis]: value })` and the host merges + re-renders. A Save
+ * button fires `onSave`, Back fires `onBack`. Pure render → unit-testable
+ * under happy-dom. Local discovery is out of scope for this slice.
+ */
+import { SKILL_AXES } from '@onderling/kring-host/circleSkills';
+
+const AXES = ['openness', 'posture', 'status', 'radius'];
+
+export function renderSkillEditor(container, {
+  skill, t, onChange, onBack, onSave,
+} = {}) {
+  const tr = typeof t === 'function' ? t : (k) => k;
+  const emit = (patch) => { if (typeof onChange === 'function') onChange(patch); };
+  container.innerHTML = '';
+  container.classList.add('circle-skill');
+
+  const back = document.createElement('button');
+  back.type = 'button';
+  back.className = 'circle-skill__back';
+  back.textContent = tr('circle.back');
+  back.addEventListener('click', () => { if (typeof onBack === 'function') onBack(); });
+  container.appendChild(back);
+
+  const head = document.createElement('h2');
+  head.className = 'circle-skill__title';
+  head.textContent = tr('circle.skills.editor_title');
+  container.appendChild(head);
+
+  for (const axis of AXES) {
+    const sec = document.createElement('section');
+    sec.className = 'circle-skill__axis';
+    sec.dataset.axis = axis;
+
+    const h = document.createElement('h3');
+    h.className = 'circle-skill__axis-title';
+    h.textContent = tr(`circle.skills.axis.${axis}`);
+    sec.appendChild(h);
+
+    for (const opt of SKILL_AXES[axis]) {
+      const label = document.createElement('label');
+      label.className = 'circle-skill__opt';
+      const radio = document.createElement('input');
+      radio.type = 'radio';
+      radio.name = axis;
+      radio.value = opt;
+      radio.checked = skill?.[axis] === opt;
+      radio.addEventListener('change', () => { if (radio.checked) emit({ [axis]: opt }); });
+      const span = document.createElement('span');
+      span.textContent = tr(`circle.skills.opt.${opt}`);
+      label.append(radio, span);
+      sec.appendChild(label);
+    }
+    container.appendChild(sec);
+  }
+
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'circle-skill__save';
+  save.textContent = tr('circle.settings.save');
+  save.addEventListener('click', () => { if (typeof onSave === 'function') onSave(); });
+  container.appendChild(save);
+
+  return container;
+}

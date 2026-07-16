@@ -1,12 +1,12 @@
 # `@onderling/chat-nav`
 
-> **Layer: substrate.** Tiny helper substrate for the canopy-chat
+> **Layer: substrate.** Tiny helper substrate for the basis
 > ⇄ side-panel navigation protocol (design choice B.1).
 
 | | |
 |---|---|
-| **Status** | v0.1.0 — shipped in canopy-chat v0.3.3 |
-| **Companion docs** | `/DESIGN-canopy-chat.md` § "Chat ⇄ side-panel navigation (B.1)", `/DESIGN-canopy-chat-journeys.md` design choice B.1 |
+| **Status** | v0.1.0 — shipped in basis v0.3.3 |
+| **Companion docs** | `/DESIGN-basis.md` § "Chat ⇄ side-panel navigation (B.1)", `/DESIGN-basis-journeys.md` design choice B.1 |
 | **Conventions** | [`architectural-layering.md`](../../docs/conventions/architectural-layering.md) — substrate layer; pure utilities, no app coupling |
 
 ---
@@ -69,7 +69,7 @@ renderFloatingButton(document.body, {
 ```
 
 Inline-styled out of the box (no CSS dependency); apps with a design
-system override via the `.canopy-chat-nav-back-button` class.
+system override via the `.basis-nav-back-button` class.
 
 Idempotent — calling `renderFloatingButton` twice replaces the
 existing button rather than stacking.
@@ -92,7 +92,7 @@ behaviour.  Lifting it to a substrate means:
 - **Not a router.** It assigns to `location.href` by default; SPA
   apps pass `onNavigate` to integrate with their router.
 - **Not a state container.** Threads + chat state live in the
-  canopy-chat app; this just shuttles a threadId through URL params.
+  basis app; this just shuttles a threadId through URL params.
 - **Not React-bound.** The `useReturnToChat` name is a hint; the
   function works in any JS context that can read `globalThis.location`.
 

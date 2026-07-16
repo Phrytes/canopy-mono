@@ -7,7 +7,7 @@
  * Why
  *   On Hermes there is no `node:fs` (FilePersist breaks) and no
  *   `globalThis.indexedDB` (IndexedDBPersist throws on construct).
- *   canopy-chat-mobile's #222.5 wave wired VaultAsyncStorage for the
+ *   basis-mobile's #222.5 wave wired VaultAsyncStorage for the
  *   secure-agent's identity / mute-list / audit-log; this adapter
  *   completes the Hermes story by giving stoop's local cache a
  *   place to live.  Without this, stoop's web-style boot on RN
@@ -23,7 +23,7 @@
  *
  *   The {dbName, prefix} keeps multiple stoop caches isolated when
  *   the same AsyncStorage instance hosts more than one agent (e.g.
- *   canopy-chat-mobile + stoop-mobile share AsyncStorage on the same
+ *   basis-mobile + stoop-mobile share AsyncStorage on the same
  *   device but want separate caches).
  *
  * Test injection: `opts.asyncStorage` accepts any mock that exposes
@@ -31,7 +31,7 @@
  * uses.  No real RN runtime needed for unit tests.
  *
  * Task #222.6 (2026-05-24).  See
- * Project Files/canopy-chat/mobile-roadmap-2026-05-24.md.
+ * Project Files/basis/mobile-roadmap-2026-05-24.md.
  */
 
 const DEFAULT_PREFIX = 'stoop-cache:';

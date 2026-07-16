@@ -17,7 +17,7 @@ import { buildMeshAgent } from '../src/lib/agentBundle.js';
 import { wireCatchUp }    from '../src/lib/catchUpWiring.js';
 import nacl               from 'tweetnacl';
 
-// Same shape as canopy-chat-mobile/test/bootSmoke.test.js — the only
+// Same shape as basis-mobile/test/bootSmoke.test.js — the only
 // surface NknTransport needs at construct-time is `MultiClient` or
 // `Client`.  The mock's `on('connect')` is what tells the transport
 // it's live; we drive it manually to exercise the connect handler.

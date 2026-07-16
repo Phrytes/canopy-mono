@@ -28,8 +28,8 @@ describe('kringChatMessageEvent', () => {
 describe('mediaForKringWire — the wire-boundary whitelist (media P1 fan-out)', () => {
   const fullEmbed = () => ({
     kind:      'media-card',
-    appOrigin: 'canopy-chat',
-    itemRef:   { app: 'canopy-chat', type: 'media', id: 'media-1' },
+    appOrigin: 'basis',
+    itemRef:   { app: 'basis', type: 'media', id: 'media-1' },
     pointer:   { type: 'media', ref: 'urn:dec:item:media-1' },
     snapshot:  {
       type: 'media', id: 'media-1', createdAt: '2026-07-09T00:00:00.000Z', createdBy: 'me',
@@ -44,8 +44,8 @@ describe('mediaForKringWire — the wire-boundary whitelist (media P1 fan-out)',
     const wire = mediaForKringWire(fullEmbed());
     expect(wire).toEqual({
       kind:      'media-card',
-      appOrigin: 'canopy-chat',
-      itemRef:   { app: 'canopy-chat', type: 'media', id: 'media-1' },
+      appOrigin: 'basis',
+      itemRef:   { app: 'basis', type: 'media', id: 'media-1' },
       pointer:   { type: 'media', ref: 'urn:dec:item:media-1' },
       snapshot:  {
         type: 'media', id: 'media-1', createdAt: '2026-07-09T00:00:00.000Z', createdBy: 'me',

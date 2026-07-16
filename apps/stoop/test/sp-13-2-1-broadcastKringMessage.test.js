@@ -377,7 +377,7 @@ describe('Stoop E1 drift-guard — ingestRemotePost honours mute (parity with kr
  *
  * Verifies the wire shape stays compatible end-to-end: what broadcast-
  * KringMessage emits via chat.send matches what ingestKringMessage
- * accepts.  We don't exercise the canopy-chat peer-router transport
+ * accepts.  We don't exercise the basis peer-router transport
  * (that lives in main.js / circleApp.js); we capture the envelope at
  * the chat.send boundary and replay it into the receiver-side skill.
  * ─────────────────────────────────────────────────────────────────────── */
@@ -401,7 +401,7 @@ describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
 
     // Capture the wire payload Anne would ship to BOB.  In production
     // chat.send routes via agent.transport.sendOneWay → Bob's wireChat
-    // (which ignores unknown subtype) AND Bob's canopy-chat peer-router
+    // (which ignores unknown subtype) AND Bob's basis peer-router
     // (which dispatches to ingestKringMessage).  Here we just spy.
     const captured = [];
     anne.chat.send = vi.fn(async (args) => { captured.push(args); return { ok: true }; });
@@ -416,9 +416,9 @@ describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
     expect(captured).toHaveLength(1);
 
     // Bob's wireChat would normally drop the unknown subtype.  In
-    // production the canopy-chat peer-router instead routes the
+    // production the basis peer-router instead routes the
     // envelope to ingestKringMessage.  Reconstruct the same payload
-    // canopy-chat's makeKringChatPeerHandler would pass:
+    // basis's makeKringChatPeerHandler would pass:
     const sent = captured[0];
     const wirePayload = {
       subtype:    'kring-chat-message',

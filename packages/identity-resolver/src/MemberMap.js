@@ -275,7 +275,7 @@ export class MemberMap extends Emitter {
       nknAddr:     m.nknAddr ?? null,
       // ── Stoop V2 Phase 24: contact-graph fields (additive) ──
       // relation: distinguishes group members (default for back-compat
-      //   with V1 callers) from 1:1 contacts.  5.6 (canopy-chat v2) added
+      //   with V1 callers) from 1:1 contacts.  5.6 (basis v2) added
       //   `'agent'` for members whose own WebID is an LLM-backed peer
       //   over NKN — same membership stack as a human, just marked so
       //   per-circle override gates (agents-filter, board 4) can route

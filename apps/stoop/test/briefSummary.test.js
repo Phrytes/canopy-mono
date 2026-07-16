@@ -2,7 +2,7 @@
  * Stoop — Q30 briefSummary tests.
  *
  * `stoop_briefSummary` is declared on `listOpen.surfaces.chat.brief`
- * in the stoop manifest; it contributes to canopy-chat's `/brief`
+ * in the stoop manifest; it contributes to basis's `/brief`
  * aggregator.  Mirrors folio's `folio_briefSummary` shape: returns
  * `{ok: true}` when no open posts exist (brief.js's isEmpty skips
  * the section) or `{items, message}` listing the topmost rows + a

@@ -1,7 +1,7 @@
 /**
  * tasks-v0 — `_sync` reply-envelope helpers.  Closes DESIGN gap #2
  * (2026-05-27) by giving every list-op reply the `_sync` shape the
- * canopy-chat renderer (`apps/canopy-chat/src/syncHints.js`) already
+ * basis renderer (`apps/basis/src/syncHints.js`) already
  * consumes for staleness hints.
  *
  * Mirrors `apps/folio/src/browser.js:73`'s `simulateSync` + the
@@ -19,7 +19,7 @@
 
 /**
  * Returns the `_sync` reply-envelope shape consumed by the
- * canopy-chat renderer.  Local-stub shape (no real pod-sync yet) —
+ * basis renderer.  Local-stub shape (no real pod-sync yet) —
  * mirrors folio's `simulateSync`.
  *
  * @returns {{plannedPaths: string[], durationMs: number, bytesPushed: number, bytesPulled: number, conflictCount: number, queueDepth: number}}

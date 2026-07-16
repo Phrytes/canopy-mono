@@ -633,7 +633,7 @@ function buildSection(view, ops, manifest) {
   // Absent → unset ⇒ consumer defaults to `[labelField]` (back-compatible).
   if (view.searchFields  !== undefined) section.searchFields  = view.searchFields;
   // SP-5b — project the view's declared audience so the list-render seam
-  // (e.g. canopy-chat `buildScreenModel`) can DEFAULT its ListFilter.audience
+  // (e.g. basis `buildScreenModel`) can DEFAULT its ListFilter.audience
   // to it.  The schema field is `view.defaultAudience` (schema.js); an explicit
   // `view.audience`, if a manifest carries one, wins over the declared default.
   if (view.audience !== undefined) section.audience = view.audience;
@@ -835,7 +835,7 @@ function buildTab(tab) {
  * `{ id, labelKey, icon?, target }` NavItem shape + `buildNavTarget`, PLUS the
  * optional gate fields (`requires`/`platforms`) copied through verbatim so the
  * action's context-gating is declared in the manifest and rides the projection
- * (the app-side selector — canopy-chat `actionProjection.js` — evaluates them).
+ * (the app-side selector — basis `actionProjection.js` — evaluates them).
  * Pure passthrough of the validated shape.  Shared, deterministic: renderMobile
  * re-exports renderWeb, so renderWeb ≡ renderMobile for the actions projection.
  */

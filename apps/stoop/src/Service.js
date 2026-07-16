@@ -3,7 +3,7 @@
  *
  * ── What this is (and what it is NOT) ────────────────────────────────────────────────────────────────
  * This is the FUNCTIONALITY-side adapter that lets a caller invoke a stoop capability by its canonical
- * `(atom × noun)` pair instead of its bespoke op-id — the same seam `apps/canopy-chat/src/v2/householdApp.js`
+ * `(atom × noun)` pair instead of its bespoke op-id — the same seam `apps/basis/src/v2/householdApp.js`
  * opened for household. It is ADDITIVE: it wraps the EXISTING `buildSkills({...})` skill set unchanged and
  * routes `(atom, noun)` → opId → the real `defineSkill` handler. No skill, agent, or manifest is modified;
  * the legacy dispatch path (a `core.Agent` registering `buildSkills` and answering A2A task requests) stays
@@ -30,7 +30,7 @@
  * ── SECURITY / gate guardrail (docs/architecture.md) ─────────────────────────────────────────────────
  * `callSkill` is the default-deny security boundary. This adapter is therefore NOT to be wired as a live
  * `(atom, noun)` entry that BYPASSES the gate: the live interpreter path resolves `(atom, noun)` → opId at
- * the GATED canopy-chat waist (the capability gate authorises the pair BEFORE dispatch). This service exists
+ * the GATED basis waist (the capability gate authorises the pair BEFORE dispatch). This service exists
  * for tests + the future gated wiring — it hands the resolved opId to the real handler, it does not decide
  * authorisation.
  */
