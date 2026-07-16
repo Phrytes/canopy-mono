@@ -81,7 +81,8 @@
     "chrono-node": "^2.7.0",
     "i18next": "^23.15.0",
     "qrcode": "^1.5.4",
-    "@canopy/attribute-charter": "workspace:*"
+    "@canopy/attribute-charter": "workspace:*",
+    "onderling-feedback": "link:../../../feedback"
   },
   "devDependencies": {
     "@canopy/pseudo-pod": "workspace:*",

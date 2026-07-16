@@ -41,9 +41,10 @@ const _cfg = withCanopyPreset({
     path.resolve(repoRoot, 'apps/stoop'),
     path.resolve(repoRoot, 'apps/folio'),
     path.resolve(repoRoot, 'apps/calendar'),
-    // M6 — the feedback bot: canopy-chat's feedbackSurface/feedbackMount reach into
-    // apps/feedback-pipeline (channel bridges + dispatcher + pod + config + ollama).
-    path.resolve(repoRoot, 'apps/feedback-pipeline'),
+    // M6 — the feedback bot: canopy-chat's feedbackSurface/feedbackMount consume the
+    // SPLIT onderling-feedback repo ('onderling-feedback/public', a link: dep) — watch
+    // the sibling checkout so Metro resolves + hot-reloads across the repo boundary.
+    path.resolve(repoRoot, '../feedback'),
     // Workspace packages the composed apps + secure-agent reach for.
     path.resolve(repoRoot, 'packages/vault'),
     path.resolve(repoRoot, 'packages/chat-p2p'),

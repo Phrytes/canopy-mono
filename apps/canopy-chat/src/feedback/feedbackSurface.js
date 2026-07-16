@@ -16,7 +16,7 @@ import { InternalBus } from '@canopy/core';
 import {
   InternalBusBridge, connectFeedbackParticipant, CanopyChatBot, InMemoryCentralPod,
   validateProjectConfig, exampleProjectConfig, applyLlmRoute, assertCleanRouteSafe,
-} from '../../../feedback-pipeline/src/public/index.js';
+} from 'onderling-feedback/public';
 // Privacy-first logging (web ≡ mobile). PII-safe by construction — we log event CODES + scalar counts here,
 // never message text, points, or identities. A dump handle is exposed so a bug report / debug can read it.
 import { log, dumpLogs, formatLogs } from '@canopy/logger';

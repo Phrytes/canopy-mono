@@ -19,7 +19,7 @@
  *       cross-identity boundary is today.
  *
  * Gated on TWO sets of client-credentials (alice + ben) + CSS_URL. Skips clean
- * otherwise. Provision both with apps/feedback-pipeline/scripts/bootstrap-owner.js
+ * otherwise. Provision both with ../feedback/scripts/bootstrap-owner.js (the onderling-feedback repo)
  * (POD_NAME=alice, then POD_NAME=ben). Run:
  *   CSS_URL=http://localhost:3000/ \
  *   CSS_A_CLIENT_ID=… CSS_A_CLIENT_SECRET=… CSS_A_WEBID=…/ann/profile/card#me \

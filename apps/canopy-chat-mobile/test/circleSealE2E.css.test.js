@@ -10,7 +10,7 @@
  * producer, the sealing — is the real code path.
  *
  * Gated on `CSS_URL` + client-credentials (skips clean otherwise). Provision with
- * `apps/feedback-pipeline/scripts/bootstrap-owner.js`.
+ * `../feedback/scripts/bootstrap-owner.js (the onderling-feedback repo)`.
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 

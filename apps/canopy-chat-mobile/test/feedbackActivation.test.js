@@ -1,7 +1,7 @@
 // Mobile feedback activation → verify-summary pods (parity with web's buildFeedbackVerifyPods wiring).
 import { describe, it, expect } from 'vitest';
 import { getOrCreateRecoveryHashRN, sessionShim, activateMobileFeedback } from '../src/v2/feedbackActivation.js';
-import { PodRoundControl } from '../../feedback-pipeline/src/verify/round-control.js';
+import { PodRoundControl } from 'onderling-feedback/public';
 
 function memStorage() {
   const m = new Map();

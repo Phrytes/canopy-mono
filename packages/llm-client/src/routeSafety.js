@@ -12,7 +12,7 @@
 // canopy-chat circles, the feedback pipeline, third parties via the SDK — shares ONE
 // definition instead of forking it. Browser-safe: `process.env` access is guarded.
 //
-// See apps/feedback-pipeline/docs/CONFIDENTIAL-LLM-TRANSPORT.md for the model, and the
+// See the onderling-feedback repo: docs/CONFIDENTIAL-LLM-TRANSPORT.md for the model, and the
 // "Option B" enclave-gateway build item (the real non-loopback production path).
 
 const env = (k) => (typeof process !== 'undefined' && process.env ? process.env[k] : undefined);
@@ -58,5 +58,5 @@ export function assertConfidentialRouteSafe({ confidential, baseUrl, attestation
     `[confidential] ${label}: a confidential route points at a non-loopback host (${baseUrl}) with no ` +
     `attestation — raw plaintext would reach that host. Use a loopback proxy, or an attested enclave ` +
     `gateway (set PRIVATEMODE_ATTESTATION / pass {attestation:true}). ` +
-    `See apps/feedback-pipeline/docs/CONFIDENTIAL-LLM-TRANSPORT.md.`);
+    `See the onderling-feedback repo: docs/CONFIDENTIAL-LLM-TRANSPORT.md.`);
 }

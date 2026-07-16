@@ -28,6 +28,7 @@
     "@canopy/blob-gateway": "file:../../packages/blob-gateway",
     "@canopy/core": "file:../../packages/core",
     "@canopy/kring-host": "file:../../packages/kring-host",
+    "onderling-feedback": "link:../../../feedback",
     "@canopy/local-store": "file:../../packages/local-store",
     "@canopy/manifest-host": "file:../../packages/manifest-host",
     "@canopy/oidc-session": "file:../../packages/oidc-session",

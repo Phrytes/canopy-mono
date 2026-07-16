@@ -5,7 +5,7 @@
 // shared control store (also the collector). No Solid login — the participant signs with their agent
 // identity and the collector is the authenticated server-side writer. Both shells (web `attachFeedbackProject`
 // and mobile `FeedbackThreadScreen`) build the same pods here so the mechanism can't drift between them.
-import { InMemoryCentralPod } from '../../../feedback-pipeline/src/public/index.js';
+import { InMemoryCentralPod } from 'onderling-feedback/public';
 import { makeHttpCollectorPod } from './httpCollectorPod.js';
 import { makeHttpRoundControl } from './httpRoundControl.js';
 import { makePersistentOwnPod } from './persistentPod.js';

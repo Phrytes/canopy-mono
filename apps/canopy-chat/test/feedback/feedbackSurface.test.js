@@ -5,11 +5,11 @@
 // taps, and parses a project-invite link. The bot OWNS the route (config.llm), no setLlmRoute.
 
 import { test, expect, beforeAll, afterAll } from 'vitest';
-import { startMockLlm } from '../../../feedback-pipeline/test/helpers/mock-llm.js';
-import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-pod.js';
+import { startMockLlm } from 'onderling-feedback/testing';
+import { InMemoryCentralPod } from 'onderling-feedback/public';
 import { randomBytes } from 'node:crypto';
 import { InternalBus, AgentIdentity } from '@canopy/core';
-import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from '../../../feedback-pipeline/src/pod/signing.js';
+import { generateParticipantIdentity, IdentityRoster, makeContributionVerifier } from 'onderling-feedback/public';
 import { createFeedbackSurface, parseFeedbackInvite, feedbackContactItem, signerForIdentity, chunkBubble } from '../../src/feedback/feedbackSurface.js';
 
 let mock;

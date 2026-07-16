@@ -5,8 +5,8 @@
  * is added here.
  */
 import { describe, it, expect } from 'vitest';
-import { InMemoryCentralPod } from '../../../feedback-pipeline/src/pod/central-pod.js';
-import { buildContribution } from '../../../feedback-pipeline/src/pod/contribution.js';
+import { InMemoryCentralPod } from 'onderling-feedback/public';
+import { buildContribution } from 'onderling-feedback/public';
 import { makePersistentOwnPod } from '../../src/feedback/persistentPod.js';
 
 // A fake AsyncStorage: async get/set over a Map (proves async adapters work + survives a "reload").

@@ -14,7 +14,7 @@
  * Convention mirrors `packages/pod-client/test/**.css.test.js`: gated on a running
  * CSS via `CSS_URL` + client-credentials — skips cleanly otherwise, so `npm test`
  * and the repo sweep stay green without any server. Provision creds with
- * `apps/feedback-pipeline/scripts/bootstrap-owner.js` (CSS_URL=… node …) and run:
+ * `../feedback/scripts/bootstrap-owner.js (the onderling-feedback repo)` (CSS_URL=… node …) and run:
  *
  *   CSS_URL=http://localhost:3000/ \
  *   CSS_CLIENT_ID=… CSS_CLIENT_SECRET=… \

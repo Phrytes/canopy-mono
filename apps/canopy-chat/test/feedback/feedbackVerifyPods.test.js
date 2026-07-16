@@ -1,7 +1,7 @@
 // Verify-summary loop — wiring the surface's pods from the activation session (own-pod-first).
 import { describe, it, expect } from 'vitest';
 import { podRootFromWebId, buildFeedbackVerifyPods } from '../../src/feedback/feedbackPod.js';
-import { PodRoundControl } from '../../../feedback-pipeline/src/verify/round-control.js';
+import { PodRoundControl } from 'onderling-feedback/public';
 
 const session = { webid: 'http://h:3000/alice/profile/card#me', fetch: async () => ({ ok: true }) };
 const activation = async () => ({ ok: true, json: async () => ({ ok: true, podRef: 'http://h:3000/project/central/alice/' }) });

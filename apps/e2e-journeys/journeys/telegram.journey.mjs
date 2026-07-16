@@ -23,10 +23,10 @@ export async function run() {
   let mods;
   try {
     mods = {
-      ChannelDispatcher:      (await import('../../feedback-pipeline/src/channel/dispatcher.js')).ChannelDispatcher,
-      MemoryChannelAdapter:   (await import('../../feedback-pipeline/src/channel/adapter.js')).MemoryChannelAdapter,
-      TelegramChannelAdapter: (await import('../../feedback-pipeline/src/channel/telegram-adapter.js')).TelegramChannelAdapter,
-      InMemoryCentralPod:     (await import('../../feedback-pipeline/src/pod/central-pod.js')).InMemoryCentralPod,
+      ChannelDispatcher:      (await import('../../../../feedback/src/channel/dispatcher.js')).ChannelDispatcher,
+      MemoryChannelAdapter:   (await import('../../../../feedback/src/channel/adapter.js')).MemoryChannelAdapter,
+      TelegramChannelAdapter: (await import('../../../../feedback/src/channel/telegram-adapter.js')).TelegramChannelAdapter,
+      InMemoryCentralPod:     (await import('../../../../feedback/src/pod/central-pod.js')).InMemoryCentralPod,
     };
   } catch (e) { return { skipped: true, reason: `feedback-pipeline unavailable (${(e?.message ?? '').slice(0, 48)})` }; }
 

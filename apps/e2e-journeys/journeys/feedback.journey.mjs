@@ -45,7 +45,7 @@ const ALLOWED_KEYS = ['id', 'text', 'raw', 'themeTags', 'timeWindow', 'lang'];
 export async function run() {
   if (!(await cssReachable(CSS_URL))) return { skipped: true, reason: `no CSS at ${CSS_URL} (set CSS_URL to run)` };
   let makeCssCentralPod;
-  try { ({ makeCssCentralPod } = await import('../../feedback-pipeline/src/public/index.js')); }
+  try { ({ makeCssCentralPod } = await import('../../../../feedback/src/public/index.js')); }
   catch (e) { return { skipped: true, reason: `feedback-pipeline unavailable (${(e?.message ?? '').slice(0, 48)})` }; }
 
   const { results, check } = checker();

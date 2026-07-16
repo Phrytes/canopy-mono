@@ -4,7 +4,7 @@
 
 import { test, expect } from 'vitest';
 import { activateParticipant, buildFeedbackPod } from '../../src/feedback/feedbackPod.js';
-import { buildContribution } from '../../../feedback-pipeline/src/pod/contribution.js';
+import { buildContribution } from 'onderling-feedback/public';
 
 function fakeCss() {
   const store = new Map(); const puts = [];

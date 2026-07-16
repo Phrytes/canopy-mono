@@ -167,3 +167,12 @@ an `extraSubpathResolvers` case (package-exports stays disabled). (Added 2026-07
 link: `apps/canopy-chat/node_modules/@canopy/attribute-charter -> ../../../../packages/attribute-charter`.
 **Tell:** `Cannot find module '@canopy/attribute-charter'` from a canopy-chat test/build → the symlink is missing
 (a fresh `pnpm install` after the lockfile picks it up also fixes it). Same pattern as the feedback-pipeline edge.
+
+- **Cross-repo `link:` dep `onderling-feedback` (post-split, 2026-07-16).** canopy-chat + canopy-chat-mobile consume
+  the SPLIT feedback repo via `"onderling-feedback": "link:../../../feedback"` (a sibling checkout at
+  `~/expotest/feedback`) — imports are `'onderling-feedback/public'` / `'onderling-feedback/testing'`. The
+  `node_modules/onderling-feedback` symlinks were **hand-materialized**; a fresh `pnpm install` should recreate them
+  from the dep entries, but if resolution breaks: `ln -sfn ../../../../feedback apps/<app>/node_modules/onderling-feedback`.
+  Metro watches `../feedback` (metro.config.js) so mobile hot-reload crosses the repo boundary. The e2e-journeys
+  import it by relative path (`../../../../feedback/...`) with a soft-skip when absent. Replaced by versioned deps
+  at the SDK publish swap.

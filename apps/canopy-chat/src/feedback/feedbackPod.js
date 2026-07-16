@@ -6,7 +6,7 @@
 // write IS the consent.
 
 // Single sanctioned import point into feedback (F1 boundary — the package `./public` barrel).
-import { makeCssCentralPod, PodRoundControl } from '../../../feedback-pipeline/src/public/index.js';
+import { makeCssCentralPod, PodRoundControl } from 'onderling-feedback/public';
 
 /** POST the activation service → the participant's container URI (podRef). */
 export async function activateParticipant({ activationUrl, projectId, code, recoveryHash, webId, fetchImpl = fetch }) {

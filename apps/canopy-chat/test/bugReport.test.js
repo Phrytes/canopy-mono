@@ -5,8 +5,8 @@
 // and surfaces ok/fail; (d) the default (no injected sink) path is safe — reason:'no-sink', no throw.
 
 import { test, expect, beforeAll, afterAll } from 'vitest';
-import { startMockLlm } from '../../feedback-pipeline/test/helpers/mock-llm.js';
-import { InMemoryCentralPod } from '../../feedback-pipeline/src/pod/central-pod.js';
+import { startMockLlm } from 'onderling-feedback/testing';
+import { InMemoryCentralPod } from 'onderling-feedback/public';
 import { log, clearLogs } from '@canopy/logger';
 import { buildReportEnvelope } from '../src/feedback/bugReport.js';
 import { createFeedbackSurface } from '../src/feedback/feedbackSurface.js';

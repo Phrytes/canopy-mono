@@ -8,7 +8,7 @@
  * the interactive browser sign-in reuses the existing `src/web/podAuth.js`.
  *
  * Gated on `CSS_URL` + client-credentials (skips clean otherwise). Provision with
- * `apps/feedback-pipeline/scripts/bootstrap-owner.js`. Run:
+ * `../feedback/scripts/bootstrap-owner.js (the onderling-feedback repo)`. Run:
  *   CSS_URL=http://localhost:3000/ CSS_CLIENT_ID=… CSS_CLIENT_SECRET=… \
  *   CSS_WEBID=http://localhost:3000/<pod>/profile/card#me \
  *   npx vitest run test/circlePodProducer.css.test.js
