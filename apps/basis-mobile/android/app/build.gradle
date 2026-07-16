@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'ag.canopy.canopychatmobile'
+    namespace 'org.onderling.basis'
     defaultConfig {
-        applicationId 'ag.canopy.canopychatmobile'
+        applicationId 'org.onderling.basis'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

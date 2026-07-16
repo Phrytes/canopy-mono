@@ -5,9 +5,9 @@
     "version": "0.0.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "scheme": "canopychat",
+    "scheme": "basis",
     "android": {
-      "package": "ag.canopy.canopychatmobile",
+      "package": "org.onderling.basis",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.WAKE_LOCK",
@@ -15,7 +15,7 @@
       ]
     },
     "ios": {
-      "bundleIdentifier": "ag.canopy.canopychatmobile",
+      "bundleIdentifier": "org.onderling.basis",
       "supportsTablet": false
     },
     "web": {

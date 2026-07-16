@@ -191,7 +191,7 @@ export default function App() {
   // tieredPolicyIo + makeCirclePolicyStoreRN.
   const sessionRef = useRef(null);
   if (!sessionRef.current) {
-    sessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'canopychat' });
+    sessionRef.current = new OidcSessionRN({ store: SecureStore, appId: 'basis' });
   }
   // S4 — share the session with circlePods so a signed-in user's sealed circles route to
   // their REAL pod (via the session's authenticated fetch).

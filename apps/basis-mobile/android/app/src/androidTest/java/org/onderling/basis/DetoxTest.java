@@ -2,7 +2,7 @@
 // hands control to Detox.runTests; from there the Jest-side test
 // files take over via the JS bridge.  Idle / RN-context timeouts are
 // configured via Detox JS-side opts in .detoxrc.js, not here.
-package ag.canopy.canopychatmobile;
+package org.onderling.basis;
 
 import com.wix.detox.Detox;
 

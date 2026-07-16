@@ -314,7 +314,7 @@ export default function ChatScreen({
   // harnesses) fall back to a screen-local ref.
   const localSessionRef = useRef(null);
   if (!sessionRefProp && !localSessionRef.current) {
-    localSessionRef.current = new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'canopychat' });
+    localSessionRef.current = new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'basis' });
   }
   const sessionRef = sessionRefProp ?? localSessionRef;
   useEffect(() => {

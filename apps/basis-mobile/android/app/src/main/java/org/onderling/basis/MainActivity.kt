@@ -1,4 +1,4 @@
-package ag.canopy.canopychatmobile
+package org.onderling.basis
 
 import android.os.Build
 import android.os.Bundle
