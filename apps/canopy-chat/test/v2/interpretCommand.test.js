@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildToolDescriptors, interpretToCommand } from '../../src/v2/interpretCommand.js';
 
 // The LLM is host-supplied + duck-typed (`llm.invoke(req) → result`), so the test fakes it directly
-// rather than depending on @canopy/llm-client — mirroring how the host injects the client.
+// rather than depending on @onderling/llm-client — mirroring how the host injects the client.
 const llmReturning = (result) => ({ invoke: async () => result });
 const llmInspecting = (capture) => ({ invoke: async (req) => { capture(req); return { toolCall: null, raw: {} }; } });
 

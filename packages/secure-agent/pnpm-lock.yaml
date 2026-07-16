@@ -8,13 +8,13 @@ importers:
 
   .:
     dependencies:
-      '@canopy/core':
+      '@onderling/core':
         specifier: workspace:*
         version: link:../core
-      '@canopy/transports':
+      '@onderling/transports':
         specifier: workspace:*
         version: link:../transports
-      '@canopy/vault':
+      '@onderling/vault':
         specifier: workspace:*
         version: link:../vault
       '@noble/hashes':

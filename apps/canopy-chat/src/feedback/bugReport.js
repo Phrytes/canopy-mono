@@ -15,7 +15,7 @@
  * `at` is INJECTED (not read from Date.now() in here) so the envelope is deterministic
  * and testable; the caller passes the timestamp.
  */
-import { formatLogs } from '@canopy/logger';
+import { formatLogs } from '@onderling/logger';
 
 /**
  * Package the PII-safe on-device log dump into an anonymous report object.

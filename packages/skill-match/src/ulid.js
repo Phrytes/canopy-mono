@@ -1,4 +1,4 @@
-// ULID — see @canopy/item-store for canonical comments.
+// ULID — see @onderling/item-store for canonical comments.
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 

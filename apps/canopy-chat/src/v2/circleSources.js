@@ -4,7 +4,7 @@
  * Maps the host's dispatch onto the `loadCircles` fetchers, reusing
  * EXISTING ops only — `getMyCircles` (tasks circles, shape
  * `{circles:[{circleId,name,kind,counts}]}`) and `getCurrentGroup` (the stoop
- * buurt record behind `/groups`) — plus an optional `@canopy/circles`
+ * buurt record behind `/groups`) — plus an optional `@onderling/circles`
  * store. No new ops are invented; the host injects `callSkill` (web: its
  * dispatch; mobile: hostOps) so the same adapter drives both launchers.
  */

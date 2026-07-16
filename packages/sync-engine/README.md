@@ -1,6 +1,6 @@
-# @canopy/sync-engine
+# @onderling/sync-engine
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Post-Phase 5.1 contract:** the substrate is bidirectional-only. One-shot ingest patterns must write directly through any `core.DataSource`; one-way live sync from a remote peer must compose `core.protocol.LiveSyncSkill` directly — neither shape composes this substrate.
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Post-Phase 5.1 contract:** the substrate is bidirectional-only. One-shot ingest patterns must write directly through any `core.DataSource`; one-way live sync from a remote peer must compose `core.protocol.LiveSyncSkill` directly — neither shape composes this substrate.
 
 Pod ↔ external-source sync engine with pluggable source adapters
 + storage convention enforcement (small=direct / big=reference).
@@ -24,7 +24,7 @@ import {
   SyncEngine,
   IngestQueueSource,
   InMemoryBackend,
-} from '@canopy/sync-engine';
+} from '@onderling/sync-engine';
 
 const source  = new IngestQueueSource();
 const backend = new InMemoryBackend();           // swap for a pod-backed backend in production
@@ -102,7 +102,7 @@ Future: `OAuthRemoteSource` (per-source connectors), bidirectional
 LocalFolderSource (when Folio's full migration lands).
 
 ```js
-import { LocalFolderSource } from '@canopy/sync-engine';
+import { LocalFolderSource } from '@onderling/sync-engine';
 
 const src = new LocalFolderSource({
   root: '/path/to/folder',
@@ -126,7 +126,7 @@ interface Backend {
 }
 ```
 
-V0 ships `InMemoryBackend`.  Apps wrap `@canopy/pod-client` (Track A)
+V0 ships `InMemoryBackend`.  Apps wrap `@onderling/pod-client` (Track A)
 in a Backend with the same shape for production.
 
 ### Item shape (in source.ingest)

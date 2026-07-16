@@ -8,12 +8,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { validateHandle, HANDLE_RULES } from '../src/lib/handle.js';
 import { createNeighborhoodAgent } from '../src/index.js';
-import { Reveals } from '@canopy/identity-resolver';
+import { Reveals } from '@onderling/identity-resolver';
 
 const ANNE = 'https://id.example/anne';
 const BOB  = 'https://id.example/bob';

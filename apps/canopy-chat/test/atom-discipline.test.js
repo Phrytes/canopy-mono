@@ -10,7 +10,7 @@
  * concern reconciled separately; it is intentionally NOT covered here.)
  */
 import { describe, it, expect } from 'vitest';
-import { validateManifest, opNouns, canonicalAtom } from '@canopy/app-manifest';
+import { validateManifest, opNouns, canonicalAtom } from '@onderling/app-manifest';
 
 import { householdManifest }  from '../../household/manifest.js';
 import { calendarManifest }   from '../../calendar/manifest.js';

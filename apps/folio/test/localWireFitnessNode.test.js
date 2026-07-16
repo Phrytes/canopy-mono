@@ -7,7 +7,7 @@
  *   • LOCAL route — the pure core called directly over an injected store whose
  *     `engine` is a deterministic fake SyncEngine.
  *   • WIRE route  — the SAME core, wireSkill-wrapped + registered on a REAL
- *     `@canopy/core` agent, invoked over the serialized parts path.
+ *     `@onderling/core` agent, invoked over the serialized parts path.
  *
  * The parity check is the ANTI-DRIFT guarantee: every `runtime:'node'`
  * folioManifest op must have a core AND a wire registration, and every node
@@ -17,14 +17,14 @@
  *
  * RESOLUTION: same self-contained pattern as the browser fitness suite — the
  * sdk helper is relative-imported from `packages/sdk/src`, the wire agent is
- * built from `@canopy/core` primitives folio DOES resolve.
+ * built from `@onderling/core` primitives folio DOES resolve.
  */
 import { describe, it, expect } from 'vitest';
 
 import {
   Agent, AgentIdentity, InternalBus, InternalTransport, Parts,
-} from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+} from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { describeLocalWireFitness } from '../../../packages/sdk/src/testing/localWireFitness.js';
 
@@ -68,7 +68,7 @@ function makeLocalInvoker() {
   return async (op, args = {}, ctx = {}) => FOLIO_NODE_CORES[op](store, args, ctx);
 }
 
-/** WIRE invoker: a real @canopy/core agent with the node wire skills. */
+/** WIRE invoker: a real @onderling/core agent with the node wire skills. */
 async function makeWireInvoker() {
   const store = makeStore();
   const bus = new InternalBus();

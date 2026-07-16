@@ -2,7 +2,7 @@
  * AgentRegistryMemberMap — MemberMap-shaped adapter over a registry-like object.
  *
  * Uses a fake registry (lookup + list) to avoid pulling in the full
- * @canopy/agent-registry test surface.
+ * @onderling/agent-registry test surface.
  */
 
 import { describe, it, expect } from 'vitest';

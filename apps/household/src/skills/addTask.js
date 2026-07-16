@@ -15,7 +15,7 @@
  * When `assignee` is supplied, the task is reassigned to that webid right
  * after creation (single-pass; LWW).  SP-2 V0 has no inline DAG / dependency
  * wiring — those land via the manifest's forward-compat hook to
- * `@canopy/protocol` (PLAN guardrail #9).
+ * `@onderling/protocol` (PLAN guardrail #9).
  */
 
 import { createHouseholdItem } from './createHouseholdItem.js';

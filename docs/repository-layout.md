@@ -20,10 +20,10 @@ Substrates compose the kernel + adapters and must not reinvent the kernel. Apps 
 the kernel directly **only with an explicit justification in the app's README**.
 
 - **The kernel (`core`)** holds only ports + kernel logic. The concrete **adapters** live outside it — network
-  transports in `@canopy/transports`, Solid-pod storage + on-pod identity in `@canopy/pod-client`, the vault
-  family in `@canopy/vault` — and nothing in the kernel depends *up* on an adapter (guarded by
+  transports in `@onderling/transports`, Solid-pod storage + on-pod identity in `@onderling/pod-client`, the vault
+  family in `@onderling/vault` — and nothing in the kernel depends *up* on an adapter (guarded by
   `packages/core/test/layering.enforcement.test.js`).
-- **`@canopy/sdk` is "the SDK"** — the dev-facing **facade** over the whole **platform** (kernel + adapters +
+- **`@onderling/sdk` is "the SDK"** — the dev-facing **facade** over the whole **platform** (kernel + adapters +
   substrates): a *low* layer that re-exports the pieces (pass your own explicitly) and a *high* layer
   (`createAgent` · `connectSkill`). See [`conventions/ports.md`](./conventions/ports.md) for the contract a
   third-party adapter satisfies.
@@ -55,18 +55,18 @@ honest "demoable vs. primitive-complete" phase table.
 
 ## `packages/` — the platform (kernel · adapters · SDK) + substrates
 
-**Kernel + adapters (what `@canopy/sdk` re-exports):**
+**Kernel + adapters (what `@onderling/sdk` re-exports):**
 - `core` — the **KERNEL**: the `Agent`, envelope/parts, skill registry, `callSkill` security gate, identity,
   `InternalTransport`, and the **ports** (`Transport`/`DataSource`/`ActorResolver` — see
   [`conventions/ports.md`](./conventions/ports.md)). Concrete adapters live outside it.
-- `transports` (`@canopy/transports`) — the concrete network transports (Nkn/Mqtt/Relay/Rendezvous), each an
+- `transports` (`@onderling/transports`) — the concrete network transports (Nkn/Mqtt/Relay/Rendezvous), each an
   adapter over the kernel's `Transport` port.
 - `pod-client` — high-level Solid pod client (read/write/list/patch, conflict resolution, tombstones) **plus** the
   on-pod storage adapters (`SolidPodSource`/`PodExporter`) and on-pod identity (`IdentityPodStore`/`IdentitySync`).
 - `vault` — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth) over the kernel's vault port.
 - `relay` — Node WebSocket relay: rendezvous signalling + proxy fallback + fan-out + group auth + push wake.
 - `react-native` — RN platform layer: BLE, mDNS, KeychainVault, push bridge, `createMeshAgent`, Metro preset.
-- `sdk` (`@canopy/sdk`) — **the developer SDK**: the layered facade — re-exports the above (low layer) + adds
+- `sdk` (`@onderling/sdk`) — **the developer SDK**: the layered facade — re-exports the above (low layer) + adds
   `createAgent()` / `connectSkill()` (high layer). "Import one thing, done."
 
 **The manifest layer** (one declaration → every surface):

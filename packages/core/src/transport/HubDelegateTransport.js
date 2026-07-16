@@ -3,8 +3,8 @@
  * to a Hub binder.
  *
  * When a bundle (Tasks, Stoop, Folio) launches and detects the Hub via
- * `@canopy/react-native/hub-discovery`, it constructs a binder via
- * `@canopy/react-native/hub-binding` and uses `HubDelegateTransport`
+ * `@onderling/react-native/hub-discovery`, it constructs a binder via
+ * `@onderling/react-native/hub-binding` and uses `HubDelegateTransport`
  * instead of its usual `NknTransport` / `MqttTransport` / etc. The Hub
  * then owns the actual relay socket, BLE/mDNS scanners, and
  * foreground-service slot — one set per device instead of one per

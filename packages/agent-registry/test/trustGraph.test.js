@@ -15,7 +15,7 @@
  * (a `role:'curator'` card is a trust node walked THROUGH, not listed).
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity } from '@canopy/core';
+import { AgentIdentity } from '@onderling/core';
 import { VaultMemory }   from '../../vault/src/VaultMemory.js';
 
 import { issueEndorsement, createCatalogSource, walkTrustGraph } from '../index.js';

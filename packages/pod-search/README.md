@@ -1,6 +1,6 @@
-# @canopy/pod-search
+# @onderling/pod-search
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Forward contract:** the V1 walker MUST compose `pod-client.PodClient.list/read` and subscribe to `PodClient`'s `'delete-local'` event for tombstone eviction (no parallel walker); per `Project Files/Substrates/refactor/L1i-pod-search-refactor.md`.
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Forward contract:** the V1 walker MUST compose `pod-client.PodClient.list/read` and subscribe to `PodClient`'s `'delete-local'` event for tombstone eviction (no parallel walker); per `Project Files/Substrates/refactor/L1i-pod-search-refactor.md`.
 
 Search wrapper over pod content — full-text + faceted filter +
 date sort.  Schema-driven (apps declare which fields are FTS-able,
@@ -24,7 +24,7 @@ retires.
 ## Quick start
 
 ```js
-import { PodSearch } from '@canopy/pod-search';
+import { PodSearch } from '@onderling/pod-search';
 
 const archiveSchema = {
   fields: {

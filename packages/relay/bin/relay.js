@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @canopy/relay — CLI entry point.
+ * @onderling/relay — CLI entry point.
  *
  * Reads options from env vars (or argv for port):
  *   PORT             default 8787
@@ -10,9 +10,9 @@
  *   STATIC_DIR       optional directory to serve over HTTP
  *
  * Usage:
- *   npx @canopy/relay
- *   PORT=9000 STATIC_DIR=./public npx @canopy/relay
- *   TLS_CERT=cert.pem TLS_KEY=key.pem npx @canopy/relay
+ *   npx @onderling/relay
+ *   PORT=9000 STATIC_DIR=./public npx @onderling/relay
+ *   TLS_CERT=cert.pem TLS_KEY=key.pem npx @onderling/relay
  */
 import { readFileSync } from 'node:fs';
 import { startRelay, getLanIp } from '../src/server.js';
@@ -39,7 +39,7 @@ const wsScheme = tls ? 'wss'   : 'ws';
 const lanIp    = getLanIp();
 
 console.log('');
-console.log('  @canopy/relay');
+console.log('  @onderling/relay');
 console.log('  ─────────────────────────────────────');
 console.log(`  Local:    ${scheme}://localhost:${port}`);
 if (lanIp) {

@@ -86,7 +86,7 @@ describe.skipIf(!HAS_ALICE)('CC-ST.8 — pod sign-in (single account)', () => {
   it.todo('TODO when wired: /signin → OIDC complete → /whoami returns Alice\'s WebID', async () => {
     // Implementation plan when this is enabled:
     //   1. boot a workspace with podAuth wired (real createSolidAuthNode
-    //      from @canopy/oidc-session)
+    //      from @onderling/oidc-session)
     //   2. dispatch /signin --issuer=https://solidcommunity.net
     //   3. complete the OIDC dance programmatically via the
     //      service-account credentials in env (NOT browser-driven)

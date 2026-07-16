@@ -2,7 +2,7 @@
 
 > **SP-4b + SP-11 (merged 2026-05-20).**  Composes household +
 > tasks-v0 (with its real multi-circle runtime) in one process via
-> `@canopy/manifest-host`, drives a chat-agent over the merged tool
+> `@onderling/manifest-host`, drives a chat-agent over the merged tool
 > catalog with a scripted LLM, and shows state landing in both apps'
 > stores from one conversation.
 >
@@ -13,7 +13,7 @@
 
 ## What this proves
 
-1. **Cross-app composition** — `@canopy/manifest-host`'s `compose()`
+1. **Cross-app composition** — `@onderling/manifest-host`'s `compose()`
    merges N manifests into one toolCatalog with `appId.opId`
    namespacing.  The chat-agent uses that merged catalog directly,
    one mount per app.
@@ -45,7 +45,7 @@ npm start        # node index.js
 You'll see something like:
 
 ```
-@canopy manifest-host recombination demo
+@onderling manifest-host recombination demo
 — composing household + tasks-v0 in one chat surface
 
 mounted apps:        household, tasks
@@ -136,7 +136,7 @@ npm test
   available; concrete consumption is SP-5b once a real cross-app
   audience scenario surfaces.
 
-- **`text` substrate-compat note.**  `@canopy/item-store`'s `addItems`
+- **`text` substrate-compat note.**  `@onderling/item-store`'s `addItems`
   requires a non-empty `text` field on every partial.  Household
   skills already comply; tasks-v0 skills also do.  Documented in
   `packages/circles/README.md` and the SP-5b backlog.
@@ -146,7 +146,7 @@ npm test
 ## What this demo does NOT do
 
 - **No real LLM.**  Tool calls are scripted via
-  `@canopy/llm-client`'s `mockProvider` for deterministic execution.
+  `@onderling/llm-client`'s `mockProvider` for deterministic execution.
   Wiring a real LLM (e.g. Ollama, OpenAI) is a one-line change in
   `scenario.js`; the rest of the pipeline is provider-agnostic.
 - **No web / mobile surface.**  Chat-only.  Web + mobile surfaces

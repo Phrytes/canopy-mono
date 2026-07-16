@@ -7,13 +7,13 @@
  * The `audience` field — when present — narrows who sees this view
  * (and, via host wiring, items created through it).  V0 accepts any
  * canonical `Audience` shape (string short-hand or structured); the
- * resolution / inheritance semantics live in `@canopy/circles` and
+ * resolution / inheritance semantics live in `@onderling/circles` and
  * are wired by the host in SP-5b.
  *
  * Reserved field-name notes:
  *   - The discriminator field is `type: { const: 'view' }`, so the
  *     *kind of items* a view lists is named `itemType` (NOT `type`).
- *   - `text` is NOT in the schema — but `@canopy/item-store`'s
+ *   - `text` is NOT in the schema — but `@onderling/item-store`'s
  *     `addItems` substrate currently requires a non-empty `text` on
  *     every partial; consumers that write views via the store should
  *     set `text: title` for substrate compatibility.  Substrate fix
@@ -35,7 +35,7 @@ export const VIEW_SCHEMA = {
     filter:   { type: 'object' },
     // Audience is intentionally loose at the schema level — accepts
     // either a string short-hand or a structured object; the
-    // canonical normaliser lives in `@canopy/circles`.  oneOf (not
+    // canonical normaliser lives in `@onderling/circles`.  oneOf (not
     // a union `type: [...]`) keeps AJV strict-mode quiet.
     audience: { oneOf: [{ type: 'string' }, { type: 'object' }] },
   },

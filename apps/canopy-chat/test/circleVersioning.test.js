@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createHash } from 'node:crypto';
 
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import {
   webSha256,
   circleVersioningFor,

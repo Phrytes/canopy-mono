@@ -1,7 +1,7 @@
 # pseudo-pod-adapter
 
 React-Native-side `StorageBackend` implementations for
-[`@canopy/pseudo-pod`](../../../pseudo-pod). Apps wire one of
+[`@onderling/pseudo-pod`](../../../pseudo-pod). Apps wire one of
 these as the backend; the substrate stays platform-neutral.
 
 > Standardisation Phase **51.1 – 51.4**. See
@@ -15,8 +15,8 @@ these as the backend; the substrate stays platform-neutral.
 ```js
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createBackend } from '@canopy/react-native/pseudo-pod-adapter';
-import { createPseudoPod } from '@canopy/pseudo-pod';
+import { createBackend } from '@onderling/react-native/pseudo-pod-adapter';
+import { createPseudoPod } from '@onderling/pseudo-pod';
 
 const backend = createBackend({
   AsyncStorage,
@@ -104,7 +104,7 @@ break siblings or block writers.
 
 - **Cache-mode write-through orchestration.** The dirty-set is
   persistent (Phase 51.5 — markers survive restart) but the
-  substrate-side queue + drain logic lives in `@canopy/pseudo-pod`
+  substrate-side queue + drain logic lives in `@onderling/pseudo-pod`
   V1 (Phase 52.8). Wire `pseudoPod.drainWriteThroughQueue()` to a
   connectivity event for the full graceful-degradation flow.
 - **iOS-specific code.** Android-primary, per the main project

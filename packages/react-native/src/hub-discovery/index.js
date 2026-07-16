@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/hub-discovery — Android Hub install detection.
+ * @onderling/react-native/hub-discovery — Android Hub install detection.
  *
  * V0 (Phase 51.6):
  *   - `createHubDiscovery({ nativeModule, intentAction? })` returns

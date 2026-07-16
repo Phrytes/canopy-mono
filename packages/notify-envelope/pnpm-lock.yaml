@@ -8,15 +8,15 @@ importers:
 
   .:
     devDependencies:
-      '@canopy/core':
+      '@onderling/core':
         specifier: file:../core
         version: file:../core
-      '@canopy/pod-routing':
+      '@onderling/pod-routing':
         specifier: file:../pod-routing
-        version: file:../pod-routing(@canopy/pseudo-pod@file:../pseudo-pod(@canopy/core@file:../core))
-      '@canopy/pseudo-pod':
+        version: file:../pod-routing(@onderling/pseudo-pod@file:../pseudo-pod(@onderling/core@file:../core))
+      '@onderling/pseudo-pod':
         specifier: file:../pseudo-pod
-        version: file:../pseudo-pod(@canopy/core@file:../core)
+        version: file:../pseudo-pod(@onderling/core@file:../core)
       vitest:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@25.9.1)
@@ -27,23 +27,23 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     resolution: {directory: ../core, type: directory}
 
-  '@canopy/oidc-session@file:../oidc-session':
+  '@onderling/oidc-session@file:../oidc-session':
     resolution: {directory: ../oidc-session, type: directory}
 
-  '@canopy/pod-routing@file:../pod-routing':
+  '@onderling/pod-routing@file:../pod-routing':
     resolution: {directory: ../pod-routing, type: directory}
     peerDependencies:
-      '@canopy/pseudo-pod': '*'
+      '@onderling/pseudo-pod': '*'
 
-  '@canopy/pseudo-pod@file:../pseudo-pod':
+  '@onderling/pseudo-pod@file:../pseudo-pod':
     resolution: {directory: ../pseudo-pod, type: directory}
     peerDependencies:
-      '@canopy/core': '*'
+      '@onderling/core': '*'
 
-  '@canopy/vault@file:../vault':
+  '@onderling/vault@file:../vault':
     resolution: {directory: ../vault, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -812,10 +812,10 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     dependencies:
-      '@canopy/oidc-session': file:../oidc-session
-      '@canopy/vault': file:../vault
+      '@onderling/oidc-session': file:../oidc-session
+      '@onderling/vault': file:../vault
       '@inrupt/solid-client': 3.0.0
       '@inrupt/solid-client-authn-node': 4.0.0
       '@noble/hashes': 2.2.0
@@ -826,19 +826,19 @@ snapshots:
     optionalDependencies:
       node-datachannel: 0.32.3
 
-  '@canopy/oidc-session@file:../oidc-session':
+  '@onderling/oidc-session@file:../oidc-session':
     dependencies:
       '@inrupt/solid-client-authn-node': 4.0.0
 
-  '@canopy/pod-routing@file:../pod-routing(@canopy/pseudo-pod@file:../pseudo-pod(@canopy/core@file:../core))':
+  '@onderling/pod-routing@file:../pod-routing(@onderling/pseudo-pod@file:../pseudo-pod(@onderling/core@file:../core))':
     dependencies:
-      '@canopy/pseudo-pod': file:../pseudo-pod(@canopy/core@file:../core)
+      '@onderling/pseudo-pod': file:../pseudo-pod(@onderling/core@file:../core)
 
-  '@canopy/pseudo-pod@file:../pseudo-pod(@canopy/core@file:../core)':
+  '@onderling/pseudo-pod@file:../pseudo-pod(@onderling/core@file:../core)':
     dependencies:
-      '@canopy/core': file:../core
+      '@onderling/core': file:../core
 
-  '@canopy/vault@file:../vault': {}
+  '@onderling/vault@file:../vault': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

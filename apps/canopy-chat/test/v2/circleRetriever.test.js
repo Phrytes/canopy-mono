@@ -5,8 +5,8 @@ import {
   makePodSearchRetriever, circleItemFromRow, CIRCLE_ITEM_SCHEMA,
   DEFAULT_CIRCLE_RAG_MIN_SCORE,
 } from '../../src/v2/circleRetriever.js';
-import { mockEmbeddingsProvider } from '@canopy/llm-client';
-import { createMemoryBackend } from '@canopy/pseudo-pod/memory';
+import { mockEmbeddingsProvider } from '@onderling/llm-client';
+import { createMemoryBackend } from '@onderling/pseudo-pod/memory';
 
 // Normalized circle items (the shape loadCircleItems returns: {id,label,kind,...}).
 const ITEMS = [

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { classifyQrPayload } from '@canopy/react-native/qr';
+import { classifyQrPayload } from '@onderling/react-native/qr';
 import { TASKS_CLASSIFIERS, _internal } from '../../src/lib/qrClassifiers.js';
 
 describe('qrClassifiers — invite', () => {

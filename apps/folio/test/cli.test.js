@@ -30,7 +30,7 @@ import { fileURLToPath }    from 'node:url';
 
 import {
   PodCapabilityToken,
-} from '@canopy/core';
+} from '@onderling/core';
 
 const HERE     = dirname(fileURLToPath(import.meta.url));
 const CLI_PATH = join(HERE, '..', 'src', 'cli.js');

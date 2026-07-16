@@ -1,7 +1,7 @@
-// @canopy/blob-gateway — media substrate (Objective S, first slice).
+// @onderling/blob-gateway — media substrate (Objective S, first slice).
 //
 // Large media doesn't belong inline in a pod. Instead: the client ENCRYPTS the blob locally
-// (reusing the `@canopy/pod-client/sealing` CEK-envelope — no new crypto), uploads the
+// (reusing the `@onderling/pod-client/sealing` CEK-envelope — no new crypto), uploads the
 // CIPHERTEXT to an untrusted object bucket, and writes only a small `embeds`-style manifest
 // line into the pod (cross-pod-ref convention). To read it back, a deny-by-default
 // poortwachter verifies a Solid token, checks the pod ACL, and issues a short-lived presigned
@@ -31,10 +31,10 @@ export {
 // REAL adapters that satisfy the injected contracts (Objective S, second slice).
 // Kept behind subpath exports so this core entry stays browser-safe (the S3 +
 // Solid-verifier adapters use `node:crypto`):
-//   • bucket      → '@canopy/blob-gateway/adapters/s3'                  createS3Bucket
-//   • verifyToken → '@canopy/blob-gateway/adapters/capability-verifier' createCapabilityVerifier / anyVerifier
+//   • bucket      → '@onderling/blob-gateway/adapters/s3'                  createS3Bucket
+//   • verifyToken → '@onderling/blob-gateway/adapters/capability-verifier' createCapabilityVerifier / anyVerifier
 //                   (PRIMARY media-gate auth: canopy capability tokens)
-//   • verifyToken → '@canopy/blob-gateway/adapters/solid-verifier'      createSolidVerifier / createJwksVerifier
+//   • verifyToken → '@onderling/blob-gateway/adapters/solid-verifier'      createSolidVerifier / createJwksVerifier
 //                   (additional verifier: Solid-OIDC — compose via anyVerifier)
-//   • acl         → '@canopy/blob-gateway/adapters/pod-acl'             createPodAcl
-//   • HTTP edge   → '@canopy/blob-gateway/http'                         createHttpGate
+//   • acl         → '@onderling/blob-gateway/adapters/pod-acl'             createPodAcl
+//   • HTTP edge   → '@onderling/blob-gateway/http'                         createHttpGate

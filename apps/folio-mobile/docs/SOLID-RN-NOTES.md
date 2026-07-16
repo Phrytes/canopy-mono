@@ -1,7 +1,7 @@
 # SOLID-RN-NOTES (moved)
 
 **The polyfill / bring-up trap catalogue is now maintained in the
-`@canopy/react-native` substrate package:**
+`@onderling/react-native` substrate package:**
 
 → [`packages/react-native/docs/BRING-UP-NOTES.md`](../../../packages/react-native/docs/BRING-UP-NOTES.md)
 
@@ -14,7 +14,7 @@ Companion docs in the same directory:
 
 This doc started life as Folio's mobile bring-up notes (drafted
 2026-04-30 against the `track-H-folio` branch).  When the
-`@canopy/react-native` package expanded into the RN-platform-layer
+`@onderling/react-native` package expanded into the RN-platform-layer
 substrate (Phase B step 1, 2026-05-02), the trap catalogue moved into
 the substrate so future RN apps inherit the same knowledge without
 copy-pasting from Folio.

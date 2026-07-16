@@ -1,4 +1,4 @@
-// Mobile shim for `@canopy/chat-agent/bridges/telegram`.
+// Mobile shim for `@onderling/chat-agent/bridges/telegram`.
 //
 // The Telegram bridge is a Node-only server transport: it `import { Telegraf } from
 // 'telegraf'` and does `class … extends Telegraf`. On Hermes, `telegraf` (a Node lib)

@@ -25,7 +25,7 @@
  * React Native / Expo has NO WebCrypto `subtle` and no `node:crypto`, so
  * neither path here fires on-device. The RN wiring is an `expo-crypto`
  * digest injected via `packages/react-native/platform` (mirrors how
- * `@canopy/sync-engine`'s `createHashRN({ Crypto })` is threaded) — the
+ * `@onderling/sync-engine`'s `createHashRN({ Crypto })` is threaded) — the
  * seam is simply "pass a different `hash` fn into `PodSearch`", so no
  * change here is needed when it lands. Tracked as the pod-search RN pass.
  */

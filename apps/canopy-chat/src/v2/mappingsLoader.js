@@ -2,17 +2,17 @@
  * mappingsLoader — COMPAT WRAPPER (repo-split W4, objective F).
  *
  * The neutral load+verify path moved into the platform-neutral substrate
- * `@canopy/kring-host` (`./mappingsLoader`). It could not `export *` re-export like the pure W3 leaves,
+ * `@onderling/kring-host` (`./mappingsLoader`). It could not `export *` re-export like the pure W3 leaves,
  * because its verify gate (`verifyMappings`, `mappingsToSources`) lives in the app-local `../mappings.js`
  * — which itself depends on the app-local `composite.js` (`verifyComposite`, destined for
- * `@canopy/manifest-host`, not kring-host), so `mappings.js` can't move into the substrate honestly yet.
+ * `@onderling/manifest-host`, not kring-host), so `mappings.js` can't move into the substrate honestly yet.
  *
  * The substrate loader therefore takes those two functions by INJECTION. This shim is the app-side
  * composition seam: it binds canopy-chat's `verifyMappings`/`mappingsToSources` into the neutral loader so
  * existing callers (web `circleApp.js`, mobile `agentBundle.js`, the test) keep calling
  * `loadVerifyMappings({ store, deviceId, catalog })` unchanged.
  */
-import { loadVerifyMappings as loadVerifyMappingsNeutral } from '@canopy/kring-host/mappingsLoader';
+import { loadVerifyMappings as loadVerifyMappingsNeutral } from '@onderling/kring-host/mappingsLoader';
 import { verifyMappings, mappingsToSources } from '../mappings.js';
 
 /** @type {typeof loadVerifyMappingsNeutral} */

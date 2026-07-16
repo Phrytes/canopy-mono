@@ -1,5 +1,5 @@
 /**
- * SolidPodSource — @canopy/logger coverage + PII-safety (logging slice 3, POD path).
+ * SolidPodSource — @onderling/logger coverage + PII-safety (logging slice 3, POD path).
  *
  * Drives read / write / an error through a mocked fetch and asserts:
  *   1. the expected structured events land in `dumpLogs()` (pod.read, pod.write, pod.error);
@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SolidPodSource } from '../src/SolidPodSource.js';
-import { log, dumpLogs, clearLogs } from '@canopy/logger';
+import { log, dumpLogs, clearLogs } from '@onderling/logger';
 
 const POD = 'https://pod.example.org/';
 

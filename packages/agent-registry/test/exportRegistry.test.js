@@ -1,7 +1,7 @@
 // Identity step 5A — export/import the profile set as an encrypted, storage-agnostic artifact.
 import { describe, it, expect } from 'vitest';
-import { Bootstrap } from '@canopy/core';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { Bootstrap } from '@onderling/core';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
 import {
   exportProfileRegistry, importProfileRegistry, restoreProfilesInto,

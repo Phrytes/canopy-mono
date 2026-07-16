@@ -1,8 +1,8 @@
 // Identity step 4 (app) — the createProfile op core: names a profile; the owner-root DERIVATION is
 // the injected `profiles` collaborator (cores stay dependency-free).
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createAgentRegistry } from '@canopy/agent-registry';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createAgentRegistry } from '@onderling/agent-registry';
 import { createProfile } from '../src/cores.js';
 
 const mkReg = () => createAgentRegistry({

@@ -1,5 +1,5 @@
 /**
- * `@canopy/manifest-host` — runtime composition of N app-manifests.
+ * `@onderling/manifest-host` — runtime composition of N app-manifests.
  *
  * SP-4 V0 substrate (locked 2026-05-20).  Owns the *runtime* side of the
  * manifest model: accept manifests via `mount()`, hand back a composed
@@ -44,7 +44,7 @@
  *     circle").  Mount is API-driven for V0; persistence wires later.
  */
 
-import { renderChat, validateManifest } from '@canopy/app-manifest';
+import { renderChat, validateManifest } from '@onderling/app-manifest';
 
 /** @returns {Host} */
 export function createManifestHost() {

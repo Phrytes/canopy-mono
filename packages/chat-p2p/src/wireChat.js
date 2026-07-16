@@ -83,9 +83,9 @@ function freshNonce() {
  * `send(...)` for outbound + `detach()` to stop listening.
  *
  * @param {object} args
- * @param {import('@canopy/core').Agent} args.agent
- * @param {import('@canopy/item-store').ItemStore} args.itemStore
- * @param {import('@canopy/identity-resolver').MemberMap} args.members
+ * @param {import('@onderling/core').Agent} args.agent
+ * @param {import('@onderling/item-store').ItemStore} args.itemStore
+ * @param {import('@onderling/identity-resolver').MemberMap} args.members
  * @param {Set<string>} args.muted             local mute set (stableIds + webid fallbacks)
  * @param {string} args.localActor             my webid
  * @param {string | null} args.localStableId   my stableId (from agent.identity.stableId)
@@ -250,8 +250,8 @@ export function wireChat({
       try {
         const me = await members?.resolveByWebid(localActor);
         // 2026-05-08: matchesProfile lives in
-        // @canopy/identity-resolver since the Phase 3 lift.
-        const { matchesProfile } = await import('@canopy/identity-resolver');
+        // @onderling/identity-resolver since the Phase 3 lift.
+        const { matchesProfile } = await import('@onderling/identity-resolver');
         const post = {
           categoryId: data.categoryId ?? null,
           tags:       Array.isArray(data.skillTags) ? data.skillTags : [],
@@ -563,7 +563,7 @@ export function wireChat({
 //
 // Inlined here as a private helper so chat-p2p stays self-contained.
 // Canonical implementation lives in `apps/stoop/src/lib/geo.js` —
-// keep the two in sync (or lift this trio into a tiny `@canopy/cell-grid`
+// keep the two in sync (or lift this trio into a tiny `@onderling/cell-grid`
 // substrate when a third consumer surfaces; rule-of-two not yet
 // triggered, the third caller is mobile's own `lib/geo.js`).
 

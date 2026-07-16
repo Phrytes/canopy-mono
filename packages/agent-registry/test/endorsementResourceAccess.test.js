@@ -4,7 +4,7 @@
  *
  * The LIVE proof that the underlying `setResourceAccess` primitive really
  * enforces access on a Solid pod (public-read → unauth 200; non-granted
- * write → 403) lives in `@canopy/pod-client`'s CSS-gated
+ * write → 403) lives in `@onderling/pod-client`'s CSS-gated
  * `test/sharing/setResourceAccess.css.test.js` (WAC-proven). THIS test only
  * asserts the agent-registry WIRING contract, hermetically:
  *   - the hook fires (once) after the first write to a REAL (https) pod URI;

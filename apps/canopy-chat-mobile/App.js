@@ -45,7 +45,7 @@ import { dlog } from './src/core/devLog.js';
 import { EventLog } from '../canopy-chat/src/eventLog.js';
 import { rehydrateKringChatsFromStoop } from '../canopy-chat/src/v2/kringChatRehydrate.js';
 import { createChatMessageInbox } from '../canopy-chat/src/v2/chatMessageInbox.js';
-import { OidcSessionRN } from '@canopy/oidc-session-rn';
+import { OidcSessionRN } from '@onderling/oidc-session-rn';
 import { buildCirclePodWriter } from './src/core/circleStoresRN.js';
 // γ-next.recipe — per-kring pending-recipe cache (AsyncStorage-backed).
 // One store per app; shared between ChatScreen (receiver) and

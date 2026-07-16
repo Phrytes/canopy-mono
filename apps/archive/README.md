@@ -15,16 +15,16 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/agent-ui` (L1d) | `mountLocalUi(agent)` — exposes the archive's skills (`search`, `addSource`, `index`, …) over A2A's standard wire shape on `127.0.0.1`. | Localhost-A2A bring-up is shared across H4 / H5 / H7 (archive); the substrate owns the dispatch + agent-card path. |
-| `@canopy/pod-search` (L1i) | SQLite FTS5 indexer + faceted search. | The pod-walker + index schema are reused by future search UIs; this app drives the substrate's V1 contract (compose `pod-client.PodClient.list/read` + tombstone eviction via `'delete-local'` event). |
+| `@onderling/agent-ui` (L1d) | `mountLocalUi(agent)` — exposes the archive's skills (`search`, `addSource`, `index`, …) over A2A's standard wire shape on `127.0.0.1`. | Localhost-A2A bring-up is shared across H4 / H5 / H7 (archive); the substrate owns the dispatch + agent-card path. |
+| `@onderling/pod-search` (L1i) | SQLite FTS5 indexer + faceted search. | The pod-walker + index schema are reused by future search UIs; this app drives the substrate's V1 contract (compose `pod-client.PodClient.list/read` + tombstone eviction via `'delete-local'` event). |
 
 ## Direct kernel use
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport` | Constructing the archive's local agent that `mountLocalUi` exposes over A2A. | No substrate wraps "construct an agent" — that's the kernel foundation. The CLI runs the agent in-process, no relay needed. |
-| `@canopy/core` | `defineSkill` | Registering the archive's skill handlers (search / addSource / index / status / show). | Skill-registry primitive is kernel-foundational; every consumer's skill set differs, so no substrate wraps the registry call site. |
-| `@canopy/pod-client` | (Future, real-pod path) `PodClient` | The walker today goes through `FsBackedMockPodClient`; real Solid OIDC plugs in `pod-client.PodClient`. | Same justification as folio: `PodClient` is the canonical pod read/write primitive; substrates compose it, apps construct it. Tracked in the "What v0 deliberately doesn't ship" list. |
+| `@onderling/core` | `Agent`, `AgentIdentity`, `VaultMemory`, `InternalBus`, `InternalTransport` | Constructing the archive's local agent that `mountLocalUi` exposes over A2A. | No substrate wraps "construct an agent" — that's the kernel foundation. The CLI runs the agent in-process, no relay needed. |
+| `@onderling/core` | `defineSkill` | Registering the archive's skill handlers (search / addSource / index / status / show). | Skill-registry primitive is kernel-foundational; every consumer's skill set differs, so no substrate wraps the registry call site. |
+| `@onderling/pod-client` | (Future, real-pod path) `PodClient` | The walker today goes through `FsBackedMockPodClient`; real Solid OIDC plugs in `pod-client.PodClient`. | Same justification as folio: `PodClient` is the canonical pod read/write primitive; substrates compose it, apps construct it. Tracked in the "What v0 deliberately doesn't ship" list. |
 
 ## What v0 ships
 
@@ -127,7 +127,7 @@ truncated for indexing (the full size + sha256 are still recorded).
 ```
 apps/archive/
 ├── README.md             ← this file
-├── package.json          ← @canopy-app/archive
+├── package.json          ← @onderling-app/archive
 ├── bin/archive           ← CLI entry (init / add-source / index / search / status / show)
 ├── src/
 │   ├── server/

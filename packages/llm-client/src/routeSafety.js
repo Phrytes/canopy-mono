@@ -8,7 +8,7 @@
 // Anything else (a "confidential" route pointed at a plain remote host, or any other
 // remote route) would expose plaintext to a host that can read it → refuse.
 //
-// This is the canonical home (SDK layer, @canopy/llm-client) so every consumer —
+// This is the canonical home (SDK layer, @onderling/llm-client) so every consumer —
 // canopy-chat circles, the feedback pipeline, third parties via the SDK — shares ONE
 // definition instead of forking it. Browser-safe: `process.env` access is guarded.
 //

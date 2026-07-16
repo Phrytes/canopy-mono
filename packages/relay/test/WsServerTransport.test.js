@@ -5,8 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import WebSocket from 'ws';
 import { WsServerTransport } from '../src/WsServerTransport.js';
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

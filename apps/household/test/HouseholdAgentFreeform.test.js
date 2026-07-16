@@ -12,8 +12,8 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { LlmClient, mockProvider } from '@canopy/llm-client';
-import { InMemoryBridge }           from '@canopy/chat-agent';
+import { LlmClient, mockProvider } from '@onderling/llm-client';
+import { InMemoryBridge }           from '@onderling/chat-agent';
 
 import { HouseholdAgentFreeform } from '../src/HouseholdAgentFreeform.js';
 

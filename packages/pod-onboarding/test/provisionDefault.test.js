@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { generateMnemonic }     from '@canopy/core';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { generateMnemonic }     from '@onderling/core';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { provisionDefault }     from '../src/provisionDefault.js';
 
 const ANNE_POD   = 'https://anne.pod';
@@ -147,8 +147,8 @@ describe('provisionDefault — happy path', () => {
   it('accepts a pre-built identity (no mnemonic)', async () => {
     const pseudoPod = mkPseudoPod('d');
     const prov = fakeProvisioner();
-    const { AgentIdentity } = await import('@canopy/core');
-    const { VaultMemory }   = await import('@canopy/vault');
+    const { AgentIdentity } = await import('@onderling/core');
+    const { VaultMemory }   = await import('@onderling/vault');
     const vault = new VaultMemory();
     const identity = await AgentIdentity.fromMnemonic(generateMnemonic(), vault);
 

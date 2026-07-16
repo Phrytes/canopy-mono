@@ -4,7 +4,7 @@
  * TODO (2026-05-04, Phase 4.1 of substrate refactor): when we return to
  * H2 for V0 ship, replace this in-app helper with a thin wrapper over
  * `MemberMap.fromPodConfig({podClient, configUri})` from
- * `@canopy/identity-resolver`. The substrate factory now reads pod
+ * `@onderling/identity-resolver`. The substrate factory now reads pod
  * config + populates a webid-keyed roster — the same pattern this
  * helper implements over `HouseholdConfig`. The H2 schema stays
  * (`HouseholdConfig.members[]`); only the read path moves to the

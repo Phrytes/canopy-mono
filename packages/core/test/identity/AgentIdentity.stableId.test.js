@@ -9,7 +9,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { generateMnemonic } from '../../src/identity/Mnemonic.js';
 
 describe('AgentIdentity — Phase 32 deterministic stableId', () => {

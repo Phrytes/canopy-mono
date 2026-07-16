@@ -16,7 +16,7 @@
 
 // Media P1 (2026-07) — the media-card chip opens the manifest line's sealed
 // inline thumbnail client-side (no gate, no fetch — the thumb ships in the line).
-import { openThumbnail } from '@canopy/blob-gateway';
+import { openThumbnail } from '@onderling/blob-gateway';
 
 /**
  * @typedef {object} DomAdapterContext

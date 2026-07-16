@@ -3,7 +3,7 @@
  *
  * Mirror of Stoop's `apps/stoop/src/lib/podSignIn.js`. Glue between
  * `createSolidAuthNode` (browser-redirect Solid OIDC, via
- * `@canopy/oidc-session`) and the circle bundle's
+ * `@onderling/oidc-session`) and the circle bundle's
  * `CachingDataSource`. Four operations:
  *
  *   - `startPodSignIn({ circle, issuer, redirectUrl })`
@@ -34,7 +34,7 @@
  * The default OIDC session is the Node browser-redirect
  * `createSolidAuthNode` (web path — UNCHANGED). React Native cannot
  * use it (`@inrupt/solid-client-authn-browser` needs `window`), and
- * its RN equivalent (`@canopy/oidc-session-rn`) acquires tokens via a
+ * its RN equivalent (`@onderling/oidc-session-rn`) acquires tokens via a
  * hook-driven PKCE flow + `adoptTokens(tokens)` rather than
  * `start()`/`handleCallback()`. So an OPTIONAL `sessionFactory`
  * argument may be threaded through all four operations to inject the
@@ -51,8 +51,8 @@
  * platforms. Web callers pass `callbackUrl` exactly as before.
  */
 
-import { SolidPodSource } from '@canopy/pod-client';
-import { createSolidAuthNode } from '@canopy/oidc-session';
+import { SolidPodSource } from '@onderling/pod-client';
+import { createSolidAuthNode } from '@onderling/oidc-session';
 import { attachTasksBundle, detachTasksBundle } from './attachTasksBundle.js';
 
 /** Lazily build a vault for OIDC token storage. */
@@ -119,7 +119,7 @@ export async function startPodSignIn({ circle, issuer, redirectUrl, sessionFacto
  *     `oidc.handleCallback(callbackUrl)` on the existing session
  *     created by `startPodSignIn`. UNCHANGED behaviour.
  *   - `tokens` (RN path): the caller already ran the PKCE flow (the
- *     `@canopy/oidc-session-rn` hook) and holds tokens. We adopt
+ *     `@onderling/oidc-session-rn` hook) and holds tokens. We adopt
  *     them onto the (optionally injected) session. `startPodSignIn`
  *     need not have run first in this mode.
  *

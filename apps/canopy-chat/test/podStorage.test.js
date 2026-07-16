@@ -118,7 +118,7 @@ describe('createPodWriter', () => {
 
 describe('CalendarStore × podWriter integration', () => {
   it('refreshIcsFeed write-throughs to the pod after setPodWriter', async () => {
-    const { CalendarStore } = await import('@canopy-app/calendar');
+    const { CalendarStore } = await import('@onderling-app/calendar');
     const session = {
       webid: 'https://anne.example/profile/card#me',
       fetch: vi.fn(async (url, _opts) => ({ ok: true, status: 200, text: async () => '' })),
@@ -138,7 +138,7 @@ describe('CalendarStore × podWriter integration', () => {
   });
 
   it('clearing the writer via setPodWriter(null) stops the write-through', async () => {
-    const { CalendarStore } = await import('@canopy-app/calendar');
+    const { CalendarStore } = await import('@onderling-app/calendar');
     const session = {
       webid: 'https://anne.example/profile/card#me',
       fetch: vi.fn(async () => ({ ok: true, status: 200, text: async () => '' })),
@@ -153,7 +153,7 @@ describe('CalendarStore × podWriter integration', () => {
   });
 
   it('getPodFeedUrl returns the URL when writer set, null otherwise', async () => {
-    const { CalendarStore } = await import('@canopy-app/calendar');
+    const { CalendarStore } = await import('@onderling-app/calendar');
     const store = new CalendarStore({ actor: 'webid:anne' });
     expect(store.getPodFeedUrl()).toBeNull();
     store.setPodWriter(createPodWriter({

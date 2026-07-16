@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/picker — image + document picker substrate.
+ * @onderling/react-native/picker — image + document picker substrate.
  *
  * Two flavours:
  *   - `pickAndResize` (image) — camera + library, JPEG-normalised

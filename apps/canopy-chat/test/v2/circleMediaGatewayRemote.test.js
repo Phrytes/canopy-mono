@@ -11,18 +11,18 @@
  *
  * The edge is a STUB `fetch` honouring the blobGateMount wire (/upload-url → PUT
  * sink → /grant → presign → ciphertext), backed by the REAL capability verifier
- * (@canopy/blob-gateway) so the minted token is genuinely checked — no crypto
- * short-cut. Sealing is a REAL group-key pair (@canopy/pod-client/sealing), the
+ * (@onderling/blob-gateway) so the minted token is genuinely checked — no crypto
+ * short-cut. Sealing is a REAL group-key pair (@onderling/pod-client/sealing), the
  * same seam the other media suites use.
  */
 import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 
-import { AgentIdentity, CapabilityToken } from '@canopy/core';
+import { AgentIdentity, CapabilityToken } from '@onderling/core';
 import {
   generateGroupKey, makeGroupSealer, makeGroupOpener, isSealed,
-} from '@canopy/pod-client/sealing';
-import { createCapabilityVerifier } from '@canopy/blob-gateway/adapters/capability-verifier';
+} from '@onderling/pod-client/sealing';
+import { createCapabilityVerifier } from '@onderling/blob-gateway/adapters/capability-verifier';
 
 import {
   createCircleMediaGateway, createRemoteMediaBucket, createCircleMediaComposition,

@@ -7,19 +7,19 @@
  * podFetcher / adapter wiring lives in exactly one place:
  *   - desktop CLI: `src/cli/_podFactory.js` (supplies a NodeFsBackend)
  *   - mobile (RN): `apps/folio-mobile` (supplies the RN
- *     `@canopy/react-native/pseudo-pod-adapter` backend)
+ *     `@onderling/react-native/pseudo-pod-adapter` backend)
  *
  * ⚠️ This file MUST stay node:fs-free — folio-mobile bundles it via the
- * `@canopy-app/folio` platform-shell import (Hermes/RN, no Node). The
+ * `@onderling-app/folio` platform-shell import (Hermes/RN, no Node). The
  * platform-specific *backend* is injected by the caller; only the
- * portable `@canopy/pseudo-pod` barrel is imported here (its Node
+ * portable `@onderling/pseudo-pod` barrel is imported here (its Node
  * backend lives behind the separate `/node` subpath and is never
  * pulled in by this module).
  *
  * P3 Phase B (desktop) + Phase C (mobile).
  */
 
-import { createPseudoPod, createSyncEnginePodClient } from '@canopy/pseudo-pod';
+import { createPseudoPod, createSyncEnginePodClient } from '@onderling/pseudo-pod';
 
 /** Minimal content-type inference for the write-through (Folio v1 = .md). */
 export function guessContentType(uri) {
@@ -36,7 +36,7 @@ export function guessContentType(uri) {
  *
  * @param {object}  args
  * @param {object}  args.realPodClient  the underlying PodClient (mock or real).
- * @param {object}  args.backend        a `@canopy/pseudo-pod` StorageBackend
+ * @param {object}  args.backend        a `@onderling/pseudo-pod` StorageBackend
  *   (NodeFsBackend on desktop, RN createBackend on mobile, MemoryBackend
  *   for tests).
  * @param {string}  [args.deviceId='folio']  pseudo-pod local-namespace id.

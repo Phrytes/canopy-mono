@@ -1,7 +1,7 @@
 /**
  * identityBootstrap — Stoop's binding of the lifted bootstrap helper.
  *
- * Lifted to `@canopy/react-native/identity` 2026-05-09 (Phase 41.0.b
+ * Lifted to `@onderling/react-native/identity` 2026-05-09 (Phase 41.0.b
  * A3). Stoop uses `'stoop'` as the keychain service namespace; the
  * vault factory is wired through a NAMED-package dynamic import so
  * vitest doesn't pre-bundle `react-native-keychain` (a TS file).
@@ -13,13 +13,13 @@
 import {
   bootstrapIdentity as _bootstrapIdentity,
   clearIdentity     as _clearIdentity,
-} from '@canopy/react-native/identity/bootstrap';
+} from '@onderling/react-native/identity/bootstrap';
 
 export const STOOP_KEYCHAIN_SERVICE = 'stoop';
 
 // Lazy KeychainVault load — only fires at runtime on a real device.
 const _vaultFactory = async () => {
-  const mod = await import('@canopy/react-native/src/identity/KeychainVault.js');
+  const mod = await import('@onderling/react-native/src/identity/KeychainVault.js');
   return new mod.KeychainVault({ service: STOOP_KEYCHAIN_SERVICE });
 };
 

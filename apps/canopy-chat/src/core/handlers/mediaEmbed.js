@@ -3,7 +3,7 @@
  * wiring, web slice; plans/NOTE-media-and-streaming.md).
  *
  * `createMediaEmbed` turns a picked image into a SEALED blob upload plus a
- * canonical `media` item (`@canopy/item-types`), and returns a `media-card`
+ * canonical `media` item (`@onderling/item-types`), and returns a `media-card`
  * embed whose message-side pointer is the embeds-style `{type:'media', ref}`
  * entry (the decided attachment shape):
  *
@@ -44,8 +44,8 @@
  * small-image inline fallback is a possible later addition — noted, not built.
  */
 
-import { uploadBlob, b64uToBytes } from '@canopy/blob-gateway';
-import { validate } from '@canopy/item-types';
+import { uploadBlob, b64uToBytes } from '@onderling/blob-gateway';
+import { validate } from '@onderling/item-types';
 import { dataUrlToB64 } from '../../v2/attachmentEncoder.js';
 
 /** True when the injected media gateway carries the two seams uploadBlob

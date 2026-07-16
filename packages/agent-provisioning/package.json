@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "@canopy/agent-provisioning",
+  "name": "@onderling/agent-provisioning",
   "version": "0.1.0",
-  "description": "Facade package — composes @canopy/core + the standardisation substrates (vault, oidc-session, webid-discovery, ...) into a one-call `provisionAgent({...})` factory. Apps that want the canonical Hub-free bring-up use this; everything else can compose substrates manually. Authored 2026-05-11 as part of the standardisation P1 work (Phase 50.5.b).",
+  "description": "Facade package — composes @onderling/core + the standardisation substrates (vault, oidc-session, webid-discovery, ...) into a one-call `provisionAgent({...})` factory. Apps that want the canonical Hub-free bring-up use this; everything else can compose substrates manually. Authored 2026-05-11 as part of the standardisation P1 work (Phase 50.5.b).",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -13,10 +13,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/vault": "file:../vault",
-    "@canopy/oidc-session": "file:../oidc-session",
-    "@canopy/webid-discovery": "file:../webid-discovery"
+    "@onderling/core": "file:../core",
+    "@onderling/vault": "file:../vault",
+    "@onderling/oidc-session": "file:../oidc-session",
+    "@onderling/webid-discovery": "file:../webid-discovery"
   },
   "devDependencies": {
     "vitest": "^2.1.9"

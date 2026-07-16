@@ -8,13 +8,13 @@
  * behaviour, and degrades to memory if IndexedDB is present but blocked (private
  * browsing / quota / SecurityError) rather than breaking the store.
  *
- * Both backends satisfy the same `@canopy/pseudo-pod` StorageBackend contract, so this
+ * Both backends satisfy the same `@onderling/pseudo-pod` StorageBackend contract, so this
  * is a drop-in for `createMemoryBackend()` at the circle-store / vectorStore
  * construction sites in `circleApp.js`.
  */
 
-import { createMemoryBackend }    from '@canopy/pseudo-pod';
-import { createIndexedDbBackend } from '@canopy/pseudo-pod/browser';
+import { createMemoryBackend }    from '@onderling/pseudo-pod';
+import { createIndexedDbBackend } from '@onderling/pseudo-pod/browser';
 
 /**
  * Pick the persistent backend for a circle store or the RAG index.

@@ -8,8 +8,8 @@ import { describe, it, expect, vi } from 'vitest';
 import Module from 'module';
 import { enableNativePush, disableNativePush, getNativePushState } from '../src/v2/nativePush.js';
 // presentLocalNotification was folded into the shared push module (RN ports-and-adapters,
-// invariant #3). Same behaviour, now imported from @canopy/react-native/push.
-import { presentLocalNotification } from '@canopy/react-native/push';
+// invariant #3). Same behaviour, now imported from @onderling/react-native/push.
+import { presentLocalNotification } from '@onderling/react-native/push';
 
 /**
  * Force the "native module absent" condition. expo-notifications / expo-device

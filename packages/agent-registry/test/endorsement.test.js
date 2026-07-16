@@ -15,8 +15,8 @@
  * endorsement resource — no crypto/pod mocks.
  */
 import { describe, it, expect } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { AgentIdentity } from '@canopy/core';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { AgentIdentity } from '@onderling/core';
 import { VaultMemory }   from '../../vault/src/VaultMemory.js';
 
 import {

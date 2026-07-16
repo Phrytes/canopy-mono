@@ -11,7 +11,7 @@
  *     routes via the joinGroup wizard, which already accepts the URL
  *     verbatim (decodeInvite is in core/wizards/joinGroupState.js).
  *
- * Built on @canopy/react-native/qr's plug-in dispatcher
+ * Built on @onderling/react-native/qr's plug-in dispatcher
  * (`classifyQrPayload(text, classifiers)`).  Pure JS, no Expo deps —
  * testable with vitest.
  */

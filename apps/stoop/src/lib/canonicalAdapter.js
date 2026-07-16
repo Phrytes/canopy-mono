@@ -1,6 +1,6 @@
 /**
  * canonicalAdapter — Stoop's legacy item-type vocabulary → canonical
- * `@canopy/item-types` shape.
+ * `@onderling/item-types` shape.
  *
  * Stoop's `postRequest` writes items with legacy types: `ask`,
  * `offer`, `lend`, `request`, `report` (plus a handful of bespoke
@@ -18,7 +18,7 @@
  * `Project Files/Substrates/substrates-v2-coding-plan-2026-05-11.md`.
  */
 
-import { validateCanonical, schema } from '@canopy/item-types';
+import { validateCanonical, schema } from '@onderling/item-types';
 
 /**
  * Is `kind` a valid canonical `kind` for `type`? Reads the canonical

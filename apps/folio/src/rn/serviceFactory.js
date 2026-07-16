@@ -2,7 +2,7 @@
  * serviceFactory — convenience for building a SyncEngine on RN.
  *
  * **2026-05-08:** the implementation lifted into the new
- * `@canopy/sync-engine-rn` substrate (Stoop V3 mobile = rule-of-two
+ * `@onderling/sync-engine-rn` substrate (Stoop V3 mobile = rule-of-two
  * consumer). This file is now a thin shim that pre-binds Folio's
  * `SyncEngine` subclass so callers don't have to.
  *
@@ -13,7 +13,7 @@
  * `SyncEngine`).
  */
 
-import { createSyncEngine as substrateCreateSyncEngine } from '@canopy/sync-engine-rn';
+import { createSyncEngine as substrateCreateSyncEngine } from '@onderling/sync-engine-rn';
 import { SyncEngine as FolioSyncEngine } from '../SyncEngine.js';
 
 /**

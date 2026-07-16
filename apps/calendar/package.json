@@ -1,7 +1,7 @@
 {
-  "name":        "@canopy-app/calendar",
+  "name":        "@onderling-app/calendar",
   "version":     "0.7.10-dev",
-  "description": "Calendar / appointment app — composes @canopy/item-store + @canopy/item-types/CALENDAR_EVENT_SCHEMA + @canopy/pseudo-pod.  v0.7.10 ships in-memory (MemoryBackend); v0.7.11 swaps to Solid-pod-backed storage (iCal via @canopy/calendar-emission substrate, to be extracted from apps/tasks-v0).",
+  "description": "Calendar / appointment app — composes @onderling/item-store + @onderling/item-types/CALENDAR_EVENT_SCHEMA + @onderling/pseudo-pod.  v0.7.10 ships in-memory (MemoryBackend); v0.7.11 swaps to Solid-pod-backed storage (iCal via @onderling/calendar-emission substrate, to be extracted from apps/tasks-v0).",
   "type":        "module",
   "main":        "src/index.js",
   "exports": {
@@ -13,13 +13,13 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/app-manifest":      "workspace:*",
-    "@canopy/calendar-emission": "workspace:*",
-    "@canopy/core":              "workspace:*",
-    "@canopy/item-store":        "workspace:*",
-    "@canopy/item-types":        "workspace:*",
-    "@canopy/pseudo-pod":        "workspace:*",
-    "@canopy/vault":             "workspace:*",
+    "@onderling/app-manifest":      "workspace:*",
+    "@onderling/calendar-emission": "workspace:*",
+    "@onderling/core":              "workspace:*",
+    "@onderling/item-store":        "workspace:*",
+    "@onderling/item-types":        "workspace:*",
+    "@onderling/pseudo-pod":        "workspace:*",
+    "@onderling/vault":             "workspace:*",
     "chrono-node":               "^2.7.0"
   },
   "devDependencies": {

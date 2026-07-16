@@ -15,7 +15,7 @@
  *
  * **Substrate candidate** (rule of two — first consumer): when a
  * second app needs trust-graded 1:1 contacts (likely the planned
- * `apps/stoop-hobby` fork), lift this into `@canopy/contacts`.
+ * `apps/stoop-hobby` fork), lift this into `@onderling/contacts`.
  * Tracked in `Project Files/Substrates/substrate-candidates.md`.
  *
  * Design choices:
@@ -56,7 +56,7 @@ function freshListId() {
 
 /**
  * @param {object} args
- * @param {import('@canopy/identity-resolver').MemberMap} args.members
+ * @param {import('@onderling/identity-resolver').MemberMap} args.members
  * @param {{read: Function, write: Function, delete: Function, list: Function}} args.dataSource
  *   The bundle's CachingDataSource (so list-CRUD writes through to
  *   the pod when one is attached).

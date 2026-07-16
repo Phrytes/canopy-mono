@@ -1,12 +1,12 @@
 /**
- * @canopy-app/calendar — manifest.
+ * @onderling-app/calendar — manifest.
  *
  * Declarative slash + chat surface for the calendar app.  v0.7.10
  * is in-process + in-memory; the same manifest works unchanged when
  * v0.7.11 swaps the storage to a real Solid pod (per the substrate
  * convention).
  *
- * Item type: 'calendar-event' (canonical, from @canopy/item-types).
+ * Item type: 'calendar-event' (canonical, from @onderling/item-types).
  * RSVP states: an event's lifecycle uses ItemStore's state field +
  * a per-attendee response map (open / claimed = accepted / declined
  * / tentative).  Cancelling an event uses ItemStore.markComplete

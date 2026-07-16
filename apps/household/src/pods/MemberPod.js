@@ -84,7 +84,7 @@ function isNotFound(err) {
 }
 
 export class MemberPod {
-  /** @type {import('@canopy/pod-client').PodClient} */
+  /** @type {import('@onderling/pod-client').PodClient} */
   #pod;
   /** @type {string} */
   #root;
@@ -93,7 +93,7 @@ export class MemberPod {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/pod-client').PodClient} args.podClient
+   * @param {import('@onderling/pod-client').PodClient} args.podClient
    *   Configured against the MEMBER's pod root + auth (typically a
    *   capability token the member issued to the household agent).
    * @param {string} args.podRoot       member's pod URL (with or without

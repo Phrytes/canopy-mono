@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { MemorySource } from '@canopy/core';
-import { MemberMap } from '@canopy/identity-resolver';
+import { MemorySource } from '@onderling/core';
+import { MemberMap } from '@onderling/identity-resolver';
 
 import { MemberMapCache } from '../src/lib/MemberMapCache.js';
 

@@ -1,13 +1,13 @@
 /**
  * Per-circle sealing — the SAFE offline slice of the S4 pod foundation
- * (circleSealingIdentity + circleControlAgent). Drives the REAL @canopy/pod-client
+ * (circleSealingIdentity + circleControlAgent). Drives the REAL @onderling/pod-client
  * sealing substrate against an in-memory pod + mock ACL sharing — no real Solid
  * pod, no OIDC. Proves: a per-circle sealing identity is stable + scoped, and a
  * p2 circle's control agent bootstraps, grants ACL + seals the group key on join,
  * and revokes + rotates (forward secrecy) on leave.
  */
 import { describe, it, expect } from 'vitest';
-import { generateKeypair } from '@canopy/pod-client';
+import { generateKeypair } from '@onderling/pod-client';
 import { createCircleSealingIdentity } from '../src/v2/circleSealingIdentity.js';
 import { createCircleControlAgent } from '../src/v2/circleControlAgent.js';
 

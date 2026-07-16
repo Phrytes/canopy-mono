@@ -2,7 +2,7 @@
  * push — re-export of the lifted push helpers.
  *
  * `setupPush` + `requestPushPermission` moved to
- * `@canopy/react-native/push` 2026-05-09 (Phase 41.0 L6). The new
+ * `@onderling/react-native/push` 2026-05-09 (Phase 41.0 L6). The new
  * `usePushOptIn` hook is also available there.
  *
  * The shim does the static `expo-notifications` import here so test-time
@@ -16,7 +16,7 @@ import {
   setupPush as _setupPush,
   requestPushPermission as _requestPushPermission,
   usePushOptIn as _usePushOptIn,
-} from '@canopy/react-native/push';
+} from '@onderling/react-native/push';
 
 export function setupPush(args = {}) {
   return _setupPush(args);

@@ -25,7 +25,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-import { renderWeb } from '@canopy/app-manifest';
+import { renderWeb } from '@onderling/app-manifest';
 
 import { tasksManifest } from '../manifest.js';
 import {

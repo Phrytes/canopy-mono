@@ -3,8 +3,8 @@
  * household-web — Slice A.3 + A.4 bootstrap (PLAN-gui-chat-uplift.md).
  *
  * Boots a localhost-only household web UI driven by the manifest's
- * NavModel (rendered via `@canopy/app-manifest`'s `renderWeb`).  The
- * server is the same `@canopy/agent-ui`'s `mountLocalUi` substrate that
+ * NavModel (rendered via `@onderling/app-manifest`'s `renderWeb`).  The
+ * server is the same `@onderling/agent-ui`'s `mountLocalUi` substrate that
  * tasks-v0 uses; the client (apps/household/web/main.js) consumes
  * `/navmodel.json` and `/household-config.json` to render tabs +
  * affordances + per-item buttons.
@@ -19,7 +19,7 @@
  *     that hands free text to `agent.onMessage` — the HouseholdAgent's
  *     existing regex-then-LLM router does the rest (slash fast-path
  *     hits skills directly; free text routes to the embedded
- *     `@canopy/chat-agent` ChatAgent built from the manifest).
+ *     `@onderling/chat-agent` ChatAgent built from the manifest).
  *   - No new LLM stack: this re-exposes the path HouseholdAgent already
  *     constructs when an LLM is configured (see HouseholdAgent.js
  *     lines 111–144).
@@ -40,10 +40,10 @@ import { parseArgs }                              from 'node:util';
 import { readFile }                               from 'node:fs/promises';
 import { fileURLToPath }                          from 'node:url';
 import { dirname, join }                          from 'node:path';
-import { Agent, AgentIdentity, InternalBus, InternalTransport, Parts } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mountLocalUi, LocalUiAuth }              from '@canopy/agent-ui';
-import { renderWeb }                              from '@canopy/app-manifest';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, Parts } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mountLocalUi, LocalUiAuth }              from '@onderling/agent-ui';
+import { renderWeb }                              from '@onderling/app-manifest';
 
 import { householdManifest }                       from '../manifest.js';
 import { HouseholdAgent }                          from '../src/HouseholdAgent.js';
@@ -140,7 +140,7 @@ export async function startHouseholdWeb(opts = {}) {
 
   // ── Slice A.4: real HouseholdAgent on the SAME store ─────────────
   // HouseholdAgent.constructor wires the regex fast path + (when an
-  // LLM is configured) the `@canopy/chat-agent` ChatAgent built from
+  // LLM is configured) the `@onderling/chat-agent` ChatAgent built from
   // the manifest's renderChat projection (toolCatalog/toolHandlers/
   // systemPrompt).  We use a MockBridge as a placeholder — the chat
   // skill below calls `householdAgent.onMessage(msg)` directly and
@@ -258,7 +258,7 @@ export async function startHouseholdWeb(opts = {}) {
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
-  // Slice B.2.0 (2026-05-20) — overlay the shared @canopy/web-adapter
+  // Slice B.2.0 (2026-05-20) — overlay the shared @onderling/web-adapter
   // helpers at `/lib/web-adapter/<file>.js` so apps/household/web/main.js
   // can ESM-import them from the browser. Same mechanism tasks-ui.js
   // uses for `/lib/dagFlatten.js`. Source-of-truth stays under
@@ -291,14 +291,14 @@ export async function startHouseholdWeb(opts = {}) {
 }
 
 /**
- * Read @canopy/web-adapter's per-helper source files into an
+ * Read @onderling/web-adapter's per-helper source files into an
  * extraStaticFiles map keyed by `/lib/web-adapter/<basename>`. Pure
  * passthrough — no rewriting; the package's source IS the runtime
  * artefact (ESM, no bundling). One overlay per file so the browser
  * can `import { callSkill } from '/lib/web-adapter/callSkill.js'`
  * just like it imports `/lib/dagFlatten.js` today.
  *
- * Resolved relative to `node_modules/@canopy/web-adapter/src/` via
+ * Resolved relative to `node_modules/@onderling/web-adapter/src/` via
  * the workspace symlink. If the package ever ships a `dist/` build
  * step, switch this to point at that.
  */

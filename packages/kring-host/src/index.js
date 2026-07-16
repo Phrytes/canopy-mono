@@ -1,8 +1,8 @@
 /**
- * @canopy/kring-host — the platform-neutral kring/circle HOST substrate (repo-split W2, objective F).
+ * @onderling/kring-host — the platform-neutral kring/circle HOST substrate (repo-split W2, objective F).
  *
  * Composition LOGIC that the web AND mobile canopy-chat shells share. It depends DOWN on the kernel
- * substrates (@canopy/item-store, @canopy/item-types) and NEVER up on an app. canopy-chat becomes a skin
+ * substrates (@onderling/item-store, @onderling/item-types) and NEVER up on an app. canopy-chat becomes a skin
  * over this package. This barrel is the package's public surface; subpaths (e.g. `./circleLists`) exist for
  * consumers that want to import a single feature without the barrel.
  *
@@ -21,7 +21,7 @@ export { kringChatMessageEvent, PERMANENT_FANOUT_REASONS, classifyFanOut, broadc
 export { WEB_MAPPINGS_DEVICE, localStorageMappingsStore } from './mappingsStore.js';
 
 // W4 extraction: two v2 leaves untangled from their invariant-violating couplings — objectVersionsStorage
-// (since consolidated onto the `@canopy/versioning` substrate; sync-engine's objectVersions is retired) and
+// (since consolidated onto the `@onderling/versioning` substrate; sync-engine's objectVersions is retired) and
 // mappingsLoader (app-local verify gate now INJECTED; the canopy-chat shim binds it).
 export { createObjectVersionsAdapter, localStorageBackend, localStorageObjectVersions, fingerprintHex } from './objectVersionsStorage.js';
 export { loadVerifyMappings } from './mappingsLoader.js';

@@ -16,7 +16,7 @@ import {
 } from '../../v2/circleRules.js';
 // 5.5c — Step 4 captures the v2 skill list (the four axes per skill).
 // `normalizeSkill` coerces partial rows; `DEFAULT_SKILL` seeds a new row.
-import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill } from '@canopy/kring-host/circleSkills';
+import { SKILL_AXES, DEFAULT_SKILL, normalizeSkill } from '@onderling/kring-host/circleSkills';
 export { SKILL_AXES };
 // β.4 — kind-aware "+ new circle" templates.  Picking a kind in Step 1
 // pre-fills the policy axes (features / revealPolicy / pod / llmTool /

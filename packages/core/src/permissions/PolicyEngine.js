@@ -49,8 +49,8 @@ export class PolicyEngine {
    * @param {import('./ActorResolver.js').ActorResolver} [opts.actorResolver]
    *   Phase 50.9.1 — optional resolver mapping any of pubKey / webid /
    *   agentUri to an `ActorRecord`. Core defines the interface but never
-   *   imports `@canopy/agent-registry`; the resolver is supplied by
-   *   the caller (typically via the `@canopy/agent-provisioning`
+   *   imports `@onderling/agent-registry`; the resolver is supplied by
+   *   the caller (typically via the `@onderling/agent-provisioning`
    *   facade). When set, `resolveActor(identifier)` becomes available
    *   to callers + the token-verification path can accept URI-shaped
    *   agent IDs (Phase 50.10).

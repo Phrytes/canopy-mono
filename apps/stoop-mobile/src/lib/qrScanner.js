@@ -3,13 +3,13 @@
  *
  * Stoop V3 Phase 40.6, lifted to substrate 2026-05-09 (Phase 41.0 L4 —
  * Tasks-mobile is the second consumer). The plug-in dispatcher lives
- * in `@canopy/react-native/qr/classifyQrPayload`; this file binds
+ * in `@onderling/react-native/qr/classifyQrPayload`; this file binds
  * Stoop's three classifiers (invite, contact, recovery) and re-exports
  * the zero-arg `classifyQrPayload(text)` shape existing call sites
  * already use.
  */
 
-import { classifyQrPayload as _classifyQrPayload } from '@canopy/react-native/qr';
+import { classifyQrPayload as _classifyQrPayload } from '@onderling/react-native/qr';
 
 const STOOP_INVITE_PATH    = 'onboard.html';
 const STOOP_CONTACT_SCHEME = 'stoop-contact://';
@@ -25,7 +25,7 @@ const STOOP_CLASSIFIERS = [
  * Classify a Stoop QR payload. Returns `{kind, payload}` on success
  * or `{kind: 'unknown'}` on no match. The plug-in slot (substrate-
  * level `classifyQrPayload(text, classifiers)`) is reachable directly
- * via `@canopy/react-native/qr` for callers needing custom classifier
+ * via `@onderling/react-native/qr` for callers needing custom classifier
  * lists.
  *
  * @param {string} text

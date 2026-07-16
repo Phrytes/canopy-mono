@@ -1,7 +1,7 @@
 /**
  * companion-node R2b.1 — the SCOPE-ENFORCING pod gate.
  *
- * R2b.0 (merged) landed the pod-SIDE verifier in `@canopy/pod-client`
+ * R2b.0 (merged) landed the pod-SIDE verifier in `@onderling/pod-client`
  * (`createPodTokenVerifier` + `scopeForRequest`): given a request (op + path) and
  * a presented `PodCapabilityToken` it decides — deny-by-default — whether the
  * token actually authorizes that request (signature · expiry · issuer-trust ·
@@ -36,7 +36,7 @@
  * The seams are kept distinct (token-presentation `#token` vs scope-check
  * `#guard`) so a real pod-HTTP boundary slots in at R3 without a rewrite.
  */
-import { scopeForRequest } from '@canopy/pod-client';
+import { scopeForRequest } from '@onderling/pod-client';
 
 /** Opaque 403 — never reveals which scope was required (no oracle for probing). */
 function podForbidden() {

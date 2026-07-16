@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { Agent, AgentIdentity, PeerGraph, InternalBus, InternalTransport, TextPart, DataPart, Parts, registerRelayForward, registerRelayReceiveSealed } from '../src/index.js';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 
 async function buildTriad() {
   // Alice  <— relay-bus —>  Bob  <— loop-bus —>  Carol

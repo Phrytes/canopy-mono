@@ -1,13 +1,13 @@
 /**
- * @canopy/sdk/requires — the declarative capability vocabulary + validator.
+ * @onderling/sdk/requires — the declarative capability vocabulary + validator.
  *
- * SP-9's seam for SP-10 (`@canopy/app-scaffold`): an app declares WHICH SDK
+ * SP-9's seam for SP-10 (`@onderling/app-scaffold`): an app declares WHICH SDK
  * slices it needs as a `requires: [...]` list drawn from a small, fixed
  * vocabulary — the SP-9 sub-path/extension names — and a validator checks
  * that list against the vocabulary (unknown → error) and, optionally, an
  * `available` set (the slices actually wired/present).
  *
- *     import { CAPABILITIES, validateRequires } from '@canopy/sdk/requires';
+ *     import { CAPABILITIES, validateRequires } from '@onderling/sdk/requires';
  *
  *     validateRequires(['core', 'vault']);
  *     // → { ok: true, missing: [], unknown: [] }
@@ -26,11 +26,11 @@
  * The capability vocabulary — the SP-9 sub-path / extension names. This is
  * the closed set a `requires` list may draw from.
  *
- *   - 'core'       → @canopy/sdk/core       (the kernel base)
- *   - 'transports' → @canopy/sdk/transports (default network transports)
- *   - 'vault'      → @canopy/sdk/vault      (default Vault family)
- *   - 'pod'        → @canopy/sdk/pod        (default pod-client extension)
- *   - 'high'       → @canopy/sdk/high       (createAgent/connectSkill/wireSkill)
+ *   - 'core'       → @onderling/sdk/core       (the kernel base)
+ *   - 'transports' → @onderling/sdk/transports (default network transports)
+ *   - 'vault'      → @onderling/sdk/vault      (default Vault family)
+ *   - 'pod'        → @onderling/sdk/pod        (default pod-client extension)
+ *   - 'high'       → @onderling/sdk/high       (createAgent/connectSkill/wireSkill)
  *
  * @type {ReadonlyArray<'core'|'transports'|'vault'|'pod'|'high'>}
  */

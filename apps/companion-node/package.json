@@ -1,5 +1,5 @@
 {
-  "name": "@canopy-app/companion-node",
+  "name": "@onderling-app/companion-node",
   "version": "0.1.0",
   "private": true,
   "description": "companion-node — a user-hostable Node process that remotely hosts Folio's relocatable (runtime:'browser') pod-file agent, reachable by the user's own devices over the mesh. Slice R1 (LAN/trusted, no gate).",
@@ -17,13 +17,13 @@
     "start": "node src/boot.js"
   },
   "dependencies": {
-    "@canopy/agent-registry": "file:../../packages/agent-registry",
-    "@canopy/core": "file:../../packages/core",
-    "@canopy/pod-client": "file:../../packages/pod-client",
-    "@canopy/relay": "file:../../packages/relay",
-    "@canopy/transports": "file:../../packages/transports",
-    "@canopy/vault": "file:../../packages/vault",
-    "@canopy-app/folio": "file:../folio"
+    "@onderling/agent-registry": "file:../../packages/agent-registry",
+    "@onderling/core": "file:../../packages/core",
+    "@onderling/pod-client": "file:../../packages/pod-client",
+    "@onderling/relay": "file:../../packages/relay",
+    "@onderling/transports": "file:../../packages/transports",
+    "@onderling/vault": "file:../../packages/vault",
+    "@onderling-app/folio": "file:../folio"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

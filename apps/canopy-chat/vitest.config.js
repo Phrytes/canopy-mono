@@ -16,7 +16,7 @@ export default defineConfig({
       // (pod-client dynamic-imports it); vite can't resolve the RN package in
       // node. Alias it to an in-memory stub so the smoke test loads.
       '@react-native-async-storage/async-storage': path.resolve(__dirname, 'test/stubs/asyncStorage.js'),
-      // @canopy/core's barrel eagerly re-exports MqttTransport (an optional runtime transport) whose
+      // @onderling/core's barrel eagerly re-exports MqttTransport (an optional runtime transport) whose
       // `import('mqtt')` vite can't pre-resolve when mqtt isn't installed → any suite reaching the barrel
       // (web-smoke, circleFolio.dom, …) fails to LOAD. Stub it; no test uses a live MQTT connection.
       mqtt: path.resolve(__dirname, 'test/stubs/mqtt.js'),

@@ -1,8 +1,8 @@
 /**
- * @canopy-app/calendar — CalendarStore.
+ * @onderling-app/calendar — CalendarStore.
  *
  * v0.7.10 implementation note (2026-05-23): originally scoped to
- * compose `@canopy/item-store/ItemStore` over `@canopy/pseudo-pod`.
+ * compose `@onderling/item-store/ItemStore` over `@onderling/pseudo-pod`.
  * In practice ItemStore.#materialise whitelists only the canonical
  * task/post/claim fields it knows about — calendar-event's custom
  * fields (`startsAt`, `endsAt`, `attendees`, `rsvp`, `location`)
@@ -10,7 +10,7 @@
  * is for items with the household/tasks/stoop shape, not arbitrary
  * typed items.
  *
- * For v0.7.10 we use `@canopy/pseudo-pod` DIRECTLY: each event is
+ * For v0.7.10 we use `@onderling/pseudo-pod` DIRECTLY: each event is
  * a JSON record at `pseudo-pod://<deviceId>/calendar/events/<id>.json`.
  * Same Solid-shape API; same forward-compat with the v0.7.11 pod
  * swap.  Audit + role-policy + per-field-merge that ItemStore would
@@ -34,8 +34,8 @@
  *   }
  */
 
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { buildIcsForEvents }                    from '@canopy/calendar-emission';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { buildIcsForEvents }                    from '@onderling/calendar-emission';
 import * as chrono                              from 'chrono-node';
 
 const TYPE      = 'calendar-event';
@@ -43,7 +43,7 @@ const DEVICE_ID    = 'calendar-demo';
 const ROOT         = `pseudo-pod://${DEVICE_ID}/calendar/events/`;
 // v0.7.11 — iCal feed lives next to the events container so a
 // real-pod attach (cache mode) makes the same URI fetchable as
-// `<pod>/calendar/feed.ics` via the @canopy/calendar-emission
+// `<pod>/calendar/feed.ics` via the @onderling/calendar-emission
 // convention.
 const ICS_FEED_URI = `pseudo-pod://${DEVICE_ID}/calendar/feed.ics`;
 
@@ -66,7 +66,7 @@ const ICS_FEED_URI = `pseudo-pod://${DEVICE_ID}/calendar/feed.ics`;
  */
 
 export class CalendarStore {
-  /** @type {import('@canopy/pseudo-pod').PseudoPod} */
+  /** @type {import('@onderling/pseudo-pod').PseudoPod} */
   #pod;
   /** @type {string} */
   #actorDefault;
@@ -317,7 +317,7 @@ export class CalendarStore {
    * v0.7.11 — rebuild + persist the `.ics` feed on every mutation.
    * Subscribers (Apple Calendar etc) consume this single file.
    * Path matches the existing `<pod>/calendar/<source>.ics`
-   * convention from `@canopy/calendar-emission`.
+   * convention from `@onderling/calendar-emission`.
    */
   async #refreshIcsFeed() {
     let ics;

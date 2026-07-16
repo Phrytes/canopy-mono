@@ -30,7 +30,7 @@ RN ↔ Android-AIDL integration ships):
 {
   "plugins": [
     [
-      "@canopy/react-native",
+      "@onderling/react-native",
       { "hubBinding": true }
     ]
   ]
@@ -129,8 +129,8 @@ Production wiring (when the native modules ship):
 
 ```js
 import { NativeModules } from 'react-native';
-import { createHubDiscovery } from '@canopy/react-native/hub-discovery';
-import { bind } from '@canopy/react-native/hub-binding';
+import { createHubDiscovery } from '@onderling/react-native/hub-discovery';
+import { bind } from '@onderling/react-native/hub-binding';
 
 const hd = createHubDiscovery({ nativeModule: NativeModules.HubDiscovery });
 const { hubInstalled } = await hd.check();

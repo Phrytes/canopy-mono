@@ -2,8 +2,8 @@
  * mcpShapes.js — the small set of Model Context Protocol wire shapes this
  * bridge models as plain objects.
  *
- * Per the repo's INJECTED/hermetic convention (like `@canopy/blob-gateway`,
- * `@canopy/confidential-llm`, and the `NetworkTransport`), we do NOT pull in a
+ * Per the repo's INJECTED/hermetic convention (like `@onderling/blob-gateway`,
+ * `@onderling/confidential-llm`, and the `NetworkTransport`), we do NOT pull in a
  * real `@modelcontextprotocol/*` SDK. MCP messages are just JSON-RPC-ish
  * objects, so we shape them ourselves:
  *
@@ -18,7 +18,7 @@
  * are DEFERRED along with the real transport.
  */
 
-import { TextPart, DataPart } from '@canopy/core';
+import { TextPart, DataPart } from '@onderling/core';
 
 /**
  * Map an inbound MCP tool-call `arguments` object into canopy `Part[]`.
@@ -29,7 +29,7 @@ import { TextPart, DataPart } from '@canopy/core';
  * no parts.
  *
  * @param {unknown} args
- * @returns {import('@canopy/core').Part[]}
+ * @returns {import('@onderling/core').Part[]}
  */
 export function partsFromArguments(args) {
   if (args && typeof args === 'object' && !Array.isArray(args)) {
@@ -49,7 +49,7 @@ export function partsFromArguments(args) {
  * structured-result surface — best-effort). Other part kinds are serialised
  * as JSON text so nothing is silently dropped.
  *
- * @param {import('@canopy/core').Part[]} parts
+ * @param {import('@onderling/core').Part[]} parts
  * @returns {{ content: Array<{type:'text', text:string}>, structuredContent?: object }}
  */
 export function mcpResult(parts) {

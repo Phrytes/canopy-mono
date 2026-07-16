@@ -3,7 +3,7 @@
  * phase3/4/9 + web tests so future tests pull one shape.
  */
 
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 /** Invoke a registered skill on an agent, simulating a caller `from`. */
 export async function callSkill(agent, skillId, args, fromWebid) {

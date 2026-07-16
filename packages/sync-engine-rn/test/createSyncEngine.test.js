@@ -3,17 +3,17 @@ import { createSyncEngine } from '../index.js';
 
 // Stub the substrate adapters so we don't need the full SyncEngine
 // dependency tree at test time.
-vi.mock('@canopy/sync-engine/adapters/fsRN', () => ({
+vi.mock('@onderling/sync-engine/adapters/fsRN', () => ({
   createFsRN: vi.fn((args) => ({ kind: 'fs', args })),
 }));
-vi.mock('@canopy/sync-engine/adapters/hashRN', () => ({
+vi.mock('@onderling/sync-engine/adapters/hashRN', () => ({
   createHashRN: vi.fn((args) => ({ kind: 'hash', args })),
 }));
-vi.mock('@canopy/sync-engine/adapters/watcherRN', () => ({
+vi.mock('@onderling/sync-engine/adapters/watcherRN', () => ({
   createWatcherRN: vi.fn((args) => ({ kind: 'watcher', args })),
   DEFAULT_POLL_INTERVAL_MS: 10_000,
 }));
-vi.mock('@canopy/sync-engine/SyncEngine', () => {
+vi.mock('@onderling/sync-engine/SyncEngine', () => {
   class FakeSubstrateSyncEngine {
     constructor(opts) { this.opts = opts; this.kind = 'substrate'; }
   }

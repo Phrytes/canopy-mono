@@ -4,7 +4,7 @@
  * same DataSource reads prior data back — what the IDB/AsyncStorage backing gives the live app).
  */
 import { describe, it, expect } from 'vitest';
-import { memoryDataSource } from '@canopy/item-store';
+import { memoryDataSource } from '@onderling/item-store';
 import { makeCircleLists } from '../src/circleLists.js';
 
 describe('circleLists', () => {

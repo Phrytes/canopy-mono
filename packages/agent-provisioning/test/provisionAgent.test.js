@@ -14,14 +14,14 @@
  *
  * OIDC + WebID-discovery integration is mocked (we don't reach a real
  * provider in unit tests).  The Inrupt session factory seam from
- * `@canopy/oidc-session` is used to inject a fake.
+ * `@onderling/oidc-session` is used to inject a fake.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { _setSessionFactory } from '@canopy/oidc-session';
+import { InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { _setSessionFactory } from '@onderling/oidc-session';
 import { provisionAgent } from '../src/provisionAgent.js';
 
 const SAMPLE_MNEMONIC = [

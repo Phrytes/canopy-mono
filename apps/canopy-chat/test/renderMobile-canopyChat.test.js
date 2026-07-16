@@ -2,7 +2,7 @@
  * #221 acceptance — does renderMobile project canopy-chat's actual
  * composed manifests into a valid NavModel?
  *
- * renderMobile lives in @canopy/app-manifest as a strict-equivalence
+ * renderMobile lives in @onderling/app-manifest as a strict-equivalence
  * re-export of renderWeb (cross-surface equivalence is the killer
  * property per DESIGN-navmodel-sketch.md § Q4).  The structural work
  * is already done; this test confirms the manifests canopy-chat
@@ -18,13 +18,13 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { renderMobile } from '@canopy/app-manifest';
+import { renderMobile } from '@onderling/app-manifest';
 
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../src/core/manifests/mockManifests.js';
 import { canopyChatManifest } from '../src/index.js';
-import { calendarManifest } from '@canopy-app/calendar/manifest';
+import { calendarManifest } from '@onderling-app/calendar/manifest';
 
 /**
  * Quick assertion bundle — the manifest must produce a NavModel

@@ -1,5 +1,5 @@
 /**
- * @canopy/versioning — backend-agnostic snapshot versioning substrate.
+ * @onderling/versioning — backend-agnostic snapshot versioning substrate.
  * See ./versionStore.js and plans/PLAN-pod-versioning-history-recovery.md.
  */
 export {

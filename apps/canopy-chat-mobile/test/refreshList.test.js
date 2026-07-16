@@ -18,7 +18,7 @@ import {
 } from '../src/core/refreshList.js';
 
 import { composeManifests, buildManifestsByOrigin } from '../src/core/composeManifests.js';
-import { renderReply, runDispatch, resolveDispatch, parseInput } from '@canopy-app/canopy-chat';
+import { renderReply, runDispatch, resolveDispatch, parseInput } from '@onderling-app/canopy-chat';
 import { initLocalisation, t } from '../src/core/localisation.js';
 import { setDevLog } from '../src/core/devLog.js';
 

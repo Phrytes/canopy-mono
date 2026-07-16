@@ -1,5 +1,5 @@
 /**
- * LlmClient — @canopy/logger coverage + PII-safety (logging slice 3, LLM path).
+ * LlmClient — @onderling/logger coverage + PII-safety (logging slice 3, LLM path).
  *
  * Drives invoke() success + error through a mock provider and asserts:
  *   1. llm.request / llm.response / llm.error land in `dumpLogs()`;
@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { LlmClient, mockProvider } from '../src/index.js';
-import { dumpLogs, clearLogs } from '@canopy/logger';
+import { dumpLogs, clearLogs } from '@onderling/logger';
 
 // Distinctive strings that must NEVER appear in any log field.
 const SECRET_PROMPT = 'my-social-security-number-is-SECRET';

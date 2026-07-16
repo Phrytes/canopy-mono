@@ -25,13 +25,13 @@
  * preserved verbatim from Stoop's V1 Phase 7 — apps that already
  * register these names continue to work after the lift.
  */
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;        // 1 hour
 
 /**
  * @typedef {(args: {webid, displayName, role}) => Promise<{
- *   identity:     import('@canopy/core').AgentIdentity,
+ *   identity:     import('@onderling/core').AgentIdentity,
  *   spawnedUrl?:  string,
  * }>} OnSpawnHook
  *
@@ -46,7 +46,7 @@ const DEFAULT_TTL_MS = 60 * 60 * 1000;        // 1 hour
  * Build the onboarding skills.
  *
  * @param {object} args
- * @param {import('@canopy/core').GroupManager} args.groupManager
+ * @param {import('@onderling/core').GroupManager} args.groupManager
  * @param {import('./MemberMap.js').MemberMap} args.members
  * @param {string} args.groupId
  * @param {OnSpawnHook} [args.onSpawn]   optional spawn-and-mint-identity hook (testbed)

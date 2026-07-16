@@ -1,7 +1,7 @@
 /**
  * metrics — Tasks V1 Phase 9 observability.
  *
- * Composes `@canopy/notifier`'s `UsageMetrics` (lifted from Stoop
+ * Composes `@onderling/notifier`'s `UsageMetrics` (lifted from Stoop
  * 2026-05-08) for counters, plus a tiny per-name latency reservoir
  * for the two time-series the UX cares about most:
  *
@@ -22,7 +22,7 @@
  * the snapshot strictly local.
  */
 
-import { UsageMetrics } from '@canopy/notifier';
+import { UsageMetrics } from '@onderling/notifier';
 
 const DEFAULT_LATENCY_RESERVOIR = 200;
 

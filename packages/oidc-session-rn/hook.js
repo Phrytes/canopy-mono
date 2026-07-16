@@ -1,5 +1,5 @@
 /**
- * @canopy/oidc-session-rn/hook — the React hook half of the
+ * @onderling/oidc-session-rn/hook — the React hook half of the
  * substrate.
  *
  * Imported separately so the default export (no Expo / React deps)
@@ -9,7 +9,7 @@
  *
  * Apps integrating sign-in import from this subpath:
  *
- *   import { useOidcSignIn } from '@canopy/oidc-session-rn/hook';
+ *   import { useOidcSignIn } from '@onderling/oidc-session-rn/hook';
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

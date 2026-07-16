@@ -18,18 +18,18 @@
  *   • an unknown METHOD → JSON-RPC method-not-found error.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 import {
   Agent, AgentIdentity,
   InternalBus, InternalTransport,
   TrustRegistry, PolicyEngine, TokenRegistry,
   TextPart, Parts,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   RemoteHandlerRegistry,
   grantRemoteCapability,
   enableIssuerRevocation,
-} from '@canopy/secure-agent';
+} from '@onderling/secure-agent';
 import {
   createStdioMcpServer,
   createDuplexLoopback,
@@ -102,7 +102,7 @@ describe('createStdioMcpServer — initialize handshake + capability negotiation
     expect(init.jsonrpc).toBe('2.0');
     expect(init.result.protocolVersion).toBe('2025-06-18');
     expect(init.result.capabilities.tools).toBeTruthy();
-    expect(init.result.serverInfo.name).toBe('@canopy/mcp-bridge');
+    expect(init.result.serverInfo.name).toBe('@onderling/mcp-bridge');
     await alice.stop(); await bob.stop();
   });
 

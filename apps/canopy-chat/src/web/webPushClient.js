@@ -6,7 +6,7 @@
  * via the browser `PushManager`, and forward the `PushSubscription` to
  * `stoop.subscribeWebPush`. The SERVER half (VAPID-signed delivery via
  * `WebPushSender`) lives in a Node-hosted stoop — in the browser-only bundle
- * `@canopy/relay` is shimmed so `getVapidPublicKey` is null + delivery is a
+ * `@onderling/relay` is shimmed so `getVapidPublicKey` is null + delivery is a
  * no-op; the subscription is still registered against the in-process registry.
  *
  * The browser primitives (`navigator`, `Notification`) are injected so the

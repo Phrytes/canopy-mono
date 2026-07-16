@@ -706,7 +706,7 @@ export function renderEmbedTree(tree) {
  * handler in renderItems can open the modal with the right ids.
  *
  * Media consolidation (2026-07-10): attachment entries are canonical
- * `media` items (`@canopy/item-types` — `{type:'media', source:
+ * `media` items (`@onderling/item-types` — `{type:'media', source:
  * {type,ref}, mime, width, height}` + stoop's `thumbnail` extra).
  * The renderer reads the canonical fields — `mime`/`width`/`height`
  * are writer-asserted layout hints (reserve space, never truth) —

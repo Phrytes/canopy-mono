@@ -7,7 +7,7 @@ manifest has to meet a shared standard — otherwise a projector needs a per-app
 contract" property quietly erodes.
 
 This page is that standard in prose. It is enforced, not aspirational: `manifestConformance(manifest)` in
-`@canopy/app-manifest` returns `{ ok, issues, warnings }` for a single manifest, and the fitness test
+`@onderling/app-manifest` returns `{ ok, issues, warnings }` for a single manifest, and the fitness test
 `packages/app-manifest/test/manifestConformance.test.js` runs it against every discovered app manifest and
 fails CI on drift. Issues carry a **code** (not a free string) so tooling and tests can assert on them.
 
@@ -58,7 +58,7 @@ raised per failing projector, tagged with the surface key.
 
 ## What is not a conformance failure
 
-The registry (`@canopy/item-types`) is the source of truth for nouns, but app-local (non-registry) item types
+The registry (`@onderling/item-types`) is the source of truth for nouns, but app-local (non-registry) item types
 are permitted (F-SP1-a): household's `shopping` / `errand`, tasks-v0's `circle` / `schedule-slot`, and so on.
 Requiring every declared noun to be registry-canonical would fail four of the six current apps, so that rule
 (`validateManifest`'s opt-in `strictNouns`) is **not** part of the standard. Registry-noncanonical nouns are
@@ -77,7 +77,7 @@ asks "which surfaces are declared?". They are separate checks.
 ## Using it
 
 ```js
-import { manifestConformance } from '@canopy/app-manifest';
+import { manifestConformance } from '@onderling/app-manifest';
 
 const { ok, issues, warnings } = manifestConformance(myManifest);
 // ok      → boolean (reflects issues only)

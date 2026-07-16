@@ -43,7 +43,7 @@ async function loadPodClient() {
     return await import('../packages/pod-client/src/index.js');
   } catch (err) {
     stderr.write(
-      'migrate-vault-to-pod: failed to load @canopy/pod-client.  '
+      'migrate-vault-to-pod: failed to load @onderling/pod-client.  '
       + 'Make sure dependencies are installed (`npm install` at the repo root).\n'
     );
     throw err;

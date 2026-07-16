@@ -50,11 +50,11 @@ import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
   mockTasksManifest, mockFolioManifest,
 } from '../src/core/manifests/mockManifests.js';
-import { calendarManifest } from '@canopy-app/calendar/manifest';
+import { calendarManifest } from '@onderling-app/calendar/manifest';
 import { createLocalBuiltins } from '../src/core/localBuiltins.js';
 
 // Real stoop manifest (D.1 slash-only declarations).  Imported via
-// relative path because @canopy-app/stoop has no `./manifest` subpath
+// relative path because @onderling-app/stoop has no `./manifest` subpath
 // export today; this is a test-only import.  If the package's exports
 // map grows a `./manifest` entry later, the import can be updated
 // without changing the test bodies.

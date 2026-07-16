@@ -4,7 +4,7 @@
 // + packages/react-native/docs/BRING-UP-NOTES.md (traps 11-13).  This MUST
 // be the first import in this file (Hermes resolves crypto at module-load
 // time).
-import '@canopy/react-native/platform/polyfills';
+import '@onderling/react-native/platform/polyfills';
 
 import 'expo-dev-client';
 
@@ -13,7 +13,7 @@ import 'expo-dev-client';
 // `TaskManager.defineTask` is what the OS looks for).  Registration is
 // in ServiceContext after sign-in; teardown on sign-out.
 import * as TaskManager from 'expo-task-manager';
-import { defineBackgroundTask } from '@canopy/sync-engine-rn';
+import { defineBackgroundTask } from '@onderling/sync-engine-rn';
 import { bgRunOnce, BG_TASK_NAME } from './src/lib/bgRunOnce.js';
 
 defineBackgroundTask({

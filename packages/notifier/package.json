@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "@canopy/notifier",
+  "name": "@onderling/notifier",
   "version": "0.4.0",
-  "description": "Daily digest scheduler + per-event nudges + push integration. Channel-pluggable; channel surface is `MessagingBridge` from @canopy/chat-agent.",
+  "description": "Daily digest scheduler + per-event nudges + push integration. Channel-pluggable; channel surface is `MessagingBridge` from @onderling/chat-agent.",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -16,10 +16,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "file:../core"
+    "@onderling/core": "file:../core"
   },
   "devDependencies": {
-    "@canopy/chat-agent": "file:../chat-agent",
+    "@onderling/chat-agent": "file:../chat-agent",
     "vitest": "^2.1.0"
   }
 }

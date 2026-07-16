@@ -36,7 +36,7 @@ import { join }           from 'node:path';
 
 import WebSocket from 'ws';
 
-import { Bootstrap } from '@canopy/core';
+import { Bootstrap } from '@onderling/core';
 
 import { SyncEngine }            from '../src/SyncEngine.js';
 import { createServer }          from '../src/server/index.js';

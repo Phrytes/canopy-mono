@@ -143,7 +143,7 @@ pnpm exec vitest run
 ### Polyfill discipline
 
 The Expo entry (`index.js`) imports the canonical polyfills FIRST
-(`@canopy/react-native/platform/polyfills`) — Hermes resolves
+(`@onderling/react-native/platform/polyfills`) — Hermes resolves
 crypto at module-load, so any later import that needs
 `crypto.getRandomValues` / `globalThis.Buffer` / `Blob` would crash
 otherwise. See `apps/stoop-mobile/index.js` for the canonical
@@ -169,11 +169,11 @@ logcat` output and file under #249.
 
 ## Troubleshooting
 
-### `Unable to resolve "@canopy/react-native/platform/polyfills"`
+### `Unable to resolve "@onderling/react-native/platform/polyfills"`
 
 Metro 52 disables `unstable_enablePackageExports` by default, so the
 package's `exports` map for `./platform/polyfills` is invisible.  The
-canonical fix is the `@canopy/react-native/metro-preset`, used via
+canonical fix is the `@onderling/react-native/metro-preset`, used via
 `metro.config.js`.  This app ships one — if it's missing, copy it
 from `apps/stoop-mobile/metro.config.js` and adjust the watch folders
 + subpath resolvers.  Always re-run with the cache busted:
@@ -227,7 +227,7 @@ device-runtime ones.
   `src/core/`. Don't rewrite features that already exist as
   substrate skills.
 - **Polyfill discipline** — index.js's first import MUST be
-  `@canopy/react-native/platform/polyfills`.
+  `@onderling/react-native/platform/polyfills`.
 
 ## See also
 

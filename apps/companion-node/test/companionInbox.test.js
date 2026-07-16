@@ -10,11 +10,11 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { Agent, AgentIdentity, Parts } from '@canopy/core';
-import { VaultMemory }                 from '@canopy/vault';
-import { RelayTransport }              from '@canopy/transports';
-import { PushSender }                  from '@canopy/relay';
-import { seal, open, generateKeypair } from '@canopy/pod-client/sealing';
+import { Agent, AgentIdentity, Parts } from '@onderling/core';
+import { VaultMemory }                 from '@onderling/vault';
+import { RelayTransport }              from '@onderling/transports';
+import { PushSender }                  from '@onderling/relay';
+import { seal, open, generateKeypair } from '@onderling/pod-client/sealing';
 
 import { startCompanionNode }          from '../src/index.js';
 import {

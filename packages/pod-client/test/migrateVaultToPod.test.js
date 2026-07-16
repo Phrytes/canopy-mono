@@ -17,9 +17,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import nacl from 'tweetnacl';
 
-import { VaultMemory }      from '@canopy/vault';
-import { Bootstrap }        from '@canopy/core';
-import { AgentIdentity }    from '@canopy/core';
+import { VaultMemory }      from '@onderling/vault';
+import { Bootstrap }        from '@onderling/core';
+import { AgentIdentity }    from '@onderling/core';
 import { IdentityPodStore } from '../src/identity/IdentityPodStore.js';
 import {
   migrateVaultToPod,

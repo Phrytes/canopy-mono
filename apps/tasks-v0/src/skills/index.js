@@ -12,7 +12,7 @@
  *
  * B★ B2 (2026-07-05) — the task-store CRUD + list + claim/complete/approve
  * family is now expressed as pure `coreFn(circle, args, ctx)` functions wrapped
- * by `wireSkill(coreFn, op, { storeFor })` from `@canopy/sdk`.  `wireSkill`
+ * by `wireSkill(coreFn, op, { storeFor })` from `@onderling/sdk`.  `wireSkill`
  * decodes `ctx.parts` → `args` (the same DataPart-unwrap the hand-written
  * `argsFromParts(parts)` did), validates `args` against the manifest op's
  * declared params, resolves the per-circle store via `storeFor(ctx)`, then calls
@@ -33,17 +33,17 @@
  * `from` carries the caller's identifier (the actor webid).  Skill
  * matching for skill-tagged tasks remains via L1e SkillMatch.
  *
- * `resolveMember` lives in `@canopy/identity-resolver`'s
+ * `resolveMember` lives in `@onderling/identity-resolver`'s
  * `buildIdentitySkills` and is registered alongside these by wireSkills.
  */
 
-import { defineSkill } from '@canopy/core';
-import { wireSkill } from '@canopy/sdk';
+import { defineSkill } from '@onderling/core';
+import { wireSkill } from '@onderling/sdk';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 // DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
 import { simulateSync, decorateWithLastSync } from './_syncEnvelope.js';
-import { validateCanonical } from '@canopy/item-types';
+import { validateCanonical } from '@onderling/item-types';
 import { saveCircleConfig, loadCircleConfig, KIND_DEFAULTS } from '../Circle.js';
 import { tasksManifest } from '../../manifest.js';
 import {

@@ -20,9 +20,9 @@ import { describe, it, expect } from 'vitest';
 
 import {
   generateGroupKey, makeGroupSealer, makeGroupOpener, isSealed,
-} from '@canopy/pod-client/sealing';
-import { openBlob, isBlobRef } from '@canopy/blob-gateway';
-import { validate } from '@canopy/item-types';
+} from '@onderling/pod-client/sealing';
+import { openBlob, isBlobRef } from '@onderling/blob-gateway';
+import { validate } from '@onderling/item-types';
 
 import { createCircleMediaGateway, makeDevMediaBucket } from '../../src/v2/circleMediaGateway.js';
 import { createMediaEmbed } from '../../src/core/handlers/mediaEmbed.js';

@@ -110,7 +110,7 @@ function _normaliseAgent(a) {
     ownerFingerprint: typeof a.ownerFingerprint === 'string' ? a.ownerFingerprint : null,
     // property layer (personas) — the PERSISTED per-context disclosure policy for this profile
     // (what this persona shares, per circle/context). Additive; absent → empty. Shape mirrors
-    // @canopy/agent-registry disclosure.js ({ perContext: { ctx: { key: {enabled, rung} } } }).
+    // @onderling/agent-registry disclosure.js ({ perContext: { ctx: { key: {enabled, rung} } } }).
     disclosure:       _normaliseDisclosure(a.disclosure),
   });
 }

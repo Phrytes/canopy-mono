@@ -12,8 +12,8 @@
  * (embeddings input can be as sensitive as the items themselves).
  *
  * Usage:
- *   import { EmbeddingClient } from '@canopy/llm-client';
- *   import { openaiEmbeddingsProvider } from '@canopy/llm-client/providers/embeddings';
+ *   import { EmbeddingClient } from '@onderling/llm-client';
+ *   import { openaiEmbeddingsProvider } from '@onderling/llm-client/providers/embeddings';
  *
  *   const embedder = new EmbeddingClient({
  *     provider: openaiEmbeddingsProvider({ baseUrl, model: 'qwen3-embedding-4b' }),

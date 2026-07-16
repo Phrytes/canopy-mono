@@ -8,9 +8,9 @@
  *   • MEMORY path (no enforcement): share still writes + resolves, byte-unchanged (no grant/seal/gate).
  */
 import { describe, it, expect } from 'vitest';
-import { makeCircleShareEnforcement } from '@canopy/item-store';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+import { makeCircleShareEnforcement } from '@onderling/item-store';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { shareItemAcrossCircles, listSharedResolved, makeCrossCircleStores } from '../../src/v2/circleShare.js';
 
 // A fake ACP `sharing` surface ({ grant, list }, the client.sharing shape). Records grants; answers list()

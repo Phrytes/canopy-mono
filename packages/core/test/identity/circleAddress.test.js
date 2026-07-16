@@ -1,6 +1,6 @@
 // Identity step 3 — per-circle addresses: deterministic (recoverable) yet distinct per circle.
 import { describe, it, expect } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { Bootstrap } from '../../src/identity/Bootstrap.js';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
 import { deriveCircleSeed, deriveCircleAddress, circleIdentity } from '../../src/identity/circleAddress.js';

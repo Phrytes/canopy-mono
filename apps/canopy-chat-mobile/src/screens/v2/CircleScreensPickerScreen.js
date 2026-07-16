@@ -25,7 +25,7 @@ import {
 } from 'react-native';
 import { theme } from './theme.js';
 import { t } from '../../core/localisation.js';
-import { isAllKringen } from '@canopy-app/canopy-chat';
+import { isAllKringen } from '@onderling-app/canopy-chat';
 
 export default function CircleScreensPickerScreen({
   book = { screens: [], activeId: null },

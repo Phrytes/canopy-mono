@@ -18,7 +18,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { InMemoryBridge } from '@canopy/chat-agent';
+import { InMemoryBridge } from '@onderling/chat-agent';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCircleAgent } from '../src/Circle.js';

@@ -2,9 +2,9 @@
 // manages the node by invoking owner-gated ops OVER THE RELAY (exactly how
 // canopy-chat would); a non-owner is denied. This is the manifest half of the
 // "one contract, two projectors" design (plans/NOTE-companion-node-management.md).
-import { Agent, AgentIdentity, Parts, DataPart } from '@canopy/core';
-import { VaultMemory }        from '@canopy/vault';
-import { RelayTransport }     from '@canopy/transports';
+import { Agent, AgentIdentity, Parts, DataPart } from '@onderling/core';
+import { VaultMemory }        from '@onderling/vault';
+import { RelayTransport }     from '@onderling/transports';
 import { startCompanionNode } from '../../companion-node/src/index.js';
 import { rm }     from 'node:fs/promises';
 import { tmpdir } from 'node:os';

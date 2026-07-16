@@ -3,8 +3,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { generateMnemonic } from '@canopy/core';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { generateMnemonic } from '@onderling/core';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { restoreFromMnemonic } from '../src/restoreFromMnemonic.js';
 
 const MNEMONIC = generateMnemonic();

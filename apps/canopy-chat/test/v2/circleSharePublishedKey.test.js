@@ -24,10 +24,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import nacl from 'tweetnacl';
-import { generateKeypair, unwrapGroupKey } from '@canopy/pod-client';
-import { sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey } from '@canopy/pod-client/sealing';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+import { generateKeypair, unwrapGroupKey } from '@onderling/pod-client';
+import { sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey } from '@onderling/pod-client/sealing';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import {
   shareItemToPublishedKey, listSharedResolved, revokeItemShare,

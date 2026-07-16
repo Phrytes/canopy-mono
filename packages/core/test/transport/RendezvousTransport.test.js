@@ -13,10 +13,10 @@
  * Ref: Design-v3/rendezvous-mode.md §11 AA2, CODING-PLAN Group AA.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { RendezvousTransport }            from '@canopy/transports';
+import { RendezvousTransport }            from '@onderling/transports';
 import { InternalBus, InternalTransport } from '../../src/transport/InternalTransport.js';
 import { AgentIdentity }                  from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }                    from '@canopy/vault';
+import { VaultMemory }                    from '@onderling/vault';
 
 // Attempt to load the polyfill. If it's not installable on this host,
 // mark the whole suite as `skipped` so local devs can still run the

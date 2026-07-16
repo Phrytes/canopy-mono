@@ -1,24 +1,24 @@
 /**
- * @canopy-app/calendar — createCalendarAgent.
+ * @onderling-app/calendar — createCalendarAgent.
  *
- * In-process boot: builds an `@canopy/core` Agent with the calendar
+ * In-process boot: builds an `@onderling/core` Agent with the calendar
  * skills registered against a CalendarStore (default: in-memory).
  * canopy-chat composes this for the v0.7.10 demo.
  *
  * The same factory works for a real deployment in v0.7.11 — caller
  * passes their own pre-wired CalendarStore (backed by a real pod
- * via @canopy/pseudo-pod cache mode).
+ * via @onderling/pseudo-pod cache mode).
  */
 
-import { Agent, AgentIdentity, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { CalendarStore } from './CalendarStore.js';
 import { registerCalendarSkills } from './skills/index.js';
 
 /**
  * @param {object}  opts
- * @param {object}  opts.bus              `@canopy/core` InternalBus
+ * @param {object}  opts.bus              `@onderling/core` InternalBus
  * @param {CalendarStore} [opts.store]    pre-wired store (otherwise in-memory)
  * @param {string}  [opts.actor]          default actor
  * @param {() => object}            [opts.simulateSync]

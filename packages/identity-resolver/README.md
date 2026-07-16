@@ -1,6 +1,6 @@
-# @canopy/identity-resolver
+# @onderling/identity-resolver
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Member-webid map (light) + cross-source Person graph (heavier).
 Two complementary classes for **identity reconciliation across
@@ -28,7 +28,7 @@ This is **L1h** in the substrate-first plan
 ## MemberMap quick start
 
 ```js
-import { MemberMap } from '@canopy/identity-resolver';
+import { MemberMap } from '@onderling/identity-resolver';
 
 const map = new MemberMap();
 await map.addMember({
@@ -67,7 +67,7 @@ For Stoop-shape apps where the UI shows `@<handle>` by default and
 only surfaces `displayName` after a per-group or per-peer reveal:
 
 ```js
-import { MemberMap, Reveals, resolve } from '@canopy/identity-resolver';
+import { MemberMap, Reveals, resolve } from '@onderling/identity-resolver';
 
 const map = new MemberMap();
 await map.addMember({
@@ -107,7 +107,7 @@ instance.
 ## PersonGraph quick start
 
 ```js
-import { PersonGraph } from '@canopy/identity-resolver';
+import { PersonGraph } from '@onderling/identity-resolver';
 
 const graph = new PersonGraph();
 

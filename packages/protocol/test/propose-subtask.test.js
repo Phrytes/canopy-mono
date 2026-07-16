@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createProtocolOrchestrator } from '../src/orchestrator.js';
 import { PROPOSE_SUBTASK } from '../src/protocols/propose-subtask.js';
 

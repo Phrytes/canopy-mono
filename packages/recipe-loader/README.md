@@ -1,4 +1,4 @@
-# @canopy/recipe-loader
+# @onderling/recipe-loader
 
 **B #64 — loader + validator for authored remote recipes.**
 
@@ -16,7 +16,7 @@ validate, trust-gate, normalise. It does *not* apply the recipe to a live circle
 ## API
 
 ```js
-import { loadRecipe } from '@canopy/recipe-loader';
+import { loadRecipe } from '@onderling/recipe-loader';
 
 const res = await loadRecipe(source, { fetch, verify });
 // success →  { recipe, warnings: string[] }
@@ -37,7 +37,7 @@ const res = await loadRecipe(source, { fetch, verify });
 
 | field          | shape                                                   | validated by (reused) |
 |----------------|---------------------------------------------------------|-----------------------|
-| `capabilities` | `{ <noun>: { atoms: [<atom>…] } }`                       | `@canopy/app-manifest` `isRegistryType` (nouns, vs the `@canopy/item-types` registry) + `isAtom`/`canonicalAtom` (atoms) — the same discipline `validateManifest` applies to `manifest.nouns` |
+| `capabilities` | `{ <noun>: { atoms: [<atom>…] } }`                       | `@onderling/app-manifest` `isRegistryType` (nouns, vs the `@onderling/item-types` registry) + `isAtom`/`canonicalAtom` (atoms) — the same discipline `validateManifest` applies to `manifest.nouns` |
 | `freedoms`     | `{ "<app> <atom> <noun>": { enabled?, freedom?, consequence?, privacyFloor? } }` | atom+noun as above; entry against exported `FREEDOM_LEVELS` / `OPT_OUT_CONSEQUENCES` (the `freedom.js` shape) |
 | `settings`     | `{ "<app>.<key>": value }`                              | **structural only** (key shape + JSON-serialisable value) — per-value schema lives in each app's `manifest.settings`; that check is part of the deferred apply seam |
 | `surfaces`     | `{ features?: { <feature>: bool }, view? }`             | **structural only** — the authoritative `CIRCLE_FEATURES` / view enum live in canopy-chat `circlePolicy.js`, which this package must not depend up on; enum-matching is part of the deferred apply seam |
@@ -56,5 +56,5 @@ trust-tagged bundle ready to hand to that applier.
 
 ## Layer & dependencies
 
-Substrate. Depends on `@canopy/app-manifest` (validation primitives) — no app
+Substrate. Depends on `@onderling/app-manifest` (validation primitives) — no app
 dependency (invariant #5). Loader/validator is pure and Node/web-portable.

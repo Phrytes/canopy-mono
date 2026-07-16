@@ -3,7 +3,7 @@
  * cli-freetext.js — terminal REPL for the free-text experiment.
  *
  * Same prompt + tools + store as `tg-freetext.js`, but uses
- * @canopy/chat-agent's `InMemoryBridge` so you can iterate without
+ * @onderling/chat-agent's `InMemoryBridge` so you can iterate without
  * the Telegram round-trip.  Drastically faster for prompt-tuning.
  *
  * Modes:
@@ -34,7 +34,7 @@
 import readline                from 'node:readline';
 import { promises as fs }      from 'node:fs';
 
-import { ChatAgent, InMemoryBridge } from '@canopy/chat-agent';
+import { ChatAgent, InMemoryBridge } from '@onderling/chat-agent';
 
 import { LlmClient }         from '../src/llm/LlmClient.js';
 import { ollamaProvider, OLLAMA_DEFAULT_MODEL } from '../src/llm/providers/ollama.js';

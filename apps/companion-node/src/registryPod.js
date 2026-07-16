@@ -9,7 +9,7 @@
  * (`apps/folio/test/registerFolioAgent.test.js#makePseudoPodStub`).
  *
  * In the shared-relay production topology (decision #5) the registry resource
- * lives in the user's pod (a cache-mode `@canopy/pseudo-pod`); the device reads
+ * lives in the user's pod (a cache-mode `@onderling/pseudo-pod`); the device reads
  * the SAME resource to discover the host.  For a hermetic in-process R1 proof,
  * the host and the device share this one Map instance — the honest analog of a
  * shared pod resource: the device runs a REAL `createAgentRegistry` over it and

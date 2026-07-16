@@ -132,7 +132,7 @@ export function buildActorAliases(members = []) {
  * — role policies gate every read/write so the lookup must be
  * non-promise. For V0 the resolver is just a wrapper around the
  * circle's local member list (same data as `buildActorAliases`). When
- * `@canopy/agent-registry` is wired into mobile (real PoC
+ * `@onderling/agent-registry` is wired into mobile (real PoC
  * dogfooding), apps swap the data source from `circle.members` to a
  * sync cache over the registry — interface stays identical so the
  * substrate side doesn't move.

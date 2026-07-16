@@ -10,7 +10,7 @@
  * `tasks-oidc-*`.
  */
 
-import { useOidcSignIn } from '@canopy/oidc-session-rn/hook';
+import { useOidcSignIn } from '@onderling/oidc-session-rn/hook';
 
 const DEFAULT_ISSUER = 'https://login.inrupt.com';
 

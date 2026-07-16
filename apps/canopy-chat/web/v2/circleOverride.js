@@ -4,14 +4,14 @@
  * The calling member's own deviations from a circle's defaults: chat off,
  * reveal-open, agents-may-contact-me, and flow-through (claimed tasks /
  * calendar → "My things"). Controlled render over a `memberOverride`
- * (`@canopy/circlePolicy`); toggles fire `onChange(patch)`; the host
+ * (`@onderling/circlePolicy`); toggles fire `onChange(patch)`; the host
  * merges + re-renders + persists. Pure → unit-testable under happy-dom.
  *
  * B · Slice 4 — also the member's capability OPT-OUTS: given the circle's admin `policy` + the merged
  * manifest `sources`, list the OPT-OUTABLE capabilities (admin freedom 'optional' or a privacy floor)
  * and let the member decline them. Declining writes `capabilityOptOuts`; the same gate then refuses them.
  */
-import { buildCapabilityMatrix } from '@canopy/app-manifest';
+import { buildCapabilityMatrix } from '@onderling/app-manifest';
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
 const FLOW_TOGGLES = ['tasksToPersonal', 'calendarToPersonal'];

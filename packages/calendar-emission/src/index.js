@@ -1,8 +1,8 @@
 /**
- * @canopy/calendar-emission — substrate barrel.
+ * @onderling/calendar-emission — substrate barrel.
  *
  * Lifted from `apps/tasks-v0/src/calendar/` on 2026-05-23 per the
- * v0.3.4 substrate-reuse gate (rule-of-two: tasks-v0 + @canopy-app/
+ * v0.3.4 substrate-reuse gate (rule-of-two: tasks-v0 + @onderling-app/
  * calendar both compose iCal emission + reading).  Pre-existing
  * tasks-v0 tests are the de-facto contract; nothing changes for
  * tasks-v0 except the import path.

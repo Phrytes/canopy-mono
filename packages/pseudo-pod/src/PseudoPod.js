@@ -51,7 +51,7 @@
  * @typedef {'standalone'|'replication-ring'|'cache'} PseudoPodMode
  */
 
-import { makeFetchResourceSkill }    from '@canopy/core';
+import { makeFetchResourceSkill }    from '@onderling/core';
 import { createWriteThroughQueue }   from './writeThroughQueue.js';
 
 /** Envelope kind used for replication-ring fan-out in V0.
@@ -86,7 +86,7 @@ const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
  *
  * Versioning seam (PLAN-pod-versioning-history-recovery P2):
  * @param {{capture: (uri: string, content: *) => Promise<*>}} [opts.versioning]
- *   — optional version store (duck-typed; `@canopy/versioning`'s
+ *   — optional version store (duck-typed; `@onderling/versioning`'s
  *   `createVersionStore`). When supplied, the write path snapshots the
  *   DISPLACED bytes before they are lost: prior local bytes on `write`,
  *   `writeFromPeer` peer-update, and `delete`; the DROPPED PEER FORK on a
@@ -738,7 +738,7 @@ export function createPseudoPod({
    *   agent.skills.register(pseudoPod.fetchResourceSkill({groupCheck, capCheck}));
    *
    * **Phase 52.2.x (Q#2 2026-05-14) — peer-fetch gates.** Pass
-   * through `groupCheck` + `capCheck` from `@canopy/core`'s
+   * through `groupCheck` + `capCheck` from `@onderling/core`'s
    * `makeFetchResourceSkill`. When neither is supplied, the skill
    * trust-the-transport's identity gate (back-compat).
    *

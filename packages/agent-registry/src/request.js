@@ -1,7 +1,7 @@
 // Request — the typed, minimal, purpose-bound ask a consumer makes of a user's property
 // layer (design Phase 1; plans/NOTE-property-layer-design.md §2–3, "Option C canonical").
 //
-// A Request is the GENERAL shape; @canopy/attribute-charter's charter is the coarse-enum +
+// A Request is the GENERAL shape; @onderling/attribute-charter's charter is the coarse-enum +
 // caps + immutable SPECIALISATION of it (a charter is a Request whose items are all
 // coarse-enum, capped at 3, over a fixed vocabulary). Kept independent for now — a later
 // refactor could have createCharter delegate here (see the design note §7).

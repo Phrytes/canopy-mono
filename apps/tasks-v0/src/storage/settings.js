@@ -1,6 +1,6 @@
 /**
  * Tasks V1 Settings — per-app schema bound to the
- * `@canopy/local-store` `createSettingsModule` factory.
+ * `@onderling/local-store` `createSettingsModule` factory.
  *
  * The factory enforces the project-wide split:
  *
@@ -27,7 +27,7 @@
  *     await updateSettings({ dataSource, deviceId, patch: { pollIntervalMs: 5000 } });
  */
 
-import { createSettingsModule } from '@canopy/local-store';
+import { createSettingsModule } from '@onderling/local-store';
 
 const SHARED_FIELDS = ['pushPreferences', 'cadenceOverrides', 'defaultCalendarShared'];
 const DEVICE_FIELDS = ['pollIntervalMs', 'localModeRoot'];

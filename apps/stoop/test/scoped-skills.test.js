@@ -15,9 +15,9 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { buildSkills } from '../src/skills/index.js';
-import { ItemStore }   from '@canopy/item-store';
-import { MemorySource } from '@canopy/core';
-import { MemberMap }   from '@canopy/identity-resolver';
+import { ItemStore }   from '@onderling/item-store';
+import { MemorySource } from '@onderling/core';
+import { MemberMap }   from '@onderling/identity-resolver';
 
 function buildBundle(groupId, localActor) {
   const dataSource = new MemorySource();

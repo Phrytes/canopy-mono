@@ -1,8 +1,8 @@
 /**
- * folioAuth — pure-helpers shim around `@canopy/oidc-session-rn`.
+ * folioAuth — pure-helpers shim around `@onderling/oidc-session-rn`.
  *
  * **2026-05-08:** the implementation moved to the
- * `@canopy/oidc-session-rn` substrate (Stoop V3 Phase 40.3 — rule
+ * `@onderling/oidc-session-rn` substrate (Stoop V3 Phase 40.3 — rule
  * of two consumer).
  *
  * This shim re-exports ONLY the pure helpers (no `expo-auth-session`
@@ -20,7 +20,7 @@ import {
   DEFAULT_SCOPES as SUBSTRATE_DEFAULT_SCOPES,
   _setDiscoveryFn,
   _setExchangeFn,
-} from '@canopy/oidc-session-rn';
+} from '@onderling/oidc-session-rn';
 
 export const DEFAULT_INRUPT_ISSUER = SUBSTRATE_DEFAULT_INRUPT_ISSUER;
 export const DEFAULT_SCOPES        = SUBSTRATE_DEFAULT_SCOPES;

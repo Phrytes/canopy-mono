@@ -1,10 +1,10 @@
 /**
  * DataSource PORT conformance — run the harness against the reference adapter
- * `MemorySource` (@canopy/core). Implementing the port + passing this harness is
- * the definition of "compatible with the @canopy SDK". See docs/conventions/ports.md.
+ * `MemorySource` (@onderling/core). Implementing the port + passing this harness is
+ * the definition of "compatible with the @onderling SDK". See docs/conventions/ports.md.
  */
 import { describe, it } from 'vitest';
-import { assertDataSourceConformance } from '@canopy/core/conformance';
+import { assertDataSourceConformance } from '@onderling/core/conformance';
 import { MemorySource } from '../../src/storage/MemorySource.js';
 
 describe('DataSource port — MemorySource (reference adapter)', () => {

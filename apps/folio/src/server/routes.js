@@ -88,7 +88,7 @@ import {
   AgentIdentity,
   Bootstrap,
   PodCapabilityToken,
-} from '@canopy/core';
+} from '@onderling/core';
 
 import { PathMap }            from '../PathMap.js';
 import { scanLocal }          from '../scanLocal.js';
@@ -97,7 +97,7 @@ import { diff }               from '../diff.js';
 import { hasConflictMarkers } from '../applyConflict.js';
 
 import { conflictIdFromRelPath, relPathFromConflictId } from './conflictId.js';
-// Versioning now rides the engine's @canopy/versioning store (Slice 1a) —
+// Versioning now rides the engine's @onderling/versioning store (Slice 1a) —
 // reached via `engine.versionStore` (list/read/listSeries/isVersionable),
 // not the retired `../versions.js` module.
 import {

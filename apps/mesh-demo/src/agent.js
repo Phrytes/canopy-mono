@@ -3,7 +3,7 @@
  *
  * Everything "infrastructure" (transports, routing, BLE write queue,
  * OfflineTransport fallback, hello auto-upgrade of stale indirect records,
- * …) lives in `@canopy/react-native`'s `createMeshAgent`.  This file
+ * …) lives in `@onderling/react-native`'s `createMeshAgent`.  This file
  * only adds what is genuinely app-specific:
  *   • the `receive-message` skill, which pipes chat text into the store
  *   • the three opt-in SDK hooks this app wants enabled
@@ -14,11 +14,11 @@ import {
   DataPart, TextPart, Parts, Task,
   registerCapabilitiesSkill,
   registerTunnelReceiveSealed,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   createMeshAgent,
   KeychainVault,
-}                                  from '@canopy/react-native';
+}                                  from '@onderling/react-native';
 import { messageStore }            from './store/messages.js';
 import { activityStore }           from './store/activity.js';
 

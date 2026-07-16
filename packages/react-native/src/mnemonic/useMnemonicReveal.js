@@ -10,7 +10,7 @@
  * Usage:
  *
  *   import { useSkill } from './lib/useSkill.js';
- *   import { useMnemonicReveal } from '@canopy/react-native/mnemonic';
+ *   import { useMnemonicReveal } from '@onderling/react-native/mnemonic';
  *
  *   const { reveal, words, loading, error, reset } =
  *     useMnemonicReveal({ useSkill });

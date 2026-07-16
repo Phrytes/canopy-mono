@@ -8,7 +8,7 @@
  *
  *   2. An authenticated `OidcSession` is reachable (either passed in
  *      via `__deps.oidc` or restored on boot from the vault refresh
- *      token) ⇒ a real `PodClient` from `@canopy/pod-client`, wrapping
+ *      token) ⇒ a real `PodClient` from `@onderling/pod-client`, wrapping
  *      the session's authenticated `fetch` via `SolidOidcAuth`.
  *
  *   3. No mock, no session ⇒ throw a clear error pointing the user at
@@ -21,10 +21,10 @@
 import { promises as fs }                from 'node:fs';
 import { dirname, join }                 from 'node:path';
 
-import { createMemoryBackend }           from '@canopy/pseudo-pod';
+import { createMemoryBackend }           from '@onderling/pseudo-pod';
 // Node-only persistent backend — separate subpath so it never poisons
 // portable bundles (this CLI file is already Node, so it's fine here).
-import { createNodeFsBackend }           from '@canopy/pseudo-pod/node';
+import { createNodeFsBackend }           from '@onderling/pseudo-pod/node';
 import { wrapWithPseudoPod }             from '../podCache.js';
 import { configDir }                     from './_config.js';
 
@@ -122,7 +122,7 @@ function maybeWrapWithPseudoPod(real, cfg) {
  * @returns {Promise<object>}          A real `PodClient`.
  */
 export async function buildRealPodClient(cfg, oidc) {
-  const podClientMod = await import('@canopy/pod-client');
+  const podClientMod = await import('@onderling/pod-client');
   const { PodClient, SolidOidcAuth } = podClientMod;
 
   const authVault = {

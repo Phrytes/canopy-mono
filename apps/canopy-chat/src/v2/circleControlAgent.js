@@ -16,7 +16,7 @@
  */
 import {
   createControlAgent, createPodKeyStore, resolveCircleStorage, readGroupKey,
-} from '@canopy/pod-client';
+} from '@onderling/pod-client';
 
 const SEALED_POSTURES = new Set(['p2', 'p3']);
 

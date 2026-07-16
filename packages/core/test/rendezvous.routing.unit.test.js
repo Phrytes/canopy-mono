@@ -24,11 +24,11 @@
 import { describe, it, expect } from 'vitest';
 import { Agent }                      from '../src/Agent.js';
 import { AgentIdentity }              from '../src/identity/AgentIdentity.js';
-import { VaultMemory }                from '@canopy/vault';
+import { VaultMemory }                from '@onderling/vault';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 import { PeerGraph }                  from '../src/discovery/PeerGraph.js';
 import { RoutingStrategy }            from '../src/routing/RoutingStrategy.js';
-import { RendezvousTransport }        from '@canopy/transports';
+import { RendezvousTransport }        from '@onderling/transports';
 
 // A harmless rtcLib that would throw if anyone tried to connect.
 // enableRendezvous doesn't invoke it at construction; we never call

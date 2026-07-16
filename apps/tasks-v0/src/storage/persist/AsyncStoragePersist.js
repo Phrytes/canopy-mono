@@ -5,7 +5,7 @@
  * Identical surface + semantics to
  * `apps/stoop/src/lib/AsyncStoragePersist.js`.  Copied (not imported)
  * to avoid an app→app dependency; substrate-extraction candidate —
- * lift these three adapters + persistPicker into `@canopy/local-store`
+ * lift these three adapters + persistPicker into `@onderling/local-store`
  * once a third app needs them.
  *
  * Default prefix is `'tasks-cache:'` so a single AsyncStorage instance

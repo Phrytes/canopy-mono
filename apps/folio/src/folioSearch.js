@@ -1,5 +1,5 @@
 /**
- * folioSearch — folio's note corpus wired onto `@canopy/pod-search` (52.25,
+ * folioSearch — folio's note corpus wired onto `@onderling/pod-search` (52.25,
  * PLAN-podsearch-v2-embeddings, first-consumer = folio, Q1).
  *
  * Folio's existing search (`searchFiles` in `browser.js`, the HTTP `/files`
@@ -9,7 +9,7 @@
  * chat `/zoek` op can offer a SEMANTIC mode on top of the same corpus, while
  * staying byte-compatible with lexical when no embedder is available.
  *
- * Boundary: pure + node-free + RN-free (it only touches `@canopy/pod-search`
+ * Boundary: pure + node-free + RN-free (it only touches `@onderling/pod-search`
  * and the injected embedder/store), so it rides into the canopy-chat browser
  * bundle alongside the rest of `browser.js`.
  *
@@ -28,7 +28,7 @@
  * `llmTool`/`embedTool` policy permits (same trust boundary as chat LLM).
  */
 
-import { PodSearch, hash as defaultHash } from '@canopy/pod-search';
+import { PodSearch, hash as defaultHash } from '@onderling/pod-search';
 
 /**
  * The note-corpus schema. `id` is the primary key (a note's relPath / id);
@@ -96,7 +96,7 @@ export function buildFolioNoteSearch({ embedder, hash = defaultHash, vectorStore
 /**
  * Normalise an injected embedder to the shape PodSearch reads
  * (`{ id, dim?, embed }`). The mock provider (`mockEmbeddingsProvider`) already
- * carries `.id`; an `@canopy/llm-client` `EmbeddingClient` exposes `.model` /
+ * carries `.id`; an `@onderling/llm-client` `EmbeddingClient` exposes `.model` /
  * `.providerId` instead, so canopy-chat can hand its resolved embed client in
  * RAW — no adapter at the call site (keeps the glue thin). Anything without an
  * `embed()` fn ⇒ `undefined` (lexical-only).

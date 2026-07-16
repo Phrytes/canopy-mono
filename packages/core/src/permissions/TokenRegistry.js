@@ -13,7 +13,7 @@ import { CapabilityToken, skillMatches } from './CapabilityToken.js';
 export class TokenRegistry {
   #vault;
 
-  /** @param {import('@canopy/vault').Vault} vault */
+  /** @param {import('@onderling/vault').Vault} vault */
   constructor(vault) {
     if (!vault) throw new Error('TokenRegistry requires a vault');
     this.#vault = vault;

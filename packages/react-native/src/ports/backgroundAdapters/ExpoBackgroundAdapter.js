@@ -3,16 +3,16 @@
  * existing background helpers with zero logic change.  It is a thin forwarder:
  * every method delegates to the same helper calls the apps already make.
  *
- * Because `@canopy/react-native` sits BELOW `@canopy/sync-engine-rn` and
- * `@canopy/online-cadence` in the layering (invariant #5 — no depending up),
+ * Because `@onderling/react-native` sits BELOW `@onderling/sync-engine-rn` and
+ * `@onderling/online-cadence` in the layering (invariant #5 — no depending up),
  * the helpers are INJECTED rather than imported.  The app's boot passes them
  * in (exactly the modules it already imports):
  *
  *   import { registerBackgroundTask, setBgRunOnce, clearBgRunOnce }
- *     from '@canopy/sync-engine-rn';                       // bgRunOnce
+ *     from '@onderling/sync-engine-rn';                       // bgRunOnce
  *   import { registerBackgroundFetch, unregisterBackgroundFetch }
- *     from '@canopy/sync-engine-rn';                       // backgroundTasks
- *   import { attachAppStateBridge } from '@canopy/online-cadence';
+ *     from '@onderling/sync-engine-rn';                       // backgroundTasks
+ *   import { attachAppStateBridge } from '@onderling/online-cadence';
  *   import * as TaskManager     from 'expo-task-manager';
  *   import * as BackgroundFetch from 'expo-background-fetch';
  *   import { AppState }         from 'react-native';

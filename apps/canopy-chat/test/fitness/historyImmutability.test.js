@@ -20,7 +20,7 @@
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { agentsManifest } from '../../../agents/manifest.js';
 import { RECOVERY_CORES } from '../../../agents/src/recoveryCores.js';
 import { AGENT_CORES } from '../../../agents/src/cores.js';

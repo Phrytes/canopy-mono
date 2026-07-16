@@ -9,9 +9,9 @@
  * (no-pod memory / persistent CachingDataSource / sealed pod-client-backed) differs per platform/tier.
  *
  * @param {object} args
- * @param {import('@canopy/core').DataSource} args.dataSource  ONE shared backing (read/write/delete/list); each
+ * @param {import('@onderling/core').DataSource} args.dataSource  ONE shared backing (read/write/delete/list); each
  *        circle is isolated by its rootContainer namespace, NOT a separate DataSource.
- * @param {{ validate?: (item:object)=>{ok:boolean,errors?:Array} }} [args.registry]  @canopy/item-types registry
+ * @param {{ validate?: (item:object)=>{ok:boolean,errors?:Array} }} [args.registry]  @onderling/item-types registry
  *        (injected; validates on write). Same instance for every circle so third-party `registerType`s apply uniformly.
  * @param {string} [args.rootPrefix='mem://circles/']  logical root; PodRouting maps it to the physical pod per tier.
  * @param {(circleId:string, store:import('./CircleItemStore.js').CircleItemStore)=>void} [args.onStore]  called ONCE

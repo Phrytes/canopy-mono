@@ -28,7 +28,7 @@
  *   - `INVALID_MANIFEST`              — bubbled up from `parseReferenceManifest`
  *   - `HASH_MISMATCH`                 — fetched bytes don't match the manifest's hash
  *
- * This module never imports from `@canopy/pod-client`; it sits in
+ * This module never imports from `@onderling/pod-client`; it sits in
  * `packages/core/src/storage/` so `core` consumers can use the helpers
  * directly without pulling in the full pod-client.
  */

@@ -1,10 +1,10 @@
 /**
- * @canopy/sync-engine-rn/react — React hooks for invoking skills
+ * @onderling/sync-engine-rn/react — React hooks for invoking skills
  * on the active agent bundle.
  *
  * Apps consume via the factory:
  *
- *   import { createReactBindings } from '@canopy/sync-engine-rn/react';
+ *   import { createReactBindings } from '@onderling/sync-engine-rn/react';
  *   import { useService } from './ServiceContext.js';
  *   export const { useSkill, useAgentEvent, useSkillResult } =
  *     createReactBindings({ useService });

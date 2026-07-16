@@ -17,7 +17,7 @@
  * Phase v0.7 sub-slice 7.1c per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
-import { renderFloatingButton } from '@canopy/chat-nav';
+import { renderFloatingButton } from '@onderling/chat-nav';
 
 /**
  * @typedef {object} LogsPanelContext

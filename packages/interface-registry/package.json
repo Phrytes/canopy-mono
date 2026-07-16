@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/interface-registry",
+  "name": "@onderling/interface-registry",
   "version": "0.1.0",
   "description": "Per-type renderer registry. Bundles register compact + full renderers for the item-types they handle; apps look up renderers by type. Hub V2 territory; direction-only. Standardisation Phase 52.12.",
   "type": "module",
@@ -13,10 +13,10 @@
     "test:watch": "vitest"
   },
   "peerDependencies": {
-    "@canopy/item-types": "*"
+    "@onderling/item-types": "*"
   },
   "devDependencies": {
-    "@canopy/item-types": "file:../item-types",
+    "@onderling/item-types": "file:../item-types",
     "vitest": "^2.1.9"
   }
 }

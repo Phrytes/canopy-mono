@@ -1,6 +1,6 @@
 # Hybrid pod — implementation notes
 
-H2 ships the @canopy project's first **hybrid pod** pattern: three
+H2 ships the @onderling project's first **hybrid pod** pattern: three
 pods (per-member / per-bot / shared household) cooperating via
 references and capability tokens.
 

@@ -1,4 +1,4 @@
-# Changelog — @canopy/chat-agent
+# Changelog — @onderling/chat-agent
 
 Versioning per `Project Files/Substrates/policies.md`.
 

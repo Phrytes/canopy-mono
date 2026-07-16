@@ -21,7 +21,7 @@
  * per-circle scope key threaded through ops — NOT N agents for N circles
  * (CLAUDE.md invariant #6). Pure + transport-free, so mobile reuses it verbatim.
  */
-import { openThumbnail } from '@canopy/blob-gateway';
+import { openThumbnail } from '@onderling/blob-gateway';
 import { itemCircleId } from './circleScope.js';
 import { createMediaEmbed } from '../core/handlers/mediaEmbed.js';
 

@@ -1,4 +1,4 @@
-# `@canopy/local-store`
+# `@onderling/local-store`
 
 > **Layer:** substrate. Cross-platform.
 > Lifted from `apps/stoop/src/lib/{CachingDataSource, SyncCadence, Settings}.js`
@@ -9,7 +9,7 @@ Local-first storage for agent-SDK apps. Three exports:
 
 ## `CachingDataSource`
 
-A `DataSource` (per `@canopy/core`) that wraps an optional inner
+A `DataSource` (per `@onderling/core`) that wraps an optional inner
 (pod-backed) DataSource:
 
 - Reads check the local Map first; fall back to the inner.
@@ -36,7 +36,7 @@ Per-app factory for the shared/device-split settings pattern (per
 [`Project Files/conventions/cross-app-settings.md`](../../docs/conventions/cross-app-settings.md)).
 
 ```js
-import { createSettingsModule } from '@canopy/local-store';
+import { createSettingsModule } from '@onderling/local-store';
 
 const m = createSettingsModule({
   appId:        'stoop',

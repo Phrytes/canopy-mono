@@ -27,7 +27,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { renderWeb, validateManifest } from '@canopy/app-manifest';
+import { renderWeb, validateManifest } from '@onderling/app-manifest';
 
 import { tasksManifest } from '../manifest.js';
 

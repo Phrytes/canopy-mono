@@ -7,7 +7,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest';
 import { startMockLlm } from 'onderling-feedback/testing';
 import { InMemoryCentralPod } from 'onderling-feedback/public';
-import { log, clearLogs } from '@canopy/logger';
+import { log, clearLogs } from '@onderling/logger';
 import { buildReportEnvelope } from '../src/feedback/bugReport.js';
 import { createFeedbackSurface } from '../src/feedback/feedbackSurface.js';
 

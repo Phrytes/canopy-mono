@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import * as core from '../src/index.js';
 
 // Phase 0a fitness-function: guard the core→vault / core→oidc-session inversion.
-// `@canopy/vault` and `@canopy/oidc-session` were extracted OUT of `core`; core must
+// `@onderling/vault` and `@onderling/oidc-session` were extracted OUT of `core`; core must
 // NOT re-export them (the deprecation-era shim is gone) and must not depend on oidc-session
 // at all. If any of these fail, someone re-introduced the layering inversion.
 
@@ -17,29 +17,29 @@ const VAULT_SYMS = ['Vault', 'VaultMemory', 'VaultLocalStorage', 'VaultIndexedDB
 const OIDC_SYMS = ['SolidVault'];
 
 describe('layering: core does not re-export or depend on vault / oidc-session', () => {
-  it('the barrel no longer re-exports the Vault family (import from @canopy/vault)', () => {
+  it('the barrel no longer re-exports the Vault family (import from @onderling/vault)', () => {
     for (const s of VAULT_SYMS) expect(core[s], `core should not re-export ${s}`).toBeUndefined();
   });
 
-  it('the barrel no longer re-exports SolidVault (import from @canopy/oidc-session)', () => {
+  it('the barrel no longer re-exports SolidVault (import from @onderling/oidc-session)', () => {
     for (const s of OIDC_SYMS) expect(core[s], `core should not re-export ${s}`).toBeUndefined();
   });
 
-  it('src/index.js has no re-export from @canopy/vault or @canopy/oidc-session', () => {
-    expect(indexSrc).not.toMatch(/from\s+['"]@canopy\/vault['"]/);
-    expect(indexSrc).not.toMatch(/from\s+['"]@canopy\/oidc-session['"]/);
+  it('src/index.js has no re-export from @onderling/vault or @onderling/oidc-session', () => {
+    expect(indexSrc).not.toMatch(/from\s+['"]@onderling\/vault['"]/);
+    expect(indexSrc).not.toMatch(/from\s+['"]@onderling\/oidc-session['"]/);
   });
 
   it('core has no RUNTIME dependency on vault / oidc-session (devDependencies allowed for tests)', () => {
     const runtime = { ...(pkg.dependencies || {}), ...(pkg.optionalDependencies || {}) };
-    expect(runtime['@canopy/oidc-session']).toBeUndefined();
-    expect(runtime['@canopy/vault']).toBeUndefined();
+    expect(runtime['@onderling/oidc-session']).toBeUndefined();
+    expect(runtime['@onderling/vault']).toBeUndefined();
   });
 
-  it('the kernel (Agent.js) does not import @canopy/vault at runtime (JSDoc @param type refs are fine)', () => {
+  it('the kernel (Agent.js) does not import @onderling/vault at runtime (JSDoc @param type refs are fine)', () => {
     const agentSrc = readFileSync(join(here, '../src/Agent.js'), 'utf8');
-    expect(agentSrc).not.toMatch(/await import\(\s*['"]@canopy\/vault['"]/);
-    expect(agentSrc).not.toMatch(/^\s*import\s.*from\s*['"]@canopy\/vault['"]/m);
+    expect(agentSrc).not.toMatch(/await import\(\s*['"]@onderling\/vault['"]/);
+    expect(agentSrc).not.toMatch(/^\s*import\s.*from\s*['"]@onderling\/vault['"]/m);
   });
 
   it('the kernel (Agent.js) constructs/imports no concrete network transport (they are injected)', () => {
@@ -53,33 +53,33 @@ describe('layering: core does not re-export or depend on vault / oidc-session', 
     for (const s of ['Agent', 'AgentIdentity', 'Emitter', 'Parts']) expect(core[s], `core must still export ${s}`).toBeDefined();
   });
 
-  it('the barrel no longer re-exports the pod-storage adapters (SolidPodSource / PodExporter / PodImporter live in @canopy/pod-client)', () => {
-    // Extracted OUT to @canopy/pod-client — core must NOT re-export them, and
+  it('the barrel no longer re-exports the pod-storage adapters (SolidPodSource / PodExporter / PodImporter live in @onderling/pod-client)', () => {
+    // Extracted OUT to @onderling/pod-client — core must NOT re-export them, and
     // src/index.js must have no export-from their old ./storage/ paths.
     for (const s of ['SolidPodSource', 'PodExporter', 'PodImporter']) {
-      expect(core[s], `core should not re-export ${s} (it lives in @canopy/pod-client)`).toBeUndefined();
+      expect(core[s], `core should not re-export ${s} (it lives in @onderling/pod-client)`).toBeUndefined();
     }
     expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/SolidPodSource\.js['"]/);
     expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/PodExporter\.js['"]/);
     expect(indexSrc).not.toMatch(/from\s+['"]\.\/storage\/PodImporter\.js['"]/);
   });
 
-  it('the barrel keeps the Transport base + InternalTransport but no longer re-exports the concrete network transports (import from @canopy/transports)', () => {
+  it('the barrel keeps the Transport base + InternalTransport but no longer re-exports the concrete network transports (import from @onderling/transports)', () => {
     // Kept in core (base + kernel-adjacent transports).
     expect(core.Transport, 'core must still export the Transport base').toBeDefined();
     expect(core.InternalTransport, 'core must still export InternalTransport').toBeDefined();
-    // Extracted OUT to @canopy/transports — core must NOT re-export them.
+    // Extracted OUT to @onderling/transports — core must NOT re-export them.
     for (const s of ['NknTransport', 'MqttTransport', 'RelayTransport', 'RendezvousTransport']) {
-      expect(core[s], `core should not re-export ${s} (it lives in @canopy/transports)`).toBeUndefined();
+      expect(core[s], `core should not re-export ${s} (it lives in @onderling/transports)`).toBeUndefined();
     }
   });
 
-  it('the barrel no longer re-exports the on-pod identity family (import from @canopy/pod-client)', () => {
+  it('the barrel no longer re-exports the on-pod identity family (import from @onderling/pod-client)', () => {
     // IdentityPodStore / IdentitySync / migrateVaultToPod store/migrate/sync
-    // identity ON a pod — they were extracted OUT to @canopy/pod-client (SDK pod
+    // identity ON a pod — they were extracted OUT to @onderling/pod-client (SDK pod
     // layer). Kernel identity (AgentIdentity / KeyRotation / Bootstrap) stays here.
     for (const s of ['IdentityPodStore', 'IdentitySync', 'migrateVaultToPod']) {
-      expect(core[s], `core should not re-export ${s} (it lives in @canopy/pod-client)`).toBeUndefined();
+      expect(core[s], `core should not re-export ${s} (it lives in @onderling/pod-client)`).toBeUndefined();
     }
     expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/IdentityPodStore\.js['"]/);
     expect(indexSrc).not.toMatch(/from\s+['"]\.\/identity\/IdentitySync\.js['"]/);

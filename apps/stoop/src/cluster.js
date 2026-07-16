@@ -25,8 +25,8 @@
  *     defaultGroupId: string,
  *   }
  */
-import { AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { createNeighborhoodAgent } from './Agent.js';
 

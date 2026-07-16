@@ -2,7 +2,7 @@
  * embeds — cross-app reference traversal.
  *
  * Every item type may carry an `embeds: [{type, ref}, ...]` field —
- * standardised by `@canopy/item-types`. Refs are URIs (pseudo-pod
+ * standardised by `@onderling/item-types`. Refs are URIs (pseudo-pod
  * or pod-attached). Apps walk the graph at render time to surface
  * the embedded chips inline.
  *

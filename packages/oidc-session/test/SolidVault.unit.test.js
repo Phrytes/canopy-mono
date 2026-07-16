@@ -14,7 +14,7 @@
  * We don't reach Inrupt internals; we inject a fake `Session` constructor
  * via the `_setSessionFactory` test seam.
  *
- * Tests import `VaultMemory` from `@canopy/core` to exercise the
+ * Tests import `VaultMemory` from `@onderling/core` to exercise the
  * substrate against the real consumer-grade vault.  The substrate itself
  * only requires a Vault-shaped object (`get`/`set`/`delete`/`list`) — it
  * has no runtime dep on core.
@@ -22,7 +22,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { SolidVault, _setSessionFactory } from '../src/SolidVault.js';
 
 const WEBID  = 'https://alice.example/profile/card#me';

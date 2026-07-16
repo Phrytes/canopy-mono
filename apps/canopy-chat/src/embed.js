@@ -8,7 +8,7 @@
  *
  * Phase v0.5 sub-slice (J7) per `/Project Files/canopy-chat/coding-plan.md`.
  *
- * Wire shape (cross-peer delivery comes in v0.5.1 via @canopy/chat-p2p
+ * Wire shape (cross-peer delivery comes in v0.5.1 via @onderling/chat-p2p
  * composition; v0.5.0 ships only the local model + renderer):
  *
  *   ChatMessage.embed?: {
@@ -141,7 +141,7 @@ export function actionsFor(embed, manifest) {
 }
 
 /**
- * Local copy of @canopy/app-manifest's matchesAppliesTo helper —
+ * Local copy of @onderling/app-manifest's matchesAppliesTo helper —
  * imported indirectly via `renderChat.inlineKeyboardFor`, but
  * canopy-chat already does the same gating logic inline (see
  * src/web/domAdapter.js' list rendering).  Same shape; pulled here

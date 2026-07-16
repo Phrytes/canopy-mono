@@ -43,9 +43,9 @@ file only helps if it's written to.
    per-shell switch statement. After any manifest change, regenerate + commit the coverage snapshot
    (`npm run coverage` in `apps/canopy-chat` → `docs/surface-coverage.md`).
 5. **Three-layer dependency invariant:** `apps/` → `packages/{substrates}` → `packages/core` (the **kernel** —
-   a lean set of ports + kernel logic). Concrete adapters live *outside* the kernel (`@canopy/transports`,
-   `@canopy/pod-client`, `@canopy/vault`); nothing in the kernel depends *up* on an adapter. The dev-facing
-   **SDK is `@canopy/sdk`** (the layered facade over the platform). Substrates compose the kernel + adapters and
+   a lean set of ports + kernel logic). Concrete adapters live *outside* the kernel (`@onderling/transports`,
+   `@onderling/pod-client`, `@onderling/vault`); nothing in the kernel depends *up* on an adapter. The dev-facing
+   **SDK is `@onderling/sdk`** (the layered facade over the platform). Substrates compose the kernel + adapters and
    don't reinvent the kernel; apps compose substrates (kernel directly only with a justification in the app
    README). → detail: [`architectural-layering.md`](docs/conventions/architectural-layering.md).
 6. **One agent per service-context.** Transports are routes into a single `core.Agent`; multi-scope state
@@ -63,7 +63,7 @@ Project-wide rules beyond the invariants — concise here, full detail in [`docs
 - **App READMEs** follow one scheme (built-on · deviations · honest phase table) — [`app-readme-scheme.md`](docs/conventions/app-readme-scheme.md).
 - **Cross-app settings** split pod-side into portable `shared.json` + per-install `devices/<id>.json` — [`cross-app-settings.md`](docs/conventions/cross-app-settings.md).
 - **Cross-pod references** use the `embeds: [{type, ref}]` field + a permission handshake, never inlined pod URLs — [`cross-pod-refs.md`](docs/conventions/cross-pod-refs.md).
-- **Pod storage layout** is canonical, owned by `@canopy/pod-onboarding` — [`storage-layout.md`](docs/conventions/storage-layout.md).
+- **Pod storage layout** is canonical, owned by `@onderling/pod-onboarding` — [`storage-layout.md`](docs/conventions/storage-layout.md).
 - **This file's scope + size budget** — what belongs in `CLAUDE.md` vs `docs/`, and when to compress/enlarge it — [`doc-structure.md`](docs/conventions/doc-structure.md).
 - **Record a decision** when a choice closes off alternatives / would be re-litigated / shapes architecture (→ `docs/decisions.md`) or org (→ private) — [`decision-log.md`](docs/conventions/decision-log.md).
 

@@ -62,6 +62,6 @@ automatically — `feedHouseholdRosterForCircle` runs on open.)
 To drive adds via the live Privatemode LLM, run the loopback proxy on the laptop and set
 the `VITE_CIRCLE_LLM_*` vars in `.env.local` (see `.env.example`). The phone does **not**
 run a model — phone-side confidential LLM needs the attested enclave gateway (Option B,
-not built). The route guard (`@canopy/llm-client/routeSafety`) refuses a non-loopback
+not built). The route guard (`@onderling/llm-client/routeSafety`) refuses a non-loopback
 confidential endpoint, so the laptop's loopback proxy is the production-safe shape today.
 ```

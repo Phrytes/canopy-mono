@@ -8,7 +8,7 @@
  * contacts all render real, scannable QRs through `renderQrInto`.
  *
  * `inviteQrPayload` produces the EXACT wire shape the existing mobile
- * scanner accepts (`@canopy/react-native/qr` _classifyInvite): a raw
+ * scanner accepts (`@onderling/react-native/qr` _classifyInvite): a raw
  * JSON string starting with `{` carrying `groupId` + `code` (with
  * optional `name` / `expiresAt`). So a web-rendered QR is scannable by
  * the unmodified Stoop app — no mobile change required.
@@ -447,7 +447,7 @@ export function renderQrInto(el, text, opts = {}) {
 
 /**
  * Build the exact invite wire string the mobile scanner accepts
- * (`@canopy/react-native/qr` _classifyInvite: raw JSON, `groupId` +
+ * (`@onderling/react-native/qr` _classifyInvite: raw JSON, `groupId` +
  * `code` required; `name` / `expiresAt` read when present). Keep this
  * the single source of truth for the invite shape on web.
  */

@@ -2,7 +2,7 @@
  * Notifier ships only the non-chat channels (`NoopChannel`, `PushChannel`).
  *
  * Chat-shaped channels are L1c `MessagingBridge` instances (e.g.
- * `TelegramBridge`, `InMemoryBridge` from `@canopy/chat-agent`) —
+ * `TelegramBridge`, `InMemoryBridge` from `@onderling/chat-agent`) —
  * apps pass them directly into `notifier.channels`.  See
  * `packages/notifier/src/types.js` for the `Channel = MessagingBridge`
  * alias and `Project Files/Substrates/L1f-notifier.md` for rationale.
@@ -51,8 +51,8 @@ export class NoopChannel {
  *
  * Example:
  *
- *   import { ExpoPushSender } from '@canopy/relay';
- *   import { PushChannel }     from '@canopy/notifier';
+ *   import { ExpoPushSender } from '@onderling/relay';
+ *   import { PushChannel }     from '@onderling/notifier';
  *
  *   const channel = new PushChannel({
  *     pushSender: new ExpoPushSender(),

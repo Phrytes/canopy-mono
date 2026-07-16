@@ -1,7 +1,7 @@
 /**
  * HouseholdPod — pod operations against the *shared* household pod.
  *
- * Wraps `@canopy/pod-client.PodClient` with the conventions specific to
+ * Wraps `@onderling/pod-client.PodClient` with the conventions specific to
  * the household pod's directory layout (Q-H2.6 lock).  All members of the
  * household read+write here via the household group key; the bot's pod
  * (BotPod) and per-member pods (MemberPod) are separate concerns.
@@ -82,7 +82,7 @@ export class HouseholdPod {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/pod-client').PodClient} args.podClient
+   * @param {import('@onderling/pod-client').PodClient} args.podClient
    *   Already configured against the shared household pod root + auth.
    * @param {string} args.podRoot
    *   Pod URL where this household's data lives, e.g.

@@ -46,7 +46,7 @@
  *
  * **Substrate candidate (rule of two — first consumer):** when
  * apps/household or apps/archive add personal-interest learning,
- * promote into `@canopy/interest-profile`.  Tracked in
+ * promote into `@onderling/interest-profile`.  Tracked in
  * `Project Files/Substrates/substrate-candidates.md`.
  */
 

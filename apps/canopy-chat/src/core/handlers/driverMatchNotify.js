@@ -6,7 +6,7 @@
  * the explainable reason. The private drivers never leave the device; the match runs here.
  *
  * REUSE, not new machinery:
- *   - matching = `matchProfileDrivers` (@canopy/agent-registry) — tag overlap + optional injected judge.
+ *   - matching = `matchProfileDrivers` (@onderling/agent-registry) — tag overlap + optional injected judge.
  *   - drivers  = injected `getDrivers()` (→ getProfileDrivers on the active persona).
  *   - notify   = injected `notify()` (→ the existing publishEvent `{app,type:'notification'}` / wake path).
  *   - the OUTREACH (anonymous DM + reveal escalation) is the USER's follow-up on the notification via the
@@ -16,7 +16,7 @@
  * holds end-to-end: a shared-tags match says the tags; a judge match says the judge's sentence.
  */
 
-import { matchProfileDrivers } from '@canopy/agent-registry';
+import { matchProfileDrivers } from '@onderling/agent-registry';
 
 /**
  * Annotate noticeboard posts with driver RESONANCE for render (#5, item b). Each post that matches the

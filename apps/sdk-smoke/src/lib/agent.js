@@ -14,11 +14,11 @@
 import {
   registerCapabilitiesSkill,
   registerTunnelReceiveSealed,
-} from '@canopy/core';
+} from '@onderling/core';
 import {
   createMeshAgent,
   KeychainVault,
-} from '@canopy/react-native';
+} from '@onderling/react-native';
 
 import {
   RELAY_URL,

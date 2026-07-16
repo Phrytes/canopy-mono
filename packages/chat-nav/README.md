@@ -1,4 +1,4 @@
-# `@canopy/chat-nav`
+# `@onderling/chat-nav`
 
 > **Layer: substrate.** Tiny helper substrate for the canopy-chat
 > ⇄ side-panel navigation protocol (design choice B.1).
@@ -29,7 +29,7 @@ Per the journeys doc choice B (and its B.1 sub-decision):
 import {
   getReturnTo, useReturnToChat, buildChatUrl,
   renderFloatingButton, removeFloatingButton,
-} from '@canopy/chat-nav';
+} from '@onderling/chat-nav';
 ```
 
 ### Reading the param (on a side-panel page)
@@ -50,7 +50,7 @@ if (back) renderFloatingButton(document.body, {
 ### Generating chat-side links
 
 ```js
-import { buildChatUrl } from '@canopy/chat-nav';
+import { buildChatUrl } from '@onderling/chat-nav';
 
 const settingsHref = `/settings?returnTo=${encodeURIComponent(thread.id)}`;
 const chatHref     = buildChatUrl('/chat', thread.id);
@@ -85,7 +85,7 @@ behaviour.  Lifting it to a substrate means:
 - One code path for the protocol (no per-app drift)
 - Easy to upgrade later (e.g. add a transition animation)
 - RN apps can compose the same returnTo + button pattern via a
-  parallel `@canopy/chat-nav/rn` export when that ships
+  parallel `@onderling/chat-nav/rn` export when that ships
 
 ## What it isn't
 
@@ -99,7 +99,7 @@ behaviour.  Lifting it to a substrate means:
 ## Tests
 
 ```bash
-pnpm --filter @canopy/chat-nav test
+pnpm --filter @onderling/chat-nav test
 ```
 
 Coverage: 22 tests — query-param parsing, URL building, floating

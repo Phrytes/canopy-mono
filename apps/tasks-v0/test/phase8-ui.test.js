@@ -16,9 +16,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
+import { AgentIdentity, InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { mountLocalUi, LocalUiAuth } from '@onderling/agent-ui';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCircleAgent } from '../src/Circle.js';

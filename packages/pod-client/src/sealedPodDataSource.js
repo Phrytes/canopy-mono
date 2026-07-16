@@ -1,6 +1,6 @@
 // sealedPodDataSource — a sealed, pod-backed `core.DataSource` (read/write/delete/list).
 //
-// This is the composition point that lets a per-circle `CircleItemStore` (@canopy/item-store) persist
+// This is the composition point that lets a per-circle `CircleItemStore` (@onderling/item-store) persist
 // to a REAL Solid pod with content sealed at rest under the circle's group key — the L1b tier, unblocking
 // the K cross-circle sharing. It ASSEMBLES existing pieces, inventing no scheme + no crypto:
 //
@@ -10,14 +10,14 @@
 //             └─ 4-method DataSource facade   ── the shape CircleItemStore consumes
 //
 // The seal/open STRATEGY is injected (or derived from a storage POSTURE via `resolveCircleStorage`), so key
-// custody stays outside this module (the circle's control-agent / @canopy/vault own the group key). A p0/p1
+// custody stays outside this module (the circle's control-agent / @onderling/vault own the group key). A p0/p1
 // posture (or an absent strategy) yields a PLAINTEXT pod-backed source — same 4 methods, no client-side seal.
 //
-// LAYERING: this lives in @canopy/pod-client (it composes the pod adapter + sealing). It does NOT import
-// @canopy/item-store — it only produces the `core.DataSource` contract that item-store depends on. So the
+// LAYERING: this lives in @onderling/pod-client (it composes the pod adapter + sealing). It does NOT import
+// @onderling/item-store — it only produces the `core.DataSource` contract that item-store depends on. So the
 // clean edge holds: apps → item-store → core, and apps → pod-client → core, with pod-client ⟂ item-store.
 //
-// URI RECONCILIATION with `@canopy/pod-onboarding`'s `resourceUriFor`:
+// URI RECONCILIATION with `@onderling/pod-onboarding`'s `resourceUriFor`:
 //   `createCircleStores({ dataSource, rootPrefix })` keys an item at
 //       <rootPrefix><circleId>/items/<id>.json
 //   and `resourceUriFor(circleId, itemId, {type})` (canonical layout) resolves

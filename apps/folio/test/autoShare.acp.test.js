@@ -17,12 +17,12 @@ import { promises as fs } from 'node:fs';
 import { tmpdir }         from 'node:os';
 import { join }           from 'node:path';
 
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import {
   createClientSharing,
   _setInruptModuleForTests,
-} from '@canopy/pod-client';
+} from '@onderling/pod-client';
 
 import {
   ensureShares,

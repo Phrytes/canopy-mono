@@ -4,9 +4,9 @@
 // rejected. Mirrors the §7.1/§7.2/§7.4 breach suite, folded into the live matrix.
 //
 // HERMETIC: pure crypto + policy verification, no relay/pod. relayUrl is unused.
-import { AgentIdentity, CapabilityToken, PolicyEngine, TrustRegistry, SkillRegistry } from '@canopy/core';
-import { VaultMemory }                     from '@canopy/vault';
-import { seal, open, generateKeypair }     from '@canopy/pod-client/sealing';
+import { AgentIdentity, CapabilityToken, PolicyEngine, TrustRegistry, SkillRegistry } from '@onderling/core';
+import { VaultMemory }                     from '@onderling/vault';
+import { seal, open, generateKeypair }     from '@onderling/pod-client/sealing';
 import { checker }                         from './_util.mjs';
 
 export const name = 'J-security (adversarial: forgery / theft / confidentiality)';

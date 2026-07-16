@@ -18,7 +18,7 @@ export class A2AAuth {
 
   /**
    * @param {object} opts
-   * @param {import('@canopy/vault').Vault}                       opts.vault
+   * @param {import('@onderling/vault').Vault}                       opts.vault
    * @param {import('../permissions/GroupManager.js').GroupManager}      [opts.groupManager]
    * @param {import('../permissions/TokenRegistry.js').TokenRegistry}    [opts.tokenRegistry]
    */

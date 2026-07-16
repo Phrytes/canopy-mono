@@ -58,7 +58,7 @@ import {
  */
 export const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
 
-const SERVER_INFO = { name: '@canopy/mcp-bridge', version: '0.1.0' };
+const SERVER_INFO = { name: '@onderling/mcp-bridge', version: '0.1.0' };
 
 function negotiateVersion(clientVersion) {
   if (typeof clientVersion === 'string' && PROTOCOL_VERSIONS.includes(clientVersion)) {
@@ -74,8 +74,8 @@ function negotiateVersion(clientVersion) {
  * server below wraps this with the NDJSON codec.
  *
  * @param {object} p
- * @param {import('@canopy/core').Agent} p.agent
- * @param {import('@canopy/app-manifest').Manifest} p.manifest
+ * @param {import('@onderling/core').Agent} p.agent
+ * @param {import('@onderling/app-manifest').Manifest} p.manifest
  * @param {object} [p.dispatch] — forwarded to handleMcpToolCall (registry|target, skillId, timeout…)
  * @returns {{ handle:(msg:object)=>Promise<object|null>, get state():string, toolsList:()=>object }}
  */
@@ -184,8 +184,8 @@ export function createMcpSession({ agent, manifest, dispatch = {} }) {
  * chain) so ordering is deterministic.
  *
  * @param {object} p
- * @param {import('@canopy/core').Agent} p.agent
- * @param {import('@canopy/app-manifest').Manifest} p.manifest
+ * @param {import('@onderling/core').Agent} p.agent
+ * @param {import('@onderling/app-manifest').Manifest} p.manifest
  * @param {{ onData:(cb:(chunk:string)=>void)=>void }} p.input
  * @param {{ write:(str:string)=>void }} p.output
  * @param {object} [p.dispatch]

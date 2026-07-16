@@ -4,7 +4,7 @@
 // non-external ops pass through untouched.
 import { describe, it, expect, vi } from 'vitest';
 import { wrapCallSkillWithEgressGate, isExternalEgressOp } from '../src/core/agent/egressGate.js';
-import { createRequest, createVocabulary, descriptor } from '@canopy/agent-registry';
+import { createRequest, createVocabulary, descriptor } from '@onderling/agent-registry';
 
 const vocab = createVocabulary([
   descriptor({ key: 'place', type: 'coarse-enum' }),

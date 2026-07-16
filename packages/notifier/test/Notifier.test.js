@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { Emitter } from '@canopy/core';
-import { InMemoryBridge } from '@canopy/chat-agent';
+import { Emitter } from '@onderling/core';
+import { InMemoryBridge } from '@onderling/chat-agent';
 import {
   Notifier,
   InMemoryScheduleStore,

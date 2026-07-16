@@ -3,7 +3,7 @@
  *
  * Connects to a WebSocket server on localhost (port or Unix socket path).
  * Uses the same register/send/message relay protocol as RelayTransport,
- * so it works out-of-the-box with WsServerTransport from @canopy/relay.
+ * so it works out-of-the-box with WsServerTransport from @onderling/relay.
  *
  * Browser: uses globalThis.WebSocket.
  * Node.js: lazily imports the `ws` package.

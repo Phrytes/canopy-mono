@@ -2,7 +2,7 @@
  * syncEngineAdapter — P3 Phase A.
  *
  * Verifies the adapter presents exactly the `podClient` surface
- * `@canopy/sync-engine`'s SyncEngine + scanPod consume (shapes asserted
+ * `@onderling/sync-engine`'s SyncEngine + scanPod consume (shapes asserted
  * here mirror `packages/sync-engine/src/{SyncEngine,scanPod}.js` — kept
  * dependency-free so Phase A stays substrate-only; the true end-to-end
  * SyncEngine integration is Phase B's parity harness).

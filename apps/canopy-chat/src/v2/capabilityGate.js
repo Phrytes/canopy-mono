@@ -19,7 +19,7 @@
  * -strings invariant.
  */
 
-import { canonicalAtom, opNouns, capabilityKey, effectiveCapabilityKeys } from '@canopy/app-manifest';
+import { canonicalAtom, opNouns, capabilityKey, effectiveCapabilityKeys } from '@onderling/app-manifest';
 
 // Re-export the shared capability key so the gate + the freedom template agree by construction — ONE
 // space-separated spelling, human-readable in the `policy.capabilities` template the wizard writes.

@@ -20,10 +20,10 @@ import {
   generateKeypair, generateGroupKey, unwrapGroupKey, recipientStrategy, groupKeyStrategy, isSealed,
   buildGroupKeyResource, rotateGroupKeyResource, readableGroupKeys,
   sealingPublicKeyFromNetworkKey, sealingKeyPairFromNetworkKey,
-} from '@canopy/pod-client/sealing';
-import { sealItem } from '@canopy/item-store';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+} from '@onderling/pod-client/sealing';
+import { sealItem } from '@onderling/item-store';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { shareItemToPublishedKey, listSharedResolved } from '../../src/v2/circleShare.js';
 

@@ -3,11 +3,11 @@
  *
  * Lifted from `src/web/realAgent.js` in #225.1 so both the web entry
  * (`src/web/realAgent.js` → thin re-export) and the canopy-chat-mobile
- * bundle (`@canopy-app/canopy-chat/core-realAgent`) share one source.
+ * bundle (`@onderling-app/canopy-chat/core-realAgent`) share one source.
  *
  * Topology (composes four real app agents on a shared InternalBus):
  *   - hostAgent   — household skills + calendar
- *   - chatAgent   — user-facing surface (via @canopy/secure-agent)
+ *   - chatAgent   — user-facing surface (via @onderling/secure-agent)
  *   - tasksCircle   — real tasks-v0 Circle agent
  *   - stoopAgent  — real Stoop NeighborhoodAgent
  *   - folioAgent  — real Folio browser agent (web-only handlers today)
@@ -26,25 +26,25 @@
 import {
   Agent, AgentIdentity, Bootstrap, InternalBus, InternalTransport, DataPart, TokenRegistry,
   PolicyEngine, TrustRegistry, deriveCircleAddress,
-} from '@canopy/core';
-import { VaultMemory, VaultLocalStorage } from '@canopy/vault';
-import { wireSkill } from '@canopy/sdk';
-import { createSecureMeshAgent } from '@canopy/secure-agent';
-import { createBrowserMultiCircleTasksAgent } from '@canopy-app/tasks-v0/browser';
-import { createBrowserStoopAgent } from '@canopy-app/stoop/browser';
-import { createBrowserFolioAgent } from '@canopy-app/folio/browser';
+} from '@onderling/core';
+import { VaultMemory, VaultLocalStorage } from '@onderling/vault';
+import { wireSkill } from '@onderling/sdk';
+import { createSecureMeshAgent } from '@onderling/secure-agent';
+import { createBrowserMultiCircleTasksAgent } from '@onderling-app/tasks-v0/browser';
+import { createBrowserStoopAgent } from '@onderling-app/stoop/browser';
+import { createBrowserFolioAgent } from '@onderling-app/folio/browser';
 // agents — the read-only "your agents" surface (2026-07-09). buildAgentSkills
 // derives the two defineSkill-shaped handlers (listAgents / viewAgent) from
 // the agents manifest via wireSkill; registerAgentBundle both registers THIS
 // device in the registry resource and returns the live registry handle.
-import { buildAgentSkills } from '@canopy-app/agents/wireSkills';
+import { buildAgentSkills } from '@onderling-app/agents/wireSkills';
 // P3 install — the curated-catalog SOURCE. commons-governance G1: when a
 // bootstrap endorser root is configured (opts.commonsRoot), the default source
 // is the REAL endorsement-backed catalog (createCatalogSource over signed,
 // cardHash-bound recommendations); otherwise the local stub keeps the surface
 // exercisable. Both satisfy the same { list, get } contract, so wireSkills /
 // installCores are unchanged. Overridable via opts.agentsCatalog.
-import { createStubCatalog } from '@canopy-app/agents/defaultCatalog';
+import { createStubCatalog } from '@onderling-app/agents/defaultCatalog';
 import {
   registerAgentBundle,
   createAgentRegistry,
@@ -57,7 +57,7 @@ import {
   releasedValues as releaseFromPolicy,
   createDriver,
   driversFromProperties,
-} from '@canopy/agent-registry';
+} from '@onderling/agent-registry';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -107,8 +107,8 @@ async function ensureOwnerRoot(vault) {
 
 import {
   CalendarStore, registerCalendarSkills,
-} from '@canopy-app/calendar';
-// Imported by RELATIVE path (not the `@canopy-app/household` package name)
+} from '@onderling-app/calendar';
+// Imported by RELATIVE path (not the `@onderling-app/household` package name)
 // because canopy-chat doesn't carry household as a workspace dep yet (the
 // dissolve is in progress).  Mirrors canopy-chat-mobile/composeManifests.js,
 // which relative-imports the sibling app sources for the same reason.
@@ -127,7 +127,7 @@ import { wireHouseholdSubstrateMirror }    from '../../../../household/src/subst
 import { buildHouseholdDataSource }        from '../../../../household/src/storage/persist.js';
 import { householdManifest }               from '../../../../household/manifest.js';
 import { createSecureMeshEnvelopeAdapter } from '../sync/secureMeshEnvelopeAdapter.js';
-import { isGenericOpId, decodeGenericOpId } from '@canopy/app-manifest';
+import { isGenericOpId, decodeGenericOpId } from '@onderling/app-manifest';
 
 // Deterministic seed for the real household store.  Three open items across
 // list types so `/list shopping` + the brief demo are non-empty out of the
@@ -195,7 +195,7 @@ export async function createRealHouseholdAgent(opts = {}) {
   // DataSource (persistent if a persistDb was passed; in-memory no-pod otherwise). `opts.householdViaCircleStore`
   // is accepted but no longer gates anything — the wired path is unconditional (there is no legacy fallback).
   const householdApp = await import('../../v2/householdApp.js');   // pure cores for the wireSkill registration below
-  const { wireStoreMirror, wireCircleStoreInbound } = await import('@canopy/item-store');
+  const { wireStoreMirror, wireCircleStoreInbound } = await import('@onderling/item-store');
   let householdAgent = null;           // B1 — dedicated in-process agent hosting the wireSkill-wrapped pure cores
   const householdSyncWired = new Set();   // circleIds whose store↔mirror sync (publish + inbound) is wired (once each)
   const householdService = householdApp.createHouseholdService({ dataSource: householdDataSource });
@@ -242,7 +242,7 @@ export async function createRealHouseholdAgent(opts = {}) {
   const hostTransport = new InternalTransport(bus, hostId.pubKey);
   const hostAgent = new Agent({ identity: hostId, transport: hostTransport });
 
-  // Chat agent — the user-facing surface.  Built via @canopy/secure-agent
+  // Chat agent — the user-facing surface.  Built via @onderling/secure-agent
   // factory so every safety primitive (identity persistence, SecurityLayer,
   // mute/block, helloGate, signed WebID claim, audit log, …) is wired
   // by default rather than re-assembled per app.
@@ -430,7 +430,7 @@ export async function createRealHouseholdAgent(opts = {}) {
   }
 
   /* ─────────── v0.7.10 — Calendar app skills ─────────── */
-  // Composed via @canopy-app/calendar's registerCalendarSkills.  The
+  // Composed via @onderling-app/calendar's registerCalendarSkills.  The
   // calendar app's CalendarStore is built fresh per agent instance
   // (in-memory pseudo-pod for v0.7.10; v0.7.11 swaps to real pod).
   //
@@ -523,7 +523,7 @@ export async function createRealHouseholdAgent(opts = {}) {
 
   /* ─────────── agents — the read-only "your agents" surface (2026-07-09) ───────────
    * The `apps/agents` manifest (listAgents /agents + viewAgent detail) reads the canonical
-   * `@canopy/agent-registry` pod resource.  The registry is anchored on THE USER'S OWN
+   * `@onderling/agent-registry` pod resource.  The registry is anchored on THE USER'S OWN
    * pseudo-pod: the shared substrate stack already built above for household
    * (`householdSubstrate.pseudoPod`), whose URI authority is the CHAT identity's pubKey —
    * i.e. this user's device pod, not a per-circle pod.  Mirrors the sibling bring-up
@@ -1099,7 +1099,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    *                    (was `'tasks-v0'`) — the merged manifest's
    *                    `.app` is `'tasks'`, and the catalog keys ops
    *                    by `m.app`.  The directory / npm package
-   *                    (`@canopy-app/tasks-v0`) keep their names.
+   *                    (`@onderling-app/tasks-v0`) keep their names.
    *   - 'stoop'      → stoopAgent.address (slice-2b NeighborhoodAgent)
    *   - 'folio'      → folioAgent.address (slice-4 web-only agent)
    *

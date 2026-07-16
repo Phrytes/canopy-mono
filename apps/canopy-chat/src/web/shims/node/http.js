@@ -3,10 +3,10 @@
  * dual-aliased in vite.config.js).
  *
  * Aliased via vite.config.js → resolve.alias.  Static `import { createServer
- * } from 'node:http'` comes from @canopy/core's A2ATransport (HTTP server
+ * } from 'node:http'` comes from @onderling/core's A2ATransport (HTTP server
  * is Node-only; constructed only when `opts.port` is set, which browser
- * callers never do).  `@canopy/relay`'s server.js also imports `node:http`,
- * but the whole `@canopy/relay` package is already aliased to relayShim.js
+ * callers never do).  `@onderling/relay`'s server.js also imports `node:http`,
+ * but the whole `@onderling/relay` package is already aliased to relayShim.js
  * at the boundary.
  *
  * `createServer` throws if called.  Other names (Server, ClientRequest,

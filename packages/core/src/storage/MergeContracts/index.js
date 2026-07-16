@@ -1,4 +1,4 @@
-// @canopy/core — storage/MergeContracts
+// @onderling/core — storage/MergeContracts
 //
 // A small library of pure-function merge contracts apps can pick
 // from when doing federated reads across member pods.  Each contract

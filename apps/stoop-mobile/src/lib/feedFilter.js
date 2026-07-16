@@ -18,7 +18,7 @@ import { distanceKm } from './geo.js';
  *
  * Phase 52.7.2 cut-over (2026-05-14, clean break per Decision 1):
  * after Stoop's `postRequest` started writing canonical
- * `@canopy/item-types` shape, the whitelist switched to the
+ * `@onderling/item-types` shape, the whitelist switched to the
  * canonical types. Pre-migration items (`type: 'ask'`/`'lend'`/etc.)
  * are no longer visible — this is a deliberate clean break per the
  * Stoop open-questions 2026-05-12 doc. The "Aanbod" / "Te leen" tab

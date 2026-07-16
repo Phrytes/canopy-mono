@@ -13,7 +13,7 @@
  * Tests inject a stub vault and never trigger the lazy path.
  */
 
-import { AgentIdentity } from '@canopy/core';
+import { AgentIdentity } from '@onderling/core';
 
 /**
  * @param {object} args

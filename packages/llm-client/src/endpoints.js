@@ -1,5 +1,5 @@
 /**
- * Configurable endpoint block for @canopy/llm-client.
+ * Configurable endpoint block for @onderling/llm-client.
  *
  * Formalises endpoint selection so a deployment / customer can pick an LLM
  * endpoint (base URL + model + optional auth/header block) as first-class

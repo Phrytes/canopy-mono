@@ -1,5 +1,5 @@
 /**
- * @canopy/pod-onboarding — pod provisioning + mnemonic-restore
+ * @onderling/pod-onboarding — pod provisioning + mnemonic-restore
  * orchestration substrate.
  *
  * Substrate-level glue. Real Solid-server interactions live behind

@@ -8,7 +8,7 @@
  *     device → relay → host agent → folio core → pod source → back
  *
  * is exercised end-to-end with NOTHING on the wire stubbed:
- *   - REAL relay          — booted in-process by `startCompanionNode` (@canopy/relay)
+ *   - REAL relay          — booted in-process by `startCompanionNode` (@onderling/relay)
  *   - REAL transport      — `RelayTransport` on BOTH agents (not InternalTransport;
  *                           the callSkill in-process fast-path is bypassed, so this
  *                           is the genuine encrypt → relay-forward → decrypt wire path)
@@ -29,10 +29,10 @@
  */
 import { describe, it, expect, afterAll } from 'vitest';
 
-import { Agent, AgentIdentity, Parts, TokenRegistry } from '@canopy/core';
-import { VaultMemory }                     from '@canopy/vault';
-import { RelayTransport }                  from '@canopy/transports';
-import { createAgentRegistry }             from '@canopy/agent-registry';
+import { Agent, AgentIdentity, Parts, TokenRegistry } from '@onderling/core';
+import { VaultMemory }                     from '@onderling/vault';
+import { RelayTransport }                  from '@onderling/transports';
+import { createAgentRegistry }             from '@onderling/agent-registry';
 
 import { startCompanionNode }              from '../src/index.js';
 
@@ -110,7 +110,7 @@ describe('companion-node R1 — cross-process folio mesh over a real relay', () 
     // come back through the pod source, not the index).
     expect(listed.items.map((f) => f.name)).not.toContain('pod-only-note.md');
 
-    // 4) searchNotes — real lexical @canopy/pod-search index over the note corpus
+    // 4) searchNotes — real lexical @onderling/pod-search index over the note corpus
     const search = Parts.data(await deviceAgent.invoke(hostPubKey, 'searchNotes', { query: 'anne' }));
     expect(Array.isArray(search.items)).toBe(true);
     expect(search.mode).toBe('lexical');

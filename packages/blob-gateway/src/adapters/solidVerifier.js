@@ -16,12 +16,12 @@
 // `createJwksVerifier` below (node:crypto + the issuer's JWKS — that is the part
 // that needs a live IdP / real JWKS endpoint).
 //
-// Issuer trust REUSES `@canopy/oidc-session`'s `resolveIssuer` — the same curated
+// Issuer trust REUSES `@onderling/oidc-session`'s `resolveIssuer` — the same curated
 // Solid-OIDC issuer surface the SolidVault session manager uses — so an unknown /
 // malformed issuer is denied by default.
 
 import crypto from 'node:crypto';
-import { resolveIssuer } from '@canopy/oidc-session';
+import { resolveIssuer } from '@onderling/oidc-session';
 
 /** Extract a WebID from verified Solid-OIDC claims. Returns null if none. */
 export function webIdFromClaims(claims) {

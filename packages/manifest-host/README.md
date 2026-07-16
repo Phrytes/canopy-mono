@@ -1,4 +1,4 @@
-# @canopy/manifest-host
+# @onderling/manifest-host
 
 > **Layer: substrate.** Runtime composition of N app-manifests in one
 > process. Each `mount(appId, manifest, opts)` caches the projector
@@ -40,9 +40,9 @@ dispatch routes naturally back to the right app.
 ## Quick start
 
 ```js
-import { createManifestHost } from '@canopy/manifest-host';
-import { householdManifest }  from '@canopy-app/household/manifest';
-import { tasksManifest }      from '@canopy-app/tasks-v0/manifest';
+import { createManifestHost } from '@onderling/manifest-host';
+import { householdManifest }  from '@onderling-app/household/manifest';
+import { tasksManifest }      from '@onderling-app/tasks-v0/manifest';
 
 const host = createManifestHost();
 

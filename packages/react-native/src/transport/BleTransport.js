@@ -33,7 +33,7 @@
  */
 import { BleManager, State }             from 'react-native-ble-plx';
 import { NativeModules, NativeEventEmitter } from 'react-native';
-import { Transport }                     from '@canopy/core';
+import { Transport }                     from '@onderling/core';
 import { b64Encode, b64Decode }          from '../utils/base64.js';
 
 export const SERVICE_UUID        = 'a8f0e4d2-0001-4b3f-8c9a-1e2d3f4a5b6c';
@@ -82,7 +82,7 @@ export class BleTransport extends Transport {
 
   /**
    * @param {object} opts
-   * @param {import('@canopy/core').AgentIdentity} opts.identity
+   * @param {import('@onderling/core').AgentIdentity} opts.identity
    * @param {boolean} [opts.advertise=true]        — start GATT server and advertise
    * @param {boolean} [opts.scan=true]             — scan and connect to nearby peripherals
    * @param {number}  [opts.bufferMaxPerPeer=50]   — cap on queued messages per offline peer

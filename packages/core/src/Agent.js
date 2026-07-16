@@ -158,23 +158,23 @@ export class Agent extends Emitter {
    *  (standardisation Phase 50.2). `null` for no-pod users. */
   get webid()    { return this.#webid; }
   /** Pseudo-pod handle (or any object) — optional. Populated by the provisioning facade
-   *  (standardisation Phase 50.3). Core never imports `@canopy/pseudo-pod`; this is
+   *  (standardisation Phase 50.3). Core never imports `@onderling/pseudo-pod`; this is
    *  an opaque slot the caller fills with whatever it wants. `null` when no pseudo-pod
    *  is wired (e.g. tests that don't need storage). */
   get pseudoPod() { return this.#pseudoPod; }
   /** Agent-registry handle (or any object) — optional. Populated by the provisioning
-   *  facade (standardisation Phase 50.8). Core never imports `@canopy/agent-registry`;
+   *  facade (standardisation Phase 50.8). Core never imports `@onderling/agent-registry`;
    *  this is an opaque slot the caller fills with whatever it wants. `null` when no
    *  registry is wired (e.g. no-pod users, tests, single-agent setups). */
   get agentRegistry() { return this.#agentRegistry; }
   /** Interface-registry handle (or any object) — optional. Populated by the provisioning
    *  facade once the destination shape (§II.13) ships (standardisation Phase 50.13, P6
-   *  direction). Core never imports `@canopy/interface-registry`; this is an opaque
+   *  direction). Core never imports `@onderling/interface-registry`; this is an opaque
    *  slot for the per-type renderer registry that Hub V2 introduces. `null` pre-P6. */
   get interfaceRegistry() { return this.#interfaceRegistry; }
   /** Protocol substrate handle (or any object) — optional. Populated by the provisioning
    *  facade once the destination shape (§II.13) ships (standardisation Phase 50.14, P6
-   *  direction). Core never imports `@canopy/protocol`; this is an opaque slot for the
+   *  direction). Core never imports `@onderling/protocol`; this is an opaque slot for the
    *  state-machine orchestrator (Tasks's propose-subtask is the canonical first
    *  consumer). `null` pre-P6. */
   get protocol() { return this.#protocol; }
@@ -290,11 +290,11 @@ export class Agent extends Emitter {
    *
    * Strict layering: core has no knowledge of what the Hub binder
    * actually is (AIDL, IPC, whatever) — it's opaque. The substrate
-   * (typically `@canopy/pseudo-pod` for the storage slot,
-   * `@canopy/agent-registry` for the registry slot) handles the
+   * (typically `@onderling/pseudo-pod` for the storage slot,
+   * `@onderling/agent-registry` for the registry slot) handles the
    * actual delegation.
    *
-   * Typical use, from `@canopy/agent-provisioning` or a bundle's
+   * Typical use, from `@onderling/agent-provisioning` or a bundle's
    * own bring-up code:
    *
    *   const hubInfo = await hubDiscovery.check();
@@ -772,8 +772,8 @@ export class Agent extends Emitter {
    * Ref: Design-v3/rendezvous-mode.md.
    *
    * The concrete `RendezvousTransport` lives OUTSIDE the kernel (it will move to
-   * `@canopy/transports`); the caller supplies it as a built instance or a factory, so the
-   * kernel depends only on the transport port. The `@canopy/sdk` facade / `createMeshAgent`
+   * `@onderling/transports`); the caller supplies it as a built instance or a factory, so the
+   * kernel depends only on the transport port. The `@onderling/sdk` facade / `createMeshAgent`
    * wire the concrete for you.
    *
    * @param {object}  opts
@@ -798,7 +798,7 @@ export class Agent extends Emitter {
         })
       : null);
     if (!rdv) {
-      throw new Error('enableRendezvous: pass a built { transport } or a { makeTransport } factory — the kernel no longer bundles RendezvousTransport (it lives in @canopy/transports / the @canopy/sdk facade)');
+      throw new Error('enableRendezvous: pass a built { transport } or a { makeTransport } factory — the kernel no longer bundles RendezvousTransport (it lives in @onderling/transports / the @onderling/sdk facade)');
     }
     this.addTransport('rendezvous', rdv);
     this._rendezvousEnabled = true;
@@ -1196,14 +1196,14 @@ export class Agent extends Emitter {
    *
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('@canopy/vault').Vault}          opts.vault      — required Vault port (inject a concrete)
+   * @param {import('@onderling/vault').Vault}          opts.vault      — required Vault port (inject a concrete)
    * @param {string}                                        [opts.label]
    * @param {object}                                        rest            — any other Agent constructor options
    * @returns {Promise<Agent>}
    */
   static async createNew({ transport, vault, label, ...rest } = {}) {
     if (!transport) throw new Error('Agent.createNew requires transport');
-    if (!vault)     throw new Error('Agent.createNew requires a vault — inject a Vault port (the @canopy/sdk facade supplies a VaultMemory default)');
+    if (!vault)     throw new Error('Agent.createNew requires a vault — inject a Vault port (the @onderling/sdk facade supplies a VaultMemory default)');
     const { AgentIdentity }  = await import('./identity/AgentIdentity.js');
     const identity           = await AgentIdentity.generate(vault);
     return new Agent({ identity, transport, label, ...rest });
@@ -1214,7 +1214,7 @@ export class Agent extends Emitter {
    *
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('@canopy/vault').Vault}          opts.vault
+   * @param {import('@onderling/vault').Vault}          opts.vault
    * @returns {Promise<Agent>}
    */
   static async restore({ transport, vault, ...rest } = {}) {
@@ -1232,7 +1232,7 @@ export class Agent extends Emitter {
    * @param {string} mnemonic
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} opts.transport
-   * @param {import('@canopy/vault').Vault}          [opts.vault]
+   * @param {import('@onderling/vault').Vault}          [opts.vault]
    * @returns {Promise<Agent>}
    */
   static async restoreFromMnemonic(mnemonic, { transport, vault, ...rest } = {}) {
@@ -1257,7 +1257,7 @@ export class Agent extends Emitter {
    * @param {object} obj
    * @param {object} opts
    * @param {import('./transport/Transport.js').Transport} [opts.transport]
-   * @param {import('@canopy/vault').Vault}          [opts.vault]
+   * @param {import('@onderling/vault').Vault}          [opts.vault]
    * @returns {Promise<Agent>}
    */
   static async fromPlainObject(obj, { transport, vault, ...rest } = {}) {

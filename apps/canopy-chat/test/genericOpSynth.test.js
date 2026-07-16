@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest';
 import { mergeManifests }        from '../src/manifestMerge.js';
 import { synthesizeGenericOps }  from '../src/genericOpSynth.js';
 import { buildToolDescriptors }  from '../src/v2/interpretCommand.js';
-import { renderSlash, encodeGenericOpId } from '@canopy/app-manifest';
+import { renderSlash, encodeGenericOpId } from '@onderling/app-manifest';
 
 // A manifest mirroring household's `note`: an op-less noun (declare a noun → get CRUD free) declaring the
 // four CRUD atoms with NO implementing op, PLUS a `task` noun that DOES have a bespoke `addTask` op.

@@ -101,7 +101,7 @@ export function ShareScreen() {
         );
       }
       const expiresIn = Math.max(1, Number(days) || 1) * ONE_DAY_MS;
-      const { PodCapabilityToken } = await import('@canopy/core');
+      const { PodCapabilityToken } = await import('@onderling/core');
       const minted = await PodCapabilityToken.issue(engine.identity, {
         subject:   subj,
         pod:       podRoot,

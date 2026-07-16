@@ -5,4 +5,4 @@
 export {
   parseIcsToBusy, readMyCalendar, busyBadge,
   DEFAULT_CALENDAR_CONTAINER,
-} from '@canopy/calendar-emission';
+} from '@onderling/calendar-emission';

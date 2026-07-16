@@ -7,12 +7,12 @@
  * free". The household manifest declares an op-LESS `note` noun; a generic
  * add/list op-id therefore operates it with zero handler code.
  *
- * Mirrors the setup of realAgent.test.js (the real @canopy/core Agent over
+ * Mirrors the setup of realAgent.test.js (the real @onderling/core Agent over
  * the InternalTransport bus), constructed with `householdViaCircleStore:true`
  * so the per-circle CircleItemStore capability service exists.
  */
 import { describe, it, expect } from 'vitest';
-import { encodeGenericOpId } from '@canopy/app-manifest';
+import { encodeGenericOpId } from '@onderling/app-manifest';
 
 import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 

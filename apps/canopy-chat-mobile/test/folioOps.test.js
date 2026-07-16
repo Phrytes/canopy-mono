@@ -63,7 +63,7 @@ describe('#237 folio surface — manifest exposure', () => {
 
 describe('#237 folio operations via mobile bundle.callSkill', () => {
   async function bootFolioBundle() {
-    const { VaultMemory } = await import('@canopy/vault');
+    const { VaultMemory } = await import('@onderling/vault');
     return bootAgentBundle({
       chatVault: new VaultMemory(),
       hostVault: new VaultMemory(),

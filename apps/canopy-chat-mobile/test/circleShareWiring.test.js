@@ -17,9 +17,9 @@
  * surface + an in-memory keyStore — no live pod, no native modules.
  */
 import { describe, it, expect } from 'vitest';
-import { createCanonicalShare, generateKeypair, unwrapGroupKey } from '@canopy/pod-client';
-import { makeResourceUriResolver, sharedRefResourceUri } from '@canopy/pod-onboarding/resourceUri';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+import { createCanonicalShare, generateKeypair, unwrapGroupKey } from '@onderling/pod-client';
+import { makeResourceUriResolver, sharedRefResourceUri } from '@onderling/pod-onboarding/resourceUri';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { buildCircleShareEnforcement } from '../../canopy-chat/src/v2/circleShareEnforcement.js';
 import {
   shareItemIntoCircle, listSharedItems, unshareItemFromCircle,

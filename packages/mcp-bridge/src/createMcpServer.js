@@ -4,7 +4,7 @@
  * ┌─ DEFERRED (real driver) ────────────────────────────────────────────────┐
  * │ There is NO real MCP server here: no stdio pipe, no HTTP server, no SSE  │
  * │ stream, no sockets, and no auth-token handshake. Exactly like the        │
- * │ `NetworkTransport` in `@canopy/transports` injects its channel and       │
+ * │ `NetworkTransport` in `@onderling/transports` injects its channel and       │
  * │ defers the real network driver, this injects a message transport and     │
  * │ defers the real stdio / HTTP+SSE server + the MCP auth-token handshake    │
  * │ (the org roadmap's "MCP-koppeling: HTTP/SSE + token"). Tests drive it     │
@@ -27,8 +27,8 @@ import { mcpError }           from './mcpShapes.js';
 
 /**
  * @param {object} p
- * @param {import('@canopy/core').Agent} p.agent
- * @param {import('@canopy/app-manifest').Manifest} p.manifest
+ * @param {import('@onderling/core').Agent} p.agent
+ * @param {import('@onderling/app-manifest').Manifest} p.manifest
  * @param {{ send: (msg:object)=>void, onMessage: (handler:(msg:object)=>void)=>void }} p.transport
  * @param {object} [p.dispatch] — forwarded to handleMcpToolCall (registry|target, skillId, timeout…)
  * @returns {{ toolsList: () => object, handleMessage: (msg:object) => Promise<void> }}

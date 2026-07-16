@@ -7,7 +7,7 @@
  * by Phase 4.2 (expo-font load in App.js); until then they're undefined →
  * RN falls back to the system serif/sans, which is the graceful default.
  */
-import { THEME } from '@canopy-app/canopy-chat';
+import { THEME } from '@onderling-app/canopy-chat';
 
 // Source Serif 4 — loaded NON-blocking via useFonts in App.js
 // (@expo-google-fonts/source-serif-4). The family names below are the

@@ -21,7 +21,7 @@
  * by `appealTask` itself).
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 

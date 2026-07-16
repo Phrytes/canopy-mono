@@ -4,7 +4,7 @@
  * The other K suites prove the pieces (write-grant hook, read gate, seal/unseal, canonical share/revoke).
  * THIS file proves the FULL round-trip through the SAME seam, hermetically, with a single fake `sharing`
  * ACP surface whose ONE in-memory table is written by the SHARE side (`grant`/`revoke`) and read by the
- * READ side (`makeSharedRefPolicy.checkGrant` → `sharing.list`). No `@canopy/pod-client` import (invariant
+ * READ side (`makeSharedRefPolicy.checkGrant` → `sharing.list`). No `@onderling/pod-client` import (invariant
  * #5): the pod-layer surfaces are injected, exactly as the existing K tests do.
  *
  * What is proven that the piecewise tests do NOT show in one loop:
@@ -60,7 +60,7 @@ function fakeSharing() {
   };
 }
 
-// A storage-layout style resolver (a real pod injects @canopy/pod-onboarding's sharedRefResourceUri).
+// A storage-layout style resolver (a real pod injects @onderling/pod-onboarding's sharedRefResourceUri).
 const uriForRef = (ref) => `https://alice.pod/group/${ref.sourceCircle}/items/${ref.sourceId}`;
 
 describe('shared-ref cross-circle read — full share → granted-read → revoke-deny loop (ACP genuinely consulted)', () => {

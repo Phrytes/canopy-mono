@@ -13,8 +13,8 @@
 import { describe, it, expect } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { DataPart } from '@canopy/core';
-import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
+import { DataPart } from '@onderling/core';
+import { mountLocalUi, LocalUiAuth } from '@onderling/agent-ui';
 
 import { createNeighborhoodCluster } from '../src/cluster.js';
 

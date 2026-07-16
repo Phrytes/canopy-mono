@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { snapshotsFromReply, embedButtonsForReply, embedsFromReply } from '../src/v2/replyEmbeds.js';
 import { mockTasksManifest } from '../src/core/manifests/mockManifests.js';
-import { buildCapabilityMatrix, capabilityKey } from '@canopy/app-manifest';
+import { buildCapabilityMatrix, capabilityKey } from '@onderling/app-manifest';
 
 const manifestsByOrigin = { 'tasks': mockTasksManifest };
 

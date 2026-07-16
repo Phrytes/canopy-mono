@@ -4,7 +4,7 @@
  * Cross-circle personal availability: holiday mode (away until a date) +
  * quiet hours (defer pushes in a daily window, optionally weekends all
  * day). Controlled render over a `memberAvailability`
- * (`@canopy/memberAvailability`); inputs fire `onChange(patch)`; the host
+ * (`@onderling/memberAvailability`); inputs fire `onChange(patch)`; the host
  * merges + re-renders + persists. Pure → unit-testable under happy-dom.
  */
 

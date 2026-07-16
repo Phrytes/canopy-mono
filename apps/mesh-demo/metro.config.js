@@ -56,7 +56,7 @@ config.resolver = {
 
   // Force package-exports resolution OFF.  Expo 55's getDefaultConfig flips
   // this on by default; when combined with packages that have "type":"module"
-  // (like @canopy/core) or that publish an ESM-preferred condition path
+  // (like @onderling/core) or that publish an ESM-preferred condition path
   // (like @noble/hashes' "import": "./esm/..."), Metro picks the ESM file,
   // Hermes executes it without `require` in scope, and startup crashes with
   // "property 'require' doesn't exist".  All subpath imports that would
@@ -67,8 +67,8 @@ config.resolver = {
     ...(config.resolver?.extraNodeModules ?? {}),
 
     // Local SDK packages
-    '@canopy/core':         path.resolve(repoRoot, 'packages/core'),
-    '@canopy/react-native': path.resolve(repoRoot, 'packages/react-native'),
+    '@onderling/core':         path.resolve(repoRoot, 'packages/core'),
+    '@onderling/react-native': path.resolve(repoRoot, 'packages/react-native'),
 
     // ws is Node.js-only; RN has globalThis.WebSocket built in
     'ws': path.resolve(__dirname, 'shims/ws.js'),
@@ -97,7 +97,7 @@ config.resolver = {
     ),
   },
 
-  // Allow Metro to find @canopy/core's transitive deps (tweetnacl, @scure/bip39, etc.)
+  // Allow Metro to find @onderling/core's transitive deps (tweetnacl, @scure/bip39, etc.)
   // from packages/core/node_modules when processing files inside packages/core/src/.
   // NOTE: we intentionally omit packages/react-native/node_modules here because that
   // directory has conflicting versions of react-native, react-native-ble-plx, etc.

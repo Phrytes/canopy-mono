@@ -86,7 +86,7 @@ export function normaliseHandle(h) {
  * strings pass through.
  *
  * Distinct from the `{text, doc}` leaf shape used in app locale
- * bundles (handled by `@canopy/react-native/localisation`'s `t()`).
+ * bundles (handled by `@onderling/react-native/localisation`'s `t()`).
  *
  * @param {string|object|null} field
  * @param {string} lang

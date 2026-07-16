@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name":        "@canopy/calendar-emission",
+  "name":        "@onderling/calendar-emission",
   "version":     "0.1.0",
-  "description": "iCal read/write substrate.  Lifted from apps/tasks-v0/src/calendar/ on 2026-05-23 (canopy-chat v0.7.11 — calendar app needed the same .ics emitter + busy-interval reader that tasks-v0 already had).  Two consumers now: tasks-v0 (free-busy + per-member calendar emission for task deadlines) and @canopy-app/calendar (event CRUD with .ics output to pod).",
+  "description": "iCal read/write substrate.  Lifted from apps/tasks-v0/src/calendar/ on 2026-05-23 (canopy-chat v0.7.11 — calendar app needed the same .ics emitter + busy-interval reader that tasks-v0 already had).  Two consumers now: tasks-v0 (free-busy + per-member calendar emission for task deadlines) and @onderling-app/calendar (event CRUD with .ics output to pod).",
   "type":        "module",
   "main":        "src/index.js",
   "exports": {

@@ -105,7 +105,7 @@ describe('mountBlobGate — presign path', () => {
     const res = await get(relay.port, '/anything-else');
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toBe('text/plain');
-    expect(await res.text()).toBe('@canopy/relay — WebSocket endpoint only');
+    expect(await res.text()).toBe('@onderling/relay — WebSocket endpoint only');
   });
 });
 
@@ -358,7 +358,7 @@ describe('startRelay — without blobGate (byte-identical behaviour)', () => {
         });
         expect(res.status).toBe(200);
         expect(res.headers.get('content-type')).toBe('text/plain');
-        expect(await res.text()).toBe('@canopy/relay — WebSocket endpoint only');
+        expect(await res.text()).toBe('@onderling/relay — WebSocket endpoint only');
       }
     } finally {
       await relay.stop();

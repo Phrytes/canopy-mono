@@ -26,7 +26,7 @@ import {
   Parts,
   RoutingStrategy,
   FallbackTable,
-} from '@canopy/core';
+} from '@onderling/core';
 import { Lab } from '../../../src/_harness/index.js';
 
 /** Make a minimal transport stub identifiable by name + ctor. */

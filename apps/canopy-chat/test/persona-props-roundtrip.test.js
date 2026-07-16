@@ -12,8 +12,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 
-import { createSecureAgent } from '@canopy/secure-agent';
-import { VaultMemory }       from '@canopy/vault';
+import { createSecureAgent } from '@onderling/secure-agent';
+import { VaultMemory }       from '@onderling/vault';
 
 import { makePeerRouter } from '../src/core/handlers/peerRouter.js';
 import {

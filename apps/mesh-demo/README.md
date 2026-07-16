@@ -116,7 +116,7 @@ Groups B–E (peer UI, relay skill, messages, routing) are defined in
 
 ## Package boundary
 
-The platform packages (`@canopy/core`, `@canopy/react-native`) are not modified
+The platform packages (`@onderling/core`, `@onderling/react-native`) are not modified
 by this app except for the `AsyncStorageAdapter.list()` bug fix added in
 `packages/react-native/src/storage/AsyncStorageAdapter.js`.
 
@@ -181,7 +181,7 @@ message but without the badge.
 ## NKN — rendezvous-less reachability
 
 Beyond mDNS / BLE / relay, the platform also ships an `NknTransport`
-(`@canopy/core`) that connects to the
+(`@onderling/core`) that connects to the
 [NKN](https://nkn.org) public messaging network.  This is useful in
 the case where two phones don't share a relay URL and have no direct
 LAN/BLE path — both ends only need NKN access, and the address is
@@ -192,7 +192,7 @@ The mesh-demo doesn't enable NKN by default — to try it, add an
 `NknTransport` to your agent in `src/agent.js`:
 
 ```js
-import { NknTransport } from '@canopy/core';
+import { NknTransport } from '@onderling/core';
 
 const nkn = new NknTransport({ identity });
 await nkn.connect();

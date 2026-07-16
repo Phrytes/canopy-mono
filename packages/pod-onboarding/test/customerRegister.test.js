@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createMemoryBackend }   from '@canopy/pseudo-pod';
+import { createMemoryBackend }   from '@onderling/pseudo-pod';
 import {
   createCustomerRegister,
   CUSTOMER_STATUS,

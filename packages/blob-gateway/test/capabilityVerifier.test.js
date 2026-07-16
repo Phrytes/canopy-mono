@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
-import { AgentIdentity, CapabilityToken } from '@canopy/core';
-import { generateKeypair, makeSealer } from '@canopy/pod-client/sealing';
+import { AgentIdentity, CapabilityToken } from '@onderling/core';
+import { generateKeypair, makeSealer } from '@onderling/pod-client/sealing';
 import {
   createCapabilityVerifier, anyVerifier,
 } from '../src/adapters/capabilityVerifier.js';

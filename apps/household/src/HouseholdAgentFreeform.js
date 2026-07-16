@@ -2,7 +2,7 @@
  * HouseholdAgentFreeform — V2 prototype agent (additive coexistence
  * with the legacy `HouseholdAgent`).
  *
- * Free-form list names + LLM-driven dispatch via @canopy/chat-agent
+ * Free-form list names + LLM-driven dispatch via @onderling/chat-agent
  * + deterministic slash-command pre-processor.  Implements the H2 V2
  * architecture per `Project Files/Substrates/apps/H2-household.md`.
  *
@@ -32,7 +32,7 @@
  * this commit minimal.
  */
 
-import { ChatAgent } from '@canopy/chat-agent';
+import { ChatAgent } from '@onderling/chat-agent';
 
 import {
   TOOL_CATALOG,
@@ -61,7 +61,7 @@ export class HouseholdAgentFreeform {
    *   MessagingBridge instances (TelegramBridge, InMemoryBridge, ...).
    *   Slash-command pre-processing is installed on each.
    * @param {object} args.llm
-   *   `@canopy/llm-client` LlmClient (or any compatible).
+   *   `@onderling/llm-client` LlmClient (or any compatible).
    * @param {object} [args.store]
    *   Free-form list store (`createListStore`-shaped: has `lists` Map +
    *   `addItem(name, item)` + `removeItem(name, match)`).  When
@@ -83,7 +83,7 @@ export class HouseholdAgentFreeform {
    * @param {number} [args.sessionTtlMs=60_000]
    * @param {number} [args.historyDepth=16]
    * @param {object} [args.scheduler]
-   *   Optional `@canopy/notifier`-shaped scheduler for digests +
+   *   Optional `@onderling/notifier`-shaped scheduler for digests +
    *   nudges.  Surfaced as a getter for downstream wiring; this V2
    *   prototype doesn't yet feed scheduler events.  V2 Phase 2 wires
    *   addToList / removeFromList state-update events through.

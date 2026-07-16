@@ -12,7 +12,7 @@ import { View, Text, Pressable, TextInput, StyleSheet, ScrollView } from 'react-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { t } from '../../core/localisation.js';
 import { theme } from './theme.js';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { buildHouseholdDataSource } from '../../../../household/src/index.js';
 
 const typeLabel = (type) => t(`circle.container.type.${type}`);

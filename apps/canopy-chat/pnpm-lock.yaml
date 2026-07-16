@@ -8,43 +8,43 @@ importers:
 
   .:
     dependencies:
-      '@canopy-app/calendar':
+      '@onderling-app/calendar':
         specifier: workspace:*
         version: link:../calendar
-      '@canopy-app/folio':
+      '@onderling-app/folio':
         specifier: workspace:*
         version: link:../folio
-      '@canopy-app/stoop':
+      '@onderling-app/stoop':
         specifier: workspace:*
         version: link:../stoop
-      '@canopy-app/tasks-v0':
+      '@onderling-app/tasks-v0':
         specifier: workspace:*
         version: link:../tasks-v0
-      '@canopy/app-manifest':
+      '@onderling/app-manifest':
         specifier: workspace:*
         version: link:../../packages/app-manifest
-      '@canopy/chat-nav':
+      '@onderling/chat-nav':
         specifier: workspace:*
         version: link:../../packages/chat-nav
-      '@canopy/core':
+      '@onderling/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@canopy/llm-client':
+      '@onderling/llm-client':
         specifier: workspace:*
         version: link:../../packages/llm-client
-      '@canopy/manifest-host':
+      '@onderling/manifest-host':
         specifier: workspace:*
         version: link:../../packages/manifest-host
-      '@canopy/pod-client':
+      '@onderling/pod-client':
         specifier: workspace:*
         version: link:../../packages/pod-client
-      '@canopy/pod-routing':
+      '@onderling/pod-routing':
         specifier: workspace:*
         version: link:../../packages/pod-routing
-      '@canopy/secure-agent':
+      '@onderling/secure-agent':
         specifier: workspace:*
         version: link:../../packages/secure-agent
-      '@canopy/vault':
+      '@onderling/vault':
         specifier: workspace:*
         version: link:../../packages/vault
       '@inrupt/solid-client':

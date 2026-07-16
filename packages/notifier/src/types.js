@@ -1,5 +1,5 @@
 /**
- * Core types for @canopy/notifier.  jsdoc only.
+ * Core types for @onderling/notifier.  jsdoc only.
  */
 
 /**
@@ -10,7 +10,7 @@
  * additional channels (`NoopChannel`, `PushChannel`) that implement
  * the same surface for non-chat targets.
  *
- * Surface (mirrored from `@canopy/chat-agent`'s `MessagingBridge`):
+ * Surface (mirrored from `@onderling/chat-agent`'s `MessagingBridge`):
  *   - `id: string`                                       stable channel id
  *   - `sendReply({chatId, text, buttons?, replyTo?})`    outbound delivery
  *
@@ -24,13 +24,13 @@
  * email address.  webid → identifier resolution is the consuming
  * app's responsibility (typically via L1h identity-resolver).
  *
- * @typedef {import('@canopy/chat-agent').MessagingBridge} Channel
+ * @typedef {import('@onderling/chat-agent').MessagingBridge} Channel
  */
 
 /**
- * @typedef {import('@canopy/chat-agent').SendReplyArgs} ChannelDeliverArgs
+ * @typedef {import('@onderling/chat-agent').SendReplyArgs} ChannelDeliverArgs
  *   Deprecated alias kept for one release; new code should use
- *   `SendReplyArgs` from `@canopy/chat-agent` directly.
+ *   `SendReplyArgs` from `@onderling/chat-agent` directly.
  */
 
 /**

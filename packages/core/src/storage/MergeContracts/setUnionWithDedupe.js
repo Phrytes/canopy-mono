@@ -1,4 +1,4 @@
-// @canopy/core — storage/MergeContracts/setUnionWithDedupe
+// @onderling/core — storage/MergeContracts/setUnionWithDedupe
 //
 // Pure-function merge contract for federated reads where each
 // peer's pod returns an array of items and the merged view is

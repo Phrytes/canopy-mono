@@ -1,5 +1,5 @@
 /**
- * LlmClient — re-exported from @canopy/llm-client (L1j substrate).
+ * LlmClient — re-exported from @onderling/llm-client (L1j substrate).
  *
  * This file used to host the implementation; as of 2026-05-02 (Plan B
  * sub-task B.2) it's a thin re-export so the substrate owns the
@@ -11,4 +11,4 @@
  * multi-tool-call support added.  See packages/llm-client/README.md.
  */
 
-export { LlmClient } from '@canopy/llm-client';
+export { LlmClient } from '@onderling/llm-client';

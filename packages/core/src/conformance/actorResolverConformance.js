@@ -7,7 +7,7 @@
  * returns `null` on a miss and the canonical record on a hit by ANY of its
  * identifiers, plus the optional `register()`/`revoke()` when present.
  *
- * "Implement the port + pass this harness = compatible with the @canopy SDK."
+ * "Implement the port + pass this harness = compatible with the @onderling SDK."
  */
 import { expect } from 'vitest';
 

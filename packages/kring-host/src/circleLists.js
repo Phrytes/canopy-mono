@@ -12,8 +12,8 @@
 import {
   createCircleStores, memoryDataSource, addChildTo, projectContainer,
   buildAcceptsPolicy, resolveAddInContainer,
-} from '@canopy/item-store';
-import { createRegistry, registerCanonicalTypes } from '@canopy/item-types';
+} from '@onderling/item-store';
+import { createRegistry, registerCanonicalTypes } from '@onderling/item-types';
 
 const LIST_SCHEMA = Object.freeze({
   type: 'object', properties: { type: { const: 'list' }, text: { type: 'string', minLength: 1 } }, required: ['type', 'text'],

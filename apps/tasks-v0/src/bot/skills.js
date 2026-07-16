@@ -24,7 +24,7 @@
  * the inner skill's own bundleResolver picks the same circle.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 

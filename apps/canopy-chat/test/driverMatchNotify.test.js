@@ -2,7 +2,7 @@
 // private drivers locally and fires ONE explainable notification on a resonant match. Reuses
 // matchProfileDrivers + injected getDrivers/notify; never throws on bad input; outreach is not automatic.
 import { describe, it, expect, vi } from 'vitest';
-import { createDriver } from '@canopy/agent-registry';
+import { createDriver } from '@onderling/agent-registry';
 import { evaluateItemForDrivers, notifyIfResonant, matchReasonText, annotateResonantPosts } from '../src/core/handlers/driverMatchNotify.js';
 
 const DRIVERS = { sailing: createDriver({ kind: 'goal', text: 'learn to sail', tags: ['sailing', 'learning'] }) };

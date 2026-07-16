@@ -36,18 +36,18 @@
  * Roster:
  *   The constructor takes `peers: Array<{pubKey: string}>` — typically
  *   sourced from `MemberMap.fromPodConfig({podClient, configUri})` per
- *   `@canopy/identity-resolver`. Apps can add/remove peers post-construction
+ *   `@onderling/identity-resolver`. Apps can add/remove peers post-construction
  *   via `addPeer({pubKey})` / `removePeer(pubKey)`.
  */
 
-import { publish, subscribe, unsubscribe } from '@canopy/core';
+import { publish, subscribe, unsubscribe } from '@onderling/core';
 
 import { ulid } from './ulid.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class SkillMatch {
-  /** @type {import('@canopy/core').Agent} */ #agent;
+  /** @type {import('@onderling/core').Agent} */ #agent;
   /** @type {string}  */ #group;
   /** @type {Map<string, {skills: Set<string>, posture: object}>} */ #profile = new Map();
   #localActor = null;
@@ -85,7 +85,7 @@ export class SkillMatch {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/core').Agent} args.agent  Real `core.Agent`.
+   * @param {import('@onderling/core').Agent} args.agent  Real `core.Agent`.
    * @param {Array<{pubKey: string}>} [args.peers=[]]    Closed-group roster (pubKey-keyed).
    * @param {string} args.group                          Closed-group identifier (topic prefix).
    * @param {string} [args.localActor]                   This agent's display id (e.g. webid).

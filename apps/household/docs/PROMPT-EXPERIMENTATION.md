@@ -187,14 +187,14 @@ apps/household/src/llm/                  mutate a Map<list, items[]>
 storage:                                 storage:
 apps/household/src/storage/              Map<string, string[]>
   InMemoryStore.js                       (lives in script process,
-(adapter over @canopy/                  vanishes on restart)
+(adapter over @onderling/                  vanishes on restart)
   item-store substrate)
 
 
               ─────── BOTH ROUTE THROUGH ───────
 
            ┌────────────────────────────────────────────┐
-           │  @canopy/chat-agent  (substrate L1c)     │
+           │  @onderling/chat-agent  (substrate L1c)     │
            │  packages/chat-agent/src/ChatAgent.js      │
            │                                            │
            │  ChatAgent.processMessage(msg) →           │
@@ -208,7 +208,7 @@ apps/household/src/storage/              Map<string, string[]>
                                 │
                                 ▼
            ┌────────────────────────────────────────────┐
-           │  @canopy/llm-client  (substrate L1j)     │
+           │  @onderling/llm-client  (substrate L1j)     │
            │  packages/llm-client/src/LlmClient.js      │
            │  + providers/ollama.js                     │
            │  + providers/openai.js                     │
@@ -255,7 +255,7 @@ apps/household/src/storage/              Map<string, string[]>
   own in-script `Map`.  Running both at once with the same bot token
   would conflict at the Telegram side, but their internal worlds
   are independent.
-- The substrate boxes (`@canopy/chat-agent`, `@canopy/llm-client`,
+- The substrate boxes (`@onderling/chat-agent`, `@onderling/llm-client`,
   `TelegramBridge`) are the same code paths in both flows.  Bug
   fixes there benefit both.
 - A `[tool] X(...)` line in the terminal means the substrate's
@@ -577,7 +577,7 @@ map.
 | **System prompt** | `lib/freetext-core.js` (`SYSTEM_PROMPT`) | Examples, contrast pairs, trigger-word cheat sheet are Dutch + English.  Replies modeled in Dutch. |
 | **ContextBuilder** | `lib/freetext-core.js` (`createContextBuilder`) | Output text "Bekende lijsten:" / "(item-inhoud is verborgen…)" is Dutch. |
 | **Tool handlers** | `lib/freetext-core.js` (`createToolHandlers`) | User-facing reply text from `removeFromList` (`"🤔 X stond niet op je <list>lijst."`) is Dutch. |
-| **NL fallback parser** | `@canopy/llm-client` v0.2.0 (`parseLooseToolCalls`) | Hard-coded Dutch + English regex patterns (`is klaar`, `verwijder`, `is done`). |
+| **NL fallback parser** | `@onderling/llm-client` v0.2.0 (`parseLooseToolCalls`) | Hard-coded Dutch + English regex patterns (`is klaar`, `verwijder`, `is done`). |
 | **Default list name** | `parseLooseToolCalls` option | `"boodschappen"` — Dutch-flavoured. |
 
 ### Recommended extension shape

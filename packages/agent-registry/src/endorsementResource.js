@@ -37,12 +37,12 @@ export const ENDORSEMENT_RESOURCE_VERSION = 1;
  * // public-READ / owner-WRITE access posture so any client can resolve+verify
  * // it while only the endorser can publish. That posture is now SET, not just
  * // marked: an injected best-effort `ensureAccess(uri)` hook (wired by the app
- * // to `@canopy/pod-client`'s `setResourceAccess` → public-read + owner-write)
+ * // to `@onderling/pod-client`'s `setResourceAccess` → public-read + owner-write)
  * // fires once after the first write to a real (https) pod URI, and is exposed
  * // as `ensureAccess()` for explicit/idempotent re-application. On the
  * // pseudo-pod (hermetic) the hook never fires — this stays a pure no-op and
  * // the read+verify path is unchanged. Proven live vs a WAC pod in
- * // `@canopy/pod-client`'s `setResourceAccess.css.test.js`; ACP-on-CSS is the
+ * // `@onderling/pod-client`'s `setResourceAccess.css.test.js`; ACP-on-CSS is the
  * // pre-existing Inrupt-SDK interop gap (surfaced, not silently swallowed).
  */
 export function endorsementResourceUri({ anchorPodUri, deviceId, preferPodUri = false } = {}) {
@@ -102,7 +102,7 @@ export function normaliseEndorsementResource(raw) {
  * @param {() => string} [opts.now]
  * @param {(uri: string) => (any|Promise<any>)} [opts.ensureAccess]
  *   — best-effort real-pod access-control hook. Wired by the app to
- *   `@canopy/pod-client`'s `setResourceAccess` (public-read + owner-write for
+ *   `@onderling/pod-client`'s `setResourceAccess` (public-read + owner-write for
  *   G1; + admin-write for a G3 community catalog). Fires once, best-effort,
  *   after the first successful write to a real (https) pod URI; NEVER on a
  *   `pseudo-pod://` URI (hermetic no-op). A throwing hook must NOT break the

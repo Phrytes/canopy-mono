@@ -11,7 +11,7 @@
  *
  * Standardisation Phase 52.10.5.
  *
- * @typedef {import('@canopy/core').ActorResolver} ActorResolver
+ * @typedef {import('@onderling/core').ActorResolver} ActorResolver
  */
 
 /**

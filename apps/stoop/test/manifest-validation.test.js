@@ -1,7 +1,7 @@
 /**
  * Slice D.1 — stoop manifest structural-invariants test.
  *
- * Asserts the DRAFT manifest validates via `@canopy/app-manifest`'s
+ * Asserts the DRAFT manifest validates via `@onderling/app-manifest`'s
  * `validateManifest` and conforms to the basic shape the slash + chat
  * surfaces require:
  *
@@ -21,7 +21,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { validateManifest } from '@canopy/app-manifest';
+import { validateManifest } from '@onderling/app-manifest';
 
 import { stoopManifest }     from '../manifest.js';
 
@@ -42,7 +42,7 @@ const HOUSEHOLD_COMMANDS = Object.freeze([
 ]);
 
 describe('stoop manifest — Slice D.1 structural invariants', () => {
-  it('validates via @canopy/app-manifest validateManifest', () => {
+  it('validates via @onderling/app-manifest validateManifest', () => {
     const result = validateManifest(stoopManifest);
     expect(result.errors).toEqual([]);
     expect(result.ok).toBe(true);

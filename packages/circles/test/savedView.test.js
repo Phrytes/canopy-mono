@@ -12,12 +12,12 @@
  *     short-circuits without touching the store; builds the right
  *     ListFilter (type + audiences + merged view.filter); closed path.
  *
- * The `itemStore` here is a minimal in-package fake — @canopy/circles
- * deliberately does NOT depend on @canopy/item-store (the consumer
+ * The `itemStore` here is a minimal in-package fake — @onderling/circles
+ * deliberately does NOT depend on @onderling/item-store (the consumer
  * wires whichever store they use).  The fake applies the `audiences`
  * filter with a tiny deep-equal matcher, enough to demonstrate the
  * union across circles.  The real `audienceMatchesAny` semantics are
- * covered in @canopy/item-store's crossCircleQuery.test.js.
+ * covered in @onderling/item-store's crossCircleQuery.test.js.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -157,7 +157,7 @@ describe('resolveSavedView', () => {
 
   it('normalisation unifies `circle:` short-hand views with structured items', async () => {
     // Items are stored structured (refA/refB); the view uses `circle:`
-    // short-hands.  Because @canopy/circles normalises, they unify.
+    // short-hands.  Because @onderling/circles normalises, they unify.
     const view = makeSavedView({ title: 'shorthand', itemType: 'task', audiences: ['circle:A', 'circle:B'] });
     const items = await resolveSavedView(view, store);
     expect(items.map((i) => i.text).sort()).toEqual(['a-1', 'a-2', 'b-1']);

@@ -1,5 +1,5 @@
 /**
- * TelegramBridge — re-exported from @canopy/chat-agent (L1c).
+ * TelegramBridge — re-exported from @onderling/chat-agent (L1c).
  *
  * As of 2026-05-02 (Plan B sub-task B.5) the implementation moved
  * into the substrate so any future chat-agent consumer (H2 V2, H5,
@@ -14,4 +14,4 @@
  * canonical implementation.
  */
 
-export { TelegramBridge } from '@canopy/chat-agent/bridges/telegram';
+export { TelegramBridge } from '@onderling/chat-agent/bridges/telegram';

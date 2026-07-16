@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native — RN platform layer (polyfills, Metro preset,
+ * @onderling/react-native — RN platform layer (polyfills, Metro preset,
  * BLE/mDNS/Keychain adapters, MobilePushBridge, push adapters, mesh agent
  * factory).
  *
@@ -27,16 +27,16 @@ export { PushAdapter }            from './src/transport/pushAdapters/PushAdapter
 // it imports `expo-notifications` at module-load time (peer dep), and apps
 // that don't use push shouldn't be forced to install it.  Use the subpath:
 //   import { ExpoNotificationsAdapter }
-//     from '@canopy/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js';
+//     from '@onderling/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js';
 
 // pseudo-pod-adapter (Phases 51.1 – 51.4). NOT re-exported here on
 // purpose — its factories take namespace imports of `expo-file-system`
 // and `@react-native-async-storage/async-storage`, which the substrate
 // shouldn't force on every consumer of this barrel. Use the subpath:
-//   import { createBackend } from '@canopy/react-native/pseudo-pod-adapter';
+//   import { createBackend } from '@onderling/react-native/pseudo-pod-adapter';
 //
 // hub-discovery + hub-binding (Phases 51.6 – 51.9). Also NOT re-exported —
 // they take a native-module injection that production wires via
 // `NativeModules.HubDiscovery` / `NativeModules.HubBinding`. Use the subpaths:
-//   import { createHubDiscovery } from '@canopy/react-native/hub-discovery';
-//   import { bind }               from '@canopy/react-native/hub-binding';
+//   import { createHubDiscovery } from '@onderling/react-native/hub-discovery';
+//   import { bind }               from '@onderling/react-native/hub-binding';

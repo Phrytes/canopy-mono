@@ -10,7 +10,7 @@ import {
   CLAIM_VERSION,
 }                               from '../src/security/reachabilityClaim.js';
 import { AgentIdentity }        from '../src/identity/AgentIdentity.js';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 
 async function freshIdentity() {
   return AgentIdentity.generate(new VaultMemory());

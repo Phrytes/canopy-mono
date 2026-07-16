@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name": "@canopy/circles",
+  "name": "@onderling/circles",
   "version": "0.1.0",
-  "description": "Audience model + saved-audience (circles) substrate. One package because circles are saved audiences — same primitive at two granularities. Ships `Audience` typedef, `normalizeAudience`, `resolveAudience`, `inAudience`, and `createCirclesStore({itemStore})` over the canonical `circle` item type. SP-5 V0 — see CODING-uniforme-representatie.md. NOTE: circle.id and task.circleId share the same string identifier space (see CIRCLE_ID_IS_CREW_ID_ALIAS in @canopy/item-types).",
+  "description": "Audience model + saved-audience (circles) substrate. One package because circles are saved audiences — same primitive at two granularities. Ships `Audience` typedef, `normalizeAudience`, `resolveAudience`, `inAudience`, and `createCirclesStore({itemStore})` over the canonical `circle` item type. SP-5 V0 — see CODING-uniforme-representatie.md. NOTE: circle.id and task.circleId share the same string identifier space (see CIRCLE_ID_IS_CREW_ID_ALIAS in @onderling/item-types).",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -13,7 +13,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/item-types": "file:../item-types"
+    "@onderling/item-types": "file:../item-types"
   },
   "devDependencies": {
     "vitest": "^2.1.9"

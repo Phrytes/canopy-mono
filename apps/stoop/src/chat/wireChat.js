@@ -1,5 +1,5 @@
 /**
- * wireChat — thin Stoop shim around `@canopy/chat-p2p`.
+ * wireChat — thin Stoop shim around `@onderling/chat-p2p`.
  *
  * **2026-05-08:** the implementation lifted into the chat-p2p
  * substrate (Tasks V1 = rule-of-two consumer per
@@ -28,7 +28,7 @@
  *     `muted`, `evictionRoster`, `dataSource`) pass through verbatim.
  */
 
-import { wireChat as substrateWireChat } from '@canopy/chat-p2p';
+import { wireChat as substrateWireChat } from '@onderling/chat-p2p';
 
 export function wireChat(args) {
   return substrateWireChat({

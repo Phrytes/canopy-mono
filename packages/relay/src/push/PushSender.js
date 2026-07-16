@@ -2,7 +2,7 @@
  * PushSender — outbound push notification primitive (server-side).
  * @abstract
  *
- * Pairs with the device-side `MobilePushBridge` in `@canopy/react-native`:
+ * Pairs with the device-side `MobilePushBridge` in `@onderling/react-native`:
  *   - device registers via Expo/APNs/FCM, gets a token, ships it to the relay
  *     with `{type: 'register-push-token'}`.
  *   - relay stores the token in `PushTokenRegistry`.

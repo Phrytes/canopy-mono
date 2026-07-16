@@ -1,19 +1,19 @@
 /**
- * @canopy/sdk — the batteries-included, LAYERED developer facade.
+ * @onderling/sdk — the batteries-included, LAYERED developer facade.
  *
  * ONE import for the whole SDK, in two layers:
  *
  * ── LOW layer (explicit / concrete) ─────────────────────────────────────
  * Named re-exports so a dev has a single import but passes adapters
  * EXPLICITLY (maximal clarity + compatibility). The whole kernel is
- * re-exported (`export * from '@canopy/core'`), plus the default concrete
+ * re-exported (`export * from '@onderling/core'`), plus the default concrete
  * adapters that were de-fatted OUT of the kernel:
- *   - the Vault family from @canopy/vault (VaultMemory is the default),
- *   - the network transports from @canopy/transports,
- *   - the pod pieces from @canopy/pod-client.
+ *   - the Vault family from @onderling/vault (VaultMemory is the default),
+ *   - the network transports from @onderling/transports,
+ *   - the pod pieces from @onderling/pod-client.
  * A dev who wants control uses these directly, e.g.:
  *
- *     import { Agent, AgentIdentity, VaultMemory, RelayTransport } from '@canopy/sdk';
+ *     import { Agent, AgentIdentity, VaultMemory, RelayTransport } from '@onderling/sdk';
  *     const id = await AgentIdentity.generate(new VaultMemory());
  *     const agent = new Agent({ identity: id, transport: new RelayTransport({ identity: id, relayUrl }) });
  *     await agent.start();
@@ -23,25 +23,25 @@
  *   - createAgent(opts)                 — Tier-3 run-as-agent, batteries in.
  *   - connectSkill(agent, name, appFn)  — Tier-1 plain-fn → skill adapter.
  *
- *     import { createAgent, connectSkill } from '@canopy/sdk';
+ *     import { createAgent, connectSkill } from '@onderling/sdk';
  *     const agent = await createAgent();                       // VaultMemory + in-process transport, started
  *     connectSkill(agent, 'greet', (args) => `Hi ${args.name}`);
  *
- * Defaults live HERE (in the facade), never back in @canopy/core — the
+ * Defaults live HERE (in the facade), never back in @onderling/core — the
  * kernel stays de-fatted; this package restores the DX on top of it.
  *
  * ── SP-9: the barrel is now the SUM of the sub-path slices ───────────────
  * The batteries-included surface below is carved into importable sub-paths
  * so a consumer can take ONLY the pieces they need (core base vs each
  * extension) rather than the whole barrel:
- *   - `@canopy/sdk/core`       → the kernel base            (./core.js)
- *   - `@canopy/sdk/transports` → default network transports (./transports.js)
- *   - `@canopy/sdk/vault`      → default Vault family        (./vault.js)
- *   - `@canopy/sdk/pod`        → default pod-client surface  (./pod.js)
- *   - `@canopy/sdk/high`       → createAgent/connectSkill/…  (./high.js)
- *   - `@canopy/sdk/requires`   → capability vocab + validator(./requires.js)
+ *   - `@onderling/sdk/core`       → the kernel base            (./core.js)
+ *   - `@onderling/sdk/transports` → default network transports (./transports.js)
+ *   - `@onderling/sdk/vault`      → default Vault family        (./vault.js)
+ *   - `@onderling/sdk/pod`        → default pod-client surface  (./pod.js)
+ *   - `@onderling/sdk/high`       → createAgent/connectSkill/…  (./high.js)
+ *   - `@onderling/sdk/requires`   → capability vocab + validator(./requires.js)
  * This barrel simply re-exports every slice, so the aggregate named surface
- * is UNCHANGED — every existing `import { X } from '@canopy/sdk'` still
+ * is UNCHANGED — every existing `import { X } from '@onderling/sdk'` still
  * resolves to the same symbol.
  */
 
@@ -53,10 +53,10 @@ export * from './core.js';
 export * from './vault.js';
 
 // Concrete network transports (the base Transport + InternalTransport /
-// OfflineTransport stay in @canopy/core, re-exported by ./core.js).
+// OfflineTransport stay in @onderling/core, re-exported by ./core.js).
 export * from './transports.js';
 
-// Pod pieces — the whole @canopy/pod-client public surface (PodClient, Auth,
+// Pod pieces — the whole @onderling/pod-client public surface (PodClient, Auth,
 // SolidPodSource, ConflictResolver, sealing/sharing/tombstones, …).
 export * from './pod.js';
 

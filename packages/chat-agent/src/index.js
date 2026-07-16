@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-agent — public entry point.
+ * @onderling/chat-agent — public entry point.
  */
 
 export { ChatAgent } from './ChatAgent.js';

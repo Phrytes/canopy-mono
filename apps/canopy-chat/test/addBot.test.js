@@ -1,10 +1,10 @@
 /**
  * addBot — get a bot into the app PeerGraph (feedback-extension P5).
- * Drives a real @canopy/core PeerGraph + a fake discover (no network).
+ * Drives a real @onderling/core PeerGraph + a fake discover (no network).
  */
 import { describe, it, expect, vi } from 'vitest';
 
-import { PeerGraph } from '@canopy/core';
+import { PeerGraph } from '@onderling/core';
 import { addBotToGraph } from '../src/v2/addBot.js';
 import { listContacts } from '../src/v2/contactsSource.js';
 

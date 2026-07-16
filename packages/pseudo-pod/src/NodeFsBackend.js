@@ -3,7 +3,7 @@
  * filesystem.
  *
  * ⚠️ NODE-ONLY (per the portability convention, the filename carries
- * `Node`). This is the *only* `node:`-coupled file in `@canopy/pseudo-pod`
+ * `Node`). This is the *only* `node:`-coupled file in `@onderling/pseudo-pod`
  * — keep it that way; never import `node:fs` into `PseudoPod.js`.
  *
  * It is a **general-purpose, opt-in** sibling to `MemoryBackend`: any

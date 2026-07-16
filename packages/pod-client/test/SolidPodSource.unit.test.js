@@ -468,8 +468,8 @@ describe('SolidPodSource — constructor', () => {
   });
 });
 
-// Smoke assertions relocated from @canopy/core's `test/storage.test.js`
-// when SolidPodSource moved out of core into @canopy/pod-client.
+// Smoke assertions relocated from @onderling/core's `test/storage.test.js`
+// when SolidPodSource moved out of core into @onderling/pod-client.
 describe('SolidPodSource (smoke)', () => {
   it('exposes the DataSource API and the new `exists` method', () => {
     const s = new SolidPodSource({ podUrl: 'https://pod.example.org/' });

@@ -13,7 +13,7 @@ import en from '../../locales/en.json';
 import nl from '../../locales/nl.json';
 // The shared `circle`/`consequence`/`role` blocks live in ONE place in the canopy-chat package
 // (src/locales/) so web + mobile can't drift; merge them over the mobile-only keys below.
-import { sharedCircleLocale, sharedConsequenceLocale, sharedRoleLocale } from '@canopy-app/canopy-chat';
+import { sharedCircleLocale, sharedConsequenceLocale, sharedRoleLocale } from '@onderling-app/canopy-chat';
 
 function unwrapLeaves(node) {
   if (node === null || typeof node !== 'object') return node;

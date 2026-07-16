@@ -80,7 +80,7 @@ function AppInner() {
           <Stack.Screen
             name="Peers"
             component={PeersScreen}
-            options={{ title: '@canopy  mesh demo' }}
+            options={{ title: '@onderling  mesh demo' }}
           />
           <Stack.Screen
             name="Message"

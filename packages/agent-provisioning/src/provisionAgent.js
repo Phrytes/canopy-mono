@@ -35,10 +35,10 @@
 import {
   Agent,
   AgentIdentity,
-} from '@canopy/core';
-import { VaultMemory }    from '@canopy/vault';
-import { SolidVault }     from '@canopy/oidc-session';
-import { WebIdCache }     from '@canopy/webid-discovery';
+} from '@onderling/core';
+import { VaultMemory }    from '@onderling/vault';
+import { SolidVault }     from '@onderling/oidc-session';
+import { WebIdCache }     from '@onderling/webid-discovery';
 
 /**
  * @typedef {object} OidcOpts
@@ -65,8 +65,8 @@ import { WebIdCache }     from '@canopy/webid-discovery';
  * @property {object}   [agentOpts={}]  — pass-through to Agent constructor (security, policyEngine, etc.)
  *
  * @typedef {object} ProvisionAgentResult
- * @property {import('@canopy/core').Agent}      agent
- * @property {import('@canopy/core').AgentIdentity} identity
+ * @property {import('@onderling/core').Agent}      agent
+ * @property {import('@onderling/core').AgentIdentity} identity
  * @property {object}                              vault       — the vault used
  * @property {string}                              mnemonic    — the BIP-39 phrase (fresh or echoed)
  * @property {object|null}                         oidc        — the SolidVault session (or null)

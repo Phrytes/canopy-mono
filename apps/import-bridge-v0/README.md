@@ -1,6 +1,6 @@
 # H6 — import-bridge-v0
 
-> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** writes directly through any `core.DataSource` (Phase 5.1 — one-shot ingest does not compose `@canopy/sync-engine`).
+> **Layer: app.** Composes substrates from `packages/{item-store, agent-ui, ...}`. Direct kernel use is allowed only when justified in this README's `## Direct kernel use` section (per [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)). See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Known direct kernel use:** writes directly through any `core.DataSource` (Phase 5.1 — one-shot ingest does not compose `@onderling/sync-engine`).
 
 Document import bridge.  Fetches documents from external services
 (Google Docs, Notion, etc.), converts them to markdown, and writes
@@ -17,17 +17,17 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/identity-resolver` (L1h) | `PersonGraph` — cross-source Person records, auto-linked when two connectors observe the same identifier. | Cross-source identity reconciliation is reused by H4/H5/H7; the merge rules don't belong inline in the import bridge. |
+| `@onderling/identity-resolver` (L1h) | `PersonGraph` — cross-source Person records, auto-linked when two connectors observe the same identifier. | Cross-source identity reconciliation is reused by H4/H5/H7; the merge rules don't belong inline in the import bridge. |
 
 ## Direct kernel use
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Emitter` | Agent extends it to surface `synced` events per imported item. | Substrate-portable emitter; substrates and apps share the same primitive — using `node:events` would break RN. |
-| `@canopy/core` | `OAuthVault`, `VaultMemory` | Per-connector OAuth credentials with auto-refresh (Google, Notion, …). | `@canopy/oauth-vault` (L1g) was deleted 2026-05-04 as a duplicate of `core.OAuthVault`; this is the only place to compose. |
-| `@canopy/core` | `DataSource` (interface) | Target the connector writes into; one-shot, no `sync-engine` composition. | Phase 5.1 audit deviation: one-shot import has no V0 SyncEngine surface to consume; writing via `DataSource` directly is simpler than wrapping in `LiveSyncSkill`. |
+| `@onderling/core` | `Emitter` | Agent extends it to surface `synced` events per imported item. | Substrate-portable emitter; substrates and apps share the same primitive — using `node:events` would break RN. |
+| `@onderling/core` | `OAuthVault`, `VaultMemory` | Per-connector OAuth credentials with auto-refresh (Google, Notion, …). | `@onderling/oauth-vault` (L1g) was deleted 2026-05-04 as a duplicate of `core.OAuthVault`; this is the only place to compose. |
+| `@onderling/core` | `DataSource` (interface) | Target the connector writes into; one-shot, no `sync-engine` composition. | Phase 5.1 audit deviation: one-shot import has no V0 SyncEngine surface to consume; writing via `DataSource` directly is simpler than wrapping in `LiveSyncSkill`. |
 
-The `@canopy/sync-engine` substrate (L1a) is **not** composed: it is bidirectional-only post-Phase 5.1, and one-shot ingest doesn't fit. Apps that want webhook/polling/cursored sync should compose `core.protocol.LiveSyncSkill` directly instead of this app's pattern.
+The `@onderling/sync-engine` substrate (L1a) is **not** composed: it is bidirectional-only post-Phase 5.1, and one-shot ingest doesn't fit. Apps that want webhook/polling/cursored sync should compose `core.protocol.LiveSyncSkill` directly instead of this app's pattern.
 
 ## Bring it up
 
@@ -39,7 +39,7 @@ npm test                 # 8/8 integration tests
 # One-shot import against MockConnector (no credentials needed)
 node -e "
 import { createImportAgent, MockConnector } from './src/index.js';
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 const target = new MemorySource();
 const agent  = await createImportAgent({
   connectors: [new MockConnector({ items: [...] })],
@@ -62,8 +62,8 @@ Real Google Docs validation (interactive OAuth) is documented in "Real-credentia
 ## Usage
 
 ```js
-import { createImportAgent, GoogleDocsConnector } from '@canopy-app/import-bridge-v0';
-import { OAuthVault, VaultMemory } from '@canopy/core';
+import { createImportAgent, GoogleDocsConnector } from '@onderling-app/import-bridge-v0';
+import { OAuthVault, VaultMemory } from '@onderling/core';
 import { PodClientBackend } from './my-pod-client-backend.js';   // wraps PodClient
 
 const oauthVault = new OAuthVault({ vault: new VaultMemory() });

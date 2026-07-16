@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyQrPayload } from '@canopy/react-native/qr';
+import { classifyQrPayload } from '@onderling/react-native/qr';
 import { getCanopyChatClassifiers } from '../src/core/qrClassifiers.js';
 
 const CL = getCanopyChatClassifiers();

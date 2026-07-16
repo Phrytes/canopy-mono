@@ -1,16 +1,16 @@
 # Changesets
 
 This folder is managed by [changesets](https://github.com/changesets/changesets). It drives
-versioning + publishing of the **public `@canopy/*` platform surface** to npm.
+versioning + publishing of the **public `@onderling/*` platform surface** to npm.
 
 ## What publishes
 
 Only the 12 packages that make up the published SDK surface — everything else in `packages/*`
 and every app in `apps/*` carries `"private": true` and is skipped by `changeset publish`:
 
-`@canopy/core`, `@canopy/vault`, `@canopy/transports`, `@canopy/pod-client`, `@canopy/oidc-session`,
-`@canopy/redaction`, `@canopy/pseudo-pod`, `@canopy/item-types`, `@canopy/item-store`,
-`@canopy/app-manifest`, `@canopy/app-scaffold`, `@canopy/sdk`.
+`@onderling/core`, `@onderling/vault`, `@onderling/transports`, `@onderling/pod-client`, `@onderling/oidc-session`,
+`@onderling/redaction`, `@onderling/pseudo-pod`, `@onderling/item-types`, `@onderling/item-store`,
+`@onderling/app-manifest`, `@onderling/app-scaffold`, `@onderling/sdk`.
 
 Versioning is **independent** per package (no `fixed`/`linked`); `access` is `public`.
 

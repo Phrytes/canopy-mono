@@ -8,13 +8,13 @@ importers:
 
   .:
     devDependencies:
-      '@canopy/core':
+      '@onderling/core':
         specifier: file:../core
         version: file:../core
-      '@canopy/pod-client':
+      '@onderling/pod-client':
         specifier: file:../pod-client
         version: file:../pod-client
-      '@canopy/sync-engine':
+      '@onderling/sync-engine':
         specifier: file:../sync-engine
         version: file:../sync-engine
       react:
@@ -30,21 +30,21 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     resolution: {directory: ../core, type: directory}
 
-  '@canopy/oidc-session@file:../oidc-session':
+  '@onderling/oidc-session@file:../oidc-session':
     resolution: {directory: ../oidc-session, type: directory}
 
-  '@canopy/pod-client@file:../pod-client':
+  '@onderling/pod-client@file:../pod-client':
     resolution: {directory: ../pod-client, type: directory}
     peerDependencies:
-      '@canopy/pseudo-pod': '*'
+      '@onderling/pseudo-pod': '*'
     peerDependenciesMeta:
-      '@canopy/pseudo-pod':
+      '@onderling/pseudo-pod':
         optional: true
 
-  '@canopy/sync-engine@file:../sync-engine':
+  '@onderling/sync-engine@file:../sync-engine':
     resolution: {directory: ../sync-engine, type: directory}
     peerDependencies:
       expo-crypto: '*'
@@ -55,7 +55,7 @@ packages:
       expo-file-system:
         optional: true
 
-  '@canopy/vault@file:../vault':
+  '@onderling/vault@file:../vault':
     resolution: {directory: ../vault, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -884,10 +884,10 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     dependencies:
-      '@canopy/oidc-session': file:../oidc-session
-      '@canopy/vault': file:../vault
+      '@onderling/oidc-session': file:../oidc-session
+      '@onderling/vault': file:../vault
       '@inrupt/solid-client': 3.0.0
       '@inrupt/solid-client-authn-node': 4.0.0
       '@noble/hashes': 2.2.0
@@ -898,20 +898,20 @@ snapshots:
     optionalDependencies:
       node-datachannel: 0.32.3
 
-  '@canopy/oidc-session@file:../oidc-session':
+  '@onderling/oidc-session@file:../oidc-session':
     dependencies:
       '@inrupt/solid-client-authn-node': 4.0.0
 
-  '@canopy/pod-client@file:../pod-client':
+  '@onderling/pod-client@file:../pod-client':
     dependencies:
-      '@canopy/core': file:../core
+      '@onderling/core': file:../core
 
-  '@canopy/sync-engine@file:../sync-engine':
+  '@onderling/sync-engine@file:../sync-engine':
     dependencies:
-      '@canopy/core': file:../core
+      '@onderling/core': file:../core
       chokidar: 3.6.0
 
-  '@canopy/vault@file:../vault': {}
+  '@onderling/vault@file:../vault': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

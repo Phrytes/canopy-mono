@@ -14,7 +14,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 import { packSealed, openSealed } from '../../src/security/sealedForward.js';
 import { TextPart }      from '../../src/Parts.js';
 import { signOrigin }    from '../../src/security/originSignature.js';

@@ -1,6 +1,6 @@
-# `@canopy-app/stoop-mobile`
+# `@onderling-app/stoop-mobile`
 
-> **Direction (decided 2026-06-11; agent path confirmed 2026-06-18):** like `@canopy-app/stoop`, this
+> **Direction (decided 2026-06-11; agent path confirmed 2026-06-18):** like `@onderling-app/stoop`, this
 > shell **dissolves into canopy-chat** — `stoop` becomes a navigation label inside the unified chat
 > surface, not a separate app/build/shell. **Agent/transport consequence (T5.3b-ii):** the cross-peer
 > agent for stoop on mobile is **canopy-chat-mobile's secure-mesh agent** (the unified
@@ -23,7 +23,7 @@
 > [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
 > See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
-> **Known direct cross-app dep:** `@canopy-app/stoop` for the
+> **Known direct cross-app dep:** `@onderling-app/stoop` for the
 > SyncEngine-shaped factory, the skill builder, groupMirror, and
 > the Stoop-vocabulary attachment helpers. Same **platform-shell
 > exception** as folio + folio-mobile (locked 2026-05-08); see the
@@ -66,9 +66,9 @@ the full Q-B retirement + A-track + C-track breakdown.
 | Phase | Theme | State |
 |---|---|---|
 | 40.1  | Workspace scaffold | ✅ |
-| 40.2  | `@canopy/sync-engine-rn` substrate (lifted from folio-mobile) | ✅ |
-| 40.3  | `@canopy/oidc-session-rn` substrate | ✅ |
-| 40.4  | `FileSystemAdapter` in `@canopy/react-native` | ✅ |
+| 40.2  | `@onderling/sync-engine-rn` substrate (lifted from folio-mobile) | ✅ |
+| 40.3  | `@onderling/oidc-session-rn` substrate | ✅ |
+| 40.4  | `FileSystemAdapter` in `@onderling/react-native` | ✅ |
 | 40.5  | Native picker (camera + library + resize); PRIKBORD / CHAT / AVATAR presets | ✅ |
 | 40.6  | QR scan + render (`expo-camera` + `react-native-qrcode-svg`) | ✅ |
 | 40.7  | GPS via `expo-location` | ✅ |
@@ -221,22 +221,22 @@ Don't introduce a per-group Agent. Concrete plan + rationale:
 
 | Package | Used for |
 |---|---|
-| `@canopy/core` | `Agent`, `AgentIdentity`, `KeychainVault` (via `@canopy/react-native`); identity bring-up via mnemonic-restore. |
-| `@canopy/react-native` | RN platform layer: polyfills, Metro preset, `KeychainVault`, `AsyncStorageAdapter`, `FileSystemAdapter`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`. |
-| `@canopy/sync-engine-rn` | RN bootstrap: `setBgRunOnce`/`bgRunOnce`/`defineBackgroundTask` + the BackgroundFetch helpers. |
-| `@canopy/oidc-session-rn` | RN-side Solid OIDC: `OidcSessionRN` token persistence + `useOidcSignIn` hook (at `/hook` subpath). Stoop V3 pre-binds `appId: 'stoop'`. |
-| `@canopy/local-store` | `CachingDataSource`, `SyncCadence`, `createSettingsModule({appId: 'stoop', ...})`. |
-| `@canopy/identity-resolver` | `MemberMap`, `MemberMapCache`, `buildOnboardingSkills`, `matchesProfile`, `TAXONOMY`. |
-| `@canopy/item-store` | `ItemStore` for posts, chat-messages, claims, redemptions. |
-| `@canopy/chat-p2p` | `wireChat({...})` peer-to-peer chat. |
-| `@canopy/notifier` | `Notifier`, `UsageMetrics`, push channels, scheduled reminders. |
-| `@canopy/skill-match` | Pubsub-of-skills broadcast over the closed group + claim flow. **Phase 40.20:** broadcast-scope extension (`extraAudience` constructor + `scope: 'group'\|'group+contacts'\|'group+contacts+hops'` on broadcast). |
-| `@canopy/pod-client` | Pod read/write/list when the user signs in with their Solid pod. |
+| `@onderling/core` | `Agent`, `AgentIdentity`, `KeychainVault` (via `@onderling/react-native`); identity bring-up via mnemonic-restore. |
+| `@onderling/react-native` | RN platform layer: polyfills, Metro preset, `KeychainVault`, `AsyncStorageAdapter`, `FileSystemAdapter`, `MdnsTransport`, `BleTransport`, `MobilePushBridge`. |
+| `@onderling/sync-engine-rn` | RN bootstrap: `setBgRunOnce`/`bgRunOnce`/`defineBackgroundTask` + the BackgroundFetch helpers. |
+| `@onderling/oidc-session-rn` | RN-side Solid OIDC: `OidcSessionRN` token persistence + `useOidcSignIn` hook (at `/hook` subpath). Stoop V3 pre-binds `appId: 'stoop'`. |
+| `@onderling/local-store` | `CachingDataSource`, `SyncCadence`, `createSettingsModule({appId: 'stoop', ...})`. |
+| `@onderling/identity-resolver` | `MemberMap`, `MemberMapCache`, `buildOnboardingSkills`, `matchesProfile`, `TAXONOMY`. |
+| `@onderling/item-store` | `ItemStore` for posts, chat-messages, claims, redemptions. |
+| `@onderling/chat-p2p` | `wireChat({...})` peer-to-peer chat. |
+| `@onderling/notifier` | `Notifier`, `UsageMetrics`, push channels, scheduled reminders. |
+| `@onderling/skill-match` | Pubsub-of-skills broadcast over the closed group + claim flow. **Phase 40.20:** broadcast-scope extension (`extraAudience` constructor + `scope: 'group'\|'group+contacts'\|'group+contacts+hops'` on broadcast). |
+| `@onderling/pod-client` | Pod read/write/list when the user signs in with their Solid pod. |
 
 ## Direct kernel use
 
 Same as desktop Stoop — composing substrates only. The cross-app
-dep `@canopy-app/stoop` is the platform-shell exception (skill
+dep `@onderling-app/stoop` is the platform-shell exception (skill
 builder, group-mirror, Agent factory).
 
 ## Authentication
@@ -247,7 +247,7 @@ SignInScreen (Phase 40.19): `startPodSignIn` →
 link → `completePodSignIn` → AuthCallbackScreen polls
 `getBulkSyncStatus` for the bulk-sync progress.
 
-Token persistence rides on `@canopy/oidc-session-rn` — keys
+Token persistence rides on `@onderling/oidc-session-rn` — keys
 under `stoop-oidc-*` in `expo-secure-store`.
 
 An eventual cleanup of pod-share/auth UX across all apps is planned;
@@ -371,10 +371,10 @@ green, including the four Phase 40.20 cases).
 ```
 apps/stoop-mobile/
 ├── README.md                  ← this file
-├── package.json               ← @canopy-app/stoop-mobile
+├── package.json               ← @onderling-app/stoop-mobile
 ├── app.json                   ← Expo config (scheme: stoop, perms)
 ├── babel.config.js
-├── metro.config.js            ← @canopy/react-native preset + stoop-shaped pins
+├── metro.config.js            ← @onderling/react-native preset + stoop-shaped pins
 ├── vitest.config.js           ← vitest aliases for testing
 ├── index.js                   ← entry: polyfills + defineBackgroundTask + registerRootComponent
 ├── App.js                     ← root: ServiceProvider + NavigationContainer + DeepLinkHandler + ShellTabs

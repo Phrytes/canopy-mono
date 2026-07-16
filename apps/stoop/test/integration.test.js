@@ -13,8 +13,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { createNeighborhoodAgent, attachSubstrateMirror } from '../src/index.js';
 

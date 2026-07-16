@@ -1,5 +1,5 @@
 /**
- * backgroundTasks — re-export shim around `@canopy/sync-engine-rn`.
+ * backgroundTasks — re-export shim around `@onderling/sync-engine-rn`.
  *
  * **2026-05-08:** the implementation lifted into the substrate
  * (Stoop V3 mobile = rule-of-two consumer). The helpers are fully
@@ -13,4 +13,4 @@ export {
   unregisterBackgroundFetch,
   statusBackgroundFetch,
   DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
-} from '@canopy/sync-engine-rn';
+} from '@onderling/sync-engine-rn';

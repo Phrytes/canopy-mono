@@ -13,7 +13,7 @@ import {
 import { recipeToCirclePolicyPatch, RECIPE_APPLY_CODES } from '../../src/v2/recipeApply.js';
 import { createCirclePolicyStore } from '../../src/v2/circlePolicyStore.js';
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
-import { capabilityKey } from '@canopy/app-manifest';
+import { capabilityKey } from '@onderling/app-manifest';
 
 // ── Installed manifests (the `sources` the gate + mapper + consent model share) ──
 const tasks = {

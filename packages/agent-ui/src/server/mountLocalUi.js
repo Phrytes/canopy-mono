@@ -17,8 +17,8 @@
  * as for any A2A peer — no `composeAgent`-style synthetic agent shape.
  *
  * @example
- *   import { Agent, defineSkill } from '@canopy/core';
- *   import { mountLocalUi } from '@canopy/agent-ui';
+ *   import { Agent, defineSkill } from '@onderling/core';
+ *   import { mountLocalUi } from '@onderling/agent-ui';
  *   const agent = await Agent.createNew({ transport, label: 'TasksAgent' });
  *   agent.register(defineSkill('echo', async ({parts}) => parts));
  *   const ui = await mountLocalUi(agent, { port: 8888 });
@@ -27,10 +27,10 @@
  *   await ui.stop();
  */
 
-import { A2ATransport } from '@canopy/core';
+import { A2ATransport } from '@onderling/core';
 
 /**
- * @param {import('@canopy/core').Agent} agent
+ * @param {import('@onderling/core').Agent} agent
  *   A real `core.Agent` with skills already registered.
  * @param {object} [opts]
  * @param {number} [opts.port=0]      HTTP port. 0 → OS picks a free port.

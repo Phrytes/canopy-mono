@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SecurityLayer, SecurityError, SEC } from '../src/security/SecurityLayer.js';
 import { AgentIdentity }                      from '../src/identity/AgentIdentity.js';
-import { VaultMemory }                        from '@canopy/vault';
+import { VaultMemory }                        from '@onderling/vault';
 import { InternalBus, InternalTransport }     from '../src/transport/InternalTransport.js';
 import { mkEnvelope, P }                      from '../src/Envelope.js';
 

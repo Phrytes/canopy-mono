@@ -26,9 +26,9 @@
  * obvious (subtask requests are admin-visible).
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
-import { computeStatus as itemStoreComputeStatus, treeOf as itemStoreTreeOf, createCrossPodRefResolver } from '@canopy/item-store';
+import { computeStatus as itemStoreComputeStatus, treeOf as itemStoreTreeOf, createCrossPodRefResolver } from '@onderling/item-store';
 import { treeOf } from '../dag-tree.js';
 import { effectiveStatus, unmetDeps } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';

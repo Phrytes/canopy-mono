@@ -11,10 +11,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { ItemStore } from '@canopy/item-store';
-import { MemorySource } from '@canopy/core';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { ItemStore } from '@onderling/item-store';
+import { MemorySource } from '@onderling/core';
 import { createNeighborhoodAgent, attachSubstrateMirror } from '../src/index.js';
 import { EvictionRoster, EVICTION_GRACE_MS } from '../src/lib/EvictionRoster.js';
 

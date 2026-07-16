@@ -7,14 +7,14 @@
  * 'household' (substrate default).
  *
  * Resolution (audience → member set) is NOT tested here — that
- * lives in `@canopy/circles`'s `resolveAudience` test.  This file
+ * lives in `@onderling/circles`'s `resolveAudience` test.  This file
  * tests the STORAGE + BRIDGE only.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import { ItemStore, audienceFromItem, audienceMatches } from '../src/index.js';
-import { MemorySource } from '@canopy/core';
+import { MemorySource } from '@onderling/core';
 
 const ACTOR = 'webid:alice';
 

@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest';
 import { Bootstrap }     from '../../src/identity/Bootstrap.js';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 
 describe('Bootstrap.deriveAgentSeed', () => {
   it('is deterministic: same secret + label → same 32-byte seed', () => {

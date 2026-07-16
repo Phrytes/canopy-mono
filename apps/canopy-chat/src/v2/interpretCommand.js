@@ -21,7 +21,7 @@ export const DEFAULT_INTERPRET_SYSTEM =
 const KIND_TO_JSON_TYPE = { string: 'string', number: 'number', integer: 'integer', boolean: 'boolean' };
 
 /**
- * Project a merged catalog's operations onto `@canopy/llm-client` ToolDescriptors
+ * Project a merged catalog's operations onto `@onderling/llm-client` ToolDescriptors
  * (`{id, description, schema}`). The tool `id` is the catalog's canonical key, so a returned
  * tool-call resolves straight back through `resolveDispatch` / the button-tap path.
  *

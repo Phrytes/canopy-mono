@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { defaultPodFactory } from '../index.js';
 
-vi.mock('@canopy/pod-client', () => {
+vi.mock('@onderling/pod-client', () => {
   class FakePodClient {
     constructor(args) { this.args = args; }
   }

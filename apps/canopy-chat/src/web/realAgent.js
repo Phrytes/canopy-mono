@@ -17,7 +17,7 @@
  *      polluting the portable core.
  *
  * The canopy-chat-mobile bundle imports the core factory directly via
- * `@canopy-app/canopy-chat/core-realAgent`.
+ * `@onderling-app/canopy-chat/core-realAgent`.
  */
 
 export { createRealHouseholdAgent } from '../core/agent/realAgent.js';

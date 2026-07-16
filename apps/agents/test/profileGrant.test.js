@@ -1,8 +1,8 @@
 // Identity step 2.3 — grantAgent can NAME a profile (delegate profile X to device D), riding
 // the same token-first + registry-mirror path as a skill grant.
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createAgentRegistry } from '@canopy/agent-registry';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createAgentRegistry } from '@onderling/agent-registry';
 import { grantAgent } from '../src/cores.js';
 
 const mkReg = () => createAgentRegistry({

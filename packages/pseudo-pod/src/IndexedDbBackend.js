@@ -9,10 +9,10 @@
  * NOT re-exported from the package's portable `index.js`. Import it from
  * the dedicated subpath instead:
  *
- *     import { createIndexedDbBackend } from '@canopy/pseudo-pod/browser'
+ *     import { createIndexedDbBackend } from '@onderling/pseudo-pod/browser'
  *
  * It is the WEB sibling of `NodeFsBackend` (Node) and the RN
- * AsyncStorage/FS backends (`@canopy/react-native/pseudo-pod-adapter`):
+ * AsyncStorage/FS backends (`@onderling/react-native/pseudo-pod-adapter`):
  * a **general-purpose, opt-in** persistent alternative to
  * `MemoryBackend` so a browser consumer's circle data (RAG vectors +
  * circle items) — and the cache-mode write-through queue — SURVIVE A

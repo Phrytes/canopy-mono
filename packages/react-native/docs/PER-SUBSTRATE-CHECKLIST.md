@@ -25,7 +25,7 @@ pattern so each one doesn't reinvent the bring-up.
    - SQLite (`better-sqlite3` vs `expo-sqlite`)
    - Secure storage (`node-keytar` vs `react-native-keychain`)
    - Push (Node serverless vs APNs/FCM via E2c)
-   - Transport adapters (already in `@canopy/react-native/adapters`)
+   - Transport adapters (already in `@onderling/react-native/adapters`)
 
 ---
 
@@ -48,10 +48,10 @@ React Native.  Other bundlers see only `*.js`.
 
 When the choice between Node and RN can't be expressed by Metro
 file-resolution alone (e.g. dynamic decision at runtime), use the
-service-factory helper from `@canopy/react-native/platform`:
+service-factory helper from `@onderling/react-native/platform`:
 
 ```js
-import { selectPlatform } from '@canopy/react-native/platform/service-factory';
+import { selectPlatform } from '@onderling/react-native/platform/service-factory';
 
 const Service = selectPlatform({
   rn:      () => require('./MyModule.rn.js'),
@@ -61,14 +61,14 @@ const Service = selectPlatform({
 
 ### Polyfills entry point
 
-Every RN app must import polyfills before any other `@canopy`
+Every RN app must import polyfills before any other `@onderling`
 substrate.  The substrate itself does NOT import polyfills — that's
 the app's responsibility (the app's `index.js`).  Document this in
 the substrate's README.
 
 ```js
 // in the consuming app's index.js
-import '@canopy/react-native/platform/polyfills';   // FIRST
+import '@onderling/react-native/platform/polyfills';   // FIRST
 import 'react-native-get-random-values';              // SECOND
 // ... rest of the app
 ```
@@ -79,7 +79,7 @@ Apps consuming the substrate are responsible for their `metro.config.js`.
 Recommend using the shared preset:
 
 ```js
-const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
 module.exports = withCanopyPreset({
   // app-specific overrides
 });
@@ -154,7 +154,7 @@ cover, OR needs a polyfill / Metro-config tweak that other
 substrates would also benefit from:
 
 1. **Don't add it to your substrate.**  Add it to
-   `@canopy/react-native` (this package).
+   `@onderling/react-native` (this package).
 2. **Document the new trap** in BRING-UP-NOTES.md.
 3. **Update the Metro preset** if the fix is config-shaped.
 4. **Bump the platform-layer minor version.**  Per

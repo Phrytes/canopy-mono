@@ -67,7 +67,7 @@ describe('createSyncEngine — argument validation', () => {
   it('throws when args are missing', () => {
     // 2026-05-08: folio's serviceFactory is now a thin shim that
     // pre-binds `SyncEngineClass: FolioSyncEngine` and forwards to
-    // `@canopy/sync-engine-rn`. The substrate sees the spread and
+    // `@onderling/sync-engine-rn`. The substrate sees the spread and
     // its first guard is `podClient required` (the spread provides a
     // truthy args object). Either error message indicates the same
     // "no real args" failure.

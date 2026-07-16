@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createHash } from 'node:crypto';
-import { createMemoryBackend } from '@canopy/pseudo-pod/memory';
+import { createMemoryBackend } from '@onderling/pseudo-pod/memory';
 import { PodSearch } from '../src/index.js';
 
 /**
  * Persistence + lifecycle (Phase 52.23) — restart ≠ re-embed.
  *
- * Uses the real `@canopy/pseudo-pod` MemoryBackend as `vectorStore`
+ * Uses the real `@onderling/pseudo-pod` MemoryBackend as `vectorStore`
  * (§3.4 layout) and a deterministic fake embedder whose embed() call
  * count is the proof that a reload does NOT re-embed.
  */

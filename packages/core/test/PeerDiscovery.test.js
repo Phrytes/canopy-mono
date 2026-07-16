@@ -3,7 +3,7 @@ import { PeerDiscovery } from '../src/discovery/PeerDiscovery.js';
 import { PeerGraph }     from '../src/discovery/PeerGraph.js';
 import { Agent }         from '../src/Agent.js';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 import { DataPart, Parts } from '../src/Parts.js';
 

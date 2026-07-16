@@ -79,7 +79,7 @@ tok()?dash():pair();
 /**
  * Start the /manage HTTP server.
  * @param {object} o
- * @param {import('@canopy/core').Agent} o.agent           the node's agent (holds the ops as skills)
+ * @param {import('@onderling/core').Agent} o.agent           the node's agent (holds the ops as skills)
  * @param {string}   o.ownerPubKey                          management authority — ops dispatch as THIS identity
  * @param {string[]} o.allowedOps                           the ONLY ops the HTTP API may dispatch
  * @param {number}   [o.port=0]                             0 → OS-assigned

@@ -33,8 +33,8 @@
  *     write DataSource = "the pod"); see `claim-cas.test.js`.
  */
 
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createCircleAgent } from '../../src/Circle.js';
 import { buildBundle } from '../../src/storage/buildBundle.js';
 

@@ -7,8 +7,8 @@
  * will use in production).
  */
 import { describe, it, expect, beforeAll } from 'vitest';
-import { GroupManager, AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { GroupManager, AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { GroupAuthVerifier } from '../src/GroupAuthVerifier.js';
 
 // ── Test fixtures ──────────────────────────────────────────────────────────
@@ -251,8 +251,8 @@ describe('GroupAuthVerifier — verifyBound + rotation chain (Phase 2B)', () => 
   });
 
   it('accepts a valid rotation chain linking old groupProof to new connecting key', async () => {
-    const { KeyRotation, AgentIdentity } = await import('@canopy/core');
-    const { VaultMemory } = await import('@canopy/vault');
+    const { KeyRotation, AgentIdentity } = await import('@onderling/core');
+    const { VaultMemory } = await import('@onderling/vault');
     const proof = await mintProof({ groupId: 'my-block' });
     const newIdentity = await AgentIdentity.generate(new VaultMemory());
     const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 86_400);
@@ -264,8 +264,8 @@ describe('GroupAuthVerifier — verifyBound + rotation chain (Phase 2B)', () => 
   });
 
   it('rejects rotation chain with wrong newPubKey link', async () => {
-    const { KeyRotation, AgentIdentity } = await import('@canopy/core');
-    const { VaultMemory } = await import('@canopy/vault');
+    const { KeyRotation, AgentIdentity } = await import('@onderling/core');
+    const { VaultMemory } = await import('@onderling/vault');
     const proof = await mintProof({ groupId: 'my-block' });
     const newIdentity   = await AgentIdentity.generate(new VaultMemory());
     const otherIdentity = await AgentIdentity.generate(new VaultMemory());
@@ -280,8 +280,8 @@ describe('GroupAuthVerifier — verifyBound + rotation chain (Phase 2B)', () => 
   });
 
   it('rejects rotation chain with tampered signature', async () => {
-    const { KeyRotation, AgentIdentity } = await import('@canopy/core');
-    const { VaultMemory } = await import('@canopy/vault');
+    const { KeyRotation, AgentIdentity } = await import('@onderling/core');
+    const { VaultMemory } = await import('@onderling/vault');
     const proof = await mintProof({ groupId: 'my-block' });
     const newIdentity = await AgentIdentity.generate(new VaultMemory());
     const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 86_400);
@@ -295,8 +295,8 @@ describe('GroupAuthVerifier — verifyBound + rotation chain (Phase 2B)', () => 
   });
 
   it('rejects rotation chain past its grace period', async () => {
-    const { KeyRotation, AgentIdentity } = await import('@canopy/core');
-    const { VaultMemory } = await import('@canopy/vault');
+    const { KeyRotation, AgentIdentity } = await import('@onderling/core');
+    const { VaultMemory } = await import('@onderling/vault');
     const proof = await mintProof({ groupId: 'my-block' });
     const newIdentity = await AgentIdentity.generate(new VaultMemory());
     const rotationProof = await KeyRotation.buildProof(member, newIdentity.pubKey, 60); // 60 seconds

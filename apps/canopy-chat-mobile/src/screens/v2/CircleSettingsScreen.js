@@ -2,7 +2,7 @@
  * canopy-chat-mobile v2 — circle settings (RN screen, board 4A · M3).
  *
  * RN counterpart of web's circleSettings renderer over the SAME shared
- * model (`@canopy-app/canopy-chat`): 5 policy axes (feature toggles + 4
+ * model (`@onderling-app/canopy-chat`): 5 policy axes (feature toggles + 4
  * enum radio groups) + the co-admin consensus toggle + per-option
  * consequence panels (1.2b).  Loads/saves through the injected policy
  * store (AsyncStorage-backed).  When consensus is active (consensusRequired
@@ -22,9 +22,9 @@ import { theme } from './theme.js';
 import {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal, DEFAULT_CIRCLE_ORIGINS,
   detectPolicyConflicts, applyPolicyResolution,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 // B · Slice 2 — the shared manifest-driven settings form + per-skill freedom matrix (web≡mobile).
-import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@canopy/app-manifest';
+import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@onderling/app-manifest';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
@@ -168,7 +168,7 @@ export default function CircleSettingsScreen({
   }, []);
 
   // B · Slice 2 — the manifest sources drive the settings form + freedom matrix (web≡mobile via the
-  // shared @canopy/app-manifest projectors + the shared circlePolicy store).
+  // shared @onderling/app-manifest projectors + the shared circlePolicy store).
   const sources = useMemo(() => [...new Set(Object.values(buildManifestsByOrigin()))].map((m) => ({ manifest: m })), []);
   const settingsForms = useMemo(() => (working ? sources
     .map((s) => ({ app: s.manifest?.app, fields: buildSettingsForm(s.manifest, { scope: 'circle', values: settingValuesForApp(working, s.manifest?.app) }) }))

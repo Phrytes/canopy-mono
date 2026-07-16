@@ -3,7 +3,7 @@
  *
  * The INSTALL act: take an installable descriptor (an A2A Agent Card /
  * registry-entry projection per SPEC-agents-registry) and add it to the
- * user's `@canopy/agent-registry` ("your agents") with ONLY the
+ * user's `@onderling/agent-registry` ("your agents") with ONLY the
  * capabilities the user grants at install — capability-security,
  * default-deny, NO ambient authority.  Two ways in:
  *   • CURATED default — `installAgent({ catalogId })` fetches the card
@@ -35,7 +35,7 @@
  * first) or `revokeAgent` (soft, keep for audit) — reused, not
  * reinvented.
  *
- * Dependency-free like cores.js / recoveryCores.js (no bare `@canopy/*`
+ * Dependency-free like cores.js / recoveryCores.js (no bare `@onderling/*`
  * import) so the standalone fitness suite runs without app-local
  * node_modules; the one collaborator it leans on — the P2 grant path — is
  * imported from the sibling cores module (also import-free).

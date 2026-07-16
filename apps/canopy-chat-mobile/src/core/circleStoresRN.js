@@ -1,7 +1,7 @@
 /**
  * canopy-chat-mobile v2 — AsyncStorage-backed circle stores (M3).
  *
- * The shared circle stores (`@canopy-app/canopy-chat`) take an injectable
+ * The shared circle stores (`@onderling-app/canopy-chat`) take an injectable
  * `{ load, save }` IO; web wires localStorage, mobile wires AsyncStorage
  * here.  Keys match the web convention verbatim (`cc.circlePolicy.<id>`,
  * `cc.circleOverride.<id>`, `cc.availability`) so a future pod-sync sees
@@ -30,7 +30,7 @@ import {
   createCirclePinStore,
   // γ.2 — per-circle rules store factory (new in γ.2).
   createCircleRulesStore,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 // γ.2 — concrete `versions` adapter wiring AsyncStorage.  Imported via
 // the canopy-chat-mobile-local module that itself reaches into the
 // canopy-chat package by relative path (Metro-friendly; same pattern

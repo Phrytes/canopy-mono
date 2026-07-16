@@ -6,10 +6,10 @@
 //
 // GATED: skips cleanly unless a CSS is reachable (CSS_URL, default :3001) — so the
 // rest of the matrix stays green with no pod. Boot one and set CSS_URL to run it.
-import { AgentIdentity, Agent }         from '@canopy/core';
-import { VaultMemory }                  from '@canopy/vault';
-import { RelayTransport }               from '@canopy/transports';
-import { PodTokenRegistry }             from '@canopy/pod-client';
+import { AgentIdentity, Agent }         from '@onderling/core';
+import { VaultMemory }                  from '@onderling/vault';
+import { RelayTransport }               from '@onderling/transports';
+import { PodTokenRegistry }             from '@onderling/pod-client';
 import { startCompanionNode }           from '../../companion-node/src/index.js';
 import { buildDevPodSource }            from '../../companion-node/src/podSource.js';
 import { authorizePod, deliverPodDelegation } from '../../companion-node/src/authorizePod.js';
@@ -57,7 +57,7 @@ export async function run({ relayUrl }) {
   check('provisioned a real CSS pod + client-credentials', !!acct.clientId && !!acct.clientSecret && !!acct.podRoot);
 
   const { SolidVault } = await import('../../../packages/oidc-session/index.js');
-  const { SolidOidcAuth, SolidPodSource } = await import('@canopy/pod-client');
+  const { SolidOidcAuth, SolidPodSource } = await import('@onderling/pod-client');
 
   const deviceVault = new VaultMemory();
   const sv = new SolidVault({ webid: acct.webId, oidcIssuer: CSS_URL, vault: deviceVault });

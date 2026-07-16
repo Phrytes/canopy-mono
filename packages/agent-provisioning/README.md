@@ -1,10 +1,10 @@
-# @canopy/agent-provisioning
+# @onderling/agent-provisioning
 
 > **Layer: facade.** One-call agent bring-up. Composes
-> [`@canopy/core`](../core/) + the standardisation substrates
-> (`@canopy/vault`, `@canopy/oidc-session`,
-> `@canopy/webid-discovery`, plus the forthcoming
-> `@canopy/pseudo-pod` and `@canopy/agent-registry`) into a
+> [`@onderling/core`](../core/) + the standardisation substrates
+> (`@onderling/vault`, `@onderling/oidc-session`,
+> `@onderling/webid-discovery`, plus the forthcoming
+> `@onderling/pseudo-pod` and `@onderling/agent-registry`) into a
 > single `provisionAgent({...})` factory.
 >
 > Apps that want the canonical Hub-free bring-up use this; anything
@@ -26,12 +26,12 @@ working Agent.
 ## Public API
 
 ```js
-import { provisionAgent } from '@canopy/agent-provisioning';
+import { provisionAgent } from '@onderling/agent-provisioning';
 
 const { agent, identity, vault, mnemonic, oidc, webid } =
   await provisionAgent({
     // required
-    transport,                         // any @canopy/core Transport
+    transport,                         // any @onderling/core Transport
 
     // identity
     mnemonic,                          // omit to generate fresh
@@ -92,11 +92,11 @@ const { agent, identity, vault, mnemonic, oidc, webid } =
                   Apps (Tasks, Stoop, Folio)
                           │
                           ▼
-        @canopy/agent-provisioning  ← this package (facade)
+        @onderling/agent-provisioning  ← this package (facade)
                           │
         ┌───────┬─────────┼─────────┬───────────────────┐
         ▼       ▼         ▼         ▼                   ▼
-  @canopy/  @canopy/  @canopy/  @canopy/   @canopy/
+  @onderling/  @onderling/  @onderling/  @onderling/   @onderling/
     core      vault      oidc-       webid-       (forthcoming
               (substrate) session     discovery   pseudo-pod,
                          (substrate) (substrate)  agent-
@@ -122,19 +122,19 @@ npm test
 - pre-constructed pseudoPod / agentRegistry passthrough
 - autoStart toggle
 - pod-having bring-up with mocked OIDC (Inrupt session injected
-  via `_setSessionFactory` from `@canopy/oidc-session`)
+  via `_setSessionFactory` from `@onderling/oidc-session`)
 - WebIdCache wiring with the pseudo-pod's read
 
 ## Limitations / future work
 
-- The not-yet-built substrates (`@canopy/pseudo-pod`,
-  `@canopy/agent-registry`, `@canopy/pod-onboarding`) are
+- The not-yet-built substrates (`@onderling/pseudo-pod`,
+  `@onderling/agent-registry`, `@onderling/pod-onboarding`) are
   accepted as **opaque pre-constructed objects**. When they
   ship as proper substrates, the facade gains the ability to
   construct them too (a follow-up phase, post-substrate work).
 - First-run pod provisioning (creating the
   `<anchor-pod>/private/sub-containers` + the WebID profile
-  pointer predicates) waits for the `@canopy/pod-onboarding`
+  pointer predicates) waits for the `@onderling/pod-onboarding`
   substrate — see Phase 50.5.b.3 in the coding plan.
 - Apps haven't migrated yet (Phase 50.5.b.5). Tasks V1
   desktop, Folio's `bin/folio init`, and Stoop V1.5 desktop
@@ -143,15 +143,15 @@ npm test
 
 ## See also
 
-- [`@canopy/core`](../core/) — Agent + transport + skill
+- [`@onderling/core`](../core/) — Agent + transport + skill
   registry + identity primitives.
-- [`@canopy/vault`](../vault/) — Vault family.
-- [`@canopy/oidc-session`](../oidc-session/) — Solid OIDC for
+- [`@onderling/vault`](../vault/) — Vault family.
+- [`@onderling/oidc-session`](../oidc-session/) — Solid OIDC for
   Node.
-- [`@canopy/oidc-session-rn`](../oidc-session-rn/) — Solid
+- [`@onderling/oidc-session-rn`](../oidc-session-rn/) — Solid
   OIDC for React Native (the RN provisioning analogue lives
-  in `@canopy/sync-engine-rn`'s `createMobileBootstrap`).
-- [`@canopy/webid-discovery`](../webid-discovery/) — WebID
+  in `@onderling/sync-engine-rn`'s `createMobileBootstrap`).
+- [`@onderling/webid-discovery`](../webid-discovery/) — WebID
   profile pointer-walk + cache.
 - `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   — design context.

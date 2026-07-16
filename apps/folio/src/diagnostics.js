@@ -51,7 +51,7 @@ import { promises as defaultFs } from 'node:fs';
 import { join }                  from 'node:path';
 import { randomBytes as defaultRandomBytes } from 'node:crypto';
 
-import { VaultNodeFs as DefaultVaultNodeFs } from '@canopy/vault';
+import { VaultNodeFs as DefaultVaultNodeFs } from '@onderling/vault';
 
 import {
   configDir as defaultConfigDir,
@@ -62,7 +62,7 @@ import { buildPodClient as defaultBuildPodClient } from './cli/_podFactory.js';
 import {
   createSolidAuthNode as defaultCreateSolidAuthNode,
   OIDC_VAULT_KEYS,
-} from '@canopy/oidc-session';
+} from '@onderling/oidc-session';
 
 import { PathMap as DefaultPathMap } from './PathMap.js';
 import { scanLocal as defaultScanLocal } from './scanLocal.js';

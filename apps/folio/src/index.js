@@ -1,5 +1,5 @@
 /**
- * @canopy-app/folio — public barrel.
+ * @onderling-app/folio — public barrel.
  *
  * The sync-engine library that all Folio drivers (CLI, web, mobile) build
  * on.  Pure JS, no UI, no platform deps beyond Node's `fs` + chokidar.
@@ -42,7 +42,7 @@ export {
   SHARES_FILE_RELPATH,
 } from './autoShare.js';
 // Folio.B4 — time-machine versioning (Q-Folio.4) RETIRED onto the shared
-// @canopy/versioning substrate (Slice 1a, PLAN-folio-as-file-agent).  The
+// @onderling/versioning substrate (Slice 1a, PLAN-folio-as-file-agent).  The
 // engine owns a per-instance `createVersionStore` (see SyncEngine.js) and
 // exposes it as `engine.versionStore`; there is no longer a standalone
 // versions module to re-export from this barrel.

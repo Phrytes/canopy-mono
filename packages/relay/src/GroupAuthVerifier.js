@@ -51,7 +51,7 @@
  *     return value; the *enforcement* (per-group counters) lives in
  *     the relay server, not here.  See `server.js` for the integration.
  */
-import { verifyGroupProof, KeyRotation } from '@canopy/core';
+import { verifyGroupProof, KeyRotation } from '@onderling/core';
 
 /** Default rank table — mirrors `packages/core/src/permissions/Roles.js`. */
 const DEFAULT_ROLE_RANKS = Object.freeze({

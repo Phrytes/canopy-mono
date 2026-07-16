@@ -7,7 +7,7 @@
 // separate key family. Generated once + persisted; the same member reuses it across sessions/devices
 // (sync the vault entry to use the same sealing identity on a second device).
 //
-// Dependency-free: the secret store is INJECTED ({ get, set } — `@canopy/vault`'s shape exactly), so
+// Dependency-free: the secret store is INJECTED ({ get, set } — `@onderling/vault`'s shape exactly), so
 // pod-client stays vault-agnostic (the app passes a Vault instance).
 
 import { generateKeypair } from './envelope.js';
@@ -15,7 +15,7 @@ import { generateKeypair } from './envelope.js';
 const DEFAULT_KEY = 'cc.sealing-identity';
 
 /**
- * @param {{ get: (k:string)=>Promise<any>, set: (k:string, v:any)=>Promise<any> }} store  e.g. a @canopy/vault
+ * @param {{ get: (k:string)=>Promise<any>, set: (k:string, v:any)=>Promise<any> }} store  e.g. a @onderling/vault
  * @param {string} [key]   vault key under which the keypair is stored
  */
 export function createMemberSealingIdentity({ store, key = DEFAULT_KEY } = {}) {

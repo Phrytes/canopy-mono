@@ -6,7 +6,7 @@
 // not enabled for a context is simply not released — and a withheld key is ABSENT from the
 // release, never marked (a "withheld" flag would itself be a signal).
 //
-// This is the generalisation of @canopy/attribute-charter's feedback-local disclosureProfile:
+// This is the generalisation of @onderling/attribute-charter's feedback-local disclosureProfile:
 // ONE policy on the profile, reused across every app/bot. The policy is a plain serialisable
 // object (persist it wherever); all functions are pure transforms.
 

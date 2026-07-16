@@ -55,34 +55,34 @@ Decisions documented after the v0.3.4 substrate-reuse audit (see
 
 | Substrate | Used for |
 |---|---|
-| `@canopy/app-manifest` | App-manifest schema + `renderChat`/`renderWeb` projectors + `validateManifest` + paramsToJsonSchema.  Source of truth for Q28 reply-shape lookups. |
-| `@canopy/manifest-host` | Runtime composition of N app-manifests.  `src/manifestMerge.js` is now a thin canopy-chat-shaped projection over `createManifestHost` (collision detection + Q28 reply-shape lookup all come from the substrate). |
-| `@canopy/core` | `Agent`, `AgentIdentity`, `InternalBus`, `InternalTransport`, `DataPart` — wires the in-process two-agent topology in `src/web/realAgent.js`.  Browser-bundled per OQ-1.A. |
-| `@canopy/vault` | `VaultMemory` for the in-browser AgentIdentity seed.  `VaultLocalStorage` / `VaultIndexedDB` are candidates when pod-sync lands in v0.6. |
-| `@canopy/chat-nav` | Sibling substrate (this repo).  Implements the B.1 chat ⇄ side-panel navigation protocol.  Other apps' settings pages consume it; canopy-chat ships it. |
+| `@onderling/app-manifest` | App-manifest schema + `renderChat`/`renderWeb` projectors + `validateManifest` + paramsToJsonSchema.  Source of truth for Q28 reply-shape lookups. |
+| `@onderling/manifest-host` | Runtime composition of N app-manifests.  `src/manifestMerge.js` is now a thin canopy-chat-shaped projection over `createManifestHost` (collision detection + Q28 reply-shape lookup all come from the substrate). |
+| `@onderling/core` | `Agent`, `AgentIdentity`, `InternalBus`, `InternalTransport`, `DataPart` — wires the in-process two-agent topology in `src/web/realAgent.js`.  Browser-bundled per OQ-1.A. |
+| `@onderling/vault` | `VaultMemory` for the in-browser AgentIdentity seed.  `VaultLocalStorage` / `VaultIndexedDB` are candidates when pod-sync lands in v0.6. |
+| `@onderling/chat-nav` | Sibling substrate (this repo).  Implements the B.1 chat ⇄ side-panel navigation protocol.  Other apps' settings pages consume it; canopy-chat ships it. |
 
 ### Intentionally kept separate (with reasons)
 
 | Substrate | Why canopy-chat does NOT compose it (yet) |
 |---|---|
-| `@canopy/web-adapter` | Adopted by tasks-v0 / household / tasks-mobile for NavModel → DOM section rendering.  canopy-chat's `domAdapter.js` / `domForm.js` are chat-specific (message-stream model, list-with-inline-keyboard, A2 lifecycle, record/mini-page with `[Close]`).  The substrate's `schemaToFormFields` overlaps with our `buildFormSpec`, but the manifest shapes are misaligned (its JSON-Schema vs our `op.params[]`).  **Revisit in v0.4+** when the manifest schema is next touched. |
-| `@canopy/notifier` | Outbound scheduled push delivery + retry.  Our `EventRouter` is **inbound** event routing to threads.  Different concern.  When v0.5+ ships background notifications, notifier composes on top of EventRouter. |
-| `@canopy/local-store` | `CachingDataSource` is for pod-synced item caches.  Our `IndexedDBStore` persists UI state (thread workspaces) without a pod inner DataSource.  **Pod-sync compose path (v0.6.4 spec, real wiring deferred):** when canopy-chat gains OIDC sign-in (J6, v0.7+) and obtains a pod, `IndexedDBStore` swaps to `CachingDataSource({inner: podDataSource, paths: ['mem://canopy-chat/threads/*']})`.  Threads then sync per-thread to the pod alongside the local cache; offline edits queue via the substrate's write queue + flush on reconnect.  Until OIDC handoff is real, IndexedDB-only is the right shape — pure UI state with no pod dependency. |
-| `@canopy/chat-agent` | LLM-mediated chat with `MessagingBridge` + per-chat session manager + tool dispatcher.  canopy-chat is a **command-first** chat shell over manifest dispatch — different product.  May **compose** chat-agent in v0.5+ as an optional LLM-conversation sink alongside the slash path. |
-| `@canopy/chat-p2p` | P2P chat envelopes via `agent.transport.sendOneWay`.  **Re-audited 2026-05-23 (v0.5.3):** canopy-chat does NOT compose chat-p2p directly.  Real cross-peer embed delivery rides on each HOSTING app's chat surface (e.g. stoop's `sendChatMessage` extended with an `embed` envelope field — app-side work).  canopy-chat's role: produce the envelope (Q29 + `buildEmbed`) + render it (`embed-card` shape).  The substrate doesn't fit our role; composing it would force canopy-chat to take on itemStore + identity-resolver + members machinery that belongs to apps. |
-| `@canopy/agent-ui` | Out-of-process agent ↔ UI via HTTP+SSE.  canopy-chat uses in-process `InternalBus` (simpler; matches the static-web deployment of OQ-1.A).  Revisit if relay-bound agents land. |
-| `@canopy/agent-provisioning` | Production-style facade (vault + OIDC + webid + transports).  `realAgent.js`'s manual wiring is intentionally minimal for the in-browser demo; the facade may replace it once OIDC handoff (J6, v0.6) is real. |
+| `@onderling/web-adapter` | Adopted by tasks-v0 / household / tasks-mobile for NavModel → DOM section rendering.  canopy-chat's `domAdapter.js` / `domForm.js` are chat-specific (message-stream model, list-with-inline-keyboard, A2 lifecycle, record/mini-page with `[Close]`).  The substrate's `schemaToFormFields` overlaps with our `buildFormSpec`, but the manifest shapes are misaligned (its JSON-Schema vs our `op.params[]`).  **Revisit in v0.4+** when the manifest schema is next touched. |
+| `@onderling/notifier` | Outbound scheduled push delivery + retry.  Our `EventRouter` is **inbound** event routing to threads.  Different concern.  When v0.5+ ships background notifications, notifier composes on top of EventRouter. |
+| `@onderling/local-store` | `CachingDataSource` is for pod-synced item caches.  Our `IndexedDBStore` persists UI state (thread workspaces) without a pod inner DataSource.  **Pod-sync compose path (v0.6.4 spec, real wiring deferred):** when canopy-chat gains OIDC sign-in (J6, v0.7+) and obtains a pod, `IndexedDBStore` swaps to `CachingDataSource({inner: podDataSource, paths: ['mem://canopy-chat/threads/*']})`.  Threads then sync per-thread to the pod alongside the local cache; offline edits queue via the substrate's write queue + flush on reconnect.  Until OIDC handoff is real, IndexedDB-only is the right shape — pure UI state with no pod dependency. |
+| `@onderling/chat-agent` | LLM-mediated chat with `MessagingBridge` + per-chat session manager + tool dispatcher.  canopy-chat is a **command-first** chat shell over manifest dispatch — different product.  May **compose** chat-agent in v0.5+ as an optional LLM-conversation sink alongside the slash path. |
+| `@onderling/chat-p2p` | P2P chat envelopes via `agent.transport.sendOneWay`.  **Re-audited 2026-05-23 (v0.5.3):** canopy-chat does NOT compose chat-p2p directly.  Real cross-peer embed delivery rides on each HOSTING app's chat surface (e.g. stoop's `sendChatMessage` extended with an `embed` envelope field — app-side work).  canopy-chat's role: produce the envelope (Q29 + `buildEmbed`) + render it (`embed-card` shape).  The substrate doesn't fit our role; composing it would force canopy-chat to take on itemStore + identity-resolver + members machinery that belongs to apps. |
+| `@onderling/agent-ui` | Out-of-process agent ↔ UI via HTTP+SSE.  canopy-chat uses in-process `InternalBus` (simpler; matches the static-web deployment of OQ-1.A).  Revisit if relay-bound agents land. |
+| `@onderling/agent-provisioning` | Production-style facade (vault + OIDC + webid + transports).  `realAgent.js`'s manual wiring is intentionally minimal for the in-browser demo; the facade may replace it once OIDC handoff (J6, v0.6) is real. |
 
 ## Direct kernel use
 
 `src/web/realAgent.js` imports `Agent`, `AgentIdentity`,
-`InternalBus`, `InternalTransport`, `DataPart` from `@canopy/core`
-+ `VaultMemory` from `@canopy/vault`.
+`InternalBus`, `InternalTransport`, `DataPart` from `@onderling/core`
++ `VaultMemory` from `@onderling/vault`.
 
 Justification per `architectural-layering.md`: there is no substrate
 that brings up a two-agent InternalBus topology pre-signed-in in the
 browser (which is what canopy-chat v0.1's demo needs per OQ-1.A).
-`@canopy/agent-provisioning` is the closest facade but it targets
+`@onderling/agent-provisioning` is the closest facade but it targets
 single-agent production bring-up with OIDC + pod; canopy-chat's
 "two agents on the same bus" demo isn't a fit until the
 provisioning facade gains multi-agent helpers.
@@ -130,7 +130,7 @@ Tracking per `/Project Files/canopy-chat/coding-plan.md` § Phase v0.1:
 | 3.4 | Date + webid param refinement | shipped 2026-05-21 |
 | 3.5 | A2 record-panel "stays live" | shipped 2026-05-21 |
 | 3.6 | Mini-page event-driven refresh | partial — infra via EventRouter; full panel-itemRef tracking deferred to v0.5 embeds |
-| 3.7 | `@canopy/chat-nav` substrate | shipped 2026-05-22 |
+| 3.7 | `@onderling/chat-nav` substrate | shipped 2026-05-22 |
 | 3.8 | B.1 nav protocol | shipped 2026-05-22 (substrate ships; chat-shell adoption follows) |
 | **3.x** | **Substrate-reuse audit + manifest-host adoption** | shipped 2026-05-22 (this README + the manifest-host refactor) |
 
@@ -202,9 +202,9 @@ the per-journey table + prioritised gap list.
 ## Running locally
 
 ```bash
-pnpm --filter @canopy-app/canopy-chat dev       # http://localhost:5173
-pnpm --filter @canopy-app/canopy-chat build     # → dist/ (static-deployable)
-pnpm --filter @canopy-app/canopy-chat preview   # preview the prod build
+pnpm --filter @onderling-app/canopy-chat dev       # http://localhost:5173
+pnpm --filter @onderling-app/canopy-chat build     # → dist/ (static-deployable)
+pnpm --filter @onderling-app/canopy-chat preview   # preview the prod build
 ```
 
 The dev server hot-reloads ESM. The mock household agent (v0.1.5

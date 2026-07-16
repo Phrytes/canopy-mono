@@ -26,7 +26,7 @@
  *     identity skills.
  */
 
-import { buildIdentitySkills } from '@canopy/identity-resolver';
+import { buildIdentitySkills } from '@onderling/identity-resolver';
 
 import { buildSkills } from './skills/index.js';
 import { buildProfileSkills } from './skills/profile.js';

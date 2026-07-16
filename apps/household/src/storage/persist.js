@@ -3,7 +3,7 @@
  *
  * Household state today lives in an in-memory `MemorySource` (see
  * `InMemoryStore`) and is lost on reload.  This helper builds a
- * `@canopy/local-store` `CachingDataSource` backed by a runtime-picked
+ * `@onderling/local-store` `CachingDataSource` backed by a runtime-picked
  * persist adapter so callers can inject it into
  * `new InMemoryStore({ dataSource })` and have items survive a fresh
  * process / page reload.
@@ -16,13 +16,13 @@
  * The three persist adapters (File / IndexedDB / AsyncStorage) + the
  * picker are duplicated from tasks-v0 / stoop by DESIGN: importing
  * across apps (`apps/tasks-v0/...`) is forbidden, and the adapters do
- * not (yet) live in `@canopy/local-store`.  When a later slice lifts
+ * not (yet) live in `@onderling/local-store`.  When a later slice lifts
  * them into the substrate, this file collapses to a thin re-use.  The
  * adapters here are byte-for-byte the same surface + semantics as
  * tasks-v0's `storage/persist/*` so behaviour is identical.
  */
 
-import { CachingDataSource } from '@canopy/local-store';
+import { CachingDataSource } from '@onderling/local-store';
 
 /**
  * Build a persistent household DataSource from a `persistDb` descriptor.

@@ -21,8 +21,8 @@
  * The helper is pure (DI'd AsyncStorage) so vitest covers the full
  * decision tree against a Map-backed mock — no RN runtime needed.
  */
-import { AgentIdentity, validateMnemonic } from '@canopy/core';
-import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
+import { AgentIdentity, validateMnemonic } from '@onderling/core';
+import { VaultAsyncStorage } from '@onderling/react-native/identity/VaultAsyncStorage';
 
 const REQUIRED_WORDS = 24;
 const CHAT_VAULT_PREFIX = 'cc-chat-id:';

@@ -1,14 +1,14 @@
 /**
  * Per-circle pod producer (S4 structural slice) — drives the REAL sealing substrate
- * over an in-memory @canopy/pseudo-pod (no OIDC, no CSS, runs in CI). Proves a p2
+ * over an in-memory @onderling/pseudo-pod (no OIDC, no CSS, runs in CI). Proves a p2
  * circle gets a real per-circle control agent that bootstraps + seals to its own
  * pod, a p0 circle gets only a sealing identity (no control agent), and two circles
  * never share a sealing key. This is the in-browser counterpart of the CSS real-pod
  * verify (circleSealing.css.test.js).
  */
 import { describe, it, expect } from 'vitest';
-import { PodClient, createSealedPodClient, createSealedPodDataSource, generateKeypair } from '@canopy/pod-client';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { PodClient, createSealedPodClient, createSealedPodDataSource, generateKeypair } from '@onderling/pod-client';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../src/v2/circlePodProducer.js';
 
 class MemVault {
@@ -206,7 +206,7 @@ describe('circle group-key provisioning → getCircleSealStrategy activates L1b'
       const self = await prod.sealingIdentity.ensure();
       const insider = await prod.controlAgent.sealingStrategy(self.privateKey);
       const sealed = insider.seal('geheim');
-      const { recipientStrategy, groupKeyStrategy, generateGroupKey } = await import('@canopy/pod-client');
+      const { recipientStrategy, groupKeyStrategy, generateGroupKey } = await import('@onderling/pod-client');
       const outsiderStrat = posture === 'p3'
         ? recipientStrategy({ recipients: [outsider.publicKey], privateKey: outsider.privateKey })
         : groupKeyStrategy({ groupKey: generateGroupKey() /* a valid but WRONG group key */ });

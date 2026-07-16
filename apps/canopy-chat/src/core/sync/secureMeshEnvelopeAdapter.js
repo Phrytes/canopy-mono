@@ -1,5 +1,5 @@
 /**
- * secureMeshEnvelopeAdapter — a `@canopy/notify-envelope` transport adapter that
+ * secureMeshEnvelopeAdapter — a `@onderling/notify-envelope` transport adapter that
  * routes over canopy-chat's REAL cross-peer wire (the secure-mesh chat agent),
  * instead of an app meshAgent's in-process bus.
  *

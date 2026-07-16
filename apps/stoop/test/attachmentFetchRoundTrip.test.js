@@ -14,9 +14,9 @@
  * through its own gateway — no author round-trip, no plaintext on the wire.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { openBlob, openThumbnail } from '@canopy/blob-gateway';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { openBlob, openThumbnail } from '@onderling/blob-gateway';
 import { createNeighborhoodAgent } from '../src/index.js';
 import { makeSealCircle, makeSealedImageAttachment, TINY_PNG_B64 } from './helpers/sealedAttachment.js';
 

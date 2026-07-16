@@ -29,8 +29,8 @@ import { describe, it, expect, vi } from 'vitest';
 
 import {
   generateGroupKey, makeGroupSealer, makeGroupOpener, isSealed,
-} from '@canopy/pod-client/sealing';
-import { broadcastKringFanOut } from '@canopy/kring-host/kringBroadcast';
+} from '@onderling/pod-client/sealing';
+import { broadcastKringFanOut } from '@onderling/kring-host/kringBroadcast';
 
 import { createCircleMediaGateway, makeDevMediaBucket } from '../../src/v2/circleMediaGateway.js';
 import { createMediaEmbed } from '../../src/core/handlers/mediaEmbed.js';

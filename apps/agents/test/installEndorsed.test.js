@@ -15,7 +15,7 @@
  *      the only way in, unchanged).
  *
  * Real primitives: Ed25519 AgentIdentity, the pseudo-pod, the endorsement
- * resource, createCatalogSource — no catalog mock. Relative @canopy imports,
+ * resource, createCatalogSource — no catalog mock. Relative @onderling imports,
  * matching install.test.js.
  */
 import { describe, it, expect } from 'vitest';

@@ -29,7 +29,7 @@
  * COMPOSITION of existing kernel pieces (`Agent.invoke`/`callSkill`,
  * `PolicyEngine`, `CapabilityToken`, `TokenRegistry`, the transport port).
  * It reinvents no kernel primitive, so it belongs in a substrate
- * (`@canopy/secure-agent`) and keeps `@canopy/core` lean. Crucially it does
+ * (`@onderling/secure-agent`) and keeps `@onderling/core` lean. Crucially it does
  * NOT touch or bypass the `callSkill` security gate — it only decides
  * *where* an op is dispatched, then hands off to the kernel.
  */
@@ -100,12 +100,12 @@ export class RemoteHandlerRegistry {
  * If `opId` is NOT bound remotely, returns the `NOT_REMOTE` sentinel so the
  * caller falls through to its existing local-handler dispatch (additive).
  *
- * @param {import('@canopy/core').Agent} agent          — the dispatching (caller) agent
+ * @param {import('@onderling/core').Agent} agent          — the dispatching (caller) agent
  * @param {RemoteHandlerRegistry}        registry
  * @param {string}                       opId
- * @param {import('@canopy/core').Part[]} [parts=[]]
+ * @param {import('@onderling/core').Part[]} [parts=[]]
  * @param {object}                       [opts]          — forwarded to agent.invoke (timeout, ttl, …)
- * @returns {Promise<import('@canopy/core').Part[] | typeof NOT_REMOTE>}
+ * @returns {Promise<import('@onderling/core').Part[] | typeof NOT_REMOTE>}
  */
 export async function dispatchRemoteOp(agent, registry, opId, parts = [], opts = {}) {
   const entry = registry?.get?.(opId);
@@ -130,12 +130,12 @@ export async function dispatchRemoteOp(agent, registry, opId, parts = [], opts =
  * the caller's TokenRegistry at dispatch time.
  *
  * @param {object} p
- * @param {import('@canopy/core').Agent} p.hostAgent     — issues the grant (the remote/external agent)
- * @param {import('@canopy/core').Agent} p.callerAgent   — receives + holds the grant
+ * @param {import('@onderling/core').Agent} p.hostAgent     — issues the grant (the remote/external agent)
+ * @param {import('@onderling/core').Agent} p.callerAgent   — receives + holds the grant
  * @param {string}  p.skillId                            — skill id (or pattern) the grant covers
  * @param {number}  [p.expiresIn]                        — seconds; forwarded to issueCapabilityToken
  * @param {object}  [p.constraints]
- * @returns {Promise<import('@canopy/core').CapabilityToken>} the issued token
+ * @returns {Promise<import('@onderling/core').CapabilityToken>} the issued token
  */
 export async function grantRemoteCapability({ hostAgent, callerAgent, skillId, expiresIn, constraints }) {
   if (!hostAgent?.issueCapabilityToken) {
@@ -167,7 +167,7 @@ export async function grantRemoteCapability({ hostAgent, callerAgent, skillId, e
  * This is the end-to-end revoke→deny hook: it makes the same remote dispatch
  * that succeeded now DENY, driven purely from the kernel's PolicyEngine.
  *
- * @param {import('@canopy/core').PolicyEngine} policyEngine — the host agent's PolicyEngine
+ * @param {import('@onderling/core').PolicyEngine} policyEngine — the host agent's PolicyEngine
  * @param {{ isRevoked: (id: string) => boolean|Promise<boolean> }} revocationList
  * @returns {{ isRevoked: (id: string) => boolean|Promise<boolean> }} the revocationList (for chaining)
  */

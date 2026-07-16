@@ -2,7 +2,7 @@
  * Mobile file-picker adapter for Bundle F P4 (#260) +
  * P4-followup-2 (#267).
  *
- * Wraps the substrate `@canopy/react-native/picker` and exposes a
+ * Wraps the substrate `@onderling/react-native/picker` and exposes a
  * single `openFilePicker()` that returns a payload compatible with
  * canopy-chat's `localBuiltins.sendFile` / `createFileEmbed` —
  * `{name, type, size, dataB64}`.  This mirrors web's
@@ -20,7 +20,7 @@
  * canopy-chat-unifier principle: substrate is portable, app-shell
  * does the gluing.
  */
-import { pickOneDocument } from '@canopy/react-native/picker';
+import { pickOneDocument } from '@onderling/react-native/picker';
 
 /**
  * Open the OS document picker, return a File-like object compatible

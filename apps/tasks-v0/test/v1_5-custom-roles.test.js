@@ -21,10 +21,10 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 import {
   isKnownRole, unregisterCustomRole,
-} from '@canopy/core';
+} from '@onderling/core';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCircleAgent } from '../src/Circle.js';
@@ -224,7 +224,7 @@ describe('V1.5 — boot-time custom-role re-registration', () => {
     // Register another directly into the process registry, NOT via
     // this circle (simulates a different circle's earlier registration
     // that this circle didn't know about).
-    const { registerCustomRole } = await import('@canopy/core');
+    const { registerCustomRole } = await import('@onderling/core');
     registerCustomRole(idProcess, 22);
 
     const r = await callSkill(circle.agent, 'listKnownRoles', {}, ANNE);

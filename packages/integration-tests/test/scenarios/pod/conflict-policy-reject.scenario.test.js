@@ -24,7 +24,7 @@
  *   - Alice's etag map advanced to her latest write.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { PodClient, ConflictError } from '@canopy/pod-client';
+import { PodClient, ConflictError } from '@onderling/pod-client';
 import { MockPod } from '../../../src/_harness/index.js';
 
 const POD_ROOT = 'https://alice.example/';

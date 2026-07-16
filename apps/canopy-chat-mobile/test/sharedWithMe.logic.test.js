@@ -8,10 +8,10 @@
  */
 import { describe, it, expect } from 'vitest';
 import nacl from 'tweetnacl';
-import { recipientStrategy, sealingKeyPairFromNetworkKey, sealingPublicKeyFromNetworkKey } from '@canopy/pod-client/sealing';
-import { sealItem } from '@canopy/item-store';
+import { recipientStrategy, sealingKeyPairFromNetworkKey, sealingPublicKeyFromNetworkKey } from '@onderling/pod-client/sealing';
+import { sealItem } from '@onderling/item-store';
 // The barrel exports the RN screen imports — prove they are the ONE shared source.
-import { buildSharedWithMe as barrelBuild, openSharedCopy as barrelOpen } from '@canopy-app/canopy-chat';
+import { buildSharedWithMe as barrelBuild, openSharedCopy as barrelOpen } from '@onderling-app/canopy-chat';
 import { buildSharedWithMe as sharedBuild, openSharedCopy as sharedOpen } from '../../canopy-chat/src/v2/sharedWithMe.js';
 
 const b64u = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

@@ -9,7 +9,7 @@
  *
  * Convention: skill handler `(args, skillCtx) → {replies, stateUpdates}`
  * — already the renderChat shape, so household plugs into
- * `@canopy/manifest-host` without an adapter (unlike tasks-v0's SDK
+ * `@onderling/manifest-host` without an adapter (unlike tasks-v0's SDK
  * skills, which need `apps/tasks-v0/src/mountable.js`'s adapter).
  */
 

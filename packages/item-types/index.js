@@ -1,5 +1,5 @@
 /**
- * @canopy/item-types — cross-app item-type taxonomy + JSON
+ * @onderling/item-types — cross-app item-type taxonomy + JSON
  * Schema validation.
  *
  * The default export is a registry pre-loaded with the canonical

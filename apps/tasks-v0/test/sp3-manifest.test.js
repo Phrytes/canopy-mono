@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { renderChat, validateManifest } from '@canopy/app-manifest';
+import { renderChat, validateManifest } from '@onderling/app-manifest';
 
 import { tasksManifest }          from '../manifest.js';
 import { buildSkills }            from '../src/skills/index.js';

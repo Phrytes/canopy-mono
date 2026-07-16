@@ -11,7 +11,7 @@
  *
  * ── The DataPart wrapper (why stoop differs from household) ──────────────────────────────────────────
  * Household was already dissolved onto a per-circle `CircleItemStore`; its ops are pure functions over that
- * store. Stoop is NOT dissolved — it still uses legacy `@canopy/core` `defineSkill('opId', ({parts, from}) =>
+ * store. Stoop is NOT dissolved — it still uses legacy `@onderling/core` `defineSkill('opId', ({parts, from}) =>
  * ...)` handlers where structured args ride in a single `DataPart` (see `dataArgs(parts)` in
  * `src/skills/index.js`). So `callSkill` here builds the SYNTHETIC single-DataPart input the handlers expect:
  *   handler({ parts: [{ type: 'DataPart', data: {...args} }], from: ctx.by, envelope: ctx.envelope ?? {} })
@@ -34,9 +34,9 @@
  * for tests + the future gated wiring — it hands the resolved opId to the real handler, it does not decide
  * authorisation.
  */
-import { dispatchCapability } from '@canopy/app-manifest';
-import { ItemStore } from '@canopy/item-store';
-import { MemorySource } from '@canopy/core';
+import { dispatchCapability } from '@onderling/app-manifest';
+import { ItemStore } from '@onderling/item-store';
+import { MemorySource } from '@onderling/core';
 import { buildSkills, buildStoopScope, STOOP_CORES } from './skills/index.js';
 import { stoopManifest } from '../manifest.js';
 

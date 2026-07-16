@@ -28,7 +28,7 @@
  * latest state (React's setter is async-scheduled; the ref is
  * the synchronous source of truth between renders).
  */
-// Relative path (not the `@canopy-app/canopy-chat/core-localBuiltins`
+// Relative path (not the `@onderling-app/canopy-chat/core-localBuiltins`
 // subpath export) — Metro on RN doesn't honor package.json "exports"
 // subpaths the way Node does.  Same pattern agentBundle.js uses for
 // realAgent.js.

@@ -1,7 +1,7 @@
 /**
  * Substrate-stack builder for Tasks-v0 circle bundles — THIN SHIM.
  *
- * The stack logic lives ONCE in `@canopy/substrate-stack` (it used to be a
+ * The stack logic lives ONCE in `@onderling/substrate-stack` (it used to be a
  * self-described "mirror of Stoop's" copy — the exact cross-app duplication
  * invariant #3 forbids; consolidated 2026-07-09). This shim preserves the
  * Tasks entry name, its literal deviceId fallback, and the
@@ -10,11 +10,11 @@
  * Original context (Phase 52.9.3, Tasks V2 ninth slice).
  */
 
-import { buildSubstrateStack as buildSharedSubstrateStack } from '@canopy/substrate-stack';
+import { buildSubstrateStack as buildSharedSubstrateStack } from '@onderling/substrate-stack';
 
 /**
- * @param {object} args — see `@canopy/substrate-stack`.
- * @param {import('@canopy/core').Agent} args.agent
+ * @param {object} args — see `@onderling/substrate-stack`.
+ * @param {import('@onderling/core').Agent} args.agent
  * @param {string} [args.deviceId] — defaults to `agent.address`.
  * @param {object} [args.existingPseudoPod] — reuse instead of constructing.
  */

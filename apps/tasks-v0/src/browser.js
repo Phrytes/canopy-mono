@@ -24,7 +24,7 @@
 
 import {
   AgentIdentity, InternalTransport,
-} from '@canopy/core';
+} from '@onderling/core';
 
 import { buildBundle }     from './storage/buildBundle.js';
 import { createCircleAgent } from './Circle.js';

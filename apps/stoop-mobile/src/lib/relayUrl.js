@@ -6,7 +6,7 @@
  *
  * The relay is a simple WebSocket broker that lets two devices reach
  * each other when they're not on the same Wi-Fi (or when the LAN
- * blocks mDNS multicast).  Run it locally with `npx @canopy/relay`
+ * blocks mDNS multicast).  Run it locally with `npx @onderling/relay`
  * on a laptop visible to both phones, or deploy the same package to
  * a public host.
  *

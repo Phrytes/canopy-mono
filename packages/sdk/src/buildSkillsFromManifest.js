@@ -7,7 +7,7 @@
  * return `[{ id, handler, visibility }]` for the caller to `agent.register`.
  * This is that loop, factored out ONCE so the three builders can't drift.
  *
- *     import { buildSkillsFromManifest } from '@canopy/sdk';         // (bare barrel)
+ *     import { buildSkillsFromManifest } from '@onderling/sdk';         // (bare barrel)
  *     // …or, from a browser/RN bundle that must stay node-free:
  *     import { buildSkillsFromManifest } from '.../packages/sdk/src/buildSkillsFromManifest.js';
  *
@@ -21,9 +21,9 @@
  * RESOLUTION / BROWSER-BOUNDARY: like `wireSkill`, this helper is a zero-node
  * module (its only import is `wireSkill.js`, whose only import is
  * `connectSkill.js` — a node-free 2-file closure). Browser/RN callers import it
- * by RELATIVE PATH from `packages/sdk/src/` rather than the bare `@canopy/sdk`
- * barrel, because the barrel re-exports `@canopy/transports` etc. which drag in
- * node deps. Callers that already have `@canopy/sdk` on a node-safe path (e.g.
+ * by RELATIVE PATH from `packages/sdk/src/` rather than the bare `@onderling/sdk`
+ * barrel, because the barrel re-exports `@onderling/transports` etc. which drag in
+ * node deps. Callers that already have `@onderling/sdk` on a node-safe path (e.g.
  * agents) may bare-import it.
  *
  * The op SELECTION (runtime filter, an explicit id list, …) is the caller's job:

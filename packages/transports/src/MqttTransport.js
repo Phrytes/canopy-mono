@@ -20,7 +20,7 @@
  *   });
  *   await t.connect();
  */
-import { Transport } from '@canopy/core';
+import { Transport } from '@onderling/core';
 
 const PREFIX = 'canopy';
 

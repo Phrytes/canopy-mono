@@ -101,7 +101,7 @@ export function parseIcsToBusy(icsString, range) {
  * to busy intervals overlapping the range. Sort ascending by start.
  *
  * The DataSource interface needs `list(prefix)` + `read(path)`. The
- * Tasks `localStoreBundle.cache` (`@canopy/local-store`'s
+ * Tasks `localStoreBundle.cache` (`@onderling/local-store`'s
  * `CachingDataSource`) supports both.
  *
  * @param {object} args

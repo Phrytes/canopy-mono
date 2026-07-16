@@ -11,7 +11,7 @@
  *
  * The `OidcSessionRN` parameter is structurally typed: any object with
  * `{ getAuthenticatedFetch(), webid, logout() }` works.  Apps may pass
- * a session built by `@canopy/oidc-session-rn` (the canonical case)
+ * a session built by `@onderling/oidc-session-rn` (the canonical case)
  * or a hand-rolled compatible shape (e.g. test stubs).
  */
 
@@ -35,7 +35,7 @@ export async function defaultPodFactory(cfg, oidc) {
 
   // Lazy-load the pod-client package so unit tests that mock this
   // factory entirely never need to resolve it.
-  const { PodClient, SolidOidcAuth } = await import('@canopy/pod-client');
+  const { PodClient, SolidOidcAuth } = await import('@onderling/pod-client');
 
   const authVault = {
     getAuthenticatedFetch: () => oidc.getAuthenticatedFetch(),

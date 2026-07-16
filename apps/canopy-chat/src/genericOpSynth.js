@@ -26,7 +26,7 @@
  *   - COLLECTION atoms (list) → no positional (body kind `none`).
  */
 
-import { capabilitiesOf, encodeGenericOpId } from '@canopy/app-manifest';
+import { capabilitiesOf, encodeGenericOpId } from '@onderling/app-manifest';
 
 /** Atoms whose slash positional is the item ID (bound to `id`); everything else binds to `body`. */
 const REFERENCE_ATOMS = new Set(['get', 'remove', 'delete']);

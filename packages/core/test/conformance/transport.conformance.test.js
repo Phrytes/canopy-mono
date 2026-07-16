@@ -1,17 +1,17 @@
 /**
  * Transport PORT conformance — run the harness against two reference adapters:
- *   • InternalTransport   (@canopy/core — in-process bus)
- *   • RendezvousTransport (@canopy/transports — WebRTC DataChannel)
+ *   • InternalTransport   (@onderling/core — in-process bus)
+ *   • RendezvousTransport (@onderling/transports — WebRTC DataChannel)
  *
  * Both MUST pass: implementing the port + passing this harness is the definition
- * of "compatible with the @canopy SDK". See docs/conventions/ports.md.
+ * of "compatible with the @onderling SDK". See docs/conventions/ports.md.
  */
 import { describe, it } from 'vitest';
-import { assertTransportConformance } from '@canopy/core/conformance';
+import { assertTransportConformance } from '@onderling/core/conformance';
 import { InternalBus, InternalTransport } from '../../src/transport/InternalTransport.js';
 import { AgentIdentity } from '../../src/identity/AgentIdentity.js';
-import { RendezvousTransport } from '@canopy/transports';
-import { VaultMemory } from '@canopy/vault';
+import { RendezvousTransport } from '@onderling/transports';
+import { VaultMemory } from '@onderling/vault';
 
 // ── Reference adapter 1: InternalTransport ──────────────────────────────────
 describe('Transport port — InternalTransport (reference adapter)', () => {

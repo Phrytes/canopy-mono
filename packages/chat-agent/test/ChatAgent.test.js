@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { LlmClient, mockProvider } from '@canopy/llm-client';
+import { LlmClient, mockProvider } from '@onderling/llm-client';
 import { ChatAgent, InMemoryBridge } from '../src/index.js';
 
 const SYS = 'You are a test assistant.';

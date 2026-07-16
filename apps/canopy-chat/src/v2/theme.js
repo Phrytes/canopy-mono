@@ -8,7 +8,7 @@
  * This object is the single token source. The web mirror lives in
  * web/v2/theme.css (`:root` CSS vars with the SAME values — keep in sync);
  * the mobile theme (canopy-chat-mobile/src/screens/v2/theme.js) imports THEME
- * from here via '@canopy-app/canopy-chat'.
+ * from here via '@onderling-app/canopy-chat'.
  */
 
 export const THEME = {

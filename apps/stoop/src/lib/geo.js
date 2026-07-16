@@ -14,7 +14,7 @@
  *
  * **Substrate candidate** (rule of two — first consumer): when a
  * 2nd app wants distance-filtered fan-out, lift this into
- * `@canopy/geo-grid`.  Tracked in
+ * `@onderling/geo-grid`.  Tracked in
  * `Project Files/Substrates/substrate-candidates.md`.
  */
 

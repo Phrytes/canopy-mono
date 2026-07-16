@@ -6,7 +6,7 @@
  * modules are needed.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { InternalBus, DataPart, TextPart, Parts } from '@canopy/core';
+import { InternalBus, DataPart, TextPart, Parts } from '@onderling/core';
 import { MessageStore }                           from '../src/store/messages.js';
 import { makeAgent, startAndConnect }             from './helpers.js';
 

@@ -1,4 +1,4 @@
-# @canopy/pod-onboarding
+# @onderling/pod-onboarding
 
 Pod-provisioning orchestration for the Decentralised-Web-Agent (DWA)
 stack — one-tap "create my pod" + mnemonic-restore on a new device.
@@ -17,8 +17,8 @@ Solid-server interactions (OIDC, PUT, ACP, WebID patch) ride on an
 ## What it does
 
 ```js
-import { createPodOnboarding } from '@canopy/pod-onboarding';
-import { generateMnemonic }    from '@canopy/core';
+import { createPodOnboarding } from '@onderling/pod-onboarding';
+import { generateMnemonic }    from '@onderling/core';
 
 const onboarding = createPodOnboarding({
   pseudoPod,
@@ -134,7 +134,7 @@ podProvisioner = {
 V0 ships **no built-in provisioner** — apps wire their own
 (Inrupt-SDK-based for Inrupt pods; CSS-specific for self-hosted CSS;
 test mocks for unit tests). Real implementations land alongside the
-`@canopy/pod-client` extensions in Phase 52.6.
+`@onderling/pod-client` extensions in Phase 52.6.
 
 ---
 
@@ -146,7 +146,7 @@ serializing them to the Solid-server's preferred wire format
 (Turtle for ACP resources is standard).
 
 ```js
-import { defaultAcpTemplates, MODES } from '@canopy/pod-onboarding';
+import { defaultAcpTemplates, MODES } from '@onderling/pod-onboarding';
 
 const t = defaultAcpTemplates({ agentWebid: 'https://anne.pod/profile#me' });
 // t.private        — agent-locked
@@ -164,7 +164,7 @@ import {
   buildInitialAgentRegistry,
   buildWebidPointers,
   pointerPredicates,
-} from '@canopy/pod-onboarding';
+} from '@onderling/pod-onboarding';
 ```
 
 These are pure-data helpers exposed so consumer code (apps,
@@ -213,7 +213,7 @@ pointerPredicates()
 - **Validate ACP templates against the target server.** The templates
   are shaped for ACP-the-spec; server quirks are the provisioner's
   problem.
-- **Manage OIDC session refresh.** That's `@canopy/oidc-session`'s
+- **Manage OIDC session refresh.** That's `@onderling/oidc-session`'s
   job; the onboarding substrate just calls `logout()` on sign-out.
 - **Track audit-log resources.** Pointer predicate is written
   (`dec:audit-log-uri`) but no consumer / writer exists yet.

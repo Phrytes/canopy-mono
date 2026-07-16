@@ -35,7 +35,7 @@ const manageHttpHost = process.env.COMPANION_MANAGE_HTTP_HOST ?? '127.0.0.1';
 const node = await startCompanionNode({ relayUrl, port, host, management, managementOwnerPubKey, manageHttp, manageHttpHost });
 
 console.log('');
-console.log('  @canopy-app/companion-node  (Slice R1 — LAN/trusted, no gate)');
+console.log('  @onderling-app/companion-node  (Slice R1 — LAN/trusted, no gate)');
 console.log('  ────────────────────────────────────────────────────────────');
 console.log(`  Host agent:   ${node.agent.address}`);
 console.log(`  Relay:        ${node.relayUrl}${node.relay ? '  (booted in-process)' : '  (shared, connected as client)'}`);

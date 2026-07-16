@@ -11,7 +11,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { viewAsDirectory } from '@canopy-app/canopy-chat';
+import { viewAsDirectory } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function CircleViewAsScreen({ members = [], policy = 'pairwise', onBack }) {

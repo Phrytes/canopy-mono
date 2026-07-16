@@ -9,7 +9,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { buildSkillMatches } from '@canopy-app/canopy-chat';
+import { buildSkillMatches } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function CircleSkillMatchesScreen({ matches = [], onBack }) {

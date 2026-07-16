@@ -1,8 +1,8 @@
-# @canopy/oidc-session
+# @onderling/oidc-session
 
 > **Layer: substrate.** Solid OIDC session manager for **Node / desktop**.
-> Peer of [`@canopy/oidc-session-rn`](../oidc-session-rn/) (the React
-> Native variant). Extracted from `@canopy/core` 2026-05-11 as part of
+> Peer of [`@onderling/oidc-session-rn`](../oidc-session-rn/) (the React
+> Native variant). Extracted from `@onderling/core` 2026-05-11 as part of
 > the standardisation P1 work (Phase 50.1 — see
 > `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`).
 
@@ -39,7 +39,7 @@
 ## Public API
 
 ```js
-import { SolidVault } from '@canopy/oidc-session';
+import { SolidVault } from '@onderling/oidc-session';
 
 const sv = new SolidVault({
   webid:       'https://alice.example/profile/card#me',
@@ -93,14 +93,14 @@ interface VaultLike {
 }
 ```
 
-`@canopy/core`'s `VaultMemory` / `VaultNodeFs` / `VaultIndexedDB` /
+`@onderling/core`'s `VaultMemory` / `VaultNodeFs` / `VaultIndexedDB` /
 `VaultLocalStorage` all satisfy this. The substrate ships a minimal
 in-memory default for the no-vault-supplied case (test ergonomics);
 production callers should pass their own.
 
 ## Relationship with the RN peer
 
-`@canopy/oidc-session-rn` and this package share the **consumer-facing
+`@onderling/oidc-session-rn` and this package share the **consumer-facing
 contract** (`isAuthenticated()`, `getAuthenticatedFetch()`, `logout()`,
 `webid` getter) but differ in **how the OIDC dance happens**:
 
@@ -135,11 +135,11 @@ documented in `test/SolidVault.css.test.js`.
 
 ## Deprecation re-export
 
-The 2026-07-05 de-fat **removed** `@canopy/core`'s re-export of `SolidVault` — import
-it from `@canopy/oidc-session` directly:
+The 2026-07-05 de-fat **removed** `@onderling/core`'s re-export of `SolidVault` — import
+it from `@onderling/oidc-session` directly:
 
 ```js
-import { SolidVault } from '@canopy/oidc-session';
+import { SolidVault } from '@onderling/oidc-session';
 ```
 
 ## Solid-auth consolidation status (Phase 52.15)
@@ -152,7 +152,7 @@ capture the inventory, the substrate design, and the phase plan.
   exports, `createSolidAuthNode` factory, Folio + Stoop wrappers
   retired.
 - **52.15.4 / 52.15.5 shipped 2026-05-14** — web HTML picker +
-  React Native `<IssuerPicker>` (`@canopy/oidc-session-rn/picker`)
+  React Native `<IssuerPicker>` (`@onderling/oidc-session-rn/picker`)
   + adoption in all 5 apps.
 - **52.15.6 / 52.15.7 / 52.15.8 shipped 2026-05-14** — terminology
   contract locked in
@@ -164,8 +164,8 @@ but not yet implemented.
 
 ## See also
 
-- [`@canopy/oidc-session-rn`](../oidc-session-rn/) — RN peer.
-- [`@canopy/pod-client`](../pod-client/) — `SolidOidcAuth` wraps a
+- [`@onderling/oidc-session-rn`](../oidc-session-rn/) — RN peer.
+- [`@onderling/pod-client`](../pod-client/) — `SolidOidcAuth` wraps a
   `SolidVault` session and adapts it to the `PodClient` auth contract.
 - `Project Files/SDK/core-v2-functional-design-2026-05-11.md`
   — design context.

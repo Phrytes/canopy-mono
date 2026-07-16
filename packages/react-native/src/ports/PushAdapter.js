@@ -3,7 +3,7 @@
  * @abstract
  *
  * ── Ports-and-adapters boundary ─────────────────────────────────────────────
- * This is one of the three named ports under `@canopy/react-native/ports`
+ * This is one of the three named ports under `@onderling/react-native/ports`
  * (with {@link BackgroundAdapter} and {@link SecureStore}). It is the shared,
  * platform-neutral CONTRACT; the per-platform native code lives in concretes:
  *   - ExpoNotificationsAdapter — v1 default, wraps `expo-notifications`.

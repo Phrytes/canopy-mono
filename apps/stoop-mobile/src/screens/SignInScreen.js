@@ -29,13 +29,13 @@ import {
   TextInput,
 } from 'react-native';
 
-import { IssuerPicker } from '@canopy/oidc-session-rn/picker';
+import { IssuerPicker } from '@onderling/oidc-session-rn/picker';
 
 import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/localisation.js';
 import { useService }                         from '../ServiceContext.js';
 import { useStoopAuth }                       from '../auth/stoopAuthHook.js';
-import { derivePodRootFromWebId }             from '@canopy-app/stoop/lib/derivePodRoot';
+import { derivePodRootFromWebId }             from '@onderling-app/stoop/lib/derivePodRoot';
 
 const DEFAULT_ISSUER = 'https://login.inrupt.com';
 

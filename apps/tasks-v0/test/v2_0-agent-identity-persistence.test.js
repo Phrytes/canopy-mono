@@ -14,8 +14,8 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { buildBundle } from '../src/storage/buildBundle.js';
 import { createCircleAgent } from '../src/Circle.js';

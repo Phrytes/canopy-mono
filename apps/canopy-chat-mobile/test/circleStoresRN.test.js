@@ -10,7 +10,7 @@ import {
   asyncKeyedIo, asyncFixedIo,
   makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
 } from '../src/core/circleStoresRN.js';
-import { DEFAULT_CIRCLE_POLICY, DEFAULT_AVAILABILITY } from '@canopy-app/canopy-chat';
+import { DEFAULT_CIRCLE_POLICY, DEFAULT_AVAILABILITY } from '@onderling-app/canopy-chat';
 
 function mockAsyncStorage() {
   const m = new Map();

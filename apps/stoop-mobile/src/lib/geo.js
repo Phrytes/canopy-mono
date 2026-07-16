@@ -17,7 +17,7 @@
  *   `{ cell, label: null, source: 'gps' }`.
  *
  * The cell helpers (`cellFor`, `cellCenter`, `distanceKm`, `snapToGrid`,
- * `DISTANCE_PRESETS`, `GEO_DEFAULTS`) come from `@canopy-app/stoop/lib/geo`
+ * `DISTANCE_PRESETS`, `GEO_DEFAULTS`) come from `@onderling-app/stoop/lib/geo`
  * — same source, same grid, same labels — so cells produced on the
  * phone collide bit-for-bit with cells produced on the laptop.
  */
@@ -30,7 +30,7 @@ import {
   snapToGrid,
   DISTANCE_PRESETS,
   GEO_DEFAULTS,
-} from '@canopy-app/stoop/lib/geo';
+} from '@onderling-app/stoop/lib/geo';
 
 export { cellFor, cellCenter, distanceKm, snapToGrid, DISTANCE_PRESETS, GEO_DEFAULTS };
 

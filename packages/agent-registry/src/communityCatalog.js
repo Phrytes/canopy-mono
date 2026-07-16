@@ -17,12 +17,12 @@
  * the circle's OWN roster policy. In canopy-chat that predicate is the circles
  * substrate's audience resolver over the circle's admin role, e.g.
  *
- *     import { inAudience } from '@canopy/circles';
+ *     import { inAudience } from '@onderling/circles';
  *     const isAdmin = (pk) => inAudience(pk, 'role:admin', { roleMembers: circle.roles });
  *
  * — i.e. exactly the `by ∈ admins` gate `PLAN-circle-share-policy` already uses
  * for share initiation. Keeping the predicate INJECTED (rather than importing
- * `@canopy/circles` here) preserves the substrate layering: `@canopy/agent-
+ * `@onderling/circles` here) preserves the substrate layering: `@onderling/agent-
  * registry` stays circle-agnostic; the app wires the concrete circle policy.
  * A non-admin's endorsement is REJECTED (deny-by-default): if no predicate is
  * supplied the catalog refuses to build rather than silently ungating.

@@ -24,7 +24,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import {
   renderReply, canopyChatManifest,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 
 import { composeManifests } from '../src/core/composeManifests.js';
 import { t, initLocalisation } from '../src/core/localisation.js';

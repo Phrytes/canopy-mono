@@ -1,2 +1,2 @@
-// Lifted to @canopy/sync-engine.  Re-export shim for back-compat.
-export { diff } from '@canopy/sync-engine/diff';
+// Lifted to @onderling/sync-engine.  Re-export shim for back-compat.
+export { diff } from '@onderling/sync-engine/diff';

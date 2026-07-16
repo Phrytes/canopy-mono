@@ -5,7 +5,7 @@
  * that CROSSES circles. On the in-memory substrate that read is unguarded (there is no real pod to gate
  * against). On a real pod the source item lives behind ACP/WAC and, if confidential, inside a sealed
  * envelope. This module is the seam that lets `resolveSharedRef` ENFORCE that posture WITHOUT item-store
- * taking a hard dependency on `@canopy/pod-client`: the pod-layer surfaces (`client.sharing`, sealing
+ * taking a hard dependency on `@onderling/pod-client`: the pod-layer surfaces (`client.sharing`, sealing
  * `open`) are INJECTED; this file only adapts their shapes to a tiny policy contract.
  *
  * The policy contract:
@@ -34,7 +34,7 @@
  *   • `registered` — copy mechanism; admins-only initiation.
  * and `canonical` is objective L (the deferred "revocable canonical"): NO copy — the item stays canonical in
  * its origin circle and the recipient gets a REVOCABLE KEY GRANT to open it IN PLACE (see
- * `@canopy/pod-client`'s `createCanonicalShare`: grantMember + ACP grant to share, rotateGroupKeyResource +
+ * `@onderling/pod-client`'s `createCanonicalShare`: grantMember + ACP grant to share, rotateGroupKeyResource +
  * ACP revoke to deny). Enum-only here; the app's circle-policy mirrors this list for its settings surface.
  */
 export const SHARE_POSTURES = Object.freeze(['closed', 'copy', 'trusted', 'registered', 'canonical']);
@@ -81,7 +81,7 @@ export const SEAL_RESERVED_KEYS = Object.freeze(new Set([
  * through `sealText` (a per-string sealer, e.g. the injected `recipientStrategy({recipients}).seal`), leaving
  * the reserved structural keys (`SEAL_RESERVED_KEYS`) untouched so the item stays listable/attributable.
  * Returns a NEW item (never mutates the stored one). The crypto is INJECTED — item-store never imports
- * `@canopy/pod-client` (invariant #5); `sealText` carries the recipient public keys in its closure.
+ * `@onderling/pod-client` (invariant #5); `sealText` carries the recipient public keys in its closure.
  *
  * Read-side symmetry: `unsealItem(item, open)` opens EVERY string field, and a non-sealed field passes
  * through `open` unchanged — so sealing only the content fields here round-trips cleanly (the reserved
@@ -152,7 +152,7 @@ export function makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, 
  * pod-backed store. `shareIntoAudience` writes the `shared-ref` (memory op, unchanged) and then, if an
  * `onShare` hook is injected, calls it so the pod layer can make the read ACTUALLY possible: create the
  * ACP read-grant for the recipient on the SOURCE item's resource, and (optionally) re-seal so the recipient
- * can open the envelope. No `@canopy/pod-client` import — the `sharing.grant` + `seal` surfaces are passed in
+ * can open the envelope. No `@onderling/pod-client` import — the `sharing.grant` + `seal` surfaces are passed in
  * (mirroring how the read policy injects `sharing.list` + `open`).
  *
  * Symmetry with the read gate: the read gate (`makeSharedRefPolicy.checkGrant`) asks "does recipient have a
@@ -164,7 +164,7 @@ export function makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, 
  *        `sharing.grant({ resourceUri, agent, modes })` once per recipient.
  * @param {(ref:object)=>(string|null)} [opts.resourceUriFor]  maps a `shared-ref` → the source item's pod
  *        resource URI (the ACP target). Defaults to the logical `sourceCircle/sourceId` (a real pod injects
- *        the storage-layout URI from `@canopy/pod-onboarding`'s `sharedRefResourceUri`).
+ *        the storage-layout URI from `@onderling/pod-onboarding`'s `sharedRefResourceUri`).
  * @param {string} [opts.mode='read']  the access mode to grant.
  * @param {(item:object, ctx:{recipient:string, recipients:string[], recipientKeys:string[], ref:object})=>object|Promise<object>} [opts.seal]
  *        optional re-seal step. In the group-key posture the recipient already holds the key so no re-seal is
@@ -189,7 +189,7 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
     if (!resourceUri) throw new Error('makeShareGrantHook: no resource URI for the shared-ref');
 
     // Who gets the read grant. A circle share resolves to one or more recipient WebIDs at the composition
-    // layer (via @canopy/circles) and passes them in; deny-by-default: no recipient ⇒ refuse the share.
+    // layer (via @onderling/circles) and passes them in; deny-by-default: no recipient ⇒ refuse the share.
     const who = Array.isArray(recipients) && recipients.length ? recipients
       : (recipient ? [recipient] : []);
     if (who.length === 0) throw new Error('makeShareGrantHook: at least one recipient is required to grant');
@@ -215,12 +215,12 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
 /**
  * CANONICAL share hook (objective L) — the WRITE-side companion for the `canonical` posture. Where
  * `makeShareGrantHook` grants a plain ACP read and (optionally) re-seals a COPY, this instead composes the
- * injected `createCanonicalShare` controller (`@canopy/pod-client`) so a share GRANTS the recipient INTO the
+ * injected `createCanonicalShare` controller (`@onderling/pod-client`) so a share GRANTS the recipient INTO the
  * item's group-key resource (`grantMember` → O(1) key re-wrap) AND lands the ACP read grant — NO copy is
  * written; `shareIntoAudience` still writes ONLY the `shared-ref` pointer. The recipient then opens the
  * CANONICAL resource in place. `revoke` rotates the group key to the remaining recipients + ACP-revokes.
  *
- * No `@canopy/pod-client` import here: the `canonicalShare` controller (with `share`/`revoke`) is INJECTED,
+ * No `@onderling/pod-client` import here: the `canonicalShare` controller (with `share`/`revoke`) is INJECTED,
  * exactly as `sharing`/`seal` are injected for the copy postures. item-store only orchestrates the per-
  * recipient loop and the roster bookkeeping the substrate's `grantMember`/`rotate` require.
  *
@@ -281,8 +281,8 @@ export function makeCanonicalShareHook({ canonicalShare, currentRecipients } = {
  * accept, and nothing else. The pod-backed composition point injects the live surfaces here and threads the
  * result into `shareIntoAudience(stores, { …, onShare })` + `resolveSharedRef(stores, ref, { policy, recipient })`.
  *
- * No `@canopy/pod-client` import: `sharing` (`{ grant, list }` = `client.sharing`), `open`/`seal` (sealing
- * with key custody), and `resourceUriFor` (from `@canopy/pod-onboarding`'s `sharedRefResourceUri`) are all
+ * No `@onderling/pod-client` import: `sharing` (`{ grant, list }` = `client.sharing`), `open`/`seal` (sealing
+ * with key custody), and `resourceUriFor` (from `@onderling/pod-onboarding`'s `sharedRefResourceUri`) are all
  * injected. Deny-by-default is preserved on the read side; the write side refuses a grant-less share.
  *
  * CANONICAL branch (objective L, additive): when a `canonicalShare` controller is injected, the returned

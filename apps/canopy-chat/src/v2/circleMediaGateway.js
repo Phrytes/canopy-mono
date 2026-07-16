@@ -26,16 +26,16 @@
  * It exists so the sealed path is user-reachable and demoable NOW. The seal
  * strategy, the upload/refuse-plaintext invariants, and the deny-by-default
  * gate are the REAL contracts. The recorded swap point for live infra:
- *   • bucket      → `@canopy/blob-gateway/adapters/s3`   (createS3Bucket, S3/R2)
- *   • verifyToken → `@canopy/blob-gateway/adapters/solid-verifier`
- *   • acl         → `@canopy/blob-gateway/adapters/pod-acl`
- *   • HTTP edge   → `@canopy/blob-gateway/http` (createHttpGate)
+ *   • bucket      → `@onderling/blob-gateway/adapters/s3`   (createS3Bucket, S3/R2)
+ *   • verifyToken → `@onderling/blob-gateway/adapters/solid-verifier`
+ *   • acl         → `@onderling/blob-gateway/adapters/pod-acl`
+ *   • HTTP edge   → `@onderling/blob-gateway/http` (createHttpGate)
  * Only the `bucket`/`gate`/`token` seams change; the gateway shape — and so
  * the handler, the message pointer, and the chip — stay byte-identical.
  */
 
-import { createBlobGatekeeper, openBlob } from '@canopy/blob-gateway';
-import { CapabilityToken } from '@canopy/core';
+import { createBlobGatekeeper, openBlob } from '@onderling/blob-gateway';
+import { CapabilityToken } from '@onderling/core';
 import { circleMemberActors } from './circleMemberActors.js';
 
 /**
@@ -70,7 +70,7 @@ export function makeDevMediaBucket() {
 
 /* ── REMOTE (deployed edge) mode ──────────────────────────────────────────────
  * The DEPLOYED counterpart of the dev bucket: full-size photos land in a real
- * object bucket behind the blob-gate HTTP edge (@canopy/relay `blobGateMount`),
+ * object bucket behind the blob-gate HTTP edge (@onderling/relay `blobGateMount`),
  * not in the per-session in-memory store. The wire (mirrored from blobGateMount,
  * not imported — the client only talks to it over HTTP):
  *

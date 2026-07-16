@@ -76,8 +76,8 @@
  * documented follow-up, NOT shipped in R3.3 — see the note on `registerPodProxy`
  * below. The loud cap is the correct, complete safety floor on its own.
  */
-import { PodCapabilityToken, Parts, b64encode, b64decode } from '@canopy/core';
-import { createPodTokenVerifier, scopeForRequest, DEFAULT_MAX_BODY_BYTES } from '@canopy/pod-client';
+import { PodCapabilityToken, Parts, b64encode, b64decode } from '@onderling/core';
+import { createPodTokenVerifier, scopeForRequest, DEFAULT_MAX_BODY_BYTES } from '@onderling/pod-client';
 
 /** The control-op id the device registers to receive proxied pod requests. */
 export const POD_PROXY_OP = 'pod.proxyRequest';
@@ -153,12 +153,12 @@ function relPathFor(url, podRoot) {
 /**
  * Register the `pod.proxyRequest` handler on a device agent.
  *
- * @param {import('@canopy/core').Agent} deviceAgent  the device (pod owner) agent
+ * @param {import('@onderling/core').Agent} deviceAgent  the device (pod owner) agent
  * @param {object}   o
  * @param {(url: string, init?: object) => Promise<Response>} o.authFetch
  *        the device's AUTHENTICATED fetch — holds the pod's OIDC session and
  *        mints DPoP per request (MOCK over an in-memory pod in R3.0).
- * @param {import('@canopy/core').AgentIdentity} o.grantIssuerIdentity
+ * @param {import('@onderling/core').AgentIdentity} o.grantIssuerIdentity
  *        the device identity that ISSUED the grant — we only honour tokens whose
  *        `issuer === grantIssuerIdentity.pubKey` (§R3 decision #5).
  * @param {string}   o.expectedHostPubKey

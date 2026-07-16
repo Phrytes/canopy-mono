@@ -1,4 +1,4 @@
-# `@canopy/online-cadence`
+# `@onderling/online-cadence`
 
 > **Layer:** SDK foundation (RN-flavored cadence helpers).
 > **Convention:** RN-specific substrates live in their own packages
@@ -15,7 +15,7 @@ Foreground/background cadence helpers for React Native agents:
   `bundle.cache.setOnline(true|false)` on AppState transitions and
   ticks `bundle.skillMatch.tick()` on each foreground pass. Returns
   a cleanup callback.
-- Re-exports of the bg-fetch helpers from `@canopy/sync-engine-rn`
+- Re-exports of the bg-fetch helpers from `@onderling/sync-engine-rn`
   (`setBgRunOnce`, `clearBgRunOnce`, `bgRunOnce`,
   `registerBackgroundTask`, `defineBackgroundTask`,
   `registerBackgroundFetch`, `unregisterBackgroundFetch`,
@@ -29,7 +29,7 @@ Lifted from `apps/stoop-mobile/src/lib/{activeCadence, appStateBridge,
 bgRunOnce}.js` on **2026-05-09** as part of Tasks-mobile Phase 41.0
 L2 — Tasks-mobile is the second consumer (rule of two). Stoop V3's
 copies are now thin re-exports through the substrate. `bgRunOnce` had
-already been promoted to `@canopy/sync-engine-rn` in 2026-05-08;
+already been promoted to `@onderling/sync-engine-rn` in 2026-05-08;
 this package re-exports it for ergonomic colocation.
 
 ## Example
@@ -39,7 +39,7 @@ import {
   attachAppStateBridge,
   setBgRunOnce,
   registerBackgroundTask,
-} from '@canopy/online-cadence';
+} from '@onderling/online-cadence';
 import { AppState } from 'react-native';
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundFetch from 'expo-background-fetch';

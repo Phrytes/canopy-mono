@@ -8,7 +8,7 @@ import {
   openTunnelOW,
 } from '../src/security/tunnelSeal.js';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 import { packSealed, openSealed } from '../src/security/sealedForward.js';
 
 describe('generateTunnelKey', () => {

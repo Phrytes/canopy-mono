@@ -49,8 +49,8 @@ let PodClient, SolidOidcAuth, setResourceAccess, SolidVault, VaultMemory;
 beforeAll(async () => {
   if (!CSS_URL || !HAVE_OIDC) return;
   ({ PodClient, SolidOidcAuth, setResourceAccess } = await import('../../src/index.js'));
-  ({ VaultMemory } = await import('@canopy/vault'));
-  ({ SolidVault }  = await import('@canopy/oidc-session'));
+  ({ VaultMemory } = await import('@onderling/vault'));
+  ({ SolidVault }  = await import('@onderling/oidc-session'));
 });
 
 SUITE('setResourceAccess — CSS integration (real-pod ACP/WAC proof)', () => {

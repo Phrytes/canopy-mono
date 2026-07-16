@@ -1,4 +1,4 @@
-// @canopy/core — storage/FederatedReader
+// @onderling/core — storage/FederatedReader
 //
 // Pure-orchestration class that reads the same path across N member
 // pods in parallel, then merges the results through a D4 merge
@@ -17,7 +17,7 @@
 //     }>
 //   }
 //
-// This is satisfied by Track-A5's `@canopy/pod-client` `PodClient`
+// This is satisfied by Track-A5's `@onderling/pod-client` `PodClient`
 // AND by simple in-memory test mocks.
 //
 // Per Q-D.3 (locked 2026-04-28): default failure-mode policy is

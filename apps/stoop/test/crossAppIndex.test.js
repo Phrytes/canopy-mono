@@ -10,11 +10,11 @@
  * listing the type's container yields ALL of its objects whoever
  * authored them. This test proves + locks that end-to-end against the
  * REAL `podPathMap` classify/reverseResolve through a real
- * `@canopy/local-store` CachingDataSource.
+ * `@onderling/local-store` CachingDataSource.
  */
 
 import { describe, it, expect } from 'vitest';
-import { CachingDataSource } from '@canopy/local-store';
+import { CachingDataSource } from '@onderling/local-store';
 import { classify, reverseResolve } from '../src/lib/podPathMap.js';
 
 // pod-routing.resolve mirror (centralised on grp.pod).

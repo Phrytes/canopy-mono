@@ -17,12 +17,12 @@
  *   --host  <ip>      (default 127.0.0.1; do NOT bind to 0.0.0.0)
  *   --watch           start the SyncEngine watcher immediately
  */
-import { VaultNodeFs } from '@canopy/vault';
+import { VaultNodeFs } from '@onderling/vault';
 
 import { SyncEngine }      from '../SyncEngine.js';
 import { requireConfig }   from './_config.js';
 import { buildPodClient }  from './_podFactory.js';
-import { createSolidAuthNode } from '@canopy/oidc-session';
+import { createSolidAuthNode } from '@onderling/oidc-session';
 
 import { createServer }      from '../server/index.js';
 import { SyncErrorBuffer }   from '../server/errorBuffer.js';

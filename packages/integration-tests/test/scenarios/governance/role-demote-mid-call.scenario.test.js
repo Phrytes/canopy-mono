@@ -36,9 +36,9 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { Agent, AgentIdentity, InternalBus, InternalTransport, TextPart, Parts, PolicyEngine, TrustRegistry, GroupManager, SkillRegistry, defineSkill, Bootstrap } from '@canopy/core';
-import { IdentityPodStore } from '@canopy/pod-client';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalBus, InternalTransport, TextPart, Parts, PolicyEngine, TrustRegistry, GroupManager, SkillRegistry, defineSkill, Bootstrap } from '@onderling/core';
+import { IdentityPodStore } from '@onderling/pod-client';
+import { VaultMemory } from '@onderling/vault';
 
 import { MockPod } from '../../../src/_harness/index.js';
 

@@ -8,9 +8,9 @@
  *   RUN_NKN_TESTS=1 npm test -- test/NknTransport.test.js
  */
 import { describe, it, expect } from 'vitest';
-import { NknTransport }  from '@canopy/transports';
+import { NknTransport }  from '@onderling/transports';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 
 const RUN_INTEGRATION = !!process.env.RUN_NKN_TESTS;
 

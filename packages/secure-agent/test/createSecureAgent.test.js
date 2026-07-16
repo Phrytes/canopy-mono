@@ -1,18 +1,18 @@
 /**
- * @canopy/secure-agent — createSecureAgent tests (S0 foundation).
+ * @onderling/secure-agent — createSecureAgent tests (S0 foundation).
  *
  * Covers the identity persistence + Agent + (mocked) NknTransport
  * wiring + rotation + diagnostic.  Future S-slice tests add their
  * own fixtures.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { createSecureAgent } from '../src/createSecureAgent.js';
 import {
   signClaim, verifyClaim, serializeClaim, parseClaim,
 } from '../src/claim.js';
 import { loadMuteSet }   from '../src/mute.js';
-import { AgentIdentity, b64decode } from '@canopy/core';
+import { AgentIdentity, b64decode } from '@onderling/core';
 import {
   registerPasskey,
   unlockWithPasskey,
@@ -22,10 +22,10 @@ import {
 import { createPeerResolver, PeerResolver } from '../src/resolver.js';
 import {
   TrustRegistry, CapabilityToken, PolicyEngine, ROLES, roleRank,
-} from '@canopy/core';
+} from '@onderling/core';
 import { loadAuditLog, AuditLog, AUDIT_VERSION } from '../src/auditLog.js';
 import { createRateLimiter, RateLimiter } from '../src/rateLimit.js';
-import { GroupManager, A2ATLSLayer } from '@canopy/core';
+import { GroupManager, A2ATLSLayer } from '@onderling/core';
 import { loadPFSChain, PFSChain } from '../src/pfs.js';
 
 describe('createSecureAgent — S0 foundation', () => {

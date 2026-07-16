@@ -2,7 +2,7 @@
  * companion-node R2b.1 — the POD-LEG SCOPE GATE fitness suite.
  *
  * R2b.0 (merged) landed the pod-side verifier (`createPodTokenVerifier` +
- * `scopeForRequest`) in `@canopy/pod-client`. R2b.1 puts it to WORK: the host's
+ * `scopeForRequest`) in `@onderling/pod-client`. R2b.1 puts it to WORK: the host's
  * held pod client is wrapped in a `ScopedPodClient` that presents a delegated
  * `PodCapabilityToken` and checks EVERY pod op against it — deny-by-default —
  * before the op touches the client. This suite proves the enforcement at the POD
@@ -26,10 +26,10 @@
  */
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { Agent, AgentIdentity, Parts, PodCapabilityToken } from '@canopy/core';
-import { VaultMemory }                     from '@canopy/vault';
-import { RelayTransport }                  from '@canopy/transports';
-import { PodTokenRegistry }                from '@canopy/pod-client';
+import { Agent, AgentIdentity, Parts, PodCapabilityToken } from '@onderling/core';
+import { VaultMemory }                     from '@onderling/vault';
+import { RelayTransport }                  from '@onderling/transports';
+import { PodTokenRegistry }                from '@onderling/pod-client';
 
 import { startCompanionNode }              from '../src/index.js';
 import { buildDevPodSource }               from '../src/podSource.js';

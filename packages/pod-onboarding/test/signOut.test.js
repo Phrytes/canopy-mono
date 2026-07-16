@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { signOut } from '../src/signOut.js';
 
 describe('signOut — OIDC clearance', () => {

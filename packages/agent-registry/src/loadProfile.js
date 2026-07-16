@@ -4,7 +4,7 @@
 // From the owner root (`deriveAgentSeed(profileId)`) OR a DELEGATED profile seed (a gadget holds
 // only its one profile's seed, never the root), materialise the profile's AgentIdentity in the
 // device vault so the device can act as it, and expose its per-circle addresses.
-import { AgentIdentity, deriveCircleAddress, deriveCircleSeed, circleIdentity } from '@canopy/core';
+import { AgentIdentity, deriveCircleAddress, deriveCircleSeed, circleIdentity } from '@onderling/core';
 
 /**
  * @param {object} a

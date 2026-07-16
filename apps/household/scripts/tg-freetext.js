@@ -36,8 +36,8 @@
  * Ctrl-C to stop.
  */
 
-import { ChatAgent }         from '@canopy/chat-agent';
-import { TelegramBridge }    from '@canopy/chat-agent/bridges/telegram';
+import { ChatAgent }         from '@onderling/chat-agent';
+import { TelegramBridge }    from '@onderling/chat-agent/bridges/telegram';
 import { LlmClient }         from '../src/llm/LlmClient.js';
 import { ollamaProvider, OLLAMA_DEFAULT_MODEL } from '../src/llm/providers/ollama.js';
 import { openaiProvider }    from '../src/llm/providers/openai.js';

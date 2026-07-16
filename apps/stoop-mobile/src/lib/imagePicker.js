@@ -1,6 +1,6 @@
 /**
  * imagePicker — Stoop's preset-specific convenience wrappers around
- * `@canopy/react-native/picker`'s `pickAndResize`.
+ * `@onderling/react-native/picker`'s `pickAndResize`.
  *
  * Lifted to substrate 2026-05-09 (Phase 41.0 L3). Stoop's three
  * presets (PRIKBORD/CHAT/AVATAR) stay here because they encode
@@ -21,7 +21,7 @@ import {
   pickAndResize as _pickAndResize,
   captureWithCamera as _captureWithCamera,
   pickFromLibrary   as _pickFromLibrary,
-} from '@canopy/react-native/picker';
+} from '@onderling/react-native/picker';
 
 const _modules = { ImagePicker, manipulateAsync, SaveFormat };
 

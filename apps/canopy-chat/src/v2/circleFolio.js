@@ -13,7 +13,7 @@ import { scopeItems, itemCircleId } from './circleScope.js';
 // B · Slice 4 — the SAME per-capability treatment lookup the list surface's
 // row buttons run through (via replyEmbeds → embedButtonsForReply). Reused
 // here so the folio file-OPEN row inherits identical greying/hiding.
-import { affordanceTreatment } from '@canopy/app-manifest';
+import { affordanceTreatment } from '@onderling/app-manifest';
 
 /**
  * B · Slice 4 — capability treatment for the folio file-OPEN row action.

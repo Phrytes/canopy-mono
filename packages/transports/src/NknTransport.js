@@ -12,8 +12,8 @@
  *   - Soft warn at 20 s if still connecting
  *   - Hard timeout at 90 s → seedless retry (different node pool)
  */
-import { Transport, b64encode } from '@canopy/core';
-import { log } from '@canopy/logger';
+import { Transport, b64encode } from '@onderling/core';
+import { log } from '@onderling/logger';
 
 export class NknTransport extends Transport {
   #client    = null;

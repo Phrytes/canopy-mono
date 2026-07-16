@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/mnemonic — recovery-phrase substrate.
+ * @onderling/react-native/mnemonic — recovery-phrase substrate.
  *
  * Three pieces:
  *   - Pure-fn helpers (`normaliseMnemonic`, `mnemonicWords`,

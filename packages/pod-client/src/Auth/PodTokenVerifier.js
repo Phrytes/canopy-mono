@@ -1,5 +1,5 @@
 // PodTokenVerifier.js — the pod-SIDE, scope-aware verifier for signed
-// `PodCapabilityToken`s (`@canopy/core`).  This is the ENFORCING half of pod
+// `PodCapabilityToken`s (`@onderling/core`).  This is the ENFORCING half of pod
 // credential delegation: given a request (op + path) it decides whether a
 // presented token actually authorizes that request, deny-by-default.
 //
@@ -44,7 +44,7 @@
 // id }` — `subject` is the host key the capability was granted to; the caller's
 // gate lets that host act within `scopes`.
 
-import { PodCapabilityToken } from '@canopy/core';
+import { PodCapabilityToken } from '@onderling/core';
 
 /** Parse the wire form: JSON string, plain object, or PodCapabilityToken. Null if neither. */
 function parseToken(token) {

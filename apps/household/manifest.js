@@ -15,7 +15,7 @@
  * not affect their emitted JSON Schema.
  *
  * F-SP1-a — `shopping`/`errand`/`repair`/`schedule` are app-local types
- *           (no canonical schema in `@canopy/item-types`); permitted by
+ *           (no canonical schema in `@onderling/item-types`); permitted by
  *           `validateManifest`.
  * F-SP1-b — slash grammar spec covers EN/NL aliases, multi-word verb
  *           phrases ("voeg toe"), specials, item splitting.
@@ -36,7 +36,7 @@ const STR_NONEMPTY = { schema: { minLength: 1 } };
 // canonical itemTypes for SP-2 (and beyond).
 const LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
 
-/** @type {import('@canopy/app-manifest').__types__} */
+/** @type {import('@onderling/app-manifest').__types__} */
 export const householdManifest = {
   app:       'household',
   itemTypes: [...LIST_TYPES, 'task', 'contact', 'note'],
@@ -48,7 +48,7 @@ export const householdManifest = {
 
   // B · Layer 1 — the (verb × noun) capability surface (PLAN-capability-arc.md).
   // Each key is one of `itemTypes`; each `atoms` entry is a CANONICAL SDK atom
-  // verb (not an alias) from `@canopy/app-manifest`'s ATOM catalogue.  This is
+  // verb (not an alias) from `@onderling/app-manifest`'s ATOM catalogue.  This is
   // the forward-additive declaration the atom-validator keys off — `add` is ONE
   // atom resolved per noun (addItem for the list nouns, addTask for `task`),
   // both now routed through the single shared `createHouseholdItem` create path.

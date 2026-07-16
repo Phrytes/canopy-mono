@@ -8,8 +8,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocketServer } from 'ws';
 import { Agent }           from '../src/Agent.js';
 import { AgentIdentity }   from '../src/identity/AgentIdentity.js';
-import { VaultMemory }     from '@canopy/vault';
-import { RelayTransport }  from '@canopy/transports';
+import { VaultMemory }     from '@onderling/vault';
+import { RelayTransport }  from '@onderling/transports';
 import { TextPart, Parts } from '../src/Parts.js';
 
 // ── In-process relay server ────────────────────────────────────────────────────

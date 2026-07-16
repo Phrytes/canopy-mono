@@ -7,9 +7,9 @@
 //   • BAN (hostile): history is re-sealed to EXCLUDE the departed → no server-fetchable old key
 //     remains for them, while remaining members keep their access.
 // Hermetic crypto + a real GroupManager (no relay/pod). Uses the REAL createControlAgent.
-import { AgentIdentity, GroupManager } from '@canopy/core';
-import { VaultMemory }                 from '@canopy/vault';
-import { createControlAgent, unwrapGroupKey, openSealedAcrossVersions, sealWithGroupKey, generateKeypair } from '@canopy/pod-client/sealing';
+import { AgentIdentity, GroupManager } from '@onderling/core';
+import { VaultMemory }                 from '@onderling/vault';
+import { createControlAgent, unwrapGroupKey, openSealedAcrossVersions, sealWithGroupKey, generateKeypair } from '@onderling/pod-client/sealing';
 import { checker } from './_util.mjs';
 
 export const name = 'J-removal (policy-based removal + mesh-proof coupling)';

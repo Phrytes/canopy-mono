@@ -11,8 +11,8 @@
  */
 
 import crypto from 'node:crypto';
-import { b64encode, b64decode } from '@canopy/core';
-import { AgentIdentity } from '@canopy/core';
+import { b64encode, b64decode } from '@onderling/core';
+import { AgentIdentity } from '@onderling/core';
 import { serializeManifest } from './turtle.js';
 
 const ENC_SUFFIX = '.enc';
@@ -91,7 +91,7 @@ function toBytes(content) {
  * 5. Concatenate the 32-byte digests.
  * 6. SHA-256 the concatenation; lowercase hex; prefix `sha256:`.
  *
- * @param   {object} podClient   `@canopy/pod-client` PodClient.
+ * @param   {object} podClient   `@onderling/pod-client` PodClient.
  * @param   {string} identityRoot  e.g. `'https://alice.example/canopy/'`.
  * @returns {Promise<string>}      `'sha256:<64 lowercase hex>'`.
  */

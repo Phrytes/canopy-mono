@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-nav — returnTo helpers tests.
+ * @onderling/chat-nav — returnTo helpers tests.
  */
 import { describe, it, expect } from 'vitest';
 

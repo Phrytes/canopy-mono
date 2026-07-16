@@ -2,9 +2,9 @@
  * `createCirclesStore({ itemStore })` — CRUD over saved audiences.
  *
  * Backed by the canonical `circle` item type (registered in
- * `@canopy/item-types`).  The injected `itemStore` is duck-typed:
+ * `@onderling/item-types`).  The injected `itemStore` is duck-typed:
  * anything with the four methods below works.  We deliberately do
- * NOT depend on `@canopy/item-store`; consumers wire whichever store
+ * NOT depend on `@onderling/item-store`; consumers wire whichever store
  * they use.
  *
  *   itemStore.addItems(items, ctx)   → Promise<Item[]>
@@ -12,7 +12,7 @@
  *   itemStore.getById(id)            → Promise<Item | null>
  *   itemStore.update(id, patch, ctx) → Promise<Item>
  *
- * Substrate-compat note: `@canopy/item-store`'s `addItems` currently
+ * Substrate-compat note: `@onderling/item-store`'s `addItems` currently
  * requires a non-empty `text` field on every partial — so this store
  * sets `text: name` when writing circles.  This is a substrate-shape
  * quirk, not part of the circle's canonical schema, and is recorded

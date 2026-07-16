@@ -1,6 +1,6 @@
 /**
- * BotPod — wrapper around `@canopy/pod-client` PodClient + (optional)
- * `@canopy/core` `OAuthVault`, scoped to the bot's own Solid pod.
+ * BotPod — wrapper around `@onderling/pod-client` PodClient + (optional)
+ * `@onderling/core` `OAuthVault`, scoped to the bot's own Solid pod.
  *
  * Per Q-H2.6 lock, the bot has its own pod, separate from the shared
  * household pod and per-member pods.  The bot's pod does NOT hold
@@ -74,7 +74,7 @@ function isNotFound(err) {
 }
 
 export class BotPod {
-  /** @type {import('@canopy/pod-client').PodClient} */
+  /** @type {import('@onderling/pod-client').PodClient} */
   #podClient;
   /** @type {string} */
   #podRoot;
@@ -83,7 +83,7 @@ export class BotPod {
 
   /**
    * @param {object} args
-   * @param {import('@canopy/pod-client').PodClient} args.podClient
+   * @param {import('@onderling/pod-client').PodClient} args.podClient
    *   Already configured against the bot's pod root + auth.
    * @param {string} args.podRoot
    *   The bot's pod URL.  Stored for reference; the PodClient is what

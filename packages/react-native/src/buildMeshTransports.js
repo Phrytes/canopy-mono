@@ -26,7 +26,7 @@
  * @param {object}  [opts.permissions]          — pre-fetched perms (skips a second prompt); else requested here
  * @returns {Promise<{ mdns:object|null, ble:object|null, relay:object|null, perms:object }>}
  */
-import { RelayTransport } from '@canopy/transports';
+import { RelayTransport } from '@onderling/transports';
 
 import { MdnsTransport }          from './transport/MdnsTransport.js';
 import { BleTransport }           from './transport/BleTransport.js';

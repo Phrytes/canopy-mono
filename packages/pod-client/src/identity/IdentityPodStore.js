@@ -50,9 +50,9 @@
 
 import nacl  from 'tweetnacl';
 
-import { b64encode, b64decode } from '@canopy/core';
-import { Bootstrap }      from '@canopy/core';
-import { AgentIdentity }  from '@canopy/core';
+import { b64encode, b64decode } from '@onderling/core';
+import { Bootstrap }      from '@onderling/core';
+import { AgentIdentity }  from '@onderling/core';
 import {
   serializeManifest,
   parseManifest,
@@ -183,7 +183,7 @@ export class IdentityPodStore {
 
   /**
    * @param {object} opts
-   * @param {object}        opts.podClient   `@canopy/pod-client` PodClient.
+   * @param {object}        opts.podClient   `@onderling/pod-client` PodClient.
    * @param {Bootstrap}     opts.bootstrap   Track B Bootstrap (root secret).
    * @param {AgentIdentity} opts.identity    root device identity (manifest signer).
    * @param {string}        opts.podRoot     pod-relative or absolute URI; the

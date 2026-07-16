@@ -1,7 +1,7 @@
 /**
  * buildBundle — Tasks V1 local-first storage bundle.
  *
- * Wraps `@canopy/local-store`'s `CachingDataSource` so the agent
+ * Wraps `@onderling/local-store`'s `CachingDataSource` so the agent
  * boots against a Map-cache immediately (Tasks V1's local-only-mode
  * rule) and write-throughs to an inner DataSource when one is
  * attached (pod sign-in flow).
@@ -38,7 +38,7 @@
  * behaviour change.
  */
 
-import { CachingDataSource, SyncCadence } from '@canopy/local-store';
+import { CachingDataSource, SyncCadence } from '@onderling/local-store';
 
 import { pickPersist } from './persist/persistPicker.js';
 

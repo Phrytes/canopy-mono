@@ -7,8 +7,8 @@ import { describe, it, expect } from 'vitest';
  */
 
 describe('SP-9 sub-path exports — each slice resolves to its symbols', () => {
-  it('@canopy/sdk/core → the kernel base (Agent, AgentIdentity, …) and NOT the extensions', async () => {
-    const core = await import('@canopy/sdk/core');
+  it('@onderling/sdk/core → the kernel base (Agent, AgentIdentity, …) and NOT the extensions', async () => {
+    const core = await import('@onderling/sdk/core');
     for (const name of ['Agent', 'AgentIdentity', 'InternalBus', 'InternalTransport', 'OfflineTransport', 'Parts']) {
       expect(core[name], name).toBeDefined();
     }
@@ -18,8 +18,8 @@ describe('SP-9 sub-path exports — each slice resolves to its symbols', () => {
     expect(core.createAgent).toBeUndefined();
   });
 
-  it('@canopy/sdk/transports → the concrete network transports only', async () => {
-    const t = await import('@canopy/sdk/transports');
+  it('@onderling/sdk/transports → the concrete network transports only', async () => {
+    const t = await import('@onderling/sdk/transports');
     for (const name of ['NknTransport', 'MqttTransport', 'RelayTransport', 'RendezvousTransport']) {
       expect(typeof t[name], name).toBe('function');
     }
@@ -27,8 +27,8 @@ describe('SP-9 sub-path exports — each slice resolves to its symbols', () => {
     expect(t.InternalTransport).toBeUndefined();
   });
 
-  it('@canopy/sdk/vault → the Vault family + OAuth helper only', async () => {
-    const v = await import('@canopy/sdk/vault');
+  it('@onderling/sdk/vault → the Vault family + OAuth helper only', async () => {
+    const v = await import('@onderling/sdk/vault');
     for (const name of ['Vault', 'VaultMemory', 'VaultLocalStorage', 'VaultIndexedDB', 'VaultNodeFs', 'OAuthVault', 'makeAuthorizedFetch']) {
       expect(v[name], name).toBeDefined();
     }
@@ -36,15 +36,15 @@ describe('SP-9 sub-path exports — each slice resolves to its symbols', () => {
     expect(v.Agent).toBeUndefined();
   });
 
-  it('@canopy/sdk/pod → the pod-client surface', async () => {
-    const p = await import('@canopy/sdk/pod');
+  it('@onderling/sdk/pod → the pod-client surface', async () => {
+    const p = await import('@onderling/sdk/pod');
     for (const name of ['PodClient', 'SolidPodSource', 'ConflictResolver']) {
       expect(typeof p[name], name).toBe('function');
     }
   });
 
-  it('@canopy/sdk/high → createAgent / connectSkill / wireSkill only', async () => {
-    const h = await import('@canopy/sdk/high');
+  it('@onderling/sdk/high → createAgent / connectSkill / wireSkill only', async () => {
+    const h = await import('@onderling/sdk/high');
     expect(typeof h.createAgent).toBe('function');
     expect(typeof h.connectSkill).toBe('function');
     expect(typeof h.wireSkill).toBe('function');
@@ -56,13 +56,13 @@ describe('SP-9 sub-path exports — each slice resolves to its symbols', () => {
 describe('SP-9 barrel stays intact — the sum of the slices', () => {
   it('the barrel re-exports every slice (same symbols the sub-paths expose)', async () => {
     const [b, core, t, v, p, h, r] = await Promise.all([
-      import('@canopy/sdk'),
-      import('@canopy/sdk/core'),
-      import('@canopy/sdk/transports'),
-      import('@canopy/sdk/vault'),
-      import('@canopy/sdk/pod'),
-      import('@canopy/sdk/high'),
-      import('@canopy/sdk/requires'),
+      import('@onderling/sdk'),
+      import('@onderling/sdk/core'),
+      import('@onderling/sdk/transports'),
+      import('@onderling/sdk/vault'),
+      import('@onderling/sdk/pod'),
+      import('@onderling/sdk/high'),
+      import('@onderling/sdk/requires'),
     ]);
     // Every symbol from every slice is present on the barrel and identical.
     for (const slice of [core, t, v, p, h]) {
@@ -76,7 +76,7 @@ describe('SP-9 barrel stays intact — the sum of the slices', () => {
   });
 
   it('a smoke import of a representative slice from each layer still works', async () => {
-    const { Agent, VaultMemory, RelayTransport, PodClient, createAgent, validateRequires } = await import('@canopy/sdk');
+    const { Agent, VaultMemory, RelayTransport, PodClient, createAgent, validateRequires } = await import('@onderling/sdk');
     expect(typeof Agent).toBe('function');
     expect(typeof VaultMemory).toBe('function');
     expect(typeof RelayTransport).toBe('function');

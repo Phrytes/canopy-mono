@@ -20,7 +20,7 @@ import {
   ReachabilityOracle,
   signReachabilityClaim,
   REACHABILITY_ORACLE_TOPIC,
-} from '@canopy/core';
+} from '@onderling/core';
 import { Lab } from '../../../src/_harness/index.js';
 
 describe('routing/oracle-preselection', () => {

@@ -5,7 +5,7 @@
  * protocol handlers never need to null-check individual fields.
  *
  * Usage:
- *   import { defineSkill } from '@canopy/core';
+ *   import { defineSkill } from '@onderling/core';
  *   const skill = defineSkill('echo', async ({ parts }) => parts, {
  *     description: 'Echoes input back to caller',
  *   });

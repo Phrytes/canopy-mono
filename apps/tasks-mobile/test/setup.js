@@ -79,7 +79,7 @@ vi.mock('@react-native-async-storage/async-storage', () => {
 // Avoid pulling AsyncStorageAdapter's full native plumbing through
 // the substrate — buildMeshAgent uses it via a stable interface, the
 // no-op stub is enough for vitest.
-vi.mock('@canopy/react-native/src/storage/AsyncStorageAdapter.js', () => ({
+vi.mock('@onderling/react-native/src/storage/AsyncStorageAdapter.js', () => ({
   AsyncStorageAdapter: class {
     constructor() {}
     async get()    { return null; }
@@ -91,7 +91,7 @@ vi.mock('@canopy/react-native/src/storage/AsyncStorageAdapter.js', () => ({
 
 // FileSystemAdapter pulls expo-file-system at module load; vitest
 // stub keeps the substrate import graph parseable.
-vi.mock('@canopy/react-native/src/storage/FileSystemAdapter.js', () => ({
+vi.mock('@onderling/react-native/src/storage/FileSystemAdapter.js', () => ({
   FileSystemAdapter: class {
     constructor() {}
     async read()   { return null; }

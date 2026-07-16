@@ -7,7 +7,7 @@
  * When the app is foreground we tick at `getPollIntervalMs()` (default
  * 5000 ms — battery-aware); when backgrounded we cancel the ticker and
  * let the OS-driven background-fetch task handle sync (see `./bgTask.js`,
- * which re-exports the helpers from `@canopy/sync-engine-rn`).
+ * which re-exports the helpers from `@onderling/sync-engine-rn`).
  *
  * Designed to be peer-injected — both `runOnce` and the `AppState`
  * namespace are passed in, which makes the ticker easy to unit-test

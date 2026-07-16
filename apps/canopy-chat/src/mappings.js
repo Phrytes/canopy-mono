@@ -2,7 +2,7 @@
  * canopy-chat — extension-mapping verify gate (feedback-extension P2b).
  *
  * A downloaded mapping (loaded from the pod `mappings/` folder by
- * `@canopy/pod-routing` `loadMappings`) declares ops that are COMPOSITES of
+ * `@onderling/pod-routing` `loadMappings`) declares ops that are COMPOSITES of
  * existing opIds. Before any such mapping is merged into the catalog, every
  * composite op must pass the **sandbox-by-construction** check (P1's
  * `verifyComposite`): each step's opId must resolve to a declared op/atom in
@@ -20,7 +20,7 @@
  */
 
 import { verifyComposite } from './composite.js';
-import { validateManifest } from '@canopy/app-manifest';
+import { validateManifest } from '@onderling/app-manifest';
 
 /** A mapping op is a remote-skill binding (handler is a contact/bot, not a local atom). */
 function isRemoteBinding(op) {
@@ -32,7 +32,7 @@ function isRemoteBinding(op) {
  * composite op's steps resolve. Returns the union of unresolved `<app>/<op>`
  * refs across the mapping.
  *
- * @param {import('@canopy/pod-routing').Mapping} mapping
+ * @param {import('@onderling/pod-routing').Mapping} mapping
  * @param {{ opsById: Map<string, object> } | { has?: Function }} catalog
  * @returns {{ ok: boolean, missing: string[] }}
  */
@@ -53,7 +53,7 @@ export function verifyMapping(mapping, catalog) {
  * Partition a list of mappings into the ones safe to merge and the ones
  * refused (with the opIds they're missing — surfaced to the user).
  *
- * @param {Array<import('@canopy/pod-routing').Mapping>} mappings
+ * @param {Array<import('@onderling/pod-routing').Mapping>} mappings
  * @param {{ opsById: Map<string, object> }} catalog
  * @returns {{ accepted: Array<object>, rejected: Array<{id: string, missing: string[]}> }}
  */
@@ -75,7 +75,7 @@ export function verifyMappings(mappings, catalog) {
  * the existing global `callSkill` — which already routes each step by its
  * `appOrigin`. So the mapping's ops just need to land in the catalog.
  *
- * @param {import('@canopy/pod-routing').Mapping} mapping
+ * @param {import('@onderling/pod-routing').Mapping} mapping
  * @returns {{ app: string, operations: object[] }}
  */
 export function mappingToManifest(mapping) {
@@ -92,7 +92,7 @@ export function mappingToManifest(mapping) {
  * can't throw the whole merge). Pair with `verifyMappings` first (the catalog
  * gate); this is the manifest-shape gate.
  *
- * @param {Array<import('@canopy/pod-routing').Mapping>} mappings
+ * @param {Array<import('@onderling/pod-routing').Mapping>} mappings
  * @returns {{ sources: Array<{manifest: object}>, dropped: Array<{id: string, errors: object[]}> }}
  */
 export function mappingsToSources(mappings) {

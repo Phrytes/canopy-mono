@@ -8,7 +8,7 @@
  * them — just as the stoop pattern does.
  *
  * No new production code is exercised beyond what M4 ships: the real
- * `classify`/`reverseResolve` through a real `@canopy/local-store`
+ * `classify`/`reverseResolve` through a real `@onderling/local-store`
  * CachingDataSource with the `innerKeyMap` seam from `buildBundle`.
  *
  * NOTE: written, not run here — orchestrator verifies in the main
@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { CachingDataSource } from '@canopy/local-store';
+import { CachingDataSource } from '@onderling/local-store';
 import { classify, reverseResolve } from '../src/lib/podPathMap.js';
 
 const CIRCLE = 'household';

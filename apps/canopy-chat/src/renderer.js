@@ -20,7 +20,7 @@
  * Phase v0.1 sub-slice 1.8 per `/Project Files/canopy-chat/coding-plan.md`.
  */
 
-import { renderChat } from '@canopy/app-manifest';
+import { renderChat } from '@onderling/app-manifest';
 
 import { formatSyncHints, formatLastSync } from './syncHints.js';
 import { QR_URI_PREFIXES }                 from './core/qrSchemes.js';

@@ -1,4 +1,4 @@
-// @canopy/core — FederatedReader unit tests
+// @onderling/core — FederatedReader unit tests
 import { describe, it, expect, vi } from 'vitest';
 import { FederatedReader, FederatedReadError } from '../../src/storage/FederatedReader.js';
 import { lastWriteWins, setUnionWithDedupe } from '../../src/storage/MergeContracts/index.js';

@@ -6,7 +6,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { CONSEQUENCE_OPTIONS, consequenceKeyFor, attachConsequences, sharedConsequenceLocale } from '@canopy-app/canopy-chat';
+import { CONSEQUENCE_OPTIONS, consequenceKeyFor, attachConsequences, sharedConsequenceLocale } from '@onderling-app/canopy-chat';
 import enRaw from '../locales/en.json';
 import nlRaw from '../locales/nl.json';
 // `consequence.*` now lives in the shared source (like `circle.*`), merged into both shells; merge it

@@ -21,12 +21,12 @@
  *   { webid: string, isLoggedIn: boolean, fetch: typeof fetch }
  *
  * The authenticated `fetch` is what unlocks real pod attach
- * (v0.7.P2 — pseudo-pod cache mode + @canopy/pod-client).
+ * (v0.7.P2 — pseudo-pod cache mode + @onderling/pod-client).
  *
- * Sister module: @canopy/oidc-session (Node) + @canopy/oidc-session-rn
+ * Sister module: @onderling/oidc-session (Node) + @onderling/oidc-session-rn
  * (React Native).  No browser substrate yet; when a second browser
  * consumer appears, this wrapper gets extracted to
- * `@canopy/oidc-session-browser` per the rule-of-two precedent.
+ * `@onderling/oidc-session-browser` per the rule-of-two precedent.
  *
  * Test seam: the `injectAuth(impl)` export lets tests substitute a
  * fake login() / getDefaultSession() / handleIncomingRedirect();
@@ -40,7 +40,7 @@ import {
   logout,
 } from '@inrupt/solid-client-authn-browser';
 
-// Curated default issuer list.  Mirrors @canopy/oidc-session/issuers.js
+// Curated default issuer list.  Mirrors @onderling/oidc-session/issuers.js
 // (canonical source) but copied here because we can't import a Node-
 // only substrate into the browser bundle.
 export const KNOWN_ISSUERS = Object.freeze([

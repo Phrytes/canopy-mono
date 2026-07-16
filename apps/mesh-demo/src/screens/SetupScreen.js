@@ -38,7 +38,7 @@ export function SetupScreen({ onDone }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={s.inner}>
-        <Text style={s.title}>@canopy</Text>
+        <Text style={s.title}>@onderling</Text>
         <Text style={s.sub}>mesh demo</Text>
 
         <View style={s.card}>

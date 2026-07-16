@@ -1,5 +1,5 @@
 /**
- * Core types for @canopy/llm-client.  jsdoc only.
+ * Core types for @onderling/llm-client.  jsdoc only.
  */
 
 /**

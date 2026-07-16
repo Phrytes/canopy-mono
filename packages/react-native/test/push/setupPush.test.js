@@ -33,7 +33,7 @@ function makeAgentStub() {
   };
 }
 
-describe('@canopy/react-native/push setupPush', () => {
+describe('@onderling/react-native/push setupPush', () => {
   it('returns bridge + token + platform on success', async () => {
     const agent = makeAgentStub();
     const onToken = vi.fn();
@@ -66,7 +66,7 @@ describe('@canopy/react-native/push setupPush', () => {
   });
 });
 
-describe('@canopy/react-native/push requestPushPermission', () => {
+describe('@onderling/react-native/push requestPushPermission', () => {
   it('passes through {granted: true}', async () => {
     const r = await requestPushPermission({
       NotificationsModule: { requestPermissionsAsync: async () => ({ granted: true, status: 'granted' }) },

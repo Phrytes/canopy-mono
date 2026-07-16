@@ -1,5 +1,5 @@
 /**
- * Core types for @canopy/item-store.  jsdoc only (no TypeScript).
+ * Core types for @onderling/item-store.  jsdoc only (no TypeScript).
  *
  * Item shape is the SUPERSET of what H2 (household items) and H4
  * (tasks) need.  H2-only consumers leave H4-extension fields
@@ -87,7 +87,7 @@
  *   helper rather than reading either field directly.
  *
  *   Audience resolution (string short-hands → member-sets,
- *   circle-ref walks) lives in `@canopy/circles`'s
+ *   circle-ref walks) lives in `@onderling/circles`'s
  *   `resolveAudience(audience, ctx)`.  Item-store stores the
  *   field as data; it does NOT resolve it.
  *
@@ -175,7 +175,7 @@
  * } Audience
  *
  * SP-5b V0a (2026-05-21).  Audience model — what set of webids an
- * item is shared with.  Mirrors `@canopy/circles`' Audience model;
+ * item is shared with.  Mirrors `@onderling/circles`' Audience model;
  * defined as a typedef here so item-store can carry the field
  * without depending on the higher-level circles package.
  *
@@ -188,7 +188,7 @@
  *   'circle:ID'       — circle-ref by id
  *
  * Resolution helpers (`normalizeAudience` / `resolveAudience` /
- * `inAudience`) live in `@canopy/circles`.  Item-store stores the
+ * `inAudience`) live in `@onderling/circles`.  Item-store stores the
  * field verbatim; consumers resolve at read time.
  */
 
@@ -228,7 +228,7 @@
  *
  *   Known limitation: the string short-hand `'circle:X'` and the
  *   structured form `{kind:'circle-ref', id:'X'}` are NOT considered
- *   equivalent (normalisation lives in `@canopy/circles`; item-store
+ *   equivalent (normalisation lives in `@onderling/circles`; item-store
  *   can't depend on it for layering reasons).  A future revision may
  *   lift `normalizeAudience` to item-types OR take a callback.
  *
@@ -246,7 +246,7 @@
  *   is exactly the single-audience `audience: a` path — back-compatible.
  *
  *   A saved cross-circle *view* is the persisted form of such a set —
- *   see `@canopy/circles`' `resolveSavedView` / `savedViewAudiences`.
+ *   see `@onderling/circles`' `resolveSavedView` / `savedViewAudiences`.
  *
  * @property {number} [since]
  *   ms epoch.  Match items with `addedAt >= since`.

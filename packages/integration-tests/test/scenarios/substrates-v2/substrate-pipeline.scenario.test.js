@@ -46,22 +46,22 @@ import {
   AgentIdentity,
   PolicyEngine,
   generateMnemonic,
-} from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+} from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import {
   createPseudoPod,
   createMemoryBackend,
-}                                          from '@canopy/pseudo-pod';
-import { createPodRouting }                from '@canopy/pod-routing';
-import { createNotifyEnvelope }            from '@canopy/notify-envelope';
-import { validateCanonical }               from '@canopy/item-types';
-import { ItemStore, treeOf }               from '@canopy/item-store';
+}                                          from '@onderling/pseudo-pod';
+import { createPodRouting }                from '@onderling/pod-routing';
+import { createNotifyEnvelope }            from '@onderling/notify-envelope';
+import { validateCanonical }               from '@onderling/item-types';
+import { ItemStore, treeOf }               from '@onderling/item-store';
 import {
   createAgentRegistry,
   makeActorResolver,
-}                                          from '@canopy/agent-registry';
-import { provisionDefault }                from '@canopy/pod-onboarding';
+}                                          from '@onderling/agent-registry';
+import { provisionDefault }                from '@onderling/pod-onboarding';
 
 const ANNE_POD    = 'https://anne.pod';
 const ANNE_WEBID  = 'https://anne.pod/profile/card#me';
@@ -407,7 +407,7 @@ describe('substrates-v2 substrate-pipeline — end-to-end composition', () => {
       capabilities: ['stoop'],
     });
 
-    const { createAgentRegistryMemberMap } = await import('@canopy/identity-resolver');
+    const { createAgentRegistryMemberMap } = await import('@onderling/identity-resolver');
     const memberMap = createAgentRegistryMemberMap(registry);
     const m = await memberMap.resolveByPubKey('pub-anne');
     expect(m).toMatchObject({

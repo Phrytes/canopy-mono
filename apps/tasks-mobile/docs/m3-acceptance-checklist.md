@@ -34,7 +34,7 @@
       dev-client APK
 - [ ] `expo start --clear` if swapping dev clients between
       stoop-mobile and tasks-mobile in the same session (stale Metro
-      cache hands tasks-mobile stoop's `@canopy-app/stoop`
+      cache hands tasks-mobile stoop's `@onderling-app/stoop`
       resolution — BRING-UP-NOTES Trap 2)
 - [ ] App boots without a redbox on first launch; splash clears
       within ~3s (cold-start target — see Appendix A2)
@@ -150,10 +150,10 @@
       "Sign out of pod" button
 - [ ] Backgrounding mid-flow then returning does not wedge the
       screen (token exchange completes or surfaces a clear error)
-- [ ] **OIDC HTTP timeout:** the Node `@canopy/oidc-session` web
+- [ ] **OIDC HTTP timeout:** the Node `@onderling/oidc-session` web
       path honours `OIDC_HTTP_TIMEOUT_MS` (default **30000 ms** vs
       the openid-client 3500 ms default — inherited fix). The RN
-      path (`@canopy/oidc-session-rn` / expo-auth-session) does NOT
+      path (`@onderling/oidc-session-rn` / expo-auth-session) does NOT
       use this env var; if discovery/token is slow on a poor
       connection, the failure surfaces as the hook's `lastError`,
       not a 3.5 s hard cut. Note the observed behaviour here:

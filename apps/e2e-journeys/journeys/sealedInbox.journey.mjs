@@ -1,11 +1,11 @@
 // M2 durable sealed inbox: a companion node on the relay holds SEALED messages
 // for an away owner; deposit + drain travel over the relay; the node holds only
 // ciphertext; only the owner key drains + opens.
-import { Agent, AgentIdentity, Parts, DataPart } from '@canopy/core';
-import { VaultMemory }                from '@canopy/vault';
-import { RelayTransport }             from '@canopy/transports';
-import { seal, open, generateKeypair } from '@canopy/pod-client/sealing';
-import { startCompanionNode }         from '@canopy-app/companion-node';
+import { Agent, AgentIdentity, Parts, DataPart } from '@onderling/core';
+import { VaultMemory }                from '@onderling/vault';
+import { RelayTransport }             from '@onderling/transports';
+import { seal, open, generateKeypair } from '@onderling/pod-client/sealing';
+import { startCompanionNode }         from '@onderling-app/companion-node';
 import { rm }      from 'node:fs/promises';
 import { tmpdir }  from 'node:os';
 import { join }    from 'node:path';

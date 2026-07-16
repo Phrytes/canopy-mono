@@ -6,7 +6,7 @@
  * paths contract (read→null on miss, write create/overwrite, delete no-op on
  * miss, list-by-prefix) and, optionally, the structured `query`.
  *
- * "Implement the port + pass this harness = compatible with the @canopy SDK."
+ * "Implement the port + pass this harness = compatible with the @onderling SDK."
  */
 import { expect } from 'vitest';
 import { DataSource } from '../storage/DataSource.js';

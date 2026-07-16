@@ -40,7 +40,7 @@
  *
  * --- Usage ------------------------------------------------------------------
  *
- *   import { migrateVaultToPod, AgentIdentity, Bootstrap } from '@canopy/core';
+ *   import { migrateVaultToPod, AgentIdentity, Bootstrap } from '@onderling/core';
  *
  *   const identity = await AgentIdentity.restore(vault);
  *   const report   = await migrateVaultToPod({
@@ -53,7 +53,7 @@
  */
 
 import { IdentityPodStore } from './IdentityPodStore.js';
-import { Bootstrap }        from '@canopy/core';
+import { Bootstrap }        from '@onderling/core';
 
 /** Vault key the migrator uses to record idempotency. */
 export const MIGRATED_FLAG_KEY = 'identity-migration:migrated-at';
@@ -127,7 +127,7 @@ export const EXACT_SKIP_KEYS = Object.freeze(new Set([
  *                                              device's own identity; its
  *                                              public key becomes the pod's
  *                                              first device record).
- * @param {object}        opts.podClient      `@canopy/pod-client` PodClient.
+ * @param {object}        opts.podClient      `@onderling/pod-client` PodClient.
  * @param {string}        opts.podRoot        Pod root URI (or already-rooted
  *                                              `<base>/canopy/`).
  * @param {string}        opts.mnemonic       BIP-39 phrase the user wrote

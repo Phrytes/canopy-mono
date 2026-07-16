@@ -3,14 +3,14 @@
  * sync-engine + a real PodClient.
  *
  * **2026-05-08 (Phase 40.2):** `defaultPodFactory` was lifted into
- * `@canopy/sync-engine-rn`. The engine builder also goes through
+ * `@onderling/sync-engine-rn`. The engine builder also goes through
  * the substrate (`createSyncEngine`) with Folio's `SyncEngine`
  * subclass passed in. No cross-app subpath imports remain.
  *
  * Two responsibilities (same shape as before):
  *
  *   1. `defaultPodFactory(cfg, oidc)` — re-exported from
- *      `@canopy/sync-engine-rn`.
+ *      `@onderling/sync-engine-rn`.
  *
  *   2. `buildEngineForRN({ podClient, ... })` — calls the substrate's
  *      `createSyncEngine` with `SyncEngineClass: FolioSyncEngine`.
@@ -19,8 +19,8 @@
 import {
   createSyncEngine as substrateCreateSyncEngine,
   defaultPodFactory as substrateDefaultPodFactory,
-} from '@canopy/sync-engine-rn';
-import { SyncEngine as FolioSyncEngine } from '@canopy-app/folio';
+} from '@onderling/sync-engine-rn';
+import { SyncEngine as FolioSyncEngine } from '@onderling-app/folio';
 
 export const defaultPodFactory = substrateDefaultPodFactory;
 
@@ -29,7 +29,7 @@ export const defaultPodFactory = substrateDefaultPodFactory;
  * substrate's `createSyncEngine`; this shim pre-binds
  * `SyncEngineClass: FolioSyncEngine`.
  *
- * NOTE: still imports `SyncEngine` from `@canopy-app/folio` —
+ * NOTE: still imports `SyncEngine` from `@onderling-app/folio` —
  * folio-mobile is folio's mobile platform-shell, so the dependency
  * on folio's SyncEngine subclass is intentional. Tracked in
  * `Project Files/conventions/architectural-layering.md` as the

@@ -1,6 +1,6 @@
-# @canopy/notifier
+# @onderling/notifier
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Cross-substrate contract:** the push channel MUST compose `relay.ExpoPushSender` + `relay.PushTokenRegistry` (Phase 0 push send-half) and the chat channel MUST compose L1c chat-agent's `MessagingBridge` interface — do NOT redefine either.
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Cross-substrate contract:** the push channel MUST compose `relay.ExpoPushSender` + `relay.PushTokenRegistry` (Phase 0 push send-half) and the chat channel MUST compose L1c chat-agent's `MessagingBridge` interface — do NOT redefine either.
 
 Daily digest scheduler + per-event nudges + push integration.
 Channel-pluggable; time-source pluggable for tests.
@@ -15,11 +15,11 @@ specs side-by-side.
 ## Quick start
 
 ```js
-import { Notifier, PushChannel, InMemoryScheduleStore } from '@canopy/notifier';
+import { Notifier, PushChannel, InMemoryScheduleStore } from '@onderling/notifier';
 // Channels for chat are L1c MessagingBridge instances — pass directly.
-import { InMemoryBridge } from '@canopy/chat-agent';
+import { InMemoryBridge } from '@onderling/chat-agent';
 // Push channel composes any relay.PushSender concrete.
-import { ExpoPushSender } from '@canopy/relay';
+import { ExpoPushSender } from '@onderling/relay';
 
 const notifier = new Notifier({
   channels: {
@@ -131,7 +131,7 @@ and call `scheduleOnce` directly.
 
 ### Channel interface
 
-A channel **IS** an `@canopy/chat-agent` `MessagingBridge` — the
+A channel **IS** an `@onderling/chat-agent` `MessagingBridge` — the
 same interface chat-agent already exposes for chat platforms:
 
 ```ts
@@ -234,8 +234,8 @@ the existing scheduler retires.
 ## See also
 
 - `Project Files/Substrates/L1f-notifier.md` — substrate sketch.
-- `@canopy/chat-agent` — supplies the `MessagingBridge` typedef + `InMemoryBridge` test fake. Apps pass any bridge directly as a notifier channel.
-- `@canopy/relay` — supplies `PushSender` (abstract) + `ExpoPushSender` (concrete) for `PushChannel`.
-- `@canopy/item-store` — emits `item-added` etc. that notifier subscribes to.
+- `@onderling/chat-agent` — supplies the `MessagingBridge` typedef + `InMemoryBridge` test fake. Apps pass any bridge directly as a notifier channel.
+- `@onderling/relay` — supplies `PushSender` (abstract) + `ExpoPushSender` (concrete) for `PushChannel`.
+- `@onderling/item-store` — emits `item-added` etc. that notifier subscribes to.
 - `Project Files/Substrates/apps/H2-household.md` — primary consumer (digest + nudge).
 - `Project Files/Substrates/apps/H4-tasks.md` — secondary consumer (deadline reminders, stalled-claim nudges).

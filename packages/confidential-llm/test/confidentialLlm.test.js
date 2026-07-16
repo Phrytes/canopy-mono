@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { LlmClient } from '@canopy/llm-client';
-import { mockProvider } from '@canopy/llm-client/providers/mock';
+import { LlmClient } from '@onderling/llm-client';
+import { mockProvider } from '@onderling/llm-client/providers/mock';
 import { createConfidentialLlm } from '../src/index.js';
 import {
   makeReport, makeSpyLlm, chainOk, chainBad, chainThrows,
@@ -33,7 +33,7 @@ describe('createConfidentialLlm — attest-first gateway, refuse-on-failure', ()
     expect(llm.calls[0].ctx).toEqual({ customerId: 'acme' });
   });
 
-  it('interops with a real @canopy/llm-client LlmClient + mockProvider', async () => {
+  it('interops with a real @onderling/llm-client LlmClient + mockProvider', async () => {
     const llm = new LlmClient({
       provider: mockProvider({ responses: [{ replyText: 'via LlmClient' }] }),
     });

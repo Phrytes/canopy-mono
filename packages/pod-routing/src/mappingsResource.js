@@ -3,7 +3,7 @@
  * (feedback-extension, DESIGN §2.2 / P2).
  *
  * A "mapping" is pure DATA: a manifest declaring ops (composites of existing
- * opIds — see `@canopy/app-manifest` `Operation.steps`) + clickable menus +
+ * opIds — see `@onderling/app-manifest` `Operation.steps`) + clickable menus +
  * locale, scoped to `'app'` or a circle. Mappings live under a FOLDER:
  *
  *   pseudo-pod://<deviceId>/private/mappings/<id>
@@ -100,7 +100,7 @@ export function validateMapping(raw) {
  * for a bad/absent mapping — boot must survive a broken extension).
  *
  * @param {object} args
- * @param {import('@canopy/pseudo-pod').PseudoPod | {list:Function, read:Function}} args.pseudoPod
+ * @param {import('@onderling/pseudo-pod').PseudoPod | {list:Function, read:Function}} args.pseudoPod
  * @param {string} args.deviceId
  * @returns {Promise<{ mappings: Mapping[], errors: Array<{uri:string, code:string, message:string}> }>}
  */

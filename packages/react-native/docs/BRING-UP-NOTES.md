@@ -1,6 +1,6 @@
-# BRING-UP-NOTES — getting `@canopy` apps to bundle on React Native
+# BRING-UP-NOTES — getting `@onderling` apps to bundle on React Native
 
-**Audience:** anyone working on a `@canopy` RN app (Folio mobile, future
+**Audience:** anyone working on a `@onderling` RN app (Folio mobile, future
 H5/H8/etc.) when the bundler hits a polyfill or resolution wall.
 
 **Source:** verbatim notes from Folio.C2's mobile bring-up
@@ -37,7 +37,7 @@ The minimum boilerplate is:
 
 ```js
 const path = require('path');
-const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
 
 module.exports = withCanopyPreset({
   projectRoot: __dirname,
@@ -172,7 +172,7 @@ landed in 2.x with SDK 52.
 
 **Fix:** the same as Trap 0 — get expo back to 52.x.
 
-### Trap 2 — `Unable to resolve "@canopy-app/folio/rn/serviceFactory"`
+### Trap 2 — `Unable to resolve "@onderling-app/folio/rn/serviceFactory"`
 
 **Symptom:** Metro fails on a dynamic `import()` of a workspace
 sibling's subpath, even though `apps/folio/package.json` `exports`
@@ -182,10 +182,10 @@ declares `./rn/serviceFactory`.
 (deliberate — avoids a Hermes ESM/CJS issue per the comment in that
 file).  With exports off, Metro falls back to "package name +
 subpath" resolution.  The `extraNodeModules` map for
-`@canopy-app/folio` points at `apps/folio` (workspace root), and
+`@onderling-app/folio` points at `apps/folio` (workspace root), and
 Metro appends `rn/serviceFactory.js` → `apps/folio/rn/serviceFactory.js`
 → doesn't exist (the real file is at `apps/folio/src/rn/...`).
-Adding `'@canopy-app/folio/rn/serviceFactory'` as a separate
+Adding `'@onderling-app/folio/rn/serviceFactory'` as a separate
 key in `extraNodeModules` doesn't help — Metro silently picks the
 shorter prefix when both are present.
 
@@ -199,8 +199,8 @@ module.exports = withCanopyPreset({
   // ...
   extraSubpathResolvers: [
     (moduleName, repoRoot) => {
-      if (moduleName.startsWith('@canopy-app/folio/rn/')) {
-        const sub = moduleName.slice('@canopy-app/folio/rn/'.length);
+      if (moduleName.startsWith('@onderling-app/folio/rn/')) {
+        const sub = moduleName.slice('@onderling-app/folio/rn/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/folio/src/rn', sub + '.js'),
           type:     'sourceFile',
@@ -217,12 +217,12 @@ same trap bit `apps/stoop-mobile/metro.config.js` for two subpaths:
 
 | Bare import                          | What we wanted                              | What Metro tried                        |
 |--------------------------------------|---------------------------------------------|-----------------------------------------|
-| `@canopy-app/stoop/lib/geo`        | `apps/stoop/src/lib/geo.js`                 | `apps/stoop/lib/geo` (404)              |
-| `@canopy-app/stoop/locales/en`     | `apps/stoop/locales/en.json`                | `apps/stoop/locales/en` (404 — no .js)  |
+| `@onderling-app/stoop/lib/geo`        | `apps/stoop/src/lib/geo.js`                 | `apps/stoop/lib/geo` (404)              |
+| `@onderling-app/stoop/locales/en`     | `apps/stoop/locales/en.json`                | `apps/stoop/locales/en` (404 — no .js)  |
 
-Adding `@canopy-app/stoop/lib/geo` to `extraNodeModules` looked
+Adding `@onderling-app/stoop/lib/geo` to `extraNodeModules` looked
 correct but was silently shadowed by the parent-prefix
-`@canopy-app/stoop` entry. Vitest didn't catch it (Vite's alias
+`@onderling-app/stoop` entry. Vitest didn't catch it (Vite's alias
 engine respects exact-match keys); only the on-device Metro bundle
 failed.
 
@@ -488,7 +488,7 @@ const [request, , promptAsync] = AuthSession.useAuthRequest(
 
 ### Trap 11.5 — `posix.join` of undefined at module load (path shim)
 
-**Symptom:** during `await import('@canopy-app/folio/rn/serviceFactory')`
+**Symptom:** during `await import('@onderling-app/folio/rn/serviceFactory')`
 boot, sync engine init crashes with:
 
 ```
@@ -833,13 +833,13 @@ since each one's package id is distinct.
 
 ---
 
-### Trap 19 — `Unable to resolve "@canopy/relay" / "web-push"` from Stoop barrel
+### Trap 19 — `Unable to resolve "@onderling/relay" / "web-push"` from Stoop barrel
 
 **Symptom (Stoop V3 mobile Phase 40.23, 2026-05-08):**
 
 ```
 Android Bundling failed 8041ms index.js (2063 modules)
-Unable to resolve "@canopy/relay" from "../stoop/src/lib/WebPushSender.js"
+Unable to resolve "@onderling/relay" from "../stoop/src/lib/WebPushSender.js"
 ```
 
 **Cause:** `apps/stoop/src/Agent.js` does a **dynamic** `import()` of
@@ -847,7 +847,7 @@ Unable to resolve "@canopy/relay" from "../stoop/src/lib/WebPushSender.js"
 runtime the branch never fires on mobile (we use native Expo push).
 But Metro's static analyser walks dynamic `import()` calls during
 bundling and follows the chain into `WebPushSender.js` →
-`@canopy/relay` → `web-push`.  Both are Node-only server packages.
+`@onderling/relay` → `web-push`.  Both are Node-only server packages.
 
 **Fix:** add the two packages to the preset's `extraNodeModules`
 shim list (alongside `@inrupt/solid-client-authn-node`, `chokidar`,
@@ -857,12 +857,12 @@ shim list (alongside `@inrupt/solid-client-authn-node`, `chokidar`,
 // packages/react-native/metro-preset.cjs (already applied)
 extraNodeModules: {
   // ...
-  '@canopy/relay': SHIM_PATHS.nodeBuiltins,
+  '@onderling/relay': SHIM_PATHS.nodeBuiltins,
   'web-push':        SHIM_PATHS.nodeBuiltins,
 }
 ```
 
-Mobile apps that compose `@canopy-app/stoop` (the platform-shell
+Mobile apps that compose `@onderling-app/stoop` (the platform-shell
 exception per the layering rule) inherit this fix automatically — no
 per-app metro config needed.
 
@@ -961,7 +961,7 @@ real polyfill.  Dead code → empty-ish shim is OK.
 
 ## Why we don't use `@inrupt/solid-client-authn-node` on mobile
 
-It bundles for two reasons: (a) it's a transitive dep of `@canopy/core`,
+It bundles for two reasons: (a) it's a transitive dep of `@onderling/core`,
 (b) Metro can't tree-shake it because of CommonJS-shaped re-exports.
 But folio-mobile uses **`expo-auth-session`** (RN-native) for auth
 instead.  See `apps/folio-mobile/src/auth/folioAuth.js`.
@@ -987,7 +987,7 @@ mobile-as-thin-client to the desktop agent**:
 - Folio web (`apps/folio/src/server/`) is already a Node agent at
   `127.0.0.1:8888` with all Solid auth + pod sync working.
 - Mobile would speak REST/WS to that agent instead of bundling
-  `@canopy/core`'s server-shape paths.
+  `@onderling/core`'s server-shape paths.
 - Phone holds local cache for offline reads; writes queue to agent
   → pod.
 

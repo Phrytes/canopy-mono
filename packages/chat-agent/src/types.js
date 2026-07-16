@@ -1,5 +1,5 @@
 /**
- * Core types for @canopy/chat-agent.  jsdoc only.
+ * Core types for @onderling/chat-agent.  jsdoc only.
  */
 
 /**

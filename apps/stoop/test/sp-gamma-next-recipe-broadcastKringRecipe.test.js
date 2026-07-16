@@ -13,8 +13,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 // Receiver side substrate lives in canopy-chat; we import directly via
 // relative path (the package wire is identical to how kringChatReceiver

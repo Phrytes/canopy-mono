@@ -80,7 +80,7 @@ NavModel keys end up using.
 
 `apps/canopy-chat-mobile/src/core/composeManifests.js`.  Merges
 every manifest into one **catalog** via the shared
-`mergeManifests()` from `@canopy/app-manifest`.
+`mergeManifests()` from `@onderling/app-manifest`.
 
 What you get back:
 ```

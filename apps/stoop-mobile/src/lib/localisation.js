@@ -1,14 +1,14 @@
 /**
  * localisation — Stoop's locale resolver, bound to apps/stoop/locales/{en,nl}.json.
  *
- * The generic resolver lives in `@canopy/react-native/localisation` (lifted
+ * The generic resolver lives in `@onderling/react-native/localisation` (lifted
  * 2026-05-09 — Phase 41.0 L7). Stoop instantiates it once and re-exports
  * the same module-level API existing call sites use.
  */
 
-import en from '@canopy-app/stoop/locales/en';
-import nl from '@canopy-app/stoop/locales/nl';
-import { loadLocale } from '@canopy/react-native/localisation';
+import en from '@onderling-app/stoop/locales/en';
+import nl from '@onderling-app/stoop/locales/nl';
+import { loadLocale } from '@onderling/react-native/localisation';
 
 const _localisation = loadLocale({ bundles: { en, nl }, defaultLang: 'en' });
 

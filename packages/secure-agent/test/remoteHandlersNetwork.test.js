@@ -5,7 +5,7 @@
  * This is the sibling of remoteHandlers.test.js. That suite proved the tier
  * over a shared `InternalBus` (same-process A2A). Here the caller (Alice) and
  * the remote/host agent (Bob) share NO bus: their ONLY link is a
- * `NetworkTransport` (@canopy/transports) over a MOCK in-memory loopback
+ * `NetworkTransport` (@onderling/transports) over a MOCK in-memory loopback
  * channel — Bob's `receiveFrame` fed from Alice's injected `send` and back.
  * Real HTTP/WebSocket/DPoP + a listening server are DEFERRED; nothing here
  * opens a real socket.
@@ -22,13 +22,13 @@
  *     (issuer- and holder-side) all DENY over the network exactly as in-process.
  */
 import { describe, it, expect } from 'vitest';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import {
   Agent, AgentIdentity,
   TrustRegistry, PolicyEngine, CapabilityToken, TokenRegistry,
   TextPart, Parts,
-} from '@canopy/core';
-import { createNetworkTransport } from '@canopy/transports';
+} from '@onderling/core';
+import { createNetworkTransport } from '@onderling/transports';
 import {
   RemoteHandlerRegistry,
   dispatchRemoteOp,

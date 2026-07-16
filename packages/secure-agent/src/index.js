@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — public entry.
+ * @onderling/secure-agent — public entry.
  *
  * Safety-by-default agent factory.  See createSecureAgent.js for
  * the full design + opt list.
@@ -82,5 +82,5 @@ export {
   GroupManager,
   A2ATLSLayer,
   A2AAuth,
-} from '@canopy/core';
-export { migrateVaultToPod } from '@canopy/pod-client';
+} from '@onderling/core';
+export { migrateVaultToPod } from '@onderling/pod-client';

@@ -1,6 +1,6 @@
-# @canopy/chat-agent
+# @onderling/chat-agent
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Conversational LLM-mediated chat surface — `MessagingBridge`
 interface, per-chat session manager, narrow tool dispatcher.
@@ -15,9 +15,9 @@ chat) specs side-by-side per the rule-of-two policy.
 ## Quick start
 
 ```js
-import { ChatAgent, InMemoryBridge } from '@canopy/chat-agent';
-import { LlmClient } from '@canopy/llm-client';
-import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
+import { ChatAgent, InMemoryBridge } from '@onderling/chat-agent';
+import { LlmClient } from '@onderling/llm-client';
+import { ollamaProvider } from '@onderling/llm-client/providers/ollama';
 
 const bridge = new InMemoryBridge({ id: 'memory' });
 const llm = new LlmClient({
@@ -196,6 +196,6 @@ Differences from the H2 V0 implementation:
 ## See also
 
 - `Project Files/Substrates/L1c-chat-agent.md` — substrate sketch.
-- `@canopy/llm-client` — the LLM provider abstraction this consumes.
-- `@canopy/notifier` — paired substrate; subscribes to `tool-call` events.
+- `@onderling/llm-client` — the LLM provider abstraction this consumes.
+- `@onderling/notifier` — paired substrate; subscribes to `tool-call` events.
 - `Project Files/Substrates/apps/H2-household.md` — primary consumer.

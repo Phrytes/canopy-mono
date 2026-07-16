@@ -29,12 +29,12 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
-import { AgentIdentity, CapabilityToken } from '@canopy/core';
-import { VaultMemory }                    from '@canopy/vault';
+import { AgentIdentity, CapabilityToken } from '@onderling/core';
+import { VaultMemory }                    from '@onderling/vault';
 import {
   uploadBlob, openBlob, makeManifestLine, isBlobRef,
-} from '@canopy/blob-gateway';
-import { generateKeypair, makeSealer, makeOpener, isSealed } from '@canopy/pod-client/sealing';
+} from '@onderling/blob-gateway';
+import { generateKeypair, makeSealer, makeOpener, isSealed } from '@onderling/pod-client/sealing';
 
 import { startCompanionNode } from '../src/index.js';
 

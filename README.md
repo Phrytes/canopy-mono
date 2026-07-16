@@ -7,8 +7,8 @@ shell composes them all, and a portable platform gives every app
 identity, transports, and peer-to-peer reachability underneath.
 
 > **Working name in public material:** *Onderling*.  This monorepo is the
-> engineering home; the platform ships under the `@canopy/*` scope and the
-> apps under `@canopy-app/*`.
+> engineering home; the platform ships under the `@onderling/*` scope and the
+> apps under `@onderling-app/*`.
 
 ---
 
@@ -57,14 +57,14 @@ declaration into four surfaces:
   system prompt      grammar             + forms           (screens/nav)
 ```
 
-- **`@canopy/app-manifest`** ships the schema, the validator, and the
+- **`@onderling/app-manifest`** ships the schema, the validator, and the
   projectors (`renderChat` / `renderSlash` / `renderWeb` / `renderMobile`,
   plus **`renderGate`** — the deterministic *pre-LLM* half: it projects each
   op's `surfaces.slash.match` verbs into token-gate rules so common phrases
   ("add X", "done X") route without the model. `renderChat` is the LLM half;
   `renderGate`/`renderSlash` are the deterministic half — same manifest, both
   used by household's TG-bot and canopy-chat's circle bot).
-- **`@canopy/manifest-host`** composes *N* apps' manifests at runtime —
+- **`@onderling/manifest-host`** composes *N* apps' manifests at runtime —
   collision detection across command namespaces + reply-shape lookup.
 - **`renderCoverage`** — a scan of which surfaces each op is wired for
   (op × chat/slash/gate/web·mobile/inline). Run `npm run coverage` in
@@ -123,31 +123,31 @@ model problems. The plan, in order: **(0)** architectural *fitness functions* �
 check so drift can't merge; **(1)** consolidate the remaining duplication; **(2)** split the repos along the
 now-enforced seams — thin **clients** (web + mobile) · **substrate/functionality** (the packages + the
 already-server-side pod-hosting / proxy / private-LLM) · the **feedback app** in its own repo (project-start,
-KLAI compat) · **third-party apps** that build against the Solid pod + `@canopy/sdk` (pod **ACPs** are the access
+KLAI compat) · **third-party apps** that build against the Solid pod + `@onderling/sdk` (pod **ACPs** are the access
 contract) without touching this repo. Sensitive compute stays client-side or in an **attested enclave** —
 functionality is placed by *trust + latency*, never default-to-server. The contract at every seam is the
-manifest (for surfaces) and `@canopy/sdk` + pod ACPs (for external apps). See `REMAINING-WORK.md` →
+manifest (for surfaces) and `@onderling/sdk` + pod ACPs (for external apps). See `REMAINING-WORK.md` →
 "★ Architectural spine" and `CLAUDE.md`. *(This README gets a full rewrite once the repos are split.)*
 
 ---
 
-## How it works — the platform + `@canopy/sdk`
+## How it works — the platform + `@onderling/sdk`
 
-Pure-JS-first, running in browser, Node, and React Native. The **developer SDK is `@canopy/sdk`** — one import
+Pure-JS-first, running in browser, Node, and React Native. The **developer SDK is `@onderling/sdk`** — one import
 that fronts the whole platform (`createAgent()` + `connectSkill()`, plus re-exports of every piece below so you
 can wire your own). The platform underneath:
 
-- **`@canopy/core`** — the **kernel**: identity, security (SecurityLayer, hello handshake, capability tokens,
+- **`@onderling/core`** — the **kernel**: identity, security (SecurityLayer, hello handshake, capability tokens,
   group manager), routing, the `Agent` class, the skill registry + `defineSkill`, protocols (pubSub /
   taskExchange / messaging / …), `InternalTransport`, and the **ports** (`Transport` / `DataSource` /
   `ActorResolver` — the compatibility contract, see [`docs/conventions/ports.md`](./docs/conventions/ports.md)).
-- **`@canopy/transports`** — the concrete network transports (Nkn / Mqtt / Relay / Rendezvous), adapters over
+- **`@onderling/transports`** — the concrete network transports (Nkn / Mqtt / Relay / Rendezvous), adapters over
   the kernel's `Transport` port.
-- **`@canopy/pod-client`** — high-level Solid pod client (read / write / list / conflict resolution / tombstones)
+- **`@onderling/pod-client`** — high-level Solid pod client (read / write / list / conflict resolution / tombstones)
   plus the on-pod storage + identity adapters (`SolidPodSource`, `IdentityPodStore`).
-- **`@canopy/vault`** — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
-- **`@canopy/relay`** — Node WebSocket relay: rendezvous signalling + proxy fallback + fan-out + group auth + push wake.
-- **`@canopy/react-native`** — RN platform layer: BLE, mDNS, KeychainVault, MobilePushBridge, `createMeshAgent`, Metro preset.
+- **`@onderling/vault`** — the Vault family (memory / local-storage / IndexedDB / node-fs / OAuth).
+- **`@onderling/relay`** — Node WebSocket relay: rendezvous signalling + proxy fallback + fan-out + group auth + push wake.
+- **`@onderling/react-native`** — RN platform layer: BLE, mDNS, KeychainVault, MobilePushBridge, `createMeshAgent`, Metro preset.
 
 Substrates (`packages/{item-store, identity-resolver, skill-match, notifier, secure-agent, llm-client, …}`)
 compose the kernel + adapters into reusable building blocks; apps compose substrates.
@@ -173,7 +173,7 @@ based on which transports have a live link to the peer.
 1. **Direct** — mDNS/TCP on the same LAN, BLE in Bluetooth range, or a
    WebRTC DataChannel across networks (relay-signalled, then the relay
    drops out of the data path). In-process transports cover tests + tabs.
-2. **Relay** — `@canopy/relay` over WebSocket, in rendezvous mode (carries
+2. **Relay** — `@onderling/relay` over WebSocket, in rendezvous mode (carries
    only SDP/ICE) or proxy-fallback mode (forwards `nacl.box`-sealed
    envelopes it cannot read).
 3. **NKN** — `NknTransport` rides the public [NKN](https://nkn.org)
@@ -199,9 +199,9 @@ packages/{item-store, identity-resolver, skill-match, notifier,
   secure-agent, app-manifest, manifest-host, llm-client, …}
   ↓                            ←  substrates; reusable building blocks
 packages/core                  ←  the KERNEL: ports + kernel logic
-                               (adapters live outside — @canopy/transports,
-                                @canopy/pod-client, @canopy/vault; the dev
-                                entry is @canopy/sdk, the facade over the platform)
+                               (adapters live outside — @onderling/transports,
+                                @onderling/pod-client, @onderling/vault; the dev
+                                entry is @onderling/sdk, the facade over the platform)
 ```
 
 Substrates compose the kernel + adapters and MUST NOT reinvent the kernel.  Apps
@@ -272,8 +272,8 @@ Apps are pnpm-filtered workspaces:
 
 ```bash
 # canopy-chat (web) — static-deployable
-pnpm --filter @canopy-app/canopy-chat dev        # http://localhost:5173
-pnpm --filter @canopy-app/canopy-chat build      # → dist/
+pnpm --filter @onderling-app/canopy-chat dev        # http://localhost:5173
+pnpm --filter @onderling-app/canopy-chat build      # → dist/
 ```
 
 ```bash

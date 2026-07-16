@@ -2,7 +2,7 @@
  * Locale-parity smoke test for β.4 — verifies the new
  * `circle.create.template.applied_hint` key exists in BOTH en + nl
  * with the same flat-key set across the canopy-chat locale files.
- * (Avoids importing renderer.js which has a worktree-only @canopy/*
+ * (Avoids importing renderer.js which has a worktree-only @onderling/*
  * resolution issue that breaks localisation.test.js — pre-existing.)
  */
 import { describe, it, expect } from 'vitest';

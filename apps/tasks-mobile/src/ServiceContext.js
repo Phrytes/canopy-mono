@@ -10,10 +10,10 @@
  *   2. Build a local-store bundle (FileSystemAdapter on a real device,
  *      MemorySource under tests).
  *   3. Build the meshAgent via `buildMeshAgent` from
- *      `@canopy-app/tasks-v0/MeshAgent`. The vault snapshot lives at
+ *      `@onderling-app/tasks-v0/MeshAgent`. The vault snapshot lives at
  *      a per-process path so the agent's pubKey survives restarts.
  *   4. Restore the user's joined circles from `bundleRegistry` (Phase
- *      41.0.b A5 — `@canopy/react-native/storage`). For each entry,
+ *      41.0.b A5 — `@onderling/react-native/storage`). For each entry,
  *      build a CircleState and add it to the `circles` Map.
  *   5. Register skills ONCE on `meshAgent.skills` via `wireSkills`
  *      with `multiCircleResolver(circles)`. The resolver closes over the
@@ -42,37 +42,37 @@ import React, {
   useState,
 } from 'react';
 
-import { MemberMap } from '@canopy/identity-resolver';
+import { MemberMap } from '@onderling/identity-resolver';
 import {
   bootstrapIdentity,
-} from '@canopy/react-native/identity/bootstrap';
+} from '@onderling/react-native/identity/bootstrap';
 import {
   createBundleRegistry,
-} from '@canopy/react-native/storage';
+} from '@onderling/react-native/storage';
 import {
   attachAppStateBridge,
   setBgRunOnce, clearBgRunOnce,
   registerBackgroundFetch, unregisterBackgroundFetch,
-} from '@canopy/online-cadence';
-import { ExpoSecureStore } from '@canopy/react-native/ports';
+} from '@onderling/online-cadence';
+import { ExpoSecureStore } from '@onderling/react-native/ports';
 
 import {
   buildMeshAgent,
-} from '@canopy-app/tasks-v0/MeshAgent';
+} from '@onderling-app/tasks-v0/MeshAgent';
 import {
   wireSkills,
-} from '@canopy-app/tasks-v0/wireSkills';
+} from '@onderling-app/tasks-v0/wireSkills';
 import {
   multiCircleResolver,
-} from '@canopy-app/tasks-v0/bundleResolver';
+} from '@onderling-app/tasks-v0/bundleResolver';
 import {
   buildMultiCircleOnboardingSkills,
-} from '@canopy-app/tasks-v0/multiCircleOnboarding';
+} from '@onderling-app/tasks-v0/multiCircleOnboarding';
 
 import { buildLocalStoreBundle } from './lib/buildLocalStoreBundle.js';
 import { buildCircleState }        from './lib/buildCircleState.js';
 import { buildPodSignInSkillsMobile } from './lib/podSignInSkillsMobile.js';
-import { attachTasksBundle, detachTasksBundle } from '@canopy-app/tasks-v0/lib/attachTasksBundle';
+import { attachTasksBundle, detachTasksBundle } from '@onderling-app/tasks-v0/lib/attachTasksBundle';
 
 const ServiceContext = createContext(null);
 
@@ -83,7 +83,7 @@ const DEFAULT_BUNDLE_NAMESPACE = 'tasks:circles';
 // injects `vaultFactory` directly so the TS-shipped react-native-keychain
 // import never runs.
 async function _defaultVaultFactory() {
-  const mod = await import('@canopy/react-native/src/identity/KeychainVault.js');
+  const mod = await import('@onderling/react-native/src/identity/KeychainVault.js');
   return new mod.KeychainVault({ service: DEFAULT_KEYCHAIN_SERVICE });
 }
 
@@ -216,9 +216,9 @@ export function ServiceProvider({ children, boot = {} }) {
     }
     // Lazy-load OidcSessionRN + SolidPodSource so vitest doesn't pull
     // expo-secure-store / @inrupt/* modules at module-load time.
-    const { OidcSessionRN } = await import('@canopy/oidc-session-rn');
+    const { OidcSessionRN } = await import('@onderling/oidc-session-rn');
     const SecureStore = await import('expo-secure-store');
-    const { SolidPodSource } = await import('@canopy/pod-client');
+    const { SolidPodSource } = await import('@onderling/pod-client');
 
     const session = podSessionRef.current
       ?? new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'tasks' });
@@ -400,7 +400,7 @@ export function ServiceProvider({ children, boot = {} }) {
         // + return shapes as tasks-v0 so screens stay portable
         // (stoop-mobile's ProfileMineScreen consumes
         // podSignInStatus / signOutOfPod). expo-secure-store +
-        // @canopy/pod-client are lazily imported inside the
+        // @onderling/pod-client are lazily imported inside the
         // factories so vitest never pulls them at module-load.
         try {
           const podSignInDefs = buildPodSignInSkillsMobile({
@@ -410,14 +410,14 @@ export function ServiceProvider({ children, boot = {} }) {
               if (podSessionRef.current) return podSessionRef.current;
               // require() keeps the RN-only deps off the vitest graph
               // (same lazy pattern attachPod uses).
-              const { OidcSessionRN } = require('@canopy/oidc-session-rn');
+              const { OidcSessionRN } = require('@onderling/oidc-session-rn');
               const SecureStore = require('expo-secure-store');
               const s = new OidcSessionRN({ store: new ExpoSecureStore({ store: SecureStore }).asOidcStore(), appId: 'tasks' });
               podSessionRef.current = s;
               return s;
             },
             dataSourceFactory: ({ podUrl, fetch: fetchFn }) => {
-              const { SolidPodSource } = require('@canopy/pod-client');
+              const { SolidPodSource } = require('@onderling/pod-client');
               return new SolidPodSource({ podUrl, fetch: fetchFn });
             },
           });

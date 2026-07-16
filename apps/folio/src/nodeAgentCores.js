@@ -6,7 +6,7 @@
  * control surface (`syncOnce`, `watchStart`, `watchStop`, `forceRepush`,
  * `deleteLocally`).  Unlike the browser cores (relocatable pod-file ops that
  * canopy-chat exposes in its browser bundle), these drive the real
- * `@canopy/sync-engine` `SyncEngine` — chokidar watcher, save-detection,
+ * `@onderling/sync-engine` `SyncEngine` — chokidar watcher, save-detection,
  * fs ↔ pod reconciliation — which needs Node + the local filesystem in reach.
  * They therefore live in a SEPARATE file from the browser cores so nothing on
  * the browser path (`browser.js` → `wireSkills.js` → `agentCores.js`) ever

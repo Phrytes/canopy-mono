@@ -6,12 +6,12 @@
  * ── Why this port exists ────────────────────────────────────────────────────
  * Today the background bits are scattered across three modules that each take
  * injected Expo namespaces:
- *   - `@canopy/sync-engine-rn/bgRunOnce`      — `registerBackgroundTask` +
+ *   - `@onderling/sync-engine-rn/bgRunOnce`      — `registerBackgroundTask` +
  *     the `setBgRunOnce`/`clearBgRunOnce` singleton (defineTask MUST run at
  *     JS-bundle load, before the engine exists).
- *   - `@canopy/sync-engine-rn/backgroundTasks` — `registerBackgroundFetch` /
+ *   - `@onderling/sync-engine-rn/backgroundTasks` — `registerBackgroundFetch` /
  *     `unregisterBackgroundFetch` (periodic wake).
- *   - `@canopy/online-cadence/attachAppStateBridge` — foreground/background
+ *   - `@onderling/online-cadence/attachAppStateBridge` — foreground/background
  *     cadence + AppState listener.
  * This port NAMES that surface so the future iOS work (BGTaskScheduler +
  * NSE-driven reconnect-and-drain + App-Group) and the Android counterpart

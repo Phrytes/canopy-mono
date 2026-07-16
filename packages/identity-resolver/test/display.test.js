@@ -14,7 +14,7 @@ import {
   HANDLE_LIMITS,
 } from '../src/display.js';
 
-describe('@canopy/identity-resolver/display — initials', () => {
+describe('@onderling/identity-resolver/display — initials', () => {
   it('returns up to two letters', () => {
     expect(initials('Anne Doe')).toBe('AD');
     expect(initials('Anne')).toBe('A');
@@ -26,7 +26,7 @@ describe('@canopy/identity-resolver/display — initials', () => {
   });
 });
 
-describe('@canopy/identity-resolver/display — paletteFor', () => {
+describe('@onderling/identity-resolver/display — paletteFor', () => {
   it('returns the same colour for the same name', () => {
     expect(paletteFor('Anne')).toBe(paletteFor('Anne'));
   });
@@ -39,7 +39,7 @@ describe('@canopy/identity-resolver/display — paletteFor', () => {
   });
 });
 
-describe('@canopy/identity-resolver/display — validateHandle', () => {
+describe('@onderling/identity-resolver/display — validateHandle', () => {
   it('accepts well-formed handles', () => {
     expect(validateHandle('frits')).toEqual({ ok: true });
     expect(validateHandle('frits-de-roos')).toEqual({ ok: true });
@@ -68,7 +68,7 @@ describe('@canopy/identity-resolver/display — validateHandle', () => {
   });
 });
 
-describe('@canopy/identity-resolver/display — normaliseHandle', () => {
+describe('@onderling/identity-resolver/display — normaliseHandle', () => {
   it('lowercases + drops disallowed chars', () => {
     expect(normaliseHandle('Anne Doe!')).toBe('annedoe');
     expect(normaliseHandle('a-b_c')).toBe('a-b_c');

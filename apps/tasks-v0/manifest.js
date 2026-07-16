@@ -9,7 +9,7 @@
  * replacement requires careful page-by-page characterization (SP-3b,
  * deferred).
  *
- * itemTypes = ['task'] (canonical in @canopy/item-types; F-SP1-a not
+ * itemTypes = ['task'] (canonical in @onderling/item-types; F-SP1-a not
  * needed here — all types are canonical).
  *
  * F-SP3-a (locked 2026-05-20, in code): `appliesTo.state` accepts a

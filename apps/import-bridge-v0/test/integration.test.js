@@ -8,13 +8,13 @@
  * Exercises:
  *   - `core.OAuthVault` — credentials supplied per source
  *   - `core.MemorySource` — write target
- *   - `@canopy/identity-resolver/PersonGraph` — auto-link on identifier collision
+ *   - `@onderling/identity-resolver/PersonGraph` — auto-link on identifier collision
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MemorySource } from '@canopy/core';
-import { OAuthVault, VaultMemory } from '@canopy/vault';
-import { PersonGraph } from '@canopy/identity-resolver/person-graph';
+import { MemorySource } from '@onderling/core';
+import { OAuthVault, VaultMemory } from '@onderling/vault';
+import { PersonGraph } from '@onderling/identity-resolver/person-graph';
 
 import {
   createImportAgent,

@@ -1,5 +1,5 @@
 /**
- * `@canopy/oidc-session-rn/picker` subpath.
+ * `@onderling/oidc-session-rn/picker` subpath.
  *
  * Pulls `react-native` at module load — kept separate from the root
  * barrel so non-RN consumers (test runners, server-side helpers)

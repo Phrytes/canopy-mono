@@ -2,7 +2,7 @@
  * Objective D — slash-collision policy end-to-end in canopy-chat.
  *
  * Two mounted apps declare the SAME bare `/done` command. The merged catalog
- * (`mergeManifests`) must, via `@canopy/manifest-host`'s `resolveSlash`:
+ * (`mergeManifests`) must, via `@onderling/manifest-host`'s `resolveSlash`:
  *   - expose the app-qualified forms (`/tasks:done`, `/stoop:done`) that always
  *     route to the right app;
  *   - surface the bare `/done` as AMBIGUOUS (offer the choices) with NO

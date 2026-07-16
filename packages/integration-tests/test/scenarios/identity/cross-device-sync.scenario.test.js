@@ -21,9 +21,9 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-import { Bootstrap, AgentIdentity } from '@canopy/core';
-import { IdentityPodStore, IdentitySync } from '@canopy/pod-client';
-import { VaultMemory } from '@canopy/vault';
+import { Bootstrap, AgentIdentity } from '@onderling/core';
+import { IdentityPodStore, IdentitySync } from '@onderling/pod-client';
+import { VaultMemory } from '@onderling/vault';
 
 import { MockPod } from '../../../src/_harness/index.js';
 

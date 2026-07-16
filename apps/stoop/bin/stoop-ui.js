@@ -33,10 +33,10 @@
  *     instance so the UI's group dropdown can navigate between them.
  */
 import { parseArgs } from 'node:util';
-import { AgentIdentity, InternalBus, InternalTransport, Agent, RoutingStrategy, FallbackTable, PeerGraph } from '@canopy/core';
-import { RelayTransport } from '@canopy/transports';
-import { VaultNodeFs } from '@canopy/vault';
-import { mountLocalUi, LocalUiAuth } from '@canopy/agent-ui';
+import { AgentIdentity, InternalBus, InternalTransport, Agent, RoutingStrategy, FallbackTable, PeerGraph } from '@onderling/core';
+import { RelayTransport } from '@onderling/transports';
+import { VaultNodeFs } from '@onderling/vault';
+import { mountLocalUi, LocalUiAuth } from '@onderling/agent-ui';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -163,7 +163,7 @@ if (isMultiGroup) {
 } else {
   const { createNeighborhoodAgent } = await import('../src/index.js');
   const bus = new InternalBus();
-  // Build the agent WITH a RoutingStrategy (mirrors @canopy/react-native
+  // Build the agent WITH a RoutingStrategy (mirrors @onderling/react-native
   // createMeshAgent). Root cause of "web never HIs the phone over the
   // relay": without routing, Agent.transportFor() returns the
   // in-process transport for EVERY peer (relay never selected), so

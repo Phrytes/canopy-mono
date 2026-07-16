@@ -19,8 +19,8 @@
  */
 import { WebSocketServer } from 'ws';
 
-// Transport is a peer dependency resolved from @canopy/core.
-import { Transport } from '@canopy/core';
+// Transport is a peer dependency resolved from @onderling/core.
+import { Transport } from '@onderling/core';
 
 export class WsServerTransport extends Transport {
   #wss  = null;

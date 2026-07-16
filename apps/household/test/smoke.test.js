@@ -5,7 +5,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-describe('@canopy-app/household — scaffold', () => {
+describe('@onderling-app/household — scaffold', () => {
   it('the package builds and the entry module imports cleanly', async () => {
     const mod = await import('../src/index.js');
     expect(mod).toBeTruthy();

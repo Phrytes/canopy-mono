@@ -53,17 +53,17 @@
  *            in-memory Map, not a pod-backed resource).  Both are R1.5/R2.
  */
 import { Agent, AgentIdentity, Parts, PodCapabilityToken,
-         PolicyEngine, TrustRegistry, TokenRegistry, CapabilityToken } from '@canopy/core';
-import { RelayTransport }              from '@canopy/transports';
-import { startRelay }                  from '@canopy/relay';
-import { VaultNodeFs }                 from '@canopy/vault';
-import { createPodTokenVerifier, PodClient, CapabilityAuth } from '@canopy/pod-client';
+         PolicyEngine, TrustRegistry, TokenRegistry, CapabilityToken } from '@onderling/core';
+import { RelayTransport }              from '@onderling/transports';
+import { startRelay }                  from '@onderling/relay';
+import { VaultNodeFs }                 from '@onderling/vault';
+import { createPodTokenVerifier, PodClient, CapabilityAuth } from '@onderling/pod-client';
 
 import { homedir }                     from 'node:os';
 import { join }                        from 'node:path';
 
 // Folio composition, reused verbatim (relative import into apps/folio/src —
-// folio's node_modules resolves the transitive @canopy/* deps; mirrors folio's
+// folio's node_modules resolves the transitive @onderling/* deps; mirrors folio's
 // own relative `wireSkill` import). We do NOT reimplement folio's cores.
 import { buildFolioSkills }            from '../../folio/src/wireSkills.js';
 import { registerFolioAgent, FOLIO_CAPABILITIES } from '../../folio/src/registerFolioAgent.js';
@@ -71,7 +71,7 @@ import { searchFiles as searchFilesCore, folioBriefSummary } from '../../folio/s
 
 import { buildCompanionStore }         from './store.js';
 import { createSealedInbox, FileSealedInboxStore } from './sealedInbox.js';
-import { CONTENTLESS_WAKE }            from '@canopy/relay';
+import { CONTENTLESS_WAKE }            from '@onderling/relay';
 import { buildDevPodSource }           from './podSource.js';
 import { ScopedPodClient, closedPodClient } from './scopedPodClient.js';
 import { ACCEPT_DELEGATION_OP }        from './authorizePod.js';
@@ -174,8 +174,8 @@ export function resolveConfigDir(explicit) {
  * @param {object}  [opts.registryPseudoPod]  inject the registry pod — else in-memory (R1)
  * @param {string}  [opts.label='companion-folio']
  * @returns {Promise<{
- *   agent: import('@canopy/core').Agent,
- *   identity: import('@canopy/core').AgentIdentity,
+ *   agent: import('@onderling/core').Agent,
+ *   identity: import('@onderling/core').AgentIdentity,
  *   relay: object|null,
  *   relayUrl: string,
  *   pseudoPod: object,
@@ -570,7 +570,7 @@ export async function startCompanionNode(opts = {}) {
    * @param {string[]} [o.skills]          skill ids to grant (default: the advertised set).
    *                                       Use `['*']` for a blanket grant.
    * @param {number}   [o.expiresIn]       ms until expiry (default: CapabilityToken default, 1h)
-   * @returns {Promise<import('@canopy/core').CapabilityToken[]>} one token per skill
+   * @returns {Promise<import('@onderling/core').CapabilityToken[]>} one token per skill
    */
   async function authorizeDevice(devicePubKey, { skills, expiresIn } = {}) {
     if (!gate || !tokenRegistry) {

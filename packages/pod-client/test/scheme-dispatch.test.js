@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { PodClient } from '../src/PodClient.js';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 
 /** Minimal Auth + podSource — we only exercise the pseudo-pod branch. */
 function makeRig({ withPseudoPod = true, deviceId = 'laptop-anne' } = {}) {

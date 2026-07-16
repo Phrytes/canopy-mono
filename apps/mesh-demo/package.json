@@ -12,9 +12,9 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@canopy/core": "file:../../packages/core",
-    "@canopy/vault": "file:../../packages/vault",
-    "@canopy/react-native": "file:../../packages/react-native",
+    "@onderling/core": "file:../../packages/core",
+    "@onderling/vault": "file:../../packages/vault",
+    "@onderling/react-native": "file:../../packages/react-native",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@react-navigation/native": "^6.1.18",
     "@react-navigation/native-stack": "^6.11.0",

@@ -1,5 +1,5 @@
 /**
- * @canopy/llm-client — public entry point.
+ * @onderling/llm-client — public entry point.
  */
 
 export { LlmClient } from './LlmClient.js';

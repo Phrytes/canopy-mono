@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { Agent }                from '../src/Agent.js';
 import { AgentIdentity }        from '../src/identity/AgentIdentity.js';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 import { PeerGraph }            from '../src/discovery/PeerGraph.js';
 import { TextPart, Parts }      from '../src/Parts.js';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';

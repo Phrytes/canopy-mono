@@ -24,8 +24,8 @@
  * @vitest-environment node
  */
 import { describe, it, expect } from 'vitest';
-import { LlmClient } from '@canopy/llm-client';
-import { ollamaProvider } from '@canopy/llm-client/providers/ollama';
+import { LlmClient } from '@onderling/llm-client';
+import { ollamaProvider } from '@onderling/llm-client/providers/ollama';
 
 import { createRealHouseholdAgent } from '../../src/web/realAgent.js';
 import { mergeManifests }            from '../../src/manifestMerge.js';

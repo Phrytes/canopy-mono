@@ -28,7 +28,7 @@
  *   HOUSEHOLD_SMOKE_FILTER=remove npm run freetext-smoke --prefix apps/household
  */
 
-import { ChatAgent, InMemoryBridge } from '@canopy/chat-agent';
+import { ChatAgent, InMemoryBridge } from '@onderling/chat-agent';
 
 import { LlmClient }      from '../src/llm/LlmClient.js';
 import { ollamaProvider } from '../src/llm/providers/ollama.js';

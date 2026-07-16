@@ -117,7 +117,7 @@ shared composition, avoids two separate folio UIs.
 
 ### #220.4 — Calendar substrate path on mobile
 
-Web uses `registerCalendarSkills` from `@canopy-app/calendar`
+Web uses `registerCalendarSkills` from `@onderling-app/calendar`
 (`calendar_addEvent` + RSVP). Mobile (tasks-mobile, stoop-mobile)
 uses native calendar sync only (`useNativeCalendarLiveSync` etc.) —
 no cross-peer invite/RSVP path.

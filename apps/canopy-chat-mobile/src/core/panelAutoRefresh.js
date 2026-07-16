@@ -12,7 +12,7 @@
  * `applyRefresh(threadId, messageId, freshRendered)` so the caller owns
  * the React state update.
  */
-import { collectStalePanels, REFRESHABLE_VERBS } from '@canopy-app/canopy-chat';
+import { collectStalePanels, REFRESHABLE_VERBS } from '@onderling-app/canopy-chat';
 import { refreshList } from './refreshList.js';
 
 /**

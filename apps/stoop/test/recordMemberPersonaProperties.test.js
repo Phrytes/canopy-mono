@@ -3,8 +3,8 @@
 // properties onto the roster row AND patches the durable redemption-item source (so it survives a
 // roster rebuild, like the join-time capture). Only existing members; {} clears; not-a-member guarded.
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 
 const ADMIN = 'https://id.example/admin';

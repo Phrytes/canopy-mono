@@ -2,7 +2,7 @@
 // agents surface (verb 'add' → CREATIVE_VERBS auto-surface), so the "New profile" button + its
 // generic param-form come from the MANIFEST alone (invariant #4 — no bespoke screen code).
 import { describe, it, expect } from 'vitest';
-import { renderWeb } from '@canopy/app-manifest';
+import { renderWeb } from '@onderling/app-manifest';
 import { agentsManifest } from '../manifest.js';
 
 describe('createProfile front-end (auto-surfaced section affordance)', () => {

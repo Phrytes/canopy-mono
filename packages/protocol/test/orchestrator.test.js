@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { defineProtocol } from '../src/defineProtocol.js';
 import { createProtocolOrchestrator } from '../src/orchestrator.js';
 

@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
-import { normalizeHopMode } from '@canopy-app/canopy-chat';
+import { normalizeHopMode } from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function CircleHopScreen({ callSkill, onBack }) {

@@ -60,8 +60,8 @@
  * two to unselected.
  */
 
-import { defineSkill } from '@canopy/core';
-import { TAXONOMY, normaliseTag, isKnownCategory } from '@canopy/identity-resolver';
+import { defineSkill } from '@onderling/core';
+import { TAXONOMY, normaliseTag, isKnownCategory } from '@onderling/identity-resolver';
 
 import { argsFromParts } from '../bundleResolver.js';
 

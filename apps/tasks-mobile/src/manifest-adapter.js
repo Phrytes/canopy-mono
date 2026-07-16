@@ -11,13 +11,13 @@
  * Cross-surface parity — this file is INTENTIONALLY platform-
  * neutral.  No React, no React Native, no DOM.  A future cleanup
  * (V0.4 of the PLAN-gui-chat-uplift sweep) can lift it verbatim to
- * `@canopy/manifest-adapter` so web + mobile + chat all share one
+ * `@onderling/manifest-adapter` so web + mobile + chat all share one
  * source.  For V0.3 / Slice C.1 it ships in tasks-mobile to keep
  * the radius tight; the shape is deliberately framework-free so
  * the lift is a copy + rewire of consumers, no API churn.
  *
  *   import { createNavModelAdapter } from './manifest-adapter.js';
- *   import { tasksManifest }         from '@canopy-app/tasks-v0/manifest';
+ *   import { tasksManifest }         from '@onderling-app/tasks-v0/manifest';
  *
  *   const adapter = createNavModelAdapter(tasksManifest, { callSkill });
  *   const open    = adapter.getSection('open');
@@ -33,7 +33,7 @@
  *     decide whether a missing section is a bug or a soft no-op
  *     (the web shells fall back to an empty array).
  *   - `fetchSection(section)` honours the V0.2 Q7 `dataSource` field
- *     via `fetchSectionItems` from `@canopy/web-adapter`.  The reply
+ *     via `fetchSectionItems` from `@onderling/web-adapter`.  The reply
  *     shape is verbatim (different list-skills return different
  *     payload shapes — `{items}`, `{tasks}`, etc.); the caller
  *     extracts per app convention.
@@ -54,12 +54,12 @@
  *     `fetchSectionItems`).
  */
 
-import { renderMobile }          from '@canopy/app-manifest';
+import { renderMobile }          from '@onderling/app-manifest';
 import {
   fetchSectionItems,
   itemMatchesAppliesTo,
   applyPrefilledParams,
-} from '@canopy/web-adapter';
+} from '@onderling/web-adapter';
 
 /**
  * @param {object} manifest          per-app manifest (tasksManifest etc.)

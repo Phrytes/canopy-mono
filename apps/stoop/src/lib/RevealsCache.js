@@ -17,11 +17,11 @@
  *
  * **Substrate candidate** (rule of two — first consumer): when a 2nd
  * app needs durable Reveals mirroring, lift this beside
- * `MemberMapCache` into `@canopy/identity-resolver` itself.
+ * `MemberMapCache` into `@onderling/identity-resolver` itself.
  * Tracked in `Project Files/Substrates/substrate-candidates.md`.
  */
 
-import { Reveals } from '@canopy/identity-resolver';
+import { Reveals } from '@onderling/identity-resolver';
 
 const REVEALS_PATH = 'mem://stoop/reveals.json';
 

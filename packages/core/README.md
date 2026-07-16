@@ -1,8 +1,8 @@
-# @canopy/core
+# @onderling/core
 
 > **Layer: SDK foundation.** This is part of the agent SDK that substrates build on. Substrates and apps compose primitives from here — they MUST NOT reinvent transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, or ULID; apps MUST justify any direct dependency in their README's `## Direct SDK use` section. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
-Pure-JS core of the @canopy SDK.  Runs in browser, Node, and React
+Pure-JS core of the @onderling SDK.  Runs in browser, Node, and React
 Native (no native deps in this package).  Provides:
 
 - **`Agent`** — composition root; skill registry, dispatch, hello/task
@@ -15,7 +15,7 @@ Native (no native deps in this package).  Provides:
 - **Routing** — `RoutingStrategy`, `FallbackTable`, hop tunneling.
 - **Skills + protocols** — task exchange, streaming, file sharing,
   pubsub, key rotation, reachability oracle.
-- **A2A bridge** — JSON-RPC over HTTPS interop with non-`@canopy`
+- **A2A bridge** — JSON-RPC over HTTPS interop with non-`@onderling`
   agent frameworks.
 
 For the bigger picture see the repo root
@@ -54,14 +54,14 @@ The four transport families used in practice:
 | `LocalTransport` | Direct (in-realm) | Same-process pub/sub bus.  Tests, browser tabs. |
 | `InternalTransport` | Direct (in-realm) | `InternalBus`-backed; pair-test friendly. |
 | `RendezvousTransport` | Direct (cross-network) | WebRTC DataChannel; needs a signalling channel (relay) for SDP/ICE.  Wire via `agent.enableRendezvous(...)`. |
-| `RelayTransport` | Centralized relay | WebSocket to `@canopy/relay`.  Two server-side modes: rendezvous (signalling) + proxy fallback. |
+| `RelayTransport` | Centralized relay | WebSocket to `@onderling/relay`.  Two server-side modes: rendezvous (signalling) + proxy fallback. |
 | `NknTransport` | Decentralized network | NKN public messaging.  No operator; identity-derived address.  Needs `nkn-sdk`. |
 | `MqttTransport` | Centralized broker | MQTT over WS.  Optional alternative to the WS relay. |
 | `OfflineTransport` | Sentinel | Always-fail clean-error fallback.  Used as "primary" by `createMeshAgent` so a missing network never blocks `agent.start()`. |
 | `Transport` (base) | — | Subclass to add a transport.  Tags `envelope._transport` on receive. |
 
 LAN transports (`MdnsTransport`, `BleTransport`) live in
-`@canopy/react-native` because they need native modules.
+`@onderling/react-native` because they need native modules.
 
 ### Hop / peer-as-relay
 
@@ -81,12 +81,12 @@ via `agent.invokeWithHop(peer, skill, parts, { group })`.  See
 import {
   Agent, AgentIdentity,
   TextPart, Parts,
-} from '@canopy/core';
-import { VaultMemory }              from '@canopy/vault';
-import { RelayTransport, NknTransport } from '@canopy/transports';
+} from '@onderling/core';
+import { VaultMemory }              from '@onderling/vault';
+import { RelayTransport, NknTransport } from '@onderling/transports';
 ```
 
-Phone factory (`createMeshAgent`) lives in `@canopy/react-native`.
+Phone factory (`createMeshAgent`) lives in `@onderling/react-native`.
 Quickstart snippets are in [`QUICKSTART.md`](../../QUICKSTART.md).
 
 ---

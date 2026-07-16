@@ -1,5 +1,5 @@
 /**
- * Core types for @canopy-app/household.  jsdoc only (per CLAUDE.md
+ * Core types for @onderling-app/household.  jsdoc only (per CLAUDE.md
  * — no TypeScript).  Importing this module gives you nothing at
  * runtime; the `@typedef`s here are for the IDE + jsdoc tooling.
  *
@@ -193,5 +193,5 @@
  */
 
 // Empty export so this file is a real ES module.  Imports
-// `@canopy-app/household/types` resolve cleanly.
+// `@onderling-app/household/types` resolve cleanly.
 export const __types__ = true;

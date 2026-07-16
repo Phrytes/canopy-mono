@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/sync-engine",
+  "name": "@onderling/sync-engine",
   "version": "0.4.0",
   "description": "Pod ↔ external-source bidirectional sync engine. Composes core.DataSource / pod-client.PodClient. Post-Phase 5.1: V0 SyncEngine deleted; only the Folio-lifted bidirectional engine + scan/diff helpers remain.",
   "type": "module",
@@ -21,9 +21,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "file:../core",
-    "@canopy/pseudo-pod": "file:../pseudo-pod",
-    "@canopy/versioning": "file:../versioning",
+    "@onderling/core": "file:../core",
+    "@onderling/pseudo-pod": "file:../pseudo-pod",
+    "@onderling/versioning": "file:../versioning",
     "chokidar":       "^3.6.0"
   },
   "devDependencies": {

@@ -9,7 +9,7 @@
  * live in ../rn/screens/.
  */
 // Relative imports — see composeManifests.js for the rationale.
-import { renderMobile } from '@canopy/app-manifest';
+import { renderMobile } from '@onderling/app-manifest';
 
 // The per-app manifest list is owned by composeManifests.js (the single
 // source of truth); we consume it here so the nav order can't drift from

@@ -11,15 +11,15 @@
  * can import this without an AsyncStorage native module); the group-key resource persists
  * there for durability across reloads.
  */
-import { VaultAsyncStorage } from '@canopy/react-native/identity/VaultAsyncStorage';
-import { createAsBackend } from '@canopy/react-native/pseudo-pod-adapter';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { VaultAsyncStorage } from '@onderling/react-native/identity/VaultAsyncStorage';
+import { createAsBackend } from '@onderling/react-native/pseudo-pod-adapter';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { PodClient, generateKeypair as podGenerateKeypair, SolidOidcAuth,
   createSealedPodDataSource, podGroupPrefix,
   recipientStrategy as podRecipientStrategy,
-  sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@canopy/pod-client';
-import { sealItem } from '@canopy/item-store';
-import { makeCircleLists } from '@canopy/kring-host/circleLists';
+  sealingPublicKeyFromNetworkKey as podSealingPublicKeyFromNetworkKey } from '@onderling/pod-client';
+import { sealItem } from '@onderling/item-store';
+import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../canopy-chat/src/v2/circlePodProducer.js';
 import { realPodRouting } from '../../../canopy-chat/src/v2/circleRealPod.js';
 import { createCirclePodSharing } from '../../../canopy-chat/src/v2/circlePodSharing.js';
@@ -326,7 +326,7 @@ export async function shareItemToPublishedKey({
     sealCopy: _sealCopyToRecipients,
     sealingKeyFromNetworkKey: podSealingPublicKeyFromNetworkKey,
     // NOTICE emitters routed by the circle's `notifyOutOfCircle` setting (mirror of web circleApp.js).
-    // `notify` (admins) → @canopy/notify-envelope wiring is a follow-up; today it records the event.
+    // `notify` (admins) → @onderling/notify-envelope wiring is a follow-up; today it records the event.
     notify: (payload) => { try { console.info?.('[share] out-of-circle', payload); } catch { /* noop */ } },
     // `post` → write the tagged post to the source circle's noticeboard item store (reuses `type:'post'`).
     // The `category:'permission-log'` tag lets a future logging section filter it out of the main board.

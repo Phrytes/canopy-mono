@@ -48,7 +48,7 @@ if (typeof globalThis.ErrorUtils?.setGlobalHandler === 'function') {
   });
 }
 
-import { ThemeProvider } from '@canopy/react-native/theme';
+import { ThemeProvider } from '@onderling/react-native/theme';
 import { ServiceProvider, useService } from './src/ServiceContext.js';
 import { LocalisationProvider, useLocalisation } from './src/LocalisationProvider.js';
 import { ROUTES } from './src/navigation.js';

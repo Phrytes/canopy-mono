@@ -1,6 +1,6 @@
 /**
  * AgentIdentity.sharedCopyOpener — the ENCAPSULATED opener seam for SILENT out-of-circle "shared with me"
- * copies. The X25519 sealing derivation + envelope `open` live in the `@canopy/pod-client` ADAPTER, which the
+ * copies. The X25519 sealing derivation + envelope `open` live in the `@onderling/pod-client` ADAPTER, which the
  * kernel must NOT depend up on (invariant #5) — so the kernel exposes a HOLE the app fills with an injected
  * `deriveOpener(networkSecretB64) => opener` builder, and hands it the raw network secret INTERNALLY. This test
  * proves the encapsulation contract WITHOUT pod-client (unresolvable from the kernel):
@@ -12,7 +12,7 @@
 import { describe, it, expect } from 'vitest';
 import nacl from 'tweetnacl';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory } from '@canopy/vault';
+import { VaultMemory } from '@onderling/vault';
 import { generateMnemonic } from '../src/identity/Mnemonic.js';
 import { mnemonicToSeed } from '../src/identity/Mnemonic.js';
 import { encode as b64encode, decode as b64decode } from '../src/crypto/b64.js';

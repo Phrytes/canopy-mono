@@ -1,4 +1,4 @@
-# Changelog — @canopy/notifier
+# Changelog — @onderling/notifier
 
 Versioning per `Project Files/Substrates/policies.md`.
 
@@ -11,7 +11,7 @@ SDK primitives, and ships a real `PushChannel` over `relay.PushSender`.
 ### Breaking
 
 - **`Channel` is now an alias for `MessagingBridge`** from
-  `@canopy/chat-agent`. Channel implementations must expose
+  `@onderling/chat-agent`. Channel implementations must expose
   `id`, `sendReply({chatId, text, buttons?, replyTo?})`, and the
   inbound `start`/`stop`/`onMessage` lifecycle (no-ops are fine for
   send-only channels). Notifier internals now call
@@ -21,7 +21,7 @@ SDK primitives, and ships a real `PushChannel` over `relay.PushSender`.
   directly: `channels: { chat: chatAgent.bridge }` or any
   `TelegramBridge` / `InMemoryBridge`.
 - **`RecordingChannel` deleted.** Tests use `InMemoryBridge` from
-  `@canopy/chat-agent` (same shape: outbox + clearOutbox).
+  `@onderling/chat-agent` (same shape: outbox + clearOutbox).
 - **`notifier.on(emitter, name, handler)` overload removed.** Use
   `notifier.subscribe(emitter, name, handler)` for foreign-emitter
   subscriptions; plain `notifier.on(name, handler)` is the own-event
@@ -49,15 +49,15 @@ SDK primitives, and ships a real `PushChannel` over `relay.PushSender`.
 - **`Notifier extends core.Emitter`** (was already aligned in Phase 2;
   this release removes the brittle `on()` overload that needed Node's
   `events.EventEmitter` to disambiguate).
-- **`@canopy/core` becomes the only runtime dep.** `@canopy/chat-agent`
+- **`@onderling/core` becomes the only runtime dep.** `@onderling/chat-agent`
   is a devDependency for tests (`InMemoryBridge`); the runtime alias
   uses jsdoc only, so apps don't pull chat-agent transitively.
 
 ### SDK additive change shipped along the way
 
-- **`core.genId` is now barrel-exported** from `@canopy/core` (was
+- **`core.genId` is now barrel-exported** from `@onderling/core` (was
   only available via the internal `Envelope.js` subpath). Substrates +
-  apps can now `import { genId } from '@canopy/core'` directly.
+  apps can now `import { genId } from '@onderling/core'` directly.
 
 ## [0.3.0] — 2026-05-02
 

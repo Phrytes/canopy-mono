@@ -16,9 +16,9 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { ItemStore } from '@canopy/item-store';
-import { MemberMap } from '@canopy/identity-resolver';
-import { MemorySource, DataPart } from '@canopy/core';
+import { ItemStore } from '@onderling/item-store';
+import { MemberMap } from '@onderling/identity-resolver';
+import { MemorySource, DataPart } from '@onderling/core';
 
 import { buildMeshAgent } from '../src/MeshAgent.js';
 import { wireSkills } from '../src/wireSkills.js';

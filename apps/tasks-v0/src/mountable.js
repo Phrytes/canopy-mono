@@ -1,11 +1,11 @@
 /**
- * `apps/tasks-v0/src/mountable.js` — tasks-v0 as a `@canopy/manifest-
+ * `apps/tasks-v0/src/mountable.js` — tasks-v0 as a `@onderling/manifest-
  * host` mountable.
  *
  * Bridges two shapes:
  *   - tasks-v0's SDK-native skills (`defineSkill({handler({parts, from,
  *     agent, envelope}) → reply})`) — registered on the meshAgent;
- *   - `@canopy/app-manifest`'s `renderChat` shape
+ *   - `@onderling/app-manifest`'s `renderChat` shape
  *     (`(args, skillCtx) → {replies, stateUpdates}`) — what
  *     `host.mount({skillRegistry, toSkillCtx, …})` expects.
  *
@@ -34,7 +34,7 @@
  * V0 demo uses the latter — see `examples/manifest-host-demo/`.
  */
 
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 import { tasksManifest } from '../manifest.js';
 

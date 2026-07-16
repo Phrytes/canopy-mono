@@ -1,4 +1,4 @@
-# @canopy-app/e2e-journeys — end-to-end user-journey harness
+# @onderling-app/e2e-journeys — end-to-end user-journey harness
 
 Runs the flagship user journeys against a relay **in one process, with the real
 SDK + app code** (no stubs). It's the repeatable "is the whole thing healthy
@@ -37,8 +37,8 @@ Exit `0` = every journey fully green · `1` = a failure · `2` = usage error.
 
 Each journey uses fresh identities, so they can share one relay without collision.
 `two-party` / `offline` / `multi-party` are SDK-level (relay only). `sealed` spins up
-a real `@canopy-app/companion-node` with the inbox enabled. `j-buurt` drives two
-real `@canopy-app/stoop` `createNeighborhoodAgent` instances with the substrate mirror.
+a real `@onderling-app/companion-node` with the inbox enabled. `j-buurt` drives two
+real `@onderling-app/stoop` `createNeighborhoodAgent` instances with the substrate mirror.
 `task-claim` is **hermetic** — it uses the in-process partitionable transport (you
 cannot tell a real relay to partition on command), so it ignores the relay URL and
 reuses the real tasks-v0 claim + substrate-mirror conflict machinery.
@@ -54,7 +54,7 @@ CSS_URL=http://localhost:3001/ node run.mjs      # now j-companion runs instead 
 
 ## Two modes
 
-- **Local (CI gate):** `node run.mjs` starts an in-process `@canopy/relay`, runs the
+- **Local (CI gate):** `node run.mjs` starts an in-process `@onderling/relay`, runs the
   matrix, tears it down. Hermetic — no network, no deployment needed.
 - **Against a deployment:** pass a `wss://` URL (a cloudflared tunnel, Koyeb, an
   Oracle VM — see [`../../deploy/DEPLOY-RUNBOOK.md`](../../deploy/DEPLOY-RUNBOOK.md)).

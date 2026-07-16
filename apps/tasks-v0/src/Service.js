@@ -2,7 +2,7 @@
  * Service — §1b op→atom dispatch adapter for tasks-v0 (PLAN-capability-arc §1b · #65b "collapse the rest").
  *
  * The household pilot (`apps/canopy-chat/src/v2/householdApp.js`) exposed `callCapability(atom, noun, args)` over
- * a dissolved `CircleItemStore`. tasks-v0 is NOT dissolved — its ops are legacy `@canopy/core` `defineSkill`
+ * a dissolved `CircleItemStore`. tasks-v0 is NOT dissolved — its ops are legacy `@onderling/core` `defineSkill`
  * handlers (`({parts, from, envelope}) => …`) whose structured args ride in a single `DataPart` and whose circle is
  * resolved from `parts` by a `bundleResolver`. So this adapter is a thin DataPart WRAPPER over the existing
  * `buildSkills`, adding NOTHING to the per-op logic:
@@ -18,8 +18,8 @@
  * interpreter path resolves `(atom,noun)`→opId at the GATED canopy-chat waist, then dispatches through the gated
  * `callSkill`. This adapter exists for tests + that future gated wiring — additive; the legacy dispatch is untouched.
  */
-import { DataPart } from '@canopy/core';
-import { dispatchCapability } from '@canopy/app-manifest';
+import { DataPart } from '@onderling/core';
+import { dispatchCapability } from '@onderling/app-manifest';
 import { buildSkills, TASK_CORES } from './skills/index.js';
 import { tasksManifest } from '../manifest.js';
 

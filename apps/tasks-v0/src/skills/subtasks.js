@@ -35,7 +35,7 @@
  *   - Cycle detection: rejected before write via `wouldCreateParentCycle`.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { depthOf, wouldCreateParentCycle } from '../dag-tree.js';
 import { argsFromParts } from '../bundleResolver.js';

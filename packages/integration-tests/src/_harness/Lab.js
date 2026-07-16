@@ -26,8 +26,8 @@
  *     `dropTransport` / `addTransport` for partition-style topology
  *     control instead.
  */
-import { Agent, AgentIdentity, InternalBus, InternalTransport } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { Agent, AgentIdentity, InternalBus, InternalTransport } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { ToggleableTransport } from './ToggleableTransport.js';
 import { MockPod }             from './MockPod.js';
 import { MockClock }           from './MockClock.js';
@@ -89,7 +89,7 @@ export class Lab {
       // takes a port and exposes a WebSocketServer.  Scenarios that
       // actually need the relay should plumb it themselves; the
       // harness exposes `lab.relay()` for that.
-      const { startRelay } = await import('@canopy/relay');
+      const { startRelay } = await import('@onderling/relay');
       this.#relay = await startRelay({ port: 0, log: false });
     } else if (relay && typeof relay === 'object' && relay.url) {
       // Caller-supplied relay URL; we don't run our own.  Stash for inspection.
@@ -493,7 +493,7 @@ export class Lab {
    * Start a streaming invocation; returns the Task immediately so the
    * caller can iterate `task.stream()` and call `task.cancel()`.
    *
-   * @returns {import('@canopy/core').Task}
+   * @returns {import('@onderling/core').Task}
    */
   invokeStream(a, b, skill, input = [], opts = {}) {
     const slotA = this.#requireSlot(a);

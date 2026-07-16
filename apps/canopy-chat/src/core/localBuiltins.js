@@ -1213,7 +1213,7 @@ function parseDuration(text) {
  * Cross-peer P2P delivery rides on each app's existing chat surface
  * (e.g. stoop's sendChatMessage) — canopy-chat produces the
  * envelope; the source app delivers.  Not in canopy-chat's scope
- * to compose @canopy/chat-p2p directly (per v0.5.3 audit).
+ * to compose @onderling/chat-p2p directly (per v0.5.3 audit).
  */
 async function createEmbed(args, { catalog, callSkill, t, localActor }) {
   // Parse args — supports both flag-style (--claim) and bare itemId.

@@ -3,13 +3,13 @@
  *
  * The P3 sealing substrate gives every member a stable X25519 **sealing** keypair
  * (distinct from the transport/NKN identity) used to wrap/unwrap a circle's group
- * key. This thin wrapper scopes `@canopy/pod-client` `createMemberSealingIdentity`
+ * key. This thin wrapper scopes `@onderling/pod-client` `createMemberSealingIdentity`
  * PER CIRCLE, so each circle keeps its own sealing key in the app vault. Pure
  * composition — the vault `store` is injected, so it's fully unit-testable offline
  * (no pod, no OIDC). The producer-side control-agent wiring + a real-pod verify are
  * later, env-gated phases (REMAINING-WORK §4 E2).
  */
-import { createMemberSealingIdentity } from '@canopy/pod-client';
+import { createMemberSealingIdentity } from '@onderling/pod-client';
 
 /**
  * @param {object} deps

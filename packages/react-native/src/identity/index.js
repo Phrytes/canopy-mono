@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/identity — RN-side identity helpers.
+ * @onderling/react-native/identity — RN-side identity helpers.
  *
  *   - `KeychainVault`: vault-backed identity store on top of
  *     `react-native-keychain`.

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createMemoryBackend }   from '@canopy/pseudo-pod';
+import { createMemoryBackend }   from '@onderling/pseudo-pod';
 import { createPendingQueue, QUEUE_PREFIX } from '../src/pendingQueue.js';
 
 function fixedNow(t) { return () => t; }

@@ -112,7 +112,7 @@ describe('B/L1 create-path atom: addTask === createHouseholdItem (task noun)', (
 describe('B/L1 nouns declaration conforms to the shared contract', () => {
   it('every nouns key is an itemType and every atom is a canonical atom', async () => {
     const { householdManifest } = await import('../manifest.js');
-    const { isAtom, canonicalAtom } = await import('@canopy/app-manifest');
+    const { isAtom, canonicalAtom } = await import('@onderling/app-manifest');
 
     const types = new Set(householdManifest.itemTypes);
     for (const [noun, decl] of Object.entries(householdManifest.nouns)) {

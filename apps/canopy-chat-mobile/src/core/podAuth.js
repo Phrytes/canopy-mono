@@ -5,7 +5,7 @@
  * `OidcSessionRN` SecureStore-backed token holder into the
  * `podAuth`-shaped interface that
  * `apps/canopy-chat/src/core/localBuiltins.js` expects (the same
- * surface web's `@canopy/oidc-session` exposes).  Web's localBuiltins
+ * surface web's `@onderling/oidc-session` exposes).  Web's localBuiltins
  * handlers — `signin`, `signout`, `whoami` — call:
  *
  *   - `podAuth.startSignIn({issuer})`
@@ -30,7 +30,7 @@
  *   - `resolveIssuer` uses the substrate's `resolveIssuer` for the
  *     KNOWN_ISSUERS list (Inrupt, NSS, SolidCommunity).
  */
-import { resolveIssuer as _resolveIssuer, DEFAULT_ISSUER } from '@canopy/oidc-session-rn';
+import { resolveIssuer as _resolveIssuer, DEFAULT_ISSUER } from '@onderling/oidc-session-rn';
 
 /**
  * @param {object} args

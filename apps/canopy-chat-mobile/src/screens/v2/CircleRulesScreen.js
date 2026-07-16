@@ -20,7 +20,7 @@ import { theme } from './theme.js';
 import {
   RULES_QUESTIONS, normalizeRulesDoc, isRulesComplete,
   detectRulesConflicts, applyRulesResolution,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 

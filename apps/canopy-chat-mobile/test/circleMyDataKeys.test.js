@@ -7,7 +7,7 @@
  * infra — the backup/restore flows reuse the existing RN wizard modals.
  */
 import { describe, it, expect } from 'vitest';
-import { sharedCircleLocale } from '@canopy-app/canopy-chat';
+import { sharedCircleLocale } from '@onderling-app/canopy-chat';
 
 const KEYS = ['keys', 'backup', 'view_mnemonic', 'restore', 'mnemonic_title', 'mnemonic_warn', 'mnemonic_none', 'close'];
 

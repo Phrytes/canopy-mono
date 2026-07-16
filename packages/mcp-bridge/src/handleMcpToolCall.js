@@ -23,21 +23,21 @@
  * gate.
  */
 
-import { dispatchRemoteOp, NOT_REMOTE } from '@canopy/secure-agent';
+import { dispatchRemoteOp, NOT_REMOTE } from '@onderling/secure-agent';
 import { partsFromArguments, mcpResult, mcpError } from './mcpShapes.js';
 import { manifestHasOp } from './internal/manifestHasOp.js';
 
 /**
  * Handle an inbound MCP tool-call by dispatching it through the gate.
  *
- * @param {import('@canopy/core').Agent} agent   — the dispatching agent (holds the capability tokens)
+ * @param {import('@onderling/core').Agent} agent   — the dispatching agent (holds the capability tokens)
  * @param {{ name: string, arguments?: object }} toolCall — MCP tools/call params
  * @param {object} [opts]
- * @param {import('@canopy/secure-agent').RemoteHandlerRegistry} [opts.registry]
+ * @param {import('@onderling/secure-agent').RemoteHandlerRegistry} [opts.registry]
  *        — op→remote-handler map; when present, dispatch goes via dispatchRemoteOp
  * @param {string} [opts.target]   — target agent address (used when no registry)
  * @param {string} [opts.skillId]  — skill id override (defaults to the tool name)
- * @param {import('@canopy/app-manifest').Manifest} [opts.manifest]
+ * @param {import('@onderling/app-manifest').Manifest} [opts.manifest]
  *        — when present, the tool name MUST be a declared op or it's rejected as unknown
  * @param {...*} [opts.rest]        — forwarded to dispatchRemoteOp / agent.invoke (timeout, ttl, …)
  * @returns {Promise<object>} an MCP tool-result or an MCP `{ isError:true }` error

@@ -9,12 +9,12 @@
  *
  * The previous "SkillRouter integration" + "broadcaster" describe blocks
  * are replaced by an end-to-end check using `mountLocalUi` +
- * `LocalAgentClient` from `@canopy/agent-ui`.
+ * `LocalAgentClient` from `@onderling/agent-ui`.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DataPart } from '@canopy/core';
-import { mountLocalUi, LocalAgentClient } from '@canopy/agent-ui';
+import { DataPart } from '@onderling/core';
+import { mountLocalUi, LocalAgentClient } from '@onderling/agent-ui';
 
 import { createTasksAgent, computeStatus, detectCycle } from '../src/index.js';
 

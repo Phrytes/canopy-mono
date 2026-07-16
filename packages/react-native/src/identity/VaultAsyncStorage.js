@@ -1,7 +1,7 @@
 /**
  * VaultAsyncStorage — Vault backed by @react-native-async-storage/async-storage.
  *
- * Hermes / RN equivalent of `VaultLocalStorage` from @canopy/vault.
+ * Hermes / RN equivalent of `VaultLocalStorage` from @onderling/vault.
  * Use this when you want plain-text persistence keyed by a prefix
  * (e.g. canopy-chat-mobile's chat-side identity / mute-list / audit
  * log).  For higher security wrap with an encryption layer or pick
@@ -30,7 +30,7 @@
  * Task #222.5 (2026-05-24) — part of canopy-chat-mobile's Hermes
  * storage path.  See Project Files/canopy-chat/mobile-roadmap-2026-05-24.md.
  */
-import { Vault } from '@canopy/vault';
+import { Vault } from '@onderling/vault';
 
 export class VaultAsyncStorage extends Vault {
   #prefix;

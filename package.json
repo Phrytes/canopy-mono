@@ -2,7 +2,7 @@
   "name": "canopy-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "@canopy/* packages + mesh-demo example app",
+  "description": "@onderling/* packages + mesh-demo example app",
   "type": "module",
   "scripts": {
     "test": "npm run test --prefix packages/core && npm run test --prefix packages/react-native && npm run test --prefix packages/relay && npm run test --prefix packages/pod-client && npm run test --prefix packages/integration-tests",

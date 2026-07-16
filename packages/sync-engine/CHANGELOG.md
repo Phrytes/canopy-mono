@@ -1,4 +1,4 @@
-# Changelog — @canopy/sync-engine
+# Changelog — @onderling/sync-engine
 
 ## [0.2.0] — 2026-05-01
 
@@ -37,4 +37,4 @@ V0 scope: ingest-queue → backend (one-way). V1+ extends to:
 - LocalFolderSource (Folio migration; Folio's existing SyncEngine keeps shipping unchanged).
 - Bidirectional sync.
 - Sha-stable debounce, copy-rename grace, version snapshots (Folio hardening as app-glue when Folio migrates).
-- Pod-backed Backend wrapping @canopy/pod-client.
+- Pod-backed Backend wrapping @onderling/pod-client.

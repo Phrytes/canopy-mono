@@ -7,12 +7,12 @@
  * (never throws — push is fire-and-forget).
  *
  * **Substrate candidate (rule of two — first consumer):** when a
- * second app needs Web Push, lift this into `@canopy/relay/push/`
+ * second app needs Web Push, lift this into `@onderling/relay/push/`
  * alongside `ExpoPushSender`.  Tracked in
  * `Project Files/Substrates/substrate-candidates.md`.
  */
 
-import { PushSender } from '@canopy/relay';
+import { PushSender } from '@onderling/relay';
 
 let _moduleFactory = null;
 

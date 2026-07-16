@@ -1,5 +1,5 @@
 /**
- * @canopy/substrate-stack — shared factory tests.
+ * @onderling/substrate-stack — shared factory tests.
  *
  * Covers both entry shapes (agent-derived transport / injected transport),
  * deviceId resolution + validation, existingPseudoPod reuse, stop(), the
@@ -11,7 +11,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 
-import { createMemoryBackend } from '@canopy/pseudo-pod';
+import { createMemoryBackend } from '@onderling/pseudo-pod';
 import { buildSubstrateStack, createAgentTransportAdapter } from '../src/index.js';
 
 const sha256Json = async (content) => {

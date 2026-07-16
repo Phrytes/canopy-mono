@@ -8,9 +8,9 @@
 // this is INERT for local/pod ops (all of today's). It is a ready-to-apply layer: install it around a
 // callSkill and declare which ops are external-egress + how to build the gate inputs for them.
 //
-// The gate LOGIC lives in @canopy/agent-registry (gateEgress) and is fully tested there; this is only the
+// The gate LOGIC lives in @onderling/agent-registry (gateEgress) and is fully tested there; this is only the
 // dispatch-boundary composition — no transport, no UI (the shell renders `onReceipt`).
-import { gateEgress } from '@canopy/agent-registry';
+import { gateEgress } from '@onderling/agent-registry';
 
 // Router-detection (§10a): "external-egress = the op resolves to a NON-LOCAL target". The PLATFORM decides this
 // (not the app's self-declaration, not the user) — because a bot can't be trusted to declare its own egress.

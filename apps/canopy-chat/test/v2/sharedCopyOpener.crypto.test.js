@@ -4,7 +4,7 @@
  * Proves the vertical slice that makes "open a received copy" actually DECRYPT: a copy sealed (SENDER side) to a
  * recipient's PUBLISHED network key opens via the RECIPIENT's own `AgentIdentity.sharedCopyOpener()` — through
  * the app-layer `openerForIdentity` bridge (the pod-client sealing adapter injected into the kernel's opener
- * seam) and the shared `openSharedCopy` walk. No cipher mocks: real `AgentIdentity`, real `@canopy/pod-client`
+ * seam) and the shared `openSharedCopy` walk. No cipher mocks: real `AgentIdentity`, real `@onderling/pod-client`
  * sealing, real item-store seal/unseal.
  *
  *   • ROUND-TRIP: seal a copy to `sealingPublicKeyFromNetworkKey(recipient.pubKey)` (exactly what the shell seals
@@ -14,10 +14,10 @@
  *   • ENCAPSULATION: the identity API returns a FUNCTION (the opener closure), not the raw secret/private key.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { recipientStrategy, sealingPublicKeyFromNetworkKey } from '@canopy/pod-client/sealing';
-import { sealItem } from '@canopy/item-store';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { recipientStrategy, sealingPublicKeyFromNetworkKey } from '@onderling/pod-client/sealing';
+import { sealItem } from '@onderling/item-store';
 import { openSharedCopy } from '../../src/v2/sharedWithMe.js';
 import { openerForIdentity, deviceSharedCopyOpener } from '../../src/v2/sharedCopyOpener.js';
 

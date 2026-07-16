@@ -12,7 +12,7 @@
  *   - Version records never leak into pseudoPod.list of live containers.
  *   - Without `versioning`, behaviour is unchanged (no capture calls).
  *
- * The version store is `@canopy/versioning`'s createVersionStore (imported
+ * The version store is `@onderling/versioning`'s createVersionStore (imported
  * relatively — the seam is duck-typed, so pseudo-pod takes no package dep)
  * sharing the SAME MemoryBackend under the `versions/` root: live keys are
  * `pseudo-pod://…` URIs, version keys are `versions/…` — disjoint prefixes.

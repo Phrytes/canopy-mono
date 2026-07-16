@@ -5,7 +5,7 @@
  * supertest+POST /api/skills/:id` pattern to the new A2A wire shape:
  * the archive server is a real `core.Agent` exposed via `mountLocalUi`
  * (`POST /tasks/send`), and tests speak via `LocalAgentClient` from
- * `@canopy/agent-ui`.
+ * `@onderling/agent-ui`.
  *
  * Substrate composition is still what we're testing — the archive's
  * skills run on the real SkillRegistry / taskExchange path, not on a
@@ -14,7 +14,7 @@
  * The previous "auth wiring" describe block (resolveActor / actor flows
  * into ctx) is dropped — that tested the legacy SkillRouter auth model.
  * The new A2A path uses `A2AAuth` (or future `LocalUiAuth`); auth tests
- * live in `@canopy/core/test/A2A.test.js` and will be re-added at the
+ * live in `@onderling/core/test/A2A.test.js` and will be re-added at the
  * archive level once `LocalUiAuth` is wired.
  *
  * The previous "broadcaster integration" test is dropped — it tested the
@@ -25,8 +25,8 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { DataPart }          from '@canopy/core';
-import { LocalAgentClient }  from '@canopy/agent-ui';
+import { DataPart }          from '@onderling/core';
+import { LocalAgentClient }  from '@onderling/agent-ui';
 
 import { Db } from '../src/Db.js';
 import { createArchiveWebServer } from '../src/server/index.js';

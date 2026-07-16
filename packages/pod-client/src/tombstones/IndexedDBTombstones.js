@@ -4,7 +4,7 @@
  * Schema: a single object store keyed by `uri`, value `{ at: number }`.
  *
  * Mirrors the open/transact pattern used by `IndexedDBSource` in
- * `@canopy/core`.  Not available in Node.js — will throw if
+ * `@onderling/core`.  Not available in Node.js — will throw if
  * `indexedDB` is absent at construction-time `add`/`has`/etc.
  */
 import { TombstoneStore } from '../TombstoneStore.js';

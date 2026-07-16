@@ -29,7 +29,7 @@ import {
   // B · Slice 4 — SAME capability-treatment lookup the list surface uses,
   // for the file-OPEN row action (get × file). Shared seam; web≡mobile.
   folioFileOpenTreatment,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 import { t } from '../../core/localisation.js';
 
 export default function CircleFolioScreen({

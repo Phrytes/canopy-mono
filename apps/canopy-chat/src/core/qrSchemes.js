@@ -3,7 +3,7 @@
  *
  * Lifted out of src/renderer.js 2026-05-27 so the mobile chat-shell
  * can also detect QR-payload fields in record bubbles + render them
- * via @canopy/react-native/qr/view.  The list is the canonical
+ * via @onderling/react-native/qr/view.  The list is the canonical
  * registry: any new scheme added here is auto-recognised by both
  * renderers + the mobile scanner classifier.
  *

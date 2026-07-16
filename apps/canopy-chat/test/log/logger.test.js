@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { log, dumpLogs, formatLogs, clearLogs, configureLog } from '@canopy/logger';
+import { log, dumpLogs, formatLogs, clearLogs, configureLog } from '@onderling/logger';
 
-describe('@canopy/logger', () => {
+describe('@onderling/logger', () => {
   beforeEach(() => {
     clearLogs();
     let n = 0;

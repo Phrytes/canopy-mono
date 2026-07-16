@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "@canopy/pod-search",
+  "name": "@onderling/pod-search",
   "version": "0.1.0",
   "description": "FTS5 wrapper + faceted filter over pod content (Archive, Notes search, Task search).",
   "type": "module",
@@ -8,7 +8,7 @@
   "exports": { ".": "./src/index.js" },
   "scripts": { "test": "vitest run", "test:watch": "vitest" },
   "devDependencies": {
-    "@canopy/pseudo-pod": "file:../pseudo-pod",
+    "@onderling/pseudo-pod": "file:../pseudo-pod",
     "vitest": "^2.1.0"
   }
 }

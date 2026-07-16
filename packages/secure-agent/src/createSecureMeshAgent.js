@@ -19,7 +19,7 @@
  *   await sa.enableSecureRendezvous();           // direct WebRTC over the signalling transport
  *
  *   // React Native (transport BUILDING injected — keeps this factory platform-neutral):
- *   import { MdnsTransport, BleTransport } from '@canopy/react-native';
+ *   import { MdnsTransport, BleTransport } from '@onderling/react-native';
  *   const sa = await createSecureMeshAgent({
  *     vault,
  *     transports: { mdns: new MdnsTransport({ identity }), ble: new BleTransport({ identity }) },

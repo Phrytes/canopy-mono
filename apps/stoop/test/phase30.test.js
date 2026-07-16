@@ -11,8 +11,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart, generateMnemonic, mnemonicToSeed } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart, generateMnemonic, mnemonicToSeed } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import nacl from 'tweetnacl';
 
 import { createNeighborhoodAgent } from '../src/index.js';

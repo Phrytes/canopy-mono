@@ -2,7 +2,7 @@
  * useSkill — hooks bound to tasks-mobile's ServiceContext.
  *
  * Phase 41.2 (2026-05-09). The substrate factories live in
- * `@canopy/sync-engine-rn/react`; this file is the per-app
+ * `@onderling/sync-engine-rn/react`; this file is the per-app
  * binding that supplies tasks-mobile's `useService` hook.
  *
  *   import { useSkill } from './lib/useSkill.js';
@@ -17,7 +17,7 @@ import {
   createMemberProfileHook,
   toParts,
   unwrapParts,
-} from '@canopy/sync-engine-rn/react';
+} from '@onderling/sync-engine-rn/react';
 import { useService } from '../ServiceContext.js';
 
 const _bindings = createReactBindings({ useService });

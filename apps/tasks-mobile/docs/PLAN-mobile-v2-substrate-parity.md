@@ -28,7 +28,7 @@
 | `tasks-mobile` | ❌ none | `mobile-0.1.0` (2026-05-09) | Pre-substrate; mirrors *old* tasks-v0 |
 | `stoop` + `stoop-mobile` | ✅ all three | — | Adopted; stoop agent now deepening pod-routing (Phase 3.x) |
 
-¹ `@canopy/pod-routing`, `@canopy/pseudo-pod`, `@canopy/notify-envelope`.
+¹ `@onderling/pod-routing`, `@onderling/pseudo-pod`, `@onderling/notify-envelope`.
 
 `tasks-mobile` is a **full minor version behind** `tasks-v0` and still
 mirrors the pre-substrate desktop surface. This is the exact
@@ -106,11 +106,11 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
 - **Node portability** — no `node:*` and no required server on the
   mobile substrate path. New Node-bound code (none expected here)
   goes in `*node*`-named files. The mobile pseudo-pod backend is the
-  RN adapter (`@canopy/react-native/pseudo-pod-adapter`), `standalone`
+  RN adapter (`@onderling/react-native/pseudo-pod-adapter`), `standalone`
   mode (Tasks does not need cache mode).
 - **Metro resolution gotcha** — RN/Metro does not hoist like Node.
-  Even though `@canopy/{pseudo-pod,pod-routing,notify-envelope}` are
-  transitively present via `@canopy-app/tasks-v0` (`file:../tasks-v0`),
+  Even though `@onderling/{pseudo-pod,pod-routing,notify-envelope}` are
+  transitively present via `@onderling-app/tasks-v0` (`file:../tasks-v0`),
   they **must be listed explicitly** in `apps/tasks-mobile/package.json`
   to be Metro-resolvable — mirror `stoop-mobile`'s explicit list.
 
@@ -148,11 +148,11 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
 | S2 — `/welcome.html` create-circle wizard + `provisionMyCircle` | create-circle wizard screen → `provisionMyCircle` | stoop-mobile create-group wizard |
 | S3 — agent-registry on `createCircleAgent` (`registerAgentBundle`) | register on bundle bring-up in `ServiceContext`/`buildCircleState` | stoop-mobile `agentBundle`/`bootstrapBundle` `registerAgentBundle` |
 | S4 — `/onboard.html` + `/pod-settings.html` | onboard (invite redeem) + pod-settings screen (policy display + upgrade row + registry status) | stoop-mobile onboard + profile "My Solid pods" |
-| S5 — pod OIDC sign-in (`startPodSignIn`/`completePodSignIn`/`signOutOfPod`/`podSignInStatus`) | wire the 4 skills behind the pod-settings sign-in card (uses `@canopy/oidc-session-rn` already in deps) | stoop-mobile `ProfileMineScreen` pod sign-in |
+| S5 — pod OIDC sign-in (`startPodSignIn`/`completePodSignIn`/`signOutOfPod`/`podSignInStatus`) | wire the 4 skills behind the pod-settings sign-in card (uses `@onderling/oidc-session-rn` already in deps) | stoop-mobile `ProfileMineScreen` pod sign-in |
 
 - [ ] Add the 4 Metro-explicit deps to `apps/tasks-mobile/package.json`:
-  `@canopy/pseudo-pod`, `@canopy/pod-routing`,
-  `@canopy/notify-envelope`, `@canopy/agent-registry`. Pin to the same
+  `@onderling/pseudo-pod`, `@onderling/pod-routing`,
+  `@onderling/notify-envelope`, `@onderling/agent-registry`. Pin to the same
   versions stoop-mobile carries.
 - [ ] Confirm `tasks-v0`'s `substrateMirror.js` + `lib/substrateStack.js`
   are RN-safe (no `node:*`); have `tasks-mobile` **import** them
@@ -181,7 +181,7 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
   `wireTasksSubstrateMirror` per circle; fan out **every** mutation —
   add/claim/complete/submit/approve/reject/revoke/reassign/remove —
   via the shared `ItemStore.applySync`/`removeSync` gate-bypass path
-  (`@canopy/item-store`, already shared). Stale-peer auto-heal +
+  (`@onderling/item-store`, already shared). Stale-peer auto-heal +
   `fetch-resource`/`groupCheck` per circle bundle inherit from the
   shared `wireTasksSubstrateMirror` (no mobile-specific code).
 - [ ] Live peer-roster updates from `redeemInvite` →
@@ -265,7 +265,7 @@ M0 ──> M1 ──> M2 ──> M3
 
 The web≡mobile rule is repo-wide. Current substrate-trio status for
 the rest of the mobile fleet, for visibility only:
-`household` — none; `folio-mobile` — `@canopy/pseudo-pod` only. Each
+`household` — none; `folio-mobile` — `@onderling/pseudo-pod` only. Each
 is its own future plan; this doc does **not** cover them.
 
 ## 8. Open questions for the owner

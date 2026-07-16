@@ -24,11 +24,11 @@
  *   await cadence.tickNow();
  *
  * Time injection (`now`, `setTimeoutFn`, `clearTimeoutFn`) mirrors
- * `@canopy/notifier`'s pattern so tests can drive the timer
+ * `@onderling/notifier`'s pattern so tests can drive the timer
  * deterministically.
  */
 
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 const DEFAULT_INTERVAL_MS = 60_000;
 
@@ -42,7 +42,7 @@ export class SyncCadence extends Emitter {
   #setTimeout;
   #clearTimeout;
   /** Schedule cursor — next absolute fire time (ms epoch).  Mirrors the
-   *  pattern in `@canopy/notifier`'s recurring scheduler so a bulk
+   *  pattern in `@onderling/notifier`'s recurring scheduler so a bulk
    *  fake-timer advance fires the right number of times rather than
    *  collapsing into "delay-from-now". */
   #nextFireAt = null;

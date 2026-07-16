@@ -1,4 +1,4 @@
-// ULID — Crockford-base32, 26 chars.  See @canopy/item-store/src/ulid.js
+// ULID — Crockford-base32, 26 chars.  See @onderling/item-store/src/ulid.js
 // for the canonical comments.  Inlined here to avoid cross-substrate dep.
 
 const CROCKFORD = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';

@@ -26,7 +26,7 @@ import { t } from '../../core/localisation.js';
 import {
   BLOCK_TYPES, BLOCK_REGISTRY,
   detectRecipeConflicts, applyResolution,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 import CircleRecipeConflictScreen from './CircleRecipeConflictScreen.js';
 
 // α.5c — list-shaped block types that expose the Compact toggle in

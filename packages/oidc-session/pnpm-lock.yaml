@@ -12,7 +12,7 @@ importers:
         specifier: 4.0.0
         version: 4.0.0
     devDependencies:
-      '@canopy/core':
+      '@onderling/core':
         specifier: file:../core
         version: file:../core
       vitest:
@@ -25,13 +25,13 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     resolution: {directory: ../core, type: directory}
 
-  '@canopy/oidc-session@file:':
+  '@onderling/oidc-session@file:':
     resolution: {directory: '', type: directory}
 
-  '@canopy/vault@file:../vault':
+  '@onderling/vault@file:../vault':
     resolution: {directory: ../vault, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -800,10 +800,10 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/core@file:../core':
+  '@onderling/core@file:../core':
     dependencies:
-      '@canopy/oidc-session': 'file:'
-      '@canopy/vault': file:../vault
+      '@onderling/oidc-session': 'file:'
+      '@onderling/vault': file:../vault
       '@inrupt/solid-client': 3.0.0
       '@inrupt/solid-client-authn-node': 4.0.0
       '@noble/hashes': 2.2.0
@@ -814,11 +814,11 @@ snapshots:
     optionalDependencies:
       node-datachannel: 0.32.3
 
-  '@canopy/oidc-session@file:':
+  '@onderling/oidc-session@file:':
     dependencies:
       '@inrupt/solid-client-authn-node': 4.0.0
 
-  '@canopy/vault@file:../vault': {}
+  '@onderling/vault@file:../vault': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

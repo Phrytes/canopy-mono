@@ -10,7 +10,7 @@ import {
 } from '../src/index.js';
 
 function mkStores() {
-  const registry = { validate: () => ({ ok: true }) };   // permissive — the shared-ref schema is tested in @canopy/item-types
+  const registry = { validate: () => ({ ok: true }) };   // permissive — the shared-ref schema is tested in @onderling/item-types
   return createCircleStores({ dataSource: memoryDataSource(), registry });
 }
 

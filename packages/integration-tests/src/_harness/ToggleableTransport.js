@@ -47,7 +47,7 @@ export class ToggleableTransport {
 
   /**
    * @param {string}                                                    name             — e.g. 'internal' or 'relay'
-   * @param {import('@canopy/core').Transport}                        wrappedTransport — the real Transport instance
+   * @param {import('@onderling/core').Transport}                        wrappedTransport — the real Transport instance
    */
   constructor(name, wrappedTransport) {
     if (!wrappedTransport) {

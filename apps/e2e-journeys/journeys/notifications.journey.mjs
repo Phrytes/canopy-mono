@@ -6,11 +6,11 @@
 // Uses the REAL companion wake path (startCompanionNode's inboxWakeSender) with a
 // ReliableExpoPushSender over a recording fetch — so we inspect the exact push
 // body that would hit Expo/APNs, without a real push service.
-import { Agent, AgentIdentity, Parts, DataPart } from '@canopy/core';
-import { VaultMemory }                 from '@canopy/vault';
-import { RelayTransport }              from '@canopy/transports';
-import { ReliableExpoPushSender }      from '@canopy/relay';
-import { seal, open, generateKeypair } from '@canopy/pod-client/sealing';
+import { Agent, AgentIdentity, Parts, DataPart } from '@onderling/core';
+import { VaultMemory }                 from '@onderling/vault';
+import { RelayTransport }              from '@onderling/transports';
+import { ReliableExpoPushSender }      from '@onderling/relay';
+import { seal, open, generateKeypair } from '@onderling/pod-client/sealing';
 import { startCompanionNode }          from '../../companion-node/src/index.js';
 import { rm }     from 'node:fs/promises';
 import { tmpdir } from 'node:os';

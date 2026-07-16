@@ -62,12 +62,12 @@ The relay builds from the **repo root** with `deploy/relay/Dockerfile`
 3. Build settings:
    - **Builder: Dockerfile**, Dockerfile path `deploy/relay/Dockerfile`.
    - **Build context / work dir: the repo root** (`.`). The image does a focused
-     pnpm install of `@canopy/relay...` from the workspace root — the context
+     pnpm install of `@onderling/relay...` from the workspace root — the context
      must be the root, not `deploy/relay/`.
 4. **Port / health:** expose the port Koyeb injects via `$PORT`. The relay reads
    `PORT` automatically (`deploy/relay/.env.example` → `PORT`, `HOST=0.0.0.0`).
    For the health check use **HTTP GET `/`** — the relay answers `200` with
-   `@canopy/relay — WebSocket endpoint only`.
+   `@onderling/relay — WebSocket endpoint only`.
 5. **Env** (from `deploy/relay/.env.example`). Messaging-only needs **none**
    (Koyeb injects `PORT`). Optional:
    - Media edge (all required together): `R2_ENDPOINT`, `R2_BUCKET`,

@@ -8,7 +8,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const provisionDefault = vi.fn(async () => ({ podUri: 'x', webidUri: 'w' }));
-vi.mock('@canopy/pod-onboarding', () => ({ provisionDefault }));
+vi.mock('@onderling/pod-onboarding', () => ({ provisionDefault }));
 
 const { createExistingPodProvisioner, ensurePodProvisioned } =
   await import('../src/lib/existingPodProvisioner.js');

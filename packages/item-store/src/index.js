@@ -1,5 +1,5 @@
 /**
- * @canopy/item-store — public entry point.
+ * @onderling/item-store — public entry point.
  *
  * Post-Phase 5.2 (2026-05-04): the synthetic `Backend` interface +
  * `InMemoryBackend` were deleted as a duplicate of `core.DataSource`.
@@ -58,7 +58,7 @@ export { treeOf, createCrossPodRefResolver } from './embeds.js';
 // `audienceFromItem(item)` resolves the effective audience by
 // checking item.audience → item.visibility → 'household' default.
 // Item-store stores audience verbatim; resolution to member sets
-// happens in `@canopy/circles`'s `resolveAudience`.
+// happens in `@onderling/circles`'s `resolveAudience`.
 //
 // SP-5b — `audienceMatches(itemAudience, filterAudience)` is the
 // predicate behind `ListFilter.audience`: exact structural equality

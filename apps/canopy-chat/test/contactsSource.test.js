@@ -1,11 +1,11 @@
 /**
  * contactsSource — the Contacten roster from a PeerGraph (feedback-extension P5).
- * Drives the real @canopy/core PeerGraph so the mapping + ordering match what
+ * Drives the real @onderling/core PeerGraph so the mapping + ordering match what
  * the live agent feeds the roster.
  */
 import { describe, it, expect } from 'vitest';
 
-import { PeerGraph } from '@canopy/core';
+import { PeerGraph } from '@onderling/core';
 import {
   listContacts, peerToContactRow, stoopContactToRow, mergeContacts,
 } from '../src/v2/contactsSource.js';

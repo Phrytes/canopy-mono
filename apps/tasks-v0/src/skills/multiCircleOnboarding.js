@@ -1,7 +1,7 @@
 /**
  * multiCircleOnboarding — Tasks V2 multi-circle runtime (2026-05-14).
  *
- * `buildOnboardingSkills` in `@canopy/identity-resolver` is per-
+ * `buildOnboardingSkills` in `@onderling/identity-resolver` is per-
  * circle: its closure captures `groupManager`, `members`, `groupId`,
  * `onSpawn` once. Registering it from `createCircleAgent` for each
  * circle would silently last-write-wins the global skill registry,
@@ -16,7 +16,7 @@
  * the rest of the skill surface is already registered.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 const DEFAULT_TTL_MS = 60 * 60 * 1000;
 

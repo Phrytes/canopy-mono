@@ -19,7 +19,7 @@
  *   - Hints older than 4 ISO weeks are pruned at read-time.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { AvailabilityHints, isoWeekOf } from '../availability/AvailabilityHints.js';
 import { argsFromParts } from '../bundleResolver.js';

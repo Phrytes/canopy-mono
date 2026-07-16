@@ -24,9 +24,9 @@ let createCirclePodProducer, createCircleControlAgentRouter;
 
 beforeAll(async () => {
   if (!CSS_URL || !HAVE_OIDC) return;
-  ({ PodClient, SolidOidcAuth, generateKeypair } = await import('@canopy/pod-client'));
-  ({ VaultMemory } = await import('@canopy/vault'));
-  ({ SolidVault } = await import('@canopy/oidc-session'));
+  ({ PodClient, SolidOidcAuth, generateKeypair } = await import('@onderling/pod-client'));
+  ({ VaultMemory } = await import('@onderling/vault'));
+  ({ SolidVault } = await import('@onderling/oidc-session'));
   ({ createCirclePodProducer, createCircleControlAgentRouter } = await import('../src/v2/circlePodProducer.js'));
 });
 
@@ -89,7 +89,7 @@ SUITE('per-circle producer — real-pod routing (CSS)', () => {
   }, 60_000);
 
   it('p3 circle on a real pod: bootstrap provisions the key; recipient strategy round-trips + non-member is denied', async () => {
-    const { createSealedPodClient, createSealedPodDataSource } = await import('@canopy/pod-client');
+    const { createSealedPodClient, createSealedPodDataSource } = await import('@onderling/pod-client');
     const podClient = await makeRealPodClient();
     const circleId = `p3-${generateKeypair().publicKey.replace(/[^a-zA-Z0-9]/g, '').slice(-12)}`;
     const vault = new MemVault();
@@ -130,7 +130,7 @@ SUITE('per-circle producer — real-pod routing (CSS)', () => {
   // pod — open content sealed in the previous session, WITHOUT rotating the group key. This is the
   // real-pod complement to the standalone IndexedDB reload-survival test (persistentBackend.test.js).
   it('p3 circle SURVIVES A RESTART on a real pod: a fresh producer reusing the vault re-hydrates + opens previously-sealed content, no rotation', async () => {
-    const { createSealedPodDataSource } = await import('@canopy/pod-client');
+    const { createSealedPodDataSource } = await import('@onderling/pod-client');
     const circleId = `restart-${generateKeypair().publicKey.replace(/[^a-zA-Z0-9]/g, '').slice(-12)}`;
     const vault = new MemVault();                      // the PERSISTENT client store — survives the "restart"
     const rootUri = `${podBase}/${circleId}`;

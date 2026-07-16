@@ -1,10 +1,10 @@
 /**
  * ┌─ PORT ──────────────────────────────────────────────────────────────────────┐
  * │ `DataSource` is the interface a third-party storage adapter implements to     │
- * │ stay compatible with the @canopy SDK. "Compatible" = *satisfies this port*:    │
+ * │ stay compatible with the @onderling SDK. "Compatible" = *satisfies this port*:    │
  * │ extend this base class and implement the CRUD-over-paths contract below.      │
  * │ Reference adapters: `MemorySource` / `IndexedDBSource` / `FileSystemSource`     │
- * │ (in @canopy/core) and `SolidPodSource` (in @canopy/pod-client). Prove          │
+ * │ (in @onderling/core) and `SolidPodSource` (in @onderling/pod-client). Prove          │
  * │ conformance with `assertDataSourceConformance()`                              │
  * │ (test/conformance/dataSourceConformance.js).                                  │
  * └──────────────────────────────────────────────────────────────────────────────┘

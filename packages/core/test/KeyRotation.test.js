@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { KeyRotation }   from '../src/identity/KeyRotation.js';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 import { TrustRegistry } from '../src/permissions/TrustRegistry.js';
 
 async function makeId() {

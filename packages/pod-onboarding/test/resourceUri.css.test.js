@@ -2,10 +2,10 @@
  * CSS integration test for the cluster-K pod-tier wiring — a REAL grant→read round-trip.
  *
  * Wires the three delivered pieces against a live Community Solid Server:
- *   • `makeResourceUriResolver` / `sharedRefResourceUri` (@canopy/pod-onboarding) — the canonical
+ *   • `makeResourceUriResolver` / `sharedRefResourceUri` (@onderling/pod-onboarding) — the canonical
  *     `group/<circle>/<type>/<item>` ACP target.
- *   • `makeCircleShareEnforcement` (@canopy/item-store) — the write-side grant hook + read-side policy,
- *     bound to the SAME resolver, over a live `client.sharing` (@canopy/pod-client).
+ *   • `makeCircleShareEnforcement` (@onderling/item-store) — the write-side grant hook + read-side policy,
+ *     bound to the SAME resolver, over a live `client.sharing` (@onderling/pod-client).
  *   • `shareIntoAudience` / `resolveSharedRef` — the share op + the gated cross-circle read.
  *
  * The composition that exists today keeps the item CONTENT in a memory `CircleItemStore` (there is no
@@ -31,13 +31,13 @@ let createCircleStores, memoryDataSource, shareIntoAudience, resolveSharedRef, m
 
 beforeAll(async () => {
   if (!CSS_URL || !HAVE_OIDC) return;
-  ({ PodClient, SolidOidcAuth } = await import('@canopy/pod-client'));
-  ({ VaultMemory } = await import('@canopy/vault'));
-  ({ SolidVault } = await import('@canopy/oidc-session'));
+  ({ PodClient, SolidOidcAuth } = await import('@onderling/pod-client'));
+  ({ VaultMemory } = await import('@onderling/vault'));
+  ({ SolidVault } = await import('@onderling/oidc-session'));
   ({ makeResourceUriResolver, sharedRefResourceUri } = await import('../src/resourceUri.js'));
   ({
     createCircleStores, memoryDataSource, shareIntoAudience, resolveSharedRef, makeCircleShareEnforcement,
-  } = await import('@canopy/item-store'));
+  } = await import('@onderling/item-store'));
 });
 
 SUITE('cluster-K pod-tier wiring — CSS grant→read round-trip', () => {

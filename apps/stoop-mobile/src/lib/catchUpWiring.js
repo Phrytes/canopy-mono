@@ -37,7 +37,7 @@ import {
 } from '../../../canopy-chat/src/core/handlers/catchUp.js';
 import { makeHandleBuurtPost } from '../../../canopy-chat/src/core/handlers/buurtPost.js';
 import { makePeerRouter }      from '../../../canopy-chat/src/core/handlers/peerRouter.js';
-import { toParts, unwrapParts } from '@canopy/sync-engine-rn/react';
+import { toParts, unwrapParts } from '@onderling/sync-engine-rn/react';
 
 const ASYNC_STORAGE_KEY = 'stoop:catch-up:lastSeenFrom';
 

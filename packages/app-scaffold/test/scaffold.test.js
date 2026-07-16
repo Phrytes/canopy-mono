@@ -52,30 +52,30 @@ describe('scaffoldApp — happy path', () => {
     );
   });
 
-  it('package.json is valid JSON, named @canopy-app/<appId>, deps on @canopy/sdk', () => {
+  it('package.json is valid JSON, named @onderling-app/<appId>, deps on @onderling/sdk', () => {
     const pkg = JSON.parse(files['package.json']);
-    expect(pkg.name).toBe('@canopy-app/demo');
+    expect(pkg.name).toBe('@onderling-app/demo');
     expect(pkg.type).toBe('module');
     expect(pkg.scripts.test).toBeTruthy();
-    expect(pkg.dependencies['@canopy/sdk']).toBeTruthy();
+    expect(pkg.dependencies['@onderling/sdk']).toBeTruthy();
   });
 
   it('package.json carries the right SDK sub-path deps for the requires', () => {
     const pkg = JSON.parse(files['package.json']);
     expect(pkg.canopy.requires).toEqual(['core', 'high', 'pod']);
     expect(pkg.canopy.sdkImports).toEqual({
-      core: '@canopy/sdk/core',
-      high: '@canopy/sdk',
-      pod:  '@canopy/sdk/pod',
+      core: '@onderling/sdk/core',
+      high: '@onderling/sdk',
+      pod:  '@onderling/sdk/pod',
     });
     // high maps to the barrel; pod maps to the /pod sub-path.
     expect(pkg.canopy.sdkImports.pod).toBe(CAPABILITY_SDK_IMPORT.pod);
   });
 
-  it('src/index.js imports createAgent from @canopy/sdk/high + wireSkill', () => {
+  it('src/index.js imports createAgent from @onderling/sdk/high + wireSkill', () => {
     const idx = files['src/index.js'];
-    expect(idx).toContain("import { createAgent } from '@canopy/sdk/high'");
-    expect(idx).toMatch(/import \{ wireSkill \}\s+from '@canopy\/sdk'/);
+    expect(idx).toContain("import { createAgent } from '@onderling/sdk/high'");
+    expect(idx).toMatch(/import \{ wireSkill \}\s+from '@onderling\/sdk'/);
   });
 
   it('src/index.js contains a wireSkill(... op ...) line per declared operation', () => {
@@ -127,11 +127,11 @@ describe('scaffoldApp — requires validation (SP-9 gate)', () => {
     });
     const pkg = JSON.parse(files['package.json']);
     expect(pkg.canopy.sdkImports).toEqual({
-      core:       '@canopy/sdk/core',
-      transports: '@canopy/sdk/transports',
-      vault:      '@canopy/sdk/vault',
-      pod:        '@canopy/sdk/pod',
-      high:       '@canopy/sdk',
+      core:       '@onderling/sdk/core',
+      transports: '@onderling/sdk/transports',
+      vault:      '@onderling/sdk/vault',
+      pod:        '@onderling/sdk/pod',
+      high:       '@onderling/sdk',
     });
   });
 });

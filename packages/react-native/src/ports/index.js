@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/ports — the RN ports-and-adapters boundary.
+ * @onderling/react-native/ports — the RN ports-and-adapters boundary.
  *
  * Three ports name the native seam so the shared 85%+ RN layer stays
  * branch-free and the future iOS/Android work drops into named slots
@@ -22,7 +22,7 @@ export { SecureStore }       from './SecureStore.js';
 // Concretes (v1 — wrap existing code)
 //   ExpoNotificationsAdapter is NOT re-exported here: it imports
 //   `expo-notifications` at module load (peer dep).  Import it from
-//   `@canopy/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js`.
+//   `@onderling/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js`.
 export { ExpoBackgroundAdapter } from './backgroundAdapters/ExpoBackgroundAdapter.js';
 export { ExpoSecureStore }       from './secureStores/ExpoSecureStore.js';
 

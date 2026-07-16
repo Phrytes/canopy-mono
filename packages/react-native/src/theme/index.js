@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/theme — minimal theme infrastructure for the
+ * @onderling/react-native/theme — minimal theme infrastructure for the
  * lifted UI primitives.
  *
  * The substrate's UI components (`AvatarCircle`, `ChipRow`,

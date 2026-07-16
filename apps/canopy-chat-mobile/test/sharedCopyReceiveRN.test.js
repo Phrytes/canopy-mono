@@ -8,11 +8,11 @@
  * cipher mocks: real pod-client sealing, real item-store, real AgentIdentity — web≡mobile via the shared src.
  */
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { recipientStrategy, sealingPublicKeyFromNetworkKey } from '@canopy/pod-client/sealing';
-import { sealItem } from '@canopy/item-store';
-import { buildSharedWithMe, openSharedCopy, makeHandleSharedCopy, openerForIdentity } from '@canopy-app/canopy-chat';
+import { AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { recipientStrategy, sealingPublicKeyFromNetworkKey } from '@onderling/pod-client/sealing';
+import { sealItem } from '@onderling/item-store';
+import { buildSharedWithMe, openSharedCopy, makeHandleSharedCopy, openerForIdentity } from '@onderling-app/canopy-chat';
 import { makeSharedWithMeStoreRN } from '../src/core/circleStoresRN.js';
 
 function mockAsyncStorage() {

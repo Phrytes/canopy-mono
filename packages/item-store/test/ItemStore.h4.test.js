@@ -15,7 +15,7 @@ import {
   PermissionDeniedError,
   InvalidLifecycleError,
 } from '../src/index.js';
-import { MemorySource } from "@canopy/core";
+import { MemorySource } from "@onderling/core";
 
 const ANNE  = 'https://id.inrupt.com/anne';
 const FRITS = 'https://id.inrupt.com/frits';

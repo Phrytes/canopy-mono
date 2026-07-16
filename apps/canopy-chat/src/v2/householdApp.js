@@ -11,9 +11,9 @@
  * The list types are registered via `registerType` (third-party-style); `task` is canonical. Every op is a
  * pure function over the circle store — no agent, no own store. (REMAINING-WORK.md cluster L.)
  */
-import { createCircleStores, memoryDataSource, createGenericAtomHandlers } from '@canopy/item-store';
-import { createRegistry, registerCanonicalTypes } from '@canopy/item-types';
-import { dispatchCapability } from '@canopy/app-manifest';
+import { createCircleStores, memoryDataSource, createGenericAtomHandlers } from '@onderling/item-store';
+import { createRegistry, registerCanonicalTypes } from '@onderling/item-types';
+import { dispatchCapability } from '@onderling/app-manifest';
 import { householdManifest } from '../../../household/manifest.js';
 
 export const LIST_TYPES = Object.freeze(['shopping', 'errand', 'repair', 'schedule']);

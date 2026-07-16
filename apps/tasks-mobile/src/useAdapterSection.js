@@ -25,9 +25,9 @@
  *
  * V0.3 status: lives in tasks-mobile for now.  Once a second RN app
  * needs it (e.g. stoop-mobile), lift to a shared
- * `@canopy/manifest-adapter-rn` package.  Web has no equivalent yet
+ * `@onderling/manifest-adapter-rn` package.  Web has no equivalent yet
  * (its consumers are imperative loops, not React); a future
- * `@canopy/web-adapter/react` could mirror this.
+ * `@onderling/web-adapter/react` could mirror this.
  *
  * Future polish: Q15 `argsFromContext` substitution.  V0.3 hook
  * passes `dataSource.args` only.  When a screen needs runtime args

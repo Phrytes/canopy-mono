@@ -29,9 +29,9 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createPodRouting }                     from '@canopy/pod-routing';
-import { createNotifyEnvelope }                 from '@canopy/notify-envelope';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createPodRouting }                     from '@onderling/pod-routing';
+import { createNotifyEnvelope }                 from '@onderling/notify-envelope';
 
 const ANNE_POD   = 'https://anne.pod';
 const DEVICE_ID  = 'laptop-anne';

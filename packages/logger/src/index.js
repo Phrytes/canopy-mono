@@ -1,5 +1,5 @@
 /**
- * @canopy/logger — privacy-first structured logging (web ≡ mobile).
+ * @onderling/logger — privacy-first structured logging (web ≡ mobile).
  *
  * WHY: a single facade so logs are captured identically on every shell, kept in a bounded on-device ring
  * buffer, and can be handed to a user-triggered bug report — WITHOUT ever leaking user data.

@@ -2,8 +2,8 @@
  * `createCirclesStore` — unit tests.
  *
  * Uses a minimal in-package fake ItemStore (duck-typed: addItems /
- * listOpen / getById / update).  Keeps the @canopy/circles package
- * free of any @canopy/item-store import; the consumer wires whichever
+ * listOpen / getById / update).  Keeps the @onderling/circles package
+ * free of any @onderling/item-store import; the consumer wires whichever
  * store they actually use in production.
  */
 
@@ -26,7 +26,7 @@ function makeFakeItemStore() {
           throw new TypeError('fake addItems: type required');
         }
         if (typeof p.text !== 'string' || p.text === '') {
-          // Mirror @canopy/item-store's substrate requirement so the
+          // Mirror @onderling/item-store's substrate requirement so the
           // circles store's text:name workaround is actually exercised.
           throw new TypeError('fake addItems: text required (substrate compat check)');
         }

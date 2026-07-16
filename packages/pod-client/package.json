@@ -1,7 +1,7 @@
 {
-  "name": "@canopy/pod-client",
+  "name": "@onderling/pod-client",
   "version": "0.1.0",
-  "description": "High-level Solid pod-client for @canopy — read/write/list/patch with capability + OIDC auth",
+  "description": "High-level Solid pod-client for @onderling — read/write/list/patch with capability + OIDC auth",
   "type": "module",
   "license": "Apache-2.0",
   "homepage": "https://github.com/Phrytes/canopy-mono/tree/master/packages/pod-client#readme",
@@ -27,22 +27,22 @@
     "test:css": "node scripts/css-sharing-harness.mjs"
   },
   "dependencies": {
-    "@canopy/core": "workspace:^",
-    "@canopy/logger": "workspace:^",
-    "@canopy/oidc-session": "workspace:^",
-    "@canopy/vault": "workspace:^",
+    "@onderling/core": "workspace:^",
+    "@onderling/logger": "workspace:^",
+    "@onderling/oidc-session": "workspace:^",
+    "@onderling/vault": "workspace:^",
     "@inrupt/solid-client": "3.0.0",
     "ed2curve": "^0.3.0",
     "tweetnacl": "^1.0.3"
   },
   "peerDependencies": {
-    "@canopy/pseudo-pod": "workspace:^"
+    "@onderling/pseudo-pod": "workspace:^"
   },
   "peerDependenciesMeta": {
-    "@canopy/pseudo-pod": { "optional": true }
+    "@onderling/pseudo-pod": { "optional": true }
   },
   "devDependencies": {
-    "@canopy/pseudo-pod": "workspace:^",
+    "@onderling/pseudo-pod": "workspace:^",
     "vitest": "^2.1.0"
   }
 }

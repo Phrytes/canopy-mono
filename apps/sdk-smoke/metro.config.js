@@ -1,5 +1,5 @@
 // sdk-smoke metro.config.js — refactored 2026-05-04 to consume the
-// @canopy/react-native metro-preset.
+// @onderling/react-native metro-preset.
 //
 // Background: the previous hand-rolled metro.config.js missed several
 // of the bring-up traps documented in
@@ -19,7 +19,7 @@
 // are sdk-smoke-specific.
 
 const path = require('path');
-const { withCanopyPreset } = require('@canopy/react-native/metro-preset');
+const { withCanopyPreset } = require('@onderling/react-native/metro-preset');
 
 const projectRoot = __dirname;
 const repoRoot    = path.resolve(__dirname, '../..');
@@ -40,7 +40,7 @@ module.exports = withCanopyPreset({
     'react-native-safe-area-context',
   ],
 
-  // sdk-smoke-specific aliases (the preset already maps @canopy/* SDK
+  // sdk-smoke-specific aliases (the preset already maps @onderling/* SDK
   // packages — core, pod-client, react-native, sync-engine).
   extraNodeModules: {
     // @scure/bip39 wordlist subpath — package.json `exports` is ignored

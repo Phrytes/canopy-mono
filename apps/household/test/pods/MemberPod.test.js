@@ -2,7 +2,7 @@
  * MemberPod.test.js — Phase 2 Stream 2d.
  *
  * Drives `MemberPod` against an in-test `MockPodClient` that mimics
- * just enough of `@canopy/pod-client.PodClient` to verify the
+ * just enough of `@onderling/pod-client.PodClient` to verify the
  * collection-file storage convention + the addItem→ItemRef contract.
  *
  * The mock pod is a flat URI→{ content, contentType } map with a

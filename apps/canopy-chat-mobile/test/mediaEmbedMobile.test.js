@@ -22,8 +22,8 @@ import { describe, it, expect } from 'vitest';
 
 import {
   generateGroupKey, makeGroupSealer, makeGroupOpener, isSealed,
-} from '@canopy/pod-client/sealing';
-import { validate } from '@canopy/item-types';
+} from '@onderling/pod-client/sealing';
+import { validate } from '@onderling/item-types';
 // blob-gateway imported relatively (Metro/package-exports gotcha — same
 // route the web test takes for the shared test doubles).
 import {
@@ -58,7 +58,7 @@ const b64 = (bytes) => {
   return btoa(bin);
 };
 
-/** The EXACT shape `@canopy/react-native/picker` pickAndResize emits. */
+/** The EXACT shape `@onderling/react-native/picker` pickAndResize emits. */
 function pickedImage({ full = fullBytes(), thumb = thumbBytes() } = {}) {
   return {
     mime:      'image/jpeg',

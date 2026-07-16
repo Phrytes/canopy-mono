@@ -1,5 +1,5 @@
 /**
- * @canopy/secure-agent — peer identity resolver wrapper.
+ * @onderling/secure-agent — peer identity resolver wrapper.
  *
  * Wires A.4 from the v0.7 security roadmap.  Composes:
  *

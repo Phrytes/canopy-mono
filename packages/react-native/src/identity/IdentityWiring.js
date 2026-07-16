@@ -11,7 +11,7 @@
  *   1. Build a `Bootstrap` from the user's BIP-39 mnemonic (or accept a
  *      pre-built one for advanced callers / tests).
  *   2. Construct an `IdentityPodStore` against the caller-supplied
- *      `PodClient` (we deliberately do NOT import `@canopy/pod-client`
+ *      `PodClient` (we deliberately do NOT import `@onderling/pod-client`
  *      here — the caller passes the client in so the RN package stays
  *      decoupled from the pod-client package's transitive deps).
  *   3. `await podStore.init()` so the manifest is materialized before the
@@ -24,8 +24,8 @@
  * `agent.stop()` cleans up the sync loop and the AppState listener.
  */
 
-import { Bootstrap } from '@canopy/core';
-import { IdentityPodStore } from '@canopy/pod-client';
+import { Bootstrap } from '@onderling/core';
+import { IdentityPodStore } from '@onderling/pod-client';
 
 // IdentitySync is shipped by B3 (running in parallel).  We reference it via
 // dynamic import inside `attachIdentityToAgent` so this file can be required
@@ -46,10 +46,10 @@ import { IdentityPodStore } from '@canopy/pod-client';
  * @param {string} [opts.pod.webid]                        user's WebID (informational; podRoot is the truth)
  * @param {string} [opts.pod.mnemonic]                     BIP-39 phrase to recover the bootstrap secret
  * @param {object} [opts.pod.bootstrap]                    pre-built Bootstrap (alternative to mnemonic; for tests / advanced callers)
- * @param {object} opts.pod.podClient                      caller-supplied PodClient (from `@canopy/pod-client`)
+ * @param {object} opts.pod.podClient                      caller-supplied PodClient (from `@onderling/pod-client`)
  * @param {string} opts.pod.podRoot                        pod root URI; identity container will be at `<podRoot>/canopy/`
  * @param {number} [opts.pod.intervalMs=300_000]           IdentitySync polling interval (5 min default per Q-B.4)
- * @param {Function} [opts.pod._identitySyncCtor]          (test-only) inject IdentitySync constructor; default: lazy `import('@canopy/pod-client').IdentitySync`
+ * @param {Function} [opts.pod._identitySyncCtor]          (test-only) inject IdentitySync constructor; default: lazy `import('@onderling/pod-client').IdentitySync`
  * @returns {Promise<{ bootstrap: object, podStore: object, sync: object, dispose: () => void }>}
  */
 export async function attachIdentityToAgent({ vault, identity, pod } = {}) {
@@ -95,11 +95,11 @@ export async function attachIdentityToAgent({ vault, identity, pod } = {}) {
   // B3 lands.  The dynamic import resolves immediately once B3 is merged.
   let IdentitySyncCtor = pod._identitySyncCtor;
   if (!IdentitySyncCtor) {
-    const podClient = await import('@canopy/pod-client');
+    const podClient = await import('@onderling/pod-client');
     IdentitySyncCtor = podClient.IdentitySync;
     if (!IdentitySyncCtor) {
       throw new Error(
-        'attachIdentityToAgent: IdentitySync is not exported from @canopy/pod-client. ' +
+        'attachIdentityToAgent: IdentitySync is not exported from @onderling/pod-client. ' +
         'pass pod._identitySyncCtor explicitly.',
       );
     }
@@ -114,7 +114,7 @@ export async function attachIdentityToAgent({ vault, identity, pod } = {}) {
 
   // ── 5. RN AppState foreground trigger ───────────────────────────────────
   // Lazy import so apps without `react-native` available (Node tests, Web
-  // targets via @canopy/core, etc.) construct successfully.  We swallow
+  // targets via @onderling/core, etc.) construct successfully.  We swallow
   // any error from the import or listener registration — AppState
   // integration is a nice-to-have, not a correctness requirement.
   let appStateSub = null;

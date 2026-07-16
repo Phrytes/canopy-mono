@@ -2,8 +2,8 @@
 // recorded on the membership-redemption + roster, surfaced by listGroupMembers — mirroring circleAddress.
 // Opt-in: absent ⇒ shared nothing (back-compat).
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 
 const ADMIN = 'https://id.example/admin';

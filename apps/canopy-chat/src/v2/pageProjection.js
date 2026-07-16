@@ -14,7 +14,7 @@
  * `manifest.surfaces.page.labelKey → renderWeb → pageLabel → t()`,
  * never a hardcoded string.
  */
-import { renderWeb, renderMobile } from '@canopy/app-manifest';
+import { renderWeb, renderMobile } from '@onderling/app-manifest';
 
 /**
  * All top-level PAGE surfaces a manifest projects, in declaration order.

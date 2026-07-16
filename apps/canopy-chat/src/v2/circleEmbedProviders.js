@@ -10,8 +10,8 @@
 // and optional key differ. Privacy (invariant #7): point the route at the same trust boundary as the
 // chat LLM — the enclave for sealed circles, never a plain remote.
 
-import { EmbeddingClient } from '@canopy/llm-client';
-import { openaiEmbeddingsProvider } from '@canopy/llm-client/providers/embeddings';
+import { EmbeddingClient } from '@onderling/llm-client';
+import { openaiEmbeddingsProvider } from '@onderling/llm-client/providers/embeddings';
 import { normalizeBase } from './circleLlmProviders.js';
 
 /**

@@ -29,7 +29,7 @@ import {
   wireSubstrateMirror,
   buildSubstrateStack,
   registerAgentInRegistry,
-} from '@canopy-app/stoop';
+} from '@onderling-app/stoop';
 import { defaultLocalActor, buildMeshAgent } from './agentBundle.js';
 
 export const BOOTSTRAP_GROUP_ID = '_bootstrap';

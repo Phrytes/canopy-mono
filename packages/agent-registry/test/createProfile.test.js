@@ -1,7 +1,7 @@
 // Identity step 2 — root-derived profile creation: reproducible keys + registry entry.
 import { describe, it, expect } from 'vitest';
-import { Bootstrap } from '@canopy/core';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { Bootstrap } from '@onderling/core';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
 import { createProfile, profilePubKey, profileCircleAddress, own } from '../index.js';
 

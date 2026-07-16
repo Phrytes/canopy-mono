@@ -20,7 +20,7 @@
  * can also verify it ends up enabled.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { Parts } from '@canopy/core';
+import { Parts } from '@onderling/core';
 import { Lab } from '../../../src/_harness/index.js';
 
 describe('routing/transport-flap', () => {

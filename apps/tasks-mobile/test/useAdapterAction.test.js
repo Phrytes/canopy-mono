@@ -22,7 +22,7 @@ vi.mock('../src/ServiceContext.js', () => ({
 
 // Mock `toParts` + `unwrapParts` to act as identity passthroughs;
 // the part-encoding is sync-engine-rn's concern, not this hook's.
-vi.mock('@canopy/sync-engine-rn/react', () => ({
+vi.mock('@onderling/sync-engine-rn/react', () => ({
   toParts:     (args) => ({ args }),         // wrap so we can inspect
   unwrapParts: (raw)  => raw?.reply,
 }));

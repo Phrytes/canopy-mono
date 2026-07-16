@@ -19,12 +19,12 @@
  * Invariant #1 (logic lives once, in shared code): this mapping +
  * reply-shape logic lives here in shared `src/v2`, consumed by the web
  * shell (circleApp's screen panel) and — later — the RN shell.  The `$key`
- * substitution itself is @canopy/web-adapter's `fetchSectionItems` (the
+ * substitution itself is @onderling/web-adapter's `fetchSectionItems` (the
  * Q15 fetch seam) — REUSED via {@link fetchScreenItems}, not reimplemented
  * (invariant #3).
  */
-import { renderWeb } from '@canopy/app-manifest';
-import { fetchSectionItems } from '@canopy/web-adapter';
+import { renderWeb } from '@onderling/app-manifest';
+import { fetchSectionItems } from '@onderling/web-adapter';
 
 /**
  * The context KEY names a section's `dataSource.argsFromContext` draws

@@ -210,8 +210,8 @@ ops covered.  Missing:
 ### State management
 
 - `useSkill` + `useSkillResult` hooks — RN-specific via
-  `@canopy/sync-engine-rn/react`.  Web needs parallel
-  `@canopy/sync-engine-web/react`.
+  `@onderling/sync-engine-rn/react`.  Web needs parallel
+  `@onderling/sync-engine-web/react`.
 - `ServiceContext` — global; web may split for code-splitting.
 - Pull-to-refresh via `<RefreshControl>` — web: refresh button or
   skeleton.

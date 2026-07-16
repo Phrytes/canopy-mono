@@ -1,6 +1,6 @@
 /**
  * AgentRegistryMemberMap — MemberMap-shaped adapter over
- * `@canopy/agent-registry`.
+ * `@onderling/agent-registry`.
  *
  * Implements the `resolveByWebid` / `resolveByPubKey` /
  * `resolveByExternalId` surface the rest of identity-resolver

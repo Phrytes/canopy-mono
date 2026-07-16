@@ -13,8 +13,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createPodRouting } from '@canopy/pod-routing';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createPodRouting } from '@onderling/pod-routing';
 import { createNotifyEnvelope } from '../src/NotifyEnvelope.js';
 
 function fakeTransport() {

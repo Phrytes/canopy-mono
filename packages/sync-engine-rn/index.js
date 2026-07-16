@@ -1,9 +1,9 @@
 /**
- * @canopy/sync-engine-rn — React Native bootstrap helpers for the
+ * @onderling/sync-engine-rn — React Native bootstrap helpers for the
  * canopy sync-engine + pod-client.
  *
  * **Layer: SDK foundation (RN sibling).** Cross-platform sync logic
- * lives in `@canopy/sync-engine`; this package is RN-only wiring
+ * lives in `@onderling/sync-engine`; this package is RN-only wiring
  * (background-fetch task bridge, pod-client factory off
  * `OidcSessionRN`, an opinionated `createMobileBootstrap` for apps
  * that want one-call setup).

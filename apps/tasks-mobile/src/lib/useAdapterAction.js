@@ -31,7 +31,7 @@
  * the existing per-op `useSkill('id').call(args)` pattern.
  *
  * V0.6 status: lives in tasks-mobile.  Lift to a shared
- * `@canopy/manifest-adapter-rn` package once a second RN app adopts —
+ * `@onderling/manifest-adapter-rn` package once a second RN app adopts —
  * same migration story as `useAdapterSection`.
  *
  *   import { useAdapterAction } from './lib/useAdapterAction.js';
@@ -55,7 +55,7 @@
 
 import { useCallback } from 'react';
 import { useService } from '../ServiceContext.js';
-import { toParts, unwrapParts } from '@canopy/sync-engine-rn/react';
+import { toParts, unwrapParts } from '@onderling/sync-engine-rn/react';
 
 export function useAdapterAction() {
   const svc = useService();

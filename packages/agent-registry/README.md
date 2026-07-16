@@ -1,4 +1,4 @@
-# @canopy/agent-registry
+# @onderling/agent-registry
 
 The user's agents listed in one canonical pod resource. Implements
 core's `ActorResolver` interface so `PolicyEngine` +
@@ -14,8 +14,8 @@ core's `ActorResolver` interface so `PolicyEngine` +
 ## Quick start
 
 ```js
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
-import { createAgentRegistry, makeActorResolver } from '@canopy/agent-registry';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
+import { createAgentRegistry, makeActorResolver } from '@onderling/agent-registry';
 
 const pseudoPod = createPseudoPod({ /* … */ });
 const registry  = createAgentRegistry({
@@ -119,7 +119,7 @@ work), the agent-registry substrate gets concurrency for free.
 
 - **Cross-user resolution.** This registry holds ONE user's agents.
   Apps that need to bridge across users use the existing
-  `@canopy/identity-resolver` MemberMap on top — the
+  `@onderling/identity-resolver` MemberMap on top — the
   agent-registry-backed adapter ships in Phase 52.11.
 - **Signature verification.** The `signedAt` field exists for
   audit-trail consumers; the substrate does not verify the
@@ -128,4 +128,4 @@ work), the agent-registry substrate gets concurrency for free.
   individual calls; each enjoys the per-entry CAS retry.
 - **WebID profile patching.** Pointer predicates on the user's WebID
   profile (`dec:agent-registry-uri`) are wired by
-  `@canopy/pod-onboarding` (Phase 52.5).
+  `@onderling/pod-onboarding` (Phase 52.5).

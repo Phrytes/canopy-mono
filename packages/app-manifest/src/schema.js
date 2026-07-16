@@ -1,5 +1,5 @@
 /**
- * Schema for @canopy/app-manifest.  JSDoc typedefs only — no runtime
+ * Schema for @onderling/app-manifest.  JSDoc typedefs only — no runtime
  * (per repo convention; cf. apps/household/src/types.js).  Importing this
  * file gives you `__types__` only; the typedefs are doc/IDE artefacts.
  *
@@ -19,7 +19,7 @@
 /**
  * @typedef {object} Manifest
  * @property {string}                 app          stable app id (namespace key)
- * @property {string[]}               itemTypes    canonical (in @canopy/item-types
+ * @property {string[]}               itemTypes    canonical (in @onderling/item-types
  *                                                 `list()`) OR app-local — both
  *                                                 are permitted (F-SP1-a).
  * @property {Operation[]}            operations
@@ -275,5 +275,5 @@
  */
 
 // Empty export so this is a real ES module.  Imports of
-// `@canopy/app-manifest/schema` (and `import './schema.js'`) resolve cleanly.
+// `@onderling/app-manifest/schema` (and `import './schema.js'`) resolve cleanly.
 export const __types__ = true;

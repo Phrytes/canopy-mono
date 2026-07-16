@@ -1,6 +1,6 @@
 // bytes.js — portable Uint8Array <-> base64url helpers (no Buffer; web-first).
 //
-// The sealing envelope (`@canopy/pod-client/sealing`) seals *strings*, so a binary
+// The sealing envelope (`@onderling/pod-client/sealing`) seals *strings*, so a binary
 // blob is carried through it as a base64url string: bytes -> b64u -> seal -> ciphertext
 // (itself ascii), and on the way back ciphertext -> open -> b64u -> bytes. The bucket
 // therefore only ever holds the sealed ascii envelope, never plaintext bytes.

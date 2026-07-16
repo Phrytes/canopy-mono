@@ -11,8 +11,8 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { createNeighborhoodAgent } from '../src/index.js';
 import {
@@ -21,7 +21,7 @@ import {
   signOutOfPod,
   podSignInStatus,
 } from '../src/lib/podSignIn.js';
-import { _setSolidAuthNodeSessionFactory } from '@canopy/oidc-session';
+import { _setSolidAuthNodeSessionFactory } from '@onderling/oidc-session';
 
 const ANNE  = 'https://id.example/anne';
 const WEBID = 'https://alice.solidcommunity.net/profile/card#me';

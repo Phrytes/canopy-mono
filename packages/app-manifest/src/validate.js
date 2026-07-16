@@ -5,17 +5,17 @@
  *
  * Per PLAN flag #12 (F-SP1-a, locked 2026-05-19): app-local
  * (non-canonical) item types are PERMITTED — canonical ones (in
- * `@canopy/item-types` `list()`) are recognised by `classifyItemTypes`,
+ * `@onderling/item-types` `list()`) are recognised by `classifyItemTypes`,
  * non-canonical pass through silently.  Required for SP-1 (household
  * uses shopping/errand/repair/schedule — not in the canonical registry);
  * SP-2 introduces canonical types alongside.
  */
 
-import { list as listCanonicalTypes, metadata as registryTypeMetadata } from '@canopy/item-types';
+import { list as listCanonicalTypes, metadata as registryTypeMetadata } from '@onderling/item-types';
 import { isAtom, canonicalAtom } from './atoms.js';
 
 /**
- * L4 ≡ B — registry recognition. True when the shared `@canopy/item-types`
+ * L4 ≡ B — registry recognition. True when the shared `@onderling/item-types`
  * registry recognises `t` as a declared noun/item-type, either by its
  * canonical name OR a legacy alias (`registryTypeMetadata` resolves aliases,
  * returning `null` only for genuinely unknown names). This is the single
@@ -31,7 +31,7 @@ export function isRegistryType(t) {
 }
 
 /**
- * Frozen verb allow-list mirroring `@canopy/item-store` `ItemStore`
+ * Frozen verb allow-list mirroring `@onderling/item-store` `ItemStore`
  * methods.  Operations must declare a `verb` from this set.
  */
 export const VERBS = Object.freeze([
@@ -136,7 +136,7 @@ export function isCanonicalVerb(verb) { return VERB_SET.has(verb); }
  *   either mapping to an atom or being explicitly named as domain-specific.
  *   Default off (F-SP1-e tolerant behaviour preserved for older callers).
  * @param {boolean} [opts.strictNouns=false]
- *   L4 ≡ B (2026-07-05) — REGISTRY-NOUN DISCIPLINE. The `@canopy/item-types`
+ *   L4 ≡ B (2026-07-05) — REGISTRY-NOUN DISCIPLINE. The `@onderling/item-types`
  *   registry is the source of truth for nouns. By DEFAULT every declared
  *   `manifest.itemTypes` entry (and, transitively, every `manifest.nouns` key —
  *   nouns keys must be a subset of itemTypes) that the registry does not
@@ -183,13 +183,13 @@ export function validateManifest(manifest, opts = {}) {
       } else {
         seen.add(t);
         // L4 ≡ B — converge the declared noun surface with the shared
-        // `@canopy/item-types` registry (source of truth). A registry-unknown
+        // `@onderling/item-types` registry (source of truth). A registry-unknown
         // type is a WARNING by default (F-SP1-a app-local types keep working)
         // and a hard ERROR under `opts.strictNouns` (default-deny).
         if (!isRegistryType(t)) {
           registrySink.push({
             path:    p,
-            message: `itemType "${t}" is not declared in the @canopy/item-types registry (the registry is the source of truth for nouns)`,
+            message: `itemType "${t}" is not declared in the @onderling/item-types registry (the registry is the source of truth for nouns)`,
             code:    'noncanonical-itemtype',
           });
         }
@@ -427,7 +427,7 @@ function validateOperation(op, path, manifest, errors, idSet, opts = {}) {
   //
   // Web chat-shell interprets `kind` as a side-panel / modal / new
   // window respectively; mobile chat-shell maps the same declaration
-  // to an RN nav screen (via @canopy/chat-nav RN parallel #128).
+  // to an RN nav screen (via @onderling/chat-nav RN parallel #128).
   //
   //   kind: 'side-panel' | 'modal' | 'screen'  (required if surfaces.page exists)
   //   title?: string                            (rendered in panel header)
@@ -1204,7 +1204,7 @@ function validateNavItem(item, path, manifest, errors, idSet, strict = false) {
 
 /**
  * Informational helper: split a manifest's `itemTypes` into canonical
- * (registered in `@canopy/item-types` `list()`) vs app-local.
+ * (registered in `@onderling/item-types` `list()`) vs app-local.
  *
  * `validateManifest` does NOT reject app-local types (F-SP1-a); this is
  * pure introspection for tooling / docs / debug output.

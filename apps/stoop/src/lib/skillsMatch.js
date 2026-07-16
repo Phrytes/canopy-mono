@@ -1,5 +1,5 @@
 /**
- * skillsMatch — re-export shim around `@canopy/identity-resolver`.
+ * skillsMatch — re-export shim around `@onderling/identity-resolver`.
  *
  * **2026-05-08:** the implementation + the two JSON data files
  * (`skillsTaxonomy.json` + `tagNormalisation.json`) lifted into the
@@ -18,4 +18,4 @@ export {
   categoryFor,
   matchesProfile,
   isKnownCategory,
-} from '@canopy/identity-resolver';
+} from '@onderling/identity-resolver';

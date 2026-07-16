@@ -27,8 +27,8 @@
  *   - 'fail'     — registration succeeded but no wake; OR registration failed.
  *   - 'pending'  — peer-dep missing / no project ID configured.
  */
-import { defineSkill } from '@canopy/core';
-import { MobilePushBridge } from '@canopy/react-native';
+import { defineSkill } from '@onderling/core';
+import { MobilePushBridge } from '@onderling/react-native';
 
 export const id    = 'S11';
 export const title = 'Push wake-up (E2c)';
@@ -38,7 +38,7 @@ export async function run({ log, sdk }) {
   let ExpoNotificationsAdapter;
   try {
     const adapterMod = await import(
-      '@canopy/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js'
+      '@onderling/react-native/src/transport/pushAdapters/ExpoNotificationsAdapter.js'
     );
     ExpoNotificationsAdapter = adapterMod.ExpoNotificationsAdapter;
   } catch (err) {
@@ -105,7 +105,7 @@ export async function run({ log, sdk }) {
   // 5. Ship token to the relay.
   const relay = sdk.getTransport?.('relay');
   if (!relay || typeof relay.registerPushToken !== 'function') {
-    log('S11: FAIL — agent has no relay transport with registerPushToken (rebuild with @canopy/core ≥ this session)');
+    log('S11: FAIL — agent has no relay transport with registerPushToken (rebuild with @onderling/core ≥ this session)');
     return { status: 'fail', detail: 'relay transport missing push registration' };
   }
   try {

@@ -2,7 +2,7 @@
 // set gets history / undoable recovery (it lives on the pseudo-pod, not a versioned circle pod).
 import { describe, it, expect } from 'vitest';
 import { createHash } from 'node:crypto';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
 import { createVersionStore } from '../../versioning/src/versionStore.js';
 
@@ -49,7 +49,7 @@ describe('registry versioning (step 2.5)', () => {
     expect(await reg.lookup('p1')).toBeTruthy();
   });
 
-  it('end-to-end: the registry resource gets real, listable history via @canopy/versioning', async () => {
+  it('end-to-end: the registry resource gets real, listable history via @onderling/versioning', async () => {
     const store = createVersionStore({ backend: memBackend(), hash: sha256, retention: { debounceMs: 0 } });
     const reg = mkReg(store);
     await reg.register({ agentId: 'p1', pubKey: 'k1', agentUri: 'u1' });

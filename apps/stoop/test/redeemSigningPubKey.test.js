@@ -12,8 +12,8 @@
  * signing address, so the authenticated identity for the joiner is `from`.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 
 const ADMIN = 'https://id.example/admin';

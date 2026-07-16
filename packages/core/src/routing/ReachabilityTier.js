@@ -34,7 +34,7 @@ const ALL_TIERS = Object.freeze([TIERS.DIRECT, TIERS.MESH, TIERS.HOP]);
 /**
  * Map of transport class name → tier.  Class names match the
  * concrete classes under `packages/core/src/transport/` and the
- * RN-only platform transports under `@canopy/react-native`.
+ * RN-only platform transports under `@onderling/react-native`.
  *
  * `hop` is intentionally absent — it is not a transport class, it's
  * a routing decision via `routing/hopTunnel.js` /

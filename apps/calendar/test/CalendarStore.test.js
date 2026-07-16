@@ -1,5 +1,5 @@
 /**
- * @canopy-app/calendar — CalendarStore tests.  v0.7.10.
+ * @onderling-app/calendar — CalendarStore tests.  v0.7.10.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 

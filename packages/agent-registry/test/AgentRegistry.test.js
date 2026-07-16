@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
 import { makeActorResolver }   from '../src/makeActorResolver.js';
 

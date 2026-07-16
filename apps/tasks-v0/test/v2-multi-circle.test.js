@@ -14,8 +14,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { DataPart, AgentIdentity } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { DataPart, AgentIdentity } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 import { buildMultiCircleRuntime } from '../src/buildMultiCircleRuntime.js';
 

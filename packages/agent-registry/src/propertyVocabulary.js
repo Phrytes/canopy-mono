@@ -11,7 +11,7 @@
 // coarseness ladder (rung names, COARSEST→finest), an optional coarsen(value, rung), and a
 // sensitivity hint. Concrete descriptors (place/ageBand/role → coarse-enum; goals → driver;
 // allergy → coded) are REGISTERED by consumers, so agent-registry stays independent of any
-// one vocabulary (e.g. @canopy/attribute-charter's coarse-enum set).
+// one vocabulary (e.g. @onderling/attribute-charter's coarse-enum set).
 
 export const PROPERTY_TYPES = Object.freeze(['coarse-enum', 'driver', 'coded', 'credential', 'scalar']);
 

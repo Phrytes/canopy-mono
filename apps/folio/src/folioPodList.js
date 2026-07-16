@@ -9,7 +9,7 @@
  * straight into `folioLevel` / the rich-row helpers.
  *
  * Source-agnostic: any object with a `.list(uri) -> { entries: [{uri,type,size?}] }`
- * works — the real `@canopy/pod-client` PodClient, or a fake in tests.  Pure +
+ * works — the real `@onderling/pod-client` PodClient, or a fake in tests.  Pure +
  * node-free (pod I/O goes through the injected client).
  */
 

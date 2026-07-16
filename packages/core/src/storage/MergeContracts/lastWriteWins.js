@@ -1,4 +1,4 @@
-// @canopy/core — storage/MergeContracts/lastWriteWins
+// @onderling/core — storage/MergeContracts/lastWriteWins
 //
 // Pure-function merge contract for federated reads where the
 // canonical view is whichever peer wrote most recently.

@@ -1,5 +1,5 @@
 /**
- * @canopy/pod-client — high-level pod read/write/list + conflict
+ * @onderling/pod-client — high-level pod read/write/list + conflict
  * detection + tombstone-backed delete-scope. Public API.
  *
  * **Layer: SDK foundation.** Substrates and apps compose primitives from this
@@ -31,7 +31,7 @@ export {
 } from './Errors.js';
 
 // Pod storage adapter + portable archive export/import (extracted from
-// @canopy/core — the concrete Solid pod DataSource and its backup pair).
+// @onderling/core — the concrete Solid pod DataSource and its backup pair).
 export { SolidPodSource } from './SolidPodSource.js';
 // L1b — sealed, pod-backed `core.DataSource` (SolidPodSource + createSealedPodClient → read/write/delete/list),
 // so a per-circle CircleItemStore can persist to a real pod with content sealed at rest under the group key.
@@ -84,10 +84,10 @@ export {
   resolveCircleStorage, circleStorageClient,
 } from './sealing/index.js';
 
-// Identity-on-pod (extracted from @canopy/core — Track B / identity-pod-schema).
+// Identity-on-pod (extracted from @onderling/core — Track B / identity-pod-schema).
 // On-pod identity store, vault→pod migration, and the pod↔vault identity
 // sync engine. These operate ON a pod, so they live at the SDK pod layer;
-// AgentIdentity / Bootstrap / KeyRotation (kernel identity) stay in @canopy/core.
+// AgentIdentity / Bootstrap / KeyRotation (kernel identity) stay in @onderling/core.
 export { IdentityPodStore } from './identity/IdentityPodStore.js';
 export { IdentitySync, vaultCacheKeyFor, resourcePathFromCacheKey } from './identity/IdentitySync.js';
 export { migrateVaultToPod } from './identity/migrateVaultToPod.js';

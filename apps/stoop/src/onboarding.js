@@ -1,5 +1,5 @@
 /**
- * onboarding — re-export shim around `@canopy/identity-resolver`.
+ * onboarding — re-export shim around `@onderling/identity-resolver`.
  *
  * **2026-05-08:** the implementation lifted into the identity-resolver
  * substrate (Tasks V1 = rule-of-two consumer per
@@ -8,4 +8,4 @@
  * `onSpawn` hook contract are preserved verbatim.
  */
 
-export { buildOnboardingSkills } from '@canopy/identity-resolver';
+export { buildOnboardingSkills } from '@onderling/identity-resolver';

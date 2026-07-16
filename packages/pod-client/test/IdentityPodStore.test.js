@@ -19,8 +19,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import crypto from 'node:crypto';
 import nacl   from 'tweetnacl';
 
-import { Bootstrap }        from '@canopy/core';
-import { AgentIdentity }    from '@canopy/core';
+import { Bootstrap }        from '@onderling/core';
+import { AgentIdentity }    from '@onderling/core';
 import { IdentityPodStore } from '../src/identity/IdentityPodStore.js';
 import { parseManifest }    from '../src/identity/identitySerializers/turtle.js';
 

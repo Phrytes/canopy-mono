@@ -10,10 +10,10 @@
  *   { cache, cadence, attachInner, detachInner, close }
  *
  * `cadence` is null in V1 — Phase 41.14 wires it via
- * `@canopy/online-cadence`.
+ * `@onderling/online-cadence`.
  */
 
-import { CachingDataSource } from '@canopy/local-store';
+import { CachingDataSource } from '@onderling/local-store';
 
 /**
  * @param {object} args

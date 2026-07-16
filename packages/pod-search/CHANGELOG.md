@@ -1,4 +1,4 @@
-# Changelog — @canopy/pod-search
+# Changelog — @onderling/pod-search
 
 ## [Unreleased] — Phase 52.25
 

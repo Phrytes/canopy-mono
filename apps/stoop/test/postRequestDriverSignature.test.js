@@ -1,8 +1,8 @@
 // Drivers #5 — postRequest persists an OPTIONAL explicit driverSignature on the item source (so peers'
 // on-device matchers can prefer it over the text/skillTags fallback). Additive + absent-safe.
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 import { createNeighborhoodAgent } from '../src/index.js';
 
 const ADMIN = 'https://id.example/admin';

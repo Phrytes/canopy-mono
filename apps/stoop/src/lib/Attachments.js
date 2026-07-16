@@ -9,7 +9,7 @@
  *   mem://stoop/items/<itemId>/attachments/<attId>.<ext>
  *
  * The Item record carries a canonical **`media` item**
- * (`@canopy/item-types` MEDIA_SCHEMA) per attachment — no bytes:
+ * (`@onderling/item-types` MEDIA_SCHEMA) per attachment — no bytes:
  *
  *   item.source.attachments = [
  *     { type: 'media', id, createdAt, createdBy,
@@ -57,7 +57,7 @@
  * canopy-chat's own circle images use.  Stoop stays key-agnostic: the
  * per-circle stoop wrapper (`apps/canopy-chat/src/v2/circleStoopScope.js`,
  * `scopeStoopCallSkill`) seals each picked image's bytes + thumbnail through
- * the circle media gateway (`@canopy/blob-gateway` `uploadBlob`, mirroring
+ * the circle media gateway (`@onderling/blob-gateway` `uploadBlob`, mirroring
  * `core/handlers/mediaEmbed.js`) BEFORE it reaches stoop, and hands stoop an
  * opaque canonical `media` item whose `source` IS the blob manifest line
  * (`{type:'blob', ref:'blob://<key>', enc:{sealed:true,…,thumb}}`).  Stoop
@@ -66,7 +66,7 @@
  * (`validateInboundAttachment` refuses it).  Recipients open the sealed inline
  * thumbnail (`openThumbnail`) + the full image (`openBlob`, gated) through
  * their own circle media gateway — the sealing key stays out of stoop.  The
- * `@canopy/chat-p2p` plaintext `attachment-request`/`-response` handlers are
+ * `@onderling/chat-p2p` plaintext `attachment-request`/`-response` handlers are
  * now structurally inert (stoop no longer injects `attachmentSupport`, and no
  * plaintext bytes exist to serve).
  */

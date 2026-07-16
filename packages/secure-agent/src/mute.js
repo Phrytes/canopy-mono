@@ -1,8 +1,8 @@
 /**
- * @canopy/secure-agent — persistent peer mute set.
+ * @onderling/secure-agent — persistent peer mute set.
  *
  * Layer: substrate.  Platform-neutral (depends only on the Vault
- * interface from @canopy/vault).
+ * interface from @onderling/vault).
  *
  * Wires A.1 from the v0.7 security roadmap.  A mute applies to:
  *   - inbound HI       (rejected via the helloGate composition)

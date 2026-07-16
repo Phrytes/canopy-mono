@@ -6,7 +6,7 @@
 // get the opened string back from read), matching how `project-seal` is used.
 //
 // The seal/open STRATEGY is injected (recipient-wrap or group-key) so key custody lives outside (e.g.
-// @canopy/vault): the writer needs only public keys (or the group key); the reader needs a private key
+// @onderling/vault): the writer needs only public keys (or the group key); the reader needs a private key
 // (or the group key). `open` passes plaintext through, so a pod with mixed sealed/legacy data still reads.
 
 import {

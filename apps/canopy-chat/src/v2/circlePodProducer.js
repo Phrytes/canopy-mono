@@ -15,7 +15,7 @@
  * per service-context; per-scope state outside — CLAUDE.md invariant #6). The app
  * keeps one of these per open circle, keyed by circle id.
  *
- * Deps are INJECTED (no hard `@canopy/pod-client` / `@canopy/pseudo-pod` import) so
+ * Deps are INJECTED (no hard `@onderling/pod-client` / `@onderling/pseudo-pod` import) so
  * this module stays portable for Metro/RN and unit-testable: the web host passes a
  * `makePodClient` that builds an in-memory pseudo-pod client (real per-circle sealed
  * storage in the browser, NO OIDC/CSS) — a real Solid pod-client is the env-gated

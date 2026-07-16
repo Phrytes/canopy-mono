@@ -2,14 +2,14 @@
  * stoop — `local ≡ wire` equivalence + route-parity fitness test
  * (Workstream B, decision #5).
  *
- * Drives the shared, app-parameterized harness (`@canopy/sdk/testing`) with
+ * Drives the shared, app-parameterized harness (`@onderling/sdk/testing`) with
  * stoop's cores + manifest + Service:
  *   • LOCAL route  — `createStoopService().callSkill(op, args, ctx)` calls the
  *                    pure `(scope, args, ctx)` core in `STOOP_CORES` DIRECTLY.
  *   • WIRE route   — the SAME cores, wrapped by `wireSkill` + registered as
  *                    `defineSkill`s (the `createStoopService().skills`), invoked
  *                    over the serialized `{parts:[DataPart], from, envelope}`
- *                    path on a real `@canopy/sdk` agent.
+ *                    path on a real `@onderling/sdk` agent.
  *
  * The per-route caller identity differs by construction (LOCAL uses a fixed
  * webid; WIRE uses the agent's own key on a self-invoke) — the harness
@@ -17,9 +17,9 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { createAgent, Parts } from '@canopy/sdk';
+import { createAgent, Parts } from '@onderling/sdk';
 // The `local ≡ wire` harness lives at the SDK layer (dependency-free).
-import { describeLocalWireFitness } from '@canopy/sdk/testing';
+import { describeLocalWireFitness } from '@onderling/sdk/testing';
 
 import { createStoopService } from '../src/Service.js';
 import { STOOP_CORES } from '../src/skills/index.js';

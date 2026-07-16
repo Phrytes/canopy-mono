@@ -1,4 +1,4 @@
-// @canopy/core — storage/MergeContracts/appendOnlyEventLog
+// @onderling/core — storage/MergeContracts/appendOnlyEventLog
 //
 // Pure-function merge contract for federated reads of append-only
 // event logs.  Each peer pod returns an array of events, each with

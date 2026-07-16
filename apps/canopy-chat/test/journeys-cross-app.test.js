@@ -22,7 +22,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 
-import { PodCapabilityToken } from '@canopy/core';
+import { PodCapabilityToken } from '@onderling/core';
 
 import {
   parseInput, mergeManifests, resolveDispatch, runDispatch, scopeReadyDispatch,
@@ -36,7 +36,7 @@ import { createRealHouseholdAgent } from '../src/web/realAgent.js';
 import {
   mockTasksManifest, mockStoopManifest, mockFolioManifest,
 } from '../src/core/manifests/mockManifests.js';
-import { calendarManifest } from '@canopy-app/calendar/manifest';
+import { calendarManifest } from '@onderling-app/calendar/manifest';
 import { createLocalBuiltins } from '../src/core/localBuiltins.js';
 
 const LOCAL_ACTOR = 'webid:local-demo-user';
@@ -963,7 +963,7 @@ describe('CC-XA.8 — logs surface', () => {
 
 describe('CC-XA.10 — mute by webid survives a reload (cross-app)', () => {
   it('mute on first boot is observable on second boot via same vault', async () => {
-    const { VaultMemory } = await import('@canopy/vault');
+    const { VaultMemory } = await import('@onderling/vault');
     const sharedChat = new VaultMemory();
     const ws1 = await bootWorkspace({ chatVault: sharedChat });
     await ws1.userInput('/block webid:troublemaker');

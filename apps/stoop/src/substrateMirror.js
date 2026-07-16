@@ -1,4 +1,4 @@
-import { registerAgentBundle } from '@canopy/agent-registry';
+import { registerAgentBundle } from '@onderling/agent-registry';
 
 import { buildSubstrateStack } from './lib/substrateStack.js';
 
@@ -22,7 +22,7 @@ import { buildSubstrateStack } from './lib/substrateStack.js';
  * @param {object|false} [opts.agentRegistry]
  *   Phase 52.10 / A7 — when an object (or omitted), the bundle
  *   registers this agent under `pseudo-pod://<deviceId>/private/agent-registry`
- *   via `@canopy/agent-registry`. Pass `false` to skip
+ *   via `@onderling/agent-registry`. Pass `false` to skip
  *   (tests / scenarios where registration isn't useful).
  *   Object shape: `{capabilities?: string[], name?: string, role?: string, anchorPodUri?: string}`.
  * @returns {Promise<object>} the mirror handle
@@ -89,12 +89,12 @@ export async function attachSubstrateMirror(bundle, { group, peers = [], evictio
 /**
  * Register a Stoop agent on the agent-registry pod resource (Phase
  * 52.10). Thin wrapper over `registerAgentBundle` from
- * `@canopy/agent-registry` that supplies the `['stoop']` default
+ * `@onderling/agent-registry` that supplies the `['stoop']` default
  * capability tag.
  *
  * Shared by web (`attachSubstrateMirror`) and mobile bundle bring-up
  * (`apps/stoop-mobile/src/lib/{agentBundle,bootstrapBundle}.js`).
- * The helper itself was lifted into `@canopy/agent-registry` on
+ * The helper itself was lifted into `@onderling/agent-registry` on
  * 2026-05-14 so Tasks (and other apps) can reuse it without a
  * cross-app dep on Stoop.
  */
@@ -119,7 +119,7 @@ export async function registerAgentInRegistry({ pseudoPod, podDeviceId, agent, o
  *
  * Retires Stoop's bespoke `wireGroupBroadcastMirror` (a pubsub-topic
  * mirror that subscribed to every peer's `<group>/requests` topic)
- * in favour of the `@canopy/notify-envelope` + `@canopy/pseudo-pod`
+ * in favour of the `@onderling/notify-envelope` + `@onderling/pseudo-pod`
  * substrate path. Phase 52.9.2 of the substrates-v2 coding plan;
  * Q-B groupMirror retirement (2026-05-14).
  *
@@ -143,7 +143,7 @@ export async function registerAgentInRegistry({ pseudoPod, podDeviceId, agent, o
  * roster used by `postRequest` to direct fan-out at publish time.
  *
  * @param {object} args
- * @param {import('@canopy/item-store').ItemStore} args.itemStore
+ * @param {import('@onderling/item-store').ItemStore} args.itemStore
  * @param {object} args.notifyEnvelope   — shared per-bundle instance.
  * @param {object} args.pseudoPod        — shared per-bundle instance.
  * @param {string} args.group            — group identifier (URI namespace).

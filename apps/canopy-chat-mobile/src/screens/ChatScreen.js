@@ -32,12 +32,12 @@ import {
   itemRefFromReply, REFRESHABLE_VERBS,
   // E2 — bulk fan-out (`/done all`).
   executeBulkDispatch, lastListingItems,
-} from '@canopy-app/canopy-chat';
+} from '@onderling-app/canopy-chat';
 
 import { createFeedbackMount } from '../../../canopy-chat/src/feedback/feedbackMount.js';
 // presentLocalNotification is the shared local-notify helper (folded out of the
-// app's old v2/nativePush.js dup → @canopy/react-native/push · PushAdapter.presentLocal).
-import { presentLocalNotification } from '@canopy/react-native/push';
+// app's old v2/nativePush.js dup → @onderling/react-native/push · PushAdapter.presentLocal).
+import { presentLocalNotification } from '@onderling/react-native/push';
 import { feedbackContactItem } from '../../../canopy-chat/src/feedback/feedbackSurface.js';
 import { autoRefreshStalePanels } from '../core/panelAutoRefresh.js';
 import { buildNavModels }  from '../core/navModel.js';
@@ -113,9 +113,9 @@ import { buildMediaCardModel }      from '../core/mediaCardModel.js';
 import { saveBase64File }           from '../core/fileSave.js';
 import { useCanopyChatAuth }        from '../auth/canopyChatAuthHook.js';
 import { buildMobilePodAuth }       from '../core/podAuth.js';
-import { OidcSessionRN }            from '@canopy/oidc-session-rn';
+import { OidcSessionRN }            from '@onderling/oidc-session-rn';
 import * as SecureStore             from 'expo-secure-store';
-import { ExpoSecureStore }          from '@canopy/react-native/ports';
+import { ExpoSecureStore }          from '@onderling/react-native/ports';
 import AsyncStorage                 from '@react-native-async-storage/async-storage';
 import SlashFAB            from '../rn/SlashFAB.js';
 import ThreadDrawer        from '../rn/ThreadDrawer.js';
@@ -124,8 +124,8 @@ import MultiFieldFormBubble from '../rn/MultiFieldFormBubble.js';
 // Phase 1 QR (2026-05-27) — render real QR images for record-field
 // values matching one of the registered URI schemes (stoop-contact://,
 // stoop-invite://, canopy-chat://).  Substrate at
-// @canopy/react-native/qr/view wraps react-native-qrcode-svg.
-import { QrCodeView }     from '@canopy/react-native/qr/view';
+// @onderling/react-native/qr/view wraps react-native-qrcode-svg.
+import { QrCodeView }     from '@onderling/react-native/qr/view';
 import QrScannerModal     from '../rn/QrScannerModal.js';
 // Extension install (feedback-extension P2 mobile parity) — consent sheet + controller.
 import ExtensionConsentSheet from './v2/ExtensionConsentSheet.js';
@@ -2079,7 +2079,7 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
   // (e.g. /share-my-contact, /pod-status, /folio-status).  Renders
   // title + each `{name, value}` field.  For QR-payload values
   // (stoop-contact://, stoop-invite://) the value is rendered as a
-  // real scannable QR via @canopy/react-native/qr/view + the raw URL
+  // real scannable QR via @onderling/react-native/qr/view + the raw URL
   // as selectable text underneath (Phase 1 of mobile QR slice).
   if (r.kind === 'record') {
     const fields = Array.isArray(r.fields) ? r.fields : [];

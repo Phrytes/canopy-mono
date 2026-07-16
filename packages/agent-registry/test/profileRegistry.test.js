@@ -1,7 +1,7 @@
 // Identity step 2 — profile fields (properties + ownerFingerprint) round-trip through the
 // real registry (pseudo-pod backed) AND survive later mutations (grant/updateCapabilities).
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createPseudoPod, createMemoryBackend } from '@canopy/pseudo-pod';
+import { createPseudoPod, createMemoryBackend } from '@onderling/pseudo-pod';
 import { createAgentRegistry } from '../src/AgentRegistry.js';
 import { own, inherit, resolveProperty } from '../index.js';
 

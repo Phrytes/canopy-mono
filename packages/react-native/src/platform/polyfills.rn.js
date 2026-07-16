@@ -1,10 +1,10 @@
 // Polyfills entry — React Native variant.
 //
 // Metro's RN bundler auto-resolves this file when an app imports
-// `@canopy/react-native/platform/polyfills`.  Node / web bundlers
+// `@onderling/react-native/platform/polyfills`.  Node / web bundlers
 // see the sibling `polyfills.js` (no-op).
 //
-// Apps must import this BEFORE any other @canopy substrate.  The
+// Apps must import this BEFORE any other @onderling substrate.  The
 // peer-deps (react-native-get-random-values, buffer) must be in the
 // app's package.json — the substrate doesn't bundle them.
 //
@@ -23,7 +23,7 @@
 
 // ─── 1. crypto.getRandomValues ────────────────────────────────────
 //
-// @noble/hashes (pulled in by @scure/bip39 via @canopy/core's
+// @noble/hashes (pulled in by @scure/bip39 via @onderling/core's
 // Mnemonic) looks up `globalThis.crypto` at module-load time.  On RN
 // that global doesn't exist by default; react-native-get-random-values
 // installs it synchronously.  Without this, the bundle crashes on
@@ -124,8 +124,8 @@ if (typeof Blob !== 'undefined') {
 // import order wrong), substrates that sign / generate keys will fail.
 if (typeof crypto === 'undefined' || typeof crypto.getRandomValues !== 'function') {
   console.warn(
-    '[@canopy/react-native/platform/polyfills] crypto.getRandomValues unavailable. ' +
+    '[@onderling/react-native/platform/polyfills] crypto.getRandomValues unavailable. ' +
     'Did react-native-get-random-values fail to load? It must be in app peer-deps + ' +
-    'this file must be imported before any other @canopy substrate.',
+    'this file must be imported before any other @onderling substrate.',
   );
 }

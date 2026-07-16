@@ -1,4 +1,4 @@
-# @canopy/circles
+# @onderling/circles
 
 > **Layer: substrate.** The audience / circle / group continuum as one
 > primitive: an `Audience` is anything that resolves to a member set; a
@@ -32,7 +32,7 @@ Why this matters:
 
 Greppable canonical reference: the constant
 `CIRCLE_ID_IS_CREW_ID_ALIAS` in
-`@canopy/item-types/src/types/circle.js` — searching it surfaces the
+`@onderling/item-types/src/types/circle.js` — searching it surfaces the
 authoritative comment.
 
 ---
@@ -93,12 +93,12 @@ interface CirclesStore {
 
 `itemStore` is **duck-typed** — any object with `addItems(items, ctx)`,
 `listOpen(filter)`, `getById(id)`, and `update(id, patch, ctx)` works.
-The package does NOT import `@canopy/item-store` directly; consumers
+The package does NOT import `@onderling/item-store` directly; consumers
 inject one.  Tests use a minimal in-package fake (see
 `test/circlesStore.test.js`).
 
 The store writes `circle` items via `addItems` — including a
-`text: name` field for `@canopy/item-store` substrate compatibility
+`text: name` field for `@onderling/item-store` substrate compatibility
 (the substrate currently requires non-empty `text` on every partial;
 fix deferred to SP-5b).
 
@@ -110,7 +110,7 @@ fix deferred to SP-5b).
 import {
   normalizeAudience, resolveAudience, inAudience,
   createCirclesStore,
-} from '@canopy/circles';
+} from '@onderling/circles';
 
 const audience = normalizeAudience('circle:gardening-circle');
 // → { kind: 'circle-ref', id: 'gardening-circle' }
@@ -136,7 +136,7 @@ await inAudience('alice', audience, { me: 'me', getCircle: circlesStore.get });
 
 ## What V0 does NOT do (SP-5b scope)
 
-- **No `item.audience` field on `@canopy/item-store`'s Item schema.**
+- **No `item.audience` field on `@onderling/item-store`'s Item schema.**
   Items today carry `visibility: 'household' | 'private' | 'role:*'`
   (a string short-hand); SP-5b widens this to the full `Audience`
   shape with a forward-additive schema migration.
@@ -148,7 +148,7 @@ await inAudience('alice', audience, { me: 'me', getCircle: circlesStore.get });
 - **No renderer audience affordances** (F-SP5-a).  `renderChat` /
   `renderWeb` / `renderMobile` unchanged in V0.
 - **No group lifecycle protocol** (S5.8).  Membership lifecycle
-  (invite/accept/leave/role-change/revoke) — a `@canopy/protocol`
+  (invite/accept/leave/role-change/revoke) — a `@onderling/protocol`
   declaration — is an explicit follow-up; circles ship without it.
 - **No app changes.**  Zero changes to existing apps; V0 publishes
   the substrate to be picked up by the first concrete consumer
@@ -159,7 +159,7 @@ await inAudience('alice', audience, { me: 'me', getCircle: circlesStore.get });
 ## Status
 
 - **SP-5 V0** (this package + the `view`/`circle` canonical item types
-  in `@canopy/item-types`).
+  in `@onderling/item-types`).
 - **SP-5b** — `item.audience` field, host wiring, cross-circle query,
   renderer affordances.  See `CODING-uniforme-representatie.md`
   § SP-5b.

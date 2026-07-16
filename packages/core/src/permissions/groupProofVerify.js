@@ -19,7 +19,7 @@
  *     sig:          base64url      ← admin signs canonical body excluding sig
  *   }
  *
- * Locked Q-E.2 (2026-04-28): used by `@canopy/relay`'s `GroupAuthVerifier`.
+ * Locked Q-E.2 (2026-04-28): used by `@onderling/relay`'s `GroupAuthVerifier`.
  *
  * @param {object} proof
  * @param {string} expectedAdminPubKey  — base64url Ed25519 pubKey the relay

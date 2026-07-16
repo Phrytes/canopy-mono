@@ -5,7 +5,7 @@ front: **"a bot" and "a human app" are not two integrations.** Both target the s
 `callSkill`) and the same discovery surface (the A2A agent card); a human comes in through a GUI projector, a
 bot queries the card and calls ops directly. Target the waist, and both work.
 
-> Status: the SDK packages (`@canopy/*`) are workspace-internal today; consuming them as published packages is
+> Status: the SDK packages (`@onderling/*`) are workspace-internal today; consuming them as published packages is
 > in progress. This page is the intended interop surface — some of it goes live with the SDK publish.
 
 ## The model in three sentences
@@ -56,9 +56,9 @@ rationale: [`decisions.md`](./decisions.md) (2026-07-14).
 ## 5. Be a *provider* — satisfy the port
 
 To reimplement a piece of Canopy (a transport, a data source, an actor resolver) rather than call one:
-**"compatible" means exactly "satisfies the port"** — implement the documented interface `@canopy/core` exports
+**"compatible" means exactly "satisfies the port"** — implement the documented interface `@onderling/core` exports
 and pass its conformance harness. See [`conventions/ports.md`](./conventions/ports.md). For building a whole app
-that plugs into the waist, the fat facade is `@canopy/sdk` (one import, connect app functions to skills, done);
+that plugs into the waist, the fat facade is `@onderling/sdk` (one import, connect app functions to skills, done);
 the manifest it must satisfy is in [`conventions/manifest-standard.md`](./conventions/manifest-standard.md).
 
 ## In short

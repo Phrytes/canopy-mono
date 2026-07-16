@@ -7,9 +7,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
-import { Reveals } from '@canopy/identity-resolver';
+import { AgentIdentity, InternalBus, InternalTransport, DataPart } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
+import { Reveals } from '@onderling/identity-resolver';
 
 import { createNeighborhoodAgent, attachSubstrateMirror } from '../src/index.js';
 

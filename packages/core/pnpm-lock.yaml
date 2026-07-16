@@ -33,10 +33,10 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.36.0
         version: 0.36.3
-      '@canopy/transports':
+      '@onderling/transports':
         specifier: file:../transports
         version: file:../transports
-      '@canopy/vault':
+      '@onderling/vault':
         specifier: file:../vault
         version: file:../vault
       vitest:
@@ -67,10 +67,10 @@ packages:
     resolution: {integrity: sha512-qUt0QNJjvg4s1zk+AuLM6s/zcsQ8MvGn7+1f0vPuxvpCYa08YtTryuDInngbEyW5fNGGYe2znKt61RMGd5HnXg==}
     engines: {'0': node >= 0.2.0}
 
-  '@canopy/transports@file:../transports':
+  '@onderling/transports@file:../transports':
     resolution: {directory: ../transports, type: directory}
 
-  '@canopy/vault@file:../vault':
+  '@onderling/vault@file:../vault':
     resolution: {directory: ../vault, type: directory}
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -1173,7 +1173,7 @@ snapshots:
     dependencies:
       buffer: 6.0.3
 
-  '@canopy/transports@file:../transports':
+  '@onderling/transports@file:../transports':
     dependencies:
       ws: 8.21.0
     optionalDependencies:
@@ -1186,7 +1186,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@canopy/vault@file:../vault': {}
+  '@onderling/vault@file:../vault': {}
 
   '@esbuild/aix-ppc64@0.21.5':
     optional: true

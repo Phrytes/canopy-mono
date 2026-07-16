@@ -16,7 +16,7 @@
  * toggling so Circle.js can attach/detach the per-member loops.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { argsFromParts } from '../bundleResolver.js';
 

@@ -55,7 +55,7 @@ import { createHash } from 'node:crypto';
 // `digest()` (the only caller below) is itself only invoked from Node
 // PodExporter flows, never from the browser.  See #303 cleanup.
 
-import { Bootstrap } from '@canopy/core';
+import { Bootstrap } from '@onderling/core';
 
 const MAGIC          = new Uint8Array([0x44, 0x57, 0x4c, 0x44, 0x50, 0x00, 0x76, 0x31]); // "DWLDP\0v1"
 const FORMAT_NAME    = 'solid-ldp-archive';

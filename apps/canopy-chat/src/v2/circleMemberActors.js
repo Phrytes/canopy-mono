@@ -4,7 +4,7 @@
  * The media blob ACL grants/reads on the capability-token SUBJECT, which is a
  * member's **signing** pubKey (`AgentIdentity.pubKey`) — see
  * `src/v2/circleMediaGateway.js` (remote mode grants `memberActors`) and
- * `@canopy/blob-gateway` (`capabilityVerifier` → `{ webId: subject }`, `podAcl`
+ * `@onderling/blob-gateway` (`capabilityVerifier` → `{ webId: subject }`, `podAcl`
  * matches `g.agent === webId`). So `memberActors` MUST be each member's signing
  * pubKey.
  *

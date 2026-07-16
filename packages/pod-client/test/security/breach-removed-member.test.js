@@ -5,7 +5,7 @@
  *
  * This is the scenario the brief flagged as MOST LIKELY a real gap. It is —
  * with an important nuance. The circle's group-key model
- * (`@canopy/pod-client/sealing` `rotateGroupKeyResource`) DOES rotate on
+ * (`@onderling/pod-client/sealing` `rotateGroupKeyResource`) DOES rotate on
  * member removal, so a removed member is locked out of content sealed AFTER
  * removal (forward secrecy — DEFENDED, green below). BUT the rotation
  * deliberately RETAINS the outgoing version in `history[]`, still wrapped to

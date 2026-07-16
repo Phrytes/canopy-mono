@@ -428,12 +428,12 @@ export class AgentIdentity {
    *
    * A silent out-of-circle share seals a COPY to the recipient's X25519
    * SEALING public key, which the SENDER derives from this agent's published
-   * Ed25519 network key (`@canopy/pod-client` `sealingPublicKeyFromNetworkKey`).
+   * Ed25519 network key (`@onderling/pod-client` `sealingPublicKeyFromNetworkKey`).
    * The recipient opens it with the matching SEALING PRIVATE key, derived from
    * its OWN network secret via the counterpart `sealingKeyPairFromNetworkKey`.
    *
    * LAYERING (invariant #5): that X25519 derivation + the envelope `open` live
-   * in the `@canopy/pod-client` ADAPTER, and the kernel must NOT depend UP on an
+   * in the `@onderling/pod-client` ADAPTER, and the kernel must NOT depend UP on an
    * adapter. So the caller INJECTS the adapter as `deriveOpener` — a pure
    * `(networkSecretB64) => ((text) => plaintext)` builder the app wires to
    * `sealingKeyPairFromNetworkKey` + `makeOpener`. This method hands the builder

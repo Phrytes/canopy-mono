@@ -5,8 +5,8 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import { WebSocket } from 'ws';
 import { startRelay } from '../src/server.js';
-import { AgentIdentity, GroupManager } from '@canopy/core';
-import { VaultMemory } from '@canopy/vault';
+import { AgentIdentity, GroupManager } from '@onderling/core';
+import { VaultMemory } from '@onderling/vault';
 
 // ── Self-signed cert fixture, generated per test run so there is no ─────────
 // ── on-disk state. Uses selfsigned library if present, otherwise skips TLS. ──
@@ -540,7 +540,7 @@ describe('startRelay — Phase 2: rotation chain at register', () => {
   afterEach(async () => { if (relay) await relay.stop(); });
 
   it('accepts the new pubKey when a valid rotation chain is presented', async () => {
-    const { KeyRotation } = await import('@canopy/core');
+    const { KeyRotation } = await import('@onderling/core');
     const rotationProof = await KeyRotation.buildProof(oldId, newId.pubKey, 86_400);
 
     relay = await startRelay({

@@ -11,7 +11,7 @@
  * bites if a future `'*'` (or an over-broad appliesTo) re-mints them.
  */
 import { describe, it, expect } from 'vitest';
-import { capabilitiesOf } from '@canopy/app-manifest';
+import { capabilitiesOf } from '@onderling/app-manifest';
 import { stoopManifest } from '../manifest.js';
 
 // itemTypes that exist only to satisfy view/manifest shape — never a member capability noun.

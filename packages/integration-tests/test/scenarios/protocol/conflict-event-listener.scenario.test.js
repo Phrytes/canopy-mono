@@ -12,7 +12,7 @@
  *     when Bob force-writes between Alice's read and her write.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { PodClient, Auth }            from '@canopy/pod-client';
+import { PodClient, Auth }            from '@onderling/pod-client';
 import { MockPod }                    from '../../../src/_harness/index.js';
 
 /** Minimal Auth used to satisfy PodClient's constructor.  No headers needed —

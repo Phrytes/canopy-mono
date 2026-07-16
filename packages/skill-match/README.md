@@ -1,6 +1,6 @@
-# @canopy/skill-match
+# @onderling/skill-match
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Post-Phase 4.2 contract:** SkillMatch consumes a real `core.Agent` + `core.protocol.pubSub` directly. Do NOT reintroduce a `transport` shim or in-memory pubsub — the synthetic `InMemoryTransport` was the catastrophic case that triggered the substrate-vs-SDK audit.
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md). **Post-Phase 4.2 contract:** SkillMatch consumes a real `core.Agent` + `core.protocol.pubSub` directly. Do NOT reintroduce a `transport` shim or in-memory pubsub — the synthetic `InMemoryTransport` was the catastrophic case that triggered the substrate-vs-SDK audit.
 
 Pubsub-of-skills + posture flag + closed-group governance for
 matchmaking + claim flows.
@@ -14,7 +14,7 @@ ships.
 ## Quick start
 
 ```js
-import { SkillMatch, InMemoryTransport } from '@canopy/skill-match';
+import { SkillMatch, InMemoryTransport } from '@onderling/skill-match';
 
 const transport = new InMemoryTransport();   // V0; swap for relay-backed in production
 

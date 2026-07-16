@@ -17,7 +17,7 @@
  * glyph plus a human size when the row carries one.
  */
 
-import { folioLevel, glyphForFile, formatFileSize } from '@canopy-app/folio/browser';
+import { folioLevel, glyphForFile, formatFileSize } from '@onderling-app/folio/browser';
 // B · Slice 4 — resolve the file-OPEN row action's capability treatment
 // (get × file) from the member's matrix. Shared logic lives in src/; this
 // renderer stays a thin adapter that just applies the returned treatment.

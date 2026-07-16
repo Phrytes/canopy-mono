@@ -16,7 +16,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { renderGate } from '@canopy/app-manifest';
+import { renderGate } from '@onderling/app-manifest';
 import { createManifestHost } from '../src/ManifestHost.js';
 import { createGate } from '../src/createGate.js';
 

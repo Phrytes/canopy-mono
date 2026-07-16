@@ -1,5 +1,5 @@
 {
-  "name": "@canopy/item-store",
+  "name": "@onderling/item-store",
   "version": "0.2.0",
   "description": "Open/closed items in a hybrid pod — attribution, audit, per-field merge contracts, pluggable role policy. Composes core.DataSource (no synthetic Backend).",
   "type": "module",
@@ -26,7 +26,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@canopy/core": "workspace:^"
+    "@onderling/core": "workspace:^"
   },
   "devDependencies": {
     "vitest": "^2.1.0"

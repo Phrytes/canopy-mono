@@ -1,8 +1,8 @@
 {
   "private": true,
-  "name":        "@canopy/chat-nav",
+  "name":        "@onderling/chat-nav",
   "version":     "0.1.0",
-  "description": "Tiny substrate for the canopy-chat ⇄ side-panel navigation protocol (B.1).  No framework — vanilla JS + DOM.  RN consumers compose the same helpers via the matching @canopy/chat-nav/rn export when that ships.",
+  "description": "Tiny substrate for the canopy-chat ⇄ side-panel navigation protocol (B.1).  No framework — vanilla JS + DOM.  RN consumers compose the same helpers via the matching @onderling/chat-nav/rn export when that ships.",
   "type":        "module",
   "main":        "index.js",
   "exports": {

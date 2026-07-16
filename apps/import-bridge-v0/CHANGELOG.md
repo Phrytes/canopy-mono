@@ -1,4 +1,4 @@
-# Changelog — @canopy-app/import-bridge-v0
+# Changelog — @onderling-app/import-bridge-v0
 
 ## [0.1.0] — 2026-05-02
 
@@ -13,9 +13,9 @@ H6 V0 — initial release.  Phase C; closes rule-of-two debt on three substrates
 
 ### Substrate dependencies
 
-- `@canopy/sync-engine` (L1a) — primary
-- `@canopy/oauth-vault` (L1g) — per-source credentials
-- `@canopy/identity-resolver/person-graph` (L1h) — cross-source identity
+- `@onderling/sync-engine` (L1a) — primary
+- `@onderling/oauth-vault` (L1g) — per-source credentials
+- `@onderling/identity-resolver/person-graph` (L1h) — cross-source identity
 
 ### Substrate validation findings
 

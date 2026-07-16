@@ -5,7 +5,7 @@
  *
  * Canonical companion to `chat-message` (#81): canopy-chat's shell
  * declares both `chat-thread` + `chat-message` on its manifest
- * surface, so both must resolve in the shared `@canopy/item-types`
+ * surface, so both must resolve in the shared `@onderling/item-types`
  * registry for the manifest to validate clean under `{strictNouns}`.
  *
  * Shape mirrors canopy-chat's ThreadStore thread object

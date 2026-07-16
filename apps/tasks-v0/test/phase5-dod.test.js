@@ -20,7 +20,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import { DataPart } from '@canopy/core';
+import { DataPart } from '@onderling/core';
 
 import { createTasksAgent } from '../src/Agent.js';
 import { computeStatus, detectCycle } from '../src/dag.js';

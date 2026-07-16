@@ -9,7 +9,7 @@
  *     that want to do their own extraction.
  *
  * Profile parsing follows the same pattern as `SolidVault.extractPimStorage`
- * in `@canopy/oidc-session`: try JSON-LD first, then Turtle regex.
+ * in `@onderling/oidc-session`: try JSON-LD first, then Turtle regex.
  * The substrate doesn't pull in a full RDF parser — the canonical writings
  * are well-defined and a regex is adequate.
  *

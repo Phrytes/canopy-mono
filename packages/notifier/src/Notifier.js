@@ -2,7 +2,7 @@
  * Notifier — schedule recurring digests + one-shot nudges; deliver
  * via channels.
  *
- * A "channel" IS an `@canopy/chat-agent` `MessagingBridge` (typedef
+ * A "channel" IS an `@onderling/chat-agent` `MessagingBridge` (typedef
  * aliased in `./types.js`).  The substrate ships `NoopChannel` +
  * `PushChannel`; chat-shaped channels are L1c bridges (e.g.
  * `TelegramBridge`, `InMemoryBridge`).  `recipient` strings are opaque
@@ -21,7 +21,7 @@
  * Time source pluggable for tests (default: Date.now / setTimeout).
  */
 
-import { Emitter, genId } from '@canopy/core';
+import { Emitter, genId } from '@onderling/core';
 
 import { InMemoryScheduleStore } from './stores/InMemoryScheduleStore.js';
 import { nextDailyFireInTz } from './timezone.js';

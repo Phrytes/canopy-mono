@@ -1,6 +1,6 @@
 /**
  * bgTask — convenience re-exports of the bg-task helpers that already
- * live in `@canopy/sync-engine-rn`. Apps using `online-cadence` for
+ * live in `@onderling/sync-engine-rn`. Apps using `online-cadence` for
  * the foreground ticker typically also want the bg-fetch bridge in
  * the same import line.
  *
@@ -18,4 +18,4 @@ export {
   unregisterBackgroundFetch,
   statusBackgroundFetch,
   DEFAULT_BACKGROUND_FETCH_INTERVAL_S,
-} from '@canopy/sync-engine-rn';
+} from '@onderling/sync-engine-rn';

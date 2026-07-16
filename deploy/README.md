@@ -33,8 +33,8 @@ image therefore:
 3. Because `shared-workspace-lockfile=false`, pnpm installs **per-package**
    (`packages/<pkg>/node_modules`) — there is **no root `node_modules`**. So the
    relay's deploy entrypoint imports the relay by its **real workspace path**
-   (`../../packages/relay/index.js`), not the `@canopy/relay` bare specifier. The
-   package's own `@canopy/*` deps still resolve from its own `node_modules`.
+   (`../../packages/relay/index.js`), not the `@onderling/relay` bare specifier. The
+   package's own `@onderling/*` deps still resolve from its own `node_modules`.
 4. `better-sqlite3` is native → the image installs `python3 make g++` to build it.
 
 The **CSS pod is different**: Community Solid Server is an independent npm package

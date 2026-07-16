@@ -1,5 +1,5 @@
 /**
- * InMemoryStore — adapter over @canopy/item-store (L1b substrate).
+ * InMemoryStore — adapter over @onderling/item-store (L1b substrate).
  *
  * As of 2026-05-02 (Plan B sub-task B.1) the implementation is the
  * substrate's ItemStore + InMemoryBackend.  This file is a thin
@@ -27,9 +27,9 @@
  * directly (one test does); re-exported from L1b's ULID helper.
  */
 
-import { ItemStore } from '@canopy/item-store';
-import { MemorySource } from '@canopy/core';
-import { ulid as l1bUlid }             from '@canopy/item-store';
+import { ItemStore } from '@onderling/item-store';
+import { MemorySource } from '@onderling/core';
+import { ulid as l1bUlid }             from '@onderling/item-store';
 
 export const ulid = l1bUlid;
 
@@ -44,7 +44,7 @@ const SYSTEM_ACTOR = '__household-store__';
  * builds a fresh `MemorySource` and is purely in-memory (lost on
  * reload).  `new InMemoryStore({ dataSource })` backs the underlying
  * ItemStore with the caller's DataSource — e.g. a
- * `@canopy/local-store` `CachingDataSource` wired to a persist adapter
+ * `@onderling/local-store` `CachingDataSource` wired to a persist adapter
  * (see `./persist.js`) — so household state survives a reload.
  *
  * @implements {import('./Store.js').Store}
@@ -60,7 +60,7 @@ export class InMemoryStore {
 
   /**
    * @param {object} [opts]
-   * @param {import('@canopy/core').DataSource} [opts.dataSource]
+   * @param {import('@onderling/core').DataSource} [opts.dataSource]
    *   OBJ-2 S1e — optional injected DataSource (e.g. a persistent
    *   `CachingDataSource`).  Default: a fresh in-memory `MemorySource`
    *   (unchanged legacy behaviour — `new InMemoryStore()` still works).
@@ -75,7 +75,7 @@ export class InMemoryStore {
     });
   }
 
-  /** the underlying @canopy/item-store ItemStore (substrate API: addItems/applySync/removeSync/listOpen/listClosed) — used by the substrate mirror. */
+  /** the underlying @onderling/item-store ItemStore (substrate API: addItems/applySync/removeSync/listOpen/listClosed) — used by the substrate mirror. */
   get substrate() { return this.#store; }
 
   /**

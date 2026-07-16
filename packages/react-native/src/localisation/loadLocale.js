@@ -8,9 +8,9 @@
  *
  * Apps consume:
  *
- *   import { loadLocale } from '@canopy/react-native/localisation';
- *   import en from '@canopy-app/<app>/locales/en';
- *   import nl from '@canopy-app/<app>/locales/nl';
+ *   import { loadLocale } from '@onderling/react-native/localisation';
+ *   import en from '@onderling-app/<app>/locales/en';
+ *   import nl from '@onderling-app/<app>/locales/nl';
  *   const localisation = loadLocale({ bundles: { en, nl }, defaultLang: 'en' });
  *
  *   await localisation.initLocalisation();             // detects device locale

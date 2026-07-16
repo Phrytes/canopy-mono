@@ -13,16 +13,16 @@
  * The verify/convert gate (`verifyMappings`, `mappingsToSources`) is INJECTED
  * rather than imported: those functions live in the canopy-chat app module
  * `src/mappings.js`, whose own dependency on the app-local `composite.js`
- * (`verifyComposite`, destined for `@canopy/manifest-host` — NOT this package)
+ * (`verifyComposite`, destined for `@onderling/manifest-host` — NOT this package)
  * keeps `mappings.js` from moving into this substrate honestly. Injection lets
- * this loader live neutrally in `@canopy/kring-host` while the app wires its
+ * this loader live neutrally in `@onderling/kring-host` while the app wires its
  * verify gate in — the compat shim at `apps/canopy-chat/src/v2/mappingsLoader.js`
  * binds the app's `verifyMappings`/`mappingsToSources` so existing callers stay
  * unchanged. Mirrors the repo's injected-dependency convention (blob-gateway /
  * confidential-llm / data-connectors inject their adapters).
  */
 
-import { loadMappings } from '@canopy/pod-routing/mappings';
+import { loadMappings } from '@onderling/pod-routing/mappings';
 
 /**
  * @param {object} args

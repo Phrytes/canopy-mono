@@ -22,7 +22,7 @@
  */
 import { describe, it, expect } from 'vitest';
 
-import { PodExporter, PodImporter } from '@canopy/pod-client';
+import { PodExporter, PodImporter } from '@onderling/pod-client';
 import { MockPod }                  from '../../../src/_harness/index.js';
 
 const POD_ROOT  = 'https://alice.example/';

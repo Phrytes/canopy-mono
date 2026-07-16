@@ -21,8 +21,8 @@
 import { describe, it, expect } from 'vitest';
 import 'fake-indexeddb/auto';
 
-import { createSecureAgent } from '@canopy/secure-agent';
-import { VaultMemory }       from '@canopy/vault';
+import { createSecureAgent } from '@onderling/secure-agent';
+import { VaultMemory }       from '@onderling/vault';
 
 /* ─── Loopback NKN hub ────────────────────────────────── */
 

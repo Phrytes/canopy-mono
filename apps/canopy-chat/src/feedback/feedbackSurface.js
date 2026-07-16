@@ -3,14 +3,14 @@
 // (entered via /feedback), free text is routed to the bot, which runs the on-device floor +
 // the same review/consent journey as Telegram.
 //
-// M1.4 — the bot is CO-HOSTED on the participant's shared @canopy/core InternalBus via the
+// M1.4 — the bot is CO-HOSTED on the participant's shared @onderling/core InternalBus via the
 // production InternalBusBridge (no network), and consent is SIGNED with the participant's own
 // identity (so a verify-enabled project accepts it). The bot OWNS its LLM route (resolved from
 // config.llm via the M0 guardrail — never a separate setLlmRoute here), so raw pre-consent text
 // can only reach a safe (local/loopback/attested) model. DOM-free + testable: the host injects
 // `emit(reply)` — the sink that renders a bot reply ({chatId, text, buttons}) into the thread.
 
-import { InternalBus } from '@canopy/core';
+import { InternalBus } from '@onderling/core';
 // Single sanctioned import point into feedback (F1 boundary — the package `./public` barrel;
 // relative until the F3 physical carve makes it a published-package specifier).
 import {
@@ -19,7 +19,7 @@ import {
 } from 'onderling-feedback/public';
 // Privacy-first logging (web ≡ mobile). PII-safe by construction — we log event CODES + scalar counts here,
 // never message text, points, or identities. A dump handle is exposed so a bug report / debug can read it.
-import { log, dumpLogs, formatLogs } from '@canopy/logger';
+import { log, dumpLogs, formatLogs } from '@onderling/logger';
 // Property-layer charter consent (shared, pure): given the project's declared charter, collect the
 // participant's opt-in coarse attributes + package what rides the contribution. See charterConsent.js.
 import {

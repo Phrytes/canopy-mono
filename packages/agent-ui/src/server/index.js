@@ -1,5 +1,5 @@
 /**
- * @canopy/agent-ui/server — server-side primitives.
+ * @onderling/agent-ui/server — server-side primitives.
  *
  * Localhost-only framing (per L1d sketch, re-scoped 2026-05-04):
  * `mountLocalUi` wraps `core.A2ATransport` on `127.0.0.1` so a UI

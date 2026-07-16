@@ -1,6 +1,6 @@
-# @canopy/item-store
+# @onderling/item-store
 
-> **Layer: substrate.** Composes the `@canopy/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
+> **Layer: substrate.** Composes the `@onderling/core` SDK. Substrates MUST NOT reinvent SDK primitives (transports, vaults, auth, merge contracts, push, skill registries, identity, emitters, ULID); when the SDK *almost* fits, extend it additively rather than forking. See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 
 Open/closed items in a hybrid pod — attribution, audit, per-field
 merge contracts, pluggable role policy.
@@ -18,7 +18,7 @@ Within the monorepo:
 
 ```json
 "dependencies": {
-  "@canopy/item-store": "file:../../packages/item-store"
+  "@onderling/item-store": "file:../../packages/item-store"
 }
 ```
 
@@ -29,7 +29,7 @@ Within the monorepo:
 ### H2-shape (household items — single role, no skills)
 
 ```js
-import { ItemStore, InMemoryBackend } from '@canopy/item-store';
+import { ItemStore, InMemoryBackend } from '@onderling/item-store';
 
 const store = new ItemStore({ backend: new InMemoryBackend() });
 
@@ -61,7 +61,7 @@ const log = await store.auditLog({ itemId: items[0].id });
 ### H4-shape (tasks — DAG deps, skills, claim flow, role policy)
 
 ```js
-import { ItemStore, InMemoryBackend, PermissionDeniedError } from '@canopy/item-store';
+import { ItemStore, InMemoryBackend, PermissionDeniedError } from '@onderling/item-store';
 
 // Standard 5-role permission table (simplified)
 const policy = {
@@ -194,7 +194,7 @@ V0 ships:
 
 V1+ adds:
 
-- **PodBackend** — pod-backed via `@canopy/pod-client` (Track A).
+- **PodBackend** — pod-backed via `@onderling/pod-client` (Track A).
   Implements the same Backend interface.  Pluggable from the
   consuming app's bootstrap.
 
@@ -211,7 +211,7 @@ import {
   PermissionDeniedError,
   ClaimRaceError,
   InvalidLifecycleError,
-} from '@canopy/item-store';
+} from '@onderling/item-store';
 ```
 
 Each carries a `code` field for branching:

@@ -1,5 +1,5 @@
 {
-  "name": "@canopy-app/sdk-smoke",
+  "name": "@onderling-app/sdk-smoke",
   "version": "0.0.1",
   "private": true,
   "description": "Two-device SDK smoke harness — one button per scenario from coding-plans/sdk-two-device-smoke.md",
@@ -15,10 +15,10 @@
     "trigger:s11": "node scripts/trigger-s11.mjs"
   },
   "dependencies": {
-    "@canopy/core": "file:../../packages/core",
-    "@canopy/vault": "file:../../packages/vault",
-    "@canopy/pod-client": "file:../../packages/pod-client",
-    "@canopy/react-native": "file:../../packages/react-native",
+    "@onderling/core": "file:../../packages/core",
+    "@onderling/vault": "file:../../packages/vault",
+    "@onderling/pod-client": "file:../../packages/pod-client",
+    "@onderling/react-native": "file:../../packages/react-native",
     "@react-native-async-storage/async-storage": "^1.24.0",
     "@scure/bip39": "^2.0.1",
     "ed2curve": "^0.3.0",
@@ -45,7 +45,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.0",
     "@babel/preset-env": "^7.25.0",
-    "@canopy/relay": "file:../../packages/relay",
+    "@onderling/relay": "file:../../packages/relay",
     "@react-native/babel-preset": "0.76.9",
     "@react-native/eslint-config": "0.76.9",
     "eslint": "^8.57.0",

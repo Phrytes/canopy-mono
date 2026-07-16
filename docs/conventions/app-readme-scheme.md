@@ -70,7 +70,7 @@ five sections above are the **required spine**.
 
 ## Template — the `## Substrates` section
 
-List every `@canopy/<substrate>` package the app imports, what the
+List every `@onderling/<substrate>` package the app imports, what the
 app uses each for, and a single sentence per substrate explaining why
 that substrate (rather than direct kernel use) is the right home for that
 concern.
@@ -83,10 +83,10 @@ This app composes the following substrate packages
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/item-store` (L1b) | Open/closed task ledger with attribution + audit. | The pod write paths + per-field merge contracts are non-trivial; substrate amortises across H4/H5/H8. |
-| `@canopy/skill-match` (L1e) | Pubsub-of-skills broadcast + claim. | The local-profile filter + posture flag is shared with H4 (tasks) and H8 (presence). |
-| `@canopy/agent-ui` (L1d) | REST + SSE skill exposure. | Same pattern as H4's web UI — the substrate owns the auth + dispatch. |
-| `@canopy/identity-resolver` (L1h) | Member webid map + display-name resolution. | Cross-source identity is reused by H4/H5/H7. |
+| `@onderling/item-store` (L1b) | Open/closed task ledger with attribution + audit. | The pod write paths + per-field merge contracts are non-trivial; substrate amortises across H4/H5/H8. |
+| `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast + claim. | The local-profile filter + posture flag is shared with H4 (tasks) and H8 (presence). |
+| `@onderling/agent-ui` (L1d) | REST + SSE skill exposure. | Same pattern as H4's web UI — the substrate owns the auth + dispatch. |
+| `@onderling/identity-resolver` (L1h) | Member webid map + display-name resolution. | Cross-source identity is reused by H4/H5/H7. |
 ```
 
 Concrete examples below. Apps with zero substrate dependencies (rare
@@ -98,8 +98,8 @@ kernel use" below for why.`
 
 ## Template — the `## Direct kernel use` section
 
-For each direct import from `@canopy/core`, `@canopy/relay`,
-`@canopy/pod-client`, or `@canopy/react-native`, list the specific
+For each direct import from `@onderling/core`, `@onderling/relay`,
+`@onderling/pod-client`, or `@onderling/react-native`, list the specific
 primitive used and the one-line justification. **The default reader
 expectation is that this section is short or empty;** every entry is
 treated as a deliberate choice and reviewed during the app↔kernel bypass
@@ -110,9 +110,9 @@ audit (see `Project Files/TODO-GENERAL.md`).
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@canopy/core` | `Agent`, `defineSkill` | App constructs the agent itself + registers app-specific skills. | No substrate wraps "construct an agent"; that's foundational. Substrate-of-substrates would be over-abstraction. |
-| `@canopy/react-native` | `MobilePushBridge`, `ExpoNotificationsAdapter` | RN-side push receiver. | Platform layer — by design, RN-specific bring-up lives in `@canopy/react-native`. No substrate wraps it. |
-| `@canopy/pod-client` | `PodClient` | Direct Solid pod read/write. | This app pre-dates L1a `sync-engine`; sync-engine V2 will replace this. Tracked in [`<link>`](...). |
+| `@onderling/core` | `Agent`, `defineSkill` | App constructs the agent itself + registers app-specific skills. | No substrate wraps "construct an agent"; that's foundational. Substrate-of-substrates would be over-abstraction. |
+| `@onderling/react-native` | `MobilePushBridge`, `ExpoNotificationsAdapter` | RN-side push receiver. | Platform layer — by design, RN-specific bring-up lives in `@onderling/react-native`. No substrate wraps it. |
+| `@onderling/pod-client` | `PodClient` | Direct Solid pod read/write. | This app pre-dates L1a `sync-engine`; sync-engine V2 will replace this. Tracked in [`<link>`](...). |
 ```
 
 If an entry can't be justified beyond "we needed it", that's the
@@ -165,7 +165,7 @@ The mobile shell's README simply notes:
 ```markdown
 ## Shared UI helpers
 
-UI-glue helpers come from `@canopy-app/<product>/ui/*` (the
+UI-glue helpers come from `@onderling-app/<product>/ui/*` (the
 desktop shell). See its README for the surface.
 ```
 
@@ -217,11 +217,11 @@ plan.
 
 | Package | Used for | Why a substrate, not direct kernel |
 |---|---|---|
-| `@canopy/item-store` (L1b) | Records every request as a structured item; audit log. | Pod write paths + per-field merge are shared with H4/H8. |
-| `@canopy/skill-match` (L1e) | Broadcast requests + collect claims. | Pubsub-of-skills + posture flag is the H5/H4/H8 shared primitive. |
-| `@canopy/identity-resolver` (L1h) | Member webid map for `resolveMember` skill. | Cross-app identity reconciliation. |
-| `@canopy/agent-ui` (L1d) | REST + SSE skill exposure (when wired). | UI host pattern shared with H4's web UI. |
-| `@canopy/notifier` (L1f) | Push wake when humans need to decide (apps wire). | Scheduling + push channel shared with H4/H8. |
+| `@onderling/item-store` (L1b) | Records every request as a structured item; audit log. | Pod write paths + per-field merge are shared with H4/H8. |
+| `@onderling/skill-match` (L1e) | Broadcast requests + collect claims. | Pubsub-of-skills + posture flag is the H5/H4/H8 shared primitive. |
+| `@onderling/identity-resolver` (L1h) | Member webid map for `resolveMember` skill. | Cross-app identity reconciliation. |
+| `@onderling/agent-ui` (L1d) | REST + SSE skill exposure (when wired). | UI host pattern shared with H4's web UI. |
+| `@onderling/notifier` (L1f) | Push wake when humans need to decide (apps wire). | Scheduling + push channel shared with H4/H8. |
 
 ## Direct kernel use
 

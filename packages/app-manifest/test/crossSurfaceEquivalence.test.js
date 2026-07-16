@@ -10,7 +10,7 @@
  * owner-approved exception marker per DESIGN-navmodel-sketch.md § Q4.
  *
  * Coverage (inline manifests, no app dependency — keeps
- * @canopy/app-manifest portable):
+ * @onderling/app-manifest portable):
  *   - empty manifest (no views, no operations)
  *   - type-enum fallback manifest (Q6 — addItem(type: enum, text))
  *   - multi-state appliesTo manifest (F-SP3-a — claim/revoke + arrays)

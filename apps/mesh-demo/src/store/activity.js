@@ -14,7 +14,7 @@
  *     caller — short pubkey of whoever is calling (or proxying) us
  *     detail — optional one-liner shown inline
  */
-import { Emitter } from '@canopy/core';
+import { Emitter } from '@onderling/core';
 
 const MAX_ENTRIES = 10;
 

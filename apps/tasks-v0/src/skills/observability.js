@@ -21,7 +21,7 @@
  * builder.
  */
 
-import { defineSkill } from '@canopy/core';
+import { defineSkill } from '@onderling/core';
 
 import { resolveCadence, sanitiseCadenceMap } from '../observability/cadence.js';
 import { argsFromParts } from '../bundleResolver.js';

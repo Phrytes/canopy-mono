@@ -1,13 +1,13 @@
 /**
- * @canopy/oidc-session — Solid OIDC auth for Node.
+ * @onderling/oidc-session — Solid OIDC auth for Node.
  *
  * Phase 50.1 (2026-05-11) extracted `SolidVault` from
- * `@canopy/core/storage` to break the package cycle.
+ * `@onderling/core/storage` to break the package cycle.
  *
  * Phase 52.15.1 (2026-05-14) added `KNOWN_ISSUERS` + `resolveIssuer()`
  * + the shared `SolidAuth` typedef for the Solid-auth consolidation
  * work (see `Project Files/Inrupt-migration/`). Peer of
- * `@canopy/oidc-session-rn` (the React Native variant).
+ * `@onderling/oidc-session-rn` (the React Native variant).
  */
 
 export { SolidVault, _setSessionFactory } from './src/SolidVault.js';

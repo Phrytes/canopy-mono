@@ -23,7 +23,7 @@
  *
  * NOTE — `circle.id` and `task.circleId` share the same string
  * identifier space.  See `CIRCLE_ID_IS_CREW_ID_ALIAS` in
- * `@canopy/item-types/src/types/circle.js`.
+ * `@onderling/item-types/src/types/circle.js`.
  */
 
 /**

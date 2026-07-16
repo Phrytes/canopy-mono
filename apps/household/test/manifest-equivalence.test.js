@@ -1,7 +1,7 @@
 /**
  * SP-1 byte/behaviour-equivalence gate.
  *
- * Proves that the new `apps/household/manifest.js` + `@canopy/app-manifest`
+ * Proves that the new `apps/household/manifest.js` + `@onderling/app-manifest`
  * projectors produce output identical to the existing hand-catalogues:
  *
  *   - `renderChat(manifest).toolCatalog`     ≡  `V0_TOOL_CATALOG`
@@ -20,7 +20,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { renderChat, renderSlash } from '@canopy/app-manifest';
+import { renderChat, renderSlash } from '@onderling/app-manifest';
 
 import { householdManifest }       from '../manifest.js';
 import { V0_TOOL_CATALOG }         from '../src/skills/classifyAndExtract.js';

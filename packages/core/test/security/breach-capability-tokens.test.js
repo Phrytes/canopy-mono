@@ -22,7 +22,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentIdentity }        from '../../src/identity/AgentIdentity.js';
-import { VaultMemory }          from '@canopy/vault';
+import { VaultMemory }          from '@onderling/vault';
 import { TrustRegistry }        from '../../src/permissions/TrustRegistry.js';
 import { PolicyEngine, PolicyDeniedError } from '../../src/permissions/PolicyEngine.js';
 import { SkillRegistry }        from '../../src/skills/SkillRegistry.js';

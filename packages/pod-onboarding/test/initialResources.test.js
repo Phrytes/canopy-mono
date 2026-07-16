@@ -53,7 +53,7 @@ describe('buildInitialAgentRegistry', () => {
     expect(reg.version).toBe(1);
     expect(reg.podUri).toBe(ANNE_POD);
     expect(reg.agents).toHaveLength(1);
-    // Seed shape matches @canopy/agent-registry expectations
+    // Seed shape matches @onderling/agent-registry expectations
     // (agentId, name, signedAt) — substrate composition fix Phase 52.10.
     expect(reg.agents[0]).toMatchObject({
       agentId:     DEVICE,

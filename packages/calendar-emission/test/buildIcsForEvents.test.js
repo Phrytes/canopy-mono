@@ -1,5 +1,5 @@
 /**
- * @canopy/calendar-emission — buildIcsForEvents tests (v0.7.11 add).
+ * @onderling/calendar-emission — buildIcsForEvents tests (v0.7.11 add).
  *
  * The pre-existing tasks-v0 emitter tests cover buildIcsFor (task
  * shape).  These cover the new calendar-event-shape path.

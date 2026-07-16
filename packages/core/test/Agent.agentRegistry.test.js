@@ -3,9 +3,9 @@
  *
  * Standardisation Phase 50.8.1 — verifies the opaque agent-registry
  * slot on `Agent`.  The substrate
- * (`@canopy/agent-registry`, forthcoming) is NOT imported by core;
+ * (`@onderling/agent-registry`, forthcoming) is NOT imported by core;
  * the slot is a property bag the caller (typically the
- * `@canopy/agent-provisioning` facade, Phase 50.5.b) fills.
+ * `@onderling/agent-provisioning` facade, Phase 50.5.b) fills.
  *
  * Covers:
  *   - Default value is `null`.
@@ -23,7 +23,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { AgentIdentity } from '../src/identity/AgentIdentity.js';
-import { VaultMemory }   from '@canopy/vault';
+import { VaultMemory }   from '@onderling/vault';
 import { Agent }         from '../src/Agent.js';
 import { InternalBus, InternalTransport } from '../src/transport/InternalTransport.js';
 

@@ -14,7 +14,7 @@
  *
  * TIER 2 — SEMANTIC: cosine over embeddings (better recall — synonyms/paraphrase).
  * `makeSemanticRetriever` embeds the query + candidate items via an injected
- * `embed(texts)→vectors` (an `@canopy/llm-client` `EmbeddingClient`, pointed at
+ * `embed(texts)→vectors` (an `@onderling/llm-client` `EmbeddingClient`, pointed at
  * the Privatemode enclave / Ollama / any `/v1/embeddings` route — see
  * `circleEmbedProviders` + `embedPicker`), ranks by cosine, and GRACEFULLY FALLS
  * BACK to lexical if the embedder is absent or errors (enclave unreachable).
@@ -24,7 +24,7 @@
  * LLM — enclave for sealed circles, NOT a plain remote.
  *
  * ── L RAG-wiring (this file, feature/l-rag-semantic-retrieve) ──
- * `makeCircleRetriever` now backs retrieval with a PERSISTENT `@canopy/pod-search`
+ * `makeCircleRetriever` now backs retrieval with a PERSISTENT `@onderling/pod-search`
  * hybrid index (`makePodSearchRetriever`) instead of re-embedding the whole
  * candidate set on every query. Each circle's items are indexed ONCE into a
  * per-circle `PodSearch` (content-hash cache ⇒ an unchanged item is never
@@ -44,7 +44,7 @@
  * `makePodSearchRetriever` for its corpus; wire it there, not here.
  */
 
-import { PodSearch, hash as defaultHash } from '@canopy/pod-search';
+import { PodSearch, hash as defaultHash } from '@onderling/pod-search';
 
 /**
  * Default semantic cosine floor for circle RAG retrieval. pod-search stores
@@ -203,7 +203,7 @@ export function makeSemanticRetriever({ embed, loadItems, limit = 5, minScore = 
 
 /* ─── PodSearch-backed retriever (L RAG-wiring) ─────────────────────────────
  *
- * The circle-item corpus wired onto `@canopy/pod-search` — the persistent,
+ * The circle-item corpus wired onto `@onderling/pod-search` — the persistent,
  * hybrid sibling of the on-the-fly tiers above. Mirrors folio's `/zoek`
  * consumer (`apps/folio/src/folioSearch.js`): a tiny schema, an embedder
  * normaliser, a row projector, then index-once + `query({mode:'hybrid'})`.
@@ -257,7 +257,7 @@ function indexedToContextEntry(item) {
 /**
  * Normalise an injected embedder to the shape PodSearch reads (`{id, dim?, embed}`).
  * Same adapter folio uses: a mock provider already carries `.id`; an
- * `@canopy/llm-client` `EmbeddingClient` exposes `.model`/`.providerId` instead,
+ * `@onderling/llm-client` `EmbeddingClient` exposes `.model`/`.providerId` instead,
  * so the resolved circle embedder can be handed in RAW. Anything without an
  * `embed()` ⇒ `undefined` (lexical-only, no embed call).
  */
@@ -334,7 +334,7 @@ export function makePodSearchRetriever({
 }
 
 /**
- * The gate-facing retriever factory. Backed by the persistent `@canopy/pod-search`
+ * The gate-facing retriever factory. Backed by the persistent `@onderling/pod-search`
  * hybrid index (`makePodSearchRetriever`): SEMANTIC + lexical fused when an
  * embedder is configured (resolved from the circle's embed policy via
  * `resolveCircleEmbedder`), else LEXICAL-only with zero embed calls. One call

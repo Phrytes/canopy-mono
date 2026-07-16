@@ -3,7 +3,7 @@
  *
  * The keystone primitive for "a slash-command that is merely a composite":
  * a new opId is defined — as pure DATA in a manifest — as a sequence of
- * EXISTING opIds (`op.steps`, see `@canopy/app-manifest` schema).  This
+ * EXISTING opIds (`op.steps`, see `@onderling/app-manifest` schema).  This
  * file runs that sequence and verifies it.
  *
  * Two pure functions, mirroring `bulkOps.js`/`dispatch.js`:
@@ -71,7 +71,7 @@ export function resolvePath(obj, path) {
  * The resolved value binds under `argRef.as` when given, else under the
  * LAST segment of `argRef.path` (`'item.id'` → `args.id`).
  *
- * @param {import('@canopy/app-manifest').CompositeStep} step
+ * @param {import('@onderling/app-manifest').CompositeStep} step
  * @param {CompositeStepResult[]} prior  results of already-run steps
  * @returns {object}
  */
@@ -102,7 +102,7 @@ function resolveStepArgs(step, prior) {
  * A step "fails" when `callSkill` throws OR returns the `{ok: false, error}`
  * envelope (same convention as `runDispatch`/`runBulkOp`).
  *
- * @param {import('@canopy/app-manifest').Operation}  op   must have `op.steps`
+ * @param {import('@onderling/app-manifest').Operation}  op   must have `op.steps`
  * @param {import('./dispatch.js').CallSkill}         callSkill
  * @param {object} [ctx]   extra args merged UNDER each step's args (e.g. the
  *                         active threadId/circle scope); a step's own args win.
@@ -196,7 +196,7 @@ export async function runCompositeOp(op, callSkill, ctx = {}) {
  * (`manifestMerge.js`): a step resolves when EITHER the bare `opId` OR the
  * app-qualified `'<appOrigin>/<opId>'` key is present in the catalog.
  *
- * @param {import('@canopy/app-manifest').Operation} op   the composite op
+ * @param {import('@onderling/app-manifest').Operation} op   the composite op
  * @param {{ opsById: Map<string, {op: object, appOrigin: string}> } | { has?: Function }} catalog
  *        a `MergedCatalog` (uses `.opsById`) or any object exposing
  *        `has(opId)` / `opsById`.

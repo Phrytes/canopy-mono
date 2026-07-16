@@ -2,7 +2,7 @@
  * `circle` type — a saved audience.  A circle is a named, persisted
  * set of members (+ optional named roles).  Used wherever an
  * audience is referenced by id (e.g. `{kind: 'circle-ref', id}`) in
- * the `@canopy/circles` audience model.
+ * the `@onderling/circles` audience model.
  *
  * ──── ALIAS NOTE — CIRCLE ID ≡ CIRCLE ID (SP-5 V0, 2026-05-20) ──────
  *
@@ -29,7 +29,7 @@
  * ─────────────────────────────────────────────────────────────────
  *
  * Reserved field-name notes:
- *   - `text` is NOT in the schema, but `@canopy/item-store`'s
+ *   - `text` is NOT in the schema, but `@onderling/item-store`'s
  *     `addItems` requires a non-empty `text` on every partial;
  *     consumers writing circles via the store should set
  *     `text: name`.  Substrate fix deferred to SP-5b.

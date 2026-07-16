@@ -39,7 +39,7 @@
  *   non-promise. Wrap the agent-registry as a small in-process cache
  *   + sync accessor at app boot.
  *
- * @returns {import('@canopy/item-store').RolePolicy}
+ * @returns {import('@onderling/item-store').RolePolicy}
  */
 export function buildStandardRolePolicy(roles, opts = {}) {
   const aliases       = opts.aliases ?? {};

@@ -9,8 +9,8 @@
  *
  * Standardisation Phase 51.3.
  *
- * @typedef {import('@canopy/pseudo-pod').StorageBackend} StorageBackend
- * @typedef {import('@canopy/pseudo-pod').BackendEvent} BackendEvent
+ * @typedef {import('@onderling/pseudo-pod').StorageBackend} StorageBackend
+ * @typedef {import('@onderling/pseudo-pod').BackendEvent} BackendEvent
  */
 
 import { makeEtagCounter } from './_utils.js';

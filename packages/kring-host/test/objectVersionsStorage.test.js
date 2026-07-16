@@ -1,6 +1,6 @@
 /**
  * γ.2 — objectVersionsStorage: concrete versions adapter for kring stores,
- * consolidated onto the `@canopy/versioning` substrate (the retired
+ * consolidated onto the `@onderling/versioning` substrate (the retired
  * sync-engine `objectVersions.js` semantics must survive the swap):
  *   - Legacy list shape `{ts, sha256, value}` with the value INLINE.
  *   - Dedup: capturing a value identical to the newest entry is a no-op,

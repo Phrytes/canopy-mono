@@ -1,5 +1,5 @@
 /**
- * @canopy/chat-nav — floating back-to-chat button tests.
+ * @onderling/chat-nav — floating back-to-chat button tests.
  *
  * @vitest-environment happy-dom
  */

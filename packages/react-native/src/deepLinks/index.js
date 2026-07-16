@@ -1,5 +1,5 @@
 /**
- * @canopy/react-native/deepLinks — generic deep-link dispatcher.
+ * @onderling/react-native/deepLinks — generic deep-link dispatcher.
  *
  * `parseDeepLink(url, {scheme, parsers, defaultPath?})` is pure JS;
  * apps supply per-path parsers + the per-app `<scheme>://` URL

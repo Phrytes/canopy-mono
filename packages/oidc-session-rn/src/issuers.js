@@ -1,7 +1,7 @@
 /**
  * Curated list of Solid OIDC issuers + a small resolver.
  *
- * **Mirror of `@canopy/oidc-session/src/issuers.js`** — kept here
+ * **Mirror of `@onderling/oidc-session/src/issuers.js`** — kept here
  * (not imported) to avoid pulling the Node package's transitive
  * `@inrupt/solid-client-authn-node` dep into the RN bundle. If you
  * change one file, change both.
@@ -48,7 +48,7 @@ export const DEFAULT_ISSUER    = KNOWN_ISSUERS.find(i => i.id === DEFAULT_ISSUER
 /**
  * Resolve a `KnownIssuer` from id or URL. Falls back to a synthesised
  * `{ id: 'custom', ... }` for unknown URLs. Returns `null` on
- * malformed input. See `@canopy/oidc-session/src/issuers.js` for
+ * malformed input. See `@onderling/oidc-session/src/issuers.js` for
  * full doc.
  *
  * @param {string} idOrUrl
