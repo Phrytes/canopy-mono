@@ -1,57 +1,70 @@
 {
-  "name":        "@onderling-app/folio",
-  "version":     "0.1.0",
+  "name": "@onderling-app/folio",
+  "version": "0.1.0",
   "description": "Folio — your markdown notes, mirrored into your Solid pod",
-  "type":        "module",
-  "main":        "src/index.js",
+  "type": "module",
+  "main": "src/index.js",
   "exports": {
-    ".":                  "./src/index.js",
-    "./browser":          "./src/browser.js",
+    ".": "./src/index.js",
+    "./browser": "./src/browser.js",
     "./registerFolioAgent": "./src/registerFolioAgent.js",
-    "./manifest":         "./manifest.js",
+    "./manifest": "./manifest.js",
     "./rn/serviceFactory": "./src/rn/serviceFactory.js",
     "./rn/backgroundTasks": "./src/rn/backgroundTasks.js",
-    "./adapters":         "./src/adapters/index.js",
-    "./adapters/*":       "./src/adapters/*.js"
+    "./adapters": "./src/adapters/index.js",
+    "./adapters/*": "./src/adapters/*.js"
   },
-  "bin":         { "folio": "src/cli.js" },
+  "bin": {
+    "folio": "src/cli.js"
+  },
   "scripts": {
-    "test":        "vitest run",
-    "test:watch":  "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:parity": "FOLIO_PSEUDO_POD=0 vitest run && vitest run"
   },
   "dependencies": {
-    "@onderling/agent-registry":          "file:../../packages/agent-registry",
-    "@onderling/app-manifest":            "file:../../packages/app-manifest",
-    "@onderling/core":                    "file:../../packages/core",
+    "@onderling/agent-registry": "file:../../packages/agent-registry",
+    "@onderling/app-manifest": "file:../../packages/app-manifest",
+    "@onderling/core": "file:../../packages/core",
     "@onderling/vault": "file:../../packages/vault",
-    "@onderling/oidc-session":            "file:../../packages/oidc-session",
-    "@onderling/pod-client":              "file:../../packages/pod-client",
-    "@onderling/pod-search":              "file:../../packages/pod-search",
-    "@onderling/pseudo-pod":              "file:../../packages/pseudo-pod",
-    "@onderling/sync-engine":             "file:../../packages/sync-engine",
-    "@onderling/sync-engine-rn":          "file:../../packages/sync-engine-rn",
-    "@inrupt/solid-client-authn-node":   "^4.0.0",
-    "chokidar":                          "^3.6.0",
-    "express":                           "^4.21.0",
-    "systray2":                          "^2.1.4",
-    "ws":                                "^8.18.0"
+    "@onderling/oidc-session": "file:../../packages/oidc-session",
+    "@onderling/pod-client": "file:../../packages/pod-client",
+    "@onderling/pod-search": "file:../../packages/pod-search",
+    "@onderling/pseudo-pod": "file:../../packages/pseudo-pod",
+    "@onderling/sync-engine": "file:../../packages/sync-engine",
+    "@onderling/sync-engine-rn": "file:../../packages/sync-engine-rn",
+    "@inrupt/solid-client-authn-node": "^4.0.0",
+    "chokidar": "^3.6.0",
+    "express": "^4.21.0",
+    "systray2": "^2.1.4",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "vitest": "^2.1.0"
   },
   "peerDependencies": {
     "expo-background-fetch": "*",
-    "expo-crypto":           "*",
-    "expo-file-system":      "*",
-    "expo-secure-store":     "*",
-    "expo-task-manager":     "*"
+    "expo-crypto": "*",
+    "expo-file-system": "*",
+    "expo-secure-store": "*",
+    "expo-task-manager": "*"
   },
   "peerDependenciesMeta": {
-    "expo-background-fetch": { "optional": true },
-    "expo-crypto":           { "optional": true },
-    "expo-file-system":      { "optional": true },
-    "expo-secure-store":     { "optional": true },
-    "expo-task-manager":     { "optional": true }
-  }
+    "expo-background-fetch": {
+      "optional": true
+    },
+    "expo-crypto": {
+      "optional": true
+    },
+    "expo-file-system": {
+      "optional": true
+    },
+    "expo-secure-store": {
+      "optional": true
+    },
+    "expo-task-manager": {
+      "optional": true
+    }
+  },
+  "private": true
 }

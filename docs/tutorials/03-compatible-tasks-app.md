@@ -77,8 +77,9 @@ import { validateCanonical } from '@onderling/item-types';
 validateCanonical(storedRecord);   // → ok
 ```
 
-Point the same store at a pod-backed `DataSource` (`SolidPodSource` from
-`@onderling/pod-client`) and your app and Basis are operating on one shared task list — claims,
-completions, and audit included.
+Point the same store at a pod-backed `DataSource` — the bridge is `createSealedPodDataSource`
+from `@onderling/pod-client` (it works unsealed too; see the how-to guide
+[persist items to a Solid pod](../how-to/persist-items-to-a-solid-pod.md)) — and your app and
+Basis are operating on one shared task list — claims, completions, and audit included.
 
 Further: [the package index](../packages.md) · [building compatible agents](../building-compatible-agents.md).

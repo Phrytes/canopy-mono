@@ -1,25 +1,28 @@
 {
-  "name":        "@onderling-app/archive",
-  "version":     "0.1.0",
+  "name": "@onderling-app/archive",
+  "version": "0.1.0",
   "description": "Archive — read-side validator + SQLite FTS5 search over pod content",
-  "type":        "module",
-  "main":        "src/index.js",
-  "bin":         { "archive": "src/cli.js" },
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "archive": "src/cli.js"
+  },
   "scripts": {
-    "test":       "vitest run",
+    "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@onderling/core":       "file:../../packages/core",
+    "@onderling/core": "file:../../packages/core",
     "@onderling/vault": "file:../../packages/vault",
     "@onderling/pod-client": "file:../../packages/pod-client",
-    "@onderling/agent-ui":   "file:../../packages/agent-ui",
+    "@onderling/agent-ui": "file:../../packages/agent-ui",
     "@onderling/pod-search": "file:../../packages/pod-search",
-    "better-sqlite3":       "^11.9.0",
-    "express":              "^4.21.0"
+    "better-sqlite3": "^11.9.0",
+    "express": "^4.21.0"
   },
   "devDependencies": {
     "supertest": "^7.0.0",
     "vitest": "^2.1.0"
-  }
+  },
+  "private": true
 }
