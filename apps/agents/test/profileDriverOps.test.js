@@ -33,6 +33,15 @@ describe('setProfileDriver / getProfileDrivers (#3)', () => {
     expect(got.drivers.goals.tags).toEqual(['sailing', 'learning']);
   });
 
+  it('accepts kind skill end-to-end (skills fold-in): stored as a skill, not downgraded', async () => {
+    const store = fakeStore();
+    const r = await setProfileDriver(store, { id: 'default', key: 'skill', kind: 'skill', text: 'ik repareer fietsen', tags: 'fiets, repareren' });
+    expect(r).toEqual({ ok: true, id: 'default', key: 'skill' });
+    expect(store._properties.skill.kind).toBe('skill');    // NOT the generic 'driver' fallback
+    const got = await getProfileDrivers(store, { id: 'default' });
+    expect(got.drivers.skill.tags).toEqual(['fiets', 'repareren']);
+  });
+
   it('accepts tags as a comma-separated string (wire/slash path)', async () => {
     const store = fakeStore();
     await setProfileDriver(store, { id: 'default', key: 'hobby', text: 'board games', tags: 'boardgames, social ,social' });
