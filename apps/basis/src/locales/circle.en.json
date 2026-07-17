@@ -3283,5 +3283,197 @@
         "doc": "personas#1 — charter attribute label: household."
       }
     }
+  },
+  "mij": {
+    "title": {
+      "text": "Me — personas",
+      "doc": "mij#personas — heading of the Me→personas overview (replaces the About-me overlay)."
+    },
+    "unavailable": {
+      "text": "Your personas aren't available.",
+      "doc": "mij#personas — the profiles couldn't be loaded (registry unreachable)."
+    },
+    "general_eyebrow": {
+      "text": "My general persona",
+      "doc": "mij#personas — section 1 eyebrow label (bulletin style, rust, mono)."
+    },
+    "general_tagline": {
+      "text": "the truth layer",
+      "doc": "mij#personas — section 1 tagline: the default profile is the truth layer."
+    },
+    "ladder_hint": {
+      "text": "ladder: {{ladder}}",
+      "doc": "mij#personas — mono hint with a property's coarseness ladder (finest → ∅)."
+    },
+    "rung": {
+      "district": {
+        "text": "district",
+        "doc": "mij#personas — ladder rung: district (finest place rung)."
+      },
+      "municipality": {
+        "text": "municipality",
+        "doc": "mij#personas — ladder rung: municipality."
+      },
+      "region": {
+        "text": "region",
+        "doc": "mij#personas — ladder rung: region."
+      },
+      "band": {
+        "text": "band",
+        "doc": "mij#personas — ladder rung: a coarse band (age/tenure)."
+      },
+      "adult": {
+        "text": "adult (y/n)",
+        "doc": "mij#personas — ladder rung: the adult predicate, coarsest useful rung."
+      },
+      "category": {
+        "text": "category",
+        "doc": "mij#personas — ladder rung: category only."
+      },
+      "all": {
+        "text": "everything",
+        "doc": "mij#personas — ladder rung: the whole item (a driver/skill shares whole or not at all)."
+      },
+      "none": {
+        "text": "∅",
+        "doc": "mij#personas — ladder rung: share nothing (the empty rung)."
+      }
+    },
+    "not_set": {
+      "text": "not set",
+      "doc": "mij#personas — property without a value on the general persona."
+    },
+    "skills_label": {
+      "text": "Skills & drivers",
+      "doc": "mij#personas — row label for the skills/drivers chips."
+    },
+    "skill_add": {
+      "text": "+ skill or driver",
+      "doc": "mij#personas — dashed add button (potential-action grammar)."
+    },
+    "skill_text_ph": {
+      "text": "what you can do or care about, in a sentence",
+      "doc": "mij#personas — placeholder: the free text of a skill/driver."
+    },
+    "skill_tags_ph": {
+      "text": "tags, comma-separated",
+      "doc": "mij#personas — placeholder: comma-separated tags."
+    },
+    "skill_save": {
+      "text": "Add",
+      "doc": "mij#personas — save the skill/driver (setProfileDriver)."
+    },
+    "skill_cancel": {
+      "text": "Cancel",
+      "doc": "mij#personas — close the inline form without saving."
+    },
+    "approx": {
+      "text": "≈ {{category}}",
+      "doc": "mij#personas — subtle badge: the coarse category this item coarsens to when shared."
+    },
+    "personas_eyebrow": {
+      "text": "Personas",
+      "doc": "mij#personas — section 2 eyebrow label."
+    },
+    "personas_tagline": {
+      "text": "filters + exceptions on the general one",
+      "doc": "mij#personas — section 2 tagline: personas are filters/exceptions on the truth layer."
+    },
+    "truth_tag": {
+      "text": "truth layer",
+      "doc": "mij#personas — tag on the root persona card (rust border)."
+    },
+    "follows_general": {
+      "text": "↑ follows general",
+      "doc": "mij#personas — card line: this property inherits from the general persona."
+    },
+    "own_mark": {
+      "text": "OWN",
+      "doc": "mij#personas — rust mark: an own (overriding) value on this persona."
+    },
+    "absent": {
+      "text": "∅",
+      "doc": "mij#personas — card line: property absent (no value anywhere)."
+    },
+    "new_persona": {
+      "text": "+ new persona",
+      "doc": "mij#personas — dashed card: create a new persona (createProfile)."
+    },
+    "new_persona_ph": {
+      "text": "name (e.g. work)",
+      "doc": "mij#personas — placeholder: the new persona's name/id."
+    },
+    "new_persona_create": {
+      "text": "Create",
+      "doc": "mij#personas — button: create the new persona."
+    },
+    "new_persona_cancel": {
+      "text": "Cancel",
+      "doc": "mij#personas — close the new-persona form."
+    },
+    "new_persona_unavailable": {
+      "text": "Creating personas isn't available here yet.",
+      "doc": "mij#personas — title text on the disabled add card (no createProfile op)."
+    },
+    "circles_eyebrow": {
+      "text": "Per circle",
+      "doc": "mij#personas — section 3 eyebrow label."
+    },
+    "circles_tagline": {
+      "text": "who sees what",
+      "doc": "mij#personas — section 3 tagline."
+    },
+    "col_circle": {
+      "text": "circle",
+      "doc": "mij#personas — table header: circle."
+    },
+    "col_persona": {
+      "text": "persona",
+      "doc": "mij#personas — table header: persona."
+    },
+    "col_key": {
+      "text": "property",
+      "doc": "mij#personas — table header: property."
+    },
+    "col_level": {
+      "text": "level",
+      "doc": "mij#personas — table header: the chosen ladder rung (coarseness)."
+    },
+    "col_shared": {
+      "text": "shared value",
+      "doc": "mij#personas — table header: the value actually released (getPersonaRelease)."
+    },
+    "col_charter": {
+      "text": "charter",
+      "doc": "mij#personas — table header: what the circle's charter requests (when known)."
+    },
+    "level_all": {
+      "text": "everything",
+      "doc": "mij#personas — level cell when no rung was chosen (the full value)."
+    },
+    "nothing_shared": {
+      "text": "shares nothing here",
+      "doc": "mij#personas — clean empty state: no persona shares anything in this circle."
+    },
+    "share_add": {
+      "text": "+ share a property",
+      "doc": "mij#personas — dashed affordance: share one more property in this circle (opt-up)."
+    },
+    "share_remove": {
+      "text": "Stop sharing {{key}}",
+      "doc": "mij#personas — title/aria of the ×: withdraw this share (setProfileDisclosure off)."
+    },
+    "no_circles": {
+      "text": "You're not in any circle yet.",
+      "doc": "mij#personas — empty state: no circles to show sharing for."
+    },
+    "charter_none": {
+      "text": "—",
+      "doc": "mij#personas — charter cell when the circle requests no attributes (clean empty state)."
+    },
+    "charter_max": {
+      "text": "≤ {{rung}}",
+      "doc": "mij#personas — charter cell: the circle requests this property up to this rung at most."
+    }
   }
 }

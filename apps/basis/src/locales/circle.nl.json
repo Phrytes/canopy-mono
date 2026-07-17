@@ -3283,5 +3283,197 @@
         "doc": "personas#1 — charter-attribuut label: household."
       }
     }
+  },
+  "mij": {
+    "title": {
+      "text": "Mij — persona's",
+      "doc": "mij#personas — kop van het Mij→persona's-overzicht (vervangt de Over-mij-overlay)."
+    },
+    "unavailable": {
+      "text": "Je persona's zijn niet beschikbaar.",
+      "doc": "mij#personas — de profielen konden niet geladen worden (registry niet bereikbaar)."
+    },
+    "general_eyebrow": {
+      "text": "Mijn algemene persona",
+      "doc": "mij#personas — sectie 1 eyebrow-label (bulletin-stijl, roest, mono)."
+    },
+    "general_tagline": {
+      "text": "de waarheidslaag",
+      "doc": "mij#personas — sectie 1 tagline: het standaardprofiel is de waarheidslaag."
+    },
+    "ladder_hint": {
+      "text": "ladder: {{ladder}}",
+      "doc": "mij#personas — mono hint met de grofheids-ladder van een eigenschap (fijnst → ∅)."
+    },
+    "rung": {
+      "district": {
+        "text": "wijk",
+        "doc": "mij#personas — laddersport: wijk (fijnste plaats-sport)."
+      },
+      "municipality": {
+        "text": "gemeente",
+        "doc": "mij#personas — laddersport: gemeente."
+      },
+      "region": {
+        "text": "regio",
+        "doc": "mij#personas — laddersport: regio."
+      },
+      "band": {
+        "text": "band",
+        "doc": "mij#personas — laddersport: een grove band (leeftijd/woonduur)."
+      },
+      "adult": {
+        "text": "volwassen (j/n)",
+        "doc": "mij#personas — laddersport: het volwassen-predicaat, grofste nuttige sport."
+      },
+      "category": {
+        "text": "categorie",
+        "doc": "mij#personas — laddersport: alleen de categorie."
+      },
+      "all": {
+        "text": "alles",
+        "doc": "mij#personas — laddersport: het hele item (drijfveer/vaardigheid deelt heel of niet)."
+      },
+      "none": {
+        "text": "∅",
+        "doc": "mij#personas — laddersport: niets delen (de lege sport)."
+      }
+    },
+    "not_set": {
+      "text": "niet ingevuld",
+      "doc": "mij#personas — eigenschap zonder waarde op de algemene persona."
+    },
+    "skills_label": {
+      "text": "Vaardigheden & drijfveren",
+      "doc": "mij#personas — rij-label voor de chips met vaardigheden/drijfveren."
+    },
+    "skill_add": {
+      "text": "+ vaardigheid of drijfveer",
+      "doc": "mij#personas — gestippelde toevoeg-knop (potentiële-actie-grammatica)."
+    },
+    "skill_text_ph": {
+      "text": "wat kun of wil je, in een zin",
+      "doc": "mij#personas — placeholder: de vrije tekst van een vaardigheid/drijfveer."
+    },
+    "skill_tags_ph": {
+      "text": "tags, komma-gescheiden",
+      "doc": "mij#personas — placeholder: komma-gescheiden tags."
+    },
+    "skill_save": {
+      "text": "Toevoegen",
+      "doc": "mij#personas — vaardigheid/drijfveer opslaan (setProfileDriver)."
+    },
+    "skill_cancel": {
+      "text": "Annuleren",
+      "doc": "mij#personas — het inline-formulier sluiten zonder op te slaan."
+    },
+    "approx": {
+      "text": "≈ {{category}}",
+      "doc": "mij#personas — subtiele badge: de grove categorie waar dit item onder delen toe vergrofd."
+    },
+    "personas_eyebrow": {
+      "text": "Persona's",
+      "doc": "mij#personas — sectie 2 eyebrow-label."
+    },
+    "personas_tagline": {
+      "text": "filters + uitzonderingen op de algemene",
+      "doc": "mij#personas — sectie 2 tagline: persona's zijn filters/uitzonderingen op de waarheidslaag."
+    },
+    "truth_tag": {
+      "text": "waarheidslaag",
+      "doc": "mij#personas — tag op de root-persona-kaart (roest rand)."
+    },
+    "follows_general": {
+      "text": "↑ volgt algemeen",
+      "doc": "mij#personas — kaartregel: deze eigenschap erft van de algemene persona."
+    },
+    "own_mark": {
+      "text": "EIGEN",
+      "doc": "mij#personas — roest merkteken: eigen (afwijkende) waarde op deze persona."
+    },
+    "absent": {
+      "text": "∅",
+      "doc": "mij#personas — kaartregel: eigenschap ontbreekt (nergens een waarde)."
+    },
+    "new_persona": {
+      "text": "+ nieuwe persona",
+      "doc": "mij#personas — gestippelde kaart: een nieuwe persona aanmaken (createProfile)."
+    },
+    "new_persona_ph": {
+      "text": "naam (bijv. werk)",
+      "doc": "mij#personas — placeholder: de naam/id van de nieuwe persona."
+    },
+    "new_persona_create": {
+      "text": "Aanmaken",
+      "doc": "mij#personas — knop: de nieuwe persona aanmaken."
+    },
+    "new_persona_cancel": {
+      "text": "Annuleren",
+      "doc": "mij#personas — het nieuwe-persona-formulier sluiten."
+    },
+    "new_persona_unavailable": {
+      "text": "Persona's aanmaken is hier nog niet beschikbaar.",
+      "doc": "mij#personas — title-tekst op de uitgeschakelde toevoeg-kaart (geen createProfile op)."
+    },
+    "circles_eyebrow": {
+      "text": "Per kring",
+      "doc": "mij#personas — sectie 3 eyebrow-label."
+    },
+    "circles_tagline": {
+      "text": "wie ziet wat",
+      "doc": "mij#personas — sectie 3 tagline."
+    },
+    "col_circle": {
+      "text": "kring",
+      "doc": "mij#personas — tabelkop: kring."
+    },
+    "col_persona": {
+      "text": "persona",
+      "doc": "mij#personas — tabelkop: persona."
+    },
+    "col_key": {
+      "text": "eigenschap",
+      "doc": "mij#personas — tabelkop: eigenschap."
+    },
+    "col_level": {
+      "text": "niveau",
+      "doc": "mij#personas — tabelkop: de gekozen laddersport (grofheid)."
+    },
+    "col_shared": {
+      "text": "gedeelde waarde",
+      "doc": "mij#personas — tabelkop: de daadwerkelijk vrijgegeven waarde (getPersonaRelease)."
+    },
+    "col_charter": {
+      "text": "charter",
+      "doc": "mij#personas — tabelkop: wat de kring via haar charter vraagt (indien bekend)."
+    },
+    "level_all": {
+      "text": "alles",
+      "doc": "mij#personas — niveau-cel wanneer geen sport gekozen is (de volle waarde)."
+    },
+    "nothing_shared": {
+      "text": "deelt hier niets",
+      "doc": "mij#personas — nette lege staat: geen enkele persona deelt iets in deze kring."
+    },
+    "share_add": {
+      "text": "+ deel een eigenschap",
+      "doc": "mij#personas — gestippelde affordance: nog een eigenschap in deze kring delen (opt-up)."
+    },
+    "share_remove": {
+      "text": "Stop met delen van {{key}}",
+      "doc": "mij#personas — titel/aria van het ×: dit delen intrekken (setProfileDisclosure uit)."
+    },
+    "no_circles": {
+      "text": "Je zit nog in geen enkele kring.",
+      "doc": "mij#personas — lege staat: geen kringen om delen voor te tonen."
+    },
+    "charter_none": {
+      "text": "—",
+      "doc": "mij#personas — charter-cel wanneer de kring geen attributen vraagt (nette lege staat)."
+    },
+    "charter_max": {
+      "text": "≤ {{rung}}",
+      "doc": "mij#personas — charter-cel: de kring vraagt deze eigenschap tot maximaal deze sport."
+    }
   }
 }

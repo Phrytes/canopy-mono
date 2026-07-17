@@ -1,11 +1,13 @@
 /**
  * personas#1 — the "About me" persona surface: the shared read-model
- * (buildPersonaViewModel) + the web renderer (renderAboutMe).
+ * (buildPersonaViewModel) + the web renderer (renderAboutMe), and the
+ * "Mij → persona's" bulletin surface (buildMijViewModel + renderMij).
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from 'vitest';
-import { buildPersonaViewModel } from '../src/v2/personaView.js';
+import { buildPersonaViewModel, buildMijViewModel, PROPERTY_LADDERS } from '../src/v2/personaView.js';
 import { renderAboutMe } from '../web/v2/circleAboutMe.js';
+import { renderMij } from '../web/v2/circleMij.js';
 import { attributeKeys } from '@onderling/attribute-charter';
 
 // Minimal t(): return the key with any {{placeholder}} substituted (mirrors the
@@ -142,5 +144,205 @@ describe('buildPersonaViewModel — drivers (#5)', () => {
     const { buildPersonaViewModel } = await import('../src/v2/personaView.js');
     const model = buildPersonaViewModel({ view: { ok: true, id: 'x', properties: { place: 'Groningen' }, disclosure: { perContext: {} } }, circles: [] });
     expect(model.drivers).toEqual([]);
+  });
+
+  it('accepts the live registry own/inherit map shape (mode entries)', () => {
+    const model = buildPersonaViewModel({
+      view: {
+        ok: true, id: 'default',
+        properties: {
+          place:   { mode: 'own', value: 'Amsterdam' },
+          ageBand: { mode: 'inherit' },     // unresolvable from a single-profile view → unset
+          sailing: { mode: 'own', value: { kind: 'goal', text: 'learn to sail', tags: ['sailing'] } },
+        },
+        disclosure: { perContext: {} },
+      },
+      circles: [],
+    });
+    expect(model.properties.find((p) => p.key === 'place').value).toBe('Amsterdam');
+    expect(model.properties.find((p) => p.key === 'ageBand').value).toBe(null);
+    expect(model.drivers).toEqual([{ key: 'sailing', kind: 'goal', text: 'learn to sail', tags: ['sailing'] }]);
+  });
+});
+
+/* ── Mij → persona's ──────────────────────────────────────────────────────── */
+
+const mijPersonas = [
+  {
+    id: 'default', name: 'default',
+    properties: {
+      place:   { mode: 'own', value: 'Amsterdam' },
+      ageBand: { mode: 'own', value: '35-54' },
+      zeilen:  { mode: 'own', value: { kind: 'hobby', text: 'leren zeilen', tags: ['zeilen', 'water'] } },
+    },
+    disclosure: { perContext: { 'circle-1': { place: { enabled: true, rung: 'municipality' }, ageBand: { enabled: false } } } },
+  },
+  {
+    id: 'werk', name: 'Werk',
+    properties: {
+      place:   { mode: 'own', value: 'Utrecht' },   // override
+      ageBand: { mode: 'inherit' },                  // declared inherit
+      // role/tenure/household/zeilen undeclared → implicit inherit / absent
+    },
+    disclosure: { perContext: { 'circle-2': { place: { enabled: true, rung: null } } } },
+  },
+];
+const mijCircles = [
+  { id: 'circle-1', name: 'Buurt', charter: { requests: [{ key: 'place', maxRung: 'municipality', purpose: 'spreiding' }] } },
+  { id: 'circle-2', name: 'Werkclub' },
+];
+const mijReleases = {
+  default: { 'circle-1': { place: 'Amsterdam' } },
+  werk:    { 'circle-2': { place: 'Utrecht' } },
+};
+
+describe('buildMijViewModel', () => {
+  it('builds the general (truth-layer) section with ladder hints + skills chips', () => {
+    const m = buildMijViewModel({ personas: mijPersonas, circles: mijCircles, releases: mijReleases });
+    expect(m.ok).toBe(true);
+    expect(m.defaultId).toBe('default');
+    const place = m.general.properties.find((p) => p.key === 'place');
+    expect(place.value).toBe('Amsterdam');
+    expect(place.ladder).toEqual(PROPERTY_LADDERS.place);
+    // every charter attribute gets a row, each with a ladder
+    expect(m.general.properties.map((p) => p.key).sort()).toEqual(attributeKeys().sort());
+    for (const p of m.general.properties) expect(Array.isArray(p.ladder)).toBe(true);
+    // the driver shows as a chip entry, not as a coarse property
+    expect(m.general.drivers).toHaveLength(1);
+    expect(m.general.drivers[0]).toMatchObject({ key: 'zeilen', kind: 'hobby', text: 'leren zeilen', tags: ['zeilen', 'water'] });
+    expect(m.general.properties.find((p) => p.key === 'zeilen')).toBeUndefined();
+  });
+
+  it('marks per persona per key: own / inherit (declared + implicit) / absent', () => {
+    const m = buildMijViewModel({ personas: mijPersonas, circles: [], releases: {} });
+    const werk = m.personas.find((p) => p.id === 'werk');
+    expect(werk.isDefault).toBe(false);
+    const entry = (k) => werk.entries.find((e) => e.key === k);
+    expect(entry('place')).toMatchObject({ state: 'own', value: 'Utrecht' });          // override
+    expect(entry('ageBand')).toMatchObject({ state: 'inherit', value: '35-54' });      // declared inherit
+    expect(entry('zeilen')).toMatchObject({ state: 'inherit', value: 'leren zeilen' }); // implicit inherit (undeclared)
+    expect(entry('role').state).toBe('absent');                                        // nothing anywhere → ∅
+    // the root card is marked and holds its own values
+    const root = m.personas.find((p) => p.id === 'default');
+    expect(root.isDefault).toBe(true);
+    expect(root.entries.find((e) => e.key === 'place')).toMatchObject({ state: 'own', value: 'Amsterdam' });
+    expect(root.entries.find((e) => e.key === 'role').state).toBe('absent');
+  });
+
+  it('builds the per-circle table: persona × key × rung × released value + charter + addable', () => {
+    const m = buildMijViewModel({ personas: mijPersonas, circles: mijCircles, releases: mijReleases });
+    const c1 = m.circles.find((c) => c.circleId === 'circle-1');
+    // only ENABLED entries become rows (ageBand enabled:false stays out)
+    expect(c1.rows).toEqual([
+      { personaId: 'default', personaName: 'default', key: 'place', rung: 'municipality', released: 'Amsterdam' },
+    ]);
+    expect(c1.charter).toEqual({ requests: [{ key: 'place', maxRung: 'municipality', purpose: 'spreiding' }] });
+    // addable = the general persona's valued keys not yet shared here
+    expect(c1.addable.sort()).toEqual(['ageBand', 'zeilen']);
+    const c2 = m.circles.find((c) => c.circleId === 'circle-2');
+    expect(c2.rows).toEqual([
+      { personaId: 'werk', personaName: 'Werk', key: 'place', rung: null, released: 'Utrecht' },
+    ]);
+    expect(c2.charter).toBe(null);   // no charter → clean empty state
+  });
+
+  it('reports not-ok without a default persona', () => {
+    const m = buildMijViewModel({ personas: [], circles: mijCircles });
+    expect(m.ok).toBe(false);
+  });
+});
+
+describe('renderMij', () => {
+  const build = () => buildMijViewModel({ personas: mijPersonas, circles: mijCircles, releases: mijReleases });
+  // Param-echoing t(): "<key> <param values>" — lets assertions see interpolated
+  // content (ladder rungs, charter rungs) without pinning real copy.
+  const t = (k, v) => {
+    if (!v || typeof v !== 'object') return k;
+    const vals = Object.entries(v).filter(([kk]) => kk !== 'defaultValue').map(([, vv]) => String(vv)).join(' ');
+    return vals ? `${k} ${vals}` : k;
+  };
+
+  it('renders the three bulletin sections', () => {
+    const el = renderMij(document.createElement('div'), { model: build(), t });
+    const eyebrows = [...el.querySelectorAll('.cc-mij__eyebrow')].map((e) => e.textContent);
+    expect(eyebrows).toEqual(['circle.mij.general_eyebrow', 'circle.mij.personas_eyebrow', 'circle.mij.circles_eyebrow']);
+    expect(el.querySelectorAll('.cc-mij__section')).toHaveLength(3);
+    // section 1: a property row with a ladder hint, and the skill chip
+    const placeRow = el.querySelector('.cc-mij__row[data-key="place"]');
+    expect(placeRow.querySelector('.cc-mij__value-btn').textContent).toBe('Amsterdam');
+    expect(placeRow.querySelector('.cc-mij__ladder').textContent).toContain('circle.mij.rung.municipality');
+    const chip = el.querySelector('.cc-mij__chip');
+    expect(chip.querySelector('.cc-mij__chip-text').textContent).toBe('leren zeilen');
+    expect([...chip.querySelectorAll('.cc-mij__chip-tag')].map((x) => x.textContent)).toEqual(['zeilen', 'water']);
+    expect(chip.querySelector('.cc-mij__chip-badge').textContent).toContain('circle.mij.approx');
+    // section 2: the root card is marked; the werk card shows OWN + follows-general
+    const root = el.querySelector('.cc-mij__card--root');
+    expect(root.dataset.personaId).toBe('default');
+    expect(root.querySelector('.cc-mij__card-tag').textContent).toBe('circle.mij.truth_tag');
+    const werk = el.querySelector('.cc-mij__card[data-persona-id="werk"]');
+    expect(werk.querySelector('.cc-mij__entry[data-key="place"] .cc-mij__own-mark').textContent).toBe('circle.mij.own_mark');
+    expect(werk.querySelector('.cc-mij__entry[data-key="place"] .cc-mij__own-value').textContent).toBe('Utrecht');
+    expect(werk.querySelector('.cc-mij__entry[data-key="ageBand"] .cc-mij__inherit')).toBeTruthy();
+    expect(werk.querySelector('.cc-mij__entry[data-key="role"] .cc-mij__absent')).toBeTruthy();
+    // section 3: the released value + the charter cell
+    const row = el.querySelector('.cc-mij__table tr[data-circle-id="circle-1"][data-key="place"]');
+    expect(row.querySelector('.cc-mij__cell-released').textContent).toBe('Amsterdam');
+    expect(row.querySelector('.cc-mij__cell-charter').textContent).toContain('circle.mij.rung.municipality');
+  });
+
+  it('adds a skill through the dashed inline form (text + tags)', () => {
+    const onAddSkill = vi.fn();
+    const el = renderMij(document.createElement('div'), { model: build(), t, onAddSkill });
+    el.querySelector('.cc-mij__add').click();
+    const form = el.querySelector('.cc-mij__form');
+    const [text, tags] = form.querySelectorAll('.cc-mij__input');
+    text.value = 'banden plakken';
+    tags.value = 'fiets, repareren';
+    form.querySelector('.cc-btn--primary').click();
+    expect(onAddSkill).toHaveBeenCalledWith({ text: 'banden plakken', tags: 'fiets, repareren' });
+  });
+
+  it('edits a general property and toggles disclosure from the circle table', () => {
+    const onSetProperty = vi.fn();
+    const onToggleDisclosure = vi.fn();
+    const el = renderMij(document.createElement('div'), { model: build(), t, onSetProperty, onToggleDisclosure });
+    // bucket edit: open the ageBand editor, pick another bucket
+    const ageRow = el.querySelector('.cc-mij__row[data-key="ageBand"]');
+    ageRow.querySelector('.cc-mij__value-btn').click();
+    const other = [...ageRow.querySelectorAll('.cc-mij__editor .cc-btn')].find((b) => b.textContent === '18-34');
+    other.click();
+    expect(onSetProperty).toHaveBeenCalledWith('ageBand', '18-34');
+    // withdraw a share (×) → disable for THAT persona
+    el.querySelector('.cc-mij__table tr[data-circle-id="circle-2"] .cc-mij__row-remove').click();
+    expect(onToggleDisclosure).toHaveBeenCalledWith('circle-2', 'place', false, 'werk');
+    // dashed opt-up affordance → enable for the default persona
+    const c1Add = [...el.querySelectorAll('tr[data-circle-id="circle-1"] .cc-mij__add-share')][0];
+    c1Add.click();
+    const keyBtn = [...el.querySelectorAll('tr[data-circle-id="circle-1"] .cc-mij__form .cc-btn')]
+      .find((b) => b.textContent === 'circle.aboutme.key.ageBand');
+    keyBtn.click();
+    expect(onToggleDisclosure).toHaveBeenCalledWith('circle-1', 'ageBand', true, 'default');
+  });
+
+  it('creates a persona through the dashed card, and disables it without the callback', () => {
+    const onCreatePersona = vi.fn();
+    const el = renderMij(document.createElement('div'), { model: build(), t, onCreatePersona });
+    el.querySelector('.cc-mij__add-card').click();
+    const form = el.querySelector('.cc-mij__grid .cc-mij__form');
+    form.querySelector('.cc-mij__input').value = 'spel';
+    form.querySelector('.cc-btn--primary').click();
+    expect(onCreatePersona).toHaveBeenCalledWith('spel');
+    const el2 = renderMij(document.createElement('div'), { model: build(), t });
+    expect(el2.querySelector('.cc-mij__add-card').disabled).toBe(true);
+  });
+
+  it('renders clean empty states (not-ok model, no circles)', () => {
+    const bad = renderMij(document.createElement('div'), { model: buildMijViewModel({ personas: [] }), t });
+    expect(bad.querySelector('.cc-mij__empty-note').textContent).toBe('circle.mij.unavailable');
+    const noCircles = renderMij(document.createElement('div'), {
+      model: buildMijViewModel({ personas: mijPersonas, circles: [] }), t,
+    });
+    expect(noCircles.querySelectorAll('.cc-mij__section')).toHaveLength(3);
+    expect(noCircles.querySelector('.cc-mij__empty-note').textContent).toBe('circle.mij.no_circles');
   });
 });

@@ -86,9 +86,10 @@ import { pageForOp } from '../../src/v2/pageProjection.js';
 import { renderListBlock } from './listScreen.js';
 // Q17 — record-shaped detail screens (read-only key→value, e.g. agent-detail).
 import { renderRecordScreen } from './recordScreen.js';
-// personas#1 — the "About me" persona surface (properties + per-circle sharing) + its shared read-model.
-import { renderAboutMe } from './circleAboutMe.js';
-import { buildPersonaViewModel } from '../../src/v2/personaView.js';
+// personas#1 — the "Mij → persona's" surface (general persona + persona cards + per-circle sharing)
+// + its shared read-model. Replaces the former single-persona About-me content (circleAboutMe.js).
+import { renderMij } from './circleMij.js';
+import { buildMijViewModel } from '../../src/v2/personaView.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@onderling/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@onderling/kring-host/mappingsStore';
@@ -3406,16 +3407,17 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
   } catch { renderCircleScreen(body, { blocks: [], t }); }
 }
 
-// personas#1 — the "About me" persona surface. Opens as a dismissable overlay
-// (same chrome as openCircleScreenPanel) for ONE persona: its coarse properties
-// (place/ageBand/…) and, per circle, what it SHARES there. Reads the substrate
-// in ONE call (getPersonaView); edits go through setProfileProperty /
-// setProfileDisclosure and re-render from a fresh read (verify the RESULT, not
-// just the dispatch). The view-model + framing live in shared code
-// (src/v2/personaView.js — web ≡ mobile); this is a thin shell.
+// personas#1 — the "Mij → persona's" surface. Opens as a dismissable overlay
+// (same chrome as openCircleScreenPanel) over ALL profiles: the general
+// (default) persona as the truth layer, every persona card (own / inherit / ∅
+// per key), and the per-circle who-sees-what table. Reads go through the
+// existing ops (listAgents · getProfileProperties · getProfileDisclosure ·
+// getPersonaRelease); edits through setProfileProperty / setProfileDriver /
+// setProfileDisclosure / createProfile, then re-render from a fresh read
+// (verify the RESULT, not just the dispatch). The view-model + framing live in
+// shared code (src/v2/personaView.js — web ≡ mobile); this is a thin shell.
 async function openAboutMePanel(personaId) {
   const id = typeof personaId === 'string' ? personaId : String(personaId ?? '');
-  if (!id) return;
   const overlay = document.createElement('div');
   overlay.className = 'cc-screen-panel';
   const card = document.createElement('div');
@@ -3423,7 +3425,7 @@ async function openAboutMePanel(personaId) {
   const head = document.createElement('div');
   head.className = 'cc-screen-panel__head';
   const title = document.createElement('h3');
-  title.textContent = t('circle.aboutme.title');
+  title.textContent = t('circle.mij.title');
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'cc-screen-panel__close';
@@ -3441,31 +3443,68 @@ async function openAboutMePanel(personaId) {
   // Load → build model → render; re-run after each edit so the surface always
   // reflects the persisted state (not the optimistic tap).
   const draw = async () => {
-    let view;
-    try { view = await rawCallSkill('agents', 'getPersonaView', { id }); }
-    catch { view = { ok: false }; }
-    const model = buildPersonaViewModel({ view, circles: circlesCache });
-    renderAboutMe(body, {
-      model, t,
+    // Every profile-role registry entry is a persona; the clicked row + the
+    // default profile are included even when the list op degrades.
+    let rows = [];
+    try {
+      const listed = await rawCallSkill('agents', 'listAgents', {});
+      rows = (listed?.agents ?? []).filter((a) => a?.role === 'profile');
+    } catch { rows = []; }
+    if (!rows.some((r) => r.agentId === 'default')) rows.unshift({ agentId: 'default', name: 'default' });
+    if (id && !rows.some((r) => r.agentId === id)) rows.push({ agentId: id, name: id });
+    const personas = await Promise.all(rows.map(async (r) => {
+      let props = null; let disc = null;
+      try { props = await rawCallSkill('agents', 'getProfileProperties', { id: r.agentId }); } catch { /* */ }
+      try { disc = await rawCallSkill('agents', 'getProfileDisclosure', { id: r.agentId }); } catch { /* */ }
+      return {
+        id:         r.agentId,
+        name:       r.name ?? r.agentId,
+        properties: props?.properties ?? {},
+        disclosure: disc?.disclosure ?? { perContext: {} },
+      };
+    }));
+    // The released values per persona × circle (only where something is enabled).
+    const releases = {};
+    await Promise.all(personas.map(async (p) => {
+      for (const [ctxId, policy] of Object.entries(p.disclosure?.perContext ?? {})) {
+        const keys = Object.entries(policy ?? {}).filter(([, e]) => e?.enabled === true).map(([k]) => k);
+        if (!keys.length) continue;
+        try {
+          const rel = await rawCallSkill('agents', 'getPersonaRelease', { id: p.id, contextId: ctxId, keys: keys.join(',') });
+          if (rel?.ok) (releases[p.id] ??= {})[ctxId] = rel.released ?? {};
+        } catch { /* */ }
+      }
+    }));
+    const model = buildMijViewModel({ personas, circles: circlesCache, releases });
+    renderMij(body, {
+      model, t, lang: currentLang(),
+      // Section 1 edits target the GENERAL persona — the truth layer.
       onSetProperty: async (key, value) => {
-        try { await rawCallSkill('agents', 'setProfileProperty', { id, key, value }); } catch { /* */ }
+        try { await rawCallSkill('agents', 'setProfileProperty', { id: model.defaultId ?? 'default', key, value }); } catch { /* */ }
         await draw();
       },
-      // personal drivers (#5) — author an open { kind, text, tags } driver on this persona.
-      onSetDriver: async ({ key, kind, text, tags }) => {
-        try { await rawCallSkill('agents', 'setProfileDriver', { id, key, kind, text, tags }); } catch { /* */ }
+      // Skills (#Q1) — a skill is a driver-like open item {text, tags[]};
+      // kind 'skill' is a first-class DRIVER_KIND (agent-registry) and its
+      // coarse rung is the taxonomy category (skillsTaxonomy.js).
+      onAddSkill: async ({ text, tags }) => {
+        const key = (text || tags).trim().toLowerCase().slice(0, 40);   // keyed by the phrase; re-using it edits
+        try { await rawCallSkill('agents', 'setProfileDriver', { id: model.defaultId ?? 'default', key, kind: 'skill', text, tags }); } catch { /* */ }
         await draw();
       },
-      onToggleDisclosure: async (contextId, key, enabled) => {
-        try { await rawCallSkill('agents', 'setProfileDisclosure', { id, contextId, key, enabled }); } catch { /* */ }
+      onCreatePersona: async (name) => {
+        try { await rawCallSkill('agents', 'createProfile', { id: name }); } catch { /* */ }
         await draw();
       },
-      // personas#2 — push THIS persona's current disclosure for `contextId` up to the circle roster.
-      onShareToCircle: (contextId) => shareDisclosureToCircle({
+      onToggleDisclosure: async (contextId, key, enabled, forPersonaId) => {
+        try { await rawCallSkill('agents', 'setProfileDisclosure', { id: forPersonaId ?? (model.defaultId ?? 'default'), contextId, key, enabled }); } catch { /* */ }
+        await draw();
+      },
+      // personas#2 — push a persona's current disclosure for `contextId` up to the circle roster.
+      onShareToCircle: (contextId, forPersonaId) => shareDisclosureToCircle({
         callSkill:         rawCallSkill,
         sendPersonaUpdate: circleSendPersonaUpdate,
         circleId:          contextId,
-        personaId:         id,
+        personaId:         forPersonaId,
       }),
     });
   };

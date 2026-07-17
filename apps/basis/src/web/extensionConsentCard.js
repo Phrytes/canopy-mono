@@ -16,7 +16,7 @@ function btn(doc, label, onClick) {
   const b = doc.createElement('button');
   b.type = 'button';
   b.textContent = label;
-  b.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #ccc;cursor:pointer;background:#f5f5f5;';
+  b.className = 'cc-btn cc-btn--quiet';   // circle.css primitives (bulletin buttons)
   b.addEventListener('click', onClick);
   return b;
 }
@@ -37,7 +37,7 @@ export function showConsentCard(result, { onAdd, onDecline, doc = globalThis.doc
 
   const panel = doc.createElement('div');
   panel.className = 'ext-consent-card';
-  panel.style.cssText = 'background:#fff;max-width:440px;width:90%;padding:20px;border-radius:12px;font-family:system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.2);';
+  panel.style.cssText = 'background:var(--card);max-width:440px;width:90%;padding:20px;border-radius:12px;font-family:system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.2);';
   overlay.appendChild(panel);
 
   const close = () => { try { overlay.remove(); } catch { /* already gone */ } };
@@ -86,12 +86,12 @@ export function showConsentCard(result, { onAdd, onDecline, doc = globalThis.doc
   }
 
   const scope = doc.createElement('p');
-  scope.style.cssText = 'margin:8px 0;color:#444;';
+  scope.style.cssText = 'margin:8px 0;color:var(--ink-soft);';
   scope.textContent = t(card.scope === 'circle' ? 'circle.extension.scope_circle' : 'circle.extension.scope_app');
   panel.appendChild(scope);
 
   const deny = doc.createElement('p');
-  deny.style.cssText = 'color:#666;font-size:.9em;margin:8px 0 0;';
+  deny.style.cssText = 'color:var(--ink-soft);font-size:.9em;margin:8px 0 0;';
   deny.textContent = t('circle.extension.what_if_deny');
   panel.appendChild(deny);
 
@@ -99,7 +99,7 @@ export function showConsentCard(result, { onAdd, onDecline, doc = globalThis.doc
   actions.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:16px;';
   actions.appendChild(btn(doc, t('circle.extension.decline'), () => { close(); onDecline?.(); }));
   const addBtn = btn(doc, t('circle.extension.add'), () => { close(); onAdd?.(); });
-  addBtn.style.cssText += 'background:#1a7f5a;color:#fff;border-color:#1a7f5a;font-weight:600;';
+  addBtn.className = 'cc-btn cc-btn--primary';
   actions.appendChild(addBtn);
   panel.appendChild(actions);
 

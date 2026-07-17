@@ -550,7 +550,7 @@ function renderQrField(container, doc, text) {
   canvas.height = 240;
   canvas.style.display = 'block';
   canvas.style.maxWidth = '240px';
-  canvas.style.background = '#fff';
+  canvas.style.background = '#fff'; // hex-ok: QR scanner contrast
   container.appendChild(canvas);
 
   // Fallback URL line + copy button (always visible — phones may scan,
