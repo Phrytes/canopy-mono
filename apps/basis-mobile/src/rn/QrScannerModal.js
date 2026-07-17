@@ -24,6 +24,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 
 import { classifyQrPayload } from '@onderling/react-native/qr';
 import { getBasisClassifiers } from '../core/qrClassifiers.js';
+import { theme } from '../screens/v2/theme.js';
 
 export default function QrScannerModal({ visible, onClose, onResult, t }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -139,20 +140,20 @@ function PasteToggle({ visible, value, onChange, onShow, onSubmit, t }) {
 }
 
 const styles = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: '#fff' },
-  header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#ddd' },
+  root:          { flex: 1, backgroundColor: theme.color.card },
+  header:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.color.line },
   title:         { fontSize: 18, fontWeight: '600' },
   closeBtn:      { padding: 4, minWidth: 32, alignItems: 'center' },
-  closeBtnText:  { fontSize: 24, color: '#444' },
+  closeBtnText:  { fontSize: 24, color: theme.color.inkSoft },
   body:          { padding: 16 },
-  bodyText:      { fontSize: 14, color: '#444', lineHeight: 20, marginBottom: 12 },
-  hintText:      { color: '#b35900', fontSize: 13, marginBottom: 12 },
-  cameraSurface: { aspectRatio: 1, backgroundColor: '#000' },
+  bodyText:      { fontSize: 14, color: theme.color.inkSoft, lineHeight: 20, marginBottom: 12 },
+  hintText:      { color: theme.color.amber, fontSize: 13, marginBottom: 12 },
+  cameraSurface: { aspectRatio: 1, backgroundColor: '#000' }, // hex-ok: QR scanner contrast (camera backdrop)
   controls:      { padding: 16 },
-  primaryBtn:    { backgroundColor: '#1a4fa0', paddingVertical: 12, borderRadius: 6, alignItems: 'center', marginTop: 8 },
-  primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  primaryBtn:    { backgroundColor: theme.color.accent, paddingVertical: 12, borderRadius: 6, alignItems: 'center', marginTop: 8 },
+  primaryBtnText: { color: theme.color.accentContrast, fontSize: 14, fontWeight: '600' },
   pasteToggle:   { paddingVertical: 12, alignItems: 'center' },
-  pasteToggleText: { color: '#1a4fa0', fontSize: 13 },
+  pasteToggleText: { color: theme.color.accentInk, fontSize: 13 },
   pasteBlock:    { marginTop: 12 },
-  pasteInput:    { minHeight: 80, borderWidth: 1, borderColor: '#bbb', borderRadius: 4, padding: 12, fontSize: 13, textAlignVertical: 'top' },
+  pasteInput:    { minHeight: 80, borderWidth: 1, borderColor: theme.color.line, borderRadius: 4, padding: 12, fontSize: 13, textAlignVertical: 'top' },
 });

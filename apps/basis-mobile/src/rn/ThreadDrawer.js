@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 
 import { t } from '../core/localisation.js';
+import { theme } from '../screens/v2/theme.js';
 
 export default function ThreadDrawer({
   threads,
@@ -132,7 +133,7 @@ const styles = StyleSheet.create({
   drawer: {
     width: '78%',
     maxWidth: 360,
-    backgroundColor: '#fff',
+    backgroundColor: theme.color.card,
     paddingTop: Platform.OS === 'ios' ? 56 : 28,
     paddingBottom: 16,
     borderTopRightRadius: 12,
@@ -147,40 +148,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16, paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: theme.color.line,
   },
   headerTitle: { fontSize: 18, fontWeight: '700' },
   closeBtn: { padding: 4, minWidth: 32, alignItems: 'center' },
-  closeBtnText: { fontSize: 24, color: '#666', lineHeight: 24 },
+  closeBtnText: { fontSize: 24, color: theme.color.inkSoft, lineHeight: 24 },
 
   list: { flex: 1 },
   row: {
     paddingVertical: 12, paddingHorizontal: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: theme.color.line,
   },
-  rowActive: { backgroundColor: '#e6f0ff' },
-  rowName: { fontSize: 15, color: '#222', fontWeight: '500' },
-  rowNameActive: { color: '#1e88e5', fontWeight: '700' },
-  rowMeta: { fontSize: 12, color: '#888', marginTop: 2 },
+  rowActive: { backgroundColor: theme.color.blueBg },
+  rowName: { fontSize: 15, color: theme.color.ink, fontWeight: '500' },
+  rowNameActive: { color: theme.color.blue, fontWeight: '700' },
+  rowMeta: { fontSize: 12, color: theme.color.inkSoft, marginTop: 2 },
 
   createRow: {
     flexDirection: 'row',
     paddingHorizontal: 12, paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
+    borderTopColor: theme.color.line,
     gap: 8,
   },
   createInput: {
-    flex: 1, borderWidth: 1, borderColor: '#ccc',
+    flex: 1, borderWidth: 1, borderColor: theme.color.line,
     borderRadius: 18, paddingHorizontal: 12, paddingVertical: 8,
     fontSize: 14,
   },
   createBtn: {
-    backgroundColor: '#1e88e5',
+    backgroundColor: theme.color.accent,
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
   },
-  createBtnDisabled: { backgroundColor: '#ccc' },
-  createBtnText: { color: '#fff', fontSize: 22, lineHeight: 24 },
+  createBtnDisabled: { backgroundColor: theme.color.trackOff },
+  createBtnText: { color: theme.color.accentContrast, fontSize: 22, lineHeight: 24 },
 });

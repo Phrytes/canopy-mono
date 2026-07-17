@@ -23,6 +23,7 @@ import {
 
 import { filterSlashSuggestions } from '../core/slashFilter.js';
 import { t }                       from '../core/localisation.js';
+import { theme }                   from '../screens/v2/theme.js';
 
 /**
  * @param {object}   props
@@ -141,31 +142,31 @@ const styles = StyleSheet.create({
     // tap('chat-send') was actually hitting the FAB.
     position: 'absolute', right: 16, bottom: 80,
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#1e88e5',
+    backgroundColor: theme.color.accent,
     justifyContent: 'center', alignItems: 'center',
     elevation: 6,
     shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '600' },
+  fabText: { color: theme.color.accentContrast, fontSize: 28, fontWeight: '600' },
   backdrop: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 12, borderTopRightRadius: 12,
+    backgroundColor: theme.color.card, borderTopLeftRadius: 12, borderTopRightRadius: 12,
     padding: 12, paddingBottom: 24, maxHeight: '80%',
   },
   input: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
+    borderWidth: 1, borderColor: theme.color.line, borderRadius: 8,
     paddingHorizontal: 12, paddingVertical: 10, fontSize: 16,
     fontFamily: 'monospace',
   },
   matchList: { marginTop: 8, maxHeight: 280 },
-  matchRow: { paddingVertical: 8, paddingHorizontal: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#eee' },
+  matchRow: { paddingVertical: 8, paddingHorizontal: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.color.line },
   matchCmd: { fontFamily: 'monospace', fontSize: 14 },
-  matchHint: { color: '#666', fontSize: 12, marginTop: 2 },
+  matchHint: { color: theme.color.inkSoft, fontSize: 12, marginTop: 2 },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12, gap: 8 },
   btnSecondary: { padding: 10 },
-  btnPrimary: { backgroundColor: '#1e88e5', padding: 10, borderRadius: 6, paddingHorizontal: 16 },
-  btnPrimaryText: { color: '#fff', fontWeight: '600' },
+  btnPrimary: { backgroundColor: theme.color.accent, padding: 10, borderRadius: 6, paddingHorizontal: 16 },
+  btnPrimaryText: { color: theme.color.accentContrast, fontWeight: '600' },
 });

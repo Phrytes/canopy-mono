@@ -20,9 +20,6 @@ import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { asyncStorageMappingsStore, MAPPINGS_DEVICE } from './src/core/mappingsStoreRN.js';
 import * as SecureStore from 'expo-secure-store';
-import {
-  useFonts, SourceSerif4_400Regular, SourceSerif4_600SemiBold,
-} from '@expo-google-fonts/source-serif-4';
 
 import { theme } from './src/screens/v2/theme.js';
 
@@ -82,10 +79,8 @@ export default function App() {
   //                  a fresh one.
   //  - 'dismissed' — proceed with the normal boot path.
   const [firstRun, setFirstRun] = useState('checking');
-  // Load Source Serif 4 in the background — NOT gated on render (gating once
-  // hung boot at a black screen). Headings switch from system serif to
-  // Source Serif 4 once it resolves.
-  useFonts({ SourceSerif4_400Regular, SourceSerif4_600SemiBold });
+  // Bulletin design (2026-07): system fonts only — the Source Serif
+  // useFonts load is gone with the linen theme.
   // SP-13.1 (2026-05-31) — there is no separate classic chat shell as a
   // routable screen.  ChatScreen stays mounted invisibly so its peer-
   // wiring keeps routing inbound DMs / mesh events; the launcher is the

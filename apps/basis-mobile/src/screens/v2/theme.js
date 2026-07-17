@@ -3,26 +3,33 @@
  *
  * Derives from the canonical token object (apps/basis/src/v2/theme.js,
  * re-exported as THEME) so web + mobile share one source of truth. Colors /
- * radius / spacing pass straight through. `font` family names are filled in
- * by Phase 4.2 (expo-font load in App.js); until then they're undefined →
- * RN falls back to the system serif/sans, which is the graceful default.
+ * radius / spacing pass straight through.
+ *
+ * Bulletin design (2026-07, full adoption): headings are bold SYSTEM sans —
+ * the Source Serif expo-font load is gone (the linen-era serif lives on in
+ * theme-linen.js on the app side). The `serif`/`serifBody` keys are kept so
+ * the v2 screens need no edits: an undefined fontFamily is RN's system
+ * default, which is exactly the bulletin's sans. `themeDark` mirrors
+ * THEME_DARK for the upcoming dark-mode wiring (Appearance API).
  */
-import { THEME } from '@onderling-app/basis';
+import { THEME, THEME_DARK } from '@onderling-app/basis';
 
-// Source Serif 4 — loaded NON-blocking via useFonts in App.js
-// (@expo-google-fonts/source-serif-4). The family names below are the
-// useFonts keys, so they resolve deterministically once loaded. Render is
-// NOT gated on the load (that once hung boot at a black screen); until the
-// font resolves, RN briefly falls back to the system default.
 export const theme = {
   color:  THEME.color,
   radius: THEME.radius,
   space:  THEME.space,
   font: {
-    serif:     'SourceSerif4_600SemiBold',
-    serifBody: 'SourceSerif4_400Regular',
+    serif:     undefined, // system sans — bulletin headings are bold sans
+    serifBody: undefined,
     mono:      'monospace',
   },
+};
+
+export const themeDark = {
+  color:  THEME_DARK.color,
+  radius: THEME_DARK.radius,
+  space:  THEME_DARK.space,
+  font:   theme.font,
 };
 
 export default theme;

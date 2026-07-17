@@ -3254,7 +3254,7 @@ const styles = StyleSheet.create({
   // separate it visually from the unread-red).
   tileProposals: {
     minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11,
-    backgroundColor: '#d8a64a',
+    backgroundColor: theme.color.amber,
     alignItems: 'center', justifyContent: 'center',
   },
   tileProposalsText: { color: theme.color.white, fontSize: 12, fontWeight: '700' },
@@ -3289,7 +3289,7 @@ const styles = StyleSheet.create({
   bubbleSender:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
   bubbleScope:      { alignSelf: 'flex-start', fontSize: 10, fontWeight: '600', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 9, marginBottom: 3, overflow: 'hidden' },
   bubbleScopeSelf:  { backgroundColor: theme.color.paper, color: theme.color.inkSoft },
-  bubbleScopeKring: { backgroundColor: '#e8eef6', color: '#3b6ea5' },
+  bubbleScopeKring: { backgroundColor: theme.color.blueBg, color: theme.color.blue },
   bubbleText:       { fontSize: 14, color: theme.color.ink },
   bubbleKind:       { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, color: theme.color.accent },
   bubbleMore:       { marginTop: 4, fontSize: 12, fontWeight: '700', color: theme.color.accent },
@@ -3332,8 +3332,8 @@ const styles = StyleSheet.create({
   // δ.2 — per-message delivery state.  Pending = subtle clock-line,
   // Failed = warning pill (tap-to-retry).  Sent renders nothing.
   deliveryPending:    { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
-  deliveryFailed:     { marginTop: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: '#f2c8b8', backgroundColor: '#fbe9e3' },
-  deliveryFailedText: { fontSize: 11, color: '#b8290f' },
+  deliveryFailed:     { marginTop: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10, borderWidth: 1, borderColor: theme.color.danger, backgroundColor: theme.color.dangerBg },
+  deliveryFailedText: { fontSize: 11, color: theme.color.danger },
   deliveryUndeliverable: { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
   ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },

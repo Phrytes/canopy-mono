@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 
 import { t } from '../core/localisation.js';
+import { theme } from '../screens/v2/theme.js';
 
 export default function MultiFieldFormBubble({ pending, onSubmit }) {
   const initial = useMemo(() => {
@@ -81,27 +82,27 @@ export default function MultiFieldFormBubble({ pending, onSubmit }) {
 
 const styles = StyleSheet.create({
   bubble: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: theme.color.paper2,
     alignSelf: 'stretch',
     padding: 12,
     borderRadius: 12,
     marginBottom: 4,
     gap: 8,
   },
-  title: { fontSize: 14, fontWeight: '700', color: '#222' },
+  title: { fontSize: 14, fontWeight: '700', color: theme.color.ink },
   fieldRow: { gap: 4 },
-  fieldLabel: { fontSize: 12, color: '#555' },
+  fieldLabel: { fontSize: 12, color: theme.color.inkSoft },
   fieldInput: {
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
+    borderWidth: 1, borderColor: theme.color.line, borderRadius: 8,
     paddingHorizontal: 10, paddingVertical: 6, fontSize: 14,
-    backgroundColor: '#fff',
+    backgroundColor: theme.color.card,
   },
   submitBtn: {
     alignSelf: 'flex-end',
-    backgroundColor: '#1e88e5',
+    backgroundColor: theme.color.accent,
     paddingHorizontal: 14, paddingVertical: 8,
     borderRadius: 18, marginTop: 4,
   },
-  submitBtnDisabled: { backgroundColor: '#bbb' },
-  submitBtnText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  submitBtnDisabled: { backgroundColor: theme.color.trackOff },
+  submitBtnText: { color: theme.color.accentContrast, fontWeight: '600', fontSize: 13 },
 });
