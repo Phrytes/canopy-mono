@@ -188,7 +188,7 @@ import CircleShareScreen from './CircleShareScreen.js';   // objective L — cro
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
 import CircleMyDataScreen from './CircleMyDataScreen.js';
-import CircleAboutMeScreen from './CircleAboutMeScreen.js';   // personas#1 — the "About me" persona surface (properties + per-circle sharing)
+import CircleMijScreen from './CircleMijScreen.js';   // mij#personas — the "Mij → persona's" surface (replaces the single-persona About-me content, web parity with openAboutMePanel)
 import SharedWithMeScreen from './SharedWithMeScreen.js';   // SILENT out-of-circle delivery — personal "shared with me" inbox (web≡mobile)
 
 // B (circle bot) — host LLM route for NL→command in the kring. Mirrors web's VITE_CIRCLE_LLM_BASEURL
@@ -2817,18 +2817,18 @@ function CircleDetail({
         </View>
       </Modal>
 
-      {/* personas#1 — the "About me" persona surface (web parity with openAboutMePanel). */}
+      {/* mij#personas — the "Mij → persona's" surface (web parity with openAboutMePanel). */}
       <Modal visible={!!aboutMePersona} animationType="slide" transparent onRequestClose={() => setAboutMePersona(null)}>
         <View style={styles.panelBackdrop}>
           <View style={styles.panelCard} testID="circle-aboutme-panel">
             <View style={styles.panelHead}>
-              <Text style={styles.panelTitle}>{t('circle.aboutme.title')}</Text>
+              <Text style={styles.panelTitle}>{t('circle.mij.title')}</Text>
               <Pressable onPress={() => setAboutMePersona(null)} testID="circle-aboutme-panel-close">
                 <Text style={styles.panelClose}>✕</Text>
               </Pressable>
             </View>
             {aboutMePersona ? (
-              <CircleAboutMeScreen callSkill={rawCallSkill} sendPersonaUpdate={sendPersonaUpdate} personaId={aboutMePersona} circles={circles} onBack={() => setAboutMePersona(null)} />
+              <CircleMijScreen callSkill={rawCallSkill} sendPersonaUpdate={sendPersonaUpdate} personaId={aboutMePersona} circles={circles} />
             ) : null}
           </View>
         </View>

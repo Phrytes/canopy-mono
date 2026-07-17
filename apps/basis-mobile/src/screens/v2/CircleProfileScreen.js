@@ -12,7 +12,7 @@ import { View, Text, Pressable, TextInput, ScrollView, StyleSheet } from 'react-
 import { t, currentLang } from '../../core/localisation.js';
 import { theme } from './theme.js';
 
-export default function CircleProfileScreen({ callSkill, onAvailability, onMyData, onSharedWithMe }) {
+export default function CircleProfileScreen({ callSkill, onAvailability, onMyData, onSharedWithMe, onOpenMij }) {
   const [profile, setProfile] = useState({});
   const [categories, setCategories] = useState([]);
   const [handle, setHandle] = useState('');
@@ -71,6 +71,17 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
         <Field label={t('circle.profile.displayName')} value={display} onChangeText={setDisplay} testID="profile-display" />
         <Pressable style={styles.primary} onPress={saveIdentity} testID="profile-save"><Text style={styles.primaryText}>{t('circle.profile.save')}</Text></Pressable>
       </Section>
+
+      {/* Fold-in phase C (web parity, circleProfile.js) — quiet pointer to the
+          "Mij → persona's" surface where skills live now. The legacy editor
+          below stays functional on mobile until the fold-in completes here. */}
+      {typeof onOpenMij === 'function' ? (
+        <Pressable onPress={onOpenMij} accessibilityRole="button" testID="profile-skills-moved">
+          <Text style={styles.skillsMoved}>{t('circle.profile.skills_moved')}</Text>
+        </Pressable>
+      ) : (
+        <Text style={styles.skillsMoved} testID="profile-skills-moved">{t('circle.profile.skills_moved')}</Text>
+      )}
 
       <Section title={t('circle.profile.skills')}>
         {mySkills.length === 0 ? <Text style={styles.muted}>{t('circle.profile.no_skills')}</Text> : (
@@ -153,6 +164,7 @@ const styles = StyleSheet.create({
   secondary: { paddingVertical: 9, paddingHorizontal: 16, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.color.accent, alignSelf: 'flex-start' },
   secondaryText: { fontSize: 14, fontWeight: '600', color: theme.color.accent },
   muted: { fontSize: 13, color: theme.color.inkSoft },
+  skillsMoved: { fontSize: 12.5, fontStyle: 'italic', color: theme.color.inkSoft },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   skillChip: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 14, borderWidth: 1, borderColor: theme.color.line },
   skillChipText: { fontSize: 13, color: theme.color.ink },
