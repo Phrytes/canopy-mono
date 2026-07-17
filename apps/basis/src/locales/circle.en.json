@@ -117,6 +117,16 @@
         "text": "These are optional in this circle. Uncheck anything you'd rather not take part in — you can change this later in your circle settings.",
         "doc": "B/S4 — explains the opt-outable capability checkboxes at join."
       }
+    },
+    "skills_default": {
+      "label": {
+        "text": "This circle is about skills-matching — sharing your skills (as a category) is on.",
+        "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the skills-matching signal; checked = disclose skill keys at the coarse 'category' rung for the chosen persona."
+      },
+      "hint": {
+        "text": "Only the category is shared, never the text or tags. Uncheck if you'd rather not share your skills here — you can change this later under Me → personas.",
+        "doc": "Fold-in phase C (Q3) — explains the coarse rung + how to change it later; shown under the pre-checked line."
+      }
     }
   },
   "invite": {
@@ -2710,7 +2720,11 @@
     },
     "skills": {
       "text": "Skills",
-      "doc": "S2 — personal skills section."
+      "doc": "S2 — personal skills section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
+    },
+    "skills_moved": {
+      "text": "Skills now live under Me → personas",
+      "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
     "no_skills": {
       "text": "No skills yet.",

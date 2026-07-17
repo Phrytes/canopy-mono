@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   SKILL_AXES, DEFAULT_SKILL, normalizeSkill, mergeSkill,
-  MATCH_SOURCES, buildSkillMatches,
+  skillsMatchingEnabled, MATCH_SOURCES, buildSkillMatches,
 } from '../src/circleSkills.js';
 
 describe('circleSkills · normalizeSkill', () => {
@@ -49,6 +49,23 @@ describe('circleSkills · mergeSkill', () => {
   it('normalises an invalid patch value back to default', () => {
     const next = mergeSkill(DEFAULT_SKILL, { radius: 'galaxy' });
     expect(next.radius).toBe('home');
+  });
+});
+
+describe('circleSkills · skillsMatchingEnabled (fold-in C/Q3 charter signal)', () => {
+  it('is OFF for the default / unconfigured record (openness private)', () => {
+    expect(skillsMatchingEnabled()).toBe(false);
+    expect(skillsMatchingEnabled(null)).toBe(false);
+    expect(skillsMatchingEnabled(DEFAULT_SKILL)).toBe(false);
+    expect(skillsMatchingEnabled({ openness: 'bogus' })).toBe(false);   // normalises → private
+  });
+
+  it('is ON when shared beyond private AND still active; paused/archived reads OFF', () => {
+    expect(skillsMatchingEnabled({ openness: 'circle' })).toBe(true);
+    expect(skillsMatchingEnabled({ openness: 'contacts' })).toBe(true);
+    expect(skillsMatchingEnabled({ openness: 'public' })).toBe(true);
+    expect(skillsMatchingEnabled({ openness: 'circle', status: 'paused' })).toBe(false);
+    expect(skillsMatchingEnabled({ openness: 'circle', status: 'archived' })).toBe(false);
   });
 });
 

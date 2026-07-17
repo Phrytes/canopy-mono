@@ -1,11 +1,16 @@
 /**
  * basis v2 — profile editor (web DOM renderer, S2 — identity + matching).
  *
- * The "Mij" surface: your handle + display name (#5), your personal skills from
- * the stoop taxonomy (#6), and your coarse location (#7). Pure render — the host
- * (`circleApp.js` showMij) loads `getMyProfile`/`listSkillCategories` and
- * dispatches the stoop mutations behind the callbacks. Personal skills here are
- * DISTINCT from `showSkills` (which is the circle's openness *policy*).
+ * The "Mij" surface: your handle + display name (#5) and your coarse location
+ * (#7). Pure render — the host (`circleApp.js` showMij) loads `getMyProfile`
+ * and dispatches the stoop mutations behind the callbacks.
+ *
+ * Skills→property fold-in phase C (2026-07-17, NOTE-skills-properties-audit §3c):
+ * the personal-skills editor (`cc-profile__skill*` + onAddSkill/onRemoveSkill)
+ * LEFT this screen — skills are driver-like items on the persona truth layer
+ * now (`circleMij.js`, "Mij → persona's"). A quiet pointer row (`onOpenMij`)
+ * replaces it. NOT to be confused with `showSkills` (the circle's openness
+ * *policy* surface, circleSkillEditor.js — a different feature, untouched).
  *
  * D / SP-3b consumer-switch (second live surface) — the "Mij" (Me) screen
  * header is sourced from the manifest PAGE projection: the `me` op declares
@@ -17,13 +22,13 @@ import { pageLabel } from '../../src/v2/pageProjection.js';
 
 export function renderCircleProfile(container, {
   profile = {},
-  categories = [],
   geocodeResult = null,
   busy = false,
   t,
   onSaveProfile,
-  onAddSkill,
-  onRemoveSkill,
+  // Fold-in phase C — open the "Mij → persona's" surface (where skills live now).
+  // Absent ⇒ the pointer renders as plain text (older callers / tests).
+  onOpenMij,
   onGeocode,
   onSaveLocation,
   onClearLocation,
@@ -66,53 +71,17 @@ export function renderCircleProfile(container, {
   idSection.appendChild(save);
   container.appendChild(idSection);
 
-  // ── skills ──────────────────────────────────────────────────────────────
-  const catLabel = (id) => categories.find((c) => c.id === id)?.label ?? id;
-  const skillSection = section(tr('circle.profile.skills'));
-  const mySkills = Array.isArray(profile.skills) ? profile.skills : [];
-  if (!mySkills.length) {
-    const none = document.createElement('p');
-    none.className = 'cc-profile__none';
-    none.textContent = tr('circle.profile.no_skills');
-    skillSection.appendChild(none);
+  // ── skills — moved (fold-in phase C, 2026-07-17) ─────────────────────────
+  // A single quiet pointer to the "Mij → persona's" surface where skills live
+  // now. Clickable when the host wires onOpenMij; plain text otherwise.
+  const moved = document.createElement('p');
+  moved.className = 'cc-profile__skills-moved';
+  if (typeof onOpenMij === 'function') {
+    moved.appendChild(button(tr('circle.profile.skills_moved'), 'cc-profile__skills-moved-link', onOpenMij));
   } else {
-    const list = document.createElement('ul');
-    list.className = 'cc-profile__skill-list';
-    for (const sk of mySkills) {
-      const li = document.createElement('li');
-      li.className = 'cc-profile__skill';
-      li.dataset.categoryId = sk.categoryId;
-      const name = document.createElement('span');
-      name.textContent = catLabel(sk.categoryId);
-      li.appendChild(name);
-      const rm = button('×', 'cc-profile__skill-remove', () => { if (typeof onRemoveSkill === 'function') onRemoveSkill(sk.categoryId); });
-      rm.setAttribute('aria-label', tr('circle.profile.remove_skill'));
-      li.appendChild(rm);
-      list.appendChild(li);
-    }
-    skillSection.appendChild(list);
+    moved.textContent = tr('circle.profile.skills_moved');
   }
-  // add: category select + button
-  const addRow = document.createElement('div');
-  addRow.className = 'cc-profile__skill-add';
-  const select = document.createElement('select');
-  select.className = 'cc-profile__skill-select';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = tr('circle.profile.pick_skill');
-  select.appendChild(placeholder);
-  for (const c of categories) {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.label;
-    select.appendChild(opt);
-  }
-  addRow.appendChild(select);
-  addRow.appendChild(button(tr('circle.profile.add_skill'), 'cc-profile__skill-add-btn', () => {
-    if (select.value && typeof onAddSkill === 'function') onAddSkill(select.value);
-  }));
-  skillSection.appendChild(addRow);
-  container.appendChild(skillSection);
+  container.appendChild(moved);
 
   // ── location ──────────────────────────────────────────────────────────────
   const locSection = section(tr('circle.profile.location'));

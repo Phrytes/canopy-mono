@@ -305,6 +305,10 @@ export function encodeMembershipCodeUrl(result) {
     ...(result.capabilities && typeof result.capabilities === 'object' && !Array.isArray(result.capabilities) && Object.keys(result.capabilities).length
       ? { capabilities: result.capabilities } : {}),
     ...(Array.isArray(result.apps) && result.apps.length ? { apps: result.apps } : {}),
+    // Skills→property fold-in phase C (Q3) — the circle's "skills-matching is ON here" charter
+    // signal; the join wizard turns it into the visible pre-checked share-skills default. Only
+    // ever an explicit true; absent on older invites / non-matching circles (default-withhold).
+    ...(result.skillsMatching === true ? { skillsMatching: true } : {}),
   };
   const json = JSON.stringify(payload);
   if (typeof globalThis.btoa !== 'function') return `stoop-invite://${json}`;

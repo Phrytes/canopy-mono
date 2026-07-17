@@ -46,6 +46,8 @@ import {
   setConsentDecline,
   loadPersonas,
   setPersona,
+  applyCharterSkillsDefault,
+  setShareSkillsAtJoin,
 } from '../../core/wizards/joinGroupState.js';
 import { RULES_FIELDS } from '../../v2/circleRules.js';
 import { t } from '../../localisation.js';
@@ -77,6 +79,11 @@ export function renderJoinGroupWizard(opts) {
   // B · Slice 4 — build the join-time capability consent model from the invite's embedded freedom
   // template + the host-injected manifest sources. No template / no sources ⇒ empty model (no-op step).
   buildJoinConsent({ state, sources });
+
+  // Fold-in phase C (Q3) — the charter-driven skill-sharing default: a skills-matching circle
+  // (invite.skillsMatching) pre-checks "share my skills as category" VISIBLY on step 3; any other
+  // circle (incl. older invites) keeps default-withhold. Logic lives once, in the shared state.
+  applyCharterSkillsDefault(state);
 
   // Kick off the rules fetch when state.step === 1.
   if (state.invite && !state.inviteParseError) {
@@ -378,6 +385,29 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
     pHint.textContent = 'Only what this persona discloses in this circle is shared — nothing on first join. Adjust later in “About me”.';
     pWrap.appendChild(pHint);
     wrap.appendChild(pWrap);
+  }
+
+  // Fold-in phase C (Q3) — the charter-driven skill-sharing default, VISIBLE and
+  // uncheckable (never silent). Rendered only when the invite carried the circle's
+  // skills-matching signal; checked ⇒ finalSubmit enables the persona's skill keys
+  // at the coarse 'category' rung for this circle before computing the release.
+  if (state.skillsMatching) {
+    const skillsRow = doc.createElement('label');
+    skillsRow.className = 'cc-wizard-check cc-wizard-skills-default';
+    const skillsBox = doc.createElement('input');
+    skillsBox.type = 'checkbox';
+    skillsBox.className = 'cc-wizard-skills-default-box';
+    skillsBox.checked = state.shareSkillsAtJoin;
+    skillsBox.addEventListener('change', () => {
+      setShareSkillsAtJoin(state, skillsBox.checked);
+    });
+    skillsRow.appendChild(skillsBox);
+    skillsRow.appendChild(doc.createTextNode(` ${t('circle.join.skills_default.label')}`));
+    wrap.appendChild(skillsRow);
+    const skillsHint = doc.createElement('div');
+    skillsHint.className = 'cc-wizard-field-hint cc-wizard-skills-default-hint';
+    skillsHint.textContent = t('circle.join.skills_default.hint');
+    wrap.appendChild(skillsHint);
   }
 
   if (state.submitError) {

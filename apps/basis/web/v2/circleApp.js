@@ -544,7 +544,7 @@ import { renderCatchUpChooser } from './catchUpChooserModal.js';
 import { renderScreensPicker } from './circleScreensPicker.js';
 import { computeAdvice, makeTooBusyEvent } from '../../src/v2/circleAdvisor.js';
 import { normalizeHopMode } from '@onderling/kring-host/circleHop';
-import { mergeSkill, normalizeSkill } from '@onderling/kring-host/circleSkills';
+import { mergeSkill, normalizeSkill, skillsMatchingEnabled } from '@onderling/kring-host/circleSkills';
 import { buildCircleFiles, circleFilesFromListFiles } from '../../src/v2/circleFolio.js';
 import { myThingsFromListFiles } from '../../src/v2/folioMyThings.js';
 import {
@@ -2797,24 +2797,25 @@ function showStream() {
 
 // "Mij" tab — personal availability (holiday + quiet hours, board 6C) plus
 // the device-global Hopping stance.
-// S2 — the Mij tab is now your PROFILE (handle + display name + personal skills +
-// location), backed by stoop's profile ops. Availability/quiet-hours moves to a
+// S2 — the Mij tab is now your PROFILE (handle + display name + location),
+// backed by stoop's profile ops. Availability/quiet-hours moves to a
 // sub-screen reached from here.
+// Skills→property fold-in phase C (2026-07-17): the personal-skills editor
+// (stoop addMySkill/removeMySkill + listSkillCategories) left this screen —
+// skills are persona drivers now, edited on "Mij → persona's" (openAboutMePanel
+// → circleMij.js). The stoop skill ops themselves STAY: the roster projection
+// still uses the roster shape, and mobile CircleProfileScreen still calls them
+// until the mobile mirror lands.
 async function showMij() {
   showTabBar('mij');
   let profile = {};
-  let categories = [];
   let geocodeResult = null;
   let busy = false;
 
   async function load() {
     try {
-      const [prof, cats] = await Promise.all([
-        rawCallSkill('stoop', 'getMyProfile', {}).catch(() => null),
-        rawCallSkill('stoop', 'listSkillCategories', { lang: currentLang() }).catch(() => null),
-      ]);
+      const prof = await rawCallSkill('stoop', 'getMyProfile', {}).catch(() => null);
       profile = prof?.entry ?? {};
-      categories = Array.isArray(cats?.categories) ? cats.categories : [];
     } catch { /* keep defaults */ }
     rerender();
   }
@@ -2827,7 +2828,7 @@ async function showMij() {
   const profilePage = pageForOp(basisManifest, 'me');
 
   const rerender = () => renderCircleProfile(rootEl, {
-    profile, categories, geocodeResult, busy, t,
+    profile, geocodeResult, busy, t,
     // D / SP-3b — the projected PAGE surface drives the header label (Q22 labelKey via t()).
     profilePage,
     onSaveProfile: async ({ handle, displayName }) => {
@@ -2838,14 +2839,8 @@ async function showMij() {
       } catch { /* surfaced on reload */ }
       busy = false; await load();
     },
-    onAddSkill: async (categoryId) => {
-      try { await rawCallSkill('stoop', 'addMySkill', { categoryId }); } catch { /* */ }
-      await load();
-    },
-    onRemoveSkill: async (categoryId) => {
-      try { await rawCallSkill('stoop', 'removeMySkill', { categoryId }); } catch { /* */ }
-      await load();
-    },
+    // Fold-in phase C — the quiet skills pointer opens the persona surface.
+    onOpenMij: () => openAboutMePanel('default'),
     onGeocode: async (query) => {
       try { const r = await rawCallSkill('stoop', 'geocode', { query }); geocodeResult = r?.error ? null : r; }
       catch { geocodeResult = null; }
@@ -3089,12 +3084,21 @@ async function showCircleInvite(circleId) {
   // opt-outable capabilities at join (see circleConsent.js). Best-effort: a missing policy just omits it.
   let invitePolicy = {};
   try { invitePolicy = (await policyStore.get(circleId)) ?? {}; } catch { /* default — no template embedded */ }
+  // Fold-in phase C (Q3) — embed the circle's skills-matching charter signal. The board-8 circle-skill
+  // record lives ONLY on this (admin) device (localStorage draft, see showSkills), so invite-build is
+  // the one moment the joiner-side wizard can learn it pre-join. Best-effort: unreadable ⇒ not embedded.
+  let inviteSkillsMatching = false;
+  try {
+    const s = localStorage.getItem(skillKey(circleId));
+    inviteSkillsMatching = !!s && skillsMatchingEnabled(JSON.parse(s));
+  } catch { inviteSkillsMatching = false; }
   let r;
   try {
     r = await buildCircleInviteUri({
       callSkill: rawCallSkill, circleId, adminPeerAddr,
       capabilities: invitePolicy.capabilities,
       apps:         invitePolicy.apps,
+      skillsMatching: inviteSkillsMatching,
     });
   }
   catch { r = { error: 'failed' }; }

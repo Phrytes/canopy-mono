@@ -46,6 +46,18 @@ export function mergeSkill(base, patch = {}) {
   return normalizeSkill({ ...normalizeSkill(base), ...patch });
 }
 
+/**
+ * The circle's "skills-matching is ON here" signal (skills→property fold-in
+ * phase C, NOTE-skills-properties-audit Q3). Today the only per-circle skill
+ * policy is this board-8 record: matching is ON when it is shared beyond
+ * `private` and still `active`. The default record (openness 'private') reads
+ * as OFF, so an unconfigured circle never triggers the join-time share default.
+ */
+export function skillsMatchingEnabled(raw) {
+  const s = normalizeSkill(raw);
+  return s.openness !== 'private' && s.status === 'active';
+}
+
 export const MATCH_SOURCES = ['human', 'agent', 'via-hop'];
 
 /** Normalise an INJECTED match list into `{ id, label, source }` rows (source coerced into MATCH_SOURCES, default 'human'). */

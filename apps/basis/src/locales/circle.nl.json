@@ -117,6 +117,16 @@
         "text": "Dit is optioneel in deze kring. Vink uit waar je liever niet aan meedoet — je kunt dit later aanpassen in je kringinstellingen.",
         "doc": "B/S4 — explains the opt-outable capability checkboxes at join."
       }
+    },
+    "skills_default": {
+      "label": {
+        "text": "Deze kring draait om vaardigheden-matching — je vaardigheden (als categorie) delen staat aan.",
+        "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the skills-matching signal; checked = disclose skill keys at the coarse 'category' rung for the chosen persona."
+      },
+      "hint": {
+        "text": "Alleen de categorie wordt gedeeld, nooit de tekst of tags. Vink uit als je je vaardigheden hier niet wilt delen — later aanpassen kan bij Mij → persona's.",
+        "doc": "Fold-in phase C (Q3) — explains the coarse rung + how to change it later; shown under the pre-checked line."
+      }
     }
   },
   "invite": {
@@ -2710,7 +2720,11 @@
     },
     "skills": {
       "text": "Vaardigheden",
-      "doc": "S2 — personal skills section."
+      "doc": "S2 — personal skills section. (Web editor retired in fold-in phase C; mobile CircleProfileScreen still renders it until the mobile mirror lands.)"
+    },
+    "skills_moved": {
+      "text": "Vaardigheden staan nu bij Mij → persona's",
+      "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
     "no_skills": {
       "text": "Nog geen vaardigheden.",
