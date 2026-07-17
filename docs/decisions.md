@@ -267,3 +267,37 @@ cadence, or governance placing the platform under different rules. The `filter-r
 proven (twice), so a later split stays a cheap afternoon. Standing policy: every package publishes
 eventually, in waves, when its API settles. Supersedes the "clients/substrate" carve in the former
 `REMAINING-WORK.md` "Architectural spine"; the gated `kring-host` carve follows the same logic.
+
+---
+
+## 2026-07-17 — "Skill" is the invocable capability (A2A-aligned); a person's offering is a property
+
+**Decision.** The word *skill* names the **invocable capability** an agent advertises — matching the
+[A2A](https://github.com/google/A2A) `AgentCard.skills` sense the platform already builds on. What a
+person *can do* ("I fix leaks") is a **profile property** (an *offering*), disclosure-controlled like
+any other. A person's offering becomes an advertised skill only when their **companion agent**
+projects it, under that person's disclosure policy. Every advertised skill carries an **execution
+mode**: `immediate` (a device/agent acts on invocation — no consent step), `requestable` (the default
+for a person — invocation raises a consent/judgment step they can accept, adapt, negotiate, or
+refuse), or `standing` (a person who pre-consented via a role, so the judgment step collapses to an
+urgent obligation).
+
+**Why.** Two unrelated subsystems currently share the noun "skill": the kernel's
+`defineSkill`/`callSkill` capability dispatch, and `MemberMap.skills` / persona skill-drivers (offering
+data). Left ambiguous, the code actively misleads. A2A is our discovery anchor, so its usage wins:
+skill = invocable. The person/device difference is then not a separate subsystem but a **mode tag** on
+one advertised-skill shape — and the offering stays distinct as privacy-controlled data that only
+*becomes* a skill through the companion + disclosure gate. This keeps the persona/disclosure model as
+the single permission layer over capability, rather than bolting on a second one. Observability
+(watchdog, confirmation, sensor) is an **orthogonal** instrumentation choice applied to whichever
+actuator is used — not what distinguishes person from device; the honest distinction is
+consent+judgment vs automatic execution, and *neither* guarantees the action.
+
+**Consequences / not yet built.** The offering→skill bridge and member-to-member invocation in a
+circle are **design-together, deferred** (`plans/NOTE-skills-vs-capabilities.md`). Before that bridge
+is built, the naming is paid down: rename so "skill" = the invocable/A2A sense throughout and the
+person-profile datum reads as *offering*/property. Compatibility for third-party companions is the
+**published contract** (AgentCard + the execution-mode extension + disclosure-gated invocation), not
+the Basis UI — Basis ships the default and lets others build the fine-grained (e.g. professional /
+emergency) workflows. The skills→property fold-in already shipped (persona layer) is the offering
+half; this decision fixes the vocabulary and the bridge's shape for when it lands.
