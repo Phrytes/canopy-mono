@@ -27,13 +27,13 @@ export const THEME = {
     line:      '#d8d8cf', // borders / hairlines
     accent:    '#17181a', // primary buttons, active state — ink
     accentContrast: '#f7f7f4', // text/icons on accent
-    accentInk: '#2e7d4f', // accent-colored text, links — green
+    accentInk: '#a3402f', // accent-colored text, links, active tab — THE rust (A+C decision 2026-07-17)
     card:      '#ffffff', // framed-card inner / bot bubble
     meBg:      '#e8e6da', // "me" chat bubble (warm beige)
-    green:   '#2e7d4f', greenBg: '#e9efe6', // lokaal / AANBOD / "ongewijzigd"
+    green:   '#2e7d4f', greenBg: '#e9efe6', // STATUS only: delivered / lokaal / AANBOD
     blue:    '#3f4f76', blueBg:  '#e0e4ee', // betaald / VRAAG / "via hop"
     amber:   '#7a5a1f', amberBg: '#ede5cf', // LENEN
-    danger:  '#a3402f', dangerBg:'#f5e7e2', // blocked / warning (bulletin rust)
+    danger:  '#963528', dangerBg:'#f5e7e2', // blocked / warning — deeper than accentInk rust
     trackOff:'#c9c8c0', // pill-toggle off track
     white:   '#ffffff',
   },
@@ -60,13 +60,13 @@ export const THEME_DARK = {
     line:      '#34362e',
     accent:    '#eceade',
     accentContrast: '#161713',
-    accentInk: '#82c298',
+    accentInk: '#d98a70',
     card:      '#1e1f1a',
     meBg:      '#2b2d25',
     green:   '#82c298', greenBg: '#22291f',
     blue:    '#9fb0d8', blueBg:  '#232837',
     amber:   '#d0b070', amberBg: '#2e2921',
-    danger:  '#d47f68', dangerBg:'#332420',
+    danger:  '#e06749', dangerBg:'#332420',
     trackOff:'#3a3c34',
     white:   '#1e1f1a', // "white" surfaces follow the card surface in dark
   },

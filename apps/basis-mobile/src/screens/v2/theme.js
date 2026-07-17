@@ -2,34 +2,40 @@
  * basis-mobile v2 — Onderling theme (RN).
  *
  * Derives from the canonical token object (apps/basis/src/v2/theme.js,
- * re-exported as THEME) so web + mobile share one source of truth. Colors /
- * radius / spacing pass straight through.
+ * re-exported as THEME/THEME_DARK) so web + mobile share one source of truth.
  *
- * Bulletin design (2026-07, full adoption): headings are bold SYSTEM sans —
- * the Source Serif expo-font load is gone (the linen-era serif lives on in
- * theme-linen.js on the app side). The `serif`/`serifBody` keys are kept so
- * the v2 screens need no edits: an undefined fontFamily is RN's system
- * default, which is exactly the bulletin's sans. `themeDark` mirrors
- * THEME_DARK for the upcoming dark-mode wiring (Appearance API).
+ * Dark mode (2026-07-17): the palette is picked ONCE at module load from the
+ * OS scheme (Appearance is synchronous), because the v2 screens build their
+ * StyleSheets at module load — everything downstream captures the right
+ * palette with zero refactor. Consequences, on purpose:
+ *  - an OS theme change mid-run applies on next app start;
+ *  - the in-app light/dark TOGGLE is web-only for now (mobile needs the
+ *    theme-context refactor first) — listed in
+ *    docs/conventions/web-mobile-exceptions.md with that exit path.
+ *
+ * Bulletin design: headings are bold SYSTEM sans (undefined fontFamily =
+ * RN system default); Source Serif is gone with the linen theme.
  */
+import { Appearance } from 'react-native';
 import { THEME, THEME_DARK } from '@onderling-app/basis';
 
-export const theme = {
-  color:  THEME.color,
-  radius: THEME.radius,
-  space:  THEME.space,
-  font: {
-    serif:     undefined, // system sans — bulletin headings are bold sans
-    serifBody: undefined,
-    mono:      'monospace',
-  },
+const FONT = {
+  serif:     undefined, // system sans — bulletin headings are bold sans
+  serifBody: undefined,
+  mono:      'monospace',
 };
 
-export const themeDark = {
-  color:  THEME_DARK.color,
-  radius: THEME_DARK.radius,
-  space:  THEME_DARK.space,
-  font:   theme.font,
-};
+const wrap = (tokens) => ({
+  color:  tokens.color,
+  radius: tokens.radius,
+  space:  tokens.space,
+  font:   FONT,
+});
+
+export const themeLight = wrap(THEME);
+export const themeDark = wrap(THEME_DARK);
+
+const scheme = typeof Appearance?.getColorScheme === 'function' ? Appearance.getColorScheme() : 'light';
+export const theme = scheme === 'dark' ? themeDark : themeLight;
 
 export default theme;

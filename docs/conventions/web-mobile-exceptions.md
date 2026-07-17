@@ -36,6 +36,7 @@ different gesture.
 | QR **scanning** | mobile only | no camera API parity on desktop web; web shows the QR + paste-a-code path | 2026-05 | WebRTC camera capture, when worth it |
 | Push notifications | mobile only | web-push exists but the privacy-preserving notification model is still designed, not built | 2026-06 | `plans/NOTE-notifications-model.md` |
 | Legacy ChatScreen (invisible peer-wiring host) | mobile only | v1 residue; keeps inbound routing alive until the port lands | 2026-05 | retire with the SP-13 chat-surface completion |
+| Light/dark **toggle** (both platforms follow the OS scheme) | web only | mobile v2 screens build StyleSheets at module load — palette is picked once at boot; live switching needs a theme-context refactor | 2026-07 | theme-context refactor across the v2 screens |
 
 Add a row when you consciously ship a one-platform feature; remove it when parity lands. The
 surface-coverage snapshot (`npm run coverage` in `apps/basis`) is the mechanical side of this
