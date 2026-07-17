@@ -434,7 +434,10 @@ export async function setProfileDriver(store, args = {}) {
     ? args.tags
     : (typeof args?.tags === 'string' ? args.tags.split(',') : []);
   try {
-    await s.profiles.setDriver({ profileId: id, key, kind: args?.kind, text: args?.text, tags });
+    await s.profiles.setDriver({
+      profileId: id, key, kind: args?.kind, text: args?.text, tags,
+      categoryId: typeof args?.categoryId === 'string' ? args.categoryId : undefined,
+    });
     return { ok: true, id, key };
   } catch (err) {
     return { ok: false, reason: 'invalid-driver', detail: err?.message ?? String(err) };

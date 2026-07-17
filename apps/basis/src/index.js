@@ -289,6 +289,9 @@ export {
   podAvailabilityIo, tieredAvailabilityIo,
 } from './v2/memberAvailability.js';
 export { THEME, THEME_DARK, tagColors, AVATAR_TINTS, circleTint } from './v2/theme.js';
+export { buildPersonaViewModel, buildMijViewModel } from './v2/personaView.js';
+export { loadMijModel } from './v2/mijLoader.js';
+export { migrateRosterSkills, skillKeyFor, SKILLS_MIGRATION_KEY } from './core/skillsMigration.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

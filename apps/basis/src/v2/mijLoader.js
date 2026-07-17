@@ -1,0 +1,70 @@
+/**
+ * mijLoader — the ONE shared load sequence behind the "Mij → persona's"
+ * surface, used verbatim by BOTH hosts (web `circleApp.js` openAboutMePanel;
+ * mobile `basis-mobile/src/core/mijHost.js`) so the sequence cannot drift
+ * (invariant #3 — this replaces the inline web copy + the mobile twin):
+ *
+ *   [migrate active circle's roster skills — phase D, marker-guarded]
+ *   listAgents (role 'profile') → getProfileProperties / getProfileDisclosure
+ *   per persona → getPersonaRelease per enabled context → buildMijViewModel.
+ *
+ * All ops ride the injected `callSkill(origin, opId, args)`; hosts re-run the
+ * loader after each edit so the surface reflects the PERSISTED state.
+ */
+
+import { buildMijViewModel } from './personaView.js';
+import { migrateRosterSkills } from '../core/skillsMigration.js';
+
+export { skillKeyFor } from '../core/skillsMigration.js';
+
+/**
+ * @param {object} args
+ * @param {(origin: string, opId: string, args: object) => Promise<*>} args.callSkill
+ * @param {string} [args.personaId]      the opened profile row (kept even when listAgents degrades)
+ * @param {Array<{id: string, name?: string, charter?: object}>} [args.circles]
+ * @param {string} [args.activeCircleId] when given, phase-D roster-skills migration
+ *                                       runs first (free after the first time — marker)
+ * @returns {Promise<object>} the buildMijViewModel result
+ */
+export async function loadMijModel({ callSkill, personaId, circles = [], activeCircleId } = {}) {
+  if (activeCircleId) {
+    try { await migrateRosterSkills({ callSkill, circleId: activeCircleId }); } catch { /* non-fatal */ }
+  }
+
+  // Every profile-role registry entry is a persona; the opened row + the
+  // default profile are included even when the list op degrades.
+  let rows = [];
+  try {
+    const listed = await callSkill('agents', 'listAgents', {});
+    rows = (listed?.agents ?? []).filter((a) => a?.role === 'profile');
+  } catch { rows = []; }
+  if (!rows.some((r) => r.agentId === 'default')) rows.unshift({ agentId: 'default', name: 'default' });
+  if (personaId && !rows.some((r) => r.agentId === personaId)) rows.push({ agentId: personaId, name: personaId });
+
+  const personas = await Promise.all(rows.map(async (r) => {
+    let props = null; let disc = null;
+    try { props = await callSkill('agents', 'getProfileProperties', { id: r.agentId }); } catch { /* */ }
+    try { disc = await callSkill('agents', 'getProfileDisclosure', { id: r.agentId }); } catch { /* */ }
+    return {
+      id:         r.agentId,
+      name:       r.name ?? r.agentId,
+      properties: props?.properties ?? {},
+      disclosure: disc?.disclosure ?? { perContext: {} },
+    };
+  }));
+
+  // The released values per persona × circle (only where something is enabled).
+  const releases = {};
+  await Promise.all(personas.map(async (p) => {
+    for (const [ctxId, policy] of Object.entries(p.disclosure?.perContext ?? {})) {
+      const keys = Object.entries(policy ?? {}).filter(([, e]) => e?.enabled === true).map(([k]) => k);
+      if (!keys.length) continue;
+      try {
+        const rel = await callSkill('agents', 'getPersonaRelease', { id: p.id, contextId: ctxId, keys: keys.join(',') });
+        if (rel?.ok) (releases[p.id] ??= {})[ctxId] = rel.released ?? {};
+      } catch { /* */ }
+    }
+  }));
+
+  return buildMijViewModel({ personas, circles, releases });
+}

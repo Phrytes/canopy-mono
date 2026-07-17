@@ -89,7 +89,7 @@ import { renderRecordScreen } from './recordScreen.js';
 // personas#1 — the "Mij → persona's" surface (general persona + persona cards + per-circle sharing)
 // + its shared read-model. Replaces the former single-persona About-me content (circleAboutMe.js).
 import { renderMij } from './circleMij.js';
-import { buildMijViewModel } from '../../src/v2/personaView.js';
+import { loadMijModel } from '../../src/v2/mijLoader.js';
 // feedback-extension P2c — load downloadable extension mappings + the load-time sandbox gate.
 import { loadMappings } from '@onderling/pod-routing/mappings';
 import { localStorageMappingsStore, WEB_MAPPINGS_DEVICE } from '@onderling/kring-host/mappingsStore';
@@ -3447,39 +3447,13 @@ async function openAboutMePanel(personaId) {
   // Load → build model → render; re-run after each edit so the surface always
   // reflects the persisted state (not the optimistic tap).
   const draw = async () => {
-    // Every profile-role registry entry is a persona; the clicked row + the
-    // default profile are included even when the list op degrades.
-    let rows = [];
-    try {
-      const listed = await rawCallSkill('agents', 'listAgents', {});
-      rows = (listed?.agents ?? []).filter((a) => a?.role === 'profile');
-    } catch { rows = []; }
-    if (!rows.some((r) => r.agentId === 'default')) rows.unshift({ agentId: 'default', name: 'default' });
-    if (id && !rows.some((r) => r.agentId === id)) rows.push({ agentId: id, name: id });
-    const personas = await Promise.all(rows.map(async (r) => {
-      let props = null; let disc = null;
-      try { props = await rawCallSkill('agents', 'getProfileProperties', { id: r.agentId }); } catch { /* */ }
-      try { disc = await rawCallSkill('agents', 'getProfileDisclosure', { id: r.agentId }); } catch { /* */ }
-      return {
-        id:         r.agentId,
-        name:       r.name ?? r.agentId,
-        properties: props?.properties ?? {},
-        disclosure: disc?.disclosure ?? { perContext: {} },
-      };
-    }));
-    // The released values per persona × circle (only where something is enabled).
-    const releases = {};
-    await Promise.all(personas.map(async (p) => {
-      for (const [ctxId, policy] of Object.entries(p.disclosure?.perContext ?? {})) {
-        const keys = Object.entries(policy ?? {}).filter(([, e]) => e?.enabled === true).map(([k]) => k);
-        if (!keys.length) continue;
-        try {
-          const rel = await rawCallSkill('agents', 'getPersonaRelease', { id: p.id, contextId: ctxId, keys: keys.join(',') });
-          if (rel?.ok) (releases[p.id] ??= {})[ctxId] = rel.released ?? {};
-        } catch { /* */ }
-      }
-    }));
-    const model = buildMijViewModel({ personas, circles: circlesCache, releases });
+    // The SHARED loader (src/v2/mijLoader.js) — same sequence as mobile by
+    // construction; runs the phase-D roster-skills migration for the active
+    // circle first (marker-guarded, free after the first time).
+    const model = await loadMijModel({
+      callSkill: rawCallSkill, personaId: id, circles: circlesCache,
+      activeCircleId: getActiveCircle(),
+    });
     renderMij(body, {
       model, t, lang: currentLang(),
       // Section 1 edits target the GENERAL persona — the truth layer.

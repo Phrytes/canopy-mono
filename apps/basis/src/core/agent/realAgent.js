@@ -676,10 +676,10 @@ export async function createRealHouseholdAgent(opts = {}) {
       // Drivers (#3) — set an OWN personal driver property: build+validate the { kind, text, tags[] } value
       // (createDriver throws on an empty driver → the core reports invalid-driver), then store it like any
       // property (setOwn merge + re-register the full entry). getDrivers filters the map to driver values.
-      setDriver: async ({ profileId, key, kind, text, tags }) => {
+      setDriver: async ({ profileId, key, kind, text, tags, categoryId }) => {
         const cur = await agentsRegistry.lookup(profileId);
         if (!cur) throw new Error(`setDriver: no such profile ${profileId}`);
-        const driver = createDriver({ kind, text, tags });
+        const driver = createDriver({ kind, text, tags, categoryId });
         await agentsRegistry.register({ ...cur, properties: setOwn(cur.properties ?? {}, key, driver) });
         return { ok: true };
       },

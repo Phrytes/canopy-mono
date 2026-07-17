@@ -16,74 +16,26 @@
  * bridge every v2 screen uses; reads re-run after each edit so the surface
  * reflects the PERSISTED state (verify the result, not the dispatch).
  */
-// Relative path (not a `@onderling-app/basis` subpath) — the basis package
-// index does not export personaView yet, and Metro doesn't honor package.json
-// "exports" subpaths (same pattern as hostOps.js / CircleAboutMeScreen).
-import { buildMijViewModel } from '../../../basis/src/v2/personaView.js';
+// Relative paths (not `@onderling-app/basis` subpaths) — Metro doesn't honor
+// package.json "exports" subpaths (same pattern as hostOps.js). The loader
+// itself is the SHARED one (phase-D consolidation): web and mobile run the
+// identical sequence by construction; pass `activeCircleId` to also run the
+// marker-guarded roster-skills migration for that circle.
+export { loadMijModel } from '../../../basis/src/v2/mijLoader.js';
 export { shareDisclosureToCircle } from '../../../basis/src/core/handlers/personaPropsUpdate.js';
-
-/**
- * Load everything the Mij surface needs and build the shared view-model.
- * Mirrors the web host's `draw()` read sequence exactly.
- *
- * @param {object} args
- * @param {(origin: string, opId: string, args: object) => Promise<*>} args.callSkill
- * @param {string} [args.personaId]   the tapped profile row (kept in the list even when listAgents degrades)
- * @param {Array<{id: string, name?: string, charter?: object}>} [args.circles]
- * @returns {Promise<object>} the buildMijViewModel result
- */
-export async function loadMijModel({ callSkill, personaId, circles = [] } = {}) {
-  // Every profile-role registry entry is a persona; the opened row + the
-  // default profile are included even when the list op degrades.
-  let rows = [];
-  try {
-    const listed = await callSkill('agents', 'listAgents', {});
-    rows = (listed?.agents ?? []).filter((a) => a?.role === 'profile');
-  } catch { rows = []; }
-  if (!rows.some((r) => r.agentId === 'default')) rows.unshift({ agentId: 'default', name: 'default' });
-  if (personaId && !rows.some((r) => r.agentId === personaId)) rows.push({ agentId: personaId, name: personaId });
-
-  const personas = await Promise.all(rows.map(async (r) => {
-    let props = null; let disc = null;
-    try { props = await callSkill('agents', 'getProfileProperties', { id: r.agentId }); } catch { /* */ }
-    try { disc = await callSkill('agents', 'getProfileDisclosure', { id: r.agentId }); } catch { /* */ }
-    return {
-      id:         r.agentId,
-      name:       r.name ?? r.agentId,
-      properties: props?.properties ?? {},
-      disclosure: disc?.disclosure ?? { perContext: {} },
-    };
-  }));
-
-  // The released values per persona × circle (only where something is enabled).
-  const releases = {};
-  await Promise.all(personas.map(async (p) => {
-    for (const [ctxId, policy] of Object.entries(p.disclosure?.perContext ?? {})) {
-      const keys = Object.entries(policy ?? {}).filter(([, e]) => e?.enabled === true).map(([k]) => k);
-      if (!keys.length) continue;
-      try {
-        const rel = await callSkill('agents', 'getPersonaRelease', { id: p.id, contextId: ctxId, keys: keys.join(',') });
-        if (rel?.ok) (releases[p.id] ??= {})[ctxId] = rel.released ?? {};
-      } catch { /* */ }
-    }
-  }));
-
-  return buildMijViewModel({ personas, circles, releases });
-}
 
 /** Section-1 edit — set a charter property on the GENERAL persona (the truth layer). */
 export async function setGeneralProperty({ callSkill, defaultId, key, value }) {
   try { await callSkill('agents', 'setProfileProperty', { id: defaultId ?? 'default', key, value }); } catch { /* */ }
 }
 
-/** The web host's skill key derivation — keyed by the phrase; re-using it edits. */
-export function skillKeyFor({ text, tags }) {
-  return (text || tags).trim().toLowerCase().slice(0, 40);
-}
+/** The shared skill key derivation — keyed by the phrase; re-using it edits. */
+export { skillKeyFor } from '../../../basis/src/core/skillsMigration.js';
+import { skillKeyFor as sharedSkillKeyFor } from '../../../basis/src/core/skillsMigration.js';
 
 /** Skills (#Q1) — add a skill-kind driver ({text, tags}) to the GENERAL persona. */
 export async function addGeneralSkill({ callSkill, defaultId, text, tags }) {
-  const key = skillKeyFor({ text, tags });
+  const key = sharedSkillKeyFor({ text, tags });
   try { await callSkill('agents', 'setProfileDriver', { id: defaultId ?? 'default', key, kind: 'skill', text, tags }); } catch { /* */ }
 }
 

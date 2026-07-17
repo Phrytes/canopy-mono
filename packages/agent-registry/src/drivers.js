@@ -52,23 +52,30 @@ export function normalizeTags(tags) {
 }
 
 /**
- * Build a validated, frozen driver value: `{ kind, text, tags[] }`.
+ * Build a validated, frozen driver value: `{ kind, text, tags[] }` (+ `categoryId` for skills).
  * - `kind` falls back to the generic `driver` when unknown.
  * - `text` is a trimmed human phrase (may be empty when tags carry the meaning).
  * - `tags` are normalised + de-duped.
+ * - `categoryId` (skill kind only): the user-picked taxonomy bucket — the coarse
+ *   rung `skillDescriptor`'s coarsen() honours over derivation. Dropped for
+ *   other kinds (they have no coarse rung).
  * A driver with neither text NOR tags is meaningless — throws (nothing to disclose or match on).
  *
- * @param {{kind?:string, text?:string, tags?:string[]}} d
- * @returns {{kind:string, text:string, tags:string[]}}
+ * @param {{kind?:string, text?:string, tags?:string[], categoryId?:string}} d
+ * @returns {{kind:string, text:string, tags:string[], categoryId?:string}}
  */
-export function createDriver({ kind = 'driver', text = '', tags = [] } = {}) {
+export function createDriver({ kind = 'driver', text = '', tags = [], categoryId } = {}) {
   const k = isDriverKind(kind) ? kind : 'driver';
   const t = String(text ?? '').trim();
   const tg = normalizeTags(tags);
   if (!t && tg.length === 0) {
     throw new TypeError('createDriver: a driver needs at least text or one tag');
   }
-  return Object.freeze({ kind: k, text: t, tags: Object.freeze(tg) });
+  const out = { kind: k, text: t, tags: Object.freeze(tg) };
+  if (k === 'skill' && typeof categoryId === 'string' && categoryId.trim()) {
+    out.categoryId = categoryId.trim();
+  }
+  return Object.freeze(out);
 }
 
 /**
