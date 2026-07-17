@@ -2930,6 +2930,22 @@
       "text": "Taal",
       "doc": "Mij — global app-language (NL/EN) section heading."
     },
+    "theme": {
+      "text": "Weergave",
+      "doc": "Mij — display theme (system/light/dark) section heading."
+    },
+    "theme_system": {
+      "text": "Systeem",
+      "doc": "Theme choice: follow the OS."
+    },
+    "theme_light": {
+      "text": "Licht",
+      "doc": "Theme choice: light."
+    },
+    "theme_dark": {
+      "text": "Donker",
+      "doc": "Theme choice: dark."
+    },
     "surface_pref_inline": {
       "text": "Knoppen in de chat",
       "doc": "S6.C — inline buttons on replies."
@@ -3196,11 +3212,26 @@
       "doc": "drivers#5 — eerlijke framing: drijfveren blijven on-device, sturen matching."
     },
     "driverkind": {
-      "hobby": { "text": "Hobby", "doc": "drivers#5 — soort drijfveer." },
-      "goal": { "text": "Doel", "doc": "drivers#5 — soort drijfveer." },
-      "desire": { "text": "Wens", "doc": "drivers#5 — soort drijfveer." },
-      "motivation": { "text": "Motivatie", "doc": "drivers#5 — soort drijfveer." },
-      "driver": { "text": "Drijfveer", "doc": "drivers#5 — algemene soort drijfveer." }
+      "hobby": {
+        "text": "Hobby",
+        "doc": "drivers#5 — soort drijfveer."
+      },
+      "goal": {
+        "text": "Doel",
+        "doc": "drivers#5 — soort drijfveer."
+      },
+      "desire": {
+        "text": "Wens",
+        "doc": "drivers#5 — soort drijfveer."
+      },
+      "motivation": {
+        "text": "Motivatie",
+        "doc": "drivers#5 — soort drijfveer."
+      },
+      "driver": {
+        "text": "Drijfveer",
+        "doc": "drivers#5 — algemene soort drijfveer."
+      }
     },
     "driver_label_ph": {
       "text": "label (bijv. zeilen)",

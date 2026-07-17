@@ -2936,6 +2936,21 @@ async function showMyData() {
     try { localStorage.setItem('circle.app.lang', lng); } catch { /* best-effort */ }
     showMij();
   };
+  // Display theme: persist + stamp data-theme live (the pre-paint hook in
+  // index.html reads the same key at boot; 'system' = follow the OS).
+  const getThemePref = () => {
+    try { return localStorage.getItem('basis.theme') || 'system'; } catch { return 'system'; }
+  };
+  const onSetTheme = (v) => {
+    if (v !== 'system' && v !== 'light' && v !== 'dark') return;
+    try {
+      if (v === 'system') localStorage.removeItem('basis.theme');
+      else localStorage.setItem('basis.theme', v);
+    } catch { /* best-effort */ }
+    if (v === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = v;
+    rerender();
+  };
   // S6.D — is the conversational "chat" projection AI-enriched in THIS circle?
   // (user-loaded LLM + circle policy.llmTool + a configured provider).
   let chatAi = { enriched: false, reason: 'no-provider' };
@@ -2994,7 +3009,7 @@ async function showMyData() {
       backTo: { returnTo: getActiveCircle() || 'chat', label: t('circle.mydata.back'), onNavigate: () => {} },
     });
   };
-  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, appLang: currentLang(), onSetAppLang, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig,
+  const rerender = () => renderCircleMyData(rootEl, { dataLocation, podStatus, privacy, metrics, t, onBack: showMij, onSignIn, onBackup, onViewMnemonic, onRestore, notifications, onToggleNotifications, surfacePref: circleSurfacePref.get(), onSetSurfacePref, appLang: currentLang(), onSetAppLang, themePref: getThemePref(), onSetTheme, chatAi, userLlm: userLlmCfg, onSaveUserLlm, validateUserLlm: validateUserLlmConfig,
     // in-app relay setting (no rebuild): the field shows the saved setting; env is the placeholder fallback.
     // Objective D / Surface 4: onOpenRelayPanel routes editing into the docked side-panel (openPagePanel).
     relayUrl: resolveRelayUrl(localStorageRelayIo().load(), ''), relayEnvUrl: CIRCLE_RELAY_ENV, onSaveRelay: applyRelayUrl, onOpenRelayPanel: openRelayPanel });

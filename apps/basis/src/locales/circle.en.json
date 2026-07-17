@@ -2930,6 +2930,22 @@
       "text": "Language",
       "doc": "Mij — global app-language (NL/EN) section heading."
     },
+    "theme": {
+      "text": "Display",
+      "doc": "Mij — display theme (system/light/dark) section heading."
+    },
+    "theme_system": {
+      "text": "System",
+      "doc": "Theme choice: follow the OS."
+    },
+    "theme_light": {
+      "text": "Light",
+      "doc": "Theme choice: light."
+    },
+    "theme_dark": {
+      "text": "Dark",
+      "doc": "Theme choice: dark."
+    },
     "surface_pref_inline": {
       "text": "Buttons in chat",
       "doc": "S6.C — inline buttons on replies."
@@ -3196,11 +3212,26 @@
       "doc": "drivers#5 — honest framing: drivers stay on-device, drive matching."
     },
     "driverkind": {
-      "hobby": { "text": "Hobby", "doc": "drivers#5 — driver kind." },
-      "goal": { "text": "Goal", "doc": "drivers#5 — driver kind." },
-      "desire": { "text": "Desire", "doc": "drivers#5 — driver kind." },
-      "motivation": { "text": "Motivation", "doc": "drivers#5 — driver kind." },
-      "driver": { "text": "Driver", "doc": "drivers#5 — generic driver kind." }
+      "hobby": {
+        "text": "Hobby",
+        "doc": "drivers#5 — driver kind."
+      },
+      "goal": {
+        "text": "Goal",
+        "doc": "drivers#5 — driver kind."
+      },
+      "desire": {
+        "text": "Desire",
+        "doc": "drivers#5 — driver kind."
+      },
+      "motivation": {
+        "text": "Motivation",
+        "doc": "drivers#5 — driver kind."
+      },
+      "driver": {
+        "text": "Driver",
+        "doc": "drivers#5 — generic driver kind."
+      }
     },
     "driver_label_ph": {
       "text": "label (e.g. sailing)",
