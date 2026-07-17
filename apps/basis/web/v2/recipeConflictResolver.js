@@ -152,19 +152,15 @@ export function renderRecipeConflictResolver(container, {
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
-  cancelBtn.className = 'circle-recipe-conflict__cancel';
+  cancelBtn.className = 'circle-recipe-conflict__cancel cc-btn cc-btn--quiet';
   cancelBtn.textContent = tr('circle.recipe.conflict.cancel');
-  cancelBtn.style.cssText = 'padding: 8px 14px; border: 1px solid var(--line, #ddd); '
-    + 'background: transparent; border-radius: 8px; font: inherit; cursor: pointer;';
   cancelBtn.addEventListener('click', () => { if (typeof onCancel === 'function') onCancel(); });
   footer.appendChild(cancelBtn);
 
   const applyBtn = document.createElement('button');
   applyBtn.type = 'button';
-  applyBtn.className = 'circle-recipe-conflict__apply';
+  applyBtn.className = 'circle-recipe-conflict__apply cc-btn cc-btn--primary';
   applyBtn.textContent = tr('circle.recipe.conflict.apply');
-  applyBtn.style.cssText = 'padding: 8px 14px; border: 0; background: var(--accent, #c84); '
-    + 'color: var(--accent-contrast); border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer;';
   applyBtn.disabled = true;
   applyBtn.addEventListener('click', () => {
     if (applyBtn.disabled) return;
@@ -219,26 +215,25 @@ function renderBlockRow(bc, { tr, local, incoming, onPick }) {
   for (const choice of ['yours', 'theirs', 'both']) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `circle-recipe-conflict__choice circle-recipe-conflict__choice--${choice}`;
+    btn.className = `circle-recipe-conflict__choice circle-recipe-conflict__choice--${choice} cc-btn cc-btn--quiet`;
     btn.dataset.blockId = bc.blockId;
     btn.dataset.choice = choice;
     btn.textContent =
         choice === 'yours'  ? tr('circle.recipe.conflict.keep_yours')
       : choice === 'theirs' ? tr('circle.recipe.conflict.take_theirs')
       :                       tr('circle.recipe.conflict.keep_both');
-    btn.style.cssText = 'padding: 6px 10px; border: 1px solid var(--line, #ddd); '
-      + 'background: var(--card, #fff); border-radius: 6px; font: inherit; cursor: pointer;';
     btn.setAttribute('aria-pressed', 'false');
     btn.addEventListener('click', () => {
       onPick(choice);
-      // Refresh visual state of siblings.
+      // Refresh visual state of siblings — chosen state is the `is-active`
+      // class (.cc-btn.is-active, circle.css); `is-picked` stays as the
+      // semantic marker existing tests/hosts key off.
       const siblings = picker.querySelectorAll('.circle-recipe-conflict__choice');
       siblings.forEach((sib) => {
         const isPicked = sib === btn;
         sib.classList.toggle('is-picked', isPicked);
+        sib.classList.toggle('is-active', isPicked);
         sib.setAttribute('aria-pressed', isPicked ? 'true' : 'false');
-        sib.style.background = isPicked ? 'var(--accent, #c84)' : 'var(--card, #fff)';
-        sib.style.color      = isPicked ? 'var(--accent-contrast)' : 'inherit';
       });
     });
     picker.appendChild(btn);
@@ -273,14 +268,12 @@ function renderMetaRow(mc, pathKey, { tr, onPick }) {
   for (const choice of ['yours', 'theirs']) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `circle-recipe-conflict__choice circle-recipe-conflict__choice--${choice}`;
+    btn.className = `circle-recipe-conflict__choice circle-recipe-conflict__choice--${choice} cc-btn cc-btn--quiet`;
     btn.dataset.pathKey = pathKey;
     btn.dataset.choice = choice;
     btn.textContent = choice === 'yours'
       ? tr('circle.recipe.conflict.keep_yours')
       : tr('circle.recipe.conflict.take_theirs');
-    btn.style.cssText = 'padding: 6px 10px; border: 1px solid var(--line, #ddd); '
-      + 'background: var(--card, #fff); border-radius: 6px; font: inherit; cursor: pointer;';
     btn.setAttribute('aria-pressed', 'false');
     btn.addEventListener('click', () => {
       onPick(choice);
@@ -288,9 +281,8 @@ function renderMetaRow(mc, pathKey, { tr, onPick }) {
       siblings.forEach((sib) => {
         const isPicked = sib === btn;
         sib.classList.toggle('is-picked', isPicked);
+        sib.classList.toggle('is-active', isPicked);
         sib.setAttribute('aria-pressed', isPicked ? 'true' : 'false');
-        sib.style.background = isPicked ? 'var(--accent, #c84)' : 'var(--card, #fff)';
-        sib.style.color      = isPicked ? 'var(--accent-contrast)' : 'inherit';
       });
     });
     picker.appendChild(btn);

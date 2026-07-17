@@ -76,6 +76,30 @@
 }
 .circle-page [class$="__back"]:hover { color: var(--accent-ink); }
 
+/* ── the button family (bulletin design — model: onderling-site chips/CTAs).
+   Ink is the action colour; quiet/chip buttons wear a hard 1.5px ink border +
+   pill radius; rust (--danger) for destructive. Dialogs/modals use these
+   instead of inline cssText. */
+.cc-btn {
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 1.5px solid transparent;
+}
+.cc-btn--primary { background: var(--accent); color: var(--accent-contrast); }
+.cc-btn--primary:hover { background: var(--accent-ink); }
+.cc-btn--quiet { background: none; color: var(--ink); border-color: var(--ink); border-radius: 999px; }
+.cc-btn--quiet:hover { background: var(--ink); color: var(--accent-contrast); }
+.cc-btn--danger { background: var(--danger); color: var(--accent-contrast); }
+.cc-btn--ghost { background: none; color: var(--ink-soft); border: none; }
+.cc-btn--ghost:hover { text-decoration: underline; }
+.cc-btn:disabled { opacity: .5; cursor: default; }
+/* chosen/active state (e.g. conflict-resolver pick buttons) */
+.cc-btn.is-active { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+
 /* primary buttons (save / agree / ask / open) */
 .circle-page [class$="__save"],
 .circle-page .circle-rules-consent__agree,
@@ -451,14 +475,16 @@
 .circle-kring__embeds-label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.4px; }
 .circle-kring__embed { font-size: 12px; color: var(--ink); background: var(--paper-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; }
 /* S6.B — a screen button (opens a panel) reads as a filled affordance vs the outline op buttons. */
-.circle-kring__screen-button { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); }
+.circle-kring__screen-button { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); } /* = .cc-btn--primary (colours) */
 .cc-screen-panel { position: fixed; inset: 0; z-index: 65; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.45); }
 .cc-screen-panel__card { width: min(560px, 100%); max-height: 88vh; overflow: auto; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
 .cc-screen-panel__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .cc-screen-panel__head h3 { margin: 0; font-size: 17px; }
 .cc-screen-panel__close { cursor: pointer; font-size: 14px; line-height: 1; border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; background: var(--paper); color: var(--ink); }
 /* Theme B — settings chatbot (guided setup). */
-.circle-settings__guided { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 9px 16px; margin: 6px 0 12px; border-radius: var(--radius); background: var(--accent); border: 1px solid var(--accent); color: var(--accent-contrast); }
+/* = .cc-btn--primary (+ layout: align-self/margin) */
+.circle-settings__guided { align-self: flex-start; margin: 6px 0 12px; cursor: pointer; font: inherit; font-size: 13.5px; font-weight: 700; padding: 8px 16px; border-radius: var(--radius-sm); border: 1.5px solid transparent; background: var(--accent); color: var(--accent-contrast); }
+.circle-settings__guided:hover { background: var(--accent-ink); }
 .cc-guided__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .cc-guided__title { margin: 0; font-size: 17px; }
 .cc-guided__close { cursor: pointer; font-size: 14px; line-height: 1; border: 1px solid var(--line); border-radius: 50%; width: 26px; height: 26px; background: var(--paper); color: var(--ink); }
@@ -467,7 +493,7 @@
 .cc-guided__opt { display: flex; gap: 8px; align-items: center; font-size: 14px; }
 .cc-guided__actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .cc-guided__btn { cursor: pointer; font: inherit; font-size: 14px; padding: 8px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--paper); color: var(--ink); }
-.cc-guided__btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+.cc-guided__btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 700; } /* = .cc-btn--primary (colours) */
 .cc-guided__btn--option:hover { border-color: var(--accent); }
 .cc-guided__done { font-size: 14px; color: var(--ink-soft); }
 /* δ.2 — per-message delivery state.  Pending = clock, Failed = warning (tap-to-retry).
@@ -647,14 +673,9 @@
   padding: 7px 10px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--card); color: var(--ink);
 }
 .cc-paired__addr { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink-soft); }
-.cc-paired__copy, .cc-paired__addbtn, .cc-paired__remove {
-  cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap;
-  padding: 7px 12px; border-radius: var(--radius);
-  background: transparent; border: 1px solid var(--accent); color: var(--accent-ink);
-}
-.cc-paired__copy:hover, .cc-paired__addbtn:hover { background: var(--accent); color: var(--accent-contrast); }
-.cc-paired__remove { border-color: var(--line); color: var(--ink-soft); font-weight: 500; }
-.cc-paired__remove:hover { border-color: var(--danger, #c0392b); color: var(--danger, #c0392b); }
+/* copy/add wear .cc-btn--quiet, remove wears .cc-btn--ghost (see primitives) — only extras here. */
+.cc-paired__copy, .cc-paired__addbtn { white-space: nowrap; }
+.cc-paired__remove:hover { color: var(--danger); }
 .cc-paired__err { color: var(--danger, #c0392b); font-size: 13px; margin: 0; }
 .cc-paired__empty { color: var(--ink-soft); font-size: 13px; margin: 2px 0; }
 .cc-paired__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }

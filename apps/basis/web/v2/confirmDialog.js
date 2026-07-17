@@ -4,8 +4,9 @@
  * Renders the shared `ConfirmRequest` model (src/v2/confirmGate.js —
  * the manifest's `surfaces.ui.confirm` message + localised chrome) as a
  * minimal self-contained modal.  Mirrors the established v2 overlay
- * pattern (catchUpChooserModal / recipeConflictResolver): inline
- * styles, backdrop + ESC = cancel, no shared "Modal" abstraction.
+ * pattern (catchUpChooserModal / recipeConflictResolver): inline layout
+ * styles + `.cc-btn` button classes (circle.css primitives), backdrop +
+ * ESC = cancel, no shared "Modal" abstraction.
  *
  * Severity 'danger' colours the accept button with the theme's
  * `--danger` tokens (red confirm — the Q27 Tier C affordance the
@@ -84,24 +85,18 @@ export function renderConfirmDialog(container, { request = {}, onResolve } = {})
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
-  cancelBtn.className = 'cc-confirm__cancel';
+  cancelBtn.className = 'cc-confirm__cancel cc-btn cc-btn--quiet';
   cancelBtn.textContent = request.cancelLabel ?? '';
-  cancelBtn.style.cssText = 'padding: 8px 14px; border: 1px solid var(--line, #ddd); '
-    + 'background: transparent; border-radius: 8px; font: inherit; cursor: pointer;';
   cancelBtn.addEventListener('click', () => settle(false));
   footer.appendChild(cancelBtn);
 
   const acceptBtn = document.createElement('button');
   acceptBtn.type = 'button';
-  acceptBtn.className = `cc-confirm__accept cc-confirm__accept--${severity}`;
+  // Destructive accept wears the theme's rust (.cc-btn--danger — theme.css --danger).
+  acceptBtn.className = `cc-confirm__accept cc-confirm__accept--${severity} cc-btn `
+    + (severity === 'danger' ? 'cc-btn--danger' : 'cc-btn--primary');
   acceptBtn.dataset.severity = severity;
   acceptBtn.textContent = request.acceptLabel ?? '';
-  acceptBtn.style.cssText = severity === 'danger'
-    // Red/destructive accept — the theme's danger tokens (theme.css).
-    ? 'padding: 8px 14px; border: 1px solid var(--danger, #b04a30); '
-      + 'background: var(--danger, #b04a30); color: var(--accent-contrast); border-radius: 8px; font: inherit; cursor: pointer;'
-    : 'padding: 8px 14px; border: 1px solid var(--line, #ddd); '
-      + 'background: var(--danger-bg, #f6e6e0); border-radius: 8px; font: inherit; cursor: pointer;';
   acceptBtn.addEventListener('click', () => settle(true));
   footer.appendChild(acceptBtn);
 

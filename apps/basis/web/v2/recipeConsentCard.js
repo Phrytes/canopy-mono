@@ -19,7 +19,7 @@ function btn(doc, label, onClick) {
   const b = doc.createElement('button');
   b.type = 'button';
   b.textContent = label;
-  b.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--line);cursor:pointer;background:var(--paper-2);';
+  b.className = 'cc-btn cc-btn--quiet';   // circle.css primitives (bulletin buttons)
   b.addEventListener('click', onClick);
   return b;
 }
@@ -144,8 +144,7 @@ export function renderRecipeConsentCard(model, { onAgree, onDecline, doc = globa
     close();
     onAgree?.({ declinedKeys });
   });
-  agree.className = 'recipe-consent-card__agree';
-  agree.style.cssText += 'background:var(--green);color:var(--accent-contrast);border-color:var(--green);font-weight:600;';
+  agree.className = 'recipe-consent-card__agree cc-btn cc-btn--primary';
   actions.appendChild(agree);
   panel.appendChild(actions);
 

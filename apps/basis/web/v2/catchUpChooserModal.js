@@ -152,10 +152,8 @@ export function renderCatchUpChooser(container, {
 
   const cancelBtn = document.createElement('button');
   cancelBtn.type = 'button';
-  cancelBtn.className = 'catch-up-chooser__cancel';
+  cancelBtn.className = 'catch-up-chooser__cancel cc-btn cc-btn--quiet';
   cancelBtn.textContent = tr('circle.chat.catch_up.chooser_cancel');
-  cancelBtn.style.cssText = 'padding: 8px 14px; border: 1px solid var(--line, #ddd); '
-    + 'background: transparent; border-radius: 8px; font: inherit; cursor: pointer;';
   cancelBtn.addEventListener('click', () => settle({ decline: true }));
   footer.appendChild(cancelBtn);
   sheet.appendChild(footer);
@@ -219,12 +217,10 @@ function renderOfferCard(o, { tr, resolveContact, onPick, now }) {
   for (const m of modes) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = `catch-up-chooser__mode catch-up-chooser__mode--${m.mode}`;
+    btn.className = `catch-up-chooser__mode catch-up-chooser__mode--${m.mode} cc-btn cc-btn--quiet`;
     btn.dataset.mode = m.mode;
     btn.dataset.offerFrom = o.from;
     btn.textContent = tr(m.labelKey);
-    btn.style.cssText = 'padding: 6px 10px; border: 1px solid var(--line, #ddd); '
-      + 'background: var(--card, #fff); border-radius: 6px; font: inherit; cursor: pointer;';
     btn.addEventListener('click', () => onPick(m.mode));
     picker.appendChild(btn);
   }

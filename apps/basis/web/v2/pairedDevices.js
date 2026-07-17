@@ -53,7 +53,7 @@ export function renderPairedDevices(container, opts = {}) {
     mineInput.addEventListener('focus', () => mineInput.select());
     const copyBtn = document.createElement('button');
     copyBtn.type = 'button';
-    copyBtn.className = 'cc-paired__copy';
+    copyBtn.className = 'cc-paired__copy cc-btn cc-btn--quiet';
     copyBtn.textContent = tr('circle.pairedDevices.copy');
     copyBtn.addEventListener('click', async () => {
       try { await navigator?.clipboard?.writeText?.(selfAddr); } catch { mineInput.select(); }
@@ -89,7 +89,7 @@ export function renderPairedDevices(container, opts = {}) {
     addInput.placeholder = tr('circle.pairedDevices.addPlaceholder');
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
-    addBtn.className = 'cc-paired__addbtn';
+    addBtn.className = 'cc-paired__addbtn cc-btn cc-btn--quiet';
     addBtn.textContent = tr('circle.pairedDevices.add');
     const err = document.createElement('p');
     err.className = 'cc-paired__err';
@@ -136,7 +136,7 @@ export function renderPairedDevices(container, opts = {}) {
       code.title = addr;
       const rm = document.createElement('button');
       rm.type = 'button';
-      rm.className = 'cc-paired__remove';
+      rm.className = 'cc-paired__remove cc-btn cc-btn--ghost';
       rm.textContent = tr('circle.pairedDevices.remove');
       rm.addEventListener('click', async () => {
         try {

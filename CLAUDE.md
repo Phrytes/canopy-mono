@@ -61,6 +61,7 @@ file only helps if it's written to.
 ## Further conventions
 Project-wide rules beyond the invariants — concise here, full detail in [`docs/conventions/`](docs/conventions/):
 - **App READMEs** follow one scheme (built-on · deviations · honest phase table) — [`app-readme-scheme.md`](docs/conventions/app-readme-scheme.md).
+- **Web/mobile differences** are idiom or listed exceptions, never capability/vocab/consent drift — [`web-mobile-exceptions.md`](docs/conventions/web-mobile-exceptions.md).
 - **Cross-app settings** split pod-side into portable `shared.json` + per-install `devices/<id>.json` — [`cross-app-settings.md`](docs/conventions/cross-app-settings.md).
 - **Cross-pod references** use the `embeds: [{type, ref}]` field + a permission handshake, never inlined pod URLs — [`cross-pod-refs.md`](docs/conventions/cross-pod-refs.md).
 - **Pod storage layout** is canonical, owned by `@onderling/pod-onboarding` — [`storage-layout.md`](docs/conventions/storage-layout.md).
