@@ -231,25 +231,35 @@ export class MemberMap extends Emitter {
       // key mute / ban / report on this.  Optional.
       stableId:    m.stableId ?? null,
       // skills: per-member skills profile (Stoop V1 Phase 11).
-      // Each item: {categoryId, freeTags?, availability?, radius?, status?}.
-      // Status: 'active' | 'paused' | 'archived' (V2.5+, English).
+      // Each item: {categoryId, freeTags?, radius?, status?}.
+      // Status: 'active' | 'paused' | 'archived' (V2.5+, English) — the
+      // offer on/off, DISTINCT from when-I'm-reachable.
       // Legacy V1/V2 vault entries used Dutch (`actief`/`gepauzeerd`/
       // `gearchiveerd`); translated on read for back-compat.
+      // NOTE: the old per-skill `availability` sub-field is DROPPED
+      // (availability unification, NOTE-skills-properties-audit §4/§5/Q5):
+      // reachability is now the ONE member-level `availability` below, which
+      // skills reference — they no longer each carry a copy.
       // Optional — consumers without skills leave it absent (= null).
       skills:      Array.isArray(m.skills)
         ? m.skills.map(s => ({
             categoryId:    s.categoryId,
             freeTags:      Array.isArray(s.freeTags) ? [...s.freeTags] : [],
-            availability:  s.availability ?? null,
             radius:        s.radius       ?? null,
             status:        _translateLegacyStatus(s.status) ?? 'active',
           }))
         : null,
-      // holidayMode: cross-device on/off flag (Stoop V2 Phase 23.4).
-      // When true, the user is "op vakantie": skill-match routes
-      // around them and the UI surfaces a banner "Je staat op
-      // vakantie".  Independent of per-skill `status`; both can
-      // change.  Optional — defaults to false.
+      // availability: the UNIFIED person-level reachability state
+      // ('open' | 'limited' | 'away'), projected onto the roster for
+      // skill-match routing (availability unification / decision Q5). 'away'
+      // IS holiday mode (the coarse rung). Skill-match routes around a member
+      // whose availability is 'away'.  Optional — absent reads as available.
+      availability: (m.availability === 'open' || m.availability === 'limited' || m.availability === 'away')
+        ? m.availability : null,
+      // holidayMode: legacy cross-device flag (Stoop V2 Phase 23.4), now the
+      // 'away' value of `availability` above. Kept mirrored so the old stoop
+      // setHolidayMode/getHolidayMode ops + the UI banner keep working (thin
+      // shim). Optional — defaults to false.
       holidayMode: m.holidayMode === true,
       // pubKey: Ed25519 pubkey of this member's agent. Required by
       // L1e (skill-match) which subscribes to peer pubsub by pubkey.

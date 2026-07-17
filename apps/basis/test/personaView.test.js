@@ -204,8 +204,8 @@ describe('buildMijViewModel', () => {
     const place = m.general.properties.find((p) => p.key === 'place');
     expect(place.value).toBe('Amsterdam');
     expect(place.ladder).toEqual(PROPERTY_LADDERS.place);
-    // every charter attribute gets a row, each with a ladder
-    expect(m.general.properties.map((p) => p.key).sort()).toEqual(attributeKeys().sort());
+    // every charter attribute gets a row + the unified availability row, each with a ladder
+    expect(m.general.properties.map((p) => p.key).sort()).toEqual([...attributeKeys(), 'availability'].sort());
     for (const p of m.general.properties) expect(Array.isArray(p.ladder)).toBe(true);
     // the driver shows as a chip entry, not as a coarse property
     expect(m.general.drivers).toHaveLength(1);
@@ -249,6 +249,33 @@ describe('buildMijViewModel', () => {
   it('reports not-ok without a default persona', () => {
     const m = buildMijViewModel({ personas: [], circles: mijCircles });
     expect(m.ok).toBe(false);
+  });
+
+  it('renders availability as a unified coarse-enum property row (Q5)', () => {
+    // an availability value on the default profile surfaces as a general property row
+    const personas = [{
+      id: 'default', name: 'default',
+      properties: { availability: { mode: 'own', value: 'away' } },
+      disclosure: { perContext: {} },
+    }];
+    const m = buildMijViewModel({ personas, circles: mijCircles, releases: {} });
+    const avail = m.general.properties.find((p) => p.key === 'availability');
+    expect(avail).toMatchObject({
+      key: 'availability', value: 'away', free: false, set: true, l10n: 'circle.mij.availability',
+    });
+    expect(avail.buckets).toEqual(['open', 'limited', 'away']);
+    // it is shareable per circle like any valued property (disclosure-controlled)
+    const c1 = m.circles.find((c) => c.circleId === 'circle-1');
+    expect(c1.addable).toContain('availability');
+  });
+
+  it('availability is absent (unset) when the profile has no value', () => {
+    const m = buildMijViewModel({ personas: mijPersonas, circles: mijCircles, releases: mijReleases });
+    const avail = m.general.properties.find((p) => p.key === 'availability');
+    expect(avail).toMatchObject({ key: 'availability', value: null, set: false });
+    // an unset property is not offered for sharing
+    const c1 = m.circles.find((c) => c.circleId === 'circle-1');
+    expect(c1.addable).not.toContain('availability');
   });
 });
 

@@ -3295,6 +3295,10 @@
       "household": {
         "text": "Household",
         "doc": "personas#1 — charter attribute label: household."
+      },
+      "availability": {
+        "text": "Availability",
+        "doc": "availability unification (Q5) — label of the unified reachability property (open/limited/away)."
       }
     }
   },
@@ -3344,6 +3348,10 @@
         "text": "category",
         "doc": "mij#personas — ladder rung: category only."
       },
+      "state": {
+        "text": "status",
+        "doc": "mij#personas — ladder rung: the availability status only (open/limited/away), without a when-detail."
+      },
       "all": {
         "text": "everything",
         "doc": "mij#personas — ladder rung: the whole item (a driver/skill shares whole or not at all)."
@@ -3351,6 +3359,20 @@
       "none": {
         "text": "∅",
         "doc": "mij#personas — ladder rung: share nothing (the empty rung)."
+      }
+    },
+    "availability": {
+      "open": {
+        "text": "Open",
+        "doc": "availability unification (Q5) — value: generally available."
+      },
+      "limited": {
+        "text": "Limited",
+        "doc": "availability unification (Q5) — value: available some of the time (free/busy)."
+      },
+      "away": {
+        "text": "Away",
+        "doc": "availability unification (Q5) — value: holiday / not available (== the old holidayMode)."
       }
     },
     "not_set": {

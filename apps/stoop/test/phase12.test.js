@@ -139,6 +139,26 @@ describe('Stoop V1 Phase 12 — matchesProfile', () => {
     expect(r.matched).toBe(false);
     expect(r.reason).toBe('no-active-skills');
   });
+
+  // availability unification (Q5): 'away' IS holiday mode — skill-match routes
+  // around a member whose unified availability is away, regardless of skills.
+  it('routes AROUND a member whose availability is away', () => {
+    const away = { ...member, availability: 'away' };
+    const r = matchesProfile({ categoryId: 'vervoer' }, away);
+    expect(r.matched).toBe(false);
+    expect(r.reason).toBe('away');
+  });
+
+  it('still matches when availability is open/limited', () => {
+    expect(matchesProfile({ categoryId: 'vervoer' }, { ...member, availability: 'open' }).matched).toBe(true);
+    expect(matchesProfile({ categoryId: 'vervoer' }, { ...member, availability: 'limited' }).matched).toBe(true);
+  });
+
+  it('honours the legacy holidayMode flag for un-migrated entries', () => {
+    const r = matchesProfile({ categoryId: 'vervoer' }, { ...member, holidayMode: true });
+    expect(r.matched).toBe(false);
+    expect(r.reason).toBe('away');
+  });
 });
 
 // ── Cross-language matching end-to-end ────────────────────────────────────

@@ -14,6 +14,7 @@
 
 import { buildMijViewModel } from './personaView.js';
 import { migrateRosterSkills } from '../core/skillsMigration.js';
+import { migrateAvailability } from '../core/availabilityMigration.js';
 
 export { skillKeyFor } from '../core/skillsMigration.js';
 
@@ -29,6 +30,10 @@ export { skillKeyFor } from '../core/skillsMigration.js';
 export async function loadMijModel({ callSkill, personaId, circles = [], activeCircleId } = {}) {
   if (activeCircleId) {
     try { await migrateRosterSkills({ callSkill, circleId: activeCircleId }); } catch { /* non-fatal */ }
+    // availability unification (Q5) — one-time, marker-guarded seed of the unified
+    // `availability` property from the most-restrictive legacy signal (holidayMode /
+    // per-skill availability). Reads the active circle's stoop context; global once seeded.
+    try { await migrateAvailability({ callSkill }); } catch { /* non-fatal */ }
   }
 
   // Every profile-role registry entry is a persona; the opened row + the

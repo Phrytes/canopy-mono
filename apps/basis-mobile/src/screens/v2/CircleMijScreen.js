@@ -121,7 +121,11 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
       {/* ── 1 · MIJN ALGEMENE PERSONA — de waarheidslaag ─────────────────── */}
       <Section eyebrowKey="circle.mij.general_eyebrow" taglineKey="circle.mij.general_tagline">
         <View style={styles.panel}>
-          {(model.general?.properties || []).map((p) => (
+          {(model.general?.properties || []).map((p) => {
+            // A property may carry an `l10n` prefix (e.g. availability) so its
+            // value + bucket options localise; charter attributes show raw values.
+            const valLabel = (v) => (p.l10n && v != null ? trOr(`${p.l10n}.${v}`, v) : v);
+            return (
             <View key={p.key} style={styles.propRow} testID={`mij-prop-${p.key}`}>
               <View style={styles.propLine}>
                 <Text style={styles.key}>{keyLabel(p.key)}</Text>
@@ -131,7 +135,7 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
                   onPress={() => setOpenEditor((k) => (k === p.key ? null : p.key))}
                 >
                   <Text style={[styles.value, p.value == null && styles.valueUnset]}>
-                    {p.value ?? t('circle.mij.not_set')}
+                    {valLabel(p.value) ?? t('circle.mij.not_set')}
                   </Text>
                 </Pressable>
                 <Text style={styles.ladder}>{ladderHint(p.ladder)}</Text>
@@ -165,14 +169,15 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
                         accessibilityState={{ selected: active }}
                         onPress={() => onSetProperty(p.key, b)}
                       >
-                        <Text style={[styles.bucketText, active && styles.bucketTextActive]}>{b}</Text>
+                        <Text style={[styles.bucketText, active && styles.bucketTextActive]}>{valLabel(b)}</Text>
                       </Pressable>
                     );
                   })}
                 </View>
               ) : null}
             </View>
-          ))}
+            );
+          })}
 
           {/* skills & drivers — chips: bold text · mono tags · "≈ categorie" badge */}
           <View style={styles.propRow}>

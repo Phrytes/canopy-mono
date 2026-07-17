@@ -25,7 +25,19 @@
  */
 
 import { attributeKeys, bucketsFor } from '@onderling/attribute-charter';
-import { isDriverValue, deriveCategory, SKILLS_TAXONOMY } from '@onderling/agent-registry';
+import { isDriverValue, deriveCategory, SKILLS_TAXONOMY, AVAILABILITY_STATES, availabilityState } from '@onderling/agent-registry';
+
+/* ── availability — the ONE unified reachability property (decision Q5) ───────
+ * Not a charter key: a person-level coarse-enum (open/limited/away) that folds
+ * the old per-skill availability sub-field AND the holidayMode boolean. Rendered
+ * as a normal property ROW in the general-persona section; disclosure-controlled
+ * per circle like every other key. The `l10n` prefix tells the shells to localise
+ * the value + the bucket options (charter buckets stay raw domain tokens). Its
+ * DISPLAY ladder hint is `state → ∅` — the descriptor's finer 'detail' rung
+ * (free-text "when") is a TODO, so it isn't offered to users yet. */
+export const AVAILABILITY_KEY = 'availability';
+const AVAILABILITY_DISPLAY_LADDER = Object.freeze(['state', 'none']);
+const AVAILABILITY_L10N = 'circle.mij.availability';
 
 /* ── Ladder labels (Mij → persona's) ─────────────────────────────────────────
  * Rung KEYS per charter attribute, shown finest→coarsest ending in the empty
@@ -256,6 +268,18 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
     const buckets = bucketsFor(key) ?? null;
     const value = displayValue(ownValueOf(defaultRaw[key]));
     return { key, value, buckets, free: buckets == null, set: value != null, ladder: ladderFor(key) };
+  });
+  // availability — the unified reachability property (decision Q5): a coarse-enum row
+  // with a LOCALISED value set (l10n prefix), rendered like place/ageBand.
+  const availabilityValue = availabilityState(ownValueOf(defaultRaw[AVAILABILITY_KEY]));
+  generalProperties.push({
+    key: AVAILABILITY_KEY,
+    value: availabilityValue,
+    buckets: [...AVAILABILITY_STATES],
+    free: false,
+    set: availabilityValue != null,
+    ladder: AVAILABILITY_DISPLAY_LADDER,
+    l10n: AVAILABILITY_L10N,
   });
   const generalDrivers = driverEntries(defaultRaw).map((d) => ({ ...d, ladder: DRIVER_LADDER }));
 

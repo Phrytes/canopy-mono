@@ -79,8 +79,12 @@ function renderGeneral(tr, model, { onSetProperty, onAddSkill }) {
     row.dataset.key = p.key;
     row.appendChild(el('span', 'cc-mij__key', tr(`circle.aboutme.key.${p.key}`, { defaultValue: p.key })));
 
+    // A property may carry an `l10n` prefix (e.g. availability) so its value +
+    // bucket OPTIONS localise; charter attributes have none and show raw values.
+    const valLabel = (v) => (p.l10n && v != null ? tr(`${p.l10n}.${v}`, { defaultValue: v }) : v);
+
     // Value cell — a quiet button that flips open the inline editor beneath.
-    const valueBtn = el('button', 'cc-mij__value-btn', p.value ?? tr('circle.mij.not_set'));
+    const valueBtn = el('button', 'cc-mij__value-btn', valLabel(p.value) ?? tr('circle.mij.not_set'));
     valueBtn.type = 'button';
     if (p.value == null) valueBtn.classList.add('cc-mij__value-btn--unset');
     row.appendChild(valueBtn);
@@ -103,7 +107,7 @@ function renderGeneral(tr, model, { onSetProperty, onAddSkill }) {
           editor.append(input, save);
         } else {
           for (const b of (p.buckets || [])) {
-            const btn = el('button', 'cc-btn', b);
+            const btn = el('button', 'cc-btn', valLabel(b));
             btn.type = 'button';
             if (b === p.value) btn.classList.add('is-active');
             btn.addEventListener('click', () => onSetProperty(p.key, b));

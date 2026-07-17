@@ -94,10 +94,18 @@ export function categoryFor(text) {
  * debuggability.
  *
  * @param {object} post  `{categoryId?, tags?}`
- * @param {{skills?: Array<{categoryId: string, freeTags?: string[], status?: string}>}} member
+ * @param {{availability?: string, holidayMode?: boolean, skills?: Array<{categoryId: string, freeTags?: string[], status?: string}>}} member
  * @returns {{matched: boolean, reason?: string, viaCategory?: string, viaTags?: string[]}}
  */
 export function matchesProfile(post, member) {
+  // Availability unification (decision Q5): 'away' IS holiday mode — the member
+  // is not reachable, so skill-match routes AROUND them. Reads the unified
+  // person-level `availability` property (projected onto the roster member); the
+  // legacy `holidayMode` flag is still honoured for un-migrated entries.
+  if (member?.availability === 'away' || member?.holidayMode === true) {
+    return { matched: false, reason: 'away' };
+  }
+
   const memberSkills = (member?.skills ?? []).filter((s) => (s.status ?? 'active') === 'active');
   if (memberSkills.length === 0) return { matched: false, reason: 'no-active-skills' };
 

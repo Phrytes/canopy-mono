@@ -505,7 +505,9 @@ async function getHolidayModeCore(scope, a, ctx) {
   const { members } = scope;
   if (!members) return { holidayMode: false };
   const me = await members.resolveByWebid(ctx.from);
-  return { holidayMode: me?.holidayMode === true };
+  // Availability unification (Q5): holiday mode IS the coarse 'away' value of the
+  // unified `availability` property; the legacy flag is honoured for un-migrated entries.
+  return { holidayMode: me?.availability === 'away' || me?.holidayMode === true };
 }
 
 async function getGroupRulesCore(scope, a, ctx) {
@@ -1505,12 +1507,13 @@ export function buildSkills({
     }),
 
     /**
-     * setHolidayMode({on})  — Phase 23.4.
-     *   Cross-device holiday-mode flag.  When `on: true`, skill-match
-     *   routes around me + the board shows a top banner.  Persists
-     *   via MemberMapCache (so it sticks across restart and syncs to
-     *   a connected pod).  Doesn't touch per-skill `status` — those
-     *   stay where the user left them.
+     * setHolidayMode({on})  — Phase 23.4, now a THIN SHIM over the unified
+     *   `availability` property (availability unification / decision Q5).
+     *   Holiday mode IS the coarse 'away' value: `on:true` sets availability
+     *   to 'away', `on:false` back to 'open'. `holidayMode` is kept mirrored
+     *   on the member so legacy readers (the UI banner, getHolidayMode) still
+     *   work. Persists via MemberMapCache; syncs to a connected pod.  Doesn't
+     *   touch per-skill `status` — those stay where the user left them.
      */
     // B★ B3 NOT wired (conflict a+c): phase23.test.js pins
     // `setHolidayMode({})` → `{error:'on (bool) required'}` returned, and the op
@@ -1521,10 +1524,11 @@ export function buildSkills({
       if (typeof a.on !== 'boolean') return { error: 'on (bool) required' };
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
-      const updated = await members.addMember({ ...me, holidayMode: a.on });
-      return { holidayMode: updated.holidayMode, _sync: simulateSync() };
+      const availability = a.on ? 'away' : 'open';
+      const updated = await members.addMember({ ...me, availability, holidayMode: a.on });
+      return { holidayMode: updated.availability === 'away', _sync: simulateSync() };
     }, {
-      description: 'Toggle the calling actor\'s holiday-mode flag (cross-device).',
+      description: 'Toggle the calling actor\'s holiday-mode flag (thin shim over the unified availability property; away == on).',
       visibility:  'authenticated',
     }),
 

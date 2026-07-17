@@ -3295,6 +3295,10 @@
       "household": {
         "text": "Huishouden",
         "doc": "personas#1 — charter-attribuut label: household."
+      },
+      "availability": {
+        "text": "Beschikbaarheid",
+        "doc": "availability-unificatie (Q5) — label van de gebundelde bereikbaarheids-eigenschap (open/beperkt/afwezig)."
       }
     }
   },
@@ -3344,6 +3348,10 @@
         "text": "categorie",
         "doc": "mij#personas — laddersport: alleen de categorie."
       },
+      "state": {
+        "text": "status",
+        "doc": "mij#personas — laddersport: alleen de beschikbaarheids-status (open/beperkt/afwezig), zonder wanneer-detail."
+      },
       "all": {
         "text": "alles",
         "doc": "mij#personas — laddersport: het hele item (drijfveer/vaardigheid deelt heel of niet)."
@@ -3351,6 +3359,20 @@
       "none": {
         "text": "∅",
         "doc": "mij#personas — laddersport: niets delen (de lege sport)."
+      }
+    },
+    "availability": {
+      "open": {
+        "text": "Open",
+        "doc": "availability-unificatie (Q5) — waarde: over het algemeen bereikbaar."
+      },
+      "limited": {
+        "text": "Beperkt",
+        "doc": "availability-unificatie (Q5) — waarde: soms bereikbaar (vrij/bezet)."
+      },
+      "away": {
+        "text": "Afwezig",
+        "doc": "availability-unificatie (Q5) — waarde: vakantie / niet bereikbaar (== oude holidayMode)."
       }
     },
     "not_set": {

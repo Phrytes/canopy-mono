@@ -32,6 +32,10 @@ export { DRIVER_KINDS, isDriverKind, normalizeTag, normalizeTags, createDriver, 
 // skills fold-in (NOTE-skills-properties-audit Q1/Q4) — a skill is a driver-like open item (kind
 // `skill`); the fixed taxonomy is DEMOTED to its coarse disclosure rung (text+tags → categoryId → ∅).
 export { SKILLS_TAXONOMY, SKILL_LADDER, deriveCategory, skillDescriptor } from './src/skillsTaxonomy.js';
+// availability unification (NOTE-skills-properties-audit §4/§5, Q5) — ONE person-level
+// coarse-enum property (open/limited/away) folding the old per-skill `availability`
+// sub-field AND the standalone `holidayMode` boolean; 'away' IS holiday mode.
+export { AVAILABILITY_STATES, AVAILABILITY_AWAY, AVAILABILITY_LADDER, isAvailabilityState, availabilityState, isAway, availabilityDescriptor } from './src/availability.js';
 // personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
 export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
 // anonymous-talk reveal ladder (#5b) — self-controlled, unilateral, ephemeral-default identity reveal.
