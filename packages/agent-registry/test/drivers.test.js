@@ -7,11 +7,18 @@ import {
 } from '../index.js';
 
 describe('drivers (#3) — the driver property type', () => {
-  it('kinds: the finer intents + the generic catch-all', () => {
-    expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver']);
+  it('kinds: the finer intents + the generic catch-all + skill (fold-in)', () => {
+    expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver', 'skill']);
     expect(isDriverKind('goal')).toBe(true);
+    expect(isDriverKind('skill')).toBe(true);
     expect(isDriverKind('nonsense')).toBe(false);
     expect(isDriverKind(null)).toBe(false);
+  });
+
+  it('createDriver: kind skill is accepted, NOT downgraded to the generic driver', () => {
+    const s = createDriver({ kind: 'skill', text: 'bike repair', tags: ['Fietsen', 'repareren'] });
+    expect(s.kind).toBe('skill');
+    expect(isDriverValue(s)).toBe(true);
   });
 
   it('normalizeTag: lowercases, hyphenates, strips junk', () => {

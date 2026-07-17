@@ -14,8 +14,13 @@
 
 import { descriptor } from './propertyVocabulary.js';
 
-/** The kinds of personal driver. `driver` is the generic catch-all; the rest are finer intents. */
-export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver']);
+/**
+ * The kinds of personal driver. `driver` is the generic catch-all; the rest are finer intents.
+ * `skill` (skills→property fold-in, NOTE-skills-properties-audit Q1) is a driver-LIKE open item —
+ * what someone can DO rather than wants — sharing the `{ kind, text, tags[] }` shape; its coarse
+ * rung (categoryId under disclosure) lives in `skillsTaxonomy.js`, not here.
+ */
+export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver', 'skill']);
 
 /** True iff `k` is one of the DRIVER_KINDS strings. */
 export function isDriverKind(k) { return typeof k === 'string' && DRIVER_KINDS.includes(k); }

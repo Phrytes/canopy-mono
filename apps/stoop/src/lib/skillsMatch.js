@@ -5,6 +5,10 @@
  * (`skillsTaxonomy.json` + `tagNormalisation.json`) lifted into the
  * identity-resolver substrate (Tasks V1 = rule-of-two consumer per
  * `Project Files/Stoop/migration-tasks-v1-lifts-2026-05-08.md`).
+ * **2026-07-17:** `skillsTaxonomy.json` moved on to
+ * `@onderling/agent-registry` (skills→property fold-in: the taxonomy
+ * is the coarse rung of the `skill` property descriptor); this shim +
+ * identity-resolver's re-exports are unchanged for consumers.
  *
  * The taxonomy is Stoop-shaped today (categories: `vervoer`,
  * `huishouden`, etc.). When a real OSS-flavour consumer needs

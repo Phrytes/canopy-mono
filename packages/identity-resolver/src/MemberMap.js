@@ -123,8 +123,8 @@ export class MemberMap extends Emitter {
    *   leave it absent.
    * @param {Array<{categoryId: string, freeTags?: string[], availability?: string, radius?: string, status?: string}>} [m.skills]
    *   Stoop V1 Phase 11: per-member skills profile.  `categoryId`
-   *   picks from a fixed taxonomy (see app-side
-   *   `apps/stoop/src/lib/skillsTaxonomy.json`).  `status` ∈
+   *   picks from a fixed taxonomy (canonical home:
+   *   `@onderling/agent-registry` `SKILLS_TAXONOMY`).  `status` ∈
    *   `'active' | 'paused' | 'archived'`  (V2.5+; legacy Dutch
    *   values `actief|gepauzeerd|gearchiveerd` are auto-translated).  Optional; legacy
    *   consumers leave it absent.

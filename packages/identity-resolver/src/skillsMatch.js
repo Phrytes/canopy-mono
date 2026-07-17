@@ -14,19 +14,24 @@
  * matches an English skill profile.
  */
 
-import taxonomyJson from './skillsTaxonomy.json' with { type: 'json' };
-import dictJson     from './tagNormalisation.json' with { type: 'json' };
+// The taxonomy moved to @onderling/agent-registry (skills→property fold-in,
+// plans/NOTE-skills-properties-audit.md Q4): it is now the COARSE rung of the `skill`
+// property descriptor there. Literal-path import so it resolves under BOTH Node's
+// exports map and Metro's exports-OFF literal resolution.
+import { SKILLS_TAXONOMY } from '@onderling/agent-registry/src/skillsTaxonomy.js';
+import dictJson from './tagNormalisation.json' with { type: 'json' };
 
 /**
  * Re-exported so apps can iterate the taxonomy for UI dropdowns.
- * Frozen to prevent accidental mutation.
+ * Frozen to prevent accidental mutation. (Canonical home:
+ * `@onderling/agent-registry` `SKILLS_TAXONOMY`.)
  */
-export const TAXONOMY = Object.freeze(taxonomyJson);
+export const TAXONOMY = SKILLS_TAXONOMY;
 
 /** Indexed dictionary entries. */
 const DICT = dictJson.entries;
 /** Quick-set of valid category ids for membership checks. */
-const CATEGORY_IDS = new Set(taxonomyJson.categories.map((c) => c.id));
+const CATEGORY_IDS = new Set(SKILLS_TAXONOMY.categories.map((c) => c.id));
 
 /** Tokenise a free-text body into lowercase word tokens. */
 function tokenise(text) {

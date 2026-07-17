@@ -29,6 +29,9 @@ export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './
 // personal drivers (#3) — the `driver` property type: an open { kind, text, tags[] } value, governed
 // by the same disclosure policy as any property. The matcher (#4) builds on this shape.
 export { DRIVER_KINDS, isDriverKind, normalizeTag, normalizeTags, createDriver, isDriverValue, driverDescriptor, driversFromProperties } from './src/drivers.js';
+// skills fold-in (NOTE-skills-properties-audit Q1/Q4) — a skill is a driver-like open item (kind
+// `skill`); the fixed taxonomy is DEMOTED to its coarse disclosure rung (text+tags → categoryId → ∅).
+export { SKILLS_TAXONOMY, SKILL_LADDER, deriveCategory, skillDescriptor } from './src/skillsTaxonomy.js';
 // personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
 export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
 // anonymous-talk reveal ladder (#5b) — self-controlled, unilateral, ephemeral-default identity reveal.

@@ -5,7 +5,9 @@
   "type": "module",
   "main": "index.js",
   "exports": {
-    ".": "./index.js"
+    ".": "./index.js",
+    "./skills-taxonomy": "./src/skillsTaxonomy.js",
+    "./src/skillsTaxonomy.js": "./src/skillsTaxonomy.js"
   },
   "scripts": {
     "test": "vitest run",

@@ -39,6 +39,12 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
   hand-materialized symlinks `apps/sdk-journeys/node_modules/@onderling/<p> → ../../../../packages/<p>`
   (sdk, core, vault, transports, pod-client, app-manifest, item-store, item-types, pseudo-pod,
   app-scaffold). node_modules is gitignored — recreate the links on a fresh checkout before `npm test`.
+  Same applies to `@onderling/identity-resolver` → `@onderling/agent-registry` (skills fold-in, 2026-07-17:
+  `skillsTaxonomy.json` moved to agent-registry; identity-resolver's `skillsMatch.js` imports it back via the
+  literal-path subpath `@onderling/agent-registry/src/skillsTaxonomy.js` — literal so it resolves under BOTH
+  Node's exports map (entry added to agent-registry `package.json`) and Metro's exports-OFF literal lookup).
+  If skillsMatch/TAXONOMY resolution breaks: `ln -sfn ../../../agent-registry
+  packages/identity-resolver/node_modules/@onderling/agent-registry`.
 
 - **Recursive / self package references → solved with (workspace) symlinks.**
   A package that references itself or forms a dependency cycle has broken resolution here before;
