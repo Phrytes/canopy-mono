@@ -105,9 +105,9 @@
 .circle-page .circle-rules-consent__agree,
 .circle-page .circle-hop__ask {
   display: inline-block;
-  background: var(--accent); color: var(--accent-contrast); border: 1px solid var(--accent);
-  border-radius: var(--radius); padding: 11px 18px;
-  font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+  background: var(--accent); color: var(--accent-contrast); border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm); padding: 10px 18px;
+  font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
 }
 .circle-page [class$="__save"]:hover,
 .circle-page .circle-rules-consent__agree:hover,
@@ -118,9 +118,9 @@
 .circle-page .circle-rules-consent__decline,
 .circle-page .circle-availability__hop {
   display: block; margin-top: 10px;
-  background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 11px 18px; font: inherit; font-weight: 600; font-size: 14px; cursor: pointer;
+  background: none; color: var(--ink);
+  border: 1.5px solid var(--ink); border-radius: 999px;
+  padding: 10px 18px; font: inherit; font-weight: 700; font-size: 13.5px; cursor: pointer;
 }
 .circle-page .circle-rules-consent__decline:hover,
 .circle-page .circle-availability__hop:hover { border-color: var(--accent); }
@@ -257,12 +257,41 @@
   font-family: var(--font-sans); font-size: 12px; font-weight: 600;
   line-height: 1;
 }
-.circle-launcher__new {
-  margin-top: 10px; width: 100%; cursor: pointer; font: inherit; font-size: 14px;
-  padding: 12px; border: 1px dashed var(--line); border-radius: var(--radius);
-  background: transparent; color: var(--ink-soft);
+.circle-launcher__new,
+.circle-launcher__join {
+  margin-top: 10px; width: 100%; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700;
+  padding: 12px; border: 1.5px dashed var(--ink-soft); border-radius: var(--radius-sm);
+  background: transparent; color: var(--ink);
 }
-.circle-launcher__new:hover { color: var(--accent-ink); border-color: var(--accent); }
+.circle-launcher__new:hover,
+.circle-launcher__join:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
+
+/* screens picker — these five were native browser buttons until 2026-07-17 */
+.circle-screens-picker__add-btn {
+  width: 100%; margin-top: 10px; padding: 10px; cursor: pointer;
+  font: inherit; font-size: 13.5px; font-weight: 700;
+  border: 1.5px dashed var(--ink-soft); border-radius: var(--radius-sm);
+  background: transparent; color: var(--ink);
+}
+.circle-screens-picker__add-btn:hover { color: var(--accent-ink); border-color: var(--accent-ink); }
+.circle-screens-picker__name {
+  font: inherit; font-size: 14px; font-weight: 700; cursor: pointer;
+  background: none; border: 0; color: var(--ink); padding: 4px 0; text-align: left;
+}
+.circle-screens-picker__name:hover { color: var(--accent-ink); }
+.circle-screens-picker__rename,
+.circle-screens-picker__activate {
+  font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  background: none; border: 1.5px solid var(--ink); border-radius: 999px; padding: 4px 12px;
+  color: var(--ink);
+}
+.circle-screens-picker__rename:hover,
+.circle-screens-picker__activate:hover { background: var(--ink); color: var(--accent-contrast); }
+.circle-screens-picker__remove {
+  font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  background: none; border: 0; color: var(--ink-soft); text-decoration: underline; padding: 4px 6px;
+}
+.circle-screens-picker__remove:hover { color: var(--danger); }
 
 /* β.5 — per-tile context menu (right-click on a kring tile).
    Positioned absolutely by the renderer at the tile's right edge. */
@@ -638,16 +667,16 @@
   display: flex; flex-wrap: wrap; gap: 8px;
 }
 .circle-screen__quick-action {
-  padding: 8px 14px;
-  border: 1px solid var(--line);
+  padding: 7px 14px;
+  border: 1.5px solid var(--ink);
   border-radius: 999px;
-  background: var(--paper-2);
+  background: none;
   color: var(--ink);
-  font-size: 13px; font-weight: 600;
+  font-size: 13px; font-weight: 700;
   cursor: pointer;
 }
 .circle-screen__quick-action:hover:not(:disabled) {
-  border-color: var(--accent);
+  background: var(--accent); color: var(--accent-contrast);
 }
 .circle-screen__quick-action:disabled { opacity: 0.5; cursor: default; }
 
