@@ -500,24 +500,34 @@ function renderBubble(row, {
   el.className = 'circle-kring__bubble';
   el.dataset.rowId = row.id ?? '';
 
-  // Sender label (top-left, small).
+  // Bulletin restyle — my own chat messages align right (me-bg block, no sender
+  // header).  Same condition the delivery icon uses: a locally-authored
+  // chat-message.  Without `localActor` plumbing everything renders as "others'".
+  const isMine = localActor != null
+    && row?.actor === localActor
+    && (row?.type === 'chat-message' || row?.event?.type === 'chat-message');
+  if (isMine) el.classList.add('circle-kring__bubble--mine');
+
+  // Sender label (top, small mono) — others'/bot bubbles only; my own name is noise.
   const senderText = pickSender(row);
-  if (senderText) {
+  if (senderText && !isMine) {
     const sender = document.createElement('div');
     sender.className = 'circle-kring__bubble-sender';
     sender.textContent = senderText;
     el.appendChild(sender);
   }
 
-  // "only you" vs "whole kring" scope badge — one presentation of the message's
-  // `scope` data property (messageScope.js). Only on real chat bubbles; absent → 'self'.
+  // "only you" vs "whole kring" scope — one presentation of the message's `scope`
+  // data property (messageScope.js). Only on real chat bubbles; absent → 'self'.
+  // Bulletin restyle: demoted from a top chip to the bottom meta line (appended
+  // there below, together with delivery state + timestamp).
   const _payload = row.event?.payload;
+  let scopeEl = null;
   if (_payload && _payload.kind === 'chat-message') {
     const scope = _payload.scope === 'kring' ? 'kring' : 'self';
-    const badge = document.createElement('span');
-    badge.className = `circle-kring__scope circle-kring__scope--${scope}`;
-    badge.textContent = `${scope === 'kring' ? '👥' : '👤'} ${tr(`circle.scope.${scope}`)}`;
-    el.appendChild(badge);
+    scopeEl = document.createElement('span');
+    scopeEl.className = `circle-kring__scope circle-kring__scope--${scope}`;
+    scopeEl.textContent = tr(`circle.scope.${scope}`);
   }
 
   // Kind pill (small, inline before text — matches the v2 PRIKBORD card
@@ -648,17 +658,14 @@ function renderBubble(row, {
   }
 
   // δ.2 — delivery-state icon for locally-sent chat messages.  Only
-  // surfaces when (a) the host supplied a lookup, (b) the row's actor
-  // matches the local actor stamp, and (c) the bubble is a chat-message
-  // (other row kinds — buurt-post mirrors etc. — never have delivery
-  // state).  The happy path ('sent' / null) renders nothing so it
-  // doesn't clutter the timeline.
-  if (
-    typeof deliveryStateFor === 'function'
-    && localActor != null
-    && row?.actor === localActor
-    && (row?.type === 'chat-message' || row?.event?.type === 'chat-message')
-  ) {
+  // surfaces when (a) the host supplied a lookup and (b) the bubble is a
+  // locally-authored chat-message (`isMine`; other row kinds — buurt-post
+  // mirrors etc. — never have delivery state).  The happy path
+  // ('sent' / null) renders nothing so it doesn't clutter the timeline.
+  // Bulletin restyle: the icon now sits in the bottom meta line (below),
+  // keeping its existing classes/roles.
+  let deliveryEl = null;
+  if (typeof deliveryStateFor === 'function' && isMine) {
     const state = deliveryStateFor(row.id);
     if (state === 'pending') {
       const ic = document.createElement('span');
@@ -668,7 +675,7 @@ function renderBubble(row, {
       ic.setAttribute('aria-label', tr('circle.chat.delivery.pending'));
       ic.title = tr('circle.chat.delivery.pending');
       ic.textContent = '⏱';
-      el.appendChild(ic);
+      deliveryEl = ic;
     } else if (state === 'failed') {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -680,7 +687,7 @@ function renderBubble(row, {
       btn.addEventListener('click', () => {
         if (typeof onRetryDelivery === 'function') onRetryDelivery(row.id);
       });
-      el.appendChild(btn);
+      deliveryEl = btn;
     } else if (state === 'undeliverable') {
       // permanent (e.g. a member has no published key) — show it, but NO retry
       // (retrying can't help). A static glyph, not a button.
@@ -691,12 +698,36 @@ function renderBubble(row, {
       ic.setAttribute('aria-label', tr('circle.chat.delivery.undeliverable'));
       ic.title = tr('circle.chat.delivery.undeliverable');
       ic.textContent = '⊘';
-      el.appendChild(ic);
+      deliveryEl = ic;
     }
     // 'sent' (and null) intentionally render nothing — happy path.
   }
 
+  // Bottom meta line (the site's `.msg .src` pattern): ONE small mono line with
+  // delivery state · audience scope · timestamp, in that order.
+  const metaChildren = [];
+  if (deliveryEl) metaChildren.push(deliveryEl);
+  if (scopeEl) metaChildren.push(scopeEl);
+  const timeText = formatTimeLabel(row.ts);
+  if (timeText) {
+    const time = document.createElement('span');
+    time.className = 'circle-kring__bubble-time';
+    time.textContent = timeText;
+    metaChildren.push(time);
+  }
+  if (metaChildren.length) {
+    const meta = document.createElement('div');
+    meta.className = 'circle-kring__bubble-meta';
+    for (const c of metaChildren) meta.appendChild(c);
+    el.appendChild(meta);
+  }
+
   return el;
+}
+
+function formatTimeLabel(ts) {
+  if (typeof ts !== 'number' || !Number.isFinite(ts)) return '';
+  return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 /**

@@ -484,13 +484,17 @@
 .circle-kring__more-item:hover { background: var(--paper); }
 .circle-kring__list { flex: 1; overflow-y: auto; padding: 4px 0 8px; display: flex; flex-direction: column; gap: 6px; }
 .circle-kring__empty { color: var(--ink-soft); font-style: italic; padding: 16px 4px; text-align: center; }
-.circle-kring__day { align-self: center; font-size: 11px; color: var(--ink-soft); text-transform: lowercase; padding: 8px 12px; font-style: italic; }
-.circle-kring__bubble { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); max-width: 80%; align-self: flex-start; }
-.circle-kring__bubble-sender { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
-/* "only you" vs "whole kring" scope badge (one presentation of the message's scope data). */
-.circle-kring__scope { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.2px; padding: 1px 7px; border-radius: 9px; margin-bottom: 3px; }
-.circle-kring__scope--self  { background: var(--paper); color: var(--ink-soft); }
-.circle-kring__scope--kring { background: var(--blue-bg); color: var(--blue); }
+.circle-kring__day { align-self: center; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.8px; padding: 8px 12px; }
+/* Bulletin sketch (mirror of the site's .chatbox .msg): others'/bot = card left, mine = me-bg right. */
+.circle-kring__bubble { padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); max-width: 78%; align-self: flex-start; }
+.circle-kring__bubble--mine { background: var(--me-bg); border: none; align-self: flex-end; }
+/* Sender label — others'/bot bubbles only (small mono line at the top). */
+.circle-kring__bubble-sender { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-soft); margin-bottom: 3px; }
+/* Bottom meta line (site .msg .src pattern): delivery · scope · timestamp, one small mono line. */
+.circle-kring__bubble-meta { display: flex; align-items: center; gap: 8px; margin-top: 5px; font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-soft); }
+/* "only you" vs "whole kring" scope (one presentation of the message's scope data) — plain meta text. */
+.circle-kring__scope--self  { color: var(--ink-soft); }
+.circle-kring__scope--kring { color: var(--ink-soft); }
 .circle-kring__bubble-kind { display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: 0.8px; padding: 2px 7px; border-radius: 4px; background: var(--paper); color: var(--accent-ink); margin-right: 6px; vertical-align: middle; }
 .circle-kring__bubble-text { font-size: 14px; color: var(--ink); display: inline; }
 .circle-kring__bubble-actions { display: flex; gap: 6px; margin-top: 8px; }
@@ -525,22 +529,23 @@
 .cc-guided__btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast); font-weight: 700; } /* = .cc-btn--primary (colours) */
 .cc-guided__btn--option:hover { border-color: var(--accent); }
 .cc-guided__done { font-size: 14px; color: var(--ink-soft); }
-/* δ.2 — per-message delivery state.  Pending = clock, Failed = warning (tap-to-retry).
-   Sent renders nothing (happy-path stays clean). */
-.circle-kring__bubble-delivery { display: inline-block; margin-top: 4px; font-size: 12px; line-height: 1; padding: 2px 6px; border-radius: 10px; }
-.circle-kring__bubble-delivery--pending { color: var(--ink-soft); background: transparent; }
-.circle-kring__bubble-delivery--failed  { color: var(--danger); background: var(--danger-bg); border: 1px solid var(--danger); cursor: pointer; font: inherit; font-size: 12px; }
-.circle-kring__bubble-delivery--failed:hover { background: var(--danger-bg); }
+/* δ.2 — per-message delivery state (lives in the bubble's meta line).  Pending = clock,
+   Failed = warning (tap-to-retry).  Sent renders nothing (happy-path stays clean). */
+.circle-kring__bubble-delivery { display: inline-block; font: inherit; line-height: 1; padding: 0; background: none; border: none; }
+.circle-kring__bubble-delivery--pending { color: var(--ink-soft); }
+.circle-kring__bubble-delivery--failed  { color: var(--danger); cursor: pointer; }
+.circle-kring__bubble-delivery--failed:hover { text-decoration: underline; }
 .circle-kring__composer { position: relative; display: flex; gap: 8px; align-items: center; padding: 10px 0 4px; border-top: 1px solid var(--line); margin-top: 4px; }
-.circle-kring__composer-input { flex: 1; padding: 10px 14px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: var(--ink); }
+/* Bulletin sketch composer: flat paper input + ink send block (mirror of the site's .chatbox form). */
+.circle-kring__composer-input { flex: 1; padding: 8px 11px; font: inherit; font-size: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--paper); color: var(--ink); }
 .circle-kring__composer-input:focus { outline: none; border-color: var(--accent); }
-.circle-kring__composer-send { width: 36px; height: 36px; border: none; border-radius: 18px; background: var(--accent); color: var(--accent-contrast); font-size: 18px; cursor: pointer; padding: 0; }
-.circle-kring__composer-send:hover { opacity: 0.92; }
+.circle-kring__composer-send { border: none; border-radius: var(--radius-sm); background: var(--accent); color: var(--accent-contrast); font: inherit; font-size: 14px; font-weight: 700; line-height: 1; padding: 9px 15px; cursor: pointer; }
+.circle-kring__composer-send:hover { background: var(--accent-ink); }
 
 /* media P1 — sealed-media attach button (only rendered when the circle has a seal strategy). */
 .circle-kring__attach {
   cursor: pointer; font-size: 16px; line-height: 1; width: 36px; height: 36px; padding: 0; flex: 0 0 auto;
-  border: 1px solid var(--line); border-radius: 18px; background: var(--paper, #fff); color: var(--ink-soft);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--paper, #fff); color: var(--ink-soft);
 }
 .circle-kring__attach:hover { border-color: var(--accent); }
 
@@ -608,7 +613,7 @@
 /* SP-13.3 — per-kring bottom tab bar + tab-coming placeholder. */
 .circle-kring__tabs { display: flex; justify-content: space-around; align-items: stretch; border-top: 1px solid var(--line); margin-top: 4px; }
 .circle-kring__tab { flex: 1; padding: 12px 6px; background: none; border: none; font: inherit; font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); cursor: pointer; border-top: 2px solid transparent; margin-top: -1px; }
-.circle-kring__tab.is-active { color: var(--accent-ink); border-top-color: var(--accent); }
+.circle-kring__tab.is-active { color: var(--accent-ink); border-top-color: var(--accent-ink); }
 .circle-kring__placeholder { padding: 24px 12px; color: var(--ink-soft); font-style: italic; text-align: center; }
 
 /* SP-13.4 — Chat ↔ Scherm header pill (v2 §4 "De Schakelaar"). */
