@@ -99,7 +99,7 @@ export function renderConfirmDialog(container, { request = {}, onResolve } = {})
   acceptBtn.style.cssText = severity === 'danger'
     // Red/destructive accept — the theme's danger tokens (theme.css).
     ? 'padding: 8px 14px; border: 1px solid var(--danger, #b04a30); '
-      + 'background: var(--danger, #b04a30); color: #fff; border-radius: 8px; font: inherit; cursor: pointer;'
+      + 'background: var(--danger, #b04a30); color: var(--accent-contrast); border-radius: 8px; font: inherit; cursor: pointer;'
     : 'padding: 8px 14px; border: 1px solid var(--line, #ddd); '
       + 'background: var(--danger-bg, #f6e6e0); border-radius: 8px; font: inherit; cursor: pointer;';
   acceptBtn.addEventListener('click', () => settle(true));

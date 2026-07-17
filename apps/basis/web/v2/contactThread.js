@@ -13,9 +13,9 @@
 // Privacy-badge palette (§10c) — the discrete states map to Onderling status tokens (mirrors
 // apps/basis/src/v2/theme.js). Colour AMPLIFIES the shape; quiet is a NEUTRAL slate outline (never green).
 const PRIVACY_BADGE_STYLE = {
-  quiet:   { fg: '#5a5240', bg: 'transparent', border: '#d8d1bc' }, // inkSoft / line — neutral outline
-  sharing: { fg: '#3f4f76', bg: '#dde2ee',     border: '#b8c2da' }, // blue / blueBg — soft-blue fill
-  risk:    { fg: '#b04a30', bg: '#ede0c4',     border: '#b04a30' }, // danger / amberBg — amber→red
+  quiet:   { fg: 'var(--ink-soft)', bg: 'transparent', border: 'var(--line)' }, // neutral outline
+  sharing: { fg: 'var(--blue)', bg: 'var(--blue-bg)', border: 'var(--blue)' }, // soft-blue fill
+  risk:    { fg: 'var(--danger)', bg: 'var(--amber-bg)', border: 'var(--danger)' }, // amber→red
 };
 
 // One-time <style> for the flip-to-risk pulse (a subtle emphasis, then settle — never a flashing nag).

@@ -288,7 +288,7 @@ export {
   // Objective D — publish the pref to the shared substrate so other agents read it.
   podAvailabilityIo, tieredAvailabilityIo,
 } from './v2/memberAvailability.js';
-export { THEME, tagColors, AVATAR_TINTS, circleTint } from './v2/theme.js';
+export { THEME, THEME_DARK, tagColors, AVATAR_TINTS, circleTint } from './v2/theme.js';
 export { runFind } from './find.js';
 export { EventLog, createEventLog, RETENTION_MS } from './eventLog.js';
 export {

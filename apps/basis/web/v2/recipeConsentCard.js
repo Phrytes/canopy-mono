@@ -19,7 +19,7 @@ function btn(doc, label, onClick) {
   const b = doc.createElement('button');
   b.type = 'button';
   b.textContent = label;
-  b.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid #ccc;cursor:pointer;background:#f5f5f5;';
+  b.style.cssText = 'padding:8px 14px;border-radius:8px;border:1px solid var(--line);cursor:pointer;background:var(--paper-2);';
   b.addEventListener('click', onClick);
   return b;
 }
@@ -50,7 +50,7 @@ export function renderRecipeConsentCard(model, { onAgree, onDecline, doc = globa
 
   const panel = doc.createElement('div');
   panel.className = 'recipe-consent-card';
-  panel.style.cssText = 'background:#fff;max-width:460px;width:90%;max-height:85vh;overflow:auto;padding:20px;border-radius:12px;font-family:system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.2);';
+  panel.style.cssText = 'background:var(--card);max-width:460px;width:90%;max-height:85vh;overflow:auto;padding:20px;border-radius:12px;font-family:system-ui,sans-serif;box-shadow:0 8px 30px rgba(0,0,0,.2);';
   overlay.appendChild(panel);
 
   const close = () => { try { overlay.remove(); } catch { /* already gone */ } };
@@ -61,7 +61,7 @@ export function renderRecipeConsentCard(model, { onAgree, onDecline, doc = globa
   panel.appendChild(h);
 
   const intro = doc.createElement('p');
-  intro.style.cssText = 'margin:0 0 12px;color:#444;';
+  intro.style.cssText = 'margin:0 0 12px;color:var(--ink-soft);';
   intro.textContent = t('circle.recipeConsent.intro');
   panel.appendChild(intro);
 
@@ -130,7 +130,7 @@ export function renderRecipeConsentCard(model, { onAgree, onDecline, doc = globa
     }
 
     const hint = doc.createElement('p');
-    hint.style.cssText = 'color:#666;font-size:.9em;margin:6px 0 0;';
+    hint.style.cssText = 'color:var(--ink-soft);font-size:.9em;margin:6px 0 0;';
     hint.textContent = t('circle.recipeConsent.optional_hint');
     panel.appendChild(hint);
   }
@@ -145,7 +145,7 @@ export function renderRecipeConsentCard(model, { onAgree, onDecline, doc = globa
     onAgree?.({ declinedKeys });
   });
   agree.className = 'recipe-consent-card__agree';
-  agree.style.cssText += 'background:#1a7f5a;color:#fff;border-color:#1a7f5a;font-weight:600;';
+  agree.style.cssText += 'background:var(--green);color:var(--accent-contrast);border-color:var(--green);font-weight:600;';
   actions.appendChild(agree);
   panel.appendChild(actions);
 

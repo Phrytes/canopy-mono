@@ -42,7 +42,9 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "fitness": "vitest run test/fitness/",
+    "fitness": "vitest run test/fitness/ && node scripts/theme-fitness.mjs",
+    "theme-css": "node scripts/theme-css.mjs",
+    "theme-fitness": "node scripts/theme-fitness.mjs",
     "test:browser": "playwright test",
     "test:browser:headed": "playwright test --headed",
     "dev": "vite",

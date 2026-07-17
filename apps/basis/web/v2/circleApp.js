@@ -837,7 +837,7 @@ function renderCatchUpIndicator() {
     el.setAttribute('role', 'status');
     el.style.cssText = [
       'position:fixed', 'top:8px', 'right:8px', 'z-index:1000',
-      'background:rgba(0,0,0,0.78)', 'color:#fff', 'padding:6px 10px',
+      'background:rgba(0,0,0,0.78)', 'color:#fff', 'padding:6px 10px', // hex-ok: fixed dark overlay
       'border-radius:12px', 'font-size:12px', 'font-family:system-ui,sans-serif',
       'box-shadow:0 2px 6px rgba(0,0,0,0.2)',
     ].join(';');
@@ -898,7 +898,7 @@ function renderCatchUpNotifications() {
   for (const { n, provider } of _catchUpNotifications) {
     const card = document.createElement('div');
     card.style.cssText = [
-      'background:#fff', 'border:1px solid #ccc', 'border-radius:8px',
+      'background:var(--card)', 'border:1px solid var(--line)', 'border-radius:8px',
       'padding:10px', 'box-shadow:0 2px 6px rgba(0,0,0,0.18)', 'font-size:13px',
     ].join(';');
     const title = document.createElement('div');
@@ -907,7 +907,7 @@ function renderCatchUpNotifications() {
       name: n.fromPeerAddr.slice(0, 12), kring: n.groupId,
     });
     const size = document.createElement('div');
-    size.style.color = '#555';
+    size.style.color = 'var(--ink-soft)';
     size.style.margin = '4px 0 8px';
     size.textContent = t('circle.chat.catch_up.provider_request_size', {
       count: n.count, kb: Math.round(n.sizeBytes / 1024) || 1,
@@ -917,7 +917,7 @@ function renderCatchUpNotifications() {
     const mkBtn = (label, mode) => {
       const b = document.createElement('button');
       b.textContent = label;
-      b.style.cssText = 'padding:4px 10px;border-radius:6px;border:1px solid #888;background:#f4f4f4;cursor:pointer;font-size:12px;';
+      b.style.cssText = 'padding:4px 10px;border-radius:6px;border:1px solid var(--line);background:var(--paper-2);cursor:pointer;font-size:12px;';
       b.addEventListener('click', () => {
         provider.resolveCatchUpRequest({ requestId: n.requestId, mode }).catch(() => {});
         _catchUpNotifications = _catchUpNotifications.filter((x) => x.n.requestId !== n.requestId);
@@ -1891,7 +1891,7 @@ async function openRecipientPicker({ itemId, fromCircleId, toCircleId, onResult 
   ].join(';');
   const overlay = document.createElement('div');
   overlay.style.cssText = [
-    'background:#fff', 'border-radius:12px', 'padding:16px', 'max-width:min(92vw,420px)',
+    'background:var(--card)', 'border-radius:12px', 'padding:16px', 'max-width:min(92vw,420px)',
     'max-height:80vh', 'overflow:auto', 'box-shadow:0 6px 24px rgba(0,0,0,0.25)',
     'font-family:system-ui,sans-serif',
   ].join(';');
@@ -3100,7 +3100,7 @@ async function showCircleInvite(circleId) {
   }
   const canvas = document.createElement('canvas');
   canvas.width = 220; canvas.height = 220;
-  canvas.style.cssText = 'display:block;margin:10px auto;background:#fff;max-width:220px';
+  canvas.style.cssText = 'display:block;margin:10px auto;background:#fff;max-width:220px'; // hex-ok: QR scanner contrast
   card.appendChild(canvas);
   import('qrcode').then((m) => (m.default ?? m).toCanvas(canvas, r.uri, { width: 220, margin: 1 }, () => {})).catch(() => { canvas.remove(); });
   const hint = document.createElement('p');

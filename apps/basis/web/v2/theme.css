@@ -1,32 +1,108 @@
 /* basis v2 — Onderling design tokens (web).
  *
- * Mirror of apps/basis/src/v2/theme.js `THEME` (used by mobile) — keep
- * the values in sync. Brand source: outreach/Onderling_v2/_chrome.css.
+ * GENERATED from src/v2/theme.js by scripts/theme-css.mjs — do not edit by
+ * hand; edit the tokens and re-run `node scripts/theme-css.mjs`.
  * Component + screen styles live in web/v2/circle.css. */
 
 :root {
-  --ink:        #1f1c14;
-  --ink-soft:   #5a5240;
-  --paper:      #f3efe2;
-  --paper-2:    #ebe6d5;
-  --line:       #d8d1bc;
-  --accent:     #b04a30;
-  --accent-ink: #8a3a26;
-  --card:       #fbf8ed;
-  --me-bg:      #f6e6e0;
-  --green:      #4a6230; --green-bg: #e0e7d2;
-  --blue:       #3f4f76; --blue-bg:  #dde2ee;
-  --amber:      #7a5a1f; --amber-bg: #ede0c4;
-  --danger:     #b04a30; --danger-bg:#f6e6e0;
-  --track-off:  #cfc7b0;
+  --ink: #17181a;
+  --ink-soft: #5b5d55;
+  --paper: #f7f7f4;
+  --paper-2: #ebeae4;
+  --line: #d8d8cf;
+  --accent: #17181a;
+  --accent-contrast: #f7f7f4;
+  --accent-ink: #2e7d4f;
+  --card: #ffffff;
+  --me-bg: #e8e6da;
+  --green: #2e7d4f;
+  --green-bg: #e9efe6;
+  --blue: #3f4f76;
+  --blue-bg: #e0e4ee;
+  --amber: #7a5a1f;
+  --amber-bg: #ede5cf;
+  --danger: #a3402f;
+  --danger-bg: #f5e7e2;
+  --track-off: #c9c8c0;
+  --white: #ffffff;
 
-  --radius-sm: 6px;
-  --radius:    10px;
-  --radius-lg: 14px;
+  --radius-sm: 4px;
+  --radius:    8px;
+  --radius-lg: 10px;
 
-  --font-serif: "Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif;
-  --font-sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --font-sans:  "Helvetica Neue", Helvetica, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --font-mono:  ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace;
+}
+
+/* dark — follows the OS unless data-theme overrides (set by the shell) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eceade;
+    --ink-soft: #9a9d90;
+    --paper: #161713;
+    --paper-2: #22231e;
+    --line: #34362e;
+    --accent: #eceade;
+    --accent-contrast: #161713;
+    --accent-ink: #82c298;
+    --card: #1e1f1a;
+    --me-bg: #2b2d25;
+    --green: #82c298;
+    --green-bg: #22291f;
+    --blue: #9fb0d8;
+    --blue-bg: #232837;
+    --amber: #d0b070;
+    --amber-bg: #2e2921;
+    --danger: #d47f68;
+    --danger-bg: #332420;
+    --track-off: #3a3c34;
+    --white: #1e1f1a;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #eceade;
+  --ink-soft: #9a9d90;
+  --paper: #161713;
+  --paper-2: #22231e;
+  --line: #34362e;
+  --accent: #eceade;
+  --accent-contrast: #161713;
+  --accent-ink: #82c298;
+  --card: #1e1f1a;
+  --me-bg: #2b2d25;
+  --green: #82c298;
+  --green-bg: #22291f;
+  --blue: #9fb0d8;
+  --blue-bg: #232837;
+  --amber: #d0b070;
+  --amber-bg: #2e2921;
+  --danger: #d47f68;
+  --danger-bg: #332420;
+  --track-off: #3a3c34;
+  --white: #1e1f1a;
+}
+:root[data-theme="light"] {
+  --ink: #17181a;
+  --ink-soft: #5b5d55;
+  --paper: #f7f7f4;
+  --paper-2: #ebeae4;
+  --line: #d8d8cf;
+  --accent: #17181a;
+  --accent-contrast: #f7f7f4;
+  --accent-ink: #2e7d4f;
+  --card: #ffffff;
+  --me-bg: #e8e6da;
+  --green: #2e7d4f;
+  --green-bg: #e9efe6;
+  --blue: #3f4f76;
+  --blue-bg: #e0e4ee;
+  --amber: #7a5a1f;
+  --amber-bg: #ede5cf;
+  --danger: #a3402f;
+  --danger-bg: #f5e7e2;
+  --track-off: #c9c8c0;
+  --white: #ffffff;
 }
 
 * { box-sizing: border-box; }

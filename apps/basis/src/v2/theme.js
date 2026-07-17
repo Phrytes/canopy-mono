@@ -1,50 +1,84 @@
 /**
  * basis v2 — Onderling design tokens (canonical, portable).
  *
- * The "linen + serif + terracotta" design language (the reason for the v2
- * transition). Brand source: outreach/Onderling_v2/_chrome.css; layouts:
- * the 36-page "Canopy interface — interface-ontwerp · print.pdf" at repo root.
+ * The "bulletin" design language (2026-07): one identity shared with
+ * onderling.org — warm paper ground, near-black ink, hard ink borders,
+ * bold sans headings, mono accents, green for links/status. Canonical CSS
+ * reference: the onderling-site repo, src/site.css. The previous
+ * "linen + serif + terracotta" tokens are preserved in ./theme-linen.js.
  *
- * This object is the single token source. The web mirror lives in
- * web/v2/theme.css (`:root` CSS vars with the SAME values — keep in sync);
- * the mobile theme (basis-mobile/src/screens/v2/theme.js) imports THEME
- * from here via '@onderling-app/basis'.
+ * This object is the single token source:
+ *  - web/v2/theme.css is GENERATED from this file — run
+ *    `node scripts/theme-css.mjs` after editing (checked by theme-fitness);
+ *  - the mobile theme (basis-mobile/src/screens/v2/theme.js) imports
+ *    THEME/THEME_DARK from here via '@onderling-app/basis'.
+ *
+ * THEME and THEME_DARK have the identical shape; consumers pick one.
+ * `accent` is the ACTION color (ink — the bulletin's black button) and
+ * `accentContrast` its text; `accentInk` is accent-colored TEXT (green).
  */
 
 export const THEME = {
   color: {
-    ink:       '#1f1c14', // primary text
-    inkSoft:   '#5a5240', // muted text, section labels
-    paper:     '#f3efe2', // app background (linen)
-    paper2:    '#ebe6d5', // card header strip / inset
-    line:      '#d8d1bc', // borders / hairlines
-    accent:    '#b04a30', // terracotta — primary buttons, active state
-    accentInk: '#8a3a26', // terracotta text on light
-    card:      '#fbf8ed', // framed-card inner / bot bubble
-    meBg:      '#f6e6e0', // "me" chat bubble (warm)
-    // status tokens (from the brand sheet + tag chips)
-    green:   '#4a6230', greenBg: '#e0e7d2', // lokaal / AANBOD / "ongewijzigd"
-    blue:    '#3f4f76', blueBg:  '#dde2ee', // betaald / VRAAG / "via hop"
-    amber:   '#7a5a1f', amberBg: '#ede0c4', // LENEN
-    danger:  '#b04a30', dangerBg:'#f6e6e0', // blocked / warning (reuses terracotta)
-    trackOff:'#cfc7b0', // pill-toggle off track
+    ink:       '#17181a', // primary text
+    inkSoft:   '#5b5d55', // muted text, section labels
+    paper:     '#f7f7f4', // app background (warm paper)
+    paper2:    '#ebeae4', // card header strip / inset
+    line:      '#d8d8cf', // borders / hairlines
+    accent:    '#17181a', // primary buttons, active state — ink
+    accentContrast: '#f7f7f4', // text/icons on accent
+    accentInk: '#2e7d4f', // accent-colored text, links — green
+    card:      '#ffffff', // framed-card inner / bot bubble
+    meBg:      '#e8e6da', // "me" chat bubble (warm beige)
+    green:   '#2e7d4f', greenBg: '#e9efe6', // lokaal / AANBOD / "ongewijzigd"
+    blue:    '#3f4f76', blueBg:  '#e0e4ee', // betaald / VRAAG / "via hop"
+    amber:   '#7a5a1f', amberBg: '#ede5cf', // LENEN
+    danger:  '#a3402f', dangerBg:'#f5e7e2', // blocked / warning (bulletin rust)
+    trackOff:'#c9c8c0', // pill-toggle off track
     white:   '#ffffff',
   },
   font: {
-    // Web font stacks. On mobile these names are remapped to the loaded
-    // expo-font families in basis-mobile/src/screens/v2/theme.js.
-    serif: '"Source Serif 4", "Iowan Old Style", Georgia, "Times New Roman", serif',
-    sans:  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    // Bold sans carries the identity; serif is a small accent (stats-strip
+    // style), system-local — no webfont download. On mobile these names are
+    // remapped in basis-mobile/src/screens/v2/theme.js.
+    serif: 'Georgia, "Iowan Old Style", "Times New Roman", serif',
+    sans:  '"Helvetica Neue", Helvetica, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif',
     mono:  'ui-monospace, SFMono-Regular, Menlo, "Roboto Mono", monospace',
   },
-  radius: { sm: 6, md: 10, lg: 14, pill: 999 },
+  radius: { sm: 4, md: 8, lg: 10, pill: 999 },
   space:  { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 },
 };
 
-// Soft per-circle avatar tints (board 1B — each circle gets its own shade:
-// periwinkle / sage / tan / beige / rose). Assigned by a stable hash of the
-// circle id so a circle keeps its colour across renders.
-export const AVATAR_TINTS = ['#e0e3f2', '#e0e7d2', '#ece2cf', '#ece6d6', '#f3e3df'];
+// Same structure on a dark ground (the site's dark variant): the action
+// color inverts to light ink, links/status lift to the lighter green.
+export const THEME_DARK = {
+  color: {
+    ink:       '#eceade',
+    inkSoft:   '#9a9d90',
+    paper:     '#161713',
+    paper2:    '#22231e',
+    line:      '#34362e',
+    accent:    '#eceade',
+    accentContrast: '#161713',
+    accentInk: '#82c298',
+    card:      '#1e1f1a',
+    meBg:      '#2b2d25',
+    green:   '#82c298', greenBg: '#22291f',
+    blue:    '#9fb0d8', blueBg:  '#232837',
+    amber:   '#d0b070', amberBg: '#2e2921',
+    danger:  '#d47f68', dangerBg:'#332420',
+    trackOff:'#3a3c34',
+    white:   '#1e1f1a', // "white" surfaces follow the card surface in dark
+  },
+  font:   THEME.font,
+  radius: THEME.radius,
+  space:  THEME.space,
+};
+
+// Soft per-circle avatar tints (board 1B — each circle gets its own shade),
+// retuned to the bulletin palette. Assigned by a stable hash of the circle
+// id so a circle keeps its colour across renders.
+export const AVATAR_TINTS = ['#e0e4ee', '#e9efe6', '#ede5cf', '#ebeae4', '#f5e7e2'];
 
 export function circleTint(seed) {
   const s = String(seed || '');
@@ -56,9 +90,10 @@ export function circleTint(seed) {
 /**
  * Tag-chip palette keyed by the stream item kind (board 5/8). Returns
  * `{ fg, bg }`; unknown kinds fall back to the neutral ink-soft/line pair.
+ * Pass `THEME_DARK.color` as `palette` when rendering on the dark theme.
  */
-export function tagColors(kind) {
-  const c = THEME.color;
+export function tagColors(kind, palette = THEME.color) {
+  const c = palette;
   switch (String(kind || '').toLowerCase()) {
     case 'vraag':
     case 'question':

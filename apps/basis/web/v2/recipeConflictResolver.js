@@ -164,7 +164,7 @@ export function renderRecipeConflictResolver(container, {
   applyBtn.className = 'circle-recipe-conflict__apply';
   applyBtn.textContent = tr('circle.recipe.conflict.apply');
   applyBtn.style.cssText = 'padding: 8px 14px; border: 0; background: var(--accent, #c84); '
-    + 'color: #fff; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer;';
+    + 'color: var(--accent-contrast); border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer;';
   applyBtn.disabled = true;
   applyBtn.addEventListener('click', () => {
     if (applyBtn.disabled) return;
@@ -238,7 +238,7 @@ function renderBlockRow(bc, { tr, local, incoming, onPick }) {
         sib.classList.toggle('is-picked', isPicked);
         sib.setAttribute('aria-pressed', isPicked ? 'true' : 'false');
         sib.style.background = isPicked ? 'var(--accent, #c84)' : 'var(--card, #fff)';
-        sib.style.color      = isPicked ? '#fff'                : 'inherit';
+        sib.style.color      = isPicked ? 'var(--accent-contrast)' : 'inherit';
       });
     });
     picker.appendChild(btn);
@@ -290,7 +290,7 @@ function renderMetaRow(mc, pathKey, { tr, onPick }) {
         sib.classList.toggle('is-picked', isPicked);
         sib.setAttribute('aria-pressed', isPicked ? 'true' : 'false');
         sib.style.background = isPicked ? 'var(--accent, #c84)' : 'var(--card, #fff)';
-        sib.style.color      = isPicked ? '#fff'                : 'inherit';
+        sib.style.color      = isPicked ? 'var(--accent-contrast)' : 'inherit';
       });
     });
     picker.appendChild(btn);

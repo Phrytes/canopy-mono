@@ -69,7 +69,7 @@ export function renderPairedDevices(container, opts = {}) {
       const canvas = document.createElement('canvas');
       canvas.className = 'cc-paired__qr';
       canvas.width = 200; canvas.height = 200;
-      canvas.style.cssText = 'display:block;max-width:200px;margin:8px 0;background:#fff';
+      canvas.style.cssText = 'display:block;max-width:200px;margin:8px 0;background:#fff'; // hex-ok: QR scanner contrast
       const qrHint = document.createElement('p');
       qrHint.className = 'cc-paired__qrhint';
       qrHint.textContent = tr('circle.pairedDevices.qrHint');
