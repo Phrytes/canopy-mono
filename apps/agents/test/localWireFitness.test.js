@@ -258,6 +258,7 @@ function buildWireDefs(registry, tokens = null, versionStoreFor = null, catalog 
     wire('getPersonaRelease'),
     wire('revokeAgent'),
     wire('grantAgent'),
+    wire('grantRole'),
     wire('revokeGrant'),
     wire('purgeAgent'),
     wire('listDataVersions'),
@@ -698,6 +699,87 @@ describe('agents — P2 control-op semantics (direct core)', () => {
     // Control ops accept it too — degraded (no tokens by definition).
     const res = await AGENT_CORES.revokeAgent(registry, { agentId: 'laptop-anne' });
     expect(res).toMatchObject({ revoked: true, tokenBacked: false });
+  });
+});
+
+/* ── P3 grantRole — roles as capability bundles (direct core) ───────────
+ * grantRole delegates to a `roleGrants` collaborator (core's
+ * RoleGrantManager) that sets the governance role AND materializes the
+ * bundle's cap-tokens.  Equivalence across routes is covered structurally
+ * by the degraded path (no collaborator → identical on both routes); these
+ * direct-core cases prove the token-backed materialization + resolution.
+ */
+describe('agents — grantRole (roles as capability bundles, direct core)', () => {
+  /** Deterministic mock RoleGrantManager: records grants, returns fixed ids. */
+  function makeMockRoleGrants() {
+    const grants = [];
+    return {
+      grants,
+      async grant({ memberPubKey, groupId, roleId, expiresIn }) {
+        grants.push({ memberPubKey, groupId, roleId, expiresIn });
+        return {
+          roleId,
+          rank:   70,
+          proof:  { role: roleId, memberPubKey, groupId },
+          tokens: [{ id: `role-tok-1` }, { id: `role-tok-2` }],
+        };
+      },
+    };
+  }
+
+  it('materializes the bundle: sets the role and reports the token ids (subject named)', async () => {
+    const registry = buildRegistry();
+    const roleGrants = makeMockRoleGrants();
+    const res = await AGENT_CORES.grantRole(
+      { registry, roleGrants },
+      { groupId: 'my-circle', role: 'warden', subject: 'member-W-pubkey', expiresInDays: 2 },
+    );
+    expect(res).toEqual({
+      granted:    true,
+      roleBacked: true,
+      role:       'warden',
+      rank:       70,
+      groupId:    'my-circle',
+      subject:    'member-W-pubkey',
+      tokenIds:   ['role-tok-1', 'role-tok-2'],
+    });
+    expect(roleGrants.grants).toEqual([
+      { memberPubKey: 'member-W-pubkey', groupId: 'my-circle', roleId: 'warden', expiresIn: 2 * MS_PER_DAY },
+    ]);
+  });
+
+  it('resolves the member by agentId/pubKey when no subject is given', async () => {
+    const registry = buildRegistry();
+    const roleGrants = makeMockRoleGrants();
+    const res = await AGENT_CORES.grantRole(
+      { registry, roleGrants },
+      { groupId: 'g', role: 'admin', agentId: 'phone-anne' },
+    );
+    // phone-anne → its pubKey becomes the grant subject.
+    expect(res.granted).toBe(true);
+    expect(res.subject).toBe('pub-anne-phone');
+    expect(roleGrants.grants[0].memberPubKey).toBe('pub-anne-phone');
+  });
+
+  it('degrades honestly with no collaborator (roleBacked false, nothing materialized)', async () => {
+    const registry = buildRegistry();
+    const res = await AGENT_CORES.grantRole(
+      { registry },
+      { groupId: 'g', role: 'warden', subject: 'w' },
+    );
+    expect(res).toEqual({
+      granted: false, roleBacked: false, role: null, rank: null,
+      groupId: null, subject: null, tokenIds: [],
+    });
+  });
+
+  it('missing groupId / role / member → degraded (no grant attempted)', async () => {
+    const registry = buildRegistry();
+    const roleGrants = makeMockRoleGrants();
+    const res = await AGENT_CORES.grantRole({ registry, roleGrants }, { role: 'warden', subject: 'w' });
+    expect(res.granted).toBe(false);
+    expect(res.roleBacked).toBe(true);   // a collaborator IS present, but args are incomplete
+    expect(roleGrants.grants).toEqual([]);
   });
 });
 

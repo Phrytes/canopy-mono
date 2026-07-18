@@ -166,6 +166,17 @@ export {
   canPromote,
   listKnownRoles,
 } from './permissions/Roles.js';
+export {
+  defineRoleBundle,
+  registerRoleBundle,
+  getRoleBundle,
+  hasRoleBundle,
+  listRoleBundles,
+  unregisterRoleBundle,
+  resetRoleBundles,
+  ADMIN_ROLE_BUNDLE,
+} from './permissions/RoleBundle.js';
+export { RoleGrantManager, materializeBundle } from './permissions/RoleGrant.js';
 
 // ── Routing (Group G) ────────────────────────────────────────────────────────
 export { FallbackTable }                       from './routing/FallbackTable.js';

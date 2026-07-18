@@ -285,6 +285,44 @@ export const agentsManifest = {
         },
       },
     },
+    /* ── P3 ROLE grant (roles as capability bundles) ────────────────────
+     * grantRole ASSIGNS a role to a member AND materializes the role's
+     * capability bundle: the injected `roleGrants` collaborator (bound to
+     * core's `RoleGrantManager`) sets the governance role via
+     * `GroupManager.setRole` (signed) AND issues the bundle's cap-tokens
+     * to the member.  Same token-first discipline as grantAgent — the
+     * enforced authority (the materialized tokens) is issued by the
+     * collaborator; this op only names the act.  Without a collaborator it
+     * reports the honest degraded `roleBacked: false`.  Enforcement stays
+     * PolicyEngine (`requiredRole` + cap-token verify) — no second gate.
+     */
+    {
+      id:        'grantRole',
+      verb:      'update',
+      appliesTo: { type: 'agent' },
+      params: [
+        // The circle/group the role is held IN.
+        { name: 'groupId', kind: 'string', required: true, schema: { minLength: 1 } },
+        // A Roles.js role id with a registered RoleBundle (standard or custom).
+        { name: 'role',    kind: 'string', required: true, schema: { minLength: 1 } },
+        // The member the role is granted to — resolved by agentId/pubKey
+        // (like the other control ops), OR named directly via `subject`
+        // (the member's pubKey). At least one.
+        { name: 'agentId', kind: 'string', schema: { minLength: 1 } },
+        { name: 'subject', kind: 'string', schema: { minLength: 1 } },
+        // Token lifetime for the materialized bundle; defaults to 1 day.
+        { name: 'expiresInDays', kind: 'number', schema: { exclusiveMinimum: 0 } },
+      ],
+      surfaces: {
+        chat: {
+          reply: 'record',
+          hint:  'Grant a member a ROLE and materialize its capability bundle: sets the '
+               + 'governance role (signed) AND issues the role bundle\'s capability tokens to '
+               + 'the member (by groupId + role + the member agentId/pubKey or subject; optional '
+               + 'expiry in days). Reports the role, rank, and the materialized token ids.',
+        },
+      },
+    },
     {
       id:        'revokeGrant',
       verb:      'revoke',

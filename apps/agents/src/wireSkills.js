@@ -50,7 +50,7 @@ import { INSTALL_CORES } from './installCores.js';
  *   separately — buildAgentSkills treats it as opaque data.
  * @returns {Array<{ id: string, handler: Function, visibility: string }>}
  */
-export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog, profiles } = {}) {
+export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog, profiles, roleGrants } = {}) {
   if (!registry || typeof registry.list !== 'function') {
     throw new TypeError('buildAgentSkills: registry (agent-registry) with list() required');
   }
@@ -71,6 +71,7 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog, p
     versionStoreFor: versionStoreFor ?? null,
     catalog:         catalog ?? null,
     profiles:        profiles ?? null,   // identity step 4 — createProfile collaborator (owner-root-backed)
+    roleGrants:      roleGrants ?? null, // P3 — grantRole collaborator (core RoleGrantManager: setRole + materialize bundle)
   };
 
   // The wired op ids, in registration order. Unlike folio (which filters by
@@ -91,6 +92,7 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog, p
     'getPersonaRelease',
     'revokeAgent',
     'grantAgent',
+    'grantRole',
     'revokeGrant',
     'purgeAgent',
     'listDataVersions',

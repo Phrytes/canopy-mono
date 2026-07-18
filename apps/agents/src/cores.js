@@ -50,13 +50,18 @@ const DEFAULT_EXPIRES_IN_DAYS = 30;   // BotAgentRegistry precedent.
  */
 function asStore(store) {
   if (store && typeof store.list === 'function') {
-    return { registry: store, tokens: null, profiles: null };
+    return { registry: store, tokens: null, profiles: null, roleGrants: null };
   }
   const registry = store?.registry;
   if (!registry || typeof registry.list !== 'function') {
     throw new TypeError('agents cores: store must be a registry or { registry, tokens? }');
   }
-  return { registry, tokens: store.tokens ?? null, profiles: store.profiles ?? null };
+  return {
+    registry,
+    tokens:     store.tokens     ?? null,
+    profiles:   store.profiles   ?? null,
+    roleGrants: store.roleGrants ?? null,
+  };
 }
 
 /**
@@ -282,6 +287,69 @@ export async function grantAgent(store, args = {}) {
     tokenId,
     expiresAt,
     agent:       await readBack(registry, entry.agentId),
+  };
+}
+
+/**
+ * grantRole — assign a ROLE to a member AND materialize its capability bundle
+ * (P3: roles as capability bundles).  Mirrors grantAgent's exposure, but the
+ * enforced authority here is a role BUNDLE, not a single skill grant: the
+ * injected `roleGrants` collaborator (core's `RoleGrantManager`) sets the
+ * governance role via `GroupManager.setRole` (signed) AND issues the bundle's
+ * cap-tokens to the member.
+ *
+ * The member is resolved by `agentId`/pubKey (a registry scan, like the other
+ * control ops) OR named directly via `subject` (the member's pubKey — the
+ * member need not be a local registry entry, since a role is held in a circle,
+ * not on this device's roster).  Without a `roleGrants` collaborator the op
+ * reports the honest degraded `roleBacked: false` (nothing materialized).
+ *
+ * @param {object} store  `{ registry, roleGrants? }`
+ * @param {{ groupId?: string, role?: string, agentId?: string,
+ *           subject?: string, expiresInDays?: number }} args
+ * @returns {Promise<{ granted: boolean, roleBacked: boolean, role: string|null,
+ *   rank: number|null, groupId: string|null, subject: string|null,
+ *   tokenIds: string[] }>}
+ */
+export async function grantRole(store, args = {}) {
+  const { registry, roleGrants } = asStore(store);
+  const groupId = (typeof args?.groupId === 'string' && args.groupId.length > 0) ? args.groupId : null;
+  const role    = (typeof args?.role    === 'string' && args.role.length    > 0) ? args.role    : null;
+
+  // Resolve the member: explicit subject wins; else the resolved entry's pubKey.
+  let subject = (typeof args?.subject === 'string' && args.subject.length > 0) ? args.subject : null;
+  if (!subject && typeof args?.agentId === 'string' && args.agentId.length > 0) {
+    const entry = await resolveEntry(registry, args.agentId);
+    subject = entry?.pubKey ?? null;
+  }
+
+  const degraded = { granted: false, roleBacked: !!roleGrants, role: null, rank: null, groupId: null, subject: null, tokenIds: [] };
+  if (!roleGrants || typeof roleGrants.grant !== 'function' || !groupId || !role || !subject) {
+    return degraded;
+  }
+
+  const expiresInDays = (typeof args?.expiresInDays === 'number' && args.expiresInDays > 0)
+    ? args.expiresInDays
+    : DEFAULT_EXPIRES_IN_DAYS;
+
+  // The collaborator does both halves (setRole + materialize) — token-first by
+  // construction (RoleGrantManager sets the role, then issues the bundle).
+  const res = await roleGrants.grant({
+    memberPubKey: subject,
+    groupId,
+    roleId:       role,
+    expiresIn:    expiresInDays * MS_PER_DAY,
+  });
+
+  return {
+    granted:    true,
+    roleBacked: true,
+    role:       res?.roleId ?? role,
+    rank:       res?.rank ?? null,
+    groupId,
+    subject,
+    // `tokens` are CapabilityToken instances (materialized bundle) — report ids.
+    tokenIds:   Array.isArray(res?.tokens) ? res.tokens.map((t) => t?.id).filter(Boolean) : [],
   };
 }
 
@@ -542,6 +610,7 @@ export const AGENT_CORES = Object.freeze({
   getPersonaRelease,
   revokeAgent,
   grantAgent,
+  grantRole,
   revokeGrant,
   purgeAgent,
 });
