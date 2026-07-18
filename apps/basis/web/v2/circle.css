@@ -957,6 +957,12 @@
 .cc-mydata__v { flex: 1 1 auto; color: var(--ink); word-break: break-all; }
 .cc-mydata__privacy-title { font-size: 13px; font-weight: 600; color: var(--ink); }
 .cc-mydata__privacy-body { font-size: 13px; color: var(--ink-soft); margin: 2px 0 0; line-height: 1.4; }
+/* Bulletin restyle — display-theme pill toggle (mirror of onderling.org's #theme-toggle):
+   a mono segmented control, the active option inverts to ink; hover previews the invert. */
+.cc-mydata__theme-toggle { align-self: flex-start; display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.cc-mydata__theme-btn { cursor: pointer; font-family: var(--font-mono); font-size: 11.5px; padding: 4px 12px; border-radius: 999px; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); }
+.cc-mydata__theme-btn:hover { background: var(--ink); color: var(--card); }
+.cc-mydata__theme-btn.is-active { background: var(--ink); color: var(--card); font-weight: 700; }
 .cc-profile__mydata { align-self: flex-start; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
 .cc-mydata__signin, .cc-mydata__action { align-self: flex-start; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: var(--radius); background: transparent; border: 1px solid var(--accent); color: var(--accent-ink); }
 .cc-mydata__action.cc-mydata__restore { border-color: var(--line); color: var(--ink-soft); }

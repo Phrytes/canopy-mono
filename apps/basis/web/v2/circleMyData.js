@@ -220,18 +220,28 @@ export function renderCircleMyData(container, {
     container.appendChild(sec);
   }
 
-  // ── display theme (system/light/dark — stored locally, applies live) ────────
+  // ── display theme (systeem/licht/donker — stored locally, applies live) ──────
+  // Bulletin restyle — a mono pill toggle (mirror of onderling.org's #theme-toggle):
+  // one segmented control, the active option inverts to ink. onSetTheme persists
+  // localStorage['basis.theme'] and stamps/removes document.documentElement.dataset.theme
+  // live (systeem = remove, so prefers-color-scheme wins) — wired in circleApp.
   if (typeof onSetTheme === 'function') {
     const sec = section(tr('circle.mydata.theme'));
+    const toggle = document.createElement('div');
+    toggle.className = 'cc-mydata__theme-toggle';
+    toggle.setAttribute('role', 'group');
+    toggle.setAttribute('aria-label', tr('circle.mydata.theme'));
     for (const th of ['system', 'light', 'dark']) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = `cc-mydata__pref${th === themePref ? ' is-active' : ''}`;
+      b.className = `cc-mydata__theme-btn${th === themePref ? ' is-active' : ''}`;
       b.dataset.theme = th;
+      b.setAttribute('aria-pressed', th === themePref ? 'true' : 'false');
       b.textContent = tr(`circle.mydata.theme_${th}`);
       b.addEventListener('click', () => onSetTheme(th));
-      sec.appendChild(b);
+      toggle.appendChild(b);
     }
+    sec.appendChild(toggle);
     container.appendChild(sec);
   }
 
