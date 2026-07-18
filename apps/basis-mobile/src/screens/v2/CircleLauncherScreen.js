@@ -168,7 +168,7 @@ import CircleStreamScreen from './CircleStreamScreen.js';
 import CircleViewAsScreen from './CircleViewAsScreen.js';
 import CircleAdvisorScreen from './CircleAdvisorScreen.js';
 import CircleHopScreen from './CircleHopScreen.js';
-import CircleSkillEditorScreen from './CircleSkillEditorScreen.js';
+import CircleOfferingEditorScreen from './CircleOfferingEditorScreen.js';
 import CircleFolioScreen from './CircleFolioScreen.js';
 import CircleRulesScreen from './CircleRulesScreen.js';
 import CircleRulesConsentScreen from './CircleRulesConsentScreen.js';
@@ -1315,7 +1315,7 @@ export default function CircleLauncherScreen({
   }
   if (selected && view === 'skills') {
     return (
-      <CircleSkillEditorScreen
+      <CircleOfferingEditorScreen
         skill={skillDraft}
         onSave={async (s) => {
           try { await AsyncStorage.setItem(`cc.circleSkill.${selected.id}`, JSON.stringify(s)); } catch { /* ignore */ }

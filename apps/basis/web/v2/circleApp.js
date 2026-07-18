@@ -561,7 +561,7 @@ import { renderCircleNearby } from './circleNearby.js';
 import { renderCircleMyThings } from './circleMyThings.js';
 import { renderCircleAdvisor } from './circleAdvisor.js';
 import { renderCircleHop } from './circleHop.js';
-import { renderSkillEditor } from './circleSkillEditor.js';
+import { renderOfferingEditor } from './circleOfferingEditor.js';
 import { renderCircleFolioBrowser } from './circleFolio.js';
 import {
   normalizeRulesDoc,
@@ -3089,7 +3089,7 @@ async function showCircleInvite(circleId) {
   // opt-outable capabilities at join (see circleConsent.js). Best-effort: a missing policy just omits it.
   let invitePolicy = {};
   try { invitePolicy = (await policyStore.get(circleId)) ?? {}; } catch { /* default — no template embedded */ }
-  // Fold-in phase C (Q3) — embed the circle's skills-matching charter signal. The board-8 circle-skill
+  // Fold-in phase C (Q3) — embed the circle's skills-matching charter signal. The board-8 circle-offering
   // record lives ONLY on this (admin) device (localStorage draft, see showSkills), so invite-build is
   // the one moment the joiner-side wizard can learn it pre-join. Best-effort: unreadable ⇒ not embedded.
   let inviteOfferingsMatching = false;
@@ -4231,7 +4231,7 @@ const skillKey = (id) => `cc.circleSkill.${id}`;
 function showSkills(id) {
   let skill = normalizeOffering(null);
   try { const s = localStorage.getItem(skillKey(id)); if (s) skill = normalizeOffering(JSON.parse(s)); } catch { /* default */ }
-  const rerender = () => renderSkillEditor(rootEl, {
+  const rerender = () => renderOfferingEditor(rootEl, {
     skill,
     t,
     onChange: (patch) => { skill = mergeOffering(skill, patch); rerender(); },

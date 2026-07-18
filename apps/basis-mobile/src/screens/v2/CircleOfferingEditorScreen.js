@@ -1,7 +1,7 @@
 /**
  * basis-mobile v2 — skill editor (RN screen, board 8).
  *
- * RN counterpart of web's circleSkillEditor over the SAME shared model
+ * RN counterpart of web's circleOfferingEditor over the SAME shared model
  * (`@onderling-app/basis`): the four skill axes (openness · posture ·
  * status · radius) as single-choice radio rows. Holds a working copy via
  * `mergeOffering`; Save returns it to the host, Back discards. Local discovery
@@ -15,7 +15,7 @@ import { t } from '../../core/localisation.js';
 
 const AXES = ['openness', 'posture', 'status', 'radius'];
 
-export default function CircleSkillEditorScreen({ skill, onSave, onBack }) {
+export default function CircleOfferingEditorScreen({ skill, onSave, onBack }) {
   const [working, setWorking] = useState(() => normalizeOffering(skill ?? DEFAULT_OFFERING));
   // N2.b — which (axis-option) consequence note is open.
   const [openInfo, setOpenInfo] = useState(null);
@@ -23,18 +23,18 @@ export default function CircleSkillEditorScreen({ skill, onSave, onBack }) {
   const patch = (p) => setWorking((cur) => mergeOffering(cur, p));
 
   return (
-    <View style={styles.page} testID="circle-skill">
+    <View style={styles.page} testID="circle-offering">
       <View style={styles.bar}>
-        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-skill-back">
+        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-offering-back">
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
       </View>
-      <Text style={styles.title}>{t('circle.skills.editor_title')}</Text>
+      <Text style={styles.title}>{t('circle.offerings.editor_title')}</Text>
 
       <ScrollView contentContainerStyle={styles.body}>
         {AXES.map((axis) => (
           <View key={axis}>
-            <Text style={styles.section}>{t(`circle.skills.axis.${axis}`)}</Text>
+            <Text style={styles.section}>{t(`circle.offerings.axis.${axis}`)}</Text>
             {OFFERING_AXES[axis].map((opt) => {
               const selected = working[axis] === opt;
               const consKey = consequenceKeyFor(axis, opt);
@@ -53,7 +53,7 @@ export default function CircleSkillEditorScreen({ skill, onSave, onBack }) {
                       <View style={[styles.radio, selected && styles.radioOn]}>
                         {selected ? <View style={styles.radioDot} /> : null}
                       </View>
-                      <Text style={styles.rowLabel}>{t(`circle.skills.opt.${opt}`)}</Text>
+                      <Text style={styles.rowLabel}>{t(`circle.offerings.opt.${opt}`)}</Text>
                     </Pressable>
                     {consKey ? (
                       <Pressable
@@ -82,7 +82,7 @@ export default function CircleSkillEditorScreen({ skill, onSave, onBack }) {
         style={styles.save}
         onPress={() => onSave?.(working)}
         accessibilityRole="button"
-        testID="circle-skill-save"
+        testID="circle-offering-save"
       >
         <Text style={styles.saveText}>{t('circle.settings.save')}</Text>
       </Pressable>

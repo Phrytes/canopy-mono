@@ -1581,14 +1581,14 @@
       "doc": "Chip shown when the per-contact mode falls through to the global stance."
     }
   },
-  "skills": {
+  "offerings": {
     "editor_title": {
-      "text": "Skill",
-      "doc": "Skill editor heading (board 8)."
+      "text": "Offering",
+      "doc": "Offering editor heading (board 8)."
     },
     "matches_title": {
       "text": "Matches",
-      "doc": "Skill match-list heading."
+      "doc": "Offering match-list heading."
     },
     "no_matches": {
       "text": "No matches yet",

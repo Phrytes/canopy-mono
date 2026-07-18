@@ -1,7 +1,7 @@
 /**
  * basis-mobile v2 — skill match list (RN screen, board 8).
  *
- * RN counterpart of web's circleSkillMatches over the SAME shared projection
+ * RN counterpart of web's circleOfferingMatches over the SAME shared projection
  * (`buildOfferingMatches`): one row per INJECTED match, each carrying a label +
  * a source badge (human / agent / via-hop). The host supplies the matches;
  * no fetching or local discovery happens here. Mirrors CircleStreamScreen.
@@ -12,26 +12,26 @@ import { theme } from './theme.js';
 import { buildOfferingMatches } from '@onderling-app/basis';
 import { t } from '../../core/localisation.js';
 
-export default function CircleSkillMatchesScreen({ matches = [], onBack }) {
+export default function CircleOfferingMatchesScreen({ matches = [], onBack }) {
   const rows = useMemo(() => buildOfferingMatches({ matches }), [matches]);
 
   return (
-    <View style={styles.page} testID="circle-skill-matches">
+    <View style={styles.page} testID="circle-offering-matches">
       <View style={styles.bar}>
-        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-skill-matches-back">
+        <Pressable onPress={onBack} accessibilityRole="button" testID="circle-offering-matches-back">
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
       </View>
-      <Text style={styles.title}>{t('circle.skills.matches_title')}</Text>
+      <Text style={styles.title}>{t('circle.offerings.matches_title')}</Text>
 
       {rows.length === 0 ? (
-        <Text style={styles.muted}>{t('circle.skills.no_matches')}</Text>
+        <Text style={styles.muted}>{t('circle.offerings.no_matches')}</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {rows.map((row) => (
             <View key={row.id} style={styles.row} testID={`skill-match-${row.id}`}>
               <Text style={styles.label}>{row.label}</Text>
-              <Text style={styles.badge}>{t(`circle.skills.source.${row.source}`)}</Text>
+              <Text style={styles.badge}>{t(`circle.offerings.source.${row.source}`)}</Text>
             </View>
           ))}
         </ScrollView>

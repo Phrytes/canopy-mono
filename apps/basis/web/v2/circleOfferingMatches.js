@@ -9,52 +9,52 @@
  */
 import { buildOfferingMatches } from '@onderling/kring-host/circleOfferings';
 
-export function renderSkillMatches(container, {
+export function renderOfferingMatches(container, {
   matches = [], t, onBack,
 } = {}) {
   const tr = typeof t === 'function' ? t : (k) => k;
   container.innerHTML = '';
-  container.classList.add('circle-skill-matches');
+  container.classList.add('circle-offering-matches');
 
   const back = document.createElement('button');
   back.type = 'button';
-  back.className = 'circle-skill-matches__back';
+  back.className = 'circle-offering-matches__back';
   back.textContent = tr('circle.back');
   back.addEventListener('click', () => { if (typeof onBack === 'function') onBack(); });
   container.appendChild(back);
 
   const head = document.createElement('h2');
-  head.className = 'circle-skill-matches__title';
-  head.textContent = tr('circle.skills.matches_title');
+  head.className = 'circle-offering-matches__title';
+  head.textContent = tr('circle.offerings.matches_title');
   container.appendChild(head);
 
   const rows = buildOfferingMatches({ matches });
 
   if (!rows.length) {
     const empty = document.createElement('div');
-    empty.className = 'circle-skill-matches__empty';
-    empty.textContent = tr('circle.skills.no_matches');
+    empty.className = 'circle-offering-matches__empty';
+    empty.textContent = tr('circle.offerings.no_matches');
     container.appendChild(empty);
     return container;
   }
 
   const list = document.createElement('div');
-  list.className = 'circle-skill-matches__list';
+  list.className = 'circle-offering-matches__list';
   for (const row of rows) {
     const el = document.createElement('div');
-    el.className = 'circle-skill-matches__row';
+    el.className = 'circle-offering-matches__row';
     el.dataset.matchId = row.id;
     el.dataset.source = row.source;
 
     const label = document.createElement('span');
-    label.className = 'circle-skill-matches__label';
+    label.className = 'circle-offering-matches__label';
     label.textContent = row.label;
     el.appendChild(label);
 
     const badge = document.createElement('span');
-    badge.className = 'circle-skill-matches__badge';
+    badge.className = 'circle-offering-matches__badge';
     badge.dataset.source = row.source;
-    badge.textContent = tr(`circle.skills.source.${row.source}`);
+    badge.textContent = tr(`circle.offerings.source.${row.source}`);
     el.appendChild(badge);
 
     list.appendChild(el);

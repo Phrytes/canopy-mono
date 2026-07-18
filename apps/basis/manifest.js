@@ -846,7 +846,7 @@ export const basisManifest = {
     { id: 'override', labelKey: 'circle.override.title',       target: { kind: 'nav', to: 'override' } },
     { id: 'viewAs',   labelKey: 'circle.viewAs.title',         target: { kind: 'nav', to: 'viewAs' },   requires: ['memberDirectory'] },
     { id: 'advisor',  labelKey: 'circle.advisor.title',        target: { kind: 'nav', to: 'advisor' } },
-    { id: 'skills',   labelKey: 'circle.skills.editor_title',  target: { kind: 'nav', to: 'skills' } },
+    { id: 'skills',   labelKey: 'circle.offerings.editor_title',  target: { kind: 'nav', to: 'skills' } },
     { id: 'files',    labelKey: 'circle.folio.title',          target: { kind: 'nav', to: 'files' },    requires: ['lists', 'notes'] },
     { id: 'rules',    labelKey: 'circle.rules.title',          target: { kind: 'nav', to: 'rules' },     requires: ['houseRules'] },
     { id: 'recipes',  labelKey: 'circle.recipe.editor.book_title', target: { kind: 'nav', to: 'recipes' } },

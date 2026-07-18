@@ -10,7 +10,7 @@
  * LEFT this screen — skills are driver-like items on the persona truth layer
  * now (`circleMij.js`, "Mij → persona's"). A quiet pointer row (`onOpenMij`)
  * replaces it. NOT to be confused with `showSkills` (the circle's openness
- * *policy* surface, circleSkillEditor.js — a different feature, untouched).
+ * *policy* surface, circleOfferingEditor.js — a different feature, untouched).
  *
  * D / SP-3b consumer-switch (second live surface) — the "Mij" (Me) screen
  * header is sourced from the manifest PAGE projection: the `me` op declares

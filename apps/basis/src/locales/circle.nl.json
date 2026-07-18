@@ -1581,14 +1581,14 @@
       "doc": "Chip for global-stance fallback."
     }
   },
-  "skills": {
+  "offerings": {
     "editor_title": {
-      "text": "Vaardigheid",
-      "doc": "Skill editor heading (board 8)."
+      "text": "Aanbod",
+      "doc": "Offering editor heading (board 8)."
     },
     "matches_title": {
       "text": "Matches",
-      "doc": "Skill match-list heading."
+      "doc": "Offering match-list heading."
     },
     "no_matches": {
       "text": "Nog geen matches",
