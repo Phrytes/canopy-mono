@@ -14,6 +14,7 @@
  */
 
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../src/v2/embedChips.js';
+import { buildAttachControl } from './attachControl.js';
 
 const INTENTS = ['ask', 'offer', 'lend'];
 
@@ -26,7 +27,15 @@ export function renderCircleNoticeboard(container, {
   onAction,
   onIntent,
   attachment = null,        // S5 — the pending image attachment ({thumbnail, name}) or null
-  onAttach,                 // (file) => void — host encodes + sets the pending attachment
+  onAttach,                 // (file) => void — host encodes + sets the pending attachment (the FILE entry's media pipeline)
+  // P2 (J4) — the ATTACHMENT projector's menu. `attachMenu` is
+  // `renderAttachments(basisManifest).attachMenu` (host-computed); the composer's
+  // "+" renders it. `attachFileOpId` names the entry that routes through the media
+  // pipeline above; `onAttachCommand(entry)` dispatches every other entry (host →
+  // callSkill/dispatchReady, params gathered via the form machinery).
+  attachMenu = [],
+  attachFileOpId = 'embed-file',
+  onAttachCommand,
   onClearAttach,            // () => void
   onViewAttachment,         // ({post, att}) => void — open the full image
   onEmbedOpen,              // ({type, ref, screen}) => void — tap a "See also" chip to open the item
@@ -60,28 +69,16 @@ export function renderCircleNoticeboard(container, {
   input.className = 'cc-prikbord__input';
   input.placeholder = tr(`circle.noticeboard.placeholder.${intent}`);
   row.appendChild(input);
-  // S5 — attach an inline image (gated on the host wiring the encoder).
-  let fileInput = null;
-  if (typeof onAttach === 'function') {
-    const attachBtn = document.createElement('button');
-    attachBtn.type = 'button';
-    attachBtn.className = 'cc-prikbord__attach';
-    attachBtn.title = tr('circle.noticeboard.attach');
-    attachBtn.textContent = '📎';
-    fileInput = document.createElement('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/png,image/jpeg,image/webp';
-    fileInput.className = 'cc-prikbord__file';
-    fileInput.style.display = 'none';
-    fileInput.addEventListener('change', () => {
-      const f = fileInput.files && fileInput.files[0];
-      if (f) onAttach(f);
-      fileInput.value = '';
-    });
-    attachBtn.addEventListener('click', () => fileInput.click());
-    row.appendChild(attachBtn);
-    row.appendChild(fileInput);
-  }
+  // P2 (J4) — the projector-driven "+" attach affordance (replaces the hand-coded
+  // 📎). The FILE entry still routes through the media pipeline (onAttach); the
+  // menu comes from the manifest via renderAttachments. Absent when nothing is
+  // usable — a sealed-only p0/p1 circle (no onAttach) with no menu shows none.
+  const attachControl = buildAttachControl({
+    attachMenu, attachFileOpId, onAttach, onAttachCommand,
+    cls: (s) => `cc-prikbord__${s}`,
+    tr, menuLabelKey: 'circle.noticeboard.attach',
+  });
+  if (attachControl) row.appendChild(attachControl);
   const post = document.createElement('button');
   post.type = 'submit';
   post.className = 'cc-prikbord__post';

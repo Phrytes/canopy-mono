@@ -3511,5 +3511,23 @@
       "text": "≤ {{rung}}",
       "doc": "mij#personas — charter cell: the circle requests this property up to this rung at most."
     }
+  },
+  "attach": {
+    "card": {
+      "text": "Card",
+      "doc": "P2/J4 — attach-menu label for the /embed op (attach an existing item card)."
+    },
+    "file": {
+      "text": "File",
+      "doc": "P2/J4 — attach-menu label for /embed-file (routes through the media pipeline)."
+    },
+    "appointment": {
+      "text": "Appointment",
+      "doc": "P2/J4 — attach-menu label for /embed-time (appointment maker)."
+    },
+    "menu": {
+      "text": "Add",
+      "doc": "P2/J4 — aria/title for the composer + attach-menu trigger."
+    }
   }
 }

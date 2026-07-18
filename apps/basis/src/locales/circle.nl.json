@@ -3511,5 +3511,23 @@
       "text": "≤ {{rung}}",
       "doc": "mij#personas — charter-cel: de kring vraagt deze eigenschap tot maximaal deze sport."
     }
+  },
+  "attach": {
+    "card": {
+      "text": "Kaart",
+      "doc": "P2/J4 — attach-menu label for the /embed op (attach an existing item card)."
+    },
+    "file": {
+      "text": "Bestand",
+      "doc": "P2/J4 — attach-menu label for /embed-file (routes through the media pipeline)."
+    },
+    "appointment": {
+      "text": "Afspraak",
+      "doc": "P2/J4 — attach-menu label for /embed-time (appointment maker)."
+    },
+    "menu": {
+      "text": "Toevoegen",
+      "doc": "P2/J4 — aria/title for the composer + attach-menu trigger."
+    }
   }
 }

@@ -158,6 +158,12 @@ export const basisManifest = {
           reply: 'embed-card',
           hint:  'embed an item card; --claim for claim-on-behalf',
         },
+        // P2 (J4) — the ATTACHMENT projector (`renderAttachments`). Mirrors
+        // `surfaces.slash`: one declaration → the op appears in the composer's
+        // "+" attach menu. `label` is a locale key (invariant #8; the surface
+        // renderer resolves it via t()). Tapping "Kaart" fires this op's
+        // `{opId,args}` → callSkill, identical to typing `/embed`.
+        attach: { label: 'circle.attach.card', group: 'embed' },
       },
     },
 
@@ -186,6 +192,11 @@ export const basisManifest = {
       surfaces: {
         slash: { command: '/embed-file', body: 'flags' },
         chat:  { reply: 'embed-card', hint: 'embed a file; --path=X | --pick | --name=X' },
+        // P2 (J4) — attach-menu entry "Bestand". The projected file entry is the
+        // ONE the web composer routes back through the media pipeline
+        // (createMediaEmbed / sealed upload); every other entry dispatches
+        // straight to callSkill. `itemType: 'file'` names the attachable noun.
+        attach: { label: 'circle.attach.file', itemType: 'file', group: 'media' },
       },
     },
 
@@ -211,6 +222,10 @@ export const basisManifest = {
       surfaces: {
         slash: { command: '/embed-time', body: 'flags' },
         chat:  { reply: 'embed-card', hint: 'create an appointment; --share=anne to send' },
+        // P2 (J4) — attach-menu entry "Afspraak". Its required params (title ·
+        // when) trip the composer's form machinery (buildFormSpec) on tap, then
+        // dispatch — exactly like `/embed-time` with no flags does today.
+        attach: { label: 'circle.attach.appointment', itemType: 'event', group: 'media' },
       },
     },
 

@@ -78,7 +78,7 @@ import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
 // B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
 // B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
-import { buildCapabilityMatrix } from '@onderling/app-manifest';
+import { buildCapabilityMatrix, renderAttachments } from '@onderling/app-manifest';
 // D / SP-3b consumer-switch — select the projected PAGE surface (renderWeb) for
 // the settings op so the live settings header is manifest-driven (invariant #4).
 import { pageForOp } from '../../src/v2/pageProjection.js';
@@ -247,6 +247,11 @@ import { renderRecipientPicker } from './recipientPicker.js';
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
 import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so basis's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
+
+// P2 (J4) — the ATTACHMENT projector's menu for the composer "+", projected ONCE from
+// the (static) basis manifest. Feeds BOTH the prikbord + kring composers; each entry
+// taps to {opId,args} → dispatch, identical to the matching slash command.
+const basisAttachMenu = renderAttachments(basisManifest).attachMenu;
 
 // The app-wide DEFAULT lists service, PERSISTENT: an IndexedDB-backed DataSource (lists survive a reload).
 // Lazy + memoised (the DataSource build is async); falls back to in-memory if IDB is unavailable (e.g. SSR/tests).
@@ -3817,6 +3822,16 @@ function showKring(id, circle, policy) {
     await loadNoticeboard();
   }
 
+  // P2 (J4) — a projected attach-menu entry (NOT the file entry) dispatches its op
+  // exactly like the matching slash command: {opId} → dispatchReady, which elicits any
+  // required params through the SAME form machinery (beginFormFollowUp → buildFormSpec)
+  // a typed command uses (e.g. /embed-time → title · when). The FILE entry never
+  // reaches here — it routes through the media pipeline (onAttach/onAttachMedia).
+  async function attachCommandDispatch(entry) {
+    if (!entry || !entry.opId) return;
+    if (circleDispatchReady) await circleDispatchReady({ opId: entry.opId, args: {} });
+  }
+
   // Sealed media (2026-07-11): open the full-size image by unsealing the blob through THIS
   // circle's media gateway (`openFullImage` → `openBlob`, gated + decrypted client-side) —
   // the SAME read path basis's own circle images use. No stoop byte round-trip: stoop
@@ -3911,6 +3926,12 @@ function showKring(id, circle, policy) {
       // circle's media composition resolves (and forever for p0/p1 — sealed-only).
       onAttachMedia: kringMedia ? kringAttachMedia : null,
       media: kringMedia ? { opener: kringMedia.mediaGateway.opener } : null,
+      // P2 (J4) — the projected attach menu for the chat composer's "+". The FILE
+      // entry (embed-file) uses onAttachMedia above; every other entry dispatches
+      // via onAttachCommand → dispatchReady (params gathered by the form machinery).
+      attachMenu: basisAttachMenu,
+      attachFileOpId: 'embed-file',
+      onAttachCommand: attachCommandDispatch,
       // S1 #1 — noticeboard surface for the prikbord tab (the view only uses it when active).
       noticeboard: {
         posts:    noticeboardPosts,
@@ -3930,6 +3951,11 @@ function showKring(id, circle, policy) {
         onAttach:         kringMedia ? noticeboardAttach : null,
         onClearAttach:    () => { noticeboardPendingAttachment = null; rerender(); },
         onViewAttachment: noticeboardViewAttachment,
+        // P2 (J4) — the projected attach menu for the prikbord composer's "+".
+        // File entry → the media pipeline (onAttach); other entries → dispatchReady.
+        attachMenu:       basisAttachMenu,
+        attachFileOpId:   'embed-file',
+        onAttachCommand:  attachCommandDispatch,
       },
       // Multi-field inline form (mobile parity). When a kring dispatch trips needsForm with 2+ missing
       // fields, `circlePendingFormFollowUp` holds the shared `PendingFormFollowUp`; the view renders an

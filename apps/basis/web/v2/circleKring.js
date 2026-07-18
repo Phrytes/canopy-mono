@@ -41,6 +41,7 @@ import { actionsForStreamRow } from '../../src/v2/streamActions.js';
 import { renderToDom } from '../../src/web/domAdapter.js';
 import { renderCircleScreen } from './circleScreen.js';
 import { renderCircleNoticeboard } from './circleNoticeboard.js';
+import { buildAttachControl } from './attachControl.js';
 import { suggestCommands } from '../../src/v2/commandSuggest.js';
 import { embedChipsOf, embedTypeLabelKey, shortRef, screenForEmbedType } from '../../src/v2/embedChips.js';
 // Convergence — the invite-circle feedback review renders the SAME editable per-point cards as the
@@ -129,6 +130,14 @@ export function renderCircleKring(container, {
   //     full-image affordance; absent → thumbnail only, no View button.
   onAttachMedia = null,
   media = null,
+  // P2 (J4) — the ATTACHMENT projector's menu for the chat composer's "+". Same
+  // contract as the prikbord composer: `attachMenu` is
+  // `renderAttachments(basisManifest).attachMenu` (host-computed); the FILE entry
+  // (`attachFileOpId`) routes through the media pipeline (`onAttachMedia`), every
+  // other entry dispatches via `onAttachCommand(entry)` (host → callSkill).
+  attachMenu = [],
+  attachFileOpId = 'embed-file',
+  onAttachCommand = null,
   // D / Surface 2 — the circle policy the ⋯ overflow menu's feature gate reads.
   // The roster + its `requires` gates are projected from manifest.actions; this
   // is the ONLY feature-gate input (the host no longer pre-filters `more`).
@@ -328,31 +337,18 @@ export function renderCircleKring(container, {
     suggestEl.hidden = true;
     form.appendChild(suggestEl);
 
-    // media P1 — attach affordance (the board's `[+]` slot; 📎 matches the prikbord's
-    // existing attach). Only when the host wired `onAttachMedia` — i.e. the circle has a
-    // content seal strategy. A p0/p1 circle shows NO button (sealed-only; never an
-    // unsealed upload). Same hidden-file-input pattern as circleNoticeboard.js.
-    if (typeof onAttachMedia === 'function') {
-      const attachBtn = document.createElement('button');
-      attachBtn.type = 'button';
-      attachBtn.className = 'circle-kring__attach';
-      attachBtn.title = tr('circle.kring.attach');
-      attachBtn.setAttribute('aria-label', tr('circle.kring.attach'));
-      attachBtn.textContent = '📎';
-      const fileInput = document.createElement('input');
-      fileInput.type = 'file';
-      fileInput.accept = 'image/png,image/jpeg,image/webp';
-      fileInput.className = 'circle-kring__file';
-      fileInput.style.display = 'none';
-      fileInput.addEventListener('change', () => {
-        const f = fileInput.files && fileInput.files[0];
-        if (f) onAttachMedia(f);
-        fileInput.value = '';
-      });
-      attachBtn.addEventListener('click', () => fileInput.click());
-      form.appendChild(attachBtn);
-      form.appendChild(fileInput);
-    }
+    // P2 (J4) — the projector-driven "+" attach affordance (replaces the hand-coded
+    // 📎). The FILE entry still routes through the sealed media pipeline
+    // (`onAttachMedia`) — a p0/p1 circle wires no `onAttachMedia`, so the file entry
+    // drops and only dispatchable entries (if any) remain. The menu is projected
+    // from the manifest via renderAttachments (shared with the prikbord composer).
+    const attachControl = buildAttachControl({
+      attachMenu, attachFileOpId,
+      onAttach: onAttachMedia, onAttachCommand,
+      cls: (s) => `circle-kring__${s}`,
+      tr, menuLabelKey: 'circle.kring.attach',
+    });
+    if (attachControl) form.appendChild(attachControl);
 
     const input = document.createElement('input');
     input.type = 'text';
