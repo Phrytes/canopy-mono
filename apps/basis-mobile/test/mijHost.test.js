@@ -102,7 +102,7 @@ describe('loadMijModel — the web openAboutMePanel read sequence, mobile half',
     // section 3 — enabled rows with the RELEASED value + charter + addable
     const c1 = m.circles.find((c) => c.circleId === 'circle-1');
     expect(c1.rows).toEqual([
-      { personaId: 'default', personaName: 'default', key: 'place', rung: 'municipality', released: 'Amsterdam' },
+      { personaId: 'default', personaName: 'default', key: 'place', rung: 'municipality', released: 'Amsterdam', l10n: null },
     ]);
     expect(c1.charter).toEqual({ requests: CIRCLES[0].charter.requests });
     expect(c1.addable.sort()).toEqual(['ageBand', 'zeilen']);

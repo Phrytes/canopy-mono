@@ -112,6 +112,14 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
     setShareState((s) => ({ ...s, [k]: res?.ok ? 'ok' : (res?.reason ?? 'failed') }));
   }, [callSkill, sendPersonaUpdate]);
 
+  // A whenField property (availability) can carry an optional free-text "when" note (the
+  // descriptor's finest 'detail' rung). Compose { state, when } when a when is present; a bare
+  // state string otherwise — mirrors web's circleMij compose().
+  const composeWhen = (p, state) => {
+    const w = String(propDrafts[`${p.key}__when`] ?? p.when ?? '').trim();
+    return (p.whenField && w) ? { state, when: w } : state;
+  };
+
   if (!model || model.ok !== true) {
     return <Text style={styles.empty}>{t('circle.mij.unavailable')}</Text>;
   }
@@ -159,20 +167,42 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
                         <Text style={styles.btnPrimaryText}>{t('circle.aboutme.save')}</Text>
                       </Pressable>
                     </>
-                  ) : (p.buckets || []).map((b) => {
-                    const active = b === p.value;
-                    return (
-                      <Pressable
-                        key={b}
-                        style={[styles.bucket, active && styles.bucketActive]}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: active }}
-                        onPress={() => onSetProperty(p.key, b)}
-                      >
-                        <Text style={[styles.bucketText, active && styles.bucketTextActive]}>{valLabel(b)}</Text>
-                      </Pressable>
-                    );
-                  })}
+                  ) : (
+                    <>
+                      {(p.buckets || []).map((b) => {
+                        const active = b === p.value;
+                        return (
+                          <Pressable
+                            key={b}
+                            style={[styles.bucket, active && styles.bucketActive]}
+                            accessibilityRole="button"
+                            accessibilityState={{ selected: active }}
+                            onPress={() => onSetProperty(p.key, composeWhen(p, b))}
+                          >
+                            <Text style={[styles.bucketText, active && styles.bucketTextActive]}>{valLabel(b)}</Text>
+                          </Pressable>
+                        );
+                      })}
+                      {p.whenField ? (
+                        <>
+                          <TextInput
+                            style={styles.input}
+                            defaultValue={p.when ?? ''}
+                            placeholder={t('circle.mij.availability_when_ph')}
+                            placeholderTextColor={c.inkSoft}
+                            onChangeText={(v) => setPropDrafts((d) => ({ ...d, [`${p.key}__when`]: v }))}
+                          />
+                          <Pressable
+                            style={styles.btnPrimary}
+                            accessibilityRole="button"
+                            onPress={() => onSetProperty(p.key, composeWhen(p, p.value ?? p.buckets[0]))}
+                          >
+                            <Text style={styles.btnPrimaryText}>{t('circle.aboutme.save')}</Text>
+                          </Pressable>
+                        </>
+                      ) : null}
+                    </>
+                  )}
                 </View>
               ) : null}
             </View>
@@ -253,7 +283,10 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
                   <View style={styles.entryOwn}>
                     {/* the root card's own values ARE the general truth — no EIGEN mark there */}
                     {!p.isDefault ? <Text style={styles.ownMark}>{t('circle.mij.own_mark')}</Text> : null}
-                    <Text style={styles.ownValue}>{entry.value ?? ''}</Text>
+                    {/* value-localised keys (availability) show their localised token, not a raw one */}
+                    <Text style={styles.ownValue}>
+                      {(entry.l10n && entry.value != null ? trOr(`${entry.l10n}.${entry.value}`, entry.value) : entry.value) ?? ''}
+                    </Text>
                   </View>
                 ) : entry.state === 'inherit' ? (
                   <Text style={styles.inherit}>{t('circle.mij.follows_general')}</Text>
@@ -334,7 +367,9 @@ export default function CircleMijScreen({ callSkill, sendPersonaUpdate, personaI
                     <View style={styles.shareKeyLine}>
                       <Text style={styles.key}>{keyLabel(r.key)}</Text>
                       <Text style={styles.levelCell}>{r.rung ? rungLabel(r.rung) : t('circle.mij.level_all')}</Text>
-                      <Text style={r.released != null ? styles.released : styles.releasedEmpty}>{r.released ?? '—'}</Text>
+                      <Text style={r.released != null ? styles.released : styles.releasedEmpty}>
+                        {(r.l10n && r.released != null ? trOr(`${r.l10n}.${r.released}`, r.released) : r.released) ?? '—'}
+                      </Text>
                       <Text style={styles.charterCell}>
                         {req
                           ? t('circle.mij.charter_max', { rung: req.maxRung ? rungLabel(req.maxRung) : '' }).trim()
