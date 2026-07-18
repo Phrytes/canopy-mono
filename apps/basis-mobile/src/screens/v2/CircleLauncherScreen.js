@@ -89,7 +89,22 @@ import { buildFindExtras } from '@onderling/kring-host/findExtras';
 import { resolveChatAi } from '../../../../basis/src/v2/chatAi.js';
 import { surfacePrefStore } from '../../core/surfacePrefStore.js';
 import MultiFieldFormBubble from '../../rn/MultiFieldFormBubble.js';   // 2+-field inline form (parity with web)
-import { createCircleDispatch, addressesBot } from '../../../../basis/src/v2/circleDispatch.js';
+import { createCircleDispatch, addressesBot, stripBotTag } from '../../../../basis/src/v2/circleDispatch.js';
+import { resolveCircleLlm } from '../../../../basis/src/v2/llmPicker.js';
+// Task #13 — the onboarding + standing help-bot flow, all logic shared with web (circleApp.js). The mobile
+// shell wires the SAME thin seams: provision the help circle, drive onboarding as the bot's chat, and run
+// the standing Q&A router with the honest (#37) route-conditional wording.
+import {
+  HELP_CIRCLE_ID, helpCircleSpec, helpCircleRoster, onderlingBotMember, provisionHelpCircle,
+} from '../../../../basis/src/v2/helpCircle.js';
+import { createOnboardingFlags, asyncStorageOnboardingIo } from '../../../../basis/src/v2/onboardingFlags.js';
+import { buildOnboardingTemplate } from '../../../../basis/src/v2/onboardingTemplate.js';
+import { startGuidedSetup } from '../../../../basis/src/v2/guidedSetup.js';
+import { onboardingTurn, answerOnboarding, parseOnboardingAction } from '../../../../basis/src/v2/onboardingChat.js';
+import { botIsAddressed } from '../../../../basis/src/v2/botAddress.js';
+import {
+  routeHelpMessage, helpTopicChips, resolveHelpTopic, parseHelpAction, helpConsentAction, helpLlmLabelKeys,
+} from '../../../../basis/src/v2/helpChat.js';
 // OBJ-2 membership — reuse the classic RN join wizard + the camera scanner + the shared invite glue.
 import JoinGroupWizardModal from '../../../../basis/src/rn/wizards/joinGroupWizardModal.js';
 import QrScannerModal from '../../rn/QrScannerModal.js';
@@ -808,6 +823,43 @@ export default function CircleLauncherScreen({
     }
   }, [callSkill, bundle]);
 
+  // Task #13 — the two first-run flags (help-circle provisioned · onboarding done), over AsyncStorage IO.
+  // The SAME shared store the web shell uses; passed down to CircleDetail so onboarding persists identically.
+  const onboardingFlags = useMemo(() => createOnboardingFlags(asyncStorageOnboardingIo(AsyncStorage)), []);
+  // Live circle ids for the provisioner's existence check without re-arming the boot effect.
+  const circlesRef = useRef(circles);
+  circlesRef.current = circles;
+  // Provision the default HELP circle (you + the Onderling-bot) ONCE, through the real mobile create path
+  // (quickCreateCircle), mirroring web's maybeProvisionHelpCircle. Idempotent + first-run-guarded via the
+  // shared provisionHelpCircle orchestrator; best-effort — a failure leaves the marker unset so it retries
+  // next boot. Runs after the first circle load so the existence check sees the persisted circles.
+  const provisionedRef = useRef(false);
+  useEffect(() => {
+    if (provisionedRef.current || loading || typeof bundle?.callSkill !== 'function') return;
+    provisionedRef.current = true;
+    (async () => {
+      try {
+        const spec = helpCircleSpec(t);
+        const r = await provisionHelpCircle({
+          isProvisioned: () => onboardingFlags.isHelpCircleProvisioned(),
+          listCircleIds: () => (circlesRef.current || []).map((c) => c.id),
+          // Real create path (raw callSkill → createGroupV2), the SAME the launcher's "+ new circle" uses.
+          createHelpCircle: (s) => quickCreateCircle({ callSkill: bundle.callSkill, name: s.name, id: s.id }),
+          // The help circle's roster is a product constant surfaced at render time (helpCircleRoster), so
+          // there's no separate member-add op here — parity with the shared provisioner (web≡mobile).
+          addBotMember: () => {},
+          markProvisioned: () => onboardingFlags.markHelpCircleProvisioned(),
+          spec,
+          bot: onderlingBotMember(spec.name),
+        });
+        if (r.provisioned) load();
+      } catch (err) {
+        console.warn('[launcher] help-circle provisioning failed', err?.message ?? err);
+        provisionedRef.current = false;   // let the next boot retry
+      }
+    })();
+  }, [loading, bundle, load, onboardingFlags]);
+
   // objective L · Phase 2 — the unified Contacten roster (PeerGraph bots/peers + stoop ContactBook people),
   // via the SAME shared helpers ContactsScreen uses. Fed to CircleShareScreen for the out-of-circle recipient
   // picker. Loaded lazily when the share view opens (below); best-effort, never blocks the launcher.
@@ -1436,6 +1488,10 @@ export default function CircleLauncherScreen({
         recipeStore={recipeStore}
         onStoopEvent={bundle?.onStoopEvent}
         sendPersonaUpdate={bundle?.sendPersonaUpdate}
+        /* Task #13 — first-run flags (shared with the launcher's provisioner) + the onboarding
+           "Ja, help me" handoff → the mobile create flow (close the help circle, open "+ new circle"). */
+        onboardingFlags={onboardingFlags}
+        onCreateCircle={() => { closeCircle(); setCreating(true); }}
         onBack={closeCircle}
         onInvite={() => openCircleInvite(selected.id)}
         onSettings={() => setView('settings')}
@@ -1805,6 +1861,8 @@ function CircleDetail({
   circle, items, callSkill, rawCallSkill, catalog: rawCatalog, policy, myListTasks = [],
   eventLog, circles = [],
   recipeStore = null, onStoopEvent, sendPersonaUpdate,
+  // Task #13 — onboarding first-run flags (shared store) + the create-flow handoff.
+  onboardingFlags = null, onCreateCircle = null,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops basis's infra ops (/me etc.)
@@ -2043,12 +2101,13 @@ function CircleDetail({
 
   // append a kring chat bubble to the local eventLog (optimistic). Returns {msgId, ts}
   // so the caller can fan out the same id (receiver-side dedup suppresses any mirrored echo).
-  const appendKringMessage = useCallback(({ actor, text, buttons, scope, embeds, review }) => {
+  const appendKringMessage = useCallback(({ actor, text, buttons, scope, embeds, review, provenance, consent }) => {
     if (!eventLog?.append || !circle?.id) return null;
     const msgId = `kring-${circle.id}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const ts    = Date.now();
     // `review` (Stage-1 feedback cards) is private by construction → scope 'self' (never fanned out).
-    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope: review ? 'self' : scope, embeds, review }));
+    // `provenance`/`consent` (Task #13 help Q&A) light the transparency badge + the dashed-rust consent card.
+    eventLog.append(kringChatMessageEvent({ msgId, ts, circleId: circle.id, actor, text, buttons, scope: review ? 'self' : scope, embeds, review, provenance, consent }));
     setStreamTick((n) => n + 1);
     return { msgId, ts };
   }, [eventLog, circle?.id]);
@@ -2113,17 +2172,38 @@ function CircleDetail({
   // roster (relation/webid rows) + my webid via the SHARED oneToOneBotLabel; null (roster not yet
   // resolved, group, or 1:1-human) → NO strip (fail-closed). Rides the same listGroupMembers load.
   const [botLabel, setBotLabel] = useState(null);
+  // Task #13 — this circle's raw roster + my webid, captured on open so the standing help Q&A can run the
+  // shared `botIsAddressed` gate (1:1 help circle → always; a group → only when @-tagged). The help
+  // circle's membership is a product constant, so its roster comes from the shared `helpCircleRoster`.
+  const kringMembersRef = useRef(null);
+  const myWebidRef = useRef(null);
+  // Task #13 — set below to the latest onboarding/help button router (so onBubbleButton, a memoised
+  // callback defined earlier, always reaches the current handlers without a stale closure).
+  const task13ButtonRef = useRef(null);
   useEffect(() => {
     let cancelled = false;
+    kringMembersRef.current = null; myWebidRef.current = null;
     if (!circle?.id || typeof rawCallSkill !== 'function') { setMandateViewer({ viewerWebid: null, isAdmin: false }); setBotLabel(null); return undefined; }
     setBotLabel(null);   // reset on circle change — fail-closed until the roster resolves
     (async () => {
       let webid = null;
       try { const r = await rawCallSkill('stoop', 'whoAmI', {}); webid = r?.webid ?? r?.webId ?? null; } catch { /* best-effort */ }
+      if (!cancelled) myWebidRef.current = webid;
+      // The help circle: you + the Onderling-bot (a product constant) — no listGroupMembers round-trip.
+      if (circle.id === HELP_CIRCLE_ID) {
+        const roster = helpCircleRoster({ selfWebid: webid || null, botName: t('circle.onboarding.help_name') });
+        if (!cancelled) {
+          kringMembersRef.current = roster;
+          setBotLabel(oneToOneBotLabel({ members: roster, selfWebid: webid, fallbackLabel: t('circle.kring.bot_header') }));
+          setMandateViewer({ viewerWebid: webid, isAdmin: true });
+        }
+        return;
+      }
       let isAdmin = false;
       try {
         const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: circle.id });
         const mem = Array.isArray(res?.members) ? res.members : [];
+        if (!cancelled) kringMembersRef.current = mem;
         const me = mem.find((m) => (m?.webid ?? m?.id) === webid);
         isAdmin = me?.role === 'admin';
         // Shared gate — decides the assistant-header strip from the raw roster (carries `relation`).
@@ -2460,6 +2540,9 @@ function CircleDetail({
   // S6.A inline manifest button (has opId) → dispatch its op against the item;
   // otherwise (B clarification candidate) → bind the id + re-run.
   const onBubbleButton = useCallback((button) => {
+    // Task #13 — an onboarding option (onboarding:*) or help affordance (help:topic:* / help:consent:*)
+    // routes to the shared onboarding/help handlers before anything else.
+    if (typeof button?.id === 'string' && task13ButtonRef.current?.(button.id)) return;
     // Feedback language switch (fp-lang:<code>) → rebuild the surface in that language (reusing the pods).
     if (typeof button?.id === 'string' && button.id.startsWith('fp-lang:')) {
       switchKringFeedbackLang(circle?.id, button.id.slice('fp-lang:'.length));
@@ -2602,6 +2685,154 @@ function CircleDetail({
     onLlmUnavailable: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.basic_mode') }); },
   }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy, llmApps, handleKringBulk]);
 
+  // ── Task #13 — onboarding-as-bot-chat + standing help Q&A (thin twin of web circleApp.js) ──────────
+  // The confidential-route-aware help LLM binding (parity with web's circleHelpLlm): ready() reflects
+  // whether an LLM is actually resolved for this circle; confidential() carries the #37 honesty signal;
+  // answer() returns the model's spoken reply (or null → never faked). Reuses the SAME resolution the
+  // circle bot uses (resolveCircleLlm over this circle's policy + the member's live providers).
+  const circleHelpLlm = useMemo(() => {
+    const resolve = () => resolveCircleLlm({
+      circlePolicy: { llmTool: circleLlmPolicy },
+      userDefault:  { mode: llmRuntime.mode },
+      providers:    llmRuntime.llmProviders,
+    });
+    return {
+      ready: () => { try { return resolve() != null; } catch { return false; } },
+      confidential: () => !!llmRuntime.confidential,
+      answer: async (query) => {
+        const llm = resolve();
+        if (!llm) return null;
+        const scopedCatalog = scopeCatalogToApps(catalog, policy?.apps);
+        const cmd = await interpretToCommand(query, { catalog: scopedCatalog, llm });
+        return cmd && typeof cmd.reply === 'string' && cmd.reply ? cmd.reply : null;
+      },
+    };
+  }, [circleLlmPolicy, llmRuntime, catalog, policy]);
+
+  // The onboarding conversation run-state (shared driver) + the first-run guards. The template is built
+  // for the current app language (bundled default; web additionally hot-loads a remote copy — parity tail).
+  const onboardingTemplate = useMemo(() => buildOnboardingTemplate(lang()), []);
+  const onboardingRunStateRef = useRef(null);
+  const onboardingPostedRef = useRef(false);
+  const helpPendingQueryRef = useRef(null);   // the miss awaiting a "ja, doorsturen" tap
+
+  // Post the driver's bot bubbles into the kring (each a bot bubble; a choice bubble carries its option
+  // buttons, mapped from the shared {label, action} to the mobile {id, label} bubble-button model).
+  const postOnboardingBubbles = useCallback((bubbles) => {
+    for (const b of (Array.isArray(bubbles) ? bubbles : [])) {
+      const buttons = Array.isArray(b.buttons) ? b.buttons.map((btn) => ({ id: btn.action, label: btn.label })) : undefined;
+      appendKringMessage({ actor: 'bot', text: b.text, buttons });
+    }
+  }, [appendKringMessage]);
+
+  // Kick off onboarding the first time the help circle opens (unless it already ran, or an onboarding is
+  // already in the persisted stream — a reopen mid-flow). Idempotent via the persisted onboardingDone flag.
+  const maybeStartOnboarding = useCallback(async () => {
+    if (circle?.id !== HELP_CIRCLE_ID || onboardingPostedRef.current || !onboardingFlags) return;
+    if (await onboardingFlags.isOnboardingDone()) { onboardingPostedRef.current = true; return; }
+    if ((rowsRef.current || []).some((r) => r.actor === 'bot' || r.event?.actor === 'bot')) { onboardingPostedRef.current = true; return; }
+    onboardingPostedRef.current = true;
+    const turn = onboardingTurn(onboardingTemplate, startGuidedSetup(onboardingTemplate));
+    postOnboardingBubbles(turn.bubbles);
+    onboardingRunStateRef.current = turn.state;
+    if (turn.done) {
+      if (turn.handoff) onCreateCircle?.();
+      await onboardingFlags.markOnboardingDone();
+    }
+  }, [circle?.id, onboardingFlags, onboardingTemplate, postOnboardingBubbles, onCreateCircle]);
+
+  // A tapped onboarding option: echo the pick, advance the flow, post the next bubbles, and on a handoff
+  // open the mobile create flow (marking onboarding done either way).
+  const handleOnboardingAnswer = useCallback(async (value) => {
+    if (circle?.id !== HELP_CIRCLE_ID || !onboardingRunStateRef.current) return;
+    const r = answerOnboarding(onboardingTemplate, onboardingRunStateRef.current, value);
+    if (r.echo) appendKringMessage({ actor: 'me', text: r.echo });
+    onboardingRunStateRef.current = r.state;
+    if (r.handoff) { await onboardingFlags?.markOnboardingDone(); onCreateCircle?.(); return; }
+    postOnboardingBubbles(r.bubbles);
+    if (r.done) await onboardingFlags?.markOnboardingDone();
+  }, [circle?.id, onboardingTemplate, appendKringMessage, postOnboardingBubbles, onboardingFlags, onCreateCircle]);
+
+  // Post the deterministic set-topic chips ("of kies zelf"); honest=true frames them as the ONLY answerable
+  // topics (the no-assistant fallback). Each chip carries its help:topic:<id> action as the mobile button id.
+  const postHelpTopicChips = useCallback(({ honest = false } = {}) => {
+    const chips = helpTopicChips({ lang: lang() }).map((c) => ({ id: c.action, label: c.label }));
+    appendKringMessage({ actor: 'bot', text: honest ? t('circle.help.no_llm_topics') : t('circle.help.pick_topic'), buttons: chips });
+  }, [appendKringMessage]);
+
+  // Layer-2 execution — forward the query through the consent-gated route; badge the provenance for the
+  // ACTUAL route (#37). A null/failed answer is surfaced HONESTLY (never faked) + the set topics.
+  const runHelpLlm = useCallback(async (query) => {
+    let reply = null;
+    try { reply = await circleHelpLlm.answer(query); }
+    catch { appendKringMessage({ actor: 'bot', text: t('circle.help.llm_unavailable') }); return; }
+    if (reply) {
+      const { badgeKey } = helpLlmLabelKeys({ confidential: circleHelpLlm.confidential() });
+      appendKringMessage({ actor: 'bot', text: reply, provenance: t(badgeKey) });
+      return;
+    }
+    appendKringMessage({ actor: 'bot', text: t('circle.help.llm_no_answer') });
+    postHelpTopicChips();
+  }, [circleHelpLlm, appendKringMessage, postHelpTopicChips]);
+
+  // Answer a posted help message. HIT → the card + its transparency badge (deterministic, nothing leaves).
+  // MISS → the consent card when an LLM is connected, else the honest set-topics.
+  const answerHelpMessage = useCallback(async (query) => {
+    const route = routeHelpMessage(query, { lang: lang(), llmReady: circleHelpLlm.ready() });
+    if (route.kind === 'hit') { appendKringMessage({ actor: 'bot', text: route.text, provenance: route.provenance }); return; }
+    if (route.kind === 'consent') {
+      helpPendingQueryRef.current = { circleId: circle?.id, query };
+      // #37 — name the route honestly: "vertrouwelijke assistent" only when it truly is confidential.
+      const { consentKey } = helpLlmLabelKeys({ confidential: circleHelpLlm.confidential() });
+      appendKringMessage({
+        actor: 'bot', text: t(consentKey), consent: true,
+        buttons: [
+          { id: helpConsentAction('yes'), label: t('circle.help.consent_yes'), variant: 'primary' },
+          { id: helpConsentAction('no'),  label: t('circle.help.consent_no'),  variant: 'secondary' },
+        ],
+      });
+      return;
+    }
+    postHelpTopicChips({ honest: true });
+  }, [circleHelpLlm, appendKringMessage, circle?.id, postHelpTopicChips]);
+
+  // A tapped help button: a topic chip resolves deterministically; a consent choice forwards to the LLM
+  // ("ja, doorsturen") or offers the set topics to pick from ("nee, ik kies zelf").
+  const handleHelpAction = useCallback(async (help) => {
+    if (help.kind === 'topic') {
+      const ans = resolveHelpTopic(help.id, { lang: lang() });
+      if (ans) appendKringMessage({ actor: 'bot', text: ans.text, provenance: ans.provenance });
+      return;
+    }
+    if (help.kind === 'consent') {
+      if (help.value === 'no') { postHelpTopicChips(); return; }
+      if (help.value === 'yes') {
+        const pending = helpPendingQueryRef.current && helpPendingQueryRef.current.circleId === circle?.id ? helpPendingQueryRef.current.query : null;
+        helpPendingQueryRef.current = null;
+        if (pending != null) await runHelpLlm(pending);
+      }
+    }
+  }, [appendKringMessage, postHelpTopicChips, circle?.id, runHelpLlm]);
+
+  // Latest-ref for onBubbleButton (defined earlier): route an onboarding/help button id, or return false.
+  const routeTask13Button = useCallback((id) => {
+    const ob = parseOnboardingAction(id);
+    if (ob) { handleOnboardingAnswer(ob); return true; }
+    const hp = parseHelpAction(id);
+    if (hp) { handleHelpAction(hp); return true; }
+    return false;
+  }, [handleOnboardingAnswer, handleHelpAction]);
+  task13ButtonRef.current = routeTask13Button;
+
+  // Run the guided onboarding the first time the help circle opens; reset the per-circle guards on change.
+  useEffect(() => {
+    onboardingPostedRef.current = false;
+    onboardingRunStateRef.current = null;
+    helpPendingQueryRef.current = null;
+    maybeStartOnboarding().catch((e) => console.warn('[kring] onboarding start failed', e?.message ?? e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [circle?.id, maybeStartOnboarding]);
+
   // kring chat send: the feedback bot gets first refusal (it owns the turn only
   // for /feedback, /feedback-stop, and free text while active); otherwise echo + route to the circle bot.
   const sendKringChat = useCallback(async () => {
@@ -2676,13 +2907,29 @@ function CircleDetail({
     } catch (e) {
       console.warn('[kring] feedback mount unavailable (chat continues):', e?.message ?? e);
     }
+    // Task #13 — /help (+/hulp) opens the deterministic set-topic chips (no assistant needed).
+    if (/^\/(help|hulp)\b/i.test(text)) { appendKringMessage({ actor: 'me', text }); postHelpTopicChips(); return; }
+    // Task #13 — standing help Q&A. When the Onderling-bot is ADDRESSED in this circle (the 1:1 help
+    // circle: always; a group: only when @-tagged, per the shared botIsAddressed gate), answer from the
+    // deterministic kaartjes engine BEFORE the command bot / fan-out. A miss offers the consent-gated LLM
+    // (when one is connected) or the honest set topics. Uses the #37 route-conditional wording (shared).
+    const members = kringMembersRef.current;
+    const helpBot = (members || []).find((m) => m && (m.relation === 'agent' || m.isBot === true));
+    if (helpBot && botIsAddressed({ text, circleMembers: members, selfWebid: myWebidRef.current || null, botMember: helpBot })) {
+      // Strip the @-tag from a GROUP mention before matching; a 1:1 line (no tag) is passed verbatim.
+      const solo = oneToOneBotLabel({ members, selfWebid: myWebidRef.current || null, fallbackLabel: 'bot' }) != null;
+      const q = solo ? text : stripBotTag(text, helpBot.name ?? helpBot.displayName ?? helpBot.label ?? '');
+      appendKringMessage({ actor: 'me', text, scope: 'kring' });
+      await answerHelpMessage(q);
+      return;
+    }
     // A plain typed line fans out to the whole kring → scope 'kring' (web parity).
     const appended = appendKringMessage({ actor: 'me', text, scope: 'kring' });
     // Fire-and-forget: the bot posts its own reply bubble; swallow rejections so a failed turn can't
     // surface as an unhandled promise rejection. noteBotTurn arms the conversational follow-up if the
     // bot replied with a question.
     Promise.resolve(circleBot.handle(text, { id: circle.id, msgId: appended?.msgId, ts: appended?.ts })).then((r) => noteBotTurn(r, text)).catch(() => {});
-  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions]);
+  }, [composerText, eventLog, circle?.id, appendKringMessage, circleBot, pendingFollowUp, runCircleCommandResolved, awaitingBotReply, noteBotTurn, manifestsByOrigin, buildFeedbackMount, emitFeedbackLangOptions, postHelpTopicChips, answerHelpMessage]);
 
   // δ.2 — tap-to-retry on the failed icon.  Looks up the original
   // text from the eventLog so we don't have to remember it elsewhere.
