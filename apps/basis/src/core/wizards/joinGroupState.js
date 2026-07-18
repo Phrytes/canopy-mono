@@ -264,7 +264,7 @@ export function setPersona(state, personaId) {
 /**
  * Skills→property fold-in phase C (NOTE-skills-properties-audit Q3, "charter-driven
  * default"). When the joined circle is ABOUT skills-matching — signalled by
- * `invite.skillsMatching: true`, embedded at invite-build from the circle's board-8
+ * `invite.offeringsMatching: true`, embedded at invite-build from the circle's board-8
  * skill record (`offeringsMatchingEnabled`, @onderling/kring-host/circleOfferings) — the
  * disclosure default for the persona's skill keys flips from withhold to enabled at
  * the COARSE rung `'category'` (only the taxonomy category is released, never the
@@ -274,35 +274,38 @@ export function setPersona(state, personaId) {
  *
  * Call after decodeInvite; mutates + returns state.
  */
-export function applyCharterSkillsDefault(state) {
-  const on = state?.invite?.skillsMatching === true;
-  state.skillsMatching = on;
-  state.shareSkillsAtJoin = on;
+export function applyCharterOfferingsDefault(state) {
+  // Read-accept: new invites carry `offeringsMatching`; older invites embed
+  // the legacy `skillsMatching` field. Both mean the same charter signal.
+  const on = state?.invite?.offeringsMatching === true
+          || state?.invite?.skillsMatching   === true;
+  state.offeringsMatching = on;
+  state.shareOfferingsAtJoin = on;
   return state;
 }
 
 /** Record the joiner's (un)check of the pre-checked skill-sharing line. */
-export function setShareSkillsAtJoin(state, on) {
-  state.shareSkillsAtJoin = on === true;
+export function setShareOfferingsAtJoin(state, on) {
+  state.shareOfferingsAtJoin = on === true;
   return state;
 }
 
 /** The coarse rung the join-time default discloses offerings at (OFFERING_LADDER's coarsest). */
-export const SKILLS_JOIN_RUNG = 'category';
+export const OFFERINGS_JOIN_RUNG = 'category';
 
 /**
  * Enact the accepted skill-sharing default for `contextId` (the joined circle):
  * enable disclosure at the coarse `'category'` rung for every skill-kind driver
  * key on the effective persona (the chosen one, else `'default'` — the charter
  * default must also work for a first-join user who never made personas). No-op
- * unless `state.shareSkillsAtJoin` is true. Best-effort per key; returns the
+ * unless `state.shareOfferingsAtJoin` is true. Best-effort per key; returns the
  * keys enabled so finalSubmit can fold them into the join release.
  *
  * @param {{state:object, callSkill:Function, contextId:string}} a
  * @returns {Promise<string[]>} the enabled skill keys
  */
-export async function applySkillsDisclosureAtJoin({ state, callSkill, contextId } = {}) {
-  if (state?.shareSkillsAtJoin !== true || typeof callSkill !== 'function' || !contextId) return [];
+export async function applyOfferingsDisclosureAtJoin({ state, callSkill, contextId } = {}) {
+  if (state?.shareOfferingsAtJoin !== true || typeof callSkill !== 'function' || !contextId) return [];
   const personaId = state.persona ?? 'default';
   let drivers = {};
   try { drivers = (await callSkill('agents', 'getProfileDrivers', { id: personaId }))?.drivers ?? {}; }
@@ -315,7 +318,7 @@ export async function applySkillsDisclosureAtJoin({ state, callSkill, contextId 
   for (const key of keys) {
     try {
       const r = await callSkill('agents', 'setProfileDisclosure', {
-        id: personaId, contextId, key, enabled: true, rung: SKILLS_JOIN_RUNG,
+        id: personaId, contextId, key, enabled: true, rung: OFFERINGS_JOIN_RUNG,
       });
       if (r?.ok !== false) enabled.push(key);
     } catch { /* best-effort — one failed key must not block the join */ }
@@ -346,13 +349,13 @@ export function initialState() {
     // default: null (first join discloses nothing regardless — this is the label).
     persona:          null,
     personas:         [],
-    // Fold-in phase C (Q3) — charter-driven skill-sharing default. `skillsMatching`
-    // mirrors the invite's embedded circle signal; `shareSkillsAtJoin` is the
-    // joiner's decision on the visible pre-checked line (applyCharterSkillsDefault
+    // Fold-in phase C (Q3) — charter-driven skill-sharing default. `offeringsMatching`
+    // mirrors the invite's embedded circle signal; `shareOfferingsAtJoin` is the
+    // joiner's decision on the visible pre-checked line (applyCharterOfferingsDefault
     // pre-checks it ONLY for a matching circle; otherwise both stay false =
     // default-withhold).
-    skillsMatching:    false,
-    shareSkillsAtJoin: false,
+    offeringsMatching:    false,
+    shareOfferingsAtJoin: false,
     submitting:       false,
     submitError:      null,
   };
@@ -401,13 +404,13 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
     // Fold-in phase C (Q3) — enact the ACCEPTED charter-driven skill-sharing default BEFORE the
     // release is computed, so the coarse (category-rung) skill keys ride the same join release.
     // The effective persona falls back to 'default' when joining minimally: the accepted skills
-    // default must still work for a joiner who never made personas (setShareSkillsAtJoin(false)
+    // default must still work for a joiner who never made personas (setShareOfferingsAtJoin(false)
     // — unchecking the visible line — keeps everything withheld, exactly as before).
-    await applySkillsDisclosureAtJoin({ state, callSkill, contextId: inv.groupId });
+    await applyOfferingsDisclosureAtJoin({ state, callSkill, contextId: inv.groupId });
     // Property layer — join AS a chosen persona: release what that persona discloses in THIS circle
     // (getPersonaRelease) and carry it so the roster records it. No persona / nothing disclosed → absent (withhold).
     let personaProperties;
-    const releasePersona = state.persona ?? (state.shareSkillsAtJoin === true ? 'default' : null);
+    const releasePersona = state.persona ?? (state.shareOfferingsAtJoin === true ? 'default' : null);
     if (releasePersona) {
       try { personaProperties = (await callSkill('agents', 'getPersonaRelease', { id: releasePersona, contextId: inv.groupId }))?.released; }
       catch { personaProperties = undefined; }

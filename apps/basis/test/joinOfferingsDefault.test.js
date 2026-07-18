@@ -3,11 +3,11 @@
  * (plans/NOTE-skills-properties-audit.md §5 Q3), shared wizard state.
  *
  * Contract:
- *   - applyCharterSkillsDefault: invite.skillsMatching === true (the circle's
+ *   - applyCharterOfferingsDefault: invite.offeringsMatching === true (the circle's
  *     embedded "this kring is about skills-matching" signal) pre-checks the
  *     visible share-skills line; any other circle — incl. every older invite
  *     without the field — keeps the protective default-withhold.
- *   - setShareSkillsAtJoin: the joiner can uncheck (never silent).
+ *   - setShareOfferingsAtJoin: the joiner can uncheck (never silent).
  *   - finalSubmit (path A): an ACCEPTED default enables disclosure for the
  *     persona's skill-kind driver keys at the COARSE 'category' rung in the
  *     joined circle, BEFORE the release is computed — so the coarse skill keys
@@ -18,21 +18,23 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   initialState,
   decodeInvite,
-  applyCharterSkillsDefault,
-  setShareSkillsAtJoin,
-  applySkillsDisclosureAtJoin,
+  applyCharterOfferingsDefault,
+  setShareOfferingsAtJoin,
+  applyOfferingsDisclosureAtJoin,
   setPersona,
   finalSubmit,
-  SKILLS_JOIN_RUNG,
+  OFFERINGS_JOIN_RUNG,
 } from '../src/core/wizards/joinGroupState.js';
 
-const matchingInvite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', skillsMatching: true };
+const matchingInvite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', offeringsMatching: true };
+// Legacy invite shape: pre-rename circles embedded `skillsMatching`. Read-accepted.
+const legacyMatchingInvite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', skillsMatching: true };
 const plainInvite    = { kind: 'membershipCode', groupId: 'b2', code: 'c2' };
 
 function stateFor(invite) {
   const s = initialState();
   decodeInvite(invite, s);
-  applyCharterSkillsDefault(s);
+  applyCharterOfferingsDefault(s);
   s.handle = 'anne';
   return s;
 }
@@ -58,52 +60,58 @@ function makeCallSkill() {
   return { callSkill, calls };
 }
 
-describe('applyCharterSkillsDefault — the two defaults', () => {
+describe('applyCharterOfferingsDefault — the two defaults', () => {
   it('matching circle → pre-checked (enabled at the coarse rung comes later, at submit)', () => {
     const s = stateFor(matchingInvite);
-    expect(s.skillsMatching).toBe(true);
-    expect(s.shareSkillsAtJoin).toBe(true);      // pre-checked, uncheckable
+    expect(s.offeringsMatching).toBe(true);
+    expect(s.shareOfferingsAtJoin).toBe(true);      // pre-checked, uncheckable
+  });
+
+  it('legacy invite carrying skillsMatching → still pre-checked (wire read-accept)', () => {
+    const s = stateFor(legacyMatchingInvite);
+    expect(s.offeringsMatching).toBe(true);
+    expect(s.shareOfferingsAtJoin).toBe(true);
   });
 
   it('non-matching circle (and any older invite without the field) → withheld', () => {
     const s = stateFor(plainInvite);
-    expect(s.skillsMatching).toBe(false);
-    expect(s.shareSkillsAtJoin).toBe(false);
+    expect(s.offeringsMatching).toBe(false);
+    expect(s.shareOfferingsAtJoin).toBe(false);
     // initialState alone is also withhold-by-default
-    expect(initialState().shareSkillsAtJoin).toBe(false);
+    expect(initialState().shareOfferingsAtJoin).toBe(false);
   });
 
-  it('setShareSkillsAtJoin records the uncheck (and re-check)', () => {
+  it('setShareOfferingsAtJoin records the uncheck (and re-check)', () => {
     const s = stateFor(matchingInvite);
-    setShareSkillsAtJoin(s, false);
-    expect(s.shareSkillsAtJoin).toBe(false);
-    setShareSkillsAtJoin(s, true);
-    expect(s.shareSkillsAtJoin).toBe(true);
-    setShareSkillsAtJoin(s, 'junk');             // defensive: only literal true enables
-    expect(s.shareSkillsAtJoin).toBe(false);
+    setShareOfferingsAtJoin(s, false);
+    expect(s.shareOfferingsAtJoin).toBe(false);
+    setShareOfferingsAtJoin(s, true);
+    expect(s.shareOfferingsAtJoin).toBe(true);
+    setShareOfferingsAtJoin(s, 'junk');             // defensive: only literal true enables
+    expect(s.shareOfferingsAtJoin).toBe(false);
   });
 });
 
-describe('applySkillsDisclosureAtJoin — enact the accepted default', () => {
+describe('applyOfferingsDisclosureAtJoin — enact the accepted default', () => {
   it('enables ONLY skill-kind driver keys, at the coarse category rung, on the effective persona', async () => {
     const s = stateFor(matchingInvite);
     const { callSkill, calls } = makeCallSkill();
-    const enabled = await applySkillsDisclosureAtJoin({ state: s, callSkill, contextId: 'b1' });
+    const enabled = await applyOfferingsDisclosureAtJoin({ state: s, callSkill, contextId: 'b1' });
     expect(enabled).toEqual(['fix-bikes']);      // the hobby driver is NOT part of the skills default
     const disc = calls.filter((c) => c.op === 'setProfileDisclosure');
     expect(disc).toHaveLength(1);
     expect(disc[0].app).toBe('agents');
     expect(disc[0].args).toEqual({
-      id: 'default', contextId: 'b1', key: 'fix-bikes', enabled: true, rung: SKILLS_JOIN_RUNG,
+      id: 'default', contextId: 'b1', key: 'fix-bikes', enabled: true, rung: OFFERINGS_JOIN_RUNG,
     });
-    expect(SKILLS_JOIN_RUNG).toBe('category');
+    expect(OFFERINGS_JOIN_RUNG).toBe('category');
   });
 
   it('is a strict no-op when the line was unchecked (or the circle is not matching)', async () => {
     const s = stateFor(matchingInvite);
-    setShareSkillsAtJoin(s, false);
+    setShareOfferingsAtJoin(s, false);
     const { callSkill } = makeCallSkill();
-    expect(await applySkillsDisclosureAtJoin({ state: s, callSkill, contextId: 'b1' })).toEqual([]);
+    expect(await applyOfferingsDisclosureAtJoin({ state: s, callSkill, contextId: 'b1' })).toEqual([]);
     expect(callSkill).not.toHaveBeenCalled();
   });
 });
@@ -144,7 +152,7 @@ describe('finalSubmit — the skills default rides the join release', () => {
 
   it('matching circle but UNCHECKED → identical to the protective default (withhold)', async () => {
     const s = stateFor(matchingInvite);
-    setShareSkillsAtJoin(s, false);
+    setShareOfferingsAtJoin(s, false);
     const { callSkill, calls } = makeCallSkill();
     const { result } = await finalSubmit({ state: s, callSkill });
     expect(result?.ok).toBe(true);

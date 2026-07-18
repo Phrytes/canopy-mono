@@ -2,7 +2,7 @@
 /**
  * Fold-in phase C (Q3) — the charter-driven skill-sharing default, web wizard surface.
  *
- * A skills-matching circle (invite.skillsMatching, embedded at invite-build from the circle's
+ * A skills-matching circle (invite.offeringsMatching, embedded at invite-build from the circle's
  * board-8 skill record) surfaces a VISIBLE pre-checked "share my skills as category" line on the
  * handle step; the joiner can uncheck it (never silent). Circles without the signal — including
  * every older invite — render no line and keep the protective default-withhold.
@@ -10,7 +10,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderJoinGroupWizard } from '../../src/web/wizards/joinGroupWizard.js';
 
-const matchingInvite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', skillsMatching: true };
+const matchingInvite = { kind: 'membershipCode', groupId: 'b1', code: 'c1', offeringsMatching: true };
 const plainInvite    = { kind: 'membershipCode', groupId: 'b2', code: 'c2' };
 
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }

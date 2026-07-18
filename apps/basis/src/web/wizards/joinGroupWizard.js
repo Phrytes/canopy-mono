@@ -46,8 +46,8 @@ import {
   setConsentDecline,
   loadPersonas,
   setPersona,
-  applyCharterSkillsDefault,
-  setShareSkillsAtJoin,
+  applyCharterOfferingsDefault,
+  setShareOfferingsAtJoin,
 } from '../../core/wizards/joinGroupState.js';
 import { RULES_FIELDS } from '../../v2/circleRules.js';
 import { t } from '../../localisation.js';
@@ -81,9 +81,9 @@ export function renderJoinGroupWizard(opts) {
   buildJoinConsent({ state, sources });
 
   // Fold-in phase C (Q3) — the charter-driven skill-sharing default: a skills-matching circle
-  // (invite.skillsMatching) pre-checks "share my skills as category" VISIBLY on step 3; any other
+  // (invite.offeringsMatching) pre-checks "share my skills as category" VISIBLY on step 3; any other
   // circle (incl. older invites) keeps default-withhold. Logic lives once, in the shared state.
-  applyCharterSkillsDefault(state);
+  applyCharterOfferingsDefault(state);
 
   // Kick off the rules fetch when state.step === 1.
   if (state.invite && !state.inviteParseError) {
@@ -391,15 +391,15 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
   // uncheckable (never silent). Rendered only when the invite carried the circle's
   // skills-matching signal; checked ⇒ finalSubmit enables the persona's skill keys
   // at the coarse 'category' rung for this circle before computing the release.
-  if (state.skillsMatching) {
+  if (state.offeringsMatching) {
     const skillsRow = doc.createElement('label');
     skillsRow.className = 'cc-wizard-check cc-wizard-skills-default';
     const skillsBox = doc.createElement('input');
     skillsBox.type = 'checkbox';
     skillsBox.className = 'cc-wizard-skills-default-box';
-    skillsBox.checked = state.shareSkillsAtJoin;
+    skillsBox.checked = state.shareOfferingsAtJoin;
     skillsBox.addEventListener('change', () => {
-      setShareSkillsAtJoin(state, skillsBox.checked);
+      setShareOfferingsAtJoin(state, skillsBox.checked);
     });
     skillsRow.appendChild(skillsBox);
     skillsRow.appendChild(doc.createTextNode(` ${t('circle.join.skills_default.label')}`));

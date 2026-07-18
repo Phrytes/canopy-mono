@@ -28,7 +28,7 @@ import { initialState, decodeInvite, finalSubmit } from '../core/wizards/joinGro
  * capabilities at join (before redeeming) and record their opt-outs — see `circleConsent.js`. Purely
  * additive: an invite built without a policy carries no template and the join consent step is a no-op.
  *
- * Skills→property fold-in phase C (Q3) — the invite optionally EMBEDS `skillsMatching: true`, the
+ * Skills→property fold-in phase C (Q3) — the invite optionally EMBEDS `offeringsMatching: true`, the
  * circle's "this kring is about skills-matching" charter signal (the board-8 circle-skill record,
  * `offeringsMatchingEnabled` in @onderling/kring-host/circleOfferings — readable only on the ADMIN device
  * that builds the invite, so it must ride the invite to reach the joiner pre-join). The join wizard
@@ -36,10 +36,10 @@ import { initialState, decodeInvite, finalSubmit } from '../core/wizards/joinGro
  * on older invites / non-matching circles ⇒ the joiner's default stays withhold.
  *
  * @param {{ callSkill:Function, circleId:string, adminPeerAddr?:string|null,
- *           capabilities?:object|null, apps?:string[]|null, skillsMatching?:boolean|null }} a
+ *           capabilities?:object|null, apps?:string[]|null, offeringsMatching?:boolean|null }} a
  * @returns {Promise<{uri:string, expiresAt?:number} | {error:string}>}
  */
-export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr = null, capabilities = null, apps = null, skillsMatching = null } = {}) {
+export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr = null, capabilities = null, apps = null, offeringsMatching = null } = {}) {
   if (typeof callSkill !== 'function' || !circleId) return { error: 'missing-args' };
   let res;
   try { res = await callSkill('stoop', 'getCurrentMembershipCode', { groupId: circleId }); }
@@ -65,7 +65,7 @@ export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr 
       ? { capabilities } : {}),
     ...(Array.isArray(apps) && apps.length ? { apps } : {}),
     // Fold-in phase C (Q3) — only ever embedded as an explicit true; false/null stays absent.
-    ...(skillsMatching === true ? { skillsMatching: true } : {}),
+    ...(offeringsMatching === true ? { offeringsMatching: true } : {}),
   };
   return { uri: encodeMembershipCodeUrl(invite), expiresAt };
 }

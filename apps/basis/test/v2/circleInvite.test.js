@@ -44,17 +44,17 @@ describe('buildCircleInviteUri', () => {
     expect('apps' in decoded).toBe(false);
   });
 
-  it('fold-in C/Q3 — embeds skillsMatching: true when passed; omits it otherwise (older-invite shape)', async () => {
+  it('fold-in C/Q3 — embeds offeringsMatching: true when passed; omits it otherwise (older-invite shape)', async () => {
     const callSkill = vi.fn(async (app, op) =>
       (op === 'getCurrentMembershipCode' ? { code: 'C', expiresAt: 1 } : {}));
     const decode = (uri) => JSON.parse(Buffer.from(
       uri.replace(/^stoop-invite:\/\//, '').replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString());
-    const on = await buildCircleInviteUri({ callSkill, circleId: 'c', skillsMatching: true });
-    expect(decode(on.uri).skillsMatching).toBe(true);
-    const off = await buildCircleInviteUri({ callSkill, circleId: 'c', skillsMatching: false });
-    expect('skillsMatching' in decode(off.uri)).toBe(false);
+    const on = await buildCircleInviteUri({ callSkill, circleId: 'c', offeringsMatching: true });
+    expect(decode(on.uri).offeringsMatching).toBe(true);
+    const off = await buildCircleInviteUri({ callSkill, circleId: 'c', offeringsMatching: false });
+    expect('offeringsMatching' in decode(off.uri)).toBe(false);
     const absent = await buildCircleInviteUri({ callSkill, circleId: 'c' });
-    expect('skillsMatching' in decode(absent.uri)).toBe(false);
+    expect('offeringsMatching' in decode(absent.uri)).toBe(false);
   });
 
   it('mints a fresh code (rotateMyGroupCode) when there is no active one', async () => {

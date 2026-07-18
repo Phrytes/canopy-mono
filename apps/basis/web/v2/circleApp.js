@@ -3092,18 +3092,18 @@ async function showCircleInvite(circleId) {
   // Fold-in phase C (Q3) — embed the circle's skills-matching charter signal. The board-8 circle-skill
   // record lives ONLY on this (admin) device (localStorage draft, see showSkills), so invite-build is
   // the one moment the joiner-side wizard can learn it pre-join. Best-effort: unreadable ⇒ not embedded.
-  let inviteSkillsMatching = false;
+  let inviteOfferingsMatching = false;
   try {
     const s = localStorage.getItem(skillKey(circleId));
-    inviteSkillsMatching = !!s && offeringsMatchingEnabled(JSON.parse(s));
-  } catch { inviteSkillsMatching = false; }
+    inviteOfferingsMatching = !!s && offeringsMatchingEnabled(JSON.parse(s));
+  } catch { inviteOfferingsMatching = false; }
   let r;
   try {
     r = await buildCircleInviteUri({
       callSkill: rawCallSkill, circleId, adminPeerAddr,
       capabilities: invitePolicy.capabilities,
       apps:         invitePolicy.apps,
-      skillsMatching: inviteSkillsMatching,
+      offeringsMatching: inviteOfferingsMatching,
     });
   }
   catch { r = { error: 'failed' }; }
