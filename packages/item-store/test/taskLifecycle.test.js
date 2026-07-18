@@ -16,8 +16,9 @@ import { MemorySource } from '@onderling/core';
 import { ItemStore, computeStatus } from '../src/ItemStore.js';
 import { CircleItemStore } from '../src/CircleItemStore.js';
 import {
-  claim, reassign, markComplete, submit, approve, reject, revoke,
+  claim, reassign, markComplete, submit, approve, reject, revoke, assigneesOf,
 } from '../src/taskLifecycle.js';
+import { listOpen } from '../src/taskCrud.js';
 import { PermissionDeniedError, DependenciesOpenError, MissingArgumentError, InvalidLifecycleError } from '../src/errors.js';
 
 const ROOT = 'pod://circle/';
@@ -116,6 +117,85 @@ describe('claim — CAS single-winner (Option A)', () => {
     expect(typeof res.claimedAt).toBe('number');
     expect(emitted).toContain('a');                    // publish-on-write seam fired
     expect(named).toEqual(['item-claimed']);           // ItemStore-parity named event
+  });
+});
+
+// ── co-ownership: assignees[] + maxAssignees (J2) ────────────────────────────
+
+describe('claim — co-ownership (J2, maxAssignees > 1)', () => {
+  const CARL = 'https://id.example/carl';
+
+  it('a maxAssignees:2 task: two members BOTH claim → both in assignees[]; the mirror stays assignees[0]', async () => {
+    const store = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    await seedTask(store, { id: 'co', text: 'shared chore', maxAssignees: 2 });
+
+    const r1 = await claim(store, 'co', { actor: ANNE });
+    expect(r1.assignees).toEqual([ANNE]);
+    expect(r1.assignee).toBe(ANNE);              // mirror = assignees[0]
+
+    const r2 = await claim(store, 'co', { actor: BOB });
+    expect(r2.assignees).toEqual([ANNE, BOB]);   // CO-OWNED — appended, not overwritten
+    expect(r2.assignee).toBe(ANNE);              // mirror unchanged (still first claimer)
+  });
+
+  it('a claim on a FULL set → already-claimed (same shape as the exclusive case)', async () => {
+    const store = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    await seedTask(store, { id: 'co', text: 't', maxAssignees: 2 });
+    await claim(store, 'co', { actor: ANNE });
+    await claim(store, 'co', { actor: BOB });    // set now full (2/2)
+
+    const third = await claim(store, 'co', { actor: CARL });
+    expect(third.error).toBe('already-claimed');
+    expect(third.current.assignees).toEqual([ANNE, BOB]);
+  });
+
+  it('BOTH co-owners see it in their "mine" set; ANY co-owner completes', async () => {
+    const store = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    await seedTask(store, { id: 'co', text: 't', maxAssignees: 3 });
+    await claim(store, 'co', { actor: ANNE });
+    await claim(store, 'co', { actor: BOB });
+
+    // listMine membership (what tasks-v0's listMineCore does).
+    const open = await listOpen(store);
+    const mineAnne = open.filter((t) => assigneesOf(t).includes(ANNE)).map((t) => t.id);
+    const mineBob  = open.filter((t) => assigneesOf(t).includes(BOB)).map((t) => t.id);
+    expect(mineAnne).toContain('co');
+    expect(mineBob).toContain('co');
+
+    // Any co-owner may complete — here the SECOND co-owner, not the mirror.
+    const [done] = await markComplete(store, [{ id: 'co' }], { actor: BOB });
+    expect(done.completedBy).toBe(BOB);
+    expect(computeStatus(done)).toBe('complete');
+  });
+
+  it('SIDE-BY-SIDE J1 parity: a default (maxAssignees:1) task still rejects the 2nd claimer', async () => {
+    // Co-ownable (maxAssignees:2) — 2nd claim SUCCEEDS.
+    const coop = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    await seedTask(coop, { id: 'coop', text: 't', maxAssignees: 2 });
+    await claim(coop, 'coop', { actor: ANNE });
+    const coopSecond = await claim(coop, 'coop', { actor: BOB });
+    expect(coopSecond.assignees).toEqual([ANNE, BOB]);   // no already-claimed
+
+    // Default (no maxAssignees ⇒ 1) — 2nd claim REJECTED, exactly today's behaviour.
+    const solo = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    await seedTask(solo, { id: 'solo', text: 't' });      // no maxAssignees
+    const first = await claim(solo, 'solo', { actor: ANNE });
+    expect(first.assignee).toBe(ANNE);
+    expect(first.assignees).toEqual([ANNE]);
+    const soloSecond = await claim(solo, 'solo', { actor: BOB });
+    expect(soloSecond.error).toBe('already-claimed');
+    expect(soloSecond.current.assignee).toBe(ANNE);      // mirror preserved
+  });
+
+  it('revoke with a target yanks ONE co-owner; the rest keep the task', async () => {
+    const store = new CircleItemStore({ dataSource: makeCasPodSource(), rootContainer: ROOT });
+    await seedTask(store, { id: 'co', text: 't', maxAssignees: 3, master: ANNE });
+    await claim(store, 'co', { actor: ANNE });
+    await claim(store, 'co', { actor: BOB });
+    const res = await revoke(store, 'co', { reason: 'stepping down', assignee: ANNE }, { actor: ANNE });
+    expect(res.assignees).toEqual([BOB]);      // ANNE removed
+    expect(res.assignee).toBe(BOB);            // mirror re-points to new assignees[0]
+    expect(computeStatus(res)).toBe('claimed');// still owned by BOB
   });
 });
 

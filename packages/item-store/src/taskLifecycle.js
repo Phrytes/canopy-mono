@@ -65,6 +65,51 @@ import {
 // and is reused by both this module and taskCrud.js — no duplicated gate logic.
 import { requireActor, gate, emit, resolveById } from './taskCtx.js';
 
+// ── co-ownership model (assignees[] + the `assignee` mirror) ─────────────────
+//
+// PLAN-cluster-verification-journeys J2 (P1 co-ownership). A task's authoritative
+// owner set is `assignees[]` (an array of webids); `maxAssignees` (default 1) caps
+// it. `assignee` (singular) is kept as a MIRROR of `assignees[0]` so every legacy
+// consumer read — `computeStatus`'s `if (item.assignee)`, the rolePolicy gates, the
+// filter/dashboard/UI `item.assignee === actor` checks — keeps working by
+// construction. These helpers are the ONE place the model is interpreted, and they
+// tolerate legacy items that carry only `assignee` (no `assignees[]` yet).
+
+/**
+ * The co-owner set for a task. Source of truth is `assignees[]`; falls back to
+ * `[assignee]` for legacy / single-owner items written before this field existed
+ * (so membership queries keep working by construction). Empty ⇒ unclaimed.
+ * @returns {string[]}
+ */
+export function assigneesOf(item) {
+  if (Array.isArray(item?.assignees)) return item.assignees;
+  if (item?.assignee) return [item.assignee];
+  return [];
+}
+
+/**
+ * The claim ceiling. `undefined` ⇒ 1 (today's EXCLUSIVE first-come default —
+ * a 2nd claimer gets `already-claimed`, so J1 stays green); `null` ⇒ unlimited
+ * (`Infinity`); a positive number ⇒ that cap (CO-OWNABLE).
+ * @returns {number}
+ */
+export function maxAssigneesOf(item) {
+  const m = item?.maxAssignees;
+  if (m === null) return Infinity;
+  if (typeof m === 'number' && Number.isFinite(m) && m >= 1) return Math.floor(m);
+  return 1;
+}
+
+/** True iff the co-owner set has no room for another claimer (default-full-at-1). */
+export function isAssigneesFull(item) {
+  return assigneesOf(item).length >= maxAssigneesOf(item);
+}
+
+/** True iff `actor` is one of the task's co-owners (membership, not equality). */
+export function isAssignee(item, actor) {
+  return assigneesOf(item).includes(actor);
+}
+
 // ── lifecycle-specific helpers ───────────────────────────────────────────────
 
 /**
@@ -92,13 +137,16 @@ async function assertDepsClosed(store, item) {
 // ── Lifecycle verbs ──────────────────────────────────────────────────────────
 
 /**
- * Claim a task — AUTHORITATIVE, race-safe single-winner (the whole point of
- * Option A). Reads current; rejects if completed (`InvalidLifecycleError`) or
- * already assigned (`{error:'already-claimed', current}` — parity); gates
- * `canClaim`; then writes via `store.putIfMatch` so a racing second writer that
- * read the same unassigned base loses the CAS. `putIfMatch`'s
- * `{error:'conflict', current}` is re-mapped to ItemStore's
- * `{error:'already-claimed', current}`.
+ * Claim a task — AUTHORITATIVE, race-safe (the whole point of Option A), now
+ * CO-OWNERSHIP-aware. CAS-ADDS the actor to `assignees[]` (via `store.putIfMatch`,
+ * so a racing second writer that read the same base loses) IF the actor is not
+ * already a co-owner AND the set has room (`assignees.length < maxAssignees`).
+ * Otherwise — already a co-owner, OR the set is FULL — returns the ItemStore-parity
+ * `{error:'already-claimed', current}`. With the DEFAULT `maxAssignees:1` the set
+ * is full after the first claim, so a 2nd claimer gets `already-claimed`: EXACTLY
+ * today's exclusive first-come behaviour (J1 stays green). `putIfMatch`'s
+ * `{error:'conflict', current}` is re-mapped to the same `already-claimed` shape.
+ * Maintains the `assignee = assignees[0]` mirror + `claimedAt`.
  *
  * @param {import('./CircleItemStore.js').CircleItemStore} store
  * @param {string} id
@@ -113,13 +161,17 @@ export async function claim(store, id, ctx = {}) {
   if (current.completedAt) {
     throw new InvalidLifecycleError({ itemId: id, currentState: 'completed', attemptedAction: 'claim' });
   }
-  if (current.assignee) {
+  const roster = assigneesOf(current);
+  // Already a co-owner, OR the set is full (default maxAssignees:1 ⇒ full after
+  // the first claim = today's EXCLUSIVE first-come) → ItemStore's already-claimed.
+  if (roster.includes(actor) || roster.length >= maxAssigneesOf(current)) {
     return { error: 'already-claimed', current };
   }
   gate(ctx.rolePolicy, 'canClaim', actor, current);
 
   const at = Date.now();
-  const updated = { ...current, assignee: actor, claimedAt: at };
+  const assignees = [...roster, actor];        // CAS-ADD (append, not overwrite)
+  const updated = { ...current, assignees, assignee: assignees[0], claimedAt: at };
   const res = await store.putIfMatch(updated, { by: actor, expectedEtag: ctx.expectedEtag });
   // CAS conflict → someone else claimed between our read and our write. Re-map
   // to ItemStore's contract; `res.current` is the re-read winner.
@@ -152,11 +204,17 @@ export async function reassign(store, id, newAssignee, ctx = {}) {
   gate(ctx.rolePolicy, 'canReassign', actor, current);
 
   const at = Date.now();
+  // `claimBase` records the SUPERSEDED sole owner (the mirror = assignees[0]) for
+  // the substrate's causal-vs-concurrent disambiguation — preserved verbatim.
   const updated = { ...current, claimBase: current.assignee ?? null };
   if (newAssignee) {
-    updated.assignee = newAssignee;
+    // Reassign to a new SOLE owner: collapse the co-owner set to just them.
+    updated.assignees = [newAssignee];
+    updated.assignee = newAssignee;            // mirror = assignees[0]
     updated.claimedAt = at;
   } else {
+    // Release: clear the whole set + the mirror.
+    delete updated.assignees;
     delete updated.assignee;
     delete updated.claimedAt;
   }
@@ -315,11 +373,17 @@ export async function reject(store, id, args, ctx = {}) {
 }
 
 /**
- * Revoke the assignee — CONTENT op. Parity with `ItemStore.revoke`: mandatory
+ * Revoke an assignment — CONTENT op. Parity with `ItemStore.revoke`: mandatory
  * `args.reason` (`MissingArgumentError`); forbids on completed / unassigned
- * (`InvalidLifecycleError`); gate `canRevoke`; append a `revoke` reviewLog entry
- * (→ `computeStatus` returns `open`); clear `assignee`+`claimedAt`; `master`
- * preserved. Emits `item-revoked` with `{item, previousAssignee, reason}`.
+ * (`InvalidLifecycleError` — the mirror empty ⇒ unassigned); gate `canRevoke`;
+ * append a `revoke` reviewLog entry; `master` preserved. Emits `item-revoked`
+ * with `{item, previousAssignee, reason}`.
+ *
+ * CO-OWNERSHIP: `args.assignee` (or `args.target`) optionally names WHICH co-owner
+ * to yank — when it names a member of a multi-owner set, only that one is removed
+ * (the mirror re-points to the new `assignees[0]`). With no target — or a
+ * single-owner set — the whole set clears (→ `computeStatus` returns `open`),
+ * EXACTLY today's single-owner revoke (parity preserved).
  */
 export async function revoke(store, id, args, ctx = {}) {
   const actor = requireActor(ctx);
@@ -337,11 +401,24 @@ export async function revoke(store, id, args, ctx = {}) {
   gate(ctx.rolePolicy, 'canRevoke', actor, current);
 
   const at = Date.now();
-  const previousAssignee = current.assignee;
+  const roster = assigneesOf(current);
+  const target = args?.assignee ?? args?.target ?? null;
   const reviewLog = appendReview(current.reviewLog, { at, by: actor, decision: 'revoke', note: args.reason });
   const updated = { ...current, reviewLog };
-  delete updated.assignee;
-  delete updated.claimedAt;
+  let previousAssignee;
+  if (target && roster.includes(target) && roster.length > 1) {
+    // Yank ONE co-owner; the rest keep the task.
+    const remaining = roster.filter((w) => w !== target);
+    updated.assignees = remaining;
+    updated.assignee = remaining[0];           // mirror = new assignees[0]
+    previousAssignee = target;
+  } else {
+    // Clear the whole set + the mirror (single-owner parity).
+    previousAssignee = current.assignee;
+    delete updated.assignees;
+    delete updated.assignee;
+    delete updated.claimedAt;
+  }
   const res = await store.put(updated, { by: actor });
   emit(ctx, 'item-revoked', { item: res, previousAssignee, reason: args.reason });
   return res;

@@ -39,6 +39,9 @@
 
 import { defineSkill } from '@onderling/core';
 import { wireSkill } from '@onderling/sdk';
+// Co-ownership (J2) — membership over the `assignees[]` set (falls back to the
+// legacy `assignee` mirror for single-owner items) + the not-full claimable test.
+import { assigneesOf, isAssigneesFull } from '@onderling/item-store';
 import { computeStatus, effectiveStatus, unmetDeps, detectCycle } from '../dag.js';
 import { argsFromParts } from '../bundleResolver.js';
 // DESIGN gap #2 (2026-05-27) — `_sync` reply envelope for staleness hints.
@@ -148,6 +151,9 @@ async function addTaskCore(circle, a, ctx) {
     ...(a.approval         !== undefined ? { approval:         a.approval         } : {}),
     ...(a.master           !== undefined ? { master:           a.master           } : {}),
     ...(a.parentTaskId     !== undefined ? { parentTaskId:     a.parentTaskId     } : {}),
+    // Co-ownership (J2) — declare the claim ceiling at creation. Default 1 ⇒
+    // exclusive first-come; >1 or null ⇒ co-ownable.
+    ...(a.maxAssignees     !== undefined ? { maxAssignees:     a.maxAssignees     } : {}),
     // V2 task fields (auto-scheduling V2.4 + invoicing V2.2).
     ...(a.scheduledAt      !== undefined ? { scheduledAt:      a.scheduledAt     } : {}),
     ...(a.estimateMinutes  !== undefined ? { estimateMinutes:  a.estimateMinutes } : {}),
@@ -305,7 +311,7 @@ async function listMineCore(circle, a, ctx) {
   const open   = await circle.itemStore.listOpen();
   const closed = await circle.itemStore.listClosed();
   const items  = open
-    .filter((t) => t.assignee === ctx.from)
+    .filter((t) => assigneesOf(t).includes(ctx.from))   // co-owner membership (mirror-compatible)
     .map((t) => ({
       ...t,
       status:   effectiveStatus(t, open, closed),
@@ -319,9 +325,14 @@ async function listMineCore(circle, a, ctx) {
  */
 async function listClaimableCore(circle, a, ctx) {
   if (!circle) return { error: 'circleId required' };
-  const filter = { assignee: null };
+  // Co-ownership (J2): "claimable" = the co-owner set has ROOM (not full), which
+  // for the default maxAssignees:1 is exactly "unassigned" (parity). A co-ownable
+  // task stays claimable until its set fills. Filter in-core (the store's
+  // `assignee:null` filter only understood the single-owner case).
+  const filter = {};
   if (a.skill) filter.requiredSkill = a.skill;
-  const items = await circle.itemStore.listOpen(filter);
+  const open  = await circle.itemStore.listOpen(filter);
+  const items = open.filter((t) => !isAssigneesFull(t));
   return { items: decorateWithLastSync(items), _sync: simulateSync() };
 }
 

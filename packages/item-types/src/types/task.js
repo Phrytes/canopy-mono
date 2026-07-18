@@ -23,7 +23,12 @@ export const TASK_SCHEMA = {
         'completed',
       ],
     },
+    // Assignment. `assignee` (singular) is the MIRROR of `assignees[0]` kept for
+    // backward-compatible reads; `assignees[]` is the authoritative co-owner set
+    // and `maxAssignees` (default 1 ⇒ exclusive; >1 or null ⇒ co-ownable) caps it.
     assignee:     { type: 'string' },
+    assignees:    { type: 'array', items: { type: 'string' } },
+    maxAssignees: { type: ['integer', 'null'], minimum: 1 },
     dependencies: { type: 'array', items: { type: 'string' } },
     circleId:       { type: 'string' },
     dod:          { type: 'string' },

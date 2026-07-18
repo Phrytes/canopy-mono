@@ -10,6 +10,11 @@
  */
 
 import { roleRank, ROLES } from '@onderling/core';
+// Co-ownership (J2): a task's owner is ANY member of `assignees[]` (the singular
+// `assignee` is just the mirror of `assignees[0]`). `isAssignee` is membership over
+// that set with a legacy fallback, so single-owner gating is byte-identical to the
+// old `item.assignee === actor` while a co-owner (not the mirror) is now allowed.
+import { isAssignee } from '@onderling/item-store';
 
 /**
  * @typedef {'admin'|'coordinator'|'member'|'observer'|'external-volunteer'} StandardRole
@@ -118,7 +123,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
         return true;
       }
       // member + external-volunteer: only complete tasks they're assigned to.
-      return item?.assignee === actor;
+      return isAssignee(item, actor);
     },
 
     canRemove: (actor) => {
@@ -147,14 +152,14 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       if (patch && typeof patch === 'object'
           && Object.keys(patch).length === 1
           && Array.isArray(patch.dependencies)) {
-        if (item?.assignee === actor) return true;
+        if (isAssignee(item, actor)) return true;
         if ((item?.master ?? item?.addedBy) === actor) return true;
       }
       // V2.4 narrow exception: the assignee may set `scheduledAt`
       // (and `estimateMinutes` if absent) on their own assignment via
       // the planner's `acceptSchedule` skill. Patch must touch ONLY
       // these planner fields — keeps the gate tight.
-      if (patch && typeof patch === 'object' && item?.assignee === actor) {
+      if (patch && typeof patch === 'object' && isAssignee(item, actor)) {
         const keys = Object.keys(patch);
         const planner = ['scheduledAt', 'estimateMinutes'];
         if (keys.length > 0 && keys.every((k) => planner.includes(k))) return true;
@@ -179,7 +184,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       // visibility filter:
       const v = item?.visibility ?? 'household';
       if (v === 'household') return true;
-      if (v === 'private') return item?.addedBy === actor || item?.assignee === actor;
+      if (v === 'private') return item?.addedBy === actor || isAssignee(item, actor);
       if (typeof v === 'string' && v.startsWith('role:')) {
         const requiredRole = v.slice('role:'.length);
         return isAdminRole(r) || r === requiredRole;
@@ -198,7 +203,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
       if (isCoordinatorOrAbove(r)) return true;
-      return item?.assignee === actor;
+      return isAssignee(item, actor);
     },
 
     /**
@@ -216,7 +221,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       if (r === undefined || r === 'observer') return false;
       if (isCoordinatorOrAbove(r)) return true;
       const mode = item?.approval ?? 'self-mark';
-      if (mode === 'self-mark') return item?.assignee === actor;
+      if (mode === 'self-mark') return isAssignee(item, actor);
       if (mode === 'creator') {
         return item?.master === actor || item?.addedBy === actor;
       }

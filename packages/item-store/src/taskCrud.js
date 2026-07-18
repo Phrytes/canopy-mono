@@ -119,6 +119,9 @@ function materialise(partial, ctx) {
     ...(partial.definitionOfDone ? { definitionOfDone: partial.definitionOfDone } : {}),
     ...(partial.approval ? { approval: partial.approval } : {}),
     ...(partial.parentTaskId ? { parentTaskId: partial.parentTaskId } : {}),
+    // Co-ownership (J2): the claim ceiling declared at creation. Absent ⇒ default
+    // 1 (EXCLUSIVE first-come) via `maxAssigneesOf`; a number/`null` ⇒ co-ownable.
+    ...(partial.maxAssignees !== undefined ? { maxAssignees: partial.maxAssignees } : {}),
     ...(partial.scheduledAt !== undefined ? { scheduledAt: partial.scheduledAt } : {}),
     ...(partial.estimateMinutes !== undefined ? { estimateMinutes: partial.estimateMinutes } : {}),
     ...(Array.isArray(partial.embeds) && partial.embeds.length > 0
@@ -218,7 +221,7 @@ const FORBIDDEN_UPDATE_FIELDS = Object.freeze([
   // ── verbatim from ItemStore#assertEditableFields ──
   'id', 'addedBy', 'addedByDisplayName', 'addedAt',
   'completedAt', 'completedBy', 'completedByDisplayName',
-  'assignee', 'claimedAt', 'claimBase',
+  'assignee', 'assignees', 'claimedAt', 'claimBase',   // assignment state — set via claim/reassign/revoke, never update()
   'reviewLog',      // append-only via submit/approve/reject/revoke
   'deliverable',    // set via submit
   'approval',       // change via a dedicated approval-mode op

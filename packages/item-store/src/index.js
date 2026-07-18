@@ -11,6 +11,7 @@ export { ItemStore, computeStatus } from './ItemStore.js';
 export { CircleItemStore } from './CircleItemStore.js';   // cluster L · L1 — per-circle, type-indexed generic store
 export {                                                  // PLAN-capabilities-tasks-roles P1 (Option A) — task lifecycle
   claim, reassign, markComplete, submit, approve, reject, revoke,  // VERBS as functions-over-CircleItemStore
+  assigneesOf, maxAssigneesOf, isAssigneesFull, isAssignee,        // co-ownership model helpers (J2): assignees[] + the `assignee` mirror
 } from './taskLifecycle.js';
 export {                                                  // PLAN-capabilities-tasks-roles P1 step 1 — task CRUD + queries
   addTasks, listOpen, listClosed, getById, update, removeItems,   // CRUD/query surface as functions-over-CircleItemStore
