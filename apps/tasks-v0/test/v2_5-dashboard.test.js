@@ -115,6 +115,54 @@ describe('V2.5 — getMyCircles skill', () => {
   });
 });
 
+describe('J3 — listMyTasksAcrossCircles skill', () => {
+  it('returns my tasks flat across circles, excludes unassigned, tags each row with circleId', async () => {
+    // Two circles on separate stores, shared via circleBundlesProvider —
+    // same wiring the getMyCircles multi-circle test uses.
+    const bundleA = buildBundle();
+    const circleA = await createCircleAgent({
+      circleConfig: CIRCLE_A, localStoreBundle: bundleA, wireOnboardingSkills: false,
+    });
+    const bundleB = buildBundle();
+    let circleB;
+    const provider = () => {
+      const list = [
+        { circle: circleA.getCircle(), itemStore: circleA.itemStore, roleOf: (a) => CIRCLE_A.members.find((m) => m.webid === a)?.role },
+      ];
+      if (circleB) list.push({ circle: circleB.getCircle(), itemStore: circleB.itemStore, roleOf: (a) => CIRCLE_B.members.find((m) => m.webid === a)?.role });
+      return list;
+    };
+    circleB = await createCircleAgent({
+      circleConfig: CIRCLE_B, localStoreBundle: bundleB, wireOnboardingSkills: false,
+      circleBundlesProvider: provider,
+    });
+
+    // Seed: a task assigned to ANNE in C1, a task assigned to ANNE in C2,
+    // and an UNASSIGNED task in C1 (must be excluded).
+    const a1 = await call(circleA, 'addTask', { text: 'A-mine' }, ANNE);
+    await call(circleA, 'claimTask', { id: a1.task.id }, ANNE);
+    await call(circleA, 'addTask', { text: 'A-unassigned' }, ANNE);   // stays open + unclaimed
+    const b1 = await call(circleB, 'addTask', { text: 'B-mine' }, ANNE);
+    await call(circleB, 'claimTask', { id: b1.task.id }, ANNE);
+
+    const r = await call(circleB, 'listMyTasksAcrossCircles', {}, ANNE);
+    const texts = r.items.map((t) => t.text).sort();
+    expect(texts).toEqual(['A-mine', 'B-mine']);        // both mine, unassigned excluded
+
+    // Each row carries the owning circleId (+ circleName) for deep-linking.
+    const byCircle = Object.fromEntries(r.items.map((t) => [t.circleId, t.text]));
+    expect(byCircle['circle-a']).toBe('A-mine');
+    expect(byCircle['circle-b']).toBe('B-mine');
+    for (const t of r.items) {
+      expect(typeof t.circleId).toBe('string');
+      expect(t.circleName).toBeTruthy();
+    }
+
+    await circleA.close();
+    await circleB.close();
+  });
+});
+
 describe('V2.5 — bot.circles', () => {
   it('dispatcher routes "circles"', () => {
     expect(dispatch('circles')).toEqual({ kind: 'skill', skillId: 'bot.circles', args: {} });

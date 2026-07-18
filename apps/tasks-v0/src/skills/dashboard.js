@@ -5,6 +5,13 @@
  *     belongs to (across every CircleState the meshAgent knows about),
  *     each with `{circleId, name, kind, counts: {open, overdue,
  *     awaitingApproval, mine}}`.
+ *   - `listMyTasksAcrossCircles()` — self only. J3. Same circle
+ *     enumeration as `getMyCircles`, but instead of per-circle COUNTS
+ *     it returns a FLAT array of the actual open task ITEMS where the
+ *     calling actor is a co-owner (`assigneesOf(t).includes(from)`),
+ *     each row tagged with its `circleId` (+ `circleName`) so the
+ *     self-chat / central-agent view can deep-link. Open + assigned-to-me
+ *     only; unassigned tasks are excluded.
  *
  * After V2.8: registered ONCE on the meshAgent. The skill enumerates
  * circles via `circlesProvider()` (returns `Map<circleId, CircleState>` or
@@ -13,8 +20,36 @@
  */
 
 import { defineSkill } from '@onderling/core';
+import { assigneesOf } from '@onderling/item-store';
 
 import { aggregateCircles } from '../dashboard/aggregator.js';
+
+/**
+ * Shared circle enumeration for the dashboard skills. Resolves the
+ * calling circle context, honours the per-CircleState multi-circle
+ * override provider (`_dashboardCirclesProvider`), and filters to the
+ * circles where `from` holds a role. Returns `{ ctxCircle, eligible }`
+ * or `{ error }` — identical to the (previously inline) getMyCircles gate.
+ */
+function eligibleCirclesFor({ parts, from, envelope, bundleResolver, circlesProvider }) {
+  const ctxCircle = bundleResolver(parts, { envelope, from });
+  if (!ctxCircle) return { error: 'circleId required' };
+  if (typeof from !== 'string' || !from) return { error: 'webid required' };
+  // V2.5 multi-circle launches plumb a per-CircleState override provider
+  // (`_dashboardCirclesProvider`) so the dashboard sees every circle the
+  // launcher built — even those not in the local wireSkills's
+  // `circlesProvider`. Falls back to the wireSkills default for
+  // single-circle launches.
+  const cp = typeof ctxCircle._dashboardCirclesProvider === 'function'
+    ? ctxCircle._dashboardCirclesProvider
+    : circlesProvider;
+  const allCircles = [...(cp() ?? [])];
+  const eligible = allCircles.filter((cs) => {
+    const role = cs?.roles?.[from];
+    return typeof role === 'string' && role.length > 0;
+  });
+  return { ctxCircle, eligible };
+}
 
 /**
  * @param {object} args
@@ -38,22 +73,9 @@ export function buildDashboardSkills({ bundleResolver, circlesProvider } = {}) {
 
   return [
     defineSkill('getMyCircles', async ({ parts, from, envelope }) => {
-      const ctxCircle = bundleResolver(parts, { envelope, from });
-      if (!ctxCircle) return { error: 'circleId required' };
-      if (typeof from !== 'string' || !from) return { error: 'webid required' };
-      // V2.5 multi-circle launches plumb a per-CircleState override
-      // provider (`_dashboardCirclesProvider`) so the dashboard sees
-      // every circle the launcher built — even those not in the local
-      // wireSkills's `circlesProvider`. Falls back to the wireSkills
-      // default for single-circle launches.
-      const cp = typeof ctxCircle._dashboardCirclesProvider === 'function'
-        ? ctxCircle._dashboardCirclesProvider
-        : circlesProvider;
-      const allCircles = [...(cp() ?? [])];
-      const eligible = allCircles.filter((cs) => {
-        const role = cs?.roles?.[from];
-        return typeof role === 'string' && role.length > 0;
-      });
+      const gate = eligibleCirclesFor({ parts, from, envelope, bundleResolver, circlesProvider });
+      if (gate.error) return { error: gate.error };
+      const { eligible } = gate;
 
       const inputs = [];
       for (const cs of eligible) {
@@ -72,6 +94,39 @@ export function buildDashboardSkills({ bundleResolver, circlesProvider } = {}) {
       return { circles };
     }, {
       description: 'List every circle the calling actor belongs to with counts.',
+      visibility:  'authenticated',
+    }),
+
+    /**
+     * listMyTasksAcrossCircles() — J3. The flat cross-circle "all my
+     * tasks" list. Same circle enumeration + membership gate as
+     * getMyCircles, but returns the actual OPEN task ITEMS where `from`
+     * is a co-owner (`assigneesOf(t).includes(from)`) rather than
+     * per-circle counts. Unassigned tasks are excluded (they'd fail the
+     * membership filter). Each row is the task item spread + `circleId`
+     * and `circleName` so the self-chat / central-agent view can
+     * deep-link back to the owning circle. Open-only (closed/completed
+     * tasks are not surfaced — this is the actionable to-do list).
+     */
+    defineSkill('listMyTasksAcrossCircles', async ({ parts, from, envelope }) => {
+      const gate = eligibleCirclesFor({ parts, from, envelope, bundleResolver, circlesProvider });
+      if (gate.error) return { error: gate.error };
+      const { eligible } = gate;
+
+      const items = [];
+      for (const cs of eligible) {
+        let openTasks = [];
+        try { openTasks = await cs.itemStore.listOpen(); } catch { /* skip circle on read error */ }
+        const circleId   = cs.liveCircle?.circleId;
+        const circleName = cs.liveCircle?.name ?? circleId;
+        for (const t of openTasks) {
+          if (!assigneesOf(t).includes(from)) continue;   // co-owner membership (mirror-compatible)
+          items.push({ ...t, circleId, circleName });
+        }
+      }
+      return { items };
+    }, {
+      description: 'List every open task assigned to the calling actor across all their circles (flat, tagged with circleId).',
       visibility:  'authenticated',
     }),
   ];

@@ -827,6 +827,24 @@ export const tasksManifest = {
       },
     },
     /**
+     * J3 (cluster-verification journeys) — the flat cross-circle "all my
+     * tasks" aggregate for the self-chat / central-agent view.  Where
+     * getMyCircles returns per-circle COUNTS, this returns the actual
+     * open task ITEMS assigned to the caller across every circle, each
+     * row tagged with its `circleId` so the UI can deep-link.  Handler
+     * lives in src/skills/dashboard.js (registered via wireSkills like
+     * getMyCircles).
+     */
+    {
+      id:    'listMyTasksAcrossCircles', verb: 'list',
+      appliesTo: { type: 'task' },
+      params: [],
+      surfaces: {
+        slash: { command: '/all-my-tasks' },
+        chat:  { reply: 'list', hint: 'every open task assigned to me across all my circles' },
+      },
+    },
+    /**
      * #190 (B3, 2026-05-23) — circle admin surface.  getCircleConfig +
      * pause/unpause (circleControls).  All accept a circleId; auto-injected
      * from opts.tasksCircleConfig.circleId by realAgent.
