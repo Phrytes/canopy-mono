@@ -28,8 +28,11 @@ export const THEME = {
     accent:    '#17181a', // primary buttons, active state — ink
     accentContrast: '#f7f7f4', // text/icons on accent
     accentInk: '#a3402f', // accent-colored text, links, active tab — THE rust (A+C decision 2026-07-17)
-    card:      '#ffffff', // framed-card inner / bot bubble
-    meBg:      '#e8e6da', // "me" chat bubble (warm beige)
+    card:      '#ffffff', // framed-card inner / bot card container
+    meBg:      '#e8e6da', // "me" chat bubble — warm light grey (right-aligned)
+    botBg:     '#f1f4ee', // bot/other chat bubble fill (left-aligned)
+    botLine:   '#dfe6da', // bot bubble hairline border (soft green-grey)
+    consentBg: '#faf1ea', // consent/handoff card fill (light peach; border = accentInk dashed)
     green:   '#2e7d4f', greenBg: '#e9efe6', // STATUS only: delivered / lokaal / AANBOD
     blue:    '#3f4f76', blueBg:  '#e0e4ee', // betaald / VRAAG / "via hop"
     amber:   '#7a5a1f', amberBg: '#ede5cf', // LENEN
@@ -63,6 +66,9 @@ export const THEME_DARK = {
     accentInk: '#d98a70',
     card:      '#1e1f1a',
     meBg:      '#2b2d25',
+    botBg:     '#22291f', // bot/other chat bubble fill (dark)
+    botLine:   '#33402f', // bot bubble hairline (dark)
+    consentBg: '#2a221c', // consent/handoff card fill (dark warm)
     green:   '#82c298', greenBg: '#22291f',
     blue:    '#9fb0d8', blueBg:  '#232837',
     amber:   '#d0b070', amberBg: '#2e2921',

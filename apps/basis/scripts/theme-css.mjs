@@ -18,6 +18,7 @@ const NAME = {
   ink: '--ink', inkSoft: '--ink-soft', paper: '--paper', paper2: '--paper-2',
   line: '--line', accent: '--accent', accentContrast: '--accent-contrast',
   accentInk: '--accent-ink', card: '--card', meBg: '--me-bg',
+  botBg: '--bot-bg', botLine: '--bot-line', consentBg: '--consent-bg',
   green: '--green', greenBg: '--green-bg', blue: '--blue', blueBg: '--blue-bg',
   amber: '--amber', amberBg: '--amber-bg', danger: '--danger', dangerBg: '--danger-bg',
   trackOff: '--track-off', white: '--white',
