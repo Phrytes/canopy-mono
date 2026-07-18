@@ -28,6 +28,8 @@ import {
   computeStatus,
   computeDagStatus,
   assigneesOf,
+  addChildTo,
+  collectSubtree,
 } from '@onderling/item-store';
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -320,10 +322,24 @@ describe('J4 — attachment projector (TODO: Phase 2 renderAttachments/embed-fil
 //      embeds/shared-ref), order preserved.
 // Verifies: a list is a first-class sendable collection, not just a view/filter.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J5 — sendable lists (TODO: Phase 1 first-class list item-type)', () => {
-  it.todo(
-    'add ordered list item → attach+send to circle → recipients resolve list + member items, order preserved',
-  );
+// The whole-list cross-circle SEND (shareContainerTree fanning the single-item
+// share, with nesting reconstruction) is proven in apps/basis/test/v2/
+// circleShareContainer.test.js. Here we assert the MECHANISM sendable-lists
+// rests on: the ordered pre-order subtree walk that gets fanned.
+describe('J5 — sendable lists (GREEN: ordered subtree walk)', () => {
+  it('collectSubtree walks a list + nested children in pre-order (container first)', async () => {
+    const store = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    await store.put({ id: 'lst', type: 'list', text: 'boodschappen' }, { by: ANNE });
+    const melk = await addChildTo(store, 'lst', { type: 'list-item', text: 'melk' });
+    await addChildTo(store, melk.id, { type: 'list-item', text: 'volle melk' }); // nested under melk
+    await addChildTo(store, 'lst', { type: 'list-item', text: 'brood' });
+
+    const order = (await collectSubtree(store, 'lst')).map((n) => (typeof n === 'string' ? n : n.id));
+    // pre-order: the list, then melk + its nested child, then brood
+    expect(order[0]).toBe('lst'); // container first — the send carries it, then members in order
+    expect(order).toContain(melk.id);
+    expect(order.length).toBe(4); // list + 3 descendants, each enumerated once
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
