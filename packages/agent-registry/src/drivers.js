@@ -20,11 +20,17 @@ import { descriptor } from './propertyVocabulary.js';
  * item — what someone can DO/offer rather than wants — sharing the `{ kind, text, tags[] }` shape;
  * its coarse rung (categoryId under disclosure) lives in `offeringsTaxonomy.js`, not here.
  *
+ * `interest` (interests→drivers fold-in, NOTE-skills-properties-audit §4/Q6) is likewise a
+ * driver-kind open item — what someone ENGAGES WITH / cares about — carried as tags on the
+ * `{ kind, text, tags[] }` shape (no taxonomy / coarse rung: interests are FREE drivers, matched
+ * on-device by tag overlap). It folds the bespoke learned Layer-2 interest signal
+ * (stoop InterestProfile top terms) into one disclosure-controlled property on the profile graph.
+ *
  * Legacy `skill` (the pre-rename name for the human "I can do X" DATA — see
  * NOTE-offering-rename-inventory.md) is READ-ACCEPTED and normalized to `offering`; new writes use
  * `offering`. The INVOCABLE A2A sense keeps the word "skill" elsewhere and is unrelated here.
  */
-export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering']);
+export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering', 'interest']);
 
 /** Back-compat: legacy driver-kind values normalized to the current name (`skill` → `offering`). */
 const LEGACY_KIND_ALIASES = Object.freeze({ skill: 'offering' });

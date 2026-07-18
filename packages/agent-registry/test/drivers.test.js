@@ -7,13 +7,23 @@ import {
 } from '../index.js';
 
 describe('drivers (#3) — the driver property type', () => {
-  it('kinds: the finer intents + the generic catch-all + offering (fold-in)', () => {
-    expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering']);
+  it('kinds: the finer intents + the generic catch-all + offering + interest (fold-ins)', () => {
+    expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering', 'interest']);
     expect(isDriverKind('goal')).toBe(true);
     expect(isDriverKind('offering')).toBe(true);
+    expect(isDriverKind('interest')).toBe(true);   // interests→drivers fold-in (audit §4/Q6)
     expect(isDriverKind('skill')).toBe(true);   // legacy alias read-accepted
     expect(isDriverKind('nonsense')).toBe(false);
     expect(isDriverKind(null)).toBe(false);
+  });
+
+  it('createDriver: kind interest is a FREE driver (tags carry it, no taxonomy/coarse rung)', () => {
+    const s = createDriver({ kind: 'interest', text: '', tags: ['Zeilen', 'houtbewerking'] });
+    expect(s.kind).toBe('interest');
+    expect(s.text).toBe('');
+    expect(s.tags).toEqual(['zeilen', 'houtbewerking']);
+    expect(s.categoryId).toBeUndefined();   // interests have no coarse taxonomy rung
+    expect(isDriverValue(s)).toBe(true);
   });
 
   it('createDriver: kind offering is accepted, NOT downgraded to the generic driver', () => {
