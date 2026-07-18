@@ -84,22 +84,62 @@ export {
 export { manifestConformance } from './conformance.js';
 
 export { paramsToJsonSchema } from './paramsToJsonSchema.js';
-export { renderChat }          from './renderChat.js';
-export { renderSlash }         from './renderSlash.js';
-// renderGate — manifest → deterministic token-gate rules (the pre-LLM half; shared by the
-// household TG-bot + the basis circle bot). Wraps renderSlash into the gate rule shape.
-export { renderGate }          from './renderGate.js';
-// renderCoverage — manifest → surface-coverage matrix (op × chat/slash/gate/web-mobile/inline):
-// scan what's wired where, find gaps, plan inline menus.
+
+// ── The projectors — TWO FAMILIES over the one manifest ─────────────────────
+// Frits' point (docs/architecture.md § "Two projector families"): the flat
+// render* list quietly mixes two categories. Name them so a reader knows which
+// a given projector belongs to — e.g. why renderAttachments is a peer of
+// renderSlash and NOT the chat shell.
+//
+//   AFFORDANCE projectors — turn ops into ONE invocation surface each. A tap /
+//     phrase / tool-call compiles to the SAME `{ opId, args }` → callSkill;
+//     the surfaces are interchangeable at the waist (this IS `web ≡ mobile` on
+//     the input side). renderChat (LLM tools) · renderSlash (/commands + NL
+//     grammar) · renderGate (deterministic pre-LLM token gate) ·
+//     renderAttachments (the attach "+" menu — an entry fires exactly like a
+//     slash command). renderAttachments joins THIS family, next to renderSlash.
+//
+//   SHELL projectors — render the WHOLE platform UI (screens + nav) from the
+//     same manifest. renderWeb + renderMobile (mobile re-exports web's NavModel;
+//     they differ only in the platform adapter).
+//
+// renderCoverage is the META-projector — a matrix OVER the surfaces, not a
+// surface of its own — so it sits outside both families.
+import { renderChat }        from './renderChat.js';
+import { renderSlash }       from './renderSlash.js';
+import { renderGate }        from './renderGate.js';
+import { renderAttachments } from './renderAttachments.js';
+import { renderWeb }         from './renderWeb.js';
+import { renderMobile }      from './renderMobile.js';
+
+// AFFORDANCE family.
+//   renderChat  — LLM tool definitions + system prompt.
+//   renderSlash — /commands + deterministic NL grammar.
+//   renderGate  — deterministic pre-LLM token-gate rules (from each op's
+//                 `surfaces.slash.match`); shared by the household TG-bot +
+//                 the basis circle bot. Wraps renderSlash into the gate shape.
+//   renderAttachments — the attach ("+") menu (from each op's `surfaces.attach`);
+//                 P2 peer of renderSlash. See renderAttachments.js.
+export { renderChat, renderSlash, renderGate, renderAttachments };
+
+// SHELL family (Slice A.1, 2026-05-20 — web/mobile surface projection).
+//   renderWeb    — DOM pages + forms (NavModel). See DESIGN-navmodel-sketch.md.
+//   renderMobile — V0 alias: renderMobile === renderWeb (same NavModel, different
+//                  adapter). Cross-surface equivalence is locked by
+//                  test/crossSurfaceEquivalence.test.js (strict JSON equality).
+export { renderWeb, renderMobile };
+
+// Named family groupings — the two categories as data, so consumers/tests can
+// iterate a family without re-listing its members (drift guard: a new projector
+// joins its family here, once).
+export const AFFORDANCE_PROJECTORS = Object.freeze({
+  renderChat, renderSlash, renderGate, renderAttachments,
+});
+export const SHELL_PROJECTORS = Object.freeze({ renderWeb, renderMobile });
+
+// renderCoverage — manifest → surface-coverage matrix (op × chat/slash/gate/
+// attach/web-mobile/inline): scan what's wired where, find gaps, plan menus.
 export { renderCoverage, coverageGaps, formatCoverageMarkdown } from './renderCoverage.js';
-// Slice A.1 (2026-05-20) — web/mobile surface projection.
-// See DESIGN-navmodel-sketch.md for the NavModel shape +
-// PLAN-gui-chat-uplift.md Slice A for the consumer roadmap.
-export { renderWeb }           from './renderWeb.js';
-// V0 alias: renderMobile === renderWeb (same NavModel, different adapter).
-// Cross-surface equivalence is locked by test/crossSurfaceEquivalence.test.js
-// per DESIGN-navmodel-sketch.md § Q4 (strict JSON equality default).
-export { renderMobile }        from './renderMobile.js';
 
 // JSDoc typedefs live here; importing the module forces it to be loaded
 // so tooling can resolve type-only references.

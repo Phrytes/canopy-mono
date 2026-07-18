@@ -68,7 +68,7 @@ describe('renderCoverage', () => {
 
   it('formatCoverageMarkdown renders a table with header + totals row', () => {
     const md = formatCoverageMarkdown(cov);
-    expect(md).toContain('| app | op | verb | chat | slash | gate | web/mobile | inline | gate verbs |');
+    expect(md).toContain('| app | op | verb | chat | slash | gate | attach | web/mobile | inline | gate verbs |');
     expect(md).toContain('`addThing`');
     expect(md).toContain('**totals**');
   });

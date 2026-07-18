@@ -175,10 +175,32 @@
  * @typedef {object} Surfaces
  * @property {ChatSurface}            [chat]
  * @property {SlashSurface}           [slash]
+ * @property {AttachSurface}          [attach]
  * @property {UiSurface}              [ui]
  */
 
 /** @typedef {{ hint?: string, examples?: string[] }} ChatSurface */
+
+/**
+ * The ATTACHMENT surface (P2) — the predicate `renderAttachments` filters on.
+ * Mirrors {@link SlashSurface}: declaring it on an op makes the op appear in
+ * the attach ("+") menu, exactly as `surfaces.slash.command` makes it appear
+ * in the slash menu. One declaration → chat + slash + attach-menu, no
+ * per-surface wiring. Every attach entry IS an op; tapping it compiles to
+ * `{ opId, args }` → `callSkill`, identical to a slash command firing.
+ *
+ * @typedef {object} AttachSurface
+ * @property {string}   [label]     the menu label (e.g. 'Photo', 'File',
+ *                                   'Appointment'). Defaults to the op id.
+ * @property {string}   [group]     optional menu section to group the entry
+ *                                   under (e.g. 'media', 'schedule').
+ * @property {string}   [itemType]  the attachable noun the op produces, when it
+ *                                   isn't the op's `appliesTo.type`. Lets the
+ *                                   menu label/group by noun and connect to the
+ *                                   `@onderling/item-types` registry of
+ *                                   attachable nouns. Falls back to a single
+ *                                   `appliesTo.type` when omitted.
+ */
 
 /**
  * @typedef {object} SlashSurface

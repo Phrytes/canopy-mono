@@ -54,22 +54,37 @@ This is the seam the repo will eventually split on: **interface clients above th
 ### The manifest is the contract
 
 An app declares its surface **once, as data**, in a `manifest.js`: its item types, operations, views, and
-per-operation surface hints. It is the single source of truth every surface reads. Five pure **projectors**
+per-operation surface hints. It is the single source of truth every surface reads. Pure **projectors**
 (`@onderling/app-manifest`) turn that one declaration into every surface:
 
-| Projector | Produces | Half |
+| Projector | Produces | Family |
 |---|---|---|
-| `renderChat` | LLM tool definitions + system prompt | the model half |
-| `renderGate` | deterministic pre-LLM token-gate rules (from each op's `surfaces.slash.match` verbs) | the deterministic half |
-| `renderSlash` | `/commands` + grammar | the deterministic half |
-| `renderWeb` | DOM pages + forms | GUI |
-| `renderMobile` | a React Native NavModel (screens/nav) | GUI |
+| `renderChat` | LLM tool definitions + system prompt | affordance |
+| `renderGate` | deterministic pre-LLM token-gate rules (from each op's `surfaces.slash.match` verbs) | affordance |
+| `renderSlash` | `/commands` + grammar | affordance |
+| `renderAttachments` | the attach ("+") menu (from each op's `surfaces.attach`) | affordance |
+| `renderWeb` | DOM pages + forms | shell |
+| `renderMobile` | a React Native NavModel (screens/nav) | shell |
 
-`renderChat` and `renderGate`/`renderSlash` are the two halves of the *input* side — the LLM path and the
-deterministic path, from the same manifest. Read the five as **two groups, not a flat list**: those three are
-**platform-agnostic input modalities** (identical on web and mobile — this *is* the `web ≡ mobile` invariant),
-while `renderWeb`/`renderMobile` are thin **platform shells** — and `renderMobile` is literally a re-export of
-`renderWeb`'s NavModel, differing only in the platform adapter. `@onderling/manifest-host` composes *N* apps' manifests at runtime
+#### Two projector families
+
+Read the projectors as **two families, not a flat list** — the flat list quietly mixes two categories, which
+is what makes a reader ask "why is `renderAttachments` a peer of the chat shell?" It isn't:
+
+- **Affordance projectors** (`renderChat` · `renderSlash` · `renderGate` · `renderAttachments`) turn ops into
+  **one invocation surface each**. A tool-call, a `/command`, a gate phrase, or an attach-menu tap all compile
+  to the same `{opId, args}` → `callSkill` — the surfaces are interchangeable at the waist (this *is* the
+  `web ≡ mobile` invariant on the input side). `renderAttachments` sits **next to `renderSlash`**: an
+  attach-menu entry fires exactly like a slash command ("attach a photo" = the `embed-file` op), driven by a
+  `surfaces.attach` declaration that mirrors `surfaces.slash`. One op declaration → chat + slash + attach-menu
+  automatically.
+- **Shell projectors** (`renderWeb` · `renderMobile`) render the **whole platform UI** — screens and nav —
+  from the same manifest. `renderMobile` is literally a re-export of `renderWeb`'s NavModel, differing only in
+  the platform adapter.
+
+(`renderCoverage` is the *meta*-projector — a matrix **over** the surfaces, not a surface of its own.)
+
+`@onderling/manifest-host` composes *N* apps' manifests at runtime
 (namespaced `appId.opId`, collision detection). Because every surface is a projection, **adding an op to a
 `manifest.js` makes it reachable from chat, slash, gate, web, and mobile at once** — and the coverage snapshot
 (`npm run coverage` → `apps/basis/docs/surface-coverage.md`) records which surfaces each op is wired for,
