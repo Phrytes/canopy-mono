@@ -54,7 +54,7 @@
  * a SEPARATE seam — see the TODO block at the bottom.
  */
 
-import { computeStatus } from './ItemStore.js';   // pure, shared status fn (reused, not reimplemented)
+import { computeStatus } from './lifecycleStatus.js';   // pure, shared status fn (reused, not reimplemented)
 import {
   ItemNotFoundError,
   InvalidLifecycleError,

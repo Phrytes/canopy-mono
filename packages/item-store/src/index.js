@@ -7,7 +7,8 @@
  * `ItemStore` constructor JSDoc.
  */
 
-export { ItemStore, computeStatus } from './ItemStore.js';
+export { ItemStore } from './ItemStore.js';
+export { computeStatus } from './lifecycleStatus.js';
 export { CircleItemStore } from './CircleItemStore.js';   // cluster L · L1 — per-circle, type-indexed generic store
 export {                                                  // PLAN-capabilities-tasks-roles P1 (Option A) — task lifecycle
   claim, reassign, markComplete, submit, approve, reject, revoke,  // VERBS as functions-over-CircleItemStore

@@ -37,6 +37,7 @@
  */
 
 import { Emitter } from '@onderling/core';
+import { computeStatus } from './lifecycleStatus.js';   // pure status fn, extracted out of this retired class
 
 import { ulid }                        from './ulid.js';
 import { audienceFromItem, audienceMatches, audienceMatchesAny } from './audience.js';
@@ -1090,50 +1091,15 @@ function resolveFuzzy(items, match) {
 }
 
 // ── DoD-lifecycle helpers (Tasks V1) ────────────────────────────────────────
-
-/**
- * Compute the lifecycle status of an item from its persisted state.
- *
- * Returns one of: `'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'`.
- *
- * This is the substrate-level status — it considers only the item's
- * own fields (no DAG dependency walk; apps layer that on top, e.g.
- * `apps/tasks-v0/src/dag.js#computeStatus(task, openItems, closedItems)`
- * which returns `'ready' | 'waiting' | 'blocked'`).
- *
- * Rules (in order):
- *   1. `completedAt` set        → `'complete'`
- *   2. last reviewLog == submit → `'submitted'`
- *   3. last reviewLog == reject → `'rejected'`
- *   4. `assignee` set           → `'claimed'`
- *   5. otherwise                → `'open'`
- *
- * Pure function; no I/O.
- *
- * @param {import('./types.js').Item} item
- * @returns {'open' | 'claimed' | 'submitted' | 'rejected' | 'complete'}
- */
-export function computeStatus(item) {
-  if (!item || typeof item !== 'object') return 'open';
-  if (item.completedAt) return 'complete';
-  const last = _lastReviewDecision(item.reviewLog);
-  if (last === 'submit') return 'submitted';
-  if (last === 'reject') return 'rejected';
-  if (item.assignee)    return 'claimed';
-  return 'open';
-}
+// NOTE: the pure `computeStatus` (and its `_lastReviewDecision` helper) now
+// live in `./lifecycleStatus.js` and are imported at the top of this file, so
+// production consumers no longer route through this retired class.
 
 /** Append-only `reviewLog` writer. Returns a NEW array. */
 function _appendReview(prev, entry) {
   const arr = Array.isArray(prev) ? [...prev] : [];
   arr.push(entry);
   return arr;
-}
-
-/** Last decision in the review log, or null. */
-function _lastReviewDecision(reviewLog) {
-  if (!Array.isArray(reviewLog) || reviewLog.length === 0) return null;
-  return reviewLog[reviewLog.length - 1]?.decision ?? null;
 }
 
 /** Validate ApprovalMode shape. */
@@ -1143,4 +1109,8 @@ function _isApprovalMode(m) {
   return m.startsWith('webid:') && m.length > 'webid:'.length;
 }
 
+// Re-export the pure status fn so the parity tests (and any legacy consumer)
+// can still `import { computeStatus } from './ItemStore.js'`; the source of
+// truth is `./lifecycleStatus.js`.
+export { computeStatus };
 export { ID_PREFIX_LEN, MIN_PREFIX_LEN };
