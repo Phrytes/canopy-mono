@@ -157,6 +157,7 @@ export { verifyGroupProof } from './permissions/groupProofVerify.js';
 export { DataSourcePolicy, DataSourceAccessDeniedError } from './permissions/DataSourcePolicy.js';
 export {
   ROLES,
+  STANDARD_RANKS,
   isStandardRole,
   roleRank,
   isKnownRole,

@@ -26,7 +26,10 @@ export const ROLES = Object.freeze({
   EXTERNAL:    'external',
 });
 
-const STANDARD_RANKS = Object.freeze({
+/** The canonical role→rank table — the SINGLE source of truth. Any consumer
+ *  that needs the standard ranks (e.g. the relay's group-auth verifier) imports
+ *  this instead of hand-copying the numbers. */
+export const STANDARD_RANKS = Object.freeze({
   admin:       100,
   coordinator:  80,
   member:       60,
