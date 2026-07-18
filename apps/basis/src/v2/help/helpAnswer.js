@@ -62,6 +62,28 @@ function createMatcher(deck, lang) {
     }
     return stem;
   }
+  // Score every (non-fallback) card on tag/heading overlap with the query, best
+  // first. Shared by `match` (the deterministic hit) and `rank` (RAG grounding),
+  // so the language-model path grounds on the SAME relatedness the on-device
+  // matcher uses — one scoring rule, not two. Cards with score 0 are dropped.
+  function scoreCards(q) {
+    const qw = words(q);
+    const scored = [];
+    for (let i = 0; i < deck.kaartjes.length; i++) {
+      const k = deck.kaartjes[i];
+      if (k.id === deck.fallbackId) continue;
+      const tags = k.tags[lang], kw = words(k.kop[lang]);
+      let score = 0;
+      for (let j = 0; j < qw.length; j++) {
+        // tag hit (exact 2 / stem 1) plus an exact heading hit (1) — they
+        // stack, so "kost" (stem of kosten) + heading "Wat kost het?" = 2.
+        score += hits(qw[j], tags) + (hits(qw[j], kw) === 2 ? 1 : 0);
+      }
+      if (score > 0) scored.push({ card: k, score });
+    }
+    scored.sort((a, b) => b.score - a.score);
+    return scored;
+  }
   // → { type: 'opening' } | { type: 'kaartje', id, layer } | { type: 'fallback' }
   function match(q) {
     const low = q.toLowerCase();
@@ -73,23 +95,11 @@ function createMatcher(deck, lang) {
           : { type: 'kaartje', id: rules[r][1], layer: 0 };
       }
     }
-    const qw = words(q);
-    let best = null, bestScore = 0;
-    for (let i = 0; i < deck.kaartjes.length; i++) {
-      const k = deck.kaartjes[i];
-      if (k.id === deck.fallbackId) continue;
-      const tags = k.tags[lang], kw = words(k.kop[lang]);
-      let score = 0;
-      for (let j = 0; j < qw.length; j++) {
-        // tag hit (exact 2 / stem 1) plus an exact heading hit (1) — they
-        // stack, so "kost" (stem of kosten) + heading "Wat kost het?" = 2.
-        score += hits(qw[j], tags) + (hits(qw[j], kw) === 2 ? 1 : 0);
-      }
-      if (score > bestScore) { bestScore = score; best = k; }
-    }
-    return bestScore >= 2 ? { type: 'kaartje', id: best.id, layer: 1 } : { type: 'fallback' };
+    const ranked = scoreCards(q);
+    const best = ranked[0];
+    return best && best.score >= 2 ? { type: 'kaartje', id: best.card.id, layer: 1 } : { type: 'fallback' };
   }
-  return { match, words };
+  return { match, words, scoreCards };
 }
 
 function cardById(deck, id) {
@@ -163,4 +173,26 @@ export function helpTopics({ lang } = {}) {
   return deck.kaartjes
     .filter((k) => k.id !== deck.fallbackId)
     .map((k) => ({ id: k.id, kop: k.kop[l] }));
+}
+
+/**
+ * rankHelpCards(query, { lang, limit }) → [{ id, kop, text, score }]
+ *
+ * The RAG hook behind the language-model help path: score every answerable card
+ * on the SAME tag/heading overlap the deterministic matcher uses, best first, and
+ * return the top `limit` as localized `{ id, kop, text }` (with the raw `score`).
+ * A card that shares nothing with the query is dropped, so this is `[]` for an
+ * out-of-topic question — the caller then falls back to a full-deck digest.
+ * Excludes the fallback (no-answer) card. Never calls a network or a model.
+ *
+ * @param {string} query
+ * @param {{ lang?: string, limit?: number, deck?: object }} [opts]
+ */
+export function rankHelpCards(query, { lang, limit = 4, deck = helpDeck } = {}) {
+  const l = lang === 'en' ? 'en' : 'nl';
+  if (typeof query !== 'string' || !query.trim()) return [];
+  const scored = createMatcher(deck, l).scoreCards(query);
+  return scored
+    .slice(0, Math.max(0, limit))
+    .map(({ card, score }) => ({ id: card.id, kop: card.kop[l], text: card[l], score }));
 }

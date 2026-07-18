@@ -167,6 +167,10 @@ import { createOnboardingFlags, localStorageOnboardingIo } from '../../src/v2/on
 import { botIsAddressed } from '../../src/v2/botAddress.js';
 import { stripBotTag } from '../../src/v2/circleDispatch.js';
 import { routeHelpMessage, helpTopicChips, resolveHelpTopic, parseHelpAction, helpConsentAction, helpLlmLabelKeys } from '../../src/v2/helpChat.js';
+// #38 — the DEDICATED help-answer LLM path: a freeform layer-2 ask is ANSWERED (grounded in the kaartjes),
+// not routed through the tool-selection prompt (which maps a help question to no op → null → fallback).
+import { answerHelpViaLlm } from '../../src/v2/help/helpLlm.js';
+import { helpDeck } from '../../src/v2/help/kaartjes.js';
 import { resolveCircleLlm } from '../../src/v2/llmPicker.js';
 // Task #13 Phase 2 — the onboarding "Ja, help me" handoff opens the RICH 5-step create wizard.
 import { renderCreateGroupWizard } from '../../src/web/wizards/createGroupWizard.js';
@@ -1868,12 +1872,13 @@ function buildCircleBot(agent) {
     botName: CIRCLE_BOT_NAME,
   });
 
-  // Task #13 Phase 2 — bind the help layer-2 executor to the SAME consent-gated circle LLM route the
+  // Task #13 Phase 2 (#38) — bind the help layer-2 executor to the SAME consent-gated circle LLM route the
   // command bot uses (resolveCircleLlm over the member's live providers, honouring the circle's llmTool
-  // policy) + interpretToCommand for a conversational answer. `ready()` reflects whether an LLM is
-  // ACTUALLY connected (so the standing Q&A only OFFERS the consent card when there's something to
-  // forward to); `answer()` returns the model's spoken reply, or null when it produced no answer / mapped
-  // the ask to a tool (never faked). The deterministic kaartjes layer never touches this.
+  // policy). `ready()` reflects whether an LLM is ACTUALLY connected (so the standing Q&A only OFFERS the
+  // consent card when there's something to forward to); `answer()` runs the DEDICATED help-answer path
+  // (answerHelpViaLlm — a grounded help prompt over the kaartjes, NOT the tool-selection interpret prompt),
+  // returning the model's spoken reply or null when it produced nothing (never faked). The deterministic
+  // kaartjes layer never touches this.
   circleHelpLlm = {
     ready: async () => {
       try {
@@ -1888,9 +1893,8 @@ function buildCircleBot(agent) {
       const circlePolicy = await policyFor();
       const llm = resolveCircleLlm({ circlePolicy, userDefault, providers: llmProviders });
       if (!llm) return null;
-      const scopedCatalog = scopeCatalogToApps(catalog, circlePolicy?.apps);
-      const cmd = await interpretToCommand(query, { catalog: scopedCatalog, llm });
-      return cmd && typeof cmd.reply === 'string' && cmd.reply ? cmd.reply : null;
+      const ans = await answerHelpViaLlm({ query, lang: currentLang(), client: llm, deck: helpDeck });
+      return ans && ans.text ? ans.text : null;
     },
   };
 }
