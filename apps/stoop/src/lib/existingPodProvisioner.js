@@ -1,6 +1,6 @@
 /**
  * existingPodProvisioner — Phase 2.2 of the pod-storage routing work
- * (decision P2-b: idempotent adopt-existing-pod provisioner).
+ * (decision -b: idempotent adopt-existing-pod provisioner).
  *
  * Stoop users sign in to an Inrupt pod they ALREADY own (the OIDC
  * flow derives `podRoot` from the WebID's `pim:storage`).

@@ -1,5 +1,5 @@
 /**
- * P6.4 — wederkerigheid (chat-off consumer-side) tests.
+ * wederkerigheid (chat-off consumer-side) tests.
  *
  * Map-backed IO drives the queue without touching real storage.
  */

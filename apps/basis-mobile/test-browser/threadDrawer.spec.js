@@ -1,5 +1,5 @@
 /**
- * Phase A — thread drawer parity (#253 step 5 verified on web).
+ * Phase A — thread drawer parity (step 5 verified on web).
  *
  * The drawer is mobile-specific UX (web basis has its own
  * left-rail sidebar with a different shape), so the parity claim here

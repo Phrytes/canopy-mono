@@ -1,7 +1,7 @@
 /**
  * @onderling/sdk/core — the kernel BASE slice.
  *
- * SP-9 sub-path: the LOW-layer kernel only. This is `@onderling/core`
+ * sub-path: the LOW-layer kernel only. This is `@onderling/core`
  * re-exported verbatim (the ports + kernel logic: Agent, AgentIdentity,
  * InternalBus/InternalTransport, OfflineTransport, Parts, Emitter, …) with
  * NONE of the concrete adapter extensions (vault / transports / pod) and

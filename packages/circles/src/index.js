@@ -13,7 +13,7 @@ export {
 
 export { createCirclesStore } from './circlesStore.js';
 
-// SP-8 — saved cross-circle views: a named SET of audiences (circle-
+// saved cross-circle views: a named SET of audiences (circle
 // refs) + a resolver that returns items visible to ANY of them.
 // Reuses the canonical `view` item type (audience = union of refs).
 export {

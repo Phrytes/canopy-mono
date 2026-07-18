@@ -1,6 +1,6 @@
 /**
  * basis v2 — circle-scoped Folio file browser (web DOM renderer,
- * board 10B).
+ * ).
  *
  * A drive-like view onto a circle's shared pod: a filter strip (All /
  * Favourites / Recent) over `buildCircleFiles` rows, each row carrying a
@@ -18,19 +18,19 @@
  */
 
 import { folioLevel, glyphForFile, formatFileSize } from '@onderling-app/folio/browser';
-// B · Slice 4 — resolve the file-OPEN row action's capability treatment
+// resolve the file-OPEN row action's capability treatment
 // (get × file) from the member's matrix. Shared logic lives in src/; this
 // renderer stays a thin adapter that just applies the returned treatment.
 import { folioFileOpenTreatment } from '../../src/v2/circleFolio.js';
 
 const FILTERS = ['all', 'favourites', 'recent'];
-// P6.M8 #350 — share-toggle row above the filter strip.
+// share-toggle row above the filter strip.
 const SHARE_FILTERS = ['shared-by-me', 'shared-with-me'];
 
 /**
  * Append a rich file row (glyph · name · size) to `list`.
  *
- * B · Slice 4 — `openTreatment` (from `folioFileOpenTreatment`) gates the row's
+ * `openTreatment` (from `folioFileOpenTreatment`) gates the row's
  * OPEN affordance, matching the list surface's row buttons:
  *   'show' → clickable open row (unchanged for a granted member);
  *   'grey' → rendered disabled + greyed, click suppressed;
@@ -76,7 +76,7 @@ export function renderCircleFolioBrowser(container, {
   onOpen,
   filter = 'all',
   onFilter,
-  // P6.M8 — when set, toggling cycles the share filter; null = neither
+  // when set, toggling cycles the share filter; null = neither
   // pill is active (the normal filter strip handles the list).
   shareFilter = null,
   onShareFilter,
@@ -90,7 +90,7 @@ export function renderCircleFolioBrowser(container, {
   onSourceMode,
   needsPod = false,
   loading = false,
-  // B · Slice 4 — the acting member's capability matrix + folio app origin.
+  // the acting member's capability matrix + folio app origin.
   // The file-OPEN row action (get × file) is greyed/hidden per this matrix,
   // matching the list surface. Absent/empty ⇒ 'show' ⇒ unchanged behaviour.
   capabilityMatrix = [],
@@ -134,7 +134,7 @@ export function renderCircleFolioBrowser(container, {
     container.appendChild(srcRow);
   }
 
-  // P6.M8 #350 — share-toggle row (Shared-by-me / Shared-with-me).  Only
+  // share-toggle row (Shared-by-me / Shared-with-me). Only
   // appears when the host wires an `onShareFilter` callback.  The share
   // lens is index-only — the pod source shows the pod's own folders.
   if (typeof onShareFilter === 'function' && !podMode) {
@@ -274,7 +274,7 @@ export function renderCircleFolioBrowser(container, {
   if (!files.length) {
     const empty = document.createElement('div');
     empty.className = 'circle-folio__empty';
-    // P6.M8 — share-filter-specific empty copy when one is active.
+    // share-filter-specific empty copy when one is active.
     const emptyKey = shareFilter === 'shared-by-me'
       ? 'circle.folio.shared_by_me_empty'
       : shareFilter === 'shared-with-me'

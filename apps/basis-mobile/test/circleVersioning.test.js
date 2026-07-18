@@ -1,5 +1,5 @@
 /**
- * circleVersioning — per-circle pod version history (P3, mobile twin).
+ * circleVersioning — per-circle pod version history (mobile twin).
  *
  * Covers: rnSha256 correctness (vs node:crypto — under vitest the expo-crypto
  * native module can't load, so this exercises the documented crypto.subtle

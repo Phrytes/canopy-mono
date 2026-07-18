@@ -1,6 +1,6 @@
 /**
  * basis v2 — the claim-conflict SURFACE (PLAN-task-claim-partition
- * Slice 3). A double-claim recorded by the tasks substrate mirror
+ * ). A double-claim recorded by the tasks substrate mirror
  * (`{taskId, localAssignee, incomingAssignee, …}`) is rendered + resolved by
  * REUSING the existing per-block recipe-conflict machinery (`recipeConflict`):
  * a claim-conflict is modelled as a one-block "recipe" whose single block is

@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — hopping (RN screen, board 7).
+ * basis-mobile v2 — hopping (RN screen).
  *
  * RN counterpart of web's circleHop: the device-global hop stance toggle,
  * backed by Stoop's getHopMode / setHopMode (read on mount, flipped on

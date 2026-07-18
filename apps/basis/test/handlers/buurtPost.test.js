@@ -1,5 +1,5 @@
 /**
- * Bundle H Phase 2 (#269) — buurt-post handler coverage.
+ * buurt-post handler coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeHandleBuurtPost } from '../../src/core/handlers/buurtPost.js';

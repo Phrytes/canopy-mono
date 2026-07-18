@@ -3,7 +3,7 @@
  * a given role may see, given the circle's current paused/archived
  * state.
  *
- * Task #227 (2026-05-24).
+ * Task (2026-05-24).
  *
  * Mirrors the substrate gating in
  * `apps/tasks-v0/src/skills/circleControls.js`:

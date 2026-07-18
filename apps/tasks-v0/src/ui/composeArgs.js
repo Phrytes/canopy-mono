@@ -82,7 +82,7 @@ export function buildAddTaskArgs(form = {}) {
  *   - `dependencies[]` is REJECTED — the substrate auto-wires the
  *     parent's `dependencies[]` to include the new sub-task's id.
  *     Letting Compose pass child-deps would silently desync the
- *     V2.7 hard-deps gate.
+ *     hard-deps gate.
  *
  * Both `addSubtask` and `proposeSubtask` accept the same shape, so
  * the caller picks the skill based on `shouldProposeSubtask(parent,
@@ -118,7 +118,7 @@ export function buildAddSubtaskArgs(form = {}) {
 
   // Intentionally NOT forwarding `dependencies` — the substrate
   // auto-wires `parent.dependencies[]`; passing child-deps here
-  // would desync V2.7's hard-deps gate.
+  // would desync 's hard-deps gate.
   return args;
 }
 

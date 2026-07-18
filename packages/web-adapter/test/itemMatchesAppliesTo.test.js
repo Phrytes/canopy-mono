@@ -54,7 +54,7 @@ describe('itemMatchesAppliesTo — base predicates', () => {
     });
   });
 
-  /* ─── V0.4 per-event-kind dispatch (generic field gating) ────── */
+  /* ─── per-event-kind dispatch (generic field gating) ────── */
 
   describe('V0.4 — per-event-kind dispatch (generic field gating)', () => {
     it('matches additional fields beyond type+state (exact)', () => {

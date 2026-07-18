@@ -1,5 +1,5 @@
 /**
- * #226 — TaskDetailScreen editTask UI affordance (tasks-mobile).
+ * TaskDetailScreen editTask UI affordance (tasks-mobile).
  *
  * Pure static-analysis sibling of the substrate round-trip test in
  * `apps/tasks-v0/test/edit-task.test.js`.  The mobile screen test

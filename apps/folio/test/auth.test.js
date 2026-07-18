@@ -391,7 +391,7 @@ describe('Mock pod regression', () => {
     process.env.FOLIO_TEST_MOCK_POD = '1';
     try {
       const c = await buildPodClient({ podRoot: POD_ROOT }, { oidc });
-      // P3 Phase B: with the pseudo-pod cache path enabled, buildPodClient
+      // Phase B: with the pseudo-pod cache path enabled, buildPodClient
       // returns the sync-engine adapter wrapping the mock. The invariant
       // ("mock pod is used regardless of OIDC") holds on the underlying
       // client; direct path → _podClient is undefined → c is the mock.
@@ -547,7 +547,7 @@ describe('Folio v2.1 — hot-swap on /auth/callback', () => {
     process.env.FOLIO_TEST_MOCK_POD = '1';
     try {
       const c = await buildPodClient({ podRoot: POD_ROOT }, { oidc });
-      // P3 Phase B: unwrap the optional pseudo-pod cache adapter — the
+      // Phase B: unwrap the optional pseudo-pod cache adapter — the
       // "mock-pod path keeps working" rule holds on the underlying client.
       expect(c._podClient ?? c).toBeInstanceOf(FsBackedMockPodClient);
       // And our hot-swap fake builder was never invoked.

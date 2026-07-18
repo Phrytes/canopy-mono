@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * screenDrilldown — Q15 selection-context drill-down (agents P3 UI slice):
+ * screenDrilldown — selection-context drill-down (agents UI slice):
  * picking a row in a LIST screen opens the sibling DETAIL screen with the
  * selection-derived context key materialized from the picked row.
  *
@@ -10,7 +10,7 @@
  *     agents → agent-detail (`$agentId`); detail screens don't drill further.
  *  2. The FULL web chain over the real DOM renderer: render a
  *     data-versions-shaped list, click a row → the detail section is fetched
- *     through `fetchScreenItems` (the @onderling/web-adapter Q15 seam) with
+ *     through `fetchScreenItems` (the @onderling web-adapter seam) with
  *     `context.uri` = the picked row's id and `$circleId` still host-supplied.
  *  3. Same mechanism for agents → agent-detail: `context.agentId` = the
  *     picked roster row (live listAgents rows carry `agentId`, not `id`),
@@ -106,7 +106,7 @@ describe('data-versions → data-version-detail — the full web chain over the 
       context:  { circleId: 'c1', uri: 'mem://pod/c1/tasks.json' },
     }]);
 
-    // ...and the detail screen's fetch substitutes BOTH context args (Q15 seam).
+    // ...and the detail screen's fetch substitutes BOTH context args (seam).
     const detail = sectionForScreen(manifestsByOrigin, opened[0].screenId).section;
     await fetchScreenItems(detail, { callSkill, context: opened[0].context });
     expect(callSkill).toHaveBeenCalledWith('listDataVersions', { circleId: 'c1', uri: 'mem://pod/c1/tasks.json' });

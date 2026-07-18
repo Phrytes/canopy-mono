@@ -1,5 +1,5 @@
 /**
- * basis-mobile — first-run mnemonic CREATE screen (board 3A · P6.9).
+ * basis-mobile — first-run mnemonic CREATE screen.
  *
  * Shown ONCE on a fresh install after the agent identity has been
  * generated.  Surfaces the BIP39 phrase the vault holds + three CTAs:
@@ -13,7 +13,7 @@
  * The screen itself doesn't touch storage — testable + reusable.
  *
  * Wiring into App.js (calling agent.identity.getMnemonic() after boot,
- * gating the welcome state) lands in #347; this slice ships the screen
+ * gating the welcome state) lands in; this slice ships the screen
  * file + helpers + tests so the rest of the flow can plug in.
  */
 import React from 'react';

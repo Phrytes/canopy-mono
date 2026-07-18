@@ -1,5 +1,5 @@
 /**
- * basis-mobile — extension install controller (feedback-extension P2 mobile parity).
+ * basis-mobile — extension install controller (feedback-extension mobile parity).
  *
  * Drives the consent sheet using the SHARED, tested orchestration
  * (`buildConsentModel` runs the sandbox gate + builds the plain card;

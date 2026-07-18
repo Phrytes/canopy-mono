@@ -1,5 +1,5 @@
 /**
- * V2.7 — hard subtask dependencies (app-level).
+ * hard subtask dependencies (app-level).
  *
  * Asserts:
  *   - completeTask returns {error, openDeps} when parent has open deps.

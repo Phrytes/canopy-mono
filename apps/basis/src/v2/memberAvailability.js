@@ -1,5 +1,5 @@
 /**
- * basis v2 — member availability (shared, board 6C).
+ * basis v2 — member availability (shared).
  *
  * A cross-circle (per-user, not per-circle) record: holiday mode (away
  * until a date) + quiet hours (defer pushes in a daily window, optionally

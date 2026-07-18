@@ -1,5 +1,5 @@
 /**
- * confirmDispatch — the MOBILE binding of the shared Q27 confirm gate
+ * confirmDispatch — the MOBILE binding of the shared confirm gate
  * (web twin: circleApp's `openCircleConfirmDialog` + confirmDialog.js).
  *
  * Invariant #1: NO confirm/dispatch logic lives here — accept-exactly-

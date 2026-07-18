@@ -88,7 +88,7 @@ describe('Stoop V2 Phase 23.4 — holidayMode', () => {
     expect(me.entry.holidayMode).toBe(true);
   });
 
-  // availability unification (Q5): the op is now a THIN SHIM over the unified
+  // availability unification: the op is now a THIN SHIM over the unified
   // `availability` property — holiday IS the coarse 'away' value.
   it('setHolidayMode is a shim: sets availability to away/open on the entry', async () => {
     const bundle = await buildBundle();

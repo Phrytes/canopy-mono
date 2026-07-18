@@ -1,6 +1,6 @@
 /**
- * Inbound chat-message handler.  Bundle H (#268, 2026-05-27) —
- * lifted from `apps/basis/web/main.js:425` (Slice 6a, 2026-
+ * Inbound chat-message handler. Bundle H (2026-05-27)
+ * lifted from `apps/basis/web/main.js:425` (, 2026
  * 05-24).
  *
  * Receives a peer's plain-text envelope and renders it in the DM

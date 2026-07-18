@@ -222,7 +222,7 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     });
   });
 
-  /* ─── SP-13.3 — per-kring bottom tabs ─── */
+  /* ─── — per-kring bottom tabs ─── */
 
   const buurtTabs = [
     { id: 'gesprek',  label: 'GESPREK' },
@@ -282,7 +282,7 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     expect(el.querySelector('.circle-kring__composer')).not.toBeNull();
   });
 
-  /* ─── SP-13.4 — Chat ↔ Scherm header pill (v2 §4 "De Schakelaar") ─── */
+  /* ─── — Chat ↔ Scherm header pill (v2 §4 "De Schakelaar") ─── */
 
   it('view-toggle pill hides unless onViewMode is wired', () => {
     const el = mount();

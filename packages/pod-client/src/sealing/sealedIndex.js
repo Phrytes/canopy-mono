@@ -6,7 +6,7 @@
 //   3. RAG          — optional per-entry embedding + cosine `semanticQuery` (caller supplies vectors)
 // Shardable: `shardKeyFor` buckets ids by a stable hash so you decrypt only the shard you need.
 //
-// PORTABLE (no node:crypto / no deps): the index query runs CLIENT-SIDE (P2 local search) on web/mobile;
+// PORTABLE (no node:crypto / no deps): the index query runs CLIENT-SIDE (local search) on web/mobile;
 // the sealing (envelope.js, node) is applied only when the blob is written/read. The index itself is the
 // bigger leak surface if a client is compromised — keep entries minimal (ids/type/ts/tags/short summary).
 

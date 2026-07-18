@@ -1,5 +1,5 @@
 /**
- * skills/briefSummary — Q30 contributor for the basis /brief
+ * skills/briefSummary — contributor for the basis /brief
  * aggregator.
  *
  * Returns a count of open household items + the topmost row so the
@@ -15,7 +15,7 @@
  * (brief.js's isEmpty skips that section); otherwise we return
  * `{items, message}`.
  *
- * args : none (Q30 brief skills take no args)
+ * args: none (brief skills take no args)
  * ctx  : SkillContext (ctx.store.listOpen())
  */
 

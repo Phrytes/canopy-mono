@@ -2,7 +2,7 @@
  * ItemStore — the public API.
  *
  * ⚠ RETIRED as a production store (2026-07-18, PLAN-capabilities-tasks-roles
- * P1). NO application constructs `new ItemStore` anymore — every consumer
+ * ). NO application constructs `new ItemStore` anymore — every consumer
  * (tasks-v0, stoop, tasks-mobile, household, presence-v0) runs on the canonical
  * thin `CircleItemStore` + the lifecycle/CRUD FUNCTIONS over it (`taskLifecycle`
  * / `taskCrud`), bundled for the ItemStore-ergonomic surface by `createTaskStore`.
@@ -76,7 +76,7 @@ export class ItemStore extends Emitter {
   /** @type {import('./types.js').RolePolicy} */
   #policy;
 
-  /** @type {boolean} V2.7 — gate close-transitions on open dependencies. */
+  /** @type {boolean} — gate close-transitions on open dependencies. */
   #enforceDependencies;
 
   /**
@@ -90,7 +90,7 @@ export class ItemStore extends Emitter {
    * @param {import('./types.js').RolePolicy} [args.rolePolicy]
    *   Optional gate; default is no-op (everything allowed).
    * @param {boolean} [args.enforceDependencies=false]
-   *   V2.7 — when `true`, `markComplete` and `approve` reject with
+   *   when `true`, `markComplete` and `approve` reject with
    *   `DependenciesOpenError` if `item.dependencies[]` contains any
    *   open (uncompleted, present) entries. Removed-or-missing deps
    *   are treated as satisfied. Off by default for back-compat;
@@ -201,7 +201,7 @@ export class ItemStore extends Emitter {
         continue;
       }
       this.#gate('canComplete', actor, item);
-      // V2.7 — enforce dependencies unless caller supplied an
+      // enforce dependencies unless caller supplied an
       // explicit `actionOverride` (force-complete admin path).
       if (this.#enforceDependencies && !ctx.actionOverride) {
         await this._assertDepsClosed(item);
@@ -230,7 +230,7 @@ export class ItemStore extends Emitter {
   /**
    * Apply a sync from a peer — substrate-internal mutation.
    *
-   * Phase 52.9.3 sub-slice 1 (2026-05-14). The substrate-mirror calls
+   * Phase 52.9.3 (2026-05-14). The substrate-mirror calls
    * this when an inbound `kind: 'task'` envelope describes a state
    * change for an item we already have locally (matched by
    * `source.syncedFromId`). Unlike the public mutation methods
@@ -309,7 +309,7 @@ export class ItemStore extends Emitter {
    * `applySync` for the removal case. Returns the deleted item, or
    * `null` when no match.
    *
-   * Phase 52.9.3 sub-slice 1 (2026-05-14).
+   * Phase 52.9.3 (2026-05-14).
    */
   async removeSync({ syncedFromId }, ctx = {}) {
     if (typeof syncedFromId !== 'string' || !syncedFromId) {
@@ -385,7 +385,7 @@ export class ItemStore extends Emitter {
       claimedAt: at,
       _etag: ulid(),
     };
-    // Slice 1 (task-claim-partition) — central-pod one-winner. When the
+    // (task-claim-partition) — central-pod one-winner. When the
     // DataSource advertises conditional writes (`readEtag` ⇒ pod-backed
     // etag-CAS), claim as a compare-and-swap against the base etag: a
     // racing second writer gets a `CONFLICT` (HTTP 409/412) which maps to
@@ -403,7 +403,7 @@ export class ItemStore extends Emitter {
   }
 
   /**
-   * Slice 1 (task-claim-partition) — conditional-write helper for `claim`.
+   * (task-claim-partition) — conditional-write helper for `claim`.
    *
    * When the DataSource is CAS-capable (duck-typed via `readEtag`), write
    * `updated` with an `If-Match` precondition against the current base
@@ -463,7 +463,7 @@ export class ItemStore extends Emitter {
       ...current,
       assignee: newAssignee ?? undefined,
       claimedAt: newAssignee ? at : undefined,
-      // Slice 2 (task-claim-partition) — causal-base marker. A reassign
+      // (task-claim-partition) — causal-base marker. A reassign
       // KNOWS the assignment it supersedes, so it records the prior
       // assignee. The substrate mirror uses this to tell a *causal*
       // reassign (`claimBase === the peer's current assignee`) from a
@@ -621,7 +621,7 @@ export class ItemStore extends Emitter {
       });
     }
     this.#gate('canApprove', actor, current);
-    // V2.7 — enforce dependencies on the approve close-transition too.
+    // enforce dependencies on the approve close-transition too.
     if (this.#enforceDependencies && !ctx.actionOverride) {
       await this._assertDepsClosed(current);
     }
@@ -805,7 +805,7 @@ export class ItemStore extends Emitter {
   #auditUri(id) { return `${this.#root}${AUDIT_DIR}/${id}.json`; }
 
   async #writeItem(item, opts) {
-    // `opts` (Slice 1) carries an optional `{ifMatch}` precondition for
+    // `opts` carries an optional `{ifMatch}` precondition for
     // CAS-capable DataSources. MemorySource & friends ignore the extra
     // arg, so the default (non-CAS) write path is unchanged.
     await this.#source.write(this.#itemUri(item.id), JSON.stringify(item), opts);
@@ -870,7 +870,7 @@ export class ItemStore extends Emitter {
         out = out.filter((i) => i.assignee === filter.assignee);
       }
     }
-    // SP-5b — match against an item's effective audience (via the
+    // match against an item's effective audience (via the
     // audienceFromItem bridge, so legacy `visibility`-only items still
     // resolve).  `audienceMatches` implements: exact structural
     // equality (the original V0b behaviour) PLUS membership for
@@ -885,7 +885,7 @@ export class ItemStore extends Emitter {
     if (filter.audience !== undefined) {
       out = out.filter((i) => audienceMatches(audienceFromItem(i), filter.audience));
     }
-    // SP-8 — cross-circle query: `filter.audiences` is an audience SET.
+    // cross-circle query: `filter.audiences` is an audience SET.
     // An item matches when its effective audience satisfies ANY member
     // of the set (see `audience.js#audienceMatchesAny`).  This is how a
     // single query spans multiple circles.  `audience` (single) and
@@ -926,7 +926,7 @@ export class ItemStore extends Emitter {
       ...(partial.requiredSkills ? { requiredSkills: [...partial.requiredSkills] } : {}),
       ...(partial.dueAt !== undefined ? { dueAt: partial.dueAt } : {}),
       ...(partial.visibility ? { visibility: partial.visibility } : {}),
-      // SP-5b V0a (2026-05-21) — store the richer `audience` field
+      // V0a (2026-05-21) — store the richer `audience` field
       // verbatim when supplied.  Forward-additive; items without it
       // fall back to `visibility` via `audienceFromItem(item)`.
       ...(partial.audience !== undefined ? { audience: partial.audience } : {}),
@@ -972,7 +972,7 @@ export class ItemStore extends Emitter {
   }
 
   /**
-   * V2.7 — walk `item.dependencies[]`, look each up, and throw
+   * walk `item.dependencies[]`, look each up, and throw
    * `DependenciesOpenError` if any are open (uncompleted).
    * Removed-or-missing entries are treated as satisfied (don't
    * block forever).
@@ -1041,7 +1041,7 @@ export class ItemStore extends Emitter {
   }
 
   /**
-   * Lookup helper for Phase 52.9.3 sub-slice 1 — find the local item
+   * Lookup helper for Phase 52.9.3 — find the local item
    * whose `source.syncedFromId` matches the supplied peer-side id.
    * Returns `null` on miss. O(N) scan; acceptable for V0 — replace
    * with an index when item-store sizes start to matter.

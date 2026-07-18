@@ -1,5 +1,5 @@
 /**
- * Slice 1 (PLAN-task-claim-partition) — central-pod one-winner.
+ * (PLAN-task-claim-partition) — central-pod one-winner.
  *
  * When the DataSource is pod-backed (honours conditional writes / etag-CAS),
  * `ItemStore.claim` threads `If-Match: <base etag>` so two racing claimers

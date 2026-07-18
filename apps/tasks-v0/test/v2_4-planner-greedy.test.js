@@ -1,5 +1,5 @@
 /**
- * V2.4 — greedy planner (pure unit tests).
+ * greedy planner (pure unit tests).
  */
 
 import { describe, it, expect } from 'vitest';

@@ -1,5 +1,5 @@
 /**
- * SP-4b proof — tasks-v0 multi-circle mounts cleanly into `@onderling/
+ * proof — tasks-v0 multi-circle mounts cleanly into `@onderling/
  * manifest-host` with multi-circle dispatch preserved end-to-end.
  *
  * Mounts the real `buildMultiCircleRuntime` output (the same machinery

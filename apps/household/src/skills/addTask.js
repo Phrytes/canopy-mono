@@ -13,7 +13,7 @@
  * consolidation handler.
  *
  * When `assignee` is supplied, the task is reassigned to that webid right
- * after creation (single-pass; LWW).  SP-2 V0 has no inline DAG / dependency
+ * after creation (single-pass; LWW). V0 has no inline DAG / dependency
  * wiring — those land via the manifest's forward-compat hook to
  * `@onderling/protocol` (PLAN guardrail #9).
  */

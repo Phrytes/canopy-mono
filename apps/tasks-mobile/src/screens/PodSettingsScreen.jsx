@@ -16,7 +16,7 @@
  *      PodSignInScreen exists). This card NAVIGATES there to sign
  *      in; status + sign-out use the registered skills
  *      (`podSignInStatus` / `signOutOfPod`) whose ids/return shapes
- *      match tasks-v0 Slice 5 (same surface stoop-mobile's
+ *      match tasks-v0 (same surface stoop-mobile's
  *      ProfileMineScreen consumes). Sign-in completion still flows
  *      through the shared apps/tasks-v0 podSignIn.js orchestration
  *      via the injected-session seam (PodSignInScreen →

@@ -1,5 +1,5 @@
 /**
- * basis — filter DSL tests.  v0.2 sub-slice 2.2.
+ * basis — filter DSL tests. v0.2.
  */
 import { describe, it, expect } from 'vitest';
 

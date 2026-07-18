@@ -1,6 +1,6 @@
 /**
  * slashFilter — unit tests for the pure slash-suggest filter
- * (#241, 2026-05-24).
+ * (2026-05-24).
  *
  * Mirrors the suggest semantics from
  * apps/basis/web/main.js's `refreshSuggest`.

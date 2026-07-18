@@ -1,5 +1,5 @@
 /**
- * P6.10 — agent-add admin approval tests.
+ * agent-add admin approval tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

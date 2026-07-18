@@ -1,7 +1,7 @@
 /**
- * basis v2 — offering 4-axis model + match list (shared, board 8).
+ * basis v2 — offering 4-axis model + match list (shared).
  *
- * An offering is a structured object across four axes (board 8): how openly it
+ * An offering is a structured object across four axes: how openly it
  * is shared (`openness`), whether the offer is fixed or up for negotiation
  * (`posture`), its lifecycle (`status`), and how far it reaches (`radius`).
  * This module is the pure model: enum tables, a default offering, normalisation
@@ -48,7 +48,7 @@ export function mergeOffering(base, patch = {}) {
 
 /**
  * The circle's "offering-matching is ON here" signal (offering→property fold-in,
- * NOTE-skills-properties-audit Q3). Today the only per-circle offering
+ * NOTE-skills-properties-audit). Today the only per-circle offering
  * policy is this board-8 record: matching is ON when it is shared beyond
  * `private` and still `active`. The default record (openness 'private') reads
  * as OFF, so an unconfigured circle never triggers the join-time share default.

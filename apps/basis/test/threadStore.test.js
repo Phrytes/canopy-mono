@@ -1,5 +1,5 @@
 /**
- * basis — ThreadStore tests.  v0.2 sub-slice 2.1.
+ * basis — ThreadStore tests. v0.2.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 

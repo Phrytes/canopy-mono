@@ -1,5 +1,5 @@
 /**
- * Stoop V2.5 Phase 35 — Auto-eviction enforcement.
+ * Stoop Phase 35 — Auto-eviction enforcement.
  *
  * Verifies:
  *   - 35.1: EvictionRoster builds Map<webid, expiresAt> from

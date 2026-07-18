@@ -29,7 +29,7 @@
  * inject `_scope: bundle.groupId ?? svc.activeGroupId ?? null` into
  * the args object so a single agent shared across N groups/circles can
  * resolve the right bundle at dispatch time. The Stoop V3 +
- * Tasks V2.8 single-agent refactors both rely on this. (Plain arrays
+ * Tasks single-agent refactors both rely on this. (Plain arrays
  * pass through unchanged.)
  */
 

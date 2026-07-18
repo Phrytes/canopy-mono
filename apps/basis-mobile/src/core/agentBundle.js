@@ -2,16 +2,16 @@
  * basis-mobile — in-process agent bundle.
  *
  * Composition shell: the same `createRealHouseholdAgent` factory
- * that powers web basis (lifted to portable code in #225.1)
+ * that powers web basis (lifted to portable code in)
  * gets booted here with RN-friendly opts.  Cross-peer mesh wires
- * the RN NknTransport (#223) when a runtime nkn-sdk module is
+ * the RN NknTransport when a runtime nkn-sdk module is
  * available.
  *
  * Portable: zero RN, zero DOM at import time.  The actual factory
  * boot may need browser-globals (createRealHouseholdAgent uses
  * `typeof globalThis.localStorage` guards), so on RN the caller
  * passes `opts.chatVault` + `opts.hostVault` to bypass the
- * localStorage default.  See #222.5 (AsyncStorage adapter follow-
+ * localStorage default. See (AsyncStorage adapter follow
  * up) for the production storage path.
  *
  * Three boot modes, picked by opts:
@@ -29,10 +29,10 @@
  */
 import { composeManifests, buildManifestsByOrigin } from './composeManifests.js';
 import { getCircleVersionStore } from './circleVersioning.js';
-// Shared extension-mapping loader (feedback-extension P2) — web≡mobile core.
+// Shared extension-mapping loader (feedback-extension) — web≡mobile core.
 import { loadVerifyMappings } from '../../../basis/src/v2/mappingsLoader.js';
 import { getActiveCircle } from '../../../basis/src/v2/activeCircle.js';
-// Shared contact/bot exposed-skill registry (feedback-extension P4) — web≡mobile core.
+// Shared contact/bot exposed-skill registry (feedback-extension) — web≡mobile core.
 import { createContactSkillRegistry } from '../../../basis/src/v2/contactSkillsLive.js';
 import { createContactThreadChannel } from '../../../basis/src/v2/contactThreadChannel.js';
 // Calendar cross-peer fan-out — wrap the bundle callSkill so a successful calendar
@@ -108,8 +108,8 @@ async function loadMdnsTransport() {
  * @param {function}[opts.publishEvent]        forwarded; defaults to no-op
  * @param {object}  [opts.nknLib]              optional runtime nkn-sdk module; if present, connectPeerTransport is wired
  * @param {function}[opts.onPeerMessage]       NKN inbound callback (only meaningful when nknLib provided)
- * @param {function}[opts.requestCatchUp]      Bundle H (#268): fired 1.5s after NKN connect; mirrors web's requestCatchUpFromKnownPeers
- * @param {function}[opts.buildPeerWiring]     Bundle H (#268): factory `({agent, callSkill}) => {onPeerMessage, requestCatchUp}`. Called after agent is created but before connect. Lets the caller build router/trigger that depend on the live agent without a chicken-and-egg with the returned bundle. Takes precedence over the explicit `opts.onPeerMessage` + `opts.requestCatchUp` when present.
+ * @param {function}[opts.requestCatchUp] Bundle H: fired 1.5s after NKN connect; mirrors web's requestCatchUpFromKnownPeers
+ * @param {function}[opts.buildPeerWiring] Bundle H: factory `({agent, callSkill}) => {onPeerMessage, requestCatchUp}`. Called after agent is created but before connect. Lets the caller build router/trigger that depend on the live agent without a chicken-and-egg with the returned bundle. Takes precedence over the explicit `opts.onPeerMessage` + `opts.requestCatchUp` when present.
  * @param {function}[opts.skillStub]           test-only — bypass the real factory entirely
  *
  * @returns {Promise<{
@@ -123,7 +123,7 @@ async function loadMdnsTransport() {
  */
 export async function bootAgentBundle(opts = {}) {
   let catalog             = composeManifests({ householdManifest: opts.householdManifest });
-  // Extension mappings (feedback-extension P2 mobile parity) — OPT-IN via opts.mappingsStore so node-vitest
+  // Extension mappings (feedback-extension mobile parity) — OPT-IN via opts.mappingsStore so node-vitest
   // boots (no store passed) skip the AsyncStorage path. Best-effort: verify each against the base catalog
   // (sandbox-by-construction; unknown-op mappings refused), then re-merge the accepted ones. Never blocks boot.
   if (opts.mappingsStore) {
@@ -163,7 +163,7 @@ export async function bootAgentBundle(opts = {}) {
   // is provided (it tries makeBrowserVault → localStorage).  Surface
   // the error in a useful shape rather than letting it crash the bundle.
   //
-  // #222.5: if the caller passed `opts.asyncStorage` but no explicit
+  // if the caller passed `opts.asyncStorage` but no explicit
   // vaults, synthesise VaultAsyncStorage instances under the same
   // prefix convention the web factory uses ('cc-chat-id:' /
   // 'cc-host-id:').  This is the canonical RN-runtime path; vitest
@@ -177,7 +177,7 @@ export async function bootAgentBundle(opts = {}) {
       ? new VaultAsyncStorage({ prefix: 'cc-host-id:', asyncStorage: opts.asyncStorage })
       : undefined);
 
-  // #222.6: when asyncStorage is provided, also seed the stoop
+  // when asyncStorage is provided, also seed the stoop
   // per-agent cache adapter so stoop's web-style boot survives app
   // reloads on Hermes.  createRealHouseholdAgent threads `opts.
   // stoopPersistDb` into createBrowserStoopAgent (which delegates
@@ -219,7 +219,7 @@ export async function bootAgentBundle(opts = {}) {
       stoopControlAgent: opts.stoopControlAgent,   // S4 — multi-member sealing router (redeem/leave)
       secureAgentOpts:  opts.secureAgentOpts,
       publishEvent:     opts.publishEvent,
-      // P3 recovery — resolve a circle's pod version store for the
+      // recovery — resolve a circle's pod version store for the
       // listDataVersions/restoreDataVersion skills (RN twin of web's
       // circleVersioning; see src/core/circleVersioning.js).
       versionStoreFor:  getCircleVersionStore,
@@ -262,7 +262,7 @@ export async function bootAgentBundle(opts = {}) {
   });
   const sharedWithMeOpener = openerForIdentity(agent?.sa?.agent?.identity ?? null);
 
-  // Cross-peer transport.  Bundle G2 (#264, 2026-05-27): NKN is the
+  // Cross-peer transport. Bundle G2 (2026-05-27): NKN is the
   // primary public layer.  Mobile loads nkn-sdk as a runtime peer-dep
   // (web uses `window.nkn` from CDN); we import it here + pass to
   // realAgent's connectPeerTransport which REQUIRES nknLib explicitly
@@ -271,7 +271,7 @@ export async function bootAgentBundle(opts = {}) {
   // forget so boot stays fast — nkn-sdk's seed-node handshake can take
   // 5-90s.  Web does the same (main.js:1325 — connectPeerImpl().then).
   //
-  // Bundle H (#268): peer-router + catch-up trigger.  `buildPeerWiring`
+  // peer-router + catch-up trigger. `buildPeerWiring`
   // is called now (agent ready, callSkill present) so the caller can
   // produce both pieces without waiting for the bundle return.
   // Peer-wiring is held in a MUTABLE slot so the caller can attach it
@@ -407,7 +407,7 @@ export async function bootAgentBundle(opts = {}) {
           rtcLib,
         });
         console.log('[cc/boot] peer transport connected, address:', agent.peer?.address);
-        // Bundle H (#268, 2026-05-27) — fire the catch-up trigger
+        // fire the catch-up trigger
         // 1.5s after connect so HI handshake settles first.  Mirrors
         // web/main.js:1338.  Read the slot at fire time — null/undefined
         // (test-mode / not-yet-attached) skips silently.
@@ -431,14 +431,14 @@ export async function bootAgentBundle(opts = {}) {
     })();
   }
 
-  // P4/P5 (feedback-extension) — contact/bot exposed skills + the DM channel, LIVE
+  // (feedback-extension) — contact/bot exposed skills + the DM channel, LIVE
   // (web≡mobile, same shared modules). basis's secure-agent keeps NO core
   // PeerGraph (agent.peers is undefined / agent.sa.agent.peers null), so contacts
-  // are APP-OWNED: one PeerGraph the P4 skill registry + the P5 Contacten roster
+  // are APP-OWNED: one PeerGraph the skill registry + the Contacten roster
   // read, populated as bots are discovered/added. The agent stays the transport
   // (sendPeerMessage → core RoutingStrategy: mdns > rendezvous > relay > nkn). The
-  // P4 registry synthesises a contact-thread catalog + a router (sendA2ATask for
-  // a2a bots); the P5 channel carries the conversation over sa.peer. Exposed on
+  // registry synthesises a contact-thread catalog + a router (sendA2ATask for
+  // a2a bots); the channel carries the conversation over sa.peer. Exposed on
   // the bundle for the Contacten screens + Detox.
   // Persist the roster so v2 Contacten survives a reload (AsyncStorage on RN);
   // the AsyncStorageAdapter implements the PeerGraph storageBackend interface

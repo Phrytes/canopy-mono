@@ -4,7 +4,7 @@
  *
  * Extracted 2026-05-20 from `HouseholdAgent.js` so it can be reused by:
  *   - the existing HouseholdAgent slow-path (LLM via renderChat);
- *   - the new `apps/household/src/mountable.js` (SP-11 recombination
+ *   the new `apps/household/src/mountable.js` (recombination
  *     demo and any future "household-as-mountable" consumer).
  *
  * Convention: skill handler `(args, skillCtx) → {replies, stateUpdates}`
@@ -19,24 +19,24 @@ import { classifyAndExtract } from './skills/classifyAndExtract.js';
 /**
  * Skill-id → handler.  Built once at module load so consumers can
  * dispatch in O(1).  Keep in lockstep with `apps/household/manifest.js`
- * — `manifest-equivalence.test.js`'s drift canary covers SP-1/SP-2 ops.
+ * — `manifest-equivalence.test.js`'s drift canary covers ops.
  *
  * @type {Record<string, import('./types.js').SkillHandler>}
  */
 export const HOUSEHOLD_SKILL_REGISTRY = Object.freeze({
-  // SP-1
+  // 
   addItem:             Skills.addItem,
   listOpen:            Skills.listOpen,
   markComplete:        Skills.markComplete,
   removeItem:          Skills.removeItem,
   help:                Skills.help,
-  // SP-2
+  // 
   addTask:             Skills.addTask,
   listTasks:           Skills.listTasks,
   claim:               Skills.claim,
   reassign:            Skills.reassign,
   registerName:        Skills.registerName,
-  // Q30 — basis /brief contributor; declared by listOpen's
+  // basis /brief contributor; declared by listOpen's
   // surfaces.chat.brief.summarySkill in manifest.js.
   household_briefSummary: Skills.briefSummary,
   // Slow-path internal

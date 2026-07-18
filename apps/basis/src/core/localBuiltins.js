@@ -20,11 +20,11 @@
 import { describeFilter }    from '../filter.js';
 import { buildEmbed }        from '../embed.js';
 import { openExternalFlow }  from '../externalFlow.js';
-import { compareForCuration } from '../v2/curation.js';   // P3 — `compare` op handler
+import { compareForCuration } from '../v2/curation.js';   // `compare` op handler
 // Media Phase 1 (2026-07) — sealed media path for picked images (chat → blob-gateway).
 import { createMediaEmbed, hasMediaGateway, isImageMime } from './handlers/mediaEmbed.js';
 
-// Bundle F P5 (#261) — lazy chrono import for createTimeEmbed's
+// lazy chrono import for createTimeEmbed's
 // natural-language fallback.  Lazy because the parseDate module
 // pulls in chrono-node (~70KB) and only /embed-time needs it.
 let _parseDateAndTime;
@@ -47,7 +47,7 @@ async function parseDateLazy(input) {
  *   Called by /newthread to switch active thread to the new one.
  * @param {(appOrigin: string, opId: string, args: object) => Promise<*>} [deps.callSkill]
  *   Required for /embed — fetches the snapshot via the catalog's
- *   Q29 declaration.
+ *   declaration.
  * @returns {{[opId: string]: (args: object) => Promise<*>}}
  */
 export function createLocalBuiltins({
@@ -61,21 +61,21 @@ export function createLocalBuiltins({
   findRunner,                // v0.7.5 — ({query}) => Promise<FindReply>
   openFilePicker,            // v0.7.13 — () => Promise<File|null>
   openQrScanner,             // 2026-05-27 — () => void (mobile: opens scanner modal)
-  podAuth,                   // v0.7.P1 — real Solid OIDC wrapper
-  onSignOut,                 // v0.7.P2 — cleanup hook for the pod writer
+  podAuth,                   // v0.7. — real Solid OIDC wrapper
+  onSignOut,                 // v0.7. — cleanup hook for the pod writer
   agent,                     // v0.7.P3a — agent {identity:{host,chat}}
   connectPeer,               // v0.7.P3b — () => Promise<{address}>
   lookupPeerAddrByWebid,      // v0.7.P3d — (webid) => Promise<string|null>
   publishPeerAddrToPod,       // v0.7.P3d — () => Promise<{ok, url, status}>
-  mediaGateway,               // media P1 — { bucket, sealer, opener?, keyRef? } (blob-gateway seams; injected by composition)
-  encodeImage,                // media P1 — web canvas encoder (attachmentEncoder.encodeImageFile); optional
-  storeMediaItem,             // media P1 — item-store seam for the `media` item; optional (absent ⇒ item rides on the embed)
+  mediaGateway,               // media — { bucket, sealer, opener?, keyRef? } (blob-gateway seams; injected by composition)
+  encodeImage,                // media — web canvas encoder (attachmentEncoder.encodeImageFile); optional
+  storeMediaItem,             // media — item-store seam for the `media` item; optional (absent ⇒ item rides on the embed)
 }) {
   return {
     help: async () => formatHelp(catalog, t),
     newthread: async (args) => createNewThread(args, { threadStore, setActive, t }),
     threads:   async ()     => listThreads({ threadStore, t }),
-    // Slice 6d — /dm <webid> opens a DM thread with the given peer.
+    // dm <webid> opens a DM thread with the given peer.
     // Same outcome as the [DM] row button (which intercepts in main.js).
     startDm:   async (args) => createDmThread(args, { threadStore, setActive, t }),
     embed:     async (args) => createEmbed(args, { catalog, callSkill, t, localActor }),
@@ -115,7 +115,7 @@ export function createLocalBuiltins({
     'debug-dump':       async ()     => debugDump({ agent, t }),
     signout:   async (args) => signOutFlow(args, { podAuth, t, onSignOut }),
     'reset-thread': async () => {
-      // v0.7.P1-followup — clear the active thread's messages.
+      // v0.7.-followup — clear the active thread's messages.
       // 2026-05-27 slash audit close-out — distinguish "no store"
       // (threadStore not wired in this build) from "no active thread"
       // (store wired but nothing selected).  Two distinct conditions
@@ -133,7 +133,7 @@ export function createLocalBuiltins({
     logs:      async (args) => runLogsBuiltin(args, { eventLog, t, openLogsPanel }),
     find:      async (args) => runFindBuiltin(args, { findRunner, t }),
     scanQr:    async ()     => runScanQrBuiltin({ openQrScanner, t }),
-    // P3 — before/after curation; returns a compareForCuration payload, rendered
+    // before/after curation; returns a compareForCuration payload, rendered
     // via the manifest's `curation` reply shape.
     compare:   async (args) => compareForCuration(args?.before, args?.after),
   };
@@ -248,7 +248,7 @@ async function runBriefBuiltin(args, { briefRunner, t }) {
 }
 
 /**
- * `/signin [--issuer=X]` — v0.7.P1 real Solid OIDC.  Triggers a
+ * `/signin [--issuer=X]` — v0.7. real Solid OIDC. Triggers a
  * full-page redirect to the chosen pod issuer.  When the user
  * returns, main.js's boot handler completes the round-trip + this
  * thread gets a confirmation via the signed-in event.
@@ -281,7 +281,7 @@ async function signinFlow(args, { podAuth, externalFlow, t }) {
     }
   }
 
-  // Fallback (test workspace / pre-v0.7.P1 builds): the mock
+  // Fallback (test workspace pre-v0.7. builds): the mock
   // externalFlow path.  Real builds always have podAuth wired.
   if (externalFlow && typeof externalFlow.open === 'function') {
     try {
@@ -296,7 +296,7 @@ async function signinFlow(args, { podAuth, externalFlow, t }) {
 }
 
 /**
- * `/whoami` — v0.7.P1.  Returns the current webid (signed in) or
+ * `/whoami` — v0.7.. Returns the current webid (signed in) or
  * a hint to use /signin.
  */
 async function whoami(_args, { podAuth, t }) {
@@ -415,7 +415,7 @@ async function sendFile(args, {
 
   let dataB64;
   if (typeof file?.dataB64 === 'string' && file.dataB64.length > 0) {
-    // Bundle F P4 (#260) — mobile pickers pre-encode the bytes
+    // mobile pickers pre-encode the bytes
     // (substrate `packages/react-native/src/picker` returns
     // {dataB64, ...}).  Hermes has no FileReader, so the browser
     // path below would crash on RN.  Short-circuit when the
@@ -774,7 +774,7 @@ async function testPeer(args, { agent, t }) {
 }
 
 /**
- * `/signout` — v0.7.P1.  Clears the local OIDC session.  v0.7.P2:
+ * `/signout` — v0.7.. Clears the local OIDC session. v0.7.:
  * also unwires the calendar pod writer so subsequent mutations
  * stop writing-through to the (now-disconnected) pod.
  */
@@ -842,7 +842,7 @@ async function appsToggle(args, { catalog, appRegistry, t }) {
  * `/send-to <peer> <itemId>` — v0.5.6 simulated cross-peer demo.
  *
  * Resolves the peer's destination thread from simPeers, builds an
- * embed against the catalog's Q29 factory (same path as /embed),
+ * embed against the catalog's factory (same path as /embed),
  * then appends a synthesised embed-card shell message DIRECTLY to
  * the peer's thread.  Returns a text confirmation in the sender's
  * active thread.
@@ -910,7 +910,7 @@ async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, t
 
 /**
  * `/embed-file` — v0.7.13.  Three modes:
- *   --path=<existing>  → look up via folio's Q29 getFileSnapshot;
+ *   path=<existing> → look up via folio's getFileSnapshot;
  *                        embed real file metadata
  *   --pick             → opens browser File API picker; user
  *                        selects local file; reads bytes inline
@@ -918,7 +918,7 @@ async function sendToPeer(args, { catalog, callSkill, t, localActor, simPeers, t
  *
  * --share=<peer> routes to peer's thread.
  *
- * Media P1 (2026-07): in --pick mode a picked IMAGE upgrades to the
+ * Media (2026-07): in --pick mode a picked IMAGE upgrades to the
  * sealed blob-gateway path (media-card + `{type:'media', ref}` pointer)
  * when the composition injects `mediaGateway`; see handlers/mediaEmbed.js.
  */
@@ -930,7 +930,7 @@ async function createFileEmbed(args, {
   const name     = String(args?.name ?? '').trim();
   const share    = String(args?.share ?? '').trim();
   const issuer   = localActor ?? 'webid:local-demo-user';
-  // v0.7.P1-fix 2026-05-23: bare `/embed-file` (no args) is the
+  // v0.7.-fix 2026-05-23: bare `/embed-file` (no args) is the
   // friendliest case — auto-open the file picker.  Explicit
   // `--pick=false` or other flags disable the auto-pick.
   const explicitPickFlag = args && Object.prototype.hasOwnProperty.call(args, 'pick');
@@ -939,9 +939,9 @@ async function createFileEmbed(args, {
     : (!path && !name);
 
   let snapshot = null;
-  let mediaEmbed = null;   // media P1 — set when a picked image takes the sealed blob-gateway path
+  let mediaEmbed = null;   // media — set when a picked image takes the sealed blob-gateway path
 
-  // Mode 1: --path → folio lookup via Q29.
+  // Mode 1: --path → folio lookup via.
   if (path && !pick) {
     if (typeof callSkill === 'function') {
       try {
@@ -960,7 +960,7 @@ async function createFileEmbed(args, {
       const file = await openFilePicker();
       if (!file) return { ok: false, error: t('embed-file.pick_cancelled') };
       const mime = file.type || file.mime || mimeFromExtension(file.name);
-      // Media P1 UPGRADE (not a fork): a picked IMAGE takes the sealed
+      // Media UPGRADE (not a fork): a picked IMAGE takes the sealed
       // blob-gateway path when the composition injected the gateway seams —
       // sealed upload + canonical `media` item + `{type:'media', ref}`
       // pointer (see handlers/mediaEmbed.js). Non-images, or a build
@@ -1038,7 +1038,7 @@ async function createFileEmbed(args, {
  * @returns {Promise<string>}
  */
 function readFileAsBase64(file) {
-  // RN/Hermes short-circuit (#267): when the caller's openFilePicker
+  // RN/Hermes short-circuit: when the caller's openFilePicker
   // already returned bytes inline (expo-document-picker reads the URI
   // through expo-file-system before resolving), skip the browser
   // FileReader path — Hermes has neither FileReader nor a fetchable
@@ -1091,7 +1091,7 @@ async function createTimeEmbed(args, { localActor, t, simPeers, threadStore, cal
   if (!title) return { ok: false, error: t('embed-time.no_title') };
   if (!when)  return { ok: false, error: t('embed-time.no_when') };
 
-  // Bundle F P5 (#261) — fall back to chrono-node for natural-
+  // fall back to chrono-node for natural
   // language dates ("tomorrow 3pm", "next Friday").  parseDate is
   // already in the bundle (used by form elicitation) + benefits
   // both web and mobile surfaces.
@@ -1202,7 +1202,7 @@ function parseDuration(text) {
 
 /**
  * `/embed <itemId>` — scan the merged catalog for ops that declare
- * a Q29 cardSnapshotSkill, fetch a snapshot, and return an embed-
+ * a cardSnapshotSkill, fetch a snapshot, and return an embed
  * card reply.
  *
  * v0.5.1 — supports `--claim` flag for sender-claim-on-behalf:
@@ -1293,7 +1293,7 @@ function createNewThread(args, { threadStore, setActive, t }) {
 }
 
 /**
- * Slice 6d — `/dm <webid>` — open (or activate) a DM thread paired
+ * `/dm <webid>` — open (or activate) a DM thread paired
  * with the given peer.  Mirrors main.js's ensureDmThread; lives in
  * localBuiltins so the slash dispatch path is symmetric with the
  * button-click intercept.
@@ -1464,7 +1464,7 @@ async function transportMode(args, { agent, t }) {
  * `/transports` — record reply with NKN + relay status side-by-side.
  */
 /**
- * #180 — settings page handler.  Invoked TWO ways:
+ * settings page handler. Invoked TWO ways:
  *   1. Bare `/settings` opens the panel (dispatchAndRender intercepts
  *      and never calls this handler — the panel handles its own
  *      submit).

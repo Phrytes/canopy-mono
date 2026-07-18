@@ -248,7 +248,7 @@ describe('Tasks V2 — spawnMyCircle', () => {
       kind:   'household',
     });
     // The bundleResolver returns the CircleState (not the bundle) per
-    // V2.8 single-agent semantics; attach the spawner there.
+    // single-agent semantics; attach the spawner there.
     circle._circleState._spawnCircleInProcess = async (circleId) => ({
       liveCircle: { circleId, name: 'In-Process', kind: 'household' },
     });

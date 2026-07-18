@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — "View as…" preview (RN screen, board 4C).
+ * basis-mobile v2 — "View as…" preview (RN screen).
  *
  * RN counterpart of web's circleViewAs over the SAME shared projection
  * (`viewAsDirectory`): pick a viewer (each member, plus a generic stranger

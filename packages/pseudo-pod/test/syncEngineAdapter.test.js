@@ -1,5 +1,5 @@
 /**
- * syncEngineAdapter — P3 Phase A.
+ * syncEngineAdapter — Phase A.
  *
  * Verifies the adapter presents exactly the `podClient` surface
  * `@onderling/sync-engine`'s SyncEngine + scanPod consume (shapes asserted

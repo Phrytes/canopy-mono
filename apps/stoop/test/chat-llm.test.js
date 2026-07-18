@@ -1,5 +1,5 @@
 /**
- * Slice D.2 — Stoop chat surface adopts LLM tool-calling via
+ * Stoop chat surface adopts LLM tool-calling via
  * `renderChat(stoopManifest)`.
  *
  * Asserts:

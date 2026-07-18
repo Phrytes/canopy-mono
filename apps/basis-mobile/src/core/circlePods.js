@@ -23,7 +23,7 @@ import { makeCircleLists } from '@onderling/kring-host/circleLists';
 import { createCirclePodProducer, createCircleControlAgentRouter, seedCircleRoster } from '../../../basis/src/v2/circlePodProducer.js';
 import { realPodRouting } from '../../../basis/src/v2/circleRealPod.js';
 import { createCirclePodSharing } from '../../../basis/src/v2/circlePodSharing.js';
-// cluster K · objective L — the SHARED cross-circle SHARE logic + the platform-neutral enforcement assembly.
+// the SHARED cross-circle SHARE logic + the platform-neutral enforcement assembly.
 // Mobile calls the SAME builder + ops as web (circleApp.js) — invariant #1/#2, no mobile fork.
 import { buildCircleShareEnforcement } from '../../../basis/src/v2/circleShareEnforcement.js';
 import { shareItemAcrossCircles, shareItemToPublishedKey as sharedShareItemToPublishedKey, listSharedResolved, revokeItemShare } from '../../../basis/src/v2/circleShare.js';
@@ -32,7 +32,7 @@ import { buildHouseholdDataSource } from '../../../household/src/index.js';
 // keys). Mirror of web circleApp.js's module-level `policyStore`: the composition-root's `policyOf` reads the
 // LIVE per-circle `sharePosture` from here instead of the deny-by-default `{}`.
 import { makeCirclePolicyStoreRN } from './circleStoresRN.js';
-// P3 pod versioning — the RN twin of web's src/web/circleVersioning.js (expo-crypto hash;
+// pod versioning — the RN twin of web's src/web/circleVersioning.js (expo-crypto hash;
 // crypto.subtle fallback for vitest/web). One store per circle, on the circle pod's own backend.
 import { circleVersioningFor } from './circleVersioning.js';
 
@@ -101,7 +101,7 @@ function makeCirclePodClient(circleId) {
   const backend = asyncStorageRef
     ? createAsBackend({ AsyncStorage: asyncStorageRef, scope: `cc-circle-${circleId}` })
     : createMemoryBackend();
-  // P3 versioning: displaced bytes (overwrites · peer-updates · dropped
+  // versioning: displaced bytes (overwrites · peer-updates · dropped
   // concurrent forks · deletes) land in `versions/` on the SAME backend —
   // the substrate under the my-data restore ops. Best-effort by design
   // (a throwing store never breaks a write).
@@ -165,7 +165,7 @@ export async function getCircleSealStrategy(circleId, policy) {
   return strat;
 }
 
-// ── cluster K · objective L — the cross-circle SHARE composition root (RN mirror of web circleApp.js) ────────
+// ── · objective L — the cross-circle SHARE composition root (RN mirror of web circleApp.js) ────────
 // Web≡mobile by construction: the SHARED share ops (circleShare.js) + the SHARED enforcement assembly
 // (circleShareEnforcement.js) are wired here to the mobile pod objects (session/routing/producer). Absent a
 // pod session + a sealing strategy the pod path declines (returns null) and the op degrades to the in-memory

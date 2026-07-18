@@ -1,5 +1,5 @@
 /**
- * basis — media P1, the full-image "[View]" affordance on the media chip.
+ * basis — media, the full-image "[View]" affordance on the media chip.
  *
  * RENDER-SIDE only (the domAdapter media-card seam). The chip already carries
  * the blob-gateway line; when the render ctx also carries an `openFull` reader

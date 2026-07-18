@@ -1,5 +1,5 @@
 /**
- * folio — registerFolioAgent self-registration (Slice 1b,
+ * folio — registerFolioAgent self-registration (,
  * PLAN-folio-as-file-agent.md).  Folio advertises its pod-file
  * capabilities into `@onderling/agent-registry` so it appears as a
  * connectable file agent in the "your agents" roster.

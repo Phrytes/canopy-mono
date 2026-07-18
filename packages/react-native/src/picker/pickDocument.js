@@ -1,6 +1,6 @@
 /**
- * pickDocument — generic file picker for RN.  Bundle F P4-followup-2
- * (#267).  Image-only `pickAndResize.js` is the right tool for camera
+ * pickDocument — generic file picker for RN. Bundle F -followup-2
+ * . Image-only `pickAndResize.js` is the right tool for camera
  * + library photo capture; this is the tool for arbitrary files
  * (PDFs, text, archives, …) that the chat-shell's `/embed-file --pick`
  * and `/send-file` need on phone.

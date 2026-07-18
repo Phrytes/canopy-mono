@@ -4,7 +4,7 @@
  * A Circle is a closed-group container for tasks, members, role
  * config, skill vocabulary, cadences, and DoD defaults. A user
  * belongs to N circles; one agent runs per circle (V1 path) or one
- * meshAgent runs per process and many CircleStates share it (V2.8
+ * meshAgent runs per process and many CircleStates share it (
  * path — see `./MeshAgent.js` + `./wireSkills.js`).
  *
  * Circle kinds influence DEFAULTS only — the substrate doesn't behave
@@ -22,8 +22,8 @@
  * `pod` returns an implicit-household circle that is identical to V0's
  * `createTasksAgent` defaults. V0 callers don't have to touch this.
  *
- * V2.8: createCircleAgent calls createTasksAgent (which now wires the
- * V2.8 single-agent + bundleResolver pattern) and then ENRICHES the
+ * createCircleAgent calls createTasksAgent (which now wires the
+ * single-agent + bundleResolver pattern) and then ENRICHES the
  * `_circleState` it returns with the V1+ wiring (chat, bot, metrics,
  * notifier-channels). Skills resolve their CircleState at dispatch
  * time, so post-construction enrichment Just Works.
@@ -77,8 +77,8 @@ import { loadSettings, updateSettings } from './storage/settings.js';
  * @property {object} [dodPolicy]                    — Phase 5 default approval mode
  * @property {object} [archivePolicy]                — Phase 10 archive policy
  * @property {number} [subtasksAdminApprovalDepth]   — Phase 7 escalation threshold (default 3)
- * @property {Object<string, string>} [pushTokens]   — V1.5 webid → device push token
- * @property {object} [pushPolicy]                   — V1.5 PushPolicy options
+ * @property {Object<string, string>} [pushTokens] — webid → device push token
+ * @property {object} [pushPolicy] — PushPolicy options
  *   `{maxPerDay?: number, quietHours?: [number, number] | null}`
  */
 
@@ -254,10 +254,10 @@ function _normaliseStorage(raw) {
  *     localStoreBundle's CachingDataSource — no "save" button)
  *   - Onboarding skills (`issueInvite`, `redeemInvite`) registered on
  *     the agent via `buildOnboardingSkills` from identity-resolver.
- *   - V2.8 enrichment of the `_circleState` returned by createTasksAgent
+ *   enrichment of the `_circleState` returned by createTasksAgent
  *     with chatController, botAgentRegistry, metricsTracker, and
  *     onCalendarEmissionChange / onCompensationChange callbacks. The
- *     V2.8 skills look these up at dispatch time, so enriching after
+ *     skills look these up at dispatch time, so enriching after
  *     skill registration is fine.
  */
 export async function createCircleAgent({
@@ -286,7 +286,7 @@ export async function createCircleAgent({
 } = {}) {
   const circle = _normaliseConfig(circleConfig ?? { ...IMPLICIT_HOUSEHOLD_CONFIG });
 
-  // V1.5 — boot-time re-register the circle's custom roles into the
+  // boot-time re-register the circle's custom roles into the
   // process-global `core.Roles` registry, so a fresh CLI launch
   // honours roles persisted in `circle.customRoles`.
   if (Array.isArray(circle.customRoles) && circle.customRoles.length > 0) {
@@ -301,10 +301,10 @@ export async function createCircleAgent({
 
   // Identity + vault — created here so we can hand them to GroupManager.
   //
-  // V2.0 — when the local-store bundle is supplied, we persist the
+  // when the local-store bundle is supplied, we persist the
   // vault snapshot to a per-circle path so the tasks agent's pubKey is
   // stable across CLI restarts. Cap-tokens issued to bot agents
-  // (V1.5) then survive without auto-rotate. First boot writes a
+  // then survive without auto-rotate. First boot writes a
   // fresh snapshot; subsequent boots restore from it.
   const identityVaultPath = `mem://tasks/circles/${circle.circleId}/agent/identity-vault.json`;
   let v   = vault   ?? null;
@@ -330,7 +330,7 @@ export async function createCircleAgent({
   }
 
   // `liveCircle` is the mutable pointer that admin/coord skills swap
-  // (frozen-copy pattern). createTasksAgent's V2.8 CircleState reads it
+  // (frozen-copy pattern). createTasksAgent's CircleState reads it
   // via the supplied circleProvider + circleMutator below.
   let liveCircle = circle;
   const circleProvider = () => liveCircle;
@@ -387,7 +387,7 @@ export async function createCircleAgent({
     }
   }
 
-  // MemberMapCache + V1+ wiring (V2.8 — enrich the CircleState).
+  // MemberMapCache + V1+ wiring (enrich the CircleState).
   let memberMapCacheDetach = null;
   let notifierBundle       = null;
   let chatController       = null;
@@ -434,7 +434,7 @@ export async function createCircleAgent({
       }),
     };
 
-    // V1.5 — cap-token-bound bot agents. Bus is sourced from the
+    // cap-token-bound bot agents. Bus is sourced from the
     // tasks agent's own InternalTransport (bot agents must share it
     // to dispatch through the real protocol stack).
     const sharedBus = bus
@@ -470,7 +470,7 @@ export async function createCircleAgent({
       } catch { /* noop */ }
     }
 
-    // V2.1 — wire the per-member emission loop when enabled. The
+    // wire the per-member emission loop when enabled. The
     // calendar-emission skill calls `circleState.onCalendarEmissionChange()`
     // when the toggle flips; we hook it here.
     function rewireCalendarEmission() {
@@ -491,7 +491,7 @@ export async function createCircleAgent({
     circleState.onCalendarEmissionChange = rewireCalendarEmission;
     rewireCalendarEmission();
 
-    // V2.2 — invoicing item-completed listener. The setMemberCompensation /
+    // invoicing item-completed listener. The setMemberCompensation /
     // setCompensationEnabled skills call `circleState.onCompensationChange()`
     // to re-attach the listener.
     function rewireInvoicing() {
@@ -516,12 +516,12 @@ export async function createCircleAgent({
     circleState.onCompensationChange = rewireInvoicing;
     rewireInvoicing();
 
-    // V2.5 — multi-circle dashboard. Default circlesProvider returns just THIS
+    // multi-circle dashboard. Default circlesProvider returns just THIS
     // CircleState (single-circle CLI). Multi-circle launches pass a closure
     // that returns every CircleState the launcher built.
     if (typeof circleBundlesProvider === 'function') {
       // External provider — wrap it into a CircleState iterator. Each
-      // provided bundle exposes {circle, itemStore, roleOf} (V2.5 shape).
+      // provided bundle exposes {circle, itemStore, roleOf} (shape).
       circleState._dashboardCirclesProvider = () => {
         const bundles = circleBundlesProvider() ?? [];
         return bundles.map((b) => ({
@@ -551,7 +551,7 @@ export async function createCircleAgent({
     circleState.notifierChannels = notifierChannels;
 
     if (notifierChannels) {
-      // V1.5 — optional push side-channel.
+      // optional push side-channel.
       let pushBundle = null;
       const pushTokens = liveCircle.pushTokens && typeof liveCircle.pushTokens === 'object'
         ? liveCircle.pushTokens
@@ -637,7 +637,7 @@ export async function createCircleAgent({
       };
       bundle.itemStore.on('item-added', subtaskListener);
 
-      // V2.7 — when a subtask-proposal is added, route it to the
+      // when a subtask-proposal is added, route it to the
       // parent's assignee's inbox with Approve/Decline buttons.
       const proposalListener = async (item) => {
         if (item?.type !== SUBTASK_PROPOSAL_TYPE) return;
@@ -673,7 +673,7 @@ export async function createCircleAgent({
   }
 
   // Tasks V2 standardisation adoption (2026-05-14) —
-  //   • Phase 52.10 (P5): register the agent in
+  //   Phase 52.10: register the agent in
   //     `<pseudo-pod>/private/agent-registry`.
   //   • Phase 52.9.3 (Tasks V2 ninth slice): wire the substrate stack
   //     (`pseudoPod` + `podRouting` + `notifyEnvelope`) + the
@@ -782,7 +782,7 @@ export async function createCircleAgent({
     circle,
     /** Returns the current (mutated) live CircleConfig. */
     getCircle: () => liveCircle,
-    /** V1.5 — cap-token bot agent registry. `null` when unavailable. */
+    /** cap-token bot agent registry. `null` when unavailable. */
     botAgentRegistry,
     async close() {
       try { issuerNotifyDetach?.(); } catch { /* noop */ }

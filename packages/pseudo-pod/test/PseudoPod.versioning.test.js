@@ -1,5 +1,5 @@
 /**
- * PseudoPod — versioning seam (PLAN-pod-versioning-history-recovery P2).
+ * PseudoPod — versioning seam (PLAN-pod-versioning-history-recovery).
  *
  * Covers:
  *   - Constructor validation of the `versioning` option.

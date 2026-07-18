@@ -1,5 +1,5 @@
 /**
- * basis — /brief aggregator tests.  v0.7 sub-slice 7.2.
+ * basis — /brief aggregator tests. v0.7.
  */
 import { describe, it, expect, vi } from 'vitest';
 

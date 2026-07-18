@@ -1,5 +1,5 @@
 /**
- * resourceUri — the canonical circle-item → pod-resource-URI resolver (cluster K pod-tier wiring).
+ * resourceUri — the canonical circle-item → pod-resource-URI resolver (pod-tier wiring).
  *
  * Verifies the storage-layout convention (storage-layout.md · `group/<circleId>/<type>/`): a circle IS a
  * circle, so `resourceUriFor(circle, item)` lands under `<pod>/group/<circle>/<container>/<item>`, keyed by

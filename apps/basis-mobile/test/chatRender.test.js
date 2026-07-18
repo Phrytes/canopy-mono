@@ -1,7 +1,7 @@
 /**
  * chatRender — regression tests for the rendered-reply pipeline.
  *
- * Covers two bugs hit on 2026-05-26 during the #253 step 2
+ * Covers two bugs hit on 2026-05-26 during the step 2
  * on-device walk-through:
  *
  *   1. List bubbles had no buttons.  Root cause: ChatScreen called

@@ -1,5 +1,5 @@
 /**
- * Phase A — per-thread message isolation (#253 step 5 invariant).
+ * Phase A — per-thread message isolation (step 5 invariant).
  *
  * Pins the reducer behavior that 17 vitest tests already cover, but
  * end-to-end through the real React render path on react-native-web:
@@ -9,7 +9,7 @@
  * Uses free-text inputs (`thread-A-marker`, `thread-B-marker`)
  * because user-bubble text is stable across host-op routing changes
  * — the original /threads + /help slashes went live as real host
- * ops under Bundle F P1, which would have changed the bot-bubble
+ * ops under Bundle F, which would have changed the bot-bubble
  * text.  User-bubbles are routing-agnostic.
  */
 import { test, expect } from '@playwright/test';

@@ -1,5 +1,5 @@
 /**
- * Button-tap special-case interceptor (#253 step 7).
+ * Button-tap special-case interceptor (step 7).
  *
  * Mirrors `apps/basis/web/main.js`'s `onButtonTap` short-circuits
  * for ops that should not go through the regular resolveDispatch path:
@@ -44,8 +44,8 @@
  * @param {string}   args.itemId
  * @param {string}   args.buttonLabel
  * @param {function} args.t            localiser
- * @param {object}   [args.embed]      item.embed forwarded from the rendered list-row (P4-followup-1, #266)
- * @param {object}   [args.extra]      Bundle H Phase 4 (#271) — extra context attached by the bubble (e.g. responder-card forwards `{fromAddr}` on its Accept/Decline/Counter taps so the intercept knows whom to address)
+ * @param {object} [args.embed] item.embed forwarded from the rendered list-row (followup-1)
+ * @param {object} [args.extra] Bundle H Phase 4 — extra context attached by the bubble (e.g. responder-card forwards `{fromAddr}` on its Accept/Decline/Counter taps so the intercept knows whom to address)
  * @returns {InterceptResult}
  */
 export function interceptButtonTap({ opId, itemId, buttonLabel, t, embed, extra, peerAddr }) {
@@ -97,7 +97,7 @@ export function interceptButtonTap({ opId, itemId, buttonLabel, t, embed, extra,
 
   // [Download] — when the rendered list-row carries an inline file
   // snapshot (embed.snapshot.dataB64), save it via expo-file-system
-  // (P4-followup-1, #266).  Without bytes — folio returning only a
+  // (followup-1). Without bytes — folio returning only a
   // pod-URL reference rather than inline bytes — fall back to the
   // friendly "not wired" bubble so the user sees something.
   if (opId === 'downloadFile') {
@@ -120,7 +120,7 @@ export function interceptButtonTap({ opId, itemId, buttonLabel, t, embed, extra,
     };
   }
 
-  // Bundle H Phase 4 (#271) — responder-card taps.  The card surfaces
+  // responder-card taps. The card surfaces
   // when an inbound `help-with-response` envelope arrives in a DM
   // thread (someone offered to help with your post).  Three button
   // intercepts plus the corresponding peer-message side-effects:

@@ -1,7 +1,7 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ * **Platform: web** (DOM-dependent). RN parallel pending.
  *
- * basis — C1 create-group wizard (#197, 2026-05-24).
+ * basis — C1 create-group wizard (2026-05-24).
  *
  * 5-step wizard surfacing stoop.createGroupV2 — substantially richer
  * than C2 (join-group): 14 distinct configuration questions across
@@ -18,7 +18,7 @@
  */
 
 // Policy catalogs + state helpers moved to
-// ../../core/wizards/createGroupState.js (#231.2d) so basis-
+// ../../core/wizards/createGroupState.js so basis
 // mobile's RN wizard can reuse them.
 import {
   ACCESS_POLICIES, LEAVE_POLICIES, CONFLICT_POLICIES,
@@ -40,7 +40,7 @@ import { t } from '../../localisation.js';
 /**
  * N1+E8 — persist the wizard's chosen policy axes (features incl. the
  * buurt chat-off default, reveal/pod/llm/agents/consensus) onto the new
- * circle's policy, so the launcher's GESPREK gating (SP-13.3) honours
+ * circle's policy, so the launcher's GESPREK gating honours
  * them.  Shares the launcher's localStorage key (`cc.circlePolicy.<id>`).
  * Only writes axes a template actually filled.  Best-effort.
  */
@@ -114,7 +114,7 @@ export function renderCreateGroupWizard(opts) {
 
 /* ─── step renderers ───────────────────────────────────────── */
 
-// STEP_NAMES moved to ../../core/wizards/createGroupState.js (#231.2d).
+// STEP_NAMES moved to../../core/wizards/createGroupState.js.
 
 function renderStepHeader(container, doc, step) {
   const header = doc.createElement('div');
@@ -744,4 +744,4 @@ function renderActions(container, doc, buttons) {
 }
 
 // slugify, isValidSlug, labelOf, buildRulesObjectFromState, finalSubmit
-// moved to ../../core/wizards/createGroupState.js (#231.2d).
+// moved to../../core/wizards/createGroupState.js.

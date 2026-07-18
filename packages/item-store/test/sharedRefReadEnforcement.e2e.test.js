@@ -1,5 +1,5 @@
 /**
- * Cluster K — END-TO-END enforcement proof of the shared-ref cross-circle READ.
+ * Cross-circle share — END-TO-END enforcement proof of the shared-ref cross-circle READ.
  *
  * The other K suites prove the pieces (write-grant hook, read gate, seal/unseal, canonical share/revoke).
  * THIS file proves the FULL round-trip through the SAME seam, hermetically, with a single fake `sharing`

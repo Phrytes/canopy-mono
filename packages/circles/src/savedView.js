@@ -1,5 +1,5 @@
 /**
- * SP-8 — saved cross-circle views.
+ * saved cross-circle views.
  *
  * A **saved cross-circle view** is a named, persisted SET of audiences
  * (typically `circle-ref`s) plus a resolver that returns every item
@@ -7,7 +7,7 @@
  * `union` audience given a home: "a circle IS a saved audience", so a
  * *view over multiple circles* is a saved SET of circle-refs.
  *
- * ── Shape decision (SP-8) ──────────────────────────────────────────
+ * ── Shape decision ──────────────────────────────────────────
  *
  * We reuse the canonical **`view` item type**
  * (`@onderling/item-types/src/types/view.js`) whose `audience` field is
@@ -27,7 +27,7 @@
  *
  * Why NOT a brand-new bespoke record?  The `view` type already exists,
  * already carries `title` / `itemType` / `filter` / `audience`, and was
- * introduced (SP-5 V0) with saved-view resolution named as its SP-5b
+ * introduced (V0) with saved-view resolution named as its
  * follow-up.  This slice is that follow-up; inventing a parallel record
  * would duplicate the model.
  *

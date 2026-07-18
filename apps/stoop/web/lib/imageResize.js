@@ -1,5 +1,5 @@
 /**
- * Browser-side image resize helper — Phase 39 (V2.5, 2026-05-07).
+ * Browser-side image resize helper — Phase 39 (2026-05-07).
  *
  * Takes a `File` from an `<input type="file">` and produces:
  *

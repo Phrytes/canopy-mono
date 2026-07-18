@@ -1,7 +1,7 @@
 /**
  * TaskGrant — task-scoped delegation ("authority travels with the task").
  *
- * Covers the P5 primitive:
+ * Covers the primitive:
  *   1. attachGrant issues a task-STAMPED cap-token that CapabilityToken.verify
  *      accepts AND that passes PolicyEngine.checkInbound (no second gate);
  *   2. ATTENUATION — a grant WIDER than the granter's parent token is rejected

@@ -1,9 +1,9 @@
 /**
- * containerOps — the COMPOSABLE-OP engine (cluster K · K2) over a `CircleItemStore` + `containment`.
+ * containerOps — the COMPOSABLE-OP engine over a `CircleItemStore` + `containment`.
  *
  * Two pieces:
  *   1. `addChildTo` — the primitive: create a typed child *inside* a container (put it in the same circle
- *      store, then K2-`contain` it = ref + back-ref). "add ‹childType› to ‹container›".
+ *      store, then -`contain` it = ref + back-ref). "add ‹childType› to ‹container›".
  *   2. `resolveContainerAdd` — the K0-deferred NATURAL-VERB resolution: a bare "add X" in a container picks
  *      WHICH child type to create from the container type's declared `accepts` policy (a list → a list-item
  *      or a task; a task → a subtask). Pure; the dispatch layer feeds it the active container + its policy.
@@ -15,7 +15,7 @@ import { contain } from './containment.js';
 
 /**
  * Create a typed child item inside `containerId` and contain it. The child lives in the SAME circle store
- * (inherits the circle's scope/seal — K1: containment never crosses stores by copy). Returns the new child.
+ * (inherits the circle's scope seal —: containment never crosses stores by copy). Returns the new child.
  *
  * @param {object} store           a CircleItemStore (get/put/delete/list)
  * @param {string} containerId
@@ -29,7 +29,7 @@ export async function addChildTo(store, containerId, childItem) {
   const container = await store.get(containerId);
   if (!container) throw new Error(`addChildTo: container "${containerId}" not found`);
   const child = await store.put({ ...childItem });        // store validates the type + assigns the id
-  await contain(store, containerId, child.id);            // K2 ref + back-ref
+  await contain(store, containerId, child.id);            // ref + back-ref
   return await store.get(child.id);                       // re-read so the returned child carries containedBy
 }
 
@@ -98,7 +98,7 @@ function parseTypeHint(body, accepts) {
 }
 
 /**
- * resolveAddInContainer — the DISPATCH bridge (cluster K · K2 surfacing). Given the ACTIVE container item,
+ * resolveAddInContainer — the DISPATCH bridge (surfacing). Given the ACTIVE container item,
  * the accepts-policy, and the raw "add X" body, resolve a bare "add" to the child-creating op — the
  * K0-deferred natural-verb context resolution made dispatchable.
  *   - `{ op, type, body }`        → run that op to create the child (the body has the type word stripped)

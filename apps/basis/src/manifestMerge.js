@@ -1,7 +1,7 @@
 /**
  * basis — manifest merge (thin shim over @onderling/manifest-host).
  *
- * The merge logic lives in `@onderling/manifest-host` (SP-4 substrate).
+ * The merge logic lives in `@onderling/manifest-host` (substrate).
  * This file is a basis-shaped projection over that substrate:
  *
  *   - `host.compose()` produces a generic composed view with
@@ -20,7 +20,7 @@
  *     `replyShapeFor`) because manifest-host's output is generic;
  *     basis's consumers expect richer per-op lookups.
  *
- * Phase v0.1 sub-slice 1.5 (original) → v0.3.4 substrate-reuse
+ * Phase v0.1 (original) → v0.3.4 substrate-reuse
  * refactor 2026-05-22.
  */
 
@@ -95,8 +95,8 @@ export function mergeManifests(sources, opts = {}) {
   const replyShape  = new Map();
   const followUps   = new Map();
   const embedSnapshot = new Map();
-  const briefDecls    = new Map();        // v0.7 Q30 — canonicalKey → {summarySkill, order?, label?, appOrigin}
-  const searchDecls   = new Map();        // v0.7.5 Q33 — canonicalKey → {searchSkill, appOrigin}
+  const briefDecls    = new Map();        // v0.7 — canonicalKey → {summarySkill, order?, label?, appOrigin}
+  const searchDecls   = new Map();        // v0.7.5 — canonicalKey → {searchSkill, appOrigin}
   const appOrigins  = [];
   /** @type {object[]} manifests that mounted OK — replayed in the §1b synthetic-op pass below. */
   const mountedManifests = [];
@@ -168,7 +168,7 @@ export function mergeManifests(sources, opts = {}) {
     mountedManifests.push(m);
 
     for (const op of m.operations ?? []) {
-      // Q32 runtime filter — drop ops that don't run in our runtime.
+      // runtime filter — drop ops that don't run in our runtime.
       if (!matchesRuntime(op.runtime ?? 'both', wantRuntime)) continue;
 
       // commandMenu: first-wins by slash command (bare commands).
@@ -218,28 +218,28 @@ export function mergeManifests(sources, opts = {}) {
       }
       opsById.set(canonicalKey, { op, appOrigin: m.app });
 
-      // Q28 + Q31 lookups from the substrate's renderChat output.
+      // lookups from the substrate's renderChat output.
       const shape = mounted.rendered.replyShapeFor?.(op.id);
       if (shape) replyShape.set(canonicalKey, shape);
 
       const fu = mounted.rendered.followUpsFor?.(op.id);
       if (Array.isArray(fu) && fu.length > 0) followUps.set(canonicalKey, fu);
 
-      // Q29 (v0.5) embed snapshot skill lookup.
+      // (v0.5) embed snapshot skill lookup.
       const skill = mounted.rendered.embedSnapshotFor?.(op.id);
       if (skill) embedSnapshot.set(canonicalKey, { snapshotSkill: skill, appOrigin: m.app });
 
-      // Q30 (v0.7) brief summary skill lookup.
+      // (v0.7) brief summary skill lookup.
       const brief = mounted.rendered.briefFor?.(op.id);
       if (brief) briefDecls.set(canonicalKey, { ...brief, appOrigin: m.app });
 
-      // Q33 (v0.7.5) search-skill lookup.
+      // (v0.7.5) search-skill lookup.
       const searchSkill = mounted.rendered.searchFor?.(op.id);
       if (searchSkill) searchDecls.set(canonicalKey, { searchSkill, appOrigin: m.app });
     }
   }
 
-  // §1b sub-slice 1c — SYNTHETIC ops for GENERIC (op-less) capabilities.
+  // §1b — SYNTHETIC ops for GENERIC (op-less) capabilities.
   // "Declare a noun → get CRUD free": a manifest can declare a noun with CRUD atoms and NO implementing
   // op. `synthesizeGenericOps` turns each such op-less capability into a synthetic op (id encodes
   // `(app, atom, noun)` via `encodeGenericOpId`) so the EXISTING projectors (renderSlash /
@@ -342,7 +342,7 @@ export function mergeManifests(sources, opts = {}) {
 }
 
 /**
- * Q32 runtime filter — does an op's declared runtime match the
+ * runtime filter — does an op's declared runtime match the
  * environment the chat shell is composing for?
  *
  * @param {'browser' | 'node' | 'both'} opRuntime

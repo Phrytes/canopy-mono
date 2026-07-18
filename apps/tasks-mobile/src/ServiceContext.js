@@ -1,5 +1,5 @@
 /**
- * ServiceContext — boots ONE meshAgent (V2.8 single-agent topology),
+ * ServiceContext — boots ONE meshAgent (single-agent topology),
  * holds the per-circle CircleStates, exposes the bundle-shape hooks +
  * lifecycle methods every screen needs.
  *

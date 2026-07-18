@@ -1,12 +1,12 @@
 /**
- * PlannerCards — V2.4 schedule-suggestion panel.
+ * PlannerCards — schedule-suggestion panel.
  *
  * Phase 41.5.2 (2026-05-09).
  *
  * "Suggest a plan" button → `suggestSchedule` skill → renders the
  * top-3 suggestions as cards with a reason chip + Accept / Skip
  * buttons. Accept calls `acceptSchedule({taskId, slotStart, slotEnd})`
- * which sets `task.scheduledAt` (V2.1's calendar emission picks it
+ * which sets `task.scheduledAt` ('s calendar emission picks it
  * up automatically). Skip just removes the card from the local list.
  */
 

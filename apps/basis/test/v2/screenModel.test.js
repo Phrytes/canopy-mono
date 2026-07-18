@@ -1,5 +1,5 @@
 /**
- * screenModel — B · Slice 3 pure projection (filter + categorise + capability-gated row actions).
+ * screenModel — B · pure projection (filter + categorise + capability-gated row actions).
  */
 import { describe, it, expect } from 'vitest';
 import { buildScreenModel } from '../../src/v2/screenModel.js';

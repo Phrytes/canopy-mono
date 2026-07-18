@@ -1,5 +1,5 @@
 /**
- * Stoop V2.5 Phase 33 — Device-specific settings split.
+ * Stoop Phase 33 — Device-specific settings split.
  *
  * Verifies the shared/device blob layout introduced by Phase 33.2 +
  * 33.3:

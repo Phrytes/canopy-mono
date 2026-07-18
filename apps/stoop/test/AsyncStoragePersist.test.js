@@ -8,7 +8,7 @@
  * Mirrors the coverage IndexedDBPersist.test.js + FilePersist tests
  * give those two adapters.
  *
- * Task #222.6 (2026-05-24).
+ * Task (2026-05-24).
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AsyncStoragePersist } from '../src/lib/AsyncStoragePersist.js';

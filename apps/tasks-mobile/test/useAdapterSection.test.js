@@ -1,5 +1,5 @@
 /**
- * useAdapterSection — V0.3 hook smoke tests.
+ * useAdapterSection — hook smoke tests.
  *
  * The hook itself is pure delegation to `useSkillResult` + an
  * adapter section lookup.  Substantive consumer-level testing

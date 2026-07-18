@@ -1,5 +1,5 @@
 /**
- * podSignIn — Stoop V1.5 Phase 20 (2026-05-06).
+ * podSignIn — Stoop Phase 20 (2026-05-06).
  *
  * Glue between `OidcSession` (browser-redirect Solid OIDC) and the
  * bundle's `CachingDataSource`.  Three operations:
@@ -31,7 +31,7 @@ import { SolidPodSource } from '@onderling/pod-client';
 import { createSolidAuthNode } from '@onderling/oidc-session';
 import { attachPodToBundle, detachPodFromBundle } from './attachPodToBundle.js';
 
-/** Lazily build a vault for OIDC token storage.  In V1.5 we can
+/** Lazily build a vault for OIDC token storage. In we can
  *  swap this for `core.VaultMemory` or a fs-backed vault per
  *  bundle. */
 function defaultVault() {

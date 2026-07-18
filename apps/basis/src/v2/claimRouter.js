@@ -1,5 +1,5 @@
 /**
- * basis v2 — claim router (board 6B / 5.7c follow-up · P6.5).
+ * basis v2 — claim router (follow-up).
  *
  * When the local user claims a task in a circle AND the circle's personal
  * override has `flowThrough.tasksToPersonal === true`, the claim should
@@ -16,7 +16,7 @@
  *   - `originCircleName`  = the human-readable circle label (when known)
  *   - `originTaskId`      = the original task's id (for de-dup + back-link)
  *   - `tag: 'via:<circleId>'` so the CircleDetail "ON YOUR LIST" section
- *                           can filter (follow-up #342).
+ *                           can filter (follow-up).
  *
  * Pure / DI: tests drive the helper with stub `getOverride` + a sink
  * `addToPersonalCircle`; no real agent / no storage needed.

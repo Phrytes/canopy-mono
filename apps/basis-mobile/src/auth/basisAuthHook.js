@@ -1,6 +1,6 @@
 /**
  * basisAuthHook — basis-mobile flavour of
- * `@onderling/oidc-session-rn/hook` (Bundle F P6, #262, 2026-05-26).
+ * `@onderling/oidc-session-rn/hook` (2026-05-26).
  *
  * Pre-binds `scheme: 'basis'` + `clientName: 'basis
  * (mobile)'` so the redirect URI + DCR cache key are namespaced

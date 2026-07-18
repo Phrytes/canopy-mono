@@ -32,14 +32,14 @@ export { offeringKeyFor } from '../core/offeringsMigration.js';
 export async function loadMijModel({ callSkill, personaId, circles = [], activeCircleId } = {}) {
   if (activeCircleId) {
     try { await migrateRosterOfferings({ callSkill, circleId: activeCircleId }); } catch { /* non-fatal */ }
-    // availability unification (Q5) — one-time, marker-guarded seed of the unified
+    // availability unification — one-time, marker-guarded seed of the unified
     // `availability` property from the most-restrictive legacy signal (holidayMode /
     // per-skill availability). Reads the active circle's stoop context; global once seeded.
     try { await migrateAvailability({ callSkill }); } catch { /* non-fatal */ }
     // location fold-in (audit §4) — one-time, marker-guarded seed of the person-level
     // `location` property from the bespoke stoop `profile.location` coarse geo field.
     try { await migrateLocation({ callSkill }); } catch { /* non-fatal */ }
-    // interests fold-in (audit §4/Q6) — one-time, marker-guarded seed of an `interest`-kind
+    // interests fold-in (audit 4) — one-time, marker-guarded seed of an `interest`-kind
     // driver from the bespoke learned Layer-2 interest signal (stoop getInterestProfile terms).
     try { await migrateInterests({ callSkill }); } catch { /* non-fatal */ }
   }

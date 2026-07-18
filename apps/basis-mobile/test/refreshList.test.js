@@ -1,5 +1,5 @@
 /**
- * refreshList — #253 step 3 (state-morphing list bubbles).
+ * refreshList — step 3 (state-morphing list bubbles).
  *
  * The contract: given the dispatch that produced an original list
  * bubble, calling refreshList re-runs it and returns a NEW

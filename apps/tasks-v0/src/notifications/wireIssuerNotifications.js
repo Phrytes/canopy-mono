@@ -34,7 +34,7 @@
  * (or creates) an `InAppInboxBridge` per webid and registers it with
  * the notifier under `inbox:<webid>`.
  *
- * V1.5 — optional push side-channel. When `pushChannel` + `pushPolicy`
+ * optional push side-channel. When `pushChannel` + `pushPolicy`
  * + `tokenFor(webid)` are all supplied, every immediate notification
  * (completed/submitted/rejected/revoked) is also offered to the push
  * policy for the recipient's device token. Push is conservative: see
@@ -61,8 +61,8 @@ import { InAppInboxBridge } from '../bridges/InAppInboxBridge.js';
  * @param {object} args.itemStore
  * @param {object} args.dataSource         — bundle.cache (for inbox bridge writes)
  * @param {string} [args.fallbackChannel='inbox']  channel name prefix
- * @param {object} [args.pushChannel]      — V1.5 PushChannel (notifier substrate)
- * @param {object} [args.pushPolicy]       — V1.5 PushPolicy (notifier substrate)
+ * @param {object} [args.pushChannel] — PushChannel (notifier substrate)
+ * @param {object} [args.pushPolicy] — PushPolicy (notifier substrate)
  * @param {(webid: string) => string | null} [args.tokenFor]
  *   Optional resolver: webid → device push token. If it returns null
  *   /undefined for a recipient, push is silently skipped for that one.

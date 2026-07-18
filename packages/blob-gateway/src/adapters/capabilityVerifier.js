@@ -3,7 +3,7 @@
 //
 //   verifyToken(token) => Promise<{ webId } | null>
 //
-// PLAN-media-infra-deployment P1 (DECIDED): canopy capability tokens are the
+// PLAN-media-infra-deployment (DECIDED): canopy capability tokens are the
 // PRIMARY media-gate auth; Solid-OIDC (solidVerifier.js) stays as an additional
 // verifier — compose the two with `anyVerifier` below.
 //

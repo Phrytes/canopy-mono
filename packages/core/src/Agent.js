@@ -77,8 +77,8 @@ export class Agent extends Emitter {
   #webid         = null;   // optional WebIdCache (or any object) — standardisation Phase 50.2
   #pseudoPod         = null;   // optional pseudo-pod (or any object) — standardisation Phase 50.3
   #agentRegistry     = null;   // optional agent-registry (or any object) — standardisation Phase 50.8
-  #interfaceRegistry = null;   // optional interface-registry (or any object) — standardisation Phase 50.13 (P6 direction)
-  #protocol          = null;   // optional protocol substrate (or any object) — standardisation Phase 50.14 (P6 direction)
+  #interfaceRegistry = null;   // optional interface-registry (or any object) — standardisation Phase 50.13 (direction)
+  #protocol          = null;   // optional protocol substrate (or any object) — standardisation Phase 50.14 (direction)
   #helloGate     = null;   // optional (envelope) => boolean gate; see Group W
   #sealedConfigs = null;   // Map<groupId, { enabled, ... }> — Group BB
   #rotationInlineSeen = new Set();  // Group FF+1 — newPubKey seen via inline proof (dedup)
@@ -176,15 +176,15 @@ export class Agent extends Emitter {
    *  registry is wired (e.g. no-pod users, tests, single-agent setups). */
   get agentRegistry() { return this.#agentRegistry; }
   /** Interface-registry handle (or any object) — optional. Populated by the provisioning
-   *  facade once the destination shape (§II.13) ships (standardisation Phase 50.13, P6
+   *  facade once the destination shape (§II.13) ships (standardisation Phase 50.13,
    *  direction). Core never imports `@onderling/interface-registry`; this is an opaque
-   *  slot for the per-type renderer registry that Hub V2 introduces. `null` pre-P6. */
+   *  slot for the per-type renderer registry that Hub V2 introduces. `null` pre-. */
   get interfaceRegistry() { return this.#interfaceRegistry; }
   /** Protocol substrate handle (or any object) — optional. Populated by the provisioning
-   *  facade once the destination shape (§II.13) ships (standardisation Phase 50.14, P6
+   *  facade once the destination shape (§II.13) ships (standardisation Phase 50.14,
    *  direction). Core never imports `@onderling/protocol`; this is an opaque slot for the
    *  state-machine orchestrator (Tasks's propose-subtask is the canonical first
-   *  consumer). `null` pre-P6. */
+   *  consumer). `null` pre-. */
   get protocol() { return this.#protocol; }
   /** AgentConfig — optional. */
   get config()   { return this.#config; }
@@ -653,7 +653,7 @@ export class Agent extends Emitter {
 
   /**
    * Mid-flight identity swap — replace the running agent's keypair
-   * with a freshly-supplied AgentIdentity (V2.5+ Phase 31).
+   * with a freshly-supplied AgentIdentity.
    *
    * Unlike `rotateIdentity` (which rotates for unlinkability + emits
    * a signed proof so peers heal smoothly), `swapIdentity` is the

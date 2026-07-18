@@ -90,7 +90,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
         };
       }
 
-      // V2.7 — when parent has an open submission, addSubtask is
+      // when parent has an open submission, addSubtask is
       // blocked. Caller must use proposeSubtask, which goes through
       // assignee approval. Self-spawn (assignee adding to their own
       // task) is allowed — the assignee can amend their own scope.
@@ -265,7 +265,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
     }),
 
     /**
-     * V2.7 — propose a sub-task on a `submitted` parent. Files a
+     * propose a sub-task on a `submitted` parent. Files a
      * `subtask-proposal` queue item targeting the parent's assignee.
      * The assignee approves or declines via the two skills below.
      *
@@ -336,7 +336,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
     }),
 
     /**
-     * V2.7 — assignee approves the proposal. Spawns the sub-task,
+     * assignee approves the proposal. Spawns the sub-task,
      * walks the parent submitted → claimed via the existing reject
      * primitive (preserves the original `submit` entry in the
      * reviewLog as history).
@@ -435,7 +435,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
     }),
 
     /**
-     * V2.7 — admin override: bypass both the post-submit gate AND
+     * admin override: bypass both the post-submit gate AND
      * the admin-approval-depth threshold. Mandatory `reason` lands
      * in the audit log under a distinct `force-spawn` action label
      * so the override is auditable.
@@ -496,7 +496,7 @@ export function buildSubtaskSkills({ bundleResolver } = {}) {
 }
 
 /**
- * V2.7 — true iff the task's reviewLog has a `submit` entry without
+ * true iff the task's reviewLog has a `submit` entry without
  * a subsequent `approve` or `reject`. I.e. parent is currently in
  * the "submitted" state.
  */

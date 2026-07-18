@@ -14,7 +14,7 @@
  *   'inline'     — 2-3 fields stacked compactly
  *   'mini-page'  — 4+ fields; submit button in a footer
  *
- * Phase v0.3 sub-slice 3.3 (DOM half).
+ * Phase v0.3 (DOM half).
  */
 
 /**
@@ -25,7 +25,7 @@
  * @param {() => void}                    [ctx.onCancel]
  * @param {(key: string, params?: object) => string} [ctx.t]
  * @param {(decl: object) => Promise<Array<{id, label}>>} [ctx.pickerFetcher]
- *   v0.7.Q34 — when a field has `pickerSource`, this fetcher resolves
+ *   v0.7. — when a field has `pickerSource`, this fetcher resolves
  *   the choices list at render-time.  The DOM adapter renders a
  *   click-to-pick list instead of a text input.
  * @returns {Element}
@@ -67,7 +67,7 @@ export function renderForm(spec, ctx) {
     cancel.type = 'button';
     cancel.className = 'cc-form-cancel';
     cancel.textContent = tr('form.cancel');
-    // v0.7.P1-followup 2026-05-23 (5th pass): after a successful
+    // v0.7.-followup 2026-05-23 (5th pass): after a successful
     // submit, the cancel button is relabelled to 'Close'.  Clicking
     // it should NOT fire onCancel (which adds 'Form cancelled' to
     // chat — confusing when the submit already succeeded).  We
@@ -82,7 +82,7 @@ export function renderForm(spec, ctx) {
   }
   form.appendChild(actions);
 
-  // v0.7.P1-followup 2026-05-23 (3rd pass): one-shot submit guard.
+  // v0.7.-followup 2026-05-23 (3rd pass): one-shot submit guard.
   // Form messages have a live DOM node that re-renders across the
   // thread stream.  If the user clicks Submit twice (or hits Enter
   // after the first submit), the listener used to fire each click.
@@ -113,7 +113,7 @@ export function renderForm(spec, ctx) {
 }
 
 function renderField(field, { doc, tr, pickerFetcher, onSubmit }) {
-  // v0.7.Q34 — pickerSource overrides the input kind.  Render a
+  // v0.7. — pickerSource overrides the input kind. Render a
   // clickable list whose rows pick the value + submit the form
   // immediately (the bare-/claim, bare-/done UX flow).
   if (field.pickerSource && typeof pickerFetcher === 'function') {
@@ -150,7 +150,7 @@ function renderField(field, { doc, tr, pickerFetcher, onSubmit }) {
 }
 
 /**
- * v0.7.Q34 — render a field whose manifest declared `pickerSource`.
+ * v0.7. — render a field whose manifest declared `pickerSource`.
  * Fetches the list at render time + renders one button per row.
  * Clicking a row sets a hidden input + auto-submits the form.
  */
@@ -234,7 +234,7 @@ function makeInput(field, doc) {
       return sel;
     }
     case 'date': {
-      // v0.7.P1-followup 2026-05-23 (3rd pass): user reverted on
+      // v0.7.-followup 2026-05-23 (3rd pass): user reverted on
       // text-only date input — they want the native calendar picker
       // back AND the time component visible.  Use datetime-local
       // which gives the date PICKER + a time field, native browser

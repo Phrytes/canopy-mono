@@ -6,7 +6,7 @@
 //      prompt carries only the few relevant items instead of the whole circle (fewer tokens).
 //
 // "Run the gate locally even when the LLM is remote" — rules + retrieval are local; only the residue
-// hits the model. Pairs with `sealedIndex.semanticQuery` as the retriever (P2 local search).
+// hits the model. Pairs with `sealedIndex.semanticQuery` as the retriever (local search).
 
 /**
  * @param {object} a

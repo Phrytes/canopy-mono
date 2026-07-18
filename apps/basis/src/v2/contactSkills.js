@@ -1,6 +1,6 @@
 /**
  * contactSkills — contact/bot exposed-skill → catalog bridge
- * (feedback-extension P4, Mode-1 "bot-exposed skills").
+ * (feedback-extension, Mode-1 "bot-exposed skills").
  *
  * DESIGN-feedback-extension §1.2 (the SCOPED CATALOG) gives every entry a
  * `scope` ∈ {app, circle, contact-thread} + a `binding` ∈

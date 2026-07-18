@@ -1,6 +1,6 @@
 /**
  * threadFormState — unit tests for the pure state-machine helpers
- * lifted from src/web/threadSidebar.js in #231 (2026-05-24).
+ * lifted from src/web/threadSidebar.js in (2026-05-24).
  *
  * Zero DOM, zero RN — the whole point is that basis-mobile
  * can rely on these same functions when it ships an RN sidebar.

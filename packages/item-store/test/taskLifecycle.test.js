@@ -1,5 +1,5 @@
 /**
- * PLAN-capabilities-tasks-roles P1 keystone (Option A) — the task lifecycle
+ * PLAN-capabilities-tasks-roles keystone (Option A) — the task lifecycle
  * VERBS as functions-over-CircleItemStore.
  *
  * Proves BEHAVIOURAL PARITY with `ItemStore`'s verbs: where practical each case
@@ -7,7 +7,7 @@
  * (side-by-side), so the port is verified against the original, not a fresh spec.
  *
  * Covers: claim CAS race (exactly one winner + `already-claimed`); reassign;
- * markComplete blocked by open deps then allowed (V2.7 DAG gate); the
+ * markComplete blocked by open deps then allowed (DAG gate); the
  * submit/approve/reject/revoke transitions; role-gate denials.
  */
 import { describe, it, expect } from 'vitest';
@@ -222,7 +222,7 @@ describe('reassign', () => {
   });
 });
 
-// ── markComplete + DAG dependency gate (V2.7) ────────────────────────────────
+// ── markComplete + DAG dependency gate ────────────────────────────────
 
 describe('markComplete — DAG dependency gate parity', () => {
   it('blocked by an open dependency, then allowed once the dep closes', async () => {

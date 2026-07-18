@@ -1,7 +1,7 @@
 /**
- * V0.2 — `fetchSectionItems` helper.
+ * `fetchSectionItems` helper.
  *
- * Honours Q7 (`section.dataSource`) when declared; falls back to Q6
+ * Honours (`section.dataSource`) when declared; falls back to
  * rule-b default (`listOpen({type, ...filter})`) otherwise.
  */
 

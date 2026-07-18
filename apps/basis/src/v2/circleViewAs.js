@@ -1,5 +1,5 @@
 /**
- * basis v2 — "View as…" reveal/openness projection (shared, board 4C).
+ * basis v2 — "View as…" reveal/openness projection (shared).
  *
  * A read-only preview of a circle's member directory as a *chosen viewer*
  * would see it — re-running the reveal/openness rules, not new data.  The

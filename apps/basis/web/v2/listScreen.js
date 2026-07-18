@@ -1,9 +1,9 @@
 /**
- * listScreen — B · Slice 3 web renderer for a manifest `surfaces.screen` list surface.
+ * listScreen — B · web renderer for a manifest `surfaces.screen` list surface.
  *
  * `renderListScreen` is the CONTROLLED render over a screen MODEL (`buildScreenModel`): search box,
  * category checkboxes, and the filtered rows each with capability-gated action buttons (greyed/hidden
- * per Slice 4). `renderListBlock` is the STATEFUL wrapper the live panel uses: it renders the chrome
+ * per). `renderListBlock` is the STATEFUL wrapper the live panel uses: it renders the chrome
  * (search + categories) ONCE and re-renders only the ROWS on filter — so the search box keeps focus —
  * while owning the query/activeCategories state. Pure DOM → unit-testable under happy-dom.
  */
@@ -13,7 +13,7 @@ import { buildScreenModel } from '../../src/v2/screenModel.js';
 /**
  * Render just the rows list (label + capability-gated action buttons); re-callable for partial updates.
  *
- * Q15 drill-down — when `onRowOpen` is provided the row LABEL renders as a
+ * drill-down — when `onRowOpen` is provided the row LABEL renders as a
  * button: picking a row fires `onRowOpen({item, itemId})` (the host opens the
  * sibling DETAIL screen with the selection context — see shared
  * src/v2/screenDrilldown.js).  Without `onRowOpen` the label stays a plain
@@ -63,7 +63,7 @@ export function renderListRows(listEl, { rows = [], t, onRowAction, onRowOpen } 
 }
 
 /**
- * SP-5b Option A — non-dismissible caption telling the user this list is
+ * Option A — non-dismissible caption telling the user this list is
  * audience-scoped. Rendered under the title whenever the model carries an
  * `audienceScope` (the normalised audience `buildScreenModel` filtered by).
  * NON-dismissible on purpose: this is a visibility *scope*, not a user filter,
@@ -153,7 +153,7 @@ export function renderListBlock(container, { block = {}, t, onRowAction, onRowOp
   const shared = { items: block.items, categoryField: block.categoryField, labelField: block.labelField, searchFields: block.searchFields, defaultAudience: block.defaultAudience, manifestsByOrigin: block.manifestsByOrigin, appOrigin: block.appOrigin, capabilityMatrix };
 
   // Build the base model ONCE for the chrome: its categories seed the category
-  // bar and its `audienceScope` drives the SP-5b scope caption (both are
+  // bar and its `audienceScope` drives the scope caption (both are
   // query/activeCategories-independent, so they don't change on filter).
   const baseModel = buildScreenModel(shared);
 

@@ -2,7 +2,7 @@
  * taskDetail unit tests — exercise the portable glue the web
  * `task.html` page and the mobile `TaskDetailScreen.jsx` both consume.
  *
- * Mirrors `chatThread.test.js` style (slice #252).
+ * Mirrors `chatThread.test.js` style.
  */
 
 import { describe, it, expect } from 'vitest';

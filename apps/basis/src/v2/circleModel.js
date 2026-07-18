@@ -5,7 +5,7 @@
  * (see `@onderling/circles` + `CIRCLE_ID_IS_CREW_ID_ALIAS`: circle.id ≡
  * task.circleId). This module normalises the circle-like sources the host
  * already exposes — tasks circles (`getMyCircles`), stoop groups, and
- * `@onderling/circles` items — into one launcher list (board 1B). Pure and
+ * `@onderling/circles` items — into one launcher list. Pure and
  * host-injected so the same logic feeds the web launcher (`web/v2/`) and
  * the mobile screen (`screens/v2/`).
  */

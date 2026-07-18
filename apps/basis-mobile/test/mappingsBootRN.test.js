@@ -1,5 +1,5 @@
 /**
- * bootAgentBundle × extension mappings (feedback-extension P2 mobile parity).
+ * bootAgentBundle × extension mappings (feedback-extension mobile parity).
  * With a mappings store, an installed extension's op is verified against the base
  * catalog and merged in at boot; an unsafe (unknown-op) mapping is refused.
  */

@@ -1,5 +1,5 @@
 /**
- * sharedRefPolicy — the injectable ENFORCEMENT surface for the cross-circle read (cluster K).
+ * sharedRefPolicy — the injectable ENFORCEMENT surface for the cross-circle read.
  *
  * `resolveSharedRef` (shareIntoAudience.js) resolves a `shared-ref` back to its source item — the read
  * that CROSSES circles. On the in-memory substrate that read is unguarded (there is no real pod to gate
@@ -172,7 +172,7 @@ export function makeSharedRefPolicy({ sharing, open, recipient, resourceUriFor, 
  *        `recipientStrategy({recipients}).seal` via `sealItem`) that returns the item re-sealed to the
  *        recipient(s), and it is written back to the source store so the recipient can open it at rest. The
  *        recipients' SEALING PUBLIC KEYS arrive as `recipientKeys` (resolved by the share op against the
- *        TARGET circle's roster — slice 3a), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal
+ *        TARGET circle's roster —), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal
  *        that needs keys but gets none should throw ⇒ the share fails.
  * @returns {(ctx:{ref:object, item:object, recipient?:string, recipients?:string[], recipientKeys?:string[], stores:object})=>Promise<void>}
  */
@@ -199,7 +199,7 @@ export function makeShareGrantHook({ sharing, resourceUriFor, mode = 'read', sea
     }
 
     // Optional re-seal so the (new) recipient can open the envelope at rest. Group-key postures skip this
-    // (recipient already holds the key via the roster). The recipients' SEALING PUBLIC KEYS (slice 3a,
+    // (recipient already holds the key via the roster). The recipients' SEALING PUBLIC KEYS (,
     // resolved by the share op against the TARGET circle's roster) arrive as `recipientKeys` and are handed
     // to the injected `seal` so it wraps to keys, not WebIDs.
     if (typeof seal === 'function' && item && ref && stores && typeof stores.getStore === 'function') {
@@ -275,7 +275,7 @@ export function makeCanonicalShareHook({ canonicalShare, currentRecipients } = {
 }
 
 /**
- * ONE-CALL pod-tier wiring for the cross-circle share (cluster K · the composition seam). Binds the
+ * ONE-CALL pod-tier wiring for the cross-circle share (the composition seam). Binds the
  * WRITE-side grant hook and the READ-side enforcement policy to the SAME `sharing` surface, `resourceUriFor`
  * mapping, and `mode` — so a share made through `onShare` is exactly what `policy.checkGrant` will later
  * accept, and nothing else. The pod-backed composition point injects the live surfaces here and threads the

@@ -16,7 +16,7 @@
  * backend lives behind the separate `/node` subpath and is never
  * pulled in by this module).
  *
- * P3 Phase B (desktop) + Phase C (mobile).
+ * Phase B (desktop) + Phase C (mobile).
  */
 
 import { createPseudoPod, createSyncEnginePodClient } from '@onderling/pseudo-pod';

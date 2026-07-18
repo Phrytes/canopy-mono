@@ -58,7 +58,7 @@ describe('persistPicker', () => {
     expect(picked.persist).toBeTruthy();
   });
 
-  // ── #222.6 — AsyncStoragePersist branch ───────────────────────────
+  // ── — AsyncStoragePersist branch ───────────────────────────
 
   function makeMockAsyncStorage() {
     const store = new Map();

@@ -11,7 +11,7 @@
  * `buildConsentModel` is pure (testable, dep-free of the store). The install/
  * uninstall helpers wrap `@onderling/pod-routing` write/remove over whatever store
  * is injected (localStorage V0 today; a real pseudo-pod once the web pod layer
- * — P3 3.3c — lands).
+ * lands).
  */
 
 import { writeMapping, removeMapping } from '@onderling/pod-routing/mappings';

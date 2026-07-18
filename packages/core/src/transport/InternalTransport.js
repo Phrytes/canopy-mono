@@ -39,7 +39,7 @@ export class InternalTransport extends Transport {
 
   /**
    * Expose the shared bus so callers that want to spin up additional
-   * in-process agents (e.g. cap-token-bound bot agents in Tasks V1.5)
+   * in-process agents (e.g. cap-token-bound bot agents in Tasks)
    * can attach a fresh InternalTransport without threading the bus
    * through multiple call layers.
    */

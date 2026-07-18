@@ -1,5 +1,5 @@
 /**
- * circleLists (cluster K · K2) — the shared composable-lists data layer (web≡mobile). create/add/complete
+ * circleLists — the shared composable-lists data layer (web≡mobile). create/add/complete
  * over the container substrate, per-circle scoping, and the PERSISTENCE contract (a fresh service over the
  * same DataSource reads prior data back — what the IDB/AsyncStorage backing gives the live app).
  */
@@ -82,7 +82,7 @@ describe('circleLists', () => {
 
   it('exposes the accepts policy (acceptsFor) for the shell', async () => {
     const svc = makeCircleLists({ dataSource: memoryDataSource() });
-    // list/list-item default to `list-item`, and (P1) ALSO accept a `task` child.
+    // list/list-item default to `list-item`, and ALSO accept a `task` child.
     expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'task']);
     expect(svc.acceptsFor('list-item').map((a) => a.type)).toEqual(['list-item', 'task']);
     expect(svc.acceptsFor('unknown-type')).toEqual([]);        // not composable → no "+ add"
@@ -91,7 +91,7 @@ describe('circleLists', () => {
   it('an injected manifest EXTENDS what a list accepts (other apps compose in)', async () => {
     const notesApp = { app: 'notes', accepts: { list: [{ type: 'note', op: 'addNote' }] } };
     const svc = makeCircleLists({ dataSource: memoryDataSource(), manifests: [notesApp] });
-    // merged: list-item (default) + task (P1 tasks-in-lists) + note (injected); list-item stays the default.
+    // merged: list-item (default) + task (tasks-in-lists) + note (injected); list-item stays the default.
     expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'task', 'note']);
   });
 
@@ -127,14 +127,14 @@ describe('circleLists', () => {
       .toEqual(['board:a board', 'list:a list']);
   });
 
-  // ── P1: "a list can contain tasks" made REAL (TASKS_ACCEPTS_MANIFEST) — list/list-item accept a `task` ──
+  // ──: "a list can contain tasks" made REAL (TASKS_ACCEPTS_MANIFEST) — list/list-item accept a `task` ──
   it('a list ACCEPTS a task child via a hint → a REAL task-typed child (not a list-item)', async () => {
     const svc = makeCircleLists({ dataSource: memoryDataSource() });
     const list = await svc.createList('c1', 'sprint');
     const task = await svc.addItem('c1', list.id, 'fix the tap', 'alice', { hint: 'task' });
     expect(task.type).toBe('task');                             // a REAL task, NOT a list-item
     expect(task.text).toBe('fix the tap');                      // the type word is stripped from the body
-    expect(task.containedBy).toContain(list.id);               // K2 containment: the task lives INSIDE the list
+    expect(task.containedBy).toContain(list.id);               // containment: the task lives INSIDE the list
   });
 
   it('a list-item ACCEPTS a task child too (nesting one level down)', async () => {

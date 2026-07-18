@@ -1,5 +1,5 @@
 /**
- * AvailabilityAdminSection — V2.3 admin toggle for the per-circle
+ * AvailabilityAdminSection — admin toggle for the per-circle
  * availability hints feature.
  *
  * Phase 41.8.7 (2026-05-09).

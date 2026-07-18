@@ -1,18 +1,18 @@
 /**
- * @onderling/app-scaffold — SP-10 v0.
+ * @onderling/app-scaffold — v0.
  *
  * A PURE manifest→app scaffolder. Given an app `manifest` (the `{ operations:
  * [{ id, verb, params, appliesTo, surfaces, … }] }` contract) and a `requires`
- * list drawn from SP-9's capability vocabulary, it:
+ * list drawn from 's capability vocabulary, it:
  *
  *   1. VALIDATES the `requires` via `@onderling/sdk/requires` `validateRequires`.
  *      An unknown capability → a coded throw (`ERR_APP_SCAFFOLD_INVALID_REQUIRES`)
- *      and NOTHING is scaffolded. This is why SP-10 was gated on SP-9.
+ *      and NOTHING is scaffolded. This is why was gated on.
  *   2. GENERATES a runnable app skeleton as a `{ <path>: <content> }` map:
  *        - `package.json` — name `@onderling-app/<appId>`, `type: module`, a test
  *          script, `@onderling/sdk` as the dependency, and a `canopy` block that
  *          records the requires + the per-capability SDK sub-path import
- *          specifiers (SP-9: core→/core, transports→/transports, vault→/vault,
+ *          specifiers (: core→/core, transports→/transports, vault→/vault,
  *          pod→/pod, high→the barrel `@onderling/sdk`).
  *        - `src/index.js` — the entry: imports `createAgent` from
  *          `@onderling/sdk/high` + `wireSkill` from `@onderling/sdk`, and for EACH
@@ -42,7 +42,7 @@ export const APP_SCAFFOLD_CODES = Object.freeze({
 });
 
 /**
- * SP-9 capability → the SDK import specifier the scaffolded app should use.
+ * capability → the SDK import specifier the scaffolded app should use.
  * Every specifier resolves to the single `@onderling/sdk` package (sub-path
  * exports), so the npm dependency is always just `@onderling/sdk`; this map is
  * what the generated code IMPORTS and what `package.json.canopy.sdkImports`
@@ -69,7 +69,7 @@ export const CAPABILITY_SDK_IMPORT = Object.freeze({
  * @param {object}   args
  * @param {object}   [args.manifest]  the app manifest (`{ operations: [...] }`);
  *                                     when omitted a minimal starter is emitted.
- * @param {string[]} args.requires    SP-9 capability list (validated).
+ * @param {string[]} args.requires capability list (validated).
  * @param {string}   args.appId       app id → package name `@onderling-app/<appId>`.
  * @param {(file: {path: string, content: string}) => void} [args.writer]
  *                                     optional side-effect sink (also written).
@@ -84,7 +84,7 @@ export function scaffoldApp({ manifest, requires, appId, writer } = {}) {
     throw new TypeError('scaffoldApp: `requires` must be an array of capability names');
   }
 
-  // 1 ── validate requires via SP-9. Unknown → coded throw, no files.
+  // 1 ── validate requires via. Unknown → coded throw, no files.
   const result = validateRequires(requires);
   if (!result.ok) {
     // v0 scaffolds against the vocabulary only (no `available` set is passed),

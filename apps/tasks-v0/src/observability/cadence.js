@@ -12,7 +12,7 @@
  *
  * Each level may set:
  *   - `channel`:  'inbox' | 'push' | 'silent'
- *                 (V1 ships only `inbox`; `push` is a V1.5 flag)
+ *                 (V1 ships only `inbox`; `push` is a flag)
  *   - `suppressed`: bool — drop the event entirely
  *   - `leadMs`:   number — for `missed-deadline` ONLY: how long
  *                 before `dueAt` to fire (default: 0 = at the

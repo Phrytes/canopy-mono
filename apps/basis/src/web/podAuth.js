@@ -3,7 +3,7 @@
  *
  * basis — real Solid OIDC auth wrapper (J6 real binding).
  *
- * v0.7.P1 (2026-05-23): replaces the v0.6.2 mock externalFlow with
+ * v0.7. (2026-05-23): replaces the v0.6.2 mock externalFlow with
  * a real Inrupt redirect-based OIDC flow.
  *
  *   - `start({issuer, redirectUrl, clientName})` — triggers a full-
@@ -21,7 +21,7 @@
  *   { webid: string, isLoggedIn: boolean, fetch: typeof fetch }
  *
  * The authenticated `fetch` is what unlocks real pod attach
- * (v0.7.P2 — pseudo-pod cache mode + @onderling/pod-client).
+ * (v0.7. — pseudo-pod cache mode @onderling pod-client).
  *
  * Sister module: @onderling/oidc-session (Node) + @onderling/oidc-session-rn
  * (React Native).  No browser substrate yet; when a second browser

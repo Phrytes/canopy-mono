@@ -42,7 +42,7 @@ robustness, and 5 contrast pairs.
 | `mistral:7b-instruct` (v0.3) | 4.4 GB | ✓ native (v0.3+) | reasonable | moderate, often emits JSON-as-text |
 | `bramvanroy/geitje-7b-ultra:Q4_K_M` | 4.4 GB | ✗ (no tool template) | strongest | only via loose-parser recovery |
 
-Hardware note: 7B Q4 models taking 60–270s per turn on cold cache
+Hardware note: 7B models taking 60–270s per turn on cold cache
 suggests partial CPU fallback.  3B sits comfortably in GPU.
 
 ---
@@ -160,7 +160,7 @@ the bottleneck, not the prompt.**
    Going longer would help marginally; going shorter hurts a lot.
    Keep it.
 
-3. **Mistral 7B Q4 is fundamentally unreliable for structured output.**
+3. **Mistral 7B is fundamentally unreliable for structured output.**
    Failures are model-level, not prompt-level: hallucinating items
    the user never mentioned, echoing prompt example dialog as if it
    were chat, leaking system context into user replies, calling

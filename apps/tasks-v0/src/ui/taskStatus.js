@@ -14,11 +14,11 @@
  * or any platform module. The whole file runs in the desktop's
  * vitest config (Node, no RN polyfills).
  *
- * The V2.7 substrate gate (`enforceDependencies`) emits a `status`
+ * The substrate gate (`enforceDependencies`) emits a `status`
  * field on listOpen output. The UI maps that into:
  *   - `kind`     — short label ('ready' | 'waiting' | 'blocked' | 'claimed' | 'submitted' | 'complete' | 'rejected')
  *   - `colorKey` — theme token to use for the pill ('info' | 'warning' | 'danger' | 'primary' | 'success' | 'textMuted')
- *   - `depsBlocked` — true when the V2.7 dependency gate would
+ *   `depsBlocked` — true when the dependency gate would
  *                     reject `markComplete` / `approve` calls
  *   - `canClose`   — true when "Mark complete" / "Approve" is allowed
  *                     (NOT depsBlocked AND status is closable)
@@ -45,7 +45,7 @@
 export function describeTaskStatus(item) {
   const kind = _normaliseKind(item?.status);
 
-  // V2.7 hard-deps gate. Two equivalent signals:
+  // hard-deps gate. Two equivalent signals:
   //   - kind === 'waiting' / 'blocked' (legacy DAG-only listOpen
   //     output, still emitted when the task is unassigned).
   //   - item.openDeps[] (set by every list skill since 41.18).
@@ -75,7 +75,7 @@ export function describeTaskStatus(item) {
 }
 
 /**
- * "Add sub-task" → "Propose sub-task" gate, per V2.7.
+ * "Add sub-task" → "Propose sub-task" gate, per.
  *
  * @param {object} item       parent item
  * @param {string} actor      caller's webid (or pubKey on mobile)

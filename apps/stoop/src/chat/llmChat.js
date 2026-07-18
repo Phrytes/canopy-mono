@@ -1,7 +1,7 @@
 /**
- * llmChat — Slice D.2: LLM tool-calling on top of Stoop's chat surface.
+ * llmChat —: LLM tool-calling on top of Stoop's chat surface.
  *
- * **Layering** (per `PLAN-gui-chat-uplift.md` Slice D.2):
+ * **Layering** (per `PLAN-gui-chat-uplift.md`):
  *   - Stoop's existing chat is bilateral peer-to-peer via
  *     `@onderling/chat-p2p` (`apps/stoop/src/chat/wireChat.js`), driven by
  *     the `respondToItem` / `sendChatMessage` skill pair.  That stays
@@ -25,7 +25,7 @@
  * dispatches them directly via `bundle.agent.skills.get(opId).handler`
  * — that's unchanged).  Free text falls through to `onFreeText`.
  *
- * **No package.json change in Slice D.2:** `@onderling/llm-client` is NOT
+ * **No package.json change in:** `@onderling/llm-client` is NOT
  * imported here — callers pass in any `llm` exposing `invoke(req)`
  * (real or mock).  See `apps/stoop/test/chat-llm.test.js`.
  */
@@ -143,12 +143,12 @@ const STOOP_OP_ALIAS = {
 const SHELL_ONLY_OPS = new Set([
   'startDm',                    // basis [DM] button → ensureDmThread
   'getCurrentGroup',            // synthesized in realAgent (single-buurt /groups)
-  'restoreFromMnemonicWizard',  // #198 customRenderer
-  'conflictDisputeWizard',      // #200 customRenderer
-  'postAudienceWizard',         // #198 customRenderer
-  'encryptedBackupWizard',      // #198 customRenderer
-  'createGroupWizard',          // #197 customRenderer
-  'joinGroupWizard',            // #196 customRenderer
+  'restoreFromMnemonicWizard',  // customRenderer
+  'conflictDisputeWizard',      // customRenderer
+  'postAudienceWizard',         // customRenderer
+  'encryptedBackupWizard',      // customRenderer
+  'createGroupWizard',          // customRenderer
+  'joinGroupWizard',            // customRenderer
 ]);
 
 export function buildStoopSkillRegistry(bundle) {
@@ -173,7 +173,7 @@ export function buildStoopSkillRegistry(bundle) {
 export const STOOP_SHELL_ONLY_OPS = SHELL_ONLY_OPS;
 
 /**
- * Create the Slice D.2 LLM chat adapter for a live stoop bundle.
+ * Create the LLM chat adapter for a live stoop bundle.
  *
  * @param {object} args
  * @param {object} args.bundle    a `createNeighborhoodAgent` bundle
@@ -211,7 +211,7 @@ export function createLlmChat({ bundle, llm, localActor, chatAgentOpts = {} } = 
       chatId:      toolCtx?.chatId,
       bridgeId:    toolCtx?.bridgeId,
     }),
-    // Stoop has no scheduler today — Slice D.2 doesn't add one.
+    // Stoop has no scheduler today — doesn't add one.
   });
 
   const chatAgent = new ChatAgent({

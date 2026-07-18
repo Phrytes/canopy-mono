@@ -1,5 +1,5 @@
 /**
- * #240 manifest convergence — defensive regression tests.
+ * manifest convergence — defensive regression tests.
  *
  * Pins canonical shapes that span every app's manifest, so the next
  * time someone adds an op with `state: 'open'` (string) we catch it

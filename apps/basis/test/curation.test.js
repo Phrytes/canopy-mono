@@ -1,5 +1,5 @@
 /**
- * curation (P3) — compareForCuration reuses objectDiff; renderCuration is the
+ * curation — compareForCuration reuses objectDiff; renderCuration is the
  * before/after curation look. One compute (objectDiff), two looks (folio
  * file-merge vs curation).
  */

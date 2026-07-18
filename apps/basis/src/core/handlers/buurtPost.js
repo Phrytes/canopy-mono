@@ -1,8 +1,8 @@
 import { notifyIfResonant } from './driverMatchNotify.js';
 
 /**
- * Inbound buurt-post handler.  Bundle H Phase 2 (#269) — lifted from
- * `apps/basis/web/main.js:807` (Slice 1, 2026-05-24).
+ * Inbound buurt-post handler. Bundle H Phase 2 — lifted from
+ * `apps/basis/web/main.js:807` (2026-05-24).
  *
  * Ingests a peer's fan-out post into the local stoop substrate via
  * `stoop.ingestRemotePost`.  Handles dedup + eviction-filter inside

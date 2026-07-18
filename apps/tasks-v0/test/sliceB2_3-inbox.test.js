@@ -1,5 +1,5 @@
 /**
- * Slice B.2.3 — inbox.html migrated to NavModel + B.2.0 web-adapter
+ * .3 — inbox.html migrated to NavModel + B.2.0 web-adapter
  * helpers (mirror of sliceB2_1-mine.test.js / sliceB2_2-review.test.js).
  *
  * Asserts:
@@ -110,7 +110,7 @@ describe('Slice B.2.3 — manifest delta (inbox.html data source + Dismiss)', ()
     expect(dismiss.appliesTo?.state).toBeUndefined();
   });
 
-  // V0.8 Q27 adoption (2026-05-20) — Tier C consent gate on clearInbox.
+  // adoption (2026-05-20) — Tier C consent gate on clearInbox.
   it('clearInbox section-header CTA carries the Q27 confirm severity hint', () => {
     const nav = renderWeb(tasksManifest);
     const sec = nav.sections.find((s) => s.id === 'inbox');

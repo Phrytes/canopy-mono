@@ -1,5 +1,5 @@
 /**
- * Cluster K · pod-tier wiring — the WRITE-side grant(+seal) hook and the one-call composition seam.
+ * Cross-circle share, pod-tier wiring — the WRITE-side grant(+seal) hook and the one-call composition seam.
  *
  * Exercised against the memory substrate with FAKE `sharing` (mimicking `client.sharing.grant`/`list`) and a
  * FAKE seal/open — no live pod, no `@onderling/pod-client` import. Covers:
@@ -171,7 +171,7 @@ describe('makeCircleShareEnforcement — write-grant + read-gate agree by constr
   });
 });
 
-// share-policy slice 3b — the seam that carries the recipients' SEALING KEYS to the injected re-seal, and
+// share-policy — the seam that carries the recipients' SEALING KEYS to the injected re-seal, and
 // the symmetric `sealItem`/`unsealItem` content walk (structural keys stay plaintext).
 describe('slice 3b — recipientKeys reach the seal; sealItem round-trips with unsealItem', () => {
   it('shareIntoAudience threads recipientKeys through onShare → seal', async () => {

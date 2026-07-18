@@ -2,7 +2,7 @@
  * chatThread unit tests — exercise the portable glue the web
  * chat.html page and the mobile ChatThreadScreen.jsx both consume.
  *
- * Slice #252 (2026-05-27). Mirrors composeArgs.test.js style.
+ * Slice (2026-05-27). Mirrors composeArgs.test.js style.
  */
 
 import { describe, it, expect } from 'vitest';

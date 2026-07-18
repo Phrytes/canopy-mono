@@ -137,7 +137,7 @@ export class DailyDigest {
  *
  * Wraps @onderling/notifier's `nextDailyFireInTz` (substrate-level
  * helper, ported from this file's earlier Intl-based implementation).
- * Substrate gained TZ-aware cadence for L1f V0.1 specifically because
+ * Substrate gained TZ-aware cadence for L1f specifically because
  * household demanded it — first rule-of-two pull on L1f.
  *
  * Re-exported here so existing test imports

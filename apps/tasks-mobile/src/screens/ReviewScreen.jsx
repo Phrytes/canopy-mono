@@ -3,19 +3,19 @@
  *
  * Phase 41.6.1 (2026-05-09).
  *
- * Slice C.3 (2026-05-20) — adapter-driven (third RN screen).
+ * adapter-driven (third RN screen).
  *
  * Builds on C.1 (Workspace) + C.2 (MyWork): the screen now resolves
  * both its data source AND its per-row action set through the
  * NavModel adapter:
  *
- *   - **Data source** (V0.2 Q7 `dataSource` + V0.3 `useAdapterSection`):
+ *   **Data source** (`dataSource` `useAdapterSection`):
  *     the `review` view's `dataSource` declares `listAwaitingApproval`
  *     in the manifest (B.2.2); pre-C.3 the screen called the skill id
  *     directly via `useSkillResult('listAwaitingApproval')`. The hook
  *     now resolves the id + args through `adapter.getSection('review')`.
  *
- *   - **Per-row actions** (V0.4 `itemActions[]` + the V0.7 DoD-
+ *   **Per-row actions** (`itemActions[]` + the DoD
  *     lifecycle state gate): `adapter.renderItemActions(section, item)`
  *     filters the section's manifest-projected `itemActions[]` by
  *     `appliesTo.state` (only `approveTask` / `rejectTask` / `revokeTask`
@@ -23,17 +23,17 @@
  *     "show approve + reject" with no state gate; C.3 inherits the
  *     same multi-state lifecycle gate the web review page already has
  *     (sliceB2_2-review.test.js). This is the first RN screen to
- *     consume `renderItemActions` — exercising the adapter's full V0.4
+ *     consume `renderItemActions` — exercising the adapter's full
  *     surface end-to-end.
  *
  * What stays hand-built:
  *   - **Button styling + labels** — localisation via `t('mobile.review.*')`;
  *     RN Pressable + theme tokens (the adapter's `action.label` is the
  *     manifest's English string, not localisation).
- *   - **V2.7 deps gate on Approve** — `describeTaskStatus(item).canClose`
+ *   ** deps gate on Approve** — `describeTaskStatus(item).canClose`
  *     gates the Approve button's `disabled` state (RN-specific UX hint;
  *     the manifest's `appliesTo.state` gate decides VISIBILITY, the
- *     V2.7 deps gate decides ENABLED-ness). When `canClose` is false
+ *     deps gate decides ENABLED-ness). When `canClose` is false
  *     the button still surfaces but disabled with the "open task to
  *     use Force-complete" hint.
  *   - **Reject flow** — pushes to TaskDetailScreen so the user can
@@ -51,7 +51,7 @@
  *   C.1's `useAdapterSection` for data: adapter declares, hook
  *   dispatches.)
  *
- * V2.7-aware: when `item.status === 'waiting'` the Approve button is
+ * aware: when `item.status === 'waiting'` the Approve button is
  * disabled with the "Has open dependencies" hint — the user has to
  * open TaskDetail to use Force-complete (admin-only).
  */
@@ -78,7 +78,7 @@ export function ReviewScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  // Slice C.3 — build the NavModel adapter once per service-change.
+  // build the NavModel adapter once per service-change.
   // Same shape as WorkspaceScreen (C.1) + MyWorkScreen (C.2). The
   // adapter is platform-neutral; `callSkill` is a tiny imperative
   // dispatcher used by `fetchSection` consumers (here unused — the
@@ -102,7 +102,7 @@ export function ReviewScreen() {
   );
 
   // Data source resolved via the manifest's `review` view dataSource
-  // (V0.2 Q7 — `listAwaitingApproval`). Same `useAdapterSection`
+  // (`listAwaitingApproval`). Same `useAdapterSection`
   // pattern as Workspace + MyWork.
   const { section, data, loading, refresh } =
     useAdapterSection(adapter, 'review', [svc?.activeCircleId]);
@@ -132,8 +132,8 @@ export function ReviewScreen() {
         renderItem={({ item }) => (
           <ReviewRow
             item={item}
-            // Slice C.3 — itemActions[] for this row, state-gated by
-            // the manifest's V0.7 DoD-lifecycle `appliesTo.state`.
+            // itemActions[] for this row, state-gated by
+            // the manifest's DoD-lifecycle `appliesTo.state`.
             // For submitted items: [approveTask, rejectTask, revokeTask].
             // For non-submitted (defensive — the list-skill should only
             // return submitted items, but the adapter's gate is the
@@ -161,10 +161,10 @@ function ReviewRow({ item, actions, onOpen, onApprove, onReject }) {
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
   const { t } = useLocalisation();
   const status = describeTaskStatus(item);
-  const blocked = !status.canClose; // V2.7 — waiting/blocked means Approve is gated
+  const blocked = !status.canClose; // waiting/blocked means Approve is gated
 
-  // Slice C.3 — derive button visibility from the manifest's
-  // state-gated itemActions[] (V0.4). The action LIST decides which
+  // derive button visibility from the manifest's
+  // state-gated itemActions[]. The action LIST decides which
   // buttons surface; localisation + RN styling are local. This matches the
   // web review.html pattern (sliceB2_2-review.test.js) where the page
   // walks `section.itemActions` and renders only matching ops.

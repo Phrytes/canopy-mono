@@ -1,20 +1,20 @@
 /**
- * basis — `/brief` aggregator (Q30, v0.7).
+ * basis — `/brief` aggregator (v0.7).
  *
  * Fans out across all enabled apps declaring `surfaces.chat.brief`
- * (Q30); calls each app's `summarySkill`; aggregates replies into a
+ * ; calls each app's `summarySkill`; aggregates replies into a
  * `'brief'`-shape reply with one section per app.
  *
  * Empty-section handling (per design doc): apps that return null /
  * `{ok: false}` / no items are skipped — the brief shows only
- * sections with content.  Apps that don't declare Q30 don't appear.
+ * sections with content. Apps that don't declare don't appear.
  *
  * Caching (per OQ-7.A user resolution): in-memory 60s cache; an
  * explicit `[Refresh]` button (rendered by the brief renderer)
  * bypasses.  Longer TTL for pod-less mode lands when that mode
  * actually exists.
  *
- * Phase v0.7 sub-slice 7.2 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.7 per `/Project Files/basis/coding-plan.md`.
  *
  * Platform: neutral.
  */

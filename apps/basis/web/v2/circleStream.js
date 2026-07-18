@@ -1,5 +1,5 @@
 /**
- * basis v2 — cross-circle Stream (web DOM renderer, board 5B).
+ * basis v2 — cross-circle Stream (web DOM renderer).
  *
  * One timeline over `buildCircleStream` rows (newest-first), each row
  * carrying a circle-tag chip + `app · type` + a timestamp.  Pure render:

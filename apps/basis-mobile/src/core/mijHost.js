@@ -33,7 +33,7 @@ export async function setGeneralProperty({ callSkill, defaultId, key, value }) {
 export { offeringKeyFor } from '../../../basis/src/core/offeringsMigration.js';
 import { offeringKeyFor as sharedOfferingKeyFor } from '../../../basis/src/core/offeringsMigration.js';
 
-/** Offerings (#Q1) — add an offering-kind driver ({text, tags}) to the GENERAL persona. */
+/** Offerings — add an offering-kind driver ({text, tags}) to the GENERAL persona. */
 export async function addGeneralOffering({ callSkill, defaultId, text, tags }) {
   const key = sharedOfferingKeyFor({ text, tags });
   try { await callSkill('agents', 'setProfileDriver', { id: defaultId ?? 'default', key, kind: 'offering', text, tags }); } catch { /* */ }

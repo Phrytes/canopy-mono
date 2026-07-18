@@ -1,5 +1,5 @@
 /**
- * V1.5 — push side-channel wiring through Circle.
+ * push side-channel wiring through Circle.
  *
  * Asserts that:
  *   - When `pushSender` is supplied AND `circleConfig.pushTokens` maps

@@ -28,7 +28,7 @@ local tree has the symlinks/`node_modules` and the build server doesn't.
 - **New workspace dep needs its `node_modules` symlink materialized.**
   This repo has NO root hoisting: each package's `file:` deps live as symlinks in *its own*
   `node_modules`. Adding a `@onderling/*` dep to a package's `package.json` is not enough for a fresh
-  checkout that doesn't re-run install — the symlink must exist. Slice 1a (2026-07-10) wired
+  checkout that doesn't re-run install — the symlink must exist. (2026-07-10) wired
   `@onderling/sync-engine` onto `@onderling/versioning` + `@onderling/pseudo-pod` (the `/node` fs backend for
   the retired `versions.js`); both are declared deps AND symlinked into
   `packages/sync-engine/node_modules/@onderling/{versioning,pseudo-pod}`. If sync-engine (or any Folio

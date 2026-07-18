@@ -27,7 +27,7 @@
  * into a throw, a resolver other than `bundleResolver`, or a manifest op whose
  * params intentionally diverge from the skill's real args).
  *
- * V2.8: skill bodies resolve a per-circle CircleState via `bundleResolver`
+ * skill bodies resolve a per-circle CircleState via `bundleResolver`
  * at dispatch time. Single registration on the process-wide meshAgent.
  *
  * `from` carries the caller's identifier (the actor webid).  Skill
@@ -154,7 +154,7 @@ async function addTaskCore(circle, a, ctx) {
     // Co-ownership (J2) — declare the claim ceiling at creation. Default 1 ⇒
     // exclusive first-come; >1 or null ⇒ co-ownable.
     ...(a.maxAssignees     !== undefined ? { maxAssignees:     a.maxAssignees     } : {}),
-    // V2 task fields (auto-scheduling V2.4 + invoicing V2.2).
+    // V2 task fields (auto-scheduling invoicing).
     ...(a.scheduledAt      !== undefined ? { scheduledAt:      a.scheduledAt     } : {}),
     ...(a.estimateMinutes  !== undefined ? { estimateMinutes:  a.estimateMinutes } : {}),
     // Tasks V2 standardisation adoption — cross-pod refs.
@@ -163,7 +163,7 @@ async function addTaskCore(circle, a, ctx) {
   // DAG cycle detection is now self-guarded inside the ported `addTasks`
   // (createTaskStore.addItems → detectCycle over the open set, throwing the
   // same `DEPENDENCY_CYCLE` code). The consumer-side re-check was removed in
-  // the P1 step-2 migration (2026-07-18) — the substrate owns the guard.
+  // the step-2 migration (2026-07-18) — the substrate owns the guard.
   const [task] = await circle.itemStore.addItems([partial], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
 
   // Phase 52.7 — warn-only canonical-shape validation. Adoption is
@@ -190,7 +190,7 @@ async function addTaskCore(circle, a, ctx) {
 async function claimTaskCore(circle, a, ctx) {
   if (!circle) return { error: 'circleId required' };
   const result = await circle.itemStore.claim(a.id, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
-  // Phase 52.9.3 sub-slice 1 — publish the post-claim state. The
+  // Phase 52.9.3 — publish the post-claim state. The
   // substrate is the source of authorisation truth on the
   // receiver side via applySync (gate-bypass); the receiver's
   // local item-store doesn't re-check the claim policy.
@@ -210,10 +210,10 @@ async function completeTaskCore(circle, a, ctx) {
       [{ id: a.id }],
       { actor: ctx.from, actorDisplayName: ctx.actorDisplayName },
     );
-    // Phase 52.9.3 sub-slice 1 — fan-out the completion.
+    // Phase 52.9.3 — fan-out the completion.
     if (completed) {
       circle?.tasksMirror?.publishTask?.(completed).catch(() => {});
-      // P5 "authority travels with the task" — the grant expires WITH the
+      // "authority travels with the task" — the grant expires WITH the
       // task. Revoke every task-scoped grant materialized for this task so any
       // outstanding cap-token fails PolicyEngine.checkInbound. Best-effort:
       // completion already succeeded; a revoke hiccup must not undo it.
@@ -221,7 +221,7 @@ async function completeTaskCore(circle, a, ctx) {
     }
     return { task: completed };
   } catch (err) {
-    // V2.7 — translate the substrate's DependenciesOpenError into
+    // translate the substrate's DependenciesOpenError into
     // a structured error the UI / bot can render usefully.
     if (err?.code === 'DEPENDENCIES_OPEN') {
       return { error: 'has-open-dependencies', openDeps: err.openDeps };
@@ -244,16 +244,16 @@ async function removeTaskCore(circle, a, ctx) {
                  ?? (await circle.itemStore.listClosed()).find((i) => i.id === a.id);
   const originalId = localItem?.source?.syncedFromId ?? a.id;
   const [id] = await circle.itemStore.removeItems([{ id: a.id }], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
-  // Phase 52.9.3 sub-slice 1 — fan-out the removal.
+  // Phase 52.9.3 — fan-out the removal.
   circle?.tasksMirror?.publishTaskRemoved?.(originalId).catch(() => {});
-  // P5 — cancelling/removing a task is a task-end too: revoke its grants so no
+  // cancelling/removing a task is a task-end too: revoke its grants so no
   // lingering authority survives the task (parity with completeTask).
   try { circle?.taskGrantManager?.revokeTaskGrants?.(a.id); } catch { /* noop */ }
   return { id };
 }
 
 /**
- * `getTaskSnapshot(id)` → ItemSnapshot — Q29 (basis v0.5)
+ * `getTaskSnapshot(id)` → ItemSnapshot — (basis v0.5)
  * snapshot factory.  Returns a thin display projection of the
  * task suitable for embedding in a chat message.  Read-only;
  * idempotent.
@@ -299,7 +299,7 @@ async function listOpenCore(circle, a, ctx) {
   //              / Approve on `openDeps.length === 0` so a
   //              claimed-but-deps-blocked task pre-disables the
   //              CTA instead of waiting for the substrate's
-  //              DependenciesOpenError post-tap (V2.7 hard-deps).
+  //              DependenciesOpenError post-tap (hard-deps).
   const items = open.map((t) => ({
     ...t,
     status:   effectiveStatus(t, open, closed),
@@ -311,7 +311,7 @@ async function listOpenCore(circle, a, ctx) {
 
 /**
  * listMine({})  — open tasks assigned to the calling actor.
- * Includes DAG `status` per item so V2.7's open-deps gate
+ * Includes DAG `status` per item so 's open-deps gate
  * surfaces in the My-work UI (disabled "Mark complete" button).
  */
 async function listMineCore(circle, a, ctx) {
@@ -355,7 +355,7 @@ async function submitTaskCore(circle, a, ctx) {
     ...(a.deliverable !== undefined ? { deliverable: a.deliverable } : {}),
     ...(a.note        !== undefined ? { note:        a.note        } : {}),
   }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
-  // Phase 52.9.3 sub-slice 1 — fan-out the submission.
+  // Phase 52.9.3 — fan-out the submission.
   if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
   return { task: updated };
 }
@@ -370,7 +370,7 @@ async function approveTaskCore(circle, a, ctx) {
     const updated = await circle.itemStore.approve(a.id, {
       ...(a.note !== undefined ? { note: a.note } : {}),
     }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
-    // Phase 52.9.3 sub-slice 1 — fan-out the approval.
+    // Phase 52.9.3 — fan-out the approval.
     if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
     return { task: updated };
   } catch (err) {
@@ -388,7 +388,7 @@ async function approveTaskCore(circle, a, ctx) {
 async function rejectTaskCore(circle, a, ctx) {
   if (!circle) return { error: 'circleId required' };
   const updated = await circle.itemStore.reject(a.id, { note: a.note }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
-  // Phase 52.9.3 sub-slice 1 — fan-out the rejection.
+  // Phase 52.9.3 — fan-out the rejection.
   if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
   return { task: updated };
 }
@@ -401,7 +401,7 @@ async function rejectTaskCore(circle, a, ctx) {
 async function revokeTaskCore(circle, a, ctx) {
   if (!circle) return { error: 'circleId required' };
   const updated = await circle.itemStore.revoke(a.id, { reason: a.reason }, { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
-  // Phase 52.9.3 sub-slice 1 — fan-out the revocation.
+  // Phase 52.9.3 — fan-out the revocation.
   if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
   return { task: updated, previousAssignee: a.previousAssignee };
 }
@@ -555,7 +555,7 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
     // ── Hand-written skills (NOT wired — see per-skill note) ───────────────
 
     /**
-     * attachTaskGrant({taskId, member, grant})  — P5 "authority travels with
+     * attachTaskGrant({taskId, member, grant}) — "authority travels with
      * the task" (NOTE-skills-vs-capabilities volley 5; journey J8).
      *
      * Attach ONE task-scoped, attenuated capability grant to `taskId` for
@@ -661,7 +661,7 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
       if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
       const updated = await circle.itemStore.reassign(a.id, a.newAssignee ?? null, { actor: from, actorDisplayName });
-      // Phase 52.9.3 sub-slice 1 — fan-out the reassignment.
+      // Phase 52.9.3 — fan-out the reassignment.
       if (updated) circle?.tasksMirror?.publishTask?.(updated).catch(() => {});
       return { task: updated };
     }, {
@@ -670,7 +670,7 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
     }),
 
     /**
-     * listClaimConflicts()  — Slice 3 (task-claim-partition).
+     * listClaimConflicts — (task-claim-partition).
      *   Read the unresolved double-claim conflicts recorded on this
      *   circle's substrate mirror (a partition→merge that double-claimed
      *   a task surfaces here instead of silently last-writer-wins).
@@ -697,7 +697,7 @@ export function buildSkills({ bundleResolver, circlesProvider } = {}) {
     }),
 
     /**
-     * resolveClaim({taskId, decision:'yours'|'theirs'|'both'})  — Slice 3.
+     * resolveClaim({taskId, decision:'yours'|'theirs'|'both'}) —.
      *   Resolve a recorded claim-conflict. `yours` keeps the local
      *   claimant, `theirs` takes the incoming claimant, `both` keeps the
      *   local claimant AND mints a fresh task (distinct id) for the other

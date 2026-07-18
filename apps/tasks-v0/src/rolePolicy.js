@@ -22,7 +22,7 @@ import { isAssignee } from '@onderling/item-store';
 
 /**
  * Authority helpers sourced from the canonical rank table in `@onderling/core`
- * (`Roles.js`) — P0 roles-authority reconciliation. These replace the inline
+ * (`Roles.js`) — roles-authority reconciliation. These replace the inline
  * `r === 'admin' || r === 'coordinator'` / `r === 'admin'` comparisons that
  * hand-reimplemented the rank ordering. `roleRank` returns `undefined` for
  * unknown / app-only roles (e.g. this app's `external-volunteer`) and for
@@ -116,7 +116,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
       if (isCoordinatorOrAbove(r)) return true;
-      // V2.7 narrow exception: the targetAssignee on a subtask-proposal
+      // narrow exception: the targetAssignee on a subtask-proposal
       // closes their own proposal via approve/decline.
       if (item?.type === 'subtask-proposal'
           && item?.source?.targetAssignee === actor) {
@@ -155,7 +155,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
         if (isAssignee(item, actor)) return true;
         if ((item?.master ?? item?.addedBy) === actor) return true;
       }
-      // V2.4 narrow exception: the assignee may set `scheduledAt`
+      // narrow exception: the assignee may set `scheduledAt`
       // (and `estimateMinutes` if absent) on their own assignment via
       // the planner's `acceptSchedule` skill. Patch must touch ONLY
       // these planner fields — keeps the gate tight.
@@ -164,7 +164,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
         const planner = ['scheduledAt', 'estimateMinutes'];
         if (keys.length > 0 && keys.every((k) => planner.includes(k))) return true;
       }
-      // V2.7 narrow exception: the targetAssignee on a subtask-proposal
+      // narrow exception: the targetAssignee on a subtask-proposal
       // can edit the proposal's notes (used by declineSubtaskProposal
       // to record the optional decline note).
       if (item?.type === 'subtask-proposal'

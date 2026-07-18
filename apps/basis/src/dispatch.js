@@ -13,9 +13,9 @@
  * Pure-ish — the only side effect is the `callSkill` call.  Caller
  * passes a stub for tests.
  *
- * Phase v0.1 sub-slice 1.7 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  *
- * P1 (feedback-extension) adds the `'composite'` dispatch kind beside
+ * (feedback-extension) adds the `'composite'` dispatch kind beside
  * `ready`/`needsForm`/`bulk`: when the resolved op carries `steps`, the
  * router emits a `composite` dispatch and `runCompositeDispatch` runs the
  * sequence via `runCompositeOp` (see `composite.js`).
@@ -26,7 +26,7 @@ import { runCompositeOp } from './composite.js';
 /**
  * @typedef {object} Reply
  * @property {*}              payload     opaque to the chat shell; renderer-specific
- * @property {string}         shape       effective Q28 reply shape (from RouteResult)
+ * @property {string} shape effective reply shape (from RouteResult)
  * @property {string|null}    threadId
  * @property {{code: string, message: string}} [error]
  */
@@ -98,7 +98,7 @@ export async function runDispatch(ready, callSkill) {
 }
 
 /**
- * Run a `composite` dispatch (from the router) — P1, feedback-extension.
+ * Run a `composite` dispatch (from the router) —, feedback-extension.
  *
  * Delegates to the shared `runCompositeOp` runner (sequential steps,
  * `argRef` threading, `onError`).  Wraps the aggregate into the same

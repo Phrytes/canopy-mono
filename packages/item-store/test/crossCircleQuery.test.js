@@ -1,8 +1,8 @@
 /**
- * SP-8 — cross-circle query (`ListFilter.audiences` + `audienceMatchesAny`).
+ * cross-circle query (`ListFilter.audiences` + `audienceMatchesAny`).
  *
  * The @onderling/circles V0 deferral: `ListFilter` could not carry an
- * audience SET.  SP-8 adds `filter.audiences: Audience[]` — an item
+ * audience SET. adds `filter.audiences: Audience[]` — an item
  * matches when its effective audience satisfies ANY audience in the
  * set, so one query spans MULTIPLE circles (union).
  *

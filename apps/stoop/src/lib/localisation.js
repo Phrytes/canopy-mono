@@ -9,7 +9,7 @@
  *   - Loads en + nl JSON files at module-init.
  *   - Exposes `t(key, params?)` for skill / lib code.
  *   - Default lang `en`, `nl` shipped from V1.
- *   - HTML pages currently keep their copy hard-coded; V1.5 moves
+ *   HTML pages currently keep their copy hard-coded; moves
  *     HTML strings out via `data-i18n` attributes.  The wrapper is
  *     ready when that day comes.
  */

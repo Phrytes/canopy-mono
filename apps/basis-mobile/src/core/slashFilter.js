@@ -1,6 +1,6 @@
 /**
  * Pure slash-suggest filter lifted from
- * apps/basis/web/main.js's `refreshSuggest` (#241, 2026-05-24).
+ * apps/basis/web/main.js's `refreshSuggest` (2026-05-24).
  *
  * Zero DOM — pure value transform over the catalog's commandMenu.
  * The RN SlashFAB (and the web slash auto-suggest, if it ever

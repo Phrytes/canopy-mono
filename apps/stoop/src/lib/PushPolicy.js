@@ -1,6 +1,6 @@
 /**
  * PushPolicy — substrate-promoted to `@onderling/notifier` on
- * 2026-05-07 (rule-of-two: Stoop V1 + Tasks V1.5). This file is a
+ * 2026-05-07 (rule-of-two: Stoop V1 Tasks). This file is a
  * thin re-export so existing Stoop import paths keep working.
  */
 

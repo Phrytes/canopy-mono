@@ -1,5 +1,5 @@
 /**
- * basis v2 — kring chat-message receiver substrate (SP-13.2.1).
+ * basis v2 — kring chat-message receiver substrate.
  *
  * Builds a `(fromPeerAddr, payload) => void` handler that matches the
  * shape registered on the existing peer-router.  Since ε.1 the actual

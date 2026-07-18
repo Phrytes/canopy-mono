@@ -30,7 +30,7 @@
  * Defaults live HERE (in the facade), never back in @onderling/core — the
  * kernel stays de-fatted; this package restores the DX on top of it.
  *
- * ── SP-9: the barrel is now the SUM of the sub-path slices ───────────────
+ * ──: the barrel is now the SUM of the sub-path slices ───────────────
  * The batteries-included surface below is carved into importable sub-paths
  * so a consumer can take ONLY the pieces they need (core base vs each
  * extension) rather than the whole barrel:
@@ -63,5 +63,5 @@ export * from './pod.js';
 // ── HIGH layer: opinionated helpers ──────────────────────────────────────
 export * from './high.js';
 
-// ── SP-9: requires vocabulary + validator (the SP-10 seam) ───────────────
+// ──: requires vocabulary + validator (the seam) ───────────────
 export { CAPABILITIES, REQUIRES_CODES, validateRequires } from './requires.js';

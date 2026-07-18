@@ -1,5 +1,5 @@
 /**
- * contactsSource — the Contacten roster from a PeerGraph (feedback-extension P5).
+ * contactsSource — the Contacten roster from a PeerGraph (feedback-extension).
  * Drives the real @onderling/core PeerGraph so the mapping + ordering match what
  * the live agent feeds the roster.
  */

@@ -1,12 +1,12 @@
 /**
- * `fetchSectionItems(section, {callSkill, context?})` — V0.2 + V0.3.
+ * `fetchSectionItems(section, {callSkill, context?})` — +.
  *
  * One-stop helper that adapters call to populate a NavModel section
- * with items.  Honours the V0.2 Q7 `section.dataSource` declaration
- * if present; otherwise falls back to the Q6 rule-b default
+ * with items. Honours the `section.dataSource` declaration
+ * if present; otherwise falls back to the rule-b default
  * (`listOpen({type, ...filter})`).
  *
- * V0.3 (2026-05-21) — Q15 `dataSource.argsFromContext` recognised.
+ * `dataSource.argsFromContext` recognised.
  * Values of the form `"$<key>"` are substituted from the caller-
  * supplied `context` object at call time:
  *
@@ -37,7 +37,7 @@
  *
  * This helper does NOT try to normalise reply shapes.  It returns
  * `result` verbatim; adapters extract `items` per their app's
- * convention.  Forward-additive: V0.3 could normalise via a
+ * convention. Forward-additive: could normalise via a
  * configurable extractor if a real consumer needs it.
  *
  * @param {object} section          NavModel section (sees: itemType, filter?, dataSource?)
@@ -46,7 +46,7 @@
  *   Adapter-supplied skill caller.  Same shape as @onderling/web-adapter's
  *   `callSkill(baseUrl, ...)` already-curried with baseUrl.
  * @param {object} [args.context]
- *   V0.3 (Q15) — context object whose keys back the `argsFromContext`
+ *   context object whose keys back the `argsFromContext`
  *   `$key` substitution.  Optional; if absent, `$key` literals pass
  *   through unchanged so callers can detect missing values.
  * @param {string} [args.defaultListSkill='listOpen']
@@ -65,16 +65,16 @@ export async function fetchSectionItems(section, { callSkill, context, defaultLi
     throw new TypeError('fetchSectionItems: callSkill (function) required');
   }
 
-  // Q7 (V0.2) — explicit dataSource wins.
+  // explicit dataSource wins.
   if (section.dataSource && typeof section.dataSource.skillId === 'string') {
-    // Q15 (V0.3) — merge static args + context-substituted args.
+    // merge static args + context-substituted args.
     const staticArgs    = section.dataSource.args            ?? {};
     const contextSubst  = substituteContext(section.dataSource.argsFromContext, context);
     const finalArgs     = { ...staticArgs, ...contextSubst };
     return callSkill(section.dataSource.skillId, finalArgs);
   }
 
-  // Q6 rule-b fallback — `listOpen({type, ...filter})`.
+  // rule-b fallback — `listOpen({type,...filter})`.
   const args = {
     ...(section.itemType !== undefined ? { type: section.itemType } : {}),
     ...(section.filter ?? {}),
@@ -83,7 +83,7 @@ export async function fetchSectionItems(section, { callSkill, context, defaultLi
 }
 
 /**
- * Q15 (V0.3) — recognise `"$key"` strings in `argsFromContext` and
+ * recognise `"$key"` strings in `argsFromContext` and
  * substitute from the caller-supplied `context` object.  Unknown keys
  * pass through literally (caller can detect "still got `$lang`" and
  * recover).  Non-string values pass through unchanged.

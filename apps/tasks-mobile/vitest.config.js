@@ -28,7 +28,7 @@ export default defineConfig({
       'react/jsx-runtime':     path.resolve(__dirname, 'node_modules/react/jsx-runtime.js'),
       'react':                 path.resolve(__dirname, 'node_modules/react'),
 
-      // Tasks app barrel — imported for the V2.8 single-agent factories
+      // Tasks app barrel — imported for the single-agent factories
       // + role policy. Same platform-shell pattern as folio-mobile +
       // stoop-mobile (locked 2026-05-08, see
       // Project Files/conventions/architectural-layering.md).
@@ -54,7 +54,7 @@ export default defineConfig({
       // the metro.config.js subpath resolver. Vite's prefix matcher
       // is greedy-longest so `/ui/<sub>` resolves before `/ui` alone.
       '@onderling-app/tasks/ui':              path.resolve(repoRoot, 'apps/tasks-v0/src/ui'),
-      // Slice C.1 (2026-05-20) — the tasks-v0 root-level manifest.js is
+      // the tasks-v0 root-level manifest.js is
       // not declared in tasks-v0's `package.json#exports`, but the
       // tasks-mobile NavModel adapter needs it.  Add a vitest alias
       // (Metro auto-resolves via `enablePackageExports: false`); when
@@ -63,7 +63,7 @@ export default defineConfig({
       '@onderling-app/tasks/manifest':        path.resolve(repoRoot, 'apps/tasks-v0/manifest.js'),
       '@onderling-app/tasks':                 path.resolve(repoRoot, 'apps/tasks-v0/src/index.js'),
 
-      // Slice C.1 (2026-05-20) — manifest projectors + web-adapter
+      // manifest projectors + web-adapter
       // helpers, consumed by `src/manifest-adapter.js` (NavModel
       // adapter for RN screens).  Metro auto-discovers from
       // packages/*/package.json; vitest needs explicit aliases.

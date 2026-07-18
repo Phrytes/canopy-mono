@@ -111,7 +111,7 @@ export class TelegramBridge {
    * @param {number} [args.handlerTimeoutMs=300000]
    *   Max time telegraf waits for our async middleware to resolve.
    *   Default 5 min — accommodates slow local LLMs (geitje / mistral
-   *   7B Q4 can take 100–270s per turn on consumer hardware).
+   *   7B can take 100–270s per turn on consumer hardware).
    *   Telegraf's own default is 90s, which is too tight here.
    * @param {boolean} [args.dropPendingUpdates=false]
    *   When true, Telegram drops every queued update on launch instead
@@ -154,7 +154,7 @@ export class TelegramBridge {
     // handlerTimeout controls how long telegraf waits for our async
     // middleware to resolve before throwing TimeoutError.  Default is
     // 90s; we bump to 5 minutes to tolerate slow local LLMs (mistral
-    // 7B Q4 has been observed at 100–270s per turn).  Override via
+    // 7B has been observed at 100–270s per turn). Override via
     // `handlerTimeoutMs` constructor option.
     const handlerTimeout = handlerTimeoutMs ?? 5 * 60 * 1000;
     const factory = telegrafFactory ?? ((/** @type {string} */ token) =>

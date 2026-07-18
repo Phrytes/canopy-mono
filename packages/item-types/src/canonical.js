@@ -46,10 +46,10 @@ export const CANONICAL_TYPES = Object.freeze({
   'announcement':       ANNOUNCEMENT_SCHEMA,
   'reveal-request':     REVEAL_REQUEST_SCHEMA,
   'neighbourhood-job':  NEIGHBOURHOOD_JOB_SCHEMA,
-  // SP-5 V0 additions (2026-05-20):
+  // V0 additions (2026-05-20):
   'view':               VIEW_SCHEMA,
   'circle':             CIRCLE_SCHEMA,
-  // K2 (2026-07-01): cross-circle per-item share reference.
+  // cross-circle per-item share reference.
   'shared-ref':         SHARED_REF_SCHEMA,
   // Media Phase 1 (2026-07-09): canonical media noun — points at a
   // blob-gateway manifest line (or any embeds-shaped ref); no bytes.

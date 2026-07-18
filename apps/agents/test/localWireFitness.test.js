@@ -1,6 +1,6 @@
 /**
  * agents — `local ≡ wire` equivalence + route-parity fitness test
- * (Workstream B, decision #5) + P2 CONTROL-op semantics.
+ * (Workstream B, decision) + CONTROL-op semantics.
  *
  * Drives the shared harness with the agents app's cores + manifest,
  * backed by a REAL `createAgentRegistry` over a minimal in-memory
@@ -49,7 +49,7 @@ import { agentsManifest } from '../manifest.js';
 const ALL_CORES = { ...AGENT_CORES, ...RECOVERY_CORES, ...INSTALL_CORES };
 
 /**
- * Deterministic catalog fixture (P3 install ops): a fixed stub source so
+ * Deterministic catalog fixture (install ops): a fixed stub source so
  * the two routes compare byte-for-byte. One card declares two skills; the
  * install cases grant a subset (capability-security) or install via the
  * power-user override with a pasted card.
@@ -179,7 +179,7 @@ function makeMockTokens() {
 }
 
 /**
- * Deterministic per-circle version-store fixture (P3 recovery ops): a
+ * Deterministic per-circle version-store fixture (recovery ops): a
  * REAL `createVersionStore` over a Map backend, frozen clock, seeded
  * with two captures (ts 1000 'v1-original' → ts 7000 'v2-current';
  * clock parked at 9000 so restore's pre-snapshot lands at a fixed ts).
@@ -367,7 +367,7 @@ describeLocalWireFitness(
         },
       },
 
-      /* ── P3 recovery (deterministic version fixture, circle 'home') ── */
+      /* ── recovery (deterministic version fixture, circle 'home') ── */
       {
         // Series roster (no uri) + one resource's versions (with uri).
         name: 'listDataVersions (series roster + per-uri pick-list)',
@@ -403,7 +403,7 @@ describeLocalWireFitness(
         }),
       },
 
-      /* ── P3 install (deterministic stub catalog) ─────────────────────── */
+      /* ── install (deterministic stub catalog) ─────────────────────── */
       {
         // The curated catalog roster (one stub card, two declared skills).
         name: 'listCatalog (curated source roster)',
@@ -702,7 +702,7 @@ describe('agents — P2 control-op semantics (direct core)', () => {
   });
 });
 
-/* ── P3 grantRole — roles as capability bundles (direct core) ───────────
+/* ── grantRole — roles as capability bundles (direct core) ───────────
  * grantRole delegates to a `roleGrants` collaborator (core's
  * RoleGrantManager) that sets the governance role AND materializes the
  * bundle's cap-tokens.  Equivalence across routes is covered structurally
@@ -783,13 +783,13 @@ describe('agents — grantRole (roles as capability bundles, direct core)', () =
   });
 });
 
-/* ── P3 recovery VIEWS — the browsable "restore lost data" surface ──────
+/* ── recovery VIEWS — the browsable "restore lost data" surface ──────
  * The recovery ops must be reachable BY SCREEN, not only via chat/LLM
  * (manifest = the single contract; renderWeb projects it).  Asserts:
  *   1. the manifest (with the two new views) still validates STRICT
  *      (skillId cross-check against operations[]);
  *   2. both data-version views project with the right dataSource +
- *      Q15 context args ($circleId; the detail adds $uri);
+ *      context args ($circleId; the detail adds $uri);
  *   3. restoreDataVersion surfaces as a danger-confirm itemAction on
  *      the data-version sections ONLY (never on the agent sections);
  *   4. the core's ADDITIVE `items` key carries {id, label} rows the

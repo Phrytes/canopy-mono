@@ -198,7 +198,7 @@ export async function createPartitionSim({ circleId, members }) {
  * A minimal CAS-capable DataSource ("the central pod"): tracks a per-path
  * etag and enforces an `If-Match` precondition on write, throwing
  * `{code:'CONFLICT'}` on mismatch. Two `ItemStore`s pointed at ONE of these
- * share the pod — the etag-CAS is the one-winner serialization point Slice 1
+ * share the pod — the etag-CAS is the one-winner serialization point
  * threads through `ItemStore.claim`.
  */
 export function makeCasPodSource() {

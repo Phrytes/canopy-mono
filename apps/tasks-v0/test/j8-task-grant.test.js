@@ -1,5 +1,5 @@
 /**
- * J8 — Task-scoped grant, attenuated + revoked (P5 "authority travels with
+ * J8 — Task-scoped grant, attenuated + revoked ("authority travels with
  * the task"; NOTE-skills-vs-capabilities volley 5;
  * PLAN-cluster-verification-journeys J8).
  *

@@ -2,7 +2,7 @@
  * PushAdapter port contract.
  *
  * Every PushAdapter concrete (and the Mock) must satisfy these.  A future
- * `PushAdapter.ios` / `.android` (Slice 3) is "done" when it passes this suite.
+ * `PushAdapter.ios` / `.android` is "done" when it passes this suite.
  *
  * The Expo concrete (`ExpoNotificationsAdapter`) statically imports
  * `expo-notifications`, which is a peer dep NOT installed in this package, so

@@ -12,12 +12,12 @@
  *   - 'list'         — items + per-item inline keyboard.  Default for verb:'list'.
  *   - 'record' / 'mini-page' — field panels (v0.3).
  *   - 'find'         — /find aggregator output (v0.7.5).
- *   - 'brief'        — Q30 morning-brief sections (v0.7).
+ *   'brief' — morning-brief sections (v0.7).
  *   - 'embed-card'   — embedded item card (J7, v0.5).
  *   - 'notification' — lightweight alert bubble with a severity level (E1).
  *   - 'file'         — single-file download/open card (E1).
  *
- * Phase v0.1 sub-slice 1.8 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { renderChat } from '@onderling/app-manifest';
@@ -25,7 +25,7 @@ import { renderChat } from '@onderling/app-manifest';
 import { formatSyncHints, formatLastSync } from './syncHints.js';
 import { QR_URI_PREFIXES }                 from './core/qrSchemes.js';
 import { normalizeQuickReplies }           from './core/quickReplies.js';
-import { compareForCuration, renderCuration } from './v2/curation.js';   // P3 — before/after curation
+import { compareForCuration, renderCuration } from './v2/curation.js';   // before/after curation
 
 /**
  * @typedef {object} RenderedReply
@@ -149,7 +149,7 @@ export function renderReply(reply, opts = {}) {
   }
 
   if (shape === 'find') {
-    // v0.7.5 — Q33 search aggregator output.  Payload is a FindReply
+    // v0.7.5 — search aggregator output. Payload is a FindReply
     // (query, groups[], generatedAt, extensiveAvailable).
     return {
       kind: 'find',
@@ -163,7 +163,7 @@ export function renderReply(reply, opts = {}) {
   }
 
   if (shape === 'brief') {
-    // v0.7 — Q30 aggregator output.  Payload is a BriefReply
+    // v0.7 — aggregator output. Payload is a BriefReply
     // (sections[], generatedAt, cacheKey, optional emptyMessage).
     // DOM adapter renders.
     return {
@@ -193,7 +193,7 @@ export function renderReply(reply, opts = {}) {
   }
 
   if (shape === 'curation') {
-    // P3 (feedback-extension) — before/after curation view. The payload is a
+    // (feedback-extension) — before/after curation view. The payload is a
     // `compareForCuration` result ({before, after, changed, diff}) OR a raw
     // { before, after } (then we compute it). `renderCuration` is the SAME view
     // model used on web + mobile; the platform adapter renders `kind:'curation'`.
@@ -321,7 +321,7 @@ function classifyFieldKind(v) {
   if (typeof v === 'number')  return 'number';
   if (typeof v === 'boolean') return 'boolean';
   if (Array.isArray(v)) {
-    // #194 (B9, 2026-05-23) — detect "refs" arrays: every element is
+    // (B9, 2026-05-23) — detect "refs" arrays: every element is
     // an object with `type` + `ref` (or `id`).  Pattern used by folio
     // note frontmatter `embeds: [{type: 'task', ref: 't-1', label}]`
     // and any other "see also" reference list.  Renderer chips these.
@@ -333,7 +333,7 @@ function classifyFieldKind(v) {
     return 'list';
   }
   if (v && typeof v === 'object') {
-    // #195 (B7) — detect availability-grid shape: object whose keys
+    // (B7) — detect availability-grid shape: object whose keys
     // are numeric day-indexes (0-6) mapping to objects with 'AM'/'PM'
     // string-state values.  Renderer dispatches to renderGridField.
     const keys = Object.keys(v);
@@ -442,7 +442,7 @@ function renderListItems(payload, opts, t) {
       : (inlineKeyboardFor ? inlineKeyboardFor({ id, ...(typeof item === 'object' ? item : {}) }) : []);
     // v0.6 — per-row staleness label from item._lastSync.
     const staleHint = formatLastSync(item?._lastSync, t);
-    // Bundle F P4-followup-1 (#266) — surface item.embed so a
+    // Bundle F -followup-1 — surface item.embed so a
     // [Download] tap on a folio file-card can reach the inline
     // snapshot bytes (mobile's saveBase64File path).  Pure pass-
     // through; renderer doesn't interpret the embed shape.

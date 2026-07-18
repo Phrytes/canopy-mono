@@ -42,7 +42,7 @@ export class HomeAgent {
     if (!locationId) throw new TypeError('HomeAgent: locationId required');
     this.#homeWebid  = homeWebid;
     this.#locationId = locationId;
-    // P1 migration step 3 (2026-07-18): the attestation log is a GENERIC
+    // migration step 3 (2026-07-18): the attestation log is a GENERIC
     // one-way item log (add + list only — no task lifecycle), so it binds
     // DIRECTLY to the converged `CircleItemStore` rather than the task-flavoured
     // `createTaskStore` surface. Call sites below use put / listByType / list.

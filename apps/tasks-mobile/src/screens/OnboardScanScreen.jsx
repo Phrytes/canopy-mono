@@ -66,7 +66,7 @@ export function OnboardScanScreen() {
         const r = await redeem.call({
           invite: res.payload.token,
           // displayName + memberPubKey come from the active identity
-          // wired through createCircleAgent / V2.8's CircleState — the
+          // wired through createCircleAgent / 's CircleState — the
           // skill reads them from the actor context. Tasks-mobile
           // doesn't need to pass them here.
         });

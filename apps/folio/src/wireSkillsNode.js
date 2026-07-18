@@ -1,6 +1,6 @@
 /**
- * buildFolioNodeSkills — the WIRE route for folio's NODE ops (Slice 1c,
- * follow-up to Slice 1b's `buildFolioSkills`; PLAN-folio-as-file-agent.md).
+ * buildFolioNodeSkills — the WIRE route for folio's NODE ops (,
+ * follow-up to 's `buildFolioSkills`; PLAN-folio-as-file-agent.md).
  *
  * The node sibling of `src/wireSkills.js#buildFolioSkills`: wraps each pure
  * core in `FOLIO_NODE_CORES` with `wireSkill(coreFn, op, { storeFor })`, so the

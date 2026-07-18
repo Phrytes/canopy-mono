@@ -1,6 +1,6 @@
 /**
  * ThreadDrawer — left-slide drawer that lists threads + lets the
- * user switch active OR create a new one (#253 step 5).
+ * user switch active OR create a new one (step 5).
  *
  * Pure RN component; business logic lives in
  * `src/core/threadState.js`.  Callers wire:

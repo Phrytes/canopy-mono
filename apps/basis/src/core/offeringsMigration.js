@@ -10,7 +10,7 @@
  * done, so re-runs are no-ops. The roster projection itself stays untouched
  * (matching keeps working; the stoop ops remain the projection writer).
  *
- * NO-SILENT-RETRACTION (decision Q3 corollary): members of a circle already
+ * NO-SILENT-RETRACTION (decision corollary): members of a circle already
  * SAW `categoryId` + `freeTags` on the roster — so migrated keys get
  * disclosure enabled at rung 'full' for that circle, preserving exactly what
  * was visible. Everywhere else stays withheld (the charter-driven default

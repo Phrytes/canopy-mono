@@ -468,7 +468,7 @@ emitted it as text.  In Telegram, you'd see the rendered text but
 **no real buttons** (because no real tool emitted them).  In the
 REPL, no `[buttons]` block appears under the reply.
 
-This is the most common failure mode with small Q4 models.  Fix
+This is the most common failure mode with small models. Fix
 options: switch to a more reliable tool-calling model (qwen ≥ 3B),
 strengthen the prompt's "never text-render lists" rule, or add a
 deterministic intent-router before the LLM.
@@ -496,7 +496,7 @@ does, currently); JS-call form is the v0.2.0 substrate-fix candidate.
 LLM is over-eager.  Symptom of weak instruction-following.  Prompt
 the model with "Use the EXACT list name; never translate.  Never
 call the same tool twice with the same args."  (Already in the
-experiment's prompt; mistral 7B Q4 still violates it occasionally.)
+experiment's prompt; mistral 7B still violates it occasionally.)
 
 ### Quick triage workflow
 
@@ -698,7 +698,7 @@ combinations.  Recorded here so future experiments don't re-litigate.
 2. **The directive prompt with 8+ examples is the sweet spot for
    7B models.**  Going longer would help even more, but you start
    hitting context-window costs.
-3. **Mistral 7B Q4 is fundamentally unreliable for structured
+3. **Mistral 7B is fundamentally unreliable for structured
    output**, even with temperature pinned to 0.1 and stop sequences
    in place.  Observed failures: hallucinating items not mentioned
    by the user, echoing prompt example dialog as if it were chat,
@@ -725,7 +725,7 @@ combinations.  Recorded here so future experiments don't re-litigate.
   vars when investigating a specific model.
 - Geitje: usable as an alternative when Dutch fluency dominates;
   deploy with the directive prompt + auto-fallback (already wired).
-- Mistral 7B Q4: not suitable.  Skip for production until a stronger
+Mistral 7B: not suitable. Skip for production until a stronger
   variant lands.
 
 ---

@@ -1,5 +1,5 @@
 /**
- * PLAN-capabilities-tasks-roles P1 step 1 — the task CRUD + query surface as
+ * PLAN-capabilities-tasks-roles step 1 — the task CRUD + query surface as
  * functions-over-CircleItemStore (companion to `taskLifecycle.test.js`).
  *
  * Proves BEHAVIOURAL PARITY with `ItemStore`'s CRUD ops: where practical each

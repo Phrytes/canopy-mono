@@ -3,7 +3,7 @@
  *
  * Every item carries:
  *   - `type` (string, constrained per-schema to a single value)
- *   - `id` (string, URI-shaped after P5)
+ *   `id` (string, URI-shaped after)
  *   - `createdAt` (ISO timestamp)
  *   - `createdBy` (agent URI)
  *   - `updatedAt` (ISO timestamp, optional)

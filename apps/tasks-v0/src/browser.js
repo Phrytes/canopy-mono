@@ -19,7 +19,7 @@
  * mount.  Per the architectural-layering convention.
  *
  * See `Project Files/basis/integration-plan-2026-05-23.md`
- * for the full per-app integration plan; this is slice 1.
+ * for the full per-app integration plan; this is.
  */
 
 import {
@@ -88,7 +88,7 @@ export async function createBrowserTasksAgent({
     circleConfig,
     localStoreBundle,
     // 2026-05-24 — flipped to true so basis's /invite + /redeem-invite
-    // slashes (A9 #187) and /join-group wizard (C2 #196) actually reach
+    // slashes (A9) and /join-group wizard (C2) actually reach
     // registered issueInvite / redeemInvite skills.  Earlier comment
     // "no invite issuance from chat-shell V0" predates A9 / C2.
     wireOnboardingSkills: true,

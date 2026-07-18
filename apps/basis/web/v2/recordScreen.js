@@ -1,5 +1,5 @@
 /**
- * recordScreen — web renderer for a `shape:'record'` manifest view (Q17),
+ * recordScreen — web renderer for a `shape:'record'` manifest view,
  * e.g. the agents app's read-only `agent-detail` (`viewAgent` +
  * `argsFromContext: {agentId: '$agentId'}`).
  *

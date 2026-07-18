@@ -7,7 +7,7 @@
  * ctx   : SkillContext
  * reply : "✓ registered: <name>" + an `item.added` stateUpdate.
  *
- * SP-2 V0: writes a `contact` item to the household pod via the
+ * V0: writes a `contact` item to the household pod via the
  * existing Store seam (centralised path, in-memory or scaffolded
  * `HybridPodStore`).  The real shared-pod write acceptance is
  * device-gated (#47-class per PLAN §2.7) and lives behind a flag —

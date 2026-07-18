@@ -1,10 +1,10 @@
 /**
- * settings — read helpers over `manifest.settings` (B · Slice 2, ruling Q1).
+ * settings — read helpers over `manifest.settings` (B, ruling).
  *
  * The declaration is validated in `validate.js`; this module is the shared read layer the creation
  * wizard + inline settings forms (web AND mobile) consume, so the `requiredWhen` resolution and the
  * scope split live ONCE. `scope:'circle'` settings are the admin template; `scope:'user'` settings
- * are member preferences (the two-level `admin-template ∩ member-prefs` resolution lands in Slice 4).
+ * are member preferences (the two-level `admin-template ∩ member-prefs` resolution lands in).
  */
 
 /** The declared settings, optionally filtered to a `scope` ('circle' default when a setting omits it). */
@@ -42,7 +42,7 @@ export function isSettingRequired(setting, values = {}) {
 }
 
 /**
- * Project `manifest.settings` into render-ready FORM FIELDS (B · Slice 2) — the pure layer the web
+ * Project `manifest.settings` into render-ready FORM FIELDS (B) — the pure layer the web
  * + mobile wizard/settings shells draw from (they own only the widgets). Each field resolves its
  * current `value` (supplied `values` ?? declared default) and conditional `required` (via
  * `isSettingRequired`), so the shell renders without re-deriving anything. `control` is the setting

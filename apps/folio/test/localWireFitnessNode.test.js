@@ -1,6 +1,6 @@
 /**
  * folio — `local ≡ wire` equivalence + route-parity fitness test for the NODE
- * ops (Slice 1c; the node sibling of `test/localWireFitness.test.js`).
+ * ops (the node sibling of `test localWireFitness.test.js`).
  *
  * Drives the shared `describeLocalWireFitness` harness with folio's extracted
  * pure NODE cores (`FOLIO_NODE_CORES`) + the folioManifest:

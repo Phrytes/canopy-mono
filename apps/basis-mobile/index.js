@@ -7,7 +7,7 @@
 import '@onderling/react-native/platform/polyfills';
 
 // @expo/metro-runtime adds the fast-refresh + web-only runtime hooks
-// required by metro-web (#224 Phase A).  Native bundles ignore it.
+// required by metro-web (Phase A). Native bundles ignore it.
 import '@expo/metro-runtime';
 
 import 'expo-dev-client';

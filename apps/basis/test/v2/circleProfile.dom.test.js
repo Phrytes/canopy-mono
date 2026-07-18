@@ -7,7 +7,7 @@ import { basisManifest } from '../../manifest.js';
 function mount() { const el = document.createElement('div'); document.body.appendChild(el); return el; }
 
 /**
- * D / SP-3b consumer-switch (second live surface) — the "Mij" (Me) profile
+ * D / consumer-switch (second live surface) — the "Mij" (Me) profile
  * header is now a genuine consumer of the manifest PAGE projection
  * (renderWeb → NavModel.pages[]).  These prove the rendered <h2> label comes
  * FROM the projection's labelKey via t(), not from a hardcoded string — the

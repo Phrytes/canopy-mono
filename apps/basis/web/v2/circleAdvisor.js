@@ -1,5 +1,5 @@
 /**
- * basis v2 — circle Advisor (web DOM renderer, board 3D).
+ * basis v2 — circle Advisor (web DOM renderer).
  *
  * Shows the single advice card `computeAdvice` decided to surface (or a
  * calm "nothing to flag" line), plus the member "I'm too busy" button that

@@ -1,7 +1,7 @@
 /**
  * circleVersioning — per-circle pod version history (web).
  *
- * P3 of PLAN-pod-versioning-history-recovery: gives each circle's
+ * of PLAN-pod-versioning-history-recovery: gives each circle's
  * pseudo-pod a `@onderling/versioning` store so DISPLACED bytes (overwrites ·
  * peer-updates · dropped concurrent forks · deletes) land in history
  * instead of vanishing — the substrate under the my-data

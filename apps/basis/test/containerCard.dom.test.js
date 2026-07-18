@@ -1,6 +1,6 @@
 /**
  * @vitest-environment happy-dom
- * renderContainerCard (cluster K · K2 container UI) — the nested container card from a projectContainer tree.
+ * renderContainerCard (container UI) — the nested container card from a projectContainer tree.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { renderContainerCard } from '../web/v2/containerCard.js';

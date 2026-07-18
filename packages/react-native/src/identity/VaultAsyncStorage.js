@@ -27,7 +27,7 @@
  * "exists" primitive); VaultLocalStorage's `getItem !== null` check
  * is the same pattern.
  *
- * Task #222.5 (2026-05-24) — part of basis-mobile's Hermes
+ * Task (2026-05-24) — part of basis-mobile's Hermes
  * storage path.  See Project Files/basis/mobile-roadmap-2026-05-24.md.
  */
 import { Vault } from '@onderling/vault';

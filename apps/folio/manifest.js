@@ -1,7 +1,7 @@
 /**
  * Folio — app-manifest declaration.
  *
- * Slice F.1 (V0.8, 2026-05-21) — folio's first NavModel manifest.
+ * folio's first NavModel manifest.
  *
  * **Part G dissolve (2026-06-11):** this is now the ONE folio manifest.
  * basis's former `mockFolioManifest` (the chat-shell slash/gate
@@ -27,7 +27,7 @@
  * `defineSkill` / agent-invoke shape the substrate apps use.
  *
  * What this manifest IS:
- *   - Source-of-truth declaration of folio's destructive ops with Q27
+ *   Source-of-truth declaration of folio's destructive ops with
  *     severity hints (per Project Files/Substrates/tier-c-proposals.md):
  *
  *       deleteFromPod   severity: 'danger'  (irreversible pod-side delete)
@@ -50,7 +50,7 @@
  *   - Wired into the HTTP routes — routes still own their own logic.
  *   - Wired into folio-mobile screens — they still own their own
  *     ConfirmModal usage.
- *   - Q16-strict — `validateManifest(folioManifest, {strict: true})`
+ *   strict — `validateManifest(folioManifest, {strict: true})`
  *     would flag `listFiles` + `verifyPodState` because they don't have
  *     `defineSkill` entries; folio's "skills" are HTTP routes.  Default
  *     non-strict validation passes.
@@ -84,12 +84,12 @@ export const folioManifest = {
   },
 
   operations: [
-    /* ── Destructive ops (Q27 confirm) ─────────────────────────────── */
+    /* ── Destructive ops (confirm) ─────────────────────────────── */
 
     {
       id:        'deleteFromPod',
       verb:      'remove',
-      // Q32 (basis v0.4, 2026-05-22) — pod-side delete is HTTPS;
+      // (basis v0.4, 2026-05-22) — pod-side delete is HTTPS;
       // works in browser.  Per OQ-1.A: basis exposes this in
       // its browser bundle.
       runtime:   'browser',
@@ -117,7 +117,7 @@ export const folioManifest = {
     {
       id:        'deleteLocally',
       verb:      'remove',
-      // Q32 — local-fs delete needs Node; basis in browser
+      // local-fs delete needs Node; basis in browser
       // filters this out per OQ-1.A.
       runtime:   'node',
       appliesTo: { type: 'file' },
@@ -142,11 +142,11 @@ export const folioManifest = {
       verb:   'sync',  // F-SP1-e: app-local verb.  Distinct from runOnce
                        // (a normal bi-directional sync) — forceRepush
                        // overwrites pod versions wholesale.
-      // Q32 — sync touches local fs (reads files to overwrite pod);
+      // sync touches local fs (reads files to overwrite pod);
       // node-only.  Sidecar-mode basis re-includes.
       runtime: 'node',
       params: [],
-      // V0.2 Q8 wildcard — folder-wide op, not file-specific.  The
+      // wildcard — folder-wide op, not file-specific. The
       // wildcard surfaces it as a section-header CTA on every view
       // (today just `files`).  Future folio views (e.g. conflicts)
       // pick it up automatically.
@@ -170,10 +170,10 @@ export const folioManifest = {
     {
       id:        'syncOnce',
       verb:      'sync',
-      // Q32 — bi-directional fs ↔ pod sync; needs Node.
+      // bi-directional fs ↔ pod sync; needs Node.
       runtime:   'node',
       params:    [],
-      // V0.2 Q8 wildcard — folder-wide; surfaces on every view's header.
+      // wildcard — folder-wide; surfaces on every view's header.
       appliesTo: { type: '*' },
       surfaces: {
         // Part G merge (2026-06-11): real ui (section-header sync button)
@@ -194,7 +194,7 @@ export const folioManifest = {
     {
       id:        'watchStart',
       verb:      'watch',
-      // Q32 — local-fs watcher (chokidar); Node-only.
+      // local-fs watcher (chokidar); Node-only.
       runtime:   'node',
       params:    [],
       appliesTo: { type: '*' },
@@ -215,7 +215,7 @@ export const folioManifest = {
       id:        'watchStop',
       verb:      'watch',  // F-SP1-e: same verb as watchStart, opposite
                            // semantics — distinguished by skill id.
-      // Q32 — stops the local-fs watcher; Node-only.
+      // stops the local-fs watcher; Node-only.
       runtime:   'node',
       params:    [],
       appliesTo: { type: '*' },
@@ -232,7 +232,7 @@ export const folioManifest = {
     {
       id:        'verifyPodState',
       verb:      'read',
-      // Q32 — HEAD-equivalent pod check + hash compare; HTTPS only,
+      // HEAD-equivalent pod check + hash compare; HTTPS only,
       // browser-doable.
       runtime:   'browser',
       appliesTo: { type: 'file' },
@@ -259,7 +259,7 @@ export const folioManifest = {
       runtime: 'browser',
       surfaces: {
         slash: { command: '/readnote' },
-        // #194 (B9, 2026-05-23) — record reply so frontmatter `embeds`
+        // (B9, 2026-05-23) — record reply so frontmatter `embeds`
         // ("See also" refs to tasks / events / posts) can render as
         // clickable chips alongside the body text.
         chat:  { reply: 'record', hint: 'read a folio note' },
@@ -281,7 +281,7 @@ export const folioManifest = {
       },
     },
     /**
-     * `getFileSnapshot(path)` — Q29 cardSnapshotSkill for /embed-file
+     * `getFileSnapshot(path)` — cardSnapshotSkill for /embed-file
      * when the user picks an existing folio file by name/path.
      */
     {
@@ -396,7 +396,7 @@ export const folioManifest = {
     // populated by folio's `/files` HTTP route + folio-mobile's
     // NotesListScreen; the manifest's `dataSource.skillId` is
     // aspirational (folio doesn't have a `listFiles` defineSkill yet).
-    // Q16-strict mode would flag this; default non-strict passes.
+    // strict mode would flag this; default non-strict passes.
     {
       id:         'files',
       title:      'Files',

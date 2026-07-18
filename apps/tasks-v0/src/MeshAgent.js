@@ -1,5 +1,5 @@
 /**
- * MeshAgent — Tasks V2.8 process-level shared agent.
+ * MeshAgent — Tasks process-level shared agent.
  *
  * Lifts the `core.Agent` + `policyEngine` + `trustRegistry` +
  * `tokenRegistry` + identity vault out of `createCircleAgent` so a
@@ -13,11 +13,11 @@
  * Why one agent per process:
  *   - One transport stack (one mDNS registration, one relay socket,
  *     one InternalBus listener per channel).
- *   - One PolicyEngine + TrustRegistry + TokenRegistry — V1.5 self-trust
+ *   One PolicyEngine + TrustRegistry + TokenRegistry — self-trust
  *     is set once.
- *   - One identity vault — V2.0's restart-survival snapshot lives at
+ *   One identity vault — 's restart-survival snapshot lives at
  *     a process-level path, not per-circle.
- *   - Cap-token-bound bot agents (V1.5) still spin up per binding;
+ *   Cap-token-bound bot agents still spin up per binding;
  *     they share the same bus the meshAgent uses, so they reach the
  *     meshAgent transparently.
  */
@@ -34,7 +34,7 @@ const DEFAULT_IDENTITY_VAULT_PATH = 'mem://tasks/process/agent-identity-vault.js
  * @param {object} [args.localStoreBundle]
  *   When supplied + `identityVault` is set, the vault snapshot is
  *   read/written via `localStoreBundle.cache` so the agent identity
- *   survives CLI restarts. (V2.0 mechanism, lifted to process scope.)
+ *   survives CLI restarts. (mechanism, lifted to process scope.)
  * @param {string} [args.identityVault=mem://tasks/process/agent-identity-vault.json]
  * @param {string} [args.label='TasksMeshAgent']
  * @returns {Promise<{
@@ -71,7 +71,7 @@ export async function buildMeshAgent({
     };
   }
 
-  // ── Vault + identity (V2.0 vault-snapshot persistence) ────────────────────
+  // ── Vault + identity (vault-snapshot persistence) ────────────────────
   let vault;
   let id;
   let restoredFromSnapshot = false;
@@ -95,7 +95,7 @@ export async function buildMeshAgent({
   // ── Transport ─────────────────────────────────────────────────────────────
   const tx = transport ?? new InternalTransport(new InternalBus(), id.pubKey);
 
-  // ── TrustRegistry + self-trust (V1.5 — required by PolicyEngine for
+  // ── TrustRegistry + self-trust (— required by PolicyEngine for
   //    self-issued cap-tokens to validate). Idempotent.
   const trustRegistry = new TrustRegistry(vault);
   await trustRegistry.setTier(id.pubKey, 'trusted');
@@ -109,7 +109,7 @@ export async function buildMeshAgent({
   });
 
   // PolicyEngine wires SkillRegistry (already on agent.skills) + the
-  // trust registry above. Same pattern as V1.5 Circle.js — shadow the
+  // trust registry above. Same pattern as Circle.js — shadow the
   // read-only getter on the instance with an own property.
   const policyEngine = new PolicyEngine({
     trustRegistry,

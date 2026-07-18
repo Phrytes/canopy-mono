@@ -108,7 +108,7 @@ describe('makeKringChatPeerHandler · SP-13.2.1 receiver', () => {
     expect(eventLog.events.map((e) => e.id)).toEqual(['A', 'B', 'C', 'A']);
   });
 
-  /* ── Hybrid: ingest mirror (SP-13.2.1 storage layer) ── */
+  /* ── Hybrid: ingest mirror (storage layer) ── */
 
   it('calls ingest first, then appends to eventLog when ingest is OK', async () => {
     const eventLog = fakeEventLog();

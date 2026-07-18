@@ -6,7 +6,7 @@
  *   →  createCirclePodProducer over the REAL pod  →  seal content + grow the roster.
  * The only non-interactive substitution is the TOKEN: client-credentials (CSS issues a
  * BEARER token — verified) instead of the interactive sign-in REDIRECT (which needs a real
- * IdP, #167). Everything downstream — the session's authenticated fetch, the routing, the
+ * IdP,). Everything downstream — the session's authenticated fetch, the routing, the
  * producer, the sealing — is the real code path.
  *
  * Gated on `CSS_URL` + client-credentials (skips clean otherwise). Provision with

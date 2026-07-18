@@ -1,5 +1,5 @@
 /**
- * basis — `/find` search aggregator (Q33, v0.7.5).
+ * basis — `/find` search aggregator (v0.7.5).
  *
  * Per user resolution (2026-05-23): cache-first.  Each app's
  * searchSkill queries ITS OWN cached/existing items (instant +
@@ -9,7 +9,7 @@
  *
  * Empty-section handling: apps that return no items are skipped.
  *
- * Phase v0.7 sub-slice 7.5.
+ * Phase v0.7.
  *
  * Platform: neutral.
  */

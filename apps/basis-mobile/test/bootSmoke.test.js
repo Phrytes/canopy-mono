@@ -1,5 +1,5 @@
 /**
- * #222 bundle-boot smoke — the lesson from #217's TDZ trap is that
+ * bundle-boot smoke — the lesson from 's TDZ trap is that
  * Vitest unit-tests pass when handlers import in ISOLATION; bundle-
  * load failures (TDZ, missing exports, polyfill drift) only show up
  * if you actually load the app entry.  This file loads the portable
@@ -99,7 +99,7 @@ describe('#222 basis-mobile portable-core boot', () => {
     expect(typeof bundle.callSkill).toBe('function');
     expect(typeof bundle.agent.sa).toBe('object');
     expect(typeof bundle.agent.connectPeerTransport).toBe('function');
-    // Bundle G2 (#264, 2026-05-27) — agentBundle fires
+    // Bundle G2 (2026-05-27) — agentBundle fires
     // connectPeerTransport as fire-and-forget so boot stays fast.
     // transport.connecting:true is the post-boot shape; the actual
     // connect completes asynchronously (vitest doesn't await it).
@@ -127,7 +127,7 @@ describe('#222 basis-mobile portable-core boot', () => {
       hostVault: new VaultMemory(),
       nknLib:    fakeNknLib,
     });
-    // Bundle G2 (#264, 2026-05-27) — connectPeerTransport is now
+    // Bundle G2 (2026-05-27) — connectPeerTransport is now
     // fire-and-forget so boot returns immediately with
     // {kind:'nkn', connecting:true}.  The actual connect resolves
     // asynchronously (the fake MultiClient never emits 'connect',

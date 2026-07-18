@@ -19,7 +19,7 @@ module.exports = withCanopyPreset({
   repoRoot,
 
   // Tasks-mobile imports the @onderling-app/tasks barrel for the
-  // V2.8 single-agent factories (buildMeshAgent, wireSkills,
+  // single-agent factories (buildMeshAgent, wireSkills,
   // bundleResolver, createCircleAgent) — same platform-shell pattern
   // as stoop-mobile + folio-mobile, documented in
   // Project Files/conventions/architectural-layering.md.

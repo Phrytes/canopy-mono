@@ -127,7 +127,7 @@ export class MemberMap extends Emitter {
    *   `offerings` (with a transitional `skills` read-alias).  `categoryId`
    *   picks from a fixed taxonomy (canonical home:
    *   `@onderling/agent-registry` `OFFERINGS_TAXONOMY`).  `status` ∈
-   *   `'active' | 'paused' | 'archived'`  (V2.5+; legacy Dutch
+   *   `'active' | 'paused' | 'archived'` (+; legacy Dutch
    *   values `actief|gepauzeerd|gearchiveerd` are auto-translated).  Optional; legacy
    *   consumers leave it absent.
    * @param {Object<string, string>} [m.externalIds]   {telegramUid, email, ...}
@@ -234,12 +234,12 @@ export class MemberMap extends Emitter {
       stableId:    m.stableId ?? null,
       // offerings: per-member offerings profile (the human "I can do X" data).
       // Each item: {categoryId, freeTags?, radius?, status?}.
-      // Status: 'active' | 'paused' | 'archived' (V2.5+, English) — the
+      // Status: 'active' | 'paused' | 'archived' (English) — the
       // offer on/off, DISTINCT from when-I'm-reachable.
       // Legacy V1/V2 vault entries used Dutch (`actief`/`gepauzeerd`/
       // `gearchiveerd`); translated on read for back-compat.
       // NOTE: the old per-offering `availability` sub-field is DROPPED
-      // (availability unification, NOTE-skills-properties-audit §4/§5/Q5):
+      // (availability unification, NOTE-skills-properties-audit 4 5):
       // reachability is now the ONE member-level `availability` below, which
       // offerings reference — they no longer each carry a copy.
       // READ-ACCEPT: legacy stored members use the field name `skills`; we
@@ -253,7 +253,7 @@ export class MemberMap extends Emitter {
       skills:      _normaliseOfferings(m.offerings ?? m.skills),
       // availability: the UNIFIED person-level reachability state
       // ('open' | 'limited' | 'away'), projected onto the roster for
-      // skill-match routing (availability unification / decision Q5). 'away'
+      // skill-match routing (availability unification decision). 'away'
       // IS holiday mode (the coarse rung). Skill-match routes around a member
       // whose availability is 'away'.  Optional — absent reads as available.
       availability: (m.availability === 'open' || m.availability === 'limited' || m.availability === 'away')
@@ -290,7 +290,7 @@ export class MemberMap extends Emitter {
       //   with V1 callers) from 1:1 contacts.  5.6 (basis v2) added
       //   `'agent'` for members whose own WebID is an LLM-backed peer
       //   over NKN — same membership stack as a human, just marked so
-      //   per-circle override gates (agents-filter, board 4) can route
+      //   per-circle override gates (agents-filter) can route
       //   them differently.  Apps that don't model contacts/agents
       //   leave this as 'group-member'.
       relation:    m.relation === 'contact' ? 'contact'
@@ -348,9 +348,9 @@ function _normaliseOfferings(list) {
 }
 
 /**
- * Translate legacy Dutch skill-status values to V2.5+ English.
+ * Translate legacy Dutch skill-status values to + English.
  * One-shot back-compat shim: V1/V2 vaults stored
- * 'actief'/'gepauzeerd'/'gearchiveerd'; everything past V2.5 uses
+ * 'actief'/'gepauzeerd'/'gearchiveerd'; everything past uses
  * English.  Unknown values pass through unchanged.
  */
 const LEGACY_STATUS_MAP = Object.freeze({

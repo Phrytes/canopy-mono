@@ -8,7 +8,7 @@
  *
  * Functions are deliberately small + DOM-imperative (no JSX, no
  * virtual DOM) so the chat-shell stays framework-free.  RN parallel
- * (#128) will provide React Native versions with the same exports.
+ * will provide React Native versions with the same exports.
  */
 
 /** Multi-step header (step pills). */

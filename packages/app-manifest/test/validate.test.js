@@ -193,12 +193,12 @@ describe('validateManifest', () => {
       app: 'a',
       itemTypes: ['task'],
       operations: [{ id: 'op', verb: 'add', futureField: 42 }],
-      requires:  { storage: 'pod' },                   // SP-9, accepted-not-interpreted
+      requires:  { storage: 'pod' },                   // accepted-not-interpreted
       somethingNew: { foo: 'bar' },
     })).toBe(true);
   });
 
-  /* ─── V0.3 — Q15/Q17 view extensions ─────────────────────────── */
+  /* ─── — view extensions ─────────────────────────── */
 
   describe('V0.3 Q17 view.shape', () => {
     const base = (overrides) => ({
@@ -316,7 +316,7 @@ describe('validateManifest', () => {
     });
   });
 
-  /* ─── V0.4 — Q18 view.fields + Q16 strict mode ─────────────────────────── */
+  /* ─── — view.fields + strict mode ─────────────────────────── */
 
   describe('V0.4 Q18 view.fields', () => {
     const base = (overrides) => ({
@@ -366,7 +366,7 @@ describe('validateManifest', () => {
       expect(e.some((x) => /field\.patch\.argName must be a non-empty string/.test(x.message))).toBe(true);
     });
 
-    /* ─── Q21 (V0.5, 2026-05-22) — patch.argWrapper ─────────────────── */
+    /* ─── (2026-05-22) — patch.argWrapper ─────────────────── */
 
     it('Q21 — accepts patch.argWrapper as a non-empty string', () => {
       expect(ok(base({
@@ -396,7 +396,7 @@ describe('validateManifest', () => {
       expect(e.some((x) => /field\.patch\.argWrapper must be a non-empty string/.test(x.message))).toBe(true);
     });
 
-    /* ─── Q22 (V0.6, 2026-05-20) — field.labelKey ────────────────────── */
+    /* ─── (2026-05-20) — field.labelKey ────────────────────── */
 
     it('Q22 — accepts field.labelKey as a non-empty string', () => {
       expect(ok(base({
@@ -421,7 +421,7 @@ describe('validateManifest', () => {
       expect(e.some((x) => /field\.labelKey must be a non-empty string/.test(x.message))).toBe(true);
     });
 
-    /* ─── Q23 (V0.6, 2026-05-20) — field.type file / image ───────────── */
+    /* ─── (2026-05-20) — field.type file / image ───────────── */
 
     it("Q23 — accepts field.type: 'image'", () => {
       expect(ok(base({
@@ -451,7 +451,7 @@ describe('validateManifest', () => {
       expect(e.some((x) => /field\.type must be a string/.test(x.message))).toBe(true);
     });
 
-    /* ─── Q25 (V0.7, 2026-05-20) — field.readSkill ───────────────────── */
+    /* ─── (2026-05-20) — field.readSkill ───────────────────── */
 
     it('Q25 — accepts field.readSkill with non-empty skillId', () => {
       expect(ok(base({
@@ -488,7 +488,7 @@ describe('validateManifest', () => {
       expect(e.some((x) => /field\.readSkill\.args must be an object/.test(x.message))).toBe(true);
     });
 
-    /* ─── Q26 (V0.7, 2026-05-20) — field.requiresField ──────────────── */
+    /* ─── (2026-05-20) — field.requiresField ──────────────── */
 
     it('Q26 — accepts single-value requiresField gate', () => {
       expect(ok(base({

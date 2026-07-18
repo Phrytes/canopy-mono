@@ -22,9 +22,9 @@
  *     defaults explicitly opt-in per circle.
  *
  * Items 7-9 added 2026-05-08 for the V2 pod paths:
- *   - Calendar emission (V2.1) — VEVENT files written to your own pod.
- *   - Invoicing (V2.2) — paid-pro lines on the circle pod.
- *   - Availability hints (V2.3) — coarse half-day chips on the circle pod.
+ *   Calendar emission — VEVENT files written to your own pod.
+ *   Invoicing — paid-pro lines on the circle pod.
+ *   Availability hints — coarse half-day chips on the circle pod.
  */
 
 export const PRIVACY_NOTICE = Object.freeze({

@@ -1,5 +1,5 @@
 /**
- * Bundle H Phase 3 (#270) — embed-button computation coverage.
+ * embed-button computation coverage.
  */
 import { describe, it, expect } from 'vitest';
 import { computeEmbedButtons } from '../../src/core/embedButtons.js';

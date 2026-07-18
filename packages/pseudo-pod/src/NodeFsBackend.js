@@ -9,7 +9,7 @@
  * It is a **general-purpose, opt-in** sibling to `MemoryBackend`: any
  * Node consumer that needs the pseudo-pod's local store (and especially
  * the cache-mode write-through queue) to **survive process restart**
- * uses it. The first consumer is the Folio desktop daemon (P3 Phase B),
+ * uses it. The first consumer is the Folio desktop daemon (Phase B),
  * but nothing here is Folio-specific. Browser consumers use an
  * IndexedDB backend instead; React Native uses its AsyncStorage/SQLite
  * backend. None of those touch this file.

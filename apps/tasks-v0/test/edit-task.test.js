@@ -1,5 +1,5 @@
 /**
- * #219 — editTask skill (2026-05-24).
+ * editTask skill (2026-05-24).
  *
  * Tasks-v0 had primitives for every state transition (claim / submit /
  * approve / reject / complete) but no way to patch a task's body

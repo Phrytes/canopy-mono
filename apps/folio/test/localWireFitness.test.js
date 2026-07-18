@@ -1,6 +1,6 @@
 /**
  * folio — `local ≡ wire` equivalence + route-parity fitness test
- * (Slice 1b, PLAN-folio-as-file-agent.md; the `apps/agents/test/
+ * (, PLAN-folio-as-file-agent.md; the `apps/agents/test/
  * localWireFitness.test.js` shape).
  *
  * Drives the shared `describeLocalWireFitness` harness with folio's

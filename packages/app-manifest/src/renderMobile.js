@@ -7,6 +7,6 @@
  * If a future divergence becomes necessary (e.g. a mobile-only
  * NavModel field), this file gains its own implementation and
  * the equivalence test gains owner-approved exception markers.
- * See DESIGN-navmodel-sketch.md § Q4 for the policy.
+ * See DESIGN-navmodel-sketch.md for the policy.
  */
 export { renderWeb as renderMobile } from './renderWeb.js';

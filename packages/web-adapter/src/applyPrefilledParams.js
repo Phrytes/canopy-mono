@@ -1,8 +1,8 @@
 /**
  * applyPrefilledParams — merge an affordance's `prefilledParams`
- *                       (Q6 of renderWeb) into a skill-call's args.
+ *                       (of renderWeb) into a skill-call's args.
  *
- * Per renderWeb's Q6 (locked 2026-05-20): when an op surfaces in a
+ * Per renderWeb's (locked 2026-05-20): when an op surfaces in a
  * section via the type-enum fallback (e.g. household's `addItem(type:
  * shopping|errand|repair|schedule, text)`), the section's itemType is
  * recorded in `affordance.prefilledParams = { type: <section.itemType> }`

@@ -8,7 +8,7 @@
  * Folio-lifted `SyncEngine` (formerly `BidirectionalSyncEngine`) +
  * the lifted helpers (`PathMap`, `scanLocal`, `scanPod`, `diff`,
  * adapters).  The Folio-lifted `versions.js` — the LAST legacy version
- * store — was RETIRED (2026-07-10, PLAN-folio-as-file-agent Slice 1a)
+ * store — was RETIRED (2026-07-10, PLAN-folio-as-file-agent)
  * onto `@onderling/versioning`: `SyncEngine` now owns one `createVersionStore`
  * per instance (Node fs backend by default) and exposes it as
  * `engine.versionStore`.  No standalone versions module / `./versions`
@@ -23,7 +23,7 @@
 
 export { SyncEngine } from './SyncEngine.js';
 
-// Folio-lifted helpers (V0.3+).  PathMap accepts an injected
+// Folio-lifted helpers. PathMap accepts an injected
 // `parseSharePath` hook; consumers that don't care about share folders
 // pass nothing.
 export { PathMap, joinRel } from './PathMap.js';

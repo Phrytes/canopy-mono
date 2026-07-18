@@ -1,5 +1,5 @@
 /**
- * settings read helpers — B · Slice 2 (settingsOf / settingDefaults / isSettingRequired).
+ * settings read helpers — B · (settingsOf / settingDefaults / isSettingRequired).
  */
 import { describe, it, expect } from 'vitest';
 import { settingsOf, settingDefaults, isSettingRequired, buildSettingsForm } from '../src/settings.js';

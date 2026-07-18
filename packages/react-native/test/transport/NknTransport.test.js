@@ -201,7 +201,7 @@ describe('NknTransport HI handshake', () => {
     // While the HI send is in-flight, a SECOND caller must wait — they
     // must NOT see helloedPeers as already-set, otherwise the
     // concurrent _put() would skip HI and the receiver would drop the
-    // OW envelope (this is the bilateral HI race fix from #215).
+    // OW envelope (this is the bilateral HI race fix from).
     let secondResolved = false;
     const secondHello  = t.sendHelloOnce('peer-Y').then(() => { secondResolved = true; });
     // Yield several microtasks; secondHello should still be pending.

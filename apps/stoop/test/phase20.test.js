@@ -1,5 +1,5 @@
 /**
- * Stoop V1.5 — Phase 20 tests.
+ * Stoop — Phase 20 tests.
  *
  * Solid pod sign-in: `startPodSignIn` → `completePodSignIn` →
  * `bundle.cache.attachInner(<pod-source>)` → `signOutOfPod`.

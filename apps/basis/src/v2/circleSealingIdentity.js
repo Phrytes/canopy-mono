@@ -1,7 +1,7 @@
 /**
  * circleSealingIdentity — a per-circle member sealing keypair (S4, pod foundation).
  *
- * The P3 sealing substrate gives every member a stable X25519 **sealing** keypair
+ * The sealing substrate gives every member a stable X25519 **sealing** keypair
  * (distinct from the transport/NKN identity) used to wrap/unwrap a circle's group
  * key. This thin wrapper scopes `@onderling/pod-client` `createMemberSealingIdentity`
  * PER CIRCLE, so each circle keeps its own sealing key in the app vault. Pure

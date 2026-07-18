@@ -1,5 +1,5 @@
 /**
- * NknTransport — @onderling/logger coverage + PII-safety (logging slice 3, TRANSPORT path).
+ * NknTransport — @onderling/logger coverage + PII-safety (logging, TRANSPORT path).
  *
  * Drives connect / send / send-failure / disconnect against an injected fake nkn lib and asserts:
  *   1. transport.connect / transport.send / transport.send.fail / transport.disconnect land in `dumpLogs()`;

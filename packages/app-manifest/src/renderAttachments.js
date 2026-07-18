@@ -1,5 +1,5 @@
 /**
- * renderAttachments — the ATTACHMENT projector (P2).
+ * renderAttachments — the ATTACHMENT projector.
  *
  * An AFFORDANCE projector (family (b), a peer of `renderSlash`/`renderChat`/
  * `renderGate` — NOT a platform shell). It turns the manifest's ops into ONE

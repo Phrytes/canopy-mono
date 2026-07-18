@@ -16,7 +16,7 @@
  * requires a non-empty `text` field on every partial — so this store
  * sets `text: name` when writing circles.  This is a substrate-shape
  * quirk, not part of the circle's canonical schema, and is recorded
- * for the SP-5b substrate-fix slice.
+ * for the substrate-fix slice.
  */
 
 /**

@@ -110,7 +110,7 @@ export function ComposeScreen() {
       };
       let r;
       if (forceSpawn) {
-        // Admin override — bypasses V2.7 deps gate; mandatory reason.
+        // Admin override — bypasses deps gate; mandatory reason.
         const args = buildForceSpawnArgs({
           ...formBase,
           parentTaskId: parentTaskIdParam,
@@ -119,8 +119,8 @@ export function ComposeScreen() {
         r = await forceSpawnSk.call(args);
       } else if (parentTaskIdParam) {
         // Sub-task flow — addSubtask auto-wires parent.dependencies[]
-        // so V2.7's hard-deps gate kicks in. proposeSubtask is the
-        // V2.7 fall-through when the parent is submitted + caller
+        // so 's hard-deps gate kicks in. proposeSubtask is the
+        // fall-through when the parent is submitted + caller
         // isn't the assignee (the assignee approves the proposal,
         // the parent rolls back to claimed, then the sub-task
         // spawns + the parent waits on it).

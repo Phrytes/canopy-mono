@@ -1,6 +1,6 @@
 /**
  * taskCtx — the SHARED, module-private ctx helpers for the functions-over-
- * CircleItemStore task surface (PLAN-capabilities-tasks-roles P1).
+ * CircleItemStore task surface (PLAN-capabilities-tasks-roles).
  *
  * Both `taskLifecycle.js` (the lifecycle VERBS) and `taskCrud.js` (the CRUD +
  * query surface) dispatch over a `CircleItemStore` with the SAME injected `ctx`

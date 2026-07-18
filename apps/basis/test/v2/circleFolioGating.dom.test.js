@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * circleFolio — B · Slice 4 capability gating of the FILE-OPEN row action.
+ * circleFolio — B · capability gating of the FILE-OPEN row action.
  *
  * The drive browser's only per-file row-action is "open the file" (the row is a
  * button firing `onOpen`) → the `get` atom on noun 'file'. This proves it now

@@ -1,5 +1,5 @@
 /**
- * CompensationSection — V2.2 invoicing config + per-month rollup.
+ * CompensationSection — invoicing config + per-month rollup.
  *
  * Phase 41.8.5 (2026-05-09).
  *
@@ -36,7 +36,7 @@ export function CompensationSection() {
     if (!isAdmin) return;
     await setEnabled.call({ enabled: !!next }).catch(() => {});
     // The circle config will refresh through the next ServiceContext-level
-    // circleMutator pass; for V1.0 we rely on parent-screen refresh.
+    // circleMutator pass; for we rely on parent-screen refresh.
   }, [isAdmin, setEnabled]);
 
   const onToggleMember = useCallback(async (memberWebid, compensated) => {

@@ -1,5 +1,5 @@
 /**
- * useAdapterAction — Q24 (V0.6, 2026-05-20) hook smoke tests.
+ * useAdapterAction — (2026-05-20) hook smoke tests.
  *
  * The hook itself is pure: build args, call `bundle.agent.invoke`,
  * unwrap parts.  Substantive consumer-level testing happens in

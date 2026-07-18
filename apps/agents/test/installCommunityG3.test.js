@@ -1,16 +1,16 @@
 /**
- * agents — P3 install through a commons-governance G3 COMMUNITY catalog.
+ * agents — install through a commons-governance G3 COMMUNITY catalog.
  *
  * The end-to-end federation proof: a card discovered via a CIRCLE-scoped,
  * admin-gated community catalog — reached because the user SUBSCRIBED to that
- * community — installs through P3's capability-security UNCHANGED (only
+ * community — installs through 's capability-security UNCHANGED (only
  * granted+declared caps land). The community write is gated by the REAL circle
  * policy (`@onderling/circles` `inAudience('role:admin')`); the subscriber's roots
  * are the community's admins.
  *
  * Real primitives end-to-end: Ed25519 AgentIdentity · the real
  * createCommunityCatalog over an in-memory pod · the real circles admin gate ·
- * createCommunitySubscriptions → createCatalogSource walk · P3 installCores.
+ * createCommunitySubscriptions → createCatalogSource walk · installCores.
  */
 import { describe, it, expect } from 'vitest';
 

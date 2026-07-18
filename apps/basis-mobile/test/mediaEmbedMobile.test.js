@@ -1,5 +1,5 @@
 /**
- * Media P1 mobile twin — the RN picker → createMediaEmbed round trip
+ * Media mobile twin — the RN picker → createMediaEmbed round trip
  * through mobile's hostOps composition, mirroring the web slice's
  * test (apps/basis/test/handlers/mediaEmbed.test.js) with the
  * MEMORY bucket + a REAL group-key sealer pair:

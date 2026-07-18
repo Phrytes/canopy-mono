@@ -7,7 +7,7 @@
  *
  *   { kind: 'ready',        ...dispatchable }       — go ahead, fire
  *   { kind: 'needsForm',    schema, missing, ... }  — required params missing
- *   { kind: 'needsConfirm', severity, message, ... }— Q27 gate triggered
+ *   { kind: 'needsConfirm', severity, message,... }— gate triggered
  *   { kind: 'unknown',      text, threadId }        — parser fell through
  *   { kind: 'error',        code, message, ... }    — invalid input
  *
@@ -15,7 +15,7 @@
  * to show for each tag, then calls dispatch when the resolution is
  * `'ready'`.
  *
- * Phase v0.1 sub-slice 1.6 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { isBulkKeyword } from './bulkOps.js';
@@ -35,7 +35,7 @@ const BULK_READ_VERBS = new Set([
  * @property {object}          args
  * @property {string}          appOrigin
  * @property {string|null}     threadId
- * @property {string}          replyShape   effective Q28 shape (declared or default)
+ * @property {string} replyShape effective shape (declared or default)
  */
 
 /**
@@ -151,7 +151,7 @@ export function resolveDispatch(parseResult, catalog) {
   }
   const { op, appOrigin } = entry;
 
-  // P1 (feedback-extension) — composite op.  When the resolved op is a
+  // (feedback-extension) — composite op. When the resolved op is a
   // pure-data sequence of existing opIds (`op.steps`), return a
   // `composite` dispatch; the host runs `runCompositeOp` over the steps.
   // The positional slash body (`_match`) is forwarded as `args` so a
@@ -212,7 +212,7 @@ export function resolveDispatch(parseResult, catalog) {
     };
   }
 
-  // Q27 — confirm gate.  Only severity ∈ {warn, danger} triggers a
+  // confirm gate. Only severity ∈ {warn, danger} triggers a
   // gate.  'info' is informational only; chat shell may show the
   // message but does not block dispatch.
   const confirm = op?.surfaces?.ui?.confirm;
@@ -381,7 +381,7 @@ function findMissingRequired(params, boundArgs) {
 }
 
 /**
- * Compute the effective Q28 reply shape:
+ * Compute the effective reply shape:
  *
  *   1. Declared `surfaces.chat.reply` (looked up via the catalog).
  *   2. Fallback by `op.verb`: 'list' → 'list', others → 'text'.

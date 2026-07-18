@@ -25,7 +25,7 @@ describe('MemberMap — basic CRUD', () => {
     expect(found.handle).toBe('anne-23');
   });
 
-  // 5.6 — agent marker (basis v2 board 4: agents-filter override).
+  // 5.6 — agent marker (basis v2: agents-filter override).
   it("relation accepts 'agent' alongside 'contact' + 'group-member'", async () => {
     const m = new MemberMap();
     await m.addMember({ webid: ANNE, relation: 'agent', displayName: 'Bot Anne' });

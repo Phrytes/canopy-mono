@@ -1,5 +1,5 @@
 /**
- * basis v2 — the LIVE sealed-media composition for a circle (media P1
+ * basis v2 — the LIVE sealed-media composition for a circle (media
  * wiring; plans/NOTE-media-and-streaming.md "no live composition point" gap).
  *
  * `createMediaEmbed` (src/core/handlers/mediaEmbed.js) owns NO infra — it

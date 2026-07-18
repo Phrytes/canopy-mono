@@ -135,7 +135,7 @@ export async function registerAgentInRegistry({ pseudoPod, podDeviceId, agent, o
  * **What stays the same:**
  * - Surface is identical: `{addPeer, stop, listPeers, backfillFrom,
  *   getPeers}`. Drop-in replacement at bundle bring-up.
- * - `evictionRoster` (V2.5) still filters posts from evicted members.
+ * `evictionRoster` still filters posts from evicted members.
  * - Dedupe on `source.requestId` preserves idempotency under retry.
  *
  * Per-group recipient lists live HERE (the substrate's `pseudoPod`
@@ -255,7 +255,7 @@ export async function wireSubstrateMirror({
    * Q-D (Phase 52.14) auto-heal: when a peer's `writeFromPeer` lands
    * with an older `_v` than ours, `pseudoPod` emits `'stale-peer'`
    * with our fresher local copy. Republish that copy back at the
-   * stale peer so they converge. Silent (no UI affordance) — V2.5
+   * stale peer so they converge. Silent (no UI affordance)
    * recommendation was auto-heal-only; banner deferred to V3 if real
    * divergence is observed in field testing.
    */

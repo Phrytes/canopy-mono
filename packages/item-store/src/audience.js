@@ -1,8 +1,8 @@
 /**
- * SP-5b V0a (2026-05-21) — `audienceFromItem(item)` bridge helper.
+ * V0a (2026-05-21) — `audienceFromItem(item)` bridge helper.
  *
  * Resolves an item's effective audience by checking, in order:
- *   1. `item.audience` (the new richer field — added SP-5b V0a).
+ *   1. `item.audience` (the new richer field — added V0a).
  *   2. `item.visibility` (the legacy short-hand — kept forever per
  *      forward-additive discipline).
  *   3. Substrate default `'household'`.
@@ -17,7 +17,7 @@
  * walks, union flattening) lives in `@onderling/circles`'s
  * `resolveAudience(audience, ctx)`.
  *
- * Forward-additive: a future SP-5b V0b may add normalisation here
+ * Forward-additive: a future V0b may add normalisation here
  * (e.g. canonicalising `'role:admin'` to a structured form), but
  * the V0a contract is "return the value as-stored".  Don't pre-
  * normalise — leave that to `@onderling/circles`.
@@ -49,7 +49,7 @@ function jsonStable(v) {
 }
 
 /**
- * SP-5b — does an item's effective audience satisfy a `ListFilter.audience`
+ * does an item's effective audience satisfy a `ListFilter.audience`
  * query?
  *
  * `itemAudience` is the item's effective audience (as produced by
@@ -63,7 +63,7 @@ function jsonStable(v) {
  *
  *  1. **Exact match.**  `itemAudience` structurally deep-equals
  *     `filterAudience` (key-order-independent).  This is the original
- *     SP-5b V0b behaviour and covers every plain short-hand
+ *     V0b behaviour and covers every plain short-hand
  *     (`'circle:A'`, `'household'`, `'private'`, …), `set`, `circle-ref`,
  *     `union`, and `public` value against an identical filter.
  *
@@ -124,7 +124,7 @@ export function audienceMatches(itemAudience, filterAudience) {
 }
 
 /**
- * SP-8 — cross-circle query predicate.  Does an item's effective
+ * cross-circle query predicate. Does an item's effective
  * audience satisfy ANY audience in a SET (`ListFilter.audiences`)?
  *
  * A cross-circle query spans MULTIPLE audiences/circles at once — "show

@@ -270,7 +270,7 @@ Reply:
 // ─── SYSTEM_PROMPT_TRIMMED ───────────────────────────────────────
 //
 // ~50% shorter — useful when a model gets confused by long prompts
-// (notably mistral 7B Q4, which echoed example dialog back as if it
+// (notably mistral 7B, which echoed example dialog back as if it
 // were chat in the lite-3 run).  Trades depth-of-examples for speed
 // + clarity.  Keeps the contrast pairs and trigger cheat sheet
 // because those are the highest-leverage parts.

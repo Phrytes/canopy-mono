@@ -5,7 +5,7 @@
  * device-specific OIDC session injected.
  *
  * M1-S5 (2026-05-18). Mirrors:
- *   - tasks-v0 Slice 5 skill ids + return shapes (so screens stay
+ *   tasks-v0 skill ids + return shapes (so screens stay
  *     portable; stoop-mobile's ProfileMineScreen also consumes
  *     `podSignInStatus` / `signOutOfPod`).
  *   - stoop-mobile's proven RN pattern: PKCE via the
@@ -20,7 +20,7 @@
  * `sessionFactory` seam (web keeps the Node `createSolidAuthNode`
  * default; zero web behaviour change).
  *
- * Skill surface (identical to tasks-v0 Slice 5):
+ * Skill surface (identical to tasks-v0):
  *   - `startPodSignIn({issuer, redirectUrl})`
  *   - `completePodSignIn({tokens})`     ← RN: tokens from the hook
  *   - `signOutOfPod()`
@@ -95,7 +95,7 @@ export function buildPodSignInSkillsMobile({
   return [
     /**
      * startPodSignIn({issuer, redirectUrl})
-     * Registered for skill-surface parity with tasks-v0 Slice 5.
+     * Registered for skill-surface parity with tasks-v0.
      * On RN the PKCE flow is the `useTasksAuth` hook, not a browser
      * redirect — calling this returns the shared module's structured
      * error (OidcSessionRN has no `.start()`). Screens use the hook.

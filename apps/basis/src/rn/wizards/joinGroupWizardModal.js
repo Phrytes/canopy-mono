@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  Mobile parity for
- * src/web/wizards/joinGroupWizard.js (Bundle F P2, #258).
+ * src/web/wizards/joinGroupWizard.js.
  *
  * 3-step flow:
  *   1. Rules — fetched from the invite or via stoop.getGroupRules

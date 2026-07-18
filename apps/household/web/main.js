@@ -1,17 +1,17 @@
 /**
- * household web client — Slice A.3 + A.4 + B.2.0 + V0.2 adoption.
+ * household web client — + A.4 + B.2.0 + adoption.
  *
  * Pure NavModel-driven UI:
  *   - tabs ← navModel.sections[].title
  *   - the active section's items ← fetchSectionItems(section, {callSkill})
- *                                  (honours view.dataSource (Q7) with
- *                                  Q6 listOpen fallback)
+ *                                  (honours view.dataSource with
+ *                                  listOpen fallback)
  *   - the section's add-form     ← navModel.sections[].affordances[0]
  *                                  rendered via schemaToFormFields(...)
- *                                  (multi-field forms, per V0.2)
+ *                                  (multi-field forms, per)
  *   - per-item buttons           ← navModel.sections[].itemActions[] (gated by appliesTo)
  *
- * Slice A.4 — free-text chat (sticky footer):
+ * free-text chat (sticky footer):
  *   - Submit hits the `chat` skill on the server, which routes through
  *     HouseholdAgent.onMessage (regex fast path → manifest-built LLM
  *     slow path when an LLM is configured).  Replies render in
@@ -19,7 +19,7 @@
  *     auto-refresh of section items — the user can switch tabs to see
  *     anything the LLM mutated.
  *
- * Slice B.2.0 (2026-05-20) — shared @onderling/web-adapter helpers:
+ * .0 (2026-05-20) — shared @onderling/web-adapter helpers:
  *   - callSkill / itemMatchesAppliesTo / deriveItemState /
  *     applyPrefilledParams are now ONE source-of-truth in
  *     `packages/web-adapter/`. Imported here via the overlay served
@@ -27,23 +27,23 @@
  *     unifies what used to be duplicated stubs in both
  *     `apps/household/web/main.js` and `apps/tasks-v0/web/dag.html`.
  *
- * V0.2 adoption (2026-05-21):
+ * adoption (2026-05-21):
  *   - `fetchSectionItems`  replaces the per-section "if shopping then
  *     listOpen else if tasks then listTasks else …" branching with a
- *     declarative read of `section.dataSource` (with Q6 fallback).
+ *     declarative read of `section.dataSource` (with fallback).
  *   - `schemaToFormFields` replaces the hand-coded single-input
  *     add-form with a schema-driven walk so multi-field affordances
  *     (e.g. addTask's optional assignee + dueAt) render their full
  *     input set.  The household manifest currently only uses `text`,
- *     but the substrate is now wired so any V0.3 multi-field op
+ *     but the substrate is now wired so any multi-field op
  *     surfaces correctly with zero adapter changes.
  *
  * V0 LIMITS (intentional):
  *   - The members section (itemType: 'contact') has no list-skill in
  *     V0; the navmodel.test.js explicitly acknowledges this gap (see
- *     manifest.js § members for the V0.3 unblock options).  We render
+ *     manifest.js members for the unblock options). We render
  *     it as an empty section; the `registerName` affordance is still
- *     surfaced by renderWeb (Q10).  fetchSectionItems would call
+ *     surfaced by renderWeb. fetchSectionItems would call
  *     listOpen({type:'contact'}) which the skill's KNOWN_TYPES guard
  *     rejects (returns an unknown-type message); we therefore short-
  *     circuit to an empty array for the members section below.
@@ -63,7 +63,7 @@ function callSkill(skillId, args = {}) {
 }
 
 /** Build the dispatch args for an item action.  Per the manifest's
- *  appliesTo and the spec's Q6 prefilledParams contract. */
+ *  appliesTo and the spec's prefilledParams contract. */
 function buildActionArgs(action, item) {
   // markComplete/removeItem/claim all take `match: <id>`.  reassign
   // takes two args — not surfaced in this slice (no surfaces.ui).
@@ -79,12 +79,12 @@ function buildAddArgs(affordance, values) {
 
 /** Find the first creative-verb affordance (verb=add or verb=register)
  *  in a section.  These are the affordances renderWeb surfaces as
- *  per-section "create" forms (Q6 rule a + Q10). */
+ *  per-section "create" forms (rule a). */
 function sectionAddAffordance(section) {
   // Order = manifest declaration order.  For list sections that's
-  // `addItem` (the only add op surfaced via Q6 type-enum fallback).
+  // `addItem` (the only add op surfaced via type-enum fallback).
   // For the tasks section it's `addTask` (explicit appliesTo).  For
-  // the members section it's `registerName` (Q10 — verb=register is
+  // the members section it's `registerName` (— verb=register is
   // now a creative verb that auto-surfaces).
   return (section.affordances ?? []).find((a) =>
     /^(add|register)/i.test(a.opId));
@@ -102,8 +102,8 @@ async function renderSection(state) {
   renderAddForm(state, section, add);
 
   // Fetch items via fetchSectionItems — honours `section.dataSource`
-  // (Q7, declared on each list-type + tasks view) and falls back to
-  // `listOpen({type, ...filter})` per Q6 rule-b when absent.  The
+  // (declared on each list-type tasks view) and falls back to
+  // `listOpen({type,...filter})` per rule-b when absent. The
   // members section has no list-skill in V0; we short-circuit to
   // empty rather than send a doomed request (listOpen rejects
   // type:'contact' via its KNOWN_TYPES guard).
@@ -139,7 +139,7 @@ async function renderSection(state) {
  *  (schemaToFormFields).  Today every household add-affordance's
  *  paramsSchema effectively reduces to a single required `text`
  *  field (the manifest's add ops take only `text` from the user;
- *  `type` is prefilled per Q6, `assignee`/`dueAt` on addTask are
+ *  `type` is prefilled per, `assignee`/`dueAt` on addTask are
  *  optional and rendered as additional inputs when present).
  *
  *  Form layout: one wrapper per descriptor, with a label + input.
@@ -354,7 +354,7 @@ async function main() {
   // (5) initial section render.
   await renderSection(state);
 
-  // (6) Slice A.4 — chat passthrough.  Submits free text to the
+  // (6) — chat passthrough. Submits free text to the
   //     `chat` skill, which forwards to HouseholdAgent.onMessage on
   //     the server.  Replies stream into the chat-log feed above the
   //     input.  After a successful turn, re-render the active section
@@ -434,7 +434,7 @@ function resetAddFields(state) {
 
 function focusFirstAddField(state) {
   // Focus the first STRING input — that's the dominant text field
-  // (the only one the SP-1/SP-2 add ops have today).  Mirrors the
+  // (the only one the add ops have today). Mirrors the
   // pre-refactor UX where the single text input auto-focused.
   const wrap = state.dom.addFields.querySelector('.add-field[data-field-type="string"]')
             ?? state.dom.addFields.querySelector('.add-field');

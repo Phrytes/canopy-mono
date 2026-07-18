@@ -1,10 +1,10 @@
 /**
- * basis v2 — kring tile activity previews (board 5A, slice P6.3).
+ * basis v2 — kring tile activity previews.
  *
- * Today's launcher tiles show member count only.  Board 5A puts an
+ * Today's launcher tiles show member count only.  Activity previews put an
  * activity-style subtitle on each tile ("Mira: brood gehaald ✓",
  * "3 new questions on the board") + an unread-count badge.  This module
- * is the pure projection over the existing EventLog (board 5B's Stream
+ * is the pure projection over the existing EventLog ('s Stream
  * already reads the same firehose); web + mobile render thin views over
  * the resulting per-circle map.
  *

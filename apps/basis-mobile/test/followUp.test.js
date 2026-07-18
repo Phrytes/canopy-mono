@@ -1,5 +1,5 @@
 /**
- * followUp — #253 step 4 single-field follow-up state machine.
+ * followUp — step 4 single-field follow-up state machine.
  *
  * Captures the on-device bug from 2026-05-26: tapping `[Help with]`
  * on a stoop post produced a red "couldn't run that command" bubble

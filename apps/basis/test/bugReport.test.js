@@ -1,5 +1,5 @@
 // @vitest-environment node
-// Logging slice 3 (client half) — the ANONYMOUS bug-report SEND affordance + adapter.
+// Logging (client half) — the ANONYMOUS bug-report SEND affordance + adapter.
 // Proves: (a) the envelope carries NO identity even when junk is smuggled in; (b) it includes the
 // formatted PII-safe log + count + the INJECTED `at`; (c) the surface calls the injected sink on send
 // and surfaces ok/fail; (d) the default (no injected sink) path is safe — reason:'no-sink', no throw.

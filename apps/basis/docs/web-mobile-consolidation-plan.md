@@ -3,15 +3,15 @@
 *Created 2026-06-11, after a 3-agent deep-dive audit of web (`web/main.js` + `web/v2/circleApp.js`)
 vs mobile (`apps/basis-mobile/src/screens/`) vs the shared `apps/basis/src/`.*
 
-> **STATUS 2026-06-12 — all phases SHARED + browser-verified; P1/P3/P5 smokes green; 2 resolver bugs fixed.**
-> Phase 0 SKIPPED. **P1 ✅** `createFeedbackMount` (`12d27b14`) — browser-smoke green (`feedback-mount.spec.js`).
-> **P2 ✅** `kringBroadcast`. **P3 ✅** `makeCircleLookup` (mobile→web) — browser-smoke green (`done-resolver.spec.js`).
-> **P4 ✅** one engine — `circleDispatch` core, `circleTurn` adapter (`d1d35281`). **P5 ✅** circle bot +
+> **STATUS 2026-06-12 — all phases SHARED + browser-verified; smokes green; 2 resolver bugs fixed.**
+> Phase 0 SKIPPED. ** ✅**`createFeedbackMount` (`12d27b14`) — browser-smoke green (`feedback-mount.spec.js`).
+> ** ✅**`kringBroadcast`. ** ✅**`makeCircleLookup` (mobile→web) — browser-smoke green (`done-resolver.spec.js`).
+> ** ✅** one engine`circleDispatch` core, `circleTurn` adapter (`d1d35281`). ** ✅** circle bot +
 > feedback in `circleApp.js`'s kring composer, all 4 `circle-kring-bot.spec.js` smokes green.
 >
 > **2026-06-12 — feedback-pipeline browser-safety DONE** (`process.env` `dc36e1b5`; `Buffer`→`TextEncoder`
 > in `pod-client/sealing/envelope.js` `73a642ed`) so the web shell boots. With the shell finally booting
-> headlessly, the P1/P3 smokes ran their bodies for the FIRST time (they used to die at the boot guard)
+> headlessly, the smokes ran their bodies for the FIRST time (they used to die at the boot guard)
 > and surfaced **two stacked real bugs** in web's typed-slash label resolver, both now fixed + regression-
 > tested:
 > 1. **circleLookup scope leak** — on a non-circle thread `getActiveCircle()` is null, and the

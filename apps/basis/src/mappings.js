@@ -4,7 +4,7 @@
  * A downloaded mapping (loaded from the pod `mappings/` folder by
  * `@onderling/pod-routing` `loadMappings`) declares ops that are COMPOSITES of
  * existing opIds. Before any such mapping is merged into the catalog, every
- * composite op must pass the **sandbox-by-construction** check (P1's
+ * composite op must pass the **sandbox-by-construction** check ('s
  * `verifyComposite`): each step's opId must resolve to a declared op/atom in
  * the catalog. A mapping that references an unknown opId is REFUSED at load
  * time — this is what makes loading a THIRD-PARTY mapping safe, and it's the
@@ -16,7 +16,7 @@
  *
  * Remote-binding ops (a bot's exposed skill — `binding: 'remote-skill@contact'`)
  * are NOT catalog-verified: their handler is the bot, not a local atom, so the
- * contact-scoped bridge (P4) vouches for them instead.
+ * contact-scoped bridge vouches for them instead.
  */
 
 import { verifyComposite } from './composite.js';
@@ -39,7 +39,7 @@ function isRemoteBinding(op) {
 export function verifyMapping(mapping, catalog) {
   const missing = new Set();
   for (const op of mapping?.ops ?? []) {
-    if (isRemoteBinding(op)) continue;          // bot vouches (P4), not the catalog
+    if (isRemoteBinding(op)) continue;          // bot vouches, not the catalog
     if (Array.isArray(op?.steps)) {
       const res = verifyComposite(op, catalog);
       for (const m of res.missing) missing.add(m);
@@ -71,7 +71,7 @@ export function verifyMappings(mappings, catalog) {
 /**
  * Convert a mapping into a `mergeManifests` source manifest. A Mode-2 mapping
  * needs NO special `callSkill`: its composite ops carry `steps`, so the router
- * emits a `composite` dispatch and `runCompositeOp` (P1) runs the steps through
+ * emits a `composite` dispatch and `runCompositeOp` runs the steps through
  * the existing global `callSkill` — which already routes each step by its
  * `appOrigin`. So the mapping's ops just need to land in the catalog.
  *

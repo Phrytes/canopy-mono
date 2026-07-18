@@ -1,7 +1,7 @@
 /**
  * basis v2 — kring scherm "recipe book" model (Plan α.1a · audit #1).
  *
- * Per Q2: a kring can have MULTIPLE named recipes (e.g. "Standaard",
+ * Per: a kring can have MULTIPLE named recipes (e.g. "Standaard",
  * "Eventfocus", "Zomeruitgave").  One is marked `activeId` — that's
  * what scherm-mode (v2 §4 pill) renders.  Admins manage the library;
  * non-admins see the active recipe.  Per-user override (member picks

@@ -1,5 +1,5 @@
 /**
- * D / SP-3b consumer-switch — thin selectors over renderWeb's PAGE
+ * D / consumer-switch — thin selectors over renderWeb's PAGE
  * projection (`NavModel.pages[]`).
  *
  * Invariant #1 (logic lives once, in shared code): the NavModel is built
@@ -19,7 +19,7 @@ import { renderWeb, renderMobile } from '@onderling/app-manifest';
 /**
  * All top-level PAGE surfaces a manifest projects, in declaration order.
  * Empty array when the manifest declares no `surfaces.page` op (the projector
- * omits the `pages` key in that case — see renderWeb.js SP-3b).
+ * omits the `pages` key in that case — see renderWeb.js).
  *
  * `renderer` selects the projector so this ONE shared module serves BOTH
  * surfaces (invariant #1/#2): web passes the default `renderWeb`, mobile the
@@ -106,7 +106,7 @@ export function sectionForScreen(manifestsByOrigin, screenId, renderer = renderW
 }
 
 /**
- * Localised header label for a projected `Page` (Q22 discipline):
+ * Localised header label for a projected `Page` (discipline):
  *   1. `page.labelKey` via `t()` when both are present (the manifest's
  *      localisation key — invariant #8);
  *   2. else the raw `page.title` passthrough (English fallback for

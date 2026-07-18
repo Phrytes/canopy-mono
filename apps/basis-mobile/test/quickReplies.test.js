@@ -5,7 +5,7 @@
  * src/screens/**), so this test pins the portable surface MessageBubble
  * consumes: the `normalizeQuickReplies` helper hands the bubble an
  * array of `{label, slash}` records that the RN Pressable row maps
- * one-to-one.  Same pattern as chatRender.test.js (#253 step 2) which
+ * one-to-one. Same pattern as chatRender.test.js (step 2) which
  * pins the list-buttons data contract from mobile's perspective.
  *
  * The RN-side dispatch wiring (Pressable → submitInput(slash)) is

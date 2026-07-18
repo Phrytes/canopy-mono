@@ -1,4 +1,4 @@
-// Conflict-dispute wizard launch (#258 Bundle F P2 / D-3 test 1).
+// Conflict-dispute wizard launch (D-3 test 1).
 //
 // Mirror of the original real-device gap: user tapped [Dispute] on
 // a stoop post + got the "not wired on mobile yet" bubble.  Now:

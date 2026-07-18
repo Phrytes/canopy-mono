@@ -1,5 +1,5 @@
 /**
- * screenModel — B · Slice 3: the pure projection behind a manifest `surfaces.screen` list surface.
+ * screenModel — B ·: the pure projection behind a manifest `surfaces.screen` list surface.
  *
  * Turns a raw item list + the user's filter state into a render-ready model: a text-filtered,
  * category-checkbox-filtered list of rows, each carrying its capability-gated ROW ACTIONS (reusing
@@ -40,7 +40,7 @@ function distinctCategories(items, field) {
  * @param {string}  [args.categoryField]        which item field groups the rows (enables category checkboxes)
  * @param {string[]|null} [args.activeCategories]  checked categories (null = all checked); an item shows iff its
  *                                              category is checked
- * @param {*}       [args.defaultAudience]      SP-5b — the view's declared `defaultAudience`
+ * @param {*} [args.defaultAudience] — the view's declared `defaultAudience`
  *                                              (projected from the manifest `view` via
  *                                              renderWeb's `section.audience`).  When set, the
  *                                              list is pre-filtered to items whose EFFECTIVE
@@ -48,11 +48,11 @@ function distinctCategories(items, field) {
  *                                              (`audienceMatches`) — so a view shows only the
  *                                              items its declared audience covers.  Absent →
  *                                              no audience filter (unchanged behaviour).
- * @param {*}       [args.audience]             SP-5b — an explicit caller audience filter; when
+ * @param {*} [args.audience] — an explicit caller audience filter; when
  *                                              provided it OVERRIDES `defaultAudience`.
  * @param {object}  [args.manifestsByOrigin]    for computing row actions (with `appOrigin`)
  * @param {string}  [args.appOrigin]
- * @param {Array}   [args.capabilityMatrix]     the member's matrix → row actions inherit greying/hiding (Slice 4)
+ * @param {Array} [args.capabilityMatrix] the member's matrix → row actions inherit greying/hiding
  * @returns {{ rows: Array<{item:object,label:string,category:(string|null),actions:object[]}>,
  *            categories: Array<{id:string,count:number,checked:boolean}> }}
  */
@@ -61,14 +61,14 @@ export function buildScreenModel({
   activeCategories = null, defaultAudience, audience, manifestsByOrigin, appOrigin, capabilityMatrix = [],
 } = {}) {
   const rawList = Array.isArray(items) ? items : [];
-  // SP-5b — audience membership is a HARD pre-filter (a scope), applied before
+  // audience membership is a HARD pre-filter (a scope), applied before
   // category/text filtering so it also constrains the category checkboxes and
   // their counts.  An explicit caller `audience` overrides the view's declared
   // `defaultAudience`; when neither is set the list passes through untouched
   // (fully back-compatible).  Reuses the item-store audience predicate rather
   // than reimplementing it.
   //
-  // Normalisation (SP-5b): a view declares its audience as the string
+  // Normalisation: a view declares its audience as the string
   // short-hand `circle:X`, but items created through a `@onderling/circles` /
   // saved-view path store the STRUCTURED `{kind:'circle-ref', id:'X'}`.  Those
   // are the same audience, but item-store's `audienceMatches` is strict-equal
@@ -127,7 +127,7 @@ export function buildScreenModel({
       }))
     : [];
 
-  // SP-5b Option A — the EFFECTIVE audience scope this model filtered by
+  // Option A — the EFFECTIVE audience scope this model filtered by
   // (normalised), or null when the list is unscoped.  Purely additive: a
   // renderer can surface a "this list is audience-scoped" caption from a
   // shared model field, so web≡mobile by construction.  The scope carries

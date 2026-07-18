@@ -1,14 +1,13 @@
 /**
- * basis v2 — holiday extension shortcuts + outgoing auto-reply
- * (board 6C, slice P6.M5).
+ * basis v2 — holiday extension shortcuts + outgoing auto-reply.
  *
- * Board 6C's holiday-mode card has two pieces this slice closes:
+ * The holiday-mode card has two pieces this slice closes:
  *   1. "Verlengen: + 7 dagen · + 14 dagen · einddatum aanpassen" —
  *      shortcuts that bump the existing `holiday.until` by N days
  *      without manually picking a new date.
  *   2. "Anderen die jou aanspreken zien: 'Bob is t/m 9 jun even niet
  *      bereikbaar'" — an outgoing auto-reply preview the peer-ping
- *      consumer (wederkerigheid notice, board 5C) shows when someone
+ *      consumer (wederkerigheid notice) shows when someone
  *      tries to reach an away user.
  *
  * Pure: hosts pass current availability + a (`+N days` or absolute)

@@ -1,12 +1,12 @@
 /**
- * Calendar write-side — Tasks V2.1.
+ * Calendar write-side — Tasks.
  *
  * Builds an `.ics` string for a member of a circle that calendar
  * applications (Google Calendar, Apple Calendar, Proton, …) can
  * subscribe to. One VEVENT per task that has either:
  *   - `dueAt`         → all-day or timed event at the deadline
  *   - `scheduledAt`   → timed event when the planner accepted a slot
- *                       (V2.4 hooks this in; V2.1 emits dueAt-only)
+ *                       (hooks this in; emits dueAt-only)
  *
  * Wire convention:
  *   - `UID = task.id` so calendar clients update existing events

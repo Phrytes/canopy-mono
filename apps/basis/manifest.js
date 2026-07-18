@@ -116,7 +116,7 @@ export const basisManifest = {
     },
 
     /**
-     * Slice 6d (2026-05-24) — `/dm <webid>`.  Slash-only entry in the
+     * `/dm <webid>`. Slash-only entry in the
      * basis manifest; the per-row [DM] button is declared in
      * stoop's mock manifest because that's where the 'contact' and
      * 'member' item types live (appliesTo validates against
@@ -136,7 +136,7 @@ export const basisManifest = {
     /**
      * `/embed <itemId> [--claim]` — v0.5 J7 demo.  Posts an embed-
      * card to the active thread using the snapshot returned by the
-     * item's `cardSnapshotSkill` (Q29).  `--claim` is the sender-
+     * item's `cardSnapshotSkill`. `--claim` is the sender
      * claim-on-behalf path (per OQ-5): the embed is issued AND
      * claimed by the sender atomically.  Without `--claim`, the
      * receiver claims via the [Claim] button on the rendered card.
@@ -146,7 +146,7 @@ export const basisManifest = {
       verb:  'add',
       params: [
         { name: 'itemId', kind: 'string',  required: true,
-          // Q34 — bare `/embed` → list household chores (default app);
+          // bare `/embed` → list household chores (default app);
           // user can switch app via /apps before invoking.  Each row
           // becomes a [pick] button that auto-submits.
           pickerSource: { listOp: 'listOpen', appOrigin: 'household' } },
@@ -158,7 +158,7 @@ export const basisManifest = {
           reply: 'embed-card',
           hint:  'embed an item card; --claim for claim-on-behalf',
         },
-        // P2 (J4) — the ATTACHMENT projector (`renderAttachments`). Mirrors
+        // (J4) — the ATTACHMENT projector (`renderAttachments`). Mirrors
         // `surfaces.slash`: one declaration → the op appears in the composer's
         // "+" attach menu. `label` is a locale key (invariant #8; the surface
         // renderer resolves it via t()). Tapping "Kaart" fires this op's
@@ -169,7 +169,7 @@ export const basisManifest = {
 
     /**
      * `/embed-file` — file-card.  v0.7.13: three modes:
-     *   /embed-file --path=<existing>  → look up via folio's Q29
+     *   embed-file --path=<existing> → look up via folio's
      *                                    getFileSnapshot; embed the
      *                                    real file metadata
      *   /embed-file --pick             → opens browser File API
@@ -192,7 +192,7 @@ export const basisManifest = {
       surfaces: {
         slash: { command: '/embed-file', body: 'flags' },
         chat:  { reply: 'embed-card', hint: 'embed a file; --path=X | --pick | --name=X' },
-        // P2 (J4) — attach-menu entry "Bestand". The projected file entry is the
+        // (J4) — attach-menu entry "Bestand". The projected file entry is the
         // ONE the web composer routes back through the media pipeline
         // (createMediaEmbed / sealed upload); every other entry dispatches
         // straight to callSkill. `itemType: 'file'` names the attachable noun.
@@ -222,7 +222,7 @@ export const basisManifest = {
       surfaces: {
         slash: { command: '/embed-time', body: 'flags' },
         chat:  { reply: 'embed-card', hint: 'create an appointment; --share=anne to send' },
-        // P2 (J4) — attach-menu entry "Afspraak". Its required params (title ·
+        // (J4) — attach-menu entry "Afspraak". Its required params (title
         // when) trip the composer's form machinery (buildFormSpec) on tap, then
         // dispatch — exactly like `/embed-time` with no flags does today.
         attach: { label: 'circle.attach.appointment', itemType: 'event', group: 'media' },
@@ -276,7 +276,7 @@ export const basisManifest = {
 
     /**
      * `/find <text>` — v0.7.5 user-requested search.  Fans across
-     * apps with Q33 `surfaces.chat.search.searchSkill` declarations;
+     * apps with `surfaces.chat.search.searchSkill` declarations;
      * queries cached items first (instant).  An [Extensive search]
      * button on the result surfaces deeper queries (pod/network)
      * when those skills land.
@@ -296,7 +296,7 @@ export const basisManifest = {
     /**
      * `/brief` — v0.7 morning-brief aggregator.  Fans across all
      * enabled apps that declare `surfaces.chat.brief.summarySkill`
-     * (Q30); aggregates replies into a single brief-shape card.
+     * ; aggregates replies into a single brief-shape card.
      * Cache TTL: 60s per OQ-7.A (use --refresh / click [Refresh] to
      * bypass).
      */
@@ -313,7 +313,7 @@ export const basisManifest = {
     },
 
     /**
-     * `compare` — P3 (feedback-extension). Before/after curation of two content
+     * `compare` — (feedback-extension). Before/after curation of two content
      * versions (e.g. an original message vs its curated form). Reuses folio's
      * `objectDiff` compute and renders via the `curation` reply shape (a
      * before/after view, distinct from folio's file-merge look). A composable op
@@ -358,7 +358,7 @@ export const basisManifest = {
      * UI lands with RN port (v0.6.7+).
      */
     /**
-     * `/reset-thread` — v0.7.P1-followup.  Clears the active
+     * `/reset-thread` — v0.7.-followup. Clears the active
      * thread's message history (in-memory + IDB).  Useful when
      * accumulated routed-event bubbles polluted Main during the
      * permissive-filter era.  Future: replace with per-thread
@@ -375,7 +375,7 @@ export const basisManifest = {
     },
 
     /**
-     * `/whoami` — v0.7.P1.  Returns the current Solid webid (if
+     * `/whoami` — v0.7.. Returns the current Solid webid (if
      * signed in) or a hint to /signin.
      */
     {
@@ -392,7 +392,7 @@ export const basisManifest = {
      * `/me` — v0.7.P3a.  Shows the user's persistent agent identity
      * info: chat-agent stableId + pubKey + NKN address.
      *
-     * D / SP-3b consumer-switch (second surface) — the "Me" op ALSO
+     * D / consumer-switch (second surface) — the "Me" op ALSO
      * surfaces as the "Mij" (Me) profile screen, the top-level self
      * surface (handle · skills · location).  Declaring `surfaces.page`
      * makes the manifest the source of truth for that screen's header:
@@ -524,7 +524,7 @@ export const basisManifest = {
       surfaces: {
         slash: { command: '/set-relay', body: 'flags' },
         chat:  { reply: 'text', hint: 'set the canopy relay URL (or --clear to drop it)' },
-        // Objective D / Surface 4 (#180) — first LIVE consumer of openPagePanel's
+        // Objective D / Surface 4 — first LIVE consumer of openPagePanel's
         // simple-form path (web `pagePanel.js`).  The docked side-panel auto-builds
         // a form from these params (url · clear) and dispatches via callSkill.
         // `title` is the English fallback; a consumer with a t() localises via
@@ -564,7 +564,7 @@ export const basisManifest = {
     },
 
     /**
-     * #180 (2026-05-24) — first consumer of surfaces.page.  Opens a
+     * first consumer of surfaces.page. Opens a
      * Settings side-panel where the user can change locale + a few
      * other preferences without typing slashes.  V0 proves the panel
      * infra works; future settings (transport-mode picker, mute
@@ -584,7 +584,7 @@ export const basisManifest = {
       surfaces: {
         slash: { command: '/settings' },
         chat:  { hint: 'open Settings in a side panel' },
-        // Q22 localisation passthrough (D / SP-3b consumer-switch): the
+        // localisation passthrough (D consumer-switch): the
         // running Settings surface (renderCircleSettings) derives its
         // header label from renderWeb(manifest).pages[].labelKey via
         // t(), instead of a hardcoded tr('circle.settings.title') call.
@@ -723,7 +723,7 @@ export const basisManifest = {
     },
 
     /**
-     * `/signout` — v0.7.P1.  Clears the local OIDC session.
+     * `/signout` — v0.7.. Clears the local OIDC session.
      */
     {
       id:    'signout',

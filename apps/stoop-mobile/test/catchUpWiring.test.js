@@ -1,6 +1,6 @@
 /**
  * catchUpWiring — unit tests for the lastSeenFrom persistence + the
- * wireCatchUp item-arrive listener (#247, 2026-05-24).
+ * wireCatchUp item-arrive listener (2026-05-24).
  *
  * Uses an in-memory mock AsyncStorage (same shape as VaultAsyncStorage's
  * test mock).  Zero RN runtime needed.

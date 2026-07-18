@@ -1,6 +1,6 @@
 /**
  * BlobAclStore tests — covers MemoryBlobAclStore + SqliteBlobAclStore
- * (the blob-gate membership-grant record, PLAN-media-infra-deployment P2).
+ * (the blob-gate membership-grant record, PLAN-media-infra-deployment).
  */
 import { describe, it, expect } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';

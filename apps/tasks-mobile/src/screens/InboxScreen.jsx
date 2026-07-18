@@ -5,20 +5,20 @@
  * housekeeping skills the desktop has had since V1: per-row clear,
  * "Clear all", and a header badge fed by `useInboxBadge`.
  *
- * Slice C.4 (2026-05-20) — adapter-driven (fourth RN screen; mobile
- * parity for the V0.4 inbox substrate that landed on web in commit
+ * adapter-driven (fourth RN screen; mobile
+ * parity for the inbox substrate that landed on web in commit
  * 538f9d2 / B.2.3b).  Replaces three hand-rolled bits with substrate:
  *
- *   - **Data source** (V0.3 `useAdapterSection`):
+ *   **Data source** (`useAdapterSection`):
  *     `listMyInbox({limit: 200})` is now resolved via
- *     `adapter.getSection('inbox').dataSource` (Q7 + V0.3 hook).
+ *     `adapter.getSection('inbox').dataSource` (hook).
  *     Pre-C.4 the screen called `useSkillResult('listMyInbox')`
  *     directly.
  *
- *   - **Per-row buttons** (V0.4 `renderItemActions` + generic
+ *   **Per-row buttons** (`renderItemActions` + generic
  *     appliesTo gating):  the four subtask approve/decline ops carry
  *     `appliesTo: {type: 'inbox-item', kind: '<subtask-proposal |
- *     subtask-request>'}` (Q19+ generic-field gate in
+ *     subtask-request>'}` (+ generic-field gate in
  *     `itemMatchesAppliesTo`).  The screen tags each event with
  *     `{type: 'inbox-item', kind: kindOf(event)}` before passing to
  *     `adapter.renderItemActions(section, tagged)` so the substrate
@@ -26,15 +26,15 @@
  *     `switch (kind)` block; the substrate now owns gating, the
  *     screen owns dispatch (same split as C.3 review).
  *
- *   - **Clear-all button** (V0.4 Q19 `renderSectionActions`):  the
+ *   **Clear-all button** (`renderSectionActions`): the
  *     `clearInbox` op carries `surfaces.ui.placement: 'section-
  *     header'`; the section's `sectionActions[]` (filled by
- *     renderWeb's Q19 branch) is surfaced via
+ *     renderWeb's branch) is surfaced via
  *     `adapter.renderSectionActions(section)`.  Pre-C.4 the button
  *     was hand-rolled with `useSkill('clearInbox')` and an inline
  *     "Clear all" label.
  *
- *   - **Per-row "✕" clear** (V0.4 `clearInboxItem` itemAction):
+ *   **Per-row "✕" clear** (`clearInboxItem` itemAction):
  *     still flows through `renderItemActions` — its `appliesTo` has
  *     no `kind` gate so it surfaces on every event (same shape as
  *     today's per-row dismiss).  Item tag normalises every event to
@@ -84,7 +84,7 @@ export function InboxScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  // Slice C.4 — build the NavModel adapter once per service-change.
+  // build the NavModel adapter once per service-change.
   // Same shape as ReviewScreen (C.3); the adapter is platform-neutral
   // and the `callSkill` dispatcher feeds `fetchSection` consumers
   // (unused here — the screen uses `useAdapterSection` for the data
@@ -106,7 +106,7 @@ export function InboxScreen() {
   );
 
   // Data source resolved via the manifest's `inbox` view dataSource
-  // (V0.2 Q7 — `listMyInbox` with `{limit: 200}`).  V0.3 hook owns
+  // (`listMyInbox` with `{limit: 200}`). hook owns
   // the useSkillResult plumbing.
   const { section, data, loading, refresh } =
     useAdapterSection(adapter, 'inbox', [svc?.activeCircleId]);
@@ -124,7 +124,7 @@ export function InboxScreen() {
               : Array.isArray(list?.data?.events) ? list.data.events
               : [];
 
-  // Slice C.4 — V0.4 section-header CTAs (Q19).  `clearInbox` declares
+  // section-header CTAs. `clearInbox` declares
   // `surfaces.ui.placement: 'section-header'`; renderWeb projects it
   // into `section.sectionActions[]`.  Pre-C.4 the button was hand-
   // rolled — now the adapter declares it + the screen routes the tap.
@@ -208,7 +208,7 @@ export function InboxScreen() {
   }, [onApproveRequest, onDeclineRequest, onClearItem]);
 
   /**
-   * Route a section-header CTA to its dispatcher.  V0.4 sectionActions
+   * Route a section-header CTA to its dispatcher. sectionActions
    * take no per-item args; `clearInbox` is the only one today and
    * surfaces a destructive confirm before dispatch.
    */
@@ -249,7 +249,7 @@ export function InboxScreen() {
           </Text>
         </View>
         {/*
-          * Slice C.4 — section-header CTAs from
+          * section-header CTAs from
           * `adapter.renderSectionActions(section)`.  Manifest declares
           * `clearInbox` with `surfaces.ui.placement: 'section-header'`;
           * the screen renders one Pressable per action.  Only surfaces
@@ -435,7 +435,7 @@ export function InboxScreen() {
 }
 
 /**
- * Slice C.4 — subtask-proposal card.  Substrate-driven buttons:
+ * subtask-proposal card. Substrate-driven buttons:
  * `actions[]` from `renderItemActions` carries only the ops the
  * manifest's per-kind appliesTo gate matched (approveSubtaskProposal
  * + declineSubtaskProposal for proposals).  The card decides chrome
@@ -506,7 +506,7 @@ function SubtaskProposalCard({ event, actions, onAction }) {
 }
 
 /**
- * Slice C.4 — subtask-request card.  Mirror of SubtaskProposalCard
+ * subtask-request card. Mirror of SubtaskProposalCard
  * for the request kind (approveSubtaskRequest + declineSubtaskRequest
  * via the manifest's per-kind appliesTo gate).
  */
@@ -575,7 +575,7 @@ function SubtaskRequestCard({ event, actions, onAction }) {
 }
 
 /**
- * Slice C.4 — generic-event row (non-subtask kinds).  Surfaces a
+ * generic-event row (non-subtask kinds). Surfaces a
  * tap-to-open zone (when the event references a task) + the
  * `clearInboxItem` "✕" button.  Pre-C.4 the "✕" was hand-rolled;
  * now it's surfaced via the substrate-projected actions[] (the only

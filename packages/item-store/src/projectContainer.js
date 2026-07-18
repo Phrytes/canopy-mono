@@ -1,7 +1,7 @@
 /**
- * projectContainer — the recursive child-render PROJECTOR (cluster K · K2).
+ * projectContainer — the recursive child-render PROJECTOR.
  *
- * The K1 finding made concrete: generalise `embedResolve` from "title preview" → a FULL recursive render of
+ * The finding made concrete: generalise `embedResolve` from "title preview" → a FULL recursive render of
  * a container + its contained children (each via its OWN type's render shape). One declaration → a nested
  * view: a list renders its tasks, a task renders its sub-tasks, an offer renders its list, … — heterogeneous,
  * arbitrarily deep, web≡mobile (the shell draws the returned tree; this is the pure data projection).

@@ -5,7 +5,7 @@ changes (sync-engine, pod-client, identity-resolver) live in their
 own packages.  See `Project Files/basis/integration-plan-2026-05-23.md`
 for the cross-app integration plan this CHANGELOG dovetails with.
 
-## 2026-05-23 — slice 4 (browser composition for basis web)
+## 2026-05-23 — (browser composition for basis web)
 
 Added `src/browser.js` exporting `createBrowserFolioAgent` — a thin
 factory that boots a `@onderling/core` Agent on a shared `InternalBus`
@@ -14,7 +14,7 @@ slice-4 integration; replaces ~125 lines of mock-real handlers that
 used to live on basis's `hostAgent`.
 
 In-scope skills (chat-web subset):
-  - `readNote`, `getFileSnapshot` (Q29 cardSnapshotSkill)
+  - `readNote`, `getFileSnapshot` (cardSnapshotSkill)
   - `shareFolder` — REAL `PodCapabilityToken` via
     `autoShare.mintShareToken` (no more placeholder stubs)
   - `listFiles`, `searchFiles`

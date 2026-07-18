@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — availability (RN screen, board 6C · M3).
+ * basis-mobile v2 — availability (RN screen).
  *
  * RN counterpart of web's circleAvailability renderer over the SAME shared
  * `memberAvailability` model: cross-circle holiday mode (away until a date)

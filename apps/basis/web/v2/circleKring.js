@@ -1,5 +1,5 @@
 /**
- * basis v2 — kring content view (web DOM renderer, SP-13.2 / v2 §1+§5).
+ * basis v2 — kring content view (web DOM renderer, v2 1 5).
  *
  * The screen you land on after tapping a kring tile.  Chat-style mixed
  * message stream + inline composer.  No separate chat shell exists; chat
@@ -32,12 +32,12 @@
  *   - `composerPlaceholder`  kring-specific placeholder text (optional)
  *
  * Per-kring bottom tabs (GESPREK / PRIKBORD / LEDEN etc.) live in
- * SP-13.3; this slice focuses on the GESPREK render.
+ * ; this slice focuses on the GESPREK render.
  */
 
 import { actionsForStreamRow } from '../../src/v2/streamActions.js';
 import { renderMandateLegibility } from './mandatePicker.js';
-// media P1 — the sealed media-card chip renders via the existing shared
+// media — the sealed media-card chip renders via the existing shared
 // domAdapter branch (renderToDom → renderMediaCard), NOT a re-implementation.
 import { renderToDom } from '../../src/web/domAdapter.js';
 import { renderCircleScreen } from './circleScreen.js';
@@ -68,14 +68,14 @@ export function renderCircleKring(container, {
   more = null,
   composerPlaceholder = null,
   composerPrefill = null,   // convergence — the ✏ edit opens the composer with the point's current text
-  // SP-13.3 — per-kring bottom tabs (board Voorbeeld 1-3).
+  // per-kring bottom tabs (board Voorbeeld 1-3).
   // `tabs`     `[{id, label}]` produced by `buildKringTabs(policy, t)`
   // `activeTab` current tab id (defaults to first / 'gesprek')
   // `onTab(id)` host switches its content render when a tab is tapped
   tabs = null,
   activeTab = null,
   onTab,
-  // SP-13.4 — Chat ↔ Scherm header pill (v2 §4 board "De Schakelaar").
+  // Chat ↔ Scherm header pill (v2 §4 board "De Schakelaar").
   // `viewMode`   one of 'chat' | 'scherm' (default 'chat')
   // `onViewMode(mode)`  host flips between the chat-style stream and
   //   the admin-recept'd scherm-weergave.
@@ -126,7 +126,7 @@ export function renderCircleKring(container, {
   // its own). `null` = host hasn't loaded it → falls back to the placeholder.
   //   `{ posts, intent, busy, onPost, onAction, onIntent }`
   noticeboard = null,
-  // media P1 — the sealed media path (live wiring). Both optional; without them the
+  // media — the sealed media path (live wiring). Both optional; without them the
   // composer + bubbles render exactly as before.
   //   `onAttachMedia(file)`  host runs the picked image through createMediaEmbed (sealed
   //     upload). Only wired when the circle HAS a content seal strategy — a p0/p1 circle
@@ -137,7 +137,7 @@ export function renderCircleKring(container, {
   //     full-image affordance; absent → thumbnail only, no View button.
   onAttachMedia = null,
   media = null,
-  // P2 (J4) — the ATTACHMENT projector's menu for the chat composer's "+". Same
+  // (J4) — the ATTACHMENT projector's menu for the chat composer's "+". Same
   // contract as the prikbord composer: `attachMenu` is
   // `renderAttachments(basisManifest).attachMenu` (host-computed); the FILE entry
   // (`attachFileOpId`) routes through the media pipeline (`onAttachMedia`), every
@@ -171,7 +171,7 @@ export function renderCircleKring(container, {
   title.textContent = circle.name || circle.id || '';
   header.appendChild(title);
 
-  // SP-13.4 — Chat ↔ Scherm pill (v2 §4 board "De Schakelaar").
+  // Chat ↔ Scherm pill (v2 §4 board "De Schakelaar").
   // Only renders when the host wires `onViewMode`; otherwise the
   // header stays clean (some hosts may want to suppress it).
   if (typeof onViewMode === 'function') {
@@ -235,9 +235,9 @@ export function renderCircleKring(container, {
     container.appendChild(menu);
   }
 
-  // SP-13.3 — body switches by active tab.  GESPREK = the chat-style
+  // body switches by active tab. GESPREK = the chat-style
   // bubble stream + day-dividers; all other tabs are placeholders for
-  // now (per-tab content lands in SP-13.3-followups).  Composer stays
+  // now (per-tab content lands in -followups). Composer stays
   // pinned at the bottom regardless — per v2 §1 all 3 voorbeeld boards
   // show the composer present whatever the body is.
   // `??` would treat the `Array.isArray && tabs[0]?.id` short-circuit's
@@ -345,7 +345,7 @@ export function renderCircleKring(container, {
     suggestEl.hidden = true;
     form.appendChild(suggestEl);
 
-    // P2 (J4) — the projector-driven "+" attach affordance (replaces the hand-coded
+    // (J4) — the projector-driven "+" attach affordance (replaces the hand-coded
     // 📎). The FILE entry still routes through the sealed media pipeline
     // (`onAttachMedia`) — a p0/p1 circle wires no `onAttachMedia`, so the file entry
     // drops and only dispatchable entries (if any) remain. The menu is projected
@@ -454,11 +454,11 @@ export function renderCircleKring(container, {
     container.appendChild(form);
   }
 
-  // SP-13.3 — per-kring bottom tab bar.  Only renders when a tabs
+  // per-kring bottom tab bar. Only renders when a tabs
   // list with ≥ 2 entries is supplied (a single-tab kring has no
   // bar to switch on).  The launcher's global Kringen/Stroom/Mij
   // bar sits in a different DOM root, so the two never collide.
-  // SP-13.4 — also suppress in scherm-mode (scherm is one canonical
+  // also suppress in scherm-mode (scherm is one canonical
   // page, no sub-tabs).
   if (Array.isArray(tabs) && tabs.length >= 2 && viewMode !== 'scherm') {
     const bar = document.createElement('nav');
@@ -496,7 +496,7 @@ function renderBubble(row, {
   onEmbedOpen = null,
   // convergence — a Stage-1 feedback review ({intro,points,labels}) renders as editable per-point cards.
   onReview = null,
-  // media P1 — `{opener, openFull?}` for the sealed media-card chip (inline thumbnail +
+  // media — `{opener, openFull?}` for the sealed media-card chip (inline thumbnail +
   // the optional gated full-image "[View]" affordance).
   media = null,
   // Mandate — viewer identity signals for the owner-only "entrust" action.
@@ -578,7 +578,7 @@ function renderBubble(row, {
     }
   }
 
-  // media P1 — a message carrying a sealed media-card embed (payload.media, set by the
+  // media — a message carrying a sealed media-card embed (payload.media, set by the
   // host's attach path) renders the chip via the EXISTING shared domAdapter branch.
   // `media.opener` opens the line's sealed inline thumbnail; no opener (or a wrong key)
   // → the chip's mime/dims placeholder. Best-effort: a chip failure never eats the bubble.

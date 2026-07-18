@@ -6,7 +6,7 @@
  * against the API; switching to FTS5 (better-sqlite3 / expo-sqlite)
  * is a backend swap.
  *
- * Per L1i sketch + Q7: existing Archive CLI lib's FTS5 schema +
+ * Per L1i sketch +: existing Archive CLI lib's FTS5 schema +
  * indexer logic informs the schema shape; the substrate ships the
  * pure-JS V0; FTS5 backend is V1.
  *
@@ -38,7 +38,7 @@ import { chunkText, resolveChunking } from './chunking.js';
 import { codedError } from './errors.js';
 
 const DEFAULT_LIMIT = 50;
-const RRF_K = 60; // reciprocal rank fusion constant (Q4, pre-decided)
+const RRF_K = 60; // reciprocal rank fusion constant (pre-decided)
 
 export class PodSearch {
   /** @type {object} */ #schema;

@@ -1,5 +1,5 @@
 /**
- * botBindings — V1.5 admin management of `circle.bot.chatBindings`.
+ * botBindings — admin management of `circle.bot.chatBindings`.
  *
  * Three skills:
  *
@@ -144,7 +144,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
       delete nextBot.chatBindings[chatId];
       circle.circleMutator({ bot: nextBot });
 
-      // V1.5 — also revoke any cap-token bot agent for this chatId.
+      // also revoke any cap-token bot agent for this chatId.
       // Best-effort; the binding itself is gone regardless.
       const botAgentRegistry = circle.botAgentRegistry;
       if (botAgentRegistry?.get(chatId)) {
@@ -157,7 +157,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
     }),
 
     /**
-     * V1.5 — promote a binding from "trust map" to cap-token mode.
+     * promote a binding from "trust map" to cap-token mode.
      * Spawns a per-binding bot agent (in-process, separate identity)
      * and issues a `CapabilityToken` to its pubKey, scoped wildcard
      * with `constraints.actingAs = webid` and `scope: 'bot'`. The
@@ -210,7 +210,7 @@ export function buildBotBindingSkills({ bundleResolver } = {}) {
     }),
 
     /**
-     * V1.5 — revoke the cap-token for a binding (returns it to
+     * revoke the cap-token for a binding (returns it to
      * "trust map" mode). The chatBinding entry stays. To remove the
      * binding entirely, call `removeBotChatBinding` instead.
      */

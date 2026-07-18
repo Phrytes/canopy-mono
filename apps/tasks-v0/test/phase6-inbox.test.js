@@ -108,7 +108,7 @@ describe('Phase 6 — InAppInboxBridge', () => {
     expect(entry.source.buttons).toEqual([{ id: 'open', label: 'Open' }]);
     expect(entry.source.meta.eventType).toBe('task-submitted');
     // Tier B — when meta.eventType is set, the bridge stamps it as a
-    // top-level `kind` for the V0.4 per-kind gate to match.
+    // top-level `kind` for the per-kind gate to match.
     expect(entry.kind).toBe('task-submitted');
   });
 });
@@ -287,7 +287,7 @@ describe('Phase 6 — appealTask skill', () => {
   });
 
   it('returns a "chat-not-wired" error when chatController is missing', async () => {
-    // V2.8 — appealTask is now always registered (single-registration
+    // appealTask is now always registered (single-registration
     // root). Without a localStoreBundle, wireChat is not invoked, so
     // the resolved CircleState has `chatController: null` and the skill
     // body returns the documented `chat-not-wired` graceful fallback.

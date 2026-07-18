@@ -1,5 +1,5 @@
 /**
- * basis-mobile — first-run mnemonic display (board 3A, slice P6.9).
+ * basis-mobile — first-run mnemonic display.
  *
  * After a fresh install generates an identity (5.9b boot path), the user
  * should be shown the BIP39 phrase ONCE so they can write it down.  Board

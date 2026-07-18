@@ -1,5 +1,5 @@
 /**
- * basis — router tests.  v0.1 sub-slice 1.6.
+ * basis — router tests. v0.1.
  *
  * Verifies the tagged-union RouteResult shapes for every routing
  * outcome: ready / needsForm / needsConfirm / unknown / error.
@@ -17,7 +17,7 @@ const householdLite = {
   app:       'household',
   itemTypes: ['chore'],
   operations: [
-    // No params + no confirm + no Q28 → ready, default shape 'text'
+    // No params + no confirm + no → ready, default shape 'text'
     {
       id: 'doNow', verb: 'add', params: [],
       surfaces: { slash: { command: '/donow' } },
@@ -42,7 +42,7 @@ const householdLite = {
       ],
       surfaces: { slash: { command: '/addchore' } },
     },
-    // Q27 warn-gate
+    // warn-gate
     {
       id: 'archiveAll', verb: 'remove', params: [],
       surfaces: {
@@ -50,7 +50,7 @@ const householdLite = {
         ui:    { confirm: { severity: 'warn', message: 'Archive everything?' } },
       },
     },
-    // Q27 danger-gate
+    // danger-gate
     {
       id: 'clearInbox', verb: 'remove', params: [],
       surfaces: {
@@ -58,7 +58,7 @@ const householdLite = {
         ui:    { confirm: { severity: 'danger', message: 'This cannot be undone.' } },
       },
     },
-    // Q27 info — informational only, NO gate
+    // info — informational only, NO gate
     {
       id: 'reportStats', verb: 'list', params: [],
       surfaces: {
@@ -103,7 +103,7 @@ describe('resolveDispatch — ready paths', () => {
       kind: 'ready',
       opId: 'markComplete',
       args: { choreText: 'dishwasher' },
-      replyShape: 'text',   // Q28 declared
+      replyShape: 'text',   // declared
     });
   });
 

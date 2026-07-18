@@ -10,11 +10,11 @@
  *   - One thread is "active" at a time (UI-level concept; events
  *     route to ALL matching threads regardless of active).
  *
- * v0.2 ships in-memory ThreadStore.  v0.2.4 (deferred sub-slice 2.8)
+ * v0.2 ships in-memory ThreadStore. v0.2.4 (deferred)
  * adds IndexedDB persistence; v0.6 adds pod-sync per OQ-3 user
  * resolution.
  *
- * Phase v0.2 sub-slice 2.1 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { Thread }            from './thread.js';
@@ -76,9 +76,9 @@ export class ThreadStore {
       createdAt:   this.#now(),
       filter:      normaliseFilter(opts.filter),
       permissions: opts.permissions,
-      origin:      opts.origin,    // #181 — back-to-origin metadata
+      origin:      opts.origin,    // back-to-origin metadata
       now:         this.#now,
-      // v0.7.P1 bug-fix — wire the thread's onChange callback so
+      // v0.7. bug-fix — wire the thread's onChange callback so
       // every message append (add{User,Shell}Message) bubbles up
       // as a thread-updated event.  attachPersistence subscribes
       // to thread-updated → so messages now persist across refresh.
@@ -216,7 +216,7 @@ export class ThreadStore {
 /**
  * Convenience: a fresh ThreadStore with the default Main + Inbox
  * threads seeded.  Per the coding plan v0.2's "default threads on
- * fresh install" (sub-slice 2.4 — partial impl here; UI lands in
+ * fresh install" (— partial impl here; UI lands in
  * v0.2.3).
  *
  *   Main  — commands enabled, no events (focus thread)
@@ -231,7 +231,7 @@ export function createDefaultThreadStore(opts) {
   store.createThread({
     id:     'main',
     name:   'Main',
-    // v0.7.P1 bug-fix 2026-05-23: filter `{}` ACTUALLY matches every
+    // v0.7. bug-fix 2026-05-23: filter `{}` ACTUALLY matches every
     // event (matchesKey treats absent allowed-lists as wildcard).
     // The old comment claimed it received 'no auto-events', which
     // was wrong — every routed event landed here, doubling

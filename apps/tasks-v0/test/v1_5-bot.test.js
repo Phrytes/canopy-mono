@@ -1,5 +1,5 @@
 /**
- * V1.5 — chat-bot bridge tests.
+ * chat-bot bridge tests.
  *
  * Covers:
  *   1. dispatch() pure parser — every command + edge case.

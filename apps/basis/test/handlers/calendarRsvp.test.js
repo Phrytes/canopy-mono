@@ -1,5 +1,5 @@
 /**
- * Bundle H Phase 2 (#269) — calendar-rsvp handler coverage.
+ * calendar-rsvp handler coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeHandleCalendarRsvp } from '../../src/core/handlers/calendarRsvp.js';

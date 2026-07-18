@@ -1,7 +1,7 @@
 /**
- * basis — contact-skill LIVE wiring tests (feedback-extension P4 wiring).
+ * basis — contact-skill LIVE wiring tests (feedback-extension wiring).
  *
- * Covers DESIGN §2.2 (P4 acceptance): "a bot contact's commands appear only in
+ * Covers DESIGN §2.2 (acceptance): "a bot contact's commands appear only in
  * that thread; invoking routes to the bot; removing the contact removes them."
  * Drives the real `@onderling/core` PeerGraph (its events are what the registry
  * subscribes to) so the test exercises the actual discover→synth→route→remove

@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — skill match list (RN screen, board 8).
+ * basis-mobile v2 — skill match list (RN screen).
  *
  * RN counterpart of web's circleOfferingMatches over the SAME shared projection
  * (`buildOfferingMatches`): one row per INJECTED match, each carrying a label +

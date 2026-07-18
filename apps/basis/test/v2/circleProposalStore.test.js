@@ -1,5 +1,5 @@
 /**
- * P6.2 — circleProposalStore tests.
+ * circleProposalStore tests.
  *
  * Pure: drives the store over a Map-backed IO adapter so vitest covers
  * every persistence branch without touching real storage.

@@ -12,7 +12,7 @@
  *   5. Update the WebID profile predicates.
  *
  * V0 deliberately doesn't ship this — ref-rewriting is open
- * (functional design §4.3.6) and gets pinned in P5 alongside the
+ * (functional design §4.3.6) and gets pinned in alongside the
  * two-pod policy work.
  *
  * Standardisation Phase 52.5 — see plan §52.5.3.

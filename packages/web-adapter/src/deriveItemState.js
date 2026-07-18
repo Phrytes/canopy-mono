@@ -5,22 +5,22 @@
  * schedule):
  *   'open' | 'complete' | 'removed'
  *
- * V0.7 DoD lifecycle (used by tasks-v0 tasks):
+ * DoD lifecycle (used by tasks-v0 tasks):
  *   'open' | 'claimed' | 'submitted' | 'rejected' | 'complete' | 'removed'
  *
  * The original `apps/household/web/main.js` helper only derived
- * open|complete|removed and didn't handle V0.7 DoD lifecycle (flagged
+ * open|complete|removed and didn't handle DoD lifecycle (flagged
  * by the A.3 agent). This shared helper subsumes both — the
  * task-status pattern is taken from `apps/tasks-v0/src/ui/taskStatus.js`
  * (the source-of-truth for the DoD-lifecycle state machine, shared
  * with tasks-mobile). We pull just the lifecycle derivation here;
- * `describeTaskStatus` keeps the deps-gate + V2.7 colourKey
+ * `describeTaskStatus` keeps the deps-gate + colourKey
  * derivation, which belongs to the tasks-only path.
  *
  * Discipline:
  *   - Pure: no DOM, no `Date.now()`, no globals.
  *   - Returns a string. `'open'` is the fallback (matches both V0 and
- *     V0.7 conventions — claim is the first state-changing op, until
+ *     conventions — claim is the first state-changing op, until
  *     then a task is "open").
  *   - Honours item.status when it is one of the substrate-canonical
  *     enum strings (the tasks-v0 listOpen skill stamps this — it is
@@ -45,7 +45,7 @@ export function deriveItemState(item) {
   if (item.completedAt) return 'complete';
   if (item.removedAt)   return 'removed';
 
-  // V0.7 DoD lifecycle — reviewLog wins over assignee.
+  // DoD lifecycle — reviewLog wins over assignee.
   // reviewLog: [{decision:'submit'|'reject'|'approve', by, at, note?}]
   const log = Array.isArray(item.reviewLog) ? item.reviewLog : [];
   const last = log.length > 0 ? log[log.length - 1]?.decision : null;

@@ -28,7 +28,7 @@ import { genId, P }         from '../Envelope.js';
 // basis's vite.config aliases each to a browser-safe stub that
 // throws if called, so importing them at module load is browser-safe
 // (the previous `await import(...)` lazy-loads were a workaround for an
-// older empty-shim setup; see #303 cleanup).
+// older empty-shim setup; see cleanup).
 
 const isAsyncGen = x => x && typeof x[Symbol.asyncIterator] === 'function';
 

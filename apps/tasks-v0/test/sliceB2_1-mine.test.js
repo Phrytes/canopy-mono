@@ -1,19 +1,19 @@
 /**
- * Slice B.2.1 — mine.html migrated to NavModel + B.2.0 web-adapter helpers.
+ * .1 — mine.html migrated to NavModel + B.2.0 web-adapter helpers.
  *
  * Asserts:
  *   - The manifest now declares the `listMyMasteredTasks` op AND the
  *     `mastered` view (was off-manifest pre-B.2.1).
  *   - renderWeb's NavModel projects the three mine.html sections
  *     (`mine` / `mastered` / `claimable`) in declaration order with
- *     the expected V0.7 DoD-lifecycle itemActions.
+ *     the expected DoD-lifecycle itemActions.
  *   - The page serves + carries the imports the B.2.0 overlay
  *     provides (itemMatchesAppliesTo / applyPrefilledParams).
  *   - The three list skills round-trip via /tasks/send.
  *
  * Pattern mirrors the dag.html characterization tests — same
  * `buildCharacterizationFixture` harness; the fixture overlays
- * `/lib/web-adapter/*` automatically (per setup.js, Slice B.2.0).
+ * `/lib/web-adapter/*` automatically (per setup.js,.0).
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';

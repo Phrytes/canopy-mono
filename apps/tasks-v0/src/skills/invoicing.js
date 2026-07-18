@@ -1,5 +1,5 @@
 /**
- * invoicing — Tasks V2.2.
+ * invoicing — Tasks.
  *
  * Three skills + one internal helper:
  *
@@ -9,7 +9,7 @@
  *
  *   - `getCompensation({memberWebid, month?})` — admin OR self only.
  *     Returns `{lines, totals}`. `totals.amount` (rate × hours) is
- *     informational, not authoritative — see V2.2 risk §4.
+ *     informational, not authoritative — see risk §4.
  *
  *   - `setMemberCompensation({memberWebid, compensated, rate?})` —
  *     admin only. Mutates the live circle config.

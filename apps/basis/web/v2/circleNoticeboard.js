@@ -28,7 +28,7 @@ export function renderCircleNoticeboard(container, {
   onIntent,
   attachment = null,        // S5 — the pending image attachment ({thumbnail, name}) or null
   onAttach,                 // (file) => void — host encodes + sets the pending attachment (the FILE entry's media pipeline)
-  // P2 (J4) — the ATTACHMENT projector's menu. `attachMenu` is
+  // (J4) — the ATTACHMENT projector's menu. `attachMenu` is
   // `renderAttachments(basisManifest).attachMenu` (host-computed); the composer's
   // "+" renders it. `attachFileOpId` names the entry that routes through the media
   // pipeline above; `onAttachCommand(entry)` dispatches every other entry (host →
@@ -69,7 +69,7 @@ export function renderCircleNoticeboard(container, {
   input.className = 'cc-prikbord__input';
   input.placeholder = tr(`circle.noticeboard.placeholder.${intent}`);
   row.appendChild(input);
-  // P2 (J4) — the projector-driven "+" attach affordance (replaces the hand-coded
+  // (J4) — the projector-driven "+" attach affordance (replaces the hand-coded
   // 📎). The FILE entry still routes through the media pipeline (onAttach); the
   // menu comes from the manifest via renderAttachments. Absent when nothing is
   // usable — a sealed-only p0/p1 circle (no onAttach) with no menu shows none.

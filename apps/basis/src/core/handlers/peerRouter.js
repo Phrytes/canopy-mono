@@ -1,5 +1,5 @@
 /**
- * Inbound peer-message subtype router.  Bundle H (#268, 2026-05-27)
+ * Inbound peer-message subtype router. Bundle H (2026-05-27)
  * — lifted from the inline `onPeerMessage` block in
  * `apps/basis/web/main.js:346`.
  *

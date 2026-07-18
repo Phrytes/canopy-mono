@@ -1,5 +1,5 @@
 /**
- * basis — bulk-op fan-out tests.  v0.2 sub-slice 2.7.
+ * basis — bulk-op fan-out tests. v0.2.
  */
 import { describe, it, expect, vi } from 'vitest';
 

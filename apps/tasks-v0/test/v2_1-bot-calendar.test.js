@@ -1,5 +1,5 @@
 /**
- * V2.1 — bot.calendar command.
+ * bot.calendar command.
  */
 
 import { describe, it, expect } from 'vitest';

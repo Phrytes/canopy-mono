@@ -1,5 +1,5 @@
 /**
- * confirmDispatch — the MOBILE Q27 confirm gate at the dispatch waist
+ * confirmDispatch — the MOBILE confirm gate at the dispatch waist
  * (web pin: apps/basis/test/v2/confirmDialog.dom.test.js).
  *
  * Exercised at the LOGIC level through the exact module the launcher

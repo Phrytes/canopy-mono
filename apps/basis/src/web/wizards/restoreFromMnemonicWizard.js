@@ -1,7 +1,7 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ * **Platform: web** (DOM-dependent). RN parallel pending.
  *
- * basis — C3 restore-from-mnemonic wizard (#198, 2026-05-24).
+ * basis — C3 restore-from-mnemonic wizard (2026-05-24).
  *
  * 3-step DESTRUCTIVE recovery wizard.  Mnemonic → confirmation →
  * actual restore.  Real skill: stoop.restoreFromMnemonic({mnemonic,

@@ -11,7 +11,7 @@
  *   - `pickDocument` / `pickOneDocument` (any file) — expo-document-
  *     picker + expo-file-system, returns {name, mime, bytes, dataB64}.
  *     Used by basis-mobile's `/embed-file --pick` and friends
- *     (#267).
+ *     
  */
 
 export {

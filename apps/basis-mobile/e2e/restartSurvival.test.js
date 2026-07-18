@@ -1,6 +1,6 @@
-// Restart survival (#254 D-1 test 3).
+// Restart survival (D-1 test 3).
 //
-// Replaces the manual #249 restart check:
+// Replaces the manual restart check:
 //   1. Boot the app, identity gets provisioned + vault stored
 //      (VaultAsyncStorage in the real RN runtime — opt-in via
 //      bootAgentBundle's asyncStorage path; tests cover the

@@ -1,5 +1,5 @@
 /**
- * circleShare (cluster K) — the app-level cross-circle SHARE op, tested at the SUBSTRATE seam (no DOM, no
+ * circleShare — the app-level cross-circle SHARE op, tested at the SUBSTRATE seam (no DOM, no
  * live pod). Proves the vertical slice:
  *   • WRITE: shareItemAcrossCircles writes a `shared-ref` into the TARGET circle and — on the pod path —
  *     lands an ACP read-grant for the recipient on the SOURCE item's resource (via the injected onShare).
@@ -34,7 +34,7 @@ function podEnforcement(sharing) {
   return makeCircleShareEnforcement({ sharing, resourceUriFor, open: (text) => text });
 }
 
-// slice 2 — the initiator gate reads the SOURCE circle's sharePosture (default 'closed' now REFUSES).
+// the initiator gate reads the SOURCE circle's sharePosture (default 'closed' now REFUSES).
 // The write/read success-path tests supply a permissive policyOf so they still exercise the substrate.
 const openPolicyOf = () => ({ sharePosture: 'trusted' });
 
@@ -119,7 +119,7 @@ describe('circleShare — app-level cross-circle SHARE op', () => {
   });
 });
 
-// slice 2 — the INITIATOR GATE: WHO may initiate a share is decided by the SOURCE circle's sharePosture
+// the INITIATOR GATE: WHO may initiate a share is decided by the SOURCE circle's sharePosture
 // (+ admins for 'registered'). Crypto-free; when the gate PASSES the write/read mechanics are unchanged.
 describe('circleShare — initiator gate by source sharePosture (slice 2)', () => {
   // Share op that refuses before touching the substrate ⇒ nothing gets written into the target.

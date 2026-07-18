@@ -1,5 +1,5 @@
 // availability — the UNIFIED person-level "am I reachable?" property (availability
-// unification, plans/NOTE-skills-properties-audit.md §4/§5, decision Q5). It replaces
+// unification, plans/NOTE-skills-properties-audit.md §4/§5, decision). It replaces
 // TWO older models that meant the same thing: the per-offering `availability` sub-field
 // (MemberMap.offerings[].availability) AND the standalone `holidayMode` boolean. There is
 // now ONE property key `availability` on the profile graph; offerings REFERENCE it (they do

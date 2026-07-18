@@ -1,6 +1,6 @@
 /**
  * MultiFieldFormBubble — inline bot-bubble that renders a multi-field
- * form for #253 step 6.
+ * form for step 6.
  *
  * Renders one TextInput per field in `pending.fields`, plus a Submit
  * button.  Local state holds the in-progress values; on Submit, the

@@ -1,5 +1,5 @@
 /**
- * @onderling/web-adapter — Slice B.2.0 (PLAN-gui-chat-uplift.md).
+ * @onderling/web-adapter —.0 (PLAN-gui-chat-uplift.md).
  *
  * Shared pure-JS helpers used by every renderWeb-driven web page in
  * the monorepo. Pulled out of `apps/household/web/main.js` +
@@ -16,7 +16,7 @@
  * never touch DOM/`window`.
  *
  * Forward direction (Slice C — tasks-mobile / renderMobile adapter,
- * Slice E.1 — stoop web): the same helpers feed renderMobile's
+ * stoop web): the same helpers feed renderMobile's
  * appliesTo predicate (it would reinvent the same gate). When that
  * lands, `itemMatchesAppliesTo` + `deriveItemState` + `applyPrefilledParams`
  * stay device-independent (per Platform Parity); only `callSkill`
@@ -29,13 +29,13 @@ export { callSkill }            from './callSkill.js';
 export { deriveItemState }      from './deriveItemState.js';
 export { itemMatchesAppliesTo } from './itemMatchesAppliesTo.js';
 export { applyPrefilledParams } from './applyPrefilledParams.js';
-// V0.2 (2026-05-21) — section data-fetch helper.  Honours Q7
-// section.dataSource; falls back to Q6 rule-b default.
+// section data-fetch helper. Honours
+// section.dataSource; falls back to rule-b default.
 export { fetchSectionItems }    from './fetchSectionItems.js';
-// V0.2 (2026-05-21) — paramsSchema → platform-neutral form-field
+// paramsSchema → platform-neutral form-field
 // descriptors.  Resolves A.3 agent's multi-field-form signal.
 export { schemaToFormFields }   from './schemaToFormFields.js';
-// V0.8 (2026-05-21) — T2-tier helper for hand-coded pages that want
+// T2-tier helper for hand-coded pages that want
 // to read confirm-severity + labels from the manifest.  Per
 // DESIGN-tier-policy.md, this is the bridge that makes T2 cheap.
 export { createOpBinding }      from './createOpBinding.js';

@@ -306,7 +306,7 @@ export function createVersionStore({
     list,
     read,
     restore,
-    // PRIVILEGED ops (PLAN P4, decision B): drop/prune erase history — they
+    // PRIVILEGED ops (PLAN, decision B): drop/prune erase history — they
     // are for the OWNER's composition/retention code only and must never be
     // wired into a grantable skill/manifest op. The history-immutability
     // guard asserts no skill surface reaches them.

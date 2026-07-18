@@ -1,11 +1,11 @@
 /**
  * Agent.interfaceRegistry + Agent.protocol — opaque-slot unit tests
- * (Phase 50.13 + 50.14, P6 direction).
+ * (direction).
  *
  * Direction-only: the substrates `@onderling/interface-registry` and
  * `@onderling/protocol` don't exist yet. Core ships the slots so the
  * substrate APIs have a stable plug-in point when they materialise
- * (Hub V2 / P6 of the standardisation plan).
+ * (Hub V2 of the standardisation plan).
  *
  * The slots mirror the pattern from Phase 50.8.1
  * (`Agent.agentRegistry`) and Phase 50.3 (`Agent.pseudoPod`):

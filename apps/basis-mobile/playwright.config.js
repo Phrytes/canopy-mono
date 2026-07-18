@@ -1,6 +1,6 @@
 /**
  * Playwright config — basis-mobile cross-device parity tests
- * (#224 Phase A).
+ * (Phase A).
  *
  * The mobile shell, served as an Expo Web bundle, is driven through
  * the same canonical pipeline as the basis web app.  These
@@ -18,7 +18,7 @@
  *
  * No real WebID / pod creds needed — the test serves the static
  * Expo Web export and exercises chat-shell mechanics.  Real-peer
- * cross-device flows are #224 Phase B (Detox).
+ * cross-device flows are Phase B (Detox).
  *
  * Browser-driven tests live in `test-browser/` (separate from
  * `test/` so vitest doesn't pick them up; Playwright + vitest have

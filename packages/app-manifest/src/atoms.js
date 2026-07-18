@@ -51,7 +51,7 @@ export const ATOMS = Object.freeze([
   { verb: 'revoke',    category: 'lifecycle', targets: 'item',       aliases: [],                semantics: 'Undo an assignment or grant.' },
   { verb: 'archive',   category: 'lifecycle', targets: 'item',       aliases: [],                semantics: 'Reversibly retire an item.' },
   { verb: 'unarchive', category: 'lifecycle', targets: 'item',       aliases: [],                semantics: 'Restore an archived item.' },
-  // ── GRAPH (K2 containment + cross-audience sharing) ──────────────────────
+  // ── GRAPH (containment cross-audience sharing) ──────────────────────
   { verb: 'share',     category: 'graph',     targets: 'item',       aliases: [],                semantics: 'Expose an item into another audience (cross-circle ref, posture floor, no transitive grant).' },
   { verb: 'move',      category: 'graph',     targets: 'item',       aliases: [],                semantics: 'Reparent an item within a container graph.' },
 ]);

@@ -1,5 +1,5 @@
 /**
- * §1b mobile parity — "declare a noun → get CRUD free" on basis-mobile (sub-slice 1e).
+ * §1b mobile parity — "declare a noun → get CRUD free" on basis-mobile.
  *
  * Mobile needs NO new production code: it composes the SAME `mergeManifests` (so the synthetic op-less
  * capability ops land in the mobile catalog), dispatches through the SAME `createRealHouseholdAgent` (1d's

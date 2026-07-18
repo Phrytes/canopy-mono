@@ -97,7 +97,7 @@ import { diff }               from '../diff.js';
 import { hasConflictMarkers } from '../applyConflict.js';
 
 import { conflictIdFromRelPath, relPathFromConflictId } from './conflictId.js';
-// Versioning now rides the engine's @onderling/versioning store (Slice 1a) —
+// Versioning now rides the engine's @onderling/versioning store
 // reached via `engine.versionStore` (list/read/listSeries/isVersionable),
 // not the retired `../versions.js` module.
 import {

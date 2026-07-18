@@ -7,7 +7,7 @@
  *        inline button per task when the list is small (≤10).
  *
  * Emits no stateUpdates.  Mirrors `listOpen`'s shape; the difference
- * is the buttons map to `claim <id>` (the SP-2 verb) instead of
+ * is the buttons map to `claim <id>` (the verb) instead of
  * `done <id>`.
  */
 

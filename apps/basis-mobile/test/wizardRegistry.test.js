@@ -1,5 +1,5 @@
 /**
- * Bundle F P2 — conflictDispute state-machine smoke (#258).
+ * conflictDispute state-machine smoke.
  *
  * Pins the portable state-machine contract that the RN
  * `ConflictDisputeWizardModal` consumes.  We do NOT import the

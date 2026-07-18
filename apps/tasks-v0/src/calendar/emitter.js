@@ -1,7 +1,7 @@
 /**
  * Calendar write-side — re-exports from the lifted substrate.
  *
- * Originally lived here (Tasks V2.1).  Lifted to
+ * Originally lived here (Tasks). Lifted to
  * @onderling/calendar-emission on 2026-05-23 per the rule-of-two
  * (basis v0.7.11 = second consumer).  This file remains so
  * existing tasks-v0 imports (skills/planner.js, tests) keep

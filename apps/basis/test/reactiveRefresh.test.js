@@ -1,5 +1,5 @@
 /**
- * basis — reactive panel-stale refresh tests.  v0.6 sub-slice 6.3.
+ * basis — reactive panel-stale refresh tests. v0.6.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 

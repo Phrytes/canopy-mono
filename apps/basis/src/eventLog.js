@@ -17,7 +17,7 @@
  *
  * Platform: neutral.
  *
- * Phase v0.7 sub-slice 7.5 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.7 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { matchesFilter } from './filter.js';

@@ -2,7 +2,7 @@
  * availabilityMigration — one-time, silent seed of the UNIFIED person-level
  * `availability` property on the root persona from the MOST-RESTRICTIVE existing
  * signal (availability unification, plans/NOTE-skills-properties-audit.md §4/§5,
- * decision Q5). Backwards compatibility is dropped, so this is deliberately
+ * decision). Backwards compatibility is dropped, so this is deliberately
  * trivial: seed once, guarded by a marker, then never touch the old signals again.
  *
  * Most-restrictive seeding: `holidayMode:true` OR any roster skill still carrying a

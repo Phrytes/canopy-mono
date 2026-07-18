@@ -1,7 +1,7 @@
 /**
- * Slice B.1 — renderWeb(tasksManifest) NavModel + dag.html wiring.
+ * renderWeb(tasksManifest) NavModel + dag.html wiring.
  *
- * Per `PLAN-gui-chat-uplift.md` § Slice B.1 acceptance gate #2 ("NavModel
+ * Per `PLAN-gui-chat-uplift.md` acceptance gate #2 ("NavModel
  * JSON for that page snapshot-locked + owner-confirmed").  Locks the
  * shape of the `dag` section + the `getDagTree` op declaration so
  * downstream consumers (web `dag.html`, future mobile DagScreen
@@ -33,17 +33,17 @@ describe('Slice B.1: renderWeb(tasksManifest) NavModel', () => {
 
   it('preserves manifest.views declaration order', () => {
     // Mirrors `views[]` in manifest.js exactly.  When a new view is
-    // added, append here AND to manifest.js (preserves Q2: declaration
+    // added, append here AND to manifest.js (preserves: declaration
     // order = render order).
     expect(navModel.sections.map((s) => s.id)).toEqual([
       'open',
       'mine',
-      'mastered',     // Slice B.2.1 (2026-05-20) — middle section of mine.html
+      'mastered',     // .1 (2026-05-20) — middle section of mine.html
       'claimable',
-      'review',       // Slice B.2.2 (2026-05-20) — review.html reviewer queue
-      'dag',          // Slice B.1   (2026-05-20)
-      'inbox',        // Slice B.2.3 (2026-05-20) — inbox.html notification feed
-      'pod-settings', // Slice B.2.4 (2026-05-20) — pod-settings.html V0.4-adopt
+      'review',       // .2 (2026-05-20) — review.html reviewer queue
+      'dag',          // (2026-05-20)
+      'inbox',        // .3 (2026-05-20) — inbox.html notification feed
+      'pod-settings', // .4 (2026-05-20) — pod-settings.html -adopt
     ]);
   });
 
@@ -54,7 +54,7 @@ describe('Slice B.1: renderWeb(tasksManifest) NavModel', () => {
     expect(dag.title).toBe('DAG');
     expect(dag.itemType).toBe('task');
     // No `filter` (full forest), no `sort` (DAG order preserved by
-    // `flattenDagTree`), no `audience` (V0 — no SP-5b consumer).
+    // `flattenDagTree`), no `audience` (V0 — no consumer).
     expect(dag.filter).toBeUndefined();
     expect(dag.sort).toBeUndefined();
     expect(dag.audience).toBeUndefined();

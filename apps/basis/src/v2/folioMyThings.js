@@ -1,7 +1,7 @@
 /**
- * basis v2 — Folio "My things" private view (P6.M7, board 10A).
+ * basis v2 — Folio "My things" private view.
  *
- * Board 10A reframes the user's private Folio as the private kring: a
+ * This view reframes the user's private Folio as the private kring: a
  * notes-list of items the user owns that aren't shared anywhere.  This
  * substrate is the pure projector — given the raw Folio list and the
  * user's webid, return the rows the notes-list view should render.
@@ -11,7 +11,7 @@
  *    absent — legacy items default to mine), AND
  *  - it carries no circle hint (no circleId/circleId/groupId/audience).
  *
- * The companion to this view is [[folioSharedFilters]] (P6.M8), which
+ * The companion to this view is [[folioSharedFilters]], which
  * powers the "Shared by me / Shared with me" toggles on the same screen.
  */
 

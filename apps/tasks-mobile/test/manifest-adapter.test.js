@@ -1,5 +1,5 @@
 /**
- * Slice C.1 (2026-05-20) — NavModel adapter for tasks-mobile.
+ * NavModel adapter for tasks-mobile.
  *
  * Locks the wire-shape of `createNavModelAdapter(tasksManifest,
  * {callSkill})` so RN screens (WorkspaceScreen first, then the rest
@@ -41,7 +41,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
     expect(open.id).toBe('open');
     expect(open.title).toBe('Open');
     expect(open.itemType).toBe('task');
-    // V0.2 Q7 dataSource — explicit listOpen({type:'task'}).
+    // dataSource — explicit listOpen({type:'task'}).
     expect(open.dataSource).toEqual({ skillId: 'listOpen', args: { type: 'task' } });
   });
 
@@ -68,17 +68,17 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
     const mine = adapter.getSection('mine');
     await adapter.fetchSection(mine);
 
-    // V0.2 — listMine declared without `args`, so fetchSectionItems
+    // listMine declared without `args`, so fetchSectionItems
     // calls it with the empty default ({}). This is the gate that
     // would catch a regression where the helper fell through to the
-    // Q6 rule-b fallback (which would call listOpen).
+    // rule-b fallback (which would call listOpen).
     expect(callSkill).toHaveBeenCalledWith('listMine', {});
   });
 
   /*
-   * Slice C.2 (2026-05-20) — MyWorkScreen consumer.  Three sections
+   * MyWorkScreen consumer. Three sections
    * resolve via the adapter; each must call the right skill id via
-   * its manifest dataSource (Q7).  Mirrors the WorkspaceScreen
+   * its manifest dataSource. Mirrors the WorkspaceScreen
    * `open`-section gate above, extended for the three-section RN
    * screen so a regression in any section's dataSource is caught
    * here (not at runtime via a broken pull-to-refresh).
@@ -89,7 +89,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       expect(mastered).toBeTruthy();
       expect(mastered.id).toBe('mastered');
       expect(mastered.itemType).toBe('task');
-      // V0.2 Q7 dataSource — explicit listMyMasteredTasks (no args).
+      // dataSource — explicit listMyMasteredTasks (no args).
       expect(mastered.dataSource).toEqual({ skillId: 'listMyMasteredTasks' });
     });
 
@@ -98,7 +98,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       expect(claimable).toBeTruthy();
       expect(claimable.id).toBe('claimable');
       expect(claimable.itemType).toBe('task');
-      // V0.2 Q7 dataSource — explicit listClaimable (no args).
+      // dataSource — explicit listClaimable (no args).
       expect(claimable.dataSource).toEqual({ skillId: 'listClaimable' });
     });
 
@@ -127,8 +127,8 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
     it('all three MyWork sections dispatch their own skill (no cross-talk)', async () => {
       // Stronger gate than the per-section tests above — proves that
       // resolving section A doesn't accidentally hand the screen
-      // section B's dataSource.  This is the regression the V0.2 Q7
-      // lift was designed to prevent (pre-V0.2 the mapping was
+      // section B's dataSource. This is the regression the
+      // lift was designed to prevent (pre- the mapping was
       // inline per-page; one accidental refactor could swap them).
       callSkill.mockReset();
       callSkill.mockResolvedValue({ items: [] });
@@ -143,11 +143,11 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
   });
 
   /*
-   * Slice C.3 (2026-05-20) — ReviewScreen consumer.  The reviewer
+   * ReviewScreen consumer. The reviewer
    * queue is a single section (`review`) backed by
    * `listAwaitingApproval` (B.2.2-declared); per-row Approve/Reject
    * buttons come from `renderItemActions(section, item)` filtered by
-   * the manifest's V0.7 DoD-lifecycle `appliesTo.state: ['submitted']`
+   * the manifest's DoD-lifecycle `appliesTo.state: ['submitted']`
    * gate.  Mirrors sliceB2_2-review.test.js's web-side coverage,
    * extended for the RN adapter consumer so a regression in the
    * `review` section's data source OR the action set's state gate is
@@ -164,7 +164,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       expect(review.id).toBe('review');
       expect(review.title).toBe('Awaiting approval');
       expect(review.itemType).toBe('task');
-      // V0.2 Q7 dataSource — explicit listAwaitingApproval (no args).
+      // dataSource — explicit listAwaitingApproval (no args).
       expect(review.dataSource).toEqual({ skillId: 'listAwaitingApproval' });
     });
 
@@ -181,7 +181,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
 
     it('renderItemActions(review, submitted) surfaces approve + reject + revoke', () => {
       const review = adapter.getSection('review');
-      // V2.7 — listAwaitingApproval stamps `status: 'submitted'` on
+      // listAwaitingApproval stamps `status: 'submitted'` on
       // every returned item (server-side effectiveStatus); the
       // adapter's deriveItemState honours the explicit status.
       const submitted = {
@@ -251,10 +251,10 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
   });
 
   /*
-   * Slice C.4 (2026-05-20) — InboxScreen consumer.  The inbox queue
-   * (`inbox` section, V0.2 dataSource `listMyInbox`) is the first RN
-   * screen to consume BOTH the V0.4 generic appliesTo gate (per-kind
-   * dispatch via `appliesTo.kind`) AND the V0.4 Q19 section-header
+   * InboxScreen consumer. The inbox queue
+   * (`inbox` section, dataSource `listMyInbox`) is the first RN
+   * screen to consume BOTH the generic appliesTo gate (per-kind
+   * dispatch via `appliesTo.kind`) AND the section-header
    * CTAs (`section.sectionActions[]` for clearInbox).  This block
    * locks both substrate features end-to-end + a happy-path for the
    * adapter's new `renderSectionActions` helper.
@@ -271,7 +271,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       expect(inbox.id).toBe('inbox');
       expect(inbox.title).toBe('Notifications');
       expect(inbox.itemType).toBe('inbox-item');
-      // V0.2 Q7 dataSource — explicit listMyInbox + limit pin.
+      // dataSource — explicit listMyInbox + limit pin.
       expect(inbox.dataSource).toEqual({ skillId: 'listMyInbox', args: { limit: 200 } });
     });
 
@@ -289,14 +289,14 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       };
       const ids = adapter.renderItemActions(inbox, proposal).map((a) => a.opId).sort();
 
-      // V0.4 generic appliesTo: kind:'subtask-proposal' gates these.
+      // generic appliesTo: kind:'subtask-proposal' gates these.
       expect(ids).toContain('approveSubtaskProposal');
       expect(ids).toContain('declineSubtaskProposal');
       // clearInboxItem has no `kind` gate — surfaces on every event.
       expect(ids).toContain('clearInboxItem');
       // Negatives — the request-kind ops MUST NOT surface on a
       // proposal-kind event (per-kind gate is the whole point of
-      // V0.4's generic appliesTo).
+      // 's generic appliesTo).
       expect(ids).not.toContain('approveSubtaskRequest');
       expect(ids).not.toContain('declineSubtaskRequest');
       // clearInbox is a section-header CTA, NOT a per-row op.
@@ -341,7 +341,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       const ids = actions.map((a) => a.opId);
 
       // clearInbox declares `surfaces.ui.placement: 'section-header'`;
-      // renderWeb projects it into section.sectionActions[] (Q19).
+      // renderWeb projects it into section.sectionActions[].
       expect(ids).toEqual(['clearInbox']);
       expect(actions[0]).toMatchObject({
         opId:  'clearInbox',
@@ -400,7 +400,7 @@ describe('Slice C.1: createNavModelAdapter(tasksManifest, {callSkill})', () => {
       expect(ids).not.toContain('claimTask');      // state:['open']
       expect(ids).not.toContain('approveTask');    // state:['submitted']
       // `reassignTask` + `removeTask` have NO surfaces.ui — they're
-      // intentionally absent from NavModel (Q6 rule c: non-creative
+      // intentionally absent from NavModel (rule c: non-creative
       // verbs need `surfaces.ui` to surface).  TaskDetailScreen's
       // admin-CTAs still call the skills directly; lifting them into
       // the manifest's web surface is a separate slice (Phase 1 +

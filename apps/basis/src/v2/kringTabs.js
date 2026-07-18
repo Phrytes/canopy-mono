@@ -1,6 +1,6 @@
 /**
  * basis v2 — per-kring bottom tabs derived from Functies axis
- * (SP-13.3 · v2 §1 board mockups).
+ * (v2 1 board mockups).
  *
  * The kring view's bottom tab bar isn't a fixed Kringen/Stroom/Mij set
  * (that's the LAUNCHER bar).  Inside a kring it derives from the
@@ -15,7 +15,7 @@
  *   memberDirectory → LEDEN     (always rendered last when on)
  *
  * `houseRules` doesn't get a tab — it lives in the kring header's
- * overflow `⋯` menu as "Huisregels" (per board 4).
+ * overflow `⋯` menu as "Huisregels" (per).
  *
  * Boards in `Canopy interface · v2 — kring als bouwsteen · print.pdf`:
  *   - Voorbeeld 1 · BUURT     → GESPREK / PRIKBORD / LEDEN

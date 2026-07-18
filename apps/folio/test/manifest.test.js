@@ -1,7 +1,7 @@
 /**
- * Slice F.1 — folio first manifest (V0.8, 2026-05-21).
+ * folio first manifest (2026-05-21).
  *
- * Validates the manifest's structure + Q27 confirm hints on the three
+ * Validates the manifest's structure + confirm hints on the three
  * destructive ops the Tier C audit (Project Files/Substrates/tier-c-proposals.md) flagged for
  * lift.  The manifest is declaration-only today (no adapter consumes
  * it yet); these tests pin the shape so future adopters know what to
@@ -76,7 +76,7 @@ describe('Slice F.1 — folio Q27 confirm declarations', () => {
   it('forceRepush declares Q27 confirm with severity:warn + section-header placement', () => {
     const op = folioManifest.operations.find((o) => o.id === 'forceRepush');
     expect(op).toBeTruthy();
-    // Q8 wildcard — folder-wide op surfaces on every view's header.
+    // wildcard — folder-wide op surfaces on every view's header.
     expect(op.appliesTo).toEqual({ type: '*' });
     expect(op.surfaces.ui.placement).toBe('section-header');
     expect(op.surfaces.ui.confirm).toEqual({

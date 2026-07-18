@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — cross-circle Stream (RN screen, board 5B).
+ * basis-mobile v2 — cross-circle Stream (RN screen).
  *
  * RN counterpart of web's circleStream over the SAME shared projection
  * (`buildCircleStream`): one timeline interleaving every circle's inbound

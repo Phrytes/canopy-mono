@@ -1,5 +1,5 @@
 /**
- * V2.2 — bot.invoice command.
+ * bot.invoice command.
  */
 
 import { describe, it, expect } from 'vitest';

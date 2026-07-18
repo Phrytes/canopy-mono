@@ -1,5 +1,5 @@
 /**
- * greedy planner — Tasks V2.4.
+ * greedy planner — Tasks.
  *
  * Pure function over (open assignments, busy spans, working-hours
  * windows, now). No I/O. Returns a sorted list of suggestions:

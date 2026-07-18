@@ -1,7 +1,7 @@
 /**
  * @onderling/sdk/high — the HIGH-layer opinionated helpers.
  *
- * SP-9 sub-path: the thin helpers built ON the low layer that inject the
+ * sub-path: the thin helpers built ON the low layer that inject the
  * defaults — createAgent (Tier-3 run-as-agent), connectSkill (Tier-1 plain
  * fn → skill) and wireSkill (manifest op → skill handler). A consumer who
  * wants only the high layer:

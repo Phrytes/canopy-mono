@@ -19,7 +19,7 @@ import QRCode from 'react-native-qrcode-svg';
  * @param {string} args.value          payload to encode
  * @param {number} [args.size=240]     side length in DIPs
  * @param {string} [args.backgroundColor='#fff']
- * @param {string} [args.color='#000']
+ * @param {string} [args.color='']
  */
 export function QrCodeView({ value, size = 240, backgroundColor = '#fff', color = '#000' }) {
   if (typeof value !== 'string' || value.length === 0) return null;

@@ -1,5 +1,5 @@
 /**
- * Shared extension-mapping loader (feedback-extension P2 — web≡mobile core;
+ * Shared extension-mapping loader (feedback-extension — web≡mobile core;
  * repo-split W4, objective F).
  *
  * Platform-independent: the caller injects the store (web localStorage /

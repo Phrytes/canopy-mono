@@ -1,5 +1,5 @@
 /**
- * Bundle G3 (#265) — mobile NKN-on-pod wrapper contract.
+ * Bundle G3 — mobile NKN-on-pod wrapper contract.
  *
  * Pins the shape `buildLookupPeerAddrByWebid` + `buildPublishPeerAddrToPod`
  * expose so /lookup-peer + /publish-peer slash handlers (in canonical

@@ -1,5 +1,5 @@
 /**
- * `renderWeb` V0 (Slice A.1) — unit tests.
+ * `renderWeb` V0 — unit tests.
  *
  * Pure-data projector test: inline manifests, no consumer (no
  * household / tasks-v0 dependency).  A.2 will add the first real
@@ -7,12 +7,12 @@
  *
  * Tests cover the five owner decisions from
  * `DESIGN-navmodel-sketch.md` (locked 2026-05-20):
- *   Q1 detail-view: NOT present in V0 NavModel
- *   Q2 section ordering: manifest declaration order
- *   Q3 globals source: inferred from surfaces.ui.placement === 'global'
- *   Q4 strict equality: tests written so renderMobile can later
+ *   detail-view: NOT present in V0 NavModel
+ *   section ordering: manifest declaration order
+ *   globals source: inferred from surfaces.ui.placement === 'global'
+ *   strict equality: tests written so renderMobile can later
  *      produce structurally-equal output
- *   Q5 view.sort passed through
+ *   view.sort passed through
  */
 
 import { describe, it, expect } from 'vitest';
@@ -210,7 +210,7 @@ describe('renderWeb V0', () => {
       expect(claim.label).toBe('Claim');
     });
 
-    // V0.4 regression (surfaced by C.4) — buildItemAction used to strip
+    // regression (surfaced by C.4) — buildItemAction used to strip
     // every appliesTo field except type+state, silently dropping the
     // generic gate the adapter's itemMatchesAppliesTo expects.
     it('itemAction preserves generic appliesTo fields (V0.4 per-kind gating)', () => {
@@ -298,14 +298,14 @@ describe('renderWeb V0', () => {
   });
 });
 
-/* ─── Q6: type-enum fallback + prefilledParams (added 2026-05-20) ─── */
+/* ───: type-enum fallback + prefilledParams (added 2026-05-20) ─── */
 
 const MULTI_TYPE_SYNTH = {
   app:       'mt',
   itemTypes: ['shopping', 'errand', 'task'],
   operations: [
     // (a) verb=add WITHOUT surfaces.ui, WITHOUT appliesTo, WITH type-enum param.
-    //     Surfaces in EACH section whose itemType is in the enum (Q6 rule a).
+    //     Surfaces in EACH section whose itemType is in the enum (rule a).
     {
       id:     'addItem',
       verb:   'add',
@@ -422,7 +422,7 @@ describe('renderWeb V0 — Q6 type-enum fallback + prefilledParams', () => {
   });
 });
 
-/* ─── V0.2: Q7 view.dataSource + Q8 appliesTo wildcard ─────────────── */
+/* ───: view.dataSource + appliesTo wildcard ─────────────── */
 
 const V02_SYNTH = {
   app:       'v02',
@@ -652,7 +652,7 @@ describe('renderWeb V0.2 — Q10 creative verbs (add + register)', () => {
     app:       'cv',
     itemTypes: ['task', 'contact'],
     operations: [
-      // verb='register' op without surfaces.ui — Q10 surfaces it.
+      // verb='register' op without surfaces.ui — surfaces it.
       {
         id:        'registerName',
         verb:      'register',
@@ -660,7 +660,7 @@ describe('renderWeb V0.2 — Q10 creative verbs (add + register)', () => {
         params:    [{ name: 'text', kind: 'string', required: true }],
         surfaces:  { chat: { hint: 'register name' } },
       },
-      // verb='add' op — also surfaces (Q6 rule a, now generalised).
+      // verb='add' op — also surfaces (rule a, now generalised).
       {
         id:        'addTask',
         verb:      'add',
@@ -772,7 +772,7 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
     expect(noFields).not.toHaveProperty('fields');
   });
 
-  /* ─── Q21 (V0.5, 2026-05-22) — patch.argWrapper pass-through ─────── */
+  /* ─── (2026-05-22) — patch.argWrapper pass-through ─────── */
 
   it('Q21 — field.patch.argWrapper passes through verbatim when present', () => {
     const nav = renderWeb({
@@ -801,7 +801,7 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
     const nav = renderWeb(MANIFEST);
     const settings = nav.sections.find((s) => s.id === 'settings');
     const lang = settings.fields.find((f) => f.name === 'language');
-    // Q18 fields stayed flat — argWrapper key must NOT appear.
+    // fields stayed flat — argWrapper key must NOT appear.
     expect(lang.patch).toEqual({ opId: 'updateSettings', argName: 'language' });
     expect(lang.patch).not.toHaveProperty('argWrapper');
   });
@@ -833,7 +833,7 @@ describe('renderWeb V0.4 — Q18 view.fields (record-shape patch fields)', () =>
 
 describe('renderWeb V0.7 — Q26 field.requiresField conditional display', () => {
   // B.2.4 signal: pod-settings groupPodUri only meaningful when
-  // policy ∈ {centralised, hybrid}.  Q26 declares the gate; adapter
+  // policy ∈ {centralised, hybrid}. declares the gate; adapter
   // hides the field when policy is 'personal'.
   const MANIFEST = {
     app:       'cond-rec',
@@ -887,7 +887,7 @@ describe('renderWeb V0.7 — Q26 field.requiresField conditional display', () =>
 
 describe('renderWeb V0.7 — Q25 field.readSkill multi-skill records', () => {
   // E.4 signal: stoop's holidayMode is reachable both via getMyProfile
-  // AND via dedicated getHolidayMode.  Q25 declares the dedicated skill
+  // AND via dedicated getHolidayMode. declares the dedicated skill
   // so the adapter can refresh single fields without re-fetching the
   // whole record.
   const MANIFEST = {
@@ -954,7 +954,7 @@ describe('renderWeb V0.7 — Q25 field.readSkill multi-skill records', () => {
 });
 
 describe('renderWeb V0.6 — Q23 field.type file / image', () => {
-  // Q23 documents the recognized field.type set + adds `'file'` and
+  // documents the recognized field.type set + adds `'file'` and
   // `'image'` for byte-shaped fields.  Substrate passes them through
   // verbatim; the dispatch contract (consumer-side transform) is
   // documented in JSDoc.
@@ -996,7 +996,7 @@ describe('renderWeb V0.6 — Q23 field.type file / image', () => {
 describe('renderWeb V0.8 — Q27 confirm severity hint', () => {
   // Manifest with confirm on each label-bearing surface: an affordance
   // (creative verb, section placement), an item-action (state-gated),
-  // and a section-header CTA (Q19 placement).
+  // and a section-header CTA (placement).
   const MANIFEST = {
     app:       'destructive-rec',
     itemTypes: ['note'],
@@ -1074,7 +1074,7 @@ describe('renderWeb V0.6 — Q22 labelKey localisation passthrough', () => {
   // affordance, an item-action op (state-gated), and a field on a
   // record-shape view.  The projector must pass labelKey through
   // unchanged on each surface; absent labelKey leaves NavModel
-  // identical to V0.5 (no extra key).
+  // identical to (no extra key).
   const MANIFEST = {
     app:       'localisation-rec',
     itemTypes: ['task', 'settings-record'],
@@ -1279,9 +1279,9 @@ describe("renderWeb V0.2 — Q8 appliesTo.type: '*' wildcard", () => {
   });
 });
 
-/* ─── D / SP-3b — surfaces.page → NavModel.pages[] ─────────────────── */
+/* ─── D / — surfaces.page → NavModel.pages[] ─────────────────── */
 
-// A manifest whose ops declare `surfaces.page` (the #180-validated shape).
+// A manifest whose ops declare `surfaces.page` (the -validated shape).
 const PAGE_SYNTH = {
   app: 'pagey',
   itemTypes: [],

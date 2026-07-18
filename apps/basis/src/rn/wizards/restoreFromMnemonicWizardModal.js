@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  Mobile parity for
- * src/web/wizards/restoreFromMnemonicWizard.js (Bundle F P2, #258).
+ * src/web/wizards/restoreFromMnemonicWizard.js.
  *
  * 3-step destructive flow:
  *   1. Mnemonic — paste / type 12 or 24 words

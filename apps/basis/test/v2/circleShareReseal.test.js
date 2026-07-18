@@ -1,5 +1,5 @@
 /**
- * share-policy slice 3 (Phase 1) — the CRITICAL real-key proof for cross-circle recipient re-seal.
+ * share-policy — the CRITICAL real-key proof for cross-circle recipient re-seal.
  *
  * The whole point of the slice: a recipient whose sealing key is DIFFERENT from the source group's key can
  * decrypt a shared sealed item, and a non-recipient (a third, distinct keypair) CANNOT — even if granted the

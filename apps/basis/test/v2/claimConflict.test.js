@@ -1,5 +1,5 @@
 /**
- * Slice 3 (PLAN-task-claim-partition) — the claim-conflict SURFACE reuses
+ * (PLAN-task-claim-partition) — the claim-conflict SURFACE reuses
  * recipeConflict. A recorded double-claim maps to a one-block recipe conflict
  * so the existing yours/theirs/both resolver drives the card.
  */

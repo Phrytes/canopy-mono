@@ -1,5 +1,5 @@
 /**
- * basis — date parser tests.  v0.3 sub-slice 3.4.
+ * basis — date parser tests. v0.3.
  */
 import { describe, it, expect } from 'vitest';
 

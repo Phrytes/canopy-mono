@@ -1,5 +1,5 @@
 /**
- * SP-8 — saved cross-circle views.
+ * saved cross-circle views.
  *
  * A saved cross-circle view = a `view` item whose `audience` is a SET
  * of audiences (typically circle-refs, stored as a `union`).  Coverage:

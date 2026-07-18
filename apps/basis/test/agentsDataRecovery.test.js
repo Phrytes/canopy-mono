@@ -1,5 +1,5 @@
 /**
- * agents P3 — data-recovery ops through the REAL composition (web wiring).
+ * agents — data-recovery ops through the REAL composition (web wiring).
  *
  * Proves the end-to-end J7 arc on the actual plumbing: a circle pod built
  * the way `circleApp.makeCirclePodClient` does it (same backend into

@@ -1,5 +1,5 @@
 /**
- * folio — pure agent cores for the NODE ops (Slice 1c, follow-up to Slice 1b's
+ * folio — pure agent cores for the NODE ops (, follow-up to 's
  * browser cores in `agentCores.js`; PLAN-folio-as-file-agent.md).
  *
  * These are the `runtime:'node'` manifest ops — folio's local-SyncEngine

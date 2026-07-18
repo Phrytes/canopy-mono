@@ -1,11 +1,11 @@
 /**
- * createOpBinding — V0.8 (2026-05-21) — T2-tier helper for hand-coded
+ * createOpBinding — (2026-05-21) — T2-tier helper for hand-coded
  * pages that want to read from the manifest without doing full
  * substrate rendering.
  *
  * Per `DESIGN-tier-policy.md`, a T2 page is hand-coded HTML/JSX that
  * still reads labels / severities / confirm messages from its app's
- * manifest.  Pre-V0.8 the pages did this manually:
+ * manifest. Pre- the pages did this manually:
  *
  *     const op = stoopManifest.operations.find(o => o.id === 'signOutOfPod');
  *     if (!confirm(op.surfaces.ui.confirm.message)) return;
@@ -61,7 +61,7 @@ export function createOpBinding({ manifest, callSkill, confirmFn } = {}) {
   }
 
   /**
-   * Resolve a label for an op, honouring Q22 labelKey when an localisation
+   * Resolve a label for an op, honouring labelKey when an localisation
    * function is supplied.
    *
    *   labelFor('signOutOfPod')           // → 'Uitloggen'  (fallback)
@@ -80,7 +80,7 @@ export function createOpBinding({ manifest, callSkill, confirmFn } = {}) {
   }
 
   /**
-   * Dispatch an op, honouring its Q27 confirm hint.
+   * Dispatch an op, honouring its confirm hint.
    *
    *   - If `op.surfaces.ui.confirm` is present with severity 'warn' or
    *     'danger', shows `confirm(message)` and returns `undefined` on

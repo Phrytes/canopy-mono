@@ -1,6 +1,6 @@
 /**
- * Inbound help-with handlers.  Bundle H Phase 2 (#269) + Phase 4
- * (#271 — 2026-05-27).
+ * Inbound help-with handlers. Bundle H Phase 2 + Phase 4
+ * (2026-05-27).
  *
  * Two factories:
  *
@@ -54,7 +54,7 @@ export function makeHandleHelpWithAccepted({
 }
 
 /**
- * Bundle H Phase 4 (#271, 2026-05-27) — lifted from
+ * lifted from
  * `apps/basis/web/main.js:2622`.  Builds + surfaces a structured
  * responder-card bubble in the DM thread paired with `fromAddr`.  The
  * card carries the post context + the helper's offer body + identifying

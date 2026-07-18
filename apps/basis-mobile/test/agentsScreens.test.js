@@ -1,6 +1,6 @@
 /**
  * agents — MOBILE screen verification (PLAN-agent-management-surface
- * P1/P2 UI, mobile half).
+ * UI, mobile half).
  *
  * web ≡ mobile by construction: mobile's own composition
  * (`buildManifestsByOrigin`, derived from the single manifestList) must
@@ -12,7 +12,7 @@
  * is that mobile's manifest pipeline surfaces the agents screens at all
  * (the dual-truth trap).
  *
- * Q15/Q17 drill-down (mobile half of "generic screen drill-down", web pin:
+ * drill-down (mobile half of "generic screen drill-down", web pin:
  * apps/basis/test/v2/screenDrilldown.dom.test.js): the panel wiring is
  * exercised at the LOGIC level through the exact module the launcher imports
  * (`src/core/screenPanelDrilldown.js` — shared screenDrilldown bound to
@@ -59,7 +59,7 @@ describe('agents — mobile composition resolves the your-agents screens', () =>
   });
 });
 
-/* ── Q15 drill-down — row → detail with selection context (mobile panel logic) ── */
+/* ── drill-down — row → detail with selection context (mobile panel logic) ── */
 
 // The exact host context the launcher's panel builds for a top-level open
 // (the active circle; no selection yet).

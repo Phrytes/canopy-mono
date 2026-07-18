@@ -2,7 +2,7 @@
  * deriveItemState — unit tests.
  *
  * Verifies both the V0 lifecycle (open|complete|removed) used by
- * household lists AND the V0.7 DoD lifecycle (claimed|submitted|
+ * household lists AND the DoD lifecycle (claimed|submitted|
  * rejected|complete|removed|open) used by tasks-v0 — the helper
  * subsumes both, per the B.2.0 brief.
  *

@@ -1,5 +1,5 @@
 /**
- * basis v2 — P6.M7 "My things" notes-list (board 10A) tests.
+ * basis v2 — "My things" notes-list tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

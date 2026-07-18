@@ -1,5 +1,5 @@
 /**
- * NodeFsBackend — persistent Node fs StorageBackend (P3 Phase B / OQ-2).
+ * NodeFsBackend — persistent Node fs StorageBackend (Phase B OQ-2).
  *
  * Covers the StorageBackend contract (parity with MemoryBackend) PLUS
  * the reason it exists: state — and especially the cache-mode

@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  Mobile parity for
- * src/web/wizards/settingsWizard.js (Bundle F P2, #258).
+ * src/web/wizards/settingsWizard.js.
  *
  * NOT a stepper — a settings panel.  Reads stoop profile +
  * holiday-mode via loadSettings, then exposes:
@@ -10,7 +10,7 @@
  *
  * Shares src/core/wizards/settingsState.js with web.
  *
- * Future Bundle F P3 reframes this to a per-app composed settings
+ * Future Bundle F reframes this to a per-app composed settings
  * screen (each app provides its own — see priority doc).  For now
  * this matches web's settingsWizard 1:1.
  */
@@ -27,7 +27,7 @@ import { Body, Field, Actions, ErrorBanner } from './_kit.js';
 // Pod sign-in section (Bundle I, 2026-05-27).  Mirrors
 // apps/tasks-mobile/src/screens/PodSettingsScreen.jsx: status row,
 // issuer picker, sign-in / sign-out buttons.  Without provisioned
-// creds (#167 pending), startSignIn returns a "no issuer redirect"-
+// creds (pending), startSignIn returns a "no issuer redirect"
 // style error — UI surfaces it without crashing.
 const KNOWN_ISSUERS = [
   { id: 'inrupt',         label: 'Inrupt Pod Spaces',  url: 'https://login.inrupt.com' },

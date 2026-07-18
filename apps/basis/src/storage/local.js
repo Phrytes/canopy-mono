@@ -15,7 +15,7 @@
  * The `_listings` Map is serialised as an array of entries (Maps
  * don't survive structured-clone in older browsers reliably).
  *
- * Phase v0.2 sub-slice 2.8 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  * Pod sync (per OQ-3 user resolution: yes via the user's pod) lands
  * in v0.6 via the sibling `podSync.js`.
  */

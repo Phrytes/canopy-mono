@@ -1,5 +1,5 @@
 /**
- * pickDocument — substrate coverage (#267).  Exercises the
+ * pickDocument — substrate coverage. Exercises the
  * SDK 50+ assets-shape and the legacy SDK <50 success-shape;
  * cancel; multi-asset; per-asset read-failure; pickOneDocument.
  */

@@ -1,5 +1,5 @@
 /**
- * contact/bot exposed-skill registry on mobile (feedback-extension P4 parity).
+ * contact/bot exposed-skill registry on mobile (feedback-extension parity).
  *
  * `bootAgentBundle` constructs the SHARED `createContactSkillRegistry` from
  * `agent.peers` in its real-boot path (and exposes it as `bundle.contactSkills`).

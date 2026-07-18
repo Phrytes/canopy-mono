@@ -10,7 +10,7 @@
  *   item rendering.  `@onderling/protocol` runs multi-step state machines.
  *   Designed forward-compatible with their public APIs — see README §Boundary.
  *
- * Phase: SP-0 (greenfield; no consumers until SP-1).
+ * Phase: (greenfield; no consumers until).
  */
 
 export {
@@ -20,9 +20,9 @@ export {
   classifyItemTypes,
   // L4 ≡ B — registry recognition for a declared noun/item-type (alias-aware).
   isRegistryType,
-  // P1 (feedback-extension) — composite-op `onError` policy allow-list.
+  // (feedback-extension) — composite-op `onError` policy allow-list.
   COMPOSITE_ON_ERROR,
-  // B · Slice 2 (ruling Q1) — settings-declaration allow-lists.
+  // B · (ruling) — settings-declaration allow-lists.
   SETTING_KINDS,
   SETTING_SCOPES,
   // Nav-chrome (D / Surface 1) — the shared NavTarget `kind` allow-list.
@@ -45,7 +45,7 @@ export {
   atomFor,
 } from './atoms.js';
 
-// B · Slice 2 (ruling Q1) — read helpers over manifest.settings (the wizard/form layer).
+// B · (ruling) — read helpers over manifest.settings (the wizard/form layer).
 export {
   settingsOf,
   settingDefaults,
@@ -67,7 +67,7 @@ export {
 // §1b — the synthetic op-id codec for GENERIC (op-less) capabilities (catalog synth ⇄ dispatch decode).
 export { encodeGenericOpId, isGenericOpId, decodeGenericOpId } from './genericOp.js';
 
-// B · Slice 2 (ruling Q3) — the admin freedom template + the narrowed effective set the gate reads.
+// B · (ruling) — the admin freedom template + the narrowed effective set the gate reads.
 export {
   FREEDOM_LEVELS,
   OPT_OUT_CONSEQUENCES,
@@ -119,10 +119,10 @@ import { renderMobile }      from './renderMobile.js';
 //                 `surfaces.slash.match`); shared by the household TG-bot +
 //                 the basis circle bot. Wraps renderSlash into the gate shape.
 //   renderAttachments — the attach ("+") menu (from each op's `surfaces.attach`);
-//                 P2 peer of renderSlash. See renderAttachments.js.
+//                 peer of renderSlash. See renderAttachments.js.
 export { renderChat, renderSlash, renderGate, renderAttachments };
 
-// SHELL family (Slice A.1, 2026-05-20 — web/mobile surface projection).
+// SHELL family (2026-05-20 — web mobile surface projection).
 //   renderWeb    — DOM pages + forms (NavModel). See DESIGN-navmodel-sketch.md.
 //   renderMobile — V0 alias: renderMobile === renderWeb (same NavModel, different
 //                  adapter). Cross-surface equivalence is locked by

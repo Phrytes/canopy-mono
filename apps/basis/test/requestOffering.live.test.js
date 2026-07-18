@@ -1,5 +1,5 @@
 /**
- * REQUESTABLE BRIDGE — the P4 host-wiring seam, LIVE on the basis real agent.
+ * REQUESTABLE BRIDGE — the host-wiring seam, LIVE on the basis real agent.
  *
  * Proves the `requestOffering` peer-facing dispatcher wired onto the live host agent
  * (realAgent.js): a peer (A) invokes a local member's REQUESTABLE offering and, instead

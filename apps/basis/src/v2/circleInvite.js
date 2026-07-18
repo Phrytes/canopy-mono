@@ -23,12 +23,12 @@ import { initialState, decodeInvite, finalSubmit } from '../core/wizards/joinGro
  * Build a `stoop-invite://` URI for an EXISTING circle so the admin can show it as a QR.
  * Admin-gated by the substrate (getCurrentMembershipCode returns {error:'admin-only'} otherwise).
  *
- * B · Slice 4 — the invite optionally EMBEDS the circle's freedom template (`capabilities` +
+ * the invite optionally EMBEDS the circle's freedom template (`capabilities` +
  * `apps`), symmetric with the embedded rules doc. It lets the joiner review the circle's OPT-OUTABLE
  * capabilities at join (before redeeming) and record their opt-outs — see `circleConsent.js`. Purely
  * additive: an invite built without a policy carries no template and the join consent step is a no-op.
  *
- * Skills→property fold-in phase C (Q3) — the invite optionally EMBEDS `offeringsMatching: true`, the
+ * Skills→property fold-in phase C — the invite optionally EMBEDS `offeringsMatching: true`, the
  * circle's "this kring is about skills-matching" charter signal (the board-8 circle-offering record,
  * `offeringsMatchingEnabled` in @onderling/kring-host/circleOfferings — readable only on the ADMIN device
  * that builds the invite, so it must ride the invite to reach the joiner pre-join). The join wizard
@@ -60,11 +60,11 @@ export async function buildCircleInviteUri({ callSkill, circleId, adminPeerAddr 
   const invite = {
     groupId: circleId, code, expiresAt,
     ...(adminPeerAddr ? { adminPeerAddr } : {}),
-    // B · Slice 4 — embed the freedom template so the joiner can review + opt out at join.
+    // embed the freedom template so the joiner can review + opt out at join.
     ...(capabilities && typeof capabilities === 'object' && !Array.isArray(capabilities) && Object.keys(capabilities).length
       ? { capabilities } : {}),
     ...(Array.isArray(apps) && apps.length ? { apps } : {}),
-    // Fold-in phase C (Q3) — only ever embedded as an explicit true; false/null stays absent.
+    // Fold-in phase C — only ever embedded as an explicit true; false/null stays absent.
     ...(offeringsMatching === true ? { offeringsMatching: true } : {}),
   };
   return { uri: encodeMembershipCodeUrl(invite), expiresAt };

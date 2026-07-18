@@ -1,5 +1,5 @@
 /**
- * V1.5 — cap-token-bound bot agent (the V1.5 plan item).
+ * cap-token-bound bot agent (the plan item).
  *
  * Asserts the real PolicyEngine path:
  *   - issueBotToken spawns a bot agent and stores a CapabilityToken in
@@ -157,7 +157,7 @@ describe('V1.5 — cap-token-bound bot agent', () => {
     const log = await circle.itemStore.auditLog({ itemId: id });
     const claim = log.find((e) => e.action === 'claim');
     expect(claim).toBeTruthy();
-    // V1.5 cap-token: actor = the bound webid (KID), not the bot's pubKey.
+    // cap-token: actor = the bound webid (KID), not the bot's pubKey.
     expect(claim.actor).toBe(KID);
     expect(claim.actorDisplayName).toMatch(/via bot/i);
 
@@ -192,7 +192,7 @@ describe('V1.5 — cap-token-bound bot agent', () => {
 
     // The bot's TokenRegistry lookup for any bot.* skill returns the
     // token; for skills outside the namespace, it returns null —
-    // proving the V1.5 follow-up A scope is honoured at the holder
+    // proving the follow-up A scope is honoured at the holder
     // side. PolicyEngine line 165 also enforces the same on the
     // verifier side; covered in packages/core/test/Permissions.test.js.
     const tasksId = circle.agent.pubKey;
@@ -321,9 +321,9 @@ describe('V1.5 — cap-token-bound bot agent', () => {
 
     const restoredEntry = circle2.botAgentRegistry.get(ANNE_CHAT);
     expect(restoredEntry).toBeTruthy();
-    // V2.0 — both bot identity AND token are stable across restarts.
-    // Bot vault is snapshot-restored (since V1.5 follow-up B); tasks
-    // agent identity is now also snapshot-restored (V2.0), so the
+    // both bot identity AND token are stable across restarts.
+    // Bot vault is snapshot-restored (since follow-up B); tasks
+    // agent identity is now also snapshot-restored, so the
     // token's `agentId` still matches and no rotation is needed.
     expect(restoredEntry.binding.botPubKey).toBe(originalBotPubKey);
     expect(restoredEntry.binding.tokenId).toBe(originalTokenId);

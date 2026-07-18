@@ -14,7 +14,7 @@
  *      raw text so the chat shell can render a "didn't understand"
  *      reply.
  *
- * Phase v0.1 sub-slice 1.4 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  */
 
 /**
@@ -221,7 +221,7 @@ function tokenize(s) {
     while (i < s.length && s[i] === ' ') i++;     // skip whitespace
     if (i >= s.length) break;
 
-    // v0.7.P1-followup 2026-05-23 (5th pass): handle both styles AND
+    // v0.7.-followup 2026-05-23 (5th pass): handle both styles AND
     // quoted values AFTER --key= boundaries.  Cases:
     //   "foo bar"              → one token: 'foo bar'
     //   'foo bar'              → one token: 'foo bar'

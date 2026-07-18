@@ -1,5 +1,5 @@
 /**
- * contactsRoster — the Contacten roster DOM render (feedback-extension P5).
+ * contactsRoster — the Contacten roster DOM render (feedback-extension).
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from 'vitest';

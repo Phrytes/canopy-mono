@@ -1,7 +1,7 @@
 /**
  * interestsMigration — one-time, silent seed of a person-level `interests` DRIVER on the root
  * persona from the bespoke learned interest signal (interests→drivers fold-in,
- * plans/NOTE-skills-properties-audit.md §4/Q6). Mirrors locationMigration.js /
+ * plans/NOTE-skills-properties-audit.md §4/). Mirrors locationMigration.js /
  * availabilityMigration.js: seed once, guarded by a marker, then never touch the old signal.
  *
  * Source: the stoop Layer-2 `getInterestProfile` snapshot — a TF-IDF profile learned from the

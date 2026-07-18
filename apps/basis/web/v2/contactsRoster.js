@@ -1,10 +1,10 @@
 /**
- * basis v2 — contacts roster (web DOM renderer, feedback-extension P5).
+ * basis v2 — contacts roster (web DOM renderer, feedback-extension).
  *
  * Pure render over the contact rows `listContacts` produces; the host injects
  * data + `t` + an `onOpen(contactId)` handler. Mirrors `renderCircleLauncher`'s
  * shape (no data fetching, no agent) so it stays unit-testable under happy-dom.
- * A bot row is tagged + shows its exposed-skill count (the P4 commands available
+ * A bot row is tagged + shows its exposed-skill count (the commands available
  * in that thread); tapping a row opens its 1:1 DM thread.
  */
 

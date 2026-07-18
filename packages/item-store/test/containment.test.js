@@ -1,5 +1,5 @@
 /**
- * containment (cluster K · K2/L2) over a CircleItemStore — the offer→list→tasks model.
+ * containment over a CircleItemStore — the offer→list→tasks model.
  * Covers: contain (ref + back-ref), heterogeneous + nested children, multi-parent, uncontain,
  * cascade=SURVIVE on delete, and the "loose items"/orphans list.
  */

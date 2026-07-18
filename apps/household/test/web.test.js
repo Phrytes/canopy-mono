@@ -1,5 +1,5 @@
 /**
- * household web UI smoke — Slice A.3 (PLAN-gui-chat-uplift.md).
+ * household web UI smoke — (PLAN-gui-chat-uplift.md).
  *
  * Boots the household-web bootstrap programmatically, then verifies:
  *   1. Every static asset (`/`, `/main.js`, `/style.css`) is served + non-empty.
@@ -39,7 +39,7 @@ describe('household web UI smoke (Slice A.3)', () => {
     expect(html).toContain('Household');
     expect(html).toContain('add-form');
     expect(html).toContain('id="tabs"');
-    // Slice A.4 — chat passthrough surface.
+    // chat passthrough surface.
     expect(html).toContain('chat-form');
     expect(html).toContain('chat-input');
   });
@@ -54,7 +54,7 @@ describe('household web UI smoke (Slice A.3)', () => {
     expect(js).toContain('/navmodel.json');
   });
 
-  // Slice B.2.0 — main.js imports the shared web-adapter helpers
+  // .0 — main.js imports the shared web-adapter helpers
   // from the `/lib/web-adapter/*.js` overlay (the same mechanism
   // tasks-ui.js uses for `/lib/dagFlatten.js`). Smoke-check that the
   // overlay endpoints serve each helper file with ESM `export`.
@@ -95,7 +95,7 @@ describe('household web UI smoke (Slice A.3)', () => {
     expect(nav.sections.map((s) => s.id)).toEqual([
       'shopping', 'errand', 'repair', 'schedule', 'tasks', 'members',
     ]);
-    // Spot-check Q6 prefilledParams plumbing — shopping section's
+    // Spot-check prefilledParams plumbing — shopping section's
     // addItem affordance must carry { type: 'shopping' } so the web
     // client dispatches addItem({type: 'shopping', text}) on submit.
     const shopping  = nav.sections.find((s) => s.id === 'shopping');

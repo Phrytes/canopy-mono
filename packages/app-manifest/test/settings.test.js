@@ -1,5 +1,5 @@
 /**
- * manifest.settings — B · Slice 2 (ruling Q1) declarative settings schema.
+ * manifest.settings — B · (ruling) declarative settings schema.
  * Validates the shape the creation wizard + inline forms render from.
  */
 import { describe, it, expect } from 'vitest';

@@ -1,12 +1,12 @@
 /**
- * useAdapterAction — V0.6 (Q24, 2026-05-20).
+ * useAdapterAction — (2026-05-20).
  *
  * Companion to `renderItemActions` / `renderSectionActions`: those
  * resolve WHICH op + WHICH args to dispatch from the manifest; this
  * hook does the dispatch without the screen wiring a per-op
  * `useSkill(opId)`.
  *
- * Pre-Q24 pattern (InboxScreen C.4):
+ * Pre- pattern (InboxScreen C.4):
  *
  *   const approveProposal = useSkill('approveSubtaskProposal');
  *   const declineProposal = useSkill('declineSubtaskProposal');
@@ -30,7 +30,7 @@
  * called; reply parts are unwrapped.  Same activeCircleId semantics as
  * the existing per-op `useSkill('id').call(args)` pattern.
  *
- * V0.6 status: lives in tasks-mobile.  Lift to a shared
+ * status: lives in tasks-mobile. Lift to a shared
  * `@onderling/manifest-adapter-rn` package once a second RN app adopts —
  * same migration story as `useAdapterSection`.
  *

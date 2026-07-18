@@ -1,6 +1,6 @@
-// Thread drawer create + switch (#224 Phase B / D-2 test 1).
+// Thread drawer create + switch (Phase B D-2 test 1).
 //
-// Verifies #253 step 5 on the real device:
+// Verifies step 5 on the real device:
 //   1. ☰ button opens the drawer modal
 //   2. + form creates a new named thread + auto-switches
 //   3. Drawer reflects both threads + active highlight

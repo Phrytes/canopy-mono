@@ -1,5 +1,5 @@
 /**
- * AgentIdentity deviceId — V2.5+ Phase 33.1 (2026-05-06).
+ * AgentIdentity deviceId — + Phase 33.1 (2026-05-06).
  *
  * Verifies the install-scoped deviceId introduced in Phase 33.1:
  *

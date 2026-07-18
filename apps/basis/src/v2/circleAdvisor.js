@@ -1,5 +1,5 @@
 /**
- * basis v2 — circle Advisor (shared, board 3D).
+ * basis v2 — circle Advisor (shared).
  *
  * A reactive, NO-LLM rules engine over the EventLog. It surfaces at most
  * ONE advice card per circle per month, and only when a circle shows signs

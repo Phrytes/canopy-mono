@@ -1,5 +1,5 @@
 /**
- * basis — storage tests.  v0.2 sub-slice 2.8.
+ * basis — storage tests. v0.2.
  *
  * @vitest-environment happy-dom
  */

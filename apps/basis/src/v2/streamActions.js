@@ -1,7 +1,7 @@
 /**
- * basis v2 — Stream per-row action buttons (board 5B, slice P6.M3).
+ * basis v2 — Stream per-row action buttons.
  *
- * Board 5B shows action buttons under each Stream row depending on the
+ * The Stream shows action buttons under each Stream row depending on the
  * event type: "Ik help" / "Negeer" on a question, "Ik doe ze" on a
  * household chore.  This module decides which buttons to render for a
  * given Stream row + describes the pinned compose's context.  Pure;

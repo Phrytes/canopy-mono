@@ -1,5 +1,5 @@
 /**
- * SolidPodSource — @onderling/logger coverage + PII-safety (logging slice 3, POD path).
+ * SolidPodSource — @onderling/logger coverage + PII-safety (logging, POD path).
  *
  * Drives read / write / an error through a mocked fetch and asserts:
  *   1. the expected structured events land in `dumpLogs()` (pod.read, pod.write, pod.error);

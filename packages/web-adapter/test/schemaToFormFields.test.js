@@ -1,5 +1,5 @@
 /**
- * V0.2 — `schemaToFormFields` helper.
+ * `schemaToFormFields` helper.
  *
  * Walks paramsSchema → platform-neutral form-field descriptors.
  * Adapters (web HTML, mobile RN) render the same descriptors as

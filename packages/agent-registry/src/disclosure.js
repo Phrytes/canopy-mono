@@ -6,7 +6,7 @@
 // not enabled for a context is simply not released — and a withheld key is ABSENT from the
 // release, never marked (a "withheld" flag would itself be a signal).
 //
-// THREE ORTHOGONAL DISCLOSURE AXES (P4 foundation; NOTE-skills-vs-capabilities.md volley 3).
+// THREE ORTHOGONAL DISCLOSURE AXES (foundation; NOTE-skills-vs-capabilities.md volley 3).
 // A property carries three INDEPENDENT switches per (context, key), none collapsing into a
 // single "share" toggle — each defaults to withhold (false):
 //   • disclosed  (`enabled`)   — visible to the circle (the disclosure ladder; the only axis

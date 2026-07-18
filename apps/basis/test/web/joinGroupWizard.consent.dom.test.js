@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * B · Slice 4 — consent-at-join, web wizard surface.
+ * consent-at-join, web wizard surface.
  *
  * The join wizard's Agree/Decline (rules) step surfaces the circle's OPT-OUTABLE capabilities from the
  * invite's embedded freedom template; unchecking one records an opt-out that rides out with the success

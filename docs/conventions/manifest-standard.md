@@ -131,7 +131,7 @@ Requiring every declared noun to be registry-canonical would fail four of the si
 instead surfaced as non-blocking `warnings` (code `noncanonical-itemtype`) on the conformance result — a
 convergence signal for tooling and docs, never something that flips `ok`.
 
-Likewise, the Q16 `strict` skillId cross-check (every `view.dataSource.skillId` resolving to a declared op or
+Likewise, the`strict` skillId cross-check (every `view.dataSource.skillId` resolving to a declared op or
 `externalSkills` entry) is not required: some apps legitimately reference skills that live outside their
 manifest.
 

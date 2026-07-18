@@ -5,13 +5,13 @@
  * threads as a clickable list + new-thread form.  Pure DOM (no
  * framework); subscribes to ThreadStore changes for live updates.
  *
- * #231 (2026-05-24): the state-machine pieces (form-state shape,
+ * the state-machine pieces (form-state shape,
  * filter build, submit logic, parseList, KNOWN_EVENT_TYPES) lifted
  * to `src/core/threads/threadFormState.js` so basis-mobile's
  * RN renderer can reuse them.  This file keeps only DOM + event
  * wiring.
  *
- * Phase v0.2 sub-slice 2.3 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { describeFilter } from '../filter.js';
@@ -42,7 +42,7 @@ import {
  */
 
 // KNOWN_EVENT_TYPES moved to src/core/threads/threadFormState.js
-// (#231).  Re-imported here for the DOM renderer's use.
+// . Re-imported here for the DOM renderer's use.
 
 /**
  * Re-render the sidebar's thread list inside `container`.  Idempotent;
@@ -175,7 +175,7 @@ function renderThreadForm(ctx, existingThread, onDone) {
   // Selection state — Set-of-strings for apps + event-types.  When
   // empty the filter slot is omitted (= wildcard '*').  Custom
   // values typed in the "+ add custom" field land here too.
-  // Form-state shape lifted to core (#231).
+  // Form-state shape lifted to core.
   const state = editing
     ? formStateFromThread(existingThread)
     : emptyFormState();
@@ -268,7 +268,7 @@ function renderThreadForm(ctx, existingThread, onDone) {
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
-    // Submit-side state machine lifted to core (#231).  Validation
+    // Submit-side state machine lifted to core. Validation
     // (empty-name reject) + filter build + create-vs-update routing
     // all happen there; this handler just wires the DOM event +
     // the onSelect / onDone navigation.
@@ -362,4 +362,4 @@ function renderChipGroup({ doc, label, hint, knownValues, selected, onChange, ad
   return wrap;
 }
 
-// parseList moved to src/core/threads/threadFormState.js (#231).
+// parseList moved to src/core/threads/threadFormState.js.

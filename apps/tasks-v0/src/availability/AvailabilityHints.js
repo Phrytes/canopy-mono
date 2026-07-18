@@ -1,5 +1,5 @@
 /**
- * AvailabilityHints — Tasks V2.3.
+ * AvailabilityHints — Tasks.
  *
  * Per (member × ISO-week × half-day) opt-in chip:
  *   'open' | 'tight' | 'unavailable' | 'unknown'

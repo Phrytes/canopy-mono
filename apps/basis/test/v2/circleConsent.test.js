@@ -1,5 +1,5 @@
 /**
- * circleConsent — B · Slice 4: the join-time consent model over the freedom template.
+ * circleConsent — B ·: the join-time consent model over the freedom template.
  *
  * The model lists the circle's OPT-OUTABLE caps (admin freedom 'optional' OR a privacy floor),
  * NEVER the mandatory ones; declining a cap yields a validated capabilityOptOuts array; a

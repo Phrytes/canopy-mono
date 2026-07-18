@@ -1,5 +1,5 @@
 /**
- * V2.0 — tasks-agent identity persistence.
+ * tasks-agent identity persistence.
  *
  * Asserts:
  *   - createCircleAgent persists the tasks agent's vault under

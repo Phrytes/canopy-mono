@@ -1,5 +1,5 @@
 /**
- * catchUpWiring — stoop-mobile reconnect-catch-up (#247 → #248).
+ * catchUpWiring — stoop-mobile reconnect-catch-up (→).
  *
  * Ships:
  *   - `LastSeenFromStore` — per-peer high-water-mark map backed by
@@ -10,7 +10,7 @@
  *     `requestCatchUpFromKnownPeers` from basis-handlers, plus an
  *     inbound `catch-up-request` handler that replies via buurt-post.
  *
- * #248 (2026-05-27, Option A): "Add NknTransport to stoop-mobile."
+ * (2026-05-27, Option A): "Add NknTransport to stoop-mobile."
  *   The lifted handler factories live in
  *   `apps/basis/src/core/handlers/catchUp.js` and operate on
  *   `{callSkill, sendPeer}`.  Stoop-mobile's bundle now exposes
@@ -157,7 +157,7 @@ export class LastSeenFromStore {
 /**
  * Wire the reconnect-catch-up flow into a stoop-mobile agent bundle.
  *
- * #248 (Option A): when `bundle.nkn` is present, also:
+ * (Option A): when `bundle.nkn` is present, also:
  *   - register the inbound `catch-up-request` handler (replies with
  *     buurt-post envelopes the receiver ingests via stoop.ingestRemotePost).
  *   - register the inbound `buurt-post` handler so catch-up REPLIES land
@@ -198,7 +198,7 @@ export function wireCatchUp({
   };
   bundle.agent?.on?.('item-arrive', onItemArrive);
 
-  // ── #248 catch-up trigger + inbound handlers ──────────────────────
+  // ── catch-up trigger + inbound handlers ──────────────────────
   // Build callSkill once (either caller-supplied or the agent.invoke
   // bridge) so both the outbound request + the inbound reply share a
   // single dispatch path.

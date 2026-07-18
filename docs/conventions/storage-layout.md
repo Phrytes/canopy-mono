@@ -1,6 +1,6 @@
 # Convention: storage layout for `@onderling` pods
 
-> **Status:** P1 deliverable (per transition doc §V.5). Documents the
+> **Status:** deliverable (per transition doc §V.5). Documents the
 > canonical pod-resource layout that `@onderling/pod-onboarding`
 > provisions and that `@onderling/pod-routing` consumes. Discovery
 > happens via the WebID profile; the layout below is what
@@ -166,7 +166,7 @@ substrate handles it.
 - **One-pod default.** Most users have one pod that holds
   everything. Two-pod (private + household) is a deliberate
   user choice via the storage-mapping editor (future Hub-web-
-  console, P5).
+  console,).
 - **`with-<webid>/` auto-share folders** live under `/sharing/`,
   named with URL-encoded WebIDs. Phase 52.16 maintains them as
   ACP grants on supported pods; cap-token fallback otherwise.

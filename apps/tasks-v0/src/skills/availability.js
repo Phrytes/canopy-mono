@@ -1,5 +1,5 @@
 /**
- * availability — Tasks V2.3 hint skills.
+ * availability — Tasks hint skills.
  *
  *   - `setMyAvailability({week, day, half, state})` — self only.
  *   - `getMyAvailability({week?})`                  — self only.

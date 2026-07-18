@@ -12,7 +12,7 @@
  *     `{ issue({subject, skill, expiresIn}) → Promise<{id, expiresAt?}>,
  *        revoke(tokenId) → Promise<void> }`
  *     — the eventual binding is `Agent.issueCapabilityToken` +
- *     `TokenRegistry.revoke`.  Without it the P2 control ops run in the
+ *     `TokenRegistry.revoke`. Without it the control ops run in the
  *     honest degraded mode (`tokenBacked: false`, mirror-only).
  *
  * Returns `[{ id, handler, visibility }]` — register each on a
@@ -34,15 +34,15 @@ import { INSTALL_CORES } from './installCores.js';
  *   (`createAgentRegistry({ pseudoPod, deviceId })`) — the store the
  *   cores read + mutate.
  * @param {object} [args.tokens]  optional duck-typed token collaborator
- *   (see module doc) backing the P2 grant/revoke ops.
+ *   (see module doc) backing the grant/revoke ops.
  * @param {(circleId: string) => object|null} [args.versionStoreFor]
  *   optional resolver to a circle pod's `@onderling/versioning` store,
- *   backing the P3 recovery ops (web: `getCircleVersionStore`; mobile:
+ *   backing the recovery ops (web: `getCircleVersionStore`; mobile:
  *   its RN twin). Without it the recovery ops answer an honest
  *   `{ok:false, error:'no-version-store'}` — always wired, never hidden,
  *   so route parity stays unconditional.
  * @param {object} [args.catalog]  optional pluggable curated-catalog
- *   SOURCE ({ list, get }) backing the P3 install ops (default: the local
+ *   SOURCE ({ list, get }) backing the install ops (default: the local
  *   `createStubCatalog`). Without it `listCatalog` answers the honest
  *   `no-catalog` "coming with the community catalog" state and only the
  *   power-user override (install from a pasted card) works.
@@ -71,7 +71,7 @@ export function buildAgentSkills({ registry, tokens, versionStoreFor, catalog, p
     versionStoreFor: versionStoreFor ?? null,
     catalog:         catalog ?? null,
     profiles:        profiles ?? null,   // identity step 4 — createProfile collaborator (owner-root-backed)
-    roleGrants:      roleGrants ?? null, // P3 — grantRole collaborator (core RoleGrantManager: setRole + materialize bundle)
+    roleGrants:      roleGrants ?? null, // grantRole collaborator (core RoleGrantManager: setRole + materialize bundle)
   };
 
   // The wired op ids, in registration order. Unlike folio (which filters by

@@ -1,9 +1,9 @@
 /**
  * **Platform: web** (DOM-dependent).  Needs an RN sibling under `rn/`
- * once the mobile pivot lands (#128 chat-nav RN parallel maps
+ * once the mobile pivot lands (chat-nav RN parallel maps
  * `surfaces.page` to RN nav screens).
  *
- * basis — generic side-panel page renderer (#180, 2026-05-24).
+ * basis — generic side-panel page renderer (2026-05-24).
  *
  * Renders any op that declares `surfaces.page: { kind, title?, route? }`
  * as a togglable side-panel.  Two content modes:

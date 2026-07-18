@@ -1,5 +1,5 @@
 /**
- * V2.3 — bot.available + bot.week.
+ * bot.available + bot.week.
  */
 
 import { describe, it, expect } from 'vitest';

@@ -1,5 +1,5 @@
 /**
- * basis v2 — launcher bottom tab bar (web, board 1/5/6C).
+ * basis v2 — launcher bottom tab bar (web).
  *
  * Screens / Kringen / Contacten / Mij — the four top-level surfaces. Shown on
  * the launcher, stream and Me screens; hidden inside a circle + its

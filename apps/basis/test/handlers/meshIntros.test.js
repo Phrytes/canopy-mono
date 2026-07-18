@@ -1,7 +1,7 @@
 /**
  * Unit tests for src/core/handlers/meshIntros.js.
  *
- * Verifies the Slice 4 mesh-intro logic in isolation — no NKN, no
+ * Verifies the mesh-intro logic in isolation — no NKN, no
  * substrate, no DOM.  Mocks callSkill + sendPeer, asserts the
  * envelope shapes + filter behaviour (self-exclusion, opt-out path).
  */

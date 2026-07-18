@@ -21,7 +21,7 @@
  * implementation that satisfies this contract using AIDL under the
  * hood; tests use a fake JS object with the same shape.
  *
- * Phase 50.11 (Hub-track P4, direction-only) — see
+ * Phase 50.11 (Hub-track, direction-only) — see
  * `Project Files/SDK/core-v2-coding-plan-2026-05-11.md`.
  */
 

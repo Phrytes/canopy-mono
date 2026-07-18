@@ -90,7 +90,7 @@ export function localStoragePolicyIo(storage = globalThis.localStorage) {
 }
 
 /**
- * The calling member's personal override for a circle (board 6A). Same
+ * The calling member's personal override for a circle. Same
  * injectable shape as the policy store; keyed by circleId since the store
  * holds the local user's own override. (Cross-member overrides live in
  * each member's space; this is the local-user slice.)

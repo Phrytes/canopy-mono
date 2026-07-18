@@ -1,5 +1,5 @@
 /**
- * Slice 0 + Slice 2 (PLAN-task-claim-partition) — the acceptance bar.
+ * (PLAN-task-claim-partition) — the acceptance bar.
  *
  * Scenario (the plan's partition→merge walkthrough): a circle shares a task;
  * the mesh splits; both halves claim the SAME task; both do work; the mesh
@@ -8,20 +8,20 @@
  *   NO WORK LOST + THE DOUBLE-CLAIM IS ALWAYS SURFACED — never a silent
  *   last-writer-wins overwrite of `assignee`.
  *
- * SLICE 0 (the red baseline this locks in): BEFORE the guard, when Ann's
+ * The red baseline this locks in: BEFORE the guard, when Ann's
  * claim envelope arrived at Bob (who had claimed locally under partition),
  * the tasks mirror's `applySync` WHOLESALE-OVERWROTE Bob's `assignee` → Ann,
  * silently, decided purely by arrival order, with NOTHING surfaced. The
  * assertions below (`assignee` NOT overwritten + a claim-conflict recorded)
  * FAILED at that point — that failure is the acceptance baseline.
  *
- * SLICE 2 (this file, now GREEN): the mirror's surgical claim-vs-claim guard
+ * This file (now GREEN): the mirror's surgical claim-vs-claim guard
  * records a `claim-conflict` carrying BOTH claimants instead of overwriting.
  *
  * The collision surfaces on the mirrorer's (Bob's) node — that is exactly the
  * side the silent overwrite used to destroy (the arriving author-claim would
  * clobber the mirrorer's local claim). Central-pod one-winner (etag-CAS) is
- * Slice 1 (`packages/item-store/test/claim-cas.test.js`); the P2P
+ * (`packages/item-store/test/claim-cas.test.js`); the P2P
  * pseudo-pod-only mesh is here. P2P multi-value merge is v2.
  */
 import { describe, it, expect } from 'vitest';
@@ -57,7 +57,7 @@ describe('Slice 0/2 — task-claim under partition (P2P mesh)', () => {
 
       // ── ACCEPTANCE ──────────────────────────────────────────────────────
       // (a) NO SILENT OVERWRITE: Bob's assignee is still Bob — Ann's arriving
-      //     claim did NOT clobber it (Slice 0 red → Slice 2 green).
+      //     claim did NOT clobber it (red → green).
       const bobAfter = (await sim.listOpenAs(BOB)).find((i) => i.source?.syncedFromId === task.id);
       expect(bobAfter.assignee).toBe(BOB);
 

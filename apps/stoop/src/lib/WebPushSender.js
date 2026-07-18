@@ -1,5 +1,5 @@
 /**
- * WebPushSender — Stoop V1.5 Phase 21 (2026-05-06).
+ * WebPushSender — Stoop Phase 21 (2026-05-06).
  *
  * Concrete `relay.PushSender` for VAPID-signed Web Push.  Lazy-loads
  * the `web-push` npm package so apps that don't enable push don't

@@ -33,9 +33,9 @@ requests + estimated prompt tokens (completion 0).
 
 ## [0.2.0] — 2026-05-03
 
-### Added — loose tool-call recovery for small / Q4 models
+### Added — loose tool-call recovery for small / models
 
-Small local models (geitje 7B, mistral 7B, often qwen 7B Q4) routinely
+Small local models (geitje 7B, mistral 7B, often qwen 7B) routinely
 emit tool-call intent in plain text rather than as structured
 `tool_calls`.  The previous parser only recognised a single shape
 (`{"tool":"x","args":{...}}` at the start of the reply), so most of

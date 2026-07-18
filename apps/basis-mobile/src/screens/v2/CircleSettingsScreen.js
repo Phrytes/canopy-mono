@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — circle settings (RN screen, board 4A · M3).
+ * basis-mobile v2 — circle settings (RN screen).
  *
  * RN counterpart of web's circleSettings renderer over the SAME shared
  * model (`@onderling-app/basis`): 5 policy axes (feature toggles + 4
@@ -23,7 +23,7 @@ import {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS, mergeCirclePolicy, makeProposal, DEFAULT_CIRCLE_ORIGINS,
   detectPolicyConflicts, applyPolicyResolution,
 } from '@onderling-app/basis';
-// B · Slice 2 — the shared manifest-driven settings form + per-skill freedom matrix (web≡mobile).
+// the shared manifest-driven settings form + per-skill freedom matrix (web≡mobile).
 import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@onderling/app-manifest';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { t } from '../../core/localisation.js';
@@ -38,7 +38,7 @@ import { loadRecipeForReview, applyReviewedRecipe } from '../../core/recipeConse
 // §4 storage-policy bridge — the circle `pod` axis drives stoop's authoritative
 // four-tier circle storage policy (shared with web; pure mapping + call).
 import { pushCircleStoragePolicy } from '../../../../basis/src/v2/circleStoragePolicy.js';
-// D / SP-3b consumer-switch (MOBILE parity) — the screen header is sourced from
+// D / consumer-switch (MOBILE parity) — the screen header is sourced from
 // the manifest PAGE projection: the `settings` op declares `surfaces.page` with
 // a `labelKey`, renderMobile projects it into NavModel.pages[], and the label
 // flows `page.labelKey → t()` via the SAME shared selectors web uses (invariant
@@ -56,7 +56,7 @@ const SETTINGS_TEMPLATE_URL = process.env.EXPO_PUBLIC_SETTINGS_TEMPLATE_URL || u
 // the most prominent setting.
 const ENUM_AXES = ['view', 'llmTool', 'agents', 'revealPolicy', 'pod'];
 
-// D / SP-3b consumer-switch (MOBILE) — the projected PAGE surface for the
+// D / consumer-switch (MOBILE) — the projected PAGE surface for the
 // `settings` op, selected once from the static basisManifest via the shared
 // mobile selector (renderMobile → pages[]). The header label resolves from its
 // `labelKey` through t() (see the header render below); a null page/absent
@@ -167,7 +167,7 @@ export default function CircleSettingsScreen({
     setWorking((cur) => mergeCirclePolicy(cur, p));
   }, []);
 
-  // B · Slice 2 — the manifest sources drive the settings form + freedom matrix (web≡mobile via the
+  // the manifest sources drive the settings form + freedom matrix (web≡mobile via the
   // shared @onderling/app-manifest projectors + the shared circlePolicy store).
   const sources = useMemo(() => [...new Set(Object.values(buildManifestsByOrigin()))].map((m) => ({ manifest: m })), []);
   const settingsForms = useMemo(() => (working ? sources
@@ -242,7 +242,7 @@ export default function CircleSettingsScreen({
   const onSave = useCallback(async () => {
     if (!working) return;
     if (consensusActive) {
-      // P6.2 — record + persist the pending proposal.  When unanimous
+      // record + persist the pending proposal. When unanimous
       // (single-admin / proposer in `requiredApprovers`), commit
       // immediately + drop the proposal; otherwise keep it pending.
       const proposal = makeProposal({
@@ -309,7 +309,7 @@ export default function CircleSettingsScreen({
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
       </View>
-      {/* D / SP-3b consumer-switch (MOBILE) — header label FROM the manifest
+      {/* D / consumer-switch (MOBILE) — header label FROM the manifest
           projection: `settings` op's surfaces.page.labelKey → renderMobile →
           pageLabel → t(). Falls back to t('circle.settings.title') when no page. */}
       <Text style={styles.title}>{pageLabel(SETTINGS_PAGE, t, t('circle.settings.title'))}</Text>
@@ -438,7 +438,7 @@ export default function CircleSettingsScreen({
         {consensusActive ? <Text style={styles.note}>{t('circle.settings.pending')}</Text> : null}
         {storageNote ? <Text style={styles.note} testID="circle-settings-storage-note">{storageNote}</Text> : null}
 
-        {/* B · Slice 2 (Q1) — manifest-driven per-app settings form */}
+        {/* manifest-driven per-app settings form */}
         {settingsForms.length ? (
           <>
             <Text style={styles.section}>{t('circle.settings.appSettings')}</Text>
@@ -476,7 +476,7 @@ export default function CircleSettingsScreen({
           </>
         ) : null}
 
-        {/* B · Slice 2 (Q3) — the per-skill freedom matrix (what the gate enforces) */}
+        {/* the per-skill freedom matrix (what the gate enforces) */}
         {capMatrix.length ? (
           <>
             <Text style={styles.section}>{t('circle.settings.capabilities')}</Text>
@@ -561,7 +561,7 @@ export default function CircleSettingsScreen({
   );
 }
 
-/** B · Slice 2 — the `policy.settings` values for one app: "<app>.<key>" → `{ key: value }`. */
+/** the `policy.settings` values for one app: "<app>.<key>" → `{ key: value }`. */
 function settingValuesForApp(policy, app) {
   const out = {};
   const all = (policy && typeof policy.settings === 'object' && policy.settings) || {};
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
   section:     { fontSize: 11, fontWeight: '700', letterSpacing: 0.6, textTransform: 'uppercase', color: theme.color.inkSoft, marginTop: 16, marginBottom: 4 },
   row:         { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
   rowLabel:    { fontSize: 14, color: theme.color.ink, flexShrink: 1, paddingRight: 8 },
-  // radio-as-box (board 4) — selected option boxed with a terracotta ring.
+  // radio-as-box — selected option boxed with a terracotta ring.
   optBox:        { borderWidth: 1, borderColor: theme.color.line, borderRadius: theme.radius.md, backgroundColor: theme.color.paper, paddingHorizontal: 12, marginBottom: 8 },
   optBoxSelected:{ borderColor: theme.color.accent, backgroundColor: theme.color.card },
   optRow:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 9 },
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
   recipeApply:  { marginTop: 8, padding: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
   recipeApplyBusy: { opacity: 0.5 },
   recipeApplyText: { color: theme.color.white, fontSize: 14, fontWeight: '700' },
-  // B · Slice 2 — settings form + freedom matrix
+  // settings form + freedom matrix
   subhead:     { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginTop: 10, marginBottom: 2 },
   input:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 5, minWidth: 90, color: theme.color.ink, textAlign: 'right' },
   chipRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingVertical: 4 },

@@ -1,5 +1,5 @@
 /**
- * V2.7 — bot-side propose / accept / decline / proposals / force-complete.
+ * bot-side propose / accept / decline / proposals / force-complete.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

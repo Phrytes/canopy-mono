@@ -1,16 +1,16 @@
 /**
- * basis v2 — agent-add admin approval (board 4B, slice P6.10).
+ * basis v2 — agent-add admin approval.
  *
  * When the circle's `agents` axis is `admin-approval`, any member trying
  * to add an LLM agent participant must wait for admin approval first.
- * Design board 4B shows the request card: "Pieter wil 'notulist'
+ * Design shows the request card: "Pieter wil 'notulist'
  * toevoegen aan Selwerd" with Who / What it does / Access details + a
  * [Goedkeur] / [Weiger] / [Vragen…] row.  On unanimous approve, the
  * agent joins; on any reject, the request closes.
  *
- * Mirrors the P6.2 multi-admin consensus shape: pure orchestrator +
+ * Mirrors the multi-admin consensus shape: pure orchestrator +
  * pluggable IO-backed store + persisted requests.  Cross-device
- * delivery (NKN fan-out + receive handler) is the follow-up #348.
+ * delivery (NKN fan-out + receive handler) is the follow-up.
  */
 
 /* ──────────────────────────────────────────────────────────────────
@@ -38,7 +38,7 @@ export function shouldGateAgentJoin(policy) {
 /**
  * Build an agent-add request.  When the circle's `agents` axis is
  * `admin-approval` AND it has ≥1 admin, the request enters the queue;
- * otherwise it returns ready/blocked immediately.  Per board 4B, the
+ * otherwise it returns ready/blocked immediately. Per, the
  * requester implicitly approves (an admin proposing a new agent
  * doesn't have to approve their own request again).
  *
@@ -117,7 +117,7 @@ export function approveAgentRequest(request, approver) {
 
 /**
  * Record an admin's rejection.  Any single reject flips the request
- * to 'rejected' (per board 4B: a checkpoint, not a tally).
+ * to 'rejected' (per: a checkpoint, not a tally).
  */
 export function rejectAgentRequest(request, rejecter) {
   if (!request) return request;

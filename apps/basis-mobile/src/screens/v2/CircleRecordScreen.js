@@ -1,6 +1,6 @@
 /**
  * CircleRecordScreen — RN renderer for a `shape:'record'` manifest view
- * (Q17), e.g. the agents app's read-only `agent-detail` (`viewAgent` +
+ * e.g. the agents app's read-only `agent-detail` (`viewAgent` +
  * `argsFromContext: {agentId: '$agentId'}`).  Twin of web's
  * `web/v2/recordScreen.js`.
  *

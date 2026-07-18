@@ -1,5 +1,5 @@
 /**
- * basis — manifestMerge tests.  v0.1 sub-slice 1.5.
+ * basis — manifestMerge tests. v0.1.
  *
  * Verifies the merged catalog has the right commandMenu entries,
  * opsById map, replyShapeFor lookup, and collision warnings.

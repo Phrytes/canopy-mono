@@ -14,7 +14,7 @@
  * surface they prefer.  Mobile parity: the RN port consumes the
  * same EventLog + uses RN list components instead of DOM.
  *
- * Phase v0.7 sub-slice 7.1c per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.7 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { renderFloatingButton } from '@onderling/chat-nav';

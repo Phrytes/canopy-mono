@@ -1,5 +1,5 @@
 /**
- * Stoop V2.5 Phase 34 — bulk-sync of pre-attach local writes.
+ * Stoop Phase 34 — bulk-sync of pre-attach local writes.
  *
  * Verifies:
  *   - 34.1: attachInner walks the local Map and pushes everything to

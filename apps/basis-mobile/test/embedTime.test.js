@@ -1,5 +1,5 @@
 /**
- * Bundle F P5 — /embed-time wizard + chrono fallback (#261).
+ * embed-time wizard + chrono fallback.
  *
  * Pins:
  *   1. embedTimeState.canSubmit / submitEmbedTime contract
@@ -81,7 +81,7 @@ describe('Bundle F P5 — localBuiltins.createTimeEmbed natural-language fallbac
   it('falls back to chrono for natural-language dates ("tomorrow 3pm")', async () => {
     const h = buildHarness();
     const r = await h.handlers['embed-time']({ title: 'BBQ', when: 'tomorrow 3pm' });
-    // Before P5 this returned `{ok: false, error: 'bad_when'}`.  With
+    // Before this returned `{ok: false, error: 'bad_when'}`. With
     // the chrono fallback, calendar.addEvent IS called.
     expect(r?.ok).not.toBe(false);
     expect(h.calls.some((c) => c.origin === 'calendar' && c.opId === 'addEvent')).toBe(true);

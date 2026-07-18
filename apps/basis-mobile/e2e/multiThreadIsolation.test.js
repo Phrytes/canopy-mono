@@ -1,4 +1,4 @@
-// Multi-thread message isolation (#224 Phase B / D-2 test 2).
+// Multi-thread message isolation (Phase B D-2 test 2).
 //
 // Mirrors the Phase A Playwright test of the same name — verifies on
 // the real device that:
@@ -11,7 +11,7 @@
 // the exact typed text (deterministic) PLUS an "unknown input" bot
 // bubble (we don't assert on that).  Free-text was originally `/threads`
 // + `/help` slashes but those went live as real host ops under
-// Bundle F P1 (#257) and the bubble text changed; user-bubbles
+// Bundle F and the bubble text changed; user-bubbles
 // are stable across host-op-routing changes.
 
 const { gotoChat } = require('./support/nav.js');

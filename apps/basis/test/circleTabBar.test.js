@@ -1,5 +1,5 @@
 /**
- * circleTabBar — the v2 bottom nav (feedback-extension P5 adds Contacten).
+ * circleTabBar — the v2 bottom nav (feedback-extension adds Contacten).
  *
  * D / Surface 1 — the tab roster is now PROJECTED from `manifest.tabs` via
  * the shared `circleTabs` selector, not a per-shell `TABS` literal.  These

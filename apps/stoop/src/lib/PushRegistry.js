@@ -1,11 +1,11 @@
 /**
- * PushRegistry — Stoop V1.5 Phase 21 (2026-05-06).
+ * PushRegistry — Stoop Phase 21 (2026-05-06).
  *
  * In-process map of WebID → array of PushSubscription objects.  Used
  * by the `subscribeWebPush` / `unsubscribeWebPush` skills + the
  * notifier's `PushChannel` to look up where to deliver wake-ups.
  *
- * V1.5 stores subscriptions in memory only; durable persistence is
+ * stores subscriptions in memory only; durable persistence is
  * V2 work (will likely live in the bundle's MemberMap as a
  * stableId-keyed `pushSubscriptions[]` array, mirrored to the pod
  * at the user's request).

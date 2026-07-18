@@ -1,5 +1,5 @@
 /**
- * P6.5 — claim-router tests.
+ * claim-router tests.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { routeClaim, makeAfterClaimHook } from '../../src/v2/claimRouter.js';

@@ -1,5 +1,5 @@
 /**
- * Attachments — Stoop V2.5 Phase 39 (2026-05-07); canonical-media
+ * Attachments — Stoop Phase 39 (2026-05-07); canonical-media
  * consolidation (media Phase 1 anti-drift tail, 2026-07-10).
  *
  * Server-side helpers for image attachments on prikbord posts and

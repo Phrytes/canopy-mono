@@ -1,5 +1,5 @@
 /**
- * P6.6 — auto-hop-prompt tests.
+ * auto-hop-prompt tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

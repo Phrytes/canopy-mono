@@ -2,11 +2,11 @@
  * **Platform: RN** (uses react-native primitives).
  *
  * Shared RN primitives for basis wizards — mirror of
- * `src/web/wizards/_wizardKit.js` (Bundle F P2, #258, 2026-05-26).
+ * `src/web/wizards/_wizardKit.js` (2026-05-26).
  *
  * Each wizard imports its state machine from
  * `src/core/wizards/<name>State.js` (portable, already split per
- * #235/#236) and uses these primitives to render via RN.  Same
+ * ) and uses these primitives to render via RN. Same
  * component contracts as the web kit so the wizards stay
  * structurally aligned across surfaces.
  *

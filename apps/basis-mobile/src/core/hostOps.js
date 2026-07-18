@@ -1,9 +1,9 @@
 /**
- * Mobile host-op bridge for Bundle F P1 (#257).
+ * Mobile host-op bridge for Bundle F.
  *
  * Web routes `appOrigin === 'basis'` ops to the canonical
  * `apps/basis/src/core/localBuiltins.js` (~30 handlers).
- * Mobile (#253) shipped with a hard short-circuit that returned
+ * Mobile shipped with a hard short-circuit that returned
  * "not wired on mobile yet" for ALL such ops — so /me /help
  * /threads /embed-time and friends were dead.
  *
@@ -19,7 +19,7 @@
  * Handlers needing DOM-only deps (file pickers, side panels,
  * OIDC) gracefully degrade because their `if (!dep) return {
  * ok: false, error: t('xxx.no_*') }` guards fire — that's a
- * real error message instead of a silent dead-end.  P3-P6 plug
+ * real error message instead of a silent dead-end. - plug
  * those gaps with RN-equivalent deps.
  *
  * The threadStore adapter mutates via the React state-setter,
@@ -36,7 +36,7 @@ import { createLocalBuiltins }   from '../../../basis/src/core/localBuiltins.js'
 import AsyncStorage              from '@react-native-async-storage/async-storage';
 import { resolveRelayUrl, asyncStorageRelayIo } from '../../../basis/src/v2/relayPref.js';
 
-// Media P1 mobile twin (2026-07) — the sealed-media upgrade gate (shared
+// Media mobile twin (2026-07) — the sealed-media upgrade gate (shared
 // handler decides; we only compose) + the RN identity-shaped encoder.
 import { hasMediaGateway }       from '../../../basis/src/core/handlers/mediaEmbed.js';
 import { encodePickedImage }     from './mediaPicker.js';
@@ -45,7 +45,7 @@ import {
   createThread, setActiveThread, updateMessages,
 } from './threadState.js';
 
-// Bundle G1 (#263) — portable runners web wires from main.js:1390-1394.
+// Bundle G1 — portable runners web wires from main.js:1390-1394.
 // brief.js + find.js are pure logic (catalog fan-out → callSkill);
 // AppRegistry is a class with subscribe + syncWithCatalog.  All three
 // already lift cleanly — same unifier pattern as Bundle F.
@@ -53,7 +53,7 @@ import { runBrief, createBriefCache } from '../../../basis/src/brief.js';
 import { runFind }                    from '../../../basis/src/find.js';
 import { AppRegistry }                from '../../../basis/src/appRegistry.js';
 
-// Bundle G3 (#265) — NKN-on-pod wrappers (lookupPeerAddrByWebid +
+// Bundle G3 — NKN-on-pod wrappers (lookupPeerAddrByWebid +
 // publishPeerAddrToPod).  Same shape web wires from main.js:1421-1435
 // but consuming the mobile OidcSessionRN's authenticated fetch.
 import {
@@ -128,7 +128,7 @@ function buildThreadStoreAdapter({ threadStateRef, setThreadState }) {
  * @param {object}                      args.catalog     merged catalog (from bundle)
  * @param {function}                    args.callSkill   bundle.callSkill (for /embed which calls back into substrate skills)
  * @param {function}                    args.t           localiser
- * @param {object}                      [args.eventLog]  EventLog instance (Bundle F P3)
+ * @param {object} [args.eventLog] EventLog instance
  * @param {function}                    [args.openLogsPanel] () => void — set ChatScreen state to show LogsPanel
  * @returns {Object<string, (args: object) => Promise<*>>}  handler table
  */
@@ -137,7 +137,7 @@ export function buildMobileLocalBuiltins({
   agent, catalog, callSkill, t,
   eventLog, openLogsPanel, openQrScanner,
   openFilePicker,
-  // Media P1 mobile twin (2026-07) — the sealed-media seams.  All optional:
+  // Media mobile twin (2026-07) — the sealed-media seams. All optional:
   // absent gateway ⇒ the shared embed-file builtin keeps its legacy inline
   // file-card path (honest degradation, identical to web — no sealer in
   // reach means NO unsealed upload; sealed-only stands).
@@ -150,7 +150,7 @@ export function buildMobileLocalBuiltins({
   //   storeMediaItem      item-store seam (absent ⇒ item rides on the embed)
   mediaGateway, openMediaFilePicker, encodeImage, storeMediaItem,
   podAuth, onSignOut,
-  // Bundle G3 (#265) — raw OidcSessionRN ref for podPeerAddr wrappers.
+  // Bundle G3 — raw OidcSessionRN ref for podPeerAddr wrappers.
   // podAuth intentionally hides session.fetch (only exposes {webid}),
   // so the NKN-on-pod helpers take the underlying session directly
   // to access getAuthenticatedFetch().
@@ -158,7 +158,7 @@ export function buildMobileLocalBuiltins({
 }) {
   const threadStore = buildThreadStoreAdapter({ threadStateRef, setThreadState });
 
-  // Bundle G1 (#263) — runner + registry singletons scoped to this
+  // Bundle G1 — runner + registry singletons scoped to this
   // build of the handler table.  /brief reads the cache across
   // invocations; /apps subscribes the registry to catalog changes
   // (mobile catalog is built-once today, so syncWithCatalog runs
@@ -193,7 +193,7 @@ export function buildMobileLocalBuiltins({
     openLogsPanel,
     openQrScanner,
     openFilePicker,
-    // Media P1 mobile twin (2026-07) — the sealed-media deps ride the same
+    // Media mobile twin (2026-07) — the sealed-media deps ride the same
     // injection route every other seam takes.  encodeImage defaults to the
     // identity-shaped adapter: the RN picker already resized + thumbnailed,
     // so "encoding" is just carrying {mime, dataB64, width, height,
@@ -203,7 +203,7 @@ export function buildMobileLocalBuiltins({
     storeMediaItem,
     podAuth,
     onSignOut,
-    // Bundle G1 (#263) — /brief, /find, /apps now wired same as web.
+    // Bundle G1 — /brief, /find, /apps now wired same as web.
     // briefCache is per-bundle-build so the 60s cache survives across
     // multiple /brief invocations within one session.
     briefRunner: (opts) => runBrief({
@@ -214,7 +214,7 @@ export function buildMobileLocalBuiltins({
     }),
     findRunner:  (opts) => runFind({ catalog, callSkill, query: opts?.query }),
     appRegistry: _appRegistry,
-    // Bundle G2 (#264) — /peer-connect reconnects the NKN transport.
+    // Bundle G2 — /peer-connect reconnects the NKN transport.
     // realAgent's connectPeerTransport REQUIRES nknLib explicitly
     // (web injects window.nkn; mobile dynamic-imports nkn-sdk).
     connectPeer: async () => {
@@ -239,7 +239,7 @@ export function buildMobileLocalBuiltins({
       });
       return { address: agent.peer?.address ?? '' };
     },
-    // Bundle G3 (#265) — /lookup-peer <webid> + /publish-peer.  Same
+    // Bundle G3 — /lookup-peer <webid> + /publish-peer. Same
     // helpers web wires via main.js:1421-1435; mobile uses the
     // OidcSessionRN authenticated fetch instead of the @inrupt
     // browser fetch.  When sessionRef isn't supplied (older
@@ -254,7 +254,7 @@ export function buildMobileLocalBuiltins({
 
   const table = createLocalBuiltins(builtinDeps);
 
-  // Media P1 mobile twin (2026-07) — "pickAndResize as the file input"
+  // Media mobile twin (2026-07) — "pickAndResize as the file input"
   // (plans/NOTE-media-and-streaming.md).  When the composition wires BOTH
   // the sealed-media gateway and the RN image picker, /embed-file's pick
   // becomes the media input: a SECOND instance of the SAME shared handler,

@@ -1,5 +1,5 @@
 /**
- * P6.3 — kring tile activity-preview tests.
+ * kring tile activity-preview tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

@@ -1,5 +1,5 @@
 /**
- * capabilityGate — B · Slice 1: the DEFAULT-DENY authorization boundary at the dispatch waist.
+ * capabilityGate — B ·: the DEFAULT-DENY authorization boundary at the dispatch waist.
  *
  * Today's per-circle app scoping (`policy.apps` → `scopeCatalogToApps`) is INTERFACE-ONLY: it hides
  * ops from the LLM tool-list and slash-suggest, but nothing refuses an op that's invoked directly
@@ -7,10 +7,10 @@
  * module turns the same policy into a REAL boundary: a pure decision function the dispatcher calls
  * BEFORE `callSkill`, keyed on the **(verb × noun) capability** the op resolves to.
  *
- * Slice 1 drives the effective set from the existing per-circle app enablement (an enabled app
+ * drives the effective set from the existing per-circle app enablement (an enabled app
  * contributes all its capabilities); Slices 2–4 swap `effectiveCapabilities` for
  * `admin-template ∩ user-prefs` WITHOUT touching the gate or the wiring — the gate only ever sees a
- * set of allowed capability keys.  Migration default (ruling Q5): an unconfigured circle
+ * set of allowed capability keys. Migration default (ruling): an unconfigured circle
  * (`policy.apps == null`) enables everything (default-on), so existing circles are unaffected.
  *
  * Pure + host-injection-shaped, mirroring `circleEnforcement.js`: the caller passes the merged
@@ -27,10 +27,10 @@ export { capabilityKey };
 
 /**
  * The EFFECTIVE capability set for a circle.
- *   Slice 1: enabled-apps -> ALL their capabilities (app-level).
- *   Slice 2 (Q3): ALSO narrowed by the admin freedom template (`policy.capabilities`) - a cap is
+ *   enabled-apps -> ALL their capabilities (app-level).
+ *   ALSO narrowed by the admin freedom template (`policy.capabilities`) - a cap is
  *   authorised iff its app is enabled AND the template does not disable it. No template => default-on
- *   (identical to Slice 1), so existing circles are unaffected.
+ *   (identical to), so existing circles are unaffected.
  *
  * @param {Array<{manifest: object}>} sources  the merged manifest sources (as fed to mergeManifests)
  * @param {{ apps?: string[]|null, capabilities?: object }} [policy]  `apps==null` => every app enabled;
@@ -40,7 +40,7 @@ export { capabilityKey };
 export function effectiveCapabilities(sources, policy = {}) {
   const appList = Array.isArray(policy?.apps) ? policy.apps : null;
   const enabledApps = appList ? new Set(appList) : null;
-  // admin-template ∩ member opt-outs (Slice 4): `optOuts` are the current member's declined caps.
+  // admin-template ∩ member opt-outs: `optOuts` are the current member's declined caps.
   const keys = effectiveCapabilityKeys(sources, { enabledApps, template: policy?.capabilities, optOuts: policy?.optOuts });
   return { keys, enabledApps };
 }
@@ -93,7 +93,7 @@ export function checkCapability({ op, appOrigin, args, atom: atomIn, noun: nounI
   if (!atom) return { allow: true };
 
   const nouns = op ? concreteNouns(op, args) : (nounIn ? [nounIn] : []);
-  // An atom op that names no noun, or a wildcard op, is authorized at app level (Slice 1).
+  // An atom op that names no noun, or a wildcard op, is authorized at app level.
   if (nouns.length === 0 || nouns.includes('*')) return { allow: true };
 
   for (const noun of nouns) {

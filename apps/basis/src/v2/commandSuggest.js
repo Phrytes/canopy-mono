@@ -1,6 +1,6 @@
 // basis v2 — shared composer affordances: slash-command auto-suggest + bash-style input history.
 //
-// Lifted verbatim (semantics-preserving) from the CLASSIC shell's composer (web/main.js, #199 +
+// Lifted verbatim (semantics-preserving) from the CLASSIC shell's composer (web/main.js, +
 // the v0.7 history catch-up) so the v2 kring composer can reach feature parity on BOTH platforms
 // from ONE source. The classic shell baked these into DOM-coupled handlers; here they're pure,
 // platform-neutral logic — web renders a <ul> dropdown, mobile renders an RN list, both drive off

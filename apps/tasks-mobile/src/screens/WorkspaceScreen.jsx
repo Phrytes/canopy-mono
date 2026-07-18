@@ -4,14 +4,14 @@
  *
  * Phase 41.4.1 (2026-05-09).
  *
- * Slice C.1 (2026-05-20) — adapter-driven.  The screen now resolves
+ * adapter-driven. The screen now resolves
  * its data source through `createNavModelAdapter(tasksManifest)` —
  * the NavModel's `open` section carries `dataSource: {skillId:
- * 'listOpen', args: {type: 'task'}}` (manifest Q7).  The screen
+ * 'listOpen', args: {type: 'task'}}` (manifest). The screen
  * keeps its hand-built UI (RN filter chips, FlatList, FAB) and the
  * existing `useSkillResult` reactive plumbing; only the skill-id +
  * args come from the manifest.  This proves the adapter pattern on
- * one screen; the remaining Phase-1 screens follow in Slice C.2+.
+ * one screen; the remaining Phase-1 screens follow in +.
  *
  * Why keep `useSkillResult` instead of going imperative via the
  * adapter's `fetchSection`?  The hook owns the
@@ -21,7 +21,7 @@
  * `callSkill` because it has no React lifecycle).
  *
  * Filter chips (ready/waiting/claimed/submitted) stay hand-built —
- * they're RN-specific UI chrome not modelled in V0.2 NavModel.
+ * they're RN-specific UI chrome not modelled in NavModel.
  * Tap a card → TaskDetail.  FAB → ComposeScreen modal.
  */
 
@@ -58,7 +58,7 @@ export function WorkspaceScreen() {
 
   const [filter, setFilter] = useState('all');
 
-  // Slice C.1 — build the NavModel adapter once per service-change.
+  // build the NavModel adapter once per service-change.
   // The adapter is platform-neutral; `callSkill` is a tiny imperative
   // dispatcher over the active bundle's agent.invoke (the same path
   // useSkill's `.call` takes internally).  Used by `fetchSection` +
@@ -79,7 +79,7 @@ export function WorkspaceScreen() {
     }),
     [svc],
   );
-  // V0.3-adopt (2026-05-21) — `useAdapterSection` replaces the
+  // adopt (2026-05-21) — `useAdapterSection` replaces the
   // per-section boilerplate (getSection + skillId resolution + args
   // resolution + useSkillResult).  Same data + lifecycle; cleaner
   // call site.

@@ -1,5 +1,5 @@
 /**
- * V0 mobile storage for extension mappings (feedback-extension P2 mobile parity).
+ * V0 mobile storage for extension mappings (feedback-extension mobile parity).
  *
  * The React-Native twin of web's `localStorageMappingsStore`: an AsyncStorage
  * adapter satisfying the SUBSET of the pseudo-pod contract that
@@ -10,7 +10,7 @@
  * `storage` is injected (no top-level `@react-native-async-storage/async-storage`
  * import) so the module stays testable under node vitest — the composition root
  * passes the real `AsyncStorage`. Same pattern as `circleStoresRN.js`. Swap for a
- * real pseudo-pod when the mobile pod layer lands (P3 3.3c).
+ * real pseudo-pod when the mobile pod layer lands (3.3c).
  */
 
 const PREFIX = 'canopy.mappings:';   // AsyncStorage namespace; JSON stored under PREFIX + <uri>

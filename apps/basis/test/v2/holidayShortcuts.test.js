@@ -1,5 +1,5 @@
 /**
- * P6.M5 — holiday extension shortcuts + auto-reply tests.
+ * holiday extension shortcuts + auto-reply tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

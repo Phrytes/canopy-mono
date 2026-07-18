@@ -1,9 +1,9 @@
 /**
- * confirmGate — the Q27 confirm gate at the DISPATCH waist (web ≡ mobile).
+ * confirmGate — the confirm gate at the DISPATCH waist (web ≡ mobile).
  *
  * `resolveDispatch` already EMITS `kind: 'needsConfirm'` for an op whose
  * manifest declares `surfaces.ui.confirm` with severity 'warn'/'danger'
- * (router.js Q27 branch) — but until 2026-07 neither shell HANDLED it:
+ * (router.js branch) — but until 2026-07 neither shell HANDLED it:
  * web `circleApp.dispatchReady` and mobile `runCircleCommandResolved`
  * both fell through `kind !== 'ready'` → the "unknown" bubble, so the
  * declared red confirm never rendered and the op never ran.

@@ -1,5 +1,5 @@
 /**
- * CustomRolesSection — V1.5 custom-role registry per circle.
+ * CustomRolesSection — custom-role registry per circle.
  *
  * Phase 41.8.3 (2026-05-09).
  *

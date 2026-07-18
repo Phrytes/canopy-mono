@@ -1,5 +1,5 @@
 /**
- * buildCircleState — minimum-viable per-circle state for the V2.8
+ * buildCircleState — minimum-viable per-circle state for the
  * single-agent topology.
  *
  * Phase 41.2 (2026-05-09).
@@ -149,7 +149,7 @@ export async function buildCircleState({ circleConfig, localStoreBundle, meshAge
   const dataSource = localStoreBundle?.cache
     ?? (await _memorySource());
 
-  // P1 migration step 3 (2026-07-18): converged `CircleItemStore` +
+  // migration step 3 (2026-07-18): converged `CircleItemStore` +
   // `createTaskStore` compat surface, threading the same per-circle rolePolicy
   // + enforceDependencies the class ItemStore took (mirrors apps/tasks-v0).
   const circleStore = new CircleItemStore({

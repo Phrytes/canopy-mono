@@ -53,7 +53,7 @@ import { createHash } from 'node:crypto';
 // vite bundle).  Canopy-chat's vite.config aliases `node:crypto` to a
 // browser-safe stub that throws if `createHash` is called — but
 // `digest()` (the only caller below) is itself only invoked from Node
-// PodExporter flows, never from the browser.  See #303 cleanup.
+// PodExporter flows, never from the browser. See cleanup.
 
 import { Bootstrap } from '@onderling/core';
 

@@ -10,7 +10,7 @@
  */
 
 export { SyncEngine }                    from './SyncEngine.js';
-// P3 Phase B/C — platform-neutral cache-mode pseudo-pod wiring, shared
+// Phase B/C — platform-neutral cache-mode pseudo-pod wiring, shared
 // by the desktop CLI and the folio-mobile platform-shell.
 export { wrapWithPseudoPod, guessContentType } from './podCache.js';
 export { PathMap, joinRel }              from './PathMap.js';
@@ -42,7 +42,7 @@ export {
   SHARES_FILE_RELPATH,
 } from './autoShare.js';
 // Folio.B4 — time-machine versioning (Q-Folio.4) RETIRED onto the shared
-// @onderling/versioning substrate (Slice 1a, PLAN-folio-as-file-agent).  The
+// @onderling/versioning substrate (PLAN-folio-as-file-agent). The
 // engine owns a per-instance `createVersionStore` (see SyncEngine.js) and
 // exposes it as `engine.versionStore`; there is no longer a standalone
 // versions module to re-export from this barrel.

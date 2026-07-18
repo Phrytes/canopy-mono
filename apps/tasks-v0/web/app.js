@@ -2,7 +2,7 @@
  * Tasks V1 web UI client — speaks A2A's wire shape directly via fetch().
  *
  * Surface:
- *   - Status pills + V2.7 deps gate use `describeTaskStatus` from
+ *   Status pills + deps gate use `describeTaskStatus` from
  *     `../src/ui/taskStatus.js` (shared with the mobile shell per
  *     `Project Files/conventions/architectural-layering.md` §
  *     "Shared UI-glue helpers between platform shells"). The skill
@@ -19,7 +19,7 @@ import {
   describeTaskStatus,
   shouldOfferForceComplete,
 } from '../src/ui/taskStatus.js';
-// Slice B.2.0 (2026-05-20) — callSkill moved to @onderling/web-adapter
+// .0 (2026-05-20) — callSkill moved to @onderling/web-adapter
 // (shared with apps/household/web/main.js). The previous inline copy
 // was duplicated verbatim here AND in apps/household/web/main.js.
 // Overlay served by `bin/tasks-ui.js` at `/lib/web-adapter/callSkill.js`.
@@ -107,7 +107,7 @@ export function renderTasks(ul, items, ctx) {
 
   for (const item of items) {
     // The skill returns item.status as effectiveStatus already (lifecycle
-    // ∪ DAG, post-41.18). describeTaskStatus normalises + adds the V2.7
+    // ∪ DAG, post-41.18). describeTaskStatus normalises + adds the
     // deps-gate signals; same helper the mobile screens consume.
     const desc = describeTaskStatus(item);
     const status = desc.kind;
@@ -245,7 +245,7 @@ function buildActions(item, status, desc, ctx) {
   const canRemove   = role === 'admin';
   const canAddSub   = isAssignee || isMaster || isAdminish;
 
-  // V2.7 — `describeTaskStatus` rolls up the lifecycle status AND
+  // `describeTaskStatus` rolls up the lifecycle status AND
   // the unmet-deps signal (item.openDeps[] from the listOpen skill).
   // A claimed-but-deps-blocked task returns kind='claimed' AND
   // depsBlocked=true; the "Mark complete" / "Approve" buttons gate
@@ -291,7 +291,7 @@ function buildActions(item, status, desc, ctx) {
       ctx.onReject(item.id, note);
     }));
   }
-  // V2.7 — admin-only force-complete override. Same gate as
+  // admin-only force-complete override. Same gate as
   // mobile's `shouldOfferForceComplete(item, actor, role)` — see
   // `src/ui/taskStatus.js`. Admins / coordinators see the CTA when
   // a non-complete task has open deps; tap → mandatory reason →
@@ -321,7 +321,7 @@ function buildActions(item, status, desc, ctx) {
     }, 'secondary'));
   }
   if (canAddSub) {
-    // V2.7 — when parent is `submitted`, adding scope changes the
+    // when parent is `submitted`, adding scope changes the
     // rules of the deal. Switch the button to "Propose sub-task"
     // (calls `proposeSubtask`); the assignee then approves/declines
     // from their inbox. Self-spawn (assignee adding to their own

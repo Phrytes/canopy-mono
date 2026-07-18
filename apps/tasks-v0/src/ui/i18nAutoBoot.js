@@ -1,6 +1,6 @@
 /**
  * tasks-v0 web — drop-in auto-bootstrap for the runtime locale loader.
- * Post-V0 follow-up (#272, 2026-05-27).
+ * Post-V0 follow-up (2026-05-27).
  *
  * Pages add a single side-effect import:
  *

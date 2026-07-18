@@ -1,5 +1,5 @@
 /**
- * Guard (P0 reconciliation): the role→rank table has ONE source of truth,
+ * Guard (reconciliation): the role→rank table has ONE source of truth,
  * `@onderling/core` `STANDARD_RANKS`. The relay's GroupAuthVerifier used to
  * hand-copy the numbers ("mirrors Roles.js") — this test fails if any inline
  * rank literal reappears here, and asserts the verifier's ranks ARE core's.

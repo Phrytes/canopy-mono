@@ -1,6 +1,6 @@
 # tasks-v0 — web↔mobile parity workarounds (audit)
 
-> **Slice B.0 prep** per `PLAN-gui-chat-uplift.md`.  Owner-flagged:
+> ** prep** per`PLAN-gui-chat-uplift.md`.  Owner-flagged:
 > *"Probably, the code already contains many fixes to make it work on
 > both mobile and web: maybe check for comments on that too (or
 > readmes)."*  This audit surfaces every parity workaround so the
@@ -32,7 +32,7 @@ surfaces.
 Patterns in the shared UI-helpers that the `renderWeb` / NavModel
 design must respect or re-expose, rather than re-implement.
 
-### 1. V2.7 hard-dependencies gate → `describeTaskStatus()` + `canClose`
+### 1. hard-dependencies gate →`describeTaskStatus()` + `canClose`
 **File:** `apps/tasks-v0/src/ui/taskStatus.js:45–75`
 
 **Pattern:** Substrate emits `status` field (ready | waiting | blocked
@@ -63,7 +63,7 @@ circleState})` instead of assuming `from` is a webid; populate
 **Pattern:** Web form state + mobile Compose screen both convert to
 the same `addTask` / `addSubtask` / `forceSpawnSubtask` payload via
 pure functions (`buildAddTaskArgs` etc.).  Sub-task dependencies are
-explicitly rejected in child compose to prevent desync of the V2.7
+explicitly rejected in child compose to prevent desync of the
 hard-deps gate.
 
 **For renderWeb:** Use `buildAddTaskArgs(form)` to convert form
@@ -163,7 +163,7 @@ bundle; house web-specific keys at the top level.
 **File:** `apps/tasks-v0/src/skills/pushTokens.js:6–24`
 
 Mobile passes `appKey: 'tasks'`, `platform: 'expo'`.  Desktop
-deferred (V1.5); schema accommodates it.  Multi-app per-webid map
+deferred; schema accommodates it. Multi-app per-webid map
 prevents Stoop and Tasks clobbering each other's tokens.
 
 ### 5. Chat skills for appeal threads

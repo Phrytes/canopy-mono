@@ -1,5 +1,5 @@
 /**
- * wireBotChannel — Tasks V1.5 chat-bot wiring.
+ * wireBotChannel — Tasks chat-bot wiring.
  *
  * Mirrors `apps/household/src/HouseholdAgent.js#start()` shape, but
  * for Tasks's surface. Generic over `MessagingBridge` instances —
@@ -28,13 +28,13 @@ import { dispatch } from './dispatch.js';
  * @param {Array<{bridge: object, name?: string}>} args.bridges
  * @param {Object<string, string> | (() => Object<string, string>)} args.chatBindings
  *   Maps `chatId` → webid. Pass a function if the binding map can
- *   change at runtime (e.g. via the V1.5 setBotChatBinding skill).
+ *   change at runtime (e.g. via the setBotChatBinding skill).
  * @param {object} [args.botAgentRegistry]
- *   V1.5 — when supplied, bindings that have a cap-token (queried via
+ *   when supplied, bindings that have a cap-token (queried via
  *   `botAgentRegistry.get(chatId)`) dispatch via the bot agent's
  *   `invoke()` so PolicyEngine actually verifies the held token.
  *   Bindings WITHOUT a token fall back to the legacy direct-call
- *   path. Without a registry, all dispatch is direct (V1.5 baseline).
+ *   path. Without a registry, all dispatch is direct (baseline).
  * @returns {Promise<{detach: () => Promise<void>}>}
  */
 export async function wireBotChannel({ agent, bridges, chatBindings, botAgentRegistry }) {
@@ -88,7 +88,7 @@ export async function wireBotChannel({ agent, bridges, chatBindings, botAgentReg
       return;
     }
 
-    // V1.5 — cap-token mode if a bot agent + held token exists for
+    // cap-token mode if a bot agent + held token exists for
     // this chatId, else legacy direct-call. The two paths return the
     // same shape (`{text, buttons?}`) so downstream is uniform.
     const entry = botAgentRegistry?.get(chatId) ?? null;

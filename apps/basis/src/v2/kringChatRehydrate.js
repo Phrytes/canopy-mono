@@ -1,9 +1,9 @@
 /**
- * basis v2 — kring-chat boot-time rehydrator (SP-13.2.2).
+ * basis v2 — kring-chat boot-time rehydrator.
  *
  * The kring view's GESPREK tab reads from `eventLog` which lives in
  * memory.  On page reload the log starts empty, so historical chats
- * (durable in stoop's itemStore from SP-13.2.1's hybrid storage path)
+ * (durable in stoop's itemStore from 's hybrid storage path)
  * wouldn't be visible until new chats arrived.
  *
  * Since ε.1, every kring-chat insert path routes through the shared
@@ -118,7 +118,7 @@ function itemToEnvelope(item) {
     ts,
     text,
     fromActor: src.fromActor ?? src.fromWebid ?? null,
-    // media P1 — stored media pointer+snapshot (broadcast/ingest persisted it
+    // media — stored media pointer+snapshot (broadcast/ingest persisted it
     // in `source.media`); rides the envelope so the rehydrated bubble keeps
     // its photo chip. Absent stays absent — legacy items map unchanged.
     ...(src.media && typeof src.media === 'object' && !Array.isArray(src.media)

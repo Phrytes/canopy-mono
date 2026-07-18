@@ -1,5 +1,5 @@
 /**
- * TaskGrant — "authority travels with the task" (P5 task-scoped delegation).
+ * TaskGrant — "authority travels with the task" (task-scoped delegation).
  *
  * Generalizes the working `BotAgentRegistry` pattern (a per-binding, scoped,
  * revocable "act-AS" cap-token wired into `PolicyEngine.setRevocationCheck`)

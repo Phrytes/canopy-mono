@@ -1,7 +1,7 @@
 /**
  * params[] → plain JSON Schema object.  Output shape matches what the
  * current household `V0_TOOL_CATALOG` feeds the LLM — no `$schema`, no
- * draft pragma — so SP-1's byte-equivalence gate can diff cleanly.
+ * draft pragma — so 's byte-equivalence gate can diff cleanly.
  *
  * Properties + required preserve param declaration order (determinism;
  * cf. internal/order.js).
@@ -24,7 +24,7 @@ export function paramsToJsonSchema(params, opts = {}) {
 
   // Omit `required` when empty — matches what hand-written JSON-Schema-based
   // tool catalogues do (e.g. household's `V0_TOOL_CATALOG.help`) and keeps
-  // byte-equivalence on the SP-1 gate.
+  // byte-equivalence on the gate.
   const out = { type: 'object', properties };
   if (required.length > 0) out.required = required;
   return out;
@@ -51,7 +51,7 @@ function paramToProperty(p, manifest) {
     // buildFormSpec.validateAndCoerce (per-kind parser).
     case 'date':    return extra ? { type: 'string', format: 'date',  ...extra } : { type: 'string', format: 'date'  };
     case 'webid':   return extra ? { type: 'string', format: 'uri',   ...extra } : { type: 'string', format: 'uri'   };
-    // Q23 — file / image surface as objects with a contentType field;
+    // file / image surface as objects with a contentType field;
     // adapters interpret the upload UI.  No real consumer yet; minimal
     // shape so the schema doesn't reject them.
     case 'file':    return extra ? { type: 'object', ...extra } : { type: 'object' };

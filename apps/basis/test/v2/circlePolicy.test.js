@@ -217,7 +217,7 @@ describe('memberOverride', () => {
     expect(next.flowThrough).toEqual({ tasksToPersonal: true, calendarToPersonal: true });
   });
 
-  // P6.M4 + α.5b — split push toggles (four kinds).
+  // split push toggles (four kinds).
   it('defaults push to the four-kind shape (board 6A · α.5b)', () => {
     expect(DEFAULT_MEMBER_OVERRIDE.push).toEqual({
       onMention:      true,

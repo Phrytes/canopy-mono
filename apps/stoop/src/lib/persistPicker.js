@@ -6,7 +6,7 @@
  * Three adapters today, same interface:
  *   - `FilePersist`           Node:    `{path: '/data/stoop.json'}`
  *   - `IndexedDBPersist`      Browser: `{dbName: 'stoop-cache'}`
- *   - `AsyncStoragePersist`   RN:      `{dbName, asyncStorage}`  (#222.6)
+ *   `AsyncStoragePersist` RN: `{dbName, asyncStorage}`
  *
  * Callers pass exactly ONE of these.  The picker validates +
  * dynamically imports the matching adapter so a browser bundle

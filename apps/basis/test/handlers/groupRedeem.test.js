@@ -1,5 +1,5 @@
 /**
- * Bundle H Phase 2 (#269) — group-redeem request + response coverage.
+ * group-redeem request + response coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import {

@@ -1,12 +1,12 @@
 /**
- * Slice B.2.2 — review.html migrated to NavModel + B.2.0 web-adapter
+ * .2 — review.html migrated to NavModel + B.2.0 web-adapter
  * helpers (mirror of sliceB2_1-mine.test.js).
  *
  * Asserts:
  *   - The manifest now declares the `listAwaitingApproval` op AND the
  *     `review` view (was off-manifest pre-B.2.2).
  *   - renderWeb's NavModel projects the `review` section with the
- *     expected V0.7 DoD-lifecycle itemActions (approveTask /
+ *     expected DoD-lifecycle itemActions (approveTask /
  *     rejectTask / revokeTask gated by appliesTo.state).
  *   - The page serves + carries the imports the B.2.0 overlay
  *     provides (itemMatchesAppliesTo / applyPrefilledParams /
@@ -61,7 +61,7 @@ describe('Slice B.2.2 — manifest delta (review.html data source)', () => {
     const sec = nav.sections.find((s) => s.id === 'review');
     expect(sec, 'review section missing').toBeTruthy();
     expect(sec.itemType).toBe('task');
-    // Same itemActions surface as mine/mastered/claimable (all V0.7
+    // Same itemActions surface as mine/mastered/claimable (all
     // DoD-lifecycle ops on type='task' with surfaces.ui).  The page
     // filters by appliesTo.state at render time.
     const opIds = sec.itemActions.map((a) => a.opId).sort();

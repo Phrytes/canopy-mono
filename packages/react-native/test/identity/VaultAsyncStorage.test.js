@@ -6,7 +6,7 @@
  * coverage that VaultMemory + VaultLocalStorage rely on in
  * @onderling/vault.
  *
- * Task #222.5 (2026-05-24).
+ * Task (2026-05-24).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { VaultAsyncStorage } from '../../src/identity/VaultAsyncStorage.js';

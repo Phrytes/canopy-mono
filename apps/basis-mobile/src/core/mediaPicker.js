@@ -1,5 +1,5 @@
 /**
- * Media P1 mobile twin (2026-07) — the RN media input for the sealed
+ * Media mobile twin (2026-07) — the RN media input for the sealed
  * media path (plans/NOTE-media-and-streaming.md: "pickAndResize as the
  * file input").
  *

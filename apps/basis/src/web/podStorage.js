@@ -2,9 +2,9 @@
  * **Platform: web** — composes a Solid OIDC `session.fetch` to read /
  * write resources at the user's pod root.
  *
- * basis — minimal pod-write helper for v0.7.P2.
+ * basis — minimal pod-write helper for v0.7..
  *
- * Pattern: when the user signs in (v0.7.P1), `podAuth.getCurrentSession()`
+ * Pattern: when the user signs in (v0.7.), `podAuth.getCurrentSession`
  * returns `{ webid, isLoggedIn, fetch }` where `fetch` is an
  * authenticated browser-fetch.  This module wraps it to provide
  * `createPodWriter(session)` — a function the calendar (and future
@@ -17,15 +17,15 @@
  *     with other Solid apps (folio's existing
  *     `<pod>/<folder-mirror>` paths remain unaffected).
  *
- * v0.7.P2 limitations:
+ * v0.7. limitations:
  *   - One-way write only (calendar emits .ics feed to pod).
  *   - No conflict detection / If-Match.
  *   - No parent-container creation (PUT to leaf URL; most Solid
  *     servers auto-create containers).  When servers don't,
- *     v0.7.P2.1 adds explicit container creation via PUT with
+ *     v0.7. adds explicit container creation via PUT with
  *     ldp:Container link header.
  *
- * Future v0.7.P3:
+ * Future v0.7.:
  *   - Bidirectional via @onderling/pseudo-pod cache-mode + per-URI
  *     mode override.
  */
@@ -34,7 +34,7 @@
  * Derive a pod root URL from a webid via the URL structure only.
  * Best-effort fallback when the WebID document can't be fetched.
  *
- * v0.7.P2.2 note: this fallback is WRONG for Inrupt-style providers
+ * v0.7. note: this fallback is WRONG for Inrupt-style providers
  * where the WebID lives on the identity-provider host but the actual
  * pod storage is on a separate host (e.g. id.inrupt.com vs
  * storage.inrupt.com).  Always prefer `discoverPodRoot(session)`
@@ -59,7 +59,7 @@ export function podRootFromWebid(webid) {
 const PIM_STORAGE = 'http://www.w3.org/ns/pim/space#storage';
 
 /**
- * v0.7.P2.2 — discover the user's actual pod storage URL by fetching
+ * v0.7. — discover the user's actual pod storage URL by fetching
  * the WebID document + reading the `pim:storage` triple.  This is
  * the canonical Solid mechanism and works for every spec-compliant
  * provider (Inrupt PodSpaces, CommunitySolid, SolidCommunity, NSS).
@@ -263,7 +263,7 @@ export function createPodWriter(session, opts = {}) {
   if (!session || typeof session.fetch !== 'function' || typeof session.webid !== 'string') {
     throw new TypeError('createPodWriter: session with {fetch, webid} required');
   }
-  // v0.7.P2.2 — caller can supply a pre-discovered pod root (e.g.
+  // v0.7. — caller can supply a pre-discovered pod root (e.g.
   // from discoverPodRoot(session)).  Defaults to the URL-shape
   // heuristic if not provided.
   const podRoot = (typeof opts.podRoot === 'string' && opts.podRoot)
@@ -278,7 +278,7 @@ export function createPodWriter(session, opts = {}) {
      * Ensure parent container exists (recursively).  Some Solid
      * servers (community-solid-server / CSS) require explicit
      * container creation before you can PUT into them; Inrupt's
-     * older NSS auto-creates.  v0.7.P2.1 adds the explicit step.
+     * older NSS auto-creates. v0.7. adds the explicit step.
      */
     async ensureContainer(containerUrl) {
       // Stop at pod root.

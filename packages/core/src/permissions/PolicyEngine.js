@@ -47,7 +47,7 @@ export class PolicyEngine {
    * @param {string} [opts.agentPubKey]  — this agent's Ed25519 pubKey (base64url)
    * @param {import('./GroupManager.js').GroupManager} [opts.groupManager]  — D3: enables `requiredRole` checks
    * @param {(tokenId: string) => boolean | Promise<boolean>} [opts.isRevoked]
-   *   Optional issuer-side revocation check (V1.5). When supplied,
+   *   Optional issuer-side revocation check. When supplied,
    *   `checkInbound` calls it after the token's signature/expiry/
    *   subject/skill/issuer-trust checks pass; if it returns truthy
    *   the token is rejected as `INVALID_TOKEN: revoked`. Lets agents
@@ -269,7 +269,7 @@ export class PolicyEngine {
       );
     }
 
-    // V1.5 — issuer-side revocation list (optional). Catches "I revoked this
+    // issuer-side revocation list (optional). Catches "I revoked this
     // token I issued" before the handler runs, even when the holder still has
     // it stored locally.
     if (this.#isRevoked) {

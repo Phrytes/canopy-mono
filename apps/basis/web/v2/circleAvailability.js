@@ -1,5 +1,5 @@
 /**
- * basis v2 — availability (web DOM renderer, board 6C).
+ * basis v2 — availability (web DOM renderer).
  *
  * Cross-circle personal availability: holiday mode (away until a date) +
  * quiet hours (defer pushes in a daily window, optionally weekends all
@@ -74,7 +74,7 @@ export function renderCircleAvailability(container, { availability, t, onChange,
   save.addEventListener('click', () => { if (typeof onSave === 'function') onSave(); });
   container.appendChild(save);
 
-  // Mij tab also surfaces the device-global Hopping stance (board 7).
+  // Mij tab also surfaces the device-global Hopping stance.
   if (typeof onHop === 'function') {
     const hop = document.createElement('button');
     hop.type = 'button';

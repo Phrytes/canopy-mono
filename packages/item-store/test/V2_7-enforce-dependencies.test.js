@@ -1,5 +1,5 @@
 /**
- * V2.7 — substrate enforce-dependencies gate.
+ * substrate enforce-dependencies gate.
  *
  * Asserts:
  *   - Default `enforceDependencies: false` keeps V1 behaviour (no gate).

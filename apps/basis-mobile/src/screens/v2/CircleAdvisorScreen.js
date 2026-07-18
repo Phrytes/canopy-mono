@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — circle Advisor (RN screen, board 3D).
+ * basis-mobile v2 — circle Advisor (RN screen).
  *
  * RN counterpart of web's circleAdvisor over the SAME no-LLM rules engine
  * (`computeAdvice`): shows at most one advice card when a circle shows

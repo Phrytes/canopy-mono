@@ -1,7 +1,7 @@
 /**
  * basis v2 — N3 role templates (starter set, admin opt-in).
  *
- * Design (Q5, Frits 2026-04/06): a circle defaults to the minimalist
+ * Design (Frits 2026-04 06): a circle defaults to the minimalist
  * admin + member roles; when an admin *wants* an extra role they pick
  * from a small starter set of templates rather than hand-rolling a
  * capability set.  This module is the pure registry of those templates.

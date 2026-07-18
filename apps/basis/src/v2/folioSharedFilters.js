@@ -1,8 +1,8 @@
 /**
  * basis v2 — Folio "Shared by me / Shared with me" filters
- * (P6.M8, board 10B).
+ * 
  *
- * Board 10B sits next to "My things" ([[folioMyThings]], board 10A) as
+ * This view sits next to "My things" ([[folioMyThings]]) as
  * two toggle filters on the same Folio screen:
  *
  *   - `shared-by-me`   — items I own that are shared into ≥1 circle

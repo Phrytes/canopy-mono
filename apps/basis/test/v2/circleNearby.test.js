@@ -1,5 +1,5 @@
 /**
- * P6.8 — "Nearby" model tests.
+ * "Nearby" model tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

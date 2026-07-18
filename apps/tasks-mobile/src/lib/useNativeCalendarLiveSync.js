@@ -9,7 +9,7 @@
  * Wires:
  *   1. `useSkillResult('listMine')` to source the assigned + master
  *      tasks the user wants on their phone calendar (mirrors the
- *      desktop's V2.1 ICS feed).
+ *      desktop's ICS feed).
  *   2. `useAgentEvent('taskListChanged')` to refresh the list when
  *      a peer claims / submits / completes / revokes.
  *   3. Persisted `eventIdByTask` map via AsyncStorage (the lib

@@ -11,10 +11,10 @@
  * dom, jsdom).  The renderer's output is data; this adapter is the
  * "view" half.
  *
- * Phase v0.1 sub-slice 1.10 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  */
 
-// Media P1 (2026-07) — the media-card chip opens the manifest line's sealed
+// Media (2026-07) — the media-card chip opens the manifest line's sealed
 // inline thumbnail client-side (no gate, no fetch — the thumb ships in the line).
 import { openThumbnail } from '@onderling/blob-gateway';
 
@@ -23,7 +23,7 @@ import { openThumbnail } from '@onderling/blob-gateway';
  * @property {Document} doc                  the DOM document (browser: document)
  * @property {{opener?: (sealedText: string) => string,
  *             openFull?: (line: object|string) => Promise<{bytes: Uint8Array, media?: object}>}} [media]
- *   Media P1 — the injected sealing OPENER for media-card thumbnails
+ *   Media — the injected sealing OPENER for media-card thumbnails
  *   (`makeOpener`/`makeGroupOpener`, or a circle seal strategy's `open`).
  *   Absent → media-cards render the mime/dims placeholder instead.
  *   `openFull` (optional) is the circle media gateway's gated full-size read
@@ -100,7 +100,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
     case 'mini-page':  return renderRecordPanel(rendered, state, ctx, 'mini-page');
     case 'brief':      return renderBrief(rendered, state, ctx);
     case 'find':       return renderFind(rendered, state, ctx);
-    case 'curation':   return renderCurationBubble(rendered, state, ctx);   // P3 — before/after
+    case 'curation':   return renderCurationBubble(rendered, state, ctx);   // before/after
     case 'form':       return renderFormShape(rendered, state, ctx);
     case 'notification': return renderNotification(rendered, state, ctx);  // E1
     case 'file':         return renderFileReply(rendered, state, ctx);     // E1
@@ -109,7 +109,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
       const variant = rendered.embed?.kind ?? 'item-card';
       if (variant === 'file-card') return renderFileCard(rendered, state, ctx);
       if (variant === 'time-card') return renderTimeCard(rendered, state, ctx);
-      if (variant === 'media-card') return renderMediaCard(rendered, state, ctx);   // media P1
+      if (variant === 'media-card') return renderMediaCard(rendered, state, ctx);   // media
       return renderEmbedCard(rendered, state, ctx);
     }
     default:           return renderUnknownShape(rendered, ctx);
@@ -118,7 +118,7 @@ function renderShellMessage(rendered, lifecycleState, ctx) {
 
 // E1 (§B#5) — notification bubble: a title (optional) + body, colour-keyed
 // by severity level via a data attribute the CSS keys on.
-// P3 (feedback-extension) — before/after curation bubble. Renders the shared
+// (feedback-extension) — before/after curation bubble. Renders the shared
 // `kind:'curation'` view model (changed · sides{before,after} · changedPaths).
 function renderCurationBubble(rendered, state, ctx) {
   const { doc } = ctx;
@@ -382,7 +382,7 @@ function renderListMessage(rendered, state, ctx) {
         } else if (typeof onButtonTap === 'function') {
           button.addEventListener('click', () => {
             const [opId, itemId] = String(btn.callbackData ?? '').split(':');
-            // #178 — pass the originating message-id so onButtonTap
+            // pass the originating message-id so onButtonTap
             // can refresh THIS list in place after the dispatch
             // (state-morphing row buttons).
             onButtonTap(opId, itemId, { originMessageId: rendered.messageId });
@@ -512,13 +512,13 @@ function renderRecordPanel(rendered, state, ctx, variant) {
         // renderQrCanvas comment for the lazy-load story.
         renderQrField(dd, doc, String(field.value));
       } else if (field.kind === 'refs') {
-        // #194 (B9) — render an array of {type, ref, label} as a row
+        // (B9) — render an array of {type, ref, label} as a row
         // of "See also" chips.  Click-handlers TBD: future slice
         // adds chip → dispatch (e.g. clicking a task chip opens its
         // /mytasks entry).
         renderRefChips(dd, doc, field.value);
       } else if (field.kind === 'grid') {
-        // #195 (B7) — 7×2 availability grid.  Each cell is a button
+        // (B7) — 7×2 availability grid. Each cell is a button
         // whose dataset packs (week|day|half|nextState) so onButtonTap
         // dispatches setMyAvailability.
         renderGridField(dd, doc, field.value, rendered, onButtonTap);
@@ -596,7 +596,7 @@ function renderQrField(container, doc, text) {
 }
 
 /**
- * #194 (B9) — render a "refs" array as a row of "See also" chips.
+ * (B9) — render a "refs" array as a row of "See also" chips.
  * Each chip shows the ref's label (or type:ref fallback) prefixed
  * by a small type-glyph.  No click handlers wired yet — future slice
  * dispatches chip clicks to the right app/op (e.g. task chip →
@@ -607,7 +607,7 @@ function renderQrField(container, doc, text) {
  * @param {Array<{type, ref|id, label?}>}    refs
  */
 /**
- * #195 (B7) — render a 7×2 availability grid.  Each cell is a
+ * (B7) — render a 7×2 availability grid. Each cell is a
  * clickable button; click cycles state (unknown→open→tight→
  * unavailable→unknown) by dispatching setMyAvailability via
  * onButtonTap with the cell-key packed as `week|day|half|nextState`.
@@ -804,7 +804,7 @@ function renderEmbedCard(rendered, state, ctx) {
     wrap.appendChild(claimBtn);
   }
 
-  // Action buttons (Q28 button surfaces from the embed's appOrigin
+  // Action buttons (button surfaces from the embed's appOrigin
   // manifest, gated by appliesTo against the snapshot).
   if (state !== 'disabled'
       && manifestsByOrigin
@@ -913,7 +913,7 @@ function renderFileCard(rendered, state, ctx) {
 }
 
 /**
- * Media P1 (2026-07) — media-card embed renderer (the sealed-media chip).
+ * Media (2026-07) — media-card embed renderer (the sealed-media chip).
  *
  * The embed's snapshot is a canonical `media` item; `snapshot.source` is
  * blob-gateway's manifest line. Chip = `openThumbnail(line, opener)` FIRST
@@ -1011,7 +1011,7 @@ function renderMediaCard(rendered, state, ctx) {
 }
 
 /**
- * Media P1 — full-image lightbox. Self-contained overlay (mirrors the v2
+ * Media — full-image lightbox. Self-contained overlay (mirrors the v2
  * confirmDialog / catchUpChooser pattern: inline styles, backdrop + ESC =
  * close, no shared "Modal" abstraction). The gated full-size read
  * (`openFull(line) => {bytes, media}`) runs on open; loading + error states
@@ -1254,7 +1254,7 @@ function appendManifestActions(wrap, embed, state, ctx, doc) {
 function deriveTypeFromKind(kind) {
   if (kind === 'file-card') return 'file';
   if (kind === 'time-card') return 'calendar-event';
-  if (kind === 'media-card') return 'media';   // media P1 — canonical noun
+  if (kind === 'media-card') return 'media';   // media — canonical noun
   return undefined;
 }
 
@@ -1355,7 +1355,7 @@ function formatTime(iso) {
 }
 
 /**
- * v0.7 — render a brief-shape reply (Q30 aggregator output).  Each
+ * v0.7 — render a brief-shape reply (aggregator output). Each
  * section becomes a labelled block; the section's payload is
  * rendered with the same rules as the top-level shapes (text /
  * list-with-items).  A [Refresh] button at the top re-runs /brief.
@@ -1623,10 +1623,10 @@ export function renderStream(container, messages, ctx) {
   while (container.firstChild) container.removeChild(container.firstChild);
   for (const m of messages) {
     const el = renderToDom(m, ctx);
-    // v0.7.P2.2 — timestamp every message.  Today: show only HH:mm;
+    // v0.7. — timestamp every message. Today: show only HH:mm;
     // older: show short date + HH:mm.
     //
-    // v0.7.P1-followup 2026-05-23 — form messages return a LIVE DOM
+    // v0.7.-followup 2026-05-23 — form messages return a LIVE DOM
     // node (rendered.formElement) that gets reused across renders.
     // The naive `el.appendChild(tsEl)` accumulated one tsEl per
     // render → users saw stacks of timestamps inside the form.
@@ -1649,7 +1649,7 @@ export function renderStream(container, messages, ctx) {
 }
 
 /**
- * v0.7.P2.2 — message timestamp formatter.
+ * v0.7. — message timestamp formatter.
  *   today           → 'HH:mm'   (e.g. '14:32')
  *   not today       → 'M/D HH:mm' (e.g. '5/21 14:32')
  *   not this year   → 'YYYY-M-D HH:mm'

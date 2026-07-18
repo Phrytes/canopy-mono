@@ -1,5 +1,5 @@
 /**
- * availability unification (decision Q5) — one-time seed of the unified
+ * availability unification (decision) — one-time seed of the unified
  * `availability` property from the most-restrictive legacy signal
  * (availabilityMigration.js). Pins: marker idempotence, most-restrictive
  * seeding (holidayMode / per-skill availability → 'away'; else 'open'), and

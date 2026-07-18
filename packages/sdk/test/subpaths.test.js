@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 /**
- * SP-9 — sub-path exports. Each slice must resolve (through the package.json
+ * sub-path exports. Each slice must resolve (through the package.json
  * `exports` map + the workspace symlink) to exactly its expected symbols, and
  * the main barrel must remain the SUM of the slices (byte-compatible surface).
  */

@@ -8,7 +8,7 @@
  * per-block `{blockId, type, status, content}` — so the existing
  * renderers consume screen output unchanged.
  *
- * Q5 (muted): drop blocks from circles in the `mutedCircleIds` set.
+ * (muted): drop blocks from circles in the `mutedCircleIds` set.
  * "Hide entirely" applies BEFORE the per-block merge — a muted kring
  * contributes nothing.
  *
@@ -40,7 +40,7 @@ import { materializeBlock as _materializeKringBlock } from './kringRecipeBlocks.
  * @param {object} args.hostOps              { callSkill, eventLog, circles }
  * @param {Set<string>|Array<string>} [args.mutedCircleIds]
  *        circles the local user has muted; their data is suppressed
- *        per Q5 ("hide entirely").
+ *        per ("hide entirely").
  * @returns {Promise<Array<object>>}
  */
 export async function materializeScreen({ screen, hostOps = {}, mutedCircleIds = null } = {}) {
@@ -53,7 +53,7 @@ export async function materializeScreen({ screen, hostOps = {}, mutedCircleIds =
   const filterIds = effectiveKringIds(screen, allCircleIds);
   const activeCircleIds = filterIds.filter((id) => !muted.has(id));
   // When the user has muted EVERY kring in the filter, an empty active
-  // list means kring-aware blocks render empty (Q5 "hide entirely").
+  // list means kring-aware blocks render empty ("hide entirely").
 
   return Promise.all(screen.blocks.map((block) => materializeOneBlock({
     block, activeCircleIds, allCircleIds, hostOps,

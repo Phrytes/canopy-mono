@@ -1,5 +1,5 @@
 /**
- * SP-5b V0b — `ListFilter.audience` equality match.
+ * V0b — `ListFilter.audience` equality match.
  *
  * Verifies the new filter on listOpen / listClosed:
  *   - filter.audience absent → existing behaviour (no audience filter)

@@ -84,7 +84,7 @@ const VALID_MODES = new Set(['standalone', 'replication-ring', 'cache']);
  *   the pod unreachable stay in the write-through queue until
  *   `drainWriteThroughQueue()` is called on reconnect.
  *
- * Versioning seam (PLAN-pod-versioning-history-recovery P2):
+ * Versioning seam (PLAN-pod-versioning-history-recovery):
  * @param {{capture: (uri: string, content: *) => Promise<*>}} [opts.versioning]
  *   — optional version store (duck-typed; `@onderling/versioning`'s
  *   `createVersionStore`). When supplied, the write path snapshots the
@@ -177,7 +177,7 @@ export function createPseudoPod({
     );
   }
 
-  /** 4b HARD INVARIANT (PLAN-pod-versioning-history-recovery P4): when a
+  /** 4b HARD INVARIANT (PLAN-pod-versioning-history-recovery): when a
    *  version store is attached, the history layer under its key prefix is
    *  IMMUTABLE through this pod — `write`/`delete` refuse it in EVERY mode
    *  (incl. cache, which skips `_assertLocalWrite`), and `writeFromPeer`

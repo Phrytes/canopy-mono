@@ -1,5 +1,5 @@
 /**
- * circleVersioning — per-circle pod version history (P3 slice 1, web).
+ * circleVersioning — per-circle pod version history (web).
  *
  * Covers: webSha256 correctness (vs node:crypto), build-once per circle,
  * getter resolution, and the end-to-end contract — a circle pseudo-pod

@@ -1,5 +1,5 @@
 /**
- * Stoop V1.5 — Phase 22 tests.
+ * Stoop — Phase 22 tests.
  *
  * Layer-2 personal-interest profile.  Pure-function lib tests +
  * skill-level wiring (`scorePostRelevance`, `getInterestProfile`,

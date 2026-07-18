@@ -1,5 +1,5 @@
 /**
- * freedom — B · Slice 2 (ruling Q3): the admin freedom template + gate-narrowing.
+ * freedom — B · (ruling): the admin freedom template + gate-narrowing.
  */
 import { describe, it, expect } from 'vitest';
 import {

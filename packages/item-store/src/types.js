@@ -69,13 +69,13 @@
  *   H4-extension.  Default: 'household'.  Filtered on read by the
  *   role-policy gate (when configured).
  *
- *   **Legacy as of SP-5b V0a (2026-05-21).**  Superseded by
+ *   **Legacy as of V0a (2026-05-21).** Superseded by
  *   `audience` (see below).  Items with only `visibility` keep
  *   working via the `audienceFromItem(item)` bridge helper.  New
  *   items should prefer the richer `audience` field.
  *
  * @property {Audience} [audience]
- *   SP-5b V0a (2026-05-21).  The audience a item is shared with.
+ *   V0a (2026-05-21). The audience a item is shared with.
  *   Strictly richer than `visibility`: accepts arbitrary
  *   `circle-ref` / `union` / `set` audiences in addition to the
  *   legacy string short-hands (`'household'`, `'private'`,
@@ -162,7 +162,7 @@
 /**
  * @typedef {'household' | `role:${string}` | 'private'} Visibility
  *
- * **Legacy** as of SP-5b V0a (2026-05-21).  See `Audience` below for
+ * **Legacy** as of V0a (2026-05-21). See `Audience` below for
  * the superseding field.
  */
 
@@ -174,7 +174,7 @@
  *   | { kind: 'public' }
  * } Audience
  *
- * SP-5b V0a (2026-05-21).  Audience model — what set of webids an
+ * V0a (2026-05-21). Audience model — what set of webids an
  * item is shared with.  Mirrors `@onderling/circles`' Audience model;
  * defined as a typedef here so item-store can carry the field
  * without depending on the higher-level circles package.
@@ -210,7 +210,7 @@
  *   actor is allowed to see.
  *
  * @property {Audience} [audience]
- *   SP-5b (2026-05-21).  Match items whose effective audience (via the
+ *   (2026-05-21). Match items whose effective audience (via the
  *   `audienceFromItem` bridge — so legacy `visibility`-only items still
  *   match) satisfies this queried audience.
  *
@@ -233,7 +233,7 @@
  *   lift `normalizeAudience` to item-types OR take a callback.
  *
  * @property {Audience[]} [audiences]
- *   SP-8 (2026-07-05).  **Cross-circle query.**  Match items whose
+ *   (2026-07-05). **Cross-circle query.** Match items whose
  *   effective audience satisfies ANY audience in this SET — the query
  *   spans multiple circles/audiences at once ("visible to circle A OR
  *   B OR …").  Each element is matched with the full

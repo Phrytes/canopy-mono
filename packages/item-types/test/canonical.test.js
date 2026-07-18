@@ -94,10 +94,10 @@ describe('Canonical types — minimal valid + missing-required-field sweep', () 
     'announcement':      { body:        'Heads up: code rotates Friday' },
     'reveal-request':    { requester:   'pk-a', target: 'pk-b' },
     'neighbourhood-job': { body:        'paint the wall' },
-    // SP-5 V0 additions (2026-05-20):
+    // V0 additions (2026-05-20):
     'view':              { title:       'Open tasks', itemType: 'task' },
     'circle':            { name:        'Gardening circle' },
-    // K2 (2026-07-01): cross-circle share reference.
+    // cross-circle share reference.
     'shared-ref':        { sourceCircle: 'circle-a', sourceId: 'dec:item/task/abc' },
     // Media Phase 1 (2026-07-09): pointer-only media item.
     'media':             { source: { type: 'blob', ref: 'blob://abc123' } },

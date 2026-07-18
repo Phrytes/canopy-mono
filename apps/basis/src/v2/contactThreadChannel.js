@@ -1,8 +1,8 @@
 /**
  * contactThreadChannel — the CLIENT end of a contact/bot peer link
- * (feedback-extension P5, the platform half of "journey A").
+ * (feedback-extension, the platform half of "journey A").
  *
- * P4 made a bot's named skills dispatchable (a slash command → a router). This
+ * made a bot's named skills dispatchable (a slash command → a router). This
  * is the COMPLEMENT: a free-text conversation with a contact-bot in its own DM
  * thread — the participant sends a turn, the bot replies asynchronously, the
  * reply lands back in that thread. It is the client mirror of the feedback

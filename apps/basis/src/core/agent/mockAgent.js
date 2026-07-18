@@ -38,7 +38,7 @@ const SEED_CHORES = [
  * manifest's relevant ops; declarations only — the mock agent
  * provides the skill implementations.
  */
-// SP-1 household list types (shopping/errand/repair/schedule) — the real household app's `addItem`
+// household list types (shopping/errand/repair/schedule) — the real household app's `addItem`
 // feature, now surfaced in the circle so the bot can drive shopping lists etc. (not just chores).
 export const HH_LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
 
@@ -77,10 +77,10 @@ export const mockHouseholdManifest = {
     {
       id:        'markComplete',
       verb:      'complete',
-      appliesTo: { type: 'chore', state: ['open'] },     // #240 — array form is canonical (matches tasks-v0/calendar/stoop)
+      appliesTo: { type: 'chore', state: ['open'] },     // array form is canonical (matches tasks-v0/calendar/stoop)
       params:    [{
         name: 'choreId', kind: 'string', required: true,
-        // Q34 — bare `/done` → list open chores; click row → done.
+        // bare `/done` → list open chores; click row → done.
         pickerSource: { listOp: 'listOpen' },
       }],
       surfaces:  {
@@ -106,7 +106,7 @@ export const mockHouseholdManifest = {
       },
     },
     /**
-     * `/addmember <name>` — household membership demo.  Q31 follow-up:
+     * `/addmember <name>` — household membership demo. follow-up:
      * after adding a member, suggest sharing a folio folder with them
      * (cross-app chain registered in followUps.js, but this op also
      * declares an in-app follow-up — viewing the chore list — so we
@@ -159,7 +159,7 @@ export const mockHouseholdManifest = {
       },
     },
     /**
-     * v0.7.cc — `/remove-chore <id-or-label>` — destructive (Q27).
+     * v0.7.cc — `/remove-chore <id-or-label>` — destructive.
      * Two-step: first call returns a confirm prompt; second call
      * adds the `--confirm=true` flag (body:'flags' so both positional
      * id + boolean flag parse together).
@@ -181,7 +181,7 @@ export const mockHouseholdManifest = {
       },
     },
     /**
-     * Q29 (v0.5) — `getChoreSnapshot` produces an ItemSnapshot for
+     * (v0.5) — `getChoreSnapshot` produces an ItemSnapshot for
      * the J7 embed primitive.  Declared on the household manifest so
      * markComplete-style ops can be embedded into chat messages.
      */
@@ -198,15 +198,15 @@ export const mockHouseholdManifest = {
   views: [{ id: 'chores', title: 'Chores', type: 'chore' }],
 };
 
-// Attach Q29 declaratively post-manifest-definition: markComplete's
+// Attach declaratively post-manifest-definition: markComplete's
 // embed-card factory is getChoreSnapshot.  This keeps the manifest
-// definition above readable while still wiring Q29 for the demo.
+// definition above readable while still wiring for the demo.
 mockHouseholdManifest.operations.find((o) => o.id === 'markComplete')
   .surfaces.chat.embed = { cardSnapshotSkill: 'getChoreSnapshot' };
 
-// v0.7 — Q30 brief-summary decl on household's list op.  /brief fans
-// across these to produce the morning brief.  Stoop / folio Q30 +
-// Q33 augmentations live in `mockManifests.js`.
+// v0.7 — brief-summary decl on household's list op. /brief fans
+// across these to produce the morning brief. Stoop / folio +
+// augmentations live in `mockManifests.js`.
 mockHouseholdManifest.operations.find((o) => o.id === 'listOpen')
   .surfaces.chat.brief = {
     summarySkill: 'briefSummary',
@@ -214,7 +214,7 @@ mockHouseholdManifest.operations.find((o) => o.id === 'listOpen')
     label:        'Lists',   // K0: household = the simple-LISTS app (vs tasks = graphs)
   };
 
-// v0.7.5 — Q33 search decl on household's list op.
+// v0.7.5 — search decl on household's list op.
 mockHouseholdManifest.operations.find((o) => o.id === 'listOpen')
   .surfaces.chat.search = { searchSkill: 'searchChores' };
 

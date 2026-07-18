@@ -1,5 +1,5 @@
 /**
- * Page skill drift canary (Slice 4, V0.8, 2026-05-21).
+ * Page skill drift canary (2026-05-21).
  *
  * Per DESIGN-tier-policy.md, T2/T3 pages may call skills not declared
  * in the manifest (e.g. page-internal app skills like setHopMode that
@@ -65,7 +65,7 @@ const ALLOWLIST = new Set([
   // The skill exists on the stoop agent (apps/stoop/src/skills/
   // index.js:3151) but tasks-v0 doesn't define it.  Either the call
   // should be removed from pod-settings.html OR tasks-v0 should
-  // declare its own whoAmI.  Tracked finding from the Slice 4 canary
+  // declare its own whoAmI. Tracked finding from the canary
   // (Tier policy session, 2026-05-21); fix in a follow-on.
   'whoAmI',
 ]);

@@ -1,7 +1,7 @@
 /**
- * basis — composite-op runner + verifier tests (P1, feedback-extension).
+ * basis — composite-op runner + verifier tests (feedback-extension).
  *
- * Covers DESIGN §2.2 (P1) acceptance + §2.3 (the verifier):
+ * Covers DESIGN §2.2 acceptance + §2.3 (the verifier):
  *   - a composite `/demo = [opA, opB]` runs end-to-end with arg-passing;
  *   - `argRef` threading (step-2 consumes step-1's output);
  *   - the verifier REJECTS an unknown-opId composite;

@@ -1,6 +1,6 @@
 # Convention: preserve pod-independence
 
-> **Status:** P1 deliverable (per transition doc §V.5 + §V.6).
+> **Status:** deliverable (per transition doc §V.5 + §V.6).
 > Pins the design principle that the substrates-v2 plan MUST not
 > regress capabilities today's code already delivers without
 > requiring a Solid pod.
@@ -29,7 +29,7 @@ design preserves it.
 | Tasks's relay-fan-out — task ledger across circle, no pod needed | Same substrate (`notify-envelope` + `pseudo-pod`); no-pod circle policy is one of four §II.2 policies |
 | Try-the-app-for-a-week-before-pod | Pseudo-pod **standalone mode** (Phase 52.2 V0); apps work fully against the local pseudo-pod without ever provisioning a Solid pod |
 | BLE-only campsite circles (no internet) | Pseudo-pod replication ring travels over BLE skill calls — no relay needed; substrate is transport-agnostic |
-| Mnemonic restore reconstructing identity locally | No-pod users: restore is local-only; vault lives in pseudo-pod, replicated across user's own devices. Pod-having users: vault lives at `<pod>/private/identity-vault` — a documented limitation in the interim (web console in P5 Hub track handles edge cases) |
+| Mnemonic restore reconstructing identity locally | No-pod users: restore is local-only; vault lives in pseudo-pod, replicated across user's own devices. Pod-having users: vault lives at `<pod>/private/identity-vault` — a documented limitation in the interim (web console in Hub track handles edge cases) |
 | Conflict resolution without a central authority | Phase 52.14 Q-D — Lamport-style `_v` per resource + 3-way `writeFromPeer` compare. No central coordinator needed |
 | Sharing without OIDC | Cap-token issuance via `PodCapabilityToken` stays as the no-pod sharing primitive (Phase 52.16). ACP/WAC is the **upgrade** for pod-having users, never the **replacement** |
 

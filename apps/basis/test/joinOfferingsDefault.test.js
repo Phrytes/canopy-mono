@@ -1,6 +1,6 @@
 /**
  * Charter-driven skill-sharing default at join — fold-in phase C
- * (plans/NOTE-skills-properties-audit.md §5 Q3), shared wizard state.
+ * (plans NOTE-skills-properties-audit.md 5), shared wizard state.
  *
  * Contract:
  *   - applyCharterOfferingsDefault: invite.offeringsMatching === true (the circle's

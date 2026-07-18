@@ -1,8 +1,8 @@
 /**
- * Portable embed-card button computation.  Bundle H Phase 3 (#270,
+ * Portable embed-card button computation. Bundle H Phase 3 (,
  * 2026-05-27) — lifted from `apps/basis/src/web/domAdapter.js:602`
  * so basis-mobile can surface the same `appliesTo`-gated action
- * buttons (Q28 button surfaces) on time-card / file-card embeds.
+ * buttons (button surfaces) on time-card / file-card embeds.
  *
  * Walks the embed's appOrigin manifest, picks operations whose
  * `surfaces.ui.control === 'button'` and whose `appliesTo` filter

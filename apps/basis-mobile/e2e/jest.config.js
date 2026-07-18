@@ -1,4 +1,4 @@
-// Jest config for Detox E2E tests (#254 — D-0 setup, 2026-05-26).
+// Jest config for Detox E2E tests (D-0 setup, 2026-05-26).
 // Lives parallel to but distinct from vitest — Detox can't run on
 // vitest, so the parent app keeps `pnpm exec vitest run` for unit
 // tests and uses `npm run detox:test` for the device-level layer.

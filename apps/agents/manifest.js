@@ -1,16 +1,16 @@
 /**
- * agents — app manifest (read slice 2026-07-09 + P2 CONTROL ops).
+ * agents — app manifest (read CONTROL ops).
  *
  * The "your agents" management surface: a member's registered agents
  * (their devices + delegated agents) listed from the canonical
  * `@onderling/agent-registry` pod resource.
  *
- * READ ops (P1, canonical `list` atom):
+ * READ ops (canonical `list` atom):
  *   • listAgents — the non-revoked roster (soft-revoke: entries with a
  *     `revokedAt` are skipped from the list).
  *   • viewAgent  — one agent's detail record, resolved by agentId/pubKey.
  *
- * CONTROL ops (P2 — PLAN-agent-management-surface.md).  Design rule
+ * CONTROL ops (PLAN-agent-management-surface.md). Design rule
  * (decision 2): the signed CapabilityToken is the ENFORCED authority;
  * the registry's `grants[]`/`capabilities[]` only MIRROR it — so grant
  * issues the token FIRST, then mirrors; revoke hits token(s) + entry
@@ -44,18 +44,18 @@ export const agentsManifest = {
   itemTypes: ['agent', 'data-version', 'catalog-entry'],
 
   // Layer-1 capability surface — (verb × noun) atoms this app ships.
-  // P2 CONTROL: `revoke` (revokeAgent / revokeGrant), `update`
+  // CONTROL: `revoke` (revokeAgent / revokeGrant), `update`
   // (grantAgent — mutates the entry's capability surface), `remove`
   // (purgeAgent — hard delete).
-  // P3 RECOVERY (`data-version`, app-local like `agent`): `list`
+  // RECOVERY (`data-version`, app-local like `agent`): `list`
   // (listDataVersions) + `update` (restoreDataVersion — writes a prior
   // state back to the live resource).
   nouns: {
-    // P3 INSTALL adds `add` (installAgent — adds a catalog/override card
+    // INSTALL adds `add` (installAgent — adds a catalog/override card
     // to your agents, default-deny).
     agent:          { atoms: ['list', 'revoke', 'update', 'remove', 'add'] },
     'data-version': { atoms: ['list', 'update'] },
-    // P3 INSTALL: the pluggable curated-catalog source, browsed read-only.
+    // INSTALL: the pluggable curated-catalog source, browsed read-only.
     'catalog-entry': { atoms: ['list'] },
   },
 
@@ -223,7 +223,7 @@ export const agentsManifest = {
       surfaces: { chat: { reply: 'record', hint: 'What a persona would share in a circle (its release for that context).' } },
     },
 
-    /* ── P2 CONTROL ops ─────────────────────────────────────────────────
+    /* ── CONTROL ops ─────────────────────────────────────────────────
      * All resolve the target by agentId OR pubKey ONLY (never webid —
      * ambiguous for multi-device users), same as viewAgent.  Token-first
      * discipline: see the header comment (decision 2).
@@ -242,7 +242,7 @@ export const agentsManifest = {
                + 'capability-grant tokens, then soft-revokes the registry entry (kept for '
                + 'audit; drops off the roster). Reports how many tokens were revoked.',
         },
-        // Q27 Tier C consent gate — disabling an agent cuts off every
+        // Tier C consent gate — disabling an agent cuts off every
         // delegation it holds.  'danger' → adapter shows a red confirm.
         ui: {
           control: 'button',
@@ -285,7 +285,7 @@ export const agentsManifest = {
         },
       },
     },
-    /* ── P3 ROLE grant (roles as capability bundles) ────────────────────
+    /* ── ROLE grant (roles as capability bundles) ────────────────────
      * grantRole ASSIGNS a role to a member AND materializes the role's
      * capability bundle: the injected `roleGrants` collaborator (bound to
      * core's `RoleGrantManager`) sets the governance role via
@@ -367,10 +367,10 @@ export const agentsManifest = {
       },
     },
 
-    /* ── P3 INSTALL ops (PLAN-agent-management-surface §P3) ─────────────
+    /* ── INSTALL ops (PLAN-agent-management-surface) ─────────────
      * Install an agent into "your agents" with CAPABILITY-SECURITY: the
      * entry is registered default-deny (no ambient authority); only the
-     * user-picked, card-DECLARED skills are granted, each through the P2
+     * user-picked, card-DECLARED skills are granted, each through the
      * token-first grant path.  Two sources: a curated catalog (pluggable
      * `store.catalog`) and the power-user override (a pasted/fetched card
      * that bypasses the catalog).  commons-governance: the catalog's
@@ -434,7 +434,7 @@ export const agentsManifest = {
       },
     },
 
-    /* ── P3 RECOVERY ops (PLAN-pod-versioning-history-recovery) ─────────
+    /* ── RECOVERY ops (PLAN-pod-versioning-history-recovery) ─────────
      * "Restore corrupted / lost data" over the per-circle pod version
      * history. Deliberately on THIS surface: J5/J7's recovery arc is
      * "revoke the misbehaving agent → restore what it touched".
@@ -478,7 +478,7 @@ export const agentsManifest = {
                + 'restore can itself be restored. Use to recover data corrupted or deleted by '
                + 'a misbehaving agent.',
         },
-        // Overwrites live content (undoably) — red confirm, same Q27 tier
+        // Overwrites live content (undoably) — red confirm, same tier
         // as revokeAgent.
         ui: {
           control: 'button',
@@ -506,7 +506,7 @@ export const agentsManifest = {
     // DETAIL — one agent, record shape (mirrors stoop `settings` /
     // tasks-v0 `pod-settings`).  `agentId` is a RUNTIME-derived arg
     // (the selected row / URL), supplied via the fetch-section context
-    // as `$agentId` (same Q15 pattern tasks-v0 uses for `$circleId`).
+    // as `$agentId` (same pattern tasks-v0 uses for `$circleId`).
     // read-only: no `fields[]` — this slice has no patch surface.
     {
       id:       'agent-detail',
@@ -520,7 +520,7 @@ export const agentsManifest = {
       },
     },
 
-    /* ── P3 INSTALL view — the curated catalog (pluggable source) ───────
+    /* ── INSTALL view — the curated catalog (pluggable source) ───────
      * Browse installable agents (rows: id · name · description · declared
      * skills, exposed as `items` with id/label by listCatalog). The
      * install act is the `add`-verb `installAgent` op, which auto-surfaces
@@ -537,7 +537,7 @@ export const agentsManifest = {
       dataSource: { skillId: 'listCatalog' },
     },
 
-    /* ── P3 RECOVERY views — "restore corrupted / lost data" by screen ──
+    /* ── RECOVERY views — "restore corrupted / lost data" by screen ──
      * Same op (`listDataVersions`) drives BOTH sections; the `uri`
      * context arg switches the mode (see the op's param comments).
      * `restoreDataVersion` surfaces on each row via its `surfaces.ui`
@@ -549,7 +549,7 @@ export const agentsManifest = {
     // retained history (rows: uri · latestMs · count; the core also
     // exposes them as `items` with id/label ← uri for the list
     // renderer).  `$circleId` is the same runtime context arg the
-    // tasks-v0 `pod-settings` view uses (Q15 — host supplies the
+    // tasks-v0 `pod-settings` view uses (— host supplies the
     // active circle).
     {
       id:         'data-versions',
@@ -565,7 +565,7 @@ export const agentsManifest = {
     // pick-list; rows: ts · id · sha256 · size · writer, exposed as
     // `items` with label ← ISO(ts) · id).  `$uri` is a NEW runtime
     // context arg: the host materializer supplies it from the row the
-    // user picked in `data-versions` (same Q15 mechanism as
+    // user picked in `data-versions` (same mechanism as
     // `$agentId` on agent-detail).  Stays a LIST (not shape:'record')
     // — the drilldown is itself a pick-list of versions.
     {

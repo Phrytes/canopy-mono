@@ -118,7 +118,7 @@ export async function createNeighborhoodAgent({
    * available, an `IndexedDBPersist` adapter is wired into
    * `bundle.cache`.  Mutually exclusive with `persistPath` (pass
    * exactly one).  Used by basis's browser composition
-   * (integration plan 2026-05-23, slice 3).
+   * (integration plan 2026-05-23).
    */
   persistDb,
   notifier:      providedNotifier,
@@ -131,7 +131,7 @@ export async function createNeighborhoodAgent({
    */
   metrics:       providedMetrics,
   /**
-   * Stoop V1.5 Phase 21 (2026-05-06): VAPID config for Web Push.
+   * Stoop Phase 21 (2026-05-06): VAPID config for Web Push.
    * Pass `{publicKey, privateKey, subject}` to enable; without it,
    * Web-Push delivery is disabled but the subscribe / unsubscribe
    * skills still register subscriptions (the demo's loop-back path).
@@ -250,7 +250,7 @@ export async function createNeighborhoodAgent({
       inner:         itemBackend ?? null,
       localStore:    initialMap,
       onLocalChange: persist ? (m) => persist.scheduleSave(m) : undefined,
-      // Phase 33+34 (V2.5): per-device settings + the migration marker
+      // per-device settings + the migration marker
       // are local-only — they must never reach the pod (the pod is
       // shared by other installs of the same user).
       localOnlyPrefixes: [
@@ -265,7 +265,7 @@ export async function createNeighborhoodAgent({
   } else {
     dataSource = itemBackend ?? new MemorySource();
   }
-  // P1 migration step 3 (2026-07-18): the LIVE store is the converged
+  // migration step 3 (2026-07-18): the LIVE store is the converged
   // `CircleItemStore` (generic typed CRUD + type index + causal/CAS writes),
   // wrapped by the thin `createTaskStore` ItemStore-compat surface (Emitter +
   // audit + inbound-sync). Stoop passes NO rolePolicy — parity with the old
@@ -402,7 +402,7 @@ export async function createNeighborhoodAgent({
     expoPushSender = new ExpoPushSender(expoPush === true ? {} : expoPush);
   }
 
-  // Stoop V2.5 Phase 35 (2026-05-06): build the eviction roster
+  // Stoop Phase 35 (2026-05-06): build the eviction roster
   // BEFORE wiring chat (chat consumes it) and BEFORE skills register
   // (so the bundle exposes it).  Hydrate from any existing
   // `membership-redemption` items, then attach so future redemptions
@@ -428,7 +428,7 @@ export async function createNeighborhoodAgent({
     dataSource:    cache,            // Phase 39 — read/write attachment bytes from the cache
   });
 
-  // Phase 20 (Stoop V1.5, 2026-05-06): the bundle object is built
+  // Phase 20 (Stoop, 2026-05-06): the bundle object is built
   // up incrementally so that sign-in skills can mutate
   // `bundle.oidcSession` / call `bundle.cache.attachInner(podSource)`
   // without circular construction.  We pass the same `bundle` ref
@@ -479,7 +479,7 @@ export async function createNeighborhoodAgent({
     bundle.interestProfileFlushNow = ipDetach.flushNow;
   }
 
-  // Phase 34 (V2.5) — track bulk-sync state on the bundle so the UI
+  // track bulk-sync state on the bundle so the UI
   // can poll it via the `getBulkSyncStatus` skill.  Phase: 'idle'
   // before any attach, 'running' while a bulk-sync is active,
   // 'finished' after, 'error' on flush failure.

@@ -1,5 +1,5 @@
 /**
- * Bundle H Phase 2 (#269) — calendar-invite handler coverage.
+ * calendar-invite handler coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeHandleCalendarInvite } from '../../src/core/handlers/calendarInvite.js';

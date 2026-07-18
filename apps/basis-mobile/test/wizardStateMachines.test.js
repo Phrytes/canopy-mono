@@ -1,6 +1,6 @@
 /**
- * Bundle F P2 follow-up — state-machine smoke for the 6 wizards
- * added alongside conflictDispute (#258, 2026-05-26).
+ * Bundle F follow-up — state-machine smoke for the 6 wizards
+ * added alongside conflictDispute (2026-05-26).
  *
  * Same shape as test/wizardRegistry.test.js — pins the portable
  * contract that each RN modal consumes.  The modal itself (React

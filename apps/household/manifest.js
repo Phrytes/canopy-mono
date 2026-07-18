@@ -1,15 +1,15 @@
 /**
  * household — app manifest.
  *
- * SP-1 (proven byte-equivalent, see `test/manifest-equivalence.test.js`):
+ * (proven byte-equivalent, see `test/manifest-equivalence.test.js`):
  * the five user-facing operations (addItem, listOpen, markComplete,
  * removeItem, help) reproduce the pre-manifest hand-catalogues exactly
  * (V0_TOOL_CATALOG + SYSTEM_PROMPT_CLASSIFY + regexParse grammar).
  *
- * SP-2 (this delta, owner-approved 2026-05-19): household grows tasks +
+ * (this delta, owner-approved 2026-05-19): household grows tasks +
  * named members.  Adds canonical `task` + `contact` item types, five new
  * operations (addTask, listTasks, claim, reassign, registerName) and
- * two views (tasks, members).  The SP-1 surface stays byte-equal because
+ * two views (tasks, members). The surface stays byte-equal because
  * `addItem`/`listOpen` declare their type enum **explicitly** (not via
  * the `'itemTypes'` reference) — growing the manifest's itemTypes does
  * not affect their emitted JSON Schema.
@@ -31,9 +31,9 @@ import { SYSTEM_PROMPT_CLASSIFY } from './src/llm/prompts.js';
 
 const STR_NONEMPTY = { schema: { minLength: 1 } };
 
-// Frozen SP-1 list-item types — declared explicitly so the SP-1
+// Frozen list-item types — declared explicitly so the
 // byte-equivalence gate holds even after the manifest grows new
-// canonical itemTypes for SP-2 (and beyond).
+// canonical itemTypes for (and beyond).
 const LIST_TYPES = ['shopping', 'errand', 'repair', 'schedule'];
 
 /** @type {import('@onderling/app-manifest').__types__} */
@@ -70,7 +70,7 @@ export const householdManifest = {
   systemPrompt: SYSTEM_PROMPT_CLASSIFY,
 
   operations: [
-    // ── SP-1 ops (byte-equal to V0_TOOL_CATALOG) ────────────────────
+    // ── ops (byte-equal to V0_TOOL_CATALOG) ────────────────────
     {
       id:   'addItem',
       verb: 'add',
@@ -100,7 +100,7 @@ export const householdManifest = {
       surfaces: {
         chat:  {
           hint: 'List open items of a type.',
-          // Q30 — household's slot in the morning brief.  /brief fans
+          // household's slot in the morning brief. /brief fans
           // across apps that declare `surfaces.chat.brief`; the
           // `household_briefSummary` skill (skills/briefSummary.js)
           // returns a count of open items + the topmost row.
@@ -119,7 +119,7 @@ export const householdManifest = {
     {
       id:        'markComplete',
       verb:      'complete',
-      // Slice A.2 — surface as per-item button across all list-type
+      // surface as per-item button across all list-type
       // sections + tasks.  Multi-type via F-SP3-a; safe vs renderChat
       // byte-equivalence (toolCatalog ignores appliesTo).
       appliesTo: { type: [...LIST_TYPES, 'task'] },
@@ -138,13 +138,13 @@ export const householdManifest = {
             onEmpty:    { skillId: 'help', args: {} },
           },
         },
-        ui: { control: 'button', label: 'Done' },   // Slice A.2 — web surface
+        ui: { control: 'button', label: 'Done' },   // web surface
       },
     },
     {
       id:        'removeItem',
       verb:      'remove',
-      appliesTo: { type: [...LIST_TYPES, 'task'] },   // Slice A.2 — same as markComplete
+      appliesTo: { type: [...LIST_TYPES, 'task'] },   // same as markComplete
       params: [
         { name: 'match', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
@@ -160,7 +160,7 @@ export const householdManifest = {
             onEmpty:    { skillId: 'help', args: {} },
           },
         },
-        ui: { control: 'button', label: 'Remove' },  // Slice A.2 — web surface
+        ui: { control: 'button', label: 'Remove' },  // web surface
       },
     },
     {
@@ -173,7 +173,7 @@ export const householdManifest = {
           command: '/help',
           match:   { verbs: ['help', 'hulp'], body: 'none' },
           // Slash dedup (2026-06-19): `/help` stays for STANDALONE household (the
-          // bot + the SP-1 byte-equivalence grammar + the bare-command fallback
+          // bot + the byte-equivalence grammar + the bare-command fallback
           // target). But in a merged circle the basis SHELL owns the global
           // `/help` (it introspects every app, including household), so this one
           // is NOT contributed to the unified catalog — `standaloneOnly` makes
@@ -183,7 +183,7 @@ export const householdManifest = {
       },
     },
 
-    // ── SP-2 ops (tasks + contacts; co-equal to the list ops) ───────
+    // ── ops (tasks + contacts; co-equal to the list ops) ───────
     {
       id:        'addTask',
       verb:      'add',
@@ -222,7 +222,7 @@ export const householdManifest = {
     {
       id:        'claim',
       verb:      'claim',
-      appliesTo: { type: 'task', state: ['open'] },     // #240 — array form is canonical (matches tasks-v0/calendar/stoop)
+      appliesTo: { type: 'task', state: ['open'] },     // array form is canonical (matches tasks-v0/calendar/stoop)
       params: [
         { name: 'match', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
@@ -282,14 +282,14 @@ export const householdManifest = {
   ],
 
   views: [
-    // Slice A.2 (2026-05-20) — four list-type views.  These let the
+    // four list-type views. These let the
     // household web surface (`PLAN-gui-chat-uplift.md` Slice A) render
     // one section per canonical list-type.  `addItem` / `markComplete`
-    // / `removeItem` surface in each section via renderWeb's Q6 type-
-    // enum fallback (see DESIGN-navmodel-sketch.md § Q6).  No impact
+    // `removeItem` surface in each section via renderWeb's type
+    // enum fallback (see DESIGN-navmodel-sketch.md). No impact
     // on renderChat output (toolCatalog + systemPrompt unchanged).
     //
-    // V0.2 adoption (2026-05-21, Q7) — `dataSource` makes the
+    // adoption (2026-05-21) — `dataSource` makes the
     // per-section list skill EXPLICIT.  The four list-types could
     // rely on `fetchSectionItems`'s rule-b default
     // (`listOpen({type, ...filter})`) but the manifest-author intent
@@ -318,10 +318,10 @@ export const householdManifest = {
       id: 'tasks',    title: 'Tasks',    type: 'task',     filter: { open: true },
       dataSource: { skillId: 'listTasks' },
     },
-    // Members section — V0.2 LIMITATION (signal for V0.3):
+    // Members section — LIMITATION (signal for):
     //
-    //   Q9 introduced `readOnly: true` to suppress creative
-    //   affordances on sections without a list-skill.  Q10 then
+    //   introduced `readOnly: true` to suppress creative
+    //   affordances on sections without a list-skill. then
     //   made `register` a creative verb so `registerName` auto-
     //   surfaces here.  These two collide: setting `readOnly: true`
     //   here would suppress the `registerName` affordance (the
@@ -330,16 +330,16 @@ export const householdManifest = {
     //   (listOpen's KNOWN_TYPES guard rejects 'contact'; no
     //   listMembers/listContacts skill exists yet).
     //
-    //   Three V0.3 paths could unblock this cleanly:
+    //   Three paths could unblock this cleanly:
     //     (a) add a list-contacts skill + `dataSource: { skillId:
     //         'listContacts' }` here;
     //     (b) widen listOpen's KNOWN_TYPES to include 'contact';
-    //     (c) split Q9 so readOnly suppresses ONLY non-register
+    //     (c) split so readOnly suppresses ONLY non-register
     //         creative verbs (less coherent — the substrate would
     //         need per-verb flags).
     //
     //   Until then we keep members as-is: registerName affordance
-    //   visible (Q10), items list empty (V0 gap acknowledged in
+    //   visible, items list empty (V0 gap acknowledged in
     //   web/main.js).  `test/navmodel.test.js` § members section
     //   pins the registerName-affordance expectation.
     { id: 'members',  title: 'Members',  type: 'contact' },
@@ -360,7 +360,7 @@ export const householdManifest = {
     }],
 
     // Mirrors `regexCommands.js` TYPE_ALIASES (EN + NL).  The `task` key
-    // here resolves to the LIST type 'errand' (SP-1 grammar, unchanged);
+    // here resolves to the LIST type 'errand' (grammar, unchanged);
     // the new `task` ITEM type is reached via the addTask verb, not
     // this alias map.
     typeAliases: {

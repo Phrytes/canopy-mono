@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — circle rules consent (RN screen, board 3C).
+ * basis-mobile v2 — circle rules consent (RN screen).
  *
  * RN counterpart of web's circleRulesConsent: the assembled rules document
  * shown read-only with Agree / Decline; only non-blank fields render.

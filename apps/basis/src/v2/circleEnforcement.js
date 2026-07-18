@@ -8,12 +8,12 @@
  *   - `isInboundChatOff(...)`        → drop / silence an inbound when
  *                                      this user has `override.chatOff`
  *                                      set for ANY circle the sender is
- *                                      in with them (board 5C).
+ *                                      in with them.
  *   - `isInboundAgentBlocked(...)`   → drop an inbound from a peer
  *                                      whose `MemberMap.relation` is
  *                                      `'agent'` when the user (or the
  *                                      circle policy) says agents may
- *                                      not contact them (board 4).
+ *                                      not contact them.
  *   - `shouldRouteClaimToPersonal(...)` → when claiming a task in a
  *                                      circle where the user set
  *                                      `flowThrough.tasksToPersonal`,

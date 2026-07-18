@@ -135,7 +135,7 @@ describe('renderChat — toolHandlers adapter', () => {
     expect(r.data.stateUpdates).toEqual([]);
   });
 
-  /* ─── V0.3 (d) — structured list reply shape (task #11) ─────────── */
+  /* ─── (d) — structured list reply shape (task) ─────────── */
 
   it("V0.3 (d): reply.data is passed through alongside stateUpdates", async () => {
     const listSkill = async () => ({
@@ -213,7 +213,7 @@ describe('renderChat — toolHandlers adapter', () => {
     // Current implementation: `{stateUpdates, ...replyData}` — replyData wins.
     // Documents the actual semantic; consumer-supplied data can
     // intentionally override.  (If we wanted protect-stateUpdates,
-    // swap the spread order; V0.3 (d) decision is to TRUST the
+    // swap the spread order; (d) decision is to TRUST the
     // skill's data shape.)
     expect(r.data.stateUpdates).toEqual([{ kind: 'attacker' }]);
     expect(r.data.items).toEqual([]);

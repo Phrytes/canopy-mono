@@ -1,5 +1,5 @@
 /**
- * basis — podStorage helper tests.  v0.7.P2.
+ * basis — podStorage helper tests. v0.7..
  */
 import { describe, it, expect, vi } from 'vitest';
 

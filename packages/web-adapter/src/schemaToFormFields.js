@@ -1,5 +1,5 @@
 /**
- * `schemaToFormFields(paramsSchema, opts?)` — V0.2 (2026-05-21).
+ * `schemaToFormFields(paramsSchema, opts?)` — (2026-05-21).
  *
  * Walks an Affordance's `paramsSchema` (output of
  * `paramsToJsonSchema`) and produces a platform-neutral array of
@@ -24,14 +24,14 @@
  *     max?:        number,
  *   }
  *
- * `prefilledParams` (Q6) → those fields are OMITTED from the form
+ * `prefilledParams` → those fields are OMITTED from the form
  * descriptor — the section already knows their values; user
  * shouldn't have to re-enter.  The adapter merges
  * `prefilledParams + userArgs` at submit time via
  * `applyPrefilledParams`.
  *
- * Forward-additive: V0.3 may add ordering / labels / placeholders
- * if real consumers need them.  V0.2 keeps the descriptor minimal.
+ * Forward-additive: may add ordering / labels / placeholders
+ * if real consumers need them. keeps the descriptor minimal.
  *
  * @param {object} paramsSchema  JSON Schema object (Affordance.paramsSchema).
  * @param {object} [opts]
@@ -59,7 +59,7 @@ export function schemaToFormFields(paramsSchema, opts = {}) {
 
   const out = [];
   for (const [name, spec] of Object.entries(props)) {
-    if (prefilledKeys.has(name)) continue;  // Q6 prefill → omit from form
+    if (prefilledKeys.has(name)) continue;  // prefill → omit from form
 
     const field = {
       name,

@@ -45,7 +45,7 @@
  *     NKN traffic (which is text-JSON over WebSocket), but useful if
  *     you observe `Network request failed` during the bootstrap call.
  *
- * ── HI race fix (inherited from #215 / secure-agent commit d15051e) ───
+ * ── HI race fix (inherited from secure-agent commit d15051e) ───
  * Before sending the first OW (one-way) envelope to a peer, we MUST
  * send a HI envelope so the peer's SecurityLayer registers our pubKey
  * + can decrypt subsequent traffic.  The original code added the peer
@@ -192,7 +192,7 @@ export class NknTransport extends Transport {
         // The payload carries our pubKey so the peer's SecurityLayer
         // auto-registers us (see SecurityLayer._autoRegisterFromHi).
         await this.sendHello(address, { pubKey: this.identity?.pubKey });
-        // ── HI RACE FIX (inherited from #215 / secure-agent d15051e) ──
+        // ── HI RACE FIX (inherited from secure-agent d15051e) ──
         // Mutation happens ONLY after the await resolves.  Concurrent
         // _put()s queued on the same address see helloedPeers === false
         // until the HI is actually on the wire.

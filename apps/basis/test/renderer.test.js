@@ -1,5 +1,5 @@
 /**
- * basis — renderer tests.  v0.1 sub-slice 1.8.
+ * basis — renderer tests. v0.1.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 

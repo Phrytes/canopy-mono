@@ -1,7 +1,7 @@
 /**
  * lifecycleControls — gating-helper coverage.
  *
- * Task #227 (2026-05-24).
+ * Task (2026-05-24).
  *
  * Mirrors the substrate's role policy from
  * `apps/tasks-v0/src/skills/circleControls.js`:

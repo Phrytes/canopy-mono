@@ -1,7 +1,7 @@
 /**
  * taskLifecycle — the task lifecycle VERBS as FUNCTIONS-OVER-CircleItemStore.
  *
- * PLAN-capabilities-tasks-roles P1 keystone (Option A, DECIDED 2026-07-18).
+ * PLAN-capabilities-tasks-roles keystone (Option A, DECIDED 2026-07-18).
  *
  * `CircleItemStore` is the canonical, deliberately-minimal per-circle store
  * (generic typed CRUD + a type index + a CAS write path). The task lifecycle —
@@ -30,7 +30,7 @@
  *   - `ctx.actor`               (required) webid performing the action.
  *   - `ctx.actorDisplayName`    optional display snapshot (parity with ItemStore).
  *   - `ctx.rolePolicy`          the `RolePolicy` gate (default: no-op = allow).
- *   - `ctx.enforceDependencies` V2.7 DAG gate on close-transitions (default false).
+ *   `ctx.enforceDependencies` DAG gate on close-transitions (default false).
  *   - `ctx.actionOverride`      force-complete admin path (bypasses the DAG gate).
  *   - `ctx.reason`              optional reason (parity; surfaced to `ctx.emit`).
  *   - `ctx.expectedEtag`        optional base etag the caller read — threaded to
@@ -67,7 +67,7 @@ import { requireActor, gate, emit, resolveById } from './taskCtx.js';
 
 // ── co-ownership model (assignees[] + the `assignee` mirror) ─────────────────
 //
-// PLAN-cluster-verification-journeys J2 (P1 co-ownership). A task's authoritative
+// PLAN-cluster-verification-journeys J2 (co-ownership). A task's authoritative
 // owner set is `assignees[]` (an array of webids); `maxAssignees` (default 1) caps
 // it. `assignee` (singular) is kept as a MIRROR of `assignees[0]` so every legacy
 // consumer read — `computeStatus`'s `if (item.assignee)`, the rolePolicy gates, the
@@ -113,11 +113,11 @@ export function isAssignee(item, actor) {
 // ── lifecycle-specific helpers ───────────────────────────────────────────────
 
 /**
- * V2.7 DAG gate — parity with `ItemStore._assertDepsClosed`. Walk
+ * DAG gate — parity with `ItemStore._assertDepsClosed`. Walk
  * `item.dependencies[]`, read each, and throw `DependenciesOpenError` if any is
  * open (present + uncompleted). Removed-or-missing deps are treated as satisfied
  * (don't block forever). `dependencies[]` is the DAG completion gate ONLY;
- * structural subtask nesting is the separate K2-containment migration (below).
+ * structural subtask nesting is the separate -containment migration (below).
  */
 async function assertDepsClosed(store, item) {
   const deps = Array.isArray(item?.dependencies) ? item.dependencies : [];
@@ -228,7 +228,7 @@ export async function reassign(store, id, newAssignee, ctx = {}) {
  * Mark items complete — CONTENT op (causal `put`, LWW completion, parity with
  * `ItemStore.markComplete`). For each ref: not-found + explicit → throw
  * `ItemNotFoundError`; already-completed + explicit → `InvalidLifecycleError`;
- * gate `canComplete`; V2.7 DAG gate (`assertDepsClosed`) unless
+ * gate `canComplete`; DAG gate (`assertDepsClosed`) unless
  * `ctx.actionOverride`; stamp `completedAt`/`completedBy`; write; emit
  * `item-completed`.
  *
@@ -305,7 +305,7 @@ export async function submit(store, id, args, ctx = {}) {
 
 /**
  * Approve a submitted item — AUTHORITATIVE (CAS; the sign-off is winner-take-all).
- * Parity with `ItemStore.approve`: requires `submitted`; gate `canApprove`; V2.7
+ * Parity with `ItemStore.approve`: requires `submitted`; gate `canApprove`;
  * DAG gate unless `ctx.actionOverride`; append an `approve` reviewLog entry;
  * stamp `completedAt`/`completedBy`. Emits `item-completed`. A CAS conflict is
  * surfaced as `{error:'conflict', current}`.
@@ -440,14 +440,14 @@ function appendReview(prev, entry) {
 }
 
 /*
- * ── TODO seams — LATER P1 steps (deliberately NOT done here) ─────────────────
+ * ── TODO seams — LATER steps (deliberately NOT done here) ─────────────────
  *
- * 1. parentTaskId → K2 containment migration.
+ * 1. parentTaskId → containment migration.
  *    `dependencies[]` is kept as the DAG completion gate ONLY (above). The
  *    structural parent/child ("is a subtask of") currently ridden on tasks-v0's
- *    immutable `parentTaskId` must move onto K2 containment (`contain` /
+ *    immutable `parentTaskId` must move onto containment (`contain` /
  *    `containedBy`, see `containment.js` / `containerOps.js`; `treeOf` already
- *    renders deps + containment as one tree). CAVEAT (from the P0-SPIKE VERDICT):
+ *    renders deps + containment as one tree). CAVEAT (from the -SPIKE VERDICT):
  *    `parentTaskId` is load-bearing for authz (spawn perms, master inheritance,
  *    depth-approval) — migrate carefully, not a field swap. These verbs read no
  *    `parentTaskId`; wire the containment-aware spawn/authz here when that step

@@ -1,5 +1,5 @@
 /**
- * bundleResolver — V2.8 single-agent dispatch primitive.
+ * bundleResolver — single-agent dispatch primitive.
  *
  * `(parts, ctx) → CircleState | null` returns the per-circle state a
  * skill body should operate on. Lives outside `wireSkills` so the

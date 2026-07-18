@@ -1,5 +1,5 @@
 /**
- * availabilityGrid — pure-fn coverage for the V2.3 grid helpers.
+ * availabilityGrid — pure-fn coverage for the grid helpers.
  *
  * Phase 41.9 (2026-05-09).
  */

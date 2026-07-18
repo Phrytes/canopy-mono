@@ -1,7 +1,7 @@
 /**
- * agents P3 — INSTALL through the REAL composition.
+ * agents — INSTALL through the REAL composition.
  *
- * Proves realAgent.js wires the P3 install surface end-to-end:
+ * Proves realAgent.js wires the install surface end-to-end:
  *   - `callSkill('agents', 'listCatalog')` returns the default stub
  *     catalog source's installable cards (the pluggable source is wired).
  *   - `callSkill('agents', 'installAgent', { catalogId, grants })` installs
@@ -10,7 +10,7 @@
  *     live composition, not just the unit cores).
  *   - the power-user override installs a NON-catalog card (pasted JSON).
  *   - an undeclared grant is REJECTED (never issued a token).
- *   - uninstall reuses P2 purge (the installed agent is gone).
+ *   uninstall reuses purge (the installed agent is gone).
  *
  * Op SEMANTICS + the PolicyEngine anti-virus proof live in the apps/agents
  * unit suite (install.test.js); this stays at the composition level.
@@ -71,7 +71,7 @@ describe('agents P3 — install through the real composition', () => {
     expect(res.granted.map((g) => g.skill)).toEqual(['sideload.run']);
     expect(res.rejected).toEqual([{ skill: 'evil.exfiltrate', reason: 'not-declared' }]);
 
-    // Uninstall reuses P2 purge — the installed agent is gone.
+    // Uninstall reuses purge — the installed agent is gone.
     const purged = await a.callSkill('agents', 'purgeAgent', { agentId: 'override:sideloaded' });
     expect(purged.purged).toBe(true);
     const view = await a.callSkill('agents', 'viewAgent', { agentId: 'override:sideloaded' });

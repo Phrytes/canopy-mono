@@ -1,5 +1,5 @@
 /**
- * basis — follow-up registry tests.  v0.4 sub-slice 4.5.
+ * basis — follow-up registry tests. v0.4.
  */
 import { describe, it, expect } from 'vitest';
 
@@ -7,7 +7,7 @@ import {
   collectFollowUps, createFollowUpResolver, DEFAULT_CROSS_APP_CHAINS,
 } from '../src/followUps.js';
 
-/** Mock catalog with a Q31-populated followUpsFor. */
+/** Mock catalog with a -populated followUpsFor. */
 function fakeCatalog(perOpHints) {
   return {
     followUpsFor: (opId) => perOpHints[opId],

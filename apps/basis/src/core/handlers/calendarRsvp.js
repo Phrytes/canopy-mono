@@ -1,5 +1,5 @@
 /**
- * Inbound calendar-rsvp handler.  Bundle H Phase 2 (#269) — lifted
+ * Inbound calendar-rsvp handler. Bundle H Phase 2 — lifted
  * from `apps/basis/web/main.js:861`.
  *
  * Applies a peer's RSVP to a local event via the

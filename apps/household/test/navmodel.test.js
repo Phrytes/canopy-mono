@@ -1,16 +1,16 @@
 /**
- * Slice A.2 — household manifest → NavModel snapshot test.
+ * household manifest → NavModel snapshot test.
  *
  * The FIRST real manifest fed through `renderWeb`.  Asserts:
  *   - the 6 declared views all surface as sections (4 list-types +
  *     tasks + members);
  *   - each list-type section has `addItem` as an affordance
- *     (auto-surfaced via Q6 verb=add rule, prefilled type);
+ *     (auto-surfaced via verb=add rule, prefilled type);
  *   - each list-type + tasks section has `markComplete`/`removeItem`
  *     as itemActions (multi-type via F-SP3-a);
  *   - the snapshot is byte-stable across runs (no non-determinism).
  *
- * See `DESIGN-navmodel-sketch.md` § "Owner decisions" for the Q1–Q6
+ * See `DESIGN-navmodel-sketch.md` "Owner decisions" for the
  * locked answers this test exercises.
  */
 
@@ -73,7 +73,7 @@ describe('household manifest → NavModel (Slice A.2)', () => {
     it('claim surfaces as itemAction with state="open"', () => {
       const claim = tasks.itemActions.find((a) => a.opId === 'claim');
       expect(claim).toBeTruthy();
-      // #240 (2026-05-26) canonicalised appliesTo.state to array form
+      // (2026-05-26) canonicalised appliesTo.state to array form
       // across all apps (tasks-v0 / calendar / stoop / household).
       expect(claim.appliesTo.state).toEqual(['open']);
     });
@@ -89,7 +89,7 @@ describe('household manifest → NavModel (Slice A.2)', () => {
     const members = navModel.sections.find((s) => s.id === 'members');
 
     it('Q10 (2026-05-21): verb=register auto-surfaces registerName as affordance', () => {
-      // Resolved 2026-05-21 (NavModel V0.2 Q10): `register` is now a
+      // Resolved 2026-05-21 (NavModel): `register` is now a
       // creative verb (alongside `add`).  household's `registerName`
       // op (verb='register', non-canonical via F-SP1-e) auto-surfaces
       // in the members section without needing `surfaces.ui`.
@@ -112,7 +112,7 @@ describe('household manifest → NavModel (Slice A.2)', () => {
       expect(allOpIds).not.toContain('classifyAndExtract');
       // reassign: no surfaces.ui declared — chat-only (NOT a creative verb).
       expect(allOpIds).not.toContain('reassign');
-      // registerName IS a creative verb (Q10) so it DOES surface — moved
+      // registerName IS a creative verb so it DOES surface — moved
       // out of the omission test.
     });
   });

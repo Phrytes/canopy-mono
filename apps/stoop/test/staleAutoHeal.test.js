@@ -4,7 +4,7 @@
  * When pseudoPod emits `'stale-peer'` (a peer wrote with an older
  * `_v` than ours), `wireSubstrateMirror` should publish the fresher
  * local copy back to that one peer via notifyEnvelope.publish.
- * Silent (no UI affordance) — V2.5 lean from the open-questions
+ * Silent (no UI affordance) — lean from the open-questions
  * doc.
  */
 import { describe, it, expect } from 'vitest';

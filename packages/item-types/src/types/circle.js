@@ -4,7 +4,7 @@
  * audience is referenced by id (e.g. `{kind: 'circle-ref', id}`) in
  * the `@onderling/circles` audience model.
  *
- * ──── ALIAS NOTE — CIRCLE ID ≡ CIRCLE ID (SP-5 V0, 2026-05-20) ──────
+ * ──── ALIAS NOTE — CIRCLE ID ≡ CIRCLE ID (V0, 2026-05-20) ──────
  *
  * **A `circle.id` value and a `task.circleId` value share the SAME
  * string identifier space.**  i.e. if a task has `circleId: "abc-123"`
@@ -21,7 +21,7 @@
  *     a group; the matching `circle` item adds the audience-resolve
  *     layer over that same identifier.
  *   - A future "kill circleId, use circle.id everywhere" refactor is
- *     SP-5b (or later) once consumers exist.
+ *     (or later) once consumers exist.
  *
  * The marker constant `CIRCLE_ID_IS_CREW_ID_ALIAS` (exported below)
  * is greppable — searching it surfaces this comment as the canonical
@@ -32,7 +32,7 @@
  *   - `text` is NOT in the schema, but `@onderling/item-store`'s
  *     `addItems` requires a non-empty `text` on every partial;
  *     consumers writing circles via the store should set
- *     `text: name`.  Substrate fix deferred to SP-5b.
+ *     `text: name`. Substrate fix deferred to.
  */
 
 import { BASE_PROPERTIES, BASE_REQUIRED, NAMESPACE } from '../baseSchema.js';

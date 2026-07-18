@@ -1,7 +1,7 @@
 /**
- * stoop — app manifest (Slice D.1 DRAFT, 2026-05-20).
+ * stoop — app manifest (DRAFT, 2026-05-20).
  *
- * Authored per `PLAN-gui-chat-uplift.md` Slice D.1 — owner-locked
+ * Authored per `PLAN-gui-chat-uplift.md` — owner-locked
  * direction is **slash-only first, then evaluate LLM tool-calling on
  * top**.  Every user-facing op declares both `surfaces.slash.command`
  * (the live D.1 surface) and `surfaces.chat.hint` (forward-compat
@@ -161,7 +161,7 @@ export const stoopManifest = {
         chat:  {
           hint: 'Post an item (ask/offer/lend) and broadcast it; returns immediately. Pass `expectClaims > 0` to wait for claims.',
           followUps: [
-            // Q31 demo — same-app follow-up: after posting, suggest viewing
+            // demo — same-app follow-up: after posting, suggest viewing
             // the feed.  Folded in from the former mockStoopManifest.
             { opId: 'listFeed' },
           ],
@@ -202,7 +202,7 @@ export const stoopManifest = {
       surfaces: {
         chat:  {
           hint:  'List open requests; optional `skill` + `intent` filters.',
-          // Q30 — stoop's slot in the morning brief.  /brief fans
+          // stoop's slot in the morning brief. /brief fans
           // across apps that declare `surfaces.chat.brief`; the
           // `stoop_briefSummary` skill (defined in skills/index.js)
           // returns a count of open posts + the topmost rows.
@@ -282,10 +282,10 @@ export const stoopManifest = {
     {
       id:        'cancelRequest',
       verb:      'remove',  // canonical — cancelRequest removes the item.
-      // V0.2 Q8 (2026-05-21, narrowed 2026-07-02 for #72) — cancelRequest spans the
+      // (2026-05-21, narrowed 2026-07-02 for) — cancelRequest spans the
       // user's own POST types (ask/offer/lend + the generic request/post the `mine`
       // section renders as).  It surfaces as `itemActions[]` in each of those sections
-      // (renderWeb's Q8 rule); without an `appliesTo` it surfaced nowhere and mine.html
+      // (renderWeb's rule); without an `appliesTo` it surfaced nowhere and mine.html
       // hard-coded Cancel.  Was `type: '*'` (ALL itemTypes) — but that blasted a phantom
       // `remove` capability onto stoop's internal/view-shape types (report · group-rules ·
       // rules-accept · group-leave), cluttering the B freedom matrix AND spuriously adding
@@ -562,7 +562,7 @@ export const stoopManifest = {
     },
 
     // ── Pod session ─────────────────────────────────────────────────
-    // Q27 adoption (V0.8, 2026-05-21).  signOutOfPod disconnects the
+    // adoption (2026-05-21). signOutOfPod disconnects the
     // OIDC session from the user's Solid pod.  No appliesTo — same
     // pattern as listMyRequests / mutePeer (session-scoped, not
     // per-item).
@@ -625,7 +625,7 @@ export const stoopManifest = {
       surfaces: {
         slash: { command: '/feed' },
         chat:  { reply: 'list', hint: "list your buurt's feed" },
-        // S6.B — the morning brief (Q30) + /find (Q33) decls for listFeed
+        // S6.B — the morning brief + /find decls for listFeed
         // are re-attached post-hoc in mockManifests.js (mirrors how the
         // folio brief/search attach there) to keep this file declarative.
       },
@@ -646,7 +646,7 @@ export const stoopManifest = {
 
     // ── DM (button-only alias of basis's startDm) ──────────────
     /**
-     * Slice 6d — per-row [DM] button on contact + member rows.  No
+     * per-row [DM] button on contact + member rows. No
      * substrate dispatch — onButtonTap intercepts + routes to
      * ensureDmThread.  appliesTo gate kept here where 'contact'/'member'
      * itemTypes are declared.
@@ -661,7 +661,7 @@ export const stoopManifest = {
       },
     },
 
-    // ── Holiday mode (#185 A6) ───────────────────────────────────────
+    // ── Holiday mode (A6) ───────────────────────────────────────
     // setHolidayMode / getHolidayMode are real skills; the realAgent
     // adapter translates the chat-shell {on:'on'|'off'} enum → boolean.
     {
@@ -683,7 +683,7 @@ export const stoopManifest = {
       },
     },
 
-    // ── ContactBook (#186 A4) ────────────────────────────────────────
+    // ── ContactBook (A4) ────────────────────────────────────────
     // Chat-shell enums are English (EN-first); the realAgent adapter
     // translates EN→NL trust ('known'→'bekend', 'trusted'→'vertrouwd')
     // + `min-trust`→`minTrust` at the boundary.
@@ -745,7 +745,7 @@ export const stoopManifest = {
       },
     },
 
-    // ── Cluster C wizards (#196/#197/#198/#200) — #180 customRenderer ──
+    // ── Cluster C wizards — customRenderer ──
     {
       id:   'restoreFromMnemonicWizard', verb: 'submit',
       params: [],
@@ -757,7 +757,7 @@ export const stoopManifest = {
     },
     {
       id:   'conflictDisputeWizard', verb: 'add',
-      // #200 — per-bubble action on stoop posts.  Slash kept for
+      // per-bubble action on stoop posts. Slash kept for
       // general-dispute (no postId) + LLM tool-call surface.
       appliesTo: { type: 'post', state: ['open'] },
       params: [
@@ -811,7 +811,7 @@ export const stoopManifest = {
       },
     },
 
-    // ── Buurt / group surface (#189 B1+B2) ───────────────────────────
+    // ── Buurt / group surface (B1 B2) ───────────────────────────
     // V0: single-buurt info per agent instance.  realAgent.js
     // auto-injects the configured groupId + synthesizes getCurrentGroup.
     {
@@ -841,19 +841,19 @@ export const stoopManifest = {
     },
   ],
 
-  // Slice E.1 (2026-05-20) — first stoop web page via renderWeb.
-  // V0.2 adopt (2026-05-21) — `dataSource` (Q7) declares the section's
+  // first stoop web page via renderWeb.
+  // adopt (2026-05-21) — `dataSource` declares the section's
   // data-fetch skill in the manifest, removing the client special-case.
-  // Slice E.2 (2026-05-20) — second stoop web page via renderWeb:
+  // second stoop web page via renderWeb:
   // `privacy.html` (closed-beta disclosure + data-location).  Picked
-  // as the smallest read-only page (66 lines) — perfect fit for Q9
+  // as the smallest read-only page (66 lines) — perfect fit for
   // `view.readOnly: true`.  Contacts (417 lines, heavy mutations) and
   // profile (591 lines, form-heavy) defer to later E.x slices.
-  // Slice E.3 (2026-05-20) — third stoop web page via renderWeb:
+  // third stoop web page via renderWeb:
   // `settings.html` (per-device + per-actor preferences).  Picked over
   // profile/contacts as the next-smallest-after-privacy + a clean fit
-  // for the existing V0.2 contract: `getSettings({})` is a param-free
-  // dataSource skill (perfect Q7 fit) and the per-field mutations
+  // for the existing contract: `getSettings({})` is a param-free
+  // dataSource skill (perfect fit) and the per-field mutations
   // (`updateSettings({patch})`, `setHopMode({global})`) live outside
   // the D.1 manifest as profile/plumbing skills (gap #4 territory).
   // Profile (591 lines — avatar resize / mnemonic / geocoding / backup,
@@ -876,18 +876,18 @@ export const stoopManifest = {
   // (the calling actor) and spans ALL of the user's post types
   // (ask/offer/lend), not just `request`.
   //
-  // V0.2 Q7 `dataSource` (locked 2026-05-21) declares this directly:
+  // `dataSource` (locked 2026-05-21) declares this directly:
   // adapters call `fetchSectionItems(section, {callSkill})` which
   // honours `section.dataSource` and dispatches `listMyRequests({})`.
   // Removes the previous client special-case ("if section.id === 'mine'
   // then listMyRequests") — the manifest is now the source of truth.
   //
-  // ──── E.2 — privacy view (V0.2 Q7 + Q9) ──────────────────────────
+  // ──── E.2 — privacy view ──────────────────────────
   //
   // `privacy.html` is a closed-beta disclosure page: it renders the
   // privacy-notice sections + a small key/value summary of where the
   // user's data lives.  TRUE read-only — no forms, no mutations —
-  // a perfect Q9 `readOnly: true` proof-point.
+  // a perfect `readOnly: true` proof-point.
   //
   // The view's `type: 'group-rules'` is a placeholder (closest
   // semantic — privacy is "rules of the system").  It does NOT
@@ -901,38 +901,38 @@ export const stoopManifest = {
   // two fetches privacy.html performs.  `getDataLocation` takes no
   // params — perfect fit for `fetchSectionItems`'s static `args ?? {}`
   // contract.  The second fetch (`getPrivacyNotice({lang})`) needs a
-  // RUNTIME-derived param (browser language) — the V0.2 `dataSource`
+  // RUNTIME-derived param (browser language) — the `dataSource`
   // contract is static args only, so the page keeps a direct
   // `callSkill('getPrivacyNotice', {lang})` for that fetch.  This is
-  // a V0.2 substrate gap (logged below) — V0.3 may add a
+  // a substrate gap (logged below) — may add a
   // `dataSource.argsFromContext` mechanism so language-aware skills
   // can be declared too.
   //
-  // ──── V0.2 substrate gaps surfaced by E.2 ─────────────────────────
+  // ──── substrate gaps surfaced by E.2 ─────────────────────────
   //   3. `view.dataSource.args` is STATIC (frozen at manifest-author
   //      time).  Privacy needs a RUNTIME lang param for
   //      `getPrivacyNotice`; no mechanism today to declare "fetch
   //      with browser lang".  Worked around: privacy.html calls
   //      `getPrivacyNotice` directly while the section's declared
   //      dataSource targets `getDataLocation` (param-free).  Logged
-  //      as a V0.3 follow-on — likely `dataSource.argsFromContext:
+  //      as a follow-on — likely `dataSource.argsFromContext:
   //      {lang: '$lang'}` (or similar).
   //   4. `getPrivacyNotice` + `getDataLocation` are not manifest ops
   //      (they're read-only info-skills, not chat/slash-callable per
-  //      Slice D.1's primary-flows discipline).  `dataSource.skillId`
+  //      's primary-flows discipline). `dataSource.skillId`
   //      is a FREE STRING (validate.js doesn't constrain it to
   //      `operations[].id`), so this is permitted but worth flagging:
   //      a manifest-driven page can call skills outside the manifest's
-  //      op set.  Forward-additive — V0.3 could add an opt-in cross-
+  //      op set. Forward-additive — could add an opt-in cross
   //      check.
   //
-  // `readOnly: true` suppresses creative-verb auto-surface (Q10
+  // `readOnly: true` suppresses creative-verb auto-surface (
   // affordances like `register` ops would otherwise appear here).
-  // Wildcard itemActions (Q8 `cancelRequest`) still surface in this
+  // Wildcard itemActions (`cancelRequest`) still surface in this
   // section's `itemActions[]` — the page IGNORES them (privacy
   // renders text sections + key/value rows, not items).
   //
-  // ──── E.3 — settings view (V0.2 Q7) ──────────────────────────────
+  // ──── E.3 — settings view ──────────────────────────────
   //
   // `settings.html` is a per-actor + per-device preferences page:
   // poll-interval (device), hop-relay (device), online-window (device),
@@ -947,43 +947,43 @@ export const stoopManifest = {
   // The `settings` view's `type: 'group-rules'` is a placeholder
   // (same pattern privacy uses) — `validateView` pins type ∈
   // manifest.itemTypes, but the section's actual data is a SINGLETON
-  // record (settings object), not a list of items.  V0.3 substrate
+  // record (settings object), not a list of items. substrate
   // signal: NavModel sections assume `Array<item>`; "singleton-record"
   // views (settings / profile / current-status) don't fit that shape
-  // cleanly.  See V0.3 substrate signals below.
+  // cleanly. See substrate signals below.
   //
   // No `readOnly: true` — the page mutates via the per-field handlers.
   // But because the per-field skills aren't manifest ops, NO creative-
-  // verb affordances surface here regardless of the readOnly flag (Q10
+  // verb affordances surface here regardless of the readOnly flag (
   // only auto-surfaces ops with surfaces.ui or add/register verbs).
   // The wildcard `cancelRequest` itemAction surfaces in this section's
-  // itemActions[] (Q8 rule) — the page IGNORES it (settings renders a
+  // itemActions[] (rule) — the page IGNORES it (settings renders a
   // singleton record + per-field toggles, not items).
   //
-  // ──── V0.2 substrate signals surfaced by E.3 ──────────────────────
+  // ──── substrate signals surfaced by E.3 ──────────────────────
   //   5. NavModel sections assume `Array<item>` data.  Settings is a
   //      SINGLETON record (one merged object: per-device + per-actor
   //      fields).  Today this works — `getSettings({})` returns
   //      `{settings: {...}}` and the page extracts `.settings`
   //      directly — but `fetchSectionItems`'s "items extraction"
-  //      contract doesn't apply.  V0.3 candidate: `view.shape:
+  //      contract doesn't apply. candidate: `view.shape:
   //      'record'` flag, or a `dataSource.extract: 'settings'` path
   //      that the helper honours, so adapters can render record views
   //      without app-side special-casing.
   //   6. Mutation paths for record-shaped views are per-field skills
   //      (`updateSettings({patch})`, `setHopMode({global})`), not
-  //      add/remove of items.  The current Q10 creative-verb model
+  //      add/remove of items. The current creative-verb model
   //      doesn't have a slot for "patch a settings field"; manifest
   //      ops would need a `verb: 'patch'` (non-canonical) or a new
   //      `view.fields[].opId` schema.  Deferred — current pages drive
-  //      these directly until V0.3 has a real signal-rich consumer.
+  //      these directly until has a real signal-rich consumer.
   views: [
     {
       id:     'mine',
       title:  'My posts',
       type:   'request',     // broadest stoop itemType; see note above
       filter: { open: true },
-      // V0.2 Q7 — explicit dataSource; `fetchSectionItems` will pick
+      // explicit dataSource; `fetchSectionItems` will pick
       // this up and call `listMyRequests({})` instead of the rule-b
       // fallback `listOpen({type: 'request', open: true})`.
       dataSource: { skillId: 'listMyRequests' },
@@ -992,11 +992,11 @@ export const stoopManifest = {
       id:       'privacy',
       title:    'Privacy — wat je moet weten',
       type:     'group-rules',  // placeholder; see note above
-      readOnly: true,           // V0.2 Q9 — read-only disclosure page
-      // V0.3 Q15 (adopted 2026-05-21) — `getPrivacyNotice` is now
+      readOnly: true,           // read-only disclosure page
+      // (adopted 2026-05-21) — `getPrivacyNotice` is now
       // the explicit dataSource; lang arg substituted at call time
       // from the browser-supplied context (`$lang`).  Replaces the
-      // V0.2 workaround that direct-called the skill.
+      // workaround that direct-called the skill.
       dataSource: {
         skillId:         'getPrivacyNotice',
         argsFromContext: { lang: '$lang' },
@@ -1007,34 +1007,34 @@ export const stoopManifest = {
       title: 'Instellingen',
       type:  'group-rules',  // placeholder; settings is singleton-record,
                              // not a list of group-rules items.
-      // V0.3 Q17 (adopted 2026-05-21) — shape: 'record' marks this
+      // (adopted 2026-05-21) — shape: 'record' marks this
       // section as a singleton.  Adapter expects ONE record from
       // `getSettings`, not an array — matches the reality of the
       // settings page.
       shape:       'record',
       dataSource:  { skillId: 'getSettings' },
-      // V0.4 Q18 (adopted 2026-05-22) — declare a representative
+      // (adopted 2026-05-22) — declare a representative
       // subset of editable fields with patch declarations.  The
       // settings.html UI is rich (localisation + per-field custom UX); the
       // manifest is the source-of-truth for WHICH fields exist +
       // their patch ops, but UI rendering stays hand-coded.
       //
-      // V0.5 signal — wrapped-patch convention: `updateSettings`
-      // takes `{patch: {<key>: <value>}}` (nested arg).  Q18's
+      // signal — wrapped-patch convention: `updateSettings`
+      // takes `{patch: {<key>: <value>}}` (nested arg). 's
       // `{opId, argName}` model is FLAT — for updateSettings-backed
       // fields, `argName` is the settings-key name (semantic);
       // adapter wraps in `{patch: {...}}` on dispatch.  A future
-      // Q21 could add `patch.argWrapper: 'patch'` to make this
+      // could add `patch.argWrapper: 'patch'` to make this
       // explicit in the substrate.
       fields: [
         {
           name:     'hopThrough',
           type:     'boolean',
           label:    'Hop-relay (globaal)',
-          // V0.6 Q22 — localisation key for Dutch-first surfaces.  Consumer-
+          // localisation key for Dutch-first surfaces. Consumer
           // side resolution; falls back to `label` if unknown.
           labelKey: 'settings.hop_label',
-          // setHopMode takes `{global: <bool>}` directly — Q18 fits.
+          // setHopMode takes `{global: <bool>}` directly — fits.
           patch:    { opId: 'setHopMode', argName: 'global' },
         },
         {
@@ -1064,12 +1064,12 @@ export const stoopManifest = {
         },
         // Other settings.html fields (online-every, online-duration,
         // …) remain to be declared.  Pattern is the same; not
-        // surfacing all 8+ in this commit to keep the V0.4-adopt
+        // surfacing all 8+ in this commit to keep the -adopt
         // proof small.  Forward-additive extensions land per-field.
       ],
     },
 
-    // ──── E.4 — profile view (V0.4-adopt) ─────────────────────────────
+    // ──── E.4 — profile view (adopt) ─────────────────────────────
     //
     // `profile.html` is stoop's account/identity surface: handle +
     // displayName + holiday-mode + skills picker + location + recovery
@@ -1079,7 +1079,7 @@ export const stoopManifest = {
     // its rich hand-coded layout.
     //
     // Manifest's job here = source-of-truth for WHICH editable identity
-    // fields exist + their patch ops.  Mirrors settings's V0.4-adopt
+    // fields exist + their patch ops. Mirrors settings's -adopt
     // pattern (commit 9e7003b): record-shape view + fields[] with
     // per-field {opId, argName}.  Page rendering stays unchanged.
     //
@@ -1102,41 +1102,41 @@ export const stoopManifest = {
     // dispatch (no argWrapper needed — getMyProfile-backed mutations
     // are all single-arg skills, not wrapped-patch like
     // updateSettings).  Avatar, mnemonic, backup, location, skills
-    // picker, and my-pods sections remain hand-coded (see V0.5+ signals
-    // below — none of them fit Q18 fields[] cleanly).
+    // picker, and my-pods sections remain hand-coded (see + signals
+    // below — none of them fit fields[] cleanly).
     //
-    // ──── V0.5+ substrate signals surfaced by E.4 ─────────────────────
+    // ──── + substrate signals surfaced by E.4 ─────────────────────
     //   7. `holidayMode` lives on the MemberMap entry (`entry.holidayMode`)
     //      — readable via `getMyProfile`.  But the dedicated reader
     //      `getHolidayMode()` returns `{holidayMode}` directly (separate
-    //      skill).  Q18 today assumes ONE dataSource skill per view;
+    //      skill). today assumes ONE dataSource skill per view;
     //      no slot for "field-specific read skill" alongside the
     //      record-level read.  Adapter has to either trust the record
     //      envelope or know to re-read per-field.  Out of scope here;
     //      page already reads holiday-mode separately.
     //   8. `avatarUrl` is bytes (data-URL after resize), not a primitive
-    //      that fits Q18's `type: 'boolean' | 'enum' | string`.  The
+    //      that fits 's `type: 'boolean' | 'enum' | string`. The
     //      avatar input is a file-picker with client-side resize
     //      (`fileToResizedDataUrl`) + dispatch to `setMyAvatarUrl({url})`
-    //      and clear via `clearMyAvatar({})`.  Q18 has no `'file'` or
+    //      and clear via `clearMyAvatar({})`. has no `'file'` or
     //      `'image'` field type + no notion of "client-side transform
     //      before dispatch".  Stays hand-coded.
     //   9. `skills` section is a list-shape WITHIN a record-shape view
     //      (the user has many skills, each editable in 3 dimensions:
-    //      checked/status/freeTags).  Q17 today is a flat `'record'`
+    //      checked/status/freeTags). today is a flat `'record'`
     //      vs `'list'` choice per view — no nested shape.  Splitting
     //      profile into "profile-identity" (record) + "profile-skills"
     //      (list) is possible but would change the page's mental model;
     //      keeping it ONE view for now.
     //  10. `location` is also list-/wizard-shape (search → preview →
-    //      confirm) with an intermediate geocode skill call.  No Q18
+    //      confirm) with an intermediate geocode skill call. No
     //      slot for "multi-step mutation".  Stays hand-coded.
     //  11. `mnemonic` + `encryptedBackup` are SECURITY-sensitive
     //      one-shot reveals (mnemonic shows once) + dangerous-action
-    //      flows (backup needs a passphrase).  Q18 has no notion of
+    //      flows (backup needs a passphrase). has no notion of
     //      "consent gate" or "one-shot read".  Stays hand-coded.
     //
-    // None of these block E.4: the V0.4-adopt proof-point is the
+    // None of these block E.4: the -adopt proof-point is the
     // record + 3 flat fields.  The signals are forward-additive
     // substrate work for later V0.x.
     {
@@ -1144,22 +1144,22 @@ export const stoopManifest = {
       title: 'Mijn profiel',
       type:  'group-rules',  // placeholder; profile is singleton-record,
                              // not a list of group-rules items.
-      // V0.3 Q17 — shape: 'record' marks this section as a singleton.
+      // shape: 'record' marks this section as a singleton.
       // `getMyProfile` returns `{entry, renderForCurrentGroup}`; the
       // page extracts `.entry` (mirrors settings's `.settings` envelope
       // extraction).
       shape:       'record',
       dataSource:  { skillId: 'getMyProfile' },
-      // V0.4 Q18 (adopted 2026-05-22) — declare 3 representative
+      // (adopted 2026-05-22) — declare 3 representative
       // identity fields with patch declarations.  All FLAT dispatch
-      // (no Q21 argWrapper) — getMyProfile-backed mutations are
+      // (no argWrapper) — getMyProfile-backed mutations are
       // single-arg skills, not wrapped-patch like updateSettings.
       fields: [
         {
           name:     'handle',
           type:     'string',
           label:    'Handle (kleine letters, 3–32 tekens)',
-          // V0.6 Q22 — localisation key for Dutch-first surfaces.
+          // localisation key for Dutch-first surfaces.
           labelKey: 'profile.handle_label',
           // setMyHandle takes `{handle: <string>}` directly — flat fit.
           patch:    { opId: 'setMyHandle', argName: 'handle' },
@@ -1177,13 +1177,13 @@ export const stoopManifest = {
           type:     'boolean',
           label:    'Vakantiemodus (skill-match overslaat me)',
           labelKey: 'profile.holiday_label',
-          // V0.7 Q25 — `holidayMode` is reachable BOTH via the record's
+          // `holidayMode` is reachable BOTH via the record's
           // dataSource (`getMyProfile` returns it under `.entry.
           // holidayMode`) AND via a dedicated `getHolidayMode` skill.
           // Adapters that want a single-field refresh (e.g. after the
           // user toggles it elsewhere) call this skill instead of
           // re-fetching the whole profile.  E.4 was the originating
-          // signal; V0.7 closed the substrate gap.
+          // signal; closed the substrate gap.
           readSkill: { skillId: 'getHolidayMode' },
           // setHolidayMode takes `{on: <bool>}` directly — argName
           // is the *skill arg* (`on`), not the field-on-entry name
@@ -1193,7 +1193,7 @@ export const stoopManifest = {
         },
         // Other profile.html fields (avatar, skills[], location,
         // mnemonic, encryptedBackup, my-pods) stay hand-coded — see
-        // V0.5+ signals (7–11) above.  Forward-additive: any of them
+        // signals (7–11) above. Forward-additive: any of them
         // can land per-field when the substrate has a fit.
       ],
     },

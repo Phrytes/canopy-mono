@@ -1,6 +1,6 @@
-// State-morph assertion (#224 Phase B / D-2 test 3).
+// State-morph assertion (Phase B D-2 test 3).
 //
-// Pins #253 step 3 on the real device: after a row-button tap that
+// Pins step 3 on the real device: after a row-button tap that
 // mutates an item's state, the originating list bubble re-renders
 // IN PLACE so the row's appliesTo-gated buttons re-match against
 // the post-dispatch state.
@@ -38,7 +38,7 @@ describe('state morph on row-button tap', () => {
     await expect(element(by.id('list-row-btn-markComplete-c-3'))).toBeVisible();
 
     // Tap markComplete on c-1.  This goes through handleButtonTap →
-    // dispatchAndAppend → refreshList (#253 step 3) which re-runs
+    // dispatchAndAppend → refreshList (step 3) which re-runs
     // the originating /mine dispatch and rewrites the rendered list
     // in place.
     await element(by.id('list-row-btn-markComplete-c-1')).tap();

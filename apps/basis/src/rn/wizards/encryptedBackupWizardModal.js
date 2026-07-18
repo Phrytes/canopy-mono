@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  Mobile parity for
- * src/web/wizards/encryptedBackupWizard.js (Bundle F P2, #258).
+ * src/web/wizards/encryptedBackupWizard.js.
  *
  * 2-step flow:
  *   1. Passphrase + confirm
@@ -8,7 +8,7 @@
  *
  * Web step 2 triggers a Blob/URL.createObjectURL download.  Mobile
  * V1 stops at step 2 and shows "ready to save — saving deferred to
- * P4" (expo-sharing wiring lands in Bundle F P4 (#260)).  The blob
+ * " (expo-sharing wiring lands in Bundle F). The blob
  * itself sits in state.blob, ready for that future step.
  *
  * Shares src/core/wizards/encryptedBackupState.js with web.

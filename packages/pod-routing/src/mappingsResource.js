@@ -1,6 +1,6 @@
 /**
  * Mappings folder — the pod-side store for downloadable EXTENSION mappings
- * (feedback-extension, DESIGN §2.2 / P2).
+ * (feedback-extension, DESIGN 2.2).
  *
  * A "mapping" is pure DATA: a manifest declaring ops (composites of existing
  * opIds — see `@onderling/app-manifest` `Operation.steps`) + clickable menus +

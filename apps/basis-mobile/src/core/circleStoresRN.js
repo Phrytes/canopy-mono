@@ -20,7 +20,7 @@ import {
   podAvailabilityIo, tieredAvailabilityIo,
   // SILENT out-of-circle delivery — the per-user "shared with me" store (received sealed copies).
   createSharedWithMeStore, podSharedWithMeIo, tieredSharedWithMeIo,
-  // P6.2 — multi-admin proposal persistence on RN.
+  // multi-admin proposal persistence on RN.
   createProposalStore,
   // α.1a — scherm recipe book store.
   createKringRecipeStore,
@@ -168,7 +168,7 @@ export function makeUserScreenStoreRN(storage) {
 }
 
 /**
- * P6.2 — proposal store IO is `{ load(key), save(key, value) }` shaped
+ * proposal store IO is `{ load(key), save(key, value) }` shaped
  * (different from the per-id stores); a small adapter passes the
  * caller-supplied key through to AsyncStorage verbatim.
  */

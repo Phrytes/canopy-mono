@@ -1,5 +1,5 @@
 /**
- * P6.7 — skill-match source-side tests.
+ * skill-match source-side tests.
  */
 import { describe, it, expect } from 'vitest';
 import { findOfferingMatches, tokenize, MATCH_SOURCES } from '../src/findOfferingMatches.js';

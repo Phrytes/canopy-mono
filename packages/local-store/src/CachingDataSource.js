@@ -39,7 +39,7 @@
  * Events (Emitter): `online`, `offline`, `queued`, `flushed`, `pulled`, `error`,
  * `bulk-sync-started`, `bulk-sync-progress`, `bulk-sync-finished`.
  *
- * **Phase 34 (V2.5, 2026-05-06):** when `attachInner(pod)` is called
+ * **Phase 34 (2026-05-06):** when `attachInner(pod)` is called
  * and the cache already holds locally-written data (the user posted
  * items / wrote settings before signing in), we walk the local Map
  * and enqueue a `write` for every non-local-only path before the
@@ -169,7 +169,7 @@ export class CachingDataSource extends DataSource {
   // ── Lifecycle controls ───────────────────────────────────────────────────
 
   /**
-   * Attach (or swap) the inner DataSource.  Phase 34 (V2.5): when an
+   * Attach (or swap) the inner DataSource. Phase 34: when an
    * inner is attached AND the local cache already holds entries that
    * weren't queued (e.g. writes that happened before any inner was
    * present, or after a previous detach), walk the Map and enqueue a

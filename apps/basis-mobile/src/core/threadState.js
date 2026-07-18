@@ -1,5 +1,5 @@
 /**
- * Mobile-local thread state for #253 step 5.
+ * Mobile-local thread state for step 5.
  *
  * Pure reducer + helpers around a small Map<threadId, ThreadEntry>
  * + an active-thread id.  Used by ChatScreen to support multi-thread
@@ -7,7 +7,7 @@
  * (which adds subscriber wiring + Thread-class lifecycle metadata
  * we don't need for the mobile V1).
  *
- * Future graduation path: when DM-spawning (#253 step 7) lands, we
+ * Future graduation path: when DM-spawning (step 7) lands, we
  * can swap this for the canonical `@onderling-app/basis`
  * ThreadStore — both share the Map<id, entry> + activeId shape, so
  * ChatScreen consumers stay the same.
@@ -20,7 +20,7 @@
  *   - sourceDispatch  list-bubble origin dispatch for state morphing
  *                     (only one tracked per thread — the most recent
  *                     list dispatch).  See refreshList.js.
- *   - pendingFollowUp single-field follow-up shape (#253 step 4),
+ *   pendingFollowUp single-field follow-up shape (step 4),
  *                     scoped to a thread so switching away parks the
  *                     pending question without losing it.
  *
@@ -47,7 +47,7 @@ export function __resetThreadIdSeq() { _threadIdSeq = 0; }
  * @property {number}                createdAt
  * @property {Array<object>}         messages
  * @property {object|null}           sourceDispatch   most-recent list dispatch
- * @property {string|null}           [peerAddr]       Bundle H (#268): peer address of the paired peer when this is a DM thread; undefined/null for regular threads
+ * @property {string|null} [peerAddr] Bundle H: peer address of the paired peer when this is a DM thread; undefined/null for regular threads
  */
 
 /**
@@ -119,7 +119,7 @@ export function createThread(state, { name, peerAddr = null, now = Date.now } = 
 }
 
 /**
- * Bundle H (#268, 2026-05-27) — find OR create the DM thread paired
+ * find OR create the DM thread paired
  * with `peerAddr`.  Mirror of web's `ensureDmThread` in
  * `apps/basis/web/main.js:1121`.  Returns the new state + the
  * thread's id; DOES NOT switch the active thread (peer-router fires
@@ -159,7 +159,7 @@ export function ensureDmThread(state, { peerAddr, nameFallback, now = Date.now }
 }
 
 /**
- * Bundle H (#268) — rename every DM thread paired with `peerAddr`
+ * rename every DM thread paired with `peerAddr`
  * to use `displayName`.  Idempotent.  Mirror of web's
  * `updateDmPeerDisplay`.
  */
@@ -212,8 +212,8 @@ export function appendMessage(state, threadId, msg) {
 
 /**
  * Patch (or replace) a specific message in a thread.  Used for the
- * pending → resolved transition (#253 step 1) + state-morphing
- * in-place rendered refresh (#253 step 3).
+ * pending → resolved transition (step 1) + state-morphing
+ * in-place rendered refresh (step 3).
  *
  * `patch` is either an object merged into the message, or a function
  * (oldMsg) => newMsg.  Returns same state when the message isn't
@@ -236,7 +236,7 @@ export function patchMessage(state, threadId, messageId, patch) {
 
 /**
  * Record (or clear) the source dispatch for a thread.  Stored to
- * support state-morphing list refresh (#253 step 3) — when a row
+ * support state-morphing list refresh (step 3) — when a row
  * button is tapped, refreshList re-runs this dispatch + updates
  * the list bubble.
  */
@@ -252,7 +252,7 @@ export function setSourceDispatch(state, threadId, sourceDispatch) {
 
 /**
  * Record (or clear) the single-field follow-up shape on a thread
- * (#253 step 4).  Switching threads must NOT carry a pending
+ * (step 4). Switching threads must NOT carry a pending
  * follow-up across — each thread holds its own.
  */
 export function setPendingFollowUp(state, threadId, pending) {

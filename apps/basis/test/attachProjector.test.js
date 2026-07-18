@@ -1,5 +1,5 @@
 /**
- * P2 (J4) — the ATTACHMENT projector wired into the basis WEB composer.
+ * (J4) — the ATTACHMENT projector wired into the basis WEB composer.
  *
  * Covers the three seams the wiring rests on:
  *   1. renderAttachments(basisManifest) projects the attach menu from each op's

@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  EmbedTime wizard for basis-mobile
- * (Bundle F P5, #261, 2026-05-26).
+ * (2026-05-26).
  *
  * Single-step form for /embed-time.  Title + when (free text, parsed
  * by chrono-node in localBuiltins.createTimeEmbed — handles ISO +

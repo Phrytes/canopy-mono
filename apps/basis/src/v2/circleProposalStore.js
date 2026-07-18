@@ -1,5 +1,5 @@
 /**
- * basis v2 — proposal store for multi-admin consensus (P6.2).
+ * basis v2 — proposal store for multi-admin consensus.
  *
  * `makeProposal()` (circleConsensus.js) builds the in-memory shape; this
  * store is the persistence layer the host wires on top.  Same IO contract

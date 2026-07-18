@@ -1,5 +1,5 @@
 /**
- * screenPanelDrilldown — the MOBILE binding of the shared Q15 screen
+ * screenPanelDrilldown — the MOBILE binding of the shared screen
  * drill-down (web twin: circleApp's `openCircleScreenPanel`).
  *
  * Invariant #1: NO drill/selection/fetch logic lives here — it all comes
@@ -55,7 +55,7 @@ export function drilldownForScreen(manifestsByOrigin, screenId, screenContext = 
 }
 
 /**
- * Q17 — the read-only key→value rows a `shape:'record'` reply renders as
+ * the read-only key→value rows a `shape:'record'` reply renders as
  * (the RN twin of web recordScreen's inline formatting: nullish → '—',
  * nested → JSON, else String).  Pure so the record screen's model is
  * assertable without a native render.

@@ -1,6 +1,6 @@
 /**
  * registerFolioAgent — self-register folio into `@onderling/agent-registry`
- * (Slice 1b, PLAN-folio-as-file-agent.md).  The folio sibling of the
+ * (PLAN-folio-as-file-agent.md). The folio sibling of the
  * agents-app bring-up in basis's `realAgent.js` (`registerAgentBundle`).
  *
  * Folio becomes a CONNECTABLE file agent: once registered it appears in the

@@ -1,5 +1,5 @@
 /**
- * basis v2 — auto-hop-prompt (board 7A, slice P6.6).
+ * basis v2 — auto-hop-prompt.
  *
  * When a skill-search inside the user's circles returns ZERO matches AND
  * the user has at least one hop-eligible contact, the chat-shell should
@@ -16,7 +16,7 @@
  *
  * The chat-shell integration (rendering the card as a chat bubble +
  * routing the "Yes" tap to `makeHopRelayRequest` over the existing
- * hop-relay substrate) is the follow-up #344 — this slice ships the
+ * hop-relay substrate) is the follow-up — this slice ships the
  * decision + presentation model + tests.
  */
 

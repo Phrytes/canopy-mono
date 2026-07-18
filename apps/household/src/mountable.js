@@ -2,7 +2,7 @@
  * `apps/household/src/mountable.js` — household as a `@onderling/manifest-
  * host` mountable.
  *
- * SP-4b+SP-11 (2026-05-20): extracted from `HouseholdAgent.js`'s
+ * extracted from `HouseholdAgent.js`'s
  * renderChat callsite (lines 140–172) so that the household skill
  * surface composes into a multi-app host without needing a full
  * HouseholdAgent.  Used by `examples/manifest-host-demo/` to mount

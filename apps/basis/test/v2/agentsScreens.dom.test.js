@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * agents — web UI verification (PLAN-agent-management-surface P1/P2 UI):
+ * agents — web UI verification (PLAN-agent-management-surface UI):
  * the "your agents" surface renders from the MANIFEST projection alone.
  *
  *  1. `sectionForScreen` resolves the agents LIST screen (dataSource

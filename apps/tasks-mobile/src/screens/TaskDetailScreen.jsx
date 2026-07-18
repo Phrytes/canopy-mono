@@ -12,9 +12,9 @@
  *   - ready  → "Claim" (any member)
  *   - claimed → "Submit" / "Mark complete" (assignee, depending on DoD)
  *   - submitted → "Approve" / "Reject" (creator/admin/coord per V1 DoD)
- *   - waiting → V2.7 disabled "Mark complete" + tooltip + admin
+ *   waiting → disabled "Mark complete" + tooltip + admin
  *               "Force complete" CTA (Phase 41.4.4 + 41.4.5)
- *   - "Add sub-task" → V2.7-aware: when parent is submitted and the
+ *   "Add sub-task" → -aware: when parent is submitted and the
  *               caller isn't the assignee, the label flips to
  *               "Propose sub-task — needs @assignee's approval" and
  *               calls proposeSubtask instead of addSubtask
@@ -123,9 +123,9 @@ export function TaskDetailScreen() {
   const [showRemove,    setShowRemove]   = useState(false);
   const [showApproval,  setShowApproval] = useState(false);
 
-  // #226 (2026-05-24) — editTask UI affordance. Visible when the
+  // editTask UI affordance. Visible when the
   // task is in `ready`/`open` or `claimed` state. The form patches
-  // text + notes through the substrate's editTask skill (#219).
+  // text + notes through the substrate's editTask skill.
   const [showEdit,      setShowEdit]     = useState(false);
   const [editText,      setEditText]     = useState('');
   const [editNotes,     setEditNotes]    = useState('');
@@ -144,7 +144,7 @@ export function TaskDetailScreen() {
   const reassignSk  = useSkill('reassignTask');
   const removeSk    = useSkill('removeTask');
   const setApproval = useSkill('setApprovalMode');
-  // #226 — editTask skill binding.
+  // editTask skill binding.
   const edit        = useSkill('editTask');
 
   const [busyAction, setBusyAction] = useState(null); // skill name or null
@@ -245,7 +245,7 @@ export function TaskDetailScreen() {
     await _withErr('setApprovalMode', () => setApproval.call({ id, mode }));
   }, [_withErr, setApproval, id]);
 
-  // #226 — editTask: open the form pre-filled with the current task
+  // editTask: open the form pre-filled with the current task
   // body. The form patches only the fields the user actually changes
   // (the skill rejects an empty patch). Forbidden lifecycle fields
   // (assignee / claimedAt / completedAt / id / addedBy / reviewLog /
@@ -518,7 +518,7 @@ export function TaskDetailScreen() {
           </>
         ) : null}
 
-        {/* V2.7 Force-complete (admin override) */}
+        {/* Force-complete (admin override) */}
         {offerForceComplete ? (
           <Action
             label={t('mobile.task_detail.force_complete')}
@@ -527,7 +527,7 @@ export function TaskDetailScreen() {
           />
         ) : null}
 
-        {/* #226 — Edit task body. Visible when the task is open
+        {/* Edit task body. Visible when the task is open
             (ready / waiting / blocked) or claimed. Submitted /
             complete / rejected tasks intentionally do NOT expose
             edit here: those have dedicated lifecycle CTAs and the
@@ -640,7 +640,7 @@ export function TaskDetailScreen() {
         destructive
       />
 
-      {/* V2.7 Force-complete reason modal */}
+      {/* Force-complete reason modal */}
       <ReasonModal
         visible={showForce}
         title={t('mobile.task_detail.force_complete_confirm')}
@@ -722,7 +722,7 @@ export function TaskDetailScreen() {
         onCancel={() => setShowApproval(false)}
       />
 
-      {/* #226 — Edit task body modal (text + notes). */}
+      {/* Edit task body modal (text + notes). */}
       <EditTaskModal
         visible={showEdit}
         title={t('mobile.task_detail.edit_title')}
@@ -867,7 +867,7 @@ function ReasonModal({ visible, title, body, label, value, onChange, onConfirm, 
 }
 
 /**
- * EditTaskModal — #226 (2026-05-24) — two-field form (text + notes)
+ * EditTaskModal — (2026-05-24) — two-field form (text + notes)
  * for editTask. Sibling of `ReasonModal` above but with two inputs
  * and a Save/Cancel pair labelled via t() entries. All copy is
  * supplied by the caller so this stays locale-agnostic.

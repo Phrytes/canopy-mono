@@ -1,5 +1,5 @@
 /**
- * loadVerifyMappings (P2 shared core) — load the store → verify against the
+ * loadVerifyMappings (shared core) — load the store → verify against the
  * catalog → return mergeable sources for accepted, rejected for the rest.
  */
 

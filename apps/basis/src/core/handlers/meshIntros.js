@@ -1,7 +1,7 @@
 /**
- * #217 (2026-05-24) — extracted mesh-intro handlers from main.js.
+ * extracted mesh-intro handlers from main.js.
  *
- * Two paired flows for Slice 4 (mesh + consent):
+ * Two paired flows for (mesh + consent):
  *
  *   - `propagateMeshIntros` — admin-side.  After a new joiner's
  *     peer-redeem succeeds, admin reads its consenting-member roster

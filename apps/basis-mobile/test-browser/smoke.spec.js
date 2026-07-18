@@ -38,7 +38,7 @@ test.describe('#224 Phase A — basis-mobile on Expo Web', () => {
       .toContainText(/Agents ready/i, { timeout: 30_000 });
 
     // /threads is now a real host op routed via mobile's
-    // localBuiltins port (Bundle F P1, #257).  It returns the
+    // localBuiltins port. It returns the
     // threads-list text payload — the seed thread is named "Main".
     // Asserting on "Main" proves parseInput + resolveDispatch +
     // localBuiltins.threads + renderReply all survived the RN→web

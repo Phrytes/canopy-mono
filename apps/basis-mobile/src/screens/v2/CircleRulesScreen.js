@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — circle rules editor (RN screen, board 3B).
+ * basis-mobile v2 — circle rules editor (RN screen).
  *
  * RN counterpart of web's circleRulesEditor: the six governance questions
  * over a rules document; required questions (purpose + agreements) gate

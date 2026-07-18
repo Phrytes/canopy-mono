@@ -1,5 +1,5 @@
 /**
- * Inbound calendar-invite handler.  Bundle H Phase 2 (#269) — lifted
+ * Inbound calendar-invite handler. Bundle H Phase 2 — lifted
  * from `apps/basis/web/main.js:477`.
  *
  * On a peer's `calendar-invite` envelope: persists the event locally

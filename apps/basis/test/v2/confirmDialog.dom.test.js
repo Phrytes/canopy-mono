@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 /**
- * confirmDialog — the web presenter of the Q27 confirm gate.
+ * confirmDialog — the web presenter of the confirm gate.
  *
  * The full web chain over the real DOM renderer, driven the way
  * circleApp wires it (needsConfirm route → shared runConfirmGate →
  * renderConfirmDialog as the presenter → executeResolved):
  *   - the DANGER dialog renders with the MANIFEST's confirm message
- *     (revokeAgent — the red Q27 Tier C affordance)
+ *     (revokeAgent — the red Tier C affordance)
  *   - the accept button carries the danger styling hint
  *   - confirm click → the dispatch executes (once, as 'ready')
  *   - cancel click / ESC / backdrop → no dispatch, quiet notice

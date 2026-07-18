@@ -213,7 +213,7 @@ export function wireChat({
         (data.fromWebid    && muted.has(data.fromWebid))
       )) return;
 
-      // Phase 35 (V2.5) — silently drop posts from evicted members.
+      // silently drop posts from evicted members.
       if (evictionRoster && data.fromWebid && evictionRoster.isEvicted(data.fromWebid)) return;
 
       // Distance filter: receiver checks against own location.

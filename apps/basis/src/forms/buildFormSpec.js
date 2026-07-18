@@ -11,13 +11,13 @@
  *        - 'sequential'  — 1 simple-kind required missing
  *        - 'inline'      — 2-3 simple-kind required missing
  *        - 'mini-page'   — 4+ OR any complex kind (date/file/image/webid)
- *      Apps may override later via Q32 `surfaces.chat.formStyle`
+ *      Apps may override later via `surfaces.chat.formStyle`
  *      (not in v0.3; deferred).
  *
  * The returned FormSpec is platform-neutral data; the DOM / RN
  * adapter consumes it and produces inputs.
  *
- * Phase v0.3 sub-slice 3.3 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.3 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { parseRelativeDate, parseDateAndTime } from './parseDate.js';
@@ -32,8 +32,8 @@ const SIMPLE_KINDS = new Set(['string', 'number', 'boolean', 'enum']);
  * @property {*}                                   [value]      prefilled value (read-only if from parser)
  * @property {boolean}                             [readOnly]   true when the parser already bound this
  * @property {string[]}                            [choices]    enum: list of allowed values
- * @property {string}                              [label]      derived from labelKey (Q22) or name
- * @property {string}                              [labelKey]   Q22 i18n key, passed through
+ * @property {string} [label] derived from labelKey or name
+ * @property {string} [labelKey] i18n key, passed through
  * @property {string}                              [placeholder]
  * @property {string}                              [hint]
  */
@@ -93,7 +93,7 @@ export function buildFormSpec({
     if (typeof p.placeholder === 'string') field.placeholder = p.placeholder;
     if (typeof p.hint        === 'string') field.hint        = p.hint;
 
-    // Q34 (v0.7) — propagate pickerSource so the DOM/RN adapter can
+    // (v0.7) — propagate pickerSource so the DOM/RN adapter can
     // render a click-to-pick list instead of a text input.
     if (p.pickerSource && typeof p.pickerSource === 'object') {
       field.pickerSource = {
@@ -124,7 +124,7 @@ export function buildFormSpec({
 }
 
 /**
- * Strategy decision rule (v0.3 default; apps may override via Q32 in
+ * Strategy decision rule (v0.3 default; apps may override via in
  * a future phase — not in this slice).
  *
  *   missing param count → strategy
@@ -204,7 +204,7 @@ export function validateAndCoerce(spec, formValues) {
         break;
       }
       case 'date': {
-        // v0.7.P1-followup 2026-05-23 — use the time-preserving
+        // v0.7.-followup 2026-05-23 — use the time-preserving
         // variant so 'tomorrow 3pm' / '23 may 15:00' / ISO datetime
         // all round-trip with their time component (instead of
         // collapsing to midnight UTC).
@@ -237,7 +237,7 @@ export function validateAndCoerce(spec, formValues) {
       }
       default: {
         // string, file, image — pass through verbatim.  File/image
-        // (Q23) handling lands when an app actually uses them.
+        // handling lands when an app actually uses them.
         args[field.name] = raw;
         break;
       }

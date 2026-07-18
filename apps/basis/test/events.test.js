@@ -1,5 +1,5 @@
 /**
- * basis — event router tests.  v0.2 sub-slice 2.5.
+ * basis — event router tests. v0.2.
  */
 import { describe, it, expect, vi } from 'vitest';
 

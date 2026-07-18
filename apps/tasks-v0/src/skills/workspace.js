@@ -61,7 +61,7 @@ export function buildWorkspaceSkills({ bundleResolver } = {}) {
       const closed = await circle.itemStore.listClosed();
       const pending = open
         .filter((it) => itemStoreComputeStatus(it) === 'submitted')
-        // V2.7 — include DAG `status` so the Review UI can disable the
+        // include DAG `status` so the Review UI can disable the
         // Approve button + show open-deps tooltip when the parent
         // can't actually be closed yet.
         .map((it) => ({

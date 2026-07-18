@@ -19,7 +19,7 @@
  *     injects it (household's deliberate layering; see its shim header).
  *     `transport` wins when both are given.
  *
- * **Versioning (the P2 composition seam).** Pass `versioning` to give the
+ * **Versioning (the composition seam).** Pass `versioning` to give the
  * stack's pseudo-pod a version history (PLAN-pod-versioning-history-recovery):
  *   - a prebuilt store (duck-typed `{capture}`) — injected as-is; or
  *   - `{ hash, retention?, versionsRoot? }` — the factory builds a
@@ -28,7 +28,7 @@
  *     `writerId = deviceId` (multi-writer-safe keys). `hash` is caller-
  *     supplied (async sha256) — this package stays runtime-agnostic, no
  *     `node:` imports (same invariant as pseudo-pod).
- * The built store is returned as `versionStore` so surfaces (P3 restore) can
+ * The built store is returned as `versionStore` so surfaces (restore) can
  * list/read/restore. Incompatible with `existingPseudoPod` (versioning is an
  * injection-time seam; a pre-built pod can't gain it) — that combination throws.
  */

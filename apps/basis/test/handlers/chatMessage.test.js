@@ -1,5 +1,5 @@
 /**
- * Bundle H (#268) — chat-message handler coverage.
+ * chat-message handler coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeHandleChatMessage } from '../../src/core/handlers/chatMessage.js';

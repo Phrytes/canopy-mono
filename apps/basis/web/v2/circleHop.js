@@ -1,5 +1,5 @@
 /**
- * basis v2 — hopping (web DOM renderer, board 7).
+ * basis v2 — hopping (web DOM renderer).
  *
  * A device-global hop stance toggle (backed by Stoop's getHopMode /
  * setHopMode) plus, when a relay chain is supplied, a hop-match card

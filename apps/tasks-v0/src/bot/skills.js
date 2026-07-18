@@ -1,5 +1,5 @@
 /**
- * bot skills — V1.5 chat-bot wrappers around the V1 skill set.
+ * bot skills — chat-bot wrappers around the V1 skill set.
  *
  * Each `bot.*` skill thin-wraps an existing Tasks skill, but:
  *   - returns a chat-shaped `{text, buttons?}` reply (the bridge
@@ -19,7 +19,7 @@
  * bound to a `member` webid cannot approve tasks (just like in the
  * web UI) — they get a `permission denied` reply.
  *
- * V2.8: bot skills resolve a CircleState via `bundleResolver` then
+ * bot skills resolve a CircleState via `bundleResolver` then
  * inject `circleId` into every inner-skill `callUnderlying` call so
  * the inner skill's own bundleResolver picks the same circle.
  */
@@ -31,7 +31,7 @@ import { argsFromParts } from '../bundleResolver.js';
 /**
  * Default skill opts for every `bot.*` defineSkill call.
  *
- * V1.5 follow-up A + C — `policy: 'requires-token'` makes
+ * follow-up A + C — `policy: 'requires-token'` makes
  * PolicyEngine actually verify a presented `CapabilityToken`
  * (signature + expiry + scope + issuer trust + revocation list).
  * Without it, transport-arrived calls to `bot.*` would short-circuit
@@ -50,7 +50,7 @@ const BOT_SKILL_OPTS = {
 /**
  * Resolve the effective actor for a bot.* handler.
  *
- * V1.5 cap-token path: when the inbound envelope carries a token
+ * cap-token path: when the inbound envelope carries a token
  * with `constraints.actingAs`, the bot is authorised to act AS that
  * webid. We honour it instead of `envelope._from` (which is the
  * bot's own pubKey, not a circle member).
@@ -127,7 +127,7 @@ function _formatTree(node, depth = 0) {
  * Annotate the actor display name with `(via bot)` so audit-log
  * viewers can tell apart UI vs bot actions.
  *
- * V2.8: we inject `circleId` into the inner skill's args so its own
+ * we inject `circleId` into the inner skill's args so its own
  * `bundleResolver(parts, ctx)` picks the same circle the bot resolved.
  * In single-circle mode this is harmless (singleCircleResolver ignores
  * args); in multi-circle mode it's load-bearing.
@@ -496,7 +496,7 @@ export function buildBotSkills({ bundleResolver } = {}) {
       return { text: `Appeal error: ${r?.error ?? JSON.stringify(r)}` };
     }, { ...BOT_SKILL_OPTS, description: 'Bot: open a chat thread with the master to appeal a revoke.' }),
 
-    // V2.7 — post-submit consent flow (chat-side mirror of the web UI).
+    // post-submit consent flow (chat-side mirror of the web UI).
 
     defineSkill('bot.propose', async ({ parts, from, envelope, agent }) => {
       const circle = bundleResolver(parts, { envelope, from });

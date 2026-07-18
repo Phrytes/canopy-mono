@@ -35,7 +35,7 @@ const { convertPublicKey, convertKeyPair } = ed2curve;
 const STABLE_ID_KEY = 'agent-stable-id';
 
 /**
- * Vault key for the per-install deviceId (Stoop V2.5 Phase 33.1, 2026-05-06).
+ * Vault key for the per-install deviceId (Stoop.1, 2026-05-06).
  *
  * Unlike `stableId`, `deviceId` is **install-scoped**: a fresh random UUID
  * generated once per install, persisted in the vault, NEVER derived from
@@ -47,7 +47,7 @@ const STABLE_ID_KEY = 'agent-stable-id';
 const DEVICE_ID_KEY = 'agent-device-id';
 
 /**
- * HKDF salt for deterministic stableId derivation (V2.5+ Phase 32,
+ * HKDF salt for deterministic stableId derivation (+ Phase 32,
  * 2026-05-07).  **Permanent** — never change.  Changing it would
  * invalidate every restored identity's stableId across all apps.
  */
@@ -74,7 +74,7 @@ function _deriveStableIdFromSeed(seed) {
  * handed back by `restoreWithPrevious` — those intentionally don't
  * persist anywhere.
  *
- * V2.5+ (Phase 32, 2026-05-07): when the vault has nothing AND a
+ * when the vault has nothing AND a
  * `seed` is supplied, derive the stableId deterministically via
  * HKDF-SHA256(seed, salt='stoop-stableId-v1').  This makes
  * `restoreFromMnemonic` produce the SAME stableId across devices —
@@ -130,7 +130,7 @@ export class AgentIdentity {
   #vault;
   /** @type {string | null} — the stable opaque user id (Stoop V1 Phase 11). */
   #stableId = null;
-  /** @type {string | null} — per-install device id (Stoop V2.5 Phase 33.1). */
+  /** @type {string | null} — per-install device id (Stoop.1). */
   #deviceId = null;
 
   constructor({ seed, vault, stableId = null, deviceId = null }) {
@@ -313,7 +313,7 @@ export class AgentIdentity {
   }
 
   /**
-   * Per-install device identifier (Stoop V2.5 Phase 33.1, 2026-05-06).
+   * Per-install device identifier (Stoop.1, 2026-05-06).
    *
    * UUIDv4 string, generated once at first construction (or lazy-init
    * on legacy vaults), persisted under `agent-device-id`, **untouched

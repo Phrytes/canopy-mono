@@ -1,7 +1,7 @@
 /**
- * circleConsent — the JOIN-TIME consent model over a circle's freedom template (B · Slice 4).
+ * circleConsent — the JOIN-TIME consent model over a circle's freedom template (B).
  *
- * Slice 4 resolves the effective capability set as `admin-template ∩ user-opt-outs`. The admin side
+ * resolves the effective capability set as `admin-template ∩ user-opt-outs`. The admin side
  * (the freedom template `policy.capabilities`) + the member side (`override.capabilityOptOuts`) already
  * meet at the gate (`capabilityGate.effectiveCapabilities`). What was missing is the JOIN-TIME surface:
  * a joiner should, at join, review the circle's OPT-OUTABLE capabilities and record their opt-outs so

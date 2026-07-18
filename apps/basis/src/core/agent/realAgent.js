@@ -1,7 +1,7 @@
 /**
  * basis — portable real-Agent factory.
  *
- * Lifted from `src/web/realAgent.js` in #225.1 so both the web entry
+ * Lifted from `src/web/realAgent.js` in so both the web entry
  * (`src/web/realAgent.js` → thin re-export) and the basis-mobile
  * bundle (`@onderling-app/basis/core-realAgent`) share one source.
  *
@@ -38,7 +38,7 @@ import { createBrowserFolioAgent } from '@onderling-app/folio/browser';
 // the agents manifest via wireSkill; registerAgentBundle both registers THIS
 // device in the registry resource and returns the live registry handle.
 import { buildAgentSkills } from '@onderling-app/agents/wireSkills';
-// P3 install — the curated-catalog SOURCE. commons-governance G1: when a
+// install — the curated-catalog SOURCE. commons-governance G1: when a
 // bootstrap endorser root is configured (opts.commonsRoot), the default source
 // is the REAL endorsement-backed catalog (createCatalogSource over signed,
 // cardHash-bound recommendations); otherwise the local stub keeps the surface
@@ -60,7 +60,7 @@ import {
   isRequestable,
   effectiveProperties,
 } from '@onderling/agent-registry';
-// REQUESTABLE BRIDGE (P4 host-wiring seam · J6) — the recipient's per-circle task
+// REQUESTABLE BRIDGE (host-wiring seam J6) — the recipient's per-circle task
 // surface (`createTaskStore`) + the convergence handler (`requestableSkillHandler`)
 // that mints a `request` task instead of executing an offering. Wired below onto the
 // live host agent as the `requestOffering` peer-facing dispatcher op.
@@ -229,7 +229,7 @@ export async function createRealHouseholdAgent(opts = {}) {
 
   const bus = new InternalBus();
 
-  // P6.5 — claim-router hook holder.  Hosts call agent.setAfterClaimHook(fn)
+  // claim-router hook holder. Hosts call agent.setAfterClaimHook(fn)
   // post-construction (the hook typically needs agent.callSkill itself, so it
   // can't be passed in opts).  Default to a no-op.
   const claimRouterRef = { hook: typeof opts.afterClaimHook === 'function' ? opts.afterClaimHook : null };
@@ -458,11 +458,11 @@ export async function createRealHouseholdAgent(opts = {}) {
     inviteAttendee: (webid, snapshot) => inviteAttendeeRef(webid, snapshot),
   });
 
-  // v0.7.P2 — caller (main.js) wires the pod writer on sign-in via
+  // v0.7. — caller (main.js) wires the pod writer on sign-in via
   // this setter; calendar's .ics feed then write-throughs to
   // <pod>/canopy/calendar/feed.ics.
   const setCalendarPodWriter = (writer) => calendarStore.setPodWriter(writer);
-  // v0.7.P2.1 — surface pod-write success / failure as notification
+  // v0.7. — surface pod-write success / failure as notification
   // events so /logs + matching threads pick them up.
   if (typeof calendarStore.setPodEventSink === 'function') {
     calendarStore.setPodEventSink((event) => {
@@ -552,7 +552,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       }))
       ?? createAgentRegistry({ pseudoPod: householdSubstrate.pseudoPod, deviceId: chatId.pubKey });
 
-    /* P2 control ops — LIVE token binding (2026-07-09).  hostAgent (the skills' home)
+    /* control ops — LIVE token binding (2026-07-09). hostAgent (the skills' home)
      * is the ISSUER: `issueCapabilityToken` signs with its identity and needs no other
      * machinery.  Neither hostAgent nor the default chat secure-agent composes a
      * TokenRegistry/PolicyEngine in this factory (hostAgent is built bare at the top;
@@ -587,13 +587,13 @@ export async function createRealHouseholdAgent(opts = {}) {
       agentsTokenRegistry = tokenRegistry;
     } catch { agentsTokens = null; agentsTokenRegistry = null; }
 
-    // P3 recovery: the platform's circle-version-store resolver (web:
+    // recovery: the platform's circle-version-store resolver (web:
     // circleVersioning.getCircleVersionStore; mobile: its RN twin) rides in
     // via opts — the recovery cores stay platform-blind (doorgeefluik).
     // Absent → listDataVersions/restoreDataVersion answer the honest
     // `no-version-store` miss.
     const versionStoreFor = typeof opts.versionStoreFor === 'function' ? opts.versionStoreFor : null;
-    // P3 install: the curated-catalog SOURCE. A caller may inject a source via
+    // install: the curated-catalog SOURCE. A caller may inject a source via
     // opts.agentsCatalog (wins). Otherwise, commons-governance: when curator
     // root pubKey(s) are configured, the default source is the REAL
     // endorsement-backed catalog. G2 makes it a WEB OF TRUST — opts.commonsRoots
@@ -696,7 +696,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       setDisclosure: async ({ profileId, contextId, key, enabled, rung, matchable, requestable }) => {
         const cur = await agentsRegistry.lookup(profileId);
         if (!cur) throw new Error(`setDisclosure: no such profile ${profileId}`);
-        // Forward only the axes actually supplied (three independent axes, P4);
+        // Forward only the axes actually supplied (three independent axes);
         // the pure setter merges per-axis so one doesn't clobber the others.
         const patch = {};
         if (enabled !== undefined) patch.enabled = enabled;
@@ -727,7 +727,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       if (!(await agentsRegistry.lookup('default'))) await agentsProfiles.create({ profileId: 'default', name: 'default' });
     } catch { /* degraded (no owner root / registry) — the on-consent persist simply stays best-effort */ }
 
-    /* ─── REQUESTABLE BRIDGE — the P4 HOST-WIRING seam #1 (NOTE-skills-vs-capabilities
+    /* ─── REQUESTABLE BRIDGE — the HOST-WIRING seam #1 (NOTE-skills-vs-capabilities
      * volleys 2–4 · journey J6) ─────────────────────────────────────────────────
      * A peer (A) invokes a local member's REQUESTABLE offering (a skill-kind driver
      * marked `requestable` in a circle's disclosure policy). The invocation does NOT
@@ -820,7 +820,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     })];
   });
 
-  // v0.5 Q29 — snapshot factory for the J7 embed primitive.  Consumed by
+  // v0.5 — snapshot factory for the J7 embed primitive. Consumed by
   // basis's /embed built-in.  Reads a real household item by id (or
   // id-prefix / keyword) from the store and shapes it as an ItemSnapshot.
   hostAgent.register('getChoreSnapshot', async ({ parts }) => {
@@ -890,7 +890,7 @@ export async function createRealHouseholdAgent(opts = {}) {
 
 
   /* folio's web-only handlers used to live here (~125 lines of mock-
-   * real handlers registered on hostAgent).  Slice 4 of the
+   * real handlers registered on hostAgent). of the
    * integration-plan-2026-05-23 moved them into a dedicated browser
    * agent — see the `createBrowserFolioAgent` boot block below the
    * tasks/stoop blocks, and the 'folio' branch in `callSkill`.
@@ -951,7 +951,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
-  /* ─── tasks-v0 real circle agent (slice 1 — integration plan
+  /* ─── tasks-v0 real circle agent (— integration plan
    *     2026-05-23) ─────────────────────────────────────────────
    *
    * Replaces the previous mock-task handlers (~210 lines) with
@@ -1043,11 +1043,11 @@ export async function createRealHouseholdAgent(opts = {}) {
   // wired at boot); provisionMyCircle persists a config to the
   // dataSource but doesn't instantiate a CircleState the dashboard
   // can see.  Until multi-circle topology lands as a separate slice
-  // (#127-#131-ish), the /circles adapter appends these "pending"
+  // (ish), the /circles adapter appends these "pending"
   // entries so the user gets visible feedback on /circle-new.
   const provisionedCircles = new Map();   // circleId → {name, kind, provisionedAt}
 
-  /* ─── stoop real agent (slice 2b — integration plan 2026-05-23) ──
+  /* ─── stoop real agent (integration plan 2026-05-23) ──
    *
    * Replaces the previous mock-stoop handlers (~85 lines: listFeed,
    * postRequest, searchPosts, stoop_briefSummary, getStoopProfile,
@@ -1058,7 +1058,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    * Separate identity vault prefix (`cc-stoop-id:`) so stoop's per-
    * buurt identity is isolated from chat + tasks (decision #2).
    * IndexedDBPersist via opts.persistDb keeps the local cache alive
-   * across page reloads (slice 2a).
+   * across page reloads.
    */
   const stoopIdentityVault = opts.stoopIdentityVault
     ?? makeBrowserVault('cc-stoop-id:');
@@ -1135,7 +1135,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     }
   }
 
-  /* ─── folio web-only agent (slice 4 — integration plan 2026-05-23) ──
+  /* ─── folio web-only agent (integration plan 2026-05-23) ──
    *
    * Replaces the previous in-host folio handlers (~125 lines: readNote
    * / shareFolder / listFiles / searchFiles / getFileSnapshot /
@@ -1149,7 +1149,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    * Separate identity vault prefix (`cc-folio-id:`) so folio's web
    * identity is isolated from chat / tasks / stoop (decision #2).
    * podRoot is reserved — when basis lands real pod-attached
-   * folio writes (slice 5 / mobile), pass `opts.folioPodRoot` so
+   * folio writes (mobile), pass `opts.folioPodRoot` so
    * shareFolder tokens carry the real pod URI.
    */
   const folioIdentityVault = opts.folioIdentityVault
@@ -1257,7 +1257,7 @@ export async function createRealHouseholdAgent(opts = {}) {
   };
 
   // 2026-05-24 — retry-on-HI-race now lives in secure-agent's
-  // sendToPeer (task #215). sa.peer.sendTo handles it transparently.
+  // sendToPeer (task). sa.peer.sendTo handles it transparently.
   // Wrapper alias kept for the existing fan-out callsite so the diff
   // stays small; new code can call sa.peer.sendTo directly.
   const _saSendWithRetry = (sa, addr, payload) => sa.peer.sendTo(addr, payload);
@@ -1389,7 +1389,7 @@ export async function createRealHouseholdAgent(opts = {}) {
           ? Number(realArgs['ttl-hours']) : 24;
         realArgs = { ...realArgs, ttlMs: hours * 60 * 60 * 1000 };
       }
-      // #190 (B3) — circle admin skills require circleId; auto-inject
+      // (B3) — circle admin skills require circleId; auto-inject
       // from the configured circle so the user doesn't have to type it.
       const CIRCLE_AUTO_INJECT = new Set([
         'getCircleConfig', 'pauseCircle', 'unpauseCircle',
@@ -1415,7 +1415,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         realArgs = { ...realArgs, circleId };
       }
       if (realOpId === 'archiveCircle' && realArgs.confirm !== true) {
-        // Q27 two-step confirm.
+        // two-step confirm.
         return {
           ok: false,
           error: 'Archiving the circle puts it read-only. Re-run with --confirm=true to proceed.',
@@ -1428,7 +1428,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         };
       }
       if (realOpId === 'acceptSchedule' && realArgs.slotKey) {
-        // #193 — decode "taskId|slotStart|slotEnd" packed into row id.
+        // decode "taskId|slotStart|slotEnd" packed into row id.
         const parts = String(realArgs.slotKey).split('|');
         if (parts.length === 3) {
           realArgs = {
@@ -1440,7 +1440,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         }
       }
       if (realOpId === 'setMyAvailability' && realArgs.cellKey) {
-        // #195 — decode "week|day|half|state" packed into the cell id.
+        // decode "week|day|half|state" packed into the cell id.
         // day: 0-6 (Mon-Sun); half: 'AM'|'PM'; state cycles
         // unknown → open → tight → unavailable → unknown.
         const parts = String(realArgs.cellKey).split('|');
@@ -1607,7 +1607,7 @@ export async function createRealHouseholdAgent(opts = {}) {
           targets: [{ kind: 'group', groupId: realArgs.groupId }],
         };
       }
-      // #189 — buurt/group skills.  Several require groupId; the
+      // buurt/group skills. Several require groupId; the
       // chat-shell knows which buurt this agent is in (single-buurt
       // mode), so auto-inject when missing.
       const REQUIRES_GROUP_ID = new Set([
@@ -1637,7 +1637,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         } catch { /* address derivation is additive — never block the redeem/create */ }
       }
       if (realOpId === 'leaveGroup' && realArgs.confirm !== true) {
-        // Q27-style two-step confirm.  Short-circuit before invoke.
+        // style two-step confirm. Short-circuit before invoke.
         return {
           ok: false,
           error: 'Leaving your buurt is irreversible. Re-run with --confirm=true to proceed.',
@@ -1665,7 +1665,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       const first  = Array.isArray(result) ? result[0] : null;
       const reply  = first?.data ?? null;
 
-      // 2026-05-24 — Slice 1 cross-instance fan-out (chat-layer bridge).
+      // cross-instance fan-out (chat-layer bridge).
       // After a local postRequest succeeds, look up the buurt roster
       // (peers we know via membership-redemption items) + fan out a
       // 'buurt-post' envelope over NKN.  Each recipient's onPeerMessage
@@ -1681,7 +1681,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         }
       }
       if (realOpId === 'postRequest' && reply?.requestId && sa?.peer?.status === 'connected') {
-        // 2026-05-24 — Slice 1 follow-up.  The substrate bundle's
+        // follow-up. The substrate bundle's
         // group is a hardcoded 'cc-default-buurt' from bundle bring-
         // up, but real buurts (the ones users /create- or /join-) are
         // tagged on membership-redemption items with their REAL
@@ -1929,7 +1929,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    */
   function adaptTasksReply(opId, data) {
     if (data == null) return null;
-    // #192 (B8) — DAG hard-dep blocking surface.  Real skill returns
+    // (B8) — DAG hard-dep blocking surface. Real skill returns
     // {error: 'has-open-dependencies', openDeps: [...]} when the user
     // tries to complete a task whose subtasks aren't done.  Translate
     // to a clear chat-shell message + structured payload the UI can
@@ -1971,7 +1971,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       submitTask:  'Submitted',
       approveTask: 'Approved',
       rejectTask:  'Rejected',
-      // #219 (2026-05-24) — editTask returns {task}; chat-shell needs
+      // editTask returns {task}; chat-shell needs
       // the ok/message envelope to render the confirmation bubble.
       editTask:    'Edited',
     };
@@ -1981,7 +1981,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       // the chat-shell + user see WHY the task was rejected.
       const noteSuffix = (opId === 'rejectTask' && data.noteHint)
         ? ` — ${data.noteHint}` : '';
-      // P6.5 — claim router: when the override has
+      // claim router: when the override has
       // flowThrough.tasksToPersonal, mirror the claimed task into the
       // personal circle so it shows up in "Mijn dingen".  Fire-and-forget;
       // the chat-shell envelope returns immediately.  Default hook is a
@@ -2021,7 +2021,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     // Real items carry `status` (ready/claimed/submitted/rejected/
     // complete/blocked) but the chat-shell renderer + most tests
     // expect a mock-era `state` field (open/claimed/done).  Add the
-    // mapped `state` alongside the original status.  #192 (B8): also
+    // mapped `state` alongside the original status. (B8): also
     // surface a `blockedBy` label when the task has openDeps so the
     // user sees the gate without clicking [Mark complete] first.
     if ((opId === 'listMine' || opId === 'listOpen' || opId === 'listMyInbox'
@@ -2087,7 +2087,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:  simulateSync(),
       };
     }
-    // #195 (B7) — getMyAvailability: {enabled, optedIn, week,
+    // (B7) — getMyAvailability: {enabled, optedIn, week,
     //   grid: {0: {AM, PM}, 1: {AM, PM}, ...}} → record reply with a
     // 'grid' field the chat-shell renders as a 7×2 clickable table.
     if (opId === 'getMyAvailability') {
@@ -2123,7 +2123,7 @@ export async function createRealHouseholdAgent(opts = {}) {
           : 'You haven\'t opted in. /availability-opt-in on to start broadcasting.',
       };
     }
-    // #195 — setMyAvailability: {ok, week, day, half, state} → text.
+    // setMyAvailability: {ok, week, day, half, state} → text.
     if (opId === 'setMyAvailability' && data.ok) {
       const STATE_GLYPH = { open: '🟢', tight: '🟡', unavailable: '🔴', unknown: '⚪' };
       const dayName = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][data.day] ?? '?';
@@ -2133,7 +2133,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync: simulateSync(),
       };
     }
-    // #195 — setAvailabilityOptIn: {ok, optedIn} → friendly text.
+    // setAvailabilityOptIn: {ok, optedIn} → friendly text.
     if (opId === 'setAvailabilityOptIn' && data.ok) {
       return {
         ok: true,
@@ -2143,7 +2143,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync: simulateSync(),
       };
     }
-    // #193 (B6) — suggestSchedule: {lookaheadDays, suggestions: [
+    // (B6) — suggestSchedule: {lookaheadDays, suggestions: [
     //   {taskId, slots: [{start, end, reasons: [...]}], ...}
     // ]} → chat-shell list with each row = ONE clickable slot
     // (top 3 per task).  Row label inlines date/time + reason chips.
@@ -2183,7 +2183,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:   simulateSync(),
       };
     }
-    // #193 — acceptSchedule: {ok, task} → friendly text.
+    // acceptSchedule: {ok, task} → friendly text.
     if (opId === 'acceptSchedule' && data?.task) {
       const t = data.task;
       const when = Number.isFinite(t.scheduledAt)
@@ -2196,7 +2196,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync:   simulateSync(),
       };
     }
-    // #191 (B5) — getMyCircles: {circles: [{circleId, name, kind, counts}]}
+    // (B5) — getMyCircles: {circles: [{circleId, name, kind, counts}]}
     // → chat-shell list with circle-shape rows.  Each row's label
     // surfaces counters inline so the user sees the dashboard at a
     // glance without expanding rows.
@@ -2257,7 +2257,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync: simulateSync(),
       };
     }
-    // #190 (B3) — getCircleConfig: {circle: {...}} or {circle: null} →
+    // (B3) — getCircleConfig: {circle: {...}} or {circle: null} →
     // record reply with members + paused/archived state.
     if (opId === 'getCircleConfig') {
       const circle = data.circle;
@@ -2301,7 +2301,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync: simulateSync(),
       };
     }
-    // #190 — pauseCircle / unpauseCircle / archiveCircle / unarchiveCircle:
+    // pauseCircle / unpauseCircle / archiveCircle / unarchiveCircle:
     // real returns {ok, paused?, archived?} → friendly text reply.
     if (opId === 'pauseCircle' && data.ok) {
       return {
@@ -2404,7 +2404,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         items: data.items.map((p) => ({
           ...p,
           label: p.text ?? p.label ?? p.id,
-          // #178 (2026-05-24) — chat-shell appliesTo gate matches on
+          // chat-shell appliesTo gate matches on
           // `item.type`.  Stoop posts are 'post' in the chat-shell
           // vocabulary (mockManifests respondToItem + markReturned
           // both gate `type: 'post'`).  Substrate item.type carries
@@ -2544,7 +2544,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         message:  'Copy the payload above + paste into any QR generator.  The receiver scans + uses /add-contact to add you with the proposed trust level.',
       };
     }
-    // #189 — listGroupMembers: {groupId, members: []} → chat-shell list.
+    // listGroupMembers: {groupId, members: []} → chat-shell list.
     // Each member carries webid/handle/displayName/role from MemberMap.
     if (opId === 'listGroupMembers' && Array.isArray(data.members)) {
       return {
@@ -2562,7 +2562,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         _sync: simulateSync(),
       };
     }
-    // #189 — getGroupRules: real returns {rules: <rules-item> | null}
+    // getGroupRules: real returns {rules: <rules-item> | null}
     // where the item carries the structured rules under
     // source.rules (an object with rulesText + accessPolicy +
     // leavePolicy + conflictPolicy + tags etc, as written by C1).
@@ -2611,7 +2611,7 @@ export async function createRealHouseholdAgent(opts = {}) {
         addedAt: item?.addedAt ? new Date(item.addedAt).toISOString() : null,
       };
     }
-    // #189 — leaveGroup: real returns {ok} or {error}.  Confirm-gated
+    // leaveGroup: real returns {ok} or {error}. Confirm-gated
     // above; when invoked for real, friendly text.
     if (opId === 'leaveGroup' && data.ok) {
       // Forget the left circle's no-pod sync peers (stops stale-peer boot HI-pings).
@@ -2642,7 +2642,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     manifest: householdManifest,
     callSkill,
     llmProviders,
-    // P6.5 — host-injected claim router; called after every successful
+    // host-injected claim router; called after every successful
     // claimTask.  Hosts wire `makeAfterClaimHook` here once the agent +
     // override store are both available.
     setAfterClaimHook(fn) { claimRouterRef.hook = typeof fn === 'function' ? fn : null; },
@@ -2670,7 +2670,7 @@ export async function createRealHouseholdAgent(opts = {}) {
       chatAddress: chatAgent.address,
       transport:   'internal',
     },
-    // agents P2 — the ISSUER-side TokenRegistry backing grantAgent/revokeAgent/
+    // agents — the ISSUER-side TokenRegistry backing grantAgent/revokeAgent/
     // revokeGrant (issue → store; revoke → isRevoked flips true).  null when the
     // token wiring fell back to registry-only mode.  Tests + admin surfaces
     // consult `isRevoked(tokenId)` here.
@@ -2681,7 +2681,7 @@ export async function createRealHouseholdAgent(opts = {}) {
     setInviteAttendee(fn) {
       if (typeof fn === 'function') inviteAttendeeRef = fn;
     },
-    // v0.7.P2 — caller wires the pod-writer on sign-in / clears on
+    // v0.7. — caller wires the pod-writer on sign-in / clears on
     // sign-out so calendar's .ics feed writes-through to the user's
     // pod under <pod>/canopy/calendar/feed.ics.
     setCalendarPodWriter,

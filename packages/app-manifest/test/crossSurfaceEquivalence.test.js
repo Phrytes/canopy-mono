@@ -7,12 +7,12 @@
  * structural by construction.  These tests lock that contract into
  * code so a future divergence cannot land silently — the moment
  * mobile gains its own projector, this suite breaks and forces an
- * owner-approved exception marker per DESIGN-navmodel-sketch.md § Q4.
+ * owner-approved exception marker per DESIGN-navmodel-sketch.md.
  *
  * Coverage (inline manifests, no app dependency — keeps
  * @onderling/app-manifest portable):
  *   - empty manifest (no views, no operations)
- *   - type-enum fallback manifest (Q6 — addItem(type: enum, text))
+ *   type-enum fallback manifest (— addItem(type: enum, text))
  *   - multi-state appliesTo manifest (F-SP3-a — claim/revoke + arrays)
  *   - no-shared-state negative test (mutating renderWeb output does
  *     not affect a subsequent renderMobile call)
@@ -32,7 +32,7 @@ const EMPTY = {
   views:      [],
 };
 
-// Q6 — addItem(type: enum, text) surfaces in each section whose itemType is in the enum.
+// addItem(type: enum, text) surfaces in each section whose itemType is in the enum.
 const TYPE_ENUM = {
   app:       'mt',
   itemTypes: ['shopping', 'errand', 'task'],
@@ -86,7 +86,7 @@ const MULTI_STATE = {
   ],
 };
 
-// D / SP-3b — surfaces.page → NavModel.pages[]; equivalence must hold for
+// surfaces.page → NavModel.pages[]; equivalence must hold for
 // pages too (route carried for the mobile adapter).
 const PAGES = {
   app:       'pg',

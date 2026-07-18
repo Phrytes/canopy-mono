@@ -1,5 +1,5 @@
 /**
- * basis v2 — media P1 FAN-OUT slice: the media pointer rides the kring
+ * basis v2 — media FAN-OUT slice: the media pointer rides the kring
  * fan-out envelope so PEERS render the photo chip (closing the recorded gap
  * where the sender saw the chip and peers only got the '📷 filename' line).
  *

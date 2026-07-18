@@ -2,7 +2,7 @@
  * basis v2 — circle member directory (shared web + mobile, F-5.1).
  *
  * Normalises the result of the `listGroupMembers` op into the member shape
- * `circleViewAs` (board 4C) consumes. The op is reached two ways depending
+ * `circleViewAs` consumes. The op is reached two ways depending
  * on the host's dispatch:
  *   - raw stoop skill →  { groupId, members: [{ webid, handle, displayName, role }] }
  *   - chat-shell reshape → { items:   [{ id, webid, label, handle, role }] }
@@ -46,7 +46,7 @@ export function circleMemberCount(result) {
 }
 
 /**
- * share-policy slice 3a — resolve a member's SEALING PUBLIC KEY from a circle roster. Pure + injectable so
+ * share-policy — resolve a member's SEALING PUBLIC KEY from a circle roster. Pure + injectable so
  * `recipientSealKeyFor(circleId, webId)` (circleApp) and its mobile peer share ONE lookup and it's testable
  * without a live pod.
  *

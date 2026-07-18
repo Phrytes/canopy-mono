@@ -23,7 +23,7 @@
  *
  *   - `type: 'inbox-item'`    — matches the manifest's `appliesTo.type`
  *   - `kind: <eventType>`     — top-level mirror of `source.meta.eventType`
- *                                when present (used by the V0.4 generic
+ *                                when present (used by the generic
  *                                gate, e.g. `appliesTo: { kind:
  *                                'subtask-proposal' }`)
  *   - `source.kind: 'inbox-entry'` — preserved for back-compat; legacy
@@ -115,7 +115,7 @@ export class InAppInboxBridge {
     const id = ulid();
     // Tier B (2026-05-20) — stamp the substrate's appliesTo keys at
     // write time.  `type: 'inbox-item'` matches the manifest's
-    // section gate; `kind` mirrors `meta.eventType` for the V0.4
+    // section gate; `kind` mirrors `meta.eventType` for the
     // generic per-kind gate (subtask-proposal/request, etc.).
     const eventKind = (meta && typeof meta === 'object' && typeof meta.eventType === 'string')
       ? meta.eventType

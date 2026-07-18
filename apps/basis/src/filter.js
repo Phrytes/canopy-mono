@@ -22,7 +22,7 @@
  *   - The special token '*' inside any array also acts as a wildcard
  *     for that dimension (convenience).
  *
- * Phase v0.2 sub-slice 2.2 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  */
 
 /**
@@ -30,8 +30,8 @@
  * @property {string[]} [apps]
  * @property {string[]} [eventTypes]
  * @property {string[]} [actors]
- * @property {string[]} [buurtId]    matches `event.payload.groupId` (Slice 2 buurt-scoped threads)
- * @property {boolean}  [dm]         informational flag — true when this is a 1:1 DM thread (Slice 6a)
+ * @property {string[]} [buurtId] matches `event.payload.groupId` (buurt-scoped threads)
+ * @property {boolean} [dm] informational flag — true when this is a 1:1 DM thread
  */
 
 /**
@@ -112,7 +112,7 @@ export function matchesFilter(event, filter) {
   if (!matchesKey(event.app,    filter.apps))       return false;
   if (!matchesKey(event.type,   filter.eventTypes)) return false;
   if (!matchesKey(event.actor,  filter.actors))     return false;
-  // Slice 2 — buurt scoping reads groupId off the event payload.
+  // buurt scoping reads groupId off the event payload.
   // publishEventRef calls from handleBuurtPost + local post echo
   // surface `payload.groupId`.
   if (!matchesKey(event.payload?.groupId, filter.buurtId)) return false;
@@ -156,7 +156,7 @@ export function normaliseFilter(filter) {
     const dedup = [...new Set(arr.map((v) => String(v)))].sort();
     out[key] = dedup;
   }
-  // Slice 6a — preserve the informational `dm` flag.  It's a boolean,
+  // preserve the informational `dm` flag. It's a boolean,
   // not an array, so it doesn't go through the dedup loop.
   if (filter.dm === true) out.dm = true;
   return out;
@@ -180,7 +180,7 @@ export function isWildcardFilter(filter) {
     if (arr.includes('*')) continue;
     return false;
   }
-  // Slice 6a — `dm: true` narrows the thread scope, so it's not wildcard.
+  // `dm: true` narrows the thread scope, so it's not wildcard.
   if (filter.dm === true) return false;
   return true;
 }

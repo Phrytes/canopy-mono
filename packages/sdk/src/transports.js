@@ -1,7 +1,7 @@
 /**
  * @onderling/sdk/transports — the default TRANSPORTS adapter extension.
  *
- * SP-9 sub-path: the concrete network transports (the base Transport +
+ * sub-path: the concrete network transports (the base Transport +
  * InternalTransport / OfflineTransport stay in @onderling/core, re-exported by
  * the `core` slice). A consumer who wants only the network transports:
  *

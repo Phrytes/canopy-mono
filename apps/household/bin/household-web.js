@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * household-web — Slice A.3 + A.4 bootstrap (PLAN-gui-chat-uplift.md).
+ * household-web — + A.4 bootstrap (PLAN-gui-chat-uplift.md).
  *
  * Boots a localhost-only household web UI driven by the manifest's
  * NavModel (rendered via `@onderling/app-manifest`'s `renderWeb`).  The
@@ -9,11 +9,11 @@
  * `/navmodel.json` and `/household-config.json` to render tabs +
  * affordances + per-item buttons.
  *
- * Slice A.3 scope (manifest-driven UI):
+ * scope (manifest-driven UI):
  *   - list/add/markComplete/remove for the 4 list-type sections (+
  *     tasks/members surfaced for completeness).
  *
- * Slice A.4 scope (LLM passthrough — NEW):
+ * scope (LLM passthrough — NEW):
  *   - When started with `{ llm }`, the bootstrap also wires a real
  *     HouseholdAgent over the SAME store.  A `chat` skill is registered
  *     that hands free text to `agent.onMessage` — the HouseholdAgent's
@@ -124,7 +124,7 @@ function adaptHouseholdSkill(skill, store, getAgent, postProcess) {
  * @param {InMemoryStore} [opts.store]  pre-built store (else fresh)
  * @param {object} [opts.llm]
  *   Optional LlmClient — when provided, free-text chat messages route
- *   through the HouseholdAgent's manifest-built ChatAgent (Slice A.4).
+ *   through the HouseholdAgent's manifest-built ChatAgent.
  *   When omitted, the `chat` skill replies with the regex help-hint.
  */
 export async function startHouseholdWeb(opts = {}) {
@@ -138,7 +138,7 @@ export async function startHouseholdWeb(opts = {}) {
   const transport = new InternalTransport(bus, id.pubKey);
   const agent     = new Agent({ identity: id, transport, label: 'household-web' });
 
-  // ── Slice A.4: real HouseholdAgent on the SAME store ─────────────
+  // ──: real HouseholdAgent on the SAME store ─────────────
   // HouseholdAgent.constructor wires the regex fast path + (when an
   // LLM is configured) the `@onderling/chat-agent` ChatAgent built from
   // the manifest's renderChat projection (toolCatalog/toolHandlers/
@@ -203,7 +203,7 @@ export async function startHouseholdWeb(opts = {}) {
   agent.register('claim',        adaptHouseholdSkill(claim,        store, getAgent));
   agent.register('registerName', adaptHouseholdSkill(registerName, store, getAgent));
 
-  // ── Slice A.4: `chat` skill — free-text passthrough ──────────────
+  // ──: `chat` skill — free-text passthrough ──────────────
   // The web client POSTs to `/tasks/send` with skillId='chat' and
   // `{ text }` in the DataPart.  We synthesise an IncomingMessage and
   // hand it to `householdAgent.onMessage` — which routes through the
@@ -258,7 +258,7 @@ export async function startHouseholdWeb(opts = {}) {
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
-  // Slice B.2.0 (2026-05-20) — overlay the shared @onderling/web-adapter
+  // .0 (2026-05-20) — overlay the shared @onderling/web-adapter
   // helpers at `/lib/web-adapter/<file>.js` so apps/household/web/main.js
   // can ESM-import them from the browser. Same mechanism tasks-ui.js
   // uses for `/lib/dagFlatten.js`. Source-of-truth stays under
@@ -310,8 +310,8 @@ async function loadWebAdapterFiles() {
     'deriveItemState.js',
     'itemMatchesAppliesTo.js',
     'applyPrefilledParams.js',
-    // V0.2 (2026-05-21) — new helpers consumed by web/main.js:
-    //   fetchSectionItems   honours view.dataSource (Q7) with Q6 fallback
+    // new helpers consumed by web/main.js:
+    //   fetchSectionItems honours view.dataSource with fallback
     //   schemaToFormFields  drives multi-field add-form rendering from
     //                       the affordance's paramsSchema
     'fetchSectionItems.js',

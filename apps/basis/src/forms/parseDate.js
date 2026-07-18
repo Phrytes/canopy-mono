@@ -16,7 +16,7 @@
  * failure.  Caller (validateAndCoerce) treats null as a validation
  * error.
  *
- * Phase v0.3 sub-slice 3.4 (original) → v0.6 OQ-3.A catch-up 2026-05-23.
+ * Phase v0.3 (original) → v0.6 OQ-3.A catch-up 2026-05-23.
  */
 
 import * as chrono from 'chrono-node';
@@ -94,7 +94,7 @@ function toIsoDate(d) {
 }
 
 /**
- * v0.7.P1-followup 2026-05-23 — same parser, but PRESERVES time-of-
+ * v0.7.-followup 2026-05-23 — same parser, but PRESERVES time-of
  * day when the input includes a clock component.  Calendar event
  * startsAt + endsAt need full datetime; the date-only
  * parseRelativeDate above was dropping '3pm' / '15:00' info.

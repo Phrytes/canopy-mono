@@ -1,6 +1,6 @@
 /**
  * FITNESS: history immutability (4b) — "no bot may EVER alter the edit
- * history" (PLAN-pod-versioning-history-recovery P4; the guard that backs
+ * history" (PLAN-pod-versioning-history-recovery; the guard that backs
  * NOTE-online-agent-surface §5's anti-virus claim).
  *
  * Two halves:

@@ -171,7 +171,7 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
 
 ### M2 — Multi-circle + mirror fan-out parity (mirror Slices 6–12)
 
-- [ ] Multi-circle runtime: `tasks-mobile` already ships the V2.8
+- [ ] Multi-circle runtime: `tasks-mobile` already ships the
   single-agent / live `circles` Map pattern (per `CHANGELOG.md
   [mobile-0.1.0]`). Verify it lines up with tasks-v0 Slices 6–8
   (`spawnMyCircle`, multi-circle onboarding dispatch, per-circle
@@ -259,7 +259,7 @@ M0 ──> M1 ──> M2 ──> M3
 - `useTasksAuth` biometry-lockout fallback — V1 ships the Stoop-shape
   (no biometry gate); deferred.
 - Folio-mobile pseudo-pod default flip stays opt-in (separate track —
-  see the P3 absorption memory; noted only to avoid scope bleed).
+  see the absorption memory; noted only to avoid scope bleed).
 
 ## 7. Fleet-parity note (out of scope, flagged per the repo-wide rule)
 
@@ -274,6 +274,6 @@ is its own future plan; this doc does **not** cover them.
   hold the whole track until the stoop agent fully finishes? (M1–M3
   are parallel-safe if isolated; the only cost of starting now is
   worktree discipline.)
-- Multi-circle (M2): is `tasks-mobile`'s existing V2.8 topology already
-  at Slice 6–8 parity, or does it predate it? Needs a code read at
+- Multi-circle (M2): is `tasks-mobile`'s existing topology already
+  at –8 parity, or does it predate it? Needs a code read at
   M2 start to size the delta.

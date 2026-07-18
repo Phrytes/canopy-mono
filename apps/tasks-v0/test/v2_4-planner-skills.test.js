@@ -1,5 +1,5 @@
 /**
- * V2.4 — planner skills + bot.plan/accept end-to-end.
+ * planner skills + bot.plan/accept end-to-end.
  */
 
 import { describe, it, expect } from 'vitest';

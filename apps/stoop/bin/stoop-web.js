@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * stoop-web — Slice E.1 bootstrap (PLAN-gui-chat-uplift.md).
+ * stoop-web — bootstrap (PLAN-gui-chat-uplift.md).
  *
  * Boots a localhost-only stoop web UI driven by the manifest's NavModel
  * (rendered via `@onderling/app-manifest`'s `renderWeb`).  Mirrors
@@ -8,7 +8,7 @@
  * `mountLocalUi` substrate, same `extraStaticFiles` carrying
  * `/navmodel.json` + `/stoop-config.json`.
  *
- * ──── Slice E.1 + E.2 + E.3 scope (the three smallest stoop pages) ──
+ * ──── + E.2 + E.3 scope (the three smallest stoop pages) ──
  *
  * Stoop has 16 web pages today (per `Project Files/projects/audit-stoop-folio-surfaces.md`).
  * E.1 surfaced ONE — `mine.html` (my active posts + completions); E.2
@@ -28,26 +28,26 @@
  *
  * Why `privacy.html` (E.2)?
  *   - Smallest read-only page (66 lines pre-migration) — a clean
- *     Q9 `view.readOnly: true` proof-point
+ *     `view.readOnly: true` proof-point
  *   - Two skill calls (`getPrivacyNotice`, `getDataLocation`), one of
- *     which (`getDataLocation`) fits the V0.2 `dataSource` contract
- *     (param-free); the lang-aware `getPrivacyNotice` exposes a V0.2
- *     gap (static `dataSource.args`) logged inline for V0.3
+ *     which (`getDataLocation`) fits the `dataSource` contract
+ *     (param-free); the lang-aware `getPrivacyNotice` exposes a
+ *     gap (static `dataSource.args`) logged inline for
  *   - Neither skill is a manifest op (they're read-only info-skills,
  *     not chat/slash-callable per D.1 primary-flows discipline) —
  *     `dataSource.skillId` is a free string in validate.js so this
  *     is permitted and worth flagging
  *
  * Why `settings.html` (E.3)?
- *   - Next-smallest-after-privacy + a clean V0.2 fit: `getSettings({})`
- *     is param-free (perfect Q7 `dataSource` declaration) and the
+ *   Next-smallest-after-privacy + a clean fit: `getSettings({})`
+ *     is param-free (perfect `dataSource` declaration) and the
  *     per-field mutations live outside the D.1 manifest as profile/
  *     plumbing skills (same gap #4 territory as privacy)
- *   - Surfaces NEW V0.3 signals: NavModel sections assume list-of-
+ *   Surfaces NEW signals: NavModel sections assume list-of
  *     items but settings is a SINGLETON record (one merged object);
  *     and the per-field "patch a setting" mutation model doesn't
- *     fit Q10's creative-verb add/register vocabulary.  Both
- *     deferred to V0.3 — see manifest views[] inline notes
+ *     fit 's creative-verb add/register vocabulary. Both
+ *     deferred to — see manifest views[] inline notes
  *   - Profile (591 lines — avatar resize / mnemonic / geocoding /
  *     backup, many runtime-arg skills) defers to a later slice
  *   - Contacts (417 lines, heavy mutations) defers to a later slice
@@ -136,9 +136,9 @@ export async function startStoopWeb(opts = {}) {
 
   const webDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'web');
 
-  // V0.2-adopt (2026-05-21) — overlay the shared `@onderling/web-adapter`
+  // adopt (2026-05-21) — overlay the shared `@onderling/web-adapter`
   // helpers at `/lib/web-adapter/<basename>.js`.  Same mechanism that
-  // tasks-v0's `bin/tasks-ui.js` uses (Slice B.2.0).  Source-of-truth
+  // tasks-v0's `bin/tasks-ui.js` uses. Source-of-truth
   // lives in `packages/web-adapter/src/`; this overlay re-routes the
   // helpers through `extraStaticFiles` so `mine.html`'s `<script
   // type="module">` can `import` them at runtime without bundling.
@@ -150,11 +150,11 @@ export async function startStoopWeb(opts = {}) {
     a2aTLSLayer:      new LocalUiAuth({ localActor: actor }),
     extraStaticFiles: {
       '/navmodel.json':      JSON.stringify(navModel),
-      // V0.8 (2026-05-21) — expose the raw manifest for T2 pages that
+      // expose the raw manifest for T2 pages that
       // need ops the NavModel projection doesn't carry (e.g. session-
       // scoped ops with no view surface like signOutOfPod).
-      // Pre-V0.8 only /navmodel.json was served; T2 pages had to
-      // hardcode Q27 confirm messages.  With /stoop-manifest.json,
+      // Pre- only /navmodel.json was served; T2 pages had to
+      // hardcode confirm messages. With /stoop-manifest.json,
       // createOpBinding({manifest}) can resolve any declared op.
       '/stoop-manifest.json': JSON.stringify(stoopManifest),
       '/stoop-config.json':  JSON.stringify({ actor, group, app: navModel.app }),
@@ -183,7 +183,7 @@ export async function startStoopWeb(opts = {}) {
 /**
  * Read `packages/web-adapter/src/*.js` from disk and return them keyed
  * by their `/lib/web-adapter/<basename>` overlay path.  Mirrors the
- * helper in `apps/tasks-v0/bin/tasks-ui.js` (Slice B.2.0); kept inline
+ * helper in `apps/tasks-v0/bin/tasks-ui.js`; kept inline
  * here rather than refactored into a shared utility to keep stoop's
  * bootstrap self-contained.
  */
@@ -200,8 +200,8 @@ async function loadWebAdapterFiles() {
     'applyPrefilledParams.js',
     'fetchSectionItems.js',
     'schemaToFormFields.js',
-    // V0.8 (2026-05-21) — T2-tier helper.  Pages that read the
-    // manifest for Q27 confirm + Q22 labelKey resolution import via
+    // T2-tier helper. Pages that read the
+    // manifest for confirm + labelKey resolution import via
     // /lib/web-adapter/createOpBinding.js.
     'createOpBinding.js',
     'index.js',

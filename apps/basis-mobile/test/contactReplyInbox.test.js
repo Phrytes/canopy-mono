@@ -1,6 +1,6 @@
 /**
  * contactReplyInbox — cross-screen bridge for inbound contact-bot replies
- * (feedback-extension P5, mobile). ChatScreen's peer router pushes; the open
+ * (feedback-extension, mobile). ChatScreen's peer router pushes; the open
  * ContactThreadScreen subscribes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';

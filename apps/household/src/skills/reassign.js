@@ -5,7 +5,7 @@
  * ctx   : SkillContext
  * reply : like `claim` — 0/1/N match resolution; on 1 → store.reassign.
  *
- * SP-2 V0: LLM-only (no slash match in the manifest — two-arg slash
+ * V0: LLM-only (no slash match in the manifest — two-arg slash
  * forms aren't in the v0 grammar).  `args.assignee` must be a webid;
  * no fuzzy lookup against contact display names yet (forward-compat
  * opportunity once `@onderling/identity-resolver` lands).

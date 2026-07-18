@@ -2,7 +2,7 @@
  * createTaskStore — the LIVE-app COMPATIBILITY SURFACE over the converged
  * `CircleItemStore` + the ported task functions (`taskLifecycle` / `taskCrud`).
  *
- * PLAN-capabilities-tasks-roles P1 migration STEP 2 (the consumer swap).
+ * PLAN-capabilities-tasks-roles migration STEP 2 (the consumer swap).
  *
  * ── What this is (and is NOT) ────────────────────────────────────────────────
  * NOT a storage implementation. It is a THIN DELEGATION BUNDLE that re-creates
@@ -92,7 +92,7 @@ function syncEventFor(action) {
  * @param {import('./CircleItemStore.js').CircleItemStore} circleStore  the converged per-circle store.
  * @param {object} [opts]
  * @param {object} [opts.rolePolicy]           the `RolePolicy` gate (threaded into every verb's ctx).
- * @param {boolean} [opts.enforceDependencies] V2.7 DAG close-gate (threaded into add/complete ctx).
+ * @param {boolean} [opts.enforceDependencies] DAG close-gate (threaded into add/complete ctx).
  * @returns {object} an `Emitter`-backed bundle with ItemStore's method surface.
  */
 export function createTaskStore(circleStore, { rolePolicy, enforceDependencies } = {}) {

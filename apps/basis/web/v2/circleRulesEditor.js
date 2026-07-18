@@ -1,5 +1,5 @@
 /**
- * basis v2 — circle rules editor (web DOM renderer, board 3B).
+ * basis v2 — circle rules editor (web DOM renderer).
  *
  * The six governance questions as a single editable form over a rules
  * document; required questions (purpose + agreements) gate Save. A

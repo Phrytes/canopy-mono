@@ -1,5 +1,5 @@
 /**
- * Bundle F P6 — mobile podAuth adapter contract (#262).
+ * mobile podAuth adapter contract.
  *
  * Pins the shape that buildMobilePodAuth exposes — same surface
  * web's @onderling/oidc-session has, so localBuiltins' signin /

@@ -1,5 +1,5 @@
 /**
- * basis — thread state tests.  v0.1 sub-slice 1.9.
+ * basis — thread state tests. v0.1.
  */
 import { describe, it, expect } from 'vitest';
 

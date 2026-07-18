@@ -1,7 +1,7 @@
 /**
  * @onderling/sdk/vault — the default VAULT adapter extension.
  *
- * SP-9 sub-path: the Vault family de-fatted OUT of the kernel — the same
+ * sub-path: the Vault family de-fatted OUT of the kernel — the same
  * named surface the barrel exposes (VaultMemory is createAgent's default),
  * plus the OAuth helper. A consumer who wants only the vault extension:
  *

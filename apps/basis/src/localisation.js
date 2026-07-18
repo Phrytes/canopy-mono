@@ -8,7 +8,7 @@
  *   - the chat shell emits LOCALISED strings via t(); raw substrate
  *     replies (e.g. error codes from skills) get mapped to keys
  *
- * Phase v0.1 sub-slice 1.11 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  */
 
 import i18next from 'i18next';

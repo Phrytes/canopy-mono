@@ -39,14 +39,14 @@ export async function createAgent({ relayUrl } = {}) {
     // Rendezvous is OFF on the phone for now.  react-native-webrtc
     // 124.0.7 still fails to register WebRTCModule under RN 0.76's
     // default bridgeless JS runtime (same "WebRTC native module not
-    // found" / native SIGSEGV as 124.0.5 — PR #1731's TurboModule
+    // found" / native SIGSEGV as 124.0.5 — PR 's TurboModule
     // fix covers RN 0.80+ but not 0.76's flavor of bridgeless).
     //
     // Re-enable when any of these unblock:
     //   • Upstream rn-webrtc publishes a release with RN 0.76-aware
     //     bridgeless support.
     //   • We adopt the GetStream fork that has the full bridgeless
-    //     port upstream tried to cherry-pick from in #1731.
+    //     port upstream tried to cherry-pick from in.
     //   • We pin a React Native / Expo config that keeps bridgeless
     //     off on 0.76 (requires MainApplication override).
     //

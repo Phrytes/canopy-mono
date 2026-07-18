@@ -1,5 +1,5 @@
 /**
- * basis v2 — circle launcher (web DOM renderer, board 1B).
+ * basis v2 — circle launcher (web DOM renderer).
  *
  * Pure render over a circle list; the host injects data + handlers +
  * `t`. Mirrors the `renderSidebar(container, ctx)` pattern. No data
@@ -16,11 +16,11 @@ const KIND_ORDER = ['household', 'buurt', 'vriendenkring'];
 
 export function renderCircleLauncher(container, {
   circles = [],
-  // P6.3 — per-circle preview map ({subtitle, ts, unread}); host computes
+  // per-circle preview map ({subtitle, ts, unread}); host computes
   // via `buildTilePreviews` over the EventLog.  Null/absent → tiles show
   // the member-count fallback (current behaviour).
   previews = null,
-  // P6.2 #341-followup — per-circle pending proposal counts keyed by id.
+  // followup — per-circle pending proposal counts keyed by id.
   // Host computes via `pendingApprovers` for circles with admin-approval
   // axes.  Tiles show a yellow voorstellen badge when > 0.
   proposals = null,
@@ -178,8 +178,8 @@ function renderTile(c, { previews, proposals, pinnedMap, mutedMap, tr, handlers 
   name.textContent = c.name;
   body.appendChild(name);
 
-  // P6.3 — activity subtitle replaces the member-count line when a
-  // recent event carries renderable text (board 5A).  Falls back to
+  // activity subtitle replaces the member-count line when a
+  // recent event carries renderable text. Falls back to
   // member-count when the preview map has no subtitle for this id.
   const preview = previews ? previews[c.id] : null;
   if (preview && typeof preview.subtitle === 'string' && preview.subtitle) {
@@ -195,7 +195,7 @@ function renderTile(c, { previews, proposals, pinnedMap, mutedMap, tr, handlers 
   }
   tile.appendChild(body);
 
-  // P6.3 — unread badge (red circle with the count).  Surfaces only
+  // unread badge (red circle with the count). Surfaces only
   // when the preview has unread > 0.
   if (preview && preview.unread > 0) {
     const badge = document.createElement('span');
@@ -205,7 +205,7 @@ function renderTile(c, { previews, proposals, pinnedMap, mutedMap, tr, handlers 
     tile.appendChild(badge);
   }
 
-  // P6.2 #341 — pending-voorstellen badge (yellow) when this circle
+  // pending-voorstellen badge (yellow) when this circle
   // has admin-approval proposals waiting on me.
   const pending = proposals && Number(proposals[c.id]) > 0 ? Number(proposals[c.id]) : 0;
   if (pending > 0) {
@@ -331,7 +331,7 @@ function openTileMenu(tile, circle, { pinnedMap, mutedMap, tr, handlers }) {
   }, 0);
 }
 
-/** First letter of a circle name for the avatar tile (board 1). */
+/** First letter of a circle name for the avatar tile. */
 function circleInitial(name) {
   const s = String(name || '').trim();
   return s ? s[0].toUpperCase() : '·';

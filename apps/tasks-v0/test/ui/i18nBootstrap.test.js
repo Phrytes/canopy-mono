@@ -1,5 +1,5 @@
 /**
- * Post-V0 follow-up (#272) — runtime locale loader for tasks-v0 web.
+ * Post-V0 follow-up — runtime locale loader for tasks-v0 web.
  * Tests cover: unwrapLeaves, interpolation, key fallback, language
  * switch, DOM walker over data-i18n* attributes.
  */

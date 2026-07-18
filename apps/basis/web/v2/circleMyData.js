@@ -38,7 +38,7 @@ export function renderCircleMyData(container, {
   relayUrl,               // in-app relay setting: the saved URL ('' / null = unset ⇒ env fallback)
   relayEnvUrl,            // the build-time env relay URL, shown as the placeholder fallback
   onSaveRelay,            // (url) => Promise<{ok, effective, error?}> — persist + live-reconnect the transport
-  onOpenRelayPanel,       // Objective D / Surface 4 (#180): () => void — open the set-relay op in the docked
+  onOpenRelayPanel,       // Objective D / Surface 4:  => void — open the set-relay op in the docked
                           // side-panel (openPagePanel). When provided, the relay row is an entry button that
                           // routes through the generic panel instead of the bespoke inline form below.
 } = {}) {
@@ -83,7 +83,7 @@ export function renderCircleMyData(container, {
     storage.appendChild(kv(tr('circle.mydata.relay'), [dataLocation.relayOperator, dataLocation.relayUrl].filter(Boolean).join(' · ')));
   }
   // In-app relay setting — point the no-server cross-device relay at a reachable server WITHOUT a rebuild.
-  // Objective D / Surface 4 (#180): when the host wires `onOpenRelayPanel`, the edit is routed through the
+  // Objective D / Surface 4: when the host wires `onOpenRelayPanel`, the edit is routed through the
   // generic docked side-panel (openPagePanel's simple-form for the `set-relay` op) instead of the bespoke
   // inline field. The button is the entry point; the panel builds the form from set-relay's params + dispatches.
   if (typeof onOpenRelayPanel === 'function') {

@@ -1,5 +1,5 @@
 /**
- * planner skills — Tasks V2.4 auto-scheduling.
+ * planner skills — Tasks auto-scheduling.
  *
  * Three skills:
  *   - `suggestSchedule({lookaheadDays?})` — self only. Reads my open

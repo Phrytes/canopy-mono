@@ -11,7 +11,7 @@ describe('drivers (#3) — the driver property type', () => {
     expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering', 'interest']);
     expect(isDriverKind('goal')).toBe(true);
     expect(isDriverKind('offering')).toBe(true);
-    expect(isDriverKind('interest')).toBe(true);   // interests→drivers fold-in (audit §4/Q6)
+    expect(isDriverKind('interest')).toBe(true);   // interests→drivers fold-in (audit 4)
     expect(isDriverKind('skill')).toBe(true);   // legacy alias read-accepted
     expect(isDriverKind('nonsense')).toBe(false);
     expect(isDriverKind(null)).toBe(false);

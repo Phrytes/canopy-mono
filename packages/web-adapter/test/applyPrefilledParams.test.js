@@ -1,7 +1,7 @@
 /**
  * applyPrefilledParams — unit tests.
  *
- * Per renderWeb's Q6: prefilledParams is the projector's way of
+ * Per renderWeb's: prefilledParams is the projector's way of
  * scoping a multi-section op (household's addItem(type, text) — one
  * tool, four sections) so the adapter pre-fills the section's type
  * on dispatch.

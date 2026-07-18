@@ -37,7 +37,7 @@ current truth and v3's sketch is the older intent.
 |--------|------|-----------------|
 | 2A · store-landing — Onderling / Buurt / Huishouden / OR-bot pakketten | 🔴 | Product/store-packaging strategy. One app today; no multi-package store listing. |
 | 2B · twee niveaus schil — kring-kiezer verborgen vs aanwezig | 🔴 | No package-level shell variant (hide kring-switcher / pin-one-kring). |
-| 2C · gemengd deelnemerschap · zelfde pod (Anne Buurt-app + Bob volle Onderling) | 🟡 | "Data leeft op de pod" is real (P3 pod-storage, cross-pod refs). The *mixed-package* membership it illustrates is 🔴. |
+| 2C · gemengd deelnemerschap · zelfde pod (Anne Buurt-app + Bob volle Onderling) | 🟡 | "Data leeft op de pod" is real (pod-storage, cross-pod refs). The *mixed-package* membership it illustrates is 🔴. |
 
 ## §3 · Eerste momenten
 
@@ -46,59 +46,59 @@ current truth and v3's sketch is the older intent.
 | 3A · eerste opening (Welkom · 12-woorden sleutel · 3 op zelfde wifi) | 🟢 | Mnemonic create/restore (5.9b, #347 `MnemonicCreateScreen`); local wifi discovery (5.9c mDNS). No-account/no-profile boot is the real flow. |
 | 3B · wizard vraag 4 · conflict-aanpak (6 vragen · gevolgen per optie) | 🟢 | Create-group wizard (#197 C1, 5.5a `createGroupState`) + consequence ⓘ per option (N2 `optionConsequences`). |
 | 3C · rules.md — wat een nieuw lid ziet vóór 'akkoord' | 🟢 | Join-group consent wizard (#196 C2, 5.5b) — structured rules doc + Agree/Decline. |
-| 3D · raadgever (drie maanden later · drempel · signaal van leden) | 🟢 | `circleAdvisor.js` — `computeAdvice` / `makeTooBusyEvent` / threshold gating (P6 advisor card). |
+| 3D · raadgever (drie maanden later · drempel · signaal van leden) | 🟢 | `circleAdvisor.js` — `computeAdvice` / `makeTooBusyEvent` threshold gating (advisor card). |
 
 ## §4 · Kring-instellingen · vijf assen
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
-| 4A · vijf assen (Functies / LLM-tool / Agents / Onthulling / Pod · consensus · toon-verschil) | 🟢 | Functies (P6.1), LLM-tool (5.8 `selectLlmClient`), Agents axis, Onthulling/reveal, Pod (5.4 tiered policy IO), 2-admin consensus voorstel + "Voorstel sturen" (P6.2, #341). |
-| 4B · agents · "agent toevoegen" verzoek (goedkeur / weiger) | 🟢 | Agent-add admin-approval inbox (P6.10, #348 `addAgent`). |
-| 4C · bekijk als… (wat ziet een ander van jou) | 🟢 | `circleViewAs.js` — WHAT THEY SEE / DON'T split (P6.M2, 5.1). |
+| 4A · vijf assen (Functies / LLM-tool / Agents / Onthulling / Pod · consensus · toon-verschil) | 🟢 | Functies, LLM-tool (5.8`selectLlmClient`), Agents axis, Onthulling/reveal, Pod (5.4 tiered policy IO), 2-admin consensus voorstel + "Voorstel sturen" (#341). |
+| 4B · agents · "agent toevoegen" verzoek (goedkeur / weiger) | 🟢 | Agent-add admin-approval inbox (, #348`addAgent`). |
+| 4C · bekijk als… (wat ziet een ander van jou) | 🟢 | `circleViewAs.js` — WHAT THEY SEE / DON'T split (5.1). |
 
 ## §5 · Chat per kring én één stroom
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
-| 5A · standaard per kring (kring-lijst met previews) | 🟢 | Chat embedded in the kring's GESPREK view (SP-13.2); tile activity preview + unread (P6.3). |
+| 5A · standaard per kring (kring-lijst met previews) | 🟢 | Chat embedded in the kring's GESPREK view; tile activity preview + unread. |
 | 5B · één stroom · cross-kring-stroom AAN (alles op één tijdlijn) | 🟡 | The literal "Stroom" tab was **retired**; the cross-kring-timeline intent is served by **α Screens** (per-user `ScreenBook` multi-kring materializer) + `circleStream.js` / `catchUpProvider.js`. Concept shipped, *different surface* than the sketch. |
-| 5C · wederkerigheid (Bob chat uit · Anne tikt 'm aan) | 🟢 | Wederkerigheid notice + chat-off consumer side (P6.4, #343). |
+| 5C · wederkerigheid (Bob chat uit · Anne tikt 'm aan) | 🟢 | Wederkerigheid notice + chat-off consumer side (#343). |
 
 ## §6 · Persoonlijke afwijking
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
-| 6A · Bob's overrides (chat-draden · push @jou/elk · onthulling-afwijking · agents · doorstroom) | 🟢 | Personal override: @-mention vs all-message push split (P6.M4), claim→Mijn-dingen doorstroom (P6.5), per-kring reveal override. |
-| 6B · Anne vs Bob · zelfde kring, andere ervaring | 🟢 | Override application diverges the view; claim "via Selwerd" lands on personal task list (P6.5, #342). |
-| 6C · vakantiestand + stilte-uren (over alle kringen) | 🟢 | Holiday mode + auto-reply (P6.M5); quiet-hours `isSuppressed` (5.7b). |
+| 6A · Bob's overrides (chat-draden · push @jou/elk · onthulling-afwijking · agents · doorstroom) | 🟢 | Personal override: @-mention vs all-message push split, claim→Mijn-dingen doorstroom, per-kring reveal override. |
+| 6B · Anne vs Bob · zelfde kring, andere ervaring | 🟢 | Override application diverges the view; claim "via Selwerd" lands on personal task list (#342). |
+| 6C · vakantiestand + stilte-uren (over alle kringen) | 🟢 | Holiday mode + auto-reply; quiet-hours`isSuppressed` (5.7b). |
 
 ## §7 · Hopping · tweedegraads via je contacten
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
-| 7A · hop wordt zichtbaar · "1 mogelijke match HOP" · drie regels | 🟢 | Auto-hop-prompt when no in-circle match (P6.6, #344); `circleHop.js` `buildHopChain` / `MAX_HOPS=1` / anonymised relay. |
-| 7B · Bert's hop-instellingen · per contact (Uit / Aan-met-goedkeuring / Altijd) | 🟢 | Per-contact hop override (P6.M6, #336 `contactHopOverrides.js`); respects Stoop trust-tiers. |
+| 7A · hop wordt zichtbaar · "1 mogelijke match HOP" · drie regels | 🟢 | Auto-hop-prompt when no in-circle match (#344);`circleHop.js` `buildHopChain` / `MAX_HOPS=1` / anonymised relay. |
+| 7B · Bert's hop-instellingen · per contact (Uit / Aan-met-goedkeuring / Altijd) | 🟢 | Per-contact hop override (, #336`contactHopOverrides.js`); respects Stoop trust-tiers. |
 
 ## §8 · Skill-vragen en -aanbod · het buurt-stuk
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
 | 8A · een skill aanmaken (openheid · houding · status · radius) | 🟢 | `circleSkills.js` `SKILL_AXES` (openness/posture/status/radius) + consequence ⓘ (N2.b); `CircleSkillEditorScreen`. |
-| 8B · skill-match in actie (mens + agent in één lijst · VIA HOP) | 🟢 | `buildSkillMatches` `MATCH_SOURCES` inline match list under posted question (P6.7, #345). |
-| 8C · lokale ontdekking · op de buurt-BBQ (wifi/BLE · 5 mensen · geen GPS) | 🟢 | Nearby screen + mDNS skill broadcast + HIER tab (P6.8, #346); presence-v0 (5.9c/5.9d). |
+| 8B · skill-match in actie (mens + agent in één lijst · VIA HOP) | 🟢 | `buildSkillMatches` `MATCH_SOURCES` inline match list under posted question (#345). |
+| 8C · lokale ontdekking · op de buurt-BBQ (wifi/BLE · 5 mensen · geen GPS) | 🟢 | Nearby screen + mDNS skill broadcast + HIER tab (#346); presence-v0 (5.9c/5.9d). |
 
 ## §9 · 'Anne komt erbij wonen' — de cross-kring-test
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
-| 9A · J3-journey kring-gewijs (lid maken · map delen · taak · 3 bevestigingen) | 🟢 | Doc itself notes it's "al ingebakken als follow-up-knoppen (Q31)". Tasks/Folio/Calendar run in kring context; claim doorstroom to "Mijn dingen" (P6.5) is the "echte test". |
+| 9A · J3-journey kring-gewijs (lid maken · map delen · taak · 3 bevestigingen) | 🟢 | Doc itself notes it's "al ingebakken als follow-up-knoppen ". Tasks/Folio/Calendar run in kring context; claim doorstroom to "Mijn dingen" is the "echte test". |
 
 ## §10 · Folio · privé én groep, plus toegangsvereiste-plek
 
 | Sketch | Tier | Evidence / note |
 |--------|------|-----------------|
-| 10A · Mijn dingen · notes-vorm (privé-kring) | 🟢 | `folioMyThings.js` — My-things notes-list as private kring (P6.M7, #349). |
-| 10B · drive-achtig in groep-kring (bladeren · favorieten/recent · gedeeld door/met mij · uploaden) | 🟢 | Circle-Folio browser (5.2) + share filters (P6.M8) + **folder nav + breadcrumbs + rich rows (N5, web `2e7193e4` / mobile `ecab3b12`)**. Caveat: the **"+ uploaden"** affordance is 🔴 on web (mobile has the doc-picker, #267). Local↔remote-pod **source toggle** still pending — and it is **not** blocked on #167: it needs only the existing signed-in OIDC pod session, pod-backing folio's `listFiles` via the `podClient` seam already present in `createBrowserFolioAgent` (marked "future work"). #167 (provisioned test creds) only gates an *automated* end-to-end test of that leg, which stays env-gated like `journeys-pod.test.js`. |
+| 10A · Mijn dingen · notes-vorm (privé-kring) | 🟢 | `folioMyThings.js` — My-things notes-list as private kring (#349). |
+| 10B · drive-achtig in groep-kring (bladeren · favorieten/recent · gedeeld door/met mij · uploaden) | 🟢 | Circle-Folio browser (5.2) + share filters + **folder nav + breadcrumbs + rich rows (N5, web`2e7193e4` / mobile `ecab3b12`)**. Caveat: the **"+ uploaden"** affordance is 🔴 on web (mobile has the doc-picker, #267). Local↔remote-pod **source toggle** still pending — and it is **not** blocked on #167: it needs only the existing signed-in OIDC pod session, pod-backing folio's `listFiles` via the `podClient` seam already present in `createBrowserFolioAgent` (marked "future work"). #167 (provisioned test creds) only gates an *automated* end-to-end test of that leg, which stays env-gated like `journeys-pod.test.js`. |
 | 10C · toekomst-plek · proof-of-location (claim binnen 50 m · getuige-netwerk) | 🔴 | Parked by design — doc marks it "VERKENNING · NIET GEBOUWD". Only a PoL placeholder row exists (5.9d presence-v0 seam). |
 
 ## §11 · Co-redactie · de consent-diff-kaart

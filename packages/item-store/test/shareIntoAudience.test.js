@@ -1,5 +1,5 @@
 /**
- * shareIntoAudience (cluster K · K2) — the cross-circle share op. A per-item `shared-ref` into a target
+ * shareIntoAudience — the cross-circle share op. A per-item `shared-ref` into a target
  * circle (NOT a copy, NOT a transitive grant), the posture floor (no confidentiality downgrade), and
  * resolution back to the source (the 🔒-gated cross-pod read, in-memory here).
  */

@@ -1,7 +1,7 @@
 /**
  * basis — web entry for the real-Agent factory.
  *
- * #225.1 (2026-05-24) split the previously single-file `realAgent.js`
+ * (2026-05-24) split the previously single-file `realAgent.js`
  * (~1700 lines) into:
  *   - `src/core/agent/realAgent.js`  — portable factory (this re-exports it)
  *   - `src/web/realAgent.js`         — this file: web-side wrapper

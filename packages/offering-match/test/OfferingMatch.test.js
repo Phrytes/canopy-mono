@@ -296,7 +296,7 @@ describe('OfferingMatch — Phase 40.20 broadcast scope + extraAudience', () => 
     let receivedRequest = null;
     b.sm.subscribe(async ({ request, decide }) => {
       receivedRequest = request;
-      // Extra-audience never auto-claims (Phase 40.20 §8a Q3 lock):
+      // Extra-audience never auto-claims (lock):
       // the receiver MUST opt in explicitly. Simulate the "user
       // tapped Help" path here.
       await decide('claim');

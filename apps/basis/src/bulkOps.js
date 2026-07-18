@@ -12,7 +12,7 @@
  * keyword detection → fan-out) lands in v0.3 alongside the form-confirm
  * UX so the user can review N items before dispatch.
  *
- * Phase v0.2 sub-slice 2.7 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  */
 
 /**

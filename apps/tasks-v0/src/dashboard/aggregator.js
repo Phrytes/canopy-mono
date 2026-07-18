@@ -1,5 +1,5 @@
 /**
- * aggregator — Tasks V2.5 cross-circle dashboard.
+ * aggregator — Tasks cross-circle dashboard.
  *
  * Pure function over a list of circle bundles. For each one, projects:
  *   { circleId, name, kind, counts: {open, overdue, awaitingApproval, mine} }

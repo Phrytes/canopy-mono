@@ -3,13 +3,13 @@
 ## [mobile-0.1.0] — 2026-05-09
 
 Initial release. Tasks-mobile V1 — React Native client mirroring the
-desktop tasks-v0 app's V0 + V1 + V1.5 + V2 surface, plus the V2.7
-hard-dependency UI gates and V2.8 single-agent topology. Phase 41
+desktop tasks-v0 app's V0 + V1 + + V2 surface, plus the
+hard-dependency UI gates and single-agent topology. Phase 41
 of the Tasks-mobile coding plan.
 
 ### Headlines
 
-- One `core.Agent` per process serves N CircleStates (V2.8 single-agent
+- One `core.Agent` per process serves N CircleStates (single-agent
   pattern). Skills register once via `wireSkills + multiCircleResolver`;
   joining/leaving a circle mutates the live `circles` Map without a
   re-registration pass.
@@ -20,7 +20,7 @@ of the Tasks-mobile coding plan.
   journey: onboarding, workspace, my-work + planner, review, DAG,
   inbox, circle dashboard, profile, settings, availability grid, circle
   admin, pod sign-in.
-- V2.7-aware UI throughout: deps-blocked tasks gate Mark-complete /
+aware UI throughout: deps-blocked tasks gate Mark-complete /
   Approve; admins see Force-complete with a mandatory-reason modal;
   Add-subtask flips to Propose-subtask when the parent is submitted
   by someone else; Inbox surfaces subtask-proposal cards with
@@ -35,7 +35,7 @@ of the Tasks-mobile coding plan.
 | 41.1  | Workspace scaffold (Expo 52 / RN 0.76.9, navigator skeleton) | 1 |
 | 41.2  | ServiceContext (boot, agent, circles Map, identity vault, AppState bridge) | 13 |
 | 41.3  | Onboarding (Welcome / Scan / Restore / Issue) + qrClassifiers | 17 |
-| 41.4  | Workspace + TaskDetail + Compose; V2.7 gate UI | 14 |
+| 41.4 | Workspace + TaskDetail + Compose; gate UI | 14 |
 | 41.5  | MyWork (3 sections) + Planner cards + photo-deliverable submit | 10 |
 | 41.6  | Review + DAG + Inbox + circle-context switch | 9 |
 | 41.7  | Circles dashboard | 3 |
@@ -54,7 +54,7 @@ of the Tasks-mobile coding plan.
 
 | Package | Used for |
 |---|---|
-| `@onderling/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + V2.7 dependency gating |
+| `@onderling/item-store` (L1b) | Per-circle task ledger with audit + DoD lifecycle + dependency gating |
 | `@onderling/identity-resolver` (L1h) | Member webid map + `MemberMapCache` write-through; canonical user-skills profile; display + skills helpers |
 | `@onderling/skill-match` (L1e) | Pubsub-of-skills broadcast for circle-wide skill availability |
 | `@onderling/notifier` (L1f) | `PushChannel` + `PushPolicy` (humanInTheLoop, daily-cap, quiet hours) |
@@ -64,7 +64,7 @@ of the Tasks-mobile coding plan.
 | `@onderling/sync-engine-rn` (`./react`) | Skill hooks (useSkill, useAgentEvent, useSkillResult, useSettings, useMemberProfile) |
 | `@onderling/oidc-session-rn` (`./hook`) | Pod sign-in (PKCE + DCR + token storage) |
 | `@onderling/react-native` | Platform layer + 5 lifted submodules (picker, qr, mnemonic, push, localisation) + theme + components + storage + deepLinks + identity helpers |
-| `@onderling-app/tasks-v0` | V2.8 single-agent factories + role policy (platform-shell exception, locked 2026-05-08) |
+| `@onderling-app/tasks-v0` | single-agent factories + role policy (platform-shell exception, locked 2026-05-08) |
 
 ### Deferred items (carried into V1.x)
 
@@ -84,7 +84,7 @@ of the Tasks-mobile coding plan.
 - **Push token-relay registration** — V1 logs the registered token;
   the actual relay-side persistence (per-app `pushTokens` map in the
   circle config) is a V1.x follow-up.
-- **Bottom-tab navigation shell** — V1.0 uses a flat stack with
+**Bottom-tab navigation shell** — uses a flat stack with
   header navigation. Bottom tabs (Workspace / MyWork / Review /
   Inbox / Circles) for thumb-reach are V1.x.
 

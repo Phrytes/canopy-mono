@@ -4,7 +4,7 @@
  * Verifies the web-only browser entry boots a real `@onderling/core`
  * Agent on a shared InternalBus, registers the chat-web subset of
  * folio skills, and that shareFolder issues a REAL
- * PodCapabilityToken (the bit that distinguishes slice 4 from the
+ * PodCapabilityToken (the bit that distinguishes from the
  * mock-real handlers it replaces).
  */
 import { describe, it, expect } from 'vitest';
@@ -76,7 +76,7 @@ describe('createBrowserFolioAgent — boot + skill dispatch', () => {
     const { agent: peer } = await makePeer(bus);
     await peer.hello(folio.address);
 
-    // Slice 1b: shareFolder is now manifest-derived — `folder` + `with` are
+    // shareFolder is now manifest-derived — `folder` + `with` are
     // declared `required:true`, so a TRULY-MISSING arg is a wireSkill
     // validation error (the manifest is the contract; the gate elicits
     // required args before dispatch in the real flow).

@@ -1,4 +1,4 @@
-// /logs opens the LogsPanel modal (#259 Bundle F P3).
+// logs opens the LogsPanel modal.
 //
 // The EventLog accumulates events from the booted agent via the
 // `publishEvent` callback wired in ChatScreen.  A bare /logs opens

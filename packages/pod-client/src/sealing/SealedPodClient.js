@@ -2,7 +2,7 @@
 //
 // Only resource BODIES are sealed; structure (uris, containers, ACLs, etags) stays cleartext, so Solid
 // semantics + the host's request-driven serving are unchanged — the host stores ciphertext it can't
-// read (P2/P3). Content is treated as an opaque string: the caller serializes (pass a string to write;
+// read. Content is treated as an opaque string: the caller serializes (pass a string to write;
 // get the opened string back from read), matching how `project-seal` is used.
 //
 // The seal/open STRATEGY is injected (recipient-wrap or group-key) so key custody lives outside (e.g.

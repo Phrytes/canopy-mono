@@ -9,7 +9,7 @@
  * Shim exports just the names browser-side static imports reference;
  * classes throw at construction so accidental use surfaces the bug.
  *
- * See #303.
+ * See.
  */
 
 class BrowserOnlyClass {

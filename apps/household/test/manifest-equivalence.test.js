@@ -1,5 +1,5 @@
 /**
- * SP-1 byte/behaviour-equivalence gate.
+ * byte/behaviour-equivalence gate.
  *
  * Proves that the new `apps/household/manifest.js` + `@onderling/app-manifest`
  * projectors produce output identical to the existing hand-catalogues:
@@ -40,10 +40,10 @@ const noopRegistry = {
 const noopCtxAdapter = (toolCtx) => ({ ...toolCtx });
 
 describe('SP-1 equivalence: toolCatalog === V0_TOOL_CATALOG', () => {
-  // SP-2 grew the manifest with new ops (addTask, listTasks, claim,
-  // reassign, registerName).  The SP-1 byte-equivalence still holds —
+  // grew the manifest with new ops (addTask, listTasks, claim,
+  // reassign, registerName). The byte-equivalence still holds
   // we filter to the original five op ids.  The remaining toolCatalog
-  // entries beyond the SP-1 set are the SP-2 additions.
+  // entries beyond the set are the additions.
   const SP1_IDS = new Set(['addItem', 'listOpen', 'markComplete', 'removeItem', 'help']);
 
   it('byte-equal JSON (filtered to the SP-1 op ids)', () => {

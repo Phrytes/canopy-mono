@@ -1,8 +1,8 @@
 /**
- * basis v2 — local-network "who's here" model (board 8C, slice P6.8).
+ * basis v2 — local-network "who's here" model.
  *
  * The launcher's passive "Nearby N device(s)" row (5.9c) is the count
- * signal; board 8C is the dedicated `HIER` screen reached from the
+ * signal; is the dedicated `HIER` screen reached from the
  * launcher: a list of people on the same WiFi/BLE with their public
  * skills, with a "X of N share skills with you" header + a "What
  * others see of you" footer.
@@ -11,7 +11,7 @@
  * (from `MdnsTransport.peers`) + the local user's published skills,
  * and get back a render-ready `{rows, header, ownProfile}` shape.
  * The chat-shell integration (new RN screen, web renderer, tab-bar
- * entry, mDNS TXT-record skill-broadcast) is the follow-up #346.
+ * entry, mDNS TXT-record skill-broadcast) is the follow-up.
  *
  * V0 substrate gap: peers don't carry skills over mDNS today.  The
  * helper accepts `peer.skills` when present + falls back to "no skill

@@ -3,7 +3,7 @@
  *
  * Runs against the Mock AND the Expo concrete (with injected fake helpers, so
  * no `expo-*` native dep is needed).  A future `BackgroundAdapter.ios` /
- * `.android` (Slice 3) is "done" when it passes this suite.
+ * `.android` is "done" when it passes this suite.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { MockBackgroundAdapter } from '../../../src/ports/mocks/MockBackgroundAdapter.js';

@@ -1,6 +1,6 @@
 /**
  * folioSearch — folio's note corpus wired onto `@onderling/pod-search` (52.25,
- * PLAN-podsearch-v2-embeddings, first-consumer = folio, Q1).
+ * PLAN-podsearch-v2-embeddings, first-consumer = folio,).
  *
  * Folio's existing search (`searchFiles` in `browser.js`, the HTTP `/files`
  * route) is a name/path SUBSTRING match — it can't find a note by meaning
@@ -13,7 +13,7 @@
  * and the injected embedder/store), so it rides into the basis browser
  * bundle alongside the rest of `browser.js`.
  *
- * Degradation (Q3 + the llmTool policy):
+ * Degradation (the llmTool policy):
  *   - NO `embedder` injected  → PodSearch is lexical-only (`semanticReady`
  *     false); `/zoek semantic` gracefully returns the lexical ranking. This
  *     is the `llmTool:'off'` path (basis injects no embedder) AND the
@@ -131,7 +131,7 @@ export async function indexFolioNotes(search, rows) {
  * Run a `/zoek` query against the folio note index.
  *
  * `mode:'semantic'|'hybrid'` degrade to lexical when the index has no
- * embedder (PodSearch's built-in Q3-option-a behaviour): a `semantic` query
+ * embedder (PodSearch's built-in -option-a behaviour): a `semantic` query
  * on a lexical-only index returns `code:'E_SEMANTIC_UNAVAILABLE'` with an
  * empty list, so callers that want a graceful answer should prefer `hybrid`
  * (silently equals lexical when semantic is off) or check `search.semanticReady`.

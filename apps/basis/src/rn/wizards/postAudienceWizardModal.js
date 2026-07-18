@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  Mobile parity for
- * src/web/wizards/postAudienceWizard.js (Bundle F P2, #258).
+ * src/web/wizards/postAudienceWizard.js.
  *
  * Single-step form: compose a post with audience targeting (trust +
  * tags + distance + recipients + group selection).  Shares

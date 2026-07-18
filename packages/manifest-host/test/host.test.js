@@ -1,5 +1,5 @@
 /**
- * SP-4 V0 — `@onderling/manifest-host` unit tests.
+ * V0 — `@onderling/manifest-host` unit tests.
  *
  * Synthetic manifests inline (no cross-app coupling) — by design, V0 must
  * not depend on any app being checked in.  Coverage:

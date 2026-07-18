@@ -1,5 +1,5 @@
 /**
- * P6.9 — first-run mnemonic display (CREATE-side) helper tests.
+ * first-run mnemonic display (CREATE-side) helper tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

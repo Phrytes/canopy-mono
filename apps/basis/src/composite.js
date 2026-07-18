@@ -1,5 +1,5 @@
 /**
- * basis — composite-op runner + verifier (P1, feedback-extension).
+ * basis — composite-op runner + verifier (feedback-extension).
  *
  * The keystone primitive for "a slash-command that is merely a composite":
  * a new opId is defined — as pure DATA in a manifest — as a sequence of

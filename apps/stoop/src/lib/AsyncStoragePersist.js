@@ -7,7 +7,7 @@
  * Why
  *   On Hermes there is no `node:fs` (FilePersist breaks) and no
  *   `globalThis.indexedDB` (IndexedDBPersist throws on construct).
- *   basis-mobile's #222.5 wave wired VaultAsyncStorage for the
+ *   basis-mobile's wave wired VaultAsyncStorage for the
  *   secure-agent's identity / mute-list / audit-log; this adapter
  *   completes the Hermes story by giving stoop's local cache a
  *   place to live.  Without this, stoop's web-style boot on RN
@@ -30,7 +30,7 @@
  * `getItem / setItem / removeItem` — same surface VaultAsyncStorage
  * uses.  No real RN runtime needed for unit tests.
  *
- * Task #222.6 (2026-05-24).  See
+ * Task (2026-05-24). See
  * Project Files/basis/mobile-roadmap-2026-05-24.md.
  */
 

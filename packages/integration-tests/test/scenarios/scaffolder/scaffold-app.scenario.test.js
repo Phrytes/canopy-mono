@@ -1,13 +1,13 @@
 /**
  * Scenario: scaffolder / scaffold-app
  *
- * Phase 52.x P5 scaffolder CLI — verifies `scripts/scaffold-app.mjs`
+ * Phase 52.x scaffolder CLI — verifies `scripts/scaffold-app.mjs`
  * produces a well-formed app skeleton. The generated app's runtime
  * behaviour (npm test, CLI run) is exercised manually during
  * scaffolder development; this test ensures the file shape stays
  * stable + the templates remain parseable.
  *
- * Phase 52.x P5 (2026-05-14).
+ * Phase 52.x (2026-05-14).
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

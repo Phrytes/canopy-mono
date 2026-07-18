@@ -1,14 +1,14 @@
 /**
- * Slice B.2.4 — pod-settings.html V0.4-adopt.
+ * .4 — pod-settings.html -adopt.
  *
- * Mirrors stoop's V0.4-adopt settings test (commit 9e7003b /
+ * Mirrors stoop's -adopt settings test (commit 9e7003b /
  * `apps/stoop/test/stoop-web.test.js`).  Asserts:
  *
  *   1. The manifest validates with the new view added.
- *   2. The `pod-settings` view declares `shape: 'record'` (Q17).
+ *   2. The `pod-settings` view declares `shape: 'record'`.
  *   3. The view declares a `dataSource` with `getCircleStoragePolicy` +
- *      `argsFromContext.circleId` (Q15 — runtime-derived arg).
- *   4. The view declares `fields[]` (Q18) with both editable fields
+ *      `argsFromContext.circleId` (runtime-derived arg).
+ *   4. The view declares `fields[]` with both editable fields
  *      of the storage policy (policy + groupPodUri), each with a
  *      `patch` declaration pointing at `setCircleStoragePolicy`.
  *   5. Renderweb projects the section verbatim (shape + dataSource +
@@ -46,16 +46,16 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(view).toBeTruthy();
     expect(view.title).toBe('Pod settings');
     expect(view.type).toBe('circle-storage-policy');
-    // Q17 — singleton record (getCircleStoragePolicy returns
+    // singleton record (getCircleStoragePolicy returns
     // {policy, groupPodUri?}, not an array).
     expect(view.shape).toBe('record');
-    // Q15 — `circleId` is RUNTIME-derived (browser URL `?circle=...`);
+    // `circleId` is RUNTIME-derived (browser URL `?circle=...`);
     // the page passes it via the fetch-section context substitution.
     expect(view.dataSource).toEqual({
       skillId:         'getCircleStoragePolicy',
       argsFromContext: { circleId: '$circleId' },
     });
-    // Q18 — fields[] declares the editable subset.
+    // fields[] declares the editable subset.
     expect(Array.isArray(view.fields)).toBe(true);
     expect(view.fields.length).toBeGreaterThanOrEqual(2);
   });
@@ -80,12 +80,12 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(byName.groupPodUri.patch).toEqual({
       opId: 'setCircleStoragePolicy', argName: 'groupPodUri',
     });
-    // No Q21 argWrapper on either field — assert absence so a future
+    // No argWrapper on either field — assert absence so a future
     // accidental wrap doesn't slip in silently.
     expect(byName.policy.patch.argWrapper).toBeUndefined();
     expect(byName.groupPodUri.patch.argWrapper).toBeUndefined();
 
-    // V0.7 Q26 adoption (2026-05-20) — groupPodUri declares a
+    // adoption (2026-05-20) — groupPodUri declares a
     // conditional-display gate: only meaningful when policy is
     // 'centralised' or 'hybrid'.  Auto-rendered consumers hide the
     // field otherwise; hand-coded pages enforce the same rule.
@@ -114,7 +114,7 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     expect(byName.policy.patch.argName).toBe('storagePolicy');
     expect(byName.groupPodUri.patch.opId).toBe('setCircleStoragePolicy');
     expect(byName.groupPodUri.patch.argName).toBe('groupPodUri');
-    // V0.7 Q26 — requiresField gate survives projection (defensive
+    // requiresField gate survives projection (defensive
     // copy of the value array).
     expect(byName.groupPodUri.requiresField).toEqual({
       policy: ['centralised', 'hybrid'],
@@ -122,10 +122,10 @@ describe('Slice B.2.4: pod-settings V0.4-adopt manifest declaration', () => {
     // No creative-verb affordances surface here — getCircleStoragePolicy
     // and setCircleStoragePolicy are NOT in manifest.operations[] (they're
     // pod-plumbing skills, mirroring stoop's getSettings/updateSettings
-    // choice).  Same V0.3 #6 territory as stoop's settings view.
+    // choice). Same #6 territory as stoop's settings view.
     expect(section.affordances).toEqual([]);
     // The view is not flagged readOnly (it mutates via the patch ops);
-    // but because the per-field skills aren't manifest ops, no Q10
+    // but because the per-field skills aren't manifest ops, no
     // creative-verb affordances surface.
     expect(section.readOnly).toBeUndefined();
   });

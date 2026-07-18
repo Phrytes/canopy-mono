@@ -138,7 +138,7 @@ export function buildMultiCircleOnboardingSkills({ bundleResolver } = {}) {
         pubKey:      memberPubKey,
       });
 
-      // Phase 52.9.3 sub-slice 4 (2026-05-14) — live peer-roster
+      // Phase 52.9.3 (2026-05-14) — live peer-roster
       // update. Tell the substrate-mirror about the new peer so the
       // next addTask fan-out reaches them. Best-effort (the local
       // member-map update above is the source of truth; the mirror

@@ -1,5 +1,5 @@
 /**
- * Mobile NKN-on-pod wrappers for Bundle G3 (#265).
+ * Mobile NKN-on-pod wrappers for Bundle G3.
  *
  * Web wires these directly in `apps/basis/web/main.js:1421-1435`:
  *   - `lookupPeerAddrByWebid(webid)` → `discoverPeerAddr(session, webid)`
@@ -19,7 +19,7 @@
  *     bearer-fetch lives on `OidcSessionRN.getAuthenticatedFetch()`.
  *   - These wrappers therefore take the raw `sessionRef` (the
  *     `OidcSessionRN` instance) + `agent` directly, mirroring the
- *     pattern Bundle F P6 (#262) already established for sign-in.
+ *     pattern Bundle F already established for sign-in.
  *
  * Architectural note (basis-unifier-principle): the pod-helpers
  * stay in `apps/basis/src/web/podStorage.js`. ONLY the

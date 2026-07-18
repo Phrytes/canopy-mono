@@ -1,5 +1,5 @@
 /**
- * issueBotTokenUrl — encode a V1.5 bot cap-token into a
+ * issueBotTokenUrl — encode a bot cap-token into a
  * `tasks://bot-token?chatId=&webid=&tokenBlob=` URL the
  * BotBindings classifier (Phase 41.3 qrClassifiers) decodes.
  *

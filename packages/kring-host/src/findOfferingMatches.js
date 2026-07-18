@@ -1,10 +1,10 @@
 /**
- * basis v2 — offering-match source (board 8B).
+ * basis v2 — offering-match source.
  *
  * When a user posts an offering-question in a circle, the app should surface
  * inline candidate matches: members of the circle whose declared offerings
- * overlap the question, plus optionally agents (board 4B) and via-hop
- * candidates (board 7A).  The RENDERER + the match card shape
+ * overlap the question, plus optionally agents and via-hop
+ * candidates. The RENDERER + the match card shape
  * (`buildOfferingMatches`) shipped earlier; this is the SOURCE — picking
  * the candidates from a real directory.
  *
@@ -12,7 +12,7 @@
  * we tokenize, score, rank, and return `{id, label, source, score,
  * matchedTokens}[]` ready for `buildOfferingMatches`.  The chat-shell
  * integration (rendering the matches under a posted question + wiring
- * the [Ask]/[Skip] taps) lives in the follow-up #345.
+ * the [Ask]/[Skip] taps) lives in the follow-up.
  *
  * Scoring is intentionally simple at V0: case-folded token containment
  * with a small bonus for category / radius / openness signals.  Real
@@ -52,8 +52,8 @@ export function tokenize(s) {
  * @param {object} args
  * @param {string} args.query                  user question text
  * @param {object[]} [args.members=[]]         circle members; each {webid|id, displayName|handle|label, offerings:[{text|label, category?, openness?}]} (legacy `skills` read-accepted)
- * @param {object[]} [args.agents=[]]          agent participants (board 4B); same offering shape
- * @param {object[]} [args.hopCandidates=[]]   via-hop candidates (board 7A); same offering shape
+ * @param {object[]} [args.agents=[]] agent participants; same offering shape
+ * @param {object[]} [args.hopCandidates=[]] via-hop candidates; same offering shape
  * @param {number}   [args.maxResults]
  * @returns {Array<{id:string, label:string, source:'human'|'agent'|'via-hop', score:number, matchedTokens:string[], skill:string|null}>}
  */

@@ -4,9 +4,9 @@
  *
  * Phase 41.5.1 (2026-05-09).
  *
- * Slice C.2 (2026-05-20) — adapter-driven.  Each of the three
- * sections now resolves its skill via the V0.2 NavModel's
- * `dataSource` (Q7) through `createNavModelAdapter(tasksManifest)`:
+ * adapter-driven. Each of the three
+ * sections now resolves its skill via the NavModel's
+ * `dataSource` through `createNavModelAdapter(tasksManifest)`:
  *
  *   - `mine`      → `listMine`
  *   - `mastered`  → `listMyMasteredTasks`
@@ -15,15 +15,15 @@
  * Skill ids + args are no longer hand-coded — they come from
  * `adapter.getSection(id).dataSource`, with `useSkillResult` keeping
  * the mount/refresh/dep-tracking lifecycle (same pattern as
- * WorkspaceScreen's Slice C.1 migration).
+ * WorkspaceScreen's migration).
  *
  * What stays hand-built:
- *   - <PlannerCards> header — V2.4 schedule suggestions, an RN-
+ *   <PlannerCards> header — schedule suggestions, an RN
  *     specific mobile UI element not modelled in NavModel.
  *   - Tap → TaskDetail navigation + pull-to-refresh — RN screen
  *     lifecycle concerns the adapter intentionally doesn't model.
  *
- * V2.7-aware via TaskCard's status-driven UI: deps-blocked items
+ * aware via TaskCard's status-driven UI: deps-blocked items
  * show the open-deps count chip; the disabled-close behaviour lives
  * in TaskDetailScreen (tap a card to act).
  */
@@ -50,8 +50,8 @@ export function MyWorkScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES } = useTheme();
 
-  // Slice C.2 — build the NavModel adapter once per service-change,
-  // same shape as WorkspaceScreen's Slice C.1 wiring.  The adapter is
+  // build the NavModel adapter once per service-change,
+  // same shape as WorkspaceScreen's wiring. The adapter is
   // platform-neutral; `callSkill` mirrors the imperative dispatcher
   // useSkill's `.call` takes internally.  Used here to resolve the
   // dataSource for each section; the screen still uses useSkillResult
@@ -72,10 +72,10 @@ export function MyWorkScreen() {
     [svc],
   );
 
-  // V0.3-adopt (2026-05-21) — `useAdapterSection` collapses the
+  // adopt (2026-05-21) — `useAdapterSection` collapses the
   // per-section boilerplate (3 sections × 4 lines = 12 lines saved).
   // Same data shape; same lifecycle.  Skill ids + args come from the
-  // manifest's Q7 dataSource declarations on the mine/mastered/
+  // manifest's dataSource declarations on the mine/mastered/
   // claimable views.
   const mine      = useAdapterSection(adapter, 'mine',      [svc?.activeCircleId]);
   const mastered  = useAdapterSection(adapter, 'mastered',  [svc?.activeCircleId]);

@@ -1,5 +1,5 @@
 /**
- * BotBindingsSection — V1.5 chat-bot bindings per circle.
+ * BotBindingsSection — chat-bot bindings per circle.
  *
  * Phase 41.8.4 (2026-05-09).
  *
@@ -7,7 +7,7 @@
  * admin add/remove. The "Issue token" flow that pairs a chat-bound
  * bot's cap-token with a QR (so a phone can scan it) lands in
  * Phase 41.13; this section surfaces a button that navigates there
- * once it ships. For V1.0 the button shows a TODO toast.
+ * once it ships. For the button shows a TODO toast.
  */
 
 import React, { useCallback, useState } from 'react';

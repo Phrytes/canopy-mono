@@ -1,6 +1,6 @@
 /**
  * BlobAclStore — the server-side membership-grant record for the blob-gate
- * edge (PLAN-media-infra-deployment P2).
+ * edge (PLAN-media-infra-deployment).
  *
  * @abstract
  *

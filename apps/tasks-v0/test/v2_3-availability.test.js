@@ -1,5 +1,5 @@
 /**
- * V2.3 — availability hints (data class + skills).
+ * availability hints (data class + skills).
  */
 
 import { describe, it, expect } from 'vitest';

@@ -1,5 +1,5 @@
 /**
- * basis v2 — pod-axis migration warning (board 4A, slice P6.M1).
+ * basis v2 — pod-axis migration warning.
  *
  * When an admin flips the pod axis (`none` ↔ `shared` ↔ `personal` ↔
  * `hybrid`), existing circle content has to be migrated.  The design's

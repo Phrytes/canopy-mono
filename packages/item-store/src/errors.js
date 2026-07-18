@@ -78,7 +78,7 @@ export class MissingArgumentError extends Error {
 }
 
 /**
- * V2.7 — thrown by `markComplete` and `approve` when the substrate's
+ * thrown by `markComplete` and `approve` when the substrate's
  * `enforceDependencies` flag is on and the item being closed has at
  * least one open dependency. Carries the open-dep ids so callers can
  * render a useful error message ("Can't close — 2 open sub-tasks: …").

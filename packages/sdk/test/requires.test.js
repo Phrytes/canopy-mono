@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { CAPABILITIES, REQUIRES_CODES, validateRequires } from '../src/requires.js';
 
 /**
- * SP-9 — the `requires` capability vocabulary + validator (the SP-10 seam).
+ * the `requires` capability vocabulary + validator (the seam).
  */
 
 describe('CAPABILITIES vocabulary', () => {

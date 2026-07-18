@@ -1,5 +1,5 @@
 /**
- * capabilityGate — B · Slice 1 default-deny authorization boundary.
+ * capabilityGate — B · default-deny authorization boundary.
  * Covers: default-on (unconfigured), app-level deny, (verb×noun) granularity,
  * arg-aware noun resolution, and domain-verb pass-through.
  */

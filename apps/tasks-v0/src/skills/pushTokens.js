@@ -2,7 +2,7 @@
  * setMyPushToken skill — Tasks Phase 41.18.5 (2026-05-10).
  *
  * Lets the mobile app register its Expo push token on the active
- * circle so the relay-side push sender (V1.5 PushChannel) can wake
+ * circle so the relay-side push sender (PushChannel) can wake
  * the device. Two-tenant-friendly shape:
  *
  *   circle.config.pushTokens[webid] = {
@@ -11,7 +11,7 @@
  *   }
  *
  * The legacy shape (`pushTokens[webid] = '<token-string>'`) used by
- * V1.5 desktop pushes still works on the read side: see
+ * desktop pushes still works on the read side: see
  * `apps/tasks-v0/src/Circle.js`'s `tokenFor` reader. New writes always
  * land in the per-app shape.
  *

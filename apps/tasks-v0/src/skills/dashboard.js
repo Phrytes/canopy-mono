@@ -1,5 +1,5 @@
 /**
- * dashboard — Tasks V2.5 cross-circle dashboard.
+ * dashboard — Tasks cross-circle dashboard.
  *
  *   - `getMyCircles()` — self only. Returns one row per circle the actor
  *     belongs to (across every CircleState the meshAgent knows about),
@@ -13,7 +13,7 @@
  *     self-chat / central-agent view can deep-link. Open + assigned-to-me
  *     only; unassigned tasks are excluded.
  *
- * After V2.8: registered ONCE on the meshAgent. The skill enumerates
+ * After: registered ONCE on the meshAgent. The skill enumerates
  * circles via `circlesProvider()` (returns `Map<circleId, CircleState>` or
  * any iterable of CircleStates) and filters to circles where the actor
  * has a role.
@@ -35,7 +35,7 @@ function eligibleCirclesFor({ parts, from, envelope, bundleResolver, circlesProv
   const ctxCircle = bundleResolver(parts, { envelope, from });
   if (!ctxCircle) return { error: 'circleId required' };
   if (typeof from !== 'string' || !from) return { error: 'webid required' };
-  // V2.5 multi-circle launches plumb a per-CircleState override provider
+  // multi-circle launches plumb a per-CircleState override provider
   // (`_dashboardCirclesProvider`) so the dashboard sees every circle the
   // launcher built — even those not in the local wireSkills's
   // `circlesProvider`. Falls back to the wireSkills default for

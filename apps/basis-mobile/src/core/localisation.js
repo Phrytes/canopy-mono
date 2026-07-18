@@ -3,7 +3,7 @@
  * i18next that unwraps the project's `{text, doc}` leaf shape and
  * exposes a `t()` that future RN screens call.
  *
- * Convention enforced from day 1 (#213): every user-facing string
+ * Convention enforced from day 1: every user-facing string
  * goes through `t()` with a locale entry; hardcoded English is a
  * defect.  Mirrors apps/tasks-v0/src/lib/localisation.js + the
  * stoop-mobile equivalent.

@@ -1,7 +1,7 @@
 /**
  * Scenario: graceful-degradation/cache-mode-edge-cases
  *
- * Phase 52.9.4 (partial) + P3 graceful-degradation test matrix
+ * Phase 52.9.4 (partial) + graceful-degradation test matrix
  * — the third axis of the substrates-v2 integration harness.
  *
  * The pod-having + no-pod matrices live in

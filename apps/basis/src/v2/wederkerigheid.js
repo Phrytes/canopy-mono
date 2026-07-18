@@ -1,10 +1,10 @@
 /**
- * basis v2 — wederkerigheid (chat-off consumer side, P6.4 / board 5C).
+ * basis v2 — wederkerigheid (chat-off consumer side).
  *
  * When member Bob has `memberOverride.chatOff === true` for circle Selwerd,
  * member Anne attempting to DM Bob in that circle's context should see an
  * inline "Bob doesn't receive chat in Selwerd" notice — NOT a "blocked"
- * red flag.  Design boundary (board 5C "TWEE DINGEN DIE HIER NIET GEBEUREN"):
+ * red flag. Design boundary ("TWEE DINGEN DIE HIER NIET GEBEUREN"):
  *   1. Bob does NOT get a "Anne tried to reach you" notification.  The
  *      attempt is invisible to him on purpose; otherwise "chat-off" would
  *      really be "chat-block".
@@ -17,7 +17,7 @@
  *
  * The chat-compose integration (compose notice + Save/Withdraw buttons +
  * actually re-routing the typed message into the queue) lives in the
- * follow-up #343 — this slice ships the model + the save-for-later
+ * follow-up — this slice ships the model + the save-for-later
  * queue substrate.
  */
 

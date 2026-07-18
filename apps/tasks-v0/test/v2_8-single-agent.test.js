@@ -1,7 +1,7 @@
 /**
- * V2.8 — single meshAgent + multi-circle via bundleResolver.
+ * single meshAgent + multi-circle via bundleResolver.
  *
- * Asserts the V2.8 contract:
+ * Asserts the contract:
  *   1. One `core.Agent` (process-level) serves N CircleStates.
  *   2. `multiCircleResolver` picks the right CircleState by `args.circleId`.
  *   3. Strict resolution — when neither `args.circleId` nor a topic

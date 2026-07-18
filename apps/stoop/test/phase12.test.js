@@ -140,7 +140,7 @@ describe('Stoop V1 Phase 12 — matchesProfile', () => {
     expect(r.reason).toBe('no-active-skills');
   });
 
-  // availability unification (Q5): 'away' IS holiday mode — skill-match routes
+  // availability unification: 'away' IS holiday mode — skill-match routes
   // around a member whose unified availability is away, regardless of skills.
   it('routes AROUND a member whose availability is away', () => {
     const away = { ...member, availability: 'away' };

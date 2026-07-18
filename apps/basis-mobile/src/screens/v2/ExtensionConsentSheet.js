@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — extension consent sheet (feedback-extension P2 mobile parity).
+ * basis-mobile v2 — extension consent sheet (feedback-extension mobile parity).
  *
  * RN twin of web's `extensionConsentCard`. Renders a `buildConsentModel` result
  * (shared, tested) as a plain consent sheet: the commands the extension adds +

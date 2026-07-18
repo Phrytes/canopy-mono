@@ -3,7 +3,7 @@
  *
  * Each known kind (household / buurt / vriendenkring / team) maps to a
  * partial policy that the create wizard pre-fills when the user picks
- * the kind in the C1 create flow (#197).  The user can override any
+ * the kind in the C1 create flow. The user can override any
  * axis before submitting; the merge here is strictly "template fills
  * the gaps", never overwriting a value the user already set.
  *

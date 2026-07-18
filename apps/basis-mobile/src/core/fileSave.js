@@ -1,5 +1,5 @@
 /**
- * Mobile file-save adapter for Bundle F P4 (#260).
+ * Mobile file-save adapter for Bundle F.
  *
  * Wraps `expo-file-system` to write base64-encoded blobs to the
  * app's `documentDirectory`.  Used by `buttonSpecials.downloadFile`
@@ -8,7 +8,7 @@
  * V1 caveats:
  *   - Saves to `documentDirectory` only (app-internal; user can
  *     access via a separate Files-app step on Android).  Share-sheet
- *     integration via `expo-sharing` is a P4 follow-up.
+ *     integration via `expo-sharing` is a follow-up.
  *   - Returns the saved URI so the caller can show it in the bot
  *     bubble (matches web's "saved as <name>" UX).
  *   - No name collision handling — overwrites silently.  Names

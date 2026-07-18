@@ -26,7 +26,7 @@
  * (`roots` accepts a thunk, so subscribe/unsubscribe take effect live). This is
  * FEDERATION by construction: subscribing to two communities UNIONS their
  * catalogs; the bounded-depth WoT walk still applies WITHIN each community's
- * admin roots. The whole thing is advisory — the P3 power-user override installs
+ * admin roots. The whole thing is advisory — the power-user override installs
  * off-catalog regardless — and exit is a right (unsubscribe, or fork + diverge).
  */
 

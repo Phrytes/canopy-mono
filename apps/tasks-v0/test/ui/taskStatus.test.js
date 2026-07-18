@@ -1,5 +1,5 @@
 /**
- * taskStatus — pure-fn coverage for the V2.7-aware UI gate helpers.
+ * taskStatus — pure-fn coverage for the -aware UI gate helpers.
  *
  * Phase 41.4.9 (2026-05-09); lifted 2026-05-10 alongside
  * `apps/tasks-v0/src/ui/taskStatus.js` per the shared-UI-glue rule

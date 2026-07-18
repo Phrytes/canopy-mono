@@ -12,7 +12,7 @@
  * / tentative).  Cancelling an event uses ItemStore.markComplete
  * with state 'cancelled' (mapped onto removal in v0.7.11 RDF).
  *
- * Phase v0.7 sub-slice 7.10 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.7 per `/Project Files/basis/coding-plan.md`.
  */
 
 export const calendarManifest = {
@@ -39,7 +39,7 @@ export const calendarManifest = {
       id:    'addEvent',
       verb:  'add',
       appliesTo: { type: 'calendar-event' },
-      // v0.7.P1-followup 2026-05-23 (3rd pass): renamed startsAt →
+      // v0.7.-followup 2026-05-23 (3rd pass): renamed startsAt →
       // 'when' for slash-arg ergonomics.  User-typed
       // `/addappt --when='tomorrow 3pm'` now matches the param name.
       // CalendarStore accepts both internally for back-compat.
@@ -81,9 +81,9 @@ export const calendarManifest = {
         chat:  {
           reply: 'list',
           hint:  'list upcoming events',
-          // Q30 — calendar's slot in the morning brief.
+          // calendar's slot in the morning brief.
           brief: { summarySkill: 'briefSummary', order: 15, label: 'Calendar' },
-          // Q33 — searchable from /find.
+          // searchable from /find.
           search: { searchSkill: 'searchEvents' },
         },
       },
@@ -102,7 +102,7 @@ export const calendarManifest = {
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
         { name: 'id', kind: 'string', required: true,
-          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // v0.7. — bare /accept / /decline / /tentative /
           // /cancelappt → form with event picker.
           pickerSource: { listOp: 'listEvents' } },
       ],
@@ -121,7 +121,7 @@ export const calendarManifest = {
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
         { name: 'id', kind: 'string', required: true,
-          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // v0.7. — bare /accept / /decline / /tentative /
           // /cancelappt → form with event picker.
           pickerSource: { listOp: 'listEvents' } },
       ],
@@ -139,7 +139,7 @@ export const calendarManifest = {
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
         { name: 'id', kind: 'string', required: true,
-          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // v0.7. — bare /accept / /decline / /tentative /
           // /cancelappt → form with event picker.
           pickerSource: { listOp: 'listEvents' } },
       ],
@@ -157,7 +157,7 @@ export const calendarManifest = {
       appliesTo: { type: 'calendar-event', state: ['open'] },
       params: [
         { name: 'id', kind: 'string', required: true,
-          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // v0.7. — bare /accept / /decline / /tentative /
           // /cancelappt → form with event picker.
           pickerSource: { listOp: 'listEvents' } },
       ],
@@ -176,7 +176,7 @@ export const calendarManifest = {
 
     /* ──── Snapshot + search ──── */
     /**
-     * `getEventSnapshot(id)` — Q29 cardSnapshotSkill for /embed-time.
+     * `getEventSnapshot(id)` — cardSnapshotSkill for /embed-time.
      */
     {
       id:    'getEventSnapshot',
@@ -184,7 +184,7 @@ export const calendarManifest = {
       appliesTo: { type: 'calendar-event' },
       params: [
         { name: 'id', kind: 'string', required: true,
-          // v0.7.Q34 — bare /accept / /decline / /tentative /
+          // v0.7. — bare /accept / /decline / /tentative /
           // /cancelappt → form with event picker.
           pickerSource: { listOp: 'listEvents' } },
       ],
@@ -194,7 +194,7 @@ export const calendarManifest = {
     },
 
     /**
-     * `briefSummary` — Q30 contributor.
+     * `briefSummary` — contributor.
      */
     {
       id:    'briefSummary',
@@ -206,7 +206,7 @@ export const calendarManifest = {
     },
 
     /**
-     * `searchEvents` — Q33 contributor.  Text match on title +
+     * `searchEvents` — contributor. Text match on title +
      * location.
      */
     {
@@ -221,7 +221,7 @@ export const calendarManifest = {
     },
 
     /**
-     * `/pod-status` — v0.7.P2.1.  Returns the current pod-write
+     * `/pod-status` — v0.7.. Returns the current pod-write
      * diagnostic state (writer wired? last write OK? errors?).
      * Critical for troubleshooting why a pod might not have
      * received writes.
@@ -264,7 +264,7 @@ export const calendarManifest = {
   ],
 };
 
-// Q29 declaration: addEvent surfaces as embeddable via getEventSnapshot.
+// declaration: addEvent surfaces as embeddable via getEventSnapshot.
 // /embed-time → calendar.addEvent → returns event → /embed renders card.
 calendarManifest.operations.find((o) => o.id === 'addEvent')
   .surfaces.chat.embed = { cardSnapshotSkill: 'getEventSnapshot' };

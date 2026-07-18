@@ -1,5 +1,5 @@
 /**
- * wireSkills — V2.8 single-registration root.
+ * wireSkills — single-registration root.
  *
  * Registers every Tasks skill on the process-wide meshAgent ONCE.
  * Skills resolve their per-circle CircleState at dispatch time via the
@@ -36,7 +36,7 @@ import { buildPushTokenSkills } from './skills/pushTokens.js';
 import { buildSubtaskSkills } from './skills/subtasks.js';
 import { buildInboxSkills } from './skills/inbox.js';
 import { buildWorkspaceSkills } from './skills/workspace.js';
-// Q30 (DESIGN gap #1, closed 2026-05-27) — `tasks_briefSummary`.
+// (DESIGN gap, closed 2026-05-27) — `tasks_briefSummary`.
 import { buildBriefSummarySkill } from './skills/briefSummary.js';
 import { buildObservabilitySkills } from './skills/observability.js';
 import { buildCircleControlSkills } from './skills/circleControls.js';

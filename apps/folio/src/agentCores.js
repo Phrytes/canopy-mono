@@ -1,5 +1,5 @@
 /**
- * folio — pure agent cores (Slice 1b, PLAN-folio-as-file-agent.md).
+ * folio — pure agent cores (PLAN-folio-as-file-agent.md).
  *
  * Extracted from the hand-rolled `agent.register(...)` handlers in
  * `browser.js` so folio's pod-file ops become MANIFEST-DERIVED wireSkill
@@ -131,7 +131,7 @@ export async function searchNotes(store, args = {}) {
   return reply;
 }
 
-/* ── getFileSnapshot — Q29 cardSnapshotSkill for /embed-file ── */
+/* ── getFileSnapshot — cardSnapshotSkill for /embed-file ── */
 export function getFileSnapshot(store, args = {}) {
   const target = store.files.find((f) => f.id === args.path || f.name === args.path);
   if (!target) return { ok: false, error: `No file at "${args.path}".` };
@@ -235,7 +235,7 @@ export function searchFiles(store, args = {}) {
 }
 
 /**
- * folio_briefSummary — Q30 briefSummary.  No manifest op (basis's
+ * folio_briefSummary — briefSummary. No manifest op (basis's
  * generic `/brief` maps to this named skill); kept as a direct registration.
  */
 export function folioBriefSummary(store /*, args, ctx */) {

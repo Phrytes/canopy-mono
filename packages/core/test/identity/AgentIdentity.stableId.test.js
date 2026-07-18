@@ -1,5 +1,5 @@
 /**
- * AgentIdentity stableId — V2.5+ Phase 32 (2026-05-07).
+ * AgentIdentity stableId — + Phase 32 (2026-05-07).
  *
  * Verifies the deterministic-from-seed derivation introduced in
  * Phase 32: same seed → same stableId on a fresh vault, on any

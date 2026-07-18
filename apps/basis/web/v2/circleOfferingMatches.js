@@ -1,5 +1,5 @@
 /**
- * basis v2 — skill match list (web DOM renderer, board 8).
+ * basis v2 — skill match list (web DOM renderer).
  *
  * Renders an INJECTED match list (`buildOfferingMatches`) as one row per match,
  * each carrying a label + a source badge (human / agent / via-hop). The host

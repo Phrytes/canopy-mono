@@ -1,9 +1,9 @@
 /**
  * @onderling/sdk/requires — the declarative capability vocabulary + validator.
  *
- * SP-9's seam for SP-10 (`@onderling/app-scaffold`): an app declares WHICH SDK
+ * 's seam for (`@onderling/app-scaffold`): an app declares WHICH SDK
  * slices it needs as a `requires: [...]` list drawn from a small, fixed
- * vocabulary — the SP-9 sub-path/extension names — and a validator checks
+ * vocabulary — the sub-path/extension names — and a validator checks
  * that list against the vocabulary (unknown → error) and, optionally, an
  * `available` set (the slices actually wired/present).
  *
@@ -19,11 +19,11 @@
  *     // → { ok: false, missing: [{ capability: 'pod', code: '…MISSING…' }], unknown: [] }
  *
  * Diagnostics carry stable CODES (not free-text message strings) so a caller
- * (SP-10) can branch on them without string-matching.
+ * can branch on them without string-matching.
  */
 
 /**
- * The capability vocabulary — the SP-9 sub-path / extension names. This is
+ * The capability vocabulary — the sub-path / extension names. This is
  * the closed set a `requires` list may draw from.
  *
  *   - 'core'       → @onderling/sdk/core       (the kernel base)

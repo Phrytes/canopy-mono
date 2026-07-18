@@ -1,5 +1,5 @@
 /**
- * Curation compare + render (feedback-extension P3).
+ * Curation compare + render (feedback-extension).
  *
  * The "before/after curation" view central to feedback (original message →
  * cleaned/curated version) reuses the SAME compute as folio's file-merge:

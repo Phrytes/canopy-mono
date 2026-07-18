@@ -1,5 +1,5 @@
 /**
- * agents — install cores (P3, PLAN-agent-management-surface §P3).
+ * agents — install cores (PLAN-agent-management-surface).
  *
  * The INSTALL act: take an installable descriptor (an A2A Agent Card /
  * registry-entry projection per SPEC-agents-registry) and add it to the
@@ -16,7 +16,7 @@
  * ── commons-governance seam ────────────────────────────────────────────
  * The catalog's trust/curation (signing keys, review, reputation, who is
  * allowed to publish) is DESIGNED SEPARATELY — the community-commons
- * governance thread (NOTE-online-agent-surface §3). P3 treats the catalog
+ * governance thread (NOTE-online-agent-surface §3). treats the catalog
  * as a pluggable DATA SOURCE and hardcodes NO governance decision. A real
  * curated source drops in behind the same `{ list, get }` contract.
  *
@@ -26,18 +26,18 @@
  * added ONLY per the user's requested grant set, and ONLY for skills the
  * card DECLARES it can do — a requested skill outside the card's declared
  * surface is REJECTED, never issued a token. Each accepted grant runs
- * through the P2 `grantAgent` path (token issued FIRST, then mirrored),
+ * through the `grantAgent` path (token issued FIRST, then mirrored),
  * so an installed agent holds only signed, scoped, revocable tokens for
  * exactly what the user picked. An ungranted skill has NO token → it is
  * denied at the invoke gate (PolicyEngine.checkInbound / offeringMatches).
  *
- * Uninstall = the P2 `purgeAgent` (hard delete, sweeps live tokens
+ * Uninstall = the `purgeAgent` (hard delete, sweeps live tokens
  * first) or `revokeAgent` (soft, keep for audit) — reused, not
  * reinvented.
  *
  * Dependency-free like cores.js / recoveryCores.js (no bare `@onderling/*`
  * import) so the standalone fitness suite runs without app-local
- * node_modules; the one collaborator it leans on — the P2 grant path — is
+ * node_modules; the one collaborator it leans on — the grant path — is
  * imported from the sibling cores module (also import-free).
  */
 
@@ -201,7 +201,7 @@ export async function listCatalog(store, _args = {}) {
 /**
  * installAgent — the install act.  Resolve a card (curated `catalogId` OR
  * power-user `card`), register it default-deny, then grant ONLY the
- * requested-and-declared skills through the P2 token-first grant path.
+ * requested-and-declared skills through the token-first grant path.
  *
  * @param {object} store  `{ registry, catalog?, tokens? }`
  * @param {object} args
@@ -253,7 +253,7 @@ export async function installAgent(store, args = {}) {
       rejected.push({ skill: req.skill, reason: 'not-declared' });
       continue;
     }
-    // Reuse the P2 token-first grant path — do NOT reinvent the registry.
+    // Reuse the token-first grant path — do NOT reinvent the registry.
     const res = await grantAgent(store, {
       agentId:       entry.agentId,
       skill:         req.skill,

@@ -70,11 +70,11 @@ export class CalendarStore {
   #pod;
   /** @type {string} */
   #actorDefault;
-  /** @type {object|null} v0.7.P2 — pod write-through target */
+  /** @type {object|null} v0.7. — pod write-through target */
   #podWriter;
-  /** v0.7.P2.1 — last write outcome + recorded errors, for diagnostics. */
+  /** v0.7. — last write outcome + recorded errors, for diagnostics. */
   #podStatus = { lastResult: null, errorCount: 0, lastError: null, attempts: 0 };
-  /** v0.7.P2.1 — optional sink for pod-write events (basis router). */
+  /** v0.7. — optional sink for pod-write events (basis router). */
   #podEventSink;
 
   /**
@@ -82,7 +82,7 @@ export class CalendarStore {
    * @param {object}  [opts.pseudoPod]   pre-wired pseudo-pod; otherwise we build one in-memory
    * @param {string}  [opts.actor='webid:local-demo-user']
    * @param {string}  [opts.deviceId=DEVICE_ID]
-   * @param {object}  [opts.podWriter]   v0.7.P2 podStorage.createPodWriter result
+   * @param {object} [opts.podWriter] v0.7. podStorage.createPodWriter result
    */
   constructor(opts = {}) {
     this.#pod = opts.pseudoPod ?? createPseudoPod({
@@ -95,7 +95,7 @@ export class CalendarStore {
   }
 
   /**
-   * v0.7.P2 — wire/unwire the pod-write target at runtime.  canopy-
+   * v0.7. — wire/unwire the pod-write target at runtime. canopy
    * chat calls this on sign-in / sign-out so calendar's .ics feed
    * writes-through to `<pod>/canopy/calendar/feed.ics`.
    *
@@ -109,7 +109,7 @@ export class CalendarStore {
   }
 
   /**
-   * v0.7.P2.1 — optional event sink for pod-write events.  When set,
+   * v0.7. — optional event sink for pod-write events. When set,
    * each pod-write attempt fires a notification event (success or
    * failure) so the chat shell can route it to /logs + Main thread.
    *
@@ -119,7 +119,7 @@ export class CalendarStore {
     this.#podEventSink = typeof sink === 'function' ? sink : null;
   }
 
-  /** v0.7.P2.1 — diagnostics for /pod-status. */
+  /** v0.7. — diagnostics for /pod-status. */
   getPodStatus() {
     return {
       writerWired:   !!this.#podWriter,
@@ -165,11 +165,11 @@ export class CalendarStore {
   async addEvent(args = {}) {
     const title = String(args.title ?? '').trim();
     if (!title) throw new Error('CalendarStore.addEvent: title required');
-    // v0.7.P1-followup (3rd pass): accept `when` (canonical 2026-05-23+)
+    // v0.7.-followup (3rd pass): accept `when` (canonical 2026-05-23+)
     // OR `startsAt` (legacy alias).  Same for `until` / `endsAt`.
     const startsAt = parseDateInput(args.when ?? args.startsAt);
     if (!startsAt) throw new Error('CalendarStore.addEvent: when (or startsAt) required (ISO-8601)');
-    // v0.7.P1-followup: duration as a string ('1h' / '30m' / '2h30m').
+    // v0.7.-followup: duration as a string ('1h' / '30m' / '2h30m').
     // CalendarStore now also accepts an explicit until/endsAt + a
     // duration override.  Default: 1 hour.
     let endsAt = parseDateInput(args.until ?? args.endsAt);
@@ -329,7 +329,7 @@ export class CalendarStore {
       // is canonical.
       return;
     }
-    // v0.7.P2 — write-through to real pod when signed in.
+    // v0.7. — write-through to real pod when signed in.
     if (this.#podWriter && typeof this.#podWriter.write === 'function') {
       this.#podStatus.attempts += 1;
       let result;
@@ -413,7 +413,7 @@ function parseDateInput(input) {
   const direct = new Date(trimmed);
   if (!Number.isNaN(direct.getTime())) return direct.toISOString();
 
-  // v0.7.P1-followup 2026-05-23 (4th pass) — natural-language fallback
+  // v0.7.-followup 2026-05-23 (4th pass) — natural-language fallback
   // via chrono-node.  Slash-arg path bypassed buildFormSpec's
   // validateAndCoerce so /addappt --when='tomorrow 3pm' reached the
   // store as raw text + failed `new Date(input)`.  This in-store
@@ -437,7 +437,7 @@ function toEpoch(input) {
 }
 
 /**
- * v0.7.P1-followup — parse '1h' / '30m' / '2h30m' / '1d' / '90m' → ms.
+ * v0.7.-followup — parse '1h' / '30m' / '2h30m' / '1d' / '90m' → ms.
  * Returns null on parse-fail.
  */
 function parseDurationMs(text) {

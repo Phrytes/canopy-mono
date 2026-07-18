@@ -1,5 +1,5 @@
 /**
- * addBot — get a bot into the app PeerGraph (feedback-extension P5).
+ * addBot — get a bot into the app PeerGraph (feedback-extension).
  * Drives a real @onderling/core PeerGraph + a fake discover (no network).
  */
 import { describe, it, expect, vi } from 'vitest';

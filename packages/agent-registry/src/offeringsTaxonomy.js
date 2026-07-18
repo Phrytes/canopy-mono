@@ -1,5 +1,5 @@
 // Offerings taxonomy + the `offering` property descriptor (offering→property fold-in,
-// plans/NOTE-skills-properties-audit.md Q1/Q4). "offering" = the human-profile "I can do X" DATA
+// plans/NOTE-skills-properties-audit.md). "offering" = the human-profile "I can do X" DATA
 // (the disclosure-controlled SOURCE); the INVOCABLE A2A sense keeps the word "skill" —
 // see plans/NOTE-skills-vs-capabilities.md + plans/NOTE-offering-rename-inventory.md.
 //
@@ -9,7 +9,7 @@
 // roster-bucket matching — not what an offering *is*. Fine matching = tags/text on-device
 // (driverMatch.js); coarse matching = the category projection this module derives.
 //
-// The JSON moved here from `packages/identity-resolver/src/` (Q4: agent-registry is the
+// The JSON moved here from `packages/identity-resolver/src/` (: agent-registry is the
 // vocabulary-machinery home; attribute-charter keeps only its feedback-flavoured descriptors).
 // identity-resolver's offeringsMatch keeps its own dictionary (`tagNormalisation.json`) and now
 // imports the taxonomy from here via the literal-path subpath export

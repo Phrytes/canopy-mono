@@ -137,7 +137,7 @@ describe('Stoop V2 Phase 30.4 — restored bundle adopts the mnemonic identity',
     const restoredId = await AgentIdentity.restore(vault);
     expect(restoredId.pubKey).toBe(pubKeyFromMnemonic(phrase));
 
-    // 3. V2.5 Phase 32: stableId is now derived deterministically
+    // 3. Phase 32: stableId is now derived deterministically
     //    from the mnemonic-seed.  Restoring on a separate device
     //    (= a fresh vault) produces the SAME stableId.
     expect(restoredId.stableId).toBeTruthy();

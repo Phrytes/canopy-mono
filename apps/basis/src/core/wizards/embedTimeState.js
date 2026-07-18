@@ -1,6 +1,6 @@
 /**
  * embedTime — state-machine helpers for the /embed-time wizard
- * (Bundle F P5, #261, 2026-05-26).
+ * (2026-05-26).
  *
  * The handler that does the heavy lifting is basis's
  * `localBuiltins.createTimeEmbed` (via callSkill('basis',

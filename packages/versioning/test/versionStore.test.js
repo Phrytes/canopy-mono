@@ -342,7 +342,7 @@ describe('multi-writer (writerId) — concurrent devices on a shared backend', (
 //
 // Collapsed here from the two byte-identical `versions.test.js` suites (Folio +
 // sync-engine) when Folio's `versions.js` retired onto this substrate
-// (PLAN-folio-as-file-agent Slice 1a).  The SEMANTIC cases (debounce, retention
+// (PLAN-folio-as-file-agent). The SEMANTIC cases (debounce, retention
 // cap, newest-first ordering, undoable restore, read-content, empty-first-skip)
 // are already covered above and are backend-agnostic; the block below adds the
 // one Folio-specific rule — reject ANY relPath with a dotted segment

@@ -1,5 +1,5 @@
 /**
- * IssueBotTokenScreen — admin issues a V1.5 cap-token for a chat
+ * IssueBotTokenScreen — admin issues a cap-token for a chat
  * binding and renders the QR a phone (or another device's bot
  * client) can scan.
  *

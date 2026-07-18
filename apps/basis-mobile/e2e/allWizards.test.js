@@ -1,5 +1,5 @@
-// Wizard-launch smoke for the 6 new wizards added in Bundle F P2
-// follow-up (#258, 2026-05-26).  Mirror of disputeWizard.test.js but
+// Wizard-launch smoke for the 6 new wizards added in Bundle F
+// follow-up (2026-05-26). Mirror of disputeWizard.test.js but
 // driven via slash commands — proves the slash → wizardModalFor →
 // modal-open path that we wired into submitInput.
 //
@@ -64,7 +64,7 @@ describe('Bundle F P2 — all-wizard launch smoke (via slash)', () => {
     await launchViaSlash('/settings',               'settings-wizard');
   });
 
-  // Bundle F P5 (#261) — /embed-time launches the wizard on mobile
+  // embed-time launches the wizard on mobile
   // so the user can fill title/when/duration via a form instead of
   // typing slash flags.  The 'when' field accepts natural-language
   // dates via the chrono fallback added to localBuiltins.

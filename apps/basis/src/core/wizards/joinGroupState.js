@@ -1,6 +1,6 @@
 /**
  * joinGroup — state-machine helpers lifted from
- * src/web/wizards/joinGroupWizard.js (#231.2c, 2026-05-24).
+ * src/web/wizards/joinGroupWizard.js (2026-05-24).
  *
  * Zero DOM — pure parsing + validation + a multi-step substrate
  * chain.  The web wizard's render layer keeps the DOM construction;
@@ -20,7 +20,7 @@ import { buildJoinConsentModel, optOutsFromDeclined } from '../../v2/circleConse
 /**
  * Privacy notice text shown in step 2.  Bilingual constant; the
  * caller passes `lang: 'nl' | 'en'` (defaults to 'en') to pick.
- * Future #213 sweep moves these into the locale JSON; for now they
+ * Future sweep moves these into the locale JSON; for now they
  * live here for surface-parity with the original web wizard.
  */
 export const PRIVACY_NOTICE = Object.freeze({
@@ -120,7 +120,7 @@ export function decodeInvite(invite, state) {
  * 5.5b — extract a v2 structured rules doc from an embedded rules
  * blob, OR null when the blob carries no structured fields (older
  * invites that only set `rulesText`).  When non-null, the renderer
- * surfaces the doc as per-section answers (board 3C); when null, it
+ * surfaces the doc as per-section answers; when null, it
  * falls back to `state.rulesText` (the summary).
  */
 export function extractRulesDoc(rules) {
@@ -179,10 +179,10 @@ export async function fetchGroupRules({ state, callSkill }) {
   return state;
 }
 
-/* ─── Consent-at-join (B · Slice 4) ─────────────────────────── */
+/* ─── Consent-at-join (B) ─────────────────────────── */
 
 /**
- * B · Slice 4 — build the join-time capability CONSENT MODEL from the invite's embedded freedom
+ * build the join-time capability CONSENT MODEL from the invite's embedded freedom
  * template (`invite.capabilities` + `invite.apps`) and the host-injected manifest `sources`. Sets
  * `state.consentModel` (the opt-outable caps the joiner reviews) and resets `state.capabilityOptOuts`
  * to whatever the model already records. Pure — the shared model both web + RN wizards render.
@@ -214,7 +214,7 @@ export function buildJoinConsent({ state, sources } = {}) {
 }
 
 /**
- * B · Slice 4 — record/clear the joiner's decision for one capability. `declined === true` opts out
+ * record/clear the joiner's decision for one capability. `declined === true` opts out
  * (adds the key); `false` opts back in (removes it). Only opt-outable keys in the consent model survive
  * (`optOutsFromDeclined` drops anything mandatory/unknown), so a mandatory cap can never be declined.
  */
@@ -259,10 +259,10 @@ export function setPersona(state, personaId) {
   return state;
 }
 
-/* ─── Charter-driven skill-sharing default (fold-in phase C · Q3) ──── */
+/* ─── Charter-driven skill-sharing default (fold-in phase C) ──── */
 
 /**
- * Skills→property fold-in phase C (NOTE-skills-properties-audit Q3, "charter-driven
+ * Skills→property fold-in phase C (NOTE-skills-properties-audit, "charter-driven
  * default"). When the joined circle is ABOUT skills-matching — signalled by
  * `invite.offeringsMatching: true`, embedded at invite-build from the circle's board-8
  * skill record (`offeringsMatchingEnabled`, @onderling/kring-host/circleOfferings) — the
@@ -338,8 +338,8 @@ export function initialState() {
     rulesError:       null,
     rulesAccepted:    false,
     privacyAccepted:  false,
-    shareAddress:     true,         // mesh-consent default ON (Slice 4)
-    // B · Slice 4 — the join-time capability consent (opt-outable caps + this joiner's declines).
+    shareAddress:     true,         // mesh-consent default ON
+    // the join-time capability consent (opt-outable caps + this joiner's declines).
     consentModel:     { items: [], keys: [] },
     capabilityOptOuts: [],
     handle:           '',
@@ -349,7 +349,7 @@ export function initialState() {
     // default: null (first join discloses nothing regardless — this is the label).
     persona:          null,
     personas:         [],
-    // Fold-in phase C (Q3) — charter-driven skill-sharing default. `offeringsMatching`
+    // Fold-in phase C — charter-driven skill-sharing default. `offeringsMatching`
     // mirrors the invite's embedded circle signal; `shareOfferingsAtJoin` is the
     // joiner's decision on the visible pre-checked line (applyCharterOfferingsDefault
     // pre-checks it ONLY for a matching circle; otherwise both stay false =
@@ -378,7 +378,7 @@ export async function finalSubmit({ state, callSkill, sendPeerRedeem }) {
   state.submitError = null;
   try {
     const result = await runFinalSubmitChain(state, callSkill, sendPeerRedeem);
-    // B · Slice 4 — carry the joiner's declined caps out with the success envelope so the host records
+    // carry the joiner's declined caps out with the success envelope so the host records
     // them into the member's prefs (`override.capabilityOptOuts`), feeding the gate's admin ∩ user set.
     if (result && Array.isArray(state.capabilityOptOuts) && state.capabilityOptOuts.length) {
       result.capabilityOptOuts = [...state.capabilityOptOuts];
@@ -401,7 +401,7 @@ async function runFinalSubmitChain(state, callSkill, sendPeerRedeem) {
     if (handle?.ok === false || handle?.error) {
       throw new Error(handle.error ?? "Couldn't set handle.");
     }
-    // Fold-in phase C (Q3) — enact the ACCEPTED charter-driven skill-sharing default BEFORE the
+    // Fold-in phase C — enact the ACCEPTED charter-driven skill-sharing default BEFORE the
     // release is computed, so the coarse (category-rung) skill keys ride the same join release.
     // The effective persona falls back to 'default' when joining minimally: the accepted skills
     // default must still work for a joiner who never made personas (setShareOfferingsAtJoin(false)

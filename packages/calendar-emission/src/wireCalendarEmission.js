@@ -1,5 +1,5 @@
 /**
- * wireCalendarEmission — Tasks V2.1.
+ * wireCalendarEmission — Tasks.
  *
  * Subscribes a per-member calendar-emission listener to the circle's
  * itemStore. On every relevant event, debounce 60 s, then rebuild the
@@ -14,7 +14,7 @@
  *
  * `getCalendarEmissionUrl()` (skill) hands the user the URL they
  * paste into their phone calendar app. URL resolution is the caller's
- * responsibility — V2.1 returns the `mem://` path; the agent-ui's
+ * responsibility — returns the `mem://` path; the agent-ui's
  * static-file overlay translates that to a `https://` URL when the
  * UI is reachable.
  */

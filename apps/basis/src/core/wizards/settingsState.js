@@ -1,6 +1,6 @@
 /**
  * settings — state helpers lifted from
- * src/web/wizards/settingsWizard.js (#231.2b, 2026-05-24).
+ * src/web/wizards/settingsWizard.js (2026-05-24).
  *
  * Settings is a panel of mostly-independent controls (locale +
  * transport-mode + stoop handle/displayName/holiday-mode) — there

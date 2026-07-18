@@ -1,5 +1,5 @@
 /**
- * threadState — pure reducer tests for #253 step 5 (mobile-local
+ * threadState — pure reducer tests for step 5 (mobile-local
  * multi-thread state).  No RN, no ThreadStore — just the
  * Map-of-thread-entries shape.
  */

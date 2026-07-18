@@ -34,7 +34,7 @@ import {
   shouldShowFirstRunWelcome, markWelcomeDismissed,
 } from './src/core/firstRun.js';
 import { restoreFromMnemonic } from './src/core/restoreFromMnemonic.js';
-// P6.9 #347 — first-run CREATE-side mnemonic display (board 3A).
+// first-run CREATE-side mnemonic display.
 import {
   shouldShowCreateMnemonic, markMnemonicAck,
 } from './src/core/mnemonicCreate.js';
@@ -81,15 +81,15 @@ export default function App() {
   const [firstRun, setFirstRun] = useState('checking');
   // Bulletin design (2026-07): system fonts only — the Source Serif
   // useFonts load is gone with the linen theme.
-  // SP-13.1 (2026-05-31) — there is no separate classic chat shell as a
+  // there is no separate classic chat shell as a
   // routable screen.  ChatScreen stays mounted invisibly so its peer-
   // wiring keeps routing inbound DMs / mesh events; the launcher is the
   // ONLY visible top-level surface.  Chat now lives inside the kring
-  // view as the GESPREK tab (SP-13.2 will fill the surface; until then
+  // view as the GESPREK tab (will fill the surface; until then
   // there's a hole where chat used to be reachable as a standalone).
   const [bundle, setBundle] = useState(null);
   const [bootError, setBootError] = useState(null);
-  // P6.9 #347 — CREATE-side mnemonic display.  States:
+  // CREATE-side mnemonic display. States:
   //  - 'pending'   — not probed yet (or skipped while bundle still booting).
   //  - 'show'      — ack marker missing → render MnemonicCreateScreen with
   //                  the agent's BIP39 phrase.
@@ -223,7 +223,7 @@ export default function App() {
     initLocalisation({ lng }).then(() => setLocaleReady(true));
   }, []);
 
-  // SP-13.1 — the chat shell is no longer a separate routable screen, so
+  // the chat shell is no longer a separate routable screen, so
   // the App-level back handler has nothing to pop.  The launcher's own
   // back handler (CircleLauncherScreen) handles popping sub-views.
 
@@ -313,7 +313,7 @@ export default function App() {
           getSharedWithMePodWriter: getCirclePodWriter,
           // S4 — multi-member sealing: route stoop redeem/leave to the circle's producer.
           stoopControlAgent: circleControlAgentRouter,
-          // Extension mappings (feedback-extension P2) — load installed extensions from AsyncStorage at boot,
+          // Extension mappings (feedback-extension) — load installed extensions from AsyncStorage at boot,
           // verify them against the base catalog, and merge the accepted ones into the dispatch catalog.
           mappingsStore:    asyncStorageMappingsStore(AsyncStorage),
           mappingsDeviceId: MAPPINGS_DEVICE,
@@ -350,7 +350,7 @@ export default function App() {
         if (!alreadySeeded) {
           AsyncStorage.setItem(SEED_FLAG, '1').catch(() => { /* non-fatal */ });
         }
-        // SP-13.2.2 — boot rehydrator: backfill the in-memory eventLog
+        // boot rehydrator: backfill the in-memory eventLog
         // with any kring chats already in stoop's itemStore from a
         // previous session.  Best-effort; failures just leave the
         // bubble stream empty until new chats arrive.
@@ -360,7 +360,7 @@ export default function App() {
             inbox:     kringChatInboxRef.current,
           }).catch(() => { /* logged inside */ });
         }
-        // P6.9 #347 — probe whether we should display the CREATE-side
+        // probe whether we should display the CREATE-side
         // mnemonic.  Skipped silently when the identity / mnemonic isn't
         // available (e.g. restore-from-mnemonic path already acknowledged
         // a different identity).  Any failure inside the probe falls
@@ -408,7 +408,7 @@ export default function App() {
     );
   }
 
-  // P6.9 #347 — show the CREATE-side mnemonic screen once after the
+  // show the CREATE-side mnemonic screen once after the
   // identity has been seeded.  Renders ABOVE the normal app overlay so
   // the user has to acknowledge (or pick "Later") before reaching the
   // launcher.  The screen never reappears once "Written down" or
@@ -435,10 +435,10 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar style="auto" />
       <View style={styles.root}>
-        {/* SP-13.1 — ChatScreen stays mounted (peer-wiring keeps routing
+        {/* ChatScreen stays mounted (peer-wiring keeps routing
             inbound DMs / mesh) but is visually hidden behind the launcher
             overlay.  No "← chat" route reveals it; chat now lives inside
-            the kring view as the GESPREK tab (SP-13.2).
+            the kring view as the GESPREK tab.
             The styles.hiddenChat below uses absolute positioning so the
             ChatScreen is mounted + peer-wired but never visible. */}
         <View style={styles.hiddenChat} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -467,7 +467,7 @@ export default function App() {
           kringRecipePendingStore={kringRecipePendingStoreRef.current}
           kringRulesPendingStore={kringRulesPendingStoreRef.current}
           kringPolicyPendingStore={kringPolicyPendingStoreRef.current}
-          /* SP-13.1 — no onBack (no chat shell to fall back to) +
+          /* no onBack (no chat shell to fall back to) +
              no onChatRoute (the kring view IS the chat, no route). */
         />
       </View>
@@ -477,7 +477,7 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  // SP-13.1 — ChatScreen is kept mounted for its peer-wiring side-effect
+  // ChatScreen is kept mounted for its peer-wiring side-effect
   // but parked off-screen so it never paints over the launcher.  An
   // alternative is `display: 'none'` but RN can lose layout in that
   // path on some platforms; absolute-zero-size + pointerEvents=none is

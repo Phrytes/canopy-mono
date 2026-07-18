@@ -42,7 +42,7 @@ test('opening a circle shows its detail and back returns to the launcher', async
   await expect(tile).toBeVisible({ timeout: LONG });
   await tile.click();
 
-  // SP-13: a tile opens the KRING view (chat IS the kring view); the old action-grid CircleDetail
+  // a tile opens the KRING view (chat IS the kring view); the old action-grid CircleDetail
   // (.circle-detail__*) was replaced as the per-circle landing surface by showKring.
   await expect(page.locator('.circle-kring__title')).toBeVisible({ timeout: LONG });
   await page.locator('.circle-kring__back').click();

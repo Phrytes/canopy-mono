@@ -2,7 +2,7 @@
  * circleControlAgent — compose a per-circle sealed-pod control agent (S4, pod
  * foundation; the SAFE offline-testable slice of REMAINING-WORK §4 E2).
  *
- * Wires the P3 sealing substrate into a single per-circle producer: a pod key
+ * Wires the sealing substrate into a single per-circle producer: a pod key
  * store (holds the versioned, recipient-wrapped group key) + a control agent that
  * grants/revokes pod ACL AND rotates the group key on membership change (forward
  * secrecy on leave). The `podClient` + `sharing` are INJECTED, so this is fully

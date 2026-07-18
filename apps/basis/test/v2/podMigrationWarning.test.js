@@ -1,5 +1,5 @@
 /**
- * P6.M1 — pod-migration warning tests.
+ * pod-migration warning tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

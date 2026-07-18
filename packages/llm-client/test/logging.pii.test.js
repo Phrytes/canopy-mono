@@ -1,5 +1,5 @@
 /**
- * LlmClient — @onderling/logger coverage + PII-safety (logging slice 3, LLM path).
+ * LlmClient — @onderling/logger coverage + PII-safety (logging, LLM path).
  *
  * Drives invoke() success + error through a mock provider and asserts:
  *   1. llm.request / llm.response / llm.error land in `dumpLogs()`;

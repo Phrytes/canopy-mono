@@ -1,12 +1,12 @@
 /**
- * addBot — get a bot/contact into the app PeerGraph (feedback-extension P5).
+ * addBot — get a bot/contact into the app PeerGraph (feedback-extension).
  *
  * The Contacten roster reads the app-owned PeerGraph; this is how a bot GETS
- * there. Two inputs, both landing a record the roster + the P4 registry pick up:
+ * there. Two inputs, both landing a record the roster + the registry pick up:
  *
  *   - an **https URL** → REUSES core `discoverA2A(coreAgent, url, {peerGraph})`,
  *     which fetches the bot's `/.well-known/agent.json` agent card, upserts an
- *     `a2a` peer (skills become SkillCards → P4 commands), and — if the card
+ *     `a2a` peer (skills become SkillCards → commands), and — if the card
  *     carries `x-canopy.pubKey`+`peerAddr` — transparently upgrades to a native
  *     peer so the conversational channel reaches it over sa.peer (mdns/relay/nkn);
  *   - a **raw peer address** (NKN/pubKey, optionally `addr|Name`) → a manual

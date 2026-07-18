@@ -1,4 +1,4 @@
-// availability — the unified person-level reachability property (decision Q5).
+// availability — the unified person-level reachability property (decision).
 // Pins: the states/ladder constants, availabilityState extraction (string + future
 // object form), isAway, and the descriptor's FAIL-CLOSED coarsen (only 'detail'
 // releases the whole value; 'state'/null/unknown collapse to the bare state).

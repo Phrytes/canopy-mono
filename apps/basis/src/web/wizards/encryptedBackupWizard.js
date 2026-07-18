@@ -1,7 +1,7 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ * **Platform: web** (DOM-dependent). RN parallel pending.
  *
- * basis — C6 encrypted-backup wizard (#198, 2026-05-24).
+ * basis — C6 encrypted-backup wizard (2026-05-24).
  *
  * 2-step backup flow: passphrase entry → download.  Real skill:
  * stoop.encryptedBackup({passphrase}) which returns {blob} — a

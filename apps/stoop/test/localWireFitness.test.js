@@ -71,7 +71,7 @@ describeLocalWireFitness(
           return invoke('listMyRequests', {});
         },
         // `display` — author-hydration block carries per-route ids.
-        // `createdBy`/`updatedBy` — the converged CircleItemStore (P1 migration
+        // `createdBy`/`updatedBy` — the converged CircleItemStore (migration
         // step 3) stamps these from the acting identity, which differs by route
         // (LOCAL webid vs WIRE agent key); not in DEFAULT_VOLATILE_KEYS. Same
         // treatment as apps/basis/test/v2/householdLocalWireFitness.test.js.

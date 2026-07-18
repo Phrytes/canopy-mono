@@ -1,5 +1,5 @@
 /**
- * P6.M2 — view-as attribute split tests.
+ * view-as attribute split tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

@@ -20,7 +20,7 @@
  */
 
 // The taxonomy moved to @onderling/agent-registry (offering→property fold-in,
-// plans/NOTE-skills-properties-audit.md Q4): it is now the COARSE rung of the `offering`
+// plans/NOTE-skills-properties-audit.md): it is now the COARSE rung of the `offering`
 // property descriptor there. Literal-path import so it resolves under BOTH Node's
 // exports map and Metro's exports-OFF literal resolution.
 import { OFFERINGS_TAXONOMY } from '@onderling/agent-registry/src/offeringsTaxonomy.js';
@@ -103,7 +103,7 @@ export function categoryFor(text) {
  * @returns {{matched: boolean, reason?: string, viaCategory?: string, viaTags?: string[]}}
  */
 export function matchesProfile(post, member) {
-  // Availability unification (decision Q5): 'away' IS holiday mode — the member
+  // Availability unification (decision): 'away' IS holiday mode — the member
   // is not reachable, so skill-match routes AROUND them. Reads the unified
   // person-level `availability` property (projected onto the roster member); the
   // legacy `holidayMode` flag is still honoured for un-migrated entries.

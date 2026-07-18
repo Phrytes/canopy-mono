@@ -1,5 +1,5 @@
 /**
- * basis v2 — P6.M8 "Shared by me / Shared with me" filter tests.
+ * basis v2 — "Shared by me / Shared with me" filter tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

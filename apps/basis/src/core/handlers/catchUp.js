@@ -1,7 +1,7 @@
 /**
- * #217 (2026-05-24) — extracted catch-up handlers from main.js.
+ * extracted catch-up handlers from main.js.
  *
- * Slice 5 (catch-up on reconnect):
+ * (catch-up on reconnect):
  *
  *   - `makeRequestCatchUpFromKnownPeers` — sender-side.  After NKN
  *     transport (re)connects, fire 'catch-up-request' to each known

@@ -1,7 +1,7 @@
 // circleLlmRoutes.js — per-circle LLM route config: a small set of STARTER PRESETS a deployment picks
 // from (local / confidential-proxy / cloud + endpoint), turned into the `{local, cloud}` providers map
 // that `resolveCircleLlm` chooses from (per the circle's `llmTool` policy). The presets pair with the
-// posture menukaart: a household circle on P2 typically uses 'local-ollama' or 'confidential-proxy'.
+// posture menukaart: a household circle on typically uses 'local-ollama' or 'confidential-proxy'.
 
 import { buildCircleLlmProviders } from './circleLlmProviders.js';
 import { assertConfidentialRouteSafe } from '@onderling/llm-client/routeSafety';

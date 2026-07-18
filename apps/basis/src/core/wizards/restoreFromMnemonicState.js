@@ -1,6 +1,6 @@
 /**
  * restoreFromMnemonic — state-machine helpers lifted from
- * src/web/wizards/restoreFromMnemonicWizard.js (#231.1, 2026-05-24).
+ * src/web/wizards/restoreFromMnemonicWizard.js (2026-05-24).
  *
  * The web wizard's render layer keeps living in its original file
  * and imports these helpers; basis-mobile's eventual RN

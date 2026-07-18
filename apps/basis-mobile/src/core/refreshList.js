@@ -1,5 +1,5 @@
 /**
- * State-morphing helper for #253 step 3.
+ * State-morphing helper for step 3.
  *
  * After a row-button-tap dispatch completes successfully, we want
  * the ORIGINATING list bubble to refresh in place so its rows

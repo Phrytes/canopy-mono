@@ -26,7 +26,7 @@
  *               getPollIntervalMs, onError, intervalSeconds },
  *   });
  *
- * This wrapper introduces NO new control flow — Slice 3's `BackgroundAdapter.ios`
+ * This wrapper introduces NO new control flow — 's `BackgroundAdapter.ios`
  * / `.android` replace it with native BGTaskScheduler / foreground-service impls
  * that satisfy the same contract.
  */
@@ -80,7 +80,7 @@ export class ExpoBackgroundAdapter extends BackgroundAdapter {
   /**
    * Attach the foreground/background cadence via today's `attachAppStateBridge`
    * (bundle-driven).  `handler` is the port's raw fg/bg observer — today's
-   * helper is bundle-driven and does not consume it; Slice 3's native adapters
+   * helper is bundle-driven and does not consume it; 's native adapters
    * will.
    */
   // eslint-disable-next-line no-unused-vars

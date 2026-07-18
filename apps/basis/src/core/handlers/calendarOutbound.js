@@ -1,6 +1,6 @@
 /**
  * Outbound calendar cross-peer hook.  Bundle calendar cross-peer
- * (#238, 2026-05-27) — lifted from `apps/basis/web/main.js:1497`
+ * (2026-05-27) — lifted from `apps/basis/web/main.js:1497`
  * (the v0.7.P3c block inside the calendar branch of the web
  * `callSkill` wrapper).
  *

@@ -1,5 +1,5 @@
 /**
- * household web — Slice A.4 (PLAN-gui-chat-uplift.md).
+ * household web — (PLAN-gui-chat-uplift.md).
  *
  * Smoke test for the LLM passthrough on the web surface.  Boots
  * `startHouseholdWeb({ llm: mockLlm })`, POSTs a free-text chat

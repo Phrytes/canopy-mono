@@ -1,5 +1,5 @@
 /**
- * PLAN-capabilities-tasks-roles P1 (Option A) — CircleItemStore's CAS write path.
+ * PLAN-capabilities-tasks-roles (Option A) — CircleItemStore's CAS write path.
  *
  * `CircleItemStore.putIfMatch` is the AUTHORITATIVE single-writer path
  * (claim / reassign / approve): an `If-Match: <etag>` precondition makes a

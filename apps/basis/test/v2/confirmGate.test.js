@@ -1,5 +1,5 @@
 /**
- * confirmGate — the shared Q27 confirm gate at the dispatch waist.
+ * confirmGate — the shared confirm gate at the dispatch waist.
  *
  * Guards the invariant the 2026-07 fall-through bug violated: an op
  * declaring `surfaces.ui.confirm` (warn/danger) NEVER executes without
@@ -54,7 +54,7 @@ describe('emission — an op with surfaces.ui.confirm + complete args resolves t
 // The MANDATE (entrust) op routes through the SAME confirm waist: attachTaskGrant
 // now declares surfaces.ui.confirm (severity warn, no manifest message → the
 // localised default), so issuing a mandate can never bypass the "weet je het
-// zeker?" gate. This is the mechanism the entrust picker relies on (P5, 2026-07-18).
+// zeker?" gate. This is the mechanism the entrust picker relies on (2026-07-18).
 describe('mandate — attachTaskGrant routes through the confirm waist', () => {
   const tasksCatalog = mergeManifests([{ manifest: tasksManifest }]);
   const routeMandate = () => resolveDispatch(

@@ -1,5 +1,5 @@
 /**
- * `shared-ref` type — a cross-circle SHARE (cluster K · K2, the share-into-audience op). An explicit, per-item
+ * `shared-ref` type — a cross-circle SHARE (the share-into-audience op). An explicit, per-item
  * grant: a reference placed in a TARGET circle's store pointing at a source item in ANOTHER circle. It is NOT a
  * copy and NOT a transitive grant — it exposes ONLY the referenced item, never its container or siblings.
  * Resolving the ref crosses circles = the 🔒-gated cross-pod read (ACP + seal enforce it on real pods). Carries

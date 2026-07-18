@@ -12,17 +12,17 @@ basis's ~210 lines of mock task handlers with the actual
 
 Plan + per-app integration details:
 `Project Files/basis/integration-plan-2026-05-23.md` §
-"Slice 1: tasks-v0 → basis browser".
+": tasks-v0 → basis browser".
 
 122/122 tasks-v0 tests still green; no app-side changes — just a
 new browser entry that wraps the existing `createCircleAgent` with
 the minimal opts basis needs.
 
-## [Unreleased] — Slice B.1 (2026-05-20) — dag.html via renderWeb (view-only)
+## [Unreleased] — (2026-05-20) — dag.html via renderWeb (view-only)
 
 First tasks-v0 web page migrated to the NavModel projector
 (`renderWeb` from `@onderling/app-manifest`) per
-`PLAN-gui-chat-uplift.md` § Slice B.1.  Read-only proof; no
+`PLAN-gui-chat-uplift.md` . Read-only proof; no
 state-changing surfaces — `dag.html` reads `getDagTree` via the
 manifest's `dag` view and flattens through the existing shared
 helper.
@@ -67,29 +67,29 @@ reassign/remove).
 
 ### Slices 1–4 — substrate-adoption first wave
 
-- **Slice 1** (`0e92e15`): `embeds:[{type, ref}]` field on
+**** (`0e92e15`): `embeds:[{type, ref}]` field on
   `addTask` (cap 8, validated, persisted via item-store);
   `circleConfig.storage` field with four §II.2 policies (`no-pod`
   default); `getCircleStoragePolicy` + `setCircleStoragePolicy`
   skills. Item-store's `#materialise` now propagates `embeds`
   through (was missing).
-- **Slice 2** (`ea5166c`): `/welcome.html` create-circle wizard
+**** (`ea5166c`): `/welcome.html` create-circle wizard
   + `provisionMyCircle` skill. Validates circle-id slug + name +
   kind + storage + optional additional members. Refuses to
   overwrite an existing circleId. `/circles.html` empty-state links
   to `/welcome.html`.
-- **Slice 3** (`203607c`): agent-registry on `createCircleAgent`.
+**** (`203607c`): agent-registry on `createCircleAgent`.
   Helper `registerAgentBundle` lifted from Stoop's app code into
   `@onderling/agent-registry`. Tasks builds a standalone-mode
   pseudoPod per circle + registers with capabilities `['tasks',
   'tasks-v0', \`circle:<circleId>\`]`. `bundle.pseudoPod` +
   `bundle.agentRegistry` exposed.
-- **Slice 4** (`cfe832c`): `/onboard.html` (invite-redemption,
+**** (`cfe832c`): `/onboard.html` (invite-redemption,
   paste-link with JSON or `tasks-invite://` URL scheme) +
   `/pod-settings.html` (storage-policy display + upgrade row +
   agent-registry status; pod-sign-in placeholder).
 
-### Slice 5 — pod OIDC sign-in
+### — pod OIDC sign-in
 
 - (`bab079b`) `apps/tasks-v0/src/lib/podSignIn.js` mirrors
   Stoop's Phase 52.15.3. Four new skills: `startPodSignIn`,
@@ -102,13 +102,13 @@ reassign/remove).
 
 ### Slices 6–8 — multi-circle runtime
 
-- **Slice 6** (`2f4b31b`): multi-circle substrate enablement —
+**** (`2f4b31b`): multi-circle substrate enablement —
   `buildMeshAgent({agent})` reuses existing core.Agent;
   `createTasksAgent({agent, registerSkills})` + `createCircleAgent`
   forward both opts. New `spawnMyCircle` skill (in-process when
   the host CLI wires `_spawnCircleInProcess`; structured restart
   hint otherwise) + `/circles.html` Spawn button.
-- **Slice 7** (`7ab7c98`): `bin/tasks-ui.js --multi-circle` flag.
+**** (`7ab7c98`): `bin/tasks-ui.js --multi-circle` flag.
   Builds meshAgent once → primary circle with
   `registerSkills: false + wireOnboardingSkills: false` →
   `circlesMap = new Map` + `_spawnCircleInProcess` closure
@@ -118,7 +118,7 @@ reassign/remove).
   writes from leaking across circles. Platform-level skills
   (`provisionMyCircle`, `listSavedCircleConfigs`, `spawnMyCircle`)
   fall back to any circle when strict routing misses.
-- **Slice 8** (`c247401`): multi-circle onboarding-skill
+**** (`c247401`): multi-circle onboarding-skill
   dispatch. `createCircleAgent` always builds the GroupManager
   and stashes on CircleState. New
   `buildMultiCircleOnboardingSkills({bundleResolver})` registers
@@ -128,7 +128,7 @@ reassign/remove).
 
 ### Slices 9–12 — Phase 52.9.3 substrate-mirror
 
-- **Slice 9** (`5899ad2`): substrate-mirror infrastructure +
+**** (`5899ad2`): substrate-mirror infrastructure +
   addTask fan-out. New `apps/tasks-v0/src/lib/substrateStack.js`
   + `apps/tasks-v0/src/substrateMirror.js` mirror Stoop's
   pattern. `wireTasksSubstrateMirror` subscribes to
@@ -136,17 +136,17 @@ reassign/remove).
   `/tasks/circles/<circleId>/tasks/`, dedupes via
   `source.syncedFromId`. `createCircleAgent` wires per-circle mirror.
   `addTask` publishes via notifyEnvelope.
-- **Slice 10** (`26611a3`): sub-slices 2–4 — stale-peer
+**** (`26611a3`): sub-slices 2–4 — stale-peer
   auto-heal in `wireTasksSubstrateMirror`; `fetch-resource` +
   `groupCheck` registered per circle bundle; live peer-roster
   updates from `redeemInvite` via `tasksMirror.addPeer`.
-- **Slice 11** (`530eea4`): substrate mutation fan-out (option
+**** (`530eea4`): substrate mutation fan-out (option
   c from the slice-10 sketch). New
   `ItemStore.applySync({syncedFromId, nextState, action}, ctx)`
   and `removeSync({syncedFromId}, ctx)` — gate-bypass, preserve
   audit + emit. Mirror's `mirror()` branches new-vs-update via
   `syncedFromId` lookup. claim/complete/remove hooked.
-- **Slice 12** (`c21dd85`): final mutation fan-out mop-up.
+**** (`c21dd85`): final mutation fan-out mop-up.
   submit/approve/reject/revoke/reassign each hooked with the
   one-liner pattern. `_inferAction` upgraded to detect
   submit/reject/approve via `reviewLog`'s newest decision.
@@ -185,7 +185,7 @@ reassign/remove).
 `0e92e15` `ea5166c` `203607c` `cfe832c` `bab079b` `2f4b31b`
 `7ab7c98` `c247401` `5899ad2` `26611a3` `530eea4` `c21dd85`
 
-## [0.3.6] — 2026-05-08 — V2.7 — hard subtask dependencies (substrate gate + consent flow)
+## [0.3.6] — 2026-05-08 — hard subtask dependencies (substrate gate + consent flow)
 
 Capability **U** from the V2 functional design. Closes the door on "I marked the project complete but the sub-tasks are still open" — a parent task can no longer transition to closed while any of its `dependencies[]` is still open. Spawning sub-tasks on a `submitted` parent is also blocked unless the assignee consents via a new propose/approve flow (mirrors V1 Phase 7's admin-approval pattern, gate flipped to the assignee).
 
@@ -227,11 +227,11 @@ Tests now: **308 across 29 files** (Tasks) + **61 across 4 files** (item-store) 
 - ✅ `web/inbox.html` — handles two new button-id prefixes: `approveSubtaskProposal:<proposalId>` (with a confirm-dialog warning about the auto-rollback) and `declineSubtaskProposal:<proposalId>` (with an optional decline-note prompt). New `eventLabel` case for `subtask-proposal`.
 - ✅ `src/Circle.js` — new `subtask-proposal` listener routes the proposal to the parent's assignee's inbox with `[Approve]` / `[Decline]` buttons (mirrors the existing `subtask-request → admin inbox` listener).
 
-CLI smoke after the wiring: starts cleanly, all V1+V1.5+V2 capabilities still work.
+CLI smoke after the wiring: starts cleanly, all V1++V2 capabilities still work.
 
-### Bot wiring (V2.7 chat surface)
+### Bot wiring (chat surface)
 
-The original V2.7 design said *"No new bot verbs for V2.7. The propose/approve flow is web-first; the bot can grow `propose <id>` / `accept-proposal <id>` later if friction shows."* — friction showed immediately (the user wanted phone-side consent). Adding now.
+The original design said *"No new bot verbs for. The propose/approve flow is web-first; the bot can grow`propose <id>` / `accept-proposal <id>` later if friction shows."* — friction showed immediately (the user wanted phone-side consent). Adding now.
 
 - ✅ `src/bot/dispatch.js` — five new verbs:
   - `propose <parent-id> <text>` → `bot.propose` (master/coord)
@@ -240,14 +240,14 @@ The original V2.7 design said *"No new bot verbs for V2.7. The propose/approve f
   - `proposals` → `bot.listProposals` (assignee glance)
   - `force-complete <id> reason: …` → `bot.forceComplete` (admin)
   HELP_TEXT updated with the new lines.
-- ✅ `src/bot/skills.js` — five new `bot.*` skills mirroring the V2.7 web flow. Each renders chat-friendly output: `Proposed sub-task to kid. They'll see it in their inbox.`, `Approved. Sub-task '...' spawned; your submission rolled back to claimed.`, `No subtask-proposals waiting on you. ✓`, etc. All declared with the shared `BOT_SKILL_OPTS` so PolicyEngine validates the cap-token; all use `effectiveActor({from, envelope})` so cap-token mode honors the bound webid.
+- ✅ `src/bot/skills.js` — five new `bot.*` skills mirroring the web flow. Each renders chat-friendly output:`Proposed sub-task to kid. They'll see it in their inbox.`, `Approved. Sub-task '...' spawned; your submission rolled back to claimed.`, `No subtask-proposals waiting on you. ✓`, etc. All declared with the shared `BOT_SKILL_OPTS` so PolicyEngine validates the cap-token; all use `effectiveActor({from, envelope})` so cap-token mode honors the bound webid.
 - ✅ Tests: 11 added in `test/v2_7-bot-propose.test.js` — dispatcher routing for all five verbs (incl. usage-hint reply paths); end-to-end propose → accept; end-to-end propose → decline; force-complete admin gate; empty-state for `proposals`.
 
 Tests now: **319 across 30 files** (Tasks).
 
-## [0.3.7] — 2026-05-08 — V2.8 — single-agent + per-circle state via bundleResolver
+## [0.3.7] — 2026-05-08 — single-agent + per-circle state via bundleResolver
 
-The desktop-side mirror of Stoop's 2026-05-08 `single-agent-refactor`. One `core.Agent` per process serves N circles; per-circle state lives in `CircleState`; skills resolve their circle at dispatch time. Unblocks tasks-mobile Phase 41.x and stops the V2.5 path of spinning N agents for N circles.
+The desktop-side mirror of Stoop's 2026-05-08 `single-agent-refactor`. One `core.Agent` per process serves N circles; per-circle state lives in `CircleState`; skills resolve their circle at dispatch time. Unblocks tasks-mobile Phase 41.x and stops the path of spinning N agents for N circles.
 
 Shipped in two passes within the day:
 - **Part 1** — extract `buildMeshAgent` (the foundation `core.Agent` + `policyEngine` + `trustRegistry` + identity vault).
@@ -255,7 +255,7 @@ Shipped in two passes within the day:
 
 ### What shipped
 
-- ✅ `src/MeshAgent.js` — `buildMeshAgent({identity, transport, localStoreBundle, identityVault, label})`. Default vault path `mem://tasks/process/agent-identity-vault.json` (per-process, not per-circle). V1.5 self-trust set; V2.0 vault-snapshot persistence preserved.
+- ✅ `src/MeshAgent.js` — `buildMeshAgent({identity, transport, localStoreBundle, identityVault, label})`. Default vault path `mem://tasks/process/agent-identity-vault.json` (per-process, not per-circle). self-trust set; vault-snapshot persistence preserved.
 - ✅ `src/bundleResolver.js` — `singleCircleResolver(circleState)` + `multiCircleResolver(circles: Map)`. Multi-circle resolution order: `args.circleId` → `<circleId>/...` topic prefix → strict `null`. Strict-on-miss is intentional: silent fallback would convert a multi-circle leak into a successful single-circle op.
 - ✅ `src/wireSkills.js` — single-registration root. Imports every builder; passes `bundleResolver` through; takes `members` (single-circle) or `getBundle` (multi-circle) for identity skills; supplies a no-op `userSettings` so observability still registers on the V0 zero-config path.
 - ✅ Every `src/skills/*.js` builder switched to the `(parts, ctx)` resolver shape — `buildSkills`, `buildProfileSkills`, `buildAppealSkill`, `buildSubtaskSkills`, `buildInboxSkills`, `buildWorkspaceSkills`, `buildObservabilitySkills`, `buildCircleControlSkills`, `buildCustomRoleSkills`, `buildBotBindingSkills`, `buildCalendarEmissionSkills`, `buildInvoicingSkills`, `buildAvailabilitySkills`, `buildPlannerSkills`, `buildDashboardSkills`, `buildForceCompleteSkill`, `buildBotSkills`. Every body opens with `const circle = bundleResolver(parts, {envelope, from}); if (!circle) return {error: 'circleId required'};` and reads `circle.itemStore` / `circle.liveCircle` / `circle.dataSource` / `circle.roles` etc.
@@ -270,7 +270,7 @@ Shipped in two passes within the day:
 
 - ✅ New `test/v2_8-single-agent.test.js` — 5 tests: one meshAgent serves two CircleStates with isolated ItemStores; strict resolution returns `{error: 'circleId required'}` when no circleId + no topic; `singleCircleResolver` keeps the V0 back-compat path; cross-circle role-policy gate fires when caller has no role in the resolved circle; `<circleId>/...` envelope topic resolves the right circle.
 - ✅ All 319 prior tests pass unchanged. **Tests now: 324 across 31 files** (Tasks).
-- ✅ Stoop's 435/41 still green — V2.8 has no Stoop impact (Stoop's own single-agent refactor predates this).
+✅ Stoop's 435/41 still green — has no Stoop impact (Stoop's own single-agent refactor predates this).
 
 ### Smokes
 
@@ -279,8 +279,8 @@ Shipped in two passes within the day:
 
 ### What this enables
 
-- Tasks-mobile Phase 41.2's `ServiceContext` can `import { buildMeshAgent, wireSkills, multiCircleResolver } from '@onderling-app/tasks-v0'` and have the V2.8 shape from day one — no per-circle agent multiplication.
-- Multi-circle CLI launches stop spinning N agents (the V2.5 dashboard path).
+- Tasks-mobile Phase 41.2's `ServiceContext` can `import { buildMeshAgent, wireSkills, multiCircleResolver } from '@onderling-app/tasks-v0'` and have the shape from day one — no per-circle agent multiplication.
+Multi-circle CLI launches stop spinning N agents (the dashboard path).
 - Future `@onderling/scoped-skill-bus` lift (if Stoop or another app trips the rule of two on this factory shape) lands without a Tasks rewrite.
 
 ### Deferred
@@ -288,9 +288,9 @@ Shipped in two passes within the day:
 - **A web circle-picker** for `--circle-list` mode: today the multi-circle launcher is CLI-only. The web UI assumes a single circle; a multi-circle picker (route per circleId, per-tab `tasks-config.json` injection) lives in tasks-mobile's plan and isn't needed before mobile ships.
 - A separately-exported `buildCircleState({meshAgent, circleConfig, localStoreBundle, ...})` from `Circle.js` — the runbook contemplated lifting it, but the multi-circle smoke uses the test-fixture pattern (a 30-line inline CircleState) and `createCircleAgent` already exposes the V1+ enrichment path. Lift this when a third consumer (mobile + multi-circle CLI counts as two — wait for #3) demands it.
 
-## [0.3.5] — 2026-05-08 — V2.5 — cross-circle dashboard + bot circles
+## [0.3.5] — 2026-05-08 — cross-circle dashboard + bot circles
 
-Capability **S** from the V2 functional design. One screen lists every circle the user belongs to with four counters (open / overdue / awaitingApproval / mine). Promoted from the V2.5-deferred line in the V1 plan after re-reading: Tasks doesn't need H7 Archive, since V1's per-circle skills already expose the counts.
+Capability **S** from the V2 functional design. One screen lists every circle the user belongs to with four counters (open / overdue / awaitingApproval / mine). Promoted from the -deferred line in the V1 plan after re-reading: Tasks doesn't need H7 Archive, since V1's per-circle skills already expose the counts.
 
 ### App-side
 
@@ -317,24 +317,24 @@ V2 implements the V2 functional design (`Project Files/Tasks App/functional-desi
 
 | Phase | Capability | Tests added |
 |---|---|---|
-| **V2.0** | Tasks-agent identity persistence | 3 |
-| **V2.1** | Calendar write-side + bot calendar | 14 |
-| **V2.2** | Compensated-role + invoicing + bot invoice | 10 |
-| **V2.3** | Availability hints + bot available/week | 18 |
-| **V2.4** | Auto-scheduling planner + bot plan/accept | 14 |
-| **V2.5** | Cross-circle dashboard + bot circles | 6 |
+| **** | Tasks-agent identity persistence | 3 |
+| **** | Calendar write-side + bot calendar | 14 |
+| **** | Compensated-role + invoicing + bot invoice | 10 |
+| **** | Availability hints + bot available/week | 18 |
+| **** | Auto-scheduling planner + bot plan/accept | 14 |
+| **** | Cross-circle dashboard + bot circles | 6 |
 | **Total** | | **65 new tests, 297 total** |
 
 Substrate touches kept to an absolute minimum (per the rule-of-two policy):
-- `core.VaultMemory` — `snapshot()` / `fromSnapshot()` already added in V1.5 follow-up B; reused in V2.0.
-- `core.InternalTransport` — `bus` getter already added in V1.5; reused.
+- `core.VaultMemory` — `snapshot()` / `fromSnapshot()` already added in follow-up B; reused in.
+- `core.InternalTransport` — `bus` getter already added in; reused.
 - `item-store.ItemStore#materialise` — additive: now passes `scheduledAt` + `estimateMinutes` through. Pure-additive; Stoop's V1 paths don't read these.
 
 No new substrates promoted in V2. The four self-contained capabilities (calendar emission, planner, invoicing, availability) all stay app-local pending a second consumer.
 
-V2.6 (deferred) carries forward: persisted revocation list, cryptographic anonymity, federated pod ownership, real-time deliverable-doc collab, "deep" cross-source dashboard.
+(deferred) carries forward: persisted revocation list, cryptographic anonymity, federated pod ownership, real-time deliverable-doc collab, "deep" cross-source dashboard.
 
-## [0.3.4] — 2026-05-08 — V2.4 — auto-scheduling planner + bot plan/accept
+## [0.3.4] — 2026-05-08 — auto-scheduling planner + bot plan/accept
 
 Capability **O** from the V2 functional design. Greedy planner suggests concrete slots for the calling actor's open assignments given (a) busy spans from V1's calendar reader, (b) `circle.workingHours` (defaults Mon-Fri 09:00-17:00), (c) each task's `dueAt` + `estimateMinutes`. Suggestions only — every slot needs a click.
 
@@ -343,7 +343,7 @@ Capability **O** from the V2 functional design. Greedy planner suggests concrete
 - ✅ `src/planner/greedy.js` — pure `suggestSchedule({tasks, busySpans, workingHours, now, lookaheadDays})`. 30-minute step granularity. Reason chips: `overdue` / `last-chance` / `fits before deadline` / `no slot`. Tie-break: `dueAt` asc → required-skill rarity (rare-skill first) → `addedAt` for stability. Accepted suggestions become busy spans for subsequent tasks (greedy, no backtracking — honest about its limits).
 - ✅ `src/skills/planner.js` — three skills:
   - `suggestSchedule({lookaheadDays?})` — self only. Reads my open assignments + free/busy from V1 calendar adapter + working hours.
-  - `acceptSchedule({taskId, slotStart, slotEnd})` — self only. Sets `task.scheduledAt = slotStart` (and `estimateMinutes` if absent). V2.1's calendar emission picks it up automatically.
+  - `acceptSchedule({taskId, slotStart, slotEnd})` — self only. Sets `task.scheduledAt = slotStart` (and `estimateMinutes` if absent). 's calendar emission picks it up automatically.
   - `rejectSchedule({taskId})` — self only. No-op (UI affordance only).
 - ✅ `src/Circle.js` — registers planner skills.
 - ✅ `src/rolePolicy.js` — narrow new exception in `canEditBody`: assignee may patch `scheduledAt` + `estimateMinutes` on their own assignment via `acceptSchedule`. Pattern matches the existing dependencies-only narrow exception (Phase 7).
@@ -359,7 +359,7 @@ Capability **O** from the V2 functional design. Greedy planner suggests concrete
 
 Tests now: **291 across 27 files** (Tasks).
 
-## [0.3.3] — 2026-05-08 — V2.3 — availability hints + bot available/week
+## [0.3.3] — 2026-05-08 — availability hints + bot available/week
 
 Capability **Q** from the V2 functional design. Members opt in per-circle to publish a coarse `open` / `tight` / `unavailable` chip per (ISO-week, half-day). Coordinators see the chips when picking assignees.
 
@@ -367,7 +367,7 @@ Capability **Q** from the V2 functional design. Members opt in per-circle to pub
 
 ### Design choice — pod-side persistence, no chat broadcast
 
-The V2.1 design called for chat-p2p broadcast. After looking at the chat-p2p substrate's shape (it ties messages to ItemStore items), V2.3 ships pod-side persistence only. The local-store cache provides eventual consistency without bloating the item ledger. Real-time push (e.g. on the assignee picker) is a V2.5+ enhancement if needed.
+The design called for chat-p2p broadcast. After looking at the chat-p2p substrate's shape (it ties messages to ItemStore items), ships pod-side persistence only. The local-store cache provides eventual consistency without bloating the item ledger. Real-time push (e.g. on the assignee picker) is a + enhancement if needed.
 
 ### App-side
 
@@ -392,13 +392,13 @@ The V2.1 design called for chat-p2p broadcast. After looking at the chat-p2p sub
 
 Tests now: **277 across 25 files** (Tasks). Stoop's 429 + core's 1279 still green.
 
-## [0.3.2] — 2026-05-08 — V2.2 — compensated-role + invoicing + bot invoice
+## [0.3.2] — 2026-05-08 — compensated-role + invoicing + bot invoice
 
 Capability **P** from the V2 functional design. Circles with `compensation.enabled` track invoice lines per (paid-pro, ISO month) when those members complete tasks. Per-month totals are surfaced on the Circle page (admin + paid-pro view) and via `bot.invoice`.
 
 ### Substrate touch (additive)
 
-- ✅ `@onderling/item-store`: `#materialise` now passes `scheduledAt` + `estimateMinutes` through (both optional). Pure-additive, no breaking change. V2.2 uses `estimateMinutes` for hour rollups; V2.4 will use `scheduledAt` for the planner.
+- ✅ `@onderling/item-store`: `#materialise` now passes `scheduledAt` + `estimateMinutes` through (both optional). Pure-additive, no breaking change. uses`estimateMinutes` for hour rollups; will use`scheduledAt` for the planner.
 
 ### App-side
 
@@ -421,7 +421,7 @@ Capability **P** from the V2 functional design. Circles with `compensation.enabl
 
 Tests now: **259 across 23 files** (Tasks). Stoop's 429 + core's 1279 still green; the item-store substrate change is additive and Stoop's V1 paths don't read the new fields.
 
-## [0.3.1] — 2026-05-08 — V2.1 — calendar write-side + bot calendar
+## [0.3.1] — 2026-05-08 — calendar write-side + bot calendar
 
 Capability **N** from the V2 functional design. Tasks now emits per-member `.ics` calendars to the local-store cache (and onward to the user's pod when attached). Members subscribe once in their phone calendar app — new tasks show up automatically.
 
@@ -433,25 +433,25 @@ Capability **N** from the V2 functional design. Tasks now emits per-member `.ics
   - `getCalendarEmissionStatus()` — self only. Read-only flag + URL.
 - ✅ `src/Circle.js` — wires emission loops on boot when `liveCircle.calendarEmission.enabled === true`; re-wires when the toggle changes; cleans up on `close()`. Path scheme: `mem://user/tasks/calendars/<circleId>-<webid>.ics`. `_normaliseConfig` extended with `calendarEmission` field (default `{enabled: false}`).
 - ✅ `src/bot/dispatch.js` — new verbs `calendar` / `cal` / `sync` route to `bot.calendar`. HELP_TEXT updated.
-- ✅ `src/bot/skills.js` — new `bot.calendar` skill calls `getCalendarEmissionUrl` for the actingAs webid; replies with the URL or the friendly off-state hint. `policy: 'requires-token'` per V1.5 follow-up A.
+- ✅ `src/bot/skills.js` — new `bot.calendar` skill calls `getCalendarEmissionUrl` for the actingAs webid; replies with the URL or the friendly off-state hint. `policy: 'requires-token'` per follow-up A.
 - ✅ `web/circle.html` — new "Calendar sync" panel between Bot bindings and Cadences. Toggle (admin/coord) + per-member URL display + off-state empty-state copy.
 - ✅ `locales/{en,nl}.json` — 8 new keys under `calendar.*` with `{text, doc}` leaves.
 - ✅ Tests: 14 added across `test/v2_1-calendar-emission.test.js` (11 — pure ics builder, diff, debounce, end-to-end via Circle) and `test/v2_1-bot-calendar.test.js` (3 — dispatcher routing + bot skill behaviour both on and off).
 
 Tests now: **249 across 21 files** (Tasks).
 
-## [0.3.0] — 2026-05-08 — V2.0 — tasks-agent identity persistence
+## [0.3.0] — 2026-05-08 — tasks-agent identity persistence
 
-First V2 phase. Closes the V1.5 follow-up R1 carried into the V2 design: the tasks agent's vault is now snapshot-persisted under `mem://tasks/circles/<circleId>/agent/identity-vault.json` so its pubKey survives CLI restarts.
+First V2 phase. Closes the follow-up R1 carried into the V2 design: the tasks agent's vault is now snapshot-persisted under`mem://tasks/circles/<circleId>/agent/identity-vault.json` so its pubKey survives CLI restarts.
 
 - ✅ `Circle.js` — at boot, attempts to restore the vault from the per-circle path; if absent, generates a fresh identity and persists the snapshot. Idempotent: `restoreFromSnapshot → AgentIdentity.restore` reads the same seed each time. Per-circle path scheme means multi-circle installs don't collide.
 - ✅ `Agent.js` — `createTasksAgent` accepts an optional `identityVault` parameter for callers that bypass `Circle.js`. Same restore-or-generate logic, kept consistent so both entry points work.
-- ✅ `BotAgentRegistry` — auto-rotate-on-restore branch from V1.5 follow-up B (0.2.5) is **no longer the common path**: with stable tasks-agent identity, persisted bot tokens' `agentId` matches across boots and stays valid. Defensive fallback retained for the case where the agent vault is wiped but bot vaults persist (e.g. partial cleanup).
+- ✅ `BotAgentRegistry` — auto-rotate-on-restore branch from follow-up B (0.2.5) is **no longer the common path**: with stable tasks-agent identity, persisted bot tokens'`agentId` matches across boots and stays valid. Defensive fallback retained for the case where the agent vault is wiped but bot vaults persist (e.g. partial cleanup).
 - ✅ Tests: 3 added in `test/v2_0-agent-identity-persistence.test.js` (first boot persists; second boot restores; multi-circle isolation; external-identity override skips persistence). `test/v1_5-bot-cap-token.test.js` restart-survival assertion updated — `tokenId` is now stable across restart (was `not.toBe(originalTokenId)`).
 
 Tests now: **235 across 19 files** (Tasks). Core + Stoop unaffected.
 
-## [0.2.5] — 2026-05-08 — V1.5 follow-ups (token scope + persistence + revocation)
+## [0.2.5] — 2026-05-08 — follow-ups (token scope + persistence + revocation)
 
 Closes the three deferred items flagged at the bottom of [0.2.4].
 
@@ -477,16 +477,16 @@ Closes the three deferred items flagged at the bottom of [0.2.4].
 
 ### Trade-offs still standing (V2 candidates)
 
-- **Tasks-agent identity persistence** — required for token IDs to survive restart unchanged. Not strictly necessary for V1.5 because the auto-rotate makes restarts seamless, but durable token IDs would help cross-process audit trails.
+**Tasks-agent identity persistence** — required for token IDs to survive restart unchanged. Not strictly necessary for because the auto-rotate makes restarts seamless, but durable token IDs would help cross-process audit trails.
 - **Revocation list persistence** — same shape: a vault-backed `RevocationRegistry` substrate (rule-of-two — promote when a second app needs it).
 
 Tests now: **232 across 18 files** (Tasks) + **1279 / 13 skipped** (core) + Stoop's full **429** still green.
 
-## [0.2.4] — 2026-05-08 — V1.5 — cap-token-bound bot agent (the missing planned item)
+## [0.2.4] — 2026-05-08 — cap-token-bound bot agent (the missing planned item)
 
-Closes the last item from the V1.5 plan in `Project Files/Tasks App/coding-plan-2026-05-07.md` § "Chat-bot bridge (Telegram)" → "Capability-token-bound bot agent (lift Stoop V2's substrate-candidate pattern: bot is an agent under the user's root identity, with a scoped cap-token specific to that bot binding)".
+Closes the last item from the plan in`Project Files/Tasks App/coding-plan-2026-05-07.md` § "Chat-bot bridge (Telegram)" → "Capability-token-bound bot agent (lift Stoop V2's substrate-candidate pattern: bot is an agent under the user's root identity, with a scoped cap-token specific to that bot binding)".
 
-The previous V1.5 work shipped chat-bot dispatch via direct in-process handler calls (trust-map mode). The cap-token path now actually exists alongside it: the bot is a real `core.Agent` with its own pubKey, holding a `CapabilityToken` issued by the tasks agent, dispatching via `agent.invoke()` so `taskExchange.handleTaskRequest` runs `PolicyEngine.checkInbound` to verify signature + expiry + subject + issuer trust.
+The previous work shipped chat-bot dispatch via direct in-process handler calls (trust-map mode). The cap-token path now actually exists alongside it: the bot is a real`core.Agent` with its own pubKey, holding a `CapabilityToken` issued by the tasks agent, dispatching via `agent.invoke()` so `taskExchange.handleTaskRequest` runs `PolicyEngine.checkInbound` to verify signature + expiry + subject + issuer trust.
 
 ### Substrate touches
 
@@ -510,7 +510,7 @@ The previous V1.5 work shipped chat-bot dispatch via direct in-process handler c
 
 - ✅ Bindings panel on the Circle page gains a `Mode` column (chip: `trust` / `cap-token` / `expired`), an `Expires` column (date + days remaining), an "Issue token" button (admin enters TTL), and a "Revoke" button.
 
-### Known V1.5 trade-offs
+### Known trade-offs
 
 - **Wildcard skill scope.** The token grants `skill: '*'` because PolicyEngine's skill match is exact (no `bot.*` prefix support). The role-policy gate on each Tasks skill still defends against bot calling non-bot skills (the bot's pubKey is not a circle member webid → `roleOf(botPubKey)` returns undefined → role check fails). V2 can scope the token via a small core-side change (e.g. `skill: ['bot.listOpen', 'bot.claim', …]` array).
 - **Bot identities are ephemeral.** On CLI restart, all cap-token bindings are dead and admins must re-issue (the binding entry persists through the existing chatBinding map; just the cap-token + bot identity are gone). Persistence requires vault serialisation + secure key storage on disk; deferred to V2.
@@ -531,7 +531,7 @@ The previous V1.5 work shipped chat-bot dispatch via direct in-process handler c
 
 Tests now: **228 across 18 files** (Tasks) + **1272 / 13 skipped** (core) — all green after the InternalTransport `bus` getter add.
 
-## [0.2.3] — 2026-05-08 — V1.5 polish (bot bindings UI)
+## [0.2.3] — 2026-05-08 — polish (bot bindings UI)
 
 Removes the "edit JSON, restart" friction for managing the bot's `chatId → webid` map. Admins can now bind / rebind / remove from inside the Circle page, and the bot picks up changes immediately.
 
@@ -548,23 +548,23 @@ Removes the "edit JSON, restart" friction for managing the bot's `chatId → web
 
 Tests now: **219 across 17 files** (Tasks).
 
-## [0.2.2] — 2026-05-07 — V1.5 polish (bot CLI plumbing + audit threading + push)
+## [0.2.2] — 2026-05-07 — polish (bot CLI plumbing + audit threading + push)
 
-### V1.5 — bot CLI plumbing
+### — bot CLI plumbing
 
 - ✅ `bin/tasks-ui.js` now accepts `--telegram-token <token>`. With a real token it lazy-imports `TelegramBridge` from `@onderling/chat-agent/bridges/telegram` (peer dep `telegraf` is hoisted automatically) and constructs `wireBotChannel` against `circleConfig.bot.chatBindings`. Without the flag the bot stays dormant. Failures during launch are caught and surfaced as a single warning line so the UI still serves.
 - ✅ Long-polling default; mode override is via the bridge constructor, not the CLI (Telegram needs the URL up-front for webhook mode anyway).
 - ✅ Cleanup wired into `SIGINT`/`SIGTERM`: bot detaches before the UI stops.
 
-### V1.5 — audit-log threading
+### — audit-log threading
 
 - ✅ Threaded `actorDisplayName` through every Tasks skill that ends up in the audit log: `addTask`, `claimTask`, `completeTask`, `reassignTask`, `removeTask`, `submitTask`, `approveTask`, `rejectTask`, `revokeTask`, `setApprovalMode`, plus the sub-task trio (`addSubtask`, `approveSubtaskRequest`, `declineSubtaskRequest`).
 - ✅ The bot wrapper sets the actor display name to `<webid> (via bot)`; audit log now distinguishes UI vs bot actions on the same item.
 - ✅ Test added in `v1_5-bot.test.js` — claim via chat carries `(via bot)` annotation; direct `addTask` does not.
 
-### V1.5 — push notifications
+### — push notifications
 
-Substrate lift (rule-of-two): `PushPolicy` was sitting at `apps/stoop/src/lib/PushPolicy.js` — Tasks V1.5 trips the second-consumer rule, so the class moved to `@onderling/notifier` (`packages/notifier/src/PushPolicy.js`) and Stoop's lib copy is now a thin re-export. Eight focused unit tests added at the substrate level (`packages/notifier/test/PushPolicy.test.js`).
+Substrate lift (rule-of-two): `PushPolicy` was sitting at `apps/stoop/src/lib/PushPolicy.js` — Tasks trips the second-consumer rule, so the class moved to`@onderling/notifier` (`packages/notifier/src/PushPolicy.js`) and Stoop's lib copy is now a thin re-export. Eight focused unit tests added at the substrate level (`packages/notifier/test/PushPolicy.test.js`).
 
 App-side:
 
@@ -576,7 +576,7 @@ App-side:
 
 Tests now: **212 across 16 files** (Tasks) + **53 across 5 files** (notifier) + Stoop's full 429-test suite still green after the substrate lift.
 
-## [0.2.1] — 2026-05-08 — Review polish + V1.5 custom-role UI
+## [0.2.1] — 2026-05-08 — Review polish + custom-role UI
 
 ### Polish
 - ✅ Fixed Review (and Workspace + My work) — `renderTasks` now surfaces:
@@ -589,7 +589,7 @@ Tests now: **212 across 16 files** (Tasks) + **53 across 5 files** (notifier) + 
 - ✅ Fixed `--circle` mode without `--storage-root` not registering V1 helper skills (`getCircleConfig` / `listAwaitingApproval` / `getDagTree` / `listMyInbox` / `getMetrics` / `pauseCircle` / `getPrivacyNotice` / `listKnownRoles` / etc.). The CLI now builds an ephemeral in-memory `CachingDataSource` bundle whenever `--circle` is used; `--storage-root` adds restart-survival on top. Console line distinguishes the two modes.
 - ✅ V1-only pages (`review.html` / `dag.html` / `circle.html` / `inbox.html`) now fail visibly via a new `renderV1NotAvailable(root, err, hint)` helper instead of staying stuck on `Loading…` when the V1 skills aren't registered. `mountInboxBadge` stops polling after 2 consecutive failures so V0 mode doesn't spam the network panel.
 
-### V1.5 — chat-bot bridge
+### — chat-bot bridge
 
 Substrate already shipped: `chat-agent.TelegramBridge` + `InMemoryBridge`. App-level work:
 
@@ -603,7 +603,7 @@ Substrate already shipped: `chat-agent.TelegramBridge` + `InMemoryBridge`. App-l
 
 Tests now: **208 across 15 files** (+21 from 187).
 
-### V1.5 — custom-role UI
+### — custom-role UI
 
 Substrate already shipped (`core.Roles.registerCustomRole` exists since Track D); only UI + skill-wrapping + boot-time persistence work.
 
@@ -643,7 +643,7 @@ substrates were lifted by parallel work).
 
 ### V1 acceptance gates — partial
 
-- ⚠️ **Circle switcher UI** — not built. V1 ships `--circle <path>` per launch; switching circles means restart-with-different-config. Multi-circle-switcher screen is V1.5 work.
+- ⚠️ **Circle switcher UI** — not built. V1 ships `--circle <path>` per launch; switching circles means restart-with-different-config. Multi-circle-switcher screen is work.
 - ⚠️ **Localisation back-fill** — localisation scaffolding shipped (`locales/{en,nl}.json` + `lib/localisation.js` + 60+ keyed strings + privacy notice in both langs). HTML pages still ship hardcoded English; `data-i18n` attribute back-fill is opportunistic per touched page.
 - ⚠️ **Inrupt-migration** — undecided. Tasks V1 ships local-only-mode-by-default; pod sign-in surface is the same legacy bespoke UX Stoop / Folio currently use. Documented inheritance.
 
@@ -710,7 +710,7 @@ substrates were lifted by parallel work).
 ### Phase 11 — docs + privacy page + acceptance pass (2026-05-08)
 
 - ✅ New `web/privacy.html` — closed-beta privacy notice page; en/nl picker; calls `getPrivacyNotice` skill.
-- ✅ Updated `apps/tasks-v0/README.md` with the V1 surface, V1/V1.5/V2+ split, full file inventory, V1 + Circle CLI examples, test-coverage table.
+- ✅ Updated `apps/tasks-v0/README.md` with the V1 surface, V1//V2+ split, full file inventory, V1 + Circle CLI examples, test-coverage table.
 - ✅ Updated `Project Files/Substrates/apps/H4-tasks.md` to reflect the V1 substrate composition + new substrate dependencies (`local-store`, `chat-p2p`) + V1 design locks.
 - ✅ Finalised this CHANGELOG with a top-level `0.2.0` entry + acceptance gates summary (passed / partial).
 - ✅ Final acceptance run: **176/176 tests passing** across 13 files; Stoop 429/429 untouched.
@@ -821,7 +821,7 @@ App side (`apps/tasks-v0`):
   - `observer` denied on every gate.
 - ✅ Default approval mode remains `'self-mark'` everywhere — V0 households don't see DoD friction.
 - ✅ Tests: 24 substrate tests added at `packages/item-store/test/ItemStore.dod.test.js`; 15 app-side tests added at `apps/tasks-v0/test/phase5-dod.test.js`. Tasks app **102/102 passing**; item-store **53/54** (1 pre-existing flaky H2 audit-ordering test from a `Date.now()` timing race in close-succession writes — not introduced by Phase 5).
-- ⚠️ Note: `core.Roles.registerCustomRole` already supports the Q-H4.7 (c) extension path. V1.0 ships the standard 5 roles only; V1.1 adds the management UI. No SDK change needed.
+- ⚠️ Note: `core.Roles.registerCustomRole` already supports the Q-H4.7 (c) extension path. ships the standard 5 roles only; adds the management UI. No SDK change needed.
 
 ### Phase 4 — local calendar reader + mockup .ics fixtures (2026-05-08)
 

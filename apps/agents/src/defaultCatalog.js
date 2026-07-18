@@ -1,5 +1,5 @@
 /**
- * agents — the DEFAULT catalog source (P3 stub).
+ * agents — the DEFAULT catalog source (stub).
  *
  * The curated catalog is a PLUGGABLE SOURCE behind a `{ list, get }`
  * contract; installCores treats it as opaque data. This module ships a

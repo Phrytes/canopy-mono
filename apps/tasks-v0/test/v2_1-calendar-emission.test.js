@@ -1,5 +1,5 @@
 /**
- * V2.1 — calendar write-side.
+ * calendar write-side.
  *
  * Asserts:
  *   - buildIcsFor produces a deterministic VCALENDAR string for a fixture.

@@ -8,7 +8,7 @@
  *   - **Quiet hours**: optional [startHourLocal, endHourLocal) window
  *     during which all sends are suppressed.
  *
- * Substrate-promoted 2026-05-07 (rule-of-two: Stoop V1 + Tasks V1.5).
+ * Substrate-promoted 2026-05-07 (rule-of-two: Stoop V1 Tasks).
  * The original copy lived at `apps/stoop/src/lib/PushPolicy.js`; both
  * apps now import from here.
  *

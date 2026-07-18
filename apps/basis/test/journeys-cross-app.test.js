@@ -266,7 +266,7 @@ describe('CC-HH.7 — remove an item by keyword', () => {
 
   it('/remove <keyword> hard-deletes the matching item', async () => {
     // Part G — the real household `removeItem` op (`/remove <match>`) is a
-    // direct hard-delete (no Q27 two-step confirm — that was a mock-only
+    // direct hard-delete (no two-step confirm — that was a mock-only
     // affordance on the retired `removeChore` op).
     const list = await ws.userInput('/list shopping');
     const label = list.payload.items[0].label;   // 'Milk'
@@ -891,7 +891,7 @@ describe('CC-XA.3 — Anne is moving in (cross-app cascade)', () => {
     expect(r.ok).toBe(true);
     // The follow-ups list is wired in followUps.js + manifest; we
     // verify the reply shape carries enough info for the renderer to
-    // build them (Q31 contract).
+    // build them (contract).
     expect(r.memberName).toBe('anne');
   });
 });

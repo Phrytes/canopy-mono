@@ -1,5 +1,5 @@
 /**
- * Cluster K · K2 — the container UI in the kring: the Lists panel renders a `list` container with its
+ * The cross-circle container UI in the kring: the Lists panel renders a `list` container with its
  * `list-item` children nested (projectContainer→renderContainerCard); "+ add" creates a contained child;
  * a row-action completes it. The composable model, live in the app.
  */

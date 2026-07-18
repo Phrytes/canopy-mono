@@ -1,6 +1,6 @@
 /**
  * Wizard state-machines — unit tests covering the three wizards
- * split in #231.1 (restoreFromMnemonic, encryptedBackup,
+ * split in (restoreFromMnemonic, encryptedBackup,
  * postAudience).  Zero DOM; pure functions + async submits with
  * stub callSkills.
  *

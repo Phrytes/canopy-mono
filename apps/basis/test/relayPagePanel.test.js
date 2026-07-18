@@ -1,5 +1,5 @@
 /**
- * basis — Objective D / Surface 4 (#180): the my-data relay-URL editor
+ * basis — Objective D / Surface 4: the my-data relay-URL editor
  * is the FIRST live consumer of openPagePanel's docked side-panel (simple-form).
  *
  * The `set-relay` manifest op declares `surfaces.page`; the my-data control is an

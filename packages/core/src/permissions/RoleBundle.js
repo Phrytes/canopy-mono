@@ -1,7 +1,7 @@
 /**
  * RoleBundle — a role as a named BUNDLE of capabilities its holder gains.
  *
- * The gap this closes (P3 / the reuse audit): today a role is only a bare id +
+ * The gap this closes (the reuse audit): today a role is only a bare id +
  * a rank (`Roles.js`: `STANDARD_RANKS` / `roleRank` / `canPromote`) plus,
  * separately, a skill's `requiredRole` gate (`PolicyEngine`). NOTHING binds a
  * role-id to the SET of capabilities a holder gains. The rank says who

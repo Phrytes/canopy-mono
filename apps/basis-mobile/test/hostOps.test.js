@@ -1,5 +1,5 @@
 /**
- * Bundle F P1 — mobile host-op port (lifted localBuiltins).
+ * mobile host-op port (lifted localBuiltins).
  *
  * Pins the contract that `buildMobileLocalBuiltins` exposes the
  * canonical web handlers (≥15 commands) and that the threadStore
@@ -47,7 +47,7 @@ function buildHarness() {
     opsById:    new Map(),
     appOrigins: new Set(['basis']),
     appsById:   new Map([['basis', { id: 'basis', ops: [] }]]),
-    // Bundle G1 (#263) — runBrief + runFind require these catalog
+    // Bundle G1 — runBrief + runFind require these catalog
     // methods.  Production catalog (mergeManifests) provides them;
     // here we return empty lists so the runners produce a clean
     // empty-result reply instead of throwing.
@@ -121,7 +121,7 @@ describe('Bundle F P1 — buildMobileLocalBuiltins', () => {
 
   it('/whoami falls back to "unavailable" when podAuth is not wired', async () => {
     const r = await h.handlers.whoami({});
-    // V1 mobile boot doesn\'t wire podAuth (P6); handler returns the
+    // V1 mobile boot doesn\'t wire podAuth; handler returns the
     // unavailable message rather than crashing.
     expect(typeof r.message).toBe('string');
   });
@@ -131,7 +131,7 @@ describe('Bundle F P1 — buildMobileLocalBuiltins', () => {
     expect(r).toBeTruthy();
   });
 
-  // Bundle G1 (#263) — these handlers used to return no_runner /
+  // Bundle G1 — these handlers used to return no_runner /
   // no_registry sentinels.  Now they actually run.
   it('/brief returns a brief-shape reply (no no_runner sentinel)', async () => {
     const r = await h.handlers.brief({});
@@ -162,7 +162,7 @@ describe('Bundle F P1 — buildMobileLocalBuiltins', () => {
     expect(r.error ?? '').not.toContain('apps.no_registry');
   });
 
-  // Bundle G3 (#265) — /lookup-peer + /publish-peer.
+  // Bundle G3 — /lookup-peer + /publish-peer.
   it('/lookup-peer + /publish-peer report unavailable when sessionRef is not wired', async () => {
     // The default buildHarness above doesn't pass sessionRef, so the
     // built-ins fall back to the t('lookup.unavailable') /

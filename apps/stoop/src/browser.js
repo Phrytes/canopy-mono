@@ -7,8 +7,8 @@
  * reach every real stoop skill (postRequest, listFeed,
  * respondToItem, sendChatMessage, setMyHandle, ...).
  *
- * Slice 2b of `Project Files/basis/integration-plan-2026-05-23.md`.
- * Prerequisite: slice 2a (IndexedDBPersist) already shipped, so we
+ * of `Project Files/basis/integration-plan-2026-05-23.md`.
+ * Prerequisite: (IndexedDBPersist) already shipped, so we
  * can compose Stoop in a browser without a `node:fs/promises` import
  * crashing the bundle.
  *
@@ -41,7 +41,7 @@ import { attachPodToBundle, detachPodFromBundle } from './lib/attachPodToBundle.
  *                                               local actor only
  * @param {object}         [args.persistDb]      `{dbName, storeName?}` for
  *                                               browser persistence (the IDB
- *                                               adapter from slice 2a);
+ *                                               adapter from);
  *                                               omit for in-memory only
  * @param {string}         [args.label='StoopAgent']
  * @param {object}         [args.controlAgent]   optional sealed-pod control-agent

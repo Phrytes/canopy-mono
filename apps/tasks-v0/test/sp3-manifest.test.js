@@ -1,5 +1,5 @@
 /**
- * SP-3 V0 manifest test.
+ * V0 manifest test.
  *
  * Asserts:
  *   - The tasks-v0 manifest validates (`validateManifest`).
@@ -48,8 +48,8 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
   });
 
   it('every manifest op id matches a defineSkill across the registered builders', () => {
-    // SP-3 V0 ops live in `buildSkills`; Slice B.1 (2026-05-20) added
-    // `getDagTree`, which lives in `buildWorkspaceSkills`.  Slice B.2.3
+    // V0 ops live in `buildSkills`; (2026-05-20) added
+    // `getDagTree`, which lives in `buildWorkspaceSkills`..3
     // (2026-05-20) added `listMyInbox` + `clearInboxItem`, which live
     // in `buildInboxSkills`.  This is the same registration set that
     // `wireSkills` wires onto the meshAgent — expand here when new
@@ -59,7 +59,7 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
       ...buildWorkspaceSkills({ bundleResolver: () => null }),
       ...buildInboxSkills({ bundleResolver: () => null }),
       ...buildSubtaskSkills({ bundleResolver: () => null }),
-      // Q27 adoption (2026-05-21) — archiveCircle + unarchiveCircle
+      // adoption (2026-05-21) — archiveCircle + unarchiveCircle
       // declared in the manifest; their defineSkill lives in
       // buildCircleControlSkills.
       ...buildCircleControlSkills({ bundleResolver: () => null }),
@@ -149,7 +149,7 @@ describe('SP-3 V0: tasks-v0 manifest', () => {
     expect(openKeys).not.toContain('approveTask');
   });
 
-  // V0.8 Q27 adoption (2026-05-21) — circle lifecycle ops.
+  // adoption (2026-05-21) — circle lifecycle ops.
   it('archiveCircle declares Q27 confirm with severity:warn + Dutch-friendly message', () => {
     const op = tasksManifest.operations.find((o) => o.id === 'archiveCircle');
     expect(op).toBeTruthy();

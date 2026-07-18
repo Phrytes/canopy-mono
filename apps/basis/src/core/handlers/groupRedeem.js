@@ -1,6 +1,6 @@
 /**
- * Inbound group-redeem handlers.  Bundle H Phase 2 (#269) — lifted
- * from `apps/basis/web/main.js:679` + `:789` (#202 fallback
+ * Inbound group-redeem handlers. Bundle H Phase 2 — lifted
+ * from `apps/basis/web/main.js:679` + `:789` (fallback
  * over NKN).
  *
  * Two paired flows:
@@ -96,7 +96,7 @@ export function makeHandleGroupRedeemRequest({
  * as `sendPeerRedeem` to `finalSubmit`.  Mirror of web's
  * `sendGroupRedeemRequest` in `apps/basis/web/main.js:532`.
  *
- * Bundle H Phase 4 (#271) — final piece of the cross-instance
+ * final piece of the cross-instance
  * group-redeem flow on mobile.  The same `pendingMap` is wired into
  * `makeHandleGroupRedeemResponse` so inbound responses resolve the
  * promise.

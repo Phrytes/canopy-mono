@@ -9,7 +9,7 @@
  *   - Native `tool_calls` (Qwen 2.5, Llama 3.1+, Mistral 7B v0.3) are
  *     parsed as-is.
  *   - When the model emits tool-call intent in plain text (common with
- *     7B Q4 models — geitje, mistral can do this), the loose parser
+ *     7B models — geitje, mistral can do this), the loose parser
  *     recovers it.  Recognised shapes:
  *       JSON blobs:
  *         {"tool":"x","args":{...}}        — substrate convention

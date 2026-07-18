@@ -1,5 +1,5 @@
 /**
- * InterestProfile — Stoop V1.5 Phase 22 (2026-05-06).
+ * InterestProfile — Stoop Phase 22 (2026-05-06).
  *
  * On-device, per-user "what does this person actually engage with?"
  * matching, layered ON TOP of the deterministic Layer-1 skills

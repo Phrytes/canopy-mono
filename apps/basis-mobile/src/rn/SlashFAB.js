@@ -1,6 +1,6 @@
 /**
  * SlashFAB — bottom-right "/" floating action button for the
- * basis-mobile primary screens (#241, 2026-05-24).
+ * basis-mobile primary screens (2026-05-24).
  *
  * Tap the FAB → opens a modal with a TextInput (slash entry) +
  * a FlatList showing matches from the lifted slashFilter.  Tap a
@@ -12,7 +12,7 @@
  *   - Pure RN component (no business logic; logic lives in the
  *     portable slashFilter helper).
  *   - All user-facing strings via `t()` from src/core/localisation.
- *   - Default-visible (per the #241 decision).  Hide via the
+ *   Default-visible (per the decision). Hide via the
  *     `visible` prop if a future settings toggle wants to opt out.
  */
 import React, { useState, useMemo, useCallback } from 'react';
@@ -136,7 +136,7 @@ export default function SlashFAB({ catalog, onDispatch, visible = true }) {
 
 const styles = StyleSheet.create({
   fab: {
-    // Positioned ABOVE the input bar (#253 step 1 added a fixed
+    // Positioned ABOVE the input bar (step 1 added a fixed
     // bottom TextInput + Send) so the FAB doesn't overlap the
     // Send button.  2026-05-26 Detox debugging caught this when
     // tap('chat-send') was actually hitting the FAB.

@@ -1,5 +1,5 @@
 /**
- * basis v2 — cross-circle Stream projection (shared, board 5B).
+ * basis v2 — cross-circle Stream projection (shared).
  *
  * The per-circle chat is the default; the Stream is the opposite lens —
  * ONE timeline interleaving every circle's inbound events by time, with a
@@ -70,11 +70,11 @@ export function buildCircleStream({ events = [], circles = [] } = {}) {
 }
 
 /**
- * SP-13 — kring-scoped Stream projection (board 2B right / 8C).  Tap
+ * kring-scoped Stream projection (right 8C). Tap
  * a kring on the launcher and you land on its content surface: the
  * cross-kring `buildCircleStream` rows narrowed to a single circle,
  * optionally filtered by a row "kind" (vraag / aanbod / leen / chore /
- * reminder — same enum the chips on board 2B render).
+ * reminder — same enum the chips on render).
  *
  * `kindFilter = null` (or 'all') = no kind filter.  Unknown kinds pass
  * through unfiltered; the helper is forward-compatible with new chips.
@@ -100,5 +100,5 @@ export function buildKringStream({
   });
 }
 
-/** Kind keys the board 2B filter strip exposes, in render order. */
+/** Kind keys the filter strip exposes, in render order. */
 export const KRING_STREAM_KIND_FILTERS = ['all', 'vraag', 'aanbod', 'leen'];

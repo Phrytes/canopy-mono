@@ -2,7 +2,7 @@
  * LifecycleSection — circle lifecycle controls.
  *
  * Phase 41.18.2 (2026-05-10).
- * Task #227 (2026-05-24): coordinators can now pause/unpause; archive
+ * Task (2026-05-24): coordinators can now pause/unpause; archive
  * controls remain admin-only. Members + observers still see only the
  * read-only label. Gating is computed by the pure helper
  * `lib/lifecycleControls.js` so it can be unit-tested without React.

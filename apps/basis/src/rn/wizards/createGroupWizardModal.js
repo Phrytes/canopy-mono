@@ -1,6 +1,6 @@
 /**
  * **Platform: RN**.  Mobile parity for
- * src/web/wizards/createGroupWizard.js (Bundle F P2, #258).
+ * src/web/wizards/createGroupWizard.js.
  *
  * 5-step flow:
  *   1. Identity — name, groupId, purpose, tags

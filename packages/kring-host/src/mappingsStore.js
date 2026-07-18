@@ -9,7 +9,7 @@
  * default already persist to localStorage.
  *
  * `loadMappings` is store-agnostic, so swapping this for a real pseudo-pod when
- * the web pod layer (P3 3.3c) lands is a one-line change at the call site.
+ * the web pod layer (3.3c) lands is a one-line change at the call site.
  */
 
 const PREFIX = 'canopy.mappings:';   // localStorage namespace; we store JSON under PREFIX + <uri>

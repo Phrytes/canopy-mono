@@ -1,5 +1,5 @@
 /**
- * basis v2 — contact DM thread (web DOM renderer, feedback-extension P5).
+ * basis v2 — contact DM thread (web DOM renderer, feedback-extension).
  *
  * Pure render of a 1:1 conversation with a contact-bot: a header (with a back
  * link to the roster), the message list (user + bot bubbles, with optional
@@ -149,7 +149,7 @@ export function renderContactThread(container, {
     container.appendChild(err);
   }
 
-  // ── skill quick-actions (P5/#13) — the bot's exposed P4 skills as chips ──────
+  // ── skill quick-actions — the bot's exposed skills as chips ──────
   if (Array.isArray(skills) && skills.length) {
     const skillRow = document.createElement('div');
     skillRow.className = 'cc-cthread__skills';

@@ -1,5 +1,5 @@
 /**
- * contactThreadChannel — client end of a contact/bot peer link (P5 platform half).
+ * contactThreadChannel — client end of a contact/bot peer link (platform half).
  *
  * Drives the channel over a FAKE peer (so no transport flakiness) and through the
  * REAL `makePeerRouter` (the shell's inbound subtype dispatch), proving:

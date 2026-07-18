@@ -1,5 +1,5 @@
 /**
- * Slice D.1 — stoop manifest structural-invariants test.
+ * stoop manifest structural-invariants test.
  *
  * Asserts the DRAFT manifest validates via `@onderling/app-manifest`'s
  * `validateManifest` and conforms to the basic shape the slash + chat
@@ -14,7 +14,7 @@
  *     manually per the audit's collision-policy guidance).
  *
  * Per `Project Files/projects/audit-slash-coverage.md`: cross-app collision *resolution* is
- * a consumer-side host policy, but Slice D.1 explicitly chose the
+ * a consumer-side host policy, but explicitly chose the
  * grammar to MINIMISE collisions at the source.  This test pins the
  * stoop command set so the choice is auditable + regression-tested.
  */
@@ -133,7 +133,7 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
     ]);
   });
 
-  // V0.8 Q27 adoption (2026-05-21) — signOutOfPod gets a warn-level
+  // adoption (2026-05-21) — signOutOfPod gets a warn-level
   // confirm.  Profile.html's sign-out button currently mirrors the
   // message verbatim (manifest is source-of-truth; page hand-coded
   // confirm references the same text).

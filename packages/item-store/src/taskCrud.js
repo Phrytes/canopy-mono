@@ -1,7 +1,7 @@
 /**
  * taskCrud — the task CRUD + QUERY surface as FUNCTIONS-OVER-CircleItemStore.
  *
- * PLAN-capabilities-tasks-roles P1 migration step 1 (the companion to
+ * PLAN-capabilities-tasks-roles migration step 1 (the companion to
  * `taskLifecycle.js`). `taskLifecycle` ported the lifecycle VERBS (claim /
  * reassign / markComplete / submit / approve / reject / revoke). This module
  * ports the remaining `ItemStore` surface consumers (tasks-v0 et al.) still use:

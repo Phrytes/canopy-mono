@@ -75,7 +75,7 @@ export const THEME_DARK = {
   space:  THEME.space,
 };
 
-// Soft per-circle avatar tints (board 1B — each circle gets its own shade),
+// Soft per-circle avatar tints (each circle gets its own shade),
 // retuned to the bulletin palette. Assigned by a stable hash of the circle
 // id so a circle keeps its colour across renders.
 export const AVATAR_TINTS = ['#e0e4ee', '#e9efe6', '#ede5cf', '#ebeae4', '#f5e7e2'];
@@ -88,7 +88,7 @@ export function circleTint(seed) {
 }
 
 /**
- * Tag-chip palette keyed by the stream item kind (board 5/8). Returns
+ * Tag-chip palette keyed by the stream item kind. Returns
  * `{ fg, bg }`; unknown kinds fall back to the neutral ink-soft/line pair.
  * Pass `THEME_DARK.color` as `palette` when rendering on the dark theme.
  */

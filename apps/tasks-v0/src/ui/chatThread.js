@@ -1,7 +1,7 @@
 /**
  * chatThread — portable helpers for the 1:1 chat-thread surface.
  *
- * Slice #252 (2026-05-27) — web parity surface for tasks-mobile's
+ * Slice (2026-05-27) — web parity surface for tasks-mobile's
  * `ChatThreadScreen.jsx`. The mobile screen and the web page share
  * the same skills (`getChatThread`, `sendChatMessage`, `appealTask`)
  * and the same thread-id convention (`appeal:<taskId>`).

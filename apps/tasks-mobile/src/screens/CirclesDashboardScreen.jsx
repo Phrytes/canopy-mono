@@ -1,14 +1,14 @@
 /**
- * CirclesDashboardScreen — V2.5 cross-circle dashboard.
+ * CirclesDashboardScreen — cross-circle dashboard.
  *
  * Phase 41.7.1 (2026-05-09).
  *
- * Wires the V2.5 `getMyCircles` skill via useSkillResult. Each row
+ * Wires the `getMyCircles` skill via useSkillResult. Each row
  * shows the circle's name + kind chip + four counters
  * (open / overdue / for-review / mine). Tap "Jump in" → flips
  * activeCircleId via svc.setActiveCircle + navigates Workspace.
  *
- * The list is busiest-first per the V2.5 aggregator's sort order.
+ * The list is busiest-first per the aggregator's sort order.
  */
 
 import React, { useCallback } from 'react';

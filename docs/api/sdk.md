@@ -362,7 +362,7 @@ Build and (by default) start a batteries-included agent.
 
 **Kind:** constant · **Import:** `CAPABILITIES` from `'@onderling/sdk'`, `'@onderling/sdk/requires'`
 
-The capability vocabulary — the SP-9 sub-path / extension names. This is
+The capability vocabulary — the sub-path / extension names. This is
 the closed set a `requires` list may draw from.
 
   - 'core'       → @onderling/sdk/core       (the kernel base)

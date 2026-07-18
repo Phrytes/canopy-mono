@@ -53,7 +53,7 @@ describe('mobile folio Drive tree (folioLevel re-export)', () => {
   });
 });
 
-// B · Slice 4 — CircleFolioScreen gates its file-OPEN row action (get × file)
+// CircleFolioScreen gates its file-OPEN row action (get × file)
 // through this shared seam (the same substrate cadence as folioLevel above):
 // the screen maps the returned treatment to show / disabled-dim / omitted.
 describe('mobile folio file-OPEN capability gate (folioFileOpenTreatment re-export)', () => {

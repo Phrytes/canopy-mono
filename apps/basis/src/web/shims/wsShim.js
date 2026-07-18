@@ -7,7 +7,7 @@
  * detection, so the `ws` code path is unreachable.  The shim just needs
  * the named exports Rollup sees at build time.
  *
- * See #303.
+ * See.
  */
 
 class BrowserOnlyClass {

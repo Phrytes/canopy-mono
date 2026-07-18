@@ -61,12 +61,12 @@ import { createCircleDispatch, addressesBot } from '../../src/v2/circleDispatch.
 // Conversation memory — recent kring turns woven into the bot's interpret context.
 import { recentKringTurns } from '../../src/v2/kringMemory.js';
 import { createClarifyingDispatch } from '../../src/v2/clarifyingDispatch.js';
-// Q27 — the shared confirm gate at the dispatch waist (web presenter: confirmDialog.js).
+// the shared confirm gate at the dispatch waist (web presenter: confirmDialog.js).
 import { runConfirmGate } from '../../src/v2/confirmGate.js';
 import { renderConfirmDialog } from './confirmDialog.js';
 import { makeCircleLookup } from '../../src/v2/circleLookup.js';
 import { sectionForScreen } from '../../src/v2/pageProjection.js';
-// Q15 drill-down — selection-context detail screens (agents → agent-detail,
+// drill-down — selection-context detail screens (agents → agent-detail,
 // data-versions → data-version-detail): the shared mapping + fetch seam.
 import {
   drilldownForSection, selectionContextFor, fetchScreenItems, itemsFromReply, recordFromReply,
@@ -75,16 +75,16 @@ import { createInputHistory } from '../../src/v2/commandSuggest.js';
 import { beginFollowUp, completeFollowUp, beginFormFollowUp, completeMultiFieldFollowUp } from '@onderling/kring-host/followUp';
 import { kringReplyText } from '../../src/v2/kringReply.js';
 import { scopeCatalogToApps } from '../../src/v2/circleCatalogScope.js';
-// B · Slice 1 — the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
+// the default-deny capability gate applied at the user-dispatch waist (dispatchReady).
 import { effectiveCapabilities, checkCapability } from '../../src/v2/capabilityGate.js';
-// B · Slice 4 (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
+// B · (4c) — the member's capability matrix drives affordance greying/hiding on reply buttons.
 import { buildCapabilityMatrix, renderAttachments } from '@onderling/app-manifest';
-// D / SP-3b consumer-switch — select the projected PAGE surface (renderWeb) for
+// D / consumer-switch — select the projected PAGE surface (renderWeb) for
 // the settings op so the live settings header is manifest-driven (invariant #4).
 import { pageForOp } from '../../src/v2/pageProjection.js';
-// B · Slice 3 — the interactive list-screen surface (search + category checkboxes + capability-gated rows).
+// the interactive list-screen surface (search + category checkboxes + capability-gated rows).
 import { renderListBlock } from './listScreen.js';
-// Q17 — record-shaped detail screens (read-only key→value, e.g. agent-detail).
+// record-shaped detail screens (read-only key→value, e.g. agent-detail).
 import { renderRecordScreen } from './recordScreen.js';
 // personas#1 — the "Mij → persona's" surface (general persona + persona cards + per-circle sharing)
 // + its shared read-model. Replaces the former single-persona About-me content (circleAboutMe.js).
@@ -114,13 +114,13 @@ import { renderJoinGroupWizard } from '../../src/web/wizards/joinGroupWizard.js'
 // S5 — web-push subscription orchestration (client half; server delivery is a
 // Node-hosted stoop with VAPID keys). The SW receiver lives at web/sw.js.
 import { enableWebPush, disableWebPush, getWebPushState } from '../../src/web/webPushClient.js';
-// Objective D / Surface 4 (#180) — generic docked side-panel renderer for manifest ops
+// Objective D / Surface 4 — generic docked side-panel renderer for manifest ops
 // that declare `surfaces.page` (first LIVE consumer: the my-data relay-URL editor).
 import { openPagePanel } from '../../src/web/pagePanel.js';
 // S5 — client-side image-attachment encoder (Canvas resize + thumbnail → the
 // inbound shape stoop.postRequest expects).
 import { encodeImageFile } from '../../src/v2/attachmentEncoder.js';
-// media P1 — the LIVE sealed-media composition for the active circle: the circle's own
+// media — the LIVE sealed-media composition for the active circle: the circle's own
 // seal strategy + a (dev-grade, in-memory) bucket + the deny-by-default gate feed
 // createMediaEmbed's injected seams. Sealed-only: a p0/p1 circle composes to null and
 // the kring composer shows NO attach affordance. Swap point for real infra (S3/R2 +
@@ -234,8 +234,8 @@ import {
 } from '../../src/v2/userScreens.js';
 import { materializeScreen } from '../../src/v2/userScreenBlocks.js';
 import { renderCircleKring } from './circleKring.js';
-import { makeCircleLists } from '@onderling/kring-host/circleLists';  // cluster K · K2 — composable lists (shared web≡mobile)
-// cluster K — the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
+import { makeCircleLists } from '@onderling/kring-host/circleLists';  // composable lists (shared web≡mobile)
+// the app-level cross-circle SHARE op. The {onShare, policy} binder + resource-URI resolver are
 // pod-layer, composed at the pod site below; the op logic itself is shared (web≡mobile) in circleShare.js.
 import { sealItem, isCanonicalPosture } from '@onderling/item-store';
 import {
@@ -246,10 +246,10 @@ import { renderRecipientPicker } from './recipientPicker.js';
 import { renderMandatePicker } from './mandatePicker.js';
 // The platform-neutral enforcement assembly (web≡mobile — mobile's circlePods.js calls the SAME builder).
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
-import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
+import { renderContainerCard } from './containerCard.js';      // the nested container card (web DOM)
 import { buildHouseholdDataSource } from '../../../household/src/storage/persist.js';  // portable persistent DataSource (IDB on web) — submodule import so basis's live path no longer loads the retired household skillRegistry/HouseholdAgent via index.js (L3)
 
-// P2 (J4) — the ATTACHMENT projector's menu for the composer "+", projected ONCE from
+// (J4) — the ATTACHMENT projector's menu for the composer "+", projected ONCE from
 // the (static) basis manifest. Feeds BOTH the prikbord + kring composers; each entry
 // taps to {opId,args} → dispatch, identical to the matching slash command.
 const basisAttachMenu = renderAttachments(basisManifest).attachMenu;
@@ -314,7 +314,7 @@ async function getCircleLists(circleId, policy) {
   return pod || getDefaultCircleLists();
 }
 
-// cluster K — the POD-TIER enforcement binder for a circle's cross-circle SHARE, built at the K plug-in
+// the POD-TIER enforcement binder for a circle's cross-circle SHARE, built at the K plug-in
 // point (the sealed-pod path above). Returns `{ onShare, policy }` (write-grant + read-gate over ONE
 // `resourceUriFor` + mode) when the circle's pod path is ACTIVE — a signed-in real-pod routing, the
 // pod-client's ACP `sharing` surface, AND a resolved sealing strategy. Absent any of those it returns
@@ -364,7 +364,7 @@ async function _circleServiceFor(circleId) {
 }
 
 /**
- * cluster K — the app-level cross-circle SHARE write op. Shares ONE item from `fromCircleId` into
+ * the app-level cross-circle SHARE write op. Shares ONE item from `fromCircleId` into
  * `toCircleId`'s audience: writes the `shared-ref` into the target AND (pod-active source) lands the ACP
  * read-grant (+ seal via the group key) so the target's members can actually resolve it. Recipients default
  * to the TARGET circle's member WebIDs (a circle share → its members); a pod share REFUSES with no recipient.
@@ -378,7 +378,7 @@ async function shareItemIntoCircle({ itemId, fromCircleId, toCircleId, by, recip
       who = members.map((m) => m.webid ?? m.id).filter(Boolean);
     } catch { who = undefined; }
   }
-  // slice 3a — resolve each recipient's SEALING PUBLIC KEY from the TARGET circle's roster, so a cross-circle
+  // resolve each recipient's SEALING PUBLIC KEY from the TARGET circle's roster, so a cross-circle
   // recipient (NOT in the source's group key) can decrypt the re-sealed content. A recipient missing from the
   // target roster resolves to no key ⇒ deny-by-default (dropped from the re-seal; the grant hook still refuses
   // a keyless recipient-seal). Best-effort: a plaintext/unprovisioned source just gets an empty key set.
@@ -390,9 +390,9 @@ async function shareItemIntoCircle({ itemId, fromCircleId, toCircleId, by, recip
   return shareItemAcrossCircles({
     resolveService: _circleServiceFor,
     enforcementFor: _shareEnforcementFor,
-    // slice 2 — the initiator gate reads the SOURCE circle's admin policy (sharePosture + admins).
+    // the initiator gate reads the SOURCE circle's admin policy (sharePosture + admins).
     policyOf: _circlePolicy,
-    // slice 3b — recipient re-seal: the resolved keys + the injected copy-mode re-sealer (pod-client crypto).
+    // recipient re-seal: the resolved keys + the injected copy-mode re-sealer (pod-client crypto).
     recipientKeys, sealCopy: sealCopyToRecipients,
     itemId, fromCircleId, toCircleId, by: by ?? LOCAL_ACTOR,
     recipient, recipients: who,
@@ -464,7 +464,7 @@ async function _shareEnforcementFor(circleId) {
 }
 
 /**
- * share-policy slice 3a — resolve a recipient's SEALING PUBLIC KEY from the TARGET circle's roster (the
+ * share-policy — resolve a recipient's SEALING PUBLIC KEY from the TARGET circle's roster (the
  * redemption trail the control agent already holds). NO publish, NO WebID network resolution (per
  * ADVICE-cross-circle-sharing-key-model.md): the circle-scoped key is already local. Two roster sources,
  * both circle-scoped:
@@ -495,7 +495,7 @@ async function recipientSealKeyFor(circleId, webId) {
 }
 
 /**
- * slice 3b — an injected COPY re-sealer: `(item, keys) => item with its content fields sealed to `keys``
+ * an injected COPY re-sealer: `(item, keys) => item with its content fields sealed to `keys``
  * (recipientStrategy, host-blind: needs only public keys). item-store's `sealItem` walks the CONTENT fields
  * (structural keys stay plaintext), the pod-client `recipientStrategy` supplies the crypto — so circleShare
  * stays pod-client-free (the seal is injected from this pod layer).
@@ -506,7 +506,7 @@ function sealCopyToRecipients(item, keys) {
 }
 
 /**
- * slice 3b — the READER's own per-text opener for a circle: `recipientStrategy({privateKey}).open` built from
+ * the READER's own per-text opener for a circle: `recipientStrategy({privateKey}).open` built from
  * this device's per-circle sealing identity. Opens content re-sealed to THIS reader's key (copy mode). Null
  * when no sealing identity is available (plaintext / not provisioned) → the read falls back to the source
  * enforcement's own `open`.
@@ -526,12 +526,12 @@ async function circleReaderOpen(circleId) {
 }
 
 /**
- * cluster K — the READ path: everything shared INTO `circleId`, resolved deny-by-default. A ref this reader
+ * the READ path: everything shared INTO `circleId`, resolved deny-by-default. A ref this reader
  * isn't a recipient of resolves to null and is dropped (never surfaced) — no plaintext/ciphertext leak.
  * `recipient` is my WebID on a pod (the grant-check subject); memory path ignores it (no policy).
  */
 async function listSharedItems(circleId, { recipient } = {}) {
-  // slice 3b — the reader's OWN opener (their per-circle sealing key) so content re-sealed to them (copy mode)
+  // the reader's OWN opener (their per-circle sealing key) so content re-sealed to them (copy mode)
   // decrypts; a non-recipient's opener throws ⇒ resolveSharedRef drops the ref (deny-by-default, no leak).
   const readerOpen = await circleReaderOpen(circleId);
   return listSharedResolved({
@@ -591,7 +591,7 @@ import { executeBulkDispatch } from '../../src/bulkOps.js';
 import { mergeCirclePolicy, mergeMemberOverride, normalizeCirclePolicy } from '../../src/v2/circlePolicy.js';
 import { makeProposal, pendingApprovers } from '../../src/v2/circleConsensus.js';
 import { createProposalStore, localStorageProposalIo } from '../../src/v2/circleProposalStore.js';
-// P6.10 #348 — agent-add admin approval store (board 4B).
+// agent-add admin approval store.
 import { createAgentRequestStore } from '../../src/v2/agentRequest.js';
 import { buildTilePreviews, bumpSeenAt } from '../../src/v2/circleTilePreviews.js';
 import { makeAfterClaimHook } from '../../src/v2/claimRouter.js';
@@ -621,11 +621,11 @@ import { renderCircleTabBar, hideCircleTabBar } from './circleTabBar.js';
 import { renderCircleSettings } from './circleSettings.js';
 import { renderCircleOverride } from './circleOverride.js';
 
-// SP-13.2 — actor label stamped on local chat-message events.  Real WebID/
-// peer-display wiring lands with peer broadcast (SP-13.2.1).
+// actor label stamped on local chat-message events. Real WebID/
+// peer-display wiring lands with peer broadcast.
 const LOCAL_ACTOR = 'me';
 
-// SP-13.2.1 — best-effort peer bootstrap.  Transport-neutral / local-first: NKN is one transport,
+// best-effort peer bootstrap. Transport-neutral / local-first: NKN is one transport,
 // not a prerequisite. Bring up whichever is available — NKN (CDN) and/or the relay (VITE_CIRCLE_RELAY_URL).
 // A configured relay alone is enough for the LAN no-pod two-device path; with NKN too the router picks
 // the best route. Doesn't throw if neither is available — the kring view still works locally.
@@ -776,9 +776,9 @@ const availabilityStore = createAvailabilityStore(
     podAvailabilityIo({ getWriter: perUserPodWriter }),
   ),
 );
-// P6.2 — persisted pending proposals (multi-admin consensus).
+// persisted pending proposals (multi-admin consensus).
 const proposalStore = createProposalStore({ io: localStorageProposalIo() });
-// P6.10 #348 — persisted pending agent-add requests (board 4B).  Reuses
+// persisted pending agent-add requests. Reuses
 // the same {load, save} adapter shape as the proposal store.
 const AGENT_REQ_STORE_KEY = 'cc.agentRequestQueue';
 const agentRequestStore = createAgentRequestStore({
@@ -793,7 +793,7 @@ const agentRequestStore = createAgentRequestStore({
   },
   storeKey: AGENT_REQ_STORE_KEY,
 });
-// Cross-circle Stream (board 5B) reads this firehose; the agent's
+// Cross-circle Stream reads this firehose; the agent's
 // publishEvent appends to it during boot.
 const eventLog = new EventLog({ initial: [], muted: [] });
 // δ.2 — one delivery-state map per agent boot (lifetime matches the
@@ -1019,7 +1019,7 @@ const FEEDBACK_LLM_BASEURL = absLocalBase(import.meta.env?.VITE_FEEDBACK_LLM_BAS
 const FEEDBACK_LLM_MODEL = import.meta.env?.VITE_FEEDBACK_LLM_MODEL ?? undefined;   // the model the route serves (default qwen2.5 404s on Privatemode)
 // cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
 const FEEDBACK_ACTIVATION_URL = import.meta.env?.VITE_FEEDBACK_ACTIVATION_URL ?? null;
-// Slice 2 — the companion-node collector that writes consented, signed summaries into the project's
+// the companion-node collector that writes consented, signed summaries into the project's
 // central pod under the participant's pseudonym (no participant pod login). When set, the feedback
 // surface signs contributions (verify) and routes consent writes here instead of the in-memory pod.
 const FEEDBACK_COLLECTOR_URL = import.meta.env?.VITE_FEEDBACK_COLLECTOR_URL ?? null;
@@ -1040,7 +1040,7 @@ const LANG_INFO = {
   tr: { name: 'Türkçe',     prompt: 'Türkçe devam et? Aşağıya dokun.' },
 };
 const FEEDBACK_PROJECT_ID = import.meta.env?.VITE_FEEDBACK_PROJECT_ID ?? 'basis';
-// Logging slice 3 — the anonymous bug-report SEND TARGET: the dev-pod "bug-report bot" address the panel's
+// Logging — the anonymous bug-report SEND TARGET: the dev-pod "bug-report bot" address the panel's
 // Send button routes the (already-anonymous) envelope to, over the SAME relay/peer transport as everything
 // else (`_peerAgent.sendPeerMessage`). The real dev address does NOT exist yet: this is a PLACEHOLDER, so it
 // drops into open-source config later (via VITE_BUGREPORT_ADDR, or by giving BUG_REPORT_DEV_ADDR the real
@@ -1063,8 +1063,8 @@ let _activeFbThread = null;     // { botId }
 let circleBot = null;            // createCircleDispatch instance (handle(text, ctx) → {via,cmd})
 let circleClarify = null;        // createClarifyingDispatch (for candidate-button picks, later)
 let circleCatalog = null;        // the merged dispatch catalog (built in buildCircleBot) — feeds the composer slash-suggest
-let circleBaseSources = [];      // B · Slice 2/4 — the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
-let circleManifestsByOrigin = {}; // B · Slice 3 — {appOrigin → manifest}, module-scoped for the list-screen panel's row actions
+let circleBaseSources = [];      // the merged manifest sources (module-scoped so showSettings/showOverride can build the settings form + freedom matrix)
+let circleManifestsByOrigin = {}; // {appOrigin → manifest}, module-scoped for the list-screen panel's row actions
 
 // D-mig-1b — the declared list-screen surfaces (contacts + prikbord) are now
 // projected FROM the composed manifests: openCircleScreenPanel resolves each
@@ -1079,14 +1079,14 @@ let circleEmbedButtonTap = null; // S6.A — dispatch an inline embed button {op
 let circleSyncFolioNoteEmbedder = null; // 52.25 — re-wire folio /zoek's embedder from the active circle's embed policy
 // S6.C — per-user surface preference (inline / screen / minimal); hydrated at boot.
 const circleSurfacePref = createSurfacePrefStore(localStorageSurfacePrefIo());
-let circleContactSkills = null;  // P4 — live contact/bot exposed-skill registry (subscribed to agent.peers)
-let circlePeerGraph = null;      // P5 — app-owned PeerGraph (contacts roster + P4 registry source)
-let circleCoreAgent = null;      // P5 — the core chat agent (agent.sa.agent), for discoverA2A
+let circleContactSkills = null;  // live contact/bot exposed-skill registry (subscribed to agent.peers)
+let circlePeerGraph = null;      // app-owned PeerGraph (contacts roster registry source)
+let circleCoreAgent = null;      // the core chat agent (agent.sa.agent), for discoverA2A
 let circleHouseholdAgent = null; // OBJ-2 — the real household agent (createRealHouseholdAgent); module-level
                                  // so showSettings (a sibling fn, NOT nested in buildCircleBot) can read its
                                  // no-pod sync hooks (householdSelfAddr / addHouseholdPeer). Was referenced
                                  // as a free `agent` → ReferenceError that broke web Circle Settings entirely.
-let circleContactChannel = null; // P5 — contact-thread peer channel (conversational link over sa.peer)
+let circleContactChannel = null; // contact-thread peer channel (conversational link over sa.peer)
 // OBJ-2 membership — peer-redeem correlation (joiner side) + the sender, set when the agent boots.
 const circlePendingRedeems = new Map();  // requestId → {resolve,reject,timer}
 let circleSendPeerRedeem = null;         // makeSendGroupRedeemRequest(...) bound to this agent
@@ -1132,7 +1132,7 @@ async function getCircleSealStrategy(circleId, policy) {
   return strat;
 }
 
-// media P1 — one DEV bucket per app session (in-memory: uploads don't survive a reload
+// media — one DEV bucket per app session (in-memory: uploads don't survive a reload
 // and never leave this device — honest v1; the real S3/R2 bucket is the recorded swap
 // point in circleMediaGateway.js). Compositions are cached per circle so the session
 // ACL's grants (which refs the local actor may re-read through the gate) persist across
@@ -1188,7 +1188,7 @@ async function resolveCircleMediaComposition(circleId, policy) {
 function makeCirclePodClient(circleId) {
   const deviceId = `circle-${circleId}`;
   const backend  = pickWebBackend(`cc-circle-${circleId}`);
-  // P3 versioning: displaced bytes (overwrites · peer-updates · dropped
+  // versioning: displaced bytes (overwrites · peer-updates · dropped
   // concurrent forks · deletes) land in `versions/` on the SAME backend —
   // the substrate under the my-data restore ops. Best-effort by design
   // (a throwing store never breaks a write).
@@ -1229,7 +1229,7 @@ async function ensureCirclePod(circleId, policy) {
     return null;
   }
 }
-// P5 — per-contact DM thread state: contactId → { name, peerAddr, messages:[{origin,text,buttons?,pending?}] }.
+// per-contact DM thread state: contactId → { name, peerAddr, messages:[{origin,text,buttons?,pending?}] }.
 const contactThreads = new Map();
 let _activeContactThread = null; // { contactId, rerender } — set while a DM thread is on screen
 let circlePendingFollowUp = null;// a single-field needsForm awaiting the user's next message (conversational elicitation)
@@ -1292,7 +1292,7 @@ function buildCircleBot(agent) {
     // lists must stay in the same order (docs/manifest-pipeline.md dual-truth).
     { manifest: agentsManifest },
   ];
-  circleBaseSources = baseSources;   // B · Slice 2/4 — expose to the module-level showSettings/showOverride
+  circleBaseSources = baseSources;   // expose to the module-level showSettings/showOverride
   let rawCatalog = mergeManifests(baseSources, { runtime: 'browser' });
   // S6.A — manifests keyed by appOrigin, for computing inline embed buttons on
   // bot replies (computeEmbedButtons looks ops up here by the op's appOrigin).
@@ -1302,7 +1302,7 @@ function buildCircleBot(agent) {
     if (m.app)   manifestsByOrigin[m.app] = m;
     if (m.appId) manifestsByOrigin[m.appId] = m;
   }
-  circleManifestsByOrigin = manifestsByOrigin;   // B · Slice 3 — expose to the module-level list-screen panel
+  circleManifestsByOrigin = manifestsByOrigin;   // expose to the module-level list-screen panel
   const appRegistry = new AppRegistry();
   appRegistry.syncWithCatalog(rawCatalog.appOrigins);
   // Scope to the circle apps (Part D) — drops basis's account/transport INFRA ops (`/me` etc.) that
@@ -1312,7 +1312,7 @@ function buildCircleBot(agent) {
   // scoping — DEFAULT_CIRCLE_ORIGINS alone would drop them. (V0: treat all accepted mappings as app-scoped;
   // per-circle scope is a later refinement.)
   let mappingOrigins = [];
-  const mappingsStore = localStorageMappingsStore();   // V0 web store; swap for a pseudo-pod at P3 3.3c
+  const mappingsStore = localStorageMappingsStore();   // V0 web store; swap for a pseudo-pod at 3.3c
   // S6.C deep — base scope = the 5 circle apps (+ accepted extension mappings); the
   // active circle's policy.apps narrows it further (intersection), so a circle can
   // compose only the apps it uses. null/empty policy.apps → all (no dead circles).
@@ -1333,7 +1333,7 @@ function buildCircleBot(agent) {
   // Extension mappings (feedback-extension P2c) — scanned from the V0 localStorage store, verified against the
   // base catalog (sandbox-by-construction: a mapping referencing an unknown opId is refused), then merged in +
   // re-scoped. Best-effort: extensions never block boot. Callable so an install can refresh the catalog. Swap the
-  // store for a real pseudo-pod when the web pod layer (P3 3.3c) lands — `loadMappings` is store-agnostic.
+  // store for a real pseudo-pod when the web pod layer (3.3c) lands — `loadMappings` is store-agnostic.
   async function loadAndMergeMappings() {
     try {
       const { mappings } = await loadMappings({ pseudoPod: mappingsStore, deviceId: WEB_MAPPINGS_DEVICE });
@@ -1373,14 +1373,14 @@ function buildCircleBot(agent) {
     } catch { /* no install param */ }
   }
 
-  // P4 (feedback-extension) — contact/bot exposed skills, LIVE. A bot discovered
+  // (feedback-extension) — contact/bot exposed skills, LIVE. A bot discovered
   // via `agent.discoverA2A` lands in `agent.peers` with its skills already as
   // SkillCards; the registry subscribes to that PeerGraph and, per bot, synthesises
   // a contact-thread catalog + a router that hands a dispatch to the bot over A2A
   // (`sendA2ATask` → await the Task's result). It is kept SEPARATE from the circle
   // catalog (contact ops are contact-thread-scoped, not app-scoped), so it never
   // pollutes the circle bot's command pool. The contact-thread VIEW that renders a
-  // bot's commands in its own DM thread is P5/P6; this wiring makes the bridge live
+  // bot's commands in its own DM thread is; this wiring makes the bridge live
   // + drivable now (`window.canopyContactSkills` for the view + e2e).
   const sendContactTask = async (peerUrl, skillId, args) => {
     const task = sendA2ATask(agent, peerUrl, skillId, args);
@@ -1389,7 +1389,7 @@ function buildCircleBot(agent) {
   };
   // basis's secure-agent doesn't maintain a core PeerGraph (peers are
   // tracked in stoop membership, not core discovery), so the contacts registry
-  // is APP-OWNED: one PeerGraph the roster + the P4 skill registry read, populated
+  // is APP-OWNED: one PeerGraph the roster + the skill registry read, populated
   // as bots/peers are discovered (discoverA2A) or added. The agent stays the
   // transport (sendPeerMessage). (Ideally the secure-agent owns this so gossip/
   // discovery feed it directly — a follow-up; app-owned is correct + sufficient
@@ -1411,7 +1411,7 @@ function buildCircleBot(agent) {
   circleContactSkills.start().catch(() => { /* discovery is best-effort — never blocks the kring */ });
   if (typeof window !== 'undefined') window.canopyContactSkills = circleContactSkills;
 
-  // P5 — the conversational channel (the client end of the bot peer link). The
+  // the conversational channel (the client end of the bot peer link). The
   // channel sends over agent.sendPeerMessage, which routes through core
   // RoutingStrategy (mdns > rendezvous > relay > nkn), so a DM turn reaches the
   // bot over whichever transport is live. Inbound replies are routed by
@@ -1430,8 +1430,8 @@ function buildCircleBot(agent) {
       const params = new URLSearchParams(_bootSearch);
       const addbot = params.get('addbot');
       if (addbot) addBotFromInput(addbot);  // ?addbot=<https url | peer address>
-      // Slice 1 — a feedback invite link (?projectId=…&code=…) creates a CIRCLE the user admins with the
-      // feedback bot as a member (no Solid login). Slice 1b — trigger on `projectId` alone so a reload (the
+      // a feedback invite link (?projectId=…&code=…) creates a CIRCLE the user admins with the
+      // feedback bot as a member (no Solid login). — trigger on `projectId` alone so a reload (the
       // OIDC handler strips `code`) still re-attaches the feedback circle (code is pulled from localStorage).
       if (params.get('projectId')) openFeedbackInviteFromBoot(_bootSearch);
     } catch { /* no addbot / invite param */ }
@@ -1510,7 +1510,7 @@ function buildCircleBot(agent) {
       _kringRender?.botBubble(t('circle.bot.needsInfo'));
       return;
     }
-    // Q27 confirm gate — an op declaring surfaces.ui.confirm (warn/danger) NEVER executes without an
+    // confirm gate — an op declaring surfaces.ui.confirm (warn/danger) NEVER executes without an
     // explicit accept. Sits at the dispatch waist, so the row-button path and the chat/slash path are
     // gated uniformly (shared runConfirmGate; the dialog is only the web presenter). Cancel = quiet notice.
     if (route.kind === 'needsConfirm') {
@@ -1531,7 +1531,7 @@ function buildCircleBot(agent) {
 
     // The execute tail every accepted route runs (direct 'ready' or confirmed 'needsConfirm' → 'ready').
     async function executeResolved(route) {
-      // B · Slice 1 — DEFAULT-DENY capability gate. Every user-initiated dispatch (slash/LLM/gate/
+      // DEFAULT-DENY capability gate. Every user-initiated dispatch (slash/LLM/gate/
       // button/follow-up) converges here; internal plumbing calls rawCallSkill directly and is untouched.
       // This closes the leak where the SCREEN button was app-gated (isOpAppEnabledForActiveCircle) but the
       // dispatch itself was not — an op could still run when invoked directly.
@@ -1548,7 +1548,7 @@ function buildCircleBot(agent) {
       const verb = entry?.op?.verb;
       // S6.A — manifest-driven inline buttons for the item(s) this reply carries
       // (Claim / Mark complete / RSVP …), gated by appliesTo. Ride payload.buttons.
-      // B · Slice 4 (4c) — grey/hide inline affordances per the member's effective capability + consequence.
+      // B · (4c) — grey/hide inline affordances per the member's effective capability + consequence.
       let capMatrix = [];
       try {
         const cid = getActiveCircle();
@@ -1587,7 +1587,7 @@ function buildCircleBot(agent) {
       _kringRender?.botBubble(kringReplyText(reply, { verb, t }), { buttons, scope, embeds });
       // Remember the most-recent listing so a bulk "/done all" can fan out over it (classic thread.lastListing).
       if (Array.isArray(reply?.payload?.items)) _lastKringListing = { appOrigin: entry?.appOrigin, items: reply.payload.items };
-      // Classic parity (P6.6/P6.7): after a /find reply, enrich with in-circle skill matches + an optional hop
+      // Classic parity: after a /find reply, enrich with in-circle skill matches + an optional hop
       // prompt. Best-effort — never let it break the dispatch.
       try { await appendFindExtras(reply); } catch { /* enrichment is non-essential */ }
       // Return the op's reply so a caller that dispatched through the waist (e.g.
@@ -1597,7 +1597,7 @@ function buildCircleBot(agent) {
     }
   }
 
-  // Q27 — promise-wrap the web confirm presenter: mount the dialog, resolve once on
+  // promise-wrap the web confirm presenter: mount the dialog, resolve once on
   // accept(true)/cancel(false), then remove the overlay (catchUpChooserModal pattern).
   function openCircleConfirmDialog(request) {
     return new Promise((resolve) => {
@@ -1655,7 +1655,7 @@ function buildCircleBot(agent) {
   // B · the default-deny capability decision for a user-initiated dispatch. Returns a deny code
   // ('app-disabled' | 'capability-denied') or null (allow). App enablement comes from the SAME source
   // the UI uses (isOpAppEnabledForActiveCircle → policy.features); the effective (verb × noun) set is
-  // admin-template (policy.capabilities, Slice 2) ∩ member opt-outs (override.capabilityOptOuts, Slice 4).
+  // admin-template (policy.capabilities) ∩ member opt-outs (override.capabilityOptOuts).
   async function circleCapabilityDeny(appOrigin, opId, args) {
     const circleId = getActiveCircle();
     if (circleId == null) return null;                          // outside a circle → no per-circle gate
@@ -1668,8 +1668,8 @@ function buildCircleBot(agent) {
     try { override = (await overrideStore.get(circleId)) ?? {}; } catch { /* default */ }
     const eff = effectiveCapabilities(baseSources, {
       apps:         enabled ? [origin] : [],
-      capabilities: policy.capabilities,          // Slice 2 — the admin freedom template
-      optOuts:      override.capabilityOptOuts,   // Slice 4 — this member's declined caps
+      capabilities: policy.capabilities,          // the admin freedom template
+      optOuts:      override.capabilityOptOuts,   // this member's declined caps
     });
     const r = checkCapability({ op, appOrigin: origin, args }, eff);
     return r.allow ? null : r.code;
@@ -1851,7 +1851,7 @@ function showTabBar(active) {
   });
 }
 
-// P5 — Contacten tab: the bot/peer roster.  Reads the app PeerGraph via the
+// Contacten tab: the bot/peer roster. Reads the app PeerGraph via the
 // shared `listContacts`; tapping a row opens its 1:1 DM thread; "+ Add a bot"
 // discovers/adds a bot into the graph.
 async function showContacts() {
@@ -2031,18 +2031,18 @@ async function loadTaskGrants({ taskId, circleId } = {}) {
   } catch { return []; }
 }
 
-// P5 — add a bot to the app PeerGraph (an https agent-card URL → discoverA2A;
+// add a bot to the app PeerGraph (an https agent-card URL → discoverA2A;
 // else a raw peer address → manual upsert), then re-render the roster.  Reuses
 // the shared `addBotToGraph` (web≡mobile).  Best-effort: a bad URL/address shows
 // a localised alert, never throws into the UI.
-// ── Slice 1 — a feedback INVITE link (?projectId&code) creates a CIRCLE the user ADMINS, with the
+// ── — a feedback INVITE link (?projectId&code) creates a CIRCLE the user ADMINS, with the
 // feedback bot as a co-hosted member — using this device's agent identity + the in-memory pseudo-pod,
 // with NO Solid pod login. (Central-pod submission runs on an in-memory pod here; the real own/central
 // pod binding + consented pod is a later slice.) The circle is renameable (the creator is admin).
 const feedbackCircleSurfaces = new Map();   // groupId → the co-hosted feedback surface for that circle
 const feedbackProjectToCircle = new Map();  // projectId → groupId (this session), for reuse without a duplicate
 
-// Slice 1b — the no-pod feedback circle is IN-MEMORY (it does NOT survive a reload), and the OIDC handler
+// the no-pod feedback circle is IN-MEMORY (it does NOT survive a reload), and the OIDC handler
 // strips the invite `code` from the URL after the first load. So on reload only `?projectId` survives and
 // the feedback bot would be gone. We remember each project's invite in localStorage and, keyed off the
 // surviving projectId, RE-CREATE + re-attach the circle on load — so following the link (or refreshing)
@@ -2238,7 +2238,7 @@ async function addBotFromInput(input) {
   showContacts();
 }
 
-// P5 — a 1:1 DM thread with a contact-bot.  The conversational turn goes over
+// a 1:1 DM thread with a contact-bot. The conversational turn goes over
 // the contact-thread channel (sa.peer → mdns/relay/nkn); the async reply lands
 // via `onContactReply` (registered in the peer router) and re-renders here.
 async function showContactThread(contactId) {
@@ -2257,8 +2257,8 @@ async function showContactThread(contactId) {
   const thread = contactThreads.get(contactId);
   thread.name = name; thread.peerAddr = peerAddr;
 
-  // #13 — the bot's P4 skills, shown as in-thread quick actions. Tapping one (or
-  // typing `/<skill> args`) DISPATCHES it to the bot via the P4 registry
+  // the bot's skills, shown as in-thread quick actions. Tapping one (or
+  // typing `/<skill> args`) DISPATCHES it to the bot via the registry
   // (sendA2ATask), distinct from a free-text conversational turn over the channel.
   const skills = circleContactSkills?.skillsFor?.(contactId) ?? [];
 
@@ -2484,7 +2484,7 @@ function replyTextFromResult(res) {
   try { return JSON.stringify(res); } catch { return ''; }
 }
 
-// P5/S1 #3 — inbound handler for a bot reply (contact-reply) AND a peer DM
+// S1 #3 — inbound handler for a bot reply (contact-reply) AND a peer DM
 // (contact-msg). Routes by threadId when echoed, else by the sender address (==
 // the contactId for a native peer); appends the other party's bubble and
 // re-renders if that thread is on screen. For a brand-new thread (someone DMs you
@@ -2510,7 +2510,7 @@ function onContactReply({ fromAddr, threadId, text, buttons }) {
   }
 }
 
-// P6.3 — seenAt persistence: bumped on showDetail(id) so unread counts
+// seenAt persistence: bumped on showDetail(id) so unread counts
 // reset after the user opens a circle.  One key holds {circleId → ts}.
 const SEEN_AT_KEY = 'cc.circleSeenAt';
 function readSeenAt() {
@@ -2522,7 +2522,7 @@ function writeSeenAt(map) {
   catch { /* quota / disabled */ }
 }
 
-// SP-13.4 — Chat ↔ Scherm pill: per-circle preference persists in
+// Chat ↔ Scherm pill: per-circle preference persists in
 // localStorage so the user lands back in whichever mode they last used
 // for that kring.
 //
@@ -2576,7 +2576,7 @@ async function refreshLauncherMutes() {
 // showLauncher (which would re-schedule that refresh and loop forever; that infinite re-render
 // starved the main thread and hung the headless e2e, 2026-06-11).
 function paintLauncher() {
-  // P6.3 — project the EventLog into per-circle previews; tiles show a
+  // project the EventLog into per-circle previews; tiles show a
   // chat-style subtitle + unread badge when there's recent activity.
   const previews = buildTilePreviews({
     events:  eventLog.query({ excludeMuted: true }),
@@ -2670,9 +2670,9 @@ async function onLeaveCircle(id, circle) {
   if (getActiveCircle() == null) showLauncher();
 }
 
-// P6.2 #341 + P6.10 #348 — per-circle pending-admin-action counts.  The
+// per-circle pending-admin-action counts. The
 // launcher's voorstellen badge surfaces the SUM of pending proposals
-// (multi-admin consensus) + pending agent-add requests (board 4B):
+// (multi-admin consensus) + pending agent-add requests:
 // both shapes wait for the same admins, so collapsing them into one
 // "needs your attention" badge keeps the launcher legible.
 let launcherProposals = {};
@@ -2690,7 +2690,7 @@ async function refreshLauncherProposals() {
   if (!sameKeys && getActiveCircle() == null) showLauncher();
 }
 
-// P6.8 #346 — Nearby screen on web.  mDNS isn't live in the browser
+// Nearby screen on web. mDNS isn't live in the browser
 // (substrate path is mobile-only today), so peers stay [] and the
 // screen renders an honest empty state + the user's own published
 // skills footer so they can see what others would see.
@@ -2700,7 +2700,7 @@ function showNearby() {
   renderCircleNearby(rootEl, { model, t, onBack: showLauncher });
 }
 
-// P6.M7 #349 — Mijn dingen notes-list (private kring, board 10A).  Files
+// Mijn dingen notes-list (private kring). Files
 // come from the Folio listFiles op filtered for mine + circle-less.  The
 // active user webid stays null on web today; the substrate falls back to
 // "anything without an owner" which matches the V0 single-user state.
@@ -2752,7 +2752,7 @@ async function showHop() {
 // First-run seed: when the book is empty, auto-create a "Stream" screen
 // (kringFilter=null + noticeboard block) so the tab is useful right away.
 //
-// Q5 (mute) honoured: materializeScreen drops muted kringen entirely.
+// (mute) honoured: materializeScreen drops muted kringen entirely.
 let _screenSubMode = 'picker';
 let _viewingScreenId = null;
 let _screensBook = null;
@@ -2912,7 +2912,7 @@ function showStream() {
   showTabBar('screens');   // α.3 — stroom retired in favour of screens
 }
 
-// "Mij" tab — personal availability (holiday + quiet hours, board 6C) plus
+// "Mij" tab — personal availability (holiday quiet hours) plus
 // the device-global Hopping stance.
 // S2 — the Mij tab is now your PROFILE (handle + display name + location),
 // backed by stoop's profile ops. Availability/quiet-hours moves to a
@@ -2937,7 +2937,7 @@ async function showMij() {
     rerender();
   }
 
-  // D / SP-3b consumer-switch (second live surface) — the "Mij" profile header
+  // D / consumer-switch (second live surface) — the "Mij" profile header
   // is sourced from the manifest PAGE projection.  renderWeb(basisManifest)
   // projects the `me` op's `surfaces.page` into pages[]; pageForOp selects it and
   // its labelKey → t() drives the header label (invariant #4 — the manifest is
@@ -2946,7 +2946,7 @@ async function showMij() {
 
   const rerender = () => renderCircleProfile(rootEl, {
     profile, geocodeResult, busy, t,
-    // D / SP-3b — the projected PAGE surface drives the header label (Q22 labelKey via t()).
+    // the projected PAGE surface drives the header label (labelKey via t).
     profilePage,
     onSaveProfile: async ({ handle, displayName }) => {
       busy = true; rerender();
@@ -3093,7 +3093,7 @@ async function showMyData() {
     // form's "Saved." confirmation; the chatAi status note refreshes on the next open.
     return null;
   };
-  // Objective D / Surface 4 (#180) — route the relay-URL editor through the generic
+  // Objective D / Surface 4 — route the relay-URL editor through the generic
   // docked side-panel (openPagePanel's simple-form). The `set-relay` manifest op is
   // the FORM CONTRACT (params url · clear + surfaces.page); dispatch resolves to
   // applyRelayUrl — the circle shell's live in-app relay setting. (agent.callSkill
@@ -3175,13 +3175,13 @@ function showJoinCircle() {
   mountMyDataWizard(renderJoinGroupWizard, {
     args: { invite },
     sendPeerRedeem: circleSendPeerRedeem,
-    // B · Slice 4 — the merged manifest sources let the wizard build the join-time capability consent
+    // the merged manifest sources let the wizard build the join-time capability consent
     // model from the invite's embedded freedom template.
     sources: circleBaseSources,
     onDispatched: async (reply) => {
       const gid = reply?.groupId ?? reply?.joinedGroupId ?? null;
       if (gid) { try { await feedHouseholdRosterForCircle?.(gid); } catch { /* best-effort */ } }
-      // B · Slice 4 — record the joiner's capability opt-outs into their prefs for this circle, so the
+      // record the joiner's capability opt-outs into their prefs for this circle, so the
       // gate's effective set (admin-template ∩ user-opt-outs) drops the declined caps from the first
       // dispatch. Opt-out-nothing ⇒ no write (unchanged behaviour).
       if (gid && Array.isArray(reply?.capabilityOptOuts) && reply.capabilityOptOuts.length) {
@@ -3197,11 +3197,11 @@ function showJoinCircle() {
 // stoop-invite:// QR for another device to scan/paste. Shown in the same modal overlay.
 async function showCircleInvite(circleId) {
   const adminPeerAddr = circleHouseholdAgent?.householdSelfAddr ?? null;
-  // B · Slice 4 — embed the circle's freedom template in the invite so the joiner can review its
+  // embed the circle's freedom template in the invite so the joiner can review its
   // opt-outable capabilities at join (see circleConsent.js). Best-effort: a missing policy just omits it.
   let invitePolicy = {};
   try { invitePolicy = (await policyStore.get(circleId)) ?? {}; } catch { /* default — no template embedded */ }
-  // Fold-in phase C (Q3) — embed the circle's skills-matching charter signal. The board-8 circle-offering
+  // Fold-in phase C — embed the circle's skills-matching charter signal. The board-8 circle-offering
   // record lives ONLY on this (admin) device (localStorage draft, see showSkills), so invite-build is
   // the one moment the joiner-side wizard can learn it pre-join. Best-effort: unreadable ⇒ not embedded.
   let inviteOfferingsMatching = false;
@@ -3289,7 +3289,7 @@ async function showMnemonicReveal() {
   document.body.appendChild(overlay);
 }
 
-// cluster K · K2 — the composable LISTS panel: a circle's `list` containers + their `list-item` children,
+// the composable LISTS panel: a circle's `list` containers + their `list-item` children,
 // rendered nested via projectContainer→renderContainerCard. "+ add" creates a contained child (addChildTo);
 // row-actions complete/remove. Self-contained (its own per-circle store) — doesn't touch the kring dispatch.
 function openListsPanel(circleId) {
@@ -3336,7 +3336,7 @@ function openListsPanel(circleId) {
         body.appendChild(renderContainerCard(tree, {
           t,
           onAdd: (node) => {
-            // K2 type picker: an AMBIGUOUS container (≥2 accepted types, no default) picks the type FIRST;
+            // type picker: an AMBIGUOUS container (≥2 accepted types, no default) picks the type FIRST;
             // a container with a default goes straight to the input.
             const { ambiguous, kinds } = svc.addKinds(node.type);
             if (ambiguous) { pendingPick = { node, kinds }; pendingAddTo = null; }
@@ -3428,7 +3428,7 @@ function openListsPanel(circleId) {
 // renderer (one block, scope:'all'), scoped to the active circle.
 async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
   const circleId = getActiveCircle();
-  // Q15 — the panel's FETCH CONTEXT: the host materializes `$circleId` (the
+  // the panel's FETCH CONTEXT: the host materializes `$circleId` (the
   // active circle — the same key the tasks host supplies its pod-settings
   // page) plus any SELECTION context a drill-down row-pick passed in
   // (screenDrilldown: `$uri` / `$agentId` ← the picked row).
@@ -3470,14 +3470,14 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
     // consumer defaults to `[labelField]` (label-only search, as before).
     const searchFields = section.searchFields;
     try {
-      // Q15 — fetch through the shared seam: static `dataSource.args` merged
+      // fetch through the shared seam: static `dataSource.args` merged
       // with `argsFromContext` `$keys` substituted from the panel's context
       // (`$circleId` host-materialized; `$uri`/`$agentId` selection-derived).
       const res = await fetchScreenItems(section, {
         callSkill: (skillId, args) => rawCallSkill(appOrigin, skillId, args),
         context: screenContext,
       });
-      // Q17 — a record-shaped DETAIL (e.g. agent-detail) renders as a
+      // a record-shaped DETAIL (e.g. agent-detail) renders as a
       // read-only key→value record, not a list.
       if (section.shape === 'record') {
         body.innerHTML = '';
@@ -3495,7 +3495,7 @@ async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
         });
       } catch { /* best-effort */ }
       body.innerHTML = '';
-      // Q15 drill-down — when a sibling DETAIL view needs a selection-derived
+      // drill-down — when a sibling DETAIL view needs a selection-derived
       // context key (screenDrilldown), picking a row opens it with that key
       // materialized from the picked row (`$uri` / `$agentId` ← row).
       const drill = drilldownForSection(circleManifestsByOrigin, screenId, { hostKeys: Object.keys(screenContext) });
@@ -3578,7 +3578,7 @@ async function openAboutMePanel(personaId) {
         try { await rawCallSkill('agents', 'setProfileProperty', { id: model.defaultId ?? 'default', key, value }); } catch { /* */ }
         await draw();
       },
-      // Skills (#Q1) — a skill is a driver-like open item {text, tags[]};
+      // Skills — a skill is a driver-like open item {text, tags[]};
       // kind 'offering' is a first-class DRIVER_KIND (agent-registry) and its
       // coarse rung is the taxonomy category (offeringsTaxonomy.js).
       onAddOffering: async ({ text, tags }) => {
@@ -3679,7 +3679,7 @@ async function showAvailability() {
 
 async function createCircle() {
   if (!rawCallSkill) {
-    // SP-13.1 — no chat-shell fallback.  Without an agent the bundle
+    // no chat-shell fallback. Without an agent the bundle
     // hasn't booted yet; surface that as an error and bail.
     globalThis.alert?.(t('circle.create_unavailable'));
     return;
@@ -3706,28 +3706,28 @@ async function showDetail(id) {
   // 52.25 — this circle's embed policy may differ from the last → re-resolve
   // folio /zoek's embedder (or null it for an 'off' circle). Best-effort.
   try { circleSyncFolioNoteEmbedder?.(); } catch { /* /zoek stays lexical */ }
-  // P6.3 — bump the seenAt marker so the next launcher render clears
+  // bump the seenAt marker so the next launcher render clears
   // this circle's unread badge.
   writeSeenAt(bumpSeenAt(readSeenAt(), id));
   const circle = circlesCache.find((c) => c.id === id) || { id };
-  // SP-13.1 — no chat-shell auto-route anymore.  Every kring opens the
+  // no chat-shell auto-route anymore. Every kring opens the
   // kring view; v2 §1 says chat IS the kring view (GESPREK tab).  The
-  // GESPREK render lands in SP-13.2.
+  // GESPREK render lands in.
   let detailPolicy = null;
   try { detailPolicy = await policyStore.get(id); }
   catch { /* fresh circle / read failure → fall through */ }
   showKring(id, circle, detailPolicy);
 }
 
-// SP-13 — kring content view (board 2B/8C).  Replaces the action-grid
+// kring content view. Replaces the action-grid
 // CircleDetail as the per-circle landing surface.  Admin actions
 // (Settings, Mine, ViewAs, …) move into the header `⋯` overflow menu,
 // gated on the Functies axis (same gates the old detail used).
 //
-// SP-13.2 — GESPREK as chat-style: drop the filter-chip row, render
+// GESPREK as chat-style: drop the filter-chip row, render
 // rows as chat bubbles, wire an inline composer that publishes a
 // chat-message event scoped to this circle.  Inbound peer broadcast
-// + slash-command parsing land in SP-13.2.1.
+// slash-command parsing land in.
 function showKring(id, circle, policy) {
   // S6.C deep — scope the bot catalog (tools + slash-suggest) to the apps THIS
   // circle composes (policy.apps); null = all. Re-scopes on every circle-open.
@@ -3742,8 +3742,8 @@ function showKring(id, circle, policy) {
   const more = {
     invite:   () => showCircleInvite(id),
     settings: () => showSettings(id),
-    lists:    () => openListsPanel(id),   // K2 — the composable lists/container UI
-    contacts: () => openCircleScreenPanel('contacts'),   // B · Slice 3 — the filterable list-screen (GUI entry point)
+    lists:    () => openListsPanel(id),   // the composable lists/container UI
+    contacts: () => openCircleScreenPanel('contacts'),   // the filterable list-screen (GUI entry point)
     override: () => showOverride(id),
     viewAs:   () => showViewAs(id),
     advisor:  () => showAdvisor(id),
@@ -3759,14 +3759,14 @@ function showKring(id, circle, policy) {
     // refused with a notice). Role-gating the menu entry is a follow-up.
     admin:    () => showAdmin(id),
   };
-  // SP-13.3 — per-kring bottom tabs derived from policy.features.
+  // per-kring bottom tabs derived from policy.features.
   const tabs = buildKringTabs(policy, t);
   let activeTab = DEFAULT_KRING_TAB;
-  // SP-13.4 — Chat ↔ Scherm pill state, persisted per circle.  §4 — the
+  // Chat ↔ Scherm pill state, persisted per circle. §4 — the
   // admin's policy.view sets the landing surface until the user overrides.
   let viewMode = readViewMode(id, policy);
   // α.1c — materialized scherm blocks (recipe book → blocks).  Null
-  // until the async load below resolves; replaces SP-13.4's
+  // until the async load below resolves; replaces 's
   // "scherm_coming" placeholder when present.
   let screenBlocks = null;
   let seq = 0;
@@ -3796,7 +3796,7 @@ function showKring(id, circle, policy) {
   ensureCirclePod(id, policy)
     .then((prod) => { if (prod?.controlAgent) return seedCircleRoster({ callSkill: rawCallSkill, circleId: id, router: circleControlAgentRouter }); })
     .catch(() => { /* best-effort; plain shared path on failure */ });
-  // media P1 — resolve this circle's sealed-media composition (async: the seal strategy
+  // media — resolve this circle's sealed-media composition (async: the seal strategy
   // rides the pod producer). Until it resolves — and for a p0/p1 circle FOREVER (null) —
   // the composer shows no attach affordance: sealed-only, no unsealed upload fallback.
   let kringMedia = null;
@@ -3806,11 +3806,11 @@ function showKring(id, circle, policy) {
     if (getActiveCircle() === id) rerender();
   });
 
-  // media P1 — the attach path: picked file → createMediaEmbed (encode → SEALED upload →
+  // media — the attach path: picked file → createMediaEmbed (encode → SEALED upload →
   // canonical media item → {type:'media', ref} pointer) → the embed rides the outgoing
   // kring message payload EXACTLY as the handler emits it; the bubble renders the
   // media-card chip via the shared domAdapter branch. The fan-out carries the pointer +
-  // snapshot too (media P1 fan-out slice): kring-host projects the embed through its
+  // snapshot too (media fan-out slice): kring-host projects the embed through its
   // WIRE whitelist (`mediaForKringWire` — sender-local fields like `stored` stripped),
   // so PEERS render the same chip — the inline thumb is sealed with the circle key the
   // receiving shell's gateway already composes an opener for.
@@ -3951,7 +3951,7 @@ function showKring(id, circle, policy) {
     await loadNoticeboard();
   }
 
-  // P2 (J4) — a projected attach-menu entry (NOT the file entry) dispatches its op
+  // (J4) — a projected attach-menu entry (NOT the file entry) dispatches its op
   // exactly like the matching slash command: {opId} → dispatchReady, which elicits any
   // required params through the SAME form machinery (beginFormFollowUp → buildFormSpec)
   // a typed command uses (e.g. /embed-time → title · when). The FILE entry never
@@ -4057,11 +4057,11 @@ function showKring(id, circle, policy) {
       history: kringInputHistory,
       // Permission gate — chat disabled for this circle ⇒ read-only composer (classic `allowCommands` analog).
       canPost: isFeatureEnabled(policy, 'chat'),
-      // media P1 — the sealed attach affordance + the chip's opener. Both null until the
+      // media — the sealed attach affordance + the chip's opener. Both null until the
       // circle's media composition resolves (and forever for p0/p1 — sealed-only).
       onAttachMedia: kringMedia ? kringAttachMedia : null,
       media: kringMedia ? { opener: kringMedia.mediaGateway.opener } : null,
-      // P2 (J4) — the projected attach menu for the chat composer's "+". The FILE
+      // (J4) — the projected attach menu for the chat composer's "+". The FILE
       // entry (embed-file) uses onAttachMedia above; every other entry dispatches
       // via onAttachCommand → dispatchReady (params gathered by the form machinery).
       attachMenu: basisAttachMenu,
@@ -4086,7 +4086,7 @@ function showKring(id, circle, policy) {
         onAttach:         kringMedia ? noticeboardAttach : null,
         onClearAttach:    () => { noticeboardPendingAttachment = null; rerender(); },
         onViewAttachment: noticeboardViewAttachment,
-        // P2 (J4) — the projected attach menu for the prikbord composer's "+".
+        // (J4) — the projected attach menu for the prikbord composer's "+".
         // File entry → the media pipeline (onAttach); other entries → dispatchReady.
         attachMenu:       basisAttachMenu,
         attachFileOpId:   'embed-file',
@@ -4163,11 +4163,11 @@ function showKring(id, circle, policy) {
       onSend:   async (text) => {
         const line = String(text ?? '').trim();
         if (!line) return;
-        // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; the ⋯ menu is the GUI
+        // a slash command opens a declared list-screen (the CHAT entry; the ⋯ menu is the GUI
         // one — peer compilers to the same surface). e.g. "/contacts", "/prikbord".
         const scr = line.match(/^\/(contacts|prikbord)\b/i);
         if (scr && sectionForScreen(circleManifestsByOrigin, scr[1].toLowerCase())) { openCircleScreenPanel(scr[1].toLowerCase()); return; }
-        // cluster K — the cross-circle SHARE op, minimal slash surface (rich picker UI deferred; see report).
+        // the cross-circle SHARE op, minimal slash surface (rich picker UI deferred; see report).
         //   /shareitem <itemId> [to] <targetCircleId>  — share one item from THIS circle into another's audience
         //   /shared                                    — list what's shared INTO this circle (deny-by-default read)
         // A note bubble to the kring stream (bot actor) reports the result — same _kringRender seam the bot uses.
@@ -4275,7 +4275,7 @@ function showKring(id, circle, policy) {
           // Language switch as a typed command: /taal en · /lang nl · /language en (canopy-side, not a bot control).
           const _langCmd = line.match(/^\/(?:taal|lang|language)\s+([a-z]{2})\s*$/i);
           if (_langCmd && LANG_INFO[_langCmd[1].toLowerCase()]) { await switchFeedbackLang(id, _langCmd[1].toLowerCase()); return; }
-          // Slice 1 — a feedback circle routes ALL free text to its co-hosted feedback bot (the user's
+          // a feedback circle routes ALL free text to its co-hosted feedback bot (the user's
           // line was already appended above; the bot's replies render via emit → _kringRender.botBubble).
           try { await _fbSurface.handle(line, id); } catch (e) { _kringRender?.botBubble?.(`⚠ ${e?.message ?? e}`); }
         } else if (circleBot) { noteCircleBotTurn(await circleBot.handle(line, { id, msgId, ts }), line); }
@@ -4291,7 +4291,7 @@ function showKring(id, circle, policy) {
         }
         // Feedback bot buttons (Send all / Send 1 / ✏ / Send nothing → fp:consent:* / fp:edit:* / fp:cancel)
         // route to this circle's co-hosted feedback surface as a control turn — the button-tap peer of the
-        // composer's text routing. (Other per-row actions remain V0 no-ops until SP-13.2.1.)
+        // composer's text routing. (Other per-row actions remain V0 no-ops until.)
         const _fb = feedbackCircleSurfaces.get(id);
         if (_fb && typeof action?.action === 'string') {
           if (action.action.startsWith('fp-lang:')) { switchFeedbackLang(id, action.action.slice('fp-lang:'.length)); return; }
@@ -4333,7 +4333,7 @@ function showKring(id, circle, policy) {
   // until they resolve, the action stays hidden.
   ensureMyWebid().then(() => { if (getActiveCircle() === id) rerender(); }).catch(() => {});
   ensureMyRole().catch(() => {});
-  // EventLog has no subscribe seam yet; SP-13.2.1 will poll-on-event so
+  // EventLog has no subscribe seam yet; will poll-on-event so
   // inbound peer messages appear without manual re-render.
 
   // α.1c — load + materialize the active recipe.  Until this resolves,
@@ -4372,7 +4372,7 @@ function showKring(id, circle, policy) {
 }
 
 
-// Skill editor (board 8) — draft persists locally per circle (cc.circleSkill.<id>);
+// Skill editor — draft persists locally per circle (cc.circleSkill.<id>);
 // "extend the Stoop skill item" is the later real-persistence path.
 const skillKey = (id) => `cc.circleSkill.${id}`;
 function showSkills(id) {
@@ -4488,10 +4488,10 @@ function broadcastActiveRecipe({ circleId, book }) {
   });
 }
 
-// Circle-scoped Folio browser (board 10B) — files come from a circle pod's
+// Circle-scoped Folio browser — files come from a circle pod's
 // listFiles once wired; empty until then (the scope/normalize is tested).
 //
-// P6.M8 #350 — share-toggle row (Shared-by-me / Shared-with-me).  Picking
+// share-toggle row (Shared-by-me / Shared-with-me). Picking
 // a toggle re-projects the cached raw `listFiles` result through the
 // share-filter substrate; clearing it restores the circle-scoped view.
 function showFolio(id) {
@@ -4502,7 +4502,7 @@ function showFolio(id) {
   let needsPod = false;            // pod selected but no pod connected yet
   let lastListResult = null;       // raw `listFiles` result for re-projection
   let files = buildCircleFiles({ files: [], circleId: id });
-  // B · Slice 4 — the acting member's capability matrix, gating the file-OPEN
+  // the acting member's capability matrix, gating the file-OPEN
   // row action (get × file) the SAME way the list surface gates its row
   // buttons. Built async (below); empty until then ⇒ 'show' (unchanged).
   let capabilityMatrix = [];
@@ -4539,7 +4539,7 @@ function showFolio(id) {
       .catch(() => { needsPod = sourceMode === 'pod'; if (getActiveCircle() === id) rerender(); });
   }
 
-  // B · Slice 4 — build the member's capability matrix (same inputs the list
+  // build the member's capability matrix (same inputs the list
   // surface uses at renderListBlock), then re-render so the folio file-OPEN
   // row action greys/hides per the gate. Best-effort: any failure leaves the
   // matrix empty ⇒ 'show' ⇒ behaviour identical to before this slice.
@@ -4563,7 +4563,7 @@ function showFolio(id) {
     sourceMode,
     needsPod,
     t,
-    // B · Slice 4 — gate the file-OPEN row action (get × file) for this member.
+    // gate the file-OPEN row action (get × file) for this member.
     capabilityMatrix,
     appOrigin: 'folio',
     // Changing the row set (filter / share toggle) resets folder depth.
@@ -4593,7 +4593,7 @@ function showFolio(id) {
   });
   rerender();
   load();
-  loadCaps();   // B · Slice 4 — resolve the capability matrix, then re-render.
+  loadCaps();   // resolve the capability matrix, then re-render.
 }
 
 // Circle rules document (boards 3B/3C) — editor persists per circle
@@ -4713,7 +4713,7 @@ async function showViewAs(id) {
 
 async function showOverride(id) {
   let working = await overrideStore.get(id);
-  // B · Slice 4 — the circle's admin policy tells us which caps are enabled + opt-outable.
+  // the circle's admin policy tells us which caps are enabled + opt-outable.
   let circlePolicy = {};
   try { circlePolicy = (await policyStore.get(id)) ?? {}; } catch { /* default */ }
   const rerender = () => renderCircleOverride(rootEl, {
@@ -4837,7 +4837,7 @@ async function showSettings(id) {
   const baselinePod = working?.pod;
   let storageNote;
   const consensusActive = () => !!working.consensusRequired && (working.admins?.length ?? 0) >= 2;
-  // P6.2 — load pending proposals so the banner can surface the count of
+  // load pending proposals so the banner can surface the count of
   // outstanding "waiting on N admins" approvals on settings entry.
   let pending = await proposalStore.listForCircle(id);
   const pendingCount = () => pending.filter((p) => p.status !== 'ready').length;
@@ -4867,7 +4867,7 @@ async function showSettings(id) {
   // recipe is reused for apply, avoiding a second load/verify round-trip).
   let _reviewedRecipe = null;
 
-  // D / SP-3b consumer-switch — the settings header is now sourced from the
+  // D / consumer-switch — the settings header is now sourced from the
   // manifest PAGE projection.  renderWeb(basisManifest) projects the
   // `settings` op's `surfaces.page` into pages[]; pageForOp selects it and its
   // labelKey → t() drives the header label (invariant #4 — the manifest is the
@@ -4877,9 +4877,9 @@ async function showSettings(id) {
   const rerender = () => renderCircleSettings(rootEl, {
     policy: working,
     t,
-    // D / SP-3b — the projected PAGE surface drives the header label (Q22 labelKey via t()).
+    // the projected PAGE surface drives the header label (labelKey via t).
     settingsPage,
-    // B · Slice 2 — the merged manifest sources drive the settings form + the per-skill freedom matrix.
+    // the merged manifest sources drive the settings form + the per-skill freedom matrix.
     sources: circleBaseSources,
     saveLabel: consensusActive() ? t('circle.settings.send_proposal') : undefined,
     note: [pendingNote(), storageNote].filter(Boolean).join(' · ') || undefined,
@@ -4967,7 +4967,7 @@ async function showSettings(id) {
         showDetail(id);
         return;
       }
-      // P6.2 — record + persist the pending proposal.  Cross-admin
+      // record + persist the pending proposal. Cross-admin
       // delivery (NKN fan-out + receive handler) is the V1 follow-up;
       // single-device approval works on-device today via approveProposal +
       // proposalStore.updateOne, and unanimous-approve commits via
@@ -4990,7 +4990,7 @@ async function showSettings(id) {
       } else {
         pending = await proposalStore.listForCircle(id);
       }
-      // P6.2 #341 — refresh the launcher's voorstellen badge map so the
+      // refresh the launcher's voorstellen badge map so the
       // tile reflects the new pending count on the next launcher visit.
       refreshLauncherProposals().catch(() => { /* ignore */ });
       showDetail(id);
@@ -5075,7 +5075,7 @@ async function boot() {
     };
     const agent = await createRealHouseholdAgent({
       publishEvent: publishEventToLog,
-      // P3 recovery — resolve a circle's pod version store for the
+      // recovery — resolve a circle's pod version store for the
       // listDataVersions/restoreDataVersion skills (see circleVersioning.js).
       versionStoreFor: getCircleVersionStore,
       // PERSISTENT chat identity (the secure-agent peer address). Without a persistent vault the
@@ -5162,7 +5162,7 @@ async function boot() {
       sources = circleSourcesFromAgent({ callSkill: resolveCallSkill, circlesStore: agent.circlesStore });
       // Phase 5 — build the kring composer's bot + feedback now that the agent (and its manifest) is up.
       try { buildCircleBot(agent); } catch (err) { console.warn('[circleApp] circle bot setup failed:', err?.message ?? err); }
-      // SP-13.2.1 — register a peer-router with the kring-chat-message
+      // register a peer-router with the kring-chat-message
       // handler + connect the NKN transport (best-effort; no-op when
       // nkn-sdk failed to load).  The ingest hook mirrors the envelope
       // into stoop's itemStore so kring chat history is durable,
@@ -5191,7 +5191,7 @@ async function boot() {
         logger: console,
       });
       const kringChatHandler = makeKringChatPeerHandler({ inbox: kringChatInbox });
-      // SP-13.2.2 — boot rehydrator: read stoop's stored chats back
+      // boot rehydrator: read stoop's stored chats back
       // into the in-memory eventLog so the GESPREK tab shows history
       // after a reload (eventLog is in-memory; itemStore persists).
       rehydrateKringChatsFromStoop({
@@ -5346,7 +5346,7 @@ async function boot() {
           // the roster + acks; the member resolves the pending push on the ack.
           'persona-props-update':    makeHandlePersonaPropsUpdate({ callSkill: rawCallSkill, sendPeer: (addr, payload) => agent.sendPeerMessage(addr, payload), publishEvent: publishEventToLog }),
           'persona-props-ack':       makeHandlePersonaPropsAck({ pendingMap: circlePendingPersonaProps }),
-          // P5 — a contact-bot's reply in its 1:1 DM thread (guarded: the channel
+          // a contact-bot's reply in its 1:1 DM thread (guarded: the channel
           // is null if buildCircleBot threw, and must not break the peer router).
           // S1 #3 — also handle an inbound PEER DM (contact-msg): a person's message
           // lands in the thread with them (onContactReply routes by sender addr).
@@ -5409,11 +5409,11 @@ async function boot() {
         // Seed the household roster for the active circle (re-fed on open below).
         feedHouseholdRosterForCircle(getActiveCircle()).catch(() => {});
       }, 1500);
-      // P6.5 — wire the claim-router hook now that callSkill + override
+      // wire the claim-router hook now that callSkill + override
       // store are both available.  On claim with `tasksToPersonal` on,
       // mirror the claimed task into the primary circle so it shows up in
       // "Mijn dingen".  Uses the existing primary circle (`cc-default`);
-      // future slice (P6.5-followup) will surface the resulting mirror
+      // future slice (followup) will surface the resulting mirror
       // tasks in an "ON YOUR LIST" section on the circle detail.
       if (typeof agent.setAfterClaimHook === 'function') {
         agent.setAfterClaimHook(makeAfterClaimHook({

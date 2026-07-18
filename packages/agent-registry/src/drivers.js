@@ -16,11 +16,11 @@ import { descriptor } from './propertyVocabulary.js';
 
 /**
  * The kinds of personal driver. `driver` is the generic catch-all; the rest are finer intents.
- * `offering` (offering→property fold-in, NOTE-skills-properties-audit Q1) is a driver-LIKE open
+ * `offering` (offering→property fold-in, NOTE-skills-properties-audit) is a driver-LIKE open
  * item — what someone can DO/offer rather than wants — sharing the `{ kind, text, tags[] }` shape;
  * its coarse rung (categoryId under disclosure) lives in `offeringsTaxonomy.js`, not here.
  *
- * `interest` (interests→drivers fold-in, NOTE-skills-properties-audit §4/Q6) is likewise a
+ * `interest` (interests→drivers fold-in, NOTE-skills-properties-audit 4) is likewise a
  * driver-kind open item — what someone ENGAGES WITH / cares about — carried as tags on the
  * `{ kind, text, tags[] }` shape (no taxonomy / coarse rung: interests are FREE drivers, matched
  * on-device by tag overlap). It folds the bespoke learned Layer-2 interest signal

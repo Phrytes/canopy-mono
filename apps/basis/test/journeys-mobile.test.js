@@ -1,20 +1,20 @@
 /**
  * basis — JM-* mobile-journey substrate spine tests.
  *
- * Task #229 (2026-05-24).  Layer 1 of the JM-* journey-test plan in
+ * Task (2026-05-24). Layer 1 of the JM-* journey-test plan in
  * `Project Files/basis/mobile-roadmap-2026-05-24.md`.
  *
  * These tests exercise the SUBSTRATE-LEVEL skill chains for each
  * JM-* journey — no NKN, no RN, no basis-mobile required.
  * The point is to lock in the composition story BEFORE the
- * basis-mobile shell exists, so when #222 ships, we already
+ * basis-mobile shell exists, so when ships, we already
  * know each journey's skill spine works end-to-end.
  *
  * What this layer DOESN'T cover:
- *   - Layer 2 (Playwright cross-tab): see #218 fixmes in
+ *   Layer 2 (Playwright cross-tab): see fixmes in
  *     `apps/basis/test-browser/multi-device-journeys.spec.js`
  *   - Layer 3 (Detox real-device): JM-3 push, JM-4 BLE, JM-5
- *     camera, JM-6 voice — see #224 Phase B.  Marked `it.todo`
+ *     camera, JM-6 voice — see Phase B. Marked `it.todo`
  *     in this file so they appear in the test list.
  *
  * Naming: **JM-<n>** — one describe-block per journey.  Body
@@ -136,7 +136,7 @@ describe('JM-1 — compose across apps (stoop → DM → task)', () => {
    *      already verifies the thread spawn).
    *   3. addTask in tasks-v0 succeeds with a reference back to the
    *      stoop post (we don't require formal cross-app linking
-   *      here — that's #220.3 territory — just that all three
+   *      here — that's territory — just that all three
    *      skills run in sequence without error).
    */
   let ws;
@@ -204,7 +204,7 @@ describe('JM-2 — offline post, online sync (substrate persistence)', () => {
 
 /* ════════════════════════════════════════════════════════════
  * JM-3, 4, 5, 6 — native-only (push, BLE, camera, audio)
- * → Layer 3 (Detox), see #224 Phase B
+ * → Layer 3 (Detox), see Phase B
  * ══════════════════════════════════════════════════════════ */
 
 describe('JM-3 — push notification → DM thread on tap', () => {
@@ -230,12 +230,12 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
    *   Anne's circle is doing "Saturday garden cleanup" (parent task).
    *   Mid-thread in basis-mobile, Frits says "I'll need
    *   someone to bring extra bags".  Anne taps [Spawn sub-task] on
-   *   the parent's embed-card — sub-task spawned via #219 substrate,
+   *   the parent's embed-card — sub-task spawned via substrate,
    *   Frits gets an inbox notification.
    *
    * Substrate spine: addTask (parent) → addSubtask → verify parent
-   * lists the new dep id.  Uses the #219 manifest entries we just
-   * shipped (#219 slice-b).
+   * lists the new dep id. Uses the manifest entries we just
+   * shipped (slice-b).
    */
   let ws;
   beforeEach(async () => { ws = await bootWorkspace(); });
@@ -251,7 +251,7 @@ describe('JM-7 — sub-task spawn from chat about parent (uses #219 skills)', ()
     const parentId = parent.payload.itemId;
     expect(parentId).toBeTruthy();
 
-    // #219 slice-b skill: addSubtask.  Substrate ID is the same as
+    // slice-b skill: addSubtask. Substrate ID is the same as
     // the slash command's body=flags form.
     const sub = await ws.callSkill('tasks', 'addSubtask', {
       parentTaskId: parentId,

@@ -1,6 +1,6 @@
 /**
  * mappingsResource — folder scan + write/remove of downloadable extension
- * mappings (feedback-extension P2). Backed by a real in-memory pseudo-pod so
+ * mappings (feedback-extension). Backed by a real in-memory pseudo-pod so
  * the wire shape (list/read/write/delete) matches production.
  */
 

@@ -38,7 +38,7 @@ const FEEDBACK_LLM_BASEURL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_BASEURL || und
 const FEEDBACK_LLM_MODEL = process.env.EXPO_PUBLIC_FEEDBACK_LLM_MODEL || undefined;
 const FEEDBACK_ACTIVATION_URL = process.env.EXPO_PUBLIC_FEEDBACK_ACTIVATION_URL || null;
 const FEEDBACK_COLLECTOR_URL = process.env.EXPO_PUBLIC_FEEDBACK_COLLECTOR_URL || null;
-// Logging slice 3 — the anonymous bug-report SEND TARGET (web parity, circleApp.js). The dev-pod "bug-report
+// Logging — the anonymous bug-report SEND TARGET (web parity, circleApp.js). The dev-pod "bug-report
 // bot" address the panel's Send button routes the (already-anonymous) envelope to, over the SAME peer/relay
 // transport (`agent.sendPeerMessage`, injected as `sendPeer`). The real dev address does NOT exist yet: this
 // is a PLACEHOLDER that drops into open-source config later (EXPO_PUBLIC_BUGREPORT_ADDR, or by giving

@@ -1,5 +1,5 @@
 /**
- * Bundle H Phase 2 (#269) — file-share handler coverage.
+ * file-share handler coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeHandleFileShare } from '../../src/core/handlers/fileShare.js';

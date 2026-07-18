@@ -125,7 +125,7 @@ export function createChatMessageInbox({
       ? resolveActorFn(envelope, fromPeerAddr)
       : envelope.fromActor) ?? fromPeerAddr ?? null;
 
-    // media P1 — optional media-card embed riding the envelope (forward-
+    // media — optional media-card embed riding the envelope (forward
     // additive; the sender's wire whitelist already stripped local-only
     // fields). Shape-guarded: anything that isn't a media-card object is
     // dropped, the MESSAGE still lands (text renders as before). Absent →

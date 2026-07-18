@@ -1,5 +1,5 @@
 /**
- * V2.2 — invoicing + compensated-role.
+ * invoicing + compensated-role.
  *
  * Asserts:
  *   - Non-compensated member completing → no invoice line.

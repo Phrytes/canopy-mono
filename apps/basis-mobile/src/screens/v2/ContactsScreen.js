@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — Contacten roster (feedback-extension P5, mobile parity).
+ * basis-mobile v2 — Contacten roster (feedback-extension, mobile parity).
  *
  * RN mirror of web's `renderContactsRoster` + add-a-bot. Reads the app-owned
  * PeerGraph (`bundle.peerGraph`) via the SHARED `listContacts`, and adds a bot via

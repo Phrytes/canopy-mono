@@ -89,7 +89,7 @@ export function renderChat(manifest, args, opts = {}) {
           console.error('[renderChat] onStateUpdates threw:', err?.message ?? err);
         }
       }
-      // V0.3 (d) — structured list reply shape (task #11, 2026-05-22).
+      // (d) — structured list reply shape (task, 2026-05-22).
       // The skill MAY return `reply.data` (e.g. `{items: [...]}` for
       // list ops, `{settings: {...}}` for record-shape views).
       // Pass through verbatim alongside `stateUpdates` so consumers
@@ -154,7 +154,7 @@ export function renderChat(manifest, args, opts = {}) {
     return out;
   };
 
-  // (e) Q28 reply-shape lookup (basis v0.1, 2026-05-21).  The
+  // (e) reply-shape lookup (basis v0.1, 2026-05-21). The
   // chat shell calls `replyShapeFor(opId)` to pick a renderer (text,
   // list, record, mini-page, file, embed-card, notification, brief).
   // When the op declares `surfaces.chat.reply`, that wins; otherwise
@@ -168,7 +168,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const replyShapeFor = (opId) => replyShapeByOp.get(opId);
 
-  // (f) Q31 follow-up hints (basis v0.4, 2026-05-22).  After a
+  // (f) follow-up hints (basis v0.4, 2026-05-22). After a
   // successful dispatch the chat shell looks up suggested next-actions
   // here; cross-app chains live in basis's static registry.
   const followUpsByOp = new Map();
@@ -180,7 +180,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const followUpsFor = (opId) => followUpsByOp.get(opId);
 
-  // (g) Q32 runtime lookup (basis v0.4, 2026-05-22).  Absent
+  // (g) runtime lookup (basis v0.4, 2026-05-22). Absent
   // value → 'both' (works anywhere); explicit value passes through.
   // Consumers (manifest-host wrappers, basis's merge) filter
   // ops by runtime as appropriate.
@@ -190,7 +190,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const runtimeFor = (opId) => runtimeByOp.get(opId) ?? 'both';
 
-  // (h) Q29 embed snapshot skill (basis v0.5, 2026-05-22).
+  // (h) embed snapshot skill (basis v0.5, 2026-05-22).
   // When an op declares `surfaces.chat.embed.cardSnapshotSkill`, the
   // chat shell knows it can use this op as an inline-card factory
   // for J7 embed messages.  Returns the snapshot-skill-id string OR
@@ -204,7 +204,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const embedSnapshotFor = (opId) => embedSnapshotByOp.get(opId);
 
-  // (i) Q30 brief-summary skill (basis v0.7, 2026-05-23).
+  // (i) brief-summary skill (basis v0.7, 2026-05-23).
   // When an op declares `surfaces.chat.brief.summarySkill`, /brief
   // calls it to populate this app's section of the aggregated brief.
   const briefByOp = new Map();
@@ -220,7 +220,7 @@ export function renderChat(manifest, args, opts = {}) {
   }
   const briefFor = (opId) => briefByOp.get(opId);
 
-  // (j) Q33 search-skill (basis v0.7.5, 2026-05-23).  When an
+  // (j) search-skill (basis v0.7.5, 2026-05-23). When an
   // op declares `surfaces.chat.search.searchSkill`, /find calls it
   // to query this app's cached items by text.
   const searchByOp = new Map();

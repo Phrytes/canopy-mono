@@ -1,7 +1,7 @@
 /**
  * basis — Vite config for the v0.1.4 static web demo.
  *
- * Build pipeline (sub-slice 1.12): outputs to `dist/` for deploy to
+ * Build pipeline: outputs to `dist/` for deploy to
  * any static host (or the user's pod once that flow exists in v0.6).
  *
  * Dev server: `pnpm --filter @onderling-app/basis dev` boots Vite
@@ -82,7 +82,7 @@ export default defineConfig({
     // broken install means @onderling/* resolve as COPIES that we hand-sync after a
     // shared-source edit (see memory `feedback-no-pnpm-install-here`). A pre-
     // bundle of the validator freezes the OLD allow-list, so a freshly-added
-    // reply shape (P3 `curation`) is rejected at mount time until the .vite cache
+    // reply shape (`curation`) is rejected at mount time until the.vite cache
     // is rebuilt — the dev server throws `surfaces.chat.reply must be one of …`
     // and the circle bot fails to build. Serving them as source makes a source/
     // copy edit always live (no stale prebundle). Both are pure ESM, so there's
@@ -189,7 +189,7 @@ export default defineConfig({
       // imports happen via dynamic-import (never executed).
       '@onderling/oidc-session':                 oidcSession,
       '@inrupt/solid-client-authn-node':      empty,
-      // v0.7.P1 — DON'T shim '@inrupt/solid-client-authn-core'.  We
+      // v0.7. — DON'T shim '@inrupt/solid-client-authn-core'. We
       // now compose '@inrupt/solid-client-authn-browser' for real
       // OIDC; the browser package depends on the core package's
       // type/util exports (e.g. determineSigningAlg).  Stubbing it
@@ -204,7 +204,7 @@ export default defineConfig({
       // the import graph at the boundary.  Without this, Rollup
       // walks transitively into `relay/src/server.js` which static-
       // imports node:http, node:https, ws, better-sqlite3, … none
-      // of which belong in a browser bundle (#303).
+      // of which belong in a browser bundle.
       '@onderling/relay':                        relayShim,
       // VaultNodeFs is Node-only by design — VaultMemory is what we
       // use in v0.1.  Stubbing keeps the @onderling/vault index re-export

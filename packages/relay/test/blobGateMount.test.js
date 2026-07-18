@@ -1,5 +1,5 @@
 /**
- * mountBlobGate — integration tests (PLAN-media-infra-deployment P2:
+ * mountBlobGate — integration tests (PLAN-media-infra-deployment:
  * the blob-gateway HTTP edge mounted on the relay's HTTP server).
  *
  * Uses a fake verifier + fake bucket (no live Solid / S3), matching the

@@ -1,5 +1,5 @@
 /**
- * Media P1 mobile twin (2026-07) — the media-card render MODEL.
+ * Media mobile twin (2026-07) — the media-card render MODEL.
  *
  * Mirrors web's `renderMediaCard` (apps/basis/src/web/domAdapter.js)
  * as a pure model so the RN bubble stays a dumb projector and the

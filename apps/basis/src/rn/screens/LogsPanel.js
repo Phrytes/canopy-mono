@@ -1,8 +1,8 @@
 /**
  * **Platform: RN**.  Logs viewer for basis-mobile
- * (Bundle F P3, #259, 2026-05-26).
+ * (2026-05-26).
  *
- * Mobile parallel of web's #121 side-panel.  Reads from an
+ * Mobile parallel of web's side-panel. Reads from an
  * `EventLog` instance (apps/basis/src/eventLog.js — portable;
  * the same class web uses) and renders a chronological list of
  * delivered events.  Wired via `openLogsPanel` callback in mobile

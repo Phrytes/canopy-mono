@@ -30,8 +30,8 @@ export function renderCircleDetail(container, {
   circle = {},
   items = [],
   pol = null,
-  // P6.1 — gate feature-bound action buttons on the circle's Functies axis
-  // (board 4A).  Null/undefined → feature defaults apply.  Passed to the shared
+  // gate feature-bound action buttons on the circle's Functies axis
+  // . Null/undefined → feature defaults apply. Passed to the shared
   // `circleActions` selector, which evaluates each action's `requires` gate.
   policy = null,
   t,
@@ -88,7 +88,7 @@ export function renderCircleDetail(container, {
     container.appendChild(meta);
   }
 
-  // Proof-of-Location row removed 2026-06-25 (parked feature — board 10C / slice 5.9d). The seam stays
+  // Proof-of-Location row removed 2026-06-25 (parked feature). The seam stays
   // (src/v2/circlePol.js + getPolStatus + circle.pol.* locale); re-add this row to re-surface it.
   void pol;
 

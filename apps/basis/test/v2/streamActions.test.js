@@ -1,5 +1,5 @@
 /**
- * P6.M3 — Stream per-row actions + pinned compose tests.
+ * Stream per-row actions + pinned compose tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

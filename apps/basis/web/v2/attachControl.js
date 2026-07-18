@@ -1,5 +1,5 @@
 /**
- * attachControl — the projector-driven "+" attach affordance (P2, lights J4).
+ * attachControl — the projector-driven "+" attach affordance (lights J4).
  *
  * Builds the composer's attach control from `renderAttachments(manifest).attachMenu`
  * (the ATTACHMENT projector, a family-(b) peer of renderSlash). It REPLACES the

@@ -1,7 +1,7 @@
 /**
  * Parameterised system-prompt builder.  Pure: same inputs ⇒ same string.
  *
- * The builder is deliberately small + knob-driven so SP-1 can wire its
+ * The builder is deliberately small + knob-driven so can wire its
  * `preamble` / `perToolLine` / `postamble` to reproduce household's
  * `SYSTEM_PROMPT_CLASSIFY` byte-for-byte (or, per PLAN §1.6, a documented
  * normalisation thereof if the hand-written prose can't be regenerated

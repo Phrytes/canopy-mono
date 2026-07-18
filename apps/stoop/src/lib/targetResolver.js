@@ -137,7 +137,7 @@ export async function isAddressedToMe(targets, { selfWebid, senderWebid, activeG
     if (t.kind === 'contacts' || t.kind === 'tag' || t.kind === 'list') {
       // Conservative: accept iff sender is in our ContactBook.
       // (Receiver can't replay the sender's resolve(); good-enough
-      // for V2.  V2.5 adds signed-target proofs.)
+      // for V2. adds signed-target proofs.)
       if (!contacts || !senderWebid) continue;
       const all = await contacts.listContacts();
       if (all.some(c => c.webid === senderWebid)) return true;

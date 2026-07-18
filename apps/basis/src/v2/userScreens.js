@@ -20,7 +20,7 @@
  *   - "Mijn dingen" → kringFilter: null, blocks: [{taken, scope:'assigned-to-me'}]
  *                    (the new task block lands in α.4)
  *
- * Per-user storage (per Q4):
+ * Per-user storage (per):
  *   One ScreenBook per user; key `cc.userScreens` (NOT per-circle).
  *   Mirrors createKringRecipeStore's injectable {load, save} shape so
  *   the host can swap localStorage → pod io later without changing

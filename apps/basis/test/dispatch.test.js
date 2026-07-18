@@ -1,5 +1,5 @@
 /**
- * basis — dispatch tests.  v0.1 sub-slice 1.7.
+ * basis — dispatch tests. v0.1.
  */
 import { describe, it, expect, vi } from 'vitest';
 

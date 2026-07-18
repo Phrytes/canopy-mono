@@ -11,7 +11,7 @@
 // for `@onderling-app/basis` from a NEW workspace pkg needs a
 // `pnpm install` cycle to land — and a previous attempt 404'd on a
 // pre-existing `@onderling/webid-discovery` dep.  Relative imports
-// sidestep that, work today, and keep #221.5's lifted core layer
+// sidestep that, work today, and keep 's lifted core layer
 // as the single source of truth.
 import { mergeManifests, basisManifest } from '../../../basis/src/index.js';
 import {
@@ -65,7 +65,7 @@ function manifestList({ householdManifest } = {}) {
 export function composeManifests({ householdManifest, extraSources = [] } = {}) {
   const entries = [
     ...manifestList({ householdManifest }).map((manifest) => ({ manifest })),
-    ...extraSources,   // extension-mapping sources (feedback-extension P2) — merged at the same waist
+    ...extraSources,   // extension-mapping sources (feedback-extension) — merged at the same waist
   ];
   // runtime:'browser' matches what basis web passes — the
   // manifest validator uses it to gate browser-only ops.  RN is

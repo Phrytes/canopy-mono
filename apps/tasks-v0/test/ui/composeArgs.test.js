@@ -179,7 +179,7 @@ describe('composeArgs.buildAddSubtaskArgs', () => {
     // Phase 41.18 follow-up — sub-tasks must NOT carry their own
     // dependencies in the addSubtask payload. The substrate wires
     // parent.dependencies[] += [subId] on its own; passing
-    // child-deps here would silently desync the V2.7 hard-deps gate.
+    // child-deps here would silently desync the hard-deps gate.
     const out = buildAddSubtaskArgs({
       text: 'sub',
       parentTaskId: 'p',

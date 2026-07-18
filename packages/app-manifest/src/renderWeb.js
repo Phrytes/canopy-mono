@@ -18,25 +18,25 @@
  * `manifest.operations`).  See "Owner decisions" below.
  *
  * ──── Owner decisions (locked 2026-05-20) ─────────────────────────
- *   Q1. Detail-view: V0 = buttons-on-row only.  No `section.detail`
+ *   . Detail-view: V0 = buttons-on-row only. No `section.detail`
  *       field yet.  V1 may add when user tests show drilldowns are
  *       needed.
- *   Q2. Section ordering: preserve `manifest.views[]` declaration
+ *   . Section ordering: preserve `manifest.views[]` declaration
  *       order.  Activity-based sort would shift sections around at
  *       runtime, which is jarring for users.  Matches `renderChat`
  *       discipline (also declaration-order).
- *   Q3. Globals source: inferred from
+ *   . Globals source: inferred from
  *       `op.surfaces.ui.placement === 'global'`.  No new
  *       `manifest.navigation` block needed; forward-additive.
- *   Q4. Equivalence: strict JSON equality renderWeb≡renderMobile;
+ *   . Equivalence: strict JSON equality renderWeb≡renderMobile;
  *       owner-approved exceptions only.
- *   Q5. Item sort: `view.sort = {by, direction}` passed through to
+ *   . Item sort: `view.sort = {by, direction}` passed through to
  *       `section.sort`.  Forward-additive.  Adapter performs the
  *       sort.  User-reordering (interactive) deferred to V1+ (needs
  *       item-store ordinal field).
  * ─────────────────────────────────────────────────────────────────
  *
- * SP-0 Phase boundary (PLAN guardrail #9): this package DECLARES.
+ * Phase boundary (PLAN guardrail): this package DECLARES.
  * `@onderling/interface-registry` runs per-type item rendering — once
  * mature, NavModel will reference `renderCompact` / `renderFull` for
  * per-item cells instead of returning `{text, buttons}`.  V0 stays
@@ -46,7 +46,7 @@
  * @property {string}   app                manifest.app verbatim
  * @property {Section[]} sections          one per manifest.view (declaration order)
  * @property {Affordance[]} globals        top-level affordances (e.g. global Help)
- * @property {Page[]}   [pages]            top-level PAGE surfaces (SP-3b, D) —
+ * @property {Page[]} [pages] top-level PAGE surfaces (D)
  *                                         one per op with `surfaces.page`
  *                                         (declaration order).  Key is OMITTED
  *                                         when the manifest declares no page
@@ -102,7 +102,7 @@
  *                                         route; web adapter ignores it — the
  *                                         NavModel stays platform-neutral so the
  *                                         same projection feeds renderMobile)
- * @property {string}   [labelKey]         Q22 localisation key passthrough (see
+ * @property {string} [labelKey] localisation key passthrough (see
  *                                         Affordance.labelKey) — absent today, but
  *                                         forward-additive so a localised page
  *                                         title can be looked up via `t()`.
@@ -113,15 +113,15 @@
  * @property {string}   itemType           mirrors view.type
  * @property {object}   [filter]           mirrors view.filter
  * @property {{by: string, direction?: 'asc'|'desc'}} [sort]
- *                                         mirrors view.sort (Q5)
+ *                                         mirrors view.sort
  * @property {*}        [audience]         the view's declared audience for the
  *                                         list-render seam to default its
- *                                         ListFilter.audience (SP-5b consumer).
+ *                                         ListFilter.audience (consumer).
  *                                         Sourced from view.defaultAudience
  *                                         (schema.js) — an explicit view.audience,
  *                                         if a manifest sets one, overrides it.
  * @property {{skillId: string, args?: object}} [dataSource]
- *                                         mirrors view.dataSource (V0.2 Q7).
+ *                                         mirrors view.dataSource.
  *                                         When present, adapters call this
  *                                         skill (with merged args) instead
  *                                         of the default `listOpen({type})`
@@ -152,7 +152,7 @@
  * @property {string}   label              from surfaces.ui.label or op.verb
  * @property {object}   paramsSchema       from paramsToJsonSchema(op.params)
  * @property {'section'|'global'} placement
- * @property {object}   [prefilledParams]  Q6 (locked 2026-05-20) — when an
+ * @property {object} [prefilledParams] (locked 2026-05-20) — when an
  *                                         op surfaces in a section via the
  *                                         type-enum fallback (params:
  *                                         [{name:'type', kind:'enum',
@@ -166,8 +166,8 @@
  * @property {string}   label              from surfaces.ui.label or op.verb
  * @property {{type?: string|string[]|'*', state?: string|string[]}} appliesTo
  *                                         passed through (F-SP3-a multi-state
- *                                         honoured).  V0.2 — `type` may be
- *                                         `'*'` (wildcard, Q8): matches every
+ *                                         honoured). — `type` may be
+ *                                         `'*'` (wildcard): matches every
  *                                         section regardless of itemType.
  *                                         Surfaced by stoop's `cancelRequest`
  *                                         spanning ask/offer/lend.
@@ -179,7 +179,7 @@
  * time (`${opId}:${item.id}` for single-app, prefixed by manifest-
  * host when ≥2 apps composed).  Keeps NavModel pure-data.
  *
- * ──── Q6 — multi-type ops via type-enum fallback (locked 2026-05-20)
+ * ──── — multi-type ops via type-enum fallback (locked 2026-05-20)
  *
  * Surfaced in A.2 by household's `addItem(type: shopping|errand|repair|
  * schedule, text)` — one chat-side tool, four web sections.  Three
@@ -197,10 +197,10 @@
  *   (c) **Other verbs require `surfaces.ui`** to surface as
  *       itemActions (state-gated per-item buttons).  Same as V0.
  *
- * ──── Q7 — `view.dataSource` explicit declaration (locked 2026-05-21)
+ * ──── — `view.dataSource` explicit declaration (locked 2026-05-21)
  *
  * Surfaced by the CONVERGENT signal from B.2 (tasks-v0 mine.html) +
- * E.1 (stoop mine.html) + B.1 (tasks-v0 dag.html).  Q6 rule (b) says
+ * E.1 (stoop mine.html) + B.1 (tasks-v0 dag.html). rule (b) says
  * "list ops are the section's implicit data source — adapter calls
  * `listOpen({type, ...filter})`".  But many real sections need a
  * DIFFERENT list skill: `listMine`, `listMyMasteredTasks`,
@@ -212,7 +212,7 @@
  * pre-filled args.  Forward-additive: absent → existing behaviour
  * (adapter calls `listOpen({type, ...filter})`).
  *
- * ──── Q9 — `view.readOnly: true` marker (locked 2026-05-21)
+ * ──── — `view.readOnly: true` marker (locked 2026-05-21)
  *
  * Surfaced by A.3 agent's signal: household's `members` section is
  * empty by substrate default (no listOpen for contact) and has no
@@ -226,24 +226,24 @@
  * button on a read-only audit log).  Adapter can also use the
  * `section.readOnly` flag for visual cues.
  *
- * ──── Q10 — Creative verbs auto-surface (locked 2026-05-21)
+ * ──── — Creative verbs auto-surface (locked 2026-05-21)
  *
- * Q6 rule (a) said `verb === 'add'` auto-surfaces.  Generalised: any
+ * rule (a) said `verb === 'add'` auto-surfaces. Generalised: any
  * verb in the `CREATIVE_VERBS` set (`{add, register}`) auto-surfaces.
  * Surfaced by A.3 agent: household's `registerName` op (verb=
  * 'register', non-canonical via F-SP1-e) creates contact items but
- * has no `surfaces.ui` — under Q6 rule (a) it was omitted from
+ * has no `surfaces.ui` — under rule (a) it was omitted from
  * NavModel.  Now it auto-surfaces in the `members` section.
  *
  * Forward-additive: future creative verbs can be added to the
  * CREATIVE_VERBS set.  Keep the set tight — each addition expands
  * the auto-surface behaviour implicitly.
  *
- * ──── Q8 — `appliesTo.type: '*'` wildcard (locked 2026-05-21)
+ * ──── — `appliesTo.type: '*'` wildcard (locked 2026-05-21)
  *
  * Surfaced by E.1: stoop's `cancelRequest` spans all 3 prikbord
  * types (ask/offer/lend); `markReturned` only matches `lend` but
- * conceptually belongs on every per-row button.  Q6 + F-SP3-a's
+ * conceptually belongs on every per-row button. + F-SP3-a's
  * multi-type array helps but is manual per-op.
  *
  * Solution: `appliesTo: { type: '*' }` is permitted (validator).
@@ -253,11 +253,11 @@
  * Forward-additive: validator special-cases `'*'`; renderWeb's
  * `matchOp` returns matched=true for wildcard regardless of view.type.
  *
- * ──── Q15 — `view.dataSource.argsFromContext` (locked 2026-05-21)
+ * ──── — `view.dataSource.argsFromContext` (locked 2026-05-21)
  *
  * Surfaced by E.2 + E.3: stoop's privacy.html needs a runtime `lang`
  * arg (browser-derived) and stoop's settings.html surfaced the
- * adjacent need for context-bound args.  V0.2 `dataSource.args` is
+ * adjacent need for context-bound args. `dataSource.args` is
  * static; runtime values forced consumers to bypass the manifest.
  *
  * Solution: `dataSource.argsFromContext: {lang: '$lang'}` — adapter
@@ -265,20 +265,20 @@
  * supplied `context` arg at call time.  Forward-additive — absent
  * means existing static-args behaviour.
  *
- * ──── Q17 — `view.shape: 'record'` (locked 2026-05-21)
+ * ──── — `view.shape: 'record'` (locked 2026-05-21)
  *
  * Surfaced by E.3: stoop's settings.html is a SINGLETON record
  * (`getSettings` returns `{settings: {...}}`), not a list.  NavModel
- * V0.2 assumes sections are `Array<item>`.  E.3 worked around by
+ * assumes sections are `Array<item>`. E.3 worked around by
  * treating the singleton as a 1-element list.
  *
  * Solution: `view.shape: 'record' | 'list'` (default `'list'` —
  * existing behaviour).  Adapter switches rendering: `'list'` →
  * iterate items[]; `'record'` → render the single returned record
- * with its fields.  Future Q18 (deferred) lets the record's fields
+ * with its fields. Future (deferred) lets the record's fields
  * declare their own patch-op for per-field mutations.
  *
- * ──── Q18 — `view.fields[].patch` per-field mutations (locked 2026-05-21)
+ * ──── — `view.fields[].patch` per-field mutations (locked 2026-05-21)
  *
  * Surfaced by E.3 (signal #6).  Record-shape views (settings, profile)
  * have fields the user edits — but the current verb model has no slot
@@ -288,22 +288,22 @@
  * {opId, argName, argWrapper?}}]`.  Only meaningful when
  * `view.shape === 'record'`.  NavModel passes through to
  * `section.fields[]`.  Adapter renders each field as an input based on
- * `type`; on change, dispatches `patch.opId(<args>)` per Q21.
+ * `type`; on change, dispatches `patch.opId(<args>)` per.
  *
  * Forward-additive — absent means existing record-rendering (no
  * editable fields).
  *
- * ──── Q21 — `patch.argWrapper` for wrapped-patch shapes (locked 2026-05-22)
+ * ──── — `patch.argWrapper` for wrapped-patch shapes (locked 2026-05-22)
  *
- * Surfaced by the V0.4-adopt for stoop's settings (commit 9e7003b):
- * Q18's flat `{opId, argName}` assumes the dispatch shape
+ * Surfaced by the -adopt for stoop's settings (commit 9e7003b):
+ * 's flat `{opId, argName}` assumes the dispatch shape
  * `opId({[argName]: newValue})`.  But many real APIs use nested patch
  * shapes — e.g. stoop's `updateSettings({patch: {pollIntervalMs: 30000}})`.
- * The page-level adapter wrapped this ad-hoc; V0.5 makes it explicit
+ * The page-level adapter wrapped this ad-hoc; makes it explicit
  * in the substrate.
  *
  * Solution: `patch.argWrapper?: string` opt-in.  When absent or empty,
- * dispatch stays FLAT: `opId({[argName]: newValue})` (Q18 behaviour
+ * dispatch stays FLAT: `opId({[argName]: newValue})` (behaviour
  * preserved).  When a non-empty string, dispatch is WRAPPED:
  * `opId({[argWrapper]: {[argName]: newValue}})`.
  *
@@ -312,14 +312,14 @@
  *            argWrapper: 'patch' }
  *   → updateSettings({patch: {pollIntervalMs: newValue}})
  *
- * Forward-additive — absent means existing flat behaviour (V0.4).
+ * Forward-additive — absent means existing flat behaviour.
  *
- * ──── Q26 — `field.requiresField` conditional display (locked 2026-05-20)
+ * ──── — `field.requiresField` conditional display (locked 2026-05-20)
  *
  * Surfaced by B.2.4 (tasks-v0 pod-settings): `groupPodUri` is only
  * meaningful when `policy ∈ {centralised, hybrid}` — the rich UI
  * hides the input when the policy is `personal`.  Auto-rendered
- * consumers would have no way to express that today; V0.5 Q21 covered
+ * consumers would have no way to express that today; covered
  * the dispatch shape but not the visibility gate.
  *
  * Solution: `view.fields[].requiresField?: {<otherField>:
@@ -330,11 +330,11 @@
  *
  * Forward-additive — absent means "always show" (existing behaviour).
  *
- * ──── Q25 — `field.readSkill` for multi-skill records (locked 2026-05-20)
+ * ──── — `field.readSkill` for multi-skill records (locked 2026-05-20)
  *
  * Surfaced by E.4 (stoop profile): `holidayMode` is reachable two
  * ways — bulk via `getMyProfile()` (record-level dataSource) AND
- * dedicated `getHolidayMode()` skill.  V0.6 Q18 has no slot for "this
+ * dedicated `getHolidayMode` skill. has no slot for "this
  * field's current value comes from a different skill than the
  * record's bulk read."  Real consequence: refresh granularity falls
  * back to "re-fetch the whole record" even when a single-field skill
@@ -346,19 +346,19 @@
  * payload.  Absent (default) → existing behaviour (read from
  * `record[name]`).
  *
- * Args are static at projection time (no Q15 `argsFromContext`
+ * Args are static at projection time (no `argsFromContext`
  * substitution yet; add when a real need surfaces).  Validator
- * enforces non-empty skillId + optional args object.  Q16-strict
+ * enforces non-empty skillId + optional args object. -strict
  * mode cross-checks skillId against `operations[]` /
  * `externalSkills[]`.
  *
  * Forward-additive — adopting consumers add the field; non-adopting
  * consumers see absent readSkill and behave as before.
  *
- * ──── Q23 — `field.type: 'file' | 'image'` byte-shaped fields (locked 2026-05-20)
+ * ──── — `field.type: 'file' | 'image'` byte-shaped fields (locked 2026-05-20)
  *
- * Q18's recognized `field.type` set was implicit — manifests today use
- * `'string' | 'number' | 'boolean' | 'enum' | 'object'`.  Q23
+ * 's recognized `field.type` set was implicit — manifests today use
+ * `'string' | 'number' | 'boolean' | 'enum' | 'object'`.
  * formalises the set + adds two new values for byte-shaped fields
  * (avatar upload, document attach, photo capture):
  *
@@ -377,12 +377,12 @@
  * The substrate stays renderer-agnostic — projector passes `type`
  * through verbatim; rendering + transform are consumer concerns.
  * Surfaced by E.4 (stoop profile.html's avatar upload — `avatarUrl`
- * is a data-URL post client-side resize; no Q18 type fit it before).
+ * is a data-URL post client-side resize; no type fit it before).
  *
  * Forward-additive — adopting consumers extend their renderer-side
  * field switch to handle the two new type values.
  *
- * ──── Q27 — `surfaces.ui.confirm` severity hint (locked 2026-05-20)
+ * ──── — `surfaces.ui.confirm` severity hint (locked 2026-05-20)
  *
  * Surfaced by the Tier C investigation (Project Files/Substrates/tier-c-proposals.md):
  * 14 destructive / side-effect-bearing surfaces across folio + tasks
@@ -409,13 +409,13 @@
  * Out of scope:
  *   - passphrase prompts (mnemonic / encryptedBackup) — auth flow
  *   - one-shot reveals (mnemonic show-once) — business rule
- *   - localisation on message (use a future Q22-style messageKey if needed)
+ *   localisation on message (use a future -style messageKey if needed)
  *
  * Adapters that don't understand `confirm` should fail the
  * affordance (strict) rather than silently ignore — a `danger` gate
  * dropped on the floor is a UX hazard.
  *
- * ──── Q22 — `labelKey` localisation passthrough (locked 2026-05-20)
+ * ──── — `labelKey` localisation passthrough (locked 2026-05-20)
  *
  * Surfaced by C.3 closeout: manifest `label` strings are English while
  * stoop is Dutch-first and tasks-mobile RN screens already use an localisation
@@ -431,10 +431,10 @@
  * Forward-additive — absent means existing English-label behaviour.
  * No adapter changes — pure consumer-side resolution.
  *
- * ──── Q19 — Section-scope CTAs via `surfaces.ui.placement: 'section-header'`
+ * ──── — Section-scope CTAs via `surfaces.ui.placement: 'section-header'`
  *
  * Surfaced by B.2.3 deferral.  Inbox has a "Clear all" header CTA —
- * not creative (doesn't add items), not per-item.  No slot in V0.3.
+ * not creative (doesn't add items), not per-item. No slot in.
  *
  * Solution: ops with `surfaces.ui.placement: 'section-header'`
  * surface in `section.sectionActions[]` (parallel to `affordances[]`
@@ -444,19 +444,19 @@
  *
  * Forward-additive.
  *
- * ──── Q16-strict — opt-in skillId cross-check (locked 2026-05-21)
+ * ──── -strict — opt-in skillId cross-check (locked 2026-05-21)
  *
  * `validateManifest(manifest, {strict: true})` walks every
- * `view.dataSource.skillId` (V0.4 also `view.fields[].patch.opId`) and
+ * `view.dataSource.skillId` (also `view.fields[].patch.opId`) and
  * verifies it's either declared in `manifest.operations[].id` OR in
  * the new `manifest.externalSkills?: string[]` allow-list.  Default
  * (no `strict` opt) keeps the existing tolerant behaviour.
  *
- * ──── D / SP-3b — `surfaces.page` projection (renderWeb tail, 2026-07)
+ * ──── D / — `surfaces.page` projection (renderWeb tail, 2026-07)
  *
  * The renderWeb-tail slice of Objective D (all surfaces manifest-driven).
  * Ops that open a persistent rich-UI surface declare `surfaces.page`
- * (validated by #180: `{kind: 'side-panel'|'modal'|'screen', title?,
+ * (validated by: `{kind: 'side-panel'|'modal'|'screen', title?,
  * route?}`) — the Settings side-panel, the Cluster-C wizards (restore
  * identity, dispute, audience picker, encrypted backup, create/join
  * buurt), etc.  Before this slice, renderWeb DROPPED these declarations:
@@ -507,8 +507,8 @@
 import { paramsToJsonSchema } from './paramsToJsonSchema.js';
 
 /**
- * Q10 (2026-05-21) — verbs that auto-surface as section affordances
- * without requiring `surfaces.ui` (Q6 rule (a) generalised).
+ * verbs that auto-surface as section affordances
+ * without requiring `surfaces.ui` (rule (a) generalised).
  *
  *   'add'      — the canonical creative verb.
  *   'register' — household's `registerName` (non-canonical via F-SP1-e);
@@ -543,8 +543,8 @@ export function renderWeb(manifest) {
 
   // (a) Globals — ops with surfaces.ui.placement === 'global'.  These
   //     surface at the app-shell level, NOT under any section.
-  //     Inferred from existing surfaces.ui (Q3, no schema change).
-  //     Q19 (V0.4) — `placement === 'section-header'` is NOT global;
+  //     Inferred from existing surfaces.ui (no schema change).
+  //     `placement === 'section-header'` is NOT global;
   //     handled inside buildSection per-section.
   const globals = [];
   for (const op of ops) {
@@ -554,10 +554,10 @@ export function renderWeb(manifest) {
     globals.push(buildAffordance(op, manifest, 'global'));
   }
 
-  // (b) Sections — one per view; preserve declaration order (Q2).
+  // (b) Sections — one per view; preserve declaration order.
   const sections = views.map((view) => buildSection(view, ops, manifest));
 
-  // (c) Pages — D / SP-3b: ops with `surfaces.page` project to top-level
+  // (c) Pages — D /: ops with `surfaces.page` project to top-level
   //     PAGE surfaces (Settings side-panel, Cluster-C wizards, …).
   //     Declaration order, deterministic.  Kept OUT of the return object
   //     when empty so page-less manifests keep the {app, sections,
@@ -632,27 +632,27 @@ function buildSection(view, ops, manifest) {
   // searches across the declared fields instead of only the label.
   // Absent → unset ⇒ consumer defaults to `[labelField]` (back-compatible).
   if (view.searchFields  !== undefined) section.searchFields  = view.searchFields;
-  // SP-5b — project the view's declared audience so the list-render seam
+  // project the view's declared audience so the list-render seam
   // (e.g. basis `buildScreenModel`) can DEFAULT its ListFilter.audience
   // to it.  The schema field is `view.defaultAudience` (schema.js); an explicit
   // `view.audience`, if a manifest carries one, wins over the declared default.
   if (view.audience !== undefined) section.audience = view.audience;
   else if (view.defaultAudience !== undefined) section.audience = view.defaultAudience;
-  // Q7 (2026-05-21) — explicit data-source declaration; adapters use
+  // explicit data-source declaration; adapters use
   // this in preference to the default `listOpen({type, ...filter})`
   // heuristic.  Validate-loose: shape correctness is the adapter's
-  // concern (forward-additive — V0.3 may tighten via JSDoc).
-  // Q15 (V0.3, 2026-05-21) — `dataSource.argsFromContext` passes
+  // concern (forward-additive — may tighten via JSDoc).
+  // `dataSource.argsFromContext` passes
   // through verbatim.  Substitution happens in
   // `@onderling/web-adapter/fetchSectionItems` at call time.
   if (view.dataSource !== undefined) section.dataSource = view.dataSource;
-  // Q9 (2026-05-21) — read-only marker.  Adapter skips Add forms /
+  // read-only marker. Adapter skips Add forms /
   // creative affordances; itemActions still render (state-gated
   // buttons may still apply).  Section receives `readOnly: true`
   // verbatim so adapter can also disable per-row interactivity if
   // needed (e.g. dim the row).
   if (view.readOnly === true)       section.readOnly   = true;
-  // Q17 (V0.3, 2026-05-21) — section shape.  Default `'list'`
+  // section shape. Default `'list'`
   // (Array<item>); `'record'` switches the adapter to expect ONE
   // record (e.g. settings, profile).  Field NOT set on the section
   // when `view.shape` is absent OR equals `'list'` — keeps NavModel
@@ -660,7 +660,7 @@ function buildSection(view, ops, manifest) {
   // implicitly list-shaped).
   if (view.shape === 'record')      section.shape      = 'record';
 
-  // Q18 (V0.4, 2026-05-21) — per-field declarations for record-shape
+  // per-field declarations for record-shape
   // views.  Pass through verbatim (defensive copy of each field +
   // patch sub-object).
   if (view.shape === 'record' && Array.isArray(view.fields)) {
@@ -668,11 +668,11 @@ function buildSection(view, ops, manifest) {
       const out = { name: f.name };
       if (f.type    !== undefined) out.type    = f.type;
       if (f.label   !== undefined) out.label   = f.label;
-      // Q22 (V0.6, 2026-05-20) — localisation key passthrough on fields.
+      // localisation key passthrough on fields.
       if (typeof f.labelKey === 'string' && f.labelKey !== '') {
         out.labelKey = f.labelKey;
       }
-      // Q26 (V0.7, 2026-05-20) — conditional-display gate.  Same shape
+      // conditional-display gate. Same shape
       // as appliesTo.state: { otherField: value | value[] }.  Adapter
       // hides the field when the record's current value for any gate
       // key doesn't match.
@@ -684,7 +684,7 @@ function buildSection(view, ops, manifest) {
         }
         if (Object.keys(gate).length > 0) out.requiresField = gate;
       }
-      // Q25 (V0.7, 2026-05-20) — multi-skill records.  Per-field
+      // multi-skill records. Per-field
       // read skill replaces the record-level dataSource value when
       // present.  Pass through as a defensive copy.
       if (f.readSkill && typeof f.readSkill === 'object'
@@ -699,7 +699,7 @@ function buildSection(view, ops, manifest) {
       if (Array.isArray(f.choices)) out.choices = f.choices.slice();
       if (f.patch && typeof f.patch === 'object') {
         out.patch = { opId: f.patch.opId, argName: f.patch.argName };
-        // Q21 (V0.5, 2026-05-22) — wrapped-patch shape opt-in.  When
+        // wrapped-patch shape opt-in. When
         // present, adapters dispatch
         // `opId({[argWrapper]: {[argName]: newValue}})` instead of the
         // flat default `opId({[argName]: newValue})`.  Validator
@@ -722,9 +722,9 @@ function buildSection(view, ops, manifest) {
     if (op.verb === 'list') continue;  // implicit data source — adapter fetches items
 
     if (CREATIVE_VERBS.has(op.verb)) {
-      // Q9: skip add/register affordances when the section is read-only.
+      // skip add/register affordances when the section is read-only.
       if (view.readOnly === true) continue;
-      // (Q6 rule a) — creative verbs (Q10: add | register) auto-surface
+      // (rule a) — creative verbs (: add | register) auto-surface
       // as section affordances without needing `surfaces.ui`.  Every
       // web section needs an "add new item" path; the manifest
       // shouldn't have to repeat `surfaces.ui` for each.
@@ -732,7 +732,7 @@ function buildSection(view, ops, manifest) {
         buildAffordance(op, manifest, 'section', m.viaTypeEnum ? { type: view.type } : null),
       );
     } else if (ui?.placement === 'section-header') {
-      // Q19 (V0.4, 2026-05-21) — section-scope CTAs.  e.g. inbox's
+      // section-scope CTAs. e.g. inbox's
       // "Clear all" header CTA.  Adjacent to the section title; not
       // per-item, not creative.  Shape matches Affordance.
       if (!section.sectionActions) section.sectionActions = [];
@@ -740,7 +740,7 @@ function buildSection(view, ops, manifest) {
         buildAffordance(op, manifest, 'section-header', m.viaTypeEnum ? { type: view.type } : null),
       );
     } else if (ui) {
-      // (Q6 rule c) — other verbs require surfaces.ui to surface as itemActions.
+      // (rule c) — other verbs require surfaces.ui to surface as itemActions.
       section.itemActions.push(
         buildItemAction(op, view, m.viaTypeEnum ? { type: view.type } : null),
       );
@@ -754,7 +754,7 @@ function buildSection(view, ops, manifest) {
  * Does an op apply to this view's item-type?  Returns `{matched, viaTypeEnum}`.
  *
  *   - **Explicit `appliesTo.type` wins** (string OR array, F-SP3-a).
- *   - **Type-enum fallback (Q6, locked 2026-05-20):** op without
+ *   **Type-enum fallback (locked 2026-05-20):** op without
  *     `appliesTo` but with a `params: [{name:'type', kind:'enum',
  *     of:[…]}]` whose enum includes `view.type` matches that view.
  *     The section's itemType is recorded in `prefilledParams.type`
@@ -765,7 +765,7 @@ function buildSection(view, ops, manifest) {
  */
 function matchOp(op, view) {
   if (op.appliesTo?.type !== undefined) {
-    // Q8 (2026-05-21) — wildcard: '*' matches every section.  No
+    // wildcard: '*' matches every section. No
     // prefilledParams; op is type-agnostic (operates on the item's
     // id, not its type).
     if (op.appliesTo.type === '*') {
@@ -797,8 +797,8 @@ function findTypeEnumParam(op) {
 }
 
 /**
- * D / SP-3b — project one `surfaces.page` declaration into a NavModel
- * Page.  Pure passthrough of the #180-validated shape (`kind` required;
+ * project one `surfaces.page` declaration into a NavModel
+ * Page. Pure passthrough of the -validated shape (`kind` required;
  * `title`/`route` optional).  `route` (mobile nav route) is carried so
  * the same projection feeds renderMobile; the web adapter ignores it.
  */
@@ -806,7 +806,7 @@ function buildPage(op, page) {
   const out = { opId: op.id, kind: page.kind };
   if (typeof page.title === 'string' && page.title !== '') out.title = page.title;
   if (typeof page.route === 'string' && page.route !== '') out.route = page.route;
-  // Q22-style localisation key passthrough — a consumer with a `t()`
+  // style localisation key passthrough — a consumer with a `t`
   // resolves the localised page title via `labelKey`; others fall back
   // to `title`.  Forward-additive (no manifest declares it yet).
   if (typeof page.labelKey === 'string' && page.labelKey !== '') out.labelKey = page.labelKey;
@@ -880,7 +880,7 @@ function buildAffordance(op, manifest, placement, prefilledParams) {
     paramsSchema: paramsToJsonSchema(op.params ?? [], { manifest }),
     placement,
   };
-  // Q22 (V0.6, 2026-05-20) — localisation key passthrough.  When the manifest
+  // localisation key passthrough. When the manifest
   // declares `surfaces.ui.labelKey`, surface it alongside `label` so
   // consumers with an localisation function look up the localized string;
   // others fall back to `label`.  Forward-additive — absent means
@@ -889,7 +889,7 @@ function buildAffordance(op, manifest, placement, prefilledParams) {
       && op.surfaces.ui.labelKey !== '') {
     a.labelKey = op.surfaces.ui.labelKey;
   }
-  // Q27 (V0.8, 2026-05-20) — confirm-severity passthrough.  Pure
+  // confirm-severity passthrough. Pure
   // defensive copy: adapters style the confirm modal on
   // `severity` and render `message` if present.  Validator
   // guarantees severity ∈ {info,warn,danger} when set.
@@ -914,7 +914,7 @@ function buildItemAction(op, view, prefilledParams) {
   if (op.appliesTo?.state !== undefined) {
     appliesTo.state = op.appliesTo.state;  // F-SP3-a passthrough
   }
-  // V0.4 — pass through any *other* appliesTo fields verbatim (e.g.
+  // pass through any *other* appliesTo fields verbatim (e.g.
   // `kind: 'subtask-proposal'` on inbox ops).  Without this, the
   // adapter's `itemMatchesAppliesTo` generic gate sees no constraint
   // and surfaces the action on every item.  Surfaced by C.4 — web
@@ -930,12 +930,12 @@ function buildItemAction(op, view, prefilledParams) {
     label: op?.surfaces?.ui?.label ?? op.verb ?? op.id,
     appliesTo,
   };
-  // Q22 (V0.6) — localisation key passthrough (see buildAffordance).
+  // localisation key passthrough (see buildAffordance).
   if (typeof op?.surfaces?.ui?.labelKey === 'string'
       && op.surfaces.ui.labelKey !== '') {
     action.labelKey = op.surfaces.ui.labelKey;
   }
-  // Q27 (V0.8) — confirm-severity passthrough (see buildAffordance).
+  // confirm-severity passthrough (see buildAffordance).
   const confirm = op?.surfaces?.ui?.confirm;
   if (confirm && typeof confirm === 'object'
       && ['info', 'warn', 'danger'].includes(confirm.severity)) {

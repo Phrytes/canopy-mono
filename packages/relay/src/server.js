@@ -185,7 +185,7 @@ const MIME = {
  *   bucket, not by tearing down the connection). Defaults to
  *   `{ perSec: 30, burst: 60 }`. Pass `false` to disable entirely.
  * @param {object} [opts.blobGate]
- *   P2 (media-infra): mount the blob-gateway HTTP edge on this relay —
+ *   (media-infra): mount the blob-gateway HTTP edge on this relay
  *   `{ verifyToken, bucket, acl?, ttl?, route?, uploaders? }`, forwarded to
  *   `mountBlobGate` (see `./blobGateMount.js` for the full contract + R2
  *   env wiring).  When absent, NOTHING changes: no routes are added and
@@ -223,7 +223,7 @@ export async function startRelay(opts = {}) {
     pushThrottleMs            = DEFAULT_PUSH_THROTTLE_MS,
     // J-security: default per-connection message rate limit. `false` disables.
     messageRateLimit          = undefined,
-    // P2 (media-infra): optional blob-gate edge.  When `blobGate` is
+    // (media-infra): optional blob-gate edge. When `blobGate` is
     // null/undefined, the relay adds no routes and behaves byte-identically —
     // fully backward compatible with existing tests and deployments.
     blobGate                  = null,
@@ -301,7 +301,7 @@ export async function startRelay(opts = {}) {
     ? createHttpsServer({ cert: tlsCert, key: tlsKey }, handler)
     : createHttpServer(handler);
 
-  // P2 (media-infra): mount the blob-gate edge ONLY when configured.  The
+  // (media-infra): mount the blob-gate edge ONLY when configured. The
   // mount wraps the request listeners additively — non-mount paths fall
   // through to `handler` untouched; without `blobGate` no wrap happens at all.
   const blobGateMount = blobGate ? mountBlobGate(httpServer, blobGate) : null;

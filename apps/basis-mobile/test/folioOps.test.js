@@ -1,5 +1,5 @@
 /**
- * #237 folio operations smoke — verifies the 5 folio skills (listFiles,
+ * folio operations smoke — verifies the 5 folio skills (listFiles,
  * getFileSnapshot, shareFolder, saveToMyPod, downloadFile) round-trip
  * through `bundle.callSkill('folio', X, args)` on the basis-mobile
  * portable-core boot.  Skills live in apps/folio/src/browser.js +
@@ -24,7 +24,7 @@ describe('#237 folio surface — manifest exposure', () => {
     const folioOps = [...c.opsById.values()].filter((e) => e.appOrigin === 'folio');
     const ids = folioOps.map((e) => e.op.id).sort();
     // The 4 manifest-surfaced ops (UI/slash entries):
-    //  - getFileSnapshot is the Q29 cardSnapshotSkill for /embed-file
+    //  getFileSnapshot is the cardSnapshotSkill for /embed-file
     //  - shareFolder backs /share
     //  - saveToMyPod / downloadFile are file-card buttons (appliesTo:file)
     //  - folioStatus backs /folio-status

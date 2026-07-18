@@ -1,6 +1,6 @@
 /**
  * buildFolioSkills — the WIRE route for folio's pod-file ops
- * (Slice 1b, PLAN-folio-as-file-agent.md).  The folio sibling of
+ * (PLAN-folio-as-file-agent.md). The folio sibling of
  * `apps/agents/src/wireSkills.js#buildAgentSkills`.
  *
  * Wraps each pure core in `FOLIO_CORES` with `wireSkill(coreFn, op,

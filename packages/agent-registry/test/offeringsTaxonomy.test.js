@@ -1,4 +1,4 @@
-// Offering fold-in (NOTE-skills-properties-audit Q1/Q4; rename NOTE-offering-rename-inventory.md) —
+// Offering fold-in (NOTE-skills-properties-audit; rename NOTE-offering-rename-inventory.md)
 // the taxonomy as the COARSE rung of the `offering` property descriptor: deriveOfferingCategory
 // (deterministic tag/keyword scoring) + the fail-closed coarsen (category rung drops text/tags,
 // keeping only { categoryId }). "offering" = the human-profile "I can do X" DATA; the INVOCABLE A2A

@@ -1,5 +1,5 @@
 /**
- * screenDrilldown — Q15 selection-context drill-down between manifest screens.
+ * screenDrilldown — selection-context drill-down between manifest screens.
  *
  * A LIST view's rows can drill into a sibling DETAIL view whose
  * `dataSource.argsFromContext` needs a SELECTION-derived `$key`:
@@ -20,7 +20,7 @@
  * reply-shape logic lives here in shared `src/v2`, consumed by the web
  * shell (circleApp's screen panel) and — later — the RN shell.  The `$key`
  * substitution itself is @onderling/web-adapter's `fetchSectionItems` (the
- * Q15 fetch seam) — REUSED via {@link fetchScreenItems}, not reimplemented
+ * fetch seam) — REUSED via {@link fetchScreenItems}, not reimplemented
  * (invariant #3).
  */
 import { renderWeb } from '@onderling/app-manifest';
@@ -28,7 +28,7 @@ import { fetchSectionItems } from '@onderling/web-adapter';
 
 /**
  * The context KEY names a section's `dataSource.argsFromContext` draws
- * from the fetch context — the `$`-stripped values (Q15 grammar).
+ * from the fetch context — the `$`-stripped values (grammar).
  *
  * @param {object|null|undefined} section  projected NavModel section
  * @returns {string[]}
@@ -110,13 +110,13 @@ export function selectionContextFor(drilldown, item, base = {}) {
 }
 
 /**
- * Fetch a projected screen section's data through the Q15 seam
+ * Fetch a projected screen section's data through the seam
  * (`fetchSectionItems`): static `dataSource.args` merged with
  * `argsFromContext` `$keys` substituted from `context`.
  *
  * Deliberately REQUIRES an explicit `dataSource.skillId` — a
  * dataSource-less section throws (the panel's legacy empty-state path)
- * instead of falling into fetchSectionItems' Q6 `listOpen` fallback,
+ * instead of falling into fetchSectionItems' `listOpen` fallback,
  * which would be a behaviour change for existing screens.
  *
  * @param {object} section
@@ -159,7 +159,7 @@ export function itemsFromReply(res) {
 }
 
 /**
- * Extract the RECORD from a `shape:'record'` section's reply (Q17):
+ * Extract the RECORD from a `shape:'record'` section's reply:
  * `item` / `record` when present, else the reply's SOLE plain-object
  * property (e.g. viewAgent → `{agent: {...}}`).  `null` when the reply
  * carries no unambiguous record (including an honest `{agent: null}` miss).

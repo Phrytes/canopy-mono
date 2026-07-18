@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — launcher bottom tab bar (board 1/5/6C).
+ * basis-mobile v2 — launcher bottom tab bar.
  *
  * Screens / Kringen / Contacten / Mij — the four top-level surfaces. Rendered
  * by the launcher beneath the list, stream and Me screens; absent inside a

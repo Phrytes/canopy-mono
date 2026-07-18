@@ -1,6 +1,6 @@
 /**
  * postAudience — state-machine helpers lifted from
- * src/web/wizards/postAudienceWizard.js (#231.1, 2026-05-24).
+ * src/web/wizards/postAudienceWizard.js (2026-05-24).
  *
  * The wizard composes audience targeting on top of stoop's
  * postRequest skill.  Zero DOM, zero RN here — pure value

@@ -1,7 +1,7 @@
 /**
- * containment — the data half of cluster K (K2) over a `CircleItemStore`-shaped store.
+ * containment — the data half of over a `CircleItemStore`-shaped store.
  *
- * Per the K1 spike, CONTAINMENT IS A REF + A BACK-REF, never a copy or an access grant:
+ * Per the spike, CONTAINMENT IS A REF + A BACK-REF, never a copy or an access grant:
  *   - parent gains an embed edge   `embeds: [{ type, ref:<childId>, rel:'contains' }]`
  *   - child  gains a back-reference `containedBy: [<parentId>, …]`  (cheap orphan-detect + multi-parent)
  *

@@ -1,5 +1,5 @@
 /**
- * basis v2 — Q27 confirm-gate dialog (web presenter).
+ * basis v2 — confirm-gate dialog (web presenter).
  *
  * Renders the shared `ConfirmRequest` model (src/v2/confirmGate.js —
  * the manifest's `surfaces.ui.confirm` message + localised chrome) as a
@@ -9,7 +9,7 @@
  * ESC = cancel, no shared "Modal" abstraction.
  *
  * Severity 'danger' colours the accept button with the theme's
- * `--danger` tokens (red confirm — the Q27 Tier C affordance the
+ * `--danger` tokens (red confirm — the Tier C affordance the
  * agents manifest declares on revokeAgent / purgeAgent /
  * restoreDataVersion).
  *

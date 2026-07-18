@@ -1,5 +1,5 @@
 /**
- * CSS integration test for the cluster-K pod-tier wiring — a REAL grant→read round-trip.
+ * CSS integration test for the pod-tier wiring — a REAL grant→read round-trip.
  *
  * Wires the three delivered pieces against a live Community Solid Server:
  *   • `makeResourceUriResolver` / `sharedRefResourceUri` (@onderling/pod-onboarding) — the canonical

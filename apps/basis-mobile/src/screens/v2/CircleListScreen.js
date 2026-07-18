@@ -1,11 +1,11 @@
 /**
- * CircleListScreen — B · Slice 3 mobile list surface (web≡mobile via the shared buildScreenModel).
+ * CircleListScreen — B · mobile list surface (web≡mobile via the shared buildScreenModel).
  *
  * A search box + category chips + the filtered rows, each with capability-gated action buttons
- * (greyed/hidden per Slice 4). Owns query + activeCategories locally; typing re-filters the rows
+ * (greyed hidden per). Owns query + activeCategories locally; typing re-filters the rows
  * (the TextInput stays mounted → keeps focus). Mirrors the web renderListBlock.
  *
- * Q15 drill-down (web parity with renderListRows): when `onRowOpen` is
+ * drill-down (web parity with renderListRows): when `onRowOpen` is
  * provided the row LABEL renders as a pressable — picking a row fires
  * `onRowOpen({item, itemId})` (the host opens the sibling DETAIL screen with
  * the selection context, see shared src/v2/screenDrilldown.js).  Without
@@ -28,7 +28,7 @@ export default function CircleListScreen({
   // threaded into the SHARED buildScreenModel so mobile search behaves
   // identically to web (web≡mobile).  Absent → consumer defaults to
   // `[labelField]` (label-only search, unchanged).
-  // Q15 — `labelField` threads through too (the launcher already passed it;
+  // `labelField` threads through too (the launcher already passed it;
   // it was silently dropped), so a view like agents (labelField 'name')
   // labels its rows the same as web.
   const shared = { items, categoryField, searchFields, labelField, manifestsByOrigin, appOrigin, capabilityMatrix };
@@ -84,7 +84,7 @@ export default function CircleListScreen({
         ) : model.rows.map((row) => (
           <View key={row.item?.id ?? row.label} style={styles.row} testID={`list-screen-row-${row.item?.id ?? ''}`}>
             {typeof onRowOpen === 'function' ? (
-              /* Q15 — a drill target exists: the label is the row-open affordance
+              /* a drill target exists: the label is the row-open affordance
                  (web parity: renderListRows' .list-screen__row-open button). */
               <Pressable
                 accessibilityRole="button"
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   body:        { paddingVertical: 10, paddingBottom: 24 },
   row:         { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: theme.color.line },
   rowLabel:    { fontSize: 15, color: theme.color.ink, flexGrow: 1 },
-  // Q15 — row-open affordance: the pressable takes the label's flex slot;
+  // row-open affordance: the pressable takes the label's flex slot;
   // accent tint marks the label as tappable (web's row-open link styling).
   rowOpen:     { flexGrow: 1 },
   rowLabelOpen:{ color: theme.color.accent },

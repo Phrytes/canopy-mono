@@ -4,7 +4,7 @@
  * Phase 41.4.3 (2026-05-09).
  *
  * Renders:
- *   - status pill (color per V2.7 status)
+ *   status pill (color per status)
  *   - deps-blocked count chip when status === 'waiting'
  *   - assignee chip when claimed/submitted/complete
  *   - required-skill chip

@@ -1,5 +1,5 @@
 /**
- * Stoop SP-13.2.1 — broadcastKringMessage skill.
+ * Stoop — broadcastKringMessage skill.
  *
  * Reuses chat.send to fan a plain-text kring chat-message out to every
  * member of the group (except self).  Mocks chat.send so the test
@@ -154,7 +154,7 @@ describe('Stoop SP-13.2.1 — broadcastKringMessage', () => {
     expect(item.source.from).toBe(ANNE);
   });
 
-  /* ── media P1 fan-out — the optional media pointer rides the envelope
+  /* ── media fan-out — the optional media pointer rides the envelope
    *    (forward-additive; absent → wire byte-identical to today). ── */
 
   it('carries an optional media pointer on extras AND persists it on the local mirror', async () => {
@@ -468,7 +468,7 @@ describe('Stoop SP-13.2.1 — cross-agent journey: Anne → Bob', () => {
 });
 
 /* ─────────────────────────────────────────────────────────────────────────
- * SP-13.2.2 — listKringChats: rehydration reader.
+ * listKringChats: rehydration reader.
  * ─────────────────────────────────────────────────────────────────────── */
 
 async function seedChats(bundle, chats) {

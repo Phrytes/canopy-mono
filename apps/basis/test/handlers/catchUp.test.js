@@ -1,5 +1,5 @@
 /**
- * Unit tests for src/core/handlers/catchUp.js (Slice 5).
+ * Unit tests for src/core/handlers/catchUp.js.
  *
  * ε.3 (2026-06-01) — added regression coverage for the new strategy-
  * routed entry points: `makePodRangeQueryForGroup` (pod path) and

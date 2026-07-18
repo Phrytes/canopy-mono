@@ -192,7 +192,7 @@ export class CapabilityToken {
  *   - `'*'`           — wildcard, matches every skill
  *   - `'<exact-id>'`  — must equal the skill id
  *   - `'<prefix>.*'`  — matches any skill id that starts with `<prefix>.`
- *                      (V1.5 follow-up A — added to scope cap-token-bound
+ *                      (follow-up A — added to scope cap-token-bound
  *                       bot agents to the `bot.*` surface only).
  *
  * Returns `false` for any other shape; callers should treat unknown

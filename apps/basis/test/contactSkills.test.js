@@ -1,9 +1,9 @@
 /**
- * basis — contact-skill → manifest bridge tests (P4 synthesis,
+ * basis — contact-skill → manifest bridge tests (synthesis,
  * feedback-extension Mode-1 "bot-exposed skills").
  *
  * Covers DESIGN §1.2 (the SCOPED CATALOG: a remote-skill entry is
- * contact-thread-scoped, dispatched to that bot) + §2.2 (P4), for the PURE
+ * contact-thread-scoped, dispatched to that bot) + §2.2, for the PURE
  * synthesis + routing core (NOT the live PeerGraph/ChatScreen wiring):
  *   - SkillCards → a manifest whose ops carry `binding:'remote-skill@contact'`
  *     + `bindRef` + a `/`-slash surface, and that passes `validateManifest`;

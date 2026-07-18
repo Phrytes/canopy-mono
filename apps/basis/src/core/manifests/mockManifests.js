@@ -42,7 +42,7 @@
  * routes the tasks circle under appOrigin `'tasks'` (realAgent.js's
  * callSkill matches `'tasks'`).  The vocab adapter bridges
  * (rejectTask reason→note, submitTask note-default) are removed — the
- * manifest declares the real `note` param directly.  The Q29 claimTask
+ * manifest declares the real `note` param directly. The claimTask
  * embed decl lives IN the real manifest now (no post-hoc patch here).
  */
 import { tasksManifest } from '../../../../tasks-v0/manifest.js';
@@ -87,7 +87,7 @@ export const mockTasksManifest = tasksManifest;
  * trust→trustOffer transforms) is KEPT — legitimate presentation→storage
  * mapping, NOT drift.
  *
- * The Q30/Q33 brief/search decls below still attach to `listFeed`.
+ * The brief/search decls below still attach to `listFeed`.
  */
 import { stoopManifest } from '../../../../stoop/manifest.js';
 
@@ -108,29 +108,29 @@ export const mockStoopManifest = stoopManifest;
  * folioStatus, listFiles) WITH their slash/chat/gate surfaces, plus
  * folio's own destructive ops (deleteFromPod, deleteLocally, forceRepush)
  * which DELIBERATELY carry no `surfaces.chat` so the circle LLM can never
- * propose deleting a shared file.  The Q30/Q33/Q29 decls below
+ * propose deleting a shared file. The decls below
  * (brief / search / embed) still attach to readNote / shareFolder.
  */
 import { folioManifest } from '../../../../folio/manifest.js';
 
 export const mockFolioManifest = folioManifest;
 
-// v0.7 — Q30 brief-summary decls on each app's list op.  /brief fans
-// across these to produce the morning brief.  Household's Q30 decl
+// v0.7 — brief-summary decls on each app's list op. /brief fans
+// across these to produce the morning brief. Household's decl
 // lives in `mockAgent.js`.
 mockStoopManifest.operations.find((o) => o.id === 'listFeed')
   .surfaces.chat.brief = { summarySkill: 'briefSummary', order: 30, label: 'Buurt' };
 mockFolioManifest.operations.find((o) => o.id === 'readNote')
   .surfaces.chat.brief = { summarySkill: 'briefSummary', order: 20, label: 'Folio' };
 
-// v0.7.5 — Q33 search decls.  Each app declares a text-search skill
+// v0.7.5 — search decls. Each app declares a text-search skill
 // so /find can fan across them.
 mockStoopManifest.operations.find((o) => o.id === 'listFeed')
   .surfaces.chat.search = { searchSkill: 'searchPosts' };
 mockFolioManifest.operations.find((o) => o.id === 'readNote')
   .surfaces.chat.search = { searchSkill: 'searchFiles' };
 
-// v0.7.13 — Q29 cardSnapshotSkill on shareFolder (the user-visible
+// v0.7.13 — cardSnapshotSkill on shareFolder (the user-visible
 // 'share a file' moment).  /embed-file --path=<existing> looks up
 // the file via getFileSnapshot before building the embed envelope.
 mockFolioManifest.operations.find((o) => o.id === 'shareFolder')

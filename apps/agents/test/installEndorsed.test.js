@@ -1,15 +1,15 @@
 /**
- * agents — P3 install through the REAL commons-governance G1 catalog source.
+ * agents — install through the REAL commons-governance G1 catalog source.
  *
  * Proves the full loop: endorse → discover → install-with-scoped-grants,
- * with P3's capability-security intact when the stubbed catalog is replaced by
+ * with 's capability-security intact when the stubbed catalog is replaced by
  * the endorsement-backed `createCatalogSource`.
  *
  *   1. END-TO-END — a card the root ENDORSES appears in `listCatalog`, and
  *      `installAgent({ catalogId })` installs it default-deny, granting ONLY
  *      the requested-AND-declared skills (undeclared → rejected, no token).
  *   2. TRANSPARENT SWAP — the real source is the SAME `{ list, get }` shape as
- *      the stub: everything P3 asserted over the stub holds over it.
+ *      the stub: everything asserted over the stub holds over it.
  *   3. NEGATIVE — a card the root did NOT endorse (or FLAGGED) is not in the
  *      catalog, so it can't be installed via `catalogId` (the override path is
  *      the only way in, unchanged).
@@ -95,7 +95,7 @@ describe('agents — G1 endorse → discover → install through the real catalo
     expect(row).toBeTruthy();
     expect(row.skills).toEqual(['summarise.document', 'summarise.thread']);
 
-    // INSTALL — through P3's capability-security path: grant ONE declared skill,
+    // INSTALL — through 's capability-security path: grant ONE declared skill,
     // request one UNDECLARED skill (rejected, no token).
     const res = await installAgent({ registry, catalog }, {
       catalogId: 'catalog:summariser',

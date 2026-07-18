@@ -10,7 +10,7 @@
 
 ## Why this exists
 
-Three observations from V2.5 work on Stoop:
+Three observations from work on Stoop:
 
 1. **Some settings belong to the user, not the device.** "Default share location with new contacts" follows the user; "poll cadence" follows the device. Hardcoding either to one blob is wrong.
 2. **A user often runs more than one of these apps on the same pod.** When they install Folio next to Stoop, "do I broadcast my displayName?" is conceptually the same answer in both. Re-asking is friction; silently ignoring the prior answer is creepy.
@@ -124,7 +124,7 @@ Apps with a pre-existing flat `<pod>/<app>/settings.json` SHOULD migrate lazily 
 
 ## Tracking
 
-- Stoop V2.5 Phase 33 introduced the layout: see `Project Files/Stoop/coding-plan-v2-2026-05-07.md` § Phase 33 + `Project Files/Stoop/pod-layout-2026-05-06.md`.
+Stoop Phase 33 introduced the layout: see`Project Files/Stoop/coding-plan-v2-2026-05-07.md` § Phase 33 + `Project Files/Stoop/pod-layout-2026-05-06.md`.
 - Cross-app shared-defaults rule (Rule 3 above) was added 2026-05-07; first consumer is whichever sibling-app ships next; rule-of-two extraction into a substrate (`@onderling/cross-app-bootstrap` or similar) is tracked in `Project Files/Substrates/substrate-candidates.md`.
 - Open questions:
   - Should the field-mapping table between siblings live in a shared registry, or stay per-app? Likely per-app for now (loose coupling); revisit if 4+ apps each maintain similar mappings.

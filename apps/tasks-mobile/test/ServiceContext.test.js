@@ -9,7 +9,7 @@
  * The ServiceContext provider chains these primitives:
  *   1. bootstrapIdentity (substrate Phase 41.0.b A3)
  *   2. buildLocalStoreBundle (mobile-local helper)
- *   3. buildMeshAgent (V2.8 — apps/tasks-v0/src/MeshAgent.js)
+ *   3. buildMeshAgent (apps tasks-v0 src MeshAgent.js)
  *   4. buildCircleState per joined circle (mobile-local helper)
  *   5. wireSkills(meshAgent, multiCircleResolver(circles))
  *

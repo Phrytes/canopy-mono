@@ -1,11 +1,11 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128 +
- * #131 (chat-nav RN + RN renderer port).
+ * **Platform: web** (DOM-dependent). RN parallel pending +
+ * (chat-nav RN + RN renderer port).
  *
- * basis — C2 join-group wizard (#196, 2026-05-24).
+ * basis — C2 join-group wizard (2026-05-24).
  *
  * 3-step rules-gate wizard that lands new buurt members.  First
- * customRenderer hook on the #180 `openPagePanel` infrastructure;
+ * customRenderer hook on the `openPagePanel` infrastructure;
  * the pattern here is the template other Cluster C wizards reuse.
  *
  * Flow:
@@ -26,14 +26,14 @@
  *
  * Args expected: `{ invite: <string|object> }`.  String form is the
  * `stoop-invite://<base64url-encoded-invite-object>` URL surfaced by
- * the QR rendering in /invite (A9, slice 187).  Object form: the
+ * the QR rendering in /invite (A9, 7). Object form: the
  * already-decoded invite per stoop's GroupManager.issueInvite shape.
  */
 
 // State-machine pieces (decodeInvite, summariseEmbeddedRules,
 // fetchGroupRules, isValidHandle, handleSuggestions, finalSubmit,
 // PRIVACY_NOTICE) moved to ../../core/wizards/joinGroupState.js
-// (#231.2c) so basis-mobile's RN wizard can reuse them.
+// so basis-mobile's RN wizard can reuse them.
 import {
   PRIVACY_NOTICE,
   handleSuggestions as HANDLE_SUGGESTIONS,
@@ -76,11 +76,11 @@ export function renderJoinGroupWizard(opts) {
   // Decode the invite arg (URL form or pre-decoded object).
   decodeInvite(args?.invite, state);
 
-  // B · Slice 4 — build the join-time capability consent model from the invite's embedded freedom
+  // build the join-time capability consent model from the invite's embedded freedom
   // template + the host-injected manifest sources. No template / no sources ⇒ empty model (no-op step).
   buildJoinConsent({ state, sources });
 
-  // Fold-in phase C (Q3) — the charter-driven skill-sharing default: a skills-matching circle
+  // Fold-in phase C — the charter-driven skill-sharing default: a skills-matching circle
   // (invite.offeringsMatching) pre-checks "share my skills as category" VISIBLY on step 3; any other
   // circle (incl. older invites) keeps default-withhold. Logic lives once, in the shared state.
   applyCharterOfferingsDefault(state);
@@ -197,7 +197,7 @@ function renderRulesStep(container, doc, state, onNext, onCancel, rerender) {
   checkRow.appendChild(doc.createTextNode(' I have read and accept the rules.'));
   wrap.appendChild(checkRow);
 
-  // B · Slice 4 — consent-at-join: the circle's OPT-OUTABLE capabilities. Rendered as part of the
+  // consent-at-join: the circle's OPT-OUTABLE capabilities. Rendered as part of the
   // Agree/Decline screen; unchecking a cap records an opt-out into state.capabilityOptOuts, which the
   // host writes to the member's prefs so the gate's effective set (admin ∩ user) drops it from join.
   renderConsentCaps(wrap, doc, state, rerender);
@@ -210,7 +210,7 @@ function renderRulesStep(container, doc, state, onNext, onCancel, rerender) {
 }
 
 /**
- * B · Slice 4 — the join-time capability consent section. Lists the circle's opt-outable caps (from
+ * the join-time capability consent section. Lists the circle's opt-outable caps (from
  * `state.consentModel`, built off the invite's freedom template). A checked box = "I take part";
  * unchecking opts out. Renders nothing when the model is empty (no template / all-mandatory).
  */
@@ -280,7 +280,7 @@ function renderPrivacyStep(container, doc, state, onNext, onBack, onCancel, rere
   checkRow.appendChild(doc.createTextNode(' I understand and accept.'));
   wrap.appendChild(checkRow);
 
-  // Slice 4 (2026-05-24) — mesh address-sharing consent.  When on,
+  // mesh address-sharing consent. When on,
   // admin propagates this joiner's peer address to other consenting
   // members + propagates other consenting members' addresses to
   // this joiner.  When off, the joiner only talks to admin (star
@@ -387,7 +387,7 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
     wrap.appendChild(pWrap);
   }
 
-  // Fold-in phase C (Q3) — the charter-driven skill-sharing default, VISIBLE and
+  // Fold-in phase C — the charter-driven skill-sharing default, VISIBLE and
   // uncheckable (never silent). Rendered only when the invite carried the circle's
   // skills-matching signal; checked ⇒ finalSubmit enables the persona's skill keys
   // at the coarse 'category' rung for this circle before computing the release.
@@ -466,8 +466,8 @@ function renderActions(container, doc, buttons) {
 
 // decodeInvite, fetchGroupRules, summariseEmbeddedRules,
 // isValidHandle moved to ../../core/wizards/joinGroupState.js
-// (#231.2c).
+// 
 
-// finalSubmit moved to ../../core/wizards/joinGroupState.js (#231.2c).
+// finalSubmit moved to../../core/wizards/joinGroupState.js.
 // The lifted version wraps the chain in a {result, state} envelope +
 // mutates state.submitting/submitError; see the call site in rerender().

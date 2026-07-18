@@ -1,5 +1,5 @@
 /**
- * contactThread — the contact DM thread DOM render (feedback-extension P5).
+ * contactThread — the contact DM thread DOM render (feedback-extension).
  * @vitest-environment happy-dom
  */
 import { describe, it, expect, vi } from 'vitest';

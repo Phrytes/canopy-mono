@@ -8,9 +8,9 @@
  * keychain).
  *
  * Findings recap (see the M2 report):
- *   - Slice 7 (itemStoreRoot per-circle prefix) was ALREADY at parity
+ *   (itemStoreRoot per-circle prefix) was ALREADY at parity
  *     in buildCircleState — these tests pin that contract.
- *   - Slice 8 (multi-circle onboarding dispatch) was the real gap:
+ *   (multi-circle onboarding dispatch) was the real gap:
  *     issueInvite/redeemInvite were never registered + the CircleState
  *     carried no GroupManager. M2-S8 wires both. Tests below assert
  *     the GroupManager is stashed + the skills register + dispatch.
@@ -79,7 +79,7 @@ async function bootHarness(label) {
   return { meshAgent, bundle, identity: idResult.identity };
 }
 
-// ── Slice 7 — per-circle itemStoreRoot isolation (ALREADY at parity) ──
+// ── — per-circle itemStoreRoot isolation (ALREADY at parity) ──
 
 describe('M2 — multi-circle itemStoreRoot isolation (Slice 7 parity)', () => {
   it('each CircleState ItemStore uses the mem://tasks/circles/<id>/ root', async () => {
@@ -125,7 +125,7 @@ describe('M2 — multi-circle itemStoreRoot isolation (Slice 7 parity)', () => {
   });
 });
 
-// ── Slice 8 — GroupManager + onboarding dispatch (the M2 fix) ───────
+// ── — GroupManager + onboarding dispatch (the fix) ───────
 
 describe('M2-S8 — per-circle GroupManager on the CircleState', () => {
   it('is null when no meshAgent supplied', async () => {
@@ -223,7 +223,7 @@ describe('M2-S8 — multi-circle onboarding skills register + dispatch', () => {
   });
 });
 
-// ── Slice 10 — live peer-roster (redeemInvite → tasksMirror.addPeer) ─
+// ── — live peer-roster (redeemInvite → tasksMirror.addPeer) ─
 
 describe('M2-S10 — redeemInvite updates the substrate-mirror peer roster', () => {
   it('addPeer is called on the circle tasksMirror after a successful redeem', async () => {

@@ -1,5 +1,5 @@
 /**
- * tasks_briefSummary — Q30 contributor for basis's /brief
+ * tasks_briefSummary — contributor for basis's /brief
  * aggregator.  Post-V0 follow-up (2026-05-27) closing DESIGN gap #1
  * (`apps/basis/README.md` line 146).
  *

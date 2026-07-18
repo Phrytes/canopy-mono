@@ -1,7 +1,7 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ * **Platform: web** (DOM-dependent). RN parallel pending.
  *
- * basis — C4 conflict-resolution dispute wizard (#198, 2026-05-24).
+ * basis — C4 conflict-resolution dispute wizard (2026-05-24).
  *
  * 3-step dispute flow: raise → propose resolution → acceptance.  Per
  * stoop's S7 design.
@@ -162,4 +162,4 @@ function appendKV(dl, doc, label, value, opts = {}) {
   dl.appendChild(dt); dl.appendChild(dd);
 }
 
-// labelOf moved to ../../core/wizards/conflictDisputeState.js (#231.2a).
+// labelOf moved to../../core/wizards/conflictDisputeState.js.

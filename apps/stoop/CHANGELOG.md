@@ -57,14 +57,14 @@ identity from a vault.  Uses the slice-2a `persistDb` opt for
 IndexedDB persistence in the browser.
 
 Plan: `Project Files/basis/integration-plan-2026-05-23.md` §
-"Slice 3: Stoop → basis browser".
+": Stoop → basis browser".
 
 594/594 stoop tests still green; no app-side changes.
 
 ## [Unreleased] — IndexedDBPersist adapter + persistPicker (2026-05-23)
 
 Prerequisite for `Project Files/basis/integration-plan-2026-
-05-23.md` slice 2 (Stoop → basis browser).
+05-23.md` (Stoop → basis browser).
 
 New files
   - `src/lib/IndexedDBPersist.js` — browser-side equivalent of
@@ -93,11 +93,11 @@ Tests + footprint
   - `package.json` devDeps: + `fake-indexeddb` ^6.0.0
   - Stoop suite: 594 → 612 tests passing (+21 new + 0 regressions)
 
-Next: slice 3 (Stoop → basis browser composition via the
+Next: (Stoop → basis browser composition via the
 shared bus; uses this adapter to keep the CachingDataSource alive
 across page reloads).
 
-## [Unreleased] — Slice E.1 — first stoop web page via renderWeb
+## [Unreleased] — first stoop web page via renderWeb
 
 Opens Slice E (stoop web → renderWeb) of `PLAN-gui-chat-uplift.md`.
 Migrates ONE web page (`mine.html`) to consume the NavModel computed by
@@ -136,7 +136,7 @@ launcher.
   `renderWeb(stoopManifest)`'s the NavModel and serves it as
   `/navmodel.json` + `/stoop-config.json` via
   `mountLocalUi({extraStaticFiles})`.  Mirrors
-  `apps/household/bin/household-web.js` (Slice A.3 substrate).
+  `apps/household/bin/household-web.js` (substrate).
   Production launchers (`stoop-ui.js`, `stoop-testbed.js`) stay
   unchanged.
 
@@ -162,7 +162,7 @@ launcher.
   `mine` declare its own data source without the client special-case.
 - **All-itemTypes ops don't surface as itemActions.**
   `cancelRequest` and `markReturned` (with lifecycle scope) span all
-  stoop post types, but renderWeb's Q6 logic only matches via
+  stoop post types, but renderWeb's logic only matches via
   explicit `appliesTo.type` or a `type` enum param — neither of
   which fits "act on any of my posts".  mine.html's per-row buttons
   use the existing `renderMyItems` helper (kind-aware), not the
@@ -202,7 +202,7 @@ Phase 52.9.2 `groupMirror` retirement.
 - **A1 — `'stale-peer'` auto-heal** in `wireSubstrateMirror`:
   `pseudoPod.on('stale-peer')` → republish the local fresher copy
   back to the stale peer via `notifyEnvelope.publish`. Silent
-  auto-heal (no UI affordance per the V2.5 lean).
+  auto-heal (no UI affordance per the lean).
 - **A2 — `fetch-resource` with `groupCheck`** registered on every
   Stoop bundle (Phase 52.2.x). `groupCheck(uri, ctx) ⇒
   mirror.getPeers().has(ctx.from)`. Defensive — closes the gap

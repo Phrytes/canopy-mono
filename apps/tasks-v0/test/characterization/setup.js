@@ -86,12 +86,12 @@ export async function buildCharacterizationFixture({
     circle:  { circleId: circleConfig.circleId, name: circleConfig.name, kind: circleConfig.kind },
   };
 
-  // Slice B.1 — `dag.html` (and future renderWeb pages) consume
+  // `dag.html` (and future renderWeb pages) consume
   // `/navmodel.json`; surface it from the manifest exactly like the
   // CLI bootstrap (`bin/tasks-ui.js`).
   const navModel = renderWeb(tasksManifest);
 
-  // Slice B.1 — overlay the shared `dagFlatten.js` helper so the
+  // overlay the shared `dagFlatten.js` helper so the
   // dag.html page can ESM-import it.  Mirror of `bin/tasks-ui.js`.
   const dagFlattenJs = await readFile(
     join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'ui', 'dagFlatten.js'),
@@ -111,7 +111,7 @@ export async function buildCharacterizationFixture({
     'utf8',
   );
 
-  // Slice B.2.0 — overlay @onderling/web-adapter helpers under
+  // .0 — overlay @onderling/web-adapter helpers under
   // `/lib/web-adapter/<basename>.js`. Same pattern as dagFlatten.js;
   // mirror of `bin/tasks-ui.js`.
   const webAdapterRoot = join(
@@ -120,7 +120,7 @@ export async function buildCharacterizationFixture({
     'packages', 'web-adapter', 'src',
   );
   const webAdapterFiles = {};
-  // V0.2 (2026-05-20) — fetchSectionItems + schemaToFormFields join the
+  // fetchSectionItems + schemaToFormFields join the
   // overlay so page scripts (dag.html / mine.html) can ESM-import them
   // through the same /lib/web-adapter/ namespace as B.2.0 helpers.
   for (const n of [

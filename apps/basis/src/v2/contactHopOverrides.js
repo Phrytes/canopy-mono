@@ -1,10 +1,10 @@
 /**
- * basis v2 — per-contact hop overrides (board 7B, slice P6.M6).
+ * basis v2 — per-contact hop overrides.
  *
- * Board 7B's "Per contact aanpassen" list lets the user set a 3-way
+ * The "Per contact aanpassen" list lets the user set a 3-way
  * gate per contact: ALTIJD (always relay) / MET-OK (relay with my
  * approval) / UIT (never relay).  Stoop's contact model already
- * carries a `hopThrough` flag per-contact (boolean); P6.M6 broadens
+ * carries a `hopThrough` flag per-contact (boolean); broadens
  * that to a 3-level enum and ships the pure mapping + a contact-list
  * projection the screen renders.
  *
@@ -39,7 +39,7 @@ export function normalizeContactHopMode(raw) {
 /**
  * Resolve the effective hop mode for one contact, given a global stance.
  *
- * Global stance shape (mirrors normalizeHopMode + board 7B's radio):
+ * Global stance shape (mirrors normalizeHopMode 's radio):
  *   { global: 'off' | 'with-ok' | 'always' }
  * Back-compat: a plain `{global: boolean}` (existing
  * normalizeHopMode shape) maps `true → 'always'`, `false → 'off'`.

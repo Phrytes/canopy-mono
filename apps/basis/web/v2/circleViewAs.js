@@ -1,5 +1,5 @@
 /**
- * basis v2 — "View as…" preview (web DOM renderer, board 4C).
+ * basis v2 — "View as…" preview (web DOM renderer).
  *
  * A read-only directory preview: pick a viewer (each member, plus a
  * generic "stranger" + "agent"), and the member list re-renders showing

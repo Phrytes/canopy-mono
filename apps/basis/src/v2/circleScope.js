@@ -42,7 +42,7 @@ function circleRefFromShorthand(str) {
 }
 
 /**
- * SP-5b (renderer normalisation) — canonicalise an audience VALUE's
+ * (renderer normalisation) — canonicalise an audience VALUE's
  * circle-ref representation so the two equivalent spellings compare equal:
  *
  *   'circle:X'                    →  { kind: 'circle-ref', id: 'X' }

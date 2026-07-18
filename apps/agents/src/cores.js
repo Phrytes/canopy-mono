@@ -1,5 +1,5 @@
 /**
- * agents — pure cores (read slice + P2 CONTROL ops).
+ * agents — pure cores (read slice CONTROL ops).
  *
  * Uniform-route shape (decision #5): each core is a pure
  * `(store, args, ctx) → result` where `store` is `{ registry, tokens? }`:
@@ -292,7 +292,7 @@ export async function grantAgent(store, args = {}) {
 
 /**
  * grantRole — assign a ROLE to a member AND materialize its capability bundle
- * (P3: roles as capability bundles).  Mirrors grantAgent's exposure, but the
+ * (: roles as capability bundles). Mirrors grantAgent's exposure, but the
  * enforced authority here is a role BUNDLE, not a single skill grant: the
  * injected `roleGrants` collaborator (core's `RoleGrantManager`) sets the
  * governance role via `GroupManager.setRole` (signed) AND issues the bundle's
@@ -545,7 +545,7 @@ export async function setProfileDisclosure(store, args = {}) {
   if (typeof s.profiles?.setDisclosure !== 'function' || !id || !contextId || !key) {
     return { ok: false, reason: !id ? 'id-required' : (!contextId ? 'contextId-required' : (!key ? 'key-required' : 'profiles-unavailable')) };
   }
-  // Three independent axes (P4): disclosed(enabled)+rung · matchable · requestable.
+  // Three independent axes: disclosed(enabled)+rung · matchable · requestable.
   // Only forward an axis the caller actually passed, so a call touching one axis
   // doesn't clobber the others (the pure setDisclosure merges per-axis).
   const patch = {};

@@ -1,5 +1,5 @@
 /**
- * Shared find-result enrichment (P6.6 #344 + P6.7 #345) — the LOGIC that both surfaces (web `circleApp.js`
+ * Shared find-result enrichment — the LOGIC that both surfaces (web `circleApp.js`
  * and mobile `CircleLauncherScreen.js`) run after a /find reply, so it lives ONCE here instead of being
  * re-implemented per shell.
  *

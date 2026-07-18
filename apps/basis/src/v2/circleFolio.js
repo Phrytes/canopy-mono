@@ -1,5 +1,5 @@
 /**
- * basis v2 — circle-scoped Folio file browser (shared, board 10B).
+ * basis v2 — circle-scoped Folio file browser (shared).
  *
  * Folio leads a double life: private notes (as-is) AND a drive-like view
  * onto a circle's shared pod.  This module is the drive lens — given a
@@ -10,13 +10,13 @@
  * does the fetching; web + mobile share this and the renderers stay thin.
  */
 import { scopeItems, itemCircleId } from './circleScope.js';
-// B · Slice 4 — the SAME per-capability treatment lookup the list surface's
+// the SAME per-capability treatment lookup the list surface's
 // row buttons run through (via replyEmbeds → embedButtonsForReply). Reused
 // here so the folio file-OPEN row inherits identical greying/hiding.
 import { affordanceTreatment } from '@onderling/app-manifest';
 
 /**
- * B · Slice 4 — capability treatment for the folio file-OPEN row action.
+ * capability treatment for the folio file-OPEN row action.
  *
  * The drive browser's ONLY per-file row-action is "open the file": the file
  * row is a button whose click fires `onOpen`. Opening = reading a single file
@@ -42,7 +42,7 @@ import { affordanceTreatment } from '@onderling/app-manifest';
  * them. So there is nothing else to gate here.
  *
  * @param {object} [opts]
- * @param {Array}  [opts.capabilityMatrix=[]]  the member's built matrix (Slice 4)
+ * @param {Array} [opts.capabilityMatrix=[]] the member's built matrix
  * @param {string} [opts.appOrigin='folio']
  * @returns {'show'|'grey'|'hide'}
  */

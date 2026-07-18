@@ -53,7 +53,7 @@ export function buildInitialStorageMapping({ podUri, deviceId }) {
 
 /**
  * Build the initial agent-registry entry. The full agent-registry
- * substrate lands in Phase 52.10 (P5) — for V0 we ship a minimal
+ * substrate lands in Phase 52.10 — for V0 we ship a minimal
  * single-agent entry so the resource exists and can be extended
  * later.
  *

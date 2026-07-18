@@ -1,6 +1,6 @@
 /**
  * contactReplyInbox — a tiny module-level emitter for inbound contact-bot replies
- * (feedback-extension P5, mobile).
+ * (feedback-extension, mobile).
  *
  * On mobile, ChatScreen owns the peer router (it stays mounted) while the
  * Contacten thread lives in CircleLauncherScreen — two separate screens. This

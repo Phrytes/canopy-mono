@@ -27,7 +27,7 @@
  * the ability to construct them too.
  *
  * Apps that want bespoke shapes (Folio's CLI auth, Stoop's relay
- * choice, Tasks's V2.8 single-agent topology) keep composing
+ * choice, Tasks's single-agent topology) keep composing
  * substrates manually — every substrate stands alone.  This facade
  * is the **canonical path**, not the only path.
  */

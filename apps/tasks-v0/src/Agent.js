@@ -3,14 +3,14 @@
  *
  * Wires:
  *   - `core.Agent` from `@onderling/core` — real SkillRegistry + dispatch.
- *     V2.8: built once via `buildMeshAgent` (process-level shared agent).
+ *     built once via `buildMeshAgent` (process-level shared agent).
  *   - L1b ItemStore (open/closed tasks, audit, role-policy gate at the
  *     item level via `buildStandardRolePolicy(roles)`)
  *   - L1h MemberMap (webid ↔ external-id resolution; resolveMember skill)
  *   - L1e OfferingMatch (claim flow via pubsub-of-skills) — optional
  *   - L1f Notifier (deadline reminders, daily digest) — optional
  *
- * V2.8: Skills register ONCE via `wireSkills` against a per-process
+ * Skills register ONCE via `wireSkills` against a per-process
  * meshAgent. The minimal CircleState that V0 builds carries just the
  * itemStore + dataSource + roles + members; richer wiring (chat,
  * bot, metrics) is left null and surfaced by `createCircleAgent`.
@@ -52,7 +52,7 @@ const V0_DEFAULT_CIRCLE_ID = 'household';
  * @param {object} [args.transport]
  * @param {string} [args.label='TasksAgent']
  * @param {() => object} [args.circleProvider]
- *   When supplied, the V2.8 CircleState's `liveCircle` getter delegates
+ *   When supplied, the CircleState's `liveCircle` getter delegates
  *   to this. Used by `createCircleAgent` so its richer config is the
  *   one observed by the registered skills.
  * @param {string} [args.identityVault]
@@ -105,7 +105,7 @@ export async function createTasksAgent({
   // ── Substrates ─────────────────────────────────────────────────────────────
   const policy    = buildStandardRolePolicy(roles);
   const dataSource = localStoreBundle?.cache ?? itemBackend ?? new MemorySource();
-  // P1 migration step 2 (2026-07-18) — the LIVE store is now the converged
+  // migration step 2 (2026-07-18) — the LIVE store is now the converged
   // `CircleItemStore` (generic typed CRUD + type index + causal/CAS writes),
   // with the task lifecycle/CRUD supplied by the ported functions-over-store and
   // exposed through `createTaskStore` — the thin ItemStore-compatible surface
@@ -114,7 +114,7 @@ export async function createTasksAgent({
   // (`subtask-proposal` / `subtask-request` / `inbox-item`), so validation-on-
   // write stays off — exact parity with the class ItemStore, which validated
   // separately (warn-only) rather than rejecting on write.
-  // V2.7 — enforce hard subtask dependencies: parent can't close while any of
+  // enforce hard subtask dependencies: parent can't close while any of
   // its `dependencies[]` is still open (threaded into the task-store ctx).
   const circleStore = new CircleItemStore({
     dataSource,
@@ -135,7 +135,7 @@ export async function createTasksAgent({
 
   const notifier = providedNotifier ?? null;
 
-  // ── MeshAgent (V2.8 — process-level shared agent) ────────────────────────
+  // ── MeshAgent (process-level shared agent) ────────────────────────
   const { meshAgent: agent, vault, identity: id } = await buildMeshAgent({
     identity,
     transport,
@@ -145,7 +145,7 @@ export async function createTasksAgent({
     agent: sharedAgent,
   });
 
-  // ── TaskGrantManager (P5 — "authority travels with the task") ────────────
+  // ── TaskGrantManager ("authority travels with the task") ────────────
   // The agent's OWN identity is the granter/token-issuer. `attachTaskGrant`
   // (skills/index.js) issues an attenuated, task-scoped cap-token per member;
   // completeTask/removeTask revoke every grant materialized for the task, so a
@@ -171,7 +171,7 @@ export async function createTasksAgent({
     await offeringMatch.start();
   }
 
-  // ── CircleState (V2.8) ─────────────────────────────────────────────────────
+  // ── CircleState ─────────────────────────────────────────────────────
   // V0 zero-config path — internal liveCircle + mutator (implicit household).
   // V1+ path (createCircleAgent) — passes its own circleProvider + circleMutator
   // so its richer config is the one observed by skills + the one its own
@@ -204,7 +204,7 @@ export async function createTasksAgent({
     itemStore,
     dataSource,
     members,
-    // P5 task-scoped grants — the granting authority skills reach via the
+    // task-scoped grants — the granting authority skills reach via the
     // resolved CircleState (like `itemStore`). Present on every path.
     taskGrantManager,
     // V1+ wiring slots — left null on the V0 path; createCircleAgent
@@ -217,7 +217,7 @@ export async function createTasksAgent({
     onCompensationChange:     null,
   };
 
-  // ── Skills (V2.8 — single registration via wireSkills) ───────────────────
+  // ── Skills (single registration via wireSkills) ───────────────────
   // Default behaviour: register skills here (single-circle path).
   // Multi-circle runtime (Tasks V2 sixth slice): when `registerSkills:
   // false` or when a shared `agent` is supplied (and the caller didn't

@@ -1,5 +1,5 @@
 /**
- * Wizard registry for basis-mobile (Bundle F P2, #258).
+ * Wizard registry for basis-mobile.
  *
  * Mirrors web's `WIZARD_RENDERERS` in `apps/basis/web/main.js`:
  * opId → React component that renders the wizard modal.  When the
@@ -30,7 +30,7 @@ export const WIZARD_REGISTRY = Object.freeze({
   postAudienceWizard:        PostAudienceWizardModal,
   encryptedBackupWizard:     EncryptedBackupWizardModal,
   settings:                  SettingsWizardModal,
-  // Bundle F P5 (#261) — /embed-time launches the wizard on mobile;
+  // embed-time launches the wizard on mobile;
   // web still uses slash flags + the same localBuiltins.createTimeEmbed
   // handler (now with chrono fallback for natural-language dates).
   'embed-time':              EmbedTimeWizardModal,

@@ -1,6 +1,6 @@
 /**
  * Determinism gate.  Same manifest → byte-identical output across runs;
- * declaration order preserved.  This is what makes SP-1's byte-equivalence
+ * declaration order preserved. This is what makes 's byte-equivalence
  * gate (PLAN §1.4) possible.
  */
 

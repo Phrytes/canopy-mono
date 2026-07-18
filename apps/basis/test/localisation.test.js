@@ -1,5 +1,5 @@
 /**
- * basis — localisation tests.  v0.1 sub-slice 1.11.
+ * basis — localisation tests. v0.1.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 

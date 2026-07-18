@@ -1,5 +1,5 @@
 /**
- * Mobile podAuth adapter for Bundle F P6 (#262).
+ * Mobile podAuth adapter for Bundle F.
  *
  * Bridges the basis-mobile `useBasisAuth` hook + an
  * `OidcSessionRN` SecureStore-backed token holder into the
@@ -23,7 +23,7 @@
  * podAuth.
  *
  * V1 caveats:
- *   - Real-pod end-to-end testing parks behind #167 (no creds).  The
+ *   Real-pod end-to-end testing parks behind (no creds). The
  *     wiring + flow ARE in place; without creds the actual sign-in
  *     prompt returns "no issuer redirect" type errors.  Web has the
  *     same gap.

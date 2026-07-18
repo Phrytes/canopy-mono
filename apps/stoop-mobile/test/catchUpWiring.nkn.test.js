@@ -1,14 +1,14 @@
 /**
- * catchUpWiring.nkn — Option A wiring (#248, 2026-05-27).
+ * catchUpWiring.nkn — Option A wiring (2026-05-27).
  *
  * Covers the additions in:
  *   - apps/stoop-mobile/src/lib/agentBundle.js     buildMeshAgent NKN composition
  *   - apps/stoop-mobile/src/lib/catchUpWiring.js   real scheduleCatchUp + peer router
  *
  * Real-network limit: the NKN mainnet handshake (5–90s, real keys,
- * real DHT) is NOT exercised here.  Same convention as #265's pod-
+ * real DHT) is NOT exercised here. Same convention as 's pod
  * creds skip — those go behind a real-device Detox slice
- * (#224B/#265.real-net).  We mock `nknLib` so the transport
+ * (#224B.real-net). We mock `nknLib` so the transport
  * constructs deterministically and we can poke its receive seam.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';

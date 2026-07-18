@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * Fold-in phase C (Q3) — the charter-driven skill-sharing default, web wizard surface.
+ * Fold-in phase C — the charter-driven skill-sharing default, web wizard surface.
  *
  * A skills-matching circle (invite.offeringsMatching, embedded at invite-build from the circle's
  * board-8 skill record) surfaces a VISIBLE pre-checked "share my skills as category" line on the

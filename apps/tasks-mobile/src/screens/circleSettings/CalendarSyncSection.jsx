@@ -1,5 +1,5 @@
 /**
- * CalendarSyncSection — V2.1 calendar emission per circle.
+ * CalendarSyncSection — calendar emission per circle.
  *
  * Phase 41.8.6 (2026-05-09).
  *

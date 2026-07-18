@@ -1,5 +1,5 @@
 /**
- * buttonSpecials — interception contract for #253 step 7.
+ * buttonSpecials — interception contract for step 7.
  *
  * Pinning the three special-case shapes ChatScreen must apply when a
  * row button is tapped:
@@ -94,7 +94,7 @@ describe('#253 step 7 — interceptButtonTap', () => {
     expect(interceptButtonTap({ opId: 'markReturned',  itemId: 'p', buttonLabel: 'Returned', t: stubT }).handled).toBe(false);
   });
 
-  // Bundle H Phase 4 (#271) — responder-card intercepts.
+  // responder-card intercepts.
   it('acceptResponder emits an accept-responder action with the responder addr', () => {
     const r = interceptButtonTap({
       opId: 'acceptResponder',

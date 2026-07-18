@@ -1,5 +1,5 @@
 /**
- * basis v2 — hopping (shared, board 7).
+ * basis v2 — hopping (shared).
  *
  * "Second-degree via contacts": a skill question with no direct match may,
  * IF an intermediary allows it, relay ONE hop to their contacts — per-contact

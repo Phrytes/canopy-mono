@@ -1,10 +1,10 @@
 /**
- * createOpBinding — V0.8 (2026-05-21) — T2-tier helper smoke tests.
+ * createOpBinding — (2026-05-21) — T2-tier helper smoke tests.
  *
  * Verifies the public surface of the helper:
  *   - findOp returns/omits ops by id
- *   - labelFor resolves Q22 labelKey vs Q22-absent fallback
- *   - confirmAndCall honours Q27 severity gates
+ *   labelFor resolves labelKey vs -absent fallback
+ *   confirmAndCall honours severity gates
  *   - error / no-op / cancel paths behave as documented
  *
  * Pure pure-JS — no DOM, no React.  Tests pass an explicit confirmFn
@@ -55,7 +55,7 @@ const MANIFEST = {
                         confirm: { severity: 'warn' } } },
     },
     {
-      id:     'labelKeyOp',  // Q22 labelKey present
+      id:     'labelKeyOp',  // labelKey present
       verb:   'do',
       params: [],
       surfaces: { ui: { label: 'Uitloggen',

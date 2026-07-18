@@ -1,5 +1,5 @@
 /**
- * projectContainer (cluster K · K2) — recursive child-render projector over containment.
+ * projectContainer — recursive child-render projector over containment.
  * The offer→list→tasks nest rendered as one tree, heterogeneous, each via its type's render shape.
  */
 import { describe, it, expect, beforeEach } from 'vitest';

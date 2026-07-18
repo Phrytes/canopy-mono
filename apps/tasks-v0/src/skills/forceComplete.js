@@ -1,5 +1,5 @@
 /**
- * forceComplete — V2.7.
+ * forceComplete —.
  *
  * Admin-only override for `completeTask` when a parent has open
  * dependencies. Mandatory `reason` is recorded in the audit log

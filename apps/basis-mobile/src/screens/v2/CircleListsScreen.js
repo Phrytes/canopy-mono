@@ -1,10 +1,10 @@
 /**
- * basis-mobile v2 — circle Lists (RN mirror of web's openListsPanel, cluster K · K2 container UI).
+ * basis-mobile v2 — circle Lists (RN mirror of web's openListsPanel, container UI).
  *
  * The composable model on mobile: a circle's CONTAINERS (lists + heterogeneous boards) + their children,
  * rendered nested via the SAME shared data layer (`makeCircleLists` → `projectContainer`) the web uses —
  * web≡mobile by construction (shared logic, per-platform renderer). "+ add" creates a CONTAINED child; on an
- * AMBIGUOUS container (a board: item OR sub-list, no default) it first shows the K2 type PICKER. Row-actions
+ * AMBIGUOUS container (a board: item OR sub-list, no default) it first shows the type PICKER. Row-actions
  * complete/remove. PERSISTENT via an AsyncStorage-backed DataSource (in-memory fallback).
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';

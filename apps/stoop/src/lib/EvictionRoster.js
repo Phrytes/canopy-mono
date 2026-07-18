@@ -1,5 +1,5 @@
 /**
- * EvictionRoster — Stoop V2.5 Phase 35.1 (2026-05-06).
+ * EvictionRoster — Stoop Phase 35.1 (2026-05-06).
  *
  * Tracks which webids are "evicted" — i.e. their last
  * `kind: 'membership-redemption'` item is past its `expiresAt + GRACE_MS`

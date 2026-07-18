@@ -1,5 +1,5 @@
 /**
- * agents — data-recovery cores (P3, PLAN-pod-versioning-history-recovery).
+ * agents — data-recovery cores (PLAN-pod-versioning-history-recovery).
  *
  * "Restore corrupted / lost data": pure cores over an injected
  * `versionStoreFor(circleId)` resolver — the host composition supplies the
@@ -34,7 +34,7 @@ function storeForCircle(store, circleId) {
  * that resource's versions, newest-first (ts · id · sha256 · size ·
  * writer) — the pick-list for a restore.
  *
- * VIEW-PIPELINE ADDITIVE KEY (P3 UI slice): both list modes ALSO expose
+ * VIEW-PIPELINE ADDITIVE KEY (UI slice): both list modes ALSO expose
  * the rows as `items: [{id, label, …row}]` — the shape the chat-shell
  * list renderer reads for `shape:'list'` sections (see basis
  * `realAgent.js` "the chat-shell renderer expects {items:[{id,label,…}]}"

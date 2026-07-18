@@ -10,7 +10,7 @@
 //   gate   — surfaces.slash.match     (the deterministic NL verbs; renderGate / renderSlash)
 //   attach — surfaces.attach          (the attach "+" menu entry; renderAttachments)
 //   screen — surfaces.ui OR surfaces.page OR a CREATIVE_VERB (add/register)  (web/mobile
-//            page/affordance; renderWeb ≡ renderMobile, V0-aliased — one column).  D / SP-3b:
+//            page/affordance; renderWeb ≡ renderMobile, V0-aliased — one column). D /:
 //            `surfaces.page` (side-panel / modal / screen) now counts — it projects to
 //            NavModel.pages[] via renderWeb, so a declared page IS a web/mobile surface.
 //   inline — surfaces.ui.control === 'button'  (the inline button/menu affordance)

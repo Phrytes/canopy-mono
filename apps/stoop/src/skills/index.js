@@ -87,7 +87,7 @@ import { update as updateInterest, score as scoreInterest, combinedRelevance } f
 import { matchesProfile } from '../lib/offeringsMatch.js';
 
 /**
- * Canonical circle-admin authority check (P0 roles-authority reconciliation).
+ * Canonical circle-admin authority check (roles-authority reconciliation).
  *
  * A circle "admin" gate historically meant `role === 'admin' || role ===
  * 'coordinator'`. Rather than hand-comparing role strings at every gate (which
@@ -526,7 +526,7 @@ async function getHolidayModeCore(scope, a, ctx) {
   const { members } = scope;
   if (!members) return { holidayMode: false };
   const me = await members.resolveByWebid(ctx.from);
-  // Availability unification (Q5): holiday mode IS the coarse 'away' value of the
+  // Availability unification: holiday mode IS the coarse 'away' value of the
   // unified `availability` property; the legacy flag is honoured for un-migrated entries.
   return { holidayMode: me?.availability === 'away' || me?.holidayMode === true };
 }
@@ -1209,7 +1209,7 @@ export function buildSkills({
     }),
 
     /**
-     * stoop_briefSummary()  — Q30 contributor for basis's /brief
+     * stoop_briefSummary — contributor for basis's /brief
      * aggregator.  Declared by `listOpen.surfaces.chat.brief` in the
      * stoop manifest.  Mirrors folio's `folio_briefSummary` shape:
      * returns `{ok: true}` when no open posts exist (brief.js skips
@@ -1304,7 +1304,7 @@ export function buildSkills({
     // `@onderling/group-mod`.  Tracked in
     // `Project Files/Substrates/substrate-candidates.md`.
     //
-    // P0 roles-authority reconciliation (canonical role-change path): when
+    // roles-authority reconciliation (canonical role-change path): when
     // `setMemberRole` is built, it MUST route through the canonical, signed
     // `core.GroupManager.setRole(memberPubKey, groupId, newRole)`
     // (`packages/core/src/permissions/GroupManager.js`) — the single
@@ -1561,7 +1561,7 @@ export function buildSkills({
 
     /**
      * setHolidayMode({on})  — Phase 23.4, now a THIN SHIM over the unified
-     *   `availability` property (availability unification / decision Q5).
+     *   `availability` property (availability unification decision).
      *   Holiday mode IS the coarse 'away' value: `on:true` sets availability
      *   to 'away', `on:false` back to 'open'. `holidayMode` is kept mirrored
      *   on the member so legacy readers (the UI banner, getHolidayMode) still
@@ -2198,7 +2198,7 @@ export function buildSkills({
           channel:        'peer',
           // Signing pubKey (fan-out routing) — see note above; mirrors sealingPublicKey.
           ...(peerSigningPubKey ? { signingPublicKey: peerSigningPubKey } : {}),
-          // Slice 4 (2026-05-24) — joiner's mesh-consent token.
+          // joiner's mesh-consent token.
           // When true, admin propagates this peer's address to
           // other members (+ propagates other consenting members'
           // addresses to this joiner).  When false, the joiner
@@ -2310,7 +2310,7 @@ export function buildSkills({
 
     /**
      * listBuurtPostsSince({groupId, sinceMs})
-     *   — Slice 5 (2026-05-24).  Returns broadcast posts in groupId
+     *   — (2026-05-24). Returns broadcast posts in groupId
      *   added after `sinceMs`.  Used by the catch-up flow:
      *
      *     - Joiner comes online → asks each peer "anything new in
@@ -2377,7 +2377,7 @@ export function buildSkills({
 
     /**
      * getLatestPostAddedAt({groupId})
-     *   — Slice 5 (2026-05-24).  Returns the max `addedAt` we have
+     *   — (2026-05-24). Returns the max `addedAt` we have
      *   for broadcast posts in groupId — joiner's catch-up
      *   high-water mark.  0 when never received anything.
      */
@@ -2403,7 +2403,7 @@ export function buildSkills({
 
     /**
      * recordPeerIntro({groupId, peerAddr, peerDisplay?})
-     *   — Slice 4 (2026-05-24).  Joiner-side mirror for a mesh
+     *   — (2026-05-24). Joiner-side mirror for a mesh
      *   introduction.  Admin propagates each consenting member's
      *   address; the receiver calls this skill to write a local
      *   `membership-redemption` item with `channel: 'intro'`.
@@ -2448,7 +2448,7 @@ export function buildSkills({
 
     /**
      * listConsentingPeers({groupId})
-     *   — Slice 4 (2026-05-24).  Returns members of groupId who
+     *   — (2026-05-24). Returns members of groupId who
      *   gave a `shareCard` (consented to mesh address-sharing).
      *   Used by admin to decide who to propagate when a new
      *   joiner arrives.  Skips self.
@@ -2729,7 +2729,7 @@ export function buildSkills({
           from:         payload.from ?? null,
           fromPubKey,
           // 2026-05-24 — wire-level NKN address for back-channel DM
-          // delivery (Slice 6b's [Help with] routes via this).
+          // delivery ('s [Help with] routes via this).
           ...(fromPeerAddr ? { fromPeerAddr } : {}),
           claimsTopic:  payload.claimsTopic ?? null,
           categoryId:   payload.categoryId ?? null,
@@ -2955,7 +2955,7 @@ export function buildSkills({
       const myItems   = allOpen.filter(i => i.addedBy === from);
       // Closed-completed items: listOpen excludes them; ItemStore exposes
       // listOpen + listAll(?)  Use listOpen now — closed items don't
-      // belong in an "active state" export.  V1.5 adds listAll if the
+      // belong in an "active state" export. adds listAll if the
       // export needs it.
       return {
         webid:          from,
@@ -3220,14 +3220,14 @@ export function buildSkills({
 
     /**
      * broadcastKringMessage({groupId, text, msgId, ts?, fromActor?, media?})
-     *   — SP-13.2.1 — plain-text chat fan-out to every member of a
+     *   — plain-text chat fan-out to every member of a
      *   kring.  Reuses the existing `chat.send` substrate (WebID→pubKey
      *   resolution, signing, transport routing) with subtype
      *   `'kring-chat-message'` so receivers can wire a dedicated
      *   peer-router handler that appends to the basis EventLog
      *   (NOT to itemStore — kring chats aren't stoop posts).
      *
-     *   `media` (optional, forward-additive — media P1 fan-out) — the
+     *   `media` (optional, forward-additive — media fan-out) — the
      *   sealed media-card pointer+snapshot the sender's chip renders
      *   from; rides the envelope so PEERS render the chip too (the
      *   inline thumb is SEALED with the circle key they hold).  The
@@ -3274,7 +3274,7 @@ export function buildSkills({
               ts,
               from,
               fromActor: a.fromActor ?? from ?? null,
-              // media P1 — persist the pointer+snapshot so rehydrate/catch-up
+              // media — persist the pointer+snapshot so rehydrate/catch-up
               // (listKringChats / getMessagesSince) serve the chip too.
               ...(media ? { media } : {}),
             },
@@ -3427,7 +3427,7 @@ export function buildSkills({
 
     /**
      * listKringChats({groupId?, sinceTs?, limit?})
-     *   — SP-13.2.2 — list stored kring chat-message items, ordered
+     *   — list stored kring chat-message items, ordered
      *   oldest → newest (chat reading order).  Defaults: all circles,
      *   no time bound, capped at 200 most recent.  Hosts (basis
      *   web + mobile) call this at boot to rehydrate eventLog so the
@@ -3522,7 +3522,7 @@ export function buildSkills({
         ts:        it?.source?.ts,
         text:      it.text ?? '',
         fromActor: it?.source?.fromActor ?? it?.source?.fromWebid ?? null,
-        // media P1 — carry the stored media pointer+snapshot so a catch-up
+        // media — carry the stored media pointer+snapshot so a catch-up
         // receiver renders the chip too (absent stays absent — legacy shape).
         ...(it?.source?.media && typeof it.source.media === 'object'
           ? { media: it.source.media } : {}),
@@ -3535,7 +3535,7 @@ export function buildSkills({
 
     /**
      * ingestKringMessage({payload, fromPubKey, fromPeerAddr})
-     *   — SP-13.2.1 — receive-side mirror for an inbound kring chat
+     *   — receive-side mirror for an inbound kring chat
      *   envelope.  Sibling of `ingestRemotePost` for the buurt-post
      *   path: dedupe + eviction + mute filtering + addItems.  Hosts
      *   (basis web + mobile) call this from their kring-chat
@@ -3573,7 +3573,7 @@ export function buildSkills({
       const open = await store.listOpen({ type: 'kring-chat-message' });
       if (open.some((i) => i?.source?.msgId === msgId)) return { deduped: true };
 
-      // media P1 — optional media-card pointer+snapshot riding the envelope
+      // media — optional media-card pointer+snapshot riding the envelope
       // (forward-additive; shape-guarded, anything else is dropped). Persisted
       // so this peer's rehydrate + catch-up serves keep the chip.
       const media = (payload.media && typeof payload.media === 'object' && !Array.isArray(payload.media))
@@ -4041,7 +4041,7 @@ export function buildSkills({
 
     /**
      * listEvictedMembers()
-     *   — Phase 35 (V2.5, 2026-05-06).  Returns the webids whose
+     *   — Phase 35 (2026-05-06). Returns the webids whose
      *   most-recent membership-redemption has expired (past
      *   `expiresAt + GRACE_MS`).  Posts from these members are
      *   silently dropped on the receive side; the UI uses this
@@ -4055,7 +4055,7 @@ export function buildSkills({
     }),
 
     /**
-     * getAttachmentDataUrl({itemId, attId})  — Phase 39 (V2.5).
+     * getAttachmentDataUrl({itemId, attId}) — Phase 39.
      *   Read the locally-cached bytes for an attachment and return
      *   a `data:<mime>;base64,...` URL the browser can drop straight
      *   into an <img> tag.  Returns `{error: 'no-bytes'}` when the
@@ -4085,7 +4085,7 @@ export function buildSkills({
     }),
 
     /**
-     * requestAttachment({itemId, attId})  — Phase 39 (V2.5).
+     * requestAttachment({itemId, attId}) — Phase 39.
      *   Fetch the full bytes for an attachment that we currently
      *   only have a thumbnail for.  Looks up the item's
      *   `source.fromPubKey` (the original author), sends a
@@ -4146,7 +4146,7 @@ export function buildSkills({
 
     /**
      * getBulkSyncStatus()
-     *   — Phase 34 (V2.5, 2026-05-06).  Reports the latest snapshot
+     *   — Phase 34 (2026-05-06). Reports the latest snapshot
      *   of the cache's bulk-sync state during attachInner.  Phases:
      *     - 'idle'     before any attach (or no cache).
      *     - 'running'  bulk-sync in flight; `done` and `total` move.
@@ -4417,7 +4417,7 @@ export function buildSkills({
      *   To actually adopt the mnemonic-derived identity on a new
      *   device, the user calls `restoreFromMnemonic` (which writes
      *   the seed into the vault) and then restarts the Stoop
-     *   process.  Mid-flight identity swap is V2.5+ — too invasive
+     *   process. Mid-flight identity swap is + — too invasive
      *   for V2.
      */
     defineSkill('validateMnemonicPhrase', async ({ parts }) => {
@@ -4442,7 +4442,7 @@ export function buildSkills({
 
     /**
      * restoreFromMnemonic({mnemonic, confirm})
-     *   — Phase 30 + V2.5 Phase 31 (mid-flight identity swap).
+     *   — Phase 30 + Phase 31 (mid-flight identity swap).
      *
      *   Validates the mnemonic, persists the derived seed into the
      *   bundle's vault under `agent-privkey`, then SWAPS the running
@@ -4490,7 +4490,7 @@ export function buildSkills({
       // across devices.
       try { await vault.delete?.('agent-stable-id'); } catch {}
 
-      // V2.5 Phase 31 — mid-flight identity swap.  Build a fresh
+      // mid-flight identity swap. Build a fresh
       // AgentIdentity (which loads the new seed + new stableId from
       // the vault) and hand it to the running agent.
       let newIdentity;
@@ -4519,7 +4519,7 @@ export function buildSkills({
         } catch { /* best-effort */ }
       }
 
-      // V2.5 Phase 31 scope: a fresh device's bundle has no peers
+      // Phase 31 scope: a fresh device's bundle has no peers
       // yet (restore flow runs before any group-rejoin), so there's
       // no peer-rebind to do at this point.  The agent's outbound
       // envelopes are now signed by the new key (handled inside

@@ -1,6 +1,6 @@
 /**
  * circleShareEnforcement — the PLATFORM-NEUTRAL assembly of a circle's cross-circle SHARE enforcement binder
- * (cluster K · objective L). Both shells (web `circleApp.js`, mobile `circlePods.js`) resolve their platform
+ * . Both shells (web `circleApp.js`, mobile `circlePods.js`) resolve their platform
  * pod objects — the ACP `sharing` surface, the content seal `strategy`, the signed-in `podRoot`, the circle's
  * `controlAgent`, this device's per-circle `idKey` — and hand them here; this module composes the SAME
  * `makeCircleShareEnforcement` (+ best-effort `createCanonicalShare`) from them. Living once here is invariant

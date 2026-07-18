@@ -1,5 +1,5 @@
 /**
- * basis v2 — personal circle override (web DOM renderer, board 6A).
+ * basis v2 — personal circle override (web DOM renderer).
  *
  * The calling member's own deviations from a circle's defaults: chat off,
  * reveal-open, agents-may-contact-me, and flow-through (claimed tasks /
@@ -7,7 +7,7 @@
  * (`@onderling/circlePolicy`); toggles fire `onChange(patch)`; the host
  * merges + re-renders + persists. Pure → unit-testable under happy-dom.
  *
- * B · Slice 4 — also the member's capability OPT-OUTS: given the circle's admin `policy` + the merged
+ * also the member's capability OPT-OUTS: given the circle's admin `policy` + the merged
  * manifest `sources`, list the OPT-OUTABLE capabilities (admin freedom 'optional' or a privacy floor)
  * and let the member decline them. Declining writes `capabilityOptOuts`; the same gate then refuses them.
  */
@@ -15,7 +15,7 @@ import { buildCapabilityMatrix } from '@onderling/app-manifest';
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
 const FLOW_TOGGLES = ['tasksToPersonal', 'calendarToPersonal'];
-// α.5b — per-kring push toggles (board 6A · audit #6).  Same shape as
+// per-kring push toggles (audit). Same shape as
 // the existing TOP_TOGGLES / FLOW_TOGGLES row pattern; the locale lives
 // under its own namespace (`circle.member.notifications.*`) so the four
 // strings are reusable by mobile + chat without sitting under the
@@ -89,7 +89,7 @@ export function renderCircleOverride(container, { override, t, onChange, onBack,
   }
   container.appendChild(flowSec);
 
-  // B · Slice 4 — the member's capability opt-outs (only the opt-outable caps of enabled apps).
+  // the member's capability opt-outs (only the opt-outable caps of enabled apps).
   renderCapabilityOptOuts(container, { sources, policy, override, tr, emit });
 
   const save = document.createElement('button');
@@ -103,7 +103,7 @@ export function renderCircleOverride(container, { override, t, onChange, onBack,
 }
 
 /**
- * B · Slice 4 — the member's capability opt-outs. Lists the OPT-OUTABLE capabilities (admin freedom
+ * the member's capability opt-outs. Lists the OPT-OUTABLE capabilities (admin freedom
  * 'optional' or a privacy floor) of the enabled apps; a checked box = "I participate", unchecking =
  * opt out. Emits the FULL updated `capabilityOptOuts` list (mergeMemberOverride replaces it wholesale).
  */

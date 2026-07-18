@@ -1,5 +1,5 @@
 /**
- * Stoop — Q30 briefSummary tests.
+ * Stoop — briefSummary tests.
  *
  * `stoop_briefSummary` is declared on `listOpen.surfaces.chat.brief`
  * in the stoop manifest; it contributes to basis's `/brief`

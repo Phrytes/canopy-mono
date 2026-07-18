@@ -1,11 +1,11 @@
 /**
- * BotAgentRegistry — V1.5 cap-token-bound bot agent management.
+ * BotAgentRegistry — cap-token-bound bot agent management.
  *
  * Each binding has its OWN in-process `core.Agent`:
  *   - Fresh `AgentIdentity` (Ed25519 keypair) per binding.
  *   - Holds exactly ONE `CapabilityToken` issued by the tasks agent
  *     to the bot's pubKey, with `constraints.actingAs = webid`.
- *     Wildcard skill scope (V1.5 trade-off — see CHANGELOG); the
+ *     Wildcard skill scope (trade-off — see CHANGELOG); the
  *     role-policy gate on each Tasks skill still applies because
  *     the bot's pubKey is not a circle member webid.
  *   - Shares the tasks agent's `InternalBus`, so bot.invoke(tasksPubKey, ...)
@@ -21,13 +21,13 @@
  *     and skill='*', the lookup can't distinguish "act as Anne" from
  *     "act as the author". Per-binding identities sidestep the problem.
  *
- * Persistence (V1.5 follow-up B): when a `dataSource` is supplied,
+ * Persistence (follow-up B): when a `dataSource` is supplied,
  * each bot agent's vault snapshot + binding metadata is written to
  * `mem://tasks/circles/<circleId>/botAgents/<chatId>.json`. On Circle
  * boot, `restoreAll()` loads them and re-spawns the bot agents
  * against the same identity, so cap-token bindings survive a CLI
  * restart. Without `dataSource`, bot identities stay ephemeral
- * (the V1.5 baseline behaviour).
+ * (the baseline behaviour).
  */
 
 import { Agent, AgentIdentity, InternalTransport, TrustRegistry, PolicyEngine, TokenRegistry, CapabilityToken } from '@onderling/core';
@@ -62,7 +62,7 @@ export class BotAgentRegistry {
   #circleId;
   /** Map<chatId, BotEntry> */
   #entries = new Map();
-  /** V1.5 follow-up C — issuer-side revocation list. Set<tokenId>. */
+  /** follow-up C — issuer-side revocation list. Set<tokenId>. */
   #revoked = new Set();
 
   /**
@@ -70,7 +70,7 @@ export class BotAgentRegistry {
    * @param {import('@onderling/core').InternalBus} args.bus
    * @param {import('@onderling/core').Agent}        args.tasksAgent
    * @param {object} [args.dataSource]
-   *   V1.5 follow-up B — when supplied, bindings persist under
+   *   follow-up B — when supplied, bindings persist under
    *   `mem://tasks/circles/<circleId>/botAgents/<chatId>.json` so
    *   cap-token bindings survive CLI restarts. Caller must pass
    *   `circleId` alongside.
@@ -85,7 +85,7 @@ export class BotAgentRegistry {
     this.#tasksAgent = tasksAgent;
     this.#dataSource = dataSource ?? null;
     this.#circleId     = circleId     ?? null;
-    // V1.5 follow-up C — feed the tasks agent's PolicyEngine our
+    // follow-up C — feed the tasks agent's PolicyEngine our
     // local revocation set so revoked tokens fail at the verifier
     // even if the holder still has the blob stored.
     if (typeof tasksAgent.policyEngine?.setRevocationCheck === 'function') {
@@ -150,7 +150,7 @@ export class BotAgentRegistry {
     await agent.hello(this.#tasksAgent.address);
 
     // 3. Issue the token. Tasks agent issues; bot holds.
-    //    V1.5 follow-up A — scope to `bot.*` instead of wildcard so
+    //    follow-up A — scope to `bot.*` instead of wildcard so
     //    a stolen token can only invoke the chat-bot surface, not
     //    arbitrary tasks skills. PolicyEngine + TokenRegistry both
     //    honour the prefix via `offeringMatches` (core).
@@ -180,7 +180,7 @@ export class BotAgentRegistry {
       binding,
     });
 
-    // V1.5 follow-up B — persist (best-effort).
+    // follow-up B — persist (best-effort).
     if (this.persisting) {
       try {
         await this.#dataSource.write(this.#pathFor(chatId), JSON.stringify({
@@ -208,7 +208,7 @@ export class BotAgentRegistry {
     if (!entry) return { error: 'not found' };
     try { await entry.tokenRegistry.revoke(entry.binding.tokenId); } catch { /* noop */ }
     try { await entry.agent.stop(); } catch { /* noop */ }
-    // V1.5 follow-up C — also publish to the issuer-side revocation
+    // follow-up C — also publish to the issuer-side revocation
     // list so PolicyEngine.checkInbound rejects any in-flight or
     // future call carrying the now-stale token.
     this.#revoked.add(entry.binding.tokenId);
@@ -220,7 +220,7 @@ export class BotAgentRegistry {
   }
 
   /**
-   * V1.5 follow-up B — re-spawn bot agents from persisted snapshots.
+   * follow-up B — re-spawn bot agents from persisted snapshots.
    * Called from Circle boot AFTER the tasks agent + dataSource are up.
    * Skips entries whose token has already expired (the admin will need
    * to re-issue) and tears down their persistent rows.
@@ -270,13 +270,13 @@ export class BotAgentRegistry {
         await agent.start();
         await agent.hello(this.#tasksAgent.address);
 
-        // V2.0 — with persisted tasks-agent identity (Circle.js writes
+        // with persisted tasks-agent identity (Circle.js writes
         // the agent vault to `mem://tasks/circles/<circleId>/agent/
         // identity-vault.json` on first boot and restores from it
         // afterwards), the token's `agentId` matches the current
         // tasks agent's pubKey across restarts; the auto-rotate
-        // branch from V1.5 follow-up B is gone. Defensive fallback
-        // remains: if the snapshot was generated before V2.0 (or
+        // branch from follow-up B is gone. Defensive fallback
+        // remains: if the snapshot was generated before (or
         // the user wiped the agent vault but kept the bot vaults),
         // re-issue rather than fail.
         if (token?.agentId !== this.#tasksAgent.pubKey) {

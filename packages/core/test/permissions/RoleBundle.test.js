@@ -1,7 +1,7 @@
 /**
  * RoleBundle + RoleGrant — roles as capability bundles, materialized on grant.
  *
- * Covers the P3 artifact end-to-end:
+ * Covers the artifact end-to-end:
  *   1. the bundle SHAPE + registry (validate against Roles.js, built-in admin);
  *   2. grantRole MATERIALIZES the bundle — sets the governance role via
  *      GroupManager AND issues the bundle's cap-tokens to the member;

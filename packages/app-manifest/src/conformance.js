@@ -16,7 +16,7 @@
  * (tasks-v0 · stoop · household · calendar · folio · basis) are encoded
  * here — so the check is GREEN on master and RED on a real regression. Rules
  * the codebase does NOT hold to universally (registry-canonical `itemTypes`
- * under `strictNouns`, the Q16 `strict` skillId cross-check) are deliberately
+ * under `strictNouns`, the `strict` skillId cross-check) are deliberately
  * NOT conformance failures: F-SP1-a permits app-local nouns, and some apps
  * legitimately reference external skills. Registry-noncanonical nouns are
  * surfaced as NON-BLOCKING `warnings` (informational), never flipping `ok`.

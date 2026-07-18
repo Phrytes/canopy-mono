@@ -27,7 +27,7 @@
  * ── The three execution modes (only `required` is built here) ────────────────
  *   • `humanInTheLoop:'required'` (requestable)  → invocation CREATES A TASK.   ← this module
  *   • `humanInTheLoop:'never'`    (immediate)     → device acts on call, no task.
- *   • `standing` (a held role-bundle grant, P3)   → collapses to immediate: the
+ *   `standing` (a held role-bundle grant) → collapses to immediate: the
  *     holder pre-consented by accepting a role, so the invocation becomes an urgent
  *     OBLIGATION with no fresh consent step. See the STANDING-BYPASS seam below —
  *     it is DELIBERATELY NOT built here.
@@ -51,7 +51,7 @@
  *      surfacing them in the roster/request UI is a separate projector.
  *   3. STANDING-BYPASS — a `standing` grant re-advertises the SAME skill in
  *      immediate mode (invocation → obligation, no task/consent step). Building the
- *      grant check that flips a `required` handler to immediate is P3 (J7); this
+ *      grant check that flips a `required` handler to immediate is (J7); this
  *      module only documents the seam (`humanInTheLoop` is a plain field an upstream
  *      grant check may override before dispatch).
  *   4. NEGOTIATION / COUNTER — `posture:'negotiable'` + the core IR round-trip is

@@ -1,5 +1,5 @@
 /**
- * V1.5 — custom-role management tests.
+ * custom-role management tests.
  *
  * Covers:
  *   1. listKnownRoles returns the standard 5 + circle customs.

@@ -1,7 +1,7 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ * **Platform: web** (DOM-dependent). RN parallel pending.
  *
- * basis — /settings panel renderer (#212, 2026-05-24).
+ * basis — /settings panel renderer (2026-05-24).
  *
  * Brings the per-app settings that used to live as individual slash
  * commands into a single grouped panel:

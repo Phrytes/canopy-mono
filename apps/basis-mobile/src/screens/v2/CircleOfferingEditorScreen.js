@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — skill editor (RN screen, board 8).
+ * basis-mobile v2 — skill editor (RN screen).
  *
  * RN counterpart of web's circleOfferingEditor over the SAME shared model
  * (`@onderling-app/basis`): the four skill axes (openness · posture ·

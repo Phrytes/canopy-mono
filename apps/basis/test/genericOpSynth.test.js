@@ -1,5 +1,5 @@
 /**
- * basis — §1b sub-slice 1c: catalog synthesis of GENERIC (op-less) capabilities.
+ * basis — §1b: catalog synthesis of GENERIC (op-less) capabilities.
  *
  * "Declare a noun → get CRUD free": a manifest can declare a noun with CRUD atoms and NO implementing op.
  * `synthesizeGenericOps` + `mergeManifests` turn each such op-less capability into a SYNTHETIC catalog op

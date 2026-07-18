@@ -1,5 +1,5 @@
 /**
- * Stoop V1.5 — Phase 21 tests.
+ * Stoop — Phase 21 tests.
  *
  * Web Push scaffold:
  *   - PushRegistry add / remove / list

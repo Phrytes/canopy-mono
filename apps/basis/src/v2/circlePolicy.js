@@ -1,8 +1,8 @@
 /**
  * basis v2 — circle policy + member override model (shared, F2).
  *
- * A circle's settings are a small record keyed by circleId (board 4: the
- * five axes) plus a per-member override record (board 6). This module is
+ * A circle's settings are a small record keyed by circleId (: the
+ * five axes) plus a per-member override record. This module is
  * the pure model: defaults, enum validation, normalisation (merge a
  * stored partial onto defaults), and deep-merge for edits. Persistence
  * (pod `shared.json` per the cross-app-settings convention) is wired by
@@ -64,7 +64,7 @@ export const CIRCLE_POLICY_ENUMS = {
   catchUpChooserMode:   ['auto', 'prompt'],
 };
 
-// Defaults match the "full Onderling" surface (board 2 strategy B): the
+// Defaults match the "full Onderling" surface (strategy B): the
 // orchestrator app lights up the features whose UI is already rendered
 // today (chat + noticeboard + houseRules + memberDirectory).  The focus-apps
 // in the store ('Buurt door Onderling', 'Huishouden door Onderling', 'OR-bot')
@@ -85,7 +85,7 @@ export const DEFAULT_CIRCLE_POLICY = {
   // than auto-routing to the classic chat shell.  The chat-route still
   // works for circles whose admin explicitly sets view='chat' (board
   // 5.9e / huisgenoten-style "chat as the kring's front door").  Until
-  // the per-kring stream surface (board 2B right-hand side) is built,
+  // the per-kring stream surface (right-hand side) is built,
   // 'screen' lands the user on the action-grid detail — at least they
   // can navigate to each feature from there instead of being kicked
   // out to the classic shell.
@@ -112,17 +112,17 @@ export const DEFAULT_CIRCLE_POLICY = {
   consensusRequired: false,
   // S6.C deep — which whole apps the circle composes; null = all DEFAULT_CIRCLE_ORIGINS.
   apps:             null,
-  // B · Slice 2 (ruling Q3) — the admin FREEDOM TEMPLATE: a partial map keyed by
+  // B · (ruling) — the admin FREEDOM TEMPLATE: a partial map keyed by
   // "<app> <atom> <noun>" → { enabled?, freedom?, consequence?, privacyFloor? }. Absent entry ⇒
-  // default-on (Q5); the capability gate (capabilityGate.js) narrows the effective set with this.
+  // default-on; the capability gate (capabilityGate.js) narrows the effective set with this.
   capabilities:     {},
-  // B · Slice 2 (ruling Q1) — per-app SETTINGS VALUES the wizard/settings form writes, keyed by
+  // B · (ruling) — per-app SETTINGS VALUES the wizard/settings form writes, keyed by
   // "<app>.<settingKey>" → value. The manifest declares the schema; this holds the chosen values.
   settings:         {},
 };
 
 /**
- * P6.1 — return whether a feature is enabled on a (possibly partial)
+ * return whether a feature is enabled on a (possibly partial)
  * policy.  Defensive: treats missing/non-policy input as the default
  * (so a circle whose `features` field hasn't been written yet still
  * surfaces the default-on features).
@@ -143,7 +143,7 @@ export function isFeatureEnabled(policy, key) {
   return typeof f[key] === 'boolean' ? f[key] : DEFAULT_CIRCLE_POLICY.features[key];
 }
 
-/** P6.1 — enumerate the enabled features on a policy, in CIRCLE_FEATURES order. */
+/** enumerate the enabled features on a policy, in CIRCLE_FEATURES order. */
 export function enabledFeatures(policy) {
   return CIRCLE_FEATURES.filter((k) => isFeatureEnabled(policy, k));
 }
@@ -208,7 +208,7 @@ export function normalizeCirclePolicy(stored = {}) {
     // narrows (e.g. ['stoop'] for a buurt-only circle). Validation is loose here —
     // the catalog scoping intersects with the apps that actually have ops.
     apps:               Array.isArray(p.apps) ? p.apps.filter((x) => typeof x === 'string') : null,
-    // B · Slice 2 — kept as plain object maps; per-entry coercion happens at read time
+    // kept as plain object maps; per-entry coercion happens at read time
     // (freedom.js resolveRow for capabilities; the manifest schema for settings).
     capabilities:       (p.capabilities && typeof p.capabilities === 'object' && !Array.isArray(p.capabilities)) ? p.capabilities : {},
     settings:           (p.settings && typeof p.settings === 'object' && !Array.isArray(p.settings)) ? p.settings : {},
@@ -222,7 +222,7 @@ export function mergeCirclePolicy(base, patch = {}) {
     ...nb,
     ...patch,
     features:     { ...nb.features, ...(patch.features || {}) },
-    // B · Slice 2 — shallow-merge at the entry-key level (a patch replaces the whole row/value for a key).
+    // shallow-merge at the entry-key level (a patch replaces the whole row/value for a key).
     capabilities: { ...nb.capabilities, ...(patch.capabilities || {}) },
     settings:     { ...nb.settings, ...(patch.settings || {}) },
   };
@@ -233,7 +233,7 @@ export const DEFAULT_MEMBER_OVERRIDE = {
   chatOff:            false,
   revealOpen:         false,
   agentsMayContactMe: true,
-  // P6.M4 (board 6A) — per-kring push toggles.  α.5b extends the v0
+  // per-kring push toggles. α.5b extends the v0
   // mention/message pair with two more types: noticeboard/agenda/task
   // items (`onNewItem`) and multi-admin voorstellen (`onProposal`).
   // Mentions, new items, and proposals are on by default so an actor
@@ -247,7 +247,7 @@ export const DEFAULT_MEMBER_OVERRIDE = {
     onProposal:     true,
   },
   flowThrough:        { tasksToPersonal: false, calendarToPersonal: false },
-  // B · Slice 4 (ruling Q3) — the member's capability OPT-OUTS: an array of "<app> <atom> <noun>"
+  // B · (ruling) — the member's capability OPT-OUTS: an array of "<app> <atom> <noun>"
   // keys the member has declined. Only OPT-OUTABLE caps (admin freedom 'optional' OR a privacy floor)
   // can be opted out; the effective set is admin-template ∩ (not these). Enforced at the same gate.
   capabilityOptOuts:  [],
@@ -288,7 +288,7 @@ export function mergeMemberOverride(base, patch = {}) {
 }
 
 /**
- * P6.M4 — decide whether to push a notification given the override + the
+ * decide whether to push a notification given the override + the
  * notification kind.  Pure; consumers wire this into the existing
  * notifier flow ([[5.7b]] isSuppressed hook).
  *
@@ -296,7 +296,7 @@ export function mergeMemberOverride(base, patch = {}) {
  *   'mention'  — someone @-mentioned me
  *   'message'  — any new message in the circle
  *   'newItem'  — a new noticeboard / agenda / task / announcement item
- *   'proposal' — a new multi-admin voorstel (P6.2)
+ *   'proposal' — a new multi-admin voorstel
  *
  * Unknown kinds return `false` conservatively — a new notification
  * type stays silent until an override field is added for it here.

@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — personal circle override (RN screen, board 6A · M3).
+ * basis-mobile v2 — personal circle override (RN screen).
  *
  * RN counterpart of web's circleOverride renderer over the SAME shared
  * `memberOverride` model: the calling member's deviations from a circle's
@@ -11,14 +11,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Switch, StyleSheet } from 'react-native';
 import { theme } from './theme.js';
 import { mergeMemberOverride } from '@onderling-app/basis';
-// B · Slice 4 — the member capability opt-out section (web≡mobile via the shared projector).
+// the member capability opt-out section (web≡mobile via the shared projector).
 import { buildCapabilityMatrix } from '@onderling/app-manifest';
 import { buildManifestsByOrigin } from '../../core/composeManifests.js';
 import { t } from '../../core/localisation.js';
 
 const TOP_TOGGLES = ['chatOff', 'revealOpen', 'agentsMayContactMe'];
 const FLOW_TOGGLES = ['tasksToPersonal', 'calendarToPersonal'];
-// α.5b — per-kring push toggles (board 6A · audit #6).  Mirrors web's
+// per-kring push toggles (audit). Mirrors web's
 // PUSH_TOGGLES row pattern; locale namespace is
 // `circle.member.notifications.*`.
 const PUSH_TOGGLES = [
@@ -41,7 +41,7 @@ export default function CircleOverrideScreen({ store, circleId, onBack, policySt
 
   const patch = useCallback((p) => setWorking((cur) => mergeMemberOverride(cur, p)), []);
 
-  // B · Slice 4 — the member's opt-outable capabilities (admin freedom 'optional' or a privacy floor).
+  // the member's opt-outable capabilities (admin freedom 'optional' or a privacy floor).
   const sources = useMemo(() => [...new Set(Object.values(buildManifestsByOrigin()))].map((m) => ({ manifest: m })), []);
   const optOutable = useMemo(() => (working ? buildCapabilityMatrix(sources, {
     enabledApps: Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null,
@@ -108,7 +108,7 @@ export default function CircleOverrideScreen({ store, circleId, onBack, policySt
           </View>
         ))}
 
-        {/* B · Slice 4 — the member's capability opt-outs (checked = participate; unchecking opts out) */}
+        {/* the member's capability opt-outs (checked = participate; unchecking opts out) */}
         {optOutable.length ? (
           <>
             <Text style={styles.section}>{t('circle.override.capabilities')}</Text>

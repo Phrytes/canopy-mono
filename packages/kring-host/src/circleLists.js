@@ -1,7 +1,7 @@
 /**
- * circleLists — the composable LISTS feature over the K2 substrate (cluster K · K2, the container UI).
+ * circleLists — the composable LISTS feature over the substrate (the container UI).
  *
- * A `list` CONTAINER whose entries are `list-item` CHILDREN (K2 containment), and — since the child type is
+ * A `list` CONTAINER whose entries are `list-item` CHILDREN (containment), and — since the child type is
  * now POLICY-DRIVEN (`buildAcceptsPolicy` + `resolveAddInContainer`, not a hardcoded `list`→`list-item`) — a
  * `list-item` is itself a container that accepts SUB-items: the offer→list→tasks→subtasks nesting made real.
  * One per-circle `CircleItemStore`; the panel (web `openListsPanel` / RN `CircleListsScreen`) renders a list
@@ -28,13 +28,13 @@ const ITEM_SCHEMA = Object.freeze({
   required: ['type', 'text'],
 });
 // A `board` — a HETEROGENEOUS container: it accepts EITHER an item OR a sub-list, with NO default, so "+ add"
-// is a genuine CHOICE (the ambiguous case that drives the K2 type picker). Same {text} shape as a list.
+// is a genuine CHOICE (the ambiguous case that drives the type picker). Same {text} shape as a list.
 const BOARD_SCHEMA = Object.freeze({
   type: 'object', properties: { type: { const: 'board' }, text: { type: 'string', minLength: 1 } }, required: ['type', 'text'],
 });
 
 /**
- * The lists feature's manifest-style `accepts` declaration (cluster K · K2 surfacing): a `list` CONTAINS
+ * The lists feature's manifest-style `accepts` declaration (surfacing): a `list` CONTAINS
  * `list-item`s; a `list-item` CONTAINS sub-items (the composable nesting). `buildAcceptsPolicy` merges this
  * with any other apps' declarations, so what a container accepts is EXTENSIBLE, not baked into this module.
  */
@@ -69,7 +69,7 @@ export function makeCircleLists({ dataSource, manifests, rootPrefix } = {}) {
   const CONTAINER_TYPES = ['list', 'board'];   // heterogeneous containers rendered by the panel (no row-actions)
 
   // The accepts policy: the lists declaration + the tasks-in-lists declaration (a list/list-item ALSO accepts
-  // a `task` child — the P1 nesting made real) + any injected extras (other apps extending what a list holds).
+  // a `task` child — the nesting made real) + any injected extras (other apps extending what a list holds).
   // Order matters: LISTS first so `list-item` stays the DEFAULT child; TASKS adds `task` as a non-default
   // alternative the picker offers. (buildAcceptsPolicy is first-declarer-per-child-type wins.)
   const policy = buildAcceptsPolicy([
@@ -89,7 +89,7 @@ export function makeCircleLists({ dataSource, manifests, rootPrefix } = {}) {
   };
 
   return {
-    // cluster K — the underlying per-circle store registry (createCircleStores). Exposed so the app-level
+    // the underlying per-circle store registry (createCircleStores). Exposed so the app-level
     // cross-circle SHARE op (circleShare.js) can thread shareIntoAudience / resolveSharedRef through the
     // SAME sealed-or-memory stores this service persists to. Read-only handle; the lists API is unchanged.
     stores,

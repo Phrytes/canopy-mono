@@ -1,5 +1,5 @@
 /**
- * basis v2 — Nearby / HIER screen (web DOM renderer, board 8C).
+ * basis v2 — Nearby / HIER screen (web DOM renderer).
  *
  * Renders the model `buildNearbyModel` produces: header line, per-peer
  * rows (pseudonym + shared-skills + proximity), and an own-profile
@@ -7,7 +7,7 @@
  * the model + `t` + back handler.
  *
  * Web is mDNS-blind today (the substrate runs but `peers=[]`), so the
- * empty state will be the common path until P6.8-followup #346 brings
+ * empty state will be the common path until -followup brings
  * a mDNS broadcast on web.  The screen still renders honestly: empty
  * list + the user's own published-skill footer so they understand
  * what others would see if they showed up.

@@ -1,17 +1,17 @@
 /**
  * Chat screen.
  *
- * #253 step 1 — TextInput + message list wired through the canonical
+ * step 1 — TextInput + message list wired through the canonical
  * basis web pipeline (parseInput → resolveDispatch → runDispatch
  * → renderReply).
  *
- * #253 step 5 — multi-thread state via the small mobile-local
+ * step 5 — multi-thread state via the small mobile-local
  * `threadState` reducer; ThreadDrawer lets the user switch + create
  * threads.  Per-thread messages, sourceDispatch, and pendingFollowUp
  * live inside the reducer so switching parks pending follow-ups
  * correctly.
  *
- * What this slice DOES not yet do (later #253 sub-steps):
+ * What this slice DOES not yet do (later sub-steps):
  *   - multi-field form rendering (step 6)
  *   - [Help with] DM spawn, [Start DM], [Download] specials (step 7)
  *   - free-text LLM routing (later — web only has slash today too)
@@ -107,7 +107,7 @@ import LogsPanel                    from '../../../basis/src/rn/screens/LogsPane
 import RecordDetailModal            from '../../../basis/src/rn/screens/RecordDetailModal.js';
 import { recordCanExpand }          from '../core/recordExpand.js';
 import { openFilePicker }           from '../core/filePicker.js';
-// Media P1 mobile twin (2026-07) — RN media input + media-card render model.
+// Media mobile twin (2026-07) — RN media input + media-card render model.
 import { openMediaFilePicker }      from '../core/mediaPicker.js';
 import { buildMediaCardModel }      from '../core/mediaCardModel.js';
 import { saveBase64File }           from '../core/fileSave.js';
@@ -127,7 +127,7 @@ import MultiFieldFormBubble from '../rn/MultiFieldFormBubble.js';
 // @onderling/react-native/qr/view wraps react-native-qrcode-svg.
 import { QrCodeView }     from '@onderling/react-native/qr/view';
 import QrScannerModal     from '../rn/QrScannerModal.js';
-// Extension install (feedback-extension P2 mobile parity) — consent sheet + controller.
+// Extension install (feedback-extension mobile parity) — consent sheet + controller.
 import ExtensionConsentSheet from './v2/ExtensionConsentSheet.js';
 import { useExtensionInstall } from '../core/extensionInstallRN.js';
 import { asyncStorageMappingsStore, MAPPINGS_DEVICE } from '../core/mappingsStoreRN.js';
@@ -209,7 +209,7 @@ export default function ChatScreen({
   // cluster J — lift podAuth up so the v2 launcher (which is the only visible UI; this ChatScreen is
   // mounted-but-hidden) can expose a pod sign-in entry. Pod sign-in otherwise has no v2 surface.
   onPodAuthReady = null,
-  // Media P1 mobile twin (2026-07) — the sealed-media seams `{ gateway, opener }`.
+  // Media mobile twin (2026-07) — the sealed-media seams `{ gateway, opener }`.
   // `gateway` ({bucket, sealer, keyRef?}) feeds hostOps → the shared embed-file
   // builtin's sealed upload path; `opener` unseals the media-card chip's inline
   // thumbnail.  App.js does NOT wire this yet — the LIVE blob-bucket + verifier
@@ -234,11 +234,11 @@ export default function ChatScreen({
   const [busy,         setBusy]         = useState(false);
   const [debugOpen,    setDebugOpen]    = useState(false);
   const [drawerOpen,   setDrawerOpen]   = useState(false);
-  // Bundle F P2 — active wizard launched by a row-button tap.
+  // active wizard launched by a row-button tap.
   // null when no wizard open; otherwise { opId, args }.  ChatScreen
   // looks up wizardModalFor(opId) to pick the component.
   const [pendingWizard, setPendingWizard] = useState(null);
-  // Bundle F P3 — eventLog instance (created once per session) and
+  // eventLog instance (created once per session) and
   // visibility flag for the LogsPanel modal.  localBuiltins.logs
   // toggles `logsPanelOpen` via the `openLogsPanel` callback when
   // the user types a bare /logs.
@@ -304,7 +304,7 @@ export default function ChatScreen({
       return p ?? null;
     } catch { return null; }
   }, []);
-  // Bundle F P6 (#262) — Solid OIDC.  Hook drives the OAuth dance;
+  // Solid OIDC. Hook drives the OAuth dance;
   // OidcSessionRN holds tokens in SecureStore (restored on mount).
   // `buildMobilePodAuth` adapts both into the podAuth shape that
   // localBuiltins (signin / signout / whoami) consumes.
@@ -362,7 +362,7 @@ export default function ChatScreen({
   // without re-binding callbacks on every state change.
   const threadStateRef  = useRef(threadState);
 
-  // Bundle H Phase 4 (#271) — joiner-side cross-instance redeem.
+  // joiner-side cross-instance redeem.
   // Shared by makeSendGroupRedeemRequest (writer; joinGroup wizard)
   // and makeHandleGroupRedeemResponse (reader; peer-router).  Lives
   // on a ref so it survives renders without leaking entries between
@@ -375,7 +375,7 @@ export default function ChatScreen({
   const activeThreadId   = threadState.activeThreadId;
   const pendingFollowUp  = activeThread?.pendingFollowUp ?? null;
 
-  // Bundle F P1 — mobile host-op handlers (lifted from web
+  // mobile host-op handlers (lifted from web
   // localBuiltins).  Built once after boot completes; the adapter
   // inside reads threadStateRef live, so handlers see fresh state.
   const localBuiltins = useMemo(() => {
@@ -390,7 +390,7 @@ export default function ChatScreen({
       openLogsPanel:  () => setLogsPanelOpen(true),
       openQrScanner:  () => setQrScannerOpen(true),
       openFilePicker,
-      // Media P1 mobile twin (2026-07) — gateway seams + the RN image picker.
+      // Media mobile twin (2026-07) — gateway seams + the RN image picker.
       // Only engages when App.js supplies `media.gateway` (live infra = the
       // recorded gap); hostOps defaults encodeImage to the identity adapter.
       mediaGateway:        media?.gateway,
@@ -400,13 +400,13 @@ export default function ChatScreen({
         await sessionRef.current?.clear?.();
         try { await onSessionChanged?.(); } catch { /* best-effort */ }
       },
-      // Bundle G3 (#265) — raw OidcSessionRN ref for /lookup-peer +
+      // Bundle G3 — raw OidcSessionRN ref for /lookup-peer +
       // /publish-peer (which need session.getAuthenticatedFetch).
       sessionRef,
     });
   }, [bootState, podAuth, media]);
 
-  // Extension install (feedback-extension P2) — the consent sheet + its controller. Uses the shared
+  // Extension install (feedback-extension) — the consent sheet + its controller. Uses the shared
   // buildConsentModel/installMapping (sandbox gate + store write). Trigger via globalThis.canopyInstallExtension
   // (set by the hook). V0: the mapping persists to AsyncStorage and surfaces as a slash-command on the next boot.
   const extStore = useMemo(() => asyncStorageMappingsStore(AsyncStorage), []);
@@ -424,7 +424,7 @@ export default function ChatScreen({
   // takes seconds; attaching at mount lands well before any inbound
   // peer message or the 1.5s catch-up trigger.
   //
-  // Bundle H (#268) — inbound peer-router (port of web/main.js:346) +
+  // inbound peer-router (port of web/main.js:346) +
   // catch-up trigger (port of main.js:1338), built over the live agent
   // + callSkill.
   const buildPeerWiring = useCallback(({ agent, callSkill, contactChannel, pendingPeerRedeems, pendingPersonaProps, sharedWithMeStore }) => {
@@ -471,7 +471,7 @@ export default function ChatScreen({
       try { eventLogRef.current?.append?.(evt); } catch { /* defensive */ }
     };
 
-    // Bundle H Phase 3 (#270) — main-thread bubble landing.
+    // main-thread bubble landing.
     // Mirrors web's `store.getThread('main').addShellMessage`.
     const addMainBubble = (bubble) => appendBubble('main', bubble);
 
@@ -540,7 +540,7 @@ export default function ChatScreen({
         'catch-up-chunk': catchUpReceiver.onPeerMessage,
         'catch-up-end':   catchUpReceiver.onPeerMessage,
       } : {}),
-      // P5 — a contact-bot's reply in its Contacten DM thread → the shared inbox
+      // a contact-bot's reply in its Contacten DM thread → the shared inbox
       // the open ContactThreadScreen subscribes to (cross-screen, like the kring
       // chat wire).  Guarded: the channel is absent in stub-mode boots.
       // S1 #3 — also an inbound PEER DM (contact-msg): a person's message lands in
@@ -560,7 +560,7 @@ export default function ChatScreen({
       'calendar-cancel':       makeHandleCalendarCancel({ callSkill, publishEvent }),
       'buurt-post':            makeHandleBuurtPost({ callSkill, publishEvent }),
       'group-redeem-request':  makeHandleGroupRedeemRequest({ callSkill, sendPeer, publishEvent }),
-      // Bundle H Phase 4 (#271) — joiner-side response.  Pairs with
+      // joiner-side response. Pairs with
       // `pendingPeerRedeemsRef` populated by the joinGroup wizard's
       // sendPeerRedeem call.  Mirror of web's handleGroupRedeemResponse
       // at main.js:743.
@@ -578,7 +578,7 @@ export default function ChatScreen({
         updatePeerDisplay: renamePeer,
         t,
       }),
-      // Bundle H Phase 4 (#271) — inbound 'help-with-response' produces
+      // inbound 'help-with-response' produces
       // a structured responder-card bubble (Accept / Decline / Counter).
       'help-with-response':    makeHandleHelpWithResponse({
         ensureDmThread:        handleDmThreadOpen,
@@ -600,7 +600,7 @@ export default function ChatScreen({
         },
         updatePeerDisplay:     renamePeer,
       }),
-      // Bundle H Phase 3 (#270) — embed-card bubbles (time-card +
+      // embed-card bubbles (time-card +
       // file-card).  Calendar invites land as time-card with RSVP
       // buttons; file-shares as file-card with [Download] + [Save].
       'calendar-invite':       makeHandleCalendarInvite({
@@ -804,7 +804,7 @@ export default function ChatScreen({
         // that circle.  No-op unless a circle is active + verb is
         // add/post + no explicit scope was supplied.
         const scopedDispatch = scopeReadyDispatch(dispatch, getActiveCircle());
-        // #238 (2026-05-27) — calendar outbound hook fires after a
+        // calendar outbound hook fires after a
         // successful calendar dispatch + fans out invite / RSVP
         // envelopes over NKN.  Same factory web uses.  Wrap
         // bundle.callSkill once + reuse in both branches below.
@@ -830,7 +830,7 @@ export default function ChatScreen({
           return r;
         };
 
-        // Bundle F P1 — basis host ops first try the mobile
+        // basis host ops first try the mobile
         // localBuiltins port (lifted from web).  If no handler yet,
         // fall back to the explicit "not wired" bubble so the user
         // sees something actionable instead of a red error.
@@ -847,7 +847,7 @@ export default function ChatScreen({
           } else {
             // Route through runDispatch so renderReply gets the
             // canonical reply shape (payload + shape + threadId).
-            // #238: route non-basis ops through
+            // route non-basis ops through
             // wrappedBundleCallSkill so the calendar outbound hook
             // fires for /addappt + /accept etc when they appear via
             // localBuiltins-routed dispatches.
@@ -864,7 +864,7 @@ export default function ChatScreen({
             });
           }
         } else {
-          // #238: wrappedBundleCallSkill fires the calendar outbound
+          // wrappedBundleCallSkill fires the calendar outbound
           // hook after substrate writes succeed.
           const reply = await runDispatch(scopedDispatch, wrappedBundleCallSkill);
           replyForRefresh = reply;
@@ -1003,7 +1003,7 @@ export default function ChatScreen({
   }, [bootState]);
 
   /** Bottom TextInput + SlashFAB path — parse free text then dispatch.
-   *  When the active thread has a pending follow-up (#253 step 4), the
+   *  When the active thread has a pending follow-up (step 4), the
    *  user's text completes it instead of parsing as a new command. */
   const submitInput = useCallback(async (rawInput) => {
     if (bootState.kind !== 'ready') return;
@@ -1018,7 +1018,7 @@ export default function ChatScreen({
     // 2026-05-27 — when the active thread is a DM (peerAddr set) and
     // the input isn't a slash command, route it as a chat-message
     // envelope over NKN.  Web does this in
-    // `apps/basis/web/main.js` (Slice 6e); mobile was missing
+    // `apps/basis/web/main.js`; mobile was missing
     // the path, which made [Start DM] + typing look broken.
     if (currentThread?.peerAddr && !text.startsWith('/')) {
       const peerAddr = currentThread.peerAddr;
@@ -1139,11 +1139,11 @@ export default function ChatScreen({
     const parsed   = parseInput(text, catalog);
     const dispatch = resolveDispatch(parsed, catalog);
 
-    // Bundle F P2 — slashes for wizard ops launch the modal directly
+    // slashes for wizard ops launch the modal directly
     // (mirrors web's pageSurfaceOpen path).  Without this the wizard
     // opIds would hit localBuiltins' "no handler" fallback.
     //
-    // P5 (#261) — also fire on `needsForm`: some wizard ops
+    // also fire on `needsForm`: some wizard ops
     // (/embed-time has title+when required) trip needsForm when the
     // slash has no flags.  The wizard collects + validates fields
     // itself, so launching it with whatever prefilledArgs we have is
@@ -1163,18 +1163,18 @@ export default function ChatScreen({
     });
   }, [bootState, dispatchAndAppend]);
 
-  /** Row-button-tap path (#253 steps 2 + 6 + 7). */
+  /** Row-button-tap path (steps 2 6 7). */
   const handleButtonTap = useCallback(async ({ opId, itemId, buttonLabel, originMessageId, embed, peerAddr }) => {
     if (bootState.kind !== 'ready') return;
     const currentState    = threadStateRef.current;
     const currentThreadId = currentState.activeThreadId;
     dlog.button('tap', { opId, itemId, buttonLabel, originMessageId, threadId: currentThreadId });
 
-    // #253 step 7 — special-case interception (respondToItem → spawn
+    // step 7 — special-case interception (respondToItem → spawn
     // a Help thread + park a follow-up; startDm → spawn a DM thread;
     // downloadFile → save-file if list-row carries inline bytes, else
     // friendly "not wired" bubble).  Mirrors web's onButtonTap short-
-    // circuits in apps/basis/web/main.js.  P4-followup-1 (#266)
+    // circuits in apps/basis/web/main.js. -followup-1
     // forwards item.embed so saveBase64File can run on phone.
     // M6 — the feedback 'agent' contact's action: enter feedback mode (not a peer DM).
     if (opId === 'openFeedback') {
@@ -1196,7 +1196,7 @@ export default function ChatScreen({
       return;
     }
 
-    // Bundle F P2 — wizard launch for ops with a registered RN
+    // wizard launch for ops with a registered RN
     // modal (e.g. conflictDisputeWizard).  Mirrors web's
     // WIZARD_RENDERERS map in apps/basis/web/main.js
     // pageSurfaceOpen.  Pass `id` so wizard state machines that
@@ -1237,7 +1237,7 @@ export default function ChatScreen({
 
     if (dispatch.kind === 'needsForm') {
       // Try single-field first; fall back to multi-field form bubble
-      // (#253 step 6) when 2+ params are missing.
+      // (step 6) when 2+ params are missing.
       const single = beginFollowUp({ dispatch, originMessageId, t });
       if (single) {
         const userMsgId = mkId();
@@ -1285,7 +1285,7 @@ export default function ChatScreen({
       threadId: currentThreadId,
     });
 
-    // #253 step 3 — refresh the originating list bubble in place.
+    // step 3 — refresh the originating list bubble in place.
     if (originMessageId) {
       const refreshState  = threadStateRef.current;
       const refreshThread = refreshState.threads.get(currentThreadId);
@@ -1390,7 +1390,7 @@ export default function ChatScreen({
         }},
       ]));
     }
-    // P4-followup-1 (#266): [Download] with an inline snapshot.
+    // followup-1: [Download] with an inline snapshot.
     // Drop the user bubble + a pending bot bubble immediately,
     // then replace the bot bubble's text once saveBase64File
     // resolves.  Pending state avoids the user staring at a
@@ -1425,7 +1425,7 @@ export default function ChatScreen({
         ));
       })();
     }
-    // Bundle H Phase 4 (#271) — responder-card Accept / Decline /
+    // responder-card Accept / Decline /
     // Counter taps.  Accept fires acceptResponder + sends help-with-
     // accepted; Decline sends help-with-declined; Counter inline-
     // prompts the user.  All three drop the user bubble first, then
@@ -1512,7 +1512,7 @@ export default function ChatScreen({
   }, [t, bootState]);
 
   /**
-   * Multi-field form Submit handler (#253 step 6).  Completes the
+   * Multi-field form Submit handler (step 6). Completes the
    * pending dispatch + replaces the form bubble with the user's filled
    * values shown as a user bubble, then runs the dispatch through the
    * normal pipeline.
@@ -1558,7 +1558,7 @@ export default function ChatScreen({
     }
   }, [bootState, dispatchAndAppend]);
 
-  /** Drawer callbacks (#253 step 5). */
+  /** Drawer callbacks (step 5). */
   const onSwitchThread = useCallback((id) => {
     setThreadState((prev) => setActiveThread(prev, id));
     setDrawerOpen(false);
@@ -1773,7 +1773,7 @@ export default function ChatScreen({
         onCreateThread={onCreateThreadFromDrawer}
       />
 
-      {/* Bundle F P2 — wizard modal launched by a row-button tap.
+      {/* wizard modal launched by a row-button tap.
           The component is resolved from wizardRegistry by opId; the
           state machine + submitDispute live in the portable
           src/core/wizards/*State.js (shared with web). */}
@@ -1786,7 +1786,7 @@ export default function ChatScreen({
             args={pendingWizard.args}
             callSkill={bootState.kind === 'ready' ? bootState.bundle.callSkill : undefined}
             t={t}
-            // Bundle H Phase 4 (#271) — joinGroupWizard's cross-instance
+            // joinGroupWizard's cross-instance
             // fallback (membershipCode-with-adminPeerAddr).  Constructed
             // inline so it closes over the live agent + pendingMap.
             // OBJ-2 — the BUNDLE's shared sender (same pending-map the response handler resolves against,
@@ -1864,7 +1864,7 @@ export default function ChatScreen({
         );
       })() : null}
 
-      {/* Bundle F P3 — /logs side-panel.  EventLog is created at
+      {/* logs side-panel. EventLog is created at
           mount and accumulates `publishEvent` deliveries from the
           booted agent. */}
       <LogsPanel
@@ -1893,7 +1893,7 @@ export default function ChatScreen({
         t={t}
       />
 
-      {/* Extension install consent sheet (feedback-extension P2 mobile parity). */}
+      {/* Extension install consent sheet (feedback-extension mobile parity). */}
       <ExtensionConsentSheet result={consentResult} onAdd={confirmExtInstall} onDecline={declineExtInstall} />
 
       {/* ε.6 — multi-offer catch-up chooser.  Only mounted while a
@@ -1988,7 +1988,7 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
     );
   }
 
-  // #253 step 6 — inline multi-field form bubble.
+  // step 6 — inline multi-field form bubble.
   if (msg.formPending) {
     return (
       <MultiFieldFormBubble
@@ -2042,16 +2042,16 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
       </View>
     );
   }
-  // Bundle H Phase 3 (#270) — embed-card render branch.  Surfaces
+  // embed-card render branch. Surfaces
   // time-card (calendar-invite) + file-card (file-share / folio
   // /embed-file) bubbles with manifest-driven action buttons
   // (Accept / Decline / Tentative on time-card; Download / Save to
   // my pod on file-card).  Buttons compute via portable
   // `computeEmbedButtons`; tap path matches list items so the
-  // existing `interceptButtonTap` save-file shortcut (#266) fires
+  // existing `interceptButtonTap` save-file shortcut fires
   // on [Download].
   if (r.kind === 'embed-card') {
-    // Media P1 mobile twin (2026-07) — the media-card variant mirrors web's
+    // Media mobile twin (2026-07) — the media-card variant mirrors web's
     // domAdapter dispatch (variant = embed.kind): the sealed-media chip
     // renders its own bubble; every other variant keeps EmbedCardBubble.
     if (r.embed?.kind === 'media-card') {
@@ -2192,7 +2192,7 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
       </View>
     );
   }
-  // Bundle H Phase 4 (#271) — responder-card from inbound
+  // responder-card from inbound
   // help-with-response.  Three buttons: Accept (substrate call +
   // help-with-accepted envelope), Decline (help-with-declined),
   // Counter (inline prompt).  Tap routes via onButtonTap →
@@ -2206,7 +2206,7 @@ function MessageBubble({ msg, onButtonTap, onFollowUpTap, onQuickReplyTap, onFor
       />
     );
   }
-  // P3 (feedback-extension) — curation before/after bubble.  Mirrors the
+  // (feedback-extension) — curation before/after bubble. Mirrors the
   // web `kind:'curation'` render from the SAME shared view model (renderer
   // emits { changed, sides:{before,after}, changedPaths }).  Presentational
   // only: a changed/unchanged tag, the two versions stacked (objects are
@@ -2397,7 +2397,7 @@ function EmbedCardBubble({ msg, rendered, onButtonTap, manifestsByOrigin }) {
 }
 
 /** Manifest-driven embed action buttons — shared by EmbedCardBubble and
- *  MediaCardBubble (media P1) so the tap contract stays defined once. */
+ *  MediaCardBubble (media) so the tap contract stays defined once. */
 function EmbedActionButtons({ msg, embed, buttons, enabled, onButtonTap }) {
   if (!buttons || buttons.length === 0) return null;
   return (
@@ -2426,7 +2426,7 @@ function EmbedActionButtons({ msg, embed, buttons, enabled, onButtonTap }) {
 }
 
 /**
- * Media P1 mobile twin (2026-07) — the sealed-media chip, mirroring web's
+ * Media mobile twin (2026-07) — the sealed-media chip, mirroring web's
  * renderMediaCard: sealed inline thumbnail (openThumbnail — no gate, no
  * fetch) when the composition supplies the opener; mime/dims placeholder
  * otherwise; enc hints WIN over the item's top-level hints (decided).
@@ -2495,7 +2495,7 @@ function ListItemRow({ item, enabled, onButtonTap, originMessageId }) {
               opId, itemId,
               buttonLabel: btn.label,
               originMessageId,
-              // P4-followup-1 (#266): pass the per-row embed so the
+              // followup-1: pass the per-row embed so the
               // [Download] short-circuit can reach an inline file
               // snapshot.  Undefined when the source item didn't
               // carry one — buttonSpecials handles that path.
@@ -2599,11 +2599,11 @@ const styles = StyleSheet.create({
   listRowBtnText:  { color: '#fff', fontSize: 12, fontWeight: '600' },
   listRowBtnTextDisabled: { color: '#666' },
 
-  // Bundle H Phase 3 (#270) — embed-card (time-card + file-card).
+  // embed-card (time-card + file-card).
   bubbleEmbedCard: { paddingVertical: 8, paddingHorizontal: 10, borderLeftWidth: 3, borderLeftColor: '#1e88e5' },
   embedTitle:      { fontSize: 15, fontWeight: '600', color: '#222' },
   embedDetails:    { fontSize: 12, color: '#666', marginTop: 2 },
-  // Media P1 mobile twin (2026-07) — the media-card chip.
+  // Media mobile twin (2026-07) — the media-card chip.
   mediaThumb:       { borderRadius: 6, backgroundColor: '#eee' },
   mediaPlaceholder: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   mediaIcon:        { fontSize: 22, marginRight: 8 },
@@ -2613,7 +2613,7 @@ const styles = StyleSheet.create({
   embedBtnDisabled:{ backgroundColor: '#ccc' },
   embedBtnText:    { color: '#fff', fontSize: 12, fontWeight: '600' },
 
-  // Bundle H Phase 4 (#271) — responder-card.
+  // responder-card.
   bubbleResponderCard:  { paddingVertical: 8, paddingHorizontal: 10, borderLeftWidth: 3, borderLeftColor: '#f57c00' },
   responderHeader:      { fontSize: 14, fontWeight: '600', color: '#222' },
   responderContext:     { fontSize: 12, color: '#666', marginTop: 4, fontStyle: 'italic' },
@@ -2634,7 +2634,7 @@ const styles = StyleSheet.create({
   recordHeaderTitle:    { flex: 1, marginBottom: 0 },
   recordExpandIcon:     { fontSize: 16, color: '#1e88e5', paddingHorizontal: 4 },
 
-  // P3 (feedback-extension) — curation before/after bubble.  Tag row +
+  // (feedback-extension) — curation before/after bubble. Tag row +
   // two stacked side panels (the after panel left-accented to read as the
   // resolved version) + a muted changed-paths caption.  Monospace side
   // text so JSON-stringified objects stay legible.

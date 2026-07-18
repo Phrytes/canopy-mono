@@ -4,7 +4,7 @@ import { basisManifest } from '../../manifest.js';
 import { stoopManifest } from '../../../stoop/manifest.js';
 
 /**
- * D / SP-3b consumer-switch — the shared selectors over renderWeb's PAGE
+ * D / consumer-switch — the shared selectors over renderWeb's PAGE
  * projection.  These prove the projection wiring is honest end-to-end:
  * the label flows manifest.surfaces.page.labelKey → renderWeb → pageLabel → t().
  */

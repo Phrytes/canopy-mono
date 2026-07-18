@@ -1,5 +1,5 @@
 /**
- * SP-5b V0a — `item.audience` field + `audienceFromItem` bridge.
+ * V0a — `item.audience` field + `audienceFromItem` bridge.
  *
  * Forward-additive verification: items can carry the new richer
  * `audience` field; items without it fall back to the legacy

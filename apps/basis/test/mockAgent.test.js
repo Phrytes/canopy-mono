@@ -1,5 +1,5 @@
 /**
- * basis — mock agent tests.  v0.1 sub-slice 1.10 (web demo).
+ * basis — mock agent tests. v0.1 (web demo).
  */
 import { describe, it, expect } from 'vitest';
 
@@ -17,7 +17,7 @@ describe('mockHouseholdManifest', () => {
     expect(ops.listOpen.surfaces.chat.reply).toBe('list');
     expect(ops.markComplete.verb).toBe('complete');
     expect(ops.markComplete.surfaces.slash.command).toBe('/done');
-    // Q34 (v0.7) added pickerSource — markComplete picks via listOpen.
+    // (v0.7) added pickerSource — markComplete picks via listOpen.
     expect(ops.markComplete.params[0]).toEqual({
       name: 'choreId', kind: 'string', required: true,
       pickerSource: { listOp: 'listOpen' },

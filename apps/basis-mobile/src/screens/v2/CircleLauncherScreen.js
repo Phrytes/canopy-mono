@@ -20,21 +20,21 @@ import {
   loadCircles, circleSourcesFromAgent, makeResolvingCallSkill,
   loadCircleItems, quickCreateCircle, setActiveCircle, normalizeCircleMembers,
   circleFilesFromListFiles,
-  // P6.1 — per-kring feature-flag consumption.
+  // per-kring feature-flag consumption.
   isFeatureEnabled,
   // §4 — admin's policy.view → default Chat/Scherm landing surface.
   defaultViewModeFromPolicy,
-  // P6.3 — per-circle activity preview + unread badge.
+  // per-circle activity preview + unread badge.
   buildTilePreviews, bumpSeenAt,
-  // P6.5 #342 — claim-router hook (mirror claimed tasks to my own circle).
+  // claim-router hook (mirror claimed tasks to my own circle).
   makeAfterClaimHook,
-  // P6.8 #346 — Nearby/HIER model + label helpers (board 8C).
+  // Nearby/HIER model + label helpers.
   buildNearbyModel,
-  // P6.M7 #349 — "My things" private notes-list (board 10A).
+  // "My things" private notes-list.
   myThingsFromListFiles,
-  // SP-13.2 — kring-scoped event stream + per-row action chips.
+  // kring-scoped event stream + per-row action chips.
   buildKringStream, actionsForStreamRow,
-  // SP-13.3 — per-kring bottom tabs from policy.features (v2 §1).
+  // per-kring bottom tabs from policy.features (v2 §1).
   buildKringTabs, DEFAULT_KRING_TAB,
   // D1 (§5A) — quickActions row: feature↔tab mapping + frequency counter.
   featureTabId, featureForTabId, createActionFrequencyStore,
@@ -75,7 +75,7 @@ import { circleActionsMobile } from '../../../../basis/src/v2/actionProjection.j
 import { basisManifest } from '../../../../basis/src/index.js';
 // S6.B/C — open-screen surface + per-circle gate (shared with web).
 import { isAppSurfaceEnabled } from '../../../../basis/src/v2/appFeature.js';
-// B · Slice 1/4 — the capability gate + the affordance matrix (web≡mobile, shared core).
+// the capability gate + the affordance matrix (web≡mobile, shared core).
 import { effectiveCapabilities, checkCapability } from '../../../../basis/src/v2/capabilityGate.js';
 import { buildCapabilityMatrix } from '@onderling/app-manifest';
 // S6.C — per-user surface preference (inline / screen / minimal), shared selector + the mobile store.
@@ -121,7 +121,7 @@ import { FeedbackReviewCards } from '../../rn/FeedbackBubbles.js';
 import CircleMandatePicker from './CircleMandatePicker.js';
 import { buildCircleLlmProviders } from '../../../../basis/src/v2/circleLlmProviders.js';
 import { createClarifyingDispatch } from '../../../../basis/src/v2/clarifyingDispatch.js';
-// Q27 — the shared confirm gate at the dispatch waist (mobile presenter: Alert.alert, destructive style).
+// the shared confirm gate at the dispatch waist (mobile presenter: Alert.alert, destructive style).
 import { runConfirmGate, alertConfirmPresenter } from '../../core/confirmDispatch.js';
 import { createUserLlmDefaultStore, asyncStorageUserLlmIo } from '../../../../basis/src/v2/userLlmDefault.js';
 import { buildUserLlmRuntime, validateUserLlmConfig } from '../../../../basis/src/v2/userLlmRuntime.js';
@@ -131,7 +131,7 @@ import {
   makeCirclePolicyStoreRN, makeMemberOverrideStoreRN, makeAvailabilityStoreRN,
   // Objective D — session → podWriter so the availability pref publishes.
   sessionToPodWriterRN,
-  // P6.2 — persisted multi-admin proposals.
+  // persisted multi-admin proposals.
   makeProposalStoreRN,
   // α.1e — scherm recipe book persistence.
   makeKringRecipeStoreRN,
@@ -147,7 +147,7 @@ import {
 import { makeScreenBlocksCacheRN } from '../../core/screenBlocksCacheStorageRN.js';
 import CircleSettingsScreen from './CircleSettingsScreen.js';
 import CircleOverrideScreen from './CircleOverrideScreen.js';
-// B · Slice 3 — the mobile list-screen surface (web≡mobile).
+// the mobile list-screen surface (web≡mobile).
 import CircleListScreen from './CircleListScreen.js';
 // D-mig-mobile-1b — list-screen config is now SOURCED from the projected manifest
 // section (shared `sectionForScreen`), mirroring web 1b. The old hardcoded
@@ -155,7 +155,7 @@ import CircleListScreen from './CircleListScreen.js';
 // over the composed manifests, and the section's dataSource/labelField/categoryField/
 // searchFields drive the fetch + render — no per-shell duplication (invariant #1/#3).
 import { sectionForScreen } from '../../../../basis/src/v2/pageProjection.js';
-// Q15/Q17 — generic screen drill-down (row → detail with selection context),
+// generic screen drill-down (row → detail with selection context),
 // the mobile twin of web's openCircleScreenPanel wiring.  The drill/selection/
 // fetch logic is SHARED (src/v2/screenDrilldown.js) — the portable core module
 // only binds renderMobile + the {circleId, ...selection} host-context shape.
@@ -184,7 +184,7 @@ import { createFeedbackBotStore } from '../../../../basis/src/v2/feedbackBots.js
 // objective L · Phase 2 — the Contacten roster feeds CircleShareScreen's out-of-circle recipient picker.
 import { listContacts, mergeContacts, stoopContactToRow } from '../../../../basis/src/v2/contactsSource.js';
 import CircleNoticeboard from './CircleNoticeboard.js';
-import CircleListsScreen from './CircleListsScreen.js';   // cluster K · K2 — composable lists (web≡mobile)
+import CircleListsScreen from './CircleListsScreen.js';   // composable lists (web≡mobile)
 import CircleShareScreen from './CircleShareScreen.js';   // objective L — cross-circle share UI (web≡mobile)
 import CircleProfileScreen from './CircleProfileScreen.js';
 import CircleAdminPanelScreen from './CircleAdminPanelScreen.js';
@@ -322,7 +322,7 @@ export default function CircleLauncherScreen({
   // M3 — sub-view within the launcher: 'list' | 'availability' | 'detail'
   // | 'settings' | 'override'.  `selected` carries the active circle for
   // detail/settings/override.
-  // α.3 — boot lands on the Schermen tab (Q6 primary).  Was 'list' (= Kringen).
+  // boot lands on the Schermen tab (primary). Was 'list' (= Kringen).
   const [view, setView] = useState('screens');
   // The member's saved assistant endpoint config (settings → My data). Persisted to AsyncStorage;
   // CircleDetail re-reads it on mount, so a save applies the next time a circle opens.
@@ -339,7 +339,7 @@ export default function CircleLauncherScreen({
     setUserLlmCfg(saved);
     return null;
   }, []);
-  // P5 — the contact (bot/peer) whose DM thread is open under the Contacten tab.
+  // the contact (bot/peer) whose DM thread is open under the Contacten tab.
   const [contactThread, setContactThread] = useState(null);
   // cluster J — persisted registry of added feedback bots (AsyncStorage), shared with the Contacten roster
   // + the dedicated feedback thread. Created once.
@@ -349,7 +349,7 @@ export default function CircleLauncherScreen({
   const [viewAsPolicy, setViewAsPolicy] = useState('pairwise');
   const [viewAsMembers, setViewAsMembers] = useState([]);
   const [folioFiles, setFolioFiles] = useState([]);
-  // B · Slice 4 — the acting member's capability matrix for the folio file
+  // the acting member's capability matrix for the folio file
   // browser. Gates the file-OPEN row action (get × file) the SAME way the list
   // surface gates its row buttons. Empty until built ⇒ 'show' ⇒ unchanged.
   const [folioCapMatrix, setFolioCapMatrix] = useState([]);
@@ -392,11 +392,11 @@ export default function CircleLauncherScreen({
   const [joinScanOpen, setJoinScanOpen] = useState(false);
   const [joinArgs, setJoinArgs] = useState(null);     // {invite} → JoinGroupWizardModal runs
   const [inviteFor, setInviteFor] = useState(null);   // {circleId, uri, error} → invite-QR modal
-  // P6.1 — selected circle's policy (loaded when `selected` changes); used
-  // to gate detail action buttons on the Functies axis (board 4A).
+  // selected circle's policy (loaded when `selected` changes); used
+  // to gate detail action buttons on the Functies axis.
   const [selectedPolicy, setSelectedPolicy] = useState(null);
   const [chatAi, setChatAi] = useState({ enriched: false, reason: 'no-provider' });   // S6.D — chat LLM enrichment for My-data
-  // P6.3 — kring tile activity preview ({subtitle, ts, unread} per circle)
+  // kring tile activity preview ({subtitle, ts, unread} per circle)
   // + seenAt persistence (the per-circle "last-open" marker that drives the
   // unread badge).  Loaded on mount; bumped on openCircle.
   const [seenAt,   setSeenAt]   = useState({});
@@ -416,17 +416,17 @@ export default function CircleLauncherScreen({
     const events = eventLog?.query ? eventLog.query({ excludeMuted: true }) : [];
     setPreviews(buildTilePreviews({ events, circles, seenAt }));
   }, [eventLog, circles, seenAt]);
-  // P6.2 #341 — per-circle voorstellen badge.  Populated lazily after
+  // per-circle voorstellen badge. Populated lazily after
   // circles load; refresh after a settings save (CircleSettingsScreen
   // calls back through onPoll once it persists a new proposal).
   const [proposalCounts, setProposalCounts] = useState({});
-  // P6.M7 #349 — Mijn dingen state lives here so the screen can render
+  // Mijn dingen state lives here so the screen can render
   // synchronously when entered; `myThingsFiles` is loaded via listFiles.
   const [myThingsFiles, setMyThingsFiles] = useState([]);
-  // P6.M8 #350 — raw Folio list result for share-toggle re-projection.
+  // raw Folio list result for share-toggle re-projection.
   const [rawFolioFiles, setRawFolioFiles] = useState(null);
 
-  // P6.1 — refresh the selected circle's policy whenever `selected` changes,
+  // refresh the selected circle's policy whenever `selected` changes,
   // so CircleDetail can gate its feature-bound buttons (houseRules,
   // memberDirectory).  Falls back to null on read failure → the helper
   // applies feature defaults.
@@ -515,7 +515,7 @@ export default function CircleLauncherScreen({
     })();
     return () => { alive = false; };
   }, [view, sharedWithMeStore]);
-  // B · Slice 4 — build the folio capability matrix from the selected circle's
+  // build the folio capability matrix from the selected circle's
   // policy + this member's opt-outs (same inputs the list surface uses). Feeds
   // CircleFolioScreen so its file-OPEN row action greys/hides per the gate.
   useEffect(() => {
@@ -535,7 +535,7 @@ export default function CircleLauncherScreen({
     })();
     return () => { alive = false; };
   }, [selected, selectedPolicy, overrideStore]);
-  // P6.2 — multi-admin proposal store.  Settings consults this to persist
+  // multi-admin proposal store. Settings consults this to persist
   // pending consensus proposals + commit on unanimous approval.
   const proposalStore     = useMemo(() => makeProposalStoreRN(AsyncStorage), []);
   // α.1e — per-kring scherm recipe book (multi-recipe; one marked active).
@@ -839,7 +839,7 @@ export default function CircleLauncherScreen({
     return () => { cancelled = true; };
   }, [load, callSkill]);
 
-  // P6.2 #341 — refresh per-circle pending proposal counts whenever the
+  // refresh per-circle pending proposal counts whenever the
   // circle list changes.  countPending is async per circle; we tolerate
   // partial failures (a single bad circle just shows no badge).
   const refreshProposals = useCallback(async () => {
@@ -854,7 +854,7 @@ export default function CircleLauncherScreen({
   }, [circles, proposalStore]);
   useEffect(() => { refreshProposals(); }, [refreshProposals]);
 
-  // P6.5 #342 — wire the claim-router hook once the bundle is ready.
+  // wire the claim-router hook once the bundle is ready.
   // On claimTask, the host hook reads the per-circle override; when
   // `flowThrough.tasksToPersonal` is true the claimed task is mirrored
   // into the user's primary circle ('cc-default') tagged `via:<circleId>`
@@ -886,7 +886,7 @@ export default function CircleLauncherScreen({
     };
   }, [bundle, overrideStore, circles]);
 
-  // P6.5 #342 — "ON YOUR LIST" tasks scoped to the selected circle.
+  // "ON YOUR LIST" tasks scoped to the selected circle.
   // Read from tasks-v0 `getMyTasks` and filter to the rows tagged with
   // `via:<circleId>` (set by the claim-router); falls back to empty on
   // any read failure.  Refreshed when `selected` changes.
@@ -912,15 +912,15 @@ export default function CircleLauncherScreen({
 
   const openCircle = useCallback(async (c) => {
     setActiveCircle(c.id);
-    // P6.3 — bump the seenAt marker so the unread badge clears on the
+    // bump the seenAt marker so the unread badge clears on the
     // next launcher render; persist to AsyncStorage for next boot.
     setSeenAt((prev) => {
       const next = bumpSeenAt(prev, c.id);
       AsyncStorage.setItem('cc.circleSeenAt', JSON.stringify(next)).catch(() => {});
       return next;
     });
-    // SP-13.1 — no chat-route fallback anymore.  Every tap-on-kring
-    // opens the kring view (which will host the GESPREK tab in SP-13.2).
+    // no chat-route fallback anymore. Every tap-on-kring
+    // opens the kring view (which will host the GESPREK tab in).
     setSelected(c);
     setView('detail');
     setItems([]);
@@ -1030,7 +1030,7 @@ export default function CircleLauncherScreen({
       }
       // Circle detail → close the circle (back to launcher list).
       if (selected) { closeCircle(); return true; }
-      // SP-13.1 — no onBack fallback (no chat shell to fall back to);
+      // no onBack fallback (no chat shell to fall back to);
       // at the launcher root, let the system handle (exit).
       return false;
     };
@@ -1159,7 +1159,7 @@ export default function CircleLauncherScreen({
       </WithTabBar>
     );
   }
-  // P5 — Contacten: the bot/peer roster + a 1:1 DM thread (mobile parity with web).
+  // Contacten: the bot/peer roster + a 1:1 DM thread (mobile parity with web).
   if (view === 'contacten') {
     if (contactThread) {
       // cluster J — a feedback bot is a co-hosted agent, not a PeerGraph peer: open the dedicated feedback
@@ -1218,7 +1218,7 @@ export default function CircleLauncherScreen({
       />
     );
   }
-  if (selected && view === 'lists') {   // cluster K · K2 — the composable lists/container UI (web≡mobile)
+  if (selected && view === 'lists') {   // the composable lists/container UI (web≡mobile)
     return <CircleListsScreen circleId={selected.id} onBack={() => setView('detail')} />;
   }
   if (selected && view === 'share') {   // objective L — the cross-circle share UI (web≡mobile)
@@ -1299,14 +1299,14 @@ export default function CircleLauncherScreen({
     return <CircleHopScreen callSkill={callSkill} onBack={() => setView('availability')} />;
   }
   if (view === 'nearby') {
-    // P6.8 #346 — Nearby/HIER screen.  Pulls peers from bundle.mdns when
+    // Nearby/HIER screen. Pulls peers from bundle.mdns when
     // wired; otherwise renders the empty-state copy from the substrate.
     const peers = bundle?.mdns?.peers ?? [];
     const model = buildNearbyModel({ peers, mySkills: [], t });
     return <NearbyScreen model={model} onBack={() => setView('list')} />;
   }
   if (view === 'mythings') {
-    // P6.M7 #349 — Mijn dingen (private kring as notes-list, board 10A).
+    // Mijn dingen (private kring as notes-list).
     return (
       <MyThingsScreen files={myThingsFiles} onBack={() => setView('list')} />
     );
@@ -1466,7 +1466,7 @@ export default function CircleLauncherScreen({
             } catch { /* keep empty */ }
           }
           setFolioFiles(fs);
-          // P6.M8 #350 — keep the raw list so the share-toggle pills can
+          // keep the raw list so the share-toggle pills can
           // re-project without a refetch.  Unwrap to a plain array if the
           // result is wrapped (`{items}` / `{files}`).
           const rawArr = !raw ? null
@@ -1499,7 +1499,7 @@ export default function CircleLauncherScreen({
   return (
     <WithTabBar active="kringen" onSelect={onTab}>
       <View style={styles.page} testID="circle-launcher">
-        {/* SP-13.1 — no "← chat" button (no chat shell to navigate to). */}
+        {/* no "← chat" button (no chat shell to navigate to). */}
         <Text style={styles.title}>{t('circle.title')}</Text>
 
         {loading ? (
@@ -1792,7 +1792,7 @@ function LauncherTile({ circle: c, preview, pending, isPinned = false, isMuted =
   );
 }
 
-// SP-13 — kring content view (board 2B / 8C).  Replaces the action-grid
+// kring content view. Replaces the action-grid
 // scaffolding as the per-circle landing surface.  Admin actions
 // (Settings, Mine, ViewAs, …) collapse into a `⋯` overflow menu in the
 // header, gated on the Functies axis (same gates the old grid used).
@@ -1813,12 +1813,12 @@ function CircleDetail({
   );
   // S6.A — {appOrigin → manifest} for computing inline buttons on bot replies.
   const manifestsByOrigin = useMemo(() => buildManifestsByOrigin(), []);
-  // B · Slice 1 — the manifest sources the capability gate reads (deduped; web≡mobile with circleApp.baseSources).
+  // the manifest sources the capability gate reads (deduped; web≡mobile with circleApp.baseSources).
   const capabilitySources = useMemo(
     () => [...new Set(Object.values(manifestsByOrigin))].map((manifest) => ({ manifest })),
     [manifestsByOrigin],
   );
-  // B · Slice 4 — the member-override store (per-circle opt-outs) that the capability matrix reads.
+  // the member-override store (per-circle opt-outs) that the capability matrix reads.
   // CircleDetail is a separate component from the outer CircleLauncherScreen, so it needs its own
   // handle; the store is a stateless AsyncStorage wrapper, so a second instance is free.
   const overrideStore = useMemo(() => makeMemberOverrideStoreRN(AsyncStorage), []);
@@ -1864,11 +1864,11 @@ function CircleDetail({
       seedCircleRosterFor({ circleId: circle.id, policy, callSkill: rawCallSkill }).catch(() => {});
     }
   }, [circle?.id, rawCallSkill, policy]);
-  // P6.1 — Functies-axis gating for the overflow menu items now rides the
+  // Functies-axis gating for the overflow menu items now rides the
   // projection: the shared `circleActionsMobile` selector evaluates each
   // action's `requires` gate against `policy` (see the ⋯-menu render below).
 
-  // SP-13.2 — kring stream rows scoped to this circle (chat-style).
+  // kring stream rows scoped to this circle (chat-style).
   // EventLog has no subscribe seam yet; bumping `streamTick` after
   // local appends forces the memo to re-pull.
   const [streamTick, setStreamTick] = useState(0);
@@ -1922,7 +1922,7 @@ function CircleDetail({
   );
   // Permission gate (classic shell's `allowCommands` analog): chat disabled for this circle ⇒ read-only.
   const canPost = isFeatureEnabled(policy, 'chat');
-  // SP-13.3 — per-kring bottom tabs derived from policy.features.
+  // per-kring bottom tabs derived from policy.features.
   const tabs = useMemo(() => buildKringTabs(policy, t), [policy]);
   const [activeTab, setActiveTab] = useState(DEFAULT_KRING_TAB);
   // Reset to GESPREK whenever we switch kringen so a non-default tab
@@ -1979,7 +1979,7 @@ function CircleDetail({
     return () => { alive = false; };
   }, [recipeStore, circle?.id, callSkill, eventLog, circles, policy, screenReloadTick]);
 
-  // SP-13.4 — Chat ↔ Scherm pill state (v2 §4 "De Schakelaar").
+  // Chat ↔ Scherm pill state (v2 §4 "De Schakelaar").
   // Per-circle preference persists in AsyncStorage at cc.circleViewMode.
   // §4 — until the member has flipped the pill for this kring, the
   // landing surface is the admin's policy.view front door
@@ -2039,7 +2039,7 @@ function CircleDetail({
     });
   }, [rawCallSkill, circle?.id]);
 
-  // SP-13.2.1 — append a kring chat bubble to the local eventLog (optimistic). Returns {msgId, ts}
+  // append a kring chat bubble to the local eventLog (optimistic). Returns {msgId, ts}
   // so the caller can fan out the same id (receiver-side dedup suppresses any mirrored echo).
   const appendKringMessage = useCallback(({ actor, text, buttons, scope, embeds, review }) => {
     if (!eventLog?.append || !circle?.id) return null;
@@ -2145,7 +2145,7 @@ function CircleDetail({
       appendKringMessage({ actor: 'bot', text: t('circle.bot.needsInfo') });   // no missing param names
       return;
     }
-    // Q27 confirm gate (web≡mobile parity with circleApp.dispatchReady) — an op declaring
+    // confirm gate (web≡mobile parity with circleApp.dispatchReady) — an op declaring
     // surfaces.ui.confirm (warn/danger) NEVER executes without an explicit accept. Sits at the dispatch
     // waist, so the row-button path and the chat/slash path are gated uniformly (shared runConfirmGate;
     // Alert.alert with a destructive accept is only the presenter). Cancel = quiet notice.
@@ -2163,7 +2163,7 @@ function CircleDetail({
 
     // The execute tail every accepted route runs (direct 'ready' or confirmed 'needsConfirm' → 'ready').
     async function executeResolved(dispatch) {
-      // B · Slice 1 — DEFAULT-DENY capability gate (web≡mobile parity with circleApp.dispatchReady). Every
+      // DEFAULT-DENY capability gate (web≡mobile parity with circleApp.dispatchReady). Every
       // user-initiated dispatch (slash/LLM/gate/button/follow-up) converges on runCircleCommandResolved.
       // Enablement comes from the SAME per-circle source the UI uses (isAppSurfaceEnabled → policy.features,
       // already consulted for the screen button below); the pure (verb×noun) gate evaluates the capability.
@@ -2196,7 +2196,7 @@ function CircleDetail({
       const entry = catalog?.opsById?.get(dispatch.opId);
       const verb = entry?.op?.verb;
       // S6.A — manifest-driven inline buttons for the reply's item(s), gated by appliesTo (web parity).
-      // B · Slice 4 (4c) — grey/hide affordances per the member's effective capability + consequence (web≡mobile).
+      // B · (4c) — grey/hide affordances per the member's effective capability + consequence (web≡mobile).
       let capMatrix = [];
       try {
         const ovr = circle?.id ? (await overrideStore.get(circle.id)) : null;
@@ -2354,7 +2354,7 @@ function CircleDetail({
   // S6.B — chat-triggered screen panel ({screen} | null) + its materialized blocks.
   const [screenPanel, setScreenPanel] = useState(null);
   const [panelBlocks, setPanelBlocks] = useState(null);
-  const [listScreenData, setListScreenData] = useState(null);   // B · Slice 3 — { items, categoryField, appOrigin, capabilityMatrix }
+  const [listScreenData, setListScreenData] = useState(null);   // { items, categoryField, appOrigin, capabilityMatrix }
   const [aboutMePersona, setAboutMePersona] = useState(null);   // personas#1 — the persona id whose "About me" view is open
   // S6.B precise scroll-to — the panel ScrollView, its content wrapper, and the
   // single highlighted row.  measureLayout(row → content) gives the row's y in
@@ -2385,11 +2385,11 @@ function CircleDetail({
     let alive = true;
     setPanelBlocks(null); setListScreenData(null);   // loading
 
-    // B · Slice 3 — a declared LIST-SCREEN fetches rows + builds the member matrix, then renders the
+    // a declared LIST-SCREEN fetches rows + builds the member matrix, then renders the
     // interactive CircleListScreen (search + category chips + capability-gated rows) instead of a block.
     // D-mig-mobile-1b — resolve the list-screen config from the projected manifest
     // section (shared selector) instead of the retired hardcoded literal.
-    // Q15 (web parity with openCircleScreenPanel) — the fetch now rides the SHARED
+    // (web parity with openCircleScreenPanel) — the fetch now rides the SHARED
     // seam `fetchScreenItems`: static `dataSource.args` merged with `argsFromContext`
     // `$keys` substituted from the panel's context (`$circleId` host-materialized
     // from the active circle; `$uri`/`$agentId` selection-derived from a picked row).
@@ -2407,7 +2407,7 @@ function CircleDetail({
             callSkill: (skillId, args) => rawCallSkill(appOrigin, skillId, args),
             context: screenContext,
           });
-          // Q17 — a record-shaped DETAIL (e.g. agent-detail) renders as a
+          // a record-shaped DETAIL (e.g. agent-detail) renders as a
           // read-only key→value record, not a list (web parity).
           if (section.shape === 'record') {
             if (alive) setListScreenData({ shape: 'record', record: recordFromReply(res), appOrigin });
@@ -2422,7 +2422,7 @@ function CircleDetail({
               template: policy?.capabilities || {}, optOuts: ovr?.capabilityOptOuts || [],
             });
           } catch { /* best-effort */ }
-          // Q15 drill-down — when a sibling DETAIL view needs a selection-derived
+          // drill-down — when a sibling DETAIL view needs a selection-derived
           // context key (shared screenDrilldown over renderMobile), picking a row
           // opens it with that key materialized from the picked row; no drill
           // target → the rows stay plain (no row-open affordance), like web.
@@ -2592,12 +2592,12 @@ function CircleDetail({
     onLlmUnavailable: () => { appendKringMessage({ actor: 'bot', text: t('circle.bot.basic_mode') }); },
   }), [catalog, clarify, circle?.id, callSkill, appendKringMessage, broadcastFanOut, llmRuntime, hasEmbedProvider, circleLlmPolicy, llmApps, handleKringBulk]);
 
-  // SP-13.2.1 / B / M6 — kring chat send: the feedback bot gets first refusal (it owns the turn only
+  // kring chat send: the feedback bot gets first refusal (it owns the turn only
   // for /feedback, /feedback-stop, and free text while active); otherwise echo + route to the circle bot.
   const sendKringChat = useCallback(async () => {
     const text = composerText.trim();
     if (!text || !eventLog?.append || !circle?.id) return;
-    // B · Slice 3 — a slash command opens a declared list-screen (the CHAT entry; web≡mobile).
+    // a slash command opens a declared list-screen (the CHAT entry; web≡mobile).
     const scr = text.match(/^\/(contacts|prikbord)\b/i);
     if (scr && sectionForScreen(manifestsByOrigin, scr[1].toLowerCase())) { setComposerText(''); setScreenPanel({ screen: scr[1].toLowerCase() }); return; }
     setComposerText('');
@@ -2685,8 +2685,8 @@ function CircleDetail({
     broadcastFanOut({ msgId, text, ts });
   }, [eventLog, broadcastFanOut]);
 
-  // Proof-of-Location: the passive placeholder row was removed 2026-06-25 (parked feature, board 10C /
-  // slice 5.9d). The seam stays in the tree (src/v2/circlePol.js + getPolStatus + circle.pol.* locale) so
+  // Proof-of-Location: the passive placeholder row was removed 2026-06-25 (parked feature, /
+  // ). The seam stays in the tree (src/v2/circlePol.js + getPolStatus + circle.pol.* locale) so
   // re-surfacing it later is just re-adding the row. See REMAINING-WORK.md "Proof-of-Location (parked)".
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -2697,7 +2697,7 @@ function CircleDetail({
         <Pressable onPress={onBack} accessibilityRole="button">
           <Text style={styles.back}>{t('circle.back')}</Text>
         </Pressable>
-        {/* SP-13.4 — Chat ↔ Scherm pill (v2 §4).
+        {/* Chat ↔ Scherm pill (v2 §4).
             React Native's accessibilityRole vocabulary doesn't include
             'group' (that's a web-only ARIA role).  The buttons inside
             carry their own role + accessibilityState; the wrapper just
@@ -2751,7 +2751,7 @@ function CircleDetail({
             .map((action) => {
               const handlers = {
                 invite: onInvite, settings: onSettings, lists: onLists,
-                contacts: () => setScreenPanel({ screen: 'contacts' }),   // B · Slice 3 — filterable list-screen
+                contacts: () => setScreenPanel({ screen: 'contacts' }),   // filterable list-screen
                 override: onMine, viewAs: onViewAs, advisor: onAdvisor, skills: onSkills,
                 files: onFiles, rules: onRules, recipes: onRecipes, admin: onAdmin, share: onShare,
               };
@@ -2785,10 +2785,10 @@ function CircleDetail({
         </View>
       ) : null}
 
-      {/* SP-13.3 — body switches by active tab.  GESPREK = chat-style
+      {/* body switches by active tab. GESPREK = chat-style
           mixed stream; other tabs are placeholders until their content
           surfaces land in follow-up slices.
-          SP-13.4 — scherm-mode wins over the tab body: the whole pane
+          scherm-mode wins over the tab body: the whole pane
           becomes the (placeholder) recept'd page. */}
       <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
         {viewMode === 'scherm' ? (
@@ -2856,12 +2856,12 @@ function CircleDetail({
               </Pressable>
             </View>
             {listScreenData?.shape === 'record' ? (
-              /* Q17 — a record-shaped DETAIL screen (read-only key→value, web parity). */
+              /* a record-shaped DETAIL screen (read-only key→value, web parity). */
               <ScrollView>
                 <CircleRecordScreen record={listScreenData.record} />
               </ScrollView>
             ) : listScreenData ? (
-              /* B · Slice 3 — the interactive list-screen (owns its own scroll + search). */
+              /* the interactive list-screen (owns its own scroll + search). */
               <CircleListScreen
                 items={listScreenData.items}
                 categoryField={listScreenData.categoryField}
@@ -2873,7 +2873,7 @@ function CircleDetail({
                 onRowAction={({ opId, itemId }) => { setScreenPanel(null); runCircleCommandResolved({ opId, args: { id: itemId } }); }}
                 onRowOpen={(screenPanel?.screen === 'agents' || listScreenData.drill)
                   /* personas#1 — on the agents surface a PROFILE row opens the
-                     "About me" persona view; other rows keep the Q15 drill-down
+                     "About me" persona view; other rows keep the drill-down
                      (web parity with openCircleScreenPanel's onRowOpen). */
                   ? ({ item }) => {
                       if (screenPanel?.screen === 'agents' && item?.role === 'profile') {
@@ -2936,11 +2936,11 @@ function CircleDetail({
         <MultiFieldFormBubble pending={pendingForm} onSubmit={onFormSubmit} />
       ) : null}
 
-      {/* SP-13.2 — inline composer.  V0 appends a chat-message event to
+      {/* inline composer. V0 appends a chat-message event to
           the local EventLog so the user sees their own write; peer
-          broadcast lands in SP-13.2.1.  Slash commands stay as a
+          broadcast lands in. Slash commands stay as a
           deeper follow-up (would need the chat-shell composition).
-          SP-13.4 — composer suppressed in scherm-mode (recept page is
+          composer suppressed in scherm-mode (recept page is
           not a chat surface). */}
       {/* S1 #1 — the noticeboard (prikbord) tab owns its own composer. */}
       {viewMode !== 'scherm' && activeTab === 'prikbord' ? null
@@ -2993,10 +2993,10 @@ function CircleDetail({
       </>
       ) : null}
 
-      {/* SP-13.3 — per-kring bottom tab bar (derived from policy.features).
+      {/* per-kring bottom tab bar (derived from policy.features).
           Only renders when there are ≥ 2 tabs (a single-tab kring has
           nothing to switch between).
-          SP-13.4 — also suppress in scherm-mode. */}
+          also suppress in scherm-mode. */}
       {tabs.length >= 2 && viewMode !== 'scherm' ? (
         <View style={styles.kringTabs} testID="circle-detail-tabs">
           {tabs.map((tab) => (
@@ -3024,7 +3024,7 @@ function CircleDetail({
   );
 }
 
-// SP-13.2 — render rows chronologically with day-dividers, mirroring
+// render rows chronologically with day-dividers, mirroring
 // the web circleKring renderer.  Keeps the mobile parity tight.
 // δ.2 — `deliveryOpts` carries the per-message delivery-state hooks
 // for locally-sent bubbles (clock / warning + tap-to-retry).
@@ -3241,7 +3241,7 @@ function formatDayLabel(ts, t) {
   return d.toLocaleDateString();
 }
 
-// P6.8 #346 — Nearby/HIER screen.  Renders the buildNearbyModel output:
+// Nearby/HIER screen. Renders the buildNearbyModel output:
 // peer rows with shared-skills + proximity, header line, and an own-profile
 // footer.  Self-contained so vitest can target it without RN test renderer.
 function NearbyScreen({ model, onBack }) {
@@ -3288,7 +3288,7 @@ function NearbyScreen({ model, onBack }) {
   );
 }
 
-// P6.M7 #349 — Mijn dingen notes-list (board 10A): the Folio screen
+// Mijn dingen notes-list: the Folio screen
 // scoped to the private kring.  Empty state by default; rows fill in
 // when callSkill('listFiles') returns mine-and-circle-less items.
 function MyThingsScreen({ files = [], onBack }) {
@@ -3351,14 +3351,14 @@ const styles = StyleSheet.create({
   tileBody:   { flex: 1, minWidth: 0 },
   tileName:   { fontSize: 14, fontWeight: '600', color: theme.color.ink },
   tileMeta:   { fontSize: 11, color: theme.color.inkSoft, marginTop: 2 },
-  // P6.3 — unread badge on the tile (board 5A).
+  // unread badge on the tile.
   tileUnread: {
     minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11,
     backgroundColor: theme.color.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   tileUnreadText: { color: theme.color.white, fontSize: 12, fontWeight: '700' },
-  // P6.2 #341 — pending voorstellen badge (uses a yellow-ish hint to
+  // pending voorstellen badge (uses a yellow-ish hint to
   // separate it visually from the unread-red).
   tileProposals: {
     minWidth: 22, height: 22, paddingHorizontal: 6, borderRadius: 11,
@@ -3382,17 +3382,17 @@ const styles = StyleSheet.create({
   input:      { flex: 1, padding: 11, borderWidth: 1, borderColor: theme.color.accent, borderRadius: 8, backgroundColor: theme.color.white, fontSize: 14 },
   createBtn:  { width: 42, paddingVertical: 11, borderRadius: 8, backgroundColor: theme.color.accent, alignItems: 'center' },
   createBtnText: { color: theme.color.white, fontSize: 16, fontWeight: '700' },
-  // Shared row styles used by NearbyScreen + MyThingsScreen + SP-13 kring stream.
+  // Shared row styles used by NearbyScreen + MyThingsScreen + kring stream.
   row:        { padding: 12, borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, marginBottom: 6 },
   rowName:    { fontSize: 14, fontWeight: '600', color: theme.color.ink },
   rowMeta:    { fontSize: 12, color: theme.color.inkSoft, marginTop: 2 },
-  // SP-13 — header overflow `⋯` trigger + collapsible menu.
+  // header overflow `⋯` trigger + collapsible menu.
   moreBtn:        { paddingHorizontal: 10, paddingVertical: 4 },
   moreBtnText:    { fontSize: 22, color: theme.color.inkSoft, lineHeight: 24 },
   moreMenu:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, padding: 4, marginTop: 4, marginBottom: 4 },
   moreItem:       { paddingVertical: 9, paddingHorizontal: 12 },
   moreItemText:   { fontSize: 13, color: theme.color.ink },
-  // SP-13.2 — chat bubbles + composer (v2 §1+§5).
+  // chat bubbles + composer (v2 §1+§5).
   bubble:           { padding: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, backgroundColor: theme.color.card, marginBottom: 6, maxWidth: '85%', alignSelf: 'flex-start' },
   bubbleSender:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
   bubbleScope:      { alignSelf: 'flex-start', fontSize: 10, fontWeight: '600', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 9, marginBottom: 3, overflow: 'hidden' },
@@ -3417,13 +3417,13 @@ const styles = StyleSheet.create({
   suggestHint:      { color: theme.color.inkSoft, fontSize: 12, flexShrink: 1 },
   // Permission gate — read-only note shown when the circle's chat feature is off.
   composerDisabled: { paddingTop: 12, paddingBottom: 6, marginTop: 4, borderTopWidth: 1, borderTopColor: theme.color.line, color: theme.color.inkSoft, fontSize: 13, fontStyle: 'italic', textAlign: 'center' },
-  // SP-13.3 — per-kring bottom tab bar + tab-coming placeholder.
+  // per-kring bottom tab bar + tab-coming placeholder.
   kringTabs:        { flexDirection: 'row', borderTopWidth: 1, borderTopColor: theme.color.line, marginTop: 4 },
   kringTab:         { flex: 1, paddingVertical: 12, alignItems: 'center', borderTopWidth: 2, borderTopColor: 'transparent', marginTop: -1 },
   kringTabActive:   { borderTopColor: theme.color.accent },
   kringTabText:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 1.4 },
   kringTabTextActive:{ color: theme.color.accentInk, fontWeight: '600' },
-  // SP-13.4 — Chat ↔ Scherm header pill.
+  // Chat ↔ Scherm header pill.
   viewToggle:          { flexDirection: 'row', borderWidth: 1, borderColor: theme.color.line, borderRadius: 999, overflow: 'hidden', backgroundColor: theme.color.paper, marginLeft: 'auto', marginRight: 8 },
   viewToggleBtn:       { paddingHorizontal: 12, paddingVertical: 5 },
   viewToggleBtnActive: { backgroundColor: theme.color.accent },
@@ -3445,7 +3445,7 @@ const styles = StyleSheet.create({
   deliveryUndeliverable: { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
   ownProfile: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.color.line },
   ownProfileTitle: { fontSize: 13, fontWeight: '600', color: theme.color.ink, marginBottom: 4 },
-  // P6.5 #342 — "ON YOUR LIST" section on CircleDetail.
+  // "ON YOUR LIST" section on CircleDetail.
   onYourList:       { marginTop: 8, paddingHorizontal: 2, paddingVertical: 8 },
   onYourListTitle:  { fontSize: 11, letterSpacing: 1.0, color: theme.color.inkSoft, textTransform: 'uppercase', marginBottom: 6 },
   onYourListRow:    { paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.color.line },

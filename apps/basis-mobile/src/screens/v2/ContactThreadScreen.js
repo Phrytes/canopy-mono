@@ -1,5 +1,5 @@
 /**
- * basis-mobile v2 — contact DM thread (feedback-extension P5, mobile parity).
+ * basis-mobile v2 — contact DM thread (feedback-extension, mobile parity).
  *
  * RN mirror of web's `renderContactThread` + the circleApp DM glue. Sends a turn
  * over the SHARED contact-thread channel (`bundle.contactChannel` → sa.peer →
@@ -19,7 +19,7 @@ export default function ContactThreadScreen({ bundle, contact, onBack }) {
   const contactId = contact?.contactId;
   const peerAddr = contact?.peerAddr ?? contactId;
   const name = contact?.name ?? contactId ?? '';
-  // #13 — the bot's P4 skills, shown as in-thread quick actions (dispatched to
+  // the bot's skills, shown as in-thread quick actions (dispatched to
   // the bot via the registry, distinct from a conversational turn).
   const skills = registry?.skillsFor?.(contactId) ?? [];
 
@@ -38,7 +38,7 @@ export default function ContactThreadScreen({ bundle, contact, onBack }) {
     });
   }, [contactId, peerAddr]);
 
-  // Dispatch a named skill to the bot (P4 registry → sendA2ATask) + append the reply.
+  // Dispatch a named skill to the bot (registry → sendA2ATask) + append the reply.
   const runSkill = useCallback(async (skillId, args = {}) => {
     if (!registry) return;
     setError(false);

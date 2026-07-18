@@ -1,6 +1,6 @@
 /**
  * Pure state-machine pieces lifted from src/web/threadSidebar.js
- * (#231, 2026-05-24).
+ * (2026-05-24).
  *
  * The web DOM renderer keeps living in src/web/threadSidebar.js and
  * imports these helpers; basis-mobile's eventual RN thread

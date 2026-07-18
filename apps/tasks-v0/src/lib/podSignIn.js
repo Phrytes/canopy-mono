@@ -29,7 +29,7 @@
  * runs one circle per process today so per-circle session-state is fine;
  * when multi-circle runtime lands, each circle gets its own session slot.
  *
- * ── Session-injection seam (Tasks V2 Slice 5 / mobile S5, 2026-05-18) ──
+ * ── Session-injection seam (Tasks V2 mobile S5, 2026-05-18) ──
  *
  * The default OIDC session is the Node browser-redirect
  * `createSolidAuthNode` (web path — UNCHANGED). React Native cannot

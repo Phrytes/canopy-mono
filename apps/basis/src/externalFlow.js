@@ -29,7 +29,7 @@
  * `window.location` + IndexedDB; RN parallel reads from a custom
  * URL scheme.
  *
- * Phase v0.6 sub-slice 6.2 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.6 per `/Project Files/basis/coding-plan.md`.
  */
 
 const IN_FLIGHT_STORE_KEY = 'cc-in-flight-flows';

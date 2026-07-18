@@ -15,7 +15,7 @@
  *     NodeFsBackend)
  *
  * Methods throw at runtime so accidentally executing them surfaces the
- * wiring bug instead of silently returning undefined.  See #303.
+ * wiring bug instead of silently returning undefined. See.
  */
 
 const browserOnlyAsync = (name) => async () => {

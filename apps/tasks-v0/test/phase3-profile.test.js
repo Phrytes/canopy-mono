@@ -286,11 +286,11 @@ describe('Phase 3 — canonical profile + circle vocabulary', () => {
     });
 
     it('still registers profile skills when no localStoreBundle is supplied (V2.8 single-registration)', async () => {
-      // V2.8 — every skill registers on the meshAgent regardless of
+      // every skill registers on the meshAgent regardless of
       // optional substrate wiring. Without a localStoreBundle, the
       // CircleState's `dataSource` is the V0 default MemorySource and
       // the profile skills work against in-memory storage. Tests
-      // before V2.8 expected zero registration in this case.
+      // before expected zero registration in this case.
       const result = await createCircleAgent({
         wireOnboardingSkills: false,
       });

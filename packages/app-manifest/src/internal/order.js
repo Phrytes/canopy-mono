@@ -5,7 +5,7 @@
  * collection when downstream order matters, and never rely on
  * Object.entries on objects whose keys arrived in an unstable order.
  *
- * This is the determinism invariant SP-1's byte-equivalence gate
+ * This is the determinism invariant 's byte-equivalence gate
  * (PLAN §1.4) depends on.
  */
 

@@ -20,7 +20,7 @@
  * v0.2.1 ships (1) and (3) basic.  v0.7 wires (2); v0.3 / v0.5
  * extend (4).
  *
- * Phase v0.2 sub-slice 2.5 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  */
 
 import { matchesFilter } from './filter.js';

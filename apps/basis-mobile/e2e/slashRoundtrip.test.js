@@ -1,6 +1,6 @@
-// Slash command round-trip (#254 D-1 test 2).
+// Slash command round-trip (D-1 test 2).
 //
-// Replaces the manual #253 step-2 verification:
+// Replaces the manual step-2 verification:
 //   1. Type "/mine" into the chat input
 //   2. Tap Send
 //   3. A list bubble appears with at least one row showing a button

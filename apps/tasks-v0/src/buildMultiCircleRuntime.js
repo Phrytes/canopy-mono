@@ -5,9 +5,9 @@
  * `buildMultiCircle()` fixture so that:
  *   - the existing v2-multi-circle test suite continues to drive it
  *     end-to-end;
- *   - the SP-4b "tasks-v0 multi-circle through manifest-host" proof
+ *   the "tasks-v0 multi-circle through manifest-host" proof
  *     (`test/manifest-host-mount.test.js`) reuses it;
- *   - the SP-11 recombination demo (`examples/manifest-host-demo/`)
+ *   the recombination demo (`examples/manifest-host-demo/`)
  *     reuses it too.
  *
  * Mirrors `bin/tasks-ui.js --multi-circle` (lines 332–414) but without

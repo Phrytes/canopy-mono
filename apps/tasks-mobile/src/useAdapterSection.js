@@ -1,5 +1,5 @@
 /**
- * `useAdapterSection(adapter, sectionId, deps?)` — V0.3 (2026-05-21).
+ * `useAdapterSection(adapter, sectionId, deps?)` — (2026-05-21).
  *
  * Removes the per-section boilerplate every adapter-driven screen
  * has been duplicating:
@@ -23,16 +23,16 @@
  * args when the section is missing).  Don't try to conditionally
  * skip the call — that breaks React's hook order invariant.
  *
- * V0.3 status: lives in tasks-mobile for now.  Once a second RN app
+ * status: lives in tasks-mobile for now. Once a second RN app
  * needs it (e.g. stoop-mobile), lift to a shared
  * `@onderling/manifest-adapter-rn` package.  Web has no equivalent yet
  * (its consumers are imperative loops, not React); a future
  * `@onderling/web-adapter/react` could mirror this.
  *
- * Future polish: Q15 `argsFromContext` substitution.  V0.3 hook
+ * Future polish: `argsFromContext` substitution. hook
  * passes `dataSource.args` only.  When a screen needs runtime args
  * (e.g. browser locale), it currently substitutes manually before
- * passing `args` in.  A V0.4 `context` parameter could automate.
+ * passing `args` in. A `context` parameter could automate.
  *
  * @param {object} adapter           From `createNavModelAdapter(...)`.
  * @param {string} sectionId

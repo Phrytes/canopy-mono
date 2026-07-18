@@ -1,5 +1,5 @@
 /**
- * Bundle calendar cross-peer (#238) — outbound hook coverage.
+ * Bundle calendar cross-peer — outbound hook coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makeCalendarOutboundHook } from '../../src/core/handlers/calendarOutbound.js';

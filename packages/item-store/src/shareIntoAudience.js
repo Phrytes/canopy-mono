@@ -1,12 +1,12 @@
 /**
- * shareIntoAudience — the cross-circle SHARE op (cluster K · K2, the one net-new op from K1).
+ * shareIntoAudience — the cross-circle SHARE op (the one net-new op from).
  *
- * Containment never crosses circles by copy or grant (K1): an item lives in ONE circle's store. Sharing it
+ * Containment never crosses circles by copy or grant: an item lives in ONE circle's store. Sharing it
  * into ANOTHER circle's audience is an EXPLICIT, per-item op that writes a `shared-ref` into the target circle
  * pointing back at the source — NOT a copy, and NOT a transitive grant (it exposes ONLY that item, never its
  * container or siblings). Resolving the ref crosses circles = the 🔒-gated cross-pod read (ACP + seal enforce
  * it on real pods; in-memory here it just reads). The POSTURE FLOOR protects the item: sharing into a LESS-
- * confidential circle would downgrade it, so that's refused (K1: never downgrade below the floor).
+ * confidential circle would downgrade it, so that's refused (: never downgrade below the floor).
  *
  * @param {{getStore:(id:string)=>object}} stores  a createCircleStores registry
  * @param {object} args
@@ -18,14 +18,14 @@
  * @param {(circleId:string)=>number} [args.postureOf]  the target circle's confidentiality (for the floor check;
  *        omit to skip the floor). Refuses when `postureOf(toCircleId) < posture`.
  * @param {(ctx:{ref:object,item:object,recipient?:string,recipients?:string[],stores:object})=>Promise<void>} [args.onShare]
- *        INJECTED WRITE-SIDE pod hook (additive · cluster K pod-tier). When the store is pod-backed the
+ *        INJECTED WRITE-SIDE pod hook (additive pod-tier). When the store is pod-backed the
  *        composition injects `makeShareGrantHook(...)` here: after the `shared-ref` is written, the hook
  *        creates the ACP read-grant for the recipient on the source item's resource (and optionally re-seals).
  *        The memory path leaves it undefined ⇒ behaviour is EXACTLY as before. A throw from the hook fails the
  *        share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
  * @param {string} [args.recipient]        the recipient WebID to grant to (pod-backed shares); passed to `onShare`.
  * @param {string[]} [args.recipients]     multiple recipient WebIDs (a circle share resolves members here).
- * @param {string[]} [args.recipientKeys]  the recipients' SEALING PUBLIC KEYS (share-policy slice 3a — resolved
+ * @param {string[]} [args.recipientKeys] the recipients' SEALING PUBLIC KEYS (share-policy — resolved
  *        against the TARGET circle's roster). Passed through to `onShare` so the injected `seal` re-wraps the
  *        content to keys (not WebIDs). Omit for the group-key posture (recipient already holds the key).
  * @returns {Promise<{ok:true, ref:object}|{ok:false, error:string, required?:number, target?:number, cause?:any}>}
@@ -73,7 +73,7 @@ export async function shareIntoAudience(stores, { itemId, fromCircleId, toCircle
  * Resolve a `shared-ref` to its source item — the read that CROSSES circles (🔒-gated on real pods).
  * Null if absent/invalid.
  *
- * ENFORCEMENT (cluster K · additive, backward-compatible). Pass an injected `policy` (see
+ * ENFORCEMENT (additive, backward-compatible). Pass an injected `policy` (see
  * `sharedRefPolicy.js`) to gate + unseal the cross-circle read:
  *   1. `policy.checkGrant({ ref, recipient, stores })` — DENY-BY-DEFAULT: if it returns falsy or throws,
  *      resolve to `null` (the recipient was NOT granted this item). On a real pod this checks a live

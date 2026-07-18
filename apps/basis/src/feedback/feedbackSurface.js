@@ -452,7 +452,7 @@ export function createFeedbackSurface({ config, projectId, lang, pod, centralPod
   // non-verify project (today's example) the signer stays INERT — behaviour is exactly as before F2
   // (unsigned writes, no signer object crosses into the bot). A verify-enabled project gets the
   // per-thread signer, which the dispatcher uses to sign consent contributions (never the raw key).
-  // Slice 2 — the no-login central-pod route requires SIGNED contributions (the companion collector /
+  // the no-login central-pod route requires SIGNED contributions (the companion collector /
   // aggregation only accept signed records). `verify:true` turns on the signature path so `idFor` is
   // wired and the dispatcher signs each consented contribution with the participant's agent identity.
   if (verify) cfg.privacy = { ...(cfg.privacy || {}), verify: true };

@@ -1,5 +1,5 @@
 /**
- * Inbound file-share handler.  Bundle H Phase 2 (#269) — lifted from
+ * Inbound file-share handler. Bundle H Phase 2 — lifted from
  * `apps/basis/web/main.js:547`.
  *
  * Renders a file-card embed in the host's main thread with the

@@ -86,7 +86,7 @@ export async function buildBundleForGroup({
   label,
   /** Optional ws://… or wss://… URL for the broker transport. */
   relayUrl,
-  /** Optional runtime nkn-sdk module — see buildMeshAgent jsdoc. (#248) */
+  /** Optional runtime nkn-sdk module — see buildMeshAgent jsdoc. */
   nknLib,
   /** Optional bootstrap RPC node URL passed to nkn-sdk. */
   nknRpcServerAddr,
@@ -234,7 +234,7 @@ export async function buildBundleForGroup({
     try { await bundle.agent.stop?.();           } catch { /* swallow */ }
   };
 
-  // #248: surface the NKN adapter (if any) on the bundle so wireCatchUp
+  // surface the NKN adapter (if any) on the bundle so wireCatchUp
   // + the catch-up trigger reach it without touching the agent internals.
   return { ...bundle, nkn: meshAgent.nkn ?? null, stop };
 }
@@ -412,7 +412,7 @@ export async function buildGroupState({
     try { bundle.itemStore.off?.('item-completed', _bridgeItemArrive); } catch { /* swallow */ }
   };
 
-  // #248: surface the shared agent's NKN adapter (if any) so wireCatchUp
+  // surface the shared agent's NKN adapter (if any) so wireCatchUp
   // can reach it from any per-group bundle.
   return { ...bundle, groupId, localActor, nkn: meshAgent.nkn ?? null, stop };
 }
@@ -435,7 +435,7 @@ export async function buildGroupState({
  *     peers (the right behaviour: OfferingMatch only addPeer's known
  *     peers, so a fall-through to internal means the broadcast is a
  *     no-op rather than an error).
- *   - **Named** (nkn slot, #248 2026-05-27): `NknTransport` — global
+ *   **Named** (nkn slot, 2026-05-27): `NknTransport` — global
  *     mainnet routing for the reconnect-catch-up flow.  Only added
  *     when the caller injects `nknLib` (runtime nkn-sdk module).  The
  *     dep is SOFT: nkn-sdk is NOT listed in stoop-mobile's package.json,
@@ -567,7 +567,7 @@ export async function buildMeshAgent({
     }
   }
 
-  // NKN (Path C, #248 2026-05-27): when a runtime nkn-sdk module is
+  // NKN (Path C, 2026-05-27): when a runtime nkn-sdk module is
   // injected, plumb an `NknTransport` for global mainnet routing.
   // The lifted reconnect-catch-up handlers in basis live on top
   // of NKN's subtype-routed envelopes (`p2p-chat` / `catch-up-request`

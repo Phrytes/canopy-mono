@@ -135,7 +135,7 @@
 > tokens onto `OidcSessionRN` and attaches a `SolidPodSource` to the
 > bundle cache through the SHARED `apps/tasks-v0` `podSignIn.js`
 > orchestration (session injected via the additive seam — zero web
-> change). Skill ids/return shapes match tasks-v0 Slice 5.
+> change). Skill ids/return shapes match tasks-v0.
 
 - [ ] PodSettingsScreen → Section 3 "Solid pod sign-in" renders the
       **enabled** "Sign in to Solid pod" button (no longer the

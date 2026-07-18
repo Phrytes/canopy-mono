@@ -46,7 +46,7 @@ export function registerCalendarSkills(agent, store, opts = {}) {
     const a = parts?.[0]?.data ?? {};
     try {
       const event = await store.addEvent(a);
-      // v0.7.P1-followup 2026-05-23: routed event message is DIFFERENT
+      // v0.7.-followup 2026-05-23: routed event message is DIFFERENT
       // from the dispatch reply.  Old code used the same text on both
       // ('✓ Added event: X') which caused visible duplication if a
       // thread filter mis-accepted item-changed events.  Now: routed
@@ -216,7 +216,7 @@ export function registerCalendarSkills(agent, store, opts = {}) {
   reg('getIcsFeed', async () => {
     const { ics, uri: localUri } = await store.getIcsFeed();
     const eventCount = (ics.match(/BEGIN:VEVENT/g) ?? []).length;
-    // v0.7.P2 — when signed in + podWriter wired, surface the REAL
+    // v0.7. — when signed in + podWriter wired, surface the REAL
     // pod URL as the subscribable feed.  Local pseudo-pod URI is
     // shown as a fallback when not signed in.
     const podUri = store.getPodFeedUrl?.();

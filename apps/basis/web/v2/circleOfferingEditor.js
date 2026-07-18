@@ -1,5 +1,5 @@
 /**
- * basis v2 — skill editor (web DOM renderer, board 8).
+ * basis v2 — skill editor (web DOM renderer).
  *
  * Controlled render of a skill's four axes (`@onderling/circleOfferings`):
  * openness · posture · status · radius. Each axis is a single-choice radio

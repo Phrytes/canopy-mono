@@ -1,5 +1,5 @@
 /**
- * AvailabilityScreen — V2.3 7×2 (days × half-days) availability grid.
+ * AvailabilityScreen — 7×2 (days × half-days) availability grid.
  *
  * Phase 41.9 (2026-05-09).
  *

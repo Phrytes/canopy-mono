@@ -1,4 +1,4 @@
-// Detox sanity check (#254 — D-0 sanity).  Minimal — just proves
+// Detox sanity check (D-0 sanity). Minimal — just proves
 // that the build-test-launch loop works.  If this fails, the
 // problem isn't in our test logic.
 //

@@ -29,7 +29,7 @@ import { diff }          from './diff.js';
 // passed in via constructor hooks (defaults below are no-ops).
 
 // Time-machine versioning now rides the shared @onderling/versioning
-// substrate (Slice 1a — the last legacy version store, ./versions.js,
+// substrate (— the last legacy version store,./versions.js,
 // retired). One `createVersionStore` per engine instance stores each
 // snapshot as an opaque record in a StorageBackend (Node fs by default)
 // instead of a browsable `.folio/versions/<rel>/<ts>.<ext>` tree.
@@ -180,7 +180,7 @@ export class SyncEngine extends Emitter {
    * @param {number} [opts.debounceMs=500]              — coalesce window for FS events
    * @param {{perFile?:number, budgetMb?:number}} [opts.versions]
    *        Folio.B4 retention.  `perFile` (default 50) is the per-series cap
-   *        (mapped to `@onderling/versioning`'s `retention.perSeries`).  Slice 1a:
+   *        (mapped to `@onderling/versioning`'s `retention.perSeries`).:
    *        `budgetMb` is IGNORED — the legacy 100 MB whole-tree byte budget was
    *        dropped when the store moved to opaque per-series records.
    * @param {object} [opts.versionBackend]
@@ -219,7 +219,7 @@ export class SyncEngine extends Emitter {
    *        knob from the legacy `watcher` parameter (above) which
    *        configures stability / grace timings.
    *
-   * ─── V0.4 hook surface (Folio app-side concerns) ────────────────
+   * ─── hook surface (Folio app-side concerns) ────────────────
    * Slice G #5 (2026-05-20) — substrate's app-glue seam.  Each hook
    * defaults to a no-op so non-Folio consumers (stoop-mobile, tasks-
    * mobile) work without configuration.  Folio's subclass pre-binds
@@ -287,7 +287,7 @@ export class SyncEngine extends Emitter {
     hash           = null,
     watcherFactory = null,
     versionBackend = null,
-    // V0.4 hook surface (Folio app-side concerns):
+    // hook surface (Folio app-side concerns):
     parseSharePath    = null,                 // forwarded into the internal PathMap
     applyConflictHook = NOOP_APPLY_CONFLICT,
     ensureSharesHook  = NOOP_ENSURE_SHARES,
@@ -313,7 +313,7 @@ export class SyncEngine extends Emitter {
     this.#stateFilePath  = joinPosix(this.#localRoot, STATE_FILE_RELPATH);
     this.#versionsOpts   = versions ?? {};
 
-    // Slice 1a — one version store per engine instance, over @onderling/versioning.
+    // one version store per engine instance, over @onderling/versioning.
     //   backend    : a PORTABLE fs-adapter store over the engine's OWN `#fs`
     //                adapter (records under <localRoot>/.folio/versions) — the
     //                same adapter the retired versions.js used, so it runs on
@@ -329,7 +329,7 @@ export class SyncEngine extends Emitter {
     //   retention  : per-series cap = the 50/file (perFile) knob. HONEST DROP —
     //                the legacy 100 MB whole-tree byte budget goes away (the
     //                substrate is per-series-cap only); re-add via an index
-    //                record only if wanted (see PLAN-folio-as-file-agent Slice 1a).
+    //                record only if wanted (see PLAN-folio-as-file-agent).
     const backend = versionBackend
       ?? createFsAdapterBackend({
         fs:      this.#fs,
@@ -377,7 +377,7 @@ export class SyncEngine extends Emitter {
   get podRoot()   { return this.#podRoot; }
   get identity()  { return this.#identity; }
   /**
-   * The per-engine @onderling/versioning store (Slice 1a).  Exposed so the
+   * The per-engine @onderling/versioning store. Exposed so the
    * Folio REST routes can serve `list`/`read`/`listSeries`/`isVersionable`
    * without a second store instance.  PRIVILEGED `drop`/`prune` are on it
    * too — route handlers must never wire those into a grantable op.
@@ -385,7 +385,7 @@ export class SyncEngine extends Emitter {
   get versionStore() { return this.#versionStore; }
 
   /**
-   * Slice G.3 (2026-05-20) — public observability for watch state.
+   * public observability for watch state.
    *
    * Returns `true` once the watcher adapter has actually attached
    * (async — `start()` is fire-and-forget, so there's a brief window
@@ -1013,7 +1013,7 @@ export class SyncEngine extends Emitter {
    * @param {string} relPath POSIX-style path (matches the SyncEngine convention).
    * @returns {Promise<Array<{ts:number, id:string, sha256:string, size:number}>>}
    *   NOTE: the legacy on-disk `path` field is GONE — snapshots are opaque
-   *   records now (Slice 1a).  Consumers read content via the store's
+   *   records now. Consumers read content via the store's
    *   `read(relPath, ts)` (routes) rather than a filesystem path.
    */
   async versions(relPath) {
@@ -1056,7 +1056,7 @@ export class SyncEngine extends Emitter {
    * on every capture; exposed for tests + manual cleanup.
    *
    * NOTE: the legacy whole-tree walk + 100 MB byte budget are GONE — the
-   * substrate enforces the per-series cap only (Slice 1a honest drop), so
+   * substrate enforces the per-series cap only (honest drop), so
    * this now prunes a single series (no-op when `relPath` is omitted).
    */
   async pruneVersions(relPath) {

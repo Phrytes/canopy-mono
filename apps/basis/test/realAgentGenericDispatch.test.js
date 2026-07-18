@@ -1,5 +1,5 @@
 /**
- * basis — real-Agent generic-capability dispatch (§1b sub-slice 1d).
+ * basis — real-Agent generic-capability dispatch (1b).
  *
  * Proves the callSkill waist decodes a SYNTHETIC generic op-id
  * (`__generic__:app:atom:noun`) and routes it to the household capability

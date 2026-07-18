@@ -1,5 +1,5 @@
 /**
- * Stoop V2.5 — Phase 31 tests.
+ * Stoop — Phase 31 tests.
  *
  * Mid-flight identity swap on restore.  Verifies:
  *   - core.Agent.swapIdentity replaces the running keypair without

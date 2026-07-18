@@ -1,7 +1,7 @@
 /**
- * basis v2 — "View as…" per-attribute split (board 4C, slice P6.M2).
+ * basis v2 — "View as…" per-attribute split.
  *
- * Board 4C shows a SPECIFIC preview: when I pick a viewer (Sara, an
+ * The "View as…" screen shows a SPECIFIC preview: when I pick a viewer (Sara, an
  * agent, a stranger), the screen splits MY profile into "WHAT SARA
  * SEES" (skill X · weekend availability) and "WHAT SARA DOESN'T SEE"
  * (real name · street · belasting-aangifte family-only · borrow-offer

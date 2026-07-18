@@ -1,7 +1,7 @@
 /**
- * **Platform: web** (DOM-dependent).  RN parallel pending #128.
+ * **Platform: web** (DOM-dependent). RN parallel pending.
  *
- * basis — C5 post-audience picker (#198, 2026-05-24).
+ * basis — C5 post-audience picker (2026-05-24).
  *
  * Single-step rich UI that ENRICHES /post with audience targeting.
  * Per the audit's S8 finding: stoop's substrate has an audience model

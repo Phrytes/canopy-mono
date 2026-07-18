@@ -1,8 +1,8 @@
 /**
- * Wizard state-machines — #231.2 split.  Covers the second wave:
+ * Wizard state-machines — split. Covers the second wave:
  * conflictDispute, settings, joinGroup, createGroup.
  *
- * Same shape as wizardsState.test.js (#231.1) — pure functions +
+ * Same shape as wizardsState.test.js — pure functions +
  * async submits with stub callSkills; zero DOM.
  */
 import { describe, it, expect, vi } from 'vitest';
@@ -345,7 +345,7 @@ describe('joinGroupState', () => {
     expect(state.submitError).toBe('bad handle');
   });
 
-  /* ── B · Slice 4 — consent-at-join ─────────────────────────── */
+  /* ── B · — consent-at-join ─────────────────────────── */
 
   const consentSources = [{
     manifest: {

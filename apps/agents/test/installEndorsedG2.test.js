@@ -1,9 +1,9 @@
 /**
- * agents — P3 install through the commons-governance G2 WEB-OF-TRUST catalog.
+ * agents — install through the commons-governance G2 WEB-OF-TRUST catalog.
  *
  * Extends installEndorsed.test.js (G1, single-root) to the G2 graph source:
  *   1. TRANSITIVE INSTALL — an agent discovered by WALKING the graph (root →
- *      curator B → agent X, depth 2) installs end-to-end with P3's
+ *      curator B → agent X, depth 2) installs end-to-end with 's
  *      capability-security (only granted+declared caps land).
  *   2. cardHash-AT-INSTALL — a card SWAPPED after listing (endorse-then-escalate)
  *      fails the re-verify inside `catalog.get`, so install can't proceed. Proves

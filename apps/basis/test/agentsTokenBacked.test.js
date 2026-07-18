@@ -1,5 +1,5 @@
 /**
- * agents P2 — token-backed control ops through the REAL composition.
+ * agents — token-backed control ops through the REAL composition.
  *
  * Proves the realAgent.js binding of the agents-app `tokens` collaborator
  * to the LIVE token machinery (2026-07-09):

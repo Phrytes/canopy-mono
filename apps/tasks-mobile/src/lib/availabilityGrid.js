@@ -1,5 +1,5 @@
 /**
- * availabilityGrid — pure-fn helpers for the V2.3 7×2 availability
+ * availabilityGrid — pure-fn helpers for the 7×2 availability
  * grid (days × half-days).
  *
  * Phase 41.9 (2026-05-09).

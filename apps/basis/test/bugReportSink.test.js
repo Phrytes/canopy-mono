@@ -1,5 +1,5 @@
 // @vitest-environment node
-// Logging slice 3 (SEND TARGET) — the injected `sendReport` SINK that delivers the anonymous bug-report
+// Logging (SEND TARGET) — the injected `sendReport` SINK that delivers the anonymous bug-report
 // envelope over the host's peer/relay transport to a config-driven dev "bug-report bot".
 // Proves: (a) the envelope arrives INTACT wrapped in a `{type:'bug-report', ...}` transport message;
 // (b) it is STILL ANONYMOUS — no chatId/pseudonym/webid/handle in the JSON-stringified outgoing message,

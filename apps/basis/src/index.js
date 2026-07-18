@@ -12,23 +12,23 @@ export { parseInput, parseSlash }    from './parser.js';
 export { mergeManifests }            from './manifestMerge.js';
 export { resolveDispatch, scopeReadyDispatch, bindMatchArg } from './router.js';
 export { runDispatch, runCompositeDispatch } from './dispatch.js';
-// P1 (feedback-extension) — composite-op runner + the sandbox-by-
+// (feedback-extension) — composite-op runner + the sandbox-by
 // construction verifier (a fitness-function seed for CI).
 export { runCompositeOp, verifyComposite, resolvePath } from './composite.js';
 // P2b (feedback-extension) — extension-mapping load-time verify gate.
 export { verifyMapping, verifyMappings, mappingToManifest, mappingsToSources } from './mappings.js';
 // P2c-3 — extension install: plain consent-card model + install/uninstall.
 export { buildConsentModel, installMapping, uninstallMapping } from './v2/extensionInstall.js';
-// P3 (feedback-extension) — curation compare (reuses objectDiff) + the before/after curation renderer.
+// (feedback-extension) — curation compare (reuses objectDiff) + the before/after curation renderer.
 export { compareForCuration, renderCuration } from './v2/curation.js';
-// P4 (feedback-extension) — contact/bot exposed skills. The PURE synth+route core …
+// (feedback-extension) — contact/bot exposed skills. The PURE synth+route core …
 export {
   skillCardsToManifest, skillCardToOp, contactSkillSources, makeRemoteCallSkill,
   contactManifestApp, REMOTE_SKILL_BINDING, CONTACT_THREAD_SCOPE,
 } from './v2/contactSkills.js';
 // … and the LIVE wiring (PeerGraph-subscribed registry + the dispatch chain).
 export { createContactSkillRegistry, chainContactCallSkill } from './v2/contactSkillsLive.js';
-// P5 (feedback-extension) — the client end of a contact/bot peer link (the
+// (feedback-extension) — the client end of a contact/bot peer link (the
 // transport-agnostic conversational channel; rides sa.peer → mdns/relay/nkn),
 // the Contacten roster source, and adding a bot to the app PeerGraph.
 export { createContactThreadChannel, DEFAULT_CONTACT_SUBTYPES } from './v2/contactThreadChannel.js';
@@ -81,12 +81,12 @@ export { getActiveCircle, setActiveCircle, subscribeActiveCircle } from './v2/ac
 export {
   CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS,
   DEFAULT_CIRCLE_POLICY, normalizeCirclePolicy, mergeCirclePolicy,
-  // P6.1 — feature-flag consumption seam.
+  // feature-flag consumption seam.
   isFeatureEnabled, enabledFeatures,
   // §4 — admin's policy.view → default Chat/Scherm landing surface.
   defaultViewModeFromPolicy,
   DEFAULT_MEMBER_OVERRIDE, normalizeMemberOverride, mergeMemberOverride,
-  // P6.M4 — split @-mention vs every-message push toggles (board 6A).
+  // split @-mention vs every-message push toggles.
   shouldPushNotify,
 } from './v2/circlePolicy.js';
 export {
@@ -113,14 +113,14 @@ export {
   ROLE_TEMPLATES, ROLE_TEMPLATE_IDS, roleTemplateById, applyRoleTemplates,
 } from './v2/roleTemplates.js';
 export { makeProposal, approveProposal, pendingApprovers } from './v2/circleConsensus.js';
-// P6.2 — persistence layer for multi-admin proposals.
+// persistence layer for multi-admin proposals.
 export { createProposalStore, localStorageProposalIo } from './v2/circleProposalStore.js';
 export {
   eventCircleId, buildCircleStream,
-  // SP-13 — kring-scoped stream + chip filters (board 2B / 8C).
+  // kring-scoped stream + chip filters.
   buildKringStream, KRING_STREAM_KIND_FILTERS,
 } from './v2/circleStream.js';
-// SP-13.3 — per-kring bottom tabs derived from policy.features (v2 §1).
+// per-kring bottom tabs derived from policy.features (v2 §1).
 export { buildKringTabs, DEFAULT_KRING_TAB, featureActionLabelKey, featureTabId, featureForTabId } from './v2/kringTabs.js';
 // δ.2 — per-message delivery state (pending / sent / failed) for the
 // optimistic kring chat send.  Sibling of the in-memory EventLog;
@@ -195,60 +195,60 @@ export {
   createScreenBlocksCacheLocal,
   localStorageScreenBlocksCacheIo,
 } from './v2/screenBlocksCacheStorage.js';
-// P6.3 — per-circle activity preview + unread count for launcher tiles.
+// per-circle activity preview + unread count for launcher tiles.
 export { buildTilePreviews, renderSubtitle, bumpSeenAt } from './v2/circleTilePreviews.js';
-// P6.5 — claim router: mirror claimed tasks into the personal circle
+// claim router: mirror claimed tasks into the personal circle
 // when the per-circle override has flowThrough.tasksToPersonal.
 export { routeClaim, makeAfterClaimHook } from './v2/claimRouter.js';
-// P6.4 — wederkerigheid (chat-off consumer-side): pure helpers + the
+// wederkerigheid (chat-off consumer-side): pure helpers + the
 // save-for-later message queue.  Compose integration is the follow-up.
 export {
   isRecipientUnavailable, buildUnavailableNotice,
   createMessageQueue,
 } from './v2/wederkerigheid.js';
-// P6.6 — auto-hop-prompt when a skill search returns no in-circle hits.
+// auto-hop-prompt when a skill search returns no in-circle hits.
 export {
   shouldAutoSuggestHop, buildHopPromptCard,
   rememberDismissed, hasDismissed,
 } from '@onderling/kring-host/hopPrompt';
-// P6.7 — skill-match source: rank circle members / agents / hop candidates
-// against a free-text question (board 8B).  Renderer is `buildOfferingMatches`.
+// skill-match source: rank circle members / agents / hop candidates
+// against a free-text question. Renderer is `buildOfferingMatches`.
 export { findOfferingMatches, tokenize as tokenizeOfferingQuery } from '@onderling/kring-host/findOfferingMatches';
-// P6.8 — Nearby screen model (board 8C): intersect local-network peers with my skills.
+// Nearby screen model: intersect local-network peers with my skills.
 export {
   buildNearbyModel,
   pickSkillText as pickNearbySkillText,
   pickPeerLabel as pickNearbyPeerLabel,
 } from './v2/circleNearby.js';
-// P6.10 — agent-add admin approval (board 4B): proposal-like flow for
+// agent-add admin approval: proposal-like flow for
 // joining an LLM agent to a circle whose `agents` axis is admin-approval.
 export {
   shouldGateAgentJoin, buildAgentRequest,
   approveAgentRequest, rejectAgentRequest, pendingAgentApprovers,
   createAgentRequestStore,
 } from './v2/agentRequest.js';
-// P6.M1 — pod-migration warning on policy change (board 4A red callout).
+// pod-migration warning on policy change (red callout).
 export { classifyPodChange, renderPodMigrationCopy } from './v2/podMigrationWarning.js';
-// P6.M2 — per-attribute view-as split (board 4C "WHAT SARA SEES / DOESN'T").
+// per-attribute view-as split ("WHAT SARA SEES DOESN'T").
 export {
   isVisibleTo, splitViewAsAttributes, viewAsCounts, OPENNESS_LEVELS,
 } from './v2/viewAsAttributes.js';
-// P6.M3 — Stream per-row actions + pinned compose (board 5B).
+// Stream per-row actions + pinned compose.
 export { actionsForStreamRow, buildStreamComposeContext } from './v2/streamActions.js';
-// P6.M5 — holiday-mode extension shortcuts + outgoing auto-reply (board 6C).
+// holiday-mode extension shortcuts + outgoing auto-reply.
 export {
   extendHolidayDays, setHolidayUntil, buildHolidayAutoReply,
 } from './v2/holidayShortcuts.js';
-// P6.M6 — per-contact hop overrides (board 7B).
+// per-contact hop overrides.
 export {
   normalizeContactHopMode, effectiveHopMode, buildContactHopList,
   HOP_PER_CONTACT_MODES,
 } from './v2/contactHopOverrides.js';
-// P6.M7 — Folio "My things" notes-list (private kring, board 10A).
+// Folio "My things" notes-list (private kring).
 export {
   itemOwner, isMyPrivateItem, buildMyThings, myThingsFromListFiles,
 } from './v2/folioMyThings.js';
-// P6.M8 — Folio "Shared by me / Shared with me" filters (board 10B).
+// Folio "Shared by me / Shared with me" filters.
 export {
   FOLIO_SHARE_FILTERS, isSharedByMe, isSharedWithMe,
   buildSharedFiles, sharedFilesFromListFiles,

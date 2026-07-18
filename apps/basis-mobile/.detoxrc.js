@@ -1,4 +1,4 @@
-// Detox configuration for basis-mobile (#254 — D-0 setup,
+// Detox configuration for basis-mobile (— D-0 setup,
 // 2026-05-26).  Targets the Android emulator (Medium_Phone_API_36)
 // by default; the `attached` device can be selected via
 // `--configuration android.attached.debug` for tests against a

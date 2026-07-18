@@ -1,5 +1,5 @@
 /**
- * createSolidAuthNode — interactive redirect ROUND-TRIP harness (#167).
+ * createSolidAuthNode — interactive redirect ROUND-TRIP harness.
  *
  * D §4 S4 — "the one hop not verified end-to-end". The focused surface
  * tests in `createSolidAuthNode.test.js` prove each method in isolation

@@ -1,5 +1,5 @@
 /**
- * tasks-mobile — NavModel adapter (Slice C.1, 2026-05-20).
+ * tasks-mobile — NavModel adapter (2026-05-20).
  *
  * Thin platform-neutral wrapper over a manifest's NavModel + the
  * shared web-adapter helpers.  Same logic feeds the web shells in
@@ -10,9 +10,9 @@
  *
  * Cross-surface parity — this file is INTENTIONALLY platform-
  * neutral.  No React, no React Native, no DOM.  A future cleanup
- * (V0.4 of the PLAN-gui-chat-uplift sweep) can lift it verbatim to
+ * (of the PLAN-gui-chat-uplift sweep) can lift it verbatim to
  * `@onderling/manifest-adapter` so web + mobile + chat all share one
- * source.  For V0.3 / Slice C.1 it ships in tasks-mobile to keep
+ * source. For / it ships in tasks-mobile to keep
  * the radius tight; the shape is deliberately framework-free so
  * the lift is a copy + rewire of consumers, no API churn.
  *
@@ -32,7 +32,7 @@
  *     `undefined` when the manifest doesn't declare it.  Callers
  *     decide whether a missing section is a bug or a soft no-op
  *     (the web shells fall back to an empty array).
- *   - `fetchSection(section)` honours the V0.2 Q7 `dataSource` field
+ *   `fetchSection(section)` honours the `dataSource` field
  *     via `fetchSectionItems` from `@onderling/web-adapter`.  The reply
  *     shape is verbatim (different list-skills return different
  *     payload shapes — `{items}`, `{tasks}`, etc.); the caller
@@ -126,7 +126,7 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
    * `applyPrefilledParams({ id }, _action(…))` pattern from
    * `apps/tasks-v0/web/mine.html` (DRY — same gate, same prefill).
    *
-   * V0.4 per-event-kind gates (e.g. `kind: 'subtask-proposal'`) flow
+   * per-event-kind gates (e.g. `kind: 'subtask-proposal'`) flow
    * through verbatim — see commit 83ce267 which lifted the generic-
    * field pass-through into `renderWeb.buildItemAction`.
    */
@@ -147,7 +147,7 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
   }
 
   /**
-   * Slice C.4 (2026-05-20) — Q19 section-header CTAs.
+   * section-header CTAs.
    *
    * Mirrors `renderItemActions` for section-scope ops (ops with
    * `surfaces.ui.placement: 'section-header'`).  The web shell pattern
@@ -157,7 +157,7 @@ export function createNavModelAdapter(manifest, { callSkill } = {}) {
    * a symmetric API to the per-row case.
    *
    * Decoration:
-   *   - `args` = `applyPrefilledParams({}, action)` — V0.4 section
+   *   `args` = `applyPrefilledParams({}, action)` — section
    *     actions take no per-item id (clearInbox is bulk).  Manifest-
    *     declared prefills still apply (none declared in V0).
    *   - `label` mirrors the NavModel's label (from `surfaces.ui.label`

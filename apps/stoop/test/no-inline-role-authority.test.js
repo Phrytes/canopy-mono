@@ -1,5 +1,5 @@
 /**
- * Guard (P0 roles-authority reconciliation): stoop skills must NOT gate
+ * Guard (roles-authority reconciliation): stoop skills must NOT gate
  * authority with inline role-string comparisons like
  * `role === 'admin' || role === 'coordinator'`. Those hand-reimplement the
  * canonical rank table and drift (and can't see custom roles). The single

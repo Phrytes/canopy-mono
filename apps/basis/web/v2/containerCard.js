@@ -1,5 +1,5 @@
 /**
- * renderContainerCard — render a `projectContainer` tree as a nested DOM card (cluster K · K2, container UI).
+ * renderContainerCard — render a `projectContainer` tree as a nested DOM card (container UI).
  *
  * The composable model made visible: a container (a list / offer) shows its CONTAINED children nested, each
  * via its type's render shape (label + row-action buttons), arbitrarily deep (offer→list→tasks→sub-tasks). A

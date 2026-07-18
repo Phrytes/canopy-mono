@@ -10,7 +10,7 @@
  *   /skills       → setMySkills      (profile setup)
  *   /leave-group  → leaveGroup       (destructive — confirm-gated in mock)
  *   /tree         → getItemTree      (read-only graph walk)
- *   /sign-out     → signOutOfPod     (Q27 confirm-gated)
+ *   sign-out → signOutOfPod (confirm-gated)
  *   /report       → reportPost       (moderation)
  *   /bulletin     → listOpen         (cross-app substrate — read prikbord)
  *
@@ -34,7 +34,7 @@
  * tracked as a follow-up; not in scope here.
  *
  * Pipeline asserted: parseInput → resolveDispatch → runDispatch
- * (or → needsConfirm gate, for Q27-marked ops).
+ * (or → needsConfirm gate, for -marked ops).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
@@ -136,7 +136,7 @@ async function bootWorkspaceWithRealStoop({ chatVault, secureAgentOpts } = {}) {
   }
 
   /** Same, but DOES dispatch through a confirm-gate (synthesises the
-   *  user-said-yes step) — needed for /sign-out and any Q27-gated op. */
+   *  user-said-yes step) — needed for /sign-out and any -gated op. */
   async function userInputForceDispatch(text, threadId = 'main') {
     const parsed = parseInput(text, catalog, { threadId });
     if (parsed.kind !== 'slash') return { kind: 'not-a-slash', text };
@@ -394,7 +394,7 @@ describe('CC-ST.A5 — /tree wires getItemTree', () => {
 
 /* ════════════════════════════════════════════════════════════
  * 6. /sign-out — signOutOfPod
- *    Q27 confirm-gated via `surfaces.ui.confirm.severity: 'warn'`.
+ *    confirm-gated via `surfaces.ui.confirm.severity: 'warn'`.
  *    resolveDispatch returns kind:'needsConfirm' on first call;
  *    we ALSO exercise the post-confirm dispatch path.
  * ══════════════════════════════════════════════════════════ */

@@ -1,6 +1,6 @@
-// Cold boot smoke (#254 D-1 test 1).
+// Cold boot smoke (D-1 test 1).
 //
-// Replaces the first half of the manual #249 checklist:
+// Replaces the first half of the manual checklist:
 //   1. App cold-boots without redbox
 //   2. "Agents ready — 6 apps" appears
 //   3. Expanding the debug section shows all 6 NavModel rows

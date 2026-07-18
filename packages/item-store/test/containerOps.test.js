@@ -1,5 +1,5 @@
 /**
- * containerOps (cluster K · K2) — the composable-op engine: addChildTo + resolveContainerAdd
+ * containerOps — the composable-op engine: addChildTo + resolveContainerAdd
  * (the K0-deferred natural-verb "add X picks the child type by the active container").
  */
 import { describe, it, expect, beforeEach } from 'vitest';

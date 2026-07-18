@@ -2,13 +2,13 @@
  * `view` type — a saved view: a title + the item type it lists +
  * optional filter + optional audience.  A "view" is itself an item,
  * so views can be created, shared, and referenced like any other
- * piece of data (SP-5 V0).
+ * piece of data (V0).
  *
  * The `audience` field — when present — narrows who sees this view
  * (and, via host wiring, items created through it).  V0 accepts any
  * canonical `Audience` shape (string short-hand or structured); the
  * resolution / inheritance semantics live in `@onderling/circles` and
- * are wired by the host in SP-5b.
+ * are wired by the host in.
  *
  * Reserved field-name notes:
  *   - The discriminator field is `type: { const: 'view' }`, so the
@@ -17,7 +17,7 @@
  *     `addItems` substrate currently requires a non-empty `text` on
  *     every partial; consumers that write views via the store should
  *     set `text: title` for substrate compatibility.  Substrate fix
- *     deferred to SP-5b.
+ *     deferred to.
  */
 
 import { BASE_PROPERTIES, BASE_REQUIRED, NAMESPACE } from '../baseSchema.js';

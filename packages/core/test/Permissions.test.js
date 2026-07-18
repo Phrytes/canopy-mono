@@ -221,7 +221,7 @@ describe('CapabilityToken', () => {
   });
 });
 
-// ── offeringMatches / skillAttenuates (V1.5 follow-up A) ────────────────────────
+// ── offeringMatches / skillAttenuates (follow-up A) ────────────────────────
 
 import { offeringMatches, skillAttenuates } from '../src/permissions/CapabilityToken.js';
 

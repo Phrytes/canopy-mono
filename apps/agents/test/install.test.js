@@ -1,18 +1,18 @@
 /**
- * agents — P3 INSTALL: the install act + capability-security proof.
+ * agents — INSTALL: the install act + capability-security proof.
  *
- * Two layers, mirroring the P2 test style:
+ * Two layers, mirroring the test style:
  *   1. INSTALL SEMANTICS (direct core) — a card installs into the registry
  *      default-deny; only requested-AND-declared skills are granted;
  *      undeclared requests are rejected (no token); the power-user
- *      override installs a non-catalog card; uninstall reuses P2's
+ *      override installs a non-catalog card; uninstall reuses 's
  *      purge/revoke.
  *   2. CAPABILITY-SECURITY = the anti-virus (REAL primitives) — an
  *      installed agent granted ONLY skill A holds a real signed
  *      CapabilityToken for A. Presented to a real `PolicyEngine.checkInbound`
  *      it is ALLOWED for A but DENIED for an ungranted skill B (the token
  *      can't be stretched), and B is unreachable with no token at all.
- *      Revoke (reuse P2 revokeAgent) makes even A go inert.
+ *      Revoke (reuse revokeAgent) makes even A go inert.
  *
  * Relative @onderling imports (self-contained, no reliance on app-local
  * node_modules), matching localWireFitness.test.js.
@@ -329,7 +329,7 @@ describe('agents — P3 capability-security: an installed agent can ONLY do what
       peerPubKey: world.callerPubKey, skillId: GRANTED_SKILL, token,
     })).allowed).toBe(true);
 
-    // Revoke the whole agent (P2) — sweeps its grant token.
+    // Revoke the whole agent — sweeps its grant token.
     const rev = await revokeAgent({ registry, tokens: world.tokens }, { agentId: 'catalog:summariser' });
     expect(rev.tokensRevoked).toBe(1);
 

@@ -1,7 +1,7 @@
 /**
  * basis — cross-app follow-up registry (v0.4).
  *
- * Per-op follow-ups (Q31 `surfaces.chat.followUps`) live IN each
+ * Per-op follow-ups (`surfaces.chat.followUps`) live IN each
  * app's manifest.  Cross-app chains (`household.addMember` →
  * `folio.share`) live HERE — no single app owns them; basis's
  * runtime decides.
@@ -18,10 +18,10 @@
  * Resolution: after a successful dispatch (`reply.error` absent),
  * `collectFollowUps(opId, appOrigin, reply, catalog)` returns the
  * combined list of:
- *   - Per-op Q31 hints from the catalog (same-app)
+ *   Per-op hints from the catalog (same-app)
  *   - Cross-app chains from this registry whose `trigger` matches
  *
- * Phase v0.4 sub-slice 4.5 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.4 per `/Project Files/basis/coding-plan.md`.
  */
 
 /**
@@ -93,7 +93,7 @@ export function createFollowUpResolver({ chains } = {}) {
   return function collectFollowUps(opId, appOrigin, reply, catalog) {
     const out = [];
 
-    // (1) Per-op Q31 hints (from the catalog's followUpsFor lookup).
+    // (1) Per-op hints (from the catalog's followUpsFor lookup).
     const perOp = catalog?.followUpsFor?.(opId);
     if (Array.isArray(perOp)) {
       for (const hint of perOp) {

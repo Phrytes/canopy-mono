@@ -1,5 +1,5 @@
 /**
- * Cluster K — on-substrate ACP/seal enforcement of the shared-ref cross-circle READ.
+ * Cross-circle share — on-substrate ACP/seal enforcement of the shared-ref cross-circle READ.
  *
  * `resolveSharedRef` gains an injected, DENY-BY-DEFAULT enforcement policy. These tests exercise the seam
  * against the memory substrate with FAKE `sharing` + `open` surfaces (mimicking `client.sharing.list` and

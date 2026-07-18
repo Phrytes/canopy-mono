@@ -51,12 +51,12 @@ export async function buildPodClient(cfg, deps = {}) {
       );
     }
   }
-  // P3 Phase D (2026-05-16): the cache-mode pseudo-pod path (offline
+  // Phase D (2026-05-16): the cache-mode pseudo-pod path (offline
   // write-through queue + read cache) is now the DEFAULT for the
   // desktop CLI/daemon. Parity proven in Phases B–C (folio 469/469 on
   // both paths).
   //
-  // ⚠️ DELIBERATE DECISION — DO NOT "CLEAN UP" (P3 OQ-5, decided
+  // ⚠️ DELIBERATE DECISION — DO NOT "CLEAN UP" (OQ-5, decided
   // 2026-05-16, risk-averse). The direct PodClient path below is still
   // reachable as an opt-out escape hatch (`pseudoPodEnabled` → false).
   // It looks like dead/legacy code now that cache-mode is the default —
@@ -69,7 +69,7 @@ export async function buildPodClient(cfg, deps = {}) {
   // fresh explicit decision — never as incidental tidy-up. The
   // `test:parity` script still exercises this path so it can't rot.
   // Full rationale: Project Files/Substrates/
-  // P3-sync-engine-pseudo-pod-absorption-2026-05-15.md (OQ-5).
+  // sync-engine-pseudo-pod-absorption-2026-05-15.md (OQ-5).
   return maybeWrapWithPseudoPod(real, cfg);
 }
 
@@ -79,7 +79,7 @@ export async function buildPodClient(cfg, deps = {}) {
  * `{ "cacheMode": false }`. Any other state ⇒ enabled.
  *
  * The opt-out is the retained rollback escape hatch — see the
- * DO-NOT-CLEAN-UP note in `buildPodClient` above (P3 OQ-5).
+ * DO-NOT-CLEAN-UP note in `buildPodClient` above (OQ-5).
  */
 function pseudoPodEnabled(cfg) {
   if (process.env.FOLIO_PSEUDO_POD === '0') return false;

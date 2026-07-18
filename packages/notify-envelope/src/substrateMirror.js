@@ -68,7 +68,7 @@ export async function wireItemMirror({
   const prefix  = typeof uriPrefix === 'function' ? uriPrefix(scopeId) : uriPrefix;
   if (typeof prefix !== 'string' || !prefix) throw new Error('wireItemMirror: uriPrefix required');
 
-  // ── Slice 2 (task-claim-partition) — claim-conflict surface ───────────────
+  // ── (task-claim-partition) — claim-conflict surface ───────────────
   // A partition→merge that double-claims the same task must NOT silently
   // last-writer-wins the `assignee`. Concurrent claim-vs-claim collisions are
   // captured here as first-class, human-resolvable records instead of being
@@ -120,7 +120,7 @@ export async function wireItemMirror({
     const existing = open.find(matches) ?? closed.find(matches);
 
     if (existing) {
-      // Slice 2 — SURGICAL claim-vs-claim guard. When an inbound sync would
+      // SURGICAL claim-vs-claim guard. When an inbound sync would
       // overwrite a locally-claimed task's `assignee` with a DIFFERENT,
       // concurrently-minted claimant, DO NOT overwrite: record a
       // claim-conflict (keeping both sides) and return. This is the ONLY
@@ -200,7 +200,7 @@ export async function wireItemMirror({
   }
   const unsubscribeStale = pseudoPod.on?.('stale-peer', _onStalePeer) ?? null;
 
-  // Slice 2 — consume `concurrent-write` (fires when a peer write lands at
+  // consume `concurrent-write` (fires when a peer write lands at
   // the SAME logical `_v` as ours with different bytes — the shared-URI
   // topology signal of a genuine concurrent edit). For a claim-vs-claim
   // collision this records the same conflict the receive-path guard does
@@ -230,7 +230,7 @@ export async function wireItemMirror({
   function listPeers() { return [...recipients]; }
   function getPeers()  { return [...recipients]; }
 
-  // ── Slice 2/3 — claim-conflict read + clear surface ───────────────────────
+  // ── — claim-conflict read + clear surface ───────────────────────
   /** Every open claim-conflict record (newest snapshot per task). */
   function listClaimConflicts() { return [...claimConflicts.values()]; }
   /** One record by local task id, or `null`. */
@@ -280,7 +280,7 @@ export async function wireItemMirror({
 }
 
 /**
- * Slice 2 (task-claim-partition) — is this inbound sync a CONCURRENT
+ * (task-claim-partition) — is this inbound sync a CONCURRENT
  * claim-vs-claim collision (as opposed to a normal claim, a causal reassign,
  * a completion, a body update, or a revoke)?
  *

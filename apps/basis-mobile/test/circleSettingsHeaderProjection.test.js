@@ -1,5 +1,5 @@
 /**
- * D / SP-3b consumer-switch (MOBILE parity) — the CircleSettingsScreen header
+ * D / consumer-switch (MOBILE parity) — the CircleSettingsScreen header
  * label is sourced from the manifest PAGE projection, not a hardcoded string.
  *
  * The screen renders its header as

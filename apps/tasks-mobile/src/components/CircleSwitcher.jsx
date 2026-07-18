@@ -4,7 +4,7 @@
  *
  * Phase 41.6.5 (2026-05-09).
  *
- * V1.0 ships a tap-to-cycle UX (simple) — Phase 41.7's CirclesDashboard
+ * ships a tap-to-cycle UX (simple) — Phase 41.7's CirclesDashboard
  * is the rich picker. This component is the lightweight indicator
  * we mount on Workspace + MyWork + Review headers so the user always
  * knows which circle they're acting in.

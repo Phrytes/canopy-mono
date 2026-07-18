@@ -63,7 +63,7 @@ const REQUIRED_KEYS = [
   'chat_threads.empty', 'chat_threads.no_active_group',
   'chat_thread.placeholder', 'chat_thread.empty',
   'chat_thread.request_reveal', 'chat_thread.revealing', 'chat_thread.reveal_unavailable',
-  // task #228 — bilateral reveal-toggle (replaces unilateral requestReveal CTA
+  // task — bilateral reveal-toggle (replaces unilateral requestReveal CTA
   // inside ChatThreadScreen; request_reveal/revealing remain for the legacy
   // hand-off from ProfileOtherScreen).
   'chat_thread.reveal_toggle_off', 'chat_thread.reveal_toggle_on',

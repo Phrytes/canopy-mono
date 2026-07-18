@@ -1,12 +1,12 @@
 /**
- * basis v2 — circle settings (web DOM renderer, board 4A).
+ * basis v2 — circle settings (web DOM renderer).
  *
  * Controlled render of the five policy axes over a `policy`
  * (`@onderling/circlePolicy`). Feature toggles + radio groups fire
  * `onChange(patch)`; the host merges + re-renders + persists via the
  * policy store. Pure render → unit-testable under happy-dom. Each enum
  * option carries a ⓘ button that toggles a "consequences" panel (board
- * 4A ⓘ, slice 1.2b) sourced from `circle.settings.consequence.<opt>`;
+ * 4A ⓘ,) sourced from `circle.settings.consequence.<opt>`;
  * the ⓘ only appears when a consequence string is actually translated.
  *
  * γ.4 — conflict resolution for the circle policy.  When `incomingPolicy`
@@ -20,14 +20,14 @@
  */
 import { CIRCLE_FEATURES, CIRCLE_POLICY_ENUMS } from '../../src/v2/circlePolicy.js';
 import { DEFAULT_CIRCLE_ORIGINS } from '../../src/v2/circleSources.js';   // S6.C — composable apps
-// B · Slice 2 — the manifest-driven settings form + the per-skill freedom matrix (rulings Q1/Q3).
+// the manifest-driven settings form + the per-skill freedom matrix (rulings).
 import { buildSettingsForm, buildCapabilityMatrix, FREEDOM_LEVELS, OPT_OUT_CONSEQUENCES } from '@onderling/app-manifest';
 import { detectPolicyConflicts, applyPolicyResolution } from '../../src/v2/policyConflict.js';
 import { renderRecipeConflictResolver } from './recipeConflictResolver.js';
 import { renderPairedDevices } from './pairedDevices.js';
 // B · consent-card — REVIEWED recipe apply: load → show the consent card → Agree/Decline (no silent apply).
 import { renderRecipeConsentCard } from './recipeConsentCard.js';
-// D / SP-3b consumer-switch — the settings header label is sourced from the
+// D / consumer-switch — the settings header label is sourced from the
 // manifest PAGE projection (`renderWeb(manifest).pages[].labelKey`) via t(),
 // not a hardcoded tr('circle.settings.title') call.  Pure selector in shared src.
 import { pageLabel } from '../../src/v2/pageProjection.js';
@@ -77,17 +77,17 @@ export function renderCircleSettings(container, {
   // When wired, applying a recipe first shows the consent card; onApplyRecipe(source, { declinedKeys, recipe, model })
   // is called only on Agree, with the user's declined optional caps.
   onReviewRecipe,
-  // B · Slice 2 — the merged manifest sources; when present, render the manifest-driven settings form
-  // + the per-skill freedom matrix (rulings Q1/Q3). Absent ⇒ those sections don't render (older callers).
+  // the merged manifest sources; when present, render the manifest-driven settings form
+  // the per-skill freedom matrix (rulings). Absent ⇒ those sections don't render (older callers).
   sources = [],
   // OBJ-2 — paired devices (no-pod sync). Host wires these when household sync is available.
   householdSelfAddr = null,
   householdPeers = [],
   onAddHouseholdPeer,
   onRemoveHouseholdPeer,
-  // D / SP-3b consumer-switch — the projected PAGE surface for this settings
+  // D / consumer-switch — the projected PAGE surface for this settings
   // op (`renderWeb(manifest).pages[]` entry, selected via pageForOp).  When
-  // present, the header label is derived from `page.labelKey` via t() (Q22),
+  // present, the header label is derived from `page.labelKey` via t,
   // making this a genuine runtime consumer of the manifest projection.  Absent
   // (older callers / tests) ⇒ the header falls back to tr('circle.settings.title')
   // bit-for-bit, so nothing regresses.
@@ -107,9 +107,9 @@ export function renderCircleSettings(container, {
 
   const head = document.createElement('h2');
   head.className = 'circle-settings__title';
-  // D / SP-3b consumer-switch — label FROM the manifest projection: the
+  // D / consumer-switch — label FROM the manifest projection: the
   // settings op's `surfaces.page.labelKey`, projected by renderWeb, resolved
-  // through t() (Q22).  Falls back to the raw page.title, then to the
+  // through t. Falls back to the raw page.title, then to the
   // pre-existing tr('circle.settings.title') when no projected page is passed.
   head.textContent = pageLabel(settingsPage, tr, tr('circle.settings.title'));
   container.appendChild(head);
@@ -266,7 +266,7 @@ export function renderCircleSettings(container, {
   consSec.appendChild(consRow);
   container.appendChild(consSec);
 
-  // B · Slice 2 (Q1) — manifest-driven per-app SETTINGS form. Values live in policy.settings keyed
+  // manifest-driven per-app SETTINGS form. Values live in policy.settings keyed
   // "<app>.<key>"; emit writes them back. Only apps that declare circle-scope settings render a block.
   if (Array.isArray(sources) && sources.length) {
     const forms = sources
@@ -274,7 +274,7 @@ export function renderCircleSettings(container, {
       .filter((f) => f.app && f.fields.length);
     renderSettingsSection(container, { forms, tr, emit });
 
-    // B · Slice 2 (Q3) — the per-skill FREEDOM matrix over the (verb×noun) capabilities of the enabled
+    // the per-skill FREEDOM matrix over the (verb×noun) capabilities of the enabled
     // apps, merged with the admin freedom template (policy.capabilities). This is what the gate enforces.
     const enabledApps = Array.isArray(policy?.apps) && policy.apps.length ? policy.apps : null;
     const matrix = buildCapabilityMatrix(sources, { enabledApps, template: policy?.capabilities || {} });
@@ -436,7 +436,7 @@ function settingValuesForApp(policy, app) {
   return out;
 }
 
-/** B · Slice 2 (Q1) — render the manifest-driven per-app settings form; emit `{settings:{"<app>.<key>":v}}`. */
+/** render the manifest-driven per-app settings form; emit `{settings:{"<app>.<key>":v}}`. */
 function renderSettingsSection(container, { forms, tr, emit }) {
   if (!forms.length) return;
   const sec = section(tr('circle.settings.appSettings'));
@@ -478,7 +478,7 @@ function renderSettingsSection(container, { forms, tr, emit }) {
 }
 
 /**
- * B · Slice 2 (Q3) — the per-skill FREEDOM matrix. Per capability: an `enabled` toggle, a
+ * the per-skill FREEDOM matrix. Per capability: an `enabled` toggle, a
  * required/optional freedom select (locked to optional on a privacy-floor row), and an opt-out
  * consequence select (greyed/hidden/limited). Each change emits the FULL row under its key so the
  * stored template is self-contained.

@@ -303,7 +303,7 @@ describe('B · Slice 2 — settings form + freedom matrix (sources-driven)', () 
 });
 
 /**
- * D / SP-3b consumer-switch — the settings header is now a genuine consumer of
+ * D / consumer-switch — the settings header is now a genuine consumer of
  * the manifest PAGE projection (renderWeb → NavModel.pages[]).  These prove the
  * rendered <h2> label comes FROM the projection's labelKey via t(), not from a
  * hardcoded string — closing invariant #4's "zero consumers of .pages" gap.

@@ -1,5 +1,5 @@
 /**
- * basis — parser tests.  v0.1 sub-slice 1.4.
+ * basis — parser tests. v0.1.
  *
  * Pure-function tests; no DOM, no agent, no manifest required to be
  * "real" — we hand-roll catalogs to isolate parser behaviour.

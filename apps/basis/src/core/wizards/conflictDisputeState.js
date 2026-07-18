@@ -1,6 +1,6 @@
 /**
  * conflictDispute — state-machine helpers lifted from
- * src/web/wizards/conflictDisputeWizard.js (#231.2a, 2026-05-24).
+ * src/web/wizards/conflictDisputeWizard.js (2026-05-24).
  *
  * Zero DOM, zero RN.  Wraps the V0 substrate gap (stoop hasn't
  * shipped raiseDispute / proposeResolution / acceptResolution yet
@@ -23,7 +23,7 @@ export const ESCALATION_PATHS = Object.freeze([
 export function initialState(args = {}) {
   return {
     step:           1,
-    // #200 — accept either `postId` (slash flag) or `id` (default
+    // accept either `postId` (slash flag) or `id` (default
     // callbackData arg when launched via a row button).
     aboutPostId:    args.postId ?? args.id ?? '',
     aboutPostText:  null,

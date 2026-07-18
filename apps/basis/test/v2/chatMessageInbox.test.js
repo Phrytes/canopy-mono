@@ -50,7 +50,7 @@ describe('createChatMessageInbox · ε.1 single normalization gate', () => {
     });
   });
 
-  /* ── media P1 fan-out — optional media field, forward-additive ── */
+  /* ── media fan-out — optional media field, forward-additive ── */
 
   it('lands an envelope media-card on payload.media (the receiver chip path)', async () => {
     const eventLog = fakeEventLog();

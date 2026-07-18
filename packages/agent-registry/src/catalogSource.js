@@ -1,7 +1,7 @@
 /**
  * catalogSource — the endorsement-backed curated catalog (commons-governance).
  *
- * Fills the `{ list, get }` seam that P3's `createStubCatalog` stubbed. It is a
+ * Fills the `{ list, get }` seam that 's `createStubCatalog` stubbed. It is a
  * CQRS read-view: it never stores a canonical list — it DERIVES the catalog by
  * WALKING the web-of-trust of signed endorsements from a set of curator roots,
  * resolving each endorsed agent's Agent Card, and keeping only the ones whose
@@ -35,7 +35,7 @@
  * survives offline. Same `{ list, get }` shape; entries are the ranked cards.
  *
  * The returned entries are plain Agent Cards (the SAME shape createStubCatalog
- * returned) with additive `x-canopy.endorsement` ranking metadata — so P3's
+ * returned) with additive `x-canopy.endorsement` ranking metadata — so 's
  * installCores (`cardId`/`declaredSkills`/`cardToEntry`) consumes them
  * unchanged and the install still runs through the capability-security grant
  * path. cardHash is re-verified inside the walk on every `get`, so a card
@@ -174,7 +174,7 @@ export function createCatalogSource({
 
 /**
  * Attach additive endorsement/ranking metadata under `x-canopy.endorsement`
- * without disturbing any A2A/x-canopy field P3 reads. `count` = distinct
+ * without disturbing any A2A/x-canopy field reads. `count` = distinct
  * reachable endorsers (G1-compatible); `depth` = shortest trust-path proximity.
  */
 function _rank(card, { depth, endorsers, tags }) {

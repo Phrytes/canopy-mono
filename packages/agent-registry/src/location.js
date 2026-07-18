@@ -3,7 +3,7 @@
 // folds in the bespoke stoop `profile.location {cell,label,source}` field (a per-circle
 // MemberMap geo attribute) as ONE person-level property on the profile graph, governed by
 // the SAME disclosure policy as every other property — mirroring the availability fold-in
-// (availability.js, decision Q5; audit §4 flagged location as the STRONG next candidate).
+// (availability.js, decision; audit 4 flagged location as the STRONG next candidate).
 //
 // Ladder (design's canonical example), COARSEST→finest (propertyVocabulary convention):
 //   in-area(y/n) → region → municipality → district → coords

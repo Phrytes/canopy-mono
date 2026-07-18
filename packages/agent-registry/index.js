@@ -29,12 +29,12 @@ export { PROPERTY_TYPES, isPropertyType, descriptor, createVocabulary } from './
 // personal drivers (#3) — the `driver` property type: an open { kind, text, tags[] } value, governed
 // by the same disclosure policy as any property. The matcher (#4) builds on this shape.
 export { DRIVER_KINDS, isDriverKind, normalizeDriverKind, normalizeTag, normalizeTags, createDriver, isDriverValue, driverDescriptor, driversFromProperties } from './src/drivers.js';
-// offering fold-in (NOTE-skills-properties-audit Q1/Q4; rename NOTE-offering-rename-inventory.md) —
+// offering fold-in (NOTE-skills-properties-audit; rename NOTE-offering-rename-inventory.md)
 // an offering is the human-profile "I can do X" DATA: a driver-like open item (kind `offering`,
 // legacy `skill` read-accepted); the fixed taxonomy is DEMOTED to its coarse disclosure rung
 // (text+tags → categoryId → ∅). The INVOCABLE A2A sense keeps the word "skill".
 export { OFFERINGS_TAXONOMY, OFFERING_LADDER, deriveOfferingCategory, offeringDescriptor } from './src/offeringsTaxonomy.js';
-// availability unification (NOTE-skills-properties-audit §4/§5, Q5) — ONE person-level
+// availability unification (NOTE-skills-properties-audit 4 5) — ONE person-level
 // coarse-enum property (open/limited/away) folding the old per-skill `availability`
 // sub-field AND the standalone `holidayMode` boolean; 'away' IS holiday mode.
 export { AVAILABILITY_STATES, AVAILABILITY_AWAY, AVAILABILITY_LADDER, isAvailabilityState, availabilityState, isAway, availabilityDescriptor } from './src/availability.js';
@@ -59,7 +59,7 @@ export { requestForm } from './src/requestForm.js';
 export { egressReceipt, gateEgress } from './src/requestGate.js';
 
 // commons-governance G1 — signed endorsements of Agent Cards + the
-// endorsement-backed curated catalog read-view (fills P3's catalogSource seam).
+// endorsement-backed curated catalog read-view (fills 's catalogSource seam).
 export {
   issueEndorsement,
   verifyEndorsement,

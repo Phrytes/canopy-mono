@@ -16,7 +16,7 @@
  */
 
 import { computeEmbedButtons } from '../core/embedButtons.js';
-// B · Slice 4 (4c) — apply the per-capability consequence (grey/hide/limit) to inline affordances.
+// B · (4c) — apply the per-capability consequence (grey/hide/limit) to inline affordances.
 import { affordanceTreatment, canonicalAtom } from '@onderling/app-manifest';
 
 // Default item `type` per appOrigin so `computeEmbedButtons`' appliesTo.type
@@ -109,7 +109,7 @@ export function embedButtonsForReply({ reply, appOrigin, manifestsByOrigin, maxB
       const key = `${b.opId}:${b.itemId}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      // B · Slice 4 (4c) — grey/hide the affordance per the member's effective capability + consequence.
+      // B · (4c) — grey/hide the affordance per the member's effective capability + consequence.
       const verb = Array.isArray(ops) ? ops.find((o) => o?.id === b.opId)?.verb : undefined;
       const treatment = affordanceTreatment(capabilityMatrix, { app: appOrigin, atom: verb ? canonicalAtom(verb) : null, noun: snap.type });
       if (treatment === 'hide') continue;

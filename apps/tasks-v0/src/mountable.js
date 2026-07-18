@@ -9,7 +9,7 @@
  *     (`(args, skillCtx) → {replies, stateUpdates}`) — what
  *     `host.mount({skillRegistry, toSkillCtx, …})` expects.
  *
- * SP-4b/SP-11 (2026-05-20): tasks-v0's existing wireSkills + multi-circle
+ * tasks-v0's existing wireSkills + multi-circle
  * bundleResolver machinery is the production wiring; mounting through
  * the host doesn't replace it — it bridges to it.  The adapter:
  *
@@ -50,7 +50,7 @@ import { tasksManifest } from '../manifest.js';
  *   The live circlesMap.  Exposed so consumers can introspect or write
  *   per-session circle-binding logic.
  * @param {{operations: Array<{id: string}>}} [args.manifest]
- *   Defaults to `tasksManifest` (the SP-3 V0 manifest with 12 ops).
+ *   Defaults to `tasksManifest` (the V0 manifest with 12 ops).
  *   Override for tests that mount a subset.
  *
  * @returns {{

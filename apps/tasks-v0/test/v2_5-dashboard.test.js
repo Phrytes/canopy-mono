@@ -1,5 +1,5 @@
 /**
- * V2.5 — cross-circle dashboard.
+ * cross-circle dashboard.
  */
 
 import { describe, it, expect } from 'vitest';

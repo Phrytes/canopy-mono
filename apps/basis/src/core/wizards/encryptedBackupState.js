@@ -1,6 +1,6 @@
 /**
  * encryptedBackup — state-machine helpers lifted from
- * src/web/wizards/encryptedBackupWizard.js (#231.1, 2026-05-24).
+ * src/web/wizards/encryptedBackupWizard.js (2026-05-24).
  *
  * Zero DOM, zero RN — pure value transforms + an async submit
  * wrapping callSkill.  The download step's blob-to-file dance is

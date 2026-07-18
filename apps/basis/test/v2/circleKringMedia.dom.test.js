@@ -1,5 +1,5 @@
 /**
- * basis v2 — sealed media, the LIVE kring wiring (media P1 user-reachable slice).
+ * basis v2 — sealed media, the LIVE kring wiring (media user-reachable slice).
  *
  * mediaEmbed.test.js proves the handler round-trip with a test-harness composition;
  * THIS suite proves the composition the v2 web shell actually ships:

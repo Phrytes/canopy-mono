@@ -1,5 +1,5 @@
 /**
- * Bundle H (#268) — peer-router dispatch coverage.
+ * peer-router dispatch coverage.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { makePeerRouter } from '../../src/core/handlers/peerRouter.js';

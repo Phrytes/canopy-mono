@@ -1,7 +1,7 @@
 /**
  * mountBlobGate — mount the blob-gateway HTTP edge on the relay's HTTP server.
  *
- * PLAN-media-infra-deployment P2 (DECIDED: edge-on-relay, R2 as provider).
+ * PLAN-media-infra-deployment (DECIDED: edge-on-relay, R2 as provider).
  * The relay already terminates HTTP(S) for its WebSocket endpoint + optional
  * static dir; this mount ADDS two JSON endpoints under `route` (default
  * '/blob-gate') and leaves every other path byte-identical — non-mount

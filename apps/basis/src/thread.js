@@ -17,7 +17,7 @@
  *     Record / mini-page shapes (v0.3+) stay 'live' until explicit
  *     close.
  *
- * Phase v0.1 sub-slice 1.9 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.1 per `/Project Files/basis/coding-plan.md`.
  */
 
 // E3 — shared open-panel matching predicate (also used by the mobile
@@ -60,7 +60,7 @@ export class Thread {
    *   Optional whitelist of appOrigins this thread may dispatch against.
    *   Undefined → all apps allowed.
    * @param {{threadId: string, label?: string}} [opts.origin]
-   *   #181 (2026-05-24) — when this thread was spawned from another
+   *   when this thread was spawned from another
    *   thread (e.g. via a row button or wizard dispatch), `origin`
    *   records where to return.  Renderer surfaces a "← Back to
    *   <label>" affordance.
@@ -88,7 +88,7 @@ export class Thread {
     this.messages     = [];
     /** @type {Map<string, ListingSnapshot>} */
     this._listings    = new Map();
-    // v0.7.P1 bug-fix (2026-05-23): message-append used to be SILENT
+    // v0.7. bug-fix (2026-05-23): message-append used to be SILENT
     // (no event emitted), so the persistence layer missed every new
     // message — refresh lost the conversation.  Now Thread accepts
     // an `onChange()` callback at construction; ThreadStore wires it
@@ -145,7 +145,7 @@ export class Thread {
       messageId:      rendered?.messageId,
       rendered,
       lifecycleState: rendered?.lifecycleState ?? 'live',
-      // #178 (2026-05-24) — sourceOp is the {opId, appOrigin, args}
+      // sourceOp is the {opId, appOrigin, args}
       // that produced this message.  Used by main.js to refresh a
       // list message in place after a row-action dispatch (state-
       // morphing buttons).
@@ -171,7 +171,7 @@ export class Thread {
   }
 
   /**
-   * #178 — replace a message's rendered content in place.  Used by
+   * replace a message's rendered content in place. Used by
    * the state-morphing refresh path: after a row-action dispatch,
    * the originating list message gets re-fetched + its `rendered`
    * swapped without inserting a new message.  Idempotent.

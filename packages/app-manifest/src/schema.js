@@ -10,8 +10,8 @@
  * added without breaking existing ones (PLAN guardrail #2).
  *
  * Deferred-but-accepted fields:
- *   - `requires` (top-level)        — SP-9 (granular capability vocab)
- *   - `view.defaultAudience`        — SP-5 (audience/circle substrate)
+ *   `requires` (top-level) — (granular capability vocab)
+ *   `view.defaultAudience` — (audience/circle substrate)
  * `validateManifest` does NOT interpret these; renderers may consult
  * them in later SPs.
  */
@@ -40,8 +40,8 @@
  *                                                 hand-written and isn't
  *                                                 byte-reproducible from
  *                                                 per-op templates (PLAN §1.6).
- * @property {object}                 [requires]   SP-9, accepted-not-interpreted
- * @property {Setting[]}              [settings]   B · Slice 2 (2026-07-01, ruling Q1): the app's
+ * @property {object} [requires], accepted-not-interpreted
+ * @property {Setting[]} [settings] B · (2026-07-01, ruling): the app's
  *                                                 declarative SETTINGS — the same shape as op params,
  *                                                 so one renderer draws inline forms AND the creation
  *                                                 wizard.  A third-party app declares settings like it
@@ -66,10 +66,10 @@
  */
 
 /**
- * A declarative app setting (B · Slice 2, ruling Q1).  Mirrors {@link Param} so the same renderer
+ * A declarative app setting (B, ruling). Mirrors {@link Param} so the same renderer
  * handles inline forms and the admin creation wizard.  `scope` splits the two-level resolution:
  * `'circle'` settings are the ADMIN TEMPLATE (per-circle); `'user'` settings are member PREFERENCES.
- * The effective value is `admin-template ∩ member-prefs` (Slice 4).
+ * The effective value is `admin-template ∩ member-prefs`.
  *
  * @typedef {object} Setting
  * @property {string}   key           unique within `manifest.settings`.
@@ -96,7 +96,7 @@
  * @property {string}                 [role]       RolePolicy key (passed through;
  *                                                 not interpreted here).
  * @property {Surfaces}               [surfaces]
- * @property {CompositeStep[]}        [steps]      P1 (feedback-extension DESIGN §1.3):
+ * @property {CompositeStep[]} [steps] (feedback-extension DESIGN §1.3):
  *                                                 when present, this op is a COMPOSITE —
  *                                                 a pure-data sequence of EXISTING opIds
  *                                                 run by `runCompositeOp`. An op with
@@ -105,14 +105,14 @@
  *                                                 steps. Bottoms out in already-present
  *                                                 atoms (the verifier enforces this →
  *                                                 sandbox-by-construction).
- * @property {'stop'|'continue'}      [onError]    P1: composite failure policy. 'stop'
+ * @property {'stop'|'continue'} [onError]: composite failure policy. 'stop'
  *                                                 (default) halts on the first failing step;
  *                                                 'continue' runs every step best-effort.
  *                                                 Best-effort only — NO implicit rollback (v0).
  */
 
 /**
- * One step of a composite Operation (P1).  Each step names an EXISTING op
+ * One step of a composite Operation. Each step names an EXISTING op
  * (`appOrigin` + `opId`) and the args to invoke it with.  `args` are
  * literal; `argRef` threads a prior step's RESULT into this step's args.
  *
@@ -125,7 +125,7 @@
  */
 
 /**
- * Threads a value from an earlier step's result into a later step's args (P1).
+ * Threads a value from an earlier step's result into a later step's args.
  *
  * @typedef {object} ArgRef
  * @property {number}                 from         index (0-based) of a PRIOR step whose
@@ -182,7 +182,7 @@
 /** @typedef {{ hint?: string, examples?: string[] }} ChatSurface */
 
 /**
- * The ATTACHMENT surface (P2) — the predicate `renderAttachments` filters on.
+ * The ATTACHMENT surface — the predicate `renderAttachments` filters on.
  * Mirrors {@link SlashSurface}: declaring it on an op makes the op appear in
  * the attach ("+") menu, exactly as `surfaces.slash.command` makes it appear
  * in the slash menu. One declaration → chat + slash + attach-menu, no
@@ -254,7 +254,7 @@
  * @property {string}                 title
  * @property {string}                 type         must reference manifest.itemTypes.
  * @property {object}                 [filter]     e.g. { open: true }
- * @property {string}                 [defaultAudience]  SP-5,
+ * @property {string} [defaultAudience],
  *                                                 accepted-not-interpreted.
  * @property {string}                 [labelField] D-mig-1a — which item field
  *                                                 supplies a list row's label

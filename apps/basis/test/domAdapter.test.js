@@ -1,5 +1,5 @@
 /**
- * basis — DOM adapter tests.  v0.1 sub-slice 1.10.
+ * basis — DOM adapter tests. v0.1.
  *
  * @vitest-environment happy-dom
  */

@@ -89,10 +89,10 @@ Pure function; no I/O.
 audienceFromItem(item)
 ```
 
-SP-5b V0a (2026-05-21) — `audienceFromItem(item)` bridge helper.
+V0a (2026-05-21)`audienceFromItem(item)` bridge helper.
 
 Resolves an item's effective audience by checking, in order:
-  1. `item.audience` (the new richer field — added SP-5b V0a).
+  1. `item.audience` (the new richer field — added V0a).
   2. `item.visibility` (the legacy short-hand — kept forever per
      forward-additive discipline).
   3. Substrate default `'household'`.
@@ -107,7 +107,7 @@ member set.  Resolution (string short-hands → webids, circle-ref
 walks, union flattening) lives in `@onderling/circles`'s
 `resolveAudience(audience, ctx)`.
 
-Forward-additive: a future SP-5b V0b may add normalisation here
+Forward-additive: a future V0b may add normalisation here
 (e.g. canonicalising `'role:admin'` to a structured form), but
 the V0a contract is "return the value as-stored".  Don't pre-
 normalise — leave that to `@onderling/circles`.
@@ -126,7 +126,7 @@ normalise — leave that to `@onderling/circles`.
 audienceMatches(itemAudience, filterAudience)
 ```
 
-SP-5b — does an item's effective audience satisfy a `ListFilter.audience`
+does an item's effective audience satisfy a`ListFilter.audience`
 query?
 
 `itemAudience` is the item's effective audience (as produced by
@@ -140,7 +140,7 @@ cover the `filterAudience` (the target)?":
 
  1. **Exact match.**  `itemAudience` structurally deep-equals
     `filterAudience` (key-order-independent).  This is the original
-    SP-5b V0b behaviour and covers every plain short-hand
+    V0b behaviour and covers every plain short-hand
     (`'circle:A'`, `'household'`, `'private'`, …), `set`, `circle-ref`,
     `union`, and `public` value against an identical filter.
 
@@ -185,7 +185,7 @@ still succeeds here (rule 1 is unchanged); membership only ever
 audienceMatchesAny(itemAudience, filterAudiences)
 ```
 
-SP-8 — cross-circle query predicate.  Does an item's effective
+cross-circle query predicate. Does an item's effective
 audience satisfy ANY audience in a SET (`ListFilter.audiences`)?
 
 A cross-circle query spans MULTIPLE audiences/circles at once — "show
@@ -319,7 +319,7 @@ async addChildTo(store, containerId, childItem)
 ```
 
 Create a typed child item inside `containerId` and contain it. The child lives in the SAME circle store
-(inherits the circle's scope/seal — K1: containment never crosses stores by copy). Returns the new child.
+(inherits the circle's scope seal —: containment never crosses stores by copy). Returns the new child.
 
 **Parameters**
 
@@ -380,7 +380,7 @@ extends what a container accepts (the dissolve-friendly, composable extensibilit
 resolveAddInContainer({ container, acceptsFor, body = '' } = {})
 ```
 
-resolveAddInContainer — the DISPATCH bridge (cluster K · K2 surfacing). Given the ACTIVE container item,
+resolveAddInContainer — the DISPATCH bridge (surfacing). Given the ACTIVE container item,
 the accepts-policy, and the raw "add X" body, resolve a bare "add" to the child-creating op — the
 K0-deferred natural-verb context resolution made dispatchable.
   - `{ op, type, body }`        → run that op to create the child (the body has the type word stripped)
@@ -668,7 +668,7 @@ class DependenciesOpenError extends Error
 new DependenciesOpenError({ itemId, openDeps })
 ```
 
-V2.7 — thrown by `markComplete` and `approve` when the substrate's
+thrown by`markComplete` and `approve` when the substrate's
 `enforceDependencies` flag is on and the item being closed has at
 least one open dependency. Carries the open-dep ids so callers can
 render a useful error message ("Can't close — 2 open sub-tasks: …").
@@ -819,14 +819,14 @@ recursion is bounded by `opts.maxDepth` (default 6). `renderFor` defaults to
 async shareIntoAudience(stores, { itemId, fromCircleId, toCircleId, by, posture, postureOf, onShare, recipient, recipients, recipientKeys } = {})
 ```
 
-shareIntoAudience — the cross-circle SHARE op (cluster K · K2, the one net-new op from K1).
+shareIntoAudience — the cross-circle SHARE op (the one net-new op from).
 
-Containment never crosses circles by copy or grant (K1): an item lives in ONE circle's store. Sharing it
+Containment never crosses circles by copy or grant: an item lives in ONE circle's store. Sharing it
 into ANOTHER circle's audience is an EXPLICIT, per-item op that writes a `shared-ref` into the target circle
 pointing back at the source — NOT a copy, and NOT a transitive grant (it exposes ONLY that item, never its
 container or siblings). Resolving the ref crosses circles = the 🔒-gated cross-pod read (ACP + seal enforce
 it on real pods; in-memory here it just reads). The POSTURE FLOOR protects the item: sharing into a LESS-
-confidential circle would downgrade it, so that's refused (K1: never downgrade below the floor).
+confidential circle would downgrade it, so that's refused (: never downgrade below the floor).
 
 **Parameters**
 
@@ -838,10 +838,10 @@ confidential circle would downgrade it, so that's refused (K1: never downgrade b
 - `[args.by]` `string` — who is sharing
 - `[args.posture]` `number` — the item's required confidentiality (default: the item's own `posture`, else 0)
 - `[args.postureOf]` `(circleId:string)=>number` — the target circle's confidentiality (for the floor check; omit to skip the floor). Refuses when `postureOf(toCircleId) < posture`.
-- `[args.onShare]` `(ctx:{ref:object,item:object,recipient?:string,recipients?:string[],stores:object})=>Promise<void>` — INJECTED WRITE-SIDE pod hook (additive · cluster K pod-tier). When the store is pod-backed the composition injects `makeShareGrantHook(...)` here: after the `shared-ref` is written, the hook creates the ACP read-grant for the recipient on the source item's resource (and optionally re-seals). The memory path leaves it undefined ⇒ behaviour is EXACTLY as before. A throw from the hook fails the share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
+- `[args.onShare]` `(ctx:{ref:object,item:object,recipient?:string,recipients?:string[],stores:object})=>Promise<void>` — INJECTED WRITE-SIDE pod hook (additive pod-tier). When the store is pod-backed the composition injects`makeShareGrantHook(...)` here: after the `shared-ref` is written, the hook creates the ACP read-grant for the recipient on the source item's resource (and optionally re-seals). The memory path leaves it undefined ⇒ behaviour is EXACTLY as before. A throw from the hook fails the share (`{ok:false, error:'share-grant-failed'}`) so a share never silently lands without its grant.
 - `[args.recipient]` `string` — the recipient WebID to grant to (pod-backed shares); passed to `onShare`.
 - `[args.recipients]` `string[]` — multiple recipient WebIDs (a circle share resolves members here).
-- `[args.recipientKeys]` `string[]` — the recipients' SEALING PUBLIC KEYS (share-policy slice 3a — resolved against the TARGET circle's roster). Passed through to `onShare` so the injected `seal` re-wraps the content to keys (not WebIDs). Omit for the group-key posture (recipient already holds the key).
+- `[args.recipientKeys]` `string[]` — the recipients' SEALING PUBLIC KEYS (share-policy — resolved against the TARGET circle's roster). Passed through to`onShare` so the injected `seal` re-wraps the content to keys (not WebIDs). Omit for the group-key posture (recipient already holds the key).
 
 **Returns:** `Promise<{ok:true, ref:object}|{ok:false, error:string, required?:number, target?:number, cause?:any}>`
 
@@ -856,7 +856,7 @@ async resolveSharedRef(stores, ref, opts = {})
 Resolve a `shared-ref` to its source item — the read that CROSSES circles (🔒-gated on real pods).
 Null if absent/invalid.
 
-ENFORCEMENT (cluster K · additive, backward-compatible). Pass an injected `policy` (see
+ENFORCEMENT (additive, backward-compatible). Pass an injected`policy` (see
 `sharedRefPolicy.js`) to gate + unseal the cross-circle read:
   1. `policy.checkGrant({ ref, recipient, stores })` — DENY-BY-DEFAULT: if it returns falsy or throws,
      resolve to `null` (the recipient was NOT granted this item). On a real pod this checks a live
@@ -1012,7 +1012,7 @@ read grant on `resourceUriFor(ref)`?"; this hook is what PUTS that grant there. 
 - `opts.sharing` `{ grant:(o:object)=>Promise<any> }` — the `client.sharing` surface — we call `sharing.grant({ resourceUri, agent, modes })` once per recipient.
 - `[opts.resourceUriFor]` `(ref:object)=>(string|null)` — maps a `shared-ref` → the source item's pod resource URI (the ACP target). Defaults to the logical `sourceCircle/sourceId` (a real pod injects the storage-layout URI from `@onderling/pod-onboarding`'s `sharedRefResourceUri`).
 - `[opts.mode='read']` `string` — the access mode to grant.
-- `[opts.seal]` `(item:object, ctx:{recipient:string, recipients:string[], recipientKeys:string[], ref:object})=>object|Promise<object>` — optional re-seal step. In the group-key posture the recipient already holds the key so no re-seal is needed (omit); in the recipient-wrap posture, inject a `seal` (e.g. built from `recipientStrategy({recipients}).seal` via `sealItem`) that returns the item re-sealed to the recipient(s), and it is written back to the source store so the recipient can open it at rest. The recipients' SEALING PUBLIC KEYS arrive as `recipientKeys` (resolved by the share op against the TARGET circle's roster — slice 3a), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal that needs keys but gets none should throw ⇒ the share fails.
+- `[opts.seal]` `(item:object, ctx:{recipient:string, recipients:string[], recipientKeys:string[], ref:object})=>object|Promise<object>` — optional re-seal step. In the group-key posture the recipient already holds the key so no re-seal is needed (omit); in the recipient-wrap posture, inject a `seal` (e.g. built from `recipientStrategy({recipients}).seal` via `sealItem`) that returns the item re-sealed to the recipient(s), and it is written back to the source store so the recipient can open it at rest. The recipients' SEALING PUBLIC KEYS arrive as `recipientKeys` (resolved by the share op against the TARGET circle's roster), so the seal wraps to keys, not WebIDs. Deny-by-default: a seal that needs keys but gets none should throw ⇒ the share fails.
 
 **Returns:** `(ctx:{ref:object, item:object, recipient?:string, recipients?:string[], recipientKeys?:string[], stores:object})=>Promise<void>`
 
@@ -1051,7 +1051,7 @@ recipient loop and the roster bookkeeping the substrate's `grantMember`/`rotate`
 makeCircleShareEnforcement({ sharing, resourceUriFor, recipient, open, seal, canonicalShare, currentRecipients, mode = 'read' } = {})
 ```
 
-ONE-CALL pod-tier wiring for the cross-circle share (cluster K · the composition seam). Binds the
+ONE-CALL pod-tier wiring for the cross-circle share (the composition seam). Binds the
 WRITE-side grant hook and the READ-side enforcement policy to the SAME `sharing` surface, `resourceUriFor`
 mapping, and `mode` — so a share made through `onShare` is exactly what `policy.checkGrant` will later
 accept, and nothing else. The pod-backed composition point injects the live surfaces here and threads the

@@ -1,7 +1,7 @@
 /**
  * `@onderling/manifest-host` — runtime composition of N app-manifests.
  *
- * SP-4 V0 substrate (locked 2026-05-20).  Owns the *runtime* side of the
+ * V0 substrate (locked 2026-05-20). Owns the *runtime* side of the
  * manifest model: accept manifests via `mount()`, hand back a composed
  * view that merges across all mounted apps with `appId.opId` namespacing.
  *
@@ -36,8 +36,8 @@
  *   - The host does NOT concatenate systemPrompts; consumer picks
  *     composition strategy (concat / pick primary / generic preamble).
  *
- * What this V0 does NOT do (deferred to SP-4b):
- *   - Generalising tasks-v0's V2.8 multi-circle machinery (`bundleResolver`,
+ * What this V0 does NOT do (deferred to):
+ *   Generalising tasks-v0's multi-circle machinery (`bundleResolver`,
  *     `wireSkills`, `CircleState`) through the host.  That touches 542
  *     production tests and needs its own characterization gate.
  *   - Per-scope enabled-set persistence ("which apps are on for this

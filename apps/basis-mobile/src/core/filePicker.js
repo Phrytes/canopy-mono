@@ -1,6 +1,6 @@
 /**
- * Mobile file-picker adapter for Bundle F P4 (#260) +
- * P4-followup-2 (#267).
+ * Mobile file-picker adapter for Bundle F +
+ * followup-2.
  *
  * Wraps the substrate `@onderling/react-native/picker` and exposes a
  * single `openFilePicker()` that returns a payload compatible with
@@ -8,7 +8,7 @@
  * `{name, type, size, dataB64}`.  This mirrors web's
  * `<input type="file">` flow (`File` object).
  *
- * Defaults to the generic document picker (P4-followup-2) so users
+ * Defaults to the generic document picker (followup-2) so users
  * can pick PDFs, text files, archives, etc.  Image-only flows
  * (stoop compose, avatar) use `pickAndResize` directly — they don't
  * route through this adapter.

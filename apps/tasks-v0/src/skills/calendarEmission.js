@@ -1,5 +1,5 @@
 /**
- * calendarEmission — Tasks V2.1 admin/self skills for the
+ * calendarEmission — Tasks admin/self skills for the
  * calendar-write side-channel.
  *
  * Three skills:

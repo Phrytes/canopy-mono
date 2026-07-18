@@ -1,5 +1,5 @@
 /**
- * P6.M6 — per-contact hop overrides tests.
+ * per-contact hop overrides tests.
  */
 import { describe, it, expect } from 'vitest';
 import {

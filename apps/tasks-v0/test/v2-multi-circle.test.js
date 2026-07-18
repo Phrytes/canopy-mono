@@ -34,10 +34,10 @@ async function callSkill(agent, skillId, args, fromWebid = ANNE) {
 }
 
 /**
- * Thin alias kept so the SP-4b proof + existing assertions stay
+ * Thin alias kept so the proof + existing assertions stay
  * untouched.  Real machinery lives in `src/buildMultiCircleRuntime.js`
- * (extracted 2026-05-20 for re-use by the SP-4b mount test + the
- * SP-11 recombination demo).
+ * (extracted 2026-05-20 for re-use by the mount test + the
+ * recombination demo).
  */
 const buildMultiCircle = () =>
   buildMultiCircleRuntime({ label: 'tasks-multi-circle-smoke' });

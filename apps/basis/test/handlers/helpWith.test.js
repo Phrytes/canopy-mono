@@ -1,7 +1,7 @@
 /**
- * Bundle H Phase 2 (#269) — help-with-accepted handler coverage.
+ * help-with-accepted handler coverage.
  * (handleHelpWithResponse stays inline on web for now — DOM widget;
- * tracked as a follow-up to #269.)
+ * tracked as a follow-up to.)
  */
 import { describe, it, expect, vi } from 'vitest';
 import {

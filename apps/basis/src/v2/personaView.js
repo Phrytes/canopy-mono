@@ -35,7 +35,7 @@ function availabilityWhen(value) {
   return null;
 }
 
-/* ── availability — the ONE unified reachability property (decision Q5) ───────
+/* ── availability — the ONE unified reachability property (decision) ───────
  * Not a charter key: a person-level coarse-enum (open/limited/away) that folds
  * the old per-offering availability sub-field AND the holidayMode boolean. Rendered
  * as a normal property ROW in the general-persona section; disclosure-controlled
@@ -309,7 +309,7 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
     const value = displayValue(ownValueOf(defaultRaw[key]));
     return { key, value, buckets, free: buckets == null, set: value != null, ladder: ladderFor(key) };
   });
-  // availability — the unified reachability property (decision Q5): a coarse-enum row
+  // availability — the unified reachability property (decision): a coarse-enum row
   // with a LOCALISED value set (l10n prefix), rendered like place/ageBand.
   const availabilityRaw = ownValueOf(defaultRaw[AVAILABILITY_KEY]);
   const availabilityValue = availabilityState(availabilityRaw);

@@ -1,5 +1,5 @@
 /**
- * basis v2 — co-admin consensus (shared, board 4A footer).
+ * basis v2 — co-admin consensus (shared, footer).
  *
  * Decides how a settings edit commits when a circle has >1 admin and
  * `consensusRequired` is on: the edit becomes a pending proposal that the

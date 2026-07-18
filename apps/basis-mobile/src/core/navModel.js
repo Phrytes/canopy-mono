@@ -15,7 +15,7 @@ import { renderMobile } from '@onderling/app-manifest';
 // source of truth); we consume it here so the nav order can't drift from
 // the dispatch catalog.  This drift is exactly what re-opened once — nav
 // hardcoded household-before-tasks while the catalog (deliberately, #49)
-// orders tasks-before-household — and #222's "same order" smoke test
+// orders tasks-before-household — and 's "same order" smoke test
 // caught it.  Reusing _internalManifestList keeps them 1:1 by construction.
 import { _internalManifestList } from './composeManifests.js';
 

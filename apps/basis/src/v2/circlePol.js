@@ -1,5 +1,5 @@
 /**
- * basis v2 — circle Proof-of-Location placeholder (board 10C, slice 5.9d).
+ * basis v2 — circle Proof-of-Location placeholder.
  *
  * Surfaces a passive "Proof of location" row on every circle's detail
  * screen. This slice ships the SEAM ONLY: a `getPolStatus` skill probe

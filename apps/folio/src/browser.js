@@ -1,5 +1,5 @@
 /**
- * folio — browser entry for basis composition (slice 4 of the
+ * folio — browser entry for basis composition (of the
  * basis integration plan, 2026-05-23).
  *
  * Composes folio's web-only surface into basis's browser
@@ -14,19 +14,19 @@
  *                           primitive the desktop sync uses)
  *   - listFiles           — return the in-process file index
  *   - searchFiles         — name/path substring search
- *   - getFileSnapshot     — Q29 cardSnapshotSkill (for /embed-file)
+ *   getFileSnapshot — cardSnapshotSkill (for /embed-file)
  *   - verifyPodState      — pod-side check (browser-doable; the
  *                           manifest declares runtime:'browser')
  *   - deleteFromPod       — pod-side delete (browser-doable)
  *   - downloadFile        — receiver-side action; placeholder reply
  *   - saveToMyPod         — receiver-side cross-pod copy; placeholder
- *   - folio_briefSummary  — Q30 briefSummary
+ *   folio_briefSummary — briefSummary
  *   - folioStatus         — record reply: count / synced / shared
  *
  * Mobile-extended (DEFERRED): basis mobile composes the same
  * browser-shape factory PLUS @onderling/sync-engine-rn for real file-
  * system mirroring; the in-memory file store collapses to a thin
- * proxy over the RN sync engine.  Tracked by #127-#131.
+ * proxy over the RN sync engine. Tracked by -.
  *
  * Boundary: imports ONLY platform-neutral parts of folio — autoShare
  * (which uses an injected FsAdapter; no `fs` import at module load)
@@ -42,7 +42,7 @@ import { mintShareToken } from './autoShare.js';
 import { listPodFolio } from './folioPodList.js';
 import { buildFolioNoteSearch, indexFolioNotes, searchFolioNotes } from './folioSearch.js';
 
-// Slice 1b — folio's pod-file ops are now MANIFEST-DERIVED wireSkill
+// folio's pod-file ops are now MANIFEST-DERIVED wireSkill
 // capabilities (buildFolioSkills), not hand-rolled agent.register handlers.
 import { buildFolioSkills } from './wireSkills.js';
 import { searchFiles as searchFilesCore, folioBriefSummary } from './agentCores.js';
@@ -67,7 +67,7 @@ const SEED_FILES = [
   {
     id: '/notes/shared/anne.md', name: 'anne.md', type: 'file',
     mime: 'text/markdown', bytes: 1234, state: 'synced',
-    // #194 (B9, 2026-05-23) — frontmatter `embeds` per
+    // (B9, 2026-05-23) — frontmatter `embeds` per
     // v1-web-functional-design § 4f.  Notes can declare references to
     // tasks / stoop posts / events; the chat-shell renders them as
     // clickable "See also" chips at the head of /readnote replies.
@@ -170,7 +170,7 @@ export async function createBrowserFolioAgent({
    * The SEMANTIC sibling of `searchFiles`. Where `searchFiles` is a
    * name/path substring match, `/zoek` (searchNotes) ranks notes by MEANING
    * via `@onderling/pod-search` — so "car" finds a note about "automobile
-   * repair". Degrades per Q3 (option a) + the llmTool policy: with no
+   * repair". Degrades per (option a) + the llmTool policy: with no
    * `noteEmbedder` injected (llmTool:'off' / no Ollama) the index is
    * lexical-only, and a `mode:'semantic'` request gracefully returns the
    * LEXICAL ranking rather than an empty E_SEMANTIC_UNAVAILABLE. No embed

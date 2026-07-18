@@ -1,5 +1,5 @@
 /**
- * Slice 3 (PLAN-task-claim-partition) — surface + resolve.
+ * (PLAN-task-claim-partition) — surface + resolve.
  *
  * `listClaimConflicts` reads the recorded double-claims; `resolveClaim`
  * (yours/theirs/both) writes a causally-later claim that clears the conflict.

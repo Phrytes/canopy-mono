@@ -1,6 +1,6 @@
 /**
  * contactSkillsLive — the LIVE wiring for contact/bot exposed skills
- * (feedback-extension P4, Mode-1 "bot-exposed skills").
+ * (feedback-extension, Mode-1 "bot-exposed skills").
  *
  * `contactSkills.js` is the PURE core: it synthesises a `contact-thread`-scoped
  * manifest from a contact's discovered SkillCards and a `makeRemoteCallSkill`

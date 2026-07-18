@@ -70,7 +70,7 @@ export class InMemoryStore {
     // `mem://household/circles/<id>/`) partitions reads/writes — the store lists
     // by the root prefix, so one shared DataSource serves all circles without leaks.
     //
-    // P1 migration step 4 (2026-07-18, the FINAL ItemStore consumer): the store is
+    // migration step 4 (2026-07-18, the FINAL ItemStore consumer): the store is
     // now the converged `CircleItemStore` (generic typed CRUD + causal/CAS writes),
     // with the task lifecycle/CRUD supplied by the ported functions-over-store and
     // exposed through `createTaskStore` — the thin ItemStore-compatible surface
@@ -178,7 +178,7 @@ export class InMemoryStore {
   }
 
   /**
-   * SP-2: claim a task (assignee := actor).  Returns the updated item
+   * claim a task (assignee:= actor). Returns the updated item
    * via `legacyShape`, or — if the item is already claimed by someone
    * else — the L1b ItemStore's `{error: 'already-claimed', current}`
    * shape passed through (with `current` legacy-shaped).
@@ -197,7 +197,7 @@ export class InMemoryStore {
   }
 
   /**
-   * SP-2: reassign a task to a different webid.
+   * reassign a task to a different webid.
    *
    * @param {string} itemId
    * @param {string} newAssignee   webid

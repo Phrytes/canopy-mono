@@ -1,8 +1,8 @@
 /**
- * customRoles — V1.5 custom-role management.
+ * customRoles — custom-role management.
  *
- * Tasks V1.0 ships the standard 5 roles only (Q-H4.7 (a) baseline).
- * V1.5 unblocks the (c) extension path — apps register additional
+ * Tasks ships the standard 5 roles only (Q-H4.7 (a) baseline).
+ * unblocks the (c) extension path — apps register additional
  * roles per-circle via:
  *
  *   - `registerCircleCustomRole({roleId, rank})` — admin only.
@@ -19,7 +19,7 @@
  *
  * **Note on process-global state.** The underlying
  * `core.Roles.customRanks` map is process-wide (one CLI = one
- * registry). After V2.8's single-agent refactor, multi-circle
+ * registry). After 's single-agent refactor, multi-circle
  * launches share the same `core.Roles` registry, so apps using
  * multiple circles in the same process MUST coordinate roleId
  * namespaces to avoid collisions.
@@ -63,7 +63,7 @@ export function applyCustomRoles(customRoles) {
 }
 
 /**
- * Build the V1.5 custom-role skills.
+ * Build the custom-role skills.
  *
  * @param {object} args
  * @param {(parts: Array, ctx?: object) => object | null} args.bundleResolver

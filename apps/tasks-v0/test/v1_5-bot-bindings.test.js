@@ -1,5 +1,5 @@
 /**
- * V1.5 — bot binding management skills.
+ * bot binding management skills.
  *
  * Asserts:
  *   - Member is denied (admin/coord-only read; admin-only writes).

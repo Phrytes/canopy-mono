@@ -23,7 +23,7 @@
  *     [--storage-root ./.tasks-data] \
  *     [--telegram-token "$TG_BOT_TOKEN"]
  *
- * Usage (V2.8 multi-circle smoke):
+ * Usage (multi-circle smoke):
  *   node bin/tasks-ui.js \
  *     --actor      https://id.example/anne \
  *     --circle-list  ./two-circles.list.json
@@ -33,15 +33,15 @@
  * cross-circle isolation), then exits. The list file shape is
  * `{"circles": ["./a.circle.json", "./b.circle.json"]}` — paths are resolved
  * relative to the list file. The HTTP UI is skipped in this mode; the
- * V2.8 web UX for multi-circle (circle picker + per-tab circleId injection)
+ * web UX for multi-circle (circle picker + per-tab circleId injection)
  * lives in tasks-mobile.
  *
- * `--telegram-token <token>` activates the V1.5 chat-bot. Set the
+ * `--telegram-token <token>` activates the chat-bot. Set the
  * token via env var to keep it out of shell history; map chatIds to
  * webids in the circle config's `bot.chatBindings`. Requires V1
  * (`--circle`) — the `bot.*` skills aren't registered in V0 mode.
  *
- * `--push` activates the V1.5 Expo push side-channel. Notifications
+ * `--push` activates the Expo push side-channel. Notifications
  * dispatch to device tokens declared in `circleConfig.pushTokens`.
  * Conservative gating via `circleConfig.pushPolicy` (humanInTheLoop +
  * per-day cap + quiet hours).
@@ -90,12 +90,12 @@ const { values } = parseArgs({
     'circle-list':     { type: 'string' },
     port:            { type: 'string' },
     'storage-root':  { type: 'string' },
-    // V1.5 — chat bot. `--telegram-token <token>` activates the
+    // chat bot. `--telegram-token <token>` activates the
     // bot bridge (TelegramBridge from @onderling/chat-agent). The
     // circle config's `bot.chatBindings` map decides which chatId
     // dispatches as which webid.
     'telegram-token': { type: 'string' },
-    // V1.5 — Expo push side-channel. Without `--push`, push wiring
+    // Expo push side-channel. Without `--push`, push wiring
     // stays dormant. With it, the CLI imports `@onderling/relay`'s
     // `ExpoPushSender` lazily and Circle dispatches notifications to
     // the per-webid tokens declared in `circleConfig.pushTokens`.
@@ -124,7 +124,7 @@ if (!values.role && !values.config && !values.circle && !values['circle-list']) 
   process.exit(2);
 }
 
-// ── V2.8 multi-circle smoke (early exit; no HTTP UI) ─────────────────────────
+// ── multi-circle smoke (early exit; no HTTP UI) ─────────────────────────
 if (values['circle-list']) {
   const listPath = resolvePath(values['circle-list']);
   const listDir  = dirname(listPath);
@@ -309,7 +309,7 @@ if (values.circle) {
   // V1 Circle mode.
   const circleConfig = JSON.parse(await readFile(values.circle, 'utf8'));
 
-  // V1.5 — optional push sender (Expo). Lazy-import so users who
+  // optional push sender (Expo). Lazy-import so users who
   // don't pass --push don't pay for the relay dep at startup.
   let pushSender;
   if (values.push) {
@@ -469,13 +469,13 @@ const tasksConfig = JSON.stringify({
   ...(bundle.circle ? { circle: { circleId: bundle.circle.circleId, name: bundle.circle.name, kind: bundle.circle.kind } } : {}),
 });
 
-// Slice B.1 (2026-05-20) — surface the NavModel for the renderWeb-
+// surface the NavModel for the renderWeb
 // driven `dag.html` (and future pages).  Static for the life of the
 // process; the manifest is module-scope const.  Mirror of household-
 // web.js (`apps/household/bin/household-web.js`).
 const navModel = renderWeb(tasksManifest);
 
-// Slice B.1 — overlay `src/ui/dagFlatten.js` at `/lib/dagFlatten.js`
+// overlay `src/ui/dagFlatten.js` at `/lib/dagFlatten.js`
 // so dag.html can `import` it from the browser.  `staticDir` is
 // path-traversal-hardened so a relative `../src/...` import resolves
 // to 404; this overlay re-routes one shared helper through
@@ -487,7 +487,7 @@ const dagFlattenJs = await readFile(
   'utf8',
 );
 
-// Slice #252 (2026-05-27) — overlay the chat-thread helpers at
+// Slice (2026-05-27) — overlay the chat-thread helpers at
 // `/lib/chatThread.js` so the web chat page (`chat.html`) can import
 // the same pure-JS glue tasks-mobile's `ChatThreadScreen.jsx`
 // consumes. Source-of-truth: `src/ui/chatThread.js`.
@@ -513,7 +513,7 @@ const taskStatusJs = await readFile(
   'utf8',
 );
 
-// Post-V0 follow-up (#272, 2026-05-27) — runtime locale loader.
+// Post-V0 follow-up (2026-05-27) — runtime locale loader.
 // Pages declare `data-i18n` attributes; until this loader landed,
 // no JS swapped them so every visible string rendered as the
 // hardcoded English fallback.  Overlay the browser-side bootstrap
@@ -537,7 +537,7 @@ const nlLocaleJson = await readFile(
   'utf8',
 );
 
-// Slice B.2.0 (2026-05-20) — overlay the shared @onderling/web-adapter
+// .0 (2026-05-20) — overlay the shared @onderling/web-adapter
 // helpers at `/lib/web-adapter/<basename>.js`. Same mechanism as
 // `/lib/dagFlatten.js`. Source-of-truth: `packages/web-adapter/src/`.
 const webAdapterFiles = await loadWebAdapterFiles();
@@ -567,9 +567,9 @@ async function loadWebAdapterFiles() {
     '..', '..', '..',
     'packages', 'web-adapter', 'src',
   );
-  // V0.2 (2026-05-20) — fetchSectionItems + schemaToFormFields join the
+  // fetchSectionItems + schemaToFormFields join the
   // shared web-adapter overlay. `fetchSectionItems` honours the
-  // manifest's `view.dataSource` (Q7) so per-page section→skill dispatch
+  // manifest's `view.dataSource` so per-page section→skill dispatch
   // collapses; `schemaToFormFields` turns an affordance's paramsSchema
   // into a platform-neutral form-field descriptor list.
   const names = [
@@ -594,7 +594,7 @@ console.log(`  role:   ${roles[values.actor]}`);
 console.log(`  pubKey: ${id.pubKey}`);
 console.log(`  members: ${members.length}`);
 
-// V1.5 — telegraf launch errors can surface as unhandled rejections
+// telegraf launch errors can surface as unhandled rejections
 // (long-polling launch is fire-and-forget inside TelegramBridge).
 // Catch them here so the rest of the UI keeps serving.
 process.on('unhandledRejection', (err) => {
@@ -607,7 +607,7 @@ process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection:', err);
 });
 
-// V1.5 — wire the Telegram bot if `--telegram-token` was supplied.
+// wire the Telegram bot if `--telegram-token` was supplied.
 // Requires V1 Circle mode (the `bot.*` skills are only registered when
 // `localStoreBundle` is present, which `--circle` always provides).
 let botCleanup = null;
@@ -632,7 +632,7 @@ if (values['telegram-token']) {
 
       const { TelegramBridge } = await import('@onderling/chat-agent/bridges/telegram');
       const { wireBotChannel } = await import('../src/bot/wireBotChannel.js');
-      // Pass a live provider so bindings added via the V1.5
+      // Pass a live provider so bindings added via the
       // setBotChatBinding skill propagate without restart.
       const liveBindings = () => bundle.getCircle?.()?.bot?.chatBindings ?? bundle.circle?.bot?.chatBindings ?? {};
       const bindingCount = Object.keys(liveBindings()).length;

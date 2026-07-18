@@ -1,5 +1,5 @@
 /**
- * Media P1 mobile twin — media-card render MODEL (src/core/mediaCardModel.js).
+ * Media mobile twin — media-card render MODEL (src/core/mediaCardModel.js).
  *
  * Mirrors the web chip's pinned behaviour (apps/basis/test/handlers/
  * mediaEmbed.test.js renderer cases) at the model level, per mobile

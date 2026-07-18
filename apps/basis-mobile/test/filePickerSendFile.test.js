@@ -1,6 +1,6 @@
 /**
- * Bundle F P4 — mobile sendFile uses the pre-encoded dataB64
- * short-circuit (#260, 2026-05-26).
+ * mobile sendFile uses the pre-encoded dataB64
+ * short-circuit (2026-05-26).
  *
  * Pins the upstream patch in apps/basis/src/core/localBuiltins.js
  * that lets mobile pickers hand pre-encoded {dataB64} bytes to

@@ -12,7 +12,7 @@
  * persistence wiring in main.js can compose 'local first; pod when
  * a pod is configured'.
  *
- * Phase v0.2 sub-slice 2.8 per `/Project Files/basis/coding-plan.md`.
+ * Phase v0.2 per `/Project Files/basis/coding-plan.md`.
  */
 
 const NOT_IMPL = () => {

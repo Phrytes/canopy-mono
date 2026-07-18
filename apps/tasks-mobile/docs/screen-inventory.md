@@ -83,7 +83,7 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
 
 ### Circles tab (1 screen)
 
-- **CirclesDashboardScreen** — V2.5 cross-circle dashboard + counters +
+**CirclesDashboardScreen** — cross-circle dashboard + counters +
   Jump-in.  Skills: `getMyCircles`.  **NavModel:** MISSING (cross-circle
   view not in manifest).
 
@@ -94,7 +94,7 @@ links via `tasks://...` parsed in `DeepLinkHandler`.
 
 ### Settings / Admin (9 screens)
 
-- **AvailabilityScreen** — V2.3 7×2 grid.  Skills:
+**AvailabilityScreen** — 7×2 grid. Skills:
   `getMyAvailability`, `setMyAvailability`, `setAvailabilityOptIn`.
   **NavModel:** all MISSING.
 - **ProfileMineScreen** — handle / avatar / skills edit + mnemonic
@@ -203,7 +203,7 @@ ops covered.  Missing:
 - `TaskCard` — reusable on web.
 - `DeliverablePhoto` — wraps RN `<Image>`; web needs `<img>`.
 - `MemberPickerSheet` — RN bottom sheet → web modal dialog.
-- `PlannerCards` — V2.4; reusable.
+- `PlannerCards` —; reusable.
 - `MainMenu` — RN drawer; web hamburger or sidebar.
 - `CircleSwitcher` — dropdown; reusable.
 

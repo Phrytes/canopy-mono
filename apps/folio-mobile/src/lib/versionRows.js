@@ -10,7 +10,7 @@
  * engine.versions() output → display rows, newest first. Tolerates a
  * non-array / missing input (→ []); drops entries without a finite ts.
  *
- * Slice 1a: the store returns opaque records `{ts, id, sha256, size}` — the
+ * the store returns opaque records `{ts, id, sha256, size}` — the
  * legacy cosmetic `path` is gone (snapshots are no longer browsable files).
  *
  * @param {Array<{ts:number,id?:string,sha256?:string,size?:number}>} list

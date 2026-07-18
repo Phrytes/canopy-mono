@@ -1,12 +1,12 @@
 /**
- * tasks-v0 — app manifest (SP-3 V0, locked 2026-05-20).
+ * tasks-v0 — app manifest (V0, locked 2026-05-20).
  *
  * Declarative source for the core task-lifecycle ops mined from
  * `src/skills/index.js`'s `defineSkill` calls.  V0 scope is
  * deliberately small: only the chat-callable surface.  The web UI
  * stays 100% hand-built — it is rich + well-tested (14 HTML pages
  * with shared UI-helpers consumed by the mobile shell too), and
- * replacement requires careful page-by-page characterization (SP-3b,
+ * replacement requires careful page-by-page characterization (,
  * deferred).
  *
  * itemTypes = ['task'] (canonical in @onderling/item-types; F-SP1-a not
@@ -40,7 +40,7 @@
  * Complex array/object params (`dependencies`, `embeds`,
  * `requiredSkills`, `deliverable`, `approval` mode) are intentionally
  * NOT modelled in the LLM surface — those live in the web form and
- * get re-modelled by SP-3b's renderWeb.
+ * get re-modelled by 's renderWeb.
  */
 
 const ID_NONEMPTY  = { schema: { minLength: 1 } };
@@ -49,7 +49,7 @@ const STR_NONEMPTY = { schema: { minLength: 1 } };
 export const tasksManifest = {
   app:       'tasks',
   /*
-   * Slice B.2.3 (2026-05-20) — `'inbox-item'` joins as an app-local
+   * .3 (2026-05-20) — `'inbox-item'` joins as an app-local
    * (non-canonical, F-SP1-a) item type so the `inbox` view can declare
    * `view.type: 'inbox-item'` (validateView pins `view.type` ∈
    * `manifest.itemTypes`).  Inbox notifications are NOT real ItemStore
@@ -60,13 +60,13 @@ export const tasksManifest = {
    * `clearInboxItem` itemAction.
    */
   /*
-   * Slice B.2.4 (2026-05-20) — `'circle-storage-policy'` joins as an
+   * .4 (2026-05-20) — `'circle-storage-policy'` joins as an
    * app-local (non-canonical, F-SP1-a) item type so the `pod-settings`
    * view can declare `view.type: 'circle-storage-policy'`
    * (validateView pins `view.type` ∈ `manifest.itemTypes`).  Like
    * stoop's `'group-rules'` placeholder for its settings view, the
    * circle storage policy is a SINGLETON record (one merged object:
-   * `{policy, groupPodUri?}`), not a list of items.  See V0.3 Q17
+   * `{policy, groupPodUri?}`), not a list of items. See
    * (`shape: 'record'`) — the view encodes that reality.
    */
   // Part G (2026-06-17) — 'schedule-slot' + 'member' folded in from the former
@@ -125,7 +125,7 @@ export const tasksManifest = {
       params: [
         {
           name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
-          // v0.7.Q34 — bare `/claim` → form shows clickable task list.
+          // v0.7. — bare `/claim` → form shows clickable task list.
           // Resolve the label against OPEN tasks: claim applies to state:['open'], and listMine
           // excludes the unclaimed tasks you'd actually be claiming (device-verify 2026-06-11 — a
           // freshly-added task was never in listMine, so "claim X" never resolved → "couldn't find X").
@@ -144,7 +144,7 @@ export const tasksManifest = {
           } },
         chat: {
           hint:  'Compare-and-swap claim a task.',
-          // Q29 (basis v0.5, 2026-05-22) — declare a snapshot
+          // (basis v0.5, 2026-05-22) — declare a snapshot
           // factory so this op surfaces as embeddable in chat.  The
           // `getTaskSnapshot` skill below is the source.
           embed: { cardSnapshotSkill: 'getTaskSnapshot' },
@@ -159,7 +159,7 @@ export const tasksManifest = {
       params: [
         {
           name: 'id', kind: 'string', required: true, ...ID_NONEMPTY,
-          // v0.7.Q34 — bare `/complete-task` → form picks from open tasks. completeTask is self-mark
+          // v0.7. — bare `/complete-task` → form picks from open tasks. completeTask is self-mark
           // mode (tasks-v0 `bot.markComplete` completes by label with NO prior claim), so resolve the
           // label against listOpen — listMine misses freshly-added unassigned tasks (device-verify
           // 2026-06-11 — "done socks" → listMine:[] → "couldn't find socks in this circle").
@@ -181,14 +181,14 @@ export const tasksManifest = {
           } },
         chat: {
           hint: 'Mark a task complete.',
-          // Q29 — same factory; lifecycle ops share the snapshot skill.
+          // same factory; lifecycle ops share the snapshot skill.
           embed: { cardSnapshotSkill: 'getTaskSnapshot' },
         },
         ui:   { control: 'button', label: 'Mark complete' },
       },
     },
     /**
-     * `getTaskSnapshot(id)` → ItemSnapshot — Q29 factory (basis
+     * `getTaskSnapshot(id)` → ItemSnapshot — factory (basis
      * v0.5).  Declaration-only in tasks-v0's manifest; the real skill
      * lives wherever tasks-v0's agent runs.  When basis
      * consumes tasks-v0's full manifest (currently it uses mocks),
@@ -224,7 +224,7 @@ export const tasksManifest = {
       },
     },
     /*
-     * P5 (2026-07-18) — "authority travels with the task" (journey J8).
+     * "authority travels with the task" (journey J8).
      * Attach a task-scoped, attenuated capability grant to a task for a
      * member. Off by default (a task carries no authority unless attached);
      * creator/admin-gated in the skill; revoked when the task
@@ -245,7 +245,7 @@ export const tasksManifest = {
       ],
       surfaces: {
         chat: { hint: 'Attach a task-scoped, attenuated capability grant to a task for a member (creator/admin only); revoked when the task completes.' },
-        // P5 (2026-07-18) — entrusting authority routes through the SAME Q27
+        // entrusting authority routes through the SAME
         // confirm waist every consequential op uses: declaring `ui.confirm`
         // makes resolveDispatch emit `needsConfirm`, so the shared runConfirmGate
         // shows a "weet je het zeker?" before ANY grant is issued — the entrust
@@ -360,7 +360,7 @@ export const tasksManifest = {
       surfaces: {
         chat: {
           hint: 'List open tasks with computed status; filters: type/requiredSkill/assignee/status.',
-          // Q30 (DESIGN gap #1, closed 2026-05-27) — tasks-v0's slot in
+          // (DESIGN gap, closed 2026-05-27) — tasks-v0's slot in
           // the morning brief.  /brief fans across apps that declare
           // `surfaces.chat.brief`; the `tasks_briefSummary` skill
           // (defined in src/skills/briefSummary.js, registered via
@@ -409,7 +409,7 @@ export const tasksManifest = {
       },
     },
     /*
-     * task-claim-partition Slice 3 (2026-07-12) — double-claim conflict
+     * task-claim-partition (2026-07-12) — double-claim conflict
      * surface. A partition→merge that double-claimed a task records a
      * claim-conflict on the substrate mirror instead of silently
      * last-writer-wins the assignee; these two ops read + resolve it.
@@ -439,13 +439,13 @@ export const tasksManifest = {
       },
     },
     /*
-     * Slice B.2.2 (2026-05-20) — surfaces the reviewer queue on
+     * .2 (2026-05-20) — surfaces the reviewer queue on
      * `apps/tasks-v0/web/review.html`.  Same pattern as
      * `listClaimable` / `listMyMasteredTasks`: read-only list op,
      * no `surfaces.ui` (list ops are an implicit data source per
-     * renderWeb's Q6 rule b — not a button).  Pre-B.2.2 review.html
+     * renderWeb's rule b — not a button). Pre-B.2.2 review.html
      * called this skill directly (off-manifest); pulling it into
-     * the manifest restores the SP-3 invariant that every list-
+     * the manifest restores the invariant that every list
      * skill the web renders is declared here.  Skill lives in
      * `src/skills/workspace.js` (registered via buildWorkspaceSkills).
      */
@@ -459,14 +459,14 @@ export const tasksManifest = {
       },
     },
     /*
-     * Slice B.2.1 (2026-05-20) — added to surface the "I'm master of"
+     * .1 (2026-05-20) — added to surface the "I'm master of"
      * data source on the `mastered` view (mine.html's middle section).
      * Pre-B.2.1 mine.html called this skill directly (off-manifest);
-     * pulling it into the manifest restores the SP-3 invariant that
+     * pulling it into the manifest restores the invariant that
      * every list-skill the web/mobile renders is declared here.
      *
      * No `surfaces.ui` (list ops don't surface as buttons — they are
-     * the implicit data source per renderWeb's Q6 rule b). The chat
+     * the implicit data source per renderWeb's rule b). The chat
      * hint mirrors the JSDoc on workspace.js's defineSkill body.
      */
     {
@@ -479,7 +479,7 @@ export const tasksManifest = {
       },
     },
     /*
-     * Slice B.2.3 (2026-05-20) — inbox notifications surfaced on
+     * .3 (2026-05-20) — inbox notifications surfaced on
      * `apps/tasks-v0/web/inbox.html`.  Per-user feed of cross-app
      * notifications stored at `mem://user/inbox/<id>.json` (Phase 6
      * `InAppInboxBridge`); skill lives in `src/skills/inbox.js`.
@@ -530,16 +530,16 @@ export const tasksManifest = {
     },
 
     /*
-     * Slice B.2.3b (2026-05-21) — the four subtask approve/decline
+     * .3b (2026-05-21) — the four subtask approve/decline
      * ops + the section-level clearInbox CTA.  Deferred from B.2.3
-     * phase 1; landed now that V0.4 substrate provides:
+     * phase 1; landed now that substrate provides:
      *
      *   - **Per-kind dispatch** — `appliesTo: { type: 'inbox-item',
      *     kind: 'subtask-request' }` gates per-row buttons by event
-     *     kind (V0.4 generic field gating).
+     *     kind (generic field gating).
      *   - **Section-scope CTAs** — `surfaces.ui.placement:
      *     'section-header'` surfaces the bulk-clear CTA in
-     *     `section.sectionActions[]` (V0.4 Q19), not crammed into
+     *     `section.sectionActions[]`, not crammed into
      *     per-item itemActions[] or app-shell globals[].
      *
      * The four subtask ops have `appliesTo.kind` so they ONLY
@@ -617,14 +617,14 @@ export const tasksManifest = {
       ],
       surfaces: {
         chat: { hint: 'Bulk-delete inbox notifications (optionally older than a cutoff).' },
-        // V0.4 Q19 — section-level CTA.  Renders in
+        // section-level CTA. Renders in
         // `section.sectionActions[]`, NOT in per-row itemActions[]
         // or app-shell globals[].
         ui:   {
           control:   'button',
           label:     'Clear all',
           placement: 'section-header',
-          // V0.8 Q27 adoption (2026-05-20) — Tier C consent gate.
+          // adoption (2026-05-20) — Tier C consent gate.
           // Bulk-clearing the inbox is recoverable (notifications
           // are re-fetchable from sources) but disruptive enough to
           // confirm.  Severity 'warn' → adapter shows a confirm
@@ -638,7 +638,7 @@ export const tasksManifest = {
     },
 
     /*
-     * Slice B.1 (2026-05-20) — DAG-tree projection of the task graph.
+     * DAG-tree projection of the task graph.
      *
      * Verb is the app-local `tree` (not in the canonical VERBS allow-
      * list; validator permits app-specific verbs as long as the field
@@ -664,7 +664,7 @@ export const tasksManifest = {
     },
 
     /*
-     * Q27 adoption (V0.8, 2026-05-21) — circle lifecycle ops.
+     * adoption (2026-05-21) — circle lifecycle ops.
      *
      * `archiveCircle` hides a circle from active workflows but does NOT
      * delete items.  Reversible via `unarchiveCircle`.  Admin-only —
@@ -680,7 +680,7 @@ export const tasksManifest = {
       id:        'archiveCircle',
       verb:      'archive',
       // Part G (2026-06-17) — the mock declared a `confirm` flag; realAgent's
-      // Q27 two-step gate reads `args.confirm`.  Additive (real had no params).
+      // two-step gate reads `args.confirm`. Additive (real had no params).
       params:    [
         { name: 'confirm', kind: 'boolean', required: false },
       ],
@@ -727,7 +727,7 @@ export const tasksManifest = {
      * vocab (no shell-side rewrite). */
 
     /**
-     * #219 (2026-05-24) — patch body fields on an existing task.
+     * patch body fields on an existing task.
      * Wraps the substrate editTask skill which delegates to
      * itemStore.update with the forbidden-field gate.  Row button shows
      * on open OR claimed tasks (post-completion edits are out of scope).
@@ -785,7 +785,7 @@ export const tasksManifest = {
       },
     },
     /**
-     * #195 (B7, 2026-05-24) — availability half-day grid.  Wires
+     * (B7, 2026-05-24) — availability half-day grid. Wires
      * tasks-v0's per-member availability hints.
      */
     {
@@ -819,7 +819,7 @@ export const tasksManifest = {
       },
     },
     /**
-     * #193 (B6, 2026-05-23) — auto-scheduling planner.  Wires
+     * (B6, 2026-05-23) — auto-scheduling planner. Wires
      * suggestSchedule + acceptSchedule.  slotKey shape:
      * "taskId|slotStartMs|slotEndMs" — encoded into the row id so [Pick]
      * buttons dispatch all three args.
@@ -848,7 +848,7 @@ export const tasksManifest = {
       },
     },
     /**
-     * #191 (B5, 2026-05-23) — cross-circle dashboard.  getMyCircles +
+     * (B5, 2026-05-23) — cross-circle dashboard. getMyCircles +
      * per-circle counters (open / overdue / mine / awaitingApproval).
      */
     {
@@ -879,7 +879,7 @@ export const tasksManifest = {
       },
     },
     /**
-     * #190 (B3, 2026-05-23) — circle admin surface.  getCircleConfig +
+     * (B3, 2026-05-23) — circle admin surface. getCircleConfig +
      * pause/unpause (circleControls).  All accept a circleId; auto-injected
      * from opts.tasksCircleConfig.circleId by realAgent.
      */
@@ -921,7 +921,7 @@ export const tasksManifest = {
       },
     },
     /**
-     * #187 (A9, 2026-05-23) — circle invite + redeem.  issueInvite /
+     * (A9, 2026-05-23) — circle invite + redeem. issueInvite /
      * redeemInvite.  /invite mints a single-use code; /redeem-invite
      * joins the circle that issued the token.
      */
@@ -948,7 +948,7 @@ export const tasksManifest = {
       },
     },
     /**
-     * #219 slice (b) (2026-05-24) — sub-task wiring.  The standalone
+     * slice (b) (2026-05-24) — sub-task wiring. The standalone
      * spawn/propose/force ops (the inbox-kind approve/decline pairs are
      * already modelled above on 'inbox-item').
      *   - addSubtask        — direct spawn (allowed up to depth 3)
@@ -1010,7 +1010,7 @@ export const tasksManifest = {
 
   views: [
     /*
-     * V0.2 (2026-05-20) — `dataSource` (Q7) declares the section's
+     * `dataSource` declares the section's
      * data-fetch skill in the manifest.  Web + mobile adapters call
      * `fetchSectionItems(section, {callSkill})` which honours this
      * field; the previous adapter-side hard-coded "if section.id === …"
@@ -1034,11 +1034,11 @@ export const tasksManifest = {
       dataSource: { skillId: 'listMine' },
     },
     /*
-     * Slice B.2.1 (2026-05-20) — middle section of mine.html.  Tasks
+     * .1 (2026-05-20) — middle section of mine.html. Tasks
      * the caller is master of (lets them revoke, change approval
      * mode, spawn sub-tasks).  Data source: listMyMasteredTasks (V0
-     * skill, manifest-declared).  Pre-V0.2 the page mapped view→skill
-     * inline; V0.2 lifts it into the manifest.
+     * skill, manifest-declared). Pre- the page mapped view→skill
+     * inline; lifts it into the manifest.
      */
     {
       id:         'mastered',
@@ -1053,7 +1053,7 @@ export const tasksManifest = {
       dataSource: { skillId: 'listClaimable' },
     },
     /*
-     * Slice B.2.2 (2026-05-20) — the reviewer queue, consumed by
+     * .2 (2026-05-20) — the reviewer queue, consumed by
      * `apps/tasks-v0/web/review.html` through the NavModel
      * projector.  Data source: `listAwaitingApproval` (V0 skill,
      * manifest-declared in B.2.2).  The page applies an additional
@@ -1074,10 +1074,10 @@ export const tasksManifest = {
       dataSource: { skillId: 'listAwaitingApproval' },
     },
     /*
-     * Slice B.1 (2026-05-20) — read-only DAG view consumed by
+     * read-only DAG view consumed by
      * `apps/tasks-v0/web/dag.html` through the NavModel projector.
      * No `filter` (the dag skill walks the whole forest); no `sort`
-     * (rendering preserves DAG order via `flattenDagTree`).  V0.2 —
+     * (rendering preserves DAG order via `flattenDagTree`).
      * `dataSource` lifts the hard-coded `getDagTree` call out of
      * dag.html into the manifest.
      */
@@ -1088,7 +1088,7 @@ export const tasksManifest = {
       dataSource: { skillId: 'getDagTree' },
     },
     /*
-     * Slice B.2.3 (2026-05-20) — notification feed consumed by
+     * .3 (2026-05-20) — notification feed consumed by
      * `apps/tasks-v0/web/inbox.html` through the NavModel projector.
      * `type: 'inbox-item'` is an app-local (non-canonical) item-type
      * tag — see itemTypes comment above; the inbox is not a real
@@ -1109,23 +1109,23 @@ export const tasksManifest = {
       dataSource: { skillId: 'listMyInbox', args: { limit: 200 } },
     },
     /*
-     * Slice B.2.4 (2026-05-20) — pod-settings view consumed by
-     * `apps/tasks-v0/web/pod-settings.html`.  Mirrors stoop's V0.4-
+     * .4 (2026-05-20) — pod-settings view consumed by
+     * `apps/tasks-v0/web/pod-settings.html`. Mirrors stoop's
      * adopt settings view (commit 9e7003b): the manifest models the
      * data shape (record + per-field patch declarations); the page
      * keeps its rich custom UI (pod-sign-in flow, conditional
      * groupPodUri row, localisation labels — auto-rendering would regress).
      *
-     * V0.3 Q17 (`shape: 'record'`) — `getCircleStoragePolicy` returns a
-     * singleton `{policy, groupPodUri?}` object, NOT a list.  Q15
+     * (`shape: 'record'`) — `getCircleStoragePolicy` returns a
+     * singleton `{policy, groupPodUri?}` object, NOT a list.
      * (`argsFromContext`) — `circleId` is a RUNTIME-derived arg
      * (URL `?circle=...`), not static; the page (or its host) supplies
      * `$circleId` via the fetch-section context.
      *
-     * V0.4 Q18 (`view.fields[]`) — declares the two editable fields
+     * (`view.fields[]`) — declares the two editable fields
      * of the storage policy with their patch ops.  Both target
      * `setCircleStoragePolicy({circleId, storagePolicy, groupPodUri?})`
-     * — a FLAT skill (no nested `{patch: {...}}` wrapper), so Q21
+     * — a FLAT skill (no nested `{patch: {...}}` wrapper), so
      * `argWrapper` is NOT needed here (omitted).  Same flat shape
      * as stoop's `setHopMode({global})` field.
      *
@@ -1134,8 +1134,8 @@ export const tasksManifest = {
      * `getSettings`/`updateSettings`/`setHopMode`).  They are
      * pod-plumbing skills, not chat/slash-callable primary flows.
      * Non-strict `validateManifest` permits `dataSource.skillId` and
-     * `field.patch.opId` to reference any string (Q16-strict would
-     * tighten this — opt-in only).  The SP-3 drift canary therefore
+     * `field.patch.opId` to reference any string (-strict would
+     * tighten this — opt-in only). The drift canary therefore
      * doesn't need to know about them.
      *
      * The page's pod-sign-in surface (`startPodSignIn`,
@@ -1148,16 +1148,16 @@ export const tasksManifest = {
       id:    'pod-settings',
       title: 'Pod settings',
       type:  'circle-storage-policy',
-      shape: 'record',                              // V0.3 Q17 — singleton
+      shape: 'record',                              // singleton
       dataSource: {
         skillId:         'getCircleStoragePolicy',
-        // V0.3 Q15 — `circleId` is runtime-derived (browser URL); the
+        // `circleId` is runtime-derived (browser URL); the
         // page supplies it via the fetch-section context.  Omitted
         // when the host has no active circle (the skill itself replies
         // `{error: 'circleId required'}` in that case).
         argsFromContext: { circleId: '$circleId' },
       },
-      // V0.4 Q18 — two representative editable fields of the storage
+      // two representative editable fields of the storage
       // policy.  Both dispatch through `setCircleStoragePolicy` (one-way
       // upgrade; admin/coordinator gated server-side).
       fields: [
@@ -1178,13 +1178,13 @@ export const tasksManifest = {
           name:  'groupPodUri',
           type:  'string',
           label: 'Pod URI',
-          // V0.7 Q26 (adopted 2026-05-20) — conditional-display gate:
+          // (adopted 2026-05-20) — conditional-display gate:
           // groupPodUri is only meaningful when policy ∈ {centralised,
           // hybrid}.  Auto-rendered consumers hide the field for
           // policy='decentralised' (own pod, no group URI).  The
           // hand-coded page enforces the same rule via a separate
           // show/hide branch; the manifest now declares it once.
-          // B.2.4 was the originating signal; V0.7 closed the
+          // B.2.4 was the originating signal; closed the
           // substrate gap.
           requiresField: { policy: ['centralised', 'hybrid'] },
           patch: { opId: 'setCircleStoragePolicy', argName: 'groupPodUri' },

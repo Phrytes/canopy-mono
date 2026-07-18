@@ -1,5 +1,5 @@
 /**
- * basis — form generator tests.  v0.3 sub-slice 3.3.
+ * basis — form generator tests. v0.3.
  */
 import { describe, it, expect } from 'vitest';
 

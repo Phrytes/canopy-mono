@@ -99,7 +99,7 @@ export class OfferingMatch {
    *   Additional peers (beyond the closed group) to subscribe to.
    *   Inbound requests from these peers carry an `extraAudience` flag
    *   that the receiver's `appHandler` can use to apply different
-   *   sensitivity (e.g. dampen hop-discovered sends per Phase 40.20 §8a Q3).
+   *   sensitivity (e.g. dampen hop-discovered sends per.20 8a).
    */
   constructor({ agent, peers = [], group, localActor, offerings, skills, posture, extraAudience = [] }) {
     if (!agent || typeof agent.on !== 'function') {

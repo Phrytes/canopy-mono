@@ -1,5 +1,5 @@
 /**
- * SP-2 feature tests.  Verifies the household feature delta:
+ * feature tests. Verifies the household feature delta:
  *
  *   - addTask creates a `task` item.
  *   - listTasks lists open tasks (with claim-buttons when ≤10).

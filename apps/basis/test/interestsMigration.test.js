@@ -1,5 +1,5 @@
 /**
- * interests→drivers fold-in (audit §4/Q6) — one-time seed of an `interest`-kind driver from
+ * interests→drivers fold-in (audit 4) — one-time seed of an `interest`-kind driver from
  * the learned Layer-2 interest signal (interestsMigration.js). Pins: topInterestTerms
  * selection/cap, marker idempotence, seeding the strongest terms as driver TAGS (kind
  * 'interest', text empty), the skip-but-mark case (no learned terms), and single-write repeats.
