@@ -1,6 +1,6 @@
 /**
- * SkillMatch — broadcast skill-tagged requests; route to subscribers
- * whose skill profile + posture matches.
+ * OfferingMatch — broadcast offering-tagged requests; route to subscribers
+ * whose offering profile + posture matches.
  *
  * **Migrated 2026-05-04 (Phase 4.2 of substrate refactor).**  The
  * pre-2026-05-04 version had a bespoke `transport` interface
@@ -22,7 +22,7 @@
  *
  * Topic / cleanup discipline:
  *   - Inbound subscriptions (peer broadcasts → us) live for the
- *     SkillMatch's lifetime. They're set up in `start()` and torn down
+ *     OfferingMatch's lifetime. They're set up in `start()` and torn down
  *     in `stop()`.
  *   - Per-broadcast claim subscriptions are scoped to the broadcast
  *     and unsubscribed on completion / timeout.
@@ -46,10 +46,10 @@ import { ulid } from './ulid.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-export class SkillMatch {
+export class OfferingMatch {
   /** @type {import('@onderling/core').Agent} */ #agent;
   /** @type {string}  */ #group;
-  /** @type {Map<string, {skills: Set<string>, posture: object}>} */ #profile = new Map();
+  /** @type {Map<string, {offerings: Set<string>, posture: object}>} */ #profile = new Map();
   #localActor = null;
 
   /** @type {Map<string, {pubKey: string}>} keyed on pubKey for de-dup. */
@@ -91,7 +91,7 @@ export class SkillMatch {
    * @param {string} [args.localActor]                   This agent's display id (e.g. webid).
    *   Defaults to `agent.address` (typically the pubKey for relay/local transports).
    *   Used as the `from` field in broadcasts/claims; opaque to the substrate.
-   * @param {Array<string>} [args.skills]                This agent's local skill list.
+   * @param {Array<string>} [args.offerings]             This agent's local offering list (legacy `skills` accepted).
    * @param {Object<string, 'always'|'negotiable'|'never'>} [args.posture]
    *
    * Phase 40.20 (2026-05-08, Stoop V3 mobile broadcast-scope locked):
@@ -101,12 +101,12 @@ export class SkillMatch {
    *   that the receiver's `appHandler` can use to apply different
    *   sensitivity (e.g. dampen hop-discovered sends per Phase 40.20 §8a Q3).
    */
-  constructor({ agent, peers = [], group, localActor, skills, posture, extraAudience = [] }) {
+  constructor({ agent, peers = [], group, localActor, offerings, skills, posture, extraAudience = [] }) {
     if (!agent || typeof agent.on !== 'function') {
-      throw new TypeError('SkillMatch: agent (a core.Agent instance) required');
+      throw new TypeError('OfferingMatch: agent (a core.Agent instance) required');
     }
     if (typeof group !== 'string' || !group) {
-      throw new TypeError('SkillMatch: group required');
+      throw new TypeError('OfferingMatch: group required');
     }
     this.#agent      = agent;
     this.#group      = group;
@@ -115,25 +115,27 @@ export class SkillMatch {
     for (const p of peers) this.addPeer(p);
     for (const p of extraAudience) this.addExtraAudiencePeer(p);
 
-    if (skills || posture) {
-      this.setLocalProfile({ skills: skills ?? [], posture: posture ?? {} });
+    // Read-accept: new callers pass `offerings`; legacy callers pass `skills`.
+    const localOfferings = offerings ?? skills;
+    if (localOfferings || posture) {
+      this.setLocalProfile({ offerings: localOfferings ?? [], posture: posture ?? {} });
     }
   }
 
   // ── Local profile ──────────────────────────────────────────────
 
   /**
-   * Declare this agent's own skills + posture.  Used by the
+   * Declare this agent's own offerings + posture.  Used by the
    * substrate's subscription filter to skip requests we can't handle.
    *
    * @param {object} args
-   * @param {string[]} args.skills
+   * @param {string[]} args.offerings   (legacy `skills` accepted)
    * @param {Object<string, string>} args.posture
    */
-  setLocalProfile({ skills, posture }) {
+  setLocalProfile({ offerings, skills, posture }) {
     this.#profile.set('local', {
-      skills:  new Set(skills),
-      posture: { ...(posture ?? {}) },
+      offerings: new Set(offerings ?? skills),
+      posture:   { ...(posture ?? {}) },
     });
   }
 
@@ -147,7 +149,7 @@ export class SkillMatch {
    */
   addPeer(peer) {
     if (!peer?.pubKey || typeof peer.pubKey !== 'string') {
-      throw new TypeError('SkillMatch.addPeer: peer.pubKey (string) required');
+      throw new TypeError('OfferingMatch.addPeer: peer.pubKey (string) required');
     }
     if (peer.pubKey === this.#agent.address) return;     // never subscribe to self
     // Roster — idempotent.
@@ -185,7 +187,7 @@ export class SkillMatch {
    */
   addExtraAudiencePeer(peer) {
     if (!peer?.pubKey || typeof peer.pubKey !== 'string') {
-      throw new TypeError('SkillMatch.addExtraAudiencePeer: peer.pubKey (string) required');
+      throw new TypeError('OfferingMatch.addExtraAudiencePeer: peer.pubKey (string) required');
     }
     if (peer.pubKey === this.#agent.address) return;
     if (this.#peers.has(peer.pubKey)) return;          // group peers shadow extras
@@ -240,25 +242,27 @@ export class SkillMatch {
   // ── Broadcast ──────────────────────────────────────────────────
 
   /**
-   * Broadcast a skill-tagged request and collect claims.
+   * Broadcast an offering-tagged request and collect claims.
    *
    * @param {object} args
-   * @param {string[]} args.requiredSkills
+   * @param {string[]} args.requiredOfferings   (legacy `requiredSkills` accepted)
    * @param {object} args.payload
    * @param {number} [args.timeoutMs]
    * @param {number} [args.expectClaims]
    * @returns {Promise<{claims: Array<{actor: string, payload: object, at: number}>}>}
    */
   async broadcast({
-    requiredSkills, payload,
+    requiredOfferings, requiredSkills, payload,
     timeoutMs = DEFAULT_TIMEOUT_MS, expectClaims = 1,
     scope = 'group',
   }) {
-    if (!Array.isArray(requiredSkills)) {
-      throw new TypeError('broadcast: requiredSkills (array) required');
+    // Read-accept: new callers pass `requiredOfferings`; legacy pass `requiredSkills`.
+    const required = requiredOfferings ?? requiredSkills;
+    if (!Array.isArray(required)) {
+      throw new TypeError('broadcast: requiredOfferings (array) required');
     }
     if (!this.#started) {
-      throw new Error('SkillMatch.broadcast: call start() first');
+      throw new Error('OfferingMatch.broadcast: call start() first');
     }
     if (typeof scope !== 'string' || !['group', 'group+contacts', 'group+contacts+hops'].includes(scope)) {
       throw new TypeError(`broadcast: scope must be one of 'group' | 'group+contacts' | 'group+contacts+hops' (got ${scope})`);
@@ -296,8 +300,8 @@ export class SkillMatch {
     // or a wider one.
     await publish(this.#agent, requestsTopic, {
       requestId,
-      from:           this.#localActor,
-      requiredSkills,
+      from:              this.#localActor,
+      requiredOfferings: required,
       payload,
       claimsTopic,
       scope,
@@ -356,7 +360,9 @@ export class SkillMatch {
   async #dispatchInbound(request) {
     const local = this.#profile.get('local');
     if (!local) return;
-    const matched = (request.requiredSkills ?? []).filter((s) => local.skills.has(s));
+    // Read-accept the legacy `requiredSkills` wire field alongside `requiredOfferings`.
+    const required = request.requiredOfferings ?? request.requiredSkills ?? [];
+    const matched = required.filter((s) => local.offerings.has(s));
     if (matched.length === 0) return;
 
     const postureLevels = matched.map((s) => local.posture[s] ?? 'negotiable');
@@ -366,7 +372,7 @@ export class SkillMatch {
       if (d !== 'claim') return;
       await publish(this.#agent, request.claimsTopic, {
         actor:   this.#localActor,
-        payload: { acceptedSkills: matched },
+        payload: { acceptedOfferings: matched },
         at:      Date.now(),
       });
     };

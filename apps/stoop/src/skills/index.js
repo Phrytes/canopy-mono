@@ -361,7 +361,7 @@ async function hydrateItems(items, ctx) {
 /**
  * @param {object} args
  * @param {import('@onderling/item-store').ItemStore} args.store
- * @param {import('@onderling/skill-match').SkillMatch} args.skillMatch
+ * @param {import('@onderling/skill-match').OfferingMatch} args.skillMatch
  * @param {object} [args.notifier]                            optional Notifier (lend reminders)
  * @param {object} [args.reveals]                             optional Reveals (author hydration)
  * @param {object} [args.members]                             optional MemberMap (author hydration)
@@ -1052,7 +1052,9 @@ export function buildSkills({
 
       const broadcastP = hasGroupTarget
         ? skillMatch.broadcast({
-            requiredSkills: a.requiredSkills ?? [],
+            // The task-item field stays `requiredSkills`; map it into the
+            // renamed broadcast wire arg `requiredOfferings`.
+            requiredOfferings: a.requiredSkills ?? [],
             payload:        broadcastPayload,
             timeoutMs:      a.timeoutMs ?? DEFAULT_TIMEOUT_MS,
             expectClaims:   a.expectClaims ?? 0,

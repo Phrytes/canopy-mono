@@ -20,7 +20,7 @@ import { Agent, AgentIdentity, InternalBus, InternalTransport, MemorySource } fr
 import { VaultMemory } from '@onderling/vault';
 import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap, Reveals, buildIdentitySkills }    from '@onderling/identity-resolver';
-import { SkillMatch }                                 from '@onderling/skill-match';
+import { OfferingMatch }                                 from '@onderling/skill-match';
 
 import { buildSkills } from './skills/index.js';
 import { CachingDataSource } from './lib/CachingDataSource.js';
@@ -343,12 +343,12 @@ export async function createNeighborhoodAgent({
   }
 
   // ── L1e SkillMatch — composes the real agent + pubSub ─────────────────────
-  const skillMatch = new SkillMatch({
+  const skillMatch = new OfferingMatch({
     agent,
     peers:      skillMatchOpts.peers ?? [],
     group:      skillMatchOpts.group,
     localActor: skillMatchOpts.localActor,
-    skills:     skillMatchOpts.skills  ?? [],
+    offerings:  skillMatchOpts.skills  ?? [],
     posture:    skillMatchOpts.posture ?? {},
   });
 

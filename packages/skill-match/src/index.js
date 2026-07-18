@@ -1,1 +1,1 @@
-export { SkillMatch } from './SkillMatch.js';
+export { OfferingMatch } from './OfferingMatch.js';

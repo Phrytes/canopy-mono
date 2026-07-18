@@ -25,7 +25,7 @@ import {
 } from '@onderling/core';
 import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap } from '@onderling/identity-resolver';
-import { SkillMatch } from '@onderling/skill-match';
+import { OfferingMatch } from '@onderling/skill-match';
 
 import { buildStandardRolePolicy } from './rolePolicy.js';
 import { buildMeshAgent } from './MeshAgent.js';
@@ -58,7 +58,7 @@ const V0_DEFAULT_CIRCLE_ID = 'household';
  * @param {string} [args.identityVault]
  * @returns {Promise<{
  *   agent: object, itemStore: object, members: MemberMap,
- *   notifier: object | null, skillMatch: SkillMatch | null,
+ *   notifier: object | null, skillMatch: OfferingMatch | null,
  *   localStore: object | null, _circleState: object,
  * }>}
  *   `_circleState` is exposed so `createCircleAgent` can enrich the
@@ -162,7 +162,7 @@ export async function createTasksAgent({
   // SkillMatch (Phase 4.2 — composes core.Agent + pubSub directly).
   let skillMatch = null;
   if (skillMatchOpts?.group) {
-    skillMatch = new SkillMatch({
+    skillMatch = new OfferingMatch({
       agent,
       peers:      skillMatchOpts.peers ?? [],
       group:      skillMatchOpts.group,

@@ -31,7 +31,7 @@ import {
   PeerGraph, RoutingStrategy,
 } from '@onderling/core';
 import { RelayTransport } from '@onderling/transports';
-import { SkillMatch }                      from '@onderling/skill-match';
+import { OfferingMatch }                      from '@onderling/skill-match';
 // Subpath imports — pulling from `@onderling/react-native`'s barrel
 // would re-evaluate KeychainVault, whose `react-native-keychain` TS
 // import vitest can't parse.  Subpath bypass.
@@ -749,12 +749,12 @@ export async function relabelBundleGroup({
   try { await bundle.mirror?.stop?.();      } catch { /* swallow */ }
   try { bundle._substrateStop?.();          } catch { /* swallow */ }
 
-  const skillMatch = new SkillMatch({
+  const skillMatch = new OfferingMatch({
     agent:      bundle.agent,
     peers,
     group:      newGroupId,
     localActor,
-    skills,
+    offerings:  skills,
     posture,
   });
   await skillMatch.start();

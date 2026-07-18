@@ -2,7 +2,7 @@
   "private": true,
   "name": "@onderling/skill-match",
   "version": "0.2.0",
-  "description": "Pubsub-of-skills + posture flag + closed-group governance for matchmaking + claim flows. Composes core.Agent + pubSub.js — no synthetic transport.",
+  "description": "Pubsub-of-offerings + posture flag + closed-group governance for matchmaking + claim flows. Composes core.Agent + pubSub.js — no synthetic transport. (Package dir/name still skill-match; OfferingMatch is the exported class.)",
   "type": "module",
   "main": "src/index.js",
   "exports": {
