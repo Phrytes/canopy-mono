@@ -1,6 +1,17 @@
 /**
  * ItemStore — the public API.
  *
+ * ⚠ RETIRED as a production store (2026-07-18, PLAN-capabilities-tasks-roles
+ * P1). NO application constructs `new ItemStore` anymore — every consumer
+ * (tasks-v0, stoop, tasks-mobile, household, presence-v0) runs on the canonical
+ * thin `CircleItemStore` + the lifecycle/CRUD FUNCTIONS over it (`taskLifecycle`
+ * / `taskCrud`), bundled for the ItemStore-ergonomic surface by `createTaskStore`.
+ * This class is retained ONLY as (a) the parity reference the migration tests
+ * assert against, (b) the export of the pure `computeStatus` (still imported by
+ * `taskLifecycle`). Do NOT use it in new code. Final cleanup (extract
+ * `computeStatus` to its own module; delete the class + its h2/h4 tests once the
+ * parity tests are self-standing) is a tracked follow-up.
+ *
  * **Migrated 2026-05-04 (Phase 5.2 of substrate refactor).**  The
  * pre-2026-05-04 version had a custom `Backend` interface (whose only
  * implementation was the synthetic `InMemoryBackend`) that duplicated

@@ -140,7 +140,7 @@ if (values['circle-list']) {
     process.exit(2);
   }
 
-  const { ItemStore } = await import('@onderling/item-store');
+  const { CircleItemStore, createTaskStore } = await import('@onderling/item-store');
   const { MemberMap } = await import('@onderling/identity-resolver');
   const { DataPart }  = await import('@onderling/core');
   const { buildMeshAgent }  = await import('../src/MeshAgent.js');
@@ -173,10 +173,12 @@ if (values['circle-list']) {
       (cfg.members ?? []).map((m) => [m.webid, m.role ?? 'member']),
     );
     const dataSource = new (await import('@onderling/core')).MemorySource();
-    const itemStore = new ItemStore({
+    const circleStore = new CircleItemStore({
       dataSource,
       rootContainer: `mem://tasks/circles/${cfg.circleId}/`,
-      rolePolicy:    buildStandardRolePolicy(roles),
+    });
+    const itemStore = createTaskStore(circleStore, {
+      rolePolicy:          buildStandardRolePolicy(roles),
       enforceDependencies: true,
     });
     let liveCircle = Object.freeze({
