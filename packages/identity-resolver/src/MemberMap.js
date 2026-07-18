@@ -122,9 +122,10 @@ export class MemberMap extends Emitter {
    *   this rather than on `webid`.  Optional — legacy consumers
    *   leave it absent.
    * @param {Array<{categoryId: string, freeTags?: string[], availability?: string, radius?: string, status?: string}>} [m.skills]
-   *   Stoop V1 Phase 11: per-member skills profile.  `categoryId`
+   *   Stoop V1 Phase 11: per-member offerings profile (wire field still named
+   *   `skills`, renamed with the matching stack later).  `categoryId`
    *   picks from a fixed taxonomy (canonical home:
-   *   `@onderling/agent-registry` `SKILLS_TAXONOMY`).  `status` ∈
+   *   `@onderling/agent-registry` `OFFERINGS_TAXONOMY`).  `status` ∈
    *   `'active' | 'paused' | 'archived'`  (V2.5+; legacy Dutch
    *   values `actief|gepauzeerd|gearchiveerd` are auto-translated).  Optional; legacy
    *   consumers leave it absent.

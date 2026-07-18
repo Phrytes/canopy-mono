@@ -12,4 +12,4 @@ export {
   categoryFor,
   matchesProfile,
   isKnownCategory,
-} from './skillsMatch.js';
+} from './offeringsMatch.js';

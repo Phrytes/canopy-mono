@@ -1,11 +1,16 @@
 /**
- * skillsMatch — pure functions for Stoop's Layer 1 matching
+ * offeringsMatch — pure functions for Stoop's Layer 1 matching
  * (Stoop V1 Phase 12, 2026-05-06; functional design § 4d).
+ *
+ * Matches over a member's OFFERINGS (the human-profile "I can do X" data — see
+ * plans/NOTE-offering-rename-inventory.md); "skill" is reserved for the invocable A2A sense.
+ * The roster wire field is still named `skills` today (renamed with the matching stack in a
+ * follow-up pass); this module read-accepts it.
  *
  * No I/O, no inference, no state.  Apps build a matcher by passing
  * the loaded taxonomy + dictionary in; the matcher returns
  * normalised tags + categories for arbitrary text, and computes
- * "is this post relevant to this member's skills?" deterministically.
+ * "is this post relevant to this member's offerings?" deterministically.
  *
  * The dictionary lookups are case-insensitive (input lowercased
  * once at the call site).  Multilingual matching falls out of the
@@ -14,24 +19,24 @@
  * matches an English skill profile.
  */
 
-// The taxonomy moved to @onderling/agent-registry (skills→property fold-in,
-// plans/NOTE-skills-properties-audit.md Q4): it is now the COARSE rung of the `skill`
+// The taxonomy moved to @onderling/agent-registry (offering→property fold-in,
+// plans/NOTE-skills-properties-audit.md Q4): it is now the COARSE rung of the `offering`
 // property descriptor there. Literal-path import so it resolves under BOTH Node's
 // exports map and Metro's exports-OFF literal resolution.
-import { OFFERINGS_TAXONOMY as SKILLS_TAXONOMY } from '@onderling/agent-registry/src/offeringsTaxonomy.js';
+import { OFFERINGS_TAXONOMY } from '@onderling/agent-registry/src/offeringsTaxonomy.js';
 import dictJson from './tagNormalisation.json' with { type: 'json' };
 
 /**
  * Re-exported so apps can iterate the taxonomy for UI dropdowns.
  * Frozen to prevent accidental mutation. (Canonical home:
- * `@onderling/agent-registry` `SKILLS_TAXONOMY`.)
+ * `@onderling/agent-registry` `OFFERINGS_TAXONOMY`.)
  */
-export const TAXONOMY = SKILLS_TAXONOMY;
+export const TAXONOMY = OFFERINGS_TAXONOMY;
 
 /** Indexed dictionary entries. */
 const DICT = dictJson.entries;
 /** Quick-set of valid category ids for membership checks. */
-const CATEGORY_IDS = new Set(SKILLS_TAXONOMY.categories.map((c) => c.id));
+const CATEGORY_IDS = new Set(OFFERINGS_TAXONOMY.categories.map((c) => c.id));
 
 /** Tokenise a free-text body into lowercase word tokens. */
 function tokenise(text) {
