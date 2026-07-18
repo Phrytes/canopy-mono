@@ -138,6 +138,92 @@ export class CircleItemStore {
     return stored;
   }
 
+  /**
+   * CAS (compare-and-set) AUTHORITATIVE write — the single-writer path for
+   * ops that must be winner-take-all (claim / reassign / approve), distinct
+   * from `put`'s causal/CRDT path.
+   *
+   * **Authoritative single-writer ops (claim/reassign/approve) use CAS;
+   * replicated content uses `put()`'s causal path.** `put` resolves
+   * concurrent writes with `causalWinner` (last-causally-newer-wins): correct
+   * for mesh content, but NOT winner-take-all — two peers can each "win" and
+   * the store converges. Claiming a task is winner-take-all: exactly ONE
+   * writer may succeed. This method gives that guarantee by threading an
+   * `If-Match: <etag>` precondition, so a racing second writer is REJECTED
+   * (surfaced as a conflict) rather than silently merged. It does NOT touch
+   * the causal path — it is an ADDITIONAL authoritative-write path.
+   *
+   * Mechanism — mirrors `ItemStore.#casWriteOrConflict` (both wrap the SAME
+   * `core.DataSource`, and etag support is DataSource-level):
+   *   1. Resolve the base etag: `expectedEtag` when the caller passes the etag
+   *      it read (the genuine race — both racers share one base), else
+   *      `readEtag(uri)` (duck-typed via `typeof src.readEtag === 'function'`).
+   *   2. `write(uri, data, { ifMatch: baseEtag })` — a `null`/absent base
+   *      (a fresh item with no prior version) writes unconditionally.
+   *   3. A precondition failure (`err.code === 'CONFLICT'` / HTTP 409 / 412)
+   *      → re-read the winner and RETURN `{ error:'conflict', current }`
+   *      (never thrown), mirroring ItemStore's `{ error, current }` conflict
+   *      shape. Lifecycle verbs map this to their own tag (claim →
+   *      `'already-claimed'`). Any other error propagates.
+   *
+   * **FALLBACK — non-CAS DataSource** (`readEtag` absent, e.g. `MemorySource`):
+   * a plain guarded write with a documented WEAKER guarantee — last-write-wins
+   * with no cross-process race protection. A single-process / synchronous
+   * source still serialises awaited calls (a second in-process write sees the
+   * first), so a caller that needs the conflict surfaced on a non-CAS source
+   * must read-check first before calling (as `ItemStore.claim` does).
+   *
+   * @param {object} item  a fully-formed typed item (needs `type`; `id` assigned if absent)
+   * @param {object} [opts]
+   * @param {string} [opts.expectedEtag]  base etag the caller read; overrides `readEtag`
+   * @param {string} [opts.by]            actor id (stamped onto `updatedBy`)
+   * @param {string|(()=>string)} [opts.now]  ISO clock (deterministic tests)
+   * @param {boolean} [opts.sync=true]    `false` = inbound write; suppress fan-out (matches `put`)
+   * @returns {Promise<object | {error:'conflict', current: object|null}>}
+   *   the stored item on success; the conflict result on a precondition failure.
+   */
+  async putIfMatch(item, { expectedEtag, by, now, sync = true } = {}) {
+    if (!item || typeof item !== 'object') throw new Error('CircleItemStore.putIfMatch: an item object is required');
+    if (typeof item.type !== 'string' || !item.type) throw new Error('CircleItemStore.putIfMatch: item.type is required');
+    const id = (typeof item.id === 'string' && item.id) ? item.id : ulid();
+    // Authoritative write: `updatedAt` is always the write time (no origin/causal
+    // preservation — that is `put`'s job). createdAt/createdBy are PRESERVED.
+    const ts = (typeof now === 'function' ? now() : now) ?? new Date().toISOString();
+    const stored = {
+      ...item,
+      id,
+      createdAt: item.createdAt ?? ts,
+      createdBy: item.createdBy ?? by ?? 'unknown',
+      updatedAt: ts,
+      updatedBy: by ?? item.updatedBy ?? item.createdBy ?? 'unknown',
+    };
+    if (this.#validate) {
+      const res = this.#validate(stored);
+      if (res && res.ok === false) {
+        const msg = (res.errors || []).map((e) => e?.message || JSON.stringify(e)).join('; ');
+        throw new Error(`CircleItemStore.putIfMatch: invalid "${stored.type}": ${msg || 'unknown type / schema error'}`);
+      }
+    }
+    const uri = this.#uri(id);
+    const src = this.#source;
+    // Resolve the base etag: caller-supplied wins (the genuine race); else read
+    // it (CAS-capable sources only). A null/absent etag → unconditional write.
+    let baseEtag = expectedEtag ?? null;
+    if (baseEtag == null && typeof src.readEtag === 'function') {
+      try { baseEtag = await src.readEtag(uri); } catch { baseEtag = null; }
+    }
+    try {
+      await src.write(uri, JSON.stringify(stored), baseEtag != null ? { ifMatch: baseEtag } : undefined);
+    } catch (err) {
+      const conflict = err && (err.code === 'CONFLICT' || err.status === 409 || err.status === 412);
+      if (conflict) return { error: 'conflict', current: await this.get(id) };
+      throw err;
+    }
+    // Successful authoritative write fans out like `put` (unless it's inbound).
+    if (sync !== false) this.#emitWrite(stored);
+    return stored;
+  }
+
   /** Read one item by id, or `null` if absent. */
   async get(id) {
     const raw = await this.#source.read(this.#uri(id));
