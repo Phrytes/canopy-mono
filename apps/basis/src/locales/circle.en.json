@@ -2754,6 +2754,10 @@
       "text": "No location set.",
       "doc": "S2 — no location yet."
     },
+    "loc_disclosure_hint": {
+      "text": "Who sees your location is set at Me → personas",
+      "doc": "location-fold-in (audit §4) — quiet pointer: location is now a disclosure-controlled property on the Mij persona layer; the geo-editor here stays for setting the coarse place."
+    },
     "geo_placeholder": {
       "text": "Search a place…",
       "doc": "S2 — geocode search input."
@@ -3299,6 +3303,10 @@
       "availability": {
         "text": "Availability",
         "doc": "availability unification (Q5) — label of the unified reachability property (open/limited/away)."
+      },
+      "location": {
+        "text": "Location",
+        "doc": "location fold-in (audit §4) — label of the unified coarse place property (ladder: district→municipality→region→in-area→∅)."
       }
     }
   },
@@ -3335,6 +3343,14 @@
       "region": {
         "text": "region",
         "doc": "mij#personas — ladder rung: region."
+      },
+      "coords": {
+        "text": "exact spot",
+        "doc": "location fold-in (audit §4) — ladder rung: exact coordinates (finest place rung)."
+      },
+      "in-area": {
+        "text": "in the area (y/n)",
+        "doc": "location fold-in (audit §4) — ladder rung: the in-area predicate, coarsest useful place rung (no raw spot)."
       },
       "band": {
         "text": "band",

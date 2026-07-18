@@ -25,7 +25,7 @@
  */
 
 import { attributeKeys, bucketsFor } from '@onderling/attribute-charter';
-import { isDriverValue, deriveCategory, SKILLS_TAXONOMY, AVAILABILITY_STATES, availabilityState } from '@onderling/agent-registry';
+import { isDriverValue, deriveCategory, SKILLS_TAXONOMY, AVAILABILITY_STATES, availabilityState, locationLabel } from '@onderling/agent-registry';
 
 /* ── availability — the ONE unified reachability property (decision Q5) ───────
  * Not a charter key: a person-level coarse-enum (open/limited/away) that folds
@@ -38,6 +38,17 @@ import { isDriverValue, deriveCategory, SKILLS_TAXONOMY, AVAILABILITY_STATES, av
 export const AVAILABILITY_KEY = 'availability';
 const AVAILABILITY_DISPLAY_LADDER = Object.freeze(['state', 'none']);
 const AVAILABILITY_L10N = 'circle.mij.availability';
+
+/* ── location — the folded-in coarse PLACE property (audit §4, design's canonical ladder) ──
+ * Not a charter key: a person-level property that folds the bespoke stoop `profile.location`
+ * geo field into ONE disclosure-controlled property on the truth layer. Rendered like `place`
+ * — an OPEN coarse label (free-text editor; the value is a real place name, so no value
+ * l10n) — while being wired like availability for everything else (migration + disclosure +
+ * ladder + row). Its DISPLAY ladder is finest→coarsest ending in ∅: coords → district →
+ * municipality → region → in-area → ∅. `coords`/`in-area` are the semantically distinct
+ * extremes; the finer per-rung geo-coarsening is a descriptor TODO (see location.js). */
+export const LOCATION_KEY = 'location';
+const LOCATION_DISPLAY_LADDER = Object.freeze(['coords', 'district', 'municipality', 'region', 'in-area', 'none']);
 
 /* ── Ladder labels (Mij → persona's) ─────────────────────────────────────────
  * Rung KEYS per charter attribute, shown finest→coarsest ending in the empty
@@ -280,6 +291,17 @@ export function buildMijViewModel({ personas, defaultId = 'default', circles, re
     set: availabilityValue != null,
     ladder: AVAILABILITY_DISPLAY_LADDER,
     l10n: AVAILABILITY_L10N,
+  });
+  // location — the folded-in coarse place property (audit §4): an OPEN coarse label (free
+  // like `place`) with the design's canonical ladder; disclosure-controlled per circle.
+  const locationValue = locationLabel(ownValueOf(defaultRaw[LOCATION_KEY]));
+  generalProperties.push({
+    key: LOCATION_KEY,
+    value: locationValue,
+    buckets: null,
+    free: true,
+    set: locationValue != null,
+    ladder: LOCATION_DISPLAY_LADDER,
   });
   const generalDrivers = driverEntries(defaultRaw).map((d) => ({ ...d, ladder: DRIVER_LADDER }));
 

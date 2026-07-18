@@ -115,6 +115,17 @@ export function renderCircleProfile(container, {
   if (profile.location?.label) {
     locSection.appendChild(button(tr('circle.profile.loc_clear'), 'cc-profile__loc-clear', () => { if (typeof onClearLocation === 'function') onClearLocation(); }));
   }
+  // location fold-in (audit §4) — this geo editor stays (it sets the coarse place),
+  // but WHO sees your location is now a disclosure-controlled property on the Mij
+  // persona layer. A quiet pointer (like skills' onOpenMij), never a removal.
+  const locHint = document.createElement('p');
+  locHint.className = 'cc-profile__loc-disclosure-hint';
+  if (typeof onOpenMij === 'function') {
+    locHint.appendChild(button(tr('circle.profile.loc_disclosure_hint'), 'cc-profile__loc-disclosure-link', onOpenMij));
+  } else {
+    locHint.textContent = tr('circle.profile.loc_disclosure_hint');
+  }
+  locSection.appendChild(locHint);
   container.appendChild(locSection);
 
   // ── availability + my-data links ──────────────────────────────────────────

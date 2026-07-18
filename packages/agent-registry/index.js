@@ -36,6 +36,10 @@ export { SKILLS_TAXONOMY, SKILL_LADDER, deriveCategory, skillDescriptor } from '
 // coarse-enum property (open/limited/away) folding the old per-skill `availability`
 // sub-field AND the standalone `holidayMode` boolean; 'away' IS holiday mode.
 export { AVAILABILITY_STATES, AVAILABILITY_AWAY, AVAILABILITY_LADDER, isAvailabilityState, availabilityState, isAway, availabilityDescriptor } from './src/availability.js';
+// location fold-in (NOTE-skills-properties-audit §4, personal-properties design §2) — ONE
+// person-level coarse-enum property with the CANONICAL disclosure ladder (in-area → region →
+// municipality → district → coords) folding the bespoke stoop `profile.location` field.
+export { LOCATION_LADDER, LOCATION_IN_AREA, isLocationValue, locationLabel, inArea, locationDescriptor } from './src/location.js';
 // personal-drivers matcher (#4) — on-device, explainable-only (tag overlap + optional injected LLM judge).
 export { deriveSignature, itemSignature, sharedTags, jaccard, scoreDriver, matchDrivers, matchDriversSemantic, matchProfileDrivers } from './src/driverMatch.js';
 // matchable-aware matching (P4c) — profile↔profile match on the `matchable` axis: `matchableSignature`

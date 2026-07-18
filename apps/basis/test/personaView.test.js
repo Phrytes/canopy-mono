@@ -204,8 +204,8 @@ describe('buildMijViewModel', () => {
     const place = m.general.properties.find((p) => p.key === 'place');
     expect(place.value).toBe('Amsterdam');
     expect(place.ladder).toEqual(PROPERTY_LADDERS.place);
-    // every charter attribute gets a row + the unified availability row, each with a ladder
-    expect(m.general.properties.map((p) => p.key).sort()).toEqual([...attributeKeys(), 'availability'].sort());
+    // every charter attribute gets a row + the folded-in availability & location rows, each with a ladder
+    expect(m.general.properties.map((p) => p.key).sort()).toEqual([...attributeKeys(), 'availability', 'location'].sort());
     for (const p of m.general.properties) expect(Array.isArray(p.ladder)).toBe(true);
     // the driver shows as a chip entry, not as a coarse property
     expect(m.general.drivers).toHaveLength(1);
@@ -276,6 +276,43 @@ describe('buildMijViewModel', () => {
     // an unset property is not offered for sharing
     const c1 = m.circles.find((c) => c.circleId === 'circle-1');
     expect(c1.addable).not.toContain('availability');
+  });
+
+  it('renders location as a folded-in coarse place property row (audit §4)', () => {
+    // a location value on the default profile surfaces as a general property row: an
+    // OPEN coarse label (free-text like place) with the design's canonical ladder.
+    const personas = [{
+      id: 'default', name: 'default',
+      properties: { location: { mode: 'own', value: 'Amsterdam' } },
+      disclosure: { perContext: {} },
+    }];
+    const m = buildMijViewModel({ personas, circles: mijCircles, releases: {} });
+    const loc = m.general.properties.find((p) => p.key === 'location');
+    expect(loc).toMatchObject({ key: 'location', value: 'Amsterdam', free: true, set: true, buckets: null });
+    // finest→coarsest display ladder ending in ∅ (coords → district → … → in-area → none)
+    expect(loc.ladder).toEqual(['coords', 'district', 'municipality', 'region', 'in-area', 'none']);
+    // it is shareable per circle like any valued property (disclosure-controlled)
+    const c1 = m.circles.find((c) => c.circleId === 'circle-1');
+    expect(c1.addable).toContain('location');
+  });
+
+  it('accepts a structured location value and shows its coarse label', () => {
+    const personas = [{
+      id: 'default', name: 'default',
+      properties: { location: { mode: 'own', value: { label: 'Amsterdam', coords: { lat: 52.3, long: 4.9 } } } },
+      disclosure: { perContext: {} },
+    }];
+    const m = buildMijViewModel({ personas, circles: [], releases: {} });
+    const loc = m.general.properties.find((p) => p.key === 'location');
+    expect(loc).toMatchObject({ key: 'location', value: 'Amsterdam', set: true });   // label, not raw coords
+  });
+
+  it('location is absent (unset) when the profile has no value', () => {
+    const m = buildMijViewModel({ personas: mijPersonas, circles: mijCircles, releases: mijReleases });
+    const loc = m.general.properties.find((p) => p.key === 'location');
+    expect(loc).toMatchObject({ key: 'location', value: null, set: false });
+    const c1 = m.circles.find((c) => c.circleId === 'circle-1');
+    expect(c1.addable).not.toContain('location');
   });
 });
 

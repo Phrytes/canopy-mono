@@ -2754,6 +2754,10 @@
       "text": "Geen locatie ingesteld.",
       "doc": "S2 — no location yet."
     },
+    "loc_disclosure_hint": {
+      "text": "Wie je locatie ziet, regel je bij Mij → persona's",
+      "doc": "location-fold-in (audit §4) — quiet pointer: location is now a disclosure-controlled property on the Mij persona layer; the geo-editor here stays for setting the coarse place."
+    },
     "geo_placeholder": {
       "text": "Zoek een plaats…",
       "doc": "S2 — geocode search input."
@@ -3299,6 +3303,10 @@
       "availability": {
         "text": "Beschikbaarheid",
         "doc": "availability-unificatie (Q5) — label van de gebundelde bereikbaarheids-eigenschap (open/beperkt/afwezig)."
+      },
+      "location": {
+        "text": "Locatie",
+        "doc": "location-fold-in (audit §4) — label van de gebundelde coarse plaats-eigenschap (ladder: wijk→gemeente→regio→in de buurt→∅)."
       }
     }
   },
@@ -3335,6 +3343,14 @@
       "region": {
         "text": "regio",
         "doc": "mij#personas — laddersport: regio."
+      },
+      "coords": {
+        "text": "exacte plek",
+        "doc": "location-fold-in (audit §4) — laddersport: exacte coördinaten (fijnste plaats-sport)."
+      },
+      "in-area": {
+        "text": "in de buurt (j/n)",
+        "doc": "location-fold-in (audit §4) — laddersport: het in-de-buurt-predicaat, grofste nuttige plaats-sport (geen ruwe plek)."
       },
       "band": {
         "text": "band",

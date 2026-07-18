@@ -15,6 +15,7 @@
 import { buildMijViewModel } from './personaView.js';
 import { migrateRosterSkills } from '../core/skillsMigration.js';
 import { migrateAvailability } from '../core/availabilityMigration.js';
+import { migrateLocation } from '../core/locationMigration.js';
 
 export { skillKeyFor } from '../core/skillsMigration.js';
 
@@ -34,6 +35,9 @@ export async function loadMijModel({ callSkill, personaId, circles = [], activeC
     // `availability` property from the most-restrictive legacy signal (holidayMode /
     // per-skill availability). Reads the active circle's stoop context; global once seeded.
     try { await migrateAvailability({ callSkill }); } catch { /* non-fatal */ }
+    // location fold-in (audit §4) — one-time, marker-guarded seed of the person-level
+    // `location` property from the bespoke stoop `profile.location` coarse geo field.
+    try { await migrateLocation({ callSkill }); } catch { /* non-fatal */ }
   }
 
   // Every profile-role registry entry is a persona; the opened row + the
