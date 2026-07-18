@@ -27,6 +27,7 @@ import {
   createTaskStore,
   computeStatus,
   computeDagStatus,
+  assigneesOf,
 } from '@onderling/item-store';
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
@@ -191,10 +192,53 @@ describe('J1 — task lifecycle (GREEN: store-convergence keystone)', () => {
 //   assert that rule.
 // Verifies: co-ownership is a set, not a last-writer overwrite of `assignee`.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J2 — co-ownership (TODO: Phase 1 assignees[]/maxAssignees)', () => {
-  it.todo(
-    'add → B claim → C joinTask → assignees == {B,C}; both in listMine; complete follows chosen policy',
-  );
+describe('J2 — co-ownership (GREEN: assignees[] / maxAssignees)', () => {
+  const DAVE = 'https://id.example/dave'; // the over-the-cap third claimer
+
+  it('co-ownable task: B + C both claim → assignees {B,C}; full rejects; any co-owner completes', async () => {
+    const circle = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    const tasks = createTaskStore(circle);
+
+    // A task that ALLOWS two co-owners (maxAssignees: 2). Default (1) would be
+    // exclusive — that's the J1 case; here we opt into co-ownership.
+    await tasks.addItems([{ id: 'heg2', text: 'heg samen knippen', maxAssignees: 2 }], { actor: ANNE });
+
+    // B claims → in the set (not an overwrite of a single field).
+    const b = await tasks.claim('heg2', { actor: BOB });
+    expect(b.error).toBeUndefined();
+    expect(assigneesOf(b)).toEqual([BOB]);
+
+    // C claims the SAME task → JOINS as a co-owner; assignees is now {B,C}.
+    const c = await tasks.claim('heg2', { actor: CARA });
+    expect(c.error).toBeUndefined();
+    expect([...assigneesOf(c)].sort()).toEqual([BOB, CARA].sort());
+
+    // Both see it as theirs (membership, not equality with one assignee).
+    const openMine = (actor) => tasks.listOpen().then((all) => all.filter((t) => assigneesOf(t).includes(actor)));
+    expect((await openMine(BOB)).map((t) => t.id)).toContain('heg2');
+    expect((await openMine(CARA)).map((t) => t.id)).toContain('heg2');
+
+    // A THIRD claim on the now-full set (cap 2) → already-claimed.
+    const d = await tasks.claim('heg2', { actor: DAVE });
+    expect(d.error).toBe('already-claimed');
+    expect([...assigneesOf(d.current)].sort()).toEqual([BOB, CARA].sort());
+
+    // ANY co-owner can complete (Frits's default) — Cara, the non-mirror owner.
+    const [done] = await tasks.markComplete([{ id: 'heg2' }], { actor: CARA });
+    expect(computeStatus(done)).toBe('complete');
+    expect(done.completedBy).toBe(CARA);
+  });
+
+  it('regression: a default (exclusive) task still rejects the 2nd claimer — J1 preserved', async () => {
+    const circle = new CircleItemStore({ dataSource: new MemorySource(), rootContainer: ROOT });
+    const tasks = createTaskStore(circle);
+    await tasks.addItems([{ id: 'solo', text: 'solo' }], { actor: ANNE }); // no maxAssignees → default 1
+
+    const b = await tasks.claim('solo', { actor: BOB });
+    expect(assigneesOf(b)).toEqual([BOB]);
+    const c = await tasks.claim('solo', { actor: CARA });
+    expect(c.error).toBe('already-claimed'); // exclusive: the cap-1 set is full
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
