@@ -153,6 +153,15 @@ import { makeHandleCalendarCancel } from '../../src/core/handlers/calendarCancel
 // Theme B — the settings chatbot: template-driven guided setup (remote-loadable, bundled fallback).
 import { renderGuidedSetup } from './guidedSetupPanel.js';
 import { startGuidedSetup, submitGuidedStep, guidedPolicyPatch, loadSettingsTemplate, DEFAULT_SETTINGS_TEMPLATE } from '../../src/v2/guidedSetup.js';
+// In-app onboarding (task #13, Phase 1) — the default HELP circle with the Onderling-bot as its sole
+// relation:'agent' member, plus the guided onboarding conversation rendered as the bot's chat. All logic
+// is shared src/; this shell only provisions through the real create path + posts the driver's bubbles.
+import {
+  HELP_CIRCLE_ID, helpCircleSpec, helpCircleRoster, onderlingBotMember, provisionHelpCircle,
+} from '../../src/v2/helpCircle.js';
+import { DEFAULT_ONBOARDING_TEMPLATE, loadOnboardingTemplate } from '../../src/v2/onboardingTemplate.js';
+import { onboardingTurn, answerOnboarding, parseOnboardingAction } from '../../src/v2/onboardingChat.js';
+import { createOnboardingFlags, localStorageOnboardingIo } from '../../src/v2/onboardingFlags.js';
 // B #64 — apply an authored remote recipe (loaded+validated → active circle policy) via the shared apply-wiring.
 import { loadAndApplyRecipe } from '../../src/v2/recipeApply.js';
 // B · consent-card — REVIEWED recipe apply: load→review model, then apply-with-opt-outs through the SAME gate.
@@ -1016,6 +1025,15 @@ const CIRCLE_LLM_POLICY    = import.meta.env?.VITE_CIRCLE_LLM_POLICY ?? 'user';
 const SETTINGS_TEMPLATE_URL = import.meta.env?.VITE_SETTINGS_TEMPLATE_URL ?? null;
 let settingsTemplate = DEFAULT_SETTINGS_TEMPLATE;
 loadSettingsTemplate({ url: SETTINGS_TEMPLATE_URL }).then((tpl) => { settingsTemplate = tpl; }).catch(() => { /* keep bundled */ });
+
+// In-app onboarding (task #13) — first-run flags + the onboarding conversation template. HQ can host an
+// updated (open-source) template at this URL; we fall back to the bundled build for the current language.
+const onboardingFlags = createOnboardingFlags(localStorageOnboardingIo());
+const ONBOARDING_TEMPLATE_URL = import.meta.env?.VITE_ONBOARDING_TEMPLATE_URL ?? null;
+let onboardingTemplate = DEFAULT_ONBOARDING_TEMPLATE;
+loadOnboardingTemplate({ url: ONBOARDING_TEMPLATE_URL, lang: currentLang() })
+  .then((tpl) => { onboardingTemplate = tpl; })
+  .catch(() => { /* keep the bundled build */ });
 const FEEDBACK_LLM_BASEURL = absLocalBase(import.meta.env?.VITE_FEEDBACK_LLM_BASEURL ?? undefined);
 const FEEDBACK_LLM_MODEL = import.meta.env?.VITE_FEEDBACK_LLM_MODEL ?? undefined;   // the model the route serves (default qwen2.5 404s on Privatemode)
 // cluster J — feedback real-pod activation env (parity with classic main.js' VITE_FEEDBACK_*).
@@ -3697,6 +3715,81 @@ async function createCircle() {
   showLauncher();
 }
 
+// ── In-app onboarding (task #13, Phase 1) ─────────────────────────────────────────
+// Provision the default HELP circle with the Onderling-bot as its sole relation:'agent'
+// member, ONCE, through the real create path (createGroupV2 via quickCreateCircle). The
+// pure `provisionHelpCircle` orchestrator (shared src/) guards against double-provision;
+// this shell only injects the real accessors. Best-effort — a failure is retried on the
+// next boot (the marker isn't set until the create succeeds).
+async function maybeProvisionHelpCircle() {
+  if (typeof rawCallSkill !== 'function') return;   // agent not up yet → skip; retried next boot
+  try {
+    const spec = helpCircleSpec(t);
+    const r = await provisionHelpCircle({
+      isProvisioned: () => onboardingFlags.isHelpCircleProvisioned(),
+      listCircleIds: () => circlesCache.map((c) => c.id),
+      createHelpCircle: (s) => quickCreateCircle({ callSkill: rawCallSkill, name: s.name, id: s.id }),
+      // The help circle's membership is a product constant (`helpCircleRoster`) surfaced at
+      // render time, so there's no separate roster op to write here — the accessor is a seam
+      // kept for parity with the shared provisioner (and a future real member-add / mobile twin).
+      addBotMember: () => {},
+      markProvisioned: () => onboardingFlags.markHelpCircleProvisioned(),
+      spec,
+      bot: onderlingBotMember(spec.name),
+    });
+    if (r.provisioned) {
+      try { circlesCache = await loadCircles(sources); } catch { /* keep current cache */ }
+    }
+  } catch (err) {
+    console.warn('[circleApp] help-circle provisioning failed', err?.message ?? err);
+  }
+}
+
+// The onboarding conversation's run-state (shared driver), scoped to the help circle. `onboardingPosted`
+// guards against re-stacking the intro on a rerender/reopen within a session; the persisted `onboardingDone`
+// flag guards across reloads (the help circle + bot stay as a standing chat regardless).
+let onboardingRunState = null;
+let onboardingPosted = false;
+
+// Post the driver's bot bubbles into the help circle's kring stream (each a bot message; a choice bubble
+// carries its option buttons). Uses the SAME `_kringRender.botBubble` the circle bot + feedback use.
+function postOnboardingBubbles(bubbles) {
+  for (const b of (Array.isArray(bubbles) ? bubbles : [])) {
+    _kringRender?.botBubble(b.text, b.buttons ? { buttons: b.buttons } : undefined);
+  }
+}
+
+// Kick off the onboarding conversation the first time the help circle is opened (unless it already ran).
+async function maybeStartOnboarding(id) {
+  if (id !== HELP_CIRCLE_ID || onboardingPosted) return;
+  if (await onboardingFlags.isOnboardingDone()) { onboardingPosted = true; return; }
+  onboardingPosted = true;
+  onboardingRunState = startGuidedSetup(onboardingTemplate);
+  const turn = onboardingTurn(onboardingTemplate, onboardingRunState);
+  postOnboardingBubbles(turn.bubbles);
+  onboardingRunState = turn.state;
+  if (turn.done) {
+    if (turn.handoff) createCircle();
+    await onboardingFlags.markOnboardingDone();
+  }
+}
+
+// A tapped onboarding option: echo the pick as a me-bubble, advance the flow, post the next bubbles, and on
+// a handoff open the create-circle wizard (marking onboarding done either way).
+async function handleOnboardingAnswer(id, value) {
+  if (id !== HELP_CIRCLE_ID || !onboardingRunState) return;
+  const r = answerOnboarding(onboardingTemplate, onboardingRunState, value);
+  if (r.echo) _kringRender?.userBubble(r.echo);
+  onboardingRunState = r.state;
+  if (r.handoff) {
+    await onboardingFlags.markOnboardingDone();
+    createCircle();                    // handoff → the real create path
+    return;
+  }
+  postOnboardingBubbles(r.bubbles);
+  if (r.done) await onboardingFlags.markOnboardingDone();
+}
+
 async function showDetail(id) {
   hideCircleTabBar(tabBarEl);
   setActiveCircle(id);
@@ -3861,6 +3954,15 @@ function showKring(id, circle, policy) {
   async function ensureMyRole() {
     if (myCircleRole !== null) return myCircleRole;
     await ensureMyWebid();
+    // Task #13 — the help circle's membership is a product constant: you + the Onderling-bot
+    // (relation:'agent'). Source its roster from the shared `helpCircleRoster` so the 1:1-bot
+    // gate (`oneToOneBotLabel`) lights the assistant-header strip — no listGroupMembers round-trip.
+    if (id === HELP_CIRCLE_ID) {
+      kringMembers = helpCircleRoster({ selfWebid: myWebid || null, botName: t('circle.onboarding.help_name') });
+      myCircleRole = 'admin';
+      if (getActiveCircle() === id) rerender();
+      return myCircleRole;
+    }
     try {
       const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: id });
       const members = Array.isArray(res?.members) ? res.members : [];
@@ -4052,7 +4154,12 @@ function showKring(id, circle, policy) {
       viewMode,
       screenBlocks,
       // S6.A — tap an inline manifest button on a bot reply → dispatch its op.
-      onEmbedButton: (b) => circleEmbedButtonTap?.(b),
+      // Task #13 — an onboarding option button (help circle) routes to the onboarding driver instead.
+      onEmbedButton: (b) => {
+        const onboardVal = parseOnboardingAction(b?.action);
+        if (onboardVal != null) { handleOnboardingAnswer(id, onboardVal); return; }
+        circleEmbedButtonTap?.(b);
+      },
       // tap a "See also" embed chip → open the screen where the item lives (S6.B panel).
       onEmbedOpen: ({ screen, ref }) => { if (screen) openCircleScreenPanel(screen, { highlightRef: ref }); },
       // Convergence — a feedback review CARD button: ✏ pre-fills the composer for an in-place edit; a
@@ -4351,6 +4458,9 @@ function showKring(id, circle, policy) {
   // until they resolve, the action stays hidden.
   ensureMyWebid().then(() => { if (getActiveCircle() === id) rerender(); }).catch(() => {});
   ensureMyRole().catch(() => {});
+  // Task #13 — first time the help circle opens, run the guided onboarding conversation as the
+  // Onderling-bot's chat (idempotent via the persisted onboardingDone flag + a per-session guard).
+  maybeStartOnboarding(id).catch((err) => console.warn('[circleApp] onboarding start failed', err?.message ?? err));
   // EventLog has no subscribe seam yet; will poll-on-event so
   // inbound peer messages appear without manual re-render.
 
@@ -5465,6 +5575,9 @@ async function boot() {
     console.warn('[circleApp] loadCircles failed', err);
     circlesCache = [];
   }
+  // In-app onboarding (task #13) — provision the default help circle + the Onderling-bot once (idempotent),
+  // then refresh the launcher list so its tile appears. Best-effort; a failure never blocks the app.
+  await maybeProvisionHelpCircle();
   // α.3 — Schermen is the primary landing tab.  First-run seeds the
   // default Stream screen inside showScreens.
   showScreens().catch((err) => {
