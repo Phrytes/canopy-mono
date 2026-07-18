@@ -125,7 +125,18 @@ function _normaliseDisclosure(d) {
     const c = {};
     for (const [key, choice] of Object.entries(entries)) {
       if (!choice || typeof choice !== 'object') continue;
-      c[key] = Object.freeze({ enabled: choice.enabled === true, rung: typeof choice.rung === 'string' ? choice.rung : null });
+      // Persist ALL THREE independent disclosure axes (disclosure.js P4): disclosed
+      // (enabled+rung) · matchable · requestable. Previously this allowlist kept only
+      // {enabled,rung}, silently dropping matchable/requestable on persistence — so a
+      // persona's `requestable` offering never survived the registry round-trip and the
+      // P4 requestable-bridge guard (`isRequestable`) always read false. Additive +
+      // backward-compatible: an old entry lacking the axes reads them as false.
+      c[key] = Object.freeze({
+        enabled:     choice.enabled === true,
+        rung:        typeof choice.rung === 'string' ? choice.rung : null,
+        matchable:   choice.matchable === true,
+        requestable: choice.requestable === true,
+      });
     }
     out[ctx] = Object.freeze(c);
   }

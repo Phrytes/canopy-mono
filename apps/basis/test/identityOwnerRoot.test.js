@@ -164,8 +164,10 @@ describe('property layer — persisted per-persona disclosure (personas #1/#2 su
     await a.callSkill('agents', 'setProfileDisclosure', { id: 'work', contextId: 'buurt-42', key: 'ageBand', enabled: false });
     const got = await a.callSkill('agents', 'getProfileDisclosure', { id: 'work' });
     expect(got.ok).toBe(true);
-    expect(got.disclosure.perContext['buurt-42'].place).toEqual({ enabled: true, rung: null });
-    expect(got.disclosure.perContext['buurt-42'].ageBand).toEqual({ enabled: false, rung: null });
+    // All three P4 axes now persist (disclosed=enabled+rung · matchable · requestable);
+    // untouched axes default to withhold (false).
+    expect(got.disclosure.perContext['buurt-42'].place).toEqual({ enabled: true, rung: null, matchable: false, requestable: false });
+    expect(got.disclosure.perContext['buurt-42'].ageBand).toEqual({ enabled: false, rung: null, matchable: false, requestable: false });
     // disclosure and properties coexist (setting one doesn't wipe the other)
     await a.callSkill('agents', 'setProfileProperty', { id: 'work', key: 'place', value: 'Groningen' });
     expect((await a.callSkill('agents', 'getProfileDisclosure', { id: 'work' })).disclosure.perContext['buurt-42'].place.enabled).toBe(true);
