@@ -440,6 +440,73 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
   });
 });
 
+describe('renderCircleKring · bulletin restyle (bot card · transparency · consent)', () => {
+  const botRow = (payload) => ({
+    id: 'b1', ts: now, app: 'kring', type: 'chat-message', actor: 'bot', circleId: 'g1',
+    event: { id: 'b1', type: 'chat-message', actor: 'bot', payload: { text: 'Klaar.', ...payload } },
+  });
+
+  it('GESPREK renders the bot card: a bot-header strip (green dot + default name) wrapping the log', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t });
+    const card = el.querySelector('.circle-kring__chat-card');
+    expect(card).not.toBeNull();
+    expect(card.querySelector('.circle-kring__bot-dot')).not.toBeNull();
+    expect(card.querySelector('.circle-kring__bot-name').textContent).toBe('circle.kring.bot_header');
+    // the message log lives inside the card
+    expect(card.querySelector('.circle-kring__list')).not.toBeNull();
+  });
+
+  it('botLabel prop overrides the default bot-header name', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, botLabel: 'de uitleg-bot' });
+    expect(el.querySelector('.circle-kring__bot-name').textContent).toBe('de uitleg-bot');
+  });
+
+  it('scherm-mode renders no bot card (not the assistant conversation)', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows, t, viewMode: 'scherm', onViewMode: () => {} });
+    expect(el.querySelector('.circle-kring__chat-card')).toBeNull();
+  });
+
+  it('transparency badge stays dormant when a bot message carries no provenance', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows: [botRow({})], t });
+    expect(el.querySelector('.circle-kring__bubble-provenance')).toBeNull();
+  });
+
+  it('transparency badge renders a verbatim string provenance under a bot message', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows: [botRow({ provenance: '· direct beantwoord' })], t });
+    expect(el.querySelector('.circle-kring__bubble-provenance').textContent).toBe('· direct beantwoord');
+  });
+
+  it('transparency badge localizes an object provenance ({ llmUsed })', () => {
+    const el = mount();
+    renderCircleKring(el, { circle, rows: [botRow({ provenance: { llmUsed: false } })], t });
+    expect(el.querySelector('.circle-kring__bubble-provenance').textContent).toBe('circle.kring.provenance_direct');
+    const el2 = mount();
+    renderCircleKring(el2, { circle, rows: [botRow({ provenance: { llmUsed: true } })], t });
+    expect(el2.querySelector('.circle-kring__bubble-provenance').textContent).toBe('circle.kring.provenance_llm');
+  });
+
+  it('a consent bubble gets the --consent card variant + primary/secondary button classes', () => {
+    const el = mount();
+    const consentRow = botRow({
+      consent: true,
+      buttons: [
+        { action: 'llm:yes', label: 'ja, doorsturen', variant: 'primary' },
+        { action: 'llm:no', label: 'nee, ik kies zelf', variant: 'secondary' },
+      ],
+    });
+    renderCircleKring(el, { circle, rows: [consentRow], t, onEmbedButton: vi.fn() });
+    const bubble = el.querySelector('.circle-kring__bubble--consent');
+    expect(bubble).not.toBeNull();
+    expect(bubble.querySelector('.circle-kring__consent-btn--primary').textContent).toBe('ja, doorsturen');
+    expect(bubble.querySelector('.circle-kring__consent-btn--secondary').textContent).toBe('nee, ik kies zelf');
+  });
+});
+
 describe('renderCircleKring · composer parity (slash-suggest + permission gate)', () => {
   const catalog = { opsById: new Map([
     ['addTask',      { op: { id: 'addTask',      surfaces: { slash: { command: '/addtask' },       chat: { hint: 'add a task' } } } }],

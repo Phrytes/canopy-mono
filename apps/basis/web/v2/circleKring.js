@@ -68,6 +68,11 @@ export function renderCircleKring(container, {
   more = null,
   composerPlaceholder = null,
   composerPrefill = null,   // convergence — the ✏ edit opens the composer with the point's current text
+  // Bulletin restyle — the label shown in the GESPREK chat-card's bot-header strip
+  // (green presence dot + this name). SEAM: no per-kring bot identity is plumbed to
+  // the renderer yet, so hosts leave this null and the strip falls back to a localized
+  // default (`circle.kring.bot_header`). Wire a real agent/bot name here when it exists.
+  botLabel = null,
   // per-kring bottom tabs (board Voorbeeld 1-3).
   // `tabs`     `[{id, label}]` produced by `buildKringTabs(policy, t)`
   // `activeTab` current tab id (defaults to first / 'gesprek')
@@ -309,7 +314,31 @@ export function renderCircleKring(container, {
       }));
     }
   }
-  container.appendChild(body);
+
+  // Bulletin restyle — the GESPREK chat stream renders as ONE bot card: a header
+  // strip (a green presence dot + the kring assistant's name) sitting over the message
+  // log, in a single 2px-ink-bordered card (mirrors onderling.org's `.chatbox`). The
+  // prikbord / scherm tabs keep the plain body — they aren't the assistant conversation.
+  const isChatStream = viewMode !== 'scherm' && effectiveTab === 'gesprek';
+  if (isChatStream) {
+    const card = document.createElement('div');
+    card.className = 'circle-kring__chat-card';
+    const head = document.createElement('div');
+    head.className = 'circle-kring__bot-head';
+    const dot = document.createElement('span');
+    dot.className = 'circle-kring__bot-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    head.appendChild(dot);
+    const name = document.createElement('span');
+    name.className = 'circle-kring__bot-name';
+    name.textContent = botLabel || tr('circle.kring.bot_header');
+    head.appendChild(name);
+    card.appendChild(head);
+    card.appendChild(body);
+    container.appendChild(card);
+  } else {
+    container.appendChild(body);
+  }
 
   // Multi-field inline form (mobile parity). Rendered between the stream and the composer when the host
   // has a `pendingForm` (a 2+-missing-field needsForm). Pure render: the host owns the pending state and
@@ -506,6 +535,14 @@ function renderBubble(row, {
   el.className = 'circle-kring__bubble';
   el.dataset.rowId = row.id ?? '';
 
+  // Bulletin restyle — the LLM-forward consent/handoff card. A bot bubble carrying
+  // `payload.consent` styles as the reference card (dashed rust border, peach fill);
+  // its `payload.buttons` carry `variant: 'primary' | 'secondary'` for the "ja,
+  // doorsturen" / "nee, ik kies zelf" pair (rendered + wired by the embedButtons path
+  // below). SEAM: nothing emits a consent bubble in the kring yet — this restyle lights
+  // up when the LLM-forward consent flow stamps one. No backend consent logic is invented.
+  if (row.event?.payload?.consent) el.classList.add('circle-kring__bubble--consent');
+
   // Bulletin restyle — my own chat messages align right (me-bg block, no sender
   // header).  Same condition the delivery icon uses: a locally-authored
   // chat-message.  Without `localActor` plumbing everything renders as "others'".
@@ -592,6 +629,25 @@ function renderBubble(row, {
     } catch { /* placeholder-less failure — the text line stands */ }
   }
 
+  // Per-answer transparency badge (the site's `.msg .src` pattern) — how a BOT answer
+  // came about (which layer, whether the language model was used). Rendered ONLY when the
+  // message carries `payload.provenance`, and only on bot rows: a string renders verbatim
+  // (a pipeline-stamped, already-localized note), an object `{ llmUsed }` localizes here.
+  // SEAM: nothing stamps provenance onto kring bot replies yet, so today the badge stays
+  // dormant — it lights up once the answer pipeline carries its layer/LLM provenance. It is
+  // never fabricated.
+  const provenance = row.event?.payload?.provenance;
+  if (provenance != null && row.event?.actor === 'bot') {
+    const prov = document.createElement('div');
+    prov.className = 'circle-kring__bubble-provenance';
+    if (typeof provenance === 'string') {
+      prov.textContent = provenance;
+    } else {
+      prov.textContent = tr(provenance.llmUsed ? 'circle.kring.provenance_llm' : 'circle.kring.provenance_direct');
+    }
+    el.appendChild(prov);
+  }
+
   // Per-row action chips (Ik help / Negeer / Ik doe ze …).  Substrate
   // already picks the right set per row kind.  The owner-only "entrust"
   // (mandate) action rides the same seam, gated by the viewer signals.
@@ -666,7 +722,11 @@ function renderBubble(row, {
       btn.type = 'button';
       // S6.B — a screen button opens a panel; an inline button dispatches an op.
       const isScreen = !!b.screen;
-      btn.className = `circle-kring__bubble-action circle-kring__embed-button${isScreen ? ' circle-kring__screen-button' : ''}`;
+      // Bulletin restyle — a consent-card button carries `variant` so the "ja, doorsturen"
+      // (primary, filled ink) / "nee, ik kies zelf" (secondary, ink-outline) pair reads right.
+      const variantCls = b.variant === 'primary' ? ' circle-kring__consent-btn--primary'
+        : b.variant === 'secondary' ? ' circle-kring__consent-btn--secondary' : '';
+      btn.className = `circle-kring__bubble-action circle-kring__embed-button${isScreen ? ' circle-kring__screen-button' : ''}${variantCls}`;
       if (b.opId) btn.dataset.opId = b.opId;
       if (b.itemId != null) btn.dataset.itemId = String(b.itemId);
       if (b.screen) btn.dataset.screen = b.screen;

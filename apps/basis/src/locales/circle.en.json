@@ -609,6 +609,18 @@
     "attach": {
       "text": "Attach a photo",
       "doc": "media P1 — kring composer attach button (sealed media path); only shown when the circle has a content seal strategy."
+    },
+    "bot_header": {
+      "text": "the kring assistant",
+      "doc": "Bulletin restyle — default label in the GESPREK chat-card's bot-header strip (green dot + name). Seam: no per-kring bot identity yet; hosts may pass a real name via botLabel."
+    },
+    "provenance_direct": {
+      "text": "· answered directly — no language model used",
+      "doc": "Bulletin restyle — transparency badge under a bot answer handled locally (layer 0/1). Only shown when the message carries payload.provenance."
+    },
+    "provenance_llm": {
+      "text": "· answered with help from the language model",
+      "doc": "Bulletin restyle — transparency badge under a bot answer that used the language model. Only shown when the message carries payload.provenance."
     }
   },
   "screen": {

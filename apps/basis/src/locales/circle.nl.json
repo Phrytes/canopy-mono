@@ -609,6 +609,18 @@
     "attach": {
       "text": "Foto toevoegen",
       "doc": "media P1 — bijlage-knop in de kring-composer (verzegeld media-pad); alleen zichtbaar als de kring een content-verzegelstrategie heeft."
+    },
+    "bot_header": {
+      "text": "de kring-assistent",
+      "doc": "Bulletin restyle — standaardlabel in de bot-header van de GESPREK-chatkaart (groene stip + naam). Seam: nog geen bot-identiteit per kring; hosts kunnen een echte naam meegeven via botLabel."
+    },
+    "provenance_direct": {
+      "text": "· direct beantwoord — geen taalmodel gebruikt",
+      "doc": "Bulletin restyle — transparantie-badge onder een bot-antwoord dat lokaal (laag 0/1) is beantwoord. Alleen getoond als het bericht payload.provenance draagt."
+    },
+    "provenance_llm": {
+      "text": "· beantwoord met hulp van het taalmodel",
+      "doc": "Bulletin restyle — transparantie-badge onder een bot-antwoord waarvoor het taalmodel is gebruikt. Alleen getoond als het bericht payload.provenance draagt."
     }
   },
   "screen": {
