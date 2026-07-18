@@ -446,10 +446,43 @@ describe('J7 — standing via role bundle (TODO: Phase 3+4 grantRole/standing)',
 // Verifies: BotAgentRegistry-pattern generalised; grants off-by-default,
 //   attenuated, temporary, brokered.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J8 — task-scoped grant (TODO: Phase 5 attenuated broker grant)', () => {
-  it.todo(
-    'attach attenuated agenda-read grant to a bot task → in-scope read ok, out-of-scope denied, keys stay; complete → revoked',
-  );
+// The app-side composition (the attachTaskGrant op, the creator/admin gate, and
+// the revoke-on-complete wiring through the live PolicyEngine) is covered in
+// tasks-v0's j8-task-grant suite. Here we assert the load-bearing primitive:
+// a grant is OFF by default, ATTENUATED to exactly the task's need + stamped
+// with the task for provenance, VERIFIES while live, and is REVOKED on complete
+// — with its revocation surfacing through the one PolicyEngine revocation hook.
+describe('J8 — task-scoped grant (GREEN: off-by-default, attenuated, revoked-on-complete)', () => {
+  it('attach attenuated agenda-read grant to a bot task → verifies while live; complete → revoked through the wired check', async () => {
+    const { TaskGrantManager, AgentIdentity, CapabilityToken } = await import('@onderling/core');
+    const { VaultMemory } = await import('@onderling/vault');
+    const granter = await AgentIdentity.generate(new VaultMemory());
+    const mgr = new TaskGrantManager({ identity: granter });
+
+    // OFF BY DEFAULT — nothing is granted until attachGrant is called.
+    expect(mgr.tokensForTask('task-1')).toEqual([]);
+
+    // Attach an attenuated agenda-read grant scoped to the task.
+    const token = await mgr.attachGrant({
+      taskId: 'task-1',
+      memberPubKey: 'ed25519:prediction-bot',
+      grant: { skill: 'agenda.read' },
+    });
+    expect(token.skill).toBe('agenda.read'); // attenuated to exactly the need
+    expect(token.constraints.task).toBe('task-1'); // stamped with the task (provenance + revocation target)
+    expect(CapabilityToken.verify(token, granter.pubKey)).toBe(true); // the issued token verifies while live
+
+    // The revocation set feeds a PolicyEngine's single revocation hook.
+    let revokedCheck;
+    mgr.installRevocationCheck({ setRevocationCheck: (fn) => { revokedCheck = fn; } });
+    expect(revokedCheck(token.id)).toBe(false); // live before complete → checkInbound would allow
+
+    // complete/cancel the task → every grant it carried is revoked.
+    mgr.revokeTaskGrants('task-1');
+    expect(mgr.isRevoked(token.id)).toBe(true);
+    expect(revokedCheck(token.id)).toBe(true); // the wired check now rejects it → checkInbound would deny
+    expect(mgr.tokensForTask('task-1')).toEqual([]); // tracking dropped
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
