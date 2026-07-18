@@ -57,7 +57,14 @@ import {
   releasedValues as releaseFromPolicy,
   createDriver,
   driversFromProperties,
+  isRequestable,
+  effectiveProperties,
 } from '@onderling/agent-registry';
+// REQUESTABLE BRIDGE (P4 host-wiring seam · J6) — the recipient's per-circle task
+// surface (`createTaskStore`) + the convergence handler (`requestableSkillHandler`)
+// that mints a `request` task instead of executing an offering. Wired below onto the
+// live host agent as the `requestOffering` peer-facing dispatcher op.
+import { createTaskStore, requestableSkillHandler } from '@onderling/item-store';
 
 /**
  * Pick the right vault for the runtime.  Used here only for the
@@ -719,6 +726,72 @@ export async function createRealHouseholdAgent(opts = {}) {
     try {
       if (!(await agentsRegistry.lookup('default'))) await agentsProfiles.create({ profileId: 'default', name: 'default' });
     } catch { /* degraded (no owner root / registry) — the on-consent persist simply stays best-effort */ }
+
+    /* ─── REQUESTABLE BRIDGE — the P4 HOST-WIRING seam #1 (NOTE-skills-vs-capabilities
+     * volleys 2–4 · journey J6) ─────────────────────────────────────────────────
+     * A peer (A) invokes a local member's REQUESTABLE offering (a skill-kind driver
+     * marked `requestable` in a circle's disclosure policy). The invocation does NOT
+     * execute the offering — it MINTS a `request` task in that circle ("A asks: …")
+     * that the recipient (B) then handles through the ordinary task lifecycle. That
+     * is the convergence: "a request to a human IS a task."
+     *
+     * Wired as a PEER-FACING dispatcher op — same direct-register pattern as
+     * `addMember`/`resolveContact`; `from` is the A2A caller (requester A). It is NOT
+     * on `manifest.js` (this is an agent-to-agent op, not a local chat/web surface —
+     * exactly like addMember), so it carries NO coverage-snapshot entry.
+     *
+     * ARCHITECTURAL CHOICE — resolve the circle context at INVOCATION time inside the
+     * handler, NOT by pre-projecting one skill per offering onto the AgentCard. A
+     * member is in N circles with DIFFERENT requestable policies AND a different task
+     * store per circle, and invariant #6 is one-agent — so the single dispatcher takes
+     * `{ contextId, key }` and resolves the right policy + per-circle store per call.
+     * Pre-projecting N per-offering handlers would fan the one agent out per circle.
+     *
+     * DISCOVERY/ADVERTISEMENT stays a SEPARATE seam: `offeringsToSkillDefinitions`
+     * (@onderling/item-store) is the offering→AgentCard projector (NOTE volley 3) —
+     * deliberately NOT built in this pass. */
+    hostAgent.register('requestOffering', async ({ parts, from }) => {
+      try {
+        const args      = parts?.[0]?.data ?? {};
+        const contextId = String(args.contextId ?? '').trim();
+        const key       = String(args.key ?? '').trim();
+        if (!contextId || !key) return [DataPart({ ok: false, error: 'contextId-and-key-required' })];
+
+        // Persona for this context. No explicit persona↔circle binding exists in this
+        // factory yet, so default to the 'default' profile (the no-login pseudonym) —
+        // the same profile the rest of this block treats as this device's identity.
+        const profileId = 'default';
+        const self      = await agentsRegistry.lookup(profileId);
+
+        // THE GUARD — a non-requestable offering mints NOTHING.
+        if (!isRequestable(self?.disclosure ?? { perContext: {} }, contextId, key)) {
+          return [DataPart({ ok: false, error: 'not-requestable' })];
+        }
+
+        // Find the offering — a skill-kind driver on the persona. Registry `properties`
+        // are stored in the own/inherit envelope ({ mode, value }); resolve to EFFECTIVE
+        // (unwrapped) values before `driversFromProperties` reads the driver shapes.
+        const props  = effectiveProperties((id) => (id === profileId ? self : null), profileId, { defaultProfileId: 'default' });
+        const driver = driversFromProperties(props)[key];
+        if (!driver) return [DataPart({ ok: false, error: 'no-such-offering' })];
+        const offering = { key, ...driver };   // stamp the key for source-provenance legibility
+
+        // The recipient's task surface for THAT circle — the per-circle CircleItemStore
+        // (the established accessor, as the household wired path uses). `recipient` is this
+        // device's local household member webid — the same local webid the addMember / seed
+        // / calendar host ops use, so the minted task's `forMember` is legible alongside them.
+        const recipient = 'webid:local-demo-user';
+        const taskStore = createTaskStore(householdService.stores.getStore(contextId), {});
+
+        const res = await requestableSkillHandler({ taskStore, offering, recipient, contextId })({
+          from,
+          requestText: typeof args.requestText === 'string' ? args.requestText : undefined,
+        });
+        return [DataPart(res)];   // { created:true, taskId, status:'pending', task }
+      } catch (e) {
+        return [DataPart({ ok: false, error: e?.message ?? 'request-failed' })];
+      }
+    }, { visibility: 'authenticated' });
   }
 
   // v0.4 — household membership demo.  The real manifest declares
