@@ -18,7 +18,7 @@
 // plans/NOTE-skills-properties-audit.md Q4): it is now the COARSE rung of the `skill`
 // property descriptor there. Literal-path import so it resolves under BOTH Node's
 // exports map and Metro's exports-OFF literal resolution.
-import { SKILLS_TAXONOMY } from '@onderling/agent-registry/src/skillsTaxonomy.js';
+import { OFFERINGS_TAXONOMY as SKILLS_TAXONOMY } from '@onderling/agent-registry/src/offeringsTaxonomy.js';
 import dictJson from './tagNormalisation.json' with { type: 'json' };
 
 /**

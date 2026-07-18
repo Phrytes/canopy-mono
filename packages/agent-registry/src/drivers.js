@@ -1,6 +1,6 @@
 // Personal drivers — the `driver` property type (property layer §12 / plans note
 // `personal-drivers-matching`). A driver is an OPT-IN, deeply personal property: what someone is
-// trying to do or cares about, BEYOND skills (a hobby, goal, desire, motivation). It is just
+// trying to do or cares about, BEYOND offerings (a hobby, goal, desire, motivation). It is just
 // another property on the profile graph, so per-persona / per-circle disclosure comes for free
 // from the existing disclosure policy — the value here is only the SHAPE + validation.
 //
@@ -16,14 +16,28 @@ import { descriptor } from './propertyVocabulary.js';
 
 /**
  * The kinds of personal driver. `driver` is the generic catch-all; the rest are finer intents.
- * `skill` (skills→property fold-in, NOTE-skills-properties-audit Q1) is a driver-LIKE open item —
- * what someone can DO rather than wants — sharing the `{ kind, text, tags[] }` shape; its coarse
- * rung (categoryId under disclosure) lives in `skillsTaxonomy.js`, not here.
+ * `offering` (offering→property fold-in, NOTE-skills-properties-audit Q1) is a driver-LIKE open
+ * item — what someone can DO/offer rather than wants — sharing the `{ kind, text, tags[] }` shape;
+ * its coarse rung (categoryId under disclosure) lives in `offeringsTaxonomy.js`, not here.
+ *
+ * Legacy `skill` (the pre-rename name for the human "I can do X" DATA — see
+ * NOTE-offering-rename-inventory.md) is READ-ACCEPTED and normalized to `offering`; new writes use
+ * `offering`. The INVOCABLE A2A sense keeps the word "skill" elsewhere and is unrelated here.
  */
-export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver', 'skill']);
+export const DRIVER_KINDS = Object.freeze(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering']);
 
-/** True iff `k` is one of the DRIVER_KINDS strings. */
-export function isDriverKind(k) { return typeof k === 'string' && DRIVER_KINDS.includes(k); }
+/** Back-compat: legacy driver-kind values normalized to the current name (`skill` → `offering`). */
+const LEGACY_KIND_ALIASES = Object.freeze({ skill: 'offering' });
+
+/** Normalize a stored/legacy driver-kind string to its current name. */
+export function normalizeDriverKind(k) {
+  return (typeof k === 'string' && LEGACY_KIND_ALIASES[k]) || k;
+}
+
+/** True iff `k` is a DRIVER_KINDS string (or a read-accepted legacy alias, e.g. `skill`). */
+export function isDriverKind(k) {
+  return typeof k === 'string' && (DRIVER_KINDS.includes(k) || k in LEGACY_KIND_ALIASES);
+}
 
 /**
  * Normalise one tag: lowercased, trimmed, internal whitespace/underscores → single hyphens,
@@ -52,27 +66,28 @@ export function normalizeTags(tags) {
 }
 
 /**
- * Build a validated, frozen driver value: `{ kind, text, tags[] }` (+ `categoryId` for skills).
+ * Build a validated, frozen driver value: `{ kind, text, tags[] }` (+ `categoryId` for offerings).
  * - `kind` falls back to the generic `driver` when unknown.
  * - `text` is a trimmed human phrase (may be empty when tags carry the meaning).
  * - `tags` are normalised + de-duped.
- * - `categoryId` (skill kind only): the user-picked taxonomy bucket — the coarse
- *   rung `skillDescriptor`'s coarsen() honours over derivation. Dropped for
+ * - `categoryId` (offering kind only): the user-picked taxonomy bucket — the coarse
+ *   rung `offeringDescriptor`'s coarsen() honours over derivation. Dropped for
  *   other kinds (they have no coarse rung).
+ * - legacy `kind:'skill'` is normalized to `offering` (read-compat).
  * A driver with neither text NOR tags is meaningless — throws (nothing to disclose or match on).
  *
  * @param {{kind?:string, text?:string, tags?:string[], categoryId?:string}} d
  * @returns {{kind:string, text:string, tags:string[], categoryId?:string}}
  */
 export function createDriver({ kind = 'driver', text = '', tags = [], categoryId } = {}) {
-  const k = isDriverKind(kind) ? kind : 'driver';
+  const k = isDriverKind(kind) ? normalizeDriverKind(kind) : 'driver';
   const t = String(text ?? '').trim();
   const tg = normalizeTags(tags);
   if (!t && tg.length === 0) {
     throw new TypeError('createDriver: a driver needs at least text or one tag');
   }
   const out = { kind: k, text: t, tags: Object.freeze(tg) };
-  if (k === 'skill' && typeof categoryId === 'string' && categoryId.trim()) {
+  if (k === 'offering' && typeof categoryId === 'string' && categoryId.trim()) {
     out.categoryId = categoryId.trim();
   }
   return Object.freeze(out);

@@ -2,22 +2,30 @@
 // vocabulary descriptor. Open { kind, text, tags[] }, not coarse buckets; all-or-nothing disclosure.
 import { describe, it, expect } from 'vitest';
 import {
-  DRIVER_KINDS, isDriverKind, normalizeTag, normalizeTags,
+  DRIVER_KINDS, isDriverKind, normalizeDriverKind, normalizeTag, normalizeTags,
   createDriver, isDriverValue, driverDescriptor, createVocabulary,
 } from '../index.js';
 
 describe('drivers (#3) — the driver property type', () => {
-  it('kinds: the finer intents + the generic catch-all + skill (fold-in)', () => {
-    expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver', 'skill']);
+  it('kinds: the finer intents + the generic catch-all + offering (fold-in)', () => {
+    expect(DRIVER_KINDS).toEqual(['hobby', 'goal', 'desire', 'motivation', 'driver', 'offering']);
     expect(isDriverKind('goal')).toBe(true);
-    expect(isDriverKind('skill')).toBe(true);
+    expect(isDriverKind('offering')).toBe(true);
+    expect(isDriverKind('skill')).toBe(true);   // legacy alias read-accepted
     expect(isDriverKind('nonsense')).toBe(false);
     expect(isDriverKind(null)).toBe(false);
   });
 
-  it('createDriver: kind skill is accepted, NOT downgraded to the generic driver', () => {
-    const s = createDriver({ kind: 'skill', text: 'bike repair', tags: ['Fietsen', 'repareren'] });
-    expect(s.kind).toBe('skill');
+  it('createDriver: kind offering is accepted, NOT downgraded to the generic driver', () => {
+    const s = createDriver({ kind: 'offering', text: 'bike repair', tags: ['Fietsen', 'repareren'] });
+    expect(s.kind).toBe('offering');
+    expect(isDriverValue(s)).toBe(true);
+  });
+
+  it('createDriver: legacy kind skill normalizes to offering (back-compat)', () => {
+    expect(normalizeDriverKind('skill')).toBe('offering');
+    const s = createDriver({ kind: 'skill', text: 'bike repair', tags: ['Fietsen'] });
+    expect(s.kind).toBe('offering');
     expect(isDriverValue(s)).toBe(true);
   });
 

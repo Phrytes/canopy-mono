@@ -6,8 +6,8 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
-    "./skills-taxonomy": "./src/skillsTaxonomy.js",
-    "./src/skillsTaxonomy.js": "./src/skillsTaxonomy.js"
+    "./offerings-taxonomy": "./src/offeringsTaxonomy.js",
+    "./src/offeringsTaxonomy.js": "./src/offeringsTaxonomy.js"
   },
   "scripts": {
     "test": "vitest run",

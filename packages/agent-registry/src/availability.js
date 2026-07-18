@@ -1,8 +1,8 @@
 // availability — the UNIFIED person-level "am I reachable?" property (availability
 // unification, plans/NOTE-skills-properties-audit.md §4/§5, decision Q5). It replaces
-// TWO older models that meant the same thing: the per-skill `availability` sub-field
-// (MemberMap.skills[].availability) AND the standalone `holidayMode` boolean. There is
-// now ONE property key `availability` on the profile graph; skills REFERENCE it (they do
+// TWO older models that meant the same thing: the per-offering `availability` sub-field
+// (MemberMap.offerings[].availability) AND the standalone `holidayMode` boolean. There is
+// now ONE property key `availability` on the profile graph; offerings REFERENCE it (they do
 // not each carry a copy), and holiday mode is simply its coarsest 'away' value.
 //
 // Modelled PRAGMATICALLY as a coarse-enum-style property (like place/ageBand) — NOT a
@@ -17,7 +17,7 @@
 // rung collapses to the bare state, never revealing more than asked.
 //
 // Pure — web ≡ mobile, no I/O. The STORE keeps the value opaque; this module owns the
-// shape + validation, like drivers.js / skillsTaxonomy.js.
+// shape + validation, like drivers.js / offeringsTaxonomy.js.
 
 import { descriptor } from './propertyVocabulary.js';
 
