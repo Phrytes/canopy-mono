@@ -15,14 +15,19 @@ function withHook() {
 }
 
 describe('InMemoryStore sync hook (OBJ-2 S1d)', () => {
-  it('addItem fans out the RAW item (id + _etag present, not legacy-shaped)', async () => {
+  it('addItem fans out the RAW item (not legacy-shaped)', async () => {
     const { store, publishItem } = withHook();
     const item = await store.addItem({ type: 'task', text: 'Milk', addedBy: 'A' });
     expect(publishItem).toHaveBeenCalledTimes(1);
     const raw = publishItem.mock.calls[0][0];
     expect(raw.id).toBe(item.id);
     expect(raw.text).toBe('Milk');
-    expect(raw._etag).toBeDefined();          // legacyShape strips _etag — proves it's the raw item
+    // The converged CircleItemStore keeps etags at the DataSource/CAS layer (no inline
+    // `_etag` body field the class ItemStore used to stamp), so raw-ness is proven by
+    // the fields legacyShape ADDS: it always normalises completedAt→null and renames
+    // assignee→claimedBy. Their absence on the fanned-out payload proves it's the raw item.
+    expect('claimedBy' in raw).toBe(false);   // legacyShape adds claimedBy — its absence ⇒ raw
+    expect(raw.completedAt).toBeUndefined();  // legacyShape normalises completedAt→null
   });
 
   it('markComplete fans out', async () => {

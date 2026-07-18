@@ -27,7 +27,7 @@
  * directly (one test does); re-exported from L1b's ULID helper.
  */
 
-import { ItemStore } from '@onderling/item-store';
+import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemorySource } from '@onderling/core';
 import { ulid as l1bUlid }             from '@onderling/item-store';
 
@@ -50,7 +50,7 @@ const SYSTEM_ACTOR = '__household-store__';
  * @implements {import('./Store.js').Store}
  */
 export class InMemoryStore {
-  /** @type {ItemStore} */
+  /** @type {ReturnType<typeof createTaskStore>} the ItemStore-compatible task surface over a CircleItemStore. */
   #store;
   /** @type {Map<string, number>}  itemId → insertion sequence */
   #insertionOrder = new Map();
@@ -67,15 +67,27 @@ export class InMemoryStore {
    */
   constructor({ dataSource, rootContainer = 'mem://household/' } = {}) {
     // Per-circle scoping (no-pod): a distinct `rootContainer` per circle (e.g.
-    // `mem://household/circles/<id>/`) partitions reads/writes — `ItemStore.#listAllItems`
-    // lists by the root prefix, so one shared DataSource serves all circles without leaks.
-    this.#store = new ItemStore({
+    // `mem://household/circles/<id>/`) partitions reads/writes — the store lists
+    // by the root prefix, so one shared DataSource serves all circles without leaks.
+    //
+    // P1 migration step 4 (2026-07-18, the FINAL ItemStore consumer): the store is
+    // now the converged `CircleItemStore` (generic typed CRUD + causal/CAS writes),
+    // with the task lifecycle/CRUD supplied by the ported functions-over-store and
+    // exposed through `createTaskStore` — the thin ItemStore-compatible surface
+    // (Emitter + audit + inbound-sync) this adapter's methods already speak. No
+    // rolePolicy / enforceDependencies is threaded: household never built one (the
+    // prior store was constructed with only `{dataSource, rootContainer}`), and createTaskStore's
+    // gate treats a missing policy as allow — exact parity with the old class-based store.
+    // No registry is injected either: household stores its own non-canonical types
+    // (shopping/errand/repair/schedule), so validation-on-write stays off (parity).
+    const circleStore = new CircleItemStore({
       dataSource:    dataSource ?? new MemorySource(),
       rootContainer,
     });
+    this.#store = createTaskStore(circleStore);
   }
 
-  /** the underlying @onderling/item-store ItemStore (substrate API: addItems/applySync/removeSync/listOpen/listClosed) — used by the substrate mirror. */
+  /** the underlying @onderling/item-store task surface (addItems/applySync/removeSync/listOpen/listClosed) — used by the substrate mirror. */
   get substrate() { return this.#store; }
 
   /**
