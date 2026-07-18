@@ -118,10 +118,10 @@
         "doc": "B/S4 — explains the opt-outable capability checkboxes at join."
       }
     },
-    "skills_default": {
+    "offerings_default": {
       "label": {
         "text": "This circle is about offering-matching — sharing your offerings (as a category) is on.",
-        "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the skills-matching signal; checked = disclose skill keys at the coarse 'category' rung for the chosen persona."
+        "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the offering-matching signal; checked = disclose offering keys at the coarse 'category' rung for the chosen persona."
       },
       "hint": {
         "text": "Only the category is shared, never the text or tags. Uncheck if you'd rather not share your offerings here — you can change this later under Me → personas.",
@@ -1949,10 +1949,10 @@
       "doc": "Secondary CTA — records dismissal so we don't re-prompt the same query."
     }
   },
-  "skillMatches": {
+  "offeringMatches": {
     "title": {
       "text": "Members with matching offerings:",
-      "doc": "Heading for the inline skill-match list (P6.7 #345) appended under /find replies."
+      "doc": "Heading for the inline offering-match list (P6.7 #345) appended under /find replies."
     }
   },
   "fileShare": {
@@ -2866,21 +2866,21 @@
       "text": "Offerings now live under Me → personas",
       "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
-    "no_skills": {
+    "no_offerings": {
       "text": "No offerings yet.",
-      "doc": "S2 — empty skills state."
+      "doc": "S2 — empty offerings state."
     },
-    "pick_skill": {
+    "pick_offering": {
       "text": "Pick an offering…",
-      "doc": "S2 — skill-category select placeholder."
+      "doc": "S2 — offering-category select placeholder."
     },
-    "add_skill": {
+    "add_offering": {
       "text": "Add",
-      "doc": "S2 — add a skill button."
+      "doc": "S2 — add an offering button."
     },
-    "remove_skill": {
+    "remove_offering": {
       "text": "Remove offering",
-      "doc": "S2 — a11y label for the per-skill remove button."
+      "doc": "S2 — a11y label for the per-offering remove button."
     },
     "location": {
       "text": "Location",

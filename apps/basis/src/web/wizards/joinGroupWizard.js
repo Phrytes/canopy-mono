@@ -387,27 +387,27 @@ function renderHandleStep(container, doc, state, onSubmit, onBack, onCancel, rer
     wrap.appendChild(pWrap);
   }
 
-  // Fold-in phase C — the charter-driven skill-sharing default, VISIBLE and
+  // Fold-in phase C — the charter-driven offering-sharing default, VISIBLE and
   // uncheckable (never silent). Rendered only when the invite carried the circle's
-  // skills-matching signal; checked ⇒ finalSubmit enables the persona's skill keys
+  // offering-matching signal; checked ⇒ finalSubmit enables the persona's offering keys
   // at the coarse 'category' rung for this circle before computing the release.
   if (state.offeringsMatching) {
-    const skillsRow = doc.createElement('label');
-    skillsRow.className = 'cc-wizard-check cc-wizard-skills-default';
-    const skillsBox = doc.createElement('input');
-    skillsBox.type = 'checkbox';
-    skillsBox.className = 'cc-wizard-skills-default-box';
-    skillsBox.checked = state.shareOfferingsAtJoin;
-    skillsBox.addEventListener('change', () => {
-      setShareOfferingsAtJoin(state, skillsBox.checked);
+    const offeringsRow = doc.createElement('label');
+    offeringsRow.className = 'cc-wizard-check cc-wizard-offerings-default';
+    const offeringsBox = doc.createElement('input');
+    offeringsBox.type = 'checkbox';
+    offeringsBox.className = 'cc-wizard-offerings-default-box';
+    offeringsBox.checked = state.shareOfferingsAtJoin;
+    offeringsBox.addEventListener('change', () => {
+      setShareOfferingsAtJoin(state, offeringsBox.checked);
     });
-    skillsRow.appendChild(skillsBox);
-    skillsRow.appendChild(doc.createTextNode(` ${t('circle.join.skills_default.label')}`));
-    wrap.appendChild(skillsRow);
-    const skillsHint = doc.createElement('div');
-    skillsHint.className = 'cc-wizard-field-hint cc-wizard-skills-default-hint';
-    skillsHint.textContent = t('circle.join.skills_default.hint');
-    wrap.appendChild(skillsHint);
+    offeringsRow.appendChild(offeringsBox);
+    offeringsRow.appendChild(doc.createTextNode(` ${t('circle.join.offerings_default.label')}`));
+    wrap.appendChild(offeringsRow);
+    const offeringsHint = doc.createElement('div');
+    offeringsHint.className = 'cc-wizard-field-hint cc-wizard-offerings-default-hint';
+    offeringsHint.textContent = t('circle.join.offerings_default.hint');
+    wrap.appendChild(offeringsHint);
   }
 
   if (state.submitError) {

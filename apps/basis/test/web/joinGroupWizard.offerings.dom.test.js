@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * Fold-in phase C — the charter-driven skill-sharing default, web wizard surface.
+ * Fold-in phase C — the charter-driven offering-sharing default, web wizard surface.
  *
  * A skills-matching circle (invite.offeringsMatching, embedded at invite-build from the circle's
  * board-8 skill record) surfaces a VISIBLE pre-checked "share my skills as category" line on the
@@ -33,7 +33,7 @@ function advanceToHandleStep(el) {
   clickByLabel(el, 'Next →');
 }
 
-describe('join wizard — charter-driven skill-sharing default', () => {
+describe('join wizard — charter-driven offering-sharing default', () => {
   it('matching circle: renders the line PRE-CHECKED with label + hint through t()', () => {
     const el = mount();
     renderJoinGroupWizard({
@@ -41,12 +41,12 @@ describe('join wizard — charter-driven skill-sharing default', () => {
       callSkill: vi.fn().mockResolvedValue({ ok: true }), onClose: vi.fn(), onDispatched: vi.fn(),
     });
     advanceToHandleStep(el);
-    const box = el.querySelector('.cc-wizard-skills-default-box');
+    const box = el.querySelector('.cc-wizard-offerings-default-box');
     expect(box).toBeTruthy();
     expect(box.checked).toBe(true);   // pre-checked — but visible and uncheckable
     // label + hint resolve via t() (uninitialised here → the locale KEY, proving no hardcoded copy)
-    expect(el.querySelector('.cc-wizard-skills-default').textContent).toContain('circle.join.skills_default.label');
-    expect(el.querySelector('.cc-wizard-skills-default-hint').textContent).toBe('circle.join.skills_default.hint');
+    expect(el.querySelector('.cc-wizard-offerings-default').textContent).toContain('circle.join.offerings_default.label');
+    expect(el.querySelector('.cc-wizard-offerings-default-hint').textContent).toBe('circle.join.offerings_default.hint');
   });
 
   it('non-matching circle (older invites included): no line at all — default stays withhold', () => {
@@ -56,10 +56,10 @@ describe('join wizard — charter-driven skill-sharing default', () => {
       callSkill: vi.fn().mockResolvedValue({ ok: true }), onClose: vi.fn(), onDispatched: vi.fn(),
     });
     advanceToHandleStep(el);
-    expect(el.querySelector('.cc-wizard-skills-default')).toBeNull();
+    expect(el.querySelector('.cc-wizard-offerings-default')).toBeNull();
   });
 
-  it('unchecking the line → the join runs WITHOUT any skills disclosure (never silent, user wins)', async () => {
+  it('unchecking the line → the join runs WITHOUT any offerings disclosure (never silent, user wins)', async () => {
     const el = mount();
     const onDispatched = vi.fn();
     const calls = [];
@@ -69,7 +69,7 @@ describe('join wizard — charter-driven skill-sharing default', () => {
       callSkill, onClose: vi.fn(), onDispatched,
     });
     advanceToHandleStep(el);
-    const box = el.querySelector('.cc-wizard-skills-default-box');
+    const box = el.querySelector('.cc-wizard-offerings-default-box');
     box.checked = false;
     box.dispatchEvent(new Event('change'));
     const handle = el.querySelector('.cc-wizard-handle-input');

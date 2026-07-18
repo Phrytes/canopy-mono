@@ -86,7 +86,7 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
       )}
 
       <Section title={t('circle.profile.offerings')}>
-        {mySkills.length === 0 ? <Text style={styles.muted}>{t('circle.profile.no_skills')}</Text> : (
+        {mySkills.length === 0 ? <Text style={styles.muted}>{t('circle.profile.no_offerings')}</Text> : (
           <View style={styles.chips}>
             {mySkills.map((s) => (
               <Pressable key={s.categoryId} style={styles.skillChip} onPress={() => removeSkill(s.categoryId)} testID={`profile-skill-${s.categoryId}`}>
@@ -95,7 +95,7 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
             ))}
           </View>
         )}
-        <Text style={styles.muted}>{t('circle.profile.pick_skill')}</Text>
+        <Text style={styles.muted}>{t('circle.profile.pick_offering')}</Text>
         <View style={styles.chips}>
           {categories.filter((c) => !myIds.has(c.id)).map((c) => (
             <Pressable key={c.id} style={styles.catChip} onPress={() => addSkill(c.id)} testID={`profile-cat-${c.id}`}>

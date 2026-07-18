@@ -118,10 +118,10 @@
         "doc": "B/S4 — explains the opt-outable capability checkboxes at join."
       }
     },
-    "skills_default": {
+    "offerings_default": {
       "label": {
         "text": "Deze kring draait om aanbod-matching — je aanbod (als categorie) delen staat aan.",
-        "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the skills-matching signal; checked = disclose skill keys at the coarse 'category' rung for the chosen persona."
+        "doc": "Fold-in phase C (Q3) — pre-checked, uncheckable wizard line when the joined circle's invite carries the offering-matching signal; checked = disclose offering keys at the coarse 'category' rung for the chosen persona."
       },
       "hint": {
         "text": "Alleen de categorie wordt gedeeld, nooit de tekst of tags. Vink uit als je je aanbod hier niet wilt delen — later aanpassen kan bij Mij → persona's.",
@@ -1949,10 +1949,10 @@
       "doc": "Secondary CTA."
     }
   },
-  "skillMatches": {
+  "offeringMatches": {
     "title": {
       "text": "Leden met passend aanbod:",
-      "doc": "Heading for the inline skill-match list (P6.7 #345)."
+      "doc": "Heading for the inline offering-match list (P6.7 #345)."
     }
   },
   "fileShare": {
@@ -2866,21 +2866,21 @@
       "text": "Aanbod staat nu bij Mij → persona's",
       "doc": "Fold-in phase C — quiet pointer row on the Profiel screen, replacing the retired skills editor; opens the Mij persona surface."
     },
-    "no_skills": {
+    "no_offerings": {
       "text": "Nog geen aanbod.",
-      "doc": "S2 — empty skills state."
+      "doc": "S2 — empty offerings state."
     },
-    "pick_skill": {
+    "pick_offering": {
       "text": "Kies aanbod…",
-      "doc": "S2 — skill-category select placeholder."
+      "doc": "S2 — offering-category select placeholder."
     },
-    "add_skill": {
+    "add_offering": {
       "text": "Toevoegen",
-      "doc": "S2 — add a skill button."
+      "doc": "S2 — add an offering button."
     },
-    "remove_skill": {
+    "remove_offering": {
       "text": "Aanbod verwijderen",
-      "doc": "S2 — a11y label for the per-skill remove button."
+      "doc": "S2 — a11y label for the per-offering remove button."
     },
     "location": {
       "text": "Locatie",
