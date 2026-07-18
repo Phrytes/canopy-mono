@@ -105,6 +105,10 @@ import { botIsAddressed } from '../../../../basis/src/v2/botAddress.js';
 import {
   routeHelpMessage, helpTopicChips, resolveHelpTopic, parseHelpAction, helpConsentAction, helpLlmLabelKeys,
 } from '../../../../basis/src/v2/helpChat.js';
+// #38 — the DEDICATED help-answer LLM path (shared with web): a freeform layer-2 ask is ANSWERED, grounded
+// in the kaartjes, instead of routed through the tool-selection prompt (→ null → fallback).
+import { answerHelpViaLlm } from '../../../../basis/src/v2/help/helpLlm.js';
+import { helpDeck } from '../../../../basis/src/v2/help/kaartjes.js';
 // OBJ-2 membership — reuse the classic RN join wizard + the camera scanner + the shared invite glue.
 import JoinGroupWizardModal from '../../../../basis/src/rn/wizards/joinGroupWizardModal.js';
 import QrScannerModal from '../../rn/QrScannerModal.js';
@@ -2702,12 +2706,12 @@ function CircleDetail({
       answer: async (query) => {
         const llm = resolve();
         if (!llm) return null;
-        const scopedCatalog = scopeCatalogToApps(catalog, policy?.apps);
-        const cmd = await interpretToCommand(query, { catalog: scopedCatalog, llm });
-        return cmd && typeof cmd.reply === 'string' && cmd.reply ? cmd.reply : null;
+        // #38 — DEDICATED help-answer path (grounded in the kaartjes), NOT interpretToCommand's tool prompt.
+        const ans = await answerHelpViaLlm({ query, lang: lang(), client: llm, deck: helpDeck });
+        return ans && ans.text ? ans.text : null;
       },
     };
-  }, [circleLlmPolicy, llmRuntime, catalog, policy]);
+  }, [circleLlmPolicy, llmRuntime]);
 
   // The onboarding conversation run-state (shared driver) + the first-run guards. The template is built
   // for the current app language (bundled default; web additionally hot-loads a remote copy — parity tail).
