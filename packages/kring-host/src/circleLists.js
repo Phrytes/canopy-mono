@@ -14,6 +14,10 @@ import {
   buildAcceptsPolicy, resolveAddInContainer,
 } from '@onderling/item-store';
 import { createRegistry, registerCanonicalTypes } from '@onderling/item-types';
+import { TASKS_ACCEPTS_MANIFEST } from './tasksInLists.js';
+
+// Re-export so a shell importing from circleLists gets the tasks-in-lists declaration alongside the module.
+export { TASKS_ACCEPTS_MANIFEST } from './tasksInLists.js';
 
 const LIST_SCHEMA = Object.freeze({
   type: 'object', properties: { type: { const: 'list' }, text: { type: 'string', minLength: 1 } }, required: ['type', 'text'],
@@ -58,12 +62,19 @@ export function makeCircleLists({ dataSource, manifests, rootPrefix } = {}) {
   registry.registerType('list', LIST_SCHEMA);
   registry.registerType('list-item', ITEM_SCHEMA);
   registry.registerType('board', BOARD_SCHEMA);
+  // `task` (the canonical noun) is ALREADY registered by registerCanonicalTypes above, so a list/list-item
+  // can hold a real `task` child (TASKS_ACCEPTS_MANIFEST) with no extra type registration here.
   const stores = createCircleStores({ dataSource: dataSource || memoryDataSource(), registry, rootPrefix });
   const s = (circleId) => stores.getStore(circleId);
   const CONTAINER_TYPES = ['list', 'board'];   // heterogeneous containers rendered by the panel (no row-actions)
 
-  // The accepts policy: the lists declaration + any injected extras (other apps extending what a list holds).
-  const policy = buildAcceptsPolicy([LISTS_ACCEPTS_MANIFEST, ...(Array.isArray(manifests) ? manifests : [])]);
+  // The accepts policy: the lists declaration + the tasks-in-lists declaration (a list/list-item ALSO accepts
+  // a `task` child — the P1 nesting made real) + any injected extras (other apps extending what a list holds).
+  // Order matters: LISTS first so `list-item` stays the DEFAULT child; TASKS adds `task` as a non-default
+  // alternative the picker offers. (buildAcceptsPolicy is first-declarer-per-child-type wins.)
+  const policy = buildAcceptsPolicy([
+    LISTS_ACCEPTS_MANIFEST, TASKS_ACCEPTS_MANIFEST, ...(Array.isArray(manifests) ? manifests : []),
+  ]);
 
   // Render shape per type — a node can-add iff its type accepts ≥1 child type (policy-driven, not hardcoded).
   const renderFor = (item) => {

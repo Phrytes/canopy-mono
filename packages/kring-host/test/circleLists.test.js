@@ -82,15 +82,17 @@ describe('circleLists', () => {
 
   it('exposes the accepts policy (acceptsFor) for the shell', async () => {
     const svc = makeCircleLists({ dataSource: memoryDataSource() });
-    expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item']);
-    expect(svc.acceptsFor('list-item').map((a) => a.type)).toEqual(['list-item']);
+    // list/list-item default to `list-item`, and (P1) ALSO accept a `task` child.
+    expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'task']);
+    expect(svc.acceptsFor('list-item').map((a) => a.type)).toEqual(['list-item', 'task']);
     expect(svc.acceptsFor('unknown-type')).toEqual([]);        // not composable → no "+ add"
   });
 
   it('an injected manifest EXTENDS what a list accepts (other apps compose in)', async () => {
     const notesApp = { app: 'notes', accepts: { list: [{ type: 'note', op: 'addNote' }] } };
     const svc = makeCircleLists({ dataSource: memoryDataSource(), manifests: [notesApp] });
-    expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'note']);  // merged, list-item default wins
+    // merged: list-item (default) + task (P1 tasks-in-lists) + note (injected); list-item stays the default.
+    expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'task', 'note']);
   });
 
   // ── board: a HETEROGENEOUS multi-type container that drives the ambiguous-type picker ────────────────
@@ -123,5 +125,52 @@ describe('circleLists', () => {
     await svc.createBoard('c1', 'a board');
     expect((await svc.listContainers('c1')).map((c) => `${c.type}:${c.text}`).sort())
       .toEqual(['board:a board', 'list:a list']);
+  });
+
+  // ── P1: "a list can contain tasks" made REAL (TASKS_ACCEPTS_MANIFEST) — list/list-item accept a `task` ──
+  it('a list ACCEPTS a task child via a hint → a REAL task-typed child (not a list-item)', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    const list = await svc.createList('c1', 'sprint');
+    const task = await svc.addItem('c1', list.id, 'fix the tap', 'alice', { hint: 'task' });
+    expect(task.type).toBe('task');                             // a REAL task, NOT a list-item
+    expect(task.text).toBe('fix the tap');                      // the type word is stripped from the body
+    expect(task.containedBy).toContain(list.id);               // K2 containment: the task lives INSIDE the list
+  });
+
+  it('a list-item ACCEPTS a task child too (nesting one level down)', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    const list = await svc.createList('c1', 'sprint');
+    const item = await svc.addItem('c1', list.id, 'kitchen');            // a list-item
+    const task = await svc.addItem('c1', item.id, 'fix the tap', 'a', { hint: 'task' });
+    expect(task.type).toBe('task');
+    expect(task.containedBy).toContain(item.id);
+  });
+
+  it('a bare add to a list still DEFAULTS to list-item (task is a non-default alternative)', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    const list = await svc.createList('c1', 'sprint');
+    const child = await svc.addItem('c1', list.id, 'milk');             // no hint → the default child
+    expect(child.type).toBe('list-item');                              // default preserved; no regression
+    expect(svc.addKinds('list').ambiguous).toBe(false);               // a default exists → bare add doesn't force a picker
+  });
+
+  it('the list picker now OFFERS both list-item (default) and task', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    expect(svc.acceptsFor('list').map((a) => a.type)).toEqual(['list-item', 'task']);
+    expect(svc.addKinds('list').kinds.map((k) => k.type)).toEqual(['list-item', 'task']);
+    expect(svc.acceptsFor('list-item').map((a) => a.type)).toEqual(['list-item', 'task']);
+    expect(svc.acceptsFor('task')).toEqual([]);   // TODO(P1c): task→task subtask-nesting is NOT wired here yet
+  });
+
+  it('the list PROJECTS with the task child nested (projectContainer renders a task generically)', async () => {
+    const svc = makeCircleLists({ dataSource: memoryDataSource() });
+    const list = await svc.createList('c1', 'sprint');
+    await svc.addItem('c1', list.id, 'buy milk');                              // a list-item child
+    await svc.addItem('c1', list.id, 'fix the tap', 'alice', { hint: 'task' }); // a task child
+    const tree = await svc.tree('c1', list.id);
+    const byType = Object.fromEntries(tree.children.map((c) => [c.type, c]));
+    expect(byType['task'].label).toBe('fix the tap');                 // the task child is projected with its label
+    expect(byType['task'].children).toEqual([]);                      // leaf: no subtask-nesting yet (P1c)
+    expect(byType['list-item'].label).toBe('buy milk');              // and the list-item alongside it
   });
 });
