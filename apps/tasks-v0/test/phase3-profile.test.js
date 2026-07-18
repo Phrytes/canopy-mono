@@ -88,8 +88,8 @@ describe('Phase 3 — canonical profile + circle vocabulary', () => {
       expect(got.skills[0].categoryId).toBeNull();
     });
 
-    it('writes to the documented canonical path (mem://user/profile/skills.json)', async () => {
-      expect(CANONICAL_PROFILE_PATH).toBe('mem://user/profile/skills.json');
+    it('writes to the documented canonical path (mem://user/profile/offerings.json)', async () => {
+      expect(CANONICAL_PROFILE_PATH).toBe('mem://user/profile/offerings.json');
       const bundle = buildBundle();
       await writeCanonicalProfile({
         dataSource: bundle.cache,
@@ -97,6 +97,24 @@ describe('Phase 3 — canonical profile + circle vocabulary', () => {
       });
       const direct = await bundle.cache.read(CANONICAL_PROFILE_PATH);
       expect(direct).toBeTruthy();
+      // Blob writes the new `offerings` field + a transitional `skills` alias.
+      const blob = typeof direct === 'string' ? JSON.parse(direct) : direct;
+      expect(Array.isArray(blob.offerings)).toBe(true);
+      expect(Array.isArray(blob.skills)).toBe(true);
+    });
+
+    it('read-accepts a legacy skills.json blob when offerings.json is absent', async () => {
+      const bundle = buildBundle();
+      // Simulate un-migrated data: only the legacy path + legacy `skills` field.
+      await bundle.cache.write('mem://user/profile/skills.json', {
+        schemaVersion: 1,
+        skills: [{ tag: 'paint', categoryId: 'klusjes' }],
+        updatedAt: 123,
+      });
+      const got = await readCanonicalProfile({ dataSource: bundle.cache });
+      expect(got.skills).toHaveLength(1);
+      expect(got.skills[0].tag).toBe('paint');
+      expect(got.updatedAt).toBe(123);
     });
 
     it('drops off-taxonomy categoryId values to null + dedupes by canonical tag', async () => {

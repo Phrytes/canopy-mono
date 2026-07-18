@@ -2,11 +2,14 @@
  * profile — canonical user-skills profile + per-circle skill vocabulary
  * + per-circle member-skills projection + per-circle posture (Phase 3).
  *
- * Canonical user profile lives at `mem://user/profile/skills.json`
+ * Canonical user profile lives at `mem://user/profile/offerings.json`
  * — intentionally NOT app-namespaced so Stoop, Tasks, Folio etc. can
  * read the same blob. When a pod is attached via the localStoreBundle,
  * the CachingDataSource forwards reads/writes through to
- * `<user-pod>/profile/skills.json` (same path, same shape).
+ * `<user-pod>/profile/offerings.json` (same path, same shape). The legacy
+ * `skills.json` path + `skills` blob field are still read-accepted (no
+ * destructive migration); new writes use `offerings.json` + an `offerings`
+ * field (with a transitional `skills` alias in the blob).
  *
  * Per-circle vocabulary lives at `mem://tasks/circles/<circleId>/skills.json`.
  * Per-circle member projection at `mem://tasks/circles/<circleId>/skills/<webid-encoded>.json`.
@@ -67,7 +70,10 @@ import { argsFromParts } from '../bundleResolver.js';
 
 // ── Path helpers ───────────────────────────────────────────────────────────
 
-const CANONICAL_PROFILE_PATH = 'mem://user/profile/skills.json';
+const CANONICAL_PROFILE_PATH = 'mem://user/profile/offerings.json';
+// Legacy canonical path (pre-offering rename). Read-accepted when the new
+// offerings.json blob is absent — no destructive migration.
+const LEGACY_CANONICAL_PROFILE_PATH = 'mem://user/profile/skills.json';
 
 function _circleVocabPath(circleId, root = 'mem://tasks/circles/') {
   return `${root}${circleId}/skills.json`;
@@ -196,11 +202,17 @@ function _normaliseVocabList(raw) {
  * @returns {Promise<{schemaVersion, skills, updatedAt} | null>}
  */
 export async function readCanonicalProfile({ dataSource, path = CANONICAL_PROFILE_PATH }) {
-  const raw = await _safeRead(dataSource, path);
+  let raw = await _safeRead(dataSource, path);
+  // Read-accept: fall back to the legacy skills.json path when the new
+  // offerings.json blob is absent (only for the default canonical path).
+  if (!raw && path === CANONICAL_PROFILE_PATH) {
+    raw = await _safeRead(dataSource, LEGACY_CANONICAL_PROFILE_PATH);
+  }
   if (!raw) return null;
   return {
     schemaVersion: 1,
-    skills:        _normaliseSkillList(raw.skills),
+    // Read-accept the new `offerings` blob field, else the legacy `skills`.
+    skills:        _normaliseSkillList(raw.offerings ?? raw.skills),
     updatedAt:     Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
   };
 }
@@ -221,9 +233,13 @@ export async function writeCanonicalProfile({
   path = CANONICAL_PROFILE_PATH,
   now,
 }) {
+  const list = _normaliseSkillList(skills);
   const blob = {
     schemaVersion: 1,
-    skills:        _normaliseSkillList(skills),
+    // Write the new `offerings` blob field + a transitional `skills`
+    // alias so un-migrated readers keep working (read-accept, no migration).
+    offerings:     list,
+    skills:        list,
     updatedAt:     Number.isFinite(now) ? now : Date.now(),
   };
   await _safeWrite(dataSource, path, blob);

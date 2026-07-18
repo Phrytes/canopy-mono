@@ -138,13 +138,13 @@ export function useProfile() {
   }, [_invoke]);
 
   const addSkill = useCallback(async (entry) => {
-    setProfile((p) => p ? { ...p, skills: mergeSkillUpdate(p.skills, entry) } : p);
+    setProfile((p) => p ? { ...p, offerings: mergeSkillUpdate(p.offerings, entry) } : p);
     const r = await _invoke('addMyOffering', entry);
     if (r?.error) throw new Error(r.error);
   }, [_invoke]);
 
   const removeSkillFn = useCallback(async (categoryId) => {
-    setProfile((p) => p ? { ...p, skills: removeSkill(p.skills, categoryId) } : p);
+    setProfile((p) => p ? { ...p, offerings: removeSkill(p.offerings, categoryId) } : p);
     const r = await _invoke('removeMyOffering', { categoryId });
     if (r?.error) throw new Error(r.error);
   }, [_invoke]);

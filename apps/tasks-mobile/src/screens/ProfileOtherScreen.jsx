@@ -48,7 +48,9 @@ export function ProfileOtherScreen() {
     );
   }
 
-  const skills = Array.isArray(member?.skills) ? member.skills : [];
+  // Read-accept: prefer the new `offerings` field, fall back to legacy `skills`.
+  const skills = Array.isArray(member?.offerings) ? member.offerings
+    : (Array.isArray(member?.skills) ? member.skills : []);
 
   return (
     <ScrollView

@@ -319,7 +319,7 @@ export function ProfileMineScreen() {
         </Text>
         <SkillPicker
           categories={categories}
-          selected={profile?.skills ?? []}
+          selected={profile?.offerings ?? []}
           onAdd={(entry)   => addSkill(entry).catch((e) => setError(e?.message ?? String(e)))}
           onRemove={(id)   => removeSkill(id).catch((e) => setError(e?.message ?? String(e)))}
         />

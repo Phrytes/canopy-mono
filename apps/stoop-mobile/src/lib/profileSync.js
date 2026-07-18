@@ -88,18 +88,22 @@ export function avatarToUri(avatarBlob) {
  *   handle: string|null,
  *   displayName: string|null,
  *   avatarUri: string|null,
- *   skills: Array<object>,
+ *   offerings: Array<object>,
  *   holidayMode: boolean,
  *   location: object|null,
  * }}
  */
 export function unpackProfile(raw) {
   const me = raw?.me ?? raw ?? {};
+  // Read-accept: prefer the new `offerings` field, fall back to the
+  // legacy `skills` field on an un-migrated blob.
+  const offerings = Array.isArray(me.offerings) ? me.offerings
+    : (Array.isArray(me.skills) ? me.skills : []);
   return {
     handle:      typeof me.handle      === 'string' ? me.handle      : null,
     displayName: typeof me.displayName === 'string' ? me.displayName : null,
     avatarUri:   typeof me.avatarUrl   === 'string' ? me.avatarUrl   : null,
-    skills:      Array.isArray(me.skills) ? me.skills : [],
+    offerings,
     holidayMode: me.holidayMode === true,
     location:    me.location && typeof me.location === 'object' ? me.location : null,
   };

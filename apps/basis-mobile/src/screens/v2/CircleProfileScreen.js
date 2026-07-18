@@ -58,7 +58,9 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
   }, [geoResult, callSkill, load]);
   const clearLocation = useCallback(async () => { try { await callSkill('stoop', 'clearMyLocation', {}); } catch { /* */ } load(); }, [callSkill, load]);
 
-  const mySkills = Array.isArray(profile.skills) ? profile.skills : [];
+  // Read-accept: prefer the new `offerings` field, fall back to legacy `skills`.
+  const mySkills = Array.isArray(profile.offerings) ? profile.offerings
+    : (Array.isArray(profile.skills) ? profile.skills : []);
   const myIds = new Set(mySkills.map((s) => s.categoryId));
   const catLabel = (id) => categories.find((c) => c.id === id)?.label ?? id;
 

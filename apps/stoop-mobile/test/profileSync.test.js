@@ -85,6 +85,7 @@ describe('unpackProfile', () => {
         handle: 'anne',
         displayName: 'Anne',
         avatarUrl: 'mem://x',
+        // Legacy `skills` field — read-accepted into `offerings`.
         skills: [{ categoryId: 'tuin' }],
         holidayMode: true,
         location: { cell: 'A1' },
@@ -93,20 +94,24 @@ describe('unpackProfile', () => {
     expect(r.handle).toBe('anne');
     expect(r.displayName).toBe('Anne');
     expect(r.avatarUri).toBe('mem://x');
-    expect(r.skills).toHaveLength(1);
+    expect(r.offerings).toHaveLength(1);
     expect(r.holidayMode).toBe(true);
     expect(r.location).toEqual({ cell: 'A1' });
+  });
+  it('prefers the new offerings field over legacy skills', () => {
+    const r = unpackProfile({ me: { offerings: [{ categoryId: 'tuin' }], skills: [] } });
+    expect(r.offerings).toHaveLength(1);
   });
   it('accepts a flat shape too', () => {
     const r = unpackProfile({ handle: 'bob' });
     expect(r.handle).toBe('bob');
-    expect(r.skills).toEqual([]);
+    expect(r.offerings).toEqual([]);
     expect(r.holidayMode).toBe(false);
   });
   it('defaults sensibly for empty input', () => {
     const r = unpackProfile(null);
     expect(r.handle).toBeNull();
-    expect(r.skills).toEqual([]);
+    expect(r.offerings).toEqual([]);
     expect(r.holidayMode).toBe(false);
     expect(r.location).toBeNull();
   });

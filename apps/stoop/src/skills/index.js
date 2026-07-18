@@ -1485,7 +1485,10 @@ export function buildSkills({
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
       const updated = await members.addMember({ ...me, offerings: skillsArr });
-      return { skills: updated.skills, _sync: simulateSync() };
+      const off = updated.offerings ?? updated.skills ?? [];
+      // Result blob writes the new `offerings` field + a transitional
+      // `skills` alias so un-migrated readers keep working (read-accept).
+      return { offerings: off, skills: off, _sync: simulateSync() };
     }, {
       description: 'Replace the calling actor\'s offerings array.',
       visibility:  'authenticated',
@@ -1503,7 +1506,8 @@ export function buildSkills({
       }
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
-      const existing = Array.isArray(me.skills) ? me.skills : [];
+      const existing = Array.isArray(me.offerings) ? me.offerings
+        : (Array.isArray(me.skills) ? me.skills : []);
       const filtered = existing.filter(s => s.categoryId !== a.categoryId);
       filtered.push({
         categoryId:   a.categoryId,
@@ -1513,7 +1517,8 @@ export function buildSkills({
         status:       a.status ?? 'active',
       });
       const updated = await members.addMember({ ...me, offerings: filtered });
-      return { skills: updated.skills, _sync: simulateSync() };
+      const off = updated.offerings ?? updated.skills ?? [];
+      return { offerings: off, skills: off, _sync: simulateSync() };
     }, {
       description: 'Add or update one offering on the calling actor\'s profile.',
       visibility:  'authenticated',
@@ -1530,10 +1535,12 @@ export function buildSkills({
       }
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
-      const existing = Array.isArray(me.skills) ? me.skills : [];
+      const existing = Array.isArray(me.offerings) ? me.offerings
+        : (Array.isArray(me.skills) ? me.skills : []);
       const next = existing.filter(s => s.categoryId !== a.categoryId);
       const updated = await members.addMember({ ...me, offerings: next });
-      return { skills: updated.skills, _sync: simulateSync() };
+      const off = updated.offerings ?? updated.skills ?? [];
+      return { offerings: off, skills: off, _sync: simulateSync() };
     }, {
       description: 'Remove an offering from the calling actor\'s profile.',
       visibility:  'authenticated',
@@ -1543,9 +1550,10 @@ export function buildSkills({
      * listMyOfferings() — diagnostic / settings UI.
      */
     ...withLegacyIds(defineSkill('listMyOfferings', async ({ from }) => {
-      if (!members) return { skills: [], _sync: simulateSync() };
+      if (!members) return { offerings: [], skills: [], _sync: simulateSync() };
       const me = await members.resolveByWebid(from);
-      return { skills: me?.skills ?? [], _sync: simulateSync() };
+      const off = me?.offerings ?? me?.skills ?? [];
+      return { offerings: off, skills: off, _sync: simulateSync() };
     }, {
       description: 'List the calling actor\'s offerings.',
       visibility:  'authenticated',

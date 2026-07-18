@@ -79,18 +79,23 @@ export function ProfileOtherScreen() {
         ) : null}
       </View>
 
-      {Array.isArray(m.skills) && m.skills.length > 0 ? (
+      {(() => {
+        // Read-accept: prefer the new `offerings` field, fall back to legacy `skills`.
+        const offerings = Array.isArray(m.offerings) ? m.offerings
+          : (Array.isArray(m.skills) ? m.skills : []);
+        return offerings.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.label}>{t('profile_other.skills', 'Skills')}</Text>
           <View style={styles.chips}>
-            {m.skills.map((s) => (
+            {offerings.map((s) => (
               <View key={s.categoryId ?? s} style={styles.chip}>
                 <Text style={styles.chipText}>{s.categoryId ?? s}</Text>
               </View>
             ))}
           </View>
         </View>
-      ) : null}
+        ) : null;
+      })()}
 
       {m.holidayMode ? (
         <View style={styles.section}>
