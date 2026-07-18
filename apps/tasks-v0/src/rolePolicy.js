@@ -9,9 +9,32 @@
  * (packages/item-store/src/types.js).
  */
 
+import { roleRank, ROLES } from '@onderling/core';
+
 /**
  * @typedef {'admin'|'coordinator'|'member'|'observer'|'external-volunteer'} StandardRole
  */
+
+/**
+ * Authority helpers sourced from the canonical rank table in `@onderling/core`
+ * (`Roles.js`) — P0 roles-authority reconciliation. These replace the inline
+ * `r === 'admin' || r === 'coordinator'` / `r === 'admin'` comparisons that
+ * hand-reimplemented the rank ordering. `roleRank` returns `undefined` for
+ * unknown / app-only roles (e.g. this app's `external-volunteer`) and for
+ * `undefined`; `undefined >= n` and `undefined === n` are both `false`, so those
+ * fail closed — the pass/fail set is identical to the old string comparisons.
+ * The app-specific policy SHAPE (canRead/canSubmit/…) stays here; only the
+ * rank/authority verdict is delegated to core.
+ */
+/** Coordinator-or-above authority (the old `admin || coordinator` gate). */
+function isCoordinatorOrAbove(r) {
+  const rank = roleRank(r);
+  return rank !== undefined && rank >= roleRank(ROLES.COORDINATOR);
+}
+/** Full circle-admin authority (the old bare `r === 'admin'` gate). */
+function isAdminRole(r) {
+  return r === ROLES.ADMIN;
+}
 
 /**
  * Build a RolePolicy from a `webid → role` map.
@@ -87,7 +110,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
     canComplete: (actor, item) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
-      if (r === 'admin' || r === 'coordinator') return true;
+      if (isCoordinatorOrAbove(r)) return true;
       // V2.7 narrow exception: the targetAssignee on a subtask-proposal
       // closes their own proposal via approve/decline.
       if (item?.type === 'subtask-proposal'
@@ -103,18 +126,18 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       // Per H4 design: admin only can hard-remove.  Others use cancel
       // (which we model as a separate completed-with-reason flow,
       // V0 simplification).
-      return r === 'admin';
+      return isAdminRole(r);
     },
 
     canReassign: (actor) => {
       const r = get(actor);
-      return r === 'admin' || r === 'coordinator';
+      return isCoordinatorOrAbove(r);
     },
 
     canEditBody: (actor, item, patch) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
-      if (r === 'admin' || r === 'coordinator') return true;
+      if (isCoordinatorOrAbove(r)) return true;
       // member: only tasks they added.
       if (r === 'member' && item?.addedBy === actor) return true;
       // Phase 7 narrow exception: the parent's assignee OR master may
@@ -159,7 +182,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
       if (v === 'private') return item?.addedBy === actor || item?.assignee === actor;
       if (typeof v === 'string' && v.startsWith('role:')) {
         const requiredRole = v.slice('role:'.length);
-        return r === 'admin' || r === requiredRole;
+        return isAdminRole(r) || r === requiredRole;
       }
       return true;
     },
@@ -174,7 +197,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
     canSubmit: (actor, item) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
-      if (r === 'admin' || r === 'coordinator') return true;
+      if (isCoordinatorOrAbove(r)) return true;
       return item?.assignee === actor;
     },
 
@@ -191,7 +214,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
     canApprove: (actor, item) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
-      if (r === 'admin' || r === 'coordinator') return true;
+      if (isCoordinatorOrAbove(r)) return true;
       const mode = item?.approval ?? 'self-mark';
       if (mode === 'self-mark') return item?.assignee === actor;
       if (mode === 'creator') {
@@ -207,7 +230,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
     canReject: (actor, item) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
-      if (r === 'admin' || r === 'coordinator') return true;
+      if (isCoordinatorOrAbove(r)) return true;
       const mode = item?.approval ?? 'self-mark';
       if (mode === 'creator') {
         return item?.master === actor || item?.addedBy === actor;
@@ -226,7 +249,7 @@ export function buildStandardRolePolicy(roles, opts = {}) {
     canRevoke: (actor, item) => {
       const r = get(actor);
       if (r === undefined || r === 'observer') return false;
-      if (r === 'admin' || r === 'coordinator') return true;
+      if (isCoordinatorOrAbove(r)) return true;
       return item?.master === actor;
     },
   };

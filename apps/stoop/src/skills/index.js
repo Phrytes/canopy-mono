@@ -57,7 +57,7 @@
  * (nothing for `wireSkill` to derive from).
  */
 
-import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity } from '@onderling/core';
+import { defineSkill, validateMnemonic, mnemonicToSeed, AgentIdentity, roleRank, ROLES } from '@onderling/core';
 import { wireSkill } from '@onderling/sdk';
 import { stoopManifest } from '../../manifest.js';
 import nacl from 'tweetnacl';
@@ -85,6 +85,27 @@ import {
 } from '../lib/Attachments.js';
 import { update as updateInterest, score as scoreInterest, combinedRelevance } from '../lib/InterestProfile.js';
 import { matchesProfile } from '../lib/skillsMatch.js';
+
+/**
+ * Canonical circle-admin authority check (P0 roles-authority reconciliation).
+ *
+ * A circle "admin" gate historically meant `role === 'admin' || role ===
+ * 'coordinator'`. Rather than hand-comparing role strings at every gate (which
+ * drifts and can't see custom roles), delegate to the canonical rank table in
+ * `@onderling/core` (`Roles.js`): a caller has circle-admin authority when their
+ * role outranks-or-equals `coordinator`. `roleRank` returns `undefined` for
+ * unknown / missing roles, and `undefined >= n` is `false`, so unknown roles
+ * fail closed — identical pass/fail set to the old inline comparison for the
+ * five standard roles, plus any custom role registered at coordinator rank or
+ * above is now correctly admitted.
+ *
+ * @param {string|undefined|null} role
+ * @returns {boolean}
+ */
+function isCircleAdmin(role) {
+  const rank = roleRank(role);
+  return rank !== undefined && rank >= roleRank(ROLES.COORDINATOR);
+}
 
 /**
  * Cross-pod ref soft cap on `postRequest({embeds: [...]})`. Eight
@@ -565,7 +586,7 @@ async function listGroupMembersCore(scope, a, ctx) {
     if (redeemedBy && personaProperties && Object.keys(personaProperties).length && !personaMaps.has(redeemedBy)) personaMaps.set(redeemedBy, personaProperties);
   }
   const scoped = list
-    .filter((m) => joined.has(m.webid) || m.role === 'admin' || m.role === 'coordinator')
+    .filter((m) => joined.has(m.webid) || isCircleAdmin(m.role))
     .map((m) => {
       let out = m;
       if (sealKeys.has(m.webid)) out = { ...out, sealingPublicKey: sealKeys.get(m.webid) };
@@ -1270,6 +1291,18 @@ export function buildSkills({
     // `apps/archive`, or `apps/tasks-v0`) needs these, extract into
     // `@onderling/group-mod`.  Tracked in
     // `Project Files/Substrates/substrate-candidates.md`.
+    //
+    // P0 roles-authority reconciliation (canonical role-change path): when
+    // `setMemberRole` is built, it MUST route through the canonical, signed
+    // `core.GroupManager.setRole(memberPubKey, groupId, newRole)`
+    // (`packages/core/src/permissions/GroupManager.js`) — the single
+    // atomic role-change op (Q-D.5) — gated on
+    // `GroupManager.canChangeRole(actor, target, groupId)` (which delegates to
+    // `Roles.canPromote`). Do NOT hand-write a `circlesStore.update({ roles })`
+    // or a `revokeProof`+`issueProof` sequence as a parallel governance path.
+    // Materialising the role's capability bundle on assignment is Phase 3, not
+    // here. (Stoop currently has NO role-change op — role is only stamped at
+    // member-add: `grantPodAccess` role='member', `createGroupV2` role='admin'.)
 
     /**
      * assignLend({itemId, borrowerWebid})  — record who currently has the lent item.
@@ -1870,7 +1903,7 @@ export function buildSkills({
       if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
       if (members) {
         const me = await members.resolveByWebid(from);
-        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        const isAdmin = isCircleAdmin(me?.role);
         if (!isAdmin) return { error: 'admin-only' };
       }
       const err = _validateStoragePolicy(a.storagePolicy, a.groupPodUri);
@@ -1906,7 +1939,7 @@ export function buildSkills({
       if (typeof a.groupId !== 'string' || !a.groupId) return { error: 'groupId required' };
       if (members) {
         const me = await members.resolveByWebid(from);
-        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        const isAdmin = isCircleAdmin(me?.role);
         if (!isAdmin) return { error: 'admin-only' };
       }
 
@@ -1971,7 +2004,7 @@ export function buildSkills({
       let isAdmin = false;
       if (members) {
         const me = await members.resolveByWebid(from);
-        isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        isAdmin = isCircleAdmin(me?.role);
       }
       if (mode === 'admin-only' && !isAdmin) return { error: 'admin-only' };
 
@@ -3566,7 +3599,7 @@ export function buildSkills({
       // field; pre-Phase-11 entries default to non-admin.
       if (members) {
         const me = await members.resolveByWebid(from);
-        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        const isAdmin = isCircleAdmin(me?.role);
         if (!isAdmin) return { error: 'admin-only' };
       }
       const [item] = await store.addItems([{
@@ -3600,7 +3633,7 @@ export function buildSkills({
       if (typeof a.rules !== 'object' || a.rules === null) return { error: 'rules object required' };
       if (members) {
         const me = await members.resolveByWebid(from);
-        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        const isAdmin = isCircleAdmin(me?.role);
         if (!isAdmin) return { error: 'admin-only' };
       }
       const [item] = await store.addItems([{
@@ -3633,7 +3666,7 @@ export function buildSkills({
       }
       if (members) {
         const me = await members.resolveByWebid(from);
-        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        const isAdmin = isCircleAdmin(me?.role);
         if (!isAdmin) return { error: 'admin-only' };
       }
       // Resolve the target's webid (webid === signing key). Prefer an explicit webid; fall back to a
@@ -3919,7 +3952,7 @@ export function buildSkills({
       const _groupId = a.groupId ?? groupId;
       if (members) {
         const me = await members.resolveByWebid(from);
-        const isAdmin = me?.role === 'admin' || me?.role === 'coordinator';
+        const isAdmin = isCircleAdmin(me?.role);
         if (!isAdmin) return { error: 'admin-only' };
       }
       const all = await store.listOpen({ type: 'report' });
