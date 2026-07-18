@@ -177,6 +177,7 @@ export {
   ADMIN_ROLE_BUNDLE,
 } from './permissions/RoleBundle.js';
 export { RoleGrantManager, materializeBundle } from './permissions/RoleGrant.js';
+export { TaskGrantManager } from './permissions/TaskGrant.js';
 
 // ── Routing (Group G) ────────────────────────────────────────────────────────
 export { FallbackTable }                       from './routing/FallbackTable.js';
