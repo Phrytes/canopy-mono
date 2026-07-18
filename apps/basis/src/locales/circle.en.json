@@ -959,6 +959,72 @@
     "ignore": {
       "text": "Ignore",
       "doc": "Stream row action — dismiss without acting."
+    },
+    "mandate": {
+      "text": "Entrust",
+      "doc": "Stream row action — entrust bounded authority for this task (owner only)."
+    }
+  },
+  "mandate": {
+    "heading": {
+      "text": "Entrust this task",
+      "doc": "Entrust (mandate) picker — title."
+    },
+    "intro": {
+      "text": "Entrust bounded authority to one member for this task.",
+      "doc": "Entrust picker — one-line explainer."
+    },
+    "cancel": {
+      "text": "Cancel",
+      "doc": "Entrust picker — dismiss."
+    },
+    "who_label": {
+      "text": "Who",
+      "doc": "Entrust picker — member section label."
+    },
+    "who_empty": {
+      "text": "No one else in this circle yet.",
+      "doc": "Entrust picker — empty roster."
+    },
+    "what_label": {
+      "text": "What",
+      "doc": "Entrust picker — attenuation section label."
+    },
+    "on_your_behalf": {
+      "text": "On your behalf",
+      "doc": "Entrust picker — the default, unnarrowed mandate."
+    },
+    "temporary": {
+      "text": "Temporary — it expires the moment the task closes.",
+      "doc": "Entrust picker — the temporary promise."
+    },
+    "brokered": {
+      "text": "Brokered — your keys stay with you; only answers travel.",
+      "doc": "Entrust picker — the brokered promise."
+    },
+    "confirm": {
+      "text": "Entrust",
+      "doc": "Entrust picker — confirm button."
+    },
+    "existing_heading": {
+      "text": "Entrusted for this task",
+      "doc": "Legibility — heading over the task's existing mandates."
+    },
+    "existing_row": {
+      "text": "{{who}} — {{what}}",
+      "doc": "Legibility — one existing mandate (who + what)."
+    },
+    "existing_note": {
+      "text": "These lift when the task closes.",
+      "doc": "Legibility — the standing temporary note."
+    },
+    "done": {
+      "text": "Entrusted.",
+      "doc": "Entrust picker — success notice."
+    },
+    "failed": {
+      "text": "Could not entrust: {{error}}",
+      "doc": "Entrust picker — failure notice; {{error}} interpolated."
     }
   },
   "settings": {

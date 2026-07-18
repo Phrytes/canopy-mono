@@ -36,6 +36,7 @@
  */
 
 import { actionsForStreamRow } from '../../src/v2/streamActions.js';
+import { renderMandateLegibility } from './mandatePicker.js';
 // media P1 — the sealed media-card chip renders via the existing shared
 // domAdapter branch (renderToDom → renderMediaCard), NOT a re-implementation.
 import { renderToDom } from '../../src/web/domAdapter.js';
@@ -96,6 +97,12 @@ export function renderCircleKring(container, {
   deliveryStateFor = null,
   localActor = null,
   onRetryDelivery = null,
+  // Mandate ("entrust" / toevertrouwen) — the viewer's identity signals decide
+  // whether the OWNER-only entrust action shows on a task-like row (the handler
+  // gate is the real security boundary; this is owner-only VISIBILITY). Absent →
+  // no entrust action (backwards-compatible).
+  viewerWebid = null,
+  viewerIsAdmin = false,
   // Composer affordances (web↔mobile parity, ported from the classic shell). Both optional — without
   // them the composer renders exactly as before.
   //   `catalog`  the merged dispatch catalog → drives the slash-command auto-suggest dropdown.
@@ -298,6 +305,7 @@ export function renderCircleKring(container, {
         deliveryStateFor, localActor, onRetryDelivery,
         onEmbedButton, onEmbedOpen, onReview,
         media,
+        viewerWebid, viewerIsAdmin,
       }));
     }
   }
@@ -491,6 +499,8 @@ function renderBubble(row, {
   // media P1 — `{opener, openFull?}` for the sealed media-card chip (inline thumbnail +
   // the optional gated full-image "[View]" affordance).
   media = null,
+  // Mandate — viewer identity signals for the owner-only "entrust" action.
+  viewerWebid = null, viewerIsAdmin = false,
 } = {}) {
   const el = document.createElement('div');
   el.className = 'circle-kring__bubble';
@@ -583,8 +593,10 @@ function renderBubble(row, {
   }
 
   // Per-row action chips (Ik help / Negeer / Ik doe ze …).  Substrate
-  // already picks the right set per row kind.
-  const actions = actionsForStreamRow(row);
+  // already picks the right set per row kind.  The owner-only "entrust"
+  // (mandate) action rides the same seam, gated by the viewer signals.
+  const rowIsOwn = localActor != null && row?.actor === localActor;
+  const actions = actionsForStreamRow(row, { viewerWebid, isAdmin: viewerIsAdmin, isOwn: rowIsOwn });
   if (actions.length) {
     const actRow = document.createElement('div');
     actRow.className = 'circle-kring__bubble-actions';
@@ -592,6 +604,7 @@ function renderBubble(row, {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'circle-kring__bubble-action';
+      if (a.action === 'mandate') btn.classList.add('circle-kring__bubble-action--mandate');
       btn.dataset.action = a.action;
       btn.textContent = tr(a.label);
       btn.addEventListener('click', () => {
@@ -600,6 +613,17 @@ function renderBubble(row, {
       actRow.appendChild(btn);
     }
     el.appendChild(actRow);
+  }
+
+  // Mandate legibility — when a task row carries issued mandates
+  // (`source.taskGrants`, best-effort on the event payload), show who holds what,
+  // noting they lift when the task closes. Compact; the authoritative source is
+  // the task item's `source.taskGrants` (surfaced when the row payload carries it).
+  const taskGrants = row.event?.payload?.taskGrants
+    ?? row.event?.payload?.source?.taskGrants
+    ?? null;
+  if (Array.isArray(taskGrants) && taskGrants.length) {
+    el.appendChild(renderMandateLegibility(taskGrants, { t: tr }));
   }
 
   // embeds[] — cross-object "See also" chips the message carries (a bot reply

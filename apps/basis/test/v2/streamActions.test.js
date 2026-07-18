@@ -77,6 +77,66 @@ describe('actionsForStreamRow', () => {
     const row = mkRow({ kind: 'question', payload: { ref: 'item-99' } });
     expect(actionsForStreamRow(row)[0].payload.ref).toBe('item-99');
   });
+
+  // ── Mandate ("entrust") — owner-only action on task-like rows ────────────────
+  describe('mandate (entrust) action', () => {
+    it('is absent by default (no viewer signals) — backwards-compatible', () => {
+      expect(actionsForStreamRow(mkRow({ kind: 'chore' })).map((a) => a.action))
+        .toEqual(['claim', 'snooze']);
+      expect(actionsForStreamRow(mkRow({ kind: 'reminder' })).map((a) => a.action))
+        .toEqual(['done', 'snooze']);
+    });
+
+    it('appears for a circle admin on task/chore/reminder', () => {
+      for (const kind of ['task', 'chore', 'reminder']) {
+        const actions = actionsForStreamRow(mkRow({ kind }), { isAdmin: true });
+        expect(actions.map((a) => a.action)).toContain('mandate');
+      }
+    });
+
+    it('appears for the row author (isOwn)', () => {
+      const actions = actionsForStreamRow(mkRow({ kind: 'chore' }), { isOwn: true });
+      expect(actions.map((a) => a.action)).toContain('mandate');
+    });
+
+    it('appears when the viewer WebID matches the row creator', () => {
+      const row = mkRow({ kind: 'chore', payload: { addedBy: 'https://me.example/#me' } });
+      const actions = actionsForStreamRow(row, { viewerWebid: 'https://me.example/#me' });
+      expect(actions.map((a) => a.action)).toContain('mandate');
+    });
+
+    it('is hidden for a non-owner (different WebID, not admin, not own)', () => {
+      const row = mkRow({ kind: 'chore', payload: { addedBy: 'https://alice.example/#me' } });
+      const actions = actionsForStreamRow(row, { viewerWebid: 'https://bob.example/#me' });
+      expect(actions.map((a) => a.action)).not.toContain('mandate');
+    });
+
+    it('is hidden when ownership cannot be affirmed (no creator, no viewer)', () => {
+      const actions = actionsForStreamRow(mkRow({ kind: 'chore' }), { viewerWebid: 'https://me.example/#me' });
+      expect(actions.map((a) => a.action)).not.toContain('mandate');
+    });
+
+    it('never appears on non-task kinds even for an admin', () => {
+      for (const kind of ['question', 'aanbod', 'leen']) {
+        const actions = actionsForStreamRow(mkRow({ kind }), { isAdmin: true });
+        expect(actions.map((a) => a.action)).not.toContain('mandate');
+      }
+    });
+
+    it('carries the taskId (row ref) in the mandate payload', () => {
+      const row = mkRow({ id: 'r-7', kind: 'chore', payload: { ref: 'task-42' } });
+      const mandate = actionsForStreamRow(row, { isAdmin: true }).find((a) => a.action === 'mandate');
+      expect(mandate.payload.taskId).toBe('task-42');
+      expect(mandate.payload.ref).toBe('task-42');
+      expect(mandate.id).toBe('r-7-mandate');
+      expect(mandate.label).toBe('circle.streamAction.mandate');
+    });
+
+    it('offers entrust on a bare task kind (no chips of its own)', () => {
+      const actions = actionsForStreamRow(mkRow({ kind: 'task' }), { isAdmin: true });
+      expect(actions.map((a) => a.action)).toEqual(['mandate']);
+    });
+  });
 });
 
 describe('buildStreamComposeContext', () => {

@@ -243,6 +243,7 @@ import {
 } from '../../src/v2/circleShare.js';
 // objective L · Phase 2 — the out-of-circle recipient picker (thin DOM over the SHARED `pickableRecipients`).
 import { renderRecipientPicker } from './recipientPicker.js';
+import { renderMandatePicker } from './mandatePicker.js';
 // The platform-neutral enforcement assembly (web≡mobile — mobile's circlePods.js calls the SAME builder).
 import { buildCircleShareEnforcement } from '../../src/v2/circleShareEnforcement.js';
 import { renderContainerCard } from './containerCard.js';      // cluster K · K2 — the nested container card (web DOM)
@@ -1275,11 +1276,11 @@ function buildCircleBot(agent) {
   // Merged catalog (the LLM tool list + dispatch catalog) — mirrors main.js.
   const baseSources = [
     { manifest: basisManifest },
-    // tasks-v0 BEFORE the household agent: a circle's items are TASKS, so colliding bare op-ids
-    // (notably `addTask`, declared by both) must resolve to tasks-v0, not household chores — matching
+    // tasks BEFORE the household agent: a circle's items are TASKS, so colliding bare op-ids
+    // (notably `addTask`, declared by both) must resolve to tasks, not household chores — matching
     // the circle GATE which already excludes household ("household shadowed by tasks", circleGate.js).
     // Without this, "@assistant add X" landed in the household circle while the complete-resolver/lookup
-    // (tasks-v0) found nothing → "couldn't find X in this circle" on `done X` (#49).
+    // (tasks) found nothing → "couldn't find X in this circle" on `done X` (#49).
     { manifest: mockTasksManifest },
     { manifest: agent.manifest },
     { manifest: mockStoopManifest },
@@ -1917,6 +1918,89 @@ async function openRecipientPicker({ itemId, fromCircleId, toCircleId, onResult 
       onResult?.(res, r);
     },
   });
+}
+
+// Entrust (mandate) — open the task-scoped grant picker overlay. Fills WHO from
+// the circle roster (listGroupMembers) and WHAT from MY offerings (getProfileDrivers,
+// kind 'offering'); Confirm dispatches the ALREADY-registered `attachTaskGrant` op
+// via the tasks appOrigin. The op enforces the creator/admin gate (a non-owner's
+// attach is refused); revoke-on-complete is already wired. A self-contained modal
+// (same pattern as openRecipientPicker) so it doesn't disturb the kring render.
+async function openMandatePicker({ taskId, circleId } = {}) {
+  if (!taskId || !circleId || typeof rawCallSkill !== 'function') return;
+
+  // My WebID (the granter / actingAs), the roster (WHO), my offerings (WHAT), and
+  // any mandates already on the task (legibility). All best-effort.
+  let myWebid = '';
+  try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; } catch { /* */ }
+
+  let members = [];
+  try {
+    const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: circleId });
+    members = Array.isArray(res?.members) ? res.members : [];
+  } catch { members = []; }
+
+  // WHAT — only offerings I hold appear; that IS the attenuation, made visible.
+  let offerings = [];
+  try {
+    const drivers = (await rawCallSkill('agents', 'getProfileDrivers', { id: 'default' }))?.drivers ?? {};
+    offerings = Object.entries(drivers)
+      .filter(([, v]) => v && v.kind === 'offering')
+      .map(([key, v]) => ({ key, text: v.text || key }));
+  } catch { offerings = []; }
+
+  let existingGrants = await loadTaskGrants({ taskId, circleId });
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'cc-mandate-overlay';
+  backdrop.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:1002', 'display:flex',
+    'align-items:center', 'justify-content:center', 'background:rgba(0,0,0,0.4)',
+  ].join(';');
+  const overlay = document.createElement('div');
+  overlay.style.cssText = [
+    'background:var(--card)', 'border-radius:12px', 'padding:16px', 'max-width:min(92vw,420px)',
+    'max-height:80vh', 'overflow:auto', 'box-shadow:0 6px 24px rgba(0,0,0,0.25)',
+    'font-family:system-ui,sans-serif',
+  ].join(';');
+  backdrop.appendChild(overlay);
+  document.body.appendChild(backdrop);
+  const close = () => backdrop.remove();
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });   // click-outside closes
+
+  let busy = false;
+  let notice = null;
+  const paint = () => renderMandatePicker(overlay, {
+    members, offerings, taskId, myWebid, existingGrants, t, busy, notice,
+    onCancel: close,
+    onConfirm: async ({ taskId: tid, member, grant }) => {
+      busy = true; notice = null; paint();
+      let res = null;
+      try { res = await rawCallSkill('tasks', 'attachTaskGrant', { taskId: tid, member, grant, circleId }); }
+      catch (e) { res = { error: e?.message ?? 'unknown' }; }
+      busy = false;
+      if (res && res.ok) {
+        // Legibility refreshes from the op's returned grant set (or a re-read).
+        existingGrants = Array.isArray(res.grants) ? res.grants : await loadTaskGrants({ taskId: tid, circleId });
+        notice = t('circle.mandate.done');
+        paint();
+      } else {
+        notice = t('circle.mandate.failed', { error: res?.error ?? 'unknown' });
+        paint();
+      }
+    },
+  });
+  paint();
+}
+
+// Best-effort read of a task's issued mandates (`source.taskGrants`) via the
+// getTaskSnapshot op — for the picker's legibility list. A miss returns [].
+async function loadTaskGrants({ taskId, circleId } = {}) {
+  try {
+    const snap = await rawCallSkill('tasks', 'getTaskSnapshot', { id: taskId, circleId });
+    const grants = snap?.source?.taskGrants ?? snap?.taskGrants ?? snap?.item?.source?.taskGrants ?? null;
+    return Array.isArray(grants) ? grants : [];
+  } catch { return []; }
 }
 
 // P5 — add a bot to the app PeerGraph (an https agent-card URL → discoverA2A;
@@ -3317,7 +3401,7 @@ function openListsPanel(circleId) {
 async function openCircleScreenPanel(screenId, { highlightRef, context } = {}) {
   const circleId = getActiveCircle();
   // Q15 — the panel's FETCH CONTEXT: the host materializes `$circleId` (the
-  // active circle — the same key the tasks-v0 host supplies its pod-settings
+  // active circle — the same key the tasks host supplies its pod-settings
   // page) plus any SELECTION context a drill-down row-pick passed in
   // (screenDrilldown: `$uri` / `$agentId` ← the picked row).
   const screenContext = { circleId, ...(context && typeof context === 'object' ? context : {}) };
@@ -3728,12 +3812,29 @@ function showKring(id, circle, policy) {
   let noticeboardBusy = false;
   let noticeboardPendingAttachment = null;   // S5 — { encoded, thumbnail, name } before posting
   let myWebid = null;   // fetched once, best-effort (whoAmI is a stoop skill, not chat-manifested)
+  let myCircleRole = null;   // my role in THIS circle ('admin' | …), for mandate owner-visibility
 
   async function ensureMyWebid() {
     if (myWebid !== null) return myWebid;
     try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; }
     catch { myWebid = ''; }
     return myWebid;
+  }
+
+  // Best-effort: my role in this circle (drives the mandate action's admin-visibility,
+  // alongside the creator/own-row path). A failure just leaves it null (creator path
+  // still works; the handler gate is the real boundary).
+  async function ensureMyRole() {
+    if (myCircleRole !== null) return myCircleRole;
+    await ensureMyWebid();
+    try {
+      const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: id });
+      const members = Array.isArray(res?.members) ? res.members : [];
+      const me = members.find((m) => (m?.webid ?? m?.id) === myWebid);
+      myCircleRole = me?.role ?? '';
+    } catch { myCircleRole = ''; }
+    if (getActiveCircle() === id) rerender();
+    return myCircleRole;
   }
   const shortWebid = (w) => (typeof w === 'string' && w ? (w.split(/[/#]/).filter(Boolean).pop() || w).slice(0, 18) : '');
 
@@ -3893,6 +3994,12 @@ function showKring(id, circle, policy) {
     });
     renderCircleKring(rootEl, {
       circle, rows, t,
+      // Mandate ("entrust") — owner-only visibility of the entrust action. myWebid
+      // + my role are best-effort (populated async on open); until then the action
+      // stays hidden (fail-closed), and a locally-authored task row still offers it
+      // via the row's `isOwn` path inside the renderer.
+      viewerWebid: myWebid || null,
+      viewerIsAdmin: myCircleRole === 'admin',
       // D / Surface 2 — feeds the ⋯ overflow menu's manifest-projected feature gate.
       policy,
       tabs, activeTab,
@@ -4147,6 +4254,13 @@ function showKring(id, circle, policy) {
         else { broadcastFanOut({ msgId, text: line, ts }); }   // fallback before the bot is built
       },
       onAction: (action /*, row */) => {
+        // Entrust (mandate) — open the task-scoped grant picker. Owner-only
+        // visibility got it here; the `attachTaskGrant` handler is the real gate.
+        if (action?.action === 'mandate') {
+          const taskId = action.payload?.taskId ?? action.payload?.ref ?? null;
+          if (taskId) openMandatePicker({ taskId, circleId: id });
+          return;
+        }
         // Feedback bot buttons (Send all / Send 1 / ✏ / Send nothing → fp:consent:* / fp:edit:* / fp:cancel)
         // route to this circle's co-hosted feedback surface as a control turn — the button-tap peer of the
         // composer's text routing. (Other per-row actions remain V0 no-ops until SP-13.2.1.)
@@ -4186,6 +4300,11 @@ function showKring(id, circle, policy) {
     rerender: () => rerender(),
   };
   rerender();
+  // Mandate — resolve my identity + role in the background so the owner-only
+  // "entrust" action can appear (each re-renders on completion). Fail-closed:
+  // until they resolve, the action stays hidden.
+  ensureMyWebid().then(() => { if (getActiveCircle() === id) rerender(); }).catch(() => {});
+  ensureMyRole().catch(() => {});
   // EventLog has no subscribe seam yet; SP-13.2.1 will poll-on-event so
   // inbound peer messages appear without manual re-render.
 

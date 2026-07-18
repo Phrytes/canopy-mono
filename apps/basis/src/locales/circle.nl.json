@@ -959,6 +959,72 @@
     "ignore": {
       "text": "Negeer",
       "doc": "Stream row action."
+    },
+    "mandate": {
+      "text": "Toevertrouwen",
+      "doc": "Stream row action — begrensde bevoegdheid voor deze taak toevertrouwen (alleen eigenaar)."
+    }
+  },
+  "mandate": {
+    "heading": {
+      "text": "Deze taak toevertrouwen",
+      "doc": "Toevertrouwen-kiezer — titel."
+    },
+    "intro": {
+      "text": "Vertrouw voor deze taak begrensde bevoegdheid toe aan één lid.",
+      "doc": "Toevertrouwen-kiezer — korte uitleg."
+    },
+    "cancel": {
+      "text": "Annuleren",
+      "doc": "Toevertrouwen-kiezer — sluiten."
+    },
+    "who_label": {
+      "text": "Wie",
+      "doc": "Toevertrouwen-kiezer — ledensectie."
+    },
+    "who_empty": {
+      "text": "Nog niemand anders in deze kring.",
+      "doc": "Toevertrouwen-kiezer — lege ledenlijst."
+    },
+    "what_label": {
+      "text": "Wat",
+      "doc": "Toevertrouwen-kiezer — attenuatie-sectie."
+    },
+    "on_your_behalf": {
+      "text": "Namens jou",
+      "doc": "Toevertrouwen-kiezer — de standaard, onversmalde bevoegdheid."
+    },
+    "temporary": {
+      "text": "Tijdelijk — vervalt zodra de taak klaar is.",
+      "doc": "Toevertrouwen-kiezer — de tijdelijk-belofte."
+    },
+    "brokered": {
+      "text": "Bemiddeld — je sleutels blijven bij jou; alleen antwoorden gaan mee.",
+      "doc": "Toevertrouwen-kiezer — de bemiddeld-belofte."
+    },
+    "confirm": {
+      "text": "Toevertrouwen",
+      "doc": "Toevertrouwen-kiezer — bevestigknop."
+    },
+    "existing_heading": {
+      "text": "Toevertrouwd voor deze taak",
+      "doc": "Legibiliteit — kop boven de bestaande mandaten van de taak."
+    },
+    "existing_row": {
+      "text": "{{who}} — {{what}}",
+      "doc": "Legibiliteit — één bestaand mandaat (wie + wat)."
+    },
+    "existing_note": {
+      "text": "Deze vervallen zodra de taak klaar is.",
+      "doc": "Legibiliteit — de vaste tijdelijk-notitie."
+    },
+    "done": {
+      "text": "Toevertrouwd.",
+      "doc": "Toevertrouwen-kiezer — succesmelding."
+    },
+    "failed": {
+      "text": "Toevertrouwen mislukt: {{error}}",
+      "doc": "Toevertrouwen-kiezer — foutmelding; {{error}} ingevuld."
     }
   },
   "settings": {

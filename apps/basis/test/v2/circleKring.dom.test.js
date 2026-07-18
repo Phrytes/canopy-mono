@@ -169,6 +169,59 @@ describe('renderCircleKring · SP-13.2 chat-style kring view', () => {
     expect(onAction.mock.calls[0][1].id).toBe('r1');
   });
 
+  // ── Mandate ("entrust") — owner-only action + legibility on task rows ────────
+  describe('entrust (mandate) action', () => {
+    const choreRow = {
+      id: 'chore-1', ts: now, circleId: circle.id, type: 'buurt-post', actor: 'Anne',
+      event: { id: 'chore-1', type: 'buurt-post', payload: { kind: 'chore', text: 'Vuilnis buiten zetten', ref: 'task-77', addedBy: 'https://me.example/#me' } },
+    };
+
+    it('is hidden by default (no viewer signals threaded)', () => {
+      const el = mount();
+      renderCircleKring(el, { circle, rows: [choreRow], t });
+      expect(el.querySelector('.circle-kring__bubble-action[data-action=mandate]')).toBeNull();
+    });
+
+    it('appears for the owner (viewer WebID matches the row creator)', () => {
+      const el = mount();
+      renderCircleKring(el, { circle, rows: [choreRow], t, viewerWebid: 'https://me.example/#me' });
+      const btn = el.querySelector('.circle-kring__bubble-action[data-action=mandate]');
+      expect(btn).not.toBeNull();
+      expect(btn.classList.contains('circle-kring__bubble-action--mandate')).toBe(true);
+    });
+
+    it('stays hidden for a non-owner viewer', () => {
+      const el = mount();
+      renderCircleKring(el, { circle, rows: [choreRow], t, viewerWebid: 'https://someone-else.example/#me' });
+      expect(el.querySelector('.circle-kring__bubble-action[data-action=mandate]')).toBeNull();
+    });
+
+    it('appears for a circle admin', () => {
+      const el = mount();
+      renderCircleKring(el, { circle, rows: [choreRow], t, viewerIsAdmin: true });
+      expect(el.querySelector('.circle-kring__bubble-action[data-action=mandate]')).not.toBeNull();
+    });
+
+    it('onAction receives the mandate action carrying the taskId', () => {
+      const el = mount();
+      const onAction = vi.fn();
+      renderCircleKring(el, { circle, rows: [choreRow], t, onAction, viewerIsAdmin: true });
+      el.querySelector('.circle-kring__bubble-action[data-action=mandate]').click();
+      expect(onAction.mock.calls[0][0].action).toBe('mandate');
+      expect(onAction.mock.calls[0][0].payload.taskId).toBe('task-77');
+    });
+
+    it('renders the legibility list when a task row carries source.taskGrants', () => {
+      const el = mount();
+      const withGrants = {
+        ...choreRow,
+        event: { ...choreRow.event, payload: { ...choreRow.event.payload, taskGrants: [{ member: 'https://alice.example/#me', skill: 'off-baking' }] } },
+      };
+      renderCircleKring(el, { circle, rows: [withGrants], t });
+      expect(el.querySelectorAll('.cc-mandate-legibility__item')).toHaveLength(1);
+    });
+  });
+
   /* ─── SP-13.3 — per-kring bottom tabs ─── */
 
   const buurtTabs = [
