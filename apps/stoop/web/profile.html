@@ -332,7 +332,7 @@
 
     async function refreshSkills() {
       const [cats, mine] = await Promise.all([
-        callSkill('listSkillCategories', { lang: currentLang() }),
+        callSkill('listOfferingCategories', { lang: currentLang() }),
         callSkill('listMyOfferings', {}),
       ]);
       const myByCat = new Map((mine?.skills ?? []).map(s => [s.categoryId, s]));

@@ -422,7 +422,7 @@
     "skill_saving":           { "text": "Saving…", "doc": "Inline status while a skill change is being persisted." },
     "skill_saved":            { "text": "Saved.", "doc": "Inline confirmation after a successful skill change." },
     "skill_tags_saved":       { "text": "Tags saved.", "doc": "Inline confirmation after the per-skill tags blur-save." },
-    "no_categories":          { "text": "No categories available.", "doc": "Empty-state shown when listSkillCategories returned an empty array." },
+    "no_categories":          { "text": "No categories available.", "doc": "Empty-state shown when listOfferingCategories returned an empty array." },
 
     "holiday_on":             { "text": "Holiday on", "doc": "Toggle-button label when holiday-mode is currently OFF (clicking turns it on)." },
     "holiday_off":            { "text": "Holiday off", "doc": "Toggle-button label when holiday-mode is currently ON (clicking turns it off)." },

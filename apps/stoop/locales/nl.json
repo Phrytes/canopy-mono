@@ -422,7 +422,7 @@
     "skill_saving":           { "text": "Bezig met opslaan…", "doc": "Inline status while a skill change is being persisted." },
     "skill_saved":            { "text": "Opgeslagen.", "doc": "Inline confirmation after a successful skill change." },
     "skill_tags_saved":       { "text": "Tags opgeslagen.", "doc": "Inline confirmation after the per-skill tags blur-save." },
-    "no_categories":          { "text": "Geen categorieën beschikbaar.", "doc": "Empty-state shown when listSkillCategories returned an empty array." },
+    "no_categories":          { "text": "Geen categorieën beschikbaar.", "doc": "Empty-state shown when listOfferingCategories returned an empty array." },
 
     "holiday_on":             { "text": "Vakantie aan", "doc": "Toggle-button label when holiday-mode is currently OFF (clicking turns it on)." },
     "holiday_off":            { "text": "Vakantie uit", "doc": "Toggle-button label when holiday-mode is currently ON (clicking turns it off)." },

@@ -1594,11 +1594,13 @@ export function buildSkills({
     }),
 
     /**
-     * listSkillCategories({lang?})
+     * listOfferingCategories({lang?})
      *   — return the taxonomy categories for UI dropdowns.  Lang
      *   defaults to NL.  Lib: `apps/stoop/src/lib/skillsTaxonomy.json`.
+     *   Registered under the legacy id `listSkillCategories` too, since a
+     *   stored slash trigger or a peer's callSkill(oldId) may still reach it.
      */
-    defineSkill('listSkillCategories', async ({ parts }) => {
+    ...withLegacyIds(defineSkill('listOfferingCategories', async ({ parts }) => {
       const a = dataArgs(parts);
       const lang = a.lang === 'en' ? 'en' : 'nl';
       return {
@@ -1609,9 +1611,9 @@ export function buildSkills({
         })),
       };
     }, {
-      description: 'Return the Stoop V1 skill-category taxonomy with localised labels.',
+      description: 'Return the Stoop V1 offering-category taxonomy with localised labels.',
       visibility:  'authenticated',
-    }),
+    }), 'listSkillCategories'),
 
     /**
      * suggestCategory({text})

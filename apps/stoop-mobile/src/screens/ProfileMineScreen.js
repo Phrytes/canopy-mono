@@ -47,7 +47,7 @@ export function ProfileMineScreen() {
     setLocation, clearLocation,
     setHolidayMode,
     addSkill, removeSkill,
-    listSkillCategories,
+    listOfferingCategories,
     getMnemonicOnce,
   } = useProfile();
 
@@ -84,8 +84,8 @@ export function ProfileMineScreen() {
   // Load taxonomy once we have an active agent.
   useEffect(() => {
     if (!svc?.activeBundle) return;
-    listSkillCategories('nl').then(setCategories).catch(() => { /* swallow */ });
-  }, [svc?.activeBundle, listSkillCategories]);
+    listOfferingCategories('nl').then(setCategories).catch(() => { /* swallow */ });
+  }, [svc?.activeBundle, listOfferingCategories]);
 
   // ── Empty state — no agent yet (no group joined). ────────────────
   if (!svc?.activeBundle) {

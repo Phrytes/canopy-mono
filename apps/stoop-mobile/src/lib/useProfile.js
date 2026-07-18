@@ -40,7 +40,7 @@ import {
  *   setHolidayMode: (next: boolean) => Promise<void>,
  *   addSkill:       (entry: object) => Promise<void>,
  *   removeSkill:    (categoryId: string) => Promise<void>,
- *   listSkillCategories: (lang?: string) => Promise<object[]>,
+ *   listOfferingCategories: (lang?: string) => Promise<object[]>,
  *   getMnemonicOnce: () => Promise<string | null>,
  * }}
  */
@@ -149,8 +149,8 @@ export function useProfile() {
     if (r?.error) throw new Error(r.error);
   }, [_invoke]);
 
-  const listSkillCategories = useCallback(async (lang) => {
-    const r = await _invoke('listSkillCategories', lang ? { lang } : {});
+  const listOfferingCategories = useCallback(async (lang) => {
+    const r = await _invoke('listOfferingCategories', lang ? { lang } : {});
     return r?.categories ?? [];
   }, [_invoke]);
 
@@ -169,7 +169,7 @@ export function useProfile() {
     setLocation, clearLocation,
     setHolidayMode,
     addSkill, removeSkill: removeSkillFn,
-    listSkillCategories,
+    listOfferingCategories,
     getMnemonicOnce,
   };
 }

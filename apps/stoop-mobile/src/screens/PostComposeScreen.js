@@ -72,7 +72,7 @@ export function PostComposeScreen() {
   const contacts = Array.isArray(contactsData?.contacts) ? contactsData.contacts : [];
 
   // Skills taxonomy (for the chip multi-select).
-  const { data: taxonomyData } = useSkillResult('listSkillCategories', { lang: 'nl' }, []);
+  const { data: taxonomyData } = useSkillResult('listOfferingCategories', { lang: 'nl' }, []);
   const taxonomyChips = (taxonomyData?.categories ?? []).map((c) => ({
     id:    c.id,
     label: typeof c.label === 'string' ? c.label : (c.label?.nl ?? c.label?.en ?? c.id),

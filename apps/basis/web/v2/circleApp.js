@@ -2977,10 +2977,10 @@ function showStream() {
 // S2 — the Mij tab is now your PROFILE (handle + display name + location),
 // backed by stoop's profile ops. Availability/quiet-hours moves to a
 // sub-screen reached from here.
-// Skills→property fold-in phase C (2026-07-17): the personal-skills editor
-// (stoop addMySkill/removeMySkill + listSkillCategories) left this screen —
-// skills are persona drivers now, edited on "Mij → persona's" (openAboutMePanel
-// → circleMij.js). The stoop skill ops themselves STAY: the roster projection
+// Offering→property fold-in phase C (2026-07-17): the personal-offering editor
+// (stoop addMyOffering/removeMyOffering + listOfferingCategories) left this screen —
+// offerings are persona drivers now, edited on "Mij → persona's" (openAboutMePanel
+// → circleMij.js). The stoop offering ops themselves STAY: the roster projection
 // still uses the roster shape, and mobile CircleProfileScreen still calls them
 // until the mobile mirror lands.
 async function showMij() {

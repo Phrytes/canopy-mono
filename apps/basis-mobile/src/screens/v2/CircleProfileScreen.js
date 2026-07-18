@@ -3,7 +3,7 @@
  *
  * RN mirror of web's circleProfile: identity (handle + display name), personal
  * offerings (taxonomy picker as tappable chips), and coarse location (geocode).
- * Self-contained: loads getMyProfile/listSkillCategories + dispatches the stoop
+ * Self-contained: loads getMyProfile/listOfferingCategories + dispatches the stoop
  * mutations via the injected `callSkill`. Availability/quiet-hours is a sub-screen
  * reached via `onAvailability`.
  */
@@ -25,7 +25,7 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
     if (typeof callSkill !== 'function') return;
     const [prof, cats] = await Promise.all([
       callSkill('stoop', 'getMyProfile', {}).catch(() => null),
-      callSkill('stoop', 'listSkillCategories', { lang: currentLang() }).catch(() => null),
+      callSkill('stoop', 'listOfferingCategories', { lang: currentLang() }).catch(() => null),
     ]);
     const entry = prof?.entry ?? {};
     setProfile(entry);
