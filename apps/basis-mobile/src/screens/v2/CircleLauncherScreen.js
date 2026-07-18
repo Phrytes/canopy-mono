@@ -118,6 +118,7 @@ import { createFeedbackMount } from '../../../../basis/src/feedback/feedbackMoun
 import { createFeedbackSurface, signerForIdentity, chunkBubble } from '../../../../basis/src/feedback/feedbackSurface.js';
 import { makeNoLoginFeedbackPods } from '../../../../basis/src/feedback/noLoginPods.js';
 import { FeedbackReviewCards } from '../../rn/FeedbackBubbles.js';
+import CircleMandatePicker from './CircleMandatePicker.js';
 import { buildCircleLlmProviders } from '../../../../basis/src/v2/circleLlmProviders.js';
 import { createClarifyingDispatch } from '../../../../basis/src/v2/clarifyingDispatch.js';
 // Q27 — the shared confirm gate at the dispatch waist (mobile presenter: Alert.alert, destructive style).
@@ -2099,6 +2100,30 @@ function CircleDetail({
     emitFeedbackLangOptions(newLang);
   }, [buildFeedbackMount, emitFeedbackLangOptions]);
 
+  // Entrust (mandate) — the open picker's gathered inputs (null = closed), plus my
+  // owner-visibility signals (WebID + admin role in THIS circle). The signals gate
+  // the owner-only "entrust" row action via the SHARED actionsForStreamRow (web≡mobile);
+  // fail-closed until resolved (a locally-authored row still offers it via isOwn).
+  const [mandatePicker, setMandatePicker] = useState(null);
+  const [mandateViewer, setMandateViewer] = useState({ viewerWebid: null, isAdmin: false });
+  useEffect(() => {
+    let cancelled = false;
+    if (!circle?.id || typeof rawCallSkill !== 'function') { setMandateViewer({ viewerWebid: null, isAdmin: false }); return undefined; }
+    (async () => {
+      let webid = null;
+      try { const r = await rawCallSkill('stoop', 'whoAmI', {}); webid = r?.webid ?? r?.webId ?? null; } catch { /* best-effort */ }
+      let isAdmin = false;
+      try {
+        const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: circle.id });
+        const mem = Array.isArray(res?.members) ? res.members : [];
+        const me = mem.find((m) => (m?.webid ?? m?.id) === webid);
+        isAdmin = me?.role === 'admin';
+      } catch { /* creator/own-row path still works; the handler gate is the real boundary */ }
+      if (!cancelled) setMandateViewer({ viewerWebid: webid, isAdmin });
+    })();
+    return () => { cancelled = true; };
+  }, [circle?.id, rawCallSkill]);
+
   // B (circle bot) — run a FULLY-RESOLVED command ({opId, args}) against the circle's catalog, scoped
   // to THIS circle, and post a one-line bot reply. Local-only (the command's substrate effect reaches
   // members on its own). Target resolution / ambiguity is handled upstream by the clarifying dispatch.
@@ -2207,6 +2232,62 @@ function CircleDetail({
       } catch { /* enrichment is non-essential */ }
     }
   }, [catalog, circle?.id, rawCallSkill, appendKringMessage, manifestsByOrigin, policy, capabilitySources, overrideStore]);
+
+  // Entrust (mandate) — open the task-scoped grant picker. Gathers WHO (the circle
+  // roster), WHAT (MY offerings, kind 'offering'), my WebID (the granter), and any
+  // mandates already on the task (legibility) — the SAME reads web's openMandatePicker
+  // uses, via the mobile 3-arg rawCallSkill. All best-effort; a miss just narrows.
+  const openMandatePicker = useCallback(async ({ taskId }) => {
+    if (!taskId || !circle?.id || typeof rawCallSkill !== 'function') return;
+    let myWebid = '';
+    try { const r = await rawCallSkill('stoop', 'whoAmI', {}); myWebid = r?.webid ?? r?.webId ?? ''; } catch { /* */ }
+    let members = [];
+    try {
+      const res = await rawCallSkill('stoop', 'listGroupMembers', { groupId: circle.id });
+      members = Array.isArray(res?.members) ? res.members : [];
+    } catch { members = []; }
+    // WHAT — only offerings I hold appear; that IS the attenuation, made visible.
+    let offerings = [];
+    try {
+      const drivers = (await rawCallSkill('agents', 'getProfileDrivers', { id: 'default' }))?.drivers ?? {};
+      offerings = Object.entries(drivers)
+        .filter(([, v]) => v && v.kind === 'offering')
+        .map(([key, v]) => ({ key, text: v.text || key }));
+    } catch { offerings = []; }
+    let existingGrants = [];
+    try {
+      const snap = await rawCallSkill('tasks', 'getTaskSnapshot', { id: taskId, circleId: circle.id });
+      const grants = snap?.source?.taskGrants ?? snap?.taskGrants ?? snap?.item?.source?.taskGrants ?? null;
+      existingGrants = Array.isArray(grants) ? grants : [];
+    } catch { existingGrants = []; }
+    setMandatePicker({ taskId, members, offerings, myWebid, existingGrants });
+  }, [circle?.id, rawCallSkill]);
+
+  // Confirm → route the mandate through the SAME dispatch waist the bot/slash path uses
+  // (runCircleCommandResolved). attachTaskGrant declares surfaces.ui.confirm, so this hits
+  // the shared confirm gate (needsConfirm → "weet je het zeker?" Alert) before ANY grant
+  // issues — no direct callSkill bypass — and the op's success/failure surfaces as a kring
+  // bubble. Close the picker first so the confirm Alert isn't stacked under it.
+  const onMandateConfirm = useCallback(async ({ taskId, member, grant }) => {
+    setMandatePicker(null);
+    await runCircleCommandResolved({
+      opId: 'attachTaskGrant',
+      args: { taskId, member, grant, circleId: circle?.id },
+      appOrigin: 'tasks',
+    });
+  }, [runCircleCommandResolved, circle?.id]);
+
+  // Row-action dispatcher for the stream bubbles — the "entrust" (mandate) action opens the
+  // picker (owner-only visibility got it here; the handler is the real gate). Other row actions
+  // are not yet wired on mobile (parity gap tracked in web-mobile-exceptions is unrelated).
+  const onRowAction = useCallback((a, row) => {
+    if (a?.action === 'mandate') {
+      const taskId = a?.payload?.taskId ?? a?.payload?.ref ?? null;
+      if (taskId) openMandatePicker({ taskId });
+      return;
+    }
+    console.info('[kring] action', a?.action, row?.id);
+  }, [openMandatePicker]);
 
   // E2 — run a bulk route ("/done all") over the most-recent listing's items (web≡mobile parity via the shared
   // executeBulkDispatch). Mobile has no filter-router; cross-thread propagation is the fan-out itself.
@@ -2755,6 +2836,9 @@ function CircleDetail({
             onToggleBubble: toggleBubble,
             // tap a "See also" embed chip → open the item's screen panel (S6.B).
             onEmbedOpen: ({ screen, ref }) => { if (screen) setScreenPanel({ screen, highlightRef: ref }); },
+            // Entrust (mandate) — owner-visibility signals + the row-action dispatcher (opens the picker).
+            mandateViewer: { ...mandateViewer, localActor: 'me' },
+            onRowAction,
           })
         )}
       </ScrollView>
@@ -2833,6 +2917,19 @@ function CircleDetail({
           </View>
         </View>
       </Modal>
+
+      {/* Entrust (mandate) — the task-scoped grant picker (RN twin of web's openMandatePicker
+          overlay). Confirm routes through the shared confirm/gate waist via onMandateConfirm. */}
+      <CircleMandatePicker
+        visible={!!mandatePicker}
+        members={mandatePicker?.members ?? []}
+        offerings={mandatePicker?.offerings ?? []}
+        taskId={mandatePicker?.taskId ?? null}
+        myWebid={mandatePicker?.myWebid ?? null}
+        existingGrants={mandatePicker?.existingGrants ?? []}
+        onConfirm={onMandateConfirm}
+        onCancel={() => setMandatePicker(null)}
+      />
 
       {/* 2+-field needsForm → an inline labelled form above the composer (parity with web). */}
       {pendingForm && viewMode !== 'scherm' && activeTab === 'gesprek' ? (
@@ -2976,7 +3073,17 @@ function renderBubble(row, t, deliveryOpts = null) {
   const kindRaw = payload.kind;
   const kind = (typeof kindRaw === 'string' && kindRaw && kindRaw !== 'message' && kindRaw !== 'chat-message')
     ? kindRaw.toUpperCase() : null;
-  const actions = actionsForStreamRow(row);
+  // Owner-only "entrust" (mandate) action rides the SAME actionsForStreamRow seam as web's
+  // circleKring — gated by the viewer's identity signals (WebID + admin) plus the locally-
+  // authored `isOwn` path. Without signals threaded the mandate action stays hidden (fail-closed).
+  const mandateViewer = deliveryOpts?.mandateViewer ?? {};
+  const rowIsOwn = mandateViewer.localActor != null && row?.actor === mandateViewer.localActor;
+  const actions = actionsForStreamRow(row, {
+    viewerWebid: mandateViewer.viewerWebid ?? null,
+    isAdmin: !!mandateViewer.isAdmin,
+    isOwn: rowIsOwn,
+  });
+  const onRowAction = typeof deliveryOpts?.onRowAction === 'function' ? deliveryOpts.onRowAction : null;
   // B (clarification) — per-message candidate buttons carried in the payload (e.g. "which item?").
   const msgButtons = Array.isArray(payload.buttons) ? payload.buttons : [];
   const onBubbleButton = typeof deliveryOpts?.onBubbleButton === 'function' ? deliveryOpts.onBubbleButton : null;
@@ -3055,7 +3162,8 @@ function renderBubble(row, t, deliveryOpts = null) {
             <Pressable
               key={a.id}
               style={styles.rowActionBtn}
-              onPress={() => console.info('[kring] action', a.action, row.id)}
+              testID={`kring-rowaction-${a.action}`}
+              onPress={() => { if (onRowAction) onRowAction(a, row); else console.info('[kring] action', a.action, row.id); }}
             >
               <Text style={styles.rowActionText}>{t(a.label)}</Text>
             </Pressable>
