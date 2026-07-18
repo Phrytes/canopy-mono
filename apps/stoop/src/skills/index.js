@@ -1474,7 +1474,7 @@ export function buildSkills({
       if (!Array.isArray(skillsArr)) return { error: 'skills array required' };
       if (!members) return { error: 'no-member-map' };
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
-      const updated = await members.addMember({ ...me, skills: skillsArr });
+      const updated = await members.addMember({ ...me, offerings: skillsArr });
       return { skills: updated.skills, _sync: simulateSync() };
     }, {
       description: 'Replace the calling actor\'s skills array.',
@@ -1502,7 +1502,7 @@ export function buildSkills({
         radius:       a.radius ?? null,
         status:       a.status ?? 'active',
       });
-      const updated = await members.addMember({ ...me, skills: filtered });
+      const updated = await members.addMember({ ...me, offerings: filtered });
       return { skills: updated.skills, _sync: simulateSync() };
     }, {
       description: 'Add or update one skill on the calling actor\'s profile.',
@@ -1522,7 +1522,7 @@ export function buildSkills({
       const me = (await members.resolveByWebid(from)) ?? { webid: from };
       const existing = Array.isArray(me.skills) ? me.skills : [];
       const next = existing.filter(s => s.categoryId !== a.categoryId);
-      const updated = await members.addMember({ ...me, skills: next });
+      const updated = await members.addMember({ ...me, offerings: next });
       return { skills: updated.skills, _sync: simulateSync() };
     }, {
       description: 'Remove a skill from the calling actor\'s profile.',
@@ -2849,7 +2849,7 @@ export function buildSkills({
         // archived ones alone so holiday-mode isn't a re-archive event.
         status: s.status === 'archived' ? 'archived' : targetStatus,
       }));
-      await members.addMember({ ...me, skills: updated });
+      await members.addMember({ ...me, offerings: updated });
       return { holidayMode: a.on, skillCount: updated.length, _sync: simulateSync() };
     }, {
       description: 'Bulk-flip every active skill between paused (gepauzeerd) and active (actief); does not touch archived skills.',

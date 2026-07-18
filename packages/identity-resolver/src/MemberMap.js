@@ -121,9 +121,10 @@ export class MemberMap extends Emitter {
    *   users, and pod migrations.  Apps key mute / ban / report on
    *   this rather than on `webid`.  Optional — legacy consumers
    *   leave it absent.
-   * @param {Array<{categoryId: string, freeTags?: string[], availability?: string, radius?: string, status?: string}>} [m.skills]
-   *   Stoop V1 Phase 11: per-member offerings profile (wire field still named
-   *   `skills`, renamed with the matching stack later).  `categoryId`
+   * @param {Array<{categoryId: string, freeTags?: string[], availability?: string, radius?: string, status?: string}>} [m.offerings]
+   *   Per-member offerings profile (the human "I can do X" data). Legacy
+   *   callers pass `skills`; it is read-accepted and normalised into
+   *   `offerings` (with a transitional `skills` read-alias).  `categoryId`
    *   picks from a fixed taxonomy (canonical home:
    *   `@onderling/agent-registry` `OFFERINGS_TAXONOMY`).  `status` ∈
    *   `'active' | 'paused' | 'archived'`  (V2.5+; legacy Dutch
@@ -231,25 +232,25 @@ export class MemberMap extends Emitter {
       // Survives handle changes + network-pubkey rotations.  Apps
       // key mute / ban / report on this.  Optional.
       stableId:    m.stableId ?? null,
-      // skills: per-member skills profile (Stoop V1 Phase 11).
+      // offerings: per-member offerings profile (the human "I can do X" data).
       // Each item: {categoryId, freeTags?, radius?, status?}.
       // Status: 'active' | 'paused' | 'archived' (V2.5+, English) — the
       // offer on/off, DISTINCT from when-I'm-reachable.
       // Legacy V1/V2 vault entries used Dutch (`actief`/`gepauzeerd`/
       // `gearchiveerd`); translated on read for back-compat.
-      // NOTE: the old per-skill `availability` sub-field is DROPPED
+      // NOTE: the old per-offering `availability` sub-field is DROPPED
       // (availability unification, NOTE-skills-properties-audit §4/§5/Q5):
       // reachability is now the ONE member-level `availability` below, which
-      // skills reference — they no longer each carry a copy.
-      // Optional — consumers without skills leave it absent (= null).
-      skills:      Array.isArray(m.skills)
-        ? m.skills.map(s => ({
-            categoryId:    s.categoryId,
-            freeTags:      Array.isArray(s.freeTags) ? [...s.freeTags] : [],
-            radius:        s.radius       ?? null,
-            status:        _translateLegacyStatus(s.status) ?? 'active',
-          }))
-        : null,
+      // offerings reference — they no longer each carry a copy.
+      // READ-ACCEPT: legacy stored members use the field name `skills`; we
+      // accept it on input and expose the canonical `offerings` field, plus
+      // a transitional `skills` read-alias (below) for readers not yet
+      // migrated. Optional — consumers without offerings leave it absent (= null).
+      offerings:   _normaliseOfferings(m.offerings ?? m.skills),
+      // Transitional read-alias — legacy field name, same data. Remove once
+      // all readers (stoop profile ops, the mobile profile UIs) move to
+      // `offerings`.
+      skills:      _normaliseOfferings(m.offerings ?? m.skills),
       // availability: the UNIFIED person-level reachability state
       // ('open' | 'limited' | 'away'), projected onto the roster for
       // skill-match routing (availability unification / decision Q5). 'away'
@@ -330,6 +331,20 @@ export class MemberMap extends Emitter {
 
 function safeJsonParse(s) {
   try { return JSON.parse(s); } catch { return null; }
+}
+
+/**
+ * Normalise a stored offerings array (each {categoryId, freeTags?, radius?,
+ * status?}); legacy Dutch status values translated. Returns null when absent.
+ */
+function _normaliseOfferings(list) {
+  if (!Array.isArray(list)) return null;
+  return list.map(s => ({
+    categoryId: s.categoryId,
+    freeTags:   Array.isArray(s.freeTags) ? [...s.freeTags] : [],
+    radius:     s.radius ?? null,
+    status:     _translateLegacyStatus(s.status) ?? 'active',
+  }));
 }
 
 /**

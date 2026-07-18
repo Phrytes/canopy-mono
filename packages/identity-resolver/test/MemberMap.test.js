@@ -88,4 +88,20 @@ describe('MemberMap — skill status enum (V2.5 migration)', () => {
     expect(found.skills.map(s => s.status))
       .toEqual(['active', 'paused', 'archived']);
   });
+
+  it('exposes the canonical `offerings` field and accepts it on input', async () => {
+    const m = new MemberMap();
+    await m.addMember({ webid: ANNE, offerings: [{ categoryId: 'klusjes' }] });
+    const found = await m.resolveByWebid(ANNE);
+    expect(found.offerings[0].categoryId).toBe('klusjes');
+    // transitional read-alias keeps the legacy field name populated
+    expect(found.skills).toEqual(found.offerings);
+  });
+
+  it('read-accepts a legacy stored member using `skills` into `offerings`', async () => {
+    const m = new MemberMap();
+    await m.addMember({ webid: BOB, skills: [{ categoryId: 'vervoer' }] });
+    const found = await m.resolveByWebid(BOB);
+    expect(found.offerings[0].categoryId).toBe('vervoer');
+  });
 });

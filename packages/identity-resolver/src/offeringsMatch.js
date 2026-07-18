@@ -111,17 +111,18 @@ export function matchesProfile(post, member) {
     return { matched: false, reason: 'away' };
   }
 
-  const memberSkills = (member?.skills ?? []).filter((s) => (s.status ?? 'active') === 'active');
-  if (memberSkills.length === 0) return { matched: false, reason: 'no-active-skills' };
+  // Read-accept: prefer the canonical `offerings`; fall back to legacy `skills`.
+  const memberOfferings = ((member?.offerings ?? member?.skills) ?? []).filter((s) => (s.status ?? 'active') === 'active');
+  if (memberOfferings.length === 0) return { matched: false, reason: 'no-active-skills' };
 
   if (post?.categoryId) {
-    const hit = memberSkills.find((s) => s.categoryId === post.categoryId);
+    const hit = memberOfferings.find((s) => s.categoryId === post.categoryId);
     if (hit) return { matched: true, viaCategory: post.categoryId };
   }
 
   if (Array.isArray(post?.tags) && post.tags.length > 0) {
     const overlap = [];
-    for (const skill of memberSkills) {
+    for (const skill of memberOfferings) {
       const free = Array.isArray(skill.freeTags) ? skill.freeTags : [];
       for (const tag of post.tags) {
         if (free.includes(tag)) overlap.push(tag);
