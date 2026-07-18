@@ -59,7 +59,7 @@ export async function migrateRosterSkills({ callSkill, circleId, defaultId = 'de
   // this circle's roster: my own skills as every member of it already sees them
   let skills = [];
   try {
-    const r = await callSkill('stoop', 'listMySkills', {});
+    const r = await callSkill('stoop', 'listMyOfferings', {});
     skills = Array.isArray(r?.skills) ? r.skills : [];
   } catch { skills = []; }
 

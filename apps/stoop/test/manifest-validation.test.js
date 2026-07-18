@@ -97,9 +97,11 @@ describe('stoop manifest — Slice D.1 structural invariants', () => {
   // Part G dissolve (2026-06-17) — the former mockStoopManifest's
   // chat-shell ops (holiday-mode / contacts / wizards / groups / share-qr
   // / startDm + the thin listFeed/getStoopProfile aliases) folded in, so
-  // the op set grew from the D.1 ~14 to 33.
-  it('ships the full chat+slash surface (Part G — one stoop manifest, 33 ops)', () => {
-    expect(stoopManifest.operations.length).toBe(33);
+  // the op set grew from the D.1 ~14 to 33.  2026-07-18: +1 for the
+  // legacy `setMySkills` alias op (kept so the old `/skills` slash trigger
+  // still dispatches after the skill→offering op-id rename) → 34.
+  it('ships the full chat+slash surface (Part G — one stoop manifest, 34 ops)', () => {
+    expect(stoopManifest.operations.length).toBe(34);
   });
 
   // No two ops may declare the same slash command (Part G hard guardrail

@@ -439,14 +439,14 @@ export const stoopManifest = {
 
     // ── Profile / reveals ───────────────────────────────────────────
     {
-      id:   'setMySkills',
+      id:   'setMyOfferings',
       verb: 'set',  // F-SP1-e: non-canonical.  This is a profile
                     // mutation — not add/remove/list of an item.
                     // Resolved 2026-05-21 (owner): kept as one
-                    // `setMySkills` op (vs splitting into addMySkill +
-                    // removeMySkill).  Slash is line-oriented; "set my
-                    // skills" is the natural user mental model.
-                    // Granular `addMySkill`/`removeMySkill` already
+                    // `setMyOfferings` op (vs splitting into addMyOffering +
+                    // removeMyOffering).  Slash is line-oriented; "set my
+                    // offerings" is the natural user mental model.
+                    // Granular `addMyOffering`/`removeMyOffering` already
                     // exist as skills and can be added to a future LLM-
                     // only manifest layer (D.2) if needed.
       params: [
@@ -457,14 +457,28 @@ export const stoopManifest = {
         { name: 'skills', kind: 'string', required: true, ...STR_NONEMPTY },
       ],
       surfaces: {
-        chat:  { hint: "Replace the calling actor's skills array." },
+        chat:  { hint: "Replace the calling actor's offerings array." },
         slash: {
-          // Resolved 2026-05-21 (owner): `/skills` (direct; matches op
-          // id 1:1).  A future `/profile` or `/profile-edit` can land
-          // separately if richer profile-mutation slash surfaces are
-          // needed.
+          command: '/offerings',
+          shape:   '/offerings <json-array-of-offering-entries>',
+        },
+      },
+    },
+    // Legacy alias of setMyOfferings — the op id was renamed skill→offering
+    // (2026-07-18).  This thin op keeps the old `/skills` slash trigger
+    // dispatching to the same handler (the `setMySkills` skill alias) so a
+    // stored slash or an un-migrated caller doesn't break.  No new behaviour.
+    {
+      id:   'setMySkills',
+      verb: 'set',
+      params: [
+        { name: 'skills', kind: 'string', required: true, ...STR_NONEMPTY },
+      ],
+      surfaces: {
+        chat:  { hint: "Replace the calling actor's offerings array (legacy alias of setMyOfferings)." },
+        slash: {
           command: '/skills',
-          shape:   '/skills <json-array-of-skill-entries>',
+          shape:   '/skills <json-array-of-offering-entries>',
         },
       },
     },

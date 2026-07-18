@@ -20,7 +20,7 @@ function makeHost({ holidayMode = false, rosterSkills = [], markerDone = false }
     if (origin === 'agents' && opId === 'getProfileProperties') return { ok: true, properties: { ...props } };
     if (origin === 'agents' && opId === 'setProfileProperty') { props[args.key] = { mode: 'own', value: args.value }; return { ok: true }; }
     if (origin === 'stoop' && opId === 'getHolidayMode') return { holidayMode };
-    if (origin === 'stoop' && opId === 'listMySkills') return { skills: rosterSkills };
+    if (origin === 'stoop' && (opId === 'listMyOfferings' || opId === 'listMySkills')) return { skills: rosterSkills };
     return { ok: false, reason: `unstubbed ${origin}.${opId}` };
   };
   return { callSkill, calls, props };

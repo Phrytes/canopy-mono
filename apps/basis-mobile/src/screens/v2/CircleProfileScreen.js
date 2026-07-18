@@ -45,8 +45,8 @@ export default function CircleProfileScreen({ callSkill, onAvailability, onMyDat
     setBusy(false); load();
   }, [handle, display, profile, callSkill, load]);
 
-  const addSkill = useCallback(async (categoryId) => { try { await callSkill('stoop', 'addMySkill', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
-  const removeSkill = useCallback(async (categoryId) => { try { await callSkill('stoop', 'removeMySkill', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
+  const addSkill = useCallback(async (categoryId) => { try { await callSkill('stoop', 'addMyOffering', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
+  const removeSkill = useCallback(async (categoryId) => { try { await callSkill('stoop', 'removeMyOffering', { categoryId }); } catch { /* */ } load(); }, [callSkill, load]);
   const geocode = useCallback(async () => {
     const q = geoQuery.trim(); if (!q) return;
     try { const r = await callSkill('stoop', 'geocode', { query: q }); setGeoResult(r?.error ? null : r); } catch { setGeoResult(null); }

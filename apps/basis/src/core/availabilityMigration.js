@@ -48,7 +48,7 @@ export async function migrateAvailability({ callSkill, defaultId = 'default' } =
   } catch { /* */ }
   if (!away) {
     try {
-      const r = await callSkill('stoop', 'listMySkills', {});
+      const r = await callSkill('stoop', 'listMyOfferings', {});
       const skills = Array.isArray(r?.skills) ? r.skills : [];
       // any legacy per-skill availability that meant "not fully open"
       if (skills.some((s) => s?.availability != null && s.availability !== '' && s.availability !== 'open')) away = true;

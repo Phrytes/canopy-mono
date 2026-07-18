@@ -39,8 +39,8 @@ export function EditSkillsScreen() {
   const { t } = useLocalisation();
   const { COLORS, SPACING, FONT_SIZES, RADII } = useTheme();
 
-  const shape = useSkillResult('getMySkillsFormShape', {}, [svc?.activeCircleId]);
-  const editSk = useSkill('editMySkillsForCircle');
+  const shape = useSkillResult('getMyOfferingsFormShape', {}, [svc?.activeCircleId]);
+  const editSk = useSkill('editMyOfferingsForCircle');
 
   const data = shape?.data ?? null;
   const prefilled       = useMemo(() => Array.isArray(data?.prefilled)       ? data.prefilled       : [], [data]);

@@ -433,8 +433,12 @@ export function buildProfileSkills({
     throw new TypeError('buildProfileSkills: bundleResolver(parts, ctx) required');
   }
 
+  // Spread a skill def under its canonical id plus a legacy alias id (same
+  // handler) so a renamed op id still dispatches for un-migrated callers.
+  const withLegacyIds = (def, ...legacyIds) => [def, ...legacyIds.map((id) => ({ ...def, id }))];
+
   return [
-    defineSkill('getMySkillsFormShape', async ({ parts, from, envelope }) => {
+    ...withLegacyIds(defineSkill('getMyOfferingsFormShape', async ({ parts, from, envelope }) => {
       const circle = bundleResolver(parts, { envelope, from });
       if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
@@ -452,10 +456,10 @@ export function buildProfileSkills({
         ...prefilledFormShape({ canonicalProfile, circleVocabulary }),
       };
     }, {
-      description: 'Read the prefilled-form shape for editing my skills in a circle.',
-    }),
+      description: 'Read the prefilled-form shape for editing my offerings in a circle.',
+    }), 'getMySkillsFormShape'),
 
-    defineSkill('editMySkillsForCircle', async ({ parts, from, envelope }) => {
+    ...withLegacyIds(defineSkill('editMyOfferingsForCircle', async ({ parts, from, envelope }) => {
       const circle = bundleResolver(parts, { envelope, from });
       if (!circle) return { error: 'circleId required' };
       const a = argsFromParts(parts);
@@ -493,8 +497,8 @@ export function buildProfileSkills({
 
       return { projection, canonicalProfile };
     }, {
-      description: 'Submit my edited skill list for a circle (and optionally mirror to canonical profile).',
-    }),
+      description: 'Submit my edited offering list for a circle (and optionally mirror to canonical profile).',
+    }), 'editMySkillsForCircle'),
   ];
 }
 

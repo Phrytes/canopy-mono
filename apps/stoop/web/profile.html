@@ -333,7 +333,7 @@
     async function refreshSkills() {
       const [cats, mine] = await Promise.all([
         callSkill('listSkillCategories', { lang: currentLang() }),
-        callSkill('listMySkills', {}),
+        callSkill('listMyOfferings', {}),
       ]);
       const myByCat = new Map((mine?.skills ?? []).map(s => [s.categoryId, s]));
       const labels = {
@@ -374,12 +374,12 @@
       try {
         if (e.target.type === 'checkbox') {
           if (e.target.checked) {
-            await callSkill('addMySkill', { categoryId: cat });
+            await callSkill('addMyOffering', { categoryId: cat });
           } else {
-            await callSkill('removeMySkill', { categoryId: cat });
+            await callSkill('removeMyOffering', { categoryId: cat });
           }
         } else if (role === 'status') {
-          await callSkill('addMySkill', { categoryId: cat, status: e.target.value });
+          await callSkill('addMyOffering', { categoryId: cat, status: e.target.value });
         }
         skillsFb.textContent = t('profile.skill_saved', 'Opgeslagen.');
         await refreshSkills();
@@ -394,7 +394,7 @@
       const freeTags = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
       skillsFb.textContent = t('profile.skill_saving', 'Bezig met opslaan…');
       try {
-        await callSkill('addMySkill', { categoryId: cat, freeTags });
+        await callSkill('addMyOffering', { categoryId: cat, freeTags });
         skillsFb.textContent = t('profile.skill_tags_saved', 'Tags opgeslagen.');
       } catch (err) {
         skillsFb.textContent = `${t('common.error', 'Fout')}: ${err.message ?? err}`;

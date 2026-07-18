@@ -727,6 +727,16 @@ export function buildStoopScope(deps = {}) {
   };
 }
 
+/**
+ * Spread a skill def under its canonical id PLUS one or more legacy alias
+ * ids (same handler). Lets an op id be renamed without breaking a peer's
+ * `callSkill(oldId)` or a stored slash trigger — the old id still dispatches
+ * to the same handler. Pure back-compat; adds no behaviour.
+ */
+function withLegacyIds(def, ...legacyIds) {
+  return [def, ...legacyIds.map((id) => ({ ...def, id }))];
+}
+
 export function buildSkills({
   store,
   skillMatch,
@@ -1458,7 +1468,7 @@ export function buildSkills({
     // B★ B3 NOT wired (conflict c): the op declares `skills` as `kind:'string'`,
     // but the skill also accepts a raw array (web/mobile pass the array directly) —
     // wireSkill's string check would reject the array form. Kept hand-written.
-    defineSkill('setMySkills', async ({ parts, from }) => {
+    ...withLegacyIds(defineSkill('setMyOfferings', async ({ parts, from }) => {
       const a = dataArgs(parts);
       // 2026-05-27 slash audit close-out — the chat-shell's slash
       // surface declares `skills` as `kind: 'string'` (consumer
@@ -1477,16 +1487,16 @@ export function buildSkills({
       const updated = await members.addMember({ ...me, offerings: skillsArr });
       return { skills: updated.skills, _sync: simulateSync() };
     }, {
-      description: 'Replace the calling actor\'s skills array.',
+      description: 'Replace the calling actor\'s offerings array.',
       visibility:  'authenticated',
-    }),
+    }), 'setMySkills'),
 
     /**
-     * addMySkill({categoryId, freeTags?, availability?, radius?, status?})
-     *   — append (or update if same categoryId) one skill to the
+     * addMyOffering({categoryId, freeTags?, availability?, radius?, status?})
+     *   — append (or update if same categoryId) one offering to the
      *   calling actor's profile.
      */
-    defineSkill('addMySkill', async ({ parts, from }) => {
+    ...withLegacyIds(defineSkill('addMyOffering', async ({ parts, from }) => {
       const a = dataArgs(parts);
       if (typeof a.categoryId !== 'string' || !a.categoryId) {
         return { error: 'categoryId required' };
@@ -1505,15 +1515,15 @@ export function buildSkills({
       const updated = await members.addMember({ ...me, offerings: filtered });
       return { skills: updated.skills, _sync: simulateSync() };
     }, {
-      description: 'Add or update one skill on the calling actor\'s profile.',
+      description: 'Add or update one offering on the calling actor\'s profile.',
       visibility:  'authenticated',
-    }),
+    }), 'addMySkill'),
 
     /**
-     * removeMySkill({categoryId})
-     *   — drop a skill from the calling actor's profile.
+     * removeMyOffering({categoryId})
+     *   — drop an offering from the calling actor's profile.
      */
-    defineSkill('removeMySkill', async ({ parts, from }) => {
+    ...withLegacyIds(defineSkill('removeMyOffering', async ({ parts, from }) => {
       const a = dataArgs(parts);
       if (typeof a.categoryId !== 'string' || !a.categoryId) {
         return { error: 'categoryId required' };
@@ -1525,21 +1535,21 @@ export function buildSkills({
       const updated = await members.addMember({ ...me, offerings: next });
       return { skills: updated.skills, _sync: simulateSync() };
     }, {
-      description: 'Remove a skill from the calling actor\'s profile.',
+      description: 'Remove an offering from the calling actor\'s profile.',
       visibility:  'authenticated',
-    }),
+    }), 'removeMySkill'),
 
     /**
-     * listMySkills() — diagnostic / settings UI.
+     * listMyOfferings() — diagnostic / settings UI.
      */
-    defineSkill('listMySkills', async ({ from }) => {
+    ...withLegacyIds(defineSkill('listMyOfferings', async ({ from }) => {
       if (!members) return { skills: [], _sync: simulateSync() };
       const me = await members.resolveByWebid(from);
       return { skills: me?.skills ?? [], _sync: simulateSync() };
     }, {
-      description: 'List the calling actor\'s skills.',
+      description: 'List the calling actor\'s offerings.',
       visibility:  'authenticated',
-    }),
+    }), 'listMySkills'),
 
     /**
      * setHolidayMode({on})  — Phase 23.4, now a THIN SHIM over the unified
