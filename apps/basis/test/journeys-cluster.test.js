@@ -302,10 +302,28 @@ describe('J3 — cross-circle "my tasks" (GREEN: membership aggregate across cir
 //      circleNoticeboard.
 // Verifies: attachment is manifest-declared, not a hardcoded button.
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J4 — attachment projector (TODO: Phase 2 renderAttachments/embed-file)', () => {
-  it.todo(
-    'renderAttachments lists embed-file + registry types; embed-file → task carries embeds:[{type:media,ref}]',
-  );
+// The full composer wiring (the "+" menu → media pipeline) is proven in
+// apps/basis/test/attachProjector.test.js. Here we assert the projector's core
+// property: surfaces.attach → attachMenu, and one op declaration surfaces in
+// BOTH the attach menu AND slash ("one declaration, every surface").
+describe('J4 — attachment projector (GREEN: surfaces.attach → attachMenu)', () => {
+  it('lists exactly the surfaces.attach ops, with resolved fields', async () => {
+    const { renderAttachments } = await import('@onderling/app-manifest');
+    const manifest = {
+      appName: 'test',
+      operations: [
+        { id: 'embed-file', surfaces: { attach: { label: 'Bestand', itemType: 'file' }, slash: { command: '/embed-file' } } },
+        { id: 'embed-time', surfaces: { attach: { label: 'Afspraak', itemType: 'event' } } },
+        { id: 'plain', surfaces: { chat: { hint: 'no attach' } } }, // no surfaces.attach → excluded
+      ],
+    };
+    const { attachMenu } = renderAttachments(manifest);
+    expect(attachMenu.map((e) => e.opId)).toEqual(['embed-file', 'embed-time']); // only the attach ops, in order
+    expect(attachMenu[0].label).toBe('Bestand'); // label (a locale key) returned verbatim
+    expect(attachMenu[0].itemType).toBe('file');
+    expect(attachMenu.map((e) => e.opId)).not.toContain('plain'); // the "one declaration, every surface"
+    // property (attach op also in slash) is proven in apps/basis/test/attachProjector.test.js.
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
