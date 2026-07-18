@@ -49,7 +49,9 @@ describe('charter consent (participant side)', () => {
     // the value lives in the agent-registry own/inherit property graph…
     expect(p.properties.ageBand).toEqual({ mode: 'own', value: '35-54' });
     // …and the share choice lives in the shared per-context disclosure policy (not a feedback-local flag).
-    expect(p.policy.perContext.proj.ageBand).toEqual({ enabled: true, rung: null });
+    // The entry carries the full three-axis shape (disclosed / matchable / requestable);
+    // consent toggles only the disclosed axis, so matchable/requestable default off.
+    expect(p.policy.perContext.proj.ageBand).toEqual({ enabled: true, rung: null, matchable: false, requestable: false });
   });
 
   it('SWAP: consentRelease can read from an EXTERNAL profile (the cross-app reuse point)', () => {
