@@ -22,10 +22,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { loadLocale } from '@onderling/react-native/localisation';
 
-import enShared  from '@onderling-app/tasks-v0/locales/shared/en';
-import nlShared  from '@onderling-app/tasks-v0/locales/shared/nl';
-import enDesktop from '@onderling-app/tasks-v0/locales/en';
-import nlDesktop from '@onderling-app/tasks-v0/locales/nl';
+import enShared  from '@onderling-app/tasks/locales/shared/en';
+import nlShared  from '@onderling-app/tasks/locales/shared/nl';
+import enDesktop from '@onderling-app/tasks/locales/en';
+import nlDesktop from '@onderling-app/tasks/locales/nl';
 import enMobile  from '../locales/en.json';
 import nlMobile  from '../locales/nl.json';
 

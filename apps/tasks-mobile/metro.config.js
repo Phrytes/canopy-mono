@@ -18,7 +18,7 @@ module.exports = withCanopyPreset({
   projectRoot,
   repoRoot,
 
-  // Tasks-mobile imports the @onderling-app/tasks-v0 barrel for the
+  // Tasks-mobile imports the @onderling-app/tasks barrel for the
   // V2.8 single-agent factories (buildMeshAgent, wireSkills,
   // bundleResolver, createCircleAgent) — same platform-shell pattern
   // as stoop-mobile + folio-mobile, documented in
@@ -113,7 +113,7 @@ module.exports = withCanopyPreset({
   // SDK packages). Same `extraNodeModules` Trap-2 caveat as stoop-mobile:
   // overlapping prefixes go via `extraSubpathResolvers` below.
   extraNodeModules: {
-    '@onderling-app/tasks-v0':      path.resolve(repoRoot, 'apps/tasks-v0'),
+    '@onderling-app/tasks':      path.resolve(repoRoot, 'apps/tasks-v0'),
 
     '@onderling/chat-p2p':          path.resolve(repoRoot, 'packages/chat-p2p'),
     '@onderling/local-store':       path.resolve(repoRoot, 'packages/local-store'),
@@ -133,48 +133,48 @@ module.exports = withCanopyPreset({
     '@noble/hashes/crypto.js': path.resolve(repoRoot, 'packages/core/node_modules/@noble/hashes/crypto.js'),
   },
 
-  // Subpath resolvers for `@onderling-app/tasks-v0/<sub>` imports —
+  // Subpath resolvers for `@onderling-app/tasks/<sub>` imports —
   // metro's enablePackageExports stays off (per the preset), so the
   // app's `package.json#exports` field is ignored. Same pattern as
   // stoop-mobile's `@onderling-app/stoop/{lib,locales}/*` resolvers.
   extraSubpathResolvers: [
     (moduleName, repoRoot) => {
-      if (moduleName.startsWith('@onderling-app/tasks-v0/locales/shared/')) {
+      if (moduleName.startsWith('@onderling-app/tasks/locales/shared/')) {
         // Shared locale bundle (Phase 41.18 follow-up — see
         // Project Files/conventions/architectural-layering.md §
         // "Shared UI-glue helpers between platform shells").
-        const sub = moduleName.slice('@onderling-app/tasks-v0/locales/shared/'.length);
+        const sub = moduleName.slice('@onderling-app/tasks/locales/shared/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/locales/shared', sub + '.json'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/locales/')) {
-        const sub = moduleName.slice('@onderling-app/tasks-v0/locales/'.length);
+      if (moduleName.startsWith('@onderling-app/tasks/locales/')) {
+        const sub = moduleName.slice('@onderling-app/tasks/locales/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/locales', sub + '.json'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/MeshAgent')) {
+      if (moduleName.startsWith('@onderling-app/tasks/MeshAgent')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/MeshAgent.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/wireSkills')) {
+      if (moduleName.startsWith('@onderling-app/tasks/wireSkills')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/bundleResolver')) {
+      if (moduleName.startsWith('@onderling-app/tasks/bundleResolver')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/Circle')) {
+      if (moduleName.startsWith('@onderling-app/tasks/Circle')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/Circle.js'),
           type:     'sourceFile',
@@ -184,26 +184,26 @@ module.exports = withCanopyPreset({
       // shared device-independent paths (platform parity, NOT mobile
       // forks). The deeper `/lib/substrateStack` MUST precede `/lib`
       // so the longest prefix wins (same trap as the vitest aliases).
-      if (moduleName.startsWith('@onderling-app/tasks-v0/lib/substrateStack')) {
+      if (moduleName.startsWith('@onderling-app/tasks/lib/substrateStack')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/substrateMirror')) {
+      if (moduleName.startsWith('@onderling-app/tasks/substrateMirror')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/multiCircleOnboarding')) {
+      if (moduleName.startsWith('@onderling-app/tasks/multiCircleOnboarding')) {
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCircleOnboarding.js'),
           type:     'sourceFile',
         };
       }
-      if (moduleName.startsWith('@onderling-app/tasks-v0/lib/')) {
-        const sub = moduleName.slice('@onderling-app/tasks-v0/lib/'.length);
+      if (moduleName.startsWith('@onderling-app/tasks/lib/')) {
+        const sub = moduleName.slice('@onderling-app/tasks/lib/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/lib', sub + '.js'),
           type:     'sourceFile',
@@ -214,8 +214,8 @@ module.exports = withCanopyPreset({
       // per `Project Files/conventions/architectural-layering.md` §
       // "Shared UI-glue helpers between platform shells". Both the
       // desktop's web/app.js AND the mobile screens import from here.
-      if (moduleName.startsWith('@onderling-app/tasks-v0/ui/')) {
-        const sub = moduleName.slice('@onderling-app/tasks-v0/ui/'.length);
+      if (moduleName.startsWith('@onderling-app/tasks/ui/')) {
+        const sub = moduleName.slice('@onderling-app/tasks/ui/'.length);
         return {
           filePath: path.resolve(repoRoot, 'apps/tasks-v0/src/ui', sub + '.js'),
           type:     'sourceFile',

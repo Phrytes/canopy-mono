@@ -110,7 +110,7 @@ One cheap seam remains — M4 re-opens `ServiceContext`/Agent to add a
   mode (Tasks does not need cache mode).
 - **Metro resolution gotcha** — RN/Metro does not hoist like Node.
   Even though `@onderling/{pseudo-pod,pod-routing,notify-envelope}` are
-  transitively present via `@onderling-app/tasks-v0` (`file:../tasks-v0`),
+  transitively present via `@onderling-app/tasks` (`file:../tasks-v0`),
   they **must be listed explicitly** in `apps/tasks-mobile/package.json`
   to be Metro-resolvable — mirror `stoop-mobile`'s explicit list.
 

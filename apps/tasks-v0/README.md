@@ -105,7 +105,7 @@ Plus shared `app.js` (skill client + `lifecycleStatus` + `mountInboxBadge` + `re
 ## Usage
 
 ```js
-import { createTasksAgent } from '@onderling-app/tasks-v0';
+import { createTasksAgent } from '@onderling-app/tasks';
 import { mountLocalUi }     from '@onderling/agent-ui';
 
 const bundle = await createTasksAgent({

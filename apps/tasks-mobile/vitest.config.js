@@ -34,34 +34,34 @@ export default defineConfig({
       // Project Files/conventions/architectural-layering.md).
       // M1-S3: substrate helpers shared via device-independent paths
       // (platform parity — NOT mobile forks). Deep paths before barrel.
-      '@onderling-app/tasks-v0/lib/substrateStack':  path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
-      '@onderling-app/tasks-v0/substrateMirror':     path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
+      '@onderling-app/tasks/lib/substrateStack':  path.resolve(repoRoot, 'apps/tasks-v0/src/lib/substrateStack.js'),
+      '@onderling-app/tasks/substrateMirror':     path.resolve(repoRoot, 'apps/tasks-v0/src/substrateMirror.js'),
       // M2-S8: multi-circle onboarding-skill dispatch (issueInvite /
       // redeemInvite, registered once). Shared, not forked.
-      '@onderling-app/tasks-v0/multiCircleOnboarding': path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCircleOnboarding.js'),
-      '@onderling-app/tasks-v0/lib':                 path.resolve(repoRoot, 'apps/tasks-v0/src/lib'),
-      '@onderling-app/tasks-v0/MeshAgent':       path.resolve(repoRoot, 'apps/tasks-v0/src/MeshAgent.js'),
-      '@onderling-app/tasks-v0/wireSkills':      path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
-      '@onderling-app/tasks-v0/bundleResolver':  path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
-      '@onderling-app/tasks-v0/Circle':            path.resolve(repoRoot, 'apps/tasks-v0/src/Circle.js'),
-      '@onderling-app/tasks-v0/locales/en':            path.resolve(repoRoot, 'apps/tasks-v0/locales/en.json'),
-      '@onderling-app/tasks-v0/locales/nl':            path.resolve(repoRoot, 'apps/tasks-v0/locales/nl.json'),
-      '@onderling-app/tasks-v0/locales/shared/en':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/en.json'),
-      '@onderling-app/tasks-v0/locales/shared/nl':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/nl.json'),
+      '@onderling-app/tasks/multiCircleOnboarding': path.resolve(repoRoot, 'apps/tasks-v0/src/skills/multiCircleOnboarding.js'),
+      '@onderling-app/tasks/lib':                 path.resolve(repoRoot, 'apps/tasks-v0/src/lib'),
+      '@onderling-app/tasks/MeshAgent':       path.resolve(repoRoot, 'apps/tasks-v0/src/MeshAgent.js'),
+      '@onderling-app/tasks/wireSkills':      path.resolve(repoRoot, 'apps/tasks-v0/src/wireSkills.js'),
+      '@onderling-app/tasks/bundleResolver':  path.resolve(repoRoot, 'apps/tasks-v0/src/bundleResolver.js'),
+      '@onderling-app/tasks/Circle':            path.resolve(repoRoot, 'apps/tasks-v0/src/Circle.js'),
+      '@onderling-app/tasks/locales/en':            path.resolve(repoRoot, 'apps/tasks-v0/locales/en.json'),
+      '@onderling-app/tasks/locales/nl':            path.resolve(repoRoot, 'apps/tasks-v0/locales/nl.json'),
+      '@onderling-app/tasks/locales/shared/en':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/en.json'),
+      '@onderling-app/tasks/locales/shared/nl':     path.resolve(repoRoot, 'apps/tasks-v0/locales/shared/nl.json'),
       // Shared UI helpers (lifted 2026-05-10 per
       // Project Files/conventions/architectural-layering.md §
       // "Shared UI-glue helpers between platform shells"). Mirrors
       // the metro.config.js subpath resolver. Vite's prefix matcher
       // is greedy-longest so `/ui/<sub>` resolves before `/ui` alone.
-      '@onderling-app/tasks-v0/ui':              path.resolve(repoRoot, 'apps/tasks-v0/src/ui'),
+      '@onderling-app/tasks/ui':              path.resolve(repoRoot, 'apps/tasks-v0/src/ui'),
       // Slice C.1 (2026-05-20) — the tasks-v0 root-level manifest.js is
       // not declared in tasks-v0's `package.json#exports`, but the
       // tasks-mobile NavModel adapter needs it.  Add a vitest alias
       // (Metro auto-resolves via `enablePackageExports: false`); when
       // tasks-v0 starts exporting `./manifest` officially this alias
       // becomes redundant.
-      '@onderling-app/tasks-v0/manifest':        path.resolve(repoRoot, 'apps/tasks-v0/manifest.js'),
-      '@onderling-app/tasks-v0':                 path.resolve(repoRoot, 'apps/tasks-v0/src/index.js'),
+      '@onderling-app/tasks/manifest':        path.resolve(repoRoot, 'apps/tasks-v0/manifest.js'),
+      '@onderling-app/tasks':                 path.resolve(repoRoot, 'apps/tasks-v0/src/index.js'),
 
       // Slice C.1 (2026-05-20) — manifest projectors + web-adapter
       // helpers, consumed by `src/manifest-adapter.js` (NavModel

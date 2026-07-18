@@ -17,7 +17,7 @@
  * the lift is a copy + rewire of consumers, no API churn.
  *
  *   import { createNavModelAdapter } from './manifest-adapter.js';
- *   import { tasksManifest }         from '@onderling-app/tasks-v0/manifest';
+ *   import { tasksManifest }         from '@onderling-app/tasks/manifest';
  *
  *   const adapter = createNavModelAdapter(tasksManifest, { callSkill });
  *   const open    = adapter.getSection('open');

@@ -4,11 +4,11 @@
  * Lifted 2026-05-10 to `apps/tasks-v0/src/ui/inboxClassify.js`.
  * This module remains as a thin re-export so existing screen
  * imports keep working; new code should import from
- * `@onderling-app/tasks-v0/ui/inboxClassify` directly.
+ * `@onderling-app/tasks/ui/inboxClassify` directly.
  *
  * `export *` (not an explicit named list) so additions to the
  * shared module flow through automatically. This shim should never
  * need a manual edit when new helpers land.
  */
 
-export * from '@onderling-app/tasks-v0/ui/inboxClassify';
+export * from '@onderling-app/tasks/ui/inboxClassify';

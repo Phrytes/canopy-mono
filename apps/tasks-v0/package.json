@@ -1,8 +1,8 @@
 {
-  "name": "@onderling-app/tasks-v0",
+  "name": "@onderling-app/tasks",
   "version": "0.1.0",
   "private": true,
-  "description": "H4 tasks-v0 — single-household task ledger with DAG dependencies + skill-based dispatch + role-aware governance.  Phase C V0; thin composition of L1b/L1d/L1e/L1f/L1h substrates.",
+  "description": "H4 tasks — single-household task ledger with DAG dependencies + skill-based dispatch + role-aware governance.  Phase C V0; thin composition of L1b/L1d/L1e/L1f/L1h substrates.",
   "type": "module",
   "main": "src/index.js",
   "exports": {

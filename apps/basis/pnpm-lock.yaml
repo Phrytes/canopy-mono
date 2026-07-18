@@ -17,7 +17,7 @@ importers:
       '@onderling-app/stoop':
         specifier: workspace:*
         version: link:../stoop
-      '@onderling-app/tasks-v0':
+      '@onderling-app/tasks':
         specifier: workspace:*
         version: link:../tasks-v0
       '@onderling/app-manifest':

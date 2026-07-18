@@ -30,7 +30,7 @@ import {
 import { VaultMemory, VaultLocalStorage } from '@onderling/vault';
 import { wireSkill } from '@onderling/sdk';
 import { createSecureMeshAgent } from '@onderling/secure-agent';
-import { createBrowserMultiCircleTasksAgent } from '@onderling-app/tasks-v0/browser';
+import { createBrowserMultiCircleTasksAgent } from '@onderling-app/tasks/browser';
 import { createBrowserStoopAgent } from '@onderling-app/stoop/browser';
 import { createBrowserFolioAgent } from '@onderling-app/folio/browser';
 // agents — the read-only "your agents" surface (2026-07-09). buildAgentSkills
@@ -1179,7 +1179,7 @@ export async function createRealHouseholdAgent(opts = {}) {
    *                    (was `'tasks-v0'`) — the merged manifest's
    *                    `.app` is `'tasks'`, and the catalog keys ops
    *                    by `m.app`.  The directory / npm package
-   *                    (`@onderling-app/tasks-v0`) keep their names.
+   *                    (`@onderling-app/tasks`) keep their names.
    *   - 'stoop'      → stoopAgent.address (slice-2b NeighborhoodAgent)
    *   - 'folio'      → folioAgent.address (slice-4 web-only agent)
    *

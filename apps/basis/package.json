@@ -57,7 +57,7 @@
     "@onderling-app/calendar": "workspace:*",
     "@onderling-app/folio": "workspace:*",
     "@onderling-app/stoop": "workspace:*",
-    "@onderling-app/tasks-v0": "workspace:*",
+    "@onderling-app/tasks": "workspace:*",
     "@onderling/agent-registry": "workspace:*",
     "@onderling/app-manifest": "workspace:*",
     "@onderling/blob-gateway": "workspace:*",

@@ -10,7 +10,7 @@
  *   2. Build a local-store bundle (FileSystemAdapter on a real device,
  *      MemorySource under tests).
  *   3. Build the meshAgent via `buildMeshAgent` from
- *      `@onderling-app/tasks-v0/MeshAgent`. The vault snapshot lives at
+ *      `@onderling-app/tasks/MeshAgent`. The vault snapshot lives at
  *      a per-process path so the agent's pubKey survives restarts.
  *   4. Restore the user's joined circles from `bundleRegistry` (Phase
  *      41.0.b A5 — `@onderling/react-native/storage`). For each entry,
@@ -58,21 +58,21 @@ import { ExpoSecureStore } from '@onderling/react-native/ports';
 
 import {
   buildMeshAgent,
-} from '@onderling-app/tasks-v0/MeshAgent';
+} from '@onderling-app/tasks/MeshAgent';
 import {
   wireSkills,
-} from '@onderling-app/tasks-v0/wireSkills';
+} from '@onderling-app/tasks/wireSkills';
 import {
   multiCircleResolver,
-} from '@onderling-app/tasks-v0/bundleResolver';
+} from '@onderling-app/tasks/bundleResolver';
 import {
   buildMultiCircleOnboardingSkills,
-} from '@onderling-app/tasks-v0/multiCircleOnboarding';
+} from '@onderling-app/tasks/multiCircleOnboarding';
 
 import { buildLocalStoreBundle } from './lib/buildLocalStoreBundle.js';
 import { buildCircleState }        from './lib/buildCircleState.js';
 import { buildPodSignInSkillsMobile } from './lib/podSignInSkillsMobile.js';
-import { attachTasksBundle, detachTasksBundle } from '@onderling-app/tasks-v0/lib/attachTasksBundle';
+import { attachTasksBundle, detachTasksBundle } from '@onderling-app/tasks/lib/attachTasksBundle';
 
 const ServiceContext = createContext(null);
 

@@ -24,10 +24,10 @@ import { describe, it, expect } from 'vitest';
 import { MemorySource, DataPart } from '@onderling/core';
 
 import { bootstrapIdentity } from '@onderling/react-native/identity/bootstrap';
-import { buildMeshAgent }    from '@onderling-app/tasks-v0/MeshAgent';
-import { wireSkills }        from '@onderling-app/tasks-v0/wireSkills';
-import { multiCircleResolver } from '@onderling-app/tasks-v0/bundleResolver';
-import { buildMultiCircleOnboardingSkills } from '@onderling-app/tasks-v0/multiCircleOnboarding';
+import { buildMeshAgent }    from '@onderling-app/tasks/MeshAgent';
+import { wireSkills }        from '@onderling-app/tasks/wireSkills';
+import { multiCircleResolver } from '@onderling-app/tasks/bundleResolver';
+import { buildMultiCircleOnboardingSkills } from '@onderling-app/tasks/multiCircleOnboarding';
 import { MemberMap }         from '@onderling/identity-resolver';
 
 import { buildLocalStoreBundle } from '../src/lib/buildLocalStoreBundle.js';

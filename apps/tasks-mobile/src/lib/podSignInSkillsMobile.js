@@ -47,7 +47,7 @@ import {
   completePodSignIn,
   signOutOfPod,
   podSignInStatus,
-} from '@onderling-app/tasks-v0/lib/podSignIn';
+} from '@onderling-app/tasks/lib/podSignIn';
 
 function _args(parts) {
   if (!Array.isArray(parts)) return {};

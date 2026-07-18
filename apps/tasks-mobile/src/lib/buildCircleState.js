@@ -33,15 +33,15 @@
 import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { GroupManager } from '@onderling/core';
 import { MemberMap } from '@onderling/identity-resolver';
-import { buildStandardRolePolicy } from '@onderling-app/tasks-v0';
+import { buildStandardRolePolicy } from '@onderling-app/tasks';
 import {
   buildActorAliases,
   buildActorResolverFromMembers,
-} from '@onderling-app/tasks-v0/ui/effectiveActor';
-import { buildTasksSubstrateStack }   from '@onderling-app/tasks-v0/lib/substrateStack';
-import { wireTasksSubstrateMirror }   from '@onderling-app/tasks-v0/substrateMirror';
+} from '@onderling-app/tasks/ui/effectiveActor';
+import { buildTasksSubstrateStack }   from '@onderling-app/tasks/lib/substrateStack';
+import { wireTasksSubstrateMirror }   from '@onderling-app/tasks/substrateMirror';
 import { registerAgentBundle }        from '@onderling/agent-registry';
-import { classify, reverseResolve }   from '@onderling-app/tasks-v0/lib/podPathMap';
+import { classify, reverseResolve }   from '@onderling-app/tasks/lib/podPathMap';
 
 /** All four §II.2 storage policies — V0 tier used here. */
 export const CIRCLE_STORAGE_POLICIES = Object.freeze(

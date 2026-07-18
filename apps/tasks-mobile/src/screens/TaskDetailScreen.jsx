@@ -56,7 +56,7 @@ import {
 } from '../lib/taskStatus.js';
 import { ROUTES } from '../navigation.js';
 import { MemberPickerSheet } from '../components/MemberPickerSheet.jsx';
-import { resolveActorRole } from '@canopy-app/tasks-v0/ui/effectiveActor';
+import { resolveActorRole } from '@canopy-app/tasks/ui/effectiveActor';
 
 export function TaskDetailScreen() {
   const nav   = useNavigation();

@@ -65,7 +65,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, RefreshControl, Pressable, Modal, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
+import { tasksManifest } from '@canopy-app/tasks/manifest';
 
 import { useTheme }       from '@canopy/react-native/theme';
 import { ConfirmModal }   from '@canopy/react-native/components';

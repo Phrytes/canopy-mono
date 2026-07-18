@@ -13,7 +13,7 @@
 //   - extraNodeModules aliases for the workspace packages that are NOT
 //     declared in package.json deps (e.g. @onderling/vault, pulled in
 //     transitively by realAgent.js → secure-agent)
-//   - extraSubpathResolvers for `@onderling-app/{tasks-v0,stoop,folio}/browser`
+//   - extraSubpathResolvers for `@onderling-app/{tasks,stoop,folio}/browser`
 //     (Trap 2 — overlapping `extraNodeModules` prefixes; shorter prefix
 //     wins, so Metro would otherwise try apps/<app>/browser instead of
 //     apps/<app>/src/browser.js)
@@ -107,7 +107,7 @@ const _cfg = withCanopyPreset({
     // Direct: the 5 composed apps.  realAgent.js uses subpath imports
     // (/browser) — those go through extraSubpathResolvers below.
     '@onderling-app/basis': path.resolve(repoRoot, 'apps/basis'),
-    '@onderling-app/tasks-v0':    path.resolve(repoRoot, 'apps/tasks-v0'),
+    '@onderling-app/tasks':    path.resolve(repoRoot, 'apps/tasks-v0'),
     '@onderling-app/stoop':       path.resolve(repoRoot, 'apps/stoop'),
     '@onderling-app/folio':       path.resolve(repoRoot, 'apps/folio'),
     '@onderling-app/calendar':    path.resolve(repoRoot, 'apps/calendar'),
@@ -136,7 +136,7 @@ const _cfg = withCanopyPreset({
 
   // Subpath resolvers — Trap 2 escape hatch.
   //
-  // `@onderling-app/{tasks-v0,stoop,folio}/browser` resolve to
+  // `@onderling-app/{tasks,stoop,folio}/browser` resolve to
   // `apps/<app>/src/browser.js` per each app's package.json `exports`
   // map; Metro can't see those because the preset disables
   // unstable_enablePackageExports.
@@ -147,11 +147,15 @@ const _cfg = withCanopyPreset({
     (moduleName /*, repoRootArg */) => {
       // 1. /browser subpath for the three composed app bundles.
       const browserMatch = moduleName.match(
-        /^@onderling-app\/(tasks-v0|stoop|folio)\/browser$/,
+        /^@onderling-app\/(tasks|stoop|folio)\/browser$/,
       );
       if (browserMatch) {
+        // The `tasks` package specifier still lives in the apps/tasks-v0
+        // directory — the "-v0" codename was dropped from the package name,
+        // but the folder rename is a separate step.
+        const appDir = browserMatch[1] === 'tasks' ? 'tasks-v0' : browserMatch[1];
         return {
-          filePath: path.resolve(repoRoot, 'apps', browserMatch[1], 'src/browser.js'),
+          filePath: path.resolve(repoRoot, 'apps', appDir, 'src/browser.js'),
           type:     'sourceFile',
         };
       }

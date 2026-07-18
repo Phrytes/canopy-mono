@@ -60,7 +60,7 @@ import React, { useCallback, useMemo } from 'react';
 import { View, Text, FlatList, RefreshControl, Pressable, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { tasksManifest } from '@canopy-app/tasks-v0/manifest';
+import { tasksManifest } from '@canopy-app/tasks/manifest';
 
 import { useTheme }       from '@canopy/react-native/theme';
 import { useService }     from '../ServiceContext.js';

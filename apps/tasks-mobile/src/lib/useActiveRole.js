@@ -14,7 +14,7 @@
  *   const { role, isAdmin, isCoordinator } = useActiveRole();
  */
 
-import { resolveActorRole } from '@onderling-app/tasks-v0/ui/effectiveActor';
+import { resolveActorRole } from '@onderling-app/tasks/ui/effectiveActor';
 import { useService } from '../ServiceContext.js';
 
 export function useActiveRole() {

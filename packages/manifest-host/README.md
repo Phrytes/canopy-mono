@@ -42,7 +42,7 @@ dispatch routes naturally back to the right app.
 ```js
 import { createManifestHost } from '@onderling/manifest-host';
 import { householdManifest }  from '@onderling-app/household/manifest';
-import { tasksManifest }      from '@onderling-app/tasks-v0/manifest';
+import { tasksManifest }      from '@onderling-app/tasks/manifest';
 
 const host = createManifestHost();
 

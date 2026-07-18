@@ -17,8 +17,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { buildCircleState } from '../src/lib/buildCircleState.js';
-import { attachTasksBundle, detachTasksBundle } from '@onderling-app/tasks-v0/lib/attachTasksBundle';
-import { classify, reverseResolve } from '@onderling-app/tasks-v0/lib/podPathMap';
+import { attachTasksBundle, detachTasksBundle } from '@onderling-app/tasks/lib/attachTasksBundle';
+import { classify, reverseResolve } from '@onderling-app/tasks/lib/podPathMap';
 
 const BASE_CIRCLE = {
   circleId:  'mobile-circle',

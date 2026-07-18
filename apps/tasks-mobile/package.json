@@ -13,7 +13,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@onderling-app/tasks-v0": "file:../tasks-v0",
+    "@onderling-app/tasks": "file:../tasks-v0",
     "@onderling/app-manifest": "file:../../packages/app-manifest",
     "@onderling/chat-p2p": "file:../../packages/chat-p2p",
     "@onderling/core": "file:../../packages/core",

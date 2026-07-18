@@ -10,7 +10,7 @@
 > [`app-readme-scheme.md`](../../docs/conventions/app-readme-scheme.md)).
 > See [`Project Files/conventions/architectural-layering.md`](../../docs/conventions/architectural-layering.md).
 >
-> **Known direct cross-app dep:** `@onderling-app/tasks-v0` for the
+> **Known direct cross-app dep:** `@onderling-app/tasks` for the
 > V2.8 single-agent factories (`buildMeshAgent`, `wireSkills`,
 > `bundleResolver`, `createCircleAgent`), the role-policy table, and
 > the Tasks-vocabulary attachment helpers. Same **platform-shell
@@ -52,7 +52,7 @@ sub-sections + 5 cross-cutting library helpers. 106/106 tests green.
 
 Tasks-mobile inherits the substrate-side restructure (Phase 52.x)
 through the **platform-shell exception** — `buildMeshAgent` from
-`@onderling-app/tasks-v0` wires the substrate primitives once for both
+`@onderling-app/tasks` wires the substrate primitives once for both
 shells, so mobile picks them up without app-side glue:
 
 | Phase | Surface | Adopted via |
@@ -98,8 +98,8 @@ This app composes the following substrate packages
 
 | Kernel/adapter package | Primitive | Used for | Justification |
 |---|---|---|---|
-| `@onderling/core` | `Agent`, `defineSkill`, `MemorySource`, `DataPart` | App constructs the meshAgent + per-circle CircleStates via the V2.8 factories from `@onderling-app/tasks-v0`. Direct core imports come along because the platform-shell exception applies. | The V2.8 single-agent topology is a layering primitive; constructing it goes through the desktop barrel by design. |
-| `@onderling-app/tasks-v0` | `buildMeshAgent`, `wireSkills`, `bundleResolver`, `createCircleAgent`, `buildStandardRolePolicy` | Skill registration + per-circle state + role-policy. | **Platform-shell exception** (locked 2026-05-08, same as folio + stoop) — the desktop barrel owns the skill-builder factory; mobile imports it instead of forking. |
+| `@onderling/core` | `Agent`, `defineSkill`, `MemorySource`, `DataPart` | App constructs the meshAgent + per-circle CircleStates via the V2.8 factories from `@onderling-app/tasks`. Direct core imports come along because the platform-shell exception applies. | The V2.8 single-agent topology is a layering primitive; constructing it goes through the desktop barrel by design. |
+| `@onderling-app/tasks` | `buildMeshAgent`, `wireSkills`, `bundleResolver`, `createCircleAgent`, `buildStandardRolePolicy` | Skill registration + per-circle state + role-policy. | **Platform-shell exception** (locked 2026-05-08, same as folio + stoop) — the desktop barrel owns the skill-builder factory; mobile imports it instead of forking. |
 
 ## Agent Hub compatibility
 
@@ -115,7 +115,7 @@ serves N CircleStates. Multiple circles share the agent's transports +
 identity vault; per-circle state (ItemStore, MemberMap, chat
 controller, calendar emission, invoicing, bot agents) lives in
 `Map<circleId, CircleState>`. Same factory exposed by the desktop tasks
-app (`@onderling-app/tasks-v0/MeshAgent`).
+app (`@onderling-app/tasks/MeshAgent`).
 
 **Capability scope:** subscribe to each joined circle's group;
 broadcast skill requests + collect claims within those groups; pod
@@ -127,7 +127,7 @@ meshAgent's bus.
 
 UI-glue helpers (`taskStatus`, `composeArgs`, `inboxClassify`,
 `effectiveActor`, `localisationMerge`) come from
-`@onderling-app/tasks-v0/ui/*` — the desktop shell's `src/ui/`
+`@onderling-app/tasks/ui/*` — the desktop shell's `src/ui/`
 directory. Both shells consume the same code so the V2.7 deps
 gate, the addTask payload shape, the inbox event classifier, and
 the pubKey↔webid resolver stay in step. See the desktop shell's
@@ -139,7 +139,7 @@ for the policy.
 The genuinely-shared locale strings (status pills, role labels,
 circle-kind chips, approval modes) live in
 `apps/tasks-v0/locales/shared/{en,nl}.json` and merge under both
-`@onderling-app/tasks-v0/locales/<lang>` and `apps/tasks-mobile/locales/<lang>`
+`@onderling-app/tasks/locales/<lang>` and `apps/tasks-mobile/locales/<lang>`
 in `LocalisationProvider.js` — shell-local keys win on collision.
 
 ## Bring it up
