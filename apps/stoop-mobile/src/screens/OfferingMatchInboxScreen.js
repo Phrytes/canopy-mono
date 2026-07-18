@@ -1,9 +1,9 @@
 /**
- * SkillMatchInboxScreen — incoming auto-skill-match suggestions.
+ * OfferingMatchInboxScreen — incoming auto-skill-match suggestions.
  *
  * Stoop V3 Phase 40.20 (2026-05-08).
  *
- * Subscribes to `agent.on('skill-match-suggestion', ...)` events that
+ * Subscribes to `agent.on('offering-match-suggestion', ...)` events that
  * the Stoop bundle (Agent.js) emits via the SkillMatch substrate's
  * appHandler bridge.  Each event carries `{request, decide}`.  The
  * receive-side privacy gate (Phase 22 `notifyWorthy` filter) already
@@ -28,15 +28,15 @@ import { COLORS, SPACING, FONT_SIZES, RADII } from '../lib/theme.js';
 import { t }                                  from '../lib/localisation.js';
 import {
   classifyOrigin, appendSuggestion, dedupSuggestions,
-} from '../lib/skillMatchListener.js';
+} from '../lib/offeringMatchListener.js';
 import { useService }                         from '../ServiceContext.js';
 
-export function SkillMatchInboxScreen() {
+export function OfferingMatchInboxScreen() {
   const svc = useService();
   const [list, setList] = useState([]);
 
   // Subscribe to the live event from the Stoop bundle.  The bundle
-  // emits `'skill-match-suggestion'` whenever a skill-match request
+  // emits `'offering-match-suggestion'` whenever a skill-match request
   // (group OR extra-audience) reaches the appHandler.
   useEffect(() => {
     const agent = svc?.activeBundle?.agent;
@@ -49,12 +49,12 @@ export function SkillMatchInboxScreen() {
         status: 'pending',
       })));
     };
-    agent.on('skill-match-suggestion', handler);
+    agent.on('offering-match-suggestion', handler);
     return () => {
       try {
-        if (typeof agent.off === 'function') agent.off('skill-match-suggestion', handler);
+        if (typeof agent.off === 'function') agent.off('offering-match-suggestion', handler);
         else if (typeof agent.removeListener === 'function') {
-          agent.removeListener('skill-match-suggestion', handler);
+          agent.removeListener('offering-match-suggestion', handler);
         }
       } catch { /* swallow */ }
     };
@@ -185,7 +185,7 @@ function _chipStyle(origin) {
   }
 }
 
-export default SkillMatchInboxScreen;
+export default OfferingMatchInboxScreen;
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.background, padding: SPACING.lg },

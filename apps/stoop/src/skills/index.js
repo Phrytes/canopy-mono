@@ -68,7 +68,7 @@ import { validateStoopItem, intentToCanonicalDraft } from '../lib/canonicalAdapt
 
 import { validateHandle } from '../lib/handle.js';
 import { getPrivacyNotice } from '../lib/privacyNotice.js';
-import { categoryFor, TAXONOMY } from '../lib/skillsMatch.js';
+import { categoryFor, TAXONOMY } from '../lib/offeringsMatch.js';
 import { findNearDuplicate } from '../lib/dupCheck.js';
 import { encryptBackup, decryptBackup } from '../lib/encryptedBackup.js';
 import { startPodSignIn, completePodSignIn, signOutOfPod, podSignInStatus } from '../lib/podSignIn.js';
@@ -84,7 +84,7 @@ import {
   MAX_ATTACHMENTS_PER_POST,
 } from '../lib/Attachments.js';
 import { update as updateInterest, score as scoreInterest, combinedRelevance } from '../lib/InterestProfile.js';
-import { matchesProfile } from '../lib/skillsMatch.js';
+import { matchesProfile } from '../lib/offeringsMatch.js';
 
 /**
  * Canonical circle-admin authority check (P0 roles-authority reconciliation).

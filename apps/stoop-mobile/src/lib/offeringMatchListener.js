@@ -1,10 +1,10 @@
 /**
- * skillMatchListener — pure helpers for the SkillMatchInboxScreen.
+ * offeringMatchListener — pure helpers for the OfferingMatchInboxScreen.
  *
  * Stoop V3 Phase 40.20 (2026-05-08).
  *
- * The mobile SkillMatchInboxScreen subscribes to
- * `agent.on('skill-match-suggestion', ...)` events that the bundle
+ * The mobile OfferingMatchInboxScreen subscribes to
+ * `agent.on('offering-match-suggestion', ...)` events that the bundle
  * emits via the SkillMatch substrate's `appHandler` bridge.  Each
  * event carries `{request, decide}` — `request` is the published
  * payload + a `fromExtraAudience` flag (Phase 40.20 substrate

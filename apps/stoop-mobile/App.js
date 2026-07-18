@@ -77,7 +77,7 @@ import { OnboardIssueScreen }         from './src/screens/OnboardIssueScreen.js'
 import { CreateGroupScreen }          from './src/screens/CreateGroupScreen.js';
 import { OnboardJoinScreen }          from './src/screens/OnboardJoinScreen.js';
 import { AuthCallbackScreen }         from './src/screens/AuthCallbackScreen.js';
-import { SkillMatchInboxScreen }      from './src/screens/SkillMatchInboxScreen.js';
+import { OfferingMatchInboxScreen }      from './src/screens/OfferingMatchInboxScreen.js';
 import { MetadataWarningScreen }      from './src/screens/MetadataWarningScreen.js';
 import { MineScreen }                 from './src/screens/MineScreen.js';
 import { MetricsScreen }              from './src/screens/MetricsScreen.js';
@@ -96,7 +96,7 @@ export const SCREEN_COMPONENTS = Object.freeze({
   [ROUTES.CreateGroup]:    CreateGroupScreen,
   [ROUTES.OnboardJoin]:    OnboardJoinScreen,
   [ROUTES.AuthCallback]:   AuthCallbackScreen,
-  [ROUTES.SkillMatchInbox]:SkillMatchInboxScreen,
+  [ROUTES.OfferingMatchInbox]:OfferingMatchInboxScreen,
   [ROUTES.PostCompose]:    PostComposeScreen,
   [ROUTES.ItemDetail]:     ItemDetailScreen,
   [ROUTES.ChatThread]:     ChatThreadScreen,
@@ -272,7 +272,7 @@ export default function App() {
             <Stack.Screen name={ROUTES.CreateGroup}    component={CreateGroupScreen} />
             <Stack.Screen name={ROUTES.OnboardJoin}    component={OnboardJoinScreen} />
             <Stack.Screen name={ROUTES.AuthCallback}   component={AuthCallbackScreen} />
-            <Stack.Screen name={ROUTES.SkillMatchInbox} component={SkillMatchInboxScreen} />
+            <Stack.Screen name={ROUTES.OfferingMatchInbox} component={OfferingMatchInboxScreen} />
 
             {/* The shell — bottom-tabs.  Welcome's "Beginnen" CTA
                 navigates here; deep links drop straight into a tab. */}

@@ -572,8 +572,8 @@ export async function createNeighborhoodAgent({
   // a no-op and can be skipped.
 
   // Phase 40.20 (Stoop V3 mobile, 2026-05-08): bridge the SkillMatch
-  // appHandler to a regular `agent.on('skill-match-suggestion', ...)`
-  // event so consumers (the mobile SkillMatchInboxScreen, future
+  // appHandler to a regular `agent.on('offering-match-suggestion', ...)`
+  // event so consumers (the mobile OfferingMatchInboxScreen, future
   // notifier hooks, etc.) can subscribe via the standard event
   // surface instead of hand-rolling `skillMatch.subscribe(...)`.
   //
@@ -582,7 +582,7 @@ export async function createNeighborhoodAgent({
   // the appHandler so the user can opt in.
   skillMatch.subscribe(async ({ request, decide }) => {
     try {
-      agent.emit?.('skill-match-suggestion', { request, decide });
+      agent.emit?.('offering-match-suggestion', { request, decide });
     } catch { /* swallow — emit failures shouldn't block the substrate */ }
   });
 

@@ -12,7 +12,7 @@ import {
   categoryFor,
   matchesProfile,
   isKnownCategory,
-} from '../src/lib/skillsMatch.js';
+} from '../src/lib/offeringsMatch.js';
 
 // ── Taxonomy ──────────────────────────────────────────────────────────────
 

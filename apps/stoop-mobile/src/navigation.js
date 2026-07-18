@@ -21,7 +21,7 @@ export const ROUTES = Object.freeze({
   CreateGroup:    'CreateGroup',      // 40.18 — minimal "make a new group" wizard
   OnboardJoin:    'OnboardJoin',      // post-scan: redeem membership code + addGroup
   AuthCallback:   'AuthCallback',     // 40.19 — bulk-sync progress after pod sign-in
-  SkillMatchInbox:'SkillMatchInbox',  // 40.20 — auto-skill-match suggestion inbox
+  OfferingMatchInbox:'OfferingMatchInbox',  // 40.20 — auto-skill-match suggestion inbox
 
   // Main shell tabs (bottom-tab navigator).
   Shell:          'Shell',            // wraps the tabs; the route name we
@@ -73,7 +73,7 @@ export const STACK_ONLY_ROUTES = Object.freeze([
   ROUTES.CreateGroup,
   ROUTES.OnboardJoin,
   ROUTES.AuthCallback,
-  ROUTES.SkillMatchInbox,
+  ROUTES.OfferingMatchInbox,
   ROUTES.PostCompose,
   ROUTES.ItemDetail,
   ROUTES.ChatThread,

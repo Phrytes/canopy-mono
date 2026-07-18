@@ -1,11 +1,11 @@
 /**
- * skillMatchListener — pure-helper coverage for SkillMatchInboxScreen.
+ * offeringMatchListener — pure-helper coverage for OfferingMatchInboxScreen.
  */
 
 import { describe, it, expect } from 'vitest';
 import {
   classifyOrigin, appendSuggestion, dedupSuggestions,
-} from '../src/lib/skillMatchListener.js';
+} from '../src/lib/offeringMatchListener.js';
 
 describe('classifyOrigin', () => {
   it('group when fromExtraAudience is falsy', () => {
