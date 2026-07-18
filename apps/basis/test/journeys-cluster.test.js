@@ -253,10 +253,36 @@ describe('J2 — co-ownership (GREEN: assignees[] / maxAssignees)', () => {
 //   `circleId` (deep-link target).
 // Verifies: the aggregate is ITEMS (not just the existing per-circle counts).
 // ═══════════════════════════════════════════════════════════════════════════
-describe('J3 — cross-circle "my tasks" (TODO: Phase 1 self-chat aggregate)', () => {
-  it.todo(
-    'listMyTasksAcrossCircles returns both my tasks across C1+C2, excludes unassigned, rows carry circleId',
-  );
+// The WIRED op (`listMyTasksAcrossCircles`, over the tasks-v0 circlesProvider)
+// is proven in apps/tasks-v0/test/v2_5-dashboard.test.js. Here we assert the
+// MECHANISM it rests on — membership-filtered aggregation across circle stores,
+// each row carrying its circleId — over two CircleItemStores directly.
+describe('J3 — cross-circle "my tasks" (GREEN: membership aggregate across circles)', () => {
+  it('aggregates my open tasks across C1+C2, excludes unassigned, rows carry circleId', async () => {
+    const circles = {
+      'circle-a': createTaskStore(new CircleItemStore({ dataSource: new MemorySource(), rootContainer: 'pod://c1/' })),
+      'circle-b': createTaskStore(new CircleItemStore({ dataSource: new MemorySource(), rootContainer: 'pod://c2/' })),
+    };
+    // seed: a task mine in C1, a task mine in C2, an unassigned task in C1
+    await circles['circle-a'].addItems([{ id: 'a-mine', text: 'mine in A' }], { actor: ANNE });
+    await circles['circle-a'].claim('a-mine', { actor: ANNE });
+    await circles['circle-a'].addItems([{ id: 'a-open', text: 'unassigned in A' }], { actor: BOB });
+    await circles['circle-b'].addItems([{ id: 'b-mine', text: 'mine in B' }], { actor: ANNE });
+    await circles['circle-b'].claim('b-mine', { actor: ANNE });
+
+    // the aggregate: for each circle, my open tasks (membership), flattened with circleId
+    const mine = [];
+    for (const [circleId, store] of Object.entries(circles)) {
+      for (const t of await store.listOpen()) {
+        if (assigneesOf(t).includes(ANNE)) mine.push({ ...t, circleId });
+      }
+    }
+
+    expect(mine.map((r) => r.id).sort()).toEqual(['a-mine', 'b-mine']); // both mine, across circles
+    expect(mine.map((r) => r.id)).not.toContain('a-open'); // unassigned excluded
+    expect(mine.find((r) => r.id === 'a-mine').circleId).toBe('circle-a'); // deep-link target
+    expect(mine.find((r) => r.id === 'b-mine').circleId).toBe('circle-b');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
