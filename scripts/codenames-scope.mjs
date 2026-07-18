@@ -1,0 +1,145 @@
+// Shared scope + extraction helpers for the codename naming-hygiene guard
+// (scripts/lint-codenames.mjs) and its fitness test.
+//
+// WHAT COUNTS AS "IN SCOPE":
+//   - Source-code COMMENTS only (// line, /* */ block, JSDoc) in tracked
+//     .js/.jsx under packages/ and apps/ — never code, strings, or identifiers.
+//   - Prose in tracked public DOCS: docs/**, root README/QUICKSTART/CLAUDE/
+//     AGENTS/CONTRIBUTING .md, apps/*/docs/**, and any CHANGELOG*.md — minus
+//     fenced/inline code so codenames inside code samples aren't flagged.
+//
+// OUT OF SCOPE (never scanned): node_modules, vendored bundles (**/vendor/**,
+//   *.min.js), private working notes (plans/**, _archive/**, root PLAN-*/
+//   DESIGN-*/REMAINING-WORK.md — gitignored anyway), locale JSON data
+//   (values, not comments), and non-.js/.jsx assets.
+
+import { execSync } from 'node:child_process';
+
+export const sh = (cmd) => execSync(cmd, { encoding: 'utf8' }).trim();
+
+const isVendored = (f) => /(^|\/)vendor\//.test(f) || /\.min\.js$/.test(f);
+
+/** A tracked .js/.jsx source file whose COMMENTS we scan. */
+export function isScopedCode(f) {
+  if (!/^(packages|apps)\/.*\.(js|jsx)$/.test(f)) return false;
+  if (f.includes('/node_modules/') || isVendored(f)) return false;
+  return true;
+}
+
+/** A tracked markdown DOC whose prose we scan. */
+export function isScopedDoc(f) {
+  if (f.includes('/node_modules/')) return false;
+  if (/^docs\//.test(f)) return true;
+  if (/^apps\/[^/]+\/docs\//.test(f)) return true;
+  if (/(^|\/)CHANGELOG[^/]*\.md$/i.test(f)) return true;
+  if (['README.md', 'QUICKSTART.md', 'CLAUDE.md', 'AGENTS.md', 'CONTRIBUTING.md'].includes(f)) return true;
+  return false;
+}
+
+export function tracked() {
+  return sh('git ls-files').split('\n').filter(Boolean);
+}
+
+/**
+ * Extract only the COMMENT regions of a JS/JSX source, preserving line numbers
+ * (non-comment characters are blanked to spaces, newlines kept). A small
+ * hand-rolled scanner that respects '…', "…", `…` strings and // + /* * /
+ * comments so a codename token inside a string literal is never mistaken for a
+ * comment. Regex literals are not fully tokenised, but our codename patterns do
+ * not occur inside regex literals in this tree.
+ */
+export const BLANK = '\x00'; // sentinel for non-comment/non-prose chars (lets the fixer isolate comment spans)
+
+export function commentMask(src) {
+  const out = new Array(src.length).fill(BLANK);
+  let i = 0;
+  const n = src.length;
+  let state = 'code'; // code | line | block | sq | dq | tpl
+  while (i < n) {
+    const c = src[i];
+    const c2 = src[i + 1];
+    if (c === '\n') { out[i] = '\n'; i++; if (state === 'line') state = 'code'; continue; }
+    switch (state) {
+      case 'code':
+        if (c === '/' && c2 === '/') { state = 'line'; i += 2; }
+        else if (c === '/' && c2 === '*') { state = 'block'; i += 2; }
+        else if (c === "'") { state = 'sq'; i++; }
+        else if (c === '"') { state = 'dq'; i++; }
+        else if (c === '`') { state = 'tpl'; i++; }
+        else i++;
+        break;
+      case 'line':
+        out[i] = c; i++;
+        break;
+      case 'block':
+        out[i] = c;
+        if (c === '*' && c2 === '/') { out[i + 1] = '/'; i += 2; state = 'code'; }
+        else i++;
+        break;
+      case 'sq':
+        if (c === '\\') i += 2;
+        else { if (c === "'") state = 'code'; i++; }
+        break;
+      case 'dq':
+        if (c === '\\') i += 2;
+        else { if (c === '"') state = 'code'; i++; }
+        break;
+      case 'tpl':
+        if (c === '\\') i += 2;
+        else { if (c === '`') state = 'code'; i++; }
+        break;
+    }
+  }
+  return out.join('');
+}
+
+/**
+ * Blank out fenced ``` blocks and inline `code` in markdown, preserving line
+ * numbers, so codenames shown in code samples are not flagged as prose.
+ */
+export function docProseMask(src) {
+  let s = src.replace(/```[\s\S]*?```/g, (m) => m.replace(/[^\n]/g, BLANK));
+  s = s.replace(/`[^`\n]*`/g, (m) => BLANK.repeat(m.length));
+  return s;
+}
+
+// The curated codename patterns (the SPEC). Each entry: a stable id and a
+// GLOBAL regex. Tuned to the actual internal planning codenames that leaked
+// into this tree, and verified to have a low false-positive rate (see the
+// fitness test). Deliberately conservative — ambiguous single-letter cluster
+// tags (bare "B ·"), milestone "M<n>", "objective L"/"L<n>", and 1–2 digit
+// "#<n>" ordinals are LEFT alone rather than risk false positives.
+// `codeOnly` patterns are enforced in source COMMENTS only, not in doc prose.
+// A bare `#123` is planning noise in a code comment, but in prose docs a `#123`
+// is routinely a legitimate issue/tracker CITATION (e.g. a traceability matrix
+// keyed by issue number) — stripping those would destroy the doc, so we leave
+// them (conservative: when a token is legit in context, don't flag it).
+export const CODENAME_PATTERNS = [
+  { id: 'cluster-K', re: /\bcluster[ ·–—-]+K\d*\b/gi },
+  { id: 'K-spike',   re: /\bK[12]\b/g },
+  { id: 'SP-n',      re: /\bSP-\d+(?:\.\d+)*[a-z]?\b/g },
+  { id: 'board-n',   re: /\bboard \d+[A-Za-z]?\b/gi },
+  { id: 'Q-n',       re: /#?\bQ\d+\b/g },
+  { id: 'P-phase',   re: /\bP[0-6](?:\.(?:M\d+|\d+[a-z]?|[a-z]))*\b/g },
+  { id: 'issue-ref', re: /#\d{3,}(?:\.\d+[a-z]?)*\b/g, codeOnly: true },
+  { id: 'slice-n',   re: /\bslice[ ]+(?:\d|[A-Z]\.)/gi },
+  { id: 'V-tag',     re: /\bV\d+\.\d+\b/g },
+];
+
+/**
+ * All codename hits in a masked text; returns [{id, match, index}].
+ * `context` is 'code' (default) or 'doc'; doc prose skips codeOnly patterns.
+ */
+export function findCodenames(maskedText, context = 'code') {
+  const hits = [];
+  for (const { id, re, codeOnly } of CODENAME_PATTERNS) {
+    if (codeOnly && context === 'doc') continue;
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(maskedText))) {
+      hits.push({ id, match: m[0], index: m.index });
+      if (m.index === re.lastIndex) re.lastIndex++;
+    }
+  }
+  return hits;
+}

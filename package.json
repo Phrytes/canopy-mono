@@ -18,6 +18,8 @@
     "lint:deps": "node scripts/lint-dep-boundaries.mjs",
     "lint:deps:update": "node scripts/lint-dep-boundaries.mjs --update",
     "test:deps": "vitest run scripts/lint-dep-boundaries.test.mjs",
+    "lint:codenames": "node scripts/lint-codenames.mjs",
+    "test:codenames": "vitest run scripts/lint-codenames.test.mjs",
     "changeset": "npx @changesets/cli",
     "version-packages": "npx @changesets/cli version",
     "release": "pnpm -r publish --access public",
