@@ -22,7 +22,7 @@
 import {
   MemorySource,
 } from '@onderling/core';
-import { ItemStore } from '@onderling/item-store';
+import { CircleItemStore, createTaskStore } from '@onderling/item-store';
 import { MemberMap } from '@onderling/identity-resolver';
 import { SkillMatch } from '@onderling/skill-match';
 
@@ -104,11 +104,22 @@ export async function createTasksAgent({
   // ── Substrates ─────────────────────────────────────────────────────────────
   const policy    = buildStandardRolePolicy(roles);
   const dataSource = localStoreBundle?.cache ?? itemBackend ?? new MemorySource();
-  // V2.7 — enforce hard subtask dependencies: parent can't close while
-  // any of its `dependencies[]` is still open.
-  const itemStore = new ItemStore({
+  // P1 migration step 2 (2026-07-18) — the LIVE store is now the converged
+  // `CircleItemStore` (generic typed CRUD + type index + causal/CAS writes),
+  // with the task lifecycle/CRUD supplied by the ported functions-over-store and
+  // exposed through `createTaskStore` — the thin ItemStore-compatible surface
+  // (Emitter + audit + inbound-sync) the ~26 call sites already speak. No
+  // registry is injected: tasks-v0 stores several non-canonical types
+  // (`subtask-proposal` / `subtask-request` / `inbox-item`), so validation-on-
+  // write stays off — exact parity with the class ItemStore, which validated
+  // separately (warn-only) rather than rejecting on write.
+  // V2.7 — enforce hard subtask dependencies: parent can't close while any of
+  // its `dependencies[]` is still open (threaded into the task-store ctx).
+  const circleStore = new CircleItemStore({
     dataSource,
     rootContainer:        itemStoreRoot ?? 'mem://tasks/',
+  });
+  const itemStore = createTaskStore(circleStore, {
     rolePolicy:           policy,
     enforceDependencies:  true,
   });

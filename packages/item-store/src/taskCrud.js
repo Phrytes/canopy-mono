@@ -99,7 +99,17 @@ function materialise(partial, ctx) {
     ...(partial.kind !== undefined ? { kind: partial.kind } : {}),
     text: partial.text,
     ...(partial.notes ? { notes: partial.notes } : {}),
+    // COMPAT METADATA (parity with `ItemStore#materialise`). `CircleItemStore.put`
+    // owns the canonical `createdAt`/`createdBy`/`updatedAt` base, but the LIVE
+    // task authz + notifications still read the ItemStore-era `addedBy`/`addedAt`
+    // convention pervasively (rolePolicy creator-approval + member-edits-own +
+    // private-visibility, issuer notifications, subtask-spawn, dashboard, UI).
+    // Stamp them here so a migrated consumer's stored task is field-compatible;
+    // `addedBy` carries the same webid `createdBy` does, `addedAt` the numeric
+    // clock ItemStore used. (`master` still defaults to the actor below.)
+    addedBy: partial.addedBy ?? ctx.actor,
     ...(ctx.actorDisplayName ? { addedByDisplayName: ctx.actorDisplayName } : {}),
+    addedAt: partial.addedAt ?? Date.now(),
     ...(partial.dependencies ? { dependencies: [...partial.dependencies] } : {}),
     ...(partial.requiredSkills ? { requiredSkills: [...partial.requiredSkills] } : {}),
     ...(partial.dueAt !== undefined ? { dueAt: partial.dueAt } : {}),
@@ -136,21 +146,25 @@ function validatePartial(partial) {
 // ── list / read ──────────────────────────────────────────────────────────────
 
 /**
- * List OPEN tasks matching `filter`. "Open" = `completedAt` absent — parity with
- * `ItemStore.listOpen`. Reads the type index (`store.listByType('task')`) then
- * partitions + filters.
+ * List OPEN items matching `filter`. "Open" = `completedAt` absent — parity with
+ * `ItemStore.listOpen`, which scans ALL items (every type) then partitions +
+ * filters. The single per-circle store holds mixed types (a task lives beside a
+ * `chat-message` / `subtask-request` / `subtask-proposal` / `inbox-item`), and
+ * LIVE consumers query them THROUGH this surface with `filter.type`; a bare
+ * `listOpen()` returns every open item, exactly as `ItemStore` did. (Restricting
+ * to `listByType('task')` would silently drop those other-typed queries.)
  */
 export async function listOpen(store, filter) {
-  const items = await store.listByType(TASK_TYPE);
+  const items = await store.list();
   return filterItems(items.filter((i) => !i.completedAt), filter);
 }
 
 /**
- * List CLOSED tasks matching `filter`. "Closed" = `completedAt` present — parity
- * with `ItemStore.listClosed`.
+ * List CLOSED items matching `filter`. "Closed" = `completedAt` present — parity
+ * with `ItemStore.listClosed` (scans ALL items; see `listOpen`).
  */
 export async function listClosed(store, filter) {
-  const items = await store.listByType(TASK_TYPE);
+  const items = await store.list();
   return filterItems(items.filter((i) => i.completedAt !== undefined && i.completedAt !== null), filter);
 }
 

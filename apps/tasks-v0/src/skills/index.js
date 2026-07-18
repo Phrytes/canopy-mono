@@ -154,17 +154,10 @@ async function addTaskCore(circle, a, ctx) {
     // Tasks V2 standardisation adoption — cross-pod refs.
     ...(embeds.length > 0  ? { embeds } : {}),
   };
-  // DAG cycle detection (Q-H4.8).
-  if (Array.isArray(partial.dependencies) && partial.dependencies.length > 0) {
-    const all = await circle.itemStore.listOpen();
-    const cycle = detectCycle({ id: '__new__', dependencies: partial.dependencies }, all);
-    if (cycle) {
-      throw Object.assign(
-        new Error(`addTask: dependency cycle would form: ${cycle.join(' → ')}`),
-        { code: 'DEPENDENCY_CYCLE', cycle },
-      );
-    }
-  }
+  // DAG cycle detection is now self-guarded inside the ported `addTasks`
+  // (createTaskStore.addItems → detectCycle over the open set, throwing the
+  // same `DEPENDENCY_CYCLE` code). The consumer-side re-check was removed in
+  // the P1 step-2 migration (2026-07-18) — the substrate owns the guard.
   const [task] = await circle.itemStore.addItems([partial], { actor: ctx.from, actorDisplayName: ctx.actorDisplayName });
 
   // Phase 52.7 — warn-only canonical-shape validation. Adoption is
