@@ -686,10 +686,17 @@ export async function createRealHouseholdAgent(opts = {}) {
       getDrivers: async ({ profileId }) => driversFromProperties((await agentsRegistry.lookup(profileId))?.properties ?? {}),
       // Personas — the PERSISTED per-context disclosure policy ("what this persona shares in circle X").
       // Merge via the pure disclosure setter, then re-register the FULL entry (preserves properties/key/grants).
-      setDisclosure: async ({ profileId, contextId, key, enabled, rung }) => {
+      setDisclosure: async ({ profileId, contextId, key, enabled, rung, matchable, requestable }) => {
         const cur = await agentsRegistry.lookup(profileId);
         if (!cur) throw new Error(`setDisclosure: no such profile ${profileId}`);
-        await agentsRegistry.register({ ...cur, disclosure: setDisclosurePolicy(cur.disclosure ?? { perContext: {} }, contextId, key, { enabled, rung }) });
+        // Forward only the axes actually supplied (three independent axes, P4);
+        // the pure setter merges per-axis so one doesn't clobber the others.
+        const patch = {};
+        if (enabled !== undefined) patch.enabled = enabled;
+        if (rung !== undefined) patch.rung = rung;
+        if (matchable !== undefined) patch.matchable = matchable;
+        if (requestable !== undefined) patch.requestable = requestable;
+        await agentsRegistry.register({ ...cur, disclosure: setDisclosurePolicy(cur.disclosure ?? { perContext: {} }, contextId, key, patch) });
         return { ok: true };
       },
       getDisclosure: async ({ profileId }) => (await agentsRegistry.lookup(profileId))?.disclosure ?? { perContext: {} },

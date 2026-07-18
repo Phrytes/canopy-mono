@@ -545,11 +545,15 @@ export async function setProfileDisclosure(store, args = {}) {
   if (typeof s.profiles?.setDisclosure !== 'function' || !id || !contextId || !key) {
     return { ok: false, reason: !id ? 'id-required' : (!contextId ? 'contextId-required' : (!key ? 'key-required' : 'profiles-unavailable')) };
   }
-  await s.profiles.setDisclosure({
-    profileId: id, contextId, key,
-    enabled: args?.enabled === true || args?.enabled === 'true',   // wire args arrive as strings; object args as bool
-    rung: typeof args?.rung === 'string' && args.rung ? args.rung : null,
-  });
+  // Three independent axes (P4): disclosed(enabled)+rung · matchable · requestable.
+  // Only forward an axis the caller actually passed, so a call touching one axis
+  // doesn't clobber the others (the pure setDisclosure merges per-axis).
+  const patch = {};
+  if (args?.enabled !== undefined) patch.enabled = args.enabled === true || args.enabled === 'true';
+  if (typeof args?.rung === 'string') patch.rung = args.rung || null;
+  if (args?.matchable !== undefined) patch.matchable = args.matchable === true || args.matchable === 'true';
+  if (args?.requestable !== undefined) patch.requestable = args.requestable === true || args.requestable === 'true';
+  await s.profiles.setDisclosure({ profileId: id, contextId, key, ...patch });
   return { ok: true, id, contextId, key };
 }
 
