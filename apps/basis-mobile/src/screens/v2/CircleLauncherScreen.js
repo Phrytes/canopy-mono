@@ -1804,6 +1804,11 @@ function CircleDetail({
   eventLog, circles = [],
   recipeStore = null, onStoopEvent, sendPersonaUpdate,
   onBack, onSettings, onMine, onViewAs, onAdvisor, onSkills, onFiles, onRules, onRecipes, onAdmin, onLists, onShare, onInvite,
+  // Bulletin restyle — the label shown in the GESPREK chat-card's bot-header strip
+  // (green presence dot + this name). SEAM: no per-kring bot identity is plumbed to
+  // the screen yet, so it stays null and the strip falls back to a localized default
+  // (circle.kring.bot_header) — same botLabel seam as web. Wire a real name when it exists.
+  botLabel = null,
 }) {
   // Part D — scope the bot/suggest catalog to the circle's apps: drops basis's infra ops (/me etc.)
   // that the circle bot can't run (they threw `circle.bot.failed`) and keeps them out of the suggest list.
@@ -2790,7 +2795,23 @@ function CircleDetail({
           surfaces land in follow-up slices.
           scherm-mode wins over the tab body: the whole pane
           becomes the (placeholder) recept'd page. */}
-      <ScrollView contentContainerStyle={styles.list} testID="circle-detail-stream">
+      {/* Bulletin restyle — the GESPREK chat stream renders as ONE bot card (mirror of
+          onderling.org's .chatbox / web's circle-kring__chat-card): a header strip (green
+          presence dot + the kring assistant's name) over the message log, framed by a
+          2px-ink border. The prikbord / scherm / leden tabs keep the plain body. The
+          header + the bordered scroll are stacked siblings that read as one contiguous
+          card (matching 2px-ink sides). */}
+      {viewMode !== 'scherm' && activeTab === 'gesprek' ? (
+        <View style={styles.chatHead} testID="circle-detail-bot-head">
+          <View style={styles.chatDot} />
+          <Text style={styles.chatName}>{botLabel || t('circle.kring.bot_header')}</Text>
+        </View>
+      ) : null}
+      <ScrollView
+        contentContainerStyle={viewMode !== 'scherm' && activeTab === 'gesprek' ? [styles.list, styles.chatListPad] : styles.list}
+        style={viewMode !== 'scherm' && activeTab === 'gesprek' ? styles.chatScroll : undefined}
+        testID="circle-detail-stream"
+      >
         {viewMode === 'scherm' ? (
           // α.1e — render the materialized recipe blocks.  CircleScreenView
           // handles per-block status (ok / empty / error) + top-level
@@ -2976,6 +2997,7 @@ function CircleDetail({
             value={composerText}
             onChangeText={setComposerText}
             placeholder={t('circle.kring.composer_placeholder')}
+            placeholderTextColor={theme.color.inkSoft}
             accessibilityLabel={t('circle.kring.composer_placeholder')}
             returnKeyType="send"
             onSubmitEditing={sendKringChat}
@@ -3099,9 +3121,24 @@ function renderBubble(row, t, deliveryOpts = null) {
     && row?.actor === localActor
     && (row?.type === 'chat-message' || row?.event?.type === 'chat-message');
   const deliveryState = isLocalChat ? deliveryStateFor(row.id) : null;
+  // Bulletin restyle (web parity) — my own chat messages align right on --me-bg
+  // (no border); everyone else's + the bot's stay left on --bot-bg + --bot-line.
+  // Same gate the delivery icon uses: a locally-authored chat-message.
+  const isMine = localActor != null
+    && row?.actor === localActor
+    && (row?.type === 'chat-message' || row?.event?.type === 'chat-message');
+  // LLM-forward consent/handoff card — a bot bubble variant (dashed rust border,
+  // peach fill). SEAM: nothing emits a consent bubble in the kring yet; the restyle
+  // lights up when payload.consent is stamped. No backend consent logic is invented.
+  const isConsent = !!payload.consent;
+  const isBotRow = row.event?.actor === 'bot' || row.actor === 'bot';
   return (
-    <View key={row.id} style={styles.bubble} testID={`kring-bubble-${row.id}`}>
-      {sender ? <Text style={styles.bubbleSender}>{sender}</Text> : null}
+    <View
+      key={row.id}
+      style={[styles.bubble, isMine && styles.bubbleMine, isConsent && styles.bubbleConsent]}
+      testID={`kring-bubble-${row.id}`}
+    >
+      {sender && !isMine ? <Text style={styles.bubbleSender}>{sender}</Text> : null}
       {/* "only you" vs "whole kring" scope badge — one presentation of payload.scope. */}
       {payload.kind === 'chat-message' ? (
         <Text
@@ -3133,6 +3170,18 @@ function renderBubble(row, t, deliveryOpts = null) {
           </>
         );
       })()}
+      {/* Per-answer transparency badge (web parity, site .msg .src) — how a BOT
+          answer came about. Only when a bot row carries payload.provenance: a string
+          renders verbatim (pipeline-stamped, already localized), an object {llmUsed}
+          localizes here. SEAM: nothing stamps provenance onto kring replies yet, so
+          it stays dormant until the answer pipeline carries it. Never fabricated. */}
+      {payload.provenance != null && isBotRow ? (
+        <Text style={styles.bubbleProvenance} testID={`kring-provenance-${row.id}`}>
+          {typeof payload.provenance === 'string'
+            ? payload.provenance
+            : t(payload.provenance.llmUsed ? 'circle.kring.provenance_llm' : 'circle.kring.provenance_direct')}
+        </Text>
+      ) : null}
       {embedChipsOf(payload).length > 0 ? (
         <View style={styles.bubbleEmbeds}>
           {embedChipsOf(payload).map((e) => {
@@ -3172,17 +3221,24 @@ function renderBubble(row, t, deliveryOpts = null) {
       ) : null}
       {msgButtons.length > 0 ? (
         <View style={styles.rowActions}>
-          {msgButtons.map((b) => (
-            <Pressable
-              key={b.id}
-              style={styles.rowActionBtn}
-              accessibilityRole="button"
-              testID={`kring-msgbtn-${b.id}`}
-              onPress={() => { if (onBubbleButton) onBubbleButton(b); }}
-            >
-              <Text style={styles.rowActionText}>{b.label}</Text>
-            </Pressable>
-          ))}
+          {msgButtons.map((b) => {
+            // Bulletin restyle — a consent-card button carries `variant` so the
+            // "ja, doorsturen" (primary, filled ink) / "nee, ik kies zelf"
+            // (secondary, ink-outline) pair reads right (web parity).
+            const primary = b.variant === 'primary';
+            const secondary = b.variant === 'secondary';
+            return (
+              <Pressable
+                key={b.id}
+                style={[styles.rowActionBtn, primary && styles.consentBtnPrimary, secondary && styles.consentBtnSecondary]}
+                accessibilityRole="button"
+                testID={`kring-msgbtn-${b.id}`}
+                onPress={() => { if (onBubbleButton) onBubbleButton(b); }}
+              >
+                <Text style={[styles.rowActionText, primary && styles.consentBtnPrimaryText]}>{b.label}</Text>
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
       {deliveryState === 'pending' ? (
@@ -3392,9 +3448,23 @@ const styles = StyleSheet.create({
   moreMenu:       { borderWidth: 1, borderColor: theme.color.line, borderRadius: 8, backgroundColor: theme.color.card, padding: 4, marginTop: 4, marginBottom: 4 },
   moreItem:       { paddingVertical: 9, paddingHorizontal: 12 },
   moreItemText:   { fontSize: 13, color: theme.color.ink },
-  // chat bubbles + composer (v2 §1+§5).
-  bubble:           { padding: 10, borderWidth: 1, borderColor: theme.color.line, borderRadius: 10, backgroundColor: theme.color.card, marginBottom: 6, maxWidth: '85%', alignSelf: 'flex-start' },
+  // Bulletin restyle — the GESPREK stream is ONE bot card (mirror of onderling.org's
+  // .chatbox / web's circle-kring__chat-card). The header strip + the bordered scroll
+  // are stacked siblings sharing a 2px-ink frame so they read as one card.
+  chatHead:  { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: theme.color.card, borderTopWidth: 2, borderLeftWidth: 2, borderRightWidth: 2, borderColor: theme.color.ink, borderTopLeftRadius: theme.radius.md, borderTopRightRadius: theme.radius.md, borderBottomWidth: 1, borderBottomColor: theme.color.line },
+  chatDot:   { width: 8, height: 8, borderRadius: 4, backgroundColor: theme.color.green },
+  chatName:  { fontSize: 12.5, fontWeight: '700', color: theme.color.ink },
+  chatScroll:{ flex: 1, backgroundColor: theme.color.card, borderLeftWidth: 2, borderRightWidth: 2, borderBottomWidth: 2, borderColor: theme.color.ink, borderBottomLeftRadius: theme.radius.md, borderBottomRightRadius: theme.radius.md },
+  chatListPad:{ padding: 14 },
+  // chat bubbles + composer (v2 §1+§5). Others'/bot = --bot-bg + --bot-line (left);
+  // mine = --me-bg block (right, no border) — web parity.
+  bubble:           { padding: 10, borderWidth: 1, borderColor: theme.color.botLine, borderRadius: theme.radius.md, backgroundColor: theme.color.botBg, marginBottom: 6, maxWidth: '78%', alignSelf: 'flex-start' },
+  bubbleMine:       { backgroundColor: theme.color.meBg, borderWidth: 0, alignSelf: 'flex-end', maxWidth: '74%' },
+  // LLM-forward consent/handoff card — a bot bubble variant: dashed rust border, peach fill, full width.
+  bubbleConsent:    { alignSelf: 'stretch', maxWidth: '100%', backgroundColor: theme.color.consentBg, borderWidth: 1.5, borderColor: theme.color.accentInk, borderStyle: 'dashed' },
   bubbleSender:     { fontSize: 11, color: theme.color.inkSoft, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 2 },
+  // Per-answer transparency badge (web parity, site .msg .src) — one small mono line.
+  bubbleProvenance: { marginTop: 5, fontFamily: theme.font.mono, fontSize: 10.5, color: theme.color.inkSoft },
   bubbleScope:      { alignSelf: 'flex-start', fontSize: 10, fontWeight: '600', paddingHorizontal: 7, paddingVertical: 1, borderRadius: 9, marginBottom: 3, overflow: 'hidden' },
   bubbleScopeSelf:  { backgroundColor: theme.color.paper, color: theme.color.inkSoft },
   bubbleScopeKring: { backgroundColor: theme.color.blueBg, color: theme.color.blue },
@@ -3407,7 +3477,8 @@ const styles = StyleSheet.create({
   bubbleEmbedText:  { fontSize: 12, color: theme.color.ink },
   dayDivider:       { alignSelf: 'center', fontSize: 11, color: theme.color.inkSoft, fontStyle: 'italic', paddingVertical: 8 },
   composer:         { flexDirection: 'row', gap: 8, alignItems: 'center', paddingTop: 8, paddingBottom: 4, borderTopWidth: 1, borderTopColor: theme.color.line, marginTop: 4 },
-  composerInput:    { flex: 1, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: theme.color.line, borderRadius: 22, backgroundColor: theme.color.white, fontSize: 14, color: theme.color.ink },
+  // Bulletin restyle — composer input on the card fill with a soft placeholder (web parity).
+  composerInput:    { flex: 1, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1, borderColor: theme.color.line, borderRadius: 22, backgroundColor: theme.color.card, fontSize: 14, color: theme.color.ink },
   composerSend:     { width: 36, height: 36, borderRadius: 18, backgroundColor: theme.color.accent, alignItems: 'center', justifyContent: 'center' },
   composerSendText: { color: theme.color.white, fontSize: 18, fontWeight: '700' },
   // Slash-command auto-suggest list above the composer (web↔mobile parity with the classic dropdown).
@@ -3437,6 +3508,10 @@ const styles = StyleSheet.create({
   rowActions:     { flexDirection: 'row', gap: 6, marginTop: 8 },
   rowActionBtn:   { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12, borderWidth: 1, borderColor: theme.color.line, backgroundColor: theme.color.paper },
   rowActionText:  { fontSize: 12, color: theme.color.ink },
+  // Consent-card button variants (web parity): primary = filled ink, secondary = ink-outline.
+  consentBtnPrimary:     { backgroundColor: theme.color.accent, borderColor: theme.color.accent },
+  consentBtnPrimaryText: { color: theme.color.accentContrast, fontWeight: '700' },
+  consentBtnSecondary:   { backgroundColor: theme.color.card, borderColor: theme.color.ink },
   // δ.2 — per-message delivery state.  Pending = subtle clock-line,
   // Failed = warning pill (tap-to-retry).  Sent renders nothing.
   deliveryPending:    { marginTop: 4, fontSize: 11, color: theme.color.inkSoft },
